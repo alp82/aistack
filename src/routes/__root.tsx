@@ -15,6 +15,7 @@ import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 import { authClient } from '../lib/auth-client'
 import { getToken } from '../lib/auth-server'
 import appCss from '../styles.css?url'
+import PosthogProvider from '../integrations/posthog/provider'
 
 import type { QueryClient } from '@tanstack/react-query'
 import type { ConvexQueryClient } from '@convex-dev/react-query'
@@ -70,9 +71,11 @@ function RootComponent() {
       authClient={authClient}
       initialToken={context.token}
     >
-      <RootDocument>
-        <Outlet />
-      </RootDocument>
+      <PosthogProvider>
+        <RootDocument>
+          <Outlet />
+        </RootDocument>
+      </PosthogProvider>
     </ConvexBetterAuthProvider>
   )
 }

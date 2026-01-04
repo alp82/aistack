@@ -11,3 +11,5 @@ count.txt
 .output
 .vinxi
 todos.json
+
+.env.local
