@@ -2,9 +2,11 @@
 
 <div align="center">
 
-![AI Stack Logo](aistack-web/public/aistack-logo.png)
+![AI Stack Logo](public/aistack-logo.png)
 
 **A curated platform for discovering, comparing, and sharing AI technology stacks**
+
+[![Live Page](https://img.shields.io/badge/Live_Demo-aistack.to-blue?style=for-the-badge&logo=web)](https://aistack.to)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -19,8 +21,8 @@ AI Stack is a web application designed to help developers and teams discover, co
 
 ## ✨ Features
 
-- **Discover** AI tools and frameworks organized by category
-- **Compare** different technology stacks side by side
+- **Discover** AI tools and frameworks organized by stack
+- **Compare** different stacks side by side and cut costs for your own usage
 - **Share** your own AI stacks with the community
 - **Stay Updated** with the latest AI technology trends
 
@@ -53,15 +55,14 @@ AI Stack is a web application designed to help developers and teams discover, co
 ## 📁 Project Structure
 
 ```
-aistack/
-├── aistack-web/          # Main web application
-│   ├── convex/           # Convex backend functions & schema
-│   ├── public/           # Static assets
-│   └── src/              # React application source
-│       ├── components/   # Reusable UI components
-│       ├── integrations/ # Third-party integrations
-│       └── routes/       # File-based routing
-└── README.md             # You are here
+aistack/              # Main web application
+├── convex/           # Convex backend functions & schema
+├── public/           # Static assets
+├── src/              # React application source
+│   ├── components/   # Reusable UI components
+│   ├── integrations/ # Third-party integrations
+│   └── routes/       # File-based routing
+└── README.md         # You are here
 ```
 
 ## 🚀 Getting Started
@@ -76,13 +77,12 @@ aistack/
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/aistack.git
+   git clone https://github.com/alp82/aistack.git
    cd aistack
    ```
 
 2. **Install dependencies**
    ```bash
-   cd aistack-web
    pnpm install
    ```
 
@@ -97,7 +97,7 @@ aistack/
 
 4. **Initialize Convex**
    ```bash
-   npx convex dev
+   pnpm convex dev
    ```
    This will automatically set up your Convex deployment and update your environment variables.
 
@@ -188,5 +188,5 @@ If you have any questions or need help, please open an issue on GitHub.
 ---
 
 <div align="center">
-Made with ❤️ by the AI Stack team
+Made with ❤️ by Alper Ortac: https://x.com/alperortac
 </div>
