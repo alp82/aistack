@@ -1,5 +1,7 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
+import { api } from './_generated/api'
+import { v4 as uuidv4 } from 'uuid'
 
 export const joinWaitlist = mutation({
   args: {
@@ -18,6 +20,7 @@ export const joinWaitlist = mutation({
     }
 
     // Add to waitlist with null userId for email submissions
+    const lookupId = uuidv4()
     const waitlistId = await ctx.db.insert('waitlist', {
       email: args.email.toLowerCase(),
       userId: undefined,
@@ -25,6 +28,15 @@ export const joinWaitlist = mutation({
       status: 'pending',
       joinedAt: Date.now(),
       source: args.source,
+      lookupId,
+    })
+
+    // Send confirmation email (non-blocking)
+    ctx.scheduler.runAfter(0, api.email.sendWaitlistConfirmEmail, {
+      email: args.email.toLowerCase(),
+      lookupId,
+    }).catch((error: unknown) => {
+      console.error('Failed to send waitlist confirmation email:', error)
     })
 
     return waitlistId
@@ -57,6 +69,7 @@ export const joinWaitlistWithAuth = mutation({
     }
 
     // Add to waitlist
+    const lookupId = uuidv4()
     const waitlistId = await ctx.db.insert('waitlist', {
       email: user.email!,
       userId: cleanUserId,
@@ -64,6 +77,15 @@ export const joinWaitlistWithAuth = mutation({
       status: 'registered',
       joinedAt: Date.now(),
       source: args.source,
+      lookupId,
+    })
+
+    // Send confirmation email (non-blocking)
+    ctx.scheduler.runAfter(0, api.email.sendWaitlistConfirmEmail, {
+      email: user.email!,
+      lookupId,
+    }).catch((error: unknown) => {
+      console.error('Failed to send waitlist confirmation email:', error)
     })
 
     return waitlistId
@@ -105,5 +127,54 @@ export const getWaitlistCount = query({
       .collect()
     
     return waitlist.length
+  },
+})
+
+export const getWaitlistPosition = query({
+  args: {
+    lookupId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Find the user by lookupId
+    const user = await ctx.db
+      .query('waitlist')
+      .withIndex('by_lookupId', (q) => q.eq('lookupId', args.lookupId))
+      .first()
+    
+    if (!user) {
+      return null
+    }
+
+    // Get all waitlist entries sorted by joinedAt
+    const allEntries = await ctx.db
+      .query('waitlist')
+      .collect()
+    
+    // Sort by joinedAt to get position
+    const sortedEntries = allEntries.sort((a, b) => a.joinedAt - b.joinedAt)
+    const position = sortedEntries.findIndex(entry => entry._id === user._id) + 1
+    
+    // Calculate people ahead
+    const peopleAhead = position - 1
+    const totalPeople = sortedEntries.length
+
+    // Estimate timeline (rough estimate: 100 people per week starting from end of January)
+    const weeksFromNow = Math.ceil(position / 100)
+    const estimatedDate = new Date()
+    estimatedDate.setDate(estimatedDate.getDate() + (weeksFromNow * 7))
+    const estimatedTimeline = estimatedDate.toLocaleDateString('en-US', { 
+      month: 'long', 
+      year: estimatedDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined 
+    })
+
+    return {
+      position,
+      peopleAhead,
+      totalPeople,
+      status: user.status,
+      email: user.email,
+      joinedAt: user.joinedAt,
+      estimatedTimeline,
+    }
   },
 })

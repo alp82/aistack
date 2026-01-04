@@ -19,6 +19,8 @@ import PosthogProvider from '../integrations/posthog/provider'
 
 import type { QueryClient } from '@tanstack/react-query'
 import type { ConvexQueryClient } from '@convex-dev/react-query'
+import { AlertCircle, Home } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 
 const getAuth = createServerFn({ method: 'GET' }).handler(async () => {
   return await getToken()
@@ -61,6 +63,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     }
   },
   component: RootComponent,
+  notFoundComponent: NotFound,
 })
 
 function RootComponent() {
@@ -104,5 +107,30 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <Scripts />
       </body>
     </html>
+  )
+}
+
+function NotFound() {
+  return (
+    <RootDocument>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+        <div className="flex items-center justify-center px-4 py-32">
+          <div className="text-center max-w-md">
+            <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+            <h1 className="text-3xl font-bold text-white mb-2">Page Not Found</h1>
+            <p className="text-gray-400 mb-8">
+              It seems you've ventured off the beaten path. The page you're looking for doesn't exist.
+            </p>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            >
+              <Home className="h-4 w-4" />
+              Go Home
+            </Link>
+          </div>
+        </div>
+      </div>
+    </RootDocument>
   )
 }

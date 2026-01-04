@@ -18,8 +18,10 @@ export default defineSchema({
     status: v.union(v.literal('pending'), v.literal('registered')),
     joinedAt: v.number(),
     source: v.optional(v.string()),
+    lookupId: v.string(), // UUID for secure public status page access
   })
     .index('by_email', ['email'])
     .index('by_userId', ['userId'])
-    .index('by_status', ['status']),
+    .index('by_status', ['status'])
+    .index('by_lookupId', ['lookupId']),
 })

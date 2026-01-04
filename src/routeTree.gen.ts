@@ -13,6 +13,7 @@ import { Route as TestRouteImport } from './routes/test'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as WaitlistLookupIdRouteImport } from './routes/waitlist.$lookupId'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
 import { Route as DemoConvexRouteImport } from './routes/demo/convex'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
@@ -45,6 +46,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WaitlistLookupIdRoute = WaitlistLookupIdRouteImport.update({
+  id: '/waitlist/$lookupId',
+  path: '/waitlist/$lookupId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DemoTanstackQueryRoute = DemoTanstackQueryRouteImport.update({
@@ -120,6 +126,7 @@ export interface FileRoutesByFullPath {
   '/test': typeof TestRoute
   '/demo/convex': typeof DemoConvexRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
@@ -139,6 +146,7 @@ export interface FileRoutesByTo {
   '/test': typeof TestRoute
   '/demo/convex': typeof DemoConvexRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
@@ -159,6 +167,7 @@ export interface FileRoutesById {
   '/test': typeof TestRoute
   '/demo/convex': typeof DemoConvexRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
@@ -180,6 +189,7 @@ export interface FileRouteTypes {
     | '/test'
     | '/demo/convex'
     | '/demo/tanstack-query'
+    | '/waitlist/$lookupId'
     | '/api/auth/$'
     | '/demo/api/names'
     | '/demo/api/tq-todos'
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/test'
     | '/demo/convex'
     | '/demo/tanstack-query'
+    | '/waitlist/$lookupId'
     | '/api/auth/$'
     | '/demo/api/names'
     | '/demo/api/tq-todos'
@@ -218,6 +229,7 @@ export interface FileRouteTypes {
     | '/test'
     | '/demo/convex'
     | '/demo/tanstack-query'
+    | '/waitlist/$lookupId'
     | '/api/auth/$'
     | '/demo/api/names'
     | '/demo/api/tq-todos'
@@ -238,6 +250,7 @@ export interface RootRouteChildren {
   TestRoute: typeof TestRoute
   DemoConvexRoute: typeof DemoConvexRoute
   DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
+  WaitlistLookupIdRoute: typeof WaitlistLookupIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   DemoApiNamesRoute: typeof DemoApiNamesRoute
   DemoApiTqTodosRoute: typeof DemoApiTqTodosRoute
@@ -279,6 +292,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/waitlist/$lookupId': {
+      id: '/waitlist/$lookupId'
+      path: '/waitlist/$lookupId'
+      fullPath: '/waitlist/$lookupId'
+      preLoaderRoute: typeof WaitlistLookupIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/demo/tanstack-query': {
@@ -382,6 +402,7 @@ const rootRouteChildren: RootRouteChildren = {
   TestRoute: TestRoute,
   DemoConvexRoute: DemoConvexRoute,
   DemoTanstackQueryRoute: DemoTanstackQueryRoute,
+  WaitlistLookupIdRoute: WaitlistLookupIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   DemoApiNamesRoute: DemoApiNamesRoute,
   DemoApiTqTodosRoute: DemoApiTqTodosRoute,
