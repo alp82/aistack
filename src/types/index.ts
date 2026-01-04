@@ -1,0 +1,12 @@
+export type ToolCategory = 
+  | "coding" 
+  | "creation" 
+  | "notes" 
+  | "research" 
+  | "thinking" 
+  | "voice" 
+  | "automation" 
+  | "slides" 
+  | "video" 
+  | "image" 
+  | "text"
