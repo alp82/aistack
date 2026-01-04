@@ -6,7 +6,7 @@
 
 **A curated platform for discovering, comparing, and sharing AI technology stacks**
 
-[![Live Page](https://img.shields.io/badge/Live_Demo-aistack.to-blue?style=for-the-badge&logo=web)](https://aistack.to)
+[![Live Page](https://img.shields.io/badge/Live_Page-aistack.to-blue?style=for-the-badge&logo=web)](https://aistack.to)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
