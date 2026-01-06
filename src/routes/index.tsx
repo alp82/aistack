@@ -12,6 +12,92 @@ import { api } from '../../convex/_generated/api'
 export const Route = createFileRoute('/')({
   ssr: false,
   component: App,
+  head: () => ({
+    meta: [
+      {
+        title: 'AI Stack - What AI tools are worth paying for?',
+      },
+      {
+        name: 'description',
+        content: 'Browse AI stacks, see what they cost, and help other builders decide what AI tools are actually worth the money. Real stacks from real founders and creators.',
+      },
+      // Open Graph
+      {
+        property: 'og:title',
+        content: 'AI Stack - What AI tools are worth paying for?',
+      },
+      {
+        property: 'og:description',
+        content: 'Browse AI stacks, see what they cost, and help other builders decide what AI tools are actually worth the money.',
+      },
+      {
+        property: 'og:image',
+        content: 'https://aistack.to/aistack-banner.png',
+      },
+      {
+        property: 'og:image:width',
+        content: '1200',
+      },
+      {
+        property: 'og:image:height',
+        content: '630',
+      },
+      {
+        property: 'og:url',
+        content: 'https://aistack.to',
+      },
+      {
+        property: 'og:type',
+        content: 'website',
+      },
+      {
+        property: 'og:site_name',
+        content: 'AI Stack',
+      },
+      // Twitter Card
+      {
+        name: 'twitter:card',
+        content: 'summary_large_image',
+      },
+      {
+        name: 'twitter:title',
+        content: 'AI Stack - What AI tools are worth paying for?',
+      },
+      {
+        name: 'twitter:description',
+        content: 'Browse AI stacks, see what they cost, and help other builders decide what AI tools are actually worth the money.',
+      },
+      {
+        name: 'twitter:image',
+        content: 'https://aistack.to/aistack-banner.png',
+      },
+      {
+        name: 'twitter:site',
+        content: '@alperortac',
+      },
+      {
+        name: 'twitter:creator',
+        content: '@alperortac',
+      },
+      // Additional SEO
+      {
+        name: 'keywords',
+        content: 'AI tools, artificial intelligence, AI stack, AI costs, AI subscriptions, AI for founders, AI for creators, AI tools comparison',
+      },
+      {
+        name: 'author',
+        content: 'Alper Ortaç',
+      },
+      {
+        name: 'robots',
+        content: 'index, follow',
+      },
+      {
+        name: 'googlebot',
+        content: 'index, follow',
+      },
+    ],
+  }),
 })
 
 function App() {
