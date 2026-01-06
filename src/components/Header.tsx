@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router'
 
 export default function Header() {
   return (
-    <header className="p-4 flex items-center justify-center bg-slate-900 text-white shadow-lg">
+    <header className="p-4 flex items-center justify-center bg-slate-950 text-white shadow-lg">
       <Link to="/" className="flex items-center gap-1 text-2xl font-semibold">
         <img
           src="/aistack-logo.png"
