@@ -345,6 +345,15 @@ function App() {
             >
               @alperortac
             </a>
+            {' • '}
+            <a 
+              href="https://github.com/alp82/aistack" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-cyan-400 hover:text-cyan-300 transition-colors"
+            >
+              GitHub
+            </a>
           </p>
         </div>
       </footer>
