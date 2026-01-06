@@ -3,7 +3,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from 'convex/react'
 import { STACK_PREVIEW_HEIGHT, STACK_PREVIEW_WIDTH, StackPreview } from '../components/StackPreview'
 import { WaitlistCTA } from '../components/WaitlistCTA'
-import { Zap, Users, Share2, DollarSign, Info } from 'lucide-react'
+import { WorkflowSection } from '../components/WorkflowSection'
+import { Zap, DollarSign, Info, Play, Copy } from 'lucide-react'
 import Stack from '../components/Stack'
 import Masonry from '../components/Masonry'
 import { exampleTools } from '../data/exampleTools'
@@ -15,20 +16,20 @@ export const Route = createFileRoute('/')({
   head: () => ({
     meta: [
       {
-        title: 'AI Stack - What AI tools are worth paying for?',
+        title: 'AI Stack - Real AI workflows from solo builders.',
       },
       {
         name: 'description',
-        content: 'Browse AI stacks, see what they cost, and help other builders decide what AI tools are actually worth the money. Real stacks from real founders and creators.',
+        content: 'Browse real founders\' AI stacks, complete with workflows, prompts, and automations you can copy in minutes.',
       },
       // Open Graph
       {
         property: 'og:title',
-        content: 'AI Stack - What AI tools are worth paying for?',
+        content: 'AI Stack - Real AI workflows from solo builders.',
       },
       {
         property: 'og:description',
-        content: 'Browse AI stacks, see what they cost, and help other builders decide what AI tools are actually worth the money.',
+        content: 'Browse real founders\' AI stacks, complete with workflows, prompts, and automations you can copy in minutes.',
       },
       {
         property: 'og:image',
@@ -61,11 +62,11 @@ export const Route = createFileRoute('/')({
       },
       {
         name: 'twitter:title',
-        content: 'AI Stack - What AI tools are worth paying for?',
+        content: 'AI Stack - Real AI workflows from solo builders.',
       },
       {
         name: 'twitter:description',
-        content: 'Browse AI stacks, see what they cost, and help other builders decide what AI tools are actually worth the money.',
+        content: 'Browse real founders\' AI stacks, complete with workflows, prompts, and automations you can copy in minutes.',
       },
       {
         name: 'twitter:image',
@@ -82,7 +83,7 @@ export const Route = createFileRoute('/')({
       // Additional SEO
       {
         name: 'keywords',
-        content: 'AI tools, artificial intelligence, AI stack, AI costs, AI subscriptions, AI for founders, AI for creators, AI tools comparison',
+        content: 'AI workflows, AI automations, AI playbooks, AI stacks, artificial intelligence, AI tools, AI for founders, AI for creators, AI workflows comparison',
       },
       {
         name: 'author',
@@ -145,7 +146,7 @@ function App() {
         <div className="absolute bottom-20 left-1/2 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-2000"></div>
       </div>
       {/* Hero Section */}
-      <section className="relative py-20 px-6 text-center overflow-hidden">
+      <section className="relative py-4 md:py-20 px-6 text-center overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-gray-950/40 via-gray-950/60 to-gray-950/80"></div>
         <div className="relative max-w-5xl mx-auto">
           {/* Badge */}
@@ -154,15 +155,15 @@ function App() {
             <span className="text-cyan-400 text-sm font-medium">For Solo Founders & Creators</span>
           </div>
           
-          <h1 className="text-4xl md:text-7xl font-black text-white mb-6">
-            What AI tools are<br />
+          <h1 className="text-3xl md:text-7xl font-black text-white mb-6">
+            Real AI workflows<br />
             <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-              worth paying for?
+              from solo builders
             </span>
           </h1>
           
           <p className="text-lg md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Browse AI stacks, see what they cost, and help other builders decide what's actually worth the money.
+            Browse real founders' AI stacks, complete with workflows, prompts, and automations you can copy in minutes.
           </p>
           
           <WaitlistCTA variant="hero" waitlistCount={waitlistCount} displayCount={displayCount} />
@@ -170,11 +171,25 @@ function App() {
       </section>
       
       {/* See How It Works */}
-      <section className="py-20 px-6">
+      <section className="py-12 md:py-20 px-2 md:px-6">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl md:text-5xl font-bold text-white text-center mb-16">
-            See how it will work
-          </h2>
+          <div className="text-center mb-16">
+            {/* <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-4 py-2 mb-6">
+              <Play className="h-4 w-4 text-emerald-400" />
+              <span className="text-emerald-400 text-sm font-medium">Full Stacks</span>
+            </div> */}
+            
+            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
+              Share AI Stacks<br />
+              <span className="bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">
+                and get inspired
+              </span>
+            </h2>
+            
+            <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto">
+              See exactly how founders connect their AI tools. Steal the <strong>entire setup</strong> or mix and match steps to create your <strong>perfect automation</strong>.
+            </p>
+          </div>
           
           {/* Using Stack component with auto-animation */}
           <div className="flex justify-center">
@@ -193,6 +208,15 @@ function App() {
                     avatar="https://api.dicebear.com/9.x/personas/svg?seed=Sarah"
                     stackName="Sarah Chen - Content Creator"
                     summary="My YouTube channel grew 400% after going all-in on AI, but I nearly burned out first. ChatGPT handles scripts (though I rewrite 40% to keep my voice), ElevenLabs saves me 2 hours per video, and Canva AI thumbnails actually perform better than my hand-made ones. I'm using AI for speed, not creativity."
+                    workflowHighlight={{
+                      title: "Content Automation Pipeline",
+                      steps: [
+                        { tool: "Descript", action: "Transcribe video" },
+                        { tool: "ChatGPT", action: "Generate tweets" },
+                        { tool: "ElevenLabs", action: "Create audio" }
+                      ],
+                      benefit: "Saves 10 hours/week"
+                    }}
                     tools={[
                       {
                         id: '1',
@@ -238,6 +262,15 @@ function App() {
                     avatar="https://api.dicebear.com/9.x/personas/svg?seed=Marcus"
                     stackName="Marcus Rodriguez - Marketer"
                     summary="Our CTR jumped from 2.1% to 8.7% using AI, but our ad spend also doubled. Jasper writes copy that converts (sometimes too salesy), SurferSEO helped us avoid over-optimization, Hootsuite AI's scheduling is brilliant."
+                    workflowHighlight={{
+                      title: "Ad Campaign Automation",
+                      steps: [
+                        { tool: "Jasper", action: "Write ad copy" },
+                        { tool: "SurferSEO", action: "Optimize" },
+                        { tool: "Hootsuite", action: "Schedule posts" }
+                      ],
+                      benefit: "CTR up 314%"
+                    }}
                     tools={[
                       {
                         id: '1',
@@ -277,6 +310,15 @@ function App() {
                     avatar="https://api.dicebear.com/9.x/personas/svg?seed=Jeri"
                     stackName="Jeri Kent - Solo Founder"
                     summary="I shipped my MVP in 6 weeks instead of 6 months. Claude is amazing for architecture talks, Cursor writes code fast (with proper guidance), Midjourney visuals look good enough without heavy prompting, and Notion AI helps me organize my thoughts."
+                    workflowHighlight={{
+                      title: "Rapid Development Flow",
+                      steps: [
+                        { tool: "Claude", action: "Plan architecture" },
+                        { tool: "Cursor", action: "Write code" },
+                        { tool: "Notion AI", action: "Document" }
+                      ],
+                      benefit: "Shipped 4x faster"
+                    }}
                     tools={[
                       {
                         id: '1',
@@ -324,15 +366,15 @@ function App() {
           <div className="grid md:grid-cols-3 gap-8">
             <div 
               className="text-center group cursor-pointer transition-all duration-300 hover:scale-105"
-              onMouseEnter={() => document.querySelectorAll('.cost-highlight').forEach(el => el.classList.add('bg-amber-500/20', 'border-amber-500/30'))}
-              onMouseLeave={() => document.querySelectorAll('.cost-highlight').forEach(el => el.classList.remove('bg-amber-500/20', 'border-amber-500/30'))}
+              onMouseEnter={() => document.querySelectorAll('.cost-highlight').forEach(el => el.classList.add('bg-yellow-500/20', 'border-yellow-500/30'))}
+              onMouseLeave={() => document.querySelectorAll('.cost-highlight').forEach(el => el.classList.remove('bg-yellow-500/20', 'border-yellow-500/30'))}
             >
-              <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/10 rounded-full p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center group-hover:from-amber-500/30 group-hover:to-amber-600/20 transition-all duration-300 shadow-lg shadow-amber-500/10">
-                <DollarSign className="h-10 w-10 text-amber-400" />
+              <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 rounded-full p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center group-hover:from-yellow-500/30 group-hover:to-yellow-600/20 transition-all duration-300 shadow-lg shadow-yellow-500/10">
+                <DollarSign className="h-10 w-10 text-yellow-400" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3 group-hover:text-amber-400 transition-colors duration-300">Cost transparency</h3>
+              <h3 className="text-xl font-semibold text-white mb-3 group-hover:text-yellow-400 transition-colors duration-300">See real costs</h3>
               <p className="text-gray-400 group-hover:text-gray-300 transition-colors duration-300">
-                Real monthly costs from real builders.
+                Know exactly what founders pay for results.
               </p>
             </div>
             
@@ -342,11 +384,11 @@ function App() {
               onMouseLeave={() => document.querySelectorAll('.context-highlight').forEach(el => el.classList.remove('bg-blue-500/20', 'border-blue-500/50', 'shadow-lg', 'shadow-blue-500/20'))}
             >
               <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 rounded-full p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center group-hover:from-blue-500/30 group-hover:to-blue-600/20 transition-all duration-300 shadow-lg shadow-blue-500/10">
-                <Users className="h-10 w-10 text-blue-400" />
+                <Copy className="h-10 w-10 text-blue-400" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3 group-hover:text-blue-400 transition-colors duration-300">Context matters</h3>
+              <h3 className="text-xl font-semibold text-white mb-3 group-hover:text-blue-400 transition-colors duration-300">Steal playbooks</h3>
               <p className="text-gray-400 group-hover:text-gray-300 transition-colors duration-300">
-                How and why the stack works for them.
+                Prompts, rules, and connections included.
               </p>
             </div>
             
@@ -360,16 +402,19 @@ function App() {
               })}
             >
               <div className="bg-gradient-to-br from-green-500/20 to-green-600/10 rounded-full p-4 w-20 h-20 mx-auto mb-4 flex items-center justify-center group-hover:from-green-500/30 group-hover:to-green-600/20 transition-all duration-300 shadow-lg shadow-green-500/10">
-                <Share2 className="h-10 w-10 text-green-400" />
+                <Play className="h-10 w-10 text-green-400" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3 group-hover:text-green-400 transition-colors duration-300">Easy sharing</h3>
+              <h3 className="text-xl font-semibold text-white mb-3 group-hover:text-green-400 transition-colors duration-300">Real workflows</h3>
               <p className="text-gray-400 group-hover:text-gray-300 transition-colors duration-300">
-                Share your stack on X, Discord, or Reddit.
+                Copy actual automations from founders who ship.
               </p>
             </div>
           </div>
         </div>
       </section>
+
+      {/* Workflow Section */}
+      <WorkflowSection />
 
       {/* Tools Masonry */}
       <section className="py-20 px-6 border-t border-gray-800">
@@ -378,10 +423,6 @@ function App() {
             <h2 className="text-3xl md:text-4xl font-bold text-white text-center">
               AI Tools for your Stack
             </h2>
-            <div className="flex items-center gap-1 bg-cyan-700/30 border border-cyan-700/20 rounded-full px-3 py-1">
-              <Info className="h-3 w-3 text-cyan-400" />
-              <span className="text-cyan-300 text-xs font-medium">Example Data</span>
-            </div>
           </div>
           <p className="text-gray-300 text-center mb-12 max-w-2xl mx-auto">
             This is how a list of your submitted AI tools could look like
@@ -419,19 +460,21 @@ function App() {
             <span className="text-gray-300 text-lg">AI Stack</span>
           </div>
           <p className="text-gray-400 mb-4">
-            What AI tools are worth paying for and why?
+            Real AI workflows from solo builders.
           </p>
-          <p className="text-gray-500 text-sm">
-            Built with <span className="text-red-500">♥</span> by{' '}
-            <a 
-              href="https://x.com/alperortac" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-cyan-400 hover:text-cyan-300 transition-colors"
-            >
-              @alperortac
-            </a>
-            {' • '}
+          <p className="flex gap-3 items-center justify-center text-gray-500 text-sm">
+            <span className='flex items-center gap-1'>
+              Built with <span className="text-red-500 text-lg">♥</span> by{' '}
+              <a 
+                href="https://x.com/alperortac" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-cyan-400 hover:text-cyan-300 transition-colors"
+              >
+                @alperortac
+              </a>
+            </span>
+            <span>•</span>
             <a 
               href="https://github.com/alp82/aistack" 
               target="_blank" 

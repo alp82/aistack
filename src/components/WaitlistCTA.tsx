@@ -103,16 +103,18 @@ export function WaitlistCTA({ variant, waitlistCount, displayCount, className = 
 
   return (
     <div className="relative max-w-4xl mx-auto text-center">
-      <div className="bg-black/25 backdrop-blur-sm border border-white/10 rounded-2xl p-12">
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+      <div className="md:bg-black/25 md:backdrop-blur-sm md:border md:border-white/10 rounded-2xl md:p-12">
+        <h2 className="hidden md:block text-3xl md:text-4xl font-bold text-white mb-2">
           Be the first to know when we launch
         </h2>
-        <p className="text-xl text-gray-300 mb-8">
-          Get early access and exclusive insights from the community.
+        <p className="text-xl text-gray-300 mb-2 md:mb-8">
+          Get early access
+          <span className="md:hidden">:</span>
+          <span className="hidden md:inline"> and exclusive insights from the community.</span>
         </p>
         
-        <div className={`space-y-4 ${className}`}>
-          <form onSubmit={handleEmailSubmit} className="flex flex-col sm:flex-row items-center gap-4 max-w-md mx-auto">
+        <div className={`space-y-2 md:space-y-4 ${className}`}>
+          <form onSubmit={handleEmailSubmit} className="flex items-center gap-2 md:gap-4 mx-auto max-w-md">
             <div className="flex-1">
               <Label htmlFor={`${variant}-email`} className="sr-only">Email</Label>
               <Input
@@ -128,10 +130,10 @@ export function WaitlistCTA({ variant, waitlistCount, displayCount, className = 
             <Button 
               type="submit" 
               size="lg"
-              disabled={isSubmitting || !!waitlistStatus}
-              className="bg-sky-600 hover:bg-sky-700 text-white px-6 cursor-pointer"
+              disabled={isSubmitting || !!waitlistStatus || !displayCount}
+              className="bg-sky-600 hover:bg-sky-700 text-white px-2 md:px-6 cursor-pointer"
             >
-              {isSubmitting ? 'Joining...' : waitlistStatus && email ? 'Already Joined' : 'Join Waitlist'}
+              {!displayCount ? 'Loading...' : isSubmitting ? 'Joining...' : waitlistStatus && email ? 'Already Joined' : 'Join Waitlist'}
             </Button>
           </form>
           
@@ -147,6 +149,7 @@ export function WaitlistCTA({ variant, waitlistCount, displayCount, className = 
           <Button 
             variant="outline" 
             onClick={handleGoogleSignIn}
+            disabled={isSubmitting || !!waitlistStatus || !displayCount}
             className="border-gray-600 text-black hover:bg-gray-300 hover:border-gray-500 max-w-md mx-auto w-full cursor-pointer"
           >
               <svg className="h-4 w-4" aria-hidden="true" viewBox="0 0 24 24">
@@ -185,7 +188,7 @@ export function WaitlistCTA({ variant, waitlistCount, displayCount, className = 
           )}
         </div>
         
-        {waitlistCount > 0 && <div className="flex items-center justify-center gap-2 mt-10">
+        {waitlistCount > 0 && <div className="flex items-center justify-center gap-2 mt-6 md:mt-10">
           <div className="flex -space-x-2">
             {[...Array(Math.min(waitlistCount, 5))].map((_, i) => (
               <img
