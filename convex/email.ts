@@ -22,7 +22,7 @@ export const sendWaitlistConfirmEmail = action({
     const html = await render(
       WaitlistConfirm({ 
         productName: "AI Stack", 
-        ctaUrl: `${process.env.VITE_SITE_URL || "http://localhost:3000"}/waitlist/${args.lookupId}`,
+        ctaUrl: `${process.env.VITE_SITE_URL || "https://aistack.to"}/waitlist/${args.lookupId}`,
       })
     );
 
