@@ -37,11 +37,11 @@ export const Route = createFileRoute('/')({
       },
       {
         property: 'og:image:width',
-        content: '1200',
+        content: '802',
       },
       {
         property: 'og:image:height',
-        content: '630',
+        content: '438',
       },
       {
         property: 'og:url',
@@ -87,7 +87,7 @@ export const Route = createFileRoute('/')({
       },
       {
         name: 'author',
-        content: 'Alper Ortaç',
+        content: 'Alper Ortac',
       },
       {
         name: 'robots',
