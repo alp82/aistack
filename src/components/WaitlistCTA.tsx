@@ -197,7 +197,7 @@ export function WaitlistCTA({ variant, waitlistCount, displayCount, className = 
             ))}
           </div>
           <span className="text-gray-300 text-sm font-medium">
-            <span className="text-cyan-400 font-bold">{displayCount}+</span> founders waiting
+            <span className="text-cyan-400 font-bold">{displayCount}+</span> people waiting
           </span>
         </div>}
       </div>
