@@ -1,4 +1,4 @@
-import { ArrowRight, Play, Copy, Zap } from 'lucide-react'
+import { ArrowRight, Copy, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface WorkflowStep {
