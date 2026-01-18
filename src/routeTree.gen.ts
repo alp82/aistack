@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WaitlistLookupIdRouteImport } from './routes/waitlist.$lookupId'
+import { Route as StacksSlugRouteImport } from './routes/stacks.$slug'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 
 const TestRoute = TestRouteImport.update({
@@ -41,6 +42,11 @@ const WaitlistLookupIdRoute = WaitlistLookupIdRouteImport.update({
   path: '/waitlist/$lookupId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StacksSlugRoute = StacksSlugRouteImport.update({
+  id: '/stacks/$slug',
+  path: '/stacks/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/auth-callback': typeof AuthCallbackRoute
   '/login': typeof LoginRoute
   '/test': typeof TestRoute
+  '/stacks/$slug': typeof StacksSlugRoute
   '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/auth-callback': typeof AuthCallbackRoute
   '/login': typeof LoginRoute
   '/test': typeof TestRoute
+  '/stacks/$slug': typeof StacksSlugRoute
   '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   '/auth-callback': typeof AuthCallbackRoute
   '/login': typeof LoginRoute
   '/test': typeof TestRoute
+  '/stacks/$slug': typeof StacksSlugRoute
   '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -79,6 +88,7 @@ export interface FileRouteTypes {
     | '/auth-callback'
     | '/login'
     | '/test'
+    | '/stacks/$slug'
     | '/waitlist/$lookupId'
     | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
@@ -87,6 +97,7 @@ export interface FileRouteTypes {
     | '/auth-callback'
     | '/login'
     | '/test'
+    | '/stacks/$slug'
     | '/waitlist/$lookupId'
     | '/api/auth/$'
   id:
@@ -95,6 +106,7 @@ export interface FileRouteTypes {
     | '/auth-callback'
     | '/login'
     | '/test'
+    | '/stacks/$slug'
     | '/waitlist/$lookupId'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
@@ -104,6 +116,7 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   LoginRoute: typeof LoginRoute
   TestRoute: typeof TestRoute
+  StacksSlugRoute: typeof StacksSlugRoute
   WaitlistLookupIdRoute: typeof WaitlistLookupIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -145,6 +158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WaitlistLookupIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/stacks/$slug': {
+      id: '/stacks/$slug'
+      path: '/stacks/$slug'
+      fullPath: '/stacks/$slug'
+      preLoaderRoute: typeof StacksSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -160,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   LoginRoute: LoginRoute,
   TestRoute: TestRoute,
+  StacksSlugRoute: StacksSlugRoute,
   WaitlistLookupIdRoute: WaitlistLookupIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
