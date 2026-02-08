@@ -16,18 +16,9 @@ Next milestone: Transform the waitlist into an MVP
 * Use the question ask tool to verify with me if the task is complete or needs more work
 * You can only declare a task as complete if you got my approval
 
-## ~~Stack Details Page~~ ✅
-* ~~List of stacks is shown on front page - linking to their details page~~
-* ~~Stack Details show same info from card, with the full list of tools~~
-* Done: Carousel + grid on landing page, details page at `/stacks/{slug}` with creator name as title, dot-separated social/project links, Solo/Team below price, oneLiner, optional description, metadata bar (stackUrl, prompts, rules, skills, mcps, resources), tool cards in responsive grid. Schema: `summary`→`oneLiner`, removed `title`, added `description`, `stackUrl`, `prompts`, `rules`, `skills`, `mcps`, `resources`.
-
-## Adding/Editing Stacks
-* Users can add new stacks
-* They see the details page immediately with skeleton bars (no pulse animation) and/or blurred sections
-* Step by step, they have inline forms to fill out and the edit page is building itself until it's ready
-* Needs a publish button once main required data is entered (name, tools, summary)
-* Stacks can be edited after publishing
-
-## Adding Tools
-* Missing Tools can be added during stack creation/editing
-* Adding tools are done in an extra form in a modal
+## Users
+* users can sign up with email and google - reuse waitlist functionality
+* users have their own table in the db
+* table has email verification link and ui the necessary functionality
+* password reset functionality
+* users can sign out

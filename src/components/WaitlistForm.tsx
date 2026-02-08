@@ -198,14 +198,12 @@ export function WaitlistForm({
 				<Button
 					type="submit"
 					size="lg"
-					disabled={isSubmitting || !!waitlistStatus || !displayCount}
+					disabled={isSubmitting || !!waitlistStatus}
 					className="bg-sky-600 hover:bg-sky-700 text-white px-2 md:px-6 cursor-pointer"
 				>
-					{!displayCount
-						? "Loading..."
-						: isSubmitting
-							? "Joining..."
-							: waitlistStatus && email
+					{isSubmitting
+						? "Joining..."
+						: waitlistStatus && email
 								? "Already Joined"
 								: "Join Waitlist"}
 				</Button>
@@ -225,7 +223,7 @@ export function WaitlistForm({
 			<Button
 				variant="outline"
 				onClick={handleGoogleSignIn}
-				disabled={isSubmitting || !!waitlistStatus || !displayCount}
+				disabled={isSubmitting || !!waitlistStatus}
 				className="border-gray-600 text-black hover:bg-gray-300 hover:border-gray-500 max-w-md mx-auto w-full cursor-pointer"
 			>
 				<svg className="h-4 w-4" aria-hidden="true" viewBox="0 0 24 24">

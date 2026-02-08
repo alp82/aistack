@@ -23,7 +23,8 @@ AI Stack is a web application designed to help developers and teams discover, co
 
 - **Discover** AI tools and frameworks organized by stack
 - **Compare** different stacks side by side and cut costs for your own usage
-- **Share** your own AI stacks with the community
+- **Share** your own AI stacks with the community (create at `/stacks/new`, edit at `/stacks/$slug/edit`)
+- **Add Tools** inline during stack creation via a modal form
 - **Stay Updated** with the latest AI technology trends
 
 ## 🛠 Tech Stack

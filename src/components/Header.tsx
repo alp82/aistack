@@ -1,8 +1,11 @@
+import { useConvexAuth } from "@convex-dev/react-query";
 import { Link } from "@tanstack/react-router";
+import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { WaitlistForm } from "./WaitlistForm";
 
 export default function Header() {
+	const { isAuthenticated } = useConvexAuth();
 	const [showWaitlistForm, setShowWaitlistForm] = useState(false);
 
 	useEffect(() => {
@@ -54,10 +57,20 @@ export default function Header() {
 					</span>
 				</Link>
 
-				{showWaitlistForm && (
-					<div className="hidden md:block animate-in fade-in slide-in-from-right-4 duration-300">
-						<WaitlistForm variant="header" />
-					</div>
+				{isAuthenticated ? (
+					<Link
+						to="/stacks/new"
+						className="inline-flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+					>
+						<Plus className="h-4 w-4" />
+						Share Stack
+					</Link>
+				) : (
+					showWaitlistForm && (
+						<div className="hidden md:block animate-in fade-in slide-in-from-right-4 duration-300">
+							<WaitlistForm variant="header" />
+						</div>
+					)
 				)}
 			</div>
 		</header>

@@ -37,6 +37,7 @@ export default defineSchema({
   creators: defineTable({
     name: v.string(),
     slug: v.string(),
+    userId: v.optional(v.string()),
     xHandle: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),
     verified: v.boolean(),
@@ -47,6 +48,7 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index('by_slug', ['slug'])
+    .index('by_userId', ['userId'])
     .index('by_verified', ['verified']),
 
   tools: defineTable({
