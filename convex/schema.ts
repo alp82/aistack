@@ -78,10 +78,10 @@ export default defineSchema({
     oneLiner: v.string(),
     description: v.optional(v.string()),
     stackUrl: v.optional(v.string()),
-    prompts: v.optional(v.number()),
-    rules: v.optional(v.number()),
-    skills: v.optional(v.number()),
-    mcps: v.optional(v.number()),
+    prompts: v.optional(v.boolean()),
+    rules: v.optional(v.boolean()),
+    skills: v.optional(v.boolean()),
+    mcps: v.optional(v.boolean()),
     resources: v.optional(v.array(v.object({
       label: v.string(),
       url: v.string(),
@@ -90,6 +90,7 @@ export default defineSchema({
       v.object({
         toolId: v.id('tools'),
         tierId: v.optional(v.string()),
+        kind: v.union(v.literal('main'), v.literal('misc')),
         primaryUsageLabel: v.string(),
         price: TierPricing,
         priceKind: v.union(
@@ -98,22 +99,15 @@ export default defineSchema({
           v.literal('bundle'),
           v.literal('usage_based')
         ),
-        bundleName: v.optional(v.string()),
+        bundleSlug: v.optional(v.string()),
         notes: v.optional(v.string()),
       })
     ),
-    bundleCosts: v.optional(
+    bundleSubscriptions: v.optional(
       v.array(
         v.object({
-          bundleName: v.string(),
-          pricing: v.object({
-            pricingType: v.literal("fixed"),
-            fixed: v.object({
-              currency: v.string(),
-              amount: v.number(),
-              period: v.union(v.literal("month"), v.literal("year"), v.literal("one_time")),
-            }),
-          }),
+          bundleId: v.id('bundles'),
+          tierId: v.string(),
           notes: v.optional(v.string()),
         }),
       ),
@@ -128,6 +122,26 @@ export default defineSchema({
     .index('by_slug', ['slug'])
     .index('by_creatorId', ['creatorId'])
     .index('by_published', ['published']),
+
+  bundles: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    description: v.optional(v.string()),
+    iconUrl: v.optional(v.string()),
+    websiteUrl: v.optional(v.string()),
+    toolSlugs: v.array(v.string()),
+    tiers: v.array(
+      v.object({
+        tierId: v.string(),
+        name: v.string(),
+        pricing: TierPricing,
+        isDefault: v.optional(v.boolean()),
+      })
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_slug', ['slug']),
 
   waitlist: defineTable({
     email: v.string(),

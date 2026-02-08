@@ -4,11 +4,35 @@ export const stacksData = [
     creatorSlug: "alper-ortac",
     oneLiner:
       "Daily driver stack: Windsurf, Claude, ChatGPT, Gemini. Using skills to make my agents smarter. Plus Lenny's Bundle for extra tools.",
+    description: `## How I Use This Stack
+
+My daily workflow revolves around **Windsurf** as my primary IDE. I've set up custom skills and rules that make the AI agent significantly smarter at understanding my codebase and coding patterns.
+
+### Core AI Tools
+
+I keep subscriptions to **Claude**, **ChatGPT**, and **Gemini** because each model has different strengths:
+
+- **Claude Pro** is my go-to for complex reasoning, refactoring, and architecture decisions
+- **ChatGPT Plus** handles quick questions, brainstorming, and general-purpose tasks
+- **Google AI Pro** gives me access to Gemini for multimodal tasks and when I need a different perspective
+
+### The Lenny's Bundle Advantage
+
+The bundle is incredible value — for $15/mo I get access to Replit, Bolt, Lovable, Notion AI, Perplexity, PostHog, and more. I mainly use:
+
+- **Perplexity** for research and staying up to date
+- **Notion AI** for documentation and project management
+- **PostHog** for product analytics
+- **Replit/Bolt/Lovable** for quick prototyping when I need to test an idea fast
+
+### Skills & Automation
+
+The real power of this stack comes from the **4 custom skills** I've built for Windsurf. They handle everything from automated code review to deployment pipelines. Combined with **3 system prompts** and **2 MCP servers**, my AI agents understand context that would normally require extensive manual explanation.`,
     stackUrl: "https://github.com/alp82/aistack",
-    prompts: 3,
-    rules: 2,
-    skills: 4,
-    mcps: 2,
+    prompts: true,
+    rules: true,
+    skills: true,
+    mcps: true,
     resources: [
       { label: "How I use AI Skills", url: "https://x.com/alperortac/status/example" },
     ],
@@ -16,7 +40,8 @@ export const stacksData = [
       {
         toolSlug: "chatgpt-plus",
         tierId: "plus",
-        primaryUsageLabel: "General AI",
+        kind: "main" as const,
+        primaryUsageLabel: "Quick questions, brainstorming, and general-purpose tasks",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -26,7 +51,8 @@ export const stacksData = [
       {
         toolSlug: "claude-pro",
         tierId: "pro",
-        primaryUsageLabel: "Main AI assistant",
+        kind: "main" as const,
+        primaryUsageLabel: "Complex reasoning, refactoring, and architecture decisions",
         priceKind: "discounted" as const,
         notes: "Discounted plan",
         price: {
@@ -37,7 +63,8 @@ export const stacksData = [
       {
         toolSlug: "google-ai-pro",
         tierId: "pro",
-        primaryUsageLabel: "Gemini",
+        kind: "main" as const,
+        primaryUsageLabel: "Multimodal tasks and getting a different perspective on problems",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -47,7 +74,8 @@ export const stacksData = [
       {
         toolSlug: "windsurf",
         tierId: "pro",
-        primaryUsageLabel: "IDE",
+        kind: "main" as const,
+        primaryUsageLabel: "Primary coding environment with custom skills and rules",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -57,9 +85,10 @@ export const stacksData = [
       {
         toolSlug: "replit",
         tierId: "default",
-        primaryUsageLabel: "Bundled tool",
+        kind: "misc" as const,
+        primaryUsageLabel: "Quick prototyping and testing ideas in the browser",
         priceKind: "bundle" as const,
-        bundleName: "Lenny's Bundle",
+        bundleSlug: "lennys-bundle",
         price: {
           pricingType: "fixed" as const,
           fixed: { currency: "USD", amount: 0, period: "month" as const },
@@ -68,9 +97,10 @@ export const stacksData = [
       {
         toolSlug: "bolt",
         tierId: "default",
-        primaryUsageLabel: "Bundled tool",
+        kind: "misc" as const,
+        primaryUsageLabel: "Rapid full-stack app scaffolding from prompts",
         priceKind: "bundle" as const,
-        bundleName: "Lenny's Bundle",
+        bundleSlug: "lennys-bundle",
         price: {
           pricingType: "fixed" as const,
           fixed: { currency: "USD", amount: 0, period: "month" as const },
@@ -79,9 +109,10 @@ export const stacksData = [
       {
         toolSlug: "lovable",
         tierId: "starter",
-        primaryUsageLabel: "Bundled tool",
+        kind: "misc" as const,
+        primaryUsageLabel: "AI-powered frontend generation for landing pages",
         priceKind: "bundle" as const,
-        bundleName: "Lenny's Bundle",
+        bundleSlug: "lennys-bundle",
         price: {
           pricingType: "fixed" as const,
           fixed: { currency: "USD", amount: 0, period: "month" as const },
@@ -90,9 +121,10 @@ export const stacksData = [
       {
         toolSlug: "notion-ai",
         tierId: "ai",
-        primaryUsageLabel: "Bundled tool",
+        kind: "misc" as const,
+        primaryUsageLabel: "Documentation, project management, and knowledge base",
         priceKind: "bundle" as const,
-        bundleName: "Lenny's Bundle",
+        bundleSlug: "lennys-bundle",
         price: {
           pricingType: "fixed" as const,
           fixed: { currency: "USD", amount: 0, period: "month" as const },
@@ -101,9 +133,10 @@ export const stacksData = [
       {
         toolSlug: "perplexity",
         tierId: "pro",
-        primaryUsageLabel: "Bundled tool",
+        kind: "misc" as const,
+        primaryUsageLabel: "Research, staying up to date, and fact-checking",
         priceKind: "bundle" as const,
-        bundleName: "Lenny's Bundle",
+        bundleSlug: "lennys-bundle",
         price: {
           pricingType: "fixed" as const,
           fixed: { currency: "USD", amount: 0, period: "month" as const },
@@ -112,25 +145,18 @@ export const stacksData = [
       {
         toolSlug: "posthog",
         tierId: "default",
-        primaryUsageLabel: "Bundled tool",
+        kind: "misc" as const,
+        primaryUsageLabel: "Product analytics and user behavior tracking",
         priceKind: "bundle" as const,
-        bundleName: "Lenny's Bundle",
+        bundleSlug: "lennys-bundle",
         price: {
           pricingType: "fixed" as const,
           fixed: { currency: "USD", amount: 0, period: "month" as const },
         },
       },
     ],
-    bundleCosts: [
-      {
-        bundleName: "Lenny's Bundle",
-        pricing: {
-          pricingType: "fixed" as const,
-          fixed: { currency: "USD", amount: 15, period: "month" as const },
-        },
-        notes:
-          "Includes Replit, Bolt, Lovable, Notion, Perplexity, PostHog, and more.",
-      },
+    bundleSubscriptions: [
+      { bundleSlug: "lennys-bundle", tierId: "monthly" },
     ],
     fixedTotal: { currency: "USD", amount: 85, period: "month" as const },
     hasUsageComponent: false,
@@ -145,7 +171,8 @@ export const stacksData = [
       {
         toolSlug: "claude-max",
         tierId: "max-200",
-        primaryUsageLabel: "Main AI assistant",
+        kind: "main" as const,
+        primaryUsageLabel: "All-in-one AI for coding, writing, and analysis",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -155,9 +182,10 @@ export const stacksData = [
       {
         toolSlug: "claude-code",
         tierId: "included",
-        primaryUsageLabel: "Terminal coding",
+        kind: "main" as const,
+        primaryUsageLabel: "CLI-based coding agent directly in the terminal",
         priceKind: "bundle" as const,
-        bundleName: "Claude Max",
+        bundleSlug: "claude-max-bundle",
         price: {
           pricingType: "fixed" as const,
           fixed: { currency: "USD", amount: 0, period: "month" as const },
@@ -166,13 +194,17 @@ export const stacksData = [
       {
         toolSlug: "higgsfield-ai",
         tierId: "ultimate",
-        primaryUsageLabel: "Video Generation",
+        kind: "misc" as const,
+        primaryUsageLabel: "Generating marketing and social media video content",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
           fixed: { currency: "USD", amount: 37.5, period: "month" as const },
         },
       },
+    ],
+    bundleSubscriptions: [
+      { bundleSlug: "claude-max-bundle", tierId: "max-200" },
     ],
     fixedTotal: { currency: "USD", amount: 237.5, period: "month" as const },
     hasUsageComponent: false,
@@ -187,7 +219,8 @@ export const stacksData = [
       {
         toolSlug: "cursor",
         tierId: "pro",
-        primaryUsageLabel: "Main IDE",
+        kind: "main" as const,
+        primaryUsageLabel: "Primary coding IDE with Auto Mode for budget control",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -197,7 +230,8 @@ export const stacksData = [
       {
         toolSlug: "chatgpt-plus",
         tierId: "plus",
-        primaryUsageLabel: "Codex extension",
+        kind: "main" as const,
+        primaryUsageLabel: "Powers the Codex extension for inline code suggestions",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -222,7 +256,8 @@ export const stacksData = [
       {
         toolSlug: "claude-max",
         tierId: "max-100",
-        primaryUsageLabel: "Main AI",
+        kind: "main" as const,
+        primaryUsageLabel: "Heavy-duty AI for complex tasks with Opus 4 access",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -232,9 +267,10 @@ export const stacksData = [
       {
         toolSlug: "claude-code",
         tierId: "included",
-        primaryUsageLabel: "Coding",
+        kind: "main" as const,
+        primaryUsageLabel: "Terminal-based coding agent included with Max plan",
         priceKind: "bundle" as const,
-        bundleName: "Claude Max",
+        bundleSlug: "claude-max-bundle",
         price: {
           pricingType: "fixed" as const,
           fixed: { currency: "USD", amount: 0, period: "month" as const },
@@ -243,7 +279,8 @@ export const stacksData = [
       {
         toolSlug: "wispr-flow",
         tierId: "pro",
-        primaryUsageLabel: "Voice input",
+        kind: "main" as const,
+        primaryUsageLabel: "Dictate code and notes hands-free with voice",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -253,13 +290,17 @@ export const stacksData = [
       {
         toolSlug: "perplexity",
         tierId: "pro",
-        primaryUsageLabel: "Research",
+        kind: "misc" as const,
+        primaryUsageLabel: "Deep research and real-time web search for answers",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
           fixed: { currency: "USD", amount: 20, period: "month" as const },
         },
       },
+    ],
+    bundleSubscriptions: [
+      { bundleSlug: "claude-max-bundle", tierId: "max-100" },
     ],
     fixedTotal: { currency: "USD", amount: 132, period: "month" as const },
     hasUsageComponent: false,
@@ -274,7 +315,8 @@ export const stacksData = [
       {
         toolSlug: "google-ai-pro",
         tierId: "pro",
-        primaryUsageLabel: "Main AI",
+        kind: "main" as const,
+        primaryUsageLabel: "Primary AI with Gemini for coding and multimodal tasks",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -284,7 +326,8 @@ export const stacksData = [
       {
         toolSlug: "chatgpt-plus",
         tierId: "plus",
-        primaryUsageLabel: "Secondary AI",
+        kind: "misc" as const,
+        primaryUsageLabel: "Backup AI for second opinions and different reasoning",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -294,7 +337,8 @@ export const stacksData = [
       {
         toolSlug: "google-antigravity",
         tierId: "free",
-        primaryUsageLabel: "IDE",
+        kind: "main" as const,
+        primaryUsageLabel: "Free AI-powered IDE replacing Cursor for personal projects",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -315,7 +359,8 @@ export const stacksData = [
       {
         toolSlug: "claude-code",
         tierId: "included",
-        primaryUsageLabel: "Feature transfer",
+        kind: "main" as const,
+        primaryUsageLabel: "Copies features from AI Studio prototypes into production code",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -325,7 +370,8 @@ export const stacksData = [
       {
         toolSlug: "windsurf",
         tierId: "early-adopter",
-        primaryUsageLabel: "Backup IDE",
+        kind: "main" as const,
+        primaryUsageLabel: "Secondary IDE for when Claude Code needs a visual editor",
         priceKind: "discounted" as const,
         price: {
           pricingType: "fixed" as const,
@@ -335,7 +381,8 @@ export const stacksData = [
       {
         toolSlug: "google-ai-pro",
         tierId: "pro",
-        primaryUsageLabel: "MVP prototyping",
+        kind: "main" as const,
+        primaryUsageLabel: "Rapid MVP prototyping with AI Studio before transferring",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -345,7 +392,8 @@ export const stacksData = [
       {
         toolSlug: "voice-ink",
         tierId: "local",
-        primaryUsageLabel: "Voice input",
+        kind: "misc" as const,
+        primaryUsageLabel: "Local speech-to-text for hands-free coding sessions",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -366,7 +414,8 @@ export const stacksData = [
       {
         toolSlug: "windsurf",
         tierId: "early-adopter",
-        primaryUsageLabel: "Main IDE",
+        kind: "main" as const,
+        primaryUsageLabel: "Primary coding IDE locked in at early adopter pricing",
         priceKind: "discounted" as const,
         price: {
           pricingType: "fixed" as const,
@@ -376,7 +425,8 @@ export const stacksData = [
       {
         toolSlug: "superwhisper",
         tierId: "pro",
-        primaryUsageLabel: "Voice input",
+        kind: "main" as const,
+        primaryUsageLabel: "Stable speech-to-text with post-processing at half the price of Wispr",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -397,7 +447,8 @@ export const stacksData = [
       {
         toolSlug: "perplexity",
         tierId: "pro",
-        primaryUsageLabel: "Research & search",
+        kind: "main" as const,
+        primaryUsageLabel: "Replaced Google as my main search engine for research",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -407,7 +458,8 @@ export const stacksData = [
       {
         toolSlug: "cursor",
         tierId: "pro",
-        primaryUsageLabel: "Coding & tab complete",
+        kind: "main" as const,
+        primaryUsageLabel: "Daily coding IDE with tab completions and inline edits",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -417,7 +469,8 @@ export const stacksData = [
       {
         toolSlug: "claude-max",
         tierId: "max-100",
-        primaryUsageLabel: "Claude Code",
+        kind: "main" as const,
+        primaryUsageLabel: "Heavy lifting with Opus 4 via Claude Code in the terminal",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -440,7 +493,8 @@ export const stacksData = [
       {
         toolSlug: "chatgpt-workspace",
         tierId: "team",
-        primaryUsageLabel: "AI Assistant",
+        kind: "main" as const,
+        primaryUsageLabel: "Team-wide AI assistant for writing, analysis, and brainstorming",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -450,7 +504,8 @@ export const stacksData = [
       {
         toolSlug: "midjourney",
         tierId: "standard",
-        primaryUsageLabel: "Image Generation",
+        kind: "main" as const,
+        primaryUsageLabel: "Creating product mockups, social assets, and brand imagery",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -460,7 +515,8 @@ export const stacksData = [
       {
         toolSlug: "kling-ai",
         tierId: "standard",
-        primaryUsageLabel: "Video Generation",
+        kind: "main" as const,
+        primaryUsageLabel: "Short-form video generation for social media content",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -470,7 +526,8 @@ export const stacksData = [
       {
         toolSlug: "x-grok",
         tierId: "premium",
-        primaryUsageLabel: "AI Chat",
+        kind: "misc" as const,
+        primaryUsageLabel: "Real-time AI chat with access to X/Twitter data",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -480,7 +537,8 @@ export const stacksData = [
       {
         toolSlug: "figma",
         tierId: "professional",
-        primaryUsageLabel: "Design Tool",
+        kind: "main" as const,
+        primaryUsageLabel: "Collaborative UI/UX design for the entire team",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -490,7 +548,8 @@ export const stacksData = [
       {
         toolSlug: "slack",
         tierId: "pro",
-        primaryUsageLabel: "Team Communication",
+        kind: "main" as const,
+        primaryUsageLabel: "Team communication hub with AI-powered search and summaries",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -500,7 +559,8 @@ export const stacksData = [
       {
         toolSlug: "envato",
         tierId: "elements",
-        primaryUsageLabel: "Digital Assets",
+        kind: "misc" as const,
+        primaryUsageLabel: "Unlimited downloads of templates, fonts, and stock assets",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -510,7 +570,8 @@ export const stacksData = [
       {
         toolSlug: "adobe-creative-cloud",
         tierId: "all-apps",
-        primaryUsageLabel: "Creative Suite",
+        kind: "main" as const,
+        primaryUsageLabel: "Full creative suite for photo, video, and motion graphics",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -520,7 +581,8 @@ export const stacksData = [
       {
         toolSlug: "unicorn-studio",
         tierId: "pro",
-        primaryUsageLabel: "3D Web",
+        kind: "misc" as const,
+        primaryUsageLabel: "Interactive 3D web experiences without writing WebGL code",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -530,7 +592,8 @@ export const stacksData = [
       {
         toolSlug: "framer",
         tierId: "pro",
-        primaryUsageLabel: "Web Design",
+        kind: "main" as const,
+        primaryUsageLabel: "High-fidelity website design with built-in animations",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -540,7 +603,8 @@ export const stacksData = [
       {
         toolSlug: "webflow",
         tierId: "cms",
-        primaryUsageLabel: "Web Development",
+        kind: "main" as const,
+        primaryUsageLabel: "CMS-driven marketing sites and client landing pages",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -550,7 +614,8 @@ export const stacksData = [
       {
         toolSlug: "spline",
         tierId: "super",
-        primaryUsageLabel: "3D Design",
+        kind: "misc" as const,
+        primaryUsageLabel: "3D modeling and interactive scenes for product pages",
         priceKind: "regular" as const,
         price: {
           pricingType: "fixed" as const,
@@ -560,9 +625,10 @@ export const stacksData = [
       {
         toolSlug: "replit",
         tierId: "default",
-        primaryUsageLabel: "Bundled tool",
+        kind: "misc" as const,
+        primaryUsageLabel: "Quick prototyping and testing client ideas in the browser",
         priceKind: "bundle" as const,
-        bundleName: "Lenny's Bundle",
+        bundleSlug: "lennys-bundle",
         price: {
           pricingType: "fixed" as const,
           fixed: { currency: "USD", amount: 0, period: "month" as const },
@@ -571,9 +637,10 @@ export const stacksData = [
       {
         toolSlug: "bolt",
         tierId: "default",
-        primaryUsageLabel: "Bundled tool",
+        kind: "misc" as const,
+        primaryUsageLabel: "Rapid full-stack scaffolding for client project kickoffs",
         priceKind: "bundle" as const,
-        bundleName: "Lenny's Bundle",
+        bundleSlug: "lennys-bundle",
         price: {
           pricingType: "fixed" as const,
           fixed: { currency: "USD", amount: 0, period: "month" as const },
@@ -582,9 +649,10 @@ export const stacksData = [
       {
         toolSlug: "lovable",
         tierId: "starter",
-        primaryUsageLabel: "Bundled tool",
+        kind: "misc" as const,
+        primaryUsageLabel: "AI-generated landing pages and marketing sites",
         priceKind: "bundle" as const,
-        bundleName: "Lenny's Bundle",
+        bundleSlug: "lennys-bundle",
         price: {
           pricingType: "fixed" as const,
           fixed: { currency: "USD", amount: 0, period: "month" as const },
@@ -593,9 +661,10 @@ export const stacksData = [
       {
         toolSlug: "notion-ai",
         tierId: "ai",
-        primaryUsageLabel: "Bundled tool",
+        kind: "misc" as const,
+        primaryUsageLabel: "Team wiki, project docs, and AI-powered writing",
         priceKind: "bundle" as const,
-        bundleName: "Lenny's Bundle",
+        bundleSlug: "lennys-bundle",
         price: {
           pricingType: "fixed" as const,
           fixed: { currency: "USD", amount: 0, period: "month" as const },
@@ -604,9 +673,10 @@ export const stacksData = [
       {
         toolSlug: "perplexity",
         tierId: "pro",
-        primaryUsageLabel: "Bundled tool",
+        kind: "misc" as const,
+        primaryUsageLabel: "Competitive research and trend analysis for clients",
         priceKind: "bundle" as const,
-        bundleName: "Lenny's Bundle",
+        bundleSlug: "lennys-bundle",
         price: {
           pricingType: "fixed" as const,
           fixed: { currency: "USD", amount: 0, period: "month" as const },
@@ -615,27 +685,20 @@ export const stacksData = [
       {
         toolSlug: "posthog",
         tierId: "default",
-        primaryUsageLabel: "Bundled tool",
+        kind: "misc" as const,
+        primaryUsageLabel: "Analytics and A/B testing across client projects",
         priceKind: "bundle" as const,
-        bundleName: "Lenny's Bundle",
+        bundleSlug: "lennys-bundle",
         price: {
           pricingType: "fixed" as const,
           fixed: { currency: "USD", amount: 0, period: "month" as const },
         },
       },
     ],
+    bundleSubscriptions: [
+      { bundleSlug: "lennys-bundle", tierId: "annual" },
+    ],
     fixedTotal: { currency: "USD", amount: 531, period: "month" as const },
     hasUsageComponent: false,
-    bundleCosts: [
-      {
-        bundleName: "Lenny's Bundle",
-        pricing: {
-          pricingType: "fixed" as const,
-          fixed: { currency: "USD", amount: 12.5, period: "month" as const },
-        },
-        notes:
-          "Includes Replit, Bolt, Lovable, Notion, Perplexity, PostHog, and more.",
-      },
-    ],
   },
 ]

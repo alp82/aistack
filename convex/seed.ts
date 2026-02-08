@@ -6,12 +6,13 @@ import type schema from './schema'
 import { toolsData } from './seeds/tools'
 import { creatorsData } from './seeds/creators'
 import { stacksData } from './seeds/stacks'
+import { bundlesData } from './seeds/bundles'
 
 type Ctx = GenericMutationCtx<DataModelFromSchemaDefinition<typeof schema>>
 
 async function clearTable(
   ctx: Ctx,
-  table: "stacks" | "creators" | "tools" | "waitlist",
+  table: "stacks" | "creators" | "tools" | "bundles" | "waitlist",
 ) {
   const docs = await ctx.db.query(table).collect();
   for (const doc of docs) {
@@ -26,6 +27,7 @@ export const seedAll = internalMutation({
     const now = Date.now()
 
     await clearTable(ctx, "stacks");
+    await clearTable(ctx, "bundles");
     await clearTable(ctx, "creators");
     await clearTable(ctx, "tools");
 
@@ -38,6 +40,23 @@ export const seedAll = internalMutation({
         updatedAt: now,
       })
       toolIds[tool.slug] = id
+    }
+
+    // ============ BUNDLES ============
+    const bundleIds: Record<string, Id<'bundles'>> = {}
+    for (const bundle of bundlesData) {
+      const id = await ctx.db.insert('bundles', {
+        name: bundle.name,
+        slug: bundle.slug,
+        description: bundle.description,
+        iconUrl: bundle.iconUrl,
+        websiteUrl: bundle.websiteUrl,
+        toolSlugs: bundle.toolSlugs,
+        tiers: bundle.tiers,
+        createdAt: now,
+        updatedAt: now,
+      })
+      bundleIds[bundle.slug] = id
     }
 
     // ============ CREATORS ============
@@ -63,6 +82,7 @@ export const seedAll = internalMutation({
         const result: {
           toolId: Id<"tools">;
           tierId?: string;
+          kind: "main" | "misc";
           primaryUsageLabel: string;
           price: {
             pricingType: "fixed" | "usage" | "mixed";
@@ -70,19 +90,31 @@ export const seedAll = internalMutation({
             usage?: { unit: string; pricePerUnit: number; currency: string; notes?: string };
           };
           priceKind: "regular" | "discounted" | "bundle" | "usage_based";
-          bundleName?: string;
+          bundleSlug?: string;
           notes?: string;
         } = {
           toolId,
           tierId: sub.tierId,
+          kind: sub.kind,
           primaryUsageLabel: sub.primaryUsageLabel,
           price: sub.price,
           priceKind: sub.priceKind,
         };
-        const maybeBundleName = (sub as { bundleName?: string }).bundleName;
+        const maybeBundleSlug = (sub as { bundleSlug?: string }).bundleSlug;
         const maybeNotes = (sub as { notes?: string }).notes;
-        if (maybeBundleName) result.bundleName = maybeBundleName;
+        if (maybeBundleSlug) result.bundleSlug = maybeBundleSlug;
         if (maybeNotes) result.notes = maybeNotes;
+        return result;
+      });
+
+      const bundleSubscriptions = (stack as { bundleSubscriptions?: Array<{ bundleSlug: string; tierId: string; notes?: string }> }).bundleSubscriptions?.map((bs) => {
+        const bundleId = bundleIds[bs.bundleSlug];
+        if (!bundleId) throw new Error(`Bundle not found: ${bs.bundleSlug}`);
+        const result: { bundleId: Id<"bundles">; tierId: string; notes?: string } = {
+          bundleId,
+          tierId: bs.tierId,
+        };
+        if (bs.notes) result.notes = bs.notes;
         return result;
       });
 
@@ -92,26 +124,27 @@ export const seedAll = internalMutation({
         oneLiner: stack.oneLiner,
         description: (stack as { description?: string }).description,
         stackUrl: (stack as { stackUrl?: string }).stackUrl,
-        prompts: (stack as { prompts?: number }).prompts,
-        rules: (stack as { rules?: number }).rules,
-        skills: (stack as { skills?: number }).skills,
-        mcps: (stack as { mcps?: number }).mcps,
+        prompts: (stack as { prompts?: boolean }).prompts,
+        rules: (stack as { rules?: boolean }).rules,
+        skills: (stack as { skills?: boolean }).skills,
+        mcps: (stack as { mcps?: boolean }).mcps,
         resources: (stack as { resources?: Array<{ label: string; url: string }> }).resources,
         teamSize: stack.teamSize,
         toolSubscriptions,
+        bundleSubscriptions,
         fixedTotal: stack.fixedTotal,
         usageTotalNotes: stack.usageTotalNotes,
         hasUsageComponent: stack.hasUsageComponent,
         published: true,
         createdAt: now,
         updatedAt: now,
-        bundleCosts: stack.bundleCosts,
       })
       stackIds[stack.slug] = id
     }
 
     console.log('Seed completed successfully!')
     console.log(`Created ${Object.keys(toolIds).length} tools`)
+    console.log(`Created ${Object.keys(bundleIds).length} bundles`)
     console.log(`Created ${Object.keys(creatorIds).length} creators`)
     console.log(`Created ${Object.keys(stackIds).length} stacks`)
 

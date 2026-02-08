@@ -1,6 +1,60 @@
 import { query } from './_generated/server'
 import { v } from 'convex/values'
 
+const MoneyValidator = v.object({
+  currency: v.string(),
+  amount: v.number(),
+  period: v.union(v.literal('month'), v.literal('year'), v.literal('one_time')),
+})
+
+const PriceValidator = v.object({
+  pricingType: v.union(v.literal('fixed'), v.literal('usage'), v.literal('mixed')),
+  fixed: v.optional(MoneyValidator),
+})
+
+const ToolValidator = v.object({
+  _id: v.id('tools'),
+  name: v.string(),
+  slug: v.string(),
+  category: v.string(),
+  iconUrl: v.optional(v.string()),
+  websiteUrl: v.optional(v.string()),
+  price: PriceValidator,
+  kind: v.union(v.literal('main'), v.literal('misc')),
+  primaryUsageLabel: v.string(),
+  priceKind: v.union(
+    v.literal('regular'),
+    v.literal('discounted'),
+    v.literal('bundle'),
+    v.literal('usage_based')
+  ),
+  bundleSlug: v.optional(v.string()),
+  notes: v.optional(v.string()),
+})
+
+const BundleValidator = v.object({
+  _id: v.id('bundles'),
+  name: v.string(),
+  slug: v.string(),
+  description: v.optional(v.string()),
+  iconUrl: v.optional(v.string()),
+  websiteUrl: v.optional(v.string()),
+  tierId: v.string(),
+  tierName: v.string(),
+  price: PriceValidator,
+  notes: v.optional(v.string()),
+})
+
+const CreatorValidator = v.object({
+  _id: v.id('creators'),
+  name: v.string(),
+  xHandle: v.optional(v.string()),
+  avatarUrl: v.optional(v.string()),
+  verified: v.boolean(),
+  personalPages: v.array(v.object({ name: v.string(), url: v.string() })),
+  projectPages: v.array(v.object({ name: v.string(), url: v.string() })),
+})
+
 export const listPublished = query({
   args: {},
   returns: v.array(
@@ -10,43 +64,11 @@ export const listPublished = query({
       slug: v.string(),
       oneLiner: v.string(),
       teamSize: v.optional(v.number()),
-      fixedTotal: v.optional(
-        v.object({
-          currency: v.string(),
-          amount: v.number(),
-          period: v.union(v.literal('month'), v.literal('year'), v.literal('one_time')),
-        })
-      ),
+      fixedTotal: v.optional(MoneyValidator),
       hasUsageComponent: v.boolean(),
       usageTotalNotes: v.optional(v.string()),
-      creator: v.object({
-        _id: v.id('creators'),
-        name: v.string(),
-        xHandle: v.optional(v.string()),
-        avatarUrl: v.optional(v.string()),
-        personalPages: v.array(v.object({ name: v.string(), url: v.string() })),
-        projectPages: v.array(v.object({ name: v.string(), url: v.string() })),
-      }),
-      tools: v.array(
-        v.object({
-          _id: v.id('tools'),
-          name: v.string(),
-          slug: v.string(),
-          category: v.string(),
-          iconUrl: v.optional(v.string()),
-          price: v.object({
-            pricingType: v.union(v.literal('fixed'), v.literal('usage'), v.literal('mixed')),
-            fixed: v.optional(
-              v.object({
-                currency: v.string(),
-                amount: v.number(),
-                period: v.union(v.literal('month'), v.literal('year'), v.literal('one_time')),
-              })
-            ),
-          }),
-          primaryUsageLabel: v.string(),
-        })
-      ),
+      creator: CreatorValidator,
+      tools: v.array(ToolValidator),
     })
   ),
   handler: async (ctx) => {
@@ -70,8 +92,13 @@ export const listPublished = query({
           slug: tool.slug,
           category: tool.category,
           iconUrl: tool.iconUrl,
+          websiteUrl: tool.websiteUrl,
           price: sub.price,
+          kind: sub.kind,
           primaryUsageLabel: sub.primaryUsageLabel,
+          priceKind: sub.priceKind,
+          bundleSlug: sub.bundleSlug,
+          notes: sub.notes,
         })
       }
 
@@ -89,6 +116,7 @@ export const listPublished = query({
           name: creator.name,
           xHandle: creator.xHandle,
           avatarUrl: creator.avatarUrl,
+          verified: creator.verified,
           personalPages: creator.personalPages,
           projectPages: creator.projectPages,
         },
@@ -110,58 +138,18 @@ export const getBySlug = query({
       oneLiner: v.string(),
       description: v.optional(v.string()),
       stackUrl: v.optional(v.string()),
-      prompts: v.optional(v.number()),
-      rules: v.optional(v.number()),
-      skills: v.optional(v.number()),
-      mcps: v.optional(v.number()),
+      prompts: v.optional(v.boolean()),
+      rules: v.optional(v.boolean()),
+      skills: v.optional(v.boolean()),
+      mcps: v.optional(v.boolean()),
       resources: v.optional(v.array(v.object({ label: v.string(), url: v.string() }))),
       teamSize: v.optional(v.number()),
-      fixedTotal: v.optional(
-        v.object({
-          currency: v.string(),
-          amount: v.number(),
-          period: v.union(v.literal('month'), v.literal('year'), v.literal('one_time')),
-        })
-      ),
+      fixedTotal: v.optional(MoneyValidator),
       hasUsageComponent: v.boolean(),
       usageTotalNotes: v.optional(v.string()),
-      creator: v.object({
-        _id: v.id('creators'),
-        name: v.string(),
-        xHandle: v.optional(v.string()),
-        avatarUrl: v.optional(v.string()),
-        verified: v.boolean(),
-        personalPages: v.array(v.object({ name: v.string(), url: v.string() })),
-        projectPages: v.array(v.object({ name: v.string(), url: v.string() })),
-      }),
-      tools: v.array(
-        v.object({
-          _id: v.id('tools'),
-          name: v.string(),
-          slug: v.string(),
-          category: v.string(),
-          iconUrl: v.optional(v.string()),
-          websiteUrl: v.optional(v.string()),
-          price: v.object({
-            pricingType: v.union(v.literal('fixed'), v.literal('usage'), v.literal('mixed')),
-            fixed: v.optional(
-              v.object({
-                currency: v.string(),
-                amount: v.number(),
-                period: v.union(v.literal('month'), v.literal('year'), v.literal('one_time')),
-              })
-            ),
-          }),
-          primaryUsageLabel: v.string(),
-          priceKind: v.union(
-            v.literal('regular'),
-            v.literal('discounted'),
-            v.literal('bundle'),
-            v.literal('usage_based')
-          ),
-          notes: v.optional(v.string()),
-        })
-      ),
+      creator: CreatorValidator,
+      tools: v.array(ToolValidator),
+      bundles: v.array(BundleValidator),
     }),
     v.null()
   ),
@@ -188,12 +176,33 @@ export const getBySlug = query({
         iconUrl: tool.iconUrl,
         websiteUrl: tool.websiteUrl,
         price: sub.price,
+        kind: sub.kind,
         primaryUsageLabel: sub.primaryUsageLabel,
         priceKind: sub.priceKind,
+        bundleSlug: sub.bundleSlug,
         notes: sub.notes,
       })
     }
 
+    const bundles = []
+    for (const bs of stack.bundleSubscriptions ?? []) {
+      const bundle = await ctx.db.get(bs.bundleId)
+      if (!bundle) continue
+      const tier = bundle.tiers.find((t) => t.tierId === bs.tierId)
+      if (!tier) continue
+      bundles.push({
+        _id: bundle._id,
+        name: bundle.name,
+        slug: bundle.slug,
+        description: bundle.description,
+        iconUrl: bundle.iconUrl,
+        websiteUrl: bundle.websiteUrl,
+        tierId: bs.tierId,
+        tierName: tier.name,
+        price: tier.pricing,
+        notes: bs.notes,
+      })
+    }
 
     return {
       _id: stack._id,
@@ -221,6 +230,7 @@ export const getBySlug = query({
         projectPages: creator.projectPages,
       },
       tools,
+      bundles,
     }
   },
 })

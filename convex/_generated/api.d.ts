@@ -12,6 +12,7 @@ import type * as auth from "../auth.js";
 import type * as email from "../email.js";
 import type * as http from "../http.js";
 import type * as seed from "../seed.js";
+import type * as seeds_bundles from "../seeds/bundles.js";
 import type * as seeds_creators from "../seeds/creators.js";
 import type * as seeds_stacks from "../seeds/stacks.js";
 import type * as seeds_tools from "../seeds/tools.js";
@@ -29,6 +30,7 @@ declare const fullApi: ApiFromModules<{
   email: typeof email;
   http: typeof http;
   seed: typeof seed;
+  "seeds/bundles": typeof seeds_bundles;
   "seeds/creators": typeof seeds_creators;
   "seeds/stacks": typeof seeds_stacks;
   "seeds/tools": typeof seeds_tools;
