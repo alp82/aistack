@@ -28,9 +28,9 @@ export const listPublished = query({
         personalPages: v.array(v.object({ name: v.string(), url: v.string() })),
         projectPages: v.array(v.object({ name: v.string(), url: v.string() })),
       }),
-      products: v.array(
+      tools: v.array(
         v.object({
-          _id: v.id('products'),
+          _id: v.id('tools'),
           name: v.string(),
           slug: v.string(),
           category: v.string(),
@@ -61,16 +61,16 @@ export const listPublished = query({
       const creator = await ctx.db.get(stack.creatorId)
       if (!creator) continue
 
-      const products = []
-      for (const sub of stack.productSubscriptions) {
-        const product = await ctx.db.get(sub.productId)
-        if (!product) continue
-        products.push({
-          _id: product._id,
-          name: product.name,
-          slug: product.slug,
-          category: product.category,
-          iconUrl: product.iconUrl,
+      const tools = []
+      for (const sub of stack.toolSubscriptions) {
+        const tool = await ctx.db.get(sub.toolId)
+        if (!tool) continue
+        tools.push({
+          _id: tool._id,
+          name: tool.name,
+          slug: tool.slug,
+          category: tool.category,
+          iconUrl: tool.iconUrl,
           price: sub.price,
           primaryUsageLabel: sub.primaryUsageLabel,
         })
@@ -94,7 +94,7 @@ export const listPublished = query({
           personalPages: creator.personalPages,
           projectPages: creator.projectPages,
         },
-        products,
+        tools,
       })
     }
 
@@ -131,9 +131,9 @@ export const getBySlug = query({
         personalPages: v.array(v.object({ name: v.string(), url: v.string() })),
         projectPages: v.array(v.object({ name: v.string(), url: v.string() })),
       }),
-      products: v.array(
+      tools: v.array(
         v.object({
-          _id: v.id('products'),
+          _id: v.id('tools'),
           name: v.string(),
           slug: v.string(),
           category: v.string(),
@@ -173,17 +173,17 @@ export const getBySlug = query({
     const creator = await ctx.db.get(stack.creatorId)
     if (!creator) return null
 
-    const products = []
-    for (const sub of stack.productSubscriptions) {
-      const product = await ctx.db.get(sub.productId)
-      if (!product) continue
-      products.push({
-        _id: product._id,
-        name: product.name,
-        slug: product.slug,
-        category: product.category,
-        iconUrl: product.iconUrl,
-        websiteUrl: product.websiteUrl,
+    const tools = []
+    for (const sub of stack.toolSubscriptions) {
+      const tool = await ctx.db.get(sub.toolId)
+      if (!tool) continue
+      tools.push({
+        _id: tool._id,
+        name: tool.name,
+        slug: tool.slug,
+        category: tool.category,
+        iconUrl: tool.iconUrl,
+        websiteUrl: tool.websiteUrl,
         price: sub.price,
         primaryUsageLabel: sub.primaryUsageLabel,
         priceKind: sub.priceKind,
@@ -212,7 +212,7 @@ export const getBySlug = query({
         personalPages: creator.personalPages,
         projectPages: creator.projectPages,
       },
-      products,
+      tools,
     }
   },
 })

@@ -1,4 +1,4 @@
-export type ProductCategory =
+export type ToolCategory =
 	| "coding"
 	| "creation"
 	| "notes"

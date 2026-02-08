@@ -1,5 +1,5 @@
 import { ArrowRight, ExternalLink, Plus, Zap } from "lucide-react";
-import { categoryConfig, type ProductCategory } from "@/config/categoryConfig";
+import { categoryConfig } from "@/config/categoryConfig";
 import { cn } from "@/lib/utils";
 
 export const STACK_CARD_WIDTH = 792;
@@ -17,7 +17,7 @@ interface Creator {
 	projectPages: Array<{ name: string; url: string }>;
 }
 
-interface Product {
+interface Tool {
 	_id: string;
 	name: string;
 	slug: string;
@@ -35,7 +35,7 @@ interface Product {
 }
 
 interface WorkflowStep {
-	product: string;
+	tool: string;
 	action: string;
 }
 
@@ -45,7 +45,7 @@ interface StackCardProps {
 	title: string;
 	summary: string;
 	teamSize?: number;
-	products: Product[];
+	tools: Tool[];
 	fixedTotal?: {
 		currency: string;
 		amount: number;
@@ -70,7 +70,7 @@ export function StackCard({
 	title, // eslint-disable-line @typescript-eslint/no-unused-vars
 	summary,
 	teamSize,
-	products,
+	tools,
 	fixedTotal,
 	hasUsageComponent,
 	usageTotalNotes, // eslint-disable-line @typescript-eslint/no-unused-vars
@@ -83,8 +83,8 @@ export function StackCard({
 	const xPage = creator.personalPages.find((p) => p.name === "X");
 	const projectPage = creator.projectPages[0];
 
-	const displayProducts = products.slice(0, DISPLAY_COUNT);
-	const remainingProducts = products.length - DISPLAY_COUNT;
+	const displayTools = tools.slice(0, DISPLAY_COUNT);
+	const remainingTools = tools.length - DISPLAY_COUNT;
 
 	return (
 		<div
@@ -198,7 +198,7 @@ export function StackCard({
 							<div className="flex items-center gap-1 text-xs text-cyan-800">
 								{workflowHighlight.steps.map((step, index) => (
 									<div key={index} className="flex items-center gap-1">
-										<span className="font-medium">{step.product}</span>
+										<span className="font-medium">{step.tool}</span>
 										{index < workflowHighlight.steps.length - 1 && (
 											<ArrowRight className="h-3 w-3" />
 										)}
@@ -212,24 +212,24 @@ export function StackCard({
 						</div>
 					)}
 
-					{/* Bottom Section: Products List */}
+					{/* Bottom Section: Tools List */}
 					<div className="flex-1 flex flex-col justify-center">
 						<div className="space-y-2">
-							{displayProducts.map((product) => {
+							{displayTools.map((tool) => {
 								const config =
 									categoryConfig[
-										product.category as keyof typeof categoryConfig
+										tool.category as keyof typeof categoryConfig
 									];
 								const Icon = config?.icon || Plus;
 
 								return (
 									<div
-										key={product._id}
+										key={tool._id}
 										className="flex items-center justify-between"
 									>
 										<div className="flex items-center gap-2 flex-1 min-w-0">
 											<span className="text-md md:text-lg font-medium text-gray-900 truncate">
-												{product.name}
+												{tool.name}
 											</span>
 											<span
 												className={cn(
@@ -239,24 +239,24 @@ export function StackCard({
 												)}
 											>
 												<Icon className="h-3 w-3" />
-												{config?.label || product.category}
+												{config?.label || tool.category}
 											</span>
 										</div>
 										<span className="text-md md:text-lg font-bold text-gray-900 ml-2 flex-shrink-0 cost-highlight border-1 border-transparent">
-											{product.price.fixed
-												? `$${product.price.fixed.amount}`
+											{tool.price.fixed
+												? `$${tool.price.fixed.amount}`
 												: "Usage"}
 										</span>
 									</div>
 								);
 							})}
 
-							{/* More products indicator / Expand/Collapse button */}
-							{products.length > DISPLAY_COUNT && (
+							{/* More tools indicator / Expand/Collapse button */}
+							{tools.length > DISPLAY_COUNT && (
 								<span className="flex items-center justify-between w-full text-sm md:text-base text-gray-500 transition-colors mt-2">
 									<span>
-										+{remainingProducts} more product
-										{remainingProducts > 1 ? "s" : ""}
+										+{remainingTools} more tool
+										{remainingTools > 1 ? "s" : ""}
 									</span>
 								</span>
 							)}

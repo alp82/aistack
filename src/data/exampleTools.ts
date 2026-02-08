@@ -1,10 +1,10 @@
-import type { ProductCategory } from "@/config/categoryConfig";
+import type { ToolCategory } from "@/config/categoryConfig";
 
-export const exampleProducts: Array<{
+export const exampleTools: Array<{
 	id: string;
 	logo: string;
 	name: string;
-	category: ProductCategory;
+	category: ToolCategory;
 	avgCost: number;
 	pros: string[];
 	cons: string[];
@@ -204,14 +204,14 @@ export const exampleProducts: Array<{
 			"Learning curve",
 		],
 	},
-].map((product) => ({
-	...product,
-	height: 140 + (product.pros.length + product.cons.length) * 20,
+].map((tool) => ({
+	...tool,
+	height: 140 + (tool.pros.length + tool.cons.length) * 20,
 })) as Array<{
 	id: string;
 	logo: string;
 	name: string;
-	category: ProductCategory;
+	category: ToolCategory;
 	avgCost: number;
 	pros: string[];
 	cons: string[];

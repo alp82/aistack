@@ -138,28 +138,28 @@ function StackDetailsPage() {
 				<p className="text-gray-300 text-lg leading-relaxed">{stack.summary}</p>
 			</section>
 
-			{/* Products */}
+			{/* Tools */}
 			<section className="max-w-4xl mx-auto px-6 py-8 border-t border-gray-800">
 				<h2 className="text-xl font-bold text-white mb-6">
-					Products in this Stack
+					Tools in this Stack
 				</h2>
 				<div className="grid gap-4">
-					{stack.products.map((product) => {
+					{stack.tools.map((tool) => {
 						const config =
-							categoryConfig[product.category as keyof typeof categoryConfig];
+							categoryConfig[tool.category as keyof typeof categoryConfig];
 						const Icon = config?.icon;
 
 						return (
 							<div
-								key={product._id}
+								key={tool._id}
 								className="bg-slate-800/50 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-colors"
 							>
 								<div className="flex items-center justify-between">
 									<div className="flex items-center gap-3">
-										{product.iconUrl ? (
+										{tool.iconUrl ? (
 											<img
-												src={product.iconUrl}
-												alt={product.name}
+												src={tool.iconUrl}
+												alt={tool.name}
 												className="h-10 w-10 rounded-lg object-contain bg-white p-1"
 											/>
 										) : Icon ? (
@@ -170,7 +170,7 @@ function StackDetailsPage() {
 										<div>
 											<div className="flex items-center gap-2">
 												<span className="font-semibold text-white">
-													{product.name}
+													{tool.name}
 												</span>
 												<span
 													className={cn(
@@ -179,46 +179,46 @@ function StackDetailsPage() {
 														config?.textColor || "text-gray-300",
 													)}
 												>
-													{config?.label || product.category}
+													{config?.label || tool.category}
 												</span>
-												{product.priceKind === "discounted" && (
+												{tool.priceKind === "discounted" && (
 													<span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
 														Discounted
 													</span>
 												)}
-												{product.priceKind === "bundle" && (
+												{tool.priceKind === "bundle" && (
 													<span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full">
 														Bundle
 													</span>
 												)}
 											</div>
 											<p className="text-sm text-gray-400">
-												{product.primaryUsageLabel}
+												{tool.primaryUsageLabel}
 											</p>
-											{product.notes && (
+											{tool.notes && (
 												<p className="text-xs text-gray-500 mt-1">
-													{product.notes}
+													{tool.notes}
 												</p>
 											)}
 										</div>
 									</div>
 									<div className="text-right">
 										<div className="text-xl font-bold text-white">
-											{product.price.fixed
-												? `$${product.price.fixed.amount}`
+											{tool.price.fixed
+												? `$${tool.price.fixed.amount}`
 												: "Usage"}
 										</div>
-										{product.price.fixed && (
+										{tool.price.fixed && (
 											<span className="text-xs text-gray-500">
 												/
-												{product.price.fixed.period === "one_time"
+												{tool.price.fixed.period === "one_time"
 													? "once"
 													: "mo"}
 											</span>
 										)}
-										{product.websiteUrl && (
+										{tool.websiteUrl && (
 											<a
-												href={product.websiteUrl}
+												href={tool.websiteUrl}
 												target="_blank"
 												rel="noopener noreferrer"
 												className="block text-xs text-cyan-400 hover:text-cyan-300 mt-1"

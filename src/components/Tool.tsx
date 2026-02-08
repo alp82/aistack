@@ -1,18 +1,18 @@
 import { Plus } from "lucide-react";
-import { categoryConfig, type ProductCategory } from "@/config/categoryConfig";
+import { categoryConfig, type ToolCategory } from "@/config/categoryConfig";
 import { cn } from "@/lib/utils";
 
-interface ProductProps {
+interface ToolProps {
 	logo: string;
 	name: string;
-	category: ProductCategory;
+	category: ToolCategory;
 	avgCost: number;
 	pros: string[];
 	cons: string[];
 	height: number;
 }
 
-export function Product({
+export function Tool({
 	logo,
 	name,
 	category,
@@ -20,7 +20,7 @@ export function Product({
 	pros,
 	cons,
 	height,
-}: ProductProps) {
+}: ToolProps) {
 	const config = categoryConfig[category as keyof typeof categoryConfig];
 	const Icon = config?.icon || Plus;
 

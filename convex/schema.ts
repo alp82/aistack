@@ -49,7 +49,7 @@ export default defineSchema({
     .index('by_slug', ['slug'])
     .index('by_verified', ['verified']),
 
-  products: defineTable({
+  tools: defineTable({
     name: v.string(),
     slug: v.string(),
     category: v.string(),
@@ -77,9 +77,9 @@ export default defineSchema({
     title: v.string(),
     teamSize: v.optional(v.number()),
     summary: v.string(),
-    productSubscriptions: v.array(
+    toolSubscriptions: v.array(
       v.object({
-        productId: v.id('products'),
+        toolId: v.id('tools'),
         tierId: v.optional(v.string()),
         primaryUsageLabel: v.string(),
         price: TierPricing,

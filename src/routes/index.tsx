@@ -12,7 +12,7 @@ import {
 	StackCard,
 } from "../components/StackCard";
 import { WaitlistCTA } from "../components/WaitlistCTA";
-import { exampleProducts } from "../data/exampleProducts";
+import { exampleTools } from "../data/exampleTools";
 
 function StackCarousel({ compact = false }: { compact?: boolean }) {
 	const stacks = useQuery(api.stacks.listPublished) ?? [];
@@ -57,7 +57,7 @@ function StackCarousel({ compact = false }: { compact?: boolean }) {
 							hasUsageComponent={stack.hasUsageComponent}
 							usageTotalNotes={stack.usageTotalNotes}
 							creator={stack.creator}
-							products={stack.products}
+							tools={stack.tools}
 							compact={compact}
 							onStealClick={() => {
 								const emailInput = document.querySelector(
@@ -422,7 +422,7 @@ function App() {
 			<SimulatorSection />
 
 
-			{/* Products Masonry */}
+			{/* Tools Masonry */}
 			<section className="py-16 px-6 border-t border-gray-800">
 				<div className="max-w-7xl mx-auto">
 					<div className="flex items-center justify-center gap-2 mb-4">
@@ -436,7 +436,7 @@ function App() {
 
 					<div>
 						<Masonry
-							items={exampleProducts}
+							items={exampleTools}
 							stagger={0.03}
 							animateFrom="bottom"
 							scaleOnHover={true}

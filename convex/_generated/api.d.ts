@@ -12,6 +12,9 @@ import type * as auth from "../auth.js";
 import type * as email from "../email.js";
 import type * as http from "../http.js";
 import type * as seed from "../seed.js";
+import type * as seeds_creators from "../seeds/creators.js";
+import type * as seeds_stacks from "../seeds/stacks.js";
+import type * as seeds_tools from "../seeds/tools.js";
 import type * as stacks from "../stacks.js";
 import type * as waitlist from "../waitlist.js";
 
@@ -26,6 +29,9 @@ declare const fullApi: ApiFromModules<{
   email: typeof email;
   http: typeof http;
   seed: typeof seed;
+  "seeds/creators": typeof seeds_creators;
+  "seeds/stacks": typeof seeds_stacks;
+  "seeds/tools": typeof seeds_tools;
   stacks: typeof stacks;
   waitlist: typeof waitlist;
 }>;

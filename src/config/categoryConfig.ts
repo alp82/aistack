@@ -80,4 +80,4 @@ export const categoryConfig = {
 	},
 } as const;
 
-export type ProductCategory = keyof typeof categoryConfig;
+export type ToolCategory = keyof typeof categoryConfig;

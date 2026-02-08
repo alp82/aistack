@@ -1,8 +1,8 @@
 import { gsap } from "gsap";
 import type React from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { ProductCategory } from "@/config/categoryConfig";
-import { Product } from "./Product";
+import type { ToolCategory } from "@/config/categoryConfig";
+import { Tool } from "./Tool";
 
 const useMedia = (
 	queries: string[],
@@ -43,18 +43,18 @@ const useMeasure = <T extends HTMLElement>() => {
 	return [ref, size] as const;
 };
 
-interface ProductItem {
+interface ToolItem {
 	id: string;
 	logo: string;
 	name: string;
-	category: ProductCategory;
+	category: ToolCategory;
 	avgCost: number;
 	pros: string[];
 	cons: string[];
 	height: number;
 }
 
-interface GridItem extends ProductItem {
+interface GridItem extends ToolItem {
 	x: number;
 	y: number;
 	w: number;
@@ -62,7 +62,7 @@ interface GridItem extends ProductItem {
 }
 
 interface MasonryProps {
-	items: ProductItem[];
+	items: ToolItem[];
 	ease?: string;
 	duration?: number;
 	stagger?: number;
@@ -259,7 +259,7 @@ const Masonry: React.FC<MasonryProps> = ({
 					onMouseLeave={() => handleMouseLeave(item.id)}
 				>
 					<div className="w-full h-full">
-						<Product
+						<Tool
 							logo={item.logo}
 							name={item.name}
 							category={item.category}
