@@ -16,9 +16,12 @@ Next milestone: Transform the waitlist into an MVP
 * Use the question ask tool to verify with me if the task is complete or needs more work
 * You can only declare a task as complete if you got my approval
 
-## Users
-* users can sign up with email and google - reuse waitlist functionality
-* users have their own table in the db
-* table has email verification link and ui the necessary functionality
-* password reset functionality
-* users can sign out
+## Users ✅
+* ✅ users can sign up with email and Google SSO (Better Auth with trustedOrigins fix)
+* ✅ using Better Auth's internal user tables (no separate custom users table needed)
+* ✅ email verification enabled — sends verification email via Resend on signup
+* ✅ password reset flow — forgot password page, reset email via Resend, reset password page
+* ✅ users can sign out via user dropdown in header
+* ✅ waitlist UI removed from frontend (DB table + convex functions retained for data preservation)
+* ✅ header shows Sign In link when unauthenticated, user avatar dropdown with Sign Out when authenticated
+* ✅ login page has forgot password link and sign up/sign in toggle

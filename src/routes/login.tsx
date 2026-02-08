@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -16,27 +16,40 @@ function LoginPage() {
 	const [password, setPassword] = useState("");
 	const [name, setName] = useState("");
 	const [error, setError] = useState("");
+	const [info, setInfo] = useState("");
 	const [loading, setLoading] = useState(false);
 
 	const handleEmailAuth = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setError("");
+		setInfo("");
 		setLoading(true);
 
 		try {
 			if (isSignUp) {
-				await authClient.signUp.email({
+				const result = await authClient.signUp.email({
 					email,
 					password,
 					name,
 				});
+				if (result.error) {
+					setError(result.error.message || "Sign up failed");
+				} else {
+					setInfo(
+						"Account created! Please check your email to verify your address.",
+					);
+				}
 			} else {
-				await authClient.signIn.email({
+				const result = await authClient.signIn.email({
 					email,
 					password,
 				});
+				if (result.error) {
+					setError(result.error.message || "Sign in failed");
+				} else {
+					navigate({ to: "/" });
+				}
 			}
-			navigate({ to: "/" });
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Authentication failed");
 		} finally {
@@ -75,6 +88,12 @@ function LoginPage() {
 				{error && (
 					<div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
 						{error}
+					</div>
+				)}
+
+				{info && (
+					<div className="rounded-md bg-green-500/10 p-3 text-sm text-green-400">
+						{info}
 					</div>
 				)}
 
@@ -145,7 +164,17 @@ function LoginPage() {
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="password">Password</Label>
+						<div className="flex items-center justify-between">
+							<Label htmlFor="password">Password</Label>
+							{!isSignUp && (
+								<Link
+									to="/forgot-password"
+									className="text-xs text-primary hover:underline"
+								>
+									Forgot password?
+								</Link>
+							)}
+						</div>
 						<Input
 							id="password"
 							type="password"
@@ -166,7 +195,11 @@ function LoginPage() {
 					<button
 						type="button"
 						className="text-primary hover:underline"
-						onClick={() => setIsSignUp(!isSignUp)}
+						onClick={() => {
+							setIsSignUp(!isSignUp);
+							setError("");
+							setInfo("");
+						}}
 					>
 						{isSignUp
 							? "Already have an account? Sign in"

@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TestRouteImport } from './routes/test'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WaitlistLookupIdRouteImport } from './routes/waitlist.$lookupId'
@@ -24,9 +26,19 @@ const TestRoute = TestRouteImport.update({
   path: '/test',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
@@ -68,7 +80,9 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth-callback': typeof AuthCallbackRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/test': typeof TestRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
@@ -79,7 +93,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth-callback': typeof AuthCallbackRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/test': typeof TestRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
@@ -91,7 +107,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth-callback': typeof AuthCallbackRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/test': typeof TestRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
@@ -104,7 +122,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth-callback'
+    | '/forgot-password'
     | '/login'
+    | '/reset-password'
     | '/test'
     | '/stacks/$slug'
     | '/stacks/new'
@@ -115,7 +135,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth-callback'
+    | '/forgot-password'
     | '/login'
+    | '/reset-password'
     | '/test'
     | '/stacks/$slug'
     | '/stacks/new'
@@ -126,7 +148,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/auth-callback'
+    | '/forgot-password'
     | '/login'
+    | '/reset-password'
     | '/test'
     | '/stacks/$slug'
     | '/stacks/new'
@@ -138,7 +162,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   TestRoute: typeof TestRoute
   StacksSlugRoute: typeof StacksSlugRoute
   StacksNewRoute: typeof StacksNewRoute
@@ -156,11 +182,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth-callback': {
@@ -218,7 +258,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   TestRoute: TestRoute,
   StacksSlugRoute: StacksSlugRoute,
   StacksNewRoute: StacksNewRoute,

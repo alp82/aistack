@@ -1,6 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { ArrowRight, Copy, DollarSign, Lightbulb, Play, Plus, Users, Zap } from "lucide-react";
+import { ArrowRight, Copy, DollarSign, Lightbulb, Plus, Users, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import Masonry from "../components/Masonry";
@@ -11,7 +11,6 @@ import {
 	STACK_CARD_WIDTH,
 	StackCard,
 } from "../components/StackCard";
-import { WaitlistCTA } from "../components/WaitlistCTA";
 import { exampleTools } from "../data/exampleTools";
 
 function StackCarousel({ compact = false }: { compact?: boolean }) {
@@ -300,40 +299,7 @@ export const Route = createFileRoute("/")({
 });
 
 function App() {
-	const [displayCount, setDisplayCount] = useState(0);
-	const waitlistCount = useQuery(api.waitlist.getWaitlistCount) ?? 0;
 	const [highlightedFeature, setHighlightedFeature] = useState<string | null>(null);
-
-	// Clear the auth success flag when signing out
-	useEffect(() => {
-		const handleSignOut = () => {
-			sessionStorage.removeItem("authSuccess");
-		};
-
-		// Listen for sign out events (you could emit a custom event)
-		window.addEventListener("auth-signout", handleSignOut);
-		return () => window.removeEventListener("auth-signout", handleSignOut);
-	}, []);
-
-	// Animate counter on mount or when count changes
-	useEffect(() => {
-		const duration = 500;
-		const steps = 30;
-		const increment = waitlistCount / steps;
-		let current = displayCount;
-
-		const timer = setInterval(() => {
-			current += increment;
-			if (current >= waitlistCount) {
-				setDisplayCount(waitlistCount);
-				clearInterval(timer);
-			} else {
-				setDisplayCount(Math.floor(current));
-			}
-		}, duration / steps);
-
-		return () => clearInterval(timer);
-	}, [waitlistCount]);
 
 	// Clear highlights when feature changes
 	useEffect(() => {
@@ -518,11 +484,27 @@ function App() {
 
 						{/* Right Column: CTA */}
 						<div className="flex justify-center lg:justify-end">
-							<WaitlistCTA
-								variant="hero"
-								waitlistCount={waitlistCount}
-								displayCount={displayCount}
-							/>
+							<div className="relative max-w-4xl mx-auto text-center">
+								<div className="md:bg-black/25 md:backdrop-blur-sm md:border md:border-white/10 rounded-2xl md:p-12 p-6">
+									<h2 className="hidden md:block mx-auto mb-2 max-w-sm text-3xl md:text-4xl font-bold text-white">
+										Share your AI stack with the community
+									</h2>
+									<p className="mx-auto max-w-sm text-xl text-gray-300 mb-2 md:mb-8">
+										Sign up to share your tools
+										<span className="hidden md:inline">
+											{" "}and discover what others are building with.
+										</span>
+									</p>
+									<div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
+										<Link
+											to="/login"
+											className="inline-flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-lg text-base font-medium transition-colors"
+										>
+											Get Started
+										</Link>
+									</div>
+								</div>
+							</div>
 						</div>
 					</div>
 
@@ -573,16 +555,26 @@ function App() {
 				</div>
 			</section>
 
-			{/* Waitlist CTA */}
+			{/* CTA Section */}
 			<section className="py-16 px-6 relative overflow-hidden">
 				<div className="absolute inset-0 bg-gradient-to-r from-cyan-900/50 via-blue-900/50 to-cyan-900/50"></div>
 				<div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-900/50"></div>
-
-				<WaitlistCTA
-					variant="footer"
-					waitlistCount={waitlistCount}
-					displayCount={displayCount}
-				/>
+				<div className="relative max-w-4xl mx-auto text-center">
+					<div className="md:bg-black/25 md:backdrop-blur-sm md:border md:border-white/10 rounded-2xl md:p-12 p-6">
+						<h2 className="mx-auto mb-2 max-w-sm text-3xl md:text-4xl font-bold text-white">
+							Ready to share your stack?
+						</h2>
+						<p className="mx-auto max-w-sm text-xl text-gray-300 mb-8">
+							Join the community and show the world what you build with.
+						</p>
+						<Link
+							to="/login"
+							className="inline-flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-8 py-3 rounded-lg text-lg font-medium transition-colors"
+						>
+							Get Started
+						</Link>
+					</div>
+				</div>
 			</section>
 
 			{/* Footer */}

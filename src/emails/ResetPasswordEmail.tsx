@@ -12,35 +12,41 @@ import {
 } from "@react-email/components";
 import type * as React from "react";
 
-export function WaitlistConfirm(props: {
+export function ResetPasswordEmail(props: {
 	productName: string;
-	ctaUrl: string;
+	resetUrl: string;
 }) {
-	const { productName, ctaUrl } = props;
+	const { productName, resetUrl } = props;
 
 	return (
 		<Html>
 			<Head />
-			<Preview>You're on the {productName} waitlist.</Preview>
+			<Preview>Reset your {productName} password</Preview>
 			<Body style={styles.body}>
 				<Container style={styles.container}>
-					<Heading style={styles.h1}>You're in.</Heading>
+					<Heading style={styles.h1}>Reset your password</Heading>
 
 					<Text style={styles.p}>
-						Thanks for joining the {productName} waitlist. I'll email you when
-						the first version is ready.
+						We received a request to reset your {productName} password. Click
+						the button below to choose a new password.
 					</Text>
 
 					<Section style={styles.ctaWrap}>
-						<Link href={ctaUrl} style={styles.cta}>
-							View your waitlist status
+						<Link href={resetUrl} style={styles.cta}>
+							Reset Password
 						</Link>
 					</Section>
+
+					<Text style={styles.p}>
+						This link will expire in 1 hour. If you didn't request a password
+						reset, you can safely ignore this email.
+					</Text>
 
 					<Hr style={styles.hr} />
 
 					<Text style={styles.small}>
-						If you didn't request this, you can ignore this email.
+						If you're having trouble clicking the button, copy and paste this
+						URL into your browser: {resetUrl}
 					</Text>
 				</Container>
 			</Body>
