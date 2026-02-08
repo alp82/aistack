@@ -74,9 +74,18 @@ export default defineSchema({
   stacks: defineTable({
     slug: v.string(),
     creatorId: v.id('creators'),
-    title: v.string(),
     teamSize: v.optional(v.number()),
-    summary: v.string(),
+    oneLiner: v.string(),
+    description: v.optional(v.string()),
+    stackUrl: v.optional(v.string()),
+    prompts: v.optional(v.number()),
+    rules: v.optional(v.number()),
+    skills: v.optional(v.number()),
+    mcps: v.optional(v.number()),
+    resources: v.optional(v.array(v.object({
+      label: v.string(),
+      url: v.string(),
+    }))),
     toolSubscriptions: v.array(
       v.object({
         toolId: v.id('tools'),

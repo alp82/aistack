@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { ArrowRight, ExternalLink, Plus, Zap } from "lucide-react";
 import { categoryConfig } from "@/config/categoryConfig";
 import { cn } from "@/lib/utils";
@@ -42,8 +43,7 @@ interface WorkflowStep {
 interface StackCardProps {
 	slug: string;
 	creator: Creator;
-	title: string;
-	summary: string;
+	oneLiner: string;
 	teamSize?: number;
 	tools: Tool[];
 	fixedTotal?: {
@@ -53,7 +53,6 @@ interface StackCardProps {
 	};
 	hasUsageComponent: boolean;
 	usageTotalNotes?: string;
-	stackLink?: string;
 	className?: string;
 	workflowHighlight?: {
 		title: string;
@@ -65,16 +64,14 @@ interface StackCardProps {
 	}
 
 export function StackCard({
-	slug, // eslint-disable-line @typescript-eslint/no-unused-vars
+	slug,
 	creator,
-	title, // eslint-disable-line @typescript-eslint/no-unused-vars
-	summary,
+	oneLiner,
 	teamSize,
 	tools,
 	fixedTotal,
 	hasUsageComponent,
 	usageTotalNotes, // eslint-disable-line @typescript-eslint/no-unused-vars
-	stackLink,
 	className,
 	workflowHighlight,
 	compact, // eslint-disable-line @typescript-eslint/no-unused-vars
@@ -182,7 +179,7 @@ export function StackCard({
 
 				{/* Summary Text */}
 				<div className="line-clamp-2 md:line-clamp-3 border-l-2 border-gray-300 pl-2 text-sm md:text-base text-gray-600 leading-relaxed context-highlight transition-all duration-300">
-					{summary}
+					{oneLiner}
 				</div>
 
 				<div className="flex flex-col md:flex-row gap-4">
@@ -263,15 +260,14 @@ export function StackCard({
 						</div>
 
 						{/* View Full Stack Link */}
-						{stackLink && (
-							<a
-								href={stackLink}
-								onClick={(e) => e.stopPropagation()}
-								className="text-sm md:text-base font-medium text-blue-600 hover:text-blue-700 transition-colors inline-flex items-center gap-1"
-							>
-								View full stack →
-							</a>
-						)}
+						<Link
+							to="/stacks/$slug"
+							params={{ slug }}
+							onClick={(e) => e.stopPropagation()}
+							className="text-sm md:text-base font-medium text-blue-600 hover:text-blue-700 transition-colors inline-flex items-center gap-1 mt-2"
+						>
+							View full stack →
+						</Link>
 					</div>
 				</div>
 			</div>

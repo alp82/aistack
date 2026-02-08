@@ -2,9 +2,16 @@ export const stacksData = [
   {
     slug: "alper-builder-stack",
     creatorSlug: "alper-ortac",
-    title: "Alper's Builder Stack",
-    summary:
+    oneLiner:
       "Daily driver stack: Windsurf, Claude, ChatGPT, Gemini. Using skills to make my agents smarter. Plus Lenny's Bundle for extra tools.",
+    stackUrl: "https://github.com/alp82/aistack",
+    prompts: 3,
+    rules: 2,
+    skills: 4,
+    mcps: 2,
+    resources: [
+      { label: "How I use AI Skills", url: "https://x.com/alperortac/status/example" },
+    ],
     toolSubscriptions: [
       {
         toolSlug: "chatgpt-plus",
@@ -132,8 +139,7 @@ export const stacksData = [
   {
     slug: "anthony-claude-stack",
     creatorSlug: "anthony",
-    title: "Anthony's Claude Stack",
-    summary:
+    oneLiner:
       "I'm on the $200 a month Claude plan and personally I haven't felt like I needed anything else. I use regular VS code so cursor isn't necessary and then just have the Claude CLI tool directly in my terminal.",
     toolSubscriptions: [
       {
@@ -175,8 +181,7 @@ export const stacksData = [
   {
     slug: "chase-cursor-stack",
     creatorSlug: "chase-myers",
-    title: "Chase's Cursor Stack",
-    summary:
+    oneLiner:
       "Cursor Pro $20 subscription. I usually use Auto Mode to stay within budget. Sometimes I decide to use OPUS 4.5. I have the Codex extension installed as well.",
     toolSubscriptions: [
       {
@@ -208,9 +213,11 @@ export const stacksData = [
   {
     slug: "will-full-stack",
     creatorSlug: "will-ness",
-    title: "Will's Full AI Stack",
-    summary:
+    oneLiner:
       "Claude Max + Claude Code + Wispr Flow + Perplexity. See my article for the full setup.",
+    resources: [
+      { label: "Full setup article", url: "https://x.com/N3sOnline/status/example" },
+    ],
     toolSubscriptions: [
       {
         toolSlug: "claude-max",
@@ -261,8 +268,7 @@ export const stacksData = [
   {
     slug: "mark-google-stack",
     creatorSlug: "mark-perera",
-    title: "Mark's Google AI Stack",
-    summary:
+    oneLiner:
       "I'm using Google AI Pro. My main IDE now is Google Antigravity instead of Cursor for personal projects.",
     toolSubscriptions: [
       {
@@ -303,8 +309,7 @@ export const stacksData = [
   {
     slug: "brutefy-shipping-stack",
     creatorSlug: "iambrutefyal",
-    title: "Brutefy's Feature Shipping Stack",
-    summary:
+    oneLiner:
       "I use Google AI Studio to get a basic MVP for any idea. Then I ask Claude Code to EXACTLY copy every feature into my own directory. That's how I ship features to clients now.",
     toolSubscriptions: [
       {
@@ -355,8 +360,7 @@ export const stacksData = [
   {
     slug: "sabih-minimal-stack",
     creatorSlug: "sabih-sarowar",
-    title: "Sabih's Minimal Stack",
-    summary:
+    oneLiner:
       "Windsurf for coding with early adopter pricing. Superwhisper for speech to text - stable, half the price of Wispr, and has text post processing.",
     toolSubscriptions: [
       {
@@ -387,8 +391,7 @@ export const stacksData = [
   {
     slug: "schuyler-power-stack",
     creatorSlug: "schuyler",
-    title: "Schuyler's Power User Stack",
-    summary:
+    oneLiner:
       "Perplexity for research (became my main search engine), Cursor for coding, Claude Max for heavy lifting with Opus 4.",
     toolSubscriptions: [
       {
@@ -430,8 +433,7 @@ export const stacksData = [
   {
     slug: "ivan-creative-stack",
     creatorSlug: "ivan-boroja",
-    title: "Ivan's Creative Development Stack",
-    summary:
+    oneLiner:
       "Comprehensive stack for creative development including AI tools, design software, and collaboration platforms. Perfect for building beautiful, functional products.",
     teamSize: 9,
     toolSubscriptions: [
