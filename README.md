@@ -161,6 +161,7 @@ pnpm dlx shadcn@latest add [component-name]
 - The Convex backend runs on `http://localhost:3210`
 - Both servers should remain running during development
 - Use Chrome DevTools MCP for debugging and reviewing code updates
+- **Dev Admin Access**: In development mode, a "Dev Admin Login" button appears on the login page. It signs in as `dev-admin@example.com` with admin privileges. This requires the Convex env var `IS_DEV=true` to be set (email verification is also skipped when `IS_DEV=true`)
 
 ## 🤝 Contributing
 

@@ -19,6 +19,63 @@ function LoginPage() {
 	const [info, setInfo] = useState("");
 	const [loading, setLoading] = useState(false);
 
+	const handleDevAdminLogin = async () => {
+		setError("");
+		setLoading(true);
+		// Use a distinct email to avoid conflicts with previous unverified accounts
+		const devEmail = "dev-admin@example.com";
+		const devPass = "password123";
+		const devName = "Dev Admin";
+
+		try {
+			// 1. Try to sign in first
+			let result = await authClient.signIn.email({
+				email: devEmail,
+				password: devPass,
+			});
+
+			// 2. If sign-in fails, check if we need to sign up
+			if (result.error) {
+				// Only sign up if the error suggests user not found or we want to retry creation
+				// Better-auth returns generic errors, so we try signUp as fallback
+				const signUpResult = await authClient.signUp.email({
+					email: devEmail,
+					password: devPass,
+					name: devName,
+				});
+
+				if (signUpResult.error) {
+					throw new Error(
+						`Login failed: ${result.error.message}. Signup failed: ${signUpResult.error.message}`,
+					);
+				}
+
+				// SignUp succeeded, usually auto-logs in.
+				// If not, we could try signIn again, but let's assume auto-login works or navigate handles it.
+				if (!signUpResult.data) {
+					// Try manual sign in again just in case
+					result = await authClient.signIn.email({
+						email: devEmail,
+						password: devPass,
+					});
+					if (result.error) throw new Error(result.error.message);
+				}
+			}
+
+			// Force a hard navigation to ensure auth state is picked up if client state is lagging
+			// Or just use navigate.
+			await navigate({ to: "/admin/tools" });
+		} catch (err) {
+			setError(
+				err instanceof Error
+					? err.message
+					: "Dev login failed. Ensure you are in development mode.",
+			);
+		} finally {
+			setLoading(false);
+		}
+	};
+
 	const handleEmailAuth = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setError("");
@@ -125,6 +182,18 @@ function LoginPage() {
 					Continue with Google
 				</Button>
 
+				{import.meta.env.DEV && (
+					<Button
+						type="button"
+						variant="destructive"
+						className="w-full mt-2"
+						onClick={handleDevAdminLogin}
+						disabled={loading}
+					>
+						Dev Admin Login
+					</Button>
+				)}
+
 				<div className="relative">
 					<div className="absolute inset-0 flex items-center">
 						<span className="w-full border-t" />
@@ -192,9 +261,10 @@ function LoginPage() {
 				</form>
 
 				<div className="text-center text-sm">
-					<button
+					<Button
 						type="button"
-						className="text-primary hover:underline"
+						variant="link"
+						className="text-primary hover:underline p-0 h-auto font-normal"
 						onClick={() => {
 							setIsSignUp(!isSignUp);
 							setError("");
@@ -204,7 +274,7 @@ function LoginPage() {
 						{isSignUp
 							? "Already have an account? Sign in"
 							: "Don't have an account? Sign up"}
-					</button>
+					</Button>
 				</div>
 			</div>
 		</div>

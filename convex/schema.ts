@@ -67,11 +67,18 @@ export default defineSchema({
         updatedAt: v.optional(v.number()),
       })
     ),
+    reviewStatus: v.union(
+      v.literal('approved'),
+      v.literal('pending'),
+      v.literal('rejected')
+    ),
+    createdBy: v.optional(v.string()), // userId of creator
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index('by_slug', ['slug'])
-    .index('by_category', ['category']),
+    .index('by_category', ['category'])
+    .index('by_reviewStatus', ['reviewStatus']),
 
   stacks: defineTable({
     slug: v.string(),

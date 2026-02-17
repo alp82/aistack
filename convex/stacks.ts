@@ -180,6 +180,12 @@ export const create = mutation({
       .first()
     if (!creator) throw new Error('Creator profile not found. Create one first.')
 
+    const existingStack = await ctx.db
+      .query('stacks')
+      .withIndex('by_creatorId', (q) => q.eq('creatorId', creator._id))
+      .first()
+    if (existingStack) throw new Error('You already have a stack. Please edit your existing stack instead.')
+
     const baseSlug = `${creator.slug}-stack`
     let slug = baseSlug
     let suffix = 2
@@ -422,6 +428,38 @@ export const getForEdit = query({
       published: stack.published,
       toolSubscriptions: toolSubs,
       bundleSubscriptions: bundleSubs,
+    }
+  },
+})
+
+export const getUserStack = query({
+  args: {},
+  returns: v.union(
+    v.object({
+      slug: v.string(),
+    }),
+    v.null()
+  ),
+  handler: async (ctx) => {
+    const user = await ctx.auth.getUserIdentity()
+    if (!user) return null
+    const userId = user.tokenIdentifier.split('|')[1]
+
+    const creator = await ctx.db
+      .query('creators')
+      .withIndex('by_userId', (q) => q.eq('userId', userId))
+      .first()
+    if (!creator) return null
+
+    const stack = await ctx.db
+      .query('stacks')
+      .withIndex('by_creatorId', (q) => q.eq('creatorId', creator._id))
+      .first()
+    
+    if (!stack) return null
+
+    return {
+      slug: stack.slug,
     }
   },
 })

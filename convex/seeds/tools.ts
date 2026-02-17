@@ -5,6 +5,7 @@ export const toolsData = [
     category: 'thinking',
     iconUrl: 'https://cdn.prod.website-files.com/6889473510b50328dbb70ae6/68c33859cc6cd903686c66a2_apple-touch-icon.png',
     websiteUrl: 'https://claude.ai',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'pro', name: 'Pro', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 20, period: 'month' as const } }, isDefault: true },
     ],
@@ -15,6 +16,7 @@ export const toolsData = [
     category: 'thinking',
     iconUrl: 'https://cdn.prod.website-files.com/6889473510b50328dbb70ae6/68c33859cc6cd903686c66a2_apple-touch-icon.png',
     websiteUrl: 'https://claude.ai',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'max-100', name: 'Max $100', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 100, period: 'month' as const } }, isDefault: true },
       { tierId: 'max-200', name: 'Max $200', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 200, period: 'month' as const } } },
@@ -26,6 +28,7 @@ export const toolsData = [
     category: 'coding',
     iconUrl: 'https://cdn.prod.website-files.com/6889473510b50328dbb70ae6/68c33859cc6cd903686c66a2_apple-touch-icon.png',
     websiteUrl: 'https://claude.ai',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'included', name: 'Included with Max', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 0, period: 'month' as const } }, isDefault: true },
     ],
@@ -36,6 +39,7 @@ export const toolsData = [
     category: 'text',
     iconUrl: 'https://chatgpt.com/cdn/assets/favicon-180x180-od45eci6.webp',
     websiteUrl: 'https://chatgpt.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'plus', name: 'Plus', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 20, period: 'month' as const } }, isDefault: true },
     ],
@@ -46,6 +50,7 @@ export const toolsData = [
     category: 'coding',
     iconUrl: 'https://cursor.com/marketing-static/apple-touch-icon.png',
     websiteUrl: 'https://cursor.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'pro', name: 'Pro', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 20, period: 'month' as const } }, isDefault: true },
     ],
@@ -55,7 +60,8 @@ export const toolsData = [
     slug: 'windsurf',
     category: 'coding',
     iconUrl: 'https://windsurf.com/favicon.png',
-    websiteUrl: 'https://windsurf.com',
+    websiteUrl: 'https://windsurf.com/refer?referral_code=e0a013b1c5',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'pro', name: 'Pro', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 15, period: 'month' as const } }, isDefault: true },
       { tierId: 'early-adopter', name: 'Early Adopter', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 10, period: 'month' as const } } },
@@ -67,6 +73,7 @@ export const toolsData = [
     category: 'research',
     iconUrl: 'https://framerusercontent.com/images/PFCYmoDJHc11RiF0s6aYcSNaqns.png',
     websiteUrl: 'https://perplexity.ai',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'pro', name: 'Pro', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 20, period: 'month' as const } }, isDefault: true },
     ],
@@ -77,6 +84,7 @@ export const toolsData = [
     category: "coding",
     iconUrl: "https://replit.com/favicon.ico",
     websiteUrl: "https://replit.com",
+    reviewStatus: 'approved' as const,
     tiers: [{ tierId: "default", name: "Default", pricing: { pricingType: "fixed" as const, fixed: { currency: "USD", amount: 0, period: "month" as const } }, isDefault: true }],
   },
   {
@@ -85,6 +93,7 @@ export const toolsData = [
     category: "coding",
     iconUrl: "https://bolt.new/favicon.ico",
     websiteUrl: "https://bolt.new",
+    reviewStatus: 'approved' as const,
     tiers: [{ tierId: "default", name: "Default", pricing: { pricingType: "fixed" as const, fixed: { currency: "USD", amount: 0, period: "month" as const } }, isDefault: true }],
   },
   {
@@ -93,6 +102,7 @@ export const toolsData = [
     category: "analytics",
     iconUrl: "https://posthog.com/favicon.ico",
     websiteUrl: "https://posthog.com",
+    reviewStatus: 'approved' as const,
     tiers: [{ tierId: "default", name: "Default", pricing: { pricingType: "fixed" as const, fixed: { currency: "USD", amount: 0, period: "month" as const } }, isDefault: true }],
   },
   {
@@ -101,6 +111,7 @@ export const toolsData = [
     category: 'voice',
     iconUrl: 'https://cdn.prod.website-files.com/682f84b3838c89f8ff7667db/68d27d1a8a10f417b5644527_flow-wc-v2.png',
     websiteUrl: 'https://wispr.ai',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'pro', name: 'Pro', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 12, period: 'month' as const } }, isDefault: true },
     ],
@@ -111,6 +122,7 @@ export const toolsData = [
     category: 'voice',
     iconUrl: 'https://superwhisper.com/favicon.ico',
     websiteUrl: 'https://superwhisper.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'pro', name: 'Pro', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 6, period: 'month' as const } }, isDefault: true },
     ],
@@ -121,6 +133,7 @@ export const toolsData = [
     category: 'ai',
     iconUrl: 'https://cdn.openai.com/favicon.ico',
     websiteUrl: 'https://openai.com/chatgpt/team',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'team', name: 'Team', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 60, period: 'month' as const } }, isDefault: true },
     ],
@@ -131,6 +144,7 @@ export const toolsData = [
     category: 'image',
     iconUrl: 'https://cdn.midjourney.com/favicon.ico',
     websiteUrl: 'https://midjourney.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'standard', name: 'Standard', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 24, period: 'month' as const } }, isDefault: true },
     ],
@@ -141,6 +155,7 @@ export const toolsData = [
     category: 'video',
     iconUrl: 'https://klingai.com/favicon.ico',
     websiteUrl: 'https://klingai.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'standard', name: 'Standard', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 9, period: 'month' as const } }, isDefault: true },
     ],
@@ -151,6 +166,7 @@ export const toolsData = [
     category: 'ai',
     iconUrl: 'https://x.com/favicon.ico',
     websiteUrl: 'https://x.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'premium', name: 'Premium', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 8, period: 'month' as const } }, isDefault: true },
     ],
@@ -161,6 +177,7 @@ export const toolsData = [
     category: 'design',
     iconUrl: 'https://www.figma.com/favicon.ico',
     websiteUrl: 'https://figma.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'professional', name: 'Professional', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 9 * 65, period: 'month' as const } }, isDefault: true },
     ],
@@ -171,6 +188,7 @@ export const toolsData = [
     category: 'communication',
     iconUrl: 'https://slack.com/favicon.ico',
     websiteUrl: 'https://slack.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'pro', name: 'Pro', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 9 * 35, period: 'month' as const } }, isDefault: true },
     ],
@@ -181,6 +199,7 @@ export const toolsData = [
     category: 'assets',
     iconUrl: 'https://envato.com/favicon.ico',
     websiteUrl: 'https://envato.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'elements', name: 'Elements', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 16.5, period: 'month' as const } }, isDefault: true },
     ],
@@ -191,6 +210,7 @@ export const toolsData = [
     category: 'creative',
     iconUrl: 'https://www.adobe.com/favicon.ico',
     websiteUrl: 'https://adobe.com/creativecloud',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'all-apps', name: 'All Apps', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 70, period: 'month' as const } }, isDefault: true },
     ],
@@ -201,6 +221,7 @@ export const toolsData = [
     category: '3d',
     iconUrl: 'https://unicorn.studio/favicon.ico',
     websiteUrl: 'https://unicorn.studio',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'pro', name: 'Pro', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 18, period: 'month' as const } }, isDefault: true },
     ],
@@ -211,6 +232,7 @@ export const toolsData = [
     category: 'design',
     iconUrl: 'https://framer.com/favicon.ico',
     websiteUrl: 'https://framer.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'pro', name: 'Pro', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 45, period: 'month' as const } }, isDefault: true },
     ],
@@ -221,6 +243,7 @@ export const toolsData = [
     category: 'web',
     iconUrl: 'https://webflow.com/favicon.ico',
     websiteUrl: 'https://webflow.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'cms', name: 'CMS', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 23, period: 'month' as const } }, isDefault: true },
     ],
@@ -231,6 +254,7 @@ export const toolsData = [
     category: '3d',
     iconUrl: 'https://spline.design/favicon.ico',
     websiteUrl: 'https://spline.design',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'super', name: 'Super', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 20, period: 'month' as const } }, isDefault: true },
     ],
@@ -241,6 +265,7 @@ export const toolsData = [
     category: 'thinking',
     iconUrl: 'https://www.gstatic.com/lamda/images/gemini_favicon_f069958c85030456e93de685481c559f160ea06b.png',
     websiteUrl: 'https://gemini.google.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'pro', name: 'Pro', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 20, period: 'month' as const } }, isDefault: true },
     ],
@@ -251,6 +276,7 @@ export const toolsData = [
     category: 'coding',
     iconUrl: 'https://www.gstatic.com/lamda/images/gemini_favicon_f069958c85030456e93de685481c559f160ea06b.png',
     websiteUrl: 'https://aistudio.google.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'free', name: 'Free', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 0, period: 'month' as const } }, isDefault: true },
     ],
@@ -261,6 +287,7 @@ export const toolsData = [
     category: 'coding',
     iconUrl: 'https://www.gstatic.com/lamda/images/gemini_favicon_f069958c85030456e93de685481c559f160ea06b.png',
     websiteUrl: 'https://idx.google.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'free', name: 'Free', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 0, period: 'month' as const } }, isDefault: true },
     ],
@@ -271,6 +298,7 @@ export const toolsData = [
     category: 'voice',
     iconUrl: 'https://tryvoiceink.com/favicon.ico',
     websiteUrl: 'https://tryvoiceink.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'local', name: 'Local (One-time)', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 0, period: 'one_time' as const } }, isDefault: true },
     ],
@@ -281,6 +309,7 @@ export const toolsData = [
     category: 'coding',
     iconUrl: 'https://chatgpt.com/cdn/assets/favicon-180x180-od45eci6.webp',
     websiteUrl: 'https://openai.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'included', name: 'Included with ChatGPT', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 0, period: 'month' as const } }, isDefault: true },
     ],
@@ -291,6 +320,7 @@ export const toolsData = [
     category: 'image',
     iconUrl: 'https://www.midjourney.com/favicon.ico',
     websiteUrl: 'https://midjourney.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'basic', name: 'Basic', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 10, period: 'month' as const } } },
       { tierId: 'standard', name: 'Standard', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 30, period: 'month' as const } }, isDefault: true },
@@ -302,6 +332,7 @@ export const toolsData = [
     category: 'voice',
     iconUrl: 'https://elevenlabs.io/apple-icon.png?6592732ab34b1d42',
     websiteUrl: 'https://elevenlabs.io',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'starter', name: 'Starter', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 5, period: 'month' as const } } },
       { tierId: 'creator', name: 'Creator', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 22, period: 'month' as const } }, isDefault: true },
@@ -313,6 +344,7 @@ export const toolsData = [
     category: 'notes',
     iconUrl: 'https://www.notion.com/front-static/logo-ios.png',
     websiteUrl: 'https://notion.so',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'ai', name: 'AI Add-on', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 10, period: 'month' as const } }, isDefault: true },
     ],
@@ -323,6 +355,7 @@ export const toolsData = [
     category: 'creation',
     iconUrl: 'https://static.canva.com/domain-assets/canva/static/images/apple-touch-120x120-1.png',
     websiteUrl: 'https://canva.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'pro', name: 'Pro', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 15, period: 'month' as const } }, isDefault: true },
     ],
@@ -333,6 +366,7 @@ export const toolsData = [
     category: 'video',
     iconUrl: 'https://assets-global.website-files.com/5d761d627a6dfa6a5b28ab12/5d761d627a6dfa22d328aba1_Webclip.png',
     websiteUrl: 'https://descript.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'creator', name: 'Creator', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 12, period: 'month' as const } }, isDefault: true },
     ],
@@ -343,6 +377,7 @@ export const toolsData = [
     category: 'coding',
     iconUrl: 'https://lovable.dev/apple-touch-icon.png',
     websiteUrl: 'https://lovable.dev',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'starter', name: 'Starter', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 20, period: 'month' as const } }, isDefault: true },
       { tierId: 'launch', name: 'Launch', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 50, period: 'month' as const } } },
@@ -354,6 +389,7 @@ export const toolsData = [
     category: 'automation',
     iconUrl: 'https://n8n.io/favicon.ico',
     websiteUrl: 'https://n8n.io',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'starter', name: 'Starter', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 20, period: 'month' as const } }, isDefault: true },
     ],
@@ -364,6 +400,7 @@ export const toolsData = [
     category: 'automation',
     iconUrl: 'https://zapier.com/favicon.ico',
     websiteUrl: 'https://zapier.com',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'starter', name: 'Starter', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 20, period: 'month' as const } }, isDefault: true },
     ],
@@ -374,6 +411,7 @@ export const toolsData = [
     category: 'video',
     iconUrl: 'https://higgsfield.ai/favicon.ico',
     websiteUrl: 'https://higgsfield.ai',
+    reviewStatus: 'approved' as const,
     tiers: [
       { tierId: 'basic', name: 'Basic', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 9, period: 'month' as const } }, isDefault: true },
       { tierId: 'pro', name: 'Pro', pricing: { pricingType: 'fixed' as const, fixed: { currency: 'USD', amount: 29, period: 'month' as const } } },

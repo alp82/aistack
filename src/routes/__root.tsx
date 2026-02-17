@@ -87,9 +87,46 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			<head>
 				<HeadContent />
 			</head>
-			<body>
+			<body className="bg-slate-900">
 				<Header />
 				{children}
+				<footer className="py-12 px-6 border-t border-gray-800">
+					<div className="max-w-6xl mx-auto text-center">
+						<div className="flex items-center justify-center gap-2 mb-4">
+							<img
+								src="/aistack-logo.png"
+								alt="AI Stack Logo"
+								className="w-8 h-8"
+							/>
+							<span className="text-gray-300 text-lg">AI Stack</span>
+						</div>
+						<p className="text-gray-400 mb-4">
+							Real AI workflows from solo builders.
+						</p>
+						<p className="flex gap-3 items-center justify-center text-gray-500 text-sm">
+							<span className="flex items-center gap-1">
+								Built with <span className="text-red-500 text-lg">♥</span> by{" "}
+								<a
+									href="https://x.com/alperortac"
+									target="_blank"
+									rel="noopener noreferrer"
+									className="text-cyan-400 hover:text-cyan-300 transition-colors"
+								>
+									@alperortac
+								</a>
+							</span>
+							<span>•</span>
+							<a
+								href="https://github.com/alp82/aistack"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="text-cyan-400 hover:text-cyan-300 transition-colors"
+							>
+								GitHub
+							</a>
+						</p>
+					</div>
+				</footer>
 				<TanStackDevtools
 					config={{
 						position: "bottom-right",

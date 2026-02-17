@@ -109,6 +109,8 @@ export const create = mutation({
       category: args.category,
       websiteUrl: args.websiteUrl,
       tiers,
+      reviewStatus: 'pending',
+      createdBy: user.subject,
       createdAt: now,
       updatedAt: now,
     })

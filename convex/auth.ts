@@ -24,7 +24,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: true,
-      requireEmailVerification: true,
+      requireEmailVerification: process.env.IS_DEV !== 'true',
       sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string }) => {
         const resend = new Resend(process.env.RESEND_API_KEY!)
         const html = await render(

@@ -1,9 +1,9 @@
+import { ExternalLink, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { Plus, Trash2, ExternalLink } from "lucide-react";
+import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
-import { Button } from "./ui/button";
 
 interface Resource {
 	label: string;
@@ -48,12 +48,17 @@ export function MetadataEditor({
 
 	const flags = { prompts, rules, skills, mcps };
 
+	const [expandedResource, setExpandedResource] = useState<number | null>(null);
+
 	const addResource = () => {
-		if (!newResourceLabel.trim() || !newResourceUrl.trim()) return;
+		if (!newResourceUrl.trim()) return;
 		onUpdate({
 			resources: [
 				...resources,
-				{ label: newResourceLabel.trim(), url: newResourceUrl.trim() },
+				{
+					label: newResourceLabel.trim() || newResourceUrl.trim(),
+					url: newResourceUrl.trim(),
+				},
 			],
 		});
 		setNewResourceLabel("");
@@ -76,60 +81,124 @@ export function MetadataEditor({
 				<Label className="text-gray-300">Repository / Stack URL</Label>
 				<Input
 					value={stackUrl ?? ""}
-					onChange={(e) => onUpdate({ stackUrl: e.target.value || undefined })}
+					onChange={(e) =>
+						onUpdate({ stackUrl: e.target.value.trim() || undefined })
+					}
 					placeholder="https://github.com/..."
 					className="bg-slate-700/50 border-gray-600 text-white"
 				/>
+				<p className="text-xs text-gray-500">
+					Link to the public repository or documentation for this stack.
+				</p>
 			</div>
 
 			<div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-				{metaFlags.map((flag) => (
-					<div
-						key={flag.key}
-						className="flex items-center justify-between bg-slate-700/30 rounded-md px-3 py-2 border border-gray-700"
-					>
-						<Label className="text-sm text-gray-300">{flag.label}</Label>
-						<Switch
-							checked={flags[flag.key] ?? false}
-							onCheckedChange={(checked) =>
-								onUpdate({ [flag.key]: checked })
-							}
-						/>
-					</div>
-				))}
+				{metaFlags.map((flag) => {
+					const isEnabled = flags[flag.key] ?? false;
+					return (
+						<Button
+							key={flag.key}
+							variant="ghost"
+							onClick={() => onUpdate({ [flag.key]: !isEnabled })}
+							className={`w-full h-auto justify-between rounded-md px-3 py-2 border transition-all cursor-pointer ${
+								isEnabled
+									? "bg-cyan-500/20 border-cyan-500/50 hover:bg-cyan-500/30"
+									: "bg-slate-700/30 border-gray-700 hover:bg-slate-700/50"
+							}`}
+						>
+							<Label
+								className={`text-sm cursor-pointer ${
+									isEnabled ? "text-cyan-300 font-medium" : "text-gray-300"
+								}`}
+							>
+								{flag.label}
+							</Label>
+							<Switch
+								checked={isEnabled}
+								onCheckedChange={(checked) => onUpdate({ [flag.key]: checked })}
+							/>
+						</Button>
+					);
+				})}
 			</div>
 
 			<div className="space-y-2">
 				<Label className="text-gray-300">Resources</Label>
+				<p className="text-xs text-gray-500">
+					Add links to documentation, guides, or related resources
+				</p>
 				{resources.map((resource, index) => (
-					<div key={index} className="flex items-center gap-2">
-						<ExternalLink className="h-4 w-4 text-gray-500 flex-shrink-0" />
-						<span className="text-sm text-cyan-400 flex-1 truncate">
-							{resource.label}
-						</span>
-						<span className="text-xs text-gray-500 truncate max-w-48">
-							{resource.url}
-						</span>
-						<button
-							type="button"
-							onClick={() => removeResource(index)}
-							className="text-gray-500 hover:text-red-400 transition-colors flex-shrink-0"
-						>
-							<Trash2 className="h-3.5 w-3.5" />
-						</button>
+					<div
+						key={index}
+						className="bg-slate-700/30 rounded-md border border-gray-700 overflow-hidden"
+					>
+						<div className="flex items-center gap-2 p-2">
+							<ExternalLink className="h-4 w-4 text-cyan-400 flex-shrink-0" />
+							<a
+								href={resource.url}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="text-sm text-cyan-400 hover:text-cyan-300 flex-1 truncate transition-colors"
+							>
+								{resource.label}
+							</a>
+
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() =>
+									setExpandedResource(expandedResource === index ? null : index)
+								}
+								className="text-gray-500 hover:text-gray-300 h-auto px-2 py-1 text-xs"
+							>
+								{expandedResource === index ? "Hide" : "Edit"}
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() => removeResource(index)}
+								className="text-gray-500 hover:text-red-400 h-6 w-6"
+							>
+								<Trash2 className="h-3.5 w-3.5" />
+							</Button>
+						</div>
+						{expandedResource === index && (
+							<div className="px-2 pb-2 pt-0 space-y-2 border-t border-gray-700">
+								<Input
+									value={resource.label}
+									onChange={(e) => {
+										const updated = [...resources];
+										updated[index] = { ...resource, label: e.target.value };
+										onUpdate({ resources: updated });
+									}}
+									placeholder="Label (optional)"
+									className="bg-slate-700/50 border-gray-600 text-white text-sm"
+								/>
+								<Input
+									value={resource.url}
+									onChange={(e) => {
+										const updated = [...resources];
+										updated[index] = { ...resource, url: e.target.value };
+										onUpdate({ resources: updated });
+									}}
+									placeholder="https://..."
+									className="bg-slate-700/50 border-gray-600 text-white text-sm"
+								/>
+							</div>
+						)}
 					</div>
 				))}
 				<div className="flex gap-2">
 					<Input
-						value={newResourceLabel}
-						onChange={(e) => setNewResourceLabel(e.target.value)}
-						placeholder="Label"
+						value={newResourceUrl}
+						onChange={(e) => setNewResourceUrl(e.target.value)}
+						placeholder="https://... (required)"
 						className="bg-slate-700/50 border-gray-600 text-white flex-1"
 					/>
 					<Input
-						value={newResourceUrl}
-						onChange={(e) => setNewResourceUrl(e.target.value)}
-						placeholder="https://..."
+						value={newResourceLabel}
+						onChange={(e) => setNewResourceLabel(e.target.value)}
+						placeholder="Label (optional)"
 						className="bg-slate-700/50 border-gray-600 text-white flex-1"
 					/>
 					<Button
@@ -137,7 +206,7 @@ export function MetadataEditor({
 						variant="ghost"
 						size="sm"
 						onClick={addResource}
-						disabled={!newResourceLabel.trim() || !newResourceUrl.trim()}
+						disabled={!newResourceUrl.trim()}
 						className="text-cyan-400 hover:text-cyan-300 flex-shrink-0"
 					>
 						<Plus className="h-4 w-4" />
