@@ -85,5 +85,5 @@ function NewStackPage() {
 		);
 	}
 
-	return <StackEditor mode="create" creator={creator} isGuest={isGuest} />;
+	return <StackEditor mode="create" actor={creator} guestSession={isGuest} />;
 }

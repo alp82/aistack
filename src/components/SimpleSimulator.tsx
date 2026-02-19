@@ -48,7 +48,7 @@ export function SimpleSimulator() {
 		if (!hasStarted) return
 
 		const runSimulation = () => {
-			workflow.forEach((step, index) => {
+			workflow.forEach((_, index) => {
 				setTimeout(() => {
 					setCurrentStep(index)
 					
@@ -87,13 +87,12 @@ export function SimpleSimulator() {
 	return (
 		<section ref={simulatorRef} className="py-12 md:py-16 px-6 bg-gradient-to-b from-slate-900/70 to-slate-900">
 			<div className="max-w-6xl mx-auto">
-				<div className="text-center mb-8">
-					<h2 className="text-3xl md:text-5xl font-bold text-white mb-3">
-						Simple Explainers<span className="hidden md:inline"> for each Stack</span>
+				<div className="mb-8 text-center">
+					<h2 className="mb-3 text-3xl font-bold text-white md:text-5xl">
+						Simple Explainers for each Stack
 					</h2>
-					<p className="text-gray-400 max-w-lg mx-auto">
-						From Brainstorming to Execution over Code Review and Delivery.
-						Copy and paste to your Stack if you like what you see.
+					<p className="mx-auto max-w-2xl text-gray-400">
+						From Brainstorming to Execution over Code Review and Delivery. Copy and paste to your Stack if you like what you see.
 					</p>
 				</div>
 

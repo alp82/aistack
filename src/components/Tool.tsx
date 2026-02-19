@@ -1,6 +1,5 @@
 import { Plus } from "lucide-react";
 import { categoryConfig, type ToolCategory } from "@/config/categoryConfig";
-import { cn } from "@/lib/utils";
 
 interface ToolProps {
 	logo: string;
@@ -26,50 +25,44 @@ export function Tool({
 
 	return (
 		<div
-			className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group"
+			className="group flex flex-col border-2 border-stroke-strong bg-bg-panel transition-all hover:border-accent-lime"
 			style={{ height: `${height}px` }}
 		>
-			<div className="flex items-start gap-3">
+			{/* Header */}
+			<div className="flex items-start gap-3 border-b border-stroke-subtle px-4 py-3">
 				<img
 					src={logo}
 					alt={name}
-					className="w-10 h-10 rounded-lg flex-shrink-0"
+					className="size-10 shrink-0 border border-stroke-subtle bg-white object-contain p-1"
 				/>
-				<div className="flex-1 min-w-0">
-					<h3 className="font-semibold text-gray-900 text-sm group-hover:text-cyan-600 transition-colors">
+				<div className="min-w-0 flex-1">
+					<h3 className="truncate font-mono text-sm font-semibold text-fg-primary transition-colors group-hover:text-accent-lime">
 						{name}
 					</h3>
-					<div className="flex items-center gap-2 mt-1">
-						<span
-							className={cn(
-								"inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-								config?.bgColor || "bg-gray-100",
-								config?.textColor || "text-gray-700",
-							)}
-						>
-							<Icon className="h-3 w-3" />
-							{config?.label || category}
-						</span>
-					</div>
+					<span className="mt-1 inline-flex items-center gap-1 border border-accent-lime/50 bg-accent-lime/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-accent-lime">
+						<Icon className="size-3" />
+						{config?.label || category}
+					</span>
 				</div>
-				<div className="text-right">
-					<span className="text-lg font-bold text-gray-900">${avgCost}</span>
-					<span className="text-xs text-gray-500 block">/mo</span>
+				<div className="shrink-0 text-right">
+					<span className="font-mono text-lg font-bold text-fg-primary">${avgCost}</span>
+					<span className="block font-mono text-[10px] text-fg-muted">/mo</span>
 				</div>
 			</div>
 
-			<div className="mt-4 space-y-3">
+			{/* Content */}
+			<div className="flex-1 space-y-3 overflow-hidden px-4 py-3">
 				{pros.length > 0 && (
-					<div className="text-sm">
-						<p className="font-medium text-green-700 mb-1">Pros:</p>
-						<ul className="space-y-1">
+					<div>
+						<p className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-accent-lime">Pros:</p>
+						<ul className="space-y-0.5">
 							{pros.slice(0, 4).map((pro, index) => (
 								<li
 									key={index}
-									className="text-green-600 text-xs flex items-start"
+									className="flex items-start text-xs text-fg-secondary"
 								>
-									<span className="text-green-500 mr-1">+</span>
-									{pro}
+									<span className="mr-1.5 text-accent-lime">+</span>
+									<span className="line-clamp-1">{pro}</span>
 								</li>
 							))}
 						</ul>
@@ -77,16 +70,16 @@ export function Tool({
 				)}
 
 				{cons.length > 0 && (
-					<div className="text-sm">
-						<p className="font-medium text-red-700 mb-1">Cons:</p>
-						<ul className="space-y-1">
+					<div>
+						<p className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-destructive">Cons:</p>
+						<ul className="space-y-0.5">
 							{cons.slice(0, 4).map((con, index) => (
 								<li
 									key={index}
-									className="text-red-600 text-xs flex items-start"
+									className="flex items-start text-xs text-fg-secondary"
 								>
-									<span className="text-red-500 mr-1">-</span>
-									{con}
+									<span className="mr-1.5 text-destructive">-</span>
+									<span className="line-clamp-1">{con}</span>
 								</li>
 							))}
 						</ul>

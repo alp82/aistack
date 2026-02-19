@@ -13,6 +13,7 @@ import {
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { createServerFn } from "@tanstack/react-start";
 import { AlertCircle, Home } from "lucide-react";
+import { Footer } from "../components/Footer";
 import Header from "../components/Header";
 import PosthogProvider from "../integrations/posthog/provider";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
@@ -87,46 +88,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			<head>
 				<HeadContent />
 			</head>
-			<body className="bg-slate-900">
+			<body className="bg-bg-canvas">
 				<Header />
 				{children}
-				<footer className="py-12 px-6 border-t border-gray-800">
-					<div className="max-w-6xl mx-auto text-center">
-						<div className="flex items-center justify-center gap-2 mb-4">
-							<img
-								src="/aistack-logo.png"
-								alt="AI Stack Logo"
-								className="w-8 h-8"
-							/>
-							<span className="text-gray-300 text-lg">AI Stack</span>
-						</div>
-						<p className="text-gray-400 mb-4">
-							Real AI workflows from solo builders.
-						</p>
-						<p className="flex gap-3 items-center justify-center text-gray-500 text-sm">
-							<span className="flex items-center gap-1">
-								Built with <span className="text-red-500 text-lg">♥</span> by{" "}
-								<a
-									href="https://x.com/alperortac"
-									target="_blank"
-									rel="noopener noreferrer"
-									className="text-cyan-400 hover:text-cyan-300 transition-colors"
-								>
-									@alperortac
-								</a>
-							</span>
-							<span>•</span>
-							<a
-								href="https://github.com/alp82/aistack"
-								target="_blank"
-								rel="noopener noreferrer"
-								className="text-cyan-400 hover:text-cyan-300 transition-colors"
-							>
-								GitHub
-							</a>
-						</p>
-					</div>
-				</footer>
+				<Footer />
 				<TanStackDevtools
 					config={{
 						position: "bottom-right",
@@ -148,22 +113,21 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 function NotFound() {
 	return (
 		<RootDocument>
-			<div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+			<div className="min-h-screen bg-bg-canvas">
 				<div className="flex items-center justify-center px-4 py-32">
-					<div className="text-center max-w-md">
-						<AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
-						<h1 className="text-3xl font-bold text-white mb-2">
+					<div className="max-w-md border-[3px] border-stroke-strong bg-bg-panel p-8 text-center shadow-[6px_6px_0_var(--stroke-strong)]">
+						<AlertCircle className="mx-auto mb-4 size-12 text-destructive" />
+						<h1 className="mb-2 text-2xl font-bold text-fg-primary">
 							Page Not Found
 						</h1>
-						<p className="text-gray-400 mb-8">
-							It seems you've ventured off the beaten path. The page you're
-							looking for doesn't exist.
+						<p className="mb-8 text-sm text-fg-secondary">
+							The page you're looking for doesn't exist.
 						</p>
 						<Link
 							to="/"
-							className="inline-flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+							className="inline-flex items-center gap-2 border-2 border-accent-lime bg-accent-lime px-5 py-3 font-mono text-sm font-semibold uppercase tracking-[0.1em] text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong"
 						>
-							<Home className="h-4 w-4" />
+							<Home className="size-4" />
 							Go Home
 						</Link>
 					</div>

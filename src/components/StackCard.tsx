@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, ExternalLink, Plus, Zap } from "lucide-react";
+
 import { categoryConfig } from "@/config/categoryConfig";
 import { cn } from "@/lib/utils";
 
@@ -7,7 +8,6 @@ export const STACK_CARD_WIDTH = 792;
 export const STACK_CARD_HEIGHT = 416;
 
 const DISPLAY_COUNT = 3;
-
 
 interface Creator {
 	_id: string;
@@ -61,7 +61,7 @@ interface StackCardProps {
 	};
 	compact?: boolean;
 	onStealClick?: () => void;
-	}
+}
 
 export function StackCard({
 	slug,
@@ -71,206 +71,124 @@ export function StackCard({
 	tools,
 	fixedTotal,
 	hasUsageComponent,
-	usageTotalNotes, // eslint-disable-line @typescript-eslint/no-unused-vars
 	className,
 	workflowHighlight,
-	compact, // eslint-disable-line @typescript-eslint/no-unused-vars
-	onStealClick, // eslint-disable-line @typescript-eslint/no-unused-vars
 }: StackCardProps) {
 	const xPage = creator.personalPages.find((p) => p.name === "X");
 	const projectPage = creator.projectPages[0];
-
 	const displayTools = tools.slice(0, DISPLAY_COUNT);
 	const remainingTools = tools.length - DISPLAY_COUNT;
 
 	return (
-		<div
+		<article
 			className={cn(
-				`w-full max-w-[${STACK_CARD_WIDTH}px] h-[${STACK_CARD_HEIGHT}px] rounded-lg border-8 bg-gray-50 p-6 shadow-sm transition-all duration-300 sharing-highlight`,
+				`w-full max-w-[${STACK_CARD_WIDTH}px] min-h-[${STACK_CARD_HEIGHT}px] border-2 border-stroke-subtle bg-bg-panel-elevated shadow-terminal-md`,
 				className,
 			)}
 		>
-			<div className="flex flex-col justify-between gap-6 h-full">
-				{/* Top Section: Avatar, Stack Name, and Price */}
-				<div className="flex justify-between gap-6">
-					{/* Avatar and stack name */}
-					<div className="flex flex-col md:flex-row items-center gap-3 w-full">
-						<div className="flex items-center gap-4">
-							{creator.avatarUrl ? (
-								<img
+			<div className="border-b border-stroke-subtle bg-gradient-to-r from-bg-panel to-bg-panel-muted/55 p-5">
+				<div className="flex items-start justify-between gap-4">
+					<div className="flex min-w-0 items-center gap-3">
+						{creator.avatarUrl ? (
+							<img
 								src={creator.avatarUrl}
 								alt={creator.name}
-								className="h-12 w-12 md:h-16 md:w-16 rounded-full object-cover"
-								/>
-							) : (
-								<div className="flex h-12 w-12 md:h-16 md:w-16 items-center justify-center rounded-full bg-gray-300">
-									<span className="text-sm md:text-base font-medium text-gray-600">
-										{creator.name.charAt(0).toUpperCase()}
-									</span>
-								</div>
-							)}
-							<h3 className="md:hidden text-xl md:text-2xl font-bold text-gray-900">
-								{creator.name}
-							</h3>
-						</div>
-						<div className="flex-1 flex-col">
-							<h3 className="hidden md:block text-xl md:text-2xl font-bold text-gray-900">
-								{creator.name}
-							</h3>
-							<span className="flex items-center gap-2">
+								className="h-12 w-12 rounded-full border border-stroke-subtle object-cover"
+							/>
+						) : (
+							<div className="flex h-12 w-12 items-center justify-center rounded-full border border-stroke-subtle bg-bg-panel-muted text-sm font-semibold text-fg-secondary">
+								{creator.name.charAt(0).toUpperCase()}
+							</div>
+						)}
+						<div className="min-w-0">
+							<h3 className="truncate text-xl font-semibold text-fg-primary">{creator.name}</h3>
+							<div className="mt-0.5 flex items-center gap-2 text-xs text-fg-muted">
 								{xPage && creator.xHandle ? (
-								<a
-									href={xPage.url}
-									target="_blank"
-									rel="noopener"
-									className="text-sm text-cyan-600 hover:text-cyan-700 transition-colors"
-								>
-									@{creator.xHandle}
-								</a>
-								) : creator.xHandle ? (
-								<span className="text-sm text-gray-500">@{creator.xHandle}</span>
+									<a href={xPage.url} target="_blank" rel="noopener" className="hover:text-fg-primary">
+										@{creator.xHandle}
+									</a>
 								) : null}
-								{(xPage && creator.xHandle) && projectPage ? <span>•</span> : null}
 								{projectPage && (
-								<a
-									href={projectPage.url}
-									target="_blank"
-									rel="noopener"
-									className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-								>
-									<span className="font-medium">{projectPage.name}</span>
-									<ExternalLink className="h-3 w-3" />
-								</a>
+									<a
+										href={projectPage.url}
+										target="_blank"
+										rel="noopener"
+										className="inline-flex items-center gap-1 hover:text-fg-primary"
+									>
+										{projectPage.name}
+										<ExternalLink className="h-3 w-3" />
+									</a>
 								)}
-							</span>
-						</div>
-
-						{/* Price */}
-						<div className="flex flex-col items-end gap-1">
-							{/* Hero Metric: Total Price */}
-							<div className="flex flex-col items-center gap-1">
-								<div className="flex items-baseline gap-1 cost-highlight border-2 border-transparent rounded px-1 transition-all duration-300">
-									<span>
-										<span className="font-bold text-gray-900 text-3xl">
-											${fixedTotal?.amount ?? 0}
-										</span>
-										<span className="text-sm text-gray-500">/mo</span>
-										{hasUsageComponent && (
-											<span className="ml-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
-												+ usage
-											</span>
-										)}
-									</span>
-								</div>
-
-								{/* Team Size Badge */}
-								<span className={cn(
-									"ml-2 text-xs px-2 py-0.5 rounded-full font-medium",
-									teamSize
-										? "bg-blue-100 text-blue-700" 
-										: "bg-yellow-100 text-yellow-700"
-								)}>
-									{teamSize ? "Team" : "Solo"}
-								</span>
 							</div>
 						</div>
 					</div>
-				</div>
-
-				{/* Summary Text */}
-				<div className="line-clamp-2 md:line-clamp-3 border-l-2 border-gray-300 pl-2 text-sm md:text-base text-gray-600 leading-relaxed context-highlight transition-all duration-300">
-					{oneLiner}
-				</div>
-
-				<div className="flex flex-col md:flex-row gap-4">
-					{/* Workflow Highlight */}
-					{workflowHighlight && (
-						<div className="flex flex-col bg-gradient-to-r from-cyan-50 to-sky-100 rounded-lg p-3 border border-sky-300 workflow-highlight transition-all duration-300">
-							<div className="flex items-center gap-2 mb-1 md:mb-3">
-								<Zap className="h-4 w-4 text-cyan-600" />
-								<span className="text-sm font-semibold text-cyan-900">
-									{workflowHighlight.title}
-								</span>
-							</div>
-							<div className="flex items-center gap-1 text-xs text-cyan-800">
-								{workflowHighlight.steps.map((step, index) => (
-									<div key={index} className="flex items-center gap-1">
-										<span className="font-medium">{step.tool}</span>
-										{index < workflowHighlight.steps.length - 1 && (
-											<ArrowRight className="h-3 w-3" />
-										)}
-									</div>
-								))}
-							</div>
-							<div className="flex-1 mb-3" />
-							<div className="text-sm text-green-700 font-medium">
-								✓ {workflowHighlight.benefit}
-							</div>
-						</div>
-					)}
-
-					{/* Bottom Section: Tools List */}
-					<div className="flex-1 flex flex-col justify-center">
-						<div className="space-y-2">
-							{displayTools.map((tool) => {
-								const config =
-									categoryConfig[
-										tool.category as keyof typeof categoryConfig
-									];
-								const Icon = config?.icon || Plus;
-
-								return (
-									<div
-										key={tool._id}
-										className="flex items-center justify-between"
-									>
-										<div className="flex items-center gap-2 flex-1 min-w-0">
-											<span className="text-md md:text-lg font-medium text-gray-900 truncate">
-												{tool.name}
-											</span>
-											<span
-												className={cn(
-													"inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs md:text-sm font-medium flex-shrink-0",
-													config?.bgColor || "bg-gray-100",
-													config?.textColor || "text-gray-700",
-												)}
-											>
-												<Icon className="h-3 w-3" />
-												{config?.label || tool.category}
-											</span>
-										</div>
-										<span className="text-md md:text-lg font-bold text-gray-900 ml-2 flex-shrink-0 cost-highlight border-1 border-transparent">
-											{tool.price.fixed
-												? `$${tool.price.fixed.amount}`
-												: "Usage"}
-										</span>
-									</div>
-								);
-							})}
-
-							{/* More tools indicator / Expand/Collapse button */}
-							{tools.length > DISPLAY_COUNT && (
-								<span className="flex items-center justify-between w-full text-sm md:text-base text-gray-500 transition-colors mt-2">
-									<span>
-										+{remainingTools} more tool
-										{remainingTools > 1 ? "s" : ""}
-									</span>
+					<div className="text-right">
+						<p className="text-3xl font-bold text-fg-primary">${fixedTotal?.amount ?? 0}</p>
+						<p className="text-xs text-fg-muted">/mo</p>
+						<div className="mt-1 flex items-center justify-end gap-2">
+							{hasUsageComponent && (
+								<span className="inline-flex border border-accent-lime/45 bg-accent-lime-soft/12 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-lime">
+									+ usage
 								</span>
 							)}
+							<span className="rounded-full bg-bg-panel px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">
+								{teamSize ? `Team ${teamSize}` : "Solo"}
+							</span>
 						</div>
-
-						{/* View Full Stack Link */}
-						<Link
-							to="/stacks/$slug"
-							params={{ slug }}
-							onClick={(e) => e.stopPropagation()}
-							className="text-sm md:text-base font-medium text-blue-600 hover:text-blue-700 transition-colors inline-flex items-center gap-1 mt-2"
-						>
-							View full stack →
-						</Link>
 					</div>
 				</div>
 			</div>
-		</div>
+
+			<div className="space-y-4 border-b border-stroke-subtle p-5">
+				<p className="line-clamp-3 border-l-2 border-stroke-subtle pl-3 text-sm leading-relaxed text-fg-secondary">
+					{oneLiner}
+				</p>
+				{workflowHighlight && (
+					<div className="border border-accent-lime/40 bg-accent-lime-soft/12 p-3">
+						<p className="mb-1 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-accent-lime">
+							<Zap className="h-3.5 w-3.5" />
+							{workflowHighlight.title}
+						</p>
+						<p className="text-xs text-fg-secondary">
+							{workflowHighlight.steps.map((step) => step.tool).join(" -> ")}
+						</p>
+						<p className="mt-1 text-xs font-medium text-green-600">{workflowHighlight.benefit}</p>
+					</div>
+				)}
+			</div>
+
+			<div className="flex items-center justify-between gap-4 bg-bg-panel px-5 py-3">
+				<div className="space-y-1">
+					{displayTools.map((tool) => {
+						const config = categoryConfig[tool.category as keyof typeof categoryConfig];
+						const Icon = config?.icon || Plus;
+
+						return (
+							<div key={tool._id} className="flex items-center gap-2 text-sm text-fg-secondary">
+								<span className="font-medium text-fg-primary">{tool.name}</span>
+								<span
+									className={cn(
+										"inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+										config?.bgColor || "bg-bg-panel-muted",
+										config?.textColor || "text-fg-muted",
+									)}
+								>
+									<Icon className="h-3 w-3" />
+									{config?.label || tool.category}
+								</span>
+								<span className="font-semibold text-fg-primary">
+									{tool.price.fixed ? `$${tool.price.fixed.amount}` : "Usage"}
+								</span>
+							</div>
+						);
+					})}
+					{remainingTools > 0 && <p className="text-xs text-fg-muted">+{remainingTools} more tools</p>}
+				</div>
+				<Link to="/stacks/$slug" params={{ slug }} className="inline-flex items-center gap-1 text-sm font-semibold text-accent-lime">
+					View full stack
+					<ArrowRight className="h-3.5 w-3.5" />
+				</Link>
+			</div>
+		</article>
 	);
 }

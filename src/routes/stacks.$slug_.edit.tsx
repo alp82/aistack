@@ -71,8 +71,8 @@ function EditStackPage() {
 	return (
 		<StackEditor
 			mode="edit"
-			creator={creator}
-			initialData={{
+			actor={creator}
+			initialValue={{
 				_id: stackData._id,
 				slug: stackData.slug,
 				oneLiner: stackData.oneLiner,

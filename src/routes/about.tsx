@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { Copy, DollarSign, Lightbulb, Zap } from "lucide-react";
+import { Copy, DollarSign, Lightbulb } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { SimulatorSection } from "../components/SimulatorSection";
@@ -123,9 +123,9 @@ function AboutPage() {
 	}, [highlightedFeature]);
 
 	const renderFeatures = (
-		<div className="flex flex-col gap-2 md:gap-10 mx-auto max-w-md">
+		<div className="flex flex-col gap-6 md:gap-10">
 			<div
-				className="flex items-center gap-4 group cursor-pointer transition-all duration-200"
+				className="flex items-start gap-4 group cursor-pointer transition-all duration-200"
 				onMouseEnter={() => {
 					if (window.innerWidth >= 1024) {
 						setHighlightedFeature("cost");
@@ -140,12 +140,12 @@ function AboutPage() {
 					setHighlightedFeature(highlightedFeature === "cost" ? null : "cost");
 				}}
 			>
-				<div className={`inline-flex items-center gap-2 bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 rounded-full p-3 w-14 h-14 transition-all duration-300 shadow-lg shadow-yellow-500/10 ${
-					highlightedFeature === "cost" ? "from-yellow-500/30 to-yellow-600/20" : "group-hover:from-yellow-500/30 group-hover:to-yellow-600/20"
-				}`}>
-					<DollarSign className={`h-7 w-7 text-yellow-400 transition-colors duration-300`} />
+				<div className={`inline-flex shrink-0 items-center justify-center rounded-full p-3 size-14 transition-all duration-300 shadow-lg shadow-yellow-500/10 bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 ${
+						highlightedFeature === "cost" ? "from-yellow-500/30 to-yellow-600/20" : "group-hover:from-yellow-500/30 group-hover:to-yellow-600/20"
+					}`}>
+					<DollarSign className="size-7 text-yellow-400 transition-colors duration-300" />
 				</div>
-				<div className="mt-3">
+				<div className="min-w-0 flex-1">
 					<h3 className={`text-lg font-semibold transition-colors duration-300 ${
 						highlightedFeature === "cost" ? "text-yellow-400" : "text-white group-hover:text-yellow-400"
 					}`}>
@@ -160,7 +160,7 @@ function AboutPage() {
 			</div>
 
 			<div
-				className="flex items-center gap-4 group cursor-pointer transition-all duration-200"
+				className="flex items-start gap-4 group cursor-pointer transition-all duration-200"
 				onMouseEnter={() => {
 					if (window.innerWidth >= 1024) {
 						setHighlightedFeature("context");
@@ -175,12 +175,12 @@ function AboutPage() {
 					setHighlightedFeature(highlightedFeature === "context" ? null : "context");
 				}}
 			>
-				<div className={`inline-flex items-center gap-2 bg-gradient-to-br from-blue-500/20 to-blue-600/10 rounded-full p-3 w-14 h-14 transition-all duration-300 shadow-lg shadow-blue-500/10 ${
-					highlightedFeature === "context" ? "from-blue-500/30 to-blue-600/20" : "group-hover:from-blue-500/30 group-hover:to-blue-600/20"
-				}`}>
-					<Lightbulb className={`h-7 w-7 text-blue-400 transition-colors duration-300`} />
+				<div className={`inline-flex shrink-0 items-center justify-center rounded-full p-3 size-14 transition-all duration-300 shadow-lg shadow-blue-500/10 bg-gradient-to-br from-blue-500/20 to-blue-600/10 ${
+						highlightedFeature === "context" ? "from-blue-500/30 to-blue-600/20" : "group-hover:from-blue-500/30 group-hover:to-blue-600/20"
+					}`}>
+					<Lightbulb className="size-7 text-blue-400 transition-colors duration-300" />
 				</div>
-				<div className="mt-3">
+				<div className="min-w-0 flex-1">
 					<h3 className={`text-lg font-semibold transition-colors duration-300 ${
 						highlightedFeature === "context" ? "text-blue-400" : "text-white group-hover:text-blue-400"
 					}`}>
@@ -195,7 +195,7 @@ function AboutPage() {
 			</div>
 
 			<div
-				className="flex items-center gap-4 group cursor-pointer transition-all duration-200"
+				className="flex items-start gap-4 group cursor-pointer transition-all duration-200"
 				onMouseEnter={() => {
 					if (window.innerWidth >= 1024) {
 						setHighlightedFeature("sharing");
@@ -210,12 +210,12 @@ function AboutPage() {
 					setHighlightedFeature(highlightedFeature === "sharing" ? null : "sharing");
 				}}
 			>
-				<div className={`inline-flex items-center gap-2 bg-gradient-to-br from-green-500/20 to-green-600/10 rounded-full p-3 w-14 h-14 transition-all duration-300 shadow-lg shadow-green-500/10 ${
-					highlightedFeature === "sharing" ? "from-green-500/30 to-green-600/20" : "group-hover:from-green-500/30 group-hover:to-green-600/20"
-				}`}>
-					<Copy className={`h-7 w-7 text-green-400 transition-colors duration-300`} />
+				<div className={`inline-flex shrink-0 items-center justify-center rounded-full p-3 size-14 transition-all duration-300 shadow-lg shadow-green-500/10 bg-gradient-to-br from-green-500/20 to-green-600/10 ${
+						highlightedFeature === "sharing" ? "from-green-500/30 to-green-600/20" : "group-hover:from-green-500/30 group-hover:to-green-600/20"
+					}`}>
+					<Copy className="size-7 text-green-400 transition-colors duration-300" />
 				</div>
-				<div className="mt-3">
+				<div className="min-w-0 flex-1">
 					<h3 className={`text-lg font-semibold transition-colors duration-300 ${
 						highlightedFeature === "sharing" ? "text-green-400" : "text-white group-hover:text-green-400"
 					}`}>
@@ -232,40 +232,36 @@ function AboutPage() {
 	);
 
 	return (
-		<div className="min-h-screen relative overflow-hidden">
-			<section className="relative py-4 md:py-24 px-4 flex flex-col gap-4 overflow-hidden">
-				<div className="absolute inset-0 bg-gradient-to-r from-gray-950/40 via-gray-950/60 to-gray-950/80"></div>
-				<div className="relative max-w-7xl mx-auto w-full">
-					<div className="text-center mb-8 lg:mb-16">
-						<div className="inline-flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/20 rounded-full px-4 py-2 mb-4 lg:mb-6">
-							<Zap className="h-4 w-4 text-cyan-400" />
-							<span className="text-cyan-400 text-sm font-medium">
-								About AI Stack
-							</span>
-						</div>
-
-						<h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-white mb-4 lg:mb-6">
-							Learn from Real
-							<br />
-							<span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-								AI Builders
-							</span>
+		<div className="min-h-screen bg-bg-canvas">
+			<section className="border-b-2 border-stroke-strong py-24 px-6 md:px-12">
+				<div className="mx-auto max-w-[1920px]">
+					{/* Section Header */}
+					<div className="flex items-baseline gap-4 mb-12 border-b-2 border-stroke-strong pb-4">
+						<span className="font-mono text-accent-lime text-xl">/</span>
+						<h1 className="text-4xl md:text-6xl font-bold tracking-tighter uppercase text-fg-primary">
+							About
 						</h1>
+					</div>
 
-						<p className="text-base md:text-xl text-gray-300 mb-6 lg:mb-8 max-w-2xl mx-auto leading-relaxed">
+					<div className="mb-16">
+						<h2 className="mb-6 text-3xl md:text-5xl font-bold tracking-tight text-fg-primary">
+							Learn from Real{" "}
+							<span className="text-highlight-lime">AI Builders</span>
+						</h2>
+						<p className="max-w-2xl text-xl text-fg-secondary leading-relaxed">
 							Explore how successful founders use AI tools, complete with workflows, agent
 							setups, prompts and automations you can copy.
 						</p>
 					</div>
 
-					<div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-						<div className="order-2 lg:order-1 flex justify-center lg:justify-start">
-							<div className="w-full max-w-[100vw] lg:max-w-[600px] px-4 lg:px-0">
+					<div className="grid items-center gap-12 lg:grid-cols-2">
+						<div className="order-2 flex justify-center lg:order-1 lg:justify-start">
+							<div className="w-full max-w-[100vw] px-4 lg:max-w-[600px] lg:px-0">
 								<StackCarousel compact />
 							</div>
 						</div>
 
-						<div className="order-1 lg:order-2 flex flex-col gap-4 lg:gap-12">
+						<div className="order-1 flex flex-col gap-4 lg:order-2 lg:gap-12">
 							{renderFeatures}
 						</div>
 					</div>

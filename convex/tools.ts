@@ -30,6 +30,7 @@ export const listAll = query({
             })),
           }),
           isDefault: v.optional(v.boolean()),
+          updatedAt: v.optional(v.number()),
         })
       ),
     })

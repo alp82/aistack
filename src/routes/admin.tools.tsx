@@ -1,7 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { Button } from "../components/ui/button";
 import { Check, X, Edit2, Shield } from "lucide-react";
 import { useState } from "react";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -56,7 +55,7 @@ function AdminToolsPage() {
 	};
 
 	return (
-		<div className="min-h-screen bg-slate-900 py-16 px-6">
+		<div className="min-h-screen bg-bg-canvas">
 			<AddToolModal
 				open={!!editingTool}
 				onClose={() => setEditingTool(null)}
@@ -66,110 +65,111 @@ function AdminToolsPage() {
 				isAdmin={true}
 			/>
 
-			<div className="max-w-6xl mx-auto">
-				<div className="flex items-center gap-3 mb-8">
-					<Shield className="h-8 w-8 text-cyan-400" />
-					<h1 className="text-3xl font-bold text-white">Admin - Tool Review</h1>
-				</div>
-
-				{!pendingTools || pendingTools.length === 0 ? (
-					<div className="bg-slate-800/50 rounded-xl border border-gray-700 p-12 text-center">
-						<p className="text-gray-400 text-lg">No pending tools to review</p>
+			<section className="py-12 sm:py-16">
+				<div className="mx-auto max-w-6xl px-4 sm:px-6">
+					<div className="mb-8 flex items-center gap-3">
+						<Shield className="size-8 text-accent-lime" />
+						<h1 className="text-2xl font-bold tracking-tight text-fg-primary sm:text-3xl">Admin - Tool Review</h1>
 					</div>
-				) : (
-					<div className="space-y-6">
-						{pendingTools.map((tool) => (
-							<div
-								key={tool._id}
-								className="bg-slate-800/50 rounded-xl border border-gray-700 p-6"
-							>
-								<div className="flex items-start justify-between mb-4">
-									<div className="flex items-start gap-4">
-										{tool.iconUrl && (
-											<img
-												src={tool.iconUrl}
-												alt={tool.name}
-												className="w-12 h-12 rounded-lg object-contain bg-white p-1"
-											/>
-										)}
-										<div>
-											<h3 className="text-xl font-semibold text-white mb-1">
-												{tool.name}
-											</h3>
-											<p className="text-sm text-gray-400">
-												Category: {tool.category}
-											</p>
-											{tool.websiteUrl && (
-												<a
-													href={tool.websiteUrl}
-													target="_blank"
-													rel="noopener noreferrer"
-													className="text-sm text-cyan-400 hover:text-cyan-300"
-												>
-													{tool.websiteUrl}
-												</a>
+
+					{!pendingTools || pendingTools.length === 0 ? (
+						<div className="border-2 border-dashed border-stroke-subtle px-4 py-12 text-center">
+							<p className="font-mono text-sm text-fg-muted">No pending tools to review</p>
+						</div>
+					) : (
+						<div className="space-y-5">
+							{pendingTools.map((tool) => (
+								<div
+									key={tool._id}
+									className="border-2 border-stroke-strong bg-bg-panel p-6"
+								>
+									<div className="mb-4 flex items-start justify-between gap-4">
+										<div className="flex items-start gap-4">
+											{tool.iconUrl && (
+												<img
+													src={tool.iconUrl}
+													alt={tool.name}
+													className="size-12 shrink-0 border border-stroke-subtle bg-white object-contain p-1"
+												/>
 											)}
+											<div>
+												<h3 className="font-mono text-lg font-semibold text-fg-primary">
+													{tool.name}
+												</h3>
+												<p className="font-mono text-xs text-fg-muted">
+													Category: {tool.category}
+												</p>
+												{tool.websiteUrl && (
+													<a
+														href={tool.websiteUrl}
+														target="_blank"
+														rel="noopener noreferrer"
+														className="font-mono text-xs text-accent-lime hover:underline"
+													>
+														{tool.websiteUrl}
+													</a>
+												)}
+											</div>
 										</div>
+
+										<button
+											type="button"
+											onClick={() => setEditingTool(tool as ToolData)}
+											className="inline-flex items-center gap-2 border border-stroke-subtle px-3 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-accent-lime hover:text-accent-lime"
+										>
+											<Edit2 className="size-3.5" />
+											Edit
+										</button>
 									</div>
 
-									<Button
-										onClick={() => setEditingTool(tool as ToolData)}
-										size="sm"
-										className="bg-slate-700 hover:bg-slate-600 text-gray-200 border border-gray-600"
-									>
-										<Edit2 className="h-4 w-4" />
-										Edit
-									</Button>
-								</div>
-
-								<div className="mb-4">
-									<h4 className="text-sm font-medium text-gray-400 mb-2">
-										Pricing Tiers
-									</h4>
-									<div className="space-y-2">
-										{tool.tiers.map((tier) => (
-											<div
-												key={tier.tierId}
-												className="bg-slate-900/50 rounded-lg p-3 text-sm"
-											>
-												<div className="flex items-center justify-between">
-													<span className="text-white font-medium">
+									<div className="mb-4">
+										<h4 className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-muted">
+											Pricing Tiers
+										</h4>
+										<div className="space-y-2">
+											{tool.tiers.map((tier) => (
+												<div
+													key={tier.tierId}
+													className="flex items-center justify-between border border-stroke-subtle bg-bg-panel-muted p-3"
+												>
+													<span className="font-mono text-sm font-medium text-fg-primary">
 														{tier.name}
 													</span>
 													{tier.pricing.pricingType === "fixed" &&
 														tier.pricing.fixed && (
-															<span className="text-cyan-400">
-																${tier.pricing.fixed.amount}/
-																{tier.pricing.fixed.period}
+															<span className="font-mono text-sm text-accent-lime">
+																${tier.pricing.fixed.amount}/{tier.pricing.fixed.period}
 															</span>
 														)}
 												</div>
-											</div>
-										))}
+											))}
+										</div>
+									</div>
+
+									<div className="flex gap-3 border-t border-stroke-subtle pt-4">
+										<button
+											type="button"
+											onClick={() => handleApprove(tool._id)}
+											className="inline-flex items-center gap-2 border-2 border-green-500 bg-green-500 px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-green-600"
+										>
+											<Check className="size-3.5" />
+											Approve
+										</button>
+										<button
+											type="button"
+											onClick={() => handleReject(tool._id)}
+											className="inline-flex items-center gap-2 border-2 border-destructive bg-destructive px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-destructive/90"
+										>
+											<X className="size-3.5" />
+											Reject
+										</button>
 									</div>
 								</div>
-
-								<div className="flex gap-3 pt-4 border-t border-gray-700">
-									<Button
-										onClick={() => handleApprove(tool._id)}
-										className="bg-green-600 hover:bg-green-700 text-white"
-									>
-										<Check className="h-4 w-4" />
-										Approve
-									</Button>
-									<Button
-										onClick={() => handleReject(tool._id)}
-										className="bg-red-600 hover:bg-red-700 text-white"
-									>
-										<X className="h-4 w-4" />
-										Reject
-									</Button>
-								</div>
-							</div>
-						))}
-					</div>
-				)}
-			</div>
+							))}
+						</div>
+					)}
+				</div>
+			</section>
 		</div>
 	);
 }

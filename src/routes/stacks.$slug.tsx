@@ -20,6 +20,26 @@ export const Route = createFileRoute("/stacks/$slug")({
 	component: StackDetailsPage,
 });
 
+function getCategoryColor(category: string): string {
+	const colors: Record<string, string> = {
+		coding: "border-purple-500 text-purple-400",
+		thinking: "border-blue-500 text-blue-400",
+		text: "border-emerald-500 text-emerald-400",
+		research: "border-amber-500 text-amber-400",
+		voice: "border-pink-500 text-pink-400",
+		image: "border-orange-500 text-orange-400",
+		video: "border-red-500 text-red-400",
+		design: "border-cyan-500 text-cyan-400",
+		automation: "border-indigo-500 text-indigo-400",
+		notes: "border-teal-500 text-teal-400",
+		communication: "border-sky-500 text-sky-400",
+		creative: "border-fuchsia-500 text-fuchsia-400",
+		web: "border-lime-500 text-lime-400",
+		ai: "border-violet-500 text-violet-400",
+	};
+	return colors[category?.toLowerCase()] || "border-zinc-500 text-zinc-400";
+}
+
 function StackDetailsPage() {
 	const { slug } = Route.useParams();
 	const stack = useQuery(api.stacks.getBySlug, { slug });
@@ -27,20 +47,20 @@ function StackDetailsPage() {
 
 	if (stack === undefined) {
 		return (
-			<div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
-				<div className="text-gray-400">Loading stack...</div>
+			<div className="flex min-h-screen items-center justify-center bg-bg-canvas">
+				<div className="font-mono text-sm text-fg-muted">Loading stack...</div>
 			</div>
 		);
 	}
 
 	if (stack === null) {
 		return (
-			<div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
+			<div className="flex min-h-screen items-center justify-center bg-bg-canvas">
 				<div className="text-center">
-					<h1 className="text-2xl font-bold text-white mb-4">
+					<h1 className="mb-4 text-2xl font-bold text-fg-primary">
 						Stack not found
 					</h1>
-					<Link to="/" className="text-cyan-400 hover:text-cyan-300">
+					<Link to="/" className="font-mono text-sm text-accent-lime hover:text-accent-lime-strong">
 						← Back to home
 					</Link>
 				</div>
@@ -57,92 +77,90 @@ function StackDetailsPage() {
 	const miscTools = stack.tools.filter((t) => t.kind === "misc");
 
 	return (
-		<div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+		<div className="min-h-screen bg-bg-canvas">
 			{/* Back link */}
-			<div className="max-w-7xl mx-auto px-6 pt-6">
+			<div className="mx-auto max-w-[1920px] px-6 md:px-12 pt-8">
 				<Link
-					to="/"
-					className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+					to="/stacks"
+					className="inline-flex items-center gap-2 font-mono text-xs text-fg-muted transition-colors hover:text-accent-lime group"
 				>
-					<ArrowLeft className="h-4 w-4" />
+					<ArrowLeft className="size-3.5 group-hover:-translate-x-1 transition-transform" />
 					Back to all stacks
 				</Link>
 			</div>
 
 			{/* Header */}
-			<header className="max-w-7xl mx-auto px-6 py-8">
-				<div className="flex items-start gap-6">
+			<header className="mx-auto max-w-[1920px] px-6 md:px-12 py-12">
+				<div className="flex flex-col gap-6 sm:flex-row sm:items-start">
 					{stack.creator.avatarUrl ? (
 						<img
 							src={stack.creator.avatarUrl}
 							alt={stack.creator.name}
-							className="h-20 w-20 rounded-full object-cover border-4 border-cyan-500/30"
+							className="size-16 shrink-0 border-[3px] border-stroke-strong object-cover sm:size-20"
 						/>
 					) : (
-						<div className="h-20 w-20 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white text-2xl font-bold">
+						<div className="flex size-16 shrink-0 items-center justify-center border-[3px] border-stroke-strong bg-bg-panel-muted font-mono text-xl font-bold text-fg-primary sm:size-20">
 							{stack.creator.name.charAt(0)}
 						</div>
 					)}
 
-					<div className="flex-1">
-						<h1 className="text-3xl font-bold text-white mb-2">
+					<div className="min-w-0 flex-1">
+						<h1 className="mb-2 text-2xl font-bold text-fg-primary sm:text-3xl">
 							{stack.creator.name}
 						</h1>
-						<div className="flex items-center gap-2 mb-3">
+						<div className="mb-3 flex flex-wrap items-center gap-2 font-mono text-xs">
 							{stack.creator.verified && (
-								<CheckCircle className="h-4 w-4 text-cyan-400" />
+								<CheckCircle className="size-4 text-accent-lime" />
 							)}
 							{xPage && stack.creator.xHandle && (
 								<a
 									href={xPage.url}
 									target="_blank"
 									rel="noopener noreferrer"
-									className="text-cyan-400 hover:text-cyan-300"
+									className="text-accent-lime hover:text-accent-lime-strong"
 								>
 									@{stack.creator.xHandle}
 								</a>
 							)}
 							{xPage && stack.creator.xHandle && projectPage && (
-								<span className="text-gray-500">•</span>
+								<span className="text-stroke-strong">•</span>
 							)}
 							{projectPage && (
 								<a
 									href={projectPage.url}
 									target="_blank"
 									rel="noopener noreferrer"
-									className="inline-flex items-center gap-1 text-gray-400 hover:text-white transition-colors"
+									className="inline-flex items-center gap-1 text-fg-muted transition-colors hover:text-fg-primary"
 								>
 									{projectPage.name}
-									<ExternalLink className="h-3 w-3" />
+									<ExternalLink className="size-3" />
 								</a>
 							)}
 						</div>
-						<p className="text-gray-300 text-sm">{stack.oneLiner}</p>
+						<p className="text-sm leading-relaxed text-fg-secondary">{stack.oneLiner}</p>
 					</div>
 
-					<div className="text-right">
+					<div className="shrink-0 border-[3px] border-stroke-strong bg-bg-panel p-4 shadow-[4px_4px_0_var(--stroke-strong)] sm:text-right">
 						<div className="flex items-baseline gap-1">
-							<span className="text-4xl font-bold text-white">
+							<span className="font-mono text-3xl font-bold text-fg-primary">
 								${stack.fixedTotal?.amount ?? 0}
 							</span>
-							<span className="text-gray-400">/mo</span>
+							<span className="font-mono text-sm text-fg-muted">/mo</span>
 						</div>
 						{stack.hasUsageComponent && (
-							<span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-1 rounded-full">
+							<span className="mt-1 inline-flex border border-accent-lime bg-transparent px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-accent-lime">
 								+ usage
 							</span>
 						)}
 						{stack.usageTotalNotes && (
-							<p className="text-xs text-gray-500 mt-1">
+							<p className="mt-1 font-mono text-xs text-fg-muted">
 								{stack.usageTotalNotes}
 							</p>
 						)}
 						<span
 							className={cn(
-								"mt-2 inline-block text-xs px-2 py-0.5 rounded-full font-medium",
-								stack.teamSize
-									? "bg-blue-500/20 text-blue-400"
-									: "bg-yellow-500/20 text-yellow-400",
+								"mt-2 inline-block font-mono text-xs font-semibold uppercase tracking-wide",
+								stack.teamSize ? "text-fg-secondary" : "text-accent-lime",
 							)}
 						>
 							{stack.teamSize ? `Team of ${stack.teamSize}` : "Solo"}
@@ -162,23 +180,23 @@ function StackDetailsPage() {
 			/>
 
 			{/* Tabs */}
-			<section className="max-w-7xl mx-auto px-6 pt-6">
-				<div className="flex gap-1 border-b border-gray-700">
+			<section className="mx-auto max-w-[1920px] px-6 md:px-12 pt-6">
+				<div className="flex gap-1 border-b-2 border-stroke-strong">
 					<Button
 						type="button"
 						variant="ghost"
 						onClick={() => setActiveTab("tools")}
 						className={cn(
-							"px-5 py-3 text-sm font-medium transition-colors relative inline-flex items-center gap-2 hover:bg-transparent h-auto rounded-none",
+							"relative inline-flex h-auto items-center gap-2 rounded-none px-5 py-3 font-mono text-xs font-semibold uppercase tracking-[0.1em] transition-colors hover:bg-transparent",
 							activeTab === "tools"
-								? "text-white"
-								: "text-gray-400 hover:text-gray-200",
+								? "text-fg-primary"
+								: "text-fg-muted hover:text-fg-secondary",
 						)}
 					>
-						<Package className="h-4 w-4" />
+						<Package className="size-4" />
 						Tools ({stack.tools.length})
 						{activeTab === "tools" && (
-							<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400" />
+							<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent-lime" />
 						)}
 					</Button>
 					{hasDescription && (
@@ -187,16 +205,16 @@ function StackDetailsPage() {
 							variant="ghost"
 							onClick={() => setActiveTab("description")}
 							className={cn(
-								"px-5 py-3 text-sm font-medium transition-colors relative inline-flex items-center gap-2 hover:bg-transparent h-auto rounded-none",
+								"relative inline-flex h-auto items-center gap-2 rounded-none px-5 py-3 font-mono text-xs font-semibold uppercase tracking-[0.1em] transition-colors hover:bg-transparent",
 								activeTab === "description"
-									? "text-white"
-									: "text-gray-400 hover:text-gray-200",
+									? "text-fg-primary"
+									: "text-fg-muted hover:text-fg-secondary",
 							)}
 						>
-							<FileText className="h-4 w-4" />
+							<FileText className="size-4" />
 							Description
 							{activeTab === "description" && (
-								<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400" />
+								<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent-lime" />
 							)}
 						</Button>
 					)}
@@ -204,16 +222,16 @@ function StackDetailsPage() {
 			</section>
 
 			{/* Tab Content */}
-			<section className="max-w-7xl mx-auto px-6 py-8">
+			<section className="mx-auto max-w-[1920px] px-6 md:px-12 py-12">
 				{activeTab === "tools" && (
 					<div className="space-y-8">
 						{/* Main Tools */}
 						{mainTools.length > 0 && (
 							<div>
-								<h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+								<h3 className="mb-4 font-mono text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-accent-lime">
 									Main Tools
 								</h3>
-								<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+								<div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
 									{mainTools.map((tool) => (
 										<MainToolCard key={tool._id} tool={tool} />
 									))}
@@ -224,10 +242,10 @@ function StackDetailsPage() {
 						{/* Misc Tools */}
 						{miscTools.length > 0 && (
 							<div>
-								<h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+								<h3 className="mb-4 font-mono text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-accent-lime">
 									Other Tools
 								</h3>
-								<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+								<div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
 									{miscTools.map((tool) => (
 										<MiscToolCard key={tool._id} tool={tool} />
 									))}
@@ -238,37 +256,37 @@ function StackDetailsPage() {
 						{/* Bundles */}
 						{stack.bundles.length > 0 && (
 							<div>
-								<h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+								<h3 className="mb-4 font-mono text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-accent-lime">
 									Bundles
 								</h3>
-								<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+								<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
 									{stack.bundles.map((bundle) => (
 										<div
 											key={bundle._id}
-											className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-4 flex items-start gap-4"
+											className="flex items-start gap-4 border-2 border-stroke-strong bg-bg-panel p-4"
 										>
 											{bundle.iconUrl ? (
 												<img
 													src={bundle.iconUrl}
 													alt={bundle.name}
-													className="h-10 w-10 rounded-lg object-contain bg-white p-1 flex-shrink-0"
+													className="size-10 shrink-0 border border-stroke-subtle bg-white object-contain p-1"
 												/>
 											) : (
-												<div className="h-10 w-10 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0">
-													<Package className="h-5 w-5 text-purple-400" />
+												<div className="flex size-10 shrink-0 items-center justify-center border border-stroke-subtle bg-bg-panel-muted">
+													<Package className="size-5 text-fg-muted" />
 												</div>
 											)}
-											<div className="flex-1 min-w-0">
-												<div className="flex items-center justify-between mb-1">
-													<span className="font-semibold text-white">
+											<div className="min-w-0 flex-1">
+												<div className="mb-1 flex items-center justify-between">
+													<span className="font-mono text-sm font-semibold text-fg-primary">
 														{bundle.name}
 													</span>
-													<span className="text-sm font-bold text-white ml-2 flex-shrink-0">
+													<span className="ml-2 shrink-0 font-mono text-sm font-bold text-fg-primary">
 														{bundle.price.fixed
 															? `$${bundle.price.fixed.amount}`
 															: "Usage"}
 														{bundle.price.fixed && (
-															<span className="text-xs text-gray-500 font-normal">
+															<span className="text-xs font-normal text-fg-muted">
 																/
 																{bundle.price.fixed.period === "one_time"
 																	? "once"
@@ -278,12 +296,12 @@ function StackDetailsPage() {
 													</span>
 												</div>
 												{bundle.description && (
-													<p className="text-sm text-gray-400 mb-2">
+													<p className="mb-2 text-sm text-fg-secondary">
 														{bundle.description}
 													</p>
 												)}
 												<div className="flex items-center gap-3">
-													<span className="text-xs text-purple-400">
+													<span className="font-mono text-xs text-fg-muted">
 														{bundle.tierName}
 													</span>
 													{bundle.websiteUrl && (
@@ -291,9 +309,9 @@ function StackDetailsPage() {
 															href={bundle.websiteUrl}
 															target="_blank"
 															rel="noopener noreferrer"
-															className="text-xs text-cyan-400 hover:text-cyan-300 inline-flex items-center gap-1"
+															className="inline-flex items-center gap-1 font-mono text-xs text-accent-lime hover:text-accent-lime-strong"
 														>
-															Visit site <ExternalLink className="h-3 w-3" />
+															Visit site <ExternalLink className="size-3" />
 														</a>
 													)}
 												</div>

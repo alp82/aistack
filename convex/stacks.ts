@@ -464,6 +464,41 @@ export const getUserStack = query({
   },
 })
 
+export const getLandingStats = query({
+  args: {},
+  returns: v.object({
+    stackCount: v.number(),
+    avgCost: v.number(),
+    toolCount: v.number(),
+  }),
+  handler: async (ctx) => {
+    const stacks = await ctx.db
+      .query('stacks')
+      .withIndex('by_published', (q) => q.eq('published', true))
+      .collect()
+
+    const toolIds = new Set<string>()
+    let totalCost = 0
+    let stacksWithCost = 0
+
+    for (const stack of stacks) {
+      if (stack.fixedTotal?.amount) {
+        totalCost += stack.fixedTotal.amount
+        stacksWithCost++
+      }
+      for (const sub of stack.toolSubscriptions) {
+        toolIds.add(sub.toolId)
+      }
+    }
+
+    return {
+      stackCount: stacks.length,
+      avgCost: stacksWithCost > 0 ? Math.round(totalCost / stacksWithCost) : 0,
+      toolCount: toolIds.size,
+    }
+  },
+})
+
 export const getBySlug = query({
   args: { slug: v.string() },
   returns: v.union(

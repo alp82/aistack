@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { categoryConfig, type ToolCategory } from "@/config/categoryConfig";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import {
@@ -176,69 +175,68 @@ export function AddToolModal({
 	const canSubmit = canProceedFromBasic;
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center">
+		<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
 			<div
-				className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+				className="absolute inset-0 bg-bg-canvas/80 backdrop-blur-sm"
 				onClick={onClose}
 				onKeyDown={(e) => e.key === "Escape" && onClose()}
 			/>
-			<div className="relative bg-slate-800 border border-gray-700 rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6">
-				<div className="flex items-center justify-between mb-6">
+			<div className="relative min-w-[400px] max-w-lg border-2 border-stroke-strong bg-bg-panel p-6 shadow-[6px_6px_0_var(--stroke-strong)]">
+				<div className="mb-6 flex items-start justify-between gap-4">
 					<div>
-						<h2 className="text-lg font-semibold text-white">
+						<h2 className="font-mono text-lg font-bold text-fg-primary">
 							{isEditMode ? "Edit Tool" : "Add New Tool"}
 						</h2>
-						<p className="text-sm text-gray-400 mt-1">
+						<p className="mt-1 font-mono text-xs text-fg-muted">
 							{step === "basic" && "Step 1 of 3: Basic Information"}
 							{step === "pricing" && "Step 2 of 3: Pricing Details"}
 							{step === "review" && "Step 3 of 3: Review & Submit"}
 						</p>
 					</div>
-					<Button
-						variant="ghost"
-						size="icon"
+					<button
+						type="button"
 						onClick={onClose}
-						className="text-gray-400 hover:text-white transition-colors"
+						className="flex size-8 shrink-0 items-center justify-center border border-stroke-subtle text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime"
 					>
-						<X className="h-5 w-5" />
-					</Button>
+						<X className="size-4" />
+					</button>
 				</div>
 
 				{/* Progress Indicator */}
-				<div className="flex items-center gap-2 mb-6">
+				<div className="mb-6 flex items-center gap-2">
 					<div
-						className={`flex-1 h-1 rounded-full ${
+						className={`h-1 flex-1 ${
 							step === "basic" || step === "pricing" || step === "review"
-								? "bg-cyan-500"
-								: "bg-gray-700"
+								? "bg-accent-lime"
+								: "bg-stroke-subtle"
 						}`}
 					/>
 					<div
-						className={`flex-1 h-1 rounded-full ${
+						className={`h-1 flex-1 ${
 							step === "pricing" || step === "review"
-								? "bg-cyan-500"
-								: "bg-gray-700"
+								? "bg-accent-lime"
+								: "bg-stroke-subtle"
 						}`}
 					/>
 					<div
-						className={`flex-1 h-1 rounded-full ${
-							step === "review" ? "bg-cyan-500" : "bg-gray-700"
+						className={`h-1 flex-1 ${
+							step === "review" ? "bg-accent-lime" : "bg-stroke-subtle"
 						}`}
 					/>
 				</div>
 
 				{error && (
-					<div className="mb-4 rounded-md bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
+					<div className="mb-4 border border-destructive/30 bg-destructive/10 p-3 font-mono text-xs text-destructive">
 						{error}
 					</div>
 				)}
 
-				<form onSubmit={handleSubmit} className="space-y-6">
+				<form onSubmit={handleSubmit} className="space-y-5">
 					{/* Step 1: Basic Information */}
 					{step === "basic" && (
 						<div className="space-y-4">
 							<div className="space-y-2">
-								<Label htmlFor="tool-name" className="text-gray-300 text-base">
+								<Label htmlFor="tool-name" className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
 									Tool Name *
 								</Label>
 								<Input
@@ -246,23 +244,23 @@ export function AddToolModal({
 									value={name}
 									onChange={(e) => setName(e.target.value)}
 									placeholder="e.g. Cursor, Claude, Windsurf"
-									className="bg-slate-700/50 border-gray-600 text-white text-base h-11"
+									className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
 									required
 								/>
-								<p className="text-xs text-gray-500">
+								<p className="text-xs text-fg-muted">
 									The name of the AI tool or service
 								</p>
 							</div>
 
 							<div className="space-y-2">
-								<Label className="text-gray-300 text-base">Category *</Label>
+								<Label className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">Category *</Label>
 								<Select
 									value={category}
 									onValueChange={(val) => {
 										if (val) setCategory(val);
 									}}
 								>
-									<SelectTrigger className="bg-slate-700/50 border-gray-600 text-white w-full h-11">
+									<SelectTrigger className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary">
 										<SelectValue placeholder="Select a category" />
 									</SelectTrigger>
 									<SelectContent>
@@ -273,7 +271,7 @@ export function AddToolModal({
 										))}
 									</SelectContent>
 								</Select>
-								<p className="text-xs text-gray-500">
+								<p className="text-xs text-fg-muted">
 									What type of AI tool is this?
 								</p>
 							</div>
@@ -281,7 +279,7 @@ export function AddToolModal({
 							<div className="space-y-2">
 								<Label
 									htmlFor="tool-website"
-									className="text-gray-300 text-base"
+									className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
 								>
 									Website URL (Optional)
 								</Label>
@@ -290,9 +288,9 @@ export function AddToolModal({
 									value={websiteUrl}
 									onChange={(e) => setWebsiteUrl(e.target.value)}
 									placeholder="https://example.com"
-									className="bg-slate-700/50 border-gray-600 text-white text-base h-11"
+									className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
 								/>
-								<p className="text-xs text-gray-500">
+								<p className="text-xs text-fg-muted">
 									Official website for the tool
 								</p>
 							</div>
@@ -301,7 +299,7 @@ export function AddToolModal({
 								<div className="space-y-2">
 									<Label
 										htmlFor="tool-icon"
-										className="text-gray-300 text-base"
+										className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
 									>
 										Icon URL (Optional)
 									</Label>
@@ -310,9 +308,9 @@ export function AddToolModal({
 										value={iconUrl}
 										onChange={(e) => setIconUrl(e.target.value)}
 										placeholder="https://example.com/icon.png"
-										className="bg-slate-700/50 border-gray-600 text-white text-base h-11"
+										className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
 									/>
-									<p className="text-xs text-gray-500">
+									<p className="text-xs text-fg-muted">
 										URL to the tool's icon image
 									</p>
 								</div>
@@ -324,7 +322,7 @@ export function AddToolModal({
 					{step === "pricing" && (
 						<div className="space-y-4">
 							<div className="space-y-2">
-								<Label htmlFor="tier-name" className="text-gray-300 text-base">
+								<Label htmlFor="tier-name" className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
 									Tier Name
 								</Label>
 								<Input
@@ -332,22 +330,22 @@ export function AddToolModal({
 									value={tierName}
 									onChange={(e) => setTierName(e.target.value)}
 									placeholder="e.g. Pro, Free, Plus"
-									className="bg-slate-700/50 border-gray-600 text-white text-base h-11"
+									className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
 								/>
-								<p className="text-xs text-gray-500">
+								<p className="text-xs text-fg-muted">
 									The subscription tier name
 								</p>
 							</div>
 
 							<div className="space-y-2">
-								<Label className="text-gray-300 text-base">Pricing Type</Label>
+								<Label className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">Pricing Type</Label>
 								<Select
 									value={pricingType}
 									onValueChange={(v) =>
 										setPricingType(v as "fixed" | "usage" | "mixed")
 									}
 								>
-									<SelectTrigger className="bg-slate-700/50 border-gray-600 text-white w-full h-11">
+									<SelectTrigger className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary">
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
@@ -356,7 +354,7 @@ export function AddToolModal({
 										<SelectItem value="mixed">Fixed + Usage</SelectItem>
 									</SelectContent>
 								</Select>
-								<p className="text-xs text-gray-500">
+								<p className="text-xs text-fg-muted">
 									How is this tool priced?
 								</p>
 							</div>
@@ -366,7 +364,7 @@ export function AddToolModal({
 									<div className="space-y-2">
 										<Label
 											htmlFor="fixed-amount"
-											className="text-gray-300 text-base"
+											className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
 										>
 											Price ($)
 										</Label>
@@ -377,11 +375,11 @@ export function AddToolModal({
 											step={0.01}
 											value={fixedAmount}
 											onChange={(e) => setFixedAmount(Number(e.target.value))}
-											className="bg-slate-700/50 border-gray-600 text-white text-base h-11"
+											className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary focus:border-accent-lime"
 										/>
 									</div>
 									<div className="space-y-2">
-										<Label className="text-gray-300 text-base">
+										<Label className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
 											Billing Period
 										</Label>
 										<Select
@@ -390,7 +388,7 @@ export function AddToolModal({
 												setFixedPeriod(v as "month" | "year" | "one_time")
 											}
 										>
-											<SelectTrigger className="bg-slate-700/50 border-gray-600 text-white w-full h-11">
+											<SelectTrigger className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary">
 												<SelectValue />
 											</SelectTrigger>
 											<SelectContent>
@@ -408,29 +406,29 @@ export function AddToolModal({
 					{/* Step 3: Review */}
 					{step === "review" && (
 						<div className="space-y-4">
-							<div className="bg-slate-700/30 rounded-lg p-4 space-y-3">
+							<div className="space-y-3 border border-stroke-subtle bg-bg-panel-muted p-4">
 								<div>
-									<p className="text-xs text-gray-500">Tool Name</p>
-									<p className="text-white font-medium">{name}</p>
+									<p className="font-mono text-[10px] uppercase tracking-wide text-fg-muted">Tool Name</p>
+									<p className="font-mono text-sm font-semibold text-fg-primary">{name}</p>
 								</div>
 								<div>
-									<p className="text-xs text-gray-500">Category</p>
-									<p className="text-white">
+									<p className="font-mono text-[10px] uppercase tracking-wide text-fg-muted">Category</p>
+									<p className="font-mono text-sm text-fg-primary">
 										{category &&
 											categoryConfig[category as ToolCategory]?.label}
 									</p>
 								</div>
 								{websiteUrl && (
 									<div>
-										<p className="text-xs text-gray-500">Website</p>
-										<p className="text-cyan-400 text-sm truncate">
+										<p className="font-mono text-[10px] uppercase tracking-wide text-fg-muted">Website</p>
+										<p className="truncate font-mono text-sm text-accent-lime">
 											{websiteUrl}
 										</p>
 									</div>
 								)}
 								<div>
-									<p className="text-xs text-gray-500">Default Tier</p>
-									<p className="text-white">
+									<p className="font-mono text-[10px] uppercase tracking-wide text-fg-muted">Default Tier</p>
+									<p className="font-mono text-sm text-fg-primary">
 										{tierName} - ${fixedAmount}/
 										{fixedPeriod === "month"
 											? "mo"
@@ -441,9 +439,9 @@ export function AddToolModal({
 								</div>
 							</div>
 							{!isEditMode && (
-								<div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
-									<p className="text-sm text-amber-400">
-										<strong>Note:</strong> Your tool will be submitted for
+								<div className="border border-accent-lime/30 bg-accent-lime/10 p-4">
+									<p className="text-xs text-fg-secondary">
+										<strong className="text-accent-lime">Note:</strong> Your tool will be submitted for
 										review before it appears publicly. Links will not be
 										rendered until approved.
 									</p>
@@ -455,54 +453,52 @@ export function AddToolModal({
 					{/* Navigation Buttons */}
 					<div className="flex gap-3 pt-2">
 						{step !== "basic" && (
-							<Button
+							<button
 								type="button"
-								variant="outline"
 								onClick={() =>
 									setStep(step === "pricing" ? "basic" : "pricing")
 								}
-								className="border-gray-600 text-gray-300 hover:text-white"
+								className="inline-flex items-center gap-2 border border-stroke-subtle px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-fg-muted hover:text-fg-primary"
 							>
-								<ArrowLeft className="h-4 w-4" />
+								<ArrowLeft className="size-3.5" />
 								Back
-							</Button>
+							</button>
 						)}
-						<Button
+						<button
 							type="button"
-							variant="outline"
 							onClick={onClose}
-							className="border-gray-600 text-gray-300 hover:text-white"
+							className="inline-flex items-center gap-2 border border-stroke-subtle px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-fg-muted hover:text-fg-primary"
 						>
 							Cancel
-						</Button>
+						</button>
 						{step === "basic" && (
-							<Button
+							<button
 								type="button"
 								onClick={() => setStep("pricing")}
 								disabled={!canProceedFromBasic}
-								className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white"
+								className="inline-flex flex-1 items-center justify-center gap-2 border-2 border-accent-lime bg-accent-lime px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong disabled:cursor-not-allowed disabled:opacity-50"
 							>
 								Next
-								<ArrowRight className="h-4 w-4" />
-							</Button>
+								<ArrowRight className="size-3.5" />
+							</button>
 						)}
 						{step === "pricing" && (
-							<Button
+							<button
 								type="button"
 								onClick={() => setStep("review")}
-								className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white"
+								className="inline-flex flex-1 items-center justify-center gap-2 border-2 border-accent-lime bg-accent-lime px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong"
 							>
 								Review
-								<ArrowRight className="h-4 w-4" />
-							</Button>
+								<ArrowRight className="size-3.5" />
+							</button>
 						)}
 						{step === "review" && (
-							<Button
+							<button
 								type="submit"
 								disabled={saving || !canSubmit}
-								className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white"
+								className="inline-flex flex-1 items-center justify-center gap-2 border-2 border-accent-lime bg-accent-lime px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong disabled:cursor-not-allowed disabled:opacity-50"
 							>
-								<Check className="h-4 w-4" />
+								<Check className="size-3.5" />
 								{saving
 									? isEditMode
 										? "Saving..."
@@ -510,7 +506,7 @@ export function AddToolModal({
 									: isEditMode
 										? "Save Changes"
 										: "Submit for Review"}
-							</Button>
+							</button>
 						)}
 					</div>
 				</form>

@@ -28,6 +28,16 @@ AI Stack is a web application designed to help developers and teams discover, co
 - **Authentication** via email/password and Google SSO, with email verification and password reset
 - **Stay Updated** with the latest AI technology trends
 
+## 🎨 Design Language (2026 UI Refresh)
+
+The current UI direction is **A3: Terminal-first Swiss Brutal**.
+
+- **Dark-only** visual system
+- **Acid-lime** accent family for primary interactions and key status moments
+- Swiss-style spacing/grid discipline with terminal utility cues
+- Strong section/status language in the stack editor (active/complete/error)
+- Shared system shells and tokens to keep visual consistency across landing + editor
+
 ## 🛠 Tech Stack
 
 ### Frontend
@@ -61,11 +71,22 @@ aistack/              # Main web application
 ├── convex/           # Convex backend functions & schema
 ├── public/           # Static assets
 ├── src/              # React application source
-│   ├── components/   # Reusable UI components
+│   ├── components/   # Shared UI primitives and cross-feature components
+│   ├── features/     # Feature-scoped modules (landing, stack-editor, etc.)
 │   ├── integrations/ # Third-party integrations
 │   └── routes/       # File-based routing
 └── README.md         # You are here
 ```
+
+### Frontend Architecture Notes
+
+- Route files should stay composition-focused (data fetch + section orchestration).
+- Landing page is organized under `src/features/landing/*`.
+- Stack editor is organized under `src/features/stack-editor/*` with:
+  - section components in `sections/*`
+  - reducer/selectors/hooks in `state/*`
+  - status computation in `editor-status.ts`
+- Reusable visual wrappers live under `src/components/system/*`.
 
 ## 🚀 Getting Started
 
@@ -136,9 +157,19 @@ pnpm test         # Run unit tests with Vitest
 
 The project uses [Vitest](https://vitest.dev/) for unit testing. Tests are located in the `src/**/__tests__` directories.
 
+Vitest is configured in `vite.config.ts` with:
+
+- `test.environment = "jsdom"`
+- `test.setupFiles = ["./src/test/setup.ts"]`
+
+`src/test/setup.ts` loads `@testing-library/jest-dom/vitest` matchers for DOM assertions.
+
 ```bash
 # Run all tests
 pnpm test
+
+# Run a single test file
+pnpm vitest run src/features/stack-editor/state/__tests__/editor-reducer.test.ts
 
 # Run tests in watch mode
 pnpm test --watch

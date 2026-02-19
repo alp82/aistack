@@ -5,28 +5,27 @@ import type * as React from "react";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-	"cursor-pointer inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+	"inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-xs border-2 border-transparent text-sm font-semibold tracking-wide transition-colors outline-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 disabled:pointer-events-none disabled:opacity-45 focus-visible:border-accent-lime focus-visible:ring-2 focus-visible:ring-accent-lime/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-canvas aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/45",
 	{
 		variants: {
 			variant: {
-				default: "bg-primary text-primary-foreground hover:bg-primary/90",
+				default:
+					"border-accent-lime bg-accent-lime text-accent-lime-contrast shadow-terminal-sm hover:border-accent-lime-strong hover:bg-accent-lime-strong",
 				destructive:
-					"bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+					"border-destructive bg-destructive text-destructive-foreground shadow-terminal-sm hover:bg-destructive/90",
 				outline:
-					"border border-gray-300 bg-transparent shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-slate-800 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-slate-700 dark:hover:text-white",
-				secondary:
-					"bg-secondary text-secondary-foreground hover:bg-secondary/80",
-				ghost:
-					"hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
-				link: "text-primary underline-offset-4 hover:underline",
+					"border-stroke-strong bg-bg-panel text-fg-primary hover:border-accent-lime/60 hover:bg-bg-panel-elevated hover:text-accent-lime",
+				secondary: "border-stroke-subtle bg-bg-panel-muted text-fg-primary hover:bg-bg-panel-elevated",
+				ghost: "border-transparent bg-transparent text-fg-secondary hover:border-stroke-subtle hover:bg-bg-panel-muted hover:text-fg-primary",
+				link: "border-transparent bg-transparent px-0 text-accent-lime underline-offset-4 hover:text-accent-lime-strong hover:underline",
 			},
 			size: {
-				default: "px-4 py-2.5 has-[>svg]:px-3",
-				sm: "rounded-md gap-1.5 py-2 px-3 has-[>svg]:px-2.5",
-				lg: "rounded-md py-3 px-6 has-[>svg]:px-4",
-				icon: "size-9",
+				default: "h-10 px-4 py-2 has-[>svg]:px-3",
+				sm: "h-8 gap-1.5 px-3 text-xs has-[>svg]:px-2.5",
+				lg: "h-11 px-6 text-sm has-[>svg]:px-4",
+				icon: "size-10",
 				"icon-sm": "size-8",
-				"icon-lg": "size-10",
+				"icon-lg": "size-12",
 			},
 		},
 		defaultVariants: {

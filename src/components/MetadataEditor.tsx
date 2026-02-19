@@ -1,5 +1,6 @@
 import { ExternalLink, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
+import { isValidHttpUrl } from "@/features/stack-editor/editor-status";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -45,10 +46,14 @@ export function MetadataEditor({
 }: MetadataEditorProps) {
 	const [newResourceLabel, setNewResourceLabel] = useState("");
 	const [newResourceUrl, setNewResourceUrl] = useState("");
+	const stackUrlInputId = useId();
+	const stackUrlErrorId = `${stackUrlInputId}-error`;
 
 	const flags = { prompts, rules, skills, mcps };
 
 	const [expandedResource, setExpandedResource] = useState<number | null>(null);
+	const trimmedStackUrl = stackUrl?.trim() ?? "";
+	const stackUrlInvalid = trimmedStackUrl.length > 0 && !isValidHttpUrl(trimmedStackUrl);
 
 	const addResource = () => {
 		if (!newResourceUrl.trim()) return;
@@ -78,15 +83,23 @@ export function MetadataEditor({
 			</h3>
 
 			<div className="space-y-1.5">
-				<Label className="text-gray-300">Repository / Stack URL</Label>
+				<Label htmlFor={stackUrlInputId} className="text-gray-300">Repository / Stack URL</Label>
 				<Input
+					id={stackUrlInputId}
 					value={stackUrl ?? ""}
 					onChange={(e) =>
 						onUpdate({ stackUrl: e.target.value.trim() || undefined })
 					}
 					placeholder="https://github.com/..."
 					className="bg-slate-700/50 border-gray-600 text-white"
+					aria-invalid={stackUrlInvalid || undefined}
+					aria-describedby={stackUrlInvalid ? stackUrlErrorId : undefined}
 				/>
+				{stackUrlInvalid && (
+					<p id={stackUrlErrorId} className="text-xs text-red-300">
+						Repository URL must be a valid http(s) address.
+					</p>
+				)}
 				<p className="text-xs text-gray-500">
 					Link to the public repository or documentation for this stack.
 				</p>
@@ -129,7 +142,7 @@ export function MetadataEditor({
 				</p>
 				{resources.map((resource, index) => (
 					<div
-						key={index}
+						key={`${resource.url}-${resource.label}`}
 						className="bg-slate-700/30 rounded-md border border-gray-700 overflow-hidden"
 					>
 						<div className="flex items-center gap-2 p-2">
@@ -164,7 +177,11 @@ export function MetadataEditor({
 						</div>
 						{expandedResource === index && (
 							<div className="px-2 pb-2 pt-0 space-y-2 border-t border-gray-700">
+								<Label htmlFor={`resource-label-${index}`} className="sr-only">
+									Resource label
+								</Label>
 								<Input
+									id={`resource-label-${index}`}
 									value={resource.label}
 									onChange={(e) => {
 										const updated = [...resources];
@@ -174,7 +191,11 @@ export function MetadataEditor({
 									placeholder="Label (optional)"
 									className="bg-slate-700/50 border-gray-600 text-white text-sm"
 								/>
+								<Label htmlFor={`resource-url-${index}`} className="sr-only">
+									Resource URL
+								</Label>
 								<Input
+									id={`resource-url-${index}`}
 									value={resource.url}
 									onChange={(e) => {
 										const updated = [...resources];
@@ -183,6 +204,7 @@ export function MetadataEditor({
 									}}
 									placeholder="https://..."
 									className="bg-slate-700/50 border-gray-600 text-white text-sm"
+									aria-invalid={!isValidHttpUrl(resource.url) || undefined}
 								/>
 							</div>
 						)}
