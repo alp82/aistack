@@ -234,17 +234,18 @@ export default function Header() {
 					) : (
 						<>
 							<Link
-								to="/login"
-								className="inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
-							>
-								Sign In
-							</Link>
-							<Link
 								to="/stacks/new"
 								className="inline-flex items-center gap-2 border-2 border-accent-lime bg-accent-lime px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong"
 							>
 								<Plus className="size-3.5" />
 								Share Stack
+							</Link>
+							<Link
+								to="/signin"
+								search={{ redirect: currentPath }}
+								className="inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
+							>
+								Sign In
 							</Link>
 						</>
 					)}

@@ -145,3 +145,51 @@ export const checkIsAdmin = query({
     return await isAdmin(ctx)
   },
 })
+
+export const getPendingBundles = query({
+  args: {},
+  handler: async (ctx) => {
+    if (!(await isAdmin(ctx))) {
+      return null
+    }
+
+    const bundles = await ctx.db
+      .query('bundles')
+      .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'pending'))
+      .collect()
+
+    return bundles
+  },
+})
+
+export const approveBundle = mutation({
+  args: {
+    bundleId: v.id('bundles'),
+  },
+  handler: async (ctx, args) => {
+    if (!(await isAdmin(ctx))) {
+      throw new Error('Unauthorized')
+    }
+
+    await ctx.db.patch(args.bundleId, {
+      reviewStatus: 'approved',
+      updatedAt: Date.now(),
+    })
+  },
+})
+
+export const rejectBundle = mutation({
+  args: {
+    bundleId: v.id('bundles'),
+  },
+  handler: async (ctx, args) => {
+    if (!(await isAdmin(ctx))) {
+      throw new Error('Unauthorized')
+    }
+
+    await ctx.db.patch(args.bundleId, {
+      reviewStatus: 'rejected',
+      updatedAt: Date.now(),
+    })
+  },
+})

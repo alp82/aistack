@@ -1,7 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "convex/react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQuery, useMutation } from "convex/react";
+import { useConvexAuth } from "convex/react";
 import {
 	ArrowLeft,
+	ArrowUp,
 	CheckCircle,
 	ExternalLink,
 	FileText,
@@ -20,30 +22,34 @@ export const Route = createFileRoute("/stacks/$slug")({
 	component: StackDetailsPage,
 });
 
-function getCategoryColor(category: string): string {
-	const colors: Record<string, string> = {
-		coding: "border-purple-500 text-purple-400",
-		thinking: "border-blue-500 text-blue-400",
-		text: "border-emerald-500 text-emerald-400",
-		research: "border-amber-500 text-amber-400",
-		voice: "border-pink-500 text-pink-400",
-		image: "border-orange-500 text-orange-400",
-		video: "border-red-500 text-red-400",
-		design: "border-cyan-500 text-cyan-400",
-		automation: "border-indigo-500 text-indigo-400",
-		notes: "border-teal-500 text-teal-400",
-		communication: "border-sky-500 text-sky-400",
-		creative: "border-fuchsia-500 text-fuchsia-400",
-		web: "border-lime-500 text-lime-400",
-		ai: "border-violet-500 text-violet-400",
-	};
-	return colors[category?.toLowerCase()] || "border-zinc-500 text-zinc-400";
-}
-
 function StackDetailsPage() {
 	const { slug } = Route.useParams();
+	const navigate = useNavigate();
+	const { isAuthenticated } = useConvexAuth();
 	const stack = useQuery(api.stacks.getBySlug, { slug });
+	const upvoteStatus = useQuery(
+		api.stacks.getUpvoteStatus,
+		stack ? { stackId: stack._id } : "skip"
+	);
+	const toggleUpvote = useMutation(api.stacks.toggleUpvote);
 	const [activeTab, setActiveTab] = useState<"tools" | "description">("tools");
+	const [upvoting, setUpvoting] = useState(false);
+
+	const handleUpvote = async () => {
+		if (!stack) return;
+		if (!isAuthenticated) {
+			navigate({ to: "/signin", search: { redirect: `/stacks/${slug}` } });
+			return;
+		}
+		setUpvoting(true);
+		try {
+			await toggleUpvote({ stackId: stack._id });
+		} catch (error) {
+			console.error("Failed to toggle upvote:", error);
+		} finally {
+			setUpvoting(false);
+		}
+	};
 
 	if (stack === undefined) {
 		return (
@@ -140,31 +146,50 @@ function StackDetailsPage() {
 						<p className="text-sm leading-relaxed text-fg-secondary">{stack.oneLiner}</p>
 					</div>
 
-					<div className="shrink-0 border-[3px] border-stroke-strong bg-bg-panel p-4 shadow-[4px_4px_0_var(--stroke-strong)] sm:text-right">
-						<div className="flex items-baseline gap-1">
-							<span className="font-mono text-3xl font-bold text-fg-primary">
-								${stack.fixedTotal?.amount ?? 0}
-							</span>
-							<span className="font-mono text-sm text-fg-muted">/mo</span>
-						</div>
-						{stack.hasUsageComponent && (
-							<span className="mt-1 inline-flex border border-accent-lime bg-transparent px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-accent-lime">
-								+ usage
-							</span>
-						)}
-						{stack.usageTotalNotes && (
-							<p className="mt-1 font-mono text-xs text-fg-muted">
-								{stack.usageTotalNotes}
-							</p>
-						)}
-						<span
+					<div className="flex flex-col gap-3 shrink-0">
+						{/* Upvote Button */}
+						<button
+							type="button"
+							onClick={handleUpvote}
+							disabled={upvoting}
 							className={cn(
-								"mt-2 inline-block font-mono text-xs font-semibold uppercase tracking-wide",
-								stack.teamSize ? "text-fg-secondary" : "text-accent-lime",
+								"flex items-center justify-center gap-2 border-2 px-4 py-3 font-mono text-sm font-semibold uppercase tracking-wide transition-all disabled:opacity-50",
+								upvoteStatus?.upvoted
+									? "border-accent-lime bg-accent-lime text-accent-lime-contrast"
+									: "border-stroke-strong bg-bg-panel text-fg-primary hover:border-accent-lime hover:text-accent-lime"
 							)}
 						>
-							{stack.teamSize ? `Team of ${stack.teamSize}` : "Solo"}
-						</span>
+							<ArrowUp className={cn("size-4", upvoteStatus?.upvoted && "fill-current")} />
+							{upvoteStatus?.count ?? 0}
+						</button>
+
+						{/* Price Card */}
+						<div className="border-[3px] border-stroke-strong bg-bg-panel p-4 shadow-[4px_4px_0_var(--stroke-strong)] sm:text-right">
+							<div className="flex items-baseline gap-1">
+								<span className="font-mono text-3xl font-bold text-fg-primary">
+									${stack.fixedTotal?.amount ?? 0}
+								</span>
+								<span className="font-mono text-sm text-fg-muted">/mo</span>
+							</div>
+							{stack.hasUsageComponent && (
+								<span className="mt-1 inline-flex border border-accent-lime bg-transparent px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-accent-lime">
+									+ usage
+								</span>
+							)}
+							{stack.usageTotalNotes && (
+								<p className="mt-1 font-mono text-xs text-fg-muted">
+									{stack.usageTotalNotes}
+								</p>
+							)}
+							<span
+								className={cn(
+									"mt-2 inline-block font-mono text-xs font-semibold uppercase tracking-wide",
+									stack.teamSize ? "text-fg-secondary" : "text-accent-lime",
+								)}
+							>
+								{stack.teamSize ? `Team of ${stack.teamSize}` : "Solo"}
+							</span>
+						</div>
 					</div>
 				</div>
 			</header>

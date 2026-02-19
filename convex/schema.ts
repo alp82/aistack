@@ -147,10 +147,17 @@ export default defineSchema({
         isDefault: v.optional(v.boolean()),
       })
     ),
+    reviewStatus: v.union(
+      v.literal('approved'),
+      v.literal('pending'),
+      v.literal('rejected')
+    ),
+    createdBy: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index('by_slug', ['slug']),
+    .index('by_slug', ['slug'])
+    .index('by_reviewStatus', ['reviewStatus']),
 
   waitlist: defineTable({
     email: v.string(),
@@ -165,4 +172,13 @@ export default defineSchema({
     .index('by_userId', ['userId'])
     .index('by_status', ['status'])
     .index('by_lookupId', ['lookupId']),
+
+  stackUpvotes: defineTable({
+    stackId: v.id('stacks'),
+    userId: v.string(),
+    createdAt: v.number(),
+  })
+    .index('by_stackId', ['stackId'])
+    .index('by_userId', ['userId'])
+    .index('by_stackId_userId', ['stackId', 'userId']),
 })

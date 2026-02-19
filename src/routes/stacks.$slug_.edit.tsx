@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { useConvexAuth } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
@@ -13,6 +13,7 @@ export const Route = createFileRoute("/stacks/$slug_/edit")({
 function EditStackPage() {
 	const { slug } = Route.useParams();
 	const navigate = useNavigate();
+	const location = useLocation();
 	const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
 	const getOrCreateCreator = useMutation(api.creators.getOrCreateForUser);
 	const stackData = useQuery(api.stacks.getForEdit, { slug });
@@ -28,7 +29,7 @@ function EditStackPage() {
 	useEffect(() => {
 		if (authLoading) return;
 		if (!isAuthenticated) {
-			navigate({ to: "/login" });
+			navigate({ to: "/signin", search: { redirect: location.pathname } });
 			return
 		}
 

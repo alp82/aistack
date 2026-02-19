@@ -87,7 +87,7 @@ export function StackEditor({
 		}
 
 		if (guestSession && publish) {
-			setShowSignInDialog(true);
+			navigate({ to: "/signin-publish", search: { redirect: "/stacks/new" } });
 			return;
 		}
 
@@ -161,6 +161,8 @@ export function StackEditor({
 						onToolsChange={setToolSubscriptions}
 						bundleSubscriptions={state.bundleSubscriptions}
 						onBundlesChange={setBundleSubscriptions}
+						guestSession={guestSession}
+						onSignInRequired={() => setShowSignInDialog(true)}
 					/>
 				);
 			case "workflow":

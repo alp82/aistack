@@ -499,6 +499,74 @@ export const getLandingStats = query({
   },
 })
 
+export const toggleUpvote = mutation({
+  args: {
+    stackId: v.id('stacks'),
+  },
+  returns: v.object({
+    upvoted: v.boolean(),
+    count: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity()
+    if (!user) throw new Error('Not authenticated')
+    const userId = user.tokenIdentifier.split('|')[1]
+
+    const existing = await ctx.db
+      .query('stackUpvotes')
+      .withIndex('by_stackId_userId', (q) => 
+        q.eq('stackId', args.stackId).eq('userId', userId)
+      )
+      .first()
+
+    if (existing) {
+      await ctx.db.delete(existing._id)
+      const count = await ctx.db
+        .query('stackUpvotes')
+        .withIndex('by_stackId', (q) => q.eq('stackId', args.stackId))
+        .collect()
+      return { upvoted: false, count: count.length }
+    }
+
+    await ctx.db.insert('stackUpvotes', {
+      stackId: args.stackId,
+      userId,
+      createdAt: Date.now(),
+    })
+
+    const count = await ctx.db
+      .query('stackUpvotes')
+      .withIndex('by_stackId', (q) => q.eq('stackId', args.stackId))
+      .collect()
+    return { upvoted: true, count: count.length }
+  },
+})
+
+export const getUpvoteStatus = query({
+  args: {
+    stackId: v.id('stacks'),
+  },
+  returns: v.object({
+    upvoted: v.boolean(),
+    count: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity()
+    const userId = user ? user.tokenIdentifier.split('|')[1] : null
+
+    const upvotes = await ctx.db
+      .query('stackUpvotes')
+      .withIndex('by_stackId', (q) => q.eq('stackId', args.stackId))
+      .collect()
+
+    const upvoted = userId 
+      ? upvotes.some((u) => u.userId === userId)
+      : false
+
+    return { upvoted, count: upvotes.length }
+  },
+})
+
 export const getBySlug = query({
   args: { slug: v.string() },
   returns: v.union(

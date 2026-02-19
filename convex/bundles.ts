@@ -1,4 +1,4 @@
-import { query } from './_generated/server'
+import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 
 export const listAll = query({
@@ -36,7 +36,10 @@ export const listAll = query({
     })
   ),
   handler: async (ctx) => {
-    const bundles = await ctx.db.query('bundles').collect()
+    const bundles = await ctx.db
+      .query('bundles')
+      .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'approved'))
+      .collect()
     return bundles.map((b) => ({
       _id: b._id,
       name: b.name,
@@ -47,5 +50,75 @@ export const listAll = query({
       toolSlugs: b.toolSlugs,
       tiers: b.tiers,
     }))
+  },
+})
+
+export const create = mutation({
+  args: {
+    name: v.string(),
+    description: v.optional(v.string()),
+    websiteUrl: v.optional(v.string()),
+    toolSlugs: v.array(v.string()),
+    tiers: v.array(
+      v.object({
+        name: v.string(),
+        pricingType: v.union(v.literal('fixed'), v.literal('usage'), v.literal('mixed')),
+        fixedAmount: v.optional(v.number()),
+        fixedPeriod: v.optional(v.union(v.literal('month'), v.literal('year'), v.literal('one_time'))),
+      })
+    ),
+  },
+  returns: v.id('bundles'),
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity()
+    if (!user) throw new Error('Not authenticated')
+
+    const baseSlug = args.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+    let slug = baseSlug
+    let suffix = 2
+    while (
+      await ctx.db
+        .query('bundles')
+        .withIndex('by_slug', (q) => q.eq('slug', slug))
+        .first()
+    ) {
+      slug = `${baseSlug}-${suffix}`
+      suffix++
+    }
+
+    const now = Date.now()
+    const tiers = args.tiers.map((t, i) => ({
+      tierId: `tier-${i + 1}`,
+      name: t.name,
+      pricing: {
+        pricingType: t.pricingType,
+        ...(t.pricingType === 'fixed' || t.pricingType === 'mixed'
+          ? {
+              fixed: {
+                currency: 'USD',
+                amount: t.fixedAmount ?? 0,
+                period: t.fixedPeriod ?? ('month' as const),
+              },
+            }
+          : {}),
+      },
+      isDefault: i === 0,
+    }))
+
+    return await ctx.db.insert('bundles', {
+      name: args.name,
+      slug,
+      description: args.description,
+      websiteUrl: args.websiteUrl,
+      toolSlugs: args.toolSlugs,
+      tiers,
+      reviewStatus: 'pending',
+      createdBy: user.subject,
+      createdAt: now,
+      updatedAt: now,
+    })
   },
 })

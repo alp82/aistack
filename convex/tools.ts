@@ -36,7 +36,10 @@ export const listAll = query({
     })
   ),
   handler: async (ctx) => {
-    const tools = await ctx.db.query('tools').collect()
+    const tools = await ctx.db
+      .query('tools')
+      .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'approved'))
+      .collect()
     return tools.map((t) => ({
       _id: t._id,
       name: t.name,

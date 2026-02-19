@@ -22,7 +22,7 @@ function ForgotPasswordPage() {
 		setLoading(true);
 
 		try {
-			await authClient.forgetPassword({
+			await authClient.requestPasswordReset({
 				email,
 				redirectTo: "/reset-password",
 			});
@@ -59,7 +59,7 @@ function ForgotPasswordPage() {
 							</p>
 						</div>
 						<Link
-							to="/login"
+							to="/signin"
 							className="flex items-center justify-center gap-2 text-sm text-primary hover:underline"
 						>
 							<ArrowLeft className="h-4 w-4" />
@@ -93,7 +93,7 @@ function ForgotPasswordPage() {
 						</form>
 
 						<Link
-							to="/login"
+							to="/signin"
 							className="flex items-center justify-center gap-2 text-sm text-primary hover:underline"
 						>
 							<ArrowLeft className="h-4 w-4" />

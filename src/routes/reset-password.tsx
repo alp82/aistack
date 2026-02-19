@@ -40,7 +40,7 @@ function ResetPasswordPage() {
 			});
 			setSuccess(true);
 			setTimeout(() => {
-				navigate({ to: "/login" });
+				navigate({ to: "/signin" });
 			}, 2000);
 		} catch (err) {
 			setError(
@@ -112,7 +112,7 @@ function ResetPasswordPage() {
 						</form>
 
 						<Link
-							to="/login"
+							to="/signin"
 							className="flex items-center justify-center gap-2 text-sm text-primary hover:underline"
 						>
 							Back to sign in

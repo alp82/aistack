@@ -6,6 +6,7 @@ export const bundlesData = [
     iconUrl: undefined,
     websiteUrl: "https://www.lennysbundle.com/",
     toolSlugs: ["replit", "bolt", "lovable", "notion-ai", "perplexity", "posthog"],
+    reviewStatus: "approved" as const,
     tiers: [
       {
         tierId: "monthly",
@@ -33,6 +34,7 @@ export const bundlesData = [
     iconUrl: "https://cdn.prod.website-files.com/6889473510b50328dbb70ae6/68c33859cc6cd903686c66a2_apple-touch-icon.png",
     websiteUrl: "https://claude.ai/",
     toolSlugs: ["claude-code"],
+    reviewStatus: "approved" as const,
     tiers: [
       {
         tierId: "max-100",

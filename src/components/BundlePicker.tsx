@@ -3,6 +3,7 @@ import { Package, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { AddBundleModal } from "./AddBundleModal";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import {
@@ -26,9 +27,11 @@ export interface BundleSubscriptionEntry {
 interface BundlePickerProps {
 	value: BundleSubscriptionEntry[];
 	onChange: (bundles: BundleSubscriptionEntry[]) => void;
+	guestSession?: boolean;
+	onSignInRequired?: () => void;
 }
 
-export function BundlePicker({ value, onChange }: BundlePickerProps) {
+export function BundlePicker({ value, onChange, guestSession = false, onSignInRequired }: BundlePickerProps) {
 	const allBundles = useQuery(api.bundles.listAll) ?? [];
 	const [showAddBundle, setShowAddBundle] = useState(false);
 
@@ -203,7 +206,13 @@ export function BundlePicker({ value, onChange }: BundlePickerProps) {
 			{/* Add Bundle Button */}
 			<button
 				type="button"
-				onClick={() => setShowAddBundle(!showAddBundle)}
+				onClick={() => {
+					if (guestSession && onSignInRequired) {
+						onSignInRequired();
+					} else {
+						setShowAddBundle(true);
+					}
+				}}
 				className="flex w-full items-center justify-center gap-3 border-2 border-dashed border-stroke-subtle p-4 transition-all hover:border-accent-lime hover:bg-bg-panel-muted"
 			>
 				<Plus className="size-5 text-accent-lime" />
@@ -212,7 +221,7 @@ export function BundlePicker({ value, onChange }: BundlePickerProps) {
 						Add New Bundle
 					</p>
 					<p className="font-mono text-[10px] text-fg-muted">
-						Request a bundle to be added
+						{guestSession ? "Sign in to add new bundles" : "Request a bundle to be added"}
 					</p>
 				</div>
 			</button>
@@ -222,6 +231,12 @@ export function BundlePicker({ value, onChange }: BundlePickerProps) {
 					No bundles available yet.
 				</p>
 			)}
+
+			<AddBundleModal
+				open={showAddBundle}
+				onClose={() => setShowAddBundle(false)}
+				onBundleCreated={() => setShowAddBundle(false)}
+			/>
 		</div>
 	);
 }

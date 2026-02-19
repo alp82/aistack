@@ -4,7 +4,7 @@ function Footer() {
 			<div className=" max-w-content mx-auto flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
 				<div>
 					<div className="flex items-center gap-2 mb-6">
-						<div className="w-3 h-3 bg-accent-lime" />
+						<div className="w-3 h-3 bg-accent-lime animate-pulse" style={{ boxShadow: '0 0 8px rgba(163, 230, 53, 0.6)' }} />
 						<span className="font-bold text-fg-primary tracking-tighter text-xl">AI STACK</span>
 					</div>
 					<p className="font-mono text-sm mb-2 text-zinc-500">Real AI workflows from passionate builders.</p>

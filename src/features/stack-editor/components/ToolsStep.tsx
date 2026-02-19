@@ -9,6 +9,8 @@ type ToolsStepProps = {
 	onToolsChange: (tools: ToolSubscriptionEntry[]) => void;
 	bundleSubscriptions: BundleSubscriptionEntry[];
 	onBundlesChange: (bundles: BundleSubscriptionEntry[]) => void;
+	guestSession?: boolean;
+	onSignInRequired?: () => void;
 };
 
 function ToolsStep({
@@ -16,6 +18,8 @@ function ToolsStep({
 	onToolsChange,
 	bundleSubscriptions,
 	onBundlesChange,
+	guestSession = false,
+	onSignInRequired,
 }: ToolsStepProps) {
 	const [showBundles, setShowBundles] = useState(bundleSubscriptions.length > 0);
 
@@ -43,7 +47,12 @@ function ToolsStep({
 							{toolSubscriptions.length} selected
 						</span>
 					</div>
-					<ToolPicker value={toolSubscriptions} onChange={onToolsChange} />
+					<ToolPicker 
+						value={toolSubscriptions} 
+						onChange={onToolsChange} 
+						guestSession={guestSession}
+						onSignInRequired={onSignInRequired}
+					/>
 				</div>
 
 				{/* Bundles Toggle */}
@@ -80,7 +89,12 @@ function ToolsStep({
 
 					{showBundles && (
 						<div className="mt-4">
-							<BundlePicker value={bundleSubscriptions} onChange={onBundlesChange} />
+							<BundlePicker 
+								value={bundleSubscriptions} 
+								onChange={onBundlesChange}
+								guestSession={guestSession}
+								onSignInRequired={onSignInRequired}
+							/>
 						</div>
 					)}
 				</div>

@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import { X } from "lucide-react";
 import { Button } from "./ui/button";
 
@@ -6,9 +6,13 @@ interface SignInDialogProps {
 	isOpen: boolean;
 	onClose: () => void;
 	message?: string;
+	redirectTo?: string;
 }
 
-export function SignInDialog({ isOpen, onClose, message }: SignInDialogProps) {
+export function SignInDialog({ isOpen, onClose, message, redirectTo }: SignInDialogProps) {
+	const location = useLocation();
+	const redirect = redirectTo ?? location.pathname;
+
 	if (!isOpen) return null;
 
 	return (
@@ -42,7 +46,7 @@ export function SignInDialog({ isOpen, onClose, message }: SignInDialogProps) {
 					</div>
 
 					<div className="flex flex-col gap-3 mt-6">
-						<Link to="/login" className="w-full">
+						<Link to="/signin" search={{ redirect }} className="w-full">
 							<Button className="w-full bg-cyan-600 hover:bg-cyan-700 text-white">
 								Sign In
 							</Button>

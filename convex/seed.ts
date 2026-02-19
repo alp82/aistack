@@ -53,6 +53,7 @@ export const seedAll = internalMutation({
         websiteUrl: bundle.websiteUrl,
         toolSlugs: bundle.toolSlugs,
         tiers: bundle.tiers,
+        reviewStatus: bundle.reviewStatus,
         createdAt: now,
         updatedAt: now,
       })

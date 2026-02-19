@@ -41,9 +41,11 @@ export interface ToolSubscriptionEntry {
 interface ToolPickerProps {
 	value: ToolSubscriptionEntry[];
 	onChange: (tools: ToolSubscriptionEntry[]) => void;
+	guestSession?: boolean;
+	onSignInRequired?: () => void;
 }
 
-export function ToolPicker({ value, onChange }: ToolPickerProps) {
+export function ToolPicker({ value, onChange, guestSession = false, onSignInRequired }: ToolPickerProps) {
 	const allTools = useQuery(api.tools.listAll) ?? [];
 	const [search, setSearch] = useState("");
 	const [showAddModal, setShowAddModal] = useState(false);
@@ -215,7 +217,13 @@ export function ToolPicker({ value, onChange }: ToolPickerProps) {
 			{/* Add New Tool Button - Full Row */}
 			<button
 				type="button"
-				onClick={() => setShowAddModal(true)}
+				onClick={() => {
+					if (guestSession && onSignInRequired) {
+						onSignInRequired();
+					} else {
+						setShowAddModal(true);
+					}
+				}}
 				className="flex w-full items-center justify-center gap-3 border-2 border-dashed border-stroke-subtle p-4 transition-all hover:border-accent-lime hover:bg-bg-panel-muted"
 			>
 				<Plus className="size-5 text-accent-lime" />
@@ -224,7 +232,7 @@ export function ToolPicker({ value, onChange }: ToolPickerProps) {
 						Add New Tool
 					</p>
 					<p className="font-mono text-[10px] text-fg-muted">
-						Missing tools? Just add them
+						{guestSession ? "Sign in to add new tools" : "Missing tools? Just add them"}
 					</p>
 				</div>
 			</button>
@@ -234,10 +242,16 @@ export function ToolPicker({ value, onChange }: ToolPickerProps) {
 					No tools found.{" "}
 					<button
 						type="button"
-						onClick={() => setShowAddModal(true)}
+						onClick={() => {
+							if (guestSession && onSignInRequired) {
+								onSignInRequired();
+							} else {
+								setShowAddModal(true);
+							}
+						}}
 						className="text-accent-lime hover:underline"
 					>
-						Create one?
+						{guestSession ? "Sign in to create" : "Create one?"}
 					</button>
 				</p>
 			)}

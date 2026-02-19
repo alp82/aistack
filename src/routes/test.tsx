@@ -30,7 +30,7 @@ function TestPage() {
 	});
 
 	const handleLogin = () => {
-		navigate({ to: "/login" });
+		navigate({ to: "/signin" });
 	};
 
 	const handleLogout = async () => {
@@ -246,7 +246,7 @@ function TestPage() {
 									<Button
 										size="sm"
 										variant="outline"
-										onClick={() => navigate({ to: "/login" })}
+										onClick={() => navigate({ to: "/signin" })}
 									>
 										Login Page
 									</Button>

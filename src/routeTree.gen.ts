@@ -11,8 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ToolsRouteImport } from './routes/tools'
 import { Route as TestRouteImport } from './routes/test'
+import { Route as SigninPublishRouteImport } from './routes/signin-publish'
+import { Route as SigninRouteImport } from './routes/signin'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
 import { Route as AboutRouteImport } from './routes/about'
@@ -35,14 +36,19 @@ const TestRoute = TestRouteImport.update({
   path: '/test',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SigninPublishRoute = SigninPublishRouteImport.update({
+  id: '/signin-publish',
+  path: '/signin-publish',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SigninRoute = SigninRouteImport.update({
+  id: '/signin',
+  path: '/signin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -106,8 +112,9 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/signin': typeof SigninRoute
+  '/signin-publish': typeof SigninPublishRoute
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
   '/admin/tools': typeof AdminToolsRoute
@@ -123,8 +130,9 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/signin': typeof SigninRoute
+  '/signin-publish': typeof SigninPublishRoute
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
   '/admin/tools': typeof AdminToolsRoute
@@ -141,8 +149,9 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/signin': typeof SigninRoute
+  '/signin-publish': typeof SigninPublishRoute
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
   '/admin/tools': typeof AdminToolsRoute
@@ -160,8 +169,9 @@ export interface FileRouteTypes {
     | '/about'
     | '/auth-callback'
     | '/forgot-password'
-    | '/login'
     | '/reset-password'
+    | '/signin'
+    | '/signin-publish'
     | '/test'
     | '/tools'
     | '/admin/tools'
@@ -177,8 +187,9 @@ export interface FileRouteTypes {
     | '/about'
     | '/auth-callback'
     | '/forgot-password'
-    | '/login'
     | '/reset-password'
+    | '/signin'
+    | '/signin-publish'
     | '/test'
     | '/tools'
     | '/admin/tools'
@@ -194,8 +205,9 @@ export interface FileRouteTypes {
     | '/about'
     | '/auth-callback'
     | '/forgot-password'
-    | '/login'
     | '/reset-password'
+    | '/signin'
+    | '/signin-publish'
     | '/test'
     | '/tools'
     | '/admin/tools'
@@ -212,8 +224,9 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
-  LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SigninRoute: typeof SigninRoute
+  SigninPublishRoute: typeof SigninPublishRoute
   TestRoute: typeof TestRoute
   ToolsRoute: typeof ToolsRoute
   AdminToolsRoute: typeof AdminToolsRoute
@@ -241,18 +254,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/signin-publish': {
+      id: '/signin-publish'
+      path: '/signin-publish'
+      fullPath: '/signin-publish'
+      preLoaderRoute: typeof SigninPublishRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signin': {
+      id: '/signin'
+      path: '/signin'
+      fullPath: '/signin'
+      preLoaderRoute: typeof SigninRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -340,8 +360,9 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
-  LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SigninRoute: SigninRoute,
+  SigninPublishRoute: SigninPublishRoute,
   TestRoute: TestRoute,
   ToolsRoute: ToolsRoute,
   AdminToolsRoute: AdminToolsRoute,
