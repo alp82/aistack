@@ -102,7 +102,7 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 
 	return (
 		<section className="section-dark py-32 px-6 md:px-16 lg:px-24 relative overflow-hidden border-b border-zinc-300">
-			<div className="mx-auto max-w-7xl py-24">
+			<div className="mx-auto max-w-content py-24">
 				{/* Section Header */}
 				<div className="flex items-baseline gap-4 mb-12 border-b-2 border-stroke-strong pb-4">
 					<span className="font-mono text-accent-lime text-xl">/01</span>

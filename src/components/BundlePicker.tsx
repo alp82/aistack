@@ -1,9 +1,8 @@
 import { useQuery } from "convex/react";
-import { ChevronDown, ChevronUp, Package, Search, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Package, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import {
@@ -13,6 +12,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "./ui/select";
+import { cn } from "@/lib/utils";
 
 export interface BundleSubscriptionEntry {
 	bundleId: Id<"bundles">;
@@ -30,20 +30,17 @@ interface BundlePickerProps {
 
 export function BundlePicker({ value, onChange }: BundlePickerProps) {
 	const allBundles = useQuery(api.bundles.listAll) ?? [];
-	const [search, setSearch] = useState("");
+	const [showAddBundle, setShowAddBundle] = useState(false);
 
 	const selectedBundleIds = new Set(value.map((b) => b.bundleId));
 
-	const filteredBundles = useMemo(() => {
-		if (!search.trim())
-			return allBundles.filter((b) => !selectedBundleIds.has(b._id));
-		const q = search.toLowerCase();
-		return allBundles.filter(
-			(b) => !selectedBundleIds.has(b._id) && b.name.toLowerCase().includes(q),
-		);
-	}, [allBundles, search, selectedBundleIds]);
+	const toggleBundle = (bundleId: Id<"bundles">) => {
+		const existingIndex = value.findIndex((b) => b.bundleId === bundleId);
+		if (existingIndex >= 0) {
+			onChange(value.filter((_, i) => i !== existingIndex));
+			return;
+		}
 
-	const addBundle = (bundleId: Id<"bundles">) => {
 		const bundle = allBundles.find((b) => b._id === bundleId);
 		if (!bundle) return;
 
@@ -59,229 +56,173 @@ export function BundlePicker({ value, onChange }: BundlePickerProps) {
 			tierName: defaultTier.name,
 		};
 		onChange([...value, entry]);
-		setSearch("");
-	};
-
-	const removeBundle = (index: number) => {
-		onChange(value.filter((_, i) => i !== index));
 	};
 
 	const updateBundle = (
-		index: number,
+		bundleId: Id<"bundles">,
 		updates: Partial<BundleSubscriptionEntry>,
 	) => {
+		const index = value.findIndex((b) => b.bundleId === bundleId);
+		if (index < 0) return;
 		const updated = [...value];
 		updated[index] = { ...updated[index], ...updates };
 		onChange(updated);
 	};
 
 	return (
-		<div className="space-y-4">
-			<h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
-				Bundles ({value.length})
-			</h3>
+		<div className="space-y-2">
+			{/* Bundle List - One per row */}
+			{allBundles.map((bundle) => {
+				const isSelected = selectedBundleIds.has(bundle._id);
+				const entry = value.find((b) => b.bundleId === bundle._id);
+				const tiers = bundle.tiers ?? [];
 
-			{value.map((entry, index) => (
-				<BundleEntry
-					key={`${entry.bundleId}-${index}`}
-					entry={entry}
-					onUpdate={(updates) => updateBundle(index, updates)}
-					onRemove={() => removeBundle(index)}
-					allBundles={allBundles}
-				/>
-			))}
+				return (
+					<div
+						key={bundle._id}
+						className={cn(
+							"border-2 transition-all",
+							isSelected
+								? "border-accent-lime bg-accent-lime/5"
+								: "border-stroke-subtle bg-bg-panel hover:border-fg-muted",
+						)}
+					>
+						{/* Bundle Row */}
+						<button
+							type="button"
+							onClick={() => toggleBundle(bundle._id)}
+							className="flex w-full items-center gap-4 p-4 text-left"
+						>
+							{/* Icon */}
+							{bundle.iconUrl ? (
+								<img
+									src={bundle.iconUrl}
+									alt={bundle.name}
+									className="size-10 shrink-0 rounded object-contain"
+								/>
+							) : (
+								<div className="flex size-10 shrink-0 items-center justify-center border-2 border-stroke-subtle bg-bg-panel-muted">
+									<Package className="size-5 text-fg-muted" />
+								</div>
+							)}
 
-			<div className="relative">
-				<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-				<Input
-					value={search}
-					onChange={(e) => setSearch(e.target.value)}
-					placeholder="Search bundles to add..."
-					className="pl-9 bg-slate-700/50 border-gray-600 text-white"
-				/>
-			</div>
-
-			{search.trim() && (
-				<div className="max-h-48 overflow-y-auto rounded-md border border-gray-700 bg-slate-800/80">
-					{filteredBundles.length === 0 ? (
-						<div className="p-3 text-sm text-gray-500 text-center">
-							No bundles found.
-						</div>
-					) : (
-						filteredBundles.map((bundle) => (
-							<Button
-								key={bundle._id}
-								type="button"
-								variant="ghost"
-								onClick={() => addBundle(bundle._id)}
-								className="w-full justify-start h-auto font-normal px-3 py-2 hover:bg-slate-700/50 text-left"
-							>
-								{bundle.iconUrl ? (
-									<img
-										src={bundle.iconUrl}
-										alt={bundle.name}
-										className="h-6 w-6 rounded object-contain bg-white p-0.5 flex-shrink-0"
-									/>
-								) : (
-									<div className="h-6 w-6 rounded bg-purple-500/20 flex items-center justify-center flex-shrink-0">
-										<Package className="h-3 w-3 text-purple-400" />
-									</div>
-								)}
-								<span className="text-sm text-white flex-1 truncate">
+							{/* Name & Description */}
+							<div className="min-w-0 flex-1">
+								<p className={cn(
+									"truncate font-mono text-sm font-semibold uppercase",
+									isSelected ? "text-accent-lime" : "text-fg-primary",
+								)}>
 									{bundle.name}
-								</span>
+								</p>
 								{bundle.description && (
-									<span className="text-xs text-gray-500 truncate max-w-32 ml-2">
+									<p className="truncate font-mono text-[10px] text-fg-muted">
 										{bundle.description}
-									</span>
+									</p>
 								)}
-							</Button>
-						))
-					)}
+							</div>
+
+							{/* Selection Indicator */}
+							<div
+								className={cn(
+									"size-5 shrink-0 border-2 transition-colors",
+									isSelected
+										? "border-accent-lime bg-accent-lime"
+										: "border-stroke-subtle bg-transparent",
+								)}
+							/>
+						</button>
+
+						{/* Expanded Details - Only when selected */}
+						{isSelected && entry && (
+							<div className="space-y-4 border-t-2 border-stroke-subtle bg-bg-panel-muted p-4">
+								<div className="grid grid-cols-2 gap-4">
+									{/* Tier */}
+									<div>
+										<Label className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-fg-muted">
+											Tier
+										</Label>
+										<Select
+											value={entry.tierId}
+											onValueChange={(tierId) => {
+												const tier = tiers.find((t) => t.tierId === tierId);
+												if (tier) {
+													updateBundle(bundle._id, {
+														tierId,
+														tierName: tier.name,
+													});
+												}
+											}}
+										>
+											<SelectTrigger className="h-9 w-full border-2 border-stroke-subtle bg-bg-panel font-mono text-xs">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												{tiers.map((t) => (
+													<SelectItem key={t.tierId} value={t.tierId}>
+														{t.name}
+														{t.pricing.fixed
+															? ` — $${t.pricing.fixed.amount}/${t.pricing.fixed.period === "one_time" ? "once" : t.pricing.fixed.period === "month" ? "mo" : "yr"}`
+															: ""}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+
+									{/* Notes */}
+									<div>
+										<Label className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-fg-muted">
+											Notes
+										</Label>
+										<Input
+											value={entry.notes ?? ""}
+											onChange={(e) =>
+												updateBundle(bundle._id, { notes: e.target.value || undefined })
+											}
+											placeholder="Optional notes..."
+											className="h-9 border-2 border-stroke-subtle bg-bg-panel font-mono text-xs"
+										/>
+									</div>
+								</div>
+
+								{/* Remove Button */}
+								<button
+									type="button"
+									onClick={() => toggleBundle(bundle._id)}
+									className="flex items-center gap-2 font-mono text-[10px] uppercase text-fg-muted transition-colors hover:text-destructive"
+								>
+									<Trash2 className="size-3" />
+									Remove from stack
+								</button>
+							</div>
+						)}
+					</div>
+				);
+			})}
+
+			{/* Add Bundle Button */}
+			<button
+				type="button"
+				onClick={() => setShowAddBundle(!showAddBundle)}
+				className="flex w-full items-center justify-center gap-3 border-2 border-dashed border-stroke-subtle p-4 transition-all hover:border-accent-lime hover:bg-bg-panel-muted"
+			>
+				<Plus className="size-5 text-accent-lime" />
+				<div className="text-left">
+					<p className="font-mono text-xs font-semibold uppercase tracking-wider text-accent-lime">
+						Add New Bundle
+					</p>
+					<p className="font-mono text-[10px] text-fg-muted">
+						Request a bundle to be added
+					</p>
 				</div>
+			</button>
+
+			{allBundles.length === 0 && (
+				<p className="py-4 text-center font-mono text-xs text-fg-muted">
+					No bundles available yet.
+				</p>
 			)}
 		</div>
 	);
 }
 
-interface BundleEntryProps {
-	entry: BundleSubscriptionEntry;
-	onUpdate: (updates: Partial<BundleSubscriptionEntry>) => void;
-	onRemove: () => void;
-	allBundles: Array<{
-		_id: Id<"bundles">;
-		iconUrl?: string;
-		tiers: Array<{
-			tierId: string;
-			name: string;
-			pricing: {
-				pricingType: "fixed" | "usage" | "mixed";
-				fixed?: {
-					currency: string;
-					amount: number;
-					period: "month" | "year" | "one_time";
-				};
-			};
-		}>;
-	}>;
-}
-
-function BundleEntry({
-	entry,
-	onUpdate,
-	onRemove,
-	allBundles,
-}: BundleEntryProps) {
-	const [expanded, setExpanded] = useState(false);
-	const bundle = allBundles.find((b) => b._id === entry.bundleId);
-	const tiers = bundle?.tiers ?? [];
-	const currentTier = tiers.find((t) => t.tierId === entry.tierId);
-
-	return (
-		<div className="bg-slate-800/50 border border-purple-500/30 rounded-lg overflow-hidden">
-			{/* Collapsed View */}
-			<div className="flex items-center gap-3 p-3">
-				{bundle?.iconUrl ? (
-					<img
-						src={bundle.iconUrl}
-						alt={entry.bundleName}
-						className="h-8 w-8 rounded object-contain bg-white p-0.5 flex-shrink-0"
-					/>
-				) : (
-					<div className="h-8 w-8 rounded bg-purple-500/20 flex items-center justify-center flex-shrink-0">
-						<Package className="h-4 w-4 text-purple-400" />
-					</div>
-				)}
-				<div className="flex-1 min-w-0">
-					<span className="font-medium text-white text-sm truncate block">
-						{entry.bundleName}
-					</span>
-					<span className="text-xs text-gray-400">
-						Includes {tiers.length} tools
-					</span>
-				</div>
-
-				{/* Inline Editing Controls */}
-				<div className="flex items-center gap-2">
-					<Select
-						value={entry.tierId}
-						onValueChange={(tierId) => {
-							const tier = tiers.find((t) => t.tierId === tierId);
-							if (tier) {
-								onUpdate({
-									tierId,
-									tierName: tier.name,
-								});
-							}
-						}}
-					>
-						<SelectTrigger className="h-8 w-48 text-xs bg-slate-700/50 border-gray-600 text-white">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							{tiers.map((t) => (
-								<SelectItem key={t.tierId} value={t.tierId}>
-									{t.name}
-									{t.pricing.fixed
-										? ` — $${t.pricing.fixed.amount}/${t.pricing.fixed.period === "one_time" ? "once" : t.pricing.fixed.period === "month" ? "mo" : "yr"}`
-										: ""}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon-sm"
-						onClick={onRemove}
-						className="text-gray-500 hover:text-red-400 hover:bg-transparent"
-					>
-						<Trash2 className="h-4 w-4" />
-					</Button>
-
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon-sm"
-						onClick={() => setExpanded(!expanded)}
-						className="text-gray-500 hover:text-white hover:bg-transparent"
-					>
-						{expanded ? (
-							<ChevronUp className="h-4 w-4" />
-						) : (
-							<ChevronDown className="h-4 w-4" />
-						)}
-					</Button>
-
-					<button
-						type="button"
-						onClick={() => setExpanded(!expanded)}
-						className="text-gray-500 hover:text-white transition-colors p-1"
-					>
-						{expanded ? (
-							<ChevronUp className="h-4 w-4" />
-						) : (
-							<ChevronDown className="h-4 w-4" />
-						)}
-					</button>
-				</div>
-			</div>
-
-			{/* Expanded View */}
-			{expanded && (
-				<div className="border-t border-purple-500/30 p-3 space-y-3 bg-slate-900/30">
-					<div>
-						<Label className="text-xs text-gray-400 mb-1.5">Notes</Label>
-						<Input
-							value={entry.notes ?? ""}
-							onChange={(e) => onUpdate({ notes: e.target.value || undefined })}
-							placeholder="Optional notes about this bundle"
-							className="h-8 text-xs bg-slate-700/50 border-gray-600 text-white"
-						/>
-					</div>
-				</div>
-			)}
-		</div>
-	);
-}

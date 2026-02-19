@@ -24,7 +24,7 @@ export function StackMetadataBar({ stackUrl, prompts, rules, skills, mcps, resou
 	if (!stackUrl && !hasAnyMeta && !hasResources) return null;
 
 	return (
-		<section className="max-w-7xl mx-auto px-6 pb-6">
+		<section className="max-w-content mx-auto px-6 pb-6">
 			<UtilityBar
 				dense
 				className="rounded-lg border-gray-700 bg-slate-800/50 px-5 py-4"

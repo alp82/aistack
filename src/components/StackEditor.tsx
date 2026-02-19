@@ -1,25 +1,20 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { ArrowLeft, CheckCircle, Save, Send } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useState } from "react";
 import { api } from "../../convex/_generated/api";
-import { StackEditorSidebar } from "@/components/StackEditorSidebar";
 import { SignInDialog } from "@/components/SignInDialog";
-import { Button } from "@/components/ui/button";
-import { getEditorSectionStatuses } from "@/features/stack-editor/editor-status";
-import { sectionOrder } from "@/features/stack-editor/state/editorReducer";
 import {
-	selectCanPublish,
 	selectSaveDraftPublishTarget,
 	selectSavePayload,
 	selectSaveValidationError,
 } from "@/features/stack-editor/state/editorSelectors";
 import { useEditorState } from "@/features/stack-editor/state/useEditorState";
-import { BundlesSection } from "@/features/stack-editor/sections/BundlesSection";
-import { DescriptionSection } from "@/features/stack-editor/sections/DescriptionSection";
-import { ProfileSection } from "@/features/stack-editor/sections/ProfileSection";
-import { SettingsSection } from "@/features/stack-editor/sections/SettingsSection";
-import { ToolsSection } from "@/features/stack-editor/sections/ToolsSection";
+import { DetailsStep } from "@/features/stack-editor/components/DetailsStep";
+import { ToolsStep } from "@/features/stack-editor/components/ToolsStep";
+import { WorkflowStep } from "@/features/stack-editor/components/WorkflowStep";
+import { WizardSidebar, steps, type WizardStep } from "@/features/stack-editor/components/WizardSidebar";
+import { WizardNavigation } from "@/features/stack-editor/components/WizardNavigation";
 import type {
 	CreatorProfile,
 	StackEditorInitialValue,
@@ -43,9 +38,10 @@ export function StackEditor({
 	const createStack = useMutation(api.stacks.create);
 	const updateStack = useMutation(api.stacks.update);
 	const updateCreatorProfile = useMutation(api.creators.updateProfile);
+	const [currentStep, setCurrentStep] = useState<WizardStep>("details");
+
 	const {
 		state,
-		setActiveSection,
 		setBundleSubscriptions,
 		setDescription,
 		setError,
@@ -63,42 +59,24 @@ export function StackEditor({
 		actor,
 		initialValue,
 	});
-	const observerRef = useRef<IntersectionObserver | null>(null);
 
-	useEffect(() => {
-		observerRef.current = new IntersectionObserver(
-			(entries) => {
-				entries.forEach((entry) => {
-					if (entry.isIntersecting) {
-						const sectionId = entry.target.id.replace("section-", "") as (typeof sectionOrder)[number];
-						setActiveSection(sectionId);
-					}
-				});
-			},
-			{ threshold: 0.3, rootMargin: "-100px 0px -50% 0px" },
-		);
+	const handleStepClick = (step: WizardStep) => {
+		setCurrentStep(step);
+	};
 
-		const sections = document.querySelectorAll('[id^="section-"]');
-		sections.forEach((section) => observerRef.current?.observe(section));
+	const handlePrevious = () => {
+		const currentIndex = steps.findIndex((s) => s.id === currentStep);
+		if (currentIndex > 0) {
+			setCurrentStep(steps[currentIndex - 1].id);
+		}
+	};
 
-		return () => observerRef.current?.disconnect();
-	}, []);
-
-	const canPublish = selectCanPublish(state);
-	const sectionStatuses = getEditorSectionStatuses({
-		oneLiner: state.oneLiner,
-		isTeam: state.isTeam,
-		teamSize: state.teamSize,
-		toolSubscriptions: state.toolSubscriptions,
-		bundleSubscriptions: state.bundleSubscriptions,
-		description: state.description,
-		stackUrl: state.stackUrl,
-		prompts: state.prompts,
-		rules: state.rules,
-		skills: state.skills,
-		mcps: state.mcps,
-		resources: state.resources,
-	});
+	const handleNext = () => {
+		const currentIndex = steps.findIndex((s) => s.id === currentStep);
+		if (currentIndex < steps.length - 1) {
+			setCurrentStep(steps[currentIndex + 1].id);
+		}
+	};
 
 	const handleSave = async (publish: boolean) => {
 		const validationError = selectSaveValidationError(state, publish);
@@ -160,92 +138,11 @@ export function StackEditor({
 
 	const saveDraftPublishTarget = selectSaveDraftPublishTarget(state, mode, initialValue);
 
-	return (
-		<div className="min-h-screen bg-bg-canvas">
-			{/* Grid background */}
-			<div 
-				className="fixed inset-0 pointer-events-none z-0 opacity-10"
-				style={{
-					backgroundImage: 'linear-gradient(to right, #333 1px, transparent 1px), linear-gradient(to bottom, #333 1px, transparent 1px)',
-					backgroundSize: '4rem 4rem'
-				}}
-			/>
-			<SignInDialog
-				isOpen={state.showSignInDialog}
-				onClose={() => setShowSignInDialog(false)}
-				message="Please sign in to publish your stack. Your work is saved locally and will be available when you return."
-			/>
-			<header className="sticky top-14 z-40 bg-bg-canvas/80 backdrop-blur-xl border-b border-zinc-800">
-				<div className=" max-w-7xl mx-auto py-4 flex items-center justify-between">
-					<div className="flex items-center gap-4">
-						<Button
-							variant="ghost"
-							onClick={() => navigate({ to: "/" })}
-							className="text-zinc-400 hover:text-accent-lime hover:bg-transparent p-0 h-auto font-mono text-xs uppercase tracking-wider"
-						>
-							<ArrowLeft className="h-4 w-4 mr-2" />
-							Back
-						</Button>
-					</div>
-					<div className="flex items-center gap-3">
-						{mode === "edit" && initialValue?.published && (
-							<div className="flex items-center gap-2 text-accent-lime text-xs font-mono uppercase">
-								<CheckCircle className="h-4 w-4" />
-								Published
-							</div>
-						)}
-						{mode === "edit" && initialValue?.published && (
-							<Button
-								type="button"
-								variant="outline"
-								onClick={() => handleSave(false)}
-								disabled={state.saving}
-								className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 font-mono text-xs uppercase tracking-wider"
-							>
-								Unpublish
-							</Button>
-						)}
-						<Button
-							type="button"
-							variant="ghost"
-							onClick={() => handleSave(saveDraftPublishTarget)}
-							disabled={state.saving}
-							className="border border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-fg-primary font-mono text-xs uppercase tracking-wider"
-						>
-							<Save className="h-4 w-4 mr-2" />
-							{state.saving ? "Saving..." : "Save Draft"}
-						</Button>
-						<Button
-							type="button"
-							onClick={() => handleSave(true)}
-							disabled={state.saving || !canPublish}
-							className="bg-accent-lime hover:bg-accent-lime-strong text-accent-lime-contrast font-mono text-xs uppercase tracking-wider font-bold"
-						>
-							<Send className="h-4 w-4 mr-2" />
-							{state.saving ? "Publishing..." : "Publish"}
-						</Button>
-					</div>
-				</div>
-			</header>
-
-			<div className="flex relative z-10">
-				<StackEditorSidebar activeSection={state.activeSection} sectionStatuses={sectionStatuses} />
-				<main className="flex-1 max-w-3xl mx-auto px-6 md:px-12 py-12 space-y-12">
-					{/* Page Header */}
-					<div className="border-b border-zinc-800 pb-6">
-						<div className="font-mono text-accent-lime text-xs mb-2">// CONFIGURATION</div>
-						<h1 className="text-4xl font-black uppercase tracking-tighter text-fg-primary">
-							{mode === "create" ? "Profile Details" : "Edit Stack"}
-						</h1>
-					</div>
-
-					{state.error && (
-						<div className="bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-400 font-mono">
-							{state.error}
-						</div>
-					)}
-
-					<ProfileSection
+	const renderCurrentStep = () => {
+		switch (currentStep) {
+			case "details":
+				return (
+					<DetailsStep
 						creator={actor}
 						oneLiner={state.oneLiner}
 						onOneLinerChange={setOneLiner}
@@ -255,38 +152,130 @@ export function StackEditor({
 						onIsTeamChange={setIsTeam}
 						teamSize={state.teamSize}
 						onTeamSizeChange={setTeamSize}
-						status={sectionStatuses.profile}
-						isActive={state.activeSection === "profile"}
 					/>
-					<ToolsSection
-						value={state.toolSubscriptions}
-						onChange={setToolSubscriptions}
-						status={sectionStatuses.tools}
-						isActive={state.activeSection === "tools"}
+				);
+			case "tools":
+				return (
+					<ToolsStep
+						toolSubscriptions={state.toolSubscriptions}
+						onToolsChange={setToolSubscriptions}
+						bundleSubscriptions={state.bundleSubscriptions}
+						onBundlesChange={setBundleSubscriptions}
 					/>
-					<BundlesSection
-						value={state.bundleSubscriptions}
-						onChange={setBundleSubscriptions}
-						status={sectionStatuses.bundles}
-						isActive={state.activeSection === "bundles"}
-					/>
-					<DescriptionSection
-						value={state.description}
-						onChange={setDescription}
-						status={sectionStatuses.description}
-						isActive={state.activeSection === "description"}
-					/>
-					<SettingsSection
+				);
+			case "workflow":
+				return (
+					<WorkflowStep
+						description={state.description}
+						onDescriptionChange={setDescription}
 						stackUrl={state.stackUrl}
 						prompts={state.prompts}
 						rules={state.rules}
 						skills={state.skills}
 						mcps={state.mcps}
 						resources={state.resources}
-						onUpdate={updateMetadata}
-						status={sectionStatuses.settings}
-						isActive={state.activeSection === "settings"}
+						onMetadataUpdate={updateMetadata}
 					/>
+				);
+		}
+	};
+
+	return (
+		<div className="min-h-screen bg-bg-canvas">
+			{/* Grid background */}
+			<div
+				className="pointer-events-none fixed inset-0 z-0 opacity-10"
+				style={{
+					backgroundImage:
+						"linear-gradient(to right, var(--stroke-subtle) 1px, transparent 1px), linear-gradient(to bottom, var(--stroke-subtle) 1px, transparent 1px)",
+					backgroundSize: "4rem 4rem",
+				}}
+			/>
+			<SignInDialog
+				isOpen={state.showSignInDialog}
+				onClose={() => setShowSignInDialog(false)}
+				message="Please sign in to publish your stack. Your work is saved locally and will be available when you return."
+			/>
+			<div className="relative z-10 mx-auto max-w-content flex">
+				<WizardSidebar
+					currentStep={currentStep}
+					onStepClick={handleStepClick}
+				/>
+				<main className="flex-1 max-w-4xl px-6 py-24 md:px-12">
+					{/* Page Header with Actions */}
+					<div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-12 gap-8 border-b-2 border-stroke-strong pb-8">
+						<div>
+							<button
+								type="button"
+								onClick={() => navigate({ to: "/" })}
+								className="inline-flex items-center gap-2 font-mono text-xs text-fg-muted transition-colors hover:text-accent-lime mb-6 group"
+							>
+								<ArrowLeft className="size-3.5 group-hover:-translate-x-1 transition-transform" />
+								Back to home
+							</button>
+							<div className="font-mono text-accent-lime mb-4 flex items-center gap-4 text-sm">
+								<span>// SHARE_YOUR_STACK</span>
+								<span className="h-px w-12 bg-accent-lime/50" />
+								<span>{mode === "edit" ? "EDIT" : "NEW"}</span>
+							</div>
+							<h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase leading-[0.9] text-fg-primary">
+								{mode === "edit" ? "EDIT STACK" : "CREATE STACK"}
+							</h1>
+						</div>
+
+						<div className="flex items-center gap-3 flex-shrink-0">
+							{mode === "edit" && initialValue?.published && (
+								<div className="flex items-center gap-2 font-mono text-xs uppercase text-accent-lime">
+									<CheckCircle className="size-4" />
+									Published
+								</div>
+							)}
+							{mode === "edit" && initialValue?.published && (
+								<button
+									type="button"
+									onClick={() => handleSave(false)}
+									disabled={state.saving}
+									className="px-4 py-3 border-2 border-stroke-strong font-mono text-xs uppercase tracking-wider text-fg-muted hover:border-accent-lime hover:text-fg-primary transition-colors disabled:opacity-50"
+								>
+									Unpublish
+								</button>
+							)}
+							<button
+								type="button"
+								onClick={() => handleSave(saveDraftPublishTarget)}
+								disabled={state.saving}
+								className="inline-flex items-center gap-2 px-4 py-3 border-2 border-stroke-strong font-mono text-xs uppercase tracking-wider text-fg-muted hover:border-accent-lime hover:text-fg-primary transition-colors disabled:opacity-50"
+							>
+								<Save className="size-4" />
+								{state.saving ? "Saving..." : "Save Draft"}
+							</button>
+							<button
+								type="button"
+								onClick={() => handleSave(true)}
+								disabled={state.saving}
+								className="inline-flex items-center gap-2 px-4 py-3 border-2 border-accent-lime bg-accent-lime font-mono text-xs font-bold uppercase tracking-wider text-accent-lime-contrast hover:bg-accent-lime-strong transition-colors disabled:opacity-50"
+							>
+								<Send className="size-4" />
+								{state.saving ? "Publishing..." : "Publish"}
+							</button>
+						</div>
+					</div>
+
+					{state.error && (
+						<div className="mb-8 border-2 border-destructive/30 bg-destructive/10 p-4 font-mono text-sm text-destructive">
+							{state.error}
+						</div>
+					)}
+
+					{renderCurrentStep()}
+
+					<div className="mt-12">
+						<WizardNavigation
+							currentStep={currentStep}
+							onPrevious={handlePrevious}
+							onNext={handleNext}
+						/>
+					</div>
 				</main>
 			</div>
 		</div>

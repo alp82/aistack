@@ -79,7 +79,7 @@ function StackDetailsPage() {
 	return (
 		<div className="min-h-screen bg-bg-canvas">
 			{/* Back link */}
-			<div className="mx-auto max-w-[1920px] px-6 md:px-12 pt-8">
+			<div className="mx-auto max-w-content px-6 md:px-12 pt-8">
 				<Link
 					to="/stacks"
 					className="inline-flex items-center gap-2 font-mono text-xs text-fg-muted transition-colors hover:text-accent-lime group"
@@ -90,7 +90,7 @@ function StackDetailsPage() {
 			</div>
 
 			{/* Header */}
-			<header className="mx-auto max-w-[1920px] px-6 md:px-12 py-12">
+			<header className="mx-auto max-w-content px-6 md:px-12 py-12">
 				<div className="flex flex-col gap-6 sm:flex-row sm:items-start">
 					{stack.creator.avatarUrl ? (
 						<img
@@ -180,7 +180,7 @@ function StackDetailsPage() {
 			/>
 
 			{/* Tabs */}
-			<section className="mx-auto max-w-[1920px] px-6 md:px-12 pt-6">
+			<section className="mx-auto max-w-content px-6 md:px-12 pt-6">
 				<div className="flex gap-1 border-b-2 border-stroke-strong">
 					<Button
 						type="button"
@@ -222,7 +222,7 @@ function StackDetailsPage() {
 			</section>
 
 			{/* Tab Content */}
-			<section className="mx-auto max-w-[1920px] px-6 md:px-12 py-12">
+			<section className="mx-auto max-w-content px-6 md:px-12 py-12">
 				{activeTab === "tools" && (
 					<div className="space-y-8">
 						{/* Main Tools */}

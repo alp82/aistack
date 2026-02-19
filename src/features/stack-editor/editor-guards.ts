@@ -9,11 +9,15 @@ function canPublishStack(oneLiner: string, toolCount: number) {
 }
 
 function getSaveValidationError({ oneLiner, publish, toolCount }: SaveValidationInput) {
-	if (!oneLiner.trim()) {
-		return "One-liner summary is required";
+	if (!publish) {
+		return null;
 	}
 
-	if (publish && toolCount === 0) {
+	if (!oneLiner.trim()) {
+		return "One-liner summary is required to publish";
+	}
+
+	if (toolCount === 0) {
 		return "Add at least one tool before publishing";
 	}
 

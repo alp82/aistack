@@ -3,6 +3,7 @@ import { useQuery } from "convex/react";
 import { Copy, DollarSign, Lightbulb } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../../convex/_generated/api";
+import { PageHeader } from "../components/PageHeader";
 import { SimulatorSection } from "../components/SimulatorSection";
 import Stack from "../components/Stack";
 import {
@@ -123,9 +124,9 @@ function AboutPage() {
 	}, [highlightedFeature]);
 
 	const renderFeatures = (
-		<div className="flex flex-col gap-6 md:gap-10">
+		<div className="flex flex-col gap-6">
 			<div
-				className="flex items-start gap-4 group cursor-pointer transition-all duration-200"
+				className="group cursor-pointer border-2 border-stroke-strong bg-bg-panel p-6 transition-all hover:border-accent-lime"
 				onMouseEnter={() => {
 					if (window.innerWidth >= 1024) {
 						setHighlightedFeature("cost");
@@ -140,27 +141,24 @@ function AboutPage() {
 					setHighlightedFeature(highlightedFeature === "cost" ? null : "cost");
 				}}
 			>
-				<div className={`inline-flex shrink-0 items-center justify-center rounded-full p-3 size-14 transition-all duration-300 shadow-lg shadow-yellow-500/10 bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 ${
-						highlightedFeature === "cost" ? "from-yellow-500/30 to-yellow-600/20" : "group-hover:from-yellow-500/30 group-hover:to-yellow-600/20"
-					}`}>
-					<DollarSign className="size-7 text-yellow-400 transition-colors duration-300" />
-				</div>
-				<div className="min-w-0 flex-1">
-					<h3 className={`text-lg font-semibold transition-colors duration-300 ${
-						highlightedFeature === "cost" ? "text-yellow-400" : "text-white group-hover:text-yellow-400"
-					}`}>
-						See real costs
-					</h3>
-					<p className={`text-sm transition-colors duration-300 ${
-						highlightedFeature === "cost" ? "text-gray-300" : "text-gray-400 group-hover:text-gray-300"
-					}`}>
-						Know exactly what founders pay for results.
-					</p>
+				<div className="flex items-start gap-4">
+					<div className="flex size-12 shrink-0 items-center justify-center border-2 border-stroke-strong bg-bg-canvas text-fg-muted transition-colors group-hover:border-accent-lime group-hover:text-accent-lime">
+						<DollarSign className="size-6" />
+					</div>
+					<div className="min-w-0 flex-1">
+						<div className="mb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">01</div>
+						<h3 className="text-lg font-bold uppercase tracking-tight text-fg-primary transition-colors group-hover:text-accent-lime">
+							See real costs
+						</h3>
+						<p className="mt-1 text-sm text-fg-muted">
+							Know exactly what founders pay for results.
+						</p>
+					</div>
 				</div>
 			</div>
 
 			<div
-				className="flex items-start gap-4 group cursor-pointer transition-all duration-200"
+				className="group cursor-pointer border-2 border-stroke-strong bg-bg-panel p-6 transition-all hover:border-accent-lime"
 				onMouseEnter={() => {
 					if (window.innerWidth >= 1024) {
 						setHighlightedFeature("context");
@@ -175,27 +173,24 @@ function AboutPage() {
 					setHighlightedFeature(highlightedFeature === "context" ? null : "context");
 				}}
 			>
-				<div className={`inline-flex shrink-0 items-center justify-center rounded-full p-3 size-14 transition-all duration-300 shadow-lg shadow-blue-500/10 bg-gradient-to-br from-blue-500/20 to-blue-600/10 ${
-						highlightedFeature === "context" ? "from-blue-500/30 to-blue-600/20" : "group-hover:from-blue-500/30 group-hover:to-blue-600/20"
-					}`}>
-					<Lightbulb className="size-7 text-blue-400 transition-colors duration-300" />
-				</div>
-				<div className="min-w-0 flex-1">
-					<h3 className={`text-lg font-semibold transition-colors duration-300 ${
-						highlightedFeature === "context" ? "text-blue-400" : "text-white group-hover:text-blue-400"
-					}`}>
-						Understand
-					</h3>
-					<p className={`text-sm transition-colors duration-300 ${
-						highlightedFeature === "context" ? "text-gray-300" : "text-gray-400 group-hover:text-gray-300"
-					}`}>
-						See prompts, rules and skills.
-					</p>
+				<div className="flex items-start gap-4">
+					<div className="flex size-12 shrink-0 items-center justify-center border-2 border-stroke-strong bg-bg-canvas text-fg-muted transition-colors group-hover:border-accent-lime group-hover:text-accent-lime">
+						<Lightbulb className="size-6" />
+					</div>
+					<div className="min-w-0 flex-1">
+						<div className="mb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">02</div>
+						<h3 className="text-lg font-bold uppercase tracking-tight text-fg-primary transition-colors group-hover:text-accent-lime">
+							Understand
+						</h3>
+						<p className="mt-1 text-sm text-fg-muted">
+							See prompts, rules and skills.
+						</p>
+					</div>
 				</div>
 			</div>
 
 			<div
-				className="flex items-start gap-4 group cursor-pointer transition-all duration-200"
+				className="group cursor-pointer border-2 border-stroke-strong bg-bg-panel p-6 transition-all hover:border-accent-lime"
 				onMouseEnter={() => {
 					if (window.innerWidth >= 1024) {
 						setHighlightedFeature("sharing");
@@ -210,22 +205,19 @@ function AboutPage() {
 					setHighlightedFeature(highlightedFeature === "sharing" ? null : "sharing");
 				}}
 			>
-				<div className={`inline-flex shrink-0 items-center justify-center rounded-full p-3 size-14 transition-all duration-300 shadow-lg shadow-green-500/10 bg-gradient-to-br from-green-500/20 to-green-600/10 ${
-						highlightedFeature === "sharing" ? "from-green-500/30 to-green-600/20" : "group-hover:from-green-500/30 group-hover:to-green-600/20"
-					}`}>
-					<Copy className="size-7 text-green-400 transition-colors duration-300" />
-				</div>
-				<div className="min-w-0 flex-1">
-					<h3 className={`text-lg font-semibold transition-colors duration-300 ${
-						highlightedFeature === "sharing" ? "text-green-400" : "text-white group-hover:text-green-400"
-					}`}>
-						Clone workflows
-					</h3>
-					<p className={`text-sm transition-colors duration-300 ${
-						highlightedFeature === "sharing" ? "text-gray-300" : "text-gray-400 group-hover:text-gray-300"
-					}`}>
-						Copy real automations made for shipping.
-					</p>
+				<div className="flex items-start gap-4">
+					<div className="flex size-12 shrink-0 items-center justify-center border-2 border-stroke-strong bg-bg-canvas text-fg-muted transition-colors group-hover:border-accent-lime group-hover:text-accent-lime">
+						<Copy className="size-6" />
+					</div>
+					<div className="min-w-0 flex-1">
+						<div className="mb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">03</div>
+						<h3 className="text-lg font-bold uppercase tracking-tight text-fg-primary transition-colors group-hover:text-accent-lime">
+							Clone workflows
+						</h3>
+						<p className="mt-1 text-sm text-fg-muted">
+							Copy real automations made for shipping.
+						</p>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -234,25 +226,13 @@ function AboutPage() {
 	return (
 		<div className="min-h-screen bg-bg-canvas">
 			<section className="border-b-2 border-stroke-strong py-24 px-6 md:px-12">
-				<div className="mx-auto max-w-[1920px]">
-					{/* Section Header */}
-					<div className="flex items-baseline gap-4 mb-12 border-b-2 border-stroke-strong pb-4">
-						<span className="font-mono text-accent-lime text-xl">/</span>
-						<h1 className="text-4xl md:text-6xl font-bold tracking-tighter uppercase text-fg-primary">
-							About
-						</h1>
-					</div>
-
-					<div className="mb-16">
-						<h2 className="mb-6 text-3xl md:text-5xl font-bold tracking-tight text-fg-primary">
-							Learn from Real{" "}
-							<span className="text-highlight-lime">AI Builders</span>
-						</h2>
-						<p className="max-w-2xl text-xl text-fg-secondary leading-relaxed">
-							Explore how successful founders use AI tools, complete with workflows, agent
-							setups, prompts and automations you can copy.
-						</p>
-					</div>
+				<div className="mx-auto max-w-content">
+					<PageHeader
+						label="ABOUT"
+						labelSuffix="LEARN"
+						title={<>LEARN FROM REAL <br /><span className="text-accent-lime">AI BUILDERS</span></>}
+						description="Explore how successful founders use AI tools, complete with workflows, agent setups, prompts and automations you can copy."
+					/>
 
 					<div className="grid items-center gap-12 lg:grid-cols-2">
 						<div className="order-2 flex justify-center lg:order-1 lg:justify-start">

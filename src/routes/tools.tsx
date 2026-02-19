@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Minus, Plus, Terminal } from "lucide-react";
 import { useState } from "react";
 import { AddToolModal } from "../components/AddToolModal";
+import { PageHeader } from "../components/PageHeader";
 import { cn } from "../lib/utils";
 import { exampleTools } from "../data/exampleTools";
 
@@ -53,44 +54,17 @@ function ToolsPage() {
 				onToolCreated={handleToolCreated}
 			/>
 
-			<div className="relative z-10 max-w-7xl mx-auto py-12">
-				{/* Header */}
-				<div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-20 gap-8 border-b-2 border-stroke-strong pb-12">
-					<div>
-						<div className="font-mono text-accent-lime mb-6 flex items-center gap-4 text-sm">
-							<span>// TOOL_DATABASE</span>
-							<span className="h-px w-20 bg-accent-lime/50" />
-							<span>INDEX</span>
-						</div>
-						<h1 className="text-5xl md:text-8xl font-black tracking-tighter uppercase leading-[0.9] text-fg-primary">
-							AI TOOLS FOR <br />
-							YOUR STACK
-						</h1>
-						<p className="mt-6 text-xl text-fg-secondary max-w-2xl border-l-4 border-accent-lime pl-6">
-							A curated selection of high-performance AI tools you can use to build your product. Validated by real shipping capability.
-						</p>
-					</div>
-
-					<motion.button
-						onClick={() => setShowAddModal(true)}
-						whileHover={{
-							scale: 1.02,
-							x: -2,
-							y: -2,
-							boxShadow: "4px 4px 0px 0px rgba(163, 230, 53, 1)",
-						}}
-						whileTap={{
-							scale: 0.98,
-							x: 0,
-							y: 0,
-							boxShadow: "0px 0px 0px 0px rgba(0,0,0,0)",
-						}}
-						transition={{ duration: 0.15 }}
-						className="flex-shrink-0 inline-flex items-center gap-3 px-6 py-4 font-mono text-sm uppercase tracking-widest font-bold border-2 border-accent-lime bg-accent-lime text-accent-lime-contrast hover:bg-accent-lime-strong transition-colors"
-					>
-						<Plus size={18} /> Add AI Tool
-					</motion.button>
-				</div>
+			<div className="relative z-10 max-w-content mx-auto py-24 px-6 md:px-12">
+				<PageHeader
+					label="TOOL_DATABASE"
+					title={<>AI TOOLS FOR <br />YOUR STACK</>}
+					description="A curated selection of high-performance AI tools you can use to build your product. Validated by real shipping capability."
+					action={{
+						label: "Add AI Tool",
+						icon: <Plus size={18} />,
+						onClick: () => setShowAddModal(true),
+					}}
+				/>
 
 				{/* Filter Bar */}
 				<div className="mb-12 flex flex-wrap gap-2">

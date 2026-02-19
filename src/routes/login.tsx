@@ -129,8 +129,8 @@ function LoginPage() {
 	};
 
 	return (
-		<div className="flex min-h-[80vh] items-center justify-center">
-			<div className="w-full max-w-md space-y-8 rounded-lg border bg-card p-8 shadow-lg">
+		<div className="flex min-h-[80vh] items-center justify-center px-4">
+			<div className="w-full min-w-[320px] max-w-md space-y-8 border-2 border-stroke-strong bg-bg-panel p-8">
 				<div className="text-center">
 					<h1 className="text-2xl font-bold">
 						{isSignUp ? "Create Account" : "Sign In"}
@@ -196,10 +196,10 @@ function LoginPage() {
 
 				<div className="relative">
 					<div className="absolute inset-0 flex items-center">
-						<span className="w-full border-t" />
+						<span className="w-full border-t border-stroke-subtle" />
 					</div>
 					<div className="relative flex justify-center text-xs uppercase">
-						<span className="bg-card px-2 text-muted-foreground">
+						<span className="bg-bg-panel px-2 text-fg-muted">
 							Or continue with email
 						</span>
 					</div>

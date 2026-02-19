@@ -1,11 +1,41 @@
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { ArrowRight, Search } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { ToolSphere } from "@/features/landing/components/ToolSphere";
 
 function HeroSection() {
+	const sectionRef = useRef<HTMLElement>(null);
+	const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+	const handleMouseMove = useCallback((e: React.MouseEvent) => {
+		if (!sectionRef.current) return;
+		const rect = sectionRef.current.getBoundingClientRect();
+		const centerX = rect.left + rect.width / 2;
+		const centerY = rect.top + rect.height / 2;
+
+		setMousePos({
+			x: (e.clientX - centerX) / rect.width,
+			y: (e.clientY - centerY) / rect.height,
+		});
+	}, []);
+
+	const handleMouseLeave = useCallback(() => {
+		setMousePos({ x: 0, y: 0 });
+	}, []);
+
 	return (
-		<section className="relative border-b-2 border-stroke-strong px-6 py-24 md:px-16 lg:px-24 md:py-32 lg:py-48 overflow-hidden">
-			<div className="mx-auto w-full max-w-7xl">
+		<section
+			ref={sectionRef}
+			className="relative border-b-2 border-stroke-strong px-6 py-24 md:px-16 lg:px-24 md:py-32 lg:py-48 overflow-hidden"
+			onMouseMove={handleMouseMove}
+			onMouseLeave={handleMouseLeave}
+		>
+			<div className="mx-auto w-full max-w-content relative">
+				{/* 3D Tool Sphere - positioned at right edge of max-w container on wide screens */}
+				<div className="absolute top-1/2 -translate-y-1/2 -mt-12 w-[500px] h-[500px] lg:w-[600px] lg:h-[600px] hidden md:block pointer-events-none right-0 translate-x-1/2 2xl:translate-x-0 2xl:right-[-100px]">
+					<ToolSphere mousePos={mousePos} />
+				</div>
 				<motion.div
 					initial={{ opacity: 0, y: 30 }}
 					animate={{ opacity: 1, y: 0 }}
@@ -13,7 +43,7 @@ function HeroSection() {
 					className="relative z-10 max-w-[90vw]"
 				>
 					{/* Builder Reference Label */}
-					<div className="font-mono text-accent-lime mb-8 flex items-center gap-4 text-sm">
+					<div className="font-mono text-accent-lime mb-16 flex items-center gap-4 text-sm">
 						<span>// FOR:</span>
 						<span>SOLO FOUNDERS</span>
 						<span className="h-px w-4 bg-accent-lime/50" />
@@ -23,7 +53,7 @@ function HeroSection() {
 					</div>
 
 					{/* Massive Headline */}
-					<h1 className="text-5xl md:text-7xl lg:text-[8rem] font-black tracking-tighter leading-[0.9] mb-12 text-fg-primary">
+					<h1 className="text-5xl md:text-7xl lg:text-[8rem] font-black tracking-tighter leading-[0.9] mb-24 text-fg-primary">
 						SEE EXACTLY WHAT
 						<br />
 						REAL{" "}<span className="text-highlight-lime ml-2 md:ml-4 -rotate-1">BUILDERS</span>
@@ -39,14 +69,14 @@ function HeroSection() {
 							daily AI workflow looks like.
 						</p>
 
-						<div className="flex flex-col md:flex-row gap-4 lg:mr-24">
+						<div className="flex flex-col md:flex-row gap-4">
 							<Link to="/stacks/new">
 								<motion.span
 									whileHover={{
 										scale: 1.02,
-										x: -2,
-										y: -2,
-										boxShadow: "4px 4px 0px 0px rgba(163, 230, 53, 1)",
+										x: -3,
+										y: -3,
+										boxShadow: "6px 6px 0px 0px rgba(163, 230, 53, 1)",
 									}}
 									whileTap={{
 										scale: 0.98,
@@ -55,19 +85,19 @@ function HeroSection() {
 										boxShadow: "0px 0px 0px 0px rgba(0,0,0,0)",
 									}}
 									transition={{ duration: 0.15 }}
-									className="inline-flex items-center gap-3 px-6 py-4 font-mono text-sm uppercase tracking-widest font-bold border-2 border-accent-lime bg-accent-lime text-accent-lime-contrast hover:bg-accent-lime-strong transition-colors"
+									className="inline-flex items-center gap-4 px-8 py-5 font-mono text-base md:text-lg uppercase tracking-widest font-bold border-2 border-accent-lime bg-accent-lime text-accent-lime-contrast hover:bg-accent-lime-strong transition-colors"
 								>
 									Share Your Stack
-									<ArrowRight className="size-5" />
+									<ArrowRight className="size-6" />
 								</motion.span>
 							</Link>
 							<Link to="/stacks">
 								<motion.span
 									whileHover={{
 										scale: 1.02,
-										x: -2,
-										y: -2,
-										boxShadow: "4px 4px 0px 0px rgba(163, 230, 53, 1)",
+										x: -3,
+										y: -3,
+										boxShadow: "6px 6px 0px 0px rgba(163, 230, 53, 1)",
 									}}
 									whileTap={{
 										scale: 0.98,
@@ -76,9 +106,9 @@ function HeroSection() {
 										boxShadow: "0px 0px 0px 0px rgba(0,0,0,0)",
 									}}
 									transition={{ duration: 0.15 }}
-									className="inline-flex items-center gap-3 px-6 py-4 font-mono text-sm uppercase tracking-widest font-bold border-2 border-fg-primary bg-transparent text-fg-primary hover:bg-bg-panel transition-colors"
+									className="inline-flex items-center gap-4 px-8 py-5 font-mono text-base md:text-lg uppercase tracking-widest font-bold border-2 border-fg-primary bg-transparent text-fg-primary hover:bg-bg-panel transition-colors"
 								>
-									<Search className="size-4" />
+									<Search className="size-5" />
 									<span>Browse</span>
 								</motion.span>
 							</Link>

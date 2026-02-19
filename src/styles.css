@@ -97,6 +97,27 @@ code, .font-mono {
   color-scheme: dark;
 }
 
+.light {
+  color-scheme: light;
+  --bg-canvas: oklch(0.97 0.003 256);
+  --bg-panel: oklch(1 0 0);
+  --bg-panel-muted: oklch(0.95 0.003 256);
+  --bg-panel-elevated: oklch(0.98 0.002 256);
+  --fg-primary: oklch(0.15 0.008 256);
+  --fg-secondary: oklch(0.3 0.006 256);
+  --fg-muted: oklch(0.45 0.005 256);
+  --fg-inverse: oklch(0.96 0.004 256);
+  --accent-lime-soft: oklch(0.65 0.16 130);
+  --accent-lime: oklch(0.55 0.18 132);
+  --accent-lime-strong: oklch(0.48 0.2 134);
+  --accent-lime-contrast: oklch(0.98 0.01 132);
+  --stroke-subtle: oklch(0.85 0.008 256 / 0.9);
+  --stroke-strong: oklch(0.7 0.01 256 / 0.95);
+  --shadow-color: oklch(0.02 0 0 / 0.12);
+  --bg-section-dark: oklch(0.94 0.004 256);
+  --bg-section-light: oklch(0.99 0.002 256);
+}
+
 @theme inline {
   --color-bg-canvas: var(--bg-canvas);
   --color-bg-panel: var(--bg-panel);
@@ -216,5 +237,10 @@ code, .font-mono {
   
   .brutal-glow-lime {
     box-shadow: var(--shadow-glow-lime);
+  }
+  
+  /* Custom max-width for main content areas - easily adjustable */
+  .max-w-content {
+    max-width: 105rem;
   }
 }

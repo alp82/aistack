@@ -19,6 +19,7 @@ import PosthogProvider from "../integrations/posthog/provider";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import { authClient } from "../lib/auth-client";
 import { getToken } from "../lib/auth-server";
+import { ThemeProvider } from "../lib/theme";
 import appCss from "../styles.css?url";
 
 const getAuth = createServerFn({ method: "GET" }).handler(async () => {
@@ -84,14 +85,16 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: React.ReactNode }) {
 	return (
-		<html lang="en">
+		<html lang="en" className="dark">
 			<head>
 				<HeadContent />
 			</head>
 			<body className="bg-bg-canvas">
-				<Header />
-				{children}
-				<Footer />
+				<ThemeProvider>
+					<Header />
+					{children}
+					<Footer />
+				</ThemeProvider>
 				<TanStackDevtools
 					config={{
 						position: "bottom-right",

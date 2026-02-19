@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { useMemo, useState } from "react";
 import { api } from "../../convex/_generated/api";
+import { PageHeader } from "@/components/PageHeader";
 import { StackArtifactCard } from "@/features/landing/components/StackArtifactCard";
 import {
 	filterPreviewStacks,
@@ -9,6 +10,38 @@ import {
 	type LandingStackPreview,
 } from "@/features/landing/sections/FeaturedStacksSection";
 import { cn } from "@/lib/utils";
+
+function getCategoryBgColor(category: string): string {
+	const colors: Record<string, string> = {
+		coding: "bg-purple-500 text-white",
+		thinking: "bg-blue-500 text-white",
+		text: "bg-emerald-500 text-white",
+		research: "bg-amber-500 text-black",
+		voice: "bg-pink-500 text-white",
+		image: "bg-orange-500 text-white",
+		video: "bg-red-500 text-white",
+		design: "bg-cyan-500 text-black",
+		automation: "bg-indigo-500 text-white",
+		notes: "bg-teal-500 text-white",
+	};
+	return colors[category.toLowerCase()] || "bg-accent-lime text-accent-lime-contrast";
+}
+
+function getCategoryHoverBorder(category: string): string {
+	const colors: Record<string, string> = {
+		coding: "hover:border-purple-500",
+		thinking: "hover:border-blue-500",
+		text: "hover:border-emerald-500",
+		research: "hover:border-amber-500",
+		voice: "hover:border-pink-500",
+		image: "hover:border-orange-500",
+		video: "hover:border-red-500",
+		design: "hover:border-cyan-500",
+		automation: "hover:border-indigo-500",
+		notes: "hover:border-teal-500",
+	};
+	return colors[category.toLowerCase()] || "hover:border-accent-lime";
+}
 
 export const Route = createFileRoute("/stacks/")({
 	ssr: false,
@@ -45,18 +78,12 @@ function BrowseStacksPage() {
 	return (
 		<div className="min-h-screen bg-bg-canvas">
 			<section className="py-24 px-6 md:px-12">
-				<div className="mx-auto max-w-[1920px]">
-					{/* Section Header */}
-					<div className="flex items-baseline gap-4 mb-12 border-b-2 border-stroke-strong pb-4">
-						<span className="font-mono text-accent-lime text-xl">/</span>
-						<h1 className="text-4xl md:text-6xl font-bold tracking-tighter uppercase text-fg-primary">
-							All Stacks
-						</h1>
-					</div>
-
-					<p className="text-xl text-fg-secondary mb-12 max-w-2xl">
-						See what tools real builders are paying for. Filter, compare, and find the stack that fits your needs.
-					</p>
+				<div className="mx-auto max-w-content">
+					<PageHeader
+						label="STACK_BROWSER"
+						title="ALL STACKS"
+						description="See what tools real builders are paying for. Filter, compare, and find the stack that fits your needs."
+					/>
 
 					{/* Filter Pills */}
 					<div className="flex flex-col md:flex-row gap-4 mb-12 font-mono text-sm">
@@ -66,10 +93,15 @@ function BrowseStacksPage() {
 								type="button"
 								onClick={() => setToolFilter(filter.id)}
 								className={cn(
-									"px-4 py-2 uppercase font-bold transition-colors",
+									"px-4 py-2 uppercase font-bold transition-colors border",
 									toolFilter === filter.id
-										? "bg-accent-lime text-accent-lime-contrast"
-										: "bg-bg-canvas text-fg-muted border border-stroke-strong hover:border-accent-lime hover:text-fg-primary"
+										? filter.id === "all"
+											? "bg-accent-lime text-accent-lime-contrast border-accent-lime"
+											: `${getCategoryBgColor(filter.id)} border-transparent`
+										: cn(
+												"bg-bg-canvas text-fg-muted border-stroke-strong hover:text-fg-primary",
+												filter.id === "all" ? "hover:border-accent-lime" : getCategoryHoverBorder(filter.id)
+											)
 								)}
 							>
 								{filter.label} {filter.count && `(${filter.count})`}
