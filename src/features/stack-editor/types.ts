@@ -7,6 +7,34 @@ type StackResource = {
 	url: string;
 };
 
+type PromptItem = {
+	name: string;
+	description: string;
+	content?: string;
+};
+
+type RuleItem = {
+	name: string;
+	description: string;
+};
+
+type SkillItem = {
+	name: string;
+	description: string;
+	trigger?: string;
+};
+
+type McpItem = {
+	name: string;
+	purpose: string;
+	url?: string;
+};
+
+type ModelItem = {
+	name: string;
+	role: string;
+};
+
 type CreatorProfile = {
 	_id: Id<"creators">;
 	name: string;
@@ -22,10 +50,11 @@ type StackEditorInitialValue = {
 	oneLiner: string;
 	description?: string;
 	stackUrl?: string;
-	prompts?: boolean;
-	rules?: boolean;
-	skills?: boolean;
-	mcps?: boolean;
+	prompts?: PromptItem[];
+	rules?: RuleItem[];
+	skills?: SkillItem[];
+	mcps?: McpItem[];
+	models?: ModelItem[];
 	resources?: StackResource[];
 	teamSize?: number;
 	published: boolean;
@@ -35,15 +64,21 @@ type StackEditorInitialValue = {
 
 type StackMetadataUpdates = {
 	stackUrl?: string;
-	prompts?: boolean;
-	rules?: boolean;
-	skills?: boolean;
-	mcps?: boolean;
+	prompts?: PromptItem[];
+	rules?: RuleItem[];
+	skills?: SkillItem[];
+	mcps?: McpItem[];
+	models?: ModelItem[];
 	resources?: StackResource[];
 };
 
 export type {
 	CreatorProfile,
+	McpItem,
+	ModelItem,
+	PromptItem,
+	RuleItem,
+	SkillItem,
 	StackEditorInitialValue,
 	StackEditorMode,
 	StackMetadataUpdates,

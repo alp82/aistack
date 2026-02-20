@@ -29,10 +29,30 @@ The bundle is incredible value — for $15/mo I get access to Replit, Bolt, Lova
 
 The real power of this stack comes from the **4 custom skills** I've built for Windsurf. They handle everything from automated code review to deployment pipelines. Combined with **3 system prompts** and **2 MCP servers**, my AI agents understand context that would normally require extensive manual explanation.`,
     stackUrl: "https://github.com/alp82/aistack",
-    prompts: true,
-    rules: true,
-    skills: true,
-    mcps: true,
+    prompts: [
+      { name: "Code Review", description: "Automated code review with best practices and security checks" },
+      { name: "Architecture Planning", description: "System design and architecture decision prompts" },
+      { name: "Documentation", description: "Generate comprehensive documentation from code" },
+    ],
+    rules: [
+      { name: "TypeScript Strict", description: "Enforce strict TypeScript patterns and type safety" },
+      { name: "Clean Code", description: "Follow clean code principles and naming conventions" },
+    ],
+    skills: [
+      { name: "Deploy Pipeline", description: "Automated deployment to production", trigger: "/deploy" },
+      { name: "Test Generator", description: "Generate unit and integration tests", trigger: "/test" },
+      { name: "Refactor", description: "Intelligent code refactoring suggestions", trigger: "/refactor" },
+      { name: "Debug Helper", description: "Systematic debugging assistance", trigger: "/debug" },
+    ],
+    mcps: [
+      { name: "GitHub", purpose: "Repository management and PR automation", url: "https://github.com" },
+      { name: "Supabase", purpose: "Database queries and schema management", url: "https://supabase.com" },
+    ],
+    models: [
+      { name: "Claude 3.5 Sonnet", role: "Primary coding and architecture" },
+      { name: "GPT-4o", role: "Quick questions and brainstorming" },
+      { name: "Gemini Pro", role: "Multimodal tasks and research" },
+    ],
     resources: [
       { label: "How I use AI Skills", url: "https://x.com/alperortac/status/example" },
     ],
@@ -167,6 +187,29 @@ The real power of this stack comes from the **4 custom skills** I've built for W
     creatorSlug: "anthony",
     oneLiner:
       "I'm on the $200 a month Claude plan and personally I haven't felt like I needed anything else. I use regular VS code so cursor isn't necessary and then just have the Claude CLI tool directly in my terminal.",
+    description: `## The All-In Claude Approach
+
+I went all-in on Claude Max at $200/month and it's been worth every penny. Here's why this minimal stack works for me:
+
+### Why Claude Max?
+
+The **Claude Max** plan gives me unlimited access to Claude's most powerful models. I don't have to think about rate limits or switching between tools — it's just one subscription that handles everything.
+
+### Terminal-First Workflow
+
+I use **VS Code** (not Cursor) because I prefer having Claude Code directly in my terminal. The CLI-based workflow feels more natural to me:
+
+- Run \`claude\` in any directory to start a coding session
+- The agent understands my full project context
+- No need for IDE-specific integrations
+
+### Video Content with Higgsfield
+
+For marketing and social media, I use **Higgsfield AI** to generate video content. It's surprisingly good at creating engaging clips from simple prompts.
+
+### The Philosophy
+
+My approach is simple: find one tool that does most things well, rather than juggling multiple subscriptions. Claude Max is that tool for me.`,
     toolSubscriptions: [
       {
         toolSlug: "claude-max",
@@ -215,6 +258,26 @@ The real power of this stack comes from the **4 custom skills** I've built for W
     creatorSlug: "chase-myers",
     oneLiner:
       "Cursor Pro $20 subscription. I usually use Auto Mode to stay within budget. Sometimes I decide to use OPUS 4.5. I have the Codex extension installed as well.",
+    description: `## Budget-Conscious Cursor Setup
+
+I keep my AI coding costs under control with a simple two-tool setup.
+
+### Cursor Pro with Auto Mode
+
+**Cursor Pro** at $20/month is my main IDE. The key to staying within budget is using **Auto Mode** — it automatically picks the best model for each task, balancing quality and cost.
+
+When I need maximum power for complex refactoring or architecture decisions, I manually switch to **Claude Opus 4.5**. This adds to my usage costs but it's worth it for the hard problems.
+
+### The Codex Extension
+
+I also run the **Codex extension** powered by ChatGPT Plus. It provides inline code suggestions as I type, which speeds up my workflow significantly.
+
+### Cost Breakdown
+
+- Base: $40/month (Cursor Pro + ChatGPT Plus)
+- Variable: Up to $30 extra when I use premium models heavily
+
+This setup gives me flexibility — I can keep costs low during routine work and scale up when I need more power.`,
     toolSubscriptions: [
       {
         toolSlug: "cursor",
@@ -249,6 +312,34 @@ The real power of this stack comes from the **4 custom skills** I've built for W
     creatorSlug: "will-ness",
     oneLiner:
       "Claude Max + Claude Code + Wispr Flow + Perplexity. See my article for the full setup.",
+    description: `## Voice-First AI Development
+
+My stack is optimized for hands-free coding and deep research. Here's how it all fits together:
+
+### Claude Max + Claude Code
+
+The **Claude Max** $100/month plan is my foundation. It includes **Claude Code** which I run directly in my terminal. The combination is incredibly powerful for:
+
+- Complex refactoring across large codebases
+- Architecture decisions with full context
+- Writing documentation and tests
+
+### Voice Input with Wispr Flow
+
+**Wispr Flow** is a game-changer. I dictate code, comments, and even commit messages. It's trained on technical vocabulary so it handles programming terms accurately.
+
+My typical workflow:
+1. Think through the problem out loud
+2. Wispr transcribes my thoughts
+3. Claude Code implements the solution
+
+### Research with Perplexity
+
+For staying current with new libraries, APIs, and best practices, **Perplexity Pro** is essential. It searches the web and synthesizes answers with citations.
+
+### The Result
+
+This stack lets me code faster while reducing RSI strain. The voice-first approach also helps me think more clearly about problems.`,
     resources: [
       { label: "Full setup article", url: "https://x.com/N3sOnline/status/example" },
     ],

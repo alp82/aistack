@@ -1,6 +1,11 @@
 import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
 import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
 import type {
+	McpItem,
+	ModelItem,
+	PromptItem,
+	RuleItem,
+	SkillItem,
 	StackEditorInitialValue,
 	StackMetadataUpdates,
 	StackResource,
@@ -14,10 +19,11 @@ type EditorState = {
 	oneLiner: string;
 	description: string;
 	stackUrl?: string;
-	prompts?: boolean;
-	rules?: boolean;
-	skills?: boolean;
-	mcps?: boolean;
+	prompts: PromptItem[];
+	rules: RuleItem[];
+	skills: SkillItem[];
+	mcps: McpItem[];
+	models: ModelItem[];
 	resources: StackResource[];
 	isTeam: boolean;
 	teamSize: number;
@@ -34,10 +40,11 @@ type GuestStackDraft = {
 	oneLiner: string;
 	description: string;
 	stackUrl?: string;
-	prompts?: boolean;
-	rules?: boolean;
-	skills?: boolean;
-	mcps?: boolean;
+	prompts: PromptItem[];
+	rules: RuleItem[];
+	skills: SkillItem[];
+	mcps: McpItem[];
+	models: ModelItem[];
 	resources: StackResource[];
 	isTeam: boolean;
 	teamSize: number;
@@ -100,10 +107,11 @@ function getInitialEditorState(args: {
 		oneLiner: initialValue?.oneLiner ?? "",
 		description: initialValue?.description ?? "",
 		stackUrl: initialValue?.stackUrl,
-		prompts: initialValue?.prompts,
-		rules: initialValue?.rules,
-		skills: initialValue?.skills,
-		mcps: initialValue?.mcps,
+		prompts: initialValue?.prompts ?? [],
+		rules: initialValue?.rules ?? [],
+		skills: initialValue?.skills ?? [],
+		mcps: initialValue?.mcps ?? [],
+		models: initialValue?.models ?? [],
 		resources: initialValue?.resources ?? [],
 		isTeam: (initialValue?.teamSize ?? 0) > 0,
 		teamSize: initialValue?.teamSize ?? 2,
@@ -175,6 +183,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 				rules: draft.rules ?? state.rules,
 				skills: draft.skills ?? state.skills,
 				mcps: draft.mcps ?? state.mcps,
+				models: draft.models ?? state.models,
 				resources: draft.resources ?? state.resources,
 				isTeam: draft.isTeam ?? state.isTeam,
 				teamSize: draft.teamSize ?? state.teamSize,

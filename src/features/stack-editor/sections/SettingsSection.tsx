@@ -2,14 +2,15 @@ import { MetadataEditor } from "@/components/MetadataEditor";
 import { SectionCard } from "@/components/system/SectionCard";
 import type { EditorSectionStatus } from "@/features/stack-editor/editor-status";
 import { SectionStatusBadge } from "@/features/stack-editor/sections/SectionStatusBadge";
-import type { StackMetadataUpdates, StackResource } from "@/features/stack-editor/types";
+import type { McpItem, ModelItem, PromptItem, RuleItem, SkillItem, StackMetadataUpdates, StackResource } from "@/features/stack-editor/types";
 
 type SettingsSectionProps = {
 	stackUrl?: string;
-	prompts?: boolean;
-	rules?: boolean;
-	skills?: boolean;
-	mcps?: boolean;
+	prompts: PromptItem[];
+	rules: RuleItem[];
+	skills: SkillItem[];
+	mcps: McpItem[];
+	models: ModelItem[];
 	resources: StackResource[];
 	onUpdate: (updates: StackMetadataUpdates) => void;
 	status: EditorSectionStatus;
@@ -22,6 +23,7 @@ export function SettingsSection({
 	rules,
 	skills,
 	mcps,
+	models,
 	resources,
 	onUpdate,
 	status,
@@ -40,6 +42,7 @@ export function SettingsSection({
 				rules={rules}
 				skills={skills}
 				mcps={mcps}
+				models={models}
 				resources={resources}
 				onUpdate={onUpdate}
 			/>

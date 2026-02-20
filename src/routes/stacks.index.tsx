@@ -3,11 +3,14 @@ import { useQuery } from "convex/react";
 import { useMemo, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { PageHeader } from "@/components/PageHeader";
+import { SortDropdown } from "@/components/SortDropdown";
 import { StackArtifactCard } from "@/features/landing/components/StackArtifactCard";
 import {
 	filterPreviewStacks,
 	getCategoryOptions,
+	SORT_OPTIONS,
 	type LandingStackPreview,
+	type SortOption,
 } from "@/features/landing/sections/FeaturedStacksSection";
 import { cn } from "@/lib/utils";
 
@@ -63,11 +66,12 @@ export const Route = createFileRoute("/stacks/")({
 function BrowseStacksPage() {
 	const stacks = (useQuery(api.stacks.listPublished) ?? []) as LandingStackPreview[];
 	const [toolFilter, setToolFilter] = useState<string>("all");
+	const [sortOption, setSortOption] = useState<SortOption>("newest");
 
 	const categoryOptions = useMemo(() => getCategoryOptions(stacks), [stacks]);
 	const filteredStacks = useMemo(
-		() => filterPreviewStacks(stacks, "all", toolFilter),
-		[stacks, toolFilter],
+		() => filterPreviewStacks(stacks, "all", toolFilter, sortOption),
+		[stacks, toolFilter, sortOption],
 	);
 
 	const allFilters = [
@@ -85,28 +89,37 @@ function BrowseStacksPage() {
 						description="See what tools real builders are paying for. Filter, compare, and find the stack that fits your needs."
 					/>
 
-					{/* Filter Pills */}
-					<div className="flex flex-col md:flex-row gap-4 mb-12 font-mono text-sm">
-						{allFilters.map((filter) => (
-							<button
-								key={filter.id}
-								type="button"
-								onClick={() => setToolFilter(filter.id)}
-								className={cn(
-									"px-4 py-2 uppercase font-bold transition-colors border",
-									toolFilter === filter.id
-										? filter.id === "all"
-											? "bg-accent-lime text-accent-lime-contrast border-accent-lime"
-											: `${getCategoryBgColor(filter.id)} border-transparent`
-										: cn(
-												"bg-bg-canvas text-fg-muted border-stroke-strong hover:text-fg-primary",
-												filter.id === "all" ? "hover:border-accent-lime" : getCategoryHoverBorder(filter.id)
-											)
-								)}
-							>
-								{filter.label} {filter.count && `(${filter.count})`}
-							</button>
-						))}
+					{/* Filter Pills + Sorting */}
+					<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-12 font-mono text-sm">
+						<div className="flex flex-wrap gap-2">
+							{allFilters.map((filter) => (
+								<button
+									key={filter.id}
+									type="button"
+									onClick={() => setToolFilter(filter.id)}
+									className={cn(
+										"px-4 py-2 uppercase font-bold transition-colors border",
+										toolFilter === filter.id
+											? filter.id === "all"
+												? "bg-accent-lime text-accent-lime-contrast border-accent-lime"
+												: `${getCategoryBgColor(filter.id)} border-transparent`
+											: cn(
+													"bg-bg-canvas text-fg-muted border-stroke-strong hover:text-fg-primary",
+													filter.id === "all" ? "hover:border-accent-lime" : getCategoryHoverBorder(filter.id)
+												)
+									)}
+								>
+									{filter.label} {filter.count && `(${filter.count})`}
+								</button>
+							))}
+						</div>
+
+						{/* Sort Dropdown */}
+						<SortDropdown
+							options={SORT_OPTIONS}
+							value={sortOption}
+							onChange={setSortOption}
+						/>
 					</div>
 
 					{stacks.length === 0 ? (

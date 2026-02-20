@@ -19,6 +19,7 @@ const stacks: LandingStackPreview[] = [
 			{ _id: "t1", name: "n8n", iconUrl: null, category: "automation" },
 			{ _id: "t2", name: "Cursor", iconUrl: null, category: "coding" },
 		],
+		upvoteCount: 0,
 	},
 	{
 		_id: "team-automation",
@@ -32,6 +33,7 @@ const stacks: LandingStackPreview[] = [
 			{ _id: "t3", name: "Zapier", iconUrl: null, category: "automation" },
 			{ _id: "t4", name: "Notion", iconUrl: null, category: "notes" },
 		],
+		upvoteCount: 5,
 	},
 	{
 		_id: "team-design",
@@ -45,6 +47,7 @@ const stacks: LandingStackPreview[] = [
 			{ _id: "t5", name: "Figma", iconUrl: null, category: "design" },
 			{ _id: "t6", name: "Framer", iconUrl: null, category: "design" },
 		],
+		upvoteCount: 10,
 	},
 ];
 

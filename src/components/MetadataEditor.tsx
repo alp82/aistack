@@ -1,39 +1,136 @@
-import { ExternalLink, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, ExternalLink, Plus, Trash2 } from "lucide-react";
+import type { ReactNode } from "react";
 import { useId, useState } from "react";
 import { isValidHttpUrl } from "@/features/stack-editor/editor-status";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Switch } from "./ui/switch";
 
 interface Resource {
 	label: string;
 	url: string;
 }
 
+interface PromptItem {
+	name: string;
+	description: string;
+	content?: string;
+}
+
+interface RuleItem {
+	name: string;
+	description: string;
+}
+
+interface SkillItem {
+	name: string;
+	description: string;
+	trigger?: string;
+}
+
+interface McpItem {
+	name: string;
+	purpose: string;
+	url?: string;
+}
+
+interface ModelItem {
+	name: string;
+	role: string;
+}
+
 interface MetadataEditorProps {
 	stackUrl?: string;
-	prompts?: boolean;
-	rules?: boolean;
-	skills?: boolean;
-	mcps?: boolean;
+	prompts: PromptItem[];
+	rules: RuleItem[];
+	skills: SkillItem[];
+	mcps: McpItem[];
+	models: ModelItem[];
 	resources: Resource[];
 	onUpdate: (updates: {
 		stackUrl?: string;
-		prompts?: boolean;
-		rules?: boolean;
-		skills?: boolean;
-		mcps?: boolean;
+		prompts?: PromptItem[];
+		rules?: RuleItem[];
+		skills?: SkillItem[];
+		mcps?: McpItem[];
+		models?: ModelItem[];
 		resources?: Resource[];
 	}) => void;
 }
 
-const metaFlags = [
-	{ key: "prompts" as const, label: "Prompts" },
-	{ key: "rules" as const, label: "Rules" },
-	{ key: "skills" as const, label: "Skills" },
-	{ key: "mcps" as const, label: "MCPs" },
-] as const;
+type ArraySectionProps<T> = {
+	title: string;
+	description: string;
+	items: T[];
+	isExpanded: boolean;
+	onToggle: () => void;
+	onAdd: () => void;
+	onRemove: (index: number) => void;
+	renderItem: (item: T, index: number) => ReactNode;
+};
+
+function ArraySection<T>({
+	title,
+	description,
+	items,
+	isExpanded,
+	onToggle,
+	onAdd,
+	onRemove,
+	renderItem,
+}: ArraySectionProps<T>) {
+	return (
+		<div className="border border-gray-700 rounded-md">
+			<button
+				type="button"
+				onClick={onToggle}
+				className="flex w-full items-center justify-between p-3 text-left hover:bg-slate-700/30"
+			>
+				<div>
+					<span className="text-sm font-medium text-gray-300">
+						{title}
+						{items.length > 0 && (
+							<span className="ml-2 text-cyan-400">({items.length})</span>
+						)}
+					</span>
+					<p className="text-xs text-gray-500">{description}</p>
+				</div>
+				{isExpanded ? (
+					<ChevronUp className="size-4 text-gray-500" />
+				) : (
+					<ChevronDown className="size-4 text-gray-500" />
+				)}
+			</button>
+			{isExpanded && (
+				<div className="space-y-2 border-t border-gray-700 p-3">
+					{items.map((item, index) => (
+						<div key={index} className="relative border border-gray-600 bg-slate-700/30 p-3 rounded">
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() => onRemove(index)}
+								className="absolute right-1 top-1 size-6 text-gray-500 hover:text-red-400"
+							>
+								<Trash2 className="size-3.5" />
+							</Button>
+							{renderItem(item, index)}
+						</div>
+					))}
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onClick={onAdd}
+						className="w-full border border-dashed border-gray-600 text-gray-400 hover:border-cyan-500 hover:text-cyan-400"
+					>
+						<Plus className="mr-1 size-4" />
+						Add {title.slice(0, -1)}
+					</Button>
+				</div>
+			)}
+		</div>
+	);
+}
 
 export function MetadataEditor({
 	stackUrl,
@@ -41,6 +138,7 @@ export function MetadataEditor({
 	rules,
 	skills,
 	mcps,
+	models,
 	resources,
 	onUpdate,
 }: MetadataEditorProps) {
@@ -49,8 +147,7 @@ export function MetadataEditor({
 	const stackUrlInputId = useId();
 	const stackUrlErrorId = `${stackUrlInputId}-error`;
 
-	const flags = { prompts, rules, skills, mcps };
-
+	const [expandedSection, setExpandedSection] = useState<string | null>(null);
 	const [expandedResource, setExpandedResource] = useState<number | null>(null);
 	const trimmedStackUrl = stackUrl?.trim() ?? "";
 	const stackUrlInvalid = trimmedStackUrl.length > 0 && !isValidHttpUrl(trimmedStackUrl);
@@ -105,34 +202,84 @@ export function MetadataEditor({
 				</p>
 			</div>
 
-			<div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-				{metaFlags.map((flag) => {
-					const isEnabled = flags[flag.key] ?? false;
-					return (
-						<Button
-							key={flag.key}
-							variant="ghost"
-							onClick={() => onUpdate({ [flag.key]: !isEnabled })}
-							className={`w-full h-auto justify-between rounded-md px-3 py-2 border transition-all cursor-pointer ${
-								isEnabled
-									? "bg-cyan-500/20 border-cyan-500/50 hover:bg-cyan-500/30"
-									: "bg-slate-700/30 border-gray-700 hover:bg-slate-700/50"
-							}`}
-						>
-							<Label
-								className={`text-sm cursor-pointer ${
-									isEnabled ? "text-cyan-300 font-medium" : "text-gray-300"
-								}`}
-							>
-								{flag.label}
-							</Label>
-							<Switch
-								checked={isEnabled}
-								onCheckedChange={(checked) => onUpdate({ [flag.key]: checked })}
-							/>
-						</Button>
-					);
-				})}
+			<div className="space-y-3">
+				<ArraySection
+					title="Prompts"
+					description="Custom prompts for AI tools"
+					items={prompts}
+					isExpanded={expandedSection === "prompts"}
+					onToggle={() => setExpandedSection(expandedSection === "prompts" ? null : "prompts")}
+					onAdd={() => onUpdate({ prompts: [...prompts, { name: "", description: "" }] })}
+					onRemove={(index) => onUpdate({ prompts: prompts.filter((_, i) => i !== index) })}
+					renderItem={(item, index) => (
+						<div className="space-y-2 pr-6">
+							<Input value={item.name} onChange={(e) => { const u = [...prompts]; u[index] = { ...item, name: e.target.value }; onUpdate({ prompts: u }); }} placeholder="Name" className="bg-slate-700/50 border-gray-600 text-white text-sm" />
+							<Input value={item.description} onChange={(e) => { const u = [...prompts]; u[index] = { ...item, description: e.target.value }; onUpdate({ prompts: u }); }} placeholder="Description" className="bg-slate-700/50 border-gray-600 text-white text-sm" />
+						</div>
+					)}
+				/>
+				<ArraySection
+					title="Rules"
+					description="Coding rules and guidelines"
+					items={rules}
+					isExpanded={expandedSection === "rules"}
+					onToggle={() => setExpandedSection(expandedSection === "rules" ? null : "rules")}
+					onAdd={() => onUpdate({ rules: [...rules, { name: "", description: "" }] })}
+					onRemove={(index) => onUpdate({ rules: rules.filter((_, i) => i !== index) })}
+					renderItem={(item, index) => (
+						<div className="space-y-2 pr-6">
+							<Input value={item.name} onChange={(e) => { const u = [...rules]; u[index] = { ...item, name: e.target.value }; onUpdate({ rules: u }); }} placeholder="Name" className="bg-slate-700/50 border-gray-600 text-white text-sm" />
+							<Input value={item.description} onChange={(e) => { const u = [...rules]; u[index] = { ...item, description: e.target.value }; onUpdate({ rules: u }); }} placeholder="Description" className="bg-slate-700/50 border-gray-600 text-white text-sm" />
+						</div>
+					)}
+				/>
+				<ArraySection
+					title="Skills"
+					description="Reusable skill definitions"
+					items={skills}
+					isExpanded={expandedSection === "skills"}
+					onToggle={() => setExpandedSection(expandedSection === "skills" ? null : "skills")}
+					onAdd={() => onUpdate({ skills: [...skills, { name: "", description: "" }] })}
+					onRemove={(index) => onUpdate({ skills: skills.filter((_, i) => i !== index) })}
+					renderItem={(item, index) => (
+						<div className="space-y-2 pr-6">
+							<Input value={item.name} onChange={(e) => { const u = [...skills]; u[index] = { ...item, name: e.target.value }; onUpdate({ skills: u }); }} placeholder="Name" className="bg-slate-700/50 border-gray-600 text-white text-sm" />
+							<Input value={item.description} onChange={(e) => { const u = [...skills]; u[index] = { ...item, description: e.target.value }; onUpdate({ skills: u }); }} placeholder="Description" className="bg-slate-700/50 border-gray-600 text-white text-sm" />
+							<Input value={item.trigger ?? ""} onChange={(e) => { const u = [...skills]; u[index] = { ...item, trigger: e.target.value || undefined }; onUpdate({ skills: u }); }} placeholder="Trigger (e.g., /deploy)" className="bg-slate-700/50 border-gray-600 text-white text-sm" />
+						</div>
+					)}
+				/>
+				<ArraySection
+					title="MCPs"
+					description="Model Context Protocols"
+					items={mcps}
+					isExpanded={expandedSection === "mcps"}
+					onToggle={() => setExpandedSection(expandedSection === "mcps" ? null : "mcps")}
+					onAdd={() => onUpdate({ mcps: [...mcps, { name: "", purpose: "" }] })}
+					onRemove={(index) => onUpdate({ mcps: mcps.filter((_, i) => i !== index) })}
+					renderItem={(item, index) => (
+						<div className="space-y-2 pr-6">
+							<Input value={item.name} onChange={(e) => { const u = [...mcps]; u[index] = { ...item, name: e.target.value }; onUpdate({ mcps: u }); }} placeholder="Name" className="bg-slate-700/50 border-gray-600 text-white text-sm" />
+							<Input value={item.purpose} onChange={(e) => { const u = [...mcps]; u[index] = { ...item, purpose: e.target.value }; onUpdate({ mcps: u }); }} placeholder="Purpose" className="bg-slate-700/50 border-gray-600 text-white text-sm" />
+							<Input value={item.url ?? ""} onChange={(e) => { const u = [...mcps]; u[index] = { ...item, url: e.target.value || undefined }; onUpdate({ mcps: u }); }} placeholder="URL (optional)" className="bg-slate-700/50 border-gray-600 text-white text-sm" />
+						</div>
+					)}
+				/>
+				<ArraySection
+					title="Models"
+					description="AI models used in your workflow"
+					items={models}
+					isExpanded={expandedSection === "models"}
+					onToggle={() => setExpandedSection(expandedSection === "models" ? null : "models")}
+					onAdd={() => onUpdate({ models: [...models, { name: "", role: "" }] })}
+					onRemove={(index) => onUpdate({ models: models.filter((_, i) => i !== index) })}
+					renderItem={(item, index) => (
+						<div className="space-y-2 pr-6">
+							<Input value={item.name} onChange={(e) => { const u = [...models]; u[index] = { ...item, name: e.target.value }; onUpdate({ models: u }); }} placeholder="Model name" className="bg-slate-700/50 border-gray-600 text-white text-sm" />
+							<Input value={item.role} onChange={(e) => { const u = [...models]; u[index] = { ...item, role: e.target.value }; onUpdate({ models: u }); }} placeholder="Role" className="bg-slate-700/50 border-gray-600 text-white text-sm" />
+						</div>
+					)}
+				/>
 			</div>
 
 			<div className="space-y-2">

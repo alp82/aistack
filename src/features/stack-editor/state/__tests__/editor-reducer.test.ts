@@ -42,19 +42,19 @@ describe("editor reducer", () => {
 			type: "metadata/updated",
 			updates: {
 				stackUrl: "https://example.com",
-				prompts: true,
-				rules: false,
-				skills: true,
-				mcps: true,
+				prompts: [{ name: "Test Prompt", description: "A test prompt" }],
+				rules: [],
+				skills: [{ name: "Test Skill", description: "A test skill" }],
+				mcps: [{ name: "Test MCP", purpose: "Testing" }],
 				resources: [{ label: "Guide", url: "https://example.com/guide" }],
 			},
 		});
 
 		expect(nextState.stackUrl).toBe("https://example.com");
-		expect(nextState.prompts).toBe(true);
-		expect(nextState.rules).toBe(false);
-		expect(nextState.skills).toBe(true);
-		expect(nextState.mcps).toBe(true);
+		expect(nextState.prompts).toHaveLength(1);
+		expect(nextState.rules).toHaveLength(0);
+		expect(nextState.skills).toHaveLength(1);
+		expect(nextState.mcps).toHaveLength(1);
 		expect(nextState.resources).toEqual([{ label: "Guide", url: "https://example.com/guide" }]);
 	});
 

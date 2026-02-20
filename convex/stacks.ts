@@ -1,6 +1,34 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 
+const PromptItemValidator = v.object({
+  name: v.string(),
+  description: v.string(),
+  content: v.optional(v.string()),
+})
+
+const RuleItemValidator = v.object({
+  name: v.string(),
+  description: v.string(),
+})
+
+const SkillItemValidator = v.object({
+  name: v.string(),
+  description: v.string(),
+  trigger: v.optional(v.string()),
+})
+
+const McpItemValidator = v.object({
+  name: v.string(),
+  purpose: v.string(),
+  url: v.optional(v.string()),
+})
+
+const ModelItemValidator = v.object({
+  name: v.string(),
+  role: v.string(),
+})
+
 const MoneyValidator = v.object({
   currency: v.string(),
   amount: v.number(),
@@ -69,6 +97,7 @@ export const listPublished = query({
       usageTotalNotes: v.optional(v.string()),
       creator: CreatorValidator,
       tools: v.array(ToolValidator),
+      upvoteCount: v.number(),
     })
   ),
   handler: async (ctx) => {
@@ -102,6 +131,11 @@ export const listPublished = query({
         })
       }
 
+      const upvotes = await ctx.db
+        .query('stackUpvotes')
+        .withIndex('by_stackId', (q) => q.eq('stackId', stack._id))
+        .collect()
+
       results.push({
         _id: stack._id,
         _creationTime: stack._creationTime,
@@ -121,6 +155,7 @@ export const listPublished = query({
           projectPages: creator.projectPages,
         },
         tools,
+        upvoteCount: upvotes.length,
       })
     }
 
@@ -158,10 +193,11 @@ export const create = mutation({
     oneLiner: v.string(),
     description: v.optional(v.string()),
     stackUrl: v.optional(v.string()),
-    prompts: v.optional(v.boolean()),
-    rules: v.optional(v.boolean()),
-    skills: v.optional(v.boolean()),
-    mcps: v.optional(v.boolean()),
+    prompts: v.optional(v.array(PromptItemValidator)),
+    rules: v.optional(v.array(RuleItemValidator)),
+    skills: v.optional(v.array(SkillItemValidator)),
+    mcps: v.optional(v.array(McpItemValidator)),
+    models: v.optional(v.array(ModelItemValidator)),
     resources: v.optional(v.array(v.object({ label: v.string(), url: v.string() }))),
     teamSize: v.optional(v.number()),
     toolSubscriptions: v.array(ToolSubscriptionInput),
@@ -230,6 +266,7 @@ export const create = mutation({
       rules: args.rules,
       skills: args.skills,
       mcps: args.mcps,
+      models: args.models,
       resources: args.resources,
       teamSize: args.teamSize,
       toolSubscriptions: args.toolSubscriptions,
@@ -251,10 +288,11 @@ export const update = mutation({
     oneLiner: v.optional(v.string()),
     description: v.optional(v.string()),
     stackUrl: v.optional(v.string()),
-    prompts: v.optional(v.boolean()),
-    rules: v.optional(v.boolean()),
-    skills: v.optional(v.boolean()),
-    mcps: v.optional(v.boolean()),
+    prompts: v.optional(v.array(PromptItemValidator)),
+    rules: v.optional(v.array(RuleItemValidator)),
+    skills: v.optional(v.array(SkillItemValidator)),
+    mcps: v.optional(v.array(McpItemValidator)),
+    models: v.optional(v.array(ModelItemValidator)),
     resources: v.optional(v.array(v.object({ label: v.string(), url: v.string() }))),
     teamSize: v.optional(v.number()),
     toolSubscriptions: v.optional(v.array(ToolSubscriptionInput)),
@@ -281,6 +319,7 @@ export const update = mutation({
     if (args.rules !== undefined) patch.rules = args.rules
     if (args.skills !== undefined) patch.skills = args.skills
     if (args.mcps !== undefined) patch.mcps = args.mcps
+    if (args.models !== undefined) patch.models = args.models
     if (args.resources !== undefined) patch.resources = args.resources
     if (args.teamSize !== undefined) patch.teamSize = args.teamSize
     if (args.toolSubscriptions !== undefined) patch.toolSubscriptions = args.toolSubscriptions
@@ -323,10 +362,11 @@ export const getForEdit = query({
       oneLiner: v.string(),
       description: v.optional(v.string()),
       stackUrl: v.optional(v.string()),
-      prompts: v.optional(v.boolean()),
-      rules: v.optional(v.boolean()),
-      skills: v.optional(v.boolean()),
-      mcps: v.optional(v.boolean()),
+      prompts: v.optional(v.array(PromptItemValidator)),
+      rules: v.optional(v.array(RuleItemValidator)),
+      skills: v.optional(v.array(SkillItemValidator)),
+      mcps: v.optional(v.array(McpItemValidator)),
+      models: v.optional(v.array(ModelItemValidator)),
       resources: v.optional(v.array(v.object({ label: v.string(), url: v.string() }))),
       teamSize: v.optional(v.number()),
       fixedTotal: v.optional(MoneyValidator),
@@ -421,6 +461,7 @@ export const getForEdit = query({
       rules: stack.rules,
       skills: stack.skills,
       mcps: stack.mcps,
+      models: stack.models,
       resources: stack.resources,
       teamSize: stack.teamSize,
       fixedTotal: stack.fixedTotal,
@@ -577,10 +618,11 @@ export const getBySlug = query({
       oneLiner: v.string(),
       description: v.optional(v.string()),
       stackUrl: v.optional(v.string()),
-      prompts: v.optional(v.boolean()),
-      rules: v.optional(v.boolean()),
-      skills: v.optional(v.boolean()),
-      mcps: v.optional(v.boolean()),
+      prompts: v.optional(v.array(PromptItemValidator)),
+      rules: v.optional(v.array(RuleItemValidator)),
+      skills: v.optional(v.array(SkillItemValidator)),
+      mcps: v.optional(v.array(McpItemValidator)),
+      models: v.optional(v.array(ModelItemValidator)),
       resources: v.optional(v.array(v.object({ label: v.string(), url: v.string() }))),
       teamSize: v.optional(v.number()),
       fixedTotal: v.optional(MoneyValidator),
@@ -654,6 +696,7 @@ export const getBySlug = query({
       rules: stack.rules,
       skills: stack.skills,
       mcps: stack.mcps,
+      models: stack.models,
       resources: stack.resources,
       teamSize: stack.teamSize,
       fixedTotal: stack.fixedTotal,

@@ -1,4 +1,6 @@
 import { ExternalLink, Plus } from "lucide-react";
+import { CategoryLabel } from "@/components/CategoryLabel";
+import { PriceDisplay } from "@/components/PriceDisplay";
 import { categoryConfig } from "@/config/categoryConfig";
 import { cn } from "@/lib/utils";
 
@@ -74,29 +76,55 @@ export function MainToolCard({ tool }: { tool: ToolData }) {
 	);
 }
 
-export function MiscToolCard({ tool }: { tool: ToolData }) {
+interface MiscToolCardProps {
+	tool: ToolData;
+	onBundleClick?: (bundleSlug: string) => void;
+}
+
+export function MiscToolCard({ tool, onBundleClick }: MiscToolCardProps) {
 	const config = categoryConfig[tool.category as keyof typeof categoryConfig];
 	const Icon = config?.icon || Plus;
 
 	return (
-		<div className="flex items-center gap-3 px-4 py-2.5 rounded-md bg-slate-800/30 border border-gray-700/50 hover:border-gray-600/50 transition-colors">
+		<div className="flex items-center gap-3 px-4 py-3 bg-bg-panel border-2 border-stroke-strong hover:border-accent-lime/50 transition-colors">
 			{tool.iconUrl ? (
-				<img src={tool.iconUrl} alt={tool.name} className="h-6 w-6 rounded object-contain bg-white p-0.5 flex-shrink-0" />
+				<img src={tool.iconUrl} alt={tool.name} className="size-8 shrink-0 border border-stroke-subtle bg-white object-contain p-1" />
 			) : (
-				<div className="h-6 w-6 rounded bg-gray-700 flex items-center justify-center flex-shrink-0">
-					<Icon className="h-3.5 w-3.5 text-gray-400" />
+				<div className="size-8 shrink-0 border border-stroke-subtle bg-bg-panel-muted flex items-center justify-center">
+					<Icon className="size-4 text-fg-muted" />
 				</div>
 			)}
-			<span className="text-sm font-medium text-gray-300 truncate">{tool.name}</span>
-			<span className={cn("inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full ml-auto flex-shrink-0", config?.bgColor || "bg-gray-700", config?.textColor || "text-gray-300")}>
-				{config?.label || tool.category}
-			</span>
+			<span className="text-sm font-semibold text-fg-primary truncate">{tool.name}</span>
+			<CategoryLabel category={tool.category} className="ml-auto shrink-0" />
+			{tool.websiteUrl && (
+				<a
+					href={tool.websiteUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="shrink-0 text-[10px] text-accent-lime hover:text-accent-lime-strong inline-flex items-center gap-0.5 font-mono uppercase tracking-wide"
+				>
+					Visit <ExternalLink className="size-2.5" />
+				</a>
+			)}
 			{tool.priceKind === "bundle" ? (
-				<span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full flex-shrink-0">Bundle</span>
+				<button
+					type="button"
+					onClick={() => tool.bundleSlug && onBundleClick?.(tool.bundleSlug)}
+					className="font-mono text-[10px] font-semibold uppercase tracking-wide bg-purple-500/20 text-purple-400 hover:text-purple-300 px-1.5 py-0.5 shrink-0 cursor-pointer transition-colors"
+				>
+					Bundle ↓
+				</button>
 			) : (
-				<span className="text-xs text-gray-500 flex-shrink-0">
-					{tool.price.fixed ? `$${tool.price.fixed.amount}/${tool.price.fixed.period === "one_time" ? "once" : "mo"}` : "Usage"}
-				</span>
+				tool.price.fixed ? (
+					<PriceDisplay
+						amount={tool.price.fixed.amount}
+						period={tool.price.fixed.period === "one_time" ? "/once" : "/mo"}
+						size="sm"
+						className="shrink-0 text-fg-primary"
+					/>
+				) : (
+					<span className="font-mono text-sm font-bold text-fg-primary shrink-0">Usage</span>
+				)
 			)}
 		</div>
 	);

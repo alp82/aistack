@@ -44,6 +44,7 @@ const sampleStacks = Array.from({ length: 7 }, (_, index) => ({
 		name: `Tool ${toolIndex}`,
 		iconUrl: null,
 	})),
+	upvoteCount: index * 2,
 }));
 
 afterEach(() => {

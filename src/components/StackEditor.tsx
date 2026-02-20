@@ -175,6 +175,7 @@ export function StackEditor({
 						rules={state.rules}
 						skills={state.skills}
 						mcps={state.mcps}
+						models={state.models}
 						resources={state.resources}
 						onMetadataUpdate={updateMetadata}
 					/>

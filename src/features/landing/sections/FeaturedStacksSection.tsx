@@ -2,8 +2,11 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { SortDropdown } from "@/components/SortDropdown";
 import { StackArtifactCard } from "@/features/landing/components/StackArtifactCard";
 import { cn } from "@/lib/utils";
+
+type SortOption = "upvotes" | "newest" | "price_low" | "price_high";
 
 type LandingStackPreview = {
 	_id: string;
@@ -25,6 +28,7 @@ type LandingStackPreview = {
 		category?: string | null;
 		iconUrl?: string | null;
 	}>;
+	upvoteCount: number;
 };
 
 type FeedSectionProps = {
@@ -58,8 +62,9 @@ function filterPreviewStacks(
 	previewStacks: LandingStackPreview[],
 	audienceFilter: AudienceFilter,
 	toolFilter: string,
+	sortOption: SortOption = "upvotes",
 ) {
-	return previewStacks.filter((stack) => {
+	const filtered = previewStacks.filter((stack) => {
 		const matchesAudience =
 			audienceFilter === "all"
 				? true
@@ -76,19 +81,42 @@ function filterPreviewStacks(
 
 		return matchesAudience && matchesTool;
 	});
+
+	return filtered.sort((a, b) => {
+		switch (sortOption) {
+			case "upvotes":
+				return b.upvoteCount - a.upvoteCount;
+			case "newest":
+				return 0; // Keep original order (already sorted by creation time from backend)
+			case "price_low":
+				return (a.fixedTotal?.amount ?? 0) - (b.fixedTotal?.amount ?? 0);
+			case "price_high":
+				return (b.fixedTotal?.amount ?? 0) - (a.fixedTotal?.amount ?? 0);
+			default:
+				return 0;
+		}
+	});
 }
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+	{ value: "newest", label: "Newest" },
+	{ value: "upvotes", label: "Most Upvoted" },
+	{ value: "price_low", label: "Price: Low → High" },
+	{ value: "price_high", label: "Price: High → Low" },
+];
 
 function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 	const previewStacks = stacks.slice(0, 6);
 	const [toolFilter, setToolFilter] = useState<string>("all");
+	const [sortOption, setSortOption] = useState<SortOption>("newest");
 
 	const categoryOptions = useMemo(
 		() => getCategoryOptions(previewStacks),
 		[previewStacks],
 	);
 	const filteredStacks = useMemo(
-		() => filterPreviewStacks(previewStacks, "all", toolFilter),
-		[previewStacks, toolFilter],
+		() => filterPreviewStacks(previewStacks, "all", toolFilter, sortOption),
+		[previewStacks, toolFilter, sortOption],
 	);
 
 	if (previewStacks.length === 0) {
@@ -111,23 +139,32 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 					</h2>
 				</div>
 
-				{/* Filter Pills */}
-				<div className="flex flex-col md:flex-row gap-4 mb-12 font-mono text-sm">
-					{allFilters.map((filter) => (
-						<button
-							key={filter.id}
-							type="button"
-							onClick={() => setToolFilter(filter.id)}
-							className={cn(
-								"px-4 py-2 uppercase font-bold transition-colors",
-								toolFilter === filter.id
-									? "bg-accent-lime text-accent-lime-contrast"
-									: "bg-bg-canvas text-fg-muted border border-stroke-strong hover:border-accent-lime hover:text-fg-primary"
-							)}
-						>
-							{filter.label} {filter.count && `(${filter.count})`}
-						</button>
-					))}
+				{/* Filter Pills + Sorting */}
+				<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-12 font-mono text-sm">
+					<div className="flex flex-wrap gap-2">
+						{allFilters.map((filter) => (
+							<button
+								key={filter.id}
+								type="button"
+								onClick={() => setToolFilter(filter.id)}
+								className={cn(
+									"px-4 py-2 uppercase font-bold transition-colors",
+									toolFilter === filter.id
+										? "bg-accent-lime text-accent-lime-contrast"
+										: "bg-bg-canvas text-fg-muted border border-stroke-strong hover:border-accent-lime hover:text-fg-primary"
+								)}
+							>
+								{filter.label} {filter.count && `(${filter.count})`}
+							</button>
+						))}
+					</div>
+
+					{/* Sort Dropdown */}
+					<SortDropdown
+						options={SORT_OPTIONS}
+						value={sortOption}
+						onChange={setSortOption}
+					/>
 				</div>
 
 				{/* Stack Grid */}
@@ -158,6 +195,6 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 	);
 }
 
-export { FeaturedStacksSection };
+export { FeaturedStacksSection, SORT_OPTIONS };
 export { filterPreviewStacks, getCategoryOptions };
-export type { FeedSectionProps, LandingStackPreview, AudienceFilter };
+export type { FeedSectionProps, LandingStackPreview, AudienceFilter, SortOption };

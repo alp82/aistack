@@ -43,7 +43,7 @@ describe("stack editor sections", () => {
 				<ToolsSection value={[]} onChange={() => {}} status={completeStatus} isActive={false} />
 				<BundlesSection value={[]} onChange={() => {}} status={completeStatus} isActive={false} />
 				<DescriptionSection value="" onChange={() => {}} status={completeStatus} isActive={false} />
-				<SettingsSection resources={[]} onUpdate={() => {}} status={completeStatus} isActive={false} />
+				<SettingsSection prompts={[]} rules={[]} skills={[]} mcps={[]} models={[]} resources={[]} onUpdate={() => {}} status={completeStatus} isActive={false} />
 			</>,
 		);
 

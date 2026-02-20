@@ -23,6 +23,34 @@ const UsagePricing = v.object({
   notes: v.optional(v.string()),
 })
 
+const PromptItem = v.object({
+  name: v.string(),
+  description: v.string(),
+  content: v.optional(v.string()),
+})
+
+const RuleItem = v.object({
+  name: v.string(),
+  description: v.string(),
+})
+
+const SkillItem = v.object({
+  name: v.string(),
+  description: v.string(),
+  trigger: v.optional(v.string()),
+})
+
+const McpItem = v.object({
+  name: v.string(),
+  purpose: v.string(),
+  url: v.optional(v.string()),
+})
+
+const ModelItem = v.object({
+  name: v.string(),
+  role: v.string(),
+})
+
 const TierPricing = v.object({
   pricingType: v.union(
     v.literal('fixed'),
@@ -87,10 +115,11 @@ export default defineSchema({
     oneLiner: v.string(),
     description: v.optional(v.string()),
     stackUrl: v.optional(v.string()),
-    prompts: v.optional(v.boolean()),
-    rules: v.optional(v.boolean()),
-    skills: v.optional(v.boolean()),
-    mcps: v.optional(v.boolean()),
+    prompts: v.optional(v.array(PromptItem)),
+    rules: v.optional(v.array(RuleItem)),
+    skills: v.optional(v.array(SkillItem)),
+    mcps: v.optional(v.array(McpItem)),
+    models: v.optional(v.array(ModelItem)),
     resources: v.optional(v.array(v.object({
       label: v.string(),
       url: v.string(),

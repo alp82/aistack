@@ -1,4 +1,5 @@
-import { ExternalLink, Eye, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, ExternalLink, Eye, Pencil, Plus, Trash2 } from "lucide-react";
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { isValidHttpUrl } from "@/features/stack-editor/editor-status";
 import { FormField } from "@/components/ui/form-field";
@@ -7,26 +8,94 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { cn } from "@/lib/utils";
-import type { StackMetadataUpdates, StackResource } from "@/features/stack-editor/types";
+import type { McpItem, ModelItem, PromptItem, RuleItem, SkillItem, StackMetadataUpdates, StackResource } from "@/features/stack-editor/types";
+
+type MetadataArraySectionProps<T> = {
+	title: string;
+	description: string;
+	items: T[];
+	isExpanded: boolean;
+	onToggle: () => void;
+	onAdd: () => void;
+	onRemove: (index: number) => void;
+	renderItem: (item: T, index: number) => ReactNode;
+};
+
+function MetadataArraySection<T>({
+	title,
+	description,
+	items,
+	isExpanded,
+	onToggle,
+	onAdd,
+	onRemove,
+	renderItem,
+}: MetadataArraySectionProps<T>) {
+	return (
+		<div className="border-2 border-stroke-subtle">
+			<button
+				type="button"
+				onClick={onToggle}
+				className="flex w-full items-center justify-between p-3 text-left transition-colors hover:bg-bg-panel-muted"
+			>
+				<div>
+					<p className="font-mono text-xs uppercase tracking-wider text-fg-primary">
+						{title}
+						{items.length > 0 && (
+							<span className="ml-2 text-accent-lime">({items.length})</span>
+						)}
+					</p>
+					<p className="mt-0.5 text-[10px] text-fg-muted">{description}</p>
+				</div>
+				{isExpanded ? (
+					<ChevronUp className="size-4 text-fg-muted" />
+				) : (
+					<ChevronDown className="size-4 text-fg-muted" />
+				)}
+			</button>
+			{isExpanded && (
+				<div className="space-y-3 border-t border-stroke-subtle p-3">
+					{items.map((item, index) => (
+						<div key={index} className="relative border border-stroke-subtle bg-bg-panel-muted p-3">
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() => onRemove(index)}
+								className="absolute right-1 top-1 size-6 text-fg-muted hover:text-destructive"
+							>
+								<Trash2 className="size-3.5" />
+							</Button>
+							{renderItem(item, index)}
+						</div>
+					))}
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onClick={onAdd}
+						className="w-full border-2 border-dashed border-stroke-subtle text-fg-muted hover:border-accent-lime hover:text-accent-lime"
+					>
+						<Plus className="mr-1 size-4" />
+						Add {title.slice(0, -1)}
+					</Button>
+				</div>
+			)}
+		</div>
+	);
+}
 
 type WorkflowStepProps = {
 	description: string;
 	onDescriptionChange: (value: string) => void;
 	stackUrl?: string;
-	prompts?: boolean;
-	rules?: boolean;
-	skills?: boolean;
-	mcps?: boolean;
+	prompts: PromptItem[];
+	rules: RuleItem[];
+	skills: SkillItem[];
+	mcps: McpItem[];
+	models: ModelItem[];
 	resources: StackResource[];
 	onMetadataUpdate: (updates: StackMetadataUpdates) => void;
 };
-
-const metaFlags = [
-	{ key: "prompts" as const, label: "Prompts", description: "Custom prompts for AI tools" },
-	{ key: "rules" as const, label: "Rules", description: "Coding rules and guidelines" },
-	{ key: "skills" as const, label: "Skills", description: "Reusable skill definitions" },
-	{ key: "mcps" as const, label: "MCPs", description: "Model Context Protocols" },
-] as const;
 
 function WorkflowStep({
 	description,
@@ -36,6 +105,7 @@ function WorkflowStep({
 	rules,
 	skills,
 	mcps,
+	models,
 	resources,
 	onMetadataUpdate,
 }: WorkflowStepProps) {
@@ -43,8 +113,7 @@ function WorkflowStep({
 	const [newResourceUrl, setNewResourceUrl] = useState("");
 	const [expandedResource, setExpandedResource] = useState<number | null>(null);
 	const [showPreview, setShowPreview] = useState(false);
-
-	const flags = { prompts, rules, skills, mcps };
+	const [expandedSection, setExpandedSection] = useState<string | null>(null);
 	const trimmedStackUrl = stackUrl?.trim() ?? "";
 	const stackUrlInvalid = trimmedStackUrl.length > 0 && !isValidHttpUrl(trimmedStackUrl);
 
@@ -168,51 +237,200 @@ function WorkflowStep({
 							/>
 						</FormField>
 
-						<div>
-							<p className="mb-3 font-mono text-xs uppercase tracking-wider text-fg-muted">
-								Workflow Features
-							</p>
-							<div className="grid grid-cols-2 gap-2">
-								{metaFlags.map((flag) => {
-									const isEnabled = flags[flag.key] ?? false;
-									return (
-										<button
-											key={flag.key}
-											type="button"
-											onClick={() => onMetadataUpdate({ [flag.key]: !isEnabled })}
-											className={cn(
-												"flex items-center justify-between border-2 p-3 text-left transition-all",
-												isEnabled
-													? "border-accent-lime bg-accent-lime/10"
-													: "border-stroke-subtle bg-transparent hover:border-fg-muted",
-											)}
-										>
-											<div>
-												<p
-													className={cn(
-														"font-mono text-xs uppercase tracking-wider",
-														isEnabled ? "text-accent-lime" : "text-fg-muted",
-													)}
-												>
-													{flag.label}
-												</p>
-												<p className="mt-0.5 text-[10px] text-fg-muted">
-													{flag.description}
-												</p>
-											</div>
-											<div
-												className={cn(
-													"size-4 border-2 transition-colors",
-													isEnabled
-														? "border-accent-lime bg-accent-lime"
-														: "border-stroke-subtle bg-transparent",
-												)}
-											/>
-										</button>
-									);
-								})}
-							</div>
-						</div>
+						{/* Prompts Section */}
+						<MetadataArraySection
+							title="Prompts"
+							description="Custom prompts for AI tools"
+							items={prompts}
+							isExpanded={expandedSection === "prompts"}
+							onToggle={() => setExpandedSection(expandedSection === "prompts" ? null : "prompts")}
+							onAdd={() => onMetadataUpdate({ prompts: [...prompts, { name: "", description: "" }] })}
+							onRemove={(index) => onMetadataUpdate({ prompts: prompts.filter((_, i) => i !== index) })}
+							renderItem={(item, index) => (
+								<div className="space-y-2">
+									<Input
+										value={item.name}
+										onChange={(e) => {
+											const updated = [...prompts];
+											updated[index] = { ...item, name: e.target.value };
+											onMetadataUpdate({ prompts: updated });
+										}}
+										placeholder="Prompt name"
+										className="text-sm"
+									/>
+									<Input
+										value={item.description}
+										onChange={(e) => {
+											const updated = [...prompts];
+											updated[index] = { ...item, description: e.target.value };
+											onMetadataUpdate({ prompts: updated });
+										}}
+										placeholder="What does this prompt do?"
+										className="text-sm"
+									/>
+								</div>
+							)}
+						/>
+
+						{/* Rules Section */}
+						<MetadataArraySection
+							title="Rules"
+							description="Coding rules and guidelines"
+							items={rules}
+							isExpanded={expandedSection === "rules"}
+							onToggle={() => setExpandedSection(expandedSection === "rules" ? null : "rules")}
+							onAdd={() => onMetadataUpdate({ rules: [...rules, { name: "", description: "" }] })}
+							onRemove={(index) => onMetadataUpdate({ rules: rules.filter((_, i) => i !== index) })}
+							renderItem={(item, index) => (
+								<div className="space-y-2">
+									<Input
+										value={item.name}
+										onChange={(e) => {
+											const updated = [...rules];
+											updated[index] = { ...item, name: e.target.value };
+											onMetadataUpdate({ rules: updated });
+										}}
+										placeholder="Rule name"
+										className="text-sm"
+									/>
+									<Input
+										value={item.description}
+										onChange={(e) => {
+											const updated = [...rules];
+											updated[index] = { ...item, description: e.target.value };
+											onMetadataUpdate({ rules: updated });
+										}}
+										placeholder="What does this rule enforce?"
+										className="text-sm"
+									/>
+								</div>
+							)}
+						/>
+
+						{/* Skills Section */}
+						<MetadataArraySection
+							title="Skills"
+							description="Reusable skill definitions"
+							items={skills}
+							isExpanded={expandedSection === "skills"}
+							onToggle={() => setExpandedSection(expandedSection === "skills" ? null : "skills")}
+							onAdd={() => onMetadataUpdate({ skills: [...skills, { name: "", description: "" }] })}
+							onRemove={(index) => onMetadataUpdate({ skills: skills.filter((_, i) => i !== index) })}
+							renderItem={(item, index) => (
+								<div className="space-y-2">
+									<Input
+										value={item.name}
+										onChange={(e) => {
+											const updated = [...skills];
+											updated[index] = { ...item, name: e.target.value };
+											onMetadataUpdate({ skills: updated });
+										}}
+										placeholder="Skill name"
+										className="text-sm"
+									/>
+									<Input
+										value={item.description}
+										onChange={(e) => {
+											const updated = [...skills];
+											updated[index] = { ...item, description: e.target.value };
+											onMetadataUpdate({ skills: updated });
+										}}
+										placeholder="What does this skill do?"
+										className="text-sm"
+									/>
+									<Input
+										value={item.trigger ?? ""}
+										onChange={(e) => {
+											const updated = [...skills];
+											updated[index] = { ...item, trigger: e.target.value || undefined };
+											onMetadataUpdate({ skills: updated });
+										}}
+										placeholder="Trigger command (e.g., /deploy)"
+										className="text-sm"
+									/>
+								</div>
+							)}
+						/>
+
+						{/* MCPs Section */}
+						<MetadataArraySection
+							title="MCPs"
+							description="Model Context Protocols"
+							items={mcps}
+							isExpanded={expandedSection === "mcps"}
+							onToggle={() => setExpandedSection(expandedSection === "mcps" ? null : "mcps")}
+							onAdd={() => onMetadataUpdate({ mcps: [...mcps, { name: "", purpose: "" }] })}
+							onRemove={(index) => onMetadataUpdate({ mcps: mcps.filter((_, i) => i !== index) })}
+							renderItem={(item, index) => (
+								<div className="space-y-2">
+									<Input
+										value={item.name}
+										onChange={(e) => {
+											const updated = [...mcps];
+											updated[index] = { ...item, name: e.target.value };
+											onMetadataUpdate({ mcps: updated });
+										}}
+										placeholder="MCP name"
+										className="text-sm"
+									/>
+									<Input
+										value={item.purpose}
+										onChange={(e) => {
+											const updated = [...mcps];
+											updated[index] = { ...item, purpose: e.target.value };
+											onMetadataUpdate({ mcps: updated });
+										}}
+										placeholder="What is this MCP used for?"
+										className="text-sm"
+									/>
+									<Input
+										value={item.url ?? ""}
+										onChange={(e) => {
+											const updated = [...mcps];
+											updated[index] = { ...item, url: e.target.value || undefined };
+											onMetadataUpdate({ mcps: updated });
+										}}
+										placeholder="URL (optional)"
+										className="text-sm"
+									/>
+								</div>
+							)}
+						/>
+
+						{/* Models Section */}
+						<MetadataArraySection
+							title="Models"
+							description="AI models used in your workflow"
+							items={models}
+							isExpanded={expandedSection === "models"}
+							onToggle={() => setExpandedSection(expandedSection === "models" ? null : "models")}
+							onAdd={() => onMetadataUpdate({ models: [...models, { name: "", role: "" }] })}
+							onRemove={(index) => onMetadataUpdate({ models: models.filter((_, i) => i !== index) })}
+							renderItem={(item, index) => (
+								<div className="space-y-2">
+									<Input
+										value={item.name}
+										onChange={(e) => {
+											const updated = [...models];
+											updated[index] = { ...item, name: e.target.value };
+											onMetadataUpdate({ models: updated });
+										}}
+										placeholder="Model name (e.g., Claude 3.5 Sonnet)"
+										className="text-sm"
+									/>
+									<Input
+										value={item.role}
+										onChange={(e) => {
+											const updated = [...models];
+											updated[index] = { ...item, role: e.target.value };
+											onMetadataUpdate({ models: updated });
+										}}
+										placeholder="Role (e.g., Primary coding)"
+										className="text-sm"
+									/>
+								</div>
+							)}
+						/>
 
 						<div>
 							<p className="mb-3 font-mono text-xs uppercase tracking-wider text-fg-muted">

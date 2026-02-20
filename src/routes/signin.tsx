@@ -207,18 +207,7 @@ function SignInPage() {
 						Continue with Google
 					</button>
 
-					{import.meta.env.DEV && (
-						<button
-							type="button"
-							onClick={handleDevAdminLogin}
-							disabled={loading}
-							className="w-full border-2 border-destructive bg-destructive px-4 py-3 font-mono text-sm font-semibold uppercase tracking-wide text-white transition-all hover:bg-destructive/90 disabled:opacity-50"
-						>
-							Dev Admin Login
-						</button>
-					)}
-
-					<div className="relative">
+						<div className="relative">
 						<div className="absolute inset-0 flex items-center">
 							<span className="w-full border-t-2 border-stroke-subtle" />
 						</div>
@@ -297,7 +286,7 @@ function SignInPage() {
 						</button>
 					</form>
 
-					<div className="text-center">
+					<div className="text-center space-y-3">
 						<button
 							type="button"
 							onClick={() => {
@@ -311,6 +300,17 @@ function SignInPage() {
 								? "Already have an account? Sign in"
 								: "Don't have an account? Sign up"}
 						</button>
+
+						{import.meta.env.DEV && (
+							<button
+								type="button"
+								onClick={handleDevAdminLogin}
+								disabled={loading}
+								className="block mx-auto font-mono text-xs text-fg-muted/50 hover:text-destructive transition-colors disabled:opacity-50"
+							>
+								[dev] admin login
+							</button>
+						)}
 					</div>
 				</div>
 			</div>
