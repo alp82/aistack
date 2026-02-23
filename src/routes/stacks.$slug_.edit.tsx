@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { StackEditor } from "@/components/StackEditor";
+import { authClient } from "@/lib/auth-client";
 
 export const Route = createFileRoute("/stacks/$slug_/edit")({
 	ssr: false,
@@ -15,14 +16,21 @@ function EditStackPage() {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+	const session = authClient.useSession();
 	const getOrCreateCreator = useMutation(api.creators.getOrCreateForUser);
 	const stackData = useQuery(api.stacks.getForEdit, { slug });
+
+	// Get user's Google profile image as default
+	const userImageUrl = session.data?.user?.image ?? undefined;
 
 	const [creator, setCreator] = useState<{
 		_id: any;
 		name: string;
 		slug: string;
 		xHandle?: string;
+		avatarUrl?: string;
+		personalPages?: Array<{ name: string; url: string }>;
+		projectPages?: Array<{ name: string; url: string }>;
 	} | null>(null);
 	const [loadingCreator, setLoadingCreator] = useState(true);
 
@@ -53,14 +61,14 @@ function EditStackPage() {
 
 	if (stackData === null || !creator) {
 		return (
-			<div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
+			<div className="min-h-screen flex items-center justify-center">
 				<div className="text-center">
 					<h1 className="text-2xl font-bold text-white mb-4">
 						Stack not found or not authorized
 					</h1>
 					<Link
 						to="/"
-						className="text-cyan-400 hover:text-cyan-300"
+						className="text-lime-400 hover:text-lime-300"
 					>
 						← Back to home
 					</Link>
@@ -73,20 +81,19 @@ function EditStackPage() {
 		<StackEditor
 			mode="edit"
 			actor={creator}
+			defaultAvatarUrl={userImageUrl}
 			initialValue={{
 				_id: stackData._id,
+				name: stackData.name,
 				slug: stackData.slug,
 				oneLiner: stackData.oneLiner,
 				description: stackData.description,
-				stackUrl: stackData.stackUrl,
-				prompts: stackData.prompts ?? [],
-				rules: stackData.rules ?? [],
-				skills: stackData.skills ?? [],
-				mcps: stackData.mcps ?? [],
-				models: stackData.models ?? [],
-				resources: stackData.resources,
+				instructions: stackData.instructions ?? [],
 				teamSize: stackData.teamSize,
 				published: stackData.published,
+				avatarUrl: stackData.avatarUrl,
+				personalPageUrl: stackData.personalPageUrl,
+				projectPageUrl: stackData.projectPageUrl,
 				toolSubscriptions: stackData.toolSubscriptions.map((t) => ({
 					toolId: t.toolId,
 					toolName: t.toolName,

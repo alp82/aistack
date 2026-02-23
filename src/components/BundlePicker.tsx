@@ -1,243 +1,227 @@
 import { useQuery } from "convex/react";
-import { Package, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Package } from "lucide-react";
+import { AddMissingItemButton } from "./AddMissingItemButton";
+import { useMemo, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { AddBundleModal } from "./AddBundleModal";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
-import { cn } from "@/lib/utils";
+import { PickerEntryCard, PickerToggleButton, PickerBrowser, TierSelector } from "./picker";
 
 export interface BundleSubscriptionEntry {
-	bundleId: Id<"bundles">;
-	bundleName: string;
-	bundleSlug: string;
-	tierId: string;
-	tierName: string;
-	notes?: string;
+    bundleId: Id<"bundles">;
+    bundleName: string;
+    bundleSlug: string;
+    bundleIconUrl?: string | null;
+    tierId: string;
+    tierName: string;
+    notes?: string;
 }
 
 interface BundlePickerProps {
-	value: BundleSubscriptionEntry[];
-	onChange: (bundles: BundleSubscriptionEntry[]) => void;
-	guestSession?: boolean;
-	onSignInRequired?: () => void;
+    value: BundleSubscriptionEntry[];
+    onChange: (bundles: BundleSubscriptionEntry[]) => void;
+    onBundleClick?: (bundle: BundleSubscriptionEntry) => void;
+    guestSession?: boolean;
+    onSignInRequired?: () => void;
 }
 
-export function BundlePicker({ value, onChange, guestSession = false, onSignInRequired }: BundlePickerProps) {
-	const allBundles = useQuery(api.bundles.listAll) ?? [];
-	const [showAddBundle, setShowAddBundle] = useState(false);
+export function BundlePicker({ value, onChange, onBundleClick, guestSession = false, onSignInRequired }: BundlePickerProps) {
+    const allBundles = useQuery(api.bundles.listAll) ?? [];
+    const [search, setSearch] = useState("");
+    const [showBundleBrowser, setShowBundleBrowser] = useState(false);
+    const [showAddModal, setShowAddModal] = useState(false);
 
-	const selectedBundleIds = new Set(value.map((b) => b.bundleId));
+    const selectedBundleIds = new Set(value.map((b) => b.bundleId));
 
-	const toggleBundle = (bundleId: Id<"bundles">) => {
-		const existingIndex = value.findIndex((b) => b.bundleId === bundleId);
-		if (existingIndex >= 0) {
-			onChange(value.filter((_, i) => i !== existingIndex));
-			return;
-		}
+    const filteredBundles = useMemo(() => {
+        let bundles = allBundles.filter((b) => !selectedBundleIds.has(b._id));
+        if (search.trim()) {
+            const searchLower = search.toLowerCase();
+            bundles = bundles.filter((b) =>
+                b.name.toLowerCase().includes(searchLower)
+            );
+        }
+        return bundles;
+    }, [allBundles, selectedBundleIds, search]);
 
-		const bundle = allBundles.find((b) => b._id === bundleId);
-		if (!bundle) return;
+    const addBundle = (bundleId: Id<"bundles">) => {
+        const bundle = allBundles.find((b) => b._id === bundleId);
+        if (!bundle) return;
 
-		const defaultTier =
-			bundle.tiers.find((t) => t.isDefault) ?? bundle.tiers[0];
-		if (!defaultTier) return;
+        const defaultTier =
+            bundle.tiers.find((t) => t.isDefault) ?? bundle.tiers[0];
+        if (!defaultTier) return;
 
-		const entry: BundleSubscriptionEntry = {
-			bundleId: bundle._id,
-			bundleName: bundle.name,
-			bundleSlug: bundle.slug,
-			tierId: defaultTier.tierId,
-			tierName: defaultTier.name,
-		};
-		onChange([...value, entry]);
-	};
+        const entry: BundleSubscriptionEntry = {
+            bundleId: bundle._id,
+            bundleName: bundle.name,
+            bundleSlug: bundle.slug,
+            bundleIconUrl: bundle.iconUrl,
+            tierId: defaultTier.tierId,
+            tierName: defaultTier.name,
+        };
+        onChange([...value, entry]);
+    };
 
-	const updateBundle = (
-		bundleId: Id<"bundles">,
-		updates: Partial<BundleSubscriptionEntry>,
-	) => {
-		const index = value.findIndex((b) => b.bundleId === bundleId);
-		if (index < 0) return;
-		const updated = [...value];
-		updated[index] = { ...updated[index], ...updates };
-		onChange(updated);
-	};
+    const removeBundle = (index: number) => {
+        onChange(value.filter((_, i) => i !== index));
+    };
 
-	return (
-		<div className="space-y-2">
-			{/* Bundle List - One per row */}
-			{allBundles.map((bundle) => {
-				const isSelected = selectedBundleIds.has(bundle._id);
-				const entry = value.find((b) => b.bundleId === bundle._id);
-				const tiers = bundle.tiers ?? [];
+    const updateBundle = (index: number, updates: Partial<BundleSubscriptionEntry>) => {
+        const updated = [...value];
+        updated[index] = { ...updated[index], ...updates };
+        onChange(updated);
+    };
 
-				return (
-					<div
-						key={bundle._id}
-						className={cn(
-							"border-2 transition-all",
-							isSelected
-								? "border-accent-lime bg-accent-lime/5"
-								: "border-stroke-subtle bg-bg-panel hover:border-fg-muted",
-						)}
-					>
-						{/* Bundle Row */}
-						<button
-							type="button"
-							onClick={() => toggleBundle(bundle._id)}
-							className="flex w-full items-center gap-4 p-4 text-left"
-						>
-							{/* Icon */}
-							{bundle.iconUrl ? (
-								<img
-									src={bundle.iconUrl}
-									alt={bundle.name}
-									className="size-10 shrink-0 rounded object-contain"
-								/>
-							) : (
-								<div className="flex size-10 shrink-0 items-center justify-center border-2 border-stroke-subtle bg-bg-panel-muted">
-									<Package className="size-5 text-fg-muted" />
-								</div>
-							)}
+    return (
+        <div className="space-y-2">
+            {/* Selected Bundles */}
+            {value.length > 0 && (
+                <div className="space-y-2">
+                    {value.map((entry, index) => (
+                        <BundleEntry
+                            key={`${entry.bundleId}-${index}`}
+                            entry={entry}
+                            allBundles={allBundles}
+                            onUpdate={(updates) => updateBundle(index, updates)}
+                            onRemove={() => removeBundle(index)}
+                            onClick={() => onBundleClick?.(entry)}
+                        />
+                    ))}
+                </div>
+            )}
 
-							{/* Name & Description */}
-							<div className="min-w-0 flex-1">
-								<p className={cn(
-									"truncate font-mono text-sm font-semibold uppercase",
-									isSelected ? "text-accent-lime" : "text-fg-primary",
-								)}>
-									{bundle.name}
-								</p>
-								{bundle.description && (
-									<p className="truncate font-mono text-[10px] text-fg-muted">
-										{bundle.description}
-									</p>
-								)}
-							</div>
+            {/* Add Bundle Button - Toggles browser */}
+            <PickerToggleButton
+                isOpen={showBundleBrowser}
+                onToggle={() => setShowBundleBrowser(!showBundleBrowser)}
+                label="Add Bundle"
+            />
 
-							{/* Selection Indicator */}
-							<div
-								className={cn(
-									"size-5 shrink-0 border-2 transition-colors",
-									isSelected
-										? "border-accent-lime bg-accent-lime"
-										: "border-stroke-subtle bg-transparent",
-								)}
-							/>
-						</button>
+            {/* Bundle Browser */}
+            {showBundleBrowser && (
+                <PickerBrowser
+                    search={search}
+                    onSearchChange={setSearch}
+                    searchPlaceholder="Search bundles..."
+                    isEmpty={filteredBundles.length === 0}
+                    emptyMessage="No bundles found"
+                    footer={
+                        <AddMissingItemButton
+                            label="Can't find your bundle? Add it"
+                            guestLabel="Sign in to add new bundles"
+                            guestSession={guestSession}
+                            onSignInRequired={onSignInRequired}
+                            onAdd={() => setShowAddModal(true)}
+                        />
+                    }
+                >
+                    {/* Bundle Grid */}
+                    <div className="grid grid-cols-3 gap-2">
+                        {filteredBundles.slice(0, 9).map((bundle) => (
+                            <button
+                                key={bundle._id}
+                                type="button"
+                                onClick={() => addBundle(bundle._id)}
+                                className="group flex flex-col items-center gap-1 border border-stroke-subtle bg-bg-panel p-2 transition-all hover:border-accent-lime hover:bg-accent-lime/5"
+                                title={bundle.name}
+                            >
+                                {bundle.iconUrl ? (
+                                    <img
+                                        src={bundle.iconUrl}
+                                        alt={bundle.name}
+                                        className="size-8 rounded object-contain"
+                                    />
+                                ) : (
+                                    <div className="flex size-8 items-center justify-center border border-stroke-subtle bg-bg-panel-muted">
+                                        <Package className="size-4 text-fg-muted" />
+                                    </div>
+                                )}
+                                <span className="w-full truncate text-center font-mono text-[9px] uppercase text-fg-muted group-hover:text-accent-lime">
+                                    {bundle.name}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                </PickerBrowser>
+            )}
 
-						{/* Expanded Details - Only when selected */}
-						{isSelected && entry && (
-							<div className="space-y-4 border-t-2 border-stroke-subtle bg-bg-panel-muted p-4">
-								<div className="grid grid-cols-2 gap-4">
-									{/* Tier */}
-									<div>
-										<Label className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-											Tier
-										</Label>
-										<Select
-											value={entry.tierId}
-											onValueChange={(tierId) => {
-												const tier = tiers.find((t) => t.tierId === tierId);
-												if (tier) {
-													updateBundle(bundle._id, {
-														tierId,
-														tierName: tier.name,
-													});
-												}
-											}}
-										>
-											<SelectTrigger className="h-9 w-full border-2 border-stroke-subtle bg-bg-panel font-mono text-xs">
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												{tiers.map((t) => (
-													<SelectItem key={t.tierId} value={t.tierId}>
-														{t.name}
-														{t.pricing.fixed
-															? ` — $${t.pricing.fixed.amount}/${t.pricing.fixed.period === "one_time" ? "once" : t.pricing.fixed.period === "month" ? "mo" : "yr"}`
-															: ""}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-									</div>
+            <AddBundleModal
+                open={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                onBundleCreated={() => setShowAddModal(false)}
+            />
+        </div>
+    );
+}
 
-									{/* Notes */}
-									<div>
-										<Label className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-											Notes
-										</Label>
-										<Input
-											value={entry.notes ?? ""}
-											onChange={(e) =>
-												updateBundle(bundle._id, { notes: e.target.value || undefined })
-											}
-											placeholder="Optional notes..."
-											className="h-9 border-2 border-stroke-subtle bg-bg-panel font-mono text-xs"
-										/>
-									</div>
-								</div>
+interface BundleEntryProps {
+    entry: BundleSubscriptionEntry;
+    allBundles: Array<{
+        _id: Id<"bundles">;
+        tiers: Array<{
+            tierId: string;
+            name: string;
+            pricing: {
+                pricingType: "fixed" | "usage" | "mixed";
+                fixed?: {
+                    currency: string;
+                    amount: number;
+                    period: "month" | "year" | "one_time";
+                };
+            };
+        }>;
+    }>;
+    onUpdate: (updates: Partial<BundleSubscriptionEntry>) => void;
+    onRemove: () => void;
+    onClick?: () => void;
+}
 
-								{/* Remove Button */}
-								<button
-									type="button"
-									onClick={() => toggleBundle(bundle._id)}
-									className="flex items-center gap-2 font-mono text-[10px] uppercase text-fg-muted transition-colors hover:text-destructive"
-								>
-									<Trash2 className="size-3" />
-									Remove from stack
-								</button>
-							</div>
-						)}
-					</div>
-				);
-			})}
+function BundleEntry({ entry, allBundles, onUpdate, onRemove, onClick }: BundleEntryProps) {
+    const [expanded, setExpanded] = useState(false);
+    const bundle = allBundles.find((b) => b._id === entry.bundleId);
+    const tiers = bundle?.tiers ?? [];
 
-			{/* Add Bundle Button */}
-			<button
-				type="button"
-				onClick={() => {
-					if (guestSession && onSignInRequired) {
-						onSignInRequired();
-					} else {
-						setShowAddBundle(true);
-					}
-				}}
-				className="flex w-full items-center justify-center gap-3 border-2 border-dashed border-stroke-subtle p-4 transition-all hover:border-accent-lime hover:bg-bg-panel-muted"
-			>
-				<Plus className="size-5 text-accent-lime" />
-				<div className="text-left">
-					<p className="font-mono text-xs font-semibold uppercase tracking-wider text-accent-lime">
-						Add New Bundle
-					</p>
-					<p className="font-mono text-[10px] text-fg-muted">
-						{guestSession ? "Sign in to add new bundles" : "Request a bundle to be added"}
-					</p>
-				</div>
-			</button>
+    const handleTierChange = (tierId: string) => {
+        const tier = tiers.find((t) => t.tierId === tierId);
+        if (tier) {
+            onUpdate({ tierId: tier.tierId, tierName: tier.name });
+        }
+    };
 
-			{allBundles.length === 0 && (
-				<p className="py-4 text-center font-mono text-xs text-fg-muted">
-					No bundles available yet.
-				</p>
-			)}
+    const icon = entry.bundleIconUrl ? (
+        <img
+            src={entry.bundleIconUrl}
+            alt={entry.bundleName}
+            className="size-8 shrink-0 rounded object-contain transition-transform group-hover:scale-110"
+        />
+    ) : (
+        <div className="flex size-8 shrink-0 items-center justify-center border border-stroke-subtle bg-bg-panel-muted transition-colors group-hover:border-accent-lime group-hover:bg-accent-lime/20">
+            <Package className="size-4 text-fg-muted group-hover:text-accent-lime" />
+        </div>
+    );
 
-			<AddBundleModal
-				open={showAddBundle}
-				onClose={() => setShowAddBundle(false)}
-				onBundleCreated={() => setShowAddBundle(false)}
-			/>
-		</div>
-	);
+    return (
+        <PickerEntryCard
+            name={entry.bundleName}
+            subtitle={entry.tierName}
+            icon={icon}
+            onClick={onClick}
+            onRemove={onRemove}
+            onEditClick={tiers.length > 1 ? () => setExpanded(!expanded) : undefined}
+            isExpanded={expanded}
+            showEditButton={tiers.length > 1}
+            expandedContent={
+                tiers.length > 1 ? (
+                    <TierSelector
+                        tiers={tiers}
+                        value={entry.tierId}
+                        onChange={handleTierChange}
+                        className="w-full"
+                    />
+                ) : undefined
+            }
+        />
+    );
 }
 

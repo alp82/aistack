@@ -53,8 +53,7 @@ function StackArtifactCard({ stack }: StackArtifactCardProps) {
 		<Link to="/stacks/$slug" params={{ slug: stack.slug }} className="block">
 			<motion.div
 				initial={{ opacity: 0, y: 20 }}
-				whileInView={{ opacity: 1, y: 0 }}
-				viewport={{ once: true }}
+				animate={{ opacity: 1, y: 0 }}
 				whileHover={{ y: -12, transition: { duration: 0.4, ease: "easeOut" } }}
 				className="group relative bg-bg-canvas border border-stroke-strong hover:border-accent-lime transition-all duration-500 overflow-hidden flex flex-col h-full shadow-2xl hover:shadow-[0_20px_50px_-12px_rgba(163,230,53,0.1)]"
 			>

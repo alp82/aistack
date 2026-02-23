@@ -1,6 +1,7 @@
 import { useMutation } from "convex/react";
 import { X } from "lucide-react";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { api } from "../../convex/_generated/api";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -86,7 +87,7 @@ export function AddBundleModal({
 		setError("");
 	};
 
-	return (
+	return createPortal(
 		<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
 			<div
 				className="absolute inset-0 bg-bg-canvas/80 backdrop-blur-sm"
@@ -257,6 +258,7 @@ export function AddBundleModal({
 					</div>
 				</form>
 			</div>
-		</div>
+		</div>,
+		document.body
 	);
 }

@@ -1,5 +1,5 @@
 import { useEffect, useReducer } from "react";
-import type { StackEditorInitialValue, StackEditorMode, StackMetadataUpdates } from "@/features/stack-editor/types";
+import type { InstructionItem, ModelSubscriptionEntry, StackEditorInitialValue, StackEditorMode } from "@/features/stack-editor/types";
 import { editorReducer, getInitialEditorState } from "@/features/stack-editor/state/editorReducer";
 import { selectGuestDraft } from "@/features/stack-editor/state/editorSelectors";
 import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
@@ -47,6 +47,8 @@ function useEditorState({ mode, guestSession, actor, initialValue }: UseEditorSt
 
 	return {
 		state,
+		setName: (value: string) =>
+			dispatch({ type: "profile/updated", updates: { name: value } }),
 		setOneLiner: (value: string) =>
 			dispatch({ type: "profile/updated", updates: { oneLiner: value } }),
 		setXHandle: (value: string) =>
@@ -55,14 +57,22 @@ function useEditorState({ mode, guestSession, actor, initialValue }: UseEditorSt
 			dispatch({ type: "profile/updated", updates: { isTeam: value } }),
 		setTeamSize: (value: number) =>
 			dispatch({ type: "profile/updated", updates: { teamSize: value } }),
+		setPersonalPageUrl: (value: string) =>
+			dispatch({ type: "profile/updated", updates: { personalPageUrl: value } }),
+		setProjectPageUrl: (value: string) =>
+			dispatch({ type: "profile/updated", updates: { projectPageUrl: value } }),
+		setAvatarUrl: (value: string) =>
+			dispatch({ type: "profile/updated", updates: { avatarUrl: value } }),
 		setDescription: (value: string) =>
 			dispatch({ type: "description/updated", description: value }),
 		setToolSubscriptions: (tools: ToolSubscriptionEntry[]) =>
 			dispatch({ type: "tools/updated", tools }),
 		setBundleSubscriptions: (bundles: BundleSubscriptionEntry[]) =>
 			dispatch({ type: "bundles/updated", bundles }),
-		updateMetadata: (updates: StackMetadataUpdates) =>
-			dispatch({ type: "metadata/updated", updates }),
+		setModelSubscriptions: (modelSubscriptions: ModelSubscriptionEntry[]) =>
+			dispatch({ type: "modelSubscriptions/updated", modelSubscriptions }),
+		setInstructions: (instructions: InstructionItem[]) =>
+			dispatch({ type: "instructions/updated", instructions }),
 		setSaving: (saving: boolean) => dispatch({ type: "ui/saveStateChanged", saving }),
 		setError: (error: string) => dispatch({ type: "ui/errorSet", error }),
 		setShowSignInDialog: (open: boolean) =>

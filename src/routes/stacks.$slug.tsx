@@ -2,19 +2,20 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation } from "convex/react";
 import { useConvexAuth } from "convex/react";
 import {
-	ArrowLeft,
 	CheckCircle,
 	ExternalLink,
 	FileText,
 	Package,
 } from "lucide-react";
 import { useState } from "react";
-import { MarkdownRenderer } from "@/components/MarkdownRenderer";
-import { StackMetadataBar } from "@/components/StackMetadataBar";
+import { TiptapEditor } from "@/components/TiptapEditor";
 import { FullWidthToolCard } from "@/components/FullWidthToolCard";
 import { MiscToolCard } from "@/components/ToolCard";
+import { ViewSidebar } from "@/components/ViewSidebar";
 import { Button } from "@/components/ui/button";
 import { PriceDisplay } from "@/components/PriceDisplay";
+import HoverPreview from "@/components/ui/hover-preview";
+import { CostBreakdownTooltip } from "@/components/CostBreakdownTooltip";
 import { UpvoteButton } from "@/components/UpvoteButton";
 import { cn } from "@/lib/utils";
 import { api } from "../../convex/_generated/api";
@@ -53,6 +54,9 @@ function StackDetailsPage() {
 		if (!stack) return;
 		if (!isAuthenticated) {
 			navigate({ to: "/signin", search: { redirect: `/stacks/${slug}` } });
+			return;
+		}
+		if (upvoteStatus?.isOwner) {
 			return;
 		}
 		setUpvoting(true);
@@ -95,25 +99,118 @@ function StackDetailsPage() {
 	const hasDescription = !!stack.description;
 	const mainTools = stack.tools.filter((t) => t.kind === "main");
 	const miscTools = stack.tools.filter((t) => t.kind === "misc");
+	const toolsContent = (
+		<div className="space-y-8">
+			{/* Main Tools */}
+			{mainTools.length > 0 && (
+				<div>
+					<h3 className="mb-4 font-mono text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-accent-lime">
+						Main Tools
+					</h3>
+					<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+						{mainTools.map((tool) => (
+							<FullWidthToolCard key={tool._id} tool={tool} onBundleClick={scrollToBundle} />
+						))}
+					</div>
+				</div>
+			)}
+
+			{/* Misc Tools */}
+			{miscTools.length > 0 && (
+				<div>
+					<h3 className="mb-4 font-mono text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-accent-lime">
+						Other Tools
+					</h3>
+					<div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
+						{miscTools.map((tool) => (
+							<MiscToolCard key={tool._id} tool={tool} onBundleClick={scrollToBundle} />
+						))}
+					</div>
+				</div>
+			)}
+
+			{/* Bundles */}
+			{stack.bundles.length > 0 && (
+				<div>
+					<h3 className="mb-4 font-mono text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-accent-lime">
+						Bundles
+					</h3>
+					<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+						{stack.bundles.map((bundle) => (
+							<div
+								key={bundle._id}
+								id={`bundle-${bundle.slug}`}
+								className={cn(
+									"flex items-start gap-4 border-2 border-stroke-strong bg-bg-panel p-4 transition-all",
+									highlightedBundle === bundle.slug && "animate-pulse border-accent-lime ring-2 ring-accent-lime/50"
+								)}
+							>
+								{bundle.iconUrl ? (
+									<img
+										src={bundle.iconUrl}
+										alt={bundle.name}
+										className="size-10 shrink-0 border border-stroke-subtle bg-white object-contain p-1"
+									/>
+								) : (
+									<div className="flex size-10 shrink-0 items-center justify-center border border-stroke-subtle bg-bg-panel-muted">
+										<Package className="size-5 text-fg-muted" />
+									</div>
+								)}
+								<div className="min-w-0 flex-1">
+									<div className="mb-1 flex items-center justify-between">
+										<span className="font-mono text-sm font-semibold text-fg-primary">
+											{bundle.name}
+										</span>
+										{bundle.price.fixed ? (
+											<PriceDisplay
+												amount={bundle.price.fixed.amount}
+												period={bundle.price.fixed.period === "one_time" ? "/once" : "/mo"}
+												size="sm"
+												className="ml-2 shrink-0 text-fg-primary"
+											/>
+										) : (
+											<span className="ml-2 shrink-0 font-mono text-sm font-bold text-fg-primary">
+												Usage
+											</span>
+										)}
+									</div>
+									{bundle.description && (
+										<p className="mb-2 text-sm text-fg-secondary">
+											{bundle.description}
+										</p>
+									)}
+									<div className="flex items-center justify-between">
+										<span className="font-mono text-xs text-fg-muted">
+											{bundle.tierName}
+										</span>
+										{bundle.websiteUrl && (
+											<a
+												href={bundle.websiteUrl}
+												target="_blank"
+												rel="noopener noreferrer"
+												className="inline-flex items-center gap-1 font-mono text-xs text-accent-lime hover:text-accent-lime-strong"
+											>
+												Visit <ExternalLink className="size-3" />
+											</a>
+										)}
+									</div>
+								</div>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
+		</div>
+	);
 
 	return (
-		<div className="min-h-screen bg-bg-canvas">
-			{/* Back link */}
-			<div className="mx-auto max-w-content px-6 md:px-12 pt-8">
-				<Link
-					to="/stacks"
-					className="inline-flex items-center gap-2 font-mono text-xs text-fg-muted transition-colors hover:text-accent-lime group"
-				>
-					<ArrowLeft className="size-3.5 group-hover:-translate-x-1 transition-transform" />
-					Back to all stacks
-				</Link>
-			</div>
-
+		<div className="bg-bg-canvas">
 			{/* Header */}
-			<header className="mx-auto max-w-content px-6 md:px-12 py-12">
+			<header className="bg-black border-b-2 border-stroke-strong">
+				<div className="mx-auto max-w-content px-6 md:px-12 py-12">
 				<div className="flex items-start gap-6">
 					{/* 2x2 Grid: Avatar/Upvote + Info/Description */}
-					<div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 flex-1 items-center">
+					<div className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-3 flex-1 items-center">
 						{/* Row 1: Avatar + Name/Handle */}
 						{stack.creator.avatarUrl ? (
 							<img
@@ -127,7 +224,7 @@ function StackDetailsPage() {
 							</div>
 						)}
 						<div>
-							<h1 className="text-2xl font-bold text-fg-primary sm:text-3xl">
+							<h1 className="text-2xl font-bold text-white sm:text-3xl">
 								{stack.creator.name}
 							</h1>
 							<div className="flex flex-wrap items-center gap-2 font-mono text-xs mt-1">
@@ -139,7 +236,7 @@ function StackDetailsPage() {
 									href={xPage.url}
 									target="_blank"
 									rel="noopener noreferrer"
-									className="text-accent-lime hover:text-accent-lime-strong"
+									className="text-accent-lime hover:text-accent-lime-strong underline"
 								>
 									@{stack.creator.xHandle}
 								</a>
@@ -152,7 +249,7 @@ function StackDetailsPage() {
 									href={projectPage.url}
 									target="_blank"
 									rel="noopener noreferrer"
-									className="inline-flex items-center gap-1 text-fg-muted transition-colors hover:text-fg-primary"
+									className="inline-flex items-center gap-1 text-white/70 transition-colors hover:text-white"
 								>
 									{projectPage.name}
 									<ExternalLink className="size-3" />
@@ -165,46 +262,59 @@ function StackDetailsPage() {
 						<UpvoteButton
 							count={upvoteStatus?.count ?? 0}
 							upvoted={upvoteStatus?.upvoted}
-							disabled={upvoting}
+							disabled={upvoting || upvoteStatus?.isOwner}
 							size="lg"
 							onClick={handleUpvote}
 						/>
-						<p className="text-sm leading-relaxed text-fg-secondary">{stack.oneLiner}</p>
+						<p className="mr-8 text-base leading-relaxed text-white">
+								{stack.oneLiner}
+							</p>
 					</div>
 
-					{/* Price Card - Square */}
-					<div className="border-[3px] border-stroke-strong bg-bg-panel shadow-[4px_4px_0_var(--stroke-strong)] shrink-0 flex flex-col items-center justify-center text-center w-32 h-32 p-4">
-						<PriceDisplay
-							amount={stack.fixedTotal?.amount ?? 0}
-							hasUsageComponent={stack.hasUsageComponent}
-							size="lg"
-							className="text-fg-primary"
-						/>
-						<span
-							className={cn(
-								"mt-1 font-mono text-[10px] font-semibold uppercase tracking-wide",
-								stack.teamSize ? "text-fg-secondary" : "text-accent-lime",
+					{/* Price Card - Square with Hover Breakdown */}
+					<HoverPreview
+						mode="wrapper"
+						position="below"
+						width={320}
+						offset={12}
+						maxRotation={5}
+						maxOffset={10}
+						renderContent={() => (
+								<CostBreakdownTooltip
+									tools={stack.tools}
+									bundles={stack.bundles}
+									fixedTotal={stack.fixedTotal}
+									hasUsageComponent={stack.hasUsageComponent}
+									usageTotalNotes={stack.usageTotalNotes}
+								/>
 							)}
-						>
-							{stack.teamSize ? `Team ${stack.teamSize}` : "Solo"}
-						</span>
-					</div>
+					>
+						<div className="border-[3px] border-stroke-strong bg-bg-panel shadow-[4px_4px_0_var(--stroke-strong)] shrink-0 flex flex-col items-center justify-center text-center w-32 h-32 p-4 transition-all hover:shadow-[6px_6px_0_var(--stroke-strong)] hover:border-accent-lime">
+							<PriceDisplay
+								amount={stack.fixedTotal?.amount ?? 0}
+								hasUsageComponent={stack.hasUsageComponent}
+								size="lg"
+								className="text-fg-primary"
+							/>
+							<span
+								className={cn(
+									"mt-1 font-mono text-[10px] font-semibold uppercase tracking-wide",
+									stack.teamSize ? "text-fg-secondary" : "text-accent-lime",
+								)}
+							>
+								{stack.teamSize ? `Team ${stack.teamSize}` : "Solo"}
+							</span>
+						</div>
+					</HoverPreview>
+				</div>
 				</div>
 			</header>
 
-			{/* Metadata Bar */}
-			<StackMetadataBar
-				stackUrl={stack.stackUrl}
-				prompts={stack.prompts}
-				rules={stack.rules}
-				skills={stack.skills}
-				mcps={stack.mcps}
-				resources={stack.resources}
-			/>
-
-			{/* Tabs */}
-			<section className="mx-auto max-w-content px-6 md:px-12 pt-6">
-				<div className="flex gap-1 border-b-2 border-stroke-strong">
+			<div className="mx-auto max-w-content lg:flex">
+				<div className="min-w-0 flex-1">
+					{/* Tabs */}
+					<section className="px-6 md:px-12 pt-6 lg:hidden">
+						<div className="flex gap-1 border-b-2 border-stroke-strong">
 					{hasDescription && (
 					<Button
 						type="button"
@@ -241,119 +351,33 @@ function StackDetailsPage() {
 						<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent-lime" />
 					)}
 				</Button>
+						</div>
+					</section>
+
+					{/* Tab Content */}
+					<section className="px-6 md:px-12 py-12 lg:hidden">
+						{activeTab === "tools" && toolsContent}
+
+						{activeTab === "description" && stack.description && (
+							<TiptapEditor content={stack.description} editable={false} />
+						)}
+					</section>
+
+					{/* Desktop Content - description only, tools are in sidebar */}
+					<section className="hidden px-6 md:px-12 py-12 lg:block">
+						{stack.description && (
+							<TiptapEditor content={stack.description} editable={false} />
+						)}
+					</section>
 				</div>
-			</section>
 
-			{/* Tab Content */}
-			<section className="mx-auto max-w-content px-6 md:px-12 py-12">
-				{activeTab === "tools" && (
-					<div className="space-y-8">
-						{/* Main Tools */}
-						{mainTools.length > 0 && (
-							<div>
-								<h3 className="mb-4 font-mono text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-accent-lime">
-									Main Tools
-								</h3>
-								<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-									{mainTools.map((tool) => (
-										<FullWidthToolCard key={tool._id} tool={tool} onBundleClick={scrollToBundle} />
-									))}
-								</div>
-							</div>
-						)}
-
-						{/* Misc Tools */}
-						{miscTools.length > 0 && (
-							<div>
-								<h3 className="mb-4 font-mono text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-accent-lime">
-									Other Tools
-								</h3>
-								<div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
-									{miscTools.map((tool) => (
-										<MiscToolCard key={tool._id} tool={tool} onBundleClick={scrollToBundle} />
-									))}
-								</div>
-							</div>
-						)}
-
-						{/* Bundles */}
-						{stack.bundles.length > 0 && (
-							<div>
-								<h3 className="mb-4 font-mono text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-accent-lime">
-									Bundles
-								</h3>
-								<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-									{stack.bundles.map((bundle) => (
-										<div
-											key={bundle._id}
-											id={`bundle-${bundle.slug}`}
-											className={cn(
-												"flex items-start gap-4 border-2 border-stroke-strong bg-bg-panel p-4 transition-all",
-												highlightedBundle === bundle.slug && "animate-pulse border-accent-lime ring-2 ring-accent-lime/50"
-											)}
-										>
-											{bundle.iconUrl ? (
-												<img
-													src={bundle.iconUrl}
-													alt={bundle.name}
-													className="size-10 shrink-0 border border-stroke-subtle bg-white object-contain p-1"
-												/>
-											) : (
-												<div className="flex size-10 shrink-0 items-center justify-center border border-stroke-subtle bg-bg-panel-muted">
-													<Package className="size-5 text-fg-muted" />
-												</div>
-											)}
-											<div className="min-w-0 flex-1">
-												<div className="mb-1 flex items-center justify-between">
-													<span className="font-mono text-sm font-semibold text-fg-primary">
-														{bundle.name}
-													</span>
-													{bundle.price.fixed ? (
-														<PriceDisplay
-															amount={bundle.price.fixed.amount}
-															period={bundle.price.fixed.period === "one_time" ? "/once" : "/mo"}
-															size="sm"
-															className="ml-2 shrink-0 text-fg-primary"
-														/>
-													) : (
-														<span className="ml-2 shrink-0 font-mono text-sm font-bold text-fg-primary">
-															Usage
-														</span>
-													)}
-												</div>
-												{bundle.description && (
-													<p className="mb-2 text-sm text-fg-secondary">
-														{bundle.description}
-													</p>
-												)}
-												<div className="flex items-center justify-between">
-													<span className="font-mono text-xs text-fg-muted">
-														{bundle.tierName}
-													</span>
-													{bundle.websiteUrl && (
-														<a
-															href={bundle.websiteUrl}
-															target="_blank"
-															rel="noopener noreferrer"
-															className="inline-flex items-center gap-1 font-mono text-xs text-accent-lime hover:text-accent-lime-strong"
-														>
-															Visit <ExternalLink className="size-3" />
-														</a>
-													)}
-												</div>
-											</div>
-										</div>
-									))}
-								</div>
-							</div>
-						)}
-					</div>
-				)}
-
-				{activeTab === "description" && stack.description && (
-					<MarkdownRenderer content={stack.description} />
-				)}
-			</section>
+				<ViewSidebar
+					tools={stack.tools}
+					bundles={stack.bundles}
+					instructions={stack.instructions ?? []}
+					onBundleClick={scrollToBundle}
+				/>
+			</div>
 		</div>
 	);
 }

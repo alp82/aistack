@@ -242,3 +242,27 @@ code, .font-mono {
     max-width: 105rem;
   }
 }
+
+/* Tool suggestion widget: add & ignore buttons visible on hover or cursor inside */
+.tool-suggestion-highlight:hover + .tool-suggestion-widget .tool-suggestion-add,
+.tool-suggestion-active + .tool-suggestion-widget .tool-suggestion-add,
+.tool-suggestion-widget:hover .tool-suggestion-add,
+.tool-suggestion-highlight:hover + .tool-suggestion-widget .tool-suggestion-ignore,
+.tool-suggestion-active + .tool-suggestion-widget .tool-suggestion-ignore,
+.tool-suggestion-widget:hover .tool-suggestion-ignore {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+  pointer-events: auto;
+}
+
+/* Model suggestion widget: add & ignore buttons visible on hover or cursor inside */
+.model-suggestion-highlight:hover + .model-suggestion-widget .model-suggestion-add,
+.model-suggestion-active + .model-suggestion-widget .model-suggestion-add,
+.model-suggestion-widget:hover .model-suggestion-add,
+.model-suggestion-highlight:hover + .model-suggestion-widget .model-suggestion-ignore,
+.model-suggestion-active + .model-suggestion-widget .model-suggestion-ignore,
+.model-suggestion-widget:hover .model-suggestion-ignore {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+  pointer-events: auto;
+}

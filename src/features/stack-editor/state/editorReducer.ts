@@ -1,14 +1,9 @@
 import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
 import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
 import type {
-	McpItem,
-	ModelItem,
-	PromptItem,
-	RuleItem,
-	SkillItem,
+	InstructionItem,
+	ModelSubscriptionEntry,
 	StackEditorInitialValue,
-	StackMetadataUpdates,
-	StackResource,
 } from "@/features/stack-editor/types";
 
 const sectionOrder = ["profile", "tools", "bundles", "description", "settings"] as const;
@@ -16,20 +11,19 @@ const sectionOrder = ["profile", "tools", "bundles", "description", "settings"] 
 type EditorSection = (typeof sectionOrder)[number];
 
 type EditorState = {
+	name: string;
 	oneLiner: string;
 	description: string;
-	stackUrl?: string;
-	prompts: PromptItem[];
-	rules: RuleItem[];
-	skills: SkillItem[];
-	mcps: McpItem[];
-	models: ModelItem[];
-	resources: StackResource[];
+	instructions: InstructionItem[];
+	modelSubscriptions: ModelSubscriptionEntry[];
 	isTeam: boolean;
 	teamSize: number;
 	toolSubscriptions: ToolSubscriptionEntry[];
 	bundleSubscriptions: BundleSubscriptionEntry[];
 	xHandle: string;
+	personalPageUrl: string;
+	projectPageUrl: string;
+	avatarUrl: string;
 	saving: boolean;
 	error: string;
 	activeSection: EditorSection;
@@ -37,27 +31,25 @@ type EditorState = {
 };
 
 type GuestStackDraft = {
+	name: string;
 	oneLiner: string;
 	description: string;
-	stackUrl?: string;
-	prompts: PromptItem[];
-	rules: RuleItem[];
-	skills: SkillItem[];
-	mcps: McpItem[];
-	models: ModelItem[];
-	resources: StackResource[];
+	instructions: InstructionItem[];
 	isTeam: boolean;
 	teamSize: number;
 	toolSubscriptions: ToolSubscriptionEntry[];
 	bundleSubscriptions: BundleSubscriptionEntry[];
 	xHandle: string;
+	personalPageUrl: string;
+	projectPageUrl: string;
+	avatarUrl: string;
 };
 
 type EditorAction =
 	| {
 			type: "profile/updated";
 			updates: Partial<
-				Pick<EditorState, "oneLiner" | "xHandle" | "isTeam" | "teamSize">
+				Pick<EditorState, "name" | "oneLiner" | "xHandle" | "isTeam" | "teamSize" | "personalPageUrl" | "projectPageUrl" | "avatarUrl">
 			>;
 	  }
 	| {
@@ -73,8 +65,12 @@ type EditorAction =
 			bundles: BundleSubscriptionEntry[];
 	  }
 	| {
-			type: "metadata/updated";
-			updates: StackMetadataUpdates;
+			type: "modelSubscriptions/updated";
+			modelSubscriptions: ModelSubscriptionEntry[];
+	  }
+	| {
+			type: "instructions/updated";
+			instructions: InstructionItem[];
 	  }
 	| {
 			type: "ui/saveStateChanged";
@@ -98,26 +94,30 @@ type EditorAction =
 	  };
 
 function getInitialEditorState(args: {
-	actor: { xHandle?: string };
+	actor: { xHandle?: string; name?: string; avatarUrl?: string; personalPages?: Array<{ name: string; url: string }>; projectPages?: Array<{ name: string; url: string }> };
 	initialValue?: StackEditorInitialValue;
 }): EditorState {
 	const { actor, initialValue } = args;
 
+	// Extract first personal page URL (for X/portfolio)
+	const personalPageUrl = actor.personalPages?.find(p => p.name !== "X")?.url ?? "";
+	// Extract first project page URL
+	const projectPageUrl = actor.projectPages?.[0]?.url ?? "";
+
 	return {
+		name: initialValue?.name ?? `${actor.name ?? "My"}'s Stack`,
 		oneLiner: initialValue?.oneLiner ?? "",
 		description: initialValue?.description ?? "",
-		stackUrl: initialValue?.stackUrl,
-		prompts: initialValue?.prompts ?? [],
-		rules: initialValue?.rules ?? [],
-		skills: initialValue?.skills ?? [],
-		mcps: initialValue?.mcps ?? [],
-		models: initialValue?.models ?? [],
-		resources: initialValue?.resources ?? [],
+		instructions: initialValue?.instructions ?? [],
+		modelSubscriptions: [],
 		isTeam: (initialValue?.teamSize ?? 0) > 0,
 		teamSize: initialValue?.teamSize ?? 2,
 		toolSubscriptions: initialValue?.toolSubscriptions ?? [],
 		bundleSubscriptions: initialValue?.bundleSubscriptions ?? [],
 		xHandle: actor.xHandle ?? "",
+		personalPageUrl: initialValue?.personalPageUrl ?? personalPageUrl,
+		projectPageUrl: initialValue?.projectPageUrl ?? projectPageUrl,
+		avatarUrl: initialValue?.avatarUrl ?? actor.avatarUrl ?? "",
 		saving: false,
 		error: "",
 		activeSection: "profile",
@@ -147,10 +147,15 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 				...state,
 				bundleSubscriptions: action.bundles,
 			};
-		case "metadata/updated":
+		case "modelSubscriptions/updated":
 			return {
 				...state,
-				...action.updates,
+				modelSubscriptions: action.modelSubscriptions,
+			};
+		case "instructions/updated":
+			return {
+				...state,
+				instructions: action.instructions,
 			};
 		case "ui/saveStateChanged":
 			return {
@@ -176,20 +181,18 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 			const draft = action.draft;
 			return {
 				...state,
+				name: draft.name ?? state.name,
 				oneLiner: draft.oneLiner ?? state.oneLiner,
 				description: draft.description ?? state.description,
-				stackUrl: draft.stackUrl ?? state.stackUrl,
-				prompts: draft.prompts ?? state.prompts,
-				rules: draft.rules ?? state.rules,
-				skills: draft.skills ?? state.skills,
-				mcps: draft.mcps ?? state.mcps,
-				models: draft.models ?? state.models,
-				resources: draft.resources ?? state.resources,
+				instructions: draft.instructions ?? state.instructions,
 				isTeam: draft.isTeam ?? state.isTeam,
 				teamSize: draft.teamSize ?? state.teamSize,
 				toolSubscriptions: draft.toolSubscriptions ?? state.toolSubscriptions,
 				bundleSubscriptions: draft.bundleSubscriptions ?? state.bundleSubscriptions,
 				xHandle: draft.xHandle ?? state.xHandle,
+				personalPageUrl: draft.personalPageUrl ?? state.personalPageUrl,
+				projectPageUrl: draft.projectPageUrl ?? state.projectPageUrl,
+				avatarUrl: draft.avatarUrl ?? state.avatarUrl,
 			};
 		}
 		default:

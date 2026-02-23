@@ -49,12 +49,8 @@ export function FullWidthToolCard({ tool, onBundleClick }: FullWidthToolCardProp
 			<div className="flex-1 min-w-0">
 				<div className="flex items-center gap-2 mb-2 flex-wrap">
 					<span className="font-semibold text-fg-primary text-lg">{tool.name}</span>
-					<CategoryLabel category={tool.category} />
 				</div>
-				<p className="text-sm text-fg-secondary">{tool.primaryUsageLabel}</p>
-				{tool.notes && (
-					<p className="text-xs text-fg-muted mt-2">{tool.notes}</p>
-				)}
+				<CategoryLabel category={tool.category} />
 			</div>
 
 			{/* Website Link */}

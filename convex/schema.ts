@@ -23,33 +23,35 @@ const UsagePricing = v.object({
   notes: v.optional(v.string()),
 })
 
-const PromptItem = v.object({
+const InstructionType = v.union(
+  v.literal('prompt'),
+  v.literal('rule'),
+  v.literal('skill'),
+  v.literal('mcp'),
+  v.literal('plugin'),
+  v.literal('subagent')
+)
+
+const InstructionItem = v.object({
+  type: InstructionType,
   name: v.string(),
-  description: v.string(),
+  description: v.optional(v.string()),
   content: v.optional(v.string()),
-})
-
-const RuleItem = v.object({
-  name: v.string(),
-  description: v.string(),
-})
-
-const SkillItem = v.object({
-  name: v.string(),
-  description: v.string(),
+  url: v.optional(v.string()),
   trigger: v.optional(v.string()),
 })
 
-const McpItem = v.object({
-  name: v.string(),
-  purpose: v.string(),
-  url: v.optional(v.string()),
-})
-
-const ModelItem = v.object({
-  name: v.string(),
-  role: v.string(),
-})
+const ModelCategory = v.union(
+  v.literal('language'),
+  v.literal('coding'),
+  v.literal('reasoning'),
+  v.literal('vision'),
+  v.literal('audio'),
+  v.literal('image'),
+  v.literal('video'),
+  v.literal('embedding'),
+  v.literal('other')
+)
 
 const TierPricing = v.object({
   pricingType: v.union(
@@ -109,21 +111,17 @@ export default defineSchema({
     .index('by_reviewStatus', ['reviewStatus']),
 
   stacks: defineTable({
+    name: v.string(),
     slug: v.string(),
     creatorId: v.id('creators'),
     teamSize: v.optional(v.number()),
     oneLiner: v.string(),
     description: v.optional(v.string()),
-    stackUrl: v.optional(v.string()),
-    prompts: v.optional(v.array(PromptItem)),
-    rules: v.optional(v.array(RuleItem)),
-    skills: v.optional(v.array(SkillItem)),
-    mcps: v.optional(v.array(McpItem)),
-    models: v.optional(v.array(ModelItem)),
-    resources: v.optional(v.array(v.object({
-      label: v.string(),
-      url: v.string(),
-    }))),
+    instructions: v.optional(v.array(InstructionItem)),
+    avatarUrl: v.optional(v.string()),
+    avatarStorageId: v.optional(v.id('_storage')),
+    personalPageUrl: v.optional(v.string()),
+    projectPageUrl: v.optional(v.string()),
     toolSubscriptions: v.array(
       v.object({
         toolId: v.id('tools'),
@@ -210,4 +208,27 @@ export default defineSchema({
     .index('by_stackId', ['stackId'])
     .index('by_userId', ['userId'])
     .index('by_stackId_userId', ['stackId', 'userId']),
+
+  models: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    provider: v.string(),
+    category: ModelCategory,
+    iconUrl: v.optional(v.string()),
+    websiteUrl: v.optional(v.string()),
+    contextWindow: v.optional(v.number()),
+    description: v.optional(v.string()),
+    reviewStatus: v.union(
+      v.literal('approved'),
+      v.literal('pending'),
+      v.literal('rejected')
+    ),
+    createdBy: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_slug', ['slug'])
+    .index('by_provider', ['provider'])
+    .index('by_category', ['category'])
+    .index('by_reviewStatus', ['reviewStatus']),
 })

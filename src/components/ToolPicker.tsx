@@ -1,13 +1,13 @@
 import { useQuery } from "convex/react";
-import { ChevronDown, ChevronUp, Plus, Search, Trash2, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Plus } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { categoryConfig, type ToolCategory } from "@/config/categoryConfig";
-import { cn } from "@/lib/utils";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { useEditorContext } from "@/features/stack-editor/context/EditorContext";
+import { AddMissingItemButton } from "./AddMissingItemButton";
 import { AddToolModal } from "./AddToolModal";
 import { Input } from "./ui/input";
-import { Label } from "./ui/label";
 import {
 	Select,
 	SelectContent,
@@ -15,6 +15,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "./ui/select";
+import { PickerEntryCard, PickerToggleButton, PickerBrowser, TierSelector } from "./picker";
 
 export interface ToolSubscriptionEntry {
 	toolId: Id<"tools">;
@@ -43,13 +44,16 @@ interface ToolPickerProps {
 	onChange: (tools: ToolSubscriptionEntry[]) => void;
 	guestSession?: boolean;
 	onSignInRequired?: () => void;
+	onToolClick?: (tool: ToolSubscriptionEntry) => void;
 }
 
-export function ToolPicker({ value, onChange, guestSession = false, onSignInRequired }: ToolPickerProps) {
+export function ToolPicker({ value, onChange, guestSession = false, onSignInRequired, onToolClick }: ToolPickerProps) {
 	const allTools = useQuery(api.tools.listAll) ?? [];
 	const [search, setSearch] = useState("");
 	const [showAddModal, setShowAddModal] = useState(false);
 	const [selectedCategory, setSelectedCategory] = useState<ToolCategory | null>(null);
+	const [showToolBrowser, setShowToolBrowser] = useState(false);
+	const { hoveredToolName } = useEditorContext();
 
 	const selectedToolIds = new Set(value.map((t) => t.toolId));
 
@@ -124,7 +128,7 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 	};
 
 	return (
-		<div className="space-y-4">
+		<div className="space-y-3">
 			{/* Selected Tools */}
 			{value.length > 0 && (
 				<div className="space-y-2">
@@ -134,126 +138,84 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 							entry={entry}
 							onUpdate={(updates) => updateTool(index, updates)}
 							onRemove={() => removeTool(index)}
+							onClick={() => onToolClick?.(entry)}
+							isHighlighted={hoveredToolName === entry.toolName}
 							allTools={allTools}
 						/>
 					))}
 				</div>
 			)}
 
-			{/* Search */}
-			<div className="relative">
-				<Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-fg-muted" />
-				<Input
-					value={search}
-					onChange={(e) => setSearch(e.target.value)}
-					placeholder="Search tools to add..."
-					className="pl-9"
-				/>
-			</div>
+			{/* Add Tool Button - Toggles browser */}
+			<PickerToggleButton
+				isOpen={showToolBrowser}
+				onToggle={() => setShowToolBrowser(!showToolBrowser)}
+				label="Add Tool"
+			/>
 
-			{/* Category Filter Grid */}
-			<div className="flex flex-wrap gap-1">
-				{availableCategories.slice(0, 14).map((category) => {
-					const config = categoryConfig[category];
-					const Icon = config?.icon;
-					const isSelected = selectedCategory === category;
-					return (
-						<button
-							key={category}
-							type="button"
-							onClick={() => setSelectedCategory(isSelected ? null : category)}
-							className={cn(
-								"flex items-center gap-1.5 border-2 px-2 py-1 font-mono text-[10px] uppercase tracking-wider transition-all",
-								isSelected
-									? "border-accent-lime bg-accent-lime/10 text-accent-lime"
-									: "border-stroke-subtle bg-transparent text-fg-muted hover:border-fg-muted hover:text-fg-secondary",
-							)}
+			{/* Toggleable Tool Browser */}
+			{showToolBrowser && (
+				<PickerBrowser
+					search={search}
+					onSearchChange={setSearch}
+					isEmpty={filteredTools.length === 0}
+					emptyMessage="No tools found."
+					filterSlot={
+						<Select
+							value={selectedCategory ?? "all"}
+							onValueChange={(val) => setSelectedCategory(val === "all" ? null : val as ToolCategory)}
 						>
-							{Icon && <Icon className="size-3" />}
-							{config?.label || category}
-						</button>
-					);
-				})}
-				{selectedCategory && (
-					<button
-						type="button"
-						onClick={() => setSelectedCategory(null)}
-						className="flex items-center gap-1 border-2 border-stroke-subtle px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-fg-muted hover:border-destructive hover:text-destructive"
-					>
-						<X className="size-3" />
-						Clear
-					</button>
-				)}
-			</div>
-
-			{/* Tool Grid */}
-			<div className="grid grid-cols-6 gap-2 sm:grid-cols-8 md:grid-cols-10">
-				{filteredTools.slice(0, 20).map((tool) => (
-					<button
-						key={tool._id}
-						type="button"
-						onClick={() => addTool(tool._id)}
-						className="group flex aspect-square flex-col items-center justify-center gap-1 border-2 border-stroke-subtle bg-bg-panel p-2 transition-all hover:border-accent-lime hover:bg-bg-panel-muted"
-						title={tool.name}
-					>
-						{tool.iconUrl ? (
-							<img
-								src={tool.iconUrl}
-								alt={tool.name}
-								className="size-8 rounded object-contain"
-							/>
-						) : (
-							<div className="flex size-8 items-center justify-center border border-stroke-subtle bg-bg-panel-muted">
-								<Plus className="size-4 text-fg-muted" />
-							</div>
-						)}
-						<span className="w-full truncate text-center font-mono text-[8px] uppercase text-fg-muted group-hover:text-fg-primary">
-							{tool.name}
-						</span>
-					</button>
-				))}
-			</div>
-
-			{/* Add New Tool Button - Full Row */}
-			<button
-				type="button"
-				onClick={() => {
-					if (guestSession && onSignInRequired) {
-						onSignInRequired();
-					} else {
-						setShowAddModal(true);
+							<SelectTrigger className="h-8 w-28 text-xs">
+								<SelectValue placeholder="All" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="all">All</SelectItem>
+								{availableCategories.map((category) => (
+									<SelectItem key={category} value={category}>
+										{categoryConfig[category]?.label || category}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
 					}
-				}}
-				className="flex w-full items-center justify-center gap-3 border-2 border-dashed border-stroke-subtle p-4 transition-all hover:border-accent-lime hover:bg-bg-panel-muted"
-			>
-				<Plus className="size-5 text-accent-lime" />
-				<div className="text-left">
-					<p className="font-mono text-xs font-semibold uppercase tracking-wider text-accent-lime">
-						Add New Tool
-					</p>
-					<p className="font-mono text-[10px] text-fg-muted">
-						{guestSession ? "Sign in to add new tools" : "Missing tools? Just add them"}
-					</p>
-				</div>
-			</button>
-
-			{filteredTools.length === 0 && (
-				<p className="py-4 text-center font-mono text-xs text-fg-muted">
-					No tools found.{" "}
-					<button
-						type="button"
-						onClick={() => {
-							if (guestSession && onSignInRequired) {
-								onSignInRequired();
-							} else {
-								setShowAddModal(true);
-							}
-						}}
-						className="text-accent-lime hover:underline"
-					>
-						{guestSession ? "Sign in to create" : "Create one?"}
-					</button>
-				</p>
+					footer={
+						<AddMissingItemButton
+							label="Can't find your tool? Add it"
+							guestLabel="Sign in to add new tools"
+							guestSession={guestSession}
+							onSignInRequired={onSignInRequired}
+							onAdd={() => setShowAddModal(true)}
+						/>
+					}
+				>
+					{/* Tool Grid - 4 per row */}
+					<div className="grid grid-cols-4 gap-2">
+						{filteredTools.slice(0, 16).map((tool) => (
+							<button
+								key={tool._id}
+								type="button"
+								onClick={() => addTool(tool._id)}
+								className="group flex aspect-square flex-col items-center justify-center gap-1.5 border border-stroke-subtle bg-bg-panel-muted p-2 transition-all hover:border-accent-lime hover:bg-accent-lime/10"
+								title={tool.name}
+							>
+								{tool.iconUrl ? (
+									<img
+										src={tool.iconUrl}
+										alt={tool.name}
+										className="size-10 rounded object-contain"
+									/>
+								) : (
+									<div className="flex size-10 items-center justify-center border border-stroke-subtle bg-bg-panel">
+										<Plus className="size-5 text-fg-muted" />
+									</div>
+								)}
+								<span className="w-full truncate text-center font-mono text-[9px] uppercase text-fg-muted group-hover:text-fg-primary">
+									{tool.name}
+								</span>
+							</button>
+						))}
+					</div>
+				</PickerBrowser>
 			)}
 
 			<AddToolModal
@@ -269,6 +231,8 @@ interface ToolEntryProps {
 	entry: ToolSubscriptionEntry;
 	onUpdate: (updates: Partial<ToolSubscriptionEntry>) => void;
 	onRemove: () => void;
+	onClick?: () => void;
+	isHighlighted?: boolean;
 	allTools: Array<{
 		_id: Id<"tools">;
 		tiers: Array<{
@@ -286,200 +250,105 @@ interface ToolEntryProps {
 	}>;
 }
 
-function ToolEntry({ entry, onUpdate, onRemove, allTools }: ToolEntryProps) {
+function ToolEntry({ entry, onUpdate, onRemove, onClick, isHighlighted, allTools }: ToolEntryProps) {
 	const [expanded, setExpanded] = useState(false);
+	const cardRef = useRef<HTMLDivElement>(null);
 	const tool = allTools.find((t) => t._id === entry.toolId);
 	const tiers = tool?.tiers ?? [];
 
+	// Scroll into view when highlighted
+	useEffect(() => {
+		if (isHighlighted && cardRef.current) {
+			cardRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+		}
+	}, [isHighlighted]);
+
+	// Format price display
+	const priceDisplay = entry.price.fixed 
+		? `$${entry.price.fixed.amount}/${entry.price.fixed.period === "one_time" ? "once" : entry.price.fixed.period}`
+		: "Usage-based";
+
+	const handleTierChange = (tierId: string) => {
+		const tier = tiers.find((t) => t.tierId === tierId);
+		if (tier) {
+			onUpdate({
+				tierId,
+				primaryUsageLabel: tier.name,
+				price: {
+					pricingType: tier.pricing.pricingType,
+					fixed: tier.pricing.fixed,
+				},
+			});
+		}
+	};
+
+	const icon = entry.toolIconUrl ? (
+		<img
+			src={entry.toolIconUrl}
+			alt={entry.toolName}
+			className="size-8 shrink-0 rounded object-contain transition-transform group-hover:scale-110"
+		/>
+	) : (
+		<div className="flex size-8 shrink-0 items-center justify-center border border-stroke-subtle bg-bg-panel-muted transition-colors group-hover:border-accent-lime group-hover:bg-accent-lime/20">
+			<Plus className="size-4 text-fg-muted group-hover:text-accent-lime" />
+		</div>
+	);
+
 	return (
-		<div className="border-2 border-stroke-subtle bg-bg-panel">
-			{/* Main Row */}
-			<div className="flex items-center gap-4 p-4">
-				{/* Icon */}
-				{entry.toolIconUrl ? (
-					<img
-						src={entry.toolIconUrl}
-						alt={entry.toolName}
-						className="size-10 shrink-0 rounded object-contain"
-					/>
-				) : (
-					<div className="flex size-10 shrink-0 items-center justify-center border-2 border-stroke-subtle bg-bg-panel-muted">
-						<Plus className="size-5 text-fg-muted" />
-					</div>
-				)}
+		<PickerEntryCard
+			name={entry.toolName}
+			subtitle={priceDisplay}
+			icon={icon}
+			onClick={onClick}
+			onRemove={onRemove}
+			onEditClick={() => setExpanded(!expanded)}
+			isExpanded={expanded}
+			isHighlighted={isHighlighted}
+			cardRef={cardRef}
+			expandedContent={
+				<>
+					{/* Tier Selector */}
+					{tiers.length > 0 && (
+						<TierSelector
+							tiers={tiers}
+							value={entry.tierId ?? tiers[0]?.tierId ?? ""}
+							onChange={handleTierChange}
+							className="w-full"
+						/>
+					)}
 
-				{/* Name & Category */}
-				<div className="min-w-0 flex-1">
-					<p className="truncate font-mono text-sm font-semibold uppercase text-fg-primary">
-						{entry.toolName}
-					</p>
-					<p className="font-mono text-[10px] uppercase text-fg-muted">
-						{entry.primaryUsageLabel}
-					</p>
-				</div>
-
-				{/* Kind Toggle */}
-				<div className="flex border-2 border-stroke-subtle">
-					<button
-						type="button"
-						onClick={() => onUpdate({ kind: "main" })}
-						className={cn(
-							"px-2 py-1 font-mono text-[10px] uppercase transition-colors",
-							entry.kind === "main"
-								? "bg-accent-lime text-accent-lime-contrast"
-								: "bg-transparent text-fg-muted hover:text-fg-primary",
-						)}
-					>
-						Main
-					</button>
-					<button
-						type="button"
-						onClick={() => onUpdate({ kind: "misc" })}
-						className={cn(
-							"border-l-2 border-stroke-subtle px-2 py-1 font-mono text-[10px] uppercase transition-colors",
-							entry.kind === "misc"
-								? "bg-accent-lime text-accent-lime-contrast"
-								: "bg-transparent text-fg-muted hover:text-fg-primary",
-						)}
-					>
-						Misc
-					</button>
-				</div>
-
-				{/* Expand/Collapse */}
-				<button
-					type="button"
-					onClick={() => setExpanded(!expanded)}
-					className="flex size-8 items-center justify-center border-2 border-stroke-subtle text-fg-muted transition-colors hover:border-fg-muted hover:text-fg-primary"
-				>
-					{expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-				</button>
-
-				{/* Remove */}
-				<button
-					type="button"
-					onClick={onRemove}
-					className="flex size-8 items-center justify-center border-2 border-stroke-subtle text-fg-muted transition-colors hover:border-destructive hover:text-destructive"
-				>
-					<Trash2 className="size-4" />
-				</button>
-			</div>
-
-			{/* Expanded Details */}
-			{expanded && (
-				<div className="space-y-4 border-t-2 border-stroke-subtle bg-bg-panel-muted p-4">
-					<div className="grid grid-cols-3 gap-4">
-						{/* Tier */}
-						<div>
-							<Label className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-								Tier
-							</Label>
-							<Select
-								value={entry.tierId ?? tiers[0]?.tierId ?? ""}
-								onValueChange={(tierId) => {
-									const tier = tiers.find((t) => t.tierId === tierId);
-									if (tier) {
-										onUpdate({
-											tierId,
-											primaryUsageLabel: tier.name,
-											price: {
-												pricingType: tier.pricing.pricingType,
-												fixed: tier.pricing.fixed,
-											},
-										});
-									}
-								}}
-							>
-								<SelectTrigger className="h-9 w-full border-2 border-stroke-subtle bg-bg-panel font-mono text-xs">
-									<SelectValue placeholder="Select tier" />
-								</SelectTrigger>
-								<SelectContent>
-									{tiers.map((t) => (
-										<SelectItem key={t.tierId} value={t.tierId}>
-											{t.name}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-
-						{/* Price */}
-						<div>
-							<Label className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-								Price
-							</Label>
-							<div className="flex items-center gap-1">
-								<span className="font-mono text-sm text-fg-muted">$</span>
-								<Input
-									type="number"
-									min={0}
-									step={0.01}
-									value={entry.price.fixed?.amount ?? 0}
-									onChange={(e) =>
-										onUpdate({
-											price: {
-												...entry.price,
-												pricingType: "fixed",
-												fixed: {
-													currency: "USD",
-													amount: Number(e.target.value),
-													period: entry.price.fixed?.period ?? "month",
-												},
-											},
-										})
-									}
-									className="h-9 w-full border-2 border-stroke-subtle bg-bg-panel font-mono text-xs"
-								/>
-							</div>
-						</div>
-
-						{/* Period */}
-						<div>
-							<Label className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-								Period
-							</Label>
-							<Select
-								value={entry.price.fixed?.period ?? "month"}
-								onValueChange={(period) =>
+					{/* Price */}
+					<div className="flex items-center gap-2">
+						<span className="font-mono text-[10px] uppercase text-fg-muted">Price:</span>
+						<div className="flex items-center gap-1">
+							<span className="font-mono text-xs text-fg-muted">$</span>
+							<Input
+								type="number"
+								min={0}
+								step={0.01}
+								value={entry.price.fixed?.amount ?? 0}
+								onChange={(e) =>
 									onUpdate({
 										price: {
 											...entry.price,
 											pricingType: "fixed",
 											fixed: {
 												currency: "USD",
-												amount: entry.price.fixed?.amount ?? 0,
-												period: period as "month" | "year" | "one_time",
+												amount: Number(e.target.value),
+												period: entry.price.fixed?.period ?? "month",
 											},
 										},
 									})
 								}
-							>
-								<SelectTrigger className="h-9 w-full border-2 border-stroke-subtle bg-bg-panel font-mono text-xs">
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="month">/month</SelectItem>
-									<SelectItem value="year">/year</SelectItem>
-									<SelectItem value="one_time">one-time</SelectItem>
-								</SelectContent>
-							</Select>
+								className="h-8 w-20 border-2 border-stroke-subtle bg-bg-panel font-mono text-xs"
+							/>
+							<span className="font-mono text-xs text-fg-muted">
+								/{entry.price.fixed?.period === "one_time" ? "once" : entry.price.fixed?.period ?? "month"}
+							</span>
 						</div>
 					</div>
-
-					{/* Usage Label */}
-					<div>
-						<Label className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-							Usage Label
-						</Label>
-						<Input
-							value={entry.primaryUsageLabel}
-							onChange={(e) => onUpdate({ primaryUsageLabel: e.target.value })}
-							placeholder="e.g. For coding & debugging"
-							className="h-9 border-2 border-stroke-subtle bg-bg-panel font-mono text-xs"
-						/>
-					</div>
-				</div>
-			)}
-		</div>
+				</>
+			}
+		/>
 	);
 }

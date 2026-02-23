@@ -28,15 +28,10 @@ function selectSaveDraftPublishTarget(
 
 function selectSavePayload(state: EditorState, published: boolean) {
 	return {
+		name: state.name.trim(),
 		oneLiner: state.oneLiner.trim(),
 		description: state.description.trim() || undefined,
-		stackUrl: state.stackUrl?.trim() || undefined,
-		prompts: state.prompts.length > 0 ? state.prompts : undefined,
-		rules: state.rules.length > 0 ? state.rules : undefined,
-		skills: state.skills.length > 0 ? state.skills : undefined,
-		mcps: state.mcps.length > 0 ? state.mcps : undefined,
-		models: state.models.length > 0 ? state.models : undefined,
-		resources: state.resources.length > 0 ? state.resources : undefined,
+		instructions: state.instructions.length > 0 ? state.instructions : undefined,
 		teamSize: state.isTeam ? state.teamSize : undefined,
 		toolSubscriptions: state.toolSubscriptions.map((tool) => ({
 			toolId: tool.toolId,
@@ -56,26 +51,27 @@ function selectSavePayload(state: EditorState, published: boolean) {
 					notes: bundle.notes,
 				}))
 				: undefined,
+		avatarUrl: state.avatarUrl.trim() || undefined,
+		personalPageUrl: state.personalPageUrl.trim() || undefined,
+		projectPageUrl: state.projectPageUrl.trim() || undefined,
 		published,
 	};
 }
 
 function selectGuestDraft(state: EditorState): GuestStackDraft {
 	return {
+		name: state.name,
 		oneLiner: state.oneLiner,
 		description: state.description,
-		stackUrl: state.stackUrl,
-		prompts: state.prompts,
-		rules: state.rules,
-		skills: state.skills,
-		mcps: state.mcps,
-		models: state.models,
-		resources: state.resources,
+		instructions: state.instructions,
 		isTeam: state.isTeam,
 		teamSize: state.teamSize,
 		toolSubscriptions: state.toolSubscriptions,
 		bundleSubscriptions: state.bundleSubscriptions,
 		xHandle: state.xHandle,
+		personalPageUrl: state.personalPageUrl,
+		projectPageUrl: state.projectPageUrl,
+		avatarUrl: state.avatarUrl,
 	};
 }
 

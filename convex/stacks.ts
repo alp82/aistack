@@ -1,32 +1,22 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 
-const PromptItemValidator = v.object({
+const InstructionTypeValidator = v.union(
+  v.literal('prompt'),
+  v.literal('rule'),
+  v.literal('skill'),
+  v.literal('mcp'),
+  v.literal('plugin'),
+  v.literal('subagent')
+)
+
+const InstructionItemValidator = v.object({
+  type: InstructionTypeValidator,
   name: v.string(),
-  description: v.string(),
+  description: v.optional(v.string()),
   content: v.optional(v.string()),
-})
-
-const RuleItemValidator = v.object({
-  name: v.string(),
-  description: v.string(),
-})
-
-const SkillItemValidator = v.object({
-  name: v.string(),
-  description: v.string(),
-  trigger: v.optional(v.string()),
-})
-
-const McpItemValidator = v.object({
-  name: v.string(),
-  purpose: v.string(),
   url: v.optional(v.string()),
-})
-
-const ModelItemValidator = v.object({
-  name: v.string(),
-  role: v.string(),
+  trigger: v.optional(v.string()),
 })
 
 const MoneyValidator = v.object({
@@ -149,7 +139,7 @@ export const listPublished = query({
           _id: creator._id,
           name: creator.name,
           xHandle: creator.xHandle,
-          avatarUrl: creator.avatarUrl,
+          avatarUrl: stack.avatarUrl ?? creator.avatarUrl,
           verified: creator.verified,
           personalPages: creator.personalPages,
           projectPages: creator.projectPages,
@@ -190,18 +180,16 @@ const BundleSubscriptionInput = v.object({
 
 export const create = mutation({
   args: {
+    name: v.string(),
     oneLiner: v.string(),
     description: v.optional(v.string()),
-    stackUrl: v.optional(v.string()),
-    prompts: v.optional(v.array(PromptItemValidator)),
-    rules: v.optional(v.array(RuleItemValidator)),
-    skills: v.optional(v.array(SkillItemValidator)),
-    mcps: v.optional(v.array(McpItemValidator)),
-    models: v.optional(v.array(ModelItemValidator)),
-    resources: v.optional(v.array(v.object({ label: v.string(), url: v.string() }))),
+    instructions: v.optional(v.array(InstructionItemValidator)),
     teamSize: v.optional(v.number()),
     toolSubscriptions: v.array(ToolSubscriptionInput),
     bundleSubscriptions: v.optional(v.array(BundleSubscriptionInput)),
+    avatarUrl: v.optional(v.string()),
+    personalPageUrl: v.optional(v.string()),
+    projectPageUrl: v.optional(v.string()),
     published: v.boolean(),
   },
   returns: v.object({ _id: v.id('stacks'), slug: v.string() }),
@@ -222,7 +210,12 @@ export const create = mutation({
       .first()
     if (existingStack) throw new Error('You already have a stack. Please edit your existing stack instead.')
 
-    const baseSlug = `${creator.slug}-stack`
+    // Generate slug from stack name
+    const baseSlug = args.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      || `${creator.slug}-stack`
     let slug = baseSlug
     let suffix = 2
     while (
@@ -257,20 +250,18 @@ export const create = mutation({
 
     const now = Date.now()
     const id = await ctx.db.insert('stacks', {
+      name: args.name,
       slug,
       creatorId: creator._id,
       oneLiner: args.oneLiner,
       description: args.description,
-      stackUrl: args.stackUrl,
-      prompts: args.prompts,
-      rules: args.rules,
-      skills: args.skills,
-      mcps: args.mcps,
-      models: args.models,
-      resources: args.resources,
+      instructions: args.instructions,
       teamSize: args.teamSize,
       toolSubscriptions: args.toolSubscriptions,
       bundleSubscriptions: args.bundleSubscriptions,
+      avatarUrl: args.avatarUrl,
+      personalPageUrl: args.personalPageUrl,
+      projectPageUrl: args.projectPageUrl,
       fixedTotal: { currency: 'USD', amount: fixedTotal, period: 'month' as const },
       hasUsageComponent,
       published: args.published,
@@ -285,18 +276,16 @@ export const create = mutation({
 export const update = mutation({
   args: {
     stackId: v.id('stacks'),
+    name: v.optional(v.string()),
     oneLiner: v.optional(v.string()),
     description: v.optional(v.string()),
-    stackUrl: v.optional(v.string()),
-    prompts: v.optional(v.array(PromptItemValidator)),
-    rules: v.optional(v.array(RuleItemValidator)),
-    skills: v.optional(v.array(SkillItemValidator)),
-    mcps: v.optional(v.array(McpItemValidator)),
-    models: v.optional(v.array(ModelItemValidator)),
-    resources: v.optional(v.array(v.object({ label: v.string(), url: v.string() }))),
+    instructions: v.optional(v.array(InstructionItemValidator)),
     teamSize: v.optional(v.number()),
     toolSubscriptions: v.optional(v.array(ToolSubscriptionInput)),
     bundleSubscriptions: v.optional(v.array(BundleSubscriptionInput)),
+    avatarUrl: v.optional(v.string()),
+    personalPageUrl: v.optional(v.string()),
+    projectPageUrl: v.optional(v.string()),
     published: v.optional(v.boolean()),
   },
   returns: v.null(),
@@ -312,18 +301,16 @@ export const update = mutation({
     if (!creator || creator.userId !== userId) throw new Error('Not authorized')
 
     const patch: Record<string, unknown> = { updatedAt: Date.now() }
+    if (args.name !== undefined) patch.name = args.name
     if (args.oneLiner !== undefined) patch.oneLiner = args.oneLiner
     if (args.description !== undefined) patch.description = args.description
-    if (args.stackUrl !== undefined) patch.stackUrl = args.stackUrl
-    if (args.prompts !== undefined) patch.prompts = args.prompts
-    if (args.rules !== undefined) patch.rules = args.rules
-    if (args.skills !== undefined) patch.skills = args.skills
-    if (args.mcps !== undefined) patch.mcps = args.mcps
-    if (args.models !== undefined) patch.models = args.models
-    if (args.resources !== undefined) patch.resources = args.resources
+    if (args.instructions !== undefined) patch.instructions = args.instructions
     if (args.teamSize !== undefined) patch.teamSize = args.teamSize
     if (args.toolSubscriptions !== undefined) patch.toolSubscriptions = args.toolSubscriptions
     if (args.bundleSubscriptions !== undefined) patch.bundleSubscriptions = args.bundleSubscriptions
+    if (args.avatarUrl !== undefined) patch.avatarUrl = args.avatarUrl
+    if (args.personalPageUrl !== undefined) patch.personalPageUrl = args.personalPageUrl
+    if (args.projectPageUrl !== undefined) patch.projectPageUrl = args.projectPageUrl
     if (args.published !== undefined) patch.published = args.published
 
     const subs = args.toolSubscriptions ?? stack.toolSubscriptions
@@ -358,20 +345,18 @@ export const getForEdit = query({
   returns: v.union(
     v.object({
       _id: v.id('stacks'),
+      name: v.string(),
       slug: v.string(),
       oneLiner: v.string(),
       description: v.optional(v.string()),
-      stackUrl: v.optional(v.string()),
-      prompts: v.optional(v.array(PromptItemValidator)),
-      rules: v.optional(v.array(RuleItemValidator)),
-      skills: v.optional(v.array(SkillItemValidator)),
-      mcps: v.optional(v.array(McpItemValidator)),
-      models: v.optional(v.array(ModelItemValidator)),
-      resources: v.optional(v.array(v.object({ label: v.string(), url: v.string() }))),
+      instructions: v.optional(v.array(InstructionItemValidator)),
       teamSize: v.optional(v.number()),
       fixedTotal: v.optional(MoneyValidator),
       hasUsageComponent: v.boolean(),
       published: v.boolean(),
+      avatarUrl: v.optional(v.string()),
+      personalPageUrl: v.optional(v.string()),
+      projectPageUrl: v.optional(v.string()),
       toolSubscriptions: v.array(v.object({
         toolId: v.id('tools'),
         toolName: v.string(),
@@ -453,20 +438,18 @@ export const getForEdit = query({
 
     return {
       _id: stack._id,
+      name: stack.name,
       slug: stack.slug,
       oneLiner: stack.oneLiner,
       description: stack.description,
-      stackUrl: stack.stackUrl,
-      prompts: stack.prompts,
-      rules: stack.rules,
-      skills: stack.skills,
-      mcps: stack.mcps,
-      models: stack.models,
-      resources: stack.resources,
+      instructions: stack.instructions,
       teamSize: stack.teamSize,
       fixedTotal: stack.fixedTotal,
       hasUsageComponent: stack.hasUsageComponent,
       published: stack.published,
+      avatarUrl: stack.avatarUrl,
+      personalPageUrl: stack.personalPageUrl,
+      projectPageUrl: stack.projectPageUrl,
       toolSubscriptions: toolSubs,
       bundleSubscriptions: bundleSubs,
     }
@@ -553,6 +536,14 @@ export const toggleUpvote = mutation({
     if (!user) throw new Error('Not authenticated')
     const userId = user.tokenIdentifier.split('|')[1]
 
+    // Prevent users from upvoting their own stack
+    const stack = await ctx.db.get(args.stackId)
+    if (!stack) throw new Error('Stack not found')
+    const creator = await ctx.db.get(stack.creatorId)
+    if (creator && creator.userId === userId) {
+      throw new Error('You cannot upvote your own stack')
+    }
+
     const existing = await ctx.db
       .query('stackUpvotes')
       .withIndex('by_stackId_userId', (q) => 
@@ -590,6 +581,7 @@ export const getUpvoteStatus = query({
   returns: v.object({
     upvoted: v.boolean(),
     count: v.number(),
+    isOwner: v.boolean(),
   }),
   handler: async (ctx, args) => {
     const user = await ctx.auth.getUserIdentity()
@@ -604,7 +596,17 @@ export const getUpvoteStatus = query({
       ? upvotes.some((u) => u.userId === userId)
       : false
 
-    return { upvoted, count: upvotes.length }
+    // Check if user owns this stack
+    let isOwner = false
+    if (userId) {
+      const stack = await ctx.db.get(args.stackId)
+      if (stack) {
+        const creator = await ctx.db.get(stack.creatorId)
+        isOwner = creator?.userId === userId
+      }
+    }
+
+    return { upvoted, count: upvotes.length, isOwner }
   },
 })
 
@@ -614,16 +616,11 @@ export const getBySlug = query({
     v.object({
       _id: v.id('stacks'),
       _creationTime: v.number(),
+      name: v.string(),
       slug: v.string(),
       oneLiner: v.string(),
       description: v.optional(v.string()),
-      stackUrl: v.optional(v.string()),
-      prompts: v.optional(v.array(PromptItemValidator)),
-      rules: v.optional(v.array(RuleItemValidator)),
-      skills: v.optional(v.array(SkillItemValidator)),
-      mcps: v.optional(v.array(McpItemValidator)),
-      models: v.optional(v.array(ModelItemValidator)),
-      resources: v.optional(v.array(v.object({ label: v.string(), url: v.string() }))),
+      instructions: v.optional(v.array(InstructionItemValidator)),
       teamSize: v.optional(v.number()),
       fixedTotal: v.optional(MoneyValidator),
       hasUsageComponent: v.boolean(),
@@ -688,16 +685,11 @@ export const getBySlug = query({
     return {
       _id: stack._id,
       _creationTime: stack._creationTime,
+      name: stack.name,
       slug: stack.slug,
       oneLiner: stack.oneLiner,
       description: stack.description,
-      stackUrl: stack.stackUrl,
-      prompts: stack.prompts,
-      rules: stack.rules,
-      skills: stack.skills,
-      mcps: stack.mcps,
-      models: stack.models,
-      resources: stack.resources,
+      instructions: stack.instructions,
       teamSize: stack.teamSize,
       fixedTotal: stack.fixedTotal,
       hasUsageComponent: stack.hasUsageComponent,
@@ -706,7 +698,7 @@ export const getBySlug = query({
         _id: creator._id,
         name: creator.name,
         xHandle: creator.xHandle,
-        avatarUrl: creator.avatarUrl,
+        avatarUrl: stack.avatarUrl ?? creator.avatarUrl,
         verified: creator.verified,
         personalPages: creator.personalPages,
         projectPages: creator.projectPages,

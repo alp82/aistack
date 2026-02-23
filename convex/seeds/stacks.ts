@@ -105,7 +105,7 @@ The real power of this stack comes from the **4 custom skills** I've built for W
       {
         toolSlug: "replit",
         tierId: "default",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "Quick prototyping and testing ideas in the browser",
         priceKind: "bundle" as const,
         bundleSlug: "lennys-bundle",
@@ -117,7 +117,7 @@ The real power of this stack comes from the **4 custom skills** I've built for W
       {
         toolSlug: "bolt",
         tierId: "default",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "Rapid full-stack app scaffolding from prompts",
         priceKind: "bundle" as const,
         bundleSlug: "lennys-bundle",
@@ -129,7 +129,7 @@ The real power of this stack comes from the **4 custom skills** I've built for W
       {
         toolSlug: "lovable",
         tierId: "starter",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "AI-powered frontend generation for landing pages",
         priceKind: "bundle" as const,
         bundleSlug: "lennys-bundle",
@@ -141,7 +141,7 @@ The real power of this stack comes from the **4 custom skills** I've built for W
       {
         toolSlug: "notion-ai",
         tierId: "ai",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "Documentation, project management, and knowledge base",
         priceKind: "bundle" as const,
         bundleSlug: "lennys-bundle",
@@ -153,7 +153,7 @@ The real power of this stack comes from the **4 custom skills** I've built for W
       {
         toolSlug: "perplexity",
         tierId: "pro",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "Research, staying up to date, and fact-checking",
         priceKind: "bundle" as const,
         bundleSlug: "lennys-bundle",
@@ -165,7 +165,7 @@ The real power of this stack comes from the **4 custom skills** I've built for W
       {
         toolSlug: "posthog",
         tierId: "default",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "Product analytics and user behavior tracking",
         priceKind: "bundle" as const,
         bundleSlug: "lennys-bundle",
@@ -237,7 +237,7 @@ My approach is simple: find one tool that does most things well, rather than jug
       {
         toolSlug: "higgsfield-ai",
         tierId: "ultimate",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "Generating marketing and social media video content",
         priceKind: "regular" as const,
         price: {
@@ -381,7 +381,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
       {
         toolSlug: "perplexity",
         tierId: "pro",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "Deep research and real-time web search for answers",
         priceKind: "regular" as const,
         price: {
@@ -417,7 +417,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
       {
         toolSlug: "chatgpt-plus",
         tierId: "plus",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "Backup AI for second opinions and different reasoning",
         priceKind: "regular" as const,
         price: {
@@ -483,7 +483,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
       {
         toolSlug: "voice-ink",
         tierId: "local",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "Local speech-to-text for hands-free coding sessions",
         priceKind: "regular" as const,
         price: {
@@ -617,7 +617,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
       {
         toolSlug: "x-grok",
         tierId: "premium",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "Real-time AI chat with access to X/Twitter data",
         priceKind: "regular" as const,
         price: {
@@ -650,7 +650,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
       {
         toolSlug: "envato",
         tierId: "elements",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "Unlimited downloads of templates, fonts, and stock assets",
         priceKind: "regular" as const,
         price: {
@@ -672,7 +672,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
       {
         toolSlug: "unicorn-studio",
         tierId: "pro",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "Interactive 3D web experiences without writing WebGL code",
         priceKind: "regular" as const,
         price: {
@@ -705,7 +705,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
       {
         toolSlug: "spline",
         tierId: "super",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "3D modeling and interactive scenes for product pages",
         priceKind: "regular" as const,
         price: {
@@ -716,7 +716,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
       {
         toolSlug: "replit",
         tierId: "default",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "Quick prototyping and testing client ideas in the browser",
         priceKind: "bundle" as const,
         bundleSlug: "lennys-bundle",
@@ -728,7 +728,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
       {
         toolSlug: "bolt",
         tierId: "default",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "Rapid full-stack scaffolding for client project kickoffs",
         priceKind: "bundle" as const,
         bundleSlug: "lennys-bundle",
@@ -740,7 +740,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
       {
         toolSlug: "lovable",
         tierId: "starter",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "AI-generated landing pages and marketing sites",
         priceKind: "bundle" as const,
         bundleSlug: "lennys-bundle",
@@ -752,7 +752,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
       {
         toolSlug: "notion-ai",
         tierId: "ai",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "Team wiki, project docs, and AI-powered writing",
         priceKind: "bundle" as const,
         bundleSlug: "lennys-bundle",
@@ -764,7 +764,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
       {
         toolSlug: "perplexity",
         tierId: "pro",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "Competitive research and trend analysis for clients",
         priceKind: "bundle" as const,
         bundleSlug: "lennys-bundle",
@@ -776,7 +776,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
       {
         toolSlug: "posthog",
         tierId: "default",
-        kind: "misc" as const,
+        kind: "main" as const,
         primaryUsageLabel: "Analytics and A/B testing across client projects",
         priceKind: "bundle" as const,
         bundleSlug: "lennys-bundle",

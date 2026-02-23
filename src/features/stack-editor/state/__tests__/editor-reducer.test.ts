@@ -35,29 +35,6 @@ describe("editor reducer", () => {
 		expect(sectionState.activeSection).toBe("tools");
 	});
 
-	it("applies metadata updates and keeps resources typed", () => {
-		const baseState = getInitialEditorState({ actor: { xHandle: "existing" } });
-
-		const nextState = editorReducer(baseState, {
-			type: "metadata/updated",
-			updates: {
-				stackUrl: "https://example.com",
-				prompts: [{ name: "Test Prompt", description: "A test prompt" }],
-				rules: [],
-				skills: [{ name: "Test Skill", description: "A test skill" }],
-				mcps: [{ name: "Test MCP", purpose: "Testing" }],
-				resources: [{ label: "Guide", url: "https://example.com/guide" }],
-			},
-		});
-
-		expect(nextState.stackUrl).toBe("https://example.com");
-		expect(nextState.prompts).toHaveLength(1);
-		expect(nextState.rules).toHaveLength(0);
-		expect(nextState.skills).toHaveLength(1);
-		expect(nextState.mcps).toHaveLength(1);
-		expect(nextState.resources).toEqual([{ label: "Guide", url: "https://example.com/guide" }]);
-	});
-
 	it("computes publish and save selectors from state", () => {
 		const createState = editorReducer(getInitialEditorState({ actor: { xHandle: "" } }), {
 			type: "profile/updated",
@@ -120,14 +97,7 @@ describe("editor reducer", () => {
 			type: "description/updated",
 			description: "   ",
 		});
-		const withMetadata = editorReducer(withDescription, {
-			type: "metadata/updated",
-			updates: {
-				stackUrl: " https://example.com/stack ",
-				resources: [],
-			},
-		});
-		const withTools = editorReducer(withMetadata, {
+		const withTools = editorReducer(withDescription, {
 			type: "tools/updated",
 			tools: [
 				{
@@ -165,8 +135,6 @@ describe("editor reducer", () => {
 		const payload = selectSavePayload(withBundles, true);
 		expect(payload.oneLiner).toBe("Builder stack");
 		expect(payload.description).toBeUndefined();
-		expect(payload.stackUrl).toBe("https://example.com/stack");
-		expect(payload.resources).toBeUndefined();
 		expect(payload.teamSize).toBeUndefined();
 		expect(payload.toolSubscriptions).toHaveLength(1);
 		expect(payload.bundleSubscriptions).toEqual([

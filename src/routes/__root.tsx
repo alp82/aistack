@@ -89,10 +89,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			<head>
 				<HeadContent />
 			</head>
-			<body className="bg-bg-canvas">
+			<body className="bg-bg-canvas min-h-screen flex flex-col">
 				<ThemeProvider>
 					<Header />
-					{children}
+						{children}
 					<Footer />
 				</ThemeProvider>
 				<TanStackDevtools

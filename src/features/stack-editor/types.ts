@@ -35,47 +35,66 @@ type ModelItem = {
 	role: string;
 };
 
+type InstructionType = 'prompt' | 'rule' | 'skill' | 'mcp' | 'plugin' | 'subagent';
+
+type InstructionItem = {
+	type: InstructionType;
+	name: string;
+	description?: string;
+	content?: string;
+	url?: string;
+	trigger?: string;
+};
+
+type ModelSubscriptionEntry = {
+	modelId: Id<"models">;
+	modelName: string;
+	modelSlug: string;
+	modelProvider: string;
+	modelCategory: 'language' | 'coding' | 'reasoning' | 'vision' | 'audio' | 'image' | 'video' | 'embedding' | 'other';
+	modelIconUrl?: string;
+	role: string;
+};
+
 type CreatorProfile = {
 	_id: Id<"creators">;
 	name: string;
 	slug: string;
 	xHandle?: string;
+	avatarUrl?: string;
+	personalPages?: Array<{ name: string; url: string }>;
+	projectPages?: Array<{ name: string; url: string }>;
 };
 
 type StackEditorMode = "create" | "edit";
 
 type StackEditorInitialValue = {
 	_id: Id<"stacks">;
+	name: string;
 	slug: string;
 	oneLiner: string;
 	description?: string;
-	stackUrl?: string;
-	prompts?: PromptItem[];
-	rules?: RuleItem[];
-	skills?: SkillItem[];
-	mcps?: McpItem[];
-	models?: ModelItem[];
-	resources?: StackResource[];
+	instructions?: InstructionItem[];
 	teamSize?: number;
 	published: boolean;
 	toolSubscriptions: ToolSubscriptionEntry[];
 	bundleSubscriptions: BundleSubscriptionEntry[];
+	personalPageUrl?: string;
+	projectPageUrl?: string;
+	avatarUrl?: string;
 };
 
 type StackMetadataUpdates = {
-	stackUrl?: string;
-	prompts?: PromptItem[];
-	rules?: RuleItem[];
-	skills?: SkillItem[];
-	mcps?: McpItem[];
-	models?: ModelItem[];
-	resources?: StackResource[];
+	instructions?: InstructionItem[];
 };
 
 export type {
 	CreatorProfile,
+	InstructionItem,
+	InstructionType,
 	McpItem,
 	ModelItem,
+	ModelSubscriptionEntry,
 	PromptItem,
 	RuleItem,
 	SkillItem,

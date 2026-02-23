@@ -94,8 +94,8 @@ export function MiscToolCard({ tool, onBundleClick }: MiscToolCardProps) {
 					<Icon className="size-4 text-fg-muted" />
 				</div>
 			)}
-			<span className="text-sm font-semibold text-fg-primary truncate">{tool.name}</span>
-			<CategoryLabel category={tool.category} className="ml-auto shrink-0" />
+			<span className="font-semibold text-fg-primary truncate">{tool.name}</span>
+			<CategoryLabel category={tool.category} className="mr-auto shrink-0" />
 			{tool.websiteUrl && (
 				<a
 					href={tool.websiteUrl}

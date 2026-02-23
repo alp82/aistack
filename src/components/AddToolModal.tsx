@@ -1,6 +1,7 @@
 import { useMutation } from "convex/react";
 import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { categoryConfig, type ToolCategory } from "@/config/categoryConfig";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -174,10 +175,10 @@ export function AddToolModal({
 	const canProceedFromBasic = name.trim() && category;
 	const canSubmit = canProceedFromBasic;
 
-	return (
+	return createPortal(
 		<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
 			<div
-				className="absolute inset-0 bg-bg-canvas/80 backdrop-blur-sm"
+				className="absolute inset-0 bg-bg-canvas/80 backdrop-blur-md"
 				onClick={onClose}
 				onKeyDown={(e) => e.key === "Escape" && onClose()}
 			/>
@@ -511,6 +512,7 @@ export function AddToolModal({
 					</div>
 				</form>
 			</div>
-		</div>
+		</div>,
+		document.body
 	);
 }

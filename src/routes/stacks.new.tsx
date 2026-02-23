@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { StackEditor } from "@/components/StackEditor";
 import { Button } from "@/components/ui/button";
 import { api } from "../../convex/_generated/api";
+import { authClient } from "@/lib/auth-client";
 
 export const Route = createFileRoute("/stacks/new")({
 	ssr: false,
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/stacks/new")({
 function NewStackPage() {
 	const navigate = useNavigate();
 	const { isAuthenticated, isLoading } = useConvexAuth();
+	const session = authClient.useSession();
 	const getOrCreateCreator = useMutation(api.creators.getOrCreateForUser);
 	const userStack = useQuery(api.stacks.getUserStack);
 	const [creator, setCreator] = useState<{
@@ -21,9 +23,15 @@ function NewStackPage() {
 		name: string;
 		slug: string;
 		xHandle?: string;
+		avatarUrl?: string;
+		personalPages?: Array<{ name: string; url: string }>;
+		projectPages?: Array<{ name: string; url: string }>;
 	} | null>(null);
 	const [loadingCreator, setLoadingCreator] = useState(true);
 	const [isGuest, setIsGuest] = useState(false);
+
+	// Get user's Google profile image as default
+	const userImageUrl = session.data?.user?.image ?? undefined;
 
 	useEffect(() => {
 		if (isLoading) return;
@@ -85,5 +93,5 @@ function NewStackPage() {
 		);
 	}
 
-	return <StackEditor mode="create" actor={creator} guestSession={isGuest} />;
+	return <StackEditor mode="create" actor={creator} guestSession={isGuest} defaultAvatarUrl={userImageUrl} />;
 }

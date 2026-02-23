@@ -1,7 +1,7 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { Check, X, Edit2, Shield, Package } from "lucide-react";
+import { Check, X, Edit2, Package, Wrench } from "lucide-react";
 import { useState } from "react";
 import type { Id } from "../../convex/_generated/dataModel";
 import { AddToolModal, type ToolData } from "../components/AddToolModal";
@@ -87,8 +87,8 @@ function AdminToolsPage() {
 			<section className="py-12 sm:py-16">
 				<div className="mx-auto max-w-6xl px-4 sm:px-6">
 					<div className="mb-8 flex items-center gap-3">
-						<Shield className="size-8 text-accent-lime" />
-						<h1 className="text-2xl font-bold tracking-tight text-fg-primary sm:text-3xl">Admin - Tool Review</h1>
+						<Wrench className="size-8 text-accent-lime" />
+						<h1 className="text-2xl font-bold tracking-tight text-fg-primary sm:text-3xl">Tool Review</h1>
 					</div>
 
 					{!pendingTools || pendingTools.length === 0 ? (

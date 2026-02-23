@@ -7,12 +7,13 @@ import { toolsData } from './seeds/tools'
 import { creatorsData } from './seeds/creators'
 import { stacksData } from './seeds/stacks'
 import { bundlesData } from './seeds/bundles'
+import { modelsData } from './seeds/models'
 
 type Ctx = GenericMutationCtx<DataModelFromSchemaDefinition<typeof schema>>
 
 async function clearTable(
   ctx: Ctx,
-  table: "stacks" | "creators" | "tools" | "bundles" | "waitlist",
+  table: "stacks" | "creators" | "tools" | "bundles" | "waitlist" | "models",
 ) {
   const docs = await ctx.db.query(table).collect();
   for (const doc of docs) {
@@ -30,6 +31,7 @@ export const seedAll = internalMutation({
     await clearTable(ctx, "bundles");
     await clearTable(ctx, "creators");
     await clearTable(ctx, "tools");
+    await clearTable(ctx, "models");
 
     // ============ TOOLS ============
     const toolIds: Record<string, Id<'tools'>> = {}
@@ -119,18 +121,17 @@ export const seedAll = internalMutation({
         return result;
       });
 
+      // Get creator name for stack name
+      const creatorDoc = await ctx.db.get(creatorId);
+      const creatorName = creatorDoc?.name ?? 'Unknown';
+      
       const id = await ctx.db.insert('stacks', {
+        name: `${creatorName}'s Stack`,
         slug: stack.slug,
         creatorId,
         oneLiner: stack.oneLiner,
         description: (stack as { description?: string }).description,
-        stackUrl: (stack as { stackUrl?: string }).stackUrl,
-        prompts: (stack as { prompts?: Array<{ name: string; description: string; content?: string }> }).prompts,
-        rules: (stack as { rules?: Array<{ name: string; description: string }> }).rules,
-        skills: (stack as { skills?: Array<{ name: string; description: string; trigger?: string }> }).skills,
-        mcps: (stack as { mcps?: Array<{ name: string; purpose: string; url?: string }> }).mcps,
-        models: (stack as { models?: Array<{ name: string; role: string }> }).models,
-        resources: (stack as { resources?: Array<{ label: string; url: string }> }).resources,
+        instructions: (stack as { instructions?: Array<{ type: 'prompt' | 'rule' | 'skill' | 'mcp' | 'plugin' | 'subagent'; name: string; description?: string; content?: string; url?: string; trigger?: string }> }).instructions,
         teamSize: stack.teamSize,
         toolSubscriptions,
         bundleSubscriptions,
@@ -144,11 +145,23 @@ export const seedAll = internalMutation({
       stackIds[stack.slug] = id
     }
 
+    // ============ MODELS ============
+    const modelIds: Record<string, Id<'models'>> = {}
+    for (const model of modelsData) {
+      const id = await ctx.db.insert('models', {
+        ...model,
+        createdAt: now,
+        updatedAt: now,
+      })
+      modelIds[model.slug] = id
+    }
+
     console.log('Seed completed successfully!')
     console.log(`Created ${Object.keys(toolIds).length} tools`)
     console.log(`Created ${Object.keys(bundleIds).length} bundles`)
     console.log(`Created ${Object.keys(creatorIds).length} creators`)
     console.log(`Created ${Object.keys(stackIds).length} stacks`)
+    console.log(`Created ${Object.keys(modelIds).length} models`)
 
     return null
   },
