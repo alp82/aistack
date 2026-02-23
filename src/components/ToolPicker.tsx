@@ -33,6 +33,11 @@ export interface ToolSubscriptionEntry {
 			amount: number;
 			period: "month" | "year" | "one_time";
 		};
+		usage?: {
+			unit: string;
+			pricePerUnit: number;
+			currency: string;
+		};
 	};
 	priceKind: "regular" | "discounted" | "bundle" | "usage_based";
 	bundleSlug?: string;
@@ -53,6 +58,7 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 	const [showAddModal, setShowAddModal] = useState(false);
 	const [selectedCategory, setSelectedCategory] = useState<ToolCategory | null>(null);
 	const [showToolBrowser, setShowToolBrowser] = useState(false);
+	const [customToolName, setCustomToolName] = useState("");
 	const { hoveredToolName } = useEditorContext();
 
 	const selectedToolIds = new Set(value.map((t) => t.toolId));
@@ -103,6 +109,7 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 			price: {
 				pricingType: defaultTier?.pricing.pricingType ?? "fixed",
 				fixed: defaultTier?.pricing.fixed,
+				usage: defaultTier?.pricing.usage,
 			},
 			priceKind: "regular",
 		};
@@ -125,6 +132,29 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 
 	const handleToolCreated = (toolId: string) => {
 		setTimeout(() => addTool(toolId as Id<"tools">), 500);
+	};
+
+	const addCustomTool = () => {
+		if (!customToolName.trim()) return;
+		const entry: ToolSubscriptionEntry = {
+			toolId: `custom-${Date.now()}` as Id<"tools">,
+			toolName: customToolName.trim(),
+			toolSlug: customToolName.trim().toLowerCase().replace(/\s+/g, "-"),
+			toolCategory: "other",
+			kind: "main",
+			primaryUsageLabel: "Custom",
+			price: {
+				pricingType: "fixed",
+				fixed: {
+					currency: "USD",
+					amount: 0,
+					period: "month",
+				},
+			},
+			priceKind: "regular",
+		};
+		onChange([...value, entry]);
+		setCustomToolName("");
 	};
 
 	return (
@@ -177,6 +207,26 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 								))}
 							</SelectContent>
 						</Select>
+					}
+					customInputSlot={
+						<div className="flex gap-2">
+							<Input
+								value={customToolName}
+								onChange={(e) => setCustomToolName(e.target.value)}
+								placeholder="Custom"
+								className="h-8 flex-1 text-xs"
+								onKeyDown={(e) => e.key === "Enter" && addCustomTool()}
+							/>
+							<button
+								type="button"
+								onClick={addCustomTool}
+								disabled={!customToolName.trim()}
+								className="flex h-8 items-center gap-1 border-2 border-accent-lime bg-accent-lime px-3 font-mono text-xs uppercase text-accent-lime-contrast transition-opacity hover:opacity-90 disabled:opacity-50"
+							>
+								<Plus className="size-3" />
+								Add
+							</button>
+						</div>
 					}
 					footer={
 						<AddMissingItemButton
@@ -245,6 +295,11 @@ interface ToolEntryProps {
 					amount: number;
 					period: "month" | "year" | "one_time";
 				};
+				usage?: {
+					unit: string;
+					pricePerUnit: number;
+					currency: string;
+				};
 			};
 		}>;
 	}>;
@@ -263,9 +318,13 @@ function ToolEntry({ entry, onUpdate, onRemove, onClick, isHighlighted, allTools
 		}
 	}, [isHighlighted]);
 
+	// Check if current tier has usage pricing
+	const currentTier = tiers.find((t) => t.tierId === entry.tierId);
+	const hasUsagePricing = currentTier?.pricing.usage || entry.price.usage;
+
 	// Format price display
 	const priceDisplay = entry.price.fixed 
-		? `$${entry.price.fixed.amount}/${entry.price.fixed.period === "one_time" ? "once" : entry.price.fixed.period}`
+		? `$${entry.price.fixed.amount}/${entry.price.fixed.period === "one_time" ? "once" : entry.price.fixed.period}${hasUsagePricing ? " + usage" : ""}`
 		: "Usage-based";
 
 	const handleTierChange = (tierId: string) => {
@@ -277,6 +336,7 @@ function ToolEntry({ entry, onUpdate, onRemove, onClick, isHighlighted, allTools
 				price: {
 					pricingType: tier.pricing.pricingType,
 					fixed: tier.pricing.fixed,
+					usage: tier.pricing.usage,
 				},
 			});
 		}
@@ -342,11 +402,39 @@ function ToolEntry({ entry, onUpdate, onRemove, onClick, isHighlighted, allTools
 								}
 								className="h-8 w-20 border-2 border-stroke-subtle bg-bg-panel font-mono text-xs"
 							/>
-							<span className="font-mono text-xs text-fg-muted">
-								/{entry.price.fixed?.period === "one_time" ? "once" : entry.price.fixed?.period ?? "month"}
-							</span>
+							<select
+								value={entry.price.fixed?.period ?? "month"}
+								onChange={(e) =>
+									onUpdate({
+										price: {
+											...entry.price,
+											pricingType: "fixed",
+											fixed: {
+												currency: "USD",
+												amount: entry.price.fixed?.amount ?? 0,
+												period: e.target.value as "month" | "year" | "one_time",
+											},
+										},
+									})
+								}
+								className="h-8 border-2 border-stroke-subtle bg-bg-panel px-2 font-mono text-xs text-fg-muted focus:border-accent-lime focus:outline-none"
+							>
+								<option value="month">/month</option>
+								<option value="year">/year</option>
+								<option value="one_time">one-time</option>
+							</select>
 						</div>
 					</div>
+
+					{/* Usage indicator - auto-shown if tier has usage pricing */}
+					{hasUsagePricing && (
+						<div className="flex items-center gap-2 border-t border-stroke-subtle pt-2">
+							<span className="font-mono text-[10px] uppercase text-fg-muted">Usage:</span>
+							<span className="font-mono text-xs text-accent-lime">
+								${entry.price.usage?.pricePerUnit ?? currentTier?.pricing.usage?.pricePerUnit ?? 0} / {entry.price.usage?.unit ?? currentTier?.pricing.usage?.unit ?? "unit"}
+							</span>
+						</div>
+					)}
 				</>
 			}
 		/>

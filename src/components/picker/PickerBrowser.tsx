@@ -50,6 +50,9 @@ export function PickerBrowser({
 				children
 			)}
 
+			{/* Custom Input Slot */}
+			{customInputSlot}
+
 			{/* Footer */}
 			{footer}
 		</div>

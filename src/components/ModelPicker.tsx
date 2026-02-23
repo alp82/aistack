@@ -1,5 +1,5 @@
 import { useQuery } from "convex/react";
-import { Brain } from "lucide-react";
+import { Brain, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -36,6 +36,7 @@ export function ModelPicker({ value, onChange, onModelClick }: ModelPickerProps)
     const [selectedCategory, setSelectedCategory] = useState<ModelCategory | null>(null);
     const [showModelBrowser, setShowModelBrowser] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [customModelName, setCustomModelName] = useState("");
 
     const selectedModelIds = new Set(value.map((m) => m.modelId));
 
@@ -88,6 +89,20 @@ export function ModelPicker({ value, onChange, onModelClick }: ModelPickerProps)
         onChange(value.filter((_, i) => i !== index));
     };
 
+    const addCustomModel = () => {
+        if (!customModelName.trim()) return;
+        const entry: ModelSubscriptionEntry = {
+            modelId: `custom-${Date.now()}` as Id<"models">,
+            modelName: customModelName.trim(),
+            modelSlug: customModelName.trim().toLowerCase().replace(/\s+/g, "-"),
+            modelProvider: "Custom",
+            modelCategory: "other",
+            role: "primary",
+        };
+        onChange([...value, entry]);
+        setCustomModelName("");
+    };
+
     return (
         <div className="space-y-2">
             {/* Selected Models */}
@@ -131,6 +146,27 @@ export function ModelPicker({ value, onChange, onModelClick }: ModelPickerProps)
                                 </option>
                             ))}
                         </select>
+                    }
+                    customInputSlot={
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={customModelName}
+                                onChange={(e) => setCustomModelName(e.target.value)}
+                                placeholder="Custom"
+                                className="h-8 flex-1 border border-stroke-subtle bg-bg-panel px-2 font-mono text-xs text-fg-primary placeholder:text-fg-muted focus:border-accent-lime focus:outline-none"
+                                onKeyDown={(e) => e.key === "Enter" && addCustomModel()}
+                            />
+                            <button
+                                type="button"
+                                onClick={addCustomModel}
+                                disabled={!customModelName.trim()}
+                                className="flex h-8 items-center gap-1 border-2 border-accent-lime bg-accent-lime px-3 font-mono text-xs uppercase text-accent-lime-contrast transition-opacity hover:opacity-90 disabled:opacity-50"
+                            >
+                                <Plus className="size-3" />
+                                Add
+                            </button>
+                        </div>
                     }
                     footer={
                         <AddMissingItemButton
@@ -207,11 +243,6 @@ function ModelEntry({ entry, onRemove, onClick }: ModelEntryProps) {
             onClick={onClick}
             onRemove={onRemove}
             showEditButton={false}
-            actions={
-                <span className="border-2 border-stroke-subtle bg-bg-panel-muted px-2 py-1 font-mono text-[10px] uppercase text-fg-muted">
-                    {entry.role}
-                </span>
-            }
         />
     );
 }

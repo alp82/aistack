@@ -1,5 +1,5 @@
 import { useQuery } from "convex/react";
-import { Package } from "lucide-react";
+import { Package, Plus } from "lucide-react";
 import { AddMissingItemButton } from "./AddMissingItemButton";
 import { useMemo, useState } from "react";
 import { api } from "../../convex/_generated/api";
@@ -14,6 +14,14 @@ export interface BundleSubscriptionEntry {
     bundleIconUrl?: string | null;
     tierId: string;
     tierName: string;
+    price?: {
+        pricingType: "fixed" | "usage" | "mixed";
+        fixed?: {
+            currency: string;
+            amount: number;
+            period: "month" | "year" | "one_time";
+        };
+    };
     notes?: string;
 }
 
@@ -30,6 +38,7 @@ export function BundlePicker({ value, onChange, onBundleClick, guestSession = fa
     const [search, setSearch] = useState("");
     const [showBundleBrowser, setShowBundleBrowser] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [customBundleName, setCustomBundleName] = useState("");
 
     const selectedBundleIds = new Set(value.map((b) => b.bundleId));
 
@@ -73,6 +82,19 @@ export function BundlePicker({ value, onChange, onBundleClick, guestSession = fa
         onChange(updated);
     };
 
+    const addCustomBundle = () => {
+        if (!customBundleName.trim()) return;
+        const entry: BundleSubscriptionEntry = {
+            bundleId: `custom-${Date.now()}` as Id<"bundles">,
+            bundleName: customBundleName.trim(),
+            bundleSlug: customBundleName.trim().toLowerCase().replace(/\s+/g, "-"),
+            tierId: "custom",
+            tierName: "Custom",
+        };
+        onChange([...value, entry]);
+        setCustomBundleName("");
+    };
+
     return (
         <div className="space-y-2">
             {/* Selected Bundles */}
@@ -106,6 +128,27 @@ export function BundlePicker({ value, onChange, onBundleClick, guestSession = fa
                     searchPlaceholder="Search bundles..."
                     isEmpty={filteredBundles.length === 0}
                     emptyMessage="No bundles found"
+                    customInputSlot={
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={customBundleName}
+                                onChange={(e) => setCustomBundleName(e.target.value)}
+                                placeholder="Custom"
+                                className="h-8 flex-1 border border-stroke-subtle bg-bg-panel px-2 font-mono text-xs text-fg-primary placeholder:text-fg-muted focus:border-accent-lime focus:outline-none"
+                                onKeyDown={(e) => e.key === "Enter" && addCustomBundle()}
+                            />
+                            <button
+                                type="button"
+                                onClick={addCustomBundle}
+                                disabled={!customBundleName.trim()}
+                                className="flex h-8 items-center gap-1 border-2 border-accent-lime bg-accent-lime px-3 font-mono text-xs uppercase text-accent-lime-contrast transition-opacity hover:opacity-90 disabled:opacity-50"
+                            >
+                                <Plus className="size-3" />
+                                Add
+                            </button>
+                        </div>
+                    }
                     footer={
                         <AddMissingItemButton
                             label="Can't find your bundle? Add it"
@@ -162,6 +205,7 @@ interface BundleEntryProps {
         tiers: Array<{
             tierId: string;
             name: string;
+            isDefault?: boolean;
             pricing: {
                 pricingType: "fixed" | "usage" | "mixed";
                 fixed?: {
@@ -185,9 +229,23 @@ function BundleEntry({ entry, allBundles, onUpdate, onRemove, onClick }: BundleE
     const handleTierChange = (tierId: string) => {
         const tier = tiers.find((t) => t.tierId === tierId);
         if (tier) {
-            onUpdate({ tierId: tier.tierId, tierName: tier.name });
+            onUpdate({
+                tierId: tier.tierId,
+                tierName: tier.name,
+                price: {
+                    pricingType: tier.pricing.pricingType,
+                    fixed: tier.pricing.fixed,
+                },
+            });
         }
     };
+
+    // Get current tier pricing for display
+    const currentTier = tiers.find((t) => t.tierId === entry.tierId);
+    const currentPrice = entry.price?.fixed ?? currentTier?.pricing.fixed;
+    const priceDisplay = currentPrice
+        ? `$${currentPrice.amount}/${currentPrice.period === "one_time" ? "once" : currentPrice.period}`
+        : entry.tierName;
 
     const icon = entry.bundleIconUrl ? (
         <img
@@ -204,22 +262,71 @@ function BundleEntry({ entry, allBundles, onUpdate, onRemove, onClick }: BundleE
     return (
         <PickerEntryCard
             name={entry.bundleName}
-            subtitle={entry.tierName}
+            subtitle={priceDisplay}
             icon={icon}
             onClick={onClick}
             onRemove={onRemove}
-            onEditClick={tiers.length > 1 ? () => setExpanded(!expanded) : undefined}
+            onEditClick={() => setExpanded(!expanded)}
             isExpanded={expanded}
-            showEditButton={tiers.length > 1}
             expandedContent={
-                tiers.length > 1 ? (
-                    <TierSelector
-                        tiers={tiers}
-                        value={entry.tierId}
-                        onChange={handleTierChange}
-                        className="w-full"
-                    />
-                ) : undefined
+                <>
+                    {/* Tier Selector */}
+                    {tiers.length > 1 && (
+                        <TierSelector
+                            tiers={tiers}
+                            value={entry.tierId}
+                            onChange={handleTierChange}
+                            className="w-full"
+                        />
+                    )}
+
+                    {/* Price */}
+                    <div className="flex items-center gap-2">
+                        <span className="font-mono text-[10px] uppercase text-fg-muted">Price:</span>
+                        <div className="flex items-center gap-1">
+                            <span className="font-mono text-xs text-fg-muted">$</span>
+                            <input
+                                type="number"
+                                min={0}
+                                step={0.01}
+                                value={entry.price?.fixed?.amount ?? currentPrice?.amount ?? 0}
+                                onChange={(e) =>
+                                    onUpdate({
+                                        price: {
+                                            pricingType: "fixed",
+                                            fixed: {
+                                                currency: "USD",
+                                                amount: Number(e.target.value),
+                                                period: entry.price?.fixed?.period ?? currentPrice?.period ?? "month",
+                                            },
+                                        },
+                                    })
+                                }
+                                className="h-8 w-20 border-2 border-stroke-subtle bg-bg-panel px-2 font-mono text-xs text-fg-primary focus:border-accent-lime focus:outline-none"
+                            />
+                            <select
+                                value={entry.price?.fixed?.period ?? currentPrice?.period ?? "month"}
+                                onChange={(e) =>
+                                    onUpdate({
+                                        price: {
+                                            pricingType: "fixed",
+                                            fixed: {
+                                                currency: "USD",
+                                                amount: entry.price?.fixed?.amount ?? currentPrice?.amount ?? 0,
+                                                period: e.target.value as "month" | "year" | "one_time",
+                                            },
+                                        },
+                                    })
+                                }
+                                className="h-8 border-2 border-stroke-subtle bg-bg-panel px-2 font-mono text-xs text-fg-muted focus:border-accent-lime focus:outline-none"
+                            >
+                                <option value="month">/month</option>
+                                <option value="year">/year</option>
+                                <option value="one_time">one-time</option>
+                            </select>
+                        </div>
+                    </div>
+                </>
             }
         />
     );

@@ -1,12 +1,10 @@
 import { ExternalLink, User } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import XLogoIcon from "@/components/icon/XLogoIcon";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { AvatarEditor } from "@/components/AvatarEditor";
 import type { CreatorProfile } from "@/features/stack-editor/types";
-
-type LinkType = "x" | "personal" | "project" | null;
 
 type DetailsStepProps = {
 	creator: CreatorProfile;
@@ -50,26 +48,6 @@ function DetailsStep({
 	onTeamSizeChange,
 }: DetailsStepProps) {
 	const [isAvatarEditorOpen, setIsAvatarEditorOpen] = useState(false);
-	const [activeLinkInput, setActiveLinkInput] = useState<LinkType>(null);
-	const linkRowRef = useRef<HTMLDivElement>(null);
-
-	// Close link input when clicking outside
-	useEffect(() => {
-		function handleClickOutside(event: MouseEvent) {
-			if (linkRowRef.current && !linkRowRef.current.contains(event.target as Node)) {
-				setActiveLinkInput(null);
-			}
-		}
-
-		if (activeLinkInput) {
-			document.addEventListener("mousedown", handleClickOutside);
-			return () => document.removeEventListener("mousedown", handleClickOutside);
-		}
-	}, [activeLinkInput]);
-
-	const toggleLinkInput = (type: LinkType) => {
-		setActiveLinkInput(activeLinkInput === type ? null : type);
-	};
 
 	// Determine which avatar to display
 	const displayAvatarUrl = avatarUrl || defaultAvatarUrl;
@@ -100,16 +78,17 @@ function DetailsStep({
 					<button
 						type="button"
 						onClick={() => setIsAvatarEditorOpen(true)}
-						className="group relative block"
+						className="group relative block cursor-pointer"
+						title="Click to edit avatar"
 					>
 						{displayAvatarUrl ? (
 							<img
 								src={displayAvatarUrl}
 								alt={creator.name}
-								className="size-28 border-[3px] border-stroke-strong object-cover bg-bg-panel-muted"
+								className="size-30 border-[3px] border-stroke-strong object-cover bg-bg-panel-muted"
 							/>
 						) : (
-							<div className="flex size-28 items-center justify-center border-[3px] border-stroke-strong bg-bg-panel-muted font-mono text-4xl font-bold text-fg-primary">
+							<div className="flex size-30 items-center justify-center border-[3px] border-stroke-strong bg-bg-panel-muted font-mono text-3xl font-bold text-fg-primary">
 								{initials}
 							</div>
 						)}
@@ -118,9 +97,6 @@ function DetailsStep({
 							<User className="size-6 text-white" />
 						</div>
 					</button>
-					<p className="mt-2 font-mono text-[10px] text-fg-muted text-center">
-						Click to edit
-					</p>
 				</div>
 
 				{/* Row 1: Stack Name + Solo/Team */}
@@ -180,101 +156,43 @@ function DetailsStep({
 					</div>
 				</div>
 
-				{/* Row 2: Social Links - 3 equal columns */}
-				<div ref={linkRowRef} className="grid grid-cols-3 gap-0">
+				{/* Row 2: Social Links - 3 equal columns as input group */}
+				<div className="flex">
 					{/* X Handle */}
-					<div className="border-2 border-stroke-subtle border-r-0">
-						{activeLinkInput === "x" ? (
-							<div className="flex items-center h-12 px-3 bg-bg-panel">
-								<XLogoIcon className="size-4 shrink-0" />
-								<Input
-									value={xHandle}
-									onChange={(e) => onXHandleChange(e.target.value)}
-									placeholder="username"
-									prefix="@"
-									autoFocus
-									className="border-0 h-full bg-transparent focus:ring-0"
-								/>
-							</div>
-						) : (
-							<button
-								type="button"
-								onClick={() => toggleLinkInput("x")}
-								className={cn(
-									"flex items-center justify-center gap-2 w-full h-12 font-mono text-xs uppercase tracking-wider transition-all cursor-pointer",
-									xHandle
-										? "text-fg-primary hover:bg-accent-lime/10"
-										: "text-fg-muted hover:text-fg-primary hover:bg-bg-panel-muted"
-								)}
-							>
-								<XLogoIcon className="size-4" />
-								<span>{xHandle ? `@${xHandle}` : "X Profile"}</span>
-							</button>
-						)}
+					<div className="flex flex-1 items-center border-2 border-stroke-subtle -mr-[2px] bg-bg-panel-muted px-3 h-12 focus-within:border-accent-lime focus-within:z-10">
+						<XLogoIcon className="size-4 shrink-0 text-fg-muted" />
+						<span className="ml-2 font-mono text-xs text-fg-muted">@</span>
+						<input
+							type="text"
+							value={xHandle}
+							onChange={(e) => onXHandleChange(e.target.value)}
+							placeholder="username"
+							className="flex-1 bg-transparent border-0 px-1 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:outline-none focus:ring-0"
+						/>
 					</div>
 
 					{/* Personal Page URL */}
-					<div className="border-2 border-stroke-subtle border-r-0">
-						{activeLinkInput === "personal" ? (
-							<div className="flex items-center h-12 px-3 bg-bg-panel">
-								<User className="size-4 shrink-0 text-fg-muted" />
-								<Input
-									value={personalPageUrl}
-									onChange={(e) => onPersonalPageUrlChange(e.target.value)}
-									placeholder="https://yoursite.com"
-									autoFocus
-									className="border-0 h-full bg-transparent focus:ring-0"
-								/>
-							</div>
-						) : (
-							<button
-								type="button"
-								onClick={() => toggleLinkInput("personal")}
-								className={cn(
-									"flex items-center justify-center gap-2 w-full h-12 font-mono text-xs uppercase tracking-wider transition-all cursor-pointer",
-									personalPageUrl
-										? "text-fg-primary hover:bg-accent-lime/10"
-										: "text-fg-muted hover:text-fg-primary hover:bg-bg-panel-muted"
-								)}
-							>
-								<User className="size-4" />
-								<span className="truncate max-w-[120px]">
-									{personalPageUrl ? personalPageUrl.replace(/^https?:\/\//, "") : "Portfolio"}
-								</span>
-							</button>
-						)}
+					<div className="flex flex-1 items-center border-2 border-stroke-subtle -mr-[2px] bg-bg-panel-muted px-3 h-12 focus-within:border-accent-lime focus-within:z-10">
+						<User className="size-4 shrink-0 text-fg-muted" />
+						<input
+							type="text"
+							value={personalPageUrl}
+							onChange={(e) => onPersonalPageUrlChange(e.target.value)}
+							placeholder="yoursite.com"
+							className="flex-1 bg-transparent border-0 px-2 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:outline-none focus:ring-0"
+						/>
 					</div>
 
 					{/* Project Page URL */}
-					<div className="border-2 border-stroke-subtle">
-						{activeLinkInput === "project" ? (
-							<div className="flex items-center h-12 px-3 bg-bg-panel">
-								<ExternalLink className="size-4 shrink-0 text-fg-muted" />
-								<Input
-									value={projectPageUrl}
-									onChange={(e) => onProjectPageUrlChange(e.target.value)}
-									placeholder="https://project.com"
-									autoFocus
-									className="border-0 h-full bg-transparent focus:ring-0"
-								/>
-							</div>
-						) : (
-							<button
-								type="button"
-								onClick={() => toggleLinkInput("project")}
-								className={cn(
-									"flex items-center justify-center gap-2 w-full h-12 font-mono text-xs uppercase tracking-wider transition-all cursor-pointer",
-									projectPageUrl
-										? "text-fg-primary hover:bg-accent-lime/10"
-										: "text-fg-muted hover:text-fg-primary hover:bg-bg-panel-muted"
-								)}
-							>
-								<ExternalLink className="size-4" />
-								<span className="truncate max-w-[120px]">
-									{projectPageUrl ? projectPageUrl.replace(/^https?:\/\//, "") : "Project"}
-								</span>
-							</button>
-						)}
+					<div className="flex flex-1 items-center border-2 border-stroke-subtle bg-bg-panel-muted px-3 h-12 focus-within:border-accent-lime focus-within:z-10">
+						<ExternalLink className="size-4 shrink-0 text-fg-muted" />
+						<input
+							type="text"
+							value={projectPageUrl}
+							onChange={(e) => onProjectPageUrlChange(e.target.value)}
+							placeholder="project.com"
+							className="flex-1 bg-transparent border-0 px-2 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:outline-none focus:ring-0"
+						/>
 					</div>
 				</div>
 			</div>

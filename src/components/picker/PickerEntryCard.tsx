@@ -55,7 +55,7 @@ export function PickerEntryCard({
 				<button
 					type="button"
 					onClick={onClick}
-					className="group flex min-w-0 flex-1 items-center gap-3 rounded-sm p-1 -m-1 text-left transition-all hover:bg-accent-lime/10"
+					className="group flex min-w-0 flex-1 items-center gap-3 rounded-sm p-1 -m-1 text-left transition-all hover:bg-accent-lime/10 cursor-copy"
 					title="Click to insert in editor"
 				>
 					{/* Icon */}

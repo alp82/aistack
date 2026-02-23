@@ -93,7 +93,7 @@ function AIInstructionBlockView({ node }: NodeViewProps) {
 						<button
 							type="button"
 							onClick={() => setShowModal(false)}
-							className="mt-4 w-full bg-accent-lime py-2 font-mono text-xs uppercase tracking-wider text-bg-primary transition-opacity hover:opacity-90"
+							className="mt-4 w-full bg-accent-lime py-2 font-mono text-xs uppercase tracking-wider text-accent-lime-contrast transition-opacity hover:opacity-90 cursor-pointer"
 						>
 							Close
 						</button>
