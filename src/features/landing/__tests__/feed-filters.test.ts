@@ -16,8 +16,8 @@ const stacks: LandingStackPreview[] = [
 		fixedTotal: { amount: 45 },
 		creator: { name: "Solo Auto", xHandle: null, avatarUrl: null },
 		tools: [
-			{ _id: "t1", name: "n8n", iconUrl: null, category: "automation" },
-			{ _id: "t2", name: "Cursor", iconUrl: null, category: "coding" },
+			{ _id: "t1", name: "n8n", iconUrl: null, categories: ["automation"] },
+			{ _id: "t2", name: "Cursor", iconUrl: null, categories: ["ide"] },
 		],
 		upvoteCount: 0,
 	},
@@ -30,8 +30,8 @@ const stacks: LandingStackPreview[] = [
 		fixedTotal: { amount: 220 },
 		creator: { name: "Team Ops", xHandle: "teamops", avatarUrl: null },
 		tools: [
-			{ _id: "t3", name: "Zapier", iconUrl: null, category: "automation" },
-			{ _id: "t4", name: "Notion", iconUrl: null, category: "notes" },
+			{ _id: "t3", name: "Zapier", iconUrl: null, categories: ["automation"] },
+			{ _id: "t4", name: "Notion", iconUrl: null, categories: ["notes"] },
 		],
 		upvoteCount: 5,
 	},
@@ -44,8 +44,8 @@ const stacks: LandingStackPreview[] = [
 		fixedTotal: { amount: 300 },
 		creator: { name: "Design Crew", xHandle: null, avatarUrl: null },
 		tools: [
-			{ _id: "t5", name: "Figma", iconUrl: null, category: "design" },
-			{ _id: "t6", name: "Framer", iconUrl: null, category: "design" },
+			{ _id: "t5", name: "Figma", iconUrl: null, categories: ["design"] },
+			{ _id: "t6", name: "Framer", iconUrl: null, categories: ["app-builder"] },
 		],
 		upvoteCount: 10,
 	},
@@ -54,7 +54,7 @@ const stacks: LandingStackPreview[] = [
 describe("feed filters", () => {
 	it("filters by audience and tool category", () => {
 		const teamsOnly = filterPreviewStacks(stacks, "team", "all");
-		expect(teamsOnly.map((stack) => stack.creator.name)).toEqual(["Team Ops", "Design Crew"]);
+		expect(teamsOnly.map((stack) => stack.creator.name)).toEqual(["Design Crew", "Team Ops"]);
 
 		const teamAutomation = filterPreviewStacks(stacks, "team", "automation");
 		expect(teamAutomation.map((stack) => stack.creator.name)).toEqual(["Team Ops"]);

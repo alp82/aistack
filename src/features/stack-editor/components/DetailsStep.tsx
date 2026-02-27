@@ -1,5 +1,5 @@
 import { ExternalLink, User } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import XLogoIcon from "@/components/icon/XLogoIcon";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -48,9 +48,15 @@ function DetailsStep({
 	onTeamSizeChange,
 }: DetailsStepProps) {
 	const [isAvatarEditorOpen, setIsAvatarEditorOpen] = useState(false);
+	const [imgError, setImgError] = useState(false);
 
 	// Determine which avatar to display
 	const displayAvatarUrl = avatarUrl || defaultAvatarUrl;
+
+	// Reset error when URL changes
+	useEffect(() => {
+		setImgError(false);
+	}, [displayAvatarUrl]);
 	const initials = creator.name.charAt(0).toUpperCase();
 
 	return (
@@ -81,11 +87,12 @@ function DetailsStep({
 						className="group relative block cursor-pointer"
 						title="Click to edit avatar"
 					>
-						{displayAvatarUrl ? (
+						{displayAvatarUrl && !imgError ? (
 							<img
 								src={displayAvatarUrl}
 								alt={creator.name}
 								className="size-30 border-[3px] border-stroke-strong object-cover bg-bg-panel-muted"
+								onError={() => setImgError(true)}
 							/>
 						) : (
 							<div className="flex size-30 items-center justify-center border-[3px] border-stroke-strong bg-bg-panel-muted font-mono text-3xl font-bold text-fg-primary">

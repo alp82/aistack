@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite dev --port 3000",
+    "dev": "vite dev --port 3019",
     "build": "vite build",
     "preview": "vite preview",
     "start": "HOST=0.0.0.0 node .output/server/index.mjs",

@@ -169,7 +169,7 @@ export default function Header() {
 					{/* Admin link - outline button style */}
 					{isAdmin && (
 						<Link
-							to="/admin/tools"
+							to="/admin"
 							className="hidden items-center gap-1.5 border-2 border-stroke-strong bg-bg-panel px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime md:inline-flex"
 						>
 							<Shield className="size-3.5" />
@@ -202,9 +202,22 @@ export default function Header() {
 								<button
 									type="button"
 									onClick={() => setMenuOpen(!menuOpen)}
-									className="flex size-8 items-center justify-center border-2 border-stroke-strong bg-bg-panel font-mono text-xs font-bold text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
+									className="flex size-8 items-center justify-center overflow-hidden border-2 border-stroke-strong bg-bg-panel font-mono text-xs font-bold text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
 								>
-									{userName.charAt(0).toUpperCase()}
+									{session.data?.user?.image ? (
+										<img
+											src={session.data.user.image}
+											alt={userName}
+											className="size-full object-cover"
+											onError={(e) => {
+												e.currentTarget.style.display = "none";
+												e.currentTarget.nextElementSibling?.classList.remove("hidden");
+											}}
+										/>
+									) : null}
+									<span className={session.data?.user?.image ? "hidden" : ""}>
+										{userName.charAt(0).toUpperCase()}
+									</span>
 								</button>
 
 								{menuOpen && (

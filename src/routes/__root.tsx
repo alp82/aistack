@@ -118,7 +118,7 @@ function NotFound() {
 		<RootDocument>
 			<div className="min-h-screen bg-bg-canvas">
 				<div className="flex items-center justify-center px-4 py-32">
-					<div className="max-w-md border-[3px] border-stroke-strong bg-bg-panel p-8 text-center shadow-[6px_6px_0_var(--stroke-strong)]">
+					<div className="max-w-2xl border-[3px] border-stroke-strong bg-bg-panel p-8 text-center shadow-[6px_6px_0_var(--stroke-strong)]">
 						<AlertCircle className="mx-auto mb-4 size-12 text-destructive" />
 						<h1 className="mb-2 text-2xl font-bold text-fg-primary">
 							Page Not Found

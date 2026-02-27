@@ -70,7 +70,7 @@ export const updateTool = mutation({
   args: {
     toolId: v.id('tools'),
     name: v.optional(v.string()),
-    category: v.optional(v.string()),
+    categories: v.optional(v.array(v.string())),
     websiteUrl: v.optional(v.string()),
     iconUrl: v.optional(v.string()),
   },
@@ -91,7 +91,7 @@ export const updateToolFull = mutation({
   args: {
     toolId: v.id('tools'),
     name: v.string(),
-    category: v.string(),
+    categories: v.array(v.string()),
     websiteUrl: v.optional(v.string()),
     iconUrl: v.optional(v.string()),
     tiers: v.array(
@@ -130,7 +130,7 @@ export const updateToolFull = mutation({
 
     await ctx.db.patch(args.toolId, {
       name: args.name,
-      category: args.category,
+      categories: args.categories,
       websiteUrl: args.websiteUrl,
       iconUrl: args.iconUrl,
       tiers,
@@ -188,6 +188,54 @@ export const rejectBundle = mutation({
     }
 
     await ctx.db.patch(args.bundleId, {
+      reviewStatus: 'rejected',
+      updatedAt: Date.now(),
+    })
+  },
+})
+
+export const getPendingModels = query({
+  args: {},
+  handler: async (ctx) => {
+    if (!(await isAdmin(ctx))) {
+      return null
+    }
+
+    const models = await ctx.db
+      .query('models')
+      .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'pending'))
+      .collect()
+
+    return models
+  },
+})
+
+export const approveModel = mutation({
+  args: {
+    modelId: v.id('models'),
+  },
+  handler: async (ctx, args) => {
+    if (!(await isAdmin(ctx))) {
+      throw new Error('Unauthorized')
+    }
+
+    await ctx.db.patch(args.modelId, {
+      reviewStatus: 'approved',
+      updatedAt: Date.now(),
+    })
+  },
+})
+
+export const rejectModel = mutation({
+  args: {
+    modelId: v.id('models'),
+  },
+  handler: async (ctx, args) => {
+    if (!(await isAdmin(ctx))) {
+      throw new Error('Unauthorized')
+    }
+
+    await ctx.db.patch(args.modelId, {
       reviewStatus: 'rejected',
       updatedAt: Date.now(),
     })

@@ -98,7 +98,7 @@ function EditStackPage() {
 					toolId: t.toolId,
 					toolName: t.toolName,
 					toolSlug: t.toolSlug,
-					toolCategory: t.toolCategory,
+					toolCategories: t.toolCategories,
 					toolIconUrl: t.toolIconUrl,
 					tierId: t.tierId,
 					kind: t.kind,

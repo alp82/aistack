@@ -1,5 +1,4 @@
 import { ExternalLink, Plus } from "lucide-react";
-import { CategoryLabel } from "@/components/CategoryLabel";
 import { PriceDisplay } from "@/components/PriceDisplay";
 import { categoryConfig } from "@/config/categoryConfig";
 import { cn } from "@/lib/utils";
@@ -8,7 +7,7 @@ interface ToolData {
 	_id: string;
 	name: string;
 	slug: string;
-	category: string;
+	categories: string[];
 	iconUrl?: string;
 	websiteUrl?: string;
 	price: {
@@ -17,13 +16,15 @@ interface ToolData {
 	};
 	kind: "main" | "misc";
 	primaryUsageLabel: string;
+	tierName?: string;
 	priceKind: "regular" | "discounted" | "bundle" | "usage_based";
 	bundleSlug?: string;
 	notes?: string;
 }
 
 export function MainToolCard({ tool }: { tool: ToolData }) {
-	const config = categoryConfig[tool.category as keyof typeof categoryConfig];
+	const firstCat = tool.categories[0];
+	const config = firstCat ? categoryConfig[firstCat as keyof typeof categoryConfig] : undefined;
 	const Icon = config?.icon || Plus;
 
 	return (
@@ -55,10 +56,16 @@ export function MainToolCard({ tool }: { tool: ToolData }) {
 						</span>
 					</div>
 					<div className="flex items-center gap-1.5 flex-wrap mb-1">
-						<span className={cn("inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full", config?.bgColor || "bg-gray-700", config?.textColor || "text-gray-300")}>
-							<Icon className="h-3 w-3" />
-							{config?.label || tool.category}
-						</span>
+						{tool.categories.map((cat) => {
+							const catConfig = categoryConfig[cat as keyof typeof categoryConfig];
+							const CatIcon = catConfig?.icon || Plus;
+							return (
+								<span key={cat} className={cn("inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full", catConfig?.bgColor || "bg-gray-700", catConfig?.textColor || "text-gray-300")}>
+									<CatIcon className="h-3 w-3" />
+									{catConfig?.label || cat}
+								</span>
+							);
+						})}
 						{tool.priceKind === "discounted" && (
 							<span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">Discounted</span>
 						)}
@@ -82,50 +89,47 @@ interface MiscToolCardProps {
 }
 
 export function MiscToolCard({ tool, onBundleClick }: MiscToolCardProps) {
-	const config = categoryConfig[tool.category as keyof typeof categoryConfig];
-	const Icon = config?.icon || Plus;
+	const firstCat2 = tool.categories[0];
+	const config2 = firstCat2 ? categoryConfig[firstCat2 as keyof typeof categoryConfig] : undefined;
+	const Icon2 = config2?.icon || Plus;
 
 	return (
-		<div className="flex items-center gap-3 px-4 py-3 bg-bg-panel border-2 border-stroke-strong hover:border-accent-lime/50 transition-colors">
+		<div className="flex items-center gap-3 border border-stroke-subtle rounded p-3 hover:border-stroke-strong transition-colors">
 			{tool.iconUrl ? (
-				<img src={tool.iconUrl} alt={tool.name} className="size-8 shrink-0 border border-stroke-subtle bg-white object-contain p-1" />
+				<img src={tool.iconUrl} alt={tool.name} className="size-8 shrink-0 rounded border border-stroke-subtle bg-white object-contain p-1" />
 			) : (
-				<div className="size-8 shrink-0 border border-stroke-subtle bg-bg-panel-muted flex items-center justify-center">
-					<Icon className="size-4 text-fg-muted" />
+				<div className="size-8 shrink-0 rounded border border-stroke-subtle bg-bg-panel-muted flex items-center justify-center">
+					<Icon2 className="size-4 text-fg-muted" />
 				</div>
 			)}
-			<span className="font-semibold text-fg-primary truncate">{tool.name}</span>
-			<CategoryLabel category={tool.category} className="mr-auto shrink-0" />
-			{tool.websiteUrl && (
-				<a
-					href={tool.websiteUrl}
-					target="_blank"
-					rel="noopener noreferrer"
-					className="shrink-0 text-[10px] text-accent-lime hover:text-accent-lime-strong inline-flex items-center gap-0.5 font-mono uppercase tracking-wide"
-				>
-					Visit <ExternalLink className="size-2.5" />
-				</a>
-			)}
-			{tool.priceKind === "bundle" ? (
-				<button
-					type="button"
-					onClick={() => tool.bundleSlug && onBundleClick?.(tool.bundleSlug)}
-					className="font-mono text-[10px] font-semibold uppercase tracking-wide bg-purple-500/20 text-purple-400 hover:text-purple-300 px-1.5 py-0.5 shrink-0 cursor-pointer transition-colors"
-				>
-					Bundle ↓
-				</button>
-			) : (
-				tool.price.fixed ? (
-					<PriceDisplay
-						amount={tool.price.fixed.amount}
-						period={tool.price.fixed.period === "one_time" ? "/once" : "/mo"}
-						size="sm"
-						className="shrink-0 text-fg-primary"
-					/>
+			<div className="flex-1 min-w-0">
+				<span className="font-mono text-sm font-semibold text-fg-primary block truncate">{tool.name}</span>
+				<span className="font-mono text-[10px] text-fg-muted uppercase tracking-wider block mt-0.5">
+					{tool.tierName ?? tool.primaryUsageLabel}
+				</span>
+			</div>
+			<div className="shrink-0 text-right">
+				{tool.priceKind === "bundle" ? (
+					<button
+						type="button"
+						onClick={() => tool.bundleSlug && onBundleClick?.(tool.bundleSlug)}
+						className="font-mono text-xs text-purple-400 hover:text-purple-300 cursor-pointer transition-colors"
+					>
+						Bundle ↓
+					</button>
 				) : (
-					<span className="font-mono text-sm font-bold text-fg-primary shrink-0">Usage</span>
-				)
-			)}
+					tool.price.fixed ? (
+						<PriceDisplay
+							amount={tool.price.fixed.amount}
+							period={tool.price.fixed.period === "one_time" ? "/once" : "/mo"}
+							size="sm"
+							className="text-fg-primary"
+						/>
+					) : (
+						<span className="font-mono text-sm font-bold text-fg-primary">Usage</span>
+					)
+				)}
+			</div>
 		</div>
 	);
 }

@@ -22,7 +22,7 @@ interface GuestStackDraft {
 	description: string;
 	toolSubscriptions: Array<{
 		toolName: string;
-		toolCategory: string;
+		toolCategories: string[];
 		toolIconUrl?: string;
 	}>;
 }

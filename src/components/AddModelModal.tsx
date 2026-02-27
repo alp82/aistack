@@ -1,5 +1,5 @@
 import { useMutation } from "convex/react";
-import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "../../convex/_generated/api";
@@ -39,8 +39,6 @@ const providers = [
 	"Other",
 ];
 
-type Step = "basic" | "details" | "review";
-
 interface AddModelModalProps {
 	open: boolean;
 	onClose: () => void;
@@ -53,7 +51,6 @@ export function AddModelModal({
 	onModelCreated,
 }: AddModelModalProps) {
 	const createModel = useMutation(api.models.create);
-	const [step, setStep] = useState<Step>("basic");
 	const [name, setName] = useState("");
 	const [provider, setProvider] = useState("");
 	const [category, setCategory] = useState<ModelCategory | "">("");
@@ -67,7 +64,10 @@ export function AddModelModal({
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (step !== "review") return;
+		if (!name.trim() || !provider.trim() || !category) {
+			setError("Name, provider, and category are required");
+			return;
+		}
 
 		setSaving(true);
 		setError("");
@@ -91,7 +91,6 @@ export function AddModelModal({
 	};
 
 	const handleClose = () => {
-		setStep("basic");
 		setName("");
 		setProvider("");
 		setCategory("");
@@ -102,8 +101,7 @@ export function AddModelModal({
 		onClose();
 	};
 
-	const canProceedFromBasic = name.trim() && provider.trim() && category;
-	const canSubmit = canProceedFromBasic;
+	const canSubmit = name.trim() && provider.trim() && category;
 
 	return createPortal(
 		<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -112,48 +110,22 @@ export function AddModelModal({
 				onClick={handleClose}
 				onKeyDown={(e) => e.key === "Escape" && handleClose()}
 			/>
-			<div className="relative min-w-[400px] max-w-lg border-2 border-stroke-strong bg-bg-panel p-6 shadow-[6px_6px_0_var(--stroke-strong)]">
-				<div className="mb-6 flex items-start justify-between gap-4">
-					<div>
-						<h2 className="font-mono text-lg font-bold text-fg-primary">
-							Add New Model
-						</h2>
-						<p className="mt-1 font-mono text-xs text-fg-muted">
-							{step === "basic" && "Step 1 of 3: Basic Information"}
-							{step === "details" && "Step 2 of 3: Model Details"}
-							{step === "review" && "Step 3 of 3: Review & Submit"}
-						</p>
-					</div>
-					<button
-						type="button"
-						onClick={handleClose}
-						className="flex size-8 shrink-0 items-center justify-center border border-stroke-subtle text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime"
-					>
-						<X className="size-4" />
-					</button>
-				</div>
+			<div className="relative w-full max-w-2xl border-2 border-stroke-strong bg-bg-panel p-8 shadow-[6px_6px_0_var(--stroke-strong)]">
+				<button
+					type="button"
+					onClick={handleClose}
+					className="absolute right-4 top-4 flex size-8 shrink-0 items-center justify-center border border-stroke-subtle text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime"
+				>
+					<X className="size-4" />
+				</button>
 
-				{/* Progress Indicator */}
-				<div className="mb-6 flex items-center gap-2">
-					<div
-						className={`h-1 flex-1 ${
-							step === "basic" || step === "details" || step === "review"
-								? "bg-accent-lime"
-								: "bg-stroke-subtle"
-						}`}
-					/>
-					<div
-						className={`h-1 flex-1 ${
-							step === "details" || step === "review"
-								? "bg-accent-lime"
-								: "bg-stroke-subtle"
-						}`}
-					/>
-					<div
-						className={`h-1 flex-1 ${
-							step === "review" ? "bg-accent-lime" : "bg-stroke-subtle"
-						}`}
-					/>
+				<div className="mb-6">
+					<h2 className="font-mono text-lg font-bold text-fg-primary">
+						Add New Model
+					</h2>
+					<p className="mt-1 font-mono text-xs text-fg-muted">
+						Fill in the details below. Your model will be submitted for review.
+					</p>
 				</div>
 
 				{error && (
@@ -162,10 +134,14 @@ export function AddModelModal({
 					</div>
 				)}
 
-				<form onSubmit={handleSubmit} className="space-y-5">
-					{/* Step 1: Basic Information */}
-					{step === "basic" && (
-						<div className="space-y-4">
+				<form onSubmit={handleSubmit} className="space-y-6">
+					{/* Basic Information */}
+					<fieldset className="space-y-4">
+						<legend className="font-mono text-[10px] font-semibold uppercase tracking-widest text-accent-lime">
+							Basic Information
+						</legend>
+
+						<div className="grid grid-cols-3 gap-4">
 							<div className="space-y-2">
 								<Label htmlFor="model-name" className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
 									Model Name *
@@ -178,9 +154,6 @@ export function AddModelModal({
 									className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
 									required
 								/>
-								<p className="text-xs text-fg-muted">
-									The name of the AI model
-								</p>
 							</div>
 
 							<div className="space-y-2">
@@ -192,7 +165,7 @@ export function AddModelModal({
 									}}
 								>
 									<SelectTrigger className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary">
-										<SelectValue placeholder="Select a provider" />
+										<SelectValue placeholder="Select provider" />
 									</SelectTrigger>
 									<SelectContent>
 										{providers.map((p) => (
@@ -202,9 +175,6 @@ export function AddModelModal({
 										))}
 									</SelectContent>
 								</Select>
-								<p className="text-xs text-fg-muted">
-									Who created this model?
-								</p>
 							</div>
 
 							<div className="space-y-2">
@@ -216,7 +186,7 @@ export function AddModelModal({
 									}}
 								>
 									<SelectTrigger className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary">
-										<SelectValue placeholder="Select a category" />
+										<SelectValue placeholder="Select category" />
 									</SelectTrigger>
 									<SelectContent>
 										{categories.map((cat) => (
@@ -226,22 +196,23 @@ export function AddModelModal({
 										))}
 									</SelectContent>
 								</Select>
-								<p className="text-xs text-fg-muted">
-									What type of model is this?
-								</p>
 							</div>
 						</div>
-					)}
+					</fieldset>
 
-					{/* Step 2: Details */}
-					{step === "details" && (
-						<div className="space-y-4">
+					{/* Details */}
+					<fieldset className="space-y-4">
+						<legend className="font-mono text-[10px] font-semibold uppercase tracking-widest text-accent-lime">
+							Details
+						</legend>
+
+						<div className="grid grid-cols-2 gap-4">
 							<div className="space-y-2">
 								<Label
 									htmlFor="model-website"
 									className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
 								>
-									Website URL (Optional)
+									Website URL
 								</Label>
 								<Input
 									id="model-website"
@@ -250,9 +221,6 @@ export function AddModelModal({
 									placeholder="https://example.com"
 									className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
 								/>
-								<p className="text-xs text-fg-muted">
-									Official website or documentation
-								</p>
 							</div>
 
 							<div className="space-y-2">
@@ -260,7 +228,7 @@ export function AddModelModal({
 									htmlFor="context-window"
 									className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
 								>
-									Context Window (Optional)
+									Context Window (tokens)
 								</Label>
 								<Input
 									id="context-window"
@@ -270,119 +238,54 @@ export function AddModelModal({
 									placeholder="e.g. 128000"
 									className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
 								/>
-								<p className="text-xs text-fg-muted">
-									Maximum context window in tokens
-								</p>
-							</div>
-
-							<div className="space-y-2">
-								<Label
-									htmlFor="description"
-									className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
-								>
-									Description (Optional)
-								</Label>
-								<Input
-									id="description"
-									value={description}
-									onChange={(e) => setDescription(e.target.value)}
-									placeholder="Brief description of the model"
-									className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
-								/>
-								<p className="text-xs text-fg-muted">
-									A short description of the model's capabilities
-								</p>
 							</div>
 						</div>
-					)}
 
-					{/* Step 3: Review */}
-					{step === "review" && (
-						<div className="space-y-4">
-							<div className="border border-stroke-subtle bg-bg-panel-muted p-4">
-								<h3 className="mb-3 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
-									Review Your Submission
-								</h3>
-								<dl className="space-y-2 text-sm">
-									<div className="flex justify-between">
-										<dt className="text-fg-muted">Name:</dt>
-										<dd className="font-medium text-fg-primary">{name}</dd>
-									</div>
-									<div className="flex justify-between">
-										<dt className="text-fg-muted">Provider:</dt>
-										<dd className="font-medium text-fg-primary">{provider}</dd>
-									</div>
-									<div className="flex justify-between">
-										<dt className="text-fg-muted">Category:</dt>
-										<dd className="font-medium text-fg-primary capitalize">{category}</dd>
-									</div>
-									{websiteUrl && (
-										<div className="flex justify-between">
-											<dt className="text-fg-muted">Website:</dt>
-											<dd className="truncate font-medium text-accent-lime">{websiteUrl}</dd>
-										</div>
-									)}
-									{contextWindow && (
-										<div className="flex justify-between">
-											<dt className="text-fg-muted">Context Window:</dt>
-											<dd className="font-medium text-fg-primary">{contextWindow.toLocaleString()} tokens</dd>
-										</div>
-									)}
-								</dl>
-							</div>
-							<p className="text-xs text-fg-muted">
-								Your model will be submitted for review. Once approved, it will appear in the models list.
-							</p>
+						<div className="space-y-2">
+							<Label
+								htmlFor="model-description"
+								className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
+							>
+								Description
+							</Label>
+							<Input
+								id="model-description"
+								value={description}
+								onChange={(e) => setDescription(e.target.value)}
+								placeholder="Brief description of the model's capabilities"
+								className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
+							/>
 						</div>
-					)}
+					</fieldset>
 
-					{/* Navigation Buttons */}
+					<div className="border border-accent-lime/30 bg-accent-lime/10 p-4">
+						<p className="text-xs text-fg-secondary">
+							<strong className="text-accent-lime">Note:</strong> Your model will be submitted for
+							review before it appears publicly.
+						</p>
+					</div>
+
+					{/* Action Buttons */}
 					<div className="flex gap-3 pt-2">
-						{step !== "basic" && (
-							<button
-								type="button"
-								onClick={() => setStep(step === "review" ? "details" : "basic")}
-								className="inline-flex flex-1 items-center justify-center gap-2 border-2 border-stroke-subtle px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-fg-muted hover:text-fg-primary"
-							>
-								<ArrowLeft className="size-3.5" />
-								Back
-							</button>
-						)}
-						{step === "basic" && (
-							<button
-								type="button"
-								onClick={() => setStep("details")}
-								disabled={!canProceedFromBasic}
-								className="inline-flex flex-1 items-center justify-center gap-2 border-2 border-accent-lime bg-accent-lime px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong disabled:cursor-not-allowed disabled:opacity-50"
-							>
-								Next
-								<ArrowRight className="size-3.5" />
-							</button>
-						)}
-						{step === "details" && (
-							<button
-								type="button"
-								onClick={() => setStep("review")}
-								className="inline-flex flex-1 items-center justify-center gap-2 border-2 border-accent-lime bg-accent-lime px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong"
-							>
-								Next
-								<ArrowRight className="size-3.5" />
-							</button>
-						)}
-						{step === "review" && (
-							<button
-								type="submit"
-								disabled={saving || !canSubmit}
-								className="inline-flex flex-1 items-center justify-center gap-2 border-2 border-accent-lime bg-accent-lime px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong disabled:cursor-not-allowed disabled:opacity-50"
-							>
-								<Check className="size-3.5" />
-								{saving ? "Submitting..." : "Submit for Review"}
-							</button>
-						)}
+						<button
+							type="button"
+							onClick={handleClose}
+							className="inline-flex items-center gap-2 border border-stroke-subtle px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-fg-muted hover:text-fg-primary"
+						>
+							Cancel
+						</button>
+						<button
+							type="submit"
+							disabled={saving || !canSubmit}
+							className="inline-flex flex-1 items-center justify-center gap-2 border-2 border-accent-lime bg-accent-lime px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							<Check className="size-3.5" />
+							{saving ? "Submitting..." : "Submit for Review"}
+						</button>
 					</div>
 				</form>
 			</div>
 		</div>,
-		document.body
+		document.body,
 	);
 }

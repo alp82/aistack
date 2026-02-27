@@ -130,7 +130,7 @@ aistack/              # Main web application
    ```
 
    The application will be available at:
-   - Frontend: http://localhost:3000
+   - Frontend: http://localhost:3019
    - Convex Dashboard: http://localhost:3210
 
 ## 📜 Available Scripts
@@ -188,7 +188,7 @@ pnpm dlx shadcn@latest add [component-name]
 
 ## 📊 Development Notes
 
-- The development server runs on `http://localhost:3000`
+- The development server runs on `http://localhost:3019`
 - The Convex backend runs on `http://localhost:3210`
 - Both servers should remain running during development
 - Use Chrome DevTools MCP for debugging and reviewing code updates

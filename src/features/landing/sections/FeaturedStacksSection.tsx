@@ -25,7 +25,7 @@ type LandingStackPreview = {
 	tools: Array<{
 		_id: string;
 		name: string;
-		category?: string | null;
+		categories: string[];
 		iconUrl?: string | null;
 	}>;
 	upvoteCount: number;
@@ -41,10 +41,9 @@ function getCategoryOptions(previewStacks: LandingStackPreview[]) {
 	const counts = new Map<string, number>();
 	for (const stack of previewStacks) {
 		for (const tool of stack.tools) {
-			if (!tool.category) {
-				continue;
+			for (const cat of tool.categories) {
+				counts.set(cat, (counts.get(cat) ?? 0) + 1);
 			}
-			counts.set(tool.category, (counts.get(tool.category) ?? 0) + 1);
 		}
 	}
 
@@ -76,8 +75,8 @@ function filterPreviewStacks(
 			toolFilter === "all"
 				? true
 				: stack.tools.some(
-						(tool) => tool.category?.toLowerCase() === toolFilter.toLowerCase(),
-					);
+					(tool) => tool.categories.some((c) => c.toLowerCase() === toolFilter.toLowerCase()),
+				);
 
 		return matchesAudience && matchesTool;
 	});

@@ -34,12 +34,13 @@ const ToolValidator = v.object({
   _id: v.id('tools'),
   name: v.string(),
   slug: v.string(),
-  category: v.string(),
+  categories: v.array(v.string()),
   iconUrl: v.optional(v.string()),
   websiteUrl: v.optional(v.string()),
   price: PriceValidator,
   kind: v.union(v.literal('main'), v.literal('misc')),
   primaryUsageLabel: v.string(),
+  tierName: v.string(),
   priceKind: v.union(
     v.literal('regular'),
     v.literal('discounted'),
@@ -105,16 +106,18 @@ export const listPublished = query({
       for (const sub of stack.toolSubscriptions) {
         const tool = await ctx.db.get(sub.toolId)
         if (!tool) continue
+        const tier = sub.tierId ? tool.tiers.find((t) => t.tierId === sub.tierId) : undefined
         tools.push({
           _id: tool._id,
           name: tool.name,
           slug: tool.slug,
-          category: tool.category,
+          categories: tool.categories,
           iconUrl: tool.iconUrl,
           websiteUrl: tool.websiteUrl,
           price: sub.price,
           kind: sub.kind,
           primaryUsageLabel: sub.primaryUsageLabel,
+          tierName: tier?.name ?? sub.tierId ?? '',
           priceKind: sub.priceKind,
           bundleSlug: sub.bundleSlug,
           notes: sub.notes,
@@ -361,7 +364,7 @@ export const getForEdit = query({
         toolId: v.id('tools'),
         toolName: v.string(),
         toolSlug: v.string(),
-        toolCategory: v.string(),
+        toolCategories: v.array(v.string()),
         toolIconUrl: v.optional(v.string()),
         tierId: v.optional(v.string()),
         kind: v.union(v.literal('main'), v.literal('misc')),
@@ -409,7 +412,7 @@ export const getForEdit = query({
         toolId: sub.toolId,
         toolName: tool.name,
         toolSlug: tool.slug,
-        toolCategory: tool.category,
+        toolCategories: tool.categories,
         toolIconUrl: tool.iconUrl,
         tierId: sub.tierId,
         kind: sub.kind,
@@ -625,6 +628,8 @@ export const getBySlug = query({
       fixedTotal: v.optional(MoneyValidator),
       hasUsageComponent: v.boolean(),
       usageTotalNotes: v.optional(v.string()),
+      personalPageUrl: v.optional(v.string()),
+      projectPageUrl: v.optional(v.string()),
       creator: CreatorValidator,
       tools: v.array(ToolValidator),
       bundles: v.array(BundleValidator),
@@ -646,16 +651,18 @@ export const getBySlug = query({
     for (const sub of stack.toolSubscriptions) {
       const tool = await ctx.db.get(sub.toolId)
       if (!tool) continue
+      const toolTier = sub.tierId ? tool.tiers.find((t) => t.tierId === sub.tierId) : undefined
       tools.push({
         _id: tool._id,
         name: tool.name,
         slug: tool.slug,
-        category: tool.category,
+        categories: tool.categories,
         iconUrl: tool.iconUrl,
         websiteUrl: tool.websiteUrl,
         price: sub.price,
         kind: sub.kind,
         primaryUsageLabel: sub.primaryUsageLabel,
+        tierName: toolTier?.name ?? sub.tierId ?? '',
         priceKind: sub.priceKind,
         bundleSlug: sub.bundleSlug,
         notes: sub.notes,
@@ -694,6 +701,8 @@ export const getBySlug = query({
       fixedTotal: stack.fixedTotal,
       hasUsageComponent: stack.hasUsageComponent,
       usageTotalNotes: stack.usageTotalNotes,
+      personalPageUrl: stack.personalPageUrl,
+      projectPageUrl: stack.projectPageUrl,
       creator: {
         _id: creator._id,
         name: creator.name,

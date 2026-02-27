@@ -9,7 +9,7 @@ interface PageHeaderProps {
 	/** Main title - can include line breaks with <br /> */
 	title: ReactNode;
 	/** Description text shown below title */
-	description: string;
+	description?: string;
 	/** Optional action button */
 	action?: {
 		label: string;
@@ -20,7 +20,7 @@ interface PageHeaderProps {
 
 export function PageHeader({
 	label,
-	labelSuffix = "INDEX",
+	labelSuffix,
 	title,
 	description,
 	action,
@@ -30,15 +30,21 @@ export function PageHeader({
 			<div>
 				<div className="font-mono text-accent-lime mb-6 flex items-center gap-4 text-sm">
 					<span>// {label}</span>
-					<span className="h-px w-20 bg-accent-lime/50" />
-					<span>{labelSuffix}</span>
+					{labelSuffix && (
+						<>
+							<span className="h-px w-20 bg-accent-lime/50" />
+							<span>{labelSuffix}</span>
+						</>
+					)}
 				</div>
 				<h1 className="text-5xl md:text-8xl font-black tracking-tighter uppercase leading-[0.9] text-fg-primary">
 					{title}
 				</h1>
-				<p className="mt-6 text-xl text-fg-secondary max-w-2xl border-l-4 border-accent-lime pl-6">
-					{description}
-				</p>
+				{description && (
+					<p className="mt-6 text-xl text-fg-secondary max-w-2xl border-l-4 border-accent-lime pl-6">
+						{description}
+					</p>
+				)}
 			</div>
 
 			{action && (

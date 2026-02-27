@@ -2,6 +2,35 @@ import type { Editor } from "@tiptap/react";
 import { createContext, useContext, useRef, useCallback, useState, type ReactNode } from "react";
 import type { InstructionType } from "@/features/stack-editor/types";
 
+export type ToolLookupData = {
+	name: string;
+	categories: string[];
+	price?: { amount: number; period: string };
+	tierName?: string;
+	notes?: string;
+};
+
+export type ModelLookupData = {
+	name: string;
+	provider: string;
+	category: string;
+	notes?: string;
+};
+
+export type BundleLookupData = {
+	name: string;
+	price?: { amount: number; period: string };
+	tierName?: string;
+	description?: string;
+	notes?: string;
+};
+
+export type InstructionLookupData = {
+	name: string;
+	type: InstructionType;
+	description?: string;
+};
+
 type EditorContextValue = {
 	registerEditor: (editor: Editor | null) => void;
 	insertToolAtCursor: (tool: { name: string; iconUrl?: string }) => void;
@@ -14,6 +43,14 @@ type EditorContextValue = {
 	insertInstructionAtCursor: (instruction: { name: string; type: InstructionType; content?: string }) => void;
 	hoveredToolName: string | null;
 	setHoveredToolName: (name: string | null) => void;
+	toolLookup: Map<string, ToolLookupData>;
+	setToolLookup: (data: Map<string, ToolLookupData>) => void;
+	modelLookup: Map<string, ModelLookupData>;
+	setModelLookup: (data: Map<string, ModelLookupData>) => void;
+	bundleLookup: Map<string, BundleLookupData>;
+	setBundleLookup: (data: Map<string, BundleLookupData>) => void;
+	instructionLookup: Map<string, InstructionLookupData>;
+	setInstructionLookup: (data: Map<string, InstructionLookupData>) => void;
 };
 
 const EditorContext = createContext<EditorContextValue | null>(null);
@@ -21,6 +58,10 @@ const EditorContext = createContext<EditorContextValue | null>(null);
 export function EditorProvider({ children }: { children: ReactNode }) {
 	const editorRef = useRef<Editor | null>(null);
 	const [hoveredToolName, setHoveredToolName] = useState<string | null>(null);
+	const [toolLookup, setToolLookup] = useState<Map<string, ToolLookupData>>(new Map());
+	const [modelLookup, setModelLookup] = useState<Map<string, ModelLookupData>>(new Map());
+	const [bundleLookup, setBundleLookup] = useState<Map<string, BundleLookupData>>(new Map());
+	const [instructionLookup, setInstructionLookup] = useState<Map<string, InstructionLookupData>>(new Map());
 
 	const registerEditor = useCallback((editor: Editor | null) => {
 		editorRef.current = editor;
@@ -198,7 +239,27 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	return (
-		<EditorContext.Provider value={{ registerEditor, insertToolAtCursor, removeToolFromEditor, removeModelFromEditor, removeBundleFromEditor, removeInstructionFromEditor, insertModelAtCursor, insertBundleAtCursor, insertInstructionAtCursor, hoveredToolName, setHoveredToolName }}>
+		<EditorContext.Provider value={{ 
+			registerEditor, 
+			insertToolAtCursor, 
+			removeToolFromEditor, 
+			removeModelFromEditor, 
+			removeBundleFromEditor, 
+			removeInstructionFromEditor, 
+			insertModelAtCursor, 
+			insertBundleAtCursor, 
+			insertInstructionAtCursor, 
+			hoveredToolName, 
+			setHoveredToolName,
+			toolLookup,
+			setToolLookup,
+			modelLookup,
+			setModelLookup,
+			bundleLookup,
+			setBundleLookup,
+			instructionLookup,
+			setInstructionLookup,
+		}}>
 			{children}
 		</EditorContext.Provider>
 	);

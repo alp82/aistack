@@ -22,7 +22,7 @@ interface Tool {
 	_id: string;
 	name: string;
 	slug: string;
-	category: string;
+	categories: string[];
 	iconUrl?: string;
 	price: {
 		pricingType: "fixed" | "usage" | "mixed";
@@ -160,22 +160,26 @@ export function StackCard({
 			<div className="flex items-center justify-between gap-4 bg-bg-panel px-5 py-3">
 				<div className="space-y-1">
 					{displayTools.map((tool) => {
-						const config = categoryConfig[tool.category as keyof typeof categoryConfig];
-						const Icon = config?.icon || Plus;
-
 						return (
 							<div key={tool._id} className="flex items-center gap-2 text-sm text-fg-secondary">
 								<span className="font-medium text-fg-primary">{tool.name}</span>
-								<span
-									className={cn(
-										"inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-										config?.bgColor || "bg-bg-panel-muted",
-										config?.textColor || "text-fg-muted",
-									)}
-								>
-									<Icon className="h-3 w-3" />
-									{config?.label || tool.category}
-								</span>
+								{tool.categories.map((cat) => {
+									const catConfig = categoryConfig[cat as keyof typeof categoryConfig];
+									const CatIcon = catConfig?.icon || Plus;
+									return (
+										<span
+											key={cat}
+											className={cn(
+												"inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+												catConfig?.bgColor || "bg-bg-panel-muted",
+												catConfig?.textColor || "text-fg-muted",
+											)}
+										>
+											<CatIcon className="h-3 w-3" />
+											{catConfig?.label || cat}
+										</span>
+									);
+								})}
 								<span className="font-semibold text-fg-primary">
 									{tool.price.fixed ? `$${tool.price.fixed.amount}` : "Usage"}
 								</span>

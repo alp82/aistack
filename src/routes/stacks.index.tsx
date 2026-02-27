@@ -16,34 +16,64 @@ import { cn } from "@/lib/utils";
 
 function getCategoryBgColor(category: string): string {
 	const colors: Record<string, string> = {
-		coding: "bg-purple-500 text-white",
-		thinking: "bg-blue-500 text-white",
-		text: "bg-emerald-500 text-white",
-		research: "bg-amber-500 text-black",
-		voice: "bg-pink-500 text-white",
-		image: "bg-orange-500 text-white",
-		video: "bg-red-500 text-white",
-		design: "bg-cyan-500 text-black",
-		automation: "bg-indigo-500 text-white",
-		notes: "bg-teal-500 text-white",
+		ide: "bg-green-500 text-white",
+		"coding-agent": "bg-emerald-500 text-white",
+		"app-builder": "bg-lime-500 text-black",
+		reasoning: "bg-blue-500 text-white",
+		research: "bg-yellow-500 text-black",
+		"image-gen": "bg-cyan-500 text-black",
+		"video-gen": "bg-teal-500 text-white",
+		"video-editing": "bg-indigo-500 text-white",
+		dictation: "bg-orange-500 text-white",
+		"voice-gen": "bg-purple-500 text-white",
+		design: "bg-fuchsia-500 text-white",
+		"3d": "bg-sky-500 text-white",
+		"creative-suite": "bg-rose-500 text-white",
+		assets: "bg-amber-500 text-black",
+		notes: "bg-pink-500 text-white",
+		communication: "bg-gray-500 text-white",
+		automation: "bg-red-500 text-white",
+		analytics: "bg-slate-500 text-white",
+		"code-review": "bg-violet-500 text-white",
+		writing: "bg-stone-500 text-white",
+		"music-gen": "bg-fuchsia-600 text-white",
+		deployment: "bg-sky-600 text-white",
+		monitoring: "bg-rose-600 text-white",
+		"project-management": "bg-blue-600 text-white",
+		presentation: "bg-amber-600 text-black",
 	};
 	return colors[category.toLowerCase()] || "bg-accent-lime text-accent-lime-contrast";
 }
 
-function getCategoryHoverBorder(category: string): string {
+function getCategoryBorderColor(category: string): string {
 	const colors: Record<string, string> = {
-		coding: "hover:border-purple-500",
-		thinking: "hover:border-blue-500",
-		text: "hover:border-emerald-500",
-		research: "hover:border-amber-500",
-		voice: "hover:border-pink-500",
-		image: "hover:border-orange-500",
-		video: "hover:border-red-500",
-		design: "hover:border-cyan-500",
-		automation: "hover:border-indigo-500",
-		notes: "hover:border-teal-500",
+		ide: "border-green-500",
+		"coding-agent": "border-emerald-500",
+		"app-builder": "border-lime-500",
+		reasoning: "border-blue-500",
+		research: "border-yellow-500",
+		"image-gen": "border-cyan-500",
+		"video-gen": "border-teal-500",
+		"video-editing": "border-indigo-500",
+		dictation: "border-orange-500",
+		"voice-gen": "border-purple-500",
+		design: "border-fuchsia-500",
+		"3d": "border-sky-500",
+		"creative-suite": "border-rose-500",
+		assets: "border-amber-500",
+		notes: "border-pink-500",
+		communication: "border-gray-500",
+		automation: "border-red-500",
+		analytics: "border-slate-500",
+		"code-review": "border-violet-500",
+		writing: "border-stone-500",
+		"music-gen": "border-fuchsia-600",
+		deployment: "border-sky-600",
+		monitoring: "border-rose-600",
+		"project-management": "border-blue-600",
+		presentation: "border-amber-600",
 	};
-	return colors[category.toLowerCase()] || "hover:border-accent-lime";
+	return colors[category.toLowerCase()] || "border-accent-lime";
 }
 
 export const Route = createFileRoute("/stacks/")({
@@ -102,10 +132,10 @@ function BrowseStacksPage() {
 										toolFilter === filter.id
 											? filter.id === "all"
 												? "bg-accent-lime text-accent-lime-contrast border-accent-lime"
-												: `${getCategoryBgColor(filter.id)} border-transparent`
+												: `${getCategoryBgColor(filter.id)} ${getCategoryBorderColor(filter.id)}`
 											: cn(
-													"bg-bg-canvas text-fg-muted border-stroke-strong hover:text-fg-primary",
-													filter.id === "all" ? "hover:border-accent-lime" : getCategoryHoverBorder(filter.id)
+													"bg-bg-canvas text-fg-muted hover:text-fg-primary",
+													filter.id === "all" ? "border-stroke-strong hover:border-accent-lime" : getCategoryBorderColor(filter.id)
 												)
 									)}
 								>

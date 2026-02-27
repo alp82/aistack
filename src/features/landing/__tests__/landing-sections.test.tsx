@@ -42,6 +42,7 @@ const sampleStacks = Array.from({ length: 7 }, (_, index) => ({
 	tools: Array.from({ length: 5 }, (__, toolIndex) => ({
 		_id: `tool-${index}-${toolIndex}`,
 		name: `Tool ${toolIndex}`,
+		categories: ["ide"],
 		iconUrl: null,
 	})),
 	upvoteCount: index * 2,

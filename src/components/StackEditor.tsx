@@ -1,17 +1,19 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { CheckCircle, Save, Send } from "lucide-react";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useEffect } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import type { ModelSubscriptionEntry } from "@/features/stack-editor/types";
+import type { ModelSubscriptionEntry, InstructionItem } from "@/features/stack-editor/types";
+import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
+import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
 import { SignInDialog } from "@/components/SignInDialog";
 import {
 	selectSavePayload,
 	selectSaveValidationError,
 } from "@/features/stack-editor/state/editorSelectors";
 import { useEditorState } from "@/features/stack-editor/state/useEditorState";
-import { EditorProvider } from "@/features/stack-editor/context/EditorContext";
+import { EditorProvider, useEditorContext, type ToolLookupData, type ModelLookupData, type BundleLookupData, type InstructionLookupData } from "@/features/stack-editor/context/EditorContext";
 import { DetailsStep } from "@/features/stack-editor/components/DetailsStep";
 import { WorkflowStep } from "@/features/stack-editor/components/WorkflowStep";
 import { ToolsSidebar } from "@/features/stack-editor/components/ToolsSidebar";
@@ -20,6 +22,72 @@ import type {
 	StackEditorInitialValue,
 	StackEditorMode,
 } from "@/features/stack-editor/types";
+
+function LookupDataSync({ 
+	tools, 
+	models, 
+	bundles, 
+	instructions 
+}: { 
+	tools: ToolSubscriptionEntry[];
+	models: ModelSubscriptionEntry[];
+	bundles: BundleSubscriptionEntry[];
+	instructions: InstructionItem[];
+}) {
+	const { setToolLookup, setModelLookup, setBundleLookup, setInstructionLookup } = useEditorContext();
+
+	useEffect(() => {
+		const toolMap = new Map<string, ToolLookupData>();
+		for (const tool of tools) {
+			toolMap.set(tool.toolName, {
+				name: tool.toolName,
+				categories: tool.toolCategories,
+				price: tool.price.fixed ? { amount: tool.price.fixed.amount, period: tool.price.fixed.period } : undefined,
+				tierName: tool.primaryUsageLabel,
+				notes: tool.notes,
+			});
+		}
+		setToolLookup(toolMap);
+	}, [tools, setToolLookup]);
+
+	useEffect(() => {
+		const modelMap = new Map<string, ModelLookupData>();
+		for (const model of models) {
+			modelMap.set(model.modelName, {
+				name: model.modelName,
+				provider: model.modelProvider,
+				category: model.modelCategory,
+			});
+		}
+		setModelLookup(modelMap);
+	}, [models, setModelLookup]);
+
+	useEffect(() => {
+		const bundleMap = new Map<string, BundleLookupData>();
+		for (const bundle of bundles) {
+			bundleMap.set(bundle.bundleName, {
+				name: bundle.bundleName,
+				tierName: bundle.tierName,
+				notes: bundle.notes,
+			});
+		}
+		setBundleLookup(bundleMap);
+	}, [bundles, setBundleLookup]);
+
+	useEffect(() => {
+		const instructionMap = new Map<string, InstructionLookupData>();
+		for (const instruction of instructions) {
+			instructionMap.set(instruction.name, {
+				name: instruction.name,
+				type: instruction.type,
+				description: instruction.description,
+			});
+		}
+		setInstructionLookup(instructionMap);
+	}, [instructions, setInstructionLookup]);
+
+	return null;
+}
 
 type StackEditorProps = {
 	mode: StackEditorMode;
@@ -99,7 +167,7 @@ export function StackEditor({
 				toolId: fullTool._id as Id<"tools">,
 				toolName: fullTool.name,
 				toolSlug: fullTool.slug,
-				toolCategory: fullTool.category,
+				toolCategories: fullTool.categories,
 				toolIconUrl: fullTool.iconUrl ?? undefined,
 				tierId: defaultTier.tierId,
 				kind: "main",
@@ -203,6 +271,12 @@ export function StackEditor({
 
 	return (
 		<EditorProvider>
+			<LookupDataSync
+				tools={state.toolSubscriptions}
+				models={state.modelSubscriptions}
+				bundles={state.bundleSubscriptions}
+				instructions={state.instructions}
+			/>
 			<div className="bg-bg-canvas">
 				{/* Grid background */}
 				<div

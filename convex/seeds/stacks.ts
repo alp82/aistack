@@ -58,7 +58,7 @@ The real power of this stack comes from the **4 custom skills** I've built for W
     ],
     toolSubscriptions: [
       {
-        toolSlug: "chatgpt-plus",
+        toolSlug: "chatgpt",
         tierId: "plus",
         kind: "main" as const,
         primaryUsageLabel: "Quick questions, brainstorming, and general-purpose tasks",
@@ -69,7 +69,7 @@ The real power of this stack comes from the **4 custom skills** I've built for W
         },
       },
       {
-        toolSlug: "claude-pro",
+        toolSlug: "claude",
         tierId: "pro",
         kind: "main" as const,
         primaryUsageLabel: "Complex reasoning, refactoring, and architecture decisions",
@@ -81,7 +81,7 @@ The real power of this stack comes from the **4 custom skills** I've built for W
         },
       },
       {
-        toolSlug: "google-ai-pro",
+        toolSlug: "google-ai",
         tierId: "pro",
         kind: "main" as const,
         primaryUsageLabel: "Multimodal tasks and getting a different perspective on problems",
@@ -104,7 +104,7 @@ The real power of this stack comes from the **4 custom skills** I've built for W
       },
       {
         toolSlug: "replit",
-        tierId: "default",
+        tierId: "core",
         kind: "main" as const,
         primaryUsageLabel: "Quick prototyping and testing ideas in the browser",
         priceKind: "bundle" as const,
@@ -116,7 +116,7 @@ The real power of this stack comes from the **4 custom skills** I've built for W
       },
       {
         toolSlug: "bolt",
-        tierId: "default",
+        tierId: "pro",
         kind: "main" as const,
         primaryUsageLabel: "Rapid full-stack app scaffolding from prompts",
         priceKind: "bundle" as const,
@@ -139,8 +139,8 @@ The real power of this stack comes from the **4 custom skills** I've built for W
         },
       },
       {
-        toolSlug: "notion-ai",
-        tierId: "ai",
+        toolSlug: "notion",
+        tierId: "plus",
         kind: "main" as const,
         primaryUsageLabel: "Documentation, project management, and knowledge base",
         priceKind: "bundle" as const,
@@ -164,7 +164,7 @@ The real power of this stack comes from the **4 custom skills** I've built for W
       },
       {
         toolSlug: "posthog",
-        tierId: "default",
+        tierId: "free",
         kind: "main" as const,
         primaryUsageLabel: "Product analytics and user behavior tracking",
         priceKind: "bundle" as const,
@@ -212,7 +212,7 @@ For marketing and social media, I use **Higgsfield AI** to generate video conten
 My approach is simple: find one tool that does most things well, rather than juggling multiple subscriptions. Claude Max is that tool for me.`,
     toolSubscriptions: [
       {
-        toolSlug: "claude-max",
+        toolSlug: "claude",
         tierId: "max-200",
         kind: "main" as const,
         primaryUsageLabel: "All-in-one AI for coding, writing, and analysis",
@@ -223,7 +223,7 @@ My approach is simple: find one tool that does most things well, rather than jug
         },
       },
       {
-        toolSlug: "claude-code",
+        toolSlug: "claude",
         tierId: "included",
         kind: "main" as const,
         primaryUsageLabel: "CLI-based coding agent directly in the terminal",
@@ -291,7 +291,7 @@ This setup gives me flexibility — I can keep costs low during routine work and
         },
       },
       {
-        toolSlug: "chatgpt-plus",
+        toolSlug: "chatgpt",
         tierId: "plus",
         kind: "main" as const,
         primaryUsageLabel: "Powers the Codex extension for inline code suggestions",
@@ -345,7 +345,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
     ],
     toolSubscriptions: [
       {
-        toolSlug: "claude-max",
+        toolSlug: "claude",
         tierId: "max-100",
         kind: "main" as const,
         primaryUsageLabel: "Heavy-duty AI for complex tasks with Opus 4 access",
@@ -356,7 +356,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
         },
       },
       {
-        toolSlug: "claude-code",
+        toolSlug: "claude",
         tierId: "included",
         kind: "main" as const,
         primaryUsageLabel: "Terminal-based coding agent included with Max plan",
@@ -404,7 +404,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
       "I'm using Google AI Pro. My main IDE now is Google Antigravity instead of Cursor for personal projects.",
     toolSubscriptions: [
       {
-        toolSlug: "google-ai-pro",
+        toolSlug: "google-ai",
         tierId: "pro",
         kind: "main" as const,
         primaryUsageLabel: "Primary AI with Gemini for coding and multimodal tasks",
@@ -415,7 +415,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
         },
       },
       {
-        toolSlug: "chatgpt-plus",
+        toolSlug: "chatgpt",
         tierId: "plus",
         kind: "main" as const,
         primaryUsageLabel: "Backup AI for second opinions and different reasoning",
@@ -426,7 +426,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
         },
       },
       {
-        toolSlug: "google-antigravity",
+        toolSlug: "antigravity",
         tierId: "free",
         kind: "main" as const,
         primaryUsageLabel: "Free AI-powered IDE replacing Cursor for personal projects",
@@ -448,7 +448,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
       "I use Google AI Studio to get a basic MVP for any idea. Then I ask Claude Code to EXACTLY copy every feature into my own directory. That's how I ship features to clients now.",
     toolSubscriptions: [
       {
-        toolSlug: "claude-code",
+        toolSlug: "claude",
         tierId: "included",
         kind: "main" as const,
         primaryUsageLabel: "Copies features from AI Studio prototypes into production code",
@@ -470,7 +470,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
         },
       },
       {
-        toolSlug: "google-ai-pro",
+        toolSlug: "google-ai",
         tierId: "pro",
         kind: "main" as const,
         primaryUsageLabel: "Rapid MVP prototyping with AI Studio before transferring",
@@ -558,7 +558,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
         },
       },
       {
-        toolSlug: "claude-max",
+        toolSlug: "claude",
         tierId: "max-100",
         kind: "main" as const,
         primaryUsageLabel: "Heavy lifting with Opus 4 via Claude Code in the terminal",
@@ -582,7 +582,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
     teamSize: 9,
     toolSubscriptions: [
       {
-        toolSlug: "chatgpt-workspace",
+        toolSlug: "chatgpt",
         tierId: "team",
         kind: "main" as const,
         primaryUsageLabel: "Team-wide AI assistant for writing, analysis, and brainstorming",
@@ -615,7 +615,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
         },
       },
       {
-        toolSlug: "x-grok",
+        toolSlug: "grok",
         tierId: "premium",
         kind: "main" as const,
         primaryUsageLabel: "Real-time AI chat with access to X/Twitter data",
@@ -715,7 +715,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
       },
       {
         toolSlug: "replit",
-        tierId: "default",
+        tierId: "core",
         kind: "main" as const,
         primaryUsageLabel: "Quick prototyping and testing client ideas in the browser",
         priceKind: "bundle" as const,
@@ -727,7 +727,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
       },
       {
         toolSlug: "bolt",
-        tierId: "default",
+        tierId: "pro",
         kind: "main" as const,
         primaryUsageLabel: "Rapid full-stack scaffolding for client project kickoffs",
         priceKind: "bundle" as const,
@@ -750,8 +750,8 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
         },
       },
       {
-        toolSlug: "notion-ai",
-        tierId: "ai",
+        toolSlug: "notion",
+        tierId: "plus",
         kind: "main" as const,
         primaryUsageLabel: "Team wiki, project docs, and AI-powered writing",
         priceKind: "bundle" as const,
@@ -775,7 +775,7 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
       },
       {
         toolSlug: "posthog",
-        tierId: "default",
+        tierId: "free",
         kind: "main" as const,
         primaryUsageLabel: "Analytics and A/B testing across client projects",
         priceKind: "bundle" as const,

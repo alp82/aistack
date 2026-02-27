@@ -224,14 +224,12 @@ function AboutPage() {
 	);
 
 	return (
-		<div className="min-h-screen bg-bg-canvas">
-			<section className="border-b-2 border-stroke-strong py-24 px-6 md:px-12">
+		<div className="mx-6 min-h-screen bg-bg-canvas">
+			<section className="border-b-2 border-stroke-strong py-24">
 				<div className="mx-auto max-w-content">
 					<PageHeader
 						label="ABOUT"
-						labelSuffix="LEARN"
 						title={<>LEARN FROM REAL <br /><span className="text-accent-lime">AI BUILDERS</span></>}
-						description="Explore how successful founders use AI tools, complete with workflows, agent setups, prompts and automations you can copy."
 					/>
 
 					<div className="grid items-center gap-12 lg:grid-cols-2">

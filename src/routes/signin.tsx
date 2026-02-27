@@ -63,7 +63,7 @@ function SignInPage() {
 				}
 			}
 
-			await navigate({ to: redirect || "/admin/tools" });
+			await navigate({ to: redirect || "/admin" });
 		} catch (err) {
 			setError(
 				err instanceof Error

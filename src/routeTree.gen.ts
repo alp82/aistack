@@ -16,13 +16,14 @@ import { Route as SigninRouteImport } from './routes/signin'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StacksIndexRouteImport } from './routes/stacks.index'
 import { Route as WaitlistLookupIdRouteImport } from './routes/waitlist.$lookupId'
+import { Route as ToolsNewRouteImport } from './routes/tools_.new'
 import { Route as StacksNewRouteImport } from './routes/stacks.new'
 import { Route as StacksSlugRouteImport } from './routes/stacks.$slug'
-import { Route as AdminToolsRouteImport } from './routes/admin.tools'
 import { Route as StacksSlugEditRouteImport } from './routes/stacks.$slug_.edit'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 
@@ -61,6 +62,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth-callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -81,6 +87,11 @@ const WaitlistLookupIdRoute = WaitlistLookupIdRouteImport.update({
   path: '/waitlist/$lookupId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsNewRoute = ToolsNewRouteImport.update({
+  id: '/tools_/new',
+  path: '/tools/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StacksNewRoute = StacksNewRouteImport.update({
   id: '/stacks/new',
   path: '/stacks/new',
@@ -89,11 +100,6 @@ const StacksNewRoute = StacksNewRouteImport.update({
 const StacksSlugRoute = StacksSlugRouteImport.update({
   id: '/stacks/$slug',
   path: '/stacks/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminToolsRoute = AdminToolsRouteImport.update({
-  id: '/admin/tools',
-  path: '/admin/tools',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StacksSlugEditRoute = StacksSlugEditRouteImport.update({
@@ -110,6 +116,7 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/admin': typeof AdminRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -117,9 +124,9 @@ export interface FileRoutesByFullPath {
   '/signin-publish': typeof SigninPublishRoute
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
-  '/admin/tools': typeof AdminToolsRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
+  '/tools/new': typeof ToolsNewRoute
   '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
   '/stacks': typeof StacksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/admin': typeof AdminRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -135,9 +143,9 @@ export interface FileRoutesByTo {
   '/signin-publish': typeof SigninPublishRoute
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
-  '/admin/tools': typeof AdminToolsRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
+  '/tools/new': typeof ToolsNewRoute
   '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
   '/stacks': typeof StacksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/admin': typeof AdminRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -154,9 +163,9 @@ export interface FileRoutesById {
   '/signin-publish': typeof SigninPublishRoute
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
-  '/admin/tools': typeof AdminToolsRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
+  '/tools_/new': typeof ToolsNewRoute
   '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
   '/stacks/': typeof StacksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/admin'
     | '/auth-callback'
     | '/forgot-password'
     | '/reset-password'
@@ -174,9 +184,9 @@ export interface FileRouteTypes {
     | '/signin-publish'
     | '/test'
     | '/tools'
-    | '/admin/tools'
     | '/stacks/$slug'
     | '/stacks/new'
+    | '/tools/new'
     | '/waitlist/$lookupId'
     | '/stacks'
     | '/api/auth/$'
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/admin'
     | '/auth-callback'
     | '/forgot-password'
     | '/reset-password'
@@ -192,9 +203,9 @@ export interface FileRouteTypes {
     | '/signin-publish'
     | '/test'
     | '/tools'
-    | '/admin/tools'
     | '/stacks/$slug'
     | '/stacks/new'
+    | '/tools/new'
     | '/waitlist/$lookupId'
     | '/stacks'
     | '/api/auth/$'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/about'
+    | '/admin'
     | '/auth-callback'
     | '/forgot-password'
     | '/reset-password'
@@ -210,9 +222,9 @@ export interface FileRouteTypes {
     | '/signin-publish'
     | '/test'
     | '/tools'
-    | '/admin/tools'
     | '/stacks/$slug'
     | '/stacks/new'
+    | '/tools_/new'
     | '/waitlist/$lookupId'
     | '/stacks/'
     | '/api/auth/$'
@@ -222,6 +234,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AdminRoute: typeof AdminRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -229,9 +242,9 @@ export interface RootRouteChildren {
   SigninPublishRoute: typeof SigninPublishRoute
   TestRoute: typeof TestRoute
   ToolsRoute: typeof ToolsRoute
-  AdminToolsRoute: typeof AdminToolsRoute
   StacksSlugRoute: typeof StacksSlugRoute
   StacksNewRoute: typeof StacksNewRoute
+  ToolsNewRoute: typeof ToolsNewRoute
   WaitlistLookupIdRoute: typeof WaitlistLookupIdRoute
   StacksIndexRoute: typeof StacksIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -289,6 +302,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about': {
       id: '/about'
       path: '/about'
@@ -317,6 +337,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WaitlistLookupIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools_/new': {
+      id: '/tools_/new'
+      path: '/tools/new'
+      fullPath: '/tools/new'
+      preLoaderRoute: typeof ToolsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/stacks/new': {
       id: '/stacks/new'
       path: '/stacks/new'
@@ -329,13 +356,6 @@ declare module '@tanstack/react-router' {
       path: '/stacks/$slug'
       fullPath: '/stacks/$slug'
       preLoaderRoute: typeof StacksSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/tools': {
-      id: '/admin/tools'
-      path: '/admin/tools'
-      fullPath: '/admin/tools'
-      preLoaderRoute: typeof AdminToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/stacks/$slug_/edit': {
@@ -358,6 +378,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AdminRoute: AdminRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   ResetPasswordRoute: ResetPasswordRoute,
@@ -365,9 +386,9 @@ const rootRouteChildren: RootRouteChildren = {
   SigninPublishRoute: SigninPublishRoute,
   TestRoute: TestRoute,
   ToolsRoute: ToolsRoute,
-  AdminToolsRoute: AdminToolsRoute,
   StacksSlugRoute: StacksSlugRoute,
   StacksNewRoute: StacksNewRoute,
+  ToolsNewRoute: ToolsNewRoute,
   WaitlistLookupIdRoute: WaitlistLookupIdRoute,
   StacksIndexRoute: StacksIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

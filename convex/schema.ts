@@ -84,7 +84,7 @@ export default defineSchema({
   tools: defineTable({
     name: v.string(),
     slug: v.string(),
-    category: v.string(),
+    categories: v.array(v.string()),
     iconUrl: v.optional(v.string()),
     websiteUrl: v.optional(v.string()),
     affiliateUrl: v.optional(v.string()),
@@ -107,7 +107,6 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index('by_slug', ['slug'])
-    .index('by_category', ['category'])
     .index('by_reviewStatus', ['reviewStatus']),
 
   stacks: defineTable({

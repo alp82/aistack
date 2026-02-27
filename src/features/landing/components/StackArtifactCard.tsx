@@ -25,8 +25,8 @@ function StackArtifactCard({ stack }: StackArtifactCardProps) {
 	const [hasUpvoted, setHasUpvoted] = useState(false);
 
 	const displayTools = stack.tools.slice(0, 6);
-	const categories = [...new Set(stack.tools.map((tool) => tool.category).filter(Boolean))]
-		.slice(0, 2) as string[];
+	const categories = [...new Set(stack.tools.flatMap((tool) => tool.categories))]
+		.slice(0, 2);
 
 	const handleUpvote = async (e: React.MouseEvent) => {
 		e.preventDefault();

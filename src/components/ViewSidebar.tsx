@@ -1,14 +1,14 @@
 import { FullWidthToolCard } from "@/components/FullWidthToolCard";
 import { MiscToolCard } from "@/components/ToolCard";
 import { PriceDisplay } from "@/components/PriceDisplay";
-import { ExternalLink, Package } from "lucide-react";
+import { Package } from "lucide-react";
 
 type ViewTool = {
 	_id: string;
 	name: string;
 	slug: string;
 	iconUrl?: string;
-	category: string;
+	categories: string[];
 	websiteUrl?: string;
 	price: {
 		pricingType: string;
@@ -16,6 +16,7 @@ type ViewTool = {
 	};
 	kind: "main" | "misc";
 	primaryUsageLabel: string;
+	tierName: string;
 	priceKind: "regular" | "discounted" | "bundle" | "usage_based";
 	bundleSlug?: string;
 	notes?: string;
@@ -60,9 +61,9 @@ export function ViewSidebar({
 	const miscTools = tools.filter((t) => t.kind === "misc");
 
 	return (
-		<aside className="hidden w-140 shrink-0 border-l border-stroke-subtle bg-bg-panel/80 lg:block">
-			<div className="sticky top-[58px] flex max-h-[calc(100vh-58px)] flex-col bg-bg-panel/80 backdrop-blur-sm">
-				<div className="flex-grow overflow-y-auto p-4 space-y-6">
+		<aside className="hidden w-140 shrink-0 lg:block">
+			<div className="sticky top-[58px] flex max-h-[calc(100vh-58px)] flex-col">
+				<div className="flex-grow overflow-y-auto ml-6 py-12 space-y-12">
 					{/* Main Tools */}
 					{mainTools.length > 0 && (
 						<section>
@@ -102,58 +103,48 @@ export function ViewSidebar({
 									<div
 										key={bundle._id}
 										id={`bundle-${bundle.slug}`}
-										className="flex items-start gap-3 border-2 border-stroke-strong bg-bg-panel p-3"
+										className="border border-stroke-subtle rounded p-3 hover:border-stroke-strong transition-colors"
 									>
-										{bundle.iconUrl ? (
-											<img
-												src={bundle.iconUrl}
-												alt={bundle.name}
-												className="size-8 shrink-0 border border-stroke-subtle bg-white object-contain p-1"
-											/>
-										) : (
-											<div className="flex size-8 shrink-0 items-center justify-center border border-stroke-subtle bg-bg-panel-muted">
-												<Package className="size-4 text-fg-muted" />
-											</div>
-										)}
-										<div className="min-w-0 flex-1">
-											<div className="mb-1 flex items-center justify-between">
-												<span className="font-mono text-sm font-semibold text-fg-primary">
+										<div className="flex items-center gap-3">
+											{bundle.iconUrl ? (
+												<img
+													src={bundle.iconUrl}
+													alt={bundle.name}
+													className="size-8 shrink-0 rounded border border-stroke-subtle bg-white object-contain p-1"
+												/>
+											) : (
+												<div className="flex size-8 shrink-0 items-center justify-center rounded border border-stroke-subtle bg-bg-panel-muted">
+													<Package className="size-4 text-fg-muted" />
+												</div>
+											)}
+											<div className="flex-1 min-w-0">
+												<span className="font-mono text-sm font-semibold text-fg-primary block">
 													{bundle.name}
 												</span>
+											</div>
+											<div className="shrink-0 text-right">
 												{bundle.price.fixed ? (
 													<PriceDisplay
 														amount={bundle.price.fixed.amount}
 														period={bundle.price.fixed.period === "one_time" ? "/once" : "/mo"}
 														size="sm"
-														className="ml-2 shrink-0 text-fg-primary"
+														className="text-fg-primary"
 													/>
 												) : (
-													<span className="ml-2 shrink-0 font-mono text-sm font-bold text-fg-primary">
+													<span className="font-mono text-sm font-bold text-fg-primary">
 														Usage
 													</span>
 												)}
 											</div>
-											{bundle.description && (
-												<p className="mb-1 text-xs text-fg-secondary line-clamp-2">
-													{bundle.description}
-												</p>
-											)}
-											<div className="flex items-center justify-between">
-												<span className="font-mono text-[10px] text-fg-muted">
-													{bundle.tierName}
-												</span>
-												{bundle.websiteUrl && (
-													<a
-														href={bundle.websiteUrl}
-														target="_blank"
-														rel="noopener noreferrer"
-														className="inline-flex items-center gap-1 font-mono text-[10px] text-accent-lime hover:text-accent-lime-strong"
-													>
-														Visit <ExternalLink className="size-2.5" />
-													</a>
-												)}
-											</div>
 										</div>
+										{bundle.description && (
+											<p className="mt-2 text-xs text-fg-secondary line-clamp-2">
+												{bundle.description}
+											</p>
+										)}
+										<span className="mt-1 font-mono text-[10px] text-fg-muted uppercase tracking-wider block">
+											{bundle.tierName}
+										</span>
 									</div>
 								))}
 							</div>

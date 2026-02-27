@@ -4,6 +4,8 @@ import type { NodeViewProps } from "@tiptap/react";
 import { FileText } from "lucide-react";
 import { useState } from "react";
 import type { InstructionType } from "@/features/stack-editor/types";
+import { useOptionalEditorContext } from "@/features/stack-editor/context/EditorContext";
+import HoverPreview from "@/components/ui/hover-preview";
 
 export interface AIInstructionBlockAttrs {
 	name: string;
@@ -29,10 +31,36 @@ const typeLabels: Record<InstructionType, string> = {
 	subagent: "Subagent",
 };
 
+function InstructionTooltipContent({ name, instructionType, description }: {
+	name: string;
+	instructionType: InstructionType;
+	description?: string;
+}) {
+	const colors = typeColors[instructionType] || typeColors.prompt;
+	return (
+		<div className="border-[3px] border-stroke-strong bg-bg-panel shadow-[6px_6px_0_var(--stroke-strong)] p-3 min-w-[180px]">
+			<div className={`font-mono text-[10px] font-bold uppercase tracking-[0.2em] ${colors.text} mb-2 border-b-2 border-stroke-strong pb-2`}>
+				{typeLabels[instructionType]}
+			</div>
+			<div className="font-mono text-sm font-semibold text-fg-primary mb-1">{name}</div>
+			{description && (
+				<div className="text-xs text-fg-secondary line-clamp-3">
+					{description}
+				</div>
+			)}
+			<div className="mt-2 text-[10px] text-fg-muted">
+				Click to view content
+			</div>
+		</div>
+	);
+}
+
 function AIInstructionBlockView({ node }: NodeViewProps) {
 	const { name, instructionType, content } = node.attrs as AIInstructionBlockAttrs;
 	const [showModal, setShowModal] = useState(false);
 	const [copied, setCopied] = useState(false);
+	const context = useOptionalEditorContext();
+	const instructionData = context?.instructionLookup.get(name);
 
 	const colors = typeColors[instructionType] || typeColors.prompt;
 
@@ -44,21 +72,39 @@ function AIInstructionBlockView({ node }: NodeViewProps) {
 		}
 	};
 
+	const blockContent = (
+		<span
+			contentEditable={false}
+			onClick={() => content && setShowModal(true)}
+			className={`inline-flex cursor-pointer items-center gap-2 rounded border ${colors.border} ${colors.bg} px-2 py-1 align-baseline font-mono text-xs font-semibold uppercase text-fg-primary transition-all hover:opacity-80`}
+		>
+			<span className={`flex size-5 shrink-0 items-center justify-center rounded-sm border ${colors.border} ${colors.bg} ${colors.text}`}>
+				<FileText className="size-3" />
+			</span>
+			<span>{name}</span>
+		</span>
+	);
+
 	return (
-		<NodeViewWrapper as="span" className="inline-flex flex-col items-center mx-1">
-			<span
-				contentEditable={false}
-				onClick={() => content && setShowModal(true)}
-				className={`inline-flex cursor-pointer items-center gap-2 rounded border ${colors.border} ${colors.bg} px-2 py-1 align-baseline font-mono text-xs font-semibold uppercase text-fg-primary transition-all hover:opacity-80`}
+		<NodeViewWrapper as="span" className="inline-flex items-center mx-1">
+			<HoverPreview
+				mode="wrapper"
+				position="above"
+				width={200}
+				height="auto"
+				offset={8}
+				maxRotation={3}
+				maxOffset={5}
+				renderContent={() => (
+					<InstructionTooltipContent
+						name={name}
+						instructionType={instructionType}
+						description={instructionData?.description}
+					/>
+				)}
 			>
-				<span className={`flex size-5 shrink-0 items-center justify-center rounded-sm border ${colors.border} ${colors.bg} ${colors.text}`}>
-					<FileText className="size-3" />
-				</span>
-				<span>{name}</span>
-			</span>
-			<span className={`font-mono text-[8px] uppercase tracking-wider ${colors.text} opacity-60 mt-0.5`}>
-				{typeLabels[instructionType]}
-			</span>
+				{blockContent}
+			</HoverPreview>
 
 			{/* Modal for viewing content */}
 			{showModal && (

@@ -8,7 +8,7 @@ export const listAll = query({
       _id: v.id('tools'),
       name: v.string(),
       slug: v.string(),
-      category: v.string(),
+      categories: v.array(v.string()),
       iconUrl: v.optional(v.string()),
       websiteUrl: v.optional(v.string()),
       tiers: v.array(
@@ -44,7 +44,7 @@ export const listAll = query({
       _id: t._id,
       name: t.name,
       slug: t.slug,
-      category: t.category,
+      categories: t.categories,
       iconUrl: t.iconUrl,
       websiteUrl: t.websiteUrl,
       tiers: t.tiers,
@@ -55,7 +55,7 @@ export const listAll = query({
 export const create = mutation({
   args: {
     name: v.string(),
-    category: v.string(),
+    categories: v.array(v.string()),
     websiteUrl: v.optional(v.string()),
     tiers: v.array(
       v.object({
@@ -110,7 +110,7 @@ export const create = mutation({
     return await ctx.db.insert('tools', {
       name: args.name,
       slug,
-      category: args.category,
+      categories: args.categories,
       websiteUrl: args.websiteUrl,
       tiers,
       reviewStatus: 'pending',

@@ -1,31 +1,34 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { Check, X, Edit2, Package, Wrench } from "lucide-react";
+import { Check, X, Edit2, Package, Wrench, Brain } from "lucide-react";
 import { useState } from "react";
 import type { Id } from "../../convex/_generated/dataModel";
 import { AddToolModal, type ToolData } from "../components/AddToolModal";
 
-export const Route = createFileRoute("/admin/tools")({
+export const Route = createFileRoute("/admin")({
 	ssr: false,
-	component: AdminToolsPage,
+	component: AdminPage,
 	head: () => ({
 		meta: [
 			{
-				title: "Admin - Review Tools & Bundles",
+				title: "Admin - Review Tools, Bundles & Models",
 			},
 		],
 	}),
 });
 
-function AdminToolsPage() {
+function AdminPage() {
 	const isAdmin = useQuery(api.admin.checkIsAdmin);
 	const pendingTools = useQuery(api.admin.getPendingTools);
 	const pendingBundles = useQuery(api.admin.getPendingBundles);
+	const pendingModels = useQuery(api.admin.getPendingModels);
 	const approveTool = useMutation(api.admin.approveTool);
 	const rejectTool = useMutation(api.admin.rejectTool);
 	const approveBundle = useMutation(api.admin.approveBundle);
 	const rejectBundle = useMutation(api.admin.rejectBundle);
+	const approveModel = useMutation(api.admin.approveModel);
+	const rejectModel = useMutation(api.admin.rejectModel);
 
 	const [editingTool, setEditingTool] = useState<ToolData | null>(null);
 
@@ -73,6 +76,22 @@ function AdminToolsPage() {
 		}
 	};
 
+	const handleApproveModel = async (modelId: Id<"models">) => {
+		try {
+			await approveModel({ modelId });
+		} catch (error) {
+			console.error("Failed to approve model:", error);
+		}
+	};
+
+	const handleRejectModel = async (modelId: Id<"models">) => {
+		try {
+			await rejectModel({ modelId });
+		} catch (error) {
+			console.error("Failed to reject model:", error);
+		}
+	};
+
 	return (
 		<div className="min-h-screen bg-bg-canvas">
 			<AddToolModal
@@ -116,7 +135,7 @@ function AdminToolsPage() {
 													{tool.name}
 												</h3>
 												<p className="font-mono text-xs text-fg-muted">
-													Category: {tool.category}
+													Categories: {tool.categories.join(", ")}
 												</p>
 												{tool.websiteUrl && (
 													<a
@@ -299,6 +318,94 @@ function AdminToolsPage() {
 										<button
 											type="button"
 											onClick={() => handleRejectBundle(bundle._id)}
+											className="inline-flex items-center gap-2 border-2 border-destructive bg-destructive px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-destructive/90"
+										>
+											<X className="size-3.5" />
+											Reject
+										</button>
+									</div>
+								</div>
+							))}
+						</div>
+					)}
+				</div>
+			</section>
+
+			{/* Models Section */}
+			<section className="pb-12 sm:pb-16">
+				<div className="mx-auto max-w-6xl px-4 sm:px-6">
+					<div className="mb-8 flex items-center gap-3">
+						<Brain className="size-8 text-accent-lime" />
+						<h2 className="text-2xl font-bold tracking-tight text-fg-primary sm:text-3xl">Model Review</h2>
+					</div>
+
+					{!pendingModels || pendingModels.length === 0 ? (
+						<div className="border-2 border-dashed border-stroke-subtle px-4 py-12 text-center">
+							<p className="font-mono text-sm text-fg-muted">No pending models to review</p>
+						</div>
+					) : (
+						<div className="space-y-5">
+							{pendingModels.map((model) => (
+								<div
+									key={model._id}
+									className="border-2 border-stroke-strong bg-bg-panel p-6"
+								>
+									<div className="mb-4 flex items-start justify-between gap-4">
+										<div className="flex items-start gap-4">
+											{model.iconUrl ? (
+												<img
+													src={model.iconUrl}
+													alt={model.name}
+													className="size-12 shrink-0 border border-stroke-subtle bg-white object-contain p-1"
+												/>
+											) : (
+												<div className="flex size-12 shrink-0 items-center justify-center border border-stroke-subtle bg-bg-panel-muted">
+													<Brain className="size-6 text-fg-muted" />
+												</div>
+											)}
+											<div>
+												<h3 className="font-mono text-lg font-semibold text-fg-primary">
+													{model.name}
+												</h3>
+												<p className="font-mono text-xs text-fg-muted">
+													Provider: {model.provider} · Category: {model.category}
+												</p>
+												{model.description && (
+													<p className="mt-1 font-mono text-xs text-fg-secondary">
+														{model.description}
+													</p>
+												)}
+												{model.websiteUrl && (
+													<a
+														href={model.websiteUrl}
+														target="_blank"
+														rel="noopener noreferrer"
+														className="font-mono text-xs text-accent-lime hover:underline"
+													>
+														{model.websiteUrl}
+													</a>
+												)}
+												{model.contextWindow && (
+													<p className="font-mono text-xs text-fg-muted">
+														Context: {model.contextWindow.toLocaleString()} tokens
+													</p>
+												)}
+											</div>
+										</div>
+									</div>
+
+									<div className="flex gap-3 border-t border-stroke-subtle pt-4">
+										<button
+											type="button"
+											onClick={() => handleApproveModel(model._id)}
+											className="inline-flex items-center gap-2 border-2 border-green-500 bg-green-500 px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-green-600"
+										>
+											<Check className="size-3.5" />
+											Approve
+										</button>
+										<button
+											type="button"
+											onClick={() => handleRejectModel(model._id)}
 											className="inline-flex items-center gap-2 border-2 border-destructive bg-destructive px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-destructive/90"
 										>
 											<X className="size-3.5" />

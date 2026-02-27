@@ -21,7 +21,7 @@ export interface ToolSubscriptionEntry {
 	toolId: Id<"tools">;
 	toolName: string;
 	toolSlug: string;
-	toolCategory: string;
+	toolCategories: string[];
 	toolIconUrl?: string;
 	tierId?: string;
 	kind: "main" | "misc";
@@ -67,7 +67,9 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 		const categories = new Set<ToolCategory>();
 		for (const tool of allTools) {
 			if (!selectedToolIds.has(tool._id)) {
-				categories.add(tool.category as ToolCategory);
+				for (const cat of tool.categories) {
+					categories.add(cat as ToolCategory);
+				}
 			}
 		}
 		return Array.from(categories).sort();
@@ -77,7 +79,7 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 		let tools = allTools.filter((t) => !selectedToolIds.has(t._id));
 		
 		if (selectedCategory) {
-			tools = tools.filter((t) => t.category === selectedCategory);
+			tools = tools.filter((t) => t.categories.includes(selectedCategory));
 		}
 		
 		if (search.trim()) {
@@ -85,7 +87,7 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 			tools = tools.filter(
 				(t) =>
 					t.name.toLowerCase().includes(q) ||
-					t.category.toLowerCase().includes(q),
+					t.categories.some((c) => c.toLowerCase().includes(q)),
 			);
 		}
 		
@@ -101,7 +103,7 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 			toolId: tool._id,
 			toolName: tool.name,
 			toolSlug: tool.slug,
-			toolCategory: tool.category,
+			toolCategories: tool.categories,
 			toolIconUrl: tool.iconUrl,
 			tierId: defaultTier?.tierId,
 			kind: "main",
@@ -140,7 +142,7 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 			toolId: `custom-${Date.now()}` as Id<"tools">,
 			toolName: customToolName.trim(),
 			toolSlug: customToolName.trim().toLowerCase().replace(/\s+/g, "-"),
-			toolCategory: "other",
+			toolCategories: [],
 			kind: "main",
 			primaryUsageLabel: "Custom",
 			price: {

@@ -33,7 +33,7 @@ export const bundlesData = [
     description: "Anthropic's premium plan. Includes unlimited Claude Code CLI access alongside the full Claude Max experience.",
     iconUrl: "https://cdn.prod.website-files.com/6889473510b50328dbb70ae6/68c33859cc6cd903686c66a2_apple-touch-icon.png",
     websiteUrl: "https://claude.ai/",
-    toolSlugs: ["claude-code"],
+    toolSlugs: ["claude"],
     reviewStatus: "approved" as const,
     tiers: [
       {

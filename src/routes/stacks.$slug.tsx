@@ -2,12 +2,13 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation } from "convex/react";
 import { useConvexAuth } from "convex/react";
 import {
+	ArrowRight,
 	CheckCircle,
 	ExternalLink,
 	FileText,
 	Package,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TiptapEditor } from "@/components/TiptapEditor";
 import { FullWidthToolCard } from "@/components/FullWidthToolCard";
 import { MiscToolCard } from "@/components/ToolCard";
@@ -19,6 +20,92 @@ import { CostBreakdownTooltip } from "@/components/CostBreakdownTooltip";
 import { UpvoteButton } from "@/components/UpvoteButton";
 import { cn } from "@/lib/utils";
 import { api } from "../../convex/_generated/api";
+import { EditorProvider, useEditorContext, type ToolLookupData, type BundleLookupData, type InstructionLookupData } from "@/features/stack-editor/context/EditorContext";
+import type { InstructionType } from "@/features/stack-editor/types";
+
+type ViewTool = {
+	_id: string;
+	name: string;
+	categories: string[];
+	price: {
+		pricingType: string;
+		fixed?: { currency: string; amount: number; period: string };
+	};
+	primaryUsageLabel: string;
+	notes?: string;
+};
+
+type ViewBundle = {
+	_id: string;
+	name: string;
+	description?: string;
+	tierName: string;
+	price: {
+		pricingType: string;
+		fixed?: { currency: string; amount: number; period: string };
+	};
+	notes?: string;
+};
+
+type ViewInstruction = {
+	type: InstructionType;
+	name: string;
+	description?: string;
+};
+
+function ViewLookupDataSync({ 
+	tools, 
+	bundles, 
+	instructions 
+}: { 
+	tools: ViewTool[];
+	bundles: ViewBundle[];
+	instructions: ViewInstruction[];
+}) {
+	const { setToolLookup, setBundleLookup, setInstructionLookup } = useEditorContext();
+
+	useEffect(() => {
+		const toolMap = new Map<string, ToolLookupData>();
+		for (const tool of tools) {
+			toolMap.set(tool.name, {
+				name: tool.name,
+				categories: tool.categories,
+				price: tool.price.fixed ? { amount: tool.price.fixed.amount, period: tool.price.fixed.period } : undefined,
+				tierName: tool.primaryUsageLabel,
+				notes: tool.notes,
+			});
+		}
+		setToolLookup(toolMap);
+	}, [tools, setToolLookup]);
+
+	useEffect(() => {
+		const bundleMap = new Map<string, BundleLookupData>();
+		for (const bundle of bundles) {
+			bundleMap.set(bundle.name, {
+				name: bundle.name,
+				price: bundle.price.fixed ? { amount: bundle.price.fixed.amount, period: bundle.price.fixed.period } : undefined,
+				tierName: bundle.tierName,
+				description: bundle.description,
+				notes: bundle.notes,
+			});
+		}
+		setBundleLookup(bundleMap);
+	}, [bundles, setBundleLookup]);
+
+	useEffect(() => {
+		const instructionMap = new Map<string, InstructionLookupData>();
+		for (const instruction of instructions) {
+			instructionMap.set(instruction.name, {
+				name: instruction.name,
+				type: instruction.type,
+				description: instruction.description,
+			});
+		}
+		setInstructionLookup(instructionMap);
+	}, [instructions, setInstructionLookup]);
+
+	return null;
+}
 
 export const Route = createFileRoute("/stacks/$slug")({
 	ssr: false,
@@ -92,10 +179,8 @@ function StackDetailsPage() {
 		);
 	}
 
-	const xPage = stack.creator.personalPages.find(
-		(p: { name: string; url: string }) => p.name === "X",
-	);
-	const projectPage = stack.creator.projectPages[0];
+	const personalPageUrl = stack.personalPageUrl;
+	const projectPageUrl = stack.projectPageUrl;
 	const hasDescription = !!stack.description;
 	const mainTools = stack.tools.filter((t) => t.kind === "main");
 	const miscTools = stack.tools.filter((t) => t.kind === "misc");
@@ -204,82 +289,111 @@ function StackDetailsPage() {
 	);
 
 	return (
-		<div className="bg-bg-canvas">
-			{/* Header */}
-			<header className="bg-black border-b-2 border-stroke-strong">
-				<div className="mx-auto max-w-content px-6 md:px-12 py-12">
-				<div className="flex items-start gap-6">
-					{/* 2x2 Grid: Avatar/Upvote + Info/Description */}
-					<div className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-3 flex-1 items-center">
-						{/* Row 1: Avatar + Name/Handle */}
-						{stack.creator.avatarUrl ? (
-							<img
-								src={stack.creator.avatarUrl}
-								alt={stack.creator.name}
-								className="size-16 shrink-0 border-[3px] border-stroke-strong object-cover sm:size-20"
+		<EditorProvider>
+			<ViewLookupDataSync
+				tools={stack.tools}
+				bundles={stack.bundles}
+				instructions={stack.instructions ?? []}
+			/>
+			<div className="mx-6 bg-bg-canvas">
+				{/* Header */}
+				<header className="py-12">
+				<div className="mx-auto max-w-content">
+					{/* 2x3 Grid: Row 1 = label in middle, Row 2 = avatar | content | price */}
+					<div className="grid grid-cols-[auto_1fr_auto] gap-x-12 items-start">
+						{/* Row 1: Empty | Label | Empty */}
+						<div />
+						<div className="font-mono text-accent-lime mb-6 flex items-center gap-4 text-sm">
+							<span>// STACK_DETAILS</span>
+						</div>
+						<div />
+
+						{/* Row 2 Col 1: Avatar + Upvote stacked */}
+						<div className="flex flex-col items-center gap-2 shrink-0">
+							{stack.creator.avatarUrl ? (
+								<img
+									src={stack.creator.avatarUrl}
+									alt={stack.creator.name}
+									className="size-16 shrink-0 rounded border border-stroke-subtle object-contain p-1"
+								/>
+							) : (
+								<div className="flex size-16 shrink-0 items-center justify-center rounded border border-stroke-subtle bg-bg-panel-muted font-mono text-lg font-bold text-fg-primary">
+									{stack.creator.name.charAt(0)}
+								</div>
+							)}
+							<UpvoteButton
+								count={upvoteStatus?.count ?? 0}
+								upvoted={upvoteStatus?.upvoted}
+								disabled={upvoting || upvoteStatus?.isOwner}
+								size="md"
+								onClick={handleUpvote}
 							/>
-						) : (
-							<div className="flex size-16 shrink-0 items-center justify-center border-[3px] border-stroke-strong bg-bg-panel-muted font-mono text-xl font-bold text-fg-primary sm:size-20">
-								{stack.creator.name.charAt(0)}
-							</div>
-						)}
-						<div>
-							<h1 className="text-2xl font-bold text-white sm:text-3xl">
-								{stack.creator.name}
-							</h1>
-							<div className="flex flex-wrap items-center gap-2 font-mono text-xs mt-1">
-							{stack.creator.verified && (
-								<CheckCircle className="size-4 text-accent-lime" />
-							)}
-							{xPage && stack.creator.xHandle && (
-								<a
-									href={xPage.url}
-									target="_blank"
-									rel="noopener noreferrer"
-									className="text-accent-lime hover:text-accent-lime-strong underline"
-								>
-									@{stack.creator.xHandle}
-								</a>
-							)}
-							{xPage && stack.creator.xHandle && projectPage && (
-								<span className="text-stroke-strong">•</span>
-							)}
-							{projectPage && (
-								<a
-									href={projectPage.url}
-									target="_blank"
-									rel="noopener noreferrer"
-									className="inline-flex items-center gap-1 text-white/70 transition-colors hover:text-white"
-								>
-									{projectPage.name}
-									<ExternalLink className="size-3" />
-								</a>
-							)}
-							</div>
 						</div>
 
-						{/* Row 2: Upvote + Description */}
-						<UpvoteButton
-							count={upvoteStatus?.count ?? 0}
-							upvoted={upvoteStatus?.upvoted}
-							disabled={upvoting || upvoteStatus?.isOwner}
-							size="lg"
-							onClick={handleUpvote}
-						/>
-						<p className="mr-8 text-base leading-relaxed text-white">
+						{/* Row 2 Col 2: Title + Links + One-liner */}
+						<div className="flex-1 min-w-0">
+							<h1 className="text-5xl md:text-8xl font-black tracking-tighter uppercase leading-[0.9] text-fg-primary">
+								{stack.name}
+							</h1>
+
+							<div className="mt-8 flex flex-wrap items-center gap-3 font-mono text-sm">
+								{stack.creator.verified && (
+									<CheckCircle className="size-5 text-accent-lime" />
+								)}
+								{stack.creator.xHandle && (
+									<a
+										href={`https://x.com/${stack.creator.xHandle}`}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="text-accent-lime hover:text-accent-lime-strong underline"
+									>
+										@{stack.creator.xHandle}
+									</a>
+								)}
+								{personalPageUrl && (
+									<>
+										<span className="text-stroke-strong">•</span>
+										<a
+											href={personalPageUrl.startsWith("http") ? personalPageUrl : `https://${personalPageUrl}`}
+											target="_blank"
+											rel="noopener noreferrer"
+											className="inline-flex items-center gap-1 text-white/70 transition-colors hover:text-white"
+										>
+											{personalPageUrl.replace(/^https?:\/\//, "")}
+											<ExternalLink className="size-4" />
+										</a>
+									</>
+								)}
+								{projectPageUrl && (
+									<>
+										<span className="text-stroke-strong">•</span>
+										<a
+											href={projectPageUrl.startsWith("http") ? projectPageUrl : `https://${projectPageUrl}`}
+											target="_blank"
+											rel="noopener noreferrer"
+											className="inline-flex items-center gap-1 text-white/70 transition-colors hover:text-white"
+										>
+											{projectPageUrl.replace(/^https?:\/\//, "")}
+											<ExternalLink className="size-4" />
+										</a>
+									</>
+								)}
+							</div>
+
+							<p className="mt-8 text-xl text-fg-secondary max-w-2xl border-l-4 border-accent-lime pl-6">
 								{stack.oneLiner}
 							</p>
-					</div>
+						</div>
 
-					{/* Price Card - Square with Hover Breakdown */}
-					<HoverPreview
-						mode="wrapper"
-						position="below"
-						width={320}
-						offset={12}
-						maxRotation={5}
-						maxOffset={10}
-						renderContent={() => (
+						{/* Column 3: Price Card */}
+						<HoverPreview
+							mode="wrapper"
+							position="below"
+							width={320}
+							offset={12}
+							maxRotation={5}
+							maxOffset={10}
+							renderContent={() => (
 								<CostBreakdownTooltip
 									tools={stack.tools}
 									bundles={stack.bundles}
@@ -288,25 +402,30 @@ function StackDetailsPage() {
 									usageTotalNotes={stack.usageTotalNotes}
 								/>
 							)}
-					>
-						<div className="border-[3px] border-stroke-strong bg-bg-panel shadow-[4px_4px_0_var(--stroke-strong)] shrink-0 flex flex-col items-center justify-center text-center w-32 h-32 p-4 transition-all hover:shadow-[6px_6px_0_var(--stroke-strong)] hover:border-accent-lime">
-							<PriceDisplay
-								amount={stack.fixedTotal?.amount ?? 0}
-								hasUsageComponent={stack.hasUsageComponent}
-								size="lg"
-								className="text-fg-primary"
-							/>
-							<span
-								className={cn(
-									"mt-1 font-mono text-[10px] font-semibold uppercase tracking-wide",
-									stack.teamSize ? "text-fg-secondary" : "text-accent-lime",
-								)}
-							>
-								{stack.teamSize ? `Team ${stack.teamSize}` : "Solo"}
-							</span>
-						</div>
-					</HoverPreview>
-				</div>
+						>
+							<div className="border-[3px] border-stroke-strong bg-bg-panel shadow-[4px_4px_0_var(--stroke-strong)] shrink-0 flex flex-col items-center justify-center text-center w-32 h-32 p-4 transition-all hover:shadow-[6px_6px_0_var(--stroke-strong)] hover:border-accent-lime">
+								<PriceDisplay
+									amount={stack.fixedTotal?.amount ?? 0}
+									hasUsageComponent={stack.hasUsageComponent}
+									size="lg"
+									className="text-fg-primary"
+								/>
+								<span
+									className={cn(
+										"mt-1 font-mono text-[10px] font-semibold uppercase tracking-wide",
+										stack.teamSize ? "text-fg-secondary" : "text-accent-lime",
+									)}
+								>
+									{stack.teamSize ? `Team ${stack.teamSize}` : "Solo"}
+								</span>
+							</div>
+						</HoverPreview>
+					</div>
+
+					{/* Swiss-style separator */}
+					<div className="mt-12 flex items-center gap-4">
+						<span className="h-px flex-1 bg-stroke-subtle" />
+					</div>
 				</div>
 			</header>
 
@@ -315,47 +434,47 @@ function StackDetailsPage() {
 					{/* Tabs */}
 					<section className="px-6 md:px-12 pt-6 lg:hidden">
 						<div className="flex gap-1 border-b-2 border-stroke-strong">
-					{hasDescription && (
-					<Button
-						type="button"
-						variant="ghost"
-						onClick={() => setActiveTab("description")}
-						className={cn(
-							"relative inline-flex h-auto items-center gap-2 rounded-none px-5 py-3 font-mono text-xs font-semibold uppercase tracking-[0.1em] transition-colors hover:bg-transparent",
-							activeTab === "description"
-								? "text-fg-primary"
-								: "text-fg-muted hover:text-fg-secondary",
-						)}
-					>
-						<FileText className="size-4" />
-						Description
-						{activeTab === "description" && (
-							<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent-lime" />
-						)}
-					</Button>
-				)}
-				<Button
-					type="button"
-					variant="ghost"
-					onClick={() => setActiveTab("tools")}
-					className={cn(
-						"relative inline-flex h-auto items-center gap-2 rounded-none px-5 py-3 font-mono text-xs font-semibold uppercase tracking-[0.1em] transition-colors hover:bg-transparent",
-						activeTab === "tools"
-							? "text-fg-primary"
-							: "text-fg-muted hover:text-fg-secondary",
-					)}
-				>
-					<Package className="size-4" />
-					Tools ({stack.tools.length})
-					{activeTab === "tools" && (
-						<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent-lime" />
-					)}
-				</Button>
+							{hasDescription && (
+								<Button
+									type="button"
+									variant="ghost"
+									onClick={() => setActiveTab("description")}
+									className={cn(
+										"relative inline-flex h-auto items-center gap-2 rounded-none px-5 py-3 font-mono text-xs font-semibold uppercase tracking-[0.1em] transition-colors hover:bg-transparent",
+										activeTab === "description"
+											? "text-fg-primary"
+											: "text-fg-muted hover:text-fg-secondary",
+									)}
+								>
+									<FileText className="size-4" />
+									Description
+									{activeTab === "description" && (
+										<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent-lime" />
+									)}
+								</Button>
+							)}
+							<Button
+								type="button"
+								variant="ghost"
+								onClick={() => setActiveTab("tools")}
+								className={cn(
+									"relative inline-flex h-auto items-center gap-2 rounded-none px-5 py-3 font-mono text-xs font-semibold uppercase tracking-[0.1em] transition-colors hover:bg-transparent",
+									activeTab === "tools"
+										? "text-fg-primary"
+										: "text-fg-muted hover:text-fg-secondary",
+								)}
+							>
+								<Package className="size-4" />
+								Tools ({stack.tools.length})
+								{activeTab === "tools" && (
+									<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent-lime" />
+								)}
+							</Button>
 						</div>
 					</section>
 
 					{/* Tab Content */}
-					<section className="px-6 md:px-12 py-12 lg:hidden">
+					<section className="px-6 py-12 lg:hidden">
 						{activeTab === "tools" && toolsContent}
 
 						{activeTab === "description" && stack.description && (
@@ -364,7 +483,7 @@ function StackDetailsPage() {
 					</section>
 
 					{/* Desktop Content - description only, tools are in sidebar */}
-					<section className="hidden px-6 md:px-12 py-12 lg:block">
+					<section className="hidden py-12 lg:block">
 						{stack.description && (
 							<TiptapEditor content={stack.description} editable={false} />
 						)}
@@ -378,6 +497,27 @@ function StackDetailsPage() {
 					onBundleClick={scrollToBundle}
 				/>
 			</div>
+
+			{/* CTA Section - only show if not the owner */}
+			{!upvoteStatus?.isOwner && (
+				<section className="bg-accent-lime py-24 px-6 md:px-16 border-t border-lime-500">
+					<div className="mx-auto max-w-3xl text-center">
+						<h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-6 text-black leading-[0.9] uppercase">
+							Share Your Own Stack
+						</h2>
+						<p className="text-lg md:text-xl text-black/80 mb-10 leading-relaxed">
+							Help other builders by sharing the tools, costs, and workflows you run.
+						</p>
+						<Link to="/stacks/new">
+							<span className="inline-flex items-center gap-3 px-8 py-4 bg-black text-white font-mono font-bold uppercase tracking-widest hover:bg-zinc-800 transition-colors text-base shadow-xl">
+								Create Your Stack
+								<ArrowRight className="size-5" />
+							</span>
+						</Link>
+					</div>
+				</section>
+			)}
 		</div>
+		</EditorProvider>
 	);
 }
