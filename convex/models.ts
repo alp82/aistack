@@ -71,6 +71,27 @@ export const create = mutation({
     const user = await ctx.auth.getUserIdentity()
     if (!user) throw new Error('Not authenticated')
 
+    // Check for existing model with same name (case-insensitive)
+    const allModels = await ctx.db.query('models').collect()
+    const normalizedName = args.name.trim().toLowerCase()
+    const existingByName = allModels.find(
+      (m) => m.name.trim().toLowerCase() === normalizedName
+    )
+    if (existingByName) {
+      throw new Error(`A model with the name "${args.name}" already exists`)
+    }
+
+    // Check for existing model with same website URL
+    if (args.websiteUrl) {
+      const normalizedUrl = args.websiteUrl.trim().toLowerCase().replace(/\/$/, '')
+      const existingByUrl = allModels.find(
+        (m) => m.websiteUrl?.trim().toLowerCase().replace(/\/$/, '') === normalizedUrl
+      )
+      if (existingByUrl) {
+        throw new Error(`A model with the URL "${args.websiteUrl}" already exists (${existingByUrl.name})`)
+      }
+    }
+
     const baseSlug = args.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')

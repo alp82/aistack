@@ -71,6 +71,27 @@ export const create = mutation({
     const user = await ctx.auth.getUserIdentity()
     if (!user) throw new Error('Not authenticated')
 
+    // Check for existing tool with same name (case-insensitive)
+    const allTools = await ctx.db.query('tools').collect()
+    const normalizedName = args.name.trim().toLowerCase()
+    const existingByName = allTools.find(
+      (t) => t.name.trim().toLowerCase() === normalizedName
+    )
+    if (existingByName) {
+      throw new Error(`A tool with the name "${args.name}" already exists`)
+    }
+
+    // Check for existing tool with same website URL
+    if (args.websiteUrl) {
+      const normalizedUrl = args.websiteUrl.trim().toLowerCase().replace(/\/$/, '')
+      const existingByUrl = allTools.find(
+        (t) => t.websiteUrl?.trim().toLowerCase().replace(/\/$/, '') === normalizedUrl
+      )
+      if (existingByUrl) {
+        throw new Error(`A tool with the URL "${args.websiteUrl}" already exists (${existingByUrl.name})`)
+      }
+    }
+
     const baseSlug = args.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -117,6 +138,43 @@ export const create = mutation({
       createdBy: user.subject,
       createdAt: now,
       updatedAt: now,
+    })
+  },
+})
+
+export const suggestEdit = mutation({
+  args: {
+    toolId: v.id('tools'),
+    suggestedName: v.string(),
+    suggestedCategories: v.array(v.string()),
+    suggestedWebsiteUrl: v.optional(v.string()),
+    suggestedTiers: v.array(
+      v.object({
+        name: v.string(),
+        pricingType: v.union(v.literal('fixed'), v.literal('usage'), v.literal('mixed')),
+        fixedAmount: v.optional(v.number()),
+        fixedPeriod: v.optional(v.union(v.literal('month'), v.literal('year'), v.literal('one_time'))),
+      })
+    ),
+    reason: v.optional(v.string()),
+  },
+  returns: v.id('toolEditSuggestions'),
+  handler: async (ctx, args) => {
+    const tool = await ctx.db.get(args.toolId)
+    if (!tool) throw new Error('Tool not found')
+
+    const user = await ctx.auth.getUserIdentity()
+
+    return await ctx.db.insert('toolEditSuggestions', {
+      toolId: args.toolId,
+      suggestedName: args.suggestedName,
+      suggestedCategories: args.suggestedCategories,
+      suggestedWebsiteUrl: args.suggestedWebsiteUrl,
+      suggestedTiers: args.suggestedTiers,
+      reason: args.reason,
+      status: 'pending',
+      submittedBy: user?.subject,
+      createdAt: Date.now(),
     })
   },
 })

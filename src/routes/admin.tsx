@@ -1,7 +1,7 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { Check, X, Edit2, Package, Wrench, Brain } from "lucide-react";
+import { Check, X, Edit2, Package, Wrench, Brain, Pencil } from "lucide-react";
 import { useState } from "react";
 import type { Id } from "../../convex/_generated/dataModel";
 import { AddToolModal, type ToolData } from "../components/AddToolModal";
@@ -23,12 +23,15 @@ function AdminPage() {
 	const pendingTools = useQuery(api.admin.getPendingTools);
 	const pendingBundles = useQuery(api.admin.getPendingBundles);
 	const pendingModels = useQuery(api.admin.getPendingModels);
+	const pendingEditSuggestions = useQuery(api.admin.getPendingToolEditSuggestions);
 	const approveTool = useMutation(api.admin.approveTool);
 	const rejectTool = useMutation(api.admin.rejectTool);
 	const approveBundle = useMutation(api.admin.approveBundle);
 	const rejectBundle = useMutation(api.admin.rejectBundle);
 	const approveModel = useMutation(api.admin.approveModel);
 	const rejectModel = useMutation(api.admin.rejectModel);
+	const approveEditSuggestion = useMutation(api.admin.approveToolEditSuggestion);
+	const rejectEditSuggestion = useMutation(api.admin.rejectToolEditSuggestion);
 
 	const [editingTool, setEditingTool] = useState<ToolData | null>(null);
 
@@ -89,6 +92,22 @@ function AdminPage() {
 			await rejectModel({ modelId });
 		} catch (error) {
 			console.error("Failed to reject model:", error);
+		}
+	};
+
+	const handleApproveEditSuggestion = async (suggestionId: Id<"toolEditSuggestions">) => {
+		try {
+			await approveEditSuggestion({ suggestionId });
+		} catch (error) {
+			console.error("Failed to approve edit suggestion:", error);
+		}
+	};
+
+	const handleRejectEditSuggestion = async (suggestionId: Id<"toolEditSuggestions">) => {
+		try {
+			await rejectEditSuggestion({ suggestionId });
+		} catch (error) {
+			console.error("Failed to reject edit suggestion:", error);
 		}
 	};
 
@@ -184,23 +203,190 @@ function AdminPage() {
 										</div>
 									</div>
 
-									<div className="flex gap-3 border-t border-stroke-subtle pt-4">
-										<button
-											type="button"
-											onClick={() => handleApproveTool(tool._id)}
-											className="inline-flex items-center gap-2 border-2 border-green-500 bg-green-500 px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-green-600"
-										>
-											<Check className="size-3.5" />
-											Approve
-										</button>
-										<button
-											type="button"
-											onClick={() => handleRejectTool(tool._id)}
-											className="inline-flex items-center gap-2 border-2 border-destructive bg-destructive px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-destructive/90"
-										>
-											<X className="size-3.5" />
-											Reject
-										</button>
+									<div className="flex items-center justify-between gap-3 border-t border-stroke-subtle pt-4">
+										<div className="flex gap-3">
+											<button
+												type="button"
+												onClick={() => handleApproveTool(tool._id)}
+												className="inline-flex items-center gap-2 border-2 border-green-500 bg-green-500 px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-green-600"
+											>
+												<Check className="size-3.5" />
+												Approve
+											</button>
+											<button
+												type="button"
+												onClick={() => handleRejectTool(tool._id)}
+												className="inline-flex items-center gap-2 border-2 border-destructive bg-destructive px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-destructive/90"
+											>
+												<X className="size-3.5" />
+												Reject
+											</button>
+										</div>
+										<div className="flex items-center gap-2 text-fg-muted">
+											{tool.submitterInfo ? (
+												<div className="flex items-center gap-1.5">
+													{tool.submitterInfo.image ? (
+														<img
+															src={tool.submitterInfo.image}
+															alt={tool.submitterInfo.name || "User"}
+															className="size-5 border border-stroke-subtle object-cover"
+														/>
+													) : (
+														<div className="flex size-5 items-center justify-center border border-stroke-subtle bg-bg-panel-muted font-mono text-[10px] font-bold text-fg-muted">
+															{(tool.submitterInfo.name || tool.submitterInfo.email || "?")[0].toUpperCase()}
+														</div>
+													)}
+													<span className="font-mono text-xs">
+														{tool.submitterInfo.name || tool.submitterInfo.email}
+													</span>
+												</div>
+											) : (
+												<span className="font-mono text-xs">Unknown</span>
+											)}
+											<span className="font-mono text-[10px]">
+												• {new Date(tool.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+											</span>
+										</div>
+									</div>
+								</div>
+							))}
+						</div>
+					)}
+				</div>
+			</section>
+
+			{/* Tool Edit Suggestions Section */}
+			<section className="pb-12 sm:pb-16">
+				<div className="mx-auto max-w-6xl px-4 sm:px-6">
+					<div className="mb-8 flex items-center gap-3">
+						<Pencil className="size-8 text-accent-lime" />
+						<h2 className="text-2xl font-bold tracking-tight text-fg-primary sm:text-3xl">Tool Edit Suggestions</h2>
+					</div>
+
+					{!pendingEditSuggestions || pendingEditSuggestions.length === 0 ? (
+						<div className="border-2 border-dashed border-stroke-subtle px-4 py-12 text-center">
+							<p className="font-mono text-sm text-fg-muted">No pending edit suggestions to review</p>
+						</div>
+					) : (
+						<div className="space-y-5">
+							{pendingEditSuggestions.map((suggestion) => (
+								<div
+									key={suggestion._id}
+									className="border-2 border-stroke-strong bg-bg-panel p-6"
+								>
+									<div className="mb-4">
+										<h3 className="font-mono text-lg font-semibold text-fg-primary">
+											Edit suggestion for: {suggestion.originalTool?.name ?? "Unknown Tool"}
+										</h3>
+									</div>
+
+									<div className="grid grid-cols-2 gap-6 mb-4">
+										{/* Original */}
+										<div className="border border-stroke-subtle bg-bg-panel-muted p-4">
+											<h4 className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-muted">
+												Original
+											</h4>
+											<div className="space-y-2 font-mono text-sm">
+												<p><span className="text-fg-muted">Name:</span> <span className="text-fg-primary">{suggestion.originalTool?.name}</span></p>
+												<p><span className="text-fg-muted">Categories:</span> <span className="text-fg-primary">{suggestion.originalTool?.categories.join(", ")}</span></p>
+												<p><span className="text-fg-muted">URL:</span> <span className="text-fg-primary">{suggestion.originalTool?.websiteUrl || "—"}</span></p>
+											</div>
+										</div>
+
+										{/* Suggested */}
+										<div className="border border-accent-lime/30 bg-accent-lime/5 p-4">
+											<h4 className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-wide text-accent-lime">
+												Suggested Changes
+											</h4>
+											<div className="space-y-2 font-mono text-sm">
+												<p><span className="text-fg-muted">Name:</span> <span className={suggestion.suggestedName !== suggestion.originalTool?.name ? "text-accent-lime font-bold" : "text-fg-primary"}>{suggestion.suggestedName}</span></p>
+												<p><span className="text-fg-muted">Categories:</span> <span className={JSON.stringify(suggestion.suggestedCategories) !== JSON.stringify(suggestion.originalTool?.categories) ? "text-accent-lime font-bold" : "text-fg-primary"}>{suggestion.suggestedCategories.join(", ")}</span></p>
+												<p><span className="text-fg-muted">URL:</span> <span className={suggestion.suggestedWebsiteUrl !== suggestion.originalTool?.websiteUrl ? "text-accent-lime font-bold" : "text-fg-primary"}>{suggestion.suggestedWebsiteUrl || "—"}</span></p>
+											</div>
+										</div>
+									</div>
+
+									{/* Suggested Tiers */}
+									<div className="mb-4">
+										<h4 className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-muted">
+											Suggested Pricing Tiers
+										</h4>
+										<div className="space-y-2">
+											{suggestion.suggestedTiers.map((tier, idx) => (
+												<div
+													key={idx}
+													className="flex items-center justify-between border border-stroke-subtle bg-bg-panel-muted p-3"
+												>
+													<span className="font-mono text-sm font-medium text-fg-primary">
+														{tier.name}
+													</span>
+													{tier.pricingType === "fixed" && tier.fixedAmount !== undefined && (
+														<span className="font-mono text-sm text-accent-lime">
+															${tier.fixedAmount}/{tier.fixedPeriod}
+														</span>
+													)}
+													{tier.pricingType === "usage" && (
+														<span className="font-mono text-sm text-fg-muted">Usage-based</span>
+													)}
+												</div>
+											))}
+										</div>
+									</div>
+
+									{/* Reason */}
+									{suggestion.reason && (
+										<div className="mb-4 border-l-2 border-accent-lime pl-4">
+											<h4 className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-muted">
+												Reason for Changes
+											</h4>
+											<p className="font-mono text-sm text-fg-secondary">{suggestion.reason}</p>
+										</div>
+									)}
+
+									<div className="flex items-center justify-between gap-3 border-t border-stroke-subtle pt-4">
+										<div className="flex gap-3">
+											<button
+												type="button"
+												onClick={() => handleApproveEditSuggestion(suggestion._id)}
+												className="inline-flex items-center gap-2 border-2 border-green-500 bg-green-500 px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-green-600"
+											>
+												<Check className="size-3.5" />
+												Apply Changes
+											</button>
+											<button
+												type="button"
+												onClick={() => handleRejectEditSuggestion(suggestion._id)}
+												className="inline-flex items-center gap-2 border-2 border-destructive bg-destructive px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-destructive/90"
+											>
+												<X className="size-3.5" />
+												Reject
+											</button>
+										</div>
+										<div className="flex items-center gap-2 text-fg-muted">
+											{suggestion.submitterInfo ? (
+												<div className="flex items-center gap-1.5">
+													{suggestion.submitterInfo.image ? (
+														<img
+															src={suggestion.submitterInfo.image}
+															alt={suggestion.submitterInfo.name || "User"}
+															className="size-5 border border-stroke-subtle object-cover"
+														/>
+													) : (
+														<div className="flex size-5 items-center justify-center border border-stroke-subtle bg-bg-panel-muted font-mono text-[10px] font-bold text-fg-muted">
+															{(suggestion.submitterInfo.name || suggestion.submitterInfo.email || "?")[0].toUpperCase()}
+														</div>
+													)}
+													<span className="font-mono text-xs">
+														{suggestion.submitterInfo.name || suggestion.submitterInfo.email}
+													</span>
+												</div>
+											) : (
+												<span className="font-mono text-xs">Unknown</span>
+											)}
+											<span className="font-mono text-[10px]">
+												• {new Date(suggestion.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+											</span>
+										</div>
 									</div>
 								</div>
 							))}
@@ -306,23 +492,50 @@ function AdminPage() {
 										</div>
 									</div>
 
-									<div className="flex gap-3 border-t border-stroke-subtle pt-4">
-										<button
-											type="button"
-											onClick={() => handleApproveBundle(bundle._id)}
-											className="inline-flex items-center gap-2 border-2 border-green-500 bg-green-500 px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-green-600"
-										>
-											<Check className="size-3.5" />
-											Approve
-										</button>
-										<button
-											type="button"
-											onClick={() => handleRejectBundle(bundle._id)}
-											className="inline-flex items-center gap-2 border-2 border-destructive bg-destructive px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-destructive/90"
-										>
-											<X className="size-3.5" />
-											Reject
-										</button>
+									<div className="flex items-center justify-between gap-3 border-t border-stroke-subtle pt-4">
+										<div className="flex gap-3">
+											<button
+												type="button"
+												onClick={() => handleApproveBundle(bundle._id)}
+												className="inline-flex items-center gap-2 border-2 border-green-500 bg-green-500 px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-green-600"
+											>
+												<Check className="size-3.5" />
+												Approve
+											</button>
+											<button
+												type="button"
+												onClick={() => handleRejectBundle(bundle._id)}
+												className="inline-flex items-center gap-2 border-2 border-destructive bg-destructive px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-destructive/90"
+											>
+												<X className="size-3.5" />
+												Reject
+											</button>
+										</div>
+										<div className="flex items-center gap-2 text-fg-muted">
+											{bundle.submitterInfo ? (
+												<div className="flex items-center gap-1.5">
+													{bundle.submitterInfo.image ? (
+														<img
+															src={bundle.submitterInfo.image}
+															alt={bundle.submitterInfo.name || "User"}
+															className="size-5 border border-stroke-subtle object-cover"
+														/>
+													) : (
+														<div className="flex size-5 items-center justify-center border border-stroke-subtle bg-bg-panel-muted font-mono text-[10px] font-bold text-fg-muted">
+															{(bundle.submitterInfo.name || bundle.submitterInfo.email || "?")[0].toUpperCase()}
+														</div>
+													)}
+													<span className="font-mono text-xs">
+														{bundle.submitterInfo.name || bundle.submitterInfo.email}
+													</span>
+												</div>
+											) : (
+												<span className="font-mono text-xs">Unknown</span>
+											)}
+											<span className="font-mono text-[10px]">
+												• {new Date(bundle.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+											</span>
+										</div>
 									</div>
 								</div>
 							))}
@@ -394,23 +607,50 @@ function AdminPage() {
 										</div>
 									</div>
 
-									<div className="flex gap-3 border-t border-stroke-subtle pt-4">
-										<button
-											type="button"
-											onClick={() => handleApproveModel(model._id)}
-											className="inline-flex items-center gap-2 border-2 border-green-500 bg-green-500 px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-green-600"
-										>
-											<Check className="size-3.5" />
-											Approve
-										</button>
-										<button
-											type="button"
-											onClick={() => handleRejectModel(model._id)}
-											className="inline-flex items-center gap-2 border-2 border-destructive bg-destructive px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-destructive/90"
-										>
-											<X className="size-3.5" />
-											Reject
-										</button>
+									<div className="flex items-center justify-between gap-3 border-t border-stroke-subtle pt-4">
+										<div className="flex gap-3">
+											<button
+												type="button"
+												onClick={() => handleApproveModel(model._id)}
+												className="inline-flex items-center gap-2 border-2 border-green-500 bg-green-500 px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-green-600"
+											>
+												<Check className="size-3.5" />
+												Approve
+											</button>
+											<button
+												type="button"
+												onClick={() => handleRejectModel(model._id)}
+												className="inline-flex items-center gap-2 border-2 border-destructive bg-destructive px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-destructive/90"
+											>
+												<X className="size-3.5" />
+												Reject
+											</button>
+										</div>
+										<div className="flex items-center gap-2 text-fg-muted">
+											{model.submitterInfo ? (
+												<div className="flex items-center gap-1.5">
+													{model.submitterInfo.image ? (
+														<img
+															src={model.submitterInfo.image}
+															alt={model.submitterInfo.name || "User"}
+															className="size-5 border border-stroke-subtle object-cover"
+														/>
+													) : (
+														<div className="flex size-5 items-center justify-center border border-stroke-subtle bg-bg-panel-muted font-mono text-[10px] font-bold text-fg-muted">
+															{(model.submitterInfo.name || model.submitterInfo.email || "?")[0].toUpperCase()}
+														</div>
+													)}
+													<span className="font-mono text-xs">
+														{model.submitterInfo.name || model.submitterInfo.email}
+													</span>
+												</div>
+											) : (
+												<span className="font-mono text-xs">Unknown</span>
+											)}
+											<span className="font-mono text-[10px]">
+												• {new Date(model.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+											</span>
+										</div>
 									</div>
 								</div>
 							))}

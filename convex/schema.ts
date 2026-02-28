@@ -230,4 +230,31 @@ export default defineSchema({
     .index('by_provider', ['provider'])
     .index('by_category', ['category'])
     .index('by_reviewStatus', ['reviewStatus']),
+
+  toolEditSuggestions: defineTable({
+    toolId: v.id('tools'),
+    suggestedName: v.string(),
+    suggestedCategories: v.array(v.string()),
+    suggestedWebsiteUrl: v.optional(v.string()),
+    suggestedTiers: v.array(
+      v.object({
+        name: v.string(),
+        pricingType: v.union(v.literal('fixed'), v.literal('usage'), v.literal('mixed')),
+        fixedAmount: v.optional(v.number()),
+        fixedPeriod: v.optional(v.union(v.literal('month'), v.literal('year'), v.literal('one_time'))),
+      })
+    ),
+    reason: v.optional(v.string()),
+    status: v.union(
+      v.literal('pending'),
+      v.literal('approved'),
+      v.literal('rejected')
+    ),
+    submittedBy: v.optional(v.string()),
+    createdAt: v.number(),
+    reviewedAt: v.optional(v.number()),
+    reviewedBy: v.optional(v.string()),
+  })
+    .index('by_toolId', ['toolId'])
+    .index('by_status', ['status']),
 })

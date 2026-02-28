@@ -73,6 +73,27 @@ export const create = mutation({
     const user = await ctx.auth.getUserIdentity()
     if (!user) throw new Error('Not authenticated')
 
+    // Check for existing bundle with same name (case-insensitive)
+    const allBundles = await ctx.db.query('bundles').collect()
+    const normalizedName = args.name.trim().toLowerCase()
+    const existingByName = allBundles.find(
+      (b) => b.name.trim().toLowerCase() === normalizedName
+    )
+    if (existingByName) {
+      throw new Error(`A bundle with the name "${args.name}" already exists`)
+    }
+
+    // Check for existing bundle with same website URL
+    if (args.websiteUrl) {
+      const normalizedUrl = args.websiteUrl.trim().toLowerCase().replace(/\/$/, '')
+      const existingByUrl = allBundles.find(
+        (b) => b.websiteUrl?.trim().toLowerCase().replace(/\/$/, '') === normalizedUrl
+      )
+      if (existingByUrl) {
+        throw new Error(`A bundle with the URL "${args.websiteUrl}" already exists (${existingByUrl.name})`)
+      }
+    }
+
     const baseSlug = args.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')

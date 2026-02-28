@@ -69,7 +69,12 @@ export function AddBundleModal({
 			resetForm();
 			onClose();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to create bundle");
+			let errorMessage = "Failed to create bundle";
+			if (err instanceof Error) {
+				const match = err.message.match(/Uncaught Error: (.+?)(?:\s+at\s+|$)/);
+				errorMessage = match ? match[1] : err.message;
+			}
+			setError(errorMessage);
 		} finally {
 			setSaving(false);
 		}
@@ -94,7 +99,7 @@ export function AddBundleModal({
 				onClick={onClose}
 				onKeyDown={(e) => e.key === "Escape" && onClose()}
 			/>
-			<div className="relative w-full max-w-2xl border-2 border-stroke-strong bg-bg-panel p-8 shadow-[6px_6px_0_var(--stroke-strong)]">
+			<div className="relative w-full max-w-4xl border-2 border-stroke-strong bg-bg-panel p-8 shadow-[6px_6px_0_var(--stroke-strong)]">
 				<button
 					type="button"
 					onClick={onClose}
@@ -257,8 +262,7 @@ export function AddBundleModal({
 
 					<div className="border border-accent-lime/30 bg-accent-lime/10 p-4">
 						<p className="text-xs text-fg-secondary">
-							<strong className="text-accent-lime">Note:</strong> Your bundle will be submitted for
-							review before it appears publicly.
+							<strong className="text-accent-lime">Note:</strong> Your bundle submission will be reviewed before it appears publicly.
 						</p>
 					</div>
 

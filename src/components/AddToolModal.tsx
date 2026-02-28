@@ -1,5 +1,5 @@
 import { useMutation } from "convex/react";
-import { Check, X } from "lucide-react";
+import { Check, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { categoryConfig, type ToolCategory } from "@/config/categoryConfig";
@@ -16,6 +16,26 @@ import {
 } from "./ui/select";
 
 const categories = Object.keys(categoryConfig) as ToolCategory[];
+
+interface TierFormData {
+	id: string;
+	name: string;
+	pricingType: "fixed" | "usage" | "mixed";
+	fixedAmount: number;
+	fixedPeriod: "month" | "year" | "one_time";
+	isDefault: boolean;
+}
+
+function createEmptyTier(isDefault = false): TierFormData {
+	return {
+		id: crypto.randomUUID(),
+		name: "",
+		pricingType: "fixed",
+		fixedAmount: 0,
+		fixedPeriod: "month",
+		isDefault,
+	};
+}
 
 export interface ToolData {
 	_id: Id<"tools">;
@@ -59,16 +79,14 @@ export function AddToolForm({
 	const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 	const [websiteUrl, setWebsiteUrl] = useState("");
 	const [iconUrl, setIconUrl] = useState("");
-	const [tierName, setTierName] = useState("Free");
-	const [pricingType, setPricingType] = useState<"fixed" | "usage" | "mixed">(
-		"fixed",
-	);
-	const [fixedAmount, setFixedAmount] = useState<number>(0);
-	const [fixedPeriod, setFixedPeriod] = useState<"month" | "year" | "one_time">(
-		"month",
-	);
+	const [tiers, setTiers] = useState<TierFormData[]>([createEmptyTier(true)]);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState("");
+	const [validationErrors, setValidationErrors] = useState<{
+		name?: boolean;
+		categories?: boolean;
+		tiers?: boolean;
+	}>({});
 
 	const isEditMode = !!editTool;
 
@@ -78,27 +96,74 @@ export function AddToolForm({
 			setSelectedCategories(editTool.categories ?? []);
 			setWebsiteUrl(editTool.websiteUrl || "");
 			setIconUrl(editTool.iconUrl || "");
-			const defaultTier =
-				editTool.tiers.find((t) => t.isDefault) || editTool.tiers[0];
-			if (defaultTier) {
-				setTierName(defaultTier.name);
-				setPricingType(defaultTier.pricing.pricingType);
-				if (defaultTier.pricing.fixed) {
-					setFixedAmount(defaultTier.pricing.fixed.amount);
-					setFixedPeriod(defaultTier.pricing.fixed.period);
-				}
-			}
+			setTiers(
+				editTool.tiers.map((t) => ({
+					id: t.tierId,
+					name: t.name,
+					pricingType: t.pricing.pricingType,
+					fixedAmount: t.pricing.fixed?.amount ?? 0,
+					fixedPeriod: t.pricing.fixed?.period ?? "month",
+					isDefault: t.isDefault ?? false,
+				}))
+			);
 		}
 	}, [editTool]);
 
+	const updateTier = (id: string, updates: Partial<TierFormData>) => {
+		setTiers((prev) =>
+			prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
+		);
+	};
+
+	const addTier = () => {
+		setTiers((prev) => [...prev, createEmptyTier()]);
+	};
+
+	const removeTier = (id: string) => {
+		setTiers((prev) => {
+			const filtered = prev.filter((t) => t.id !== id);
+			if (filtered.length === 0) return [createEmptyTier(true)];
+			if (!filtered.some((t) => t.isDefault)) {
+				filtered[0].isDefault = true;
+			}
+			return filtered;
+		});
+	};
+
+	const setDefaultTier = (id: string) => {
+		setTiers((prev) =>
+			prev.map((t) => ({ ...t, isDefault: t.id === id }))
+		);
+	};
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!name.trim() || selectedCategories.length === 0) {
-			setError("Name and at least one category are required");
+		const errors: typeof validationErrors = {};
+		if (!name.trim()) errors.name = true;
+		if (selectedCategories.length === 0) errors.categories = true;
+		if (tiers.length === 0 || !tiers.some((t) => t.name.trim())) errors.tiers = true;
+		
+		setValidationErrors(errors);
+		
+		if (Object.keys(errors).length > 0) {
+			const errorMessages: string[] = [];
+			if (errors.name) errorMessages.push("Tool name is required");
+			if (errors.categories) errorMessages.push("At least one category is required");
+			if (errors.tiers) errorMessages.push("At least one tier with a name is required");
+			setError(errorMessages.join(". "));
 			return;
 		}
 		setError("");
 		setSaving(true);
+		const formattedTiers = tiers
+			.filter((t) => t.name.trim())
+			.map((t) => ({
+				name: t.name.trim(),
+				pricingType: t.pricingType,
+				...(t.pricingType === "fixed" || t.pricingType === "mixed"
+					? { fixedAmount: t.fixedAmount, fixedPeriod: t.fixedPeriod }
+					: {}),
+			}));
 		try {
 			if (isEditMode && editTool) {
 				await updateToolAdmin({
@@ -107,15 +172,7 @@ export function AddToolForm({
 					categories: selectedCategories,
 					websiteUrl: websiteUrl.trim() || undefined,
 					iconUrl: iconUrl.trim() || undefined,
-					tiers: [
-						{
-							name: tierName.trim() || "Default",
-							pricingType,
-							...(pricingType === "fixed" || pricingType === "mixed"
-								? { fixedAmount, fixedPeriod }
-								: {}),
-						},
-					],
+					tiers: formattedTiers,
 				});
 				onToolUpdated?.(editTool._id);
 			} else {
@@ -123,32 +180,22 @@ export function AddToolForm({
 					name: name.trim(),
 					categories: selectedCategories,
 					websiteUrl: websiteUrl.trim() || undefined,
-					tiers: [
-						{
-							name: tierName.trim() || "Default",
-							pricingType,
-							...(pricingType === "fixed" || pricingType === "mixed"
-								? { fixedAmount, fixedPeriod }
-								: {}),
-						},
-					],
+					tiers: formattedTiers,
 				});
 				onToolCreated(toolId);
 			}
 		} catch (err) {
-			setError(
-				err instanceof Error
-					? err.message
-					: isEditMode
-						? "Failed to update tool"
-						: "Failed to create tool",
-			);
+			let errorMessage = isEditMode ? "Failed to update tool" : "Failed to create tool";
+			if (err instanceof Error) {
+				// Extract clean message from Convex error format
+				const match = err.message.match(/Uncaught Error: (.+?)(?:\s+at\s+|$)/);
+				errorMessage = match ? match[1] : err.message;
+			}
+			setError(errorMessage);
 		} finally {
 			setSaving(false);
 		}
 	};
-
-	const canSubmit = name.trim() && selectedCategories.length > 0;
 
 	return (
 		<div>
@@ -184,10 +231,12 @@ export function AddToolForm({
 							<Input
 								id="tool-name"
 								value={name}
-								onChange={(e) => setName(e.target.value)}
+								onChange={(e) => {
+									setName(e.target.value);
+									if (validationErrors.name) setValidationErrors((prev) => ({ ...prev, name: false }));
+								}}
 								placeholder="e.g. Cursor, Claude, Windsurf"
-								className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
-								required
+								className={`h-10 bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime ${validationErrors.name ? "border-destructive" : "border-stroke-subtle"}`}
 							/>
 						</div>
 
@@ -227,8 +276,8 @@ export function AddToolForm({
 					)}
 
 					<div className="space-y-2">
-						<Label className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">Categories *</Label>
-						<div className="flex flex-wrap gap-2">
+						<Label className={`font-mono text-xs font-semibold uppercase tracking-wide ${validationErrors.categories ? "text-destructive" : "text-fg-secondary"}`}>Categories *</Label>
+						<div className={`flex flex-wrap gap-2 p-2 border ${validationErrors.categories ? "border-destructive" : "border-transparent"}`}>
 							{categories.map((cat) => {
 								const isSelected = selectedCategories.includes(cat);
 								return (
@@ -239,6 +288,7 @@ export function AddToolForm({
 											setSelectedCategories((prev) =>
 												isSelected ? prev.filter((c) => c !== cat) : [...prev, cat]
 											);
+											if (validationErrors.categories) setValidationErrors((prev) => ({ ...prev, categories: false }));
 										}}
 										className={`px-3 py-1.5 font-mono text-xs uppercase tracking-wide border transition-colors ${
 											isSelected
@@ -254,122 +304,166 @@ export function AddToolForm({
 					</div>
 				</fieldset>
 
-				{/* Pricing */}
+				{/* Pricing Tiers */}
 				<fieldset className="space-y-4">
-					<legend className="font-mono text-[10px] font-semibold uppercase tracking-widest text-accent-lime">
-						Pricing
-					</legend>
+					<div className="flex items-center justify-between">
+						<legend className={`font-mono text-[10px] font-semibold uppercase tracking-widest ${validationErrors.tiers ? "text-destructive" : "text-accent-lime"}`}>
+							Pricing Tiers *
+						</legend>
+						<button
+							type="button"
+							onClick={addTier}
+							className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-xs uppercase tracking-wide border border-stroke-subtle text-fg-muted hover:border-accent-lime hover:text-accent-lime transition-colors"
+						>
+							<Plus className="size-3" />
+							Add Tier
+						</button>
+					</div>
 
-					<div className="grid grid-cols-3 gap-4">
-						<div className="space-y-2">
-							<Label htmlFor="tier-name" className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
-								Tier Name
-							</Label>
-							<Input
-								id="tier-name"
-								value={tierName}
-								onChange={(e) => setTierName(e.target.value)}
-								placeholder="e.g. Pro, Free, Plus"
-								className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
-							/>
-						</div>
-
-						<div className="space-y-2">
-							<Label className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">Pricing Type</Label>
-							<Select
-								value={pricingType}
-								onValueChange={(v) =>
-									setPricingType(v as "fixed" | "usage" | "mixed")
-								}
+					<div className="space-y-3">
+						{tiers.map((tier, index) => (
+							<div
+								key={tier.id}
+								className="border border-stroke-subtle bg-bg-panel-muted p-4 space-y-3"
 							>
-								<SelectTrigger className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary">
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="fixed">Fixed Price</SelectItem>
-									<SelectItem value="usage">Usage-Based</SelectItem>
-									<SelectItem value="mixed">Fixed + Usage</SelectItem>
-								</SelectContent>
-							</Select>
-						</div>
-
-						{(pricingType === "fixed" || pricingType === "mixed") && (
-							<div className="grid grid-cols-2 gap-4">
-								<div className="space-y-2">
-									<Label
-										htmlFor="fixed-amount"
-										className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
-									>
-										Price ($)
-									</Label>
-									<Input
-										id="fixed-amount"
-										type="number"
-										min={0}
-										step={0.01}
-										value={fixedAmount}
-										onChange={(e) => setFixedAmount(Number(e.target.value))}
-										className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary focus:border-accent-lime"
-									/>
+								<div className="flex items-center justify-between gap-4">
+									<div className="flex items-center gap-3 flex-1">
+										<span className="font-mono text-[10px] text-fg-muted uppercase tracking-wider w-16">
+											Tier {index + 1}
+										</span>
+										<button
+											type="button"
+											onClick={() => setDefaultTier(tier.id)}
+											className={`px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide border transition-colors ${
+												tier.isDefault
+													? "border-accent-lime bg-accent-lime/20 text-accent-lime"
+													: "border-stroke-subtle text-fg-muted hover:border-fg-muted"
+											}`}
+										>
+											{tier.isDefault ? "Default" : "Set Default"}
+										</button>
+									</div>
+									{tiers.length > 1 && (
+										<button
+											type="button"
+											onClick={() => removeTier(tier.id)}
+											className="p-1.5 text-fg-muted hover:text-destructive transition-colors"
+										>
+											<Trash2 className="size-4" />
+										</button>
+									)}
 								</div>
-								<div className="space-y-2">
-									<Label className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
-										Period
-									</Label>
-									<Select
-										value={fixedPeriod}
-										onValueChange={(v) =>
-											setFixedPeriod(v as "month" | "year" | "one_time")
-										}
-									>
-										<SelectTrigger className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="month">Monthly</SelectItem>
-											<SelectItem value="year">Yearly</SelectItem>
-											<SelectItem value="one_time">One-time</SelectItem>
-										</SelectContent>
-									</Select>
+
+								<div className="grid grid-cols-4 gap-3">
+									<div className="space-y-1.5">
+										<Label className="font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">
+											Tier Name *
+										</Label>
+										<Input
+											value={tier.name}
+											onChange={(e) => {
+												updateTier(tier.id, { name: e.target.value });
+												if (validationErrors.tiers) setValidationErrors((prev) => ({ ...prev, tiers: false }));
+											}}
+											placeholder="e.g. Free, Pro"
+											className={`h-9 bg-bg-panel font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime ${validationErrors.tiers && !tier.name.trim() ? "border-destructive" : "border-stroke-subtle"}`}
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label className="font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">
+											Pricing Type
+										</Label>
+										<Select
+											value={tier.pricingType}
+											onValueChange={(v) =>
+												updateTier(tier.id, { pricingType: v as "fixed" | "usage" | "mixed" })
+											}
+										>
+											<SelectTrigger className="h-9 border-stroke-subtle bg-bg-panel font-mono text-sm text-fg-primary">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="fixed">Fixed</SelectItem>
+												<SelectItem value="usage">Usage</SelectItem>
+												<SelectItem value="mixed">Mixed</SelectItem>
+											</SelectContent>
+										</Select>
+									</div>
+
+									{(tier.pricingType === "fixed" || tier.pricingType === "mixed") && (
+										<>
+											<div className="space-y-1.5">
+												<Label className="font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">
+													Price ($)
+												</Label>
+												<Input
+													type="number"
+													min={0}
+													step={0.01}
+													value={tier.fixedAmount}
+													onChange={(e) => updateTier(tier.id, { fixedAmount: Number(e.target.value) })}
+													className="h-9 border-stroke-subtle bg-bg-panel font-mono text-sm text-fg-primary focus:border-accent-lime"
+												/>
+											</div>
+											<div className="space-y-1.5">
+												<Label className="font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">
+													Period
+												</Label>
+												<Select
+													value={tier.fixedPeriod}
+													onValueChange={(v) =>
+														updateTier(tier.id, { fixedPeriod: v as "month" | "year" | "one_time" })
+													}
+												>
+													<SelectTrigger className="h-9 border-stroke-subtle bg-bg-panel font-mono text-sm text-fg-primary">
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="month">Monthly</SelectItem>
+														<SelectItem value="year">Yearly</SelectItem>
+														<SelectItem value="one_time">One-time</SelectItem>
+													</SelectContent>
+												</Select>
+											</div>
+										</>
+									)}
 								</div>
 							</div>
-						)}
+						))}
 					</div>
 				</fieldset>
 
-				{/* Note for non-edit mode */}
-				{!isEditMode && (
-					<div className="border border-accent-lime/30 bg-accent-lime/10 p-4">
-						<p className="text-xs text-fg-secondary">
-							<strong className="text-accent-lime">Note:</strong> Your tool will be submitted for
-							review before it appears publicly.
-						</p>
-					</div>
-				)}
-
 				{/* Action Buttons */}
-				<div className="flex gap-3 pt-2">
-					<button
-						type="button"
-						onClick={onCancel}
-						className="inline-flex items-center gap-2 border border-stroke-subtle px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-fg-muted hover:text-fg-primary"
-					>
-						Cancel
-					</button>
-					<button
-						type="submit"
-						disabled={saving || !canSubmit}
-						className="inline-flex flex-1 items-center justify-center gap-2 border-2 border-accent-lime bg-accent-lime px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						<Check className="size-3.5" />
-						{saving
-							? isEditMode
-								? "Saving..."
-								: "Submitting..."
-							: isEditMode
-								? "Save Changes"
-								: "Submit for Review"}
-					</button>
+				<div className="flex flex-col gap-3 pt-2">
+					<div className="flex gap-3">
+						<button
+							type="button"
+							onClick={onCancel}
+							className="inline-flex items-center gap-2 border border-stroke-subtle px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-fg-muted hover:text-fg-primary"
+						>
+							Cancel
+						</button>
+						<button
+							type="submit"
+							disabled={saving}
+							className="inline-flex flex-1 items-center justify-center gap-2 border-2 border-accent-lime bg-accent-lime px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							<Check className="size-3.5" />
+							{saving
+								? isEditMode
+									? "Saving..."
+									: "Submitting..."
+								: isEditMode
+									? "Save Changes"
+									: "Submit for Review"}
+						</button>
+					</div>
+					{!isEditMode && (
+						<p className="text-center text-xs text-fg-muted">
+							Your tool submission will be reviewed before it appears publicly.
+						</p>
+					)}
 				</div>
 			</form>
 		</div>
@@ -402,7 +496,7 @@ export function AddToolModal({
 				onClick={onClose}
 				onKeyDown={(e) => e.key === "Escape" && onClose()}
 			/>
-			<div className="relative w-full max-w-2xl border-2 border-stroke-strong bg-bg-panel p-8 shadow-[6px_6px_0_var(--stroke-strong)]">
+			<div className="relative w-full max-w-4xl border-2 border-stroke-strong bg-bg-panel p-8 shadow-[6px_6px_0_var(--stroke-strong)]">
 				<button
 					type="button"
 					onClick={onClose}

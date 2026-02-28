@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { AddToolForm } from "../components/AddToolModal";
+import { PageHeader } from "../components/PageHeader";
 
 export const Route = createFileRoute("/tools_/new")({
 	ssr: false,
@@ -29,17 +30,19 @@ function NewToolPage() {
 				}}
 			/>
 
-			<div className="relative z-10 max-w-2xl mx-auto py-24">
-				<button
-					type="button"
-					onClick={() => navigate({ to: "/tools" })}
-					className="mb-8 inline-flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-wide text-fg-muted transition-colors hover:text-accent-lime"
-				>
-					<ArrowLeft className="size-4" />
-					Back to Tools
-				</button>
+			<div className="relative z-10 max-w-content mx-auto py-24">
+				<PageHeader
+					label="TOOLS"
+					title={<>AI TOOLS FOR <br />YOUR STACK</>}
+					description="A curated selection of high-performance AI tools you can use to build your product. Validated by real shipping capability."
+					action={{
+						label: "Back to Tools",
+						icon: <ArrowLeft size={18} />,
+						onClick: () => navigate({ to: "/tools" }),
+					}}
+				/>
 
-				<div className="border-2 border-stroke-strong bg-bg-panel p-8 shadow-[6px_6px_0_var(--stroke-strong)]">
+				<div className="mt-12 border-2 border-stroke-strong bg-bg-panel p-8 shadow-[6px_6px_0_var(--stroke-strong)]">
 					<AddToolForm
 						onCancel={() => navigate({ to: "/tools" })}
 						onToolCreated={() => navigate({ to: "/tools" })}

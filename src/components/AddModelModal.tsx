@@ -84,7 +84,12 @@ export function AddModelModal({
 			onModelCreated(modelId);
 			handleClose();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to create model");
+			let errorMessage = "Failed to create model";
+			if (err instanceof Error) {
+				const match = err.message.match(/Uncaught Error: (.+?)(?:\s+at\s+|$)/);
+				errorMessage = match ? match[1] : err.message;
+			}
+			setError(errorMessage);
 		} finally {
 			setSaving(false);
 		}
@@ -110,7 +115,7 @@ export function AddModelModal({
 				onClick={handleClose}
 				onKeyDown={(e) => e.key === "Escape" && handleClose()}
 			/>
-			<div className="relative w-full max-w-2xl border-2 border-stroke-strong bg-bg-panel p-8 shadow-[6px_6px_0_var(--stroke-strong)]">
+			<div className="relative w-full max-w-4xl border-2 border-stroke-strong bg-bg-panel p-8 shadow-[6px_6px_0_var(--stroke-strong)]">
 				<button
 					type="button"
 					onClick={handleClose}
@@ -260,8 +265,8 @@ export function AddModelModal({
 
 					<div className="border border-accent-lime/30 bg-accent-lime/10 p-4">
 						<p className="text-xs text-fg-secondary">
-							<strong className="text-accent-lime">Note:</strong> Your model will be submitted for
-							review before it appears publicly.
+							<strong className="text-accent-lime">Note:</strong> Your model submission will be reviewed
+							before it appears publicly.
 						</p>
 					</div>
 

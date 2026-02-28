@@ -1,10 +1,11 @@
 import { useQuery } from "convex/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { ExternalLink, Plus, Terminal } from "lucide-react";
+import { ExternalLink, Pencil, Plus, Terminal } from "lucide-react";
 import { useMemo, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { PageHeader } from "../components/PageHeader";
+import { SuggestEditModal, type ToolForSuggestion } from "../components/SuggestEditModal";
 import { categoryConfig, type ToolCategory } from "../config/categoryConfig";
 import { cn } from "../lib/utils";
 
@@ -37,6 +38,7 @@ function formatPrice(tier: { pricing: { pricingType: string; fixed?: { amount: n
 function ToolsPage() {
 	const navigate = useNavigate();
 	const [filter, setFilter] = useState<string>("ALL");
+	const [suggestEditTool, setSuggestEditTool] = useState<ToolForSuggestion | null>(null);
 	const tools = useQuery(api.tools.listAll) ?? [];
 
 	const availableCategories = useMemo(() => {
@@ -106,9 +108,18 @@ function ToolsPage() {
 				{/* Tools Grid */}
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 					{filteredTools.map((tool) => (
-						<ToolCard key={tool._id} tool={tool} />
+						<ToolCard key={tool._id} tool={tool} onSuggestEdit={setSuggestEditTool} />
 					))}
 				</div>
+
+				{/* Suggest Edit Modal */}
+				{suggestEditTool && (
+					<SuggestEditModal
+						open={!!suggestEditTool}
+						onClose={() => setSuggestEditTool(null)}
+						tool={suggestEditTool}
+					/>
+				)}
 
 				{filteredTools.length === 0 && (
 					<div className="py-24 text-center border-2 border-dashed border-stroke-strong">
@@ -129,7 +140,7 @@ function ToolsPage() {
 
 type ToolFromDB = NonNullable<ReturnType<typeof useQuery<typeof api.tools.listAll>>>[number];
 
-function ToolCard({ tool }: { tool: ToolFromDB }) {
+function ToolCard({ tool, onSuggestEdit }: { tool: ToolFromDB; onSuggestEdit: (tool: ToolForSuggestion) => void }) {
 	const maxVisible = tool.categories.length > 3 ? 2 : 3;
 	const visibleCats = tool.categories.slice(0, maxVisible);
 	const hiddenCats = tool.categories.slice(maxVisible);
@@ -226,17 +237,29 @@ function ToolCard({ tool }: { tool: ToolFromDB }) {
 						</span>
 					)}
 				</div>
-				{tool.websiteUrl && (
-					<a
-						href={tool.websiteUrl}
-						target="_blank"
-						rel="noopener noreferrer"
+				<div className="flex items-center justify-between">
+					{tool.websiteUrl ? (
+						<a
+							href={tool.websiteUrl}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="inline-flex items-center gap-1.5 text-[11px] font-mono text-fg-muted hover:text-accent-lime transition-colors"
+						>
+							<ExternalLink size={12} />
+							{new URL(tool.websiteUrl).hostname.replace("www.", "")}
+						</a>
+					) : (
+						<span />
+					)}
+					<button
+						type="button"
+						onClick={() => onSuggestEdit(tool)}
 						className="inline-flex items-center gap-1.5 text-[11px] font-mono text-fg-muted hover:text-accent-lime transition-colors"
 					>
-						<ExternalLink size={12} />
-						{new URL(tool.websiteUrl).hostname.replace("www.", "")}
-					</a>
-				)}
+						<Pencil size={12} />
+						Suggest Edit
+					</button>
+				</div>
 			</div>
 		</motion.div>
 	);

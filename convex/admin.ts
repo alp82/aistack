@@ -1,7 +1,33 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
+// @ts-ignore - components will be generated after convex dev restarts
+import { components } from './_generated/api'
 
 const ADMIN_EMAILS = ['alportac@gmail.com']
+
+async function getUserInfo(ctx: any, subjectOrTokenId: string | undefined) {
+  if (!subjectOrTokenId) return null
+  try {
+    const userId = subjectOrTokenId.includes('|') 
+      ? subjectOrTokenId.split('|')[1] 
+      : subjectOrTokenId
+    
+    const user = await ctx.runQuery(components.betterAuth.adapter.findOne, {
+      model: 'user',
+      where: [{ field: '_id', value: userId }],
+    })
+    if (user) {
+      return {
+        name: user.name,
+        email: user.email,
+        image: user.image,
+      }
+    }
+  } catch {
+    // Fallback if user lookup fails
+  }
+  return null
+}
 
 async function isAdmin(ctx: any) {
   const user = await ctx.auth.getUserIdentity()
@@ -30,7 +56,14 @@ export const getPendingTools = query({
       .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'pending'))
       .collect()
 
-    return tools
+    const toolsWithUserInfo = await Promise.all(
+      tools.map(async (tool) => {
+        const userInfo = await getUserInfo(ctx, tool.createdBy)
+        return { ...tool, submitterInfo: userInfo }
+      })
+    )
+
+    return toolsWithUserInfo
   },
 })
 
@@ -158,7 +191,14 @@ export const getPendingBundles = query({
       .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'pending'))
       .collect()
 
-    return bundles
+    const bundlesWithUserInfo = await Promise.all(
+      bundles.map(async (bundle) => {
+        const userInfo = await getUserInfo(ctx, bundle.createdBy)
+        return { ...bundle, submitterInfo: userInfo }
+      })
+    )
+
+    return bundlesWithUserInfo
   },
 })
 
@@ -206,7 +246,14 @@ export const getPendingModels = query({
       .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'pending'))
       .collect()
 
-    return models
+    const modelsWithUserInfo = await Promise.all(
+      models.map(async (model) => {
+        const userInfo = await getUserInfo(ctx, model.createdBy)
+        return { ...model, submitterInfo: userInfo }
+      })
+    )
+
+    return modelsWithUserInfo
   },
 })
 
@@ -238,6 +285,109 @@ export const rejectModel = mutation({
     await ctx.db.patch(args.modelId, {
       reviewStatus: 'rejected',
       updatedAt: Date.now(),
+    })
+  },
+})
+
+export const getPendingToolEditSuggestions = query({
+  args: {},
+  handler: async (ctx) => {
+    if (!(await isAdmin(ctx))) {
+      return null
+    }
+
+    const suggestions = await ctx.db
+      .query('toolEditSuggestions')
+      .withIndex('by_status', (q) => q.eq('status', 'pending'))
+      .collect()
+
+    const suggestionsWithTools = await Promise.all(
+      suggestions.map(async (suggestion) => {
+        const tool = await ctx.db.get(suggestion.toolId)
+        const userInfo = await getUserInfo(ctx, suggestion.submittedBy)
+        return {
+          ...suggestion,
+          originalTool: tool ? {
+            name: tool.name,
+            categories: tool.categories,
+            websiteUrl: tool.websiteUrl,
+          } : null,
+          submitterInfo: userInfo,
+        }
+      })
+    )
+
+    return suggestionsWithTools
+  },
+})
+
+export const approveToolEditSuggestion = mutation({
+  args: {
+    suggestionId: v.id('toolEditSuggestions'),
+  },
+  handler: async (ctx, args) => {
+    if (!(await isAdmin(ctx))) {
+      throw new Error('Unauthorized')
+    }
+
+    const user = await ctx.auth.getUserIdentity()
+    const suggestion = await ctx.db.get(args.suggestionId)
+    if (!suggestion) throw new Error('Suggestion not found')
+
+    const tool = await ctx.db.get(suggestion.toolId)
+    if (!tool) throw new Error('Tool not found')
+
+    const now = Date.now()
+    const tiers = suggestion.suggestedTiers.map((t, i) => ({
+      tierId: `tier-${i + 1}`,
+      name: t.name,
+      pricing: {
+        pricingType: t.pricingType,
+        ...(t.pricingType === 'fixed' || t.pricingType === 'mixed'
+          ? {
+              fixed: {
+                currency: 'USD',
+                amount: t.fixedAmount ?? 0,
+                period: t.fixedPeriod ?? ('month' as const),
+              },
+            }
+          : {}),
+      },
+      isDefault: i === 0,
+      updatedAt: now,
+    }))
+
+    await ctx.db.patch(suggestion.toolId, {
+      name: suggestion.suggestedName,
+      categories: suggestion.suggestedCategories,
+      websiteUrl: suggestion.suggestedWebsiteUrl,
+      tiers,
+      updatedAt: now,
+    })
+
+    await ctx.db.patch(args.suggestionId, {
+      status: 'approved',
+      reviewedAt: now,
+      reviewedBy: user?.subject,
+    })
+  },
+})
+
+export const rejectToolEditSuggestion = mutation({
+  args: {
+    suggestionId: v.id('toolEditSuggestions'),
+  },
+  handler: async (ctx, args) => {
+    if (!(await isAdmin(ctx))) {
+      throw new Error('Unauthorized')
+    }
+
+    const user = await ctx.auth.getUserIdentity()
+
+    await ctx.db.patch(args.suggestionId, {
+      status: 'rejected',
+      reviewedAt: Date.now(),
+      reviewedBy: user?.subject,
     })
   },
 })

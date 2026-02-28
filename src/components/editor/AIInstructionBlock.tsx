@@ -113,7 +113,7 @@ function AIInstructionBlockView({ node }: NodeViewProps) {
 					onClick={() => setShowModal(false)}
 				>
 					<div 
-						className="max-h-[80vh] w-full max-w-2xl overflow-auto border border-stroke-subtle bg-bg-panel p-6"
+						className="max-h-[80vh] w-full max-w-4xl overflow-auto border border-stroke-subtle bg-bg-panel p-6"
 						onClick={(e) => e.stopPropagation()}
 					>
 						<div className="mb-4 flex items-center justify-between">
