@@ -1,5 +1,5 @@
 import { useQuery } from "convex/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 
 interface ToolPoint {
@@ -31,18 +31,21 @@ function sphereToCartesian(theta: number, phi: number, radius: number) {
 }
 
 interface ToolSphereProps {
-	mousePos?: { x: number; y: number };
+	mouseClient?: { x: number; y: number } | null;
 }
 
-export function ToolSphere({ mousePos: externalMousePos }: ToolSphereProps) {
+export function ToolSphere({ mouseClient }: ToolSphereProps) {
 	const allTools = useQuery(api.tools.listAll) ?? [];
 	const containerRef = useRef<HTMLDivElement>(null);
 	const rotationYRef = useRef(0);
 	const rotationXRef = useRef(0);
-	const mousePosRef = useRef({ x: 0, y: 0 });
-	const targetMousePosRef = useRef({ x: 0, y: 0 });
+	const cursorPxRef = useRef({ x: 0, y: 0 });
+	const mouseClientRef = useRef(mouseClient);
 	const [, forceUpdate] = useState(0);
 	const animationRef = useRef<number>(0);
+
+	// Keep ref in sync without restarting animation
+	mouseClientRef.current = mouseClient;
 
 	const toolPoints = useMemo(() => {
 		const positions = distributePointsOnSphere(allTools.length || 20);
@@ -66,16 +69,22 @@ export function ToolSphere({ mousePos: externalMousePos }: ToolSphereProps) {
 			// Slight X rotation for more dynamic feel
 			rotationXRef.current += delta * 2;
 
-			// Use external mouse position if provided, otherwise use internal tracking
-			const targetX = externalMousePos?.x ?? targetMousePosRef.current.x;
-			const targetY = externalMousePos?.y ?? targetMousePosRef.current.y;
+			// Compute cursor position in pixels relative to sphere center
+			let targetX = 0;
+			let targetY = 0;
+			const client = mouseClientRef.current;
+			const el = containerRef.current;
+			if (client && el) {
+				const rect = el.getBoundingClientRect();
+				targetX = client.x - (rect.left + rect.width / 2);
+				targetY = client.y - (rect.top + rect.height / 2);
+			}
 
-			// Smooth mouse position interpolation
-			mousePosRef.current = {
-				x: mousePosRef.current.x + (targetX - mousePosRef.current.x) * 0.1,
-				y: mousePosRef.current.y + (targetY - mousePosRef.current.y) * 0.1,
+			// Smooth interpolation
+			cursorPxRef.current = {
+				x: cursorPxRef.current.x + (targetX - cursorPxRef.current.x) * 0.1,
+				y: cursorPxRef.current.y + (targetY - cursorPxRef.current.y) * 0.1,
 			};
-
 			// Force re-render
 			forceUpdate((n) => n + 1);
 
@@ -89,22 +98,6 @@ export function ToolSphere({ mousePos: externalMousePos }: ToolSphereProps) {
 				cancelAnimationFrame(animationRef.current);
 			}
 		};
-	}, [externalMousePos]);
-
-	const handleMouseMove = useCallback((e: React.MouseEvent) => {
-		if (!containerRef.current) return;
-		const rect = containerRef.current.getBoundingClientRect();
-		const centerX = rect.left + rect.width / 2;
-		const centerY = rect.top + rect.height / 2;
-
-		targetMousePosRef.current = {
-			x: (e.clientX - centerX) / rect.width,
-			y: (e.clientY - centerY) / rect.height,
-		};
-	}, []);
-
-	const handleMouseLeave = useCallback(() => {
-		targetMousePosRef.current = { x: 0, y: 0 };
 	}, []);
 
 	if (toolPoints.length === 0) {
@@ -113,16 +106,13 @@ export function ToolSphere({ mousePos: externalMousePos }: ToolSphereProps) {
 
 	const radius = 220;
 
-	const mousePos = mousePosRef.current;
 	const rotationY = rotationYRef.current;
 	const rotationX = rotationXRef.current;
 
 	return (
 		<div
 			ref={containerRef}
-			className="absolute inset-0 pointer-events-auto select-none"
-			onMouseMove={handleMouseMove}
-			onMouseLeave={handleMouseLeave}
+			className="absolute inset-0 select-none"
 			style={{ perspective: "1200px" }}
 		>
 			{/* Main sphere container - slight tilt based on mouse */}
@@ -130,7 +120,7 @@ export function ToolSphere({ mousePos: externalMousePos }: ToolSphereProps) {
 				className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
 				style={{
 					transformStyle: "preserve-3d",
-					transform: `rotateX(${mousePos.y * -10}deg) rotateY(${mousePos.x * 10}deg)`,
+					transform: `rotateX(0deg) rotateY(0deg)`,
 				}}
 			>
 				{/* Wireframe sphere rings - brutalist style */}
@@ -186,7 +176,15 @@ export function ToolSphere({ mousePos: externalMousePos }: ToolSphereProps) {
 					
 					// Opacity based on z position - fade out as they go behind
 					const normalizedZ = (pos.z + radius) / (radius * 2);
-					const opacity = Math.max(0, Math.min(1, normalizedZ * 1.8 - 0.4));
+					const zOpacity = Math.max(0, Math.min(1, normalizedZ * 1.8 - 0.4));
+					
+					// Staggered fade in/out - pseudo-random phase per logo
+					const scramble = ((index * 7919 + 104729) % 997) / 997; // hash to [0,1]
+					const phase = scramble * Math.PI * 2;
+					const fadeWave = (Math.sin(rotationY * 0.03 + phase) + 1) / 2; // 0 to 1
+					const fadeFactor = fadeWave * fadeWave * fadeWave; // cubic for sharper on/off
+					
+					const opacity = zOpacity * fadeFactor;
 					
 					// Skip completely invisible logos
 					if (opacity < 0.05) return null;
@@ -195,19 +193,18 @@ export function ToolSphere({ mousePos: externalMousePos }: ToolSphereProps) {
 					const scale = 0.5 + normalizedZ * 0.7;
 					const size = 40;
 
-					// Logos "look at" the mouse - calculate direction from logo to cursor
-					// mousePos is normalized (-0.5 to 0.5), pos is in pixels
-					// Convert logo position to normalized space relative to sphere center
-					const logoNormX = pos.x / radius; // -1 to 1
-					const logoNormY = pos.y / radius; // -1 to 1
+					// Logos "look at" the mouse like eyes following cursor
+					// cursorPxRef tracks mouse in pixel space relative to ToolSphere center
+					const cursor = cursorPxRef.current;
+					const dirX = cursor.x - pos.x;
+					const dirY = cursor.y - pos.y;
+					const dist = Math.sqrt(dirX * dirX + dirY * dirY) || 1;
 					
-					// Direction from logo to cursor (in normalized space)
-					const dirX = mousePos.x - logoNormX * 0.3;
-					const dirY = mousePos.y - logoNormY * 0.3;
-					
-					// Tilt towards cursor direction
-					const logoRotateX = dirY * -40;
-					const logoRotateY = dirX * 40;
+					// Normalize and apply max tilt angle (30deg), attenuate by distance
+					const maxTilt = 30;
+					const strength = Math.min(1, dist / 200);
+					const logoRotateY = (dirX / dist) * maxTilt * strength;
+					const logoRotateX = -(dirY / dist) * maxTilt * strength;
 
 					return (
 						<div

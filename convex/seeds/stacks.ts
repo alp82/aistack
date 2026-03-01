@@ -228,7 +228,6 @@ My approach is simple: find one tool that does most things well, rather than jug
         kind: "main" as const,
         primaryUsageLabel: "CLI-based coding agent directly in the terminal",
         priceKind: "bundle" as const,
-        bundleSlug: "claude-max-bundle",
         price: {
           pricingType: "fixed" as const,
           fixed: { currency: "USD", amount: 0, period: "month" as const },
@@ -245,9 +244,6 @@ My approach is simple: find one tool that does most things well, rather than jug
           fixed: { currency: "USD", amount: 37.5, period: "month" as const },
         },
       },
-    ],
-    bundleSubscriptions: [
-      { bundleSlug: "claude-max-bundle", tierId: "max-200" },
     ],
     fixedTotal: { currency: "USD", amount: 237.5, period: "month" as const },
     hasUsageComponent: false,
@@ -361,7 +357,6 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
         kind: "main" as const,
         primaryUsageLabel: "Terminal-based coding agent included with Max plan",
         priceKind: "bundle" as const,
-        bundleSlug: "claude-max-bundle",
         price: {
           pricingType: "fixed" as const,
           fixed: { currency: "USD", amount: 0, period: "month" as const },
@@ -389,9 +384,6 @@ This stack lets me code faster while reducing RSI strain. The voice-first approa
           fixed: { currency: "USD", amount: 20, period: "month" as const },
         },
       },
-    ],
-    bundleSubscriptions: [
-      { bundleSlug: "claude-max-bundle", tierId: "max-100" },
     ],
     fixedTotal: { currency: "USD", amount: 132, period: "month" as const },
     hasUsageComponent: false,

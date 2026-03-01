@@ -6,35 +6,27 @@ import { ToolSphere } from "@/features/landing/components/ToolSphere";
 
 function HeroSection() {
 	const sectionRef = useRef<HTMLElement>(null);
-	const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+	const [mouseClient, setMouseClient] = useState<{ x: number; y: number } | null>(null);
 
 	const handleMouseMove = useCallback((e: React.MouseEvent) => {
-		if (!sectionRef.current) return;
-		const rect = sectionRef.current.getBoundingClientRect();
-		const centerX = rect.left + rect.width / 2;
-		const centerY = rect.top + rect.height / 2;
-
-		setMousePos({
-			x: (e.clientX - centerX) / rect.width,
-			y: (e.clientY - centerY) / rect.height,
-		});
+		setMouseClient({ x: e.clientX, y: e.clientY });
 	}, []);
 
 	const handleMouseLeave = useCallback(() => {
-		setMousePos({ x: 0, y: 0 });
+		setMouseClient(null);
 	}, []);
 
 	return (
 		<section
 			ref={sectionRef}
-			className="relative border-b-2 border-stroke-strong px-6 py-24 md:px-16 lg:px-24 md:py-32 lg:py-48 overflow-hidden"
+			className="relative border-b-2 border-stroke-strong px-6 py-24 md:py-32 lg:py-48 overflow-hidden"
 			onMouseMove={handleMouseMove}
 			onMouseLeave={handleMouseLeave}
 		>
 			<div className="mx-auto w-full max-w-content relative">
 				{/* 3D Tool Sphere - positioned at right edge of max-w container on wide screens */}
 				<div className="absolute top-1/2 -translate-y-1/2 -mt-12 w-[500px] h-[500px] lg:w-[600px] lg:h-[600px] hidden md:block pointer-events-none right-0 translate-x-1/2 2xl:translate-x-0 2xl:right-[-100px]">
-					<ToolSphere mousePos={mousePos} />
+					<ToolSphere mouseClient={mouseClient} />
 				</div>
 				<motion.div
 					initial={{ opacity: 0, y: 30 }}
@@ -53,7 +45,7 @@ function HeroSection() {
 					</div>
 
 					{/* Massive Headline */}
-					<h1 className="text-5xl md:text-7xl lg:text-[8rem] font-black tracking-tighter leading-[0.9] mb-24 text-fg-primary">
+					<h1 className="text-5xl sm:text-[3rem] md:text-[5rem] lg:text-[7rem] font-black tracking-tighter leading-[0.9] mb-24 text-fg-primary">
 						SEE EXACTLY WHAT
 						<br />
 						REAL{" "}<span className="text-highlight-lime ml-2 md:ml-4 -rotate-1">BUILDERS</span>
@@ -69,7 +61,7 @@ function HeroSection() {
 							daily AI workflow looks like.
 						</p>
 
-						<div className="flex flex-col md:flex-row gap-4">
+						<div className="flex flex-row flex-wrap gap-4">
 							<Link to="/stacks/new">
 								<motion.span
 									whileHover={{

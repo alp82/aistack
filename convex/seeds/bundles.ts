@@ -27,32 +27,4 @@ export const bundlesData = [
       },
     ],
   },
-  {
-    slug: "claude-max-bundle",
-    name: "Claude Max",
-    description: "Anthropic's premium plan. Includes unlimited Claude Code CLI access alongside the full Claude Max experience.",
-    iconUrl: "https://cdn.prod.website-files.com/6889473510b50328dbb70ae6/68c33859cc6cd903686c66a2_apple-touch-icon.png",
-    websiteUrl: "https://claude.ai/",
-    toolSlugs: ["claude"],
-    reviewStatus: "approved" as const,
-    tiers: [
-      {
-        tierId: "max-100",
-        name: "Max $100",
-        pricing: {
-          pricingType: "fixed" as const,
-          fixed: { currency: "USD", amount: 100, period: "month" as const },
-        },
-      },
-      {
-        tierId: "max-200",
-        name: "Max $200",
-        pricing: {
-          pricingType: "fixed" as const,
-          fixed: { currency: "USD", amount: 200, period: "month" as const },
-        },
-        isDefault: true,
-      },
-    ],
-  },
 ]
