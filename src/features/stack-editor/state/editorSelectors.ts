@@ -52,7 +52,7 @@ function selectSavePayload(state: EditorState, published: boolean) {
 			modelSlug: model.modelSlug,
 			role: model.role,
 		})),
-		avatarUrl: state.avatarUrl.trim() || undefined,
+		stackImageUrl: state.stackImageUrl.trim() || undefined,
 		personalPageUrl: state.personalPageUrl.trim() || undefined,
 		projectPageUrl: state.projectPageUrl.trim() || undefined,
 		published,
@@ -73,7 +73,7 @@ function selectGuestDraft(state: EditorState): GuestStackDraft {
 		xHandle: state.xHandle,
 		personalPageUrl: state.personalPageUrl,
 		projectPageUrl: state.projectPageUrl,
-		avatarUrl: state.avatarUrl,
+		stackImageUrl: state.stackImageUrl,
 	};
 }
 

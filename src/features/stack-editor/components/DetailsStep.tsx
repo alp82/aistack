@@ -18,8 +18,8 @@ type DetailsStepProps = {
 	onPersonalPageUrlChange: (value: string) => void;
 	projectPageUrl: string;
 	onProjectPageUrlChange: (value: string) => void;
-	avatarUrl: string;
-	onAvatarUrlChange: (value: string) => void;
+	stackImageUrl: string;
+	onStackImageUrlChange: (value: string) => void;
 	defaultAvatarUrl?: string;
 	isTeam: boolean;
 	onIsTeamChange: (value: boolean) => void;
@@ -39,8 +39,8 @@ function DetailsStep({
 	onPersonalPageUrlChange,
 	projectPageUrl,
 	onProjectPageUrlChange,
-	avatarUrl,
-	onAvatarUrlChange,
+	stackImageUrl,
+	onStackImageUrlChange,
 	defaultAvatarUrl,
 	isTeam,
 	onIsTeamChange,
@@ -51,7 +51,7 @@ function DetailsStep({
 	const [imgError, setImgError] = useState(false);
 
 	// Determine which avatar to display
-	const displayAvatarUrl = avatarUrl || defaultAvatarUrl;
+	const displayAvatarUrl = stackImageUrl || defaultAvatarUrl;
 
 	// Reset error when URL changes
 	useEffect(() => {
@@ -71,10 +71,10 @@ function DetailsStep({
 			<AvatarEditor
 				isOpen={isAvatarEditorOpen}
 				onClose={() => setIsAvatarEditorOpen(false)}
-				currentAvatarUrl={avatarUrl}
+				currentAvatarUrl={stackImageUrl}
 				defaultAvatarUrl={defaultAvatarUrl}
 				creatorName={creator.name}
-				onAvatarChange={onAvatarUrlChange}
+				onAvatarChange={onStackImageUrlChange}
 			/>
 
 			{/* Main grid layout */}

@@ -1,5 +1,38 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
+import type { QueryCtx } from './_generated/server'
+
+const SHORT_ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'
+const SHORT_ID_LENGTH = 6
+
+async function generateUniqueShortId(ctx: QueryCtx): Promise<string> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    let shortId = ''
+    for (let i = 0; i < SHORT_ID_LENGTH; i++) {
+      shortId += SHORT_ID_CHARS[Math.floor(Math.random() * SHORT_ID_CHARS.length)]
+    }
+    const existing = await ctx.db
+      .query('stacks')
+      .withIndex('by_shortId', (q) => q.eq('shortId', shortId))
+      .first()
+    if (!existing) return shortId
+  }
+  throw new Error('Failed to generate unique shortId after 10 attempts')
+}
+
+function extractShortId(compositeSlug: string): string {
+  const lastHyphen = compositeSlug.lastIndexOf('-')
+  if (lastHyphen === -1) return compositeSlug
+  return compositeSlug.slice(lastHyphen + 1)
+}
+
+function slugify(name: string, fallback: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    || fallback
+}
 
 const InstructionTypeValidator = v.union(
   v.literal('prompt'),
@@ -145,7 +178,7 @@ export const listPublished = query({
       results.push({
         _id: stack._id,
         _creationTime: stack._creationTime,
-        slug: stack.slug,
+        slug: `${stack.slug}-${stack.shortId}`,
         oneLiner: stack.oneLiner,
         teamSize: stack.teamSize,
         fixedTotal: stack.fixedTotal,
@@ -155,7 +188,7 @@ export const listPublished = query({
           _id: creator._id,
           name: creator.name,
           xHandle: creator.xHandle,
-          avatarUrl: stack.avatarUrl ?? creator.avatarUrl,
+          avatarUrl: stack.stackImageUrl ?? creator.avatarUrl,
           verified: creator.verified,
           personalPages: creator.personalPages,
           projectPages: creator.projectPages,
@@ -209,7 +242,7 @@ export const create = mutation({
     toolSubscriptions: v.array(ToolSubscriptionInput),
     bundleSubscriptions: v.optional(v.array(BundleSubscriptionInput)),
     modelSubscriptions: v.optional(v.array(ModelSubscriptionInput)),
-    avatarUrl: v.optional(v.string()),
+    stackImageUrl: v.optional(v.string()),
     personalPageUrl: v.optional(v.string()),
     projectPageUrl: v.optional(v.string()),
     published: v.boolean(),
@@ -232,23 +265,9 @@ export const create = mutation({
       .first()
     if (existingStack) throw new Error('You already have a stack. Please edit your existing stack instead.')
 
-    // Generate slug from stack name
-    const baseSlug = args.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      || `${creator.slug}-stack`
-    let slug = baseSlug
-    let suffix = 2
-    while (
-      await ctx.db
-        .query('stacks')
-        .withIndex('by_slug', (q) => q.eq('slug', slug))
-        .first()
-    ) {
-      slug = `${baseSlug}-${suffix}`
-      suffix++
-    }
+    // Generate slug and shortId
+    const slug = slugify(args.name, `${creator.slug}-stack`)
+    const shortId = await generateUniqueShortId(ctx)
 
     let fixedTotal = 0
     let hasUsageComponent = false
@@ -277,6 +296,7 @@ export const create = mutation({
     const id = await ctx.db.insert('stacks', {
       name: args.name,
       slug,
+      shortId,
       creatorId: creator._id,
       oneLiner: args.oneLiner,
       description: args.description,
@@ -285,7 +305,7 @@ export const create = mutation({
       toolSubscriptions: args.toolSubscriptions,
       bundleSubscriptions: args.bundleSubscriptions,
       modelSubscriptions: args.modelSubscriptions,
-      avatarUrl: args.avatarUrl,
+      stackImageUrl: args.stackImageUrl,
       personalPageUrl: args.personalPageUrl,
       projectPageUrl: args.projectPageUrl,
       fixedTotal: { currency: 'USD', amount: fixedTotal, period: 'month' as const },
@@ -295,7 +315,7 @@ export const create = mutation({
       updatedAt: now,
     })
 
-    return { _id: id, slug }
+    return { _id: id, slug: `${slug}-${shortId}` }
   },
 })
 
@@ -310,7 +330,7 @@ export const update = mutation({
     toolSubscriptions: v.optional(v.array(ToolSubscriptionInput)),
     bundleSubscriptions: v.optional(v.array(BundleSubscriptionInput)),
     modelSubscriptions: v.optional(v.array(ModelSubscriptionInput)),
-    avatarUrl: v.optional(v.string()),
+    stackImageUrl: v.optional(v.string()),
     personalPageUrl: v.optional(v.string()),
     projectPageUrl: v.optional(v.string()),
     published: v.optional(v.boolean()),
@@ -328,7 +348,10 @@ export const update = mutation({
     if (!creator || creator.userId !== userId) throw new Error('Not authorized')
 
     const patch: Record<string, unknown> = { updatedAt: Date.now() }
-    if (args.name !== undefined) patch.name = args.name
+    if (args.name !== undefined) {
+      patch.name = args.name
+      patch.slug = slugify(args.name, stack.slug)
+    }
     if (args.oneLiner !== undefined) patch.oneLiner = args.oneLiner
     if (args.description !== undefined) patch.description = args.description
     if (args.instructions !== undefined) patch.instructions = args.instructions
@@ -336,7 +359,7 @@ export const update = mutation({
     if (args.toolSubscriptions !== undefined) patch.toolSubscriptions = args.toolSubscriptions
     if (args.bundleSubscriptions !== undefined) patch.bundleSubscriptions = args.bundleSubscriptions
     if (args.modelSubscriptions !== undefined) patch.modelSubscriptions = args.modelSubscriptions
-    if (args.avatarUrl !== undefined) patch.avatarUrl = args.avatarUrl
+    if (args.stackImageUrl !== undefined) patch.stackImageUrl = args.stackImageUrl
     if (args.personalPageUrl !== undefined) patch.personalPageUrl = args.personalPageUrl
     if (args.projectPageUrl !== undefined) patch.projectPageUrl = args.projectPageUrl
     if (args.published !== undefined) patch.published = args.published
@@ -385,7 +408,7 @@ export const getForEdit = query({
       fixedTotal: v.optional(MoneyValidator),
       hasUsageComponent: v.boolean(),
       published: v.boolean(),
-      avatarUrl: v.optional(v.string()),
+      stackImageUrl: v.optional(v.string()),
       personalPageUrl: v.optional(v.string()),
       projectPageUrl: v.optional(v.string()),
       toolSubscriptions: v.array(v.object({
@@ -429,9 +452,10 @@ export const getForEdit = query({
     if (!user) return null
     const userId = user.tokenIdentifier.split('|')[1]
 
+    const shortId = extractShortId(args.slug)
     const stack = await ctx.db
       .query('stacks')
-      .withIndex('by_slug', (q) => q.eq('slug', args.slug))
+      .withIndex('by_shortId', (q) => q.eq('shortId', shortId))
       .first()
     if (!stack) return null
 
@@ -497,7 +521,7 @@ export const getForEdit = query({
     return {
       _id: stack._id,
       name: stack.name,
-      slug: stack.slug,
+      slug: `${stack.slug}-${stack.shortId}`,
       oneLiner: stack.oneLiner,
       description: stack.description,
       instructions: stack.instructions,
@@ -505,7 +529,7 @@ export const getForEdit = query({
       fixedTotal: stack.fixedTotal,
       hasUsageComponent: stack.hasUsageComponent,
       published: stack.published,
-      avatarUrl: stack.avatarUrl,
+      stackImageUrl: stack.stackImageUrl,
       personalPageUrl: stack.personalPageUrl,
       projectPageUrl: stack.projectPageUrl,
       toolSubscriptions: toolSubs,
@@ -542,7 +566,7 @@ export const getUserStack = query({
     if (!stack) return null
 
     return {
-      slug: stack.slug,
+      slug: `${stack.slug}-${stack.shortId}`,
     }
   },
 })
@@ -694,9 +718,10 @@ export const getBySlug = query({
     v.null()
   ),
   handler: async (ctx, args) => {
+    const shortId = extractShortId(args.slug)
     const stack = await ctx.db
       .query('stacks')
-      .withIndex('by_slug', (q) => q.eq('slug', args.slug))
+      .withIndex('by_shortId', (q) => q.eq('shortId', shortId))
       .first()
 
     if (!stack || !stack.published) return null
@@ -774,7 +799,7 @@ export const getBySlug = query({
       _id: stack._id,
       _creationTime: stack._creationTime,
       name: stack.name,
-      slug: stack.slug,
+      slug: `${stack.slug}-${stack.shortId}`,
       oneLiner: stack.oneLiner,
       description: stack.description,
       instructions: stack.instructions,
@@ -788,7 +813,7 @@ export const getBySlug = query({
         _id: creator._id,
         name: creator.name,
         xHandle: creator.xHandle,
-        avatarUrl: stack.avatarUrl ?? creator.avatarUrl,
+        avatarUrl: stack.stackImageUrl ?? creator.avatarUrl,
         verified: creator.verified,
         personalPages: creator.personalPages,
         projectPages: creator.projectPages,

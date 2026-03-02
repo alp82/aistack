@@ -131,7 +131,7 @@ export function StackEditor({
 		setXHandle,
 		setPersonalPageUrl,
 		setProjectPageUrl,
-		setAvatarUrl,
+		setStackImageUrl,
 		revertDraft,
 		dismissDraft,
 		disableDraftSaving,
@@ -251,6 +251,11 @@ export function StackEditor({
 			}
 
 			const payload = selectSavePayload(state, publish);
+
+			// Auto-fill stackImageUrl from user profile if not explicitly set
+			if (!payload.stackImageUrl && defaultAvatarUrl) {
+				payload.stackImageUrl = defaultAvatarUrl;
+			}
 
 			// Disable draft auto-save BEFORE the mutation to prevent race conditions
 			disableDraftSaving();
@@ -415,8 +420,8 @@ export function StackEditor({
 								onPersonalPageUrlChange={setPersonalPageUrl}
 								projectPageUrl={state.projectPageUrl}
 								onProjectPageUrlChange={setProjectPageUrl}
-								avatarUrl={state.avatarUrl}
-								onAvatarUrlChange={setAvatarUrl}
+								stackImageUrl={state.stackImageUrl}
+								onStackImageUrlChange={setStackImageUrl}
 								defaultAvatarUrl={defaultAvatarUrl}
 								isTeam={state.isTeam}
 								onIsTeamChange={setIsTeam}

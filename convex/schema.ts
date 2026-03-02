@@ -112,12 +112,13 @@ export default defineSchema({
   stacks: defineTable({
     name: v.string(),
     slug: v.string(),
+    shortId: v.string(),
     creatorId: v.id('creators'),
     teamSize: v.optional(v.number()),
     oneLiner: v.string(),
     description: v.optional(v.string()),
     instructions: v.optional(v.array(InstructionItem)),
-    avatarUrl: v.optional(v.string()),
+    stackImageUrl: v.optional(v.string()),
     avatarStorageId: v.optional(v.id('_storage')),
     personalPageUrl: v.optional(v.string()),
     projectPageUrl: v.optional(v.string()),
@@ -163,6 +164,7 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index('by_slug', ['slug'])
+    .index('by_shortId', ['shortId'])
     .index('by_creatorId', ['creatorId'])
     .index('by_published', ['published']),
 

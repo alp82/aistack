@@ -57,8 +57,8 @@ function useEditorState({ mode, guestSession, actor, initialValue }: UseEditorSt
 			dispatch({ type: "profile/updated", updates: { personalPageUrl: value } }),
 		setProjectPageUrl: (value: string) =>
 			dispatch({ type: "profile/updated", updates: { projectPageUrl: value } }),
-		setAvatarUrl: (value: string) =>
-			dispatch({ type: "profile/updated", updates: { avatarUrl: value } }),
+		setStackImageUrl: (value: string) =>
+			dispatch({ type: "profile/updated", updates: { stackImageUrl: value } }),
 		setDescription: (value: string) =>
 			dispatch({ type: "description/updated", description: value }),
 		setToolSubscriptions: (tools: ToolSubscriptionEntry[]) =>

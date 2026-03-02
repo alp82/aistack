@@ -52,6 +52,13 @@ function EditStackPage() {
 			})
 	}, [isAuthenticated, authLoading, getOrCreateCreator, navigate]);
 
+	// Redirect to canonical slug if URL slug prefix is stale/wrong
+	useEffect(() => {
+		if (stackData && stackData.slug !== slug) {
+			window.location.href = `/stacks/${stackData.slug}/edit`;
+		}
+	}, [stackData, slug]);
+
 	if (authLoading || loadingCreator || stackData === undefined) {
 		return (
 			<div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
@@ -92,7 +99,7 @@ function EditStackPage() {
 				instructions: stackData.instructions ?? [],
 				teamSize: stackData.teamSize,
 				published: stackData.published,
-				avatarUrl: stackData.avatarUrl,
+				stackImageUrl: stackData.stackImageUrl,
 				personalPageUrl: stackData.personalPageUrl,
 				projectPageUrl: stackData.projectPageUrl,
 				toolSubscriptions: stackData.toolSubscriptions.map((t) => ({

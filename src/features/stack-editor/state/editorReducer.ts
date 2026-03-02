@@ -27,7 +27,7 @@ type EditorState = {
 	xHandle: string;
 	personalPageUrl: string;
 	projectPageUrl: string;
-	avatarUrl: string;
+	stackImageUrl: string;
 	saving: boolean;
 	error: string;
 	activeSection: EditorSection;
@@ -48,14 +48,14 @@ type GuestStackDraft = {
 	xHandle: string;
 	personalPageUrl: string;
 	projectPageUrl: string;
-	avatarUrl: string;
+	stackImageUrl: string;
 };
 
 type EditorAction =
 	| {
 			type: "profile/updated";
 			updates: Partial<
-				Pick<EditorState, "name" | "oneLiner" | "xHandle" | "isTeam" | "teamSize" | "personalPageUrl" | "projectPageUrl" | "avatarUrl">
+				Pick<EditorState, "name" | "oneLiner" | "xHandle" | "isTeam" | "teamSize" | "personalPageUrl" | "projectPageUrl" | "stackImageUrl">
 			>;
 	  }
 	| {
@@ -159,7 +159,7 @@ function getInitialEditorState(args: {
 		xHandle: savedDraft?.xHandle ?? actor.xHandle ?? "",
 		personalPageUrl: savedDraft?.personalPageUrl ?? initialValue?.personalPageUrl ?? personalPageUrl,
 		projectPageUrl: savedDraft?.projectPageUrl ?? initialValue?.projectPageUrl ?? projectPageUrl,
-		avatarUrl: savedDraft?.avatarUrl ?? initialValue?.avatarUrl ?? actor.avatarUrl ?? "",
+		stackImageUrl: savedDraft?.stackImageUrl ?? initialValue?.stackImageUrl ?? actor.avatarUrl ?? "",
 		saving: false,
 		error: "",
 		activeSection: "profile",
@@ -236,7 +236,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 				xHandle: draft.xHandle !== undefined ? draft.xHandle : state.xHandle,
 				personalPageUrl: draft.personalPageUrl !== undefined ? draft.personalPageUrl : state.personalPageUrl,
 				projectPageUrl: draft.projectPageUrl !== undefined ? draft.projectPageUrl : state.projectPageUrl,
-				avatarUrl: draft.avatarUrl !== undefined ? draft.avatarUrl : state.avatarUrl,
+				stackImageUrl: draft.stackImageUrl !== undefined ? draft.stackImageUrl : state.stackImageUrl,
 			};
 		}
 		case "draft/reverted": {
@@ -255,7 +255,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 				bundleSubscriptions: iv.bundleSubscriptions ?? [],
 				personalPageUrl: iv.personalPageUrl ?? "",
 				projectPageUrl: iv.projectPageUrl ?? "",
-				avatarUrl: iv.avatarUrl ?? "",
+				stackImageUrl: iv.stackImageUrl ?? "",
 				restoredFromDraft: false,
 			};
 		}

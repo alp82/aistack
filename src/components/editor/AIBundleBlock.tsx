@@ -65,17 +65,17 @@ function AIBundleBlockView({ node }: NodeViewProps) {
 	const blockContent = (
 		<span
 			contentEditable={false}
-			className="inline-flex cursor-pointer items-center gap-2 rounded border border-violet-500/30 bg-violet-500/10 px-2 py-1 align-baseline font-mono text-xs font-semibold uppercase text-fg-primary transition-all hover:border-violet-500 hover:bg-violet-500/20"
+			className="inline-flex cursor-pointer items-center gap-2 border border-violet-500/30 bg-violet-500/10 px-2 py-1 align-middle font-mono text-xs font-semibold uppercase text-fg-primary transition-all hover:border-violet-500 hover:bg-violet-500/20"
 		>
 			{iconUrl ? (
 				<img
 					src={iconUrl}
 					alt=""
-					className="size-5 shrink-0 rounded object-contain align-middle"
+					className="size-4 shrink-0 rounded object-contain align-middle"
 					style={{ margin: 0 }}
 				/>
 			) : (
-				<span className="flex size-5 shrink-0 items-center justify-center rounded-sm border border-violet-500/30 bg-violet-500/10 text-violet-500">
+				<span className="flex size-4 shrink-0 items-center justify-center rounded-sm border border-violet-500/30 bg-violet-500/10 text-violet-500">
 					<Package className="size-3" />
 				</span>
 			)}
@@ -84,7 +84,7 @@ function AIBundleBlockView({ node }: NodeViewProps) {
 	);
 
 	return (
-		<NodeViewWrapper as="span" className="inline-flex items-center mx-1">
+		<NodeViewWrapper as="span" className="inline-flex items-center mx-1" style={{ verticalAlign: '0.05em' }}>
 			{bundleData ? (
 				<HoverPreview
 					mode="wrapper"

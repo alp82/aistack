@@ -81,7 +81,7 @@ type StackEditorInitialValue = {
 	modelSubscriptions: ModelSubscriptionEntry[];
 	personalPageUrl?: string;
 	projectPageUrl?: string;
-	avatarUrl?: string;
+	stackImageUrl?: string;
 };
 
 type StackMetadataUpdates = {

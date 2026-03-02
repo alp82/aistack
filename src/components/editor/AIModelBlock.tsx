@@ -57,7 +57,7 @@ function AIModelBlockView({ node }: NodeViewProps) {
 	const blockContent = (
 		<span
 			contentEditable={false}
-			className="inline-flex cursor-pointer items-center gap-2 rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 align-baseline font-mono text-xs font-semibold uppercase text-fg-primary transition-all hover:border-cyan-500 hover:bg-cyan-500/20"
+			className="inline-flex cursor-pointer items-center gap-2 border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 align-middle font-mono text-xs font-semibold uppercase text-fg-primary transition-all hover:border-cyan-500 hover:bg-cyan-500/20"
 		>
 			{iconUrl ? (
 				<img
@@ -76,7 +76,7 @@ function AIModelBlockView({ node }: NodeViewProps) {
 	);
 
 	return (
-		<NodeViewWrapper as="span" className="inline-flex items-center mx-1">
+		<NodeViewWrapper as="span" className="inline-flex items-center mx-1" style={{ verticalAlign: '0.05em' }}>
 			{modelData ? (
 				<HoverPreview
 					mode="wrapper"

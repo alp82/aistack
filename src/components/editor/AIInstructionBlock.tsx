@@ -76,9 +76,9 @@ function AIInstructionBlockView({ node }: NodeViewProps) {
 		<span
 			contentEditable={false}
 			onClick={() => content && setShowModal(true)}
-			className={`inline-flex cursor-pointer items-center gap-2 border ${colors.border} ${colors.bg} px-2 py-1 align-baseline font-mono text-xs font-semibold uppercase text-fg-primary transition-all hover:opacity-80`}
+			className={`inline-flex cursor-pointer items-center gap-2 border ${colors.border} ${colors.bg} px-2 py-1 align-middle font-mono text-xs font-semibold uppercase text-fg-primary transition-all hover:opacity-80`}
 		>
-			<span className={`flex size-5 shrink-0 items-center justify-center border ${colors.border} ${colors.bg} ${colors.text}`}>
+			<span className={`flex size-4 shrink-0 items-center justify-center border ${colors.border} ${colors.bg} ${colors.text}`}>
 				<FileText className="size-3" />
 			</span>
 			<span>{name}</span>
@@ -86,7 +86,7 @@ function AIInstructionBlockView({ node }: NodeViewProps) {
 	);
 
 	return (
-		<NodeViewWrapper as="span" className="inline-flex items-center mx-1">
+		<NodeViewWrapper as="span" className="inline-flex items-center mx-1" style={{ verticalAlign: '0.05em' }}>
 			<HoverPreview
 				mode="wrapper"
 				position="above"

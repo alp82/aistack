@@ -70,7 +70,7 @@ function AIToolBlockView({ node }: NodeViewProps) {
 			contentEditable={false}
 			onMouseEnter={() => setHoveredToolName(name)}
 			onMouseLeave={() => setHoveredToolName(null)}
-			className="inline-flex cursor-pointer items-center gap-2 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 align-baseline font-mono text-xs font-semibold uppercase text-fg-primary transition-all hover:border-amber-500 hover:bg-amber-500/20"
+			className="inline-flex cursor-pointer items-center gap-2 border border-amber-500/30 bg-amber-500/10 px-2 py-1 align-middle font-mono text-xs font-semibold uppercase text-fg-primary transition-all hover:border-amber-500 hover:bg-amber-500/20"
 		>
 			{iconUrl ? (
 				<img
@@ -89,7 +89,7 @@ function AIToolBlockView({ node }: NodeViewProps) {
 	);
 
 	return (
-		<NodeViewWrapper as="span" className="inline-flex items-center mx-1">
+		<NodeViewWrapper as="span" className="inline-flex items-center mx-1" style={{ verticalAlign: '0.05em' }}>
 			{toolData ? (
 				<HoverPreview
 					mode="wrapper"

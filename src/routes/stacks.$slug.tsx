@@ -161,6 +161,13 @@ function StackDetailsPage() {
 		}
 	};
 
+	// Redirect to canonical slug if URL slug prefix is stale/wrong
+	useEffect(() => {
+		if (stack && stack.slug !== slug) {
+			navigate({ to: "/stacks/$slug", params: { slug: stack.slug }, replace: true });
+		}
+	}, [stack, slug, navigate]);
+
 	if (stack === undefined) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-bg-canvas">
@@ -301,8 +308,8 @@ function StackDetailsPage() {
 				instructions={stack.instructions ?? []}
 			/>
 			<div className="mx-6 bg-bg-canvas">
-				{/* Header */}
-				<header className="py-12">
+			{/* Header */}
+			<header className="py-12 px-6">
 				<div className="mx-auto max-w-content">
 					{/* 2x3 Grid: Row 1 = label in middle, Row 2 = avatar | content | price */}
 					<div className="grid grid-cols-[auto_1fr_auto] gap-x-12 items-start">
@@ -434,11 +441,11 @@ function StackDetailsPage() {
 				</div>
 			</header>
 
-			<div className="mx-auto max-w-content lg:flex">
+			<div className="mx-auto max-w-content px-6 lg:flex">
 				<div className="min-w-0 flex-1">
 					{/* Tabs */}
-					<section className="px-6 md:px-12 pt-6 lg:hidden">
-						<div className="flex gap-1 border-b-2 border-stroke-strong">
+					<section className="pt-6 lg:hidden">
+						<div className="flex gap-1">
 							{hasDescription && (
 								<Button
 									type="button"
@@ -470,7 +477,7 @@ function StackDetailsPage() {
 								)}
 							>
 								<Package className="size-4" />
-								Tools ({stack.tools.length})
+								Resources ({stack.tools.length + (stack.models?.length ?? 0) + (stack.bundles?.length ?? 0) + (stack.instructions?.length ?? 0)})
 								{activeTab === "tools" && (
 									<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent-lime" />
 								)}
@@ -479,7 +486,7 @@ function StackDetailsPage() {
 					</section>
 
 					{/* Tab Content */}
-					<section className="px-6 py-12 lg:hidden">
+					<section className="py-12 lg:hidden">
 						{activeTab === "tools" && toolsContent}
 
 						{activeTab === "description" && stack.description && (
