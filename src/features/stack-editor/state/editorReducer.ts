@@ -8,8 +8,14 @@ import type {
 
 const sectionOrder = ["profile", "tools", "bundles", "description", "settings"] as const;
 
+function extractShortId(compositeSlug: string): string {
+	const lastHyphen = compositeSlug.lastIndexOf("-");
+	if (lastHyphen === -1) return compositeSlug;
+	return compositeSlug.slice(lastHyphen + 1);
+}
+
 function getDraftKey(slug?: string): string {
-	return slug ? `stackDraft-${slug}` : "stackDraft-new";
+	return slug ? `stackDraft-${extractShortId(slug)}` : "stackDraft-new";
 }
 
 type EditorSection = (typeof sectionOrder)[number];

@@ -55,9 +55,9 @@ function EditStackPage() {
 	// Redirect to canonical slug if URL slug prefix is stale/wrong
 	useEffect(() => {
 		if (stackData && stackData.slug !== slug) {
-			window.location.href = `/stacks/${stackData.slug}/edit`;
+			navigate({ to: "/stacks/$slug/edit", params: { slug: stackData.slug }, replace: true });
 		}
-	}, [stackData, slug]);
+	}, [stackData, slug, navigate]);
 
 	if (authLoading || loadingCreator || stackData === undefined) {
 		return (
