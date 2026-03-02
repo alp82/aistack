@@ -176,7 +176,7 @@ The real power of this stack comes from the **4 custom skills** I've built for W
       },
     ],
     bundleSubscriptions: [
-      { bundleSlug: "lennys-bundle", tierId: "monthly" },
+      { bundleSlug: "lennys-bundle", tierId: "annual" },
     ],
     fixedTotal: { currency: "USD", amount: 85, period: "month" as const },
     hasUsageComponent: false,

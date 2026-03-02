@@ -46,7 +46,7 @@ function getEditorSectionStatuses(input: EditorStatusInput): EditorSectionStatus
 	const hasValidTeamSize = !input.isTeam || Number.isInteger(input.teamSize) && input.teamSize >= 2;
 
 	const hasInvalidBundle = input.bundleSubscriptions.some(
-		(bundle) => !bundle.bundleId || !bundle.tierId,
+		(bundle) => !bundle.bundleSlug || !bundle.tierId,
 	);
 
 	const hasMetadataSignals =

@@ -11,8 +11,9 @@ export interface AIToolBlockAttrs {
 	iconUrl: string | null;
 }
 
-function ToolTooltipContent({ name, categories, price, tierName, notes }: {
+function ToolTooltipContent({ name, iconUrl, categories, price, tierName, notes }: {
 	name: string;
+	iconUrl?: string;
 	categories?: string[];
 	price?: { amount: number; period: string };
 	tierName?: string;
@@ -23,7 +24,12 @@ function ToolTooltipContent({ name, categories, price, tierName, notes }: {
 			<div className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-amber-500 mb-2 border-b-2 border-stroke-strong pb-2">
 				Tool
 			</div>
-			<div className="font-mono text-sm font-semibold text-fg-primary mb-1">{name}</div>
+			<div className="flex items-center gap-2 mb-1">
+				{iconUrl && (
+					<img src={iconUrl} alt="" className="size-5 shrink-0 rounded object-contain" />
+				)}
+				<span className="font-mono text-sm font-semibold text-fg-primary">{name}</span>
+			</div>
 			{categories && categories.length > 0 && (
 				<div className="mb-2 flex flex-wrap gap-1">
 					{categories.map((cat) => (
@@ -96,6 +102,7 @@ function AIToolBlockView({ node }: NodeViewProps) {
 					renderContent={() => (
 						<ToolTooltipContent
 							name={name}
+							iconUrl={toolData.iconUrl}
 							categories={toolData.categories}
 							price={toolData.price}
 							tierName={toolData.tierName}
@@ -106,7 +113,22 @@ function AIToolBlockView({ node }: NodeViewProps) {
 					{blockContent}
 				</HoverPreview>
 			) : (
-				blockContent
+				<HoverPreview
+					mode="wrapper"
+					position="above"
+					width={220}
+					height="auto"
+					offset={8}
+					maxRotation={3}
+					maxOffset={5}
+					renderContent={() => (
+						<ToolTooltipContent
+							name={name}
+						/>
+					)}
+				>
+					{blockContent}
+				</HoverPreview>
 			)}
 		</NodeViewWrapper>
 	);

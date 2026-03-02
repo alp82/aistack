@@ -5,6 +5,7 @@ import type { InstructionType } from "@/features/stack-editor/types";
 export type ToolLookupData = {
 	name: string;
 	categories: string[];
+	iconUrl?: string;
 	price?: { amount: number; period: string };
 	tierName?: string;
 	notes?: string;
@@ -13,12 +14,14 @@ export type ToolLookupData = {
 export type ModelLookupData = {
 	name: string;
 	provider: string;
+	iconUrl?: string;
 	category: string;
 	notes?: string;
 };
 
 export type BundleLookupData = {
 	name: string;
+	iconUrl?: string;
 	price?: { amount: number; period: string };
 	tierName?: string;
 	description?: string;

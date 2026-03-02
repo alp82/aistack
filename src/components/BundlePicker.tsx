@@ -8,9 +8,8 @@ import { AddBundleModal } from "./AddBundleModal";
 import { PickerEntryCard, PickerToggleButton, PickerBrowser, TierSelector } from "./picker";
 
 export interface BundleSubscriptionEntry {
-    bundleId: Id<"bundles">;
-    bundleName: string;
     bundleSlug: string;
+    bundleName: string;
     bundleIconUrl?: string | null;
     tierId: string;
     tierName: string;
@@ -40,10 +39,10 @@ export function BundlePicker({ value, onChange, onBundleClick, guestSession = fa
     const [showAddModal, setShowAddModal] = useState(false);
     const [customBundleName, setCustomBundleName] = useState("");
 
-    const selectedBundleIds = new Set(value.map((b) => b.bundleId));
+    const selectedBundleSlugs = new Set(value.map((b) => b.bundleSlug));
 
     const filteredBundles = useMemo(() => {
-        let bundles = allBundles.filter((b) => !selectedBundleIds.has(b._id));
+        let bundles = allBundles.filter((b) => !selectedBundleSlugs.has(b.slug));
         if (search.trim()) {
             const searchLower = search.toLowerCase();
             bundles = bundles.filter((b) =>
@@ -51,7 +50,7 @@ export function BundlePicker({ value, onChange, onBundleClick, guestSession = fa
             );
         }
         return bundles;
-    }, [allBundles, selectedBundleIds, search]);
+    }, [allBundles, selectedBundleSlugs, search]);
 
     const addBundle = (bundleId: Id<"bundles">) => {
         const bundle = allBundles.find((b) => b._id === bundleId);
@@ -62,9 +61,8 @@ export function BundlePicker({ value, onChange, onBundleClick, guestSession = fa
         if (!defaultTier) return;
 
         const entry: BundleSubscriptionEntry = {
-            bundleId: bundle._id,
-            bundleName: bundle.name,
             bundleSlug: bundle.slug,
+            bundleName: bundle.name,
             bundleIconUrl: bundle.iconUrl,
             tierId: defaultTier.tierId,
             tierName: defaultTier.name,
@@ -85,9 +83,8 @@ export function BundlePicker({ value, onChange, onBundleClick, guestSession = fa
     const addCustomBundle = () => {
         if (!customBundleName.trim()) return;
         const entry: BundleSubscriptionEntry = {
-            bundleId: `custom-${Date.now()}` as Id<"bundles">,
-            bundleName: customBundleName.trim(),
             bundleSlug: customBundleName.trim().toLowerCase().replace(/\s+/g, "-"),
+            bundleName: customBundleName.trim(),
             tierId: "custom",
             tierName: "Custom",
         };
@@ -102,7 +99,7 @@ export function BundlePicker({ value, onChange, onBundleClick, guestSession = fa
                 <div className="space-y-2">
                     {value.map((entry, index) => (
                         <BundleEntry
-                            key={`${entry.bundleId}-${index}`}
+                            key={`${entry.bundleSlug}-${index}`}
                             entry={entry}
                             allBundles={allBundles}
                             onUpdate={(updates) => updateBundle(index, updates)}
@@ -159,32 +156,34 @@ export function BundlePicker({ value, onChange, onBundleClick, guestSession = fa
                         />
                     }
                 >
-                    {/* Bundle Grid */}
-                    <div className="grid grid-cols-3 gap-2">
-                        {filteredBundles.slice(0, 9).map((bundle) => (
+                    {/* Bundle List - Full Row */}
+                    <div className="max-h-[480px] overflow-y-auto">
+                    <div className="flex flex-col gap-2">
+                        {filteredBundles.map((bundle) => (
                             <button
                                 key={bundle._id}
                                 type="button"
                                 onClick={() => addBundle(bundle._id)}
-                                className="group flex flex-col items-center gap-1 border border-stroke-subtle bg-bg-panel p-2 transition-all hover:border-accent-lime hover:bg-accent-lime/5"
+                                className="group flex w-full items-center gap-3 border border-stroke-subtle bg-bg-panel p-2 transition-all hover:border-accent-lime hover:bg-accent-lime/5"
                                 title={bundle.name}
                             >
                                 {bundle.iconUrl ? (
                                     <img
                                         src={bundle.iconUrl}
                                         alt={bundle.name}
-                                        className="size-8 rounded object-contain"
+                                        className="size-8 shrink-0 rounded object-contain"
                                     />
                                 ) : (
-                                    <div className="flex size-8 items-center justify-center border border-stroke-subtle bg-bg-panel-muted">
+                                    <div className="flex size-8 shrink-0 items-center justify-center border border-stroke-subtle bg-bg-panel-muted">
                                         <Package className="size-4 text-fg-muted" />
                                     </div>
                                 )}
-                                <span className="w-full truncate text-center font-mono text-[9px] uppercase text-fg-muted group-hover:text-accent-lime">
+                                <span className="truncate font-mono text-xs uppercase text-fg-muted group-hover:text-accent-lime">
                                     {bundle.name}
                                 </span>
                             </button>
                         ))}
+                    </div>
                     </div>
                 </PickerBrowser>
             )}
@@ -202,6 +201,7 @@ interface BundleEntryProps {
     entry: BundleSubscriptionEntry;
     allBundles: Array<{
         _id: Id<"bundles">;
+        slug: string;
         tiers: Array<{
             tierId: string;
             name: string;
@@ -223,7 +223,7 @@ interface BundleEntryProps {
 
 function BundleEntry({ entry, allBundles, onUpdate, onRemove, onClick }: BundleEntryProps) {
     const [expanded, setExpanded] = useState(false);
-    const bundle = allBundles.find((b) => b._id === entry.bundleId);
+    const bundle = allBundles.find((b) => b.slug === entry.bundleSlug);
     const tiers = bundle?.tiers ?? [];
 
     const handleTierChange = (tierId: string) => {

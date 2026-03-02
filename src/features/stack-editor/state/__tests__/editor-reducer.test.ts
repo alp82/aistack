@@ -49,9 +49,8 @@ describe("editor reducer", () => {
 			type: "tools/updated",
 			tools: [
 				{
-					toolId: "tool_1" as never,
-					toolName: "Tool One",
 					toolSlug: "tool-one",
+					toolName: "Tool One",
 					toolCategories: ["research"],
 					tierId: "tier_1" as never,
 					kind: "main",
@@ -101,9 +100,8 @@ describe("editor reducer", () => {
 			type: "tools/updated",
 			tools: [
 				{
-					toolId: "tool_1" as never,
-					toolName: "Tool One",
 					toolSlug: "tool-one",
+					toolName: "Tool One",
 					toolCategories: ["research"],
 					tierId: "tier_1" as never,
 					kind: "main",
@@ -122,9 +120,8 @@ describe("editor reducer", () => {
 			type: "bundles/updated",
 			bundles: [
 				{
-					bundleId: "bundle_1" as never,
-					bundleName: "Bundle One",
 					bundleSlug: "bundle-one",
+					bundleName: "Bundle One",
 					tierId: "bundle_tier_1" as never,
 					tierName: "Starter",
 					notes: "Optional",
@@ -139,7 +136,7 @@ describe("editor reducer", () => {
 		expect(payload.toolSubscriptions).toHaveLength(1);
 		expect(payload.bundleSubscriptions).toEqual([
 			{
-				bundleId: "bundle_1",
+				bundleSlug: "bundle-one",
 				tierId: "bundle_tier_1",
 				notes: "Optional",
 			},

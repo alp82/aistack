@@ -2,6 +2,9 @@ import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-r
 import { useEffect, useState } from "react";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { TiptapEditor } from "../components/TiptapEditor";
+import { EditorProvider } from "../features/stack-editor/context/EditorContext";
+import { getDraftKey } from "../features/stack-editor/state/editorReducer";
 import { authClient } from "../lib/auth-client";
 
 type SignInPublishSearch = {
@@ -25,9 +28,26 @@ interface GuestStackDraft {
 		toolCategories: string[];
 		toolIconUrl?: string;
 	}>;
+	bundleSubscriptions?: Array<{
+		bundleName: string;
+		bundleIconUrl?: string;
+	}>;
+	modelSubscriptions?: Array<{
+		modelName: string;
+		modelProvider: string;
+		modelIconUrl?: string;
+	}>;
 }
 
 function SignInPublishPage() {
+	return (
+		<EditorProvider>
+			<SignInPublishContent />
+		</EditorProvider>
+	);
+}
+
+function SignInPublishContent() {
 	const navigate = useNavigate();
 	const { redirect } = useSearch({ from: "/signin-publish" });
 	const [isSignUp, setIsSignUp] = useState(true);
@@ -40,7 +60,7 @@ function SignInPublishPage() {
 	const [guestDraft, setGuestDraft] = useState<GuestStackDraft | null>(null);
 
 	useEffect(() => {
-		const saved = localStorage.getItem("guestStack");
+		const saved = localStorage.getItem(getDraftKey(undefined));
 		if (saved) {
 			try {
 				setGuestDraft(JSON.parse(saved));
@@ -103,15 +123,8 @@ function SignInPublishPage() {
 	return (
 		<div className="flex min-h-screen">
 			{/* Left side - Stack Preview */}
-			<div className="hidden lg:flex lg:w-1/2 flex-col bg-bg-canvas px-12 xl:px-20 py-12 border-r-4 border-accent-lime overflow-y-auto">
-				<div>
-					<Link to="/" className="inline-flex items-center gap-2 mb-12">
-						<div className="w-4 h-4 bg-accent-lime animate-pulse" style={{ boxShadow: '0 0 8px rgba(163, 230, 53, 0.6)' }} />
-						<span className="font-bold text-fg-primary tracking-tighter text-2xl">AI STACK</span>
-					</Link>
-				</div>
-
-				<div className="space-y-6 flex-1">
+			<div className="hidden lg:flex justify-center lg:w-1/2 flex-col bg-bg-canvas px-12 xl:px-20 border-r-4 border-accent-lime overflow-y-auto">
+				<div className="space-y-6">
 					<div>
 						<p className="font-mono text-xs uppercase tracking-widest text-accent-lime mb-2">
 							// Your Stack Preview
@@ -140,9 +153,9 @@ function SignInPublishPage() {
 									<p className="font-mono text-[10px] uppercase tracking-widest text-fg-muted mb-1">
 										Description
 									</p>
-									<p className="text-sm text-fg-secondary line-clamp-3">
-										{guestDraft.description}
-									</p>
+									<div className="text-sm text-fg-secondary line-clamp-3 overflow-hidden">
+										<TiptapEditor content={guestDraft.description} editable={false} />
+									</div>
 								</div>
 							)}
 
@@ -155,7 +168,7 @@ function SignInPublishPage() {
 										{guestDraft.toolSubscriptions.slice(0, 8).map((tool, i) => (
 											<div
 												key={`${tool.toolName}-${i}`}
-												className="flex items-center gap-2 border border-stroke-subtle bg-bg-panel-muted px-2 py-1"
+												className="flex items-center gap-2 border border-stroke-subtle bg-bg-panel-muted px-2 py-1 transition-colors hover:border-accent-lime hover:bg-accent-lime/10"
 											>
 												{tool.toolIconUrl ? (
 													<img
@@ -174,6 +187,74 @@ function SignInPublishPage() {
 										{guestDraft.toolSubscriptions.length > 8 && (
 											<span className="font-mono text-xs text-fg-muted px-2 py-1">
 												+{guestDraft.toolSubscriptions.length - 8} more
+											</span>
+										)}
+									</div>
+								</div>
+							)}
+
+							{guestDraft.bundleSubscriptions && guestDraft.bundleSubscriptions.length > 0 && (
+								<div>
+									<p className="font-mono text-[10px] uppercase tracking-widest text-fg-muted mb-2">
+										Bundles ({guestDraft.bundleSubscriptions.length})
+									</p>
+									<div className="flex flex-wrap gap-2">
+										{guestDraft.bundleSubscriptions.slice(0, 8).map((bundle, i) => (
+											<div
+												key={`${bundle.bundleName}-${i}`}
+												className="flex items-center gap-2 border border-stroke-subtle bg-bg-panel-muted px-2 py-1 transition-colors hover:border-accent-lime hover:bg-accent-lime/10"
+											>
+												{bundle.bundleIconUrl ? (
+													<img
+														src={bundle.bundleIconUrl}
+														alt={bundle.bundleName}
+														className="size-4 rounded object-contain"
+													/>
+												) : (
+													<div className="size-4 bg-accent-lime/20" />
+												)}
+												<span className="font-mono text-xs text-fg-secondary">
+													{bundle.bundleName}
+												</span>
+											</div>
+										))}
+										{guestDraft.bundleSubscriptions.length > 8 && (
+											<span className="font-mono text-xs text-fg-muted px-2 py-1">
+												+{guestDraft.bundleSubscriptions.length - 8} more
+											</span>
+										)}
+									</div>
+								</div>
+							)}
+
+							{guestDraft.modelSubscriptions && guestDraft.modelSubscriptions.length > 0 && (
+								<div>
+									<p className="font-mono text-[10px] uppercase tracking-widest text-fg-muted mb-2">
+										Models ({guestDraft.modelSubscriptions.length})
+									</p>
+									<div className="flex flex-wrap gap-2">
+										{guestDraft.modelSubscriptions.slice(0, 8).map((model, i) => (
+											<div
+												key={`${model.modelName}-${i}`}
+												className="flex items-center gap-2 border border-stroke-subtle bg-bg-panel-muted px-2 py-1 transition-colors hover:border-accent-lime hover:bg-accent-lime/10"
+											>
+												{model.modelIconUrl ? (
+													<img
+														src={model.modelIconUrl}
+														alt={model.modelName}
+														className="size-4 rounded object-contain"
+													/>
+												) : (
+													<div className="size-4 bg-accent-lime/20" />
+												)}
+												<span className="font-mono text-xs text-fg-secondary">
+													{model.modelName}
+												</span>
+											</div>
+										))}
+										{guestDraft.modelSubscriptions.length > 8 && (
+											<span className="font-mono text-xs text-fg-muted px-2 py-1">
+												+{guestDraft.modelSubscriptions.length - 8} more
 											</span>
 										)}
 									</div>

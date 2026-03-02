@@ -11,8 +11,9 @@ export interface AIBundleBlockAttrs {
 	iconUrl: string | null;
 }
 
-function BundleTooltipContent({ name, price, tierName, description, notes }: {
+function BundleTooltipContent({ name, iconUrl, price, tierName, description, notes }: {
 	name: string;
+	iconUrl?: string;
 	price?: { amount: number; period: string };
 	tierName?: string;
 	description?: string;
@@ -23,7 +24,12 @@ function BundleTooltipContent({ name, price, tierName, description, notes }: {
 			<div className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-violet-500 mb-2 border-b-2 border-stroke-strong pb-2">
 				Bundle
 			</div>
-			<div className="font-mono text-sm font-semibold text-fg-primary mb-1">{name}</div>
+			<div className="flex items-center gap-2 mb-1">
+				{iconUrl && (
+					<img src={iconUrl} alt="" className="size-5 shrink-0 rounded object-contain" />
+				)}
+				<span className="font-mono text-sm font-semibold text-fg-primary">{name}</span>
+			</div>
 			{description && (
 				<div className="text-xs text-fg-secondary mb-2 line-clamp-2">
 					{description}
@@ -91,6 +97,7 @@ function AIBundleBlockView({ node }: NodeViewProps) {
 					renderContent={() => (
 						<BundleTooltipContent
 							name={name}
+							iconUrl={bundleData.iconUrl}
 							price={bundleData.price}
 							tierName={bundleData.tierName}
 							description={bundleData.description}
@@ -101,7 +108,22 @@ function AIBundleBlockView({ node }: NodeViewProps) {
 					{blockContent}
 				</HoverPreview>
 			) : (
-				blockContent
+				<HoverPreview
+					mode="wrapper"
+					position="above"
+					width={220}
+					height="auto"
+					offset={8}
+					maxRotation={3}
+					maxOffset={5}
+					renderContent={() => (
+						<BundleTooltipContent
+							name={name}
+						/>
+					)}
+				>
+					{blockContent}
+				</HoverPreview>
 			)}
 		</NodeViewWrapper>
 	);

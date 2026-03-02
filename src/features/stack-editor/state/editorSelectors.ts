@@ -34,7 +34,7 @@ function selectSavePayload(state: EditorState, published: boolean) {
 		instructions: state.instructions.length > 0 ? state.instructions : undefined,
 		teamSize: state.isTeam ? state.teamSize : undefined,
 		toolSubscriptions: state.toolSubscriptions.map((tool) => ({
-			toolId: tool.toolId,
+			toolSlug: tool.toolSlug,
 			tierId: tool.tierId,
 			kind: tool.kind,
 			primaryUsageLabel: tool.primaryUsageLabel,
@@ -43,14 +43,15 @@ function selectSavePayload(state: EditorState, published: boolean) {
 			bundleSlug: tool.bundleSlug,
 			notes: tool.notes,
 		})),
-		bundleSubscriptions:
-			state.bundleSubscriptions.length > 0
-				? state.bundleSubscriptions.map((bundle) => ({
-					bundleId: bundle.bundleId,
-					tierId: bundle.tierId,
-					notes: bundle.notes,
-				}))
-				: undefined,
+		bundleSubscriptions: state.bundleSubscriptions.map((bundle) => ({
+			bundleSlug: bundle.bundleSlug,
+			tierId: bundle.tierId,
+			notes: bundle.notes,
+		})),
+		modelSubscriptions: state.modelSubscriptions.map((model) => ({
+			modelSlug: model.modelSlug,
+			role: model.role,
+		})),
 		avatarUrl: state.avatarUrl.trim() || undefined,
 		personalPageUrl: state.personalPageUrl.trim() || undefined,
 		projectPageUrl: state.projectPageUrl.trim() || undefined,
@@ -64,6 +65,7 @@ function selectGuestDraft(state: EditorState): GuestStackDraft {
 		oneLiner: state.oneLiner,
 		description: state.description,
 		instructions: state.instructions,
+		modelSubscriptions: state.modelSubscriptions,
 		isTeam: state.isTeam,
 		teamSize: state.teamSize,
 		toolSubscriptions: state.toolSubscriptions,

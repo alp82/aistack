@@ -12,8 +12,9 @@ export interface AIModelBlockAttrs {
 	iconUrl: string | null;
 }
 
-function ModelTooltipContent({ name, provider, category, notes }: {
+function ModelTooltipContent({ name, iconUrl, provider, category, notes }: {
 	name: string;
+	iconUrl?: string;
 	provider?: string;
 	category?: string;
 	notes?: string;
@@ -23,7 +24,12 @@ function ModelTooltipContent({ name, provider, category, notes }: {
 			<div className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-500 mb-2 border-b-2 border-stroke-strong pb-2">
 				Model
 			</div>
-			<div className="font-mono text-sm font-semibold text-fg-primary mb-1">{name}</div>
+			<div className="flex items-center gap-2 mb-1">
+				{iconUrl && (
+					<img src={iconUrl} alt="" className="size-5 shrink-0 rounded object-contain" />
+				)}
+				<span className="font-mono text-sm font-semibold text-fg-primary">{name}</span>
+			</div>
 			{provider && (
 				<div className="font-mono text-xs text-fg-muted mb-1">
 					by {provider}
@@ -83,6 +89,7 @@ function AIModelBlockView({ node }: NodeViewProps) {
 					renderContent={() => (
 						<ModelTooltipContent
 							name={name}
+							iconUrl={modelData.iconUrl}
 							provider={modelData.provider}
 							category={modelData.category}
 							notes={modelData.notes}

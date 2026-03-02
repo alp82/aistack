@@ -64,6 +64,16 @@ const BundleValidator = v.object({
   notes: v.optional(v.string()),
 })
 
+const ModelValidator = v.object({
+  _id: v.id('models'),
+  name: v.string(),
+  slug: v.string(),
+  provider: v.string(),
+  category: v.string(),
+  iconUrl: v.optional(v.string()),
+  role: v.union(v.literal('primary'), v.literal('secondary'), v.literal('specialized')),
+})
+
 const CreatorValidator = v.object({
   _id: v.id('creators'),
   name: v.string(),
@@ -104,7 +114,10 @@ export const listPublished = query({
 
       const tools = []
       for (const sub of stack.toolSubscriptions) {
-        const tool = await ctx.db.get(sub.toolId)
+        const tool = await ctx.db
+          .query('tools')
+          .withIndex('by_slug', (q) => q.eq('slug', sub.toolSlug))
+          .first()
         if (!tool) continue
         const tier = sub.tierId ? tool.tiers.find((t) => t.tierId === sub.tierId) : undefined
         tools.push({
@@ -157,7 +170,7 @@ export const listPublished = query({
 })
 
 const ToolSubscriptionInput = v.object({
-  toolId: v.id('tools'),
+  toolSlug: v.string(),
   tierId: v.optional(v.string()),
   kind: v.union(v.literal('main'), v.literal('misc')),
   primaryUsageLabel: v.string(),
@@ -176,9 +189,14 @@ const ToolSubscriptionInput = v.object({
 })
 
 const BundleSubscriptionInput = v.object({
-  bundleId: v.id('bundles'),
+  bundleSlug: v.string(),
   tierId: v.string(),
   notes: v.optional(v.string()),
+})
+
+const ModelSubscriptionInput = v.object({
+  modelSlug: v.string(),
+  role: v.union(v.literal('primary'), v.literal('secondary'), v.literal('specialized')),
 })
 
 export const create = mutation({
@@ -190,6 +208,7 @@ export const create = mutation({
     teamSize: v.optional(v.number()),
     toolSubscriptions: v.array(ToolSubscriptionInput),
     bundleSubscriptions: v.optional(v.array(BundleSubscriptionInput)),
+    modelSubscriptions: v.optional(v.array(ModelSubscriptionInput)),
     avatarUrl: v.optional(v.string()),
     personalPageUrl: v.optional(v.string()),
     projectPageUrl: v.optional(v.string()),
@@ -241,7 +260,10 @@ export const create = mutation({
     }
     if (args.bundleSubscriptions) {
       for (const bs of args.bundleSubscriptions) {
-        const bundle = await ctx.db.get(bs.bundleId)
+        const bundle = await ctx.db
+          .query('bundles')
+          .withIndex('by_slug', (q) => q.eq('slug', bs.bundleSlug))
+          .first()
         if (!bundle) continue
         const tier = bundle.tiers.find((t) => t.tierId === bs.tierId)
         if (tier?.pricing.fixed) fixedTotal += tier.pricing.fixed.amount
@@ -262,6 +284,7 @@ export const create = mutation({
       teamSize: args.teamSize,
       toolSubscriptions: args.toolSubscriptions,
       bundleSubscriptions: args.bundleSubscriptions,
+      modelSubscriptions: args.modelSubscriptions,
       avatarUrl: args.avatarUrl,
       personalPageUrl: args.personalPageUrl,
       projectPageUrl: args.projectPageUrl,
@@ -286,6 +309,7 @@ export const update = mutation({
     teamSize: v.optional(v.number()),
     toolSubscriptions: v.optional(v.array(ToolSubscriptionInput)),
     bundleSubscriptions: v.optional(v.array(BundleSubscriptionInput)),
+    modelSubscriptions: v.optional(v.array(ModelSubscriptionInput)),
     avatarUrl: v.optional(v.string()),
     personalPageUrl: v.optional(v.string()),
     projectPageUrl: v.optional(v.string()),
@@ -311,6 +335,7 @@ export const update = mutation({
     if (args.teamSize !== undefined) patch.teamSize = args.teamSize
     if (args.toolSubscriptions !== undefined) patch.toolSubscriptions = args.toolSubscriptions
     if (args.bundleSubscriptions !== undefined) patch.bundleSubscriptions = args.bundleSubscriptions
+    if (args.modelSubscriptions !== undefined) patch.modelSubscriptions = args.modelSubscriptions
     if (args.avatarUrl !== undefined) patch.avatarUrl = args.avatarUrl
     if (args.personalPageUrl !== undefined) patch.personalPageUrl = args.personalPageUrl
     if (args.projectPageUrl !== undefined) patch.projectPageUrl = args.projectPageUrl
@@ -327,7 +352,10 @@ export const update = mutation({
     }
     const bSubs = args.bundleSubscriptions ?? stack.bundleSubscriptions ?? []
     for (const bs of bSubs) {
-      const bundle = await ctx.db.get(bs.bundleId)
+      const bundle = await ctx.db
+        .query('bundles')
+        .withIndex('by_slug', (q) => q.eq('slug', bs.bundleSlug))
+        .first()
       if (!bundle) continue
       const tier = bundle.tiers.find((t) => t.tierId === bs.tierId)
       if (tier?.pricing.fixed) fixedTotal += tier.pricing.fixed.amount
@@ -361,9 +389,8 @@ export const getForEdit = query({
       personalPageUrl: v.optional(v.string()),
       projectPageUrl: v.optional(v.string()),
       toolSubscriptions: v.array(v.object({
-        toolId: v.id('tools'),
-        toolName: v.string(),
         toolSlug: v.string(),
+        toolName: v.string(),
         toolCategories: v.array(v.string()),
         toolIconUrl: v.optional(v.string()),
         tierId: v.optional(v.string()),
@@ -380,12 +407,19 @@ export const getForEdit = query({
         notes: v.optional(v.string()),
       })),
       bundleSubscriptions: v.array(v.object({
-        bundleId: v.id('bundles'),
-        bundleName: v.string(),
         bundleSlug: v.string(),
+        bundleName: v.string(),
         tierId: v.string(),
         tierName: v.string(),
         notes: v.optional(v.string()),
+      })),
+      modelSubscriptions: v.array(v.object({
+        modelSlug: v.string(),
+        modelName: v.string(),
+        modelProvider: v.string(),
+        modelCategory: v.string(),
+        modelIconUrl: v.optional(v.string()),
+        role: v.union(v.literal('primary'), v.literal('secondary'), v.literal('specialized')),
       })),
     }),
     v.null()
@@ -406,12 +440,14 @@ export const getForEdit = query({
 
     const toolSubs = []
     for (const sub of stack.toolSubscriptions) {
-      const tool = await ctx.db.get(sub.toolId)
+      const tool = await ctx.db
+        .query('tools')
+        .withIndex('by_slug', (q) => q.eq('slug', sub.toolSlug))
+        .first()
       if (!tool) continue
       toolSubs.push({
-        toolId: sub.toolId,
+        toolSlug: sub.toolSlug,
         toolName: tool.name,
-        toolSlug: tool.slug,
         toolCategories: tool.categories,
         toolIconUrl: tool.iconUrl,
         tierId: sub.tierId,
@@ -426,16 +462,35 @@ export const getForEdit = query({
 
     const bundleSubs = []
     for (const bs of stack.bundleSubscriptions ?? []) {
-      const bundle = await ctx.db.get(bs.bundleId)
+      const bundle = await ctx.db
+        .query('bundles')
+        .withIndex('by_slug', (q) => q.eq('slug', bs.bundleSlug))
+        .first()
       if (!bundle) continue
       const tier = bundle.tiers.find((t) => t.tierId === bs.tierId)
       bundleSubs.push({
-        bundleId: bs.bundleId,
+        bundleSlug: bs.bundleSlug,
         bundleName: bundle.name,
-        bundleSlug: bundle.slug,
         tierId: bs.tierId,
         tierName: tier?.name ?? bs.tierId,
         notes: bs.notes,
+      })
+    }
+
+    const modelSubs = []
+    for (const ms of stack.modelSubscriptions ?? []) {
+      const model = await ctx.db
+        .query('models')
+        .withIndex('by_slug', (q) => q.eq('slug', ms.modelSlug))
+        .first()
+      if (!model) continue
+      modelSubs.push({
+        modelSlug: ms.modelSlug,
+        modelName: model.name,
+        modelProvider: model.provider,
+        modelCategory: model.category,
+        modelIconUrl: model.iconUrl,
+        role: ms.role,
       })
     }
 
@@ -455,6 +510,7 @@ export const getForEdit = query({
       projectPageUrl: stack.projectPageUrl,
       toolSubscriptions: toolSubs,
       bundleSubscriptions: bundleSubs,
+      modelSubscriptions: modelSubs,
     }
   },
 })
@@ -514,7 +570,7 @@ export const getLandingStats = query({
         stacksWithCost++
       }
       for (const sub of stack.toolSubscriptions) {
-        toolIds.add(sub.toolId)
+        toolIds.add(sub.toolSlug)
       }
     }
 
@@ -633,6 +689,7 @@ export const getBySlug = query({
       creator: CreatorValidator,
       tools: v.array(ToolValidator),
       bundles: v.array(BundleValidator),
+      models: v.array(ModelValidator),
     }),
     v.null()
   ),
@@ -649,7 +706,10 @@ export const getBySlug = query({
 
     const tools = []
     for (const sub of stack.toolSubscriptions) {
-      const tool = await ctx.db.get(sub.toolId)
+      const tool = await ctx.db
+        .query('tools')
+        .withIndex('by_slug', (q) => q.eq('slug', sub.toolSlug))
+        .first()
       if (!tool) continue
       const toolTier = sub.tierId ? tool.tiers.find((t) => t.tierId === sub.tierId) : undefined
       tools.push({
@@ -671,7 +731,10 @@ export const getBySlug = query({
 
     const bundles = []
     for (const bs of stack.bundleSubscriptions ?? []) {
-      const bundle = await ctx.db.get(bs.bundleId)
+      const bundle = await ctx.db
+        .query('bundles')
+        .withIndex('by_slug', (q) => q.eq('slug', bs.bundleSlug))
+        .first()
       if (!bundle) continue
       const tier = bundle.tiers.find((t) => t.tierId === bs.tierId)
       if (!tier) continue
@@ -686,6 +749,24 @@ export const getBySlug = query({
         tierName: tier.name,
         price: tier.pricing,
         notes: bs.notes,
+      })
+    }
+
+    const models = []
+    for (const ms of stack.modelSubscriptions ?? []) {
+      const model = await ctx.db
+        .query('models')
+        .withIndex('by_slug', (q) => q.eq('slug', ms.modelSlug))
+        .first()
+      if (!model) continue
+      models.push({
+        _id: model._id,
+        name: model.name,
+        slug: model.slug,
+        provider: model.provider,
+        category: model.category,
+        iconUrl: model.iconUrl,
+        role: ms.role,
       })
     }
 
@@ -714,6 +795,7 @@ export const getBySlug = query({
       },
       tools,
       bundles,
+      models,
     }
   },
 })

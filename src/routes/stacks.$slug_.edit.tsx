@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { StackEditor } from "@/components/StackEditor";
+import type { ModelSubscriptionEntry } from "@/features/stack-editor/types";
 import { authClient } from "@/lib/auth-client";
 
 export const Route = createFileRoute("/stacks/$slug_/edit")({
@@ -95,9 +96,8 @@ function EditStackPage() {
 				personalPageUrl: stackData.personalPageUrl,
 				projectPageUrl: stackData.projectPageUrl,
 				toolSubscriptions: stackData.toolSubscriptions.map((t) => ({
-					toolId: t.toolId,
-					toolName: t.toolName,
 					toolSlug: t.toolSlug,
+					toolName: t.toolName,
 					toolCategories: t.toolCategories,
 					toolIconUrl: t.toolIconUrl,
 					tierId: t.tierId,
@@ -109,12 +109,19 @@ function EditStackPage() {
 					notes: t.notes,
 				})),
 				bundleSubscriptions: stackData.bundleSubscriptions.map((b) => ({
-					bundleId: b.bundleId,
-					bundleName: b.bundleName,
 					bundleSlug: b.bundleSlug,
+					bundleName: b.bundleName,
 					tierId: b.tierId,
 					tierName: b.tierName,
 					notes: b.notes,
+				})),
+				modelSubscriptions: stackData.modelSubscriptions.map((m) => ({
+					modelSlug: m.modelSlug,
+					modelName: m.modelName,
+					modelProvider: m.modelProvider,
+					modelCategory: m.modelCategory as ModelSubscriptionEntry["modelCategory"],
+					modelIconUrl: m.modelIconUrl,
+					role: m.role,
 				})),
 			}}
 		/>

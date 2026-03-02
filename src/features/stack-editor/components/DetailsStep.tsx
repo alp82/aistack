@@ -185,7 +185,7 @@ function DetailsStep({
 							type="text"
 							value={personalPageUrl}
 							onChange={(e) => onPersonalPageUrlChange(e.target.value)}
-							placeholder="yoursite.com"
+							placeholder="https://yourportfolio.com"
 							className="flex-1 bg-transparent border-0 px-2 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:outline-none focus:ring-0"
 						/>
 					</div>
@@ -197,7 +197,7 @@ function DetailsStep({
 							type="text"
 							value={projectPageUrl}
 							onChange={(e) => onProjectPageUrlChange(e.target.value)}
-							placeholder="project.com"
+							placeholder="https://yourproject.com"
 							className="flex-1 bg-transparent border-0 px-2 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:outline-none focus:ring-0"
 						/>
 					</div>

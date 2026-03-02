@@ -56,6 +56,7 @@ export const listAll = query({
 export const create = mutation({
   args: {
     name: v.string(),
+    iconUrl: v.optional(v.string()),
     description: v.optional(v.string()),
     websiteUrl: v.optional(v.string()),
     toolSlugs: v.array(v.string()),
@@ -132,6 +133,7 @@ export const create = mutation({
     return await ctx.db.insert('bundles', {
       name: args.name,
       slug,
+      iconUrl: args.iconUrl,
       description: args.description,
       websiteUrl: args.websiteUrl,
       toolSlugs: args.toolSlugs,

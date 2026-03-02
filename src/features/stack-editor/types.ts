@@ -47,13 +47,12 @@ type InstructionItem = {
 };
 
 type ModelSubscriptionEntry = {
-	modelId: Id<"models">;
-	modelName: string;
 	modelSlug: string;
+	modelName: string;
 	modelProvider: string;
 	modelCategory: 'language' | 'coding' | 'reasoning' | 'vision' | 'audio' | 'image' | 'video' | 'embedding' | 'other';
 	modelIconUrl?: string;
-	role: string;
+	role: "primary" | "secondary" | "specialized";
 };
 
 type CreatorProfile = {
@@ -79,6 +78,7 @@ type StackEditorInitialValue = {
 	published: boolean;
 	toolSubscriptions: ToolSubscriptionEntry[];
 	bundleSubscriptions: BundleSubscriptionEntry[];
+	modelSubscriptions: ModelSubscriptionEntry[];
 	personalPageUrl?: string;
 	projectPageUrl?: string;
 	avatarUrl?: string;

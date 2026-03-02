@@ -1,6 +1,6 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useRef } from "react";
 import type { InstructionItem, ModelSubscriptionEntry, StackEditorInitialValue, StackEditorMode } from "@/features/stack-editor/types";
-import { editorReducer, getInitialEditorState } from "@/features/stack-editor/state/editorReducer";
+import { editorReducer, getDraftKey, getInitialEditorState } from "@/features/stack-editor/state/editorReducer";
 import { selectGuestDraft } from "@/features/stack-editor/state/editorSelectors";
 import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
 import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
@@ -12,38 +12,34 @@ type UseEditorStateArgs = {
 	initialValue?: StackEditorInitialValue;
 };
 
+export type { UseEditorStateArgs };
+
 function useEditorState({ mode, guestSession, actor, initialValue }: UseEditorStateArgs) {
 	const [state, dispatch] = useReducer(editorReducer, {
 		actor,
 		initialValue,
+		mode,
+		guestSession,
 	}, getInitialEditorState);
+	
+	const hasLoadedInitialData = useRef(false);
+	const draftSavingDisabled = useRef(false);
 
+	// Mark as loaded after first render
 	useEffect(() => {
-		if (!(guestSession && mode === "create")) {
-			return;
-		}
+		hasLoadedInitialData.current = true;
+	}, []);
 
-		const saved = localStorage.getItem("guestStack");
-		if (!saved) {
-			return;
-		}
-
-		try {
-			dispatch({
-				type: "guestDraft/loaded",
-				draft: JSON.parse(saved),
-			});
-		} catch (cause) {
-			console.error("Failed to load guest stack from localStorage", cause);
-		}
-	}, [guestSession, mode]);
-
+	// Save draft to localStorage on every state change (for both guest and authenticated users)
+	// Only save after initial data has been loaded to prevent overwriting
+	// Skip if draft saving was disabled (e.g. after a successful save/publish)
 	useEffect(() => {
-		if (!guestSession) {
+		if (!hasLoadedInitialData.current || draftSavingDisabled.current) {
 			return;
 		}
-		localStorage.setItem("guestStack", JSON.stringify(selectGuestDraft(state)));
-	}, [guestSession, state]);
+		const draftKey = getDraftKey(initialValue?.slug);
+		localStorage.setItem(draftKey, JSON.stringify(selectGuestDraft(state)));
+	}, [state]);
 
 	return {
 		state,
@@ -79,6 +75,13 @@ function useEditorState({ mode, guestSession, actor, initialValue }: UseEditorSt
 			dispatch({ type: "ui/signInDialogToggled", open }),
 		setActiveSection: (section: "profile" | "tools" | "bundles" | "description" | "settings") =>
 			dispatch({ type: "navigation/activeSectionChanged", section }),
+		revertDraft: () => {
+			if (initialValue) {
+				dispatch({ type: "draft/reverted", initialValue });
+			}
+		},
+		dismissDraft: () => dispatch({ type: "draft/dismissed" }),
+		disableDraftSaving: () => { draftSavingDisabled.current = true; },
 	};
 }
 

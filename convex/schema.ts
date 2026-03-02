@@ -123,7 +123,7 @@ export default defineSchema({
     projectPageUrl: v.optional(v.string()),
     toolSubscriptions: v.array(
       v.object({
-        toolId: v.id('tools'),
+        toolSlug: v.string(),
         tierId: v.optional(v.string()),
         kind: v.union(v.literal('main'), v.literal('misc')),
         primaryUsageLabel: v.string(),
@@ -141,9 +141,17 @@ export default defineSchema({
     bundleSubscriptions: v.optional(
       v.array(
         v.object({
-          bundleId: v.id('bundles'),
+          bundleSlug: v.string(),
           tierId: v.string(),
           notes: v.optional(v.string()),
+        }),
+      ),
+    ),
+    modelSubscriptions: v.optional(
+      v.array(
+        v.object({
+          modelSlug: v.string(),
+          role: v.union(v.literal('primary'), v.literal('secondary'), v.literal('specialized')),
         }),
       ),
     ),

@@ -38,20 +38,20 @@ export function ModelPicker({ value, onChange, onModelClick }: ModelPickerProps)
     const [showAddModal, setShowAddModal] = useState(false);
     const [customModelName, setCustomModelName] = useState("");
 
-    const selectedModelIds = new Set(value.map((m) => m.modelId));
+    const selectedModelSlugs = new Set(value.map((m) => m.modelSlug));
 
     const availableCategories = useMemo(() => {
         const categories = new Set<ModelCategory>();
         for (const model of allModels) {
-            if (!selectedModelIds.has(model._id)) {
+            if (!selectedModelSlugs.has(model.slug)) {
                 categories.add(model.category);
             }
         }
         return Array.from(categories).sort();
-    }, [allModels, selectedModelIds]);
+    }, [allModels, selectedModelSlugs]);
 
     const filteredModels = useMemo(() => {
-        let models = allModels.filter((m) => !selectedModelIds.has(m._id));
+        let models = allModels.filter((m) => !selectedModelSlugs.has(m.slug));
 
         if (selectedCategory) {
             models = models.filter((m) => m.category === selectedCategory);
@@ -67,16 +67,15 @@ export function ModelPicker({ value, onChange, onModelClick }: ModelPickerProps)
         }
 
         return models;
-    }, [allModels, selectedModelIds, selectedCategory, search]);
+    }, [allModels, selectedModelSlugs, selectedCategory, search]);
 
     const addModel = (modelId: Id<"models">) => {
         const model = allModels.find((m) => m._id === modelId);
         if (!model) return;
 
         const entry: ModelSubscriptionEntry = {
-            modelId: model._id,
-            modelName: model.name,
             modelSlug: model.slug,
+            modelName: model.name,
             modelProvider: model.provider,
             modelCategory: model.category,
             modelIconUrl: model.iconUrl,
@@ -92,9 +91,8 @@ export function ModelPicker({ value, onChange, onModelClick }: ModelPickerProps)
     const addCustomModel = () => {
         if (!customModelName.trim()) return;
         const entry: ModelSubscriptionEntry = {
-            modelId: `custom-${Date.now()}` as Id<"models">,
-            modelName: customModelName.trim(),
             modelSlug: customModelName.trim().toLowerCase().replace(/\s+/g, "-"),
+            modelName: customModelName.trim(),
             modelProvider: "Custom",
             modelCategory: "other",
             role: "primary",
@@ -110,7 +108,7 @@ export function ModelPicker({ value, onChange, onModelClick }: ModelPickerProps)
                 <div className="space-y-2">
                     {value.map((entry, index) => (
                         <ModelEntry
-                            key={`${entry.modelId}-${index}`}
+                            key={`${entry.modelSlug}-${index}`}
                             entry={entry}
                             onRemove={() => removeModel(index)}
                             onClick={() => onModelClick?.(entry)}
@@ -175,32 +173,34 @@ export function ModelPicker({ value, onChange, onModelClick }: ModelPickerProps)
                         />
                     }
                 >
-                    {/* Model Grid */}
-                    <div className="grid grid-cols-4 gap-2">
-                        {filteredModels.slice(0, 15).map((model) => (
+                    {/* Model List - Full Row */}
+                    <div className="max-h-[480px] overflow-y-auto">
+                    <div className="flex flex-col gap-2">
+                        {filteredModels.map((model) => (
                             <button
                                 key={model._id}
                                 type="button"
                                 onClick={() => addModel(model._id)}
-                                className="group flex flex-col items-center gap-1 border border-stroke-subtle bg-bg-panel p-2 transition-all hover:border-accent-lime hover:bg-accent-lime/5"
+                                className="group flex w-full items-center gap-3 border border-stroke-subtle bg-bg-panel p-2 transition-all hover:border-accent-lime hover:bg-accent-lime/5"
                                 title={model.name}
                             >
                                 {model.iconUrl ? (
                                     <img
                                         src={model.iconUrl}
                                         alt={model.name}
-                                        className="size-8 rounded object-contain"
+                                        className="size-8 shrink-0 rounded object-contain"
                                     />
                                 ) : (
-                                    <div className="flex size-8 items-center justify-center border border-stroke-subtle bg-bg-panel-muted">
+                                    <div className="flex size-8 shrink-0 items-center justify-center border border-stroke-subtle bg-bg-panel-muted">
                                         <Brain className="size-4 text-fg-muted" />
                                     </div>
                                 )}
-                                <span className="w-full truncate text-center font-mono text-[9px] uppercase text-fg-muted group-hover:text-accent-lime">
+                                <span className="truncate font-mono text-xs uppercase text-fg-muted group-hover:text-accent-lime">
                                     {model.name}
                                 </span>
                             </button>
                         ))}
+                    </div>
                     </div>
                 </PickerBrowser>
             )}

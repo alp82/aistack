@@ -27,6 +27,7 @@ type ViewTool = {
 	_id: string;
 	name: string;
 	categories: string[];
+	iconUrl?: string;
 	price: {
 		pricingType: string;
 		fixed?: { currency: string; amount: number; period: string };
@@ -39,6 +40,7 @@ type ViewBundle = {
 	_id: string;
 	name: string;
 	description?: string;
+	iconUrl?: string;
 	tierName: string;
 	price: {
 		pricingType: string;
@@ -51,6 +53,7 @@ type ViewInstruction = {
 	type: InstructionType;
 	name: string;
 	description?: string;
+	content?: string;
 };
 
 function ViewLookupDataSync({ 
@@ -70,6 +73,7 @@ function ViewLookupDataSync({
 			toolMap.set(tool.name, {
 				name: tool.name,
 				categories: tool.categories,
+				iconUrl: tool.iconUrl,
 				price: tool.price.fixed ? { amount: tool.price.fixed.amount, period: tool.price.fixed.period } : undefined,
 				tierName: tool.primaryUsageLabel,
 				notes: tool.notes,
@@ -83,6 +87,7 @@ function ViewLookupDataSync({
 		for (const bundle of bundles) {
 			bundleMap.set(bundle.name, {
 				name: bundle.name,
+				iconUrl: bundle.iconUrl,
 				price: bundle.price.fixed ? { amount: bundle.price.fixed.amount, period: bundle.price.fixed.period } : undefined,
 				tierName: bundle.tierName,
 				description: bundle.description,
@@ -190,7 +195,7 @@ function StackDetailsPage() {
 			{mainTools.length > 0 && (
 				<div>
 					<h3 className="mb-4 font-mono text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-accent-lime">
-						Main Tools
+						Tools
 					</h3>
 					<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
 						{mainTools.map((tool) => (
@@ -204,7 +209,7 @@ function StackDetailsPage() {
 			{miscTools.length > 0 && (
 				<div>
 					<h3 className="mb-4 font-mono text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-accent-lime">
-						Other Tools
+						Secondary Tools
 					</h3>
 					<div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
 						{miscTools.map((tool) => (
@@ -493,6 +498,7 @@ function StackDetailsPage() {
 				<ViewSidebar
 					tools={stack.tools}
 					bundles={stack.bundles}
+					models={stack.models}
 					instructions={stack.instructions ?? []}
 					onBundleClick={scrollToBundle}
 				/>

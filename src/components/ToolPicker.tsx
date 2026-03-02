@@ -18,9 +18,8 @@ import {
 import { PickerEntryCard, PickerToggleButton, PickerBrowser, TierSelector } from "./picker";
 
 export interface ToolSubscriptionEntry {
-	toolId: Id<"tools">;
-	toolName: string;
 	toolSlug: string;
+	toolName: string;
 	toolCategories: string[];
 	toolIconUrl?: string;
 	tierId?: string;
@@ -61,22 +60,22 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 	const [customToolName, setCustomToolName] = useState("");
 	const { hoveredToolName } = useEditorContext();
 
-	const selectedToolIds = new Set(value.map((t) => t.toolId));
+	const selectedToolSlugs = new Set(value.map((t) => t.toolSlug));
 
 	const availableCategories = useMemo(() => {
 		const categories = new Set<ToolCategory>();
 		for (const tool of allTools) {
-			if (!selectedToolIds.has(tool._id)) {
+			if (!selectedToolSlugs.has(tool.slug)) {
 				for (const cat of tool.categories) {
 					categories.add(cat as ToolCategory);
 				}
 			}
 		}
 		return Array.from(categories).sort();
-	}, [allTools, selectedToolIds]);
+	}, [allTools, selectedToolSlugs]);
 
 	const filteredTools = useMemo(() => {
-		let tools = allTools.filter((t) => !selectedToolIds.has(t._id));
+		let tools = allTools.filter((t) => !selectedToolSlugs.has(t.slug));
 		
 		if (selectedCategory) {
 			tools = tools.filter((t) => t.categories.includes(selectedCategory));
@@ -92,7 +91,7 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 		}
 		
 		return tools;
-	}, [allTools, search, selectedToolIds, selectedCategory]);
+	}, [allTools, search, selectedToolSlugs, selectedCategory]);
 
 	const addTool = (toolId: Id<"tools">) => {
 		const tool = allTools.find((t) => t._id === toolId);
@@ -100,9 +99,8 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 
 		const defaultTier = tool.tiers.find((t) => t.isDefault) ?? tool.tiers[0];
 		const entry: ToolSubscriptionEntry = {
-			toolId: tool._id,
-			toolName: tool.name,
 			toolSlug: tool.slug,
+			toolName: tool.name,
 			toolCategories: tool.categories,
 			toolIconUrl: tool.iconUrl,
 			tierId: defaultTier?.tierId,
@@ -139,9 +137,8 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 	const addCustomTool = () => {
 		if (!customToolName.trim()) return;
 		const entry: ToolSubscriptionEntry = {
-			toolId: `custom-${Date.now()}` as Id<"tools">,
-			toolName: customToolName.trim(),
 			toolSlug: customToolName.trim().toLowerCase().replace(/\s+/g, "-"),
+			toolName: customToolName.trim(),
 			toolCategories: [],
 			kind: "main",
 			primaryUsageLabel: "Custom",
@@ -166,7 +163,7 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 				<div className="space-y-2">
 					{value.map((entry, index) => (
 						<ToolEntry
-							key={`${entry.toolId}-${index}`}
+							key={`${entry.toolSlug}-${index}`}
 							entry={entry}
 							onUpdate={(updates) => updateTool(index, updates)}
 							onRemove={() => removeTool(index)}
@@ -241,8 +238,9 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 					}
 				>
 					{/* Tool Grid - 4 per row */}
+					<div className="max-h-[480px] overflow-y-auto">
 					<div className="grid grid-cols-4 gap-2">
-						{filteredTools.slice(0, 16).map((tool) => (
+						{filteredTools.map((tool) => (
 							<button
 								key={tool._id}
 								type="button"
@@ -267,6 +265,7 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 							</button>
 						))}
 					</div>
+					</div>
 				</PickerBrowser>
 			)}
 
@@ -287,6 +286,7 @@ interface ToolEntryProps {
 	isHighlighted?: boolean;
 	allTools: Array<{
 		_id: Id<"tools">;
+		slug: string;
 		tiers: Array<{
 			tierId: string;
 			name: string;
@@ -310,7 +310,7 @@ interface ToolEntryProps {
 function ToolEntry({ entry, onUpdate, onRemove, onClick, isHighlighted, allTools }: ToolEntryProps) {
 	const [expanded, setExpanded] = useState(false);
 	const cardRef = useRef<HTMLDivElement>(null);
-	const tool = allTools.find((t) => t._id === entry.toolId);
+	const tool = allTools.find((t) => t.slug === entry.toolSlug);
 	const tiers = tool?.tiers ?? [];
 
 	// Scroll into view when highlighted

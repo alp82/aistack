@@ -3,7 +3,6 @@ import { useMutation, useQuery } from "convex/react";
 import { CheckCircle, Save, Send } from "lucide-react";
 import { useCallback, useRef, useEffect } from "react";
 import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
 import type { ModelSubscriptionEntry, InstructionItem } from "@/features/stack-editor/types";
 import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
 import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
@@ -12,6 +11,7 @@ import {
 	selectSavePayload,
 	selectSaveValidationError,
 } from "@/features/stack-editor/state/editorSelectors";
+import { getDraftKey } from "@/features/stack-editor/state/editorReducer";
 import { useEditorState } from "@/features/stack-editor/state/useEditorState";
 import { EditorProvider, useEditorContext, type ToolLookupData, type ModelLookupData, type BundleLookupData, type InstructionLookupData } from "@/features/stack-editor/context/EditorContext";
 import { DetailsStep } from "@/features/stack-editor/components/DetailsStep";
@@ -42,6 +42,7 @@ function LookupDataSync({
 			toolMap.set(tool.toolName, {
 				name: tool.toolName,
 				categories: tool.toolCategories,
+				iconUrl: tool.toolIconUrl,
 				price: tool.price.fixed ? { amount: tool.price.fixed.amount, period: tool.price.fixed.period } : undefined,
 				tierName: tool.primaryUsageLabel,
 				notes: tool.notes,
@@ -56,6 +57,7 @@ function LookupDataSync({
 			modelMap.set(model.modelName, {
 				name: model.modelName,
 				provider: model.modelProvider,
+				iconUrl: model.modelIconUrl,
 				category: model.modelCategory,
 			});
 		}
@@ -67,6 +69,7 @@ function LookupDataSync({
 		for (const bundle of bundles) {
 			bundleMap.set(bundle.bundleName, {
 				name: bundle.bundleName,
+				iconUrl: bundle.bundleIconUrl ?? undefined,
 				tierName: bundle.tierName,
 				notes: bundle.notes,
 			});
@@ -95,6 +98,7 @@ type StackEditorProps = {
 	guestSession?: boolean;
 	initialValue?: StackEditorInitialValue;
 	defaultAvatarUrl?: string;
+	onNavigating?: () => void;
 };
 
 export function StackEditor({
@@ -103,6 +107,7 @@ export function StackEditor({
 	initialValue,
 	guestSession = false,
 	defaultAvatarUrl,
+	onNavigating,
 }: StackEditorProps) {
 	const navigate = useNavigate();
 	const createStack = useMutation(api.stacks.create);
@@ -127,6 +132,9 @@ export function StackEditor({
 		setPersonalPageUrl,
 		setProjectPageUrl,
 		setAvatarUrl,
+		revertDraft,
+		dismissDraft,
+		disableDraftSaving,
 	} = useEditorState({
 		mode,
 		guestSession,
@@ -149,14 +157,14 @@ export function StackEditor({
 		const currentState = stateRef.current;
 		const currentAllTools = allToolsRef.current;
 
-		// Check if tool is already in the list
-		if (currentState.toolSubscriptions.some((t) => t.toolId === tool._id)) {
-			return;
-		}
-
 		// Find the full tool data
 		const fullTool = currentAllTools.find((t) => t._id === tool._id);
 		if (!fullTool) return;
+
+		// Check if tool is already in the list
+		if (currentState.toolSubscriptions.some((t) => t.toolSlug === fullTool.slug)) {
+			return;
+		}
 
 		const defaultTier = fullTool.tiers.find((t) => t.isDefault) ?? fullTool.tiers[0];
 		if (!defaultTier) return;
@@ -164,9 +172,8 @@ export function StackEditor({
 		setToolSubscriptions([
 			...currentState.toolSubscriptions,
 			{
-				toolId: fullTool._id as Id<"tools">,
-				toolName: fullTool.name,
 				toolSlug: fullTool.slug,
+				toolName: fullTool.name,
 				toolCategories: fullTool.categories,
 				toolIconUrl: fullTool.iconUrl ?? undefined,
 				tierId: defaultTier.tierId,
@@ -189,19 +196,18 @@ export function StackEditor({
 		const currentState = stateRef.current;
 		const currentAllModels = allModelsRef.current;
 
-		// Check if model is already in the list
-		if (currentState.modelSubscriptions.some((m) => m.modelId === model._id)) {
-			return;
-		}
-
 		// Find the full model data
 		const fullModel = currentAllModels.find((m) => m._id === model._id);
 		if (!fullModel) return;
 
+		// Check if model is already in the list
+		if (currentState.modelSubscriptions.some((m) => m.modelSlug === fullModel.slug)) {
+			return;
+		}
+
 		const entry: ModelSubscriptionEntry = {
-			modelId: fullModel._id as Id<"models">,
-			modelName: fullModel.name,
 			modelSlug: fullModel.slug,
+			modelName: fullModel.name,
 			modelProvider: fullModel.provider,
 			modelCategory: fullModel.category,
 			modelIconUrl: fullModel.iconUrl,
@@ -246,8 +252,13 @@ export function StackEditor({
 
 			const payload = selectSavePayload(state, publish);
 
+			// Disable draft auto-save BEFORE the mutation to prevent race conditions
+			disableDraftSaving();
+
 			if (mode === "create") {
 				const result = await createStack(payload);
+				localStorage.removeItem(getDraftKey(undefined));
+				onNavigating?.();
 				navigate({ to: "/stacks/$slug", params: { slug: result.slug } });
 				return;
 			}
@@ -257,10 +268,13 @@ export function StackEditor({
 					stackId: initialValue._id,
 					...payload,
 				});
-				navigate({
-					to: "/stacks/$slug",
-					params: { slug: initialValue.slug },
-				});
+				localStorage.removeItem(getDraftKey(initialValue.slug));
+				if (publish) {
+					navigate({
+						to: "/stacks/$slug",
+						params: { slug: initialValue.slug },
+					});
+				}
 			}
 		} catch (cause) {
 			setError(cause instanceof Error ? cause.message : "Failed to save stack");
@@ -365,6 +379,29 @@ export function StackEditor({
 									</div>
 								)}
 							</header>
+
+							{state.restoredFromDraft && (
+								<div className="mb-6 flex items-center justify-between gap-4 border-2 border-amber-500/30 bg-amber-500/10 p-3 font-mono text-sm text-amber-400">
+									<span>Unsaved changes restored from your last session.</span>
+									<div className="flex items-center gap-2 flex-shrink-0">
+										<button
+											type="button"
+											onClick={revertDraft}
+											className="px-3 py-1 border border-amber-500/40 text-xs font-bold uppercase tracking-wider hover:bg-amber-500/20 transition-colors cursor-pointer"
+										>
+											Revert
+										</button>
+										<button
+											type="button"
+											onClick={dismissDraft}
+											className="px-3 py-1 text-xs font-bold uppercase tracking-wider text-fg-muted hover:text-fg-secondary transition-colors cursor-pointer"
+										>
+											Dismiss
+										</button>
+									</div>
+								</div>
+							)}
+
 							{/* Stack Details Section */}
 							<DetailsStep
 								creator={actor}

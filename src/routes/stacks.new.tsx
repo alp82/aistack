@@ -1,7 +1,7 @@
 import { useConvexAuth } from "@convex-dev/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { StackEditor } from "@/components/StackEditor";
 import { Button } from "@/components/ui/button";
 import { api } from "../../convex/_generated/api";
@@ -29,6 +29,7 @@ function NewStackPage() {
 	} | null>(null);
 	const [loadingCreator, setLoadingCreator] = useState(true);
 	const [isGuest, setIsGuest] = useState(false);
+	const navigatingRef = useRef(false);
 
 	// Get user's Google profile image as default
 	const userImageUrl = session.data?.user?.image ?? undefined;
@@ -49,7 +50,8 @@ function NewStackPage() {
 		}
 
 		// Authenticated user - check if they already have a stack
-		if (userStack !== undefined && userStack !== null) {
+		// Skip redirect if we just created a stack (handleSave navigates to detail page)
+		if (userStack !== undefined && userStack !== null && !navigatingRef.current) {
 			window.location.href = `/stacks/${userStack.slug}/edit`;
 			return;
 		}
@@ -93,5 +95,5 @@ function NewStackPage() {
 		);
 	}
 
-	return <StackEditor mode="create" actor={creator} guestSession={isGuest} defaultAvatarUrl={userImageUrl} />;
+	return <StackEditor mode="create" actor={creator} guestSession={isGuest} defaultAvatarUrl={userImageUrl} onNavigating={() => { navigatingRef.current = true; }} />;
 }

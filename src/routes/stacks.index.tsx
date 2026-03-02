@@ -1,6 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
+import { useConvexAuth } from "convex/react";
 import { useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { PageHeader } from "@/components/PageHeader";
 import { SortDropdown } from "@/components/SortDropdown";
@@ -94,7 +96,10 @@ export const Route = createFileRoute("/stacks/")({
 });
 
 function BrowseStacksPage() {
+	const navigate = useNavigate();
+	const { isAuthenticated } = useConvexAuth();
 	const stacks = (useQuery(api.stacks.listPublished) ?? []) as LandingStackPreview[];
+	const userStack = useQuery(api.stacks.getUserStack);
 	const [toolFilter, setToolFilter] = useState<string>("all");
 	const [sortOption, setSortOption] = useState<SortOption>("newest");
 
@@ -109,6 +114,14 @@ function BrowseStacksPage() {
 		...categoryOptions,
 	];
 
+	const handleAddStack = () => {
+		if (isAuthenticated && userStack) {
+			navigate({ to: `/stacks/${userStack.slug}/edit` });
+		} else {
+			navigate({ to: "/stacks/new" });
+		}
+	};
+
 	return (
 		<div className="min-h-screen bg-bg-canvas">
 			<section className="py-24 px-6 md:px-12">
@@ -117,6 +130,11 @@ function BrowseStacksPage() {
 						label="STACK_BROWSER"
 						title="ALL STACKS"
 						description="See what tools real builders are paying for. Filter, compare, and find the stack that fits your needs."
+						action={{
+							label: isAuthenticated && userStack ? "Edit Your Stack" : "Add Stack",
+							icon: <Plus size={18} />,
+							onClick: handleAddStack,
+						}}
 					/>
 
 					{/* Filter Pills + Sorting */}
