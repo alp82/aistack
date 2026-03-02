@@ -130,7 +130,7 @@ export default function Header() {
 						>
 							Tools
 						</Link>
-						<Link
+						{/* <Link
 							to="/about"
 							className={cn(
 								"font-mono text-xs font-semibold uppercase tracking-[0.15em] transition-colors",
@@ -138,7 +138,7 @@ export default function Header() {
 							)}
 						>
 							About
-						</Link>
+						</Link> */}
 					</nav>
 				</div>
 
