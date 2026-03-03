@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![AI Stack Logo](public/aistack-logo.png)
+[![AI Stack Demo](public/aistack-demo.mp4)](https://aistack.to)
 
 **A curated platform for discovering, comparing, and sharing AI technology stacks**
 

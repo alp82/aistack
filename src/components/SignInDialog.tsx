@@ -21,7 +21,7 @@ export function SignInDialog({ isOpen, onClose, message, redirectTo }: SignInDia
 				className="absolute inset-0 bg-black/60 backdrop-blur-sm"
 				onClick={onClose}
 			/>
-			<div className="relative bg-slate-800 rounded-xl border border-gray-700 shadow-2xl max-w-md w-full mx-4 p-6">
+			<div className="relative bg-slate-800 rounded-xl border border-gray-700 shadow-2xl max-w-[28rem] w-full mx-4 p-6">
 				<Button
 					variant="ghost"
 					size="icon"
