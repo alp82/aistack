@@ -2,8 +2,7 @@
 
 <div align="center">
 
-[![AI Stack Demo](public/aistack-demo.mp4)](https://aistack.to)
-<video src="public/aistack-demo.mp4" width="100%" autoplay loop muted controls></video>
+[![AI Stack Demo](public/aistack-demo.gif)](https://aistack.to)
 
 **A curated platform for discovering, comparing, and sharing AI technology stacks**
 
@@ -24,20 +23,10 @@ AI Stack is a web application designed to help developers and teams discover, co
 
 - **Discover** AI tools and frameworks organized by stack
 - **Compare** different stacks side by side and cut costs for your own usage
-- **Share** your own AI stacks with the community (create at `/stacks/new`, edit at `/stacks/$slug/edit`)
-- **Add Tools** inline during stack creation via a modal form
-- **Authentication** via email/password and Google SSO, with email verification and password reset
+- **Share** your own AI stacks with the community
+- **Add Missing Tools** inline during stack creation or in batch mode
 - **Stay Updated** with the latest AI technology trends
-
-## 🎨 Design Language (2026 UI Refresh)
-
-The current UI direction is **A3: Terminal-first Swiss Brutal**.
-
-- **Dark-only** visual system
-- **Acid-lime** accent family for primary interactions and key status moments
-- Swiss-style spacing/grid discipline with terminal utility cues
-- Strong section/status language in the stack editor (active/complete/error)
-- Shared system shells and tokens to keep visual consistency across landing + editor
+- **Authentication** via email/password and Google SSO
 
 ## 🛠 Tech Stack
 
