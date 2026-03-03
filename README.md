@@ -3,6 +3,7 @@
 <div align="center">
 
 [![AI Stack Demo](public/aistack-demo.mp4)](https://aistack.to)
+<video src="public/aistack-demo.mp4" width="100%" autoplay loop muted controls></video>
 
 **A curated platform for discovering, comparing, and sharing AI technology stacks**
 
