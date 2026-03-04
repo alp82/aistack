@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { MagicLinkForm } from "../components/MagicLinkForm";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { TiptapEditor } from "../components/TiptapEditor";
@@ -357,7 +358,20 @@ function SignInPublishContent() {
 						</div>
 						<div className="relative flex justify-center">
 							<span className="bg-bg-panel px-4 font-mono text-xs uppercase tracking-widest text-fg-muted">
-								Or
+								Or use a magic link
+							</span>
+						</div>
+					</div>
+
+					<MagicLinkForm callbackURL={redirect || "/stacks/new"} disabled={loading} />
+
+					<div className="relative">
+						<div className="absolute inset-0 flex items-center">
+							<span className="w-full border-t-2 border-stroke-subtle" />
+						</div>
+						<div className="relative flex justify-center">
+							<span className="bg-bg-panel px-4 font-mono text-xs uppercase tracking-widest text-fg-muted">
+								Or use email & password
 							</span>
 						</div>
 					</div>

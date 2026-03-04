@@ -1,4 +1,5 @@
 import { betterAuth } from 'better-auth/minimal'
+import { magicLink } from 'better-auth/plugins'
 import { createClient } from '@convex-dev/better-auth'
 import { convex } from '@convex-dev/better-auth/plugins'
 import authConfig from './auth.config'
@@ -9,6 +10,7 @@ import { Resend } from 'resend'
 import { render } from '@react-email/render'
 import { VerifyEmail } from '../src/emails/VerifyEmail'
 import { ResetPasswordEmail } from '../src/emails/ResetPasswordEmail'
+import { MagicLinkEmail } from '../src/emails/MagicLinkEmail'
 
 // @ts-ignore - components will be generated after convex dev restarts
 import { components } from './_generated/api'
@@ -69,7 +71,33 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
         clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
       },
     },
-    plugins: [convex({ authConfig })],
+    plugins: [
+      magicLink({
+        sendMagicLink: async ({ email, url }: { email: string; url: string }) => {
+          console.log('[auth] sendMagicLink called for:', email)
+          try {
+            const resend = new Resend(process.env.RESEND_API_KEY!)
+            const html = await render(
+              MagicLinkEmail({ productName: 'AI Stack', magicLinkUrl: url })
+            )
+            const { data, error } = await resend.emails.send({
+              from: process.env.EMAIL_FROM || 'onboarding@resend.dev',
+              to: email,
+              subject: 'Sign in to AI Stack',
+              html,
+            })
+            if (error) {
+              console.error('[auth] Resend error sending magic link:', error)
+            } else {
+              console.log('[auth] Magic link email sent successfully, id:', data?.id)
+            }
+          } catch (err) {
+            console.error('[auth] Exception sending magic link:', err)
+          }
+        },
+      }),
+      convex({ authConfig }),
+    ],
   })
 }
 
