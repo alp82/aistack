@@ -153,7 +153,7 @@ function getInitialEditorState(args: {
 	}
 
 	return {
-		name: savedDraft?.name ?? initialValue?.name ?? `${actor.name ?? "My"}'s Stack`,
+		name: savedDraft?.name ?? initialValue?.name ?? actor.name ?? "My Stack",
 		oneLiner: savedDraft?.oneLiner ?? initialValue?.oneLiner ?? "",
 		description: savedDraft?.description ?? initialValue?.description ?? "",
 		instructions: savedDraft?.instructions ?? initialValue?.instructions ?? [],

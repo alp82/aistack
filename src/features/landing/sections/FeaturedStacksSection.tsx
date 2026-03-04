@@ -40,10 +40,14 @@ type AudienceFilter = "all" | "solo" | "team";
 function getCategoryOptions(previewStacks: LandingStackPreview[]) {
 	const counts = new Map<string, number>();
 	for (const stack of previewStacks) {
+		const stackCategories = new Set<string>();
 		for (const tool of stack.tools) {
 			for (const cat of tool.categories) {
-				counts.set(cat, (counts.get(cat) ?? 0) + 1);
+				stackCategories.add(cat);
 			}
+		}
+		for (const cat of stackCategories) {
+			counts.set(cat, (counts.get(cat) ?? 0) + 1);
 		}
 	}
 

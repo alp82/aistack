@@ -371,7 +371,7 @@ export function StackEditor({
 													className="inline-flex items-center gap-2 px-4 py-2 border-2 border-accent-lime bg-accent-lime font-mono text-xs font-bold uppercase tracking-wider text-accent-lime-contrast hover:bg-accent-lime-strong transition-colors disabled:opacity-50 cursor-pointer"
 												>
 													<Send className="size-4" />
-													{state.saving ? "Publishing..." : "Publish"}
+													{state.saving ? "Publishing..." : guestSession ? "Signup & Publish" : "Publish"}
 												</button>
 											</>
 										)}

@@ -153,8 +153,9 @@ function SignInPublishContent() {
 									<p className="font-mono text-[10px] uppercase tracking-widest text-fg-muted mb-1">
 										Description
 									</p>
-									<div className="text-sm text-fg-secondary line-clamp-3 overflow-hidden">
-										<TiptapEditor content={guestDraft.description} editable={false} />
+									<div className="relative max-h-40 overflow-hidden text-sm text-fg-secondary">
+										<TiptapEditor content={guestDraft.description} editable={false} className="space-y-2 [&_.ProseMirror]:min-h-0" />
+										<div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-bg-panel to-transparent" />
 									</div>
 								</div>
 							)}

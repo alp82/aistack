@@ -24,19 +24,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: true,
-      requireEmailVerification: process.env.IS_DEV !== 'true',
-      sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string }) => {
-        const resend = new Resend(process.env.RESEND_API_KEY!)
-        const html = await render(
-          VerifyEmail({ productName: 'AI Stack', verifyUrl: url })
-        )
-        await resend.emails.send({
-          from: process.env.EMAIL_FROM || 'onboarding@resend.dev',
-          to: user.email,
-          subject: 'Verify your AI Stack email',
-          html,
-        })
-      },
+      requireEmailVerification: true,
       sendResetPassword: async ({ user, url }: { user: { email: string }; url: string }) => {
         const resend = new Resend(process.env.RESEND_API_KEY!)
         const html = await render(
@@ -48,6 +36,31 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
           subject: 'Reset your AI Stack password',
           html,
         })
+      },
+    },
+    emailVerification: {
+      sendOnSignUp: true,
+      sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string }) => {
+        console.log('[auth] sendVerificationEmail called for:', user.email)
+        try {
+          const resend = new Resend(process.env.RESEND_API_KEY!)
+          const html = await render(
+            VerifyEmail({ productName: 'AI Stack', verifyUrl: url })
+          )
+          const { data, error } = await resend.emails.send({
+            from: process.env.EMAIL_FROM || 'onboarding@resend.dev',
+            to: user.email,
+            subject: 'Verify your AI Stack email',
+            html,
+          })
+          if (error) {
+            console.error('[auth] Resend error sending verification email:', error)
+          } else {
+            console.log('[auth] Verification email sent successfully, id:', data?.id)
+          }
+        } catch (err) {
+          console.error('[auth] Exception sending verification email:', err)
+        }
       },
     },
     socialProviders: {

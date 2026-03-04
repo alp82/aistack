@@ -1,3 +1,4 @@
+import { convexQuery } from "@convex-dev/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { useConvexAuth } from "convex/react";
@@ -81,6 +82,11 @@ function getCategoryBorderColor(category: string): string {
 export const Route = createFileRoute("/stacks/")({
 	ssr: false,
 	component: BrowseStacksPage,
+	loader: async ({ context }) => {
+		await context.queryClient.prefetchQuery(
+			convexQuery(api.stacks.listPublished, {}),
+		);
+	},
 	head: () => ({
 		meta: [
 			{

@@ -37,8 +37,8 @@ function AdminPage() {
 
 	if (isAdmin === undefined) {
 		return (
-			<div className="min-h-screen flex items-center justify-center">
-				<div className="text-gray-400">Loading...</div>
+			<div className="flex min-h-screen items-center justify-center bg-bg-canvas">
+				<div className="font-mono text-sm text-fg-muted">Loading...</div>
 			</div>
 		);
 	}

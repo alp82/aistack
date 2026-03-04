@@ -41,7 +41,7 @@ function NewStackPage() {
 		if (!isAuthenticated) {
 			setCreator({
 				_id: "guest",
-				name: "Guest User",
+				name: "My AI Stack",
 				slug: "guest",
 			});
 			setIsGuest(true);
@@ -69,24 +69,24 @@ function NewStackPage() {
 
 	if (isLoading || loadingCreator) {
 		return (
-			<div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
-				<div className="text-gray-400">Loading...</div>
+			<div className="flex min-h-screen items-center justify-center bg-bg-canvas">
+				<div className="font-mono text-sm text-fg-muted">Loading...</div>
 			</div>
 		);
 	}
 
 	if (!creator) {
 		return (
-			<div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
+			<div className="flex min-h-screen items-center justify-center bg-bg-canvas">
 				<div className="text-center">
-					<h1 className="text-2xl font-bold text-white mb-4">
+					<h1 className="mb-4 text-2xl font-bold text-fg-primary">
 						Could not create your profile
 					</h1>
 					<Button
 						type="button"
 						variant="link"
 						onClick={() => navigate({ to: "/" })}
-						className="text-cyan-400 hover:text-cyan-300 hover:no-underline p-0 h-auto font-normal"
+						className="font-mono text-sm text-accent-lime hover:text-accent-lime-strong hover:no-underline p-0 h-auto font-normal"
 					>
 						← Back to home
 					</Button>

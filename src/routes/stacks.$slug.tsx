@@ -1,3 +1,4 @@
+import { convexQuery } from "@convex-dev/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation } from "convex/react";
 import { useConvexAuth } from "convex/react";
@@ -115,6 +116,11 @@ function ViewLookupDataSync({
 export const Route = createFileRoute("/stacks/$slug")({
 	ssr: false,
 	component: StackDetailsPage,
+	loader: async ({ context, params }) => {
+		await context.queryClient.prefetchQuery(
+			convexQuery(api.stacks.getBySlug, { slug: params.slug }),
+		);
+	},
 });
 
 function StackDetailsPage() {
@@ -122,6 +128,7 @@ function StackDetailsPage() {
 	const navigate = useNavigate();
 	const { isAuthenticated } = useConvexAuth();
 	const stack = useQuery(api.stacks.getBySlug, { slug });
+	const userStack = useQuery(api.stacks.getUserStack);
 	const upvoteStatus = useQuery(
 		api.stacks.getUpvoteStatus,
 		stack ? { stackId: stack._id } : "skip"
@@ -511,8 +518,8 @@ function StackDetailsPage() {
 				/>
 			</div>
 
-			{/* CTA Section - only show if not the owner */}
-			{!upvoteStatus?.isOwner && (
+			{/* CTA Section - hide if user already published a stack */}
+			{!upvoteStatus?.isOwner && !userStack && (
 				<section className="bg-accent-lime py-24 px-6 md:px-16 border-t border-lime-500">
 					<div className="mx-auto max-w-3xl text-center">
 						<h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-6 text-black leading-[0.9] uppercase">

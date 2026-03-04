@@ -63,6 +63,7 @@ export default function Header() {
 
 	const userStack = useQuery(api.stacks.getUserStack);
 	const isAdmin = useQuery(api.admin.checkIsAdmin) ?? false;
+	const pendingReviewCount = useQuery(api.admin.getPendingReviewCount);
 
 	useEffect(() => {
 		if (userStack !== undefined) {
@@ -170,10 +171,15 @@ export default function Header() {
 					{isAdmin && (
 						<Link
 							to="/admin"
-							className="hidden items-center gap-1.5 border-2 border-stroke-strong bg-bg-panel px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime md:inline-flex"
+							className="relative hidden items-center gap-1.5 border-2 border-stroke-strong bg-bg-panel px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime md:inline-flex"
 						>
 							<Shield className="size-3.5" />
 							Admin
+							{typeof pendingReviewCount === "number" && pendingReviewCount > 0 && (
+								<span className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-red-500 font-mono text-[10px] font-bold text-white">
+									{pendingReviewCount > 9 ? "9+" : pendingReviewCount}
+								</span>
+							)}
 						</Link>
 					)}
 
