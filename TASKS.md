@@ -16,6 +16,7 @@
     - add update link for own stack page
 * stack editing
     * guest: needs better initial name
+    * max number of team members 99
     * cant remove photo - upload other pic also does not work
     * add go to details link
     * alias for tools and models (amp, opus, etc.)
@@ -26,6 +27,7 @@
         - https://github.com/ueberdosis/tiptap/blob/main/demos/src/Examples/Menus/React/index.jsx
         - https://github.com/ueberdosis/tiptap/blob/main/demos/src/Examples/Menus/React/styles.scss
     * edit sidebar:
+        - missing on mobile
         - stack costs don't update for bundles
         - popular tools to add expanded by default
         - add tools to bundle (shown both in tool editing and in bundle editing)
@@ -33,6 +35,10 @@
         - click to edit, left side arrow to insert into editor
         - more obvious to add new tools that are missing
     * full tool blocks inline in editor (with dialog to edit) - replacing sidebar?
+* stack page dynamic image for og:image
+* multiple stacks per user
+    * work & private
+* Emails with AIS design
 * CLI workflow
     * npx aistack login
     * npx aistack collect

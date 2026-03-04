@@ -137,7 +137,7 @@ function BrowseStacksPage() {
 						title="ALL STACKS"
 						description="See what tools real builders are paying for. Filter, compare, and find the stack that fits your needs."
 						action={{
-							label: isAuthenticated && userStack ? "Edit Your Stack" : "Add Stack",
+							label: isAuthenticated && userStack ? "Update Your Stack" : "Add Stack",
 							icon: <Plus size={18} />,
 							onClick: handleAddStack,
 						}}

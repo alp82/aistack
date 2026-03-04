@@ -318,7 +318,7 @@ export function StackEditor({
 							<header className="sticky top-12 mb-12 py-4 z-20 bg-bg-canvas/95 backdrop-blur-sm border-b border-stroke-subtle">
 								<div className="flex items-center justify-between gap-4">
 									<h1 className="text-2xl md:text-3xl font-black tracking-tighter uppercase text-fg-primary">
-										{mode === "create" ? "Create Stack" : "Edit Stack"}
+										{mode === "create" ? "Create Stack" : "Update Stack"}
 									</h1>
 
 									<div className="flex items-center gap-3 flex-shrink-0">

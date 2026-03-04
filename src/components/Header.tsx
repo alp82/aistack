@@ -1,7 +1,7 @@
 import { useConvexAuth } from "@convex-dev/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { Edit, LogOut, Moon, Plus, Shield, Sun } from "lucide-react";
+import { LogOut, Menu, Moon, Pencil, Plus, Shield, Sun, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { authClient } from "../lib/auth-client";
@@ -41,6 +41,7 @@ export default function Header() {
 	const routerState = useRouterState();
 	const currentPath = routerState.location.pathname;
 	const [menuOpen, setMenuOpen] = useState(false);
+	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 	const menuRef = useRef<HTMLDivElement>(null);
 	const session = authClient.useSession();
 	const userName = session.data?.user?.name || session.data?.user?.email || "";
@@ -101,15 +102,15 @@ export default function Header() {
 	};
 
 	return (
-		<header className="sticky top-0 z-50 h-14 border-b-2 border-stroke-strong bg-bg-canvas px-6">
-			<div className="mx-auto flex h-full max-w-content items-center justify-between">
-				<div className="flex items-center gap-12">
+		<header className="sticky top-0 z-50 border-b-2 border-stroke-strong bg-bg-canvas px-6">
+			<div className="mx-auto flex h-14 max-w-content items-center justify-between">
+				<div className="flex items-center gap-6 md:gap-12">
 					<Link
 						to="/"
 						className="flex items-center gap-2 font-bold tracking-tighter text-xl text-fg-primary transition-colors hover:text-accent-lime"
 					>
 						<div className="w-3 h-3 bg-accent-lime animate-pulse" style={{ boxShadow: '0 0 8px rgba(163, 230, 53, 0.6)' }} />
-						<span className="hidden lg:inline">AI STACK</span>
+						<span className="hidden sm:inline">AI STACK</span>
 					</Link>
 
 					<nav className="hidden items-center gap-8 md:flex">
@@ -143,7 +144,7 @@ export default function Header() {
 					</nav>
 				</div>
 
-				<div className="flex items-center gap-3">
+				<div className="flex items-center gap-2 sm:gap-3">
 					{/* Social links */}
 					<div className="hidden items-center gap-2 sm:flex">
 						<a
@@ -189,15 +190,15 @@ export default function Header() {
 							{userStack || cachedUserStack ? (
 								<a
 									href={`/stacks/${(userStack || cachedUserStack)?.slug}/edit`}
-									className="inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
+									className="hidden sm:inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
 								>
-									<Edit className="size-3.5" />
-									Edit Stack
+									<Pencil className="size-3.5" />
+									Update Stack
 								</a>
 							) : userStack === null ? (
 								<Link
 									to="/stacks/new"
-									className="inline-flex items-center gap-2 border-2 border-accent-lime bg-accent-lime px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong"
+									className="hidden sm:inline-flex items-center gap-2 border-2 border-accent-lime bg-accent-lime px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong"
 								>
 									<Plus className="size-3.5" />
 									Share Stack
@@ -254,7 +255,7 @@ export default function Header() {
 						<>
 							<Link
 								to="/stacks/new"
-								className="inline-flex items-center gap-2 border-2 border-accent-lime bg-accent-lime px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong"
+								className="hidden sm:inline-flex items-center gap-2 border-2 border-accent-lime bg-accent-lime px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong"
 							>
 								<Plus className="size-3.5" />
 								Share Stack
@@ -268,8 +269,121 @@ export default function Header() {
 							</Link>
 						</>
 					)}
+
+					{/* Mobile hamburger */}
+					<button
+						type="button"
+						onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+						className="flex size-8 items-center justify-center text-fg-primary md:hidden"
+						aria-label="Toggle menu"
+					>
+						{mobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+					</button>
 				</div>
 			</div>
+
+			{/* Mobile menu panel */}
+			{mobileMenuOpen && (
+				<div className="border-t-2 border-stroke-strong bg-bg-canvas px-6 py-6 md:hidden">
+					<nav className="flex flex-col gap-4 mb-6">
+						<Link
+							to="/stacks"
+							onClick={() => setMobileMenuOpen(false)}
+							className={cn(
+								"font-mono text-sm font-semibold uppercase tracking-[0.15em] transition-colors",
+								isActive("/stacks") ? "text-accent-lime" : "text-fg-muted hover:text-fg-primary"
+							)}
+						>
+							Stacks
+						</Link>
+						<Link
+							to="/tools"
+							onClick={() => setMobileMenuOpen(false)}
+							className={cn(
+								"font-mono text-sm font-semibold uppercase tracking-[0.15em] transition-colors",
+								isActive("/tools") ? "text-accent-lime" : "text-fg-muted hover:text-fg-primary"
+							)}
+						>
+							Tools
+						</Link>
+					</nav>
+
+					<div className="flex flex-col gap-3">
+						{isAuthenticated ? (
+							<>
+								{userStack || cachedUserStack ? (
+									<a
+										href={`/stacks/${(userStack || cachedUserStack)?.slug}/edit`}
+										onClick={() => setMobileMenuOpen(false)}
+										className="inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-2 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
+									>
+										<Pencil className="size-3.5" />
+										Update Stack
+									</a>
+								) : userStack === null ? (
+									<Link
+										to="/stacks/new"
+										onClick={() => setMobileMenuOpen(false)}
+										className="inline-flex items-center gap-2 border-2 border-accent-lime bg-accent-lime px-3 py-2 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong"
+									>
+										<Plus className="size-3.5" />
+										Share Stack
+									</Link>
+								) : null}
+								<button
+									type="button"
+									onClick={() => { setMobileMenuOpen(false); handleSignOut(); }}
+									className="inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-2 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-secondary transition-colors hover:border-destructive hover:text-destructive"
+								>
+									<LogOut className="size-3.5" />
+									Sign Out
+								</button>
+							</>
+						) : (
+							<>
+								<Link
+									to="/stacks/new"
+									onClick={() => setMobileMenuOpen(false)}
+									className="inline-flex items-center gap-2 border-2 border-accent-lime bg-accent-lime px-3 py-2 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong"
+								>
+									<Plus className="size-3.5" />
+									Share Stack
+								</Link>
+								<Link
+									to="/signin"
+									search={{ redirect: currentPath }}
+									onClick={() => setMobileMenuOpen(false)}
+									className="inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-2 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
+								>
+									Sign In
+								</Link>
+							</>
+						)}
+					</div>
+
+					<div className="mt-6 flex items-center gap-3">
+						<a
+							href="https://x.com/alperortac"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="flex size-8 items-center justify-center text-fg-muted transition-colors hover:text-fg-primary"
+							aria-label="Follow on X"
+						>
+							<XIcon />
+						</a>
+						<a
+							href="https://discord.gg/5y4fpyahaF"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="flex size-8 items-center justify-center text-fg-muted transition-colors hover:text-fg-primary"
+							aria-label="Join Discord"
+						>
+							<DiscordIcon />
+						</a>
+						<ThemeToggle />
+					</div>
+				</div>
+			)}
 		</header>
 	);
 }

@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { ArrowRight, Edit } from "lucide-react";
+import { ArrowRight, Pencil } from "lucide-react";
 
 type PublishCTASectionProps = {
 	userStack?: { slug: string } | null;
@@ -46,8 +46,8 @@ function PublishCTASection({ userStack }: PublishCTASectionProps) {
 								transition={{ duration: 0.15 }}
 								className="inline-flex items-center gap-3 px-8 py-5 bg-black text-white font-mono font-bold uppercase tracking-widest hover:bg-zinc-800 transition-colors text-lg shadow-2xl"
 							>
-								Edit Your Stack
-								<Edit className="size-5" />
+								Update Your Stack
+								<Pencil className="size-5" />
 							</motion.span>
 						</Link>
 					) : (

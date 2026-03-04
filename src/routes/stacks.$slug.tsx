@@ -8,6 +8,7 @@ import {
 	ExternalLink,
 	FileText,
 	Package,
+	Pencil,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { TiptapEditor } from "@/components/TiptapEditor";
@@ -314,21 +315,43 @@ function StackDetailsPage() {
 				bundles={stack.bundles}
 				instructions={stack.instructions ?? []}
 			/>
-			<div className="mx-6 bg-bg-canvas">
+			<div className="bg-bg-canvas">
 			{/* Header */}
-			<header className="py-12 px-6">
+			<header className="py-8 md:py-12 px-6">
 				<div className="mx-auto max-w-content">
-					{/* 2x3 Grid: Row 1 = label in middle, Row 2 = avatar | content | price */}
-					<div className="grid grid-cols-[auto_1fr_auto] gap-x-12 items-start">
-						{/* Row 1: Empty | Label | Empty */}
-						<div />
-						<div className="font-mono text-accent-lime mb-6 flex items-center gap-4 text-sm">
+					{/* Layout: avatar | content | price */}
+					<div className="flex flex-col md:grid md:grid-cols-[auto_1fr_auto] gap-6 md:gap-x-12 items-start">
+						{/* Row 1: Label in second column, Edit button in third column on desktop */}
+						<div className="hidden md:block" />
+						<div className="font-mono text-accent-lime mb-0 md:-mb-2 flex items-center gap-4 text-sm">
 							<span>// STACK_DETAILS</span>
 						</div>
-						<div />
+						<div className="hidden md:flex justify-end">
+							{upvoteStatus?.isOwner && (
+								<Link
+									to="/stacks/$slug/edit"
+									params={{ slug: stack.slug }}
+									className="inline-flex items-center gap-1.5 border-2 border-stroke-strong bg-bg-panel px-3 py-1 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
+								>
+									<Pencil className="size-3" />
+									Edit
+								</Link>
+							)}
+						</div>
+						{/* Mobile: Edit button below label */}
+						{upvoteStatus?.isOwner && (
+							<Link
+								to="/stacks/$slug/edit"
+								params={{ slug: stack.slug }}
+								className="inline-flex md:hidden items-center gap-1.5 border-2 border-stroke-strong bg-bg-panel px-3 py-1 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime w-fit"
+							>
+								<Pencil className="size-3" />
+								Edit
+							</Link>
+						)}
 
-						{/* Row 2 Col 1: Avatar + Upvote stacked */}
-						<div className="flex flex-col items-center gap-2 shrink-0">
+						{/* Avatar + Upvote stacked */}
+						<div className="flex md:flex-col items-center gap-3 md:gap-2 shrink-0">
 							{stack.creator.avatarUrl ? (
 								<img
 									src={stack.creator.avatarUrl}
@@ -349,13 +372,13 @@ function StackDetailsPage() {
 							/>
 						</div>
 
-						{/* Row 2 Col 2: Title + Links + One-liner */}
+						{/* Title + Links + One-liner */}
 						<div className="flex-1 min-w-0">
-							<h1 className="text-5xl md:text-8xl font-black tracking-tighter uppercase leading-[0.9] text-fg-primary">
+							<h1 className="text-4xl sm:text-5xl md:text-8xl font-black tracking-tighter uppercase leading-[0.9] text-fg-primary break-words">
 								{stack.name}
 							</h1>
 
-							<div className="mt-8 flex flex-wrap items-center gap-3 font-mono text-sm">
+							<div className="mt-4 md:mt-8 flex flex-wrap items-center gap-3 font-mono text-sm">
 								{stack.creator.verified && (
 									<CheckCircle className="size-5 text-accent-lime" />
 								)}
@@ -399,12 +422,12 @@ function StackDetailsPage() {
 								)}
 							</div>
 
-							<p className="mt-8 text-xl text-fg-secondary max-w-2xl border-l-4 border-accent-lime pl-6">
+							<p className="mt-4 md:mt-8 text-base md:text-xl text-fg-secondary max-w-2xl border-l-4 border-accent-lime pl-4 md:pl-6">
 								{stack.oneLiner}
 							</p>
 						</div>
 
-						{/* Column 3: Price Card */}
+						{/* Price Card */}
 						<HoverPreview
 							mode="wrapper"
 							position="below"
