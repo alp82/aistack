@@ -48,6 +48,7 @@ function StackCarousel({ compact = false }: { compact?: boolean }) {
 						<StackCard
 							key={stack._id}
 							slug={stack.slug}
+							name={stack.name}
 							oneLiner={stack.oneLiner}
 							teamSize={stack.teamSize}
 							fixedTotal={stack.fixedTotal}

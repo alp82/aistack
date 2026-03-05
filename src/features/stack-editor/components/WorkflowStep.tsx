@@ -19,11 +19,11 @@ function WorkflowStep({
 	const allTools = useQuery(api.tools.listAll) ?? [];
 	const allModels = useQuery(api.models.listAll) ?? [];
 	const toolsForEditor = useMemo(
-		() => allTools.map((t) => ({ _id: t._id, name: t.name, iconUrl: t.iconUrl })),
+		() => allTools.map((t) => ({ _id: t._id, name: t.name, aliases: t.aliases, iconUrl: t.iconUrl })),
 		[allTools]
 	);
 	const modelsForEditor = useMemo(
-		() => allModels.map((m) => ({ _id: m._id, name: m.name, provider: m.provider, iconUrl: m.iconUrl })),
+		() => allModels.map((m) => ({ _id: m._id, name: m.name, aliases: m.aliases, provider: m.provider, iconUrl: m.iconUrl })),
 		[allModels]
 	);
 
@@ -44,7 +44,6 @@ function WorkflowStep({
 					<TiptapEditor
 						content={description}
 						onChange={onDescriptionChange}
-						placeholder="Describe how you use these tools..."
 						tools={toolsForEditor}
 						onToolAdded={onToolAdded}
 						models={modelsForEditor}

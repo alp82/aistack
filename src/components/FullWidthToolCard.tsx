@@ -16,7 +16,7 @@ interface ToolData {
 	kind: "main" | "misc";
 	primaryUsageLabel: string;
 	tierName?: string;
-	priceKind: "regular" | "discounted" | "bundle" | "usage_based";
+	priceKind: "regular" | "discounted" | "bundle" | "usage_based" | "sponsored";
 	bundleSlug?: string;
 	notes?: string;
 }
@@ -56,7 +56,11 @@ export function FullWidthToolCard({ tool, onBundleClick }: FullWidthToolCardProp
 
 			{/* Price */}
 			<div className="shrink-0 text-right">
-				{tool.priceKind === "bundle" ? (
+				{tool.priceKind === "sponsored" ? (
+					<span className="inline-block border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-amber-400">
+						Sponsored
+					</span>
+				) : tool.priceKind === "bundle" ? (
 					<button
 						type="button"
 						onClick={() => tool.bundleSlug && onBundleClick?.(tool.bundleSlug)}

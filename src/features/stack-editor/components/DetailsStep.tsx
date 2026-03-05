@@ -50,8 +50,9 @@ function DetailsStep({
 	const [isAvatarEditorOpen, setIsAvatarEditorOpen] = useState(false);
 	const [imgError, setImgError] = useState(false);
 
-	// Determine which avatar to display
-	const displayAvatarUrl = stackImageUrl || defaultAvatarUrl;
+	// Display the stackImageUrl directly — no fallback to defaultAvatarUrl
+	// so that "remove avatar" works (shows initials fallback)
+	const displayAvatarUrl = stackImageUrl;
 
 	// Reset error when URL changes
 	useEffect(() => {
@@ -143,6 +144,7 @@ function DetailsStep({
 							<input
 								type="number"
 								min={2}
+								max={99}
 								value={teamSize}
 								onChange={(e) => {
 									e.stopPropagation();

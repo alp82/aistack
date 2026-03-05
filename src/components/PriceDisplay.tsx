@@ -15,7 +15,7 @@ function PriceDisplay({
 	size = "md",
 	className,
 }: PriceDisplayProps) {
-	const flooredAmount = Math.floor(amount);
+	const roundedAmount = Math.round(amount);
 
 	const sizeClasses = {
 		sm: "text-lg",
@@ -31,7 +31,7 @@ function PriceDisplay({
 
 	return (
 		<span className={cn("font-mono font-black", sizeClasses[size], className)}>
-			${flooredAmount}
+			${roundedAmount}
 			{hasUsageComponent && (
 				<span className="text-accent-lime">+</span>
 			)}

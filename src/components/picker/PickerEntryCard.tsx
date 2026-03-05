@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { ConfirmDeleteRow } from "../ConfirmDeleteRow";
@@ -8,10 +8,10 @@ type PickerEntryCardProps = {
 	subtitle?: string;
 	icon: ReactNode;
 	onClick?: () => void;
+	onInsertClick?: () => void;
 	onRemove: () => void;
 	onEditClick?: () => void;
 	isExpanded?: boolean;
-	showEditButton?: boolean;
 	isHighlighted?: boolean;
 	actions?: ReactNode;
 	expandedContent?: ReactNode;
@@ -23,10 +23,10 @@ export function PickerEntryCard({
 	subtitle,
 	icon,
 	onClick,
+	onInsertClick,
 	onRemove,
 	onEditClick,
 	isExpanded = false,
-	showEditButton = true,
 	isHighlighted = false,
 	actions,
 	expandedContent,
@@ -50,13 +50,24 @@ export function PickerEntryCard({
 			)}
 		>
 			{/* Main Row */}
-			<div className="flex items-center gap-3 p-3">
-				{/* Clickable Icon + Name area */}
+			<div className="flex items-center gap-0">
+				{/* Insert into editor button */}
+				{onInsertClick && (
+					<button
+						type="button"
+						onClick={onInsertClick}
+						className="group/insert flex items-center justify-center self-stretch w-8 shrink-0 border-r border-stroke-subtle text-fg-muted transition-colors hover:bg-accent-lime/10 hover:text-accent-lime cursor-copy"
+						title="Insert in editor"
+					>
+						<ArrowLeft className="size-3.5 transition-transform group-hover/insert:-translate-x-0.5" />
+					</button>
+				)}
+
+				{/* Clickable Icon + Name area — toggles edit */}
 				<button
 					type="button"
-					onClick={onClick}
-					className="group flex min-w-0 flex-1 items-center gap-3 rounded-sm p-1 -m-1 text-left transition-all hover:bg-accent-lime/10 cursor-copy"
-					title="Click to insert in editor"
+					onClick={onEditClick ?? onClick}
+					className="group flex min-w-0 flex-1 items-center gap-3 rounded-sm p-3 text-left transition-all hover:bg-bg-panel-muted"
 				>
 					{/* Icon */}
 					{icon}
@@ -77,22 +88,11 @@ export function PickerEntryCard({
 				{/* Custom actions slot */}
 				{actions}
 
-				{/* Edit link */}
-				{showEditButton && onEditClick && (
-					<button
-						type="button"
-						onClick={onEditClick}
-						className="font-mono text-[10px] text-accent-lime hover:underline"
-					>
-						{isExpanded ? "close" : "edit"}
-					</button>
-				)}
-
 				{/* Remove */}
 				<button
 					type="button"
 					onClick={() => setShowConfirmDelete(true)}
-					className="flex size-7 items-center justify-center border border-stroke-subtle text-fg-muted transition-colors hover:border-destructive hover:text-destructive"
+					className="flex size-7 items-center justify-center border border-stroke-subtle text-fg-muted transition-colors hover:border-destructive hover:text-destructive mr-3"
 				>
 					<Trash2 className="size-3.5" />
 				</button>

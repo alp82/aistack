@@ -1,6 +1,6 @@
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { CheckCircle, Save, Send } from "lucide-react";
+import { CheckCircle, ExternalLink, Save, Send } from "lucide-react";
 import { useCallback, useRef, useEffect } from "react";
 import { api } from "../../convex/_generated/api";
 import type { ModelSubscriptionEntry, InstructionItem } from "@/features/stack-editor/types";
@@ -252,11 +252,6 @@ export function StackEditor({
 
 			const payload = selectSavePayload(state, publish);
 
-			// Auto-fill stackImageUrl from user profile if not explicitly set
-			if (!payload.stackImageUrl && defaultAvatarUrl) {
-				payload.stackImageUrl = defaultAvatarUrl;
-			}
-
 			// Disable draft auto-save BEFORE the mutation to prevent race conditions
 			disableDraftSaving();
 
@@ -322,7 +317,18 @@ export function StackEditor({
 									</h1>
 
 									<div className="flex items-center gap-3 flex-shrink-0">
-										{initialValue?.published ? (
+									{mode === "edit" && initialValue?.published && initialValue?.slug && (
+										<Link
+											to="/stacks/$slug"
+											params={{ slug: `${initialValue.slug}` }}
+											target="_blank"
+											className="inline-flex items-center gap-2 px-4 py-2 border-2 border-stroke-subtle font-mono text-xs uppercase tracking-wider text-fg-muted hover:border-fg-muted hover:text-fg-primary transition-colors cursor-pointer"
+										>
+											<ExternalLink className="size-4" />
+											View Stack
+										</Link>
+									)}
+									{initialValue?.published ? (
 											<>
 												{/* Published/Unpublish Button - outline green with checkmark */}
 												<button

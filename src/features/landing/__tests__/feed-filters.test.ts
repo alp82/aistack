@@ -9,6 +9,8 @@ import {
 const stacks: LandingStackPreview[] = [
 	{
 		_id: "solo-automation",
+		_creationTime: 1000,
+		name: "Solo Automation Stack",
 		slug: "solo-automation",
 		oneLiner: "Solo builder shipping through automation",
 		hasUsageComponent: false,
@@ -23,6 +25,8 @@ const stacks: LandingStackPreview[] = [
 	},
 	{
 		_id: "team-automation",
+		_creationTime: 2000,
+		name: "Team Automation Stack",
 		slug: "team-automation",
 		oneLiner: "Team workflow with automation layer",
 		hasUsageComponent: true,
@@ -37,6 +41,8 @@ const stacks: LandingStackPreview[] = [
 	},
 	{
 		_id: "team-design",
+		_creationTime: 3000,
+		name: "Team Design Stack",
 		slug: "team-design",
 		oneLiner: "Design-heavy team stack",
 		hasUsageComponent: false,

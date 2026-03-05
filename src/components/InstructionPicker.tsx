@@ -232,17 +232,12 @@ function InstructionEntry({ instruction, onRemove, onUpdate, onClick }: Instruct
         </div>
     );
 
-    const typeLabel = (
-        <span className={cn("font-mono text-[10px] uppercase", typeColors[instruction.type].split(" ")[0])}>
-            {typeLabels[instruction.type]}
-        </span>
-    );
-
     return (
         <PickerEntryCard
             name={instruction.name}
+            subtitle={typeLabels[instruction.type]}
             icon={icon}
-            onClick={onClick}
+            onInsertClick={onClick}
             onRemove={onRemove}
             onEditClick={() => setExpanded(!expanded)}
             isExpanded={expanded}
@@ -299,7 +294,6 @@ function InstructionEntry({ instruction, onRemove, onUpdate, onClick }: Instruct
                     </button>
                 </>
             }
-            actions={typeLabel}
         />
     );
 }

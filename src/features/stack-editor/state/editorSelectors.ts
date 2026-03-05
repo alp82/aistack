@@ -52,7 +52,7 @@ function selectSavePayload(state: EditorState, published: boolean) {
 			modelSlug: model.modelSlug,
 			role: model.role,
 		})),
-		stackImageUrl: state.stackImageUrl.trim() || undefined,
+		stackImageUrl: state.stackImageUrl.trim(),
 		personalPageUrl: state.personalPageUrl.trim() || undefined,
 		projectPageUrl: state.projectPageUrl.trim() || undefined,
 		published,

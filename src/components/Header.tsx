@@ -45,6 +45,13 @@ export default function Header() {
 	const menuRef = useRef<HTMLDivElement>(null);
 	const session = authClient.useSession();
 	const userName = session.data?.user?.name || session.data?.user?.email || "";
+	const [avatarError, setAvatarError] = useState(false);
+	const avatarUrl = session.data?.user?.image;
+
+	// Reset error state when avatar URL changes
+	useEffect(() => {
+		setAvatarError(false);
+	}, [avatarUrl]);
 
 	const isActive = (path: string) => {
 		if (path === "/stacks") return currentPath.startsWith("/stacks") && !currentPath.includes("/new");
@@ -211,20 +218,18 @@ export default function Header() {
 									onClick={() => setMenuOpen(!menuOpen)}
 									className="flex size-8 items-center justify-center overflow-hidden border-2 border-stroke-strong bg-bg-panel font-mono text-xs font-bold text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
 								>
-									{session.data?.user?.image ? (
+									{avatarUrl && !avatarError ? (
 										<img
-											src={session.data.user.image}
+											src={avatarUrl}
 											alt={userName}
 											className="size-full object-cover"
-											onError={(e) => {
-												e.currentTarget.style.display = "none";
-												e.currentTarget.nextElementSibling?.classList.remove("hidden");
-											}}
+											onError={() => setAvatarError(true)}
 										/>
-									) : null}
-									<span className={session.data?.user?.image ? "hidden" : ""}>
-										{userName.charAt(0).toUpperCase()}
-									</span>
+									) : (
+										<span>
+											{userName.charAt(0).toUpperCase()}
+										</span>
+									)}
 								</button>
 
 								{menuOpen && (

@@ -1,12 +1,12 @@
 import { useQuery } from "convex/react";
-import { Plus } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Gift, Package, Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { categoryConfig, type ToolCategory } from "@/config/categoryConfig";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useEditorContext } from "@/features/stack-editor/context/EditorContext";
 import { AddMissingItemButton } from "./AddMissingItemButton";
-import { AddToolModal } from "./AddToolModal";
+import { AddItemModal } from "./AddItemModal";
 import { Input } from "./ui/input";
 import {
 	Select,
@@ -38,7 +38,7 @@ export interface ToolSubscriptionEntry {
 			currency: string;
 		};
 	};
-	priceKind: "regular" | "discounted" | "bundle" | "usage_based";
+	priceKind: "regular" | "discounted" | "bundle" | "usage_based" | "sponsored";
 	bundleSlug?: string;
 	notes?: string;
 }
@@ -46,17 +46,18 @@ export interface ToolSubscriptionEntry {
 interface ToolPickerProps {
 	value: ToolSubscriptionEntry[];
 	onChange: (tools: ToolSubscriptionEntry[]) => void;
+	bundleSubscriptions?: Array<{ bundleSlug: string; bundleName: string }>;
 	guestSession?: boolean;
 	onSignInRequired?: () => void;
 	onToolClick?: (tool: ToolSubscriptionEntry) => void;
 }
 
-export function ToolPicker({ value, onChange, guestSession = false, onSignInRequired, onToolClick }: ToolPickerProps) {
+export function ToolPicker({ value, onChange, bundleSubscriptions, guestSession = false, onSignInRequired, onToolClick }: ToolPickerProps) {
 	const allTools = useQuery(api.tools.listAll) ?? [];
 	const [search, setSearch] = useState("");
 	const [showAddModal, setShowAddModal] = useState(false);
 	const [selectedCategory, setSelectedCategory] = useState<ToolCategory | null>(null);
-	const [showToolBrowser, setShowToolBrowser] = useState(false);
+	const [showToolBrowser, setShowToolBrowser] = useState(value.length === 0);
 	const [customToolName, setCustomToolName] = useState("");
 	const { hoveredToolName } = useEditorContext();
 
@@ -86,7 +87,8 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 			tools = tools.filter(
 				(t) =>
 					t.name.toLowerCase().includes(q) ||
-					t.categories.some((c) => c.toLowerCase().includes(q)),
+					t.categories.some((c) => c.toLowerCase().includes(q)) ||
+					(t.aliases && t.aliases.some((a: string) => a.toLowerCase().includes(q))),
 			);
 		}
 		
@@ -170,6 +172,7 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 							onClick={() => onToolClick?.(entry)}
 							isHighlighted={hoveredToolName === entry.toolName}
 							allTools={allTools}
+							bundleSubscriptions={bundleSubscriptions}
 						/>
 					))}
 				</div>
@@ -269,9 +272,10 @@ export function ToolPicker({ value, onChange, guestSession = false, onSignInRequ
 				</PickerBrowser>
 			)}
 
-			<AddToolModal
+			<AddItemModal
 				open={showAddModal}
 				onClose={() => setShowAddModal(false)}
+				defaultTab="tool"
 				onToolCreated={handleToolCreated}
 			/>
 		</div>
@@ -305,9 +309,10 @@ interface ToolEntryProps {
 			};
 		}>;
 	}>;
+	bundleSubscriptions?: Array<{ bundleSlug: string; bundleName: string }>;
 }
 
-function ToolEntry({ entry, onUpdate, onRemove, onClick, isHighlighted, allTools }: ToolEntryProps) {
+function ToolEntry({ entry, onUpdate, onRemove, onClick, isHighlighted, allTools, bundleSubscriptions }: ToolEntryProps) {
 	const [expanded, setExpanded] = useState(false);
 	const cardRef = useRef<HTMLDivElement>(null);
 	const tool = allTools.find((t) => t.slug === entry.toolSlug);
@@ -324,10 +329,51 @@ function ToolEntry({ entry, onUpdate, onRemove, onClick, isHighlighted, allTools
 	const currentTier = tiers.find((t) => t.tierId === entry.tierId);
 	const hasUsagePricing = currentTier?.pricing.usage || entry.price.usage;
 
+	const isBundle = entry.priceKind === "bundle";
+	const isSponsored = entry.priceKind === "sponsored";
+
 	// Format price display
-	const priceDisplay = entry.price.fixed 
-		? `$${entry.price.fixed.amount}/${entry.price.fixed.period === "one_time" ? "once" : entry.price.fixed.period}${hasUsagePricing ? " + usage" : ""}`
-		: "Usage-based";
+	const priceDisplay = isBundle
+		? "Bundled · $0"
+		: isSponsored
+			? "Sponsored · $0"
+			: entry.price.fixed 
+				? `$${entry.price.fixed.amount}/${entry.price.fixed.period === "one_time" ? "once" : entry.price.fixed.period}${hasUsagePricing ? " + usage" : ""}`
+				: "Usage-based";
+
+	const handleToggleBundle = useCallback(() => {
+		if (isBundle) {
+			// Restore to regular pricing from the current tier
+			const tier = tiers.find((t) => t.tierId === entry.tierId);
+			onUpdate({
+				priceKind: "regular",
+				bundleSlug: undefined,
+				price: tier ? { pricingType: tier.pricing.pricingType, fixed: tier.pricing.fixed, usage: tier.pricing.usage } : entry.price,
+			});
+		} else {
+			onUpdate({
+				priceKind: "bundle",
+				bundleSlug: bundleSubscriptions?.[0]?.bundleSlug,
+				price: { pricingType: "fixed", fixed: { currency: "USD", amount: 0, period: "month" } },
+			});
+		}
+	}, [isBundle, entry.tierId, entry.price, tiers, bundleSubscriptions, onUpdate]);
+
+	const handleToggleSponsored = useCallback(() => {
+		if (isSponsored) {
+			const tier = tiers.find((t) => t.tierId === entry.tierId);
+			onUpdate({
+				priceKind: "regular",
+				price: tier ? { pricingType: tier.pricing.pricingType, fixed: tier.pricing.fixed, usage: tier.pricing.usage } : entry.price,
+			});
+		} else {
+			onUpdate({
+				priceKind: "sponsored",
+				bundleSlug: undefined,
+				price: { pricingType: "fixed", fixed: { currency: "USD", amount: 0, period: "month" } },
+			});
+		}
+	}, [isSponsored, entry.tierId, entry.price, tiers, onUpdate]);
 
 	const handleTierChange = (tierId: string) => {
 		const tier = tiers.find((t) => t.tierId === tierId);
@@ -361,7 +407,7 @@ function ToolEntry({ entry, onUpdate, onRemove, onClick, isHighlighted, allTools
 			name={entry.toolName}
 			subtitle={priceDisplay}
 			icon={icon}
-			onClick={onClick}
+			onInsertClick={onClick}
 			onRemove={onRemove}
 			onEditClick={() => setExpanded(!expanded)}
 			isExpanded={expanded}
@@ -379,57 +425,114 @@ function ToolEntry({ entry, onUpdate, onRemove, onClick, isHighlighted, allTools
 						/>
 					)}
 
-					{/* Price */}
+					{/* Bundle / Sponsored Toggles */}
 					<div className="flex items-center gap-2">
-						<span className="font-mono text-[10px] uppercase text-fg-muted">Price:</span>
-						<div className="flex items-center gap-1">
-							<span className="font-mono text-xs text-fg-muted">$</span>
-							<Input
-								type="number"
-								min={0}
-								step={0.01}
-								value={entry.price.fixed?.amount ?? 0}
-								onChange={(e) =>
-									onUpdate({
-										price: {
-											...entry.price,
-											pricingType: "fixed",
-											fixed: {
-												currency: "USD",
-												amount: Number(e.target.value),
-												period: entry.price.fixed?.period ?? "month",
-											},
-										},
-									})
-								}
-								className="h-8 w-20 border-2 border-stroke-subtle bg-bg-panel font-mono text-xs"
-							/>
-							<select
-								value={entry.price.fixed?.period ?? "month"}
-								onChange={(e) =>
-									onUpdate({
-										price: {
-											...entry.price,
-											pricingType: "fixed",
-											fixed: {
-												currency: "USD",
-												amount: entry.price.fixed?.amount ?? 0,
-												period: e.target.value as "month" | "year" | "one_time",
-											},
-										},
-									})
-								}
-								className="h-8 border-2 border-stroke-subtle bg-bg-panel px-2 font-mono text-xs text-fg-muted focus:border-accent-lime focus:outline-none"
-							>
-								<option value="month">/month</option>
-								<option value="year">/year</option>
-								<option value="one_time">one-time</option>
-							</select>
-						</div>
+						<button
+							type="button"
+							onClick={handleToggleBundle}
+							disabled={!bundleSubscriptions?.length}
+							className={`flex items-center gap-1.5 border px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wide transition-all ${
+								isBundle
+									? "border-blue-500/60 bg-blue-500/15 text-blue-400"
+									: "border-stroke-subtle text-fg-muted hover:border-blue-500/40 hover:text-blue-400 disabled:opacity-40 disabled:cursor-not-allowed"
+							}`}
+							title={!bundleSubscriptions?.length ? "Add a bundle first" : isBundle ? "Remove from bundle" : "Mark as bundled"}
+						>
+							<Package className="size-3" />
+							Bundle
+						</button>
+						<button
+							type="button"
+							onClick={handleToggleSponsored}
+							className={`flex items-center gap-1.5 border px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wide transition-all ${
+								isSponsored
+									? "border-amber-500/60 bg-amber-500/15 text-amber-400"
+									: "border-stroke-subtle text-fg-muted hover:border-amber-500/40 hover:text-amber-400"
+							}`}
+							title={isSponsored ? "Remove sponsored status" : "Mark as sponsored"}
+						>
+							<Gift className="size-3" />
+							Sponsored
+						</button>
 					</div>
 
+					{/* Bundle selector - shown when bundled and multiple bundles exist */}
+					{isBundle && bundleSubscriptions && bundleSubscriptions.length > 1 && (
+						<div className="flex items-center gap-2">
+							<span className="font-mono text-[10px] uppercase text-fg-muted">Bundle:</span>
+							<select
+								value={entry.bundleSlug ?? ""}
+								onChange={(e) => onUpdate({ bundleSlug: e.target.value })}
+								className="h-8 border-2 border-stroke-subtle bg-bg-panel px-2 font-mono text-xs text-fg-muted focus:border-accent-lime focus:outline-none"
+							>
+								{bundleSubscriptions.map((b) => (
+									<option key={b.bundleSlug} value={b.bundleSlug}>{b.bundleName}</option>
+								))}
+							</select>
+						</div>
+					)}
+
+					{/* Price - readonly when bundled or sponsored */}
+					{!isBundle && !isSponsored && (
+						<div className="flex items-center gap-2">
+							<span className="font-mono text-[10px] uppercase text-fg-muted">Price:</span>
+							<div className="flex items-center gap-1">
+								<span className="font-mono text-xs text-fg-muted">$</span>
+								<Input
+									type="number"
+									min={0}
+									step={0.01}
+									value={entry.price.fixed?.amount ?? 0}
+									onChange={(e) =>
+										onUpdate({
+											price: {
+												...entry.price,
+												pricingType: "fixed",
+												fixed: {
+													currency: "USD",
+													amount: Number(e.target.value),
+													period: entry.price.fixed?.period ?? "month",
+												},
+											},
+										})
+									}
+									className="h-8 w-20 border-2 border-stroke-subtle bg-bg-panel font-mono text-xs"
+								/>
+								<select
+									value={entry.price.fixed?.period ?? "month"}
+									onChange={(e) =>
+										onUpdate({
+											price: {
+												...entry.price,
+												pricingType: "fixed",
+												fixed: {
+													currency: "USD",
+													amount: entry.price.fixed?.amount ?? 0,
+													period: e.target.value as "month" | "year" | "one_time",
+												},
+											},
+										})
+									}
+									className="h-8 border-2 border-stroke-subtle bg-bg-panel px-2 font-mono text-xs text-fg-muted focus:border-accent-lime focus:outline-none"
+								>
+									<option value="month">/month</option>
+									<option value="year">/year</option>
+									<option value="one_time">one-time</option>
+								</select>
+							</div>
+						</div>
+					)}
+
+					{/* Bundled/Sponsored price indicator */}
+					{(isBundle || isSponsored) && (
+						<div className="flex items-center gap-2">
+							<span className="font-mono text-[10px] uppercase text-fg-muted">Price:</span>
+							<span className="font-mono text-xs text-fg-muted">$0/month</span>
+						</div>
+					)}
+
 					{/* Usage indicator - auto-shown if tier has usage pricing */}
-					{hasUsagePricing && (
+					{hasUsagePricing && !isBundle && !isSponsored && (
 						<div className="flex items-center gap-2 border-t border-stroke-subtle pt-2">
 							<span className="font-mono text-[10px] uppercase text-fg-muted">Usage:</span>
 							<span className="font-mono text-xs text-accent-lime">

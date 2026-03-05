@@ -103,6 +103,7 @@ export function ProfileSection({
 						<Input
 							type="number"
 							min={2}
+							max={99}
 							value={teamSize}
 							onChange={(event) => onTeamSizeChange(Number(event.target.value))}
 							className="bg-slate-700/50 border-gray-600 text-white"

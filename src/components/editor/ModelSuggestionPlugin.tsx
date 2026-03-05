@@ -7,6 +7,7 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 export interface ModelData {
 	_id: string;
 	name: string;
+	aliases?: string[];
 	provider: string;
 	iconUrl?: string | null;
 }
@@ -26,7 +27,18 @@ function findModelMatches(doc: ProseMirrorNode, models: ModelData[]): ModelMatch
 	const matches: ModelMatch[] = [];
 	if (!models.length) return matches;
 
-	const sortedModels = [...models].sort((a, b) => b.name.length - a.name.length);
+	// Build searchable entries: each model's name + its aliases, all mapped to the model
+	const entries: Array<{ searchName: string; searchNameLower: string; model: ModelData }> = [];
+	for (const model of models) {
+		entries.push({ searchName: model.name, searchNameLower: model.name.toLowerCase(), model });
+		if (model.aliases) {
+			for (const alias of model.aliases) {
+				entries.push({ searchName: alias, searchNameLower: alias.toLowerCase(), model });
+			}
+		}
+	}
+	// Sort by length descending so longer matches take priority
+	entries.sort((a, b) => b.searchName.length - a.searchName.length);
 
 	doc.descendants((node, pos) => {
 		if (!node.isText || !node.text) return;
@@ -34,34 +46,33 @@ function findModelMatches(doc: ProseMirrorNode, models: ModelData[]): ModelMatch
 		const text = node.text;
 		const textLower = text.toLowerCase();
 
-		for (const model of sortedModels) {
-			const modelNameLower = model.name.toLowerCase();
+		for (const entry of entries) {
 			let searchStart = 0;
 
 			while (searchStart < textLower.length) {
-				const index = textLower.indexOf(modelNameLower, searchStart);
+				const index = textLower.indexOf(entry.searchNameLower, searchStart);
 				if (index === -1) break;
 
 				const charBefore = index > 0 ? text[index - 1] : " ";
 				const charAfter =
-					index + model.name.length < text.length
-						? text[index + model.name.length]
+					index + entry.searchName.length < text.length
+						? text[index + entry.searchName.length]
 						: " ";
 
 				const isWordBoundaryBefore = /[\s\p{P}]/u.test(charBefore) || index === 0;
 				const isWordBoundaryAfter =
-					/[\s\p{P}]/u.test(charAfter) || index + model.name.length === text.length;
+					/[\s\p{P}]/u.test(charAfter) || index + entry.searchName.length === text.length;
 
 				if (isWordBoundaryBefore && isWordBoundaryAfter) {
 					const from = pos + index;
-					const to = from + model.name.length;
+					const to = from + entry.searchName.length;
 
 					const overlaps = matches.some(
 						(m) => (from >= m.from && from < m.to) || (to > m.from && to <= m.to)
 					);
 
 					if (!overlaps) {
-						matches.push({ from, to, model });
+						matches.push({ from, to, model: entry.model });
 					}
 				}
 

@@ -33,17 +33,15 @@ function createEmptyTier(isDefault = false): TierFormData {
 	};
 }
 
-interface AddBundleModalProps {
-	open: boolean;
-	onClose: () => void;
+interface AddBundleFormProps {
+	onCancel: () => void;
 	onBundleCreated: (bundleId: string) => void;
 }
 
-export function AddBundleModal({
-	open,
-	onClose,
+export function AddBundleForm({
+	onCancel,
 	onBundleCreated,
-}: AddBundleModalProps) {
+}: AddBundleFormProps) {
 	const createBundle = useMutation(api.bundles.create);
 	const [name, setName] = useState("");
 	const [websiteUrl, setWebsiteUrl] = useState("");
@@ -55,8 +53,6 @@ export function AddBundleModal({
 		name?: boolean;
 		tiers?: boolean;
 	}>({});
-
-	if (!open) return null;
 
 	const updateTier = (id: string, updates: Partial<TierFormData>) => {
 		setTiers((prev) =>
@@ -122,8 +118,6 @@ export function AddBundleModal({
 				tiers: formattedTiers,
 			});
 			onBundleCreated(bundleId);
-			resetForm();
-			onClose();
 		} catch (err) {
 			let errorMessage = "Failed to create bundle";
 			if (err instanceof Error) {
@@ -136,47 +130,24 @@ export function AddBundleModal({
 		}
 	};
 
-	const resetForm = () => {
-		setName("");
-		setWebsiteUrl("");
-		setIconUrl("");
-		setTiers([createEmptyTier(true)]);
-		setError("");
-		setValidationErrors({});
-	};
+	return (
+		<div>
+			<div className="mb-6">
+				<h2 className="font-mono text-lg font-bold text-fg-primary">
+					Add New Bundle
+				</h2>
+				<p className="mt-1 font-mono text-xs text-fg-muted">
+					Fill in the details below. Your bundle will be submitted for review.
+				</p>
+			</div>
 
-	return createPortal(
-		<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-			<div
-				className="absolute inset-0 bg-bg-canvas/80 backdrop-blur-md"
-				onClick={onClose}
-				onKeyDown={(e) => e.key === "Escape" && onClose()}
-			/>
-			<div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto border-2 border-stroke-strong bg-bg-panel p-8 shadow-[6px_6px_0_var(--stroke-strong)]">
-				<button
-					type="button"
-					onClick={onClose}
-					className="absolute right-4 top-4 flex size-8 shrink-0 items-center justify-center border border-stroke-subtle text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime"
-				>
-					<X className="size-4" />
-				</button>
-
-				<div className="mb-6">
-					<h2 className="font-mono text-lg font-bold text-fg-primary">
-						Add New Bundle
-					</h2>
-					<p className="mt-1 font-mono text-xs text-fg-muted">
-						Fill in the details below. Your bundle will be submitted for review.
-					</p>
+			{error && (
+				<div className="mb-4 border border-destructive/30 bg-destructive/10 p-3 font-mono text-xs text-destructive">
+					{error}
 				</div>
+			)}
 
-				{error && (
-					<div className="mb-4 border border-destructive/30 bg-destructive/10 p-3 font-mono text-xs text-destructive">
-						{error}
-					</div>
-				)}
-
-				<form onSubmit={handleSubmit} className="space-y-6">
+			<form onSubmit={handleSubmit} className="space-y-6">
 					{/* Basic Information */}
 					<fieldset className="space-y-4">
 						<legend className="font-mono text-[10px] font-semibold uppercase tracking-widest text-accent-lime">
@@ -375,29 +346,68 @@ export function AddBundleModal({
 						</div>
 					</fieldset>
 
-					{/* Action Buttons */}
-					<div className="flex flex-col gap-3 pt-2">
-						<div className="flex gap-3">
-							<button
-								type="button"
-								onClick={onClose}
-								className="inline-flex items-center gap-2 border border-stroke-subtle px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-fg-muted hover:text-fg-primary"
-							>
-								Cancel
-							</button>
-							<button
-								type="submit"
-								disabled={saving || !name.trim()}
-								className="inline-flex flex-1 items-center justify-center gap-2 border-2 border-accent-lime bg-accent-lime px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong disabled:cursor-not-allowed disabled:opacity-50"
-							>
-								{saving ? "Creating..." : "Create Bundle"}
-							</button>
-						</div>
-						<p className="text-center text-xs text-fg-muted">
-							Your bundle submission will be reviewed before it appears publicly.
-						</p>
+				{/* Action Buttons */}
+				<div className="flex flex-col gap-3 pt-2">
+					<div className="flex gap-3">
+						<button
+							type="button"
+							onClick={onCancel}
+							className="inline-flex items-center gap-2 border border-stroke-subtle px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-fg-muted hover:text-fg-primary"
+						>
+							Cancel
+						</button>
+						<button
+							type="submit"
+							disabled={saving || !name.trim()}
+							className="inline-flex flex-1 items-center justify-center gap-2 border-2 border-accent-lime bg-accent-lime px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							{saving ? "Creating..." : "Create Bundle"}
+						</button>
 					</div>
-				</form>
+					<p className="text-center text-xs text-fg-muted">
+						Your bundle submission will be reviewed before it appears publicly.
+					</p>
+				</div>
+			</form>
+		</div>
+	);
+}
+
+interface AddBundleModalProps {
+	open: boolean;
+	onClose: () => void;
+	onBundleCreated: (bundleId: string) => void;
+}
+
+export function AddBundleModal({
+	open,
+	onClose,
+	onBundleCreated,
+}: AddBundleModalProps) {
+	if (!open) return null;
+
+	return createPortal(
+		<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+			<div
+				className="absolute inset-0 bg-bg-canvas/80 backdrop-blur-md"
+				onClick={onClose}
+				onKeyDown={(e) => e.key === "Escape" && onClose()}
+			/>
+			<div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto border-2 border-stroke-strong bg-bg-panel p-8 shadow-[6px_6px_0_var(--stroke-strong)]">
+				<button
+					type="button"
+					onClick={onClose}
+					className="absolute right-4 top-4 flex size-8 shrink-0 items-center justify-center border border-stroke-subtle text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime"
+				>
+					<X className="size-4" />
+				</button>
+				<AddBundleForm
+					onCancel={onClose}
+					onBundleCreated={(bundleId) => {
+						onBundleCreated(bundleId);
+						onClose();
+					}}
+				/>
 			</div>
 		</div>,
 		document.body,

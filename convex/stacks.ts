@@ -78,7 +78,8 @@ const ToolValidator = v.object({
     v.literal('regular'),
     v.literal('discounted'),
     v.literal('bundle'),
-    v.literal('usage_based')
+    v.literal('usage_based'),
+    v.literal('sponsored')
   ),
   bundleSlug: v.optional(v.string()),
   notes: v.optional(v.string()),
@@ -123,6 +124,7 @@ export const listPublished = query({
     v.object({
       _id: v.id('stacks'),
       _creationTime: v.number(),
+      name: v.string(),
       slug: v.string(),
       oneLiner: v.string(),
       teamSize: v.optional(v.number()),
@@ -178,6 +180,7 @@ export const listPublished = query({
       results.push({
         _id: stack._id,
         _creationTime: stack._creationTime,
+        name: stack.name,
         slug: `${stack.slug}-${stack.shortId}`,
         oneLiner: stack.oneLiner,
         teamSize: stack.teamSize,
@@ -215,7 +218,8 @@ const ToolSubscriptionInput = v.object({
     v.literal('regular'),
     v.literal('discounted'),
     v.literal('bundle'),
-    v.literal('usage_based')
+    v.literal('usage_based'),
+    v.literal('sponsored')
   ),
   bundleSlug: v.optional(v.string()),
   notes: v.optional(v.string()),
@@ -424,7 +428,8 @@ export const getForEdit = query({
           v.literal('regular'),
           v.literal('discounted'),
           v.literal('bundle'),
-          v.literal('usage_based')
+          v.literal('usage_based'),
+          v.literal('sponsored')
         ),
         bundleSlug: v.optional(v.string()),
         notes: v.optional(v.string()),
@@ -434,6 +439,7 @@ export const getForEdit = query({
         bundleName: v.string(),
         tierId: v.string(),
         tierName: v.string(),
+        price: v.optional(PriceValidator),
         notes: v.optional(v.string()),
       })),
       modelSubscriptions: v.array(v.object({
@@ -497,6 +503,7 @@ export const getForEdit = query({
         bundleName: bundle.name,
         tierId: bs.tierId,
         tierName: tier?.name ?? bs.tierId,
+        price: tier?.pricing ? { pricingType: tier.pricing.pricingType, fixed: tier.pricing.fixed } : undefined,
         notes: bs.notes,
       })
     }

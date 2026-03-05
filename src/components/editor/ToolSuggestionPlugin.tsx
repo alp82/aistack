@@ -7,6 +7,7 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 export interface ToolData {
 	_id: string;
 	name: string;
+	aliases?: string[];
 	iconUrl?: string | null;
 }
 
@@ -25,7 +26,18 @@ function findToolMatches(doc: ProseMirrorNode, tools: ToolData[]): ToolMatch[] {
 	const matches: ToolMatch[] = [];
 	if (!tools.length) return matches;
 
-	const sortedTools = [...tools].sort((a, b) => b.name.length - a.name.length);
+	// Build searchable entries: each tool's name + its aliases, all mapped to the tool
+	const entries: Array<{ searchName: string; searchNameLower: string; tool: ToolData }> = [];
+	for (const tool of tools) {
+		entries.push({ searchName: tool.name, searchNameLower: tool.name.toLowerCase(), tool });
+		if (tool.aliases) {
+			for (const alias of tool.aliases) {
+				entries.push({ searchName: alias, searchNameLower: alias.toLowerCase(), tool });
+			}
+		}
+	}
+	// Sort by length descending so longer matches take priority
+	entries.sort((a, b) => b.searchName.length - a.searchName.length);
 
 	doc.descendants((node, pos) => {
 		if (!node.isText || !node.text) return;
@@ -33,34 +45,33 @@ function findToolMatches(doc: ProseMirrorNode, tools: ToolData[]): ToolMatch[] {
 		const text = node.text;
 		const textLower = text.toLowerCase();
 
-		for (const tool of sortedTools) {
-			const toolNameLower = tool.name.toLowerCase();
+		for (const entry of entries) {
 			let searchStart = 0;
 
 			while (searchStart < textLower.length) {
-				const index = textLower.indexOf(toolNameLower, searchStart);
+				const index = textLower.indexOf(entry.searchNameLower, searchStart);
 				if (index === -1) break;
 
 				const charBefore = index > 0 ? text[index - 1] : " ";
 				const charAfter =
-					index + tool.name.length < text.length
-						? text[index + tool.name.length]
+					index + entry.searchName.length < text.length
+						? text[index + entry.searchName.length]
 						: " ";
 
 				const isWordBoundaryBefore = /[\s\p{P}]/u.test(charBefore) || index === 0;
 				const isWordBoundaryAfter =
-					/[\s\p{P}]/u.test(charAfter) || index + tool.name.length === text.length;
+					/[\s\p{P}]/u.test(charAfter) || index + entry.searchName.length === text.length;
 
 				if (isWordBoundaryBefore && isWordBoundaryAfter) {
 					const from = pos + index;
-					const to = from + tool.name.length;
+					const to = from + entry.searchName.length;
 
 					const overlaps = matches.some(
 						(m) => (from >= m.from && from < m.to) || (to > m.from && to <= m.to)
 					);
 
 					if (!overlaps) {
-						matches.push({ from, to, tool });
+						matches.push({ from, to, tool: entry.tool });
 					}
 				}
 

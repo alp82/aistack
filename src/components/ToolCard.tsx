@@ -17,7 +17,7 @@ interface ToolData {
 	kind: "main" | "misc";
 	primaryUsageLabel: string;
 	tierName?: string;
-	priceKind: "regular" | "discounted" | "bundle" | "usage_based";
+	priceKind: "regular" | "discounted" | "bundle" | "usage_based" | "sponsored";
 	bundleSlug?: string;
 	notes?: string;
 }
@@ -41,7 +41,9 @@ export function MainToolCard({ tool }: { tool: ToolData }) {
 					<div className="flex items-center justify-between mb-1">
 						<span className="font-semibold text-white truncate">{tool.name}</span>
 						<span className="text-lg font-bold text-white ml-2 flex-shrink-0">
-							{tool.priceKind === "bundle" ? (
+							{tool.priceKind === "sponsored" ? (
+								<span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-medium">Sponsored</span>
+							) : tool.priceKind === "bundle" ? (
 								<span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full font-medium">Bundle</span>
 							) : (
 								<>
@@ -68,6 +70,9 @@ export function MainToolCard({ tool }: { tool: ToolData }) {
 						})}
 						{tool.priceKind === "discounted" && (
 							<span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">Discounted</span>
+						)}
+						{tool.priceKind === "sponsored" && (
+							<span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">Sponsored</span>
 						)}
 					</div>
 					<p className="text-sm text-gray-400">{tool.primaryUsageLabel}</p>
@@ -109,7 +114,11 @@ export function MiscToolCard({ tool, onBundleClick }: MiscToolCardProps) {
 				</span>
 			</div>
 			<div className="shrink-0 text-right">
-				{tool.priceKind === "bundle" ? (
+				{tool.priceKind === "sponsored" ? (
+					<span className="inline-block border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-amber-400">
+						Sponsored
+					</span>
+				) : tool.priceKind === "bundle" ? (
 					<button
 						type="button"
 						onClick={() => tool.bundleSlug && onBundleClick?.(tool.bundleSlug)}

@@ -29,6 +29,8 @@ vi.mock("@tanstack/react-router", async () => {
 
 const sampleStacks = Array.from({ length: 7 }, (_, index) => ({
 	_id: `stack-${index}`,
+	_creationTime: Date.now() - index * 100000,
+	name: `Stack ${index}`,
 	slug: `stack-${index}`,
 	oneLiner: `Stack one liner ${index}`,
 	hasUsageComponent: index % 2 === 0,

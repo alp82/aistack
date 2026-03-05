@@ -57,7 +57,7 @@ function NewStackPage() {
 		}
 
 		// Create creator profile for authenticated user
-		getOrCreateCreator({})
+		getOrCreateCreator({ imageUrl: userImageUrl })
 			.then((c) => {
 				setCreator(c);
 				setLoadingCreator(false);

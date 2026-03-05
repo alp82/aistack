@@ -2,7 +2,9 @@ import { mutation } from './_generated/server'
 import { v } from 'convex/values'
 
 export const getOrCreateForUser = mutation({
-  args: {},
+  args: {
+    imageUrl: v.optional(v.string()),
+  },
   returns: v.object({
     _id: v.id('creators'),
     name: v.string(),
@@ -13,7 +15,7 @@ export const getOrCreateForUser = mutation({
     personalPages: v.array(v.object({ name: v.string(), url: v.string() })),
     projectPages: v.array(v.object({ name: v.string(), url: v.string() })),
   }),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const user = await ctx.auth.getUserIdentity()
     if (!user) throw new Error('Not authenticated')
     const userId = user.tokenIdentifier.split('|')[1]
@@ -24,12 +26,17 @@ export const getOrCreateForUser = mutation({
       .first()
 
     if (existing) {
+      // Backfill avatarUrl from Google profile pic if not yet set
+      if (!existing.avatarUrl && args.imageUrl) {
+        await ctx.db.patch(existing._id, { avatarUrl: args.imageUrl })
+      }
+
       return {
         _id: existing._id,
         name: existing.name,
         slug: existing.slug,
         xHandle: existing.xHandle,
-        avatarUrl: existing.avatarUrl,
+        avatarUrl: existing.avatarUrl || args.imageUrl,
         verified: existing.verified,
         personalPages: existing.personalPages,
         projectPages: existing.projectPages,
@@ -53,10 +60,13 @@ export const getOrCreateForUser = mutation({
       suffix++
     }
 
+    const avatarUrl = args.imageUrl ?? undefined
+
     const id = await ctx.db.insert('creators', {
       name,
       slug,
       userId,
+      avatarUrl,
       verified: false,
       personalPages: [],
       projectPages: [],
@@ -68,7 +78,7 @@ export const getOrCreateForUser = mutation({
       name,
       slug,
       xHandle: undefined,
-      avatarUrl: undefined,
+      avatarUrl,
       verified: false,
       personalPages: [],
       projectPages: [],

@@ -1,5 +1,5 @@
 import { useMutation } from "convex/react";
-import { Link2, Upload, X } from "lucide-react";
+import { Link2, Upload, User, X } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { Input } from "@/components/ui/input";
@@ -31,7 +31,7 @@ export function AvatarEditor({
 	const generateUploadUrl = useMutation(api.files.generateUploadUrl);
 	const getFileUrl = useMutation(api.files.getUrl);
 
-	const displayUrl = currentAvatarUrl || defaultAvatarUrl;
+	const displayUrl = currentAvatarUrl;
 	const initials = creatorName.charAt(0).toUpperCase();
 
 	const handleFileUpload = useCallback(async (file: File) => {
@@ -156,6 +156,21 @@ export function AvatarEditor({
 					)}
 				</div>
 
+				{/* Use Profile Picture */}
+				{defaultAvatarUrl && currentAvatarUrl !== defaultAvatarUrl && (
+					<button
+						type="button"
+						onClick={() => {
+							onAvatarChange(defaultAvatarUrl);
+							onClose();
+						}}
+						className="mb-4 flex w-full items-center justify-center gap-2 border-2 border-stroke-subtle px-4 py-2 font-mono text-xs uppercase tracking-wider text-fg-muted hover:border-accent-lime hover:text-accent-lime transition-colors cursor-pointer"
+					>
+						<User className="size-4" />
+						Use Profile Picture
+					</button>
+				)}
+				
 				{/* Upload Dropzone */}
 				<div
 					onDrop={handleDrop}

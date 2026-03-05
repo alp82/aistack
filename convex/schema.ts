@@ -84,6 +84,7 @@ export default defineSchema({
   tools: defineTable({
     name: v.string(),
     slug: v.string(),
+    aliases: v.optional(v.array(v.string())),
     categories: v.array(v.string()),
     iconUrl: v.optional(v.string()),
     websiteUrl: v.optional(v.string()),
@@ -133,7 +134,8 @@ export default defineSchema({
           v.literal('regular'),
           v.literal('discounted'),
           v.literal('bundle'),
-          v.literal('usage_based')
+          v.literal('usage_based'),
+          v.literal('sponsored')
         ),
         bundleSlug: v.optional(v.string()),
         notes: v.optional(v.string()),
@@ -171,6 +173,7 @@ export default defineSchema({
   bundles: defineTable({
     name: v.string(),
     slug: v.string(),
+    aliases: v.optional(v.array(v.string())),
     description: v.optional(v.string()),
     iconUrl: v.optional(v.string()),
     websiteUrl: v.optional(v.string()),
@@ -221,6 +224,7 @@ export default defineSchema({
   models: defineTable({
     name: v.string(),
     slug: v.string(),
+    aliases: v.optional(v.array(v.string())),
     provider: v.string(),
     category: ModelCategory,
     iconUrl: v.optional(v.string()),

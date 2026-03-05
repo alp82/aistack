@@ -42,7 +42,7 @@ function EditStackPage() {
 			return
 		}
 
-		getOrCreateCreator({})
+		getOrCreateCreator({ imageUrl: userImageUrl })
 			.then((c) => {
 				setCreator(c);
 				setLoadingCreator(false);
@@ -120,6 +120,7 @@ function EditStackPage() {
 					bundleName: b.bundleName,
 					tierId: b.tierId,
 					tierName: b.tierName,
+					price: b.price,
 					notes: b.notes,
 				})),
 				modelSubscriptions: stackData.modelSubscriptions.map((m) => ({

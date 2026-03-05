@@ -42,6 +42,7 @@ interface WorkflowStep {
 
 interface StackCardProps {
 	slug: string;
+	name: string;
 	creator: Creator;
 	oneLiner: string;
 	teamSize?: number;
@@ -65,6 +66,7 @@ interface StackCardProps {
 
 export function StackCard({
 	slug,
+	name,
 	creator,
 	oneLiner,
 	teamSize,
@@ -101,7 +103,7 @@ export function StackCard({
 							</div>
 						)}
 						<div className="min-w-0">
-							<h3 className="truncate text-xl font-semibold text-fg-primary">{creator.name}</h3>
+							<h3 className="truncate text-xl font-semibold text-fg-primary">{name}</h3>
 							<div className="mt-0.5 flex items-center gap-2 text-xs text-fg-muted">
 								{xPage && creator.xHandle ? (
 									<a href={xPage.url} target="_blank" rel="noopener" className="hover:text-fg-primary">

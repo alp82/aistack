@@ -10,6 +10,8 @@ type SortOption = "upvotes" | "newest" | "price_low" | "price_high";
 
 type LandingStackPreview = {
 	_id: string;
+	_creationTime: number;
+	name: string;
 	slug: string;
 	oneLiner: string;
 	hasUsageComponent: boolean;
@@ -90,7 +92,7 @@ function filterPreviewStacks(
 			case "upvotes":
 				return b.upvoteCount - a.upvoteCount;
 			case "newest":
-				return 0; // Keep original order (already sorted by creation time from backend)
+				return b._creationTime - a._creationTime;
 			case "price_low":
 				return (a.fixedTotal?.amount ?? 0) - (b.fixedTotal?.amount ?? 0);
 			case "price_high":
@@ -114,8 +116,8 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 	const [sortOption, setSortOption] = useState<SortOption>("newest");
 
 	const categoryOptions = useMemo(
-		() => getCategoryOptions(previewStacks),
-		[previewStacks],
+		() => getCategoryOptions(stacks),
+		[stacks],
 	);
 	const filteredStacks = useMemo(
 		() => filterPreviewStacks(previewStacks, "all", toolFilter, sortOption),
@@ -127,7 +129,7 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 	}
 
 	const allFilters = [
-		{ id: "all", label: "All Stacks", count: previewStacks.length },
+		{ id: "all", label: "All Stacks", count: stacks.length },
 		...categoryOptions,
 	];
 

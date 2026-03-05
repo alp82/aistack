@@ -1,9 +1,9 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useConvexAuth } from "convex/react";
 import { motion } from "framer-motion";
 import { ArrowRight, Box } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -20,9 +20,17 @@ function StackArtifactCard({ stack }: StackArtifactCardProps) {
 	const navigate = useNavigate();
 	const { isAuthenticated } = useConvexAuth();
 	const toggleUpvote = useMutation(api.stacks.toggleUpvote);
+	const upvoteStatus = useQuery(api.stacks.getUpvoteStatus, { stackId: stack._id as Id<"stacks"> });
 	const [upvoting, setUpvoting] = useState(false);
 	const [localUpvoteCount, setLocalUpvoteCount] = useState(stack.upvoteCount);
 	const [hasUpvoted, setHasUpvoted] = useState(false);
+
+	useEffect(() => {
+		if (upvoteStatus) {
+			setHasUpvoted(upvoteStatus.upvoted);
+			setLocalUpvoteCount(upvoteStatus.count);
+		}
+	}, [upvoteStatus]);
 
 	const displayTools = stack.tools.slice(0, 6);
 	const categories = [...new Set(stack.tools.flatMap((tool) => tool.categories))]
@@ -78,13 +86,11 @@ function StackArtifactCard({ stack }: StackArtifactCardProps) {
 						<div className="flex items-center justify-between">
 							<div>
 								<h3 className="text-xl font-bold text-fg-primary leading-none group-hover:text-accent-lime transition-colors">
-									{stack.creator.name}
+									{stack.name}
 								</h3>
-								{stack.creator.xHandle && (
-									<p className="font-mono text-[10px] text-fg-muted uppercase tracking-wider mt-0.5">
-										@{stack.creator.xHandle}
-									</p>
-								)}
+								<p className="font-mono text-[10px] text-fg-muted uppercase tracking-wider mt-0.5">
+								{stack.creator.xHandle && `@${stack.creator.xHandle}`}
+								</p>
 							</div>
 							<div className="text-right">
 								<PriceDisplay

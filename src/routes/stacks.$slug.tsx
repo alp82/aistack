@@ -202,8 +202,25 @@ function StackDetailsPage() {
 	const personalPageUrl = stack.personalPageUrl;
 	const projectPageUrl = stack.projectPageUrl;
 	const hasDescription = !!stack.description;
-	const mainTools = stack.tools.filter((t) => t.kind === "main");
-	const miscTools = stack.tools.filter((t) => t.kind === "misc");
+	const sortByPriceThenName = (a: typeof stack.tools[number], b: typeof stack.tools[number]) => {
+		const groupOrder = (t: typeof stack.tools[number]) => {
+			if (t.priceKind === "sponsored") return 0;
+			const price = t.price.fixed?.amount ?? 0;
+			if (price > 0) return 1;
+			if (t.priceKind === "bundle") return 2;
+			return 3;
+		};
+		const groupA = groupOrder(a);
+		const groupB = groupOrder(b);
+		if (groupA !== groupB) return groupA - groupB;
+		if (groupA === 1) {
+			const diff = (b.price.fixed?.amount ?? 0) - (a.price.fixed?.amount ?? 0);
+			if (diff !== 0) return diff;
+		}
+		return a.name.localeCompare(b.name);
+	};
+	const mainTools = stack.tools.filter((t) => t.kind === "main").sort(sortByPriceThenName);
+	const miscTools = stack.tools.filter((t) => t.kind === "misc").sort(sortByPriceThenName);
 	const toolsContent = (
 		<div className="space-y-8">
 			{/* Main Tools */}
@@ -447,7 +464,7 @@ function StackDetailsPage() {
 						>
 							<div className="border-[3px] border-stroke-strong bg-bg-panel shadow-[4px_4px_0_var(--stroke-strong)] shrink-0 flex flex-col items-center justify-center text-center w-32 h-32 p-4 transition-all hover:shadow-[6px_6px_0_var(--stroke-strong)] hover:border-accent-lime">
 								<PriceDisplay
-									amount={stack.fixedTotal?.amount ?? 0}
+									amount={Math.floor(stack.fixedTotal?.amount ?? 0)}
 									hasUsageComponent={stack.hasUsageComponent}
 									size="lg"
 									className="text-fg-primary"

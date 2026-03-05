@@ -63,7 +63,7 @@ export function CostBreakdownTooltip({
 									{tool.name}
 								</span>
 								<span className="font-mono font-bold text-fg-primary shrink-0">
-									${tool.price.fixed?.amount ?? 0}
+									${Math.round(tool.price.fixed?.amount ?? 0)}
 								</span>
 							</div>
 						))}
@@ -87,7 +87,7 @@ export function CostBreakdownTooltip({
 									{bundle.name}
 								</span>
 								<span className="font-mono font-bold text-fg-primary shrink-0">
-									${bundle.price.fixed?.amount ?? 0}
+									${Math.round(bundle.price.fixed?.amount ?? 0)}
 								</span>
 							</div>
 						))}
@@ -114,7 +114,7 @@ export function CostBreakdownTooltip({
 					Total
 				</span>
 				<span className="font-mono text-lg font-black text-fg-primary">
-					${fixedTotal?.amount ?? 0}
+					${Math.floor(fixedTotal?.amount ?? 0)}
 					{hasUsageComponent && <span className="text-accent-lime">+</span>}
 					<span className="text-sm font-normal text-fg-muted">/mo</span>
 				</span>

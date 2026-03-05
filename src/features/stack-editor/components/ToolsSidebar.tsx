@@ -35,7 +35,8 @@ function ToolsSidebar({
 	guestSession = false,
 	onSignInRequired,
 }: ToolsSidebarProps) {
-	// Accordion state - only one section open at a time, tools starts expanded
+	// Accordion state - only one section open at a time
+	// Tools section starts expanded by default (especially important when no tools exist yet)
 	const [activeSection, setActiveSection] = useState<SidebarSection>("tools");
 	const { insertToolAtCursor, removeToolFromEditor, removeModelFromEditor, removeBundleFromEditor, removeInstructionFromEditor, insertModelAtCursor, insertBundleAtCursor, insertInstructionAtCursor } = useEditorContext();
 	
@@ -160,7 +161,7 @@ function ToolsSidebar({
 		});
 	}, [insertBundleAtCursor]);
 
-	// Calculate total monthly price from tools only (bundles don't have price in entry)
+	// Calculate total monthly price from tools and bundles
 	const totalMonthlyPrice = useMemo(() => {
 		let total = 0;
 		
@@ -176,8 +177,20 @@ function ToolsSidebar({
 			}
 		}
 
+		for (const bundle of bundles) {
+			if (bundle.price?.fixed) {
+				const amount = bundle.price.fixed.amount;
+				const period = bundle.price.fixed.period;
+				if (period === "month") {
+					total += amount;
+				} else if (period === "year") {
+					total += amount / 12;
+				}
+			}
+		}
+
 		return total;
-	}, [tools]);
+	}, [tools, bundles]);
 
 	return (
 		<aside className="hidden w-96 border-l border-stroke-subtle bg-bg-panel/80 lg:block">
@@ -190,7 +203,7 @@ function ToolsSidebar({
 					</p>
 					<div className="mt-2 flex items-baseline gap-2">
 						<span className="text-2xl font-black text-fg-primary">
-							${totalMonthlyPrice.toFixed(2)}
+							${Math.floor(totalMonthlyPrice)}
 						</span>
 						<span className="font-mono text-xs text-fg-muted">/month</span>
 					</div>
@@ -237,6 +250,7 @@ function ToolsSidebar({
 								<ToolPicker 
 									value={tools} 
 									onChange={handleToolsChange} 
+									bundleSubscriptions={bundles.map((b) => ({ bundleSlug: b.bundleSlug, bundleName: b.bundleName }))}
 									onToolClick={handleToolClick}
 									guestSession={guestSession}
 									onSignInRequired={onSignInRequired}

@@ -5,7 +5,7 @@ import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { ModelSubscriptionEntry } from "@/features/stack-editor/types";
 import { AddMissingItemButton } from "./AddMissingItemButton";
-import { AddModelModal } from "./AddModelModal";
+import { AddItemModal } from "./AddItemModal";
 import { PickerEntryCard, PickerToggleButton, PickerBrowser } from "./picker";
 
 export type ModelCategory = 'language' | 'coding' | 'reasoning' | 'vision' | 'audio' | 'image' | 'video' | 'embedding' | 'other';
@@ -62,7 +62,8 @@ export function ModelPicker({ value, onChange, onModelClick }: ModelPickerProps)
             models = models.filter(
                 (m) =>
                     m.name.toLowerCase().includes(q) ||
-                    m.provider.toLowerCase().includes(q)
+                    m.provider.toLowerCase().includes(q) ||
+                    (m.aliases && m.aliases.some((a: string) => a.toLowerCase().includes(q)))
             );
         }
 
@@ -205,12 +206,10 @@ export function ModelPicker({ value, onChange, onModelClick }: ModelPickerProps)
                 </PickerBrowser>
             )}
 
-            <AddModelModal
+            <AddItemModal
                 open={showAddModal}
                 onClose={() => setShowAddModal(false)}
-                onModelCreated={() => {
-                    setShowAddModal(false);
-                }}
+                defaultTab="model"
             />
         </div>
     );
@@ -240,9 +239,8 @@ function ModelEntry({ entry, onRemove, onClick }: ModelEntryProps) {
             name={entry.modelName}
             subtitle={entry.modelProvider}
             icon={icon}
-            onClick={onClick}
+            onInsertClick={onClick}
             onRemove={onRemove}
-            showEditButton={false}
         />
     );
 }

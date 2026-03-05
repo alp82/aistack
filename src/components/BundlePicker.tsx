@@ -4,7 +4,7 @@ import { AddMissingItemButton } from "./AddMissingItemButton";
 import { useMemo, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { AddBundleModal } from "./AddBundleModal";
+import { AddItemModal } from "./AddItemModal";
 import { PickerEntryCard, PickerToggleButton, PickerBrowser, TierSelector } from "./picker";
 
 export interface BundleSubscriptionEntry {
@@ -46,7 +46,8 @@ export function BundlePicker({ value, onChange, onBundleClick, guestSession = fa
         if (search.trim()) {
             const searchLower = search.toLowerCase();
             bundles = bundles.filter((b) =>
-                b.name.toLowerCase().includes(searchLower)
+                b.name.toLowerCase().includes(searchLower) ||
+                (b.aliases && b.aliases.some((a: string) => a.toLowerCase().includes(searchLower)))
             );
         }
         return bundles;
@@ -66,6 +67,10 @@ export function BundlePicker({ value, onChange, onBundleClick, guestSession = fa
             bundleIconUrl: bundle.iconUrl,
             tierId: defaultTier.tierId,
             tierName: defaultTier.name,
+            price: {
+                pricingType: defaultTier.pricing.pricingType,
+                fixed: defaultTier.pricing.fixed,
+            },
         };
         onChange([...value, entry]);
     };
@@ -188,10 +193,10 @@ export function BundlePicker({ value, onChange, onBundleClick, guestSession = fa
                 </PickerBrowser>
             )}
 
-            <AddBundleModal
+            <AddItemModal
                 open={showAddModal}
                 onClose={() => setShowAddModal(false)}
-                onBundleCreated={() => setShowAddModal(false)}
+                defaultTab="bundle"
             />
         </div>
     );
@@ -264,7 +269,7 @@ function BundleEntry({ entry, allBundles, onUpdate, onRemove, onClick }: BundleE
             name={entry.bundleName}
             subtitle={priceDisplay}
             icon={icon}
-            onClick={onClick}
+            onInsertClick={onClick}
             onRemove={onRemove}
             onEditClick={() => setExpanded(!expanded)}
             isExpanded={expanded}
