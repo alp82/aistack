@@ -311,7 +311,7 @@ export function SlashCommandDropdown({
 
 	return (
 		<div
-			className="fixed z-[100] border-2 border-stroke-strong bg-bg-panel shadow-[4px_4px_0_var(--stroke-strong)] min-w-[260px] max-w-[340px] max-h-[320px] flex flex-col"
+			className="fixed z-[100] border-2 border-stroke-strong bg-bg-panel shadow-[4px_4px_0_var(--stroke-strong)] min-w-[260px] max-w-[340px] max-h-[420px] flex flex-col"
 			style={{ top: position.top, left: position.left }}
 			ref={listRef}
 		>
@@ -382,8 +382,9 @@ export function SlashCommandDropdown({
 					</div>
 				);
 			})}
+			</div>
 			{onAddMissing && (
-				<div className="p-2 border-t border-stroke-subtle">
+				<div className="shrink-0 p-2 border-t border-stroke-subtle">
 					<button
 						type="button"
 						className="group flex w-full items-center gap-3 border border-dashed border-stroke-subtle bg-fg-muted/5 px-3 py-2.5 text-left transition-all hover:border-accent-lime hover:bg-accent-lime/5 cursor-pointer"
@@ -406,7 +407,6 @@ export function SlashCommandDropdown({
 					</button>
 				</div>
 			)}
-			</div>
 		</div>
 	);
 }

@@ -265,13 +265,28 @@ export function AddToolForm({
 							>
 								Icon URL
 							</Label>
-							<Input
-								id="tool-icon"
-								value={iconUrl}
-								onChange={(e) => setIconUrl(e.target.value)}
-								placeholder="https://example.com/icon.png"
-								className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
-							/>
+							<div className="flex items-center gap-3">
+								{iconUrl.trim() ? (
+									<img
+										src={iconUrl.trim()}
+										alt="Icon preview"
+										className="size-10 shrink-0 rounded border border-stroke-subtle object-contain p-0.5"
+										onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+										onLoad={(e) => { (e.target as HTMLImageElement).style.display = "block"; }}
+									/>
+								) : (
+									<div className="flex size-10 shrink-0 items-center justify-center rounded border border-stroke-subtle bg-bg-panel-muted">
+										<span className="font-mono text-[10px] text-fg-muted">Icon</span>
+									</div>
+								)}
+								<Input
+									id="tool-icon"
+									value={iconUrl}
+									onChange={(e) => setIconUrl(e.target.value)}
+									placeholder="https://example.com/icon.png"
+									className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
+								/>
+							</div>
 						</div>
 					)}
 

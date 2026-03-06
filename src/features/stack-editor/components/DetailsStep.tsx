@@ -85,7 +85,7 @@ function DetailsStep({
 					<button
 						type="button"
 						onClick={() => setIsAvatarEditorOpen(true)}
-						className="group relative block cursor-pointer"
+						className="group relative block cursor-pointer min-w-30"
 						title="Click to edit avatar"
 					>
 						{displayAvatarUrl && !imgError ? (

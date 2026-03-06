@@ -14,9 +14,9 @@ const THEME_KEY = "aistack-theme";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
 	const [theme, setThemeState] = useState<Theme>(() => {
-		if (typeof window !== "undefined") {
-			const stored = localStorage.getItem(THEME_KEY) as Theme | null;
-			if (stored === "light" || stored === "dark") return stored;
+		if (typeof document !== "undefined") {
+			const htmlClass = document.documentElement.className;
+			if (htmlClass === "light") return "light";
 		}
 		return "dark";
 	});

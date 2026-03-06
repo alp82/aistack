@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FullWidthToolCard } from "@/components/FullWidthToolCard";
 import { MiscToolCard } from "@/components/ToolCard";
 import { PriceDisplay } from "@/components/PriceDisplay";
+import { ItemIcon } from "@/components/ItemIcon";
 import { Brain, FileText, Package } from "lucide-react";
 
 const typeLabels: Record<string, string> = {
@@ -164,17 +165,7 @@ export function ViewSidebar({
 										className="border border-stroke-subtle rounded p-3 hover:border-stroke-strong transition-colors"
 									>
 										<div className="flex items-center gap-3">
-											{model.iconUrl ? (
-												<img
-													src={model.iconUrl}
-													alt={model.name}
-													className="size-8 shrink-0 rounded border border-stroke-subtle bg-white object-contain p-1"
-												/>
-											) : (
-												<div className="flex size-8 shrink-0 items-center justify-center rounded border border-stroke-subtle bg-bg-panel-muted">
-													<Brain className="size-4 text-fg-muted" />
-												</div>
-											)}
+											<ItemIcon src={model.iconUrl} alt={model.name} size="sm" fallbackIcon={Brain} />
 											<div className="flex-1 min-w-0">
 												<span className="font-mono text-sm font-semibold text-fg-primary block">
 													{model.name}
@@ -204,17 +195,7 @@ export function ViewSidebar({
 										className="border border-stroke-subtle rounded p-3 hover:border-stroke-strong transition-colors"
 									>
 										<div className="flex items-center gap-3">
-											{bundle.iconUrl ? (
-												<img
-													src={bundle.iconUrl}
-													alt={bundle.name}
-													className="size-8 shrink-0 rounded border border-stroke-subtle bg-white object-contain p-1"
-												/>
-											) : (
-												<div className="flex size-8 shrink-0 items-center justify-center rounded border border-stroke-subtle bg-bg-panel-muted">
-													<Package className="size-4 text-fg-muted" />
-												</div>
-											)}
+											<ItemIcon src={bundle.iconUrl} alt={bundle.name} size="sm" fallbackIcon={Package} />
 											<div className="flex-1 min-w-0">
 												<span className="font-mono text-sm font-semibold text-fg-primary block">
 													{bundle.name}

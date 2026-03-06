@@ -23,14 +23,24 @@ const DiscordIcon = () => (
 
 function ThemeToggle() {
 	const { theme, toggleTheme } = useTheme();
+	const [mounted, setMounted] = useState(false);
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
+
 	return (
 		<button
 			type="button"
 			onClick={toggleTheme}
 			className="flex size-8 items-center justify-center text-fg-muted transition-colors hover:text-fg-primary"
-			aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+			aria-label={mounted ? (theme === "dark" ? "Switch to light mode" : "Switch to dark mode") : "Toggle theme"}
 		>
-			{theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+			{mounted ? (
+				theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />
+			) : (
+				<Sun className="size-4" />
+			)}
 		</button>
 	);
 }
@@ -61,13 +71,17 @@ export default function Header() {
 
 	const [cachedUserStack, setCachedUserStack] = useState<{
 		slug: string;
-	} | null>(() => {
-		if (typeof window !== "undefined" && isAuthenticated) {
+	} | null>(null);
+
+	// Hydrate from localStorage after mount to avoid SSR mismatch
+	useEffect(() => {
+		if (isAuthenticated) {
 			const cached = localStorage.getItem("userStack");
-			return cached ? JSON.parse(cached) : null;
+			if (cached) {
+				setCachedUserStack(JSON.parse(cached));
+			}
 		}
-		return null;
-	});
+	}, [isAuthenticated]);
 
 	const userStack = useQuery(api.stacks.getUserStack);
 	const isAdmin = useQuery(api.admin.checkIsAdmin) ?? false;

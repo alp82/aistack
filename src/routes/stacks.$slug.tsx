@@ -1,3 +1,4 @@
+import { GridBackground } from "@/components/GridBackground";
 import { convexQuery } from "@convex-dev/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation } from "convex/react";
@@ -118,7 +119,7 @@ export const Route = createFileRoute("/stacks/$slug")({
 	ssr: false,
 	component: StackDetailsPage,
 	loader: async ({ context, params }) => {
-		await context.queryClient.prefetchQuery(
+		await context.queryClient.ensureQueryData(
 			convexQuery(api.stacks.getBySlug, { slug: params.slug }),
 		);
 	},
@@ -271,7 +272,7 @@ function StackDetailsPage() {
 									<img
 										src={bundle.iconUrl}
 										alt={bundle.name}
-										className="size-10 shrink-0 border border-stroke-subtle bg-white object-contain p-1"
+										className="size-10 shrink-0 rounded border border-stroke-subtle object-contain p-0.5"
 									/>
 								) : (
 									<div className="flex size-10 shrink-0 items-center justify-center border border-stroke-subtle bg-bg-panel-muted">
@@ -333,6 +334,7 @@ function StackDetailsPage() {
 				instructions={stack.instructions ?? []}
 			/>
 			<div className="bg-bg-canvas">
+			<GridBackground />
 			{/* Header */}
 			<header className="py-8 md:py-12 px-6">
 				<div className="mx-auto max-w-content">

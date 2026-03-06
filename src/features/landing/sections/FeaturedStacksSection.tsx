@@ -1,10 +1,12 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { SortDropdown } from "@/components/SortDropdown";
 import { StackArtifactCard } from "@/features/landing/components/StackArtifactCard";
 import { cn } from "@/lib/utils";
+
+const STACKS_PER_PAGE = 9;
 
 type SortOption = "upvotes" | "newest" | "price_low" | "price_high";
 
@@ -104,27 +106,34 @@ function filterPreviewStacks(
 }
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-	{ value: "newest", label: "Newest" },
 	{ value: "upvotes", label: "Most Upvoted" },
+	{ value: "newest", label: "Newest" },
 	{ value: "price_low", label: "Price: Low → High" },
 	{ value: "price_high", label: "Price: High → Low" },
 ];
 
 function FeaturedStacksSection({ stacks }: FeedSectionProps) {
-	const previewStacks = stacks.slice(0, 6);
 	const [toolFilter, setToolFilter] = useState<string>("all");
-	const [sortOption, setSortOption] = useState<SortOption>("newest");
+	const [sortOption, setSortOption] = useState<SortOption>("upvotes");
+	const [currentPage, setCurrentPage] = useState(1);
 
 	const categoryOptions = useMemo(
 		() => getCategoryOptions(stacks),
 		[stacks],
 	);
 	const filteredStacks = useMemo(
-		() => filterPreviewStacks(previewStacks, "all", toolFilter, sortOption),
-		[previewStacks, toolFilter, sortOption],
+		() => filterPreviewStacks(stacks, "all", toolFilter, sortOption),
+		[stacks, toolFilter, sortOption],
 	);
 
-	if (previewStacks.length === 0) {
+	const totalPages = Math.max(1, Math.ceil(filteredStacks.length / STACKS_PER_PAGE));
+	const safeCurrentPage = Math.min(currentPage, totalPages);
+	const paginatedStacks = filteredStacks.slice(
+		(safeCurrentPage - 1) * STACKS_PER_PAGE,
+		safeCurrentPage * STACKS_PER_PAGE,
+	);
+
+	if (stacks.length === 0) {
 		return null;
 	}
 
@@ -145,13 +154,13 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 				</div>
 
 				{/* Filter Pills + Sorting */}
-				<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-12 font-mono text-sm">
+				<div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-12 font-mono text-sm">
 					<div className="flex flex-wrap gap-2">
 						{allFilters.map((filter) => (
 							<button
 								key={filter.id}
 								type="button"
-								onClick={() => setToolFilter(filter.id)}
+								onClick={() => { setToolFilter(filter.id); setCurrentPage(1); }}
 								className={cn(
 									"px-4 py-2 uppercase font-bold transition-colors",
 									toolFilter === filter.id
@@ -168,13 +177,13 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 					<SortDropdown
 						options={SORT_OPTIONS}
 						value={sortOption}
-						onChange={setSortOption}
+						onChange={(v) => { setSortOption(v); setCurrentPage(1); }}
 					/>
 				</div>
 
 				{/* Stack Grid */}
 				<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-					{filteredStacks.map((stack) => (
+					{paginatedStacks.map((stack) => (
 						<StackArtifactCard key={stack._id} stack={stack} />
 					))}
 				</div>
@@ -185,8 +194,45 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 					</div>
 				)}
 
+				{/* Pagination */}
+				{totalPages > 1 && (
+					<div className="mt-12 flex items-center justify-center gap-2">
+						<button
+							type="button"
+							onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+							disabled={safeCurrentPage <= 1}
+							className="flex size-10 items-center justify-center border border-stroke-strong text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime disabled:opacity-30 disabled:cursor-not-allowed"
+						>
+							<ChevronLeft className="size-4" />
+						</button>
+						{Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+							<button
+								key={page}
+								type="button"
+								onClick={() => setCurrentPage(page)}
+								className={cn(
+									"flex size-10 items-center justify-center border font-mono text-sm font-bold transition-colors",
+									page === safeCurrentPage
+										? "border-accent-lime bg-accent-lime text-accent-lime-contrast"
+										: "border-stroke-strong text-fg-muted hover:border-accent-lime hover:text-accent-lime"
+								)}
+							>
+								{page}
+							</button>
+						))}
+						<button
+							type="button"
+							onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+							disabled={safeCurrentPage >= totalPages}
+							className="flex size-10 items-center justify-center border border-stroke-strong text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime disabled:opacity-30 disabled:cursor-not-allowed"
+						>
+							<ChevronRight className="size-4" />
+						</button>
+					</div>
+				)}
+
 				{/* View All Link */}
-				<div className="mt-20 flex justify-center">
+				<div className="mt-12 flex justify-center">
 					<Link
 						to="/stacks"
 						className="text-fg-muted hover:text-accent-lime font-mono uppercase tracking-widest text-sm flex items-center gap-2 group transition-colors"

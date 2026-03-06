@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { GridBackground } from "@/components/GridBackground";
 import { useQuery } from "convex/react";
 import { Copy, DollarSign, Lightbulb } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -226,7 +227,8 @@ function AboutPage() {
 
 	return (
 		<div className="mx-6 min-h-screen bg-bg-canvas">
-			<section className="border-b-2 border-stroke-strong py-24">
+			<GridBackground />
+			<section className="relative z-10 border-b-2 border-stroke-strong py-24">
 				<div className="mx-auto max-w-content">
 					<PageHeader
 						label="ABOUT"

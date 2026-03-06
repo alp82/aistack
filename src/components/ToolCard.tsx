@@ -1,5 +1,6 @@
 import { ExternalLink, Plus } from "lucide-react";
 import { PriceDisplay } from "@/components/PriceDisplay";
+import { ItemIcon } from "@/components/ItemIcon";
 import { categoryConfig } from "@/config/categoryConfig";
 import { cn } from "@/lib/utils";
 
@@ -30,13 +31,7 @@ export function MainToolCard({ tool }: { tool: ToolData }) {
 	return (
 		<div className="bg-slate-700/40 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-colors">
 			<div className="flex items-start gap-3">
-				{tool.iconUrl ? (
-					<img src={tool.iconUrl} alt={tool.name} className="h-10 w-10 rounded-lg object-contain bg-white p-1 flex-shrink-0" />
-				) : (
-					<div className="h-10 w-10 rounded-lg bg-gray-700 flex items-center justify-center flex-shrink-0">
-						<Icon className="h-5 w-5 text-gray-400" />
-					</div>
-				)}
+				<ItemIcon src={tool.iconUrl} alt={tool.name} size="md" fallbackIcon={Icon} />
 				<div className="flex-1 min-w-0">
 					<div className="flex items-center justify-between mb-1">
 						<span className="font-semibold text-white truncate">{tool.name}</span>
@@ -100,13 +95,7 @@ export function MiscToolCard({ tool, onBundleClick }: MiscToolCardProps) {
 
 	return (
 		<div className="flex items-center gap-3 border border-stroke-subtle rounded p-3 hover:border-stroke-strong transition-colors">
-			{tool.iconUrl ? (
-				<img src={tool.iconUrl} alt={tool.name} className="size-8 shrink-0 rounded border border-stroke-subtle bg-white object-contain p-1" />
-			) : (
-				<div className="size-8 shrink-0 rounded border border-stroke-subtle bg-bg-panel-muted flex items-center justify-center">
-					<Icon2 className="size-4 text-fg-muted" />
-				</div>
-			)}
+			<ItemIcon src={tool.iconUrl} alt={tool.name} size="sm" fallbackIcon={Icon2} />
 			<div className="flex-1 min-w-0">
 				<span className="font-mono text-sm font-semibold text-fg-primary block truncate">{tool.name}</span>
 				<span className="font-mono text-[10px] text-fg-muted uppercase tracking-wider block mt-0.5">

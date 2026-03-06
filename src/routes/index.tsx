@@ -11,7 +11,7 @@ export const Route = createFileRoute("/")({
 	ssr: false,
 	component: IndexRoute,
 	loader: async ({ context }) => {
-		await context.queryClient.prefetchQuery(
+		await context.queryClient.ensureQueryData(
 			convexQuery(api.stacks.listPublished, {}),
 		);
 	},

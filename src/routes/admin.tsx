@@ -5,6 +5,7 @@ import { Check, X, Edit2, Package, Wrench, Brain, Pencil } from "lucide-react";
 import { useState } from "react";
 import type { Id } from "../../convex/_generated/dataModel";
 import { AddToolModal, type ToolData } from "../components/AddToolModal";
+import { ItemIcon } from "@/components/ItemIcon";
 
 export const Route = createFileRoute("/admin")({
 	ssr: false,
@@ -142,13 +143,7 @@ function AdminPage() {
 								>
 									<div className="mb-4 flex items-start justify-between gap-4">
 										<div className="flex items-start gap-4">
-											{tool.iconUrl && (
-												<img
-													src={tool.iconUrl}
-													alt={tool.name}
-													className="size-12 shrink-0 border border-stroke-subtle bg-white object-contain p-1"
-												/>
-											)}
+											<ItemIcon src={tool.iconUrl} alt={tool.name} size="lg" fallbackIcon={Wrench} />
 											<div>
 												<h3 className="font-mono text-lg font-semibold text-fg-primary">
 													{tool.name}
@@ -274,10 +269,42 @@ function AdminPage() {
 									key={suggestion._id}
 									className="border-2 border-stroke-strong bg-bg-panel p-6"
 								>
-									<div className="mb-4">
+									<div className="mb-4 flex items-start justify-between gap-4">
 										<h3 className="font-mono text-lg font-semibold text-fg-primary">
 											Edit suggestion for: {suggestion.originalTool?.name ?? "Unknown Tool"}
 										</h3>
+										{suggestion.originalTool && (
+											<button
+												type="button"
+												onClick={() => setEditingTool({
+													_id: suggestion.originalTool!._id,
+													name: suggestion.suggestedName,
+													categories: suggestion.suggestedCategories,
+													websiteUrl: suggestion.suggestedWebsiteUrl,
+													iconUrl: suggestion.originalTool!.iconUrl,
+													tiers: suggestion.suggestedTiers.map((t, i) => ({
+														tierId: `tier-${i + 1}`,
+														name: t.name,
+														pricing: {
+															pricingType: t.pricingType as "fixed" | "usage" | "mixed",
+															...(t.pricingType === "fixed" || t.pricingType === "mixed"
+																? {
+																	fixed: {
+																		currency: "USD",
+																		amount: t.fixedAmount ?? 0,
+																		period: (t.fixedPeriod ?? "month") as "month" | "year" | "one_time",
+																	},
+																}
+																: {}),
+														},
+													})),
+												})}
+												className="inline-flex items-center gap-2 border border-stroke-subtle px-3 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-accent-lime hover:text-accent-lime shrink-0"
+											>
+												<Edit2 className="size-3.5" />
+												Edit Tool
+											</button>
+										)}
 									</div>
 
 									<div className="grid grid-cols-2 gap-6 mb-4">
@@ -416,17 +443,7 @@ function AdminPage() {
 								>
 									<div className="mb-4 flex items-start justify-between gap-4">
 										<div className="flex items-start gap-4">
-											{bundle.iconUrl ? (
-												<img
-													src={bundle.iconUrl}
-													alt={bundle.name}
-													className="size-12 shrink-0 border border-stroke-subtle bg-white object-contain p-1"
-												/>
-											) : (
-												<div className="flex size-12 shrink-0 items-center justify-center border border-stroke-subtle bg-bg-panel-muted">
-													<Package className="size-6 text-fg-muted" />
-												</div>
-											)}
+											<ItemIcon src={bundle.iconUrl} alt={bundle.name} size="lg" fallbackIcon={Package} />
 											<div>
 												<h3 className="font-mono text-lg font-semibold text-fg-primary">
 													{bundle.name}
@@ -565,17 +582,7 @@ function AdminPage() {
 								>
 									<div className="mb-4 flex items-start justify-between gap-4">
 										<div className="flex items-start gap-4">
-											{model.iconUrl ? (
-												<img
-													src={model.iconUrl}
-													alt={model.name}
-													className="size-12 shrink-0 border border-stroke-subtle bg-white object-contain p-1"
-												/>
-											) : (
-												<div className="flex size-12 shrink-0 items-center justify-center border border-stroke-subtle bg-bg-panel-muted">
-													<Brain className="size-6 text-fg-muted" />
-												</div>
-											)}
+											<ItemIcon src={model.iconUrl} alt={model.name} size="lg" fallbackIcon={Brain} />
 											<div>
 												<h3 className="font-mono text-lg font-semibold text-fg-primary">
 													{model.name}

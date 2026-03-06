@@ -85,7 +85,7 @@ function StackArtifactCard({ stack }: StackArtifactCardProps) {
 						)}
 						<div className="flex items-center justify-between">
 							<div>
-								<h3 className="text-xl font-bold text-fg-primary leading-none group-hover:text-accent-lime transition-colors">
+								<h3 className="text-xl font-bold text-fg-primary leading-tight line-clamp-2 group-hover:text-accent-lime transition-colors">
 									{stack.name}
 								</h3>
 								<p className="font-mono text-[10px] text-fg-muted uppercase tracking-wider mt-0.5">
@@ -94,7 +94,7 @@ function StackArtifactCard({ stack }: StackArtifactCardProps) {
 							</div>
 							<div className="text-right">
 								<PriceDisplay
-									amount={stack.fixedTotal?.amount ?? 0}
+									amount={Math.floor(stack.fixedTotal?.amount ?? 0)}
 									hasUsageComponent={stack.hasUsageComponent}
 									className="text-fg-primary group-hover:text-accent-lime transition-colors"
 								/>

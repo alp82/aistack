@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { AddToolForm } from "../components/AddToolModal";
+import { GridBackground } from "../components/GridBackground";
 import { PageHeader } from "../components/PageHeader";
 
 export const Route = createFileRoute("/tools_/new")({
@@ -20,15 +21,7 @@ function NewToolPage() {
 
 	return (
 		<div className="mx-6 min-h-screen bg-bg-canvas">
-			{/* Grid background */}
-			<div
-				className="fixed inset-0 pointer-events-none z-0 opacity-10"
-				style={{
-					backgroundImage:
-						"linear-gradient(to right, #333 1px, transparent 1px), linear-gradient(to bottom, #333 1px, transparent 1px)",
-					backgroundSize: "4rem 4rem",
-				}}
-			/>
+			<GridBackground />
 
 			<div className="relative z-10 max-w-content mx-auto py-24">
 				<PageHeader

@@ -57,6 +57,7 @@ export const listAll = query({
 export const create = mutation({
   args: {
     name: v.string(),
+    aliases: v.optional(v.array(v.string())),
     categories: v.array(v.string()),
     websiteUrl: v.optional(v.string()),
     tiers: v.array(

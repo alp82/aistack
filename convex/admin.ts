@@ -340,9 +340,12 @@ export const getPendingToolEditSuggestions = query({
         return {
           ...suggestion,
           originalTool: tool ? {
+            _id: tool._id,
             name: tool.name,
             categories: tool.categories,
             websiteUrl: tool.websiteUrl,
+            iconUrl: tool.iconUrl,
+            tiers: tool.tiers,
           } : null,
           submitterInfo: userInfo,
         }

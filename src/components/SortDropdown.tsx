@@ -46,10 +46,10 @@ function SortDropdown<T extends string>({
 			<button
 				type="button"
 				onClick={() => setIsOpen(!isOpen)}
-				className="flex items-center gap-2 px-4 py-2 border border-stroke-strong bg-bg-canvas text-fg-muted hover:border-accent-lime hover:text-fg-primary transition-colors"
+				className="flex items-center gap-2 h-12 px-4 border border-stroke-strong bg-bg-canvas text-fg-muted hover:border-accent-lime hover:text-fg-primary transition-colors"
 			>
 				<span className="uppercase text-xs tracking-wider">Sort:</span>
-				<span className="uppercase font-bold">{selectedOption?.label}</span>
+				<span className="uppercase text-xs font-bold">{selectedOption?.label}</span>
 				<ChevronDown className={cn("size-4 transition-transform", isOpen && "rotate-180")} />
 			</button>
 			{isOpen && (

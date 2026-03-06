@@ -9,12 +9,16 @@ import {
 	Outlet,
 	Scripts,
 	useRouteContext,
+	useRouterState,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { createServerFn } from "@tanstack/react-start";
+import { useConvexAuth } from "convex/react";
 import { AlertCircle, Home } from "lucide-react";
+import { useRef } from "react";
 import { Footer } from "../components/Footer";
 import Header from "../components/Header";
+import { LoadingScreen } from "../components/LoadingScreen";
 import PosthogProvider from "../integrations/posthog/provider";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import { authClient } from "../lib/auth-client";
@@ -109,17 +113,44 @@ function RootComponent() {
 	);
 }
 
+function AppShell({ children }: { children: React.ReactNode }) {
+	const { isLoading: authLoading } = useConvexAuth();
+	const routerStatus = useRouterState({ select: (s) => s.status });
+	const initialLoadDone = useRef(false);
+
+	const showLoadingScreen = !initialLoadDone.current && (authLoading || routerStatus !== "idle");
+
+	if (!showLoadingScreen && !initialLoadDone.current) {
+		initialLoadDone.current = true;
+	}
+
+	if (showLoadingScreen) {
+		return <LoadingScreen />;
+	}
+
+	return (
+		<>
+			<Header />
+			{children}
+			<Footer />
+		</>
+	);
+}
+
 function RootDocument({ children }: { children: React.ReactNode }) {
 	return (
-		<html lang="en" className="dark">
+		<html lang="en" className="dark" suppressHydrationWarning>
 			<head>
 				<HeadContent />
+				<script
+					dangerouslySetInnerHTML={{
+						__html: `(function(){try{var t=localStorage.getItem('aistack-theme');if(t==='light'||t==='dark'){document.documentElement.className=t}}catch(e){}})()`,
+					}}
+				/>
 			</head>
-			<body className="bg-bg-canvas min-h-screen flex flex-col">
+			<body className="bg-bg-canvas min-h-screen flex flex-col" suppressHydrationWarning>
 				<ThemeProvider>
-					<Header />
-						{children}
-					<Footer />
+					<AppShell>{children}</AppShell>
 				</ThemeProvider>
 				<TanStackDevtools
 					config={{

@@ -1,11 +1,21 @@
 import { PostHogProvider as PHProvider } from "posthog-js/react";
-import React, { type FC, type ReactNode } from "react";
+import { type FC, type ReactNode, useEffect, useState } from "react";
 
 interface PosthogProviderProps {
 	children: ReactNode;
 }
 
 const PosthogProvider: FC<PosthogProviderProps> = ({ children }) => {
+	const [mounted, setMounted] = useState(false);
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
+
+	if (!mounted) {
+		return <>{children}</>;
+	}
+
 	return (
 		<PHProvider
 			apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY}

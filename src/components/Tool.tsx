@@ -1,4 +1,5 @@
 import { Plus } from "lucide-react";
+import { ItemIcon } from "@/components/ItemIcon";
 import { categoryConfig, type ToolCategory } from "@/config/categoryConfig";
 
 interface ToolProps {
@@ -30,11 +31,7 @@ export function Tool({
 		>
 			{/* Header */}
 			<div className="flex items-start gap-3 border-b border-stroke-subtle px-4 py-3">
-				<img
-					src={logo}
-					alt={name}
-					className="size-10 shrink-0 border border-stroke-subtle bg-white object-contain p-1"
-				/>
+				<ItemIcon src={logo} alt={name} size="md" />
 				<div className="min-w-0 flex-1">
 					<h3 className="truncate font-mono text-sm font-semibold text-fg-primary transition-colors group-hover:text-accent-lime">
 						{name}

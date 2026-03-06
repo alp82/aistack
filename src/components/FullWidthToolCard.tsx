@@ -1,5 +1,6 @@
 import { Plus } from "lucide-react";
 import { PriceDisplay } from "@/components/PriceDisplay";
+import { ItemIcon } from "@/components/ItemIcon";
 import { categoryConfig } from "@/config/categoryConfig";
 
 interface ToolData {
@@ -34,17 +35,7 @@ export function FullWidthToolCard({ tool, onBundleClick }: FullWidthToolCardProp
 	return (
 		<div className="flex items-center gap-3 border border-stroke-subtle rounded p-3 hover:border-stroke-strong transition-colors">
 			{/* Icon */}
-			{tool.iconUrl ? (
-				<img
-					src={tool.iconUrl}
-					alt={tool.name}
-					className="size-10 shrink-0 rounded border border-stroke-subtle bg-white object-contain p-1"
-				/>
-			) : (
-				<div className="size-10 shrink-0 rounded border border-stroke-subtle bg-bg-panel-muted flex items-center justify-center">
-					<Icon className="size-5 text-fg-muted" />
-				</div>
-			)}
+			<ItemIcon src={tool.iconUrl} alt={tool.name} size="md" fallbackIcon={Icon} />
 
 			{/* Name & Tier */}
 			<div className="flex-1 min-w-0">

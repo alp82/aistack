@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { GridBackground } from "@/components/GridBackground";
 import { useMutation, useQuery } from "convex/react";
 import { CheckCircle, ExternalLink, Save, Send } from "lucide-react";
 import { useCallback, useRef, useEffect } from "react";
@@ -292,15 +293,7 @@ export function StackEditor({
 				instructions={state.instructions}
 			/>
 			<div className="bg-bg-canvas">
-				{/* Grid background */}
-				<div
-					className="pointer-events-none fixed inset-0 z-0 opacity-10"
-					style={{
-						backgroundImage:
-							"linear-gradient(to right, var(--stroke-subtle) 1px, transparent 1px), linear-gradient(to bottom, var(--stroke-subtle) 1px, transparent 1px)",
-						backgroundSize: "4rem 4rem",
-					}}
-				/>
+				<GridBackground />
 				<SignInDialog
 					isOpen={state.showSignInDialog}
 					onClose={() => setShowSignInDialog(false)}

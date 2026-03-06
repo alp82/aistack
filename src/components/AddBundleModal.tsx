@@ -196,7 +196,7 @@ export function AddBundleForm({
 									<img
 										src={iconUrl.trim()}
 										alt="Icon preview"
-										className="size-10 shrink-0 rounded border border-stroke-subtle bg-white object-contain p-1"
+										className="size-10 shrink-0 rounded border border-stroke-subtle object-contain p-0.5"
 										onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
 										onLoad={(e) => { (e.target as HTMLImageElement).style.display = "block"; }}
 									/>

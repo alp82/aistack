@@ -3,10 +3,12 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { useConvexAuth } from "convex/react";
 import { useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import { api } from "../../convex/_generated/api";
+import { GridBackground } from "@/components/GridBackground";
 import { PageHeader } from "@/components/PageHeader";
 import { SortDropdown } from "@/components/SortDropdown";
+import { Input } from "@/components/ui/input";
 import { StackArtifactCard } from "@/features/landing/components/StackArtifactCard";
 import {
 	filterPreviewStacks,
@@ -16,6 +18,8 @@ import {
 	type SortOption,
 } from "@/features/landing/sections/FeaturedStacksSection";
 import { cn } from "@/lib/utils";
+
+const STACKS_PER_PAGE = 12;
 
 function getCategoryBgColor(category: string): string {
 	const colors: Record<string, string> = {
@@ -83,7 +87,7 @@ export const Route = createFileRoute("/stacks/")({
 	ssr: false,
 	component: BrowseStacksPage,
 	loader: async ({ context }) => {
-		await context.queryClient.prefetchQuery(
+		await context.queryClient.ensureQueryData(
 			convexQuery(api.stacks.listPublished, {}),
 		);
 	},
@@ -107,12 +111,31 @@ function BrowseStacksPage() {
 	const stacks = (useQuery(api.stacks.listPublished) ?? []) as LandingStackPreview[];
 	const userStack = useQuery(api.stacks.getUserStack);
 	const [toolFilter, setToolFilter] = useState<string>("all");
-	const [sortOption, setSortOption] = useState<SortOption>("newest");
+	const [sortOption, setSortOption] = useState<SortOption>("upvotes");
+	const [searchQuery, setSearchQuery] = useState("");
+	const [currentPage, setCurrentPage] = useState(1);
 
 	const categoryOptions = useMemo(() => getCategoryOptions(stacks), [stacks]);
-	const filteredStacks = useMemo(
-		() => filterPreviewStacks(stacks, "all", toolFilter, sortOption),
-		[stacks, toolFilter, sortOption],
+	const filteredStacks = useMemo(() => {
+		let result = filterPreviewStacks(stacks, "all", toolFilter, sortOption);
+		if (searchQuery.trim()) {
+			const q = searchQuery.trim().toLowerCase();
+			result = result.filter(
+				(s) =>
+					s.name.toLowerCase().includes(q) ||
+					s.oneLiner.toLowerCase().includes(q) ||
+					s.creator.name.toLowerCase().includes(q) ||
+					s.tools.some((t) => t.name.toLowerCase().includes(q)),
+			);
+		}
+		return result;
+	}, [stacks, toolFilter, sortOption, searchQuery]);
+
+	const totalPages = Math.max(1, Math.ceil(filteredStacks.length / STACKS_PER_PAGE));
+	const safeCurrentPage = Math.min(currentPage, totalPages);
+	const paginatedStacks = filteredStacks.slice(
+		(safeCurrentPage - 1) * STACKS_PER_PAGE,
+		safeCurrentPage * STACKS_PER_PAGE,
 	);
 
 	const allFilters = [
@@ -130,7 +153,8 @@ function BrowseStacksPage() {
 
 	return (
 		<div className="min-h-screen bg-bg-canvas">
-			<section className="py-24 px-6 md:px-12">
+			<GridBackground />
+			<section className="relative z-10 py-24 px-6 md:px-12">
 				<div className="mx-auto max-w-content">
 					<PageHeader
 						label="STACK_BROWSER"
@@ -143,37 +167,46 @@ function BrowseStacksPage() {
 						}}
 					/>
 
-					{/* Filter Pills + Sorting */}
-					<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-12 font-mono text-sm">
-						<div className="flex flex-wrap gap-2">
-							{allFilters.map((filter) => (
-								<button
-									key={filter.id}
-									type="button"
-									onClick={() => setToolFilter(filter.id)}
-									className={cn(
-										"px-4 py-2 uppercase font-bold transition-colors border",
-										toolFilter === filter.id
-											? filter.id === "all"
-												? "bg-accent-lime text-accent-lime-contrast border-accent-lime"
-												: `${getCategoryBgColor(filter.id)} ${getCategoryBorderColor(filter.id)}`
-											: cn(
-													"bg-bg-canvas text-fg-muted hover:text-fg-primary",
-													filter.id === "all" ? "border-stroke-strong hover:border-accent-lime" : getCategoryBorderColor(filter.id)
-												)
-									)}
-								>
-									{filter.label} {filter.count && `(${filter.count})`}
-								</button>
-							))}
+					{/* Search Bar + Sort */}
+					<div className="flex gap-4 mb-8">
+						<div className="relative flex-1">
+							<Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-fg-muted" />
+							<Input
+								value={searchQuery}
+								onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+								placeholder="Search stacks by name, creator, or tool..."
+								className="h-12 pl-11 border-stroke-strong bg-bg-panel font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
+							/>
 						</div>
-
-						{/* Sort Dropdown */}
 						<SortDropdown
 							options={SORT_OPTIONS}
 							value={sortOption}
-							onChange={setSortOption}
+							onChange={(v) => { setSortOption(v); setCurrentPage(1); }}
 						/>
+					</div>
+
+					{/* Filter Pills */}
+					<div className="flex flex-wrap gap-2 mb-12 font-mono text-sm">
+						{allFilters.map((filter) => (
+							<button
+								key={filter.id}
+								type="button"
+								onClick={() => { setToolFilter(filter.id); setCurrentPage(1); }}
+								className={cn(
+									"px-4 py-2 uppercase font-bold transition-colors border",
+									toolFilter === filter.id
+										? filter.id === "all"
+											? "bg-accent-lime text-accent-lime-contrast border-accent-lime"
+											: `${getCategoryBgColor(filter.id)} ${getCategoryBorderColor(filter.id)}`
+										: cn(
+												"bg-bg-canvas text-fg-muted hover:text-fg-primary",
+												filter.id === "all" ? "border-stroke-strong hover:border-accent-lime" : getCategoryBorderColor(filter.id)
+											)
+								)}
+							>
+								{filter.label} {filter.count && `(${filter.count})`}
+							</button>
+						))}
 					</div>
 
 					{stacks.length === 0 ? (
@@ -185,12 +218,51 @@ function BrowseStacksPage() {
 							No stacks match these filters.
 						</div>
 					) : (
-						<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-							{filteredStacks.map((stack) => (
-								<StackArtifactCard key={stack._id} stack={stack} />
-							))}
-						</div>
-					)}
+						<>
+							<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+								{paginatedStacks.map((stack) => (
+									<StackArtifactCard key={stack._id} stack={stack} />
+								))}
+							</div>
+
+							{/* Pagination */}
+							{totalPages > 1 && (
+								<div className="mt-12 flex items-center justify-center gap-2">
+									<button
+										type="button"
+										onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+										disabled={safeCurrentPage <= 1}
+										className="flex size-10 items-center justify-center border border-stroke-strong text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime disabled:opacity-30 disabled:cursor-not-allowed"
+									>
+										<ChevronLeft className="size-4" />
+									</button>
+									{Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+										<button
+											key={page}
+											type="button"
+											onClick={() => setCurrentPage(page)}
+											className={cn(
+												"flex size-10 items-center justify-center border font-mono text-sm font-bold transition-colors",
+												page === safeCurrentPage
+													? "border-accent-lime bg-accent-lime text-accent-lime-contrast"
+													: "border-stroke-strong text-fg-muted hover:border-accent-lime hover:text-accent-lime"
+											)}
+										>
+											{page}
+										</button>
+									))}
+									<button
+										type="button"
+										onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+										disabled={safeCurrentPage >= totalPages}
+										className="flex size-10 items-center justify-center border border-stroke-strong text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime disabled:opacity-30 disabled:cursor-not-allowed"
+									>
+										<ChevronRight className="size-4" />
+									</button>
+								</div>
+							)}
+						</>)
+					}
 				</div>
 			</section>
 		</div>
