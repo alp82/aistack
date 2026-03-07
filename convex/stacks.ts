@@ -1,6 +1,8 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import type { QueryCtx } from './_generated/server'
+import { type FixedPrice, sumNormalizedMonthlyAmounts } from '../src/lib/pricing'
+import { slugifyAscii } from '../src/lib/slug'
 
 const SHORT_ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'
 const SHORT_ID_LENGTH = 6
@@ -26,12 +28,58 @@ function extractShortId(compositeSlug: string): string {
   return compositeSlug.slice(lastHyphen + 1)
 }
 
-function slugify(name: string, fallback: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    || fallback
+type ToolSubscriptionLike = {
+  price: {
+    pricingType: 'fixed' | 'usage' | 'mixed'
+    fixed?: FixedPrice
+  }
+}
+
+type BundleSubscriptionLike = {
+  bundleSlug: string
+  tierId: string
+}
+
+function buildFixedTotal(prices: Array<FixedPrice | undefined>) {
+  return {
+    currency: 'USD',
+    amount: sumNormalizedMonthlyAmounts(prices),
+    period: 'month' as const,
+  }
+}
+
+async function calculateStackPricing(
+  ctx: QueryCtx,
+  toolSubscriptions: ToolSubscriptionLike[],
+  bundleSubscriptions: BundleSubscriptionLike[] = []
+) {
+  const fixedPrices: Array<FixedPrice | undefined> = []
+  let hasUsageComponent = false
+
+  for (const sub of toolSubscriptions) {
+    if (sub.price.fixed) fixedPrices.push(sub.price.fixed)
+    if (sub.price.pricingType === 'usage' || sub.price.pricingType === 'mixed') {
+      hasUsageComponent = true
+    }
+  }
+
+  for (const bs of bundleSubscriptions) {
+    const bundle = await ctx.db
+      .query('bundles')
+      .withIndex('by_slug', (q) => q.eq('slug', bs.bundleSlug))
+      .first()
+    if (!bundle) continue
+    const tier = bundle.tiers.find((t) => t.tierId === bs.tierId)
+    if (tier?.pricing.fixed) fixedPrices.push(tier.pricing.fixed)
+    if (tier?.pricing.pricingType === 'usage' || tier?.pricing.pricingType === 'mixed') {
+      hasUsageComponent = true
+    }
+  }
+
+  return {
+    fixedTotal: buildFixedTotal(fixedPrices),
+    hasUsageComponent,
+  }
 }
 
 const InstructionTypeValidator = v.union(
@@ -146,6 +194,7 @@ export const listPublished = query({
     for (const stack of stacks) {
       const creator = await ctx.db.get(stack.creatorId)
       if (!creator) continue
+      const pricing = await calculateStackPricing(ctx, stack.toolSubscriptions, stack.bundleSubscriptions ?? [])
 
       const tools = []
       for (const sub of stack.toolSubscriptions) {
@@ -184,8 +233,8 @@ export const listPublished = query({
         slug: `${stack.slug}-${stack.shortId}`,
         oneLiner: stack.oneLiner,
         teamSize: stack.teamSize,
-        fixedTotal: stack.fixedTotal,
-        hasUsageComponent: stack.hasUsageComponent,
+        fixedTotal: pricing.fixedTotal,
+        hasUsageComponent: pricing.hasUsageComponent,
         usageTotalNotes: stack.usageTotalNotes,
         creator: {
           _id: creator._id,
@@ -270,31 +319,9 @@ export const create = mutation({
     if (existingStack) throw new Error('You already have a stack. Please edit your existing stack instead.')
 
     // Generate slug and shortId
-    const slug = slugify(args.name, `${creator.slug}-stack`)
+    const slug = slugifyAscii(args.name, `${creator.slug}-stack`)
     const shortId = await generateUniqueShortId(ctx)
-
-    let fixedTotal = 0
-    let hasUsageComponent = false
-    for (const sub of args.toolSubscriptions) {
-      if (sub.price.fixed) fixedTotal += sub.price.fixed.amount
-      if (sub.price.pricingType === 'usage' || sub.price.pricingType === 'mixed') {
-        hasUsageComponent = true
-      }
-    }
-    if (args.bundleSubscriptions) {
-      for (const bs of args.bundleSubscriptions) {
-        const bundle = await ctx.db
-          .query('bundles')
-          .withIndex('by_slug', (q) => q.eq('slug', bs.bundleSlug))
-          .first()
-        if (!bundle) continue
-        const tier = bundle.tiers.find((t) => t.tierId === bs.tierId)
-        if (tier?.pricing.fixed) fixedTotal += tier.pricing.fixed.amount
-        if (tier?.pricing.pricingType === 'usage' || tier?.pricing.pricingType === 'mixed') {
-          hasUsageComponent = true
-        }
-      }
-    }
+    const pricing = await calculateStackPricing(ctx, args.toolSubscriptions, args.bundleSubscriptions ?? [])
 
     const now = Date.now()
     const id = await ctx.db.insert('stacks', {
@@ -312,8 +339,8 @@ export const create = mutation({
       stackImageUrl: args.stackImageUrl,
       personalPageUrl: args.personalPageUrl,
       projectPageUrl: args.projectPageUrl,
-      fixedTotal: { currency: 'USD', amount: fixedTotal, period: 'month' as const },
-      hasUsageComponent,
+      fixedTotal: pricing.fixedTotal,
+      hasUsageComponent: pricing.hasUsageComponent,
       published: args.published,
       createdAt: now,
       updatedAt: now,
@@ -354,7 +381,7 @@ export const update = mutation({
     const patch: Record<string, unknown> = { updatedAt: Date.now() }
     if (args.name !== undefined) {
       patch.name = args.name
-      patch.slug = slugify(args.name, stack.slug)
+      patch.slug = slugifyAscii(args.name, stack.slug)
     }
     if (args.oneLiner !== undefined) patch.oneLiner = args.oneLiner
     if (args.description !== undefined) patch.description = args.description
@@ -369,29 +396,10 @@ export const update = mutation({
     if (args.published !== undefined) patch.published = args.published
 
     const subs = args.toolSubscriptions ?? stack.toolSubscriptions
-    let fixedTotal = 0
-    let hasUsageComponent = false
-    for (const sub of subs) {
-      if (sub.price.fixed) fixedTotal += sub.price.fixed.amount
-      if (sub.price.pricingType === 'usage' || sub.price.pricingType === 'mixed') {
-        hasUsageComponent = true
-      }
-    }
     const bSubs = args.bundleSubscriptions ?? stack.bundleSubscriptions ?? []
-    for (const bs of bSubs) {
-      const bundle = await ctx.db
-        .query('bundles')
-        .withIndex('by_slug', (q) => q.eq('slug', bs.bundleSlug))
-        .first()
-      if (!bundle) continue
-      const tier = bundle.tiers.find((t) => t.tierId === bs.tierId)
-      if (tier?.pricing.fixed) fixedTotal += tier.pricing.fixed.amount
-      if (tier?.pricing.pricingType === 'usage' || tier?.pricing.pricingType === 'mixed') {
-        hasUsageComponent = true
-      }
-    }
-    patch.fixedTotal = { currency: 'USD', amount: fixedTotal, period: 'month' as const }
-    patch.hasUsageComponent = hasUsageComponent
+    const pricing = await calculateStackPricing(ctx, subs, bSubs)
+    patch.fixedTotal = pricing.fixedTotal
+    patch.hasUsageComponent = pricing.hasUsageComponent
 
     await ctx.db.patch(args.stackId, patch)
     return null
@@ -525,6 +533,8 @@ export const getForEdit = query({
       })
     }
 
+    const pricing = await calculateStackPricing(ctx, stack.toolSubscriptions, stack.bundleSubscriptions ?? [])
+
     return {
       _id: stack._id,
       name: stack.name,
@@ -533,8 +543,8 @@ export const getForEdit = query({
       description: stack.description,
       instructions: stack.instructions,
       teamSize: stack.teamSize,
-      fixedTotal: stack.fixedTotal,
-      hasUsageComponent: stack.hasUsageComponent,
+      fixedTotal: pricing.fixedTotal,
+      hasUsageComponent: pricing.hasUsageComponent,
       published: stack.published,
       stackImageUrl: stack.stackImageUrl,
       personalPageUrl: stack.personalPageUrl,
@@ -596,8 +606,9 @@ export const getLandingStats = query({
     let stacksWithCost = 0
 
     for (const stack of stacks) {
-      if (stack.fixedTotal?.amount) {
-        totalCost += stack.fixedTotal.amount
+      const pricing = await calculateStackPricing(ctx, stack.toolSubscriptions, stack.bundleSubscriptions ?? [])
+      if (pricing.fixedTotal.amount) {
+        totalCost += pricing.fixedTotal.amount
         stacksWithCost++
       }
       for (const sub of stack.toolSubscriptions) {
@@ -803,6 +814,8 @@ export const getBySlug = query({
       })
     }
 
+    const pricing = await calculateStackPricing(ctx, stack.toolSubscriptions, stack.bundleSubscriptions ?? [])
+
     return {
       _id: stack._id,
       _creationTime: stack._creationTime,
@@ -813,8 +826,8 @@ export const getBySlug = query({
       description: stack.description,
       instructions: stack.instructions,
       teamSize: stack.teamSize,
-      fixedTotal: stack.fixedTotal,
-      hasUsageComponent: stack.hasUsageComponent,
+      fixedTotal: pricing.fixedTotal,
+      hasUsageComponent: pricing.hasUsageComponent,
       usageTotalNotes: stack.usageTotalNotes,
       personalPageUrl: stack.personalPageUrl,
       projectPageUrl: stack.projectPageUrl,

@@ -1,3 +1,4 @@
+import { formatPriceDisplay, getNormalizedMonthlyAmount } from "@/lib/pricing";
 import type { Id } from "../../convex/_generated/dataModel";
 
 type Tool = {
@@ -5,7 +6,11 @@ type Tool = {
 	name: string;
 	price: {
 		pricingType: "fixed" | "usage" | "mixed";
-		fixed?: { currency: string; amount: number; period: "month" | "year" | "one_time" };
+		fixed?: {
+			currency: string;
+			amount: number;
+			period: "month" | "year" | "one_time";
+		};
 	};
 };
 
@@ -14,7 +19,11 @@ type Bundle = {
 	name: string;
 	price: {
 		pricingType: "fixed" | "usage" | "mixed";
-		fixed?: { currency: string; amount: number; period: "month" | "year" | "one_time" };
+		fixed?: {
+			currency: string;
+			amount: number;
+			period: "month" | "year" | "one_time";
+		};
 	};
 };
 
@@ -35,11 +44,19 @@ export function CostBreakdownTooltip({
 }: CostBreakdownTooltipProps) {
 	const paidTools = [...tools]
 		.filter((t) => t.price.fixed && t.price.fixed.amount > 0)
-		.sort((a, b) => (b.price.fixed?.amount ?? 0) - (a.price.fixed?.amount ?? 0));
+		.sort(
+			(a, b) =>
+				getNormalizedMonthlyAmount(b.price.fixed) -
+				getNormalizedMonthlyAmount(a.price.fixed),
+		);
 
 	const paidBundles = [...bundles]
 		.filter((b) => b.price.fixed && b.price.fixed.amount > 0)
-		.sort((a, b) => (b.price.fixed?.amount ?? 0) - (a.price.fixed?.amount ?? 0));
+		.sort(
+			(a, b) =>
+				getNormalizedMonthlyAmount(b.price.fixed) -
+				getNormalizedMonthlyAmount(a.price.fixed),
+		);
 
 	return (
 		<div className="border-[3px] border-stroke-strong bg-bg-panel shadow-[6px_6px_0_var(--stroke-strong)] p-4">
@@ -54,19 +71,28 @@ export function CostBreakdownTooltip({
 						Tools
 					</div>
 					<div className="space-y-1">
-						{paidTools.map((tool) => (
-							<div
-								key={tool._id}
-								className="flex items-center justify-between text-sm"
-							>
-								<span className="text-fg-secondary truncate pr-2">
-									{tool.name}
-								</span>
-								<span className="font-mono font-bold text-fg-primary shrink-0">
-									${Math.round(tool.price.fixed?.amount ?? 0)}
-								</span>
-							</div>
-						))}
+						{paidTools.map((tool) => {
+							const display = formatPriceDisplay(
+								tool.price.fixed?.amount ?? 0,
+								tool.price.fixed?.period ?? "month",
+								"exact",
+							);
+
+							return (
+								<div
+									key={tool._id}
+									className="flex items-center justify-between text-sm"
+								>
+									<span className="text-fg-secondary truncate pr-2">
+										{tool.name}
+									</span>
+									<span className="font-mono font-bold text-fg-primary shrink-0">
+										${display.amountText}
+										{display.suffix}
+									</span>
+								</div>
+							);
+						})}
 					</div>
 				</div>
 			)}
@@ -78,19 +104,28 @@ export function CostBreakdownTooltip({
 						Bundles
 					</div>
 					<div className="space-y-1">
-						{paidBundles.map((bundle) => (
-							<div
-								key={bundle._id}
-								className="flex items-center justify-between text-sm"
-							>
-								<span className="text-fg-secondary truncate pr-2">
-									{bundle.name}
-								</span>
-								<span className="font-mono font-bold text-fg-primary shrink-0">
-									${Math.round(bundle.price.fixed?.amount ?? 0)}
-								</span>
-							</div>
-						))}
+						{paidBundles.map((bundle) => {
+							const display = formatPriceDisplay(
+								bundle.price.fixed?.amount ?? 0,
+								bundle.price.fixed?.period ?? "month",
+								"exact",
+							);
+
+							return (
+								<div
+									key={bundle._id}
+									className="flex items-center justify-between text-sm"
+								>
+									<span className="text-fg-secondary truncate pr-2">
+										{bundle.name}
+									</span>
+									<span className="font-mono font-bold text-fg-primary shrink-0">
+										${display.amountText}
+										{display.suffix}
+									</span>
+								</div>
+							);
+						})}
 					</div>
 				</div>
 			)}
@@ -114,9 +149,18 @@ export function CostBreakdownTooltip({
 					Total
 				</span>
 				<span className="font-mono text-lg font-black text-fg-primary">
-					${Math.floor(fixedTotal?.amount ?? 0)}
+					$
+					{
+						formatPriceDisplay(fixedTotal?.amount ?? 0, "month", "exact")
+							.amountText
+					}
 					{hasUsageComponent && <span className="text-accent-lime">+</span>}
-					<span className="text-sm font-normal text-fg-muted">/mo</span>
+					<span className="text-sm font-normal text-fg-muted">
+						{
+							formatPriceDisplay(fixedTotal?.amount ?? 0, "month", "exact")
+								.suffix
+						}
+					</span>
 				</span>
 			</div>
 		</div>

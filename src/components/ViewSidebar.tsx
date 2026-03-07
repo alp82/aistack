@@ -1,9 +1,10 @@
+import { Brain, FileText, Package } from "lucide-react";
 import { useState } from "react";
 import { FullWidthToolCard } from "@/components/FullWidthToolCard";
-import { MiscToolCard } from "@/components/ToolCard";
-import { PriceDisplay } from "@/components/PriceDisplay";
 import { ItemIcon } from "@/components/ItemIcon";
-import { Brain, FileText, Package } from "lucide-react";
+import { PriceDisplay } from "@/components/PriceDisplay";
+import { MiscToolCard } from "@/components/ToolCard";
+import type { BillingPeriod } from "@/lib/pricing";
 
 const typeLabels: Record<string, string> = {
 	prompt: "Prompt",
@@ -23,7 +24,7 @@ type ViewTool = {
 	websiteUrl?: string;
 	price: {
 		pricingType: string;
-		fixed?: { currency: string; amount: number; period: string };
+		fixed?: { currency: string; amount: number; period: BillingPeriod };
 	};
 	kind: "main" | "misc";
 	primaryUsageLabel: string;
@@ -90,7 +91,8 @@ export function ViewSidebar({
 	instructions,
 	onBundleClick,
 }: ViewSidebarProps) {
-	const [activeInstruction, setActiveInstruction] = useState<ViewInstruction | null>(null);
+	const [activeInstruction, setActiveInstruction] =
+		useState<ViewInstruction | null>(null);
 	const [copied, setCopied] = useState(false);
 
 	const handleCopy = async () => {
@@ -117,8 +119,12 @@ export function ViewSidebar({
 		}
 		return a.name.localeCompare(b.name);
 	};
-	const mainTools = tools.filter((t) => t.kind === "main").sort(sortByPriceThenName);
-	const miscTools = tools.filter((t) => t.kind === "misc").sort(sortByPriceThenName);
+	const mainTools = tools
+		.filter((t) => t.kind === "main")
+		.sort(sortByPriceThenName);
+	const miscTools = tools
+		.filter((t) => t.kind === "misc")
+		.sort(sortByPriceThenName);
 
 	return (
 		<aside className="hidden w-140 shrink-0 lg:block">
@@ -128,11 +134,15 @@ export function ViewSidebar({
 					{mainTools.length > 0 && (
 						<section>
 							<p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
-								// Tools
+								{"// Tools"}
 							</p>
 							<div className="space-y-2">
 								{mainTools.map((tool) => (
-									<FullWidthToolCard key={tool._id} tool={tool} onBundleClick={onBundleClick} />
+									<FullWidthToolCard
+										key={tool._id}
+										tool={tool}
+										onBundleClick={onBundleClick}
+									/>
 								))}
 							</div>
 						</section>
@@ -142,11 +152,15 @@ export function ViewSidebar({
 					{miscTools.length > 0 && (
 						<section>
 							<p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
-								// Secondary Tools
+								{"// Secondary Tools"}
 							</p>
 							<div className="space-y-2">
 								{miscTools.map((tool) => (
-									<MiscToolCard key={tool._id} tool={tool} onBundleClick={onBundleClick} />
+									<MiscToolCard
+										key={tool._id}
+										tool={tool}
+										onBundleClick={onBundleClick}
+									/>
 								))}
 							</div>
 						</section>
@@ -156,7 +170,7 @@ export function ViewSidebar({
 					{models.length > 0 && (
 						<section>
 							<p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
-								// Models
+								{"// Models"}
 							</p>
 							<div className="space-y-2">
 								{models.map((model) => (
@@ -165,7 +179,12 @@ export function ViewSidebar({
 										className="border border-stroke-subtle rounded p-3 hover:border-stroke-strong transition-colors"
 									>
 										<div className="flex items-center gap-3">
-											<ItemIcon src={model.iconUrl} alt={model.name} size="sm" fallbackIcon={Brain} />
+											<ItemIcon
+												src={model.iconUrl}
+												alt={model.name}
+												size="sm"
+												fallbackIcon={Brain}
+											/>
 											<div className="flex-1 min-w-0">
 												<span className="font-mono text-sm font-semibold text-fg-primary block">
 													{model.name}
@@ -185,7 +204,7 @@ export function ViewSidebar({
 					{bundles.length > 0 && (
 						<section>
 							<p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
-								// Bundles
+								{"// Bundles"}
 							</p>
 							<div className="space-y-2">
 								{bundles.map((bundle) => (
@@ -195,7 +214,12 @@ export function ViewSidebar({
 										className="border border-stroke-subtle rounded p-3 hover:border-stroke-strong transition-colors"
 									>
 										<div className="flex items-center gap-3">
-											<ItemIcon src={bundle.iconUrl} alt={bundle.name} size="sm" fallbackIcon={Package} />
+											<ItemIcon
+												src={bundle.iconUrl}
+												alt={bundle.name}
+												size="sm"
+												fallbackIcon={Package}
+											/>
 											<div className="flex-1 min-w-0">
 												<span className="font-mono text-sm font-semibold text-fg-primary block">
 													{bundle.name}
@@ -208,7 +232,7 @@ export function ViewSidebar({
 												{bundle.price.fixed ? (
 													<PriceDisplay
 														amount={bundle.price.fixed.amount}
-														period={bundle.price.fixed.period === "one_time" ? "/once" : "/mo"}
+														period={bundle.price.fixed.period}
 														size="sm"
 														className="text-fg-primary"
 													/>
@@ -234,7 +258,7 @@ export function ViewSidebar({
 					{instructions.length > 0 && (
 						<section>
 							<p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
-								// Instructions
+								{"// Instructions"}
 							</p>
 							<div className="space-y-2">
 								{instructions.map((inst, i) => (
@@ -245,12 +269,18 @@ export function ViewSidebar({
 										onClick={() => inst.content && setActiveInstruction(inst)}
 									>
 										<div className="flex items-center gap-3">
-											<div className={`flex size-8 shrink-0 items-center justify-center rounded border ${instructionTypeColors[inst.type] ?? "text-fg-muted border-stroke-subtle bg-bg-panel-muted"}`}>
+											<div
+												className={`flex size-8 shrink-0 items-center justify-center rounded border ${instructionTypeColors[inst.type] ?? "text-fg-muted border-stroke-subtle bg-bg-panel-muted"}`}
+											>
 												<FileText className="size-4" />
 											</div>
 											<div className="min-w-0 flex-1">
-												<p className="truncate font-mono text-sm font-semibold text-fg-primary">{inst.name}</p>
-												<p className="font-mono text-[10px] uppercase tracking-wider text-fg-muted">{typeLabels[inst.type] ?? inst.type}</p>
+												<p className="truncate font-mono text-sm font-semibold text-fg-primary">
+													{inst.name}
+												</p>
+												<p className="font-mono text-[10px] uppercase tracking-wider text-fg-muted">
+													{typeLabels[inst.type] ?? inst.type}
+												</p>
 											</div>
 											{inst.content && (
 												<span className="shrink-0 border border-accent-lime/30 bg-accent-lime/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-accent-lime">
@@ -266,20 +296,27 @@ export function ViewSidebar({
 				</div>
 			</div>
 			{activeInstruction && (
-				<div
-					className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
-					onClick={() => setActiveInstruction(null)}
-				>
+				<div className="fixed inset-0 z-50 flex items-center justify-center">
+					<button
+						type="button"
+						aria-label="Close instruction dialog"
+						className="absolute inset-0 bg-black/80"
+						onClick={() => setActiveInstruction(null)}
+					/>
 					<div
-						className="max-h-[80vh] w-full max-w-4xl overflow-auto border border-stroke-subtle bg-bg-panel p-6"
-						onClick={(e) => e.stopPropagation()}
+						className="relative max-h-[80vh] w-full max-w-4xl overflow-auto border border-stroke-subtle bg-bg-panel p-6"
+						role="dialog"
+						aria-modal="true"
+						aria-label={activeInstruction.name}
 					>
 						<div className="mb-4 flex items-center justify-between">
 							<div>
 								<h3 className="font-mono text-sm font-bold uppercase text-fg-primary">
 									{activeInstruction.name}
 								</h3>
-								<span className={`font-mono text-[10px] uppercase ${(instructionTypeColors[activeInstruction.type] ?? "").split(" ")[0]}`}>
+								<span
+									className={`font-mono text-[10px] uppercase ${(instructionTypeColors[activeInstruction.type] ?? "").split(" ")[0]}`}
+								>
 									{typeLabels[activeInstruction.type] ?? activeInstruction.type}
 								</span>
 							</div>

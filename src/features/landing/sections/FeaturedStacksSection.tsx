@@ -20,6 +20,7 @@ type LandingStackPreview = {
 	teamSize?: number | null;
 	fixedTotal?: {
 		amount: number;
+		period?: "month" | "year" | "one_time";
 	} | null;
 	creator: {
 		name: string;
@@ -82,9 +83,11 @@ function filterPreviewStacks(
 		const matchesTool =
 			toolFilter === "all"
 				? true
-				: stack.tools.some(
-					(tool) => tool.categories.some((c) => c.toLowerCase() === toolFilter.toLowerCase()),
-				);
+				: stack.tools.some((tool) =>
+						tool.categories.some(
+							(c) => c.toLowerCase() === toolFilter.toLowerCase(),
+						),
+					);
 
 		return matchesAudience && matchesTool;
 	});
@@ -117,16 +120,16 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 	const [sortOption, setSortOption] = useState<SortOption>("upvotes");
 	const [currentPage, setCurrentPage] = useState(1);
 
-	const categoryOptions = useMemo(
-		() => getCategoryOptions(stacks),
-		[stacks],
-	);
+	const categoryOptions = useMemo(() => getCategoryOptions(stacks), [stacks]);
 	const filteredStacks = useMemo(
 		() => filterPreviewStacks(stacks, "all", toolFilter, sortOption),
 		[stacks, toolFilter, sortOption],
 	);
 
-	const totalPages = Math.max(1, Math.ceil(filteredStacks.length / STACKS_PER_PAGE));
+	const totalPages = Math.max(
+		1,
+		Math.ceil(filteredStacks.length / STACKS_PER_PAGE),
+	);
 	const safeCurrentPage = Math.min(currentPage, totalPages);
 	const paginatedStacks = filteredStacks.slice(
 		(safeCurrentPage - 1) * STACKS_PER_PAGE,
@@ -160,12 +163,15 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 							<button
 								key={filter.id}
 								type="button"
-								onClick={() => { setToolFilter(filter.id); setCurrentPage(1); }}
+								onClick={() => {
+									setToolFilter(filter.id);
+									setCurrentPage(1);
+								}}
 								className={cn(
 									"px-4 py-2 uppercase font-bold transition-colors",
 									toolFilter === filter.id
 										? "bg-accent-lime text-accent-lime-contrast"
-										: "bg-bg-canvas text-fg-muted border border-stroke-strong hover:border-accent-lime hover:text-fg-primary"
+										: "bg-bg-canvas text-fg-muted border border-stroke-strong hover:border-accent-lime hover:text-fg-primary",
 								)}
 							>
 								{filter.label} {filter.count && `(${filter.count})`}
@@ -177,7 +183,10 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 					<SortDropdown
 						options={SORT_OPTIONS}
 						value={sortOption}
-						onChange={(v) => { setSortOption(v); setCurrentPage(1); }}
+						onChange={(v) => {
+							setSortOption(v);
+							setCurrentPage(1);
+						}}
 					/>
 				</div>
 
@@ -214,7 +223,7 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 									"flex size-10 items-center justify-center border font-mono text-sm font-bold transition-colors",
 									page === safeCurrentPage
 										? "border-accent-lime bg-accent-lime text-accent-lime-contrast"
-										: "border-stroke-strong text-fg-muted hover:border-accent-lime hover:text-accent-lime"
+										: "border-stroke-strong text-fg-muted hover:border-accent-lime hover:text-accent-lime",
 								)}
 							>
 								{page}
@@ -248,4 +257,9 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 
 export { FeaturedStacksSection, SORT_OPTIONS };
 export { filterPreviewStacks, getCategoryOptions };
-export type { FeedSectionProps, LandingStackPreview, AudienceFilter, SortOption };
+export type {
+	FeedSectionProps,
+	LandingStackPreview,
+	AudienceFilter,
+	SortOption,
+};

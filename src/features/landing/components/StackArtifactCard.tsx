@@ -1,16 +1,14 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQuery } from "convex/react";
-import { useConvexAuth } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { motion } from "framer-motion";
 import { ArrowRight, Box } from "lucide-react";
 import { useEffect, useState } from "react";
-
-import { api } from "../../../../convex/_generated/api";
-import type { Id } from "../../../../convex/_generated/dataModel";
 import { CategoryLabel } from "@/components/CategoryLabel";
 import { PriceDisplay } from "@/components/PriceDisplay";
 import { UpvoteButton } from "@/components/UpvoteButton";
 import type { LandingStackPreview } from "@/features/landing/sections/FeaturedStacksSection";
+import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 type StackArtifactCardProps = {
 	stack: LandingStackPreview;
@@ -20,7 +18,9 @@ function StackArtifactCard({ stack }: StackArtifactCardProps) {
 	const navigate = useNavigate();
 	const { isAuthenticated } = useConvexAuth();
 	const toggleUpvote = useMutation(api.stacks.toggleUpvote);
-	const upvoteStatus = useQuery(api.stacks.getUpvoteStatus, { stackId: stack._id as Id<"stacks"> });
+	const upvoteStatus = useQuery(api.stacks.getUpvoteStatus, {
+		stackId: stack._id as Id<"stacks">,
+	});
 	const [upvoting, setUpvoting] = useState(false);
 	const [localUpvoteCount, setLocalUpvoteCount] = useState(stack.upvoteCount);
 	const [hasUpvoted, setHasUpvoted] = useState(false);
@@ -33,18 +33,22 @@ function StackArtifactCard({ stack }: StackArtifactCardProps) {
 	}, [upvoteStatus]);
 
 	const displayTools = stack.tools.slice(0, 6);
-	const categories = [...new Set(stack.tools.flatMap((tool) => tool.categories))]
-		.slice(0, 2);
+	const categories = [
+		...new Set(stack.tools.flatMap((tool) => tool.categories)),
+	].slice(0, 2);
 
 	const handleUpvote = async (e: React.MouseEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
-		
+
 		if (!isAuthenticated) {
-			navigate({ to: "/signin", search: { redirect: `/stacks/${stack.slug}` } });
+			navigate({
+				to: "/signin",
+				search: { redirect: `/stacks/${stack.slug}` },
+			});
 			return;
 		}
-		
+
 		setUpvoting(true);
 		try {
 			const result = await toggleUpvote({ stackId: stack._id as Id<"stacks"> });
@@ -89,12 +93,14 @@ function StackArtifactCard({ stack }: StackArtifactCardProps) {
 									{stack.name}
 								</h3>
 								<p className="font-mono text-[10px] text-fg-muted uppercase tracking-wider mt-0.5">
-								{stack.creator.xHandle && `@${stack.creator.xHandle}`}
+									{stack.creator.xHandle && `@${stack.creator.xHandle}`}
 								</p>
 							</div>
 							<div className="text-right">
 								<PriceDisplay
-									amount={Math.floor(stack.fixedTotal?.amount ?? 0)}
+									amount={stack.fixedTotal?.amount ?? 0}
+									period={stack.fixedTotal?.period ?? "month"}
+									rounding="floor"
 									hasUsageComponent={stack.hasUsageComponent}
 									className="text-fg-primary group-hover:text-accent-lime transition-colors"
 								/>
@@ -103,7 +109,7 @@ function StackArtifactCard({ stack }: StackArtifactCardProps) {
 								</div>
 							</div>
 						</div>
-						
+
 						{/* Row 2: Upvote + Description */}
 						<UpvoteButton
 							count={localUpvoteCount}
@@ -139,12 +145,13 @@ function StackArtifactCard({ stack }: StackArtifactCardProps) {
 											<Box className="size-4" />
 										)}
 									</span>
-									<span className="font-mono text-xs truncate">{tool.name}</span>
+									<span className="font-mono text-xs truncate">
+										{tool.name}
+									</span>
 								</div>
 							))}
 						</div>
 					</div>
-
 				</div>
 
 				{/* Footer tags */}

@@ -5,6 +5,9 @@
 * slugs with asciified chars 
     * ç could become c, Chánh Đại could become chanh-dai etc
 * og fonts too small, bigger tools in 2 cols
+* more focus on project links
+    * visible in cards and og images
+    * bigger in details
 * stack editing
     * stack saved locally looks like error
     * adding instructions easier and more obvious
@@ -20,5 +23,5 @@
 * CLI workflow
     * npx aistack login
     * npx aistack collect
-    * npx aistack createhttps://en.wikipedia.org/wiki/Data_URI_schemehttps://www.namecheap.com/
+    * npx aistack create
     

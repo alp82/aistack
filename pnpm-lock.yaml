@@ -218,6 +218,9 @@ importers:
       resend:
         specifier: ^6.9.3
         version: 6.9.3(@react-email/render@2.0.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3))
+      slugify:
+        specifier: ^1.6.6
+        version: 1.6.6
       tailwind-merge:
         specifier: ^3.0.2
         version: 3.4.0
@@ -4044,6 +4047,10 @@ packages:
 
   siginfo@2.0.0:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
+
+  slugify@1.6.6:
+    resolution: {integrity: sha512-h+z7HKHYXj6wJU+AnS/+IH8Uh9fdcX1Lrhg1/VMdf9PwoBQXFcXiAdsy2tSK0P6gKwJLXp02r90ahUCqHk9rrw==}
+    engines: {node: '>=8.0.0'}
 
   solid-js@1.9.10:
     resolution: {integrity: sha512-Coz956cos/EPDlhs6+jsdTxKuJDPT7B5SVIWgABwROyxjY7Xbr8wkzD68Et+NxnV7DLJ3nJdAC2r9InuV/4Jew==}
@@ -8417,6 +8424,8 @@ snapshots:
   shell-quote@1.8.3: {}
 
   siginfo@2.0.0: {}
+
+  slugify@1.6.6: {}
 
   solid-js@1.9.10:
     dependencies:

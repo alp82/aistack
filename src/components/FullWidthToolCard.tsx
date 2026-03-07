@@ -1,7 +1,8 @@
 import { Plus } from "lucide-react";
-import { PriceDisplay } from "@/components/PriceDisplay";
 import { ItemIcon } from "@/components/ItemIcon";
+import { PriceDisplay } from "@/components/PriceDisplay";
 import { categoryConfig } from "@/config/categoryConfig";
+import type { BillingPeriod } from "@/lib/pricing";
 
 interface ToolData {
 	_id: string;
@@ -12,7 +13,7 @@ interface ToolData {
 	websiteUrl?: string;
 	price: {
 		pricingType: string;
-		fixed?: { currency: string; amount: number; period: string };
+		fixed?: { currency: string; amount: number; period: BillingPeriod };
 	};
 	kind: "main" | "misc";
 	primaryUsageLabel: string;
@@ -27,19 +28,31 @@ interface FullWidthToolCardProps {
 	onBundleClick?: (bundleSlug: string) => void;
 }
 
-export function FullWidthToolCard({ tool, onBundleClick }: FullWidthToolCardProps) {
+export function FullWidthToolCard({
+	tool,
+	onBundleClick,
+}: FullWidthToolCardProps) {
 	const firstCat = tool.categories[0];
-	const config = firstCat ? categoryConfig[firstCat as keyof typeof categoryConfig] : undefined;
+	const config = firstCat
+		? categoryConfig[firstCat as keyof typeof categoryConfig]
+		: undefined;
 	const Icon = config?.icon || Plus;
 
 	return (
 		<div className="flex items-center gap-3 border border-stroke-subtle rounded p-3 hover:border-stroke-strong transition-colors">
 			{/* Icon */}
-			<ItemIcon src={tool.iconUrl} alt={tool.name} size="md" fallbackIcon={Icon} />
+			<ItemIcon
+				src={tool.iconUrl}
+				alt={tool.name}
+				size="md"
+				fallbackIcon={Icon}
+			/>
 
 			{/* Name & Tier */}
 			<div className="flex-1 min-w-0">
-				<span className="font-mono text-sm font-semibold text-fg-primary block">{tool.name}</span>
+				<span className="font-mono text-sm font-semibold text-fg-primary block">
+					{tool.name}
+				</span>
 				<span className="font-mono text-[10px] text-fg-muted uppercase tracking-wider block mt-0.5">
 					{tool.tierName ?? tool.primaryUsageLabel}
 				</span>
@@ -59,19 +72,17 @@ export function FullWidthToolCard({ tool, onBundleClick }: FullWidthToolCardProp
 					>
 						Bundle ↓
 					</button>
+				) : tool.price.fixed ? (
+					<PriceDisplay
+						amount={tool.price.fixed.amount}
+						period={tool.price.fixed.period}
+						size="sm"
+						className="text-fg-primary"
+					/>
 				) : (
-					<>
-						{tool.price.fixed ? (
-							<PriceDisplay
-								amount={tool.price.fixed.amount}
-								period={tool.price.fixed.period === "one_time" ? "/once" : "/mo"}
-								size="sm"
-								className="text-fg-primary"
-							/>
-						) : (
-							<span className="font-mono text-sm font-bold text-fg-primary">Usage</span>
-						)}
-					</>
+					<span className="font-mono text-sm font-bold text-fg-primary">
+						Usage
+					</span>
 				)}
 			</div>
 		</div>

@@ -1,5 +1,6 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
+import { slugifyAscii } from '../src/lib/slug'
 
 export const listAll = query({
   args: {},
@@ -95,10 +96,7 @@ export const create = mutation({
       }
     }
 
-    const baseSlug = args.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
+    const baseSlug = slugifyAscii(args.name, 'tool')
     let slug = baseSlug
     let suffix = 2
     while (

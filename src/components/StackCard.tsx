@@ -1,7 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, ExternalLink, Plus, Zap } from "lucide-react";
 
+import { PriceDisplay } from "@/components/PriceDisplay";
 import { categoryConfig } from "@/config/categoryConfig";
+import { formatPriceDisplay } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
 export const STACK_CARD_WIDTH = 792;
@@ -103,10 +105,17 @@ export function StackCard({
 							</div>
 						)}
 						<div className="min-w-0">
-							<h3 className="truncate text-xl font-semibold text-fg-primary">{name}</h3>
+							<h3 className="truncate text-xl font-semibold text-fg-primary">
+								{name}
+							</h3>
 							<div className="mt-0.5 flex items-center gap-2 text-xs text-fg-muted">
 								{xPage && creator.xHandle ? (
-									<a href={xPage.url} target="_blank" rel="noopener" className="hover:text-fg-primary">
+									<a
+										href={xPage.url}
+										target="_blank"
+										rel="noopener"
+										className="hover:text-fg-primary"
+									>
 										@{creator.xHandle}
 									</a>
 								) : null}
@@ -125,8 +134,13 @@ export function StackCard({
 						</div>
 					</div>
 					<div className="text-right">
-						<p className="text-3xl font-bold text-fg-primary">${fixedTotal?.amount ?? 0}</p>
-						<p className="text-xs text-fg-muted">/mo</p>
+						<PriceDisplay
+							amount={fixedTotal?.amount ?? 0}
+							period={fixedTotal?.period ?? "month"}
+							rounding="floor"
+							size="lg"
+							className="text-fg-primary"
+						/>
 						<div className="mt-1 flex items-center justify-end gap-2">
 							{hasUsageComponent && (
 								<span className="inline-flex border border-accent-lime/45 bg-accent-lime-soft/12 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-lime">
@@ -154,7 +168,9 @@ export function StackCard({
 						<p className="text-xs text-fg-secondary">
 							{workflowHighlight.steps.map((step) => step.tool).join(" -> ")}
 						</p>
-						<p className="mt-1 text-xs font-medium text-green-600">{workflowHighlight.benefit}</p>
+						<p className="mt-1 text-xs font-medium text-green-600">
+							{workflowHighlight.benefit}
+						</p>
 					</div>
 				)}
 			</div>
@@ -162,12 +178,24 @@ export function StackCard({
 			<div className="flex items-center justify-between gap-4 bg-bg-panel px-5 py-3">
 				<div className="space-y-1">
 					{displayTools.map((tool) => {
+						const toolPriceDisplay = tool.price.fixed
+							? formatPriceDisplay(
+									tool.price.fixed.amount,
+									tool.price.fixed.period,
+								)
+							: null;
+
 						return (
-							<div key={tool._id} className="flex items-center gap-2 text-sm text-fg-secondary">
+							<div
+								key={tool._id}
+								className="flex items-center gap-2 text-sm text-fg-secondary"
+							>
 								<span className="font-medium text-fg-primary">{tool.name}</span>
 								{tool.categories.map((cat) => {
-									const catConfig = categoryConfig[cat as keyof typeof categoryConfig];
+									const catConfig =
+										categoryConfig[cat as keyof typeof categoryConfig];
 									const CatIcon = catConfig?.icon || Plus;
+
 									return (
 										<span
 											key={cat}
@@ -183,14 +211,24 @@ export function StackCard({
 									);
 								})}
 								<span className="font-semibold text-fg-primary">
-									{tool.price.fixed ? `$${tool.price.fixed.amount}` : "Usage"}
+									{toolPriceDisplay
+										? `$${toolPriceDisplay.amountText}${toolPriceDisplay.suffix}`
+										: "Usage"}
 								</span>
 							</div>
 						);
 					})}
-					{remainingTools > 0 && <p className="text-xs text-fg-muted">+{remainingTools} more tools</p>}
+					{remainingTools > 0 && (
+						<p className="text-xs text-fg-muted">
+							+{remainingTools} more tools
+						</p>
+					)}
 				</div>
-				<Link to="/stacks/$slug" params={{ slug }} className="inline-flex items-center gap-1 text-sm font-semibold text-accent-lime">
+				<Link
+					to="/stacks/$slug"
+					params={{ slug }}
+					className="inline-flex items-center gap-1 text-sm font-semibold text-accent-lime"
+				>
 					View full stack
 					<ArrowRight className="h-3.5 w-3.5" />
 				</Link>

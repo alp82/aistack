@@ -1,3 +1,5 @@
+import { formatPriceDisplay } from "@/lib/pricing";
+
 type StackOgImageProps = {
 	name: string;
 	oneLiner: string;
@@ -8,6 +10,7 @@ type StackOgImageProps = {
 	};
 	fixedTotal?: {
 		amount: number;
+		period?: "month" | "year" | "one_time";
 	} | null;
 	hasUsageComponent: boolean;
 	teamSize?: number | null;
@@ -41,6 +44,20 @@ function toCategoryLabel(value: string) {
 	return value.charAt(0).toUpperCase() + value.slice(1).replace(/-/g, " ");
 }
 
+function isInlineImageSource(value?: string | null) {
+	return Boolean(value?.startsWith("data:"));
+}
+
+function getInitials(value: string) {
+	const parts = value.split(/\s+/).filter(Boolean).slice(0, 2);
+
+	if (parts.length === 0) {
+		return "?";
+	}
+
+	return parts.map((part) => part.charAt(0).toUpperCase()).join("");
+}
+
 export function StackOgImage({
 	name,
 	oneLiner,
@@ -53,8 +70,14 @@ export function StackOgImage({
 }: StackOgImageProps) {
 	const displayTools = tools.slice(0, 6);
 	const displayCategories = categories.slice(0, 2);
-	const price = Math.floor(fixedTotal?.amount ?? 0);
-	const displayName = name.length > 35 ? `${name.slice(0, 35)}...` : name;
+	const displayPrice = formatPriceDisplay(
+		fixedTotal?.amount ?? 0,
+		fixedTotal?.period ?? "month",
+		"floor",
+	);
+	const displayName = name.length > 38 ? `${name.slice(0, 36)}...` : name;
+	const displayDescription =
+		oneLiner.length > 120 ? `${oneLiner.slice(0, 120)}...` : oneLiner;
 
 	return (
 		<div
@@ -64,45 +87,49 @@ export function StackOgImage({
 				width: "100%",
 				height: "100%",
 				backgroundColor: "#0a0a0a",
-				fontFamily: "Inter, system-ui, sans-serif",
+				fontFamily: "Geist",
 			}}
 		>
-			{/* Top accent bar */}
 			<div
 				style={{
 					display: "flex",
-					height: "10px",
+					height: "14px",
 					width: "100%",
 					backgroundColor: "#a3e635",
 				}}
 			/>
-
-			{/* Main content */}
 			<div
 				style={{
 					display: "flex",
 					flexDirection: "column",
 					flex: 1,
-					padding: "40px 50px",
+					padding: "36px 44px 32px",
 				}}
 			>
-				{/* Header section */}
 				<div
 					style={{
 						display: "flex",
 						justifyContent: "space-between",
-						alignItems: "flex-start",
+						alignItems: "stretch",
+						gap: "28px",
 						marginBottom: "20px",
 					}}
 				>
-					{/* Left: Avatar + Name */}
-					<div style={{ display: "flex", alignItems: "center", gap: "20px", flex: 1, minWidth: 0 }}>
-						{creator.avatarUrl ? (
+					<div
+						style={{
+							display: "flex",
+							alignItems: "center",
+							gap: "20px",
+							flex: 1,
+							minWidth: 0,
+						}}
+					>
+						{isInlineImageSource(creator.avatarUrl) ? (
 							<img
-								src={creator.avatarUrl}
+								src={creator.avatarUrl ?? undefined}
 								alt=""
-								width={80}
-								height={80}
+								width={88}
+								height={88}
 								style={{
 									border: "3px solid #3f3f46",
 									objectFit: "cover",
@@ -113,28 +140,36 @@ export function StackOgImage({
 							<div
 								style={{
 									display: "flex",
-									width: "80px",
-									height: "80px",
+									width: "88px",
+									height: "88px",
 									backgroundColor: "#27272a",
 									border: "3px solid #3f3f46",
 									alignItems: "center",
 									justifyContent: "center",
-									fontSize: "32px",
+									fontSize: "34px",
 									fontWeight: 700,
 									color: "#a1a1aa",
 									flexShrink: 0,
 								}}
 							>
-								{creator.name.charAt(0).toUpperCase()}
+								{getInitials(creator.name)}
 							</div>
 						)}
-						<div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
+						<div
+							style={{
+								display: "flex",
+								flexDirection: "column",
+								minWidth: 0,
+								flex: 1,
+							}}
+						>
 							<span
 								style={{
-									fontSize: "42px",
-									fontWeight: 700,
+									fontSize: "64px",
+									fontWeight: 800,
 									color: "#fafafa",
-									lineHeight: 1.1,
+									lineHeight: 1,
+									letterSpacing: "-0.04em",
 								}}
 							>
 								{displayName}
@@ -142,10 +177,9 @@ export function StackOgImage({
 							{creator.xHandle && (
 								<span
 									style={{
-										fontSize: "18px",
+										fontSize: "20px",
 										color: "#71717a",
-										marginTop: "6px",
-										fontFamily: "monospace",
+										marginTop: "8px",
 									}}
 								>
 									@{creator.xHandle}
@@ -159,28 +193,38 @@ export function StackOgImage({
 						style={{
 							display: "flex",
 							flexDirection: "column",
+							justifyContent: "space-between",
 							alignItems: "flex-end",
+							minWidth: "280px",
+							padding: "18px 20px",
+							border: "2px solid #3f3f46",
+							backgroundColor: "#111113",
 						}}
 					>
-						<div style={{ display: "flex", alignItems: "baseline" }}>
+						<div
+							style={{
+								display: "flex",
+								alignItems: "baseline",
+								justifyContent: "flex-end",
+								width: "100%",
+							}}
+						>
 							<span
 								style={{
-									fontSize: "56px",
+									fontSize: "82px",
 									fontWeight: 900,
 									color: "#fafafa",
-									fontFamily: "monospace",
 									lineHeight: 1,
 								}}
 							>
-								${price}
+								${displayPrice.amountText}
 							</span>
 							{hasUsageComponent && (
 								<span
 									style={{
-										fontSize: "56px",
+										fontSize: "82px",
 										fontWeight: 900,
 										color: "#a3e635",
-										fontFamily: "monospace",
 										lineHeight: 1,
 									}}
 								>
@@ -189,168 +233,160 @@ export function StackOgImage({
 							)}
 							<span
 								style={{
-									fontSize: "28px",
+									fontSize: "34px",
 									color: "#71717a",
-									marginLeft: "4px",
+									marginLeft: "6px",
 									fontWeight: 500,
 									lineHeight: 1,
 									alignSelf: "flex-end",
-									paddingBottom: "6px",
+									paddingBottom: "10px",
 								}}
 							>
-								/mo
+								{displayPrice.suffix}
 							</span>
 						</div>
 						<span
 							style={{
-								fontSize: "14px",
+								fontSize: "16px",
 								fontWeight: 600,
 								color: "#a1a1aa",
 								textTransform: "uppercase",
-								letterSpacing: "0.05em",
-								marginTop: "8px",
+								letterSpacing: "0.08em",
+								marginTop: "12px",
 							}}
 						>
 							{teamSize ? `Team ${teamSize}` : "Solo"}
 						</span>
 					</div>
 				</div>
-
-				{/* Description with lime border */}
 				<div
 					style={{
 						display: "flex",
-						marginBottom: "28px",
+						marginBottom: "26px",
 					}}
 				>
 					<div
 						style={{
-							width: "4px",
+							width: "6px",
 							backgroundColor: "#a3e635",
 							flexShrink: 0,
-							marginRight: "16px",
+							marginRight: "18px",
 						}}
 					/>
 					<p
 						style={{
-							fontSize: "24px",
+							fontSize: "30px",
 							color: "#d4d4d8",
-							lineHeight: 1.4,
+							lineHeight: 1.28,
 							margin: 0,
 						}}
 					>
-						{oneLiner.length > 100 ? `${oneLiner.slice(0, 100)}...` : oneLiner}
+						{displayDescription}
 					</p>
 				</div>
-
-				{/* Tools grid */}
 				<div
 					style={{
-						marginTop: "32px",
 						display: "flex",
 						flexDirection: "column",
 						flex: 1,
+						minHeight: 0,
 					}}
 				>
 					<span
 						style={{
-							fontSize: "14px",
+							fontSize: "16px",
 							fontWeight: 600,
 							color: "#71717a",
 							textTransform: "uppercase",
 							letterSpacing: "0.15em",
 							marginBottom: "14px",
-							fontFamily: "monospace",
 						}}
 					>
 						AI Tools
 					</span>
 					<div
 						style={{
-							display: "flex",
-							flexWrap: "wrap",
+							display: "grid",
+							gridTemplateColumns: "1fr 1fr",
+							gridAutoRows: "1fr",
 							gap: "16px",
+							flex: 1,
 						}}
 					>
-						{displayTools.map((tool, i) => (
+						{displayTools.map((tool) => (
 							<div
-								key={i}
+								key={tool.name}
 								style={{
 									display: "flex",
 									alignItems: "center",
-									gap: "10px",
+									gap: "14px",
 									backgroundColor: "#18181b",
-									padding: "14px 20px",
+									padding: "18px 20px",
 									border: "1px solid #27272a",
+									height: "100%",
 								}}
 							>
-								{tool.iconUrl ? (
+								{isInlineImageSource(tool.iconUrl) ? (
 									<img
-										src={tool.iconUrl}
+										src={tool.iconUrl ?? undefined}
 										alt=""
-										width={28}
-										height={28}
+										width={34}
+										height={34}
 										style={{ objectFit: "contain" }}
 									/>
 								) : (
 									<div
 										style={{
-											width: "28px",
-											height: "28px",
+											width: "34px",
+											height: "34px",
 											backgroundColor: "#3f3f46",
+											borderRadius: "8px",
+											alignItems: "center",
+											justifyContent: "center",
+											display: "flex",
+											color: "#d4d4d8",
+											fontSize: "14px",
+											fontWeight: 700,
 										}}
-									/>
+									>
+										{getInitials(tool.name)}
+									</div>
 								)}
 								<span
 									style={{
-										fontSize: "18px",
+										fontSize: "24px",
 										color: "#e4e4e7",
-										fontFamily: "monospace",
-										fontWeight: 500,
+										fontWeight: 600,
+										lineHeight: 1.15,
 									}}
 								>
 									{tool.name}
 								</span>
 							</div>
 						))}
-						{tools.length > 6 && (
-							<div
-								style={{
-									display: "flex",
-									alignItems: "center",
-									padding: "12px 16px",
-									fontSize: "16px",
-									color: "#71717a",
-								}}
-							>
-								+{tools.length - 6} more
-							</div>
-						)}
 					</div>
 				</div>
-
-				{/* Footer with categories and link */}
 				<div
 					style={{
 						display: "flex",
 						justifyContent: "space-between",
 						alignItems: "center",
-						paddingTop: "24px",
+						paddingTop: "20px",
 						borderTop: "1px solid #27272a",
 					}}
 				>
 					<div style={{ display: "flex", gap: "10px" }}>
-						{displayCategories.map((cat, i) => {
+						{displayCategories.map((cat) => {
 							const style = getCategoryStyle(cat);
 							return (
 								<span
-									key={i}
+									key={cat}
 									style={{
 										fontSize: "12px",
 										fontWeight: 700,
 										textTransform: "uppercase",
 										letterSpacing: "0.05em",
-										padding: "8px 14px",
+										padding: "9px 14px",
 										border: `2px solid ${style.border}`,
 										color: style.text,
 										backgroundColor: "rgba(0,0,0,0.5)",
@@ -367,15 +403,15 @@ export function StackOgImage({
 							alignItems: "center",
 							gap: "12px",
 							backgroundColor: "#a3e635",
-							padding: "10px 20px",
+							padding: "12px 22px",
 						}}
 					>
 						<span
 							style={{
-								fontSize: "18px",
+								fontSize: "20px",
 								fontWeight: 700,
 								color: "#0a0a0a",
-								fontFamily: "monospace",
+								fontFamily: "Geist Mono",
 								letterSpacing: "0.02em",
 							}}
 						>

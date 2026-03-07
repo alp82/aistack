@@ -1,8 +1,14 @@
+import {
+	type BillingPeriod,
+	formatPriceDisplay,
+	type PriceRoundingMode,
+} from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
 type PriceDisplayProps = {
 	amount: number;
-	period?: string;
+	period?: BillingPeriod | string;
+	rounding?: PriceRoundingMode;
 	hasUsageComponent?: boolean;
 	size?: "sm" | "md" | "lg";
 	className?: string;
@@ -10,12 +16,13 @@ type PriceDisplayProps = {
 
 function PriceDisplay({
 	amount,
-	period = "/mo",
+	period = "month",
+	rounding = "round",
 	hasUsageComponent = false,
 	size = "md",
 	className,
 }: PriceDisplayProps) {
-	const roundedAmount = Math.round(amount);
+	const displayPrice = formatPriceDisplay(amount, period, rounding);
 
 	const sizeClasses = {
 		sm: "text-lg",
@@ -31,12 +38,12 @@ function PriceDisplay({
 
 	return (
 		<span className={cn("font-mono font-black", sizeClasses[size], className)}>
-			${roundedAmount}
-			{hasUsageComponent && (
-				<span className="text-accent-lime">+</span>
-			)}
-			<span className={cn("font-normal text-fg-muted", periodSizeClasses[size])}>
-				{period}
+			${displayPrice.amountText}
+			{hasUsageComponent && <span className="text-accent-lime">+</span>}
+			<span
+				className={cn("font-normal text-fg-muted", periodSizeClasses[size])}
+			>
+				{displayPrice.suffix}
 			</span>
 		</span>
 	);

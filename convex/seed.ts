@@ -4,8 +4,6 @@ import type { Id } from './_generated/dataModel'
 import type { GenericMutationCtx, DataModelFromSchemaDefinition } from 'convex/server'
 import type schema from './schema'
 import { toolsData } from './seeds/tools'
-import { creatorsData } from './seeds/creators'
-import { stacksData } from './seeds/stacks'
 import { bundlesData } from './seeds/bundles'
 import { modelsData } from './seeds/models'
 
