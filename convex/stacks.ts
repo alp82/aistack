@@ -706,6 +706,7 @@ export const getBySlug = query({
     v.object({
       _id: v.id('stacks'),
       _creationTime: v.number(),
+      updatedAt: v.optional(v.number()),
       name: v.string(),
       slug: v.string(),
       oneLiner: v.string(),
@@ -805,6 +806,7 @@ export const getBySlug = query({
     return {
       _id: stack._id,
       _creationTime: stack._creationTime,
+      updatedAt: stack.updatedAt ?? stack._creationTime,
       name: stack.name,
       slug: `${stack.slug}-${stack.shortId}`,
       oneLiner: stack.oneLiner,

@@ -152,6 +152,7 @@ export const Route = createFileRoute("/stacks/$slug")({
 		}
 
 		const description = `${stack.oneLiner} • ${toolCount} tools • ${costText}`;
+		const ogImageUrl = `https://aistack.to/api/og/stack/${stack.slug}?v=${stack.updatedAt ?? stack._creationTime}`;
 
 		return {
 			meta: [
@@ -172,7 +173,7 @@ export const Route = createFileRoute("/stacks/$slug")({
 				},
 				{
 					property: "og:image",
-					content: `https://aistack.to/api/og/stack/${stack.slug}`,
+					content: ogImageUrl,
 				},
 				{
 					property: "og:image:width",
@@ -208,7 +209,7 @@ export const Route = createFileRoute("/stacks/$slug")({
 				},
 				{
 					name: "twitter:image",
-					content: `https://aistack.to/api/og/stack/${stack.slug}`,
+					content: ogImageUrl,
 				},
 				{
 					name: "twitter:site",
