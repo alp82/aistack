@@ -8,6 +8,7 @@ type StackOgImageProps = {
 		xHandle?: string | null;
 		avatarUrl?: string | null;
 	};
+	stackImageUrl?: string | null;
 	fixedTotal?: {
 		amount: number;
 		period?: "month" | "year" | "one_time";
@@ -62,6 +63,7 @@ export function StackOgImage({
 	name,
 	oneLiner,
 	creator,
+	stackImageUrl,
 	fixedTotal,
 	hasUsageComponent,
 	teamSize,
@@ -118,15 +120,15 @@ export function StackOgImage({
 					<div
 						style={{
 							display: "flex",
-							alignItems: "center",
+							alignItems: "start",
 							gap: "20px",
 							flex: 1,
 							minWidth: 0,
 						}}
 					>
-						{isInlineImageSource(creator.avatarUrl) ? (
+						{stackImageUrl ? (
 							<img
-								src={creator.avatarUrl ?? undefined}
+								src={stackImageUrl}
 								alt=""
 								width={88}
 								height={88}
@@ -152,7 +154,7 @@ export function StackOgImage({
 									flexShrink: 0,
 								}}
 							>
-								{getInitials(creator.name)}
+								{getInitials(name)}
 							</div>
 						)}
 						<div
@@ -193,12 +195,8 @@ export function StackOgImage({
 						style={{
 							display: "flex",
 							flexDirection: "column",
-							justifyContent: "space-between",
 							alignItems: "flex-end",
 							minWidth: "280px",
-							padding: "18px 20px",
-							border: "2px solid #3f3f46",
-							backgroundColor: "#111113",
 						}}
 					>
 						<div

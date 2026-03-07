@@ -727,6 +727,7 @@ export const getBySlug = query({
       fixedTotal: v.optional(MoneyValidator),
       hasUsageComponent: v.boolean(),
       usageTotalNotes: v.optional(v.string()),
+      stackImageUrl: v.optional(v.string()),
       personalPageUrl: v.optional(v.string()),
       projectPageUrl: v.optional(v.string()),
       creator: CreatorValidator,
@@ -829,6 +830,7 @@ export const getBySlug = query({
       fixedTotal: pricing.fixedTotal,
       hasUsageComponent: pricing.hasUsageComponent,
       usageTotalNotes: stack.usageTotalNotes,
+      stackImageUrl: stack.stackImageUrl,
       personalPageUrl: stack.personalPageUrl,
       projectPageUrl: stack.projectPageUrl,
       creator: {
