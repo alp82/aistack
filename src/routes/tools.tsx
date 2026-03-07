@@ -46,6 +46,81 @@ export const Route = createFileRoute("/tools")({
 				content:
 					"Browse a curated collection of AI tools that builders use to ship products faster.",
 			},
+			{
+				property: "og:title",
+				content: "AI Tools - Discover Tools for Your Stack",
+			},
+			{
+				property: "og:description",
+				content:
+					"Browse a curated collection of AI tools that builders use to ship products faster.",
+			},
+			{
+				property: "og:image",
+				content: "https://aistack.to/banners/tools.png",
+			},
+			{
+				property: "og:image:width",
+				content: "802",
+			},
+			{
+				property: "og:image:height",
+				content: "438",
+			},
+			{
+				property: "og:url",
+				content: "https://aistack.to/tools",
+			},
+			{
+				property: "og:type",
+				content: "website",
+			},
+			{
+				property: "og:site_name",
+				content: "AI Stack",
+			},
+			{
+				name: "twitter:card",
+				content: "summary_large_image",
+			},
+			{
+				name: "twitter:title",
+				content: "AI Tools - Discover Tools for Your Stack",
+			},
+			{
+				name: "twitter:description",
+				content:
+					"Browse a curated collection of AI tools that builders use to ship products faster.",
+			},
+			{
+				name: "twitter:image",
+				content: "https://aistack.to/banners/tools.png",
+			},
+			{
+				name: "twitter:site",
+				content: "@alperortac",
+			},
+			{
+				name: "twitter:creator",
+				content: "@alperortac",
+			},
+			{
+				name: "keywords",
+				content:
+					"AI tools, AI workflows, startup operations, indie builders, AI tooling costs, command line productivity",
+			},
+			{
+				name: "author",
+				content: "Alper Ortac",
+			},
+			{
+				name: "robots",
+				content: "index, follow",
+			},
+			{
+				name: "googlebot",
+				content: "index, follow",
+			},
 		],
 	}),
 });

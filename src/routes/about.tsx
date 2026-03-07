@@ -79,6 +79,81 @@ export const Route = createFileRoute("/about")({
 				content:
 					"Discover how AI Stack helps you explore, compare, and clone real AI workflows from successful builders.",
 			},
+			{
+				property: "og:title",
+				content: "About AI Stack - Learn How to Use AI Stacks",
+			},
+			{
+				property: "og:description",
+				content:
+					"Discover how AI Stack helps you explore, compare, and clone real AI workflows from successful builders.",
+			},
+			{
+				property: "og:image",
+				content: "https://aistack.to/banners/aistack.png",
+			},
+			{
+				property: "og:image:width",
+				content: "802",
+			},
+			{
+				property: "og:image:height",
+				content: "438",
+			},
+			{
+				property: "og:url",
+				content: "https://aistack.to/about",
+			},
+			{
+				property: "og:type",
+				content: "website",
+			},
+			{
+				property: "og:site_name",
+				content: "AI Stack",
+			},
+			{
+				name: "twitter:card",
+				content: "summary_large_image",
+			},
+			{
+				name: "twitter:title",
+				content: "About AI Stack - Learn How to Use AI Stacks",
+			},
+			{
+				name: "twitter:description",
+				content:
+					"Discover how AI Stack helps you explore, compare, and clone real AI workflows from successful builders.",
+			},
+			{
+				name: "twitter:image",
+				content: "https://aistack.to/banners/aistack.png",
+			},
+			{
+				name: "twitter:site",
+				content: "@alperortac",
+			},
+			{
+				name: "twitter:creator",
+				content: "@alperortac",
+			},
+			{
+				name: "keywords",
+				content:
+					"AI stacks, AI workflows, startup operations, indie builders, AI tooling costs, command line productivity",
+			},
+			{
+				name: "author",
+				content: "Alper Ortac",
+			},
+			{
+				name: "robots",
+				content: "index, follow",
+			},
+			{
+				name: "googlebot",
+				content: "index, follow",
+			},
 		],
 	}),
 });

@@ -16,16 +16,16 @@ function PublishCTASection({ userStack }: PublishCTASectionProps) {
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true }}
 					transition={{ duration: 0.6 }}
-					className="text-5xl md:text-8xl font-black tracking-tighter mb-8 text-black leading-[0.9]"
+					className="text-5xl md:text-8xl font-bold tracking-tighter mb-8 text-fg-inverse leading-[0.9]"
 				>
-					{hasPublished ? (<>UPDATE YOUR<br />STACK</>) : (<>PUBLISH YOUR<br />STACK TODAY</>)}
+					{hasPublished ? (<>YOUR<br />STACK</>) : (<>PUBLISH YOUR<br />STACK TODAY</>)}
 				</motion.h2>
 				<motion.p
 					initial={{ opacity: 0, y: 20 }}
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true }}
 					transition={{ duration: 0.6, delay: 0.1 }}
-					className="text-xl md:text-2xl font-mono text-black/80 mb-12 max-w-2xl mx-auto"
+					className="text-xl md:text-2xl font-mono text-fg-inverse/80 mb-12 max-w-2xl mx-auto"
 				>
 					{hasPublished
 						? "Keep your stack up to date. Add new tools, tweak your workflow."
@@ -68,7 +68,7 @@ function PublishCTASection({ userStack }: PublishCTASectionProps) {
 							whileHover={{ scale: 1.02 }}
 							whileTap={{ scale: 0.98 }}
 							transition={{ duration: 0.15 }}
-							className="inline-flex items-center gap-3 px-8 py-5 bg-transparent border-4 border-black text-black font-mono font-bold uppercase tracking-widest hover:bg-black hover:text-lime-400 transition-colors text-lg"
+							className="inline-flex items-center gap-3 px-8 py-5 bg-transparent border-4 border-black text-inverse font-mono font-bold uppercase tracking-widest hover:bg-black hover:text-lime-400 transition-colors text-lg"
 						>
 							Browse Stacks
 						</motion.span>

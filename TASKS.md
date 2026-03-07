@@ -13,7 +13,6 @@
 * block hover previews:
     * bigger, nicer layout
     * instructions with bigger CTA to click
-* stack page dynamic image for og:image
 * Emails with AIS design
 * admin for editing aliases
     * e.g. amp, opus, etc.

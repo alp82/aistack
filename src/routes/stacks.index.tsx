@@ -101,6 +101,81 @@ export const Route = createFileRoute("/stacks/")({
 				content:
 					"Browse all AI stacks from real builders. See what tools, workflows, and automations successful founders use.",
 			},
+			{
+				property: "og:title",
+				content: "Browse AI Stacks - See What Builders Use",
+			},
+			{
+				property: "og:description",
+				content:
+					"Browse all AI stacks from real builders. See what tools, workflows, and automations successful founders use.",
+			},
+			{
+				property: "og:image",
+				content: "https://aistack.to/banners/stacks.png",
+			},
+			{
+				property: "og:image:width",
+				content: "802",
+			},
+			{
+				property: "og:image:height",
+				content: "438",
+			},
+			{
+				property: "og:url",
+				content: "https://aistack.to/stacks",
+			},
+			{
+				property: "og:type",
+				content: "website",
+			},
+			{
+				property: "og:site_name",
+				content: "AI Stack",
+			},
+			{
+				name: "twitter:card",
+				content: "summary_large_image",
+			},
+			{
+				name: "twitter:title",
+				content: "Browse AI Stacks - See What Builders Use",
+			},
+			{
+				name: "twitter:description",
+				content:
+					"Browse all AI stacks from real builders. See what tools, workflows, and automations successful founders use.",
+			},
+			{
+				name: "twitter:image",
+				content: "https://aistack.to/banners/stacks.png",
+			},
+			{
+				name: "twitter:site",
+				content: "@alperortac",
+			},
+			{
+				name: "twitter:creator",
+				content: "@alperortac",
+			},
+			{
+				name: "keywords",
+				content:
+					"AI stacks, AI workflows, startup operations, indie builders, AI tooling costs, command line productivity",
+			},
+			{
+				name: "author",
+				content: "Alper Ortac",
+			},
+			{
+				name: "robots",
+				content: "index, follow",
+			},
+			{
+				name: "googlebot",
+				content: "index, follow",
+			},
 		],
 	}),
 });

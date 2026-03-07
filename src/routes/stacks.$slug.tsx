@@ -119,38 +119,125 @@ export const Route = createFileRoute("/stacks/$slug")({
 	ssr: false,
 	component: StackDetailsPage,
 	loader: async ({ context, params }) => {
-		await context.queryClient.ensureQueryData(
+		const stack = await context.queryClient.ensureQueryData(
 			convexQuery(api.stacks.getBySlug, { slug: params.slug }),
 		);
+		return { stack };
 	},
-	head: ({ params }) => ({
-		meta: [
-			{
-				property: "og:image",
-				content: `https://aistack.to/api/og/stack/${params.slug}`,
-			},
-			{
-				property: "og:image:width",
-				content: "1200",
-			},
-			{
-				property: "og:image:height",
-				content: "630",
-			},
-			{
-				property: "og:type",
-				content: "website",
-			},
-			{
-				name: "twitter:card",
-				content: "summary_large_image",
-			},
-			{
-				name: "twitter:image",
-				content: `https://aistack.to/api/og/stack/${params.slug}`,
-			},
-		],
-	}),
+	head: ({ loaderData }) => {
+		if (!loaderData?.stack) {
+			return {
+				meta: [
+					{ title: "AI Stack Details" },
+					{ name: "description", content: "View detailed information about this AI stack." },
+				],
+			};
+		}
+
+		const stack = loaderData.stack;
+		const toolCount = stack.tools.length;
+
+		// Format cost for description
+		let costText = "";
+		if (stack.fixedTotal) {
+			const price = Math.floor(stack.fixedTotal.amount)
+			costText = `$${price}/${stack.fixedTotal.period}`;
+			if (stack.hasUsageComponent) {
+				costText += " + usage";
+			}
+		} else if (stack.hasUsageComponent) {
+			costText = "usage-based pricing";
+		} else {
+			costText = "free";
+		}
+
+		const description = `${stack.oneLiner} • ${toolCount} tools • ${costText}`;
+
+		return {
+			meta: [
+				{
+					title: `${stack.name} - AI Stack`,
+				},
+				{
+					name: "description",
+					content: description,
+				},
+				{
+					property: "og:title",
+					content: `${stack.name} - AI Stack`,
+				},
+				{
+					property: "og:description",
+					content: description,
+				},
+				{
+					property: "og:image",
+					content: `https://aistack.to/api/og/stack/${stack.slug}`,
+				},
+				{
+					property: "og:image:width",
+					content: "1200",
+				},
+				{
+					property: "og:image:height",
+					content: "630",
+				},
+				{
+					property: "og:url",
+					content: `https://aistack.to/stacks/${stack.slug}`,
+				},
+				{
+					property: "og:type",
+					content: "website",
+				},
+				{
+					property: "og:site_name",
+					content: "AI Stack",
+				},
+				{
+					name: "twitter:card",
+					content: "summary_large_image",
+				},
+				{
+					name: "twitter:title",
+					content: `${stack.name} - AI Stack`,
+				},
+				{
+					name: "twitter:description",
+					content: description,
+				},
+				{
+					name: "twitter:image",
+					content: `https://aistack.to/api/og/stack/${stack.slug}`,
+				},
+				{
+					name: "twitter:site",
+					content: "@alperortac",
+				},
+				{
+					name: "twitter:creator",
+					content: "@alperortac",
+				},
+				{
+					name: "keywords",
+					content:
+						"AI stacks, AI workflows, startup operations, indie builders, AI tooling costs, command line productivity",
+				},
+				{
+					name: "author",
+					content: "Alper Ortac",
+				},
+				{
+					name: "robots",
+					content: "index, follow",
+				},
+				{
+					name: "googlebot",
+					content: "index, follow",
+				},
+			],
+		};
+	},
 });
 
 function StackDetailsPage() {
