@@ -123,6 +123,34 @@ export const Route = createFileRoute("/stacks/$slug")({
 			convexQuery(api.stacks.getBySlug, { slug: params.slug }),
 		);
 	},
+	head: ({ params }) => ({
+		meta: [
+			{
+				property: "og:image",
+				content: `https://aistack.to/api/og/stack/${params.slug}`,
+			},
+			{
+				property: "og:image:width",
+				content: "1200",
+			},
+			{
+				property: "og:image:height",
+				content: "630",
+			},
+			{
+				property: "og:type",
+				content: "website",
+			},
+			{
+				name: "twitter:card",
+				content: "summary_large_image",
+			},
+			{
+				name: "twitter:image",
+				content: `https://aistack.to/api/og/stack/${params.slug}`,
+			},
+		],
+	}),
 });
 
 function StackDetailsPage() {

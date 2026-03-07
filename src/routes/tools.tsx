@@ -260,7 +260,7 @@ function ToolCard({ tool, onSuggestEdit }: { tool: ToolFromDB; onSuggestEdit: (t
 			initial={{ opacity: 0, y: 10 }}
 			whileInView={{ opacity: 1, y: 0 }}
 			viewport={{ once: true }}
-			className="group bg-bg-canvas border border-stroke-strong p-6 flex flex-col h-fulltransition-all hover:shadow-[0_10px_30px_-10px_rgba(163,230,53,0.1)]"
+			className="group bg-bg-canvas border border-stroke-strong p-6 flex flex-col h-full transition-all hover:shadow-[0_10px_30px_-10px_rgba(163,230,53,0.1)]"
 		>
 			{/* Header: logo + name */}
 			<div className="flex items-center gap-4 mb-5">

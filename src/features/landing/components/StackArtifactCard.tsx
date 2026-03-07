@@ -120,7 +120,7 @@ function StackArtifactCard({ stack }: StackArtifactCardProps) {
 					{/* Tools Section - 2 Column Grid */}
 					<div className="mb-6 space-y-2">
 						<div className="text-[10px] font-mono text-fg-muted uppercase tracking-widest mb-3">
-							Active Stack
+							AI Tools
 						</div>
 						<div className="grid grid-cols-2 gap-2">
 							{displayTools.map((tool) => (
