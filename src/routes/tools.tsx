@@ -56,7 +56,7 @@ export const Route = createFileRoute("/tools")({
 			},
 			{
 				property: "og:image",
-				content: "https://aistack.to/banners/tools.png",
+				content: "https://aistack.to/banners/aistack.png",
 			},
 			{
 				property: "og:image:width",
@@ -93,7 +93,7 @@ export const Route = createFileRoute("/tools")({
 			},
 			{
 				name: "twitter:image",
-				content: "https://aistack.to/banners/tools.png",
+				content: "https://aistack.to/banners/aistack.png",
 			},
 			{
 				name: "twitter:site",

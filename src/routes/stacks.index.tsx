@@ -111,7 +111,7 @@ export const Route = createFileRoute("/stacks/")({
 			},
 			{
 				property: "og:image",
-				content: "https://aistack.to/banners/stacks.png",
+				content: "https://aistack.to/banners/aistack.png",
 			},
 			{
 				property: "og:image:width",
@@ -148,7 +148,7 @@ export const Route = createFileRoute("/stacks/")({
 			},
 			{
 				name: "twitter:image",
-				content: "https://aistack.to/banners/stacks.png",
+				content: "https://aistack.to/banners/aistack.png",
 			},
 			{
 				name: "twitter:site",
