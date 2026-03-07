@@ -67,7 +67,6 @@ function StackCarousel({ compact = false }: { compact?: boolean }) {
 }
 
 export const Route = createFileRoute("/about")({
-	ssr: false,
 	component: AboutPage,
 	head: () => ({
 		meta: [

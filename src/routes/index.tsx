@@ -8,7 +8,6 @@ import type { LandingStackPreview } from "@/features/landing/sections/FeaturedSt
 
 
 export const Route = createFileRoute("/")({
-	ssr: false,
 	component: IndexRoute,
 	loader: async ({ context }) => {
 		await context.queryClient.ensureQueryData(
@@ -27,7 +26,7 @@ export const Route = createFileRoute("/")({
 			},
 			{
 				property: "og:title",
-				content: "AI Stack - Command line signal from real builder stacks",
+				content: "AI Stack - What real builders use to ship",
 			},
 			{
 				property: "og:description",

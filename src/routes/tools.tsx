@@ -24,7 +24,6 @@ const TOOL_SORT_OPTIONS: { value: ToolSortOption; label: string }[] = [
 const TOOLS_PER_PAGE = 16;
 
 export const Route = createFileRoute("/tools")({
-	ssr: false,
 	component: ToolsPage,
 	loader: async ({ context }) => {
 		await Promise.all([

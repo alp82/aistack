@@ -116,7 +116,6 @@ function ViewLookupDataSync({
 }
 
 export const Route = createFileRoute("/stacks/$slug")({
-	ssr: false,
 	component: StackDetailsPage,
 	loader: async ({ context, params }) => {
 		const stack = await context.queryClient.ensureQueryData(

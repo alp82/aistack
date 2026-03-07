@@ -84,7 +84,6 @@ function getCategoryBorderColor(category: string): string {
 }
 
 export const Route = createFileRoute("/stacks/")({
-	ssr: false,
 	component: BrowseStacksPage,
 	loader: async ({ context }) => {
 		await context.queryClient.ensureQueryData(
