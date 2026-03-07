@@ -123,8 +123,8 @@ export default function Header() {
 	};
 
 	return (
-		<header className="sticky top-0 z-50 border-b-2 border-stroke-strong bg-bg-canvas px-6">
-			<div className="mx-auto flex h-14 max-w-content items-center justify-between">
+		<header className="sticky top-0 z-50 border-b-2 border-stroke-strong bg-bg-canvas px-6 shadow-[0_10px_30px_-20px_var(--shadow-color)] backdrop-blur-md">
+			<div className="mx-auto flex h-16 max-w-content items-center justify-between">
 				<div className="flex items-center gap-6 md:gap-12">
 					<Link
 						to="/"

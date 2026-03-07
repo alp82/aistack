@@ -1,7 +1,7 @@
 function Footer() {
 	return (
-		<footer className="flex-1 bg-bg-canvas text-fg-muted py-20 px-6 md:px-16 lg:px-24 border-t border-zinc-800">
-			<div className=" max-w-content mx-auto flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
+		<footer className="relative flex-1 overflow-hidden border-t-2 border-stroke-strong bg-bg-canvas text-fg-muted py-20 px-6 shadow-[0_-20px_50px_-30px_var(--shadow-color)] md:px-16 lg:px-24">
+			<div className="relative max-w-content mx-auto flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
 				<div>
 					<div className="flex items-center gap-2 mb-6">
 						<div className="w-3 h-3 bg-accent-lime animate-pulse" style={{ boxShadow: '0 0 8px rgba(163, 230, 53, 0.6)' }} />

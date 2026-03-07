@@ -63,6 +63,22 @@ import { useOptionalEditorContext } from "@/features/stack-editor/context/Editor
 
 const lowlight = createLowlight(common);
 
+let lastInternalClipboardAt = 0;
+
+function isInternalEditorPaste(event: ClipboardEvent): boolean {
+	const types = Array.from(event.clipboardData?.types ?? []);
+	if (types.includes("application/x-prosemirror-slice")) {
+		return true;
+	}
+
+	const html = event.clipboardData?.getData("text/html") ?? "";
+	if (html.includes("data-pm-slice")) {
+		return true;
+	}
+
+	return Date.now() - lastInternalClipboardAt < 10_000;
+}
+
 function looksLikeMarkdown(text: string): boolean {
 	return (
 		/^#{1,6}\s/.test(text) ||
@@ -85,7 +101,21 @@ const PasteMarkdown = Extension.create({
 		return [
 			new Plugin({
 				props: {
+					handleDOMEvents: {
+						copy: () => {
+							lastInternalClipboardAt = Date.now();
+							return false;
+						},
+						cut: () => {
+							lastInternalClipboardAt = Date.now();
+							return false;
+						},
+					},
 					handlePaste(_view, event) {
+						if (isInternalEditorPaste(event)) {
+							return false;
+						}
+
 						const text = event.clipboardData?.getData("text/plain");
 
 						if (!text) {
@@ -257,8 +287,8 @@ export function TiptapEditor({
 				nested: true,
 			}),
 			Markdown.configure({
-				transformPastedText: true,
-				transformCopiedText: true,
+				transformPastedText: false,
+				transformCopiedText: false,
 			}),
 			PasteMarkdown,
 			AIToolBlock,
@@ -285,16 +315,17 @@ export function TiptapEditor({
 		editorProps: {
 			attributes: {
 				class: cn(
-					"prose prose-invert max-w-none focus:outline-none min-h-64",
-					"[&_h1]:text-3xl [&_h1]:font-black [&_h1]:text-fg-primary [&_h1]:mt-8 [&_h1]:mb-4 [&_h1]:tracking-tight",
-					"[&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-fg-primary [&_h2]:mt-8 [&_h2]:mb-4 [&_h2]:tracking-tight",
-					"[&_h3]:text-xl [&_h3]:font-bold [&_h3]:text-fg-primary [&_h3]:mt-6 [&_h3]:mb-3 [&_h3]:tracking-tight",
-					"[&_p]:text-fg-secondary [&_p]:font-medium [&_p]:leading-relaxed [&_p]:tracking-wide [&_p]:my-1",
-					"[&_ul]:list-none [&_ul]:pl-6 [&_ul]:space-y-3 [&_ul_li]:relative [&_ul_li]:before:content-['–'] [&_ul_li]:before:absolute [&_ul_li]:before:-left-5 [&_ul_li]:before:text-fg-muted",
+					"prose prose-invert max-w-none focus:outline-none min-h-64 text-[1.02rem] leading-8",
+					"[&_h1]:mt-12 [&_h1]:mb-5 [&_h2]:font-mono [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:tracking-[0.02em] [&_h1]:text-fg-primary md:[&_h1]:text-3xl",
+					"[&_h2]:mt-8 [&_h2]:mb-4 [&_h2]:font-mono [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:tracking-[0.02em] [&_h2]:text-fg-primary md:[&_h2]:text-2xl",
+					"[&_h3]:mt-4 [&_h3]:mb-3 [&_h3]:font-mono [&_h3]:text-xl [&_h3]:font-bold [&_h3]:tracking-[0.01em] [&_h3]:text-fg-primary md:[&_h3]:text-xl",
+					"[&_p]:my-3 [&_p]:text-fg-secondary [&_p]:font-medium [&_p]:leading-8",
+					"[&_ul:not([data-type='taskList'])]:list-disc [&_ul:not([data-type='taskList'])]:pl-6 [&_ul:not([data-type='taskList'])]:space-y-3",
 					"[&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-3",
-					"[&_li]:text-fg-secondary [&_li]:font-medium [&_li]:leading-relaxed",
-					"[&_strong]:text-fg-primary [&_strong]:font-bold",
-					"[&_em]:italic",
+					"[&_li]:text-fg-secondary [&_li]:font-medium [&_li]:leading-8",
+					"[&_li_p]:my-0",
+					"[&_strong]:font-semibold [&_strong]:text-amber-400/95",
+					"[&_em]:italic [&_em]:decoration-accent-lime/70 [&_em]:decoration-wavy [&_em]:underline [&_em]:underline-offset-4",
 					"[&_a]:text-accent-lime [&_a:hover]:text-accent-lime-strong [&_a]:font-semibold",
 					"[&_code]:bg-bg-panel [&_code]:px-2 [&_code]:py-0.5 [&_code]:text-sm [&_code]:text-accent-lime [&_code]:font-mono [&_code]:rounded [&_code]:border [&_code]:border-stroke-strong",
 					"[&_pre]:bg-bg-panel [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:border [&_pre]:border-stroke-strong",
@@ -302,8 +333,8 @@ export function TiptapEditor({
 					"[&_hr]:border-stroke-strong [&_hr]:my-6",
 					"[&_table]:border-collapse [&_table]:w-full [&_th]:border [&_th]:border-stroke-strong [&_th]:p-2 [&_th]:bg-bg-panel-muted [&_td]:border [&_td]:border-stroke-strong [&_td]:p-2",
 					"[&_img]:max-w-full [&_img]:h-auto [&_img]:my-4",
-					"[&_ul[data-type='taskList']]:list-none [&_ul[data-type='taskList']]:pl-0",
-					"[&_li[data-type='taskItem']]:flex [&_li[data-type='taskItem']]:gap-2 [&_li[data-type='taskItem']]:items-start",
+					"[&_ul[data-type='taskList']]:my-4 [&_ul[data-type='taskList']]:list-none [&_ul[data-type='taskList']]:pl-0",
+					"[&_li[data-type='taskItem']]:my-3 [&_li[data-type='taskItem']]:flex [&_li[data-type='taskItem']]:items-start [&_li[data-type='taskItem']]:gap-3",
 				),
 			},
 		},
@@ -414,8 +445,9 @@ export function TiptapEditor({
 
 	return (
 		<div className={cn("space-y-2", className)}>
-			{/* Toolbar Row 1: Text formatting */}
-			<div className="flex flex-wrap gap-1 border-2 border-stroke-subtle bg-bg-panel-muted p-1">
+			<div className="max-h-[70vh] overflow-x-hidden overflow-y-auto border-2 border-stroke-subtle bg-bg-panel">
+				{/* Toolbar Row 1: Text formatting */}
+				<div className="sticky top-0 z-20 flex flex-wrap gap-1 border-b-2 border-stroke-subtle bg-bg-panel-muted p-1">
 				{/* Undo/Redo */}
 				<ToolbarButton
 					onClick={() => editor.chain().focus().undo().run()}
@@ -607,9 +639,10 @@ export function TiptapEditor({
 				>
 					<Copy className="size-4" />
 				</ToolbarButton>
-			</div>
-			<div className="tiptap-editor-wrapper relative min-h-64 border-2 border-stroke-subtle bg-bg-panel p-4">
-				<EditorContent editor={editor} />
+				</div>
+				<div className="tiptap-editor-wrapper relative min-h-64 bg-bg-panel p-4">
+					<EditorContent editor={editor} />
+				</div>
 			</div>
 			<AddItemModal
 				open={addItemModalOpen}

@@ -18,6 +18,7 @@ code, .font-mono {
 :root {
   color-scheme: dark;
   --bg-canvas: oklch(0.16 0.008 256);
+  --bg-shell: oklch(0.12 0.01 256);
   --bg-panel: oklch(0.2 0.009 256);
   --bg-panel-muted: oklch(0.24 0.009 256);
   --bg-panel-elevated: oklch(0.28 0.01 256);
@@ -98,6 +99,7 @@ code, .font-mono {
 .light {
   color-scheme: light;
   --bg-canvas: oklch(0.97 0.003 256);
+  --bg-shell: oklch(0.92 0.006 256);
   --bg-panel: oklch(1 0 0);
   --bg-panel-muted: oklch(0.95 0.003 256);
   --bg-panel-elevated: oklch(0.98 0.002 256);
@@ -118,6 +120,7 @@ code, .font-mono {
 
 @theme inline {
   --color-bg-canvas: var(--bg-canvas);
+  --color-bg-shell: var(--bg-shell);
   --color-bg-panel: var(--bg-panel);
   --color-bg-panel-muted: var(--bg-panel-muted);
   --color-bg-panel-elevated: var(--bg-panel-elevated);
@@ -300,6 +303,66 @@ code, .font-mono {
   padding-top: 0.5rem;
   border-top: 1px solid var(--stroke-subtle);
   clear: both;
+}
+
+.ProseMirror ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  list-style: none;
+}
+
+.ProseMirror ul[data-type="taskList"] li::marker {
+  content: none;
+}
+
+.ProseMirror ul[data-type="taskList"] li > label {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  margin: 0;
+  padding-top: 0.28rem;
+}
+
+.ProseMirror ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ProseMirror ul[data-type="taskList"] li > div > p {
+  margin: 0;
+}
+
+.ProseMirror ul[data-type="taskList"] input[type="checkbox"] {
+  margin: 0;
+  margin-left: 2px;
+  margin-top: 5px;
+}
+
+.ProseMirror ul[data-type="taskList"] {
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3 {
+  position: relative;
+}
+
+.ProseMirror h1::before,
+.ProseMirror h2::before {
+  margin-right: 0.65rem;
+  color: var(--accent-lime);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Menlo, Monaco, Consolas, monospace;
+}
+
+.ProseMirror h1::before {
+  content: ">>";
+}
+
+.ProseMirror h2::before {
+  content: ">";
 }
 
 /* Tool suggestion widget: add & ignore buttons visible on hover or cursor inside */

@@ -32,6 +32,7 @@ export type InstructionLookupData = {
 	name: string;
 	type: InstructionType;
 	description?: string;
+	content?: string;
 };
 
 type EditorContextValue = {

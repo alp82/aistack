@@ -71,7 +71,9 @@ function LookupDataSync({
 			bundleMap.set(bundle.bundleName, {
 				name: bundle.bundleName,
 				iconUrl: bundle.bundleIconUrl ?? undefined,
+				price: bundle.price?.fixed ? { amount: bundle.price.fixed.amount, period: bundle.price.fixed.period } : undefined,
 				tierName: bundle.tierName,
+				description: bundle.notes,
 				notes: bundle.notes,
 			});
 		}
@@ -85,6 +87,7 @@ function LookupDataSync({
 				name: instruction.name,
 				type: instruction.type,
 				description: instruction.description,
+				content: instruction.content,
 			});
 		}
 		setInstructionLookup(instructionMap);
@@ -303,7 +306,7 @@ export function StackEditor({
 					<div className="flex">
 						<main className="flex-1 px-6 py-8">
 							{/* Sticky Header with Title and Actions */}
-							<header className="sticky top-12 mb-12 py-4 z-20 bg-bg-canvas/95 backdrop-blur-sm border-b border-stroke-subtle">
+							<header className="sticky top-16 mb-12 py-4 z-20 bg-bg-canvas border-b-2 border-stroke-subtle">
 								<div className="flex items-center justify-between gap-4">
 									<h1 className="text-2xl md:text-3xl font-black tracking-tighter uppercase text-fg-primary">
 										{mode === "create" ? "Create Stack" : "Update Stack"}

@@ -107,6 +107,7 @@ function ViewLookupDataSync({
 				name: instruction.name,
 				type: instruction.type,
 				description: instruction.description,
+				content: instruction.content,
 			});
 		}
 		setInstructionLookup(instructionMap);

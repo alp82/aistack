@@ -82,7 +82,7 @@ const HoverPreview = (props: HoverPreviewProps) => {
     exitSpeed = 0.15,
     maxRotation = 12,
     maxOffset = 15,
-    width = 200,
+    width = 240,
     height = 200,
     className,
     offset = 24,
@@ -118,7 +118,7 @@ const HoverPreview = (props: HoverPreviewProps) => {
   const smoothOffsetY = useSpring(offsetY, { stiffness: 150, damping: 15 });
 
   const previewWidth = typeof width === "number" ? width : 280;
-  const previewHeight = height === "auto" ? 200 : (height as number);
+  const previewHeight = height === "auto" ? 240 : (height as number);
 
   const finalX = useTransform(() => {
     const cx = smoothCursorX.get();
@@ -365,7 +365,7 @@ const HoverPreview = (props: HoverPreviewProps) => {
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.2, ease: "easeInOut" }}
-        className={props.contentClassName}
+        className={cn("w-full", props.contentClassName)}
       >
         {props.renderContent()}
       </motion.div>

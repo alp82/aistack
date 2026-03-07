@@ -31,25 +31,32 @@ const typeLabels: Record<InstructionType, string> = {
 	subagent: "Subagent",
 };
 
-function InstructionTooltipContent({ name, instructionType, description }: {
+function InstructionTooltipContent({ name, instructionType, description, content }: {
 	name: string;
 	instructionType: InstructionType;
 	description?: string;
+	content?: string;
 }) {
 	const colors = typeColors[instructionType] || typeColors.prompt;
+	const previewText = content
+		?.split(/\r?\n/)
+		.filter((line: string) => line.trim().length > 0)
+		.slice(0, 3)
+		.join("\n") || description;
+
 	return (
-		<div className="border-[3px] border-stroke-strong bg-bg-panel shadow-[6px_6px_0_var(--stroke-strong)] p-3 min-w-[180px]">
-			<div className={`font-mono text-[10px] font-bold uppercase tracking-[0.2em] ${colors.text} mb-2 border-b-2 border-stroke-strong pb-2`}>
+		<div className="min-w-[280px] border-[3px] border-stroke-strong bg-bg-panel-elevated p-4 shadow-[6px_6px_0_var(--stroke-strong)]">
+			<div className={`mb-3 border-b-2 border-stroke-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] ${colors.text}`}>
 				{typeLabels[instructionType]}
 			</div>
-			<div className="font-mono text-sm font-semibold text-fg-primary mb-1">{name}</div>
-			{description && (
-				<div className="text-xs text-fg-secondary line-clamp-3">
-					{description}
+			<div className="mb-2 font-mono text-sm font-semibold text-fg-primary">{name}</div>
+			{previewText && (
+				<div className="whitespace-pre-line text-xs leading-6 text-fg-secondary line-clamp-3">
+					{previewText}
 				</div>
 			)}
-			<div className="mt-2 text-[10px] text-fg-muted">
-				Click to view content
+			<div className="mt-4 inline-flex items-center border border-stroke-strong bg-bg-panel px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-fg-primary">
+				Click to open full instruction
 			</div>
 		</div>
 	);
@@ -90,7 +97,7 @@ function AIInstructionBlockView({ node }: NodeViewProps) {
 			<HoverPreview
 				mode="wrapper"
 				position="above"
-				width={200}
+				width={320}
 				height="auto"
 				offset={8}
 				maxRotation={3}
@@ -100,6 +107,7 @@ function AIInstructionBlockView({ node }: NodeViewProps) {
 						name={name}
 						instructionType={instructionType}
 						description={instructionData?.description}
+						content={content ?? instructionData?.content}
 					/>
 				)}
 			>
