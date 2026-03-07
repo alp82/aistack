@@ -1,12 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
+import { authClient } from "../lib/auth-client";
 import { MagicLinkForm } from "./MagicLinkForm";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { authClient } from "../lib/auth-client";
 
 const GoogleIcon = () => (
-	<svg className="h-5 w-5" viewBox="0 0 24 24">
+	<svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24">
 		<path
 			fill="currentColor"
 			d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -22,6 +22,15 @@ const GoogleIcon = () => (
 		<path
 			fill="currentColor"
 			d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+		/>
+	</svg>
+);
+
+const GitHubIcon = () => (
+	<svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24">
+		<path
+			fill="currentColor"
+			d="M12 1.5C6.2 1.5 1.5 6.2 1.5 12c0 4.64 3.01 8.58 7.18 9.97.53.1.72-.23.72-.51 0-.25-.01-1.09-.01-1.97-2.92.63-3.54-1.24-3.54-1.24-.48-1.21-1.16-1.53-1.16-1.53-.95-.65.07-.64.07-.64 1.05.07 1.61 1.08 1.61 1.08.94 1.6 2.45 1.14 3.05.87.09-.68.37-1.14.67-1.4-2.33-.27-4.78-1.16-4.78-5.18 0-1.14.41-2.08 1.08-2.82-.11-.27-.47-1.36.1-2.84 0 0 .88-.28 2.89 1.08A9.97 9.97 0 0 1 12 6.34c.88 0 1.77.12 2.6.35 2-1.36 2.88-1.08 2.88-1.08.57 1.48.21 2.57.1 2.84.67.74 1.08 1.68 1.08 2.82 0 4.03-2.45 4.9-4.79 5.17.38.32.71.94.71 1.9 0 1.37-.01 2.47-.01 2.81 0 .28.19.62.73.51A10.5 10.5 0 0 0 22.5 12c0-5.8-4.7-10.5-10.5-10.5Z"
 		/>
 	</svg>
 );
@@ -54,6 +63,9 @@ export function AuthForm({
 	const [error, setError] = useState("");
 	const [info, setInfo] = useState("");
 	const [loading, setLoading] = useState(false);
+	const nameId = useId();
+	const emailId = useId();
+	const passwordId = useId();
 
 	const handleEmailAuth = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -93,16 +105,20 @@ export function AuthForm({
 		}
 	};
 
-	const handleGoogleSignIn = async () => {
+	const handleSocialSignIn = async (provider: "google" | "github") => {
 		setError("");
 		setLoading(true);
 		try {
 			await authClient.signIn.social({
-				provider: "google",
+				provider,
 				callbackURL,
 			});
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Google sign-in failed");
+			setError(
+				err instanceof Error
+					? err.message
+					: `${provider === "google" ? "Google" : "GitHub"} sign-in failed`,
+			);
 			setLoading(false);
 		}
 	};
@@ -123,12 +139,22 @@ export function AuthForm({
 
 			<button
 				type="button"
-				onClick={handleGoogleSignIn}
+				onClick={() => handleSocialSignIn("google")}
 				disabled={loading}
 				className="w-full flex items-center justify-center gap-3 border-2 border-stroke-strong bg-bg-canvas px-4 py-4 font-mono text-sm font-semibold uppercase tracking-wide text-fg-primary transition-all hover:border-accent-lime hover:text-accent-lime disabled:opacity-50"
 			>
 				<GoogleIcon />
 				Continue with Google
+			</button>
+
+			<button
+				type="button"
+				onClick={() => handleSocialSignIn("github")}
+				disabled={loading}
+				className="w-full flex items-center justify-center gap-3 border-2 border-stroke-strong bg-bg-canvas px-4 py-4 font-mono text-sm font-semibold uppercase tracking-wide text-fg-primary transition-all hover:border-accent-lime hover:text-accent-lime disabled:opacity-50"
+			>
+				<GitHubIcon />
+				Continue with GitHub
 			</button>
 
 			<div className="relative">
@@ -158,11 +184,14 @@ export function AuthForm({
 			<form onSubmit={handleEmailAuth} className="space-y-5">
 				{isSignUp && (
 					<div className="space-y-2">
-						<Label htmlFor="name" className="font-mono text-xs uppercase tracking-widest text-fg-muted">
+						<Label
+							htmlFor={nameId}
+							className="font-mono text-xs uppercase tracking-widest text-fg-muted"
+						>
 							Name
 						</Label>
 						<Input
-							id="name"
+							id={nameId}
 							type="text"
 							value={name}
 							onChange={(e) => setName(e.target.value)}
@@ -174,11 +203,14 @@ export function AuthForm({
 				)}
 
 				<div className="space-y-2">
-					<Label htmlFor="email" className="font-mono text-xs uppercase tracking-widest text-fg-muted">
+					<Label
+						htmlFor={emailId}
+						className="font-mono text-xs uppercase tracking-widest text-fg-muted"
+					>
 						Email
 					</Label>
 					<Input
-						id="email"
+						id={emailId}
 						type="email"
 						value={email}
 						onChange={(e) => setEmail(e.target.value)}
@@ -190,7 +222,10 @@ export function AuthForm({
 
 				<div className="space-y-2">
 					<div className="flex items-center justify-between">
-						<Label htmlFor="password" className="font-mono text-xs uppercase tracking-widest text-fg-muted">
+						<Label
+							htmlFor={passwordId}
+							className="font-mono text-xs uppercase tracking-widest text-fg-muted"
+						>
 							Password
 						</Label>
 						{!isSignUp && (
@@ -203,7 +238,7 @@ export function AuthForm({
 						)}
 					</div>
 					<Input
-						id="password"
+						id={passwordId}
 						type="password"
 						value={password}
 						onChange={(e) => setPassword(e.target.value)}
@@ -219,7 +254,11 @@ export function AuthForm({
 					disabled={loading}
 					className="w-full border-2 border-accent-lime bg-accent-lime px-4 py-4 font-mono text-sm font-bold uppercase tracking-widest text-accent-lime-contrast transition-all hover:bg-accent-lime-strong disabled:opacity-50"
 				>
-					{loading ? "Loading..." : isSignUp ? signUpSubmitLabel : signInSubmitLabel}
+					{loading
+						? "Loading..."
+						: isSignUp
+							? signUpSubmitLabel
+							: signInSubmitLabel}
 				</button>
 			</form>
 

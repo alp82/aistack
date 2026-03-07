@@ -14,7 +14,7 @@ export const sendWaitlistConfirmEmail = action({
     }
 
     const resend = new Resend(process.env.RESEND_API_KEY);
-    const ctaUrl = `${process.env.SITE_URL || "https://aistack.to"}/waitlist/${args.lookupId}`;
+    const ctaUrl = `${process.env.APP_URL || "https://aistack.to"}/waitlist/${args.lookupId}`;
 
     const html = `
       <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#fff;border-radius:12px;border:1px solid #eceef5">

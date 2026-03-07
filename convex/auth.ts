@@ -15,13 +15,13 @@ import { MagicLinkEmail } from '../src/emails/MagicLinkEmail'
 // @ts-ignore - components will be generated after convex dev restarts
 import { components } from './_generated/api'
 
-const siteUrl = process.env.SITE_URL!
+const appUrl = process.env.APP_URL || process.env.BETTER_AUTH_URL!
 
 export const authComponent = createClient<DataModel>(components.betterAuth)
 
 export const createAuth = (ctx: GenericCtx<DataModel>) => {
   return betterAuth({
-    baseURL: siteUrl,
+    baseURL: appUrl,
     trustedOrigins: [process.env.APP_URL || process.env.BETTER_AUTH_URL || 'http://localhost:3019'],
     database: authComponent.adapter(ctx),
     emailAndPassword: {
@@ -69,6 +69,10 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
       google: {
         clientId: process.env.GOOGLE_OAUTH_CLIENT_ID!,
         clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
+      },
+      github: {
+        clientId: process.env.GITHUB_OAUTH_CLIENT_ID!,
+        clientSecret: process.env.GITHUB_OAUTH_CLIENT_SECRET!,
       },
     },
     plugins: [
