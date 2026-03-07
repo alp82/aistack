@@ -117,11 +117,7 @@ export function formatPricingSummary(
 	hasUsageComponent = false,
 ): string {
 	if (fixedTotal) {
-		const display = formatPriceDisplay(
-			fixedTotal.amount,
-			fixedTotal.period,
-			"floor",
-		);
+		const display = formatPriceDisplay(fixedTotal.amount, "month", "floor");
 		return `$${display.amountText}${display.suffix}${hasUsageComponent ? " + usage" : ""}`;
 	}
 

@@ -627,7 +627,7 @@ function StackDetailsPage() {
 								<div className="border-[3px] border-stroke-strong bg-bg-panel shadow-[4px_4px_0_var(--stroke-strong)] shrink-0 flex flex-col items-center justify-center text-center w-32 h-32 p-4 transition-all hover:shadow-[6px_6px_0_var(--stroke-strong)] hover:border-accent-lime">
 									<PriceDisplay
 										amount={stack.fixedTotal?.amount ?? 0}
-										period={stack.fixedTotal?.period ?? "month"}
+										period="month"
 										rounding="floor"
 										hasUsageComponent={stack.hasUsageComponent}
 										size="lg"

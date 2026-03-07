@@ -99,7 +99,7 @@ function StackArtifactCard({ stack }: StackArtifactCardProps) {
 							<div className="text-right">
 								<PriceDisplay
 									amount={stack.fixedTotal?.amount ?? 0}
-									period={stack.fixedTotal?.period ?? "month"}
+									period="month"
 									rounding="floor"
 									hasUsageComponent={stack.hasUsageComponent}
 									className="text-fg-primary group-hover:text-accent-lime transition-colors"

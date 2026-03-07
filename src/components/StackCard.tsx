@@ -136,7 +136,7 @@ export function StackCard({
 					<div className="text-right">
 						<PriceDisplay
 							amount={fixedTotal?.amount ?? 0}
-							period={fixedTotal?.period ?? "month"}
+							period="month"
 							rounding="floor"
 							size="lg"
 							className="text-fg-primary"

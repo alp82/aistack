@@ -72,7 +72,7 @@ export function StackOgImage({
 	const displayCategories = categories.slice(0, 2);
 	const displayPrice = formatPriceDisplay(
 		fixedTotal?.amount ?? 0,
-		fixedTotal?.period ?? "month",
+		"month",
 		"floor",
 	);
 	const displayName = name.length > 38 ? `${name.slice(0, 36)}...` : name;
