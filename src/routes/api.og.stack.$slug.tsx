@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ConvexHttpClient } from "convex/browser";
+import { ImageResponse } from "@takumi-rs/image-response";
 
 import { api } from "../../convex/_generated/api";
 import { StackOgImage } from "@/components/og/StackOgImage";
@@ -21,8 +22,6 @@ export const Route = createFileRoute("/api/og/stack/$slug")({
 				const categories = [
 					...new Set(stack.tools.flatMap((tool) => tool.categories)),
 				].slice(0, 2);
-
-				const { ImageResponse } = await import("@takumi-rs/image-response");
 
 				return new ImageResponse(
 					<StackOgImage

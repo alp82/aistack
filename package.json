@@ -25,6 +25,7 @@
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@tailwindcss/vite": "^4.0.6",
+    "@takumi-rs/core-linux-x64-gnu": "^0.70.4",
     "@takumi-rs/image-response": "^0.70.4",
     "@tanstack/react-devtools": "^0.7.0",
     "@tanstack/react-form": "^1.0.0",

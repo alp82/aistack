@@ -1,7 +1,0 @@
-providers = ["node"]
-
-[phases.install]
-cmds = [
-  'rm -rf node_modules package-lock.json',
-  'npm ci --include=optional --omit=dev'
-]
