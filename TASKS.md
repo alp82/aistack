@@ -1,8 +1,10 @@
 # TODO
 
-* slugs with asciified chars 
-    * ç could become c, Chánh Đại could become chanh-dai etc
+* more focus on project links
+    * visible in cards and og images
+    * bigger in details
 * stack editing
+    * tools in stack can be "work" -  like sponsored
     * full tool blocks inline in editor (with dialog to edit) - replacing sidebar?
         - currently sidebar missing on mobile
     * adding instructions easier and more obvious
@@ -10,9 +12,6 @@
     * editor objects draggable
 * admin for editing aliases
     * e.g. amp, opus, etc.
-* more focus on project links
-    * visible in cards and og images
-    * bigger in details
 * multiple stacks per user
     * work & private
 * og image: bigger tool icons
