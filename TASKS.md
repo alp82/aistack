@@ -20,4 +20,3 @@
     * npx aistack login
     * npx aistack collect
     * npx aistack create
-    
