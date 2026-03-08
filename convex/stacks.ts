@@ -179,6 +179,8 @@ export const listPublished = query({
       fixedTotal: v.optional(MoneyValidator),
       hasUsageComponent: v.boolean(),
       usageTotalNotes: v.optional(v.string()),
+      personalPageUrl: v.optional(v.string()),
+      projectPageUrl: v.optional(v.string()),
       creator: CreatorValidator,
       tools: v.array(ToolValidator),
       upvoteCount: v.number(),
@@ -236,6 +238,8 @@ export const listPublished = query({
         fixedTotal: pricing.fixedTotal,
         hasUsageComponent: pricing.hasUsageComponent,
         usageTotalNotes: stack.usageTotalNotes,
+        personalPageUrl: stack.personalPageUrl,
+        projectPageUrl: stack.projectPageUrl,
         creator: {
           _id: creator._id,
           name: creator.name,

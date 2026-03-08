@@ -60,8 +60,8 @@ function HeroSection() {
 					</h1>
 
 					{/* Description + CTAs */}
-					<div className="flex flex-col lg:flex-row items-start lg:items-end gap-12 justify-between">
-						<p className="max-w-2xl text-xl md:text-2xl text-fg-secondary leading-relaxed border-l-4 border-accent-lime pl-8 py-2">
+					<div className="flex flex-col xl:flex-row items-start xl:items-end gap-12 xl:gap-4 justify-between">
+						<p className="max-w-2xl text-xl xl:text-2xl text-fg-secondary leading-relaxed border-l-4 border-accent-lime pl-8 py-2">
 							AI Stack is where founders publish the exact tools to build their
 							products. Learn what they pay every month and how their daily AI
 							workflow looks like.

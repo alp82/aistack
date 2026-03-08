@@ -6,8 +6,10 @@ import {
 	CheckCircle,
 	ExternalLink,
 	FileText,
+	Globe,
 	Package,
 	Pencil,
+	User,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CostBreakdownTooltip } from "@/components/CostBreakdownTooltip";
@@ -549,61 +551,60 @@ function StackDetailsPage() {
 									{stack.name}
 								</h1>
 
-								<div className="mt-4 md:mt-8 flex flex-wrap items-center gap-3 font-mono text-sm">
-									{stack.creator.verified && (
-										<CheckCircle className="size-5 text-accent-lime" />
-									)}
-									{stack.creator.xHandle && (
-										<a
-											href={`https://x.com/${stack.creator.xHandle}`}
-											target="_blank"
-											rel="noopener noreferrer"
-											className="text-accent-lime hover:text-accent-lime-strong underline"
-										>
-											@{stack.creator.xHandle}
-										</a>
-									)}
-									{personalPageUrl && (
-										<>
-											<span className="text-stroke-strong">•</span>
-											<a
-												href={
-													personalPageUrl.startsWith("http")
-														? personalPageUrl
-														: `https://${personalPageUrl}`
-												}
-												target="_blank"
-												rel="noopener noreferrer"
-												className="inline-flex items-center gap-1 text-white/70 transition-colors hover:text-white"
-											>
-												{personalPageUrl.replace(/^https?:\/\//, "")}
-												<ExternalLink className="size-4" />
-											</a>
-										</>
-									)}
-									{projectPageUrl && (
-										<>
-											<span className="text-stroke-strong">•</span>
-											<a
-												href={
-													projectPageUrl.startsWith("http")
-														? projectPageUrl
-														: `https://${projectPageUrl}`
-												}
-												target="_blank"
-												rel="noopener noreferrer"
-												className="inline-flex items-center gap-1 text-white/70 transition-colors hover:text-white"
-											>
-												{projectPageUrl.replace(/^https?:\/\//, "")}
-												<ExternalLink className="size-4" />
-											</a>
-										</>
-									)}
-								</div>
+								{/* Creator Social Bar */}
+								{(stack.creator.xHandle || personalPageUrl || projectPageUrl) && (
+									<div className="mt-6 bg-bg-panel-muted inline-flex">
+										<div className="flex flex-wrap items-center divide-x divide-stroke-subtle">
+											{stack.creator.xHandle && (
+												<a
+													href={`https://x.com/${stack.creator.xHandle}`}
+													target="_blank"
+													rel="noopener noreferrer"
+													className="flex items-center gap-2 px-5 py-3 font-mono text-sm text-fg-secondary transition-colors border-t-2 border-t-transparent hover:border-t-accent-lime hover:text-accent-lime hover:bg-bg-panel"
+												>
+													<svg className="size-4" viewBox="0 0 24 24" fill="currentColor">
+														<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+													</svg>
+													<span>@{stack.creator.xHandle}</span>
+												</a>
+											)}
+											{personalPageUrl && (
+												<a
+													href={personalPageUrl.startsWith("http") ? personalPageUrl : `https://${personalPageUrl}`}
+													target="_blank"
+													rel="noopener noreferrer"
+													className="flex items-center gap-2 px-5 py-3 font-mono text-sm text-fg-secondary transition-colors border-t-2 border-t-transparent hover:border-t-accent-lime hover:text-accent-lime hover:bg-bg-panel"
+												>
+													<User className="size-4" />
+													<span>{personalPageUrl.replace(/^https?:\/\//, "").split("/")[0]}</span>
+												</a>
+											)}
+											{projectPageUrl && (
+												<a
+													href={projectPageUrl.startsWith("http") ? projectPageUrl : `https://${projectPageUrl}`}
+													target="_blank"
+													rel="noopener noreferrer"
+													className="flex items-center gap-2 px-5 py-3 font-mono text-sm text-fg-secondary transition-colors border-t-2 border-t-transparent hover:border-t-accent-lime hover:text-accent-lime hover:bg-bg-panel"
+												>
+													<Globe className="size-4" />
+													<span>{projectPageUrl.replace(/^https?:\/\//, "").split("/")[0]}</span>
+												</a>
+											)}
+										</div>
+									</div>
+								)}
 
-								<p className="mt-4 md:mt-8 text-base md:text-xl text-fg-secondary max-w-2xl border-l-4 border-accent-lime pl-4 md:pl-6">
+								{stack.creator.verified && (
+									<div className="mt-2 flex items-center gap-1.5 text-accent-lime font-mono text-xs">
+										<CheckCircle className="size-4" />
+										<span>Verified</span>
+									</div>
+								)}
+
+								<p className="mt-4 md:mt-6 text-base md:text-xl text-fg-secondary max-w-2xl border-l-4 border-accent-lime pl-4 md:pl-6">
 									{stack.oneLiner}
 								</p>
+
 							</div>
 
 							{/* Price Card */}

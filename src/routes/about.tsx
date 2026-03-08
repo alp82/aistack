@@ -7,14 +7,14 @@ import { api } from "../../convex/_generated/api";
 import { PageHeader } from "../components/PageHeader";
 import { SimulatorSection } from "../components/SimulatorSection";
 import Stack from "../components/Stack";
-import {
-	STACK_CARD_HEIGHT,
-	STACK_CARD_WIDTH,
-	StackCard,
-} from "../components/StackCard";
+import { StackCard } from "@/features/landing/components/StackCard";
+import type { LandingStackPreview } from "@/features/landing/sections/FeaturedStacksSection";
+
+const STACK_CARD_WIDTH = 420;
+const STACK_CARD_HEIGHT = 520;
 
 function StackCarousel({ compact = false }: { compact?: boolean }) {
-	const stacks = useQuery(api.stacks.listPublished) ?? [];
+	const stacks = (useQuery(api.stacks.listPublished) ?? []) as LandingStackPreview[];
 
 	if (stacks.length === 0) {
 		return (
@@ -51,16 +51,7 @@ function StackCarousel({ compact = false }: { compact?: boolean }) {
 					cards={stacks.map((stack) => (
 						<StackCard
 							key={stack._id}
-							slug={stack.slug}
-							name={stack.name}
-							oneLiner={stack.oneLiner}
-							teamSize={stack.teamSize}
-							fixedTotal={stack.fixedTotal}
-							hasUsageComponent={stack.hasUsageComponent}
-							usageTotalNotes={stack.usageTotalNotes}
-							creator={stack.creator}
-							tools={stack.tools}
-							compact={compact}
+							stack={stack}
 						/>
 					))}
 				/>

@@ -3,7 +3,7 @@ import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { SortDropdown } from "@/components/SortDropdown";
-import { StackArtifactCard } from "@/features/landing/components/StackArtifactCard";
+import { StackCard } from "@/features/landing/components/StackCard";
 import { cn } from "@/lib/utils";
 
 const STACKS_PER_PAGE = 9;
@@ -22,6 +22,8 @@ type LandingStackPreview = {
 		amount: number;
 		period?: "month" | "year" | "one_time";
 	} | null;
+	personalPageUrl?: string | null;
+	projectPageUrl?: string | null;
 	creator: {
 		name: string;
 		xHandle?: string | null;
@@ -193,7 +195,7 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 				{/* Stack Grid */}
 				<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
 					{paginatedStacks.map((stack) => (
-						<StackArtifactCard key={stack._id} stack={stack} />
+						<StackCard key={stack._id} stack={stack} />
 					))}
 				</div>
 

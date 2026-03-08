@@ -9,7 +9,7 @@ import { GridBackground } from "@/components/GridBackground";
 import { PageHeader } from "@/components/PageHeader";
 import { SortDropdown } from "@/components/SortDropdown";
 import { Input } from "@/components/ui/input";
-import { StackArtifactCard } from "@/features/landing/components/StackArtifactCard";
+import { StackCard } from "@/features/landing/components/StackCard";
 import {
 	filterPreviewStacks,
 	getCategoryOptions,
@@ -315,7 +315,7 @@ function BrowseStacksPage() {
 						<>
 							<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
 								{paginatedStacks.map((stack) => (
-									<StackArtifactCard key={stack._id} stack={stack} />
+									<StackCard key={stack._id} stack={stack} />
 								))}
 							</div>
 

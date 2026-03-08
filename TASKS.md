@@ -1,8 +1,5 @@
 # TODO
 
-* more focus on project links
-    * visible in cards and og images
-    * bigger in details
 * stack editing
     * tools in stack can be "work" -  like sponsored
     * full tool blocks inline in editor (with dialog to edit) - replacing sidebar?
