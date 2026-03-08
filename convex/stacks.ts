@@ -295,7 +295,7 @@ export const create = mutation({
     oneLiner: v.string(),
     description: v.optional(v.string()),
     instructions: v.optional(v.array(InstructionItemValidator)),
-    teamSize: v.optional(v.number()),
+    teamSize: v.optional(v.union(v.number(), v.null())),
     toolSubscriptions: v.array(ToolSubscriptionInput),
     bundleSubscriptions: v.optional(v.array(BundleSubscriptionInput)),
     modelSubscriptions: v.optional(v.array(ModelSubscriptionInput)),
@@ -336,7 +336,7 @@ export const create = mutation({
       oneLiner: args.oneLiner,
       description: args.description,
       instructions: args.instructions,
-      teamSize: args.teamSize,
+      teamSize: args.teamSize === null ? undefined : args.teamSize,
       toolSubscriptions: args.toolSubscriptions,
       bundleSubscriptions: args.bundleSubscriptions,
       modelSubscriptions: args.modelSubscriptions,
@@ -361,7 +361,7 @@ export const update = mutation({
     oneLiner: v.optional(v.string()),
     description: v.optional(v.string()),
     instructions: v.optional(v.array(InstructionItemValidator)),
-    teamSize: v.optional(v.number()),
+    teamSize: v.optional(v.union(v.number(), v.null())),
     toolSubscriptions: v.optional(v.array(ToolSubscriptionInput)),
     bundleSubscriptions: v.optional(v.array(BundleSubscriptionInput)),
     modelSubscriptions: v.optional(v.array(ModelSubscriptionInput)),
@@ -390,7 +390,7 @@ export const update = mutation({
     if (args.oneLiner !== undefined) patch.oneLiner = args.oneLiner
     if (args.description !== undefined) patch.description = args.description
     if (args.instructions !== undefined) patch.instructions = args.instructions
-    if (args.teamSize !== undefined) patch.teamSize = args.teamSize
+    if (args.teamSize !== undefined) patch.teamSize = args.teamSize === null ? undefined : args.teamSize
     if (args.toolSubscriptions !== undefined) patch.toolSubscriptions = args.toolSubscriptions
     if (args.bundleSubscriptions !== undefined) patch.bundleSubscriptions = args.bundleSubscriptions
     if (args.modelSubscriptions !== undefined) patch.modelSubscriptions = args.modelSubscriptions
