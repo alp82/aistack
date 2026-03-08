@@ -3,80 +3,68 @@ import {
 	Container,
 	Head,
 	Heading,
-	Hr,
 	Html,
 	Link,
 	Preview,
+	Row,
+	Column,
 	Section,
 	Text,
 } from "@react-email/components";
-import type * as React from "react";
+import { EMAIL_CONFIG, glowKeyframes, styles } from "./styles";
 
 export function MagicLinkEmail(props: {
-	productName: string;
+	productName?: string;
 	magicLinkUrl: string;
 }) {
-	const { productName, magicLinkUrl } = props;
+	const { productName = EMAIL_CONFIG.productName, magicLinkUrl } = props;
 
 	return (
 		<Html>
-			<Head />
+			<Head>
+				<style>{glowKeyframes}</style>
+			</Head>
 			<Preview>Sign in to {productName}</Preview>
 			<Body style={styles.body}>
 				<Container style={styles.container}>
-					<Heading style={styles.h1}>Sign in to {productName}</Heading>
-
-					<Text style={styles.p}>
-						Click the button below to sign in to your {productName} account. This
-						link will expire in 10 minutes.
-					</Text>
-
-					<Section style={styles.ctaWrap}>
-						<Link href={magicLinkUrl} style={styles.cta}>
-							Sign In to {productName}
-						</Link>
+					<Section style={styles.header}>
+						<Row>
+							<Column style={{ width: 16, verticalAlign: "middle" }}>
+								<div style={styles.logoSquare} />
+							</Column>
+							<Column style={{ paddingLeft: 12, verticalAlign: "middle" }}>
+								<Text style={styles.logoText}>AI STACK</Text>
+							</Column>
+						</Row>
 					</Section>
 
-					<Hr style={styles.hr} />
+					<Section style={styles.content}>
+						<Text style={styles.sectionLabel}>// Passwordless Access</Text>
+						<Heading style={styles.h1}>Sign In Instantly</Heading>
 
-					<Text style={styles.small}>
-						If you didn't request this email, you can safely ignore it.
-					</Text>
+						<Text style={styles.p}>
+							No password needed. Click below to access your account.
+							This link expires in 10 minutes.
+						</Text>
+
+						<Section style={styles.ctaWrap}>
+							<Link href={magicLinkUrl} style={styles.ctaAnimated}>
+								Sign In  ⟶
+							</Link>
+						</Section>
+
+						<Text style={styles.small}>
+							Didn't request this? Ignore this email — your account is safe.
+						</Text>
+					</Section>
+
+					<Section style={styles.footer}>
+						<Text style={styles.footerText}>
+							<Link href="https://aistack.to" style={styles.footerLink}>{productName}</Link> · {new Date().getFullYear()}
+						</Text>
+					</Section>
 				</Container>
 			</Body>
 		</Html>
 	);
 }
-
-const styles: Record<string, React.CSSProperties> = {
-	body: {
-		backgroundColor: "#f6f7fb",
-		fontFamily:
-			'-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", sans-serif',
-		padding: "24px 0",
-	},
-	container: {
-		backgroundColor: "#ffffff",
-		borderRadius: 12,
-		padding: 24,
-		margin: "0 auto",
-		width: "100%",
-		maxWidth: 520,
-		border: "1px solid #eceef5",
-	},
-	h1: { fontSize: 28, margin: "0 0 12px" },
-	p: { fontSize: 16, lineHeight: "24px", margin: "0 0 16px" },
-	ctaWrap: { marginTop: 8, marginBottom: 8 },
-	cta: {
-		display: "inline-block",
-		padding: "12px 16px",
-		borderRadius: 10,
-		backgroundColor: "#111827",
-		color: "#ffffff",
-		textDecoration: "none",
-		fontSize: 14,
-		fontWeight: 600,
-	},
-	hr: { borderColor: "#eceef5", margin: "20px 0" },
-	small: { fontSize: 12, color: "#6b7280", lineHeight: "18px", margin: 0 },
-};

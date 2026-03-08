@@ -16,6 +16,11 @@ This is a webapp for sharing AI Stacks so that users can compare and choose the 
 * Use the question ask tool to verify with me if the task is complete or needs more work
 * You can only declare a task as complete if you got my approval
 
+## Styling Guidelines
+* **No border-radius** - Use sharp corners throughout the design
+* Use monospace fonts for buttons, labels, and technical accents
+* Brand color: lime
+
 ## Tech Stack
 * `pnpm`
 * TypeScript / Vite / Biome

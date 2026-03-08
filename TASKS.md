@@ -1,10 +1,9 @@
 # TODO
 
-* Emails with AIS design
-* yearly pricing wrongly calculated
 * slugs with asciified chars 
     * ç could become c, Chánh Đại could become chanh-dai etc
-* og fonts too small, bigger tools in 2 cols
+* og image: bigger tool icons
+* admin: edit suggestion instead of tool
 * more focus on project links
     * visible in cards and og images
     * bigger in details

@@ -6,6 +6,7 @@ import { useState } from "react";
 import type { Id } from "../../convex/_generated/dataModel";
 import { AddToolModal, type ToolData } from "../components/AddToolModal";
 import { ItemIcon } from "@/components/ItemIcon";
+import { EmailPreviewCenter } from "@/components/EmailPreviewCenter";
 
 export const Route = createFileRoute("/admin")({
 	ssr: false,
@@ -665,6 +666,9 @@ function AdminPage() {
 					)}
 				</div>
 			</section>
+
+			{/* Email Templates Preview */}
+			<EmailPreviewCenter />
 		</div>
 	);
 }
