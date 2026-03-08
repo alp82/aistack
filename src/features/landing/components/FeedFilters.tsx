@@ -35,7 +35,9 @@ function SegmentedControls({
 }) {
 	return (
 		<div className="space-y-1.5">
-			<p className="text-[0.65rem] uppercase tracking-[0.2em] text-fg-muted">{legend}</p>
+			<p className="text-[0.65rem] uppercase tracking-[0.2em] text-fg-muted">
+				{legend}
+			</p>
 			<div className="inline-flex max-w-full items-center gap-1 overflow-x-auto border border-stroke-subtle bg-bg-panel-muted p-1">
 				{options.map((option) => {
 					const isActive = option.id === active;
@@ -57,7 +59,9 @@ function SegmentedControls({
 								<span
 									className={cn(
 										"rounded-full px-1.5 py-0.5 text-[10px]",
-										isActive ? "bg-bg-panel/25 text-bg-canvas" : "bg-bg-panel-muted text-fg-muted",
+										isActive
+											? "bg-bg-panel/25 text-bg-canvas"
+											: "bg-bg-panel-muted text-fg-muted",
 									)}
 								>
 									{option.count}
@@ -84,7 +88,10 @@ function FeedFilters({
 		{ id: "team", label: "Team" },
 	];
 
-	const toolSegments: SegmentedOption[] = [{ id: "all", label: "All" }, ...toolOptions];
+	const toolSegments: SegmentedOption[] = [
+		{ id: "all", label: "All" },
+		...toolOptions,
+	];
 
 	return (
 		<div className="flex flex-wrap items-center gap-4 border border-stroke-subtle bg-bg-panel/60 p-3">

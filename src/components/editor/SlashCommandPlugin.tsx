@@ -3,7 +3,14 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { createRoot, type Root } from "react-dom/client";
 import { Wrench, Brain, Package, FileText, Plus } from "lucide-react";
-import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from "react";
+import {
+	useState,
+	useEffect,
+	useRef,
+	useCallback,
+	useMemo,
+	type ReactNode,
+} from "react";
 import type { ToolData } from "./ToolSuggestionPlugin";
 import type { ModelData } from "./ModelSuggestionPlugin";
 import type { InstructionType } from "@/features/stack-editor/types";
@@ -13,6 +20,7 @@ import type { InstructionType } from "@/features/stack-editor/types";
 export interface BundleData {
 	_id: string;
 	name: string;
+	shortId?: string;
 	aliases?: string[];
 	iconUrl?: string | null;
 }
@@ -58,11 +66,30 @@ export interface SlashCommandStorage {
 
 // --- Category config ---
 
-const categoryConfig: Record<SlashItemCategory, { label: string; color: string; icon: ReactNode }> = {
-	tool: { label: "Tools", color: "text-amber-500", icon: <Wrench className="size-3.5" /> },
-	model: { label: "Models", color: "text-cyan-500", icon: <Brain className="size-3.5" /> },
-	bundle: { label: "Bundles", color: "text-violet-500", icon: <Package className="size-3.5" /> },
-	instruction: { label: "Instructions", color: "text-blue-500", icon: <FileText className="size-3.5" /> },
+const categoryConfig: Record<
+	SlashItemCategory,
+	{ label: string; color: string; icon: ReactNode }
+> = {
+	tool: {
+		label: "Tools",
+		color: "text-amber-500",
+		icon: <Wrench className="size-3.5" />,
+	},
+	model: {
+		label: "Models",
+		color: "text-cyan-500",
+		icon: <Brain className="size-3.5" />,
+	},
+	bundle: {
+		label: "Bundles",
+		color: "text-violet-500",
+		icon: <Package className="size-3.5" />,
+	},
+	instruction: {
+		label: "Instructions",
+		color: "text-blue-500",
+		icon: <FileText className="size-3.5" />,
+	},
 };
 
 const categoryPrefixes: Record<string, SlashItemCategory> = {
@@ -95,7 +122,12 @@ function fuzzyScore(target: string, query: string): number {
 	while (ti < t.length && qi < q.length) {
 		if (t[ti] === q[qi]) {
 			score += 1 + consecutive;
-			if (ti === 0 || t[ti - 1] === " " || t[ti - 1] === "-" || t[ti - 1] === ".") {
+			if (
+				ti === 0 ||
+				t[ti - 1] === " " ||
+				t[ti - 1] === "-" ||
+				t[ti - 1] === "."
+			) {
 				score += 2;
 			}
 			consecutive++;
@@ -152,7 +184,10 @@ export function SlashCommandDropdown({
 			const prefix = trimmed.slice(0, spaceIdx);
 			const cat = categoryPrefixes[prefix];
 			if (cat) {
-				return { categoryFilter: cat, searchText: trimmed.slice(spaceIdx + 1).trim() };
+				return {
+					categoryFilter: cat,
+					searchText: trimmed.slice(spaceIdx + 1).trim(),
+				};
 			}
 		}
 
@@ -175,9 +210,14 @@ export function SlashCommandDropdown({
 			const scored = result
 				.map((item) => {
 					const nameScore = fuzzyScore(item.name, searchText);
-					const subtitleScore = item.subtitle ? fuzzyScore(item.subtitle, searchText) : -1;
+					const subtitleScore = item.subtitle
+						? fuzzyScore(item.subtitle, searchText)
+						: -1;
 					const aliasScore = item.aliases
-						? Math.max(...item.aliases.map((a) => fuzzyScore(a, searchText)), -1)
+						? Math.max(
+								...item.aliases.map((a) => fuzzyScore(a, searchText)),
+								-1,
+							)
 						: -1;
 					const best = Math.max(nameScore, subtitleScore, aliasScore);
 					return { item, score: best };
@@ -192,7 +232,12 @@ export function SlashCommandDropdown({
 	// Group by category
 	const grouped = useMemo(() => {
 		const groups: { category: SlashItemCategory; items: SlashItem[] }[] = [];
-		const order: SlashItemCategory[] = ["tool", "model", "bundle", "instruction"];
+		const order: SlashItemCategory[] = [
+			"tool",
+			"model",
+			"bundle",
+			"instruction",
+		];
 		for (const cat of order) {
 			const catItems = filtered.filter((i) => i.category === cat);
 			if (catItems.length > 0) {
@@ -230,7 +275,11 @@ export function SlashCommandDropdown({
 			if (e.key === "ArrowUp") {
 				e.preventDefault();
 				e.stopPropagation();
-				setSelectedIndex((prev) => (prev - 1 + Math.max(flatItems.length, 1)) % Math.max(flatItems.length, 1));
+				setSelectedIndex(
+					(prev) =>
+						(prev - 1 + Math.max(flatItems.length, 1)) %
+						Math.max(flatItems.length, 1),
+				);
 				return;
 			}
 			if (e.key === "Enter" || e.key === "Tab") {
@@ -248,7 +297,7 @@ export function SlashCommandDropdown({
 				return;
 			}
 		},
-		[flatItems, selectedIndex, onSelect, onClose]
+		[flatItems, selectedIndex, onSelect, onClose],
 	);
 
 	useEffect(() => {
@@ -257,7 +306,9 @@ export function SlashCommandDropdown({
 	}, [handleKeyDown]);
 
 	const addMissingHint: "tool" | "model" | "bundle" | null =
-		categoryFilter === "tool" || categoryFilter === "model" || categoryFilter === "bundle"
+		categoryFilter === "tool" ||
+		categoryFilter === "model" ||
+		categoryFilter === "bundle"
 			? categoryFilter
 			: null;
 
@@ -329,59 +380,63 @@ export function SlashCommandDropdown({
 				</div>
 			)}
 			<div className="overflow-y-auto flex-1">
-			{grouped.map((group) => {
-				const config = categoryConfig[group.category];
-				return (
-					<div key={group.category}>
-						<div className={`sticky top-0 bg-bg-panel-muted px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] ${config.color} border-b border-stroke-subtle flex items-center gap-1.5`}>
-							{config.icon}
-							{config.label}
-						</div>
-						{group.items.map((item) => {
-							const idx = flatIndex++;
-							const isSelected = idx === selectedIndex;
-							return (
-								<button
-									key={`${item.category}-${item.id}`}
-									ref={(el) => {
-										if (el) itemRefs.current.set(idx, el);
-									}}
-									type="button"
-									className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors cursor-pointer ${
-										isSelected
-											? "bg-accent-lime/15 text-fg-primary"
-											: "text-fg-secondary hover:bg-bg-panel-muted hover:text-fg-primary"
-									}`}
-									onClick={() => onSelect(item)}
-									onMouseEnter={() => setSelectedIndex(idx)}
-								>
-									{item.iconUrl ? (
-										<img
-											src={item.iconUrl}
-											alt=""
-											className="size-5 shrink-0 rounded object-contain"
-										/>
-									) : (
-										<span className={`flex size-5 shrink-0 items-center justify-center rounded-sm border border-stroke-subtle bg-bg-panel-muted ${categoryConfig[item.category].color}`}>
-											{categoryConfig[item.category].icon}
-										</span>
-									)}
-									<div className="min-w-0 flex-1">
-										<div className="font-mono text-xs font-semibold truncate">
-											{item.name}
-										</div>
-										{item.subtitle && (
-											<div className="font-mono text-[10px] text-fg-muted truncate">
-												{item.subtitle}
-											</div>
+				{grouped.map((group) => {
+					const config = categoryConfig[group.category];
+					return (
+						<div key={group.category}>
+							<div
+								className={`sticky top-0 bg-bg-panel-muted px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] ${config.color} border-b border-stroke-subtle flex items-center gap-1.5`}
+							>
+								{config.icon}
+								{config.label}
+							</div>
+							{group.items.map((item) => {
+								const idx = flatIndex++;
+								const isSelected = idx === selectedIndex;
+								return (
+									<button
+										key={`${item.category}-${item.id}`}
+										ref={(el) => {
+											if (el) itemRefs.current.set(idx, el);
+										}}
+										type="button"
+										className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors cursor-pointer ${
+											isSelected
+												? "bg-accent-lime/15 text-fg-primary"
+												: "text-fg-secondary hover:bg-bg-panel-muted hover:text-fg-primary"
+										}`}
+										onClick={() => onSelect(item)}
+										onMouseEnter={() => setSelectedIndex(idx)}
+									>
+										{item.iconUrl ? (
+											<img
+												src={item.iconUrl}
+												alt=""
+												className="size-5 shrink-0 rounded object-contain"
+											/>
+										) : (
+											<span
+												className={`flex size-5 shrink-0 items-center justify-center rounded-sm border border-stroke-subtle bg-bg-panel-muted ${categoryConfig[item.category].color}`}
+											>
+												{categoryConfig[item.category].icon}
+											</span>
 										)}
-									</div>
-								</button>
-							);
-						})}
-					</div>
-				);
-			})}
+										<div className="min-w-0 flex-1">
+											<div className="font-mono text-xs font-semibold truncate">
+												{item.name}
+											</div>
+											{item.subtitle && (
+												<div className="font-mono text-[10px] text-fg-muted truncate">
+													{item.subtitle}
+												</div>
+											)}
+										</div>
+									</button>
+								);
+							})}
+						</div>
+					);
+				})}
 			</div>
 			{onAddMissing && (
 				<div className="shrink-0 p-2 border-t border-stroke-subtle">
@@ -415,7 +470,12 @@ export function SlashCommandDropdown({
 
 const slashPluginKey = new PluginKey("slashCommand");
 
-export function buildItems(storage: Pick<SlashCommandStorage, "tools" | "models" | "bundles" | "instructions">): SlashItem[] {
+export function buildItems(
+	storage: Pick<
+		SlashCommandStorage,
+		"tools" | "models" | "bundles" | "instructions"
+	>,
+): SlashItem[] {
 	const items: SlashItem[] = [];
 
 	for (const tool of storage.tools) {
@@ -485,9 +545,8 @@ export function insertBlockForItem(
 		case "tool": {
 			const tool = item.data as ToolData;
 			node = schema.nodes.aiToolBlock.create({
-				toolId: tool._id,
+				shortId: tool.shortId ?? null,
 				name: tool.name,
-				iconUrl: tool.iconUrl ?? null,
 			});
 			if (onToolAdded) onToolAdded(tool);
 			break;
@@ -495,10 +554,9 @@ export function insertBlockForItem(
 		case "model": {
 			const model = item.data as ModelData;
 			node = schema.nodes.aiModelBlock.create({
-				modelId: model._id,
+				shortId: model.shortId ?? null,
 				name: model.name,
-				provider: (model as ModelData).provider ?? "",
-				iconUrl: model.iconUrl ?? null,
+				provider: model.provider ?? "",
 			});
 			if (onModelAdded) onModelAdded(model);
 			break;
@@ -506,9 +564,8 @@ export function insertBlockForItem(
 		case "bundle": {
 			const bundle = item.data as BundleData;
 			node = schema.nodes.aiBundleBlock.create({
-				bundleId: bundle._id,
+				shortId: bundle.shortId ?? null,
 				name: bundle.name,
-				iconUrl: bundle.iconUrl ?? null,
 			});
 			break;
 		}
@@ -531,7 +588,10 @@ export function insertBlockForItem(
 	view.focus();
 }
 
-export const SlashCommandPlugin = Extension.create<SlashCommandOptions, SlashCommandStorage>({
+export const SlashCommandPlugin = Extension.create<
+	SlashCommandOptions,
+	SlashCommandStorage
+>({
 	name: "slashCommand",
 
 	addOptions() {
@@ -559,10 +619,19 @@ export const SlashCommandPlugin = Extension.create<SlashCommandOptions, SlashCom
 	},
 
 	onUpdate() {
-		const keys = ["tools", "models", "bundles", "instructions", "onToolAdded", "onModelAdded", "onAddMissing"] as const;
+		const keys = [
+			"tools",
+			"models",
+			"bundles",
+			"instructions",
+			"onToolAdded",
+			"onModelAdded",
+			"onAddMissing",
+		] as const;
 		for (const key of keys) {
 			if (this.options[key] !== this.storage[key]) {
-				(this.storage as unknown as Record<string, unknown>)[key] = this.options[key];
+				(this.storage as unknown as Record<string, unknown>)[key] =
+					this.options[key];
 			}
 		}
 	},
@@ -602,7 +671,12 @@ export const SlashCommandPlugin = Extension.create<SlashCommandOptions, SlashCom
 			activatedSlashPos = -1;
 		}
 
-		function renderDropdown(query: string, view: EditorView, from: number, to: number) {
+		function renderDropdown(
+			query: string,
+			view: EditorView,
+			from: number,
+			to: number,
+		) {
 			getDropdownContainer();
 
 			// Get cursor position for dropdown placement
@@ -660,7 +734,7 @@ export const SlashCommandPlugin = Extension.create<SlashCommandOptions, SlashCom
 					onClose={handleClose}
 					position={position}
 					onAddMissing={handleAddMissing}
-				/>
+				/>,
 			);
 		}
 
@@ -682,14 +756,22 @@ export const SlashCommandPlugin = Extension.create<SlashCommandOptions, SlashCom
 							const $from = state.selection.$from;
 							const parentStart = $from.start();
 							const cursorInParent = $from.parentOffset;
-							const textInParent = $from.parent.textBetween(0, cursorInParent, "");
+							const textInParent = $from.parent.textBetween(
+								0,
+								cursorInParent,
+								"",
+							);
 
 							if (slashActivated) {
 								// Active slash session: track from the recorded position
 								const slashOffsetInParent = activatedSlashPos - parentStart;
 
 								// Slash must be in current paragraph and cursor must be at or after slash
-								if (activatedSlashPos < parentStart || slashOffsetInParent < 0 || cursorInParent < slashOffsetInParent) {
+								if (
+									activatedSlashPos < parentStart ||
+									slashOffsetInParent < 0 ||
+									cursorInParent < slashOffsetInParent
+								) {
 									destroyDropdown();
 									return;
 								}
@@ -747,7 +829,11 @@ export const SlashCommandPlugin = Extension.create<SlashCommandOptions, SlashCom
 						if (text === "/") {
 							// Only activate if at start of line or preceded by whitespace
 							const $from = view.state.doc.resolve(from);
-							const textBefore = $from.parent.textBetween(0, $from.parentOffset, "");
+							const textBefore = $from.parent.textBetween(
+								0,
+								$from.parentOffset,
+								"",
+							);
 							if (textBefore.length === 0 || /\s$/.test(textBefore)) {
 								slashActivated = true;
 								activatedSlashPos = from;
@@ -765,7 +851,12 @@ export const SlashCommandPlugin = Extension.create<SlashCommandOptions, SlashCom
 						}
 
 						// Let arrow/enter/tab propagate to the React window listener
-						if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Enter" || event.key === "Tab") {
+						if (
+							event.key === "ArrowDown" ||
+							event.key === "ArrowUp" ||
+							event.key === "Enter" ||
+							event.key === "Tab"
+						) {
 							return false;
 						}
 						return false;

@@ -10,7 +10,12 @@ type DescriptionSectionProps = {
 	isActive: boolean;
 };
 
-export function DescriptionSection({ value, onChange, status, isActive }: DescriptionSectionProps) {
+export function DescriptionSection({
+	value,
+	onChange,
+	status,
+	isActive,
+}: DescriptionSectionProps) {
 	return (
 		<SectionCard
 			id="section-description"

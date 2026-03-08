@@ -7,6 +7,7 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 export interface ToolData {
 	_id: string;
 	name: string;
+	shortId?: string;
 	aliases?: string[];
 	iconUrl?: string | null;
 }
@@ -27,12 +28,24 @@ function findToolMatches(doc: ProseMirrorNode, tools: ToolData[]): ToolMatch[] {
 	if (!tools.length) return matches;
 
 	// Build searchable entries: each tool's name + its aliases, all mapped to the tool
-	const entries: Array<{ searchName: string; searchNameLower: string; tool: ToolData }> = [];
+	const entries: Array<{
+		searchName: string;
+		searchNameLower: string;
+		tool: ToolData;
+	}> = [];
 	for (const tool of tools) {
-		entries.push({ searchName: tool.name, searchNameLower: tool.name.toLowerCase(), tool });
+		entries.push({
+			searchName: tool.name,
+			searchNameLower: tool.name.toLowerCase(),
+			tool,
+		});
 		if (tool.aliases) {
 			for (const alias of tool.aliases) {
-				entries.push({ searchName: alias, searchNameLower: alias.toLowerCase(), tool });
+				entries.push({
+					searchName: alias,
+					searchNameLower: alias.toLowerCase(),
+					tool,
+				});
 			}
 		}
 	}
@@ -58,16 +71,19 @@ function findToolMatches(doc: ProseMirrorNode, tools: ToolData[]): ToolMatch[] {
 						? text[index + entry.searchName.length]
 						: " ";
 
-				const isWordBoundaryBefore = /[\s\p{P}]/u.test(charBefore) || index === 0;
+				const isWordBoundaryBefore =
+					/[\s\p{P}]/u.test(charBefore) || index === 0;
 				const isWordBoundaryAfter =
-					/[\s\p{P}]/u.test(charAfter) || index + entry.searchName.length === text.length;
+					/[\s\p{P}]/u.test(charAfter) ||
+					index + entry.searchName.length === text.length;
 
 				if (isWordBoundaryBefore && isWordBoundaryAfter) {
 					const from = pos + index;
 					const to = from + entry.searchName.length;
 
 					const overlaps = matches.some(
-						(m) => (from >= m.from && from < m.to) || (to > m.from && to <= m.to)
+						(m) =>
+							(from >= m.from && from < m.to) || (to > m.from && to <= m.to),
 					);
 
 					if (!overlaps) {
@@ -88,24 +104,28 @@ function createSuggestionWidget(
 	from: number,
 	to: number,
 	getView: () => EditorView | null,
-	onToolAdded?: (tool: ToolData) => void
+	onToolAdded?: (tool: ToolData) => void,
 ): HTMLElement {
 	const wrapper = document.createElement("span");
 	wrapper.className = "tool-suggestion-widget";
 	wrapper.setAttribute("contenteditable", "false");
-	wrapper.style.cssText = "display: inline-flex; flex-direction: column; align-items: center; position: relative; width: 0; height: 0; overflow: visible;";
+	wrapper.style.cssText =
+		"display: inline-flex; flex-direction: column; align-items: center; position: relative; width: 0; height: 0; overflow: visible;";
 
 	// Add button (above) - visible on hover/cursor
 	const addWrapper = document.createElement("span");
-	addWrapper.className = "tool-suggestion-add opacity-0 scale-90 transition-all pointer-events-none";
-	addWrapper.style.cssText = "position: absolute; bottom: 22px; white-space: nowrap; z-index: 1;";
+	addWrapper.className =
+		"tool-suggestion-add opacity-0 scale-90 transition-all pointer-events-none";
+	addWrapper.style.cssText =
+		"position: absolute; bottom: 22px; white-space: nowrap; z-index: 1;";
 	wrapper.appendChild(addWrapper);
 
 	const addButton = document.createElement("button");
 	addButton.type = "button";
 	addButton.className =
 		"inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-accent-lime text-accent-lime-contrast hover:bg-accent-lime-strong transition-colors whitespace-nowrap";
-	addButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Add Tool</span>';
+	addButton.innerHTML =
+		'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Add Tool</span>';
 
 	const handleAdd = (e: Event) => {
 		e.preventDefault();
@@ -140,8 +160,10 @@ function createSuggestionWidget(
 
 	// Ignore button (below) - visible on hover/cursor
 	const ignoreWrapper = document.createElement("span");
-	ignoreWrapper.className = "tool-suggestion-ignore opacity-0 scale-90 transition-all pointer-events-none";
-	ignoreWrapper.style.cssText = "position: absolute; top: 4px; white-space: nowrap; z-index: 1;";
+	ignoreWrapper.className =
+		"tool-suggestion-ignore opacity-0 scale-90 transition-all pointer-events-none";
+	ignoreWrapper.style.cssText =
+		"position: absolute; top: 4px; white-space: nowrap; z-index: 1;";
 	wrapper.appendChild(ignoreWrapper);
 
 	const ignoreButton = document.createElement("button");
@@ -194,7 +216,10 @@ export interface ToolSuggestionStorage {
 	onToolAdded?: (tool: ToolData) => void;
 }
 
-export const ToolSuggestionPlugin = Extension.create<ToolSuggestionOptions, ToolSuggestionStorage>({
+export const ToolSuggestionPlugin = Extension.create<
+	ToolSuggestionOptions,
+	ToolSuggestionStorage
+>({
 	name: "toolSuggestion",
 
 	addOptions() {
@@ -248,27 +273,40 @@ export const ToolSuggestionPlugin = Extension.create<ToolSuggestionOptions, Tool
 					decorations(state) {
 						const pluginState = this.getState(state);
 						if (!pluginState) return DecorationSet.empty;
-						
+
 						const { doc, tools } = pluginState;
-						const matches = findToolMatches(doc, tools).filter(m => !ignoredTools.has(m.tool._id));
+						const matches = findToolMatches(doc, tools).filter(
+							(m) => !ignoredTools.has(m.tool._id),
+						);
 						const decorations: Decoration[] = [];
 						const cursorPos = state.selection.from;
 
 						for (const match of matches) {
-							const isCursorInside = cursorPos >= match.from && cursorPos <= match.to;
+							const isCursorInside =
+								cursorPos >= match.from && cursorPos <= match.to;
 							const highlightClass = isCursorInside
 								? "tool-suggestion-highlight tool-suggestion-active relative inline-block px-1.5 py-0.5 border-2 border-dashed border-accent-lime/70 bg-accent-lime/10"
 								: "tool-suggestion-highlight relative inline-block px-1.5 py-0.5 border-2 border-dashed border-accent-lime/50 bg-accent-lime/5 hover:border-accent-lime/70 hover:bg-accent-lime/10";
-							
+
 							decorations.push(
 								Decoration.inline(match.from, match.to, {
 									class: highlightClass,
-								})
+								}),
 							);
 							decorations.push(
-								Decoration.widget(match.to, () => {
-									return createSuggestionWidget(match.tool, match.from, match.to, () => currentView, extension.storage.onToolAdded);
-								}, { side: 1 })
+								Decoration.widget(
+									match.to,
+									() => {
+										return createSuggestionWidget(
+											match.tool,
+											match.from,
+											match.to,
+											() => currentView,
+											extension.storage.onToolAdded,
+										);
+									},
+									{ side: 1 },
+								),
 							);
 						}
 

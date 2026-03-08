@@ -1,4 +1,7 @@
-import { ToolPicker, type ToolSubscriptionEntry } from "@/components/ToolPicker";
+import {
+	ToolPicker,
+	type ToolSubscriptionEntry,
+} from "@/components/ToolPicker";
 import { SectionCard } from "@/components/system/SectionCard";
 import type { EditorSectionStatus } from "@/features/stack-editor/editor-status";
 import { SectionStatusBadge } from "@/features/stack-editor/sections/SectionStatusBadge";
@@ -10,7 +13,12 @@ type ToolsSectionProps = {
 	isActive: boolean;
 };
 
-export function ToolsSection({ value, onChange, status, isActive }: ToolsSectionProps) {
+export function ToolsSection({
+	value,
+	onChange,
+	status,
+	isActive,
+}: ToolsSectionProps) {
 	return (
 		<SectionCard
 			id="section-tools"

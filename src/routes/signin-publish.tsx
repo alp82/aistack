@@ -1,5 +1,10 @@
 import { useConvexAuth } from "convex/react";
-import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import {
+	createFileRoute,
+	Link,
+	useNavigate,
+	useSearch,
+} from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AuthForm } from "../components/AuthForm";
 import { TiptapEditor } from "../components/TiptapEditor";
@@ -14,7 +19,8 @@ export const Route = createFileRoute("/signin-publish")({
 	component: SignInPublishPage,
 	validateSearch: (search: Record<string, unknown>): SignInPublishSearch => {
 		return {
-			redirect: typeof search.redirect === "string" ? search.redirect : undefined,
+			redirect:
+				typeof search.redirect === "string" ? search.redirect : undefined,
 		};
 	},
 });
@@ -103,7 +109,11 @@ function SignInPublishContent() {
 										Description
 									</p>
 									<div className="relative max-h-40 overflow-hidden text-sm text-fg-secondary">
-										<TiptapEditor content={guestDraft.description} editable={false} className="space-y-2 [&_.ProseMirror]:min-h-0" />
+										<TiptapEditor
+											content={guestDraft.description}
+											editable={false}
+											className="space-y-2 [&_.ProseMirror]:min-h-0"
+										/>
 										<div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-bg-panel to-transparent" />
 									</div>
 								</div>
@@ -143,85 +153,94 @@ function SignInPublishContent() {
 								</div>
 							)}
 
-							{guestDraft.bundleSubscriptions && guestDraft.bundleSubscriptions.length > 0 && (
-								<div>
-									<p className="font-mono text-[10px] uppercase tracking-widest text-fg-muted mb-2">
-										Bundles ({guestDraft.bundleSubscriptions.length})
-									</p>
-									<div className="flex flex-wrap gap-2">
-										{guestDraft.bundleSubscriptions.slice(0, 8).map((bundle, i) => (
-											<div
-												key={`${bundle.bundleName}-${i}`}
-												className="flex items-center gap-2 border border-stroke-subtle bg-bg-panel-muted px-2 py-1 transition-colors hover:border-accent-lime hover:bg-accent-lime/10"
-											>
-												{bundle.bundleIconUrl ? (
-													<img
-														src={bundle.bundleIconUrl}
-														alt={bundle.bundleName}
-														className="size-4 rounded object-contain"
-													/>
-												) : (
-													<div className="size-4 bg-accent-lime/20" />
-												)}
-												<span className="font-mono text-xs text-fg-secondary">
-													{bundle.bundleName}
+							{guestDraft.bundleSubscriptions &&
+								guestDraft.bundleSubscriptions.length > 0 && (
+									<div>
+										<p className="font-mono text-[10px] uppercase tracking-widest text-fg-muted mb-2">
+											Bundles ({guestDraft.bundleSubscriptions.length})
+										</p>
+										<div className="flex flex-wrap gap-2">
+											{guestDraft.bundleSubscriptions
+												.slice(0, 8)
+												.map((bundle, i) => (
+													<div
+														key={`${bundle.bundleName}-${i}`}
+														className="flex items-center gap-2 border border-stroke-subtle bg-bg-panel-muted px-2 py-1 transition-colors hover:border-accent-lime hover:bg-accent-lime/10"
+													>
+														{bundle.bundleIconUrl ? (
+															<img
+																src={bundle.bundleIconUrl}
+																alt={bundle.bundleName}
+																className="size-4 rounded object-contain"
+															/>
+														) : (
+															<div className="size-4 bg-accent-lime/20" />
+														)}
+														<span className="font-mono text-xs text-fg-secondary">
+															{bundle.bundleName}
+														</span>
+													</div>
+												))}
+											{guestDraft.bundleSubscriptions.length > 8 && (
+												<span className="font-mono text-xs text-fg-muted px-2 py-1">
+													+{guestDraft.bundleSubscriptions.length - 8} more
 												</span>
-											</div>
-										))}
-										{guestDraft.bundleSubscriptions.length > 8 && (
-											<span className="font-mono text-xs text-fg-muted px-2 py-1">
-												+{guestDraft.bundleSubscriptions.length - 8} more
-											</span>
-										)}
+											)}
+										</div>
 									</div>
-								</div>
-							)}
+								)}
 
-							{guestDraft.modelSubscriptions && guestDraft.modelSubscriptions.length > 0 && (
-								<div>
-									<p className="font-mono text-[10px] uppercase tracking-widest text-fg-muted mb-2">
-										Models ({guestDraft.modelSubscriptions.length})
-									</p>
-									<div className="flex flex-wrap gap-2">
-										{guestDraft.modelSubscriptions.slice(0, 8).map((model, i) => (
-											<div
-												key={`${model.modelName}-${i}`}
-												className="flex items-center gap-2 border border-stroke-subtle bg-bg-panel-muted px-2 py-1 transition-colors hover:border-accent-lime hover:bg-accent-lime/10"
-											>
-												{model.modelIconUrl ? (
-													<img
-														src={model.modelIconUrl}
-														alt={model.modelName}
-														className="size-4 rounded object-contain"
-													/>
-												) : (
-													<div className="size-4 bg-accent-lime/20" />
-												)}
-												<span className="font-mono text-xs text-fg-secondary">
-													{model.modelName}
+							{guestDraft.modelSubscriptions &&
+								guestDraft.modelSubscriptions.length > 0 && (
+									<div>
+										<p className="font-mono text-[10px] uppercase tracking-widest text-fg-muted mb-2">
+											Models ({guestDraft.modelSubscriptions.length})
+										</p>
+										<div className="flex flex-wrap gap-2">
+											{guestDraft.modelSubscriptions
+												.slice(0, 8)
+												.map((model, i) => (
+													<div
+														key={`${model.modelName}-${i}`}
+														className="flex items-center gap-2 border border-stroke-subtle bg-bg-panel-muted px-2 py-1 transition-colors hover:border-accent-lime hover:bg-accent-lime/10"
+													>
+														{model.modelIconUrl ? (
+															<img
+																src={model.modelIconUrl}
+																alt={model.modelName}
+																className="size-4 rounded object-contain"
+															/>
+														) : (
+															<div className="size-4 bg-accent-lime/20" />
+														)}
+														<span className="font-mono text-xs text-fg-secondary">
+															{model.modelName}
+														</span>
+													</div>
+												))}
+											{guestDraft.modelSubscriptions.length > 8 && (
+												<span className="font-mono text-xs text-fg-muted px-2 py-1">
+													+{guestDraft.modelSubscriptions.length - 8} more
 												</span>
-											</div>
-										))}
-										{guestDraft.modelSubscriptions.length > 8 && (
-											<span className="font-mono text-xs text-fg-muted px-2 py-1">
-												+{guestDraft.modelSubscriptions.length - 8} more
-											</span>
-										)}
+											)}
+										</div>
 									</div>
-								</div>
-							)}
+								)}
 						</div>
 					)}
 
 					<div className="border-2 border-dashed border-stroke-subtle p-4 bg-bg-panel-muted/50">
 						<p className="font-mono text-xs text-fg-muted">
-							<span className="text-accent-lime font-semibold">✓</span> Your progress is saved locally
+							<span className="text-accent-lime font-semibold">✓</span> Your
+							progress is saved locally
 						</p>
 						<p className="font-mono text-xs text-fg-muted mt-1">
-							<span className="text-accent-lime font-semibold">✓</span> Only registered users can publish stacks
+							<span className="text-accent-lime font-semibold">✓</span> Only
+							registered users can publish stacks
 						</p>
 						<p className="font-mono text-xs text-fg-muted mt-1">
-							<span className="text-accent-lime font-semibold">✓</span> Your stack will be live after sign up
+							<span className="text-accent-lime font-semibold">✓</span> Your
+							stack will be live after sign up
 						</p>
 					</div>
 				</div>
@@ -237,8 +256,13 @@ function SignInPublishContent() {
 					{/* Mobile preview */}
 					<div className="lg:hidden mb-8">
 						<Link to="/" className="inline-flex items-center gap-2 mb-4">
-							<div className="w-3 h-3 bg-accent-lime animate-pulse" style={{ boxShadow: '0 0 8px rgba(163, 230, 53, 0.6)' }} />
-							<span className="font-bold text-fg-primary tracking-tighter text-xl">AI STACK</span>
+							<div
+								className="w-3 h-3 bg-accent-lime animate-pulse"
+								style={{ boxShadow: "0 0 8px rgba(163, 230, 53, 0.6)" }}
+							/>
+							<span className="font-bold text-fg-primary tracking-tighter text-xl">
+								AI STACK
+							</span>
 						</Link>
 						{guestDraft && (
 							<div className="border border-stroke-subtle bg-bg-panel-muted p-3 mb-4">

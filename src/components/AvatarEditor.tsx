@@ -34,56 +34,62 @@ export function AvatarEditor({
 	const displayUrl = currentAvatarUrl;
 	const initials = creatorName.charAt(0).toUpperCase();
 
-	const handleFileUpload = useCallback(async (file: File) => {
-		if (!file.type.startsWith("image/")) {
-			setError("Please upload an image file");
-			return;
-		}
-
-		if (file.size > 5 * 1024 * 1024) {
-			setError("Image must be less than 5MB");
-			return;
-		}
-
-		setIsUploading(true);
-		setError("");
-
-		try {
-			const uploadUrl = await generateUploadUrl();
-			const response = await fetch(uploadUrl, {
-				method: "POST",
-				headers: { "Content-Type": file.type },
-				body: file,
-			});
-
-			if (!response.ok) {
-				throw new Error("Upload failed");
+	const handleFileUpload = useCallback(
+		async (file: File) => {
+			if (!file.type.startsWith("image/")) {
+				setError("Please upload an image file");
+				return;
 			}
 
-			const { storageId } = await response.json();
-			const url = await getFileUrl({ storageId });
-			
-			if (url) {
-				onAvatarChange(url);
-				onClose();
+			if (file.size > 5 * 1024 * 1024) {
+				setError("Image must be less than 5MB");
+				return;
 			}
-		} catch (err) {
-			setError("Failed to upload image");
-			console.error(err);
-		} finally {
-			setIsUploading(false);
-		}
-	}, [generateUploadUrl, getFileUrl, onAvatarChange, onClose]);
 
-	const handleDrop = useCallback((e: React.DragEvent) => {
-		e.preventDefault();
-		setDragActive(false);
-		
-		const file = e.dataTransfer.files[0];
-		if (file) {
-			handleFileUpload(file);
-		}
-	}, [handleFileUpload]);
+			setIsUploading(true);
+			setError("");
+
+			try {
+				const uploadUrl = await generateUploadUrl();
+				const response = await fetch(uploadUrl, {
+					method: "POST",
+					headers: { "Content-Type": file.type },
+					body: file,
+				});
+
+				if (!response.ok) {
+					throw new Error("Upload failed");
+				}
+
+				const { storageId } = await response.json();
+				const url = await getFileUrl({ storageId });
+
+				if (url) {
+					onAvatarChange(url);
+					onClose();
+				}
+			} catch (err) {
+				setError("Failed to upload image");
+				console.error(err);
+			} finally {
+				setIsUploading(false);
+			}
+		},
+		[generateUploadUrl, getFileUrl, onAvatarChange, onClose],
+	);
+
+	const handleDrop = useCallback(
+		(e: React.DragEvent) => {
+			e.preventDefault();
+			setDragActive(false);
+
+			const file = e.dataTransfer.files[0];
+			if (file) {
+				handleFileUpload(file);
+			}
+		},
+		[handleFileUpload],
+	);
 
 	const handleDragOver = useCallback((e: React.DragEvent) => {
 		e.preventDefault();
@@ -95,12 +101,15 @@ export function AvatarEditor({
 		setDragActive(false);
 	}, []);
 
-	const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0];
-		if (file) {
-			handleFileUpload(file);
-		}
-	}, [handleFileUpload]);
+	const handleFileSelect = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
+			const file = e.target.files?.[0];
+			if (file) {
+				handleFileUpload(file);
+			}
+		},
+		[handleFileUpload],
+	);
 
 	const handleUrlSubmit = useCallback(() => {
 		if (!urlInput.trim()) {
@@ -170,7 +179,7 @@ export function AvatarEditor({
 						Use Profile Picture
 					</button>
 				)}
-				
+
 				{/* Upload Dropzone */}
 				<div
 					onDrop={handleDrop}
@@ -181,12 +190,19 @@ export function AvatarEditor({
 						"mb-4 flex cursor-pointer flex-col items-center justify-center border-2 border-dashed p-6 transition-colors",
 						dragActive
 							? "border-accent-lime bg-accent-lime/10"
-							: "border-stroke-subtle hover:border-accent-lime hover:bg-accent-lime/5"
+							: "border-stroke-subtle hover:border-accent-lime hover:bg-accent-lime/5",
 					)}
 				>
-					<Upload className={cn("mb-2 size-8", dragActive ? "text-accent-lime" : "text-fg-muted")} />
+					<Upload
+						className={cn(
+							"mb-2 size-8",
+							dragActive ? "text-accent-lime" : "text-fg-muted",
+						)}
+					/>
 					<p className="font-mono text-sm text-fg-muted">
-						{isUploading ? "Uploading..." : "Drop image here or click to upload"}
+						{isUploading
+							? "Uploading..."
+							: "Drop image here or click to upload"}
 					</p>
 					<p className="mt-1 font-mono text-[10px] text-fg-muted">
 						Max 5MB, JPG/PNG/GIF
@@ -203,7 +219,9 @@ export function AvatarEditor({
 				{/* Divider */}
 				<div className="mb-4 flex items-center gap-3">
 					<div className="h-px flex-1 bg-stroke-subtle" />
-					<span className="font-mono text-[10px] uppercase tracking-wider text-fg-muted">or</span>
+					<span className="font-mono text-[10px] uppercase tracking-wider text-fg-muted">
+						or
+					</span>
 					<div className="h-px flex-1 bg-stroke-subtle" />
 				</div>
 

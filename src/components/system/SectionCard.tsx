@@ -49,8 +49,14 @@ function SectionCard({
 								{eyebrow}
 							</p>
 						)}
-						{title && <h2 className="text-sm font-semibold tracking-wide text-fg-primary">{title}</h2>}
-						{description && <p className="text-sm text-fg-muted">{description}</p>}
+						{title && (
+							<h2 className="text-sm font-semibold tracking-wide text-fg-primary">
+								{title}
+							</h2>
+						)}
+						{description && (
+							<p className="text-sm text-fg-muted">{description}</p>
+						)}
 					</div>
 					{actions && <div className="shrink-0">{actions}</div>}
 				</header>

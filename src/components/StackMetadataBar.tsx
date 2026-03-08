@@ -1,4 +1,11 @@
-import { BookOpen, FileText, GitBranch, Plug, ScrollText, Sparkles } from "lucide-react";
+import {
+	BookOpen,
+	FileText,
+	GitBranch,
+	Plug,
+	ScrollText,
+	Sparkles,
+} from "lucide-react";
 
 interface PromptItem {
 	name: string;
@@ -39,7 +46,14 @@ const metaItems = [
 	{ key: "mcps" as const, label: "MCPs", icon: Plug },
 ];
 
-export function StackMetadataBar({ stackUrl, prompts, rules, skills, mcps, resources }: StackMetadataBarProps) {
+export function StackMetadataBar({
+	stackUrl,
+	prompts,
+	rules,
+	skills,
+	mcps,
+	resources,
+}: StackMetadataBarProps) {
 	const arrays = { prompts, rules, skills, mcps };
 	const hasAnyMeta = metaItems.some((item) => {
 		const arr = arrays[item.key];
@@ -53,10 +67,10 @@ export function StackMetadataBar({ stackUrl, prompts, rules, skills, mcps, resou
 			<div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-2 border-stroke-strong bg-bg-panel px-5 py-4">
 				{/* Repository Link */}
 				{stackUrl && (
-					<a 
-						href={stackUrl} 
-						target="_blank" 
-						rel="noopener noreferrer" 
+					<a
+						href={stackUrl}
+						target="_blank"
+						rel="noopener noreferrer"
 						className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-accent-lime hover:text-accent-lime-strong transition-colors"
 					>
 						<GitBranch className="size-4" />
@@ -64,10 +78,15 @@ export function StackMetadataBar({ stackUrl, prompts, rules, skills, mcps, resou
 					</a>
 				)}
 
-				{stackUrl && hasAnyMeta && <span className="text-stroke-strong">|</span>}
+				{stackUrl && hasAnyMeta && (
+					<span className="text-stroke-strong">|</span>
+				)}
 
 				{/* Meta items with counts */}
-				<ul className="flex flex-wrap items-center gap-4" aria-label="Stack metadata coverage">
+				<ul
+					className="flex flex-wrap items-center gap-4"
+					aria-label="Stack metadata coverage"
+				>
 					{metaItems.map((item) => {
 						const arr = arrays[item.key];
 						if (!arr || arr.length === 0) return null;
@@ -86,17 +105,19 @@ export function StackMetadataBar({ stackUrl, prompts, rules, skills, mcps, resou
 					})}
 				</ul>
 
-				{hasResources && (stackUrl || hasAnyMeta) && <span className="text-stroke-strong">|</span>}
+				{hasResources && (stackUrl || hasAnyMeta) && (
+					<span className="text-stroke-strong">|</span>
+				)}
 
 				{/* Resources */}
 				{hasResources && (
 					<div className="flex flex-wrap items-center gap-4">
 						{resources?.map((resource) => (
-							<a 
-								key={resource.url} 
-								href={resource.url} 
-								target="_blank" 
-								rel="noopener noreferrer" 
+							<a
+								key={resource.url}
+								href={resource.url}
+								target="_blank"
+								rel="noopener noreferrer"
 								className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-accent-lime hover:text-accent-lime-strong transition-colors"
 							>
 								<BookOpen className="size-3.5" />

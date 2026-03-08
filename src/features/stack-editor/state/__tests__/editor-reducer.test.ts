@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { editorReducer, getInitialEditorState } from "@/features/stack-editor/state/editorReducer";
+import {
+	editorReducer,
+	getInitialEditorState,
+} from "@/features/stack-editor/state/editorReducer";
 import {
 	selectCanPublish,
 	selectGuestDraft,
@@ -36,14 +39,21 @@ describe("editor reducer", () => {
 	});
 
 	it("computes publish and save selectors from state", () => {
-		const createState = editorReducer(getInitialEditorState({ actor: { xHandle: "" } }), {
-			type: "profile/updated",
-			updates: { oneLiner: "Builder stack" },
-		});
+		const createState = editorReducer(
+			getInitialEditorState({ actor: { xHandle: "" } }),
+			{
+				type: "profile/updated",
+				updates: { oneLiner: "Builder stack" },
+			},
+		);
 
 		expect(selectCanPublish(createState)).toBe(false);
-		expect(selectSaveValidationError(createState, true)).toBe("Add at least one tool before publishing");
-		expect(selectSaveDraftPublishTarget(createState, "create", undefined)).toBe(false);
+		expect(selectSaveValidationError(createState, true)).toBe(
+			"Add at least one tool before publishing",
+		);
+		expect(selectSaveDraftPublishTarget(createState, "create", undefined)).toBe(
+			false,
+		);
 
 		const withTools = editorReducer(createState, {
 			type: "tools/updated",
@@ -70,10 +80,18 @@ describe("editor reducer", () => {
 	});
 
 	it("builds guest draft payload with parity keys", () => {
-		const state = editorReducer(getInitialEditorState({ actor: { xHandle: "" } }), {
-			type: "profile/updated",
-			updates: { oneLiner: "Draft", xHandle: "alp", isTeam: true, teamSize: 3 },
-		});
+		const state = editorReducer(
+			getInitialEditorState({ actor: { xHandle: "" } }),
+			{
+				type: "profile/updated",
+				updates: {
+					oneLiner: "Draft",
+					xHandle: "alp",
+					isTeam: true,
+					teamSize: 3,
+				},
+			},
+		);
 
 		const draft = selectGuestDraft(state);
 		expect(draft.oneLiner).toBe("Draft");
@@ -146,8 +164,14 @@ describe("editor reducer", () => {
 
 	it("updates ui flags and merges guest draft values", () => {
 		const base = getInitialEditorState({ actor: { xHandle: "existing" } });
-		const saving = editorReducer(base, { type: "ui/saveStateChanged", saving: true });
-		const errored = editorReducer(saving, { type: "ui/errorSet", error: "Failed" });
+		const saving = editorReducer(base, {
+			type: "ui/saveStateChanged",
+			saving: true,
+		});
+		const errored = editorReducer(saving, {
+			type: "ui/errorSet",
+			error: "Failed",
+		});
 		const withDialog = editorReducer(errored, {
 			type: "ui/signInDialogToggled",
 			open: true,

@@ -35,7 +35,13 @@ type ModelItem = {
 	role: string;
 };
 
-type InstructionType = 'prompt' | 'rule' | 'skill' | 'mcp' | 'plugin' | 'subagent';
+type InstructionType =
+	| "prompt"
+	| "rule"
+	| "skill"
+	| "mcp"
+	| "plugin"
+	| "subagent";
 
 type InstructionItem = {
 	type: InstructionType;
@@ -49,8 +55,18 @@ type InstructionItem = {
 type ModelSubscriptionEntry = {
 	modelSlug: string;
 	modelName: string;
+	modelShortId?: string;
 	modelProvider: string;
-	modelCategory: 'language' | 'coding' | 'reasoning' | 'vision' | 'audio' | 'image' | 'video' | 'embedding' | 'other';
+	modelCategory:
+		| "language"
+		| "coding"
+		| "reasoning"
+		| "vision"
+		| "audio"
+		| "image"
+		| "video"
+		| "embedding"
+		| "other";
 	modelIconUrl?: string;
 	role: "primary" | "secondary" | "specialized";
 };

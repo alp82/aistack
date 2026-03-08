@@ -46,7 +46,7 @@ function CategoryLabel({ category, className }: CategoryLabelProps) {
 			className={cn(
 				"text-[10px] font-bold bg-bg-panel px-2 py-1 uppercase tracking-wider border",
 				getCategoryColor(category),
-				className
+				className,
 			)}
 		>
 			{toCategoryLabel(category)}

@@ -1,6 +1,15 @@
 import { useEffect, useReducer, useRef } from "react";
-import type { InstructionItem, ModelSubscriptionEntry, StackEditorInitialValue, StackEditorMode } from "@/features/stack-editor/types";
-import { editorReducer, getDraftKey, getInitialEditorState } from "@/features/stack-editor/state/editorReducer";
+import type {
+	InstructionItem,
+	ModelSubscriptionEntry,
+	StackEditorInitialValue,
+	StackEditorMode,
+} from "@/features/stack-editor/types";
+import {
+	editorReducer,
+	getDraftKey,
+	getInitialEditorState,
+} from "@/features/stack-editor/state/editorReducer";
 import { selectGuestDraft } from "@/features/stack-editor/state/editorSelectors";
 import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
 import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
@@ -14,14 +23,23 @@ type UseEditorStateArgs = {
 
 export type { UseEditorStateArgs };
 
-function useEditorState({ mode, guestSession, actor, initialValue }: UseEditorStateArgs) {
-	const [state, dispatch] = useReducer(editorReducer, {
-		actor,
-		initialValue,
-		mode,
-		guestSession,
-	}, getInitialEditorState);
-	
+function useEditorState({
+	mode,
+	guestSession,
+	actor,
+	initialValue,
+}: UseEditorStateArgs) {
+	const [state, dispatch] = useReducer(
+		editorReducer,
+		{
+			actor,
+			initialValue,
+			mode,
+			guestSession,
+		},
+		getInitialEditorState,
+	);
+
 	const hasLoadedInitialData = useRef(false);
 	const draftSavingDisabled = useRef(false);
 
@@ -54,7 +72,10 @@ function useEditorState({ mode, guestSession, actor, initialValue }: UseEditorSt
 		setTeamSize: (value: number) =>
 			dispatch({ type: "profile/updated", updates: { teamSize: value } }),
 		setPersonalPageUrl: (value: string) =>
-			dispatch({ type: "profile/updated", updates: { personalPageUrl: value } }),
+			dispatch({
+				type: "profile/updated",
+				updates: { personalPageUrl: value },
+			}),
 		setProjectPageUrl: (value: string) =>
 			dispatch({ type: "profile/updated", updates: { projectPageUrl: value } }),
 		setStackImageUrl: (value: string) =>
@@ -69,19 +90,23 @@ function useEditorState({ mode, guestSession, actor, initialValue }: UseEditorSt
 			dispatch({ type: "modelSubscriptions/updated", modelSubscriptions }),
 		setInstructions: (instructions: InstructionItem[]) =>
 			dispatch({ type: "instructions/updated", instructions }),
-		setSaving: (saving: boolean) => dispatch({ type: "ui/saveStateChanged", saving }),
+		setSaving: (saving: boolean) =>
+			dispatch({ type: "ui/saveStateChanged", saving }),
 		setError: (error: string) => dispatch({ type: "ui/errorSet", error }),
 		setShowSignInDialog: (open: boolean) =>
 			dispatch({ type: "ui/signInDialogToggled", open }),
-		setActiveSection: (section: "profile" | "tools" | "bundles" | "description" | "settings") =>
-			dispatch({ type: "navigation/activeSectionChanged", section }),
+		setActiveSection: (
+			section: "profile" | "tools" | "bundles" | "description" | "settings",
+		) => dispatch({ type: "navigation/activeSectionChanged", section }),
 		revertDraft: () => {
 			if (initialValue) {
 				dispatch({ type: "draft/reverted", initialValue });
 			}
 		},
 		dismissDraft: () => dispatch({ type: "draft/dismissed" }),
-		disableDraftSaving: () => { draftSavingDisabled.current = true; },
+		disableDraftSaving: () => {
+			draftSavingDisabled.current = true;
+		},
 	};
 }
 

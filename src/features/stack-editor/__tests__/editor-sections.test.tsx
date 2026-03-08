@@ -5,7 +5,10 @@ import { BundlesSection } from "@/features/stack-editor/sections/BundlesSection"
 import { DescriptionSection } from "@/features/stack-editor/sections/DescriptionSection";
 import { ProfileSection } from "@/features/stack-editor/sections/ProfileSection";
 import { ToolsSection } from "@/features/stack-editor/sections/ToolsSection";
-import { canPublishStack, getSaveValidationError } from "@/features/stack-editor/editor-guards";
+import {
+	canPublishStack,
+	getSaveValidationError,
+} from "@/features/stack-editor/editor-guards";
 import type { EditorSectionStatus } from "@/features/stack-editor/editor-status";
 
 vi.mock("@/components/ToolPicker", () => ({
@@ -23,7 +26,11 @@ describe("stack editor sections", () => {
 		render(
 			<>
 				<ProfileSection
-					creator={{ _id: "creator_1" as never, name: "Builder", slug: "builder" }}
+					creator={{
+						_id: "creator_1" as never,
+						name: "Builder",
+						slug: "builder",
+					}}
 					oneLiner=""
 					onOneLinerChange={() => {}}
 					xHandle=""
@@ -35,9 +42,24 @@ describe("stack editor sections", () => {
 					status={completeStatus}
 					isActive={false}
 				/>
-				<ToolsSection value={[]} onChange={() => {}} status={completeStatus} isActive={false} />
-				<BundlesSection value={[]} onChange={() => {}} status={completeStatus} isActive={false} />
-				<DescriptionSection value="" onChange={() => {}} status={completeStatus} isActive={false} />
+				<ToolsSection
+					value={[]}
+					onChange={() => {}}
+					status={completeStatus}
+					isActive={false}
+				/>
+				<BundlesSection
+					value={[]}
+					onChange={() => {}}
+					status={completeStatus}
+					isActive={false}
+				/>
+				<DescriptionSection
+					value=""
+					onChange={() => {}}
+					status={completeStatus}
+					isActive={false}
+				/>
 			</>,
 		);
 
@@ -55,20 +77,34 @@ describe("stack editor sections", () => {
 			throw new Error("expected all section anchors to render");
 		}
 
-		expect(profile.compareDocumentPosition(tools)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-		expect(tools.compareDocumentPosition(bundles)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-		expect(bundles.compareDocumentPosition(description)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+		expect(profile.compareDocumentPosition(tools)).toBe(
+			Node.DOCUMENT_POSITION_FOLLOWING,
+		);
+		expect(tools.compareDocumentPosition(bundles)).toBe(
+			Node.DOCUMENT_POSITION_FOLLOWING,
+		);
+		expect(bundles.compareDocumentPosition(description)).toBe(
+			Node.DOCUMENT_POSITION_FOLLOWING,
+		);
 	});
 
 	it("keeps save and publish guard behavior", () => {
-		expect(getSaveValidationError({ oneLiner: "", publish: false, toolCount: 0 })).toBe(
-			"One-liner summary is required",
-		);
 		expect(
-			getSaveValidationError({ oneLiner: "Valid one liner", publish: true, toolCount: 0 }),
+			getSaveValidationError({ oneLiner: "", publish: false, toolCount: 0 }),
+		).toBe("One-liner summary is required");
+		expect(
+			getSaveValidationError({
+				oneLiner: "Valid one liner",
+				publish: true,
+				toolCount: 0,
+			}),
 		).toBe("Add at least one tool before publishing");
 		expect(
-			getSaveValidationError({ oneLiner: "Valid one liner", publish: false, toolCount: 0 }),
+			getSaveValidationError({
+				oneLiner: "Valid one liner",
+				publish: false,
+				toolCount: 0,
+			}),
 		).toBe(null);
 
 		expect(canPublishStack("", 1)).toBe(false);

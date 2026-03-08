@@ -6,7 +6,6 @@ import { api } from "../../convex/_generated/api";
 import { LandingPageShell } from "@/features/landing/LandingPageShell";
 import type { LandingStackPreview } from "@/features/landing/sections/FeaturedStacksSection";
 
-
 export const Route = createFileRoute("/")({
 	component: IndexRoute,
 	loader: async ({ context }) => {
@@ -104,7 +103,8 @@ export const Route = createFileRoute("/")({
 });
 
 function IndexRoute() {
-	const stacks = (useQuery(api.stacks.listPublished) ?? []) as LandingStackPreview[];
+	const stacks = (useQuery(api.stacks.listPublished) ??
+		[]) as LandingStackPreview[];
 	const userStack = useQuery(api.stacks.getUserStack);
 
 	return <LandingPageShell stacks={stacks} userStack={userStack} />;

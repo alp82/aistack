@@ -25,7 +25,10 @@ function SortDropdown<T extends string>({
 
 	useEffect(() => {
 		function handleClickOutside(event: MouseEvent) {
-			if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+			if (
+				dropdownRef.current &&
+				!dropdownRef.current.contains(event.target as Node)
+			) {
 				setIsOpen(false);
 			}
 		}
@@ -49,8 +52,12 @@ function SortDropdown<T extends string>({
 				className="flex items-center gap-2 h-12 px-4 border border-stroke-strong bg-bg-canvas text-fg-muted hover:border-accent-lime hover:text-fg-primary transition-colors"
 			>
 				<span className="uppercase text-xs tracking-wider">Sort:</span>
-				<span className="uppercase text-xs font-bold">{selectedOption?.label}</span>
-				<ChevronDown className={cn("size-4 transition-transform", isOpen && "rotate-180")} />
+				<span className="uppercase text-xs font-bold">
+					{selectedOption?.label}
+				</span>
+				<ChevronDown
+					className={cn("size-4 transition-transform", isOpen && "rotate-180")}
+				/>
 			</button>
 			{isOpen && (
 				<div className="absolute right-0 top-full mt-1 z-20 bg-bg-panel border border-stroke-strong shadow-lg min-w-[180px]">
@@ -66,7 +73,7 @@ function SortDropdown<T extends string>({
 								"w-full px-4 py-2 text-left uppercase text-xs font-bold transition-colors",
 								value === option.value
 									? "bg-accent-lime/10 text-accent-lime"
-									: "text-fg-muted hover:bg-bg-panel-muted hover:text-fg-primary"
+									: "text-fg-muted hover:bg-bg-panel-muted hover:text-fg-primary",
 							)}
 						>
 							{option.label}

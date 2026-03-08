@@ -6,13 +6,18 @@ import { useOptionalEditorContext } from "@/features/stack-editor/context/Editor
 import HoverPreview from "@/components/ui/hover-preview";
 
 export interface AIModelBlockAttrs {
-	modelId: string;
+	shortId: string;
 	name: string;
 	provider: string;
-	iconUrl: string | null;
 }
 
-function ModelTooltipContent({ name, iconUrl, provider, category, notes }: {
+function ModelTooltipContent({
+	name,
+	iconUrl,
+	provider,
+	category,
+	notes,
+}: {
 	name: string;
 	iconUrl?: string;
 	provider?: string;
@@ -26,10 +31,16 @@ function ModelTooltipContent({ name, iconUrl, provider, category, notes }: {
 			</div>
 			<div className="mb-2 flex items-center gap-3">
 				{iconUrl && (
-					<img src={iconUrl} alt="" className="size-8 shrink-0 object-contain" />
+					<img
+						src={iconUrl}
+						alt=""
+						className="size-8 shrink-0 object-contain"
+					/>
 				)}
 				<div className="min-w-0">
-					<div className="font-mono text-sm font-semibold text-fg-primary">{name}</div>
+					<div className="font-mono text-sm font-semibold text-fg-primary">
+						{name}
+					</div>
 					{provider && (
 						<div className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-fg-muted">
 							by {provider}
@@ -52,9 +63,13 @@ function ModelTooltipContent({ name, iconUrl, provider, category, notes }: {
 }
 
 function AIModelBlockView({ node }: NodeViewProps) {
-	const { name, iconUrl, provider } = node.attrs as AIModelBlockAttrs;
+	const { shortId, name, provider } = node.attrs as AIModelBlockAttrs;
 	const context = useOptionalEditorContext();
-	const modelData = context?.modelLookup.get(name);
+	// Look up model data by shortId first, fall back to name for legacy nodes
+	const modelData =
+		context?.modelLookupByShortId?.get(shortId) ??
+		context?.modelLookup.get(name);
+	const iconUrl = modelData?.iconUrl;
 
 	const blockContent = (
 		<span
@@ -78,7 +93,11 @@ function AIModelBlockView({ node }: NodeViewProps) {
 	);
 
 	return (
-		<NodeViewWrapper as="span" className="inline-flex items-center mx-1" style={{ verticalAlign: '0.05em' }}>
+		<NodeViewWrapper
+			as="span"
+			className="inline-flex items-center mx-1"
+			style={{ verticalAlign: "0.05em" }}
+		>
 			{modelData ? (
 				<HoverPreview
 					mode="wrapper"
@@ -110,10 +129,7 @@ function AIModelBlockView({ node }: NodeViewProps) {
 					maxRotation={3}
 					maxOffset={5}
 					renderContent={() => (
-						<ModelTooltipContent
-							name={name}
-							provider={provider}
-						/>
+						<ModelTooltipContent name={name} provider={provider} />
 					)}
 				>
 					{blockContent}
@@ -131,7 +147,7 @@ export const AIModelBlock = Node.create({
 
 	addAttributes() {
 		return {
-			modelId: {
+			shortId: {
 				default: null,
 			},
 			name: {
@@ -140,16 +156,21 @@ export const AIModelBlock = Node.create({
 			provider: {
 				default: "",
 			},
-			iconUrl: {
-				default: null,
-			},
 		};
 	},
 
 	parseHTML() {
 		return [
 			{
-				tag: 'span[data-ai-model-block]',
+				tag: "span[data-ai-model-block]",
+				getAttrs: (element) => {
+					const el = element as HTMLElement;
+					return {
+						shortId: el.getAttribute("data-short-id") || null,
+						name: el.getAttribute("data-model-name") || el.textContent || "",
+						provider: el.getAttribute("data-model-provider") || "",
+					};
+				},
 			},
 		];
 	},
@@ -157,10 +178,11 @@ export const AIModelBlock = Node.create({
 	renderHTML({ HTMLAttributes, node }) {
 		return [
 			"span",
-			mergeAttributes(HTMLAttributes, { 
+			mergeAttributes(HTMLAttributes, {
 				"data-ai-model-block": "",
-				"data-model-id": node.attrs.modelId,
+				"data-short-id": node.attrs.shortId,
 				"data-model-name": node.attrs.name,
+				"data-model-provider": node.attrs.provider,
 			}),
 			node.attrs.name,
 		];

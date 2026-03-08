@@ -51,7 +51,11 @@ function NewStackPage() {
 
 		// Authenticated user - check if they already have a stack
 		// Skip redirect if we just created a stack (handleSave navigates to detail page)
-		if (userStack !== undefined && userStack !== null && !navigatingRef.current) {
+		if (
+			userStack !== undefined &&
+			userStack !== null &&
+			!navigatingRef.current
+		) {
 			window.location.href = `/stacks/${userStack.slug}/edit`;
 			return;
 		}
@@ -95,5 +99,15 @@ function NewStackPage() {
 		);
 	}
 
-	return <StackEditor mode="create" actor={creator} guestSession={isGuest} defaultAvatarUrl={userImageUrl} onNavigating={() => { navigatingRef.current = true; }} />;
+	return (
+		<StackEditor
+			mode="create"
+			actor={creator}
+			guestSession={isGuest}
+			defaultAvatarUrl={userImageUrl}
+			onNavigating={() => {
+				navigatingRef.current = true;
+			}}
+		/>
+	);
 }

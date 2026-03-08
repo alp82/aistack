@@ -1,5 +1,23 @@
-import { mutation, query } from './_generated/server'
+import { mutation, query, type QueryCtx } from './_generated/server'
 import { v } from 'convex/values'
+
+const SHORT_ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'
+const SHORT_ID_LENGTH = 6
+
+async function generateUniqueShortId(ctx: QueryCtx): Promise<string> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    let shortId = ''
+    for (let i = 0; i < SHORT_ID_LENGTH; i++) {
+      shortId += SHORT_ID_CHARS[Math.floor(Math.random() * SHORT_ID_CHARS.length)]
+    }
+    const existing = await ctx.db
+      .query('bundles')
+      .withIndex('by_shortId', (q) => q.eq('shortId', shortId))
+      .first()
+    if (!existing) return shortId
+  }
+  throw new Error('Failed to generate unique shortId after 10 attempts')
+}
 
 export const listAll = query({
   args: {},
@@ -8,6 +26,7 @@ export const listAll = query({
       _id: v.id('bundles'),
       name: v.string(),
       slug: v.string(),
+      shortId: v.optional(v.string()),
       aliases: v.optional(v.array(v.string())),
       description: v.optional(v.string()),
       iconUrl: v.optional(v.string()),
@@ -45,6 +64,7 @@ export const listAll = query({
       _id: b._id,
       name: b.name,
       slug: b.slug,
+      shortId: b.shortId,
       aliases: b.aliases,
       description: b.description,
       iconUrl: b.iconUrl,
@@ -132,9 +152,12 @@ export const create = mutation({
       isDefault: i === 0,
     }))
 
+    const shortId = await generateUniqueShortId(ctx)
+
     return await ctx.db.insert('bundles', {
       name: args.name,
       slug,
+      shortId,
       iconUrl: args.iconUrl,
       description: args.description,
       websiteUrl: args.websiteUrl,

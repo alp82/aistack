@@ -22,7 +22,7 @@ export function PickerToggleButton({
 				"flex w-full items-center justify-center gap-2 border-2 border-dashed p-3 font-mono text-xs uppercase tracking-wider transition-all cursor-pointer",
 				isOpen
 					? "border-accent-lime bg-accent-lime/5 text-accent-lime"
-					: "border-stroke-subtle text-fg-muted hover:border-fg-muted hover:text-fg-primary"
+					: "border-stroke-subtle text-fg-muted hover:border-fg-muted hover:text-fg-primary",
 			)}
 		>
 			{isOpen ? (

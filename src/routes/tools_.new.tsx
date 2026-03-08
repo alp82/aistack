@@ -26,7 +26,12 @@ function NewToolPage() {
 			<div className="relative z-10 max-w-content mx-auto py-24">
 				<PageHeader
 					label="TOOLS"
-					title={<>AI TOOLS FOR <br />YOUR STACK</>}
+					title={
+						<>
+							AI TOOLS FOR <br />
+							YOUR STACK
+						</>
+					}
 					description="A curated selection of high-performance AI tools you can use to build your product. Validated by real shipping capability."
 					action={{
 						label: "Back to Tools",
@@ -43,5 +48,5 @@ function NewToolPage() {
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

@@ -9,6 +9,23 @@ import { modelsData } from './seeds/models'
 
 type Ctx = GenericMutationCtx<DataModelFromSchemaDefinition<typeof schema>>
 
+const SHORT_ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'
+const SHORT_ID_LENGTH = 6
+
+function generateShortId(usedIds: Set<string>): string {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    let shortId = ''
+    for (let i = 0; i < SHORT_ID_LENGTH; i++) {
+      shortId += SHORT_ID_CHARS[Math.floor(Math.random() * SHORT_ID_CHARS.length)]
+    }
+    if (!usedIds.has(shortId)) {
+      usedIds.add(shortId)
+      return shortId
+    }
+  }
+  throw new Error('Failed to generate unique shortId after 10 attempts')
+}
+
 async function clearTable(
   ctx: Ctx,
   table: "stacks" | "creators" | "tools" | "bundles" | "waitlist" | "models",
@@ -24,6 +41,7 @@ export const seedAll = internalMutation({
   returns: v.null(),
   handler: async (ctx) => {
     const now = Date.now()
+    const usedShortIds = new Set<string>()
 
     await clearTable(ctx, "tools");
     await clearTable(ctx, "bundles");
@@ -36,6 +54,7 @@ export const seedAll = internalMutation({
     for (const tool of toolsData) {
       const id = await ctx.db.insert('tools', {
         ...tool,
+        shortId: generateShortId(usedShortIds),
         createdAt: now,
         updatedAt: now,
       })
@@ -48,6 +67,7 @@ export const seedAll = internalMutation({
       const id = await ctx.db.insert('bundles', {
         name: bundle.name,
         slug: bundle.slug,
+        shortId: generateShortId(usedShortIds),
         description: bundle.description,
         iconUrl: bundle.iconUrl,
         websiteUrl: bundle.websiteUrl,
@@ -65,6 +85,7 @@ export const seedAll = internalMutation({
     for (const model of modelsData) {
       const id = await ctx.db.insert('models', {
         ...model,
+        shortId: generateShortId(usedShortIds),
         createdAt: now,
         updatedAt: now,
       })

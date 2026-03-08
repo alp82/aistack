@@ -4,7 +4,10 @@ import { useMutation, useQuery } from "convex/react";
 import { CheckCircle, ExternalLink, Save, Send } from "lucide-react";
 import { useCallback, useRef, useEffect } from "react";
 import { api } from "../../convex/_generated/api";
-import type { ModelSubscriptionEntry, InstructionItem } from "@/features/stack-editor/types";
+import type {
+	ModelSubscriptionEntry,
+	InstructionItem,
+} from "@/features/stack-editor/types";
 import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
 import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
 import { SignInDialog } from "@/components/SignInDialog";
@@ -14,7 +17,14 @@ import {
 } from "@/features/stack-editor/state/editorSelectors";
 import { getDraftKey } from "@/features/stack-editor/state/editorReducer";
 import { useEditorState } from "@/features/stack-editor/state/useEditorState";
-import { EditorProvider, useEditorContext, type ToolLookupData, type ModelLookupData, type BundleLookupData, type InstructionLookupData } from "@/features/stack-editor/context/EditorContext";
+import {
+	EditorProvider,
+	useEditorContext,
+	type ToolLookupData,
+	type ModelLookupData,
+	type BundleLookupData,
+	type InstructionLookupData,
+} from "@/features/stack-editor/context/EditorContext";
 import { DetailsStep } from "@/features/stack-editor/components/DetailsStep";
 import { WorkflowStep } from "@/features/stack-editor/components/WorkflowStep";
 import { ToolsSidebar } from "@/features/stack-editor/components/ToolsSidebar";
@@ -24,27 +34,35 @@ import type {
 	StackEditorMode,
 } from "@/features/stack-editor/types";
 
-function LookupDataSync({ 
-	tools, 
-	models, 
-	bundles, 
-	instructions 
-}: { 
+function LookupDataSync({
+	tools,
+	models,
+	bundles,
+	instructions,
+}: {
 	tools: ToolSubscriptionEntry[];
 	models: ModelSubscriptionEntry[];
 	bundles: BundleSubscriptionEntry[];
 	instructions: InstructionItem[];
 }) {
-	const { setToolLookup, setModelLookup, setBundleLookup, setInstructionLookup } = useEditorContext();
+	const {
+		setToolLookup,
+		setModelLookup,
+		setBundleLookup,
+		setInstructionLookup,
+	} = useEditorContext();
 
 	useEffect(() => {
 		const toolMap = new Map<string, ToolLookupData>();
 		for (const tool of tools) {
 			toolMap.set(tool.toolName, {
 				name: tool.toolName,
+				shortId: tool.toolShortId,
 				categories: tool.toolCategories,
 				iconUrl: tool.toolIconUrl,
-				price: tool.price.fixed ? { amount: tool.price.fixed.amount, period: tool.price.fixed.period } : undefined,
+				price: tool.price.fixed
+					? { amount: tool.price.fixed.amount, period: tool.price.fixed.period }
+					: undefined,
 				tierName: tool.primaryUsageLabel,
 				notes: tool.notes,
 			});
@@ -57,6 +75,7 @@ function LookupDataSync({
 		for (const model of models) {
 			modelMap.set(model.modelName, {
 				name: model.modelName,
+				shortId: model.modelShortId,
 				provider: model.modelProvider,
 				iconUrl: model.modelIconUrl,
 				category: model.modelCategory,
@@ -70,8 +89,14 @@ function LookupDataSync({
 		for (const bundle of bundles) {
 			bundleMap.set(bundle.bundleName, {
 				name: bundle.bundleName,
+				shortId: bundle.bundleShortId,
 				iconUrl: bundle.bundleIconUrl ?? undefined,
-				price: bundle.price?.fixed ? { amount: bundle.price.fixed.amount, period: bundle.price.fixed.period } : undefined,
+				price: bundle.price?.fixed
+					? {
+							amount: bundle.price.fixed.amount,
+							period: bundle.price.fixed.period,
+						}
+					: undefined,
 				tierName: bundle.tierName,
 				description: bundle.notes,
 				notes: bundle.notes,
@@ -117,7 +142,7 @@ export function StackEditor({
 	const createStack = useMutation(api.stacks.create);
 	const updateStack = useMutation(api.stacks.update);
 	const updateCreatorProfile = useMutation(api.creators.updateProfile);
-	
+
 	const {
 		state,
 		setBundleSubscriptions,
@@ -157,69 +182,91 @@ export function StackEditor({
 	allToolsRef.current = allTools;
 	allModelsRef.current = allModels;
 
-	const handleToolAdded = useCallback((tool: { _id: string; name: string; iconUrl?: string | null }) => {
-		const currentState = stateRef.current;
-		const currentAllTools = allToolsRef.current;
+	const handleToolAdded = useCallback(
+		(tool: { _id: string; name: string; iconUrl?: string | null }) => {
+			const currentState = stateRef.current;
+			const currentAllTools = allToolsRef.current;
 
-		// Find the full tool data
-		const fullTool = currentAllTools.find((t) => t._id === tool._id);
-		if (!fullTool) return;
+			// Find the full tool data
+			const fullTool = currentAllTools.find((t) => t._id === tool._id);
+			if (!fullTool) return;
 
-		// Check if tool is already in the list
-		if (currentState.toolSubscriptions.some((t) => t.toolSlug === fullTool.slug)) {
-			return;
-		}
+			// Check if tool is already in the list
+			if (
+				currentState.toolSubscriptions.some((t) => t.toolSlug === fullTool.slug)
+			) {
+				return;
+			}
 
-		const defaultTier = fullTool.tiers.find((t) => t.isDefault) ?? fullTool.tiers[0];
-		if (!defaultTier) return;
+			const defaultTier =
+				fullTool.tiers.find((t) => t.isDefault) ?? fullTool.tiers[0];
+			if (!defaultTier) return;
 
-		setToolSubscriptions([
-			...currentState.toolSubscriptions,
-			{
-				toolSlug: fullTool.slug,
-				toolName: fullTool.name,
-				toolCategories: fullTool.categories,
-				toolIconUrl: fullTool.iconUrl ?? undefined,
-				tierId: defaultTier.tierId,
-				kind: "main",
-				primaryUsageLabel: defaultTier.name,
-				price: {
-					pricingType: defaultTier.pricing.pricingType,
-					fixed: defaultTier.pricing.pricingType === "fixed" && defaultTier.pricing.fixed ? {
-						currency: defaultTier.pricing.fixed.currency,
-						amount: defaultTier.pricing.fixed.amount,
-						period: defaultTier.pricing.fixed.period,
-					} : undefined,
+			setToolSubscriptions([
+				...currentState.toolSubscriptions,
+				{
+					toolSlug: fullTool.slug,
+					toolName: fullTool.name,
+					toolCategories: fullTool.categories,
+					toolIconUrl: fullTool.iconUrl ?? undefined,
+					tierId: defaultTier.tierId,
+					kind: "main",
+					primaryUsageLabel: defaultTier.name,
+					price: {
+						pricingType: defaultTier.pricing.pricingType,
+						fixed:
+							defaultTier.pricing.pricingType === "fixed" &&
+							defaultTier.pricing.fixed
+								? {
+										currency: defaultTier.pricing.fixed.currency,
+										amount: defaultTier.pricing.fixed.amount,
+										period: defaultTier.pricing.fixed.period,
+									}
+								: undefined,
+					},
+					priceKind: "regular",
 				},
-				priceKind: "regular",
-			},
-		]);
-	}, [setToolSubscriptions]);
+			]);
+		},
+		[setToolSubscriptions],
+	);
 
-	const handleModelAdded = useCallback((model: { _id: string; name: string; provider: string; iconUrl?: string | null }) => {
-		const currentState = stateRef.current;
-		const currentAllModels = allModelsRef.current;
+	const handleModelAdded = useCallback(
+		(model: {
+			_id: string;
+			name: string;
+			provider: string;
+			iconUrl?: string | null;
+		}) => {
+			const currentState = stateRef.current;
+			const currentAllModels = allModelsRef.current;
 
-		// Find the full model data
-		const fullModel = currentAllModels.find((m) => m._id === model._id);
-		if (!fullModel) return;
+			// Find the full model data
+			const fullModel = currentAllModels.find((m) => m._id === model._id);
+			if (!fullModel) return;
 
-		// Check if model is already in the list
-		if (currentState.modelSubscriptions.some((m) => m.modelSlug === fullModel.slug)) {
-			return;
-		}
+			// Check if model is already in the list
+			if (
+				currentState.modelSubscriptions.some(
+					(m) => m.modelSlug === fullModel.slug,
+				)
+			) {
+				return;
+			}
 
-		const entry: ModelSubscriptionEntry = {
-			modelSlug: fullModel.slug,
-			modelName: fullModel.name,
-			modelProvider: fullModel.provider,
-			modelCategory: fullModel.category,
-			modelIconUrl: fullModel.iconUrl,
-			role: "primary",
-		};
+			const entry: ModelSubscriptionEntry = {
+				modelSlug: fullModel.slug,
+				modelName: fullModel.name,
+				modelProvider: fullModel.provider,
+				modelCategory: fullModel.category,
+				modelIconUrl: fullModel.iconUrl,
+				role: "primary",
+			};
 
-		setModelSubscriptions([...currentState.modelSubscriptions, entry]);
-	}, [setModelSubscriptions]);
+			setModelSubscriptions([...currentState.modelSubscriptions, entry]);
+		},
+		[setModelSubscriptions],
+	);
 
 	const handleSave = async (publish: boolean) => {
 		const validationError = selectSaveValidationError(state, publish);
@@ -313,18 +360,20 @@ export function StackEditor({
 									</h1>
 
 									<div className="flex items-center gap-3 flex-shrink-0">
-									{mode === "edit" && initialValue?.published && initialValue?.slug && (
-										<Link
-											to="/stacks/$slug"
-											params={{ slug: `${initialValue.slug}` }}
-											target="_blank"
-											className="inline-flex items-center gap-2 px-4 py-2 border-2 border-stroke-subtle font-mono text-xs uppercase tracking-wider text-fg-muted hover:border-fg-muted hover:text-fg-primary transition-colors cursor-pointer"
-										>
-											<ExternalLink className="size-4" />
-											View Stack
-										</Link>
-									)}
-									{initialValue?.published ? (
+										{mode === "edit" &&
+											initialValue?.published &&
+											initialValue?.slug && (
+												<Link
+													to="/stacks/$slug"
+													params={{ slug: `${initialValue.slug}` }}
+													target="_blank"
+													className="inline-flex items-center gap-2 px-4 py-2 border-2 border-stroke-subtle font-mono text-xs uppercase tracking-wider text-fg-muted hover:border-fg-muted hover:text-fg-primary transition-colors cursor-pointer"
+												>
+													<ExternalLink className="size-4" />
+													View Stack
+												</Link>
+											)}
+										{initialValue?.published ? (
 											<>
 												{/* Published/Unpublish Button - outline green with checkmark */}
 												<button
@@ -336,8 +385,12 @@ export function StackEditor({
 													<CheckCircle className="size-4 group-hover:hidden" />
 													<span className="hidden group-hover:inline">✕</span>
 													<span className="relative">
-														<span className="group-hover:hidden">Published</span>
-														<span className="hidden group-hover:inline">Unpublish</span>
+														<span className="group-hover:hidden">
+															Published
+														</span>
+														<span className="hidden group-hover:inline">
+															Unpublish
+														</span>
 													</span>
 												</button>
 
@@ -373,7 +426,11 @@ export function StackEditor({
 													className="inline-flex items-center gap-2 px-4 py-2 border-2 border-accent-lime bg-accent-lime font-mono text-xs font-bold uppercase tracking-wider text-accent-lime-contrast hover:bg-accent-lime-strong transition-colors disabled:opacity-50 cursor-pointer"
 												>
 													<Send className="size-4" />
-													{state.saving ? "Publishing..." : guestSession ? "Signup & Publish" : "Publish"}
+													{state.saving
+														? "Publishing..."
+														: guestSession
+															? "Signup & Publish"
+															: "Publish"}
 												</button>
 											</>
 										)}

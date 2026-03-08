@@ -1,12 +1,19 @@
 import { FileText, Package, Settings, Terminal, User } from "lucide-react";
-import type { EditorSectionKey, EditorSectionStatuses } from "@/features/stack-editor/editor-status";
+import type {
+	EditorSectionKey,
+	EditorSectionStatuses,
+} from "@/features/stack-editor/editor-status";
 
 interface StackEditorSidebarProps {
 	activeSection: EditorSectionKey;
 	sectionStatuses: EditorSectionStatuses;
 }
 
-const sections: Array<{ id: EditorSectionKey; label: string; icon: typeof User }> = [
+const sections: Array<{
+	id: EditorSectionKey;
+	label: string;
+	icon: typeof User;
+}> = [
 	{ id: "profile", label: "Profile & Bio", icon: User },
 	{ id: "tools", label: "Stack Tools", icon: Terminal },
 	{ id: "bundles", label: "Bundles", icon: Package },
@@ -14,7 +21,10 @@ const sections: Array<{ id: EditorSectionKey; label: string; icon: typeof User }
 	{ id: "settings", label: "Settings", icon: Settings },
 ];
 
-export function StackEditorSidebar({ activeSection, sectionStatuses }: StackEditorSidebarProps) {
+export function StackEditorSidebar({
+	activeSection,
+	sectionStatuses,
+}: StackEditorSidebarProps) {
 	const scrollToSection = (sectionId: string) => {
 		const element = document.getElementById(`section-${sectionId}`);
 		if (element) {
@@ -38,9 +48,10 @@ export function StackEditorSidebar({ activeSection, sectionStatuses }: StackEdit
 							type="button"
 							onClick={() => scrollToSection(section.id)}
 							className={`w-full text-left p-3 border-l-4 font-mono text-xs uppercase tracking-wider transition-all flex justify-between items-center group
-								${isActive
-									? "border-accent-lime bg-zinc-800 text-fg-primary"
-									: "border-zinc-800 text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
+								${
+									isActive
+										? "border-accent-lime bg-zinc-800 text-fg-primary"
+										: "border-zinc-800 text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
 								}
 							`}
 						>
@@ -48,8 +59,16 @@ export function StackEditorSidebar({ activeSection, sectionStatuses }: StackEdit
 								<Icon className="h-4 w-4" />
 								{section.label}
 							</span>
-							{isError && <span className="text-[10px] text-red-400 font-bold">[ ! ]</span>}
-							{isComplete && !isError && <span className="text-[10px] text-accent-lime font-bold">[ OK ]</span>}
+							{isError && (
+								<span className="text-[10px] text-red-400 font-bold">
+									[ ! ]
+								</span>
+							)}
+							{isComplete && !isError && (
+								<span className="text-[10px] text-accent-lime font-bold">
+									[ OK ]
+								</span>
+							)}
 						</button>
 					);
 				})}

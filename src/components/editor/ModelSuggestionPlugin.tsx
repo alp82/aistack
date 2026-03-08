@@ -7,6 +7,7 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 export interface ModelData {
 	_id: string;
 	name: string;
+	shortId?: string;
 	aliases?: string[];
 	provider: string;
 	iconUrl?: string | null;
@@ -23,17 +24,32 @@ interface ModelMatch {
 
 const pluginKey = new PluginKey("modelSuggestion");
 
-function findModelMatches(doc: ProseMirrorNode, models: ModelData[]): ModelMatch[] {
+function findModelMatches(
+	doc: ProseMirrorNode,
+	models: ModelData[],
+): ModelMatch[] {
 	const matches: ModelMatch[] = [];
 	if (!models.length) return matches;
 
 	// Build searchable entries: each model's name + its aliases, all mapped to the model
-	const entries: Array<{ searchName: string; searchNameLower: string; model: ModelData }> = [];
+	const entries: Array<{
+		searchName: string;
+		searchNameLower: string;
+		model: ModelData;
+	}> = [];
 	for (const model of models) {
-		entries.push({ searchName: model.name, searchNameLower: model.name.toLowerCase(), model });
+		entries.push({
+			searchName: model.name,
+			searchNameLower: model.name.toLowerCase(),
+			model,
+		});
 		if (model.aliases) {
 			for (const alias of model.aliases) {
-				entries.push({ searchName: alias, searchNameLower: alias.toLowerCase(), model });
+				entries.push({
+					searchName: alias,
+					searchNameLower: alias.toLowerCase(),
+					model,
+				});
 			}
 		}
 	}
@@ -59,16 +75,19 @@ function findModelMatches(doc: ProseMirrorNode, models: ModelData[]): ModelMatch
 						? text[index + entry.searchName.length]
 						: " ";
 
-				const isWordBoundaryBefore = /[\s\p{P}]/u.test(charBefore) || index === 0;
+				const isWordBoundaryBefore =
+					/[\s\p{P}]/u.test(charBefore) || index === 0;
 				const isWordBoundaryAfter =
-					/[\s\p{P}]/u.test(charAfter) || index + entry.searchName.length === text.length;
+					/[\s\p{P}]/u.test(charAfter) ||
+					index + entry.searchName.length === text.length;
 
 				if (isWordBoundaryBefore && isWordBoundaryAfter) {
 					const from = pos + index;
 					const to = from + entry.searchName.length;
 
 					const overlaps = matches.some(
-						(m) => (from >= m.from && from < m.to) || (to > m.from && to <= m.to)
+						(m) =>
+							(from >= m.from && from < m.to) || (to > m.from && to <= m.to),
 					);
 
 					if (!overlaps) {
@@ -89,24 +108,28 @@ function createSuggestionWidget(
 	from: number,
 	to: number,
 	getView: () => EditorView | null,
-	onModelAdded?: (model: ModelData) => void
+	onModelAdded?: (model: ModelData) => void,
 ): HTMLElement {
 	const wrapper = document.createElement("span");
 	wrapper.className = "model-suggestion-widget";
 	wrapper.setAttribute("contenteditable", "false");
-	wrapper.style.cssText = "display: inline-flex; flex-direction: column; align-items: center; position: relative; width: 0; height: 0; overflow: visible;";
+	wrapper.style.cssText =
+		"display: inline-flex; flex-direction: column; align-items: center; position: relative; width: 0; height: 0; overflow: visible;";
 
 	// Add button (above) - visible on hover/cursor
 	const addWrapper = document.createElement("span");
-	addWrapper.className = "model-suggestion-add opacity-0 scale-90 transition-all pointer-events-none";
-	addWrapper.style.cssText = "position: absolute; left: 0px; right: 0px; bottom: 22px; white-space: nowrap; z-index: 1;";
+	addWrapper.className =
+		"model-suggestion-add opacity-0 scale-90 transition-all pointer-events-none";
+	addWrapper.style.cssText =
+		"position: absolute; left: 0px; right: 0px; bottom: 22px; white-space: nowrap; z-index: 1;";
 	wrapper.appendChild(addWrapper);
 
 	const addButton = document.createElement("button");
 	addButton.type = "button";
 	addButton.className =
 		"inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-cyan-500 text-white hover:bg-cyan-600 transition-colors whitespace-nowrap";
-	addButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Add Model</span>';
+	addButton.innerHTML =
+		'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg><span>Add Model</span>';
 
 	const handleAdd = (e: Event) => {
 		e.preventDefault();
@@ -142,8 +165,10 @@ function createSuggestionWidget(
 
 	// Ignore button (below) - visible on hover/cursor
 	const ignoreWrapper = document.createElement("span");
-	ignoreWrapper.className = "model-suggestion-ignore opacity-0 scale-90 transition-all pointer-events-none";
-	ignoreWrapper.style.cssText = "position: absolute; top: 4px; white-space: nowrap; z-index: 1;";
+	ignoreWrapper.className =
+		"model-suggestion-ignore opacity-0 scale-90 transition-all pointer-events-none";
+	ignoreWrapper.style.cssText =
+		"position: absolute; top: 4px; white-space: nowrap; z-index: 1;";
 	wrapper.appendChild(ignoreWrapper);
 
 	const ignoreButton = document.createElement("button");
@@ -195,7 +220,10 @@ export interface ModelSuggestionStorage {
 	onModelAdded?: (model: ModelData) => void;
 }
 
-export const ModelSuggestionPlugin = Extension.create<ModelSuggestionOptions, ModelSuggestionStorage>({
+export const ModelSuggestionPlugin = Extension.create<
+	ModelSuggestionOptions,
+	ModelSuggestionStorage
+>({
 	name: "modelSuggestion",
 
 	addOptions() {
@@ -249,27 +277,40 @@ export const ModelSuggestionPlugin = Extension.create<ModelSuggestionOptions, Mo
 					decorations(state) {
 						const pluginState = this.getState(state);
 						if (!pluginState) return DecorationSet.empty;
-						
+
 						const { doc, models } = pluginState;
-						const matches = findModelMatches(doc, models).filter(m => !ignoredModels.has(m.model._id));
+						const matches = findModelMatches(doc, models).filter(
+							(m) => !ignoredModels.has(m.model._id),
+						);
 						const decorations: Decoration[] = [];
 						const cursorPos = state.selection.from;
 
 						for (const match of matches) {
-							const isCursorInside = cursorPos >= match.from && cursorPos <= match.to;
+							const isCursorInside =
+								cursorPos >= match.from && cursorPos <= match.to;
 							const highlightClass = isCursorInside
 								? "model-suggestion-highlight model-suggestion-active relative inline-block px-1.5 py-0.5 border-2 border-dashed border-cyan-500/70 bg-cyan-500/10"
 								: "model-suggestion-highlight relative inline-block px-1.5 py-0.5 border-2 border-dashed border-cyan-500/50 bg-cyan-500/5 hover:border-cyan-500/70 hover:bg-cyan-500/10";
-							
+
 							decorations.push(
 								Decoration.inline(match.from, match.to, {
 									class: highlightClass,
-								})
+								}),
 							);
 							decorations.push(
-								Decoration.widget(match.to, () => {
-									return createSuggestionWidget(match.model, match.from, match.to, () => currentView, extension.storage.onModelAdded);
-								}, { side: 1 })
+								Decoration.widget(
+									match.to,
+									() => {
+										return createSuggestionWidget(
+											match.model,
+											match.from,
+											match.to,
+											() => currentView,
+											extension.storage.onModelAdded,
+										);
+									},
+									{ side: 1 },
+								),
 							);
 						}
 

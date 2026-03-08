@@ -46,7 +46,7 @@ export function PickerEntryCard({
 				"border bg-bg-panel transition-all",
 				isHighlighted
 					? "border-accent-lime ring-2 ring-accent-lime/30"
-					: "border-stroke-subtle"
+					: "border-stroke-subtle",
 			)}
 		>
 			{/* Main Row */}

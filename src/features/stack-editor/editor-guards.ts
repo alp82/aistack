@@ -8,7 +8,11 @@ function canPublishStack(oneLiner: string, toolCount: number) {
 	return oneLiner.trim().length > 0 && toolCount > 0;
 }
 
-function getSaveValidationError({ oneLiner, publish, toolCount }: SaveValidationInput) {
+function getSaveValidationError({
+	oneLiner,
+	publish,
+	toolCount,
+}: SaveValidationInput) {
 	if (!publish) {
 		return null;
 	}

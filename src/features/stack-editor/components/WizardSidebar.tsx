@@ -21,7 +21,11 @@ type WizardSidebarProps = {
 	completedSteps?: WizardStep[];
 };
 
-function WizardSidebar({ currentStep, onStepClick, completedSteps = [] }: WizardSidebarProps) {
+function WizardSidebar({
+	currentStep,
+	onStepClick,
+	completedSteps = [],
+}: WizardSidebarProps) {
 	return (
 		<aside className="sticky top-[73px] hidden h-[calc(100vh-73px)] w-64 flex-col border-r border-stroke-subtle bg-bg-panel/80 backdrop-blur-sm lg:flex">
 			<div className="flex-grow space-y-1 p-6">
@@ -55,7 +59,9 @@ function WizardSidebar({ currentStep, onStepClick, completedSteps = [] }: Wizard
 								{step.label}
 							</span>
 							{isCompleted && !isActive && (
-								<span className="font-mono text-[10px] text-accent-lime">[ OK ]</span>
+								<span className="font-mono text-[10px] text-accent-lime">
+									[ OK ]
+								</span>
 							)}
 						</button>
 					);

@@ -30,17 +30,30 @@ function TerminalHeader({
 		>
 			<div className="mb-3 flex items-center justify-between gap-3 border-b border-stroke-subtle pb-2">
 				<div className="flex items-center gap-2 text-xs text-fg-muted">
-					<span className="h-2.5 w-2.5 rounded-full bg-destructive" aria-hidden="true" />
-					<span className="h-2.5 w-2.5 rounded-full bg-accent-lime-soft" aria-hidden="true" />
-					<span className="h-2.5 w-2.5 rounded-full bg-fg-muted/70" aria-hidden="true" />
-					{status && <span className="ml-2 tracking-wide uppercase">{status}</span>}
+					<span
+						className="h-2.5 w-2.5 rounded-full bg-destructive"
+						aria-hidden="true"
+					/>
+					<span
+						className="h-2.5 w-2.5 rounded-full bg-accent-lime-soft"
+						aria-hidden="true"
+					/>
+					<span
+						className="h-2.5 w-2.5 rounded-full bg-fg-muted/70"
+						aria-hidden="true"
+					/>
+					{status && (
+						<span className="ml-2 tracking-wide uppercase">{status}</span>
+					)}
 				</div>
 				{actions && <div className="flex items-center gap-2">{actions}</div>}
 			</div>
 			<div className="flex items-start gap-3">
 				{icon && <div className="mt-0.5 text-accent-lime">{icon}</div>}
 				<div className="min-w-0">
-					<h1 className="text-base font-semibold tracking-wide text-fg-primary sm:text-lg">{title}</h1>
+					<h1 className="text-base font-semibold tracking-wide text-fg-primary sm:text-lg">
+						{title}
+					</h1>
 					{subtitle && <p className="mt-1 text-sm text-fg-muted">{subtitle}</p>}
 				</div>
 			</div>

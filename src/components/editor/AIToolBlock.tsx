@@ -6,12 +6,18 @@ import HoverPreview from "@/components/ui/hover-preview";
 import { CategoryLabel } from "@/components/CategoryLabel";
 
 export interface AIToolBlockAttrs {
-	toolId: string;
+	shortId: string;
 	name: string;
-	iconUrl: string | null;
 }
 
-function ToolTooltipContent({ name, iconUrl, categories, price, tierName, notes }: {
+function ToolTooltipContent({
+	name,
+	iconUrl,
+	categories,
+	price,
+	tierName,
+	notes,
+}: {
 	name: string;
 	iconUrl?: string;
 	categories?: string[];
@@ -26,16 +32,22 @@ function ToolTooltipContent({ name, iconUrl, categories, price, tierName, notes 
 			</div>
 			<div className="mb-2 flex items-start justify-between gap-3">
 				<div className="flex min-w-0 items-center gap-3">
-				{iconUrl && (
-					<img src={iconUrl} alt="" className="size-8 shrink-0 object-contain" />
-				)}
-					<div className="min-w-0">
-					<div className="font-mono text-sm font-semibold text-fg-primary">{name}</div>
-					{tierName && (
-						<div className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-fg-muted">
-							{tierName}
-						</div>
+					{iconUrl && (
+						<img
+							src={iconUrl}
+							alt=""
+							className="size-8 shrink-0 object-contain"
+						/>
 					)}
+					<div className="min-w-0">
+						<div className="font-mono text-sm font-semibold text-fg-primary">
+							{name}
+						</div>
+						{tierName && (
+							<div className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-fg-muted">
+								{tierName}
+							</div>
+						)}
 					</div>
 				</div>
 				{price && (
@@ -64,10 +76,13 @@ function ToolTooltipContent({ name, iconUrl, categories, price, tierName, notes 
 }
 
 function AIToolBlockView({ node }: NodeViewProps) {
-	const { name, iconUrl } = node.attrs as AIToolBlockAttrs;
+	const { shortId, name } = node.attrs as AIToolBlockAttrs;
 	const context = useOptionalEditorContext();
 	const setHoveredToolName = context?.setHoveredToolName ?? (() => {});
-	const toolData = context?.toolLookup.get(name);
+	// Look up tool data by shortId first, fall back to name for legacy nodes
+	const toolData =
+		context?.toolLookupByShortId?.get(shortId) ?? context?.toolLookup.get(name);
+	const iconUrl = toolData?.iconUrl;
 
 	const blockContent = (
 		<span
@@ -93,7 +108,11 @@ function AIToolBlockView({ node }: NodeViewProps) {
 	);
 
 	return (
-		<NodeViewWrapper as="span" className="inline-flex items-center mx-1" style={{ verticalAlign: '0.05em' }}>
+		<NodeViewWrapper
+			as="span"
+			className="inline-flex items-center mx-1"
+			style={{ verticalAlign: "0.05em" }}
+		>
 			{toolData ? (
 				<HoverPreview
 					mode="wrapper"
@@ -125,11 +144,7 @@ function AIToolBlockView({ node }: NodeViewProps) {
 					offset={8}
 					maxRotation={3}
 					maxOffset={5}
-					renderContent={() => (
-						<ToolTooltipContent
-							name={name}
-						/>
-					)}
+					renderContent={() => <ToolTooltipContent name={name} />}
 				>
 					{blockContent}
 				</HoverPreview>
@@ -146,14 +161,11 @@ export const AIToolBlock = Node.create({
 
 	addAttributes() {
 		return {
-			toolId: {
+			shortId: {
 				default: null,
 			},
 			name: {
 				default: "",
-			},
-			iconUrl: {
-				default: null,
 			},
 		};
 	},
@@ -161,7 +173,14 @@ export const AIToolBlock = Node.create({
 	parseHTML() {
 		return [
 			{
-				tag: 'span[data-ai-tool-block]',
+				tag: "span[data-ai-tool-block]",
+				getAttrs: (element) => {
+					const el = element as HTMLElement;
+					return {
+						shortId: el.getAttribute("data-short-id") || null,
+						name: el.getAttribute("data-tool-name") || el.textContent || "",
+					};
+				},
 			},
 		];
 	},
@@ -169,9 +188,9 @@ export const AIToolBlock = Node.create({
 	renderHTML({ HTMLAttributes, node }) {
 		return [
 			"span",
-			mergeAttributes(HTMLAttributes, { 
+			mergeAttributes(HTMLAttributes, {
 				"data-ai-tool-block": "",
-				"data-tool-id": node.attrs.toolId,
+				"data-short-id": node.attrs.shortId,
 				"data-tool-name": node.attrs.name,
 			}),
 			node.attrs.name,

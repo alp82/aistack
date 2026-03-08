@@ -13,7 +13,16 @@ import {
 	SelectValue,
 } from "./ui/select";
 
-type ModelCategory = "language" | "coding" | "reasoning" | "vision" | "audio" | "image" | "video" | "embedding" | "other";
+type ModelCategory =
+	| "language"
+	| "coding"
+	| "reasoning"
+	| "vision"
+	| "audio"
+	| "image"
+	| "video"
+	| "embedding"
+	| "other";
 
 const categories: { value: ModelCategory; label: string }[] = [
 	{ value: "language", label: "Language" },
@@ -44,10 +53,7 @@ interface AddModelFormProps {
 	onModelCreated: (modelId: string) => void;
 }
 
-export function AddModelForm({
-	onCancel,
-	onModelCreated,
-}: AddModelFormProps) {
+export function AddModelForm({ onCancel, onModelCreated }: AddModelFormProps) {
 	const createModel = useMutation(api.models.create);
 	const [name, setName] = useState("");
 	const [provider, setProvider] = useState("");
@@ -118,7 +124,10 @@ export function AddModelForm({
 
 					<div className="grid grid-cols-3 gap-4">
 						<div className="space-y-2">
-							<Label htmlFor="model-name" className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
+							<Label
+								htmlFor="model-name"
+								className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
+							>
 								Model Name *
 							</Label>
 							<Input
@@ -132,7 +141,9 @@ export function AddModelForm({
 						</div>
 
 						<div className="space-y-2">
-							<Label className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">Provider *</Label>
+							<Label className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
+								Provider *
+							</Label>
 							<Select
 								value={provider}
 								onValueChange={(val) => {
@@ -153,7 +164,9 @@ export function AddModelForm({
 						</div>
 
 						<div className="space-y-2">
-							<Label className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">Category *</Label>
+							<Label className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
+								Category *
+							</Label>
 							<Select
 								value={category}
 								onValueChange={(val) => {
@@ -209,7 +222,9 @@ export function AddModelForm({
 								id="context-window"
 								type="number"
 								value={contextWindow}
-								onChange={(e) => setContextWindow(e.target.value ? Number(e.target.value) : "")}
+								onChange={(e) =>
+									setContextWindow(e.target.value ? Number(e.target.value) : "")
+								}
 								placeholder="e.g. 128000"
 								className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
 							/>

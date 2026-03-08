@@ -6,8 +6,17 @@ import { TiptapEditor } from "@/components/TiptapEditor";
 type WorkflowStepProps = {
 	description: string;
 	onDescriptionChange: (value: string) => void;
-	onToolAdded?: (tool: { _id: string; name: string; iconUrl?: string | null }) => void;
-	onModelAdded?: (model: { _id: string; name: string; provider: string; iconUrl?: string | null }) => void;
+	onToolAdded?: (tool: {
+		_id: string;
+		name: string;
+		iconUrl?: string | null;
+	}) => void;
+	onModelAdded?: (model: {
+		_id: string;
+		name: string;
+		provider: string;
+		iconUrl?: string | null;
+	}) => void;
 };
 
 function WorkflowStep({
@@ -19,12 +28,25 @@ function WorkflowStep({
 	const allTools = useQuery(api.tools.listAll) ?? [];
 	const allModels = useQuery(api.models.listAll) ?? [];
 	const toolsForEditor = useMemo(
-		() => allTools.map((t) => ({ _id: t._id, name: t.name, aliases: t.aliases, iconUrl: t.iconUrl })),
-		[allTools]
+		() =>
+			allTools.map((t) => ({
+				_id: t._id,
+				name: t.name,
+				aliases: t.aliases,
+				iconUrl: t.iconUrl,
+			})),
+		[allTools],
 	);
 	const modelsForEditor = useMemo(
-		() => allModels.map((m) => ({ _id: m._id, name: m.name, aliases: m.aliases, provider: m.provider, iconUrl: m.iconUrl })),
-		[allModels]
+		() =>
+			allModels.map((m) => ({
+				_id: m._id,
+				name: m.name,
+				aliases: m.aliases,
+				provider: m.provider,
+				iconUrl: m.iconUrl,
+			})),
+		[allModels],
 	);
 
 	return (

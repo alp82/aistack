@@ -84,6 +84,7 @@ export default defineSchema({
   tools: defineTable({
     name: v.string(),
     slug: v.string(),
+    shortId: v.optional(v.string()),
     aliases: v.optional(v.array(v.string())),
     categories: v.array(v.string()),
     iconUrl: v.optional(v.string()),
@@ -108,6 +109,7 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index('by_slug', ['slug'])
+    .index('by_shortId', ['shortId'])
     .index('by_reviewStatus', ['reviewStatus']),
 
   stacks: defineTable({
@@ -173,6 +175,7 @@ export default defineSchema({
   bundles: defineTable({
     name: v.string(),
     slug: v.string(),
+    shortId: v.optional(v.string()),
     aliases: v.optional(v.array(v.string())),
     description: v.optional(v.string()),
     iconUrl: v.optional(v.string()),
@@ -196,6 +199,7 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index('by_slug', ['slug'])
+    .index('by_shortId', ['shortId'])
     .index('by_reviewStatus', ['reviewStatus']),
 
   waitlist: defineTable({
@@ -224,6 +228,7 @@ export default defineSchema({
   models: defineTable({
     name: v.string(),
     slug: v.string(),
+    shortId: v.optional(v.string()),
     aliases: v.optional(v.array(v.string())),
     provider: v.string(),
     category: ModelCategory,
@@ -241,6 +246,7 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index('by_slug', ['slug'])
+    .index('by_shortId', ['shortId'])
     .index('by_provider', ['provider'])
     .index('by_category', ['category'])
     .index('by_reviewStatus', ['reviewStatus']),

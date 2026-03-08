@@ -13,13 +13,40 @@ export interface AIInstructionBlockAttrs {
 	content: string | null;
 }
 
-const typeColors: Record<InstructionType, { border: string; bg: string; text: string }> = {
-	prompt: { border: "border-blue-500/30", bg: "bg-blue-500/10", text: "text-blue-500" },
-	rule: { border: "border-purple-500/30", bg: "bg-purple-500/10", text: "text-purple-500" },
-	skill: { border: "border-emerald-500/30", bg: "bg-emerald-500/10", text: "text-emerald-500" },
-	mcp: { border: "border-pink-500/30", bg: "bg-pink-500/10", text: "text-pink-500" },
-	plugin: { border: "border-orange-500/30", bg: "bg-orange-500/10", text: "text-orange-500" },
-	subagent: { border: "border-indigo-500/30", bg: "bg-indigo-500/10", text: "text-indigo-500" },
+const typeColors: Record<
+	InstructionType,
+	{ border: string; bg: string; text: string }
+> = {
+	prompt: {
+		border: "border-blue-500/30",
+		bg: "bg-blue-500/10",
+		text: "text-blue-500",
+	},
+	rule: {
+		border: "border-purple-500/30",
+		bg: "bg-purple-500/10",
+		text: "text-purple-500",
+	},
+	skill: {
+		border: "border-emerald-500/30",
+		bg: "bg-emerald-500/10",
+		text: "text-emerald-500",
+	},
+	mcp: {
+		border: "border-pink-500/30",
+		bg: "bg-pink-500/10",
+		text: "text-pink-500",
+	},
+	plugin: {
+		border: "border-orange-500/30",
+		bg: "bg-orange-500/10",
+		text: "text-orange-500",
+	},
+	subagent: {
+		border: "border-indigo-500/30",
+		bg: "bg-indigo-500/10",
+		text: "text-indigo-500",
+	},
 };
 
 const typeLabels: Record<InstructionType, string> = {
@@ -31,25 +58,35 @@ const typeLabels: Record<InstructionType, string> = {
 	subagent: "Subagent",
 };
 
-function InstructionTooltipContent({ name, instructionType, description, content }: {
+function InstructionTooltipContent({
+	name,
+	instructionType,
+	description,
+	content,
+}: {
 	name: string;
 	instructionType: InstructionType;
 	description?: string;
 	content?: string;
 }) {
 	const colors = typeColors[instructionType] || typeColors.prompt;
-	const previewText = content
-		?.split(/\r?\n/)
-		.filter((line: string) => line.trim().length > 0)
-		.slice(0, 3)
-		.join("\n") || description;
+	const previewText =
+		content
+			?.split(/\r?\n/)
+			.filter((line: string) => line.trim().length > 0)
+			.slice(0, 3)
+			.join("\n") || description;
 
 	return (
 		<div className="min-w-[280px] border-[3px] border-stroke-strong bg-bg-panel-elevated p-4 shadow-[6px_6px_0_var(--stroke-strong)]">
-			<div className={`mb-3 border-b-2 border-stroke-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] ${colors.text}`}>
+			<div
+				className={`mb-3 border-b-2 border-stroke-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] ${colors.text}`}
+			>
 				{typeLabels[instructionType]}
 			</div>
-			<div className="mb-2 font-mono text-sm font-semibold text-fg-primary">{name}</div>
+			<div className="mb-2 font-mono text-sm font-semibold text-fg-primary">
+				{name}
+			</div>
 			{previewText && (
 				<div className="whitespace-pre-line text-xs leading-6 text-fg-secondary line-clamp-3">
 					{previewText}
@@ -63,7 +100,8 @@ function InstructionTooltipContent({ name, instructionType, description, content
 }
 
 function AIInstructionBlockView({ node }: NodeViewProps) {
-	const { name, instructionType, content } = node.attrs as AIInstructionBlockAttrs;
+	const { name, instructionType, content } =
+		node.attrs as AIInstructionBlockAttrs;
 	const [showModal, setShowModal] = useState(false);
 	const [copied, setCopied] = useState(false);
 	const context = useOptionalEditorContext();
@@ -85,7 +123,9 @@ function AIInstructionBlockView({ node }: NodeViewProps) {
 			onClick={() => content && setShowModal(true)}
 			className={`inline-flex cursor-pointer items-center gap-2 border ${colors.border} ${colors.bg} px-2 py-1 align-middle font-mono text-xs font-semibold uppercase text-fg-primary transition-all hover:opacity-80`}
 		>
-			<span className={`flex size-4 shrink-0 items-center justify-center border ${colors.border} ${colors.bg} ${colors.text}`}>
+			<span
+				className={`flex size-4 shrink-0 items-center justify-center border ${colors.border} ${colors.bg} ${colors.text}`}
+			>
 				<FileText className="size-3" />
 			</span>
 			<span>{name}</span>
@@ -93,7 +133,11 @@ function AIInstructionBlockView({ node }: NodeViewProps) {
 	);
 
 	return (
-		<NodeViewWrapper as="span" className="inline-flex items-center mx-1" style={{ verticalAlign: '0.05em' }}>
+		<NodeViewWrapper
+			as="span"
+			className="inline-flex items-center mx-1"
+			style={{ verticalAlign: "0.05em" }}
+		>
 			<HoverPreview
 				mode="wrapper"
 				position="above"
@@ -116,11 +160,11 @@ function AIInstructionBlockView({ node }: NodeViewProps) {
 
 			{/* Modal for viewing content */}
 			{showModal && (
-				<div 
+				<div
 					className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
 					onClick={() => setShowModal(false)}
 				>
-					<div 
+					<div
 						className="max-h-[80vh] w-full max-w-4xl overflow-auto border border-stroke-subtle bg-bg-panel p-6"
 						onClick={(e) => e.stopPropagation()}
 					>
@@ -129,7 +173,9 @@ function AIInstructionBlockView({ node }: NodeViewProps) {
 								<h3 className="font-mono text-sm font-bold uppercase text-fg-primary">
 									{name}
 								</h3>
-								<span className={`font-mono text-[10px] uppercase ${colors.text}`}>
+								<span
+									className={`font-mono text-[10px] uppercase ${colors.text}`}
+								>
 									{typeLabels[instructionType]}
 								</span>
 							</div>
@@ -181,10 +227,17 @@ export const AIInstructionBlock = Node.create({
 	addStorage() {
 		return {
 			markdown: {
-				serialize(state: { write: (text: string) => void }, node: { attrs: AIInstructionBlockAttrs }) {
+				serialize(
+					state: { write: (text: string) => void },
+					node: { attrs: AIInstructionBlockAttrs },
+				) {
 					// Serialize as HTML span that can be parsed back
-					const content = node.attrs.content ? encodeURIComponent(node.attrs.content) : '';
-					state.write(`<span data-ai-instruction-block="" data-instruction-name="${node.attrs.name}" data-instruction-type="${node.attrs.instructionType}" data-instruction-content="${content}">${node.attrs.name}</span>`);
+					const content = node.attrs.content
+						? encodeURIComponent(node.attrs.content)
+						: "";
+					state.write(
+						`<span data-ai-instruction-block="" data-instruction-name="${node.attrs.name}" data-instruction-type="${node.attrs.instructionType}" data-instruction-content="${content}">${node.attrs.name}</span>`,
+					);
 				},
 				parse: {
 					// No special markdown parsing needed - HTML parsing handles it
@@ -196,14 +249,24 @@ export const AIInstructionBlock = Node.create({
 	parseHTML() {
 		return [
 			{
-				tag: 'span[data-ai-instruction-block]',
+				tag: "span[data-ai-instruction-block]",
 				getAttrs: (element) => {
-					if (typeof element === 'string') return false;
+					if (typeof element === "string") return false;
 					const el = element as HTMLElement;
 					// Try multiple attribute formats for backwards compatibility
-					const name = el.getAttribute('data-instruction-name') || el.getAttribute('name') || el.textContent || '';
-					const instructionType = el.getAttribute('data-instruction-type') || el.getAttribute('instructiontype') || 'prompt';
-					let content = el.getAttribute('data-instruction-content') || el.getAttribute('content') || null;
+					const name =
+						el.getAttribute("data-instruction-name") ||
+						el.getAttribute("name") ||
+						el.textContent ||
+						"";
+					const instructionType =
+						el.getAttribute("data-instruction-type") ||
+						el.getAttribute("instructiontype") ||
+						"prompt";
+					let content =
+						el.getAttribute("data-instruction-content") ||
+						el.getAttribute("content") ||
+						null;
 					// Decode URL-encoded content
 					if (content) {
 						try {
@@ -220,10 +283,12 @@ export const AIInstructionBlock = Node.create({
 
 	renderHTML({ node }) {
 		// Encode content to handle special characters (newlines, quotes, etc.)
-		const encodedContent = node.attrs.content ? encodeURIComponent(node.attrs.content) : '';
+		const encodedContent = node.attrs.content
+			? encodeURIComponent(node.attrs.content)
+			: "";
 		return [
 			"span",
-			{ 
+			{
 				"data-ai-instruction-block": "",
 				"data-instruction-name": node.attrs.name,
 				"data-instruction-type": node.attrs.instructionType,

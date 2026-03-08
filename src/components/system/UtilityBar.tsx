@@ -8,7 +8,14 @@ type UtilityBarProps = React.HTMLAttributes<HTMLDivElement> & {
 	dense?: boolean;
 };
 
-function UtilityBar({ left, right, dense = false, className, children, ...props }: UtilityBarProps) {
+function UtilityBar({
+	left,
+	right,
+	dense = false,
+	className,
+	children,
+	...props
+}: UtilityBarProps) {
 	return (
 		<div
 			data-slot="utility-bar"

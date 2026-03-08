@@ -58,12 +58,26 @@ export interface ToolData {
 	}>;
 }
 
+interface SuggestionFormData {
+	name: string;
+	categories: string[];
+	websiteUrl?: string;
+	tiers: Array<{
+		name: string;
+		pricingType: "fixed" | "usage" | "mixed";
+		fixedAmount?: number;
+		fixedPeriod?: "month" | "year" | "one_time";
+	}>;
+}
+
 interface AddToolFormProps {
 	onCancel: () => void;
 	onToolCreated: (toolId: string) => void;
 	editTool?: ToolData;
 	onToolUpdated?: (toolId: Id<"tools">) => void;
 	isAdmin?: boolean;
+	editingSuggestion?: boolean;
+	onSuggestionUpdated?: (data: SuggestionFormData) => void;
 }
 
 export function AddToolForm({
@@ -72,6 +86,8 @@ export function AddToolForm({
 	editTool,
 	onToolUpdated,
 	isAdmin,
+	editingSuggestion,
+	onSuggestionUpdated,
 }: AddToolFormProps) {
 	const createTool = useMutation(api.tools.create);
 	const updateToolAdmin = useMutation(api.admin.updateToolFull);
@@ -104,14 +120,14 @@ export function AddToolForm({
 					fixedAmount: t.pricing.fixed?.amount ?? 0,
 					fixedPeriod: t.pricing.fixed?.period ?? "month",
 					isDefault: t.isDefault ?? false,
-				}))
+				})),
 			);
 		}
 	}, [editTool]);
 
 	const updateTier = (id: string, updates: Partial<TierFormData>) => {
 		setTiers((prev) =>
-			prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
+			prev.map((t) => (t.id === id ? { ...t, ...updates } : t)),
 		);
 	};
 
@@ -131,9 +147,7 @@ export function AddToolForm({
 	};
 
 	const setDefaultTier = (id: string) => {
-		setTiers((prev) =>
-			prev.map((t) => ({ ...t, isDefault: t.id === id }))
-		);
+		setTiers((prev) => prev.map((t) => ({ ...t, isDefault: t.id === id })));
 	};
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -141,15 +155,18 @@ export function AddToolForm({
 		const errors: typeof validationErrors = {};
 		if (!name.trim()) errors.name = true;
 		if (selectedCategories.length === 0) errors.categories = true;
-		if (tiers.length === 0 || !tiers.some((t) => t.name.trim())) errors.tiers = true;
-		
+		if (tiers.length === 0 || !tiers.some((t) => t.name.trim()))
+			errors.tiers = true;
+
 		setValidationErrors(errors);
-		
+
 		if (Object.keys(errors).length > 0) {
 			const errorMessages: string[] = [];
 			if (errors.name) errorMessages.push("Tool name is required");
-			if (errors.categories) errorMessages.push("At least one category is required");
-			if (errors.tiers) errorMessages.push("At least one tier with a name is required");
+			if (errors.categories)
+				errorMessages.push("At least one category is required");
+			if (errors.tiers)
+				errorMessages.push("At least one tier with a name is required");
 			setError(errorMessages.join(". "));
 			return;
 		}
@@ -165,7 +182,14 @@ export function AddToolForm({
 					: {}),
 			}));
 		try {
-			if (isEditMode && editTool) {
+			if (editingSuggestion && onSuggestionUpdated) {
+				onSuggestionUpdated({
+					name: name.trim(),
+					categories: selectedCategories,
+					websiteUrl: websiteUrl.trim() || undefined,
+					tiers: formattedTiers,
+				});
+			} else if (isEditMode && editTool) {
 				await updateToolAdmin({
 					toolId: editTool._id,
 					name: name.trim(),
@@ -185,7 +209,9 @@ export function AddToolForm({
 				onToolCreated(toolId);
 			}
 		} catch (err) {
-			let errorMessage = isEditMode ? "Failed to update tool" : "Failed to create tool";
+			let errorMessage = isEditMode
+				? "Failed to update tool"
+				: "Failed to create tool";
 			if (err instanceof Error) {
 				// Extract clean message from Convex error format
 				const match = err.message.match(/Uncaught Error: (.+?)(?:\s+at\s+|$)/);
@@ -201,12 +227,18 @@ export function AddToolForm({
 		<div>
 			<div className="mb-6">
 				<h2 className="font-mono text-lg font-bold text-fg-primary">
-					{isEditMode ? "Edit Tool" : "Add New Tool"}
+					{editingSuggestion
+						? "Edit Suggestion"
+						: isEditMode
+							? "Edit Tool"
+							: "Add New Tool"}
 				</h2>
 				<p className="mt-1 font-mono text-xs text-fg-muted">
-					{isEditMode
-						? "Update the tool details below"
-						: "Fill in the details below. Your tool will be submitted for review."}
+					{editingSuggestion
+						? "Modify the suggested changes before approving"
+						: isEditMode
+							? "Update the tool details below"
+							: "Fill in the details below. Your tool will be submitted for review."}
 				</p>
 			</div>
 
@@ -225,7 +257,10 @@ export function AddToolForm({
 
 					<div className="grid grid-cols-2 gap-4">
 						<div className="space-y-2">
-							<Label htmlFor="tool-name" className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
+							<Label
+								htmlFor="tool-name"
+								className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
+							>
 								Tool Name *
 							</Label>
 							<Input
@@ -233,7 +268,8 @@ export function AddToolForm({
 								value={name}
 								onChange={(e) => {
 									setName(e.target.value);
-									if (validationErrors.name) setValidationErrors((prev) => ({ ...prev, name: false }));
+									if (validationErrors.name)
+										setValidationErrors((prev) => ({ ...prev, name: false }));
 								}}
 								placeholder="e.g. Cursor, Claude, Windsurf"
 								className={`h-10 bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime ${validationErrors.name ? "border-destructive" : "border-stroke-subtle"}`}
@@ -271,12 +307,18 @@ export function AddToolForm({
 										src={iconUrl.trim()}
 										alt="Icon preview"
 										className="size-10 shrink-0 rounded border border-stroke-subtle object-contain p-0.5"
-										onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-										onLoad={(e) => { (e.target as HTMLImageElement).style.display = "block"; }}
+										onError={(e) => {
+											(e.target as HTMLImageElement).style.display = "none";
+										}}
+										onLoad={(e) => {
+											(e.target as HTMLImageElement).style.display = "block";
+										}}
 									/>
 								) : (
 									<div className="flex size-10 shrink-0 items-center justify-center rounded border border-stroke-subtle bg-bg-panel-muted">
-										<span className="font-mono text-[10px] text-fg-muted">Icon</span>
+										<span className="font-mono text-[10px] text-fg-muted">
+											Icon
+										</span>
 									</div>
 								)}
 								<Input
@@ -291,8 +333,14 @@ export function AddToolForm({
 					)}
 
 					<div className="space-y-2">
-						<Label className={`font-mono text-xs font-semibold uppercase tracking-wide ${validationErrors.categories ? "text-destructive" : "text-fg-secondary"}`}>Categories *</Label>
-						<div className={`flex flex-wrap gap-2 p-2 border ${validationErrors.categories ? "border-destructive" : "border-transparent"}`}>
+						<Label
+							className={`font-mono text-xs font-semibold uppercase tracking-wide ${validationErrors.categories ? "text-destructive" : "text-fg-secondary"}`}
+						>
+							Categories *
+						</Label>
+						<div
+							className={`flex flex-wrap gap-2 p-2 border ${validationErrors.categories ? "border-destructive" : "border-transparent"}`}
+						>
 							{categories.map((cat) => {
 								const isSelected = selectedCategories.includes(cat);
 								return (
@@ -301,9 +349,15 @@ export function AddToolForm({
 										type="button"
 										onClick={() => {
 											setSelectedCategories((prev) =>
-												isSelected ? prev.filter((c) => c !== cat) : [...prev, cat]
+												isSelected
+													? prev.filter((c) => c !== cat)
+													: [...prev, cat],
 											);
-											if (validationErrors.categories) setValidationErrors((prev) => ({ ...prev, categories: false }));
+											if (validationErrors.categories)
+												setValidationErrors((prev) => ({
+													...prev,
+													categories: false,
+												}));
 										}}
 										className={`px-3 py-1.5 font-mono text-xs uppercase tracking-wide border transition-colors ${
 											isSelected
@@ -322,7 +376,9 @@ export function AddToolForm({
 				{/* Pricing Tiers */}
 				<fieldset className="space-y-4">
 					<div className="flex items-center justify-between">
-						<legend className={`font-mono text-[10px] font-semibold uppercase tracking-widest ${validationErrors.tiers ? "text-destructive" : "text-accent-lime"}`}>
+						<legend
+							className={`font-mono text-[10px] font-semibold uppercase tracking-widest ${validationErrors.tiers ? "text-destructive" : "text-accent-lime"}`}
+						>
 							Pricing Tiers *
 						</legend>
 						<button
@@ -378,7 +434,11 @@ export function AddToolForm({
 											value={tier.name}
 											onChange={(e) => {
 												updateTier(tier.id, { name: e.target.value });
-												if (validationErrors.tiers) setValidationErrors((prev) => ({ ...prev, tiers: false }));
+												if (validationErrors.tiers)
+													setValidationErrors((prev) => ({
+														...prev,
+														tiers: false,
+													}));
 											}}
 											placeholder="e.g. Free, Pro"
 											className={`h-9 bg-bg-panel font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime ${validationErrors.tiers && !tier.name.trim() ? "border-destructive" : "border-stroke-subtle"}`}
@@ -392,7 +452,9 @@ export function AddToolForm({
 										<Select
 											value={tier.pricingType}
 											onValueChange={(v) =>
-												updateTier(tier.id, { pricingType: v as "fixed" | "usage" | "mixed" })
+												updateTier(tier.id, {
+													pricingType: v as "fixed" | "usage" | "mixed",
+												})
 											}
 										>
 											<SelectTrigger className="h-9 border-stroke-subtle bg-bg-panel font-mono text-sm text-fg-primary">
@@ -406,7 +468,8 @@ export function AddToolForm({
 										</Select>
 									</div>
 
-									{(tier.pricingType === "fixed" || tier.pricingType === "mixed") && (
+									{(tier.pricingType === "fixed" ||
+										tier.pricingType === "mixed") && (
 										<>
 											<div className="space-y-1.5">
 												<Label className="font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">
@@ -417,7 +480,11 @@ export function AddToolForm({
 													min={0}
 													step={0.01}
 													value={tier.fixedAmount}
-													onChange={(e) => updateTier(tier.id, { fixedAmount: Number(e.target.value) })}
+													onChange={(e) =>
+														updateTier(tier.id, {
+															fixedAmount: Number(e.target.value),
+														})
+													}
 													className="h-9 border-stroke-subtle bg-bg-panel font-mono text-sm text-fg-primary focus:border-accent-lime"
 												/>
 											</div>
@@ -428,7 +495,9 @@ export function AddToolForm({
 												<Select
 													value={tier.fixedPeriod}
 													onValueChange={(v) =>
-														updateTier(tier.id, { fixedPeriod: v as "month" | "year" | "one_time" })
+														updateTier(tier.id, {
+															fixedPeriod: v as "month" | "year" | "one_time",
+														})
 													}
 												>
 													<SelectTrigger className="h-9 border-stroke-subtle bg-bg-panel font-mono text-sm text-fg-primary">
@@ -492,6 +561,8 @@ interface AddToolModalProps {
 	editTool?: ToolData;
 	onToolUpdated?: (toolId: Id<"tools">) => void;
 	isAdmin?: boolean;
+	editingSuggestion?: boolean;
+	onSuggestionUpdated?: (data: SuggestionFormData) => void;
 }
 
 export function AddToolModal({
@@ -501,6 +572,8 @@ export function AddToolModal({
 	editTool,
 	onToolUpdated,
 	isAdmin,
+	editingSuggestion,
+	onSuggestionUpdated,
 }: AddToolModalProps) {
 	if (!open) return null;
 
@@ -531,6 +604,11 @@ export function AddToolModal({
 						onClose();
 					}}
 					isAdmin={isAdmin}
+					editingSuggestion={editingSuggestion}
+					onSuggestionUpdated={(data) => {
+						onSuggestionUpdated?.(data);
+						onClose();
+					}}
 				/>
 			</div>
 		</div>,

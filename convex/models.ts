@@ -1,6 +1,24 @@
-import { mutation, query } from './_generated/server'
+import { mutation, query, type QueryCtx } from './_generated/server'
 import { v } from 'convex/values'
 import { slugifyAscii } from '../src/lib/slug'
+
+const SHORT_ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'
+const SHORT_ID_LENGTH = 6
+
+async function generateUniqueShortId(ctx: QueryCtx): Promise<string> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    let shortId = ''
+    for (let i = 0; i < SHORT_ID_LENGTH; i++) {
+      shortId += SHORT_ID_CHARS[Math.floor(Math.random() * SHORT_ID_CHARS.length)]
+    }
+    const existing = await ctx.db
+      .query('models')
+      .withIndex('by_shortId', (q) => q.eq('shortId', shortId))
+      .first()
+    if (!existing) return shortId
+  }
+  throw new Error('Failed to generate unique shortId after 10 attempts')
+}
 
 const ModelCategory = v.union(
   v.literal('language'),
@@ -21,6 +39,7 @@ export const listAll = query({
       _id: v.id('models'),
       name: v.string(),
       slug: v.string(),
+      shortId: v.optional(v.string()),
       aliases: v.optional(v.array(v.string())),
       provider: v.string(),
       category: ModelCategory,
@@ -39,6 +58,7 @@ export const listAll = query({
       _id: m._id,
       name: m.name,
       slug: m.slug,
+      shortId: m.shortId,
       aliases: m.aliases,
       provider: m.provider,
       category: m.category,
@@ -108,9 +128,12 @@ export const create = mutation({
       suffix++
     }
 
+    const shortId = await generateUniqueShortId(ctx)
+
     const modelId = await ctx.db.insert('models', {
       name: args.name,
       slug,
+      shortId,
       provider: args.provider,
       category: args.category,
       websiteUrl: args.websiteUrl,

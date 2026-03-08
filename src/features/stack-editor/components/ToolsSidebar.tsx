@@ -111,7 +111,7 @@ function ToolsSidebar({
 		(tool: ToolSubscriptionEntry) => {
 			insertToolAtCursor({
 				name: tool.toolName,
-				iconUrl: tool.toolIconUrl,
+				shortId: tool.toolShortId,
 			});
 		},
 		[insertToolAtCursor],
@@ -185,8 +185,8 @@ function ToolsSidebar({
 		(model: ModelSubscriptionEntry) => {
 			insertModelAtCursor({
 				name: model.modelName,
+				shortId: model.modelShortId,
 				provider: model.modelProvider,
-				iconUrl: model.modelIconUrl,
 			});
 		},
 		[insertModelAtCursor],
@@ -197,7 +197,7 @@ function ToolsSidebar({
 		(bundle: BundleSubscriptionEntry) => {
 			insertBundleAtCursor({
 				name: bundle.bundleName,
-				iconUrl: bundle.bundleIconUrl ?? undefined,
+				shortId: bundle.bundleShortId,
 			});
 		},
 		[insertBundleAtCursor],

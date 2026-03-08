@@ -9,7 +9,12 @@ interface SignInDialogProps {
 	redirectTo?: string;
 }
 
-export function SignInDialog({ isOpen, onClose, message, redirectTo }: SignInDialogProps) {
+export function SignInDialog({
+	isOpen,
+	onClose,
+	message,
+	redirectTo,
+}: SignInDialogProps) {
 	const location = useLocation();
 	const redirect = redirectTo ?? location.pathname;
 

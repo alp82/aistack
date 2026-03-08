@@ -49,7 +49,7 @@ export function VerifyEmail(props: {
 
 						<Section style={styles.ctaWrap}>
 							<Link href={verifyUrl} style={styles.ctaAnimated}>
-								Verify Email  ⟶
+								Verify Email ⟶
 							</Link>
 						</Section>
 
@@ -60,7 +60,10 @@ export function VerifyEmail(props: {
 
 					<Section style={styles.footer}>
 						<Text style={styles.footerText}>
-							<Link href="https://aistack.to" style={styles.footerLink}>{productName}</Link> · {new Date().getFullYear()}
+							<Link href="https://aistack.to" style={styles.footerLink}>
+								{productName}
+							</Link>{" "}
+							· {new Date().getFullYear()}
 						</Text>
 					</Section>
 				</Container>

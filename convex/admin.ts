@@ -426,3 +426,35 @@ export const rejectToolEditSuggestion = mutation({
     })
   },
 })
+
+export const updateToolEditSuggestion = mutation({
+  args: {
+    suggestionId: v.id('toolEditSuggestions'),
+    suggestedName: v.string(),
+    suggestedCategories: v.array(v.string()),
+    suggestedWebsiteUrl: v.optional(v.string()),
+    suggestedTiers: v.array(
+      v.object({
+        name: v.string(),
+        pricingType: v.union(v.literal('fixed'), v.literal('usage'), v.literal('mixed')),
+        fixedAmount: v.optional(v.number()),
+        fixedPeriod: v.optional(v.union(v.literal('month'), v.literal('year'), v.literal('one_time'))),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    if (!(await isAdmin(ctx))) {
+      throw new Error('Unauthorized')
+    }
+
+    const suggestion = await ctx.db.get(args.suggestionId)
+    if (!suggestion) throw new Error('Suggestion not found')
+
+    await ctx.db.patch(args.suggestionId, {
+      suggestedName: args.suggestedName,
+      suggestedCategories: args.suggestedCategories,
+      suggestedWebsiteUrl: args.suggestedWebsiteUrl,
+      suggestedTiers: args.suggestedTiers,
+    })
+  },
+})

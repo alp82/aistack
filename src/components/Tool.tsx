@@ -42,7 +42,9 @@ export function Tool({
 					</span>
 				</div>
 				<div className="shrink-0 text-right">
-					<span className="font-mono text-lg font-bold text-fg-primary">${avgCost}</span>
+					<span className="font-mono text-lg font-bold text-fg-primary">
+						${avgCost}
+					</span>
 					<span className="block font-mono text-[10px] text-fg-muted">/mo</span>
 				</div>
 			</div>
@@ -51,7 +53,9 @@ export function Tool({
 			<div className="flex-1 space-y-3 overflow-hidden px-4 py-3">
 				{pros.length > 0 && (
 					<div>
-						<p className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-accent-lime">Pros:</p>
+						<p className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-accent-lime">
+							Pros:
+						</p>
 						<ul className="space-y-0.5">
 							{pros.slice(0, 4).map((pro, index) => (
 								<li
@@ -68,7 +72,9 @@ export function Tool({
 
 				{cons.length > 0 && (
 					<div>
-						<p className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-destructive">Cons:</p>
+						<p className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-destructive">
+							Cons:
+						</p>
 						<ul className="space-y-0.5">
 							{cons.slice(0, 4).map((con, index) => (
 								<li

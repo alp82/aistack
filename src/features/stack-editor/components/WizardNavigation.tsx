@@ -9,7 +9,11 @@ type WizardNavigationProps = {
 	onNext: () => void;
 };
 
-function WizardNavigation({ currentStep, onPrevious, onNext }: WizardNavigationProps) {
+function WizardNavigation({
+	currentStep,
+	onPrevious,
+	onNext,
+}: WizardNavigationProps) {
 	const currentIndex = steps.findIndex((s) => s.id === currentStep);
 	const isFirst = currentIndex === 0;
 	const isLast = currentIndex === steps.length - 1;

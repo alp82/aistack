@@ -44,31 +44,33 @@ export function ResetPasswordEmail(props: {
 						<Heading style={styles.h1}>Reset Your Password</Heading>
 
 						<Text style={styles.p}>
-							We received a request to reset your {productName} password.
-							Click below to choose a new one. This link expires in 1 hour.
+							We received a request to reset your {productName} password. Click
+							below to choose a new one. This link expires in 1 hour.
 						</Text>
 
 						<Section style={styles.ctaWrap}>
 							<Link href={resetUrl} style={styles.ctaAnimated}>
-								Reset Password  ⟶
+								Reset Password ⟶
 							</Link>
 						</Section>
 
 						<Text style={styles.small}>
-							Didn't request this? Ignore this email — your password stays the same.
+							Didn't request this? Ignore this email — your password stays the
+							same.
 						</Text>
 
 						<Hr style={styles.hr} />
 
-						<Text style={styles.small}>
-							Button not working? Copy this URL:
-						</Text>
+						<Text style={styles.small}>Button not working? Copy this URL:</Text>
 						<Text style={styles.codeBlock}>{resetUrl}</Text>
 					</Section>
 
 					<Section style={styles.footer}>
 						<Text style={styles.footerText}>
-							<Link href="https://aistack.to" style={styles.footerLink}>{productName}</Link> · {new Date().getFullYear()}
+							<Link href="https://aistack.to" style={styles.footerLink}>
+								{productName}
+							</Link>{" "}
+							· {new Date().getFullYear()}
 						</Text>
 					</Section>
 				</Container>

@@ -184,6 +184,92 @@ pnpm dlx shadcn@latest add [component-name]
 - Use Chrome DevTools MCP for debugging and reviewing code updates
 - **Dev Admin Access**: In development mode, a "Dev Admin Login" button appears on the login page. It signs in as `dev-admin@example.com` with admin privileges. This requires the Convex env var `IS_DEV=true` to be set (email verification is also skipped when `IS_DEV=true`)
 
+## Database Migrations
+
+Migration scripts are located in `convex/migrations/`. Run them via the Convex Dashboard or CLI.
+
+### Running Migrations via Convex Dashboard
+
+1. Open your Convex Dashboard at https://dashboard.convex.dev
+2. Navigate to your project → **Functions** tab
+3. Find the migration function under `migrations/`
+4. Click on the function and use **Run Function** to execute it
+
+### Running Migrations via CLI
+
+```bash
+# Run an internal query (read-only, for previews)
+npx convex run migrations/backup:exportStackDescriptions
+
+# Run an internal mutation (makes changes)
+npx convex run migrations/populateShortIds:populateAllShortIds
+```
+
+### Available Migration Scripts
+
+#### `migrations/backup.ts` - Backup & Restore
+
+| Function | Type | Description |
+|----------|------|-------------|
+| `exportStackDescriptions` | Query | Export all stack descriptions as JSON backup |
+| `exportShortIdMappings` | Query | Export tool/model/bundle shortId mappings |
+| `restoreStackDescription` | Mutation | Restore a single stack from backup |
+| `restoreStackDescriptionsBatch` | Mutation | Restore multiple stacks from backup array |
+
+#### `migrations/populateShortIds.ts` - ShortId Population
+
+| Function | Type | Description |
+|----------|------|-------------|
+| `getMissingCounts` | Query | Check how many records are missing shortId |
+| `populateAllShortIds` | Mutation | Populate shortIds for all tools, models, bundles |
+| `populateToolShortIds` | Mutation | Populate shortIds for tools only |
+| `populateModelShortIds` | Mutation | Populate shortIds for models only |
+| `populateBundleShortIds` | Mutation | Populate shortIds for bundles only |
+
+#### `migrations/migrateStackDescriptions.ts` - Description Migration
+
+| Function | Type | Description |
+|----------|------|-------------|
+| `getStackCounts` | Query | Count stacks with legacy blocks (iconurl attributes) |
+| `dryRunMigration` | Query | Preview what would be migrated without changes |
+| `previewStackMigration` | Query | Preview migration for a single stack |
+| `migrateAllStackDescriptions` | Mutation | Run the actual migration on all stacks |
+
+### Migration Workflow
+
+**Before running migrations on production, always create a backup first!**
+
+```bash
+# Step 1: Backup existing stack descriptions
+npx convex run migrations/backup:exportStackDescriptions > backup-stacks.json
+
+# Step 2: Check how many records need shortId population
+npx convex run migrations/populateShortIds:getMissingCounts
+
+# Step 3: Populate shortIds for tools, models, and bundles
+npx convex run migrations/populateShortIds:populateAllShortIds
+
+# Step 4: Preview description migration (dry run)
+npx convex run migrations/migrateStackDescriptions:dryRunMigration
+
+# Step 5: Run the actual description migration
+npx convex run migrations/migrateStackDescriptions:migrateAllStackDescriptions
+```
+
+### Restoring from Backup
+
+If something goes wrong, restore from your backup:
+
+```bash
+# For a single stack
+npx convex run migrations/backup:restoreStackDescription \
+  '{"stackId": "k1234...", "description": "<p>Original content...</p>"}'
+
+# For multiple stacks (pass JSON array)
+npx convex run migrations/backup:restoreStackDescriptionsBatch \
+  '{"backups": [{"stackId": "k1234...", "description": "..."}]}'
+```
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please read our contributing guidelines and submit pull requests to the main branch.

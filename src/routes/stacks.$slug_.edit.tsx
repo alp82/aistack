@@ -1,4 +1,9 @@
-import { createFileRoute, Link, useNavigate, useLocation } from "@tanstack/react-router";
+import {
+	createFileRoute,
+	Link,
+	useNavigate,
+	useLocation,
+} from "@tanstack/react-router";
 import { useConvexAuth } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
@@ -39,7 +44,7 @@ function EditStackPage() {
 		if (authLoading) return;
 		if (!isAuthenticated) {
 			navigate({ to: "/signin", search: { redirect: location.pathname } });
-			return
+			return;
 		}
 
 		getOrCreateCreator({ imageUrl: userImageUrl })
@@ -49,13 +54,17 @@ function EditStackPage() {
 			})
 			.catch(() => {
 				setLoadingCreator(false);
-			})
+			});
 	}, [isAuthenticated, authLoading, getOrCreateCreator, navigate]);
 
 	// Redirect to canonical slug if URL slug prefix is stale/wrong
 	useEffect(() => {
 		if (stackData && stackData.slug !== slug) {
-			navigate({ to: "/stacks/$slug/edit", params: { slug: stackData.slug }, replace: true });
+			navigate({
+				to: "/stacks/$slug/edit",
+				params: { slug: stackData.slug },
+				replace: true,
+			});
 		}
 	}, [stackData, slug, navigate]);
 
@@ -64,7 +73,7 @@ function EditStackPage() {
 			<div className="flex min-h-screen items-center justify-center bg-bg-canvas">
 				<div className="font-mono text-sm text-fg-muted">Loading...</div>
 			</div>
-		)
+		);
 	}
 
 	if (stackData === null || !creator) {
@@ -82,7 +91,7 @@ function EditStackPage() {
 					</Link>
 				</div>
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -127,11 +136,12 @@ function EditStackPage() {
 					modelSlug: m.modelSlug,
 					modelName: m.modelName,
 					modelProvider: m.modelProvider,
-					modelCategory: m.modelCategory as ModelSubscriptionEntry["modelCategory"],
+					modelCategory:
+						m.modelCategory as ModelSubscriptionEntry["modelCategory"],
 					modelIconUrl: m.modelIconUrl,
 					role: m.role,
 				})),
 			}}
 		/>
-	)
+	);
 }

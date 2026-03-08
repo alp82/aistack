@@ -23,7 +23,11 @@ function FieldShell({
 	...props
 }: FieldShellProps) {
 	return (
-		<div data-slot="field-shell" className={cn("space-y-2", className)} {...props}>
+		<div
+			data-slot="field-shell"
+			className={cn("space-y-2", className)}
+			{...props}
+		>
 			{label && (
 				<div className="flex items-center justify-between gap-2">
 					<label
@@ -33,10 +37,14 @@ function FieldShell({
 						{label}
 						{required && <span className="ml-1 text-accent-lime">*</span>}
 					</label>
-					{labelAdornment && <div className="text-xs text-fg-muted">{labelAdornment}</div>}
+					{labelAdornment && (
+						<div className="text-xs text-fg-muted">{labelAdornment}</div>
+					)}
 				</div>
 			)}
-			<div className="rounded-xs border border-stroke-subtle bg-bg-panel-muted/40 p-1">{children}</div>
+			<div className="rounded-xs border border-stroke-subtle bg-bg-panel-muted/40 p-1">
+				{children}
+			</div>
 			{error ? (
 				<p role="alert" className="text-xs font-medium text-destructive">
 					{error}

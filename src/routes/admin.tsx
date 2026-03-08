@@ -25,17 +25,24 @@ function AdminPage() {
 	const pendingTools = useQuery(api.admin.getPendingTools);
 	const pendingBundles = useQuery(api.admin.getPendingBundles);
 	const pendingModels = useQuery(api.admin.getPendingModels);
-	const pendingEditSuggestions = useQuery(api.admin.getPendingToolEditSuggestions);
+	const pendingEditSuggestions = useQuery(
+		api.admin.getPendingToolEditSuggestions,
+	);
 	const approveTool = useMutation(api.admin.approveTool);
 	const rejectTool = useMutation(api.admin.rejectTool);
 	const approveBundle = useMutation(api.admin.approveBundle);
 	const rejectBundle = useMutation(api.admin.rejectBundle);
 	const approveModel = useMutation(api.admin.approveModel);
 	const rejectModel = useMutation(api.admin.rejectModel);
-	const approveEditSuggestion = useMutation(api.admin.approveToolEditSuggestion);
+	const approveEditSuggestion = useMutation(
+		api.admin.approveToolEditSuggestion,
+	);
 	const rejectEditSuggestion = useMutation(api.admin.rejectToolEditSuggestion);
+	const updateEditSuggestion = useMutation(api.admin.updateToolEditSuggestion);
 
 	const [editingTool, setEditingTool] = useState<ToolData | null>(null);
+	const [editingSuggestionId, setEditingSuggestionId] =
+		useState<Id<"toolEditSuggestions"> | null>(null);
 
 	if (isAdmin === undefined) {
 		return (
@@ -97,7 +104,9 @@ function AdminPage() {
 		}
 	};
 
-	const handleApproveEditSuggestion = async (suggestionId: Id<"toolEditSuggestions">) => {
+	const handleApproveEditSuggestion = async (
+		suggestionId: Id<"toolEditSuggestions">,
+	) => {
 		try {
 			await approveEditSuggestion({ suggestionId });
 		} catch (error) {
@@ -105,7 +114,9 @@ function AdminPage() {
 		}
 	};
 
-	const handleRejectEditSuggestion = async (suggestionId: Id<"toolEditSuggestions">) => {
+	const handleRejectEditSuggestion = async (
+		suggestionId: Id<"toolEditSuggestions">,
+	) => {
 		try {
 			await rejectEditSuggestion({ suggestionId });
 		} catch (error) {
@@ -117,23 +128,52 @@ function AdminPage() {
 		<div className="min-h-screen bg-bg-canvas">
 			<AddToolModal
 				open={!!editingTool}
-				onClose={() => setEditingTool(null)}
+				onClose={() => {
+					setEditingTool(null);
+					setEditingSuggestionId(null);
+				}}
 				onToolCreated={() => {}}
 				editTool={editingTool || undefined}
-				onToolUpdated={() => setEditingTool(null)}
+				onToolUpdated={() => {
+					setEditingTool(null);
+					setEditingSuggestionId(null);
+				}}
 				isAdmin={true}
+				editingSuggestion={!!editingSuggestionId}
+				onSuggestionUpdated={async (data) => {
+					if (editingSuggestionId) {
+						await updateEditSuggestion({
+							suggestionId: editingSuggestionId,
+							suggestedName: data.name,
+							suggestedCategories: data.categories,
+							suggestedWebsiteUrl: data.websiteUrl,
+							suggestedTiers: data.tiers.map((t) => ({
+								name: t.name,
+								pricingType: t.pricingType,
+								fixedAmount: t.fixedAmount,
+								fixedPeriod: t.fixedPeriod,
+							})),
+						});
+					}
+					setEditingTool(null);
+					setEditingSuggestionId(null);
+				}}
 			/>
 
 			<section className="py-12 sm:py-16">
 				<div className="mx-auto max-w-6xl px-4 sm:px-6">
 					<div className="mb-8 flex items-center gap-3">
 						<Wrench className="size-8 text-accent-lime" />
-						<h1 className="text-2xl font-bold tracking-tight text-fg-primary sm:text-3xl">Tool Review</h1>
+						<h1 className="text-2xl font-bold tracking-tight text-fg-primary sm:text-3xl">
+							Tool Review
+						</h1>
 					</div>
 
 					{!pendingTools || pendingTools.length === 0 ? (
 						<div className="border-2 border-dashed border-stroke-subtle px-4 py-12 text-center">
-							<p className="font-mono text-sm text-fg-muted">No pending tools to review</p>
+							<p className="font-mono text-sm text-fg-muted">
+								No pending tools to review
+							</p>
 						</div>
 					) : (
 						<div className="space-y-5">
@@ -144,7 +184,12 @@ function AdminPage() {
 								>
 									<div className="mb-4 flex items-start justify-between gap-4">
 										<div className="flex items-start gap-4">
-											<ItemIcon src={tool.iconUrl} alt={tool.name} size="lg" fallbackIcon={Wrench} />
+											<ItemIcon
+												src={tool.iconUrl}
+												alt={tool.name}
+												size="lg"
+												fallbackIcon={Wrench}
+											/>
 											<div>
 												<h3 className="font-mono text-lg font-semibold text-fg-primary">
 													{tool.name}
@@ -191,7 +236,8 @@ function AdminPage() {
 													{tier.pricing.pricingType === "fixed" &&
 														tier.pricing.fixed && (
 															<span className="font-mono text-sm text-accent-lime">
-																${tier.pricing.fixed.amount}/{tier.pricing.fixed.period}
+																${tier.pricing.fixed.amount}/
+																{tier.pricing.fixed.period}
 															</span>
 														)}
 												</div>
@@ -229,18 +275,26 @@ function AdminPage() {
 														/>
 													) : (
 														<div className="flex size-5 items-center justify-center border border-stroke-subtle bg-bg-panel-muted font-mono text-[10px] font-bold text-fg-muted">
-															{(tool.submitterInfo.name || tool.submitterInfo.email || "?")[0].toUpperCase()}
+															{(tool.submitterInfo.name ||
+																tool.submitterInfo.email ||
+																"?")[0].toUpperCase()}
 														</div>
 													)}
 													<span className="font-mono text-xs">
-														{tool.submitterInfo.name || tool.submitterInfo.email}
+														{tool.submitterInfo.name ||
+															tool.submitterInfo.email}
 													</span>
 												</div>
 											) : (
 												<span className="font-mono text-xs">Unknown</span>
 											)}
 											<span className="font-mono text-[10px]">
-												• {new Date(tool.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+												•{" "}
+												{new Date(tool.createdAt).toLocaleDateString("en-US", {
+													month: "short",
+													day: "numeric",
+													year: "numeric",
+												})}
 											</span>
 										</div>
 									</div>
@@ -256,12 +310,16 @@ function AdminPage() {
 				<div className="mx-auto max-w-6xl px-4 sm:px-6">
 					<div className="mb-8 flex items-center gap-3">
 						<Pencil className="size-8 text-accent-lime" />
-						<h2 className="text-2xl font-bold tracking-tight text-fg-primary sm:text-3xl">Tool Edit Suggestions</h2>
+						<h2 className="text-2xl font-bold tracking-tight text-fg-primary sm:text-3xl">
+							Tool Edit Suggestions
+						</h2>
 					</div>
 
 					{!pendingEditSuggestions || pendingEditSuggestions.length === 0 ? (
 						<div className="border-2 border-dashed border-stroke-subtle px-4 py-12 text-center">
-							<p className="font-mono text-sm text-fg-muted">No pending edit suggestions to review</p>
+							<p className="font-mono text-sm text-fg-muted">
+								No pending edit suggestions to review
+							</p>
 						</div>
 					) : (
 						<div className="space-y-5">
@@ -272,38 +330,49 @@ function AdminPage() {
 								>
 									<div className="mb-4 flex items-start justify-between gap-4">
 										<h3 className="font-mono text-lg font-semibold text-fg-primary">
-											Edit suggestion for: {suggestion.originalTool?.name ?? "Unknown Tool"}
+											Edit suggestion for:{" "}
+											{suggestion.originalTool?.name ?? "Unknown Tool"}
 										</h3>
 										{suggestion.originalTool && (
 											<button
 												type="button"
-												onClick={() => setEditingTool({
-													_id: suggestion.originalTool!._id,
-													name: suggestion.suggestedName,
-													categories: suggestion.suggestedCategories,
-													websiteUrl: suggestion.suggestedWebsiteUrl,
-													iconUrl: suggestion.originalTool!.iconUrl,
-													tiers: suggestion.suggestedTiers.map((t, i) => ({
-														tierId: `tier-${i + 1}`,
-														name: t.name,
-														pricing: {
-															pricingType: t.pricingType as "fixed" | "usage" | "mixed",
-															...(t.pricingType === "fixed" || t.pricingType === "mixed"
-																? {
-																	fixed: {
-																		currency: "USD",
-																		amount: t.fixedAmount ?? 0,
-																		period: (t.fixedPeriod ?? "month") as "month" | "year" | "one_time",
-																	},
-																}
-																: {}),
-														},
-													})),
-												})}
+												onClick={() => {
+													setEditingSuggestionId(suggestion._id);
+													setEditingTool({
+														_id: suggestion.originalTool!._id,
+														name: suggestion.suggestedName,
+														categories: suggestion.suggestedCategories,
+														websiteUrl: suggestion.suggestedWebsiteUrl,
+														iconUrl: suggestion.originalTool!.iconUrl,
+														tiers: suggestion.suggestedTiers.map((t, i) => ({
+															tierId: `tier-${i + 1}`,
+															name: t.name,
+															pricing: {
+																pricingType: t.pricingType as
+																	| "fixed"
+																	| "usage"
+																	| "mixed",
+																...(t.pricingType === "fixed" ||
+																t.pricingType === "mixed"
+																	? {
+																			fixed: {
+																				currency: "USD",
+																				amount: t.fixedAmount ?? 0,
+																				period: (t.fixedPeriod ?? "month") as
+																					| "month"
+																					| "year"
+																					| "one_time",
+																			},
+																		}
+																	: {}),
+															},
+														})),
+													});
+												}}
 												className="inline-flex items-center gap-2 border border-stroke-subtle px-3 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-accent-lime hover:text-accent-lime shrink-0"
 											>
 												<Edit2 className="size-3.5" />
-												Edit Tool
+												Edit Suggestion
 											</button>
 										)}
 									</div>
@@ -315,9 +384,24 @@ function AdminPage() {
 												Original
 											</h4>
 											<div className="space-y-2 font-mono text-sm">
-												<p><span className="text-fg-muted">Name:</span> <span className="text-fg-primary">{suggestion.originalTool?.name}</span></p>
-												<p><span className="text-fg-muted">Categories:</span> <span className="text-fg-primary">{suggestion.originalTool?.categories.join(", ")}</span></p>
-												<p><span className="text-fg-muted">URL:</span> <span className="text-fg-primary">{suggestion.originalTool?.websiteUrl || "—"}</span></p>
+												<p>
+													<span className="text-fg-muted">Name:</span>{" "}
+													<span className="text-fg-primary">
+														{suggestion.originalTool?.name}
+													</span>
+												</p>
+												<p>
+													<span className="text-fg-muted">Categories:</span>{" "}
+													<span className="text-fg-primary">
+														{suggestion.originalTool?.categories.join(", ")}
+													</span>
+												</p>
+												<p>
+													<span className="text-fg-muted">URL:</span>{" "}
+													<span className="text-fg-primary">
+														{suggestion.originalTool?.websiteUrl || "—"}
+													</span>
+												</p>
 											</div>
 										</div>
 
@@ -327,9 +411,47 @@ function AdminPage() {
 												Suggested Changes
 											</h4>
 											<div className="space-y-2 font-mono text-sm">
-												<p><span className="text-fg-muted">Name:</span> <span className={suggestion.suggestedName !== suggestion.originalTool?.name ? "text-accent-lime font-bold" : "text-fg-primary"}>{suggestion.suggestedName}</span></p>
-												<p><span className="text-fg-muted">Categories:</span> <span className={JSON.stringify(suggestion.suggestedCategories) !== JSON.stringify(suggestion.originalTool?.categories) ? "text-accent-lime font-bold" : "text-fg-primary"}>{suggestion.suggestedCategories.join(", ")}</span></p>
-												<p><span className="text-fg-muted">URL:</span> <span className={suggestion.suggestedWebsiteUrl !== suggestion.originalTool?.websiteUrl ? "text-accent-lime font-bold" : "text-fg-primary"}>{suggestion.suggestedWebsiteUrl || "—"}</span></p>
+												<p>
+													<span className="text-fg-muted">Name:</span>{" "}
+													<span
+														className={
+															suggestion.suggestedName !==
+															suggestion.originalTool?.name
+																? "text-accent-lime font-bold"
+																: "text-fg-primary"
+														}
+													>
+														{suggestion.suggestedName}
+													</span>
+												</p>
+												<p>
+													<span className="text-fg-muted">Categories:</span>{" "}
+													<span
+														className={
+															JSON.stringify(suggestion.suggestedCategories) !==
+															JSON.stringify(
+																suggestion.originalTool?.categories,
+															)
+																? "text-accent-lime font-bold"
+																: "text-fg-primary"
+														}
+													>
+														{suggestion.suggestedCategories.join(", ")}
+													</span>
+												</p>
+												<p>
+													<span className="text-fg-muted">URL:</span>{" "}
+													<span
+														className={
+															suggestion.suggestedWebsiteUrl !==
+															suggestion.originalTool?.websiteUrl
+																? "text-accent-lime font-bold"
+																: "text-fg-primary"
+														}
+													>
+														{suggestion.suggestedWebsiteUrl || "—"}
+													</span>
+												</p>
 											</div>
 										</div>
 									</div>
@@ -348,13 +470,16 @@ function AdminPage() {
 													<span className="font-mono text-sm font-medium text-fg-primary">
 														{tier.name}
 													</span>
-													{tier.pricingType === "fixed" && tier.fixedAmount !== undefined && (
-														<span className="font-mono text-sm text-accent-lime">
-															${tier.fixedAmount}/{tier.fixedPeriod}
-														</span>
-													)}
+													{tier.pricingType === "fixed" &&
+														tier.fixedAmount !== undefined && (
+															<span className="font-mono text-sm text-accent-lime">
+																${tier.fixedAmount}/{tier.fixedPeriod}
+															</span>
+														)}
 													{tier.pricingType === "usage" && (
-														<span className="font-mono text-sm text-fg-muted">Usage-based</span>
+														<span className="font-mono text-sm text-fg-muted">
+															Usage-based
+														</span>
 													)}
 												</div>
 											))}
@@ -367,7 +492,9 @@ function AdminPage() {
 											<h4 className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-muted">
 												Reason for Changes
 											</h4>
-											<p className="font-mono text-sm text-fg-secondary">{suggestion.reason}</p>
+											<p className="font-mono text-sm text-fg-secondary">
+												{suggestion.reason}
+											</p>
 										</div>
 									)}
 
@@ -375,7 +502,9 @@ function AdminPage() {
 										<div className="flex gap-3">
 											<button
 												type="button"
-												onClick={() => handleApproveEditSuggestion(suggestion._id)}
+												onClick={() =>
+													handleApproveEditSuggestion(suggestion._id)
+												}
 												className="inline-flex items-center gap-2 border-2 border-green-500 bg-green-500 px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-green-600"
 											>
 												<Check className="size-3.5" />
@@ -383,7 +512,9 @@ function AdminPage() {
 											</button>
 											<button
 												type="button"
-												onClick={() => handleRejectEditSuggestion(suggestion._id)}
+												onClick={() =>
+													handleRejectEditSuggestion(suggestion._id)
+												}
 												className="inline-flex items-center gap-2 border-2 border-destructive bg-destructive px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-destructive/90"
 											>
 												<X className="size-3.5" />
@@ -401,18 +532,25 @@ function AdminPage() {
 														/>
 													) : (
 														<div className="flex size-5 items-center justify-center border border-stroke-subtle bg-bg-panel-muted font-mono text-[10px] font-bold text-fg-muted">
-															{(suggestion.submitterInfo.name || suggestion.submitterInfo.email || "?")[0].toUpperCase()}
+															{(suggestion.submitterInfo.name ||
+																suggestion.submitterInfo.email ||
+																"?")[0].toUpperCase()}
 														</div>
 													)}
 													<span className="font-mono text-xs">
-														{suggestion.submitterInfo.name || suggestion.submitterInfo.email}
+														{suggestion.submitterInfo.name ||
+															suggestion.submitterInfo.email}
 													</span>
 												</div>
 											) : (
 												<span className="font-mono text-xs">Unknown</span>
 											)}
 											<span className="font-mono text-[10px]">
-												• {new Date(suggestion.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+												•{" "}
+												{new Date(suggestion.createdAt).toLocaleDateString(
+													"en-US",
+													{ month: "short", day: "numeric", year: "numeric" },
+												)}
 											</span>
 										</div>
 									</div>
@@ -428,12 +566,16 @@ function AdminPage() {
 				<div className="mx-auto max-w-6xl px-4 sm:px-6">
 					<div className="mb-8 flex items-center gap-3">
 						<Package className="size-8 text-accent-lime" />
-						<h2 className="text-2xl font-bold tracking-tight text-fg-primary sm:text-3xl">Bundle Review</h2>
+						<h2 className="text-2xl font-bold tracking-tight text-fg-primary sm:text-3xl">
+							Bundle Review
+						</h2>
 					</div>
 
 					{!pendingBundles || pendingBundles.length === 0 ? (
 						<div className="border-2 border-dashed border-stroke-subtle px-4 py-12 text-center">
-							<p className="font-mono text-sm text-fg-muted">No pending bundles to review</p>
+							<p className="font-mono text-sm text-fg-muted">
+								No pending bundles to review
+							</p>
 						</div>
 					) : (
 						<div className="space-y-5">
@@ -444,7 +586,12 @@ function AdminPage() {
 								>
 									<div className="mb-4 flex items-start justify-between gap-4">
 										<div className="flex items-start gap-4">
-											<ItemIcon src={bundle.iconUrl} alt={bundle.name} size="lg" fallbackIcon={Package} />
+											<ItemIcon
+												src={bundle.iconUrl}
+												alt={bundle.name}
+												size="lg"
+												fallbackIcon={Package}
+											/>
 											<div>
 												<h3 className="font-mono text-lg font-semibold text-fg-primary">
 													{bundle.name}
@@ -502,7 +649,8 @@ function AdminPage() {
 													{tier.pricing.pricingType === "fixed" &&
 														tier.pricing.fixed && (
 															<span className="font-mono text-sm text-accent-lime">
-																${tier.pricing.fixed.amount}/{tier.pricing.fixed.period}
+																${tier.pricing.fixed.amount}/
+																{tier.pricing.fixed.period}
 															</span>
 														)}
 												</div>
@@ -540,18 +688,25 @@ function AdminPage() {
 														/>
 													) : (
 														<div className="flex size-5 items-center justify-center border border-stroke-subtle bg-bg-panel-muted font-mono text-[10px] font-bold text-fg-muted">
-															{(bundle.submitterInfo.name || bundle.submitterInfo.email || "?")[0].toUpperCase()}
+															{(bundle.submitterInfo.name ||
+																bundle.submitterInfo.email ||
+																"?")[0].toUpperCase()}
 														</div>
 													)}
 													<span className="font-mono text-xs">
-														{bundle.submitterInfo.name || bundle.submitterInfo.email}
+														{bundle.submitterInfo.name ||
+															bundle.submitterInfo.email}
 													</span>
 												</div>
 											) : (
 												<span className="font-mono text-xs">Unknown</span>
 											)}
 											<span className="font-mono text-[10px]">
-												• {new Date(bundle.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+												•{" "}
+												{new Date(bundle.createdAt).toLocaleDateString(
+													"en-US",
+													{ month: "short", day: "numeric", year: "numeric" },
+												)}
 											</span>
 										</div>
 									</div>
@@ -567,12 +722,16 @@ function AdminPage() {
 				<div className="mx-auto max-w-6xl px-4 sm:px-6">
 					<div className="mb-8 flex items-center gap-3">
 						<Brain className="size-8 text-accent-lime" />
-						<h2 className="text-2xl font-bold tracking-tight text-fg-primary sm:text-3xl">Model Review</h2>
+						<h2 className="text-2xl font-bold tracking-tight text-fg-primary sm:text-3xl">
+							Model Review
+						</h2>
 					</div>
 
 					{!pendingModels || pendingModels.length === 0 ? (
 						<div className="border-2 border-dashed border-stroke-subtle px-4 py-12 text-center">
-							<p className="font-mono text-sm text-fg-muted">No pending models to review</p>
+							<p className="font-mono text-sm text-fg-muted">
+								No pending models to review
+							</p>
 						</div>
 					) : (
 						<div className="space-y-5">
@@ -583,13 +742,19 @@ function AdminPage() {
 								>
 									<div className="mb-4 flex items-start justify-between gap-4">
 										<div className="flex items-start gap-4">
-											<ItemIcon src={model.iconUrl} alt={model.name} size="lg" fallbackIcon={Brain} />
+											<ItemIcon
+												src={model.iconUrl}
+												alt={model.name}
+												size="lg"
+												fallbackIcon={Brain}
+											/>
 											<div>
 												<h3 className="font-mono text-lg font-semibold text-fg-primary">
 													{model.name}
 												</h3>
 												<p className="font-mono text-xs text-fg-muted">
-													Provider: {model.provider} · Category: {model.category}
+													Provider: {model.provider} · Category:{" "}
+													{model.category}
 												</p>
 												{model.description && (
 													<p className="mt-1 font-mono text-xs text-fg-secondary">
@@ -608,7 +773,8 @@ function AdminPage() {
 												)}
 												{model.contextWindow && (
 													<p className="font-mono text-xs text-fg-muted">
-														Context: {model.contextWindow.toLocaleString()} tokens
+														Context: {model.contextWindow.toLocaleString()}{" "}
+														tokens
 													</p>
 												)}
 											</div>
@@ -645,18 +811,26 @@ function AdminPage() {
 														/>
 													) : (
 														<div className="flex size-5 items-center justify-center border border-stroke-subtle bg-bg-panel-muted font-mono text-[10px] font-bold text-fg-muted">
-															{(model.submitterInfo.name || model.submitterInfo.email || "?")[0].toUpperCase()}
+															{(model.submitterInfo.name ||
+																model.submitterInfo.email ||
+																"?")[0].toUpperCase()}
 														</div>
 													)}
 													<span className="font-mono text-xs">
-														{model.submitterInfo.name || model.submitterInfo.email}
+														{model.submitterInfo.name ||
+															model.submitterInfo.email}
 													</span>
 												</div>
 											) : (
 												<span className="font-mono text-xs">Unknown</span>
 											)}
 											<span className="font-mono text-[10px]">
-												• {new Date(model.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+												•{" "}
+												{new Date(model.createdAt).toLocaleDateString("en-US", {
+													month: "short",
+													day: "numeric",
+													year: "numeric",
+												})}
 											</span>
 										</div>
 									</div>

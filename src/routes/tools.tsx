@@ -2,14 +2,25 @@ import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "convex/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, ExternalLink, Pencil, Plus, Search, Terminal } from "lucide-react";
+import {
+	ChevronLeft,
+	ChevronRight,
+	ExternalLink,
+	Pencil,
+	Plus,
+	Search,
+	Terminal,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { GridBackground } from "../components/GridBackground";
 import { PageHeader } from "../components/PageHeader";
 import { SortDropdown } from "../components/SortDropdown";
 import { Input } from "../components/ui/input";
-import { SuggestEditModal, type ToolForSuggestion } from "../components/SuggestEditModal";
+import {
+	SuggestEditModal,
+	type ToolForSuggestion,
+} from "../components/SuggestEditModal";
 import { categoryConfig, type ToolCategory } from "../config/categoryConfig";
 import { cn } from "../lib/utils";
 import type { LandingStackPreview } from "@/features/landing/sections/FeaturedStacksSection";
@@ -27,9 +38,7 @@ export const Route = createFileRoute("/tools")({
 	component: ToolsPage,
 	loader: async ({ context }) => {
 		await Promise.all([
-			context.queryClient.ensureQueryData(
-				convexQuery(api.tools.listAll, {}),
-			),
+			context.queryClient.ensureQueryData(convexQuery(api.tools.listAll, {})),
 			context.queryClient.ensureQueryData(
 				convexQuery(api.stacks.listPublished, {}),
 			),
@@ -124,12 +133,15 @@ export const Route = createFileRoute("/tools")({
 	}),
 });
 
-function formatPrice(tier: { pricing: { pricingType: string; fixed?: { amount: number; period: string } } }) {
+function formatPrice(tier: {
+	pricing: { pricingType: string; fixed?: { amount: number; period: string } };
+}) {
 	if (tier.pricing.pricingType === "usage") return "Usage";
 	if (!tier.pricing.fixed) return "—";
 	const { amount, period } = tier.pricing.fixed;
 	if (amount === 0) return "Free";
-	const periodLabel = period === "one_time" ? "" : `/${period === "month" ? "mo" : "yr"}`;
+	const periodLabel =
+		period === "one_time" ? "" : `/${period === "month" ? "mo" : "yr"}`;
 	return `$${amount}${periodLabel}`;
 }
 
@@ -139,9 +151,11 @@ function ToolsPage() {
 	const [sortOption, setSortOption] = useState<ToolSortOption>("newest");
 	const [searchQuery, setSearchQuery] = useState("");
 	const [currentPage, setCurrentPage] = useState(1);
-	const [suggestEditTool, setSuggestEditTool] = useState<ToolForSuggestion | null>(null);
+	const [suggestEditTool, setSuggestEditTool] =
+		useState<ToolForSuggestion | null>(null);
 	const tools = useQuery(api.tools.listAll) ?? [];
-	const stacks = (useQuery(api.stacks.listPublished) ?? []) as LandingStackPreview[];
+	const stacks = (useQuery(api.stacks.listPublished) ??
+		[]) as LandingStackPreview[];
 
 	const toolUsageCounts = useMemo(() => {
 		const counts = new Map<string, number>();
@@ -164,7 +178,10 @@ function ToolsPage() {
 	}, [tools]);
 
 	const filteredTools = useMemo(() => {
-		let result = filter === "ALL" ? [...tools] : tools.filter((t) => t.categories.includes(filter));
+		let result =
+			filter === "ALL"
+				? [...tools]
+				: tools.filter((t) => t.categories.includes(filter));
 
 		if (searchQuery.trim()) {
 			const q = searchQuery.trim().toLowerCase();
@@ -177,7 +194,9 @@ function ToolsPage() {
 
 		result.sort((a, b) => {
 			if (sortOption === "most_used") {
-				return (toolUsageCounts.get(b._id) ?? 0) - (toolUsageCounts.get(a._id) ?? 0);
+				return (
+					(toolUsageCounts.get(b._id) ?? 0) - (toolUsageCounts.get(a._id) ?? 0)
+				);
 			}
 			return b._id.localeCompare(a._id);
 		});
@@ -185,7 +204,10 @@ function ToolsPage() {
 		return result;
 	}, [tools, filter, searchQuery, sortOption, toolUsageCounts]);
 
-	const totalPages = Math.max(1, Math.ceil(filteredTools.length / TOOLS_PER_PAGE));
+	const totalPages = Math.max(
+		1,
+		Math.ceil(filteredTools.length / TOOLS_PER_PAGE),
+	);
 	const safeCurrentPage = Math.min(currentPage, totalPages);
 	const paginatedTools = filteredTools.slice(
 		(safeCurrentPage - 1) * TOOLS_PER_PAGE,
@@ -199,7 +221,12 @@ function ToolsPage() {
 			<div className="relative z-10 max-w-content mx-auto py-24">
 				<PageHeader
 					label="TOOLS"
-					title={<>AI TOOLS FOR <br />YOUR STACK</>}
+					title={
+						<>
+							AI TOOLS FOR <br />
+							YOUR STACK
+						</>
+					}
 					description="A curated selection of high-performance AI tools you can use to build your product. Validated by real shipping capability."
 					action={{
 						label: "Add AI Tool",
@@ -214,7 +241,10 @@ function ToolsPage() {
 						<Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-fg-muted" />
 						<Input
 							value={searchQuery}
-							onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+							onChange={(e) => {
+								setSearchQuery(e.target.value);
+								setCurrentPage(1);
+							}}
 							placeholder="Search tools by name or category..."
 							className="h-12 pl-11 border-stroke-strong bg-bg-panel font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
 						/>
@@ -222,7 +252,10 @@ function ToolsPage() {
 					<SortDropdown
 						options={TOOL_SORT_OPTIONS}
 						value={sortOption}
-						onChange={(v) => { setSortOption(v); setCurrentPage(1); }}
+						onChange={(v) => {
+							setSortOption(v);
+							setCurrentPage(1);
+						}}
 					/>
 				</div>
 
@@ -232,7 +265,10 @@ function ToolsPage() {
 						<button
 							key={cat}
 							type="button"
-							onClick={() => { setFilter(cat); setCurrentPage(1); }}
+							onClick={() => {
+								setFilter(cat);
+								setCurrentPage(1);
+							}}
 							className={cn(
 								"px-6 py-3 font-mono text-xs uppercase tracking-widest font-bold border transition-all",
 								filter === cat
@@ -240,14 +276,17 @@ function ToolsPage() {
 										? "bg-accent-lime text-accent-lime-contrast border-accent-lime"
 										: `${categoryConfig[cat as ToolCategory]?.bgColor ?? "bg-accent-lime"} ${categoryConfig[cat as ToolCategory]?.textColor ?? "text-accent-lime-contrast"} ${categoryConfig[cat as ToolCategory]?.borderColor ?? "border-accent-lime"}`
 									: cn(
-										"bg-bg-canvas text-fg-muted hover:text-fg-primary",
-										cat === "ALL"
-											? "border-stroke-strong hover:border-accent-lime"
-											: categoryConfig[cat as ToolCategory]?.borderColor ?? "border-stroke-strong"
-									)
+											"bg-bg-canvas text-fg-muted hover:text-fg-primary",
+											cat === "ALL"
+												? "border-stroke-strong hover:border-accent-lime"
+												: (categoryConfig[cat as ToolCategory]?.borderColor ??
+														"border-stroke-strong"),
+										),
 							)}
 						>
-							{cat === "ALL" ? "All" : categoryConfig[cat as ToolCategory]?.label ?? cat}
+							{cat === "ALL"
+								? "All"
+								: (categoryConfig[cat as ToolCategory]?.label ?? cat)}
 						</button>
 					))}
 				</div>
@@ -255,7 +294,11 @@ function ToolsPage() {
 				{/* Tools Grid */}
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 					{paginatedTools.map((tool) => (
-						<ToolCard key={tool._id} tool={tool} onSuggestEdit={setSuggestEditTool} />
+						<ToolCard
+							key={tool._id}
+							tool={tool}
+							onSuggestEdit={setSuggestEditTool}
+						/>
 					))}
 				</div>
 
@@ -288,7 +331,7 @@ function ToolsPage() {
 									"flex size-10 items-center justify-center border font-mono text-sm font-bold transition-colors",
 									page === safeCurrentPage
 										? "border-accent-lime bg-accent-lime text-accent-lime-contrast"
-										: "border-stroke-strong text-fg-muted hover:border-accent-lime hover:text-accent-lime"
+										: "border-stroke-strong text-fg-muted hover:border-accent-lime hover:text-accent-lime",
 								)}
 							>
 								{page}
@@ -307,10 +350,16 @@ function ToolsPage() {
 
 				{filteredTools.length === 0 && (
 					<div className="py-24 text-center border-2 border-dashed border-stroke-strong">
-						<div className="text-fg-muted font-mono uppercase tracking-widest mb-4">No Tools Found</div>
+						<div className="text-fg-muted font-mono uppercase tracking-widest mb-4">
+							No Tools Found
+						</div>
 						<button
 							type="button"
-							onClick={() => { setFilter("ALL"); setSearchQuery(""); setCurrentPage(1); }}
+							onClick={() => {
+								setFilter("ALL");
+								setSearchQuery("");
+								setCurrentPage(1);
+							}}
 							className="px-6 py-3 font-mono text-xs uppercase tracking-widest font-bold border border-stroke-strong text-fg-muted hover:text-fg-primary hover:border-fg-muted transition-colors"
 						>
 							Clear Filters
@@ -322,9 +371,17 @@ function ToolsPage() {
 	);
 }
 
-type ToolFromDB = NonNullable<ReturnType<typeof useQuery<typeof api.tools.listAll>>>[number];
+type ToolFromDB = NonNullable<
+	ReturnType<typeof useQuery<typeof api.tools.listAll>>
+>[number];
 
-function ToolCard({ tool, onSuggestEdit }: { tool: ToolFromDB; onSuggestEdit: (tool: ToolForSuggestion) => void }) {
+function ToolCard({
+	tool,
+	onSuggestEdit,
+}: {
+	tool: ToolFromDB;
+	onSuggestEdit: (tool: ToolForSuggestion) => void;
+}) {
 	const maxVisible = tool.categories.length > 3 ? 2 : 3;
 	const visibleCats = tool.categories.slice(0, maxVisible);
 	const hiddenCats = tool.categories.slice(maxVisible);
@@ -340,7 +397,11 @@ function ToolCard({ tool, onSuggestEdit }: { tool: ToolFromDB; onSuggestEdit: (t
 			<div className="flex items-center gap-4 mb-5">
 				<div className="w-12 h-12 bg-bg-panel border border-stroke-strong flex items-center justify-center text-fg-primary transition-colors overflow-hidden shrink-0">
 					{tool.iconUrl ? (
-						<img src={tool.iconUrl} alt={tool.name} className="w-8 h-8 object-contain" />
+						<img
+							src={tool.iconUrl}
+							alt={tool.name}
+							className="w-8 h-8 object-contain"
+						/>
 					) : (
 						<Terminal size={20} />
 					)}
@@ -357,14 +418,20 @@ function ToolCard({ tool, onSuggestEdit }: { tool: ToolFromDB; onSuggestEdit: (t
 				</div>
 				<ul className="space-y-1.5">
 					{tool.tiers.map((tier) => (
-						<li key={tier.tierId} className="flex items-center justify-between text-xs font-mono">
+						<li
+							key={tier.tierId}
+							className="flex items-center justify-between text-xs font-mono"
+						>
 							<span className="text-fg-muted">{tier.name}</span>
-							<span className={cn(
-								"font-bold",
-								tier.pricing.fixed?.amount === 0 || tier.pricing.pricingType === "usage"
-									? "text-accent-lime"
-									: "text-fg-primary"
-							)}>
+							<span
+								className={cn(
+									"font-bold",
+									tier.pricing.fixed?.amount === 0 ||
+										tier.pricing.pricingType === "usage"
+										? "text-accent-lime"
+										: "text-fg-primary",
+								)}
+							>
 								{formatPrice(tier)}
 							</span>
 						</li>
@@ -394,9 +461,7 @@ function ToolCard({ tool, onSuggestEdit }: { tool: ToolFromDB; onSuggestEdit: (t
 					})}
 					{hiddenCats.length > 0 && (
 						<span className="relative group/more">
-							<span
-								className="inline-flex items-center px-2 py-1.5 text-[10px] font-mono uppercase tracking-wider border border-stroke-strong text-fg-muted hover:text-fg-primary hover:border-fg-muted transition-colors cursor-default"
-							>
+							<span className="inline-flex items-center px-2 py-1.5 text-[10px] font-mono uppercase tracking-wider border border-stroke-strong text-fg-muted hover:text-fg-primary hover:border-fg-muted transition-colors cursor-default">
 								+{hiddenCats.length} more
 							</span>
 							<span className="absolute bottom-full left-0 mb-1.5 hidden group-hover/more:flex flex-wrap gap-1 bg-bg-panel border border-stroke-strong p-2 rounded shadow-lg z-10 min-w-max">

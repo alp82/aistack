@@ -27,7 +27,7 @@ function UpvoteButton({
 				size === "lg" && "w-16 sm:w-20 py-2",
 				upvoted
 					? "bg-accent-lime text-accent-lime-contrast"
-					: "bg-bg-panel-muted text-fg-primary hover:bg-accent-lime/20 hover:text-accent-lime"
+					: "bg-bg-panel-muted text-fg-primary hover:bg-accent-lime/20 hover:text-accent-lime",
 			)}
 		>
 			<svg
@@ -36,7 +36,7 @@ function UpvoteButton({
 					"fill-current",
 					size === "sm" && "size-3 mb-0.5",
 					size === "md" && "size-4 mb-0.5",
-					size === "lg" && "size-5 mb-0.5"
+					size === "lg" && "size-5 mb-0.5",
 				)}
 			>
 				<path d="M12 4L3 15h18L12 4z" />
@@ -46,7 +46,7 @@ function UpvoteButton({
 					"font-mono font-black",
 					size === "sm" && "text-xs",
 					size === "md" && "text-base",
-					size === "lg" && "text-lg"
+					size === "lg" && "text-lg",
 				)}
 			>
 				{count}

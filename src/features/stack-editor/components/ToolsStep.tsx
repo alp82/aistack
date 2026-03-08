@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp, Package } from "lucide-react";
-import { ToolPicker, type ToolSubscriptionEntry } from "@/components/ToolPicker";
-import { BundlePicker, type BundleSubscriptionEntry } from "@/components/BundlePicker";
+import {
+	ToolPicker,
+	type ToolSubscriptionEntry,
+} from "@/components/ToolPicker";
+import {
+	BundlePicker,
+	type BundleSubscriptionEntry,
+} from "@/components/BundlePicker";
 import { cn } from "@/lib/utils";
 
 type ToolsStepProps = {
@@ -21,7 +27,9 @@ function ToolsStep({
 	guestSession = false,
 	onSignInRequired,
 }: ToolsStepProps) {
-	const [showBundles, setShowBundles] = useState(bundleSubscriptions.length > 0);
+	const [showBundles, setShowBundles] = useState(
+		bundleSubscriptions.length > 0,
+	);
 
 	return (
 		<div className="space-y-8">
@@ -47,9 +55,9 @@ function ToolsStep({
 							{toolSubscriptions.length} selected
 						</span>
 					</div>
-					<ToolPicker 
-						value={toolSubscriptions} 
-						onChange={onToolsChange} 
+					<ToolPicker
+						value={toolSubscriptions}
+						onChange={onToolsChange}
 						guestSession={guestSession}
 						onSignInRequired={onSignInRequired}
 					/>
@@ -68,9 +76,19 @@ function ToolsStep({
 						)}
 					>
 						<div className="flex items-center gap-3">
-							<Package className={cn("size-5", showBundles ? "text-accent-lime" : "text-fg-muted")} />
+							<Package
+								className={cn(
+									"size-5",
+									showBundles ? "text-accent-lime" : "text-fg-muted",
+								)}
+							/>
 							<div className="text-left">
-								<p className={cn("font-mono text-xs uppercase tracking-wider", showBundles ? "text-accent-lime" : "text-fg-muted")}>
+								<p
+									className={cn(
+										"font-mono text-xs uppercase tracking-wider",
+										showBundles ? "text-accent-lime" : "text-fg-muted",
+									)}
+								>
 									Bundles
 								</p>
 								<p className="font-mono text-[10px] text-fg-muted">
@@ -89,8 +107,8 @@ function ToolsStep({
 
 					{showBundles && (
 						<div className="mt-4">
-							<BundlePicker 
-								value={bundleSubscriptions} 
+							<BundlePicker
+								value={bundleSubscriptions}
 								onChange={onBundlesChange}
 								guestSession={guestSession}
 								onSignInRequired={onSignInRequired}

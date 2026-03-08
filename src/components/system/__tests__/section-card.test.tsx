@@ -7,13 +7,20 @@ import { SectionCard } from "@/components/system/SectionCard";
 describe("SectionCard", () => {
 	it("renders heading copy and content", () => {
 		render(
-			<SectionCard title="Metadata" description="Update stack metadata before publishing.">
+			<SectionCard
+				title="Metadata"
+				description="Update stack metadata before publishing."
+			>
 				<div>Inner content</div>
 			</SectionCard>,
 		);
 
-		expect(screen.getByRole("heading", { level: 2, name: "Metadata" })).toBeDefined();
-		expect(screen.getByText("Update stack metadata before publishing.")).toBeDefined();
+		expect(
+			screen.getByRole("heading", { level: 2, name: "Metadata" }),
+		).toBeDefined();
+		expect(
+			screen.getByText("Update stack metadata before publishing."),
+		).toBeDefined();
 		expect(screen.getByText("Inner content")).toBeDefined();
 	});
 

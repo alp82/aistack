@@ -62,7 +62,10 @@ describe("landing sections", () => {
 			level: 1,
 			name: /ship faster from the command line/i,
 		});
-		const feedHeading = screen.getByRole("heading", { level: 2, name: /live stack feed/i });
+		const feedHeading = screen.getByRole("heading", {
+			level: 2,
+			name: /live stack feed/i,
+		});
 		const explainerHeading = screen.getByRole("heading", {
 			level: 2,
 			name: /how this works/i,
@@ -72,8 +75,12 @@ describe("landing sections", () => {
 			name: /join the private terminal log/i,
 		});
 
-		expect(heroHeading.compareDocumentPosition(feedHeading)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-		expect(feedHeading.compareDocumentPosition(explainerHeading)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+		expect(heroHeading.compareDocumentPosition(feedHeading)).toBe(
+			Node.DOCUMENT_POSITION_FOLLOWING,
+		);
+		expect(feedHeading.compareDocumentPosition(explainerHeading)).toBe(
+			Node.DOCUMENT_POSITION_FOLLOWING,
+		);
 		expect(explainerHeading.compareDocumentPosition(waitlistHeading)).toBe(
 			Node.DOCUMENT_POSITION_FOLLOWING,
 		);

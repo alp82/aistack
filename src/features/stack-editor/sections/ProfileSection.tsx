@@ -34,10 +34,17 @@ export function ProfileSection({
 	status,
 	isActive,
 }: ProfileSectionProps) {
-	const teamSizeInvalid = isTeam && (!Number.isInteger(teamSize) || teamSize < 2);
+	const teamSizeInvalid =
+		isTeam && (!Number.isInteger(teamSize) || teamSize < 2);
 	const oneLinerInvalid = !oneLiner.trim();
-	const oneLinerErrorId = status.state === "error" && oneLinerInvalid ? "profile-one-liner-error" : undefined;
-	const teamSizeErrorId = status.state === "error" && teamSizeInvalid ? "profile-team-size-error" : undefined;
+	const oneLinerErrorId =
+		status.state === "error" && oneLinerInvalid
+			? "profile-one-liner-error"
+			: undefined;
+	const teamSizeErrorId =
+		status.state === "error" && teamSizeInvalid
+			? "profile-team-size-error"
+			: undefined;
 
 	return (
 		<SectionCard
@@ -54,7 +61,9 @@ export function ProfileSection({
 					<div className="flex items-center justify-between">
 						<div>
 							<Label className="text-sm text-gray-400 mb-1">Display Name</Label>
-							<div className="text-lg font-semibold text-white">{creator.name}</div>
+							<div className="text-lg font-semibold text-white">
+								{creator.name}
+							</div>
 						</div>
 						<div className="flex items-center gap-2">
 							<Button
@@ -89,9 +98,9 @@ export function ProfileSection({
 									<Twitter className="h-4 w-4" />
 									<span>@</span>
 								</div>
-				<Input
-					value={xHandle}
-					onChange={(event) => onXHandleChange(event.target.value)}
+								<Input
+									value={xHandle}
+									onChange={(event) => onXHandleChange(event.target.value)}
 									placeholder="alperortac"
 									className="flex-1 bg-slate-700/50 border-gray-600 text-white"
 								/>
@@ -100,23 +109,25 @@ export function ProfileSection({
 						{isTeam && (
 							<div>
 								<Label className="text-sm text-gray-400 mb-2">Team Size</Label>
-						<Input
-							type="number"
-							min={2}
-							max={99}
-							value={teamSize}
-							onChange={(event) => onTeamSizeChange(Number(event.target.value))}
-							className="bg-slate-700/50 border-gray-600 text-white"
-							aria-invalid={teamSizeInvalid || undefined}
-							aria-describedby={teamSizeErrorId}
-						/>
-						{teamSizeErrorId && (
-							<p id={teamSizeErrorId} className="text-xs text-red-300 mt-1">
-								Team size must be at least 2
-							</p>
+								<Input
+									type="number"
+									min={2}
+									max={99}
+									value={teamSize}
+									onChange={(event) =>
+										onTeamSizeChange(Number(event.target.value))
+									}
+									className="bg-slate-700/50 border-gray-600 text-white"
+									aria-invalid={teamSizeInvalid || undefined}
+									aria-describedby={teamSizeErrorId}
+								/>
+								{teamSizeErrorId && (
+									<p id={teamSizeErrorId} className="text-xs text-red-300 mt-1">
+										Team size must be at least 2
+									</p>
+								)}
+							</div>
 						)}
-					</div>
-				)}
 					</div>
 				</div>
 			</div>
@@ -136,7 +147,9 @@ export function ProfileSection({
 						One-liner summary is required
 					</p>
 				)}
-				<p className="text-xs text-gray-500 mt-1">Visible on search results and stack header.</p>
+				<p className="text-xs text-gray-500 mt-1">
+					Visible on search results and stack header.
+				</p>
 			</div>
 		</SectionCard>
 	);

@@ -88,7 +88,7 @@ export function SuggestEditModal({
 					pricingType: t.pricing.pricingType,
 					fixedAmount: t.pricing.fixed?.amount ?? 0,
 					fixedPeriod: t.pricing.fixed?.period ?? "month",
-				}))
+				})),
 			);
 			setReason("");
 			setError("");
@@ -98,7 +98,7 @@ export function SuggestEditModal({
 
 	const updateTier = (id: string, updates: Partial<TierFormData>) => {
 		setTiers((prev) =>
-			prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
+			prev.map((t) => (t.id === id ? { ...t, ...updates } : t)),
 		);
 	};
 
@@ -151,7 +151,7 @@ export function SuggestEditModal({
 			}, 1500);
 		} catch (err) {
 			setError(
-				err instanceof Error ? err.message : "Failed to submit suggestion"
+				err instanceof Error ? err.message : "Failed to submit suggestion",
 			);
 		} finally {
 			setSaving(false);
@@ -186,7 +186,8 @@ export function SuggestEditModal({
 						</h2>
 					</div>
 					<p className="font-mono text-xs text-fg-muted">
-						Propose changes to this tool. Your suggestion will be reviewed by an admin.
+						Propose changes to this tool. Your suggestion will be reviewed by an
+						admin.
 					</p>
 				</div>
 
@@ -259,7 +260,7 @@ export function SuggestEditModal({
 														setSelectedCategories((prev) =>
 															isSelected
 																? prev.filter((c) => c !== cat)
-																: [...prev, cat]
+																: [...prev, cat],
 														);
 													}}
 													className={`px-3 py-1.5 font-mono text-xs uppercase tracking-wide border transition-colors ${
@@ -442,6 +443,6 @@ export function SuggestEditModal({
 				)}
 			</div>
 		</div>,
-		document.body
+		document.body,
 	);
 }

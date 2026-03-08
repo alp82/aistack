@@ -1,5 +1,5 @@
-import { SimpleSimulator } from './SimpleSimulator'
+import { SimpleSimulator } from "./SimpleSimulator";
 
 export function SimulatorSection() {
-  return <SimpleSimulator />
+	return <SimpleSimulator />;
 }

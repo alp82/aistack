@@ -40,7 +40,9 @@ describe("editor status ui", () => {
 			settings: { state: "complete" },
 		};
 
-		render(<StackEditorSidebar activeSection="tools" sectionStatuses={statuses} />);
+		render(
+			<StackEditorSidebar activeSection="tools" sectionStatuses={statuses} />,
+		);
 
 		const tools = screen.getByRole("button", { name: /Tools Stack/i });
 		const profile = screen.getByRole("button", { name: /Profile & Bio/i });
@@ -54,7 +56,11 @@ describe("editor status ui", () => {
 	it("marks required profile controls with aria-invalid", () => {
 		render(
 			<ProfileSection
-				creator={{ _id: "creator_1" as never, name: "Builder", slug: "builder" }}
+				creator={{
+					_id: "creator_1" as never,
+					name: "Builder",
+					slug: "builder",
+				}}
 				oneLiner=""
 				onOneLinerChange={() => {}}
 				xHandle=""
@@ -68,9 +74,13 @@ describe("editor status ui", () => {
 			/>,
 		);
 
-		expect(screen.getByPlaceholderText(/What is this stack about/i).getAttribute("aria-invalid")).toBe(
+		expect(
+			screen
+				.getByPlaceholderText(/What is this stack about/i)
+				.getAttribute("aria-invalid"),
+		).toBe("true");
+		expect(screen.getByDisplayValue("1").getAttribute("aria-invalid")).toBe(
 			"true",
 		);
-		expect(screen.getByDisplayValue("1").getAttribute("aria-invalid")).toBe("true");
 	});
 });

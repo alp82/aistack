@@ -28,7 +28,10 @@ function StackCarousel({ compact = false }: { compact?: boolean }) {
 	}
 
 	const cardWidth = compact
-		? Math.min(STACK_CARD_WIDTH, window.innerWidth < 640 ? window.innerWidth - 32 : 600)
+		? Math.min(
+				STACK_CARD_WIDTH,
+				window.innerWidth < 640 ? window.innerWidth - 32 : 600,
+			)
 		: STACK_CARD_WIDTH;
 	const cardHeight = compact
 		? Math.min(STACK_CARD_HEIGHT, 380)
@@ -158,22 +161,28 @@ export const Route = createFileRoute("/about")({
 });
 
 function AboutPage() {
-	const [highlightedFeature, setHighlightedFeature] = useState<string | null>(null);
+	const [highlightedFeature, setHighlightedFeature] = useState<string | null>(
+		null,
+	);
 
 	useEffect(() => {
-		document.querySelectorAll(".cost-highlight, .context-highlight, .sharing-highlight").forEach((el) => {
-			el.classList.remove(
-				"bg-yellow-500/20",
-				"border-yellow-500/30",
-				"bg-blue-500/20",
-				"border-blue-500/50",
-				"shadow-lg",
-				"shadow-blue-500/20",
-				"border-green-500/70",
-				"shadow-2xl",
-				"shadow-green-500/30",
-			);
-		});
+		document
+			.querySelectorAll(
+				".cost-highlight, .context-highlight, .sharing-highlight",
+			)
+			.forEach((el) => {
+				el.classList.remove(
+					"bg-yellow-500/20",
+					"border-yellow-500/30",
+					"bg-blue-500/20",
+					"border-blue-500/50",
+					"shadow-lg",
+					"shadow-blue-500/20",
+					"border-green-500/70",
+					"shadow-2xl",
+					"shadow-green-500/30",
+				);
+			});
 
 		if (highlightedFeature === "cost") {
 			document.querySelectorAll(".cost-highlight").forEach((el) => {
@@ -222,7 +231,9 @@ function AboutPage() {
 						<DollarSign className="size-6" />
 					</div>
 					<div className="min-w-0 flex-1">
-						<div className="mb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">01</div>
+						<div className="mb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
+							01
+						</div>
 						<h3 className="text-lg font-bold uppercase tracking-tight text-fg-primary transition-colors group-hover:text-accent-lime">
 							See real costs
 						</h3>
@@ -246,7 +257,9 @@ function AboutPage() {
 					}
 				}}
 				onTouchStart={() => {
-					setHighlightedFeature(highlightedFeature === "context" ? null : "context");
+					setHighlightedFeature(
+						highlightedFeature === "context" ? null : "context",
+					);
 				}}
 			>
 				<div className="flex items-start gap-4">
@@ -254,7 +267,9 @@ function AboutPage() {
 						<Lightbulb className="size-6" />
 					</div>
 					<div className="min-w-0 flex-1">
-						<div className="mb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">02</div>
+						<div className="mb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
+							02
+						</div>
 						<h3 className="text-lg font-bold uppercase tracking-tight text-fg-primary transition-colors group-hover:text-accent-lime">
 							Understand
 						</h3>
@@ -278,7 +293,9 @@ function AboutPage() {
 					}
 				}}
 				onTouchStart={() => {
-					setHighlightedFeature(highlightedFeature === "sharing" ? null : "sharing");
+					setHighlightedFeature(
+						highlightedFeature === "sharing" ? null : "sharing",
+					);
 				}}
 			>
 				<div className="flex items-start gap-4">
@@ -286,7 +303,9 @@ function AboutPage() {
 						<Copy className="size-6" />
 					</div>
 					<div className="min-w-0 flex-1">
-						<div className="mb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">03</div>
+						<div className="mb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
+							03
+						</div>
 						<h3 className="text-lg font-bold uppercase tracking-tight text-fg-primary transition-colors group-hover:text-accent-lime">
 							Clone workflows
 						</h3>
@@ -306,7 +325,12 @@ function AboutPage() {
 				<div className="mx-auto max-w-content">
 					<PageHeader
 						label="ABOUT"
-						title={<>LEARN FROM REAL <br /><span className="text-accent-lime">AI BUILDERS</span></>}
+						title={
+							<>
+								LEARN FROM REAL <br />
+								<span className="text-accent-lime">AI BUILDERS</span>
+							</>
+						}
 					/>
 
 					<div className="grid items-center gap-12 lg:grid-cols-2">

@@ -158,7 +158,7 @@ function DetailsStep({
 									"w-10 h-7 text-center rounded text-xs font-bold transition-colors",
 									isTeam
 										? "bg-accent-lime-contrast text-accent-lime"
-										: "bg-bg-panel-muted text-fg-muted"
+										: "bg-bg-panel-muted text-fg-muted",
 								)}
 							/>
 						</button>
@@ -209,7 +209,10 @@ function DetailsStep({
 			{/* Short Summary (textarea) */}
 			<div className="space-y-1">
 				<div className="flex items-center justify-between">
-					<label htmlFor="one-liner" className="font-mono text-[10px] uppercase tracking-widest text-fg-muted">
+					<label
+						htmlFor="one-liner"
+						className="font-mono text-[10px] uppercase tracking-widest text-fg-muted"
+					>
 						Short Summary
 					</label>
 					<span className="font-mono text-[10px] text-fg-muted">

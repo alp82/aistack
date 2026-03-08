@@ -43,7 +43,7 @@ function BrutalButton({
 				primary
 					? "bg-accent-lime text-accent-lime-contrast border-accent-lime hover:bg-accent-lime-strong"
 					: "bg-transparent text-fg-primary border-fg-primary hover:bg-bg-panel",
-				className
+				className,
 			)}
 		>
 			<div className="flex items-center gap-3">{children}</div>
@@ -83,7 +83,7 @@ function BrutalButtonLink({
 				primary
 					? "bg-accent-lime text-accent-lime-contrast border-accent-lime hover:bg-accent-lime-strong"
 					: "bg-transparent text-fg-primary border-fg-primary hover:bg-bg-panel",
-				className
+				className,
 			)}
 		>
 			{children}

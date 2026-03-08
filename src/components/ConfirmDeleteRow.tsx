@@ -4,12 +4,14 @@ interface ConfirmDeleteRowProps {
 	onCancel: () => void;
 }
 
-export function ConfirmDeleteRow({ name, onConfirm, onCancel }: ConfirmDeleteRowProps) {
+export function ConfirmDeleteRow({
+	name,
+	onConfirm,
+	onCancel,
+}: ConfirmDeleteRowProps) {
 	return (
 		<div className="border-t border-stroke-subtle bg-destructive/10 p-3">
-			<p className="mb-2 font-mono text-xs text-fg-primary">
-				Remove {name}?
-			</p>
+			<p className="mb-2 font-mono text-xs text-fg-primary">Remove {name}?</p>
 			<div className="flex gap-2">
 				<button
 					type="button"

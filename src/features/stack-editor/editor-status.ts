@@ -2,7 +2,12 @@ import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
 import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
 import type { StackResource } from "@/features/stack-editor/types";
 
-type EditorSectionKey = "profile" | "tools" | "bundles" | "description" | "settings";
+type EditorSectionKey =
+	| "profile"
+	| "tools"
+	| "bundles"
+	| "description"
+	| "settings";
 type EditorSectionStatusState = "idle" | "active" | "complete" | "error";
 
 type EditorSectionStatus = {
@@ -40,22 +45,25 @@ function isValidHttpUrl(value: string): boolean {
 	}
 }
 
-function getEditorSectionStatuses(input: EditorStatusInput): EditorSectionStatuses {
+function getEditorSectionStatuses(
+	input: EditorStatusInput,
+): EditorSectionStatuses {
 	const oneLiner = input.oneLiner.trim();
 	const hasValidOneLiner = oneLiner.length > 0;
-	const hasValidTeamSize = !input.isTeam || Number.isInteger(input.teamSize) && input.teamSize >= 2;
+	const hasValidTeamSize =
+		!input.isTeam || (Number.isInteger(input.teamSize) && input.teamSize >= 2);
 
 	const hasInvalidBundle = input.bundleSubscriptions.some(
 		(bundle) => !bundle.bundleSlug || !bundle.tierId,
 	);
 
 	const hasMetadataSignals =
-		Boolean(input.stackUrl?.trim())
-		|| input.prompts !== undefined
-		|| input.rules !== undefined
-		|| input.skills !== undefined
-		|| input.mcps !== undefined
-		|| input.resources.length > 0;
+		Boolean(input.stackUrl?.trim()) ||
+		input.prompts !== undefined ||
+		input.rules !== undefined ||
+		input.skills !== undefined ||
+		input.mcps !== undefined ||
+		input.resources.length > 0;
 
 	if (!hasValidOneLiner) {
 		return {
@@ -72,7 +80,9 @@ function getEditorSectionStatuses(input: EditorStatusInput): EditorSectionStatus
 				: input.bundleSubscriptions.length > 0
 					? { state: "complete" }
 					: { state: "idle" },
-			description: input.description.trim() ? { state: "complete" } : { state: "idle" },
+			description: input.description.trim()
+				? { state: "complete" }
+				: { state: "idle" },
 			settings: getSettingsStatus(input, hasMetadataSignals),
 		};
 	}
@@ -92,7 +102,9 @@ function getEditorSectionStatuses(input: EditorStatusInput): EditorSectionStatus
 				: input.bundleSubscriptions.length > 0
 					? { state: "complete" }
 					: { state: "idle" },
-			description: input.description.trim() ? { state: "complete" } : { state: "idle" },
+			description: input.description.trim()
+				? { state: "complete" }
+				: { state: "idle" },
 			settings: getSettingsStatus(input, hasMetadataSignals),
 		};
 	}
@@ -101,19 +113,27 @@ function getEditorSectionStatuses(input: EditorStatusInput): EditorSectionStatus
 		profile: { state: "complete" },
 		tools: {
 			state: input.toolSubscriptions.length > 0 ? "complete" : "error",
-			message: input.toolSubscriptions.length > 0 ? undefined : "Add at least one tool before publishing",
+			message:
+				input.toolSubscriptions.length > 0
+					? undefined
+					: "Add at least one tool before publishing",
 		},
 		bundles: hasInvalidBundle
 			? { state: "error", message: "Select a valid bundle tier" }
 			: input.bundleSubscriptions.length > 0
 				? { state: "complete" }
 				: { state: "idle" },
-		description: input.description.trim() ? { state: "complete" } : { state: "idle" },
+		description: input.description.trim()
+			? { state: "complete" }
+			: { state: "idle" },
 		settings: getSettingsStatus(input, hasMetadataSignals),
 	};
 }
 
-function getSettingsStatus(input: EditorStatusInput, hasMetadataSignals: boolean): EditorSectionStatus {
+function getSettingsStatus(
+	input: EditorStatusInput,
+	hasMetadataSignals: boolean,
+): EditorSectionStatus {
 	if (input.stackUrl?.trim() && !isValidHttpUrl(input.stackUrl.trim())) {
 		return {
 			state: "error",
@@ -121,7 +141,9 @@ function getSettingsStatus(input: EditorStatusInput, hasMetadataSignals: boolean
 		};
 	}
 
-	const hasInvalidResource = input.resources.some((resource) => !isValidHttpUrl(resource.url));
+	const hasInvalidResource = input.resources.some(
+		(resource) => !isValidHttpUrl(resource.url),
+	);
 	if (hasInvalidResource) {
 		return {
 			state: "error",

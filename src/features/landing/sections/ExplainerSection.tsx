@@ -29,9 +29,9 @@ function ExplainerSection() {
 				<Signpost size={600} strokeWidth={2} />
 			</div>
 			<div className="mx-auto w-full max-w-content relative z-10">
-			{/* Section Header */}
-			<div className="flex items-baseline gap-4 mb-12 border-b-2 border-zinc-300 pb-4">
-				<span className="font-mono text-accent-lime text-xl">/02</span>
+				{/* Section Header */}
+				<div className="flex items-baseline gap-4 mb-12 border-b-2 border-zinc-300 pb-4">
+					<span className="font-mono text-accent-lime text-xl">/02</span>
 					<h2 className="text-4xl md:text-6xl font-bold tracking-tighter uppercase text-black">
 						Why It Works
 					</h2>

@@ -1,12 +1,24 @@
-import { canPublishStack, getSaveValidationError } from "@/features/stack-editor/editor-guards";
-import type { StackEditorInitialValue, StackEditorMode } from "@/features/stack-editor/types";
-import type { EditorState, GuestStackDraft } from "@/features/stack-editor/state/editorReducer";
+import {
+	canPublishStack,
+	getSaveValidationError,
+} from "@/features/stack-editor/editor-guards";
+import type {
+	StackEditorInitialValue,
+	StackEditorMode,
+} from "@/features/stack-editor/types";
+import type {
+	EditorState,
+	GuestStackDraft,
+} from "@/features/stack-editor/state/editorReducer";
 
 function selectCanPublish(state: EditorState): boolean {
 	return canPublishStack(state.oneLiner, state.toolSubscriptions.length);
 }
 
-function selectSaveValidationError(state: EditorState, publish: boolean): string | null {
+function selectSaveValidationError(
+	state: EditorState,
+	publish: boolean,
+): string | null {
 	return getSaveValidationError({
 		oneLiner: state.oneLiner,
 		publish,
@@ -31,7 +43,8 @@ function selectSavePayload(state: EditorState, published: boolean) {
 		name: state.name.trim(),
 		oneLiner: state.oneLiner.trim(),
 		description: state.description.trim() || undefined,
-		instructions: state.instructions.length > 0 ? state.instructions : undefined,
+		instructions:
+			state.instructions.length > 0 ? state.instructions : undefined,
 		teamSize: state.isTeam ? state.teamSize : undefined,
 		toolSubscriptions: state.toolSubscriptions.map((tool) => ({
 			toolSlug: tool.toolSlug,

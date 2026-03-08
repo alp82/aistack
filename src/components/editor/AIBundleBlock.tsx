@@ -6,12 +6,18 @@ import { useOptionalEditorContext } from "@/features/stack-editor/context/Editor
 import HoverPreview from "@/components/ui/hover-preview";
 
 export interface AIBundleBlockAttrs {
-	bundleId: string;
+	shortId: string;
 	name: string;
-	iconUrl: string | null;
 }
 
-function BundleTooltipContent({ name, iconUrl, price, tierName, description, notes }: {
+function BundleTooltipContent({
+	name,
+	iconUrl,
+	price,
+	tierName,
+	description,
+	notes,
+}: {
 	name: string;
 	iconUrl?: string;
 	price?: { amount: number; period: string };
@@ -30,16 +36,22 @@ function BundleTooltipContent({ name, iconUrl, price, tierName, description, not
 			</div>
 			<div className="mb-2 flex items-start justify-between gap-3">
 				<div className="flex min-w-0 items-center gap-3">
-				{iconUrl && (
-					<img src={iconUrl} alt="" className="size-8 shrink-0 object-contain" />
-				)}
-					<div className="min-w-0">
-					<div className="font-mono text-sm font-semibold text-fg-primary">{name}</div>
-					{tierName && (
-						<div className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-fg-muted">
-							{tierName}
-						</div>
+					{iconUrl && (
+						<img
+							src={iconUrl}
+							alt=""
+							className="size-8 shrink-0 object-contain"
+						/>
 					)}
+					<div className="min-w-0">
+						<div className="font-mono text-sm font-semibold text-fg-primary">
+							{name}
+						</div>
+						{tierName && (
+							<div className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-fg-muted">
+								{tierName}
+							</div>
+						)}
 					</div>
 				</div>
 				{priceLabel && (
@@ -63,9 +75,13 @@ function BundleTooltipContent({ name, iconUrl, price, tierName, description, not
 }
 
 function AIBundleBlockView({ node }: NodeViewProps) {
-	const { name, iconUrl } = node.attrs as AIBundleBlockAttrs;
+	const { shortId, name } = node.attrs as AIBundleBlockAttrs;
 	const context = useOptionalEditorContext();
-	const bundleData = context?.bundleLookup.get(name);
+	// Look up bundle data by shortId first, fall back to name for legacy nodes
+	const bundleData =
+		context?.bundleLookupByShortId?.get(shortId) ??
+		context?.bundleLookup.get(name);
+	const iconUrl = bundleData?.iconUrl;
 
 	const blockContent = (
 		<span
@@ -89,7 +105,11 @@ function AIBundleBlockView({ node }: NodeViewProps) {
 	);
 
 	return (
-		<NodeViewWrapper as="span" className="inline-flex items-center mx-1" style={{ verticalAlign: '0.05em' }}>
+		<NodeViewWrapper
+			as="span"
+			className="inline-flex items-center mx-1"
+			style={{ verticalAlign: "0.05em" }}
+		>
 			{bundleData ? (
 				<HoverPreview
 					mode="wrapper"
@@ -121,11 +141,7 @@ function AIBundleBlockView({ node }: NodeViewProps) {
 					offset={8}
 					maxRotation={3}
 					maxOffset={5}
-					renderContent={() => (
-						<BundleTooltipContent
-							name={name}
-						/>
-					)}
+					renderContent={() => <BundleTooltipContent name={name} />}
 				>
 					{blockContent}
 				</HoverPreview>
@@ -142,14 +158,11 @@ export const AIBundleBlock = Node.create({
 
 	addAttributes() {
 		return {
-			bundleId: {
+			shortId: {
 				default: null,
 			},
 			name: {
 				default: "",
-			},
-			iconUrl: {
-				default: null,
 			},
 		};
 	},
@@ -157,7 +170,14 @@ export const AIBundleBlock = Node.create({
 	parseHTML() {
 		return [
 			{
-				tag: 'span[data-ai-bundle-block]',
+				tag: "span[data-ai-bundle-block]",
+				getAttrs: (element) => {
+					const el = element as HTMLElement;
+					return {
+						shortId: el.getAttribute("data-short-id") || null,
+						name: el.getAttribute("data-bundle-name") || el.textContent || "",
+					};
+				},
 			},
 		];
 	},
@@ -165,9 +185,9 @@ export const AIBundleBlock = Node.create({
 	renderHTML({ HTMLAttributes, node }) {
 		return [
 			"span",
-			mergeAttributes(HTMLAttributes, { 
+			mergeAttributes(HTMLAttributes, {
 				"data-ai-bundle-block": "",
-				"data-bundle-id": node.attrs.bundleId,
+				"data-short-id": node.attrs.shortId,
 				"data-bundle-name": node.attrs.name,
 			}),
 			node.attrs.name,

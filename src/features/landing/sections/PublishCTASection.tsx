@@ -18,7 +18,19 @@ function PublishCTASection({ userStack }: PublishCTASectionProps) {
 					transition={{ duration: 0.6 }}
 					className="text-5xl md:text-8xl font-bold tracking-tighter mb-8 text-fg-inverse leading-[0.9]"
 				>
-					{hasPublished ? (<>YOUR<br />STACK</>) : (<>PUBLISH YOUR<br />STACK TODAY</>)}
+					{hasPublished ? (
+						<>
+							YOUR
+							<br />
+							STACK
+						</>
+					) : (
+						<>
+							PUBLISH YOUR
+							<br />
+							STACK TODAY
+						</>
+					)}
 				</motion.h2>
 				<motion.p
 					initial={{ opacity: 0, y: 20 }}

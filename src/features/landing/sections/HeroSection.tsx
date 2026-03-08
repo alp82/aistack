@@ -6,7 +6,10 @@ import { ToolSphere } from "@/features/landing/components/ToolSphere";
 
 function HeroSection() {
 	const sectionRef = useRef<HTMLElement>(null);
-	const [mouseClient, setMouseClient] = useState<{ x: number; y: number } | null>(null);
+	const [mouseClient, setMouseClient] = useState<{
+		x: number;
+		y: number;
+	} | null>(null);
 
 	const handleMouseMove = useCallback((e: React.MouseEvent) => {
 		setMouseClient({ x: e.clientX, y: e.clientY });
@@ -48,7 +51,10 @@ function HeroSection() {
 					<h1 className="text-5xl sm:text-[3rem] md:text-[5rem] lg:text-[7rem] font-black tracking-tighter leading-[0.9] mb-24 text-fg-primary">
 						SEE EXACTLY WHAT
 						<br />
-						REAL{" "}<span className="text-highlight-lime ml-2 md:ml-4 -rotate-1">BUILDERS</span>
+						REAL{" "}
+						<span className="text-highlight-lime ml-2 md:ml-4 -rotate-1">
+							BUILDERS
+						</span>
 						<br />
 						USE TO SHIP
 					</h1>
@@ -56,9 +62,9 @@ function HeroSection() {
 					{/* Description + CTAs */}
 					<div className="flex flex-col lg:flex-row items-start lg:items-end gap-12 justify-between">
 						<p className="max-w-2xl text-xl md:text-2xl text-fg-secondary leading-relaxed border-l-4 border-accent-lime pl-8 py-2">
-							AI Stack is where founders publish the exact tools to build
-							their products. Learn what they pay every month and how their
-							daily AI workflow looks like.
+							AI Stack is where founders publish the exact tools to build their
+							products. Learn what they pay every month and how their daily AI
+							workflow looks like.
 						</p>
 
 						<div className="flex flex-row flex-wrap gap-4">

@@ -1,4 +1,7 @@
-import { BundlePicker, type BundleSubscriptionEntry } from "@/components/BundlePicker";
+import {
+	BundlePicker,
+	type BundleSubscriptionEntry,
+} from "@/components/BundlePicker";
 import { SectionCard } from "@/components/system/SectionCard";
 import type { EditorSectionStatus } from "@/features/stack-editor/editor-status";
 import { SectionStatusBadge } from "@/features/stack-editor/sections/SectionStatusBadge";
@@ -10,7 +13,12 @@ type BundlesSectionProps = {
 	isActive: boolean;
 };
 
-export function BundlesSection({ value, onChange, status, isActive }: BundlesSectionProps) {
+export function BundlesSection({
+	value,
+	onChange,
+	status,
+	isActive,
+}: BundlesSectionProps) {
 	return (
 		<SectionCard
 			id="section-bundles"

@@ -49,7 +49,9 @@ function getCategoryBgColor(category: string): string {
 		"project-management": "bg-blue-600 text-white",
 		presentation: "bg-amber-600 text-black",
 	};
-	return colors[category.toLowerCase()] || "bg-accent-lime text-accent-lime-contrast";
+	return (
+		colors[category.toLowerCase()] || "bg-accent-lime text-accent-lime-contrast"
+	);
 }
 
 function getCategoryBorderColor(category: string): string {
@@ -182,7 +184,8 @@ export const Route = createFileRoute("/stacks/")({
 function BrowseStacksPage() {
 	const navigate = useNavigate();
 	const { isAuthenticated } = useConvexAuth();
-	const stacks = (useQuery(api.stacks.listPublished) ?? []) as LandingStackPreview[];
+	const stacks = (useQuery(api.stacks.listPublished) ??
+		[]) as LandingStackPreview[];
 	const userStack = useQuery(api.stacks.getUserStack);
 	const [toolFilter, setToolFilter] = useState<string>("all");
 	const [sortOption, setSortOption] = useState<SortOption>("upvotes");
@@ -205,7 +208,10 @@ function BrowseStacksPage() {
 		return result;
 	}, [stacks, toolFilter, sortOption, searchQuery]);
 
-	const totalPages = Math.max(1, Math.ceil(filteredStacks.length / STACKS_PER_PAGE));
+	const totalPages = Math.max(
+		1,
+		Math.ceil(filteredStacks.length / STACKS_PER_PAGE),
+	);
 	const safeCurrentPage = Math.min(currentPage, totalPages);
 	const paginatedStacks = filteredStacks.slice(
 		(safeCurrentPage - 1) * STACKS_PER_PAGE,
@@ -235,7 +241,10 @@ function BrowseStacksPage() {
 						title="ALL STACKS"
 						description="See what tools real builders are paying for. Filter, compare, and find the stack that fits your needs."
 						action={{
-							label: isAuthenticated && userStack ? "Update Your Stack" : "Add Stack",
+							label:
+								isAuthenticated && userStack
+									? "Update Your Stack"
+									: "Add Stack",
 							icon: <Plus size={18} />,
 							onClick: handleAddStack,
 						}}
@@ -247,7 +256,10 @@ function BrowseStacksPage() {
 							<Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-fg-muted" />
 							<Input
 								value={searchQuery}
-								onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+								onChange={(e) => {
+									setSearchQuery(e.target.value);
+									setCurrentPage(1);
+								}}
 								placeholder="Search stacks by name, creator, or tool..."
 								className="h-12 pl-11 border-stroke-strong bg-bg-panel font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
 							/>
@@ -255,7 +267,10 @@ function BrowseStacksPage() {
 						<SortDropdown
 							options={SORT_OPTIONS}
 							value={sortOption}
-							onChange={(v) => { setSortOption(v); setCurrentPage(1); }}
+							onChange={(v) => {
+								setSortOption(v);
+								setCurrentPage(1);
+							}}
 						/>
 					</div>
 
@@ -265,7 +280,10 @@ function BrowseStacksPage() {
 							<button
 								key={filter.id}
 								type="button"
-								onClick={() => { setToolFilter(filter.id); setCurrentPage(1); }}
+								onClick={() => {
+									setToolFilter(filter.id);
+									setCurrentPage(1);
+								}}
 								className={cn(
 									"px-4 py-2 uppercase font-bold transition-colors border",
 									toolFilter === filter.id
@@ -274,8 +292,10 @@ function BrowseStacksPage() {
 											: `${getCategoryBgColor(filter.id)} ${getCategoryBorderColor(filter.id)}`
 										: cn(
 												"bg-bg-canvas text-fg-muted hover:text-fg-primary",
-												filter.id === "all" ? "border-stroke-strong hover:border-accent-lime" : getCategoryBorderColor(filter.id)
-											)
+												filter.id === "all"
+													? "border-stroke-strong hover:border-accent-lime"
+													: getCategoryBorderColor(filter.id),
+											),
 								)}
 							>
 								{filter.label} {filter.count && `(${filter.count})`}
@@ -310,24 +330,28 @@ function BrowseStacksPage() {
 									>
 										<ChevronLeft className="size-4" />
 									</button>
-									{Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-										<button
-											key={page}
-											type="button"
-											onClick={() => setCurrentPage(page)}
-											className={cn(
-												"flex size-10 items-center justify-center border font-mono text-sm font-bold transition-colors",
-												page === safeCurrentPage
-													? "border-accent-lime bg-accent-lime text-accent-lime-contrast"
-													: "border-stroke-strong text-fg-muted hover:border-accent-lime hover:text-accent-lime"
-											)}
-										>
-											{page}
-										</button>
-									))}
+									{Array.from({ length: totalPages }, (_, i) => i + 1).map(
+										(page) => (
+											<button
+												key={page}
+												type="button"
+												onClick={() => setCurrentPage(page)}
+												className={cn(
+													"flex size-10 items-center justify-center border font-mono text-sm font-bold transition-colors",
+													page === safeCurrentPage
+														? "border-accent-lime bg-accent-lime text-accent-lime-contrast"
+														: "border-stroke-strong text-fg-muted hover:border-accent-lime hover:text-accent-lime",
+												)}
+											>
+												{page}
+											</button>
+										),
+									)}
 									<button
 										type="button"
-										onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+										onClick={() =>
+											setCurrentPage((p) => Math.min(totalPages, p + 1))
+										}
 										disabled={safeCurrentPage >= totalPages}
 										className="flex size-10 items-center justify-center border border-stroke-strong text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime disabled:opacity-30 disabled:cursor-not-allowed"
 									>
@@ -335,8 +359,8 @@ function BrowseStacksPage() {
 									</button>
 								</div>
 							)}
-						</>)
-					}
+						</>
+					)}
 				</div>
 			</section>
 		</div>

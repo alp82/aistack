@@ -19,19 +19,25 @@ const EMAIL_TEMPLATES: EmailTemplate[] = [
 		id: "verify-email",
 		name: "Verify Email",
 		description: "Sent when a user signs up to verify their email address",
-		component: <VerifyEmail verifyUrl="https://aistack.to/verify?token=example123" />,
+		component: (
+			<VerifyEmail verifyUrl="https://aistack.to/verify?token=example123" />
+		),
 	},
 	{
 		id: "magic-link",
 		name: "Magic Link",
 		description: "Sent when a user requests a passwordless sign-in link",
-		component: <MagicLinkEmail magicLinkUrl="https://aistack.to/auth/magic?token=example123" />,
+		component: (
+			<MagicLinkEmail magicLinkUrl="https://aistack.to/auth/magic?token=example123" />
+		),
 	},
 	{
 		id: "reset-password",
 		name: "Reset Password",
 		description: "Sent when a user requests to reset their password",
-		component: <ResetPasswordEmail resetUrl="https://aistack.to/reset?token=example123" />,
+		component: (
+			<ResetPasswordEmail resetUrl="https://aistack.to/reset?token=example123" />
+		),
 	},
 ];
 
@@ -162,7 +168,8 @@ export function EmailPreviewCenter() {
 				</div>
 
 				<p className="mb-6 font-mono text-sm text-fg-muted">
-					Preview all email templates with the current branding. Click to expand and view the rendered HTML.
+					Preview all email templates with the current branding. Click to expand
+					and view the rendered HTML.
 				</p>
 
 				<div className="space-y-4">

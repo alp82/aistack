@@ -9,7 +9,13 @@ export type { AIInstructionBlockAttrs } from "./AIInstructionBlock";
 export { ToolSuggestionPlugin } from "./ToolSuggestionPlugin";
 export type { ToolData, ToolSuggestionOptions } from "./ToolSuggestionPlugin";
 export { ModelSuggestionPlugin } from "./ModelSuggestionPlugin";
-export type { ModelData, ModelSuggestionOptions } from "./ModelSuggestionPlugin";
+export type {
+	ModelData,
+	ModelSuggestionOptions,
+} from "./ModelSuggestionPlugin";
 export { SlashCommandPlugin } from "./SlashCommandPlugin";
-export type { SlashCommandOptions, BundleData, InstructionData } from "./SlashCommandPlugin";
-
+export type {
+	SlashCommandOptions,
+	BundleData,
+	InstructionData,
+} from "./SlashCommandPlugin";

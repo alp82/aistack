@@ -60,10 +60,15 @@ const stacks: LandingStackPreview[] = [
 describe("feed filters", () => {
 	it("filters by audience and tool category", () => {
 		const teamsOnly = filterPreviewStacks(stacks, "team", "all");
-		expect(teamsOnly.map((stack) => stack.creator.name)).toEqual(["Design Crew", "Team Ops"]);
+		expect(teamsOnly.map((stack) => stack.creator.name)).toEqual([
+			"Design Crew",
+			"Team Ops",
+		]);
 
 		const teamAutomation = filterPreviewStacks(stacks, "team", "automation");
-		expect(teamAutomation.map((stack) => stack.creator.name)).toEqual(["Team Ops"]);
+		expect(teamAutomation.map((stack) => stack.creator.name)).toEqual([
+			"Team Ops",
+		]);
 	});
 
 	it("derives category options sorted by count", () => {

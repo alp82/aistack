@@ -9,7 +9,9 @@ interface ToolPoint {
 	name: string;
 }
 
-function distributePointsOnSphere(count: number): { theta: number; phi: number }[] {
+function distributePointsOnSphere(
+	count: number,
+): { theta: number; phi: number }[] {
 	const points: { theta: number; phi: number }[] = [];
 	const goldenRatio = (1 + Math.sqrt(5)) / 2;
 
@@ -156,36 +158,38 @@ export function ToolSphere({ mouseClient }: ToolSphereProps) {
 					// Apply sphere rotation to each logo position
 					const rotYRad = (rotationY * Math.PI) / 180;
 					const rotXRad = (rotationX * Math.PI) / 180;
-					
+
 					// Get base position
 					const basePos = sphereToCartesian(tool.theta, tool.phi, radius);
-					
+
 					// Apply Y rotation (horizontal spin)
 					const afterYRot = {
 						x: basePos.x * Math.cos(rotYRad) + basePos.z * Math.sin(rotYRad),
 						y: basePos.y,
 						z: -basePos.x * Math.sin(rotYRad) + basePos.z * Math.cos(rotYRad),
 					};
-					
+
 					// Apply X rotation (vertical tilt)
 					const pos = {
 						x: afterYRot.x,
-						y: afterYRot.y * Math.cos(rotXRad) - afterYRot.z * Math.sin(rotXRad),
-						z: afterYRot.y * Math.sin(rotXRad) + afterYRot.z * Math.cos(rotXRad),
+						y:
+							afterYRot.y * Math.cos(rotXRad) - afterYRot.z * Math.sin(rotXRad),
+						z:
+							afterYRot.y * Math.sin(rotXRad) + afterYRot.z * Math.cos(rotXRad),
 					};
-					
+
 					// Opacity based on z position - fade out as they go behind
 					const normalizedZ = (pos.z + radius) / (radius * 2);
 					const zOpacity = Math.max(0, Math.min(1, normalizedZ * 1.8 - 0.4));
-					
+
 					// Staggered fade in/out - pseudo-random phase per logo
 					const scramble = ((index * 7919 + 104729) % 997) / 997; // hash to [0,1]
 					const phase = scramble * Math.PI * 2;
 					const fadeWave = (Math.sin(rotationY * 0.03 + phase) + 1) / 2; // 0 to 1
 					const fadeFactor = fadeWave * fadeWave * fadeWave; // cubic for sharper on/off
-					
+
 					const opacity = zOpacity * fadeFactor;
-					
+
 					// Skip completely invisible logos
 					if (opacity < 0.05) return null;
 
@@ -199,7 +203,7 @@ export function ToolSphere({ mouseClient }: ToolSphereProps) {
 					const dirX = cursor.x - pos.x;
 					const dirY = cursor.y - pos.y;
 					const dist = Math.sqrt(dirX * dirX + dirY * dirY) || 1;
-					
+
 					// Normalize and apply max tilt angle (30deg), attenuate by distance
 					const maxTilt = 30;
 					const strength = Math.min(1, dist / 200);

@@ -1,5 +1,9 @@
 import { useConvexAuth } from "convex/react";
-import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import {
+	createFileRoute,
+	useNavigate,
+	useSearch,
+} from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AuthForm } from "../components/AuthForm";
 import { authClient } from "../lib/auth-client";
@@ -12,7 +16,8 @@ export const Route = createFileRoute("/signin")({
 	component: SignInPage,
 	validateSearch: (search: Record<string, unknown>): SignInSearch => {
 		return {
-			redirect: typeof search.redirect === "string" ? search.redirect : undefined,
+			redirect:
+				typeof search.redirect === "string" ? search.redirect : undefined,
 		};
 	},
 });
@@ -39,26 +44,26 @@ function SignInPage() {
 			let result = await authClient.signIn.email({
 				email: devEmail,
 				password: devPass,
-			})
+			});
 
 			if (result.error) {
 				const signUpResult = await authClient.signUp.email({
 					email: devEmail,
 					password: devPass,
 					name: devName,
-				})
+				});
 
 				if (signUpResult.error) {
 					throw new Error(
 						`Login failed: ${result.error.message}. Signup failed: ${signUpResult.error.message}`,
-					)
+					);
 				}
 
 				if (!signUpResult.data) {
 					result = await authClient.signIn.email({
 						email: devEmail,
 						password: devPass,
-					})
+					});
 					if (result.error) throw new Error(result.error.message);
 				}
 			}
@@ -69,11 +74,11 @@ function SignInPage() {
 				err instanceof Error
 					? err.message
 					: "Dev login failed. Ensure you are in development mode.",
-			)
+			);
 		} finally {
 			setLoading(false);
 		}
-	}
+	};
 
 	return (
 		<div className="flex min-h-screen">
@@ -81,11 +86,13 @@ function SignInPage() {
 			<div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-end bg-bg-canvas px-12 xl:px-24 2xl:px-32 py-16 border-r-4 border-accent-lime">
 				<div className="space-y-6 text-right max-w-2xl">
 					<h1 className="text-[clamp(3rem,8vw,6rem)] font-black leading-[0.85] tracking-tighter text-fg-primary uppercase">
-						WELCOME<br />
+						WELCOME
+						<br />
 						<span className="text-accent-lime">BACK</span>
 					</h1>
 					<p className="font-mono text-base text-fg-muted leading-relaxed">
-						Continue building and sharing your AI stack with passionate builders.
+						Continue building and sharing your AI stack with passionate
+						builders.
 					</p>
 				</div>
 			</div>
@@ -122,5 +129,5 @@ function SignInPage() {
 				</div>
 			</div>
 		</div>
-	)
+	);
 }

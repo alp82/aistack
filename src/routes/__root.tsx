@@ -118,7 +118,8 @@ function AppShell({ children }: { children: React.ReactNode }) {
 	const routerStatus = useRouterState({ select: (s) => s.status });
 	const initialLoadDone = useRef(false);
 
-	const showLoadingScreen = !initialLoadDone.current && (authLoading || routerStatus !== "idle");
+	const showLoadingScreen =
+		!initialLoadDone.current && (authLoading || routerStatus !== "idle");
 
 	if (!showLoadingScreen && !initialLoadDone.current) {
 		initialLoadDone.current = true;
@@ -148,7 +149,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 					}}
 				/>
 			</head>
-			<body className="bg-bg-canvas min-h-screen flex flex-col" suppressHydrationWarning>
+			<body
+				className="bg-bg-canvas min-h-screen flex flex-col"
+				suppressHydrationWarning
+			>
 				<ThemeProvider>
 					<AppShell>{children}</AppShell>
 				</ThemeProvider>
