@@ -54,6 +54,7 @@ export const listAll = query({
           updatedAt: v.optional(v.number()),
         })
       ),
+      createdAt: v.number(),
     })
   ),
   handler: async (ctx) => {
@@ -71,6 +72,7 @@ export const listAll = query({
       iconUrl: t.iconUrl,
       websiteUrl: t.websiteUrl,
       tiers: t.tiers,
+      createdAt: t.createdAt,
     }))
   },
 })

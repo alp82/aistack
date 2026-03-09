@@ -198,7 +198,7 @@ function ToolsPage() {
 					(toolUsageCounts.get(b._id) ?? 0) - (toolUsageCounts.get(a._id) ?? 0)
 				);
 			}
-			return b._id.localeCompare(a._id);
+			return b.createdAt - a.createdAt;
 		});
 
 		return result;
@@ -388,9 +388,10 @@ function ToolCard({
 
 	return (
 		<motion.div
+			layout
 			initial={{ opacity: 0, y: 10 }}
-			whileInView={{ opacity: 1, y: 0 }}
-			viewport={{ once: true }}
+			animate={{ opacity: 1, y: 0 }}
+			transition={{ duration: 0.15}}
 			className="group bg-bg-canvas border border-stroke-strong p-6 flex flex-col h-full transition-all hover:shadow-[0_10px_30px_-10px_rgba(163,230,53,0.1)]"
 		>
 			{/* Header: logo + name */}
