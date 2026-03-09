@@ -97,42 +97,30 @@ function StackCard({ stack }: StackCardProps) {
 								{/* Creator Links */}
 								<div className="flex items-center gap-3 mt-1">
 									{stack.creator.xHandle && (
-										<a
-											href={`https://x.com/${stack.creator.xHandle}`}
-											target="_blank"
-											rel="noopener noreferrer"
-											onClick={(e) => e.stopPropagation()}
-											className="inline-flex items-center gap-1 font-mono text-[10px] text-fg-muted hover:text-accent-lime transition-colors"
+										<span
+											className="inline-flex items-center gap-1 font-mono text-[10px] text-fg-muted transition-colors"
 										>
 											<svg className="size-3" viewBox="0 0 24 24" fill="currentColor">
 												<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
 											</svg>
 											<span className="truncate max-w-[75px]">@{stack.creator.xHandle}</span>
-										</a>
+										</span>
 									)}
 									{personalPageUrl && (
-										<a
-											href={personalPageUrl.startsWith("http") ? personalPageUrl : `https://${personalPageUrl}`}
-											target="_blank"
-											rel="noopener noreferrer"
-											onClick={(e) => e.stopPropagation()}
-											className="inline-flex items-center gap-1 font-mono text-[10px] text-fg-muted hover:text-accent-lime transition-colors"
+										<span
+											className="inline-flex items-center gap-1 font-mono text-[10px] text-fg-muted transition-colors"
 										>
 											<User className="size-3" />
 											<span className="truncate max-w-[75px]">{personalPageUrl.replace(/^https?:\/\//, "").split("/")[0]}</span>
-										</a>
+										</span>
 									)}
 									{projectPageUrl && (
-										<a
-											href={projectPageUrl.startsWith("http") ? projectPageUrl : `https://${projectPageUrl}`}
-											target="_blank"
-											rel="noopener noreferrer"
-											onClick={(e) => e.stopPropagation()}
-											className="inline-flex items-center gap-1 font-mono text-[10px] text-fg-muted hover:text-accent-lime transition-colors"
+										<span
+											className="inline-flex items-center gap-1 font-mono text-[10px] text-fg-muted transition-colors"
 										>
 											<Globe className="size-3" />
 											<span className="truncate max-w-[75px]">{projectPageUrl.replace(/^https?:\/\//, "").split("/")[0]}</span>
-										</a>
+										</span>
 									)}
 								</div>
 							</div>
