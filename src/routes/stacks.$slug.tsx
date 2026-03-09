@@ -13,11 +13,10 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CostBreakdownTooltip } from "@/components/CostBreakdownTooltip";
-import { FullWidthToolCard } from "@/components/FullWidthToolCard";
 import { GridBackground } from "@/components/GridBackground";
 import { PriceDisplay } from "@/components/PriceDisplay";
 import { TiptapEditor } from "@/components/TiptapEditor";
-import { MiscToolCard } from "@/components/ToolCard";
+import { ToolItem } from "@/components/ToolItem";
 import { UpvoteButton } from "@/components/UpvoteButton";
 import { Button } from "@/components/ui/button";
 import HoverPreview from "@/components/ui/hover-preview";
@@ -377,9 +376,10 @@ function StackDetailsPage() {
 					</h3>
 					<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
 						{mainTools.map((tool) => (
-							<FullWidthToolCard
+							<ToolItem
 								key={tool._id}
 								tool={tool}
+								size="md"
 								onBundleClick={scrollToBundle}
 							/>
 						))}
@@ -395,9 +395,10 @@ function StackDetailsPage() {
 					</h3>
 					<div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
 						{miscTools.map((tool) => (
-							<MiscToolCard
+							<ToolItem
 								key={tool._id}
 								tool={tool}
+								size="sm"
 								onBundleClick={scrollToBundle}
 							/>
 						))}

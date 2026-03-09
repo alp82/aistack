@@ -1,15 +1,11 @@
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "convex/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { motion } from "framer-motion";
 import {
 	ChevronLeft,
 	ChevronRight,
-	ExternalLink,
-	Pencil,
 	Plus,
 	Search,
-	Terminal,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { api } from "../../convex/_generated/api";
@@ -21,6 +17,7 @@ import {
 	SuggestEditModal,
 	type ToolForSuggestion,
 } from "../components/SuggestEditModal";
+import { ToolCard } from "../components/ToolCard";
 import { categoryConfig, type ToolCategory } from "../config/categoryConfig";
 import { cn } from "../lib/utils";
 import type { LandingStackPreview } from "@/features/landing/sections/FeaturedStacksSection";
@@ -132,18 +129,6 @@ export const Route = createFileRoute("/tools")({
 		],
 	}),
 });
-
-function formatPrice(tier: {
-	pricing: { pricingType: string; fixed?: { amount: number; period: string } };
-}) {
-	if (tier.pricing.pricingType === "usage") return "Usage";
-	if (!tier.pricing.fixed) return "—";
-	const { amount, period } = tier.pricing.fixed;
-	if (amount === 0) return "Free";
-	const periodLabel =
-		period === "one_time" ? "" : `/${period === "month" ? "mo" : "yr"}`;
-	return `$${amount}${periodLabel}`;
-}
 
 function ToolsPage() {
 	const navigate = useNavigate();
@@ -297,7 +282,7 @@ function ToolsPage() {
 						<ToolCard
 							key={tool._id}
 							tool={tool}
-							onSuggestEdit={setSuggestEditTool}
+							onSuggestEdit={(t) => setSuggestEditTool(t as unknown as ToolForSuggestion)}
 						/>
 					))}
 				</div>
@@ -371,146 +356,3 @@ function ToolsPage() {
 	);
 }
 
-type ToolFromDB = NonNullable<
-	ReturnType<typeof useQuery<typeof api.tools.listAll>>
->[number];
-
-function ToolCard({
-	tool,
-	onSuggestEdit,
-}: {
-	tool: ToolFromDB;
-	onSuggestEdit: (tool: ToolForSuggestion) => void;
-}) {
-	const maxVisible = tool.categories.length > 3 ? 2 : 3;
-	const visibleCats = tool.categories.slice(0, maxVisible);
-	const hiddenCats = tool.categories.slice(maxVisible);
-
-	return (
-		<motion.div
-			layout
-			initial={{ opacity: 0, y: 10 }}
-			animate={{ opacity: 1, y: 0 }}
-			transition={{ duration: 0.15}}
-			className="group bg-bg-canvas border border-stroke-strong p-6 flex flex-col h-full transition-all hover:shadow-[0_10px_30px_-10px_rgba(163,230,53,0.1)]"
-		>
-			{/* Header: logo + name */}
-			<div className="flex items-center gap-4 mb-5">
-				<div className="w-12 h-12 bg-bg-panel border border-stroke-strong flex items-center justify-center text-fg-primary transition-colors overflow-hidden shrink-0">
-					{tool.iconUrl ? (
-						<img
-							src={tool.iconUrl}
-							alt={tool.name}
-							className="w-8 h-8 object-contain"
-						/>
-					) : (
-						<Terminal size={20} />
-					)}
-				</div>
-				<h3 className="text-lg font-bold text-fg-primary transition-colors leading-tight">
-					{tool.name}
-				</h3>
-			</div>
-
-			{/* Body: tiers list */}
-			<div className="flex-1 mb-5">
-				<div className="text-[10px] font-mono text-fg-muted uppercase tracking-widest mb-2">
-					Pricing Tiers
-				</div>
-				<ul className="space-y-1.5">
-					{tool.tiers.map((tier) => (
-						<li
-							key={tier.tierId}
-							className="flex items-center justify-between text-xs font-mono"
-						>
-							<span className="text-fg-muted">{tier.name}</span>
-							<span
-								className={cn(
-									"font-bold",
-									tier.pricing.fixed?.amount === 0 ||
-										tier.pricing.pricingType === "usage"
-										? "text-accent-lime"
-										: "text-fg-primary",
-								)}
-							>
-								{formatPrice(tier)}
-							</span>
-						</li>
-					))}
-				</ul>
-			</div>
-
-			{/* Footer: category tags + website link */}
-			<div className="pt-4 border-t border-stroke-strong">
-				<div className="flex flex-wrap gap-1.5 mb-3">
-					{visibleCats.map((cat) => {
-						const config = categoryConfig[cat as ToolCategory];
-						if (!config) return null;
-						return (
-							<span
-								key={cat}
-								className={cn(
-									"inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider border",
-									config.bgColor,
-									config.textColor,
-									config.borderColor,
-								)}
-							>
-								{config.label}
-							</span>
-						);
-					})}
-					{hiddenCats.length > 0 && (
-						<span className="relative group/more">
-							<span className="inline-flex items-center px-2 py-1.5 text-[10px] font-mono uppercase tracking-wider border border-stroke-strong text-fg-muted hover:text-fg-primary hover:border-fg-muted transition-colors cursor-default">
-								+{hiddenCats.length} more
-							</span>
-							<span className="absolute bottom-full left-0 mb-1.5 hidden group-hover/more:flex flex-wrap gap-1 bg-bg-panel border border-stroke-strong p-2 rounded shadow-lg z-10 min-w-max">
-								{hiddenCats.map((cat) => {
-									const cfg = categoryConfig[cat as ToolCategory];
-									if (!cfg) return null;
-									return (
-										<span
-											key={cat}
-											className={cn(
-												"inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider border",
-												cfg.bgColor,
-												cfg.textColor,
-												cfg.borderColor,
-											)}
-										>
-											{cfg.label}
-										</span>
-									);
-								})}
-							</span>
-						</span>
-					)}
-				</div>
-				<div className="flex items-center justify-between">
-					{tool.websiteUrl ? (
-						<a
-							href={tool.websiteUrl}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="inline-flex items-center gap-1.5 text-[11px] font-mono text-fg-muted hover:text-accent-lime transition-colors"
-						>
-							<ExternalLink size={12} />
-							{new URL(tool.websiteUrl).hostname.replace("www.", "")}
-						</a>
-					) : (
-						<span />
-					)}
-					<button
-						type="button"
-						onClick={() => onSuggestEdit(tool)}
-						className="inline-flex items-center gap-1.5 text-[11px] font-mono text-fg-muted hover:text-accent-lime transition-colors cursor-pointer"
-					>
-						<Pencil size={12} />
-						Suggest Edit
-					</button>
-				</div>
-			</div>
-		</motion.div>
-	);
-}

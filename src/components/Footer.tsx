@@ -70,7 +70,7 @@ const socialLinks = [
 function Footer() {
 	return (
 		<footer className="relative flex-1 overflow-hidden border-t-2 border-stroke-strong bg-bg-canvas text-fg-muted py-16 px-6 shadow-[0_-20px_50px_-30px_var(--shadow-color)] md:px-16 lg:px-24">
-			<div className="relative max-w-content mx-auto flex flex-col gap-12 md:flex-row md:justify-between md:items-start">
+			<div className="relative max-w-2xl mx-auto flex flex-col gap-12 md:flex-row md:justify-between md:items-start">
 				{/* Left side: Logo, Nav, Credit */}
 				<div className="flex flex-col gap-8">
 					{/* Logo */}

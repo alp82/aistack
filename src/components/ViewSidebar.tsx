@@ -1,80 +1,18 @@
-import { Brain, FileText, Package } from "lucide-react";
 import { useState } from "react";
-import { FullWidthToolCard } from "@/components/FullWidthToolCard";
-import { ItemIcon } from "@/components/ItemIcon";
-import { PriceDisplay } from "@/components/PriceDisplay";
-import { MiscToolCard } from "@/components/ToolCard";
-import type { BillingPeriod } from "@/lib/pricing";
+import { BundleItem, type BundleItemData } from "@/components/BundleItem";
+import {
+	InstructionItem,
+	type InstructionItemData,
+	instructionTypeColors,
+	typeLabels,
+} from "@/components/InstructionItem";
+import { ModelItem, type ModelItemData } from "@/components/ModelItem";
+import { ToolItem, type ToolItemData } from "@/components/ToolItem";
 
-const typeLabels: Record<string, string> = {
-	prompt: "Prompt",
-	rule: "Rule",
-	skill: "Skill",
-	mcp: "MCP",
-	plugin: "Plugin",
-	subagent: "Subagent",
-};
-
-type ViewTool = {
-	_id: string;
-	name: string;
-	slug: string;
-	iconUrl?: string;
-	categories: string[];
-	websiteUrl?: string;
-	price: {
-		pricingType: string;
-		fixed?: { currency: string; amount: number; period: BillingPeriod };
-	};
-	kind: "main" | "misc";
-	primaryUsageLabel: string;
-	tierName: string;
-	priceKind: "regular" | "discounted" | "bundle" | "usage_based" | "sponsored";
-	bundleSlug?: string;
-	notes?: string;
-};
-
-type ViewBundle = {
-	_id: string;
-	name: string;
-	slug: string;
-	description?: string;
-	iconUrl?: string;
-	websiteUrl?: string;
-	tierId: string;
-	tierName: string;
-	price: {
-		pricingType: string;
-		fixed?: { currency: string; amount: number; period: string };
-	};
-	notes?: string;
-};
-
-type ViewModel = {
-	_id: string;
-	name: string;
-	slug: string;
-	provider: string;
-	category: string;
-	iconUrl?: string;
-	role: "primary" | "secondary" | "specialized";
-};
-
-type ViewInstruction = {
-	type: "prompt" | "rule" | "skill" | "mcp" | "plugin" | "subagent";
-	name: string;
-	description?: string;
-	content?: string;
-};
-
-const instructionTypeColors: Record<string, string> = {
-	prompt: "text-blue-400 border-blue-400/30 bg-blue-400/10",
-	rule: "text-amber-400 border-amber-400/30 bg-amber-400/10",
-	skill: "text-purple-400 border-purple-400/30 bg-purple-400/10",
-	mcp: "text-cyan-400 border-cyan-400/30 bg-cyan-400/10",
-	plugin: "text-pink-400 border-pink-400/30 bg-pink-400/10",
-	subagent: "text-emerald-400 border-emerald-400/30 bg-emerald-400/10",
-};
+type ViewTool = ToolItemData & { tierName: string };
+type ViewBundle = BundleItemData;
+type ViewModel = ModelItemData;
+type ViewInstruction = InstructionItemData;
 
 type ViewSidebarProps = {
 	tools: ViewTool[];
@@ -145,9 +83,10 @@ export function ViewSidebar({
 							</p>
 							<div className="space-y-2">
 								{mainTools.map((tool) => (
-									<FullWidthToolCard
+									<ToolItem
 										key={tool._id}
 										tool={tool}
+										size="md"
 										onBundleClick={onBundleClick}
 									/>
 								))}
@@ -163,9 +102,10 @@ export function ViewSidebar({
 							</p>
 							<div className="space-y-2">
 								{miscTools.map((tool) => (
-									<MiscToolCard
+									<ToolItem
 										key={tool._id}
 										tool={tool}
+										size="sm"
 										onBundleClick={onBundleClick}
 									/>
 								))}
@@ -181,27 +121,7 @@ export function ViewSidebar({
 							</p>
 							<div className="space-y-2">
 								{sortedModels.map((model) => (
-									<div
-										key={model._id}
-										className="border border-stroke-subtle rounded p-3 hover:border-stroke-strong transition-colors"
-									>
-										<div className="flex items-center gap-3">
-											<ItemIcon
-												src={model.iconUrl}
-												alt={model.name}
-												size="sm"
-												fallbackIcon={Brain}
-											/>
-											<div className="flex-1 min-w-0">
-												<span className="font-mono text-sm font-semibold text-fg-primary block">
-													{model.name}
-												</span>
-												<span className="font-mono text-[10px] text-fg-muted uppercase tracking-wider">
-													{model.provider}
-												</span>
-											</div>
-										</div>
-									</div>
+									<ModelItem key={model._id} model={model} />
 								))}
 							</div>
 						</section>
@@ -215,47 +135,11 @@ export function ViewSidebar({
 							</p>
 							<div className="space-y-2">
 								{bundles.map((bundle) => (
-									<div
+									<BundleItem
 										key={bundle._id}
+										bundle={bundle}
 										id={`bundle-${bundle.slug}`}
-										className="border border-stroke-subtle rounded p-3 hover:border-stroke-strong transition-colors"
-									>
-										<div className="flex items-center gap-3">
-											<ItemIcon
-												src={bundle.iconUrl}
-												alt={bundle.name}
-												size="sm"
-												fallbackIcon={Package}
-											/>
-											<div className="flex-1 min-w-0">
-												<span className="font-mono text-sm font-semibold text-fg-primary block">
-													{bundle.name}
-												</span>
-												<span className="font-mono text-[10px] text-fg-muted uppercase tracking-wider">
-													{bundle.tierName}
-												</span>
-											</div>
-											<div className="shrink-0 text-right">
-												{bundle.price.fixed ? (
-													<PriceDisplay
-														amount={bundle.price.fixed.amount}
-														period={bundle.price.fixed.period}
-														size="sm"
-														className="text-fg-primary"
-													/>
-												) : (
-													<span className="font-mono text-sm font-bold text-fg-primary">
-														Usage
-													</span>
-												)}
-											</div>
-										</div>
-										{bundle.description && (
-											<p className="mt-2 text-xs text-fg-secondary line-clamp-2">
-												{bundle.description}
-											</p>
-										)}
-									</div>
+									/>
 								))}
 							</div>
 						</section>
@@ -269,33 +153,11 @@ export function ViewSidebar({
 							</p>
 							<div className="space-y-2">
 								{instructions.map((inst, i) => (
-									<button
-										type="button"
+									<InstructionItem
 										key={`${inst.name}-${i}`}
-										className="w-full text-left border border-stroke-subtle rounded p-3 hover:border-stroke-strong transition-colors cursor-pointer"
+										instruction={inst}
 										onClick={() => inst.content && setActiveInstruction(inst)}
-									>
-										<div className="flex items-center gap-3">
-											<div
-												className={`flex size-8 shrink-0 items-center justify-center rounded border ${instructionTypeColors[inst.type] ?? "text-fg-muted border-stroke-subtle bg-bg-panel-muted"}`}
-											>
-												<FileText className="size-4" />
-											</div>
-											<div className="min-w-0 flex-1">
-												<p className="truncate font-mono text-sm font-semibold text-fg-primary">
-													{inst.name}
-												</p>
-												<p className="font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-													{typeLabels[inst.type] ?? inst.type}
-												</p>
-											</div>
-											{inst.content && (
-												<span className="shrink-0 border border-accent-lime/30 bg-accent-lime/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-accent-lime">
-													Show
-												</span>
-											)}
-										</div>
-									</button>
+									/>
 								))}
 							</div>
 						</section>
