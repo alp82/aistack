@@ -38,4 +38,4 @@ jobs:
           
       - name: Deploy to production
         run: |
-          ssh ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "bash -l -c 'cd ~/aistack && git pull && pnpm i && pnpm convex deploy'"
+          ssh ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "bash -l -c 'cd ~/aistack && git pull && /root/.local/share/pnpm/pnpm i && /root/.local/share/pnpm/pnpm convex deploy'"
