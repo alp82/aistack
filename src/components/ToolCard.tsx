@@ -166,7 +166,7 @@ export function ToolCard<TId = string>({ tool, onSuggestEdit }: ToolCardProps<TI
 							className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-mono text-fg-muted hover:text-accent-lime transition-colors cursor-pointer"
 						>
 							<Pencil size={12} />
-							Suggest Edit
+							Edit
 						</button>
 					)}
 				</div>
