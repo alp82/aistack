@@ -126,6 +126,13 @@ export function ViewSidebar({
 		.filter((t) => t.kind === "misc")
 		.sort(sortByPriceThenName);
 
+	const sortModelsByProviderThenName = (a: ViewModel, b: ViewModel) => {
+		const providerDiff = a.provider.localeCompare(b.provider);
+		if (providerDiff !== 0) return providerDiff;
+		return b.name.localeCompare(a.name);
+	};
+	const sortedModels = models.sort(sortModelsByProviderThenName);
+
 	return (
 		<aside className="hidden w-140 shrink-0 lg:block">
 			<div className="sticky top-[58px] flex max-h-[calc(100vh-58px)] flex-col">
@@ -167,13 +174,13 @@ export function ViewSidebar({
 					)}
 
 					{/* Models */}
-					{models.length > 0 && (
+					{sortedModels.length > 0 && (
 						<section>
 							<p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
 								{"// Models"}
 							</p>
 							<div className="space-y-2">
-								{models.map((model) => (
+								{sortedModels.map((model) => (
 									<div
 										key={model._id}
 										className="border border-stroke-subtle rounded p-3 hover:border-stroke-strong transition-colors"
