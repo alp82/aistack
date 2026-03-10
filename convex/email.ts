@@ -110,10 +110,6 @@ export const sendTestEmail = action({
     }
 
     const html = await render(WaitlistLaunchEmail({}));
-    
-    // Debug: Log a snippet of the HTML to verify img tags have src
-    const imgMatch = html.match(/<img[^>]*perplexity[^>]*>/i);
-    console.log("Debug - Perplexity img tag:", imgMatch ? imgMatch[0] : "NOT FOUND");
 
     try {
       const { error } = await resend.emails.send({
