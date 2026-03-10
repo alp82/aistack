@@ -40,6 +40,9 @@ const BROADCAST_EMAILS: BroadcastEmail[] = [
 	},
 ];
 
+// Track which broadcasts have already been sent
+const SENT_BROADCASTS = new Set(["waitlist-launch"]);
+
 function BroadcastPreviewCard({ broadcast }: { broadcast: BroadcastEmail }) {
 	const [expanded, setExpanded] = useState(false);
 	const [viewMode, setViewMode] = useState<ViewMode>("preview");
@@ -177,10 +180,28 @@ function BroadcastPreviewCard({ broadcast }: { broadcast: BroadcastEmail }) {
 			<Dialog
 				open={showBroadcastDialog}
 				onClose={closeBroadcastDialog}
-				title="Send Broadcast"
-				titleIcon={<ShieldAlert className="size-6 text-red-500" />}
+				title={
+					SENT_BROADCASTS.has(broadcast.id)
+						? "Broadcast Sent"
+						: "Send Broadcast"
+				}
+				titleIcon={
+					<ShieldAlert
+						className={`size-6 ${SENT_BROADCASTS.has(broadcast.id) ? "text-green-500" : "text-red-500"}`}
+					/>
+				}
 				size="md"
 			>
+				{/* Already Sent Message */}
+				{SENT_BROADCASTS.has(broadcast.id) && (
+					<div className="mb-4 flex items-center gap-3 border border-green-700 bg-green-900/20 p-4">
+						<CheckCircle className="size-5 text-green-500" />
+						<span className="font-mono text-sm text-fg-primary">
+							This broadcast has already been sent to all waitlist subscribers.
+						</span>
+					</div>
+				)}
+
 				{/* Test Result */}
 				{testResult && (
 					<div
@@ -274,34 +295,39 @@ function BroadcastPreviewCard({ broadcast }: { broadcast: BroadcastEmail }) {
 					</button>
 				</div>
 
-				<p className="mb-4 font-mono text-sm text-fg-secondary">
-					You are about to send this email to{" "}
-					<span className="font-bold text-fg-primary">
-						{waitlistCount ?? "..."} recipients
-					</span>
-					. This action cannot be undone.
-				</p>
-
-				{/* Safety Toggle */}
-				<div className="mb-6 flex items-center justify-between border border-stroke-subtle bg-bg-panel-muted p-4">
-					<div className="flex items-center gap-3">
-						<ShieldAlert className="size-5 text-red-500" />
-						<span className="font-mono text-sm text-fg-secondary">
-							Enable broadcast send
+				{/* Warning - hidden if already sent */}
+				{!SENT_BROADCASTS.has(broadcast.id) && (
+					<p className="mb-4 font-mono text-sm text-fg-secondary">
+						You are about to send this email to{" "}
+						<span className="font-bold text-fg-primary">
+							{waitlistCount ?? "..."} recipients
 						</span>
+						. This action cannot be undone.
+					</p>
+				)}
+
+				{/* Safety Toggle - hidden if already sent */}
+				{!SENT_BROADCASTS.has(broadcast.id) && (
+					<div className="mb-6 flex items-center justify-between border border-stroke-subtle bg-bg-panel-muted p-4">
+						<div className="flex items-center gap-3">
+							<ShieldAlert className="size-5 text-red-500" />
+							<span className="font-mono text-sm text-fg-secondary">
+								Enable broadcast send
+							</span>
+						</div>
+						<button
+							type="button"
+							onClick={() => setBroadcastEnabled(!broadcastEnabled)}
+							className="text-fg-muted hover:text-fg-primary"
+						>
+							{broadcastEnabled ? (
+								<ToggleRight className="size-8 text-accent-lime" />
+							) : (
+								<ToggleLeft className="size-8" />
+							)}
+						</button>
 					</div>
-					<button
-						type="button"
-						onClick={() => setBroadcastEnabled(!broadcastEnabled)}
-						className="text-fg-muted hover:text-fg-primary"
-					>
-						{broadcastEnabled ? (
-							<ToggleRight className="size-8 text-accent-lime" />
-						) : (
-							<ToggleLeft className="size-8" />
-						)}
-					</button>
-				</div>
+				)}
 
 				{/* Actions */}
 				<div className="flex items-center justify-end gap-3">
@@ -310,17 +336,19 @@ function BroadcastPreviewCard({ broadcast }: { broadcast: BroadcastEmail }) {
 						onClick={closeBroadcastDialog}
 						className="border-2 border-stroke-subtle px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-fg-muted transition-colors hover:border-fg-muted"
 					>
-						Cancel
+						{SENT_BROADCASTS.has(broadcast.id) ? "Close" : "Cancel"}
 					</button>
-					<button
-						type="button"
-						onClick={handleSendBroadcast}
-						disabled={!broadcastEnabled || sendingBroadcast}
-						className="inline-flex items-center gap-2 border-2 border-red-500 bg-red-500 px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						<Send className="size-3.5" />
-						{sendingBroadcast ? "Sending..." : "Send Broadcast"}
-					</button>
+					{!SENT_BROADCASTS.has(broadcast.id) && (
+						<button
+							type="button"
+							onClick={handleSendBroadcast}
+							disabled={!broadcastEnabled || sendingBroadcast}
+							className="inline-flex items-center gap-2 border-2 border-red-500 bg-red-500 px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							<Send className="size-3.5" />
+							{sendingBroadcast ? "Sending..." : "Send Broadcast"}
+						</button>
+					)}
 				</div>
 			</Dialog>
 

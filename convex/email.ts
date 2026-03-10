@@ -3,7 +3,8 @@ import { v } from "convex/values";
 import { Resend } from "resend";
 import { render } from "@react-email/render";
 import { WaitlistLaunchEmail } from "../src/emails/WaitlistLaunchEmail";
-import { internal } from "./_generated/api";
+// internal import kept for future broadcast queries
+// import { internal } from "./_generated/api";
 
 export const sendWaitlistConfirmEmail = action({
   args: {
@@ -132,105 +133,106 @@ export const sendTestEmail = action({
   },
 });
 
-// Emails that have already received the launch broadcast (from previous successful sends)
-const ALREADY_SENT_EMAILS = [
-  "shuaibprojects@gmail.com",
-  "josgood09@gmail.com",
-  "sourinisatwork@gmail.com",
-  "willness210@gmail.com",
-  "sandydrogba77@gmail.com",
-  "riley@rileyfires.com",
-  "schuylergleaves@outlook.com",
-  "alportac@gmail.com",
-  "szumlas.kuba@gmail.com",
-  "akinwamide945@gmail.com",
-];
+// Reusable broadcast email sender with rate limiting and detailed logging
+// Sends emails one at a time with 1 second delay to respect Resend rate limit (2/sec)
+// Usage example for future broadcasts:
+//   const resend = new Resend(process.env.RESEND_API_KEY);
+//   const html = await render(MyEmailTemplate({}));
+//   const result = await sendBroadcastEmails(resend, emails, "Subject", html);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface BroadcastResult {
+  success: boolean;
+  sent: number;
+  failed: number;
+  total: number;
+  sentEmails: string[];
+  errors: { email: string; error: string }[];
+}
 
-// Send broadcast email to all waitlist subscribers
-export const sendWaitlistLaunchBroadcast = action({
-  args: {},
-  handler: async (ctx) => {
-    if (!process.env.RESEND_API_KEY) {
-      console.error("RESEND_API_KEY environment variable is not set");
-      return { success: false, error: "Email service not configured", sent: 0, failed: 0 };
-    }
+// @ts-ignore - Kept for future broadcasts
+async function sendBroadcastEmails(
+  resend: Resend,
+  emails: string[],
+  subject: string,
+  html: string
+): Promise<BroadcastResult> {
+  let sent = 0;
+  let failed = 0;
+  const errors: { email: string; error: string }[] = [];
+  const sentEmails: string[] = [];
 
-    // Get all waitlist emails and filter out already-sent ones
-    const allEmails: string[] = await ctx.runQuery(internal.email.getWaitlistEmails, {});
-    const alreadySentSet = new Set(ALREADY_SENT_EMAILS.map(e => e.toLowerCase()));
-    const emails = allEmails.filter(email => !alreadySentSet.has(email.toLowerCase()));
+  console.log(`Starting broadcast to ${emails.length} recipients (1 email per second)...`);
+
+  for (let i = 0; i < emails.length; i++) {
+    const email = emails[i];
+    console.log(`Sending ${i + 1}/${emails.length}: ${email}`);
     
-    console.log(`Total waitlist: ${allEmails.length}, Already sent: ${ALREADY_SENT_EMAILS.length}, To send: ${emails.length}`);
-    
-    if (emails.length === 0) {
-      return { success: true, sent: 0, failed: 0, message: "No new waitlist subscribers to send to" };
-    }
-
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    const html = await render(WaitlistLaunchEmail({}));
-    
-    let sent = 0;
-    let failed = 0;
-    const errors: { email: string; error: string }[] = [];
-    const sentEmails: string[] = [];
-
-    console.log(`Starting broadcast to ${emails.length} recipients (1 email per second)...`);
-
-    // Send emails one at a time with 1 second delay to respect Resend rate limit (2/sec)
-    for (let i = 0; i < emails.length; i++) {
-      const email = emails[i];
-      console.log(`Sending ${i + 1}/${emails.length}: ${email}`);
+    try {
+      const { error } = await resend.emails.send({
+        from: process.env.EMAIL_FROM || "onboarding@resend.dev",
+        to: email,
+        subject,
+        html,
+      });
       
-      try {
-        const { error } = await resend.emails.send({
-          from: process.env.EMAIL_FROM || "onboarding@resend.dev",
-          to: email,
-          subject: "AI Stack is Live! 🚀",
-          html,
-        });
-        
-        if (error) {
-          failed++;
-          const errorMsg = JSON.stringify(error);
-          errors.push({ email, error: errorMsg });
-          console.error(`✗ Failed: ${email} - ${errorMsg}`);
-        } else {
-          sent++;
-          sentEmails.push(email);
-          console.log(`✓ Sent: ${email}`);
-        }
-      } catch (err) {
+      if (error) {
         failed++;
-        const errorMsg = err instanceof Error ? err.message : "Unknown error";
+        const errorMsg = JSON.stringify(error);
         errors.push({ email, error: errorMsg });
         console.error(`✗ Failed: ${email} - ${errorMsg}`);
+      } else {
+        sent++;
+        sentEmails.push(email);
+        console.log(`✓ Sent: ${email}`);
       }
-
-      // Wait 1 second before next email (except for the last one)
-      if (i < emails.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
+    } catch (err) {
+      failed++;
+      const errorMsg = err instanceof Error ? err.message : "Unknown error";
+      errors.push({ email, error: errorMsg });
+      console.error(`✗ Failed: ${email} - ${errorMsg}`);
     }
 
-    console.log(`\n=== Broadcast Summary ===`);
-    console.log(`Total: ${emails.length}, Sent: ${sent}, Failed: ${failed}`);
-    if (sentEmails.length > 0) {
-      console.log(`Sent to: ${sentEmails.join(", ")}`);
+    // Wait 1 second before next email (except for the last one)
+    if (i < emails.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
-    if (errors.length > 0) {
-      console.log(`Failed emails:`);
-      for (const err of errors) {
-        console.log(`  - ${err.email}: ${err.error}`);
-      }
+  }
+
+  console.log(`\n=== Broadcast Summary ===`);
+  console.log(`Total: ${emails.length}, Sent: ${sent}, Failed: ${failed}`);
+  if (sentEmails.length > 0) {
+    console.log(`Sent to: ${sentEmails.join(", ")}`);
+  }
+  if (errors.length > 0) {
+    console.log(`Failed emails:`);
+    for (const err of errors) {
+      console.log(`  - ${err.email}: ${err.error}`);
     }
-    
-    return {
-      success: failed === 0,
-      sent,
-      failed,
-      total: emails.length,
-      sentEmails,
-      errors, // Full error details for debugging
+  }
+
+  return {
+    success: failed === 0,
+    sent,
+    failed,
+    total: emails.length,
+    sentEmails,
+    errors,
+  };
+}
+
+// Send broadcast email to all waitlist subscribers
+// NOTE: This broadcast has been sent to all waitlist subscribers on 2025-03-10
+// The UI should prevent re-sending, but this is a safety check
+export const sendWaitlistLaunchBroadcast = action({
+  args: {},
+  handler: async (_ctx) => {
+    // Broadcast already sent - return immediately
+    return { 
+      success: false, 
+      sent: 0, 
+      failed: 0, 
+      alreadySent: true,
+      message: "This broadcast has already been sent to all waitlist subscribers" 
     };
   },
 });
