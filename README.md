@@ -4,10 +4,10 @@
 
 [![Live Page](https://img.shields.io/badge/Live_Page-aistack.to-blue?style=for-the-badge&logo=web)](https://aistack.to)
 
+[![AI Stack Demo](public/aistack-demo.gif)](https://aistack.to)
+
 [![Discord](https://img.shields.io/badge/Discord-5865F2?logo=discord&logoColor=white&style=for-the-badge)](https://discord.gg/5y4fpyahaF)
 [![Reddit](https://img.shields.io/badge/Reddit-FF4500?logo=reddit&logoColor=white&style=for-the-badge)](https://www.reddit.com/r/aistackcommunity/)
-
-[![AI Stack Demo](public/aistack-demo.gif)](https://aistack.to)
 
 **A curated platform for discovering, comparing, and sharing AI technology stacks**
 
