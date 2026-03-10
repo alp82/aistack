@@ -2,19 +2,19 @@
 
 <div align="center">
 
+[![Live Page](https://img.shields.io/badge/Live_Page-aistack.to-blue?style=for-the-badge&logo=web)](https://aistack.to)
+
+[![Discord](https://img.shields.io/badge/Discord-5865F2?logo=discord&logoColor=white&style=for-the-badge)](https://discord.gg/5y4fpyahaF)
+[![Reddit](https://img.shields.io/badge/Reddit-FF4500?logo=reddit&logoColor=white&style=for-the-badge)](https://www.reddit.com/r/aistackcommunity/)
+
 [![AI Stack Demo](public/aistack-demo.gif)](https://aistack.to)
 
 **A curated platform for discovering, comparing, and sharing AI technology stacks**
-
-[![Live Page](https://img.shields.io/badge/Live_Page-aistack.to-blue?style=for-the-badge&logo=web)](https://aistack.to)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-
-[![Discord](https://img.shields.io/badge/Discord-5865F2?logo=discord&logoColor=white&style=for-the-badge)](https://discord.gg/5y4fpyahaF)
-[![Reddit](https://img.shields.io/badge/Reddit-FF4500?logo=reddit&logoColor=white&style=for-the-badge)](https://www.reddit.com/r/aistackcommunity/)
 
 </div>
 
