@@ -45,7 +45,7 @@ function selectSavePayload(state: EditorState, published: boolean) {
 		description: state.description.trim() || undefined,
 		instructions:
 			state.instructions.length > 0 ? state.instructions : undefined,
-		teamSize: state.isTeam ? state.teamSize : null,
+		teamSize: state.isTeam ? state.teamSize : undefined,
 		toolSubscriptions: state.toolSubscriptions.map((tool) => ({
 			toolSlug: tool.toolSlug,
 			tierId: tool.tierId,
