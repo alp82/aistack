@@ -1,7 +1,7 @@
 import { useMutation } from "convex/react";
-import { Package, Plus, Trash2, X } from "lucide-react";
+import { Package, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { createPortal } from "react-dom";
+import { Dialog } from "./ui/Dialog";
 import { api } from "../../convex/_generated/api";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -413,32 +413,15 @@ export function AddBundleModal({
 	onClose,
 	onBundleCreated,
 }: AddBundleModalProps) {
-	if (!open) return null;
-
-	return createPortal(
-		<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-			<div
-				className="absolute inset-0 bg-bg-canvas/80 backdrop-blur-md"
-				onClick={onClose}
-				onKeyDown={(e) => e.key === "Escape" && onClose()}
+	return (
+		<Dialog open={open} onClose={onClose} size="lg" scrollable>
+			<AddBundleForm
+				onCancel={onClose}
+				onBundleCreated={(bundleId) => {
+					onBundleCreated(bundleId);
+					onClose();
+				}}
 			/>
-			<div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto border-2 border-stroke-strong bg-bg-panel p-8 shadow-[6px_6px_0_var(--stroke-strong)]">
-				<button
-					type="button"
-					onClick={onClose}
-					className="absolute right-4 top-4 flex size-8 shrink-0 items-center justify-center border border-stroke-subtle text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime"
-				>
-					<X className="size-4" />
-				</button>
-				<AddBundleForm
-					onCancel={onClose}
-					onBundleCreated={(bundleId) => {
-						onBundleCreated(bundleId);
-						onClose();
-					}}
-				/>
-			</div>
-		</div>,
-		document.body,
+		</Dialog>
 	);
 }

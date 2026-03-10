@@ -13,7 +13,7 @@ export const colors = {
 	bgAccentBlock: "#111111",
 
 	// Accent (lime)
-	accentLime: "#a3e635",
+	accentLime: "rgba(162, 230, 53, 0.73)",
 	accentLimeContrast: "#0a1f02",
 
 	// Text

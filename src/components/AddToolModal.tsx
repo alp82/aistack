@@ -1,7 +1,7 @@
 import { useMutation } from "convex/react";
-import { Check, Plus, Trash2, X } from "lucide-react";
+import { Check, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { Dialog } from "./ui/Dialog";
 import { categoryConfig, type ToolCategory } from "@/config/categoryConfig";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -575,43 +575,26 @@ export function AddToolModal({
 	editingSuggestion,
 	onSuggestionUpdated,
 }: AddToolModalProps) {
-	if (!open) return null;
-
-	return createPortal(
-		<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-			<div
-				className="absolute inset-0 bg-bg-canvas/80 backdrop-blur-md"
-				onClick={onClose}
-				onKeyDown={(e) => e.key === "Escape" && onClose()}
+	return (
+		<Dialog open={open} onClose={onClose} size="lg">
+			<AddToolForm
+				onCancel={onClose}
+				onToolCreated={(toolId) => {
+					onToolCreated(toolId);
+					onClose();
+				}}
+				editTool={editTool}
+				onToolUpdated={(toolId) => {
+					onToolUpdated?.(toolId);
+					onClose();
+				}}
+				isAdmin={isAdmin}
+				editingSuggestion={editingSuggestion}
+				onSuggestionUpdated={(data) => {
+					onSuggestionUpdated?.(data);
+					onClose();
+				}}
 			/>
-			<div className="relative w-full max-w-4xl border-2 border-stroke-strong bg-bg-panel p-8 shadow-[6px_6px_0_var(--stroke-strong)]">
-				<button
-					type="button"
-					onClick={onClose}
-					className="absolute right-4 top-4 flex size-8 shrink-0 items-center justify-center border border-stroke-subtle text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime"
-				>
-					<X className="size-4" />
-				</button>
-				<AddToolForm
-					onCancel={onClose}
-					onToolCreated={(toolId) => {
-						onToolCreated(toolId);
-						onClose();
-					}}
-					editTool={editTool}
-					onToolUpdated={(toolId) => {
-						onToolUpdated?.(toolId);
-						onClose();
-					}}
-					isAdmin={isAdmin}
-					editingSuggestion={editingSuggestion}
-					onSuggestionUpdated={(data) => {
-						onSuggestionUpdated?.(data);
-						onClose();
-					}}
-				/>
-			</div>
-		</div>,
-		document.body,
+		</Dialog>
 	);
 }

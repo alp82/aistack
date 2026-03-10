@@ -1,6 +1,9 @@
-import { action } from "./_generated/server";
+import { action, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { Resend } from "resend";
+import { render } from "@react-email/render";
+import { WaitlistLaunchEmail } from "../src/emails/WaitlistLaunchEmail";
+import { internal } from "./_generated/api";
 
 export const sendWaitlistConfirmEmail = action({
   args: {
@@ -70,5 +73,137 @@ export const sendWaitlistConfirmEmail = action({
       console.error("Error sending email:", error);
       return { success: false, error };
     }
+  },
+});
+
+// Internal query to get all waitlist emails for broadcast
+export const getWaitlistEmails = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const waitlist = await ctx.db.query("waitlist").collect();
+    return waitlist.map((entry) => entry.email);
+  },
+});
+
+// Send test email to the current admin user
+export const sendTestEmail = action({
+  args: {
+    broadcastId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    if (!process.env.RESEND_API_KEY) {
+      console.error("RESEND_API_KEY environment variable is not set");
+      return { success: false, message: "Email service not configured" };
+    }
+
+    // Get the current user's email from auth
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity?.email) {
+      return { success: false, message: "Not authenticated or no email found" };
+    }
+
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    
+    // For now, only support waitlist-launch broadcast
+    if (args.broadcastId !== "waitlist-launch") {
+      return { success: false, message: "Unknown broadcast ID" };
+    }
+
+    const html = await render(WaitlistLaunchEmail({}));
+    
+    // Debug: Log a snippet of the HTML to verify img tags have src
+    const imgMatch = html.match(/<img[^>]*perplexity[^>]*>/i);
+    console.log("Debug - Perplexity img tag:", imgMatch ? imgMatch[0] : "NOT FOUND");
+
+    try {
+      const { error } = await resend.emails.send({
+        from: process.env.EMAIL_FROM || "onboarding@resend.dev",
+        to: identity.email,
+        subject: "[TEST] AI Stack is Live! 🚀",
+        html,
+      });
+
+      if (error) {
+        console.error("Failed to send test email:", error);
+        return { success: false, message: JSON.stringify(error) };
+      }
+
+      return { success: true, message: `Test email sent to ${identity.email}` };
+    } catch (error) {
+      console.error("Error sending test email:", error);
+      return { success: false, message: error instanceof Error ? error.message : "Unknown error" };
+    }
+  },
+});
+
+// Send broadcast email to all waitlist subscribers
+export const sendWaitlistLaunchBroadcast = action({
+  args: {},
+  handler: async (ctx) => {
+    if (!process.env.RESEND_API_KEY) {
+      console.error("RESEND_API_KEY environment variable is not set");
+      return { success: false, error: "Email service not configured", sent: 0, failed: 0 };
+    }
+
+    // Get all waitlist emails
+    const emails: string[] = await ctx.runQuery(internal.email.getWaitlistEmails, {});
+    
+    if (emails.length === 0) {
+      return { success: true, sent: 0, failed: 0, message: "No waitlist subscribers found" };
+    }
+
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const html = await render(WaitlistLaunchEmail({}));
+    
+    let sent = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    // Send emails in batches to avoid rate limits
+    const BATCH_SIZE = 10;
+    const DELAY_BETWEEN_BATCHES = 1000; // 1 second
+
+    for (let i = 0; i < emails.length; i += BATCH_SIZE) {
+      const batch = emails.slice(i, i + BATCH_SIZE);
+      
+      const results = await Promise.allSettled(
+        batch.map(async (email) => {
+          const { error } = await resend.emails.send({
+            from: process.env.EMAIL_FROM || "onboarding@resend.dev",
+            to: email,
+            subject: "AI Stack is Live! 🚀",
+            html,
+          });
+          if (error) {
+            throw new Error(`Failed to send to ${email}: ${JSON.stringify(error)}`);
+          }
+          return email;
+        })
+      );
+
+      for (const result of results) {
+        if (result.status === "fulfilled") {
+          sent++;
+        } else {
+          failed++;
+          errors.push(result.reason?.message || "Unknown error");
+        }
+      }
+
+      // Delay between batches (except for the last batch)
+      if (i + BATCH_SIZE < emails.length) {
+        await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
+      }
+    }
+
+    console.log(`Broadcast complete: ${sent} sent, ${failed} failed`);
+    
+    return {
+      success: failed === 0,
+      sent,
+      failed,
+      total: emails.length,
+      errors: errors.slice(0, 5), // Only return first 5 errors
+    };
   },
 });
