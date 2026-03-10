@@ -140,6 +140,10 @@ const ALREADY_SENT_EMAILS = [
   "willness210@gmail.com",
   "sandydrogba77@gmail.com",
   "riley@rileyfires.com",
+  "schuylergleaves@outlook.com",
+  "alportac@gmail.com",
+  "szumlas.kuba@gmail.com",
+  "akinwamide945@gmail.com",
 ];
 
 // Send broadcast email to all waitlist subscribers
@@ -170,52 +174,41 @@ export const sendWaitlistLaunchBroadcast = action({
     const errors: { email: string; error: string }[] = [];
     const sentEmails: string[] = [];
 
-    console.log(`Starting broadcast to ${emails.length} recipients...`);
+    console.log(`Starting broadcast to ${emails.length} recipients (1 email per second)...`);
 
-    // Send emails in batches to avoid rate limits
-    const BATCH_SIZE = 10;
-    const DELAY_BETWEEN_BATCHES = 1000; // 1 second
-
-    for (let i = 0; i < emails.length; i += BATCH_SIZE) {
-      const batch = emails.slice(i, i + BATCH_SIZE);
-      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-      const totalBatches = Math.ceil(emails.length / BATCH_SIZE);
+    // Send emails one at a time with 1 second delay to respect Resend rate limit (2/sec)
+    for (let i = 0; i < emails.length; i++) {
+      const email = emails[i];
+      console.log(`Sending ${i + 1}/${emails.length}: ${email}`);
       
-      console.log(`Processing batch ${batchNum}/${totalBatches}: ${batch.join(", ")}`);
-      
-      const results = await Promise.allSettled(
-        batch.map(async (email) => {
-          const { error } = await resend.emails.send({
-            from: process.env.EMAIL_FROM || "onboarding@resend.dev",
-            to: email,
-            subject: "AI Stack is Live! 🚀",
-            html,
-          });
-          if (error) {
-            throw new Error(JSON.stringify(error));
-          }
-          return email;
-        })
-      );
-
-      for (let j = 0; j < results.length; j++) {
-        const result = results[j];
-        const email = batch[j];
-        if (result.status === "fulfilled") {
+      try {
+        const { error } = await resend.emails.send({
+          from: process.env.EMAIL_FROM || "onboarding@resend.dev",
+          to: email,
+          subject: "AI Stack is Live! 🚀",
+          html,
+        });
+        
+        if (error) {
+          failed++;
+          const errorMsg = JSON.stringify(error);
+          errors.push({ email, error: errorMsg });
+          console.error(`✗ Failed: ${email} - ${errorMsg}`);
+        } else {
           sent++;
           sentEmails.push(email);
-          console.log(`✓ Sent to: ${email}`);
-        } else {
-          failed++;
-          const errorMsg = result.reason?.message || "Unknown error";
-          errors.push({ email, error: errorMsg });
-          console.error(`✗ Failed to send to ${email}: ${errorMsg}`);
+          console.log(`✓ Sent: ${email}`);
         }
+      } catch (err) {
+        failed++;
+        const errorMsg = err instanceof Error ? err.message : "Unknown error";
+        errors.push({ email, error: errorMsg });
+        console.error(`✗ Failed: ${email} - ${errorMsg}`);
       }
 
-      // Delay between batches (except for the last batch)
-      if (i + BATCH_SIZE < emails.length) {
-        await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
+      // Wait 1 second before next email (except for the last one)
+      if (i < emails.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
 
