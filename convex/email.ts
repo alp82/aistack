@@ -132,6 +132,16 @@ export const sendTestEmail = action({
   },
 });
 
+// Emails that have already received the launch broadcast (from previous successful sends)
+const ALREADY_SENT_EMAILS = [
+  "shuaibprojects@gmail.com",
+  "josgood09@gmail.com",
+  "sourinisatwork@gmail.com",
+  "willness210@gmail.com",
+  "sandydrogba77@gmail.com",
+  "riley@rileyfires.com",
+];
+
 // Send broadcast email to all waitlist subscribers
 export const sendWaitlistLaunchBroadcast = action({
   args: {},
@@ -141,11 +151,15 @@ export const sendWaitlistLaunchBroadcast = action({
       return { success: false, error: "Email service not configured", sent: 0, failed: 0 };
     }
 
-    // Get all waitlist emails
-    const emails: string[] = await ctx.runQuery(internal.email.getWaitlistEmails, {});
+    // Get all waitlist emails and filter out already-sent ones
+    const allEmails: string[] = await ctx.runQuery(internal.email.getWaitlistEmails, {});
+    const alreadySentSet = new Set(ALREADY_SENT_EMAILS.map(e => e.toLowerCase()));
+    const emails = allEmails.filter(email => !alreadySentSet.has(email.toLowerCase()));
+    
+    console.log(`Total waitlist: ${allEmails.length}, Already sent: ${ALREADY_SENT_EMAILS.length}, To send: ${emails.length}`);
     
     if (emails.length === 0) {
-      return { success: true, sent: 0, failed: 0, message: "No waitlist subscribers found" };
+      return { success: true, sent: 0, failed: 0, message: "No new waitlist subscribers to send to" };
     }
 
     const resend = new Resend(process.env.RESEND_API_KEY);
@@ -153,7 +167,10 @@ export const sendWaitlistLaunchBroadcast = action({
     
     let sent = 0;
     let failed = 0;
-    const errors: string[] = [];
+    const errors: { email: string; error: string }[] = [];
+    const sentEmails: string[] = [];
+
+    console.log(`Starting broadcast to ${emails.length} recipients...`);
 
     // Send emails in batches to avoid rate limits
     const BATCH_SIZE = 10;
@@ -161,6 +178,10 @@ export const sendWaitlistLaunchBroadcast = action({
 
     for (let i = 0; i < emails.length; i += BATCH_SIZE) {
       const batch = emails.slice(i, i + BATCH_SIZE);
+      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+      const totalBatches = Math.ceil(emails.length / BATCH_SIZE);
+      
+      console.log(`Processing batch ${batchNum}/${totalBatches}: ${batch.join(", ")}`);
       
       const results = await Promise.allSettled(
         batch.map(async (email) => {
@@ -171,18 +192,24 @@ export const sendWaitlistLaunchBroadcast = action({
             html,
           });
           if (error) {
-            throw new Error(`Failed to send to ${email}: ${JSON.stringify(error)}`);
+            throw new Error(JSON.stringify(error));
           }
           return email;
         })
       );
 
-      for (const result of results) {
+      for (let j = 0; j < results.length; j++) {
+        const result = results[j];
+        const email = batch[j];
         if (result.status === "fulfilled") {
           sent++;
+          sentEmails.push(email);
+          console.log(`✓ Sent to: ${email}`);
         } else {
           failed++;
-          errors.push(result.reason?.message || "Unknown error");
+          const errorMsg = result.reason?.message || "Unknown error";
+          errors.push({ email, error: errorMsg });
+          console.error(`✗ Failed to send to ${email}: ${errorMsg}`);
         }
       }
 
@@ -192,14 +219,25 @@ export const sendWaitlistLaunchBroadcast = action({
       }
     }
 
-    console.log(`Broadcast complete: ${sent} sent, ${failed} failed`);
+    console.log(`\n=== Broadcast Summary ===`);
+    console.log(`Total: ${emails.length}, Sent: ${sent}, Failed: ${failed}`);
+    if (sentEmails.length > 0) {
+      console.log(`Sent to: ${sentEmails.join(", ")}`);
+    }
+    if (errors.length > 0) {
+      console.log(`Failed emails:`);
+      for (const err of errors) {
+        console.log(`  - ${err.email}: ${err.error}`);
+      }
+    }
     
     return {
       success: failed === 0,
       sent,
       failed,
       total: emails.length,
-      errors: errors.slice(0, 5), // Only return first 5 errors
+      sentEmails,
+      errors, // Full error details for debugging
     };
   },
 });

@@ -56,6 +56,8 @@ function BroadcastPreviewCard({ broadcast }: { broadcast: BroadcastEmail }) {
 		sent: number;
 		failed: number;
 		message?: string;
+		sentEmails?: string[];
+		errors?: { email: string; error: string }[];
 	} | null>(null);
 	const [showBroadcastDialog, setShowBroadcastDialog] = useState(false);
 	const [broadcastEnabled, setBroadcastEnabled] = useState(false);
@@ -202,22 +204,54 @@ function BroadcastPreviewCard({ broadcast }: { broadcast: BroadcastEmail }) {
 				{/* Broadcast Result */}
 				{broadcastResult && (
 					<div
-						className={`mb-4 flex items-center gap-3 p-3 ${
+						className={`mb-4 p-3 ${
 							broadcastResult.success
 								? "bg-green-900/20 border border-green-700"
 								: "bg-red-900/20 border border-red-700"
 						}`}
 					>
-						{broadcastResult.success ? (
-							<CheckCircle className="size-5 text-green-500" />
-						) : (
-							<AlertTriangle className="size-5 text-red-500" />
+						<div className="flex items-center gap-3">
+							{broadcastResult.success ? (
+								<CheckCircle className="size-5 text-green-500" />
+							) : (
+								<AlertTriangle className="size-5 text-red-500" />
+							)}
+							<span className="font-mono text-sm text-fg-primary">
+								{broadcastResult.success
+									? `Successfully sent ${broadcastResult.sent} emails`
+									: `Sent: ${broadcastResult.sent}, Failed: ${broadcastResult.failed}`}
+							</span>
+						</div>
+						{/* Show sent emails */}
+						{broadcastResult.sentEmails &&
+							broadcastResult.sentEmails.length > 0 && (
+								<details className="mt-2">
+									<summary className="cursor-pointer font-mono text-xs text-green-400">
+										✓ Sent ({broadcastResult.sentEmails.length})
+									</summary>
+									<ul className="mt-1 max-h-32 overflow-y-auto pl-4 font-mono text-xs text-fg-muted">
+										{broadcastResult.sentEmails.map((email) => (
+											<li key={email}>{email}</li>
+										))}
+									</ul>
+								</details>
+							)}
+						{/* Show failed emails with errors */}
+						{broadcastResult.errors && broadcastResult.errors.length > 0 && (
+							<details className="mt-2" open>
+								<summary className="cursor-pointer font-mono text-xs text-red-400">
+									✗ Failed ({broadcastResult.errors.length})
+								</summary>
+								<ul className="mt-1 max-h-48 overflow-y-auto pl-4 font-mono text-xs text-fg-muted">
+									{broadcastResult.errors.map((err) => (
+										<li key={err.email} className="mb-1">
+											<span className="text-red-400">{err.email}</span>
+											<span className="text-fg-muted">: {err.error}</span>
+										</li>
+									))}
+								</ul>
+							</details>
 						)}
-						<span className="font-mono text-sm text-fg-primary">
-							{broadcastResult.success
-								? `Successfully sent ${broadcastResult.sent} emails`
-								: `Failed: ${broadcastResult.message || `${broadcastResult.failed} emails failed`}`}
-						</span>
 					</div>
 				)}
 
