@@ -334,8 +334,25 @@ export function StackEditor({
 		}
 	};
 
+	const handleInstructionUpdate = useCallback(
+		(oldName: string, updates: Partial<InstructionLookupData>) => {
+			const updatedInstructions = state.instructions.map((inst) =>
+				inst.name === oldName
+					? {
+							...inst,
+							name: updates.name ?? inst.name,
+							description: updates.description ?? inst.description,
+							content: updates.content ?? inst.content,
+						}
+					: inst,
+			);
+			setInstructions(updatedInstructions);
+		},
+		[state.instructions, setInstructions],
+	);
+
 	return (
-		<EditorProvider>
+		<EditorProvider onInstructionUpdate={handleInstructionUpdate}>
 			<LookupDataSync
 				tools={state.toolSubscriptions}
 				models={state.modelSubscriptions}

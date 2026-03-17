@@ -3,60 +3,21 @@ import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import type { NodeViewProps } from "@tiptap/react";
 import { FileText } from "lucide-react";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import type { InstructionType } from "@/features/stack-editor/types";
 import { useOptionalEditorContext } from "@/features/stack-editor/context/EditorContext";
 import HoverPreview from "@/components/ui/hover-preview";
+import { InstructionDialog } from "@/components/InstructionDialog";
+import {
+	instructionTypeColorsSplit as typeColors,
+	instructionTypeLabels as typeLabels,
+} from "@/lib/instruction-utils";
 
 export interface AIInstructionBlockAttrs {
 	name: string;
 	instructionType: InstructionType;
 	content: string | null;
 }
-
-const typeColors: Record<
-	InstructionType,
-	{ border: string; bg: string; text: string }
-> = {
-	prompt: {
-		border: "border-blue-500/30",
-		bg: "bg-blue-500/10",
-		text: "text-blue-500",
-	},
-	rule: {
-		border: "border-purple-500/30",
-		bg: "bg-purple-500/10",
-		text: "text-purple-500",
-	},
-	skill: {
-		border: "border-emerald-500/30",
-		bg: "bg-emerald-500/10",
-		text: "text-emerald-500",
-	},
-	mcp: {
-		border: "border-pink-500/30",
-		bg: "bg-pink-500/10",
-		text: "text-pink-500",
-	},
-	plugin: {
-		border: "border-orange-500/30",
-		bg: "bg-orange-500/10",
-		text: "text-orange-500",
-	},
-	subagent: {
-		border: "border-indigo-500/30",
-		bg: "bg-indigo-500/10",
-		text: "text-indigo-500",
-	},
-};
-
-const typeLabels: Record<InstructionType, string> = {
-	prompt: "Prompt",
-	rule: "Rule",
-	skill: "Skill",
-	mcp: "MCP",
-	plugin: "Plugin",
-	subagent: "Subagent",
-};
 
 function InstructionTooltipContent({
 	name,
@@ -99,28 +60,37 @@ function InstructionTooltipContent({
 	);
 }
 
-function AIInstructionBlockView({ node }: NodeViewProps) {
-	const { name, instructionType, content } =
-		node.attrs as AIInstructionBlockAttrs;
+function AIInstructionBlockView({ node, editor }: NodeViewProps) {
+	const { name, instructionType } = node.attrs as AIInstructionBlockAttrs;
 	const [showModal, setShowModal] = useState(false);
-	const [copied, setCopied] = useState(false);
 	const context = useOptionalEditorContext();
 	const instructionData = context?.instructionLookup.get(name);
 
-	const colors = typeColors[instructionType] || typeColors.prompt;
+	// Use live data from lookup, fallback to node attrs
+	const content = instructionData?.content ?? node.attrs.content;
 
-	const handleCopy = async () => {
-		if (content) {
-			await navigator.clipboard.writeText(content);
-			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
-		}
+	const colors = typeColors[instructionType] || typeColors.prompt;
+	const isEditable = editor?.isEditable ?? false;
+
+	const handleOpenModal = () => {
+		if (!content) return;
+		setShowModal(true);
+	};
+
+	const handleSave = (updates: {
+		name: string;
+		type: InstructionType;
+		description?: string;
+		content?: string;
+	}) => {
+		if (!context?.onInstructionUpdate) return;
+		context.onInstructionUpdate(name, updates);
 	};
 
 	const blockContent = (
 		<span
 			contentEditable={false}
-			onClick={() => content && setShowModal(true)}
+			onClick={handleOpenModal}
 			className={`inline-flex cursor-pointer items-center gap-2 border ${colors.border} ${colors.bg} px-2 py-1 align-middle font-mono text-xs font-semibold uppercase text-fg-primary transition-all hover:opacity-80`}
 		>
 			<span
@@ -158,48 +128,19 @@ function AIInstructionBlockView({ node }: NodeViewProps) {
 				{blockContent}
 			</HoverPreview>
 
-			{/* Modal for viewing content */}
-			{showModal && (
-				<div
-					className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
-					onClick={() => setShowModal(false)}
-				>
-					<div
-						className="max-h-[80vh] w-full max-w-4xl overflow-auto border border-stroke-subtle bg-bg-panel p-6"
-						onClick={(e) => e.stopPropagation()}
-					>
-						<div className="mb-4 flex items-center justify-between">
-							<div>
-								<h3 className="font-mono text-sm font-bold uppercase text-fg-primary">
-									{name}
-								</h3>
-								<span
-									className={`font-mono text-[10px] uppercase ${colors.text}`}
-								>
-									{typeLabels[instructionType]}
-								</span>
-							</div>
-							<button
-								type="button"
-								onClick={handleCopy}
-								className="border border-stroke-subtle bg-bg-panel-muted px-3 py-1 font-mono text-xs uppercase text-fg-muted transition-all hover:border-accent-lime hover:text-accent-lime"
-							>
-								{copied ? "Copied!" : "Copy"}
-							</button>
-						</div>
-						<pre className="whitespace-pre-wrap border border-stroke-subtle bg-bg-panel-muted p-4 font-mono text-xs text-fg-primary">
-							{content || "No content"}
-						</pre>
-						<button
-							type="button"
-							onClick={() => setShowModal(false)}
-							className="mt-4 w-full bg-accent-lime py-2 font-mono text-xs uppercase tracking-wider text-accent-lime-contrast transition-opacity hover:opacity-90 cursor-pointer"
-						>
-							Close
-						</button>
-					</div>
-				</div>
-			)}
+			{showModal &&
+				createPortal(
+					<InstructionDialog
+						isOpen={showModal}
+						onClose={() => setShowModal(false)}
+						name={name}
+						type={instructionType}
+						content={content ?? ""}
+						editMode={isEditable}
+						onSave={handleSave}
+					/>,
+					document.body,
+				)}
 		</NodeViewWrapper>
 	);
 }

@@ -64,6 +64,10 @@ type EditorContextValue = {
 		type: InstructionType;
 		content?: string;
 	}) => void;
+	onInstructionUpdate?: (
+		oldName: string,
+		updates: Partial<InstructionLookupData>,
+	) => void;
 	hoveredToolName: string | null;
 	setHoveredToolName: (name: string | null) => void;
 	toolLookup: Map<string, ToolLookupData>;
@@ -81,7 +85,16 @@ type EditorContextValue = {
 
 const EditorContext = createContext<EditorContextValue | null>(null);
 
-export function EditorProvider({ children }: { children: ReactNode }) {
+export function EditorProvider({
+	children,
+	onInstructionUpdate,
+}: {
+	children: ReactNode;
+	onInstructionUpdate?: (
+		oldName: string,
+		updates: Partial<InstructionLookupData>,
+	) => void;
+}) {
 	const editorRef = useRef<Editor | null>(null);
 	const [hoveredToolName, setHoveredToolName] = useState<string | null>(null);
 	const [toolLookup, setToolLookup] = useState<Map<string, ToolLookupData>>(
@@ -347,6 +360,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 				insertModelAtCursor,
 				insertBundleAtCursor,
 				insertInstructionAtCursor,
+				onInstructionUpdate,
 				hoveredToolName,
 				setHoveredToolName,
 				toolLookup,

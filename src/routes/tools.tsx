@@ -1,12 +1,7 @@
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "convex/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import {
-	ChevronLeft,
-	ChevronRight,
-	Plus,
-	Search,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { GridBackground } from "../components/GridBackground";
@@ -282,7 +277,9 @@ function ToolsPage() {
 						<ToolCard
 							key={tool._id}
 							tool={tool}
-							onSuggestEdit={(t) => setSuggestEditTool(t as unknown as ToolForSuggestion)}
+							onSuggestEdit={(t) =>
+								setSuggestEditTool(t as unknown as ToolForSuggestion)
+							}
 						/>
 					))}
 				</div>
@@ -355,4 +352,3 @@ function ToolsPage() {
 		</div>
 	);
 }
-

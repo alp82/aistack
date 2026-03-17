@@ -1,22 +1,8 @@
 import { FileText } from "lucide-react";
-
-const typeLabels: Record<string, string> = {
-	prompt: "Prompt",
-	rule: "Rule",
-	skill: "Skill",
-	mcp: "MCP",
-	plugin: "Plugin",
-	subagent: "Subagent",
-};
-
-const instructionTypeColors: Record<string, string> = {
-	prompt: "text-blue-400 border-blue-400/30 bg-blue-400/10",
-	rule: "text-amber-400 border-amber-400/30 bg-amber-400/10",
-	skill: "text-purple-400 border-purple-400/30 bg-purple-400/10",
-	mcp: "text-cyan-400 border-cyan-400/30 bg-cyan-400/10",
-	plugin: "text-pink-400 border-pink-400/30 bg-pink-400/10",
-	subagent: "text-emerald-400 border-emerald-400/30 bg-emerald-400/10",
-};
+import {
+	instructionTypeColors,
+	instructionTypeLabels as typeLabels,
+} from "@/lib/instruction-utils";
 
 export interface InstructionItemData {
 	type: "prompt" | "rule" | "skill" | "mcp" | "plugin" | "subagent";
@@ -30,7 +16,10 @@ interface InstructionItemProps {
 	onClick?: () => void;
 }
 
-export function InstructionItem({ instruction, onClick }: InstructionItemProps) {
+export function InstructionItem({
+	instruction,
+	onClick,
+}: InstructionItemProps) {
 	return (
 		<button
 			type="button"
@@ -60,5 +49,3 @@ export function InstructionItem({ instruction, onClick }: InstructionItemProps) 
 		</button>
 	);
 }
-
-export { typeLabels, instructionTypeColors };

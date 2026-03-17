@@ -773,9 +773,7 @@ export function AdminReviewTab() {
 
 										<button
 											type="button"
-											onClick={() =>
-												setEditingModel(model as ModelData)
-											}
+											onClick={() => setEditingModel(model as ModelData)}
 											className="inline-flex items-center gap-2 border border-stroke-subtle px-3 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-accent-lime hover:text-accent-lime"
 										>
 											<Edit2 className="size-3.5" />

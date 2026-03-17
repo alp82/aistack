@@ -9,7 +9,12 @@ interface ToolCardTier {
 	pricing: {
 		pricingType: string;
 		fixed?: { currency: string; amount: number; period: string };
-		usage?: { unit: string; pricePerUnit: number; currency: string; notes?: string };
+		usage?: {
+			unit: string;
+			pricePerUnit: number;
+			currency: string;
+			notes?: string;
+		};
 	};
 	isDefault?: boolean;
 	updatedAt?: number;
@@ -43,7 +48,10 @@ function formatPrice(tier: ToolCardTier) {
 	return `$${amount}${periodLabel}`;
 }
 
-export function ToolCard<TId = string>({ tool, onSuggestEdit }: ToolCardProps<TId>) {
+export function ToolCard<TId = string>({
+	tool,
+	onSuggestEdit,
+}: ToolCardProps<TId>) {
 	const maxVisible = tool.categories.length > 3 ? 2 : 3;
 	const visibleCats = tool.categories.slice(0, maxVisible);
 	const hiddenCats = tool.categories.slice(maxVisible);
@@ -159,7 +167,7 @@ export function ToolCard<TId = string>({ tool, onSuggestEdit }: ToolCardProps<TI
 							</span>
 						</span>
 					)}
-				{onSuggestEdit && (
+					{onSuggestEdit && (
 						<button
 							type="button"
 							onClick={() => onSuggestEdit(tool)}

@@ -14,7 +14,8 @@ const STACK_CARD_WIDTH = 420;
 const STACK_CARD_HEIGHT = 520;
 
 function StackCarousel({ compact = false }: { compact?: boolean }) {
-	const stacks = (useQuery(api.stacks.listPublished) ?? []) as LandingStackPreview[];
+	const stacks = (useQuery(api.stacks.listPublished) ??
+		[]) as LandingStackPreview[];
 
 	if (stacks.length === 0) {
 		return (
@@ -49,10 +50,7 @@ function StackCarousel({ compact = false }: { compact?: boolean }) {
 					pauseOnHover={true}
 					animationConfig={{ stiffness: 200, damping: 20 }}
 					cards={stacks.map((stack) => (
-						<StackCard
-							key={stack._id}
-							stack={stack}
-						/>
+						<StackCard key={stack._id} stack={stack} />
 					))}
 				/>
 			</div>

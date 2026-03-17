@@ -3,9 +3,8 @@ import { BundleItem, type BundleItemData } from "@/components/BundleItem";
 import {
 	InstructionItem,
 	type InstructionItemData,
-	instructionTypeColors,
-	typeLabels,
 } from "@/components/InstructionItem";
+import { InstructionDialog } from "@/components/InstructionDialog";
 import { ModelItem, type ModelItemData } from "@/components/ModelItem";
 import { ToolItem, type ToolItemData } from "@/components/ToolItem";
 
@@ -31,15 +30,6 @@ export function ViewSidebar({
 }: ViewSidebarProps) {
 	const [activeInstruction, setActiveInstruction] =
 		useState<ViewInstruction | null>(null);
-	const [copied, setCopied] = useState(false);
-
-	const handleCopy = async () => {
-		if (activeInstruction?.content) {
-			await navigator.clipboard.writeText(activeInstruction.content);
-			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
-		}
-	};
 	const sortByPriceThenName = (a: ViewTool, b: ViewTool) => {
 		const groupOrder = (t: ViewTool) => {
 			if (t.priceKind === "sponsored") return 0;
@@ -164,52 +154,14 @@ export function ViewSidebar({
 					)}
 				</div>
 			</div>
-			{activeInstruction && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center">
-					<button
-						type="button"
-						aria-label="Close instruction dialog"
-						className="absolute inset-0 bg-black/80"
-						onClick={() => setActiveInstruction(null)}
-					/>
-					<div
-						className="relative max-h-[80vh] w-full max-w-4xl overflow-auto border border-stroke-subtle bg-bg-panel p-6"
-						role="dialog"
-						aria-modal="true"
-						aria-label={activeInstruction.name}
-					>
-						<div className="mb-4 flex items-center justify-between">
-							<div>
-								<h3 className="font-mono text-sm font-bold uppercase text-fg-primary">
-									{activeInstruction.name}
-								</h3>
-								<span
-									className={`font-mono text-[10px] uppercase ${(instructionTypeColors[activeInstruction.type] ?? "").split(" ")[0]}`}
-								>
-									{typeLabels[activeInstruction.type] ?? activeInstruction.type}
-								</span>
-							</div>
-							<button
-								type="button"
-								onClick={handleCopy}
-								className="border border-stroke-subtle bg-bg-panel-muted px-3 py-1 font-mono text-xs uppercase text-fg-muted transition-all hover:border-accent-lime hover:text-accent-lime"
-							>
-								{copied ? "Copied!" : "Copy"}
-							</button>
-						</div>
-						<pre className="whitespace-pre-wrap border border-stroke-subtle bg-bg-panel-muted p-4 font-mono text-xs text-fg-primary">
-							{activeInstruction.content || "No content"}
-						</pre>
-						<button
-							type="button"
-							onClick={() => setActiveInstruction(null)}
-							className="mt-4 w-full bg-accent-lime py-2 font-mono text-xs uppercase tracking-wider text-accent-lime-contrast transition-opacity hover:opacity-90 cursor-pointer"
-						>
-							Close
-						</button>
-					</div>
-				</div>
-			)}
+			<InstructionDialog
+				isOpen={!!activeInstruction}
+				onClose={() => setActiveInstruction(null)}
+				name={activeInstruction?.name ?? ""}
+				type={activeInstruction?.type ?? "prompt"}
+				content={activeInstruction?.content ?? ""}
+				editMode={false}
+			/>
 		</aside>
 	);
 }

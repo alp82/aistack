@@ -553,7 +553,9 @@ function StackDetailsPage() {
 								</h1>
 
 								{/* Creator Social Bar */}
-								{(stack.creator.xHandle || personalPageUrl || projectPageUrl) && (
+								{(stack.creator.xHandle ||
+									personalPageUrl ||
+									projectPageUrl) && (
 									<div className="mt-6 bg-bg-panel-muted inline-flex">
 										<div className="flex flex-wrap items-center divide-x divide-stroke-subtle">
 											{stack.creator.xHandle && (
@@ -563,7 +565,11 @@ function StackDetailsPage() {
 													rel="noopener noreferrer"
 													className="flex items-center gap-2 px-5 py-3 font-mono text-sm text-fg-secondary transition-colors border-t-2 border-t-transparent hover:border-t-accent-lime hover:text-accent-lime hover:bg-bg-panel"
 												>
-													<svg className="size-4" viewBox="0 0 24 24" fill="currentColor">
+													<svg
+														className="size-4"
+														viewBox="0 0 24 24"
+														fill="currentColor"
+													>
 														<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
 													</svg>
 													<span>@{stack.creator.xHandle}</span>
@@ -571,24 +577,44 @@ function StackDetailsPage() {
 											)}
 											{personalPageUrl && (
 												<a
-													href={personalPageUrl.startsWith("http") ? personalPageUrl : `https://${personalPageUrl}`}
+													href={
+														personalPageUrl.startsWith("http")
+															? personalPageUrl
+															: `https://${personalPageUrl}`
+													}
 													target="_blank"
 													rel="noopener noreferrer"
 													className="flex items-center gap-2 px-5 py-3 font-mono text-sm text-fg-secondary transition-colors border-t-2 border-t-transparent hover:border-t-accent-lime hover:text-accent-lime hover:bg-bg-panel"
 												>
 													<User className="size-4" />
-													<span>{personalPageUrl.replace(/^https?:\/\//, "").split("/")[0]}</span>
+													<span>
+														{
+															personalPageUrl
+																.replace(/^https?:\/\//, "")
+																.split("/")[0]
+														}
+													</span>
 												</a>
 											)}
 											{projectPageUrl && (
 												<a
-													href={projectPageUrl.startsWith("http") ? projectPageUrl : `https://${projectPageUrl}`}
+													href={
+														projectPageUrl.startsWith("http")
+															? projectPageUrl
+															: `https://${projectPageUrl}`
+													}
 													target="_blank"
 													rel="noopener noreferrer"
 													className="flex items-center gap-2 px-5 py-3 font-mono text-sm text-fg-secondary transition-colors border-t-2 border-t-transparent hover:border-t-accent-lime hover:text-accent-lime hover:bg-bg-panel"
 												>
 													<Globe className="size-4" />
-													<span>{projectPageUrl.replace(/^https?:\/\//, "").split("/")[0]}</span>
+													<span>
+														{
+															projectPageUrl
+																.replace(/^https?:\/\//, "")
+																.split("/")[0]
+														}
+													</span>
 												</a>
 											)}
 										</div>
@@ -605,7 +631,6 @@ function StackDetailsPage() {
 								<p className="mt-4 md:mt-6 text-base md:text-xl text-fg-secondary max-w-2xl border-l-4 border-accent-lime pl-4 md:pl-6">
 									{stack.oneLiner}
 								</p>
-
 							</div>
 
 							{/* Price Card */}

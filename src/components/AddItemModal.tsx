@@ -55,9 +55,7 @@ export function AddItemModal({
 			else if (type === "bundle") onBundleCreated?.(id);
 
 			if (addAnotherRef.current) {
-				setLastCreatedMessage(
-					`${name || type} submitted for review.`,
-				);
+				setLastCreatedMessage(`${name || type} submitted for review.`);
 				setFormKey((k) => k + 1);
 			} else {
 				onClose();
