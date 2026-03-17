@@ -77,6 +77,70 @@ export const listAll = query({
   },
 })
 
+export const listForEditor = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id('tools'),
+      name: v.string(),
+      slug: v.string(),
+      shortId: v.optional(v.string()),
+      aliases: v.optional(v.array(v.string())),
+      categories: v.array(v.string()),
+      iconUrl: v.optional(v.string()),
+      websiteUrl: v.optional(v.string()),
+      tiers: v.array(
+        v.object({
+          tierId: v.string(),
+          name: v.string(),
+          pricing: v.object({
+            pricingType: v.union(v.literal('fixed'), v.literal('usage'), v.literal('mixed')),
+            fixed: v.optional(v.object({
+              currency: v.string(),
+              amount: v.number(),
+              period: v.union(v.literal('month'), v.literal('year'), v.literal('one_time')),
+            })),
+            usage: v.optional(v.object({
+              unit: v.string(),
+              pricePerUnit: v.number(),
+              currency: v.string(),
+              notes: v.optional(v.string()),
+            })),
+          }),
+          isDefault: v.optional(v.boolean()),
+          updatedAt: v.optional(v.number()),
+        })
+      ),
+      createdAt: v.number(),
+      reviewStatus: v.optional(v.string()),
+    })
+  ),
+  handler: async (ctx) => {
+    const approved = await ctx.db
+      .query('tools')
+      .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'approved'))
+      .collect()
+    const pending = await ctx.db
+      .query('tools')
+      .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'pending'))
+      .collect()
+    const all = [...approved, ...pending]
+    return all.map((t) => ({
+      _id: t._id,
+      name: t.name,
+      slug: t.slug,
+      shortId: t.shortId,
+      aliases: t.aliases,
+      categories: t.categories,
+      iconUrl: t.iconUrl,
+      websiteUrl: t.websiteUrl,
+      tiers: t.tiers,
+      createdAt: t.createdAt,
+      reviewStatus: t.reviewStatus,
+    }))
+  },
+})
+
 export const create = mutation({
   args: {
     name: v.string(),

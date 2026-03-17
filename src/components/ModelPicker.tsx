@@ -44,7 +44,7 @@ export function ModelPicker({
 	onChange,
 	onModelClick,
 }: ModelPickerProps) {
-	const allModels = useQuery(api.models.listAll) ?? [];
+	const allModels = useQuery(api.models.listForEditor) ?? [];
 	const [search, setSearch] = useState("");
 	const [selectedCategory, setSelectedCategory] =
 		useState<ModelCategory | null>(null);

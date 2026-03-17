@@ -35,7 +35,7 @@ function createEmptyTier(isDefault = false): TierFormData {
 
 interface AddBundleFormProps {
 	onCancel: () => void;
-	onBundleCreated: (bundleId: string) => void;
+	onBundleCreated: (bundleId: string, name?: string) => void;
 }
 
 export function AddBundleForm({
@@ -117,7 +117,7 @@ export function AddBundleForm({
 				toolSlugs: [],
 				tiers: formattedTiers,
 			});
-			onBundleCreated(bundleId);
+			onBundleCreated(bundleId, name.trim());
 		} catch (err) {
 			let errorMessage = "Failed to create bundle";
 			if (err instanceof Error) {

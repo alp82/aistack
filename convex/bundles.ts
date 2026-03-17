@@ -75,6 +75,69 @@ export const listAll = query({
   },
 })
 
+export const listForEditor = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id('bundles'),
+      name: v.string(),
+      slug: v.string(),
+      shortId: v.optional(v.string()),
+      aliases: v.optional(v.array(v.string())),
+      description: v.optional(v.string()),
+      iconUrl: v.optional(v.string()),
+      websiteUrl: v.optional(v.string()),
+      toolSlugs: v.array(v.string()),
+      tiers: v.array(
+        v.object({
+          tierId: v.string(),
+          name: v.string(),
+          pricing: v.object({
+            pricingType: v.union(v.literal('fixed'), v.literal('usage'), v.literal('mixed')),
+            fixed: v.optional(v.object({
+              currency: v.string(),
+              amount: v.number(),
+              period: v.union(v.literal('month'), v.literal('year'), v.literal('one_time')),
+            })),
+            usage: v.optional(v.object({
+              unit: v.string(),
+              pricePerUnit: v.number(),
+              currency: v.string(),
+              notes: v.optional(v.string()),
+            })),
+          }),
+          isDefault: v.optional(v.boolean()),
+        })
+      ),
+      reviewStatus: v.optional(v.string()),
+    })
+  ),
+  handler: async (ctx) => {
+    const approved = await ctx.db
+      .query('bundles')
+      .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'approved'))
+      .collect()
+    const pending = await ctx.db
+      .query('bundles')
+      .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'pending'))
+      .collect()
+    const all = [...approved, ...pending]
+    return all.map((b) => ({
+      _id: b._id,
+      name: b.name,
+      slug: b.slug,
+      shortId: b.shortId,
+      aliases: b.aliases,
+      description: b.description,
+      iconUrl: b.iconUrl,
+      websiteUrl: b.websiteUrl,
+      toolSlugs: b.toolSlugs,
+      tiers: b.tiers,
+      reviewStatus: b.reviewStatus,
+    }))
+  },
+})
+
 export const create = mutation({
   args: {
     name: v.string(),

@@ -66,7 +66,7 @@ export function ToolPicker({
 	onSignInRequired,
 	onToolClick,
 }: ToolPickerProps) {
-	const allTools = useQuery(api.tools.listAll) ?? [];
+	const allTools = useQuery(api.tools.listForEditor) ?? [];
 	const [search, setSearch] = useState("");
 	const [showAddModal, setShowAddModal] = useState(false);
 	const [selectedCategory, setSelectedCategory] = useState<ToolCategory | null>(

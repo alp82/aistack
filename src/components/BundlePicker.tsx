@@ -45,7 +45,7 @@ export function BundlePicker({
 	guestSession = false,
 	onSignInRequired,
 }: BundlePickerProps) {
-	const allBundles = useQuery(api.bundles.listAll) ?? [];
+	const allBundles = useQuery(api.bundles.listForEditor) ?? [];
 	const [search, setSearch] = useState("");
 	const [showBundleBrowser, setShowBundleBrowser] = useState(false);
 	const [showAddModal, setShowAddModal] = useState(false);

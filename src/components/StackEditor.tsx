@@ -171,8 +171,8 @@ export function StackEditor({
 		initialValue,
 	});
 
-	const allTools = useQuery(api.tools.listAll) ?? [];
-	const allModels = useQuery(api.models.listAll) ?? [];
+	const allTools = useQuery(api.tools.listForEditor) ?? [];
+	const allModels = useQuery(api.models.listForEditor) ?? [];
 
 	// Use refs to avoid stale closures in the callback passed to the editor
 	const stateRef = useRef(state);

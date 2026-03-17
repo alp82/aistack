@@ -204,6 +204,46 @@ export const updateToolFull = mutation({
   },
 })
 
+export const updateModelFull = mutation({
+  args: {
+    modelId: v.id('models'),
+    name: v.string(),
+    provider: v.string(),
+    category: v.union(
+      v.literal('language'),
+      v.literal('coding'),
+      v.literal('reasoning'),
+      v.literal('vision'),
+      v.literal('audio'),
+      v.literal('image'),
+      v.literal('video'),
+      v.literal('embedding'),
+      v.literal('other')
+    ),
+    websiteUrl: v.optional(v.string()),
+    iconUrl: v.optional(v.string()),
+    contextWindow: v.optional(v.number()),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    if (!(await isAdmin(ctx))) {
+      throw new Error('Unauthorized')
+    }
+
+    const now = Date.now()
+    await ctx.db.patch(args.modelId, {
+      name: args.name,
+      provider: args.provider,
+      category: args.category,
+      websiteUrl: args.websiteUrl,
+      iconUrl: args.iconUrl,
+      contextWindow: args.contextWindow,
+      description: args.description,
+      updatedAt: now,
+    })
+  },
+})
+
 export const checkIsAdmin = query({
   args: {},
   handler: async (ctx) => {

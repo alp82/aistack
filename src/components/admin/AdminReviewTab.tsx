@@ -4,6 +4,8 @@ import { Check, X, Edit2, Package, Wrench, Brain, Pencil } from "lucide-react";
 import { useState } from "react";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { AddToolModal, type ToolData } from "../AddToolModal";
+import { AddModelForm, type ModelData } from "../AddModelModal";
+import { Dialog } from "../ui/Dialog";
 import { ItemIcon } from "@/components/ItemIcon";
 
 export function AdminReviewTab() {
@@ -28,6 +30,7 @@ export function AdminReviewTab() {
 	const [editingTool, setEditingTool] = useState<ToolData | null>(null);
 	const [editingSuggestionId, setEditingSuggestionId] =
 		useState<Id<"toolEditSuggestions"> | null>(null);
+	const [editingModel, setEditingModel] = useState<ModelData | null>(null);
 
 	const handleApproveTool = async (toolId: Id<"tools">) => {
 		try {
@@ -132,6 +135,20 @@ export function AdminReviewTab() {
 					setEditingSuggestionId(null);
 				}}
 			/>
+
+			<Dialog
+				open={!!editingModel}
+				onClose={() => setEditingModel(null)}
+				size="lg"
+			>
+				<AddModelForm
+					onCancel={() => setEditingModel(null)}
+					onModelCreated={() => {}}
+					editModel={editingModel || undefined}
+					onModelUpdated={() => setEditingModel(null)}
+					isAdmin={true}
+				/>
+			</Dialog>
 
 			{/* Tool Review Section */}
 			<section className="py-12 sm:py-16">
@@ -753,6 +770,17 @@ export function AdminReviewTab() {
 												)}
 											</div>
 										</div>
+
+										<button
+											type="button"
+											onClick={() =>
+												setEditingModel(model as ModelData)
+											}
+											className="inline-flex items-center gap-2 border border-stroke-subtle px-3 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-accent-lime hover:text-accent-lime"
+										>
+											<Edit2 className="size-3.5" />
+											Edit
+										</button>
 									</div>
 
 									<div className="flex items-center justify-between gap-3 border-t border-stroke-subtle pt-4">

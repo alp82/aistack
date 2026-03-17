@@ -1,8 +1,9 @@
 import { useMutation } from "convex/react";
 import { Check } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog } from "./ui/Dialog";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import {
@@ -48,13 +49,35 @@ const providers = [
 	"Other",
 ];
 
-interface AddModelFormProps {
-	onCancel: () => void;
-	onModelCreated: (modelId: string) => void;
+export interface ModelData {
+	_id: Id<"models">;
+	name: string;
+	provider: string;
+	category: ModelCategory;
+	websiteUrl?: string;
+	iconUrl?: string;
+	contextWindow?: number;
+	description?: string;
 }
 
-export function AddModelForm({ onCancel, onModelCreated }: AddModelFormProps) {
+interface AddModelFormProps {
+	onCancel: () => void;
+	onModelCreated: (modelId: string, name?: string) => void;
+	editModel?: ModelData;
+	onModelUpdated?: (modelId: Id<"models">) => void;
+	isAdmin?: boolean;
+}
+
+export function AddModelForm({
+	onCancel,
+	onModelCreated,
+	editModel,
+	onModelUpdated,
+	isAdmin,
+}: AddModelFormProps) {
 	const createModel = useMutation(api.models.create);
+	const updateModelAdmin = useMutation(api.admin.updateModelFull);
+	const isEditMode = !!editModel;
 	const [name, setName] = useState("");
 	const [provider, setProvider] = useState("");
 	const [category, setCategory] = useState<ModelCategory | "">("");
@@ -63,6 +86,17 @@ export function AddModelForm({ onCancel, onModelCreated }: AddModelFormProps) {
 	const [description, setDescription] = useState("");
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState("");
+
+	useEffect(() => {
+		if (editModel) {
+			setName(editModel.name);
+			setProvider(editModel.provider);
+			setCategory(editModel.category);
+			setWebsiteUrl(editModel.websiteUrl || "");
+			setContextWindow(editModel.contextWindow ?? "");
+			setDescription(editModel.description || "");
+		}
+	}, [editModel]);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -75,17 +109,33 @@ export function AddModelForm({ onCancel, onModelCreated }: AddModelFormProps) {
 		setError("");
 
 		try {
-			const modelId = await createModel({
-				name: name.trim(),
-				provider: provider.trim(),
-				category: category as ModelCategory,
-				websiteUrl: websiteUrl.trim() || undefined,
-				contextWindow: contextWindow ? Number(contextWindow) : undefined,
-				description: description.trim() || undefined,
-			});
-			onModelCreated(modelId);
+			if (isEditMode && editModel && isAdmin) {
+				await updateModelAdmin({
+					modelId: editModel._id,
+					name: name.trim(),
+					provider: provider.trim(),
+					category: category as ModelCategory,
+					websiteUrl: websiteUrl.trim() || undefined,
+					iconUrl: editModel.iconUrl || undefined,
+					contextWindow: contextWindow ? Number(contextWindow) : undefined,
+					description: description.trim() || undefined,
+				});
+				onModelUpdated?.(editModel._id);
+			} else {
+				const modelId = await createModel({
+					name: name.trim(),
+					provider: provider.trim(),
+					category: category as ModelCategory,
+					websiteUrl: websiteUrl.trim() || undefined,
+					contextWindow: contextWindow ? Number(contextWindow) : undefined,
+					description: description.trim() || undefined,
+				});
+				onModelCreated(modelId, name.trim());
+			}
 		} catch (err) {
-			let errorMessage = "Failed to create model";
+			let errorMessage = isEditMode
+				? "Failed to update model"
+				: "Failed to create model";
 			if (err instanceof Error) {
 				const match = err.message.match(/Uncaught Error: (.+?)(?:\s+at\s+|$)/);
 				errorMessage = match ? match[1] : err.message;
@@ -102,10 +152,12 @@ export function AddModelForm({ onCancel, onModelCreated }: AddModelFormProps) {
 		<div>
 			<div className="mb-6">
 				<h2 className="font-mono text-lg font-bold text-fg-primary">
-					Add New Model
+					{isEditMode ? "Edit Model" : "Add New Model"}
 				</h2>
 				<p className="mt-1 font-mono text-xs text-fg-muted">
-					Fill in the details below. Your model will be submitted for review.
+					{isEditMode
+						? "Update the model details below."
+						: "Fill in the details below. Your model will be submitted for review."}
 				</p>
 			</div>
 
@@ -264,12 +316,20 @@ export function AddModelForm({ onCancel, onModelCreated }: AddModelFormProps) {
 							className="inline-flex flex-1 items-center justify-center gap-2 border-2 border-accent-lime bg-accent-lime px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong disabled:cursor-not-allowed disabled:opacity-50"
 						>
 							<Check className="size-3.5" />
-							{saving ? "Submitting..." : "Submit for Review"}
+							{saving
+								? isEditMode
+									? "Saving..."
+									: "Submitting..."
+								: isEditMode
+									? "Save Changes"
+									: "Submit for Review"}
 						</button>
 					</div>
-					<p className="text-center text-xs text-fg-muted">
-						Your model submission will be reviewed before it appears publicly.
-					</p>
+					{!isEditMode && (
+						<p className="text-center text-xs text-fg-muted">
+							Your model submission will be reviewed before it appears publicly.
+						</p>
+					)}
 				</div>
 			</form>
 		</div>

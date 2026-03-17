@@ -72,7 +72,7 @@ interface SuggestionFormData {
 
 interface AddToolFormProps {
 	onCancel: () => void;
-	onToolCreated: (toolId: string) => void;
+	onToolCreated: (toolId: string, name?: string) => void;
 	editTool?: ToolData;
 	onToolUpdated?: (toolId: Id<"tools">) => void;
 	isAdmin?: boolean;
@@ -206,7 +206,7 @@ export function AddToolForm({
 					websiteUrl: websiteUrl.trim() || undefined,
 					tiers: formattedTiers,
 				});
-				onToolCreated(toolId);
+				onToolCreated(toolId, name.trim());
 			}
 		} catch (err) {
 			let errorMessage = isEditMode

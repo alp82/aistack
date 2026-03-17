@@ -717,11 +717,8 @@ export const SlashCommandPlugin = Extension.create<
 
 			const handleAddMissing = extensionStorage.storage.onAddMissing
 				? (categoryHint: "tool" | "model" | "bundle" | null) => {
-						destroyDropdown();
-						view.focus();
-						// Delete the slash command text before opening the modal
-						const tr = view.state.tr.delete(from, to);
-						view.dispatch(tr);
+						// Keep the slash text and dropdown alive so the user can
+						// continue searching after the modal closes.
 						extensionStorage.storage.onAddMissing!(categoryHint);
 					}
 				: undefined;

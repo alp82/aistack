@@ -70,6 +70,51 @@ export const listAll = query({
   },
 })
 
+export const listForEditor = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id('models'),
+      name: v.string(),
+      slug: v.string(),
+      shortId: v.optional(v.string()),
+      aliases: v.optional(v.array(v.string())),
+      provider: v.string(),
+      category: ModelCategory,
+      iconUrl: v.optional(v.string()),
+      websiteUrl: v.optional(v.string()),
+      contextWindow: v.optional(v.number()),
+      description: v.optional(v.string()),
+      reviewStatus: v.optional(v.string()),
+    })
+  ),
+  handler: async (ctx) => {
+    const approved = await ctx.db
+      .query('models')
+      .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'approved'))
+      .collect()
+    const pending = await ctx.db
+      .query('models')
+      .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'pending'))
+      .collect()
+    const all = [...approved, ...pending]
+    return all.map((m) => ({
+      _id: m._id,
+      name: m.name,
+      slug: m.slug,
+      shortId: m.shortId,
+      aliases: m.aliases,
+      provider: m.provider,
+      category: m.category,
+      iconUrl: m.iconUrl,
+      websiteUrl: m.websiteUrl,
+      contextWindow: m.contextWindow,
+      description: m.description,
+      reviewStatus: m.reviewStatus,
+    }))
+  },
+})
+
 export const create = mutation({
   args: {
     name: v.string(),
@@ -102,17 +147,6 @@ export const create = mutation({
     )
     if (existingByName) {
       throw new Error(`A model with the name "${args.name}" already exists`)
-    }
-
-    // Check for existing model with same website URL
-    if (args.websiteUrl) {
-      const normalizedUrl = args.websiteUrl.trim().toLowerCase().replace(/\/$/, '')
-      const existingByUrl = allModels.find(
-        (m) => m.websiteUrl?.trim().toLowerCase().replace(/\/$/, '') === normalizedUrl
-      )
-      if (existingByUrl) {
-        throw new Error(`A model with the URL "${args.websiteUrl}" already exists (${existingByUrl.name})`)
-      }
     }
 
     const baseSlug = slugifyAscii(args.name, 'model')

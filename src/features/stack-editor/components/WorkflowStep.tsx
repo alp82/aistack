@@ -25,8 +25,8 @@ function WorkflowStep({
 	onToolAdded,
 	onModelAdded,
 }: WorkflowStepProps) {
-	const allTools = useQuery(api.tools.listAll) ?? [];
-	const allModels = useQuery(api.models.listAll) ?? [];
+	const allTools = useQuery(api.tools.listForEditor) ?? [];
+	const allModels = useQuery(api.models.listForEditor) ?? [];
 	const toolsForEditor = useMemo(
 		() =>
 			allTools.map((t) => ({
