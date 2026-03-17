@@ -1,4 +1,4 @@
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Dialog } from "./ui/Dialog";
@@ -82,10 +82,23 @@ export function AddModelForm({
 	const [provider, setProvider] = useState("");
 	const [category, setCategory] = useState<ModelCategory | "">("");
 	const [websiteUrl, setWebsiteUrl] = useState("");
-	const [contextWindow, setContextWindow] = useState<number | "">("");
-	const [description, setDescription] = useState("");
+	const [iconUrl, setIconUrl] = useState("");
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState("");
+
+	// Query provider data for auto-population
+	const providerData = useQuery(
+		api.models.getFirstByProvider,
+		provider && provider !== "Other" ? { provider } : "skip",
+	);
+
+	// Clear icon and URL when selecting "Other" provider
+	useEffect(() => {
+		if (provider === "Other") {
+			setIconUrl("");
+			setWebsiteUrl("");
+		}
+	}, [provider]);
 
 	useEffect(() => {
 		if (editModel) {
@@ -93,10 +106,23 @@ export function AddModelForm({
 			setProvider(editModel.provider);
 			setCategory(editModel.category);
 			setWebsiteUrl(editModel.websiteUrl || "");
-			setContextWindow(editModel.contextWindow ?? "");
-			setDescription(editModel.description || "");
+			setIconUrl(editModel.iconUrl || "");
 		}
 	}, [editModel]);
+
+	// Auto-populate URL and icon when provider changes
+	useEffect(() => {
+		if (providerData !== undefined && provider !== "Other") {
+			if (providerData) {
+				setWebsiteUrl(providerData.websiteUrl || "");
+				setIconUrl(providerData.iconUrl || "");
+			} else {
+				// No data found for this provider, clear fields
+				setWebsiteUrl("");
+				setIconUrl("");
+			}
+		}
+	}, [providerData, provider]);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -116,9 +142,7 @@ export function AddModelForm({
 					provider: provider.trim(),
 					category: category as ModelCategory,
 					websiteUrl: websiteUrl.trim() || undefined,
-					iconUrl: editModel.iconUrl || undefined,
-					contextWindow: contextWindow ? Number(contextWindow) : undefined,
-					description: description.trim() || undefined,
+					iconUrl: iconUrl.trim() || undefined,
 				});
 				onModelUpdated?.(editModel._id);
 			} else {
@@ -127,8 +151,6 @@ export function AddModelForm({
 					provider: provider.trim(),
 					category: category as ModelCategory,
 					websiteUrl: websiteUrl.trim() || undefined,
-					contextWindow: contextWindow ? Number(contextWindow) : undefined,
-					description: description.trim() || undefined,
 				});
 				onModelCreated(modelId, name.trim());
 			}
@@ -175,7 +197,7 @@ export function AddModelForm({
 					</legend>
 
 					<div className="grid grid-cols-3 gap-4">
-						<div className="space-y-2">
+						<div className="space-y-2 col-span-2">
 							<Label
 								htmlFor="model-name"
 								className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
@@ -186,33 +208,10 @@ export function AddModelForm({
 								id="model-name"
 								value={name}
 								onChange={(e) => setName(e.target.value)}
-								placeholder="e.g. GPT-4o, Claude 3.5 Sonnet"
+								placeholder="e.g. GPT 5.4, Claude Opus 4.6"
 								className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
 								required
 							/>
-						</div>
-
-						<div className="space-y-2">
-							<Label className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
-								Provider *
-							</Label>
-							<Select
-								value={provider}
-								onValueChange={(val) => {
-									if (val) setProvider(val);
-								}}
-							>
-								<SelectTrigger className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary">
-									<SelectValue placeholder="Select provider" />
-								</SelectTrigger>
-								<SelectContent>
-									{providers.map((p) => (
-										<SelectItem key={p} value={p}>
-											{p}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
 						</div>
 
 						<div className="space-y-2">
@@ -240,66 +239,86 @@ export function AddModelForm({
 					</div>
 				</fieldset>
 
-				{/* Details */}
 				<fieldset className="space-y-4">
 					<legend className="font-mono text-[10px] font-semibold uppercase tracking-widest text-accent-lime">
 						Details
 					</legend>
 
-					<div className="grid grid-cols-2 gap-4">
+					<div className="grid grid-cols-3 gap-4">
 						<div className="space-y-2">
-							<Label
-								htmlFor="model-website"
-								className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
-							>
-								Website URL
+							<Label className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
+								Provider *
 							</Label>
-							<Input
-								id="model-website"
-								value={websiteUrl}
-								onChange={(e) => setWebsiteUrl(e.target.value)}
-								placeholder="https://example.com"
-								className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
-							/>
+							<div className="flex items-center gap-2">
+								<div className="size-8 shrink-0 border border-stroke-subtle bg-bg-panel p-1">
+									{iconUrl && (
+										<img
+											src={iconUrl}
+											alt={provider}
+											className="size-full object-contain"
+										/>
+									)}
+								</div>
+								<Select
+									value={provider}
+									onValueChange={(val) => {
+										if (val) setProvider(val);
+									}}
+								>
+									<SelectTrigger className="h-10 flex-1 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary">
+										<SelectValue placeholder="Select provider" />
+									</SelectTrigger>
+									<SelectContent>
+										{providers.map((p) => (
+											<SelectItem key={p} value={p}>
+												{p}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
 						</div>
 
-						<div className="space-y-2">
-							<Label
-								htmlFor="context-window"
-								className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
-							>
-								Context Window (tokens)
-							</Label>
-							<Input
-								id="context-window"
-								type="number"
-								value={contextWindow}
-								onChange={(e) =>
-									setContextWindow(e.target.value ? Number(e.target.value) : "")
-								}
-								placeholder="e.g. 128000"
-								className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
-							/>
-						</div>
+						{/* Website URL - Show for "Other" provider or in admin edit mode */}
+						{(provider === "Other" || (isEditMode && isAdmin)) && (
+							<div className="space-y-2 col-span-2">
+								<Label
+									htmlFor="model-website"
+									className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
+								>
+									Website URL
+								</Label>
+								<Input
+									id="model-website"
+									value={websiteUrl}
+									onChange={(e) => setWebsiteUrl(e.target.value)}
+									placeholder="https://example.com"
+									className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
+								/>
+							</div>
+						)}
 					</div>
-
-					<div className="space-y-2">
-						<Label
-							htmlFor="model-description"
-							className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
-						>
-							Description
-						</Label>
-						<Input
-							id="model-description"
-							value={description}
-							onChange={(e) => setDescription(e.target.value)}
-							placeholder="Brief description of the model's capabilities"
-							className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
-						/>
+					<div>
+						{/* Icon URL - Only show in admin edit mode */}
+						{isEditMode && isAdmin && (
+							<div className="space-y-2">
+								<Label
+									htmlFor="model-icon"
+									className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
+								>
+									Icon URL
+								</Label>
+								<Input
+									id="model-icon"
+									value={iconUrl}
+									onChange={(e) => setIconUrl(e.target.value)}
+									placeholder="https://example.com/icon.png"
+									className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
+								/>
+							</div>
+						)}
 					</div>
 				</fieldset>
-
 				{/* Action Buttons */}
 				<div className="flex flex-col gap-3 pt-2">
 					<div className="flex gap-3">

@@ -46,6 +46,7 @@ function FormTextarea({
 				placeholder={placeholder}
 				rows={rows}
 				className="w-full resize-y border-2 border-stroke-subtle bg-bg-panel px-2 py-1.5 font-mono text-xs text-fg-primary placeholder:text-fg-muted focus:border-accent-lime focus:outline-none"
+				style={{ minHeight: `${rows * 1.5}rem` }}
 			/>
 		</FormField>
 	);

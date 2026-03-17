@@ -138,7 +138,7 @@ export function InstructionDialog({
 								value={editContent}
 								onChange={(e) => setEditContent(e.target.value)}
 								placeholder="Markdown content..."
-								rows={24}
+								rows={12}
 							/>
 						</div>
 

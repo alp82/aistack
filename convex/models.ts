@@ -70,6 +70,29 @@ export const listAll = query({
   },
 })
 
+export const getFirstByProvider = query({
+	args: { provider: v.string() },
+	returns: v.union(
+		v.object({
+			websiteUrl: v.optional(v.string()),
+			iconUrl: v.optional(v.string()),
+		}),
+		v.null()
+	),
+	handler: async (ctx, args) => {
+		const model = await ctx.db
+			.query('models')
+			.withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'approved'))
+			.filter((q) => q.eq(q.field('provider'), args.provider))
+			.first();
+		if (!model) return null;
+		return {
+			websiteUrl: model.websiteUrl,
+			iconUrl: model.iconUrl,
+		};
+	},
+});
+
 export const listForEditor = query({
   args: {},
   returns: v.array(

@@ -1,6 +1,5 @@
 # TODO
 
-* models automatically get url and image from provider (url only shows if "other" is selected)
 * ai stack knowledge/learning area
     * article grid with nice bg borders: https://www.aihero.dev/posts
     * focused articles with tags
@@ -24,16 +23,16 @@
         * Local LLM: https://www.canirun.ai
     * use the same editor. new feature: crosslinking articles
 * stack editing
-    * tools in stack can be "work" -  like sponsored
     * full tool blocks inline in editor (with dialog to edit) - replacing sidebar?
         - currently sidebar missing on mobile
     * adding instructions easier and more obvious
     * when remove last block of one item in text, ask to also remove in sidebar? dialog
     * editor objects draggable
-* admin for editing aliases
-    * e.g. amp, opus, etc.
+    * tools in stack can be "work" -  like sponsored
 * multiple stacks per user
     * work & private
+* admin for editing aliases
+    * e.g. amp, opus, etc.
 * og image: bigger tool icons
 * CLI workflow
     * npx aistack login
