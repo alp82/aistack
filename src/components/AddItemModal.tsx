@@ -1,34 +1,49 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Wrench, Brain, Package } from "lucide-react";
+import { Wrench, Brain, Package, FileText } from "lucide-react";
 import { AddToolForm } from "./AddToolModal";
 import { AddModelForm } from "./AddModelModal";
 import { AddBundleForm } from "./AddBundleModal";
+import { AddInstructionForm } from "./AddInstructionForm";
 import { Dialog } from "./ui/Dialog";
+import type { InstructionType } from "@/features/stack-editor/types";
 
-export type AddItemTab = "tool" | "model" | "bundle";
+export type AddItemTab = "tool" | "model" | "bundle" | "instruction";
 
 interface AddItemModalProps {
 	open: boolean;
 	onClose: () => void;
 	defaultTab?: AddItemTab;
+	defaultInstructionType?: InstructionType;
 	onToolCreated?: (toolId: string) => void;
 	onModelCreated?: (modelId: string) => void;
 	onBundleCreated?: (bundleId: string) => void;
+	onInstructionCreated?: (instruction: {
+		name: string;
+		type: InstructionType;
+		content?: string;
+	}) => void;
 }
 
 const tabs: { key: AddItemTab; label: string; icon: React.ReactNode }[] = [
 	{ key: "tool", label: "Tool", icon: <Wrench className="size-3.5" /> },
 	{ key: "model", label: "Model", icon: <Brain className="size-3.5" /> },
 	{ key: "bundle", label: "Bundle", icon: <Package className="size-3.5" /> },
+	{
+		key: "instruction",
+		label: "Instruction",
+		icon: <FileText className="size-3.5" />,
+	},
 ];
 
 export function AddItemModal({
 	open,
 	onClose,
 	defaultTab = "tool",
+	defaultInstructionType,
 	onToolCreated,
 	onModelCreated,
 	onBundleCreated,
+	onInstructionCreated,
 }: AddItemModalProps) {
 	const [activeTab, setActiveTab] = useState<AddItemTab>(defaultTab);
 	const [formKey, setFormKey] = useState(0);
@@ -62,6 +77,23 @@ export function AddItemModal({
 			}
 		},
 		[onToolCreated, onModelCreated, onBundleCreated, onClose],
+	);
+
+	const handleInstructionCreated = useCallback(
+		(
+			instruction: { name: string; type: InstructionType; content?: string },
+			name?: string,
+		) => {
+			onInstructionCreated?.(instruction);
+
+			if (addAnotherRef.current) {
+				setLastCreatedMessage(`${name || "Instruction"} added.`);
+				setFormKey((k) => k + 1);
+			} else {
+				onClose();
+			}
+		},
+		[onInstructionCreated, onClose],
 	);
 
 	return (
@@ -119,9 +151,17 @@ export function AddItemModal({
 						}}
 					/>
 				)}
+				{activeTab === "instruction" && (
+					<AddInstructionForm
+						key={formKey}
+						onCancel={onClose}
+						onInstructionCreated={handleInstructionCreated}
+						defaultType={defaultInstructionType}
+					/>
+				)}
 
 				{/* Add another checkbox */}
-				<div className="mt-4 flex items-center gap-2">
+				<div className="mt-4 flex items-center justify-end gap-2">
 					<input
 						type="checkbox"
 						id="add-another"

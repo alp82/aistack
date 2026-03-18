@@ -6,6 +6,7 @@ import {
 	instructionTypeColorsSplit as typeColors,
 	instructionTypeLabels as typeLabels,
 } from "@/lib/instruction-utils";
+import { InstructionTypeNav } from "@/components/InstructionTypeNav";
 
 interface InstructionDialogProps {
 	isOpen: boolean;
@@ -96,28 +97,10 @@ export function InstructionDialog({
 						{/* Edit/Add Mode */}
 						<div className="border-b border-stroke-subtle p-6 pb-4">
 							{isAddMode ? (
-								<div className="flex gap-2">
-									{(
-										Object.entries(typeLabels) as [InstructionType, string][]
-									).map(([value, label]) => {
-										const tabColors = typeColors[value] || typeColors.prompt;
-										const isActive = editType === value;
-										return (
-											<button
-												key={value}
-												type="button"
-												onClick={() => setEditType(value)}
-												className={`flex-1 border-2 py-2 font-mono text-sm font-bold uppercase transition-all ${
-													isActive
-														? `${tabColors.border} ${tabColors.bg} ${tabColors.text}`
-														: "border-stroke-subtle bg-bg-panel text-fg-muted hover:border-fg-muted hover:text-fg-primary"
-												}`}
-											>
-												{label}
-											</button>
-										);
-									})}
-								</div>
+								<InstructionTypeNav
+									activeType={editType}
+									onTypeChange={setEditType}
+								/>
 							) : (
 								<h3 className="font-mono text-sm font-bold uppercase text-fg-primary">
 									Edit{" "}

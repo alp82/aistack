@@ -14,6 +14,10 @@ import {
 import type { ToolData } from "./ToolSuggestionPlugin";
 import type { ModelData } from "./ModelSuggestionPlugin";
 import type { InstructionType } from "@/features/stack-editor/types";
+import {
+	instructionTypeColorsSplit,
+	instructionTypeLabels,
+} from "@/lib/instruction-utils";
 
 // --- Types ---
 
@@ -44,6 +48,11 @@ interface SlashItem {
 	data: ToolData | ModelData | BundleData | InstructionData;
 }
 
+export interface AddMissingHint {
+	category: "tool" | "model" | "bundle" | "instruction" | null;
+	instructionType?: InstructionType;
+}
+
 export interface SlashCommandOptions {
 	tools: ToolData[];
 	models: ModelData[];
@@ -51,7 +60,7 @@ export interface SlashCommandOptions {
 	instructions: InstructionData[];
 	onToolAdded?: (tool: ToolData) => void;
 	onModelAdded?: (model: ModelData) => void;
-	onAddMissing?: (categoryHint: "tool" | "model" | "bundle" | null) => void;
+	onAddMissing?: (hint: AddMissingHint) => void;
 }
 
 export interface SlashCommandStorage {
@@ -61,7 +70,7 @@ export interface SlashCommandStorage {
 	instructions: InstructionData[];
 	onToolAdded?: (tool: ToolData) => void;
 	onModelAdded?: (model: ModelData) => void;
-	onAddMissing?: (categoryHint: "tool" | "model" | "bundle" | null) => void;
+	onAddMissing?: (hint: AddMissingHint) => void;
 }
 
 // --- Category config ---
@@ -108,6 +117,29 @@ const categoryPrefixes: Record<string, SlashItemCategory> = {
 	plugin: "instruction",
 	subagent: "instruction",
 };
+
+/** Maps a slash prefix to its specific instruction subtype, if any */
+const instructionSubtypePrefixes: Record<string, InstructionType> = {
+	prompt: "prompt",
+	rule: "rule",
+	skill: "skill",
+	mcp: "mcp",
+	plugin: "plugin",
+	subagent: "subagent",
+};
+
+/** All prefix keys, sorted longest-first so longer matches win */
+const allPrefixKeys = Object.keys(categoryPrefixes).sort(
+	(a, b) => b.length - a.length,
+);
+
+/** Find the first categoryPrefix key that starts with the given input (first match wins). */
+function findPrefixMatch(input: string): string | undefined {
+	// Exact match first
+	if (categoryPrefixes[input]) return input;
+	// Then startsWith — first match wins (longest keys checked first)
+	return allPrefixKeys.find((key) => key.startsWith(input));
+}
 
 // --- Fuzzy matching ---
 
@@ -157,7 +189,7 @@ export function SlashCommandDropdown({
 	onSelect: (item: SlashItem) => void;
 	onClose: () => void;
 	position: { top: number; left: number };
-	onAddMissing?: (categoryHint: "tool" | "model" | "bundle" | null) => void;
+	onAddMissing?: (hint: AddMissingHint) => void;
 	showSearch?: boolean;
 }) {
 	const [selectedIndex, setSelectedIndex] = useState(0);
@@ -176,34 +208,56 @@ export function SlashCommandDropdown({
 	}, [showSearch]);
 
 	// Parse query: check for category prefix like "/tool " or "/model something"
-	const { categoryFilter, searchText } = useMemo(() => {
+	const { categoryFilter, instructionSubtype, searchText } = useMemo(() => {
 		const trimmed = query.trim().toLowerCase();
 		const spaceIdx = trimmed.indexOf(" ");
 
 		if (spaceIdx > 0) {
 			const prefix = trimmed.slice(0, spaceIdx);
-			const cat = categoryPrefixes[prefix];
-			if (cat) {
+			// Only match if prefix is at least 2 chars (avoid matching just "/")
+			if (prefix.length >= 2) {
+				const matchedKey = findPrefixMatch(prefix);
+				if (matchedKey) {
+					const cat = categoryPrefixes[matchedKey];
+					return {
+						categoryFilter: cat,
+						instructionSubtype:
+							instructionSubtypePrefixes[matchedKey] ?? undefined,
+						searchText: trimmed.slice(spaceIdx + 1).trim(),
+					};
+				}
+			}
+		}
+
+		// Check if the whole query matches a category prefix (startsWith, without space yet)
+		// Only match if query is at least 2 chars (avoid matching just "/")
+		if (trimmed.length >= 2) {
+			const matchedKey = findPrefixMatch(trimmed);
+			if (matchedKey) {
+				const cat = categoryPrefixes[matchedKey];
 				return {
 					categoryFilter: cat,
-					searchText: trimmed.slice(spaceIdx + 1).trim(),
+					instructionSubtype:
+						instructionSubtypePrefixes[matchedKey] ?? undefined,
+					searchText: "",
 				};
 			}
 		}
 
-		// Check if the whole query matches a category prefix (without space yet)
-		const cat = categoryPrefixes[trimmed];
-		if (cat) {
-			return { categoryFilter: cat, searchText: "" };
-		}
-
-		return { categoryFilter: null, searchText: trimmed };
+		return {
+			categoryFilter: null,
+			instructionSubtype: undefined,
+			searchText: trimmed,
+		};
 	}, [query]);
 
 	// Filter items (fuzzy match)
 	const filtered = useMemo(() => {
 		let result = items;
-		if (categoryFilter) {
+		// Only apply category filter if there's actual search text after the prefix
+		// This allows showing all items when just typing "/prompt" while still
+		// providing a targeted "Add new" button hint
+		if (categoryFilter && searchText) {
 			result = result.filter((item) => item.category === categoryFilter);
 		}
 		if (searchText) {
@@ -305,12 +359,67 @@ export function SlashCommandDropdown({
 		return () => window.removeEventListener("keydown", handleKeyDown, true);
 	}, [handleKeyDown]);
 
-	const addMissingHint: "tool" | "model" | "bundle" | null =
-		categoryFilter === "tool" ||
-		categoryFilter === "model" ||
-		categoryFilter === "bundle"
-			? categoryFilter
-			: null;
+	// Build the AddMissingHint based on the current filter
+	const addMissingHint = useMemo((): AddMissingHint => {
+		if (categoryFilter === "instruction") {
+			return { category: "instruction", instructionType: instructionSubtype };
+		}
+		if (
+			categoryFilter === "tool" ||
+			categoryFilter === "model" ||
+			categoryFilter === "bundle"
+		) {
+			return { category: categoryFilter };
+		}
+		return { category: null };
+	}, [categoryFilter, instructionSubtype]);
+
+	// Targeted label + style for the "Add new" button
+	const { addMissingLabel, addMissingStyle } = useMemo(() => {
+		// Instruction subtype — use its specific color
+		if (addMissingHint.instructionType) {
+			const it = addMissingHint.instructionType;
+			const colors = instructionTypeColorsSplit[it];
+			return {
+				addMissingLabel: `Add new ${instructionTypeLabels[it]}`,
+				addMissingStyle: {
+					border: colors.border,
+					bg: colors.bg,
+					text: colors.text,
+					hoverBorder: colors.border,
+					hoverBg: colors.bg,
+				},
+			};
+		}
+		// Category-level — use the category color
+		if (addMissingHint.category) {
+			const catColor = categoryConfig[addMissingHint.category]?.color ?? "";
+			const catLabel =
+				addMissingHint.category.charAt(0).toUpperCase() +
+				addMissingHint.category.slice(1);
+			return {
+				addMissingLabel: `Add new ${catLabel}`,
+				addMissingStyle: {
+					border: "border-stroke-subtle",
+					bg: "bg-fg-muted/5",
+					text: catColor,
+					hoverBorder: "hover:border-accent-lime",
+					hoverBg: "hover:bg-accent-lime/5",
+				},
+			};
+		}
+		// No category
+		return {
+			addMissingLabel: "Can't find it? Add new",
+			addMissingStyle: {
+				border: "border-stroke-subtle",
+				bg: "bg-fg-muted/5",
+				text: "text-fg-muted",
+				hoverBorder: "hover:border-accent-lime",
+				hoverBg: "hover:bg-accent-lime/5",
+			},
+		};
+	}, [addMissingHint]);
 
 	if (flatItems.length === 0) {
 		return (
@@ -335,21 +444,27 @@ export function SlashCommandDropdown({
 				{onAddMissing && (
 					<button
 						type="button"
-						className="group mt-2 flex w-full items-center gap-3 border border-dashed border-stroke-subtle bg-fg-muted/5 px-3 py-2.5 text-left transition-all hover:border-accent-lime hover:bg-accent-lime/5 cursor-pointer"
+						className={`group mt-2 flex w-full items-center gap-3 border border-dashed ${addMissingStyle.border} ${addMissingStyle.bg} px-3 py-2.5 text-left transition-all ${addMissingStyle.hoverBorder} ${addMissingStyle.hoverBg} cursor-pointer`}
 						onMouseDown={(e) => {
 							e.preventDefault();
 							onAddMissing(addMissingHint);
 						}}
 					>
-						<span className="flex size-6 shrink-0 items-center justify-center border border-stroke-subtle text-fg-muted transition-colors group-hover:border-accent-lime group-hover:text-accent-lime">
+						<span
+							className={`flex size-6 shrink-0 items-center justify-center border ${addMissingStyle.border} ${addMissingStyle.text} transition-colors`}
+						>
 							<Plus className="size-3" />
 						</span>
 						<span className="min-w-0 flex-1">
-							<span className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-muted transition-colors group-hover:text-accent-lime">
-								Can't find it? Add new
+							<span
+								className={`block font-mono text-[10px] font-semibold uppercase tracking-wider ${addMissingStyle.text} transition-colors`}
+							>
+								{addMissingLabel}
 							</span>
 							<span className="block font-mono text-[9px] text-fg-muted/60">
-								Submit a new entry to the database
+								{addMissingHint.category === "instruction"
+									? "Create a new instruction for your stack"
+									: "Submit a new entry to the database"}
 							</span>
 						</span>
 					</button>
@@ -442,21 +557,27 @@ export function SlashCommandDropdown({
 				<div className="shrink-0 p-2 border-t border-stroke-subtle">
 					<button
 						type="button"
-						className="group flex w-full items-center gap-3 border border-dashed border-stroke-subtle bg-fg-muted/5 px-3 py-2.5 text-left transition-all hover:border-accent-lime hover:bg-accent-lime/5 cursor-pointer"
+						className={`group flex w-full items-center gap-3 border border-dashed ${addMissingStyle.border} ${addMissingStyle.bg} px-3 py-2.5 text-left transition-all ${addMissingStyle.hoverBorder} ${addMissingStyle.hoverBg} cursor-pointer`}
 						onMouseDown={(e) => {
 							e.preventDefault();
 							onAddMissing(addMissingHint);
 						}}
 					>
-						<span className="flex size-6 shrink-0 items-center justify-center border border-stroke-subtle text-fg-muted transition-colors group-hover:border-accent-lime group-hover:text-accent-lime">
+						<span
+							className={`flex size-6 shrink-0 items-center justify-center border ${addMissingStyle.border} ${addMissingStyle.text} transition-colors`}
+						>
 							<Plus className="size-3" />
 						</span>
 						<span className="min-w-0 flex-1">
-							<span className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-muted transition-colors group-hover:text-accent-lime">
-								Can't find it? Add new
+							<span
+								className={`block font-mono text-[10px] font-semibold uppercase tracking-wider ${addMissingStyle.text} transition-colors`}
+							>
+								{addMissingLabel}
 							</span>
 							<span className="block font-mono text-[9px] text-fg-muted/60">
-								Submit a new entry to the database
+								{addMissingHint.category === "instruction"
+									? "Create a new instruction for your stack"
+									: "Submit a new entry to the database"}
 							</span>
 						</span>
 					</button>
@@ -716,10 +837,10 @@ export const SlashCommandPlugin = Extension.create<
 			};
 
 			const handleAddMissing = extensionStorage.storage.onAddMissing
-				? (categoryHint: "tool" | "model" | "bundle" | null) => {
+				? (hint: AddMissingHint) => {
 						// Keep the slash text and dropdown alive so the user can
 						// continue searching after the modal closes.
-						extensionStorage.storage.onAddMissing!(categoryHint);
+						extensionStorage.storage.onAddMissing!(hint);
 					}
 				: undefined;
 

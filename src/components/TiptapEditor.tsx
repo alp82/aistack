@@ -55,6 +55,7 @@ import {
 	buildItems,
 } from "@/components/editor/SlashCommandPlugin";
 import { AddItemModal, type AddItemTab } from "@/components/AddItemModal";
+import type { InstructionType } from "@/features/stack-editor/types";
 
 import {
 	Bold as BoldIcon,
@@ -192,6 +193,8 @@ export function TiptapEditor({
 	const [addItemModalOpen, setAddItemModalOpen] = useState(false);
 	const [addItemDefaultTab, setAddItemDefaultTab] =
 		useState<AddItemTab>("tool");
+	const [addItemDefaultInstructionType, setAddItemDefaultInstructionType] =
+		useState<InstructionType | undefined>(undefined);
 	const [showToolbarDropdown, setShowToolbarDropdown] = useState(false);
 	const [toolbarDropdownPos, setToolbarDropdownPos] = useState({
 		top: 0,
@@ -354,8 +357,9 @@ export function TiptapEditor({
 					instructions: slashInstructions,
 					onToolAdded,
 					onModelAdded,
-					onAddMissing: (categoryHint) => {
-						setAddItemDefaultTab(categoryHint ?? "tool");
+					onAddMissing: (hint) => {
+						setAddItemDefaultTab(hint.category ?? "tool");
+						setAddItemDefaultInstructionType(hint.instructionType);
 						setAddItemModalOpen(true);
 					},
 				}),
@@ -717,6 +721,7 @@ export function TiptapEditor({
 				open={addItemModalOpen}
 				onClose={() => setAddItemModalOpen(false)}
 				defaultTab={addItemDefaultTab}
+				defaultInstructionType={addItemDefaultInstructionType}
 			/>
 			{showToolbarDropdown &&
 				createPortal(
@@ -786,14 +791,10 @@ export function TiptapEditor({
 							}}
 							onClose={() => setShowToolbarDropdown(false)}
 							position={toolbarDropdownPos}
-							onAddMissing={(categoryHint) => {
+							onAddMissing={(hint) => {
 								setShowToolbarDropdown(false);
-								if (categoryHint === "tool") setAddItemDefaultTab("tool");
-								else if (categoryHint === "model")
-									setAddItemDefaultTab("model");
-								else if (categoryHint === "bundle")
-									setAddItemDefaultTab("bundle");
-								else setAddItemDefaultTab("tool");
+								setAddItemDefaultTab(hint.category ?? "tool");
+								setAddItemDefaultInstructionType(hint.instructionType);
 								setAddItemModalOpen(true);
 							}}
 						/>
