@@ -234,12 +234,13 @@ export function SlashCommandDropdown({
 		if (trimmed.length >= 2) {
 			const matchedKey = findPrefixMatch(trimmed);
 			if (matchedKey) {
-				const cat = categoryPrefixes[matchedKey];
 				return {
-					categoryFilter: cat,
+					// Don't filter by category — show all items
+					categoryFilter: null,
 					instructionSubtype:
 						instructionSubtypePrefixes[matchedKey] ?? undefined,
-					searchText: "",
+					// Use the typed text as search text for fuzzy matching
+					searchText: trimmed,
 				};
 			}
 		}
@@ -361,8 +362,12 @@ export function SlashCommandDropdown({
 
 	// Build the AddMissingHint based on the current filter
 	const addMissingHint = useMemo((): AddMissingHint => {
-		if (categoryFilter === "instruction") {
+		// If we have an instruction subtype (e.g., /skill, /prompt), use it
+		if (instructionSubtype) {
 			return { category: "instruction", instructionType: instructionSubtype };
+		}
+		if (categoryFilter === "instruction") {
+			return { category: "instruction", instructionType: undefined };
 		}
 		if (
 			categoryFilter === "tool" ||
