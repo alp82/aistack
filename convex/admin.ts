@@ -274,6 +274,56 @@ export const getPendingBundles = query({
   },
 })
 
+export const updateBundleFull = mutation({
+  args: {
+    bundleId: v.id('bundles'),
+    name: v.string(),
+    websiteUrl: v.optional(v.string()),
+    iconUrl: v.optional(v.string()),
+    tiers: v.array(
+      v.object({
+        name: v.string(),
+        pricingType: v.union(v.literal('fixed'), v.literal('usage'), v.literal('mixed')),
+        fixedAmount: v.optional(v.number()),
+        fixedPeriod: v.optional(v.union(v.literal('month'), v.literal('year'), v.literal('one_time'))),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    if (!(await isAdmin(ctx))) {
+      throw new Error('Unauthorized')
+    }
+
+    const now = Date.now()
+    const tiers = args.tiers.map((t, i) => ({
+      tierId: `tier-${i + 1}`,
+      name: t.name,
+      pricing: {
+        pricingType: t.pricingType,
+        ...(t.pricingType === 'fixed' || t.pricingType === 'mixed'
+          ? {
+              fixed: {
+                currency: 'USD',
+                amount: t.fixedAmount ?? 0,
+                period: t.fixedPeriod ?? ('month' as const),
+              },
+            }
+          : {}),
+      },
+      isDefault: i === 0,
+      updatedAt: now,
+    }))
+
+    await ctx.db.patch(args.bundleId, {
+      name: args.name,
+      websiteUrl: args.websiteUrl,
+      iconUrl: args.iconUrl,
+      tiers,
+      updatedAt: now,
+    })
+  },
+})
+
 export const approveBundle = mutation({
   args: {
     bundleId: v.id('bundles'),

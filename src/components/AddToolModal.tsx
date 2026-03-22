@@ -1,5 +1,5 @@
 import { useMutation } from "convex/react";
-import { Check, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Dialog } from "./ui/Dialog";
 import { categoryConfig, type ToolCategory } from "@/config/categoryConfig";
@@ -98,8 +98,11 @@ export function AddToolForm({
 	const [tiers, setTiers] = useState<TierFormData[]>([createEmptyTier(true)]);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState("");
+	const [showDetails, setShowDetails] = useState(false);
 	const [validationErrors, setValidationErrors] = useState<{
 		name?: boolean;
+		websiteUrl?: boolean;
+		iconUrl?: boolean;
 		categories?: boolean;
 		tiers?: boolean;
 	}>({});
@@ -154,33 +157,42 @@ export function AddToolForm({
 		e.preventDefault();
 		const errors: typeof validationErrors = {};
 		if (!name.trim()) errors.name = true;
-		if (selectedCategories.length === 0) errors.categories = true;
-		if (tiers.length === 0 || !tiers.some((t) => t.name.trim()))
-			errors.tiers = true;
+
+		// In admin edit mode, enforce all required fields
+		if (isEditMode && isAdmin) {
+			if (!websiteUrl.trim()) errors.websiteUrl = true;
+			if (!iconUrl.trim()) errors.iconUrl = true;
+			if (selectedCategories.length === 0) errors.categories = true;
+			if (!tiers.some((t) => t.name.trim())) errors.tiers = true;
+		}
 
 		setValidationErrors(errors);
-
 		if (Object.keys(errors).length > 0) {
-			const errorMessages: string[] = [];
-			if (errors.name) errorMessages.push("Tool name is required");
-			if (errors.categories)
-				errorMessages.push("At least one category is required");
-			if (errors.tiers)
-				errorMessages.push("At least one tier with a name is required");
-			setError(errorMessages.join(". "));
+			const msgs: string[] = [];
+			if (errors.name) msgs.push("Tool name is required");
+			if (errors.websiteUrl) msgs.push("Website URL is required");
+			if (errors.iconUrl) msgs.push("Icon URL is required");
+			if (errors.categories) msgs.push("At least one category is required");
+			if (errors.tiers) msgs.push("At least one pricing tier with a name is required");
+			setError(msgs.join(". "));
 			return;
 		}
 		setError("");
 		setSaving(true);
-		const formattedTiers = tiers
-			.filter((t) => t.name.trim())
-			.map((t) => ({
-				name: t.name.trim(),
-				pricingType: t.pricingType,
-				...(t.pricingType === "fixed" || t.pricingType === "mixed"
-					? { fixedAmount: t.fixedAmount, fixedPeriod: t.fixedPeriod }
-					: {}),
-			}));
+
+		const formattedTiers =
+			showDetails || isEditMode
+				? tiers
+						.filter((t) => t.name.trim())
+						.map((t) => ({
+							name: t.name.trim(),
+							pricingType: t.pricingType,
+							...(t.pricingType === "fixed" || t.pricingType === "mixed"
+								? { fixedAmount: t.fixedAmount, fixedPeriod: t.fixedPeriod }
+								: {}),
+						}))
+				: [];
+
 		try {
 			if (editingSuggestion && onSuggestionUpdated) {
 				onSuggestionUpdated({
@@ -202,7 +214,7 @@ export function AddToolForm({
 			} else {
 				const toolId = await createTool({
 					name: name.trim(),
-					categories: selectedCategories,
+					categories: showDetails ? selectedCategories : [],
 					websiteUrl: websiteUrl.trim() || undefined,
 					tiers: formattedTiers,
 				});
@@ -213,7 +225,6 @@ export function AddToolForm({
 				? "Failed to update tool"
 				: "Failed to create tool";
 			if (err instanceof Error) {
-				// Extract clean message from Convex error format
 				const match = err.message.match(/Uncaught Error: (.+?)(?:\s+at\s+|$)/);
 				errorMessage = match ? match[1] : err.message;
 			}
@@ -269,7 +280,7 @@ export function AddToolForm({
 								onChange={(e) => {
 									setName(e.target.value);
 									if (validationErrors.name)
-										setValidationErrors((prev) => ({ ...prev, name: false }));
+										setValidationErrors({});
 								}}
 								placeholder="e.g. Cursor, Claude, Windsurf"
 								className={`h-10 bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime ${validationErrors.name ? "border-destructive" : "border-stroke-subtle"}`}
@@ -281,14 +292,18 @@ export function AddToolForm({
 								htmlFor="tool-website"
 								className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
 							>
-								Website URL
+								Website URL{isEditMode && isAdmin ? " *" : ""}
 							</Label>
 							<Input
 								id="tool-website"
 								value={websiteUrl}
-								onChange={(e) => setWebsiteUrl(e.target.value)}
+								onChange={(e) => {
+									setWebsiteUrl(e.target.value);
+									if (validationErrors.websiteUrl)
+										setValidationErrors((prev) => ({ ...prev, websiteUrl: false }));
+								}}
 								placeholder="https://example.com"
-								className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
+								className={`h-10 bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime ${validationErrors.websiteUrl ? "border-destructive" : "border-stroke-subtle"}`}
 							/>
 						</div>
 					</div>
@@ -299,7 +314,7 @@ export function AddToolForm({
 								htmlFor="tool-icon"
 								className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
 							>
-								Icon URL
+								Icon URL{isEditMode ? " *" : ""}
 							</Label>
 							<div className="flex items-center gap-3">
 								{iconUrl.trim() ? (
@@ -315,7 +330,7 @@ export function AddToolForm({
 										}}
 									/>
 								) : (
-									<div className="flex size-10 shrink-0 items-center justify-center rounded border border-stroke-subtle bg-bg-panel-muted">
+									<div className={`flex size-10 shrink-0 items-center justify-center rounded border bg-bg-panel-muted ${validationErrors.iconUrl ? "border-destructive" : "border-stroke-subtle"}`}>
 										<span className="font-mono text-[10px] text-fg-muted">
 											Icon
 										</span>
@@ -324,179 +339,152 @@ export function AddToolForm({
 								<Input
 									id="tool-icon"
 									value={iconUrl}
-									onChange={(e) => setIconUrl(e.target.value)}
+									onChange={(e) => {
+										setIconUrl(e.target.value);
+										if (validationErrors.iconUrl)
+											setValidationErrors((prev) => ({ ...prev, iconUrl: false }));
+									}}
 									placeholder="https://example.com/icon.png"
-									className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
+									className={`h-10 bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime ${validationErrors.iconUrl ? "border-destructive" : "border-stroke-subtle"}`}
 								/>
 							</div>
 						</div>
 					)}
-
-					<div className="space-y-2">
-						<Label
-							className={`font-mono text-xs font-semibold uppercase tracking-wide ${validationErrors.categories ? "text-destructive" : "text-fg-secondary"}`}
-						>
-							Categories *
-						</Label>
-						<div
-							className={`flex flex-wrap gap-2 p-2 border ${validationErrors.categories ? "border-destructive" : "border-transparent"}`}
-						>
-							{categories.map((cat) => {
-								const isSelected = selectedCategories.includes(cat);
-								return (
-									<button
-										key={cat}
-										type="button"
-										onClick={() => {
-											setSelectedCategories((prev) =>
-												isSelected
-													? prev.filter((c) => c !== cat)
-													: [...prev, cat],
-											);
-											if (validationErrors.categories)
-												setValidationErrors((prev) => ({
-													...prev,
-													categories: false,
-												}));
-										}}
-										className={`px-3 py-1.5 font-mono text-xs uppercase tracking-wide border transition-colors ${
-											isSelected
-												? "border-accent-lime bg-accent-lime/20 text-accent-lime"
-												: "border-stroke-subtle bg-bg-panel-muted text-fg-muted hover:border-fg-muted"
-										}`}
-									>
-										{categoryConfig[cat].label}
-									</button>
-								);
-							})}
-						</div>
-					</div>
 				</fieldset>
 
-				{/* Pricing Tiers */}
-				<fieldset className="space-y-4">
-					<div className="flex items-center justify-between">
-						<legend
-							className={`font-mono text-[10px] font-semibold uppercase tracking-widest ${validationErrors.tiers ? "text-destructive" : "text-accent-lime"}`}
-						>
-							Pricing Tiers *
-						</legend>
-						<button
-							type="button"
-							onClick={addTier}
-							className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-xs uppercase tracking-wide border border-stroke-subtle text-fg-muted hover:border-accent-lime hover:text-accent-lime transition-colors"
-						>
-							<Plus className="size-3" />
-							Add Tier
-						</button>
-					</div>
+				{/* More Details Toggle — hidden in edit mode since all fields are always shown */}
+				{!isEditMode && (
+					<button
+						type="button"
+						onClick={() => setShowDetails((v) => !v)}
+						className="flex items-center gap-2 font-mono text-xs text-fg-muted hover:text-fg-primary transition-colors"
+					>
+						{showDetails ? (
+							<ChevronDown className="size-3.5" />
+						) : (
+							<ChevronRight className="size-3.5" />
+						)}
+						<span className="uppercase tracking-wide">
+							{showDetails ? "Hide details" : "Add more details"}
+						</span>
+						{!showDetails && (
+							<span className="normal-case tracking-normal">
+								— categories, pricing
+							</span>
+						)}
+					</button>
+				)}
 
-					<div className="space-y-3">
-						{tiers.map((tier, index) => (
-							<div
-								key={tier.id}
-								className="border border-stroke-subtle bg-bg-panel-muted p-4 space-y-3"
-							>
-								<div className="flex items-center justify-between gap-4">
-									<div className="flex items-center gap-3 flex-1">
-										<span className="font-mono text-[10px] text-fg-muted uppercase tracking-wider w-16">
-											Tier {index + 1}
-										</span>
+				{(showDetails || isEditMode) && (
+					<>
+						{/* Categories */}
+						<fieldset className="space-y-3">
+							<legend className={`font-mono text-[10px] font-semibold uppercase tracking-widest ${validationErrors.categories ? "text-destructive" : "text-accent-lime"}`}>
+								Categories{isEditMode && isAdmin ? " *" : ""}
+							</legend>
+							<div className="flex flex-wrap gap-2">
+								{categories.map((cat) => {
+									const isSelected = selectedCategories.includes(cat);
+									return (
 										<button
+											key={cat}
 											type="button"
-											onClick={() => setDefaultTier(tier.id)}
-											className={`px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide border transition-colors ${
-												tier.isDefault
+											onClick={() =>
+												setSelectedCategories((prev) =>
+													isSelected
+														? prev.filter((c) => c !== cat)
+														: [...prev, cat],
+												)
+											}
+											className={`px-3 py-1.5 font-mono text-xs uppercase tracking-wide border transition-colors ${
+												isSelected
 													? "border-accent-lime bg-accent-lime/20 text-accent-lime"
-													: "border-stroke-subtle text-fg-muted hover:border-fg-muted"
+													: "border-stroke-subtle bg-bg-panel-muted text-fg-muted hover:border-fg-muted"
 											}`}
 										>
-											{tier.isDefault ? "Default" : "Set Default"}
+											{categoryConfig[cat].label}
 										</button>
-									</div>
-									{tiers.length > 1 && (
-										<button
-											type="button"
-											onClick={() => removeTier(tier.id)}
-											className="p-1.5 text-fg-muted hover:text-destructive transition-colors"
-										>
-											<Trash2 className="size-4" />
-										</button>
-									)}
-								</div>
+									);
+								})}
+							</div>
+						</fieldset>
 
-								<div className="grid grid-cols-4 gap-3">
-									<div className="space-y-1.5">
-										<Label className="font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">
-											Tier Name *
-										</Label>
-										<Input
-											value={tier.name}
-											onChange={(e) => {
-												updateTier(tier.id, { name: e.target.value });
-												if (validationErrors.tiers)
-													setValidationErrors((prev) => ({
-														...prev,
-														tiers: false,
-													}));
-											}}
-											placeholder="e.g. Free, Pro"
-											className={`h-9 bg-bg-panel font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime ${validationErrors.tiers && !tier.name.trim() ? "border-destructive" : "border-stroke-subtle"}`}
-										/>
-									</div>
+						{/* Pricing Tiers */}
+						<fieldset className="space-y-4">
+							<div className="flex items-center justify-between">
+								<legend className={`font-mono text-[10px] font-semibold uppercase tracking-widest ${validationErrors.tiers ? "text-destructive" : "text-accent-lime"}`}>
+									Pricing Tiers{isEditMode && isAdmin ? " *" : ""}
+								</legend>
+								<button
+									type="button"
+									onClick={addTier}
+									className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-xs uppercase tracking-wide border border-stroke-subtle text-fg-muted hover:border-accent-lime hover:text-accent-lime transition-colors"
+								>
+									<Plus className="size-3" />
+									Add Tier
+								</button>
+							</div>
 
-									<div className="space-y-1.5">
-										<Label className="font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">
-											Pricing Type
-										</Label>
-										<Select
-											value={tier.pricingType}
-											onValueChange={(v) =>
-												updateTier(tier.id, {
-													pricingType: v as "fixed" | "usage" | "mixed",
-												})
-											}
-										>
-											<SelectTrigger className="h-9 border-stroke-subtle bg-bg-panel font-mono text-sm text-fg-primary">
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="fixed">Fixed</SelectItem>
-												<SelectItem value="usage">Usage</SelectItem>
-												<SelectItem value="mixed">Mixed</SelectItem>
-											</SelectContent>
-										</Select>
-									</div>
+							<div className="space-y-3">
+								{tiers.map((tier, index) => (
+									<div
+										key={tier.id}
+										className="border border-stroke-subtle bg-bg-panel-muted p-4 space-y-3"
+									>
+										<div className="flex items-center justify-between gap-4">
+											<div className="flex items-center gap-3 flex-1">
+												<span className="font-mono text-[10px] text-fg-muted uppercase tracking-wider w-16">
+													Tier {index + 1}
+												</span>
+												<button
+													type="button"
+													onClick={() => setDefaultTier(tier.id)}
+													className={`px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide border transition-colors ${
+														tier.isDefault
+															? "border-accent-lime bg-accent-lime/20 text-accent-lime"
+															: "border-stroke-subtle text-fg-muted hover:border-fg-muted"
+													}`}
+												>
+													{tier.isDefault ? "Default" : "Set Default"}
+												</button>
+											</div>
+											{tiers.length > 1 && (
+												<button
+													type="button"
+													onClick={() => removeTier(tier.id)}
+													className="p-1.5 text-fg-muted hover:text-destructive transition-colors"
+												>
+													<Trash2 className="size-4" />
+												</button>
+											)}
+										</div>
 
-									{(tier.pricingType === "fixed" ||
-										tier.pricingType === "mixed") && (
-										<>
+										<div className="grid grid-cols-4 gap-3">
 											<div className="space-y-1.5">
 												<Label className="font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">
-													Price ($)
+													Tier Name{isEditMode && isAdmin ? " *" : ""}
 												</Label>
 												<Input
-													type="number"
-													min={0}
-													step={0.01}
-													value={tier.fixedAmount}
-													onChange={(e) =>
-														updateTier(tier.id, {
-															fixedAmount: Number(e.target.value),
-														})
-													}
-													className="h-9 border-stroke-subtle bg-bg-panel font-mono text-sm text-fg-primary focus:border-accent-lime"
+													value={tier.name}
+													onChange={(e) => {
+														updateTier(tier.id, { name: e.target.value });
+														if (validationErrors.tiers)
+															setValidationErrors((prev) => ({ ...prev, tiers: false }));
+													}}
+													placeholder="e.g. Free, Pro"
+													className={`h-9 bg-bg-panel font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime ${validationErrors.tiers && !tier.name.trim() ? "border-destructive" : "border-stroke-subtle"}`}
 												/>
 											</div>
+
 											<div className="space-y-1.5">
 												<Label className="font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">
-													Period
+													Pricing Type
 												</Label>
 												<Select
-													value={tier.fixedPeriod}
+													value={tier.pricingType}
 													onValueChange={(v) =>
 														updateTier(tier.id, {
-															fixedPeriod: v as "month" | "year" | "one_time",
+															pricingType: v as "fixed" | "usage" | "mixed",
 														})
 													}
 												>
@@ -504,19 +492,69 @@ export function AddToolForm({
 														<SelectValue />
 													</SelectTrigger>
 													<SelectContent>
-														<SelectItem value="month">Monthly</SelectItem>
-														<SelectItem value="year">Yearly</SelectItem>
-														<SelectItem value="one_time">One-time</SelectItem>
+														<SelectItem value="fixed">Fixed</SelectItem>
+														<SelectItem value="usage">Usage</SelectItem>
+														<SelectItem value="mixed">Mixed</SelectItem>
 													</SelectContent>
 												</Select>
 											</div>
-										</>
-									)}
-								</div>
+
+											{(tier.pricingType === "fixed" ||
+												tier.pricingType === "mixed") && (
+												<>
+													<div className="space-y-1.5">
+														<Label className="font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">
+															Price ($)
+														</Label>
+														<Input
+															type="number"
+															min={0}
+															step={0.01}
+															value={tier.fixedAmount}
+															onChange={(e) =>
+																updateTier(tier.id, {
+																	fixedAmount: Number(e.target.value),
+																})
+															}
+															className="h-9 border-stroke-subtle bg-bg-panel font-mono text-sm text-fg-primary focus:border-accent-lime"
+														/>
+													</div>
+													<div className="space-y-1.5">
+														<Label className="font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">
+															Period
+														</Label>
+														<Select
+															value={tier.fixedPeriod}
+															onValueChange={(v) =>
+																updateTier(tier.id, {
+																	fixedPeriod: v as
+																		| "month"
+																		| "year"
+																		| "one_time",
+																})
+															}
+														>
+															<SelectTrigger className="h-9 border-stroke-subtle bg-bg-panel font-mono text-sm text-fg-primary">
+																<SelectValue />
+															</SelectTrigger>
+															<SelectContent>
+																<SelectItem value="month">Monthly</SelectItem>
+																<SelectItem value="year">Yearly</SelectItem>
+																<SelectItem value="one_time">
+																	One-time
+																</SelectItem>
+															</SelectContent>
+														</Select>
+													</div>
+												</>
+											)}
+										</div>
+									</div>
+								))}
 							</div>
-						))}
-					</div>
-				</fieldset>
+						</fieldset>
+					</>
+				)}
 
 				{/* Action Buttons */}
 				<div className="flex flex-col gap-3 pt-2">

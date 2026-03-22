@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { AddToolModal, type ToolData } from "../AddToolModal";
 import { AddModelForm, type ModelData } from "../AddModelModal";
+import { AddBundleModal, type BundleData } from "../AddBundleModal";
 import { Dialog } from "../ui/Dialog";
 import { ItemIcon } from "@/components/ItemIcon";
 
@@ -31,6 +32,7 @@ export function AdminReviewTab() {
 	const [editingSuggestionId, setEditingSuggestionId] =
 		useState<Id<"toolEditSuggestions"> | null>(null);
 	const [editingModel, setEditingModel] = useState<ModelData | null>(null);
+	const [editingBundle, setEditingBundle] = useState<BundleData | null>(null);
 
 	const handleApproveTool = async (toolId: Id<"tools">) => {
 		try {
@@ -149,6 +151,15 @@ export function AdminReviewTab() {
 					isAdmin={true}
 				/>
 			</Dialog>
+
+			<AddBundleModal
+				open={!!editingBundle}
+				onClose={() => setEditingBundle(null)}
+				onBundleCreated={() => {}}
+				editBundle={editingBundle || undefined}
+				onBundleUpdated={() => setEditingBundle(null)}
+				isAdmin={true}
+			/>
 
 			{/* Tool Review Section */}
 			<section className="py-12 sm:py-16">
@@ -604,6 +615,23 @@ export function AdminReviewTab() {
 												)}
 											</div>
 										</div>
+
+										<button
+											type="button"
+											onClick={() =>
+												setEditingBundle({
+													_id: bundle._id,
+													name: bundle.name,
+													websiteUrl: bundle.websiteUrl,
+													iconUrl: bundle.iconUrl,
+													tiers: bundle.tiers,
+												})
+											}
+											className="inline-flex items-center gap-2 border border-stroke-subtle px-3 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-accent-lime hover:text-accent-lime"
+										>
+											<Edit2 className="size-3.5" />
+											Edit
+										</button>
 									</div>
 
 									{bundle.toolSlugs.length > 0 && (

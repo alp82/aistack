@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "convex/react";
-import { Check } from "lucide-react";
+import { Check, ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Dialog } from "./ui/Dialog";
 import { api } from "../../convex/_generated/api";
@@ -85,6 +85,12 @@ export function AddModelForm({
 	const [iconUrl, setIconUrl] = useState("");
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState("");
+	const [showDetails, setShowDetails] = useState(false);
+	const [validationErrors, setValidationErrors] = useState<{
+		websiteUrl?: boolean;
+		iconUrl?: boolean;
+		category?: boolean;
+	}>({});
 
 	// Query provider data for auto-population
 	const providerData = useQuery(
@@ -117,7 +123,6 @@ export function AddModelForm({
 				setWebsiteUrl(providerData.websiteUrl || "");
 				setIconUrl(providerData.iconUrl || "");
 			} else {
-				// No data found for this provider, clear fields
 				setWebsiteUrl("");
 				setIconUrl("");
 			}
@@ -126,8 +131,25 @@ export function AddModelForm({
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!name.trim() || !provider.trim() || !category) {
-			setError("Name, provider, and category are required");
+		if (!name.trim() || !provider.trim()) {
+			setError("Provider and model name are required");
+			return;
+		}
+
+		const errors: typeof validationErrors = {};
+		if (isEditMode && isAdmin) {
+			if (!websiteUrl.trim()) errors.websiteUrl = true;
+			if (!iconUrl.trim()) errors.iconUrl = true;
+			if (!category) errors.category = true;
+		}
+
+		setValidationErrors(errors);
+		if (Object.keys(errors).length > 0) {
+			const msgs: string[] = [];
+			if (errors.websiteUrl) msgs.push("Website URL is required");
+			if (errors.iconUrl) msgs.push("Icon URL is required");
+			if (errors.category) msgs.push("Category is required");
+			setError(msgs.join(". "));
 			return;
 		}
 
@@ -140,7 +162,7 @@ export function AddModelForm({
 					modelId: editModel._id,
 					name: name.trim(),
 					provider: provider.trim(),
-					category: category as ModelCategory,
+					category: (category || "other") as ModelCategory,
 					websiteUrl: websiteUrl.trim() || undefined,
 					iconUrl: iconUrl.trim() || undefined,
 				});
@@ -149,7 +171,7 @@ export function AddModelForm({
 				const modelId = await createModel({
 					name: name.trim(),
 					provider: provider.trim(),
-					category: category as ModelCategory,
+					category: (category || "other") as ModelCategory,
 					websiteUrl: websiteUrl.trim() || undefined,
 				});
 				onModelCreated(modelId, name.trim());
@@ -168,7 +190,7 @@ export function AddModelForm({
 		}
 	};
 
-	const canSubmit = name.trim() && provider.trim() && category;
+	const canSubmit = name.trim() && provider.trim();
 
 	return (
 		<div>
@@ -194,54 +216,6 @@ export function AddModelForm({
 				<fieldset className="space-y-4">
 					<legend className="font-mono text-[10px] font-semibold uppercase tracking-widest text-accent-lime">
 						Basic Information
-					</legend>
-
-					<div className="grid grid-cols-3 gap-4">
-						<div className="space-y-2 col-span-2">
-							<Label
-								htmlFor="model-name"
-								className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
-							>
-								Model Name *
-							</Label>
-							<Input
-								id="model-name"
-								value={name}
-								onChange={(e) => setName(e.target.value)}
-								placeholder="e.g. GPT 5.4, Claude Opus 4.6"
-								className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
-								required
-							/>
-						</div>
-
-						<div className="space-y-2">
-							<Label className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
-								Category *
-							</Label>
-							<Select
-								value={category}
-								onValueChange={(val) => {
-									if (val) setCategory(val as ModelCategory);
-								}}
-							>
-								<SelectTrigger className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary">
-									<SelectValue placeholder="Select category" />
-								</SelectTrigger>
-								<SelectContent>
-									{categories.map((cat) => (
-										<SelectItem key={cat.value} value={cat.value}>
-											{cat.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-					</div>
-				</fieldset>
-
-				<fieldset className="space-y-4">
-					<legend className="font-mono text-[10px] font-semibold uppercase tracking-widest text-accent-lime">
-						Details
 					</legend>
 
 					<div className="grid grid-cols-3 gap-4">
@@ -279,46 +253,120 @@ export function AddModelForm({
 							</div>
 						</div>
 
-						{/* Website URL - Show for "Other" provider or in admin edit mode */}
-						{(provider === "Other" || (isEditMode && isAdmin)) && (
-							<div className="space-y-2 col-span-2">
-								<Label
-									htmlFor="model-website"
-									className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
-								>
-									Website URL
-								</Label>
-								<Input
-									id="model-website"
-									value={websiteUrl}
-									onChange={(e) => setWebsiteUrl(e.target.value)}
-									placeholder="https://example.com"
-									className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
-								/>
-							</div>
-						)}
+						<div className="space-y-2 col-span-2">
+							<Label
+								htmlFor="model-name"
+								className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
+							>
+								Model Name *
+							</Label>
+							<Input
+								id="model-name"
+								value={name}
+								onChange={(e) => setName(e.target.value)}
+								placeholder="e.g. GPT 5.4, Claude Opus 4.6"
+								className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
+								required
+							/>
+						</div>
 					</div>
-					<div>
-						{/* Icon URL - Only show in admin edit mode */}
-						{isEditMode && isAdmin && (
-							<div className="space-y-2">
-								<Label
-									htmlFor="model-icon"
-									className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
-								>
-									Icon URL
-								</Label>
-								<Input
-									id="model-icon"
-									value={iconUrl}
-									onChange={(e) => setIconUrl(e.target.value)}
-									placeholder="https://example.com/icon.png"
-									className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
-								/>
-							</div>
-						)}
-					</div>
+
+					{/* Website URL — only for "Other" provider or admin edit */}
+					{(provider === "Other" || (isEditMode && isAdmin)) && (
+						<div className="space-y-2">
+							<Label
+								htmlFor="model-website"
+								className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
+							>
+								Website URL{isEditMode && isAdmin ? " *" : ""}
+							</Label>
+							<Input
+								id="model-website"
+								value={websiteUrl}
+								onChange={(e) => {
+									setWebsiteUrl(e.target.value);
+									if (validationErrors.websiteUrl)
+										setValidationErrors((prev) => ({ ...prev, websiteUrl: false }));
+								}}
+								placeholder="https://example.com"
+								className={`h-10 bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime ${validationErrors.websiteUrl ? "border-destructive" : "border-stroke-subtle"}`}
+							/>
+						</div>
+					)}
+
+					{/* Icon URL — admin edit only */}
+					{isEditMode && isAdmin && (
+						<div className="space-y-2">
+							<Label
+								htmlFor="model-icon"
+								className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
+							>
+								Icon URL *
+							</Label>
+							<Input
+								id="model-icon"
+								value={iconUrl}
+								onChange={(e) => {
+									setIconUrl(e.target.value);
+									if (validationErrors.iconUrl)
+										setValidationErrors((prev) => ({ ...prev, iconUrl: false }));
+								}}
+								placeholder="https://example.com/icon.png"
+								className={`h-10 bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime ${validationErrors.iconUrl ? "border-destructive" : "border-stroke-subtle"}`}
+							/>
+						</div>
+					)}
 				</fieldset>
+
+				{/* More Details Toggle */}
+				{!isEditMode && (
+					<button
+						type="button"
+						onClick={() => setShowDetails((v) => !v)}
+						className="flex items-center gap-2 font-mono text-xs text-fg-muted hover:text-fg-primary transition-colors"
+					>
+						{showDetails ? (
+							<ChevronDown className="size-3.5" />
+						) : (
+							<ChevronRight className="size-3.5" />
+						)}
+						<span className="uppercase tracking-wide">
+							{showDetails ? "Hide details" : "Add more details"}
+						</span>
+						{!showDetails && (
+							<span className="normal-case tracking-normal">— category</span>
+						)}
+					</button>
+				)}
+
+				{(showDetails || isEditMode) && (
+					<fieldset className="space-y-3">
+						<legend className={`font-mono text-[10px] font-semibold uppercase tracking-widest ${validationErrors.category ? "text-destructive" : "text-accent-lime"}`}>
+							Category{isEditMode && isAdmin ? " *" : ""}
+						</legend>
+						<div className="flex flex-wrap gap-2">
+							{categories.map((cat) => (
+								<button
+									key={cat.value}
+									type="button"
+									onClick={() => {
+										setCategory((prev) => prev === cat.value ? "" : cat.value);
+										if (validationErrors.category)
+											setValidationErrors((prev) => ({ ...prev, category: false }));
+									}}
+									className={`px-3 py-1.5 font-mono text-xs uppercase tracking-wide border transition-colors ${
+										category === cat.value
+											? "border-accent-lime bg-accent-lime/20 text-accent-lime"
+											: "border-stroke-subtle bg-bg-panel-muted text-fg-muted hover:border-fg-muted"
+									}`}
+								>
+									{cat.label}
+								</button>
+							))}
+						</div>
+					</fieldset>
+				)}
+
 				{/* Action Buttons */}
 				<div className="flex flex-col gap-3 pt-2">
 					<div className="flex gap-3">
