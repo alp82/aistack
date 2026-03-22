@@ -188,7 +188,7 @@ function BrowseStacksPage() {
 		[]) as LandingStackPreview[];
 	const userStack = useQuery(api.stacks.getUserStack);
 	const [toolFilter, setToolFilter] = useState<string>("all");
-	const [sortOption, setSortOption] = useState<SortOption>("upvotes");
+	const [sortOption, setSortOption] = useState<SortOption>("newest");
 	const [searchQuery, setSearchQuery] = useState("");
 	const [currentPage, setCurrentPage] = useState(1);
 

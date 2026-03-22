@@ -119,7 +119,7 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 
 function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 	const [toolFilter, setToolFilter] = useState<string>("all");
-	const [sortOption, setSortOption] = useState<SortOption>("upvotes");
+	const [sortOption, setSortOption] = useState<SortOption>("newest");
 	const [currentPage, setCurrentPage] = useState(1);
 
 	const categoryOptions = useMemo(() => getCategoryOptions(stacks), [stacks]);
