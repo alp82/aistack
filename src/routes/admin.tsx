@@ -1,9 +1,10 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { ClipboardCheck, Mail } from "lucide-react";
+import { ClipboardCheck, Flag, Mail } from "lucide-react";
 import { useState } from "react";
 import { AdminReviewTab } from "@/components/admin/AdminReviewTab";
+import { AdminQualityTab } from "@/components/admin/AdminQualityTab";
 import { AdminEmailTab } from "@/components/admin/AdminEmailTab";
 
 export const Route = createFileRoute("/admin")({
@@ -18,7 +19,7 @@ export const Route = createFileRoute("/admin")({
 	}),
 });
 
-type AdminTab = "review" | "email";
+type AdminTab = "review" | "quality" | "email";
 
 function AdminPage() {
 	const isAdmin = useQuery(api.admin.checkIsAdmin);
@@ -56,6 +57,18 @@ function AdminPage() {
 						</button>
 						<button
 							type="button"
+							onClick={() => setActiveTab("quality")}
+							className={`inline-flex items-center gap-2 border-b-2 px-6 py-4 font-mono text-sm font-semibold uppercase tracking-wide transition-colors -mb-[2px] ${
+								activeTab === "quality"
+									? "border-accent-lime text-accent-lime"
+									: "border-transparent text-fg-muted hover:text-fg-primary"
+							}`}
+						>
+							<Flag className="size-4" />
+							Quality
+						</button>
+						<button
+							type="button"
 							onClick={() => setActiveTab("email")}
 							className={`inline-flex items-center gap-2 border-b-2 px-6 py-4 font-mono text-sm font-semibold uppercase tracking-wide transition-colors -mb-[2px] ${
 								activeTab === "email"
@@ -71,7 +84,9 @@ function AdminPage() {
 			</div>
 
 			{/* Tab Content */}
-			{activeTab === "review" ? <AdminReviewTab /> : <AdminEmailTab />}
+			{activeTab === "review" && <AdminReviewTab />}
+			{activeTab === "quality" && <AdminQualityTab />}
+			{activeTab === "email" && <AdminEmailTab />}
 		</div>
 	);
 }
