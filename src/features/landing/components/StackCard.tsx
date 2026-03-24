@@ -202,11 +202,11 @@ function StackCard({ stack }: StackCardProps) {
 						))}
 					</div>
 					<span className="inline-flex items-center gap-1 font-mono text-xs font-semibold text-accent-lime transition-all">
-						Open stack
-						<ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
-					</span>
-				</div>
-			</motion.div>
+					Open stack
+					<ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
+				</span>
+			</div>
+		</motion.div>
 		</Link>
 	);
 }

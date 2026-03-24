@@ -1,5 +1,6 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
+import type { Id } from './_generated/dataModel'
 // @ts-ignore - components will be generated after convex dev restarts
 import { components } from './_generated/api'
 
@@ -72,7 +73,16 @@ export const getPendingReviewCount = query({
       .withIndex('by_status', (q) => q.eq('status', 'pending'))
       .collect()
 
-    return tools.length + bundles.length + models.length + editSuggestions.length
+    // Count stacks with flags that haven't been marked low quality yet
+    const allFlags = await ctx.db.query('stackFlags').collect()
+    const flaggedStackIds = new Set(allFlags.map((f) => f.stackId))
+    let pendingFlaggedStacks = 0
+    for (const stackId of flaggedStackIds) {
+      const stack = await ctx.db.get(stackId)
+      if (stack && !stack.isLowQuality) pendingFlaggedStacks++
+    }
+
+    return tools.length + bundles.length + models.length + editSuggestions.length + pendingFlaggedStacks
   },
 })
 
@@ -514,6 +524,113 @@ export const rejectToolEditSuggestion = mutation({
       reviewedAt: Date.now(),
       reviewedBy: user?.subject,
     })
+  },
+})
+
+export const getFlaggedStacks = query({
+  args: {},
+  handler: async (ctx) => {
+    if (!(await isAdmin(ctx))) return null
+
+    const allFlags = await ctx.db.query('stackFlags').collect()
+
+    // Group flags by stackId
+    const flagsByStack = new Map<Id<'stacks'>, typeof allFlags>()
+    for (const flag of allFlags) {
+      const existing = flagsByStack.get(flag.stackId) ?? []
+      existing.push(flag)
+      flagsByStack.set(flag.stackId, existing)
+    }
+
+    const result = []
+    for (const [stackId, flags] of flagsByStack) {
+      const stack = await ctx.db.get(stackId)
+      if (!stack || stack.isLowQuality) continue // already acted on or deleted
+
+      const creator = await ctx.db.get(stack.creatorId)
+      result.push({
+        _id: stack._id,
+        name: stack.name,
+        slug: `${stack.slug}-${stack.shortId}`,
+        oneLiner: stack.oneLiner,
+        creatorName: creator?.name ?? 'Unknown',
+        flagCount: flags.length,
+        firstFlaggedAt: Math.min(...flags.map((f) => f.createdAt)),
+      })
+    }
+
+    return result.sort((a, b) => b.flagCount - a.flagCount)
+  },
+})
+
+export const markStackLowQuality = mutation({
+  args: { stackId: v.id('stacks') },
+  handler: async (ctx, args) => {
+    if (!(await isAdmin(ctx))) throw new Error('Unauthorized')
+    await ctx.db.patch(args.stackId, { isLowQuality: true, updatedAt: Date.now() })
+  },
+})
+
+export const dismissStackFlags = mutation({
+  args: { stackId: v.id('stacks') },
+  handler: async (ctx, args) => {
+    if (!(await isAdmin(ctx))) throw new Error('Unauthorized')
+    const flags = await ctx.db
+      .query('stackFlags')
+      .withIndex('by_stackId', (q) => q.eq('stackId', args.stackId))
+      .collect()
+    for (const flag of flags) {
+      await ctx.db.delete(flag._id)
+    }
+  },
+})
+
+export const unmarkStackLowQuality = mutation({
+  args: { stackId: v.id('stacks') },
+  handler: async (ctx, args) => {
+    if (!(await isAdmin(ctx))) throw new Error('Unauthorized')
+    await ctx.db.patch(args.stackId, { isLowQuality: false, updatedAt: Date.now() })
+    // Also clear all flags so it doesn't reappear in the flagged queue
+    const flags = await ctx.db
+      .query('stackFlags')
+      .withIndex('by_stackId', (q) => q.eq('stackId', args.stackId))
+      .collect()
+    for (const flag of flags) {
+      await ctx.db.delete(flag._id)
+    }
+  },
+})
+
+export const getLowQualityStacks = query({
+  args: {},
+  handler: async (ctx) => {
+    if (!(await isAdmin(ctx))) return null
+
+    const stacks = await ctx.db
+      .query('stacks')
+      .withIndex('by_isLowQuality', (q) => q.eq('isLowQuality', true))
+      .collect()
+
+    return await Promise.all(
+      stacks.map(async (stack) => {
+        const creator = await ctx.db.get(stack.creatorId)
+        const flagCount = (
+          await ctx.db
+            .query('stackFlags')
+            .withIndex('by_stackId', (q) => q.eq('stackId', stack._id))
+            .collect()
+        ).length
+        return {
+          _id: stack._id,
+          name: stack.name,
+          slug: `${stack.slug}-${stack.shortId}`,
+          oneLiner: stack.oneLiner,
+          creatorName: creator?.name ?? 'Unknown',
+          flagCount,
+          updatedAt: stack.updatedAt,
+        }
+      })
+    )
   },
 })
 

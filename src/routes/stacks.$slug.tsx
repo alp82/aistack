@@ -2,10 +2,12 @@ import { convexQuery } from "@convex-dev/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import {
+	AlertTriangle,
 	ArrowRight,
 	CheckCircle,
 	ExternalLink,
 	FileText,
+	Flag,
 	Globe,
 	Package,
 	Pencil,
@@ -261,11 +263,18 @@ function StackDetailsPage() {
 		api.stacks.getUpvoteStatus,
 		stack ? { stackId: stack._id } : "skip",
 	);
+	const reportStatus = useQuery(
+		api.stacks.getReportStatus,
+		stack ? { stackId: stack._id } : "skip",
+	);
 	const toggleUpvote = useMutation(api.stacks.toggleUpvote);
+	const reportStack = useMutation(api.stacks.reportStack);
+	const unreportStack = useMutation(api.stacks.unreportStack);
 	const [activeTab, setActiveTab] = useState<"tools" | "description">(
 		"description",
 	);
 	const [upvoting, setUpvoting] = useState(false);
+	const [reporting, setReporting] = useState(false);
 	const [highlightedBundle, setHighlightedBundle] = useState<string | null>(
 		null,
 	);
@@ -297,6 +306,26 @@ function StackDetailsPage() {
 			console.error("Failed to toggle upvote:", error);
 		} finally {
 			setUpvoting(false);
+		}
+	};
+
+	const handleReport = async () => {
+		if (!stack) return;
+		if (!isAuthenticated) {
+			navigate({ to: "/signin", search: { redirect: `/stacks/${slug}` } });
+			return;
+		}
+		setReporting(true);
+		try {
+			if (reportStatus?.reported) {
+				await unreportStack({ stackId: stack._id });
+			} else {
+				await reportStack({ stackId: stack._id });
+			}
+		} catch (error) {
+			console.error("Failed to toggle report:", error);
+		} finally {
+			setReporting(false);
 		}
 	};
 
@@ -544,7 +573,25 @@ function StackDetailsPage() {
 									size="md"
 									onClick={handleUpvote}
 								/>
+							{!upvoteStatus?.isOwner && (
+								<button
+									type="button"
+									onClick={handleReport}
+									disabled={reporting}
+									className={`cursor-pointer w-16 py-1.5 flex flex-col items-center justify-center gap-0.5 transition-all disabled:opacity-50 ${
+										reportStatus?.reported
+											? "bg-orange-500/15 text-orange-400 hover:bg-orange-500/30"
+											: "bg-bg-panel-muted text-fg-muted hover:bg-orange-500/15 hover:text-orange-400"
+									}`}
+								>
+									<Flag className="size-3.5" />
+									<span className="font-mono text-[9px] font-bold uppercase tracking-wide leading-tight text-center">
+										{reportStatus?.reported ? "Unreport" : "Report"}
+									</span>
+								</button>
+							)}
 							</div>
+
 
 							{/* Title + Links + One-liner */}
 							<div className="flex-1 min-w-0">
@@ -676,6 +723,18 @@ function StackDetailsPage() {
 						<div className="mt-12 flex items-center gap-4">
 							<span className="h-px flex-1 bg-stroke-subtle" />
 						</div>
+
+					{/* Low quality banner */}
+					{(stack.isLowQuality || reportStatus?.reported) && (
+						<div className="mt-6 flex items-center gap-3 border border-orange-400/40 bg-orange-400/5 px-5 py-4">
+							<AlertTriangle className="size-4 text-orange-400 shrink-0" />
+							<p className="font-mono text-sm text-fg-secondary">
+								{stack.isLowQuality
+									? "This stack has been flagged as low quality by the community. The content may be incomplete or inaccurate."
+									: "You reported this stack as low quality. It's pending admin review."}
+							</p>
+						</div>
+					)}
 					</div>
 				</header>
 

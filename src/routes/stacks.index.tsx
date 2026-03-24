@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { useConvexAuth } from "convex/react";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { GridBackground } from "@/components/GridBackground";
 import { PageHeader } from "@/components/PageHeader";
@@ -191,10 +191,14 @@ function BrowseStacksPage() {
 	const [sortOption, setSortOption] = useState<SortOption>("newest");
 	const [searchQuery, setSearchQuery] = useState("");
 	const [currentPage, setCurrentPage] = useState(1);
+	const [showLowQuality, setShowLowQuality] = useState(false);
 
-	const categoryOptions = useMemo(() => getCategoryOptions(stacks), [stacks]);
+	const goodStacks = useMemo(() => stacks.filter((s) => !s.isLowQuality), [stacks]);
+	const lowQualityStacks = useMemo(() => stacks.filter((s) => s.isLowQuality), [stacks]);
+
+	const categoryOptions = useMemo(() => getCategoryOptions(goodStacks), [goodStacks]);
 	const filteredStacks = useMemo(() => {
-		let result = filterPreviewStacks(stacks, "all", toolFilter, sortOption);
+		let result = filterPreviewStacks(goodStacks, "all", toolFilter, sortOption);
 		if (searchQuery.trim()) {
 			const q = searchQuery.trim().toLowerCase();
 			result = result.filter(
@@ -206,7 +210,23 @@ function BrowseStacksPage() {
 			);
 		}
 		return result;
-	}, [stacks, toolFilter, sortOption, searchQuery]);
+	}, [goodStacks, toolFilter, sortOption, searchQuery]);
+
+	const filteredLowQualityStacks = useMemo(() => {
+		if (!showLowQuality) return [];
+		let result = filterPreviewStacks(lowQualityStacks, "all", toolFilter, sortOption);
+		if (searchQuery.trim()) {
+			const q = searchQuery.trim().toLowerCase();
+			result = result.filter(
+				(s) =>
+					s.name.toLowerCase().includes(q) ||
+					s.oneLiner.toLowerCase().includes(q) ||
+					s.creator.name.toLowerCase().includes(q) ||
+					s.tools.some((t) => t.name.toLowerCase().includes(q)),
+			);
+		}
+		return result;
+	}, [lowQualityStacks, toolFilter, sortOption, searchQuery, showLowQuality]);
 
 	const totalPages = Math.max(
 		1,
@@ -219,7 +239,7 @@ function BrowseStacksPage() {
 	);
 
 	const allFilters = [
-		{ id: "all", label: "All Stacks", count: stacks.length },
+		{ id: "all", label: "All Stacks", count: goodStacks.length },
 		...categoryOptions,
 	];
 
@@ -357,6 +377,45 @@ function BrowseStacksPage() {
 									>
 										<ChevronRight className="size-4" />
 									</button>
+								</div>
+							)}
+
+							{/* Low quality stacks disclaimer */}
+							{lowQualityStacks.length > 0 && (
+								<div className="mt-16 border border-dashed border-stroke-subtle">
+									{!showLowQuality ? (
+										<button
+											type="button"
+											onClick={() => setShowLowQuality(true)}
+											className="cursor-pointer w-full flex items-center justify-center gap-3 px-6 py-4 font-mono text-sm text-fg-muted hover:text-fg-secondary transition-colors"
+										>
+											<AlertTriangle className="size-4 text-orange-400" />
+											<span>
+												{lowQualityStacks.length} stack{lowQualityStacks.length !== 1 ? "s" : ""} hidden due to low quality reports — click to show
+											</span>
+										</button>
+									) : (
+										<div>
+											<div className="flex items-center justify-between gap-4 border-b border-stroke-subtle px-6 py-4">
+												<div className="flex items-center gap-2 font-mono text-sm text-fg-muted">
+													<AlertTriangle className="size-4 text-orange-400" />
+													<span>These stacks have been flagged as low quality by the community.</span>
+												</div>
+												<button
+													type="button"
+													onClick={() => setShowLowQuality(false)}
+													className="cursor-pointer font-mono text-xs text-fg-muted hover:text-fg-primary transition-colors shrink-0"
+												>
+													Hide
+												</button>
+											</div>
+											<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 p-6">
+												{filteredLowQualityStacks.map((stack) => (
+													<StackCard key={stack._id} stack={stack} />
+												))}
+											</div>
+										</div>
+									)}
 								</div>
 							)}
 						</>

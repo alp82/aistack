@@ -184,6 +184,7 @@ export const listPublished = query({
       creator: CreatorValidator,
       tools: v.array(ToolValidator),
       upvoteCount: v.number(),
+      isLowQuality: v.optional(v.boolean()),
     })
   ),
   handler: async (ctx) => {
@@ -251,6 +252,7 @@ export const listPublished = query({
         },
         tools,
         upvoteCount: upvotes.length,
+        isLowQuality: stack.isLowQuality,
       })
     }
 
@@ -391,6 +393,15 @@ export const update = mutation({
     if (args.description !== undefined) patch.description = args.description
     if (args.instructions !== undefined) patch.instructions = args.instructions
     if (args.teamSize !== undefined) patch.teamSize = args.teamSize === null ? undefined : args.teamSize
+    const meaningfulChange =
+      args.name !== undefined ||
+      args.oneLiner !== undefined ||
+      args.description !== undefined ||
+      args.toolSubscriptions !== undefined ||
+      args.bundleSubscriptions !== undefined ||
+      args.modelSubscriptions !== undefined
+    if (meaningfulChange && stack.isLowQuality) patch.isLowQuality = false
+
     if (args.toolSubscriptions !== undefined) patch.toolSubscriptions = args.toolSubscriptions
     if (args.bundleSubscriptions !== undefined) patch.bundleSubscriptions = args.bundleSubscriptions
     if (args.modelSubscriptions !== undefined) patch.modelSubscriptions = args.modelSubscriptions
@@ -715,6 +726,65 @@ export const getUpvoteStatus = query({
   },
 })
 
+export const reportStack = mutation({
+  args: { stackId: v.id('stacks') },
+  returns: v.object({ reported: v.boolean() }),
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity()
+    if (!user) throw new Error('Not authenticated')
+    const userId = user.tokenIdentifier.split('|')[1]
+
+    const stack = await ctx.db.get(args.stackId)
+    if (!stack) throw new Error('Stack not found')
+
+    const creator = await ctx.db.get(stack.creatorId)
+    if (creator && creator.userId === userId) throw new Error('You cannot report your own stack')
+
+    const existing = await ctx.db
+      .query('stackFlags')
+      .withIndex('by_stackId_userId', (q) => q.eq('stackId', args.stackId).eq('userId', userId))
+      .first()
+    if (existing) return { reported: true }
+
+    await ctx.db.insert('stackFlags', { stackId: args.stackId, userId, createdAt: Date.now() })
+    return { reported: true }
+  },
+})
+
+export const unreportStack = mutation({
+  args: { stackId: v.id('stacks') },
+  returns: v.object({ reported: v.boolean() }),
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity()
+    if (!user) throw new Error('Not authenticated')
+    const userId = user.tokenIdentifier.split('|')[1]
+
+    const existing = await ctx.db
+      .query('stackFlags')
+      .withIndex('by_stackId_userId', (q) => q.eq('stackId', args.stackId).eq('userId', userId))
+      .first()
+    if (existing) await ctx.db.delete(existing._id)
+    return { reported: false }
+  },
+})
+
+export const getReportStatus = query({
+  args: { stackId: v.id('stacks') },
+  returns: v.object({ reported: v.boolean(), flagCount: v.number() }),
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity()
+    const userId = user ? user.tokenIdentifier.split('|')[1] : null
+
+    const flags = await ctx.db
+      .query('stackFlags')
+      .withIndex('by_stackId', (q) => q.eq('stackId', args.stackId))
+      .collect()
+
+    const reported = userId ? flags.some((f) => f.userId === userId) : false
+    return { reported, flagCount: flags.length }
+  },
+})
+
 export const getBySlug = query({
   args: { slug: v.string() },
   returns: v.union(
@@ -738,6 +808,7 @@ export const getBySlug = query({
       tools: v.array(ToolValidator),
       bundles: v.array(BundleValidator),
       models: v.array(ModelValidator),
+      isLowQuality: v.optional(v.boolean()),
     }),
     v.null()
   ),
@@ -849,6 +920,7 @@ export const getBySlug = query({
       tools,
       bundles,
       models,
+      isLowQuality: stack.isLowQuality,
     }
   },
 })

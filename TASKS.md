@@ -3,9 +3,9 @@
 * stack editing
     * full tool blocks inline in editor (with dialog to edit) - replacing sidebar?
         - currently sidebar missing on mobile
-    * when remove last block of one item in text, ask to also remove in sidebar? dialog
     * editor objects draggable
     * tools in stack can be "work" -  like sponsored
+    * when remove last block of one item in text, ask to also remove in sidebar? dialog
 * CLI workflow
     * https://github.com/FutureExcited/vibe-rules
     * npx aistack login

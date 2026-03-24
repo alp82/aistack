@@ -36,6 +36,7 @@ type LandingStackPreview = {
 		iconUrl?: string | null;
 	}>;
 	upvoteCount: number;
+	isLowQuality?: boolean | null;
 };
 
 type FeedSectionProps = {

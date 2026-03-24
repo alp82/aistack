@@ -164,13 +164,23 @@ export default defineSchema({
     usageTotalNotes: v.optional(v.string()),
     hasUsageComponent: v.boolean(),
     published: v.boolean(),
+    isLowQuality: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index('by_slug', ['slug'])
     .index('by_shortId', ['shortId'])
     .index('by_creatorId', ['creatorId'])
-    .index('by_published', ['published']),
+    .index('by_published', ['published'])
+    .index('by_isLowQuality', ['isLowQuality']),
+
+  stackFlags: defineTable({
+    stackId: v.id('stacks'),
+    userId: v.string(),
+    createdAt: v.number(),
+  })
+    .index('by_stackId', ['stackId'])
+    .index('by_stackId_userId', ['stackId', 'userId']),
 
   bundles: defineTable({
     name: v.string(),
