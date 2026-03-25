@@ -125,7 +125,8 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 	const [sortOption, setSortOption] = useState<SortOption>("newest");
 	const [currentPage, setCurrentPage] = useState(1);
 
-	const categoryOptions = useMemo(() => getCategoryOptions(stacks), [stacks]);
+	const visibleStacks = useMemo(() => stacks.filter((s) => !s.isLowQuality), [stacks]);
+	const categoryOptions = useMemo(() => getCategoryOptions(visibleStacks), [visibleStacks]);
 	const filteredStacks = useMemo(
 		() => filterPreviewStacks(stacks, "all", toolFilter, sortOption),
 		[stacks, toolFilter, sortOption],
