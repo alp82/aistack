@@ -147,7 +147,7 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 	}
 
 	const allFilters = [
-		{ id: "all", label: "All Stacks", count: stacks.length },
+		{ id: "all", label: "All Stacks", count: visibleStacks.length },
 		...categoryOptions,
 	];
 
