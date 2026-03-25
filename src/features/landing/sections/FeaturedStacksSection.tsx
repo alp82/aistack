@@ -76,6 +76,8 @@ function filterPreviewStacks(
 	sortOption: SortOption = "upvotes",
 ) {
 	const filtered = previewStacks.filter((stack) => {
+		if (stack.isLowQuality) return false;
+
 		const matchesAudience =
 			audienceFilter === "all"
 				? true
