@@ -71,7 +71,7 @@ describe("editor reducer", () => {
 					},
 					priceKind: "regular",
 					bundleSlug: undefined,
-					notes: undefined,
+					description: undefined,
 				},
 			],
 		});
@@ -130,7 +130,7 @@ describe("editor reducer", () => {
 					},
 					priceKind: "regular",
 					bundleSlug: undefined,
-					notes: "Note",
+					description: "Note",
 				},
 			],
 		});
@@ -142,7 +142,7 @@ describe("editor reducer", () => {
 					bundleName: "Bundle One",
 					tierId: "bundle_tier_1" as never,
 					tierName: "Starter",
-					notes: "Optional",
+					description: "Optional",
 				},
 			],
 		});
@@ -156,7 +156,7 @@ describe("editor reducer", () => {
 			{
 				bundleSlug: "bundle-one",
 				tierId: "bundle_tier_1",
-				notes: "Optional",
+				description: "Optional",
 			},
 		]);
 		expect(payload.published).toBe(true);

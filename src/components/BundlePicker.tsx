@@ -27,7 +27,7 @@ export interface BundleSubscriptionEntry {
 			period: "month" | "year" | "one_time";
 		};
 	};
-	notes?: string;
+	description?: string;
 }
 
 interface BundlePickerProps {

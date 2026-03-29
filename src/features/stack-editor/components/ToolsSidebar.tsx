@@ -57,14 +57,14 @@ function ToolsSidebar({
 	// Tools section starts expanded by default (especially important when no tools exist yet)
 	const [activeSection, setActiveSection] = useState<SidebarSection>("tools");
 	const {
-		insertToolAtCursor,
+		insertToolCardAtCursor,
 		removeToolFromEditor,
 		removeModelFromEditor,
 		removeBundleFromEditor,
 		removeInstructionFromEditor,
-		insertModelAtCursor,
-		insertBundleAtCursor,
-		insertInstructionAtCursor,
+		insertModelCardAtCursor,
+		insertBundleCardAtCursor,
+		insertInstructionCardAtCursor,
 	} = useEditorContext();
 
 	// Track previous counts to detect additions
@@ -109,25 +109,33 @@ function ToolsSidebar({
 	// Handle tool click - insert into editor at cursor
 	const handleToolClick = useCallback(
 		(tool: ToolSubscriptionEntry) => {
-			insertToolAtCursor({
+			insertToolCardAtCursor({
 				name: tool.toolName,
 				shortId: tool.toolShortId,
 			});
 		},
-		[insertToolAtCursor],
+		[insertToolCardAtCursor],
 	);
 
-	// Handle tool removal - also remove from editor
+	// Handle tool removal - confirm then remove from editor
 	const handleToolsChange = useCallback(
 		(newTools: ToolSubscriptionEntry[]) => {
-			// Find removed tools
 			const removedTools = tools.filter(
 				(t) => !newTools.some((nt) => nt.toolSlug === t.toolSlug),
 			);
 
-			// Remove from editor
-			for (const tool of removedTools) {
-				removeToolFromEditor(tool.toolName);
+			if (removedTools.length > 0) {
+				const names = removedTools.map((t) => t.toolName).join(", ");
+				if (
+					!window.confirm(
+						`Remove ${names} from your stack? This will also remove it from the editor.`,
+					)
+				) {
+					return;
+				}
+				for (const tool of removedTools) {
+					removeToolFromEditor(tool.toolName);
+				}
 			}
 
 			onToolsChange(newTools);
@@ -135,35 +143,59 @@ function ToolsSidebar({
 		[tools, onToolsChange, removeToolFromEditor],
 	);
 
-	// Handle model removal - also remove from editor
+	// Handle model removal - confirm then remove from editor
 	const handleModelsChange = useCallback(
 		(newModels: ModelSubscriptionEntry[]) => {
 			const removedModels = models.filter(
 				(m) => !newModels.some((nm) => nm.modelSlug === m.modelSlug),
 			);
-			for (const model of removedModels) {
-				removeModelFromEditor(model.modelName);
+
+			if (removedModels.length > 0) {
+				const names = removedModels.map((m) => m.modelName).join(", ");
+				if (
+					!window.confirm(
+						`Remove ${names} from your stack? This will also remove it from the editor.`,
+					)
+				) {
+					return;
+				}
+				for (const model of removedModels) {
+					removeModelFromEditor(model.modelName);
+				}
 			}
+
 			onModelsChange(newModels);
 		},
 		[models, onModelsChange, removeModelFromEditor],
 	);
 
-	// Handle bundle removal - also remove from editor
+	// Handle bundle removal - confirm then remove from editor
 	const handleBundlesChange = useCallback(
 		(newBundles: BundleSubscriptionEntry[]) => {
 			const removedBundles = bundles.filter(
 				(b) => !newBundles.some((nb) => nb.bundleSlug === b.bundleSlug),
 			);
-			for (const bundle of removedBundles) {
-				removeBundleFromEditor(bundle.bundleName);
+
+			if (removedBundles.length > 0) {
+				const names = removedBundles.map((b) => b.bundleName).join(", ");
+				if (
+					!window.confirm(
+						`Remove ${names} from your stack? This will also remove it from the editor.`,
+					)
+				) {
+					return;
+				}
+				for (const bundle of removedBundles) {
+					removeBundleFromEditor(bundle.bundleName);
+				}
 			}
+
 			onBundlesChange(newBundles);
 		},
 		[bundles, onBundlesChange, removeBundleFromEditor],
 	);
 
-	// Handle instruction removal - also remove from editor
+	// Handle instruction removal - confirm then remove from editor
 	const handleInstructionsChange = useCallback(
 		(newInstructions: InstructionItem[]) => {
 			const removedInstructions = instructions.filter(
@@ -172,9 +204,21 @@ function ToolsSidebar({
 						(ni) => ni.name === inst.name && ni.type === inst.type,
 					),
 			);
-			for (const inst of removedInstructions) {
-				removeInstructionFromEditor(inst.name);
+
+			if (removedInstructions.length > 0) {
+				const names = removedInstructions.map((i) => i.name).join(", ");
+				if (
+					!window.confirm(
+						`Remove ${names} from your stack? This will also remove it from the editor.`,
+					)
+				) {
+					return;
+				}
+				for (const inst of removedInstructions) {
+					removeInstructionFromEditor(inst.name);
+				}
 			}
+
 			onInstructionsChange(newInstructions);
 		},
 		[instructions, onInstructionsChange, removeInstructionFromEditor],
@@ -183,36 +227,35 @@ function ToolsSidebar({
 	// Handle model click - insert into editor at cursor
 	const handleModelClick = useCallback(
 		(model: ModelSubscriptionEntry) => {
-			insertModelAtCursor({
+			insertModelCardAtCursor({
 				name: model.modelName,
 				shortId: model.modelShortId,
 				provider: model.modelProvider,
 			});
 		},
-		[insertModelAtCursor],
+		[insertModelCardAtCursor],
 	);
 
 	// Handle bundle click - insert into editor at cursor
 	const handleBundleClick = useCallback(
 		(bundle: BundleSubscriptionEntry) => {
-			insertBundleAtCursor({
+			insertBundleCardAtCursor({
 				name: bundle.bundleName,
 				shortId: bundle.bundleShortId,
 			});
 		},
-		[insertBundleAtCursor],
+		[insertBundleCardAtCursor],
 	);
 
 	// Handle instruction click - insert into editor at cursor
 	const handleInstructionClick = useCallback(
 		(instruction: InstructionItem) => {
-			insertInstructionAtCursor({
+			insertInstructionCardAtCursor({
 				name: instruction.name,
 				type: instruction.type,
-				content: instruction.content,
 			});
 		},
-		[insertInstructionAtCursor],
+		[insertInstructionCardAtCursor],
 	);
 
 	// Calculate total monthly price from tools and bundles

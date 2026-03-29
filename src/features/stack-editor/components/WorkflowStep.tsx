@@ -1,7 +1,8 @@
 import { useQuery } from "convex/react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import { TiptapEditor } from "@/components/TiptapEditor";
+import { EditorModeToggle } from "@/components/editor/EditorModeToggle";
 
 type WorkflowStepProps = {
 	description: string;
@@ -49,6 +50,8 @@ function WorkflowStep({
 		[allModels],
 	);
 
+	const [previewMode, setPreviewMode] = useState(false);
+
 	return (
 		<div className="space-y-8">
 			<div>
@@ -60,9 +63,15 @@ function WorkflowStep({
 			<div className="space-y-8">
 				{/* Description with Tiptap Editor */}
 				<div>
-					<label className="mb-2 block font-mono text-xs uppercase tracking-wider text-fg-muted">
-						Description
-					</label>
+					<div className="mb-2 flex items-center justify-between">
+						<label className="font-mono text-xs uppercase tracking-wider text-fg-muted">
+							Description
+						</label>
+						<EditorModeToggle
+							previewMode={previewMode}
+							onToggle={setPreviewMode}
+						/>
+					</div>
 					<TiptapEditor
 						content={description}
 						onChange={onDescriptionChange}
@@ -70,6 +79,7 @@ function WorkflowStep({
 						onToolAdded={onToolAdded}
 						models={modelsForEditor}
 						onModelAdded={onModelAdded}
+						previewMode={previewMode}
 					/>
 					<p className="mt-2 font-mono text-[10px] text-fg-muted">
 						Describe your stack in detail. Use the toolbar for formatting.

@@ -7,6 +7,7 @@ import { api } from "../../convex/_generated/api";
 import type {
 	ModelSubscriptionEntry,
 	InstructionItem,
+	FileEntry,
 } from "@/features/stack-editor/types";
 import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
 import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
@@ -50,6 +51,7 @@ function LookupDataSync({
 		setModelLookup,
 		setBundleLookup,
 		setInstructionLookup,
+		setInstructionFiles,
 	} = useEditorContext();
 
 	useEffect(() => {
@@ -64,7 +66,7 @@ function LookupDataSync({
 					? { amount: tool.price.fixed.amount, period: tool.price.fixed.period }
 					: undefined,
 				tierName: tool.primaryUsageLabel,
-				notes: tool.notes,
+				description: tool.description,
 			});
 		}
 		setToolLookup(toolMap);
@@ -79,6 +81,7 @@ function LookupDataSync({
 				provider: model.modelProvider,
 				iconUrl: model.modelIconUrl,
 				category: model.modelCategory,
+				description: model.description,
 			});
 		}
 		setModelLookup(modelMap);
@@ -98,8 +101,7 @@ function LookupDataSync({
 						}
 					: undefined,
 				tierName: bundle.tierName,
-				description: bundle.notes,
-				notes: bundle.notes,
+				description: bundle.description,
 			});
 		}
 		setBundleLookup(bundleMap);
@@ -107,16 +109,20 @@ function LookupDataSync({
 
 	useEffect(() => {
 		const instructionMap = new Map<string, InstructionLookupData>();
+		const filesMap = new Map<string, FileEntry[]>();
 		for (const instruction of instructions) {
 			instructionMap.set(instruction.name, {
 				name: instruction.name,
 				type: instruction.type,
 				description: instruction.description,
-				content: instruction.content,
 			});
+			if (instruction.files && instruction.files.length > 0) {
+				filesMap.set(instruction.name, instruction.files);
+			}
 		}
 		setInstructionLookup(instructionMap);
-	}, [instructions, setInstructionLookup]);
+		setInstructionFiles(filesMap);
+	}, [instructions, setInstructionLookup, setInstructionFiles]);
 
 	return null;
 }
@@ -336,23 +342,104 @@ export function StackEditor({
 
 	const handleInstructionUpdate = useCallback(
 		(oldName: string, updates: Partial<InstructionLookupData>) => {
-			const updatedInstructions = state.instructions.map((inst) =>
-				inst.name === oldName
-					? {
-							...inst,
-							name: updates.name ?? inst.name,
-							description: updates.description ?? inst.description,
-							content: updates.content ?? inst.content,
-						}
-					: inst,
-			);
-			setInstructions(updatedInstructions);
+			const currentInstructions = stateRef.current.instructions;
+			const found = currentInstructions.some((inst) => inst.name === oldName);
+			if (found) {
+				const updatedInstructions = currentInstructions.map((inst) =>
+					inst.name === oldName
+						? {
+								...inst,
+								name: updates.name ?? inst.name,
+								description: updates.description ?? inst.description,
+							}
+						: inst,
+				);
+				setInstructions(updatedInstructions);
+			} else {
+				setInstructions([
+					...currentInstructions,
+					{
+						name: updates.name ?? oldName,
+						type: updates.type ?? "prompt",
+						description: updates.description,
+					},
+				]);
+			}
 		},
-		[state.instructions, setInstructions],
+		[setInstructions],
+	);
+
+	const handleInstructionFilesUpdate = useCallback(
+		(instructionName: string, files: FileEntry[]) => {
+			const currentInstructions = stateRef.current.instructions;
+			const found = currentInstructions.some(
+				(inst) => inst.name === instructionName,
+			);
+			if (found) {
+				const updatedInstructions = currentInstructions.map((inst) =>
+					inst.name === instructionName
+						? { ...inst, files: files.length > 0 ? files : undefined }
+						: inst,
+				);
+				setInstructions(updatedInstructions);
+			} else {
+				setInstructions([
+					...currentInstructions,
+					{
+						name: instructionName,
+						type: "prompt" as const,
+						files: files.length > 0 ? files : undefined,
+					},
+				]);
+			}
+		},
+		[setInstructions],
+	);
+
+	const handleToolDescriptionUpdate = useCallback(
+		(idOrName: string, description: string) => {
+			const updatedTools = stateRef.current.toolSubscriptions.map((t) =>
+				t.toolShortId === idOrName || t.toolName === idOrName
+					? { ...t, description }
+					: t,
+			);
+			setToolSubscriptions(updatedTools);
+		},
+		[setToolSubscriptions],
+	);
+
+	const handleBundleDescriptionUpdate = useCallback(
+		(idOrName: string, description: string) => {
+			const updatedBundles = stateRef.current.bundleSubscriptions.map((b) =>
+				b.bundleShortId === idOrName || b.bundleName === idOrName
+					? { ...b, description }
+					: b,
+			);
+			setBundleSubscriptions(updatedBundles);
+		},
+		[setBundleSubscriptions],
+	);
+
+	const handleModelDescriptionUpdate = useCallback(
+		(idOrName: string, description: string) => {
+			const updatedModels = stateRef.current.modelSubscriptions.map((m) =>
+				m.modelShortId === idOrName || m.modelName === idOrName
+					? { ...m, description }
+					: m,
+			);
+			setModelSubscriptions(updatedModels);
+		},
+		[setModelSubscriptions],
 	);
 
 	return (
-		<EditorProvider onInstructionUpdate={handleInstructionUpdate}>
+		<EditorProvider
+			onInstructionUpdate={handleInstructionUpdate}
+			onInstructionFilesUpdate={handleInstructionFilesUpdate}
+			onToolDescriptionUpdate={handleToolDescriptionUpdate}
+			onBundleDescriptionUpdate={handleBundleDescriptionUpdate}
+			onModelDescriptionUpdate={handleModelDescriptionUpdate}
+		>
 			<LookupDataSync
 				tools={state.toolSubscriptions}
 				models={state.modelSubscriptions}

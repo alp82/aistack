@@ -139,7 +139,7 @@ function createSuggestionWidget(
 
 		tr.delete(from, to);
 
-		const toolBlockNode = state.schema.nodes.aiToolBlock.create({
+		const toolBlockNode = state.schema.nodes.aiToolReference.create({
 			toolId: tool._id,
 			name: tool.name,
 			iconUrl: tool.iconUrl ?? null,

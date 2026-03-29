@@ -1,6 +1,6 @@
-import type { Id } from "../../../convex/_generated/dataModel";
 import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
 import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 type StackResource = {
 	label: string;
@@ -35,6 +35,13 @@ type ModelItem = {
 	role: string;
 };
 
+type FileEntry = {
+	name: string;
+	content: string;
+	path?: string;
+	tags?: string[];
+};
+
 type InstructionType =
 	| "prompt"
 	| "rule"
@@ -50,6 +57,8 @@ type InstructionItem = {
 	content?: string;
 	url?: string;
 	trigger?: string;
+	files?: Array<{ name: string; content: string }>;
+	path?: string;
 };
 
 type ModelSubscriptionEntry = {
@@ -69,6 +78,7 @@ type ModelSubscriptionEntry = {
 		| "other";
 	modelIconUrl?: string;
 	role: "primary" | "secondary" | "specialized";
+	description?: string;
 };
 
 type CreatorProfile = {
@@ -106,6 +116,7 @@ type StackMetadataUpdates = {
 
 export type {
 	CreatorProfile,
+	FileEntry,
 	InstructionItem,
 	InstructionType,
 	McpItem,

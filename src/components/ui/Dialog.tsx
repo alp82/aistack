@@ -48,7 +48,9 @@ export function Dialog({
 				className={`relative w-full ${sizeClasses[size]} ${scrollClass} border-2 border-stroke-strong bg-bg-panel ${paddingClass} shadow-[6px_6px_0_var(--stroke-strong)]`}
 			>
 				{title && (
-					<div className="mb-4 flex items-center justify-between">
+					<div
+						className={`mb-4 flex items-center justify-between ${paddingClass === "p-0" ? "px-6 pt-5" : ""}`}
+					>
 						<div className="flex items-center gap-3">
 							{titleIcon}
 							<h3 className="font-mono text-lg font-bold text-fg-primary">

@@ -4,7 +4,7 @@ import {
 	InstructionItem,
 	type InstructionItemData,
 } from "@/components/InstructionItem";
-import { InstructionDialog } from "@/components/InstructionDialog";
+import { FileContentDialog } from "@/components/editor/FileContentDialog";
 import { ModelItem, type ModelItemData } from "@/components/ModelItem";
 import { ToolItem, type ToolItemData } from "@/components/ToolItem";
 
@@ -146,7 +146,11 @@ export function ViewSidebar({
 									<InstructionItem
 										key={`${inst.name}-${i}`}
 										instruction={inst}
-										onClick={() => inst.content && setActiveInstruction(inst)}
+										onClick={() =>
+											inst.files &&
+											inst.files.length > 0 &&
+											setActiveInstruction(inst)
+										}
 									/>
 								))}
 							</div>
@@ -154,13 +158,12 @@ export function ViewSidebar({
 					)}
 				</div>
 			</div>
-			<InstructionDialog
-				isOpen={!!activeInstruction}
+			<FileContentDialog
+				open={!!activeInstruction}
 				onClose={() => setActiveInstruction(null)}
-				name={activeInstruction?.name ?? ""}
-				type={activeInstruction?.type ?? "prompt"}
-				content={activeInstruction?.content ?? ""}
-				editMode={false}
+				instructionName={activeInstruction?.name ?? ""}
+				files={activeInstruction?.files ?? []}
+				isEditable={false}
 			/>
 		</aside>
 	);

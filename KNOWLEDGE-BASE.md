@@ -1,3 +1,5 @@
+~/.claude/research/ai-coding-quality-systems-2026-03.md
+
 parallelization & orchestration:
 https://www.conductor.build
 https://github.com/RunMaestro/Maestro
@@ -6,7 +8,6 @@ https://github.com/RightNow-AI/openfang
 https://www.warp.dev/oz
 https://www.emdash.sh
 https://x.com/juristr/status/2031820737745682520
-https://factory.ai
 https://github.com/ruvnet/ruflo
 
 agent & skill standards:
@@ -28,21 +29,48 @@ https://chrlschn.dev/blog/2026/03/mcp-is-dead-long-live-mcp/
 writing good instructions:
 https://www.hlyr.dev/blog/writing-a-good-claude-md
 https://gemini.google.com/app/8564c2f5d1e8fa74
+https://hannahstulberg.substack.com/p/claude-code-for-everything-how-the
+https://hannahstulberg.substack.com/p/claude-code-for-everything-the-best-personal-assistant-remembers-everything-about-you
 
-tame the slop:
+Evaluation Framwork:
+https://github.com/chrisvoncsefalvay/autostar
+
+
+Writing Style
+https://asciinema.org/a/875847
+Flesch-Kincaid
+https://vale.sh
+https://textstat.org
+
+
+context management:
 https://www.aihero.dev/tracer-bullets
+https://hannahstulberg.substack.com/p/claude-code-for-everything-why-ai
 
 structuring rules:
 https://www.aihero.dev/never-run-claude-init
+complexity management
+assign budgets
+
+spec driven development:
+https://openspec.dev
+
+product and documentation:
+https://hannahstulberg.substack.com/p/claude-code-for-everything-draft-in-claude-code-collaborate-in-notion
 
 RLM:
 https://x.com/neural_avb/status/2035040781074145412
 
-cli tools:
+developing cli tools:
 https://justin.poehnelt.com/posts/rewrite-your-cli-for-ai-agents/
 
-IDE alternatives:
-https://openchamber.dev/, https://opencode.ai/zen
+CLI IDE's:
+https://openchamber.dev/
+https://opencode.ai/zen
+https://factory.ai
+
+CLI command center:
+https://hannahstulberg.substack.com/p/claude-code-for-everything-your-status-line-is-empty
 
 package publishing:
 https://tanstack.com/blog/from-docs-to-agents
@@ -51,14 +79,14 @@ openclaw era / personal assistants:
 https://mitchellh.com/writing/my-ai-adoption-journey
 https://github.com/mnfst/manifest
 
-spec driven development:
-https://openspec.dev
-
 humanize ai:
 https://raven.tavuslabs.org
 
 auth:
 https://agent-auth-protocol.com
+
+payment:
+stripe ai payment gateway
 
 self healing:
 https://x.com/i/status/2032179887277060476

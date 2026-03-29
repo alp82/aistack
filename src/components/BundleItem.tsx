@@ -15,7 +15,6 @@ export interface BundleItemData {
 		pricingType: string;
 		fixed?: { currency: string; amount: number; period: string };
 	};
-	notes?: string;
 }
 
 interface BundleItemProps {

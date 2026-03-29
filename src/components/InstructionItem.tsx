@@ -8,7 +8,12 @@ export interface InstructionItemData {
 	type: "prompt" | "rule" | "skill" | "mcp" | "plugin" | "subagent";
 	name: string;
 	description?: string;
-	content?: string;
+	files?: Array<{
+		name: string;
+		content: string;
+		path?: string;
+		tags?: string[];
+	}>;
 }
 
 interface InstructionItemProps {
@@ -40,7 +45,7 @@ export function InstructionItem({
 						{typeLabels[instruction.type] ?? instruction.type}
 					</p>
 				</div>
-				{instruction.content && (
+				{instruction.files && instruction.files.length > 0 && (
 					<span className="shrink-0 border border-accent-lime/30 bg-accent-lime/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-accent-lime">
 						Show
 					</span>

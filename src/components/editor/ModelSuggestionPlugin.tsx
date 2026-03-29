@@ -143,7 +143,7 @@ function createSuggestionWidget(
 
 		tr.delete(from, to);
 
-		const modelBlockNode = state.schema.nodes.aiModelBlock.create({
+		const modelBlockNode = state.schema.nodes.aiModelReference.create({
 			modelId: model._id,
 			name: model.name,
 			provider: model.provider,

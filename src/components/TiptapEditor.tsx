@@ -22,7 +22,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { TableKit } from "@tiptap/extension-table";
 import TableOfContents from "@tiptap/extension-table-of-contents";
 import { TextStyle, Color } from "@tiptap/extension-text-style";
-import { TrailingNode, UndoRedo } from "@tiptap/extensions";
+import { Dropcursor, TrailingNode, UndoRedo } from "@tiptap/extensions";
 import Blockquote from "@tiptap/extension-blockquote";
 import {
 	Details,
@@ -38,10 +38,14 @@ import { common, createLowlight } from "lowlight";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import {
-	AIToolBlock,
-	AIModelBlock,
-	AIBundleBlock,
-	AIInstructionBlock,
+	AIToolReference,
+	AIModelReference,
+	AIBundleReference,
+	AIInstructionReference,
+	AIToolCard,
+	AIModelCard,
+	AIBundleCard,
+	AIFileCard,
 	ToolSuggestionPlugin,
 	ModelSuggestionPlugin,
 	SlashCommandPlugin,
@@ -50,9 +54,11 @@ import {
 	type BundleData,
 	type InstructionData,
 } from "@/components/editor";
+import { DragHandle } from "@tiptap/extension-drag-handle";
 import {
 	SlashCommandDropdown,
 	buildItems,
+	findExistingNode,
 } from "@/components/editor/SlashCommandPlugin";
 import { AddItemModal, type AddItemTab } from "@/components/AddItemModal";
 import type { InstructionType } from "@/features/stack-editor/types";
@@ -177,6 +183,7 @@ type TiptapEditorProps = {
 	onToolAdded?: (tool: ToolData) => void;
 	models?: ModelData[];
 	onModelAdded?: (model: ModelData) => void;
+	previewMode?: boolean;
 };
 
 export function TiptapEditor({
@@ -188,8 +195,10 @@ export function TiptapEditor({
 	onToolAdded,
 	models = [],
 	onModelAdded,
+	previewMode: externalPreviewMode,
 }: TiptapEditorProps) {
 	const [copied, setCopied] = useState(false);
+	const previewMode = externalPreviewMode ?? false;
 	const [addItemModalOpen, setAddItemModalOpen] = useState(false);
 	const [addItemDefaultTab, setAddItemDefaultTab] =
 		useState<AddItemTab>("tool");
@@ -292,6 +301,11 @@ export function TiptapEditor({
 				Color,
 				TrailingNode,
 				UndoRedo,
+				Dropcursor.configure({
+					color: "#84cc16",
+					width: 3,
+					class: "drop-cursor-lime",
+				}),
 				Blockquote,
 				Details,
 				DetailsSummary,
@@ -344,10 +358,43 @@ export function TiptapEditor({
 					transformCopiedText: false,
 				}),
 				PasteMarkdown,
-				AIToolBlock,
-				AIModelBlock,
-				AIBundleBlock,
-				AIInstructionBlock,
+				AIToolReference,
+				AIModelReference,
+				AIBundleReference,
+				AIInstructionReference,
+				AIToolCard,
+				AIModelCard,
+				AIBundleCard,
+				AIFileCard,
+				...(editable
+					? [
+							DragHandle.configure({
+								render() {
+									const el = document.createElement("div");
+									el.className = "tiptap-drag-handle";
+									el.innerHTML = "⠿";
+									return el;
+								},
+								onNodeChange(data) {
+									if (!data.node || !data.editor) return;
+									const handle =
+										data.editor.view.dom.parentElement?.querySelector<HTMLElement>(
+											".tiptap-drag-handle",
+										);
+									if (!handle) return;
+									// pos is available at runtime but not in the type
+									const pos = (data as { pos?: number }).pos;
+									if (pos != null && pos >= 0) {
+										const domNode = data.editor.view.nodeDOM(pos);
+										if (domNode instanceof HTMLElement) {
+											handle.style.height = `${domNode.offsetHeight}px`;
+											return;
+										}
+									}
+								},
+							}),
+						]
+					: []),
 				ToolSuggestionPlugin.configure({ tools, onToolAdded }),
 				ModelSuggestionPlugin.configure({ models, onModelAdded }),
 				SlashCommandPlugin.configure({
@@ -369,7 +416,7 @@ export function TiptapEditor({
 			editorProps: {
 				attributes: {
 					class: cn(
-						"prose prose-invert max-w-none focus:outline-none min-h-64 text-[1.02rem] leading-8",
+						"prose prose-invert max-w-none focus:outline-none min-h-64 pl-10 text-[1.02rem] leading-8",
 						"[&_h1]:mt-12 [&_h1]:mb-5 [&_h2]:font-mono [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:tracking-[0.02em] [&_h1]:text-fg-primary md:[&_h1]:text-3xl",
 						"[&_h2]:mt-8 [&_h2]:mb-4 [&_h2]:font-mono [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:tracking-[0.02em] [&_h2]:text-fg-primary md:[&_h2]:text-2xl",
 						"[&_h3]:mt-4 [&_h3]:mb-3 [&_h3]:font-mono [&_h3]:text-xl [&_h3]:font-bold [&_h3]:tracking-[0.01em] [&_h3]:text-fg-primary md:[&_h3]:text-xl",
@@ -383,7 +430,7 @@ export function TiptapEditor({
 						"[&_a]:text-accent-lime [&_a:hover]:text-accent-lime-strong [&_a]:font-semibold",
 						"[&_code]:bg-bg-panel [&_code]:px-2 [&_code]:py-0.5 [&_code]:text-sm [&_code]:text-accent-lime [&_code]:font-mono [&_code]:rounded [&_code]:border [&_code]:border-stroke-strong",
 						"[&_pre]:bg-bg-panel [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:border [&_pre]:border-stroke-strong",
-						"[&_blockquote]:border-l-4 [&_blockquote]:border-accent-lime [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-fg-muted",
+						"[&_blockquote]:border-l-0 [&_blockquote]:pl-8 [&_blockquote]:py-8 [&_blockquote]:italic [&_blockquote]:text-fg-muted [&_blockquote_p]:my-1 [&_blockquote_p]:leading-6",
 						"[&_hr]:border-stroke-strong [&_hr]:my-6",
 						"[&_table]:border-collapse [&_table]:w-full [&_th]:border [&_th]:border-stroke-strong [&_th]:p-2 [&_th]:bg-bg-panel-muted [&_td]:border [&_td]:border-stroke-strong [&_td]:p-2",
 						"[&_img]:max-w-full [&_img]:h-auto [&_img]:my-4",
@@ -394,7 +441,7 @@ export function TiptapEditor({
 			},
 			onUpdate: ({ editor }) => {
 				if (onChange) {
-					// Use HTML instead of markdown to preserve custom nodes like aiInstructionBlock
+					// Use HTML instead of markdown to preserve custom nodes like aiInstructionReference
 					const html = editor.getHTML();
 					onChange(html);
 				}
@@ -409,6 +456,12 @@ export function TiptapEditor({
 		editorContext.registerEditor(editor);
 		return () => editorContext.registerEditor(null);
 	}, [editor, editorContext]);
+
+	// Toggle editability based on preview mode
+	useEffect(() => {
+		if (!editor) return;
+		editor.setEditable(!previewMode && editable);
+	}, [previewMode, editor]);
 
 	const editorState = useEditorState({
 		editor,
@@ -457,18 +510,6 @@ export function TiptapEditor({
 		editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
 	}, [editor]);
 
-	if (!editor || !editorState) {
-		return null;
-	}
-
-	if (!editable) {
-		return (
-			<div className={cn("max-w-3xl space-y-6", className)}>
-				<EditorContent editor={editor} />
-			</div>
-		);
-	}
-
 	const copyAsMarkdown = useCallback(() => {
 		if (!editor) return;
 		const markdown = (
@@ -505,214 +546,229 @@ export function TiptapEditor({
 		}
 	}, [editor]);
 
+	if (!editor || !editorState) {
+		return null;
+	}
+
+	if (!editable) {
+		return (
+			<div className={cn("max-w-3xl space-y-6", className)}>
+				<EditorContent editor={editor} />
+			</div>
+		);
+	}
+
 	return (
 		<div className={cn("space-y-2", className)}>
 			<div className="max-h-[70vh] overflow-x-hidden overflow-y-auto border-2 border-stroke-subtle bg-bg-panel">
 				{/* Toolbar Row 1: Text formatting */}
-				<div className="sticky top-0 z-20 flex flex-wrap gap-1 border-b-2 border-stroke-subtle bg-bg-panel-muted p-1">
-					{/* Undo/Redo */}
-					<ToolbarButton
-						onClick={() => editor.chain().focus().undo().run()}
-						isActive={false}
-						title="Undo (Ctrl+Z)"
-						disabled={!editorState.canUndo}
-					>
-						<Undo className="size-4" />
-					</ToolbarButton>
-					<ToolbarButton
-						onClick={() => editor.chain().focus().redo().run()}
-						isActive={false}
-						title="Redo (Ctrl+Y)"
-						disabled={!editorState.canRedo}
-					>
-						<Redo className="size-4" />
-					</ToolbarButton>
-					<ToolbarDivider />
-
-					{/* Add Item (slash dropdown from toolbar) */}
-					<div className="relative">
-						<button
-							ref={toolbarAddBtnRef}
-							type="button"
-							onClick={() => {
-								if (showToolbarDropdown) {
-									setShowToolbarDropdown(false);
-									return;
-								}
-								const rect = toolbarAddBtnRef.current?.getBoundingClientRect();
-								if (rect) {
-									setToolbarDropdownPos({
-										top: rect.bottom + 4,
-										left: rect.left,
-									});
-								}
-								setShowToolbarDropdown(true);
-							}}
-							title="Add Tool / Model / Bundle"
-							className={cn(
-								"h-8 flex items-center gap-1 px-2 transition-colors cursor-pointer rounded",
-								showToolbarDropdown
-									? "bg-accent-lime text-accent-lime-contrast"
-									: "text-fg-muted hover:text-fg-primary hover:bg-bg-panel",
-							)}
+				{!previewMode && (
+					<div className="sticky top-0 z-20 flex flex-wrap gap-1 border-b-2 border-stroke-subtle bg-bg-panel-muted p-1">
+						{/* Undo/Redo */}
+						<ToolbarButton
+							onClick={() => editor.chain().focus().undo().run()}
+							isActive={false}
+							title="Undo (Ctrl+Z)"
+							disabled={!editorState.canUndo}
 						>
-							<Plus className="size-3.5" />
-							<span className="font-mono text-[10px] font-bold uppercase tracking-wider">
-								Add
-							</span>
-						</button>
+							<Undo className="size-4" />
+						</ToolbarButton>
+						<ToolbarButton
+							onClick={() => editor.chain().focus().redo().run()}
+							isActive={false}
+							title="Redo (Ctrl+Y)"
+							disabled={!editorState.canRedo}
+						>
+							<Redo className="size-4" />
+						</ToolbarButton>
+						<ToolbarDivider />
+
+						{/* Add Item (slash dropdown from toolbar) */}
+						<div className="relative">
+							<button
+								ref={toolbarAddBtnRef}
+								type="button"
+								onClick={() => {
+									if (showToolbarDropdown) {
+										setShowToolbarDropdown(false);
+										return;
+									}
+									const rect =
+										toolbarAddBtnRef.current?.getBoundingClientRect();
+									if (rect) {
+										setToolbarDropdownPos({
+											top: rect.bottom + 4,
+											left: rect.left,
+										});
+									}
+									setShowToolbarDropdown(true);
+								}}
+								title="Add Tool / Model / Bundle"
+								className={cn(
+									"h-8 flex items-center gap-1 px-2 transition-colors cursor-pointer rounded",
+									showToolbarDropdown
+										? "bg-accent-lime text-accent-lime-contrast"
+										: "text-fg-muted hover:text-fg-primary hover:bg-bg-panel",
+								)}
+							>
+								<Plus className="size-3.5" />
+								<span className="font-mono text-[10px] font-bold uppercase tracking-wider">
+									Add
+								</span>
+							</button>
+						</div>
+						<ToolbarDivider />
+
+						{/* Text formatting */}
+						<ToolbarButton
+							onClick={() => editor.chain().focus().toggleBold().run()}
+							isActive={editorState.isBold}
+							title="Bold (Ctrl+B)"
+						>
+							<BoldIcon className="size-4" />
+						</ToolbarButton>
+						<ToolbarButton
+							onClick={() => editor.chain().focus().toggleItalic().run()}
+							isActive={editorState.isItalic}
+							title="Italic (Ctrl+I)"
+						>
+							<ItalicIcon className="size-4" />
+						</ToolbarButton>
+						<ToolbarDivider />
+
+						{/* Headings */}
+						<ToolbarButton
+							onClick={() =>
+								editor.chain().focus().toggleHeading({ level: 1 }).run()
+							}
+							isActive={editorState.isHeading1}
+							title="Heading 1"
+						>
+							<Heading1 className="size-4" />
+						</ToolbarButton>
+						<ToolbarButton
+							onClick={() =>
+								editor.chain().focus().toggleHeading({ level: 2 }).run()
+							}
+							isActive={editorState.isHeading2}
+							title="Heading 2"
+						>
+							<Heading2 className="size-4" />
+						</ToolbarButton>
+						<ToolbarButton
+							onClick={() =>
+								editor.chain().focus().toggleHeading({ level: 3 }).run()
+							}
+							isActive={editorState.isHeading3}
+							title="Heading 3"
+						>
+							<Heading3 className="size-4" />
+						</ToolbarButton>
+						<ToolbarDivider />
+
+						{/* Lists */}
+						<ToolbarButton
+							onClick={() => editor.chain().focus().toggleBulletList().run()}
+							isActive={editorState.isBulletList}
+							title="Bullet List"
+						>
+							<List className="size-4" />
+						</ToolbarButton>
+						<ToolbarButton
+							onClick={() => editor.chain().focus().toggleOrderedList().run()}
+							isActive={editorState.isOrderedList}
+							title="Ordered List"
+						>
+							<ListOrdered className="size-4" />
+						</ToolbarButton>
+						<ToolbarButton
+							onClick={() => editor.chain().focus().toggleTaskList().run()}
+							isActive={editorState.isTaskList}
+							title="Task List"
+						>
+							<ListTodo className="size-4" />
+						</ToolbarButton>
+						<ToolbarDivider />
+
+						{/* Block elements */}
+						<ToolbarButton
+							onClick={() => editor.chain().focus().toggleBlockquote().run()}
+							isActive={editorState.isBlockquote}
+							title="Blockquote"
+						>
+							<Quote className="size-4" />
+						</ToolbarButton>
+						<ToolbarButton
+							onClick={() => editor.chain().focus().toggleCode().run()}
+							isActive={editorState.isCode}
+							title="Inline Code"
+						>
+							<CodeXml className="size-4" />
+						</ToolbarButton>
+						<ToolbarButton
+							onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+							isActive={editorState.isCodeBlock}
+							title="Code Block"
+						>
+							<Code className="size-4" />
+						</ToolbarButton>
+						<ToolbarButton
+							onClick={() => editor.chain().focus().setHorizontalRule().run()}
+							isActive={false}
+							title="Horizontal Rule"
+						>
+							<Minus className="size-4" />
+						</ToolbarButton>
+						<ToolbarButton
+							onClick={() => editor.chain().focus().setDetails().run()}
+							isActive={editorState.isDetails}
+							title="Collapsible Section"
+						>
+							<ChevronDown className="size-4" />
+						</ToolbarButton>
+						<ToolbarDivider />
+
+						{/* Insert elements */}
+						<ToolbarButton
+							onClick={setLink}
+							isActive={editorState.isLink}
+							title="Add Link"
+						>
+							<LinkIcon className="size-4" />
+						</ToolbarButton>
+						<ToolbarButton
+							onClick={insertImage}
+							isActive={false}
+							title="Insert Image"
+						>
+							<ImageIcon className="size-4" />
+						</ToolbarButton>
+						<ToolbarButton
+							onClick={insertTable}
+							isActive={editorState.isTable}
+							title="Insert Table"
+						>
+							<Table className="size-4" />
+						</ToolbarButton>
+						<ToolbarButton
+							onClick={insertYoutube}
+							isActive={false}
+							title="Insert YouTube Video"
+						>
+							<YoutubeIcon className="size-4" />
+						</ToolbarButton>
+						<ToolbarDivider />
+
+						{/* Copy as Markdown */}
+						<ToolbarButton
+							onClick={copyAsMarkdown}
+							isActive={copied}
+							title="Copy as Markdown"
+						>
+							<Copy className="size-4" />
+						</ToolbarButton>
 					</div>
-					<ToolbarDivider />
-
-					{/* Text formatting */}
-					<ToolbarButton
-						onClick={() => editor.chain().focus().toggleBold().run()}
-						isActive={editorState.isBold}
-						title="Bold (Ctrl+B)"
-					>
-						<BoldIcon className="size-4" />
-					</ToolbarButton>
-					<ToolbarButton
-						onClick={() => editor.chain().focus().toggleItalic().run()}
-						isActive={editorState.isItalic}
-						title="Italic (Ctrl+I)"
-					>
-						<ItalicIcon className="size-4" />
-					</ToolbarButton>
-					<ToolbarDivider />
-
-					{/* Headings */}
-					<ToolbarButton
-						onClick={() =>
-							editor.chain().focus().toggleHeading({ level: 1 }).run()
-						}
-						isActive={editorState.isHeading1}
-						title="Heading 1"
-					>
-						<Heading1 className="size-4" />
-					</ToolbarButton>
-					<ToolbarButton
-						onClick={() =>
-							editor.chain().focus().toggleHeading({ level: 2 }).run()
-						}
-						isActive={editorState.isHeading2}
-						title="Heading 2"
-					>
-						<Heading2 className="size-4" />
-					</ToolbarButton>
-					<ToolbarButton
-						onClick={() =>
-							editor.chain().focus().toggleHeading({ level: 3 }).run()
-						}
-						isActive={editorState.isHeading3}
-						title="Heading 3"
-					>
-						<Heading3 className="size-4" />
-					</ToolbarButton>
-					<ToolbarDivider />
-
-					{/* Lists */}
-					<ToolbarButton
-						onClick={() => editor.chain().focus().toggleBulletList().run()}
-						isActive={editorState.isBulletList}
-						title="Bullet List"
-					>
-						<List className="size-4" />
-					</ToolbarButton>
-					<ToolbarButton
-						onClick={() => editor.chain().focus().toggleOrderedList().run()}
-						isActive={editorState.isOrderedList}
-						title="Ordered List"
-					>
-						<ListOrdered className="size-4" />
-					</ToolbarButton>
-					<ToolbarButton
-						onClick={() => editor.chain().focus().toggleTaskList().run()}
-						isActive={editorState.isTaskList}
-						title="Task List"
-					>
-						<ListTodo className="size-4" />
-					</ToolbarButton>
-					<ToolbarDivider />
-
-					{/* Block elements */}
-					<ToolbarButton
-						onClick={() => editor.chain().focus().toggleBlockquote().run()}
-						isActive={editorState.isBlockquote}
-						title="Blockquote"
-					>
-						<Quote className="size-4" />
-					</ToolbarButton>
-					<ToolbarButton
-						onClick={() => editor.chain().focus().toggleCode().run()}
-						isActive={editorState.isCode}
-						title="Inline Code"
-					>
-						<CodeXml className="size-4" />
-					</ToolbarButton>
-					<ToolbarButton
-						onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-						isActive={editorState.isCodeBlock}
-						title="Code Block"
-					>
-						<Code className="size-4" />
-					</ToolbarButton>
-					<ToolbarButton
-						onClick={() => editor.chain().focus().setHorizontalRule().run()}
-						isActive={false}
-						title="Horizontal Rule"
-					>
-						<Minus className="size-4" />
-					</ToolbarButton>
-					<ToolbarButton
-						onClick={() => editor.chain().focus().setDetails().run()}
-						isActive={editorState.isDetails}
-						title="Collapsible Section"
-					>
-						<ChevronDown className="size-4" />
-					</ToolbarButton>
-					<ToolbarDivider />
-
-					{/* Insert elements */}
-					<ToolbarButton
-						onClick={setLink}
-						isActive={editorState.isLink}
-						title="Add Link"
-					>
-						<LinkIcon className="size-4" />
-					</ToolbarButton>
-					<ToolbarButton
-						onClick={insertImage}
-						isActive={false}
-						title="Insert Image"
-					>
-						<ImageIcon className="size-4" />
-					</ToolbarButton>
-					<ToolbarButton
-						onClick={insertTable}
-						isActive={editorState.isTable}
-						title="Insert Table"
-					>
-						<Table className="size-4" />
-					</ToolbarButton>
-					<ToolbarButton
-						onClick={insertYoutube}
-						isActive={false}
-						title="Insert YouTube Video"
-					>
-						<YoutubeIcon className="size-4" />
-					</ToolbarButton>
-					<ToolbarDivider />
-
-					{/* Copy as Markdown */}
-					<ToolbarButton
-						onClick={copyAsMarkdown}
-						isActive={copied}
-						title="Copy as Markdown"
-					>
-						<Copy className="size-4" />
-					</ToolbarButton>
-				</div>
+				)}
 				<div className="tiptap-editor-wrapper relative min-h-64 bg-bg-panel p-4">
 					<EditorContent editor={editor} />
 				</div>
@@ -722,6 +778,19 @@ export function TiptapEditor({
 				onClose={() => setAddItemModalOpen(false)}
 				defaultTab={addItemDefaultTab}
 				defaultInstructionType={addItemDefaultInstructionType}
+				onInstructionCreated={(instruction) => {
+					setAddItemModalOpen(false);
+					editorContext?.insertInstructionCardAtCursor(instruction);
+					editorContext?.onInstructionUpdate?.(instruction.name, {
+						name: instruction.name,
+						type: instruction.type,
+					});
+					if (instruction.content) {
+						editorContext?.onInstructionFilesUpdate?.(instruction.name, [
+							{ name: instruction.name, content: instruction.content },
+						]);
+					}
+				}}
 			/>
 			{showToolbarDropdown &&
 				createPortal(
@@ -745,41 +814,95 @@ export function TiptapEditor({
 								switch (item.category) {
 									case "tool": {
 										const tool = item.data as ToolData;
-										node = schema.nodes.aiToolBlock.create({
-											toolId: tool._id,
-											name: tool.name,
-											iconUrl: tool.iconUrl ?? null,
-										});
-										if (onToolAdded) onToolAdded(tool);
+										const toolCardExists = findExistingNode(
+											view,
+											"aiToolCard",
+											tool.shortId,
+											tool.name,
+										);
+										if (toolCardExists) {
+											node = schema.nodes.aiToolReference.create({
+												shortId: tool.shortId ?? null,
+												name: tool.name,
+											});
+										} else {
+											node = schema.nodes.aiToolCard.create({
+												shortId: tool.shortId ?? null,
+												name: tool.name,
+											});
+											if (onToolAdded) onToolAdded(tool);
+										}
 										break;
 									}
 									case "model": {
 										const model = item.data as ModelData;
-										node = schema.nodes.aiModelBlock.create({
-											modelId: model._id,
-											name: model.name,
-											provider: (model as ModelData).provider ?? "",
-											iconUrl: model.iconUrl ?? null,
-										});
-										if (onModelAdded) onModelAdded(model);
+										const modelCardExists = findExistingNode(
+											view,
+											"aiModelCard",
+											model.shortId,
+											model.name,
+										);
+										if (modelCardExists) {
+											node = schema.nodes.aiModelReference.create({
+												shortId: model.shortId ?? null,
+												name: model.name,
+												provider: (model as ModelData).provider ?? "",
+											});
+										} else {
+											node = schema.nodes.aiModelCard.create({
+												shortId: model.shortId ?? null,
+												name: model.name,
+												provider: (model as ModelData).provider ?? "",
+											});
+											if (onModelAdded) onModelAdded(model);
+										}
 										break;
 									}
 									case "bundle": {
 										const bundle = item.data as BundleData;
-										node = schema.nodes.aiBundleBlock.create({
-											bundleId: bundle._id,
-											name: bundle.name,
-											iconUrl: bundle.iconUrl ?? null,
-										});
+										const bundleCardExists = findExistingNode(
+											view,
+											"aiBundleCard",
+											bundle.shortId,
+											bundle.name,
+										);
+										if (bundleCardExists) {
+											node = schema.nodes.aiBundleReference.create({
+												shortId: bundle.shortId ?? null,
+												name: bundle.name,
+											});
+										} else {
+											node = schema.nodes.aiBundleCard.create({
+												shortId: bundle.shortId ?? null,
+												name: bundle.name,
+											});
+										}
 										break;
 									}
 									case "instruction": {
 										const instruction = item.data as InstructionData;
-										node = schema.nodes.aiInstructionBlock.create({
-											name: instruction.name,
-											instructionType: instruction.type,
-											content: instruction.content ?? null,
-										});
+										const instrCardExists = findExistingNode(
+											view,
+											"aiFileCard",
+											null,
+											instruction.name,
+										);
+										if (instrCardExists) {
+											node = schema.nodes.aiInstructionReference.create({
+												name: instruction.name,
+												instructionType: instruction.type,
+												content: instruction.content ?? null,
+											});
+										} else {
+											node = schema.nodes.aiFileCard.create({
+												name: instruction.name,
+												instructionType: instruction.type,
+												content: instruction.content
+													? encodeURIComponent(instruction.content)
+													: null,
+												description: instruction.description ?? null,
+											});
+										}
 										break;
 									}
 								}

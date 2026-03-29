@@ -91,13 +91,20 @@ const InstructionTypeValidator = v.union(
   v.literal('subagent')
 )
 
+const InstructionFileValidator = v.object({
+  name: v.string(),
+  content: v.string(),
+  path: v.optional(v.string()),
+  tags: v.optional(v.array(v.string())),
+})
+
 const InstructionItemValidator = v.object({
   type: InstructionTypeValidator,
   name: v.string(),
   description: v.optional(v.string()),
-  content: v.optional(v.string()),
   url: v.optional(v.string()),
   trigger: v.optional(v.string()),
+  files: v.optional(v.array(InstructionFileValidator)),
 })
 
 const MoneyValidator = v.object({
@@ -130,20 +137,19 @@ const ToolValidator = v.object({
     v.literal('sponsored')
   ),
   bundleSlug: v.optional(v.string()),
-  notes: v.optional(v.string()),
+  description: v.optional(v.string()),
 })
 
 const BundleValidator = v.object({
   _id: v.id('bundles'),
   name: v.string(),
   slug: v.string(),
-  description: v.optional(v.string()),
   iconUrl: v.optional(v.string()),
   websiteUrl: v.optional(v.string()),
   tierId: v.string(),
   tierName: v.string(),
   price: PriceValidator,
-  notes: v.optional(v.string()),
+  description: v.optional(v.string()),
 })
 
 const ModelValidator = v.object({
@@ -154,6 +160,7 @@ const ModelValidator = v.object({
   category: v.string(),
   iconUrl: v.optional(v.string()),
   role: v.union(v.literal('primary'), v.literal('secondary'), v.literal('specialized')),
+  description: v.optional(v.string()),
 })
 
 const CreatorValidator = v.object({
@@ -220,7 +227,7 @@ export const listPublished = query({
           tierName: tier?.name ?? sub.tierId ?? '',
           priceKind: sub.priceKind,
           bundleSlug: sub.bundleSlug,
-          notes: sub.notes,
+          description: sub.description,
         })
       }
 
@@ -277,18 +284,19 @@ const ToolSubscriptionInput = v.object({
     v.literal('sponsored')
   ),
   bundleSlug: v.optional(v.string()),
-  notes: v.optional(v.string()),
+  description: v.optional(v.string()),
 })
 
 const BundleSubscriptionInput = v.object({
   bundleSlug: v.string(),
   tierId: v.string(),
-  notes: v.optional(v.string()),
+  description: v.optional(v.string()),
 })
 
 const ModelSubscriptionInput = v.object({
   modelSlug: v.string(),
   role: v.union(v.literal('primary'), v.literal('secondary'), v.literal('specialized')),
+  description: v.optional(v.string()),
 })
 
 export const create = mutation({
@@ -455,7 +463,7 @@ export const getForEdit = query({
           v.literal('sponsored')
         ),
         bundleSlug: v.optional(v.string()),
-        notes: v.optional(v.string()),
+        description: v.optional(v.string()),
       })),
       bundleSubscriptions: v.array(v.object({
         bundleSlug: v.string(),
@@ -463,7 +471,7 @@ export const getForEdit = query({
         tierId: v.string(),
         tierName: v.string(),
         price: v.optional(PriceValidator),
-        notes: v.optional(v.string()),
+        description: v.optional(v.string()),
       })),
       modelSubscriptions: v.array(v.object({
         modelSlug: v.string(),
@@ -472,6 +480,7 @@ export const getForEdit = query({
         modelCategory: v.string(),
         modelIconUrl: v.optional(v.string()),
         role: v.union(v.literal('primary'), v.literal('secondary'), v.literal('specialized')),
+        description: v.optional(v.string()),
       })),
     }),
     v.null()
@@ -509,7 +518,7 @@ export const getForEdit = query({
         price: sub.price,
         priceKind: sub.priceKind,
         bundleSlug: sub.bundleSlug,
-        notes: sub.notes,
+        description: sub.description,
       })
     }
 
@@ -527,7 +536,7 @@ export const getForEdit = query({
         tierId: bs.tierId,
         tierName: tier?.name ?? bs.tierId,
         price: tier?.pricing ? { pricingType: tier.pricing.pricingType, fixed: tier.pricing.fixed } : undefined,
-        notes: bs.notes,
+        description: bs.description,
       })
     }
 
@@ -545,6 +554,7 @@ export const getForEdit = query({
         modelCategory: model.category,
         modelIconUrl: model.iconUrl,
         role: ms.role,
+        description: ms.description,
       })
     }
 
@@ -845,7 +855,7 @@ export const getBySlug = query({
         tierName: toolTier?.name ?? sub.tierId ?? '',
         priceKind: sub.priceKind,
         bundleSlug: sub.bundleSlug,
-        notes: sub.notes,
+        description: sub.description,
       })
     }
 
@@ -862,13 +872,12 @@ export const getBySlug = query({
         _id: bundle._id,
         name: bundle.name,
         slug: bundle.slug,
-        description: bundle.description,
         iconUrl: bundle.iconUrl,
         websiteUrl: bundle.websiteUrl,
         tierId: bs.tierId,
         tierName: tier.name,
         price: tier.pricing,
-        notes: bs.notes,
+        description: bs.description,
       })
     }
 
@@ -887,6 +896,7 @@ export const getBySlug = query({
         category: model.category,
         iconUrl: model.iconUrl,
         role: ms.role,
+        description: ms.description,
       })
     }
 

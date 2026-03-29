@@ -15,32 +15,32 @@ export const instructionTypeColorsSplit: Record<
 > = {
 	prompt: {
 		border: "border-blue-400/30",
-		bg: "bg-blue-400/10",
+		bg: "bg-blue-400",
 		text: "text-blue-400",
 	},
 	rule: {
 		border: "border-purple-400/30",
-		bg: "bg-purple-400/10",
+		bg: "bg-purple-400",
 		text: "text-purple-400",
 	},
 	skill: {
 		border: "border-emerald-400/30",
-		bg: "bg-emerald-400/10",
+		bg: "bg-emerald-400",
 		text: "text-emerald-400",
 	},
 	mcp: {
 		border: "border-cyan-400/30",
-		bg: "bg-cyan-400/10",
+		bg: "bg-cyan-400",
 		text: "text-cyan-400",
 	},
 	plugin: {
 		border: "border-pink-400/30",
-		bg: "bg-pink-400/10",
+		bg: "bg-pink-400",
 		text: "text-pink-400",
 	},
 	subagent: {
 		border: "border-orange-400/30",
-		bg: "bg-orange-400/10",
+		bg: "bg-orange-400",
 		text: "text-orange-400",
 	},
 };

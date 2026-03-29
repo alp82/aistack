@@ -20,7 +20,7 @@ export interface ToolItemData {
 	tierName?: string;
 	priceKind: "regular" | "discounted" | "bundle" | "usage_based" | "sponsored";
 	bundleSlug?: string;
-	notes?: string;
+	description?: string;
 }
 
 interface ToolItemProps {

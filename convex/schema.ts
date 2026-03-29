@@ -32,13 +32,20 @@ const InstructionType = v.union(
   v.literal('subagent')
 )
 
+const InstructionFile = v.object({
+  name: v.string(),
+  content: v.string(),
+  path: v.optional(v.string()),
+  tags: v.optional(v.array(v.string())),
+})
+
 const InstructionItem = v.object({
   type: InstructionType,
   name: v.string(),
   description: v.optional(v.string()),
-  content: v.optional(v.string()),
   url: v.optional(v.string()),
   trigger: v.optional(v.string()),
+  files: v.optional(v.array(InstructionFile)),
 })
 
 const ModelCategory = v.union(
@@ -140,7 +147,7 @@ export default defineSchema({
           v.literal('sponsored')
         ),
         bundleSlug: v.optional(v.string()),
-        notes: v.optional(v.string()),
+        description: v.optional(v.string()),
       })
     ),
     bundleSubscriptions: v.optional(
@@ -148,7 +155,7 @@ export default defineSchema({
         v.object({
           bundleSlug: v.string(),
           tierId: v.string(),
-          notes: v.optional(v.string()),
+          description: v.optional(v.string()),
         }),
       ),
     ),
@@ -157,6 +164,7 @@ export default defineSchema({
         v.object({
           modelSlug: v.string(),
           role: v.union(v.literal('primary'), v.literal('secondary'), v.literal('specialized')),
+          description: v.optional(v.string()),
         }),
       ),
     ),

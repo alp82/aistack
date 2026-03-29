@@ -46,7 +46,7 @@ export interface ToolSubscriptionEntry {
 	};
 	priceKind: "regular" | "discounted" | "bundle" | "usage_based" | "sponsored";
 	bundleSlug?: string;
-	notes?: string;
+	description?: string;
 }
 
 interface ToolPickerProps {

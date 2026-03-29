@@ -74,7 +74,7 @@ The real power of this stack comes from the **4 custom skills** I've built for W
         kind: "main" as const,
         primaryUsageLabel: "Complex reasoning, refactoring, and architecture decisions",
         priceKind: "discounted" as const,
-        notes: "Discounted plan",
+        description: "Discounted plan",
         price: {
           pricingType: "fixed" as const,
           fixed: { currency: "USD", amount: 17, period: "month" as const },

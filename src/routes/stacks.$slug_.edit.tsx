@@ -122,7 +122,7 @@ function EditStackPage() {
 					price: t.price,
 					priceKind: t.priceKind,
 					bundleSlug: t.bundleSlug,
-					notes: t.notes,
+					description: t.description,
 				})),
 				bundleSubscriptions: stackData.bundleSubscriptions.map((b) => ({
 					bundleSlug: b.bundleSlug,
@@ -130,7 +130,7 @@ function EditStackPage() {
 					tierId: b.tierId,
 					tierName: b.tierName,
 					price: b.price,
-					notes: b.notes,
+					description: b.description,
 				})),
 				modelSubscriptions: stackData.modelSubscriptions.map((m) => ({
 					modelSlug: m.modelSlug,

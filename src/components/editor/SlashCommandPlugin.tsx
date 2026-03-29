@@ -1,23 +1,23 @@
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
-import { createRoot, type Root } from "react-dom/client";
-import { Wrench, Brain, Package, FileText, Plus } from "lucide-react";
+import { Brain, FileText, Package, Plus, Wrench } from "lucide-react";
 import {
-	useState,
-	useEffect,
-	useRef,
-	useCallback,
-	useMemo,
 	type ReactNode,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
 } from "react";
-import type { ToolData } from "./ToolSuggestionPlugin";
-import type { ModelData } from "./ModelSuggestionPlugin";
+import { createRoot, type Root } from "react-dom/client";
 import type { InstructionType } from "@/features/stack-editor/types";
 import {
 	instructionTypeColorsSplit,
 	instructionTypeLabels,
 } from "@/lib/instruction-utils";
+import type { ModelData } from "./ModelSuggestionPlugin";
+import type { ToolData } from "./ToolSuggestionPlugin";
 
 // --- Types ---
 
@@ -651,6 +651,28 @@ export function buildItems(
 	return items;
 }
 
+export function findExistingNode(
+	view: EditorView,
+	cardTypeName: string,
+	shortId: string | null | undefined,
+	name: string,
+): boolean {
+	let found = false;
+	view.state.doc.descendants((node) => {
+		if (found) return false;
+		if (node.type.name === cardTypeName) {
+			if (
+				(shortId && node.attrs.shortId === shortId) ||
+				node.attrs.name === name
+			) {
+				found = true;
+				return false;
+			}
+		}
+	});
+	return found;
+}
+
 export function insertBlockForItem(
 	item: SlashItem,
 	view: EditorView,
@@ -670,38 +692,115 @@ export function insertBlockForItem(
 	switch (item.category) {
 		case "tool": {
 			const tool = item.data as ToolData;
-			node = schema.nodes.aiToolBlock.create({
-				shortId: tool.shortId ?? null,
-				name: tool.name,
-			});
-			if (onToolAdded) onToolAdded(tool);
+			const cardExists = findExistingNode(
+				view,
+				"aiToolCard",
+				tool.shortId,
+				tool.name,
+			);
+			if (cardExists) {
+				node = schema.nodes.aiToolReference?.create({
+					shortId: tool.shortId ?? null,
+					name: tool.name,
+				});
+			} else {
+				node =
+					schema.nodes.aiToolCard?.create({
+						shortId: tool.shortId ?? null,
+						name: tool.name,
+					}) ??
+					schema.nodes.aiToolReference.create({
+						shortId: tool.shortId ?? null,
+						name: tool.name,
+					});
+				if (onToolAdded) onToolAdded(tool);
+			}
 			break;
 		}
 		case "model": {
 			const model = item.data as ModelData;
-			node = schema.nodes.aiModelBlock.create({
-				shortId: model.shortId ?? null,
-				name: model.name,
-				provider: model.provider ?? "",
-			});
-			if (onModelAdded) onModelAdded(model);
+			const cardExists = findExistingNode(
+				view,
+				"aiModelCard",
+				model.shortId,
+				model.name,
+			);
+			if (cardExists) {
+				node = schema.nodes.aiModelReference?.create({
+					shortId: model.shortId ?? null,
+					name: model.name,
+					provider: model.provider ?? "",
+				});
+			} else {
+				node =
+					schema.nodes.aiModelCard?.create({
+						shortId: model.shortId ?? null,
+						name: model.name,
+						provider: model.provider ?? "",
+					}) ??
+					schema.nodes.aiModelReference.create({
+						shortId: model.shortId ?? null,
+						name: model.name,
+						provider: model.provider ?? "",
+					});
+				if (onModelAdded) onModelAdded(model);
+			}
 			break;
 		}
 		case "bundle": {
 			const bundle = item.data as BundleData;
-			node = schema.nodes.aiBundleBlock.create({
-				shortId: bundle.shortId ?? null,
-				name: bundle.name,
-			});
+			const cardExists = findExistingNode(
+				view,
+				"aiBundleCard",
+				bundle.shortId,
+				bundle.name,
+			);
+			if (cardExists) {
+				node = schema.nodes.aiBundleReference?.create({
+					shortId: bundle.shortId ?? null,
+					name: bundle.name,
+				});
+			} else {
+				node =
+					schema.nodes.aiBundleCard?.create({
+						shortId: bundle.shortId ?? null,
+						name: bundle.name,
+					}) ??
+					schema.nodes.aiBundleReference.create({
+						shortId: bundle.shortId ?? null,
+						name: bundle.name,
+					});
+			}
 			break;
 		}
 		case "instruction": {
 			const instruction = item.data as InstructionData;
-			node = schema.nodes.aiInstructionBlock.create({
-				name: instruction.name,
-				instructionType: instruction.type,
-				content: instruction.content ?? null,
-			});
+			const cardExists = findExistingNode(
+				view,
+				"aiFileCard",
+				null,
+				instruction.name,
+			);
+			if (cardExists) {
+				node = schema.nodes.aiInstructionReference?.create({
+					name: instruction.name,
+					instructionType: instruction.type,
+					content: instruction.content ?? null,
+				});
+			} else {
+				node =
+					schema.nodes.aiFileCard?.create({
+						name: instruction.name,
+						instructionType: instruction.type,
+						content: instruction.content ?? null,
+						description: instruction.description ?? null,
+					}) ??
+					schema.nodes.aiInstructionReference.create({
+						name: instruction.name,
+						instructionType: instruction.type,
+						content: instruction.content ?? null,
+					});
+			}
 			break;
 		}
 	}
