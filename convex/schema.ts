@@ -34,7 +34,9 @@ const InstructionItem = v.object({
   type: v.string(),
   name: v.string(),
   description: v.optional(v.string()),
-  files: v.array(InstructionFile),
+  /** @deprecated Migrate old instructions to use files[] */
+  content: v.optional(v.string()),
+  files: v.optional(v.array(InstructionFile)),
 })
 
 const ModelCategory = v.union(
