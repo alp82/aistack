@@ -1,23 +1,12 @@
 import { FileText } from "lucide-react";
 import {
-	instructionTypeColors,
-	instructionTypeLabels as typeLabels,
+	getInstructionTypeColors,
+	getInstructionTypeLabel,
 } from "@/lib/instruction-utils";
-
-export interface InstructionItemData {
-	type: "prompt" | "rule" | "skill" | "mcp" | "plugin" | "subagent";
-	name: string;
-	description?: string;
-	files?: Array<{
-		name: string;
-		content: string;
-		path?: string;
-		tags?: string[];
-	}>;
-}
+import type { InstructionItem as InstructionItemType } from "@/features/stack-editor/types";
 
 interface InstructionItemProps {
-	instruction: InstructionItemData;
+	instruction: InstructionItemType;
 	onClick?: () => void;
 }
 
@@ -33,7 +22,7 @@ export function InstructionItem({
 		>
 			<div className="flex items-center gap-3">
 				<div
-					className={`flex size-8 shrink-0 items-center justify-center border ${instructionTypeColors[instruction.type] ?? "text-fg-muted border-stroke-subtle bg-bg-panel-muted"}`}
+					className={`flex size-8 shrink-0 items-center justify-center border ${getInstructionTypeColors(instruction.type)}`}
 				>
 					<FileText className="size-4" />
 				</div>
@@ -42,10 +31,10 @@ export function InstructionItem({
 						{instruction.name}
 					</p>
 					<p className="font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-						{typeLabels[instruction.type] ?? instruction.type}
+						{getInstructionTypeLabel(instruction.type)}
 					</p>
 				</div>
-				{instruction.files && instruction.files.length > 0 && (
+				{instruction.files.length > 0 && (
 					<span className="shrink-0 border border-accent-lime/30 bg-accent-lime/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-accent-lime">
 						Show
 					</span>

@@ -7,34 +7,6 @@ type StackResource = {
 	url: string;
 };
 
-type PromptItem = {
-	name: string;
-	description: string;
-	content?: string;
-};
-
-type RuleItem = {
-	name: string;
-	description: string;
-};
-
-type SkillItem = {
-	name: string;
-	description: string;
-	trigger?: string;
-};
-
-type McpItem = {
-	name: string;
-	purpose: string;
-	url?: string;
-};
-
-type ModelItem = {
-	name: string;
-	role: string;
-};
-
 type FileEntry = {
 	name: string;
 	content: string;
@@ -42,23 +14,24 @@ type FileEntry = {
 	tags?: string[];
 };
 
-type InstructionType =
+/** Well-known instruction types. The type field accepts any string. */
+type KnownInstructionType =
 	| "prompt"
 	| "rule"
 	| "skill"
 	| "mcp"
-	| "plugin"
-	| "subagent";
+	| "hook"
+	| "subagent"
+	| "custom";
+
+/** Accepts known types with autocomplete, plus any arbitrary string. */
+type InstructionType = KnownInstructionType | (string & {});
 
 type InstructionItem = {
 	type: InstructionType;
 	name: string;
 	description?: string;
-	content?: string;
-	url?: string;
-	trigger?: string;
-	files?: Array<{ name: string; content: string }>;
-	path?: string;
+	files: FileEntry[];
 };
 
 type ModelSubscriptionEntry = {
@@ -119,12 +92,8 @@ export type {
 	FileEntry,
 	InstructionItem,
 	InstructionType,
-	McpItem,
-	ModelItem,
+	KnownInstructionType,
 	ModelSubscriptionEntry,
-	PromptItem,
-	RuleItem,
-	SkillItem,
 	StackEditorInitialValue,
 	StackEditorMode,
 	StackMetadataUpdates,

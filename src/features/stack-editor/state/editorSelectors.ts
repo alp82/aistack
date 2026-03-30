@@ -38,13 +38,27 @@ function selectSaveDraftPublishTarget(
 	return false;
 }
 
+function normalizeInstructions(
+	instructions: EditorState["instructions"],
+): EditorState["instructions"] {
+	return instructions.map((instruction) => ({
+		type: instruction.type,
+		name: instruction.name,
+		description: instruction.description,
+		files: instruction.files,
+	}));
+}
+
 function selectSavePayload(state: EditorState, published: boolean) {
+	const instructions =
+		state.instructions.length > 0
+			? normalizeInstructions(state.instructions)
+			: undefined;
 	return {
 		name: state.name.trim(),
 		oneLiner: state.oneLiner.trim(),
 		description: state.description.trim() || undefined,
-		instructions:
-			state.instructions.length > 0 ? state.instructions : undefined,
+		instructions,
 		teamSize: state.isTeam ? state.teamSize : undefined,
 		toolSubscriptions: state.toolSubscriptions.map((tool) => ({
 			toolSlug: tool.toolSlug,

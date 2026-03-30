@@ -13,8 +13,8 @@ import {
 import { createRoot, type Root } from "react-dom/client";
 import type { InstructionType } from "@/features/stack-editor/types";
 import {
-	instructionTypeColorsSplit,
-	instructionTypeLabels,
+	getInstructionTypeColorsSplit,
+	getInstructionTypeLabel,
 } from "@/lib/instruction-utils";
 import type { ModelData } from "./ModelSuggestionPlugin";
 import type { ToolData } from "./ToolSuggestionPlugin";
@@ -114,7 +114,7 @@ const categoryPrefixes: Record<string, SlashItemCategory> = {
 	rule: "instruction",
 	skill: "instruction",
 	mcp: "instruction",
-	plugin: "instruction",
+	hook: "instruction",
 	subagent: "instruction",
 };
 
@@ -124,7 +124,7 @@ const instructionSubtypePrefixes: Record<string, InstructionType> = {
 	rule: "rule",
 	skill: "skill",
 	mcp: "mcp",
-	plugin: "plugin",
+	hook: "hook",
 	subagent: "subagent",
 };
 
@@ -384,9 +384,9 @@ export function SlashCommandDropdown({
 		// Instruction subtype — use its specific color
 		if (addMissingHint.instructionType) {
 			const it = addMissingHint.instructionType;
-			const colors = instructionTypeColorsSplit[it];
+			const colors = getInstructionTypeColorsSplit(it);
 			return {
-				addMissingLabel: `Add new ${instructionTypeLabels[it]}`,
+				addMissingLabel: `Add new ${getInstructionTypeLabel(it)}`,
 				addMissingStyle: {
 					border: colors.border,
 					bg: colors.bg,

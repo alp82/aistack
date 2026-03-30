@@ -1,4 +1,4 @@
-import { FileText, Plus, X } from "lucide-react";
+import { Check, Copy, FileText, Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
 import type { FileEntry } from "@/features/stack-editor/types";
@@ -26,6 +26,7 @@ export function FileContentDialog({
 	const [activeTab, setActiveTab] = useState(initialTab);
 	const [addingFile, setAddingFile] = useState(false);
 	const [newFileName, setNewFileName] = useState("");
+	const [copied, setCopied] = useState(false);
 
 	useEffect(() => {
 		setFiles(externalFiles);
@@ -42,6 +43,13 @@ export function FileContentDialog({
 
 	const handleFileContentChange = (idx: number, content: string) => {
 		const updated = files.map((f, i) => (i === idx ? { ...f, content } : f));
+		updateFiles(updated);
+	};
+
+	const handleFileNameChange = (idx: number, newName: string) => {
+		const updated = files.map((f, i) =>
+			i === idx ? { ...f, name: newName } : f,
+		);
 		updateFiles(updated);
 	};
 
@@ -67,6 +75,13 @@ export function FileContentDialog({
 		setActiveTab(updated.length - 1);
 		setNewFileName("");
 		setAddingFile(false);
+	};
+
+	const handleCopy = () => {
+		if (!activeFile) return;
+		navigator.clipboard.writeText(activeFile.content);
+		setCopied(true);
+		setTimeout(() => setCopied(false), 2000);
 	};
 
 	const activeFile = files[activeTab] ?? null;
@@ -159,20 +174,52 @@ export function FileContentDialog({
 			{/* Active file content */}
 			{activeFile ? (
 				<div className="flex flex-col">
-					{/* Path input */}
-					<div className="border-b border-stroke-subtle px-4 py-2">
-						<input
-							type="text"
-							value={activeFile.path ?? ""}
-							onChange={(e) => handleFilePathChange(activeTab, e.target.value)}
-							onKeyDown={(e) => {
-								e.stopPropagation();
-								if (e.key === "Enter") e.currentTarget.blur();
-							}}
-							placeholder={isEditable ? "path, e.g. ~/.claude/CLAUDE.md" : ""}
-							readOnly={!isEditable}
-							className="w-full border-0 bg-transparent font-mono text-[11px] text-fg-muted placeholder:text-fg-muted/40 focus:outline-none focus:ring-0"
-						/>
+					{/* Path + Filename row */}
+					<div className="flex items-center gap-0 border-b border-stroke-subtle">
+						{/* Path prefix */}
+						<div className="shrink-0 border-r border-stroke-subtle px-4 py-2.5">
+							{isEditable ? (
+								<input
+									type="text"
+									value={activeFile.path ?? ""}
+									onChange={(e) =>
+										handleFilePathChange(activeTab, e.target.value)
+									}
+									onKeyDown={(e) => {
+										e.stopPropagation();
+										if (e.key === "Enter") e.currentTarget.blur();
+									}}
+									placeholder="path/"
+									className="w-32 border-0 bg-transparent font-mono text-xs text-fg-muted placeholder:text-fg-muted/30 focus:outline-none focus:ring-0"
+								/>
+							) : (
+								<span className="font-mono text-xs text-fg-muted">
+									{activeFile.path || "—"}
+								</span>
+							)}
+						</div>
+						{/* Filename */}
+						<div className="min-w-0 flex-1 px-4 py-2.5">
+							{isEditable ? (
+								<input
+									type="text"
+									value={activeFile.name}
+									onChange={(e) =>
+										handleFileNameChange(activeTab, e.target.value)
+									}
+									onKeyDown={(e) => {
+										e.stopPropagation();
+										if (e.key === "Enter") e.currentTarget.blur();
+									}}
+									placeholder="filename.md"
+									className="w-full border-0 bg-transparent font-mono text-sm font-bold text-fg-primary placeholder:text-fg-muted/40 focus:outline-none focus:ring-0"
+								/>
+							) : (
+								<span className="font-mono text-sm font-bold text-fg-primary">
+									{activeFile.name}
+								</span>
+							)}
+						</div>
 					</div>
 
 					{/* Tags display */}
@@ -212,7 +259,28 @@ export function FileContentDialog({
 			)}
 
 			{/* Footer */}
-			<div className="flex items-center justify-end gap-2 border-t border-stroke-subtle px-4 py-3">
+			<div className="flex items-center justify-between border-t border-stroke-subtle px-4 py-3">
+				{activeFile ? (
+					<button
+						type="button"
+						onClick={handleCopy}
+						className="inline-flex items-center gap-2 border-2 border-stroke-subtle px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime cursor-pointer"
+					>
+						{copied ? (
+							<>
+								<Check className="size-3.5" />
+								Copied
+							</>
+						) : (
+							<>
+								<Copy className="size-3.5" />
+								Copy
+							</>
+						)}
+					</button>
+				) : (
+					<div />
+				)}
 				<button
 					type="button"
 					onClick={onClose}

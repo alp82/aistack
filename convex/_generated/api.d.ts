@@ -17,7 +17,7 @@ import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as migrations_backup from "../migrations/backup.js";
 import type * as migrations_migrateBlockToReference from "../migrations/migrateBlockToReference.js";
-import type * as migrations_migrateInstructionFiles from "../migrations/migrateInstructionFiles.js";
+import type * as migrations_migrateInstructionModel from "../migrations/migrateInstructionModel.js";
 import type * as migrations_migrateNotesToDescription from "../migrations/migrateNotesToDescription.js";
 import type * as migrations_migrateStackDescriptions from "../migrations/migrateStackDescriptions.js";
 import type * as migrations_populateShortIds from "../migrations/populateShortIds.js";
@@ -48,7 +48,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "migrations/backup": typeof migrations_backup;
   "migrations/migrateBlockToReference": typeof migrations_migrateBlockToReference;
-  "migrations/migrateInstructionFiles": typeof migrations_migrateInstructionFiles;
+  "migrations/migrateInstructionModel": typeof migrations_migrateInstructionModel;
   "migrations/migrateNotesToDescription": typeof migrations_migrateNotesToDescription;
   "migrations/migrateStackDescriptions": typeof migrations_migrateStackDescriptions;
   "migrations/populateShortIds": typeof migrations_populateShortIds;

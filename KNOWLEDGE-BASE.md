@@ -75,6 +75,9 @@ https://hannahstulberg.substack.com/p/claude-code-for-everything-your-status-lin
 package publishing:
 https://tanstack.com/blog/from-docs-to-agents
 
+marketing:
+https://github.com/coreyhaines31/marketingskills
+
 openclaw era / personal assistants:
 https://mitchellh.com/writing/my-ai-adoption-journey
 https://github.com/mnfst/manifest
@@ -98,6 +101,7 @@ https://www.typeui.sh
 https://www.pencil.dev
 https://x.com/i/status/2035508816461074883
 https://x.com/tkkong/status/2034368184036561160
+https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md
 ```
 Tiny cute isometric cowboy hat emoji, shape, soft lighting, soft pastel colors, brown, 3d icon clay render, blender 3d, pastel background
 ```

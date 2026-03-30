@@ -1,11 +1,12 @@
-import { Node, mergeAttributes } from "@tiptap/core";
-import { ReactNodeViewRenderer } from "@tiptap/react";
+import { mergeAttributes, Node } from "@tiptap/core";
 import type { NodeViewProps } from "@tiptap/react";
+import { ReactNodeViewRenderer } from "@tiptap/react";
 import { Brain } from "lucide-react";
 import { useOptionalEditorContext } from "@/features/stack-editor/context/EditorContext";
+import { BaseCard } from "./BaseCard";
+import { EntityPill, modelPillColors } from "./EntityPill";
 import { collapseCardToReference } from "./expandCollapse";
 import { ModelTooltipContent } from "./ModelTooltipContent";
-import { BaseCard } from "./BaseCard";
 
 export interface AIModelCardAttrs {
 	shortId: string;
@@ -31,33 +32,42 @@ function AIModelCardView({ node, editor, getPos, selected }: NodeViewProps) {
 		});
 	};
 
+	const modelIcon = iconUrl ? (
+		<img
+			src={iconUrl}
+			alt=""
+			className="size-4 max-h-4 shrink-0 object-contain"
+		/>
+	) : (
+		<Brain className="size-3.5 shrink-0 text-cyan-500" />
+	);
+
 	return (
 		<BaseCard
 			accentColorClass="bg-cyan-500"
 			selected={selected}
-			icon={
-				iconUrl ? (
-					<img src={iconUrl} alt="" className="size-4 object-contain" />
-				) : (
-					<Brain className="size-3.5 text-cyan-500" />
-				)
+			headerContent={
+				<EntityPill
+					name={name}
+					icon={modelIcon}
+					colors={modelPillColors}
+					onCollapse={isEditable ? handleCollapse : undefined}
+					tooltipContent={() => (
+						<ModelTooltipContent
+							name={name}
+							iconUrl={modelData?.iconUrl}
+							provider={modelData?.provider ?? provider}
+							category={modelData?.category}
+							description={modelData?.description}
+						/>
+					)}
+				/>
 			}
-			name={name}
 			description={modelData?.description ?? ""}
 			isEditable={isEditable}
 			onDescriptionChange={(value) =>
 				context?.onModelDescriptionUpdate?.(shortId || name, value)
 			}
-			onCollapse={handleCollapse}
-			tooltipContent={() => (
-				<ModelTooltipContent
-					name={name}
-					iconUrl={modelData?.iconUrl}
-					provider={modelData?.provider ?? provider}
-					category={modelData?.category}
-					description={modelData?.description}
-				/>
-			)}
 			cardId={shortId || name}
 		/>
 	);

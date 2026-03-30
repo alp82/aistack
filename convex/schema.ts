@@ -23,15 +23,6 @@ const UsagePricing = v.object({
   notes: v.optional(v.string()),
 })
 
-const InstructionType = v.union(
-  v.literal('prompt'),
-  v.literal('rule'),
-  v.literal('skill'),
-  v.literal('mcp'),
-  v.literal('plugin'),
-  v.literal('subagent')
-)
-
 const InstructionFile = v.object({
   name: v.string(),
   content: v.string(),
@@ -40,12 +31,10 @@ const InstructionFile = v.object({
 })
 
 const InstructionItem = v.object({
-  type: InstructionType,
+  type: v.string(),
   name: v.string(),
   description: v.optional(v.string()),
-  url: v.optional(v.string()),
-  trigger: v.optional(v.string()),
-  files: v.optional(v.array(InstructionFile)),
+  files: v.array(InstructionFile),
 })
 
 const ModelCategory = v.union(

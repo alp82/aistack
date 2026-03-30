@@ -61,7 +61,6 @@ import {
 	findExistingNode,
 } from "@/components/editor/SlashCommandPlugin";
 import { AddItemModal, type AddItemTab } from "@/components/AddItemModal";
-import type { InstructionType } from "@/features/stack-editor/types";
 
 import {
 	Bold as BoldIcon,
@@ -202,8 +201,6 @@ export function TiptapEditor({
 	const [addItemModalOpen, setAddItemModalOpen] = useState(false);
 	const [addItemDefaultTab, setAddItemDefaultTab] =
 		useState<AddItemTab>("tool");
-	const [addItemDefaultInstructionType, setAddItemDefaultInstructionType] =
-		useState<InstructionType | undefined>(undefined);
 	const [showToolbarDropdown, setShowToolbarDropdown] = useState(false);
 	const [toolbarDropdownPos, setToolbarDropdownPos] = useState({
 		top: 0,
@@ -405,8 +402,9 @@ export function TiptapEditor({
 					onToolAdded,
 					onModelAdded,
 					onAddMissing: (hint) => {
-						setAddItemDefaultTab(hint.category ?? "tool");
-						setAddItemDefaultInstructionType(hint.instructionType);
+						if (hint.category && hint.category !== "instruction") {
+							setAddItemDefaultTab(hint.category);
+						}
 						setAddItemModalOpen(true);
 					},
 				}),
@@ -777,20 +775,6 @@ export function TiptapEditor({
 				open={addItemModalOpen}
 				onClose={() => setAddItemModalOpen(false)}
 				defaultTab={addItemDefaultTab}
-				defaultInstructionType={addItemDefaultInstructionType}
-				onInstructionCreated={(instruction) => {
-					setAddItemModalOpen(false);
-					editorContext?.insertInstructionCardAtCursor(instruction);
-					editorContext?.onInstructionUpdate?.(instruction.name, {
-						name: instruction.name,
-						type: instruction.type,
-					});
-					if (instruction.content) {
-						editorContext?.onInstructionFilesUpdate?.(instruction.name, [
-							{ name: instruction.name, content: instruction.content },
-						]);
-					}
-				}}
 			/>
 			{showToolbarDropdown &&
 				createPortal(
@@ -916,8 +900,9 @@ export function TiptapEditor({
 							position={toolbarDropdownPos}
 							onAddMissing={(hint) => {
 								setShowToolbarDropdown(false);
-								setAddItemDefaultTab(hint.category ?? "tool");
-								setAddItemDefaultInstructionType(hint.instructionType);
+								if (hint.category && hint.category !== "instruction") {
+									setAddItemDefaultTab(hint.category);
+								}
 								setAddItemModalOpen(true);
 							}}
 						/>

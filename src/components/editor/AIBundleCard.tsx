@@ -1,11 +1,12 @@
-import { Node, mergeAttributes } from "@tiptap/core";
-import { ReactNodeViewRenderer } from "@tiptap/react";
+import { mergeAttributes, Node } from "@tiptap/core";
 import type { NodeViewProps } from "@tiptap/react";
+import { ReactNodeViewRenderer } from "@tiptap/react";
 import { Package } from "lucide-react";
 import { useOptionalEditorContext } from "@/features/stack-editor/context/EditorContext";
-import { collapseCardToReference } from "./expandCollapse";
-import { BundleTooltipContent } from "./BundleTooltipContent";
 import { BaseCard } from "./BaseCard";
+import { BundleTooltipContent } from "./BundleTooltipContent";
+import { bundlePillColors, EntityPill } from "./EntityPill";
+import { collapseCardToReference } from "./expandCollapse";
 
 export interface AIBundleCardAttrs {
 	shortId: string;
@@ -29,33 +30,42 @@ function AIBundleCardView({ node, editor, getPos, selected }: NodeViewProps) {
 		});
 	};
 
+	const bundleIcon = iconUrl ? (
+		<img
+			src={iconUrl}
+			alt=""
+			className="size-4 max-h-4 shrink-0 object-contain"
+		/>
+	) : (
+		<Package className="size-3.5 shrink-0 text-violet-500" />
+	);
+
 	return (
 		<BaseCard
 			accentColorClass="bg-violet-500"
 			selected={selected}
-			icon={
-				iconUrl ? (
-					<img src={iconUrl} alt="" className="size-4 object-contain" />
-				) : (
-					<Package className="size-3.5 text-violet-500" />
-				)
+			headerContent={
+				<EntityPill
+					name={name}
+					icon={bundleIcon}
+					colors={bundlePillColors}
+					onCollapse={isEditable ? handleCollapse : undefined}
+					tooltipContent={() => (
+						<BundleTooltipContent
+							name={name}
+							iconUrl={bundleData?.iconUrl}
+							price={bundleData?.price}
+							tierName={bundleData?.tierName}
+							description={bundleData?.description}
+						/>
+					)}
+				/>
 			}
-			name={name}
 			description={bundleData?.description ?? ""}
 			isEditable={isEditable}
 			onDescriptionChange={(value) =>
 				context?.onBundleDescriptionUpdate?.(shortId || name, value)
 			}
-			onCollapse={handleCollapse}
-			tooltipContent={() => (
-				<BundleTooltipContent
-					name={name}
-					iconUrl={bundleData?.iconUrl}
-					price={bundleData?.price}
-					tierName={bundleData?.tierName}
-					description={bundleData?.description}
-				/>
-			)}
 			cardId={shortId || name}
 		/>
 	);

@@ -102,6 +102,8 @@ type EditorContextValue = {
 		instructionName: string,
 		files: FileEntry[],
 	) => void;
+	editInstructionRequest: string | null;
+	setEditInstructionRequest: (name: string | null) => void;
 };
 
 const EditorContext = createContext<EditorContextValue | null>(null);
@@ -183,6 +185,9 @@ export function EditorProvider({
 	const [instructionFiles, setInstructionFiles] = useState<
 		Map<string, FileEntry[]>
 	>(new Map());
+	const [editInstructionRequest, setEditInstructionRequest] = useState<
+		string | null
+	>(null);
 
 	// Derived lookup maps by shortId
 	const toolLookupByShortId = useMemo(() => {
@@ -429,6 +434,8 @@ export function EditorProvider({
 				instructionFiles,
 				setInstructionFiles,
 				onInstructionFilesUpdate,
+				editInstructionRequest,
+				setEditInstructionRequest,
 			}}
 		>
 			{children}

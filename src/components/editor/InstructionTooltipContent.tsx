@@ -1,7 +1,7 @@
 import type { InstructionType } from "@/features/stack-editor/types";
 import {
-	instructionTypeColorsSplit as typeColors,
-	instructionTypeLabels as typeLabels,
+	getInstructionTypeColorsSplit,
+	getInstructionTypeLabel,
 } from "@/lib/instruction-utils";
 
 export function InstructionTooltipContent({
@@ -15,7 +15,7 @@ export function InstructionTooltipContent({
 	description?: string;
 	content?: string;
 }) {
-	const colors = typeColors[instructionType] || typeColors.prompt;
+	const colors = getInstructionTypeColorsSplit(instructionType);
 	const previewText =
 		content
 			?.split(/\r?\n/)
@@ -28,7 +28,7 @@ export function InstructionTooltipContent({
 			<div
 				className={`mb-3 border-b-2 border-stroke-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] ${colors.text}`}
 			>
-				{typeLabels[instructionType]}
+				{getInstructionTypeLabel(instructionType)}
 			</div>
 			<div className="mb-2 font-mono text-sm font-semibold text-fg-primary">
 				{name}

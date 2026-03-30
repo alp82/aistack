@@ -1,11 +1,11 @@
-import { Node, mergeAttributes } from "@tiptap/core";
-import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
+import { mergeAttributes, Node } from "@tiptap/core";
 import type { NodeViewProps } from "@tiptap/react";
-import { Package, Maximize2 } from "lucide-react";
+import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
+import { Package } from "lucide-react";
 import { useOptionalEditorContext } from "@/features/stack-editor/context/EditorContext";
-import HoverPreview from "@/components/ui/hover-preview";
-import { expandReferenceToCard } from "./expandCollapse";
 import { BundleTooltipContent } from "./BundleTooltipContent";
+import { bundlePillColors, EntityPill } from "./EntityPill";
+import { expandReferenceToCard } from "./expandCollapse";
 
 export interface AIBundleReferenceAttrs {
 	shortId: string;
@@ -18,11 +18,15 @@ function AIBundleReferenceView({ node, editor, getPos }: NodeViewProps) {
 	const bundleData =
 		context?.bundleLookupByShortId?.get(shortId) ??
 		context?.bundleLookup.get(name);
-	const iconUrl = bundleData?.iconUrl;
 	const isEditable = editor?.isEditable ?? false;
+	const iconUrl = bundleData?.iconUrl;
 
-	const handleClick = () => {
-		const cardId = shortId || name;
+	const cardId = shortId || name;
+	const cardExists = !!document.querySelector(
+		`[data-card-id="${CSS.escape(cardId)}"]`,
+	);
+
+	const handleScrollToCard = () => {
 		const cardEl = document.querySelector(
 			`[data-card-id="${CSS.escape(cardId)}"]`,
 		);
@@ -31,8 +35,7 @@ function AIBundleReferenceView({ node, editor, getPos }: NodeViewProps) {
 		}
 	};
 
-	const handleExpand = (e: React.MouseEvent) => {
-		e.stopPropagation();
+	const handleExpand = () => {
 		if (!editor || typeof getPos !== "function") return;
 		expandReferenceToCard(editor, getPos, node, "aiBundleCard", {
 			shortId,
@@ -40,39 +43,16 @@ function AIBundleReferenceView({ node, editor, getPos }: NodeViewProps) {
 		});
 	};
 
-	const blockContent = (
-		<span
-			contentEditable={false}
-			className="inline-flex items-stretch border border-violet-500/30 bg-violet-500/10 align-middle font-mono text-xs font-semibold uppercase text-fg-primary transition-all"
-		>
-			<span
-				onClick={handleClick}
-				className="inline-flex cursor-pointer items-center gap-1.5 px-2 py-1 transition-colors hover:bg-violet-500/20"
-			>
-				{iconUrl ? (
-					<img
-						src={iconUrl}
-						alt=""
-						className="size-4 shrink-0 rounded object-contain align-middle"
-						style={{ margin: 0 }}
-					/>
-				) : (
-					<span className="flex size-4 shrink-0 items-center justify-center rounded-sm border border-violet-500/30 bg-violet-500/10 text-violet-500">
-						<Package className="size-3" />
-					</span>
-				)}
-				<span>{name}</span>
-			</span>
-			{isEditable && (
-				<span
-					role="button"
-					onClick={handleExpand}
-					title="Expand to card"
-					className="flex cursor-pointer items-center border-l border-violet-500/30 px-1.5 text-fg-muted transition-colors hover:bg-violet-500/20 hover:text-violet-400"
-				>
-					<Maximize2 className="size-2.5" />
-				</span>
-			)}
+	const bundleIcon = iconUrl ? (
+		<img
+			src={iconUrl}
+			alt=""
+			className="size-4 shrink-0 object-contain align-middle"
+			style={{ margin: 0 }}
+		/>
+	) : (
+		<span className="flex size-4 shrink-0 items-center justify-center border border-violet-500/30 bg-violet-500/10 text-violet-500">
+			<Package className="size-3" />
 		</span>
 	);
 
@@ -82,41 +62,23 @@ function AIBundleReferenceView({ node, editor, getPos }: NodeViewProps) {
 			className="inline-flex items-center mx-1"
 			style={{ verticalAlign: "0.05em" }}
 		>
-			{bundleData ? (
-				<HoverPreview
-					mode="wrapper"
-					position="above"
-					width={300}
-					height="auto"
-					offset={8}
-					maxRotation={3}
-					maxOffset={5}
-					renderContent={() => (
-						<BundleTooltipContent
-							name={name}
-							iconUrl={bundleData.iconUrl}
-							price={bundleData.price}
-							tierName={bundleData.tierName}
-							description={bundleData.description}
-						/>
-					)}
-				>
-					{blockContent}
-				</HoverPreview>
-			) : (
-				<HoverPreview
-					mode="wrapper"
-					position="above"
-					width={300}
-					height="auto"
-					offset={8}
-					maxRotation={3}
-					maxOffset={5}
-					renderContent={() => <BundleTooltipContent name={name} />}
-				>
-					{blockContent}
-				</HoverPreview>
-			)}
+			<EntityPill
+				name={name}
+				icon={bundleIcon}
+				colors={bundlePillColors}
+				onNameClick={handleScrollToCard}
+				onLocate={cardExists ? handleScrollToCard : undefined}
+				onExpand={!cardExists && isEditable ? handleExpand : undefined}
+				tooltipContent={() => (
+					<BundleTooltipContent
+						name={name}
+						iconUrl={bundleData?.iconUrl}
+						price={bundleData?.price}
+						tierName={bundleData?.tierName}
+						description={bundleData?.description}
+					/>
+				)}
+			/>
 		</NodeViewWrapper>
 	);
 }

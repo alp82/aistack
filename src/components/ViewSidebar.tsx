@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { BundleItem, type BundleItemData } from "@/components/BundleItem";
-import {
-	InstructionItem,
-	type InstructionItemData,
-} from "@/components/InstructionItem";
+import { InstructionItem } from "@/components/InstructionItem";
+import type { InstructionItem as InstructionItemType } from "@/features/stack-editor/types";
 import { FileContentDialog } from "@/components/editor/FileContentDialog";
 import { ModelItem, type ModelItemData } from "@/components/ModelItem";
 import { ToolItem, type ToolItemData } from "@/components/ToolItem";
@@ -11,7 +9,7 @@ import { ToolItem, type ToolItemData } from "@/components/ToolItem";
 type ViewTool = ToolItemData & { tierName: string };
 type ViewBundle = BundleItemData;
 type ViewModel = ModelItemData;
-type ViewInstruction = InstructionItemData;
+type ViewInstruction = InstructionItemType;
 
 type ViewSidebarProps = {
 	tools: ViewTool[];
@@ -147,9 +145,7 @@ export function ViewSidebar({
 										key={`${inst.name}-${i}`}
 										instruction={inst}
 										onClick={() =>
-											inst.files &&
-											inst.files.length > 0 &&
-											setActiveInstruction(inst)
+											inst.files.length > 0 && setActiveInstruction(inst)
 										}
 									/>
 								))}

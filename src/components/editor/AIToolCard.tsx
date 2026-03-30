@@ -1,11 +1,12 @@
-import { Node, mergeAttributes } from "@tiptap/core";
-import { ReactNodeViewRenderer } from "@tiptap/react";
+import { mergeAttributes, Node } from "@tiptap/core";
 import type { NodeViewProps } from "@tiptap/react";
+import { ReactNodeViewRenderer } from "@tiptap/react";
 import { Terminal } from "lucide-react";
 import { useOptionalEditorContext } from "@/features/stack-editor/context/EditorContext";
+import { BaseCard } from "./BaseCard";
+import { EntityPill, toolPillColors } from "./EntityPill";
 import { collapseCardToReference } from "./expandCollapse";
 import { ToolTooltipContent } from "./ToolTooltipContent";
-import { BaseCard } from "./BaseCard";
 
 export interface AIToolCardAttrs {
 	shortId: string;
@@ -28,34 +29,43 @@ function AIToolCardView({ node, editor, getPos, selected }: NodeViewProps) {
 		});
 	};
 
+	const toolIcon = iconUrl ? (
+		<img
+			src={iconUrl}
+			alt=""
+			className="size-4 max-h-4 shrink-0 object-contain"
+		/>
+	) : (
+		<Terminal className="size-3.5 shrink-0 text-fg-muted" />
+	);
+
 	return (
 		<BaseCard
 			accentColorClass="bg-amber-500"
 			selected={selected}
-			icon={
-				iconUrl ? (
-					<img src={iconUrl} alt="" className="size-4 object-contain" />
-				) : (
-					<Terminal className="size-3.5 text-fg-muted" />
-				)
+			headerContent={
+				<EntityPill
+					name={name}
+					icon={toolIcon}
+					colors={toolPillColors}
+					onCollapse={isEditable ? handleCollapse : undefined}
+					tooltipContent={() => (
+						<ToolTooltipContent
+							name={name}
+							iconUrl={toolData?.iconUrl}
+							categories={toolData?.categories}
+							price={toolData?.price}
+							tierName={toolData?.tierName}
+							description={toolData?.description}
+						/>
+					)}
+				/>
 			}
-			name={name}
 			description={toolData?.description ?? ""}
 			isEditable={isEditable}
 			onDescriptionChange={(value) =>
 				context?.onToolDescriptionUpdate?.(shortId || name, value)
 			}
-			onCollapse={handleCollapse}
-			tooltipContent={() => (
-				<ToolTooltipContent
-					name={name}
-					iconUrl={toolData?.iconUrl}
-					categories={toolData?.categories}
-					price={toolData?.price}
-					tierName={toolData?.tierName}
-					description={toolData?.description}
-				/>
-			)}
 			cardId={shortId || name}
 		/>
 	);

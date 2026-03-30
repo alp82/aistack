@@ -1,29 +1,11 @@
 import { internalMutation, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 
-type InstructionType =
-	| "prompt"
-	| "rule"
-	| "skill"
-	| "mcp"
-	| "plugin"
-	| "subagent";
-
 type LegacyInstruction = {
-	type: InstructionType;
+	type: string;
 	name: string;
 	description?: string;
 	content?: string;
-	url?: string;
-	trigger?: string;
-	files?: Array<{ name: string; content: string }>;
-	path?: string;
-};
-
-type MigratedInstruction = {
-	type: InstructionType;
-	name: string;
-	description?: string;
 	url?: string;
 	trigger?: string;
 	files?: Array<{
@@ -32,52 +14,65 @@ type MigratedInstruction = {
 		path?: string;
 		tags?: string[];
 	}>;
+	path?: string;
 };
 
-function migrateInstruction(
-	instruction: LegacyInstruction,
-): { migrated: MigratedInstruction; changed: boolean } {
-	const { content, path, files, ...rest } = instruction;
+type MigratedInstruction = {
+	type: string;
+	name: string;
+	description?: string;
+	files: Array<{
+		name: string;
+		content: string;
+		path?: string;
+		tags?: string[];
+	}>;
+};
 
-	// Already has files array — add path from instruction level to first file if needed
+function migrateInstruction(instruction: LegacyInstruction): {
+	migrated: MigratedInstruction;
+	changed: boolean;
+} {
+	const { content, path, url, trigger, files, type, ...rest } = instruction;
+
+	// Rename plugin → hook
+	const newType = type === "plugin" ? "hook" : type;
+
+	// Build files array from existing files or legacy content field
+	let newFiles: MigratedInstruction["files"];
 	if (files && files.length > 0) {
-		const migratedFiles = files.map((f, i) => ({
+		newFiles = files.map((f, i) => ({
 			name: f.name,
 			content: f.content,
-			path: i === 0 && path ? path : undefined,
+			path: f.path ?? (i === 0 && path ? path : undefined),
+			tags: f.tags,
 		}));
-		const changed = path !== undefined;
-		return {
-			migrated: { ...rest, files: migratedFiles },
-			changed: changed || content !== undefined,
-		};
-	}
-
-	// Single-file mode: content exists at instruction level
-	if (content) {
-		return {
-			migrated: {
-				...rest,
-				files: [
-					{
-						name: instruction.name,
-						content,
-						path: path || undefined,
-					},
-				],
+	} else if (content) {
+		newFiles = [
+			{
+				name: instruction.name,
+				content,
+				path: path || undefined,
 			},
-			changed: true,
-		};
+		];
+	} else {
+		newFiles = [];
 	}
 
-	// No content and no files — just strip content/path fields
-	const changed = content !== undefined || path !== undefined;
-	return { migrated: rest, changed };
+	const changed =
+		type !== newType ||
+		content !== undefined ||
+		path !== undefined ||
+		url !== undefined ||
+		trigger !== undefined ||
+		!files;
+
+	return {
+		migrated: { ...rest, type: newType, files: newFiles },
+		changed,
+	};
 }
 
-/**
- * Dry run: preview instruction file migration
- */
 export const dryRun = internalQuery({
 	args: {},
 	returns: v.object({
@@ -120,9 +115,6 @@ export const dryRun = internalQuery({
 	},
 });
 
-/**
- * Migrate all stacks: move instruction content/path into files array
- */
 export const run = internalMutation({
 	args: {},
 	returns: v.object({

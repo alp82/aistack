@@ -1,9 +1,8 @@
-import { Node, mergeAttributes } from "@tiptap/core";
-import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
+import { mergeAttributes, Node } from "@tiptap/core";
 import type { NodeViewProps } from "@tiptap/react";
-import { Maximize2 } from "lucide-react";
+import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import { useOptionalEditorContext } from "@/features/stack-editor/context/EditorContext";
-import HoverPreview from "@/components/ui/hover-preview";
+import { EntityPill, toolPillColors } from "./EntityPill";
 import { expandReferenceToCard } from "./expandCollapse";
 import { ToolTooltipContent } from "./ToolTooltipContent";
 
@@ -18,11 +17,15 @@ function AIToolReferenceView({ node, editor, getPos }: NodeViewProps) {
 	const setHoveredToolName = context?.setHoveredToolName ?? (() => {});
 	const toolData =
 		context?.toolLookupByShortId?.get(shortId) ?? context?.toolLookup.get(name);
-	const iconUrl = toolData?.iconUrl;
 	const isEditable = editor?.isEditable ?? false;
+	const iconUrl = toolData?.iconUrl;
 
-	const handleClick = () => {
-		const cardId = shortId || name;
+	const cardId = shortId || name;
+	const cardExists = !!document.querySelector(
+		`[data-card-id="${CSS.escape(cardId)}"]`,
+	);
+
+	const handleScrollToCard = () => {
 		const cardEl = document.querySelector(
 			`[data-card-id="${CSS.escape(cardId)}"]`,
 		);
@@ -31,8 +34,7 @@ function AIToolReferenceView({ node, editor, getPos }: NodeViewProps) {
 		}
 	};
 
-	const handleExpand = (e: React.MouseEvent) => {
-		e.stopPropagation();
+	const handleExpand = () => {
 		if (!editor || typeof getPos !== "function") return;
 		expandReferenceToCard(editor, getPos, node, "aiToolCard", {
 			shortId,
@@ -40,41 +42,16 @@ function AIToolReferenceView({ node, editor, getPos }: NodeViewProps) {
 		});
 	};
 
-	const blockContent = (
-		<span
-			contentEditable={false}
-			className="inline-flex items-stretch border border-amber-500/30 bg-amber-500/10 align-middle font-mono text-xs font-semibold uppercase text-fg-primary transition-all"
-		>
-			<span
-				onClick={handleClick}
-				onMouseEnter={() => setHoveredToolName(name)}
-				onMouseLeave={() => setHoveredToolName(null)}
-				className="inline-flex cursor-pointer items-center gap-1.5 px-2 py-1 transition-colors hover:bg-amber-500/20"
-			>
-				{iconUrl ? (
-					<img
-						src={iconUrl}
-						alt=""
-						className="size-4 shrink-0 rounded object-contain align-middle"
-						style={{ margin: 0 }}
-					/>
-				) : (
-					<span className="flex size-4 shrink-0 items-center justify-center rounded-sm border border-stroke-subtle bg-bg-panel-muted text-[9px] font-bold text-fg-muted">
-						{name.charAt(0).toUpperCase()}
-					</span>
-				)}
-				<span>{name}</span>
-			</span>
-			{isEditable && (
-				<span
-					role="button"
-					onClick={handleExpand}
-					title="Expand to card"
-					className="flex cursor-pointer items-center border-l border-amber-500/30 px-1.5 text-fg-muted transition-colors hover:bg-amber-500/20 hover:text-amber-400"
-				>
-					<Maximize2 className="size-2.5" />
-				</span>
-			)}
+	const toolIcon = iconUrl ? (
+		<img
+			src={iconUrl}
+			alt=""
+			className="size-4 shrink-0 object-contain align-middle"
+			style={{ margin: 0 }}
+		/>
+	) : (
+		<span className="flex size-4 shrink-0 items-center justify-center border border-stroke-subtle bg-bg-panel-muted text-[9px] font-bold text-fg-muted">
+			{name.charAt(0).toUpperCase()}
 		</span>
 	);
 
@@ -84,42 +61,26 @@ function AIToolReferenceView({ node, editor, getPos }: NodeViewProps) {
 			className="inline-flex items-center mx-1"
 			style={{ verticalAlign: "0.05em" }}
 		>
-			{toolData ? (
-				<HoverPreview
-					mode="wrapper"
-					position="above"
-					width={300}
-					height="auto"
-					offset={8}
-					maxRotation={3}
-					maxOffset={5}
-					renderContent={() => (
-						<ToolTooltipContent
-							name={name}
-							iconUrl={toolData.iconUrl}
-							categories={toolData.categories}
-							price={toolData.price}
-							tierName={toolData.tierName}
-							description={toolData.description}
-						/>
-					)}
-				>
-					{blockContent}
-				</HoverPreview>
-			) : (
-				<HoverPreview
-					mode="wrapper"
-					position="above"
-					width={300}
-					height="auto"
-					offset={8}
-					maxRotation={3}
-					maxOffset={5}
-					renderContent={() => <ToolTooltipContent name={name} />}
-				>
-					{blockContent}
-				</HoverPreview>
-			)}
+			<EntityPill
+				name={name}
+				icon={toolIcon}
+				colors={toolPillColors}
+				onNameClick={handleScrollToCard}
+				onLocate={cardExists ? handleScrollToCard : undefined}
+				onExpand={!cardExists && isEditable ? handleExpand : undefined}
+				tooltipContent={() => (
+					<ToolTooltipContent
+						name={name}
+						iconUrl={toolData?.iconUrl}
+						categories={toolData?.categories}
+						price={toolData?.price}
+						tierName={toolData?.tierName}
+						description={toolData?.description}
+					/>
+				)}
+				onNameHoverStart={() => setHoveredToolName(name)}
+				onNameHoverEnd={() => setHoveredToolName(null)}
+			/>
 		</NodeViewWrapper>
 	);
 }

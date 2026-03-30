@@ -64,7 +64,12 @@ type ViewInstruction = {
 	type: InstructionType;
 	name: string;
 	description?: string;
-	content?: string;
+	files: Array<{
+		name: string;
+		content: string;
+		path?: string;
+		tags?: string[];
+	}>;
 };
 
 function ViewLookupDataSync({

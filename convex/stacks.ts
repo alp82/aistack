@@ -82,15 +82,6 @@ async function calculateStackPricing(
   }
 }
 
-const InstructionTypeValidator = v.union(
-  v.literal('prompt'),
-  v.literal('rule'),
-  v.literal('skill'),
-  v.literal('mcp'),
-  v.literal('plugin'),
-  v.literal('subagent')
-)
-
 const InstructionFileValidator = v.object({
   name: v.string(),
   content: v.string(),
@@ -99,12 +90,10 @@ const InstructionFileValidator = v.object({
 })
 
 const InstructionItemValidator = v.object({
-  type: InstructionTypeValidator,
+  type: v.string(),
   name: v.string(),
   description: v.optional(v.string()),
-  url: v.optional(v.string()),
-  trigger: v.optional(v.string()),
-  files: v.optional(v.array(InstructionFileValidator)),
+  files: v.array(InstructionFileValidator),
 })
 
 const MoneyValidator = v.object({

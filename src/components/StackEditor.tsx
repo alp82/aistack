@@ -1,39 +1,38 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { GridBackground } from "@/components/GridBackground";
 import { useMutation, useQuery } from "convex/react";
 import { CheckCircle, ExternalLink, Save, Send } from "lucide-react";
-import { useCallback, useRef, useEffect } from "react";
-import { api } from "../../convex/_generated/api";
-import type {
-	ModelSubscriptionEntry,
-	InstructionItem,
-	FileEntry,
-} from "@/features/stack-editor/types";
-import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
+import { useCallback, useEffect, useRef } from "react";
 import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
+import { GridBackground } from "@/components/GridBackground";
+import { MobileInstructionOverlay } from "@/components/MobileInstructionOverlay";
 import { SignInDialog } from "@/components/SignInDialog";
+import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
+import { DetailsStep } from "@/features/stack-editor/components/DetailsStep";
+import { ToolsSidebar } from "@/features/stack-editor/components/ToolsSidebar";
+import { WorkflowStep } from "@/features/stack-editor/components/WorkflowStep";
+import {
+	type BundleLookupData,
+	EditorProvider,
+	type InstructionLookupData,
+	type ModelLookupData,
+	type ToolLookupData,
+	useEditorContext,
+} from "@/features/stack-editor/context/EditorContext";
+import { getDraftKey } from "@/features/stack-editor/state/editorReducer";
 import {
 	selectSavePayload,
 	selectSaveValidationError,
 } from "@/features/stack-editor/state/editorSelectors";
-import { getDraftKey } from "@/features/stack-editor/state/editorReducer";
 import { useEditorState } from "@/features/stack-editor/state/useEditorState";
-import {
-	EditorProvider,
-	useEditorContext,
-	type ToolLookupData,
-	type ModelLookupData,
-	type BundleLookupData,
-	type InstructionLookupData,
-} from "@/features/stack-editor/context/EditorContext";
-import { DetailsStep } from "@/features/stack-editor/components/DetailsStep";
-import { WorkflowStep } from "@/features/stack-editor/components/WorkflowStep";
-import { ToolsSidebar } from "@/features/stack-editor/components/ToolsSidebar";
 import type {
 	CreatorProfile,
+	FileEntry,
+	InstructionItem,
+	ModelSubscriptionEntry,
 	StackEditorInitialValue,
 	StackEditorMode,
 } from "@/features/stack-editor/types";
+import { api } from "../../convex/_generated/api";
 
 function LookupDataSync({
 	tools,
@@ -116,7 +115,7 @@ function LookupDataSync({
 				type: instruction.type,
 				description: instruction.description,
 			});
-			if (instruction.files && instruction.files.length > 0) {
+			if (instruction.files.length > 0) {
 				filesMap.set(instruction.name, instruction.files);
 			}
 		}
@@ -362,6 +361,7 @@ export function StackEditor({
 						name: updates.name ?? oldName,
 						type: updates.type ?? "prompt",
 						description: updates.description,
+						files: [],
 					},
 				]);
 			}
@@ -372,26 +372,13 @@ export function StackEditor({
 	const handleInstructionFilesUpdate = useCallback(
 		(instructionName: string, files: FileEntry[]) => {
 			const currentInstructions = stateRef.current.instructions;
-			const found = currentInstructions.some(
-				(inst) => inst.name === instructionName,
-			);
-			if (found) {
-				const updatedInstructions = currentInstructions.map((inst) =>
-					inst.name === instructionName
-						? { ...inst, files: files.length > 0 ? files : undefined }
-						: inst,
-				);
-				setInstructions(updatedInstructions);
-			} else {
-				setInstructions([
-					...currentInstructions,
-					{
-						name: instructionName,
-						type: "prompt" as const,
-						files: files.length > 0 ? files : undefined,
-					},
-				]);
+			if (!currentInstructions.some((inst) => inst.name === instructionName)) {
+				return;
 			}
+			const updatedInstructions = currentInstructions.map((inst) =>
+				inst.name === instructionName ? { ...inst, files } : inst,
+			);
+			setInstructions(updatedInstructions);
 		},
 		[setInstructions],
 	);
@@ -620,6 +607,10 @@ export function StackEditor({
 					</div>
 				</div>
 			</div>
+			<MobileInstructionOverlay
+				instructions={state.instructions}
+				onInstructionsChange={setInstructions}
+			/>
 		</EditorProvider>
 	);
 }
