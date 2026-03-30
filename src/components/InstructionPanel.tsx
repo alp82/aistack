@@ -117,7 +117,7 @@ export function InstructionPanel({
 			<button
 				type="button"
 				onClick={onBack}
-				className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-fg-muted transition-colors hover:text-accent-lime"
+				className="flex items-center gap-1.5 border-2 border-stroke-strong px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime cursor-pointer"
 			>
 				<ArrowLeft className="size-3.5" />
 				Back

@@ -81,8 +81,12 @@ function ViewLookupDataSync({
 	bundles: ViewBundle[];
 	instructions: ViewInstruction[];
 }) {
-	const { setToolLookup, setBundleLookup, setInstructionLookup } =
-		useEditorContext();
+	const {
+		setToolLookup,
+		setBundleLookup,
+		setInstructionLookup,
+		setInstructionFiles,
+	} = useEditorContext();
 
 	useEffect(() => {
 		const toolMap = new Map<string, ToolLookupData>();
@@ -122,15 +126,20 @@ function ViewLookupDataSync({
 
 	useEffect(() => {
 		const instructionMap = new Map<string, InstructionLookupData>();
+		const filesMap = new Map<string, ViewInstruction["files"]>();
 		for (const instruction of instructions) {
 			instructionMap.set(instruction.name, {
 				name: instruction.name,
 				type: instruction.type,
 				description: instruction.description,
 			});
+			if (instruction.files.length > 0) {
+				filesMap.set(instruction.name, instruction.files);
+			}
 		}
 		setInstructionLookup(instructionMap);
-	}, [instructions, setInstructionLookup]);
+		setInstructionFiles(filesMap);
+	}, [instructions, setInstructionLookup, setInstructionFiles]);
 
 	return null;
 }

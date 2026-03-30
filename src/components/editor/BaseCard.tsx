@@ -74,7 +74,11 @@ export function BaseCard({
 
 					{/* Description */}
 					{showDescription && (
-						<div className="px-3 pb-2" onMouseDown={(e) => e.stopPropagation()}>
+						<div
+							className="px-3 pb-2"
+							onMouseDown={(e) => e.stopPropagation()}
+							onClick={() => textareaRef.current?.focus()}
+						>
 							{isEditable ? (
 								<textarea
 									ref={textareaRef}

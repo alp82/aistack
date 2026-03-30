@@ -1,8 +1,8 @@
 # TODO
 
-* shared method for ordering tools in stacks and og images: sponsored -> expensive -> ...
 * orcdev: sponsored openai still counts as $200
-* remove alert when removing tools from sidebar
+* shared method for ordering tools in stacks and og images: sponsored -> expensive -> ...
+* price tiers for sibling products: claude code vs claude ai
 * low quality stacks should only show up on last page and contain the actual stacks - currently they are empty
 * show count numbers in admin subnav (pending reviews, quality flags)
 * mobile optimized:
@@ -21,6 +21,7 @@
     * user comments - one level deep threaded
 * e2e tests
 * currency settings
+* alert and logic when removing tools from sidebar
 * when remove last block of one item in text, ask to also remove in sidebar? dialog
 * tools in stack can be "work" -  like sponsored
 * AI stack tools

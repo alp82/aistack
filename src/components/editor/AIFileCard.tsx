@@ -23,7 +23,13 @@ export interface AIFileCardAttrs {
 	description: string | null;
 }
 
-function AIFileCardView({ node, editor, getPos, selected }: NodeViewProps) {
+function AIFileCardView({
+	node,
+	editor,
+	getPos,
+	selected,
+	updateAttributes,
+}: NodeViewProps) {
 	const { name, instructionType, description } = node.attrs as AIFileCardAttrs;
 	const context = useOptionalEditorContext();
 	const isEditable = editor?.isEditable ?? false;
@@ -53,6 +59,7 @@ function AIFileCardView({ node, editor, getPos, selected }: NodeViewProps) {
 	};
 
 	const handleDescriptionChange = (value: string) => {
+		updateAttributes({ description: value });
 		context?.onInstructionUpdate?.(name, {
 			name,
 			type: instructionType,

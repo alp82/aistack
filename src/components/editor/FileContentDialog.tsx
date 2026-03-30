@@ -236,19 +236,40 @@ export function FileContentDialog({
 						</div>
 					)}
 
-					{/* Content textarea */}
-					<textarea
-						value={activeFile.content}
-						onChange={(e) => handleFileContentChange(activeTab, e.target.value)}
-						onKeyDown={(e) => e.stopPropagation()}
-						placeholder={isEditable ? "File content..." : ""}
-						readOnly={!isEditable}
-						rows={Math.min(
-							Math.max(activeFile.content.split("\n").length + 1, 10),
-							30,
-						)}
-						className="w-full resize-none border-0 bg-bg-panel p-4 font-mono text-xs leading-5 text-fg-primary placeholder:text-fg-muted/40 focus:outline-none focus:ring-0"
-					/>
+					{/* Content area with copy button */}
+					<div className="relative">
+						<button
+							type="button"
+							onClick={handleCopy}
+							className="absolute right-5 top-3 z-10 inline-flex items-center gap-1.5 border-2 border-accent-lime/50 bg-bg-panel px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-accent-lime transition-colors hover:border-accent-lime hover:bg-accent-lime/10 cursor-pointer"
+						>
+							{copied ? (
+								<>
+									<Check className="size-3" />
+									Copied
+								</>
+							) : (
+								<>
+									<Copy className="size-3" />
+									Copy
+								</>
+							)}
+						</button>
+						<textarea
+							value={activeFile.content}
+							onChange={(e) =>
+								handleFileContentChange(activeTab, e.target.value)
+							}
+							onKeyDown={(e) => e.stopPropagation()}
+							placeholder={isEditable ? "File content..." : ""}
+							readOnly={!isEditable}
+							rows={Math.min(
+								Math.max(activeFile.content.split("\n").length + 1, 10),
+								30,
+							)}
+							className="w-full resize-none overflow-y-scroll border-0 bg-bg-panel p-4 font-mono text-xs leading-5 text-fg-primary placeholder:text-fg-muted/40 focus:outline-none focus:ring-0"
+						/>
+					</div>
 				</div>
 			) : (
 				<div className="p-4 font-mono text-sm text-fg-muted">
@@ -259,28 +280,7 @@ export function FileContentDialog({
 			)}
 
 			{/* Footer */}
-			<div className="flex items-center justify-between border-t border-stroke-subtle px-4 py-3">
-				{activeFile ? (
-					<button
-						type="button"
-						onClick={handleCopy}
-						className="inline-flex items-center gap-2 border-2 border-stroke-subtle px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime cursor-pointer"
-					>
-						{copied ? (
-							<>
-								<Check className="size-3.5" />
-								Copied
-							</>
-						) : (
-							<>
-								<Copy className="size-3.5" />
-								Copy
-							</>
-						)}
-					</button>
-				) : (
-					<div />
-				)}
+			<div className="flex items-center justify-end border-t border-stroke-subtle px-4 py-3">
 				<button
 					type="button"
 					onClick={onClose}
