@@ -1,0 +1,29 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "convex dev",
+			"type": "shell",
+			"command": "pnpm convex dev",
+			"isBackground": true,
+			"runOptions": { "runOn": "folderOpen" },
+			"presentation": {
+				"group": "services",
+				"panel": "dedicated"
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "vite dev",
+			"type": "shell",
+			"command": "pnpm dev",
+			"isBackground": true,
+			"runOptions": { "runOn": "folderOpen" },
+			"presentation": {
+				"group": "services",
+				"panel": "dedicated"
+			},
+			"problemMatcher": []
+		}
+	]
+}

@@ -92,6 +92,7 @@ export function ModelPicker({
 		const entry: ModelSubscriptionEntry = {
 			modelSlug: model.slug,
 			modelName: model.name,
+			modelShortId: model.shortId,
 			modelProvider: model.provider,
 			modelCategory: model.category,
 			modelIconUrl: model.iconUrl,

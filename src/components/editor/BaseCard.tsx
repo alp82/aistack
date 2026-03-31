@@ -40,6 +40,15 @@ export function BaseCard({
 		if (textareaRef.current) autoResize(textareaRef.current);
 	}, [draftDescription]);
 
+	// Re-measure after mount in case layout wasn't complete during useLayoutEffect
+	useEffect(() => {
+		if (textareaRef.current) {
+			requestAnimationFrame(() => {
+				if (textareaRef.current) autoResize(textareaRef.current);
+			});
+		}
+	}, []);
+
 	useEffect(() => {
 		if (selected && isEditable) {
 			textareaRef.current?.focus();
@@ -75,7 +84,7 @@ export function BaseCard({
 					{/* Description */}
 					{showDescription && (
 						<div
-							className="px-3 pb-2"
+							className="px-3"
 							onMouseDown={(e) => e.stopPropagation()}
 							onClick={() => textareaRef.current?.focus()}
 						>
@@ -90,10 +99,10 @@ export function BaseCard({
 									onKeyDown={(e) => e.stopPropagation()}
 									placeholder="Add a description..."
 									rows={1}
-									className="w-full resize-none overflow-hidden border-0 bg-transparent font-mono text-xs leading-relaxed text-fg-muted placeholder:text-fg-muted/40 focus:outline-none focus:ring-0"
+									className="w-full resize-none overflow-hidden border-0 bg-transparent text-sm leading-relaxed text-fg-secondary placeholder:text-fg-muted/40 focus:outline-none focus:ring-0"
 								/>
 							) : (
-								<p className="m-0 whitespace-pre-wrap font-mono text-xs leading-relaxed text-fg-muted">
+								<p className="m-0 whitespace-pre-wrap text-sm leading-relaxed text-fg-secondary">
 									{draftDescription}
 								</p>
 							)}

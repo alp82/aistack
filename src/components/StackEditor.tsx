@@ -212,6 +212,7 @@ export function StackEditor({
 				{
 					toolSlug: fullTool.slug,
 					toolName: fullTool.name,
+					toolShortId: fullTool.shortId,
 					toolCategories: fullTool.categories,
 					toolIconUrl: fullTool.iconUrl ?? undefined,
 					tierId: defaultTier.tierId,
@@ -262,6 +263,7 @@ export function StackEditor({
 			const entry: ModelSubscriptionEntry = {
 				modelSlug: fullModel.slug,
 				modelName: fullModel.name,
+				modelShortId: fullModel.shortId,
 				modelProvider: fullModel.provider,
 				modelCategory: fullModel.category,
 				modelIconUrl: fullModel.iconUrl,

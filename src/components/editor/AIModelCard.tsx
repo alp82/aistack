@@ -12,16 +12,26 @@ export interface AIModelCardAttrs {
 	shortId: string;
 	name: string;
 	provider: string;
+	description: string | null;
 }
 
-function AIModelCardView({ node, editor, getPos, selected }: NodeViewProps) {
-	const { shortId, name, provider } = node.attrs as AIModelCardAttrs;
+function AIModelCardView({
+	node,
+	editor,
+	getPos,
+	selected,
+	updateAttributes,
+}: NodeViewProps) {
+	const { shortId, name, provider, description } =
+		node.attrs as AIModelCardAttrs;
 	const context = useOptionalEditorContext();
 	const modelData =
 		context?.modelLookupByShortId?.get(shortId) ??
 		context?.modelLookup.get(name);
 	const isEditable = editor?.isEditable ?? false;
 	const iconUrl = modelData?.iconUrl;
+
+	const resolvedDescription = modelData?.description ?? description ?? "";
 
 	const handleCollapse = () => {
 		if (!editor || typeof getPos !== "function") return;
@@ -30,6 +40,11 @@ function AIModelCardView({ node, editor, getPos, selected }: NodeViewProps) {
 			name,
 			provider,
 		});
+	};
+
+	const handleDescriptionChange = (value: string) => {
+		updateAttributes({ description: value });
+		context?.onModelDescriptionUpdate?.(shortId || name, value);
 	};
 
 	const modelIcon = iconUrl ? (
@@ -63,11 +78,9 @@ function AIModelCardView({ node, editor, getPos, selected }: NodeViewProps) {
 					)}
 				/>
 			}
-			description={modelData?.description ?? ""}
+			description={resolvedDescription}
 			isEditable={isEditable}
-			onDescriptionChange={(value) =>
-				context?.onModelDescriptionUpdate?.(shortId || name, value)
-			}
+			onDescriptionChange={handleDescriptionChange}
 			cardId={shortId || name}
 		/>
 	);
@@ -89,6 +102,9 @@ export const AIModelCard = Node.create({
 			provider: {
 				default: "",
 			},
+			description: {
+				default: null,
+			},
 		};
 	},
 
@@ -102,6 +118,7 @@ export const AIModelCard = Node.create({
 						shortId: el.getAttribute("data-short-id") || null,
 						name: el.getAttribute("data-model-name") || "",
 						provider: el.getAttribute("data-provider") || "",
+						description: el.getAttribute("data-description") || null,
 					};
 				},
 			},
@@ -116,6 +133,7 @@ export const AIModelCard = Node.create({
 				"data-short-id": node.attrs.shortId,
 				"data-model-name": node.attrs.name,
 				"data-provider": node.attrs.provider,
+				"data-description": node.attrs.description || "",
 			}),
 			node.attrs.name,
 		];

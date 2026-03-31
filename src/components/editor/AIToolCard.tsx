@@ -11,15 +11,24 @@ import { ToolTooltipContent } from "./ToolTooltipContent";
 export interface AIToolCardAttrs {
 	shortId: string;
 	name: string;
+	description: string | null;
 }
 
-function AIToolCardView({ node, editor, getPos, selected }: NodeViewProps) {
-	const { shortId, name } = node.attrs as AIToolCardAttrs;
+function AIToolCardView({
+	node,
+	editor,
+	getPos,
+	selected,
+	updateAttributes,
+}: NodeViewProps) {
+	const { shortId, name, description } = node.attrs as AIToolCardAttrs;
 	const context = useOptionalEditorContext();
 	const toolData =
 		context?.toolLookupByShortId?.get(shortId) ?? context?.toolLookup.get(name);
 	const isEditable = editor?.isEditable ?? false;
 	const iconUrl = toolData?.iconUrl;
+
+	const resolvedDescription = toolData?.description ?? description ?? "";
 
 	const handleCollapse = () => {
 		if (!editor || typeof getPos !== "function") return;
@@ -27,6 +36,11 @@ function AIToolCardView({ node, editor, getPos, selected }: NodeViewProps) {
 			shortId,
 			name,
 		});
+	};
+
+	const handleDescriptionChange = (value: string) => {
+		updateAttributes({ description: value });
+		context?.onToolDescriptionUpdate?.(shortId || name, value);
 	};
 
 	const toolIcon = iconUrl ? (
@@ -61,11 +75,9 @@ function AIToolCardView({ node, editor, getPos, selected }: NodeViewProps) {
 					)}
 				/>
 			}
-			description={toolData?.description ?? ""}
+			description={resolvedDescription}
 			isEditable={isEditable}
-			onDescriptionChange={(value) =>
-				context?.onToolDescriptionUpdate?.(shortId || name, value)
-			}
+			onDescriptionChange={handleDescriptionChange}
 			cardId={shortId || name}
 		/>
 	);
@@ -84,6 +96,9 @@ export const AIToolCard = Node.create({
 			name: {
 				default: "",
 			},
+			description: {
+				default: null,
+			},
 		};
 	},
 
@@ -96,6 +111,7 @@ export const AIToolCard = Node.create({
 					return {
 						shortId: el.getAttribute("data-short-id") || null,
 						name: el.getAttribute("data-tool-name") || "",
+						description: el.getAttribute("data-description") || null,
 					};
 				},
 			},
@@ -109,6 +125,7 @@ export const AIToolCard = Node.create({
 				"data-ai-tool-card": "",
 				"data-short-id": node.attrs.shortId,
 				"data-tool-name": node.attrs.name,
+				"data-description": node.attrs.description || "",
 			}),
 			node.attrs.name,
 		];

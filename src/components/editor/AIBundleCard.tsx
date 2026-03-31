@@ -11,10 +11,17 @@ import { collapseCardToReference } from "./expandCollapse";
 export interface AIBundleCardAttrs {
 	shortId: string;
 	name: string;
+	description: string | null;
 }
 
-function AIBundleCardView({ node, editor, getPos, selected }: NodeViewProps) {
-	const { shortId, name } = node.attrs as AIBundleCardAttrs;
+function AIBundleCardView({
+	node,
+	editor,
+	getPos,
+	selected,
+	updateAttributes,
+}: NodeViewProps) {
+	const { shortId, name, description } = node.attrs as AIBundleCardAttrs;
 	const context = useOptionalEditorContext();
 	const bundleData =
 		context?.bundleLookupByShortId?.get(shortId) ??
@@ -22,12 +29,19 @@ function AIBundleCardView({ node, editor, getPos, selected }: NodeViewProps) {
 	const isEditable = editor?.isEditable ?? false;
 	const iconUrl = bundleData?.iconUrl;
 
+	const resolvedDescription = bundleData?.description ?? description ?? "";
+
 	const handleCollapse = () => {
 		if (!editor || typeof getPos !== "function") return;
 		collapseCardToReference(editor, getPos, node, "aiBundleReference", {
 			shortId,
 			name,
 		});
+	};
+
+	const handleDescriptionChange = (value: string) => {
+		updateAttributes({ description: value });
+		context?.onBundleDescriptionUpdate?.(shortId || name, value);
 	};
 
 	const bundleIcon = iconUrl ? (
@@ -61,11 +75,9 @@ function AIBundleCardView({ node, editor, getPos, selected }: NodeViewProps) {
 					)}
 				/>
 			}
-			description={bundleData?.description ?? ""}
+			description={resolvedDescription}
 			isEditable={isEditable}
-			onDescriptionChange={(value) =>
-				context?.onBundleDescriptionUpdate?.(shortId || name, value)
-			}
+			onDescriptionChange={handleDescriptionChange}
 			cardId={shortId || name}
 		/>
 	);
@@ -84,6 +96,9 @@ export const AIBundleCard = Node.create({
 			name: {
 				default: "",
 			},
+			description: {
+				default: null,
+			},
 		};
 	},
 
@@ -96,6 +111,7 @@ export const AIBundleCard = Node.create({
 					return {
 						shortId: el.getAttribute("data-short-id") || null,
 						name: el.getAttribute("data-bundle-name") || "",
+						description: el.getAttribute("data-description") || null,
 					};
 				},
 			},
@@ -109,6 +125,7 @@ export const AIBundleCard = Node.create({
 				"data-ai-bundle-card": "",
 				"data-short-id": node.attrs.shortId,
 				"data-bundle-name": node.attrs.name,
+				"data-description": node.attrs.description || "",
 			}),
 			node.attrs.name,
 		];

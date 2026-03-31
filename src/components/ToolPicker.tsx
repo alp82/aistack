@@ -119,6 +119,7 @@ export function ToolPicker({
 		const entry: ToolSubscriptionEntry = {
 			toolSlug: tool.slug,
 			toolName: tool.name,
+			toolShortId: tool.shortId,
 			toolCategories: tool.categories,
 			toolIconUrl: tool.iconUrl,
 			tierId: defaultTier?.tierId,
