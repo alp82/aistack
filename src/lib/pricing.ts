@@ -130,8 +130,8 @@ export function sortToolsByPrice<T extends SortableTool>(tools: T[]): T[] {
 			getNormalizedMonthlyAmount(t.originalTierPrice ?? t.price.fixed);
 
 		const groupOrder = (t: SortableTool) => {
-			if (sortPrice(t) > 0) return 0;
 			if (t.priceKind === "bundle") return 1;
+			if (sortPrice(t) > 0) return 0;
 			return 2;
 		};
 
