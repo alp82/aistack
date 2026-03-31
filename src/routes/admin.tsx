@@ -23,6 +23,8 @@ type AdminTab = "review" | "quality" | "email";
 
 function AdminPage() {
 	const isAdmin = useQuery(api.admin.checkIsAdmin);
+	const reviewCount = useQuery(api.admin.getReviewTabCount);
+	const qualityCount = useQuery(api.admin.getQualityTabCount);
 	const [activeTab, setActiveTab] = useState<AdminTab>("review");
 
 	if (isAdmin === undefined) {
@@ -54,6 +56,11 @@ function AdminPage() {
 						>
 							<ClipboardCheck className="size-4" />
 							Review
+							{reviewCount ? (
+								<span className="inline-flex h-5 min-w-5 items-center justify-center bg-accent-lime px-1 font-mono text-xs font-bold text-bg-canvas">
+									{reviewCount}
+								</span>
+							) : null}
 						</button>
 						<button
 							type="button"
@@ -66,6 +73,11 @@ function AdminPage() {
 						>
 							<Flag className="size-4" />
 							Quality
+							{qualityCount ? (
+								<span className="inline-flex h-5 min-w-5 items-center justify-center bg-accent-lime px-1 font-mono text-xs font-bold text-bg-canvas">
+									{qualityCount}
+								</span>
+							) : null}
 						</button>
 						<button
 							type="button"

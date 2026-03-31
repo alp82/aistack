@@ -86,6 +86,50 @@ export const getPendingReviewCount = query({
   },
 })
 
+export const getReviewTabCount = query({
+  args: {},
+  returns: v.union(v.number(), v.null()),
+  handler: async (ctx) => {
+    if (!(await isAdmin(ctx))) return null
+
+    const tools = await ctx.db
+      .query('tools')
+      .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'pending'))
+      .collect()
+    const bundles = await ctx.db
+      .query('bundles')
+      .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'pending'))
+      .collect()
+    const models = await ctx.db
+      .query('models')
+      .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'pending'))
+      .collect()
+    const editSuggestions = await ctx.db
+      .query('toolEditSuggestions')
+      .withIndex('by_status', (q) => q.eq('status', 'pending'))
+      .collect()
+
+    return tools.length + bundles.length + models.length + editSuggestions.length
+  },
+})
+
+export const getQualityTabCount = query({
+  args: {},
+  returns: v.union(v.number(), v.null()),
+  handler: async (ctx) => {
+    if (!(await isAdmin(ctx))) return null
+
+    const allFlags = await ctx.db.query('stackFlags').collect()
+    const flaggedStackIds = new Set(allFlags.map((f) => f.stackId))
+    let count = 0
+    for (const stackId of flaggedStackIds) {
+      const stack = await ctx.db.get(stackId)
+      if (stack && !stack.isLowQuality) count++
+    }
+    return count
+  },
+})
+
 export const getPendingTools = query({
   args: {},
   handler: async (ctx) => {
