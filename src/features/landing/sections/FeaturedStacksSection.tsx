@@ -95,8 +95,6 @@ function filterPreviewStacks(
 	sortOption: SortOption = "upvotes",
 ) {
 	const filtered = previewStacks.filter((stack) => {
-		if (stack.isLowQuality) return false;
-
 		const matchesAudience =
 			audienceFilter === "all"
 				? true
@@ -153,8 +151,8 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 		[visibleStacks],
 	);
 	const filteredStacks = useMemo(
-		() => filterPreviewStacks(stacks, "all", toolFilter, sortOption),
-		[stacks, toolFilter, sortOption],
+		() => filterPreviewStacks(visibleStacks, "all", toolFilter, sortOption),
+		[visibleStacks, toolFilter, sortOption],
 	);
 
 	const totalPages = Math.max(

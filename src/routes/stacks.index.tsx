@@ -3,7 +3,13 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { useConvexAuth } from "convex/react";
 import { useMemo, useState } from "react";
-import { AlertTriangle, ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
+import {
+	AlertTriangle,
+	ChevronLeft,
+	ChevronRight,
+	Plus,
+	Search,
+} from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { GridBackground } from "@/components/GridBackground";
 import { PageHeader } from "@/components/PageHeader";
@@ -193,45 +199,53 @@ function BrowseStacksPage() {
 	const [currentPage, setCurrentPage] = useState(1);
 	const [showLowQuality, setShowLowQuality] = useState(false);
 
-	const goodStacks = useMemo(() => stacks.filter((s) => !s.isLowQuality), [stacks]);
-	const lowQualityStacks = useMemo(() => stacks.filter((s) => s.isLowQuality), [stacks]);
+	const goodStacks = useMemo(
+		() => stacks.filter((s) => !s.isLowQuality),
+		[stacks],
+	);
+	const lowQualityStacks = useMemo(
+		() => stacks.filter((s) => s.isLowQuality),
+		[stacks],
+	);
 
-	const categoryOptions = useMemo(() => getCategoryOptions(goodStacks), [goodStacks]);
-	const filteredStacks = useMemo(() => {
-		let result = filterPreviewStacks(goodStacks, "all", toolFilter, sortOption);
-		if (searchQuery.trim()) {
-			const q = searchQuery.trim().toLowerCase();
-			result = result.filter(
-				(s) =>
-					s.name.toLowerCase().includes(q) ||
-					s.oneLiner.toLowerCase().includes(q) ||
-					s.creator.name.toLowerCase().includes(q) ||
-					s.tools.some((t) => t.name.toLowerCase().includes(q)),
-			);
-		}
-		return result;
-	}, [goodStacks, toolFilter, sortOption, searchQuery]);
+	const categoryOptions = useMemo(
+		() => getCategoryOptions(goodStacks),
+		[goodStacks],
+	);
 
-	const filteredLowQualityStacks = useMemo(() => {
-		if (!showLowQuality) return [];
-		let result = filterPreviewStacks(lowQualityStacks, "all", toolFilter, sortOption);
-		if (searchQuery.trim()) {
-			const q = searchQuery.trim().toLowerCase();
-			result = result.filter(
-				(s) =>
-					s.name.toLowerCase().includes(q) ||
-					s.oneLiner.toLowerCase().includes(q) ||
-					s.creator.name.toLowerCase().includes(q) ||
-					s.tools.some((t) => t.name.toLowerCase().includes(q)),
-			);
-		}
-		return result;
-	}, [lowQualityStacks, toolFilter, sortOption, searchQuery, showLowQuality]);
+	const searchFilter = (list: LandingStackPreview[]) => {
+		if (!searchQuery.trim()) return list;
+		const q = searchQuery.trim().toLowerCase();
+		return list.filter(
+			(s) =>
+				s.name.toLowerCase().includes(q) ||
+				s.oneLiner.toLowerCase().includes(q) ||
+				s.creator.name.toLowerCase().includes(q) ||
+				s.tools.some((t) => t.name.toLowerCase().includes(q)),
+		);
+	};
+
+	const filteredStacks = useMemo(
+		() =>
+			searchFilter(
+				filterPreviewStacks(goodStacks, "all", toolFilter, sortOption),
+			),
+		[goodStacks, toolFilter, sortOption, searchQuery],
+	);
+
+	const filteredLowQualityStacks = useMemo(
+		() =>
+			searchFilter(
+				filterPreviewStacks(lowQualityStacks, "all", toolFilter, sortOption),
+			),
+		[lowQualityStacks, toolFilter, sortOption, searchQuery],
+	);
 
 	const totalPages = Math.max(
 		1,
 		Math.ceil(filteredStacks.length / STACKS_PER_PAGE),
 	);
+	const isLastPage = currentPage >= totalPages;
 	const safeCurrentPage = Math.min(currentPage, totalPages);
 	const paginatedStacks = filteredStacks.slice(
 		(safeCurrentPage - 1) * STACKS_PER_PAGE,
@@ -380,8 +394,7 @@ function BrowseStacksPage() {
 								</div>
 							)}
 
-							{/* Low quality stacks disclaimer */}
-							{lowQualityStacks.length > 0 && (
+							{isLastPage && filteredLowQualityStacks.length > 0 && (
 								<div className="mt-16 border border-dashed border-stroke-subtle">
 									{!showLowQuality ? (
 										<button
@@ -391,15 +404,20 @@ function BrowseStacksPage() {
 										>
 											<AlertTriangle className="size-4 text-orange-400" />
 											<span>
-												{lowQualityStacks.length} stack{lowQualityStacks.length !== 1 ? "s" : ""} hidden due to low quality reports — click to show
+												{filteredLowQualityStacks.length} stack
+												{filteredLowQualityStacks.length !== 1 ? "s" : ""}{" "}
+												hidden due to low quality reports — click to show
 											</span>
 										</button>
 									) : (
-										<div>
+										<>
 											<div className="flex items-center justify-between gap-4 border-b border-stroke-subtle px-6 py-4">
 												<div className="flex items-center gap-2 font-mono text-sm text-fg-muted">
 													<AlertTriangle className="size-4 text-orange-400" />
-													<span>These stacks have been flagged as low quality by the community.</span>
+													<span>
+														These stacks have been flagged as low quality by the
+														community.
+													</span>
 												</div>
 												<button
 													type="button"
@@ -414,7 +432,7 @@ function BrowseStacksPage() {
 													<StackCard key={stack._id} stack={stack} />
 												))}
 											</div>
-										</div>
+										</>
 									)}
 								</div>
 							)}

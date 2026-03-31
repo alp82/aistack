@@ -1,7 +1,5 @@
 # TODO
 
-* low quality stacks should only show up on last page and contain the actual stacks - currently they are empty
-* show count numbers in admin subnav (pending reviews, quality flags)
 * mobile optimized:
     * header
     * cards
