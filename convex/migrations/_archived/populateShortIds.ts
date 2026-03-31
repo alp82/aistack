@@ -1,4 +1,4 @@
-import { internalMutation, internalQuery } from "../_generated/server";
+import { internalMutation, internalQuery } from "../../_generated/server";
 import { v } from "convex/values";
 
 // Characters for shortId generation (alphanumeric, no ambiguous chars)
