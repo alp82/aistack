@@ -33,7 +33,9 @@ function StackCard({ stack }: StackCardProps) {
 		}
 	}, [upvoteStatus]);
 
-	const displayTools = sortToolsByPrice(stack.tools).slice(0, 6);
+	const displayTools = sortToolsByPrice(
+		stack.tools.filter((t) => t.kind === "main"),
+	).slice(0, 6);
 	const personalPageUrl = stack.personalPageUrl;
 	const projectPageUrl = stack.projectPageUrl;
 	const categories = [
@@ -180,10 +182,10 @@ function StackCard({ stack }: StackCardProps) {
 											<img
 												src={tool.iconUrl}
 												alt={tool.name}
-												className="size-4 object-contain"
+												className="size-5 object-contain"
 											/>
 										) : (
-											<Box className="size-4" />
+											<Box className="size-5" />
 										)}
 									</span>
 									<span className="font-mono text-xs truncate">

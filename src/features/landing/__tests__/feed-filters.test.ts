@@ -16,6 +16,7 @@ function tool(
 		name,
 		iconUrl: null,
 		categories,
+		kind: "main",
 		price: { pricingType: "fixed" },
 		priceKind: "regular",
 	};

@@ -14,6 +14,7 @@
     * article grid with nice bg borders: https://www.aihero.dev/posts
     * use the same editor. new feature: crosslinking articles
     * user comments - one level deep threaded
+* fix tests
 * e2e tests
 * price tiers for sibling products: claude code vs claude ai
 * currency settings

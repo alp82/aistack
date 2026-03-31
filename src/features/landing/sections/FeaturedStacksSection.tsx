@@ -34,6 +34,7 @@ type LandingStackPreview = {
 		name: string;
 		categories: string[];
 		iconUrl?: string | null;
+		kind: "main" | "misc";
 		price: {
 			pricingType: string;
 			fixed?: {
@@ -139,7 +140,7 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 
 function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 	const [toolFilter, setToolFilter] = useState<string>("all");
-	const [sortOption, setSortOption] = useState<SortOption>("newest");
+	const [sortOption, setSortOption] = useState<SortOption>("upvotes");
 	const [currentPage, setCurrentPage] = useState(1);
 
 	const visibleStacks = useMemo(
