@@ -34,9 +34,7 @@ const InstructionItem = v.object({
   type: v.string(),
   name: v.string(),
   description: v.optional(v.string()),
-  /** @deprecated Migrate old instructions to use files[] */
-  content: v.optional(v.string()),
-  files: v.optional(v.array(InstructionFile)),
+  files: v.array(InstructionFile),
 })
 
 const ModelCategory = v.union(
@@ -82,7 +80,7 @@ export default defineSchema({
   tools: defineTable({
     name: v.string(),
     slug: v.string(),
-    shortId: v.optional(v.string()),
+    shortId: v.string(),
     aliases: v.optional(v.array(v.string())),
     categories: v.array(v.string()),
     iconUrl: v.optional(v.string()),
@@ -184,7 +182,7 @@ export default defineSchema({
   bundles: defineTable({
     name: v.string(),
     slug: v.string(),
-    shortId: v.optional(v.string()),
+    shortId: v.string(),
     aliases: v.optional(v.array(v.string())),
     description: v.optional(v.string()),
     iconUrl: v.optional(v.string()),
@@ -237,7 +235,7 @@ export default defineSchema({
   models: defineTable({
     name: v.string(),
     slug: v.string(),
-    shortId: v.optional(v.string()),
+    shortId: v.string(),
     aliases: v.optional(v.array(v.string())),
     provider: v.string(),
     category: ModelCategory,

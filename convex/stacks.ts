@@ -93,9 +93,7 @@ const InstructionItemValidator = v.object({
   type: v.string(),
   name: v.string(),
   description: v.optional(v.string()),
-  /** @deprecated Migrate old instructions to use files[] */
-  content: v.optional(v.string()),
-  files: v.optional(v.array(InstructionFileValidator)),
+  files: v.array(InstructionFileValidator),
 })
 
 const MoneyValidator = v.object({
