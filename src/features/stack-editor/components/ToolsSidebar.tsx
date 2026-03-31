@@ -67,7 +67,6 @@ function ToolsSidebar({
 		removeModelFromEditor,
 		removeBundleFromEditor,
 		removeInstructionFromEditor,
-		syncInstructionToEditor,
 		insertModelCardAtCursor,
 		insertBundleCardAtCursor,
 		insertInstructionCardAtCursor,
@@ -304,19 +303,10 @@ function ToolsSidebar({
 					next[idx] = updated;
 					onInstructionsChange(next);
 				}
-				// Sync description back to Tiptap node attr so HTML serialization stays current
-				syncInstructionToEditor(editingInstruction.name, {
-					description: updated.description ?? null,
-				});
 			}
 			setEditingInstruction(null);
 		},
-		[
-			editingInstruction,
-			instructions,
-			onInstructionsChange,
-			syncInstructionToEditor,
-		],
+		[editingInstruction, instructions, onInstructionsChange],
 	);
 
 	// Handle delete from panel

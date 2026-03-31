@@ -76,10 +76,6 @@ type EditorContextValue = {
 	removeModelFromEditor: (modelName: string) => void;
 	removeBundleFromEditor: (bundleName: string) => void;
 	removeInstructionFromEditor: (instructionName: string) => void;
-	syncInstructionToEditor: (
-		instructionName: string,
-		attrs: Record<string, unknown>,
-	) => void;
 	onInstructionUpdate?: (
 		oldName: string,
 		updates: Partial<InstructionLookupData>,
@@ -111,34 +107,6 @@ type EditorContextValue = {
 };
 
 const EditorContext = createContext<EditorContextValue | null>(null);
-
-/**
- * Update attrs on all aiFileCard nodes matching a given name.
- */
-function syncInstructionNodeAttrs(
-	editor: Editor,
-	instructionName: string,
-	attrs: Record<string, unknown>,
-) {
-	const { doc, tr } = editor.state;
-	let changed = false;
-
-	doc.descendants((node, pos) => {
-		if (
-			node.type.name === "aiFileCard" &&
-			node.attrs.name === instructionName
-		) {
-			for (const [key, value] of Object.entries(attrs)) {
-				tr.setNodeAttribute(pos, key, value);
-			}
-			changed = true;
-		}
-	});
-
-	if (changed) {
-		editor.view.dispatch(tr);
-	}
-}
 
 /**
  * Remove all nodes matching given type names and name attribute from the editor.
@@ -430,15 +398,6 @@ export function EditorProvider({
 		);
 	}, []);
 
-	const syncInstructionToEditor = useCallback(
-		(instructionName: string, attrs: Record<string, unknown>) => {
-			const editor = editorRef.current;
-			if (!editor) return;
-			syncInstructionNodeAttrs(editor, instructionName, attrs);
-		},
-		[],
-	);
-
 	return (
 		<EditorContext.Provider
 			value={{
@@ -455,7 +414,6 @@ export function EditorProvider({
 				removeModelFromEditor,
 				removeBundleFromEditor,
 				removeInstructionFromEditor,
-				syncInstructionToEditor,
 				onInstructionUpdate,
 				onToolDescriptionUpdate,
 				onBundleDescriptionUpdate,
