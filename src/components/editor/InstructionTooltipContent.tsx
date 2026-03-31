@@ -38,9 +38,6 @@ export function InstructionTooltipContent({
 					{previewText}
 				</div>
 			)}
-			<div className="mt-4 inline-flex items-center border border-stroke-strong bg-bg-panel px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-fg-primary">
-				Click to open full instruction
-			</div>
 		</div>
 	);
 }

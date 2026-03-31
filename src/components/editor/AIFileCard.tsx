@@ -30,7 +30,7 @@ function AIFileCardView({
 	selected,
 	updateAttributes,
 }: NodeViewProps) {
-	const { name, instructionType, description } = node.attrs as AIFileCardAttrs;
+	const { name, instructionType } = node.attrs as AIFileCardAttrs;
 	const context = useOptionalEditorContext();
 	const isEditable = editor?.isEditable ?? false;
 
@@ -43,7 +43,7 @@ function AIFileCardView({
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [dialogTab, setDialogTab] = useState(0);
 
-	const resolvedDescription = instructionData?.description ?? description ?? "";
+	const resolvedDescription = instructionData?.description ?? "";
 
 	const openDialog = (tab: number) => {
 		setDialogTab(tab);

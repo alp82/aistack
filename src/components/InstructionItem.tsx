@@ -30,6 +30,11 @@ export function InstructionItem({
 					<p className="truncate font-mono text-sm font-semibold text-fg-primary">
 						{instruction.name}
 					</p>
+					{instruction.description && (
+						<p className="truncate text-xs text-fg-muted mt-0.5">
+							{instruction.description}
+						</p>
+					)}
 					<p className="font-mono text-[10px] uppercase tracking-wider text-fg-muted">
 						{getInstructionTypeLabel(instruction.type)}
 					</p>

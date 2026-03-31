@@ -79,10 +79,17 @@ function InstructionEntry({
 		</div>
 	);
 
+	const parts = [getInstructionTypeLabel(instruction.type)];
+	if (instruction.description) parts.push(instruction.description);
+	if (instruction.files.length > 0)
+		parts.push(
+			`${instruction.files.length} file${instruction.files.length !== 1 ? "s" : ""}`,
+		);
+
 	return (
 		<PickerEntryCard
 			name={instruction.name}
-			subtitle={getInstructionTypeLabel(instruction.type)}
+			subtitle={parts.join(" · ")}
 			icon={icon}
 			onInsertClick={onClick}
 			onRemove={onRemove}
