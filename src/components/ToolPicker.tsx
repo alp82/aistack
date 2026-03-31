@@ -2,6 +2,7 @@ import { useQuery } from "convex/react";
 import { Gift, Package, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { categoryConfig, type ToolCategory } from "@/config/categoryConfig";
+import { sortToolsByPrice } from "@/lib/pricing";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useEditorContext } from "@/features/stack-editor/context/EditorContext";
@@ -43,6 +44,11 @@ export interface ToolSubscriptionEntry {
 			pricePerUnit: number;
 			currency: string;
 		};
+	};
+	originalTierPrice?: {
+		currency: string;
+		amount: number;
+		period: "month" | "year" | "one_time";
 	};
 	priceKind: "regular" | "discounted" | "bundle" | "usage_based" | "sponsored";
 	bundleSlug?: string;
@@ -130,6 +136,7 @@ export function ToolPicker({
 				fixed: defaultTier?.pricing.fixed,
 				usage: defaultTier?.pricing.usage,
 			},
+			originalTierPrice: defaultTier?.pricing.fixed,
 			priceKind: "regular",
 		};
 		onChange([...value, entry]);
@@ -175,12 +182,24 @@ export function ToolPicker({
 		setCustomToolName("");
 	};
 
+	const sortedEntries = useMemo(() => {
+		const wrapped = value.map((entry, index) => ({
+			...entry,
+			name: entry.toolName,
+			_origIndex: index,
+		}));
+		return sortToolsByPrice(wrapped).map((w) => ({
+			entry: value[w._origIndex],
+			index: w._origIndex,
+		}));
+	}, [value]);
+
 	return (
 		<div className="space-y-3">
 			{/* Selected Tools */}
 			{value.length > 0 && (
 				<div className="space-y-2">
-					{value.map((entry, index) => (
+					{sortedEntries.map(({ entry, index }) => (
 						<ToolEntry
 							key={`${entry.toolSlug}-${index}`}
 							entry={entry}
@@ -372,7 +391,6 @@ function ToolEntry({
 
 	const handleToggleBundle = useCallback(() => {
 		if (isBundle) {
-			// Restore to regular pricing from the current tier
 			const tier = tiers.find((t) => t.tierId === entry.tierId);
 			onUpdate({
 				priceKind: "regular",
@@ -386,9 +404,11 @@ function ToolEntry({
 					: entry.price,
 			});
 		} else {
+			const tier = tiers.find((t) => t.tierId === entry.tierId);
 			onUpdate({
 				priceKind: "bundle",
 				bundleSlug: bundleSubscriptions?.[0]?.bundleSlug,
+				originalTierPrice: tier?.pricing.fixed ?? entry.originalTierPrice,
 				price: {
 					pricingType: "fixed",
 					fixed: { currency: "USD", amount: 0, period: "month" },
@@ -398,7 +418,7 @@ function ToolEntry({
 	}, [
 		isBundle,
 		entry.tierId,
-		entry.price,
+		entry.originalTierPrice,
 		tiers,
 		bundleSubscriptions,
 		onUpdate,
@@ -418,9 +438,11 @@ function ToolEntry({
 					: entry.price,
 			});
 		} else {
+			const tier = tiers.find((t) => t.tierId === entry.tierId);
 			onUpdate({
 				priceKind: "sponsored",
 				bundleSlug: undefined,
+				originalTierPrice: tier?.pricing.fixed ?? entry.originalTierPrice,
 				price: {
 					pricingType: "fixed",
 					fixed: { currency: "USD", amount: 0, period: "month" },
@@ -432,15 +454,19 @@ function ToolEntry({
 	const handleTierChange = (tierId: string) => {
 		const tier = tiers.find((t) => t.tierId === tierId);
 		if (tier) {
-			onUpdate({
+			const updates: Partial<ToolSubscriptionEntry> = {
 				tierId,
 				primaryUsageLabel: tier.name,
-				price: {
+				originalTierPrice: tier.pricing.fixed,
+			};
+			if (!isSponsored && !isBundle) {
+				updates.price = {
 					pricingType: tier.pricing.pricingType,
 					fixed: tier.pricing.fixed,
 					usage: tier.pricing.usage,
-				},
-			});
+				};
+			}
+			onUpdate(updates);
 		}
 	};
 

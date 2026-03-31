@@ -7,6 +7,7 @@ import { CategoryLabel } from "@/components/CategoryLabel";
 import { PriceDisplay } from "@/components/PriceDisplay";
 import { UpvoteButton } from "@/components/UpvoteButton";
 import type { LandingStackPreview } from "@/features/landing/sections/FeaturedStacksSection";
+import { sortToolsByPrice } from "@/lib/pricing";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
@@ -32,7 +33,7 @@ function StackCard({ stack }: StackCardProps) {
 		}
 	}, [upvoteStatus]);
 
-	const displayTools = stack.tools.slice(0, 6);
+	const displayTools = sortToolsByPrice(stack.tools).slice(0, 6);
 	const personalPageUrl = stack.personalPageUrl;
 	const projectPageUrl = stack.projectPageUrl;
 	const categories = [
@@ -202,11 +203,11 @@ function StackCard({ stack }: StackCardProps) {
 						))}
 					</div>
 					<span className="inline-flex items-center gap-1 font-mono text-xs font-semibold text-accent-lime transition-all">
-					Open stack
-					<ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
-				</span>
-			</div>
-		</motion.div>
+						Open stack
+						<ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
+					</span>
+				</div>
+			</motion.div>
 		</Link>
 	);
 }

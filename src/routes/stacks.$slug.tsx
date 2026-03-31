@@ -31,7 +31,7 @@ import {
 	useEditorContext,
 } from "@/features/stack-editor/context/EditorContext";
 import type { InstructionType } from "@/features/stack-editor/types";
-import { formatPricingSummary } from "@/lib/pricing";
+import { formatPricingSummary, sortToolsByPrice } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import { api } from "../../convex/_generated/api";
 
@@ -380,32 +380,12 @@ function StackDetailsPage() {
 	const personalPageUrl = stack.personalPageUrl;
 	const projectPageUrl = stack.projectPageUrl;
 	const hasDescription = !!stack.description;
-	const sortByPriceThenName = (
-		a: (typeof stack.tools)[number],
-		b: (typeof stack.tools)[number],
-	) => {
-		const groupOrder = (t: (typeof stack.tools)[number]) => {
-			if (t.priceKind === "sponsored") return 0;
-			const price = t.price.fixed?.amount ?? 0;
-			if (price > 0) return 1;
-			if (t.priceKind === "bundle") return 2;
-			return 3;
-		};
-		const groupA = groupOrder(a);
-		const groupB = groupOrder(b);
-		if (groupA !== groupB) return groupA - groupB;
-		if (groupA === 1) {
-			const diff = (b.price.fixed?.amount ?? 0) - (a.price.fixed?.amount ?? 0);
-			if (diff !== 0) return diff;
-		}
-		return a.name.localeCompare(b.name);
-	};
-	const mainTools = stack.tools
-		.filter((t) => t.kind === "main")
-		.sort(sortByPriceThenName);
-	const miscTools = stack.tools
-		.filter((t) => t.kind === "misc")
-		.sort(sortByPriceThenName);
+	const mainTools = sortToolsByPrice(
+		stack.tools.filter((t) => t.kind === "main"),
+	);
+	const miscTools = sortToolsByPrice(
+		stack.tools.filter((t) => t.kind === "misc"),
+	);
 	const toolsContent = (
 		<div className="space-y-8">
 			{/* Main Tools */}

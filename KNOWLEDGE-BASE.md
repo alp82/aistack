@@ -61,6 +61,15 @@ https://hannahstulberg.substack.com/p/claude-code-for-everything-draft-in-claude
 RLM:
 https://x.com/neural_avb/status/2035040781074145412
 
+human bottleneck / code review:
+https://www.latent.space/p/reviews-dead
+https://depot.dev/blog/the-bottleneck-has-shifted
+
+AI quality and escalation:
+https://x.com/KatanaLarp/status/2029928471632224486
+https://paddo.dev/blog/kiro-escalation/
+https://addyosmani.com/blog/comprehension-debt/?ck_subscriber_id=887775429
+
 developing cli tools:
 https://justin.poehnelt.com/posts/rewrite-your-cli-for-ai-agents/
 
@@ -114,18 +123,11 @@ https://x.com/i/status/2030636384156086564
 web scraping:
 https://scrapling.readthedocs.io/en/latest/
 https://crawlee.dev
+firecrawl
 
 logging / wide events:
 https://x.com/grok/status/2028576562644230231
 evlog, agent-tail
-
-human bottleneck / code review:
-https://www.latent.space/p/reviews-dead
-https://depot.dev/blog/the-bottleneck-has-shifted
-
-AI quality and escalation:
-https://x.com/KatanaLarp/status/2029928471632224486
-https://paddo.dev/blog/kiro-escalation/
 
 Serverless AI:
 https://developer.puter.com/?ck_subscriber_id=887775429

@@ -5,8 +5,16 @@ import type { InstructionItem as InstructionItemType } from "@/features/stack-ed
 import { FileContentDialog } from "@/components/editor/FileContentDialog";
 import { ModelItem, type ModelItemData } from "@/components/ModelItem";
 import { ToolItem, type ToolItemData } from "@/components/ToolItem";
+import { sortToolsByPrice } from "@/lib/pricing";
 
-type ViewTool = ToolItemData & { tierName: string };
+type ViewTool = ToolItemData & {
+	tierName: string;
+	originalTierPrice?: {
+		currency: string;
+		amount: number;
+		period: "month" | "year" | "one_time";
+	};
+};
 type ViewBundle = BundleItemData;
 type ViewModel = ModelItemData;
 type ViewInstruction = InstructionItemType;
@@ -28,29 +36,8 @@ export function ViewSidebar({
 }: ViewSidebarProps) {
 	const [activeInstruction, setActiveInstruction] =
 		useState<ViewInstruction | null>(null);
-	const sortByPriceThenName = (a: ViewTool, b: ViewTool) => {
-		const groupOrder = (t: ViewTool) => {
-			if (t.priceKind === "sponsored") return 0;
-			const price = t.price.fixed?.amount ?? 0;
-			if (price > 0) return 1;
-			if (t.priceKind === "bundle") return 2;
-			return 3;
-		};
-		const groupA = groupOrder(a);
-		const groupB = groupOrder(b);
-		if (groupA !== groupB) return groupA - groupB;
-		if (groupA === 1) {
-			const diff = (b.price.fixed?.amount ?? 0) - (a.price.fixed?.amount ?? 0);
-			if (diff !== 0) return diff;
-		}
-		return a.name.localeCompare(b.name);
-	};
-	const mainTools = tools
-		.filter((t) => t.kind === "main")
-		.sort(sortByPriceThenName);
-	const miscTools = tools
-		.filter((t) => t.kind === "misc")
-		.sort(sortByPriceThenName);
+	const mainTools = sortToolsByPrice(tools.filter((t) => t.kind === "main"));
+	const miscTools = sortToolsByPrice(tools.filter((t) => t.kind === "misc"));
 
 	const sortModelsByProviderThenName = (a: ViewModel, b: ViewModel) => {
 		const providerDiff = a.provider.localeCompare(b.provider);

@@ -115,6 +115,7 @@ const ToolValidator = v.object({
   iconUrl: v.optional(v.string()),
   websiteUrl: v.optional(v.string()),
   price: PriceValidator,
+  originalTierPrice: v.optional(MoneyValidator),
   kind: v.union(v.literal('main'), v.literal('misc')),
   primaryUsageLabel: v.string(),
   tierName: v.string(),
@@ -211,6 +212,7 @@ export const listPublished = query({
           iconUrl: tool.iconUrl,
           websiteUrl: tool.websiteUrl,
           price: sub.price,
+          originalTierPrice: tier?.pricing.fixed,
           kind: sub.kind,
           primaryUsageLabel: sub.primaryUsageLabel,
           tierName: tier?.name ?? sub.tierId ?? '',
@@ -444,6 +446,7 @@ export const getForEdit = query({
         kind: v.union(v.literal('main'), v.literal('misc')),
         primaryUsageLabel: v.string(),
         price: PriceValidator,
+        originalTierPrice: v.optional(MoneyValidator),
         priceKind: v.union(
           v.literal('regular'),
           v.literal('discounted'),
@@ -496,6 +499,7 @@ export const getForEdit = query({
         .withIndex('by_slug', (q) => q.eq('slug', sub.toolSlug))
         .first()
       if (!tool) continue
+      const tier = sub.tierId ? tool.tiers.find((t) => t.tierId === sub.tierId) : undefined
       toolSubs.push({
         toolSlug: sub.toolSlug,
         toolName: tool.name,
@@ -505,6 +509,7 @@ export const getForEdit = query({
         kind: sub.kind,
         primaryUsageLabel: sub.primaryUsageLabel,
         price: sub.price,
+        originalTierPrice: tier?.pricing.fixed,
         priceKind: sub.priceKind,
         bundleSlug: sub.bundleSlug,
         description: sub.description,
@@ -839,6 +844,7 @@ export const getBySlug = query({
         iconUrl: tool.iconUrl,
         websiteUrl: tool.websiteUrl,
         price: sub.price,
+        originalTierPrice: toolTier?.pricing.fixed,
         kind: sub.kind,
         primaryUsageLabel: sub.primaryUsageLabel,
         tierName: toolTier?.name ?? sub.tierId ?? '',

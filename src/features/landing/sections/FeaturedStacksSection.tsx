@@ -34,6 +34,25 @@ type LandingStackPreview = {
 		name: string;
 		categories: string[];
 		iconUrl?: string | null;
+		price: {
+			pricingType: string;
+			fixed?: {
+				currency: string;
+				amount: number;
+				period: "month" | "year" | "one_time";
+			};
+		};
+		priceKind:
+			| "regular"
+			| "discounted"
+			| "bundle"
+			| "usage_based"
+			| "sponsored";
+		originalTierPrice?: {
+			currency: string;
+			amount: number;
+			period: "month" | "year" | "one_time";
+		};
 	}>;
 	upvoteCount: number;
 	isLowQuality?: boolean | null;
@@ -125,8 +144,14 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 	const [sortOption, setSortOption] = useState<SortOption>("newest");
 	const [currentPage, setCurrentPage] = useState(1);
 
-	const visibleStacks = useMemo(() => stacks.filter((s) => !s.isLowQuality), [stacks]);
-	const categoryOptions = useMemo(() => getCategoryOptions(visibleStacks), [visibleStacks]);
+	const visibleStacks = useMemo(
+		() => stacks.filter((s) => !s.isLowQuality),
+		[stacks],
+	);
+	const categoryOptions = useMemo(
+		() => getCategoryOptions(visibleStacks),
+		[visibleStacks],
+	);
 	const filteredStacks = useMemo(
 		() => filterPreviewStacks(stacks, "all", toolFilter, sortOption),
 		[stacks, toolFilter, sortOption],

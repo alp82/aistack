@@ -112,6 +112,40 @@ export function formatPriceDisplay(
 	};
 }
 
+export type SortableTool = {
+	name: string;
+	priceKind: "regular" | "discounted" | "bundle" | "usage_based" | "sponsored";
+	price: {
+		fixed?: { amount: number; period: "month" | "year" | "one_time" } | null;
+	};
+	originalTierPrice?: {
+		amount: number;
+		period: "month" | "year" | "one_time";
+	} | null;
+};
+
+export function sortToolsByPrice<T extends SortableTool>(tools: T[]): T[] {
+	return [...tools].sort((a, b) => {
+		const sortPrice = (t: SortableTool) =>
+			getNormalizedMonthlyAmount(t.originalTierPrice ?? t.price.fixed);
+
+		const groupOrder = (t: SortableTool) => {
+			if (sortPrice(t) > 0) return 0;
+			if (t.priceKind === "bundle") return 1;
+			return 2;
+		};
+
+		const groupA = groupOrder(a);
+		const groupB = groupOrder(b);
+		if (groupA !== groupB) return groupA - groupB;
+		if (groupA === 0) {
+			const diff = sortPrice(b) - sortPrice(a);
+			if (diff !== 0) return diff;
+		}
+		return a.name.localeCompare(b.name);
+	});
+}
+
 export function formatPricingSummary(
 	fixedTotal?: FixedPrice | null,
 	hasUsageComponent = false,

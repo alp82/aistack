@@ -46,6 +46,8 @@ const sampleStacks = Array.from({ length: 7 }, (_, index) => ({
 		name: `Tool ${toolIndex}`,
 		categories: ["ide"],
 		iconUrl: null,
+		price: { pricingType: "fixed" as const },
+		priceKind: "regular" as const,
 	})),
 	upvoteCount: index * 2,
 }));

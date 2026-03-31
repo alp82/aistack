@@ -6,6 +6,21 @@ import {
 	type LandingStackPreview,
 } from "@/features/landing/sections/FeaturedStacksSection";
 
+function tool(
+	id: string,
+	name: string,
+	categories: string[],
+): LandingStackPreview["tools"][number] {
+	return {
+		_id: id,
+		name,
+		iconUrl: null,
+		categories,
+		price: { pricingType: "fixed" },
+		priceKind: "regular",
+	};
+}
+
 const stacks: LandingStackPreview[] = [
 	{
 		_id: "solo-automation",
@@ -17,10 +32,7 @@ const stacks: LandingStackPreview[] = [
 		teamSize: null,
 		fixedTotal: { amount: 45 },
 		creator: { name: "Solo Auto", xHandle: null, avatarUrl: null },
-		tools: [
-			{ _id: "t1", name: "n8n", iconUrl: null, categories: ["automation"] },
-			{ _id: "t2", name: "Cursor", iconUrl: null, categories: ["ide"] },
-		],
+		tools: [tool("t1", "n8n", ["automation"]), tool("t2", "Cursor", ["ide"])],
 		upvoteCount: 0,
 	},
 	{
@@ -34,8 +46,8 @@ const stacks: LandingStackPreview[] = [
 		fixedTotal: { amount: 220 },
 		creator: { name: "Team Ops", xHandle: "teamops", avatarUrl: null },
 		tools: [
-			{ _id: "t3", name: "Zapier", iconUrl: null, categories: ["automation"] },
-			{ _id: "t4", name: "Notion", iconUrl: null, categories: ["notes"] },
+			tool("t3", "Zapier", ["automation"]),
+			tool("t4", "Notion", ["notes"]),
 		],
 		upvoteCount: 5,
 	},
@@ -50,8 +62,8 @@ const stacks: LandingStackPreview[] = [
 		fixedTotal: { amount: 300 },
 		creator: { name: "Design Crew", xHandle: null, avatarUrl: null },
 		tools: [
-			{ _id: "t5", name: "Figma", iconUrl: null, categories: ["design"] },
-			{ _id: "t6", name: "Framer", iconUrl: null, categories: ["app-builder"] },
+			tool("t5", "Figma", ["design"]),
+			tool("t6", "Framer", ["app-builder"]),
 		],
 		upvoteCount: 10,
 	},
