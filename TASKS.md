@@ -1,7 +1,6 @@
 # TODO
 
 * mobile optimized:
-    * header
     * cards
     * stack details
 * headline anchors
