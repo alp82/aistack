@@ -155,6 +155,12 @@ export default function Header() {
 				<div className="flex items-center gap-6 md:gap-12">
 					<Link
 						to="/"
+						onClick={(e) => {
+							if (window.innerWidth < 768) {
+								e.preventDefault();
+								setMobileMenuOpen(!mobileMenuOpen);
+							}
+						}}
 						className="flex items-center gap-2 font-bold tracking-tighter text-xl text-fg-primary transition-colors hover:text-accent-lime"
 					>
 						<div
@@ -379,6 +385,27 @@ export default function Header() {
 						>
 							Tools
 						</Link>
+						{isAdmin && (
+							<Link
+								to="/admin"
+								onClick={() => setMobileMenuOpen(false)}
+								className={cn(
+									"relative font-mono text-sm font-semibold uppercase tracking-[0.15em] transition-colors inline-flex items-center gap-1.5",
+									isActive("/admin")
+										? "text-accent-lime"
+										: "text-fg-muted hover:text-fg-primary",
+								)}
+							>
+								<Shield className="size-3.5" />
+								Admin
+								{typeof pendingReviewCount === "number" &&
+									pendingReviewCount > 0 && (
+										<span className="flex size-4 items-center justify-center rounded-full bg-red-500 font-mono text-[10px] font-bold text-white">
+											{pendingReviewCount > 9 ? "9+" : pendingReviewCount}
+										</span>
+									)}
+							</Link>
+						)}
 					</nav>
 
 					<div className="flex flex-col gap-3">

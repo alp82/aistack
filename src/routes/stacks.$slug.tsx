@@ -593,23 +593,23 @@ function StackDetailsPage() {
 								{(stack.creator.xHandle ||
 									personalPageUrl ||
 									projectPageUrl) && (
-									<div className="mt-6 bg-bg-panel-muted inline-flex">
+									<div className="mt-6 bg-bg-panel-muted inline-flex max-w-full">
 										<div className="flex flex-wrap items-center divide-x divide-stroke-subtle">
 											{stack.creator.xHandle && (
 												<a
 													href={`https://x.com/${stack.creator.xHandle}`}
 													target="_blank"
 													rel="noopener noreferrer"
-													className="flex items-center gap-2 px-5 py-3 font-mono text-sm text-fg-secondary transition-colors border-t-2 border-t-transparent hover:border-t-accent-lime hover:text-accent-lime hover:bg-bg-panel"
+													className="flex items-center gap-2 px-3 sm:px-5 py-3 font-mono text-sm text-fg-secondary transition-colors border-t-2 border-t-transparent hover:border-t-accent-lime hover:text-accent-lime hover:bg-bg-panel min-w-0"
 												>
 													<svg
-														className="size-4"
+														className="size-4 shrink-0"
 														viewBox="0 0 24 24"
 														fill="currentColor"
 													>
 														<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
 													</svg>
-													<span>@{stack.creator.xHandle}</span>
+													<span className="truncate">@{stack.creator.xHandle}</span>
 												</a>
 											)}
 											{personalPageUrl && (
@@ -621,10 +621,10 @@ function StackDetailsPage() {
 													}
 													target="_blank"
 													rel="noopener noreferrer"
-													className="flex items-center gap-2 px-5 py-3 font-mono text-sm text-fg-secondary transition-colors border-t-2 border-t-transparent hover:border-t-accent-lime hover:text-accent-lime hover:bg-bg-panel"
+													className="flex items-center gap-2 px-3 sm:px-5 py-3 font-mono text-sm text-fg-secondary transition-colors border-t-2 border-t-transparent hover:border-t-accent-lime hover:text-accent-lime hover:bg-bg-panel min-w-0"
 												>
-													<User className="size-4" />
-													<span>
+													<User className="size-4 shrink-0" />
+													<span className="truncate">
 														{
 															personalPageUrl
 																.replace(/^https?:\/\//, "")
@@ -642,10 +642,10 @@ function StackDetailsPage() {
 													}
 													target="_blank"
 													rel="noopener noreferrer"
-													className="flex items-center gap-2 px-5 py-3 font-mono text-sm text-fg-secondary transition-colors border-t-2 border-t-transparent hover:border-t-accent-lime hover:text-accent-lime hover:bg-bg-panel"
+													className="flex items-center gap-2 px-3 sm:px-5 py-3 font-mono text-sm text-fg-secondary transition-colors border-t-2 border-t-transparent hover:border-t-accent-lime hover:text-accent-lime hover:bg-bg-panel min-w-0"
 												>
-													<Globe className="size-4" />
-													<span>
+													<Globe className="size-4 shrink-0" />
+													<span className="truncate">
 														{
 															projectPageUrl
 																.replace(/^https?:\/\//, "")
