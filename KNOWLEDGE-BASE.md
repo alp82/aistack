@@ -81,6 +81,14 @@ https://factory.ai
 CLI command center:
 https://hannahstulberg.substack.com/p/claude-code-for-everything-your-status-line-is-empty
 
+email:
+https://mxroute.com
+selfhost:
+* https://github.com/eibrahim/freeresend
+testing:
+* https://github.com/Olib-AI/mailcue
+* https://www.mail-tester.com
+
 package publishing:
 https://tanstack.com/blog/from-docs-to-agents
 
