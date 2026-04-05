@@ -1,10 +1,5 @@
 # TODO
 
-* mobile optimized:
-    * header
-    * cards
-    * stack details
-* headline anchors
 * CLI workflow
     * https://github.com/FutureExcited/vibe-rules
     * npx aistack login
@@ -14,6 +9,7 @@
     * article grid with nice bg borders: https://www.aihero.dev/posts
     * use the same editor. new feature: crosslinking articles
     * user comments - one level deep threaded
+* headline anchors
 * fix tests
 * e2e tests
 * price tiers for sibling products: claude code vs claude ai

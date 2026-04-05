@@ -132,7 +132,9 @@ function AppShell({ children }: { children: React.ReactNode }) {
 	return (
 		<>
 			<Header />
-			{children}
+			<div className="pb-14 md:pb-0">
+				{children}
+			</div>
 			<Footer />
 		</>
 	);

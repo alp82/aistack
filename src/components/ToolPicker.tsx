@@ -282,7 +282,7 @@ export function ToolPicker({
 				>
 					{/* Tool Grid - 4 per row */}
 					<div className="max-h-[480px] overflow-y-auto">
-						<div className="grid grid-cols-4 gap-2">
+						<div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
 							{filteredTools.map((tool) => (
 								<button
 									key={tool._id}

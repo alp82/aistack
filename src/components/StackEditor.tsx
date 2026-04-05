@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { CheckCircle, ExternalLink, Save, Send } from "lucide-react";
-import { useCallback, useEffect, useRef } from "react";
+import { CheckCircle, ExternalLink, Save, Send, Wrench } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
 import { GridBackground } from "@/components/GridBackground";
 import { MobileInstructionOverlay } from "@/components/MobileInstructionOverlay";
@@ -421,6 +421,26 @@ export function StackEditor({
 		[setModelSubscriptions],
 	);
 
+	const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+	// Lock body scroll when mobile sidebar is open
+	useEffect(() => {
+		if (mobileSidebarOpen) {
+			document.body.style.overflow = "hidden";
+		} else {
+			document.body.style.overflow = "";
+		}
+		return () => {
+			document.body.style.overflow = "";
+		};
+	}, [mobileSidebarOpen]);
+
+	const toolCount =
+		state.toolSubscriptions.length +
+		state.bundleSubscriptions.length +
+		state.modelSubscriptions.length +
+		state.instructions.length;
+
 	return (
 		<EditorProvider
 			onInstructionUpdate={handleInstructionUpdate}
@@ -444,15 +464,15 @@ export function StackEditor({
 				/>
 				<div className="relative z-10 mx-auto max-w-content flex flex-col">
 					<div className="flex">
-						<main className="flex-1 px-6 py-8">
+						<main className="flex-1 px-3 py-4 sm:px-6 sm:py-8 min-w-0">
 							{/* Sticky Header with Title and Actions */}
-							<header className="sticky top-16 mb-12 py-4 z-20 bg-bg-canvas border-b-2 border-stroke-subtle">
-								<div className="flex items-center justify-between gap-4">
-									<h1 className="text-2xl md:text-3xl font-black tracking-tighter uppercase text-fg-primary">
+							<header className="sticky top-16 mb-6 sm:mb-12 py-3 sm:py-4 z-20 bg-bg-canvas border-b-2 border-stroke-subtle">
+								<div className="flex items-center justify-between gap-2 sm:gap-4">
+									<h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tighter uppercase text-fg-primary">
 										{mode === "create" ? "Create Stack" : "Update Stack"}
 									</h1>
 
-									<div className="flex items-center gap-3 flex-shrink-0">
+									<div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
 										{mode === "edit" &&
 											initialValue?.published &&
 											initialValue?.slug && (
@@ -460,7 +480,7 @@ export function StackEditor({
 													to="/stacks/$slug"
 													params={{ slug: `${initialValue.slug}` }}
 													target="_blank"
-													className="inline-flex items-center gap-2 px-4 py-2 border-2 border-stroke-subtle font-mono text-xs uppercase tracking-wider text-fg-muted hover:border-fg-muted hover:text-fg-primary transition-colors cursor-pointer"
+													className="hidden sm:inline-flex items-center gap-2 px-4 py-2 border-2 border-stroke-subtle font-mono text-xs uppercase tracking-wider text-fg-muted hover:border-fg-muted hover:text-fg-primary transition-colors cursor-pointer"
 												>
 													<ExternalLink className="size-4" />
 													View Stack
@@ -468,12 +488,12 @@ export function StackEditor({
 											)}
 										{initialValue?.published ? (
 											<>
-												{/* Published/Unpublish Button - outline green with checkmark */}
+												{/* Published/Unpublish Button - hidden on mobile */}
 												<button
 													type="button"
 													onClick={() => handleSave(false)}
 													disabled={state.saving}
-													className="group inline-flex items-center gap-2 px-4 py-2 border-2 border-accent-lime font-mono text-xs font-bold uppercase tracking-wider text-accent-lime transition-colors hover:border-destructive hover:text-destructive disabled:opacity-50 cursor-pointer"
+													className="group hidden sm:inline-flex items-center gap-2 px-4 py-2 border-2 border-accent-lime font-mono text-xs font-bold uppercase tracking-wider text-accent-lime transition-colors hover:border-destructive hover:text-destructive disabled:opacity-50 cursor-pointer"
 												>
 													<CheckCircle className="size-4 group-hover:hidden" />
 													<span className="hidden group-hover:inline">✕</span>
@@ -492,23 +512,23 @@ export function StackEditor({
 													type="button"
 													onClick={() => handleSave(true)}
 													disabled={state.saving}
-													className="inline-flex items-center gap-2 px-4 py-2 border-2 border-accent-lime bg-accent-lime font-mono text-xs font-bold uppercase tracking-wider text-accent-lime-contrast hover:bg-accent-lime-strong transition-colors disabled:opacity-50 cursor-pointer"
+													className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 border-2 border-accent-lime bg-accent-lime font-mono text-xs font-bold uppercase tracking-wider text-accent-lime-contrast hover:bg-accent-lime-strong transition-colors disabled:opacity-50 cursor-pointer"
 												>
 													<Save className="size-4" />
-													{state.saving ? "Saving..." : "Save"}
+													<span className="hidden sm:inline">{state.saving ? "Saving..." : "Save"}</span>
 												</button>
 											</>
 										) : (
 											<>
-												{/* Save Draft Button - outline */}
+												{/* Save Draft Button - outline, icon-only on mobile */}
 												<button
 													type="button"
 													onClick={() => handleSave(false)}
 													disabled={state.saving}
-													className="inline-flex items-center gap-2 px-4 py-2 border-2 border-stroke-strong font-mono text-xs uppercase tracking-wider text-fg-muted hover:border-accent-lime hover:text-fg-primary transition-colors disabled:opacity-50 cursor-pointer"
+													className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 border-2 border-stroke-strong font-mono text-xs uppercase tracking-wider text-fg-muted hover:border-accent-lime hover:text-fg-primary transition-colors disabled:opacity-50 cursor-pointer"
 												>
 													<Save className="size-4" />
-													{state.saving ? "Saving..." : "Save Draft"}
+													<span className="hidden sm:inline">{state.saving ? "Saving..." : "Save Draft"}</span>
 												</button>
 
 												{/* Publish Button - lime filled */}
@@ -516,14 +536,16 @@ export function StackEditor({
 													type="button"
 													onClick={() => handleSave(true)}
 													disabled={state.saving}
-													className="inline-flex items-center gap-2 px-4 py-2 border-2 border-accent-lime bg-accent-lime font-mono text-xs font-bold uppercase tracking-wider text-accent-lime-contrast hover:bg-accent-lime-strong transition-colors disabled:opacity-50 cursor-pointer"
+													className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 border-2 border-accent-lime bg-accent-lime font-mono text-xs font-bold uppercase tracking-wider text-accent-lime-contrast hover:bg-accent-lime-strong transition-colors disabled:opacity-50 cursor-pointer"
 												>
 													<Send className="size-4" />
-													{state.saving
-														? "Publishing..."
-														: guestSession
-															? "Signup & Publish"
-															: "Publish"}
+													<span className="hidden sm:inline">
+														{state.saving
+															? "Publishing..."
+															: guestSession
+																? "Signup & Publish"
+																: "Publish"}
+													</span>
 												</button>
 											</>
 										)}
@@ -538,7 +560,7 @@ export function StackEditor({
 							</header>
 
 							{state.restoredFromDraft && (
-								<div className="mb-6 flex items-center justify-between gap-4 border-2 border-amber-500/30 bg-amber-500/10 p-3 font-mono text-sm text-amber-400">
+								<div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 border-2 border-amber-500/30 bg-amber-500/10 p-3 font-mono text-sm text-amber-400">
 									<span>Unsaved changes restored from your last session.</span>
 									<div className="flex items-center gap-2 flex-shrink-0">
 										<button
@@ -582,7 +604,7 @@ export function StackEditor({
 							/>
 
 							{/* HR between steps */}
-							<hr className="my-12 border-stroke-subtle" />
+							<hr className="my-8 sm:my-12 border-stroke-subtle" />
 
 							{/* Workflow Section */}
 							<div>
@@ -609,6 +631,69 @@ export function StackEditor({
 					</div>
 				</div>
 			</div>
+
+			{/* Mobile sidebar overlay */}
+			{mobileSidebarOpen && (
+				<div
+					style={{ position: "fixed", inset: 0, zIndex: 9999 }}
+					className="lg:hidden"
+				>
+					<button
+						type="button"
+						style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)" }}
+						onClick={() => setMobileSidebarOpen(false)}
+						aria-label="Close sidebar"
+					/>
+					<div
+						style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "85vw", maxWidth: "384px" }}
+						className="bg-bg-panel border-l-2 border-stroke-strong overflow-y-auto"
+					>
+						<div className="sticky top-0 z-10 flex items-center justify-between border-b border-stroke-subtle bg-bg-panel p-4">
+							<span className="font-mono text-xs font-semibold uppercase tracking-wider text-fg-primary">
+								Stack Items
+							</span>
+							<button
+								type="button"
+								onClick={() => setMobileSidebarOpen(false)}
+								className="flex size-8 items-center justify-center text-fg-muted hover:text-fg-primary"
+								aria-label="Close"
+							>
+								✕
+							</button>
+						</div>
+						<ToolsSidebar
+							tools={state.toolSubscriptions}
+							onToolsChange={setToolSubscriptions}
+							bundles={state.bundleSubscriptions}
+							onBundlesChange={setBundleSubscriptions}
+							models={state.modelSubscriptions}
+							onModelsChange={setModelSubscriptions}
+							instructions={state.instructions}
+							onInstructionsChange={setInstructions}
+							guestSession={guestSession}
+							onSignInRequired={() => setShowSignInDialog(true)}
+							mobile
+						/>
+					</div>
+				</div>
+			)}
+
+			{/* Mobile FAB to open sidebar */}
+			<button
+				type="button"
+				onClick={() => setMobileSidebarOpen(true)}
+				style={{ position: "fixed", bottom: "5rem", right: "1rem", zIndex: 9998 }}
+				className="flex items-center gap-2 border-2 border-accent-lime bg-accent-lime px-4 py-3 font-mono text-xs font-bold uppercase tracking-wider text-accent-lime-contrast shadow-[4px_4px_0_var(--stroke-strong)] transition-colors hover:bg-accent-lime-strong lg:hidden"
+			>
+				<Wrench className="size-4" />
+				Tools
+				{toolCount > 0 && (
+					<span className="flex size-5 items-center justify-center bg-accent-lime-contrast text-accent-lime text-[10px] font-bold">
+						{toolCount}
+					</span>
+				)}
+			</button>
+
 			<MobileInstructionOverlay
 				instructions={state.instructions}
 				onInstructionsChange={setInstructions}

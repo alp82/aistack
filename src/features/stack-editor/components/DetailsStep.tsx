@@ -78,25 +78,25 @@ function DetailsStep({
 				onAvatarChange={onStackImageUrlChange}
 			/>
 
-			{/* Main grid layout */}
-			<div className="grid grid-cols-[auto_1fr] gap-6">
-				{/* Avatar - spans 2 rows */}
-				<div className="row-span-2">
+			{/* Main layout */}
+			<div className="flex flex-col sm:grid sm:grid-cols-[auto_1fr] gap-4 sm:gap-6">
+				{/* Avatar */}
+				<div className="sm:row-span-2">
 					<button
 						type="button"
 						onClick={() => setIsAvatarEditorOpen(true)}
-						className="group relative block cursor-pointer min-w-30"
+						className="group relative block cursor-pointer"
 						title="Click to edit avatar"
 					>
 						{displayAvatarUrl && !imgError ? (
 							<img
 								src={displayAvatarUrl}
 								alt={creator.name}
-								className="size-30 border-[3px] border-stroke-strong object-cover bg-bg-panel-muted"
+								className="size-20 sm:size-30 border-[3px] border-stroke-strong object-cover bg-bg-panel-muted"
 								onError={() => setImgError(true)}
 							/>
 						) : (
-							<div className="flex size-30 items-center justify-center border-[3px] border-stroke-strong bg-bg-panel-muted font-mono text-3xl font-bold text-fg-primary">
+							<div className="flex size-20 sm:size-30 items-center justify-center border-[3px] border-stroke-strong bg-bg-panel-muted font-mono text-2xl sm:text-3xl font-bold text-fg-primary">
 								{initials}
 							</div>
 						)}
@@ -108,7 +108,7 @@ function DetailsStep({
 				</div>
 
 				{/* Row 1: Stack Name + Solo/Team */}
-				<div className="flex items-center gap-4">
+				<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
 					<Input
 						id="stack-name"
 						value={name}
@@ -122,7 +122,7 @@ function DetailsStep({
 							type="button"
 							onClick={() => onIsTeamChange(false)}
 							className={cn(
-								"border-2 border-r-0 font-mono text-xs uppercase tracking-wider transition-all px-4 h-12 cursor-pointer",
+								"border-2 border-r-0 font-mono text-xs uppercase tracking-wider transition-all px-4 h-12 cursor-pointer flex-1 sm:flex-initial",
 								!isTeam
 									? "border-accent-lime bg-accent-lime text-accent-lime-contrast"
 									: "border-stroke-subtle bg-transparent text-fg-muted hover:text-fg-primary",
@@ -134,7 +134,7 @@ function DetailsStep({
 							type="button"
 							onClick={() => onIsTeamChange(true)}
 							className={cn(
-								"border-2 font-mono text-xs uppercase tracking-wider transition-all px-3 h-12 flex items-center gap-2 cursor-pointer",
+								"border-2 font-mono text-xs uppercase tracking-wider transition-all px-3 h-12 flex items-center justify-center gap-2 cursor-pointer flex-1 sm:flex-initial",
 								isTeam
 									? "border-accent-lime bg-accent-lime text-accent-lime-contrast"
 									: "border-stroke-subtle bg-transparent text-fg-muted hover:text-fg-primary",
@@ -155,7 +155,7 @@ function DetailsStep({
 									if (!isTeam) onIsTeamChange(true);
 								}}
 								className={cn(
-									"w-10 h-7 text-center rounded text-xs font-bold transition-colors",
+									"w-12 h-8 text-center rounded text-xs font-bold transition-colors",
 									isTeam
 										? "bg-accent-lime-contrast text-accent-lime"
 										: "bg-bg-panel-muted text-fg-muted",
@@ -165,10 +165,10 @@ function DetailsStep({
 					</div>
 				</div>
 
-				{/* Row 2: Social Links - 3 equal columns as input group */}
-				<div className="flex">
+				{/* Row 2: Social Links - stacked on mobile, row on desktop */}
+				<div className="flex flex-col sm:flex-row">
 					{/* X Handle */}
-					<div className="flex flex-1 items-center border-2 border-stroke-subtle -mr-[2px] bg-bg-panel-muted px-3 h-12 focus-within:border-accent-lime focus-within:z-10">
+					<div className="flex flex-1 items-center border-2 border-stroke-subtle sm:-mr-[2px] -mb-[2px] sm:mb-0 bg-bg-panel-muted px-3 h-12 focus-within:border-accent-lime focus-within:z-10">
 						<XLogoIcon className="size-4 shrink-0 text-fg-muted" />
 						<span className="ml-2 font-mono text-xs text-fg-muted">@</span>
 						<input
@@ -181,7 +181,7 @@ function DetailsStep({
 					</div>
 
 					{/* Personal Page URL */}
-					<div className="flex flex-1 items-center border-2 border-stroke-subtle -mr-[2px] bg-bg-panel-muted px-3 h-12 focus-within:border-accent-lime focus-within:z-10">
+					<div className="flex flex-1 items-center border-2 border-stroke-subtle sm:-mr-[2px] -mb-[2px] sm:mb-0 bg-bg-panel-muted px-3 h-12 focus-within:border-accent-lime focus-within:z-10">
 						<User className="size-4 shrink-0 text-fg-muted" />
 						<input
 							type="text"

@@ -1,7 +1,7 @@
 import { useConvexAuth } from "@convex-dev/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { LogOut, Menu, Moon, Pencil, Plus, Shield, Sun, X } from "lucide-react";
+import { Home, Layers, LogOut, Menu, Moon, Pencil, Plus, Shield, Sun, Wrench, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { authClient } from "../lib/auth-client";
@@ -143,19 +143,31 @@ export default function Header() {
 		navigate({ to: "/" });
 	};
 
+	const shareStackHref =
+		userStack || cachedUserStack
+			? `/stacks/${(userStack || cachedUserStack)?.slug}/edit`
+			: "/stacks/new";
+
 	return (
+		<>
 		<header className="sticky top-0 z-50 border-b-2 border-stroke-strong bg-bg-canvas px-6 shadow-[0_10px_30px_-20px_var(--shadow-color)] backdrop-blur-md">
 			<div className="mx-auto flex h-16 max-w-content items-center justify-between">
 				<div className="flex items-center gap-6 md:gap-12">
 					<Link
 						to="/"
+						onClick={(e) => {
+							if (window.innerWidth < 768) {
+								e.preventDefault();
+								setMobileMenuOpen(!mobileMenuOpen);
+							}
+						}}
 						className="flex items-center gap-2 font-bold tracking-tighter text-xl text-fg-primary transition-colors hover:text-accent-lime"
 					>
 						<div
 							className="w-3 h-3 bg-accent-lime animate-pulse"
 							style={{ boxShadow: "0 0 8px rgba(163, 230, 53, 0.6)" }}
 						/>
-						<span className="hidden sm:inline">AI STACK</span>
+						<span>AI STACK</span>
 					</Link>
 
 					<nav className="hidden items-center gap-8 md:flex">
@@ -338,6 +350,18 @@ export default function Header() {
 				<div className="border-t-2 border-stroke-strong bg-bg-canvas px-6 py-6 md:hidden">
 					<nav className="flex flex-col gap-4 mb-6">
 						<Link
+							to="/"
+							onClick={() => setMobileMenuOpen(false)}
+							className={cn(
+								"font-mono text-sm font-semibold uppercase tracking-[0.15em] transition-colors",
+								currentPath === "/"
+									? "text-accent-lime"
+									: "text-fg-muted hover:text-fg-primary",
+							)}
+						>
+							Home
+						</Link>
+						<Link
 							to="/stacks"
 							onClick={() => setMobileMenuOpen(false)}
 							className={cn(
@@ -361,6 +385,27 @@ export default function Header() {
 						>
 							Tools
 						</Link>
+						{isAdmin && (
+							<Link
+								to="/admin"
+								onClick={() => setMobileMenuOpen(false)}
+								className={cn(
+									"relative font-mono text-sm font-semibold uppercase tracking-[0.15em] transition-colors inline-flex items-center gap-1.5",
+									isActive("/admin")
+										? "text-accent-lime"
+										: "text-fg-muted hover:text-fg-primary",
+								)}
+							>
+								<Shield className="size-3.5" />
+								Admin
+								{typeof pendingReviewCount === "number" &&
+									pendingReviewCount > 0 && (
+										<span className="flex size-4 items-center justify-center rounded-full bg-red-500 font-mono text-[10px] font-bold text-white">
+											{pendingReviewCount > 9 ? "9+" : pendingReviewCount}
+										</span>
+									)}
+							</Link>
+						)}
 					</nav>
 
 					<div className="flex flex-col gap-3">
@@ -443,5 +488,64 @@ export default function Header() {
 				</div>
 			)}
 		</header>
+
+		{/* Mobile bottom tab bar */}
+		<nav className="fixed bottom-0 left-0 right-0 z-50 border-t-2 border-stroke-strong bg-bg-canvas md:hidden">
+			<div className="flex items-stretch justify-around">
+				<Link
+					to="/"
+					onClick={() => setMobileMenuOpen(false)}
+					className={cn(
+						"flex flex-1 flex-col items-center gap-1 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors",
+						currentPath === "/"
+							? "text-accent-lime"
+							: "text-fg-muted",
+					)}
+				>
+					<Home className="size-5" />
+					Home
+				</Link>
+				<Link
+					to="/stacks"
+					onClick={() => setMobileMenuOpen(false)}
+					className={cn(
+						"flex flex-1 flex-col items-center gap-1 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors",
+						isActive("/stacks")
+							? "text-accent-lime"
+							: "text-fg-muted",
+					)}
+				>
+					<Layers className="size-5" />
+					Stacks
+				</Link>
+				<Link
+					to="/tools"
+					onClick={() => setMobileMenuOpen(false)}
+					className={cn(
+						"flex flex-1 flex-col items-center gap-1 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors",
+						isActive("/tools")
+							? "text-accent-lime"
+							: "text-fg-muted",
+					)}
+				>
+					<Wrench className="size-5" />
+					Tools
+				</Link>
+				<a
+					href={shareStackHref}
+					onClick={() => setMobileMenuOpen(false)}
+					className={cn(
+						"flex flex-1 flex-col items-center gap-1 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors",
+						currentPath === "/stacks/new"
+							? "text-accent-lime"
+							: "text-fg-muted",
+					)}
+				>
+					<Plus className="size-5" />
+					Share
+				</a>
+			</div>
+		</nav>
+		</>
 	);
 }
