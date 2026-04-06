@@ -33,7 +33,9 @@ import {
 } from "@/features/stack-editor/context/EditorContext";
 import type { ModelItemData } from "@/components/ModelItem";
 import type { InstructionType } from "@/features/stack-editor/types";
+import { JsonLd } from "@/components/JsonLd";
 import { formatPricingSummary, sortToolsByPrice } from "@/lib/pricing";
+import { seoMeta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import { api } from "../../convex/_generated/api";
 
@@ -173,111 +175,33 @@ export const Route = createFileRoute("/stacks/$slug")({
 	head: ({ loaderData }) => {
 		if (!loaderData?.stack) {
 			return {
-				meta: [
-					{ title: "AI Stack Details" },
-					{
-						name: "description",
-						content: "View detailed information about this AI stack.",
-					},
-				],
+				meta: seoMeta({
+					title: "AI Stack Details",
+					description: "View detailed information about this AI stack.",
+					noindex: true,
+				}),
 			};
 		}
 
 		const stack = loaderData.stack;
 		const toolCount = stack.tools.length;
-
-		// Format cost for description
 		const costText = formatPricingSummary(
 			stack.fixedTotal,
 			stack.hasUsageComponent,
 		);
-
 		const description = `${stack.oneLiner} • ${toolCount} tools • ${costText}`;
 		const ogImageUrl = `https://aistack.to/api/og/stack/${stack.slug}?v=${stack.updatedAt ?? stack._creationTime}`;
 
 		return {
-			meta: [
-				{
-					title: `${stack.name} - AI Stack`,
-				},
-				{
-					name: "description",
-					content: description,
-				},
-				{
-					property: "og:title",
-					content: `${stack.name} - AI Stack`,
-				},
-				{
-					property: "og:description",
-					content: description,
-				},
-				{
-					property: "og:image",
-					content: ogImageUrl,
-				},
-				{
-					property: "og:image:width",
-					content: "1200",
-				},
-				{
-					property: "og:image:height",
-					content: "630",
-				},
-				{
-					property: "og:url",
-					content: `https://aistack.to/stacks/${stack.slug}`,
-				},
-				{
-					property: "og:type",
-					content: "website",
-				},
-				{
-					property: "og:site_name",
-					content: "AI Stack",
-				},
-				{
-					name: "twitter:card",
-					content: "summary_large_image",
-				},
-				{
-					name: "twitter:title",
-					content: `${stack.name} - AI Stack`,
-				},
-				{
-					name: "twitter:description",
-					content: description,
-				},
-				{
-					name: "twitter:image",
-					content: ogImageUrl,
-				},
-				{
-					name: "twitter:site",
-					content: "@alperortac",
-				},
-				{
-					name: "twitter:creator",
-					content: "@alperortac",
-				},
-				{
-					name: "keywords",
-					content:
-						"AI stacks, AI workflows, startup operations, indie builders, AI tooling costs, command line productivity",
-				},
-				{
-					name: "author",
-					content: "Alper Ortac",
-				},
-				{
-					name: "robots",
-					content: "index, follow",
-				},
-				{
-					name: "googlebot",
-					content: "index, follow",
-				},
-			],
+			meta: seoMeta({
+				title: `${stack.name} - AI Stack`,
+				description,
+				url: `/stacks/${stack.slug}`,
+				image: ogImageUrl,
+				imageWidth: "1200",
+				imageHeight: "630",
+				keywords: `${stack.name}, AI stack, ${stack.tools.map((t: ViewTool) => t.name).join(", ")}`,
+			}),
 		};
 	},
 });
@@ -519,8 +443,28 @@ function StackDetailsPage() {
 		</div>
 	);
 
+	const costText = formatPricingSummary(
+		stack.fixedTotal,
+		stack.hasUsageComponent,
+	);
+
 	return (
 		<EditorProvider>
+			<JsonLd
+				data={{
+					type: "SoftwareApplication",
+					name: stack.name,
+					description: `${stack.oneLiner} • ${stack.tools.length} tools • ${costText}`,
+					url: `/stacks/${stack.slug}`,
+					author: stack.creator?.name,
+					...(stack.fixedTotal?.amount > 0 && {
+						offers: {
+							price: String(stack.fixedTotal.amount),
+							priceCurrency: "USD",
+						},
+					}),
+				}}
+			/>
 			<ViewLookupDataSync
 				tools={stack.tools}
 				bundles={stack.bundles}

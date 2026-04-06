@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { AuthForm } from "../components/AuthForm";
 import { TiptapEditor } from "../components/TiptapEditor";
 import { EditorProvider } from "../features/stack-editor/context/EditorContext";
+import { seoMeta } from "../lib/seo";
 import { getDraftKey } from "../features/stack-editor/state/editorReducer";
 
 type SignInPublishSearch = {
@@ -23,6 +24,13 @@ export const Route = createFileRoute("/signin-publish")({
 				typeof search.redirect === "string" ? search.redirect : undefined,
 		};
 	},
+	head: () => ({
+		meta: seoMeta({
+			title: "Sign In to Publish - AI Stack",
+			description: "Sign in to publish your AI stack on AI Stack.",
+			noindex: true,
+		}),
+	}),
 });
 
 interface GuestStackDraft {

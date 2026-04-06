@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { GridBackground } from "../components/GridBackground";
+import { JsonLd } from "../components/JsonLd";
 import { PageHeader } from "../components/PageHeader";
 import { SortDropdown } from "../components/SortDropdown";
 import { Input } from "../components/ui/input";
@@ -14,6 +15,7 @@ import {
 } from "../components/SuggestEditModal";
 import { ToolCard } from "../components/ToolCard";
 import { categoryConfig, type ToolCategory } from "../config/categoryConfig";
+import { seoMeta } from "../lib/seo";
 import { cn } from "../lib/utils";
 import type { LandingStackPreview } from "@/features/landing/sections/FeaturedStacksSection";
 
@@ -37,91 +39,14 @@ export const Route = createFileRoute("/tools")({
 		]);
 	},
 	head: () => ({
-		meta: [
-			{
-				title: "AI Tools - Discover Tools for Your Stack",
-			},
-			{
-				name: "description",
-				content:
-					"Browse a curated collection of AI tools that builders use to ship products faster.",
-			},
-			{
-				property: "og:title",
-				content: "AI Tools - Discover Tools for Your Stack",
-			},
-			{
-				property: "og:description",
-				content:
-					"Browse a curated collection of AI tools that builders use to ship products faster.",
-			},
-			{
-				property: "og:image",
-				content: "https://aistack.to/banners/aistack.png",
-			},
-			{
-				property: "og:image:width",
-				content: "802",
-			},
-			{
-				property: "og:image:height",
-				content: "438",
-			},
-			{
-				property: "og:url",
-				content: "https://aistack.to/tools",
-			},
-			{
-				property: "og:type",
-				content: "website",
-			},
-			{
-				property: "og:site_name",
-				content: "AI Stack",
-			},
-			{
-				name: "twitter:card",
-				content: "summary_large_image",
-			},
-			{
-				name: "twitter:title",
-				content: "AI Tools - Discover Tools for Your Stack",
-			},
-			{
-				name: "twitter:description",
-				content:
-					"Browse a curated collection of AI tools that builders use to ship products faster.",
-			},
-			{
-				name: "twitter:image",
-				content: "https://aistack.to/banners/aistack.png",
-			},
-			{
-				name: "twitter:site",
-				content: "@alperortac",
-			},
-			{
-				name: "twitter:creator",
-				content: "@alperortac",
-			},
-			{
-				name: "keywords",
-				content:
-					"AI tools, AI workflows, startup operations, indie builders, AI tooling costs, command line productivity",
-			},
-			{
-				name: "author",
-				content: "Alper Ortac",
-			},
-			{
-				name: "robots",
-				content: "index, follow",
-			},
-			{
-				name: "googlebot",
-				content: "index, follow",
-			},
-		],
+		meta: seoMeta({
+			title: "AI Tools - Browse Tools That Builders Actually Use",
+			description:
+				"Browse a curated directory of AI tools used in real production stacks. Filter by category, compare pricing, and find the right tools for your workflow.",
+			url: "/tools",
+			keywords:
+				"AI tools, AI tool directory, developer tools, AI pricing, coding tools, AI assistants",
+		}),
 	}),
 });
 
@@ -196,6 +121,15 @@ function ToolsPage() {
 
 	return (
 		<div className="mx-6 min-h-screen bg-bg-canvas">
+			<JsonLd
+				data={{
+					type: "CollectionPage",
+					name: "AI Tools Directory",
+					description:
+						"Browse a curated directory of AI tools used in real production stacks.",
+					url: "/tools",
+				}}
+			/>
 			<GridBackground />
 
 			<div className="relative z-10 max-w-content mx-auto py-24">

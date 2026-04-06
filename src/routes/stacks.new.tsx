@@ -6,10 +6,19 @@ import { StackEditor } from "@/components/StackEditor";
 import { Button } from "@/components/ui/button";
 import { api } from "../../convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
+import { seoMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/stacks/new")({
 	ssr: false,
 	component: NewStackPage,
+	head: () => ({
+		meta: seoMeta({
+			title: "Create Your AI Stack - AI Stack",
+			description:
+				"Build and share your AI stack. Show the world what tools you use to ship.",
+			noindex: true,
+		}),
+	}),
 });
 
 function NewStackPage() {

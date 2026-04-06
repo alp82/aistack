@@ -6,16 +6,17 @@ import { useState } from "react";
 import { AdminReviewTab } from "@/components/admin/AdminReviewTab";
 import { AdminQualityTab } from "@/components/admin/AdminQualityTab";
 import { AdminEmailTab } from "@/components/admin/AdminEmailTab";
+import { seoMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/admin")({
 	ssr: false,
 	component: AdminPage,
 	head: () => ({
-		meta: [
-			{
-				title: "Admin - AI Stack",
-			},
-		],
+		meta: seoMeta({
+			title: "Admin - AI Stack",
+			description: "AI Stack admin dashboard.",
+			noindex: true,
+		}),
 	}),
 });
 

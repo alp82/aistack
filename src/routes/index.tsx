@@ -3,8 +3,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 
 import { api } from "../../convex/_generated/api";
+import { JsonLd } from "@/components/JsonLd";
 import { LandingPageShell } from "@/features/landing/LandingPageShell";
 import type { LandingStackPreview } from "@/features/landing/sections/FeaturedStacksSection";
+import { seoMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/")({
 	component: IndexRoute,
@@ -14,91 +16,14 @@ export const Route = createFileRoute("/")({
 		);
 	},
 	head: () => ({
-		meta: [
-			{
-				title: "AI Stack - Command line signal from real builder stacks",
-			},
-			{
-				name: "description",
-				content:
-					"Track the AI stacks indie builders run in production. Compare costs, clone workflows, and ship with less guesswork.",
-			},
-			{
-				property: "og:title",
-				content: "AI Stack - What real builders use to ship",
-			},
-			{
-				property: "og:description",
-				content:
-					"Track the AI stacks indie builders run in production. Compare costs, clone workflows, and ship with less guesswork.",
-			},
-			{
-				property: "og:image",
-				content: "https://aistack.to/banners/aistack.png",
-			},
-			{
-				property: "og:image:width",
-				content: "802",
-			},
-			{
-				property: "og:image:height",
-				content: "438",
-			},
-			{
-				property: "og:url",
-				content: "https://aistack.to",
-			},
-			{
-				property: "og:type",
-				content: "website",
-			},
-			{
-				property: "og:site_name",
-				content: "AI Stack",
-			},
-			{
-				name: "twitter:card",
-				content: "summary_large_image",
-			},
-			{
-				name: "twitter:title",
-				content: "AI Stack - Command line signal from real builder stacks",
-			},
-			{
-				name: "twitter:description",
-				content:
-					"Track the AI stacks indie builders run in production. Compare costs, clone workflows, and ship with less guesswork.",
-			},
-			{
-				name: "twitter:image",
-				content: "https://aistack.to/banners/aistack.png",
-			},
-			{
-				name: "twitter:site",
-				content: "@alperortac",
-			},
-			{
-				name: "twitter:creator",
-				content: "@alperortac",
-			},
-			{
-				name: "keywords",
-				content:
-					"AI stacks, AI workflows, startup operations, indie builders, AI tooling costs, command line productivity",
-			},
-			{
-				name: "author",
-				content: "Alper Ortac",
-			},
-			{
-				name: "robots",
-				content: "index, follow",
-			},
-			{
-				name: "googlebot",
-				content: "index, follow",
-			},
-		],
+		meta: seoMeta({
+			title: "AI Stack - See What Real Builders Use to Ship",
+			description:
+				"Explore the AI stacks indie builders run in production. Compare tools, costs, and workflows — then build your own.",
+			url: "/",
+			keywords:
+				"AI stacks, AI tools, AI workflows, indie builders, AI tooling costs, developer tools",
+		}),
 	}),
 });
 
@@ -107,5 +32,16 @@ function IndexRoute() {
 		[]) as LandingStackPreview[];
 	const userStack = useQuery(api.stacks.getUserStack);
 
-	return <LandingPageShell stacks={stacks} userStack={userStack} />;
+	return (
+		<>
+			<JsonLd
+				data={{
+					type: "WebSite",
+					description:
+						"Explore the AI stacks indie builders run in production. Compare tools, costs, and workflows.",
+				}}
+			/>
+			<LandingPageShell stacks={stacks} userStack={userStack} />
+		</>
+	);
 }

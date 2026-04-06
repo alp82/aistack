@@ -12,9 +12,11 @@ import {
 } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { GridBackground } from "@/components/GridBackground";
+import { JsonLd } from "@/components/JsonLd";
 import { PageHeader } from "@/components/PageHeader";
 import { SortDropdown } from "@/components/SortDropdown";
 import { Input } from "@/components/ui/input";
+import { seoMeta } from "@/lib/seo";
 import { StackCard } from "@/features/landing/components/StackCard";
 import {
 	filterPreviewStacks,
@@ -99,91 +101,14 @@ export const Route = createFileRoute("/stacks/")({
 		);
 	},
 	head: () => ({
-		meta: [
-			{
-				title: "Browse AI Stacks - See What Builders Use",
-			},
-			{
-				name: "description",
-				content:
-					"Browse all AI stacks from real builders. See what tools, workflows, and automations successful founders use.",
-			},
-			{
-				property: "og:title",
-				content: "Browse AI Stacks - See What Builders Use",
-			},
-			{
-				property: "og:description",
-				content:
-					"Browse all AI stacks from real builders. See what tools, workflows, and automations successful founders use.",
-			},
-			{
-				property: "og:image",
-				content: "https://aistack.to/banners/aistack.png",
-			},
-			{
-				property: "og:image:width",
-				content: "802",
-			},
-			{
-				property: "og:image:height",
-				content: "438",
-			},
-			{
-				property: "og:url",
-				content: "https://aistack.to/stacks",
-			},
-			{
-				property: "og:type",
-				content: "website",
-			},
-			{
-				property: "og:site_name",
-				content: "AI Stack",
-			},
-			{
-				name: "twitter:card",
-				content: "summary_large_image",
-			},
-			{
-				name: "twitter:title",
-				content: "Browse AI Stacks - See What Builders Use",
-			},
-			{
-				name: "twitter:description",
-				content:
-					"Browse all AI stacks from real builders. See what tools, workflows, and automations successful founders use.",
-			},
-			{
-				name: "twitter:image",
-				content: "https://aistack.to/banners/aistack.png",
-			},
-			{
-				name: "twitter:site",
-				content: "@alperortac",
-			},
-			{
-				name: "twitter:creator",
-				content: "@alperortac",
-			},
-			{
-				name: "keywords",
-				content:
-					"AI stacks, AI workflows, startup operations, indie builders, AI tooling costs, command line productivity",
-			},
-			{
-				name: "author",
-				content: "Alper Ortac",
-			},
-			{
-				name: "robots",
-				content: "index, follow",
-			},
-			{
-				name: "googlebot",
-				content: "index, follow",
-			},
-		],
+		meta: seoMeta({
+			title: "Browse AI Stacks - See What Builders Actually Use",
+			description:
+				"Browse AI stacks from real builders. See what tools, workflows, and automations successful founders use to ship products.",
+			url: "/stacks",
+			keywords:
+				"AI stacks, AI workflows, indie builders, AI tooling costs, developer stacks, production tools",
+		}),
 	}),
 });
 
@@ -267,6 +192,15 @@ function BrowseStacksPage() {
 
 	return (
 		<div className="min-h-screen bg-bg-canvas">
+			<JsonLd
+				data={{
+					type: "CollectionPage",
+					name: "Browse AI Stacks",
+					description:
+						"Browse AI stacks from real builders. See what tools and workflows successful founders use.",
+					url: "/stacks",
+				}}
+			/>
 			<GridBackground />
 			<section className="relative z-10 py-24 px-6 md:px-12">
 				<div className="mx-auto max-w-content">

@@ -1,3 +1,15 @@
-# https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow:
+Allow: /
+
+Disallow: /admin
+Disallow: /signin
+Disallow: /signin-publish
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /auth-callback
+Disallow: /waitlist/
+Disallow: /stacks/new
+Disallow: /tools/new
+Disallow: /api/
+
+Sitemap: https://aistack.to/sitemap.xml

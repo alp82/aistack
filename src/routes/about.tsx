@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { PageHeader } from "../components/PageHeader";
 import { SimulatorSection } from "../components/SimulatorSection";
+import { seoMeta } from "../lib/seo";
 import Stack from "../components/Stack";
 import { StackCard } from "@/features/landing/components/StackCard";
 import type { LandingStackPreview } from "@/features/landing/sections/FeaturedStacksSection";
@@ -61,91 +62,14 @@ function StackCarousel({ compact = false }: { compact?: boolean }) {
 export const Route = createFileRoute("/about")({
 	component: AboutPage,
 	head: () => ({
-		meta: [
-			{
-				title: "About AI Stack - Learn How to Use AI Stacks",
-			},
-			{
-				name: "description",
-				content:
-					"Discover how AI Stack helps you explore, compare, and clone real AI workflows from successful builders.",
-			},
-			{
-				property: "og:title",
-				content: "About AI Stack - Learn How to Use AI Stacks",
-			},
-			{
-				property: "og:description",
-				content:
-					"Discover how AI Stack helps you explore, compare, and clone real AI workflows from successful builders.",
-			},
-			{
-				property: "og:image",
-				content: "https://aistack.to/banners/aistack.png",
-			},
-			{
-				property: "og:image:width",
-				content: "802",
-			},
-			{
-				property: "og:image:height",
-				content: "438",
-			},
-			{
-				property: "og:url",
-				content: "https://aistack.to/about",
-			},
-			{
-				property: "og:type",
-				content: "website",
-			},
-			{
-				property: "og:site_name",
-				content: "AI Stack",
-			},
-			{
-				name: "twitter:card",
-				content: "summary_large_image",
-			},
-			{
-				name: "twitter:title",
-				content: "About AI Stack - Learn How to Use AI Stacks",
-			},
-			{
-				name: "twitter:description",
-				content:
-					"Discover how AI Stack helps you explore, compare, and clone real AI workflows from successful builders.",
-			},
-			{
-				name: "twitter:image",
-				content: "https://aistack.to/banners/aistack.png",
-			},
-			{
-				name: "twitter:site",
-				content: "@alperortac",
-			},
-			{
-				name: "twitter:creator",
-				content: "@alperortac",
-			},
-			{
-				name: "keywords",
-				content:
-					"AI stacks, AI workflows, startup operations, indie builders, AI tooling costs, command line productivity",
-			},
-			{
-				name: "author",
-				content: "Alper Ortac",
-			},
-			{
-				name: "robots",
-				content: "index, follow",
-			},
-			{
-				name: "googlebot",
-				content: "index, follow",
-			},
-		],
+		meta: seoMeta({
+			title: "About AI Stack - How It Works",
+			description:
+				"Learn how AI Stack helps you explore, compare, and share real AI workflows from successful builders. See costs, tools, and configs side by side.",
+			url: "/about",
+			keywords:
+				"AI stacks, how it works, AI tool comparison, builder workflows, AI costs",
+		}),
 	}),
 });
 

@@ -11,10 +11,18 @@ import { api } from "../../convex/_generated/api";
 import { StackEditor } from "@/components/StackEditor";
 import type { ModelSubscriptionEntry } from "@/features/stack-editor/types";
 import { authClient } from "@/lib/auth-client";
+import { seoMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/stacks/$slug_/edit")({
 	ssr: false,
 	component: EditStackPage,
+	head: () => ({
+		meta: seoMeta({
+			title: "Edit Stack - AI Stack",
+			description: "Edit your AI stack on AI Stack.",
+			noindex: true,
+		}),
+	}),
 });
 
 function EditStackPage() {

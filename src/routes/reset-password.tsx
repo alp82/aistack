@@ -5,9 +5,17 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { authClient } from "../lib/auth-client";
+import { seoMeta } from "../lib/seo";
 
 export const Route = createFileRoute("/reset-password")({
 	component: ResetPasswordPage,
+	head: () => ({
+		meta: seoMeta({
+			title: "Reset Password - AI Stack",
+			description: "Set a new password for your AI Stack account.",
+			noindex: true,
+		}),
+	}),
 });
 
 function ResetPasswordPage() {

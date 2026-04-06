@@ -7,6 +7,7 @@ import {
 import { useEffect, useState } from "react";
 import { AuthForm } from "../components/AuthForm";
 import { authClient } from "../lib/auth-client";
+import { seoMeta } from "../lib/seo";
 
 type SignInSearch = {
 	redirect?: string;
@@ -20,6 +21,13 @@ export const Route = createFileRoute("/signin")({
 				typeof search.redirect === "string" ? search.redirect : undefined,
 		};
 	},
+	head: () => ({
+		meta: seoMeta({
+			title: "Sign In - AI Stack",
+			description: "Sign in to AI Stack to share and manage your AI workflow.",
+			noindex: true,
+		}),
+	}),
 });
 
 function SignInPage() {

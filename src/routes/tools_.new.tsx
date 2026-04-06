@@ -3,16 +3,17 @@ import { ArrowLeft } from "lucide-react";
 import { AddToolForm } from "../components/AddToolModal";
 import { GridBackground } from "../components/GridBackground";
 import { PageHeader } from "../components/PageHeader";
+import { seoMeta } from "../lib/seo";
 
 export const Route = createFileRoute("/tools_/new")({
 	ssr: false,
 	component: NewToolPage,
 	head: () => ({
-		meta: [
-			{
-				title: "Add New Tool - AI Stack",
-			},
-		],
+		meta: seoMeta({
+			title: "Add New Tool - AI Stack",
+			description: "Submit a new AI tool to the AI Stack directory.",
+			noindex: true,
+		}),
 	}),
 });
 

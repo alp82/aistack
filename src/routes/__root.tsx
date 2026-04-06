@@ -46,7 +46,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 				content: "width=device-width, initial-scale=1",
 			},
 			{
-				title: "AI Stack",
+				title: "AI Stack - See What Real Builders Use to Ship",
 			},
 		],
 		links: [
@@ -132,9 +132,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
 	return (
 		<>
 			<Header />
-			<div className="pb-14 md:pb-0">
-				{children}
-			</div>
+			<div className="pb-14 md:pb-0">{children}</div>
 			<Footer />
 		</>
 	);

@@ -8,9 +8,17 @@ import {
 	CardHeader,
 	CardTitle,
 } from "../components/ui/card";
+import { seoMeta } from "../lib/seo";
 
 export const Route = createFileRoute("/waitlist/$lookupId")({
 	component: WaitlistStatus,
+	head: () => ({
+		meta: seoMeta({
+			title: "Waitlist Status - AI Stack",
+			description: "Check your AI Stack waitlist position.",
+			noindex: true,
+		}),
+	}),
 });
 
 function WaitlistStatus() {
