@@ -9,10 +9,11 @@ import { ToolTooltipContent } from "./ToolTooltipContent";
 export interface AIToolReferenceAttrs {
 	shortId: string;
 	name: string;
+	description: string | null;
 }
 
 function AIToolReferenceView({ node, editor, getPos }: NodeViewProps) {
-	const { shortId, name } = node.attrs as AIToolReferenceAttrs;
+	const { shortId, name, description } = node.attrs as AIToolReferenceAttrs;
 	const context = useOptionalEditorContext();
 	const setHoveredToolName = context?.setHoveredToolName ?? (() => {});
 	const toolData =
@@ -30,7 +31,8 @@ function AIToolReferenceView({ node, editor, getPos }: NodeViewProps) {
 			`[data-card-id="${CSS.escape(cardId)}"]`,
 		);
 		if (cardEl) {
-			cardEl.scrollIntoView({ behavior: "smooth", block: "center" });
+			const top = cardEl.getBoundingClientRect().top + window.scrollY - 80;
+			window.scrollTo({ top, behavior: "smooth" });
 		}
 	};
 
@@ -39,6 +41,7 @@ function AIToolReferenceView({ node, editor, getPos }: NodeViewProps) {
 		expandReferenceToCard(editor, getPos, node, "aiToolCard", {
 			shortId,
 			name,
+			description,
 		});
 	};
 
@@ -99,6 +102,9 @@ export const AIToolReference = Node.create({
 			name: {
 				default: "",
 			},
+			description: {
+				default: null,
+			},
 		};
 	},
 
@@ -111,6 +117,7 @@ export const AIToolReference = Node.create({
 					return {
 						shortId: el.getAttribute("data-short-id") || null,
 						name: el.getAttribute("data-tool-name") || el.textContent || "",
+						description: el.getAttribute("data-description") || null,
 					};
 				},
 			},
@@ -123,6 +130,7 @@ export const AIToolReference = Node.create({
 			mergeAttributes(HTMLAttributes, {
 				"data-ai-tool-reference": "",
 				"data-short-id": node.attrs.shortId,
+				"data-description": node.attrs.description || "",
 				"data-tool-name": node.attrs.name,
 			}),
 			node.attrs.name,

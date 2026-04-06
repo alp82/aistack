@@ -15,8 +15,8 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CostBreakdownTooltip } from "@/components/CostBreakdownTooltip";
-import { GridBackground } from "@/components/GridBackground";
 import { PriceDisplay } from "@/components/PriceDisplay";
+import { TableOfContents } from "@/components/TableOfContents";
 import { TiptapEditor } from "@/components/TiptapEditor";
 import { ToolItem } from "@/components/ToolItem";
 import { UpvoteButton } from "@/components/UpvoteButton";
@@ -27,9 +27,11 @@ import {
 	type BundleLookupData,
 	EditorProvider,
 	type InstructionLookupData,
+	type ModelLookupData,
 	type ToolLookupData,
 	useEditorContext,
 } from "@/features/stack-editor/context/EditorContext";
+import type { ModelItemData } from "@/components/ModelItem";
 import type { InstructionType } from "@/features/stack-editor/types";
 import { formatPricingSummary, sortToolsByPrice } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
@@ -75,15 +77,18 @@ type ViewInstruction = {
 function ViewLookupDataSync({
 	tools,
 	bundles,
+	models,
 	instructions,
 }: {
 	tools: ViewTool[];
 	bundles: ViewBundle[];
+	models: ModelItemData[];
 	instructions: ViewInstruction[];
 }) {
 	const {
 		setToolLookup,
 		setBundleLookup,
+		setModelLookup,
 		setInstructionLookup,
 		setInstructionFiles,
 	} = useEditorContext();
@@ -123,6 +128,19 @@ function ViewLookupDataSync({
 		}
 		setBundleLookup(bundleMap);
 	}, [bundles, setBundleLookup]);
+
+	useEffect(() => {
+		const modelMap = new Map<string, ModelLookupData>();
+		for (const model of models) {
+			modelMap.set(model.name, {
+				name: model.name,
+				provider: model.provider,
+				iconUrl: model.iconUrl,
+				category: model.category,
+			});
+		}
+		setModelLookup(modelMap);
+	}, [models, setModelLookup]);
 
 	useEffect(() => {
 		const instructionMap = new Map<string, InstructionLookupData>();
@@ -506,12 +524,24 @@ function StackDetailsPage() {
 			<ViewLookupDataSync
 				tools={stack.tools}
 				bundles={stack.bundles}
+				models={stack.models}
 				instructions={stack.instructions ?? []}
 			/>
 			<div className="bg-bg-canvas">
-				<GridBackground />
 				{/* Header */}
-				<header className="py-8 md:py-12 px-6">
+				<header className="relative overflow-hidden py-8 md:py-12 px-6">
+					<div
+						className="pointer-events-none absolute inset-0 z-0 opacity-10"
+						style={{
+							backgroundImage:
+								"linear-gradient(to right, var(--stroke-subtle) 1px, transparent 1px), linear-gradient(to bottom, var(--stroke-subtle) 1px, transparent 1px)",
+							backgroundSize: "4rem 4rem",
+							maskImage:
+								"linear-gradient(to bottom, black 40%, transparent 100%)",
+							WebkitMaskImage:
+								"linear-gradient(to bottom, black 40%, transparent 100%)",
+						}}
+					/>
 					<div className="mx-auto max-w-content">
 						{/* Layout: avatar | content | price */}
 						<div className="flex flex-col md:grid md:grid-cols-[auto_1fr_auto] gap-6 md:gap-x-12 items-start">
@@ -609,7 +639,9 @@ function StackDetailsPage() {
 													>
 														<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
 													</svg>
-													<span className="truncate">@{stack.creator.xHandle}</span>
+													<span className="truncate">
+														@{stack.creator.xHandle}
+													</span>
 												</a>
 											)}
 											{personalPageUrl && (
@@ -777,21 +809,27 @@ function StackDetailsPage() {
 							</div>
 						</section>
 
-						{/* Tab Content */}
-						<section className="py-12 lg:hidden">
-							{activeTab === "tools" && toolsContent}
+						{/* Mobile: tools tab content */}
+						{activeTab === "tools" && (
+							<section className="py-12 lg:hidden">{toolsContent}</section>
+						)}
 
-							{activeTab === "description" && stack.description && (
+						{/* Description — single instance, visibility controlled per breakpoint */}
+						{stack.description && (
+							<section
+								id="stack-description"
+								className={cn(
+									"py-12",
+									activeTab !== "description" && "hidden lg:block",
+								)}
+							>
+								<TableOfContents
+									containerSelector="#stack-description"
+									contentLength={stack.description.length}
+								/>
 								<TiptapEditor content={stack.description} editable={false} />
-							)}
-						</section>
-
-						{/* Desktop Content - description only, tools are in sidebar */}
-						<section className="hidden py-12 lg:block">
-							{stack.description && (
-								<TiptapEditor content={stack.description} editable={false} />
-							)}
-						</section>
+							</section>
+						)}
 					</div>
 
 					<ViewSidebar

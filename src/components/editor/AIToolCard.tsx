@@ -1,12 +1,11 @@
 import { mergeAttributes, Node } from "@tiptap/core";
 import type { NodeViewProps } from "@tiptap/react";
 import { ReactNodeViewRenderer } from "@tiptap/react";
-import { Terminal } from "lucide-react";
+import { Blocks, Terminal } from "lucide-react";
 import { useOptionalEditorContext } from "@/features/stack-editor/context/EditorContext";
 import { BaseCard } from "./BaseCard";
 import { EntityPill, toolPillColors } from "./EntityPill";
 import { collapseCardToReference } from "./expandCollapse";
-import { ToolTooltipContent } from "./ToolTooltipContent";
 
 export interface AIToolCardAttrs {
 	shortId: string;
@@ -35,6 +34,7 @@ function AIToolCardView({
 		collapseCardToReference(editor, getPos, node, "aiToolReference", {
 			shortId,
 			name,
+			description: resolvedDescription || null,
 		});
 	};
 
@@ -43,7 +43,7 @@ function AIToolCardView({
 		context?.onToolDescriptionUpdate?.(shortId || name, value);
 	};
 
-	const toolIcon = iconUrl ? (
+	const pillIcon = iconUrl ? (
 		<img
 			src={iconUrl}
 			alt=""
@@ -53,28 +53,29 @@ function AIToolCardView({
 		<Terminal className="size-3.5 shrink-0 text-fg-muted" />
 	);
 
+	const metadataSlot = toolData?.price ? (
+		<span className="font-mono text-[10px] text-fg-muted">
+			{toolData.price.amount === 0
+				? "Free"
+				: `$${toolData.price.amount}/${toolData.price.period === "one_time" ? "once" : "mo"}`}
+		</span>
+	) : undefined;
+
 	return (
 		<BaseCard
-			accentColorClass="bg-amber-500"
+			icon={<Blocks className="size-7 shrink-0 text-amber-500" />}
+			iconBgClass="bg-amber-500/15"
+			borderClass="border-amber-500/30"
 			selected={selected}
 			headerContent={
 				<EntityPill
 					name={name}
-					icon={toolIcon}
+					icon={pillIcon}
 					colors={toolPillColors}
 					onCollapse={isEditable ? handleCollapse : undefined}
-					tooltipContent={() => (
-						<ToolTooltipContent
-							name={name}
-							iconUrl={toolData?.iconUrl}
-							categories={toolData?.categories}
-							price={toolData?.price}
-							tierName={toolData?.tierName}
-							description={toolData?.description}
-						/>
-					)}
 				/>
 			}
+			metadataSlot={metadataSlot}
 			description={resolvedDescription}
 			isEditable={isEditable}
 			onDescriptionChange={handleDescriptionChange}

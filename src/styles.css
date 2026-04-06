@@ -305,6 +305,26 @@ code, .font-mono {
   clear: both;
 }
 
+.ProseMirror ul:not([data-type="taskList"]) {
+  list-style: none;
+}
+
+.ProseMirror ul:not([data-type="taskList"]) > li {
+  display: flex;
+}
+
+.ProseMirror ul:not([data-type="taskList"]) > li::before {
+  content: "–";
+  flex-shrink: 0;
+  color: var(--fg-muted);
+  margin-right: 0.5rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.ProseMirror ul:not([data-type="taskList"]) > li > p {
+  margin: 0;
+}
+
 .ProseMirror ul[data-type="taskList"] li {
   display: flex;
   align-items: flex-start;
@@ -382,21 +402,65 @@ code, .font-mono {
 .ProseMirror h2,
 .ProseMirror h3 {
   position: relative;
+  scroll-margin-top: 80px;
 }
 
-.ProseMirror h1::before,
-.ProseMirror h2::before {
-  margin-right: 0.65rem;
+.ProseMirror .heading-highlight {
+  animation: heading-flash 2s ease-out forwards;
+}
+
+@keyframes heading-flash {
+  0% {
+    background-color: oklch(0.75 0.15 85 / 0.3);
+  }
+  30% {
+    background-color: oklch(0.75 0.15 85 / 0.15);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* Anchor link on headings */
+.ProseMirror h1 .heading-anchor,
+.ProseMirror h2 .heading-anchor,
+.ProseMirror h3 .heading-anchor {
+  opacity: 0;
+  margin-left: 0.4rem;
+  color: var(--fg-muted);
+  text-decoration: none;
+  font-size: 0.75em;
+  vertical-align: middle;
+  transition: opacity 0.15s ease, color 0.15s ease;
+  cursor: pointer;
+}
+
+.ProseMirror h1:hover .heading-anchor,
+.ProseMirror h2:hover .heading-anchor,
+.ProseMirror h3:hover .heading-anchor {
+  opacity: 1;
+}
+
+.ProseMirror h1 .heading-anchor:hover,
+.ProseMirror h2 .heading-anchor:hover,
+.ProseMirror h3 .heading-anchor:hover {
   color: var(--accent-lime);
-  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Menlo, Monaco, Consolas, monospace;
 }
 
 .ProseMirror h1::before {
-  content: ">>";
+  content: "■";
+  margin-right: 0.5rem;
+  color: var(--accent-lime);
+  font-size: 0.9em;
+  vertical-align: middle;
 }
 
 .ProseMirror h2::before {
-  content: ">";
+  content: "■";
+  margin-right: 0.45rem;
+  color: var(--accent-lime);
+  font-size: 0.45em;
+  vertical-align: middle;
 }
 
 /* Tiptap drag handle — grip bar with centered dots */

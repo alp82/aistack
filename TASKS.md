@@ -1,6 +1,8 @@
 # TODO
 
 * CLI workflow
+    * https://github.com/dyoshikawa/rulesync
+    * https://github.com/caliber-ai-org/ai-setup
     * https://github.com/FutureExcited/vibe-rules
     * npx aistack login
     * npx aistack collect

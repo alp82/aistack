@@ -4,7 +4,6 @@ import { ReactNodeViewRenderer } from "@tiptap/react";
 import { Package } from "lucide-react";
 import { useOptionalEditorContext } from "@/features/stack-editor/context/EditorContext";
 import { BaseCard } from "./BaseCard";
-import { BundleTooltipContent } from "./BundleTooltipContent";
 import { bundlePillColors, EntityPill } from "./EntityPill";
 import { collapseCardToReference } from "./expandCollapse";
 
@@ -36,6 +35,7 @@ function AIBundleCardView({
 		collapseCardToReference(editor, getPos, node, "aiBundleReference", {
 			shortId,
 			name,
+			description: resolvedDescription || null,
 		});
 	};
 
@@ -44,7 +44,7 @@ function AIBundleCardView({
 		context?.onBundleDescriptionUpdate?.(shortId || name, value);
 	};
 
-	const bundleIcon = iconUrl ? (
+	const pillIcon = iconUrl ? (
 		<img
 			src={iconUrl}
 			alt=""
@@ -56,24 +56,26 @@ function AIBundleCardView({
 
 	return (
 		<BaseCard
-			accentColorClass="bg-violet-500"
+			icon={<Package className="size-7 shrink-0 text-violet-500" />}
+			iconBgClass="bg-violet-500/15"
+			borderClass="border-violet-500/30"
 			selected={selected}
 			headerContent={
 				<EntityPill
 					name={name}
-					icon={bundleIcon}
+					icon={pillIcon}
 					colors={bundlePillColors}
 					onCollapse={isEditable ? handleCollapse : undefined}
-					tooltipContent={() => (
-						<BundleTooltipContent
-							name={name}
-							iconUrl={bundleData?.iconUrl}
-							price={bundleData?.price}
-							tierName={bundleData?.tierName}
-							description={bundleData?.description}
-						/>
-					)}
 				/>
+			}
+			metadataSlot={
+				bundleData?.price ? (
+					<span className="font-mono text-[10px] text-fg-muted">
+						{bundleData.price.amount === 0
+							? "Free"
+							: `$${bundleData.price.amount}/${bundleData.price.period === "one_time" ? "once" : "mo"}`}
+					</span>
+				) : undefined
 			}
 			description={resolvedDescription}
 			isEditable={isEditable}

@@ -11,10 +11,12 @@ export interface AIModelReferenceAttrs {
 	shortId: string;
 	name: string;
 	provider: string;
+	description: string | null;
 }
 
 function AIModelReferenceView({ node, editor, getPos }: NodeViewProps) {
-	const { shortId, name, provider } = node.attrs as AIModelReferenceAttrs;
+	const { shortId, name, provider, description } =
+		node.attrs as AIModelReferenceAttrs;
 	const context = useOptionalEditorContext();
 	const modelData =
 		context?.modelLookupByShortId?.get(shortId) ??
@@ -32,7 +34,8 @@ function AIModelReferenceView({ node, editor, getPos }: NodeViewProps) {
 			`[data-card-id="${CSS.escape(cardId)}"]`,
 		);
 		if (cardEl) {
-			cardEl.scrollIntoView({ behavior: "smooth", block: "center" });
+			const top = cardEl.getBoundingClientRect().top + window.scrollY - 80;
+			window.scrollTo({ top, behavior: "smooth" });
 		}
 	};
 
@@ -42,6 +45,7 @@ function AIModelReferenceView({ node, editor, getPos }: NodeViewProps) {
 			shortId,
 			name,
 			provider,
+			description,
 		});
 	};
 
@@ -102,6 +106,9 @@ export const AIModelReference = Node.create({
 			provider: {
 				default: "",
 			},
+			description: {
+				default: null,
+			},
 		};
 	},
 
@@ -115,6 +122,7 @@ export const AIModelReference = Node.create({
 						shortId: el.getAttribute("data-short-id") || null,
 						name: el.getAttribute("data-model-name") || el.textContent || "",
 						provider: el.getAttribute("data-model-provider") || "",
+						description: el.getAttribute("data-description") || null,
 					};
 				},
 			},
@@ -129,6 +137,7 @@ export const AIModelReference = Node.create({
 				"data-short-id": node.attrs.shortId,
 				"data-model-name": node.attrs.name,
 				"data-model-provider": node.attrs.provider,
+				"data-description": node.attrs.description || "",
 			}),
 			node.attrs.name,
 		];

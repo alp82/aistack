@@ -6,7 +6,6 @@ import { useOptionalEditorContext } from "@/features/stack-editor/context/Editor
 import { BaseCard } from "./BaseCard";
 import { EntityPill, modelPillColors } from "./EntityPill";
 import { collapseCardToReference } from "./expandCollapse";
-import { ModelTooltipContent } from "./ModelTooltipContent";
 
 export interface AIModelCardAttrs {
 	shortId: string;
@@ -39,6 +38,7 @@ function AIModelCardView({
 			shortId,
 			name,
 			provider,
+			description: resolvedDescription || null,
 		});
 	};
 
@@ -47,7 +47,7 @@ function AIModelCardView({
 		context?.onModelDescriptionUpdate?.(shortId || name, value);
 	};
 
-	const modelIcon = iconUrl ? (
+	const pillIcon = iconUrl ? (
 		<img
 			src={iconUrl}
 			alt=""
@@ -59,24 +59,22 @@ function AIModelCardView({
 
 	return (
 		<BaseCard
-			accentColorClass="bg-cyan-500"
+			icon={<Brain className="size-7 shrink-0 text-cyan-500" />}
+			iconBgClass="bg-cyan-500/15"
+			borderClass="border-cyan-500/30"
 			selected={selected}
 			headerContent={
 				<EntityPill
 					name={name}
-					icon={modelIcon}
+					icon={pillIcon}
 					colors={modelPillColors}
 					onCollapse={isEditable ? handleCollapse : undefined}
-					tooltipContent={() => (
-						<ModelTooltipContent
-							name={name}
-							iconUrl={modelData?.iconUrl}
-							provider={modelData?.provider ?? provider}
-							category={modelData?.category}
-							description={modelData?.description}
-						/>
-					)}
 				/>
+			}
+			metadataSlot={
+				<span className="font-mono text-[10px] text-fg-muted">
+					{modelData?.provider ?? provider}
+				</span>
 			}
 			description={resolvedDescription}
 			isEditable={isEditable}

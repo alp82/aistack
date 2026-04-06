@@ -17,10 +17,12 @@ export interface AIInstructionReferenceAttrs {
 	name: string;
 	instructionType: InstructionType;
 	content: string | null;
+	description: string | null;
 }
 
 function AIInstructionReferenceView({ node, editor, getPos }: NodeViewProps) {
-	const { name, instructionType } = node.attrs as AIInstructionReferenceAttrs;
+	const { name, instructionType, description } =
+		node.attrs as AIInstructionReferenceAttrs;
 	const context = useOptionalEditorContext();
 	const instructionData = context?.instructionLookup.get(name);
 
@@ -40,7 +42,8 @@ function AIInstructionReferenceView({ node, editor, getPos }: NodeViewProps) {
 			`[data-card-id="${CSS.escape(name)}"]`,
 		);
 		if (cardEl) {
-			cardEl.scrollIntoView({ behavior: "smooth", block: "center" });
+			const top = cardEl.getBoundingClientRect().top + window.scrollY - 80;
+			window.scrollTo({ top, behavior: "smooth" });
 		}
 	};
 
@@ -58,7 +61,7 @@ function AIInstructionReferenceView({ node, editor, getPos }: NodeViewProps) {
 			name,
 			instructionType,
 			content,
-			description: instructionData?.description ?? null,
+			description: description ?? instructionData?.description ?? null,
 		});
 	};
 
@@ -116,6 +119,9 @@ export const AIInstructionReference = Node.create({
 				default: "prompt",
 			},
 			content: {
+				default: null,
+			},
+			description: {
 				default: null,
 			},
 		};

@@ -9,8 +9,11 @@ import {
 import { autoResize } from "./autoResize";
 
 interface BaseCardProps {
-	accentColorClass: string;
+	icon: ReactNode;
+	iconBgClass: string;
+	borderClass?: string;
 	headerContent: ReactNode;
+	metadataSlot?: ReactNode;
 	description: string;
 	isEditable: boolean;
 	selected?: boolean;
@@ -20,8 +23,11 @@ interface BaseCardProps {
 }
 
 export function BaseCard({
-	accentColorClass,
+	icon,
+	iconBgClass,
+	borderClass,
 	headerContent,
+	metadataSlot,
 	description,
 	isEditable,
 	selected,
@@ -53,7 +59,7 @@ export function BaseCard({
 		if (selected && isEditable) {
 			textareaRef.current?.focus();
 		}
-	}, [selected]);
+	}, [selected, isEditable]);
 
 	const handleDescriptionChange = (value: string) => {
 		setDraftDescription(value);
@@ -63,15 +69,17 @@ export function BaseCard({
 	const showDescription = isEditable || draftDescription.trim();
 
 	return (
-		<NodeViewWrapper
-			as="div"
-			className="my-3"
-			data-card-id={cardId}
-			contentEditable={false}
-		>
-			<div className="group/card flex">
-				{/* Accent stripe */}
-				<div className={`w-[4px] shrink-0 ${accentColorClass}`} />
+		<NodeViewWrapper as="div" className="my-3" contentEditable={false}>
+			<div
+				data-card-id={cardId}
+				className={`group/card flex ${borderClass ? `border ${borderClass}` : ""}`}
+			>
+				{/* Icon column */}
+				<div
+					className={`w-12 shrink-0 flex items-center justify-center ${iconBgClass}`}
+				>
+					{icon}
+				</div>
 
 				<div className="min-w-0 flex-1">
 					{/* Header row */}
@@ -79,6 +87,7 @@ export function BaseCard({
 						<div className="flex min-w-0 flex-1 items-center">
 							{headerContent}
 						</div>
+						{metadataSlot && <div className="shrink-0">{metadataSlot}</div>}
 					</div>
 
 					{/* Description */}

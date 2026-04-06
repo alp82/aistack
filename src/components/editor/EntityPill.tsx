@@ -12,7 +12,7 @@ export interface EntityPillColors {
 
 interface EntityPillProps {
 	name: string;
-	icon: ReactNode;
+	icon?: ReactNode;
 	colors: EntityPillColors;
 	onNameClick?: () => void;
 	/** Arrow button — scrolls to the card (for references) */

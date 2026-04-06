@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { BundleItem, type BundleItemData } from "@/components/BundleItem";
 import { InstructionItem } from "@/components/InstructionItem";
 import type { InstructionItem as InstructionItemType } from "@/features/stack-editor/types";
@@ -44,7 +44,26 @@ export function ViewSidebar({
 		if (providerDiff !== 0) return providerDiff;
 		return b.name.localeCompare(a.name);
 	};
-	const sortedModels = models.sort(sortModelsByProviderThenName);
+	const sortedModels = [...models].sort(sortModelsByProviderThenName);
+
+	const toolPriceTotal = useMemo(() => {
+		let total = 0;
+		for (const t of tools) {
+			if (
+				t.price.fixed &&
+				t.priceKind !== "bundle" &&
+				t.priceKind !== "sponsored"
+			) {
+				total += t.price.fixed.amount;
+			}
+		}
+		return total;
+	}, [tools]);
+
+	const totalFileCount = useMemo(
+		() => instructions.reduce((sum, inst) => sum + inst.files.length, 0),
+		[instructions],
+	);
 
 	return (
 		<aside className="hidden w-140 shrink-0 lg:block">
@@ -53,17 +72,22 @@ export function ViewSidebar({
 					{/* Main Tools */}
 					{mainTools.length > 0 && (
 						<section>
-							<p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
+							<p className="sticky top-0 z-10 mb-3 bg-bg-canvas pb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
 								{"// Tools"}
+								<span className="ml-2 text-fg-muted">
+									· {tools.length} {tools.length === 1 ? "item" : "items"}
+									{toolPriceTotal > 0 && ` · $${toolPriceTotal}/mo`}
+								</span>
 							</p>
 							<div className="space-y-2">
 								{mainTools.map((tool) => (
-									<ToolItem
-										key={tool._id}
-										tool={tool}
-										size="md"
-										onBundleClick={onBundleClick}
-									/>
+									<div key={tool._id} className="border-l-2 border-accent-lime">
+										<ToolItem
+											tool={tool}
+											size="md"
+											onBundleClick={onBundleClick}
+										/>
+									</div>
 								))}
 							</div>
 						</section>
@@ -72,7 +96,7 @@ export function ViewSidebar({
 					{/* Other Tools */}
 					{miscTools.length > 0 && (
 						<section>
-							<p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
+							<p className="sticky top-0 z-10 mb-3 bg-bg-canvas pb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
 								{"// Secondary Tools"}
 							</p>
 							<div className="space-y-2">
@@ -91,8 +115,12 @@ export function ViewSidebar({
 					{/* Models */}
 					{sortedModels.length > 0 && (
 						<section>
-							<p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
+							<p className="sticky top-0 z-10 mb-3 bg-bg-canvas pb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
 								{"// Models"}
+								<span className="ml-2 text-fg-muted">
+									· {sortedModels.length}{" "}
+									{sortedModels.length === 1 ? "item" : "items"}
+								</span>
 							</p>
 							<div className="space-y-2">
 								{sortedModels.map((model) => (
@@ -105,8 +133,11 @@ export function ViewSidebar({
 					{/* Bundles */}
 					{bundles.length > 0 && (
 						<section>
-							<p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
+							<p className="sticky top-0 z-10 mb-3 bg-bg-canvas pb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
 								{"// Bundles"}
+								<span className="ml-2 text-fg-muted">
+									· {bundles.length} {bundles.length === 1 ? "item" : "items"}
+								</span>
 							</p>
 							<div className="space-y-2">
 								{bundles.map((bundle) => (
@@ -123,8 +154,14 @@ export function ViewSidebar({
 					{/* Instructions */}
 					{instructions.length > 0 && (
 						<section>
-							<p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
+							<p className="sticky top-0 z-10 mb-3 bg-bg-canvas pb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
 								{"// Instructions"}
+								<span className="ml-2 text-fg-muted">
+									· {instructions.length}{" "}
+									{instructions.length === 1 ? "item" : "items"}
+									{totalFileCount > 0 &&
+										` · ${totalFileCount} ${totalFileCount === 1 ? "file" : "files"}`}
+								</span>
 							</p>
 							<div className="space-y-2">
 								{instructions.map((inst, i) => (

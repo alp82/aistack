@@ -10,10 +10,11 @@ import { expandReferenceToCard } from "./expandCollapse";
 export interface AIBundleReferenceAttrs {
 	shortId: string;
 	name: string;
+	description: string | null;
 }
 
 function AIBundleReferenceView({ node, editor, getPos }: NodeViewProps) {
-	const { shortId, name } = node.attrs as AIBundleReferenceAttrs;
+	const { shortId, name, description } = node.attrs as AIBundleReferenceAttrs;
 	const context = useOptionalEditorContext();
 	const bundleData =
 		context?.bundleLookupByShortId?.get(shortId) ??
@@ -31,7 +32,8 @@ function AIBundleReferenceView({ node, editor, getPos }: NodeViewProps) {
 			`[data-card-id="${CSS.escape(cardId)}"]`,
 		);
 		if (cardEl) {
-			cardEl.scrollIntoView({ behavior: "smooth", block: "center" });
+			const top = cardEl.getBoundingClientRect().top + window.scrollY - 80;
+			window.scrollTo({ top, behavior: "smooth" });
 		}
 	};
 
@@ -40,6 +42,7 @@ function AIBundleReferenceView({ node, editor, getPos }: NodeViewProps) {
 		expandReferenceToCard(editor, getPos, node, "aiBundleCard", {
 			shortId,
 			name,
+			description,
 		});
 	};
 
@@ -97,6 +100,9 @@ export const AIBundleReference = Node.create({
 			name: {
 				default: "",
 			},
+			description: {
+				default: null,
+			},
 		};
 	},
 
@@ -109,6 +115,7 @@ export const AIBundleReference = Node.create({
 					return {
 						shortId: el.getAttribute("data-short-id") || null,
 						name: el.getAttribute("data-bundle-name") || el.textContent || "",
+						description: el.getAttribute("data-description") || null,
 					};
 				},
 			},
@@ -122,6 +129,7 @@ export const AIBundleReference = Node.create({
 				"data-ai-bundle-reference": "",
 				"data-short-id": node.attrs.shortId,
 				"data-bundle-name": node.attrs.name,
+				"data-description": node.attrs.description || "",
 			}),
 			node.attrs.name,
 		];

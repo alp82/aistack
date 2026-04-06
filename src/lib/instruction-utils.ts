@@ -1,3 +1,13 @@
+import type { LucideIcon } from "lucide-react";
+import {
+	BookOpen,
+	Bot,
+	Cpu,
+	FileText,
+	Shield,
+	Wrench,
+	Zap,
+} from "lucide-react";
 import type { KnownInstructionType } from "@/features/stack-editor/types";
 
 const knownTypeColors: Record<KnownInstructionType, string> = {
@@ -154,6 +164,36 @@ export function getInstructionTypePillColors(type: string): {
 	hoverText: string;
 } {
 	return isKnownType(type) ? knownTypePillColors[type] : defaultPillColors;
+}
+
+const knownTypeIcons: Record<KnownInstructionType, LucideIcon> = {
+	subagent: Bot,
+	hook: Zap,
+	prompt: BookOpen,
+	rule: Shield,
+	mcp: Cpu,
+	skill: Wrench,
+	custom: FileText,
+};
+
+export function getInstructionTypeIcon(type: string): LucideIcon {
+	return isKnownType(type) ? knownTypeIcons[type] : knownTypeIcons.custom;
+}
+
+const knownTypeIconBgClasses: Record<KnownInstructionType, string> = {
+	prompt: "bg-blue-400/15",
+	rule: "bg-purple-400/15",
+	skill: "bg-emerald-400/15",
+	mcp: "bg-cyan-400/15",
+	hook: "bg-pink-400/15",
+	subagent: "bg-orange-400/15",
+	custom: "bg-stone-400/15",
+};
+
+export function getInstructionTypeIconBgClass(type: string): string {
+	return isKnownType(type)
+		? knownTypeIconBgClasses[type]
+		: knownTypeIconBgClasses.custom;
 }
 
 export { isKnownType };
