@@ -38,7 +38,7 @@ type EditorState = {
 	bundleSubscriptions: BundleSubscriptionEntry[];
 	xHandle: string;
 	personalPageUrl: string;
-	projectPageUrl: string;
+
 	stackImageUrl: string;
 	saving: boolean;
 	error: string;
@@ -59,7 +59,7 @@ type GuestStackDraft = {
 	bundleSubscriptions: BundleSubscriptionEntry[];
 	xHandle: string;
 	personalPageUrl: string;
-	projectPageUrl: string;
+
 	stackImageUrl: string;
 };
 
@@ -75,7 +75,6 @@ type EditorAction =
 					| "isTeam"
 					| "teamSize"
 					| "personalPageUrl"
-					| "projectPageUrl"
 					| "stackImageUrl"
 				>
 			>;
@@ -145,8 +144,6 @@ function getInitialEditorState(args: {
 	// Extract first personal page URL (for X/portfolio)
 	const personalPageUrl =
 		actor.personalPages?.find((p) => p.name !== "X")?.url ?? "";
-	// Extract first project page URL
-	const projectPageUrl = actor.projectPages?.[0]?.url ?? "";
 
 	// Load from localStorage using scoped key (per-stack for edit, shared for create)
 	const draftKey = getDraftKey(initialValue?.slug);
@@ -211,10 +208,6 @@ function getInitialEditorState(args: {
 			savedDraft?.personalPageUrl ??
 			initialValue?.personalPageUrl ??
 			personalPageUrl,
-		projectPageUrl:
-			savedDraft?.projectPageUrl ??
-			initialValue?.projectPageUrl ??
-			projectPageUrl,
 		stackImageUrl:
 			savedDraft?.stackImageUrl ??
 			initialValue?.stackImageUrl ??
@@ -315,10 +308,6 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 					draft.personalPageUrl !== undefined
 						? draft.personalPageUrl
 						: state.personalPageUrl,
-				projectPageUrl:
-					draft.projectPageUrl !== undefined
-						? draft.projectPageUrl
-						: state.projectPageUrl,
 				stackImageUrl:
 					draft.stackImageUrl !== undefined
 						? draft.stackImageUrl
@@ -340,7 +329,6 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 				toolSubscriptions: iv.toolSubscriptions ?? [],
 				bundleSubscriptions: iv.bundleSubscriptions ?? [],
 				personalPageUrl: iv.personalPageUrl ?? "",
-				projectPageUrl: iv.projectPageUrl ?? "",
 				stackImageUrl: iv.stackImageUrl ?? "",
 				restoredFromDraft: false,
 			};

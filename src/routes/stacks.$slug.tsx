@@ -8,13 +8,13 @@ import {
 	ExternalLink,
 	FileText,
 	Flag,
-	Globe,
 	Package,
 	Pencil,
 	User,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CostBreakdownTooltip } from "@/components/CostBreakdownTooltip";
+import { ProjectsSection } from "@/components/ProjectsSection";
 import { PriceDisplay } from "@/components/PriceDisplay";
 import { TableOfContents } from "@/components/TableOfContents";
 import { TiptapEditor } from "@/components/TiptapEditor";
@@ -320,7 +320,6 @@ function StackDetailsPage() {
 	}
 
 	const personalPageUrl = stack.personalPageUrl;
-	const projectPageUrl = stack.projectPageUrl;
 	const hasDescription = !!stack.description;
 	const mainTools = sortToolsByPrice(
 		stack.tools.filter((t) => t.kind === "main"),
@@ -564,9 +563,7 @@ function StackDetailsPage() {
 								</h1>
 
 								{/* Creator Social Bar */}
-								{(stack.creator.xHandle ||
-									personalPageUrl ||
-									projectPageUrl) && (
+								{(stack.creator.xHandle || personalPageUrl) && (
 									<div className="mt-6 bg-bg-panel-muted inline-flex max-w-full">
 										<div className="flex flex-wrap items-center divide-x divide-stroke-subtle">
 											{stack.creator.xHandle && (
@@ -603,27 +600,6 @@ function StackDetailsPage() {
 													<span className="truncate">
 														{
 															personalPageUrl
-																.replace(/^https?:\/\//, "")
-																.split("/")[0]
-														}
-													</span>
-												</a>
-											)}
-											{projectPageUrl && (
-												<a
-													href={
-														projectPageUrl.startsWith("http")
-															? projectPageUrl
-															: `https://${projectPageUrl}`
-													}
-													target="_blank"
-													rel="noopener noreferrer"
-													className="flex items-center gap-2 px-3 sm:px-5 py-3 font-mono text-sm text-fg-secondary transition-colors border-t-2 border-t-transparent hover:border-t-accent-lime hover:text-accent-lime hover:bg-bg-panel min-w-0"
-												>
-													<Globe className="size-4 shrink-0" />
-													<span className="truncate">
-														{
-															projectPageUrl
 																.replace(/^https?:\/\//, "")
 																.split("/")[0]
 														}
@@ -703,6 +679,13 @@ function StackDetailsPage() {
 						)}
 					</div>
 				</header>
+
+				{/* Projects Section */}
+				<ProjectsSection
+					stackId={stack._id}
+					stackSlug={stack.slug}
+					isOwner={upvoteStatus?.isOwner ?? false}
+				/>
 
 				<div className="mx-auto max-w-content px-6 lg:flex">
 					<div className="min-w-0 flex-1">

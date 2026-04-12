@@ -164,7 +164,6 @@ export function StackEditor({
 		setToolSubscriptions,
 		setXHandle,
 		setPersonalPageUrl,
-		setProjectPageUrl,
 		setStackImageUrl,
 		revertDraft,
 		dismissDraft,
@@ -515,7 +514,9 @@ export function StackEditor({
 													className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 border-2 border-accent-lime bg-accent-lime font-mono text-xs font-bold uppercase tracking-wider text-accent-lime-contrast hover:bg-accent-lime-strong transition-colors disabled:opacity-50 cursor-pointer"
 												>
 													<Save className="size-4" />
-													<span className="hidden sm:inline">{state.saving ? "Saving..." : "Save"}</span>
+													<span className="hidden sm:inline">
+														{state.saving ? "Saving..." : "Save"}
+													</span>
 												</button>
 											</>
 										) : (
@@ -528,7 +529,9 @@ export function StackEditor({
 													className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 border-2 border-stroke-strong font-mono text-xs uppercase tracking-wider text-fg-muted hover:border-accent-lime hover:text-fg-primary transition-colors disabled:opacity-50 cursor-pointer"
 												>
 													<Save className="size-4" />
-													<span className="hidden sm:inline">{state.saving ? "Saving..." : "Save Draft"}</span>
+													<span className="hidden sm:inline">
+														{state.saving ? "Saving..." : "Save Draft"}
+													</span>
 												</button>
 
 												{/* Publish Button - lime filled */}
@@ -592,8 +595,6 @@ export function StackEditor({
 								onXHandleChange={setXHandle}
 								personalPageUrl={state.personalPageUrl}
 								onPersonalPageUrlChange={setPersonalPageUrl}
-								projectPageUrl={state.projectPageUrl}
-								onProjectPageUrlChange={setProjectPageUrl}
 								stackImageUrl={state.stackImageUrl}
 								onStackImageUrlChange={setStackImageUrl}
 								defaultAvatarUrl={defaultAvatarUrl}
@@ -640,12 +641,23 @@ export function StackEditor({
 				>
 					<button
 						type="button"
-						style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)" }}
+						style={{
+							position: "absolute",
+							inset: 0,
+							background: "rgba(0,0,0,0.6)",
+						}}
 						onClick={() => setMobileSidebarOpen(false)}
 						aria-label="Close sidebar"
 					/>
 					<div
-						style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "85vw", maxWidth: "384px" }}
+						style={{
+							position: "absolute",
+							right: 0,
+							top: 0,
+							bottom: 0,
+							width: "85vw",
+							maxWidth: "384px",
+						}}
 						className="bg-bg-panel border-l-2 border-stroke-strong overflow-y-auto"
 					>
 						<div className="sticky top-0 z-10 flex items-center justify-between border-b border-stroke-subtle bg-bg-panel p-4">
@@ -682,7 +694,12 @@ export function StackEditor({
 			<button
 				type="button"
 				onClick={() => setMobileSidebarOpen(true)}
-				style={{ position: "fixed", bottom: "5rem", right: "1rem", zIndex: 9998 }}
+				style={{
+					position: "fixed",
+					bottom: "5rem",
+					right: "1rem",
+					zIndex: 9998,
+				}}
 				className="flex items-center gap-2 border-2 border-accent-lime bg-accent-lime px-4 py-3 font-mono text-xs font-bold uppercase tracking-wider text-accent-lime-contrast shadow-[4px_4px_0_var(--stroke-strong)] transition-colors hover:bg-accent-lime-strong lg:hidden"
 			>
 				<Wrench className="size-4" />

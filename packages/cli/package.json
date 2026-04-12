@@ -1,0 +1,25 @@
+{
+  "name": "@aistack/cli",
+  "version": "0.1.0",
+  "description": "Share and clone AI development configurations",
+  "type": "module",
+  "bin": { "aistack": "./dist/index.js" },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "open": "^10.1.0",
+    "picocolors": "^1.1.0",
+    "@clack/prompts": "^0.10.0",
+    "ignore": "^7.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.4.0",
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.2"
+  },
+  "engines": { "node": ">=18" }
+}

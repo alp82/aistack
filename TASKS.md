@@ -1,20 +1,22 @@
 # TODO
 
 * CLI workflow
+    * https://www.codacy.com/ai-inventory
     * https://github.com/dyoshikawa/rulesync
     * https://github.com/caliber-ai-org/ai-setup
     * https://github.com/FutureExcited/vibe-rules
     * npx aistack login
     * npx aistack collect
     * npx aistack create
+* stacks and projects structure
+    https://elio.dev
+* price tiers for sibling products: claude code vs claude ai
 * ai stack knowledge/learning area
     * article grid with nice bg borders: https://www.aihero.dev/posts
     * use the same editor. new feature: crosslinking articles
     * user comments - one level deep threaded
-* headline anchors
 * fix tests
 * e2e tests
-* price tiers for sibling products: claude code vs claude ai
 * currency settings
 * alert and logic when removing tools from sidebar
 * when remove last block of one item in text, ask to also remove in sidebar? dialog

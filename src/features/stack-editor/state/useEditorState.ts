@@ -76,8 +76,6 @@ function useEditorState({
 				type: "profile/updated",
 				updates: { personalPageUrl: value },
 			}),
-		setProjectPageUrl: (value: string) =>
-			dispatch({ type: "profile/updated", updates: { projectPageUrl: value } }),
 		setStackImageUrl: (value: string) =>
 			dispatch({ type: "profile/updated", updates: { stackImageUrl: value } }),
 		setDescription: (value: string) =>

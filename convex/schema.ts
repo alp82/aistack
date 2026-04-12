@@ -23,14 +23,14 @@ const UsagePricing = v.object({
   notes: v.optional(v.string()),
 })
 
-const InstructionFile = v.object({
+export const InstructionFile = v.object({
   name: v.string(),
   content: v.string(),
   path: v.optional(v.string()),
   tags: v.optional(v.array(v.string())),
 })
 
-const InstructionItem = v.object({
+export const InstructionItem = v.object({
   type: v.string(),
   name: v.string(),
   description: v.optional(v.string()),
@@ -120,7 +120,7 @@ export default defineSchema({
     stackImageUrl: v.optional(v.string()),
     avatarStorageId: v.optional(v.id('_storage')),
     personalPageUrl: v.optional(v.string()),
-    projectPageUrl: v.optional(v.string()),
+    projectPageUrl: v.optional(v.string()), // deprecated — remove after migration
     toolSubscriptions: v.array(
       v.object({
         toolSlug: v.string(),
@@ -257,6 +257,50 @@ export default defineSchema({
     .index('by_provider', ['provider'])
     .index('by_category', ['category'])
     .index('by_reviewStatus', ['reviewStatus']),
+
+  cliSessions: defineTable({
+    userCode: v.string(),
+    secretId: v.string(),
+    status: v.union(v.literal('pending'), v.literal('approved'), v.literal('expired')),
+    userId: v.optional(v.string()),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+  })
+    .index('by_userCode', ['userCode'])
+    .index('by_secretId', ['secretId']),
+
+  cliTokens: defineTable({
+    token: v.string(),
+    userId: v.string(),
+    name: v.optional(v.string()),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    lastUsedAt: v.number(),
+  })
+    .index('by_token', ['token'])
+    .index('by_userId', ['userId']),
+
+  projects: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    shortId: v.string(),
+    creatorId: v.id('creators'),
+    stackId: v.id('stacks'),
+    source: v.optional(v.string()),
+    description: v.optional(v.string()),
+    url: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    order: v.optional(v.number()),
+    cloneCount: v.optional(v.number()),
+    published: v.optional(v.boolean()),
+    instructions: v.array(InstructionItem),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_slug', ['slug'])
+    .index('by_shortId', ['shortId'])
+    .index('by_creatorId', ['creatorId'])
+    .index('by_stackId', ['stackId']),
 
   toolEditSuggestions: defineTable({
     toolId: v.id('tools'),

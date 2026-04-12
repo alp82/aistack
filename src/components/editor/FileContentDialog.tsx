@@ -95,90 +95,91 @@ export function FileContentDialog({
 			padding="p-0"
 			scrollable
 		>
-			{/* Tab bar */}
-			<div className="flex items-center overflow-x-auto border-b border-stroke-subtle">
-				{files.map((file, idx) => (
-					<button
-						key={`tab-${file.name}-${idx}`}
-						type="button"
-						onClick={() => setActiveTab(idx)}
-						className={`group inline-flex shrink-0 items-center gap-1.5 px-4 py-2.5 font-mono text-xs transition-colors cursor-pointer ${
-							activeTab === idx
-								? "border-b-2 border-accent-lime bg-accent-lime/5 text-fg-primary"
-								: "text-fg-muted hover:text-fg-primary"
-						}`}
-					>
-						<FileText className="size-3 shrink-0" />
-						{file.name || "(unnamed)"}
-						{isEditable && (
-							<span
-								role="button"
-								tabIndex={-1}
-								onClick={(e) => {
-									e.stopPropagation();
-									handleDeleteFile(idx);
-								}}
-								onKeyDown={(e) => {
-									if (e.key === "Enter") {
+			{/* Tab bar — hidden for single-file, non-editable items */}
+			{(files.length > 1 || isEditable) && (
+				<div className="flex items-center overflow-x-auto border-b border-stroke-subtle">
+					{files.map((file, idx) => (
+						<button
+							key={`tab-${file.name}-${idx}`}
+							type="button"
+							onClick={() => setActiveTab(idx)}
+							className={`group inline-flex shrink-0 items-center gap-1.5 px-4 py-2.5 font-mono text-xs transition-colors cursor-pointer ${
+								activeTab === idx
+									? "border-b-2 border-accent-lime bg-accent-lime/5 text-fg-primary"
+									: "text-fg-muted hover:text-fg-primary"
+							}`}
+						>
+							<FileText className="size-3 shrink-0" />
+							{file.name || "(unnamed)"}
+							{isEditable && (
+								<span
+									role="button"
+									tabIndex={-1}
+									onClick={(e) => {
 										e.stopPropagation();
 										handleDeleteFile(idx);
-									}
+									}}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											e.stopPropagation();
+											handleDeleteFile(idx);
+										}
+									}}
+									className="ml-1 opacity-0 transition-colors hover:text-destructive group-hover:opacity-100"
+								>
+									<X className="size-3" />
+								</span>
+							)}
+						</button>
+					))}
+
+					{isEditable && addingFile && (
+						<div className="inline-flex shrink-0 items-center gap-1.5 px-4 py-2.5">
+							<FileText className="size-3 shrink-0 text-fg-muted" />
+							<input
+								type="text"
+								value={newFileName}
+								onChange={(e) => setNewFileName(e.target.value)}
+								autoFocus
+								placeholder="filename.md"
+								className="w-24 border-b border-stroke-subtle bg-transparent font-mono text-xs text-fg-primary focus:border-accent-lime focus:outline-none"
+								onKeyDown={(e) => {
+									e.stopPropagation();
+									if (e.key === "Enter") handleAddFile();
+									if (e.key === "Escape") setAddingFile(false);
 								}}
-								className="ml-1 opacity-0 transition-colors hover:text-destructive group-hover:opacity-100"
-							>
-								<X className="size-3" />
-							</span>
-						)}
-					</button>
-				))}
+								onBlur={() => {
+									if (!newFileName.trim()) setAddingFile(false);
+								}}
+							/>
+						</div>
+					)}
 
-				{isEditable && addingFile && (
-					<div className="inline-flex shrink-0 items-center gap-1.5 px-4 py-2.5">
-						<FileText className="size-3 shrink-0 text-fg-muted" />
-						<input
-							type="text"
-							value={newFileName}
-							onChange={(e) => setNewFileName(e.target.value)}
-							autoFocus
-							placeholder="filename.md"
-							className="w-24 border-b border-stroke-subtle bg-transparent font-mono text-xs text-fg-primary focus:border-accent-lime focus:outline-none"
-							onKeyDown={(e) => {
-								e.stopPropagation();
-								if (e.key === "Enter") handleAddFile();
-								if (e.key === "Escape") setAddingFile(false);
+					{isEditable && (
+						<button
+							type="button"
+							onClick={() => {
+								if (addingFile && newFileName.trim()) {
+									handleAddFile();
+								}
+								setAddingFile(true);
 							}}
-							onBlur={() => {
-								if (!newFileName.trim()) setAddingFile(false);
-							}}
-						/>
-					</div>
-				)}
-
-				{isEditable && (
-					<button
-						type="button"
-						onClick={() => {
-							if (addingFile && newFileName.trim()) {
-								handleAddFile();
-							}
-							setAddingFile(true);
-						}}
-						className="flex shrink-0 cursor-pointer items-center justify-center px-3 py-2.5 text-fg-muted transition-colors hover:text-accent-lime"
-						title="Add file"
-					>
-						<Plus className="size-3.5" />
-					</button>
-				)}
-			</div>
+							className="flex shrink-0 cursor-pointer items-center justify-center px-3 py-2.5 text-fg-muted transition-colors hover:text-accent-lime"
+							title="Add file"
+						>
+							<Plus className="size-3.5" />
+						</button>
+					)}
+				</div>
+			)}
 
 			{/* Active file content */}
 			{activeFile ? (
 				<div className="flex flex-col">
 					{/* Path + Filename row */}
-					<div className="flex items-center gap-0 border-b border-stroke-subtle">
-						{/* Path prefix */}
-						<div className="shrink-0 border-r border-stroke-subtle px-4 py-2.5">
-							{isEditable ? (
+					{isEditable ? (
+						<div className="flex items-center gap-0 border-b border-stroke-subtle">
+							<div className="shrink-0 border-r border-stroke-subtle px-4 py-2.5">
 								<input
 									type="text"
 									value={activeFile.path ?? ""}
@@ -192,15 +193,8 @@ export function FileContentDialog({
 									placeholder="path/"
 									className="w-32 border-0 bg-transparent font-mono text-xs text-fg-muted placeholder:text-fg-muted/30 focus:outline-none focus:ring-0"
 								/>
-							) : (
-								<span className="font-mono text-xs text-fg-muted">
-									{activeFile.path || "—"}
-								</span>
-							)}
-						</div>
-						{/* Filename */}
-						<div className="min-w-0 flex-1 px-4 py-2.5">
-							{isEditable ? (
+							</div>
+							<div className="min-w-0 flex-1 px-4 py-2.5">
 								<input
 									type="text"
 									value={activeFile.name}
@@ -214,13 +208,17 @@ export function FileContentDialog({
 									placeholder="filename.md"
 									className="w-full border-0 bg-transparent font-mono text-sm font-bold text-fg-primary placeholder:text-fg-muted/40 focus:outline-none focus:ring-0"
 								/>
-							) : (
-								<span className="font-mono text-sm font-bold text-fg-primary">
-									{activeFile.name}
-								</span>
-							)}
+							</div>
 						</div>
-					</div>
+					) : activeFile.path &&
+						activeFile.path !== activeFile.name &&
+						activeFile.path !== instructionName ? (
+						<div className="border-b border-stroke-subtle px-4 py-2.5">
+							<span className="font-mono text-xs text-fg-muted">
+								{activeFile.path}
+							</span>
+						</div>
+					) : null}
 
 					{/* Tags display */}
 					{activeFile.tags && activeFile.tags.length > 0 && (
@@ -241,7 +239,7 @@ export function FileContentDialog({
 						<button
 							type="button"
 							onClick={handleCopy}
-							className="absolute right-5 top-3 z-10 inline-flex items-center gap-1.5 border-2 border-accent-lime/50 bg-bg-panel px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-accent-lime transition-colors hover:border-accent-lime hover:bg-accent-lime/10 cursor-pointer"
+							className="absolute right-7 top-4 z-10 inline-flex items-center gap-1.5 border-2 border-accent-lime/50 bg-bg-panel px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-accent-lime transition-colors hover:border-accent-lime hover:bg-accent-lime/10 cursor-pointer"
 						>
 							{copied ? (
 								<>
@@ -267,7 +265,7 @@ export function FileContentDialog({
 								Math.max(activeFile.content.split("\n").length + 1, 10),
 								30,
 							)}
-							className="w-full resize-none overflow-y-scroll border-0 bg-bg-panel p-4 font-mono text-xs leading-5 text-fg-primary placeholder:text-fg-muted/40 focus:outline-none focus:ring-0"
+							className="w-full resize-none overflow-y-scroll border-0 bg-bg-canvas p-4 font-mono text-xs leading-5 text-fg-primary placeholder:text-fg-muted/40 focus:outline-none focus:ring-0"
 						/>
 					</div>
 				</div>

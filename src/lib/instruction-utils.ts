@@ -4,7 +4,9 @@ import {
 	Bot,
 	Cpu,
 	FileText,
+	Settings,
 	Shield,
+	Terminal,
 	Wrench,
 	Zap,
 } from "lucide-react";
@@ -14,9 +16,11 @@ const knownTypeColors: Record<KnownInstructionType, string> = {
 	prompt: "text-blue-400 border-blue-400/30 bg-blue-400/10",
 	rule: "text-purple-400 border-purple-400/30 bg-purple-400/10",
 	skill: "text-emerald-400 border-emerald-400/30 bg-emerald-400/10",
+	command: "text-teal-400 border-teal-400/30 bg-teal-400/10",
 	mcp: "text-cyan-400 border-cyan-400/30 bg-cyan-400/10",
 	hook: "text-pink-400 border-pink-400/30 bg-pink-400/10",
 	subagent: "text-orange-400 border-orange-400/30 bg-orange-400/10",
+	config: "text-amber-400 border-amber-400/30 bg-amber-400/10",
 	custom: "text-stone-400 border-stone-400/30 bg-stone-400/10",
 };
 
@@ -39,6 +43,11 @@ const knownTypeColorsSplit: Record<
 		bg: "bg-emerald-400",
 		text: "text-emerald-400",
 	},
+	command: {
+		border: "border-teal-400/30",
+		bg: "bg-teal-400",
+		text: "text-teal-400",
+	},
 	mcp: {
 		border: "border-cyan-400/30",
 		bg: "bg-cyan-400",
@@ -54,6 +63,11 @@ const knownTypeColorsSplit: Record<
 		bg: "bg-orange-400",
 		text: "text-orange-400",
 	},
+	config: {
+		border: "border-amber-400/30",
+		bg: "bg-amber-400",
+		text: "text-amber-400",
+	},
 	custom: {
 		border: "border-stone-400/30",
 		bg: "bg-stone-400",
@@ -65,9 +79,11 @@ const knownTypeLabels: Record<KnownInstructionType, string> = {
 	prompt: "Prompt",
 	rule: "Rule",
 	skill: "Skill",
+	command: "Command",
 	mcp: "MCP",
 	hook: "Hook",
 	subagent: "Subagent",
+	config: "Config",
 	custom: "Custom",
 };
 
@@ -100,9 +116,11 @@ export const knownInstructionTypes: KnownInstructionType[] = [
 	"prompt",
 	"rule",
 	"skill",
+	"command",
 	"mcp",
 	"hook",
 	"subagent",
+	"config",
 	"custom",
 ];
 
@@ -129,6 +147,12 @@ const knownTypePillColors: Record<
 		hoverBg: "hover:bg-emerald-400/10",
 		hoverText: "hover:text-emerald-400",
 	},
+	command: {
+		border: "border-teal-400/20",
+		bg: "bg-teal-400/5",
+		hoverBg: "hover:bg-teal-400/10",
+		hoverText: "hover:text-teal-400",
+	},
 	mcp: {
 		border: "border-cyan-400/20",
 		bg: "bg-cyan-400/5",
@@ -146,6 +170,12 @@ const knownTypePillColors: Record<
 		bg: "bg-orange-400/5",
 		hoverBg: "hover:bg-orange-400/10",
 		hoverText: "hover:text-orange-400",
+	},
+	config: {
+		border: "border-amber-400/20",
+		bg: "bg-amber-400/5",
+		hoverBg: "hover:bg-amber-400/10",
+		hoverText: "hover:text-amber-400",
 	},
 	custom: {
 		border: "border-stone-400/20",
@@ -173,6 +203,8 @@ const knownTypeIcons: Record<KnownInstructionType, LucideIcon> = {
 	rule: Shield,
 	mcp: Cpu,
 	skill: Wrench,
+	command: Terminal,
+	config: Settings,
 	custom: FileText,
 };
 
@@ -184,9 +216,11 @@ const knownTypeIconBgClasses: Record<KnownInstructionType, string> = {
 	prompt: "bg-blue-400/15",
 	rule: "bg-purple-400/15",
 	skill: "bg-emerald-400/15",
+	command: "bg-teal-400/15",
 	mcp: "bg-cyan-400/15",
 	hook: "bg-pink-400/15",
 	subagent: "bg-orange-400/15",
+	config: "bg-amber-400/15",
 	custom: "bg-stone-400/15",
 };
 

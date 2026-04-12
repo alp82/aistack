@@ -1,4 +1,4 @@
-import { ExternalLink, User } from "lucide-react";
+import { User } from "lucide-react";
 import { useEffect, useState } from "react";
 import XLogoIcon from "@/components/icon/XLogoIcon";
 import { Input } from "@/components/ui/input";
@@ -16,8 +16,6 @@ type DetailsStepProps = {
 	onXHandleChange: (value: string) => void;
 	personalPageUrl: string;
 	onPersonalPageUrlChange: (value: string) => void;
-	projectPageUrl: string;
-	onProjectPageUrlChange: (value: string) => void;
 	stackImageUrl: string;
 	onStackImageUrlChange: (value: string) => void;
 	defaultAvatarUrl?: string;
@@ -37,8 +35,6 @@ function DetailsStep({
 	onXHandleChange,
 	personalPageUrl,
 	onPersonalPageUrlChange,
-	projectPageUrl,
-	onProjectPageUrlChange,
 	stackImageUrl,
 	onStackImageUrlChange,
 	defaultAvatarUrl,
@@ -181,25 +177,13 @@ function DetailsStep({
 					</div>
 
 					{/* Personal Page URL */}
-					<div className="flex flex-1 items-center border-2 border-stroke-subtle sm:-mr-[2px] -mb-[2px] sm:mb-0 bg-bg-panel-muted px-3 h-12 focus-within:border-accent-lime focus-within:z-10">
+					<div className="flex flex-1 items-center border-2 border-stroke-subtle bg-bg-panel-muted px-3 h-12 focus-within:border-accent-lime focus-within:z-10">
 						<User className="size-4 shrink-0 text-fg-muted" />
 						<input
 							type="text"
 							value={personalPageUrl}
 							onChange={(e) => onPersonalPageUrlChange(e.target.value)}
 							placeholder="https://yourportfolio.com"
-							className="flex-1 bg-transparent border-0 px-2 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:outline-none focus:ring-0"
-						/>
-					</div>
-
-					{/* Project Page URL */}
-					<div className="flex flex-1 items-center border-2 border-stroke-subtle bg-bg-panel-muted px-3 h-12 focus-within:border-accent-lime focus-within:z-10">
-						<ExternalLink className="size-4 shrink-0 text-fg-muted" />
-						<input
-							type="text"
-							value={projectPageUrl}
-							onChange={(e) => onProjectPageUrlChange(e.target.value)}
-							placeholder="https://yourproject.com"
 							className="flex-1 bg-transparent border-0 px-2 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:outline-none focus:ring-0"
 						/>
 					</div>

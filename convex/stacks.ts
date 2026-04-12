@@ -3,30 +3,8 @@ import { v } from 'convex/values'
 import type { QueryCtx } from './_generated/server'
 import { type FixedPrice, sumNormalizedMonthlyAmounts } from '../src/lib/pricing'
 import { slugifyAscii } from '../src/lib/slug'
-
-const SHORT_ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'
-const SHORT_ID_LENGTH = 6
-
-async function generateUniqueShortId(ctx: QueryCtx): Promise<string> {
-  for (let attempt = 0; attempt < 10; attempt++) {
-    let shortId = ''
-    for (let i = 0; i < SHORT_ID_LENGTH; i++) {
-      shortId += SHORT_ID_CHARS[Math.floor(Math.random() * SHORT_ID_CHARS.length)]
-    }
-    const existing = await ctx.db
-      .query('stacks')
-      .withIndex('by_shortId', (q) => q.eq('shortId', shortId))
-      .first()
-    if (!existing) return shortId
-  }
-  throw new Error('Failed to generate unique shortId after 10 attempts')
-}
-
-function extractShortId(compositeSlug: string): string {
-  const lastHyphen = compositeSlug.lastIndexOf('-')
-  if (lastHyphen === -1) return compositeSlug
-  return compositeSlug.slice(lastHyphen + 1)
-}
+import { generateUniqueShortId, extractShortId } from './lib/ids'
+import { InstructionItem as InstructionItemValidator } from './schema'
 
 type ToolSubscriptionLike = {
   price: {
@@ -81,20 +59,6 @@ async function calculateStackPricing(
     hasUsageComponent,
   }
 }
-
-const InstructionFileValidator = v.object({
-  name: v.string(),
-  content: v.string(),
-  path: v.optional(v.string()),
-  tags: v.optional(v.array(v.string())),
-})
-
-const InstructionItemValidator = v.object({
-  type: v.string(),
-  name: v.string(),
-  description: v.optional(v.string()),
-  files: v.array(InstructionFileValidator),
-})
 
 const MoneyValidator = v.object({
   currency: v.string(),
@@ -177,7 +141,7 @@ export const listPublished = query({
       hasUsageComponent: v.boolean(),
       usageTotalNotes: v.optional(v.string()),
       personalPageUrl: v.optional(v.string()),
-      projectPageUrl: v.optional(v.string()),
+
       creator: CreatorValidator,
       tools: v.array(ToolValidator),
       upvoteCount: v.number(),
@@ -238,7 +202,7 @@ export const listPublished = query({
         hasUsageComponent: pricing.hasUsageComponent,
         usageTotalNotes: stack.usageTotalNotes,
         personalPageUrl: stack.personalPageUrl,
-        projectPageUrl: stack.projectPageUrl,
+
         creator: {
           _id: creator._id,
           name: creator.name,
@@ -302,7 +266,6 @@ export const create = mutation({
     modelSubscriptions: v.optional(v.array(ModelSubscriptionInput)),
     stackImageUrl: v.optional(v.string()),
     personalPageUrl: v.optional(v.string()),
-    projectPageUrl: v.optional(v.string()),
     published: v.boolean(),
   },
   returns: v.object({ _id: v.id('stacks'), slug: v.string() }),
@@ -325,7 +288,7 @@ export const create = mutation({
 
     // Generate slug and shortId
     const slug = slugifyAscii(args.name, `${creator.slug}-stack`)
-    const shortId = await generateUniqueShortId(ctx)
+    const shortId = await generateUniqueShortId(ctx, 'stacks')
     const pricing = await calculateStackPricing(ctx, args.toolSubscriptions, args.bundleSubscriptions ?? [])
 
     const now = Date.now()
@@ -343,7 +306,6 @@ export const create = mutation({
       modelSubscriptions: args.modelSubscriptions,
       stackImageUrl: args.stackImageUrl,
       personalPageUrl: args.personalPageUrl,
-      projectPageUrl: args.projectPageUrl,
       fixedTotal: pricing.fixedTotal,
       hasUsageComponent: pricing.hasUsageComponent,
       published: args.published,
@@ -368,7 +330,6 @@ export const update = mutation({
     modelSubscriptions: v.optional(v.array(ModelSubscriptionInput)),
     stackImageUrl: v.optional(v.string()),
     personalPageUrl: v.optional(v.string()),
-    projectPageUrl: v.optional(v.string()),
     published: v.optional(v.boolean()),
   },
   returns: v.null(),
@@ -406,7 +367,6 @@ export const update = mutation({
     if (args.modelSubscriptions !== undefined) patch.modelSubscriptions = args.modelSubscriptions
     if (args.stackImageUrl !== undefined) patch.stackImageUrl = args.stackImageUrl
     if (args.personalPageUrl !== undefined) patch.personalPageUrl = args.personalPageUrl
-    if (args.projectPageUrl !== undefined) patch.projectPageUrl = args.projectPageUrl
     if (args.published !== undefined) patch.published = args.published
 
     const subs = args.toolSubscriptions ?? stack.toolSubscriptions
@@ -436,7 +396,7 @@ export const getForEdit = query({
       published: v.boolean(),
       stackImageUrl: v.optional(v.string()),
       personalPageUrl: v.optional(v.string()),
-      projectPageUrl: v.optional(v.string()),
+
       toolSubscriptions: v.array(v.object({
         toolSlug: v.string(),
         toolName: v.string(),
@@ -567,7 +527,6 @@ export const getForEdit = query({
       published: stack.published,
       stackImageUrl: stack.stackImageUrl,
       personalPageUrl: stack.personalPageUrl,
-      projectPageUrl: stack.projectPageUrl,
       toolSubscriptions: toolSubs,
       bundleSubscriptions: bundleSubs,
       modelSubscriptions: modelSubs,
@@ -807,7 +766,7 @@ export const getBySlug = query({
       usageTotalNotes: v.optional(v.string()),
       stackImageUrl: v.optional(v.string()),
       personalPageUrl: v.optional(v.string()),
-      projectPageUrl: v.optional(v.string()),
+
       creator: CreatorValidator,
       tools: v.array(ToolValidator),
       bundles: v.array(BundleValidator),
@@ -912,7 +871,6 @@ export const getBySlug = query({
       usageTotalNotes: stack.usageTotalNotes,
       stackImageUrl: stack.stackImageUrl,
       personalPageUrl: stack.personalPageUrl,
-      projectPageUrl: stack.projectPageUrl,
       creator: {
         _id: creator._id,
         name: creator.name,

@@ -82,7 +82,6 @@ function selectSavePayload(state: EditorState, published: boolean) {
 		})),
 		stackImageUrl: state.stackImageUrl.trim(),
 		personalPageUrl: state.personalPageUrl.trim() || undefined,
-		projectPageUrl: state.projectPageUrl.trim() || undefined,
 		published,
 	};
 }
@@ -100,7 +99,6 @@ function selectGuestDraft(state: EditorState): GuestStackDraft {
 		bundleSubscriptions: state.bundleSubscriptions,
 		xHandle: state.xHandle,
 		personalPageUrl: state.personalPageUrl,
-		projectPageUrl: state.projectPageUrl,
 		stackImageUrl: state.stackImageUrl,
 	};
 }

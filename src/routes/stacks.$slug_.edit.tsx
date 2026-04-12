@@ -118,7 +118,6 @@ function EditStackPage() {
 				published: stackData.published,
 				stackImageUrl: stackData.stackImageUrl,
 				personalPageUrl: stackData.personalPageUrl,
-				projectPageUrl: stackData.projectPageUrl,
 				toolSubscriptions: stackData.toolSubscriptions.map((t) => ({
 					toolSlug: t.toolSlug,
 					toolName: t.toolName,

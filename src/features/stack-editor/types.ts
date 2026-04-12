@@ -19,9 +19,11 @@ type KnownInstructionType =
 	| "prompt"
 	| "rule"
 	| "skill"
+	| "command"
 	| "mcp"
 	| "hook"
 	| "subagent"
+	| "config"
 	| "custom";
 
 /** Accepts known types with autocomplete, plus any arbitrary string. */
@@ -79,7 +81,6 @@ type StackEditorInitialValue = {
 	bundleSubscriptions: BundleSubscriptionEntry[];
 	modelSubscriptions: ModelSubscriptionEntry[];
 	personalPageUrl?: string;
-	projectPageUrl?: string;
 	stackImageUrl?: string;
 };
 

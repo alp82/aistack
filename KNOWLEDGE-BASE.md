@@ -54,14 +54,23 @@ Flesch-Kincaid
 https://vale.sh
 https://textstat.org
 
+memory:
+https://github.com/milla-jovovich/mempalace
+
 context management:
 https://www.aihero.dev/tracer-bullets
 https://hannahstulberg.substack.com/p/claude-code-for-everything-why-ai
+
+planning with prototypes:
+https://willness.dev/blog/prototype-before-you-build
 
 structuring rules:
 https://www.aihero.dev/never-run-claude-init
 complexity management
 assign budgets
+
+TDD:
+https://martinfowler.com/articles/practical-test-pyramid.html
 
 spec driven development:
 https://openspec.dev
