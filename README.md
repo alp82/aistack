@@ -31,6 +31,73 @@ AI Stack is a web application designed to help developers and teams discover, co
 - **Stay Updated** with the latest AI technology trends
 - **Authentication** via email/password and Google SSO
 
+## ⚙️ How It Works
+
+AI Stack has two surfaces that work together:
+
+1. **The web app** ([aistack.to](https://aistack.to)) — where you browse stacks, compare tools, and publish your own setups. Each stack can group multiple **projects**, and each project holds your actual AI configuration files (prompts, rules, skills, MCP servers).
+
+2. **The CLI** (`@aistacks/cli`) — a small tool that bridges your local filesystem with your stack on the web. It scans your project for AI config files and uploads them, or clones someone else's configs into your working directory. No manual copy-paste.
+
+Typical flow:
+
+- Sign up on the web app, create a stack, add a project to it.
+- Run `aistack collect` inside your repo to upload your `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, skills, MCP configs, etc.
+- Share the project link. Others run `aistack create <slug>` to clone your AI setup into their own project.
+
+## 💻 CLI
+
+The CLI is published to npm as [`@aistacks/cli`](https://www.npmjs.com/package/@aistacks/cli).
+
+### Install
+
+Run it on-demand with `npx`:
+
+```sh
+npx @aistacks/cli <command>
+```
+
+Or install globally:
+
+```sh
+npm i -g @aistacks/cli
+```
+
+### Commands
+
+#### `aistack login`
+
+Authenticate with your AI Stack account via browser.
+
+```sh
+aistack login
+```
+
+#### `aistack collect`
+
+Scan the current project for AI config files and upload them to one of your projects on aistack.to.
+
+```sh
+cd your-project
+aistack collect
+```
+
+Detects: `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, `.cursor/rules/`, `mcp.json`, skill directories, prompts, and global configs (`~/.claude/`, `~/.cursor/`, etc).
+
+#### `aistack create <slug>`
+
+Clone a shared project's AI config files into your current directory.
+
+```sh
+aistack create alper-ortac-unw0sl
+```
+
+---
+
+# Contributing
+
+The rest of this document is for contributors working on the AI Stack web app or CLI.
+
 ## 🛠 Tech Stack
 
 ### Frontend
