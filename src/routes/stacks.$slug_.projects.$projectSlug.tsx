@@ -8,6 +8,7 @@ import {
 	Download,
 	ExternalLink,
 	Globe,
+	Pencil,
 	Terminal,
 	Trash2,
 } from "lucide-react";
@@ -66,6 +67,7 @@ function ProjectDetailPage() {
 	const [copied, setCopied] = useState(false);
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 	const [deleting, setDeleting] = useState(false);
+	const [editOpen, setEditOpen] = useState(false);
 
 	if (project === undefined) {
 		return (
@@ -122,7 +124,7 @@ function ProjectDetailPage() {
 		}, [project.instructions]);
 
 	const fileCount = localFileCount + globalFileCount;
-	const createCommand = `npx @aistack/cli create ${project.slug}`;
+	const createCommand = `npx @aistacks/cli create ${project.slug}`;
 
 	const handleCopyCommand = () => {
 		navigator.clipboard.writeText(createCommand);
@@ -181,33 +183,41 @@ function ProjectDetailPage() {
 						{project.name}
 					</h1>
 
-					<div className="mt-4 flex flex-wrap items-center gap-4 font-mono text-sm text-fg-muted">
-						{project.isOwner && project.published === true && (
-							<button
-								type="button"
-								onClick={() =>
-									publishProject({
-										projectId: project._id,
-										published: false,
-									})
-								}
-								className="inline-flex items-center gap-1.5 border border-stroke-subtle px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime cursor-pointer"
-							>
-								Unpublish
-							</button>
-						)}
+					<div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-sm text-fg-muted">
 						{project.isOwner && (
-							<button
-								type="button"
-								onClick={() => setShowDeleteConfirm(true)}
-								className="inline-flex items-center gap-1.5 border border-stroke-subtle px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-muted transition-colors hover:border-destructive hover:text-destructive cursor-pointer"
-							>
-								<Trash2 className="size-3" />
-								Delete
-							</button>
+							<div className="flex items-center gap-1.5">
+								<button
+									type="button"
+									onClick={() => setEditOpen((v) => !v)}
+									className="inline-flex items-center gap-1.5 border border-stroke-subtle px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime cursor-pointer"
+								>
+									<Pencil className="size-3" />
+									{editOpen ? "Close" : "Edit"}
+								</button>
+								{project.published === true && (
+									<button
+										type="button"
+										onClick={() =>
+											publishProject({
+												projectId: project._id,
+												published: false,
+											})
+										}
+										className="inline-flex items-center gap-1.5 border border-stroke-subtle px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime cursor-pointer"
+									>
+										Unpublish
+									</button>
+								)}
+								<button
+									type="button"
+									onClick={() => setShowDeleteConfirm(true)}
+									className="inline-flex items-center gap-1.5 border border-stroke-subtle px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-muted transition-colors hover:border-destructive hover:text-destructive cursor-pointer"
+								>
+									<Trash2 className="size-3" />
+									Delete
+								</button>
+							</div>
 						)}
-						<span>by {project.creator.name}</span>
-						<span className="text-stroke-subtle">|</span>
 						<span>
 							{fileCount} {fileCount === 1 ? "file" : "files"}
 						</span>
@@ -228,10 +238,15 @@ function ProjectDetailPage() {
 						)}
 					</div>
 
-					{project.description && (
-						<p className="mt-4 text-base text-fg-secondary max-w-2xl border-l-4 border-accent-lime pl-4">
-							{project.description}
-						</p>
+					{project.isOwner && editOpen && (
+						<ProjectEditSection
+							projectId={project._id}
+							name={project.name}
+							description={project.description}
+							url={project.url}
+							tags={project.tags}
+							updateProject={updateProject}
+						/>
 					)}
 
 					{project.url && (
@@ -243,11 +258,17 @@ function ProjectDetailPage() {
 							}
 							target="_blank"
 							rel="noopener noreferrer"
-							className="mt-3 inline-flex items-center gap-1.5 font-mono text-sm text-accent-lime hover:text-accent-lime-strong transition-colors"
+							className="mt-4 inline-flex items-center gap-1.5 font-mono text-sm text-accent-lime hover:text-accent-lime-strong transition-colors"
 						>
 							<ExternalLink className="size-3.5" />
 							{project.url.replace(/^https?:\/\//, "").split("/")[0]}
 						</a>
+					)}
+
+					{project.description && (
+						<p className="mt-4 text-base text-fg-secondary max-w-2xl border-l-4 border-accent-lime pl-4">
+							{project.description}
+						</p>
 					)}
 
 					{project.tags && project.tags.length > 0 && (
@@ -291,17 +312,6 @@ function ProjectDetailPage() {
 					</div>
 				</div>
 			</header>
-
-			{project.isOwner && (
-				<ProjectEditSection
-					projectId={project._id}
-					name={project.name}
-					description={project.description}
-					url={project.url}
-					tags={project.tags}
-					updateProject={updateProject}
-				/>
-			)}
 
 			<div className="mx-auto max-w-content px-6 py-12">
 				{localItems.length > 0 && (
@@ -471,88 +481,86 @@ function ProjectEditSection({
 	};
 
 	return (
-		<div className="mx-auto max-w-content px-6 pt-8">
-			<div className="border-2 border-stroke-strong bg-zinc-950 p-6">
-				<h3 className="mb-4 font-mono text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-accent-lime">
-					Edit Project
-				</h3>
-				<div className="space-y-4">
-					<div>
-						<label className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-fg-muted">
-							Name
-						</label>
+		<div className="mt-4 border-2 border-stroke-strong bg-bg-panel p-6">
+			<h3 className="mb-4 font-mono text-sm text-accent-lime">
+				{"// EDIT PROJECT"}
+			</h3>
+			<div className="space-y-4">
+				<div>
+					<label className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-fg-muted">
+						Name
+					</label>
+					<input
+						type="text"
+						value={draftName}
+						onChange={(e) => setDraftName(e.target.value)}
+						onBlur={commitName}
+						className="w-full border-2 border-stroke-subtle bg-zinc-900 px-3 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime focus:outline-none"
+					/>
+				</div>
+
+				<div>
+					<label className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-fg-muted">
+						Description
+					</label>
+					<textarea
+						value={draftDescription}
+						onChange={(e) => setDraftDescription(e.target.value)}
+						onBlur={commitDescription}
+						placeholder="Short description of the project..."
+						rows={2}
+						className="w-full resize-none border-2 border-stroke-subtle bg-zinc-900 px-3 py-2 text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime focus:outline-none"
+					/>
+				</div>
+
+				<div>
+					<label className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-fg-muted">
+						URL
+					</label>
+					<div className="flex items-center border-2 border-stroke-subtle bg-zinc-900 focus-within:border-accent-lime">
+						<ExternalLink className="ml-3 size-4 shrink-0 text-fg-muted" />
 						<input
 							type="text"
-							value={draftName}
-							onChange={(e) => setDraftName(e.target.value)}
-							onBlur={commitName}
-							className="w-full border-2 border-stroke-subtle bg-zinc-900 px-3 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime focus:outline-none"
+							value={draftUrl}
+							onChange={(e) => setDraftUrl(e.target.value)}
+							onBlur={commitUrl}
+							placeholder="https://..."
+							className="flex-1 border-0 bg-transparent px-2 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:outline-none focus:ring-0"
 						/>
 					</div>
+				</div>
 
-					<div>
-						<label className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-fg-muted">
-							Description
-						</label>
-						<textarea
-							value={draftDescription}
-							onChange={(e) => setDraftDescription(e.target.value)}
-							onBlur={commitDescription}
-							placeholder="Short description of the project..."
-							rows={2}
-							className="w-full resize-none border-2 border-stroke-subtle bg-zinc-900 px-3 py-2 text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime focus:outline-none"
+				<div>
+					<label className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-fg-muted">
+						Tags
+					</label>
+					<div className="flex items-center gap-2">
+						<input
+							type="text"
+							value={tagInput}
+							onChange={(e) => setTagInput(e.target.value)}
+							onKeyDown={(e) => {
+								if (e.key === "Enter") {
+									e.preventDefault();
+									addTag();
+								}
+							}}
+							placeholder="Add tag + Enter"
+							className="flex-1 border-2 border-stroke-subtle bg-zinc-900 px-3 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime focus:outline-none"
 						/>
 					</div>
-
-					<div>
-						<label className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-fg-muted">
-							URL
-						</label>
-						<div className="flex items-center border-2 border-stroke-subtle bg-zinc-900 focus-within:border-accent-lime">
-							<ExternalLink className="ml-3 size-4 shrink-0 text-fg-muted" />
-							<input
-								type="text"
-								value={draftUrl}
-								onChange={(e) => setDraftUrl(e.target.value)}
-								onBlur={commitUrl}
-								placeholder="https://..."
-								className="flex-1 border-0 bg-transparent px-2 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:outline-none focus:ring-0"
-							/>
+					{draftTags.length > 0 && (
+						<div className="mt-2 flex flex-wrap gap-1.5">
+							{draftTags.map((tag) => (
+								<TagBadge
+									key={tag}
+									tag={tag}
+									size="md"
+									onRemove={() => removeTag(tag)}
+								/>
+							))}
 						</div>
-					</div>
-
-					<div>
-						<label className="mb-1 block font-mono text-[10px] uppercase tracking-widest text-fg-muted">
-							Tags
-						</label>
-						<div className="flex items-center gap-2">
-							<input
-								type="text"
-								value={tagInput}
-								onChange={(e) => setTagInput(e.target.value)}
-								onKeyDown={(e) => {
-									if (e.key === "Enter") {
-										e.preventDefault();
-										addTag();
-									}
-								}}
-								placeholder="Add tag + Enter"
-								className="flex-1 border-2 border-stroke-subtle bg-zinc-900 px-3 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime focus:outline-none"
-							/>
-						</div>
-						{draftTags.length > 0 && (
-							<div className="mt-2 flex flex-wrap gap-1.5">
-								{draftTags.map((tag) => (
-									<TagBadge
-										key={tag}
-										tag={tag}
-										size="md"
-										onRemove={() => removeTag(tag)}
-									/>
-								))}
-							</div>
-						)}
-					</div>
+					)}
 				</div>
 			</div>
 		</div>

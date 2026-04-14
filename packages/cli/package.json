@@ -1,13 +1,23 @@
 {
-  "name": "@aistack/cli",
+  "name": "@aistacks/cli",
   "version": "0.1.0",
   "description": "Share and clone AI development configurations",
   "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alp82/aistack.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/alp82/aistack#readme",
   "bin": { "aistack": "./dist/index.js" },
-  "files": ["dist"],
+  "files": ["dist", "README.md"],
+  "publishConfig": { "access": "public" },
   "scripts": {
     "build": "tsup",
-    "dev": "tsup --watch"
+    "postbuild": "chmod +x dist/index.js",
+    "dev": "tsup --watch",
+    "prepublishOnly": "pnpm build"
   },
   "dependencies": {
     "commander": "^13.1.0",

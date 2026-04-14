@@ -72,7 +72,7 @@ export function ViewSidebar({
 					{/* Main Tools */}
 					{mainTools.length > 0 && (
 						<section>
-							<p className="sticky top-0 z-10 mb-3 bg-bg-canvas pb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
+							<p className="sticky top-0 z-10 mb-3 pb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
 								{"// Tools"}
 								<span className="ml-2 text-fg-muted">
 									· {tools.length} {tools.length === 1 ? "item" : "items"}
@@ -96,7 +96,7 @@ export function ViewSidebar({
 					{/* Other Tools */}
 					{miscTools.length > 0 && (
 						<section>
-							<p className="sticky top-0 z-10 mb-3 bg-bg-canvas pb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
+							<p className="sticky top-0 z-10 mb-3 pb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
 								{"// Secondary Tools"}
 							</p>
 							<div className="space-y-2">
@@ -115,7 +115,7 @@ export function ViewSidebar({
 					{/* Models */}
 					{sortedModels.length > 0 && (
 						<section>
-							<p className="sticky top-0 z-10 mb-3 bg-bg-canvas pb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
+							<p className="sticky top-0 z-10 mb-3 pb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
 								{"// Models"}
 								<span className="ml-2 text-fg-muted">
 									· {sortedModels.length}{" "}
@@ -133,7 +133,7 @@ export function ViewSidebar({
 					{/* Bundles */}
 					{bundles.length > 0 && (
 						<section>
-							<p className="sticky top-0 z-10 mb-3 bg-bg-canvas pb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
+							<p className="sticky top-0 z-10 mb-3 pb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
 								{"// Bundles"}
 								<span className="ml-2 text-fg-muted">
 									· {bundles.length} {bundles.length === 1 ? "item" : "items"}
@@ -154,7 +154,7 @@ export function ViewSidebar({
 					{/* Instructions */}
 					{instructions.length > 0 && (
 						<section>
-							<p className="sticky top-0 z-10 mb-3 bg-bg-canvas pb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
+							<p className="sticky top-0 z-10 mb-3 pb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
 								{"// Instructions"}
 								<span className="ml-2 text-fg-muted">
 									· {instructions.length}{" "}

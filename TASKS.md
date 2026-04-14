@@ -1,6 +1,7 @@
 # TODO
 
 * CLI workflow
+    * hide/ignore env sections in mcp.json
     * https://www.codacy.com/ai-inventory
     * https://github.com/dyoshikawa/rulesync
     * https://github.com/caliber-ai-org/ai-setup

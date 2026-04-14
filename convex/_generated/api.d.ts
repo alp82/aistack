@@ -26,7 +26,6 @@ import type * as migrations__archived_migrateNotesToDescription from "../migrati
 import type * as migrations__archived_migrateStackDescriptions from "../migrations/_archived/migrateStackDescriptions.js";
 import type * as migrations__archived_populateShortIds from "../migrations/_archived/populateShortIds.js";
 import type * as migrations_backup from "../migrations/backup.js";
-import type * as migrations_removeProjectPageUrl from "../migrations/removeProjectPageUrl.js";
 import type * as models from "../models.js";
 import type * as projects from "../projects.js";
 import type * as seed from "../seed.js";
@@ -64,7 +63,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/_archived/migrateStackDescriptions": typeof migrations__archived_migrateStackDescriptions;
   "migrations/_archived/populateShortIds": typeof migrations__archived_populateShortIds;
   "migrations/backup": typeof migrations_backup;
-  "migrations/removeProjectPageUrl": typeof migrations_removeProjectPageUrl;
   models: typeof models;
   projects: typeof projects;
   seed: typeof seed;

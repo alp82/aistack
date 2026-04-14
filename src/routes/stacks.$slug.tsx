@@ -479,10 +479,6 @@ function StackDetailsPage() {
 							backgroundImage:
 								"linear-gradient(to right, var(--stroke-subtle) 1px, transparent 1px), linear-gradient(to bottom, var(--stroke-subtle) 1px, transparent 1px)",
 							backgroundSize: "4rem 4rem",
-							maskImage:
-								"linear-gradient(to bottom, black 40%, transparent 100%)",
-							WebkitMaskImage:
-								"linear-gradient(to bottom, black 40%, transparent 100%)",
 						}}
 					/>
 					<div className="mx-auto max-w-content">
@@ -661,11 +657,6 @@ function StackDetailsPage() {
 							</HoverPreview>
 						</div>
 
-						{/* Swiss-style separator */}
-						<div className="mt-12 flex items-center gap-4">
-							<span className="h-px flex-1 bg-stroke-subtle" />
-						</div>
-
 						{/* Low quality banner */}
 						{(stack.isLowQuality || reportStatus?.reported) && (
 							<div className="mt-6 flex items-center gap-3 border border-orange-400/40 bg-orange-400/5 px-5 py-4">
@@ -679,7 +670,8 @@ function StackDetailsPage() {
 						)}
 					</div>
 				</header>
-
+			</div>
+			<div className="border-t border-stroke-strong bg-bg-panel">
 				{/* Projects Section */}
 				<ProjectsSection
 					stackId={stack._id}

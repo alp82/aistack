@@ -409,6 +409,12 @@ code, .font-mono {
   animation: heading-flash 2s ease-out forwards;
 }
 
+@keyframes blink {
+  0%, 60% { opacity: 1; }
+  67%, 93% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
 @keyframes heading-flash {
   0% {
     background-color: oklch(0.75 0.15 85 / 0.3);
