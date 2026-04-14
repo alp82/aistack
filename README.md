@@ -37,7 +37,7 @@ AI Stack has two surfaces that work together:
 
 1. **The web app** ([aistack.to](https://aistack.to)) — where you browse stacks, compare tools, and publish your own setups. Each stack can group multiple **projects**, and each project holds your actual AI configuration files (prompts, rules, skills, MCP servers).
 
-2. **The CLI** (`@aistacks/cli`) — a small tool that bridges your local filesystem with your stack on the web. It scans your project for AI config files and uploads them, or clones someone else's configs into your working directory. No manual copy-paste.
+2. **The CLI** (`@use-aistack/cli`) — a small tool that bridges your local filesystem with your stack on the web. It scans your project for AI config files and uploads them, or clones someone else's configs into your working directory. No manual copy-paste.
 
 Typical flow:
 
@@ -47,20 +47,20 @@ Typical flow:
 
 ## 💻 CLI
 
-The CLI is published to npm as [`@aistacks/cli`](https://www.npmjs.com/package/@aistacks/cli).
+The CLI is published to npm as [`@use-aistack/cli`](https://www.npmjs.com/package/@use-aistack/cli).
 
 ### Install
 
 Run it on-demand with `npx`:
 
 ```sh
-npx @aistacks/cli <command>
+npx @use-aistack/cli <command>
 ```
 
 Or install globally:
 
 ```sh
-npm i -g @aistacks/cli
+npm i -g @use-aistack/cli
 ```
 
 ### Commands

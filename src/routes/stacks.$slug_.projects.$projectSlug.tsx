@@ -124,7 +124,7 @@ function ProjectDetailPage() {
 		}, [project.instructions]);
 
 	const fileCount = localFileCount + globalFileCount;
-	const createCommand = `npx @aistacks/cli create ${project.slug}`;
+	const createCommand = `npx @use-aistack/cli create ${project.slug}`;
 
 	const handleCopyCommand = () => {
 		navigator.clipboard.writeText(createCommand);

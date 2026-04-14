@@ -45,7 +45,7 @@ export function ProjectsSection({
 	};
 
 	const copyCliCommand = () => {
-		navigator.clipboard.writeText("npx @aistacks/cli collect");
+		navigator.clipboard.writeText("npx @use-aistack/cli collect");
 		setCopied(true);
 		setTimeout(() => setCopied(false), 2000);
 	};
@@ -62,7 +62,7 @@ export function ProjectsSection({
 							<span className="uppercase tracking-wider">Add more:</span>
 							<div className="inline-flex items-center border border-stroke-subtle bg-bg-panel">
 								<code className="px-2 py-1 text-accent-lime">
-									npx @aistacks/cli collect
+									npx @use-aistack/cli collect
 								</code>
 								<button
 									type="button"
@@ -99,7 +99,7 @@ export function ProjectsSection({
 								</p>
 								<div className="mt-3 inline-flex items-center border border-stroke-subtle bg-bg-panel">
 									<code className="font-mono text-sm text-accent-lime px-3 py-1.5">
-										npx @aistacks/cli collect
+										npx @use-aistack/cli collect
 									</code>
 									<button
 										type="button"

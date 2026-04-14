@@ -1,17 +1,17 @@
-# @aistacks/cli
+# @use-aistack/cli
 
 Share and clone AI development configurations (prompts, rules, skills, MCP setups).
 
 ## Install
 
 ```sh
-npx @aistacks/cli <command>
+npx @use-aistack/cli <command>
 ```
 
 Or install globally:
 
 ```sh
-npm i -g @aistacks/cli
+npm i -g @use-aistack/cli
 ```
 
 ## Commands
@@ -46,8 +46,8 @@ aistack create my-project-abc123
 ## Development
 
 ```sh
-pnpm --filter @aistacks/cli build
-pnpm --filter @aistacks/cli dev   # watch mode
+pnpm --filter @use-aistack/cli build
+pnpm --filter @use-aistack/cli dev   # watch mode
 ```
 
 Test locally:

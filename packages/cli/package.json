@@ -1,5 +1,5 @@
 {
-  "name": "@aistacks/cli",
+  "name": "@use-aistack/cli",
   "version": "0.1.0",
   "description": "Share and clone AI development configurations",
   "type": "module",
