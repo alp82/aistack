@@ -34,6 +34,8 @@ export const InstructionItem = v.object({
   type: v.string(),
   name: v.string(),
   description: v.optional(v.string()),
+  group: v.string(),
+  stableKey: v.string(),
   files: v.array(InstructionFile),
 })
 

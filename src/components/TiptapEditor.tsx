@@ -1,96 +1,97 @@
-import {
-	useEditor,
-	useEditorState,
-	EditorContent,
-	type Editor,
-	Extension,
-} from "@tiptap/react";
-import { Plugin } from "@tiptap/pm/state";
-import Document from "@tiptap/extension-document";
-import Paragraph from "@tiptap/extension-paragraph";
-import Text from "@tiptap/extension-text";
+import Blockquote from "@tiptap/extension-blockquote";
 import Bold from "@tiptap/extension-bold";
-import InlineCode from "@tiptap/extension-code";
-import Italic from "@tiptap/extension-italic";
-import Heading from "@tiptap/extension-heading";
-import Link from "@tiptap/extension-link";
 import BulletList from "@tiptap/extension-bullet-list";
-import OrderedList from "@tiptap/extension-ordered-list";
+import InlineCode from "@tiptap/extension-code";
+import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import {
+	Details,
+	DetailsContent,
+	DetailsSummary,
+} from "@tiptap/extension-details";
+import Document from "@tiptap/extension-document";
+import { DragHandle } from "@tiptap/extension-drag-handle";
+import { FileHandler } from "@tiptap/extension-file-handler";
+import Heading from "@tiptap/extension-heading";
+import HorizontalRule from "@tiptap/extension-horizontal-rule";
+import Image from "@tiptap/extension-image";
+import Italic from "@tiptap/extension-italic";
+import Link from "@tiptap/extension-link";
 import ListItem from "@tiptap/extension-list-item";
-import { Markdown } from "tiptap-markdown";
+import OrderedList from "@tiptap/extension-ordered-list";
+import Paragraph from "@tiptap/extension-paragraph";
 import Placeholder from "@tiptap/extension-placeholder";
 import { TableKit } from "@tiptap/extension-table";
 import TableOfContents from "@tiptap/extension-table-of-contents";
-import { TextStyle, Color } from "@tiptap/extension-text-style";
-import { Dropcursor, TrailingNode, UndoRedo } from "@tiptap/extensions";
-import Blockquote from "@tiptap/extension-blockquote";
-import {
-	Details,
-	DetailsSummary,
-	DetailsContent,
-} from "@tiptap/extension-details";
-import HorizontalRule from "@tiptap/extension-horizontal-rule";
-import Youtube from "@tiptap/extension-youtube";
-import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
-import { FileHandler } from "@tiptap/extension-file-handler";
-import Image from "@tiptap/extension-image";
-import { common, createLowlight } from "lowlight";
-import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
+import TaskList from "@tiptap/extension-task-list";
+import Text from "@tiptap/extension-text";
+import { Color, TextStyle } from "@tiptap/extension-text-style";
+import Youtube from "@tiptap/extension-youtube";
+import { Dropcursor, TrailingNode, UndoRedo } from "@tiptap/extensions";
+import { Plugin } from "@tiptap/pm/state";
 import {
-	AIToolReference,
-	AIModelReference,
-	AIBundleReference,
-	AIInstructionReference,
-	AIToolCard,
-	AIModelCard,
-	AIBundleCard,
-	AIFileCard,
-	ToolSuggestionPlugin,
-	ModelSuggestionPlugin,
-	SlashCommandPlugin,
-	type ToolData,
-	type ModelData,
-	type BundleData,
-	type InstructionData,
-} from "@/components/editor";
-import { DragHandle } from "@tiptap/extension-drag-handle";
-import {
-	SlashCommandDropdown,
-	buildItems,
-	findExistingNode,
-} from "@/components/editor/SlashCommandPlugin";
-import { AddItemModal, type AddItemTab } from "@/components/AddItemModal";
-
+	type Editor,
+	EditorContent,
+	Extension,
+	useEditor,
+	useEditorState,
+} from "@tiptap/react";
+import { useQuery } from "convex/react";
+import { common, createLowlight } from "lowlight";
 import {
 	Bold as BoldIcon,
-	Italic as ItalicIcon,
+	ChevronDown,
+	Code,
+	CodeXml,
+	Copy,
 	Heading1,
 	Heading2,
 	Heading3,
+	ImageIcon,
+	Italic as ItalicIcon,
 	Link as LinkIcon,
 	List,
 	ListOrdered,
-	Quote,
-	Code,
-	CodeXml,
+	ListTodo,
 	Minus,
+	Plus,
+	Quote,
+	Redo,
 	Table,
 	Undo,
-	Redo,
-	Copy,
 	Youtube as YoutubeIcon,
-	ListTodo,
-	ChevronDown,
-	ImageIcon,
-	Plus,
 } from "lucide-react";
-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { cn } from "@/lib/utils";
+import { Markdown } from "tiptap-markdown";
+import { AddItemModal, type AddItemTab } from "@/components/AddItemModal";
+import {
+	AIBundleCard,
+	AIBundleReference,
+	AIInstructionCard,
+	AIInstructionGroup,
+	AIModelCard,
+	AIModelReference,
+	AIToolCard,
+	AIToolReference,
+	type BundleData,
+	type ModelData,
+	ModelSuggestionPlugin,
+	SlashCommandPlugin,
+	type ToolData,
+	ToolSuggestionPlugin,
+} from "@/components/editor";
+import type { SlashFileItem } from "@/components/editor/SlashCommandPlugin";
+import {
+	buildItems,
+	insertBlockForItem,
+	SlashCommandDropdown,
+} from "@/components/editor/SlashCommandPlugin";
 import { Button } from "@/components/ui/button";
 import { useOptionalEditorContext } from "@/features/stack-editor/context/EditorContext";
+import type { InstructionItem as InstructionItemType } from "@/features/stack-editor/types";
+import { cn } from "@/lib/utils";
+import { api } from "../../convex/_generated/api";
 
 const lowlight = createLowlight(common);
 
@@ -183,6 +184,15 @@ type TiptapEditorProps = {
 	models?: ModelData[];
 	onModelAdded?: (model: ModelData) => void;
 	previewMode?: boolean;
+	/**
+	 * Stack-level instructions (e.g., CLI-collected globals routed to the
+	 * stack). Required when editable to enable file insertion of stack files
+	 * via the slash command.
+	 */
+	stackInstructions?: {
+		stackId: string;
+		instructions: InstructionItemType[];
+	};
 };
 
 export function TiptapEditor({
@@ -195,6 +205,7 @@ export function TiptapEditor({
 	models = [],
 	onModelAdded,
 	previewMode: externalPreviewMode,
+	stackInstructions,
 }: TiptapEditorProps) {
 	const [copied, setCopied] = useState(false);
 	const previewMode = externalPreviewMode ?? false;
@@ -223,22 +234,120 @@ export function TiptapEditor({
 		}));
 	}, [editorContext?.bundleLookup]);
 
-	const slashInstructions = useMemo<InstructionData[]>(() => {
-		if (!editorContext) return [];
-		return Array.from(editorContext.instructionLookup.values()).map((i) => ({
-			name: i.name,
-			type: i.type,
-			description: i.description,
-		}));
-	}, [editorContext?.instructionLookup]);
+	const projectFilesData = useQuery(
+		api.projects.listByCreator,
+		editable ? {} : "skip",
+	);
+
+	const slashFiles = useMemo<SlashFileItem[]>(() => {
+		const out: SlashFileItem[] = [];
+
+		// Aggregate groups per source — groups come from both stack and project
+		// levels, keyed by source+sourceId+group.
+		const groupIndex = new Map<
+			string,
+			{
+				source: "stack" | "project";
+				sourceId: string;
+				group: string;
+				fileCount: number;
+			}
+		>();
+
+		const addToGroup = (
+			source: "stack" | "project",
+			sourceId: string,
+			group: string,
+			count: number,
+		) => {
+			const key = `${source}:${sourceId}:${group}`;
+			const existing = groupIndex.get(key);
+			if (existing) {
+				existing.fileCount += count;
+			} else {
+				groupIndex.set(key, { source, sourceId, group, fileCount: count });
+			}
+		};
+
+		// Stack-level instructions
+		if (stackInstructions?.stackId) {
+			for (const instruction of stackInstructions.instructions) {
+				addToGroup(
+					"stack",
+					stackInstructions.stackId,
+					instruction.group,
+					instruction.files.length,
+				);
+				for (const file of instruction.files) {
+					out.push({
+						kind: "file",
+						source: "stack",
+						sourceId: stackInstructions.stackId,
+						stableKey: instruction.stableKey,
+						fileName: file.name,
+						type: instruction.type,
+						group: instruction.group,
+					});
+				}
+			}
+		}
+
+		// Project-level instructions
+		if (projectFilesData) {
+			for (const project of projectFilesData) {
+				for (const instruction of project.instructions) {
+					addToGroup(
+						"project",
+						project.projectId,
+						instruction.group,
+						instruction.files.length,
+					);
+					for (const file of instruction.files) {
+						out.push({
+							kind: "file",
+							source: "project",
+							sourceId: project.projectId,
+							stableKey: instruction.stableKey,
+							fileName: file.name,
+							type: instruction.type,
+							group: instruction.group,
+						});
+					}
+				}
+			}
+		}
+
+		// Prepend groups (only include groups with >1 file)
+		const groupItems: SlashFileItem[] = [];
+		for (const g of groupIndex.values()) {
+			if (g.fileCount > 1) {
+				groupItems.push({
+					kind: "group",
+					source: g.source,
+					sourceId: g.sourceId,
+					group: g.group,
+					fileCount: g.fileCount,
+				});
+			}
+		}
+
+		return [...groupItems, ...out];
+	}, [projectFilesData, stackInstructions]);
 
 	const slashBundlesKey = useMemo(
 		() => slashBundles.map((b) => b._id).join(","),
 		[slashBundles],
 	);
-	const slashInstructionsKey = useMemo(
-		() => slashInstructions.map((i) => i.name).join(","),
-		[slashInstructions],
+	const slashFilesKey = useMemo(
+		() =>
+			slashFiles
+				.map((f) =>
+					f.kind === "group"
+						? `g:${f.source}:${f.sourceId}:${f.group}:${f.fileCount}`
+						: `f:${f.source}:${f.sourceId}:${f.stableKey}:${f.fileName}`,
+				)
+				.join(","),
+		[slashFiles],
 	);
 
 	const toolbarDropdownItems = useMemo(
@@ -247,9 +356,9 @@ export function TiptapEditor({
 				tools,
 				models,
 				bundles: slashBundles,
-				instructions: slashInstructions,
+				files: slashFiles,
 			}),
-		[tools, models, slashBundles, slashInstructions],
+		[tools, models, slashBundles, slashFiles],
 	);
 
 	const editor = useEditor(
@@ -358,11 +467,11 @@ export function TiptapEditor({
 				AIToolReference,
 				AIModelReference,
 				AIBundleReference,
-				AIInstructionReference,
 				AIToolCard,
 				AIModelCard,
 				AIBundleCard,
-				AIFileCard,
+				AIInstructionCard,
+				AIInstructionGroup,
 				...(editable
 					? [
 							DragHandle.configure({
@@ -398,11 +507,15 @@ export function TiptapEditor({
 					tools,
 					models,
 					bundles: slashBundles,
-					instructions: slashInstructions,
+					files: slashFiles,
 					onToolAdded,
 					onModelAdded,
 					onAddMissing: (hint) => {
-						if (hint.category && hint.category !== "instruction") {
+						if (
+							hint.category &&
+							hint.category !== "files" &&
+							hint.category !== null
+						) {
 							setAddItemDefaultTab(hint.category);
 						}
 						setAddItemModalOpen(true);
@@ -439,13 +552,13 @@ export function TiptapEditor({
 			},
 			onUpdate: ({ editor }) => {
 				if (onChange) {
-					// Use HTML instead of markdown to preserve custom nodes like aiInstructionReference
+					// Use HTML instead of markdown to preserve custom nodes like aiInstructionCard
 					const html = editor.getHTML();
 					onChange(html);
 				}
 			},
 		},
-		[toolsKey, modelsKey, slashBundlesKey, slashInstructionsKey],
+		[toolsKey, modelsKey, slashBundlesKey, slashFilesKey],
 	);
 
 	// Register editor with context for sidebar integration
@@ -791,116 +904,24 @@ export function TiptapEditor({
 								setShowToolbarDropdown(false);
 								if (!editor) return;
 								const { from } = editor.state.selection;
-								const view = editor.view;
-								const { schema } = view.state;
-								const tr = view.state.tr;
-								let node;
-								switch (item.category) {
-									case "tool": {
-										const tool = item.data as ToolData;
-										const toolCardExists = findExistingNode(
-											view,
-											"aiToolCard",
-											tool.shortId,
-											tool.name,
-										);
-										if (toolCardExists) {
-											node = schema.nodes.aiToolReference.create({
-												shortId: tool.shortId ?? null,
-												name: tool.name,
-											});
-										} else {
-											node = schema.nodes.aiToolCard.create({
-												shortId: tool.shortId ?? null,
-												name: tool.name,
-											});
-											if (onToolAdded) onToolAdded(tool);
-										}
-										break;
-									}
-									case "model": {
-										const model = item.data as ModelData;
-										const modelCardExists = findExistingNode(
-											view,
-											"aiModelCard",
-											model.shortId,
-											model.name,
-										);
-										if (modelCardExists) {
-											node = schema.nodes.aiModelReference.create({
-												shortId: model.shortId ?? null,
-												name: model.name,
-												provider: (model as ModelData).provider ?? "",
-											});
-										} else {
-											node = schema.nodes.aiModelCard.create({
-												shortId: model.shortId ?? null,
-												name: model.name,
-												provider: (model as ModelData).provider ?? "",
-											});
-											if (onModelAdded) onModelAdded(model);
-										}
-										break;
-									}
-									case "bundle": {
-										const bundle = item.data as BundleData;
-										const bundleCardExists = findExistingNode(
-											view,
-											"aiBundleCard",
-											bundle.shortId,
-											bundle.name,
-										);
-										if (bundleCardExists) {
-											node = schema.nodes.aiBundleReference.create({
-												shortId: bundle.shortId ?? null,
-												name: bundle.name,
-											});
-										} else {
-											node = schema.nodes.aiBundleCard.create({
-												shortId: bundle.shortId ?? null,
-												name: bundle.name,
-											});
-										}
-										break;
-									}
-									case "instruction": {
-										const instruction = item.data as InstructionData;
-										const instrCardExists = findExistingNode(
-											view,
-											"aiFileCard",
-											null,
-											instruction.name,
-										);
-										if (instrCardExists) {
-											node = schema.nodes.aiInstructionReference.create({
-												name: instruction.name,
-												instructionType: instruction.type,
-												content: instruction.content ?? null,
-											});
-										} else {
-											node = schema.nodes.aiFileCard.create({
-												name: instruction.name,
-												instructionType: instruction.type,
-												content: instruction.content
-													? encodeURIComponent(instruction.content)
-													: null,
-												description: instruction.description ?? null,
-											});
-										}
-										break;
-									}
-								}
-								if (node) {
-									tr.insert(from, node);
-									view.dispatch(tr);
-								}
-								view.focus();
+								insertBlockForItem(
+									item,
+									editor.view,
+									from,
+									from,
+									onToolAdded,
+									onModelAdded,
+								);
 							}}
 							onClose={() => setShowToolbarDropdown(false)}
 							position={toolbarDropdownPos}
 							onAddMissing={(hint) => {
 								setShowToolbarDropdown(false);
-								if (hint.category && hint.category !== "instruction") {
+								if (
+									hint.category &&
+									hint.category !== "files" &&
+									hint.category !== null
+								) {
 									setAddItemDefaultTab(hint.category);
 								}
 								setAddItemModalOpen(true);

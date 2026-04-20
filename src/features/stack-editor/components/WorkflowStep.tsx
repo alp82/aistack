@@ -1,8 +1,9 @@
 import { useQuery } from "convex/react";
 import { useMemo, useState } from "react";
-import { api } from "../../../../convex/_generated/api";
-import { TiptapEditor } from "@/components/TiptapEditor";
 import { EditorModeToggle } from "@/components/editor/EditorModeToggle";
+import { TiptapEditor } from "@/components/TiptapEditor";
+import type { InstructionItem } from "@/features/stack-editor/types";
+import { api } from "../../../../convex/_generated/api";
 
 type WorkflowStepProps = {
 	description: string;
@@ -18,6 +19,10 @@ type WorkflowStepProps = {
 		provider: string;
 		iconUrl?: string | null;
 	}) => void;
+	stackInstructions?: {
+		stackId: string;
+		instructions: InstructionItem[];
+	};
 };
 
 function WorkflowStep({
@@ -25,6 +30,7 @@ function WorkflowStep({
 	onDescriptionChange,
 	onToolAdded,
 	onModelAdded,
+	stackInstructions,
 }: WorkflowStepProps) {
 	const allTools = useQuery(api.tools.listForEditor) ?? [];
 	const allModels = useQuery(api.models.listForEditor) ?? [];
@@ -80,6 +86,7 @@ function WorkflowStep({
 						models={modelsForEditor}
 						onModelAdded={onModelAdded}
 						previewMode={previewMode}
+						stackInstructions={stackInstructions}
 					/>
 					<p className="mt-2 font-mono text-[10px] text-fg-muted">
 						Describe your stack in detail. Use the toolbar for formatting.

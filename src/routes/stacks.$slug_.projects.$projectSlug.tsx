@@ -7,17 +7,14 @@ import {
 	Copy,
 	Download,
 	ExternalLink,
-	Globe,
 	Pencil,
 	Terminal,
 	Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { InstructionItem } from "@/components/InstructionItem";
+import { useEffect, useState } from "react";
+import { InstructionBrowser } from "@/components/instructions";
 import { TagBadge } from "@/components/TagBadge";
-import { FileContentDialog } from "@/components/editor/FileContentDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import type { InstructionItem as InstructionItemType } from "@/features/stack-editor/types";
 import { seoMeta } from "@/lib/seo";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -62,8 +59,6 @@ function ProjectDetailPage() {
 	const deleteProject = useMutation(api.projects.deleteProject);
 	const updateProject = useMutation(api.projects.updateProject);
 	const publishProject = useMutation(api.projects.publishProject);
-	const [activeInstruction, setActiveInstruction] =
-		useState<InstructionItemType | null>(null);
 	const [copied, setCopied] = useState(false);
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 	const [deleting, setDeleting] = useState(false);
@@ -98,32 +93,11 @@ function ProjectDetailPage() {
 		);
 	}
 
-	const { localItems, globalItems, localFileCount, globalFileCount } =
-		useMemo(() => {
-			const local: typeof project.instructions = [];
-			const global: typeof project.instructions = [];
-			for (const item of project.instructions) {
-				const isGlobal = item.files.some((f: { tags?: string[] }) =>
-					f.tags?.includes("global"),
-				);
-				if (isGlobal) global.push(item);
-				else local.push(item);
-			}
-			return {
-				localItems: local,
-				globalItems: global,
-				localFileCount: local.reduce(
-					(s: number, i: { files: unknown[] }) => s + i.files.length,
-					0,
-				),
-				globalFileCount: global.reduce(
-					(s: number, i: { files: unknown[] }) => s + i.files.length,
-					0,
-				),
-			};
-		}, [project.instructions]);
-
-	const fileCount = localFileCount + globalFileCount;
+	const fileCount = project.instructions.reduce(
+		(s: number, i: { files: unknown[] }) => s + i.files.length,
+		0,
+	);
+	const hasInstructions = project.instructions.length > 0;
 	const createCommand = `npx @use-aistack/cli create ${project.slug}`;
 
 	const handleCopyCommand = () => {
@@ -314,62 +288,16 @@ function ProjectDetailPage() {
 			</header>
 
 			<div className="mx-auto max-w-content px-6 py-12">
-				{localItems.length > 0 && (
+				{hasInstructions && (
 					<>
 						<h2 className="mb-6 font-mono text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-accent-lime">
 							Project Files
-							<span className="ml-2 text-fg-muted">{localFileCount}</span>
+							<span className="ml-2 text-fg-muted">{fileCount}</span>
 						</h2>
-						<div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-							{localItems.map((instruction) => (
-								<InstructionItem
-									key={instruction.name}
-									instruction={instruction as InstructionItemType}
-									onClick={() =>
-										setActiveInstruction(instruction as InstructionItemType)
-									}
-								/>
-							))}
-						</div>
+						<InstructionBrowser target={{ kind: "project", id: project._id }} />
 					</>
 				)}
-
-				{globalItems.length > 0 && (
-					<div className="mt-12">
-						<div className="mb-6 flex items-center gap-2">
-							<Globe className="size-3.5 text-fg-muted" />
-							<h2 className="font-mono text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-fg-muted">
-								Global Config
-								<span className="ml-2">{globalFileCount}</span>
-							</h2>
-						</div>
-						<p className="mb-4 text-xs text-fg-muted">
-							Creator's machine-wide config — shared across all their projects.
-						</p>
-						<div className="grid grid-cols-1 gap-2 md:grid-cols-2 opacity-80">
-							{globalItems.map((instruction) => (
-								<InstructionItem
-									key={instruction.name}
-									instruction={instruction as InstructionItemType}
-									onClick={() =>
-										setActiveInstruction(instruction as InstructionItemType)
-									}
-								/>
-							))}
-						</div>
-					</div>
-				)}
 			</div>
-
-			{activeInstruction && (
-				<FileContentDialog
-					open={!!activeInstruction}
-					onClose={() => setActiveInstruction(null)}
-					instructionName={activeInstruction.name}
-					files={activeInstruction.files}
-					isEditable={false}
-				/>
-			)}
 
 			<ConfirmDialog
 				open={showDeleteConfirm}

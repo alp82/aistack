@@ -3,18 +3,22 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { projectGet } from "../api.js";
 import {
-	banner,
 	bold,
 	dim,
 	divider,
+	intro,
 	lime,
 	lines,
+	outro,
+	outroCancel,
+	outroError,
+	outroSkipped,
 	section,
 	yellow,
 } from "../theme.js";
 
 export async function createCommand(slugOrShortId: string) {
-	p.intro(banner("create"));
+	intro("create");
 
 	const s = p.spinner();
 	s.start("Fetching project...");
@@ -29,12 +33,14 @@ export async function createCommand(slugOrShortId: string) {
 		if (!project) {
 			s.stop("Not found");
 			p.log.error(`Project "${slugOrShortId}" not found.`);
+			outroError("not found");
 			process.exit(1);
 		}
 		s.stop(bold(project.name));
 	} catch (err) {
 		s.stop("Failed to fetch project");
 		p.log.error(err instanceof Error ? err.message : String(err));
+		outroError("error");
 		process.exit(1);
 	}
 
@@ -42,9 +48,9 @@ export async function createCommand(slugOrShortId: string) {
 	const globalFiles: FileToWrite[] = [];
 
 	for (const item of project.instructions) {
+		const isGlobal = item.scope === "global";
 		for (const file of item.files) {
 			const writePath = file.path ?? file.name;
-			const isGlobal = file.tags?.includes("global");
 			if (isGlobal) {
 				globalFiles.push({ path: writePath, content: file.content });
 			} else {
@@ -61,7 +67,7 @@ export async function createCommand(slugOrShortId: string) {
 
 	if (localFiles.length === 0) {
 		p.log.warn("No local files to write.");
-		p.outro(dim("nothing to create"));
+		outroSkipped("nothing to create");
 		return;
 	}
 
@@ -92,7 +98,7 @@ export async function createCommand(slugOrShortId: string) {
 	if (toWrite.length === 0) {
 		divider();
 		p.log.info("All local files already exist.");
-		p.outro(dim("nothing to write"));
+		outroSkipped("nothing to write");
 		return;
 	}
 
@@ -103,7 +109,7 @@ export async function createCommand(slugOrShortId: string) {
 	});
 
 	if (p.isCancel(confirm) || !confirm) {
-		p.cancel("Cancelled.");
+		outroCancel();
 		process.exit(0);
 	}
 
@@ -117,7 +123,7 @@ export async function createCommand(slugOrShortId: string) {
 	p.log.success(
 		`${lime(String(toWrite.length))} written, ${dim(String(skipped.length) + " skipped")}`,
 	);
-	p.outro(lime("done"));
+	outro(lime("done"));
 }
 
 interface FileToWrite {

@@ -1,11 +1,14 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { BundleItem, type BundleItemData } from "@/components/BundleItem";
-import { InstructionItem } from "@/components/InstructionItem";
-import type { InstructionItem as InstructionItemType } from "@/features/stack-editor/types";
-import { FileContentDialog } from "@/components/editor/FileContentDialog";
 import { ModelItem, type ModelItemData } from "@/components/ModelItem";
 import { ToolItem, type ToolItemData } from "@/components/ToolItem";
+import {
+	UnifiedFileList,
+	type UnifiedFileListProjectGroup,
+} from "@/components/UnifiedFileList";
+import type { InstructionItem as InstructionItemType } from "@/features/stack-editor/types";
 import { sortToolsByPrice } from "@/lib/pricing";
+import type { Id } from "../../convex/_generated/dataModel";
 
 type ViewTool = ToolItemData & {
 	tierName: string;
@@ -18,24 +21,32 @@ type ViewTool = ToolItemData & {
 type ViewBundle = BundleItemData;
 type ViewModel = ModelItemData;
 type ViewInstruction = InstructionItemType;
+type ProjectSourcedInstruction = InstructionItemType & {
+	sourceProjectId?: Id<"projects">;
+	sourceProjectName?: string;
+	sourceIsOwnProject?: boolean;
+	sourceStableKey?: string;
+};
 
 type ViewSidebarProps = {
+	stackId?: Id<"stacks">;
 	tools: ViewTool[];
 	bundles: ViewBundle[];
 	models: ViewModel[];
 	instructions: ViewInstruction[];
+	projectInstructions?: ProjectSourcedInstruction[];
 	onBundleClick?: (bundleSlug: string) => void;
 };
 
 export function ViewSidebar({
+	stackId,
 	tools,
 	bundles,
 	models,
 	instructions,
+	projectInstructions,
 	onBundleClick,
 }: ViewSidebarProps) {
-	const [activeInstruction, setActiveInstruction] =
-		useState<ViewInstruction | null>(null);
 	const mainTools = sortToolsByPrice(tools.filter((t) => t.kind === "main"));
 	const miscTools = sortToolsByPrice(tools.filter((t) => t.kind === "misc"));
 
@@ -60,9 +71,49 @@ export function ViewSidebar({
 		return total;
 	}, [tools]);
 
+	const projectInstructionsList = useMemo(
+		() => projectInstructions ?? [],
+		[projectInstructions],
+	);
+	const totalInstructionCount =
+		instructions.length + projectInstructionsList.length;
 	const totalFileCount = useMemo(
-		() => instructions.reduce((sum, inst) => sum + inst.files.length, 0),
-		[instructions],
+		() =>
+			instructions.reduce((sum, inst) => sum + inst.files.length, 0) +
+			projectInstructionsList.reduce((sum, inst) => sum + inst.files.length, 0),
+		[instructions, projectInstructionsList],
+	);
+	const hasAnyInstructions = totalInstructionCount > 0;
+
+	const projectGroups = useMemo<UnifiedFileListProjectGroup[]>(() => {
+		const byProject = new Map<string, UnifiedFileListProjectGroup>();
+		for (const item of projectInstructionsList) {
+			if (!item.sourceProjectId) continue;
+			const pid = String(item.sourceProjectId);
+			const existing = byProject.get(pid);
+			if (existing) {
+				existing.instructions.push(item);
+			} else {
+				byProject.set(pid, {
+					sourceId: pid,
+					sourceLabel: item.sourceProjectName ?? "",
+					instructions: [item],
+				});
+			}
+		}
+		return Array.from(byProject.values());
+	}, [projectInstructionsList]);
+
+	const stackInstructionsForList = useMemo(
+		() =>
+			stackId && instructions.length > 0
+				? {
+						sourceId: String(stackId),
+						sourceLabel: "Stack",
+						instructions: instructions as InstructionItemType[],
+					}
+				: null,
+		[stackId, instructions],
 	);
 
 	return (
@@ -152,39 +203,37 @@ export function ViewSidebar({
 					)}
 
 					{/* Instructions */}
-					{instructions.length > 0 && (
-						<section>
-							<p className="sticky top-0 z-10 mb-3 pb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
-								{"// Instructions"}
+					<section>
+						<p className="sticky top-0 z-10 mb-3 pb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
+							{"// Instructions"}
+							{hasAnyInstructions && (
 								<span className="ml-2 text-fg-muted">
-									· {instructions.length}{" "}
-									{instructions.length === 1 ? "item" : "items"}
+									· {totalInstructionCount}{" "}
+									{totalInstructionCount === 1 ? "item" : "items"}
 									{totalFileCount > 0 &&
 										` · ${totalFileCount} ${totalFileCount === 1 ? "file" : "files"}`}
 								</span>
-							</p>
-							<div className="space-y-2">
-								{instructions.map((inst, i) => (
-									<InstructionItem
-										key={`${inst.name}-${i}`}
-										instruction={inst}
-										onClick={() =>
-											inst.files.length > 0 && setActiveInstruction(inst)
-										}
-									/>
-								))}
+							)}
+						</p>
+						{hasAnyInstructions ? (
+							<UnifiedFileList
+								mode="view"
+								stackInstructions={stackInstructionsForList}
+								projectInstructions={projectGroups}
+							/>
+						) : (
+							<div className="border border-stroke-subtle bg-bg-panel-muted/40 p-4">
+								<p className="text-sm text-fg-secondary">
+									Connect a project via CLI to see your setup files here
+								</p>
+								<code className="mt-3 inline-block border border-stroke-subtle bg-bg-panel px-2 py-1 font-mono text-xs text-accent-lime">
+									npx @use-aistack/cli collect
+								</code>
 							</div>
-						</section>
-					)}
+						)}
+					</section>
 				</div>
 			</div>
-			<FileContentDialog
-				open={!!activeInstruction}
-				onClose={() => setActiveInstruction(null)}
-				instructionName={activeInstruction?.name ?? ""}
-				files={activeInstruction?.files ?? []}
-				isEditable={false}
-			/>
 		</aside>
 	);
 }

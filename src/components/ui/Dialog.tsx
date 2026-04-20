@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import { useId } from "react";
 import { X } from "lucide-react";
 
 interface DialogProps {
@@ -31,11 +32,15 @@ export function Dialog({
 	padding,
 	scrollable = false,
 }: DialogProps) {
+	const titleId = useId();
+
 	if (!open) return null;
 
 	const defaultPadding = size === "lg" ? "p-8" : "p-6";
 	const paddingClass = padding ?? defaultPadding;
 	const scrollClass = scrollable ? "max-h-[90vh] overflow-y-auto" : "";
+
+	// TODO(a11y): focus trap + focus return on close
 
 	return createPortal(
 		<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -45,6 +50,9 @@ export function Dialog({
 				onKeyDown={(e) => e.key === "Escape" && onClose()}
 			/>
 			<div
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby={title ? titleId : undefined}
 				className={`relative w-full ${sizeClasses[size]} ${scrollClass} border-2 border-stroke-strong bg-bg-panel ${paddingClass} shadow-[6px_6px_0_var(--stroke-strong)]`}
 			>
 				{title && (
@@ -53,7 +61,10 @@ export function Dialog({
 					>
 						<div className="flex items-center gap-3">
 							{titleIcon}
-							<h3 className="font-mono text-lg font-bold text-fg-primary">
+							<h3
+								id={titleId}
+								className="font-mono text-lg font-bold text-fg-primary"
+							>
 								{title}
 							</h3>
 						</div>

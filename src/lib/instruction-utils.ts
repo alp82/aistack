@@ -230,4 +230,44 @@ export function getInstructionTypeIconBgClass(type: string): string {
 		: knownTypeIconBgClasses.custom;
 }
 
+const groupLabels: Record<string, string> = {
+	"claude-code": "Claude Code",
+	cursor: "Cursor",
+	windsurf: "Windsurf",
+	cline: "Cline",
+	copilot: "Copilot",
+	aider: "Aider",
+	continue: "Continue",
+	"claude-desktop": "Claude Desktop",
+	generic: "Other",
+};
+
+export function getGroupLabel(group: string | undefined): string {
+	if (!group) return groupLabels.generic;
+	return groupLabels[group] ?? group;
+}
+
+export const MANUAL_INSTRUCTION_GROUP = "manual";
+
+export function buildManualStableKey(type: string, name: string): string {
+	return `${MANUAL_INSTRUCTION_GROUP}:${type}:${name}`;
+}
+
 export { isKnownType };
+
+import type { Id } from "../../convex/_generated/dataModel";
+
+export type InstructionSource = "stack" | "project";
+
+export type InstructionTarget =
+	| { kind: "stack"; id: Id<"stacks"> }
+	| { kind: "project"; id: Id<"projects"> };
+
+export function sourceToTarget(
+	source: InstructionSource,
+	sourceId: string,
+): InstructionTarget {
+	return source === "stack"
+		? { kind: "stack", id: sourceId as Id<"stacks"> }
+		: { kind: "project", id: sourceId as Id<"projects"> };
+}

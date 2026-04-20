@@ -15,24 +15,29 @@ import {
 	saveProjectSettings,
 } from "../config.js";
 import {
-	banner,
 	bold,
 	dim,
 	divider,
+	intro,
 	lime,
 	limeBold,
 	lines,
+	outro,
+	outroCancel,
+	outroError,
+	outroSkipped,
 	red,
 	section,
 	yellow,
 } from "../theme.js";
 
 export async function collectCommand(options: { global: boolean }) {
-	p.intro(banner("collect"));
+	intro("collect");
 
 	const token = getToken();
 	if (!token) {
 		p.log.error(`Not authenticated. Run ${limeBold("aistack login")} first.`);
+		outroError("not authenticated");
 		process.exit(1);
 	}
 
@@ -49,7 +54,7 @@ export async function collectCommand(options: { global: boolean }) {
 
 	if (localFiles.length === 0 && globalFiles.length === 0) {
 		p.log.warn("No AI configuration files found.");
-		p.outro(dim("nothing to collect"));
+		outroSkipped("nothing to collect");
 		return;
 	}
 
@@ -66,7 +71,7 @@ export async function collectCommand(options: { global: boolean }) {
 			placeholder: defaultName,
 		});
 		if (p.isCancel(name)) {
-			p.cancel("Cancelled.");
+			outroCancel();
 			process.exit(0);
 		}
 		projectName = (name as string) || defaultName;
@@ -99,6 +104,7 @@ export async function collectCommand(options: { global: boolean }) {
 		}
 	} catch (err) {
 		p.log.error(err instanceof Error ? err.message : String(err));
+		outroError("error");
 		process.exit(1);
 	}
 
@@ -111,7 +117,7 @@ export async function collectCommand(options: { global: boolean }) {
 
 		if (diff.changed === 0 && diff.added === 0 && diff.removed === 0) {
 			p.log.info("No changes since last collect.");
-			p.outro(dim("nothing to upload"));
+			outroSkipped("nothing to upload");
 			return;
 		}
 
@@ -165,7 +171,7 @@ export async function collectCommand(options: { global: boolean }) {
 	});
 
 	if (p.isCancel(action) || action === "cancel") {
-		p.cancel("Cancelled.");
+		outroCancel();
 		process.exit(0);
 	}
 
@@ -181,7 +187,7 @@ export async function collectCommand(options: { global: boolean }) {
 		});
 
 		if (p.isCancel(selected)) {
-			p.cancel("Cancelled.");
+			outroCancel();
 			process.exit(0);
 		}
 
@@ -192,7 +198,7 @@ export async function collectCommand(options: { global: boolean }) {
 
 		if (selectedFiles.length === 0) {
 			p.log.warn("No files selected.");
-			p.outro(dim("nothing to collect"));
+			outroSkipped("nothing to collect");
 			process.exit(0);
 		}
 	}
@@ -210,10 +216,11 @@ export async function collectCommand(options: { global: boolean }) {
 			excluded.map((f) => f.relativePath),
 		);
 		p.log.success(dim(result.url));
-		p.outro(lime("done"));
+		outro(lime("done"));
 	} catch (err) {
 		s.stop("Upload failed");
 		p.log.error(err instanceof Error ? err.message : String(err));
+		outroError("upload failed");
 		process.exit(1);
 	}
 }

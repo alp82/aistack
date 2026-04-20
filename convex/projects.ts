@@ -1,4 +1,5 @@
 import { mutation, query } from './_generated/server'
+import type { Doc } from './_generated/dataModel'
 import { v } from 'convex/values'
 import { extractShortId } from './lib/ids'
 import { slugifyAscii } from '../src/lib/slug'
@@ -106,8 +107,7 @@ export const listByStack = query({
       order: v.optional(v.number()),
       cloneCount: v.optional(v.number()),
       published: v.optional(v.boolean()),
-      localFileCount: v.number(),
-      globalFileCount: v.number(),
+      fileCount: v.number(),
       createdAt: v.number(),
       updatedAt: v.number(),
     })
@@ -123,13 +123,9 @@ export const listByStack = query({
     }
 
     const mapped = projects.map((project) => {
-      let localFileCount = 0
-      let globalFileCount = 0
+      let fileCount = 0
       for (const item of project.instructions) {
-        for (const file of item.files) {
-          if (file.tags?.includes('global')) globalFileCount++
-          else localFileCount++
-        }
+        fileCount += item.files.length
       }
       return {
         _id: project._id,
@@ -143,8 +139,7 @@ export const listByStack = query({
         order: project.order,
         cloneCount: project.cloneCount,
         published: project.published,
-        localFileCount,
-        globalFileCount,
+        fileCount,
         createdAt: project.createdAt,
         updatedAt: project.updatedAt,
       }
@@ -158,6 +153,140 @@ export const listByStack = query({
     })
 
     return mapped
+  },
+})
+
+export const listProjectInstructionsByStack = query({
+  args: { stackId: v.id('stacks'), includeUnpublished: v.optional(v.boolean()) },
+  returns: v.array(
+    v.object({
+      projectId: v.id('projects'),
+      projectName: v.string(),
+      projectSlug: v.string(),
+      isOwnProject: v.boolean(),
+      instructions: v.array(InstructionItemValidator),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity()
+    const userId = user ? user.tokenIdentifier.split('|')[1] : null
+
+    let projects = await ctx.db
+      .query('projects')
+      .withIndex('by_stackId', (q) => q.eq('stackId', args.stackId))
+      .collect()
+
+    const ownedCreatorIds = new Set<string>()
+    if (userId) {
+      for (const project of projects) {
+        if (ownedCreatorIds.has(project.creatorId)) continue
+        const creator = await ctx.db.get(project.creatorId)
+        if (creator && creator.userId === userId) {
+          ownedCreatorIds.add(project.creatorId)
+        }
+      }
+    }
+
+    if (!args.includeUnpublished) {
+      projects = projects.filter(
+        (p) => p.published === true || ownedCreatorIds.has(p.creatorId)
+      )
+    }
+
+    const mapped = projects.map((project) => ({
+      projectId: project._id,
+      projectName: project.name,
+      projectSlug: `${project.slug}-${project.shortId}`,
+      isOwnProject: ownedCreatorIds.has(project.creatorId),
+      instructions: project.instructions,
+      order: project.order,
+      createdAt: project.createdAt,
+    }))
+
+    mapped.sort((a, b) => {
+      const orderA = a.order ?? Infinity
+      const orderB = b.order ?? Infinity
+      if (orderA !== orderB) return orderA - orderB
+      return a.createdAt - b.createdAt
+    })
+
+    return mapped.map(
+      ({ projectId, projectName, projectSlug, isOwnProject, instructions }) => ({
+        projectId,
+        projectName,
+        projectSlug,
+        isOwnProject,
+        instructions,
+      })
+    )
+  },
+})
+
+export const listByCreator = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      projectId: v.id('projects'),
+      projectName: v.string(),
+      projectSlug: v.string(),
+      stackId: v.id('stacks'),
+      stackName: v.string(),
+      stackSlug: v.string(),
+      instructions: v.array(InstructionItemValidator),
+    })
+  ),
+  handler: async (ctx) => {
+    const user = await ctx.auth.getUserIdentity()
+    if (!user) return []
+    const userId = user.tokenIdentifier.split('|')[1]
+
+    const creators = await ctx.db
+      .query('creators')
+      .withIndex('by_userId', (q) => q.eq('userId', userId))
+      .collect()
+    if (creators.length === 0) return []
+
+    const projects: Doc<'projects'>[] = []
+    for (const creator of creators) {
+      const part = await ctx.db
+        .query('projects')
+        .withIndex('by_creatorId', (q) => q.eq('creatorId', creator._id))
+        .take(200)
+      projects.push(...part)
+    }
+
+    projects.sort((a, b) => b.updatedAt - a.updatedAt)
+    const limited = projects.slice(0, 200)
+
+    const stackCache = new Map<string, { name: string; slug: string; shortId: string }>()
+    const results: {
+      projectId: Doc<'projects'>['_id']
+      projectName: string
+      projectSlug: string
+      stackId: Doc<'projects'>['stackId']
+      stackName: string
+      stackSlug: string
+      instructions: Doc<'projects'>['instructions']
+    }[] = []
+    for (const project of limited) {
+      let stackInfo = stackCache.get(project.stackId)
+      if (!stackInfo) {
+        const stack = await ctx.db.get(project.stackId)
+        if (!stack) continue
+        stackInfo = { name: stack.name, slug: stack.slug, shortId: stack.shortId }
+        stackCache.set(project.stackId, stackInfo)
+      }
+      results.push({
+        projectId: project._id,
+        projectName: project.name,
+        projectSlug: `${project.slug}-${project.shortId}`,
+        stackId: project.stackId,
+        stackName: stackInfo.name,
+        stackSlug: `${stackInfo.slug}-${stackInfo.shortId}`,
+        instructions: project.instructions,
+      })
+    }
+    return results
   },
 })
 

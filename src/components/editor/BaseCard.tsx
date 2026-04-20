@@ -108,7 +108,7 @@ export function BaseCard({
 									onKeyDown={(e) => e.stopPropagation()}
 									placeholder="Add a description..."
 									rows={1}
-									className="w-full resize-none overflow-hidden border-0 bg-transparent text-sm leading-relaxed text-fg-secondary placeholder:text-fg-muted/40 focus:outline-none focus:ring-0"
+									className="w-full resize-none overflow-hidden border-0 bg-transparent font-mono text-sm leading-relaxed text-fg-secondary placeholder:text-fg-muted/40 focus:outline-none focus:ring-0"
 								/>
 							) : (
 								<p className="m-0 whitespace-pre-wrap text-sm leading-relaxed text-fg-secondary">

@@ -33,6 +33,8 @@ type InstructionItem = {
 	type: InstructionType;
 	name: string;
 	description?: string;
+	group: string;
+	stableKey: string;
 	files: FileEntry[];
 };
 

@@ -26,32 +26,26 @@ import {
 import { useEditorState } from "@/features/stack-editor/state/useEditorState";
 import type {
 	CreatorProfile,
-	FileEntry,
-	InstructionItem,
 	ModelSubscriptionEntry,
 	StackEditorInitialValue,
 	StackEditorMode,
 } from "@/features/stack-editor/types";
+import {
+	buildManualStableKey,
+	MANUAL_INSTRUCTION_GROUP,
+} from "@/lib/instruction-utils";
 import { api } from "../../convex/_generated/api";
 
 function LookupDataSync({
 	tools,
 	models,
 	bundles,
-	instructions,
 }: {
 	tools: ToolSubscriptionEntry[];
 	models: ModelSubscriptionEntry[];
 	bundles: BundleSubscriptionEntry[];
-	instructions: InstructionItem[];
 }) {
-	const {
-		setToolLookup,
-		setModelLookup,
-		setBundleLookup,
-		setInstructionLookup,
-		setInstructionFiles,
-	} = useEditorContext();
+	const { setToolLookup, setModelLookup, setBundleLookup } = useEditorContext();
 
 	useEffect(() => {
 		const toolMap = new Map<string, ToolLookupData>();
@@ -105,23 +99,6 @@ function LookupDataSync({
 		}
 		setBundleLookup(bundleMap);
 	}, [bundles, setBundleLookup]);
-
-	useEffect(() => {
-		const instructionMap = new Map<string, InstructionLookupData>();
-		const filesMap = new Map<string, FileEntry[]>();
-		for (const instruction of instructions) {
-			instructionMap.set(instruction.name, {
-				name: instruction.name,
-				type: instruction.type,
-				description: instruction.description,
-			});
-			if (instruction.files.length > 0) {
-				filesMap.set(instruction.name, instruction.files);
-			}
-		}
-		setInstructionLookup(instructionMap);
-		setInstructionFiles(filesMap);
-	}, [instructions, setInstructionLookup, setInstructionFiles]);
 
 	return null;
 }
@@ -177,6 +154,24 @@ export function StackEditor({
 
 	const allTools = useQuery(api.tools.listForEditor) ?? [];
 	const allModels = useQuery(api.models.listForEditor) ?? [];
+
+	const projectInstructionsByProject = useQuery(
+		api.projects.listProjectInstructionsByStack,
+		initialValue?._id
+			? { stackId: initialValue._id, includeUnpublished: true }
+			: "skip",
+	);
+	const flattenedProjectInstructions = (
+		projectInstructionsByProject ?? []
+	).flatMap((project) =>
+		project.instructions.map((inst) => ({
+			...inst,
+			sourceProjectId: project.projectId,
+			sourceProjectName: project.projectName,
+			sourceIsOwnProject: project.isOwnProject,
+			sourceStableKey: inst.stableKey,
+		})),
+	);
 
 	// Use refs to avoid stale closures in the callback passed to the editor
 	const stateRef = useRef(state);
@@ -356,30 +351,20 @@ export function StackEditor({
 				);
 				setInstructions(updatedInstructions);
 			} else {
+				const nextName = updates.name ?? oldName;
+				const nextType = updates.type ?? "prompt";
 				setInstructions([
 					...currentInstructions,
 					{
-						name: updates.name ?? oldName,
-						type: updates.type ?? "prompt",
+						name: nextName,
+						type: nextType,
 						description: updates.description,
+						group: MANUAL_INSTRUCTION_GROUP,
+						stableKey: buildManualStableKey(nextType, nextName),
 						files: [],
 					},
 				]);
 			}
-		},
-		[setInstructions],
-	);
-
-	const handleInstructionFilesUpdate = useCallback(
-		(instructionName: string, files: FileEntry[]) => {
-			const currentInstructions = stateRef.current.instructions;
-			if (!currentInstructions.some((inst) => inst.name === instructionName)) {
-				return;
-			}
-			const updatedInstructions = currentInstructions.map((inst) =>
-				inst.name === instructionName ? { ...inst, files } : inst,
-			);
-			setInstructions(updatedInstructions);
 		},
 		[setInstructions],
 	);
@@ -443,7 +428,6 @@ export function StackEditor({
 	return (
 		<EditorProvider
 			onInstructionUpdate={handleInstructionUpdate}
-			onInstructionFilesUpdate={handleInstructionFilesUpdate}
 			onToolDescriptionUpdate={handleToolDescriptionUpdate}
 			onBundleDescriptionUpdate={handleBundleDescriptionUpdate}
 			onModelDescriptionUpdate={handleModelDescriptionUpdate}
@@ -452,7 +436,6 @@ export function StackEditor({
 				tools={state.toolSubscriptions}
 				models={state.modelSubscriptions}
 				bundles={state.bundleSubscriptions}
-				instructions={state.instructions}
 			/>
 			<div className="bg-bg-canvas">
 				<GridBackground />
@@ -614,10 +597,19 @@ export function StackEditor({
 									onDescriptionChange={setDescription}
 									onToolAdded={handleToolAdded}
 									onModelAdded={handleModelAdded}
+									stackInstructions={
+										initialValue?._id
+											? {
+													stackId: String(initialValue._id),
+													instructions: state.instructions,
+												}
+											: undefined
+									}
 								/>
 							</div>
 						</main>
 						<ToolsSidebar
+							stackId={initialValue?._id}
 							tools={state.toolSubscriptions}
 							onToolsChange={setToolSubscriptions}
 							bundles={state.bundleSubscriptions}
@@ -626,6 +618,7 @@ export function StackEditor({
 							onModelsChange={setModelSubscriptions}
 							instructions={state.instructions}
 							onInstructionsChange={setInstructions}
+							projectInstructions={flattenedProjectInstructions}
 							guestSession={guestSession}
 							onSignInRequired={() => setShowSignInDialog(true)}
 						/>
@@ -674,6 +667,7 @@ export function StackEditor({
 							</button>
 						</div>
 						<ToolsSidebar
+							stackId={initialValue?._id}
 							tools={state.toolSubscriptions}
 							onToolsChange={setToolSubscriptions}
 							bundles={state.bundleSubscriptions}
@@ -682,6 +676,7 @@ export function StackEditor({
 							onModelsChange={setModelSubscriptions}
 							instructions={state.instructions}
 							onInstructionsChange={setInstructions}
+							projectInstructions={flattenedProjectInstructions}
 							guestSession={guestSession}
 							onSignInRequired={() => setShowSignInDialog(true)}
 							mobile

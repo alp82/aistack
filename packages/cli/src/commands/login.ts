@@ -2,10 +2,10 @@ import * as p from "@clack/prompts";
 import open from "open";
 import { authStart, authPoll } from "../api.js";
 import { saveToken } from "../config.js";
-import { banner, dim, lime, limeBold } from "../theme.js";
+import { dim, intro, lime, limeBold, outro, outroError } from "../theme.js";
 
 export async function loginCommand() {
-	p.intro(banner("login"));
+	intro("login");
 
 	const s = p.spinner();
 	s.start("Starting authentication...");
@@ -17,6 +17,7 @@ export async function loginCommand() {
 	} catch (err) {
 		s.stop("Failed to start authentication");
 		p.log.error(err instanceof Error ? err.message : String(err));
+		outroError("error");
 		process.exit(1);
 	}
 
@@ -46,23 +47,26 @@ export async function loginCommand() {
 				p.log.success(
 					`Token saved. Run ${limeBold("aistack collect")} to get started.`,
 				);
-				p.outro(lime("done"));
+				outro(lime("done"));
 				return;
 			}
 
 			if (result.status === "expired") {
 				s.stop("Session expired");
 				p.log.error("Authentication session expired. Please try again.");
+				outroError("expired");
 				process.exit(1);
 			}
 		} catch (err) {
 			s.stop("Error polling");
 			p.log.error(err instanceof Error ? err.message : String(err));
+			outroError("error");
 			process.exit(1);
 		}
 	}
 
 	s.stop("Timed out");
 	p.log.error("Authentication timed out after 3 minutes. Please try again.");
+	outroError("timed out");
 	process.exit(1);
 }

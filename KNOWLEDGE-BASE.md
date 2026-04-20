@@ -15,6 +15,7 @@ https://buildermethods.com/agent-os
 https://github.com/eljulians/skillfile
 https://github.com/addyosmani/agent-skills
 https://agentclientprotocol.com/get-started/clients
+https://www.youtube.com/watch?v=0cVuMHaYEHE
 
 parallelization, orchestration & agent teams:
 https://yggchat.com
@@ -26,6 +27,7 @@ https://github.com/RunMaestro/Maestro
 https://github.com/superset-sh/superset
 https://github.com/RightNow-AI/openfang
 https://code.claude.com/docs/en/agent-teams
+https://github.com/GoogleCloudPlatform/scion
 https://github.com/JackChen-me/open-multi-agent
 https://x.com/juristr/status/2031820737745682520
 
@@ -44,6 +46,7 @@ https://www.hlyr.dev/blog/writing-a-good-claude-md
 https://gemini.google.com/app/8564c2f5d1e8fa74
 https://hannahstulberg.substack.com/p/claude-code-for-everything-how-the
 https://hannahstulberg.substack.com/p/claude-code-for-everything-the-best-personal-assistant-remembers-everything-about-you
+https://www.danhock.co/p/how-to-use-ai
 
 Evaluation Framework:
 https://github.com/chrisvoncsefalvay/autostar
@@ -56,10 +59,25 @@ https://textstat.org
 
 memory:
 https://github.com/milla-jovovich/mempalace
+https://github.com/garrytan/gbrain
 
 context management:
 https://www.aihero.dev/tracer-bullets
+https://x.com/i/status/2044548257058328723
 https://hannahstulberg.substack.com/p/claude-code-for-everything-why-ai
+
+design/frontend:
+gemini 3.1 pro canvas
+https://katagami.ai
+https://www.typeui.sh
+https://www.pencil.dev
+https://x.com/i/status/2035508816461074883
+https://github.com/VoltAgent/awesome-design-md
+https://x.com/tkkong/status/2034368184036561160
+https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md
+```
+Tiny cute isometric cowboy hat emoji, shape, soft lighting, soft pastel colors, brown, 3d icon clay render, blender 3d, pastel background
+```
 
 planning with prototypes:
 https://willness.dev/blog/prototype-before-you-build
@@ -69,10 +87,8 @@ https://www.aihero.dev/never-run-claude-init
 complexity management
 assign budgets
 
-TDD:
+TDD & SDD:
 https://martinfowler.com/articles/practical-test-pyramid.html
-
-spec driven development:
 https://openspec.dev
 
 product and documentation:
@@ -133,18 +149,6 @@ stripe ai payment gateway
 self healing:
 https://x.com/i/status/2032179887277060476
 https://x.com/itsolelehmann/status/2033919415771713715
-
-design/frontend:
-gemini 3.1 pro canvas
-https://www.typeui.sh
-https://www.pencil.dev
-https://x.com/i/status/2035508816461074883
-https://github.com/VoltAgent/awesome-design-md
-https://x.com/tkkong/status/2034368184036561160
-https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md
-```
-Tiny cute isometric cowboy hat emoji, shape, soft lighting, soft pastel colors, brown, 3d icon clay render, blender 3d, pastel background
-```
 
 seo:
 https://x.com/i/status/2027832658789609654

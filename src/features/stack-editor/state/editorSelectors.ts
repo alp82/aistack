@@ -45,6 +45,8 @@ function normalizeInstructions(
 		type: instruction.type,
 		name: instruction.name,
 		description: instruction.description,
+		group: instruction.group,
+		stableKey: instruction.stableKey,
 		files: instruction.files,
 	}));
 }

@@ -1,4 +1,4 @@
-import { Check, Copy, FileText, Plus, X } from "lucide-react";
+import { Check, Copy, FileText, Plus, Save, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
 import type { FileEntry } from "@/features/stack-editor/types";
@@ -11,6 +11,15 @@ interface FileContentDialogProps {
 	initialTab?: number;
 	isEditable: boolean;
 	onFilesChange?: (files: FileEntry[]) => void;
+	/**
+	 * When set, this dialog is showing a file from a source project. If the
+	 * current user is the project's creator, a save-to-source action is shown
+	 * that invokes `onSaveToSource` with the edited content.
+	 */
+	sourceProjectEdit?: {
+		fileName: string;
+		onSave: (content: string) => Promise<void> | void;
+	};
 }
 
 export function FileContentDialog({
@@ -21,16 +30,28 @@ export function FileContentDialog({
 	initialTab = 0,
 	isEditable,
 	onFilesChange,
+	sourceProjectEdit,
 }: FileContentDialogProps) {
 	const [files, setFiles] = useState<FileEntry[]>(externalFiles);
 	const [activeTab, setActiveTab] = useState(initialTab);
 	const [addingFile, setAddingFile] = useState(false);
 	const [newFileName, setNewFileName] = useState("");
 	const [copied, setCopied] = useState(false);
+	const [sourceSaving, setSourceSaving] = useState(false);
+	const [sourceSaved, setSourceSaved] = useState(false);
+	const [sourceDirty, setSourceDirty] = useState(false);
+	const [sourceError, setSourceError] = useState<string | null>(null);
 
 	useEffect(() => {
+		if (!open) return;
 		setFiles(externalFiles);
-	}, [externalFiles]);
+		setSourceDirty(false);
+		setSourceSaved(false);
+		setSourceError(null);
+		// Only snapshot external files when the dialog opens — ignore live updates
+		// while open to prevent overwriting in-progress edits.
+		// biome-ignore lint/correctness/useExhaustiveDependencies: intentional open-gate snapshot
+	}, [open]);
 
 	useEffect(() => {
 		setActiveTab(initialTab);
@@ -44,6 +65,11 @@ export function FileContentDialog({
 	const handleFileContentChange = (idx: number, content: string) => {
 		const updated = files.map((f, i) => (i === idx ? { ...f, content } : f));
 		updateFiles(updated);
+		if (sourceProjectEdit && files[idx]?.name === sourceProjectEdit.fileName) {
+			setSourceDirty(true);
+			setSourceSaved(false);
+			setSourceError(null);
+		}
 	};
 
 	const handleFileNameChange = (idx: number, newName: string) => {
@@ -85,6 +111,28 @@ export function FileContentDialog({
 	};
 
 	const activeFile = files[activeTab] ?? null;
+	const canEditActiveContent =
+		isEditable ||
+		(!!sourceProjectEdit && activeFile?.name === sourceProjectEdit.fileName);
+
+	const handleSaveToSource = async () => {
+		if (!sourceProjectEdit || !activeFile) return;
+		if (activeFile.name !== sourceProjectEdit.fileName) return;
+		setSourceSaving(true);
+		setSourceError(null);
+		try {
+			await sourceProjectEdit.onSave(activeFile.content);
+			setSourceSaved(true);
+			setSourceDirty(false);
+			setTimeout(() => setSourceSaved(false), 2000);
+		} catch (err) {
+			setSourceError(
+				err instanceof Error ? err.message : "Failed to save file",
+			);
+		} finally {
+			setSourceSaving(false);
+		}
+	};
 
 	return (
 		<Dialog
@@ -220,20 +268,6 @@ export function FileContentDialog({
 						</div>
 					) : null}
 
-					{/* Tags display */}
-					{activeFile.tags && activeFile.tags.length > 0 && (
-						<div className="flex items-center gap-1 border-b border-stroke-subtle px-4 py-1.5">
-							{activeFile.tags.map((tag) => (
-								<span
-									key={tag}
-									className="font-mono text-[10px] text-fg-muted border border-stroke-subtle px-1.5 py-0.5"
-								>
-									{tag}
-								</span>
-							))}
-						</div>
-					)}
-
 					{/* Content area with copy button */}
 					<div className="relative">
 						<button
@@ -259,8 +293,8 @@ export function FileContentDialog({
 								handleFileContentChange(activeTab, e.target.value)
 							}
 							onKeyDown={(e) => e.stopPropagation()}
-							placeholder={isEditable ? "File content..." : ""}
-							readOnly={!isEditable}
+							placeholder={canEditActiveContent ? "File content..." : ""}
+							readOnly={!canEditActiveContent}
 							rows={Math.min(
 								Math.max(activeFile.content.split("\n").length + 1, 10),
 								30,
@@ -278,7 +312,36 @@ export function FileContentDialog({
 			)}
 
 			{/* Footer */}
-			<div className="flex items-center justify-end border-t border-stroke-subtle px-4 py-3">
+			<div className="flex items-center justify-end gap-2 border-t border-stroke-subtle px-4 py-3">
+				{sourceProjectEdit &&
+					activeFile &&
+					activeFile.name === sourceProjectEdit.fileName && (
+						<>
+							{sourceError && (
+								<span className="mr-auto font-mono text-xs text-destructive">
+									{sourceError}
+								</span>
+							)}
+							<button
+								type="button"
+								onClick={handleSaveToSource}
+								disabled={sourceSaving || !sourceDirty}
+								className="inline-flex items-center gap-1.5 border-2 border-accent-lime bg-accent-lime px-4 py-2 font-mono text-xs uppercase tracking-wider text-accent-lime-contrast transition-opacity hover:opacity-90 disabled:opacity-40 cursor-pointer"
+							>
+								{sourceSaved ? (
+									<>
+										<Check className="size-3" />
+										Saved
+									</>
+								) : (
+									<>
+										<Save className="size-3" />
+										{sourceSaving ? "Saving..." : "Save to source"}
+									</>
+								)}
+							</button>
+						</>
+					)}
 				<button
 					type="button"
 					onClick={onClose}

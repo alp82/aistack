@@ -7,9 +7,11 @@ import type {
 	InstructionType,
 } from "@/features/stack-editor/types";
 import {
+	buildManualStableKey,
 	getInstructionTypeColorsSplit,
 	getInstructionTypeLabel,
 	knownInstructionTypes,
+	MANUAL_INSTRUCTION_GROUP,
 } from "@/lib/instruction-utils";
 import { cn } from "@/lib/utils";
 import { AddFileButton } from "@/components/editor/AddFileButton";
@@ -100,11 +102,15 @@ export function InstructionPanel({
 	};
 
 	const handleSave = () => {
-		if (!name.trim()) return;
+		const trimmedName = name.trim();
+		if (!trimmedName) return;
 		onSave({
 			type,
-			name: name.trim(),
+			name: trimmedName,
 			description: description.trim() || undefined,
+			group: instruction?.group ?? MANUAL_INSTRUCTION_GROUP,
+			stableKey:
+				instruction?.stableKey ?? buildManualStableKey(type, trimmedName),
 			files,
 		});
 	};

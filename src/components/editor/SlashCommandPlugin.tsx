@@ -1,7 +1,14 @@
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
-import { Brain, FileText, Package, Plus, Wrench } from "lucide-react";
+import {
+	Brain,
+	FileText,
+	FolderTree,
+	Package,
+	Plus,
+	Wrench,
+} from "lucide-react";
 import {
 	type ReactNode,
 	useCallback,
@@ -11,6 +18,7 @@ import {
 	useState,
 } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import type { InstructionSource } from "@/components/instructions";
 import type { InstructionType } from "@/features/stack-editor/types";
 import {
 	getInstructionTypeColorsSplit,
@@ -29,14 +37,30 @@ export interface BundleData {
 	iconUrl?: string | null;
 }
 
-export interface InstructionData {
-	name: string;
-	type: InstructionType;
-	content?: string | null;
-	description?: string;
-}
+/**
+ * Unified file-item payload covering both individual files (a single-file
+ * reference) and full group references (all files under a given harness /
+ * tool family).
+ */
+export type SlashFileItem =
+	| {
+			kind: "group";
+			source: InstructionSource;
+			sourceId: string;
+			group: string;
+			fileCount: number;
+	  }
+	| {
+			kind: "file";
+			source: InstructionSource;
+			sourceId: string;
+			stableKey: string;
+			fileName: string;
+			type: InstructionType;
+			group: string;
+	  };
 
-type SlashItemCategory = "tool" | "model" | "bundle" | "instruction";
+type SlashItemCategory = "tool" | "model" | "bundle" | "files";
 
 interface SlashItem {
 	category: SlashItemCategory;
@@ -45,11 +69,11 @@ interface SlashItem {
 	aliases?: string[];
 	subtitle?: string;
 	iconUrl?: string | null;
-	data: ToolData | ModelData | BundleData | InstructionData;
+	data: ToolData | ModelData | BundleData | SlashFileItem;
 }
 
 export interface AddMissingHint {
-	category: "tool" | "model" | "bundle" | "instruction" | null;
+	category: "tool" | "model" | "bundle" | "files" | null;
 	instructionType?: InstructionType;
 }
 
@@ -57,7 +81,7 @@ export interface SlashCommandOptions {
 	tools: ToolData[];
 	models: ModelData[];
 	bundles: BundleData[];
-	instructions: InstructionData[];
+	files: SlashFileItem[];
 	onToolAdded?: (tool: ToolData) => void;
 	onModelAdded?: (model: ModelData) => void;
 	onAddMissing?: (hint: AddMissingHint) => void;
@@ -67,7 +91,7 @@ export interface SlashCommandStorage {
 	tools: ToolData[];
 	models: ModelData[];
 	bundles: BundleData[];
-	instructions: InstructionData[];
+	files: SlashFileItem[];
 	onToolAdded?: (tool: ToolData) => void;
 	onModelAdded?: (model: ModelData) => void;
 	onAddMissing?: (hint: AddMissingHint) => void;
@@ -94,9 +118,9 @@ const categoryConfig: Record<
 		color: "text-violet-500",
 		icon: <Package className="size-3.5" />,
 	},
-	instruction: {
-		label: "Instructions",
-		color: "text-blue-500",
+	files: {
+		label: "Files",
+		color: "text-accent-lime",
 		icon: <FileText className="size-3.5" />,
 	},
 };
@@ -108,24 +132,28 @@ const categoryPrefixes: Record<string, SlashItemCategory> = {
 	models: "model",
 	bundle: "bundle",
 	bundles: "bundle",
-	instruction: "instruction",
-	instructions: "instruction",
-	prompt: "instruction",
-	rule: "instruction",
-	skill: "instruction",
-	mcp: "instruction",
-	hook: "instruction",
-	subagent: "instruction",
+	file: "files",
+	files: "files",
+	prompt: "files",
+	rule: "files",
+	skill: "files",
+	mcp: "files",
+	hook: "files",
+	subagent: "files",
+	command: "files",
+	config: "files",
 };
 
 /** Maps a slash prefix to its specific instruction subtype, if any */
-const instructionSubtypePrefixes: Record<string, InstructionType> = {
+const fileSubtypePrefixes: Record<string, InstructionType> = {
 	prompt: "prompt",
 	rule: "rule",
 	skill: "skill",
 	mcp: "mcp",
 	hook: "hook",
 	subagent: "subagent",
+	command: "command",
+	config: "config",
 };
 
 /** All prefix keys, sorted longest-first so longer matches win */
@@ -208,7 +236,7 @@ export function SlashCommandDropdown({
 	}, [showSearch]);
 
 	// Parse query: check for category prefix like "/tool " or "/model something"
-	const { categoryFilter, instructionSubtype, searchText } = useMemo(() => {
+	const { categoryFilter, fileSubtype, searchText } = useMemo(() => {
 		const trimmed = query.trim().toLowerCase();
 		const spaceIdx = trimmed.indexOf(" ");
 
@@ -221,8 +249,7 @@ export function SlashCommandDropdown({
 					const cat = categoryPrefixes[matchedKey];
 					return {
 						categoryFilter: cat,
-						instructionSubtype:
-							instructionSubtypePrefixes[matchedKey] ?? undefined,
+						fileSubtype: fileSubtypePrefixes[matchedKey] ?? undefined,
 						searchText: trimmed.slice(spaceIdx + 1).trim(),
 					};
 				}
@@ -237,8 +264,7 @@ export function SlashCommandDropdown({
 				return {
 					// Don't filter by category — show all items
 					categoryFilter: null,
-					instructionSubtype:
-						instructionSubtypePrefixes[matchedKey] ?? undefined,
+					fileSubtype: fileSubtypePrefixes[matchedKey] ?? undefined,
 					// Use the typed text as search text for fuzzy matching
 					searchText: trimmed,
 				};
@@ -247,7 +273,7 @@ export function SlashCommandDropdown({
 
 		return {
 			categoryFilter: null,
-			instructionSubtype: undefined,
+			fileSubtype: undefined,
 			searchText: trimmed,
 		};
 	}, [query]);
@@ -256,10 +282,20 @@ export function SlashCommandDropdown({
 	const filtered = useMemo(() => {
 		let result = items;
 		// Only apply category filter if there's actual search text after the prefix
-		// This allows showing all items when just typing "/prompt" while still
-		// providing a targeted "Add new" button hint
 		if (categoryFilter && searchText) {
 			result = result.filter((item) => item.category === categoryFilter);
+		}
+		// When a file-subtype prefix is active, further narrow files by that type
+		if (fileSubtype) {
+			result = result.filter((item) => {
+				if (item.category !== "files") return true;
+				const data = item.data as SlashFileItem;
+				if (data.kind === "file") {
+					return data.type === fileSubtype;
+				}
+				// Groups don't have a single type — keep them visible
+				return true;
+			});
 		}
 		if (searchText) {
 			const scored = result
@@ -282,21 +318,36 @@ export function SlashCommandDropdown({
 			result = scored.map((x) => x.item);
 		}
 		return result;
-	}, [items, categoryFilter, searchText]);
+	}, [items, categoryFilter, fileSubtype, searchText]);
 
-	// Group by category
+	// Group by category — groups (files.kind === 'group') render first inside files
 	const grouped = useMemo(() => {
 		const groups: { category: SlashItemCategory; items: SlashItem[] }[] = [];
-		const order: SlashItemCategory[] = [
-			"tool",
-			"model",
-			"bundle",
-			"instruction",
-		];
+		const order: SlashItemCategory[] = ["tool", "model", "bundle", "files"];
 		for (const cat of order) {
 			const catItems = filtered.filter((i) => i.category === cat);
 			if (catItems.length > 0) {
-				groups.push({ category: cat, items: catItems });
+				if (cat === "files") {
+					// Groups first (sorted by fileCount desc), then files
+					const groupItems = catItems.filter(
+						(i) => (i.data as SlashFileItem).kind === "group",
+					);
+					groupItems.sort((a, b) => {
+						const aCount =
+							(a.data as Extract<SlashFileItem, { kind: "group" }>).fileCount ??
+							0;
+						const bCount =
+							(b.data as Extract<SlashFileItem, { kind: "group" }>).fileCount ??
+							0;
+						return bCount - aCount;
+					});
+					const fileItems = catItems.filter(
+						(i) => (i.data as SlashFileItem).kind === "file",
+					);
+					groups.push({ category: cat, items: [...groupItems, ...fileItems] });
+				} else {
+					groups.push({ category: cat, items: catItems });
+				}
 			}
 		}
 		return groups;
@@ -362,12 +413,12 @@ export function SlashCommandDropdown({
 
 	// Build the AddMissingHint based on the current filter
 	const addMissingHint = useMemo((): AddMissingHint => {
-		// If we have an instruction subtype (e.g., /skill, /prompt), use it
-		if (instructionSubtype) {
-			return { category: "instruction", instructionType: instructionSubtype };
+		// If we have a file subtype (e.g., /skill, /prompt), use it
+		if (fileSubtype) {
+			return { category: "files", instructionType: fileSubtype };
 		}
-		if (categoryFilter === "instruction") {
-			return { category: "instruction", instructionType: undefined };
+		if (categoryFilter === "files") {
+			return { category: "files", instructionType: undefined };
 		}
 		if (
 			categoryFilter === "tool" ||
@@ -377,7 +428,7 @@ export function SlashCommandDropdown({
 			return { category: categoryFilter };
 		}
 		return { category: null };
-	}, [categoryFilter, instructionSubtype]);
+	}, [categoryFilter, fileSubtype]);
 
 	// Targeted label + style for the "Add new" button
 	const { addMissingLabel, addMissingStyle } = useMemo(() => {
@@ -467,7 +518,7 @@ export function SlashCommandDropdown({
 								{addMissingLabel}
 							</span>
 							<span className="block font-mono text-[9px] text-fg-muted/60">
-								{addMissingHint.category === "instruction"
+								{addMissingHint.category === "files"
 									? "Create a new instruction for your stack"
 									: "Submit a new entry to the database"}
 							</span>
@@ -513,6 +564,9 @@ export function SlashCommandDropdown({
 							{group.items.map((item) => {
 								const idx = flatIndex++;
 								const isSelected = idx === selectedIndex;
+								const isGroupFile =
+									item.category === "files" &&
+									(item.data as SlashFileItem).kind === "group";
 								return (
 									<button
 										key={`${item.category}-${item.id}`}
@@ -532,11 +586,15 @@ export function SlashCommandDropdown({
 											<img
 												src={item.iconUrl}
 												alt=""
-												className="size-5 shrink-0 rounded object-contain"
+												className="size-5 shrink-0 object-contain"
 											/>
+										) : isGroupFile ? (
+											<span className="flex size-5 shrink-0 items-center justify-center border border-accent-lime/40 bg-accent-lime/20 text-accent-lime">
+												<FolderTree className="size-3" />
+											</span>
 										) : (
 											<span
-												className={`flex size-5 shrink-0 items-center justify-center rounded-sm border border-stroke-subtle bg-bg-panel-muted ${categoryConfig[item.category].color}`}
+												className={`flex size-5 shrink-0 items-center justify-center border border-stroke-subtle bg-bg-panel-muted ${categoryConfig[item.category].color}`}
 											>
 												{categoryConfig[item.category].icon}
 											</span>
@@ -551,6 +609,18 @@ export function SlashCommandDropdown({
 												</div>
 											)}
 										</div>
+										{isGroupFile && (
+											<span className="shrink-0 border border-accent-lime/30 bg-accent-lime/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-accent-lime">
+												{
+													(
+														item.data as Extract<
+															SlashFileItem,
+															{ kind: "group" }
+														>
+													).fileCount
+												}
+											</span>
+										)}
 									</button>
 								);
 							})}
@@ -580,7 +650,7 @@ export function SlashCommandDropdown({
 								{addMissingLabel}
 							</span>
 							<span className="block font-mono text-[9px] text-fg-muted/60">
-								{addMissingHint.category === "instruction"
+								{addMissingHint.category === "files"
 									? "Create a new instruction for your stack"
 									: "Submit a new entry to the database"}
 							</span>
@@ -597,10 +667,7 @@ export function SlashCommandDropdown({
 const slashPluginKey = new PluginKey("slashCommand");
 
 export function buildItems(
-	storage: Pick<
-		SlashCommandStorage,
-		"tools" | "models" | "bundles" | "instructions"
-	>,
+	storage: Pick<SlashCommandStorage, "tools" | "models" | "bundles" | "files">,
 ): SlashItem[] {
 	const items: SlashItem[] = [];
 
@@ -638,14 +705,24 @@ export function buildItems(
 		});
 	}
 
-	for (const instruction of storage.instructions) {
-		items.push({
-			category: "instruction",
-			id: instruction.name,
-			name: instruction.name,
-			subtitle: instruction.type,
-			data: instruction,
-		});
+	for (const file of storage.files ?? []) {
+		if (file.kind === "group") {
+			items.push({
+				category: "files",
+				id: `group:${file.source}:${file.sourceId}:${file.group}`,
+				name: file.group,
+				subtitle: `${file.source === "stack" ? "Stack" : "Project"} group · ${file.fileCount} ${file.fileCount === 1 ? "file" : "files"}`,
+				data: file,
+			});
+		} else {
+			items.push({
+				category: "files",
+				id: `file:${file.source}:${file.sourceId}:${file.stableKey}:${file.fileName}`,
+				name: file.fileName,
+				subtitle: `${file.source === "stack" ? "Stack" : "Project"} · ${file.type}`,
+				data: file,
+			});
+		}
 	}
 
 	return items;
@@ -680,13 +757,16 @@ export function insertBlockForItem(
 	to: number,
 	onToolAdded?: (tool: ToolData) => void,
 	onModelAdded?: (model: ModelData) => void,
+	slashFiles?: SlashFileItem[],
 ) {
 	const { state, dispatch } = view;
 	const { schema } = state;
 	const tr = state.tr;
 
-	// Delete the slash command text (/ + query)
-	tr.delete(from, to);
+	// Delete the slash command text (/ + query), if any
+	if (to > from) {
+		tr.delete(from, to);
+	}
 
 	let node;
 	switch (item.category) {
@@ -773,33 +853,44 @@ export function insertBlockForItem(
 			}
 			break;
 		}
-		case "instruction": {
-			const instruction = item.data as InstructionData;
-			const cardExists = findExistingNode(
-				view,
-				"aiFileCard",
-				null,
-				instruction.name,
-			);
-			if (cardExists) {
-				node = schema.nodes.aiInstructionReference?.create({
-					name: instruction.name,
-					instructionType: instruction.type,
-					content: instruction.content ?? null,
+		case "files": {
+			const payload = item.data as SlashFileItem;
+			if (payload.kind === "group") {
+				// Compute typeBreakdown from the slashFiles list at insert time so the
+				// group card doesn't need its own live query (snapshot — accepts staleness
+				// if files are uploaded after the card is inserted).
+				const typeCounts = new Map<string, number>();
+				for (const f of slashFiles ?? []) {
+					if (
+						f.kind === "file" &&
+						f.source === payload.source &&
+						f.sourceId === payload.sourceId &&
+						f.group === payload.group
+					) {
+						typeCounts.set(f.type, (typeCounts.get(f.type) ?? 0) + 1);
+					}
+				}
+				const typeBreakdown = Array.from(typeCounts.entries()).map(
+					([type, count]) => ({ type, count }),
+				);
+				node = schema.nodes.aiInstructionGroup?.create({
+					source: payload.source,
+					sourceId: payload.sourceId,
+					group: payload.group,
+					description: null,
+					fileCount: payload.fileCount,
+					typeBreakdown,
 				});
 			} else {
-				node =
-					schema.nodes.aiFileCard?.create({
-						name: instruction.name,
-						instructionType: instruction.type,
-						content: instruction.content ?? null,
-						description: instruction.description ?? null,
-					}) ??
-					schema.nodes.aiInstructionReference.create({
-						name: instruction.name,
-						instructionType: instruction.type,
-						content: instruction.content ?? null,
-					});
+				node = schema.nodes.aiInstructionCard?.create({
+					source: payload.source,
+					sourceId: payload.sourceId,
+					stableKey: payload.stableKey,
+					fileName: payload.fileName,
+					type: payload.type,
+					group: payload.group,
+					description: null,
+				});
 			}
 			break;
 		}
@@ -824,7 +915,7 @@ export const SlashCommandPlugin = Extension.create<
 			tools: [],
 			models: [],
 			bundles: [],
-			instructions: [],
+			files: [],
 			onToolAdded: undefined,
 			onModelAdded: undefined,
 			onAddMissing: undefined,
@@ -836,7 +927,7 @@ export const SlashCommandPlugin = Extension.create<
 			tools: this.options.tools,
 			models: this.options.models,
 			bundles: this.options.bundles,
-			instructions: this.options.instructions,
+			files: this.options.files,
 			onToolAdded: this.options.onToolAdded,
 			onModelAdded: this.options.onModelAdded,
 			onAddMissing: this.options.onAddMissing,
@@ -848,7 +939,7 @@ export const SlashCommandPlugin = Extension.create<
 			"tools",
 			"models",
 			"bundles",
-			"instructions",
+			"files",
 			"onToolAdded",
 			"onModelAdded",
 			"onAddMissing",
@@ -931,6 +1022,7 @@ export const SlashCommandPlugin = Extension.create<
 					to,
 					extensionStorage.storage.onToolAdded,
 					extensionStorage.storage.onModelAdded,
+					extensionStorage.storage.files,
 				);
 				destroyDropdown();
 			};

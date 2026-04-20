@@ -26,13 +26,11 @@ import { ViewSidebar } from "@/components/ViewSidebar";
 import {
 	type BundleLookupData,
 	EditorProvider,
-	type InstructionLookupData,
 	type ModelLookupData,
 	type ToolLookupData,
 	useEditorContext,
 } from "@/features/stack-editor/context/EditorContext";
 import type { ModelItemData } from "@/components/ModelItem";
-import type { InstructionType } from "@/features/stack-editor/types";
 import { JsonLd } from "@/components/JsonLd";
 import { formatPricingSummary, sortToolsByPrice } from "@/lib/pricing";
 import { seoMeta } from "@/lib/seo";
@@ -64,36 +62,16 @@ type ViewBundle = {
 	};
 };
 
-type ViewInstruction = {
-	type: InstructionType;
-	name: string;
-	description?: string;
-	files: Array<{
-		name: string;
-		content: string;
-		path?: string;
-		tags?: string[];
-	}>;
-};
-
 function ViewLookupDataSync({
 	tools,
 	bundles,
 	models,
-	instructions,
 }: {
 	tools: ViewTool[];
 	bundles: ViewBundle[];
 	models: ModelItemData[];
-	instructions: ViewInstruction[];
 }) {
-	const {
-		setToolLookup,
-		setBundleLookup,
-		setModelLookup,
-		setInstructionLookup,
-		setInstructionFiles,
-	} = useEditorContext();
+	const { setToolLookup, setBundleLookup, setModelLookup } = useEditorContext();
 
 	useEffect(() => {
 		const toolMap = new Map<string, ToolLookupData>();
@@ -143,23 +121,6 @@ function ViewLookupDataSync({
 		}
 		setModelLookup(modelMap);
 	}, [models, setModelLookup]);
-
-	useEffect(() => {
-		const instructionMap = new Map<string, InstructionLookupData>();
-		const filesMap = new Map<string, ViewInstruction["files"]>();
-		for (const instruction of instructions) {
-			instructionMap.set(instruction.name, {
-				name: instruction.name,
-				type: instruction.type,
-				description: instruction.description,
-			});
-			if (instruction.files.length > 0) {
-				filesMap.set(instruction.name, instruction.files);
-			}
-		}
-		setInstructionLookup(instructionMap);
-		setInstructionFiles(filesMap);
-	}, [instructions, setInstructionLookup, setInstructionFiles]);
 
 	return null;
 }
@@ -214,6 +175,10 @@ function StackDetailsPage() {
 	const userStack = useQuery(api.stacks.getUserStack);
 	const upvoteStatus = useQuery(
 		api.stacks.getUpvoteStatus,
+		stack ? { stackId: stack._id } : "skip",
+	);
+	const projectInstructionsByProject = useQuery(
+		api.projects.listProjectInstructionsByStack,
 		stack ? { stackId: stack._id } : "skip",
 	);
 	const reportStatus = useQuery(
@@ -321,6 +286,17 @@ function StackDetailsPage() {
 
 	const personalPageUrl = stack.personalPageUrl;
 	const hasDescription = !!stack.description;
+	const flattenedProjectInstructions = (
+		projectInstructionsByProject ?? []
+	).flatMap((project) =>
+		project.instructions.map((inst) => ({
+			...inst,
+			sourceProjectId: project.projectId,
+			sourceProjectName: project.projectName,
+			sourceIsOwnProject: project.isOwnProject,
+			sourceStableKey: inst.stableKey,
+		})),
+	);
 	const mainTools = sortToolsByPrice(
 		stack.tools.filter((t) => t.kind === "main"),
 	);
@@ -468,7 +444,6 @@ function StackDetailsPage() {
 				tools={stack.tools}
 				bundles={stack.bundles}
 				models={stack.models}
-				instructions={stack.instructions ?? []}
 			/>
 			<div className="bg-bg-canvas">
 				{/* Header */}
@@ -752,10 +727,12 @@ function StackDetailsPage() {
 					</div>
 
 					<ViewSidebar
+						stackId={stack._id}
 						tools={stack.tools}
 						bundles={stack.bundles}
 						models={stack.models}
 						instructions={stack.instructions ?? []}
+						projectInstructions={flattenedProjectInstructions}
 						onBundleClick={scrollToBundle}
 					/>
 				</div>

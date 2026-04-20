@@ -1,14 +1,22 @@
 import type { Editor } from "@tiptap/react";
 import {
 	createContext,
-	useContext,
-	useRef,
-	useCallback,
-	useState,
-	useMemo,
 	type ReactNode,
+	useCallback,
+	useContext,
+	useMemo,
+	useRef,
+	useState,
 } from "react";
-import type { FileEntry, InstructionType } from "@/features/stack-editor/types";
+import type { AIInstructionCardAttrs } from "@/components/editor/AIInstructionCard";
+import type { AIInstructionGroupAttrs } from "@/components/editor/AIInstructionGroup";
+import type { InstructionType } from "@/features/stack-editor/types";
+
+export type InstructionLookupData = {
+	name: string;
+	type: InstructionType;
+	description?: string;
+};
 
 export type ToolLookupData = {
 	name: string;
@@ -38,12 +46,6 @@ export type BundleLookupData = {
 	description?: string;
 };
 
-export type InstructionLookupData = {
-	name: string;
-	type: InstructionType;
-	description?: string;
-};
-
 type EditorContextValue = {
 	registerEditor: (editor: Editor | null) => void;
 	insertToolCardAtCursor: (tool: { name: string; shortId?: string }) => void;
@@ -56,10 +58,8 @@ type EditorContextValue = {
 		name: string;
 		shortId?: string;
 	}) => void;
-	insertInstructionCardAtCursor: (instruction: {
-		name: string;
-		type: InstructionType;
-	}) => void;
+	insertInstructionCard: (args: AIInstructionCardAttrs) => void;
+	insertInstructionGroup: (args: AIInstructionGroupAttrs) => void;
 	// Legacy: insert as inline reference (used by @mention)
 	insertToolAtCursor: (tool: { name: string; shortId?: string }) => void;
 	insertModelAtCursor: (model: {
@@ -68,10 +68,6 @@ type EditorContextValue = {
 		provider: string;
 	}) => void;
 	insertBundleAtCursor: (bundle: { name: string; shortId?: string }) => void;
-	insertInstructionAtCursor: (instruction: {
-		name: string;
-		type: InstructionType;
-	}) => void;
 	removeToolFromEditor: (toolName: string) => void;
 	removeModelFromEditor: (modelName: string) => void;
 	removeBundleFromEditor: (bundleName: string) => void;
@@ -94,14 +90,6 @@ type EditorContextValue = {
 	bundleLookup: Map<string, BundleLookupData>;
 	setBundleLookup: (data: Map<string, BundleLookupData>) => void;
 	bundleLookupByShortId: Map<string, BundleLookupData>;
-	instructionLookup: Map<string, InstructionLookupData>;
-	setInstructionLookup: (data: Map<string, InstructionLookupData>) => void;
-	instructionFiles: Map<string, FileEntry[]>;
-	setInstructionFiles: (data: Map<string, FileEntry[]>) => void;
-	onInstructionFilesUpdate?: (
-		instructionName: string,
-		files: FileEntry[],
-	) => void;
 	editInstructionRequest: string | null;
 	setEditInstructionRequest: (name: string | null) => void;
 };
@@ -109,13 +97,16 @@ type EditorContextValue = {
 const EditorContext = createContext<EditorContextValue | null>(null);
 
 /**
- * Remove all nodes matching given type names and name attribute from the editor.
+ * Remove all nodes matching the given type names and a custom matcher.
  * Handles both inline references and block cards.
+ *
+ * `fallbackText` is used to replace inline nodes; block nodes are deleted.
  */
-function removeNodesByNameAttr(
+function removeNodesByMatch(
 	editor: Editor,
 	nodeTypeNames: string[],
-	entityName: string,
+	matcher: (attrs: Record<string, unknown>) => boolean,
+	fallbackText: string,
 ) {
 	const { doc, tr, schema } = editor.state;
 	const nodesToRemove: { pos: number; size: number }[] = [];
@@ -123,7 +114,7 @@ function removeNodesByNameAttr(
 	doc.descendants((node, pos) => {
 		if (
 			nodeTypeNames.includes(node.type.name) &&
-			node.attrs.name === entityName
+			matcher(node.attrs as Record<string, unknown>)
 		) {
 			nodesToRemove.push({ pos, size: node.nodeSize });
 		}
@@ -135,7 +126,7 @@ function removeNodesByNameAttr(
 		// For inline nodes, replace with text; for block nodes, delete
 		const node = tr.doc.nodeAt(pos);
 		if (node && node.isInline) {
-			const textNode = schema.text(entityName);
+			const textNode = schema.text(fallbackText);
 			tr.replaceWith(pos, pos + size, textNode);
 		} else {
 			tr.delete(pos, pos + size);
@@ -150,7 +141,6 @@ function removeNodesByNameAttr(
 export function EditorProvider({
 	children,
 	onInstructionUpdate,
-	onInstructionFilesUpdate,
 	onToolDescriptionUpdate,
 	onBundleDescriptionUpdate,
 	onModelDescriptionUpdate,
@@ -159,10 +149,6 @@ export function EditorProvider({
 	onInstructionUpdate?: (
 		oldName: string,
 		updates: Partial<InstructionLookupData>,
-	) => void;
-	onInstructionFilesUpdate?: (
-		instructionName: string,
-		files: FileEntry[],
 	) => void;
 	onToolDescriptionUpdate?: (idOrName: string, description: string) => void;
 	onBundleDescriptionUpdate?: (idOrName: string, description: string) => void;
@@ -178,12 +164,6 @@ export function EditorProvider({
 	);
 	const [bundleLookup, setBundleLookup] = useState<
 		Map<string, BundleLookupData>
-	>(new Map());
-	const [instructionLookup, setInstructionLookup] = useState<
-		Map<string, InstructionLookupData>
-	>(new Map());
-	const [instructionFiles, setInstructionFiles] = useState<
-		Map<string, FileEntry[]>
 	>(new Map());
 	const [editInstructionRequest, setEditInstructionRequest] = useState<
 		string | null
@@ -255,7 +235,12 @@ export function EditorProvider({
 	const removeToolFromEditor = useCallback((toolName: string) => {
 		const editor = editorRef.current;
 		if (!editor) return;
-		removeNodesByNameAttr(editor, ["aiToolReference", "aiToolCard"], toolName);
+		removeNodesByMatch(
+			editor,
+			["aiToolReference", "aiToolCard"],
+			(attrs) => attrs.name === toolName,
+			toolName,
+		);
 	}, []);
 
 	const insertModelAtCursor = useCallback(
@@ -301,9 +286,10 @@ export function EditorProvider({
 	const removeModelFromEditor = useCallback((modelName: string) => {
 		const editor = editorRef.current;
 		if (!editor) return;
-		removeNodesByNameAttr(
+		removeNodesByMatch(
 			editor,
 			["aiModelReference", "aiModelCard"],
+			(attrs) => attrs.name === modelName,
 			modelName,
 		);
 	}, []);
@@ -343,44 +329,51 @@ export function EditorProvider({
 	const removeBundleFromEditor = useCallback((bundleName: string) => {
 		const editor = editorRef.current;
 		if (!editor) return;
-		removeNodesByNameAttr(
+		removeNodesByMatch(
 			editor,
 			["aiBundleReference", "aiBundleCard"],
+			(attrs) => attrs.name === bundleName,
 			bundleName,
 		);
 	}, []);
 
-	const insertInstructionAtCursor = useCallback(
-		(instruction: { name: string; type: InstructionType }) => {
-			const editor = editorRef.current;
-			if (!editor) return;
-			editor
-				.chain()
-				.focus()
-				.insertContent({
-					type: "aiInstructionReference",
-					attrs: {
-						name: instruction.name,
-						instructionType: instruction.type,
-					},
-				})
-				.run();
-		},
-		[],
-	);
+	const insertInstructionCard = useCallback((args: AIInstructionCardAttrs) => {
+		const editor = editorRef.current;
+		if (!editor) return;
+		editor
+			.chain()
+			.focus()
+			.insertContent({
+				type: "aiInstructionCard",
+				attrs: {
+					source: args.source,
+					sourceId: args.sourceId,
+					stableKey: args.stableKey,
+					fileName: args.fileName,
+					type: args.type,
+					group: args.group,
+					description: args.description,
+				},
+			})
+			.run();
+	}, []);
 
-	const insertInstructionCardAtCursor = useCallback(
-		(instruction: { name: string; type: InstructionType }) => {
+	const insertInstructionGroup = useCallback(
+		(args: AIInstructionGroupAttrs) => {
 			const editor = editorRef.current;
 			if (!editor) return;
 			editor
 				.chain()
 				.focus()
 				.insertContent({
-					type: "aiFileCard",
+					type: "aiInstructionGroup",
 					attrs: {
-						name: instruction.name,
-						instructionType: instruction.type,
+						source: args.source,
+						sourceId: args.sourceId,
+						group: args.group,
+						description: args.description,
+						fileCount: args.fileCount ?? 0,
+						typeBreakdown: args.typeBreakdown ?? [],
 					},
 				})
 				.run();
@@ -391,9 +384,10 @@ export function EditorProvider({
 	const removeInstructionFromEditor = useCallback((instructionName: string) => {
 		const editor = editorRef.current;
 		if (!editor) return;
-		removeNodesByNameAttr(
+		removeNodesByMatch(
 			editor,
-			["aiInstructionReference", "aiFileCard"],
+			["aiInstructionCard"],
+			(attrs) => attrs.fileName === instructionName,
 			instructionName,
 		);
 	}, []);
@@ -408,8 +402,8 @@ export function EditorProvider({
 				insertModelCardAtCursor,
 				insertBundleAtCursor,
 				insertBundleCardAtCursor,
-				insertInstructionAtCursor,
-				insertInstructionCardAtCursor,
+				insertInstructionCard,
+				insertInstructionGroup,
 				removeToolFromEditor,
 				removeModelFromEditor,
 				removeBundleFromEditor,
@@ -429,11 +423,6 @@ export function EditorProvider({
 				bundleLookup,
 				setBundleLookup,
 				bundleLookupByShortId,
-				instructionLookup,
-				setInstructionLookup,
-				instructionFiles,
-				setInstructionFiles,
-				onInstructionFilesUpdate,
 				editInstructionRequest,
 				setEditInstructionRequest,
 			}}

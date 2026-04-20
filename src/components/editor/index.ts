@@ -1,29 +1,30 @@
-export { AIToolReference } from "./AIToolReference";
-export type { AIToolReferenceAttrs } from "./AIToolReference";
-export { AIModelReference } from "./AIModelReference";
-export type { AIModelReferenceAttrs } from "./AIModelReference";
-export { AIBundleReference } from "./AIBundleReference";
-export type { AIBundleReferenceAttrs } from "./AIBundleReference";
-export { AIInstructionReference } from "./AIInstructionReference";
-export type { AIInstructionReferenceAttrs } from "./AIInstructionReference";
-export { AIToolCard } from "./AIToolCard";
-export type { AIToolCardAttrs } from "./AIToolCard";
-export { AIModelCard } from "./AIModelCard";
-export type { AIModelCardAttrs } from "./AIModelCard";
-export { AIBundleCard } from "./AIBundleCard";
 export type { AIBundleCardAttrs } from "./AIBundleCard";
-export { AIFileCard } from "./AIFileCard";
-export type { AIFileCardAttrs } from "./AIFileCard";
-export { ToolSuggestionPlugin } from "./ToolSuggestionPlugin";
-export type { ToolData, ToolSuggestionOptions } from "./ToolSuggestionPlugin";
-export { ModelSuggestionPlugin } from "./ModelSuggestionPlugin";
+export { AIBundleCard } from "./AIBundleCard";
+export type { AIBundleReferenceAttrs } from "./AIBundleReference";
+export { AIBundleReference } from "./AIBundleReference";
+export type { AIInstructionCardAttrs } from "./AIInstructionCard";
+export { AIInstructionCard } from "./AIInstructionCard";
+export type { AIInstructionGroupAttrs } from "./AIInstructionGroup";
+export { AIInstructionGroup } from "./AIInstructionGroup";
+export type { AIModelCardAttrs } from "./AIModelCard";
+export { AIModelCard } from "./AIModelCard";
+export type { AIModelReferenceAttrs } from "./AIModelReference";
+export { AIModelReference } from "./AIModelReference";
+export type { AIToolCardAttrs } from "./AIToolCard";
+export { AIToolCard } from "./AIToolCard";
+export type { AIToolReferenceAttrs } from "./AIToolReference";
+export { AIToolReference } from "./AIToolReference";
 export type {
 	ModelData,
 	ModelSuggestionOptions,
 } from "./ModelSuggestionPlugin";
-export { SlashCommandPlugin } from "./SlashCommandPlugin";
+export { ModelSuggestionPlugin } from "./ModelSuggestionPlugin";
 export type {
-	SlashCommandOptions,
+	AddMissingHint,
 	BundleData,
-	InstructionData,
+	SlashCommandOptions,
+	SlashFileItem,
 } from "./SlashCommandPlugin";
+export { SlashCommandPlugin } from "./SlashCommandPlugin";
+export type { ToolData, ToolSuggestionOptions } from "./ToolSuggestionPlugin";
+export { ToolSuggestionPlugin } from "./ToolSuggestionPlugin";

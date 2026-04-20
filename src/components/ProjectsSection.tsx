@@ -173,13 +173,7 @@ export function ProjectsSection({
 														</div>
 													)}
 													<div className="mt-2 flex items-center gap-3 font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-														<span>{project.localFileCount} files</span>
-														{project.globalFileCount > 0 && (
-															<>
-																<span className="text-stroke-subtle">|</span>
-																<span>{project.globalFileCount} global</span>
-															</>
-														)}
+														<span>{project.fileCount} files</span>
 														{(project.cloneCount ?? 0) > 0 && (
 															<>
 																<span className="text-stroke-subtle">|</span>

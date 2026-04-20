@@ -1,3 +1,5 @@
+import * as p from "@clack/prompts";
+
 const esc = (code: string) => `\x1b[${code}m`;
 const reset = esc("0");
 
@@ -38,4 +40,29 @@ export function section(label: string, count?: number) {
 
 export function divider() {
 	console.log(`${BAR}  ${dim("─".repeat(40))}`);
+}
+
+export function intro(cmd: string) {
+	console.log();
+	p.intro(banner(cmd));
+}
+
+export function outro(msg: string) {
+	p.outro(msg);
+	console.log();
+}
+
+export function outroError(msg: string) {
+	p.outro(red(msg));
+	console.log();
+}
+
+export function outroCancel(msg = "cancelled") {
+	p.cancel(dim(msg));
+	console.log();
+}
+
+export function outroSkipped(msg: string) {
+	p.outro(dim(msg));
+	console.log();
 }

@@ -92,6 +92,9 @@ export interface InstructionItem {
 	type: string;
 	name: string;
 	description?: string;
+	group: string;
+	scope?: "global" | "project";
+	stableKey: string;
 	files: InstructionFile[];
 }
 

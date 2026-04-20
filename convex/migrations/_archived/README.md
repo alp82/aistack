@@ -9,4 +9,3 @@ These migrations have been applied to production and are kept for reference only
 | `migrateStackDescriptions.ts` | Rewrote inline HTML attributes to use `data-short-id` | 2026-03-31 |
 | `migrateBlockToReference.ts` | Renamed `data-ai-*-block` attributes to `data-ai-*-reference` | 2026-03-31 |
 | `migrateNotesToDescription.ts` | Renamed `notes` to `description` in subscription arrays | 2026-03-31 |
-| `migrateInstructionModel.ts` | Restructured instructions from flat content to `files[]` array | 2026-03-31 |

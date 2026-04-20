@@ -20,6 +20,7 @@ export interface ScannedFile {
 	content: string;
 	type: FileType;
 	source: "local" | "global";
+	group: string;
 }
 
 const MAX_FILE_SIZE = 100 * 1024; // 100KB
@@ -27,37 +28,45 @@ const MAX_FILE_SIZE = 100 * 1024; // 100KB
 interface FilePattern {
 	path: string;
 	type: FileType;
+	group: string;
 }
 
 const LOCAL_PATTERNS: FilePattern[] = [
 	// Rules
-	{ path: "CLAUDE.md", type: "rule" },
-	{ path: "AGENTS.md", type: "rule" },
-	{ path: ".cursorrules", type: "rule" },
-	{ path: ".windsurfrules", type: "rule" },
-	{ path: ".clinerules", type: "rule" },
-	{ path: ".github/copilot-instructions.md", type: "rule" },
+	{ path: "CLAUDE.md", type: "rule", group: "claude-code" },
+	{ path: "AGENTS.md", type: "rule", group: "claude-code" },
+	{ path: ".cursorrules", type: "rule", group: "cursor" },
+	{ path: ".windsurfrules", type: "rule", group: "windsurf" },
+	{ path: ".clinerules", type: "rule", group: "cline" },
+	{ path: ".github/copilot-instructions.md", type: "rule", group: "copilot" },
 	// MCP
-	{ path: "mcp.json", type: "mcp" },
-	{ path: ".cursor/mcp.json", type: "mcp" },
-	{ path: "claude_desktop_config.json", type: "mcp" },
+	{ path: "mcp.json", type: "mcp", group: "generic" },
+	{ path: ".cursor/mcp.json", type: "mcp", group: "cursor" },
+	{
+		path: "claude_desktop_config.json",
+		type: "mcp",
+		group: "claude-desktop",
+	},
 	// Config
-	{ path: ".aider.conf.yml", type: "config" },
-	{ path: ".continue/config.json", type: "config" },
-	// Config
-	{ path: ".claude/settings.json", type: "config" },
-	{ path: ".claude/settings.local.json", type: "config" },
+	{ path: ".aider.conf.yml", type: "config", group: "aider" },
+	{ path: ".continue/config.json", type: "config", group: "continue" },
+	{ path: ".claude/settings.json", type: "config", group: "claude-code" },
+	{
+		path: ".claude/settings.local.json",
+		type: "config",
+		group: "claude-code",
+	},
 	// Prompts
-	{ path: "system-prompt.md", type: "prompt" },
+	{ path: "system-prompt.md", type: "prompt", group: "generic" },
 ];
 
-const LOCAL_DIR_PATTERNS: { dir: string; type: FileType }[] = [
-	{ dir: ".cursor/rules", type: "rule" },
-	{ dir: ".claude/commands", type: "command" },
-	{ dir: ".claude/agents", type: "subagent" },
-	{ dir: ".claude/hooks", type: "hook" },
-	{ dir: "prompts", type: "prompt" },
-	{ dir: ".ai", type: "custom" },
+const LOCAL_DIR_PATTERNS: { dir: string; type: FileType; group: string }[] = [
+	{ dir: ".cursor/rules", type: "rule", group: "cursor" },
+	{ dir: ".claude/commands", type: "command", group: "claude-code" },
+	{ dir: ".claude/agents", type: "subagent", group: "claude-code" },
+	{ dir: ".claude/hooks", type: "hook", group: "claude-code" },
+	{ dir: "prompts", type: "prompt", group: "generic" },
+	{ dir: ".ai", type: "custom", group: "generic" },
 ];
 
 function loadGitignore(cwd: string): ReturnType<typeof ignore> {
@@ -114,12 +123,13 @@ export function scanLocal(cwd: string): ScannedFile[] {
 					content,
 					type: pattern.type,
 					source: "local",
+					group: pattern.group,
 				});
 			}
 		}
 	}
 
-	for (const { dir, type } of LOCAL_DIR_PATTERNS) {
+	for (const { dir, type, group } of LOCAL_DIR_PATTERNS) {
 		const dirPath = join(cwd, dir);
 		const files = walkDir(dirPath);
 		for (const filePath of files) {
@@ -133,6 +143,7 @@ export function scanLocal(cwd: string): ScannedFile[] {
 					content,
 					type,
 					source: "local",
+					group,
 				});
 			}
 		}
@@ -175,6 +186,7 @@ function scanSkillDirs(
 					content,
 					type: "skill",
 					source: "local",
+					group: "generic",
 				});
 			}
 		}
@@ -199,11 +211,11 @@ export function scanGlobal(): ScannedFile[] {
 	const results: ScannedFile[] = [];
 
 	const globalPatterns: FilePattern[] = [
-		{ path: ".claude/CLAUDE.md", type: "rule" },
-		{ path: ".claude/settings.json", type: "config" },
-		{ path: ".cursor/mcp.json", type: "mcp" },
-		{ path: ".continue/config.json", type: "config" },
-		{ path: ".aider.conf.yml", type: "config" },
+		{ path: ".claude/CLAUDE.md", type: "rule", group: "claude-code" },
+		{ path: ".claude/settings.json", type: "config", group: "claude-code" },
+		{ path: ".cursor/mcp.json", type: "mcp", group: "cursor" },
+		{ path: ".continue/config.json", type: "config", group: "continue" },
+		{ path: ".aider.conf.yml", type: "config", group: "aider" },
 	];
 
 	for (const pattern of globalPatterns) {
@@ -216,18 +228,19 @@ export function scanGlobal(): ScannedFile[] {
 				content,
 				type: pattern.type,
 				source: "global",
+				group: pattern.group,
 			});
 		}
 	}
 
-	const globalDirs: { dir: string; type: FileType }[] = [
-		{ dir: ".claude/commands", type: "command" },
-		{ dir: ".claude/agents", type: "subagent" },
-		{ dir: ".claude/hooks", type: "hook" },
-		{ dir: ".cursor/rules", type: "rule" },
+	const globalDirs: { dir: string; type: FileType; group: string }[] = [
+		{ dir: ".claude/commands", type: "command", group: "claude-code" },
+		{ dir: ".claude/agents", type: "subagent", group: "claude-code" },
+		{ dir: ".claude/hooks", type: "hook", group: "claude-code" },
+		{ dir: ".cursor/rules", type: "rule", group: "cursor" },
 	];
 
-	for (const { dir, type } of globalDirs) {
+	for (const { dir, type, group } of globalDirs) {
 		const dirPath = join(home, dir);
 		const files = walkDir(dirPath, 2);
 		for (const filePath of files) {
@@ -239,6 +252,7 @@ export function scanGlobal(): ScannedFile[] {
 					content,
 					type,
 					source: "global",
+					group,
 				});
 			}
 		}

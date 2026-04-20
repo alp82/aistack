@@ -10,7 +10,7 @@
     * npx aistack collect
     * npx aistack create
 * stacks and projects structure
-    https://elio.dev
+    https://elio.devS
 * price tiers for sibling products: claude code vs claude ai
 * ai stack knowledge/learning area
     * article grid with nice bg borders: https://www.aihero.dev/posts
@@ -24,6 +24,8 @@
 * tools in stack can be "work" -  like sponsored
 * AI stack tools
     * https://x.com/hridoyreh/status/2032720794682581474
+    * https://solaris.buildclub.ai
+    * https://buildclub.ai
 * multiple stacks per user
     * work & private
 * admin for editing aliases

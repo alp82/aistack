@@ -167,6 +167,9 @@ export const projectsCollect = httpAction(async (ctx, request) => {
       shortId: body.stackShortId,
     })
     if (stack) {
+      if (stack.creatorId !== creator._id) {
+        return jsonResponse({ error: 'Not authorized to write to this stack' }, 403)
+      }
       stackId = stack._id
       stackSlugComposed = `${stack.slug}-${stack.shortId}`
     }

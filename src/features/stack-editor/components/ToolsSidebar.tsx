@@ -13,7 +13,6 @@ import {
 	type BundleSubscriptionEntry,
 } from "@/components/BundlePicker";
 import { InstructionPanel } from "@/components/InstructionPanel";
-import { InstructionPicker } from "@/components/InstructionPicker";
 import {
 	ModelPicker,
 	type ModelSubscriptionEntry,
@@ -23,14 +22,27 @@ import {
 	ToolPicker,
 	type ToolSubscriptionEntry,
 } from "@/components/ToolPicker";
+import {
+	UnifiedFileList,
+	type UnifiedFileListProjectGroup,
+} from "@/components/UnifiedFileList";
 import { useEditorContext } from "@/features/stack-editor/context/EditorContext";
 import type { InstructionItem } from "@/features/stack-editor/types";
 import { sumNormalizedMonthlyAmounts } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 type SidebarSection = "tools" | "bundles" | "models" | "instructions" | null;
 
+type ProjectSourcedInstruction = InstructionItem & {
+	sourceProjectId?: Id<"projects">;
+	sourceProjectName?: string;
+	sourceIsOwnProject?: boolean;
+	sourceStableKey?: string;
+};
+
 type ToolsSidebarProps = {
+	stackId?: Id<"stacks">;
 	tools: ToolSubscriptionEntry[];
 	onToolsChange: (tools: ToolSubscriptionEntry[]) => void;
 	bundles: BundleSubscriptionEntry[];
@@ -39,12 +51,14 @@ type ToolsSidebarProps = {
 	onModelsChange: (models: ModelSubscriptionEntry[]) => void;
 	instructions: InstructionItem[];
 	onInstructionsChange: (instructions: InstructionItem[]) => void;
+	projectInstructions?: ProjectSourcedInstruction[];
 	guestSession?: boolean;
 	onSignInRequired?: () => void;
 	mobile?: boolean;
 };
 
 function ToolsSidebar({
+	stackId,
 	tools,
 	onToolsChange,
 	bundles,
@@ -53,10 +67,12 @@ function ToolsSidebar({
 	onModelsChange,
 	instructions,
 	onInstructionsChange,
+	projectInstructions,
 	guestSession = false,
 	onSignInRequired,
 	mobile = false,
 }: ToolsSidebarProps) {
+	const projectInstructionsList = projectInstructions ?? [];
 	// Accordion state - only one section open at a time
 	// Tools section starts expanded by default (especially important when no tools exist yet)
 	const [activeSection, setActiveSection] = useState<SidebarSection>("tools");
@@ -71,12 +87,13 @@ function ToolsSidebar({
 		removeInstructionFromEditor,
 		insertModelCardAtCursor,
 		insertBundleCardAtCursor,
-		insertInstructionCardAtCursor,
+		insertInstructionCard,
+		insertInstructionGroup,
 		editInstructionRequest,
 		setEditInstructionRequest,
 	} = useEditorContext();
 
-	// React to edit instruction requests from the editor (e.g. gear button on AIFileCard)
+	// React to edit instruction requests from the editor.
 	useEffect(() => {
 		if (editInstructionRequest) {
 			const inst = instructions.find((i) => i.name === editInstructionRequest);
@@ -216,35 +233,6 @@ function ToolsSidebar({
 		[bundles, onBundlesChange, removeBundleFromEditor],
 	);
 
-	// Handle instruction removal - confirm then remove from editor
-	const handleInstructionsChange = useCallback(
-		(newInstructions: InstructionItem[]) => {
-			const removedInstructions = instructions.filter(
-				(inst) =>
-					!newInstructions.some(
-						(ni) => ni.name === inst.name && ni.type === inst.type,
-					),
-			);
-
-			if (removedInstructions.length > 0) {
-				const names = removedInstructions.map((i) => i.name).join(", ");
-				if (
-					!window.confirm(
-						`Remove ${names} from your stack? This will also remove it from the editor.`,
-					)
-				) {
-					return;
-				}
-				for (const inst of removedInstructions) {
-					removeInstructionFromEditor(inst.name);
-				}
-			}
-
-			onInstructionsChange(newInstructions);
-		},
-		[instructions, onInstructionsChange, removeInstructionFromEditor],
-	);
-
 	// Handle model click - insert into editor at cursor
 	const handleModelClick = useCallback(
 		(model: ModelSubscriptionEntry) => {
@@ -267,22 +255,6 @@ function ToolsSidebar({
 		},
 		[insertBundleCardAtCursor],
 	);
-
-	// Handle instruction click - insert into editor at cursor
-	const handleInstructionClick = useCallback(
-		(instruction: InstructionItem) => {
-			insertInstructionCardAtCursor({
-				name: instruction.name,
-				type: instruction.type,
-			});
-		},
-		[insertInstructionCardAtCursor],
-	);
-
-	// Handle edit instruction - open panel
-	const handleEditInstruction = useCallback((instruction: InstructionItem) => {
-		setEditingInstruction(instruction);
-	}, []);
 
 	// Handle add instruction - open panel for new
 	const handleAddInstruction = useCallback(() => {
@@ -339,6 +311,100 @@ function ToolsSidebar({
 			...bundles.map((bundle) => bundle.price?.fixed),
 		]);
 	}, [tools, bundles]);
+
+	// Group flattened project instructions back into per-project groups for
+	// the unified file list.
+	const projectGroups = useMemo<UnifiedFileListProjectGroup[]>(() => {
+		const byProject = new Map<string, UnifiedFileListProjectGroup>();
+		for (const item of projectInstructionsList) {
+			if (!item.sourceProjectId) continue;
+			const pid = String(item.sourceProjectId);
+			const existing = byProject.get(pid);
+			if (existing) {
+				existing.instructions.push(item);
+			} else {
+				byProject.set(pid, {
+					sourceId: pid,
+					sourceLabel: item.sourceProjectName ?? "",
+					instructions: [item],
+				});
+			}
+		}
+		return Array.from(byProject.values());
+	}, [projectInstructionsList]);
+
+	const stackInstructionsForList = useMemo(
+		() =>
+			stackId
+				? {
+						sourceId: String(stackId),
+						sourceLabel: "Stack",
+						instructions,
+					}
+				: null,
+		[stackId, instructions],
+	);
+
+	const handleUnifiedInsertFile = useCallback(
+		(args: {
+			source: "stack" | "project";
+			sourceId: string;
+			stableKey: string;
+			fileName: string;
+			type: string;
+			group: string | undefined;
+		}) => {
+			insertInstructionCard({
+				source: args.source,
+				sourceId: args.sourceId,
+				stableKey: args.stableKey,
+				fileName: args.fileName,
+				type: args.type,
+				group: args.group ?? null,
+				description: null,
+			});
+		},
+		[insertInstructionCard],
+	);
+
+	const handleUnifiedInsertGroup = useCallback(
+		(args: {
+			source: "stack" | "project";
+			sourceId: string;
+			group: string;
+			fileCount: number;
+		}) => {
+			const sourceInstructions =
+				args.source === "stack"
+					? instructions
+					: projectInstructionsList.filter(
+							(i) =>
+								(i as ProjectSourcedInstruction).sourceProjectId ===
+								args.sourceId,
+						);
+			const typeCounts = new Map<string, number>();
+			for (const instr of sourceInstructions) {
+				if ((instr.group ?? "generic") === args.group) {
+					typeCounts.set(
+						instr.type,
+						(typeCounts.get(instr.type) ?? 0) + instr.files.length,
+					);
+				}
+			}
+			const typeBreakdown = Array.from(typeCounts.entries()).map(
+				([type, count]) => ({ type, count }),
+			);
+			insertInstructionGroup({
+				source: args.source,
+				sourceId: args.sourceId,
+				group: args.group,
+				description: null,
+				fileCount: args.fileCount,
+				typeBreakdown,
+			});
+		},
+		[insertInstructionGroup, instructions, projectInstructionsList],
+	);
 
 	const showPanel = editingInstruction !== null;
 
@@ -548,7 +614,9 @@ function ToolsSidebar({
 					</div>
 					<div className="flex items-center gap-2">
 						<span className="font-mono text-[10px] text-fg-muted">
-							{instructions.length}
+							{projectInstructionsList.length > 0
+								? `${projectInstructionsList.length}+${instructions.length}`
+								: instructions.length}
 						</span>
 						{activeSection === "instructions" ? (
 							<ChevronUp className="size-4 text-accent-lime" />
@@ -559,12 +627,13 @@ function ToolsSidebar({
 				</button>
 				{activeSection === "instructions" && (
 					<div className="mt-3">
-						<InstructionPicker
-							value={instructions}
-							onChange={handleInstructionsChange}
-							onInstructionClick={handleInstructionClick}
-							onEditInstruction={handleEditInstruction}
-							onAddInstruction={handleAddInstruction}
+						<UnifiedFileList
+							mode="edit"
+							stackInstructions={stackInstructionsForList}
+							projectInstructions={projectGroups}
+							onInsertFile={handleUnifiedInsertFile}
+							onInsertGroup={handleUnifiedInsertGroup}
+							onAddManual={handleAddInstruction}
 						/>
 					</div>
 				)}
@@ -686,9 +755,7 @@ function ToolsSidebar({
 								exit={{ x: "-100%", opacity: 0 }}
 								transition={{ duration: 0.25, ease: "easeInOut" }}
 							>
-								<div className="space-y-2 p-4">
-									{renderSections()}
-								</div>
+								<div className="space-y-2 p-4">{renderSections()}</div>
 							</motion.div>
 						)}
 					</AnimatePresence>
