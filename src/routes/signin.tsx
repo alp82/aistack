@@ -1,4 +1,5 @@
 import { useConvexAuth } from "convex/react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
 	createFileRoute,
 	useNavigate,
@@ -32,6 +33,7 @@ export const Route = createFileRoute("/signin")({
 
 function SignInPage() {
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const { redirect } = useSearch({ from: "/signin" });
 	const { isAuthenticated } = useConvexAuth();
 	const [loading, setLoading] = useState(false);
@@ -76,6 +78,7 @@ function SignInPage() {
 				}
 			}
 
+			await queryClient.invalidateQueries({ queryKey: ["auth-token"] });
 			await navigate({ to: redirect || "/admin" });
 		} catch (err) {
 			console.error(

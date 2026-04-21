@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useId, useState } from "react";
 import { authClient } from "../lib/auth-client";
@@ -56,6 +57,7 @@ export function AuthForm({
 	footer,
 }: AuthFormProps) {
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const [isSignUp, setIsSignUp] = useState(defaultIsSignUp);
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
@@ -95,6 +97,7 @@ export function AuthForm({
 				if (result.error) {
 					setError(result.error.message || "Sign in failed");
 				} else {
+					await queryClient.invalidateQueries({ queryKey: ["auth-token"] });
 					navigate({ to: callbackURL });
 				}
 			}

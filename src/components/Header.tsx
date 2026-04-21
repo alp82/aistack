@@ -1,7 +1,20 @@
 import { useConvexAuth } from "@convex-dev/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { Home, Layers, LogOut, Menu, Moon, Pencil, Plus, Shield, Sun, Wrench, X } from "lucide-react";
+import {
+	Home,
+	Layers,
+	LogOut,
+	Menu,
+	Moon,
+	Pencil,
+	Plus,
+	Shield,
+	Sun,
+	Wrench,
+	X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { authClient } from "../lib/auth-client";
@@ -68,6 +81,7 @@ function ThemeToggle() {
 export default function Header() {
 	const { isAuthenticated } = useConvexAuth();
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const routerState = useRouterState();
 	const currentPath = routerState.location.pathname;
 	const [menuOpen, setMenuOpen] = useState(false);
@@ -140,6 +154,7 @@ export default function Header() {
 	const handleSignOut = async () => {
 		setMenuOpen(false);
 		await authClient.signOut();
+		await queryClient.invalidateQueries({ queryKey: ["auth-token"] });
 		navigate({ to: "/" });
 	};
 
@@ -150,50 +165,50 @@ export default function Header() {
 
 	return (
 		<>
-		<header className="sticky top-0 z-50 border-b-2 border-stroke-strong bg-bg-canvas px-6 shadow-[0_10px_30px_-20px_var(--shadow-color)] backdrop-blur-md">
-			<div className="mx-auto flex h-16 max-w-content items-center justify-between">
-				<div className="flex items-center gap-6 md:gap-12">
-					<Link
-						to="/"
-						onClick={(e) => {
-							if (window.innerWidth < 768) {
-								e.preventDefault();
-								setMobileMenuOpen(!mobileMenuOpen);
-							}
-						}}
-						className="flex items-center gap-2 font-bold tracking-tighter text-xl text-fg-primary transition-colors hover:text-accent-lime"
-					>
-						<div
-							className="w-3 h-3 bg-accent-lime animate-pulse"
-							style={{ boxShadow: "0 0 8px rgba(163, 230, 53, 0.6)" }}
-						/>
-						<span>AI STACK</span>
-					</Link>
+			<header className="sticky top-0 z-50 border-b-2 border-stroke-strong bg-bg-canvas px-6 shadow-[0_10px_30px_-20px_var(--shadow-color)] backdrop-blur-md">
+				<div className="mx-auto flex h-16 max-w-content items-center justify-between">
+					<div className="flex items-center gap-6 md:gap-12">
+						<Link
+							to="/"
+							onClick={(e) => {
+								if (window.innerWidth < 768) {
+									e.preventDefault();
+									setMobileMenuOpen(!mobileMenuOpen);
+								}
+							}}
+							className="flex items-center gap-2 font-bold tracking-tighter text-xl text-fg-primary transition-colors hover:text-accent-lime"
+						>
+							<div
+								className="w-3 h-3 bg-accent-lime animate-pulse"
+								style={{ boxShadow: "0 0 8px rgba(163, 230, 53, 0.6)" }}
+							/>
+							<span>AI STACK</span>
+						</Link>
 
-					<nav className="hidden items-center gap-8 md:flex">
-						<Link
-							to="/stacks"
-							className={cn(
-								"font-mono text-xs font-semibold uppercase tracking-[0.15em] transition-colors",
-								isActive("/stacks")
-									? "text-accent-lime"
-									: "text-fg-muted hover:text-fg-primary",
-							)}
-						>
-							Stacks
-						</Link>
-						<Link
-							to="/tools"
-							className={cn(
-								"font-mono text-xs font-semibold uppercase tracking-[0.15em] transition-colors",
-								isActive("/tools")
-									? "text-accent-lime"
-									: "text-fg-muted hover:text-fg-primary",
-							)}
-						>
-							Tools
-						</Link>
-						{/* <Link
+						<nav className="hidden items-center gap-8 md:flex">
+							<Link
+								to="/stacks"
+								className={cn(
+									"font-mono text-xs font-semibold uppercase tracking-[0.15em] transition-colors",
+									isActive("/stacks")
+										? "text-accent-lime"
+										: "text-fg-muted hover:text-fg-primary",
+								)}
+							>
+								Stacks
+							</Link>
+							<Link
+								to="/tools"
+								className={cn(
+									"font-mono text-xs font-semibold uppercase tracking-[0.15em] transition-colors",
+									isActive("/tools")
+										? "text-accent-lime"
+										: "text-fg-muted hover:text-fg-primary",
+								)}
+							>
+								Tools
+							</Link>
+							{/* <Link
 							to="/about"
 							className={cn(
 								"font-mono text-xs font-semibold uppercase tracking-[0.15em] transition-colors",
@@ -202,62 +217,116 @@ export default function Header() {
 						>
 							About
 						</Link> */}
-					</nav>
-				</div>
-
-				<div className="flex items-center gap-2 sm:gap-3">
-					{/* Social links */}
-					<div className="hidden items-center gap-2 sm:flex">
-						<a
-							href="https://x.com/alperortac"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="flex size-8 items-center justify-center text-fg-muted transition-colors hover:text-fg-primary"
-							aria-label="Follow on X"
-						>
-							<XIcon />
-						</a>
-						<a
-							href="https://discord.gg/5y4fpyahaF"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="flex size-8 items-center justify-center text-fg-muted transition-colors hover:text-fg-primary"
-							aria-label="Join Discord"
-						>
-							<DiscordIcon />
-						</a>
-						<ThemeToggle />
+						</nav>
 					</div>
 
-					{/* Admin link - outline button style */}
-					{isAdmin && (
-						<Link
-							to="/admin"
-							className="relative hidden items-center gap-1.5 border-2 border-stroke-strong bg-bg-panel px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime md:inline-flex"
-						>
-							<Shield className="size-3.5" />
-							Admin
-							{typeof pendingReviewCount === "number" &&
-								pendingReviewCount > 0 && (
-									<span className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-red-500 font-mono text-[10px] font-bold text-white">
-										{pendingReviewCount > 9 ? "9+" : pendingReviewCount}
-									</span>
-								)}
-						</Link>
-					)}
+					<div className="flex items-center gap-2 sm:gap-3">
+						{/* Social links */}
+						<div className="hidden items-center gap-2 sm:flex">
+							<a
+								href="https://x.com/alperortac"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="flex size-8 items-center justify-center text-fg-muted transition-colors hover:text-fg-primary"
+								aria-label="Follow on X"
+							>
+								<XIcon />
+							</a>
+							<a
+								href="https://discord.gg/5y4fpyahaF"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="flex size-8 items-center justify-center text-fg-muted transition-colors hover:text-fg-primary"
+								aria-label="Join Discord"
+							>
+								<DiscordIcon />
+							</a>
+							<ThemeToggle />
+						</div>
 
-					{/* Share Stack CTA */}
-					{isAuthenticated ? (
-						<>
-							{userStack || cachedUserStack ? (
-								<a
-									href={`/stacks/${(userStack || cachedUserStack)?.slug}/edit`}
-									className="hidden sm:inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
-								>
-									<Pencil className="size-3.5" />
-									Update Stack
-								</a>
-							) : userStack === null ? (
+						{/* Admin link - outline button style */}
+						{isAdmin && (
+							<Link
+								to="/admin"
+								className="relative hidden items-center gap-1.5 border-2 border-stroke-strong bg-bg-panel px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime md:inline-flex"
+							>
+								<Shield className="size-3.5" />
+								Admin
+								{typeof pendingReviewCount === "number" &&
+									pendingReviewCount > 0 && (
+										<span className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-red-500 font-mono text-[10px] font-bold text-white">
+											{pendingReviewCount > 9 ? "9+" : pendingReviewCount}
+										</span>
+									)}
+							</Link>
+						)}
+
+						{/* Share Stack CTA */}
+						{isAuthenticated ? (
+							<>
+								{userStack || cachedUserStack ? (
+									<a
+										href={`/stacks/${(userStack || cachedUserStack)?.slug}/edit`}
+										className="hidden sm:inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
+									>
+										<Pencil className="size-3.5" />
+										Update Stack
+									</a>
+								) : userStack === null ? (
+									<Link
+										to="/stacks/new"
+										className="hidden sm:inline-flex items-center gap-2 border-2 border-accent-lime bg-accent-lime px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong"
+									>
+										<Plus className="size-3.5" />
+										Share Stack
+									</Link>
+								) : null}
+
+								<div className="relative" ref={menuRef}>
+									<button
+										type="button"
+										onClick={() => setMenuOpen(!menuOpen)}
+										className="flex size-8 items-center justify-center overflow-hidden border-2 border-stroke-strong bg-bg-panel font-mono text-xs font-bold text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
+									>
+										{avatarUrl && !avatarError ? (
+											<img
+												src={avatarUrl}
+												alt={userName}
+												className="size-full object-cover"
+												onError={() => setAvatarError(true)}
+											/>
+										) : (
+											<span>{userName.charAt(0).toUpperCase()}</span>
+										)}
+									</button>
+
+									{menuOpen && (
+										<div className="absolute right-0 z-50 mt-1 w-56 border-2 border-stroke-strong bg-bg-panel shadow-[4px_4px_0_var(--stroke-strong)]">
+											<div className="border-b border-stroke-subtle px-4 py-3">
+												<p className="truncate font-mono text-xs font-semibold uppercase tracking-wide text-fg-primary">
+													{userName}
+												</p>
+												{session.data?.user?.email &&
+													session.data?.user?.name && (
+														<p className="mt-0.5 truncate font-mono text-xs text-fg-muted">
+															{session.data.user.email}
+														</p>
+													)}
+											</div>
+											<Button
+												variant="ghost"
+												onClick={handleSignOut}
+												className="w-full justify-start rounded-none font-mono text-xs uppercase tracking-wide text-fg-secondary hover:bg-bg-panel-muted hover:text-fg-primary"
+											>
+												<LogOut className="size-3.5" />
+												Sign Out
+											</Button>
+										</div>
+									)}
+								</div>
+							</>
+						) : (
+							<>
 								<Link
 									to="/stacks/new"
 									className="hidden sm:inline-flex items-center gap-2 border-2 border-accent-lime bg-accent-lime px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong"
@@ -265,162 +334,131 @@ export default function Header() {
 									<Plus className="size-3.5" />
 									Share Stack
 								</Link>
-							) : null}
-
-							<div className="relative" ref={menuRef}>
-								<button
-									type="button"
-									onClick={() => setMenuOpen(!menuOpen)}
-									className="flex size-8 items-center justify-center overflow-hidden border-2 border-stroke-strong bg-bg-panel font-mono text-xs font-bold text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
+								<Link
+									to="/signin"
+									search={{ redirect: currentPath }}
+									className="inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
 								>
-									{avatarUrl && !avatarError ? (
-										<img
-											src={avatarUrl}
-											alt={userName}
-											className="size-full object-cover"
-											onError={() => setAvatarError(true)}
-										/>
-									) : (
-										<span>{userName.charAt(0).toUpperCase()}</span>
-									)}
-								</button>
-
-								{menuOpen && (
-									<div className="absolute right-0 z-50 mt-1 w-56 border-2 border-stroke-strong bg-bg-panel shadow-[4px_4px_0_var(--stroke-strong)]">
-										<div className="border-b border-stroke-subtle px-4 py-3">
-											<p className="truncate font-mono text-xs font-semibold uppercase tracking-wide text-fg-primary">
-												{userName}
-											</p>
-											{session.data?.user?.email &&
-												session.data?.user?.name && (
-													<p className="mt-0.5 truncate font-mono text-xs text-fg-muted">
-														{session.data.user.email}
-													</p>
-												)}
-										</div>
-										<Button
-											variant="ghost"
-											onClick={handleSignOut}
-											className="w-full justify-start rounded-none font-mono text-xs uppercase tracking-wide text-fg-secondary hover:bg-bg-panel-muted hover:text-fg-primary"
-										>
-											<LogOut className="size-3.5" />
-											Sign Out
-										</Button>
-									</div>
-								)}
-							</div>
-						</>
-					) : (
-						<>
-							<Link
-								to="/stacks/new"
-								className="hidden sm:inline-flex items-center gap-2 border-2 border-accent-lime bg-accent-lime px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong"
-							>
-								<Plus className="size-3.5" />
-								Share Stack
-							</Link>
-							<Link
-								to="/signin"
-								search={{ redirect: currentPath }}
-								className="inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
-							>
-								Sign In
-							</Link>
-						</>
-					)}
-
-					{/* Mobile hamburger */}
-					<button
-						type="button"
-						onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-						className="flex size-8 items-center justify-center text-fg-primary md:hidden"
-						aria-label="Toggle menu"
-					>
-						{mobileMenuOpen ? (
-							<X className="size-5" />
-						) : (
-							<Menu className="size-5" />
+									Sign In
+								</Link>
+							</>
 						)}
-					</button>
-				</div>
-			</div>
 
-			{/* Mobile menu panel */}
-			{mobileMenuOpen && (
-				<div className="border-t-2 border-stroke-strong bg-bg-canvas px-6 py-6 md:hidden">
-					<nav className="flex flex-col gap-4 mb-6">
-						<Link
-							to="/"
-							onClick={() => setMobileMenuOpen(false)}
-							className={cn(
-								"font-mono text-sm font-semibold uppercase tracking-[0.15em] transition-colors",
-								currentPath === "/"
-									? "text-accent-lime"
-									: "text-fg-muted hover:text-fg-primary",
-							)}
+						{/* Mobile hamburger */}
+						<button
+							type="button"
+							onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+							className="flex size-8 items-center justify-center text-fg-primary md:hidden"
+							aria-label="Toggle menu"
 						>
-							Home
-						</Link>
-						<Link
-							to="/stacks"
-							onClick={() => setMobileMenuOpen(false)}
-							className={cn(
-								"font-mono text-sm font-semibold uppercase tracking-[0.15em] transition-colors",
-								isActive("/stacks")
-									? "text-accent-lime"
-									: "text-fg-muted hover:text-fg-primary",
+							{mobileMenuOpen ? (
+								<X className="size-5" />
+							) : (
+								<Menu className="size-5" />
 							)}
-						>
-							Stacks
-						</Link>
-						<Link
-							to="/tools"
-							onClick={() => setMobileMenuOpen(false)}
-							className={cn(
-								"font-mono text-sm font-semibold uppercase tracking-[0.15em] transition-colors",
-								isActive("/tools")
-									? "text-accent-lime"
-									: "text-fg-muted hover:text-fg-primary",
-							)}
-						>
-							Tools
-						</Link>
-						{isAdmin && (
+						</button>
+					</div>
+				</div>
+
+				{/* Mobile menu panel */}
+				{mobileMenuOpen && (
+					<div className="border-t-2 border-stroke-strong bg-bg-canvas px-6 py-6 md:hidden">
+						<nav className="flex flex-col gap-4 mb-6">
 							<Link
-								to="/admin"
+								to="/"
 								onClick={() => setMobileMenuOpen(false)}
 								className={cn(
-									"relative font-mono text-sm font-semibold uppercase tracking-[0.15em] transition-colors inline-flex items-center gap-1.5",
-									isActive("/admin")
+									"font-mono text-sm font-semibold uppercase tracking-[0.15em] transition-colors",
+									currentPath === "/"
 										? "text-accent-lime"
 										: "text-fg-muted hover:text-fg-primary",
 								)}
 							>
-								<Shield className="size-3.5" />
-								Admin
-								{typeof pendingReviewCount === "number" &&
-									pendingReviewCount > 0 && (
-										<span className="flex size-4 items-center justify-center rounded-full bg-red-500 font-mono text-[10px] font-bold text-white">
-											{pendingReviewCount > 9 ? "9+" : pendingReviewCount}
-										</span>
-									)}
+								Home
 							</Link>
-						)}
-					</nav>
+							<Link
+								to="/stacks"
+								onClick={() => setMobileMenuOpen(false)}
+								className={cn(
+									"font-mono text-sm font-semibold uppercase tracking-[0.15em] transition-colors",
+									isActive("/stacks")
+										? "text-accent-lime"
+										: "text-fg-muted hover:text-fg-primary",
+								)}
+							>
+								Stacks
+							</Link>
+							<Link
+								to="/tools"
+								onClick={() => setMobileMenuOpen(false)}
+								className={cn(
+									"font-mono text-sm font-semibold uppercase tracking-[0.15em] transition-colors",
+									isActive("/tools")
+										? "text-accent-lime"
+										: "text-fg-muted hover:text-fg-primary",
+								)}
+							>
+								Tools
+							</Link>
+							{isAdmin && (
+								<Link
+									to="/admin"
+									onClick={() => setMobileMenuOpen(false)}
+									className={cn(
+										"relative font-mono text-sm font-semibold uppercase tracking-[0.15em] transition-colors inline-flex items-center gap-1.5",
+										isActive("/admin")
+											? "text-accent-lime"
+											: "text-fg-muted hover:text-fg-primary",
+									)}
+								>
+									<Shield className="size-3.5" />
+									Admin
+									{typeof pendingReviewCount === "number" &&
+										pendingReviewCount > 0 && (
+											<span className="flex size-4 items-center justify-center rounded-full bg-red-500 font-mono text-[10px] font-bold text-white">
+												{pendingReviewCount > 9 ? "9+" : pendingReviewCount}
+											</span>
+										)}
+								</Link>
+							)}
+						</nav>
 
-					<div className="flex flex-col gap-3">
-						{isAuthenticated ? (
-							<>
-								{userStack || cachedUserStack ? (
-									<a
-										href={`/stacks/${(userStack || cachedUserStack)?.slug}/edit`}
-										onClick={() => setMobileMenuOpen(false)}
-										className="inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-2 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
+						<div className="flex flex-col gap-3">
+							{isAuthenticated ? (
+								<>
+									{userStack || cachedUserStack ? (
+										<a
+											href={`/stacks/${(userStack || cachedUserStack)?.slug}/edit`}
+											onClick={() => setMobileMenuOpen(false)}
+											className="inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-2 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
+										>
+											<Pencil className="size-3.5" />
+											Update Stack
+										</a>
+									) : userStack === null ? (
+										<Link
+											to="/stacks/new"
+											onClick={() => setMobileMenuOpen(false)}
+											className="inline-flex items-center gap-2 border-2 border-accent-lime bg-accent-lime px-3 py-2 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong"
+										>
+											<Plus className="size-3.5" />
+											Share Stack
+										</Link>
+									) : null}
+									<button
+										type="button"
+										onClick={() => {
+											setMobileMenuOpen(false);
+											handleSignOut();
+										}}
+										className="inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-2 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-secondary transition-colors hover:border-destructive hover:text-destructive"
 									>
-										<Pencil className="size-3.5" />
-										Update Stack
-									</a>
-								) : userStack === null ? (
+										<LogOut className="size-3.5" />
+										Sign Out
+									</button>
+								</>
+							) : (
+								<>
 									<Link
 										to="/stacks/new"
 										onClick={() => setMobileMenuOpen(false)}
@@ -429,123 +467,94 @@ export default function Header() {
 										<Plus className="size-3.5" />
 										Share Stack
 									</Link>
-								) : null}
-								<button
-									type="button"
-									onClick={() => {
-										setMobileMenuOpen(false);
-										handleSignOut();
-									}}
-									className="inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-2 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-secondary transition-colors hover:border-destructive hover:text-destructive"
-								>
-									<LogOut className="size-3.5" />
-									Sign Out
-								</button>
-							</>
-						) : (
-							<>
-								<Link
-									to="/stacks/new"
-									onClick={() => setMobileMenuOpen(false)}
-									className="inline-flex items-center gap-2 border-2 border-accent-lime bg-accent-lime px-3 py-2 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong"
-								>
-									<Plus className="size-3.5" />
-									Share Stack
-								</Link>
-								<Link
-									to="/signin"
-									search={{ redirect: currentPath }}
-									onClick={() => setMobileMenuOpen(false)}
-									className="inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-2 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
-								>
-									Sign In
-								</Link>
-							</>
+									<Link
+										to="/signin"
+										search={{ redirect: currentPath }}
+										onClick={() => setMobileMenuOpen(false)}
+										className="inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-2 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
+									>
+										Sign In
+									</Link>
+								</>
+							)}
+						</div>
+
+						<div className="mt-6 flex items-center gap-3">
+							<a
+								href="https://x.com/alperortac"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="flex size-8 items-center justify-center text-fg-muted transition-colors hover:text-fg-primary"
+								aria-label="Follow on X"
+							>
+								<XIcon />
+							</a>
+							<a
+								href="https://discord.gg/5y4fpyahaF"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="flex size-8 items-center justify-center text-fg-muted transition-colors hover:text-fg-primary"
+								aria-label="Join Discord"
+							>
+								<DiscordIcon />
+							</a>
+							<ThemeToggle />
+						</div>
+					</div>
+				)}
+			</header>
+
+			{/* Mobile bottom tab bar */}
+			<nav className="fixed bottom-0 left-0 right-0 z-50 border-t-2 border-stroke-strong bg-bg-canvas md:hidden">
+				<div className="flex items-stretch justify-around">
+					<Link
+						to="/"
+						onClick={() => setMobileMenuOpen(false)}
+						className={cn(
+							"flex flex-1 flex-col items-center gap-1 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors",
+							currentPath === "/" ? "text-accent-lime" : "text-fg-muted",
 						)}
-					</div>
-
-					<div className="mt-6 flex items-center gap-3">
-						<a
-							href="https://x.com/alperortac"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="flex size-8 items-center justify-center text-fg-muted transition-colors hover:text-fg-primary"
-							aria-label="Follow on X"
-						>
-							<XIcon />
-						</a>
-						<a
-							href="https://discord.gg/5y4fpyahaF"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="flex size-8 items-center justify-center text-fg-muted transition-colors hover:text-fg-primary"
-							aria-label="Join Discord"
-						>
-							<DiscordIcon />
-						</a>
-						<ThemeToggle />
-					</div>
+					>
+						<Home className="size-5" />
+						Home
+					</Link>
+					<Link
+						to="/stacks"
+						onClick={() => setMobileMenuOpen(false)}
+						className={cn(
+							"flex flex-1 flex-col items-center gap-1 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors",
+							isActive("/stacks") ? "text-accent-lime" : "text-fg-muted",
+						)}
+					>
+						<Layers className="size-5" />
+						Stacks
+					</Link>
+					<Link
+						to="/tools"
+						onClick={() => setMobileMenuOpen(false)}
+						className={cn(
+							"flex flex-1 flex-col items-center gap-1 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors",
+							isActive("/tools") ? "text-accent-lime" : "text-fg-muted",
+						)}
+					>
+						<Wrench className="size-5" />
+						Tools
+					</Link>
+					<a
+						href={shareStackHref}
+						onClick={() => setMobileMenuOpen(false)}
+						className={cn(
+							"flex flex-1 flex-col items-center gap-1 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors",
+							currentPath === "/stacks/new"
+								? "text-accent-lime"
+								: "text-fg-muted",
+						)}
+					>
+						<Plus className="size-5" />
+						Share
+					</a>
 				</div>
-			)}
-		</header>
-
-		{/* Mobile bottom tab bar */}
-		<nav className="fixed bottom-0 left-0 right-0 z-50 border-t-2 border-stroke-strong bg-bg-canvas md:hidden">
-			<div className="flex items-stretch justify-around">
-				<Link
-					to="/"
-					onClick={() => setMobileMenuOpen(false)}
-					className={cn(
-						"flex flex-1 flex-col items-center gap-1 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors",
-						currentPath === "/"
-							? "text-accent-lime"
-							: "text-fg-muted",
-					)}
-				>
-					<Home className="size-5" />
-					Home
-				</Link>
-				<Link
-					to="/stacks"
-					onClick={() => setMobileMenuOpen(false)}
-					className={cn(
-						"flex flex-1 flex-col items-center gap-1 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors",
-						isActive("/stacks")
-							? "text-accent-lime"
-							: "text-fg-muted",
-					)}
-				>
-					<Layers className="size-5" />
-					Stacks
-				</Link>
-				<Link
-					to="/tools"
-					onClick={() => setMobileMenuOpen(false)}
-					className={cn(
-						"flex flex-1 flex-col items-center gap-1 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors",
-						isActive("/tools")
-							? "text-accent-lime"
-							: "text-fg-muted",
-					)}
-				>
-					<Wrench className="size-5" />
-					Tools
-				</Link>
-				<a
-					href={shareStackHref}
-					onClick={() => setMobileMenuOpen(false)}
-					className={cn(
-						"flex flex-1 flex-col items-center gap-1 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors",
-						currentPath === "/stacks/new"
-							? "text-accent-lime"
-							: "text-fg-muted",
-					)}
-				>
-					<Plus className="size-5" />
-					Share
-				</a>
-			</div>
-		</nav>
+			</nav>
 		</>
 	);
 }

@@ -34,6 +34,7 @@ export const getRouter = () => {
 			convexQueryClient,
 		},
 		defaultPreload: "viewport",
+		defaultPreloadStaleTime: 30_000,
 		scrollRestoration: true,
 		Wrap: ({ children }) => (
 			<ConvexProvider client={convexQueryClient.convexClient}>

@@ -1,5 +1,5 @@
 import { useConvexAuth } from "@convex-dev/react-query";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Button } from "../components/ui/button";
 import {
@@ -17,6 +17,7 @@ export const Route = createFileRoute("/test")({
 
 function TestPage() {
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const { isAuthenticated, isLoading } = useConvexAuth();
 
 	// Get user data from Convex
@@ -35,6 +36,7 @@ function TestPage() {
 
 	const handleLogout = async () => {
 		await authClient.signOut();
+		await queryClient.invalidateQueries({ queryKey: ["auth-token"] });
 		navigate({ to: "/" });
 	};
 

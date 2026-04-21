@@ -83,7 +83,11 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 		],
 	}),
 	beforeLoad: async (ctx) => {
-		const token = await getAuth();
+		const token = await ctx.context.queryClient.ensureQueryData({
+			queryKey: ["auth-token"],
+			queryFn: () => getAuth(),
+			staleTime: Number.POSITIVE_INFINITY,
+		});
 		if (token) {
 			ctx.context.convexQueryClient.serverHttpClient?.setAuth(token);
 		}
