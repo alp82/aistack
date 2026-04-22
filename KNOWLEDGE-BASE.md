@@ -74,6 +74,7 @@ https://www.pencil.dev
 https://x.com/i/status/2035508816461074883
 https://github.com/VoltAgent/awesome-design-md
 https://x.com/tkkong/status/2034368184036561160
+https://x.com/ParthJadhav8/status/2045909607990825244?s=20
 https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md
 ```
 Tiny cute isometric cowboy hat emoji, shape, soft lighting, soft pastel colors, brown, 3d icon clay render, blender 3d, pastel background
