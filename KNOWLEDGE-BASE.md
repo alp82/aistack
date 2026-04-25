@@ -19,18 +19,31 @@ https://agentclientprotocol.com/get-started/clients
 https://www.augmentcode.com/blog/how-to-write-good-agents-dot-md-files
 
 parallelization, orchestration & agent teams:
+https://air.dev
+https://dmux.ai
+https://cmux.com
+https://jean.build
 https://yggchat.com
+https://tryorca.com
+https://addy-ade.com
+https://superterm.dev
 https://www.emdash.sh
-https://www.warp.dev/oz
+https://paperclip.ing
+https://www.warp.dev/oz1
+https://getpolyscope.com
+https://thecommander.app
 https://www.conductor.build
+https://penso.github.io/arbor
 https://github.com/ruvnet/ruflo
 https://github.com/RunMaestro/Maestro
 https://github.com/superset-sh/superset
 https://github.com/RightNow-AI/openfang
+https://www.augmentcode.com/product/intent
 https://code.claude.com/docs/en/agent-teams
 https://github.com/GoogleCloudPlatform/scion
 https://github.com/JackChen-me/open-multi-agent
 https://x.com/juristr/status/2031820737745682520
+https://github.com/andyrewlee/awesome-agent-orchestrators
 
 harness basics & advanced usage:
 https://magazine.sebastianraschka.com/p/components-of-a-coding-agent

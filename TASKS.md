@@ -1,6 +1,7 @@
 # TODO
-
+* bug in stack page: sticky tools header on top of scrolling listed items (Jay)
 * CLI workflow
+    + all instructions all with npx
     * hide/ignore env sections in mcp.json
     * https://www.codacy.com/ai-inventory
     * https://github.com/dyoshikawa/rulesync
@@ -9,10 +10,14 @@
     * npx aistack login
     * npx aistack collect
     * npx aistack create
+* models page
+    * easy adding models
 * stacks and projects structure
     https://elio.devS
-    * nicer cards
+    * nicer cards - with remove button
     * mermaid diagrams
+    * model card: replace with other version
+    * reorder tools and models
 * price tiers for sibling products: claude code vs claude ai
 * ai stack knowledge/learning area
     * article grid with nice bg borders: https://www.aihero.dev/posts
@@ -33,3 +38,4 @@
 * admin for editing aliases
     * e.g. amp, opus, etc.
 * og image: bigger tool icons
+[text](about:blank#blocked)

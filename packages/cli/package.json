@@ -10,9 +10,13 @@
     "directory": "packages/cli"
   },
   "homepage": "https://github.com/alp82/aistack#readme",
-  "bin": { "aistack": "./dist/index.js" },
+  "bin": {
+    "aistack": "dist/index.js"
+  },
   "files": ["dist", "README.md"],
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "postbuild": "chmod +x dist/index.js",
@@ -31,5 +35,7 @@
     "typescript": "^5.7.2",
     "@types/node": "^22.10.2"
   },
-  "engines": { "node": ">=18" }
+  "engines": {
+    "node": ">=18"
+  }
 }
