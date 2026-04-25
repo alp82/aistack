@@ -65,12 +65,22 @@ export async function projectsCollect(
 	if (res.status === 401)
 		throw new Error("Authentication expired. Run `aistack login` again.");
 	if (!res.ok) {
-		const body = await res.json().catch(() => ({}));
-		throw new Error(
-			(body as { error?: string }).error || `Collect failed: ${res.status}`,
-		);
+		throw new Error(await formatHttpError(res, "Collect failed"));
 	}
 	return res.json();
+}
+
+async function formatHttpError(res: Response, label: string): Promise<string> {
+	const prefix = `${label}: ${res.status} ${res.statusText || ""}`.trim();
+	const text = await res.text().catch(() => "");
+	if (!text) return prefix;
+	try {
+		const body = JSON.parse(text) as { error?: string; message?: string };
+		const detail = body.error || body.message;
+		if (detail) return `${prefix} — ${detail}`;
+	} catch {}
+	const snippet = text.trim().slice(0, 500);
+	return snippet ? `${prefix} — ${snippet}` : prefix;
 }
 
 export async function projectGet(shortId: string): Promise<ProjectData | null> {

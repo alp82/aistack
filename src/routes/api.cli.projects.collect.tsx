@@ -20,15 +20,32 @@ export const Route = createFileRoute("/api/cli/projects/collect")({
 				const auth = request.headers.get("Authorization");
 				if (auth) headers.Authorization = auth;
 
-				const resp = await fetch(`${convexOrigin}/api/cli/projects/collect`, {
-					method: "POST",
-					headers,
-					body,
-				});
-				return new Response(resp.body, {
-					status: resp.status,
-					headers: { "Content-Type": "application/json" },
-				});
+				try {
+					const resp = await fetch(`${convexOrigin}/api/cli/projects/collect`, {
+						method: "POST",
+						headers,
+						body,
+					});
+					const respBody = await resp.text();
+					return new Response(respBody, {
+						status: resp.status,
+						headers: {
+							"Content-Type":
+								resp.headers.get("Content-Type") ?? "application/json",
+						},
+					});
+				} catch (err) {
+					const message = err instanceof Error ? err.message : String(err);
+					return new Response(
+						JSON.stringify({
+							error: `Proxy → Convex (${convexOrigin}) failed: ${message}`,
+						}),
+						{
+							status: 502,
+							headers: { "Content-Type": "application/json" },
+						},
+					);
+				}
 			},
 		},
 	},

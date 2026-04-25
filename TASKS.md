@@ -11,6 +11,8 @@
     * npx aistack create
 * stacks and projects structure
     https://elio.devS
+    * nicer cards
+    * mermaid diagrams
 * price tiers for sibling products: claude code vs claude ai
 * ai stack knowledge/learning area
     * article grid with nice bg borders: https://www.aihero.dev/posts

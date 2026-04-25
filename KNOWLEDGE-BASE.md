@@ -14,8 +14,9 @@ https://index.tego.security/skills/
 https://buildermethods.com/agent-os
 https://github.com/eljulians/skillfile
 https://github.com/addyosmani/agent-skills
-https://agentclientprotocol.com/get-started/clients
 https://www.youtube.com/watch?v=0cVuMHaYEHE
+https://agentclientprotocol.com/get-started/clients
+https://www.augmentcode.com/blog/how-to-write-good-agents-dot-md-files
 
 parallelization, orchestration & agent teams:
 https://yggchat.com
@@ -31,6 +32,10 @@ https://github.com/GoogleCloudPlatform/scion
 https://github.com/JackChen-me/open-multi-agent
 https://x.com/juristr/status/2031820737745682520
 
+harness basics & advanced usage:
+https://magazine.sebastianraschka.com/p/components-of-a-coding-agent
+https://openai.com/index/speeding-up-agentic-workflows-with-websockets/
+
 sandbox & safety:
 https://www.agentsh.org
 https://nono.sh
@@ -40,6 +45,7 @@ https://x.com/i/status/2031813357423247458
 https://x.com/yenkel/status/2032098351567487037
 https://nx.dev/blog/why-we-deleted-most-of-our-mcp-tools
 https://chrlschn.dev/blog/2026/03/mcp-is-dead-long-live-mcp/
+https://claude.com/blog/building-agents-that-reach-production-systems-with-mcp
 
 writing good instructions:
 https://www.hlyr.dev/blog/writing-a-good-claude-md
@@ -159,6 +165,7 @@ https://x.com/i/status/2030636384156086564
 web scraping:
 https://scrapling.readthedocs.io/en/latest/
 https://crawlee.dev
+https://webclaw.io
 firecrawl
 
 logging / wide events:
