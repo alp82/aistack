@@ -1,9 +1,13 @@
 import { useMutation, useQuery } from "convex/react";
 import { Check, ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Dialog } from "./ui/Dialog";
+import {
+	IconUploadField,
+	type IconValue,
+} from "@/components/forms/IconUploadField";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { Dialog } from "./ui/Dialog";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import {
@@ -56,6 +60,7 @@ export interface ModelData {
 	category: ModelCategory;
 	websiteUrl?: string;
 	iconUrl?: string;
+	iconStorageId?: Id<"_storage">;
 	contextWindow?: number;
 	description?: string;
 }
@@ -82,7 +87,7 @@ export function AddModelForm({
 	const [provider, setProvider] = useState("");
 	const [category, setCategory] = useState<ModelCategory | "">("");
 	const [websiteUrl, setWebsiteUrl] = useState("");
-	const [iconUrl, setIconUrl] = useState("");
+	const [iconValue, setIconValue] = useState<IconValue>(null);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState("");
 	const [showDetails, setShowDetails] = useState(false);
@@ -101,7 +106,7 @@ export function AddModelForm({
 	// Clear icon and URL when selecting "Other" provider
 	useEffect(() => {
 		if (provider === "Other") {
-			setIconUrl("");
+			setIconValue(null);
 			setWebsiteUrl("");
 		}
 	}, [provider]);
@@ -112,7 +117,10 @@ export function AddModelForm({
 			setProvider(editModel.provider);
 			setCategory(editModel.category);
 			setWebsiteUrl(editModel.websiteUrl || "");
-			setIconUrl(editModel.iconUrl || "");
+			setIconValue({
+				iconStorageId: editModel.iconStorageId,
+				iconUrl: editModel.iconUrl,
+			});
 		}
 	}, [editModel]);
 
@@ -121,10 +129,16 @@ export function AddModelForm({
 		if (providerData !== undefined && provider !== "Other") {
 			if (providerData) {
 				setWebsiteUrl(providerData.websiteUrl || "");
-				setIconUrl(providerData.iconUrl || "");
+				setIconValue(
+					providerData.iconStorageId
+						? { iconStorageId: providerData.iconStorageId, iconUrl: undefined }
+						: providerData.iconUrl
+							? { iconStorageId: undefined, iconUrl: providerData.iconUrl }
+							: null,
+				);
 			} else {
 				setWebsiteUrl("");
-				setIconUrl("");
+				setIconValue(null);
 			}
 		}
 	}, [providerData, provider]);
@@ -139,7 +153,8 @@ export function AddModelForm({
 		const errors: typeof validationErrors = {};
 		if (isEditMode && isAdmin) {
 			if (!websiteUrl.trim()) errors.websiteUrl = true;
-			if (!iconUrl.trim()) errors.iconUrl = true;
+			if (!iconValue?.iconStorageId && !iconValue?.iconUrl)
+				errors.iconUrl = true;
 			if (!category) errors.category = true;
 		}
 
@@ -164,7 +179,8 @@ export function AddModelForm({
 					provider: provider.trim(),
 					category: (category || "other") as ModelCategory,
 					websiteUrl: websiteUrl.trim() || undefined,
-					iconUrl: iconUrl.trim() || undefined,
+					iconUrl: iconValue?.iconUrl?.trim() || undefined,
+					iconStorageId: iconValue?.iconStorageId,
 				});
 				onModelUpdated?.(editModel._id);
 			} else {
@@ -224,15 +240,10 @@ export function AddModelForm({
 								Provider *
 							</Label>
 							<div className="flex items-center gap-2">
-								<div className="size-8 shrink-0 border border-stroke-subtle bg-bg-panel p-1">
-									{iconUrl && (
-										<img
-											src={iconUrl}
-											alt={provider}
-											className="size-full object-contain"
-										/>
-									)}
-								</div>
+								<ProviderIconPreview
+									iconValue={iconValue}
+									provider={provider}
+								/>
 								<Select
 									value={provider}
 									onValueChange={(val) => {
@@ -286,7 +297,10 @@ export function AddModelForm({
 								onChange={(e) => {
 									setWebsiteUrl(e.target.value);
 									if (validationErrors.websiteUrl)
-										setValidationErrors((prev) => ({ ...prev, websiteUrl: false }));
+										setValidationErrors((prev) => ({
+											...prev,
+											websiteUrl: false,
+										}));
 								}}
 								placeholder="https://example.com"
 								className={`h-10 bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime ${validationErrors.websiteUrl ? "border-destructive" : "border-stroke-subtle"}`}
@@ -294,27 +308,23 @@ export function AddModelForm({
 						</div>
 					)}
 
-					{/* Icon URL — admin edit only */}
+					{/* Icon — admin edit only */}
 					{isEditMode && isAdmin && (
-						<div className="space-y-2">
-							<Label
-								htmlFor="model-icon"
-								className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
-							>
-								Icon URL *
-							</Label>
-							<Input
-								id="model-icon"
-								value={iconUrl}
-								onChange={(e) => {
-									setIconUrl(e.target.value);
-									if (validationErrors.iconUrl)
-										setValidationErrors((prev) => ({ ...prev, iconUrl: false }));
-								}}
-								placeholder="https://example.com/icon.png"
-								className={`h-10 bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime ${validationErrors.iconUrl ? "border-destructive" : "border-stroke-subtle"}`}
-							/>
-						</div>
+						<IconUploadField
+							label="Icon"
+							required
+							error={validationErrors.iconUrl}
+							value={iconValue}
+							onChange={(next) => {
+								setIconValue(next);
+								if (validationErrors.iconUrl) {
+									setValidationErrors((prev) => ({
+										...prev,
+										iconUrl: false,
+									}));
+								}
+							}}
+						/>
 					)}
 				</fieldset>
 
@@ -341,7 +351,9 @@ export function AddModelForm({
 
 				{(showDetails || isEditMode) && (
 					<fieldset className="space-y-3">
-						<legend className={`font-mono text-[10px] font-semibold uppercase tracking-widest ${validationErrors.category ? "text-destructive" : "text-accent-lime"}`}>
+						<legend
+							className={`font-mono text-[10px] font-semibold uppercase tracking-widest ${validationErrors.category ? "text-destructive" : "text-accent-lime"}`}
+						>
 							Category{isEditMode && isAdmin ? " *" : ""}
 						</legend>
 						<div className="flex flex-wrap gap-2">
@@ -350,9 +362,14 @@ export function AddModelForm({
 									key={cat.value}
 									type="button"
 									onClick={() => {
-										setCategory((prev) => prev === cat.value ? "" : cat.value);
+										setCategory((prev) =>
+											prev === cat.value ? "" : cat.value,
+										);
 										if (validationErrors.category)
-											setValidationErrors((prev) => ({ ...prev, category: false }));
+											setValidationErrors((prev) => ({
+												...prev,
+												category: false,
+											}));
 									}}
 									className={`px-3 py-1.5 font-mono text-xs uppercase tracking-wide border transition-colors ${
 										category === cat.value
@@ -399,6 +416,29 @@ export function AddModelForm({
 					)}
 				</div>
 			</form>
+		</div>
+	);
+}
+
+function ProviderIconPreview({
+	iconValue,
+	provider,
+}: {
+	iconValue: IconValue;
+	provider: string;
+}) {
+	const storageUrl = useQuery(
+		api.iconStorage.getUrl,
+		iconValue?.iconStorageId ? { storageId: iconValue.iconStorageId } : "skip",
+	);
+	const src = iconValue?.iconStorageId
+		? (storageUrl ?? null)
+		: (iconValue?.iconUrl ?? null);
+	return (
+		<div className="size-8 shrink-0 border border-stroke-subtle bg-bg-panel p-1">
+			{src && (
+				<img src={src} alt={provider} className="size-full object-contain" />
+			)}
 		</div>
 	);
 }

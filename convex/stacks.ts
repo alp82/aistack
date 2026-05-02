@@ -41,11 +41,16 @@ async function calculateStackPricing(
     }
   }
 
-  for (const bs of bundleSubscriptions) {
-    const bundle = await ctx.db
-      .query('bundles')
-      .withIndex('by_slug', (q) => q.eq('slug', bs.bundleSlug))
-      .first()
+  const bundles = await Promise.all(
+    bundleSubscriptions.map((bs) =>
+      ctx.db
+        .query('bundles')
+        .withIndex('by_slug', (q) => q.eq('slug', bs.bundleSlug))
+        .first()
+        .then((bundle) => ({ bs, bundle }))
+    )
+  )
+  for (const { bs, bundle } of bundles) {
     if (!bundle) continue
     const tier = bundle.tiers.find((t) => t.tierId === bs.tierId)
     if (tier?.pricing.fixed) fixedPrices.push(tier.pricing.fixed)
@@ -154,71 +159,77 @@ export const listPublished = query({
       .withIndex('by_published', (q) => q.eq('published', true))
       .collect()
 
-    const results = []
-    for (const stack of stacks) {
-      const creator = await ctx.db.get(stack.creatorId)
-      if (!creator) continue
-      const pricing = await calculateStackPricing(ctx, stack.toolSubscriptions, stack.bundleSubscriptions ?? [])
+    const maybeResults = await Promise.all(
+      stacks.map(async (stack) => {
+        const creator = await ctx.db.get(stack.creatorId)
+        if (!creator) return null
+        const pricing = await calculateStackPricing(ctx, stack.toolSubscriptions, stack.bundleSubscriptions ?? [])
 
-      const tools = []
-      for (const sub of stack.toolSubscriptions) {
-        const tool = await ctx.db
-          .query('tools')
-          .withIndex('by_slug', (q) => q.eq('slug', sub.toolSlug))
-          .first()
-        if (!tool) continue
-        const tier = sub.tierId ? tool.tiers.find((t) => t.tierId === sub.tierId) : undefined
-        tools.push({
-          _id: tool._id,
-          name: tool.name,
-          slug: tool.slug,
-          categories: tool.categories,
-          iconUrl: tool.iconUrl,
-          websiteUrl: tool.websiteUrl,
-          price: sub.price,
-          originalTierPrice: tier?.pricing.fixed,
-          kind: sub.kind,
-          primaryUsageLabel: sub.primaryUsageLabel,
-          tierName: tier?.name ?? sub.tierId ?? '',
-          priceKind: sub.priceKind,
-          bundleSlug: sub.bundleSlug,
-          description: sub.description,
-        })
-      }
+        const toolEntries = await Promise.all(
+          stack.toolSubscriptions.map(async (sub) => {
+            const tool = await ctx.db
+              .query('tools')
+              .withIndex('by_slug', (q) => q.eq('slug', sub.toolSlug))
+              .first()
+            if (!tool) return null
+            const tier = sub.tierId ? tool.tiers.find((t) => t.tierId === sub.tierId) : undefined
+            const resolvedToolUrl = tool.iconStorageId
+              ? await ctx.storage.getUrl(tool.iconStorageId)
+              : null
+            return {
+              _id: tool._id,
+              name: tool.name,
+              slug: tool.slug,
+              categories: tool.categories,
+              iconUrl: resolvedToolUrl ?? tool.iconUrl,
+              websiteUrl: tool.websiteUrl,
+              price: sub.price,
+              originalTierPrice: tier?.pricing.fixed,
+              kind: sub.kind,
+              primaryUsageLabel: sub.primaryUsageLabel,
+              tierName: tier?.name ?? sub.tierId ?? '',
+              priceKind: sub.priceKind,
+              bundleSlug: sub.bundleSlug,
+              description: sub.description,
+            }
+          })
+        )
+        const tools = toolEntries.filter((t): t is NonNullable<typeof t> => t !== null)
 
-      const upvotes = await ctx.db
-        .query('stackUpvotes')
-        .withIndex('by_stackId', (q) => q.eq('stackId', stack._id))
-        .collect()
+        const upvotes = await ctx.db
+          .query('stackUpvotes')
+          .withIndex('by_stackId', (q) => q.eq('stackId', stack._id))
+          .collect()
 
-      results.push({
-        _id: stack._id,
-        _creationTime: stack._creationTime,
-        name: stack.name,
-        slug: `${stack.slug}-${stack.shortId}`,
-        oneLiner: stack.oneLiner,
-        teamSize: stack.teamSize,
-        fixedTotal: pricing.fixedTotal,
-        hasUsageComponent: pricing.hasUsageComponent,
-        usageTotalNotes: stack.usageTotalNotes,
-        personalPageUrl: stack.personalPageUrl,
+        return {
+          _id: stack._id,
+          _creationTime: stack._creationTime,
+          name: stack.name,
+          slug: `${stack.slug}-${stack.shortId}`,
+          oneLiner: stack.oneLiner,
+          teamSize: stack.teamSize,
+          fixedTotal: pricing.fixedTotal,
+          hasUsageComponent: pricing.hasUsageComponent,
+          usageTotalNotes: stack.usageTotalNotes,
+          personalPageUrl: stack.personalPageUrl,
 
-        creator: {
-          _id: creator._id,
-          name: creator.name,
-          xHandle: creator.xHandle,
-          avatarUrl: stack.stackImageUrl ?? creator.avatarUrl,
-          verified: creator.verified,
-          personalPages: creator.personalPages,
-          projectPages: creator.projectPages,
-        },
-        tools,
-        upvoteCount: upvotes.length,
-        isLowQuality: stack.isLowQuality,
+          creator: {
+            _id: creator._id,
+            name: creator.name,
+            xHandle: creator.xHandle,
+            avatarUrl: stack.stackImageUrl ?? creator.avatarUrl,
+            verified: creator.verified,
+            personalPages: creator.personalPages,
+            projectPages: creator.projectPages,
+          },
+          tools,
+          upvoteCount: upvotes.length,
+          isLowQuality: stack.isLowQuality,
+        }
       })
-    }
+    )
 
-    return results
+    return maybeResults.filter((r): r is NonNullable<typeof r> => r !== null)
   },
 })
 
@@ -452,65 +463,77 @@ export const getForEdit = query({
     const creator = await ctx.db.get(stack.creatorId)
     if (!creator || creator.userId !== userId) return null
 
-    const toolSubs = []
-    for (const sub of stack.toolSubscriptions) {
-      const tool = await ctx.db
-        .query('tools')
-        .withIndex('by_slug', (q) => q.eq('slug', sub.toolSlug))
-        .first()
-      if (!tool) continue
-      const tier = sub.tierId ? tool.tiers.find((t) => t.tierId === sub.tierId) : undefined
-      toolSubs.push({
-        toolSlug: sub.toolSlug,
-        toolName: tool.name,
-        toolCategories: tool.categories,
-        toolIconUrl: tool.iconUrl,
-        tierId: sub.tierId,
-        kind: sub.kind,
-        primaryUsageLabel: sub.primaryUsageLabel,
-        price: sub.price,
-        originalTierPrice: tier?.pricing.fixed,
-        priceKind: sub.priceKind,
-        bundleSlug: sub.bundleSlug,
-        description: sub.description,
+    const toolSubEntries = await Promise.all(
+      stack.toolSubscriptions.map(async (sub) => {
+        const tool = await ctx.db
+          .query('tools')
+          .withIndex('by_slug', (q) => q.eq('slug', sub.toolSlug))
+          .first()
+        if (!tool) return null
+        const tier = sub.tierId ? tool.tiers.find((t) => t.tierId === sub.tierId) : undefined
+        const resolvedToolUrl = tool.iconStorageId
+          ? await ctx.storage.getUrl(tool.iconStorageId)
+          : null
+        return {
+          toolSlug: sub.toolSlug,
+          toolName: tool.name,
+          toolCategories: tool.categories,
+          toolIconUrl: resolvedToolUrl ?? tool.iconUrl,
+          tierId: sub.tierId,
+          kind: sub.kind,
+          primaryUsageLabel: sub.primaryUsageLabel,
+          price: sub.price,
+          originalTierPrice: tier?.pricing.fixed,
+          priceKind: sub.priceKind,
+          bundleSlug: sub.bundleSlug,
+          description: sub.description,
+        }
       })
-    }
+    )
+    const toolSubs = toolSubEntries.filter((s): s is NonNullable<typeof s> => s !== null)
 
-    const bundleSubs = []
-    for (const bs of stack.bundleSubscriptions ?? []) {
-      const bundle = await ctx.db
-        .query('bundles')
-        .withIndex('by_slug', (q) => q.eq('slug', bs.bundleSlug))
-        .first()
-      if (!bundle) continue
-      const tier = bundle.tiers.find((t) => t.tierId === bs.tierId)
-      bundleSubs.push({
-        bundleSlug: bs.bundleSlug,
-        bundleName: bundle.name,
-        tierId: bs.tierId,
-        tierName: tier?.name ?? bs.tierId,
-        price: tier?.pricing ? { pricingType: tier.pricing.pricingType, fixed: tier.pricing.fixed } : undefined,
-        description: bs.description,
+    const bundleSubEntries = await Promise.all(
+      (stack.bundleSubscriptions ?? []).map(async (bs) => {
+        const bundle = await ctx.db
+          .query('bundles')
+          .withIndex('by_slug', (q) => q.eq('slug', bs.bundleSlug))
+          .first()
+        if (!bundle) return null
+        const tier = bundle.tiers.find((t) => t.tierId === bs.tierId)
+        return {
+          bundleSlug: bs.bundleSlug,
+          bundleName: bundle.name,
+          tierId: bs.tierId,
+          tierName: tier?.name ?? bs.tierId,
+          price: tier?.pricing ? { pricingType: tier.pricing.pricingType, fixed: tier.pricing.fixed } : undefined,
+          description: bs.description,
+        }
       })
-    }
+    )
+    const bundleSubs = bundleSubEntries.filter((s): s is NonNullable<typeof s> => s !== null)
 
-    const modelSubs = []
-    for (const ms of stack.modelSubscriptions ?? []) {
-      const model = await ctx.db
-        .query('models')
-        .withIndex('by_slug', (q) => q.eq('slug', ms.modelSlug))
-        .first()
-      if (!model) continue
-      modelSubs.push({
-        modelSlug: ms.modelSlug,
-        modelName: model.name,
-        modelProvider: model.provider,
-        modelCategory: model.category,
-        modelIconUrl: model.iconUrl,
-        role: ms.role,
-        description: ms.description,
+    const modelSubEntries = await Promise.all(
+      (stack.modelSubscriptions ?? []).map(async (ms) => {
+        const model = await ctx.db
+          .query('models')
+          .withIndex('by_slug', (q) => q.eq('slug', ms.modelSlug))
+          .first()
+        if (!model) return null
+        const resolvedModelUrl = model.iconStorageId
+          ? await ctx.storage.getUrl(model.iconStorageId)
+          : null
+        return {
+          modelSlug: ms.modelSlug,
+          modelName: model.name,
+          modelProvider: model.provider,
+          modelCategory: model.category,
+          modelIconUrl: resolvedModelUrl ?? model.iconUrl,
+          role: ms.role,
+          description: ms.description,
+        }
       })
-    }
+    )
+    const modelSubs = modelSubEntries.filter((s): s is NonNullable<typeof s> => s !== null)
 
     const pricing = await calculateStackPricing(ctx, stack.toolSubscriptions, stack.bundleSubscriptions ?? [])
 
@@ -583,8 +606,14 @@ export const getLandingStats = query({
     let totalCost = 0
     let stacksWithCost = 0
 
-    for (const stack of stacks) {
-      const pricing = await calculateStackPricing(ctx, stack.toolSubscriptions, stack.bundleSubscriptions ?? [])
+    const pricings = await Promise.all(
+      stacks.map((stack) =>
+        calculateStackPricing(ctx, stack.toolSubscriptions, stack.bundleSubscriptions ?? [])
+      )
+    )
+    for (let i = 0; i < stacks.length; i++) {
+      const stack = stacks[i]
+      const pricing = pricings[i]
       if (pricing.fixedTotal.amount) {
         totalCost += pricing.fixedTotal.amount
         stacksWithCost++
@@ -787,72 +816,87 @@ export const getBySlug = query({
     const creator = await ctx.db.get(stack.creatorId)
     if (!creator) return null
 
-    const tools = []
-    for (const sub of stack.toolSubscriptions) {
-      const tool = await ctx.db
-        .query('tools')
-        .withIndex('by_slug', (q) => q.eq('slug', sub.toolSlug))
-        .first()
-      if (!tool) continue
-      const toolTier = sub.tierId ? tool.tiers.find((t) => t.tierId === sub.tierId) : undefined
-      tools.push({
-        _id: tool._id,
-        name: tool.name,
-        slug: tool.slug,
-        categories: tool.categories,
-        iconUrl: tool.iconUrl,
-        websiteUrl: tool.websiteUrl,
-        price: sub.price,
-        originalTierPrice: toolTier?.pricing.fixed,
-        kind: sub.kind,
-        primaryUsageLabel: sub.primaryUsageLabel,
-        tierName: toolTier?.name ?? sub.tierId ?? '',
-        priceKind: sub.priceKind,
-        bundleSlug: sub.bundleSlug,
-        description: sub.description,
+    const toolEntries = await Promise.all(
+      stack.toolSubscriptions.map(async (sub) => {
+        const tool = await ctx.db
+          .query('tools')
+          .withIndex('by_slug', (q) => q.eq('slug', sub.toolSlug))
+          .first()
+        if (!tool) return null
+        const toolTier = sub.tierId ? tool.tiers.find((t) => t.tierId === sub.tierId) : undefined
+        const resolvedToolUrl = tool.iconStorageId
+          ? await ctx.storage.getUrl(tool.iconStorageId)
+          : null
+        return {
+          _id: tool._id,
+          name: tool.name,
+          slug: tool.slug,
+          categories: tool.categories,
+          iconUrl: resolvedToolUrl ?? tool.iconUrl,
+          websiteUrl: tool.websiteUrl,
+          price: sub.price,
+          originalTierPrice: toolTier?.pricing.fixed,
+          kind: sub.kind,
+          primaryUsageLabel: sub.primaryUsageLabel,
+          tierName: toolTier?.name ?? sub.tierId ?? '',
+          priceKind: sub.priceKind,
+          bundleSlug: sub.bundleSlug,
+          description: sub.description,
+        }
       })
-    }
+    )
+    const tools = toolEntries.filter((t): t is NonNullable<typeof t> => t !== null)
 
-    const bundles = []
-    for (const bs of stack.bundleSubscriptions ?? []) {
-      const bundle = await ctx.db
-        .query('bundles')
-        .withIndex('by_slug', (q) => q.eq('slug', bs.bundleSlug))
-        .first()
-      if (!bundle) continue
-      const tier = bundle.tiers.find((t) => t.tierId === bs.tierId)
-      if (!tier) continue
-      bundles.push({
-        _id: bundle._id,
-        name: bundle.name,
-        slug: bundle.slug,
-        iconUrl: bundle.iconUrl,
-        websiteUrl: bundle.websiteUrl,
-        tierId: bs.tierId,
-        tierName: tier.name,
-        price: tier.pricing,
-        description: bs.description,
+    const bundleEntries = await Promise.all(
+      (stack.bundleSubscriptions ?? []).map(async (bs) => {
+        const bundle = await ctx.db
+          .query('bundles')
+          .withIndex('by_slug', (q) => q.eq('slug', bs.bundleSlug))
+          .first()
+        if (!bundle) return null
+        const tier = bundle.tiers.find((t) => t.tierId === bs.tierId)
+        if (!tier) return null
+        const resolvedBundleUrl = bundle.iconStorageId
+          ? await ctx.storage.getUrl(bundle.iconStorageId)
+          : null
+        return {
+          _id: bundle._id,
+          name: bundle.name,
+          slug: bundle.slug,
+          iconUrl: resolvedBundleUrl ?? bundle.iconUrl,
+          websiteUrl: bundle.websiteUrl,
+          tierId: bs.tierId,
+          tierName: tier.name,
+          price: tier.pricing,
+          description: bs.description,
+        }
       })
-    }
+    )
+    const bundles = bundleEntries.filter((b): b is NonNullable<typeof b> => b !== null)
 
-    const models = []
-    for (const ms of stack.modelSubscriptions ?? []) {
-      const model = await ctx.db
-        .query('models')
-        .withIndex('by_slug', (q) => q.eq('slug', ms.modelSlug))
-        .first()
-      if (!model) continue
-      models.push({
-        _id: model._id,
-        name: model.name,
-        slug: model.slug,
-        provider: model.provider,
-        category: model.category,
-        iconUrl: model.iconUrl,
-        role: ms.role,
-        description: ms.description,
+    const modelEntries = await Promise.all(
+      (stack.modelSubscriptions ?? []).map(async (ms) => {
+        const model = await ctx.db
+          .query('models')
+          .withIndex('by_slug', (q) => q.eq('slug', ms.modelSlug))
+          .first()
+        if (!model) return null
+        const resolvedModelUrl = model.iconStorageId
+          ? await ctx.storage.getUrl(model.iconStorageId)
+          : null
+        return {
+          _id: model._id,
+          name: model.name,
+          slug: model.slug,
+          provider: model.provider,
+          category: model.category,
+          iconUrl: resolvedModelUrl ?? model.iconUrl,
+          role: ms.role,
+          description: ms.description,
+        }
       })
-    }
+    )
+    const models = modelEntries.filter((m): m is NonNullable<typeof m> => m !== null)
 
     const pricing = await calculateStackPricing(ctx, stack.toolSubscriptions, stack.bundleSubscriptions ?? [])
 

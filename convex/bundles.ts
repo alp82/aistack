@@ -1,23 +1,6 @@
-import { mutation, query, type QueryCtx } from './_generated/server'
+import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
-
-const SHORT_ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'
-const SHORT_ID_LENGTH = 6
-
-async function generateUniqueShortId(ctx: QueryCtx): Promise<string> {
-  for (let attempt = 0; attempt < 10; attempt++) {
-    let shortId = ''
-    for (let i = 0; i < SHORT_ID_LENGTH; i++) {
-      shortId += SHORT_ID_CHARS[Math.floor(Math.random() * SHORT_ID_CHARS.length)]
-    }
-    const existing = await ctx.db
-      .query('bundles')
-      .withIndex('by_shortId', (q) => q.eq('shortId', shortId))
-      .first()
-    if (!existing) return shortId
-  }
-  throw new Error('Failed to generate unique shortId after 10 attempts')
-}
+import { generateUniqueShortId } from './lib/ids'
 
 export const listAll = query({
   args: {},
@@ -60,18 +43,25 @@ export const listAll = query({
       .query('bundles')
       .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'approved'))
       .collect()
-    return bundles.map((b) => ({
-      _id: b._id,
-      name: b.name,
-      slug: b.slug,
-      shortId: b.shortId,
-      aliases: b.aliases,
-      description: b.description,
-      iconUrl: b.iconUrl,
-      websiteUrl: b.websiteUrl,
-      toolSlugs: b.toolSlugs,
-      tiers: b.tiers,
-    }))
+    return await Promise.all(
+      bundles.map(async (b) => {
+        const resolvedUrl = b.iconStorageId
+          ? await ctx.storage.getUrl(b.iconStorageId)
+          : null
+        return {
+          _id: b._id,
+          name: b.name,
+          slug: b.slug,
+          shortId: b.shortId,
+          aliases: b.aliases,
+          description: b.description,
+          iconUrl: resolvedUrl ?? b.iconUrl,
+          websiteUrl: b.websiteUrl,
+          toolSlugs: b.toolSlugs,
+          tiers: b.tiers,
+        }
+      })
+    )
   },
 })
 
@@ -122,26 +112,32 @@ export const listForEditor = query({
       .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'pending'))
       .collect()
     const all = [...approved, ...pending]
-    return all.map((b) => ({
-      _id: b._id,
-      name: b.name,
-      slug: b.slug,
-      shortId: b.shortId,
-      aliases: b.aliases,
-      description: b.description,
-      iconUrl: b.iconUrl,
-      websiteUrl: b.websiteUrl,
-      toolSlugs: b.toolSlugs,
-      tiers: b.tiers,
-      reviewStatus: b.reviewStatus,
-    }))
+    return await Promise.all(
+      all.map(async (b) => {
+        const resolvedUrl = b.iconStorageId
+          ? await ctx.storage.getUrl(b.iconStorageId)
+          : null
+        return {
+          _id: b._id,
+          name: b.name,
+          slug: b.slug,
+          shortId: b.shortId,
+          aliases: b.aliases,
+          description: b.description,
+          iconUrl: resolvedUrl ?? b.iconUrl,
+          websiteUrl: b.websiteUrl,
+          toolSlugs: b.toolSlugs,
+          tiers: b.tiers,
+          reviewStatus: b.reviewStatus,
+        }
+      })
+    )
   },
 })
 
 export const create = mutation({
   args: {
     name: v.string(),
-    iconUrl: v.optional(v.string()),
     description: v.optional(v.string()),
     websiteUrl: v.optional(v.string()),
     toolSlugs: v.array(v.string()),
@@ -215,13 +211,12 @@ export const create = mutation({
       isDefault: i === 0,
     }))
 
-    const shortId = await generateUniqueShortId(ctx)
+    const shortId = await generateUniqueShortId(ctx, 'bundles')
 
     return await ctx.db.insert('bundles', {
       name: args.name,
       slug,
       shortId,
-      iconUrl: args.iconUrl,
       description: args.description,
       websiteUrl: args.websiteUrl,
       toolSlugs: args.toolSlugs,

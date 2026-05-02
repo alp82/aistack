@@ -1,8 +1,21 @@
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { ArrowRight, Search } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
-import { ToolSphere } from "@/features/landing/components/ToolSphere";
+import {
+	lazy,
+	Suspense,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
+import { useMediaQuery } from "@/lib/useMediaQuery";
+
+const ToolSphere = lazy(() =>
+	import("@/features/landing/components/ToolSphere").then((m) => ({
+		default: m.ToolSphere,
+	})),
+);
 
 function HeroSection() {
 	const sectionRef = useRef<HTMLElement>(null);
@@ -10,6 +23,12 @@ function HeroSection() {
 		x: number;
 		y: number;
 	} | null>(null);
+	const [mounted, setMounted] = useState(false);
+	const isDesktop = useMediaQuery("(min-width: 768px)");
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
 
 	const handleMouseMove = useCallback((e: React.MouseEvent) => {
 		setMouseClient({ x: e.clientX, y: e.clientY });
@@ -29,7 +48,11 @@ function HeroSection() {
 			<div className="mx-auto w-full max-w-content relative">
 				{/* 3D Tool Sphere - positioned at right edge of max-w container on wide screens */}
 				<div className="absolute top-1/2 -translate-y-1/2 -mt-12 w-[500px] h-[500px] lg:w-[600px] lg:h-[600px] hidden md:block pointer-events-none right-0 translate-x-1/2 2xl:translate-x-0 2xl:right-[-100px]">
-					<ToolSphere mouseClient={mouseClient} />
+					{mounted && isDesktop ? (
+						<Suspense fallback={null}>
+							<ToolSphere mouseClient={mouseClient} />
+						</Suspense>
+					) : null}
 				</div>
 				<motion.div
 					initial={{ opacity: 0, y: 30 }}

@@ -48,7 +48,9 @@ export async function projectsCheck(
 		},
 	);
 	if (res.status === 401)
-		throw new Error("Authentication expired. Run `aistack login` again.");
+		throw new Error(
+			"Authentication expired. Run `npx @use-aistack/cli login` again.",
+		);
 	if (!res.ok) throw new Error(`Project check failed: ${res.status}`);
 	return res.json();
 }
@@ -63,7 +65,9 @@ export async function projectsCollect(
 		body: JSON.stringify(data),
 	});
 	if (res.status === 401)
-		throw new Error("Authentication expired. Run `aistack login` again.");
+		throw new Error(
+			"Authentication expired. Run `npx @use-aistack/cli login` again.",
+		);
 	if (!res.ok) {
 		throw new Error(await formatHttpError(res, "Collect failed"));
 	}

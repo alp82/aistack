@@ -3,16 +3,15 @@ import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 // @ts-ignore - components will be generated after convex dev restarts
 import { components } from './_generated/api'
-
-const ADMIN_EMAILS = ['alportac@gmail.com']
+import { isAdmin } from './lib/admin'
 
 async function getUserInfo(ctx: any, subjectOrTokenId: string | undefined) {
   if (!subjectOrTokenId) return null
   try {
-    const userId = subjectOrTokenId.includes('|') 
-      ? subjectOrTokenId.split('|')[1] 
+    const userId = subjectOrTokenId.includes('|')
+      ? subjectOrTokenId.split('|')[1]
       : subjectOrTokenId
-    
+
     const user = await ctx.runQuery(components.betterAuth.adapter.findOne, {
       model: 'user',
       where: [{ field: '_id', value: userId }],
@@ -28,21 +27,6 @@ async function getUserInfo(ctx: any, subjectOrTokenId: string | undefined) {
     // Fallback if user lookup fails
   }
   return null
-}
-
-async function isAdmin(ctx: any) {
-  const user = await ctx.auth.getUserIdentity()
-  if (!user) return false
-
-  if (ADMIN_EMAILS.includes(user.email)) return true
-
-  // Dev-only admin access via Convex IS_DEV env var
-  // (process.env.NODE_ENV is always 'production' in Convex runtime, even during local dev)
-  if (user.email === 'dev-admin@example.com' && process.env.IS_DEV === 'true') {
-    return true
-  }
-
-  return false
 }
 
 export const getPendingReviewCount = query({
@@ -145,7 +129,28 @@ export const getPendingTools = query({
     const toolsWithUserInfo = await Promise.all(
       tools.map(async (tool) => {
         const userInfo = await getUserInfo(ctx, tool.createdBy)
-        return { ...tool, submitterInfo: userInfo }
+        const resolvedUrl = tool.iconStorageId
+          ? await ctx.storage.getUrl(tool.iconStorageId)
+          : null
+        return {
+          _id: tool._id,
+          _creationTime: tool._creationTime,
+          name: tool.name,
+          slug: tool.slug,
+          shortId: tool.shortId,
+          aliases: tool.aliases,
+          categories: tool.categories,
+          iconStorageId: tool.iconStorageId,
+          iconUrl: resolvedUrl ?? tool.iconUrl,
+          websiteUrl: tool.websiteUrl,
+          affiliateUrl: tool.affiliateUrl,
+          tiers: tool.tiers,
+          reviewStatus: tool.reviewStatus,
+          createdBy: tool.createdBy,
+          createdAt: tool.createdAt,
+          updatedAt: tool.updatedAt,
+          submitterInfo: userInfo,
+        }
       })
     )
 
@@ -192,6 +197,7 @@ export const updateTool = mutation({
     categories: v.optional(v.array(v.string())),
     websiteUrl: v.optional(v.string()),
     iconUrl: v.optional(v.string()),
+    iconStorageId: v.optional(v.id('_storage')),
   },
   handler: async (ctx, args) => {
     if (!(await isAdmin(ctx))) {
@@ -213,6 +219,7 @@ export const updateToolFull = mutation({
     categories: v.array(v.string()),
     websiteUrl: v.optional(v.string()),
     iconUrl: v.optional(v.string()),
+    iconStorageId: v.optional(v.id('_storage')),
     tiers: v.array(
       v.object({
         name: v.string(),
@@ -252,6 +259,7 @@ export const updateToolFull = mutation({
       categories: args.categories,
       websiteUrl: args.websiteUrl,
       iconUrl: args.iconUrl,
+      iconStorageId: args.iconStorageId,
       tiers,
       updatedAt: now,
     })
@@ -276,6 +284,7 @@ export const updateModelFull = mutation({
     ),
     websiteUrl: v.optional(v.string()),
     iconUrl: v.optional(v.string()),
+    iconStorageId: v.optional(v.id('_storage')),
     contextWindow: v.optional(v.number()),
     description: v.optional(v.string()),
   },
@@ -291,6 +300,7 @@ export const updateModelFull = mutation({
       category: args.category,
       websiteUrl: args.websiteUrl,
       iconUrl: args.iconUrl,
+      iconStorageId: args.iconStorageId,
       contextWindow: args.contextWindow,
       description: args.description,
       updatedAt: now,
@@ -320,7 +330,28 @@ export const getPendingBundles = query({
     const bundlesWithUserInfo = await Promise.all(
       bundles.map(async (bundle) => {
         const userInfo = await getUserInfo(ctx, bundle.createdBy)
-        return { ...bundle, submitterInfo: userInfo }
+        const resolvedUrl = bundle.iconStorageId
+          ? await ctx.storage.getUrl(bundle.iconStorageId)
+          : null
+        return {
+          _id: bundle._id,
+          _creationTime: bundle._creationTime,
+          name: bundle.name,
+          slug: bundle.slug,
+          shortId: bundle.shortId,
+          aliases: bundle.aliases,
+          description: bundle.description,
+          iconStorageId: bundle.iconStorageId,
+          iconUrl: resolvedUrl ?? bundle.iconUrl,
+          websiteUrl: bundle.websiteUrl,
+          toolSlugs: bundle.toolSlugs,
+          tiers: bundle.tiers,
+          reviewStatus: bundle.reviewStatus,
+          createdBy: bundle.createdBy,
+          createdAt: bundle.createdAt,
+          updatedAt: bundle.updatedAt,
+          submitterInfo: userInfo,
+        }
       })
     )
 
@@ -334,6 +365,7 @@ export const updateBundleFull = mutation({
     name: v.string(),
     websiteUrl: v.optional(v.string()),
     iconUrl: v.optional(v.string()),
+    iconStorageId: v.optional(v.id('_storage')),
     tiers: v.array(
       v.object({
         name: v.string(),
@@ -372,6 +404,7 @@ export const updateBundleFull = mutation({
       name: args.name,
       websiteUrl: args.websiteUrl,
       iconUrl: args.iconUrl,
+      iconStorageId: args.iconStorageId,
       tiers,
       updatedAt: now,
     })
@@ -425,7 +458,29 @@ export const getPendingModels = query({
     const modelsWithUserInfo = await Promise.all(
       models.map(async (model) => {
         const userInfo = await getUserInfo(ctx, model.createdBy)
-        return { ...model, submitterInfo: userInfo }
+        const resolvedUrl = model.iconStorageId
+          ? await ctx.storage.getUrl(model.iconStorageId)
+          : null
+        return {
+          _id: model._id,
+          _creationTime: model._creationTime,
+          name: model.name,
+          slug: model.slug,
+          shortId: model.shortId,
+          aliases: model.aliases,
+          provider: model.provider,
+          category: model.category,
+          iconStorageId: model.iconStorageId,
+          iconUrl: resolvedUrl ?? model.iconUrl,
+          websiteUrl: model.websiteUrl,
+          contextWindow: model.contextWindow,
+          description: model.description,
+          reviewStatus: model.reviewStatus,
+          createdBy: model.createdBy,
+          createdAt: model.createdAt,
+          updatedAt: model.updatedAt,
+          submitterInfo: userInfo,
+        }
       })
     )
 
@@ -481,6 +536,9 @@ export const getPendingToolEditSuggestions = query({
       suggestions.map(async (suggestion) => {
         const tool = await ctx.db.get(suggestion.toolId)
         const userInfo = await getUserInfo(ctx, suggestion.submittedBy)
+        const resolvedUrl = tool?.iconStorageId
+          ? await ctx.storage.getUrl(tool.iconStorageId)
+          : null
         return {
           ...suggestion,
           originalTool: tool ? {
@@ -488,7 +546,8 @@ export const getPendingToolEditSuggestions = query({
             name: tool.name,
             categories: tool.categories,
             websiteUrl: tool.websiteUrl,
-            iconUrl: tool.iconUrl,
+            iconStorageId: tool.iconStorageId,
+            iconUrl: resolvedUrl ?? tool.iconUrl,
             tiers: tool.tiers,
           } : null,
           submitterInfo: userInfo,

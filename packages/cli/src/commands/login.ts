@@ -45,7 +45,7 @@ export async function loginCommand() {
 				s.stop(lime("Authenticated"));
 				saveToken(result.token, result.userId);
 				p.log.success(
-					`Token saved. Run ${limeBold("aistack collect")} to get started.`,
+					`Token saved. Run ${limeBold("npx @use-aistack/cli collect")} to get started.`,
 				);
 				outro(lime("done"));
 				return;

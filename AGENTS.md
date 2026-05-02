@@ -24,3 +24,23 @@ This is a webapp for sharing AI Stacks so that users can compare and choose the 
 * Convex
 * Better Auth
 * Resend
+
+## Icon Migration
+
+After seeding (or any time `iconUrl` rows on tools/models/bundles need to be
+moved into Convex storage), run:
+
+```sh
+# Dev (whatever deploy `convex dev` is currently pointing at):
+pnpm tsx scripts/migrate-icons.ts
+
+# Self-hosted prod - make sure .env exists, deploy code first, then run:
+npx convex deploy
+pnpm tsx scripts/migrate-icons.ts
+```
+
+The script is idempotent — a second run skips every row that already has an
+`iconStorageId`. Data URIs are decoded, http URLs are fetched (8s timeout),
+ICOs are decoded via `decode-ico` (largest entry), and everything is sharp'd
+to 512×512 WebP q80 and uploaded. Data-URI sources are cleared from
+`iconUrl`; http-URL sources are kept as the canonical source.

@@ -25,7 +25,9 @@ import { Route as ToolsNewRouteImport } from './routes/tools_.new'
 import { Route as StacksNewRouteImport } from './routes/stacks.new'
 import { Route as StacksSlugRouteImport } from './routes/stacks.$slug'
 import { Route as CliAuthRouteImport } from './routes/cli.auth'
+import { Route as AdminIconsRouteImport } from './routes/admin_.icons'
 import { Route as StacksSlugEditRouteImport } from './routes/stacks.$slug_.edit'
+import { Route as ApiIconsFromUrlRouteImport } from './routes/api.icons.from-url'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 import { Route as StacksSlugProjectsProjectSlugRouteImport } from './routes/stacks.$slug_.projects.$projectSlug'
 import { Route as ApiOgStackSlugRouteImport } from './routes/api.og.stack.$slug'
@@ -115,9 +117,19 @@ const CliAuthRoute = CliAuthRouteImport.update({
   path: '/cli/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIconsRoute = AdminIconsRouteImport.update({
+  id: '/admin_/icons',
+  path: '/admin/icons',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StacksSlugEditRoute = StacksSlugEditRouteImport.update({
   id: '/stacks/$slug_/edit',
   path: '/stacks/$slug/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIconsFromUrlRoute = ApiIconsFromUrlRouteImport.update({
+  id: '/api/icons/from-url',
+  path: '/api/icons/from-url',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -173,6 +185,7 @@ export interface FileRoutesByFullPath {
   '/signin-publish': typeof SigninPublishRoute
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
+  '/admin/icons': typeof AdminIconsRoute
   '/cli/auth': typeof CliAuthRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
@@ -180,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
   '/stacks': typeof StacksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/stacks/$slug/edit': typeof StacksSlugEditRoute
   '/api/cli/auth/poll': typeof ApiCliAuthPollRoute
   '/api/cli/auth/start': typeof ApiCliAuthStartRoute
@@ -200,6 +214,7 @@ export interface FileRoutesByTo {
   '/signin-publish': typeof SigninPublishRoute
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
+  '/admin/icons': typeof AdminIconsRoute
   '/cli/auth': typeof CliAuthRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
@@ -207,6 +222,7 @@ export interface FileRoutesByTo {
   '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
   '/stacks': typeof StacksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/stacks/$slug/edit': typeof StacksSlugEditRoute
   '/api/cli/auth/poll': typeof ApiCliAuthPollRoute
   '/api/cli/auth/start': typeof ApiCliAuthStartRoute
@@ -228,6 +244,7 @@ export interface FileRoutesById {
   '/signin-publish': typeof SigninPublishRoute
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
+  '/admin_/icons': typeof AdminIconsRoute
   '/cli/auth': typeof CliAuthRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
@@ -235,6 +252,7 @@ export interface FileRoutesById {
   '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
   '/stacks/': typeof StacksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/stacks/$slug_/edit': typeof StacksSlugEditRoute
   '/api/cli/auth/poll': typeof ApiCliAuthPollRoute
   '/api/cli/auth/start': typeof ApiCliAuthStartRoute
@@ -257,6 +275,7 @@ export interface FileRouteTypes {
     | '/signin-publish'
     | '/test'
     | '/tools'
+    | '/admin/icons'
     | '/cli/auth'
     | '/stacks/$slug'
     | '/stacks/new'
@@ -264,6 +283,7 @@ export interface FileRouteTypes {
     | '/waitlist/$lookupId'
     | '/stacks'
     | '/api/auth/$'
+    | '/api/icons/from-url'
     | '/stacks/$slug/edit'
     | '/api/cli/auth/poll'
     | '/api/cli/auth/start'
@@ -284,6 +304,7 @@ export interface FileRouteTypes {
     | '/signin-publish'
     | '/test'
     | '/tools'
+    | '/admin/icons'
     | '/cli/auth'
     | '/stacks/$slug'
     | '/stacks/new'
@@ -291,6 +312,7 @@ export interface FileRouteTypes {
     | '/waitlist/$lookupId'
     | '/stacks'
     | '/api/auth/$'
+    | '/api/icons/from-url'
     | '/stacks/$slug/edit'
     | '/api/cli/auth/poll'
     | '/api/cli/auth/start'
@@ -311,6 +333,7 @@ export interface FileRouteTypes {
     | '/signin-publish'
     | '/test'
     | '/tools'
+    | '/admin_/icons'
     | '/cli/auth'
     | '/stacks/$slug'
     | '/stacks/new'
@@ -318,6 +341,7 @@ export interface FileRouteTypes {
     | '/waitlist/$lookupId'
     | '/stacks/'
     | '/api/auth/$'
+    | '/api/icons/from-url'
     | '/stacks/$slug_/edit'
     | '/api/cli/auth/poll'
     | '/api/cli/auth/start'
@@ -339,6 +363,7 @@ export interface RootRouteChildren {
   SigninPublishRoute: typeof SigninPublishRoute
   TestRoute: typeof TestRoute
   ToolsRoute: typeof ToolsRoute
+  AdminIconsRoute: typeof AdminIconsRoute
   CliAuthRoute: typeof CliAuthRoute
   StacksSlugRoute: typeof StacksSlugRoute
   StacksNewRoute: typeof StacksNewRoute
@@ -346,6 +371,7 @@ export interface RootRouteChildren {
   WaitlistLookupIdRoute: typeof WaitlistLookupIdRoute
   StacksIndexRoute: typeof StacksIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiIconsFromUrlRoute: typeof ApiIconsFromUrlRoute
   StacksSlugEditRoute: typeof StacksSlugEditRoute
   ApiCliAuthPollRoute: typeof ApiCliAuthPollRoute
   ApiCliAuthStartRoute: typeof ApiCliAuthStartRoute
@@ -470,11 +496,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CliAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin_/icons': {
+      id: '/admin_/icons'
+      path: '/admin/icons'
+      fullPath: '/admin/icons'
+      preLoaderRoute: typeof AdminIconsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/stacks/$slug_/edit': {
       id: '/stacks/$slug_/edit'
       path: '/stacks/$slug/edit'
       fullPath: '/stacks/$slug/edit'
       preLoaderRoute: typeof StacksSlugEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/icons/from-url': {
+      id: '/api/icons/from-url'
+      path: '/api/icons/from-url'
+      fullPath: '/api/icons/from-url'
+      preLoaderRoute: typeof ApiIconsFromUrlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
@@ -547,6 +587,7 @@ const rootRouteChildren: RootRouteChildren = {
   SigninPublishRoute: SigninPublishRoute,
   TestRoute: TestRoute,
   ToolsRoute: ToolsRoute,
+  AdminIconsRoute: AdminIconsRoute,
   CliAuthRoute: CliAuthRoute,
   StacksSlugRoute: StacksSlugRoute,
   StacksNewRoute: StacksNewRoute,
@@ -554,6 +595,7 @@ const rootRouteChildren: RootRouteChildren = {
   WaitlistLookupIdRoute: WaitlistLookupIdRoute,
   StacksIndexRoute: StacksIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiIconsFromUrlRoute: ApiIconsFromUrlRoute,
   StacksSlugEditRoute: StacksSlugEditRoute,
   ApiCliAuthPollRoute: ApiCliAuthPollRoute,
   ApiCliAuthStartRoute: ApiCliAuthStartRoute,

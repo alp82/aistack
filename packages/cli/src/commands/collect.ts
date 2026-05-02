@@ -36,7 +36,9 @@ export async function collectCommand(options: { global: boolean }) {
 
 	const token = getToken();
 	if (!token) {
-		p.log.error(`Not authenticated. Run ${limeBold("aistack login")} first.`);
+		p.log.error(
+			`Not authenticated. Run ${limeBold("npx @use-aistack/cli login")} first.`,
+		);
 		outroError("not authenticated");
 		process.exit(1);
 	}

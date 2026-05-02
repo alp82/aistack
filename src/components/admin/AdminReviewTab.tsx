@@ -1,13 +1,13 @@
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { Check, X, Edit2, Package, Wrench, Brain, Pencil } from "lucide-react";
+import { useMutation, useQuery } from "convex/react";
+import { Brain, Check, Edit2, Package, Pencil, Wrench, X } from "lucide-react";
 import { useState } from "react";
-import type { Id } from "../../../convex/_generated/dataModel";
-import { AddToolModal, type ToolData } from "../AddToolModal";
-import { AddModelForm, type ModelData } from "../AddModelModal";
-import { AddBundleModal, type BundleData } from "../AddBundleModal";
-import { Dialog } from "../ui/Dialog";
 import { ItemIcon } from "@/components/ItemIcon";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+import { AddBundleModal, type BundleData } from "../AddBundleModal";
+import { AddModelForm, type ModelData } from "../AddModelModal";
+import { AddToolModal, type ToolData } from "../AddToolModal";
+import { Dialog } from "../ui/Dialog";
 
 export function AdminReviewTab() {
 	const pendingTools = useQuery(api.admin.getPendingTools);
@@ -346,6 +346,8 @@ export function AdminReviewTab() {
 														categories: suggestion.suggestedCategories,
 														websiteUrl: suggestion.suggestedWebsiteUrl,
 														iconUrl: suggestion.originalTool!.iconUrl,
+														iconStorageId:
+															suggestion.originalTool!.iconStorageId,
 														tiers: suggestion.suggestedTiers.map((t, i) => ({
 															tierId: `tier-${i + 1}`,
 															name: t.name,
@@ -624,6 +626,7 @@ export function AdminReviewTab() {
 													name: bundle.name,
 													websiteUrl: bundle.websiteUrl,
 													iconUrl: bundle.iconUrl,
+													iconStorageId: bundle.iconStorageId,
 													tiers: bundle.tiers,
 												})
 											}

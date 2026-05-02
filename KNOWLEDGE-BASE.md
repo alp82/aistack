@@ -1,6 +1,7 @@
 ~/.claude/research/ai-coding-quality-systems-2026-03.md
 
 agent & skill standards:
+https://ecc.tools
 https://skills.sh
     https://skills.sh/mattpocock/skills/grill-me
     https://skills.sh/mattpocock/skills/write-a-prd
@@ -15,6 +16,7 @@ https://buildermethods.com/agent-os
 https://github.com/eljulians/skillfile
 https://github.com/addyosmani/agent-skills
 https://www.youtube.com/watch?v=0cVuMHaYEHE
+https://github.com/AlemTuzlak/skills/tree/main
 https://agentclientprotocol.com/get-started/clients
 https://www.augmentcode.com/blog/how-to-write-good-agents-dot-md-files
 
@@ -29,6 +31,7 @@ https://addy-ade.com
 https://superterm.dev
 https://www.emdash.sh
 https://paperclip.ing
+https://www.dpcode.cc
 https://www.warp.dev/oz1
 https://getpolyscope.com
 https://thecommander.app
@@ -41,6 +44,7 @@ https://github.com/RightNow-AI/openfang
 https://www.augmentcode.com/product/intent
 https://code.claude.com/docs/en/agent-teams
 https://github.com/GoogleCloudPlatform/scion
+https://github.com/codejunkie99/agentic-stack
 https://github.com/JackChen-me/open-multi-agent
 https://x.com/juristr/status/2031820737745682520
 https://github.com/andyrewlee/awesome-agent-orchestrators
@@ -59,6 +63,9 @@ https://x.com/yenkel/status/2032098351567487037
 https://nx.dev/blog/why-we-deleted-most-of-our-mcp-tools
 https://chrlschn.dev/blog/2026/03/mcp-is-dead-long-live-mcp/
 https://claude.com/blog/building-agents-that-reach-production-systems-with-mcp
+
+troubleshooting & browser usage:
+https://skills.sh/browserbase/skills/browser-trace
 
 writing good instructions:
 https://www.hlyr.dev/blog/writing-a-good-claude-md
@@ -85,11 +92,15 @@ https://www.aihero.dev/tracer-bullets
 https://x.com/i/status/2044548257058328723
 https://hannahstulberg.substack.com/p/claude-code-for-everything-why-ai
 
+demo videos:
+https://github.com/AlemTuzlak/skills/tree/main/skills/remotion-video
+
 design/frontend:
 gemini 3.1 pro canvas
 https://katagami.ai
 https://www.typeui.sh
 https://www.pencil.dev
+https://motionsites.ai
 https://x.com/i/status/2035508816461074883
 https://github.com/VoltAgent/awesome-design-md
 https://x.com/tkkong/status/2034368184036561160
@@ -99,8 +110,9 @@ https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skil
 Tiny cute isometric cowboy hat emoji, shape, soft lighting, soft pastel colors, brown, 3d icon clay render, blender 3d, pastel background
 ```
 
-planning with prototypes:
+prototypes & research:
 https://willness.dev/blog/prototype-before-you-build
+https://github.com/evo-hq/evo
 
 structuring rules:
 https://www.aihero.dev/never-run-claude-init
@@ -177,6 +189,8 @@ https://x.com/i/status/2030636384156086564
 
 web scraping:
 https://scrapling.readthedocs.io/en/latest/
+https://github.com/h4ckf0r0day/obscura
+https://cloakbrowser.dev/
 https://crawlee.dev
 https://webclaw.io
 firecrawl

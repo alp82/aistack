@@ -2,45 +2,55 @@
 
 Share and clone AI development configurations (prompts, rules, skills, MCP setups).
 
-## Install
+Run on-demand with `npx` — no install required:
 
 ```sh
 npx @use-aistack/cli <command>
 ```
 
-Or install globally:
-
-```sh
-npm i -g @use-aistack/cli
-```
-
 ## Commands
 
-### `aistack login`
+### `npx @use-aistack/cli login`
 
 Authenticate with your AI Stack account via browser.
 
 ```sh
-aistack login
+npx @use-aistack/cli login
 ```
 
-### `aistack collect`
+### `npx @use-aistack/cli collect`
 
 Scan your project for AI config files and upload them.
 
 ```sh
 cd your-project
-aistack collect
+npx @use-aistack/cli collect
 ```
 
 Detects: `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, `.cursor/rules/`, `mcp.json`, skill directories, prompts, and global configs (`~/.claude/`, `~/.cursor/`, etc).
 
-### `aistack create <slug>`
+### `npx @use-aistack/cli create <slug>`
 
 Clone a shared project's AI config files into your current directory.
 
 ```sh
-aistack create my-project-abc123
+npx @use-aistack/cli create my-project-abc123
+```
+
+## Install globally (optional)
+
+If you'd rather type `aistack` instead of `npx @use-aistack/cli` every time, install it globally:
+
+```sh
+npm i -g @use-aistack/cli
+```
+
+Then the same commands become:
+
+```sh
+aistack login
+aistack collect
+aistack create <slug>
 ```
 
 ## Development

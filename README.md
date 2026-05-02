@@ -42,54 +42,60 @@ AI Stack has two surfaces that work together:
 Typical flow:
 
 - Sign up on the web app, create a stack, add a project to it.
-- Run `aistack collect` inside your repo to upload your `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, skills, MCP configs, etc.
-- Share the project link. Others run `aistack create <slug>` to clone your AI setup into their own project.
+- Run `npx @use-aistack/cli collect` inside your repo to upload your `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, skills, MCP configs, etc.
+- Share the project link. Others run `npx @use-aistack/cli create <slug>` to clone your AI setup into their own project.
 
 ## 💻 CLI
 
-The CLI is published to npm as [`@use-aistack/cli`](https://www.npmjs.com/package/@use-aistack/cli).
-
-### Install
-
-Run it on-demand with `npx`:
+The CLI is published to npm as [`@use-aistack/cli`](https://www.npmjs.com/package/@use-aistack/cli). Run it on-demand with `npx` — no install required:
 
 ```sh
 npx @use-aistack/cli <command>
 ```
 
-Or install globally:
-
-```sh
-npm i -g @use-aistack/cli
-```
-
 ### Commands
 
-#### `aistack login`
+#### `npx @use-aistack/cli login`
 
 Authenticate with your AI Stack account via browser.
 
 ```sh
-aistack login
+npx @use-aistack/cli login
 ```
 
-#### `aistack collect`
+#### `npx @use-aistack/cli collect`
 
 Scan the current project for AI config files and upload them to one of your projects on aistack.to.
 
 ```sh
 cd your-project
-aistack collect
+npx @use-aistack/cli collect
 ```
 
 Detects: `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, `.cursor/rules/`, `mcp.json`, skill directories, prompts, and global configs (`~/.claude/`, `~/.cursor/`, etc).
 
-#### `aistack create <slug>`
+#### `npx @use-aistack/cli create <slug>`
 
 Clone a shared project's AI config files into your current directory.
 
 ```sh
-aistack create alper-ortac-unw0sl
+npx @use-aistack/cli create alper-ortac-unw0sl
+```
+
+### Install globally (optional)
+
+If you'd rather type `aistack` instead of `npx @use-aistack/cli` every time, install it globally:
+
+```sh
+npm i -g @use-aistack/cli
+```
+
+Then the same commands become:
+
+```sh
+aistack login
+aistack collect
+aistack create <slug>
 ```
 
 ---

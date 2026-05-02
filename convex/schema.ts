@@ -86,6 +86,7 @@ export default defineSchema({
     aliases: v.optional(v.array(v.string())),
     categories: v.array(v.string()),
     iconUrl: v.optional(v.string()),
+    iconStorageId: v.optional(v.id('_storage')),
     websiteUrl: v.optional(v.string()),
     affiliateUrl: v.optional(v.string()),
     tiers: v.array(
@@ -187,6 +188,7 @@ export default defineSchema({
     aliases: v.optional(v.array(v.string())),
     description: v.optional(v.string()),
     iconUrl: v.optional(v.string()),
+    iconStorageId: v.optional(v.id('_storage')),
     websiteUrl: v.optional(v.string()),
     toolSlugs: v.array(v.string()),
     tiers: v.array(
@@ -241,6 +243,7 @@ export default defineSchema({
     provider: v.string(),
     category: ModelCategory,
     iconUrl: v.optional(v.string()),
+    iconStorageId: v.optional(v.id('_storage')),
     websiteUrl: v.optional(v.string()),
     contextWindow: v.optional(v.number()),
     description: v.optional(v.string()),

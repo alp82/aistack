@@ -1,10 +1,18 @@
 import { useMutation } from "convex/react";
 import { Check, ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Dialog } from "./ui/Dialog";
+import {
+	IconUploadField,
+	type IconValue,
+} from "@/components/forms/IconUploadField";
+import {
+	createEmptyTier,
+	type TierFormData,
+} from "@/components/forms/tierForm";
 import { categoryConfig, type ToolCategory } from "@/config/categoryConfig";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { Dialog } from "./ui/Dialog";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import {
@@ -17,32 +25,13 @@ import {
 
 const categories = Object.keys(categoryConfig) as ToolCategory[];
 
-interface TierFormData {
-	id: string;
-	name: string;
-	pricingType: "fixed" | "usage" | "mixed";
-	fixedAmount: number;
-	fixedPeriod: "month" | "year" | "one_time";
-	isDefault: boolean;
-}
-
-function createEmptyTier(isDefault = false): TierFormData {
-	return {
-		id: crypto.randomUUID(),
-		name: "",
-		pricingType: "fixed",
-		fixedAmount: 0,
-		fixedPeriod: "month",
-		isDefault,
-	};
-}
-
 export interface ToolData {
 	_id: Id<"tools">;
 	name: string;
 	categories: string[];
 	websiteUrl?: string;
 	iconUrl?: string;
+	iconStorageId?: Id<"_storage">;
 	tiers: Array<{
 		tierId: string;
 		name: string;
@@ -94,7 +83,7 @@ export function AddToolForm({
 	const [name, setName] = useState("");
 	const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 	const [websiteUrl, setWebsiteUrl] = useState("");
-	const [iconUrl, setIconUrl] = useState("");
+	const [iconValue, setIconValue] = useState<IconValue>(null);
 	const [tiers, setTiers] = useState<TierFormData[]>([createEmptyTier(true)]);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState("");
@@ -114,7 +103,10 @@ export function AddToolForm({
 			setName(editTool.name);
 			setSelectedCategories(editTool.categories ?? []);
 			setWebsiteUrl(editTool.websiteUrl || "");
-			setIconUrl(editTool.iconUrl || "");
+			setIconValue({
+				iconStorageId: editTool.iconStorageId,
+				iconUrl: editTool.iconUrl,
+			});
 			setTiers(
 				editTool.tiers.map((t) => ({
 					id: t.tierId,
@@ -161,7 +153,8 @@ export function AddToolForm({
 		// In admin edit mode, enforce all required fields
 		if (isEditMode && isAdmin) {
 			if (!websiteUrl.trim()) errors.websiteUrl = true;
-			if (!iconUrl.trim()) errors.iconUrl = true;
+			if (!iconValue?.iconStorageId && !iconValue?.iconUrl)
+				errors.iconUrl = true;
 			if (selectedCategories.length === 0) errors.categories = true;
 			if (!tiers.some((t) => t.name.trim())) errors.tiers = true;
 		}
@@ -173,7 +166,8 @@ export function AddToolForm({
 			if (errors.websiteUrl) msgs.push("Website URL is required");
 			if (errors.iconUrl) msgs.push("Icon URL is required");
 			if (errors.categories) msgs.push("At least one category is required");
-			if (errors.tiers) msgs.push("At least one pricing tier with a name is required");
+			if (errors.tiers)
+				msgs.push("At least one pricing tier with a name is required");
 			setError(msgs.join(". "));
 			return;
 		}
@@ -207,7 +201,8 @@ export function AddToolForm({
 					name: name.trim(),
 					categories: selectedCategories,
 					websiteUrl: websiteUrl.trim() || undefined,
-					iconUrl: iconUrl.trim() || undefined,
+					iconUrl: iconValue?.iconUrl?.trim() || undefined,
+					iconStorageId: iconValue?.iconStorageId,
 					tiers: formattedTiers,
 				});
 				onToolUpdated?.(editTool._id);
@@ -279,8 +274,7 @@ export function AddToolForm({
 								value={name}
 								onChange={(e) => {
 									setName(e.target.value);
-									if (validationErrors.name)
-										setValidationErrors({});
+									if (validationErrors.name) setValidationErrors({});
 								}}
 								placeholder="e.g. Cursor, Claude, Windsurf"
 								className={`h-10 bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime ${validationErrors.name ? "border-destructive" : "border-stroke-subtle"}`}
@@ -300,7 +294,10 @@ export function AddToolForm({
 								onChange={(e) => {
 									setWebsiteUrl(e.target.value);
 									if (validationErrors.websiteUrl)
-										setValidationErrors((prev) => ({ ...prev, websiteUrl: false }));
+										setValidationErrors((prev) => ({
+											...prev,
+											websiteUrl: false,
+										}));
 								}}
 								placeholder="https://example.com"
 								className={`h-10 bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime ${validationErrors.websiteUrl ? "border-destructive" : "border-stroke-subtle"}`}
@@ -309,46 +306,21 @@ export function AddToolForm({
 					</div>
 
 					{isAdmin && (
-						<div className="space-y-2">
-							<Label
-								htmlFor="tool-icon"
-								className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
-							>
-								Icon URL{isEditMode ? " *" : ""}
-							</Label>
-							<div className="flex items-center gap-3">
-								{iconUrl.trim() ? (
-									<img
-										src={iconUrl.trim()}
-										alt="Icon preview"
-										className="size-10 shrink-0 rounded border border-stroke-subtle object-contain p-0.5"
-										onError={(e) => {
-											(e.target as HTMLImageElement).style.display = "none";
-										}}
-										onLoad={(e) => {
-											(e.target as HTMLImageElement).style.display = "block";
-										}}
-									/>
-								) : (
-									<div className={`flex size-10 shrink-0 items-center justify-center rounded border bg-bg-panel-muted ${validationErrors.iconUrl ? "border-destructive" : "border-stroke-subtle"}`}>
-										<span className="font-mono text-[10px] text-fg-muted">
-											Icon
-										</span>
-									</div>
-								)}
-								<Input
-									id="tool-icon"
-									value={iconUrl}
-									onChange={(e) => {
-										setIconUrl(e.target.value);
-										if (validationErrors.iconUrl)
-											setValidationErrors((prev) => ({ ...prev, iconUrl: false }));
-									}}
-									placeholder="https://example.com/icon.png"
-									className={`h-10 bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime ${validationErrors.iconUrl ? "border-destructive" : "border-stroke-subtle"}`}
-								/>
-							</div>
-						</div>
+						<IconUploadField
+							label="Icon"
+							required={isEditMode}
+							error={validationErrors.iconUrl}
+							value={iconValue}
+							onChange={(next) => {
+								setIconValue(next);
+								if (validationErrors.iconUrl) {
+									setValidationErrors((prev) => ({
+										...prev,
+										iconUrl: false,
+									}));
+								}
+							}}
+						/>
 					)}
 				</fieldset>
 
@@ -379,7 +351,9 @@ export function AddToolForm({
 					<>
 						{/* Categories */}
 						<fieldset className="space-y-3">
-							<legend className={`font-mono text-[10px] font-semibold uppercase tracking-widest ${validationErrors.categories ? "text-destructive" : "text-accent-lime"}`}>
+							<legend
+								className={`font-mono text-[10px] font-semibold uppercase tracking-widest ${validationErrors.categories ? "text-destructive" : "text-accent-lime"}`}
+							>
 								Categories{isEditMode && isAdmin ? " *" : ""}
 							</legend>
 							<div className="flex flex-wrap gap-2">
@@ -412,7 +386,9 @@ export function AddToolForm({
 						{/* Pricing Tiers */}
 						<fieldset className="space-y-4">
 							<div className="flex items-center justify-between">
-								<legend className={`font-mono text-[10px] font-semibold uppercase tracking-widest ${validationErrors.tiers ? "text-destructive" : "text-accent-lime"}`}>
+								<legend
+									className={`font-mono text-[10px] font-semibold uppercase tracking-widest ${validationErrors.tiers ? "text-destructive" : "text-accent-lime"}`}
+								>
 									Pricing Tiers{isEditMode && isAdmin ? " *" : ""}
 								</legend>
 								<button
@@ -469,7 +445,10 @@ export function AddToolForm({
 													onChange={(e) => {
 														updateTier(tier.id, { name: e.target.value });
 														if (validationErrors.tiers)
-															setValidationErrors((prev) => ({ ...prev, tiers: false }));
+															setValidationErrors((prev) => ({
+																...prev,
+																tiers: false,
+															}));
 													}}
 													placeholder="e.g. Free, Pro"
 													className={`h-9 bg-bg-panel font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime ${validationErrors.tiers && !tier.name.trim() ? "border-destructive" : "border-stroke-subtle"}`}

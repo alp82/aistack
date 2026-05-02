@@ -1,7 +1,9 @@
 # TODO
-* bug in stack page: sticky tools header on top of scrolling listed items (Jay)
+* logos storage
+* show who upvoted
 * CLI workflow
-    + all instructions all with npx
+    * uploaded files don't appear in project
+    * custom instructions cards disappear after saving and even destroy next header
     * hide/ignore env sections in mcp.json
     * https://www.codacy.com/ai-inventory
     * https://github.com/dyoshikawa/rulesync
@@ -10,14 +12,17 @@
     * npx aistack login
     * npx aistack collect
     * npx aistack create
-* models page
-    * easy adding models
 * stacks and projects structure
-    https://elio.devS
-    * nicer cards - with remove button
-    * mermaid diagrams
+    * use https://trees.software
+    * project card ugly
+    * nicer description cards - with remove button
     * model card: replace with other version
     * reorder tools and models
+    * project back navigation more obvious
+    * mermaid diagrams
+* https://elio.devS
+* models page
+    * easy adding models
 * price tiers for sibling products: claude code vs claude ai
 * ai stack knowledge/learning area
     * article grid with nice bg borders: https://www.aihero.dev/posts

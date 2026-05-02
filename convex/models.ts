@@ -1,24 +1,7 @@
-import { mutation, query, type QueryCtx } from './_generated/server'
+import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { slugifyAscii } from '../src/lib/slug'
-
-const SHORT_ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'
-const SHORT_ID_LENGTH = 6
-
-async function generateUniqueShortId(ctx: QueryCtx): Promise<string> {
-  for (let attempt = 0; attempt < 10; attempt++) {
-    let shortId = ''
-    for (let i = 0; i < SHORT_ID_LENGTH; i++) {
-      shortId += SHORT_ID_CHARS[Math.floor(Math.random() * SHORT_ID_CHARS.length)]
-    }
-    const existing = await ctx.db
-      .query('models')
-      .withIndex('by_shortId', (q) => q.eq('shortId', shortId))
-      .first()
-    if (!existing) return shortId
-  }
-  throw new Error('Failed to generate unique shortId after 10 attempts')
-}
+import { generateUniqueShortId } from './lib/ids'
 
 const ModelCategory = v.union(
   v.literal('language'),
@@ -54,19 +37,26 @@ export const listAll = query({
       .query('models')
       .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'approved'))
       .collect()
-    return models.map((m) => ({
-      _id: m._id,
-      name: m.name,
-      slug: m.slug,
-      shortId: m.shortId,
-      aliases: m.aliases,
-      provider: m.provider,
-      category: m.category,
-      iconUrl: m.iconUrl,
-      websiteUrl: m.websiteUrl,
-      contextWindow: m.contextWindow,
-      description: m.description,
-    }))
+    return await Promise.all(
+      models.map(async (m) => {
+        const resolvedUrl = m.iconStorageId
+          ? await ctx.storage.getUrl(m.iconStorageId)
+          : null
+        return {
+          _id: m._id,
+          name: m.name,
+          slug: m.slug,
+          shortId: m.shortId,
+          aliases: m.aliases,
+          provider: m.provider,
+          category: m.category,
+          iconUrl: resolvedUrl ?? m.iconUrl,
+          websiteUrl: m.websiteUrl,
+          contextWindow: m.contextWindow,
+          description: m.description,
+        }
+      })
+    )
   },
 })
 
@@ -76,6 +66,7 @@ export const getFirstByProvider = query({
 		v.object({
 			websiteUrl: v.optional(v.string()),
 			iconUrl: v.optional(v.string()),
+			iconStorageId: v.optional(v.id('_storage')),
 		}),
 		v.null()
 	),
@@ -86,9 +77,13 @@ export const getFirstByProvider = query({
 			.filter((q) => q.eq(q.field('provider'), args.provider))
 			.first();
 		if (!model) return null;
+		const resolvedUrl = model.iconStorageId
+			? await ctx.storage.getUrl(model.iconStorageId)
+			: null;
 		return {
 			websiteUrl: model.websiteUrl,
-			iconUrl: model.iconUrl,
+			iconUrl: resolvedUrl ?? model.iconUrl,
+			iconStorageId: model.iconStorageId,
 		};
 	},
 });
@@ -121,20 +116,27 @@ export const listForEditor = query({
       .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'pending'))
       .collect()
     const all = [...approved, ...pending]
-    return all.map((m) => ({
-      _id: m._id,
-      name: m.name,
-      slug: m.slug,
-      shortId: m.shortId,
-      aliases: m.aliases,
-      provider: m.provider,
-      category: m.category,
-      iconUrl: m.iconUrl,
-      websiteUrl: m.websiteUrl,
-      contextWindow: m.contextWindow,
-      description: m.description,
-      reviewStatus: m.reviewStatus,
-    }))
+    return await Promise.all(
+      all.map(async (m) => {
+        const resolvedUrl = m.iconStorageId
+          ? await ctx.storage.getUrl(m.iconStorageId)
+          : null
+        return {
+          _id: m._id,
+          name: m.name,
+          slug: m.slug,
+          shortId: m.shortId,
+          aliases: m.aliases,
+          provider: m.provider,
+          category: m.category,
+          iconUrl: resolvedUrl ?? m.iconUrl,
+          websiteUrl: m.websiteUrl,
+          contextWindow: m.contextWindow,
+          description: m.description,
+          reviewStatus: m.reviewStatus,
+        }
+      })
+    )
   },
 })
 
@@ -185,7 +187,7 @@ export const create = mutation({
       suffix++
     }
 
-    const shortId = await generateUniqueShortId(ctx)
+    const shortId = await generateUniqueShortId(ctx, 'models')
 
     const modelId = await ctx.db.insert('models', {
       name: args.name,

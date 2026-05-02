@@ -1,24 +1,7 @@
-import { mutation, query, type QueryCtx } from './_generated/server'
+import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { slugifyAscii } from '../src/lib/slug'
-
-const SHORT_ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'
-const SHORT_ID_LENGTH = 6
-
-async function generateUniqueShortId(ctx: QueryCtx): Promise<string> {
-  for (let attempt = 0; attempt < 10; attempt++) {
-    let shortId = ''
-    for (let i = 0; i < SHORT_ID_LENGTH; i++) {
-      shortId += SHORT_ID_CHARS[Math.floor(Math.random() * SHORT_ID_CHARS.length)]
-    }
-    const existing = await ctx.db
-      .query('tools')
-      .withIndex('by_shortId', (q) => q.eq('shortId', shortId))
-      .first()
-    if (!existing) return shortId
-  }
-  throw new Error('Failed to generate unique shortId after 10 attempts')
-}
+import { generateUniqueShortId } from './lib/ids'
 
 export const listAll = query({
   args: {},
@@ -62,18 +45,25 @@ export const listAll = query({
       .query('tools')
       .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'approved'))
       .collect()
-    return tools.map((t) => ({
-      _id: t._id,
-      name: t.name,
-      slug: t.slug,
-      shortId: t.shortId,
-      aliases: t.aliases,
-      categories: t.categories,
-      iconUrl: t.iconUrl,
-      websiteUrl: t.websiteUrl,
-      tiers: t.tiers,
-      createdAt: t.createdAt,
-    }))
+    return await Promise.all(
+      tools.map(async (t) => {
+        const resolvedUrl = t.iconStorageId
+          ? await ctx.storage.getUrl(t.iconStorageId)
+          : null
+        return {
+          _id: t._id,
+          name: t.name,
+          slug: t.slug,
+          shortId: t.shortId,
+          aliases: t.aliases,
+          categories: t.categories,
+          iconUrl: resolvedUrl ?? t.iconUrl,
+          websiteUrl: t.websiteUrl,
+          tiers: t.tiers,
+          createdAt: t.createdAt,
+        }
+      })
+    )
   },
 })
 
@@ -125,19 +115,26 @@ export const listForEditor = query({
       .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'pending'))
       .collect()
     const all = [...approved, ...pending]
-    return all.map((t) => ({
-      _id: t._id,
-      name: t.name,
-      slug: t.slug,
-      shortId: t.shortId,
-      aliases: t.aliases,
-      categories: t.categories,
-      iconUrl: t.iconUrl,
-      websiteUrl: t.websiteUrl,
-      tiers: t.tiers,
-      createdAt: t.createdAt,
-      reviewStatus: t.reviewStatus,
-    }))
+    return await Promise.all(
+      all.map(async (t) => {
+        const resolvedUrl = t.iconStorageId
+          ? await ctx.storage.getUrl(t.iconStorageId)
+          : null
+        return {
+          _id: t._id,
+          name: t.name,
+          slug: t.slug,
+          shortId: t.shortId,
+          aliases: t.aliases,
+          categories: t.categories,
+          iconUrl: resolvedUrl ?? t.iconUrl,
+          websiteUrl: t.websiteUrl,
+          tiers: t.tiers,
+          createdAt: t.createdAt,
+          reviewStatus: t.reviewStatus,
+        }
+      })
+    )
   },
 })
 
@@ -215,7 +212,7 @@ export const create = mutation({
       updatedAt: now,
     }))
 
-    const shortId = await generateUniqueShortId(ctx)
+    const shortId = await generateUniqueShortId(ctx, 'tools')
 
     return await ctx.db.insert('tools', {
       name: args.name,

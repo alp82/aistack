@@ -1,9 +1,17 @@
 import { useMutation } from "convex/react";
-import { Check, ChevronDown, ChevronRight, Package, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Dialog } from "./ui/Dialog";
+import {
+	IconUploadField,
+	type IconValue,
+} from "@/components/forms/IconUploadField";
+import {
+	createEmptyTier,
+	type TierFormData,
+} from "@/components/forms/tierForm";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { Dialog } from "./ui/Dialog";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import {
@@ -14,31 +22,12 @@ import {
 	SelectValue,
 } from "./ui/select";
 
-interface TierFormData {
-	id: string;
-	name: string;
-	pricingType: "fixed" | "usage" | "mixed";
-	fixedAmount: number;
-	fixedPeriod: "month" | "year" | "one_time";
-	isDefault: boolean;
-}
-
-function createEmptyTier(isDefault = false): TierFormData {
-	return {
-		id: crypto.randomUUID(),
-		name: "",
-		pricingType: "fixed",
-		fixedAmount: 0,
-		fixedPeriod: "month",
-		isDefault,
-	};
-}
-
 export interface BundleData {
 	_id: Id<"bundles">;
 	name: string;
 	websiteUrl?: string;
 	iconUrl?: string;
+	iconStorageId?: Id<"_storage">;
 	tiers: Array<{
 		tierId: string;
 		name: string;
@@ -75,7 +64,7 @@ export function AddBundleForm({
 
 	const [name, setName] = useState("");
 	const [websiteUrl, setWebsiteUrl] = useState("");
-	const [iconUrl, setIconUrl] = useState("");
+	const [iconValue, setIconValue] = useState<IconValue>(null);
 	const [tiers, setTiers] = useState<TierFormData[]>([createEmptyTier(true)]);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState("");
@@ -91,7 +80,10 @@ export function AddBundleForm({
 		if (editBundle) {
 			setName(editBundle.name);
 			setWebsiteUrl(editBundle.websiteUrl || "");
-			setIconUrl(editBundle.iconUrl || "");
+			setIconValue({
+				iconStorageId: editBundle.iconStorageId,
+				iconUrl: editBundle.iconUrl,
+			});
 			setTiers(
 				editBundle.tiers.length > 0
 					? editBundle.tiers.map((t) => ({
@@ -141,7 +133,8 @@ export function AddBundleForm({
 		// In admin edit mode, enforce required fields
 		if (isEditMode && isAdmin) {
 			if (!websiteUrl.trim()) errors.websiteUrl = true;
-			if (!iconUrl.trim()) errors.iconUrl = true;
+			if (!iconValue?.iconStorageId && !iconValue?.iconUrl)
+				errors.iconUrl = true;
 			if (!tiers.some((t) => t.name.trim())) errors.tiers = true;
 		}
 
@@ -151,7 +144,8 @@ export function AddBundleForm({
 			if (errors.name) msgs.push("Bundle name is required");
 			if (errors.websiteUrl) msgs.push("Website URL is required");
 			if (errors.iconUrl) msgs.push("Icon URL is required");
-			if (errors.tiers) msgs.push("At least one pricing tier with a name is required");
+			if (errors.tiers)
+				msgs.push("At least one pricing tier with a name is required");
 			setError(msgs.join(". "));
 			return;
 		}
@@ -159,17 +153,18 @@ export function AddBundleForm({
 		setError("");
 		setSaving(true);
 
-		const formattedTiers = (showDetails || isEditMode)
-			? tiers
-					.filter((t) => t.name.trim())
-					.map((t) => ({
-						name: t.name.trim(),
-						pricingType: t.pricingType,
-						...(t.pricingType === "fixed" || t.pricingType === "mixed"
-							? { fixedAmount: t.fixedAmount, fixedPeriod: t.fixedPeriod }
-							: {}),
-					}))
-			: [];
+		const formattedTiers =
+			showDetails || isEditMode
+				? tiers
+						.filter((t) => t.name.trim())
+						.map((t) => ({
+							name: t.name.trim(),
+							pricingType: t.pricingType,
+							...(t.pricingType === "fixed" || t.pricingType === "mixed"
+								? { fixedAmount: t.fixedAmount, fixedPeriod: t.fixedPeriod }
+								: {}),
+						}))
+				: [];
 
 		try {
 			if (isEditMode && editBundle && isAdmin) {
@@ -177,7 +172,8 @@ export function AddBundleForm({
 					bundleId: editBundle._id,
 					name: name.trim(),
 					websiteUrl: websiteUrl.trim() || undefined,
-					iconUrl: iconUrl.trim() || undefined,
+					iconUrl: iconValue?.iconUrl?.trim() || undefined,
+					iconStorageId: iconValue?.iconStorageId,
 					tiers: formattedTiers,
 				});
 				onBundleUpdated?.(editBundle._id);
@@ -191,7 +187,9 @@ export function AddBundleForm({
 				onBundleCreated(bundleId, name.trim());
 			}
 		} catch (err) {
-			let errorMessage = isEditMode ? "Failed to update bundle" : "Failed to create bundle";
+			let errorMessage = isEditMode
+				? "Failed to update bundle"
+				: "Failed to create bundle";
 			if (err instanceof Error) {
 				const match = err.message.match(/Uncaught Error: (.+?)(?:\s+at\s+|$)/);
 				errorMessage = match ? match[1] : err.message;
@@ -262,7 +260,10 @@ export function AddBundleForm({
 								onChange={(e) => {
 									setWebsiteUrl(e.target.value);
 									if (validationErrors.websiteUrl)
-										setValidationErrors((prev) => ({ ...prev, websiteUrl: false }));
+										setValidationErrors((prev) => ({
+											...prev,
+											websiteUrl: false,
+										}));
 								}}
 								placeholder="https://..."
 								type="url"
@@ -271,46 +272,23 @@ export function AddBundleForm({
 						</div>
 					</div>
 
-					{/* Icon URL — always shown in edit mode */}
+					{/* Icon — admin edit only */}
 					{isEditMode && isAdmin && (
-						<div className="space-y-2">
-							<Label
-								htmlFor="bundle-icon"
-								className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary"
-							>
-								Icon URL *
-							</Label>
-							<div className="flex items-center gap-3">
-								{iconUrl.trim() ? (
-									<img
-										src={iconUrl.trim()}
-										alt="Icon preview"
-										className="size-10 shrink-0 rounded border border-stroke-subtle object-contain p-0.5"
-										onError={(e) => {
-											(e.target as HTMLImageElement).style.display = "none";
-										}}
-										onLoad={(e) => {
-											(e.target as HTMLImageElement).style.display = "block";
-										}}
-									/>
-								) : (
-									<div className="flex size-10 shrink-0 items-center justify-center border border-stroke-subtle bg-bg-panel-muted">
-										<Package className="size-5 text-fg-muted" />
-									</div>
-								)}
-								<Input
-									id="bundle-icon"
-									value={iconUrl}
-									onChange={(e) => {
-										setIconUrl(e.target.value);
-										if (validationErrors.iconUrl)
-											setValidationErrors((prev) => ({ ...prev, iconUrl: false }));
-									}}
-									placeholder="https://example.com/icon.png"
-									className={`h-10 bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime ${validationErrors.iconUrl ? "border-destructive" : "border-stroke-subtle"}`}
-								/>
-							</div>
-						</div>
+						<IconUploadField
+							label="Icon"
+							required
+							error={validationErrors.iconUrl}
+							value={iconValue}
+							onChange={(next) => {
+								setIconValue(next);
+								if (validationErrors.iconUrl) {
+									setValidationErrors((prev) => ({
+										...prev,
+										iconUrl: false,
+									}));
+								}
+							}}
+						/>
 					)}
 				</fieldset>
 
@@ -398,7 +376,10 @@ export function AddBundleForm({
 												onChange={(e) => {
 													updateTier(tier.id, { name: e.target.value });
 													if (validationErrors.tiers)
-														setValidationErrors((prev) => ({ ...prev, tiers: false }));
+														setValidationErrors((prev) => ({
+															...prev,
+															tiers: false,
+														}));
 												}}
 												placeholder="e.g. Monthly, Annual"
 												className={`h-9 bg-bg-panel font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime ${validationErrors.tiers && !tier.name.trim() ? "border-destructive" : "border-stroke-subtle"}`}
@@ -506,7 +487,8 @@ export function AddBundleForm({
 					</div>
 					{!isEditMode && (
 						<p className="text-center text-xs text-fg-muted">
-							Your bundle submission will be reviewed before it appears publicly.
+							Your bundle submission will be reviewed before it appears
+							publicly.
 						</p>
 					)}
 				</div>
