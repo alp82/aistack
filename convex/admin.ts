@@ -4,6 +4,8 @@ import type { Id } from './_generated/dataModel'
 // @ts-ignore - components will be generated after convex dev restarts
 import { components } from './_generated/api'
 import { isAdmin } from './lib/admin'
+import { assertValidIconUrl } from './lib/iconUrl'
+import { buildTiers } from './lib/tiers'
 
 async function getUserInfo(ctx: any, subjectOrTokenId: string | undefined) {
   if (!subjectOrTokenId) return null
@@ -235,24 +237,7 @@ export const updateToolFull = mutation({
     }
 
     const now = Date.now()
-    const tiers = args.tiers.map((t, i) => ({
-      tierId: `tier-${i + 1}`,
-      name: t.name,
-      pricing: {
-        pricingType: t.pricingType,
-        ...(t.pricingType === 'fixed' || t.pricingType === 'mixed'
-          ? {
-              fixed: {
-                currency: 'USD',
-                amount: t.fixedAmount ?? 0,
-                period: t.fixedPeriod ?? ('month' as const),
-              },
-            }
-          : {}),
-      },
-      isDefault: i === 0,
-      updatedAt: now,
-    }))
+    const tiers = buildTiers(args.tiers, now)
 
     await ctx.db.patch(args.toolId, {
       name: args.name,
@@ -381,24 +366,7 @@ export const updateBundleFull = mutation({
     }
 
     const now = Date.now()
-    const tiers = args.tiers.map((t, i) => ({
-      tierId: `tier-${i + 1}`,
-      name: t.name,
-      pricing: {
-        pricingType: t.pricingType,
-        ...(t.pricingType === 'fixed' || t.pricingType === 'mixed'
-          ? {
-              fixed: {
-                currency: 'USD',
-                amount: t.fixedAmount ?? 0,
-                period: t.fixedPeriod ?? ('month' as const),
-              },
-            }
-          : {}),
-      },
-      isDefault: i === 0,
-      updatedAt: now,
-    }))
+    const tiers = buildTiers(args.tiers, now)
 
     await ctx.db.patch(args.bundleId, {
       name: args.name,
@@ -536,11 +504,18 @@ export const getPendingToolEditSuggestions = query({
       suggestions.map(async (suggestion) => {
         const tool = await ctx.db.get(suggestion.toolId)
         const userInfo = await getUserInfo(ctx, suggestion.submittedBy)
-        const resolvedUrl = tool?.iconStorageId
-          ? await ctx.storage.getUrl(tool.iconStorageId)
-          : null
+        const [resolvedUrl, resolvedSuggestedIconUrl] = await Promise.all([
+          tool?.iconStorageId
+            ? ctx.storage.getUrl(tool.iconStorageId)
+            : Promise.resolve(null),
+          suggestion.suggestedIconStorageId
+            ? ctx.storage.getUrl(suggestion.suggestedIconStorageId)
+            : Promise.resolve(null),
+        ])
         return {
           ...suggestion,
+          suggestedIconUrl:
+            resolvedSuggestedIconUrl ?? suggestion.suggestedIconUrl,
           originalTool: tool ? {
             _id: tool._id,
             name: tool.name,
@@ -576,32 +551,23 @@ export const approveToolEditSuggestion = mutation({
     if (!tool) throw new Error('Tool not found')
 
     const now = Date.now()
-    const tiers = suggestion.suggestedTiers.map((t, i) => ({
-      tierId: `tier-${i + 1}`,
-      name: t.name,
-      pricing: {
-        pricingType: t.pricingType,
-        ...(t.pricingType === 'fixed' || t.pricingType === 'mixed'
-          ? {
-              fixed: {
-                currency: 'USD',
-                amount: t.fixedAmount ?? 0,
-                period: t.fixedPeriod ?? ('month' as const),
-              },
-            }
-          : {}),
-      },
-      isDefault: i === 0,
-      updatedAt: now,
-    }))
+    const tiers = buildTiers(suggestion.suggestedTiers, now)
 
-    await ctx.db.patch(suggestion.toolId, {
+    const patch: any = {
       name: suggestion.suggestedName,
       categories: suggestion.suggestedCategories,
       websiteUrl: suggestion.suggestedWebsiteUrl,
       tiers,
       updatedAt: now,
-    })
+    }
+    const iconWasProposed =
+      suggestion.suggestedIconStorageId !== undefined ||
+      suggestion.suggestedIconUrl !== undefined
+    if (iconWasProposed) {
+      patch.iconStorageId = suggestion.suggestedIconStorageId
+      patch.iconUrl = suggestion.suggestedIconUrl
+    }
+    await ctx.db.patch(suggestion.toolId, patch)
 
     await ctx.db.patch(args.suggestionId, {
       status: 'approved',
@@ -621,6 +587,19 @@ export const rejectToolEditSuggestion = mutation({
     }
 
     const user = await ctx.auth.getUserIdentity()
+
+    // Re-fetch the row immediately before delete to mitigate races against
+    // concurrent updateToolEditSuggestion calls that swap the icon blob.
+    const current = await ctx.db.get(args.suggestionId)
+    if (!current) throw new Error('Suggestion not found')
+
+    if (current.suggestedIconStorageId) {
+      try {
+        await ctx.storage.delete(current.suggestedIconStorageId)
+      } catch (e) {
+        console.warn('icon blob already gone or deletion failed:', e)
+      }
+    }
 
     await ctx.db.patch(args.suggestionId, {
       status: 'rejected',
@@ -743,6 +722,9 @@ export const updateToolEditSuggestion = mutation({
     suggestedName: v.string(),
     suggestedCategories: v.array(v.string()),
     suggestedWebsiteUrl: v.optional(v.string()),
+    iconTouched: v.optional(v.boolean()),
+    suggestedIconStorageId: v.optional(v.id('_storage')),
+    suggestedIconUrl: v.optional(v.string()),
     suggestedTiers: v.array(
       v.object({
         name: v.string(),
@@ -760,11 +742,26 @@ export const updateToolEditSuggestion = mutation({
     const suggestion = await ctx.db.get(args.suggestionId)
     if (!suggestion) throw new Error('Suggestion not found')
 
-    await ctx.db.patch(args.suggestionId, {
+    if (args.suggestedIconUrl !== undefined && args.suggestedIconUrl !== '') {
+      assertValidIconUrl(args.suggestedIconUrl)
+    }
+
+    const patch: any = {
       suggestedName: args.suggestedName,
       suggestedCategories: args.suggestedCategories,
       suggestedWebsiteUrl: args.suggestedWebsiteUrl,
       suggestedTiers: args.suggestedTiers,
-    })
+    }
+    // Only mutate the icon fields if the admin explicitly touched the icon
+    // input. This prevents stale signed URLs (resolved server-side for the
+    // diff card) from being persisted into the suggestion row when the admin
+    // edited unrelated fields. iconTouched defaults to false when missing
+    // (legacy callers).
+    if (args.iconTouched) {
+      patch.suggestedIconStorageId = args.suggestedIconStorageId
+      patch.suggestedIconUrl = args.suggestedIconUrl
+    }
+
+    await ctx.db.patch(args.suggestionId, patch)
   },
 })

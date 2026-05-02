@@ -105,10 +105,17 @@ export async function assertSafePublicUrl(rawUrl: string): Promise<URL> {
 	const hostname = parsed.hostname;
 	if (!hostname) throw new Error("URL has no hostname");
 
+	// WHATWG URL keeps IPv6 brackets in `hostname`; strip them so net.isIP
+	// can recognize the literal form.
+	const bareHost =
+		hostname.startsWith("[") && hostname.endsWith("]")
+			? hostname.slice(1, -1)
+			: hostname;
+
 	// If the hostname is a literal IP, validate it directly.
-	const family = net.isIP(hostname);
+	const family = net.isIP(bareHost);
 	if (family !== 0) {
-		if (isBlockedIp(hostname)) {
+		if (isBlockedIp(bareHost)) {
 			throw new Error("URL resolves to a blocked address");
 		}
 		return parsed;

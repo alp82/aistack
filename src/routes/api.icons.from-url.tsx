@@ -114,18 +114,17 @@ export const Route = createFileRoute("/api/icons/from-url")({
 					return jsonError(400, "url is required");
 				}
 
-				// Admin gate via the existing checkIsAdmin Convex query, which
-				// already enforces the same allowlist used elsewhere.
-				let isAdmin = false;
+				// Authenticated-user gate. Suggestion submitters need icon-from-URL
+				// fetch too, so we no longer require the admin role. Validate the
+				// token server-side via Convex (not just presence) so revoked
+				// sessions are rejected.
+				let isAuthed = false;
 				try {
-					isAdmin = (await fetchAuthQuery(
-						api.admin.checkIsAdmin,
-						{},
-					)) as boolean;
+					isAuthed = await fetchAuthQuery(api.auth.isAuthenticated, {});
 				} catch {
-					isAdmin = false;
+					isAuthed = false;
 				}
-				if (!isAdmin) {
+				if (!isAuthed) {
 					return jsonError(401, "Unauthorized");
 				}
 

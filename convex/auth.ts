@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth'
 import { magicLink } from 'better-auth/plugins'
 import { createClient } from '@convex-dev/better-auth'
 import { convex } from '@convex-dev/better-auth/plugins'
+import { v } from 'convex/values'
 import authConfig from './auth.config'
 import { query } from './_generated/server'
 import type { GenericCtx } from '@convex-dev/better-auth'
@@ -109,5 +110,18 @@ export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
     return await authComponent.getAuthUser(ctx)
+  },
+})
+
+/**
+ * Lightweight auth-presence check used by server routes that need to gate
+ * authenticated users without leaking admin-only details. Returns true iff
+ * the request carries a valid Convex auth identity.
+ */
+export const isAuthenticated = query({
+  args: {},
+  returns: v.boolean(),
+  handler: async (ctx) => {
+    return (await ctx.auth.getUserIdentity()) !== null
   },
 })

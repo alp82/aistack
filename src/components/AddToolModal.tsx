@@ -51,6 +51,9 @@ interface SuggestionFormData {
 	name: string;
 	categories: string[];
 	websiteUrl?: string;
+	iconStorageId?: Id<"_storage">;
+	iconUrl?: string;
+	iconTouched: boolean;
 	tiers: Array<{
 		name: string;
 		pricingType: "fixed" | "usage" | "mixed";
@@ -84,6 +87,7 @@ export function AddToolForm({
 	const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 	const [websiteUrl, setWebsiteUrl] = useState("");
 	const [iconValue, setIconValue] = useState<IconValue>(null);
+	const [iconTouched, setIconTouched] = useState(false);
 	const [tiers, setTiers] = useState<TierFormData[]>([createEmptyTier(true)]);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState("");
@@ -107,6 +111,7 @@ export function AddToolForm({
 				iconStorageId: editTool.iconStorageId,
 				iconUrl: editTool.iconUrl,
 			});
+			setIconTouched(false);
 			setTiers(
 				editTool.tiers.map((t) => ({
 					id: t.tierId,
@@ -193,6 +198,13 @@ export function AddToolForm({
 					name: name.trim(),
 					categories: selectedCategories,
 					websiteUrl: websiteUrl.trim() || undefined,
+					iconTouched,
+					...(iconTouched
+						? {
+								iconStorageId: iconValue?.iconStorageId,
+								iconUrl: iconValue?.iconUrl?.trim() || undefined,
+							}
+						: {}),
 					tiers: formattedTiers,
 				});
 			} else if (isEditMode && editTool) {
@@ -313,6 +325,7 @@ export function AddToolForm({
 							value={iconValue}
 							onChange={(next) => {
 								setIconValue(next);
+								setIconTouched(true);
 								if (validationErrors.iconUrl) {
 									setValidationErrors((prev) => ({
 										...prev,

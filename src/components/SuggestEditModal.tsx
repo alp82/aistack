@@ -1,10 +1,19 @@
-import { useMutation } from "convex/react";
-import { Check, Pencil, Plus, Trash2 } from "lucide-react";
+import { Link, useLocation } from "@tanstack/react-router";
+import { useConvexAuth, useMutation } from "convex/react";
+import { Check, Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Dialog } from "./ui/Dialog";
+import {
+	IconUploadField,
+	type IconValue,
+} from "@/components/forms/IconUploadField";
+import {
+	createEmptyTier,
+	type TierFormData,
+} from "@/components/forms/tierForm";
 import { categoryConfig, type ToolCategory } from "@/config/categoryConfig";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { Dialog } from "./ui/Dialog";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import {
@@ -17,29 +26,13 @@ import {
 
 const categories = Object.keys(categoryConfig) as ToolCategory[];
 
-interface TierFormData {
-	id: string;
-	name: string;
-	pricingType: "fixed" | "usage" | "mixed";
-	fixedAmount: number;
-	fixedPeriod: "month" | "year" | "one_time";
-}
-
-function createEmptyTier(): TierFormData {
-	return {
-		id: crypto.randomUUID(),
-		name: "",
-		pricingType: "fixed",
-		fixedAmount: 0,
-		fixedPeriod: "month",
-	};
-}
-
 export interface ToolForSuggestion {
 	_id: Id<"tools">;
 	name: string;
 	categories: string[];
 	websiteUrl?: string;
+	iconUrl?: string;
+	iconStorageId?: Id<"_storage">;
 	tiers: Array<{
 		tierId: string;
 		name: string;
@@ -66,10 +59,14 @@ export function SuggestEditModal({
 	tool,
 	onSuggestionSubmitted,
 }: SuggestEditModalProps) {
+	const { isAuthenticated } = useConvexAuth();
+	const location = useLocation();
 	const suggestEdit = useMutation(api.tools.suggestEdit);
 	const [name, setName] = useState("");
 	const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 	const [websiteUrl, setWebsiteUrl] = useState("");
+	const [iconValue, setIconValue] = useState<IconValue>(null);
+	const [iconTouched, setIconTouched] = useState(false);
 	const [tiers, setTiers] = useState<TierFormData[]>([]);
 	const [reason, setReason] = useState("");
 	const [saving, setSaving] = useState(false);
@@ -81,6 +78,11 @@ export function SuggestEditModal({
 			setName(tool.name);
 			setSelectedCategories(tool.categories ?? []);
 			setWebsiteUrl(tool.websiteUrl || "");
+			setIconValue({
+				iconStorageId: tool.iconStorageId,
+				iconUrl: tool.iconUrl,
+			});
+			setIconTouched(false);
 			setTiers(
 				tool.tiers.map((t) => ({
 					id: t.tierId,
@@ -88,6 +90,7 @@ export function SuggestEditModal({
 					pricingType: t.pricing.pricingType,
 					fixedAmount: t.pricing.fixed?.amount ?? 0,
 					fixedPeriod: t.pricing.fixed?.period ?? "month",
+					isDefault: false,
 				})),
 			);
 			setReason("");
@@ -143,6 +146,12 @@ export function SuggestEditModal({
 				suggestedWebsiteUrl: websiteUrl.trim() || undefined,
 				suggestedTiers: formattedTiers,
 				reason: reason.trim() || undefined,
+				...(iconTouched
+					? {
+							suggestedIconStorageId: iconValue?.iconStorageId,
+							suggestedIconUrl: iconValue?.iconUrl,
+						}
+					: {}),
 			});
 			setSuccess(true);
 			onSuggestionSubmitted?.();
@@ -169,204 +178,193 @@ export function SuggestEditModal({
 			title={`Suggest Edit for ${tool.name}`}
 			titleIcon={<Pencil className="size-5 text-accent-lime" />}
 		>
-			<p className="font-mono text-xs text-fg-muted mb-6">
-				Propose changes to this tool. Your suggestion will be reviewed by an
-				admin.
-			</p>
-
-			{success ? (
+			{!isAuthenticated ? (
 				<div className="flex flex-col items-center justify-center py-12">
 					<div className="size-16 rounded-full bg-accent-lime/20 flex items-center justify-center mb-4">
-						<Check className="size-8 text-accent-lime" />
+						<Lock className="size-8 text-accent-lime" />
 					</div>
 					<h3 className="font-mono text-lg font-bold text-fg-primary mb-2">
-						Suggestion Submitted!
+						Sign in to suggest edits
 					</h3>
-					<p className="font-mono text-sm text-fg-muted">
-						Thank you for helping improve our tool database.
+					<p className="font-mono text-sm text-fg-muted mb-6 text-center">
+						You need an account to propose changes to this tool.
 					</p>
+					<Link
+						to="/signin"
+						search={{ redirect: location.pathname }}
+						className="w-full max-w-xs"
+					>
+						<button
+							type="button"
+							className="w-full border-2 border-accent-lime bg-accent-lime px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong"
+						>
+							Sign In
+						</button>
+					</Link>
 				</div>
 			) : (
 				<>
-					{error && (
-						<div className="mb-4 border border-destructive/30 bg-destructive/10 p-3 font-mono text-xs text-destructive">
-							{error}
+					<p className="font-mono text-xs text-fg-muted mb-6">
+						Propose changes to this tool. Your suggestion will be reviewed by an
+						admin.
+					</p>
+
+					{success ? (
+						<div className="flex flex-col items-center justify-center py-12">
+							<div className="size-16 rounded-full bg-accent-lime/20 flex items-center justify-center mb-4">
+								<Check className="size-8 text-accent-lime" />
+							</div>
+							<h3 className="font-mono text-lg font-bold text-fg-primary mb-2">
+								Suggestion Submitted!
+							</h3>
+							<p className="font-mono text-sm text-fg-muted">
+								Thank you for helping improve our tool database.
+							</p>
 						</div>
-					)}
-
-					<form onSubmit={handleSubmit} className="space-y-6">
-						{/* Basic Information */}
-						<fieldset className="space-y-4">
-							<legend className="font-mono text-[10px] font-semibold uppercase tracking-widest text-accent-lime">
-								Basic Information
-							</legend>
-
-							<div className="grid grid-cols-2 gap-4">
-								<div className="space-y-2">
-									<Label className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
-										Tool Name *
-									</Label>
-									<Input
-										value={name}
-										onChange={(e) => setName(e.target.value)}
-										placeholder="e.g. Cursor, Claude, Windsurf"
-										className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
-										required
-									/>
+					) : (
+						<>
+							{error && (
+								<div className="mb-4 border border-destructive/30 bg-destructive/10 p-3 font-mono text-xs text-destructive">
+									{error}
 								</div>
+							)}
 
-								<div className="space-y-2">
-									<Label className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
-										Website URL
-									</Label>
-									<Input
-										value={websiteUrl}
-										onChange={(e) => setWebsiteUrl(e.target.value)}
-										placeholder="https://example.com"
-										className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
-									/>
-								</div>
-							</div>
+							<form onSubmit={handleSubmit} className="space-y-6">
+								{/* Basic Information */}
+								<fieldset className="space-y-4">
+									<legend className="font-mono text-[10px] font-semibold uppercase tracking-widest text-accent-lime">
+										Basic Information
+									</legend>
 
-							<div className="space-y-2">
-								<Label className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
-									Categories *
-								</Label>
-								<div className="flex flex-wrap gap-2">
-									{categories.map((cat) => {
-										const isSelected = selectedCategories.includes(cat);
-										return (
-											<button
-												key={cat}
-												type="button"
-												onClick={() => {
-													setSelectedCategories((prev) =>
-														isSelected
-															? prev.filter((c) => c !== cat)
-															: [...prev, cat],
-													);
-												}}
-												className={`px-3 py-1.5 font-mono text-xs uppercase tracking-wide border transition-colors ${
-													isSelected
-														? "border-accent-lime bg-accent-lime/20 text-accent-lime"
-														: "border-stroke-subtle bg-bg-panel-muted text-fg-muted hover:border-fg-muted"
-												}`}
-											>
-												{categoryConfig[cat].label}
-											</button>
-										);
-									})}
-								</div>
-							</div>
-						</fieldset>
-
-						{/* Pricing Tiers */}
-						<fieldset className="space-y-4">
-							<div className="flex items-center justify-between">
-								<legend className="font-mono text-[10px] font-semibold uppercase tracking-widest text-accent-lime">
-									Pricing Tiers
-								</legend>
-								<button
-									type="button"
-									onClick={addTier}
-									className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-xs uppercase tracking-wide border border-stroke-subtle text-fg-muted hover:border-accent-lime hover:text-accent-lime transition-colors"
-								>
-									<Plus className="size-3" />
-									Add Tier
-								</button>
-							</div>
-
-							<div className="space-y-3">
-								{tiers.map((tier, index) => (
-									<div
-										key={tier.id}
-										className="border border-stroke-subtle bg-bg-panel-muted p-4 space-y-3"
-									>
-										<div className="flex items-center justify-between gap-4">
-											<span className="font-mono text-[10px] text-fg-muted uppercase tracking-wider">
-												Tier {index + 1}
-											</span>
-											{tiers.length > 1 && (
-												<button
-													type="button"
-													onClick={() => removeTier(tier.id)}
-													className="p-1.5 text-fg-muted hover:text-destructive transition-colors"
-												>
-													<Trash2 className="size-4" />
-												</button>
-											)}
+									<div className="grid grid-cols-2 gap-4">
+										<div className="space-y-2">
+											<Label className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
+												Tool Name *
+											</Label>
+											<Input
+												value={name}
+												onChange={(e) => setName(e.target.value)}
+												placeholder="e.g. Cursor, Claude, Windsurf"
+												className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
+												required
+											/>
 										</div>
 
-										<div className="grid grid-cols-4 gap-3">
-											<div className="space-y-1.5">
-												<Label className="font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">
-													Tier Name *
-												</Label>
-												<Input
-													value={tier.name}
-													onChange={(e) =>
-														updateTier(tier.id, { name: e.target.value })
-													}
-													placeholder="e.g. Free, Pro"
-													className="h-9 border-stroke-subtle bg-bg-panel font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
-												/>
-											</div>
+										<div className="space-y-2">
+											<Label className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
+												Website URL
+											</Label>
+											<Input
+												value={websiteUrl}
+												onChange={(e) => setWebsiteUrl(e.target.value)}
+												placeholder="https://example.com"
+												className="h-10 border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
+											/>
+										</div>
+									</div>
 
-											<div className="space-y-1.5">
-												<Label className="font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">
-													Pricing Type
-												</Label>
-												<Select
-													value={tier.pricingType}
-													onValueChange={(v) =>
-														updateTier(tier.id, {
-															pricingType: v as "fixed" | "usage" | "mixed",
-														})
-													}
-												>
-													<SelectTrigger className="h-9 border-stroke-subtle bg-bg-panel font-mono text-sm text-fg-primary">
-														<SelectValue />
-													</SelectTrigger>
-													<SelectContent>
-														<SelectItem value="fixed">Fixed</SelectItem>
-														<SelectItem value="usage">Usage</SelectItem>
-														<SelectItem value="mixed">Mixed</SelectItem>
-													</SelectContent>
-												</Select>
-											</div>
+									<IconUploadField
+										label="Icon"
+										value={iconValue}
+										onChange={(next) => {
+											setIconValue(next);
+											setIconTouched(true);
+										}}
+									/>
 
-											{(tier.pricingType === "fixed" ||
-												tier.pricingType === "mixed") && (
-												<>
+									<div className="space-y-2">
+										<Label className="font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary">
+											Categories *
+										</Label>
+										<div className="flex flex-wrap gap-2">
+											{categories.map((cat) => {
+												const isSelected = selectedCategories.includes(cat);
+												return (
+													<button
+														key={cat}
+														type="button"
+														onClick={() => {
+															setSelectedCategories((prev) =>
+																isSelected
+																	? prev.filter((c) => c !== cat)
+																	: [...prev, cat],
+															);
+														}}
+														className={`px-3 py-1.5 font-mono text-xs uppercase tracking-wide border transition-colors ${
+															isSelected
+																? "border-accent-lime bg-accent-lime/20 text-accent-lime"
+																: "border-stroke-subtle bg-bg-panel-muted text-fg-muted hover:border-fg-muted"
+														}`}
+													>
+														{categoryConfig[cat].label}
+													</button>
+												);
+											})}
+										</div>
+									</div>
+								</fieldset>
+
+								{/* Pricing Tiers */}
+								<fieldset className="space-y-4">
+									<div className="flex items-center justify-between">
+										<legend className="font-mono text-[10px] font-semibold uppercase tracking-widest text-accent-lime">
+											Pricing Tiers
+										</legend>
+										<button
+											type="button"
+											onClick={addTier}
+											className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-xs uppercase tracking-wide border border-stroke-subtle text-fg-muted hover:border-accent-lime hover:text-accent-lime transition-colors"
+										>
+											<Plus className="size-3" />
+											Add Tier
+										</button>
+									</div>
+
+									<div className="space-y-3">
+										{tiers.map((tier, index) => (
+											<div
+												key={tier.id}
+												className="border border-stroke-subtle bg-bg-panel-muted p-4 space-y-3"
+											>
+												<div className="flex items-center justify-between gap-4">
+													<span className="font-mono text-[10px] text-fg-muted uppercase tracking-wider">
+														Tier {index + 1}
+													</span>
+													{tiers.length > 1 && (
+														<button
+															type="button"
+															onClick={() => removeTier(tier.id)}
+															className="p-1.5 text-fg-muted hover:text-destructive transition-colors"
+														>
+															<Trash2 className="size-4" />
+														</button>
+													)}
+												</div>
+
+												<div className="grid grid-cols-4 gap-3">
 													<div className="space-y-1.5">
 														<Label className="font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">
-															Price ($)
+															Tier Name *
 														</Label>
 														<Input
-															type="number"
-															min={0}
-															step={0.01}
-															value={tier.fixedAmount}
+															value={tier.name}
 															onChange={(e) =>
-																updateTier(tier.id, {
-																	fixedAmount: Number(e.target.value),
-																})
+																updateTier(tier.id, { name: e.target.value })
 															}
-															className="h-9 border-stroke-subtle bg-bg-panel font-mono text-sm text-fg-primary focus:border-accent-lime"
+															placeholder="e.g. Free, Pro"
+															className="h-9 border-stroke-subtle bg-bg-panel font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
 														/>
 													</div>
+
 													<div className="space-y-1.5">
 														<Label className="font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">
-															Period
+															Pricing Type
 														</Label>
 														<Select
-															value={tier.fixedPeriod}
+															value={tier.pricingType}
 															onValueChange={(v) =>
 																updateTier(tier.id, {
-																	fixedPeriod: v as
-																		| "month"
-																		| "year"
-																		| "one_time",
+																	pricingType: v as "fixed" | "usage" | "mixed",
 																})
 															}
 														>
@@ -374,54 +372,104 @@ export function SuggestEditModal({
 																<SelectValue />
 															</SelectTrigger>
 															<SelectContent>
-																<SelectItem value="month">Monthly</SelectItem>
-																<SelectItem value="year">Yearly</SelectItem>
-																<SelectItem value="one_time">
-																	One-time
-																</SelectItem>
+																<SelectItem value="fixed">Fixed</SelectItem>
+																<SelectItem value="usage">Usage</SelectItem>
+																<SelectItem value="mixed">Mixed</SelectItem>
 															</SelectContent>
 														</Select>
 													</div>
-												</>
-											)}
-										</div>
+
+													{(tier.pricingType === "fixed" ||
+														tier.pricingType === "mixed") && (
+														<>
+															<div className="space-y-1.5">
+																<Label className="font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">
+																	Price ($)
+																</Label>
+																<Input
+																	type="number"
+																	min={0}
+																	step={0.01}
+																	value={tier.fixedAmount}
+																	onChange={(e) =>
+																		updateTier(tier.id, {
+																			fixedAmount: Number(e.target.value),
+																		})
+																	}
+																	className="h-9 border-stroke-subtle bg-bg-panel font-mono text-sm text-fg-primary focus:border-accent-lime"
+																/>
+															</div>
+															<div className="space-y-1.5">
+																<Label className="font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">
+																	Period
+																</Label>
+																<Select
+																	value={tier.fixedPeriod}
+																	onValueChange={(v) =>
+																		updateTier(tier.id, {
+																			fixedPeriod: v as
+																				| "month"
+																				| "year"
+																				| "one_time",
+																		})
+																	}
+																>
+																	<SelectTrigger className="h-9 border-stroke-subtle bg-bg-panel font-mono text-sm text-fg-primary">
+																		<SelectValue />
+																	</SelectTrigger>
+																	<SelectContent>
+																		<SelectItem value="month">
+																			Monthly
+																		</SelectItem>
+																		<SelectItem value="year">Yearly</SelectItem>
+																		<SelectItem value="one_time">
+																			One-time
+																		</SelectItem>
+																	</SelectContent>
+																</Select>
+															</div>
+														</>
+													)}
+												</div>
+											</div>
+										))}
 									</div>
-								))}
-							</div>
-						</fieldset>
+								</fieldset>
 
-						{/* Reason for suggestion */}
-						<fieldset className="space-y-2">
-							<legend className="font-mono text-[10px] font-semibold uppercase tracking-widest text-accent-lime">
-								Reason for Changes (Optional)
-							</legend>
-							<textarea
-								value={reason}
-								onChange={(e) => setReason(e.target.value)}
-								placeholder="Explain why these changes should be made..."
-								className="w-full h-20 px-3 py-2 border border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime focus:outline-none resize-none"
-							/>
-						</fieldset>
+								{/* Reason for suggestion */}
+								<fieldset className="space-y-2">
+									<legend className="font-mono text-[10px] font-semibold uppercase tracking-widest text-accent-lime">
+										Reason for Changes (Optional)
+									</legend>
+									<textarea
+										value={reason}
+										onChange={(e) => setReason(e.target.value)}
+										placeholder="Explain why these changes should be made..."
+										className="w-full h-20 px-3 py-2 border border-stroke-subtle bg-bg-panel-muted font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime focus:outline-none resize-none"
+									/>
+								</fieldset>
 
-						{/* Action Buttons */}
-						<div className="flex gap-3 pt-2">
-							<button
-								type="button"
-								onClick={onClose}
-								className="inline-flex items-center gap-2 border border-stroke-subtle px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-fg-muted hover:text-fg-primary"
-							>
-								Cancel
-							</button>
-							<button
-								type="submit"
-								disabled={saving || !canSubmit}
-								className="inline-flex flex-1 items-center justify-center gap-2 border-2 border-accent-lime bg-accent-lime px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong disabled:cursor-not-allowed disabled:opacity-50"
-							>
-								<Check className="size-3.5" />
-								{saving ? "Submitting..." : "Submit Suggestion"}
-							</button>
-						</div>
-					</form>
+								{/* Action Buttons */}
+								<div className="flex gap-3 pt-2">
+									<button
+										type="button"
+										onClick={onClose}
+										className="inline-flex items-center gap-2 border border-stroke-subtle px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-fg-muted hover:text-fg-primary"
+									>
+										Cancel
+									</button>
+									<button
+										type="submit"
+										disabled={saving || !canSubmit}
+										className="inline-flex flex-1 items-center justify-center gap-2 border-2 border-accent-lime bg-accent-lime px-4 py-2.5 font-mono text-xs font-semibold uppercase tracking-wide text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong disabled:cursor-not-allowed disabled:opacity-50"
+									>
+										<Check className="size-3.5" />
+										{saving ? "Submitting..." : "Submit Suggestion"}
+									</button>
+								</div>
+							</form>
+						</>
+					)}
 				</>
 			)}
 		</Dialog>

@@ -229,7 +229,7 @@ export function IconUploadField({
 
 					<div className="flex items-stretch gap-2">
 						<div
-							className="flex flex-1 items-center gap-2 border border-stroke-subtle bg-bg-panel-muted px-3"
+							className="flex h-10 flex-1 items-center gap-2 border-2 border-stroke-subtle bg-bg-panel py-1 px-3 shadow-terminal-sm transition-colors focus-within:border-accent-lime focus-within:ring-2 focus-within:ring-accent-lime/60 focus-within:ring-offset-2 focus-within:ring-offset-bg-canvas"
 							aria-busy={urlBusy}
 						>
 							<Link2 className="size-3.5 text-fg-muted" />
@@ -241,7 +241,7 @@ export function IconUploadField({
 								disabled={anyBusy}
 								aria-describedby={errorId}
 								aria-invalid={error || undefined}
-								className="h-9 border-none bg-transparent px-0 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus-visible:ring-0"
+								className="h-full border-0 bg-transparent px-0 font-mono text-sm text-fg-primary shadow-none outline-none placeholder:text-fg-muted focus-visible:border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
 								onKeyDown={(e) => {
 									if (e.key === "Enter") {
 										e.preventDefault();

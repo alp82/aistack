@@ -311,6 +311,8 @@ export default defineSchema({
     suggestedName: v.string(),
     suggestedCategories: v.array(v.string()),
     suggestedWebsiteUrl: v.optional(v.string()),
+    suggestedIconStorageId: v.optional(v.id('_storage')),
+    suggestedIconUrl: v.optional(v.string()),
     suggestedTiers: v.array(
       v.object({
         name: v.string(),

@@ -2,6 +2,7 @@ import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { slugifyAscii } from '../src/lib/slug'
 import { generateUniqueShortId } from './lib/ids'
+import { assertValidIconUrl } from './lib/iconUrl'
 
 export const listAll = query({
   args: {},
@@ -235,6 +236,8 @@ export const suggestEdit = mutation({
     suggestedName: v.string(),
     suggestedCategories: v.array(v.string()),
     suggestedWebsiteUrl: v.optional(v.string()),
+    suggestedIconStorageId: v.optional(v.id('_storage')),
+    suggestedIconUrl: v.optional(v.string()),
     suggestedTiers: v.array(
       v.object({
         name: v.string(),
@@ -247,20 +250,27 @@ export const suggestEdit = mutation({
   },
   returns: v.id('toolEditSuggestions'),
   handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity()
+    if (!user) throw new Error('Not authenticated')
+
     const tool = await ctx.db.get(args.toolId)
     if (!tool) throw new Error('Tool not found')
 
-    const user = await ctx.auth.getUserIdentity()
+    if (args.suggestedIconUrl !== undefined && args.suggestedIconUrl !== '') {
+      assertValidIconUrl(args.suggestedIconUrl)
+    }
 
     return await ctx.db.insert('toolEditSuggestions', {
       toolId: args.toolId,
       suggestedName: args.suggestedName,
       suggestedCategories: args.suggestedCategories,
       suggestedWebsiteUrl: args.suggestedWebsiteUrl,
+      suggestedIconStorageId: args.suggestedIconStorageId,
+      suggestedIconUrl: args.suggestedIconUrl,
       suggestedTiers: args.suggestedTiers,
       reason: args.reason,
       status: 'pending',
-      submittedBy: user?.subject,
+      submittedBy: user.subject,
       createdAt: Date.now(),
     })
   },

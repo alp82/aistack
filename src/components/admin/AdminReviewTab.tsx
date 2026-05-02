@@ -125,6 +125,13 @@ export function AdminReviewTab() {
 							suggestedName: data.name,
 							suggestedCategories: data.categories,
 							suggestedWebsiteUrl: data.websiteUrl,
+							iconTouched: data.iconTouched,
+							...(data.iconTouched
+								? {
+										suggestedIconStorageId: data.iconStorageId,
+										suggestedIconUrl: data.iconUrl,
+									}
+								: {}),
 							suggestedTiers: data.tiers.map((t) => ({
 								name: t.name,
 								pricingType: t.pricingType,
@@ -345,9 +352,12 @@ export function AdminReviewTab() {
 														name: suggestion.suggestedName,
 														categories: suggestion.suggestedCategories,
 														websiteUrl: suggestion.suggestedWebsiteUrl,
-														iconUrl: suggestion.originalTool!.iconUrl,
 														iconStorageId:
+															suggestion.suggestedIconStorageId ??
 															suggestion.originalTool!.iconStorageId,
+														iconUrl:
+															suggestion.suggestedIconUrl ??
+															suggestion.originalTool!.iconUrl,
 														tiers: suggestion.suggestedTiers.map((t, i) => ({
 															tierId: `tier-${i + 1}`,
 															name: t.name,
@@ -406,6 +416,21 @@ export function AdminReviewTab() {
 														{suggestion.originalTool?.websiteUrl || "—"}
 													</span>
 												</p>
+												<div className="flex items-center gap-2">
+													<span className="text-fg-muted">Icon:</span>
+													<div className="flex size-8 items-center justify-center border border-stroke-subtle bg-bg-panel">
+														{suggestion.originalTool?.iconUrl ? (
+															<img
+																src={suggestion.originalTool.iconUrl}
+																alt={suggestion.originalTool?.name ?? "Icon"}
+																className="max-h-full max-w-full object-contain p-0.5"
+																referrerPolicy="no-referrer"
+															/>
+														) : (
+															<Wrench className="size-4 text-fg-muted" />
+														)}
+													</div>
+												</div>
 											</div>
 										</div>
 
@@ -456,6 +481,33 @@ export function AdminReviewTab() {
 														{suggestion.suggestedWebsiteUrl || "—"}
 													</span>
 												</p>
+												{(() => {
+													const iconChanged =
+														suggestion.suggestedIconStorageId !== undefined ||
+														suggestion.suggestedIconUrl !== undefined;
+													const displaySuggestedIconUrl =
+														suggestion.suggestedIconUrl ??
+														suggestion.originalTool?.iconUrl;
+													return (
+														<div className="flex items-center gap-2">
+															<span className="text-fg-muted">Icon:</span>
+															<div
+																className={`flex size-8 items-center justify-center border bg-bg-panel ${iconChanged ? "border-accent-lime" : "border-stroke-subtle"}`}
+															>
+																{displaySuggestedIconUrl ? (
+																	<img
+																		src={displaySuggestedIconUrl}
+																		alt={suggestion.suggestedName}
+																		className="max-h-full max-w-full object-contain p-0.5"
+																		referrerPolicy="no-referrer"
+																	/>
+																) : (
+																	<Wrench className="size-4 text-fg-muted" />
+																)}
+															</div>
+														</div>
+													);
+												})()}
 											</div>
 										</div>
 									</div>
