@@ -115,7 +115,18 @@ function resolveAuth(): { url: string; adminKey: string } {
 }
 
 const auth = resolveAuth()
-const client = new ConvexHttpClient(auth.url)
+const httpClient = new ConvexHttpClient(auth.url)
+// `setAdminAuth` is a runtime method on ConvexHttpClient (visible in compiled
+// JS) but not exported in the public TS types. Same for invoking internal
+// functions: the typed `query`/`mutation` only accept public refs, but at
+// runtime the admin-auth header lets internal refs through. Cast once.
+const client = httpClient as unknown as {
+  setAdminAuth: (key: string) => void
+  // biome-ignore lint/suspicious/noExplicitAny: internal-fn polymorphism
+  query: (fn: any, args: Record<string, unknown>) => Promise<any>
+  // biome-ignore lint/suspicious/noExplicitAny: internal-fn polymorphism
+  mutation: (fn: any, args: Record<string, unknown>) => Promise<any>
+}
 client.setAdminAuth(auth.adminKey)
 
 // --- Image pipeline --------------------------------------------------------

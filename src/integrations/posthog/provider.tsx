@@ -5,11 +5,32 @@ interface PosthogProviderProps {
 	children: ReactNode;
 }
 
+// Defer PostHog mount until the browser is idle so the analytics SDK + flag
+// fetch don't compete with first-paint resources. Falls back to a 2s timeout
+// in browsers without `requestIdleCallback` (Safari < 18).
 const PosthogProvider: FC<PosthogProviderProps> = ({ children }) => {
 	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => {
-		setMounted(true);
+		const w = window as Window & {
+			requestIdleCallback?: (
+				cb: () => void,
+				opts?: { timeout: number },
+			) => number;
+		};
+		if (typeof w.requestIdleCallback === "function") {
+			const handle = w.requestIdleCallback(() => setMounted(true), {
+				timeout: 2000,
+			});
+			return () => {
+				const cancel = (
+					window as Window & { cancelIdleCallback?: (h: number) => void }
+				).cancelIdleCallback;
+				if (typeof cancel === "function") cancel(handle);
+			};
+		}
+		const timer = setTimeout(() => setMounted(true), 2000);
+		return () => clearTimeout(timer);
 	}, []);
 
 	if (!mounted) {

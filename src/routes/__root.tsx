@@ -47,6 +47,19 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 		],
 		links: [
 			{
+				rel: "preconnect",
+				href: "https://convex.aistack.to",
+			},
+			{
+				rel: "preconnect",
+				href: "https://fonts.gstatic.com",
+				crossOrigin: "anonymous",
+			},
+			{
+				rel: "preconnect",
+				href: "https://a.aistack.to",
+			},
+			{
 				rel: "stylesheet",
 				href: appCss,
 			},
