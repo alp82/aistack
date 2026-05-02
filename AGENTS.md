@@ -31,15 +31,23 @@ After seeding (or any time `iconUrl` rows on tools/models/bundles need to be
 moved into Convex storage), run:
 
 ```sh
-# Dev (whatever deploy `convex dev` is currently pointing at):
+# Dev: auto-detects the running `convex dev` anonymous backend's admin key
+# from ~/.convex/anonymous-convex-backend-state/<deployment>/config.json
 pnpm tsx scripts/migrate-icons.ts
 
-# Self-hosted prod - make sure .env exists, deploy code first, then run:
+# Self-hosted prod — set self-hosted env vars (in .env.local or shell), deploy
+# code first so the migration functions exist, then run:
+export CONVEX_SELF_HOSTED_URL=http://10.0.0.20:3210
+export CONVEX_SELF_HOSTED_ADMIN_KEY=convex-self-hosted...
 npx convex deploy
 pnpm tsx scripts/migrate-icons.ts
 ```
 
-The script is idempotent — a second run skips every row that already has an
+Auth: the script talks HTTP to Convex via `ConvexHttpClient` with admin auth
+(no CLI shelling, no stdout parsing). It auto-detects a local anonymous
+backend when env vars aren't set.
+
+Idempotent — a second run skips every row that already has an
 `iconStorageId`. Data URIs are decoded, http URLs are fetched (8s timeout),
 ICOs are decoded via `decode-ico` (largest entry), and everything is sharp'd
 to 512×512 WebP q80 and uploaded. Data-URI sources are cleared from

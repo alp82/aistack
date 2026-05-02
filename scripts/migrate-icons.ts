@@ -13,14 +13,21 @@
  *
  * Idempotent: a second run reports every row as skipped.
  *
- * Auth: the script calls internal mutations/queries via `npx convex run`,
- * which uses the local convex deploy credentials managed by the user's
- * running `convex dev`. No separate admin key is required.
+ * Auth: talks to Convex over HTTP via ConvexHttpClient with admin auth.
+ *   - Self-hosted: set CONVEX_SELF_HOSTED_URL + CONVEX_SELF_HOSTED_ADMIN_KEY.
+ *   - Local anonymous (`convex dev`): the script auto-reads
+ *     `~/.convex/anonymous-convex-backend-state/<deployment>/config.json`
+ *     when those env vars aren't set.
  */
 
-import { execFileSync } from 'node:child_process'
+import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
+import { ConvexHttpClient } from 'convex/browser'
 import decodeIco from 'decode-ico'
 import sharp from 'sharp'
+import { internal } from '../convex/_generated/api'
+import type { Id } from '../convex/_generated/dataModel'
 import { assertSafePublicUrl } from '../src/lib/ssrfGuard'
 
 const MAX_DIM = 512
@@ -38,44 +45,90 @@ type Row = {
 
 type Table = 'tools' | 'models' | 'bundles'
 
-// Targets whichever deployment `convex` is configured to talk to:
-//   • dev — the running `convex dev` process pushes code automatically.
-//   • prod — set CONVEX_DEPLOYMENT=prod:<deploy-name> (or pass `--prod` via
-//     CONVEX_RUN_ARGS), and `npx convex deploy --prod` first to ensure the
-//     migration functions are present.
-const EXTRA_ARGS = process.env.CONVEX_RUN_ARGS
-  ? process.env.CONVEX_RUN_ARGS.split(/\s+/).filter(Boolean)
-  : []
+// --- Env / auth resolution --------------------------------------------------
 
-function runConvex(fn: string, args: Record<string, unknown>): unknown {
-  const stdout = execFileSync(
-    'npx',
-    ['convex', 'run', ...EXTRA_ARGS, fn, JSON.stringify(args)],
-    {
-      stdio: ['ignore', 'pipe', 'inherit'],
-      encoding: 'utf-8',
-      maxBuffer: 1024 * 1024 * 64,
-    },
-  )
-  // `convex run` prints setup lines (e.g. "✔ Convex functions ready!") before
-  // the function's return value. The return value is JSON, possibly multi-line
-  // (indented arrays/objects). Find the first line starting with [, {, ", or a
-  // bareword JSON literal, then parse from that offset to the end of stdout.
-  const firstJsonLineRe = /^[ \t]*[\[{"]|^[ \t]*(true|false|null|-?\d)/m
-  const match = firstJsonLineRe.exec(stdout)
-  if (!match) {
-    return null
+function loadDotenvLocal(): void {
+  const path = join(process.cwd(), '.env.local')
+  if (!existsSync(path)) return
+  const raw = readFileSync(path, 'utf-8')
+  for (const line of raw.split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+    const eq = trimmed.indexOf('=')
+    if (eq === -1) continue
+    const key = trimmed.slice(0, eq).trim()
+    let value = trimmed.slice(eq + 1).trim()
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1)
+    }
+    if (!(key in process.env)) process.env[key] = value
   }
-  const candidate = stdout.slice(match.index).trim()
+}
+
+function readAnonymousBackendConfig(): { url: string; adminKey: string } | null {
+  const stateDir = join(homedir(), '.convex', 'anonymous-convex-backend-state')
+  if (!existsSync(stateDir)) return null
+  const dirs = readdirSync(stateDir, { withFileTypes: true }).filter(
+    (d) => d.isDirectory(),
+  )
+  if (dirs.length === 0) return null
+  // Prefer a directory whose name matches the project root, fall back to the only one.
+  const projectName = process.cwd().split('/').pop() ?? ''
+  const matching =
+    dirs.find((d) => d.name.includes(projectName)) ?? dirs[0]
+  const cfgPath = join(stateDir, matching.name, 'config.json')
+  if (!existsSync(cfgPath)) return null
   try {
-    return JSON.parse(candidate)
+    const cfg = JSON.parse(readFileSync(cfgPath, 'utf-8')) as {
+      ports?: { cloud?: number }
+      adminKey?: string
+    }
+    if (!cfg.adminKey || !cfg.ports?.cloud) return null
+    return {
+      url: `http://127.0.0.1:${cfg.ports.cloud}`,
+      adminKey: cfg.adminKey,
+    }
   } catch {
     return null
   }
 }
 
+function resolveAuth(): { url: string; adminKey: string } {
+  loadDotenvLocal()
+  const url = process.env.CONVEX_SELF_HOSTED_URL ?? process.env.CONVEX_URL
+  const adminKey =
+    process.env.CONVEX_SELF_HOSTED_ADMIN_KEY ?? process.env.CONVEX_DEPLOY_KEY
+  if (url && adminKey) return { url, adminKey }
+  const local = readAnonymousBackendConfig()
+  if (local) {
+    console.log(
+      `[auth] using local anonymous backend at ${local.url} (config.json adminKey)`,
+    )
+    return local
+  }
+  throw new Error(
+    'No Convex credentials found. Set CONVEX_SELF_HOSTED_URL + CONVEX_SELF_HOSTED_ADMIN_KEY in .env.local or your shell, or run `npx convex dev` to start an anonymous local backend.',
+  )
+}
+
+const auth = resolveAuth()
+const client = new ConvexHttpClient(auth.url)
+client.setAdminAuth(auth.adminKey)
+
+// --- Image pipeline --------------------------------------------------------
+
+async function toWebP(input: Buffer): Promise<Buffer> {
+  const buf = isIco(input) ? await decodeIcoToSharpInput(input) : input
+  return sharp(buf, { limitInputPixels: MAX_INPUT_PIXELS })
+    .resize(MAX_DIM, MAX_DIM, { fit: 'inside', withoutEnlargement: true })
+    .webp({ quality: WEBP_QUALITY })
+    .toBuffer()
+}
+
 function isIco(buf: Buffer): boolean {
-  // ICONDIR header: reserved=0x0000, type=0x0001 (icon), count >= 1
   return (
     buf.length >= 6 &&
     buf[0] === 0x00 &&
@@ -86,28 +139,27 @@ function isIco(buf: Buffer): boolean {
 }
 
 async function decodeIcoToSharpInput(buf: Buffer): Promise<Buffer> {
-  // decode-ico returns one entry per stored size; pick the largest by area.
   const entries = decodeIco(buf)
   if (entries.length === 0) throw new Error('ICO contains no images')
   const largest = entries.reduce((a, b) =>
     a.width * a.height >= b.width * b.height ? a : b,
   )
-  // PNG-typed entries are already PNG-encoded; raw is RGBA pixels.
   if (largest.type === 'png') {
-    return Buffer.from(largest.data.buffer, largest.data.byteOffset, largest.data.byteLength)
+    return Buffer.from(
+      largest.data.buffer,
+      largest.data.byteOffset,
+      largest.data.byteLength,
+    )
   }
-  return await sharp(Buffer.from(largest.data.buffer, largest.data.byteOffset, largest.data.byteLength), {
-    raw: { width: largest.width, height: largest.height, channels: 4 },
-  })
+  return await sharp(
+    Buffer.from(
+      largest.data.buffer,
+      largest.data.byteOffset,
+      largest.data.byteLength,
+    ),
+    { raw: { width: largest.width, height: largest.height, channels: 4 } },
+  )
     .png()
-    .toBuffer()
-}
-
-async function toWebP(input: Buffer): Promise<Buffer> {
-  const buf = isIco(input) ? await decodeIcoToSharpInput(input) : input
-  return sharp(buf, { limitInputPixels: MAX_INPUT_PIXELS })
-    .resize(MAX_DIM, MAX_DIM, { fit: 'inside', withoutEnlargement: true })
-    .webp({ quality: WEBP_QUALITY })
     .toBuffer()
 }
 
@@ -144,10 +196,10 @@ async function fetchWithTimeout(rawUrl: string): Promise<Buffer> {
 }
 
 async function uploadToStorage(webpBuffer: Buffer): Promise<string> {
-  const uploadUrl = runConvex('migrations/icons:generateUploadUrl', {}) as string
-  if (typeof uploadUrl !== 'string') {
-    throw new Error(`generateUploadUrl returned ${JSON.stringify(uploadUrl)}`)
-  }
+  const uploadUrl = await client.mutation(
+    internal.migrations.icons.generateUploadUrl,
+    {},
+  )
   const resp = await fetch(uploadUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'image/webp' },
@@ -161,7 +213,12 @@ async function uploadToStorage(webpBuffer: Buffer): Promise<string> {
   return data.storageId
 }
 
-async function processRow(table: Table, row: Row): Promise<'ok' | 'skipped' | 'failed'> {
+// --- Per-row + per-table processing ----------------------------------------
+
+async function processRow(
+  table: Table,
+  row: Row,
+): Promise<'ok' | 'skipped' | 'failed'> {
   if (row.iconStorageId) return 'skipped'
   if (!row.iconUrl) return 'skipped'
 
@@ -201,27 +258,42 @@ async function processRow(table: Table, row: Row): Promise<'ok' | 'skipped' | 'f
   }
 
   try {
-    const patchArgs: Record<string, unknown> = {
+    const args: {
+      table: Table
+      iconStorageId: Id<'_storage'>
+      clearIconUrl?: boolean
+      toolId?: Id<'tools'>
+      modelId?: Id<'models'>
+      bundleId?: Id<'bundles'>
+    } = {
       table,
-      iconStorageId: storageId,
+      iconStorageId: storageId as Id<'_storage'>,
       clearIconUrl: isDataURI,
     }
-    if (table === 'tools') patchArgs.toolId = row._id
-    else if (table === 'models') patchArgs.modelId = row._id
-    else patchArgs.bundleId = row._id
-    runConvex('migrations/icons:patchIcon', patchArgs)
+    if (table === 'tools') args.toolId = row._id as Id<'tools'>
+    else if (table === 'models') args.modelId = row._id as Id<'models'>
+    else args.bundleId = row._id as Id<'bundles'>
+    await client.mutation(internal.migrations.icons.patchIcon, args)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error(`  [${table}] ${row.name} — patch failed: ${message}`)
     return 'failed'
   }
 
-  console.log(`  [${table}] ${row.name} — ok (${webp.byteLength} bytes${isDataURI ? ', cleared iconUrl' : ', kept iconUrl'})`)
+  console.log(
+    `  [${table}] ${row.name} — ok (${webp.byteLength} bytes${isDataURI ? ', cleared iconUrl' : ', kept iconUrl'})`,
+  )
   return 'ok'
 }
 
-async function processTable(table: Table, listFn: string): Promise<void> {
-  const rows = runConvex(`migrations/icons:${listFn}`, {}) as Row[]
+async function processTable(
+  table: Table,
+  listFn:
+    | typeof internal.migrations.icons.listToolsToMigrate
+    | typeof internal.migrations.icons.listModelsToMigrate
+    | typeof internal.migrations.icons.listBundlesToMigrate,
+): Promise<void> {
+  const rows = (await client.query(listFn, {})) as Row[]
   console.log(`\n[${table}] ${rows.length} rows`)
   let ok = 0
   let skipped = 0
@@ -232,14 +304,16 @@ async function processTable(table: Table, listFn: string): Promise<void> {
     else if (result === 'skipped') skipped++
     else failed++
   }
-  console.log(`[${table}] summary — ok: ${ok}, skipped: ${skipped}, failed: ${failed}`)
+  console.log(
+    `[${table}] summary — ok: ${ok}, skipped: ${skipped}, failed: ${failed}`,
+  )
 }
 
 async function main(): Promise<void> {
   console.log('Icon migration starting...')
-  await processTable('tools', 'listToolsToMigrate')
-  await processTable('models', 'listModelsToMigrate')
-  await processTable('bundles', 'listBundlesToMigrate')
+  await processTable('tools', internal.migrations.icons.listToolsToMigrate)
+  await processTable('models', internal.migrations.icons.listModelsToMigrate)
+  await processTable('bundles', internal.migrations.icons.listBundlesToMigrate)
   console.log('\nDone.')
 }
 
