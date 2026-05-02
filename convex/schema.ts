@@ -233,7 +233,8 @@ export default defineSchema({
   })
     .index('by_stackId', ['stackId'])
     .index('by_userId', ['userId'])
-    .index('by_stackId_userId', ['stackId', 'userId']),
+    .index('by_stackId_userId', ['stackId', 'userId'])
+    .index('by_stackId_createdAt', ['stackId', 'createdAt']),
 
   models: defineTable({
     name: v.string(),

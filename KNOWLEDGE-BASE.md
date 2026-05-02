@@ -53,6 +53,9 @@ harness basics & advanced usage:
 https://magazine.sebastianraschka.com/p/components-of-a-coding-agent
 https://openai.com/index/speeding-up-agentic-workflows-with-websockets/
 
+build your own harness:
+https://flueframework.com
+
 sandbox & safety:
 https://www.agentsh.org
 https://nono.sh

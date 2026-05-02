@@ -1,6 +1,6 @@
 import { ArrowRight, Maximize2, Minimize2 } from "lucide-react";
 import type { ReactNode } from "react";
-import HoverPreview from "@/components/ui/hover-preview";
+import HoverCard from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 
 export interface EntityPillColors {
@@ -71,7 +71,7 @@ export function EntityPill({
 			)}
 		>
 			{tooltipContent ? (
-				<HoverPreview
+				<HoverCard
 					mode="wrapper"
 					position="above"
 					width={300}
@@ -82,7 +82,7 @@ export function EntityPill({
 					renderContent={tooltipContent}
 				>
 					{nameArea}
-				</HoverPreview>
+				</HoverCard>
 			) : (
 				nameArea
 			)}

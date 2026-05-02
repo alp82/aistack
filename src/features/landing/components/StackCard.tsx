@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { CategoryLabel } from "@/components/CategoryLabel";
 import { PriceDisplay } from "@/components/PriceDisplay";
 import { UpvoteButton } from "@/components/UpvoteButton";
+import { UpvotersTooltip } from "@/components/UpvotersTooltip";
+import HoverCard from "@/components/ui/hover-card";
 import type { LandingStackPreview } from "@/features/landing/sections/FeaturedStacksSection";
 import { sortToolsByPrice } from "@/lib/pricing";
 import { api } from "../../../../convex/_generated/api";
@@ -25,13 +27,18 @@ function StackCard({ stack }: StackCardProps) {
 	const [upvoting, setUpvoting] = useState(false);
 	const [localUpvoteCount, setLocalUpvoteCount] = useState(stack.upvoteCount);
 	const [hasUpvoted, setHasUpvoted] = useState(false);
+	const [hasHovered, setHasHovered] = useState(false);
+	const upvotersData = useQuery(
+		api.stacks.getUpvoters,
+		hasHovered ? { stackId: stack._id as Id<"stacks"> } : "skip",
+	);
 
 	useEffect(() => {
-		if (upvoteStatus) {
+		if (upvoteStatus && !upvoting) {
 			setHasUpvoted(upvoteStatus.upvoted);
 			setLocalUpvoteCount(upvoteStatus.count);
 		}
-	}, [upvoteStatus]);
+	}, [upvoteStatus, upvoting]);
 
 	const displayTools = sortToolsByPrice(
 		stack.tools.filter((t) => t.kind === "main"),
@@ -141,13 +148,41 @@ function StackCard({ stack }: StackCardProps) {
 						</div>
 
 						{/* Row 2: Upvote + Description */}
-						<UpvoteButton
-							count={localUpvoteCount}
-							upvoted={hasUpvoted}
-							disabled={upvoting}
-							size="sm"
-							onClick={handleUpvote}
-						/>
+						{localUpvoteCount > 0 ? (
+							<HoverCard
+								mode="wrapper"
+								position="below"
+								width={280}
+								height="auto"
+								maxRotation={6}
+								maxOffset={8}
+								renderContent={() => (
+									<UpvotersTooltip
+										upvoters={upvotersData?.upvoters ?? []}
+										totalCount={upvotersData?.totalCount ?? localUpvoteCount}
+										currentUserId={upvoteStatus?.currentUserId ?? null}
+										loading={upvotersData === undefined}
+									/>
+								)}
+							>
+								<UpvoteButton
+									count={localUpvoteCount}
+									upvoted={hasUpvoted}
+									disabled={upvoting}
+									size="sm"
+									onClick={handleUpvote}
+									onMouseEnter={() => setHasHovered(true)}
+								/>
+							</HoverCard>
+						) : (
+							<UpvoteButton
+								count={localUpvoteCount}
+								upvoted={hasUpvoted}
+								disabled={upvoting}
+								size="sm"
+								onClick={handleUpvote}
+							/>
+						)}
 						<p className="text-sm text-fg-muted leading-relaxed line-clamp-2">
 							{stack.oneLiner}
 						</p>

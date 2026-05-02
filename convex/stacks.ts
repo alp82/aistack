@@ -659,26 +659,24 @@ export const toggleUpvote = mutation({
       )
       .first()
 
+    let upvoted: boolean
     if (existing) {
       await ctx.db.delete(existing._id)
-      const count = await ctx.db
-        .query('stackUpvotes')
-        .withIndex('by_stackId', (q) => q.eq('stackId', args.stackId))
-        .collect()
-      return { upvoted: false, count: count.length }
+      upvoted = false
+    } else {
+      await ctx.db.insert('stackUpvotes', {
+        stackId: args.stackId,
+        userId,
+        createdAt: Date.now(),
+      })
+      upvoted = true
     }
 
-    await ctx.db.insert('stackUpvotes', {
-      stackId: args.stackId,
-      userId,
-      createdAt: Date.now(),
-    })
-
-    const count = await ctx.db
+    const remaining = await ctx.db
       .query('stackUpvotes')
       .withIndex('by_stackId', (q) => q.eq('stackId', args.stackId))
       .collect()
-    return { upvoted: true, count: count.length }
+    return { upvoted, count: remaining.length }
   },
 })
 
@@ -690,6 +688,7 @@ export const getUpvoteStatus = query({
     upvoted: v.boolean(),
     count: v.number(),
     isOwner: v.boolean(),
+    currentUserId: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
     const user = await ctx.auth.getUserIdentity()
@@ -700,7 +699,7 @@ export const getUpvoteStatus = query({
       .withIndex('by_stackId', (q) => q.eq('stackId', args.stackId))
       .collect()
 
-    const upvoted = userId 
+    const upvoted = userId
       ? upvotes.some((u) => u.userId === userId)
       : false
 
@@ -714,7 +713,48 @@ export const getUpvoteStatus = query({
       }
     }
 
-    return { upvoted, count: upvotes.length, isOwner }
+    return { upvoted, count: upvotes.length, isOwner, currentUserId: userId }
+  },
+})
+
+export const getUpvoters = query({
+  args: { stackId: v.id('stacks') },
+  returns: v.object({
+    totalCount: v.number(),
+    upvoters: v.array(v.object({
+      userId: v.string(),
+      name: v.string(),
+      avatarUrl: v.union(v.string(), v.null()),
+    })),
+  }),
+  handler: async (ctx, args) => {
+    const allUpvotes = await ctx.db
+      .query('stackUpvotes')
+      .withIndex('by_stackId', (q) => q.eq('stackId', args.stackId))
+      .collect()
+    const totalCount = allUpvotes.length
+    if (totalCount === 0) return { totalCount: 0, upvoters: [] }
+    const top = await ctx.db
+      .query('stackUpvotes')
+      .withIndex('by_stackId_createdAt', (q) => q.eq('stackId', args.stackId))
+      .order('desc')
+      .take(30)
+    const resolved = await Promise.all(
+      top.map(async (u) => {
+        const creator = await ctx.db
+          .query('creators')
+          .withIndex('by_userId', (q) => q.eq('userId', u.userId))
+          .first()
+        if (!creator) return null
+        return {
+          userId: u.userId,
+          name: creator.name,
+          avatarUrl: creator.avatarUrl ?? null,
+        }
+      }),
+    )
+    const upvoters = resolved.filter((x): x is NonNullable<typeof x> => x !== null).slice(0, 10)
+    return { totalCount, upvoters }
   },
 })
 

@@ -22,7 +22,7 @@ export interface HoverTarget {
 }
 
 /** Shared animation and positioning options */
-interface HoverPreviewBaseProps {
+interface HoverCardBaseProps {
 	/** Position of the preview relative to the trigger */
 	position?: "above" | "below" | "left" | "right";
 	/** Enter animation duration in seconds */
@@ -44,7 +44,7 @@ interface HoverPreviewBaseProps {
 }
 
 /** Props for inline text mode with multiple targets */
-interface HoverPreviewInlineProps extends HoverPreviewBaseProps {
+interface HoverCardInlineProps extends HoverCardBaseProps {
 	mode: "inline";
 	/** Text content with placeholders for targets (use {0}, {1}, etc.) */
 	content: string;
@@ -63,7 +63,7 @@ interface HoverPreviewInlineProps extends HoverPreviewBaseProps {
 }
 
 /** Props for wrapper mode with custom content */
-interface HoverPreviewWrapperProps extends HoverPreviewBaseProps {
+interface HoverCardWrapperProps extends HoverCardBaseProps {
 	mode: "wrapper";
 	/** Children to wrap as the hover trigger */
 	children: React.ReactNode;
@@ -73,11 +73,9 @@ interface HoverPreviewWrapperProps extends HoverPreviewBaseProps {
 	contentClassName?: string;
 }
 
-export type HoverPreviewProps =
-	| HoverPreviewInlineProps
-	| HoverPreviewWrapperProps;
+export type HoverCardProps = HoverCardInlineProps | HoverCardWrapperProps;
 
-const HoverPreview = (props: HoverPreviewProps) => {
+const HoverCard = (props: HoverCardProps) => {
 	const {
 		position = "below",
 		enterSpeed = 0.2,
@@ -393,7 +391,6 @@ const HoverPreview = (props: HoverPreviewProps) => {
 					onMouseEnter={(e) => handleMouseEnter(e)}
 					onMouseMove={(e) => handleMouseMove(e)}
 					onMouseLeave={handleMouseLeave}
-					className="cursor-pointer"
 				>
 					{props.children}
 				</div>
@@ -467,6 +464,6 @@ const HoverPreview = (props: HoverPreviewProps) => {
 	);
 };
 
-HoverPreview.displayName = "HoverPreview";
+HoverCard.displayName = "HoverCard";
 
-export default HoverPreview;
+export default HoverCard;

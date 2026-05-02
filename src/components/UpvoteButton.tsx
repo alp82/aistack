@@ -6,6 +6,7 @@ type UpvoteButtonProps = {
 	disabled?: boolean;
 	size?: "sm" | "md" | "lg";
 	onClick?: (e: React.MouseEvent) => void;
+	onMouseEnter?: () => void;
 };
 
 function UpvoteButton({
@@ -14,12 +15,16 @@ function UpvoteButton({
 	disabled = false,
 	size = "lg",
 	onClick,
+	onMouseEnter,
 }: UpvoteButtonProps) {
 	return (
 		<button
 			type="button"
 			onClick={onClick}
+			onMouseEnter={onMouseEnter}
 			disabled={disabled}
+			aria-label={`${upvoted ? "Remove upvote" : "Upvote"}, ${count} ${count === 1 ? "upvote" : "upvotes"}`}
+			aria-pressed={upvoted}
 			className={cn(
 				"flex flex-col items-center justify-center transition-all disabled:opacity-50 cursor-pointer",
 				size === "sm" && "w-10 py-1",
@@ -32,6 +37,7 @@ function UpvoteButton({
 		>
 			<svg
 				viewBox="0 0 24 24"
+				aria-hidden="true"
 				className={cn(
 					"fill-current",
 					size === "sm" && "size-3 mb-0.5",
@@ -42,6 +48,7 @@ function UpvoteButton({
 				<path d="M12 4L3 15h18L12 4z" />
 			</svg>
 			<span
+				aria-hidden="true"
 				className={cn(
 					"font-mono font-black",
 					size === "sm" && "text-xs",

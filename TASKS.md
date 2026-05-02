@@ -1,5 +1,4 @@
 # TODO
-* logos storage
 * show who upvoted
 * CLI workflow
     * uploaded files don't appear in project

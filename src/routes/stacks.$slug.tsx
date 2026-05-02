@@ -20,8 +20,9 @@ import { TableOfContents } from "@/components/TableOfContents";
 import { TiptapEditor } from "@/components/TiptapEditor";
 import { ToolItem } from "@/components/ToolItem";
 import { UpvoteButton } from "@/components/UpvoteButton";
+import { UpvotersTooltip } from "@/components/UpvotersTooltip";
 import { Button } from "@/components/ui/button";
-import HoverPreview from "@/components/ui/hover-preview";
+import HoverCard from "@/components/ui/hover-card";
 import { ViewSidebar } from "@/components/ViewSidebar";
 import {
 	type BundleLookupData,
@@ -195,6 +196,11 @@ function StackDetailsPage() {
 	const [reporting, setReporting] = useState(false);
 	const [highlightedBundle, setHighlightedBundle] = useState<string | null>(
 		null,
+	);
+	const [hasHovered, setHasHovered] = useState(false);
+	const upvotersData = useQuery(
+		api.stacks.getUpvoters,
+		hasHovered && stack ? { stackId: stack._id } : "skip",
 	);
 
 	const scrollToBundle = (bundleSlug: string) => {
@@ -501,13 +507,43 @@ function StackDetailsPage() {
 										{stack.creator.name.charAt(0)}
 									</div>
 								)}
-								<UpvoteButton
-									count={upvoteStatus?.count ?? 0}
-									upvoted={upvoteStatus?.upvoted}
-									disabled={upvoting || upvoteStatus?.isOwner}
-									size="md"
-									onClick={handleUpvote}
-								/>
+								{(upvoteStatus?.count ?? 0) > 0 ? (
+									<HoverCard
+										mode="wrapper"
+										position="below"
+										width={280}
+										height="auto"
+										maxRotation={6}
+										maxOffset={8}
+										renderContent={() => (
+											<UpvotersTooltip
+												upvoters={upvotersData?.upvoters ?? []}
+												totalCount={
+													upvotersData?.totalCount ?? upvoteStatus?.count ?? 0
+												}
+												currentUserId={upvoteStatus?.currentUserId ?? null}
+												loading={upvotersData === undefined}
+											/>
+										)}
+									>
+										<UpvoteButton
+											count={upvoteStatus?.count ?? 0}
+											upvoted={upvoteStatus?.upvoted}
+											disabled={upvoting || upvoteStatus?.isOwner}
+											size="md"
+											onClick={handleUpvote}
+											onMouseEnter={() => setHasHovered(true)}
+										/>
+									</HoverCard>
+								) : (
+									<UpvoteButton
+										count={upvoteStatus?.count ?? 0}
+										upvoted={upvoteStatus?.upvoted}
+										disabled={upvoting || upvoteStatus?.isOwner}
+										size="md"
+										onClick={handleUpvote}
+									/>
+								)}
 								{!upvoteStatus?.isOwner && (
 									<button
 										type="button"
@@ -594,7 +630,7 @@ function StackDetailsPage() {
 							</div>
 
 							{/* Price Card */}
-							<HoverPreview
+							<HoverCard
 								mode="wrapper"
 								position="below"
 								width={320}
@@ -629,7 +665,7 @@ function StackDetailsPage() {
 										{stack.teamSize ? `Team ${stack.teamSize}` : "Solo"}
 									</span>
 								</div>
-							</HoverPreview>
+							</HoverCard>
 						</div>
 
 						{/* Low quality banner */}
