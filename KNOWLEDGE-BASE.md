@@ -1,7 +1,13 @@
 ~/.claude/research/ai-coding-quality-systems-2026-03.md
 
-agent & skill standards:
-https://ecc.tools
+individual stacks & workflows:
+https://github.com/mattpocock/skills
+https://github.com/jal-co/jalco-pi-mono
+https://github.com/jal-co/jalco-opencode
+https://github.com/addyosmani/agent-skills
+https://github.com/AlemTuzlak/skills/tree/main
+
+skill collections & directories:
 https://skills.sh
     https://skills.sh/mattpocock/skills/grill-me
     https://skills.sh/mattpocock/skills/write-a-prd
@@ -9,16 +15,16 @@ https://skills.sh
     https://skills.sh/vercel-labs/agent-browser/agent-browser
 https://agentskill.sh
 https://skillsmp.com/search
+https://index.tego.security/skills/
+https://github.com/eljulians/skillfile
+
+agentic standards:
+https://ecc.tools
 https://agentskills.io/home
 https://jeffreyemanuel.com/tldr
-https://index.tego.security/skills/
 https://buildermethods.com/agent-os
-https://github.com/eljulians/skillfile
-https://github.com/addyosmani/agent-skills
 https://www.youtube.com/watch?v=0cVuMHaYEHE
-https://github.com/AlemTuzlak/skills/tree/main
 https://agentclientprotocol.com/get-started/clients
-https://www.augmentcode.com/blog/how-to-write-good-agents-dot-md-files
 
 parallelization, orchestration & agent teams:
 https://air.dev
@@ -51,6 +57,7 @@ https://github.com/andyrewlee/awesome-agent-orchestrators
 
 harness basics & advanced usage:
 https://magazine.sebastianraschka.com/p/components-of-a-coding-agent
+https://www.augmentcode.com/blog/how-to-write-good-agents-dot-md-files
 https://openai.com/index/speeding-up-agentic-workflows-with-websockets/
 
 build your own harness:
@@ -87,11 +94,13 @@ https://vale.sh
 https://textstat.org
 
 memory:
-https://github.com/milla-jovovich/mempalace
 https://github.com/garrytan/gbrain
+https://github.com/thedotmack/claude-mem
+https://github.com/milla-jovovich/mempalace
 
 context management:
 https://www.aihero.dev/tracer-bullets
+https://github.com/mksglu/context-mode
 https://x.com/i/status/2044548257058328723
 https://hannahstulberg.substack.com/p/claude-code-for-everything-why-ai
 
@@ -100,13 +109,16 @@ https://github.com/AlemTuzlak/skills/tree/main/skills/remotion-video
 
 design/frontend:
 gemini 3.1 pro canvas
+https://ui.sh
 https://katagami.ai
 https://www.typeui.sh
 https://www.pencil.dev
 https://motionsites.ai
+https://impeccable.style
 https://x.com/i/status/2035508816461074883
 https://github.com/VoltAgent/awesome-design-md
 https://x.com/tkkong/status/2034368184036561160
+https://x.com/LexnLin/status/2050709691978936715
 https://x.com/ParthJadhav8/status/2045909607990825244?s=20
 https://github.com/anthropics/claude-code/blob/main/plugins/frontend-design/skills/frontend-design/SKILL.md
 ```

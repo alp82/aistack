@@ -1,13 +1,13 @@
 "use client";
 
 import {
-	motion,
 	AnimatePresence,
+	motion,
 	useMotionValue,
 	useSpring,
 	useTransform,
 } from "motion/react";
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 export interface HoverTarget {
@@ -21,10 +21,12 @@ export interface HoverTarget {
 	altText?: string;
 }
 
+type Position = "above" | "below" | "left" | "right";
+
 /** Shared animation and positioning options */
 interface HoverCardBaseProps {
 	/** Position of the preview relative to the trigger */
-	position?: "above" | "below" | "left" | "right";
+	position?: Position;
 	/** Enter animation duration in seconds */
 	enterSpeed?: number;
 	/** Exit animation duration in seconds */
@@ -75,6 +77,30 @@ interface HoverCardWrapperProps extends HoverCardBaseProps {
 
 export type HoverCardProps = HoverCardInlineProps | HoverCardWrapperProps;
 
+const SELF_TRANSLATE: Record<Position, string> = {
+	below: "translate(-50%, 0)",
+	above: "translate(-50%, -100%)",
+	left: "translate(-100%, -50%)",
+	right: "translate(0, -50%)",
+};
+
+function computeAnchor(
+	rect: DOMRect,
+	position: Position,
+	offset: number,
+): { x: number; y: number } {
+	switch (position) {
+		case "below":
+			return { x: rect.left + rect.width / 2, y: rect.bottom + offset };
+		case "above":
+			return { x: rect.left + rect.width / 2, y: rect.top - offset };
+		case "left":
+			return { x: rect.left - offset, y: rect.top + rect.height / 2 };
+		case "right":
+			return { x: rect.right + offset, y: rect.top + rect.height / 2 };
+	}
+}
+
 const HoverCard = (props: HoverCardProps) => {
 	const {
 		position = "below",
@@ -104,69 +130,81 @@ const HoverCard = (props: HoverCardProps) => {
 		}
 	}, [props]);
 
-	// Motion values for smooth cursor tracking and rotation
-	const cursorX = useMotionValue(0);
-	const cursorY = useMotionValue(0);
+	// Anchor coords (the point on the trigger the card snaps to). Spring smooths
+	// transitions between targets in inline mode.
+	const anchorX = useMotionValue(0);
+	const anchorY = useMotionValue(0);
+	const smoothAnchorX = useSpring(anchorX, { stiffness: 350, damping: 30 });
+	const smoothAnchorY = useSpring(anchorY, { stiffness: 350, damping: 30 });
+
+	// Cursor-driven parallax: small rotation + offset added on top of the anchor.
 	const rotation = useMotionValue(0);
 	const offsetX = useMotionValue(0);
 	const offsetY = useMotionValue(0);
-
-	const smoothCursorX = useSpring(cursorX, { stiffness: 250, damping: 20 });
-	const smoothCursorY = useSpring(cursorY, { stiffness: 250, damping: 20 });
 	const smoothRotation = useSpring(rotation, { stiffness: 150, damping: 15 });
 	const smoothOffsetX = useSpring(offsetX, { stiffness: 150, damping: 15 });
 	const smoothOffsetY = useSpring(offsetY, { stiffness: 150, damping: 15 });
 
 	const previewWidth = typeof width === "number" ? width : 280;
-	const previewHeight = height === "auto" ? 240 : (height as number);
 
-	const finalX = useTransform(() => {
-		const cx = smoothCursorX.get();
-		const ox = smoothOffsetX.get();
-		let x: number;
-		switch (position) {
-			case "left":
-				x = cx - previewWidth - offset + ox;
-				break;
-			case "right":
-				x = cx + offset + ox;
-				break;
-			case "above":
-			case "below":
-			default:
-				x = cx - previewWidth / 2 + ox;
-		}
-		// Clamp to viewport horizontally
-		const padding = 16;
-		return Math.max(
-			padding,
-			Math.min(x, window.innerWidth - previewWidth - padding),
-		);
-	});
+	const finalX = useTransform(() => smoothAnchorX.get() + smoothOffsetX.get());
+	const finalY = useTransform(() => smoothAnchorY.get() + smoothOffsetY.get());
 
-	const finalY = useTransform(() => {
-		const cy = smoothCursorY.get();
-		const oy = smoothOffsetY.get();
-		let y: number;
-		switch (position) {
-			case "above":
-				y = cy - previewHeight - offset + oy;
-				break;
-			case "below":
-				y = cy + offset + oy;
-				break;
-			case "left":
-			case "right":
-			default:
-				y = cy - previewHeight / 2 + oy;
-		}
-		// Clamp to viewport vertically
-		const padding = 16;
-		return Math.max(
-			padding,
-			Math.min(y, window.innerHeight - previewHeight - padding),
-		);
-	});
+	const updateAnchorFromElement = useCallback(
+		(el: HTMLElement | null, jump: boolean) => {
+			if (!el) return;
+			const rect = el.getBoundingClientRect();
+			let { x, y } = computeAnchor(rect, position, offset);
+			// Horizontal clamp for above/below: keep the card (centered on x) inside
+			// the viewport. Falls back to centering when the trigger is comfortably
+			// inside the viewport.
+			if (position === "above" || position === "below") {
+				const padding = 16;
+				const halfWidth = previewWidth / 2;
+				const minX = padding + halfWidth;
+				const maxX = window.innerWidth - padding - halfWidth;
+				if (maxX >= minX) {
+					x = Math.max(minX, Math.min(x, maxX));
+				}
+			}
+			anchorX.set(x);
+			anchorY.set(y);
+			if (jump) {
+				smoothAnchorX.jump(x);
+				smoothAnchorY.jump(y);
+			}
+		},
+		[
+			anchorX,
+			anchorY,
+			smoothAnchorX,
+			smoothAnchorY,
+			position,
+			offset,
+			previewWidth,
+		],
+	);
+
+	const getCurrentAnchorElement = useCallback((): HTMLElement | null => {
+		if (props.mode === "wrapper") return triggerRef.current;
+		if (hoveredIndex !== null) return targetRefs.current[hoveredIndex];
+		return null;
+	}, [props.mode, hoveredIndex]);
+
+	// Re-anchor on scroll / resize while visible so the card stays glued to the
+	// trigger even if the page scrolls.
+	useEffect(() => {
+		if (!isVisible) return;
+		const update = () => {
+			updateAnchorFromElement(getCurrentAnchorElement(), true);
+		};
+		window.addEventListener("scroll", update, { passive: true, capture: true });
+		window.addEventListener("resize", update);
+		return () => {
+			window.removeEventListener("scroll", update, { capture: true });
+			window.removeEventListener("resize", update);
+		};
+	}, [isVisible, getCurrentAnchorElement, updateAnchorFromElement]);
 
 	const handleMouseEnter = useCallback(
 		(event: React.MouseEvent<HTMLElement>, index?: number) => {
@@ -177,11 +215,13 @@ const HoverCard = (props: HoverCardProps) => {
 
 			const isFirstHover = !isVisible;
 
+			if (index !== undefined) {
+				setHoveredIndex(index);
+			}
+
+			updateAnchorFromElement(event.currentTarget, isFirstHover);
+
 			if (isFirstHover) {
-				cursorX.jump(event.clientX);
-				cursorY.jump(event.clientY);
-				smoothCursorX.jump(event.clientX);
-				smoothCursorY.jump(event.clientY);
 				rotation.jump(0);
 				smoothRotation.jump(0);
 				offsetX.jump(0);
@@ -190,17 +230,11 @@ const HoverCard = (props: HoverCardProps) => {
 				smoothOffsetY.jump(0);
 			}
 
-			if (index !== undefined) {
-				setHoveredIndex(index);
-			}
 			setIsVisible(true);
 		},
 		[
 			isVisible,
-			cursorX,
-			cursorY,
-			smoothCursorX,
-			smoothCursorY,
+			updateAnchorFromElement,
 			rotation,
 			smoothRotation,
 			offsetX,
@@ -214,18 +248,13 @@ const HoverCard = (props: HoverCardProps) => {
 		(event: React.MouseEvent<HTMLElement>, index?: number) => {
 			if (props.mode === "inline" && hoveredIndex !== index) return;
 
-			const currentX = event.clientX;
-			const currentY = event.clientY;
-			cursorX.set(currentX);
-			cursorY.set(currentY);
-
 			const target = event.currentTarget;
 			const rect = target.getBoundingClientRect();
 
 			const centerX = rect.left + rect.width / 2;
 			const centerY = rect.top + rect.height / 2;
-			const deltaX = currentX - centerX;
-			const deltaY = currentY - centerY;
+			const deltaX = event.clientX - centerX;
+			const deltaY = event.clientY - centerY;
 
 			const rot = Math.max(
 				-maxRotation,
@@ -250,8 +279,6 @@ const HoverCard = (props: HoverCardProps) => {
 			hoveredIndex,
 			maxRotation,
 			maxOffset,
-			cursorX,
-			cursorY,
 			rotation,
 			offsetX,
 			offsetY,
@@ -355,12 +382,12 @@ const HoverCard = (props: HoverCardProps) => {
 						src={targets[hoveredIndex].imageUrl}
 						alt={targets[hoveredIndex].altText || targets[hoveredIndex].text}
 						width={previewWidth}
-						height={previewHeight}
+						height={typeof height === "number" ? height : 240}
 						className={cn("object-cover", showImageShadow && "shadow-2xl")}
 						style={{
 							borderRadius: imageBorderRadius,
 							width: previewWidth,
-							height: previewHeight,
+							height: typeof height === "number" ? height : 240,
 						}}
 					/>
 				</motion.div>
@@ -382,56 +409,22 @@ const HoverCard = (props: HoverCardProps) => {
 		);
 	};
 
-	// Wrapper mode render
-	if (props.mode === "wrapper") {
-		return (
-			<div className={cn("relative inline-block", className)}>
-				<div
-					ref={triggerRef}
-					onMouseEnter={(e) => handleMouseEnter(e)}
-					onMouseMove={(e) => handleMouseMove(e)}
-					onMouseLeave={handleMouseLeave}
-				>
-					{props.children}
-				</div>
+	const selfTranslate = SELF_TRANSLATE[position];
 
-				<motion.div
-					initial={{ opacity: 0, scale: 0.85 }}
-					animate={{
-						opacity: isVisible ? 1 : 0,
-						scale: isVisible ? 1 : 0.85,
-					}}
-					transition={{
-						duration: isVisible ? enterSpeed : exitSpeed,
-						ease: isVisible ? "easeOut" : "easeIn",
-					}}
-					style={{
-						position: "fixed",
-						left: 0,
-						top: 0,
-						x: finalX,
-						y: finalY,
-						width,
-						height: height === "auto" ? "auto" : height,
-						rotate: smoothRotation,
-						pointerEvents: "none",
-						zIndex: 9999,
-						willChange: "transform, opacity",
-					}}
-				>
-					<AnimatePresence mode="popLayout" initial={false}>
-						{isVisible && renderPreviewContent()}
-					</AnimatePresence>
-				</motion.div>
-			</div>
-		);
-	}
-
-	// Inline mode render
-	return (
-		<div className={cn("relative", className)}>
-			{renderInlineContent()}
-
+	const previewSurface = (
+		<motion.div
+			style={{
+				position: "fixed",
+				left: 0,
+				top: 0,
+				x: finalX,
+				y: finalY,
+				pointerEvents: "none",
+				zIndex: 9999,
+				willChange: "transform",
+			}}
+			transformTemplate={(_, generated) => `${generated} ${selfTranslate}`}
+		>
 			<motion.div
 				initial={{ opacity: 0, scale: 0.85 }}
 				animate={{
@@ -443,23 +436,41 @@ const HoverCard = (props: HoverCardProps) => {
 					ease: isVisible ? "easeOut" : "easeIn",
 				}}
 				style={{
-					position: "fixed",
-					left: 0,
-					top: 0,
-					x: finalX,
-					y: finalY,
 					width: previewWidth,
-					height: previewHeight,
+					height: height === "auto" ? "auto" : (height as number),
 					rotate: smoothRotation,
-					pointerEvents: "none",
-					zIndex: 9999,
 					willChange: "transform, opacity",
 				}}
 			>
-				<AnimatePresence mode="popLayout" initial={false}>
-					{hoveredIndex !== null && renderPreviewContent()}
+				<AnimatePresence initial={false}>
+					{isVisible &&
+						(props.mode === "wrapper" || hoveredIndex !== null) &&
+						renderPreviewContent()}
 				</AnimatePresence>
 			</motion.div>
+		</motion.div>
+	);
+
+	if (props.mode === "wrapper") {
+		return (
+			<div className={cn("relative inline-block", className)}>
+				<div
+					ref={triggerRef}
+					onMouseEnter={(e) => handleMouseEnter(e)}
+					onMouseMove={(e) => handleMouseMove(e)}
+					onMouseLeave={handleMouseLeave}
+				>
+					{props.children}
+				</div>
+				{previewSurface}
+			</div>
+		);
+	}
+
+	return (
+		<div className={cn("relative", className)}>
+			{renderInlineContent()}
+			{previewSurface}
 		</div>
 	);
 };

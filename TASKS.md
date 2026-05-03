@@ -1,5 +1,4 @@
 # TODO
-* show who upvoted
 * CLI workflow
     * uploaded files don't appear in project
     * custom instructions cards disappear after saving and even destroy next header
