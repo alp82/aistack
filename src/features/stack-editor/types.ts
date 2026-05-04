@@ -24,7 +24,9 @@ type KnownInstructionType =
 	| "hook"
 	| "subagent"
 	| "config"
-	| "custom";
+	| "custom"
+	| "plugin"
+	| "dotfile";
 
 /** Accepts known types with autocomplete, plus any arbitrary string. */
 type InstructionType = KnownInstructionType | (string & {});
@@ -36,6 +38,17 @@ type InstructionItem = {
 	group: string;
 	stableKey: string;
 	files: FileEntry[];
+	source?: "authored" | "cli" | "github";
+	scope?: "global" | "project";
+	upstream?: {
+		repoUrl: string;
+		path?: string;
+		license?: string;
+		stars?: number;
+		lastCommitSha?: string;
+		mirrorMode: "link" | "preview" | "mirror";
+		lastSyncAt?: number;
+	};
 };
 
 type ModelSubscriptionEntry = {

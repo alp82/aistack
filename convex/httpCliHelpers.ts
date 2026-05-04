@@ -1,5 +1,5 @@
 import { internalMutation, internalQuery } from './_generated/server'
-import { v } from 'convex/values'
+import { Infer, v } from 'convex/values'
 import { slugifyAscii } from '../src/lib/slug'
 import { generateUniqueShortId } from './lib/ids'
 
@@ -113,46 +113,21 @@ const IncomingInstructionItem = v.object({
       tags: v.optional(v.array(v.string())),
     }),
   ),
+  source: v.optional(v.union(v.literal('authored'), v.literal('cli'), v.literal('github'))),
+  upstream: v.optional(v.object({
+    repoUrl: v.string(),
+    path: v.optional(v.string()),
+    license: v.optional(v.string()),
+    stars: v.optional(v.number()),
+    lastCommitSha: v.optional(v.string()),
+    mirrorMode: v.union(v.literal('link'), v.literal('preview'), v.literal('mirror')),
+    lastSyncAt: v.optional(v.number()),
+  })),
 })
 
-type IncomingItem = {
-  type: string
-  name: string
-  description?: string
-  group: string
-  scope?: 'global' | 'project'
-  stableKey: string
-  files: Array<{
-    name: string
-    content: string
-    path?: string
-    tags?: string[]
-  }>
-}
+type Item = Infer<typeof IncomingInstructionItem>
 
-type StoredItem = {
-  type: string
-  name: string
-  description?: string
-  group: string
-  stableKey: string
-  files: Array<{
-    name: string
-    content: string
-    path?: string
-    tags?: string[]
-  }>
-}
-
-function stripScope(item: IncomingItem): StoredItem {
-  const { scope: _scope, ...rest } = item
-  return rest
-}
-
-function mergeByStableKey(
-  existing: StoredItem[],
-  incoming: StoredItem[],
-): StoredItem[] {
+function mergeByStableKey(existing: Item[], incoming: Item[]): Item[] {
   const incomingKeys = new Set<string>()
   for (const item of incoming) {
     incomingKeys.add(item.stableKey)
@@ -174,14 +149,14 @@ export const upsertProject = internalMutation({
     shortId: v.string(),
   }),
   handler: async (ctx, args) => {
-    const projectItems: StoredItem[] = []
-    const globalItems: StoredItem[] = []
-    for (const item of args.instructions as IncomingItem[]) {
-      if (item.scope === 'global') {
-        globalItems.push(stripScope(item))
-      } else {
-        projectItems.push(stripScope(item))
-      }
+    const projectItems: Item[] = []
+    const globalItems: Item[] = []
+    for (const item of args.instructions) {
+      // Server forces source='cli' for HTTP CLI endpoint;
+      // web/GitHub-link paths use a different code path.
+      const stored: Item = { ...item, source: 'cli' as const }
+      if (item.scope === 'global') globalItems.push(stored)
+      else projectItems.push(stored)
     }
 
     const existing = await ctx.db
@@ -198,7 +173,7 @@ export const upsertProject = internalMutation({
 
     if (match) {
       const mergedProjectInstructions = mergeByStableKey(
-        match.instructions as StoredItem[],
+        match.instructions,
         projectItems,
       )
       await ctx.db.patch(match._id, {
@@ -232,8 +207,7 @@ export const upsertProject = internalMutation({
         if (stack.creatorId !== args.creatorId) {
           throw new Error('Not authorized to write to this stack')
         }
-        const existingStackInstructions =
-          (stack.instructions ?? []) as StoredItem[]
+        const existingStackInstructions = stack.instructions ?? []
         const mergedStackInstructions = mergeByStableKey(
           existingStackInstructions,
           globalItems,

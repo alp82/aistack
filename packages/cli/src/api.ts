@@ -110,6 +110,16 @@ export interface InstructionItem {
 	scope?: "global" | "project";
 	stableKey: string;
 	files: InstructionFile[];
+	source?: "authored" | "cli" | "github";
+	upstream?: {
+		repoUrl: string;
+		path?: string;
+		license?: string;
+		stars?: number;
+		lastCommitSha?: string;
+		mirrorMode: "link" | "preview" | "mirror";
+		lastSyncAt?: number;
+	};
 }
 
 export interface ProjectData {

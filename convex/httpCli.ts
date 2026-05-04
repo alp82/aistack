@@ -1,5 +1,6 @@
 import { httpAction } from './_generated/server'
 import { api, internal } from './_generated/api'
+import type { Id } from './_generated/dataModel'
 
 const USER_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
@@ -176,6 +177,7 @@ export const projectsCollect = httpAction(async (ctx, request) => {
   }
 
   if (!stackId) {
+    // TODO: enforce one-stack-per-creator invariant — currently silently picks first
     const stack = await ctx.runQuery(internal.httpCliHelpers.getFirstStackByCreator, {
       creatorId: creator._id,
     })
@@ -188,7 +190,7 @@ export const projectsCollect = httpAction(async (ctx, request) => {
 
   const result = await ctx.runMutation(internal.httpCliHelpers.upsertProject, {
     creatorId: creator._id,
-    stackId: stackId as any,
+    stackId: stackId as Id<'stacks'>,
     name: body.name,
     instructions: body.instructions,
     source: body.source ?? 'cli',
@@ -196,7 +198,7 @@ export const projectsCollect = httpAction(async (ctx, request) => {
 
   const now = Date.now()
   await ctx.runMutation(internal.cliTokens.refreshToken, {
-    id: tokenId as any,
+    id: tokenId as Id<'cliTokens'>,
     lastUsedAt: now,
     expiresAt: now + 90 * 24 * 60 * 60 * 1000,
   })

@@ -41,4 +41,5 @@
 * admin for editing aliases
     * e.g. amp, opus, etc.
 * og image: bigger tool icons
-[text](about:blank#blocked)
+
+## one-stack-per-creator invariant — CLI silently picks first stack via getFirstStackByCreator in convex/httpCli.ts:179; should enforce server-side or surface stack-picker to user.

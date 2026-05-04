@@ -30,6 +30,11 @@ export const InstructionFile = v.object({
   tags: v.optional(v.array(v.string())),
 })
 
+/**
+ * @stableKey format invariants:
+ *   - Authored items: `manual:${type}:${name}` via buildManualStableKey in src/lib/instruction-utils.ts
+ *   - CLI items: `${group}:${type}:${relPath}` via computeStableKey in packages/cli/src/stableKey.ts
+ */
 export const InstructionItem = v.object({
   type: v.string(),
   name: v.string(),
@@ -37,6 +42,17 @@ export const InstructionItem = v.object({
   group: v.string(),
   stableKey: v.string(),
   files: v.array(InstructionFile),
+  source: v.optional(v.union(v.literal('authored'), v.literal('cli'), v.literal('github'))),
+  scope: v.optional(v.union(v.literal('global'), v.literal('project'))),
+  upstream: v.optional(v.object({
+    repoUrl: v.string(),
+    path: v.optional(v.string()),
+    license: v.optional(v.string()),
+    stars: v.optional(v.number()),
+    lastCommitSha: v.optional(v.string()),
+    mirrorMode: v.union(v.literal('link'), v.literal('preview'), v.literal('mirror')),
+    lastSyncAt: v.optional(v.number()),
+  })),
 })
 
 const ModelCategory = v.union(
@@ -169,6 +185,7 @@ export default defineSchema({
   })
     .index('by_slug', ['slug'])
     .index('by_shortId', ['shortId'])
+    // TODO: enforce one-stack-per-creator invariant
     .index('by_creatorId', ['creatorId'])
     .index('by_published', ['published'])
     .index('by_isLowQuality', ['isLowQuality']),

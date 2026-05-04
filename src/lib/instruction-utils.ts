@@ -3,7 +3,9 @@ import {
 	BookOpen,
 	Bot,
 	Cpu,
+	FileCode,
 	FileText,
+	Puzzle,
 	Settings,
 	Shield,
 	Terminal,
@@ -22,6 +24,8 @@ const knownTypeColors: Record<KnownInstructionType, string> = {
 	subagent: "text-orange-400 border-orange-400/30 bg-orange-400/10",
 	config: "text-amber-400 border-amber-400/30 bg-amber-400/10",
 	custom: "text-stone-400 border-stone-400/30 bg-stone-400/10",
+	plugin: "text-violet-400 border-violet-400/30 bg-violet-400/10",
+	dotfile: "text-slate-400 border-slate-400/30 bg-slate-400/10",
 };
 
 const knownTypeColorsSplit: Record<
@@ -73,6 +77,16 @@ const knownTypeColorsSplit: Record<
 		bg: "bg-stone-400",
 		text: "text-stone-400",
 	},
+	plugin: {
+		border: "border-violet-400/30",
+		bg: "bg-violet-400",
+		text: "text-violet-400",
+	},
+	dotfile: {
+		border: "border-slate-400/30",
+		bg: "bg-slate-400",
+		text: "text-slate-400",
+	},
 };
 
 const knownTypeLabels: Record<KnownInstructionType, string> = {
@@ -85,6 +99,8 @@ const knownTypeLabels: Record<KnownInstructionType, string> = {
 	subagent: "Subagent",
 	config: "Config",
 	custom: "Custom",
+	plugin: "Plugin",
+	dotfile: "Dotfile",
 };
 
 const defaultColors = knownTypeColors.custom;
@@ -122,6 +138,8 @@ export const knownInstructionTypes: KnownInstructionType[] = [
 	"subagent",
 	"config",
 	"custom",
+	"plugin",
+	"dotfile",
 ];
 
 /** Pill colors for inline references and card headers — dimmer than tool/model/bundle pills. */
@@ -183,6 +201,18 @@ const knownTypePillColors: Record<
 		hoverBg: "hover:bg-stone-400/10",
 		hoverText: "hover:text-stone-400",
 	},
+	plugin: {
+		border: "border-violet-400/20",
+		bg: "bg-violet-400/5",
+		hoverBg: "hover:bg-violet-400/10",
+		hoverText: "hover:text-violet-400",
+	},
+	dotfile: {
+		border: "border-slate-400/20",
+		bg: "bg-slate-400/5",
+		hoverBg: "hover:bg-slate-400/10",
+		hoverText: "hover:text-slate-400",
+	},
 };
 
 const defaultPillColors = knownTypePillColors.custom;
@@ -206,6 +236,8 @@ const knownTypeIcons: Record<KnownInstructionType, LucideIcon> = {
 	command: Terminal,
 	config: Settings,
 	custom: FileText,
+	plugin: Puzzle,
+	dotfile: FileCode,
 };
 
 export function getInstructionTypeIcon(type: string): LucideIcon {
@@ -222,6 +254,8 @@ const knownTypeIconBgClasses: Record<KnownInstructionType, string> = {
 	subagent: "bg-orange-400/15",
 	config: "bg-amber-400/15",
 	custom: "bg-stone-400/15",
+	plugin: "bg-violet-400/15",
+	dotfile: "bg-slate-400/15",
 };
 
 export function getInstructionTypeIconBgClass(type: string): string {
