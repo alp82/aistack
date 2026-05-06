@@ -3,7 +3,7 @@ import type { Doc } from './_generated/dataModel'
 import { v } from 'convex/values'
 import { extractShortId } from './lib/ids'
 import { slugifyAscii } from '../src/lib/slug'
-import { InstructionItem as InstructionItemValidator } from './schema'
+import { Resource as ResourceValidator } from './schema'
 
 export const getBySlug = query({
   args: { slug: v.string() },
@@ -20,7 +20,7 @@ export const getBySlug = query({
       order: v.optional(v.number()),
       cloneCount: v.optional(v.number()),
       published: v.optional(v.boolean()),
-      instructions: v.array(InstructionItemValidator),
+      resources: v.array(ResourceValidator),
       createdAt: v.number(),
       updatedAt: v.number(),
       creator: v.object({
@@ -72,7 +72,7 @@ export const getBySlug = query({
       order: project.order,
       cloneCount: project.cloneCount,
       published: project.published,
-      instructions: project.instructions,
+      resources: project.resources ?? [],
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
       creator: {
@@ -124,7 +124,7 @@ export const listByStack = query({
 
     const mapped = projects.map((project) => {
       let fileCount = 0
-      for (const item of project.instructions) {
+      for (const item of project.resources ?? []) {
         fileCount += item.files.length
       }
       return {
@@ -156,7 +156,7 @@ export const listByStack = query({
   },
 })
 
-export const listProjectInstructionsByStack = query({
+export const listProjectResourcesByStack = query({
   args: { stackId: v.id('stacks'), includeUnpublished: v.optional(v.boolean()) },
   returns: v.array(
     v.object({
@@ -164,7 +164,7 @@ export const listProjectInstructionsByStack = query({
       projectName: v.string(),
       projectSlug: v.string(),
       isOwnProject: v.boolean(),
-      instructions: v.array(InstructionItemValidator),
+      resources: v.array(ResourceValidator),
     })
   ),
   handler: async (ctx, args) => {
@@ -198,7 +198,7 @@ export const listProjectInstructionsByStack = query({
       projectName: project.name,
       projectSlug: `${project.slug}-${project.shortId}`,
       isOwnProject: ownedCreatorIds.has(project.creatorId),
-      instructions: project.instructions,
+      resources: project.resources ?? [],
       order: project.order,
       createdAt: project.createdAt,
     }))
@@ -211,12 +211,12 @@ export const listProjectInstructionsByStack = query({
     })
 
     return mapped.map(
-      ({ projectId, projectName, projectSlug, isOwnProject, instructions }) => ({
+      ({ projectId, projectName, projectSlug, isOwnProject, resources }) => ({
         projectId,
         projectName,
         projectSlug,
         isOwnProject,
-        instructions,
+        resources,
       })
     )
   },
@@ -232,7 +232,7 @@ export const listByCreator = query({
       stackId: v.id('stacks'),
       stackName: v.string(),
       stackSlug: v.string(),
-      instructions: v.array(InstructionItemValidator),
+      resources: v.array(ResourceValidator),
     })
   ),
   handler: async (ctx) => {
@@ -266,7 +266,7 @@ export const listByCreator = query({
       stackId: Doc<'projects'>['stackId']
       stackName: string
       stackSlug: string
-      instructions: Doc<'projects'>['instructions']
+      resources: NonNullable<Doc<'projects'>['resources']>
     }[] = []
     for (const project of limited) {
       let stackInfo = stackCache.get(project.stackId)
@@ -283,7 +283,7 @@ export const listByCreator = query({
         stackId: project.stackId,
         stackName: stackInfo.name,
         stackSlug: `${stackInfo.slug}-${stackInfo.shortId}`,
-        instructions: project.instructions,
+        resources: project.resources ?? [],
       })
     }
     return results
@@ -302,7 +302,7 @@ export const getByShortId = query({
       creatorId: v.id('creators'),
       stackId: v.id('stacks'),
       source: v.optional(v.string()),
-      instructions: v.array(InstructionItemValidator),
+      resources: v.array(ResourceValidator),
       createdAt: v.number(),
       updatedAt: v.number(),
     }),
@@ -323,7 +323,7 @@ export const getByShortId = query({
       creatorId: project.creatorId,
       stackId: project.stackId,
       source: project.source,
-      instructions: project.instructions,
+      resources: project.resources ?? [],
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
     }

@@ -1,7 +1,7 @@
 import { useEffect, useReducer, useRef } from "react";
 import type {
-	InstructionItem,
 	ModelSubscriptionEntry,
+	Resource,
 	StackEditorInitialValue,
 	StackEditorMode,
 } from "@/features/stack-editor/types";
@@ -86,8 +86,8 @@ function useEditorState({
 			dispatch({ type: "bundles/updated", bundles }),
 		setModelSubscriptions: (modelSubscriptions: ModelSubscriptionEntry[]) =>
 			dispatch({ type: "modelSubscriptions/updated", modelSubscriptions }),
-		setInstructions: (instructions: InstructionItem[]) =>
-			dispatch({ type: "instructions/updated", instructions }),
+		setResources: (resources: Resource[]) =>
+			dispatch({ type: "resources/updated", resources }),
 		setSaving: (saving: boolean) =>
 			dispatch({ type: "ui/saveStateChanged", saving }),
 		setError: (error: string) => dispatch({ type: "ui/errorSet", error }),

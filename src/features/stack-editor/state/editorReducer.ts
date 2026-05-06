@@ -1,8 +1,8 @@
 import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
 import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
 import type {
-	InstructionItem,
 	ModelSubscriptionEntry,
+	Resource,
 	StackEditorInitialValue,
 } from "@/features/stack-editor/types";
 
@@ -30,7 +30,7 @@ type EditorState = {
 	name: string;
 	oneLiner: string;
 	description: string;
-	instructions: InstructionItem[];
+	resources: Resource[];
 	modelSubscriptions: ModelSubscriptionEntry[];
 	isTeam: boolean;
 	teamSize: number;
@@ -51,7 +51,7 @@ type GuestStackDraft = {
 	name: string;
 	oneLiner: string;
 	description: string;
-	instructions: InstructionItem[];
+	resources: Resource[];
 	modelSubscriptions: ModelSubscriptionEntry[];
 	isTeam: boolean;
 	teamSize: number;
@@ -96,8 +96,8 @@ type EditorAction =
 			modelSubscriptions: ModelSubscriptionEntry[];
 	  }
 	| {
-			type: "instructions/updated";
-			instructions: InstructionItem[];
+			type: "resources/updated";
+			resources: Resource[];
 	  }
 	| {
 			type: "ui/saveStateChanged";
@@ -184,15 +184,15 @@ function getInitialEditorState(args: {
 					savedDraft.modelSubscriptions,
 					initialValue.modelSubscriptions ?? [],
 				)) ||
-			(savedDraft.instructions !== undefined &&
-				!eq(savedDraft.instructions, initialValue.instructions ?? []));
+			(savedDraft.resources !== undefined &&
+				!eq(savedDraft.resources, initialValue.resources ?? []));
 	}
 
 	return {
 		name: savedDraft?.name ?? initialValue?.name ?? actor.name ?? "My Stack",
 		oneLiner: savedDraft?.oneLiner ?? initialValue?.oneLiner ?? "",
 		description: savedDraft?.description ?? initialValue?.description ?? "",
-		instructions: savedDraft?.instructions ?? initialValue?.instructions ?? [],
+		resources: savedDraft?.resources ?? initialValue?.resources ?? [],
 		modelSubscriptions:
 			savedDraft?.modelSubscriptions ?? initialValue?.modelSubscriptions ?? [],
 		isTeam: savedDraft?.isTeam ?? (initialValue?.teamSize ?? 0) > 0,
@@ -248,10 +248,10 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 				...state,
 				modelSubscriptions: action.modelSubscriptions,
 			};
-		case "instructions/updated":
+		case "resources/updated":
 			return {
 				...state,
-				instructions: action.instructions,
+				resources: action.resources,
 			};
 		case "ui/saveStateChanged":
 			return {
@@ -284,10 +284,8 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 					draft.description !== undefined
 						? draft.description
 						: state.description,
-				instructions:
-					draft.instructions !== undefined
-						? draft.instructions
-						: state.instructions,
+				resources:
+					draft.resources !== undefined ? draft.resources : state.resources,
 				modelSubscriptions:
 					draft.modelSubscriptions !== undefined
 						? draft.modelSubscriptions
@@ -322,7 +320,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 				name: iv.name ?? state.name,
 				oneLiner: iv.oneLiner ?? "",
 				description: iv.description ?? "",
-				instructions: iv.instructions ?? [],
+				resources: iv.resources ?? [],
 				modelSubscriptions: iv.modelSubscriptions ?? [],
 				isTeam: (iv.teamSize ?? 0) > 0,
 				teamSize: iv.teamSize ?? 2,

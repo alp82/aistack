@@ -12,9 +12,9 @@ import {
 	Wrench,
 	Zap,
 } from "lucide-react";
-import type { KnownInstructionType } from "@/features/stack-editor/types";
+import type { KnownResourceType } from "@/features/stack-editor/types";
 
-const knownTypeColors: Record<KnownInstructionType, string> = {
+const knownTypeColors: Record<KnownResourceType, string> = {
 	prompt: "text-blue-400 border-blue-400/30 bg-blue-400/10",
 	rule: "text-purple-400 border-purple-400/30 bg-purple-400/10",
 	skill: "text-emerald-400 border-emerald-400/30 bg-emerald-400/10",
@@ -29,7 +29,7 @@ const knownTypeColors: Record<KnownInstructionType, string> = {
 };
 
 const knownTypeColorsSplit: Record<
-	KnownInstructionType,
+	KnownResourceType,
 	{ border: string; bg: string; text: string }
 > = {
 	prompt: {
@@ -89,7 +89,7 @@ const knownTypeColorsSplit: Record<
 	},
 };
 
-const knownTypeLabels: Record<KnownInstructionType, string> = {
+const knownTypeLabels: Record<KnownResourceType, string> = {
 	prompt: "Prompt",
 	rule: "Rule",
 	skill: "Skill",
@@ -106,15 +106,15 @@ const knownTypeLabels: Record<KnownInstructionType, string> = {
 const defaultColors = knownTypeColors.custom;
 const defaultColorsSplit = knownTypeColorsSplit.custom;
 
-function isKnownType(type: string): type is KnownInstructionType {
+function isKnownType(type: string): type is KnownResourceType {
 	return type in knownTypeColors;
 }
 
-export function getInstructionTypeColors(type: string): string {
+export function getResourceTypeColors(type: string): string {
 	return isKnownType(type) ? knownTypeColors[type] : defaultColors;
 }
 
-export function getInstructionTypeColorsSplit(type: string): {
+export function getResourceTypeColorsSplit(type: string): {
 	border: string;
 	bg: string;
 	text: string;
@@ -122,13 +122,13 @@ export function getInstructionTypeColorsSplit(type: string): {
 	return isKnownType(type) ? knownTypeColorsSplit[type] : defaultColorsSplit;
 }
 
-export function getInstructionTypeLabel(type: string): string {
+export function getResourceTypeLabel(type: string): string {
 	if (isKnownType(type)) return knownTypeLabels[type];
 	return type.charAt(0).toUpperCase() + type.slice(1);
 }
 
 /** All known types, useful for combobox suggestions. */
-export const knownInstructionTypes: KnownInstructionType[] = [
+export const knownResourceTypes: KnownResourceType[] = [
 	"prompt",
 	"rule",
 	"skill",
@@ -144,7 +144,7 @@ export const knownInstructionTypes: KnownInstructionType[] = [
 
 /** Pill colors for inline references and card headers — dimmer than tool/model/bundle pills. */
 const knownTypePillColors: Record<
-	KnownInstructionType,
+	KnownResourceType,
 	{ border: string; bg: string; hoverBg: string; hoverText: string }
 > = {
 	prompt: {
@@ -217,7 +217,7 @@ const knownTypePillColors: Record<
 
 const defaultPillColors = knownTypePillColors.custom;
 
-export function getInstructionTypePillColors(type: string): {
+export function getResourceTypePillColors(type: string): {
 	border: string;
 	bg: string;
 	hoverBg: string;
@@ -226,7 +226,7 @@ export function getInstructionTypePillColors(type: string): {
 	return isKnownType(type) ? knownTypePillColors[type] : defaultPillColors;
 }
 
-const knownTypeIcons: Record<KnownInstructionType, LucideIcon> = {
+const knownTypeIcons: Record<KnownResourceType, LucideIcon> = {
 	subagent: Bot,
 	hook: Zap,
 	prompt: BookOpen,
@@ -240,11 +240,11 @@ const knownTypeIcons: Record<KnownInstructionType, LucideIcon> = {
 	dotfile: FileCode,
 };
 
-export function getInstructionTypeIcon(type: string): LucideIcon {
+export function getResourceTypeIcon(type: string): LucideIcon {
 	return isKnownType(type) ? knownTypeIcons[type] : knownTypeIcons.custom;
 }
 
-const knownTypeIconBgClasses: Record<KnownInstructionType, string> = {
+const knownTypeIconBgClasses: Record<KnownResourceType, string> = {
 	prompt: "bg-blue-400/15",
 	rule: "bg-purple-400/15",
 	skill: "bg-emerald-400/15",
@@ -258,7 +258,7 @@ const knownTypeIconBgClasses: Record<KnownInstructionType, string> = {
 	dotfile: "bg-slate-400/15",
 };
 
-export function getInstructionTypeIconBgClass(type: string): string {
+export function getResourceTypeIconBgClass(type: string): string {
 	return isKnownType(type)
 		? knownTypeIconBgClasses[type]
 		: knownTypeIconBgClasses.custom;
@@ -291,16 +291,16 @@ export { isKnownType };
 
 import type { Id } from "../../convex/_generated/dataModel";
 
-export type InstructionSource = "stack" | "project";
+export type ResourceLocationKind = "stack" | "project";
 
-export type InstructionTarget =
+export type ResourceLocation =
 	| { kind: "stack"; id: Id<"stacks"> }
 	| { kind: "project"; id: Id<"projects"> };
 
-export function sourceToTarget(
-	source: InstructionSource,
+export function kindToLocation(
+	source: ResourceLocationKind,
 	sourceId: string,
-): InstructionTarget {
+): ResourceLocation {
 	return source === "stack"
 		? { kind: "stack", id: sourceId as Id<"stacks"> }
 		: { kind: "project", id: sourceId as Id<"projects"> };

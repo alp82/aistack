@@ -1,29 +1,31 @@
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import {
-	InstructionBrowserDialog,
-	type InstructionSource,
-	InstructionTree,
-	type InstructionTreeSelection,
-} from "@/components/instructions";
-import type { InstructionItem as InstructionItemType } from "@/features/stack-editor/types";
-import { sourceToTarget } from "@/lib/instruction-utils";
+	ResourceBrowserDialog,
+	ResourceTree,
+	type ResourceTreeSelection,
+} from "@/components/resources";
+import type { Resource } from "@/features/stack-editor/types";
+import {
+	kindToLocation,
+	type ResourceLocationKind,
+} from "@/lib/resource-utils";
 import { cn } from "@/lib/utils";
 
-export interface UnifiedFileListStackItems {
+export interface UnifiedResourceListStackItems {
 	sourceId: string;
 	sourceLabel: string;
-	instructions: InstructionItemType[];
+	resources: Resource[];
 }
 
-export interface UnifiedFileListProjectGroup {
+export interface UnifiedResourceListProjectGroup {
 	sourceId: string;
 	sourceLabel: string;
-	instructions: InstructionItemType[];
+	resources: Resource[];
 }
 
-export interface UnifiedFileListInsertFileArgs {
-	source: InstructionSource;
+export interface UnifiedResourceListInsertFileArgs {
+	source: ResourceLocationKind;
 	sourceId: string;
 	stableKey: string;
 	fileName: string;
@@ -31,42 +33,42 @@ export interface UnifiedFileListInsertFileArgs {
 	group: string;
 }
 
-export interface UnifiedFileListInsertGroupArgs {
-	source: InstructionSource;
+export interface UnifiedResourceListInsertGroupArgs {
+	source: ResourceLocationKind;
 	sourceId: string;
 	group: string;
 	fileCount: number;
 }
 
-export interface UnifiedFileListProps {
-	stackInstructions?: UnifiedFileListStackItems | null;
-	projectInstructions?: UnifiedFileListProjectGroup[];
+export interface UnifiedResourceListProps {
+	stackResources?: UnifiedResourceListStackItems | null;
+	projectResources?: UnifiedResourceListProjectGroup[];
 	mode: "edit" | "view";
-	onInsertFile?: (args: UnifiedFileListInsertFileArgs) => void;
-	onInsertGroup?: (args: UnifiedFileListInsertGroupArgs) => void;
+	onInsertFile?: (args: UnifiedResourceListInsertFileArgs) => void;
+	onInsertGroup?: (args: UnifiedResourceListInsertGroupArgs) => void;
 	onAddManual?: () => void;
 	className?: string;
 }
 
-export function UnifiedFileList({
-	stackInstructions,
-	projectInstructions,
+export function UnifiedResourceList({
+	stackResources,
+	projectResources,
 	mode,
 	onInsertFile,
 	onInsertGroup,
 	onAddManual,
 	className,
-}: UnifiedFileListProps) {
+}: UnifiedResourceListProps) {
 	const [viewerOpen, setViewerOpen] = useState(false);
 	const [viewerTarget, setViewerTarget] = useState<ReturnType<
-		typeof sourceToTarget
+		typeof kindToLocation
 	> | null>(null);
 	const [viewerInitial, setViewerInitial] = useState<
 		{ stableKey: string; fileName: string } | undefined
 	>(undefined);
 
-	const handleSelect = (selection: InstructionTreeSelection) => {
-		const target = sourceToTarget(selection.source, selection.sourceId);
+	const handleSelect = (selection: ResourceTreeSelection) => {
+		const target = kindToLocation(selection.source, selection.sourceId);
 		setViewerTarget(target);
 		setViewerInitial({
 			stableKey: selection.stableKey,
@@ -75,20 +77,20 @@ export function UnifiedFileList({
 		setViewerOpen(true);
 	};
 
-	const projectGroups = projectInstructions ?? [];
+	const projectGroups = projectResources ?? [];
 
 	return (
 		<div className={cn("space-y-3", className)}>
-			{stackInstructions && stackInstructions.instructions.length > 0 && (
-				<InstructionTree
-					stack={stackInstructions}
+			{stackResources && stackResources.resources.length > 0 && (
+				<ResourceTree
+					stack={stackResources}
 					onSelect={handleSelect}
 					onInsertFile={mode === "edit" ? onInsertFile : undefined}
 					onInsertGroup={mode === "edit" ? onInsertGroup : undefined}
 				/>
 			)}
 			{projectGroups.map((project) => (
-				<InstructionTree
+				<ResourceTree
 					key={project.sourceId}
 					project={project}
 					onSelect={handleSelect}
@@ -103,11 +105,11 @@ export function UnifiedFileList({
 					className="flex w-full items-center justify-center gap-2 border border-dashed border-stroke-subtle bg-transparent px-3 py-2.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime cursor-pointer"
 				>
 					<Plus className="size-3" />
-					Add Instruction
+					Add Resource
 				</button>
 			)}
 			{viewerOpen && viewerTarget && (
-				<InstructionBrowserDialog
+				<ResourceBrowserDialog
 					open={viewerOpen}
 					onClose={() => setViewerOpen(false)}
 					target={viewerTarget}

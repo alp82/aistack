@@ -68,10 +68,10 @@ import { AddItemModal, type AddItemTab } from "@/components/AddItemModal";
 import {
 	AIBundleCard,
 	AIBundleReference,
-	AIInstructionCard,
-	AIInstructionGroup,
 	AIModelCard,
 	AIModelReference,
+	AIResourceCard,
+	AIResourceGroup,
 	AIToolCard,
 	AIToolReference,
 	type BundleData,
@@ -89,7 +89,7 @@ import {
 } from "@/components/editor/SlashCommandPlugin";
 import { Button } from "@/components/ui/button";
 import { useOptionalEditorContext } from "@/features/stack-editor/context/EditorContext";
-import type { InstructionItem as InstructionItemType } from "@/features/stack-editor/types";
+import type { Resource } from "@/features/stack-editor/types";
 import { cn } from "@/lib/utils";
 import { api } from "../../convex/_generated/api";
 
@@ -185,13 +185,13 @@ type TiptapEditorProps = {
 	onModelAdded?: (model: ModelData) => void;
 	previewMode?: boolean;
 	/**
-	 * Stack-level instructions (e.g., CLI-collected globals routed to the
+	 * Stack-level resources (e.g., CLI-collected globals routed to the
 	 * stack). Required when editable to enable file insertion of stack files
 	 * via the slash command.
 	 */
-	stackInstructions?: {
+	stackResources?: {
 		stackId: string;
-		instructions: InstructionItemType[];
+		resources: Resource[];
 	};
 };
 
@@ -205,7 +205,7 @@ export function TiptapEditor({
 	models = [],
 	onModelAdded,
 	previewMode: externalPreviewMode,
-	stackInstructions,
+	stackResources,
 }: TiptapEditorProps) {
 	const [copied, setCopied] = useState(false);
 	const previewMode = externalPreviewMode ?? false;
@@ -223,7 +223,7 @@ export function TiptapEditor({
 	const toolsKey = useMemo(() => tools.map((t) => t._id).join(","), [tools]);
 	const modelsKey = useMemo(() => models.map((m) => m._id).join(","), [models]);
 
-	// Derive bundles and instructions from EditorContext for slash commands
+	// Derive bundles and resources from EditorContext for slash commands
 	const slashBundles = useMemo<BundleData[]>(() => {
 		if (!editorContext) return [];
 		return Array.from(editorContext.bundleLookup.values()).map((b) => ({
@@ -269,48 +269,48 @@ export function TiptapEditor({
 			}
 		};
 
-		// Stack-level instructions
-		if (stackInstructions?.stackId) {
-			for (const instruction of stackInstructions.instructions) {
+		// Stack-level resources
+		if (stackResources?.stackId) {
+			for (const resource of stackResources.resources) {
 				addToGroup(
 					"stack",
-					stackInstructions.stackId,
-					instruction.group,
-					instruction.files.length,
+					stackResources.stackId,
+					resource.group,
+					resource.files.length,
 				);
-				for (const file of instruction.files) {
+				for (const file of resource.files) {
 					out.push({
 						kind: "file",
 						source: "stack",
-						sourceId: stackInstructions.stackId,
-						stableKey: instruction.stableKey,
+						sourceId: stackResources.stackId,
+						stableKey: resource.stableKey,
 						fileName: file.name,
-						type: instruction.type,
-						group: instruction.group,
+						type: resource.type,
+						group: resource.group,
 					});
 				}
 			}
 		}
 
-		// Project-level instructions
+		// Project-level resources
 		if (projectFilesData) {
 			for (const project of projectFilesData) {
-				for (const instruction of project.instructions) {
+				for (const resource of project.resources) {
 					addToGroup(
 						"project",
 						project.projectId,
-						instruction.group,
-						instruction.files.length,
+						resource.group,
+						resource.files.length,
 					);
-					for (const file of instruction.files) {
+					for (const file of resource.files) {
 						out.push({
 							kind: "file",
 							source: "project",
 							sourceId: project.projectId,
-							stableKey: instruction.stableKey,
+							stableKey: resource.stableKey,
 							fileName: file.name,
-							type: instruction.type,
-							group: instruction.group,
+							type: resource.type,
+							group: resource.group,
 						});
 					}
 				}
@@ -332,7 +332,7 @@ export function TiptapEditor({
 		}
 
 		return [...groupItems, ...out];
-	}, [projectFilesData, stackInstructions]);
+	}, [projectFilesData, stackResources]);
 
 	const slashBundlesKey = useMemo(
 		() => slashBundles.map((b) => b._id).join(","),
@@ -470,8 +470,8 @@ export function TiptapEditor({
 				AIToolCard,
 				AIModelCard,
 				AIBundleCard,
-				AIInstructionCard,
-				AIInstructionGroup,
+				AIResourceCard,
+				AIResourceGroup,
 				...(editable
 					? [
 							DragHandle.configure({
@@ -552,7 +552,7 @@ export function TiptapEditor({
 			},
 			onUpdate: ({ editor }) => {
 				if (onChange) {
-					// Use HTML instead of markdown to preserve custom nodes like aiInstructionCard
+					// Use HTML instead of markdown to preserve custom nodes like aiResourceCard
 					const html = editor.getHTML();
 					onChange(html);
 				}

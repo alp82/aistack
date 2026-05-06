@@ -57,7 +57,7 @@ export async function projectsCheck(
 
 export async function projectsCollect(
 	token: string,
-	data: { name: string; instructions: InstructionItem[] },
+	data: { name: string; resources: Resource[] },
 ): Promise<{ slug: string; shortId: string; url: string }> {
 	const res = await request("/api/cli/projects/collect", {
 		method: "POST",
@@ -95,21 +95,21 @@ export async function projectGet(shortId: string): Promise<ProjectData | null> {
 }
 
 // Types used across the CLI
-export interface InstructionFile {
+export interface ResourceFile {
 	name: string;
 	content: string;
 	path?: string;
 	tags?: string[];
 }
 
-export interface InstructionItem {
+export interface Resource {
 	type: string;
 	name: string;
 	description?: string;
 	group: string;
 	scope?: "global" | "project";
 	stableKey: string;
-	files: InstructionFile[];
+	files: ResourceFile[];
 	source?: "authored" | "cli" | "github";
 	upstream?: {
 		repoUrl: string;
@@ -126,7 +126,7 @@ export interface ProjectData {
 	name: string;
 	slug: string;
 	shortId: string;
-	instructions: InstructionItem[];
+	resources: Resource[];
 	creator?: { name: string };
 	stack?: { name: string; slug: string };
 }

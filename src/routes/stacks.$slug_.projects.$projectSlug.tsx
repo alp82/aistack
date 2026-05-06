@@ -12,7 +12,7 @@ import {
 	Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { InstructionBrowser } from "@/components/instructions";
+import { ResourceBrowser } from "@/components/resources";
 import { TagBadge } from "@/components/TagBadge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { seoMeta } from "@/lib/seo";
@@ -38,7 +38,7 @@ export const Route = createFileRoute("/stacks/$slug_/projects/$projectSlug")({
 			};
 		}
 		const project = loaderData.project;
-		const fileCount = project.instructions.reduce(
+		const fileCount = project.resources.reduce(
 			(sum: number, i: { files: unknown[] }) => sum + i.files.length,
 			0,
 		);
@@ -93,11 +93,11 @@ function ProjectDetailPage() {
 		);
 	}
 
-	const fileCount = project.instructions.reduce(
+	const fileCount = project.resources.reduce(
 		(s: number, i: { files: unknown[] }) => s + i.files.length,
 		0,
 	);
-	const hasInstructions = project.instructions.length > 0;
+	const hasResources = project.resources.length > 0;
 	const createCommand = `npx @use-aistack/cli create ${project.slug}`;
 
 	const handleCopyCommand = () => {
@@ -288,13 +288,13 @@ function ProjectDetailPage() {
 			</header>
 
 			<div className="mx-auto max-w-content px-6 py-12">
-				{hasInstructions && (
+				{hasResources && (
 					<>
 						<h2 className="mb-6 font-mono text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-accent-lime">
 							Project Files
 							<span className="ml-2 text-fg-muted">{fileCount}</span>
 						</h2>
-						<InstructionBrowser target={{ kind: "project", id: project._id }} />
+						<ResourceBrowser target={{ kind: "project", id: project._id }} />
 					</>
 				)}
 			</div>

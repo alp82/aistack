@@ -3,13 +3,13 @@ import type { NodeViewProps } from "@tiptap/react";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import { FolderTree } from "lucide-react";
 import { useState } from "react";
-import type { InstructionSource } from "@/components/instructions";
-import { InstructionBrowserDialog } from "@/components/instructions";
-import { getGroupLabel, sourceToTarget } from "@/lib/instruction-utils";
+import type { ResourceLocationKind } from "@/lib/resource-utils";
+import { ResourceBrowserDialog } from "@/components/resources";
+import { getGroupLabel, kindToLocation } from "@/lib/resource-utils";
 import { BaseCard } from "./BaseCard";
 
-export interface AIInstructionGroupAttrs {
-	source: InstructionSource;
+export interface AIResourceGroupAttrs {
+	source: ResourceLocationKind;
 	sourceId: string;
 	group: string;
 	description: string | null;
@@ -19,18 +19,18 @@ export interface AIInstructionGroupAttrs {
 	typeBreakdown: Array<{ type: string; count: number }>;
 }
 
-function AIInstructionGroupView({
+function AIResourceGroupView({
 	node,
 	editor,
 	selected,
 	updateAttributes,
 }: NodeViewProps) {
 	const { source, sourceId, group, description, fileCount, typeBreakdown } =
-		node.attrs as AIInstructionGroupAttrs;
+		node.attrs as AIResourceGroupAttrs;
 	const isEditable = editor?.isEditable ?? false;
 	const [dialogOpen, setDialogOpen] = useState(false);
 
-	const target = sourceToTarget(source, sourceId);
+	const target = kindToLocation(source, sourceId);
 
 	const groupLabel = getGroupLabel(group);
 
@@ -75,7 +75,7 @@ function AIInstructionGroupView({
 				description={description ?? ""}
 				isEditable={isEditable}
 				onDescriptionChange={handleDescriptionChange}
-				cardId={`instruction-group:${source}:${sourceId}:${group}`}
+				cardId={`resource-group:${source}:${sourceId}:${group}`}
 			>
 				{breakdownLabels.length > 0 && (
 					<div className="mt-1 px-3 pb-2">
@@ -86,7 +86,7 @@ function AIInstructionGroupView({
 				)}
 			</BaseCard>
 			{dialogOpen && (
-				<InstructionBrowserDialog
+				<ResourceBrowserDialog
 					open={dialogOpen}
 					onClose={() => setDialogOpen(false)}
 					target={target}
@@ -97,8 +97,8 @@ function AIInstructionGroupView({
 	);
 }
 
-export const AIInstructionGroup = Node.create({
-	name: "aiInstructionGroup",
+export const AIResourceGroup = Node.create({
+	name: "aiResourceGroup",
 	group: "block",
 	atom: true,
 
@@ -128,6 +128,25 @@ export const AIInstructionGroup = Node.create({
 	parseHTML() {
 		return [
 			{
+				tag: "div[data-ai-resource-group]",
+				getAttrs: (element) => {
+					if (typeof element === "string") return false;
+					const el = element as HTMLElement;
+
+					return {
+						source: el.getAttribute("data-source") || "stack",
+						sourceId: el.getAttribute("data-source-id") || "",
+						group: el.getAttribute("data-group") || "",
+						description: el.getAttribute("data-description") || null,
+						fileCount: Number(el.getAttribute("data-file-count") ?? 0),
+						typeBreakdown: JSON.parse(
+							el.getAttribute("data-type-breakdown") || "[]",
+						),
+					};
+				},
+			},
+			// Legacy compat: existing serialized descriptions still use the old data attr.
+			{
 				tag: "div[data-ai-instruction-group]",
 				getAttrs: (element) => {
 					if (typeof element === "string") return false;
@@ -152,7 +171,7 @@ export const AIInstructionGroup = Node.create({
 		return [
 			"div",
 			mergeAttributes(HTMLAttributes, {
-				"data-ai-instruction-group": "",
+				"data-ai-resource-group": "",
 				"data-source": node.attrs.source,
 				"data-source-id": node.attrs.sourceId,
 				"data-group": node.attrs.group,
@@ -165,6 +184,6 @@ export const AIInstructionGroup = Node.create({
 	},
 
 	addNodeView() {
-		return ReactNodeViewRenderer(AIInstructionGroupView);
+		return ReactNodeViewRenderer(AIResourceGroupView);
 	},
 });

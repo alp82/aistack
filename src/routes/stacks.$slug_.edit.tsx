@@ -113,7 +113,7 @@ function EditStackPage() {
 				slug: stackData.slug,
 				oneLiner: stackData.oneLiner,
 				description: stackData.description,
-				instructions: stackData.instructions ?? [],
+				resources: stackData.resources ?? [],
 				teamSize: stackData.teamSize,
 				published: stackData.published,
 				stackImageUrl: stackData.stackImageUrl,

@@ -18,12 +18,12 @@ import {
 	useState,
 } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { InstructionSource } from "@/components/instructions";
-import type { InstructionType } from "@/features/stack-editor/types";
+import type { ResourceLocationKind } from "@/lib/resource-utils";
+import type { ResourceType } from "@/features/stack-editor/types";
 import {
-	getInstructionTypeColorsSplit,
-	getInstructionTypeLabel,
-} from "@/lib/instruction-utils";
+	getResourceTypeColorsSplit,
+	getResourceTypeLabel,
+} from "@/lib/resource-utils";
 import type { ModelData } from "./ModelSuggestionPlugin";
 import type { ToolData } from "./ToolSuggestionPlugin";
 
@@ -45,18 +45,18 @@ export interface BundleData {
 export type SlashFileItem =
 	| {
 			kind: "group";
-			source: InstructionSource;
+			source: ResourceLocationKind;
 			sourceId: string;
 			group: string;
 			fileCount: number;
 	  }
 	| {
 			kind: "file";
-			source: InstructionSource;
+			source: ResourceLocationKind;
 			sourceId: string;
 			stableKey: string;
 			fileName: string;
-			type: InstructionType;
+			type: ResourceType;
 			group: string;
 	  };
 
@@ -74,7 +74,7 @@ interface SlashItem {
 
 export interface AddMissingHint {
 	category: "tool" | "model" | "bundle" | "files" | null;
-	instructionType?: InstructionType;
+	resourceType?: ResourceType;
 }
 
 export interface SlashCommandOptions {
@@ -144,8 +144,8 @@ const categoryPrefixes: Record<string, SlashItemCategory> = {
 	config: "files",
 };
 
-/** Maps a slash prefix to its specific instruction subtype, if any */
-const fileSubtypePrefixes: Record<string, InstructionType> = {
+/** Maps a slash prefix to its specific resource subtype, if any */
+const fileSubtypePrefixes: Record<string, ResourceType> = {
 	prompt: "prompt",
 	rule: "rule",
 	skill: "skill",
@@ -415,10 +415,10 @@ export function SlashCommandDropdown({
 	const addMissingHint = useMemo((): AddMissingHint => {
 		// If we have a file subtype (e.g., /skill, /prompt), use it
 		if (fileSubtype) {
-			return { category: "files", instructionType: fileSubtype };
+			return { category: "files", resourceType: fileSubtype };
 		}
 		if (categoryFilter === "files") {
-			return { category: "files", instructionType: undefined };
+			return { category: "files", resourceType: undefined };
 		}
 		if (
 			categoryFilter === "tool" ||
@@ -432,12 +432,12 @@ export function SlashCommandDropdown({
 
 	// Targeted label + style for the "Add new" button
 	const { addMissingLabel, addMissingStyle } = useMemo(() => {
-		// Instruction subtype — use its specific color
-		if (addMissingHint.instructionType) {
-			const it = addMissingHint.instructionType;
-			const colors = getInstructionTypeColorsSplit(it);
+		// Resource subtype — use its specific color
+		if (addMissingHint.resourceType) {
+			const it = addMissingHint.resourceType;
+			const colors = getResourceTypeColorsSplit(it);
 			return {
-				addMissingLabel: `Add new ${getInstructionTypeLabel(it)}`,
+				addMissingLabel: `Add new ${getResourceTypeLabel(it)}`,
 				addMissingStyle: {
 					border: colors.border,
 					bg: colors.bg,
@@ -873,7 +873,7 @@ export function insertBlockForItem(
 				const typeBreakdown = Array.from(typeCounts.entries()).map(
 					([type, count]) => ({ type, count }),
 				);
-				node = schema.nodes.aiInstructionGroup?.create({
+				node = schema.nodes.aiResourceGroup?.create({
 					source: payload.source,
 					sourceId: payload.sourceId,
 					group: payload.group,
@@ -882,7 +882,7 @@ export function insertBlockForItem(
 					typeBreakdown,
 				});
 			} else {
-				node = schema.nodes.aiInstructionCard?.create({
+				node = schema.nodes.aiResourceCard?.create({
 					source: payload.source,
 					sourceId: payload.sourceId,
 					stableKey: payload.stableKey,

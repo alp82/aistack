@@ -47,7 +47,7 @@ export async function createCommand(slugOrShortId: string) {
 	const localFiles: FileToWrite[] = [];
 	const globalFiles: FileToWrite[] = [];
 
-	for (const item of project.instructions) {
+	for (const item of project.resources) {
 		const isGlobal = item.scope === "global";
 		for (const file of item.files) {
 			const writePath = file.path ?? file.name;

@@ -6,7 +6,7 @@ import {
 	projectsCheck,
 	projectsCollect,
 	projectGet,
-	type InstructionItem,
+	type Resource,
 } from "../api.js";
 import {
 	getToken,
@@ -92,7 +92,7 @@ export async function collectCommand(options: { global: boolean }) {
 	);
 
 	// Classify selected files
-	let allInstructions = classify(selectedFiles);
+	let allResources = classify(selectedFiles);
 
 	// Fetch existing project and diff
 	let existingProject: Awaited<ReturnType<typeof projectGet>> = null;
@@ -112,10 +112,7 @@ export async function collectCommand(options: { global: boolean }) {
 
 	// Show file list or diff
 	if (existingProject) {
-		const diff = diffInstructions(
-			allInstructions,
-			existingProject.instructions,
-		);
+		const diff = diffResources(allResources, existingProject.resources);
 
 		if (diff.changed === 0 && diff.added === 0 && diff.removed === 0) {
 			p.log.info("No changes since last collect.");
@@ -196,7 +193,7 @@ export async function collectCommand(options: { global: boolean }) {
 		const selectedSet = new Set(selected as string[]);
 		selectedFiles = allFiles.filter((f) => selectedSet.has(f.relativePath));
 		excluded = allFiles.filter((f) => !selectedSet.has(f.relativePath));
-		allInstructions = classify(selectedFiles);
+		allResources = classify(selectedFiles);
 
 		if (selectedFiles.length === 0) {
 			p.log.warn("No files selected.");
@@ -209,7 +206,7 @@ export async function collectCommand(options: { global: boolean }) {
 	try {
 		const result = await projectsCollect(token, {
 			name: projectName,
-			instructions: allInstructions,
+			resources: allResources,
 		});
 		s.stop(lime("Uploaded"));
 		saveProjectSettings(
@@ -265,10 +262,7 @@ interface DiffResult {
 	details: Array<{ name: string; status: "added" | "changed" | "removed" }>;
 }
 
-function diffInstructions(
-	current: InstructionItem[],
-	existing: InstructionItem[],
-): DiffResult {
+function diffResources(current: Resource[], existing: Resource[]): DiffResult {
 	const existingMap = new Map<string, string>();
 	for (const item of existing) {
 		for (const file of item.files) {

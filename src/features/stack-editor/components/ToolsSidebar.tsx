@@ -12,7 +12,7 @@ import {
 	BundlePicker,
 	type BundleSubscriptionEntry,
 } from "@/components/BundlePicker";
-import { InstructionPanel } from "@/components/InstructionPanel";
+import { ResourcePanel } from "@/components/ResourcePanel";
 import {
 	ModelPicker,
 	type ModelSubscriptionEntry,
@@ -23,18 +23,18 @@ import {
 	type ToolSubscriptionEntry,
 } from "@/components/ToolPicker";
 import {
-	UnifiedFileList,
-	type UnifiedFileListProjectGroup,
-} from "@/components/UnifiedFileList";
+	UnifiedResourceList,
+	type UnifiedResourceListProjectGroup,
+} from "@/components/UnifiedResourceList";
 import { useEditorContext } from "@/features/stack-editor/context/EditorContext";
-import type { InstructionItem } from "@/features/stack-editor/types";
+import type { Resource } from "@/features/stack-editor/types";
 import { sumNormalizedMonthlyAmounts } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
-type SidebarSection = "tools" | "bundles" | "models" | "instructions" | null;
+type SidebarSection = "tools" | "bundles" | "models" | "resources" | null;
 
-type ProjectSourcedInstruction = InstructionItem & {
+type ProjectSourcedResource = Resource & {
 	sourceProjectId?: Id<"projects">;
 	sourceProjectName?: string;
 	sourceIsOwnProject?: boolean;
@@ -49,9 +49,9 @@ type ToolsSidebarProps = {
 	onBundlesChange: (bundles: BundleSubscriptionEntry[]) => void;
 	models: ModelSubscriptionEntry[];
 	onModelsChange: (models: ModelSubscriptionEntry[]) => void;
-	instructions: InstructionItem[];
-	onInstructionsChange: (instructions: InstructionItem[]) => void;
-	projectInstructions?: ProjectSourcedInstruction[];
+	resources: Resource[];
+	onResourcesChange: (resources: Resource[]) => void;
+	projectResources?: ProjectSourcedResource[];
 	guestSession?: boolean;
 	onSignInRequired?: () => void;
 	mobile?: boolean;
@@ -65,51 +65,37 @@ function ToolsSidebar({
 	onBundlesChange,
 	models,
 	onModelsChange,
-	instructions,
-	onInstructionsChange,
-	projectInstructions,
+	resources,
+	onResourcesChange,
+	projectResources,
 	guestSession = false,
 	onSignInRequired,
 	mobile = false,
 }: ToolsSidebarProps) {
-	const projectInstructionsList = projectInstructions ?? [];
+	const projectResourcesList = projectResources ?? [];
 	// Accordion state - only one section open at a time
 	// Tools section starts expanded by default (especially important when no tools exist yet)
 	const [activeSection, setActiveSection] = useState<SidebarSection>("tools");
-	const [editingInstruction, setEditingInstruction] = useState<
-		InstructionItem | "new" | null
+	const [editingResource, setEditingResource] = useState<
+		Resource | "new" | null
 	>(null);
 	const {
 		insertToolCardAtCursor,
 		removeToolFromEditor,
 		removeModelFromEditor,
 		removeBundleFromEditor,
-		removeInstructionFromEditor,
+		removeResourceFromEditor,
 		insertModelCardAtCursor,
 		insertBundleCardAtCursor,
-		insertInstructionCard,
-		insertInstructionGroup,
-		editInstructionRequest,
-		setEditInstructionRequest,
+		insertResourceCard,
+		insertResourceGroup,
 	} = useEditorContext();
-
-	// React to edit instruction requests from the editor.
-	useEffect(() => {
-		if (editInstructionRequest) {
-			const inst = instructions.find((i) => i.name === editInstructionRequest);
-			if (inst) {
-				setEditingInstruction(inst);
-				setActiveSection("instructions");
-			}
-			setEditInstructionRequest(null);
-		}
-	}, [editInstructionRequest, instructions, setEditInstructionRequest]);
 
 	// Track previous counts to detect additions
 	const prevToolsCount = useRef(tools.length);
 	const prevBundlesCount = useRef(bundles.length);
 	const prevModelsCount = useRef(models.length);
-	const prevInstructionsCount = useRef(instructions.length);
+	const prevResourcesCount = useRef(resources.length);
 
 	// Auto-expand section when items are added
 	useEffect(() => {
@@ -134,11 +120,11 @@ function ToolsSidebar({
 	}, [models.length]);
 
 	useEffect(() => {
-		if (instructions.length > prevInstructionsCount.current) {
-			setActiveSection("instructions");
+		if (resources.length > prevResourcesCount.current) {
+			setActiveSection("resources");
 		}
-		prevInstructionsCount.current = instructions.length;
-	}, [instructions.length]);
+		prevResourcesCount.current = resources.length;
+	}, [resources.length]);
 
 	const toggleSection = (section: SidebarSection) => {
 		setActiveSection(activeSection === section ? null : section);
@@ -256,53 +242,46 @@ function ToolsSidebar({
 		[insertBundleCardAtCursor],
 	);
 
-	// Handle add instruction - open panel for new
-	const handleAddInstruction = useCallback(() => {
-		setEditingInstruction("new");
+	// Handle add resource - open panel for new
+	const handleAddResource = useCallback(() => {
+		setEditingResource("new");
 	}, []);
 
 	// Handle save from panel
 	const handlePanelSave = useCallback(
-		(updated: InstructionItem) => {
-			if (editingInstruction === "new") {
-				onInstructionsChange([...instructions, updated]);
-			} else if (editingInstruction) {
-				const idx = instructions.findIndex(
+		(updated: Resource) => {
+			if (editingResource === "new") {
+				onResourcesChange([...resources, updated]);
+			} else if (editingResource) {
+				const idx = resources.findIndex(
 					(i) =>
-						i.name === editingInstruction.name &&
-						i.type === editingInstruction.type,
+						i.name === editingResource.name && i.type === editingResource.type,
 				);
 				if (idx >= 0) {
-					const next = [...instructions];
+					const next = [...resources];
 					next[idx] = updated;
-					onInstructionsChange(next);
+					onResourcesChange(next);
 				}
 			}
-			setEditingInstruction(null);
+			setEditingResource(null);
 		},
-		[editingInstruction, instructions, onInstructionsChange],
+		[editingResource, resources, onResourcesChange],
 	);
 
 	// Handle delete from panel
 	const handlePanelDelete = useCallback(() => {
-		if (editingInstruction && editingInstruction !== "new") {
-			const filtered = instructions.filter(
+		if (editingResource && editingResource !== "new") {
+			const filtered = resources.filter(
 				(i) =>
-					!(
-						i.name === editingInstruction.name &&
-						i.type === editingInstruction.type
-					),
+					!(i.name === editingResource.name && i.type === editingResource.type),
 			);
-			removeInstructionFromEditor(editingInstruction.name);
-			onInstructionsChange(filtered);
+			for (const file of editingResource.files) {
+				removeResourceFromEditor(editingResource.stableKey, file.name);
+			}
+			onResourcesChange(filtered);
 		}
-		setEditingInstruction(null);
-	}, [
-		editingInstruction,
-		instructions,
-		onInstructionsChange,
-		removeInstructionFromEditor,
-	]);
+		setEditingResource(null);
+	}, [editingResource, resources, onResourcesChange, removeResourceFromEditor]);
 
 	// Calculate total monthly price from tools and bundles
 	const totalMonthlyPrice = useMemo(() => {
@@ -312,37 +291,37 @@ function ToolsSidebar({
 		]);
 	}, [tools, bundles]);
 
-	// Group flattened project instructions back into per-project groups for
+	// Group flattened project resources back into per-project groups for
 	// the unified file list.
-	const projectGroups = useMemo<UnifiedFileListProjectGroup[]>(() => {
-		const byProject = new Map<string, UnifiedFileListProjectGroup>();
-		for (const item of projectInstructionsList) {
+	const projectGroups = useMemo<UnifiedResourceListProjectGroup[]>(() => {
+		const byProject = new Map<string, UnifiedResourceListProjectGroup>();
+		for (const item of projectResourcesList) {
 			if (!item.sourceProjectId) continue;
 			const pid = String(item.sourceProjectId);
 			const existing = byProject.get(pid);
 			if (existing) {
-				existing.instructions.push(item);
+				existing.resources.push(item);
 			} else {
 				byProject.set(pid, {
 					sourceId: pid,
 					sourceLabel: item.sourceProjectName ?? "",
-					instructions: [item],
+					resources: [item],
 				});
 			}
 		}
 		return Array.from(byProject.values());
-	}, [projectInstructionsList]);
+	}, [projectResourcesList]);
 
-	const stackInstructionsForList = useMemo(
+	const stackResourcesForList = useMemo(
 		() =>
 			stackId
 				? {
 						sourceId: String(stackId),
 						sourceLabel: "Stack",
-						instructions,
+						resources,
 					}
 				: null,
-		[stackId, instructions],
+		[stackId, resources],
 	);
 
 	const handleUnifiedInsertFile = useCallback(
@@ -354,7 +333,7 @@ function ToolsSidebar({
 			type: string;
 			group: string | undefined;
 		}) => {
-			insertInstructionCard({
+			insertResourceCard({
 				source: args.source,
 				sourceId: args.sourceId,
 				stableKey: args.stableKey,
@@ -364,7 +343,7 @@ function ToolsSidebar({
 				description: null,
 			});
 		},
-		[insertInstructionCard],
+		[insertResourceCard],
 	);
 
 	const handleUnifiedInsertGroup = useCallback(
@@ -374,16 +353,15 @@ function ToolsSidebar({
 			group: string;
 			fileCount: number;
 		}) => {
-			const sourceInstructions =
+			const sourceResources =
 				args.source === "stack"
-					? instructions
-					: projectInstructionsList.filter(
+					? resources
+					: projectResourcesList.filter(
 							(i) =>
-								(i as ProjectSourcedInstruction).sourceProjectId ===
-								args.sourceId,
+								(i as ProjectSourcedResource).sourceProjectId === args.sourceId,
 						);
 			const typeCounts = new Map<string, number>();
-			for (const instr of sourceInstructions) {
+			for (const instr of sourceResources) {
 				if ((instr.group ?? "generic") === args.group) {
 					typeCounts.set(
 						instr.type,
@@ -394,7 +372,7 @@ function ToolsSidebar({
 			const typeBreakdown = Array.from(typeCounts.entries()).map(
 				([type, count]) => ({ type, count }),
 			);
-			insertInstructionGroup({
+			insertResourceGroup({
 				source: args.source,
 				sourceId: args.sourceId,
 				group: args.group,
@@ -403,10 +381,10 @@ function ToolsSidebar({
 				typeBreakdown,
 			});
 		},
-		[insertInstructionGroup, instructions, projectInstructionsList],
+		[insertResourceGroup, resources, projectResourcesList],
 	);
 
-	const showPanel = editingInstruction !== null;
+	const showPanel = editingResource !== null;
 
 	const renderSections = () => (
 		<>
@@ -580,14 +558,14 @@ function ToolsSidebar({
 				)}
 			</div>
 
-			{/* Instructions Section - Collapsible */}
+			{/* Resources Section - Collapsible */}
 			<div>
 				<button
 					type="button"
-					onClick={() => toggleSection("instructions")}
+					onClick={() => toggleSection("resources")}
 					className={cn(
 						"flex w-full items-center justify-between border-2 p-3 transition-all",
-						activeSection === "instructions"
+						activeSection === "resources"
 							? "border-accent-lime bg-accent-lime/5"
 							: "border-stroke-subtle bg-transparent hover:border-fg-muted",
 					)}
@@ -596,7 +574,7 @@ function ToolsSidebar({
 						<FileText
 							className={cn(
 								"size-4",
-								activeSection === "instructions"
+								activeSection === "resources"
 									? "text-accent-lime"
 									: "text-fg-muted",
 							)}
@@ -604,36 +582,36 @@ function ToolsSidebar({
 						<p
 							className={cn(
 								"font-mono text-[10px] uppercase tracking-wider",
-								activeSection === "instructions"
+								activeSection === "resources"
 									? "text-accent-lime"
 									: "text-fg-muted",
 							)}
 						>
-							Instructions
+							Resources
 						</p>
 					</div>
 					<div className="flex items-center gap-2">
 						<span className="font-mono text-[10px] text-fg-muted">
-							{projectInstructionsList.length > 0
-								? `${projectInstructionsList.length}+${instructions.length}`
-								: instructions.length}
+							{projectResourcesList.length > 0
+								? `${projectResourcesList.length}+${resources.length}`
+								: resources.length}
 						</span>
-						{activeSection === "instructions" ? (
+						{activeSection === "resources" ? (
 							<ChevronUp className="size-4 text-accent-lime" />
 						) : (
 							<ChevronDown className="size-4 text-fg-muted" />
 						)}
 					</div>
 				</button>
-				{activeSection === "instructions" && (
+				{activeSection === "resources" && (
 					<div className="mt-3">
-						<UnifiedFileList
+						<UnifiedResourceList
 							mode="edit"
-							stackInstructions={stackInstructionsForList}
-							projectInstructions={projectGroups}
+							stackResources={stackResourcesForList}
+							projectResources={projectGroups}
 							onInsertFile={handleUnifiedInsertFile}
 							onInsertGroup={handleUnifiedInsertGroup}
-							onAddManual={handleAddInstruction}
+							onAddManual={handleAddResource}
 						/>
 					</div>
 				)}
@@ -673,15 +651,15 @@ function ToolsSidebar({
 								exit={{ x: "100%", opacity: 0 }}
 								transition={{ duration: 0.25, ease: "easeInOut" }}
 							>
-								<InstructionPanel
+								<ResourcePanel
 									instruction={
-										editingInstruction === "new" ? null : editingInstruction
+										editingResource === "new" ? null : editingResource
 									}
 									onSave={handlePanelSave}
 									onDelete={
-										editingInstruction !== "new" ? handlePanelDelete : undefined
+										editingResource !== "new" ? handlePanelDelete : undefined
 									}
-									onBack={() => setEditingInstruction(null)}
+									onBack={() => setEditingResource(null)}
 								/>
 							</motion.div>
 						) : (
@@ -736,15 +714,15 @@ function ToolsSidebar({
 								exit={{ x: "100%", opacity: 0 }}
 								transition={{ duration: 0.25, ease: "easeInOut" }}
 							>
-								<InstructionPanel
+								<ResourcePanel
 									instruction={
-										editingInstruction === "new" ? null : editingInstruction
+										editingResource === "new" ? null : editingResource
 									}
 									onSave={handlePanelSave}
 									onDelete={
-										editingInstruction !== "new" ? handlePanelDelete : undefined
+										editingResource !== "new" ? handlePanelDelete : undefined
 									}
-									onBack={() => setEditingInstruction(null)}
+									onBack={() => setEditingResource(null)}
 								/>
 							</motion.div>
 						) : (

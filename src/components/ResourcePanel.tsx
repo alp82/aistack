@@ -1,38 +1,44 @@
-import { ArrowLeft, ChevronDown, FileText, Trash2 } from "lucide-react";
+import {
+	ArrowLeft,
+	ChevronDown,
+	FileText,
+	Plus,
+	Trash2,
+	X,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FileContentDialog } from "@/components/editor/FileContentDialog";
+import { AddFileButton } from "@/components/editor/AddFileButton";
+import { ResourceViewer } from "@/components/resources/ResourceViewer";
+import { Dialog } from "@/components/ui/Dialog";
 import type {
 	FileEntry,
-	InstructionItem,
-	InstructionType,
+	Resource,
+	ResourceType,
 } from "@/features/stack-editor/types";
 import {
 	buildManualStableKey,
-	getInstructionTypeColorsSplit,
-	getInstructionTypeLabel,
-	knownInstructionTypes,
+	getResourceTypeColorsSplit,
+	getResourceTypeLabel,
+	knownResourceTypes,
 	MANUAL_INSTRUCTION_GROUP,
-} from "@/lib/instruction-utils";
+} from "@/lib/resource-utils";
 import { cn } from "@/lib/utils";
-import { AddFileButton } from "@/components/editor/AddFileButton";
 
-interface InstructionPanelProps {
-	instruction: InstructionItem | null;
-	onSave: (instruction: InstructionItem) => void;
+interface ResourcePanelProps {
+	instruction: Resource | null;
+	onSave: (instruction: Resource) => void;
 	onDelete?: () => void;
 	onBack: () => void;
 }
 
-export function InstructionPanel({
+export function ResourcePanel({
 	instruction,
 	onSave,
 	onDelete,
 	onBack,
-}: InstructionPanelProps) {
+}: ResourcePanelProps) {
 	const [name, setName] = useState(instruction?.name ?? "");
-	const [type, setType] = useState<InstructionType>(
-		instruction?.type ?? "prompt",
-	);
+	const [type, setType] = useState<ResourceType>(instruction?.type ?? "prompt");
 	const [description, setDescription] = useState(
 		instruction?.description ?? "",
 	);
@@ -46,7 +52,9 @@ export function InstructionPanel({
 	const blurTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
 	const [fileDialogOpen, setFileDialogOpen] = useState(false);
-	const [fileDialogTab, setFileDialogTab] = useState(0);
+	const [activeTab, setActiveTab] = useState(0);
+	const [addingFile, setAddingFile] = useState(false);
+	const [newFileName, setNewFileName] = useState("");
 
 	// Close type dropdown on outside click
 	useEffect(() => {
@@ -65,7 +73,7 @@ export function InstructionPanel({
 		};
 	}, []);
 
-	const handleTypeSelect = useCallback((t: InstructionType) => {
+	const handleTypeSelect = useCallback((t: ResourceType) => {
 		setType(t);
 		setTypeInputValue(t);
 		setTypeInputFocused(false);
@@ -86,19 +94,50 @@ export function InstructionPanel({
 	};
 
 	const handleFileClick = (index: number) => {
-		setFileDialogTab(index);
+		setActiveTab(index);
 		setFileDialogOpen(true);
 	};
 
 	const handleAddFile = () => {
 		const newFiles = [...files, { name: "untitled.md", content: "" }];
 		setFiles(newFiles);
-		setFileDialogTab(newFiles.length - 1);
+		setActiveTab(newFiles.length - 1);
 		setFileDialogOpen(true);
 	};
 
-	const handleFilesChange = (updated: FileEntry[]) => {
+	const updateFileAt = (index: number, content: string) => {
+		setFiles((prev) =>
+			prev.map((f, i) => (i === index ? { ...f, content } : f)),
+		);
+	};
+
+	const handleFileNameChange = (idx: number, newName: string) => {
+		setFiles((prev) =>
+			prev.map((f, i) => (i === idx ? { ...f, name: newName } : f)),
+		);
+	};
+
+	const handleFilePathChange = (idx: number, path: string) => {
+		setFiles((prev) =>
+			prev.map((f, i) => (i === idx ? { ...f, path: path || undefined } : f)),
+		);
+	};
+
+	const handleDeleteFile = (idx: number) => {
+		const updated = files.filter((_, i) => i !== idx);
 		setFiles(updated);
+		if (activeTab >= updated.length) {
+			setActiveTab(Math.max(0, updated.length - 1));
+		}
+	};
+
+	const handleAddNewFile = () => {
+		if (!newFileName.trim()) return;
+		const updated = [...files, { name: newFileName.trim(), content: "" }];
+		setFiles(updated);
+		setActiveTab(updated.length - 1);
+		setNewFileName("");
+		setAddingFile(false);
 	};
 
 	const handleSave = () => {
@@ -116,6 +155,7 @@ export function InstructionPanel({
 	};
 
 	const isEditing = instruction !== null;
+	const activeFile = files[activeTab] ?? null;
 
 	return (
 		<div className="space-y-4 p-4">
@@ -132,7 +172,7 @@ export function InstructionPanel({
 			{/* Title */}
 			<div className="border-b border-stroke-subtle pb-2">
 				<p className="font-mono text-[10px] uppercase tracking-widest text-accent-lime">
-					{isEditing ? "// EDIT INSTRUCTION" : "// NEW INSTRUCTION"}
+					{isEditing ? "// EDIT RESOURCE" : "// NEW RESOURCE"}
 				</p>
 			</div>
 
@@ -169,8 +209,8 @@ export function InstructionPanel({
 
 					{typeInputFocused && (
 						<div className="absolute top-full z-10 mt-1 w-full border-2 border-stroke-subtle bg-bg-panel">
-							{knownInstructionTypes.map((t) => {
-								const colors = getInstructionTypeColorsSplit(t);
+							{knownResourceTypes.map((t) => {
+								const colors = getResourceTypeColorsSplit(t);
 								return (
 									<button
 										key={t}
@@ -185,7 +225,7 @@ export function InstructionPanel({
 										)}
 									>
 										<span className={cn("size-2 shrink-0", colors.bg)} />
-										{getInstructionTypeLabel(t)}
+										{getResourceTypeLabel(t)}
 									</button>
 								);
 							})}
@@ -219,7 +259,7 @@ export function InstructionPanel({
 				{files.length > 0 && (
 					<div className="flex flex-wrap gap-1.5">
 						{files.map((file, index) => {
-							const colors = getInstructionTypeColorsSplit(type);
+							const colors = getResourceTypeColorsSplit(type);
 							return (
 								<button
 									key={`${file.name}-${index}`}
@@ -266,16 +306,117 @@ export function InstructionPanel({
 				</button>
 			</div>
 
-			{/* File Content Dialog */}
-			<FileContentDialog
+			{/* Multi-file dialog: tab strip + per-file editor */}
+			<Dialog
 				open={fileDialogOpen}
 				onClose={() => setFileDialogOpen(false)}
-				instructionName={name || "New Instruction"}
-				files={files}
-				initialTab={fileDialogTab}
-				isEditable
-				onFilesChange={handleFilesChange}
-			/>
+				title={name || "New Resource"}
+				size="lg"
+				padding="p-0"
+				scrollable
+			>
+				{/* Tab bar */}
+				<div className="flex items-center overflow-x-auto border-b border-stroke-subtle">
+					{files.map((file, idx) => (
+						<button
+							key={`tab-${file.name}-${idx}`}
+							type="button"
+							onClick={() => setActiveTab(idx)}
+							className={`group inline-flex shrink-0 items-center gap-1.5 px-4 py-2.5 font-mono text-xs transition-colors cursor-pointer ${
+								activeTab === idx
+									? "border-b-2 border-accent-lime bg-accent-lime/5 text-fg-primary"
+									: "text-fg-muted hover:text-fg-primary"
+							}`}
+						>
+							<FileText className="size-3 shrink-0" />
+							{file.name || "(unnamed)"}
+							<span
+								role="button"
+								tabIndex={-1}
+								onClick={(e) => {
+									e.stopPropagation();
+									handleDeleteFile(idx);
+								}}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										e.stopPropagation();
+										handleDeleteFile(idx);
+									}
+								}}
+								className="ml-1 opacity-0 transition-colors hover:text-destructive group-hover:opacity-100"
+							>
+								<X className="size-3" />
+							</span>
+						</button>
+					))}
+
+					{addingFile && (
+						<div className="inline-flex shrink-0 items-center gap-1.5 px-4 py-2.5">
+							<FileText className="size-3 shrink-0 text-fg-muted" />
+							<input
+								type="text"
+								value={newFileName}
+								onChange={(e) => setNewFileName(e.target.value)}
+								autoFocus
+								placeholder="filename.md"
+								className="w-24 border-b border-stroke-subtle bg-transparent font-mono text-xs text-fg-primary focus:border-accent-lime focus:outline-none"
+								onKeyDown={(e) => {
+									e.stopPropagation();
+									if (e.key === "Enter") handleAddNewFile();
+									if (e.key === "Escape") setAddingFile(false);
+								}}
+								onBlur={() => {
+									if (!newFileName.trim()) setAddingFile(false);
+								}}
+							/>
+						</div>
+					)}
+
+					<button
+						type="button"
+						onClick={() => {
+							if (addingFile && newFileName.trim()) {
+								handleAddNewFile();
+							}
+							setAddingFile(true);
+						}}
+						className="flex shrink-0 cursor-pointer items-center justify-center px-3 py-2.5 text-fg-muted transition-colors hover:text-accent-lime"
+						title="Add file"
+					>
+						<Plus className="size-3.5" />
+					</button>
+				</div>
+
+				{/* Active file content area: shared editable-header viewer body.
+				    Save UX is handled externally by the panel's own Save button, so we
+				    intentionally omit `onSave` to suppress the inner save footer. */}
+				{activeFile ? (
+					<ResourceViewer
+						className="border-0"
+						file={activeFile}
+						editable
+						editableHeader
+						onContentChange={(content) => updateFileAt(activeTab, content)}
+						onNameChange={(newName) => handleFileNameChange(activeTab, newName)}
+						onPathChange={(path) => handleFilePathChange(activeTab, path)}
+					/>
+				) : (
+					<div className="p-4 font-mono text-sm text-fg-muted">
+						Click "Add file" to create your first file
+					</div>
+				)}
+
+				{/* Footer */}
+				<div className="flex items-center justify-end gap-2 border-t border-stroke-subtle px-4 py-3">
+					<button
+						type="button"
+						onClick={() => setFileDialogOpen(false)}
+						className="px-4 py-2 font-mono text-xs uppercase tracking-wider text-fg-muted hover:text-fg-primary transition-colors cursor-pointer border border-stroke-subtle"
+					>
+						Close
+					</button>
+				</div>
+			</Dialog>
 		</div>
 	);
 }

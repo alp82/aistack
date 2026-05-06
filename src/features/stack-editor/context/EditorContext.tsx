@@ -8,13 +8,13 @@ import {
 	useRef,
 	useState,
 } from "react";
-import type { AIInstructionCardAttrs } from "@/components/editor/AIInstructionCard";
-import type { AIInstructionGroupAttrs } from "@/components/editor/AIInstructionGroup";
-import type { InstructionType } from "@/features/stack-editor/types";
+import type { AIResourceCardAttrs } from "@/components/editor/AIResourceCard";
+import type { AIResourceGroupAttrs } from "@/components/editor/AIResourceGroup";
+import type { ResourceType } from "@/features/stack-editor/types";
 
-export type InstructionLookupData = {
+export type ResourceLookupData = {
 	name: string;
-	type: InstructionType;
+	type: ResourceType;
 	description?: string;
 };
 
@@ -58,8 +58,8 @@ type EditorContextValue = {
 		name: string;
 		shortId?: string;
 	}) => void;
-	insertInstructionCard: (args: AIInstructionCardAttrs) => void;
-	insertInstructionGroup: (args: AIInstructionGroupAttrs) => void;
+	insertResourceCard: (args: AIResourceCardAttrs) => void;
+	insertResourceGroup: (args: AIResourceGroupAttrs) => void;
 	// Legacy: insert as inline reference (used by @mention)
 	insertToolAtCursor: (tool: { name: string; shortId?: string }) => void;
 	insertModelAtCursor: (model: {
@@ -71,10 +71,10 @@ type EditorContextValue = {
 	removeToolFromEditor: (toolName: string) => void;
 	removeModelFromEditor: (modelName: string) => void;
 	removeBundleFromEditor: (bundleName: string) => void;
-	removeInstructionFromEditor: (instructionName: string) => void;
-	onInstructionUpdate?: (
+	removeResourceFromEditor: (stableKey: string, fileName: string) => void;
+	onResourceUpdate?: (
 		oldName: string,
-		updates: Partial<InstructionLookupData>,
+		updates: Partial<ResourceLookupData>,
 	) => void;
 	onToolDescriptionUpdate?: (idOrName: string, description: string) => void;
 	onBundleDescriptionUpdate?: (idOrName: string, description: string) => void;
@@ -90,8 +90,6 @@ type EditorContextValue = {
 	bundleLookup: Map<string, BundleLookupData>;
 	setBundleLookup: (data: Map<string, BundleLookupData>) => void;
 	bundleLookupByShortId: Map<string, BundleLookupData>;
-	editInstructionRequest: string | null;
-	setEditInstructionRequest: (name: string | null) => void;
 };
 
 const EditorContext = createContext<EditorContextValue | null>(null);
@@ -140,15 +138,15 @@ function removeNodesByMatch(
 
 export function EditorProvider({
 	children,
-	onInstructionUpdate,
+	onResourceUpdate,
 	onToolDescriptionUpdate,
 	onBundleDescriptionUpdate,
 	onModelDescriptionUpdate,
 }: {
 	children: ReactNode;
-	onInstructionUpdate?: (
+	onResourceUpdate?: (
 		oldName: string,
-		updates: Partial<InstructionLookupData>,
+		updates: Partial<ResourceLookupData>,
 	) => void;
 	onToolDescriptionUpdate?: (idOrName: string, description: string) => void;
 	onBundleDescriptionUpdate?: (idOrName: string, description: string) => void;
@@ -165,9 +163,6 @@ export function EditorProvider({
 	const [bundleLookup, setBundleLookup] = useState<
 		Map<string, BundleLookupData>
 	>(new Map());
-	const [editInstructionRequest, setEditInstructionRequest] = useState<
-		string | null
-	>(null);
 
 	// Derived lookup maps by shortId
 	const toolLookupByShortId = useMemo(() => {
@@ -337,14 +332,14 @@ export function EditorProvider({
 		);
 	}, []);
 
-	const insertInstructionCard = useCallback((args: AIInstructionCardAttrs) => {
+	const insertResourceCard = useCallback((args: AIResourceCardAttrs) => {
 		const editor = editorRef.current;
 		if (!editor) return;
 		editor
 			.chain()
 			.focus()
 			.insertContent({
-				type: "aiInstructionCard",
+				type: "aiResourceCard",
 				attrs: {
 					source: args.source,
 					sourceId: args.sourceId,
@@ -358,39 +353,39 @@ export function EditorProvider({
 			.run();
 	}, []);
 
-	const insertInstructionGroup = useCallback(
-		(args: AIInstructionGroupAttrs) => {
+	const insertResourceGroup = useCallback((args: AIResourceGroupAttrs) => {
+		const editor = editorRef.current;
+		if (!editor) return;
+		editor
+			.chain()
+			.focus()
+			.insertContent({
+				type: "aiResourceGroup",
+				attrs: {
+					source: args.source,
+					sourceId: args.sourceId,
+					group: args.group,
+					description: args.description,
+					fileCount: args.fileCount ?? 0,
+					typeBreakdown: args.typeBreakdown ?? [],
+				},
+			})
+			.run();
+	}, []);
+
+	const removeResourceFromEditor = useCallback(
+		(stableKey: string, fileName: string) => {
 			const editor = editorRef.current;
 			if (!editor) return;
-			editor
-				.chain()
-				.focus()
-				.insertContent({
-					type: "aiInstructionGroup",
-					attrs: {
-						source: args.source,
-						sourceId: args.sourceId,
-						group: args.group,
-						description: args.description,
-						fileCount: args.fileCount ?? 0,
-						typeBreakdown: args.typeBreakdown ?? [],
-					},
-				})
-				.run();
+			removeNodesByMatch(
+				editor,
+				["aiResourceCard"],
+				(attrs) => attrs.stableKey === stableKey && attrs.fileName === fileName,
+				fileName,
+			);
 		},
 		[],
 	);
-
-	const removeInstructionFromEditor = useCallback((instructionName: string) => {
-		const editor = editorRef.current;
-		if (!editor) return;
-		removeNodesByMatch(
-			editor,
-			["aiInstructionCard"],
-			(attrs) => attrs.fileName === instructionName,
-			instructionName,
-		);
-	}, []);
 
 	return (
 		<EditorContext.Provider
@@ -402,13 +397,13 @@ export function EditorProvider({
 				insertModelCardAtCursor,
 				insertBundleAtCursor,
 				insertBundleCardAtCursor,
-				insertInstructionCard,
-				insertInstructionGroup,
+				insertResourceCard,
+				insertResourceGroup,
 				removeToolFromEditor,
 				removeModelFromEditor,
 				removeBundleFromEditor,
-				removeInstructionFromEditor,
-				onInstructionUpdate,
+				removeResourceFromEditor,
+				onResourceUpdate,
 				onToolDescriptionUpdate,
 				onBundleDescriptionUpdate,
 				onModelDescriptionUpdate,
@@ -423,8 +418,6 @@ export function EditorProvider({
 				bundleLookup,
 				setBundleLookup,
 				bundleLookupByShortId,
-				editInstructionRequest,
-				setEditInstructionRequest,
 			}}
 		>
 			{children}

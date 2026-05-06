@@ -98,7 +98,7 @@ export const incrementCloneCount = internalMutation({
   },
 })
 
-const IncomingInstructionItem = v.object({
+const IncomingResource = v.object({
   type: v.string(),
   name: v.string(),
   description: v.optional(v.string()),
@@ -125,7 +125,7 @@ const IncomingInstructionItem = v.object({
   })),
 })
 
-type Item = Infer<typeof IncomingInstructionItem>
+type Item = Infer<typeof IncomingResource>
 
 function mergeByStableKey(existing: Item[], incoming: Item[]): Item[] {
   const incomingKeys = new Set<string>()
@@ -141,7 +141,7 @@ export const upsertProject = internalMutation({
     creatorId: v.id('creators'),
     stackId: v.id('stacks'),
     name: v.string(),
-    instructions: v.array(IncomingInstructionItem),
+    resources: v.array(IncomingResource),
     source: v.optional(v.string()),
   },
   returns: v.object({
@@ -151,7 +151,7 @@ export const upsertProject = internalMutation({
   handler: async (ctx, args) => {
     const projectItems: Item[] = []
     const globalItems: Item[] = []
-    for (const item of args.instructions) {
+    for (const item of args.resources) {
       // Server forces source='cli' for HTTP CLI endpoint;
       // web/GitHub-link paths use a different code path.
       const stored: Item = { ...item, source: 'cli' as const }
@@ -172,12 +172,12 @@ export const upsertProject = internalMutation({
     let resolvedStackId = args.stackId
 
     if (match) {
-      const mergedProjectInstructions = mergeByStableKey(
-        match.instructions,
+      const mergedProjectResources = mergeByStableKey(
+        match.resources ?? [],
         projectItems,
       )
       await ctx.db.patch(match._id, {
-        instructions: mergedProjectInstructions,
+        resources: mergedProjectResources,
         updatedAt: now,
       })
       projectSlug = match.slug
@@ -195,7 +195,7 @@ export const upsertProject = internalMutation({
         stackId: args.stackId,
         source: args.source,
         published: false,
-        instructions: projectItems,
+        resources: projectItems,
         createdAt: now,
         updatedAt: now,
       })
@@ -207,13 +207,13 @@ export const upsertProject = internalMutation({
         if (stack.creatorId !== args.creatorId) {
           throw new Error('Not authorized to write to this stack')
         }
-        const existingStackInstructions = stack.instructions ?? []
-        const mergedStackInstructions = mergeByStableKey(
-          existingStackInstructions,
+        const existingStackResources = stack.resources ?? []
+        const mergedStackResources = mergeByStableKey(
+          existingStackResources,
           globalItems,
         )
         await ctx.db.patch(stack._id, {
-          instructions: mergedStackInstructions,
+          resources: mergedStackResources,
           updatedAt: now,
         })
       }

@@ -4,7 +4,6 @@ import { CheckCircle, ExternalLink, Save, Send, Wrench } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
 import { GridBackground } from "@/components/GridBackground";
-import { MobileInstructionOverlay } from "@/components/MobileInstructionOverlay";
 import { SignInDialog } from "@/components/SignInDialog";
 import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
 import { DetailsStep } from "@/features/stack-editor/components/DetailsStep";
@@ -13,8 +12,8 @@ import { WorkflowStep } from "@/features/stack-editor/components/WorkflowStep";
 import {
 	type BundleLookupData,
 	EditorProvider,
-	type InstructionLookupData,
 	type ModelLookupData,
+	type ResourceLookupData,
 	type ToolLookupData,
 	useEditorContext,
 } from "@/features/stack-editor/context/EditorContext";
@@ -33,7 +32,7 @@ import type {
 import {
 	buildManualStableKey,
 	MANUAL_INSTRUCTION_GROUP,
-} from "@/lib/instruction-utils";
+} from "@/lib/resource-utils";
 import { api } from "../../convex/_generated/api";
 
 function LookupDataSync({
@@ -130,7 +129,7 @@ export function StackEditor({
 		setBundleSubscriptions,
 		setDescription,
 		setError,
-		setInstructions,
+		setResources,
 		setIsTeam,
 		setModelSubscriptions,
 		setName,
@@ -155,22 +154,21 @@ export function StackEditor({
 	const allTools = useQuery(api.tools.listForEditor) ?? [];
 	const allModels = useQuery(api.models.listForEditor) ?? [];
 
-	const projectInstructionsByProject = useQuery(
-		api.projects.listProjectInstructionsByStack,
+	const projectResourcesByProject = useQuery(
+		api.projects.listProjectResourcesByStack,
 		initialValue?._id
 			? { stackId: initialValue._id, includeUnpublished: true }
 			: "skip",
 	);
-	const flattenedProjectInstructions = (
-		projectInstructionsByProject ?? []
-	).flatMap((project) =>
-		project.instructions.map((inst) => ({
-			...inst,
-			sourceProjectId: project.projectId,
-			sourceProjectName: project.projectName,
-			sourceIsOwnProject: project.isOwnProject,
-			sourceStableKey: inst.stableKey,
-		})),
+	const flattenedProjectResources = (projectResourcesByProject ?? []).flatMap(
+		(project) =>
+			project.resources.map((inst) => ({
+				...inst,
+				sourceProjectId: project.projectId,
+				sourceProjectName: project.projectName,
+				sourceIsOwnProject: project.isOwnProject,
+				sourceStableKey: inst.stableKey,
+			})),
 	);
 
 	// Use refs to avoid stale closures in the callback passed to the editor
@@ -335,12 +333,12 @@ export function StackEditor({
 		}
 	};
 
-	const handleInstructionUpdate = useCallback(
-		(oldName: string, updates: Partial<InstructionLookupData>) => {
-			const currentInstructions = stateRef.current.instructions;
-			const found = currentInstructions.some((inst) => inst.name === oldName);
+	const handleResourceUpdate = useCallback(
+		(oldName: string, updates: Partial<ResourceLookupData>) => {
+			const currentResources = stateRef.current.resources;
+			const found = currentResources.some((inst) => inst.name === oldName);
 			if (found) {
-				const updatedInstructions = currentInstructions.map((inst) =>
+				const updatedResources = currentResources.map((inst) =>
 					inst.name === oldName
 						? {
 								...inst,
@@ -349,12 +347,12 @@ export function StackEditor({
 							}
 						: inst,
 				);
-				setInstructions(updatedInstructions);
+				setResources(updatedResources);
 			} else {
 				const nextName = updates.name ?? oldName;
 				const nextType = updates.type ?? "prompt";
-				setInstructions([
-					...currentInstructions,
+				setResources([
+					...currentResources,
 					{
 						name: nextName,
 						type: nextType,
@@ -366,7 +364,7 @@ export function StackEditor({
 				]);
 			}
 		},
-		[setInstructions],
+		[setResources],
 	);
 
 	const handleToolDescriptionUpdate = useCallback(
@@ -423,11 +421,11 @@ export function StackEditor({
 		state.toolSubscriptions.length +
 		state.bundleSubscriptions.length +
 		state.modelSubscriptions.length +
-		state.instructions.length;
+		state.resources.length;
 
 	return (
 		<EditorProvider
-			onInstructionUpdate={handleInstructionUpdate}
+			onResourceUpdate={handleResourceUpdate}
 			onToolDescriptionUpdate={handleToolDescriptionUpdate}
 			onBundleDescriptionUpdate={handleBundleDescriptionUpdate}
 			onModelDescriptionUpdate={handleModelDescriptionUpdate}
@@ -597,11 +595,11 @@ export function StackEditor({
 									onDescriptionChange={setDescription}
 									onToolAdded={handleToolAdded}
 									onModelAdded={handleModelAdded}
-									stackInstructions={
+									stackResources={
 										initialValue?._id
 											? {
 													stackId: String(initialValue._id),
-													instructions: state.instructions,
+													resources: state.resources,
 												}
 											: undefined
 									}
@@ -616,9 +614,9 @@ export function StackEditor({
 							onBundlesChange={setBundleSubscriptions}
 							models={state.modelSubscriptions}
 							onModelsChange={setModelSubscriptions}
-							instructions={state.instructions}
-							onInstructionsChange={setInstructions}
-							projectInstructions={flattenedProjectInstructions}
+							resources={state.resources}
+							onResourcesChange={setResources}
+							projectResources={flattenedProjectResources}
 							guestSession={guestSession}
 							onSignInRequired={() => setShowSignInDialog(true)}
 						/>
@@ -674,9 +672,9 @@ export function StackEditor({
 							onBundlesChange={setBundleSubscriptions}
 							models={state.modelSubscriptions}
 							onModelsChange={setModelSubscriptions}
-							instructions={state.instructions}
-							onInstructionsChange={setInstructions}
-							projectInstructions={flattenedProjectInstructions}
+							resources={state.resources}
+							onResourcesChange={setResources}
+							projectResources={flattenedProjectResources}
 							guestSession={guestSession}
 							onSignInRequired={() => setShowSignInDialog(true)}
 							mobile
@@ -705,11 +703,6 @@ export function StackEditor({
 					</span>
 				)}
 			</button>
-
-			<MobileInstructionOverlay
-				instructions={state.instructions}
-				onInstructionsChange={setInstructions}
-			/>
 		</EditorProvider>
 	);
 }

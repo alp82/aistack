@@ -14,8 +14,8 @@ type FileEntry = {
 	tags?: string[];
 };
 
-/** Well-known instruction types. The type field accepts any string. */
-type KnownInstructionType =
+/** Well-known resource types. The type field accepts any string. */
+type KnownResourceType =
 	| "prompt"
 	| "rule"
 	| "skill"
@@ -29,10 +29,10 @@ type KnownInstructionType =
 	| "dotfile";
 
 /** Accepts known types with autocomplete, plus any arbitrary string. */
-type InstructionType = KnownInstructionType | (string & {});
+type ResourceType = KnownResourceType | (string & {});
 
-type InstructionItem = {
-	type: InstructionType;
+type Resource = {
+	type: ResourceType;
 	name: string;
 	description?: string;
 	group: string;
@@ -89,7 +89,7 @@ type StackEditorInitialValue = {
 	slug: string;
 	oneLiner: string;
 	description?: string;
-	instructions?: InstructionItem[];
+	resources?: Resource[];
 	teamSize?: number;
 	published: boolean;
 	toolSubscriptions: ToolSubscriptionEntry[];
@@ -100,16 +100,16 @@ type StackEditorInitialValue = {
 };
 
 type StackMetadataUpdates = {
-	instructions?: InstructionItem[];
+	resources?: Resource[];
 };
 
 export type {
 	CreatorProfile,
 	FileEntry,
-	InstructionItem,
-	InstructionType,
-	KnownInstructionType,
+	KnownResourceType,
 	ModelSubscriptionEntry,
+	Resource,
+	ResourceType,
 	StackEditorInitialValue,
 	StackEditorMode,
 	StackMetadataUpdates,

@@ -23,7 +23,7 @@ const UsagePricing = v.object({
   notes: v.optional(v.string()),
 })
 
-export const InstructionFile = v.object({
+export const ResourceFile = v.object({
   name: v.string(),
   content: v.string(),
   path: v.optional(v.string()),
@@ -32,16 +32,16 @@ export const InstructionFile = v.object({
 
 /**
  * @stableKey format invariants:
- *   - Authored items: `manual:${type}:${name}` via buildManualStableKey in src/lib/instruction-utils.ts
+ *   - Authored items: `manual:${type}:${name}` via buildManualStableKey in src/lib/resource-utils.ts
  *   - CLI items: `${group}:${type}:${relPath}` via computeStableKey in packages/cli/src/stableKey.ts
  */
-export const InstructionItem = v.object({
+export const Resource = v.object({
   type: v.string(),
   name: v.string(),
   description: v.optional(v.string()),
   group: v.string(),
   stableKey: v.string(),
-  files: v.array(InstructionFile),
+  files: v.array(ResourceFile),
   source: v.optional(v.union(v.literal('authored'), v.literal('cli'), v.literal('github'))),
   scope: v.optional(v.union(v.literal('global'), v.literal('project'))),
   upstream: v.optional(v.object({
@@ -135,7 +135,9 @@ export default defineSchema({
     teamSize: v.optional(v.number()),
     oneLiner: v.string(),
     description: v.optional(v.string()),
-    instructions: v.optional(v.array(InstructionItem)),
+    resources: v.optional(v.array(Resource)),
+    // Transitional: legacy `instructions` field — drop after migration runs.
+    instructions: v.optional(v.array(Resource)),
     stackImageUrl: v.optional(v.string()),
     avatarStorageId: v.optional(v.id('_storage')),
     personalPageUrl: v.optional(v.string()),
@@ -315,7 +317,9 @@ export default defineSchema({
     order: v.optional(v.number()),
     cloneCount: v.optional(v.number()),
     published: v.optional(v.boolean()),
-    instructions: v.array(InstructionItem),
+    resources: v.optional(v.array(Resource)),
+    // Transitional: legacy `instructions` field — drop after migration runs.
+    instructions: v.optional(v.array(Resource)),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

@@ -1,19 +1,19 @@
 import { FileText } from "lucide-react";
 import {
-	getInstructionTypeColors,
-	getInstructionTypeLabel,
-} from "@/lib/instruction-utils";
-import type { InstructionItem as InstructionItemType } from "@/features/stack-editor/types";
+	getResourceTypeColors,
+	getResourceTypeLabel,
+} from "@/lib/resource-utils";
+import type { Resource } from "@/features/stack-editor/types";
 
-interface InstructionItemProps {
-	instruction: InstructionItemType;
+interface ResourceListItemProps {
+	instruction: Resource;
 	onClick?: () => void;
 }
 
-export function InstructionItem({
+export function ResourceListItem({
 	instruction,
 	onClick,
-}: InstructionItemProps) {
+}: ResourceListItemProps) {
 	return (
 		<button
 			type="button"
@@ -22,7 +22,7 @@ export function InstructionItem({
 		>
 			<div className="flex items-center gap-3">
 				<div
-					className={`flex size-8 shrink-0 items-center justify-center border ${getInstructionTypeColors(instruction.type)}`}
+					className={`flex size-8 shrink-0 items-center justify-center border ${getResourceTypeColors(instruction.type)}`}
 				>
 					<FileText className="size-4" />
 				</div>
@@ -36,7 +36,7 @@ export function InstructionItem({
 						</p>
 					)}
 					<p className="font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-						{getInstructionTypeLabel(instruction.type)}
+						{getResourceTypeLabel(instruction.type)}
 					</p>
 				</div>
 				{instruction.files.length > 0 && (

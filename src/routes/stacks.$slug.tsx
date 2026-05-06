@@ -178,8 +178,8 @@ function StackDetailsPage() {
 		api.stacks.getUpvoteStatus,
 		stack ? { stackId: stack._id } : "skip",
 	);
-	const projectInstructionsByProject = useQuery(
-		api.projects.listProjectInstructionsByStack,
+	const projectResourcesByProject = useQuery(
+		api.projects.listProjectResourcesByStack,
 		stack ? { stackId: stack._id } : "skip",
 	);
 	const reportStatus = useQuery(
@@ -292,16 +292,15 @@ function StackDetailsPage() {
 
 	const personalPageUrl = stack.personalPageUrl;
 	const hasDescription = !!stack.description;
-	const flattenedProjectInstructions = (
-		projectInstructionsByProject ?? []
-	).flatMap((project) =>
-		project.instructions.map((inst) => ({
-			...inst,
-			sourceProjectId: project.projectId,
-			sourceProjectName: project.projectName,
-			sourceIsOwnProject: project.isOwnProject,
-			sourceStableKey: inst.stableKey,
-		})),
+	const flattenedProjectResources = (projectResourcesByProject ?? []).flatMap(
+		(project) =>
+			project.resources.map((inst) => ({
+				...inst,
+				sourceProjectId: project.projectId,
+				sourceProjectName: project.projectName,
+				sourceIsOwnProject: project.isOwnProject,
+				sourceStableKey: inst.stableKey,
+			})),
 	);
 	const mainTools = sortToolsByPrice(
 		stack.tools.filter((t) => t.kind === "main"),
@@ -730,7 +729,7 @@ function StackDetailsPage() {
 									{stack.tools.length +
 										(stack.models?.length ?? 0) +
 										(stack.bundles?.length ?? 0) +
-										(stack.instructions?.length ?? 0)}
+										(stack.resources?.length ?? 0)}
 									)
 									{activeTab === "tools" && (
 										<span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent-lime" />
@@ -767,8 +766,8 @@ function StackDetailsPage() {
 						tools={stack.tools}
 						bundles={stack.bundles}
 						models={stack.models}
-						instructions={stack.instructions ?? []}
-						projectInstructions={flattenedProjectInstructions}
+						resources={stack.resources ?? []}
+						projectResources={flattenedProjectResources}
 						onBundleClick={scrollToBundle}
 					/>
 				</div>

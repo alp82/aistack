@@ -1,9 +1,9 @@
 import type { ScannedFile } from "./scanner.js";
-import type { InstructionItem } from "./api.js";
+import type { Resource } from "./api.js";
 import { basename, dirname } from "node:path";
 import { computeStableKey } from "./stableKey.js";
 
-export function classify(files: ScannedFile[]): InstructionItem[] {
+export function classify(files: ScannedFile[]): Resource[] {
 	// Group by {group, scope, type, containing directory}
 	const groups = new Map<string, ScannedFile[]>();
 	const singletons: ScannedFile[] = [];
@@ -33,11 +33,11 @@ export function classify(files: ScannedFile[]): InstructionItem[] {
 		}
 	}
 
-	const items: InstructionItem[] = [];
+	const items: Resource[] = [];
 	const scope = (source: string) =>
 		source === "global" ? ("global" as const) : ("project" as const);
 
-	// Singletons: one InstructionItem per file
+	// Singletons: one Resource per file
 	for (const file of singletons) {
 		const s = scope(file.source);
 		const relPath = file.relativePath
@@ -59,7 +59,7 @@ export function classify(files: ScannedFile[]): InstructionItem[] {
 		});
 	}
 
-	// Groups: one InstructionItem per directory group
+	// Groups: one Resource per directory group
 	for (const [, groupFiles] of groups) {
 		const first = groupFiles[0];
 		const dir = dirname(first.relativePath);

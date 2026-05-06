@@ -2,20 +2,20 @@ import { mergeAttributes, Node } from "@tiptap/core";
 import type { NodeViewProps } from "@tiptap/react";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import { useState } from "react";
-import type { InstructionSource } from "@/components/instructions";
-import { InstructionBrowserDialog } from "@/components/instructions";
+import type { ResourceLocationKind } from "@/lib/resource-utils";
+import { ResourceBrowserDialog } from "@/components/resources";
 import {
 	getGroupLabel,
-	getInstructionTypeColorsSplit,
-	getInstructionTypeIcon,
-	getInstructionTypeIconBgClass,
-	getInstructionTypeLabel,
-	sourceToTarget,
-} from "@/lib/instruction-utils";
+	getResourceTypeColorsSplit,
+	getResourceTypeIcon,
+	getResourceTypeIconBgClass,
+	getResourceTypeLabel,
+	kindToLocation,
+} from "@/lib/resource-utils";
 import { BaseCard } from "./BaseCard";
 
-export interface AIInstructionCardAttrs {
-	source: InstructionSource;
+export interface AIResourceCardAttrs {
+	source: ResourceLocationKind;
 	sourceId: string;
 	stableKey: string;
 	fileName: string;
@@ -24,28 +24,28 @@ export interface AIInstructionCardAttrs {
 	description: string | null;
 }
 
-function AIInstructionCardView({
+function AIResourceCardView({
 	node,
 	editor,
 	selected,
 	updateAttributes,
 }: NodeViewProps) {
 	const { source, sourceId, stableKey, fileName, type, group, description } =
-		node.attrs as AIInstructionCardAttrs;
+		node.attrs as AIResourceCardAttrs;
 	const isEditable = editor?.isEditable ?? false;
 	const [dialogOpen, setDialogOpen] = useState(false);
 
-	const colors = getInstructionTypeColorsSplit(type);
-	const IconComponent = getInstructionTypeIcon(type);
-	const iconBgClass = getInstructionTypeIconBgClass(type);
+	const colors = getResourceTypeColorsSplit(type);
+	const IconComponent = getResourceTypeIcon(type);
+	const iconBgClass = getResourceTypeIconBgClass(type);
 	const groupLabel = getGroupLabel(group ?? undefined);
-	const typeLabel = getInstructionTypeLabel(type);
+	const typeLabel = getResourceTypeLabel(type);
 
 	const handleDescriptionChange = (value: string) => {
 		updateAttributes({ description: value });
 	};
 
-	const target = sourceToTarget(source, sourceId);
+	const target = kindToLocation(source, sourceId);
 
 	return (
 		<>
@@ -82,10 +82,10 @@ function AIInstructionCardView({
 				description={description ?? ""}
 				isEditable={isEditable}
 				onDescriptionChange={handleDescriptionChange}
-				cardId={`instruction-card:${source}:${sourceId}:${stableKey}:${fileName}`}
+				cardId={`resource-card:${source}:${sourceId}:${stableKey}:${fileName}`}
 			/>
 			{dialogOpen && (
-				<InstructionBrowserDialog
+				<ResourceBrowserDialog
 					open={dialogOpen}
 					onClose={() => setDialogOpen(false)}
 					target={target}
@@ -96,8 +96,8 @@ function AIInstructionCardView({
 	);
 }
 
-export const AIInstructionCard = Node.create({
-	name: "aiInstructionCard",
+export const AIResourceCard = Node.create({
+	name: "aiResourceCard",
 	group: "block",
 	atom: true,
 
@@ -130,6 +130,23 @@ export const AIInstructionCard = Node.create({
 	parseHTML() {
 		return [
 			{
+				tag: "div[data-ai-resource-card]",
+				getAttrs: (element) => {
+					if (typeof element === "string") return false;
+					const el = element as HTMLElement;
+					return {
+						source: el.getAttribute("data-source") || "stack",
+						sourceId: el.getAttribute("data-source-id") || "",
+						stableKey: el.getAttribute("data-stable-key") || "",
+						fileName: el.getAttribute("data-file-name") || "",
+						type: el.getAttribute("data-type") || "custom",
+						group: el.getAttribute("data-group") || null,
+						description: el.getAttribute("data-description") || null,
+					};
+				},
+			},
+			// Legacy compat: existing serialized descriptions still use the old data attr.
+			{
 				tag: "div[data-ai-instruction-card]",
 				getAttrs: (element) => {
 					if (typeof element === "string") return false;
@@ -152,7 +169,7 @@ export const AIInstructionCard = Node.create({
 		return [
 			"div",
 			mergeAttributes(HTMLAttributes, {
-				"data-ai-instruction-card": "",
+				"data-ai-resource-card": "",
 				"data-source": node.attrs.source,
 				"data-source-id": node.attrs.sourceId,
 				"data-stable-key": node.attrs.stableKey,
@@ -166,6 +183,6 @@ export const AIInstructionCard = Node.create({
 	},
 
 	addNodeView() {
-		return ReactNodeViewRenderer(AIInstructionCardView);
+		return ReactNodeViewRenderer(AIResourceCardView);
 	},
 });

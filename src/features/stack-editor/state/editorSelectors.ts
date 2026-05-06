@@ -38,29 +38,29 @@ function selectSaveDraftPublishTarget(
 	return false;
 }
 
-function normalizeInstructions(
-	instructions: EditorState["instructions"],
-): EditorState["instructions"] {
-	return instructions.map((instruction) => ({
-		type: instruction.type,
-		name: instruction.name,
-		description: instruction.description,
-		group: instruction.group,
-		stableKey: instruction.stableKey,
-		files: instruction.files,
+function normalizeResources(
+	resources: EditorState["resources"],
+): EditorState["resources"] {
+	return resources.map((resource) => ({
+		type: resource.type,
+		name: resource.name,
+		description: resource.description,
+		group: resource.group,
+		stableKey: resource.stableKey,
+		files: resource.files,
 	}));
 }
 
 function selectSavePayload(state: EditorState, published: boolean) {
-	const instructions =
-		state.instructions.length > 0
-			? normalizeInstructions(state.instructions)
+	const resources =
+		state.resources.length > 0
+			? normalizeResources(state.resources)
 			: undefined;
 	return {
 		name: state.name.trim(),
 		oneLiner: state.oneLiner.trim(),
 		description: state.description.trim() || undefined,
-		instructions,
+		resources,
 		teamSize: state.isTeam ? state.teamSize : undefined,
 		toolSubscriptions: state.toolSubscriptions.map((tool) => ({
 			toolSlug: tool.toolSlug,
@@ -93,7 +93,7 @@ function selectGuestDraft(state: EditorState): GuestStackDraft {
 		name: state.name,
 		oneLiner: state.oneLiner,
 		description: state.description,
-		instructions: state.instructions,
+		resources: state.resources,
 		modelSubscriptions: state.modelSubscriptions,
 		isTeam: state.isTeam,
 		teamSize: state.teamSize,

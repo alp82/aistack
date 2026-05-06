@@ -104,7 +104,9 @@ https://github.com/mksglu/context-mode
 https://x.com/i/status/2044548257058328723
 https://hannahstulberg.substack.com/p/claude-code-for-everything-why-ai
 
-demo videos:
+videos creation:
+https://github.com/av/remotion-bits
+https://github.com/heygen-com/hyperframes
 https://github.com/AlemTuzlak/skills/tree/main/skills/remotion-video
 
 design/frontend:
@@ -153,6 +155,9 @@ https://x.com/itsolelehmann/status/2038661433626333649
 https://x.com/KatanaLarp/status/2029928471632224486
 https://paddo.dev/blog/kiro-escalation/
 https://addyosmani.com/blog/comprehension-debt/?ck_subscriber_id=887775429
+
+tool directories:
+https://github.com/av/awesome-llm-services
 
 developing cli tools:
 https://justin.poehnelt.com/posts/rewrite-your-cli-for-ai-agents/

@@ -4,7 +4,7 @@ import type { QueryCtx } from './_generated/server'
 import { type FixedPrice, sumNormalizedMonthlyAmounts } from '../src/lib/pricing'
 import { slugifyAscii } from '../src/lib/slug'
 import { generateUniqueShortId, extractShortId } from './lib/ids'
-import { InstructionItem as InstructionItemValidator } from './schema'
+import { Resource as ResourceValidator } from './schema'
 
 type ToolSubscriptionLike = {
   price: {
@@ -270,7 +270,7 @@ export const create = mutation({
     name: v.string(),
     oneLiner: v.string(),
     description: v.optional(v.string()),
-    instructions: v.optional(v.array(InstructionItemValidator)),
+    resources: v.optional(v.array(ResourceValidator)),
     teamSize: v.optional(v.number()),
     toolSubscriptions: v.array(ToolSubscriptionInput),
     bundleSubscriptions: v.optional(v.array(BundleSubscriptionInput)),
@@ -310,7 +310,7 @@ export const create = mutation({
       creatorId: creator._id,
       oneLiner: args.oneLiner,
       description: args.description,
-      instructions: args.instructions,
+      resources: args.resources,
       teamSize: args.teamSize,
       toolSubscriptions: args.toolSubscriptions,
       bundleSubscriptions: args.bundleSubscriptions,
@@ -334,7 +334,7 @@ export const update = mutation({
     name: v.optional(v.string()),
     oneLiner: v.optional(v.string()),
     description: v.optional(v.string()),
-    instructions: v.optional(v.array(InstructionItemValidator)),
+    resources: v.optional(v.array(ResourceValidator)),
     teamSize: v.optional(v.union(v.number(), v.null())),
     toolSubscriptions: v.optional(v.array(ToolSubscriptionInput)),
     bundleSubscriptions: v.optional(v.array(BundleSubscriptionInput)),
@@ -362,7 +362,7 @@ export const update = mutation({
     }
     if (args.oneLiner !== undefined) patch.oneLiner = args.oneLiner
     if (args.description !== undefined) patch.description = args.description
-    if (args.instructions !== undefined) patch.instructions = args.instructions
+    if (args.resources !== undefined) patch.resources = args.resources
     if (args.teamSize !== undefined) patch.teamSize = args.teamSize === null ? undefined : args.teamSize
     const meaningfulChange =
       args.name !== undefined ||
@@ -400,7 +400,7 @@ export const getForEdit = query({
       slug: v.string(),
       oneLiner: v.string(),
       description: v.optional(v.string()),
-      instructions: v.optional(v.array(InstructionItemValidator)),
+      resources: v.optional(v.array(ResourceValidator)),
       teamSize: v.optional(v.number()),
       fixedTotal: v.optional(MoneyValidator),
       hasUsageComponent: v.boolean(),
@@ -543,7 +543,7 @@ export const getForEdit = query({
       slug: `${stack.slug}-${stack.shortId}`,
       oneLiner: stack.oneLiner,
       description: stack.description,
-      instructions: stack.instructions,
+      resources: stack.resources,
       teamSize: stack.teamSize,
       fixedTotal: pricing.fixedTotal,
       hasUsageComponent: pricing.hasUsageComponent,
@@ -828,7 +828,7 @@ export const getBySlug = query({
       slug: v.string(),
       oneLiner: v.string(),
       description: v.optional(v.string()),
-      instructions: v.optional(v.array(InstructionItemValidator)),
+      resources: v.optional(v.array(ResourceValidator)),
       teamSize: v.optional(v.number()),
       fixedTotal: v.optional(MoneyValidator),
       hasUsageComponent: v.boolean(),
@@ -948,7 +948,7 @@ export const getBySlug = query({
       slug: `${stack.slug}-${stack.shortId}`,
       oneLiner: stack.oneLiner,
       description: stack.description,
-      instructions: stack.instructions,
+      resources: stack.resources,
       teamSize: stack.teamSize,
       fixedTotal: pricing.fixedTotal,
       hasUsageComponent: pricing.hasUsageComponent,

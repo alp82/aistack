@@ -3,11 +3,12 @@ import { BundleItem, type BundleItemData } from "@/components/BundleItem";
 import { ModelItem, type ModelItemData } from "@/components/ModelItem";
 import { ToolItem, type ToolItemData } from "@/components/ToolItem";
 import {
-	UnifiedFileList,
-	type UnifiedFileListProjectGroup,
-} from "@/components/UnifiedFileList";
-import type { InstructionItem as InstructionItemType } from "@/features/stack-editor/types";
+	UnifiedResourceList,
+	type UnifiedResourceListProjectGroup,
+} from "@/components/UnifiedResourceList";
+import type { Resource } from "@/features/stack-editor/types";
 import { sortToolsByPrice } from "@/lib/pricing";
+import { getResourceTypeLabel } from "@/lib/resource-utils";
 import type { Id } from "../../convex/_generated/dataModel";
 
 type ViewTool = ToolItemData & {
@@ -20,8 +21,8 @@ type ViewTool = ToolItemData & {
 };
 type ViewBundle = BundleItemData;
 type ViewModel = ModelItemData;
-type ViewInstruction = InstructionItemType;
-type ProjectSourcedInstruction = InstructionItemType & {
+type ViewResource = Resource;
+type ProjectSourcedResource = Resource & {
 	sourceProjectId?: Id<"projects">;
 	sourceProjectName?: string;
 	sourceIsOwnProject?: boolean;
@@ -33,8 +34,8 @@ type ViewSidebarProps = {
 	tools: ViewTool[];
 	bundles: ViewBundle[];
 	models: ViewModel[];
-	instructions: ViewInstruction[];
-	projectInstructions?: ProjectSourcedInstruction[];
+	resources: ViewResource[];
+	projectResources?: ProjectSourcedResource[];
 	onBundleClick?: (bundleSlug: string) => void;
 };
 
@@ -43,8 +44,8 @@ export function ViewSidebar({
 	tools,
 	bundles,
 	models,
-	instructions,
-	projectInstructions,
+	resources,
+	projectResources,
 	onBundleClick,
 }: ViewSidebarProps) {
 	const mainTools = sortToolsByPrice(tools.filter((t) => t.kind === "main"));
@@ -71,49 +72,58 @@ export function ViewSidebar({
 		return total;
 	}, [tools]);
 
-	const projectInstructionsList = useMemo(
-		() => projectInstructions ?? [],
-		[projectInstructions],
+	const projectResourcesList = useMemo(
+		() => projectResources ?? [],
+		[projectResources],
 	);
-	const totalInstructionCount =
-		instructions.length + projectInstructionsList.length;
+	const totalResourceCount = resources.length + projectResourcesList.length;
 	const totalFileCount = useMemo(
 		() =>
-			instructions.reduce((sum, inst) => sum + inst.files.length, 0) +
-			projectInstructionsList.reduce((sum, inst) => sum + inst.files.length, 0),
-		[instructions, projectInstructionsList],
+			resources.reduce((sum, r) => sum + r.files.length, 0) +
+			projectResourcesList.reduce((sum, r) => sum + r.files.length, 0),
+		[resources, projectResourcesList],
 	);
-	const hasAnyInstructions = totalInstructionCount > 0;
+	const hasAnyResources = totalResourceCount > 0;
 
-	const projectGroups = useMemo<UnifiedFileListProjectGroup[]>(() => {
-		const byProject = new Map<string, UnifiedFileListProjectGroup>();
-		for (const item of projectInstructionsList) {
+	const kindCounts = useMemo(() => {
+		const counts = new Map<string, number>();
+		for (const r of [...resources, ...projectResourcesList]) {
+			counts.set(r.type, (counts.get(r.type) ?? 0) + 1);
+		}
+		return Array.from(counts.entries())
+			.filter(([, c]) => c > 0)
+			.sort(([a], [b]) => a.localeCompare(b));
+	}, [resources, projectResourcesList]);
+
+	const projectGroups = useMemo<UnifiedResourceListProjectGroup[]>(() => {
+		const byProject = new Map<string, UnifiedResourceListProjectGroup>();
+		for (const item of projectResourcesList) {
 			if (!item.sourceProjectId) continue;
 			const pid = String(item.sourceProjectId);
 			const existing = byProject.get(pid);
 			if (existing) {
-				existing.instructions.push(item);
+				existing.resources.push(item);
 			} else {
 				byProject.set(pid, {
 					sourceId: pid,
 					sourceLabel: item.sourceProjectName ?? "",
-					instructions: [item],
+					resources: [item],
 				});
 			}
 		}
 		return Array.from(byProject.values());
-	}, [projectInstructionsList]);
+	}, [projectResourcesList]);
 
-	const stackInstructionsForList = useMemo(
+	const stackResourcesForList = useMemo(
 		() =>
-			stackId && instructions.length > 0
+			stackId && resources.length > 0
 				? {
 						sourceId: String(stackId),
 						sourceLabel: "Stack",
-						instructions: instructions as InstructionItemType[],
+						resources: resources as Resource[],
 					}
 				: null,
-		[stackId, instructions],
+		[stackId, resources],
 	);
 
 	return (
@@ -202,24 +212,34 @@ export function ViewSidebar({
 						</section>
 					)}
 
-					{/* Instructions */}
+					{/* Resources */}
 					<section>
 						<p className="mb-3 pb-1 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
-							{"// Instructions"}
-							{hasAnyInstructions && (
+							{"// SETUP"}
+							{hasAnyResources && (
 								<span className="ml-2 text-fg-muted">
-									· {totalInstructionCount}{" "}
-									{totalInstructionCount === 1 ? "item" : "items"}
+									· {totalResourceCount}{" "}
+									{totalResourceCount === 1 ? "item" : "items"}
 									{totalFileCount > 0 &&
 										` · ${totalFileCount} ${totalFileCount === 1 ? "file" : "files"}`}
 								</span>
 							)}
 						</p>
-						{hasAnyInstructions ? (
-							<UnifiedFileList
+						{kindCounts.length > 0 && (
+							<div className="mb-3 flex flex-wrap gap-x-2 gap-y-1 font-mono text-[10px] text-fg-muted">
+								{kindCounts.map(([type, count], idx) => (
+									<span key={type}>
+										{idx > 0 && <span className="mr-2">·</span>}
+										{count} {getResourceTypeLabel(type)}
+									</span>
+								))}
+							</div>
+						)}
+						{hasAnyResources ? (
+							<UnifiedResourceList
 								mode="view"
-								stackInstructions={stackInstructionsForList}
-								projectInstructions={projectGroups}
+								stackResources={stackResourcesForList}
+								projectResources={projectGroups}
 							/>
 						) : (
 							<div className="border border-stroke-subtle bg-bg-panel-muted/40 p-4">

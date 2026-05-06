@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { convexTest } from 'convex-test'
 import { expect, test } from 'vitest'
 import schema from './schema'
@@ -40,7 +41,7 @@ test('upsertProject persists scope=global onto stack with source=cli', async () 
     creatorId,
     stackId,
     name: 'my-project',
-    instructions: [
+    resources: [
       {
         type: 'rule',
         name: 'global-rule',
@@ -62,11 +63,11 @@ test('upsertProject persists scope=global onto stack with source=cli', async () 
     return { stack, projects }
   })
 
-  expect(result.stack?.instructions).toHaveLength(1)
-  expect(result.stack?.instructions?.[0]?.scope).toBe('global')
-  expect(result.stack?.instructions?.[0]?.source).toBe('cli')
+  expect(result.stack?.resources).toHaveLength(1)
+  expect(result.stack?.resources?.[0]?.scope).toBe('global')
+  expect(result.stack?.resources?.[0]?.source).toBe('cli')
   expect(result.projects).toHaveLength(1)
-  expect(result.projects[0].instructions).toHaveLength(0)
+  expect(result.projects[0].resources).toHaveLength(0)
 })
 
 test('upsertProject persists scope=project onto project with source=cli', async () => {
@@ -77,7 +78,7 @@ test('upsertProject persists scope=project onto project with source=cli', async 
     creatorId,
     stackId,
     name: 'my-project',
-    instructions: [
+    resources: [
       {
         type: 'prompt',
         name: 'project-prompt',
@@ -99,11 +100,12 @@ test('upsertProject persists scope=project onto project with source=cli', async 
     return { stack, projects }
   })
 
-  expect(result.stack?.instructions ?? []).toHaveLength(0)
+  expect(result.stack?.resources ?? []).toHaveLength(0)
   expect(result.projects).toHaveLength(1)
-  expect(result.projects[0].instructions).toHaveLength(1)
-  expect(result.projects[0].instructions[0].scope).toBe('project')
-  expect(result.projects[0].instructions[0].source).toBe('cli')
+  const projectResources = result.projects[0].resources ?? []
+  expect(projectResources).toHaveLength(1)
+  expect(projectResources[0].scope).toBe('project')
+  expect(projectResources[0].source).toBe('cli')
 })
 
 test('upsertProject merges by stableKey on second call (preserves A, replaces B, adds C)', async () => {
@@ -114,7 +116,7 @@ test('upsertProject merges by stableKey on second call (preserves A, replaces B,
     creatorId,
     stackId,
     name: 'my-project',
-    instructions: [
+    resources: [
       {
         type: 'rule',
         name: 'A',
@@ -139,7 +141,7 @@ test('upsertProject merges by stableKey on second call (preserves A, replaces B,
     creatorId,
     stackId,
     name: 'my-project',
-    instructions: [
+    resources: [
       {
         type: 'rule',
         name: 'B',
@@ -168,7 +170,7 @@ test('upsertProject merges by stableKey on second call (preserves A, replaces B,
   })
 
   expect(projects).toHaveLength(1)
-  const items = projects[0].instructions
+  const items = projects[0].resources ?? []
   expect(items).toHaveLength(3)
 
   const byKey = new Map(items.map((i) => [i.stableKey, i]))

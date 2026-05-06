@@ -1,6 +1,6 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
-import { InstructionItem as InstructionItemValidator } from './schema'
+import { Resource as ResourceValidator } from './schema'
 
 const StackTarget = v.object({
   kind: v.literal('stack'),
@@ -14,7 +14,7 @@ const ProjectTarget = v.object({
 
 const TargetValidator = v.union(StackTarget, ProjectTarget)
 
-export const updateInstructionContent = mutation({
+export const updateResourceContent = mutation({
   args: {
     target: TargetValidator,
     stableKey: v.string(),
@@ -36,9 +36,9 @@ export const updateInstructionContent = mutation({
         throw new Error('Not authorized')
       }
 
-      const existing = stack.instructions ?? []
+      const existing = stack.resources ?? []
       let matched = false
-      const updatedInstructions = existing.map((item) => {
+      const updatedResources = existing.map((item) => {
         if (item.stableKey !== args.stableKey) return item
         const updatedFiles = item.files.map((file) => {
           if (file.name !== args.fileName) return file
@@ -53,7 +53,7 @@ export const updateInstructionContent = mutation({
       }
 
       await ctx.db.patch(args.target.id, {
-        instructions: updatedInstructions,
+        resources: updatedResources,
         updatedAt: Date.now(),
       })
       return null
@@ -68,7 +68,7 @@ export const updateInstructionContent = mutation({
     }
 
     let matched = false
-    const updatedInstructions = (project.instructions ?? []).map((item) => {
+    const updatedResources = (project.resources ?? []).map((item) => {
       if (item.stableKey !== args.stableKey) return item
       const updatedFiles = item.files.map((file) => {
         if (file.name !== args.fileName) return file
@@ -83,20 +83,20 @@ export const updateInstructionContent = mutation({
     }
 
     await ctx.db.patch(args.target.id, {
-      instructions: updatedInstructions,
+      resources: updatedResources,
       updatedAt: Date.now(),
     })
     return null
   },
 })
 
-export const getInstructionBrowserContext = query({
+export const getResourceBrowserContext = query({
   args: {
     target: TargetValidator,
   },
   returns: v.object({
-    stackInstructions: v.array(InstructionItemValidator),
-    projectInstructions: v.array(InstructionItemValidator),
+    stackResources: v.array(ResourceValidator),
+    projectResources: v.array(ResourceValidator),
     stackName: v.string(),
     projectName: v.optional(v.string()),
     isOwner: v.boolean(),
@@ -111,8 +111,8 @@ export const getInstructionBrowserContext = query({
       const stack = await ctx.db.get(args.target.id)
       if (!stack) {
         return {
-          stackInstructions: [],
-          projectInstructions: [],
+          stackResources: [],
+          projectResources: [],
           stackName: '',
           projectName: undefined,
           isOwner: false,
@@ -128,8 +128,8 @@ export const getInstructionBrowserContext = query({
 
       if (!stack.published && !isOwner) {
         return {
-          stackInstructions: [],
-          projectInstructions: [],
+          stackResources: [],
+          projectResources: [],
           stackName: stack.name,
           projectName: undefined,
           isOwner,
@@ -139,8 +139,8 @@ export const getInstructionBrowserContext = query({
       }
 
       return {
-        stackInstructions: stack.instructions ?? [],
-        projectInstructions: [],
+        stackResources: stack.resources ?? [],
+        projectResources: [],
         stackName: stack.name,
         projectName: undefined,
         isOwner,
@@ -152,8 +152,8 @@ export const getInstructionBrowserContext = query({
     const project = await ctx.db.get(args.target.id)
     if (!project) {
       return {
-        stackInstructions: [],
-        projectInstructions: [],
+        stackResources: [],
+        projectResources: [],
         stackName: '',
         projectName: undefined,
         isOwner: false,
@@ -170,8 +170,8 @@ export const getInstructionBrowserContext = query({
     const projectPublished = project.published === true
     if (!projectPublished && !isOwner) {
       return {
-        stackInstructions: [],
-        projectInstructions: [],
+        stackResources: [],
+        projectResources: [],
         stackName: stack?.name ?? '',
         projectName: project.name,
         isOwner,
@@ -182,12 +182,12 @@ export const getInstructionBrowserContext = query({
 
     const stackCreator = stack ? await ctx.db.get(stack.creatorId) : null
     const isStackOwner = !!(userId && stackCreator && stackCreator.userId === userId)
-    const stackInstructions =
-      stack?.published === true || isStackOwner ? (stack?.instructions ?? []) : []
+    const stackResources =
+      stack?.published === true || isStackOwner ? (stack?.resources ?? []) : []
 
     return {
-      stackInstructions,
-      projectInstructions: project.instructions,
+      stackResources,
+      projectResources: project.resources ?? [],
       stackName: stack?.name ?? '',
       projectName: project.name,
       isOwner,

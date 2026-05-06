@@ -1,38 +1,37 @@
 import { ChevronRight, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { InstructionItem as InstructionItemType } from "@/features/stack-editor/types";
+import type { Resource } from "@/features/stack-editor/types";
 import {
 	getGroupLabel,
-	getInstructionTypeColors,
-	getInstructionTypeIcon,
-	getInstructionTypeLabel,
-} from "@/lib/instruction-utils";
+	getResourceTypeColors,
+	getResourceTypeIcon,
+	getResourceTypeLabel,
+	type ResourceLocationKind,
+} from "@/lib/resource-utils";
 import { cn } from "@/lib/utils";
 
-export type InstructionSource = "stack" | "project";
-
-export interface InstructionTreeSelection {
-	source: InstructionSource;
+export interface ResourceTreeSelection {
+	source: ResourceLocationKind;
 	sourceId: string;
 	stableKey: string;
 	fileName: string;
 }
 
-export interface InstructionTreeSourceItems {
+export interface ResourceTreeSourceItems {
 	sourceId: string;
 	sourceLabel: string;
-	instructions: InstructionItemType[];
+	resources: Resource[];
 }
 
-export interface InstructionTreeProps {
-	stack?: InstructionTreeSourceItems | null;
-	project?: InstructionTreeSourceItems | null;
-	selected?: InstructionTreeSelection | null;
-	onSelect?: (selection: InstructionTreeSelection) => void;
+export interface ResourceTreeProps {
+	stack?: ResourceTreeSourceItems | null;
+	project?: ResourceTreeSourceItems | null;
+	selected?: ResourceTreeSelection | null;
+	onSelect?: (selection: ResourceTreeSelection) => void;
 	groupFilter?: string;
 	isLoading?: boolean;
 	onInsertFile?: (args: {
-		source: InstructionSource;
+		source: ResourceLocationKind;
 		sourceId: string;
 		stableKey: string;
 		fileName: string;
@@ -40,7 +39,7 @@ export interface InstructionTreeProps {
 		group: string;
 	}) => void;
 	onInsertGroup?: (args: {
-		source: InstructionSource;
+		source: ResourceLocationKind;
 		sourceId: string;
 		group: string;
 		fileCount: number;
@@ -50,7 +49,7 @@ export interface InstructionTreeProps {
 
 interface TypeGroup {
 	type: string;
-	items: InstructionItemType[];
+	items: Resource[];
 	totalFiles: number;
 }
 
@@ -61,18 +60,16 @@ interface GroupSection {
 	totalFiles: number;
 }
 
-function groupByGroupAndType(
-	instructions: InstructionItemType[],
-): GroupSection[] {
-	const groupMap = new Map<string, InstructionItemType[]>();
-	for (const item of instructions) {
+function groupByGroupAndType(resources: Resource[]): GroupSection[] {
+	const groupMap = new Map<string, Resource[]>();
+	for (const item of resources) {
 		const existing = groupMap.get(item.group) ?? [];
 		existing.push(item);
 		groupMap.set(item.group, existing);
 	}
 
 	return Array.from(groupMap.entries()).map(([group, items]) => {
-		const typeMap = new Map<string, InstructionItemType[]>();
+		const typeMap = new Map<string, Resource[]>();
 		for (const item of items) {
 			const existing = typeMap.get(item.type) ?? [];
 			existing.push(item);
@@ -99,7 +96,7 @@ function groupByGroupAndType(
 	});
 }
 
-export function InstructionTree({
+export function ResourceTree({
 	stack,
 	project,
 	selected,
@@ -109,16 +106,16 @@ export function InstructionTree({
 	onInsertFile,
 	onInsertGroup,
 	className,
-}: InstructionTreeProps) {
+}: ResourceTreeProps) {
 	const sections = useMemo(() => {
 		const result: Array<{
-			source: InstructionSource;
+			source: ResourceLocationKind;
 			sourceId: string;
 			sourceLabel: string;
 			groups: GroupSection[];
 		}> = [];
-		if (stack && stack.instructions.length > 0) {
-			let groups = groupByGroupAndType(stack.instructions);
+		if (stack && stack.resources.length > 0) {
+			let groups = groupByGroupAndType(stack.resources);
 			if (groupFilter) {
 				groups = groups.filter((g) => g.group === groupFilter);
 			}
@@ -131,8 +128,8 @@ export function InstructionTree({
 				});
 			}
 		}
-		if (project && project.instructions.length > 0) {
-			let groups = groupByGroupAndType(project.instructions);
+		if (project && project.resources.length > 0) {
+			let groups = groupByGroupAndType(project.resources);
 			if (groupFilter) {
 				groups = groups.filter((g) => g.group === groupFilter);
 			}
@@ -172,7 +169,7 @@ export function InstructionTree({
 				)}
 			>
 				<p className="font-mono text-xs text-fg-muted">
-					No instruction files available.
+					No resource files available.
 				</p>
 			</div>
 		);
@@ -264,12 +261,12 @@ function GroupBlock({
 	onInsertGroup,
 }: {
 	section: GroupSection;
-	source: InstructionSource;
+	source: ResourceLocationKind;
 	sourceId: string;
-	selected?: InstructionTreeSelection | null;
-	onSelect?: (selection: InstructionTreeSelection) => void;
-	onInsertFile?: InstructionTreeProps["onInsertFile"];
-	onInsertGroup?: InstructionTreeProps["onInsertGroup"];
+	selected?: ResourceTreeSelection | null;
+	onSelect?: (selection: ResourceTreeSelection) => void;
+	onInsertFile?: ResourceTreeProps["onInsertFile"];
+	onInsertGroup?: ResourceTreeProps["onInsertGroup"];
 }) {
 	const [expanded, setExpanded] = useState(true);
 
@@ -362,15 +359,15 @@ function TypeBlock({
 	onInsertFile,
 }: {
 	typeGroup: TypeGroup;
-	source: InstructionSource;
+	source: ResourceLocationKind;
 	sourceId: string;
-	selected?: InstructionTreeSelection | null;
-	onSelect?: (selection: InstructionTreeSelection) => void;
-	onInsertFile?: InstructionTreeProps["onInsertFile"];
+	selected?: ResourceTreeSelection | null;
+	onSelect?: (selection: ResourceTreeSelection) => void;
+	onInsertFile?: ResourceTreeProps["onInsertFile"];
 }) {
 	const [expanded, setExpanded] = useState(true);
-	const Icon = getInstructionTypeIcon(typeGroup.type);
-	const colors = getInstructionTypeColors(typeGroup.type);
+	const Icon = getResourceTypeIcon(typeGroup.type);
+	const colors = getResourceTypeColors(typeGroup.type);
 
 	return (
 		<div>
@@ -397,7 +394,7 @@ function TypeBlock({
 				</div>
 				<span className="flex-1" />
 				<span className="font-mono text-xs font-bold uppercase tracking-wider text-fg-primary">
-					{getInstructionTypeLabel(typeGroup.type)}
+					{getResourceTypeLabel(typeGroup.type)}
 				</span>
 				<span className="font-mono text-[10px] text-fg-muted">
 					{typeGroup.totalFiles}
@@ -435,15 +432,15 @@ function FileRow({
 	onSelect,
 	onInsertFile,
 }: {
-	source: InstructionSource;
+	source: ResourceLocationKind;
 	sourceId: string;
 	stableKey: string;
 	fileName: string;
 	type: string;
 	group: string;
-	selected?: InstructionTreeSelection | null;
-	onSelect?: (selection: InstructionTreeSelection) => void;
-	onInsertFile?: InstructionTreeProps["onInsertFile"];
+	selected?: ResourceTreeSelection | null;
+	onSelect?: (selection: ResourceTreeSelection) => void;
+	onInsertFile?: ResourceTreeProps["onInsertFile"];
 }) {
 	const isSelected =
 		selected?.source === source &&

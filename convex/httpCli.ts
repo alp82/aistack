@@ -144,15 +144,15 @@ export const projectsCollect = httpAction(async (ctx, request) => {
   if (authResult instanceof Response) return authResult
   const { userId, tokenId } = authResult
 
-  let body: { name: string; instructions: any[]; stackShortId?: string; source?: string }
+  let body: { name: string; resources: any[]; stackShortId?: string; source?: string }
   try {
     body = await request.json()
   } catch {
     return jsonResponse({ error: 'Invalid JSON body' }, 400)
   }
 
-  if (!body.name || !body.instructions) {
-    return jsonResponse({ error: 'Missing required fields: name, instructions' }, 400)
+  if (!body.name || !body.resources) {
+    return jsonResponse({ error: 'Missing required fields: name, resources' }, 400)
   }
 
   const creator = await ctx.runQuery(internal.httpCliHelpers.getCreatorByUserId, { userId })
@@ -192,7 +192,7 @@ export const projectsCollect = httpAction(async (ctx, request) => {
     creatorId: creator._id,
     stackId: stackId as Id<'stacks'>,
     name: body.name,
-    instructions: body.instructions,
+    resources: body.resources,
     source: body.source ?? 'cli',
   })
 
