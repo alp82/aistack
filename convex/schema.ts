@@ -136,8 +136,6 @@ export default defineSchema({
     oneLiner: v.string(),
     description: v.optional(v.string()),
     resources: v.optional(v.array(Resource)),
-    // Transitional: legacy `instructions` field — drop after migration runs.
-    instructions: v.optional(v.array(Resource)),
     stackImageUrl: v.optional(v.string()),
     avatarStorageId: v.optional(v.id('_storage')),
     personalPageUrl: v.optional(v.string()),
@@ -317,9 +315,7 @@ export default defineSchema({
     order: v.optional(v.number()),
     cloneCount: v.optional(v.number()),
     published: v.optional(v.boolean()),
-    resources: v.optional(v.array(Resource)),
-    // Transitional: legacy `instructions` field — drop after migration runs.
-    instructions: v.optional(v.array(Resource)),
+    resources: v.array(Resource),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

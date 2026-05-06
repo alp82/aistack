@@ -72,7 +72,7 @@ export const getBySlug = query({
       order: project.order,
       cloneCount: project.cloneCount,
       published: project.published,
-      resources: project.resources ?? [],
+      resources: project.resources,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
       creator: {
@@ -124,7 +124,7 @@ export const listByStack = query({
 
     const mapped = projects.map((project) => {
       let fileCount = 0
-      for (const item of project.resources ?? []) {
+      for (const item of project.resources) {
         fileCount += item.files.length
       }
       return {
@@ -198,7 +198,7 @@ export const listProjectResourcesByStack = query({
       projectName: project.name,
       projectSlug: `${project.slug}-${project.shortId}`,
       isOwnProject: ownedCreatorIds.has(project.creatorId),
-      resources: project.resources ?? [],
+      resources: project.resources,
       order: project.order,
       createdAt: project.createdAt,
     }))
@@ -266,7 +266,7 @@ export const listByCreator = query({
       stackId: Doc<'projects'>['stackId']
       stackName: string
       stackSlug: string
-      resources: NonNullable<Doc<'projects'>['resources']>
+      resources: Doc<'projects'>['resources']
     }[] = []
     for (const project of limited) {
       let stackInfo = stackCache.get(project.stackId)
@@ -283,7 +283,7 @@ export const listByCreator = query({
         stackId: project.stackId,
         stackName: stackInfo.name,
         stackSlug: `${stackInfo.slug}-${stackInfo.shortId}`,
-        resources: project.resources ?? [],
+        resources: project.resources,
       })
     }
     return results
@@ -323,7 +323,7 @@ export const getByShortId = query({
       creatorId: project.creatorId,
       stackId: project.stackId,
       source: project.source,
-      resources: project.resources ?? [],
+      resources: project.resources,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
     }

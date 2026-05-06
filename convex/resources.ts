@@ -187,7 +187,7 @@ export const getResourceBrowserContext = query({
 
     return {
       stackResources,
-      projectResources: project.resources ?? [],
+      projectResources: project.resources,
       stackName: stack?.name ?? '',
       projectName: project.name,
       isOwner,

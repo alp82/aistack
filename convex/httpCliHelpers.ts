@@ -173,7 +173,7 @@ export const upsertProject = internalMutation({
 
     if (match) {
       const mergedProjectResources = mergeByStableKey(
-        match.resources ?? [],
+        match.resources,
         projectItems,
       )
       await ctx.db.patch(match._id, {
