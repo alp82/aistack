@@ -86,6 +86,7 @@ https://www.danhock.co/p/how-to-use-ai
 
 Evaluation Framework:
 https://github.com/chrisvoncsefalvay/autostar
+https://x.com/odysseus0z/status/2052848277247361322?s=20
 
 Writing Style
 https://asciinema.org/a/875847
@@ -95,6 +96,7 @@ https://textstat.org
 
 memory:
 https://github.com/garrytan/gbrain
+https://github.com/cytostack/openwolf
 https://github.com/thedotmack/claude-mem
 https://github.com/milla-jovovich/mempalace
 

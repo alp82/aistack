@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vite'
 import { devtools } from '@tanstack/devtools-vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
@@ -9,10 +9,6 @@ import { nitro } from 'nitro/vite'
 const config = defineConfig({
   ssr: {
     noExternal: ['@convex-dev/better-auth'],
-  },
-  test: {
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
   },
   plugins: [
     devtools(),
