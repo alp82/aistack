@@ -63,6 +63,9 @@ https://openai.com/index/speeding-up-agentic-workflows-with-websockets/
 build your own harness:
 https://flueframework.com
 
+markdown vs html:
+https://thariqs.github.io/html-effectiveness/
+
 sandbox & safety:
 https://www.agentsh.org
 https://nono.sh
