@@ -671,10 +671,10 @@ export function TiptapEditor({
 
 	return (
 		<div className={cn("space-y-2", className)}>
-			<div className="max-h-[70vh] overflow-x-hidden overflow-y-auto border-2 border-stroke-subtle bg-bg-panel">
+			<div className="relative z-0 isolate max-h-[70vh] overflow-x-hidden overflow-y-auto border-2 border-stroke-subtle bg-bg-panel">
 				{/* Toolbar Row 1: Text formatting */}
 				{!previewMode && (
-					<div className="sticky top-0 z-20 flex flex-wrap gap-1 border-b-2 border-stroke-subtle bg-bg-panel-muted p-1">
+					<div className="sticky top-0 z-10 flex flex-wrap gap-1 border-b-2 border-stroke-subtle bg-bg-panel-muted p-1">
 						{/* Undo/Redo */}
 						<ToolbarButton
 							onClick={() => editor.chain().focus().undo().run()}

@@ -684,7 +684,7 @@ function ToolsSidebar({
 
 	return (
 		<aside className="hidden w-96 border-l border-stroke-subtle bg-bg-panel/80 lg:block">
-			<div className="sticky top-[58px] flex max-h-[calc(100vh-58px)] flex-col bg-bg-panel/80 backdrop-blur-sm">
+			<div className="sticky top-16 flex max-h-[calc(100vh-4rem)] flex-col bg-bg-panel/80 backdrop-blur-sm">
 				{/* Total Price Header - always visible */}
 				<div className="border-b border-stroke-subtle bg-bg-panel p-4">
 					<p className="font-mono text-[10px] uppercase tracking-widest text-accent-lime">

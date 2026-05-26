@@ -446,7 +446,7 @@ export function StackEditor({
 					<div className="flex">
 						<main className="flex-1 px-3 py-4 sm:px-6 sm:py-8 min-w-0">
 							{/* Sticky Header with Title and Actions */}
-							<header className="sticky top-16 mb-6 sm:mb-12 py-3 sm:py-4 z-20 bg-bg-canvas border-b-2 border-stroke-subtle">
+							<header className="sticky top-16 z-40 mb-6 border-b-2 border-stroke-subtle bg-bg-canvas py-3 sm:mb-12 sm:py-4">
 								<div className="flex items-center justify-between gap-2 sm:gap-4">
 									<h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tighter uppercase text-fg-primary">
 										{mode === "create" ? "Create Stack" : "Update Stack"}
