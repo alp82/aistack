@@ -20,8 +20,10 @@ function extractShortId(compositeSlug: string): string {
 	return compositeSlug.slice(lastHyphen + 1);
 }
 
-function getDraftKey(slug?: string): string {
-	return slug ? `stackDraft-${extractShortId(slug)}` : "stackDraft-new";
+function getDraftKey(slug?: string, draftOwner = "guest"): string {
+	return slug
+		? `stackDraft-${extractShortId(slug)}`
+		: `stackDraft-new-${draftOwner}`;
 }
 
 type EditorSection = (typeof sectionOrder)[number];
@@ -132,21 +134,26 @@ function getInitialEditorState(args: {
 		xHandle?: string;
 		name?: string;
 		avatarUrl?: string;
+		_id?: string;
 		personalPages?: Array<{ name: string; url: string }>;
 		projectPages?: Array<{ name: string; url: string }>;
 	};
 	initialValue?: StackEditorInitialValue;
 	mode?: "create" | "edit";
 	guestSession?: boolean;
+	draftOwner?: string;
 }): EditorState {
-	const { actor, initialValue, mode } = args;
+	const { actor, draftOwner, initialValue, mode } = args;
 
 	// Extract first personal page URL (for X/portfolio)
 	const personalPageUrl =
 		actor.personalPages?.find((p) => p.name !== "X")?.url ?? "";
 
 	// Load from localStorage using scoped key (per-stack for edit, shared for create)
-	const draftKey = getDraftKey(initialValue?.slug);
+	const owner =
+		draftOwner ??
+		(!args.guestSession && actor._id ? `user:${actor._id}` : "guest");
+	const draftKey = getDraftKey(initialValue?.slug, owner);
 	let savedDraft: Partial<GuestStackDraft> | null = null;
 	if ((mode === "create" || mode === "edit") && typeof window !== "undefined") {
 		const saved = localStorage.getItem(draftKey);
@@ -209,10 +216,7 @@ function getInitialEditorState(args: {
 			initialValue?.personalPageUrl ??
 			personalPageUrl,
 		stackImageUrl:
-			savedDraft?.stackImageUrl ??
-			initialValue?.stackImageUrl ??
-			actor.avatarUrl ??
-			"",
+			savedDraft?.stackImageUrl ?? initialValue?.stackImageUrl ?? "",
 		saving: false,
 		error: "",
 		activeSection: "profile",

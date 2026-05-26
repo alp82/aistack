@@ -11,7 +11,9 @@ type AvatarEditorProps = {
 	currentAvatarUrl: string;
 	defaultAvatarUrl?: string;
 	creatorName: string;
+	guestSession?: boolean;
 	onAvatarChange: (url: string) => void;
+	onSignInRequired?: () => void;
 };
 
 export function AvatarEditor({
@@ -20,7 +22,9 @@ export function AvatarEditor({
 	currentAvatarUrl,
 	defaultAvatarUrl,
 	creatorName,
+	guestSession = false,
 	onAvatarChange,
+	onSignInRequired,
 }: AvatarEditorProps) {
 	const [urlInput, setUrlInput] = useState("");
 	const [isUploading, setIsUploading] = useState(false);
@@ -34,8 +38,18 @@ export function AvatarEditor({
 	const displayUrl = currentAvatarUrl;
 	const initials = creatorName.charAt(0).toUpperCase();
 
+	const requestSignInForUpload = useCallback(() => {
+		setError("Sign in to upload an image.");
+		onSignInRequired?.();
+	}, [onSignInRequired]);
+
 	const handleFileUpload = useCallback(
 		async (file: File) => {
+			if (guestSession) {
+				requestSignInForUpload();
+				return;
+			}
+
 			if (!file.type.startsWith("image/")) {
 				setError("Please upload an image file");
 				return;
@@ -75,7 +89,14 @@ export function AvatarEditor({
 				setIsUploading(false);
 			}
 		},
-		[generateUploadUrl, getFileUrl, onAvatarChange, onClose],
+		[
+			generateUploadUrl,
+			getFileUrl,
+			guestSession,
+			onAvatarChange,
+			onClose,
+			requestSignInForUpload,
+		],
 	);
 
 	const handleDrop = useCallback(
@@ -185,7 +206,13 @@ export function AvatarEditor({
 					onDrop={handleDrop}
 					onDragOver={handleDragOver}
 					onDragLeave={handleDragLeave}
-					onClick={() => fileInputRef.current?.click()}
+					onClick={() => {
+						if (guestSession) {
+							requestSignInForUpload();
+							return;
+						}
+						fileInputRef.current?.click();
+					}}
 					className={cn(
 						"mb-4 flex cursor-pointer flex-col items-center justify-center border-2 border-dashed p-6 transition-colors",
 						dragActive

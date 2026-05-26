@@ -19,6 +19,8 @@ type DetailsStepProps = {
 	stackImageUrl: string;
 	onStackImageUrlChange: (value: string) => void;
 	defaultAvatarUrl?: string;
+	guestSession?: boolean;
+	onSignInRequired?: () => void;
 	isTeam: boolean;
 	onIsTeamChange: (value: boolean) => void;
 	teamSize: number;
@@ -38,6 +40,8 @@ function DetailsStep({
 	stackImageUrl,
 	onStackImageUrlChange,
 	defaultAvatarUrl,
+	guestSession = false,
+	onSignInRequired,
 	isTeam,
 	onIsTeamChange,
 	teamSize,
@@ -72,7 +76,9 @@ function DetailsStep({
 				currentAvatarUrl={stackImageUrl}
 				defaultAvatarUrl={defaultAvatarUrl}
 				creatorName={creator.name}
+				guestSession={guestSession}
 				onAvatarChange={onStackImageUrlChange}
+				onSignInRequired={onSignInRequired}
 			/>
 
 			{/* Main layout */}

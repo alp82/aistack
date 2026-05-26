@@ -17,7 +17,7 @@ import type {
 type UseEditorStateArgs = {
 	mode: StackEditorMode;
 	guestSession: boolean;
-	actor: { xHandle?: string };
+	actor: { _id?: string; xHandle?: string };
 	initialValue?: StackEditorInitialValue;
 };
 
@@ -29,10 +29,16 @@ function useEditorState({
 	actor,
 	initialValue,
 }: UseEditorStateArgs) {
+	const draftOwner =
+		mode === "create" && !guestSession && actor._id
+			? `user:${actor._id}`
+			: "guest";
+	const draftKey = getDraftKey(initialValue?.slug, draftOwner);
 	const [state, dispatch] = useReducer(
 		editorReducer,
 		{
 			actor,
+			draftOwner,
 			initialValue,
 			mode,
 			guestSession,
@@ -55,9 +61,8 @@ function useEditorState({
 		if (!hasLoadedInitialData.current || draftSavingDisabled.current) {
 			return;
 		}
-		const draftKey = getDraftKey(initialValue?.slug);
 		localStorage.setItem(draftKey, JSON.stringify(selectGuestDraft(state)));
-	}, [state, initialValue?.slug]);
+	}, [state, draftKey]);
 
 	return {
 		state,
@@ -105,6 +110,7 @@ function useEditorState({
 		disableDraftSaving: () => {
 			draftSavingDisabled.current = true;
 		},
+		draftKey,
 	};
 }
 

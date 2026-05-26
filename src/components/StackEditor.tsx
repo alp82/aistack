@@ -144,6 +144,7 @@ export function StackEditor({
 		revertDraft,
 		dismissDraft,
 		disableDraftSaving,
+		draftKey,
 	} = useEditorState({
 		mode,
 		guestSession,
@@ -307,7 +308,7 @@ export function StackEditor({
 
 			if (mode === "create") {
 				const result = await createStack(payload);
-				localStorage.removeItem(getDraftKey(undefined));
+				localStorage.removeItem(draftKey);
 				onNavigating?.();
 				navigate({ to: "/stacks/$slug", params: { slug: result.slug } });
 				return;
@@ -579,6 +580,7 @@ export function StackEditor({
 								stackImageUrl={state.stackImageUrl}
 								onStackImageUrlChange={setStackImageUrl}
 								defaultAvatarUrl={defaultAvatarUrl}
+								guestSession={guestSession}
 								isTeam={state.isTeam}
 								onIsTeamChange={setIsTeam}
 								teamSize={state.teamSize}

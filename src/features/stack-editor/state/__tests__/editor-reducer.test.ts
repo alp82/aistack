@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	editorReducer,
+	getDraftKey,
 	getInitialEditorState,
 } from "@/features/stack-editor/state/editorReducer";
 import {
@@ -12,6 +13,16 @@ import {
 } from "@/features/stack-editor/state/editorSelectors";
 
 describe("editor reducer", () => {
+	it("scopes create drafts while keeping edit drafts slug-based", () => {
+		expect(getDraftKey(undefined, "guest")).toBe("stackDraft-new-guest");
+		expect(getDraftKey(undefined, "user:creator_1")).toBe(
+			"stackDraft-new-user:creator_1",
+		);
+		expect(getDraftKey("my-stack-abc123", "user:creator_1")).toBe(
+			"stackDraft-abc123",
+		);
+	});
+
 	it("updates profile and section state with typed transitions", () => {
 		const baseState = getInitialEditorState({ actor: { xHandle: "existing" } });
 

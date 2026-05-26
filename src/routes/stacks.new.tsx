@@ -104,6 +104,7 @@ function NewStackPage() {
 
 	return (
 		<StackEditor
+			key={isGuest ? "guest" : `user-${creator._id}`}
 			mode="create"
 			actor={creator}
 			guestSession={isGuest}
