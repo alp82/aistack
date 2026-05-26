@@ -46,6 +46,8 @@ export function StackEditorSidebar({
 						<button
 							key={section.id}
 							type="button"
+							aria-current={isActive ? "step" : undefined}
+							aria-invalid={isError ? "true" : undefined}
 							onClick={() => scrollToSection(section.id)}
 							className={`w-full text-left p-3 border-l-4 font-mono text-xs uppercase tracking-wider transition-all flex justify-between items-center group
 								${

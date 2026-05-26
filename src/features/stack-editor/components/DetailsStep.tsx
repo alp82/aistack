@@ -1,10 +1,10 @@
 import { User } from "lucide-react";
 import { useEffect, useState } from "react";
+import { AvatarEditor } from "@/components/AvatarEditor";
 import XLogoIcon from "@/components/icon/XLogoIcon";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
-import { AvatarEditor } from "@/components/AvatarEditor";
 import type { CreatorProfile } from "@/features/stack-editor/types";
+import { cn } from "@/lib/utils";
 
 type DetailsStepProps = {
 	creator: CreatorProfile;
@@ -51,9 +51,10 @@ function DetailsStep({
 	const displayAvatarUrl = stackImageUrl;
 
 	// Reset error when URL changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the derived avatar URL should reset image error state when the stack avatar changes.
 	useEffect(() => {
 		setImgError(false);
-	}, [displayAvatarUrl]);
+	}, [stackImageUrl]);
 	const initials = creator.name.charAt(0).toUpperCase();
 
 	return (

@@ -1,6 +1,6 @@
 import type * as React from "react";
-import { FormField } from "./form-field";
 import { cn } from "@/lib/utils";
+import { FormField } from "./form-field";
 
 type FormSelectProps = {
 	label: string;

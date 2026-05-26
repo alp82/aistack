@@ -1,6 +1,6 @@
-import type { ScannedFile } from "./scanner.js";
-import type { Resource } from "./api.js";
 import { basename, dirname } from "node:path";
+import type { Resource } from "./api.js";
+import type { ScannedFile } from "./scanner.js";
 import { computeStableKey } from "./stableKey.js";
 
 export function classify(files: ScannedFile[]): Resource[] {

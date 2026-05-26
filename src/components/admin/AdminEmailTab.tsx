@@ -1,7 +1,7 @@
-import { useState } from "react";
 import { Mail, Radio } from "lucide-react";
-import { EmailTemplatesSection } from "./EmailTemplatesSection";
+import { useState } from "react";
 import { EmailBroadcastsSection } from "./EmailBroadcastsSection";
+import { EmailTemplatesSection } from "./EmailTemplatesSection";
 
 type EmailSubTab = "templates" | "broadcasts";
 

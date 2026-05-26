@@ -1,5 +1,5 @@
 import { Search } from "lucide-react";
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Input } from "../ui/input";
 
 type PickerBrowserProps = {

@@ -232,7 +232,7 @@ export function TiptapEditor({
 			shortId: b.shortId,
 			iconUrl: b.iconUrl,
 		}));
-	}, [editorContext?.bundleLookup]);
+	}, [editorContext?.bundleLookup, editorContext]);
 
 	const projectFilesData = useQuery(
 		api.projects.listByCreator,
@@ -572,7 +572,7 @@ export function TiptapEditor({
 	useEffect(() => {
 		if (!editor) return;
 		editor.setEditable(!previewMode && editable);
-	}, [previewMode, editor]);
+	}, [previewMode, editor, editable]);
 
 	const editorState = useEditorState({
 		editor,

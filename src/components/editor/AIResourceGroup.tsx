@@ -3,8 +3,8 @@ import type { NodeViewProps } from "@tiptap/react";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import { FolderTree } from "lucide-react";
 import { useState } from "react";
-import type { ResourceLocationKind } from "@/lib/resource-utils";
 import { ResourceBrowserDialog } from "@/components/resources";
+import type { ResourceLocationKind } from "@/lib/resource-utils";
 import { getGroupLabel, kindToLocation } from "@/lib/resource-utils";
 import { BaseCard } from "./BaseCard";
 

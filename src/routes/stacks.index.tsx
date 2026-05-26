@@ -1,8 +1,6 @@
 import { convexQuery } from "@convex-dev/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "convex/react";
-import { useConvexAuth } from "convex/react";
-import { useMemo, useState } from "react";
+import { useConvexAuth, useQuery } from "convex/react";
 import {
 	AlertTriangle,
 	ChevronLeft,
@@ -10,22 +8,23 @@ import {
 	Plus,
 	Search,
 } from "lucide-react";
-import { api } from "../../convex/_generated/api";
+import { useCallback, useMemo, useState } from "react";
 import { GridBackground } from "@/components/GridBackground";
 import { JsonLd } from "@/components/JsonLd";
 import { PageHeader } from "@/components/PageHeader";
 import { SortDropdown } from "@/components/SortDropdown";
 import { Input } from "@/components/ui/input";
-import { seoMeta } from "@/lib/seo";
 import { StackCard } from "@/features/landing/components/StackCard";
 import {
 	filterPreviewStacks,
 	getCategoryOptions,
-	SORT_OPTIONS,
 	type LandingStackPreview,
+	SORT_OPTIONS,
 	type SortOption,
 } from "@/features/landing/sections/FeaturedStacksSection";
+import { seoMeta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
+import { api } from "../../convex/_generated/api";
 
 const STACKS_PER_PAGE = 12;
 
@@ -138,24 +137,27 @@ function BrowseStacksPage() {
 		[goodStacks],
 	);
 
-	const searchFilter = (list: LandingStackPreview[]) => {
-		if (!searchQuery.trim()) return list;
-		const q = searchQuery.trim().toLowerCase();
-		return list.filter(
-			(s) =>
-				s.name.toLowerCase().includes(q) ||
-				s.oneLiner.toLowerCase().includes(q) ||
-				s.creator.name.toLowerCase().includes(q) ||
-				s.tools.some((t) => t.name.toLowerCase().includes(q)),
-		);
-	};
+	const searchFilter = useCallback(
+		(list: LandingStackPreview[]) => {
+			if (!searchQuery.trim()) return list;
+			const q = searchQuery.trim().toLowerCase();
+			return list.filter(
+				(s) =>
+					s.name.toLowerCase().includes(q) ||
+					s.oneLiner.toLowerCase().includes(q) ||
+					s.creator.name.toLowerCase().includes(q) ||
+					s.tools.some((t) => t.name.toLowerCase().includes(q)),
+			);
+		},
+		[searchQuery],
+	);
 
 	const filteredStacks = useMemo(
 		() =>
 			searchFilter(
 				filterPreviewStacks(goodStacks, "all", toolFilter, sortOption),
 			),
-		[goodStacks, toolFilter, sortOption, searchQuery],
+		[goodStacks, toolFilter, sortOption, searchFilter],
 	);
 
 	const filteredLowQualityStacks = useMemo(
@@ -163,7 +165,7 @@ function BrowseStacksPage() {
 			searchFilter(
 				filterPreviewStacks(lowQualityStacks, "all", toolFilter, sortOption),
 			),
-		[lowQualityStacks, toolFilter, sortOption, searchQuery],
+		[lowQualityStacks, toolFilter, sortOption, searchFilter],
 	);
 
 	const totalPages = Math.max(

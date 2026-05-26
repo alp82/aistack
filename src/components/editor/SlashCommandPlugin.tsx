@@ -1,4 +1,5 @@
 import { Extension } from "@tiptap/core";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import {
@@ -18,8 +19,8 @@ import {
 	useState,
 } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { ResourceLocationKind } from "@/lib/resource-utils";
 import type { ResourceType } from "@/features/stack-editor/types";
+import type { ResourceLocationKind } from "@/lib/resource-utils";
 import {
 	getResourceTypeColorsSplit,
 	getResourceTypeLabel,
@@ -359,7 +360,7 @@ export function SlashCommandDropdown({
 	// Reset selection when items change
 	useEffect(() => {
 		setSelectedIndex(0);
-	}, [flatItems.length, query]);
+	}, []);
 
 	// Scroll selected into view
 	useEffect(() => {
@@ -768,7 +769,7 @@ export function insertBlockForItem(
 		tr.delete(from, to);
 	}
 
-	let node;
+	let node: ProseMirrorNode | null | undefined;
 	switch (item.category) {
 		case "tool": {
 			const tool = item.data as ToolData;
@@ -1036,11 +1037,11 @@ export const SlashCommandPlugin = Extension.create<
 				? (hint: AddMissingHint) => {
 						// Keep the slash text and dropdown alive so the user can
 						// continue searching after the modal closes.
-						extensionStorage.storage.onAddMissing!(hint);
+						extensionStorage.storage.onAddMissing?.(hint);
 					}
 				: undefined;
 
-			reactRoot!.render(
+			reactRoot?.render(
 				<SlashCommandDropdown
 					items={items}
 					query={query}

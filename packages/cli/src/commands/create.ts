@@ -1,6 +1,6 @@
-import * as p from "@clack/prompts";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import * as p from "@clack/prompts";
 import { projectGet } from "../api.js";
 import {
 	bold,
@@ -121,7 +121,7 @@ export async function createCommand(slugOrShortId: string) {
 	}
 
 	p.log.success(
-		`${lime(String(toWrite.length))} written, ${dim(String(skipped.length) + " skipped")}`,
+		`${lime(String(toWrite.length))} written, ${dim(`${String(skipped.length)} skipped`)}`,
 	);
 	outro(lime("done"));
 }

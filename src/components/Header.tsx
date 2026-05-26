@@ -16,11 +16,11 @@ import {
 	X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 import { api } from "../../convex/_generated/api";
 import { authClient } from "../lib/auth-client";
 import { useTheme } from "../lib/theme";
 import { Button } from "./ui/button";
-import { cn } from "@/lib/utils";
 
 const XIcon = () => (
 	<svg
@@ -95,7 +95,7 @@ export default function Header() {
 	// Reset error state when avatar URL changes
 	useEffect(() => {
 		setAvatarError(false);
-	}, [avatarUrl]);
+	}, []);
 
 	const isActive = (path: string) => {
 		if (path === "/stacks")

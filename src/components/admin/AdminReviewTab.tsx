@@ -348,16 +348,16 @@ export function AdminReviewTab() {
 												onClick={() => {
 													setEditingSuggestionId(suggestion._id);
 													setEditingTool({
-														_id: suggestion.originalTool!._id,
+														_id: suggestion.originalTool?._id,
 														name: suggestion.suggestedName,
 														categories: suggestion.suggestedCategories,
 														websiteUrl: suggestion.suggestedWebsiteUrl,
 														iconStorageId:
 															suggestion.suggestedIconStorageId ??
-															suggestion.originalTool!.iconStorageId,
+															suggestion.originalTool?.iconStorageId,
 														iconUrl:
 															suggestion.suggestedIconUrl ??
-															suggestion.originalTool!.iconUrl,
+															suggestion.originalTool?.iconUrl,
 														tiers: suggestion.suggestedTiers.map((t, i) => ({
 															tierId: `tier-${i + 1}`,
 															name: t.name,
@@ -520,7 +520,7 @@ export function AdminReviewTab() {
 										<div className="space-y-2">
 											{suggestion.suggestedTiers.map((tier, idx) => (
 												<div
-													key={idx}
+													key={`${tier.name}-${tier.pricingType}-${idx}`}
 													className="flex items-center justify-between border border-stroke-subtle bg-bg-panel-muted p-3"
 												>
 													<span className="font-mono text-sm font-medium text-fg-primary">

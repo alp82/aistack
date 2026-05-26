@@ -1,12 +1,12 @@
 import { useQuery } from "convex/react";
 import { Brain, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
+import type { ModelSubscriptionEntry } from "@/features/stack-editor/types";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import type { ModelSubscriptionEntry } from "@/features/stack-editor/types";
-import { AddMissingItemButton } from "./AddMissingItemButton";
 import { AddItemModal } from "./AddItemModal";
-import { PickerEntryCard, PickerToggleButton, PickerBrowser } from "./picker";
+import { AddMissingItemButton } from "./AddMissingItemButton";
+import { PickerBrowser, PickerEntryCard, PickerToggleButton } from "./picker";
 
 export type ModelCategory =
 	| "language"
@@ -77,8 +77,7 @@ export function ModelPicker({
 				(m) =>
 					m.name.toLowerCase().includes(q) ||
 					m.provider.toLowerCase().includes(q) ||
-					(m.aliases &&
-						m.aliases.some((a: string) => a.toLowerCase().includes(q))),
+					m.aliases?.some((a: string) => a.toLowerCase().includes(q)),
 			);
 		}
 

@@ -1,14 +1,14 @@
 import { useQuery } from "convex/react";
 import { Package, Plus } from "lucide-react";
-import { AddMissingItemButton } from "./AddMissingItemButton";
 import { useMemo, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { AddItemModal } from "./AddItemModal";
+import { AddMissingItemButton } from "./AddMissingItemButton";
 import {
+	PickerBrowser,
 	PickerEntryCard,
 	PickerToggleButton,
-	PickerBrowser,
 	TierSelector,
 } from "./picker";
 
@@ -60,10 +60,7 @@ export function BundlePicker({
 			bundles = bundles.filter(
 				(b) =>
 					b.name.toLowerCase().includes(searchLower) ||
-					(b.aliases &&
-						b.aliases.some((a: string) =>
-							a.toLowerCase().includes(searchLower),
-						)),
+					b.aliases?.some((a: string) => a.toLowerCase().includes(searchLower)),
 			);
 		}
 		return bundles;

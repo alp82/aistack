@@ -1,12 +1,12 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
 import { ClipboardCheck, Flag, Mail } from "lucide-react";
 import { useState } from "react";
-import { AdminReviewTab } from "@/components/admin/AdminReviewTab";
-import { AdminQualityTab } from "@/components/admin/AdminQualityTab";
 import { AdminEmailTab } from "@/components/admin/AdminEmailTab";
+import { AdminQualityTab } from "@/components/admin/AdminQualityTab";
+import { AdminReviewTab } from "@/components/admin/AdminReviewTab";
 import { seoMeta } from "@/lib/seo";
+import { api } from "../../convex/_generated/api";
 
 export const Route = createFileRoute("/admin")({
 	ssr: false,

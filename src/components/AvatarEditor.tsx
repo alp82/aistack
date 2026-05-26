@@ -1,9 +1,9 @@
 import { useMutation } from "convex/react";
 import { Link2, Upload, User, X } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
-import { api } from "../../convex/_generated/api";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { api } from "../../convex/_generated/api";
 
 type AvatarEditorProps = {
 	isOpen: boolean;

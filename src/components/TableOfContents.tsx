@@ -83,7 +83,7 @@ export function TableOfContents({
 				tocItems.push({
 					id: slug,
 					text,
-					level: Number.parseInt(el.tagName[1]),
+					level: Number.parseInt(el.tagName[1], 10),
 				});
 			});
 

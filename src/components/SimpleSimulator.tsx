@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { Globe, Monitor, Terminal } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Monitor, Terminal, Globe } from "lucide-react";
 
 const SIMPLE_SIMULATOR_HEIGHT = 400;
 
@@ -190,7 +190,7 @@ export function SimpleSimulator() {
 
 									return (
 										<div
-											key={index}
+											key={workflow[index].content}
 											className={cn(
 												"animate-in fade-in slide-in-from-left-2 duration-300",
 												workflow[index].type === "user" &&

@@ -1,6 +1,6 @@
-import { createPortal } from "react-dom";
-import { useId } from "react";
 import { X } from "lucide-react";
+import { useId } from "react";
+import { createPortal } from "react-dom";
 
 interface DialogProps {
 	open: boolean;

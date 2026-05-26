@@ -1,13 +1,13 @@
-import { useState } from "react";
 import { ChevronDown, ChevronUp, Package } from "lucide-react";
-import {
-	ToolPicker,
-	type ToolSubscriptionEntry,
-} from "@/components/ToolPicker";
+import { useState } from "react";
 import {
 	BundlePicker,
 	type BundleSubscriptionEntry,
 } from "@/components/BundlePicker";
+import {
+	ToolPicker,
+	type ToolSubscriptionEntry,
+} from "@/components/ToolPicker";
 import { cn } from "@/lib/utils";
 
 type ToolsStepProps = {

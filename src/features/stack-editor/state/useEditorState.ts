@@ -1,18 +1,18 @@
 import { useEffect, useReducer, useRef } from "react";
-import type {
-	ModelSubscriptionEntry,
-	Resource,
-	StackEditorInitialValue,
-	StackEditorMode,
-} from "@/features/stack-editor/types";
+import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
+import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
 import {
 	editorReducer,
 	getDraftKey,
 	getInitialEditorState,
 } from "@/features/stack-editor/state/editorReducer";
 import { selectGuestDraft } from "@/features/stack-editor/state/editorSelectors";
-import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
-import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
+import type {
+	ModelSubscriptionEntry,
+	Resource,
+	StackEditorInitialValue,
+	StackEditorMode,
+} from "@/features/stack-editor/types";
 
 type UseEditorStateArgs = {
 	mode: StackEditorMode;
@@ -57,7 +57,7 @@ function useEditorState({
 		}
 		const draftKey = getDraftKey(initialValue?.slug);
 		localStorage.setItem(draftKey, JSON.stringify(selectGuestDraft(state)));
-	}, [state]);
+	}, [state, initialValue?.slug]);
 
 	return {
 		state,

@@ -1,5 +1,5 @@
-import { Box } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { Box } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ItemIconSize = "xs" | "sm" | "md" | "lg";

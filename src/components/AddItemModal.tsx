@@ -1,8 +1,8 @@
+import { Brain, Package, Wrench } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Wrench, Brain, Package } from "lucide-react";
-import { AddToolForm } from "./AddToolModal";
-import { AddModelForm } from "./AddModelModal";
 import { AddBundleForm } from "./AddBundleModal";
+import { AddModelForm } from "./AddModelModal";
+import { AddToolForm } from "./AddToolModal";
 import { Dialog } from "./ui/Dialog";
 
 export type AddItemTab = "tool" | "model" | "bundle";

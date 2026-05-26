@@ -2,11 +2,11 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { StackEditorSidebar } from "@/components/StackEditorSidebar";
-import { ProfileSection } from "@/features/stack-editor/sections/ProfileSection";
 import {
-	getEditorSectionStatuses,
 	type EditorSectionStatuses,
+	getEditorSectionStatuses,
 } from "@/features/stack-editor/editor-status";
+import { ProfileSection } from "@/features/stack-editor/sections/ProfileSection";
 
 describe("editor status ui", () => {
 	it("uses strict validation states for every section", () => {
@@ -44,13 +44,13 @@ describe("editor status ui", () => {
 			<StackEditorSidebar activeSection="tools" sectionStatuses={statuses} />,
 		);
 
-		const tools = screen.getByRole("button", { name: /Tools Stack/i });
+		const tools = screen.getByRole("button", { name: /Stack Tools/i });
 		const profile = screen.getByRole("button", { name: /Profile & Bio/i });
 		const description = screen.getByRole("button", { name: /Description/i });
 
 		expect(tools.getAttribute("aria-current")).toBe("step");
 		expect(profile.getAttribute("aria-invalid")).toBe("true");
-		expect(description.textContent).toContain("Complete");
+		expect(description.textContent).toContain("[ OK ]");
 	});
 
 	it("marks required profile controls with aria-invalid", () => {

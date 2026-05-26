@@ -1,5 +1,6 @@
 import {
 	Body,
+	Column,
 	Container,
 	Head,
 	Heading,
@@ -8,11 +9,10 @@ import {
 	Link,
 	Preview,
 	Row,
-	Column,
 	Section,
 	Text,
 } from "@react-email/components";
-import { EMAIL_CONFIG, glowKeyframes, styles, colors, fonts } from "./styles";
+import { colors, EMAIL_CONFIG, fonts, glowKeyframes, styles } from "./styles";
 
 // Tool logos - popular tools on AI Stack
 // Using public URLs for email compatibility

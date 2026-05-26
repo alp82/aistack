@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Mail, Eye, Code, ChevronDown, ChevronUp } from "lucide-react";
 import { render } from "@react-email/render";
+import { ChevronDown, ChevronUp, Code, Eye, Mail } from "lucide-react";
+import { useState } from "react";
 import { MagicLinkEmail } from "../emails/MagicLinkEmail";
 import { ResetPasswordEmail } from "../emails/ResetPasswordEmail";
 import { VerifyEmail } from "../emails/VerifyEmail";

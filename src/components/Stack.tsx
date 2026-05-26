@@ -4,7 +4,7 @@ import {
 	useMotionValue,
 	useTransform,
 } from "motion/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface CardRotateProps {
 	children: React.ReactNode;
@@ -118,7 +118,7 @@ export default function Stack({
 		}
 	}, [cards]);
 
-	const sendToBack = (id: number) => {
+	const sendToBack = useCallback((id: number) => {
 		setStack((prev) => {
 			const newStack = [...prev];
 			const index = newStack.findIndex((card) => card.id === id);
@@ -126,7 +126,7 @@ export default function Stack({
 			newStack.unshift(card);
 			return newStack;
 		});
-	};
+	}, []);
 
 	useEffect(() => {
 		if (autoplay && stack.length > 1 && !isPaused) {
@@ -137,7 +137,7 @@ export default function Stack({
 
 			return () => clearInterval(interval);
 		}
-	}, [autoplay, autoplayDelay, stack, isPaused]);
+	}, [autoplay, autoplayDelay, stack, isPaused, sendToBack]);
 
 	return (
 		<div

@@ -1,17 +1,20 @@
+import { useConvexAuth } from "@convex-dev/react-query";
 import {
 	createFileRoute,
 	Link,
-	useNavigate,
 	useLocation,
+	useNavigate,
 } from "@tanstack/react-router";
-import { useConvexAuth } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
-import { api } from "../../convex/_generated/api";
 import { StackEditor } from "@/components/StackEditor";
-import type { ModelSubscriptionEntry } from "@/features/stack-editor/types";
+import type {
+	CreatorProfile,
+	ModelSubscriptionEntry,
+} from "@/features/stack-editor/types";
 import { authClient } from "@/lib/auth-client";
 import { seoMeta } from "@/lib/seo";
+import { api } from "../../convex/_generated/api";
 
 export const Route = createFileRoute("/stacks/$slug_/edit")({
 	ssr: false,
@@ -37,15 +40,7 @@ function EditStackPage() {
 	// Get user's Google profile image as default
 	const userImageUrl = session.data?.user?.image ?? undefined;
 
-	const [creator, setCreator] = useState<{
-		_id: any;
-		name: string;
-		slug: string;
-		xHandle?: string;
-		avatarUrl?: string;
-		personalPages?: Array<{ name: string; url: string }>;
-		projectPages?: Array<{ name: string; url: string }>;
-	} | null>(null);
+	const [creator, setCreator] = useState<CreatorProfile | null>(null);
 	const [loadingCreator, setLoadingCreator] = useState(true);
 
 	useEffect(() => {
@@ -63,7 +58,14 @@ function EditStackPage() {
 			.catch(() => {
 				setLoadingCreator(false);
 			});
-	}, [isAuthenticated, authLoading, getOrCreateCreator, navigate]);
+	}, [
+		isAuthenticated,
+		authLoading,
+		getOrCreateCreator,
+		navigate,
+		location.pathname,
+		userImageUrl,
+	]);
 
 	// Redirect to canonical slug if URL slug prefix is stale/wrong
 	useEffect(() => {

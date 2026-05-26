@@ -200,7 +200,7 @@ export function ProjectsSection({
 													onClick={() =>
 														publishProject({
 															projectId: project._id,
-															published: !isDraft ? false : true,
+															published: !!isDraft,
 														})
 													}
 													className="flex-1 font-mono text-[10px] font-semibold uppercase tracking-wider border border-stroke-subtle px-2 py-1 text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime cursor-pointer"

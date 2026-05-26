@@ -1,6 +1,6 @@
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { useMutation, useQuery } from "convex/react";
 import { Check, Flag, X } from "lucide-react";
+import { api } from "../../../convex/_generated/api";
 
 export function AdminQualityTab() {
 	const flaggedStacks = useQuery(api.admin.getFlaggedStacks);
@@ -75,9 +75,7 @@ export function AdminQualityTab() {
 										</button>
 										<button
 											type="button"
-											onClick={() =>
-												dismissStackFlags({ stackId: stack._id })
-											}
+											onClick={() => dismissStackFlags({ stackId: stack._id })}
 											className="cursor-pointer inline-flex items-center gap-2 border-2 border-stroke-strong px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-accent-lime hover:text-accent-lime"
 										>
 											<X className="size-3.5" />

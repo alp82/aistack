@@ -1,8 +1,8 @@
+import { SectionCard } from "@/components/system/SectionCard";
 import {
 	ToolPicker,
 	type ToolSubscriptionEntry,
 } from "@/components/ToolPicker";
-import { SectionCard } from "@/components/system/SectionCard";
 import type { EditorSectionStatus } from "@/features/stack-editor/editor-status";
 import { SectionStatusBadge } from "@/features/stack-editor/sections/SectionStatusBadge";
 

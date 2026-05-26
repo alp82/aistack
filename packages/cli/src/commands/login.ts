@@ -1,6 +1,6 @@
 import * as p from "@clack/prompts";
 import open from "open";
-import { authStart, authPoll } from "../api.js";
+import { authPoll, authStart } from "../api.js";
 import { saveToken } from "../config.js";
 import { dim, intro, lime, limeBold, outro, outroError } from "../theme.js";
 

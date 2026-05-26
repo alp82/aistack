@@ -44,7 +44,7 @@ export function BaseCard({
 
 	useLayoutEffect(() => {
 		if (textareaRef.current) autoResize(textareaRef.current);
-	}, [draftDescription]);
+	}, []);
 
 	// Re-measure after mount in case layout wasn't complete during useLayoutEffect
 	useEffect(() => {

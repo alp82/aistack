@@ -3,13 +3,13 @@ import {
 	getSaveValidationError,
 } from "@/features/stack-editor/editor-guards";
 import type {
-	StackEditorInitialValue,
-	StackEditorMode,
-} from "@/features/stack-editor/types";
-import type {
 	EditorState,
 	GuestStackDraft,
 } from "@/features/stack-editor/state/editorReducer";
+import type {
+	StackEditorInitialValue,
+	StackEditorMode,
+} from "@/features/stack-editor/types";
 
 function selectCanPublish(state: EditorState): boolean {
 	return canPublishStack(state.oneLiner, state.toolSubscriptions.length);

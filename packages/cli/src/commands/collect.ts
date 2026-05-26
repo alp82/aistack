@@ -1,19 +1,19 @@
-import * as p from "@clack/prompts";
 import { basename } from "node:path";
-import { scanLocal, scanGlobal, type ScannedFile } from "../scanner.js";
-import { classify } from "../classifier.js";
+import * as p from "@clack/prompts";
 import {
+	projectGet,
 	projectsCheck,
 	projectsCollect,
-	projectGet,
 	type Resource,
 } from "../api.js";
+import { classify } from "../classifier.js";
 import {
-	getToken,
-	getProjectName,
 	getExcludedPaths,
+	getProjectName,
+	getToken,
 	saveProjectSettings,
 } from "../config.js";
+import { type ScannedFile, scanGlobal, scanLocal } from "../scanner.js";
 import {
 	bold,
 	dim,
@@ -88,7 +88,7 @@ export async function collectCommand(options: { global: boolean }) {
 
 	// Show file counts
 	p.log.info(
-		`${lime(String(selectedFiles.length))} included${excluded.length > 0 ? ` · ${dim(String(excluded.length) + " excluded")}` : ""}`,
+		`${lime(String(selectedFiles.length))} included${excluded.length > 0 ? ` · ${dim(`${String(excluded.length)} excluded`)}` : ""}`,
 	);
 
 	// Classify selected files

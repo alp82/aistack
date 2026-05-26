@@ -1,12 +1,11 @@
 import { convexQuery } from "@convex-dev/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-
-import { api } from "../../convex/_generated/api";
 import { JsonLd } from "@/components/JsonLd";
 import { LandingPageShell } from "@/features/landing/LandingPageShell";
 import type { LandingStackPreview } from "@/features/landing/sections/FeaturedStacksSection";
 import { seoMeta } from "@/lib/seo";
+import { api } from "../../convex/_generated/api";
 
 export const Route = createFileRoute("/")({
 	component: IndexRoute,

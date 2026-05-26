@@ -314,9 +314,9 @@ const HoverCard = (props: HoverCardProps) => {
 		let lastIndex = 0;
 
 		const placeholderRegex = /\{(\d+)\}/g;
-		let match;
+		let match: RegExpExecArray | null = placeholderRegex.exec(content);
 
-		while ((match = placeholderRegex.exec(content)) !== null) {
+		while (match !== null) {
 			const placeholderIndex = parseInt(match[1], 10);
 
 			if (match.index > lastIndex) {
@@ -350,6 +350,7 @@ const HoverCard = (props: HoverCardProps) => {
 			}
 
 			lastIndex = match.index + match[0].length;
+			match = placeholderRegex.exec(content);
 		}
 
 		if (lastIndex < content.length) {

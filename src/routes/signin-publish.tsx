@@ -1,16 +1,16 @@
-import { useConvexAuth } from "convex/react";
 import {
 	createFileRoute,
 	Link,
 	useNavigate,
 	useSearch,
 } from "@tanstack/react-router";
+import { useConvexAuth } from "convex/react";
 import { useEffect, useState } from "react";
 import { AuthForm } from "../components/AuthForm";
 import { TiptapEditor } from "../components/TiptapEditor";
 import { EditorProvider } from "../features/stack-editor/context/EditorContext";
-import { seoMeta } from "../lib/seo";
 import { getDraftKey } from "../features/stack-editor/state/editorReducer";
+import { seoMeta } from "../lib/seo";
 
 type SignInPublishSearch = {
 	redirect?: string;

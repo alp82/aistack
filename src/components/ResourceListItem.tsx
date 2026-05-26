@@ -1,9 +1,9 @@
 import { FileText } from "lucide-react";
+import type { Resource } from "@/features/stack-editor/types";
 import {
 	getResourceTypeColors,
 	getResourceTypeLabel,
 } from "@/lib/resource-utils";
-import type { Resource } from "@/features/stack-editor/types";
 
 interface ResourceListItemProps {
 	instruction: Resource;

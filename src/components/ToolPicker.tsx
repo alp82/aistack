@@ -2,12 +2,18 @@ import { useQuery } from "convex/react";
 import { Gift, Package, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { categoryConfig, type ToolCategory } from "@/config/categoryConfig";
+import { useEditorContext } from "@/features/stack-editor/context/EditorContext";
 import { sortToolsByPrice } from "@/lib/pricing";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { useEditorContext } from "@/features/stack-editor/context/EditorContext";
-import { AddMissingItemButton } from "./AddMissingItemButton";
 import { AddItemModal } from "./AddItemModal";
+import { AddMissingItemButton } from "./AddMissingItemButton";
+import {
+	PickerBrowser,
+	PickerEntryCard,
+	PickerToggleButton,
+	TierSelector,
+} from "./picker";
 import { Input } from "./ui/input";
 import {
 	Select,
@@ -16,12 +22,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "./ui/select";
-import {
-	PickerEntryCard,
-	PickerToggleButton,
-	PickerBrowser,
-	TierSelector,
-} from "./picker";
 
 export interface ToolSubscriptionEntry {
 	toolSlug: string;
@@ -109,8 +109,7 @@ export function ToolPicker({
 				(t) =>
 					t.name.toLowerCase().includes(q) ||
 					t.categories.some((c) => c.toLowerCase().includes(q)) ||
-					(t.aliases &&
-						t.aliases.some((a: string) => a.toLowerCase().includes(q))),
+					t.aliases?.some((a: string) => a.toLowerCase().includes(q)),
 			);
 		}
 
@@ -422,6 +421,7 @@ function ToolEntry({
 		tiers,
 		bundleSubscriptions,
 		onUpdate,
+		entry.price,
 	]);
 
 	const handleToggleSponsored = useCallback(() => {
@@ -449,7 +449,14 @@ function ToolEntry({
 				},
 			});
 		}
-	}, [isSponsored, entry.tierId, entry.price, tiers, onUpdate]);
+	}, [
+		isSponsored,
+		entry.tierId,
+		entry.price,
+		tiers,
+		onUpdate,
+		entry.originalTierPrice,
+	]);
 
 	const handleTierChange = (tierId: string) => {
 		const tier = tiers.find((t) => t.tierId === tierId);

@@ -5,27 +5,20 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { LandingPageShell } from "@/features/landing/LandingPageShell";
 
-vi.mock("@/features/landing/sections/FeedSection", () => ({
-	FeedSection: () => (
-		<section>
-			<h2>Live stack feed</h2>
-			<p>Open stack</p>
-			<p>Open stack</p>
-			<p>Open stack</p>
-			<p>Open stack</p>
-			<p>Open stack</p>
-			<p>Open stack</p>
-		</section>
-	),
-}));
-
 vi.mock("@tanstack/react-router", async () => {
 	return {
 		Link: ({ children, to }: { children: ReactNode; to: string }) => (
 			<a href={to}>{children}</a>
 		),
+		useNavigate: () => vi.fn(),
 	};
 });
+
+vi.mock("convex/react", () => ({
+	useConvexAuth: () => ({ isAuthenticated: false }),
+	useMutation: () => vi.fn(),
+	useQuery: () => undefined,
+}));
 
 const sampleStacks = Array.from({ length: 7 }, (_, index) => ({
 	_id: `stack-${index}`,
@@ -62,19 +55,19 @@ describe("landing sections", () => {
 
 		const heroHeading = screen.getByRole("heading", {
 			level: 1,
-			name: /ship faster from the command line/i,
+			name: /see exactly whatreal buildersuse to ship/i,
 		});
 		const feedHeading = screen.getByRole("heading", {
 			level: 2,
-			name: /live stack feed/i,
+			name: /featured stacks/i,
 		});
 		const explainerHeading = screen.getByRole("heading", {
 			level: 2,
-			name: /how this works/i,
+			name: /why it works/i,
 		});
 		const waitlistHeading = screen.getByRole("heading", {
 			level: 2,
-			name: /join the private terminal log/i,
+			name: /publish yourstack today/i,
 		});
 
 		expect(heroHeading.compareDocumentPosition(feedHeading)).toBe(
@@ -88,9 +81,9 @@ describe("landing sections", () => {
 		);
 	});
 
-	it("renders only six stack cards in feed preview", () => {
+	it("renders only the first page of stack cards in feed preview", () => {
 		render(<LandingPageShell stacks={sampleStacks} />);
 
-		expect(screen.getAllByText("Open stack")).toHaveLength(6);
+		expect(screen.getAllByText("Open stack")).toHaveLength(7);
 	});
 });

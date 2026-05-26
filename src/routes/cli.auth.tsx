@@ -6,8 +6,8 @@ import {
 import { useConvexAuth, useMutation } from "convex/react";
 import { CheckCircle, Terminal, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/Dialog";
 import { seoMeta } from "@/lib/seo";
 import { api } from "../../convex/_generated/api";
 

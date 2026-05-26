@@ -1,4 +1,4 @@
-import { type JsonLdInput, buildJsonLd } from "@/lib/seo";
+import { buildJsonLd, type JsonLdInput } from "@/lib/seo";
 
 export function JsonLd({ data }: { data: JsonLdInput }) {
 	return (

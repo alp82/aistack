@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { BundlesSection } from "@/features/stack-editor/sections/BundlesSection";
-import { DescriptionSection } from "@/features/stack-editor/sections/DescriptionSection";
-import { ProfileSection } from "@/features/stack-editor/sections/ProfileSection";
-import { ToolsSection } from "@/features/stack-editor/sections/ToolsSection";
 import {
 	canPublishStack,
 	getSaveValidationError,
 } from "@/features/stack-editor/editor-guards";
 import type { EditorSectionStatus } from "@/features/stack-editor/editor-status";
+import { BundlesSection } from "@/features/stack-editor/sections/BundlesSection";
+import { DescriptionSection } from "@/features/stack-editor/sections/DescriptionSection";
+import { ProfileSection } from "@/features/stack-editor/sections/ProfileSection";
+import { ToolsSection } from "@/features/stack-editor/sections/ToolsSection";
 
 vi.mock("@/components/ToolPicker", () => ({
 	ToolPicker: () => <h2>Tools Stack</h2>,
@@ -91,7 +91,10 @@ describe("stack editor sections", () => {
 	it("keeps save and publish guard behavior", () => {
 		expect(
 			getSaveValidationError({ oneLiner: "", publish: false, toolCount: 0 }),
-		).toBe("One-liner summary is required");
+		).toBe(null);
+		expect(
+			getSaveValidationError({ oneLiner: "", publish: true, toolCount: 0 }),
+		).toBe("One-liner summary is required to publish");
 		expect(
 			getSaveValidationError({
 				oneLiner: "Valid one liner",

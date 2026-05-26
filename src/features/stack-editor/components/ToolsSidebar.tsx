@@ -12,12 +12,12 @@ import {
 	BundlePicker,
 	type BundleSubscriptionEntry,
 } from "@/components/BundlePicker";
-import { ResourcePanel } from "@/components/ResourcePanel";
 import {
 	ModelPicker,
 	type ModelSubscriptionEntry,
 } from "@/components/ModelPicker";
 import { PriceDisplay } from "@/components/PriceDisplay";
+import { ResourcePanel } from "@/components/ResourcePanel";
 import {
 	ToolPicker,
 	type ToolSubscriptionEntry,

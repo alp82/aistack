@@ -123,7 +123,7 @@ function removeNodesByMatch(
 		const { pos, size } = nodesToRemove[i];
 		// For inline nodes, replace with text; for block nodes, delete
 		const node = tr.doc.nodeAt(pos);
-		if (node && node.isInline) {
+		if (node?.isInline) {
 			const textNode = schema.text(fallbackText);
 			tr.replaceWith(pos, pos + size, textNode);
 		} else {

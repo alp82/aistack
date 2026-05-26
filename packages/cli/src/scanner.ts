@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
 import { homedir } from "node:os";
+import { join, relative } from "node:path";
 import ignore from "ignore";
 
 export type FileType =
@@ -154,7 +154,7 @@ export function scanLocal(cwd: string): ScannedFile[] {
 		for (const entry of readdirSync(cwd, { withFileTypes: true }).filter((e) =>
 			e.isDirectory(),
 		)) {
-			if (ig.ignores(entry.name + "/")) continue;
+			if (ig.ignores(`${entry.name}/`)) continue;
 			scanSkillDirs(join(cwd, entry.name), cwd, ig, results, 1);
 		}
 	} catch {
@@ -196,7 +196,7 @@ function scanSkillDirs(
 		for (const entry of readdirSync(dir, { withFileTypes: true })) {
 			if (entry.isDirectory()) {
 				const rel = relative(cwd, join(dir, entry.name));
-				if (!ig.ignores(rel + "/")) {
+				if (!ig.ignores(`${rel}/`)) {
 					scanSkillDirs(join(dir, entry.name), cwd, ig, results, depth + 1);
 				}
 			}

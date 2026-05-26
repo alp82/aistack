@@ -1,5 +1,5 @@
-import { BrutalistToggle } from "../ui/brutalist-toggle";
 import { BrutalistSelect } from "../ui/brutalist-select";
+import { BrutalistToggle } from "../ui/brutalist-toggle";
 
 type Tier = {
 	tierId: string;

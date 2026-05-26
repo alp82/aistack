@@ -1,10 +1,10 @@
-import { useConvexAuth } from "convex/react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
 	createFileRoute,
 	useNavigate,
 	useSearch,
 } from "@tanstack/react-router";
+import { useConvexAuth } from "convex/react";
 import { useEffect, useState } from "react";
 import { AuthForm } from "../components/AuthForm";
 import { authClient } from "../lib/auth-client";

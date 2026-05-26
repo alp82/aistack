@@ -1,15 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { GridBackground } from "@/components/GridBackground";
 import { useQuery } from "convex/react";
 import { Copy, DollarSign, Lightbulb } from "lucide-react";
 import { useEffect, useState } from "react";
+import { GridBackground } from "@/components/GridBackground";
+import { StackCard } from "@/features/landing/components/StackCard";
+import type { LandingStackPreview } from "@/features/landing/sections/FeaturedStacksSection";
 import { api } from "../../convex/_generated/api";
 import { PageHeader } from "../components/PageHeader";
 import { SimulatorSection } from "../components/SimulatorSection";
-import { seoMeta } from "../lib/seo";
 import Stack from "../components/Stack";
-import { StackCard } from "@/features/landing/components/StackCard";
-import type { LandingStackPreview } from "@/features/landing/sections/FeaturedStacksSection";
+import { seoMeta } from "../lib/seo";
 
 const STACK_CARD_WIDTH = 420;
 const STACK_CARD_HEIGHT = 520;

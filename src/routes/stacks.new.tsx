@@ -4,9 +4,11 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useRef, useState } from "react";
 import { StackEditor } from "@/components/StackEditor";
 import { Button } from "@/components/ui/button";
-import { api } from "../../convex/_generated/api";
+import type { CreatorProfile } from "@/features/stack-editor/types";
 import { authClient } from "@/lib/auth-client";
 import { seoMeta } from "@/lib/seo";
+import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 
 export const Route = createFileRoute("/stacks/new")({
 	ssr: false,
@@ -27,15 +29,7 @@ function NewStackPage() {
 	const session = authClient.useSession();
 	const getOrCreateCreator = useMutation(api.creators.getOrCreateForUser);
 	const userStack = useQuery(api.stacks.getUserStack);
-	const [creator, setCreator] = useState<{
-		_id: any;
-		name: string;
-		slug: string;
-		xHandle?: string;
-		avatarUrl?: string;
-		personalPages?: Array<{ name: string; url: string }>;
-		projectPages?: Array<{ name: string; url: string }>;
-	} | null>(null);
+	const [creator, setCreator] = useState<CreatorProfile | null>(null);
 	const [loadingCreator, setLoadingCreator] = useState(true);
 	const [isGuest, setIsGuest] = useState(false);
 	const navigatingRef = useRef(false);
@@ -49,7 +43,7 @@ function NewStackPage() {
 		// Guest mode - allow creating stack without authentication
 		if (!isAuthenticated) {
 			setCreator({
-				_id: "guest",
+				_id: "guest" as Id<"creators">,
 				name: "My AI Stack",
 				slug: "guest",
 			});
@@ -78,7 +72,7 @@ function NewStackPage() {
 			.catch(() => {
 				setLoadingCreator(false);
 			});
-	}, [isAuthenticated, isLoading, userStack, getOrCreateCreator, navigate]);
+	}, [isAuthenticated, isLoading, userStack, getOrCreateCreator, userImageUrl]);
 
 	if (isLoading || loadingCreator) {
 		return (

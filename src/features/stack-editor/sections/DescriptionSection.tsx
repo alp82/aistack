@@ -1,7 +1,7 @@
 import { SectionCard } from "@/components/system/SectionCard";
+import { Textarea } from "@/components/ui/textarea";
 import type { EditorSectionStatus } from "@/features/stack-editor/editor-status";
 import { SectionStatusBadge } from "@/features/stack-editor/sections/SectionStatusBadge";
-import { Textarea } from "@/components/ui/textarea";
 
 type DescriptionSectionProps = {
 	value: string;

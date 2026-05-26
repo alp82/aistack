@@ -1,23 +1,23 @@
 import { convexQuery } from "@convex-dev/react-query";
-import { useQuery } from "convex/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "convex/react";
 import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import type { LandingStackPreview } from "@/features/landing/sections/FeaturedStacksSection";
 import { api } from "../../convex/_generated/api";
 import { GridBackground } from "../components/GridBackground";
 import { JsonLd } from "../components/JsonLd";
 import { PageHeader } from "../components/PageHeader";
 import { SortDropdown } from "../components/SortDropdown";
-import { Input } from "../components/ui/input";
 import {
 	SuggestEditModal,
 	type ToolForSuggestion,
 } from "../components/SuggestEditModal";
 import { ToolCard } from "../components/ToolCard";
+import { Input } from "../components/ui/input";
 import { categoryConfig, type ToolCategory } from "../config/categoryConfig";
 import { seoMeta } from "../lib/seo";
 import { cn } from "../lib/utils";
-import type { LandingStackPreview } from "@/features/landing/sections/FeaturedStacksSection";
 
 type ToolSortOption = "newest" | "most_used";
 

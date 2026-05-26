@@ -14,8 +14,10 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CostBreakdownTooltip } from "@/components/CostBreakdownTooltip";
-import { ProjectsSection } from "@/components/ProjectsSection";
+import { JsonLd } from "@/components/JsonLd";
+import type { ModelItemData } from "@/components/ModelItem";
 import { PriceDisplay } from "@/components/PriceDisplay";
+import { ProjectsSection } from "@/components/ProjectsSection";
 import { TableOfContents } from "@/components/TableOfContents";
 import { TiptapEditor } from "@/components/TiptapEditor";
 import { ToolItem } from "@/components/ToolItem";
@@ -31,8 +33,6 @@ import {
 	type ToolLookupData,
 	useEditorContext,
 } from "@/features/stack-editor/context/EditorContext";
-import type { ModelItemData } from "@/components/ModelItem";
-import { JsonLd } from "@/components/JsonLd";
 import { formatPricingSummary, sortToolsByPrice } from "@/lib/pricing";
 import { seoMeta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
