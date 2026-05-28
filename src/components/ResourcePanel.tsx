@@ -20,33 +20,31 @@ import {
 	getResourceTypeColorsSplit,
 	getResourceTypeLabel,
 	knownResourceTypes,
-	MANUAL_INSTRUCTION_GROUP,
+	MANUAL_RESOURCE_GROUP,
 } from "@/lib/resource-utils";
 import { cn } from "@/lib/utils";
 
 interface ResourcePanelProps {
-	instruction: Resource | null;
-	onSave: (instruction: Resource) => void;
+	resource: Resource | null;
+	onSave: (resource: Resource) => void;
 	onDelete?: () => void;
 	onBack: () => void;
 }
 
 export function ResourcePanel({
-	instruction,
+	resource,
 	onSave,
 	onDelete,
 	onBack,
 }: ResourcePanelProps) {
-	const [name, setName] = useState(instruction?.name ?? "");
-	const [type, setType] = useState<ResourceType>(instruction?.type ?? "prompt");
-	const [description, setDescription] = useState(
-		instruction?.description ?? "",
-	);
-	const [files, setFiles] = useState<FileEntry[]>(instruction?.files ?? []);
+	const [name, setName] = useState(resource?.name ?? "");
+	const [type, setType] = useState<ResourceType>(resource?.type ?? "prompt");
+	const [description, setDescription] = useState(resource?.description ?? "");
+	const [files, setFiles] = useState<FileEntry[]>(resource?.files ?? []);
 
 	const [typeInputFocused, setTypeInputFocused] = useState(false);
 	const [typeInputValue, setTypeInputValue] = useState(
-		instruction?.type ?? "prompt",
+		resource?.type ?? "prompt",
 	);
 	const typeContainerRef = useRef<HTMLDivElement>(null);
 	const blurTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -147,14 +145,13 @@ export function ResourcePanel({
 			type,
 			name: trimmedName,
 			description: description.trim() || undefined,
-			group: instruction?.group ?? MANUAL_INSTRUCTION_GROUP,
-			stableKey:
-				instruction?.stableKey ?? buildManualStableKey(type, trimmedName),
+			group: resource?.group ?? MANUAL_RESOURCE_GROUP,
+			stableKey: resource?.stableKey ?? buildManualStableKey(type, trimmedName),
 			files,
 		});
 	};
 
-	const isEditing = instruction !== null;
+	const isEditing = resource !== null;
 	const activeFile = files[activeTab] ?? null;
 
 	return (

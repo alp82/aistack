@@ -4,6 +4,7 @@ import { v } from 'convex/values'
 import { extractShortId } from './lib/ids'
 import { slugifyAscii } from '../src/lib/slug'
 import { Resource as ResourceValidator } from './schema'
+import { cascadeUnlinkOwner, resolveLinkedResources } from './lib/resourceLinks'
 
 export const getBySlug = query({
   args: { slug: v.string() },
@@ -60,6 +61,8 @@ export const getBySlug = query({
       isOwner = creator.userId === userId
     }
 
+    const resources = await resolveLinkedResources(ctx, 'project', project._id)
+
     return {
       _id: project._id,
       name: project.name,
@@ -72,7 +75,7 @@ export const getBySlug = query({
       order: project.order,
       cloneCount: project.cloneCount,
       published: project.published,
-      resources: project.resources,
+      resources,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
       creator: {
@@ -122,28 +125,31 @@ export const listByStack = query({
       projects = projects.filter((p) => p.published === true)
     }
 
-    const mapped = projects.map((project) => {
-      let fileCount = 0
-      for (const item of project.resources) {
-        fileCount += item.files.length
-      }
-      return {
-        _id: project._id,
-        name: project.name,
-        slug: `${project.slug}-${project.shortId}`,
-        shortId: project.shortId,
-        source: project.source,
-        description: project.description,
-        url: project.url,
-        tags: project.tags,
-        order: project.order,
-        cloneCount: project.cloneCount,
-        published: project.published,
-        fileCount,
-        createdAt: project.createdAt,
-        updatedAt: project.updatedAt,
-      }
-    })
+    const mapped = await Promise.all(
+      projects.map(async (project) => {
+        const resources = await resolveLinkedResources(ctx, 'project', project._id)
+        let fileCount = 0
+        for (const item of resources) {
+          fileCount += item.files.length
+        }
+        return {
+          _id: project._id,
+          name: project.name,
+          slug: `${project.slug}-${project.shortId}`,
+          shortId: project.shortId,
+          source: project.source,
+          description: project.description,
+          url: project.url,
+          tags: project.tags,
+          order: project.order,
+          cloneCount: project.cloneCount,
+          published: project.published,
+          fileCount,
+          createdAt: project.createdAt,
+          updatedAt: project.updatedAt,
+        }
+      }),
+    )
 
     mapped.sort((a, b) => {
       const orderA = a.order ?? Infinity
@@ -193,15 +199,17 @@ export const listProjectResourcesByStack = query({
       )
     }
 
-    const mapped = projects.map((project) => ({
-      projectId: project._id,
-      projectName: project.name,
-      projectSlug: `${project.slug}-${project.shortId}`,
-      isOwnProject: ownedCreatorIds.has(project.creatorId),
-      resources: project.resources,
-      order: project.order,
-      createdAt: project.createdAt,
-    }))
+    const mapped = await Promise.all(
+      projects.map(async (project) => ({
+        projectId: project._id,
+        projectName: project.name,
+        projectSlug: `${project.slug}-${project.shortId}`,
+        isOwnProject: ownedCreatorIds.has(project.creatorId),
+        resources: await resolveLinkedResources(ctx, 'project', project._id),
+        order: project.order,
+        createdAt: project.createdAt,
+      })),
+    )
 
     mapped.sort((a, b) => {
       const orderA = a.order ?? Infinity
@@ -266,7 +274,7 @@ export const listByCreator = query({
       stackId: Doc<'projects'>['stackId']
       stackName: string
       stackSlug: string
-      resources: Doc<'projects'>['resources']
+      resources: Awaited<ReturnType<typeof resolveLinkedResources>>
     }[] = []
     for (const project of limited) {
       let stackInfo = stackCache.get(project.stackId)
@@ -276,6 +284,7 @@ export const listByCreator = query({
         stackInfo = { name: stack.name, slug: stack.slug, shortId: stack.shortId }
         stackCache.set(project.stackId, stackInfo)
       }
+      const resources = await resolveLinkedResources(ctx, 'project', project._id)
       results.push({
         projectId: project._id,
         projectName: project.name,
@@ -283,7 +292,7 @@ export const listByCreator = query({
         stackId: project.stackId,
         stackName: stackInfo.name,
         stackSlug: `${stackInfo.slug}-${stackInfo.shortId}`,
-        resources: project.resources,
+        resources,
       })
     }
     return results
@@ -314,6 +323,7 @@ export const getByShortId = query({
       .withIndex('by_shortId', (q) => q.eq('shortId', args.shortId))
       .first()
     if (!project) return null
+    const resources = await resolveLinkedResources(ctx, 'project', project._id)
     return {
       _id: project._id,
       _creationTime: project._creationTime,
@@ -323,7 +333,7 @@ export const getByShortId = query({
       creatorId: project.creatorId,
       stackId: project.stackId,
       source: project.source,
-      resources: project.resources,
+      resources,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
     }
@@ -435,6 +445,7 @@ export const deleteProject = mutation({
     const creator = await ctx.db.get(project.creatorId)
     if (!creator || creator.userId !== userId) throw new Error('Not authorized')
 
+    await cascadeUnlinkOwner(ctx, 'project', args.projectId)
     await ctx.db.delete(args.projectId)
     return null
   },

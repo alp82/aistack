@@ -15,8 +15,13 @@ https://skills.sh
     https://skills.sh/vercel-labs/agent-browser/agent-browser
 https://agentskill.sh
 https://skillsmp.com/search
+https://rosie.libs.technology
 https://index.tego.security/skills/
 https://github.com/eljulians/skillfile
+
+
+skill usage & stats:
+https://github.com/av/skilled
 
 agentic standards:
 https://ecc.tools
@@ -30,6 +35,7 @@ parallelization, orchestration & agent teams:
 https://air.dev
 https://dmux.ai
 https://cmux.com
+https://herdr.dev
 https://jean.build
 https://yggchat.com
 https://tryorca.com
@@ -38,12 +44,14 @@ https://superterm.dev
 https://www.emdash.sh
 https://paperclip.ing
 https://www.dpcode.cc
+https://www.omnara.com
 https://www.warp.dev/oz1
 https://getpolyscope.com
 https://thecommander.app
 https://www.conductor.build
 https://penso.github.io/arbor
 https://github.com/ruvnet/ruflo
+https://github.com/stablyai/orca
 https://github.com/RunMaestro/Maestro
 https://github.com/superset-sh/superset
 https://github.com/RightNow-AI/openfang
@@ -56,21 +64,44 @@ https://x.com/juristr/status/2031820737745682520
 https://github.com/andyrewlee/awesome-agent-orchestrators
 
 harness basics & advanced usage:
+https://github.com/cocoindex-io/cocoindex-code
 https://magazine.sebastianraschka.com/p/components-of-a-coding-agent
 https://www.augmentcode.com/blog/how-to-write-good-agents-dot-md-files
 https://openai.com/index/speeding-up-agentic-workflows-with-websockets/
 
+codex tips:
+https://x.com/LifeOfShandi/status/2059357818709524740
+
 build your own harness:
 https://flueframework.com
+https://momito.co.uk/flue/
+
+ai database:
+https://dinobase.ai
 
 markdown vs html:
 https://thariqs.github.io/html-effectiveness/
+
+web scraping:
+firecrawl
+https://webclaw.io
+https://crawlee.dev
+https://cloakbrowser.dev/
+https://into-md.nicobaier.com
+https://github.com/jimmc414/onefilellm
+https://scrapling.readthedocs.io/en/latest/
+https://github.com/h4ckf0r0day/obscura
+
+logging / wide events:
+https://x.com/grok/status/2028576562644230231
+evlog, agent-tail
 
 sandbox & safety:
 https://www.agentsh.org
 https://nono.sh
 
 cli vs mcp:
+https://github.com/oraios/serena
 https://x.com/i/status/2031813357423247458
 https://x.com/yenkel/status/2032098351567487037
 https://nx.dev/blog/why-we-deleted-most-of-our-mcp-tools
@@ -114,6 +145,9 @@ https://github.com/av/remotion-bits
 https://github.com/heygen-com/hyperframes
 https://github.com/AlemTuzlak/skills/tree/main/skills/remotion-video
 
+imagen / 3d scenes:
+https://github.com/neilsonnn/image-blaster
+
 design/frontend:
 gemini 3.1 pro canvas
 https://ui.sh
@@ -122,6 +156,7 @@ https://www.typeui.sh
 https://www.pencil.dev
 https://motionsites.ai
 https://impeccable.style
+https://github.com/leonxlnx/taste-skill
 https://x.com/i/status/2035508816461074883
 https://github.com/VoltAgent/awesome-design-md
 https://x.com/tkkong/status/2034368184036561160
@@ -211,18 +246,6 @@ seo:
 https://x.com/i/status/2027832658789609654
 https://x.com/i/status/2031701565434732917
 https://x.com/i/status/2030636384156086564
-
-web scraping:
-https://scrapling.readthedocs.io/en/latest/
-https://github.com/h4ckf0r0day/obscura
-https://cloakbrowser.dev/
-https://crawlee.dev
-https://webclaw.io
-firecrawl
-
-logging / wide events:
-https://x.com/grok/status/2028576562644230231
-evlog, agent-tail
 
 Serverless AI:
 https://developer.puter.com/?ck_subscriber_id=887775429

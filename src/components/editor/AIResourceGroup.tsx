@@ -145,25 +145,6 @@ export const AIResourceGroup = Node.create({
 					};
 				},
 			},
-			// Legacy compat: existing serialized descriptions still use the old data attr.
-			{
-				tag: "div[data-ai-instruction-group]",
-				getAttrs: (element) => {
-					if (typeof element === "string") return false;
-					const el = element as HTMLElement;
-
-					return {
-						source: el.getAttribute("data-source") || "stack",
-						sourceId: el.getAttribute("data-source-id") || "",
-						group: el.getAttribute("data-group") || "",
-						description: el.getAttribute("data-description") || null,
-						fileCount: Number(el.getAttribute("data-file-count") ?? 0),
-						typeBreakdown: JSON.parse(
-							el.getAttribute("data-type-breakdown") || "[]",
-						),
-					};
-				},
-			},
 		];
 	},
 

@@ -1,7 +1,12 @@
 import { internalMutation, internalQuery } from './_generated/server'
+import type { Id } from './_generated/dataModel'
 import { Infer, v } from 'convex/values'
 import { slugifyAscii } from '../src/lib/slug'
 import { generateUniqueShortId } from './lib/ids'
+import {
+  type Resource,
+  upsertResourcesForOwner,
+} from './lib/resourceLinks'
 
 export const getCreatorByUserId = internalQuery({
   args: { userId: v.string() },
@@ -127,15 +132,6 @@ const IncomingResource = v.object({
 
 type Item = Infer<typeof IncomingResource>
 
-function mergeByStableKey(existing: Item[], incoming: Item[]): Item[] {
-  const incomingKeys = new Set<string>()
-  for (const item of incoming) {
-    incomingKeys.add(item.stableKey)
-  }
-  const preserved = existing.filter((item) => !incomingKeys.has(item.stableKey))
-  return [...preserved, ...incoming]
-}
-
 export const upsertProject = internalMutation({
   args: {
     creatorId: v.id('creators'),
@@ -152,11 +148,8 @@ export const upsertProject = internalMutation({
     const projectItems: Item[] = []
     const globalItems: Item[] = []
     for (const item of args.resources) {
-      // Server forces source='cli' for HTTP CLI endpoint;
-      // web/GitHub-link paths use a different code path.
-      const stored: Item = { ...item, source: 'cli' as const }
-      if (item.scope === 'global') globalItems.push(stored)
-      else projectItems.push(stored)
+      if (item.scope === 'global') globalItems.push(item)
+      else projectItems.push(item)
     }
 
     const existing = await ctx.db
@@ -167,19 +160,14 @@ export const upsertProject = internalMutation({
 
     const now = Date.now()
 
+    let projectId: Id<'projects'>
     let projectSlug: string
     let projectShortId: string
     let resolvedStackId = args.stackId
 
     if (match) {
-      const mergedProjectResources = mergeByStableKey(
-        match.resources,
-        projectItems,
-      )
-      await ctx.db.patch(match._id, {
-        resources: mergedProjectResources,
-        updatedAt: now,
-      })
+      await ctx.db.patch(match._id, { updatedAt: now })
+      projectId = match._id
       projectSlug = match.slug
       projectShortId = match.shortId
       resolvedStackId = match.stackId
@@ -187,7 +175,7 @@ export const upsertProject = internalMutation({
       projectSlug = slugifyAscii(args.name, 'project')
       projectShortId = await generateUniqueShortId(ctx, 'projects')
 
-      await ctx.db.insert('projects', {
+      projectId = await ctx.db.insert('projects', {
         name: args.name,
         slug: projectSlug,
         shortId: projectShortId,
@@ -195,11 +183,21 @@ export const upsertProject = internalMutation({
         stackId: args.stackId,
         source: args.source,
         published: false,
-        resources: projectItems,
         createdAt: now,
         updatedAt: now,
       })
     }
+
+    // Server forces source='cli' for the HTTP CLI endpoint; web/GitHub-link
+    // paths use a different code path.
+    await upsertResourcesForOwner(ctx, {
+      creatorId: args.creatorId,
+      ownerKind: 'project',
+      ownerId: projectId,
+      items: projectItems as Resource[],
+      source: 'cli',
+      defaultScope: 'project',
+    })
 
     if (globalItems.length > 0) {
       const stack = await ctx.db.get(resolvedStackId)
@@ -207,15 +205,15 @@ export const upsertProject = internalMutation({
         if (stack.creatorId !== args.creatorId) {
           throw new Error('Not authorized to write to this stack')
         }
-        const existingStackResources = stack.resources ?? []
-        const mergedStackResources = mergeByStableKey(
-          existingStackResources,
-          globalItems,
-        )
-        await ctx.db.patch(stack._id, {
-          resources: mergedStackResources,
-          updatedAt: now,
+        await upsertResourcesForOwner(ctx, {
+          creatorId: args.creatorId,
+          ownerKind: 'stack',
+          ownerId: stack._id,
+          items: globalItems as Resource[],
+          source: 'cli',
+          defaultScope: 'global',
         })
+        await ctx.db.patch(stack._id, { updatedAt: now })
       }
     }
 

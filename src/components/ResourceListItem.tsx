@@ -6,14 +6,11 @@ import {
 import type { Resource } from "@/features/stack-editor/types";
 
 interface ResourceListItemProps {
-	instruction: Resource;
+	resource: Resource;
 	onClick?: () => void;
 }
 
-export function ResourceListItem({
-	instruction,
-	onClick,
-}: ResourceListItemProps) {
+export function ResourceListItem({ resource, onClick }: ResourceListItemProps) {
 	return (
 		<button
 			type="button"
@@ -22,24 +19,24 @@ export function ResourceListItem({
 		>
 			<div className="flex items-center gap-3">
 				<div
-					className={`flex size-8 shrink-0 items-center justify-center border ${getResourceTypeColors(instruction.type)}`}
+					className={`flex size-8 shrink-0 items-center justify-center border ${getResourceTypeColors(resource.type)}`}
 				>
 					<FileText className="size-4" />
 				</div>
 				<div className="min-w-0 flex-1">
 					<p className="truncate font-mono text-sm font-semibold text-fg-primary">
-						{instruction.name}
+						{resource.name}
 					</p>
-					{instruction.description && (
+					{resource.description && (
 						<p className="truncate text-xs text-fg-muted mt-0.5">
-							{instruction.description}
+							{resource.description}
 						</p>
 					)}
 					<p className="font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-						{getResourceTypeLabel(instruction.type)}
+						{getResourceTypeLabel(resource.type)}
 					</p>
 				</div>
-				{instruction.files.length > 0 && (
+				{resource.files.length > 0 && (
 					<span className="shrink-0 border border-accent-lime/30 bg-accent-lime/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-accent-lime">
 						Show
 					</span>

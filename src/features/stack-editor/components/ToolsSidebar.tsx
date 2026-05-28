@@ -652,9 +652,7 @@ function ToolsSidebar({
 								transition={{ duration: 0.25, ease: "easeInOut" }}
 							>
 								<ResourcePanel
-									instruction={
-										editingResource === "new" ? null : editingResource
-									}
+									resource={editingResource === "new" ? null : editingResource}
 									onSave={handlePanelSave}
 									onDelete={
 										editingResource !== "new" ? handlePanelDelete : undefined
@@ -715,9 +713,7 @@ function ToolsSidebar({
 								transition={{ duration: 0.25, ease: "easeInOut" }}
 							>
 								<ResourcePanel
-									instruction={
-										editingResource === "new" ? null : editingResource
-									}
+									resource={editingResource === "new" ? null : editingResource}
 									onSave={handlePanelSave}
 									onDelete={
 										editingResource !== "new" ? handlePanelDelete : undefined

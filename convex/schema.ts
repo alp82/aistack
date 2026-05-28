@@ -315,7 +315,7 @@ export default defineSchema({
     order: v.optional(v.number()),
     cloneCount: v.optional(v.number()),
     published: v.optional(v.boolean()),
-    resources: v.array(Resource),
+    resources: v.optional(v.array(Resource)),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -323,6 +323,41 @@ export default defineSchema({
     .index('by_shortId', ['shortId'])
     .index('by_creatorId', ['creatorId'])
     .index('by_stackId', ['stackId']),
+
+  resources: defineTable({
+    creatorId: v.id('creators'),
+    scope: v.union(v.literal('global'), v.literal('project')),
+    type: v.string(),
+    name: v.string(),
+    description: v.optional(v.string()),
+    group: v.string(),
+    stableKey: v.string(),
+    files: v.array(ResourceFile),
+    source: v.optional(v.union(v.literal('authored'), v.literal('cli'), v.literal('github'))),
+    upstream: v.optional(v.object({
+      repoUrl: v.string(),
+      path: v.optional(v.string()),
+      license: v.optional(v.string()),
+      stars: v.optional(v.number()),
+      lastCommitSha: v.optional(v.string()),
+      mirrorMode: v.union(v.literal('link'), v.literal('preview'), v.literal('mirror')),
+      lastSyncAt: v.optional(v.number()),
+    })),
+    deletedAt: v.union(v.number(), v.null()),
+    shortId: v.string(),
+  })
+    .index('by_creator_stableKey', ['creatorId', 'stableKey'])
+    .index('by_shortId', ['shortId']),
+
+  resourceLinks: defineTable({
+    resourceId: v.id('resources'),
+    ownerKind: v.union(v.literal('stack'), v.literal('project')),
+    ownerId: v.string(),
+    order: v.number(),
+    addedAt: v.number(),
+  })
+    .index('by_resourceId', ['resourceId'])
+    .index('by_owner', ['ownerKind', 'ownerId']),
 
   toolEditSuggestions: defineTable({
     toolId: v.id('tools'),

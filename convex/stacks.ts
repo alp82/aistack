@@ -5,6 +5,7 @@ import { type FixedPrice, sumNormalizedMonthlyAmounts } from '../src/lib/pricing
 import { slugifyAscii } from '../src/lib/slug'
 import { generateUniqueShortId, extractShortId } from './lib/ids'
 import { Resource as ResourceValidator } from './schema'
+import { resolveLinkedResources, upsertResourcesForOwner } from './lib/resourceLinks'
 
 type ToolSubscriptionLike = {
   price: {
@@ -310,7 +311,6 @@ export const create = mutation({
       creatorId: creator._id,
       oneLiner: args.oneLiner,
       description: args.description,
-      resources: args.resources,
       teamSize: args.teamSize,
       toolSubscriptions: args.toolSubscriptions,
       bundleSubscriptions: args.bundleSubscriptions,
@@ -323,6 +323,17 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     })
+
+    if (args.resources !== undefined) {
+      await upsertResourcesForOwner(ctx, {
+        creatorId: creator._id,
+        ownerKind: 'stack',
+        ownerId: id,
+        items: args.resources,
+        source: 'authored',
+        defaultScope: 'global',
+      })
+    }
 
     return { _id: id, slug: `${slug}-${shortId}` }
   },
@@ -362,7 +373,6 @@ export const update = mutation({
     }
     if (args.oneLiner !== undefined) patch.oneLiner = args.oneLiner
     if (args.description !== undefined) patch.description = args.description
-    if (args.resources !== undefined) patch.resources = args.resources
     if (args.teamSize !== undefined) patch.teamSize = args.teamSize === null ? undefined : args.teamSize
     const meaningfulChange =
       args.name !== undefined ||
@@ -387,6 +397,18 @@ export const update = mutation({
     patch.hasUsageComponent = pricing.hasUsageComponent
 
     await ctx.db.patch(args.stackId, patch)
+
+    if (args.resources !== undefined) {
+      await upsertResourcesForOwner(ctx, {
+        creatorId: stack.creatorId,
+        ownerKind: 'stack',
+        ownerId: args.stackId,
+        items: args.resources,
+        source: 'authored',
+        defaultScope: 'global',
+      })
+    }
+
     return null
   },
 })
@@ -536,6 +558,7 @@ export const getForEdit = query({
     const modelSubs = modelSubEntries.filter((s): s is NonNullable<typeof s> => s !== null)
 
     const pricing = await calculateStackPricing(ctx, stack.toolSubscriptions, stack.bundleSubscriptions ?? [])
+    const resources = await resolveLinkedResources(ctx, 'stack', stack._id)
 
     return {
       _id: stack._id,
@@ -543,7 +566,7 @@ export const getForEdit = query({
       slug: `${stack.slug}-${stack.shortId}`,
       oneLiner: stack.oneLiner,
       description: stack.description,
-      resources: stack.resources,
+      resources,
       teamSize: stack.teamSize,
       fixedTotal: pricing.fixedTotal,
       hasUsageComponent: pricing.hasUsageComponent,
@@ -939,6 +962,7 @@ export const getBySlug = query({
     const models = modelEntries.filter((m): m is NonNullable<typeof m> => m !== null)
 
     const pricing = await calculateStackPricing(ctx, stack.toolSubscriptions, stack.bundleSubscriptions ?? [])
+    const resources = await resolveLinkedResources(ctx, 'stack', stack._id)
 
     return {
       _id: stack._id,
@@ -948,7 +972,7 @@ export const getBySlug = query({
       slug: `${stack.slug}-${stack.shortId}`,
       oneLiner: stack.oneLiner,
       description: stack.description,
-      resources: stack.resources,
+      resources,
       teamSize: stack.teamSize,
       fixedTotal: pricing.fixedTotal,
       hasUsageComponent: pricing.hasUsageComponent,

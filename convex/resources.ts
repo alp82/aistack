@@ -1,6 +1,7 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { Resource as ResourceValidator } from './schema'
+import { resolveLinkedResources, unlinkResourceFromOwner } from './lib/resourceLinks'
 
 const StackTarget = v.object({
   kind: v.literal('stack'),
@@ -27,65 +28,82 @@ export const updateResourceContent = mutation({
     if (!user) throw new Error('Not authenticated')
     const userId = user.tokenIdentifier.split('|')[1]
 
-    if (args.target.kind === 'stack') {
-      const stack = await ctx.db.get(args.target.id)
-      if (!stack) throw new Error('Stack not found')
-
-      const creator = await ctx.db.get(stack.creatorId)
-      if (!creator || creator.userId !== userId) {
-        throw new Error('Not authorized')
-      }
-
-      const existing = stack.resources ?? []
-      let matched = false
-      const updatedResources = existing.map((item) => {
-        if (item.stableKey !== args.stableKey) return item
-        const updatedFiles = item.files.map((file) => {
-          if (file.name !== args.fileName) return file
-          matched = true
-          return { ...file, content: args.content }
-        })
-        return { ...item, files: updatedFiles }
-      })
-
-      if (!matched) {
-        throw new Error('File not found for given stableKey + fileName')
-      }
-
-      await ctx.db.patch(args.target.id, {
-        resources: updatedResources,
-        updatedAt: Date.now(),
-      })
-      return null
+    const owner = await ctx.db.get(args.target.id)
+    if (!owner) {
+      throw new Error(args.target.kind === 'stack' ? 'Stack not found' : 'Project not found')
     }
 
-    const project = await ctx.db.get(args.target.id)
-    if (!project) throw new Error('Project not found')
-
-    const creator = await ctx.db.get(project.creatorId)
+    const creator = await ctx.db.get(owner.creatorId)
     if (!creator || creator.userId !== userId) {
       throw new Error('Not authorized')
     }
 
+    // Resolve the single resources row linked to this owner under the given
+    // stableKey, then patch the matched file's content on that row.
+    const links = await ctx.db
+      .query('resourceLinks')
+      .withIndex('by_owner', (q) =>
+        q.eq('ownerKind', args.target.kind).eq('ownerId', args.target.id),
+      )
+      .collect()
+
     let matched = false
-    const updatedResources = (project.resources ?? []).map((item) => {
-      if (item.stableKey !== args.stableKey) return item
-      const updatedFiles = item.files.map((file) => {
+    for (const link of links) {
+      const resource = await ctx.db.get(link.resourceId)
+      if (!resource || resource.deletedAt !== null) continue
+      if (resource.stableKey !== args.stableKey) continue
+
+      const updatedFiles = resource.files.map((file) => {
         if (file.name !== args.fileName) return file
         matched = true
         return { ...file, content: args.content }
       })
-      return { ...item, files: updatedFiles }
-    })
+
+      if (matched) {
+        await ctx.db.patch(resource._id, { files: updatedFiles })
+        break
+      }
+    }
 
     if (!matched) {
       throw new Error('File not found for given stableKey + fileName')
     }
 
-    await ctx.db.patch(args.target.id, {
-      resources: updatedResources,
-      updatedAt: Date.now(),
-    })
+    await ctx.db.patch(args.target.id, { updatedAt: Date.now() })
+    return null
+  },
+})
+
+export const unlinkResource = mutation({
+  args: {
+    target: TargetValidator,
+    stableKey: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity()
+    if (!user) throw new Error('Not authenticated')
+    const userId = user.tokenIdentifier.split('|')[1]
+
+    const owner = await ctx.db.get(args.target.id)
+    if (!owner) {
+      throw new Error(args.target.kind === 'stack' ? 'Stack not found' : 'Project not found')
+    }
+
+    const creator = await ctx.db.get(owner.creatorId)
+    if (!creator || creator.userId !== userId) {
+      throw new Error('Not authorized')
+    }
+
+    const removed = await unlinkResourceFromOwner(
+      ctx,
+      args.target.kind,
+      args.target.id,
+      args.stableKey,
+    )
+    if (removed) {
+      await ctx.db.patch(args.target.id, { updatedAt: Date.now() })
+    }
     return null
   },
 })
@@ -138,8 +156,9 @@ export const getResourceBrowserContext = query({
         }
       }
 
+      const stackResources = await resolveLinkedResources(ctx, 'stack', stack._id)
       return {
-        stackResources: stack.resources ?? [],
+        stackResources,
         projectResources: [],
         stackName: stack.name,
         projectName: undefined,
@@ -183,11 +202,14 @@ export const getResourceBrowserContext = query({
     const stackCreator = stack ? await ctx.db.get(stack.creatorId) : null
     const isStackOwner = !!(userId && stackCreator && stackCreator.userId === userId)
     const stackResources =
-      stack?.published === true || isStackOwner ? (stack?.resources ?? []) : []
+      stack && (stack.published === true || isStackOwner)
+        ? await resolveLinkedResources(ctx, 'stack', stack._id)
+        : []
+    const projectResources = await resolveLinkedResources(ctx, 'project', project._id)
 
     return {
       stackResources,
-      projectResources: project.resources,
+      projectResources,
       stackName: stack?.name ?? '',
       projectName: project.name,
       isOwner,

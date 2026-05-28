@@ -281,10 +281,10 @@ export function getGroupLabel(group: string | undefined): string {
 	return groupLabels[group] ?? group;
 }
 
-export const MANUAL_INSTRUCTION_GROUP = "manual";
+export const MANUAL_RESOURCE_GROUP = "manual";
 
 export function buildManualStableKey(type: string, name: string): string {
-	return `${MANUAL_INSTRUCTION_GROUP}:${type}:${name}`;
+	return `${MANUAL_RESOURCE_GROUP}:${type}:${name}`;
 }
 
 export { isKnownType };

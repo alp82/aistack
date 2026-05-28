@@ -519,7 +519,7 @@ export function SlashCommandDropdown({
 							</span>
 							<span className="block font-mono text-[9px] text-fg-muted/60">
 								{addMissingHint.category === "files"
-									? "Create a new instruction for your stack"
+									? "Create a new resource for your stack"
 									: "Submit a new entry to the database"}
 							</span>
 						</span>
@@ -651,7 +651,7 @@ export function SlashCommandDropdown({
 							</span>
 							<span className="block font-mono text-[9px] text-fg-muted/60">
 								{addMissingHint.category === "files"
-									? "Create a new instruction for your stack"
+									? "Create a new resource for your stack"
 									: "Submit a new entry to the database"}
 							</span>
 						</span>

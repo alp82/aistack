@@ -145,23 +145,6 @@ export const AIResourceCard = Node.create({
 					};
 				},
 			},
-			// Legacy compat: existing serialized descriptions still use the old data attr.
-			{
-				tag: "div[data-ai-instruction-card]",
-				getAttrs: (element) => {
-					if (typeof element === "string") return false;
-					const el = element as HTMLElement;
-					return {
-						source: el.getAttribute("data-source") || "stack",
-						sourceId: el.getAttribute("data-source-id") || "",
-						stableKey: el.getAttribute("data-stable-key") || "",
-						fileName: el.getAttribute("data-file-name") || "",
-						type: el.getAttribute("data-type") || "custom",
-						group: el.getAttribute("data-group") || null,
-						description: el.getAttribute("data-description") || null,
-					};
-				},
-			},
 		];
 	},
 

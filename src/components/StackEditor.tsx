@@ -31,7 +31,7 @@ import type {
 } from "@/features/stack-editor/types";
 import {
 	buildManualStableKey,
-	MANUAL_INSTRUCTION_GROUP,
+	MANUAL_RESOURCE_GROUP,
 } from "@/lib/resource-utils";
 import { api } from "../../convex/_generated/api";
 
@@ -357,7 +357,7 @@ export function StackEditor({
 						name: nextName,
 						type: nextType,
 						description: updates.description,
-						group: MANUAL_INSTRUCTION_GROUP,
+						group: MANUAL_RESOURCE_GROUP,
 						stableKey: buildManualStableKey(nextType, nextName),
 						files: [],
 					},

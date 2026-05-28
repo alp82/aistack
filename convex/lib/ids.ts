@@ -5,7 +5,7 @@ const SHORT_ID_LENGTH = 6
 
 export async function generateUniqueShortId(
   ctx: QueryCtx,
-  table: 'stacks' | 'projects' | 'tools' | 'bundles' | 'models',
+  table: 'stacks' | 'projects' | 'tools' | 'bundles' | 'models' | 'resources',
 ): Promise<string> {
   for (let attempt = 0; attempt < 10; attempt++) {
     let shortId = ''
