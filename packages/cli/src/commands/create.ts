@@ -49,7 +49,7 @@ export async function createCommand(slugOrShortId: string) {
 
 	for (const item of project.resources) {
 		const isGlobal = item.scope === "global";
-		for (const file of item.files) {
+		for (const file of item.files ?? []) {
 			const writePath = file.path ?? file.name;
 			if (isGlobal) {
 				globalFiles.push({ path: writePath, content: file.content });

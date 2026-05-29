@@ -26,6 +26,7 @@ https://github.com/av/skilled
 agentic standards:
 https://ecc.tools
 https://agentskills.io/home
+https://github.com/av/facts
 https://jeffreyemanuel.com/tldr
 https://buildermethods.com/agent-os
 https://www.youtube.com/watch?v=0cVuMHaYEHE
@@ -48,6 +49,7 @@ https://www.omnara.com
 https://www.warp.dev/oz1
 https://getpolyscope.com
 https://thecommander.app
+https://www.themaestri.app
 https://www.conductor.build
 https://penso.github.io/arbor
 https://github.com/ruvnet/ruflo
@@ -127,6 +129,9 @@ https://asciinema.org/a/875847
 Flesch-Kincaid
 https://vale.sh
 https://textstat.org
+
+AI usage best practices:
+https://susam.net/inverse-laws-of-robotics.html
 
 memory:
 https://github.com/garrytan/gbrain

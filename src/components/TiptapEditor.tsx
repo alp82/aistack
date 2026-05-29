@@ -276,9 +276,9 @@ export function TiptapEditor({
 					"stack",
 					stackResources.stackId,
 					resource.group,
-					resource.files.length,
+					resource.files?.length ?? 0,
 				);
-				for (const file of resource.files) {
+				for (const file of resource.files ?? []) {
 					out.push({
 						kind: "file",
 						source: "stack",
@@ -300,9 +300,9 @@ export function TiptapEditor({
 						"project",
 						project.projectId,
 						resource.group,
-						resource.files.length,
+						resource.files?.length ?? 0,
 					);
-					for (const file of resource.files) {
+					for (const file of resource.files ?? []) {
 						out.push({
 							kind: "file",
 							source: "project",

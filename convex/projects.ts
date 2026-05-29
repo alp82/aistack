@@ -130,7 +130,7 @@ export const listByStack = query({
         const resources = await resolveLinkedResources(ctx, 'project', project._id)
         let fileCount = 0
         for (const item of resources) {
-          fileCount += item.files.length
+          fileCount += item.files?.length ?? 0
         }
         return {
           _id: project._id,

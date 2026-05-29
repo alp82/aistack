@@ -79,7 +79,10 @@ function groupByGroupAndType(resources: Resource[]): GroupSection[] {
 			([type, typeItems]) => ({
 				type,
 				items: typeItems,
-				totalFiles: typeItems.reduce((sum, i) => sum + i.files.length, 0),
+				totalFiles: typeItems.reduce(
+					(sum, i) => sum + (i.files?.length ?? 0),
+					0,
+				),
 			}),
 		);
 		const totalFiles = allTypeGroups.reduce((sum, t) => sum + t.totalFiles, 0);
@@ -211,7 +214,7 @@ export function ResourceTree({
 												))}
 												{gs.singletons.map((group) => {
 													const item = group.items[0];
-													const file = item.files[0];
+													const file = item.files?.[0];
 													if (!file) return null;
 													return (
 														<FileRow
@@ -327,7 +330,7 @@ function GroupBlock({
 					))}
 					{section.singletons.map((group) => {
 						const item = group.items[0];
-						const file = item.files[0];
+						const file = item.files?.[0];
 						if (!file) return null;
 						return (
 							<FileRow
@@ -402,7 +405,7 @@ function TypeBlock({
 			</button>
 			{expanded &&
 				typeGroup.items.flatMap((item) =>
-					item.files.map((file) => (
+					(item.files ?? []).map((file) => (
 						<FileRow
 							key={`${item.stableKey}:${file.name}`}
 							source={source}

@@ -1,4 +1,5 @@
 # TODO
+* check CLI still works
 * stack pages vertical
     * hero
     * projects

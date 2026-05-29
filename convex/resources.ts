@@ -1,7 +1,11 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { Resource as ResourceValidator } from './schema'
-import { resolveLinkedResources, unlinkResourceFromOwner } from './lib/resourceLinks'
+import {
+  resolveLinkedResourceDocs,
+  resolveLinkedResources,
+  unlinkResourceFromOwner,
+} from './lib/resourceLinks'
 
 const StackTarget = v.object({
   kind: v.literal('stack'),
@@ -40,20 +44,17 @@ export const updateResourceContent = mutation({
 
     // Resolve the single resources row linked to this owner under the given
     // stableKey, then patch the matched file's content on that row.
-    const links = await ctx.db
-      .query('resourceLinks')
-      .withIndex('by_owner', (q) =>
-        q.eq('ownerKind', args.target.kind).eq('ownerId', args.target.id),
-      )
-      .collect()
+    const docs = await resolveLinkedResourceDocs(
+      ctx,
+      args.target.kind,
+      args.target.id,
+    )
 
     let matched = false
-    for (const link of links) {
-      const resource = await ctx.db.get(link.resourceId)
-      if (!resource || resource.deletedAt !== null) continue
+    for (const resource of docs) {
       if (resource.stableKey !== args.stableKey) continue
 
-      const updatedFiles = resource.files.map((file) => {
+      const updatedFiles = (resource.files ?? []).map((file) => {
         if (file.name !== args.fileName) return file
         matched = true
         return { ...file, content: args.content }

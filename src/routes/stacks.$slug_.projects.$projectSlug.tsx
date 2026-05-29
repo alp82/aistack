@@ -39,7 +39,7 @@ export const Route = createFileRoute("/stacks/$slug_/projects/$projectSlug")({
 		}
 		const project = loaderData.project;
 		const fileCount = project.resources.reduce(
-			(sum: number, i: { files: unknown[] }) => sum + i.files.length,
+			(sum: number, i: { files?: unknown[] }) => sum + (i.files?.length ?? 0),
 			0,
 		);
 		return {
@@ -94,7 +94,7 @@ function ProjectDetailPage() {
 	}
 
 	const fileCount = project.resources.reduce(
-		(s: number, i: { files: unknown[] }) => s + i.files.length,
+		(s: number, i: { files?: unknown[] }) => s + (i.files?.length ?? 0),
 		0,
 	);
 	const hasResources = project.resources.length > 0;

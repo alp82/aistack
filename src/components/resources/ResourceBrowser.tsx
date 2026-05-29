@@ -74,12 +74,12 @@ export function ResourceBrowser({
 		const inStack = context.stackResources.some(
 			(i) =>
 				i.stableKey === initialSelection.stableKey &&
-				i.files.some((f) => f.name === initialSelection.fileName),
+				(i.files ?? []).some((f) => f.name === initialSelection.fileName),
 		);
 		const inProject = context.projectResources.some(
 			(i) =>
 				i.stableKey === initialSelection.stableKey &&
-				i.files.some((f) => f.name === initialSelection.fileName),
+				(i.files ?? []).some((f) => f.name === initialSelection.fileName),
 		);
 		if (inStack) {
 			setSelection({
@@ -106,7 +106,7 @@ export function ResourceBrowser({
 				? context.stackResources
 				: context.projectResources;
 		const item = list.find((i) => i.stableKey === selection.stableKey);
-		const file = item?.files.find((f) => f.name === selection.fileName);
+		const file = item?.files?.find((f) => f.name === selection.fileName);
 		if (!file) return null;
 		return {
 			name: file.name,

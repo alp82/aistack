@@ -31,14 +31,20 @@ type KnownResourceType =
 /** Accepts known types with autocomplete, plus any arbitrary string. */
 type ResourceType = KnownResourceType | (string & {});
 
+type ResourceOwner =
+	| { kind: "creator"; id: Id<"creators"> }
+	| { kind: "github"; handle: string };
+
 type Resource = {
 	type: ResourceType;
 	name: string;
 	description?: string;
 	group: string;
 	stableKey: string;
-	files: FileEntry[];
-	source?: "authored" | "cli" | "github";
+	files?: FileEntry[];
+	storage?: "hosted" | "linked";
+	owner?: ResourceOwner;
+	addedBy?: string;
 	scope?: "global" | "project";
 	upstream?: {
 		repoUrl: string;
@@ -46,7 +52,6 @@ type Resource = {
 		license?: string;
 		stars?: number;
 		lastCommitSha?: string;
-		mirrorMode: "link" | "preview" | "mirror";
 		lastSyncAt?: number;
 	};
 };

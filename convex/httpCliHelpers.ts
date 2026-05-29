@@ -1,11 +1,12 @@
 import { internalMutation, internalQuery } from './_generated/server'
 import type { Id } from './_generated/dataModel'
-import { Infer, v } from 'convex/values'
+import { v } from 'convex/values'
 import { slugifyAscii } from '../src/lib/slug'
 import { generateUniqueShortId } from './lib/ids'
+import { ResourceInput } from './schema'
 import {
-  type Resource,
   upsertResourcesForOwner,
+  type ResourceInputItem,
 } from './lib/resourceLinks'
 
 export const getCreatorByUserId = internalQuery({
@@ -103,41 +104,12 @@ export const incrementCloneCount = internalMutation({
   },
 })
 
-const IncomingResource = v.object({
-  type: v.string(),
-  name: v.string(),
-  description: v.optional(v.string()),
-  group: v.string(),
-  scope: v.optional(v.union(v.literal('global'), v.literal('project'))),
-  stableKey: v.string(),
-  files: v.array(
-    v.object({
-      name: v.string(),
-      content: v.string(),
-      path: v.optional(v.string()),
-      tags: v.optional(v.array(v.string())),
-    }),
-  ),
-  source: v.optional(v.union(v.literal('authored'), v.literal('cli'), v.literal('github'))),
-  upstream: v.optional(v.object({
-    repoUrl: v.string(),
-    path: v.optional(v.string()),
-    license: v.optional(v.string()),
-    stars: v.optional(v.number()),
-    lastCommitSha: v.optional(v.string()),
-    mirrorMode: v.union(v.literal('link'), v.literal('preview'), v.literal('mirror')),
-    lastSyncAt: v.optional(v.number()),
-  })),
-})
-
-type Item = Infer<typeof IncomingResource>
-
 export const upsertProject = internalMutation({
   args: {
     creatorId: v.id('creators'),
     stackId: v.id('stacks'),
     name: v.string(),
-    resources: v.array(IncomingResource),
+    resources: v.array(ResourceInput),
     source: v.optional(v.string()),
   },
   returns: v.object({
@@ -145,8 +117,8 @@ export const upsertProject = internalMutation({
     shortId: v.string(),
   }),
   handler: async (ctx, args) => {
-    const projectItems: Item[] = []
-    const globalItems: Item[] = []
+    const projectItems: ResourceInputItem[] = []
+    const globalItems: ResourceInputItem[] = []
     for (const item of args.resources) {
       if (item.scope === 'global') globalItems.push(item)
       else projectItems.push(item)
@@ -188,14 +160,11 @@ export const upsertProject = internalMutation({
       })
     }
 
-    // Server forces source='cli' for the HTTP CLI endpoint; web/GitHub-link
-    // paths use a different code path.
     await upsertResourcesForOwner(ctx, {
-      creatorId: args.creatorId,
+      addedBy: args.creatorId,
       ownerKind: 'project',
       ownerId: projectId,
-      items: projectItems as Resource[],
-      source: 'cli',
+      items: projectItems,
       defaultScope: 'project',
     })
 
@@ -206,11 +175,10 @@ export const upsertProject = internalMutation({
           throw new Error('Not authorized to write to this stack')
         }
         await upsertResourcesForOwner(ctx, {
-          creatorId: args.creatorId,
+          addedBy: args.creatorId,
           ownerKind: 'stack',
           ownerId: stack._id,
-          items: globalItems as Resource[],
-          source: 'cli',
+          items: globalItems,
           defaultScope: 'global',
         })
         await ctx.db.patch(stack._id, { updatedAt: now })

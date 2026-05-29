@@ -265,14 +265,14 @@ interface DiffResult {
 function diffResources(current: Resource[], existing: Resource[]): DiffResult {
 	const existingMap = new Map<string, string>();
 	for (const item of existing) {
-		for (const file of item.files) {
+		for (const file of item.files ?? []) {
 			existingMap.set(file.path ?? file.name, file.content);
 		}
 	}
 
 	const currentMap = new Map<string, string>();
 	for (const item of current) {
-		for (const file of item.files) {
+		for (const file of item.files ?? []) {
 			currentMap.set(file.path ?? file.name, file.content);
 		}
 	}

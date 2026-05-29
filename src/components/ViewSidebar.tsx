@@ -79,8 +79,8 @@ export function ViewSidebar({
 	const totalResourceCount = resources.length + projectResourcesList.length;
 	const totalFileCount = useMemo(
 		() =>
-			resources.reduce((sum, r) => sum + r.files.length, 0) +
-			projectResourcesList.reduce((sum, r) => sum + r.files.length, 0),
+			resources.reduce((sum, r) => sum + (r.files?.length ?? 0), 0) +
+			projectResourcesList.reduce((sum, r) => sum + (r.files?.length ?? 0), 0),
 		[resources, projectResourcesList],
 	);
 	const hasAnyResources = totalResourceCount > 0;

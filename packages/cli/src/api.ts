@@ -109,15 +109,13 @@ export interface Resource {
 	group: string;
 	scope?: "global" | "project";
 	stableKey: string;
-	files: ResourceFile[];
-	source?: "authored" | "cli" | "github";
+	files?: ResourceFile[];
 	upstream?: {
 		repoUrl: string;
 		path?: string;
 		license?: string;
 		stars?: number;
 		lastCommitSha?: string;
-		mirrorMode: "link" | "preview" | "mirror";
 		lastSyncAt?: number;
 	};
 }

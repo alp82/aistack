@@ -89,7 +89,9 @@ test('upsertProject persists scope=global onto stack with source=cli', async () 
   const stackResources = await resourcesForOwner(t, 'stack', stackId)
   expect(stackResources).toHaveLength(1)
   expect(stackResources[0].scope).toBe('global')
-  expect(stackResources[0].source).toBe('cli')
+  expect(stackResources[0].storage).toBe('hosted')
+  expect(stackResources[0].owner.kind).toBe('creator')
+  expect(stackResources[0].addedBy).toBe(creatorId)
 
   const projectResources = await resourcesForOwner(t, 'project', projects[0]._id)
   expect(projectResources).toHaveLength(0)
@@ -130,7 +132,9 @@ test('upsertProject persists scope=project onto project with source=cli', async 
   const projectResources = await resourcesForOwner(t, 'project', projects[0]._id)
   expect(projectResources).toHaveLength(1)
   expect(projectResources[0].scope).toBe('project')
-  expect(projectResources[0].source).toBe('cli')
+  expect(projectResources[0].storage).toBe('hosted')
+  expect(projectResources[0].owner.kind).toBe('creator')
+  expect(projectResources[0].addedBy).toBe(creatorId)
 })
 
 test('upsertProject merges by stableKey on second call (preserves A, replaces B, adds C)', async () => {
@@ -199,9 +203,9 @@ test('upsertProject merges by stableKey on second call (preserves A, replaces B,
   expect(items).toHaveLength(3)
 
   const byKey = new Map(items.map((i) => [i.stableKey, i]))
-  expect(byKey.get('claude-code:rule:A')?.files[0]?.content).toBe('A v1')
-  expect(byKey.get('claude-code:rule:B')?.files[0]?.content).toBe('B v2')
-  expect(byKey.get('claude-code:rule:C')?.files[0]?.content).toBe('C v1')
+  expect(byKey.get('claude-code:rule:A')?.files?.[0]?.content).toBe('A v1')
+  expect(byKey.get('claude-code:rule:B')?.files?.[0]?.content).toBe('B v2')
+  expect(byKey.get('claude-code:rule:C')?.files?.[0]?.content).toBe('C v1')
 })
 
 test('upsertResourcesForOwner resurrects a soft-deleted row and reuses its _id', async () => {
@@ -276,7 +280,7 @@ test('upsertResourcesForOwner resurrects a soft-deleted row and reuses its _id',
   expect(resurrected?.deletedAt).toBeNull()
   expect(resurrected?.name).toBe('R renamed')
   expect(resurrected?.description).toBe('second')
-  expect(resurrected?.files[0]?.content).toBe('R v2')
+  expect(resurrected?.files?.[0]?.content).toBe('R v2')
 
   // The link was re-created against the new owner.
   const project2 = (await t.run(async (ctx) =>
@@ -445,11 +449,7 @@ test('updateResourceContent patches the resources row, not an embedded array', a
   })
 
   const stackResources = await resourcesForOwner(t, 'stack', stackId)
-  expect(stackResources[0].files[0].content).toBe('after')
-
-  // Embedded field on the stack doc stays untouched (undefined).
-  const stack = await t.run(async (ctx) => ctx.db.get(stackId))
-  expect(stack?.resources).toBeUndefined()
+  expect(stackResources[0].files?.[0]?.content).toBe('after')
 })
 
 test('deleteProject cascades: zero links and the row is soft-deleted with no live link', async () => {
@@ -600,50 +600,62 @@ test('deleteProject cascades: resource NOT soft-deleted when another owner still
   expect(resourceRow?.deletedAt).toBeNull()
 })
 
-test('field-clear migration is idempotent', async () => {
+test('reset_resources hard-deletes all rows and is idempotent', async () => {
   const t = convexTest(schema, modules)
-  const { creatorId } = await seedCreatorAndStack(t)
+  const { creatorId, stackId } = await seedCreatorAndStack(t)
 
-  // Seed a stack carrying a legacy embedded resources array.
-  await t.run(async (ctx) =>
-    ctx.db.insert('stacks', {
-      name: 'Legacy',
-      slug: 'legacy',
-      shortId: 'LEG001',
-      creatorId,
-      oneLiner: 'legacy',
-      toolSubscriptions: [],
-      hasUsageComponent: false,
-      published: false,
-      resources: [
-        {
-          type: 'rule',
-          name: 'L',
-          group: 'claude-code',
-          stableKey: 'claude-code:rule:L',
-          files: [{ name: 'L.md', content: 'L' }],
-        },
-      ],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    }),
-  )
+  // Seed one resources row + one resourceLinks row pointing at it.
+  await t.run(async (ctx) => {
+    const now = Date.now()
+    const resourceId = await ctx.db.insert('resources', {
+      scope: 'project',
+      type: 'rule',
+      name: 'to-wipe',
+      group: 'claude-code',
+      stableKey: 'claude-code:rule:to-wipe',
+      files: [{ name: 'w.md', content: 'w' }],
+      storage: 'hosted',
+      owner: { kind: 'creator', id: creatorId },
+      addedBy: creatorId,
+      deletedAt: null,
+      shortId: 'RES001',
+    })
+    await ctx.db.insert('resourceLinks', {
+      resourceId,
+      ownerKind: 'stack',
+      ownerId: stackId,
+      order: 0,
+      addedAt: now,
+    })
+  })
 
   const first = await t.mutation(
-    internal.migrations['20260528_clear_embedded_resources'].run,
+    internal.migrations['20260529_reset_resources'].run,
     {},
   )
-  expect(first.stacksCleared).toBeGreaterThanOrEqual(1)
+  expect(first.resourcesDeleted).toBeGreaterThanOrEqual(1)
+  expect(first.linksDeleted).toBeGreaterThanOrEqual(1)
 
+  // Both tables are empty after the reset.
+  const resourcesAfter = await t.run(async (ctx) =>
+    ctx.db.query('resources').collect(),
+  )
+  const linksAfter = await t.run(async (ctx) =>
+    ctx.db.query('resourceLinks').collect(),
+  )
+  expect(resourcesAfter).toHaveLength(0)
+  expect(linksAfter).toHaveLength(0)
+
+  // Second run deletes nothing and returns zeros.
   const second = await t.mutation(
-    internal.migrations['20260528_clear_embedded_resources'].run,
+    internal.migrations['20260529_reset_resources'].run,
     {},
   )
-  expect(second.stacksCleared).toBe(0)
-  expect(second.projectsCleared).toBe(0)
+  expect(second.resourcesDeleted).toBe(0)
+  expect(second.linksDeleted).toBe(0)
 })
 
-test('getByShortId returns the pre-split Resource JSON shape for the CLI clone endpoint', async () => {
+test('getByShortId returns split linked/hosted Resource JSON shapes for the CLI clone endpoint', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
 
@@ -659,11 +671,19 @@ test('getByShortId returns the pre-split Resource JSON shape for the CLI clone e
         group: 'claude-code',
         scope: 'project',
         stableKey: 'claude-code:rule:CLAUDE.md',
-        files: [{ name: 'CLAUDE.md', content: '# hi', path: 'CLAUDE.md' }],
         upstream: {
-          repoUrl: 'https://example.com/repo',
-          mirrorMode: 'mirror',
+          repoUrl: 'https://github.com/acme/repo',
+          path: 'CLAUDE.md',
         },
+      },
+      {
+        type: 'prompt',
+        name: 'hosted-prompt',
+        description: 'local prompt',
+        group: 'claude-code',
+        scope: 'project',
+        stableKey: 'claude-code:prompt:hosted-prompt',
+        files: [{ name: 'p.md', content: '# hi', path: 'p.md' }],
       },
     ],
     source: 'cli',
@@ -682,32 +702,55 @@ test('getByShortId returns the pre-split Resource JSON shape for the CLI clone e
   expect(result).not.toBeNull()
   const r = result!
   expect(r._id).toBe(project._id)
-  expect(r.resources).toHaveLength(1)
+  expect(r.resources).toHaveLength(2)
 
-  const res = r.resources[0]
-  // Exactly the Resource validator fields, no _id / creatorId / deletedAt.
-  expect(Object.keys(res).sort()).toEqual(
+  const byKey = new Map(r.resources.map((res) => [res.stableKey, res]))
+  const linked = byKey.get('claude-code:rule:CLAUDE.md')!
+  const hosted = byKey.get('claude-code:prompt:hosted-prompt')!
+
+  // Linked: pure reference — carries `upstream`, omits `files`.
+  expect(Object.keys(linked).sort()).toEqual(
     [
+      'addedBy',
       'description',
-      'files',
       'group',
       'name',
+      'owner',
       'scope',
-      'source',
       'stableKey',
+      'storage',
       'type',
       'upstream',
     ].sort(),
   )
-  expect(res.type).toBe('rule')
-  expect(res.name).toBe('CLAUDE.md')
-  expect(res.scope).toBe('project')
-  expect(res.source).toBe('cli')
-  expect(res.files[0]).toEqual({ name: 'CLAUDE.md', content: '# hi', path: 'CLAUDE.md' })
-  expect(res.upstream?.repoUrl).toBe('https://example.com/repo')
-  expect((res as Record<string, unknown>)._id).toBeUndefined()
-  expect((res as Record<string, unknown>).creatorId).toBeUndefined()
-  expect((res as Record<string, unknown>).deletedAt).toBeUndefined()
+  expect(linked.storage).toBe('linked')
+  expect(linked.owner).toEqual({ kind: 'github', handle: 'acme' })
+  expect(linked.upstream?.repoUrl).toBe('https://github.com/acme/repo')
+  expect((linked as Record<string, unknown>).files).toBeUndefined()
+
+  // Hosted: carries `files`, omits `upstream`.
+  expect(Object.keys(hosted).sort()).toEqual(
+    [
+      'addedBy',
+      'description',
+      'files',
+      'group',
+      'name',
+      'owner',
+      'scope',
+      'stableKey',
+      'storage',
+      'type',
+    ].sort(),
+  )
+  expect(hosted.storage).toBe('hosted')
+  expect(hosted.owner.kind).toBe('creator')
+  expect(hosted.files?.[0]).toEqual({ name: 'p.md', content: '# hi', path: 'p.md' })
+  expect((hosted as Record<string, unknown>).upstream).toBeUndefined()
+
+  expect((linked as Record<string, unknown>)._id).toBeUndefined()
+  expect((linked as Record<string, unknown>).creatorId).toBeUndefined()
+  expect((linked as Record<string, unknown>).deletedAt).toBeUndefined()
 })
 
 test('unlinkResource removes one link and leaves the others intact', async () => {
@@ -1116,4 +1159,170 @@ test('createProject rejects an unauthenticated caller and a non-owner of the tar
   await expect(
     asOther.mutation(api.projects.createProject, { name: 'x', stackId }),
   ).rejects.toThrow(/not authorized/i)
+})
+
+test('two creators linking the same repo+path share ONE fileless row with two links', async () => {
+  const t = convexTest(schema, modules)
+  const { creatorId: creatorA, stackId: stackA } = await seedCreatorAndStack(t)
+
+  // A second creator + stack.
+  const { creatorB, stackB } = await t.run(async (ctx) => {
+    const now = Date.now()
+    const creatorB = await ctx.db.insert('creators', {
+      name: 'Creator B',
+      slug: 'creator-b',
+      userId: 'user-b',
+      verified: false,
+      personalPages: [],
+      projectPages: [],
+      createdAt: now,
+    })
+    const stackB = await ctx.db.insert('stacks', {
+      name: 'Stack B',
+      slug: 'stack-b',
+      shortId: 'STK002',
+      creatorId: creatorB,
+      oneLiner: 'b',
+      toolSubscriptions: [],
+      hasUsageComponent: false,
+      published: false,
+      createdAt: now,
+      updatedAt: now,
+    })
+    return { creatorB, stackB }
+  })
+
+  const linkedItem = {
+    type: 'rule' as const,
+    name: 'shared-linked',
+    group: 'claude-code',
+    scope: 'project' as const,
+    stableKey: 'claude-code:rule:shared-linked',
+    upstream: { repoUrl: 'https://github.com/acme/repo', path: 'AGENTS.md' },
+  }
+
+  await t.mutation(internal.httpCliHelpers.upsertProject, {
+    creatorId: creatorA,
+    stackId: stackA,
+    name: 'project-a',
+    resources: [linkedItem],
+    source: 'cli',
+  })
+  await t.mutation(internal.httpCliHelpers.upsertProject, {
+    creatorId: creatorB,
+    stackId: stackB,
+    name: 'project-b',
+    resources: [linkedItem],
+    source: 'cli',
+  })
+
+  // Exactly ONE shared resources row, fileless, github-owned.
+  const rows = await t.run(async (ctx) =>
+    ctx.db.query('resources').collect(),
+  )
+  expect(rows).toHaveLength(1)
+  expect(rows[0].storage).toBe('linked')
+  expect(rows[0].files).toBeUndefined()
+  expect(rows[0].owner).toEqual({ kind: 'github', handle: 'acme' })
+  expect(rows[0].upstream?.path).toBe('AGENTS.md')
+
+  // Two links — one per project.
+  const links = await t.run(async (ctx) =>
+    ctx.db
+      .query('resourceLinks')
+      .withIndex('by_resourceId', (q) => q.eq('resourceId', rows[0]._id))
+      .collect(),
+  )
+  expect(links).toHaveLength(2)
+
+  const projects = await t.run(async (ctx) =>
+    ctx.db.query('projects').collect(),
+  )
+  const projectA = projects.find((p) => p.name === 'project-a')!
+  const projectB = projects.find((p) => p.name === 'project-b')!
+
+  // Unlink from A — shared row stays alive (B still links it).
+  await t.run(async (ctx: MutationCtx) => {
+    const link = await ctx.db
+      .query('resourceLinks')
+      .withIndex('by_owner', (q) =>
+        q.eq('ownerKind', 'project').eq('ownerId', projectA._id),
+      )
+      .first()
+    await ctx.db.delete(link!._id)
+    const remaining = await ctx.db
+      .query('resourceLinks')
+      .withIndex('by_resourceId', (q) => q.eq('resourceId', rows[0]._id))
+      .collect()
+    if (remaining.length === 0) {
+      await ctx.db.patch(rows[0]._id, { deletedAt: Date.now() })
+    }
+  })
+  expect(
+    (await t.run(async (ctx: MutationCtx) => ctx.db.get(rows[0]._id)))?.deletedAt,
+  ).toBeNull()
+
+  // Unlink from B — last link gone, row soft-deleted.
+  await t.run(async (ctx: MutationCtx) => {
+    const link = await ctx.db
+      .query('resourceLinks')
+      .withIndex('by_owner', (q) =>
+        q.eq('ownerKind', 'project').eq('ownerId', projectB._id),
+      )
+      .first()
+    await ctx.db.delete(link!._id)
+    const remaining = await ctx.db
+      .query('resourceLinks')
+      .withIndex('by_resourceId', (q) => q.eq('resourceId', rows[0]._id))
+      .collect()
+    if (remaining.length === 0) {
+      await ctx.db.patch(rows[0]._id, { deletedAt: Date.now() })
+    }
+  })
+  expect(
+    (await t.run(async (ctx: MutationCtx) => ctx.db.get(rows[0]._id)))?.deletedAt,
+  ).not.toBeNull()
+})
+
+test('upsert guard: linked-with-files and hosted-without-files both throw', async () => {
+  const t = convexTest(schema, modules)
+  const { creatorId, stackId } = await seedCreatorAndStack(t)
+
+  await expect(
+    t.mutation(internal.httpCliHelpers.upsertProject, {
+      creatorId,
+      stackId,
+      name: 'bad-linked',
+      resources: [
+        {
+          type: 'rule',
+          name: 'linked-with-files',
+          group: 'claude-code',
+          scope: 'project',
+          stableKey: 'claude-code:rule:linked-with-files',
+          files: [{ name: 'x.md', content: 'x' }],
+          upstream: { repoUrl: 'https://github.com/acme/repo', path: 'x.md' },
+        },
+      ],
+      source: 'cli',
+    }),
+  ).rejects.toThrow(/linked resource must not carry files/)
+
+  await expect(
+    t.mutation(internal.httpCliHelpers.upsertProject, {
+      creatorId,
+      stackId,
+      name: 'bad-hosted',
+      resources: [
+        {
+          type: 'rule',
+          name: 'hosted-without-files',
+          group: 'claude-code',
+          scope: 'project',
+          stableKey: 'claude-code:rule:hosted-without-files',
+        },
+      ],
+      source: 'cli',
+    }),
+  ).rejects.toThrow(/hosted resource must carry files/)
 })

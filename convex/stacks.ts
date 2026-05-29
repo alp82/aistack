@@ -4,7 +4,7 @@ import type { QueryCtx } from './_generated/server'
 import { type FixedPrice, sumNormalizedMonthlyAmounts } from '../src/lib/pricing'
 import { slugifyAscii } from '../src/lib/slug'
 import { generateUniqueShortId, extractShortId } from './lib/ids'
-import { Resource as ResourceValidator } from './schema'
+import { Resource as ResourceValidator, ResourceInput } from './schema'
 import { resolveLinkedResources, upsertResourcesForOwner } from './lib/resourceLinks'
 
 type ToolSubscriptionLike = {
@@ -271,7 +271,7 @@ export const create = mutation({
     name: v.string(),
     oneLiner: v.string(),
     description: v.optional(v.string()),
-    resources: v.optional(v.array(ResourceValidator)),
+    resources: v.optional(v.array(ResourceInput)),
     teamSize: v.optional(v.number()),
     toolSubscriptions: v.array(ToolSubscriptionInput),
     bundleSubscriptions: v.optional(v.array(BundleSubscriptionInput)),
@@ -326,11 +326,10 @@ export const create = mutation({
 
     if (args.resources !== undefined) {
       await upsertResourcesForOwner(ctx, {
-        creatorId: creator._id,
+        addedBy: creator._id,
         ownerKind: 'stack',
         ownerId: id,
         items: args.resources,
-        source: 'authored',
         defaultScope: 'global',
       })
     }
@@ -345,7 +344,7 @@ export const update = mutation({
     name: v.optional(v.string()),
     oneLiner: v.optional(v.string()),
     description: v.optional(v.string()),
-    resources: v.optional(v.array(ResourceValidator)),
+    resources: v.optional(v.array(ResourceInput)),
     teamSize: v.optional(v.union(v.number(), v.null())),
     toolSubscriptions: v.optional(v.array(ToolSubscriptionInput)),
     bundleSubscriptions: v.optional(v.array(BundleSubscriptionInput)),
@@ -400,11 +399,10 @@ export const update = mutation({
 
     if (args.resources !== undefined) {
       await upsertResourcesForOwner(ctx, {
-        creatorId: stack.creatorId,
+        addedBy: stack.creatorId,
         ownerKind: 'stack',
         ownerId: args.stackId,
         items: args.resources,
-        source: 'authored',
         defaultScope: 'global',
       })
     }

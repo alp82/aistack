@@ -36,7 +36,7 @@ export function ResourceListItem({ resource, onClick }: ResourceListItemProps) {
 						{getResourceTypeLabel(resource.type)}
 					</p>
 				</div>
-				{resource.files.length > 0 && (
+				{(resource.files?.length ?? 0) > 0 && (
 					<span className="shrink-0 border border-accent-lime/30 bg-accent-lime/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-accent-lime">
 						Show
 					</span>

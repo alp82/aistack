@@ -30,10 +30,27 @@ export const ResourceFile = v.object({
   tags: v.optional(v.array(v.string())),
 })
 
+const ResourceUpstream = v.object({
+  repoUrl: v.string(),
+  path: v.optional(v.string()),
+  license: v.optional(v.string()),
+  stars: v.optional(v.number()),
+  lastCommitSha: v.optional(v.string()),
+  lastSyncAt: v.optional(v.number()),
+})
+
+const ResourceOwner = v.union(
+  v.object({ kind: v.literal('creator'), id: v.id('creators') }),
+  v.object({ kind: v.literal('github'), handle: v.string() }),
+)
+
 /**
  * @stableKey format invariants:
  *   - Authored items: `manual:${type}:${name}` via buildManualStableKey in src/lib/resource-utils.ts
  *   - CLI items: `${group}:${type}:${relPath}` via computeStableKey in packages/cli/src/stableKey.ts
+ *
+ * upstream presence is the SOLE storage discriminator: present => linked
+ * reference (no files), absent => hosted (files, per-creator).
  */
 export const Resource = v.object({
   type: v.string(),
@@ -41,18 +58,28 @@ export const Resource = v.object({
   description: v.optional(v.string()),
   group: v.string(),
   stableKey: v.string(),
-  files: v.array(ResourceFile),
-  source: v.optional(v.union(v.literal('authored'), v.literal('cli'), v.literal('github'))),
+  files: v.optional(v.array(ResourceFile)),
+  storage: v.union(v.literal('hosted'), v.literal('linked')),
+  owner: ResourceOwner,
+  addedBy: v.string(),
   scope: v.optional(v.union(v.literal('global'), v.literal('project'))),
-  upstream: v.optional(v.object({
-    repoUrl: v.string(),
-    path: v.optional(v.string()),
-    license: v.optional(v.string()),
-    stars: v.optional(v.number()),
-    lastCommitSha: v.optional(v.string()),
-    mirrorMode: v.union(v.literal('link'), v.literal('preview'), v.literal('mirror')),
-    lastSyncAt: v.optional(v.number()),
-  })),
+  upstream: v.optional(ResourceUpstream),
+})
+
+/**
+ * Public input shape for resources. Clients supply everything except the
+ * server-derived `storage`/`owner`/`addedBy`, which the mutation derives from
+ * the authenticated caller and the `upstream` discriminator.
+ */
+export const ResourceInput = v.object({
+  type: v.string(),
+  name: v.string(),
+  description: v.optional(v.string()),
+  group: v.string(),
+  stableKey: v.string(),
+  files: v.optional(v.array(ResourceFile)),
+  scope: v.optional(v.union(v.literal('global'), v.literal('project'))),
+  upstream: v.optional(ResourceUpstream),
 })
 
 const ModelCategory = v.union(
@@ -135,7 +162,6 @@ export default defineSchema({
     teamSize: v.optional(v.number()),
     oneLiner: v.string(),
     description: v.optional(v.string()),
-    resources: v.optional(v.array(Resource)),
     stackImageUrl: v.optional(v.string()),
     avatarStorageId: v.optional(v.id('_storage')),
     personalPageUrl: v.optional(v.string()),
@@ -315,7 +341,6 @@ export default defineSchema({
     order: v.optional(v.number()),
     cloneCount: v.optional(v.number()),
     published: v.optional(v.boolean()),
-    resources: v.optional(v.array(Resource)),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -324,29 +349,25 @@ export default defineSchema({
     .index('by_creatorId', ['creatorId'])
     .index('by_stackId', ['stackId']),
 
+  // upstream presence is the SOLE storage discriminator: present => linked
+  // reference (no files), absent => hosted (files, per-creator).
   resources: defineTable({
-    creatorId: v.id('creators'),
     scope: v.union(v.literal('global'), v.literal('project')),
     type: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     group: v.string(),
     stableKey: v.string(),
-    files: v.array(ResourceFile),
-    source: v.optional(v.union(v.literal('authored'), v.literal('cli'), v.literal('github'))),
-    upstream: v.optional(v.object({
-      repoUrl: v.string(),
-      path: v.optional(v.string()),
-      license: v.optional(v.string()),
-      stars: v.optional(v.number()),
-      lastCommitSha: v.optional(v.string()),
-      mirrorMode: v.union(v.literal('link'), v.literal('preview'), v.literal('mirror')),
-      lastSyncAt: v.optional(v.number()),
-    })),
+    files: v.optional(v.array(ResourceFile)),
+    storage: v.union(v.literal('hosted'), v.literal('linked')),
+    owner: ResourceOwner,
+    addedBy: v.string(),
+    upstream: v.optional(ResourceUpstream),
     deletedAt: v.union(v.number(), v.null()),
     shortId: v.string(),
   })
-    .index('by_creator_stableKey', ['creatorId', 'stableKey'])
+    .index('by_addedBy_stableKey', ['addedBy', 'stableKey'])
+    .index('by_upstream', ['upstream.repoUrl', 'upstream.path'])
     .index('by_shortId', ['shortId']),
 
   resourceLinks: defineTable({

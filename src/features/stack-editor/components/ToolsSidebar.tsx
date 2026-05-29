@@ -275,7 +275,7 @@ function ToolsSidebar({
 				(i) =>
 					!(i.name === editingResource.name && i.type === editingResource.type),
 			);
-			for (const file of editingResource.files) {
+			for (const file of editingResource.files ?? []) {
 				removeResourceFromEditor(editingResource.stableKey, file.name);
 			}
 			onResourcesChange(filtered);
@@ -365,7 +365,7 @@ function ToolsSidebar({
 				if ((instr.group ?? "generic") === args.group) {
 					typeCounts.set(
 						instr.type,
-						(typeCounts.get(instr.type) ?? 0) + instr.files.length,
+						(typeCounts.get(instr.type) ?? 0) + (instr.files?.length ?? 0),
 					);
 				}
 			}

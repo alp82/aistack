@@ -41,22 +41,29 @@ Multi-phase initiative to fix: *projects are CLI-only and invisible after creati
 
 **Files:** modify `convex/projects.ts` (+createProject), `src/components/ProjectsSection.tsx` (New Project button — NOT in-flight, safe), `src/components/Header.tsx` (nav link). Create `src/routes/projects.index.tsx` (grid backed by `listByCreator`), `src/components/projects/CreateProjectDialog.tsx`.
 
-## Feature #4 — Resource-mapping UX with scope clarity
+## Feature #4 — Resource provenance model + UX (reframed 2026-05-29)
 
-**Approach:** make scope + reuse legible inside the existing `ResourceBrowser`/`ResourceTree`. Add scope badges, a "used by N" link-count, an unlink action (wire the ready `unlinkResource`), and a "link existing resource" picker that attaches a library row without duplicating it.
+**What it became.** The original "scope-clarity UX" framing was reshaped with the user into a resource **provenance** effort across three axes: reach (`scope`: global vs project), content-location (`storage`: `hosted` = authored/stored on-platform vs `linked` = referenced from a git repo), and repo-ownership (`owner`: a platform creator vs an external GitHub account like `mattpocock`). The point: external community resources should be recognized as external, **shared not copied per user**, and credited to their source. Split into two slices: **model (done)**, then **UI (next)**.
 
-**Backend:** `unlinkResource` already exists (just needs a UI consumer). Needed: a "used by N" count (fold into `getResourceBrowserContext` via `by_resourceId`, or a dedicated query). If the library-picker direction is confirmed, add `listCreatorLibrary` (caller's live resources, optionally excluding rows already linked to a target) + a focused `linkExisting` mutation (or reuse `upsertResourcesForOwner`'s link path).
+### Slice A — data model — DONE (2026-05-29, backend only)
 
-**UX decisions to confirm first:**
-- How/where to show scope? (proposed: monospace `GLOBAL`/`PROJECT` badge at resource/type level, sharp corners, lime per AGENTS.md)
-- "Used by N": count-only or click-to-drill-down list of owners?
-- **Biggest one:** link from a library picker (reuse existing rows — true to "stop copying files") vs free-form create-and-link? Determines whether `listCreatorLibrary`/`linkExisting` get built.
-- Unlink confirm UX? (proposed: confirm dialog, since last-link unlink soft-deletes the shared row)
-- Scope editing (global↔project) — proposed OUT of scope for #4 (display-only).
+As-built (see auto-memory `project_resources_architecture.md` → Shipped section for the authoritative detail):
+- Single `resources` table. `creatorId`/`source` replaced by `addedBy: Id<'creators'>` + `owner: {kind:'creator',id} | {kind:'github',handle}` + `storage: 'hosted'|'linked'`. `mirrorMode` dropped. `files` now optional.
+- **`upstream` presence is the sole storage discriminator**: present ⇒ linked (pure reference, NO `files`), absent ⇒ hosted (`files`, per-creator).
+- Dedup branches in `upsertResourcesForOwner`: hosted → `(addedBy, stableKey)` via `by_addedBy_stableKey`; linked → GLOBAL `(repoUrl, path ?? '')` via `by_upstream`, so two creators linking the same repo path share ONE row + two links. Orphan soft-delete (table-wide link count) keeps a shared row alive until its last link drops.
+- New helpers in `convex/lib/resourceLinks.ts`: `parseGithubHandle`, `resolveLinkedResourceDocs` (extracted), exported `softDeleteIfOrphaned`. Input/output validator split: `ResourceInput` (schema.ts) for args, `Resource` for returns.
+- Reset, not migrate: `convex/migrations/20260529_reset_resources.ts` hard-deletes all `resources` + `resourceLinks` (tested, idempotent).
+- **Operational gate before this pushes:** the new required `owner`/`addedBy`/`storage` fields make Convex reject existing rows. Clear both tables (dashboard, or temporarily `schemaValidation:false` → push → run the reset mutation → re-enable) so the schema push succeeds on empty tables.
+- Known residual (logged in memory open-questions): the `by_upstream` dedup uses the raw `repoUrl` — not yet canonicalized for trailing-slash / `.git` / `git@`↔`https` variants, so URL spelling differences would fork shared rows. Normalize before it bites.
 
-**Files:** extend `convex/resources.ts` (`getResourceBrowserContext` +usedByCount, maybe +`listCreatorLibrary`/`linkExisting`); modify `src/components/resources/ResourceTree.tsx` + `ResourceBrowser.tsx` (badges, used-by, `onUnlink`/`onLinkExisting` — both follow the existing optional-callback pattern, NOT in-flight, safe). Create `src/components/resources/LinkResourceDialog.tsx` (if library direction), optional `ScopeBadge.tsx`.
+### Slice B — UI — REMAINING
 
-**Note:** `scope` is already on the wire (`getResourceBrowserContext` returns full `Resource` objects incl. `scope`) — the badge likely needs no backend change; only "used by N" does. `ResourceTree` today distinguishes by *source* (stack vs project section), never by *scope*.
+Hang the original affordances off the shipped model, inside `ResourceBrowser`/`ResourceTree`:
+- Origin/scope badge — `scope` (global/project) AND `owner.kind` (mine vs a GitHub handle) are both on the wire now; render monospace, sharp corners, lime per AGENTS.md.
+- "Used by N builders" count — cross-creator, falls out of `by_resourceId` (links) / `by_upstream`; fold into `getResourceBrowserContext` or a dedicated query.
+- Unlink action — wire the ready `unlinkResource`; confirm dialog since last-link unlink soft-deletes the shared row.
+- Attach-existing + create-new — both confirmed in scope. Reintroduce the `isOwnedBy(resource, creatorId)` derived helper here (built then removed in slice A as premature — zero consumers; add it back with a real caller).
+- Still display-only: no global↔project scope editing.
 
 ## CRITICAL caveats
 
