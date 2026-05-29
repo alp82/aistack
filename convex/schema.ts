@@ -162,9 +162,6 @@ export default defineSchema({
     teamSize: v.optional(v.number()),
     oneLiner: v.string(),
     description: v.optional(v.string()),
-    // TRANSITIONAL: loose shim so un-migrated prod rows validate; remove after
-    // running migrations/20260528_clear_embedded_resources:run on prod.
-    resources: v.optional(v.array(v.any())),
     stackImageUrl: v.optional(v.string()),
     avatarStorageId: v.optional(v.id('_storage')),
     personalPageUrl: v.optional(v.string()),
@@ -344,9 +341,6 @@ export default defineSchema({
     order: v.optional(v.number()),
     cloneCount: v.optional(v.number()),
     published: v.optional(v.boolean()),
-    // TRANSITIONAL: loose shim so un-migrated prod rows validate; remove after
-    // running migrations/20260528_clear_embedded_resources:run on prod.
-    resources: v.optional(v.array(v.any())),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
