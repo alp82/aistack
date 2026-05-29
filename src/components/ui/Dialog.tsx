@@ -71,6 +71,7 @@ export function Dialog({
 						<button
 							type="button"
 							onClick={onClose}
+							aria-label="Close"
 							className="flex size-8 shrink-0 items-center justify-center border border-stroke-subtle text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime cursor-pointer"
 						>
 							<X className="size-4" />
@@ -81,6 +82,7 @@ export function Dialog({
 					<button
 						type="button"
 						onClick={onClose}
+						aria-label="Close"
 						className="absolute right-4 top-4 flex size-8 shrink-0 items-center justify-center border border-stroke-subtle text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime cursor-pointer"
 					>
 						<X className="size-4" />

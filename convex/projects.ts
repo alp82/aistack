@@ -1,7 +1,7 @@
 import { mutation, query } from './_generated/server'
-import type { Doc } from './_generated/dataModel'
+import type { Doc, Id } from './_generated/dataModel'
 import { v } from 'convex/values'
-import { extractShortId } from './lib/ids'
+import { extractShortId, generateUniqueShortId } from './lib/ids'
 import { slugifyAscii } from '../src/lib/slug'
 import { Resource as ResourceValidator } from './schema'
 import { cascadeUnlinkOwner, resolveLinkedResources } from './lib/resourceLinks'
@@ -378,6 +378,64 @@ export const updateProject = mutation({
   },
 })
 
+export const createProject = mutation({
+  args: {
+    name: v.string(),
+    description: v.optional(v.string()),
+    url: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    stackId: v.optional(v.id('stacks')),
+  },
+  returns: v.object({ _id: v.id('projects'), slug: v.string() }),
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity()
+    if (!user) throw new Error('Not authenticated')
+    const userId = user.tokenIdentifier.split('|')[1]
+
+    const creator = await ctx.db
+      .query('creators')
+      .withIndex('by_userId', (q) => q.eq('userId', userId))
+      .first()
+    if (!creator) throw new Error('Creator profile not found. Create one first.')
+
+    let resolvedStackId: Id<'stacks'>
+    if (args.stackId !== undefined) {
+      const stack = await ctx.db.get(args.stackId)
+      if (!stack) throw new Error('Stack not found')
+      if (stack.creatorId !== creator._id) throw new Error('Not authorized')
+      resolvedStackId = stack._id
+    } else {
+      const stack = await ctx.db
+        .query('stacks')
+        .withIndex('by_creatorId', (q) => q.eq('creatorId', creator._id))
+        .first()
+      if (!stack) throw new Error('You need a stack before adding projects.')
+      resolvedStackId = stack._id
+    }
+
+    const slug = slugifyAscii(args.name, 'project')
+    const shortId = await generateUniqueShortId(ctx, 'projects')
+    const now = Date.now()
+
+    const projectId = await ctx.db.insert('projects', {
+      name: args.name,
+      slug,
+      shortId,
+      creatorId: creator._id,
+      stackId: resolvedStackId,
+      source: 'web',
+      description: args.description,
+      url: args.url,
+      tags: args.tags,
+      published: false,
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    return { _id: projectId, slug: `${slug}-${shortId}` }
+  },
+})
+
 export const publishProject = mutation({
   args: {
     projectId: v.id('projects'),
@@ -444,6 +502,9 @@ export const deleteProject = mutation({
 
     const creator = await ctx.db.get(project.creatorId)
     if (!creator || creator.userId !== userId) throw new Error('Not authorized')
+
+    if (project.published === true)
+      throw new Error('Cannot delete a published project. Unpublish it first.')
 
     await cascadeUnlinkOwner(ctx, 'project', args.projectId)
     await ctx.db.delete(args.projectId)

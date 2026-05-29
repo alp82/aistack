@@ -1,10 +1,15 @@
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { Check, Copy, Download, FolderOpen, Trash2 } from "lucide-react";
+import { Check, Copy, Download, FolderOpen, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { ProjectOrderButtons } from "@/components/ProjectOrderButtons";
 import { TagBadge } from "@/components/TagBadge";
+import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Dialog } from "@/components/ui/Dialog";
+import { FormField } from "@/components/ui/form-field";
+import { FormInput } from "@/components/ui/form-input";
+import { FormTextarea } from "@/components/ui/form-textarea";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 
@@ -24,12 +29,14 @@ export function ProjectsSection({
 	const reorderProjects = useMutation(api.projects.reorderProjects);
 	const publishProject = useMutation(api.projects.publishProject);
 	const deleteProjectMutation = useMutation(api.projects.deleteProject);
+	const createProject = useMutation(api.projects.createProject);
 	const [deleteTarget, setDeleteTarget] = useState<{
 		id: Id<"projects">;
 		name: string;
 	} | null>(null);
 	const [deleting, setDeleting] = useState(false);
 	const [copied, setCopied] = useState(false);
+	const [createOpen, setCreateOpen] = useState(false);
 
 	const hasProjects = projects && projects.length > 0;
 	if (!isOwner && !hasProjects) return null;
@@ -57,6 +64,16 @@ export function ProjectsSection({
 					<h2 className="font-mono text-sm text-accent-lime">
 						{"// PROJECTS"}
 					</h2>
+					{isOwner && (
+						<button
+							type="button"
+							onClick={() => setCreateOpen(true)}
+							className="inline-flex items-center gap-1.5 border border-stroke-subtle px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime cursor-pointer"
+						>
+							<Plus className="size-3" />
+							New Project
+						</button>
+					)}
 					{isOwner && hasProjects && (
 						<div className="inline-flex items-center gap-2 font-mono text-xs text-fg-muted">
 							<span className="uppercase tracking-wider">Add more:</span>
@@ -104,6 +121,7 @@ export function ProjectsSection({
 									<button
 										type="button"
 										onClick={copyCliCommand}
+										aria-label="Copy command"
 										className="border-l border-stroke-subtle px-2 py-1.5 text-fg-muted hover:text-fg-primary transition-colors cursor-pointer"
 									>
 										{copied ? (
@@ -116,6 +134,14 @@ export function ProjectsSection({
 								<p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-fg-muted">
 									Projects arrive as drafts. Review and publish them here.
 								</p>
+								<button
+									type="button"
+									onClick={() => setCreateOpen(true)}
+									className="mt-4 inline-flex items-center gap-1.5 border border-stroke-subtle px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime cursor-pointer"
+								>
+									<Plus className="size-3" />
+									New Project
+								</button>
 							</div>
 						</div>
 					</div>
@@ -207,18 +233,21 @@ export function ProjectsSection({
 												>
 													{isDraft ? "Publish" : "Unpublish"}
 												</button>
-												<button
-													type="button"
-													onClick={() =>
-														setDeleteTarget({
-															id: project._id,
-															name: project.name,
-														})
-													}
-													className="font-mono text-[10px] font-semibold uppercase tracking-wider border border-stroke-subtle px-2 py-1 text-fg-muted transition-colors hover:border-destructive hover:text-destructive cursor-pointer"
-												>
-													<Trash2 className="size-3" />
-												</button>
+												{isDraft && (
+													<button
+														type="button"
+														onClick={() =>
+															setDeleteTarget({
+																id: project._id,
+																name: project.name,
+															})
+														}
+														aria-label={`Delete ${project.name}`}
+														className="font-mono text-[10px] font-semibold uppercase tracking-wider border border-stroke-subtle px-2 py-1 text-fg-muted transition-colors hover:border-destructive hover:text-destructive cursor-pointer"
+													>
+														<Trash2 className="size-3" />
+													</button>
+												)}
 											</div>
 										)}
 									</div>
@@ -249,7 +278,162 @@ export function ProjectsSection({
 					variant="danger"
 					loading={deleting}
 				/>
+
+				<CreateProjectDialog
+					open={createOpen}
+					onClose={() => setCreateOpen(false)}
+					stackId={stackId}
+					createProject={createProject}
+				/>
 			</div>
 		</section>
+	);
+}
+
+function CreateProjectDialog({
+	open,
+	onClose,
+	stackId,
+	createProject,
+}: {
+	open: boolean;
+	onClose: () => void;
+	stackId: Id<"stacks">;
+	createProject: (args: {
+		name: string;
+		description?: string;
+		url?: string;
+		tags?: string[];
+		stackId: Id<"stacks">;
+	}) => Promise<{ _id: Id<"projects">; slug: string }>;
+}) {
+	const [name, setName] = useState("");
+	const [description, setDescription] = useState("");
+	const [url, setUrl] = useState("");
+	const [tags, setTags] = useState<string[]>([]);
+	const [tagInput, setTagInput] = useState("");
+	const [submitting, setSubmitting] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	const addTag = () => {
+		const trimmed = tagInput.trim().toLowerCase();
+		if (trimmed && !tags.includes(trimmed)) {
+			setTags([...tags, trimmed]);
+		}
+		setTagInput("");
+	};
+
+	const removeTag = (tag: string) => {
+		setTags(tags.filter((t) => t !== tag));
+	};
+
+	const reset = () => {
+		setName("");
+		setDescription("");
+		setUrl("");
+		setTags([]);
+		setTagInput("");
+		setError(null);
+	};
+
+	const handleClose = () => {
+		reset();
+		onClose();
+	};
+
+	const handleSubmit = async () => {
+		const trimmedName = name.trim();
+		if (!trimmedName || submitting) return;
+		setSubmitting(true);
+		setError(null);
+		try {
+			await createProject({
+				name: trimmedName,
+				description: description.trim() || undefined,
+				url: url.trim() || undefined,
+				tags: tags.length ? tags : undefined,
+				stackId,
+			});
+			reset();
+			onClose();
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to create project");
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
+	return (
+		<Dialog open={open} onClose={handleClose} title="New Project">
+			<div className="space-y-4">
+				<FormInput
+					label="Name"
+					required
+					value={name}
+					onChange={(e) => setName(e.target.value)}
+					placeholder="My project"
+				/>
+				<FormTextarea
+					label="Description"
+					rows={2}
+					value={description}
+					onChange={(e) => setDescription(e.target.value)}
+					placeholder="Short description of the project..."
+				/>
+				<FormInput
+					label="URL"
+					value={url}
+					onChange={(e) => setUrl(e.target.value)}
+					placeholder="https://..."
+				/>
+				<FormField label="Tags" htmlFor="create-project-tags">
+					<input
+						id="create-project-tags"
+						type="text"
+						value={tagInput}
+						onChange={(e) => setTagInput(e.target.value)}
+						onKeyDown={(e) => {
+							if (e.key === "Enter") {
+								e.preventDefault();
+								addTag();
+							}
+						}}
+						placeholder="Add tag + Enter"
+						className="w-full border-2 border-stroke-subtle bg-bg-panel px-2 py-1.5 font-mono text-xs text-fg-primary placeholder:text-fg-muted focus:border-accent-lime focus:outline-none"
+					/>
+					{tags.length > 0 && (
+						<div className="mt-2 flex flex-wrap gap-1.5">
+							{tags.map((tag) => (
+								<TagBadge
+									key={tag}
+									tag={tag}
+									size="md"
+									onRemove={() => removeTag(tag)}
+								/>
+							))}
+						</div>
+					)}
+				</FormField>
+				{error && <p className="font-mono text-xs text-destructive">{error}</p>}
+				<div className="flex justify-end gap-2 pt-2">
+					<Button
+						type="button"
+						variant="outline"
+						onClick={handleClose}
+						className="font-mono text-xs font-bold uppercase tracking-wider"
+					>
+						Cancel
+					</Button>
+					<Button
+						type="button"
+						onClick={handleSubmit}
+						disabled={!name.trim() || submitting}
+						className="font-mono text-xs font-bold uppercase tracking-wider"
+					>
+						{submitting ? "Creating..." : "Create"}
+					</Button>
+				</div>
+			</div>
+		</Dialog>
 	);
 }

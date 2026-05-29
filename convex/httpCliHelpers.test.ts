@@ -947,3 +947,173 @@ test('unlinkResource rejects a non-owner', async () => {
   const items = await resourcesForOwner(t, 'project', project._id)
   expect(items).toHaveLength(1)
 })
+
+test('deleteProject rejects a published project and allows an unpublished one', async () => {
+  const t = convexTest(schema, modules)
+  const { creatorId, stackId } = await seedCreatorAndStack(t)
+  await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
+
+  const now = Date.now()
+  const { publishedId, draftId } = await t.run(async (ctx: MutationCtx) => {
+    const publishedId = await ctx.db.insert('projects', {
+      name: 'Published',
+      slug: 'published',
+      shortId: 'PUB001',
+      creatorId,
+      stackId,
+      published: true,
+      createdAt: now,
+      updatedAt: now,
+    })
+    const draftId = await ctx.db.insert('projects', {
+      name: 'Draft',
+      slug: 'draft',
+      shortId: 'DRF001',
+      creatorId,
+      stackId,
+      published: false,
+      createdAt: now,
+      updatedAt: now,
+    })
+    return { publishedId, draftId }
+  })
+
+  const asUser = t.withIdentity({ tokenIdentifier: 'convex|user-1' })
+
+  // Published project cannot be hard-deleted.
+  await expect(
+    asUser.mutation(api.projects.deleteProject, { projectId: publishedId }),
+  ).rejects.toThrow(/published/i)
+  const stillThere = await t.run(async (ctx: MutationCtx) => ctx.db.get(publishedId))
+  expect(stillThere).not.toBeNull()
+
+  // Unpublished project deletes successfully and the row is gone.
+  await asUser.mutation(api.projects.deleteProject, { projectId: draftId })
+  const gone = await t.run(async (ctx: MutationCtx) => ctx.db.get(draftId))
+  expect(gone).toBeNull()
+})
+
+test('createProject persists a web draft with unique slug+shortId, timestamps, and resolved stack', async () => {
+  const t = convexTest(schema, modules)
+  const { creatorId, stackId } = await seedCreatorAndStack(t)
+  await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
+
+  const asUser = t.withIdentity({ tokenIdentifier: 'convex|user-1' })
+  const result = await asUser.mutation(api.projects.createProject, {
+    name: 'Web Project',
+    description: 'd',
+    url: 'https://x',
+    tags: ['a'],
+  })
+  expect(result.slug).toMatch(/^web-project-[a-z0-9]{6}$/)
+
+  const projects = await t.run(async (ctx) =>
+    ctx.db
+      .query('projects')
+      .withIndex('by_creatorId', (q) => q.eq('creatorId', creatorId))
+      .collect(),
+  )
+  expect(projects).toHaveLength(1)
+  const project = projects[0]
+  expect(project._id).toBe(result._id)
+  expect(project.published).toBe(false)
+  expect(project.source).toBe('web')
+  expect(project.order).toBeUndefined()
+  expect(project.stackId).toBe(stackId)
+  expect(project.description).toBe('d')
+  expect(project.url).toBe('https://x')
+  expect(project.tags).toEqual(['a'])
+  expect(project.shortId).toHaveLength(6)
+  expect(project.createdAt).toBeGreaterThan(0)
+  expect(project.updatedAt).toBeGreaterThan(0)
+})
+
+test('createProject appends to the bottom of listByStack (order undefined)', async () => {
+  const t = convexTest(schema, modules)
+  const { creatorId, stackId } = await seedCreatorAndStack(t)
+  await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
+
+  // Pre-existing project with order undefined and an earlier createdAt.
+  const existingId = await t.run(async (ctx) =>
+    ctx.db.insert('projects', {
+      name: 'Existing',
+      slug: 'existing',
+      shortId: 'EXS001',
+      creatorId,
+      stackId,
+      published: false,
+      createdAt: Date.now() - 10_000,
+      updatedAt: Date.now() - 10_000,
+    }),
+  )
+
+  const asUser = t.withIdentity({ tokenIdentifier: 'convex|user-1' })
+  const result = await asUser.mutation(api.projects.createProject, {
+    name: 'New One',
+  })
+
+  const list = await t.query(api.projects.listByStack, {
+    stackId,
+    includeUnpublished: true,
+  })
+  expect(list).toHaveLength(2)
+  expect(list[0]._id).toBe(existingId)
+  expect(list[list.length - 1]._id).toBe(result._id)
+})
+
+test('createProject auto-resolves the single stack and rejects when the creator has none', async () => {
+  const t = convexTest(schema, modules)
+  const { creatorId, stackId } = await seedCreatorAndStack(t)
+  await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
+
+  // Auto-resolve: no stackId arg -> falls back to the creator's single stack.
+  const asUser = t.withIdentity({ tokenIdentifier: 'convex|user-1' })
+  const result = await asUser.mutation(api.projects.createProject, { name: 'x' })
+  const project = await t.run(async (ctx) => ctx.db.get(result._id))
+  expect(project?.stackId).toBe(stackId)
+
+  // A lone creator with no stack -> clear error.
+  await t.run(async (ctx) =>
+    ctx.db.insert('creators', {
+      name: 'Stackless',
+      slug: 'stackless',
+      userId: 'user-2',
+      verified: false,
+      personalPages: [],
+      projectPages: [],
+      createdAt: Date.now(),
+    }),
+  )
+  const asUser2 = t.withIdentity({ tokenIdentifier: 'convex|user-2' })
+  await expect(
+    asUser2.mutation(api.projects.createProject, { name: 'x' }),
+  ).rejects.toThrow(/stack/i)
+})
+
+test('createProject rejects an unauthenticated caller and a non-owner of the target stack', async () => {
+  const t = convexTest(schema, modules)
+  const { creatorId, stackId } = await seedCreatorAndStack(t)
+  await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
+
+  // Unauthenticated.
+  await expect(
+    t.mutation(api.projects.createProject, { name: 'x' }),
+  ).rejects.toThrow(/not authenticated/i)
+
+  // A different creator targeting the owner's stack -> Not authorized.
+  await t.run(async (ctx) =>
+    ctx.db.insert('creators', {
+      name: 'Other',
+      slug: 'other',
+      userId: 'user-2',
+      verified: false,
+      personalPages: [],
+      projectPages: [],
+      createdAt: Date.now(),
+    }),
+  )
+  const asOther = t.withIdentity({ tokenIdentifier: 'convex|user-2' })
+  await expect(
+    asOther.mutation(api.projects.createProject, { name: 'x', stackId }),
+  ).rejects.toThrow(/not authorized/i)
+})

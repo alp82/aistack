@@ -27,6 +27,7 @@ export function TagBadge({
 				<button
 					type="button"
 					onClick={onRemove}
+					aria-label={`Remove ${tag}`}
 					className="ml-0.5 text-fg-secondary hover:text-fg-default transition-colors cursor-pointer"
 				>
 					<X className={size === "sm" ? "size-3" : "size-3.5"} />

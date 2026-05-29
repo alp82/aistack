@@ -182,14 +182,16 @@ function ProjectDetailPage() {
 										Unpublish
 									</button>
 								)}
-								<button
-									type="button"
-									onClick={() => setShowDeleteConfirm(true)}
-									className="inline-flex items-center gap-1.5 border border-stroke-subtle px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-muted transition-colors hover:border-destructive hover:text-destructive cursor-pointer"
-								>
-									<Trash2 className="size-3" />
-									Delete
-								</button>
+								{project.published !== true && (
+									<button
+										type="button"
+										onClick={() => setShowDeleteConfirm(true)}
+										className="inline-flex items-center gap-1.5 border border-stroke-subtle px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-muted transition-colors hover:border-destructive hover:text-destructive cursor-pointer"
+									>
+										<Trash2 className="size-3" />
+										Delete
+									</button>
+								)}
 							</div>
 						)}
 						<span>
