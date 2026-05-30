@@ -1,8 +1,21 @@
 import type { Infer } from 'convex/values'
+import { parseRepo } from '../../src/lib/github-repo'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { Resource as ResourceValidator, ResourceInput } from '../schema'
 import { generateUniqueShortId } from './ids'
+
+// `src/lib/github-repo.ts` is the single source of truth for the GitHub repo
+// parser (it owns the test table). Convex imports plain TS from `src/` the same
+// way it imports `slugifyAscii` elsewhere. Re-exported here so existing
+// importers of this module (resources.ts, the test, etc.) keep working.
+export {
+  canonicalizeRepoUrl,
+  isGithubRepoUrl,
+  normalizeUpstreamPath,
+  parseRepo,
+  repoNameFromCanonical,
+} from '../../src/lib/github-repo'
 
 /**
  * Owner-scoped resource access. Hosted `resources` rows are shared per
@@ -26,17 +39,12 @@ function castOwnerId(ownerKind: OwnerKind, ownerId: string) {
 
 /**
  * Derive a GitHub handle (owner org/user) from a repo URL without any network
- * call. Handles `https://github.com/owner/repo(.git)` and
- * `git@github.com:owner/repo(.git)` forms; falls back to the trimmed input.
+ * call. Falls back to the trimmed input when the URL is not a recognizable
+ * `owner/repo` form (preserving the prior contract). Server-only wrapper over
+ * the shared `parseRepo`; used at the linked-row insert.
  */
 export function parseGithubHandle(repoUrl: string): string {
-  const trimmed = repoUrl.trim()
-  const scpMatch = trimmed.match(/^[^@]+@[^:]+:(.+)$/)
-  const pathPart = scpMatch
-    ? scpMatch[1]
-    : trimmed.replace(/^[a-z]+:\/\//i, '').replace(/^[^/]+\//, '')
-  const segments = pathPart.replace(/\.git$/, '').split('/').filter(Boolean)
-  return segments[0] ?? trimmed
+  return parseRepo(repoUrl)?.owner ?? repoUrl.trim()
 }
 
 function toResource(doc: Doc<'resources'>): Resource {

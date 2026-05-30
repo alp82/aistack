@@ -4,7 +4,7 @@ import { expect, test } from 'vitest'
 import schema from './schema'
 import { api, internal } from './_generated/api'
 import type { MutationCtx } from './_generated/server'
-import type { Doc } from './_generated/dataModel'
+import type { Doc, Id } from './_generated/dataModel'
 
 const modules = import.meta.glob('./**/*.{js,ts}')
 
@@ -1325,4 +1325,266 @@ test('upsert guard: linked-with-files and hosted-without-files both throw', asyn
       source: 'cli',
     }),
   ).rejects.toThrow(/hosted resource must carry files/)
+})
+
+async function seedOwnedProject(
+  t: ReturnType<typeof convexTest>,
+  creatorId: Id<'creators'>,
+  stackId: Id<'stacks'>,
+  name: string,
+  slug: string,
+  shortId: string,
+) {
+  return await t.run(async (ctx: MutationCtx) => {
+    const now = Date.now()
+    return await ctx.db.insert('projects', {
+      name,
+      slug,
+      shortId,
+      creatorId,
+      stackId,
+      published: false,
+      createdAt: now,
+      updatedAt: now,
+    })
+  })
+}
+
+test('linkResource creates one fileless linked row owned by the github handle', async () => {
+  const t = convexTest(schema, modules)
+  const { creatorId, stackId } = await seedCreatorAndStack(t)
+  await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
+  const projectId = await seedOwnedProject(
+    t,
+    creatorId,
+    stackId,
+    'p',
+    'p',
+    'PRJ001',
+  )
+
+  const asUser = t.withIdentity({ tokenIdentifier: 'convex|user-1' })
+  await asUser.mutation(api.resources.linkResource, {
+    target: { kind: 'project', id: projectId },
+    item: {
+      type: 'rule',
+      name: 'AGENTS',
+      group: 'claude-code',
+      stableKey: 'pending',
+      upstream: { repoUrl: 'https://github.com/acme/repo', path: 'src/agents' },
+    },
+  })
+
+  const rows = await t.run(async (ctx) => ctx.db.query('resources').collect())
+  expect(rows).toHaveLength(1)
+  expect(rows[0].storage).toBe('linked')
+  expect(rows[0].files).toBeUndefined()
+  expect(rows[0].owner).toEqual({ kind: 'github', handle: 'acme' })
+  expect(rows[0].scope).toBe('global')
+  expect(rows[0].addedBy).toBe(creatorId)
+  expect(rows[0].upstream?.repoUrl).toBe('https://github.com/acme/repo')
+  expect(rows[0].upstream?.path).toBe('src/agents')
+  expect(rows[0].stableKey).toBe(
+    'linked:https://github.com/acme/repo:src/agents',
+  )
+
+  const links = await resourcesForOwner(t, 'project', projectId)
+  expect(links).toHaveLength(1)
+})
+
+test('linkResource dedups two owners onto ONE row across messy casing/.git/slash/query', async () => {
+  const t = convexTest(schema, modules)
+  const { creatorId: creatorA, stackId: stackA } = await seedCreatorAndStack(t)
+  await t.run(async (ctx) => ctx.db.patch(creatorA, { userId: 'user-a' }))
+  const projectA = await seedOwnedProject(
+    t,
+    creatorA,
+    stackA,
+    'project-a',
+    'project-a',
+    'PRJ00A',
+  )
+
+  const { creatorB, stackB } = await t.run(async (ctx) => {
+    const now = Date.now()
+    const creatorB = await ctx.db.insert('creators', {
+      name: 'Creator B',
+      slug: 'creator-b',
+      userId: 'user-b',
+      verified: false,
+      personalPages: [],
+      projectPages: [],
+      createdAt: now,
+    })
+    const stackB = await ctx.db.insert('stacks', {
+      name: 'Stack B',
+      slug: 'stack-b',
+      shortId: 'STK00B',
+      creatorId: creatorB,
+      oneLiner: 'b',
+      toolSubscriptions: [],
+      hasUsageComponent: false,
+      published: false,
+      createdAt: now,
+      updatedAt: now,
+    })
+    return { creatorB, stackB }
+  })
+  const projectB = await seedOwnedProject(
+    t,
+    creatorB,
+    stackB,
+    'project-b',
+    'project-b',
+    'PRJ00B',
+  )
+
+  const asA = t.withIdentity({ tokenIdentifier: 'convex|user-a' })
+  await asA.mutation(api.resources.linkResource, {
+    target: { kind: 'project', id: projectA },
+    item: {
+      type: 'rule',
+      name: 'A names it',
+      group: 'claude-code',
+      stableKey: 'pending',
+      upstream: { repoUrl: 'https://github.com/acme/repo', path: 'AGENTS.md' },
+    },
+  })
+
+  // B links the SAME logical repo+path via a messy URL/path: scp form, .git,
+  // mixed case owner/repo, query string, and a leading slash on the path.
+  const asB = t.withIdentity({ tokenIdentifier: 'convex|user-b' })
+  await asB.mutation(api.resources.linkResource, {
+    target: { kind: 'project', id: projectB },
+    item: {
+      type: 'rule',
+      name: 'B names it differently',
+      group: 'claude-code',
+      stableKey: 'pending',
+      upstream: {
+        repoUrl: 'git@github.com:Acme/Repo.git?tab=readme',
+        path: '/AGENTS.md',
+      },
+    },
+  })
+
+  const rows = await t.run(async (ctx) => ctx.db.query('resources').collect())
+  expect(rows).toHaveLength(1)
+  expect(rows[0].upstream?.repoUrl).toBe('https://github.com/acme/repo')
+  expect(rows[0].upstream?.path).toBe('AGENTS.md')
+
+  const links = await t.run(async (ctx) =>
+    ctx.db
+      .query('resourceLinks')
+      .withIndex('by_resourceId', (q) => q.eq('resourceId', rows[0]._id))
+      .collect(),
+  )
+  expect(links).toHaveLength(2)
+  expect(await resourcesForOwner(t, 'project', projectA)).toHaveLength(1)
+  expect(await resourcesForOwner(t, 'project', projectB)).toHaveLength(1)
+})
+
+test('linkResource rejects a non-github / repo-less URL and writes nothing', async () => {
+  const t = convexTest(schema, modules)
+  const { creatorId, stackId } = await seedCreatorAndStack(t)
+  await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
+  const projectId = await seedOwnedProject(
+    t,
+    creatorId,
+    stackId,
+    'p',
+    'p',
+    'PRJ00C',
+  )
+
+  const asUser = t.withIdentity({ tokenIdentifier: 'convex|user-1' })
+  await expect(
+    asUser.mutation(api.resources.linkResource, {
+      target: { kind: 'project', id: projectId },
+      item: {
+        type: 'rule',
+        name: 'gitlab',
+        group: 'claude-code',
+        stableKey: 'pending',
+        upstream: { repoUrl: 'https://gitlab.com/acme/repo' },
+      },
+    }),
+  ).rejects.toThrow(/GitHub repository URLs/)
+
+  await expect(
+    asUser.mutation(api.resources.linkResource, {
+      target: { kind: 'project', id: projectId },
+      item: {
+        type: 'rule',
+        name: 'repo-less',
+        group: 'claude-code',
+        stableKey: 'pending',
+        upstream: { repoUrl: 'https://github.com/onlyowner' },
+      },
+    }),
+  ).rejects.toThrow(/GitHub repository URLs/)
+
+  const rows = await t.run(async (ctx) => ctx.db.query('resources').collect())
+  expect(rows).toHaveLength(0)
+})
+
+test('linkResource rejects a non-owner', async () => {
+  const t = convexTest(schema, modules)
+  const { creatorId, stackId } = await seedCreatorAndStack(t)
+  await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'owner-user' }))
+  const projectId = await seedOwnedProject(
+    t,
+    creatorId,
+    stackId,
+    'p',
+    'p',
+    'PRJ00D',
+  )
+
+  const asOther = t.withIdentity({ tokenIdentifier: 'convex|intruder' })
+  await expect(
+    asOther.mutation(api.resources.linkResource, {
+      target: { kind: 'project', id: projectId },
+      item: {
+        type: 'rule',
+        name: 'x',
+        group: 'claude-code',
+        stableKey: 'pending',
+        upstream: { repoUrl: 'https://github.com/acme/repo' },
+      },
+    }),
+  ).rejects.toThrow('Not authorized')
+
+  const rows = await t.run(async (ctx) => ctx.db.query('resources').collect())
+  expect(rows).toHaveLength(0)
+})
+
+test('linkResource throws when upstream is omitted and writes nothing', async () => {
+  const t = convexTest(schema, modules)
+  const { creatorId, stackId } = await seedCreatorAndStack(t)
+  await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
+  const projectId = await seedOwnedProject(
+    t,
+    creatorId,
+    stackId,
+    'p',
+    'p',
+    'PRJ00E',
+  )
+
+  const asUser = t.withIdentity({ tokenIdentifier: 'convex|user-1' })
+  await expect(
+    asUser.mutation(api.resources.linkResource, {
+      target: { kind: 'project', id: projectId },
+      item: {
+        type: 'rule',
+        name: 'no-upstream',
+        group: 'claude-code',
+        stableKey: 'pending',
+      },
+    }),
+  ).rejects.toThrow(/requires an upstream repo URL/)
+
+  const rows = await t.run(async (ctx) => ctx.db.query('resources').collect())
+  expect(rows).toHaveLength(0)
 })

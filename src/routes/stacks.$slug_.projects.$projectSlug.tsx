@@ -7,12 +7,13 @@ import {
 	Copy,
 	Download,
 	ExternalLink,
+	Github,
 	Pencil,
 	Terminal,
 	Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { ResourceBrowser } from "@/components/resources";
+import { LinkResourceDialog, ResourceBrowser } from "@/components/resources";
 import { TagBadge } from "@/components/TagBadge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { seoMeta } from "@/lib/seo";
@@ -63,6 +64,7 @@ function ProjectDetailPage() {
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 	const [deleting, setDeleting] = useState(false);
 	const [editOpen, setEditOpen] = useState(false);
+	const [linkOpen, setLinkOpen] = useState(false);
 
 	if (project === undefined) {
 		return (
@@ -290,16 +292,52 @@ function ProjectDetailPage() {
 			</header>
 
 			<div className="mx-auto max-w-content px-6 py-12">
-				{hasResources && (
-					<>
-						<h2 className="mb-6 font-mono text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-accent-lime">
-							Project Files
-							<span className="ml-2 text-fg-muted">{fileCount}</span>
-						</h2>
-						<ResourceBrowser target={{ kind: "project", id: project._id }} />
-					</>
+				<div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2">
+					<h2 className="font-mono text-xs font-bold uppercase tracking-widest text-accent-lime">
+						Project Files
+						<span className="ml-2 text-fg-muted">
+							{fileCount > 0
+								? fileCount
+								: hasResources
+									? `${project.resources.length} linked`
+									: 0}
+						</span>
+					</h2>
+					{project.isOwner && (
+						<button
+							type="button"
+							onClick={() => setLinkOpen(true)}
+							className="inline-flex items-center gap-1.5 border border-stroke-subtle px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime cursor-pointer"
+						>
+							<Github className="size-3" />
+							Link from GitHub
+						</button>
+					)}
+				</div>
+				{hasResources ? (
+					<ResourceBrowser target={{ kind: "project", id: project._id }} />
+				) : project.isOwner ? (
+					<div className="flex flex-col items-start gap-3 border border-stroke-subtle bg-bg-panel-muted/40 p-6">
+						<p className="font-mono text-xs text-fg-muted">No resources yet.</p>
+						<button
+							type="button"
+							onClick={() => setLinkOpen(true)}
+							className="inline-flex items-center gap-1.5 border border-stroke-subtle px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime cursor-pointer"
+						>
+							<Github className="size-3" />
+							Link from GitHub
+						</button>
+					</div>
+				) : (
+					<p className="font-mono text-xs text-fg-muted">No resources yet.</p>
 				)}
 			</div>
+
+			<LinkResourceDialog
+				open={linkOpen}
+				onClose={() => setLinkOpen(false)}
+				target={{ kind: "project", id: project._id }}
+			/>
 
 			<ConfirmDialog
 				open={showDeleteConfirm}

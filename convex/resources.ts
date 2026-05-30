@@ -1,10 +1,13 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
-import { Resource as ResourceValidator } from './schema'
+import { Resource as ResourceValidator, ResourceInput } from './schema'
 import {
+  canonicalizeRepoUrl,
+  normalizeUpstreamPath,
   resolveLinkedResourceDocs,
   resolveLinkedResources,
   unlinkResourceFromOwner,
+  upsertResourcesForOwner,
 } from './lib/resourceLinks'
 
 const StackTarget = v.object({
@@ -31,6 +34,7 @@ export const updateResourceContent = mutation({
     const user = await ctx.auth.getUserIdentity()
     if (!user) throw new Error('Not authenticated')
     const userId = user.tokenIdentifier.split('|')[1]
+    if (!userId) throw new Error('Not authenticated')
 
     const owner = await ctx.db.get(args.target.id)
     if (!owner) {
@@ -38,7 +42,7 @@ export const updateResourceContent = mutation({
     }
 
     const creator = await ctx.db.get(owner.creatorId)
-    if (!creator || creator.userId !== userId) {
+    if (!creator || !creator.userId || creator.userId !== userId) {
       throw new Error('Not authorized')
     }
 
@@ -75,6 +79,69 @@ export const updateResourceContent = mutation({
   },
 })
 
+export const linkResource = mutation({
+  args: {
+    target: TargetValidator,
+    item: ResourceInput,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity()
+    if (!user) throw new Error('Not authenticated')
+    const userId = user.tokenIdentifier.split('|')[1]
+    if (!userId) throw new Error('Not authenticated')
+
+    const owner = await ctx.db.get(args.target.id)
+    if (!owner) {
+      throw new Error(
+        args.target.kind === 'stack' ? 'Stack not found' : 'Project not found',
+      )
+    }
+
+    const creator = await ctx.db.get(owner.creatorId)
+    if (!creator || !creator.userId || creator.userId !== userId) {
+      throw new Error('Not authorized')
+    }
+
+    if (!args.item.upstream) {
+      throw new Error('A linked resource requires an upstream repo URL')
+    }
+
+    const canonical = canonicalizeRepoUrl(args.item.upstream.repoUrl)
+    if (canonical === null) {
+      throw new Error(
+        'Only GitHub repository URLs (github.com/owner/repo) can be linked',
+      )
+    }
+
+    const normPath = normalizeUpstreamPath(args.item.upstream.path)
+    const stableKey = `linked:${canonical}:${normPath}`
+
+    await upsertResourcesForOwner(ctx, {
+      addedBy: creator._id,
+      ownerKind: args.target.kind,
+      ownerId: args.target.id,
+      items: [
+        {
+          ...args.item,
+          files: undefined,
+          upstream: {
+            ...args.item.upstream,
+            repoUrl: canonical,
+            path: normPath || undefined,
+          },
+          stableKey,
+          scope: 'global',
+        },
+      ],
+      defaultScope: 'global',
+    })
+
+    await ctx.db.patch(args.target.id, { updatedAt: Date.now() })
+    return null
+  },
+})
+
 export const unlinkResource = mutation({
   args: {
     target: TargetValidator,
@@ -85,6 +152,7 @@ export const unlinkResource = mutation({
     const user = await ctx.auth.getUserIdentity()
     if (!user) throw new Error('Not authenticated')
     const userId = user.tokenIdentifier.split('|')[1]
+    if (!userId) throw new Error('Not authenticated')
 
     const owner = await ctx.db.get(args.target.id)
     if (!owner) {
@@ -92,7 +160,7 @@ export const unlinkResource = mutation({
     }
 
     const creator = await ctx.db.get(owner.creatorId)
-    if (!creator || creator.userId !== userId) {
+    if (!creator || !creator.userId || creator.userId !== userId) {
       throw new Error('Not authorized')
     }
 

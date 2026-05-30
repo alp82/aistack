@@ -1,6 +1,10 @@
-import { ChevronRight, Plus } from "lucide-react";
+import { ChevronRight, ExternalLink, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { Resource } from "@/features/stack-editor/types";
+import type { FileEntry, Resource } from "@/features/stack-editor/types";
+import {
+	normalizeUpstreamPath,
+	repoNameFromCanonical,
+} from "@/lib/github-repo";
 import {
 	getGroupLabel,
 	getResourceTypeColors,
@@ -53,6 +57,23 @@ interface TypeGroup {
 	totalFiles: number;
 }
 
+/**
+ * A linked resource carries no `files`; it is a pure GitHub reference. Synthesize
+ * a single display row from its `upstream` so it renders like a one-file entry.
+ * Returns the row's first real file when present, otherwise the pseudo-file.
+ */
+function linkedPseudoFile(item: Resource): FileEntry | undefined {
+	if (item.files?.[0]) return item.files[0];
+	if (!item.upstream) return undefined;
+	return {
+		name:
+			normalizeUpstreamPath(item.upstream.path) ||
+			repoNameFromCanonical(item.upstream.repoUrl),
+		content: "",
+		path: undefined,
+	};
+}
+
 interface GroupSection {
 	group: string;
 	typeGroups: TypeGroup[];
@@ -80,7 +101,7 @@ function groupByGroupAndType(resources: Resource[]): GroupSection[] {
 				type,
 				items: typeItems,
 				totalFiles: typeItems.reduce(
-					(sum, i) => sum + (i.files?.length ?? 0),
+					(sum, i) => sum + ((i.files?.length ?? 0) || (i.upstream ? 1 : 0)),
 					0,
 				),
 			}),
@@ -214,7 +235,7 @@ export function ResourceTree({
 												))}
 												{gs.singletons.map((group) => {
 													const item = group.items[0];
-													const file = item.files?.[0];
+													const file = linkedPseudoFile(item);
 													if (!file) return null;
 													return (
 														<FileRow
@@ -225,6 +246,7 @@ export function ResourceTree({
 															fileName={file.name}
 															type={item.type}
 															group={item.group}
+															upstream={item.upstream}
 															selected={selected}
 															onSelect={onSelect}
 															onInsertFile={onInsertFile}
@@ -330,7 +352,7 @@ function GroupBlock({
 					))}
 					{section.singletons.map((group) => {
 						const item = group.items[0];
-						const file = item.files?.[0];
+						const file = linkedPseudoFile(item);
 						if (!file) return null;
 						return (
 							<FileRow
@@ -341,6 +363,7 @@ function GroupBlock({
 								fileName={file.name}
 								type={item.type}
 								group={item.group}
+								upstream={item.upstream}
 								selected={selected}
 								onSelect={onSelect}
 								onInsertFile={onInsertFile}
@@ -404,8 +427,30 @@ function TypeBlock({
 				</span>
 			</button>
 			{expanded &&
-				typeGroup.items.flatMap((item) =>
-					(item.files ?? []).map((file) => (
+				typeGroup.items.flatMap((item) => {
+					// A linked row carries no files; synthesize a single pseudo-file so
+					// it still renders (otherwise a co-typed linked row is invisible).
+					const files = item.files ?? [];
+					if (files.length === 0) {
+						const file = linkedPseudoFile(item);
+						if (!file) return [];
+						return [
+							<FileRow
+								key={`${item.stableKey}:${file.name}`}
+								source={source}
+								sourceId={sourceId}
+								stableKey={item.stableKey}
+								fileName={file.name}
+								type={item.type}
+								group={item.group}
+								upstream={item.upstream}
+								selected={selected}
+								onSelect={onSelect}
+								onInsertFile={onInsertFile}
+							/>,
+						];
+					}
+					return files.map((file) => (
 						<FileRow
 							key={`${item.stableKey}:${file.name}`}
 							source={source}
@@ -418,8 +463,8 @@ function TypeBlock({
 							onSelect={onSelect}
 							onInsertFile={onInsertFile}
 						/>
-					)),
-				)}
+					));
+				})}
 		</div>
 	);
 }
@@ -431,6 +476,7 @@ function FileRow({
 	fileName,
 	type,
 	group,
+	upstream,
 	selected,
 	onSelect,
 	onInsertFile,
@@ -441,6 +487,7 @@ function FileRow({
 	fileName: string;
 	type: string;
 	group: string;
+	upstream?: Resource["upstream"];
 	selected?: ResourceTreeSelection | null;
 	onSelect?: (selection: ResourceTreeSelection) => void;
 	onInsertFile?: ResourceTreeProps["onInsertFile"];
@@ -458,18 +505,40 @@ function FileRow({
 				isSelected && "bg-accent-lime/10",
 			)}
 		>
-			<button
-				type="button"
-				onClick={() => onSelect?.({ source, sourceId, stableKey, fileName })}
-				className={cn(
-					"flex flex-1 items-center gap-2 px-3 py-1.5 pl-10 text-left transition-colors cursor-pointer",
-					isSelected
-						? "text-fg-primary"
-						: "text-fg-secondary hover:bg-bg-panel-muted hover:text-fg-primary",
-				)}
-			>
-				<span className="truncate font-mono text-xs">{fileName}</span>
-			</button>
+			{upstream ? (
+				<a
+					href={
+						upstream.path
+							? `${upstream.repoUrl}/tree/HEAD/${upstream.path}`
+							: upstream.repoUrl
+					}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="flex flex-1 items-center gap-2 px-3 py-1.5 pl-10 text-left text-fg-secondary transition-colors hover:bg-bg-panel-muted hover:text-fg-primary"
+				>
+					<span className="truncate font-mono text-xs">
+						{repoNameFromCanonical(upstream.repoUrl)}
+						{upstream.path ? ` · ${upstream.path}` : ""}
+					</span>
+					<ExternalLink
+						aria-hidden="true"
+						className="size-3 shrink-0 text-fg-muted"
+					/>
+				</a>
+			) : (
+				<button
+					type="button"
+					onClick={() => onSelect?.({ source, sourceId, stableKey, fileName })}
+					className={cn(
+						"flex flex-1 items-center gap-2 px-3 py-1.5 pl-10 text-left transition-colors cursor-pointer",
+						isSelected
+							? "text-fg-primary"
+							: "text-fg-secondary hover:bg-bg-panel-muted hover:text-fg-primary",
+					)}
+				>
+					<span className="truncate font-mono text-xs">{fileName}</span>
+				</button>
+			)}
 			{onInsertFile && (
 				<button
 					type="button"

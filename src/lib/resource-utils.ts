@@ -281,6 +281,9 @@ export function getGroupLabel(group: string | undefined): string {
 	return groupLabels[group] ?? group;
 }
 
+/** All known groups (the `groupLabels` keys), useful for combobox suggestions. */
+export const knownGroups: string[] = Object.keys(groupLabels);
+
 export const MANUAL_RESOURCE_GROUP = "manual";
 
 export function buildManualStableKey(type: string, name: string): string {

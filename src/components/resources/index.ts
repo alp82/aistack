@@ -1,4 +1,8 @@
 export {
+	LinkResourceDialog,
+	type LinkResourceDialogProps,
+} from "./LinkResourceDialog";
+export {
 	ResourceBrowser,
 	type ResourceBrowserInitialSelection,
 	type ResourceBrowserProps,
