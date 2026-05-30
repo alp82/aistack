@@ -13,7 +13,10 @@
   "bin": {
     "aistack": "dist/index.js"
   },
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "publishConfig": {
     "access": "public"
   },
@@ -24,16 +27,18 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
+    "@clack/prompts": "^0.10.0",
     "commander": "^13.1.0",
+    "ignore": "^7.0.0",
     "open": "^10.1.0",
     "picocolors": "^1.1.0",
-    "@clack/prompts": "^0.10.0",
-    "ignore": "^7.0.0"
+    "smol-toml": "^1.6.1",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
+    "@types/node": "^22.10.2",
     "tsup": "^8.4.0",
-    "typescript": "^5.7.2",
-    "@types/node": "^22.10.2"
+    "typescript": "^5.7.2"
   },
   "engines": {
     "node": ">=18"

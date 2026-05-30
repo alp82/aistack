@@ -39,9 +39,26 @@ const ResourceUpstream = v.object({
   lastSyncAt: v.optional(v.number()),
 })
 
+// A non-repo package reference (e.g. an MCP server: an npm/PyPI package, a
+// Docker image, or a remote URL). The identity lives in (registry, id).
+const ResourcePackage = v.object({
+  registry: v.union(
+    v.literal('npm'),
+    v.literal('pypi'),
+    v.literal('oci'),
+    v.literal('url')
+  ),
+  id: v.string(),
+  version: v.optional(v.string()),
+  transport: v.optional(
+    v.union(v.literal('stdio'), v.literal('http'), v.literal('sse'))
+  ),
+})
+
 const ResourceOwner = v.union(
   v.object({ kind: v.literal('creator'), id: v.id('creators') }),
   v.object({ kind: v.literal('github'), handle: v.string() }),
+  v.object({ kind: v.literal('package'), registry: v.string(), id: v.string() })
 )
 
 /**
@@ -49,8 +66,9 @@ const ResourceOwner = v.union(
  *   - Authored items: `manual:${type}:${name}` via buildManualStableKey in src/lib/resource-utils.ts
  *   - CLI items: `${group}:${type}:${relPath}` via computeStableKey in packages/cli/src/stableKey.ts
  *
- * upstream presence is the SOLE storage discriminator: present => linked
- * reference (no files), absent => hosted (files, per-creator).
+ * A linked reference carries exactly one of `upstream` (GitHub repo) or `pkg`
+ * (a package — npm/PyPI/OCI/url, e.g. an MCP server) and no files; a hosted
+ * resource carries files (per-creator). Presence of either ref => linked.
  */
 export const Resource = v.object({
   type: v.string(),
@@ -64,6 +82,7 @@ export const Resource = v.object({
   addedBy: v.string(),
   scope: v.optional(v.union(v.literal('global'), v.literal('project'))),
   upstream: v.optional(ResourceUpstream),
+  pkg: v.optional(ResourcePackage),
 })
 
 /**
@@ -80,6 +99,7 @@ export const ResourceInput = v.object({
   files: v.optional(v.array(ResourceFile)),
   scope: v.optional(v.union(v.literal('global'), v.literal('project'))),
   upstream: v.optional(ResourceUpstream),
+  pkg: v.optional(ResourcePackage),
 })
 
 const ModelCategory = v.union(
@@ -349,8 +369,9 @@ export default defineSchema({
     .index('by_creatorId', ['creatorId'])
     .index('by_stackId', ['stackId']),
 
-  // upstream presence is the SOLE storage discriminator: present => linked
-  // reference (no files), absent => hosted (files, per-creator).
+  // A linked row carries exactly one of `upstream` (GitHub) or `pkg` (package)
+  // and no files; a hosted row carries files. Linked rows are shared globally —
+  // deduped by `by_upstream` (repo) or `by_pkg` (package); hosted by creator.
   resources: defineTable({
     scope: v.union(v.literal('global'), v.literal('project')),
     type: v.string(),
@@ -363,11 +384,13 @@ export default defineSchema({
     owner: ResourceOwner,
     addedBy: v.string(),
     upstream: v.optional(ResourceUpstream),
+    pkg: v.optional(ResourcePackage),
     deletedAt: v.union(v.number(), v.null()),
     shortId: v.string(),
   })
     .index('by_addedBy_stableKey', ['addedBy', 'stableKey'])
     .index('by_upstream', ['upstream.repoUrl', 'upstream.path'])
+    .index('by_pkg', ['pkg.registry', 'pkg.id'])
     .index('by_shortId', ['shortId']),
 
   resourceLinks: defineTable({

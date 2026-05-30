@@ -65,6 +65,24 @@ export async function createCommand(slugOrShortId: string) {
 		lines(globalFiles.map((f) => dim(f.path)));
 	}
 
+	// Linked resources have no files to write — surface them so they aren't
+	// silently dropped on download (GitHub repos + package refs like MCP servers).
+	const linked = project.resources.filter(
+		(item) => (item.upstream || item.pkg) && !item.files?.length,
+	);
+	if (linked.length > 0) {
+		section("linked", linked.length);
+		lines([dim("view only")]);
+		lines(
+			linked.map((item) =>
+				dim(
+					item.upstream?.repoUrl ??
+						(item.pkg ? `${item.pkg.registry}:${item.pkg.id}` : ""),
+				),
+			),
+		);
+	}
+
 	if (localFiles.length === 0) {
 		p.log.warn("No local files to write.");
 		outroSkipped("nothing to create");

@@ -118,6 +118,12 @@ export interface Resource {
 		lastCommitSha?: string;
 		lastSyncAt?: number;
 	};
+	pkg?: {
+		registry: "npm" | "pypi" | "oci" | "url";
+		id: string;
+		version?: string;
+		transport?: "stdio" | "http" | "sse";
+	};
 }
 
 export interface ProjectData {
@@ -125,6 +131,8 @@ export interface ProjectData {
 	slug: string;
 	shortId: string;
 	resources: Resource[];
+	/** Stack-scoped resources, for diffing global (stack-attached) links. */
+	stackResources?: Resource[];
 	creator?: { name: string };
 	stack?: { name: string; slug: string };
 }

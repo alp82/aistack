@@ -58,20 +58,40 @@ interface TypeGroup {
 }
 
 /**
- * A linked resource carries no `files`; it is a pure GitHub reference. Synthesize
- * a single display row from its `upstream` so it renders like a one-file entry.
- * Returns the row's first real file when present, otherwise the pseudo-file.
+ * A linked resource carries no `files`; it is a pure reference to a GitHub repo
+ * (`upstream`) or a package (`pkg`, e.g. an MCP server). Synthesize a single
+ * display row so it renders like a one-file entry. Returns the row's first real
+ * file when present, otherwise the pseudo-file.
  */
 function linkedPseudoFile(item: Resource): FileEntry | undefined {
 	if (item.files?.[0]) return item.files[0];
-	if (!item.upstream) return undefined;
-	return {
-		name:
-			normalizeUpstreamPath(item.upstream.path) ||
-			repoNameFromCanonical(item.upstream.repoUrl),
-		content: "",
-		path: undefined,
-	};
+	if (item.upstream) {
+		return {
+			name:
+				normalizeUpstreamPath(item.upstream.path) ||
+				repoNameFromCanonical(item.upstream.repoUrl),
+			content: "",
+			path: undefined,
+		};
+	}
+	if (item.pkg) {
+		return { name: item.pkg.id, content: "", path: undefined };
+	}
+	return undefined;
+}
+
+/** External URL for a package reference, by registry. */
+function packageHref(pkg: NonNullable<Resource["pkg"]>): string {
+	switch (pkg.registry) {
+		case "npm":
+			return `https://www.npmjs.com/package/${pkg.id}`;
+		case "pypi":
+			return `https://pypi.org/project/${pkg.id}/`;
+		case "oci":
+			return `https://hub.docker.com/r/${pkg.id}`;
+		default:
+			return pkg.id; // url registry: the id is the endpoint URL
+	}
 }
 
 interface GroupSection {
@@ -101,7 +121,8 @@ function groupByGroupAndType(resources: Resource[]): GroupSection[] {
 				type,
 				items: typeItems,
 				totalFiles: typeItems.reduce(
-					(sum, i) => sum + ((i.files?.length ?? 0) || (i.upstream ? 1 : 0)),
+					(sum, i) =>
+						sum + ((i.files?.length ?? 0) || (i.upstream || i.pkg ? 1 : 0)),
 					0,
 				),
 			}),
@@ -247,6 +268,7 @@ export function ResourceTree({
 															type={item.type}
 															group={item.group}
 															upstream={item.upstream}
+															pkg={item.pkg}
 															selected={selected}
 															onSelect={onSelect}
 															onInsertFile={onInsertFile}
@@ -364,6 +386,7 @@ function GroupBlock({
 								type={item.type}
 								group={item.group}
 								upstream={item.upstream}
+								pkg={item.pkg}
 								selected={selected}
 								onSelect={onSelect}
 								onInsertFile={onInsertFile}
@@ -444,6 +467,7 @@ function TypeBlock({
 								type={item.type}
 								group={item.group}
 								upstream={item.upstream}
+								pkg={item.pkg}
 								selected={selected}
 								onSelect={onSelect}
 								onInsertFile={onInsertFile}
@@ -477,6 +501,7 @@ function FileRow({
 	type,
 	group,
 	upstream,
+	pkg,
 	selected,
 	onSelect,
 	onInsertFile,
@@ -488,6 +513,7 @@ function FileRow({
 	type: string;
 	group: string;
 	upstream?: Resource["upstream"];
+	pkg?: Resource["pkg"];
 	selected?: ResourceTreeSelection | null;
 	onSelect?: (selection: ResourceTreeSelection) => void;
 	onInsertFile?: ResourceTreeProps["onInsertFile"];
@@ -519,6 +545,25 @@ function FileRow({
 					<span className="truncate font-mono text-xs">
 						{repoNameFromCanonical(upstream.repoUrl)}
 						{upstream.path ? ` · ${upstream.path}` : ""}
+					</span>
+					<ExternalLink
+						aria-hidden="true"
+						className="size-3 shrink-0 text-fg-muted"
+					/>
+				</a>
+			) : pkg ? (
+				<a
+					href={packageHref(pkg)}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="flex flex-1 items-center gap-2 px-3 py-1.5 pl-10 text-left text-fg-secondary transition-colors hover:bg-bg-panel-muted hover:text-fg-primary"
+				>
+					<span className="truncate font-mono text-xs">
+						{pkg.id}
+						{pkg.version ? ` · ${pkg.version}` : ""}
+					</span>
+					<span className="font-mono text-[10px] uppercase text-fg-muted">
+						{pkg.registry}
 					</span>
 					<ExternalLink
 						aria-hidden="true"

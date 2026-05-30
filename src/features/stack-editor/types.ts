@@ -33,7 +33,15 @@ type ResourceType = KnownResourceType | (string & {});
 
 type ResourceOwner =
 	| { kind: "creator"; id: Id<"creators"> }
-	| { kind: "github"; handle: string };
+	| { kind: "github"; handle: string }
+	| { kind: "package"; registry: string; id: string };
+
+type ResourcePackage = {
+	registry: "npm" | "pypi" | "oci" | "url";
+	id: string;
+	version?: string;
+	transport?: "stdio" | "http" | "sse";
+};
 
 type Resource = {
 	type: ResourceType;
@@ -54,6 +62,7 @@ type Resource = {
 		lastCommitSha?: string;
 		lastSyncAt?: number;
 	};
+	pkg?: ResourcePackage;
 };
 
 type ModelSubscriptionEntry = {

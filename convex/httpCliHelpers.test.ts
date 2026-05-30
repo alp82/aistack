@@ -753,6 +753,129 @@ test('getByShortId returns split linked/hosted Resource JSON shapes for the CLI 
   expect((linked as Record<string, unknown>).deletedAt).toBeUndefined()
 })
 
+test('getByShortId splits project vs stack-scoped resources (stackResources)', async () => {
+  const t = convexTest(schema, modules)
+  const { creatorId, stackId } = await seedCreatorAndStack(t)
+
+  // A global-scoped item attaches to the stack (e.g. an installed plugin link);
+  // a project-scoped item to the project. getByShortId must split them.
+  await t.mutation(internal.httpCliHelpers.upsertProject, {
+    creatorId,
+    stackId,
+    name: 'scoped',
+    resources: [
+      {
+        type: 'plugin',
+        name: 'alp-river',
+        group: 'claude-code',
+        scope: 'global',
+        stableKey: 'linked:https://github.com/alp82/alp-river:',
+        upstream: { repoUrl: 'https://github.com/alp82/alp-river' },
+      },
+      {
+        type: 'prompt',
+        name: 'local',
+        group: 'claude-code',
+        scope: 'project',
+        stableKey: 'claude-code:prompt:local',
+        files: [{ name: 'p.md', content: '# hi', path: 'p.md' }],
+      },
+    ],
+    source: 'cli',
+  })
+
+  const project = (await t.run(async (ctx) =>
+    ctx.db
+      .query('projects')
+      .withIndex('by_creatorId', (q) => q.eq('creatorId', creatorId))
+      .first(),
+  ))!
+
+  const result = (await t.query(api.projects.getByShortId, {
+    shortId: project.shortId,
+  }))!
+
+  expect(result.resources.map((r) => r.stableKey)).toEqual([
+    'claude-code:prompt:local',
+  ])
+  const pluginLink = result.stackResources.find(
+    (r) => r.stableKey === 'linked:https://github.com/alp82/alp-river:',
+  )!
+  expect(pluginLink).toBeDefined()
+  expect(pluginLink.storage).toBe('linked')
+  expect(pluginLink.type).toBe('plugin')
+})
+
+test('upsertProject stores a pkg (MCP) resource as a linked row, deduped by (registry,id)', async () => {
+  const t = convexTest(schema, modules)
+  const { creatorId, stackId } = await seedCreatorAndStack(t)
+
+  const pkgItem = {
+    type: 'mcp',
+    name: 'context7',
+    group: 'claude-code',
+    scope: 'project' as const,
+    stableKey: 'linked:pkg:npm:@upstash/context7-mcp',
+    pkg: {
+      registry: 'npm' as const,
+      id: '@upstash/context7-mcp',
+      transport: 'stdio' as const,
+    },
+  }
+
+  // Two projects link the same MCP server.
+  await t.mutation(internal.httpCliHelpers.upsertProject, {
+    creatorId,
+    stackId,
+    name: 'a',
+    resources: [pkgItem],
+    source: 'cli',
+  })
+  await t.mutation(internal.httpCliHelpers.upsertProject, {
+    creatorId,
+    stackId,
+    name: 'b',
+    resources: [pkgItem],
+    source: 'cli',
+  })
+
+  // Deduped GLOBALLY by by_pkg → exactly one shared resources row.
+  const rows = await t.run(async (ctx) =>
+    ctx.db
+      .query('resources')
+      .withIndex('by_pkg', (q) =>
+        q.eq('pkg.registry', 'npm').eq('pkg.id', '@upstash/context7-mcp'),
+      )
+      .collect(),
+  )
+  expect(rows).toHaveLength(1)
+  expect(rows[0].storage).toBe('linked')
+  expect(rows[0].owner).toEqual({
+    kind: 'package',
+    registry: 'npm',
+    id: '@upstash/context7-mcp',
+  })
+  expect(rows[0].files).toBeUndefined()
+
+  const projectA = (await t.run(async (ctx) =>
+    ctx.db
+      .query('projects')
+      .withIndex('by_creatorId', (q) => q.eq('creatorId', creatorId))
+      .filter((q) => q.eq(q.field('name'), 'a'))
+      .first(),
+  ))!
+  const result = (await t.query(api.projects.getByShortId, {
+    shortId: projectA.shortId,
+  }))!
+  const mcp = result.resources.find((r) => r.pkg)!
+  expect(mcp.stableKey).toBe('linked:pkg:npm:@upstash/context7-mcp')
+  expect(mcp.pkg).toEqual({
+    registry: 'npm',
+    id: '@upstash/context7-mcp',
+    transport: 'stdio',
+  })
+})
+
 test('unlinkResource removes one link and leaves the others intact', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)

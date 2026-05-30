@@ -60,6 +60,7 @@ function toResource(doc: Doc<'resources'>): Resource {
     scope: doc.scope,
     ...(doc.files !== undefined ? { files: doc.files } : {}),
     ...(doc.upstream !== undefined ? { upstream: doc.upstream } : {}),
+    ...(doc.pkg !== undefined ? { pkg: doc.pkg } : {}),
   }
 }
 
@@ -125,9 +126,12 @@ export async function upsertResourcesForOwner(
   for (const item of items) {
     const scope = item.scope ?? defaultScope
 
-    // upstream presence is the SOLE storage discriminator: present => linked
-    // reference (no files), absent => hosted (files, per-creator).
-    if (item.upstream) {
+    // A linked row has exactly one of upstream/pkg and no files; a hosted row
+    // has files.
+    if (item.upstream || item.pkg) {
+      if (item.upstream && item.pkg) {
+        throw new Error('linked resource cannot have both upstream and pkg')
+      }
       if (item.files?.length) {
         throw new Error('linked resource must not carry files')
       }
@@ -172,6 +176,40 @@ export async function upsertResourcesForOwner(
           shortId,
         })
       }
+    } else if (item.pkg) {
+      // LINKED package (e.g. MCP server): shared GLOBALLY by (registry, id).
+      // Hoist to locals so the index closure keeps the narrowed types.
+      const { registry, id } = item.pkg
+      const existing = await ctx.db
+        .query('resources')
+        .withIndex('by_pkg', (q) =>
+          q.eq('pkg.registry', registry).eq('pkg.id', id),
+        )
+        .first()
+
+      if (existing) {
+        // Shared linked row exists; only resurrect a soft-deleted one.
+        resourceId = existing._id
+        if (existing.deletedAt !== null) {
+          await ctx.db.patch(existing._id, { deletedAt: null })
+        }
+      } else {
+        const shortId = await generateUniqueShortId(ctx, 'resources')
+        resourceId = await ctx.db.insert('resources', {
+          scope,
+          type: item.type,
+          name: item.name,
+          description: item.description,
+          group: item.group,
+          stableKey: item.stableKey,
+          storage: 'linked',
+          owner: { kind: 'package', registry, id },
+          addedBy,
+          pkg: item.pkg,
+          deletedAt: null,
+          shortId,
+        })
+      }
     } else {
       // HOSTED: shared per (addedBy, stableKey), files carried on the row.
       const existing = await ctx.db
@@ -195,6 +233,7 @@ export async function upsertResourcesForOwner(
           storage: 'hosted',
           owner: { kind: 'creator', id: addedBy },
           upstream: undefined,
+          pkg: undefined,
           deletedAt: null,
         })
       } else {

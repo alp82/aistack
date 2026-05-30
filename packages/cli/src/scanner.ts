@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
 import { homedir } from "node:os";
+import { join, relative } from "node:path";
 import ignore from "ignore";
 
 export type FileType =
@@ -35,21 +35,19 @@ const LOCAL_PATTERNS: FilePattern[] = [
 	// Rules
 	{ path: "CLAUDE.md", type: "rule", group: "claude-code" },
 	{ path: "AGENTS.md", type: "rule", group: "claude-code" },
+	{ path: "GEMINI.md", type: "rule", group: "gemini" },
 	{ path: ".cursorrules", type: "rule", group: "cursor" },
 	{ path: ".windsurfrules", type: "rule", group: "windsurf" },
 	{ path: ".clinerules", type: "rule", group: "cline" },
+	{ path: ".roorules", type: "rule", group: "roo" },
 	{ path: ".github/copilot-instructions.md", type: "rule", group: "copilot" },
-	// MCP
-	{ path: "mcp.json", type: "mcp", group: "generic" },
-	{ path: ".cursor/mcp.json", type: "mcp", group: "cursor" },
-	{
-		path: "claude_desktop_config.json",
-		type: "mcp",
-		group: "claude-desktop",
-	},
+	// MCP servers are detected separately as pkg-reference links (see mcp.ts) —
+	// their config files are intentionally NOT collected as content here (which
+	// would also upload `env` secrets).
 	// Config
 	{ path: ".aider.conf.yml", type: "config", group: "aider" },
 	{ path: ".continue/config.json", type: "config", group: "continue" },
+	{ path: ".continue/config.yaml", type: "config", group: "continue" },
 	{ path: ".claude/settings.json", type: "config", group: "claude-code" },
 	{
 		path: ".claude/settings.local.json",
@@ -62,6 +60,11 @@ const LOCAL_PATTERNS: FilePattern[] = [
 
 const LOCAL_DIR_PATTERNS: { dir: string; type: FileType; group: string }[] = [
 	{ dir: ".cursor/rules", type: "rule", group: "cursor" },
+	{ dir: ".clinerules", type: "rule", group: "cline" },
+	{ dir: ".windsurf/rules", type: "rule", group: "windsurf" },
+	{ dir: ".roo/rules", type: "rule", group: "roo" },
+	{ dir: ".github/instructions", type: "rule", group: "copilot" },
+	{ dir: ".github/prompts", type: "prompt", group: "copilot" },
 	{ dir: ".claude/commands", type: "command", group: "claude-code" },
 	{ dir: ".claude/agents", type: "subagent", group: "claude-code" },
 	{ dir: ".claude/hooks", type: "hook", group: "claude-code" },
@@ -213,9 +216,17 @@ export function scanGlobal(): ScannedFile[] {
 	const globalPatterns: FilePattern[] = [
 		{ path: ".claude/CLAUDE.md", type: "rule", group: "claude-code" },
 		{ path: ".claude/settings.json", type: "config", group: "claude-code" },
-		{ path: ".cursor/mcp.json", type: "mcp", group: "cursor" },
 		{ path: ".continue/config.json", type: "config", group: "continue" },
+		{ path: ".continue/config.yaml", type: "config", group: "continue" },
 		{ path: ".aider.conf.yml", type: "config", group: "aider" },
+		{ path: ".gemini/GEMINI.md", type: "rule", group: "gemini" },
+		{ path: ".gemini/settings.json", type: "config", group: "gemini" },
+		{ path: ".codex/config.toml", type: "config", group: "codex" },
+		{
+			path: ".codeium/windsurf/memories/global_rules.md",
+			type: "rule",
+			group: "windsurf",
+		},
 	];
 
 	for (const pattern of globalPatterns) {
@@ -256,6 +267,32 @@ export function scanGlobal(): ScannedFile[] {
 				});
 			}
 		}
+	}
+
+	// Global skills: ~/.claude/skills/<name>/SKILL.md (+ supporting files). Not
+	// covered by globalDirs since each skill is its own dir keyed by SKILL.md.
+	const skillsRoot = join(home, ".claude", "skills");
+	try {
+		for (const entry of readdirSync(skillsRoot, { withFileTypes: true })) {
+			if (!entry.isDirectory()) continue;
+			const skillDir = join(skillsRoot, entry.name);
+			if (!existsSync(join(skillDir, "SKILL.md"))) continue;
+			for (const filePath of walkDir(skillDir, 2)) {
+				const content = readFileSafe(filePath);
+				if (content !== null) {
+					results.push({
+						path: filePath,
+						relativePath: `~/${relative(home, filePath)}`,
+						content,
+						type: "skill",
+						source: "global",
+						group: "claude-code",
+					});
+				}
+			}
+		}
+	} catch {
+		/* skills dir absent / permission errors */
 	}
 
 	return results;

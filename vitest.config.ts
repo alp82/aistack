@@ -30,6 +30,14 @@ export default defineConfig({
           setupFiles: ['./src/test/setup.ts'],
         },
       },
+      {
+        extends: true,
+        test: {
+          name: 'cli',
+          include: ['packages/cli/**/*.test.ts'],
+          environment: 'node',
+        },
+      },
     ],
   },
 })

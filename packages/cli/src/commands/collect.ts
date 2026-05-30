@@ -1,19 +1,24 @@
-import * as p from "@clack/prompts";
 import { basename } from "node:path";
-import { scanLocal, scanGlobal, type ScannedFile } from "../scanner.js";
-import { classify } from "../classifier.js";
+import * as p from "@clack/prompts";
 import {
+	projectGet,
 	projectsCheck,
 	projectsCollect,
-	projectGet,
 	type Resource,
 } from "../api.js";
+import { classify } from "../classifier.js";
 import {
-	getToken,
-	getProjectName,
 	getExcludedPaths,
+	getProjectName,
+	getToken,
 	saveProjectSettings,
 } from "../config.js";
+import { buildRepoLinkResource, detectRepoUrl } from "../git.js";
+import { repoNameFromCanonical } from "../github-repo.js";
+import { detectHooks } from "../hooks.js";
+import { detectMcpServers } from "../mcp.js";
+import { detectInstalledPlugins } from "../plugins.js";
+import { type ScannedFile, scanGlobal, scanLocal } from "../scanner.js";
 import {
 	bold,
 	dim,
@@ -30,6 +35,24 @@ import {
 	section,
 	yellow,
 } from "../theme.js";
+
+// Sentinel selection key for the detected repo link. NUL-prefixed so it can
+// never collide with a real ScannedFile.relativePath, letting links ride the
+// existing excluded[] selection/persistence model with no config.ts changes.
+const REPO_LINK_KEY = "\0repo-link";
+
+/**
+ * A non-file resource surfaced during collect — the repo link, an installed
+ * plugin, etc. Toggleable and persisted exactly like a scanned file, keyed by
+ * its sentinel. `scope` decides where it attaches: "project" vs "global" (the
+ * stack).
+ */
+interface DetectedLink {
+	key: string;
+	resource: Resource;
+	label: string;
+	scope: "project" | "global";
+}
 
 export async function collectCommand(options: { global: boolean }) {
 	intro("collect");
@@ -91,8 +114,58 @@ export async function collectCommand(options: { global: boolean }) {
 		`${lime(String(selectedFiles.length))} included${excluded.length > 0 ? ` · ${dim(String(excluded.length) + " excluded")}` : ""}`,
 	);
 
+	// Detect non-file links: the repo this project lives in (project scope) and
+	// installed Claude Code plugins (stack/global scope). Each is toggleable and
+	// included by default unless previously deselected. All graceful no-ops.
+	const detectedLinks: DetectedLink[] = [];
+	const repoUrl = detectRepoUrl(cwd);
+	if (repoUrl) {
+		detectedLinks.push({
+			key: REPO_LINK_KEY,
+			resource: buildRepoLinkResource(repoUrl),
+			label: `repo · ${repoNameFromCanonical(repoUrl)}`,
+			scope: "project",
+		});
+	}
+	for (const resource of detectInstalledPlugins()) {
+		detectedLinks.push({
+			key: `\0plugin:${resource.stableKey}`,
+			resource,
+			label: `plugin · ${resource.name}`,
+			scope: "global",
+		});
+	}
+	for (const resource of detectMcpServers(cwd)) {
+		detectedLinks.push({
+			key: `\0mcp:${resource.stableKey}`,
+			resource,
+			label: `mcp · ${resource.name}`,
+			scope: resource.scope === "global" ? "global" : "project",
+		});
+	}
+	for (const resource of detectHooks(cwd)) {
+		detectedLinks.push({
+			key: `\0hook:${resource.stableKey}`,
+			resource,
+			label: `hook · ${resource.name}`,
+			scope: resource.scope === "global" ? "global" : "project",
+		});
+	}
+
+	const includedLinks = new Set(
+		detectedLinks
+			.filter((l) => !savedExcluded.includes(l.key))
+			.map((l) => l.key),
+	);
+	const withLinks = (base: Resource[]): Resource[] => [
+		...base,
+		...detectedLinks
+			.filter((l) => includedLinks.has(l.key))
+			.map((l) => l.resource),
+	];
+
 	// Classify selected files
-	let allResources = classify(selectedFiles);
+	let allResources = withLinks(classify(selectedFiles));
 
 	// Fetch existing project and diff
 	let existingProject: Awaited<ReturnType<typeof projectGet>> = null;
@@ -112,25 +185,47 @@ export async function collectCommand(options: { global: boolean }) {
 
 	// Show file list or diff
 	if (existingProject) {
-		const diff = diffResources(allResources, existingProject.resources);
+		// Scope-aware: project-scoped resources diff against the project's
+		// existing resources; global-scoped ones (global config files, plugin
+		// links) against the stack's. Diffing everything against the project
+		// alone would mark every global item as perpetually "added".
+		const isGlobal = (r: Resource) => r.scope === "global";
+		const projectDiff = diffResources(
+			allResources.filter((r) => !isGlobal(r)),
+			existingProject.resources,
+		);
+		const stackDiff = diffResources(
+			allResources.filter(isGlobal),
+			existingProject.stackResources ?? [],
+		);
+		const changeCount =
+			projectDiff.added +
+			projectDiff.changed +
+			projectDiff.removed +
+			stackDiff.added +
+			stackDiff.changed +
+			stackDiff.removed;
 
-		if (diff.changed === 0 && diff.added === 0 && diff.removed === 0) {
+		if (changeCount === 0) {
 			p.log.info("No changes since last collect.");
 			outroSkipped("nothing to upload");
 			return;
 		}
 
+		const details = [...projectDiff.details, ...stackDiff.details];
+		const unchanged = projectDiff.unchanged + stackDiff.unchanged;
+
 		divider();
 		section("changes");
 		lines(
-			diff.details.map((f) => {
+			details.map((f) => {
 				if (f.status === "added") return lime(`+ ${f.name}`);
 				if (f.status === "changed") return yellow(`~ ${f.name}`);
 				return red(`- ${f.name}`);
 			}),
 		);
-		if (diff.unchanged > 0) {
-			lines([dim(`${diff.unchanged} unchanged`)]);
+		if (unchanged > 0) {
+			lines([dim(`${unchanged} unchanged`)]);
 		}
 		divider();
 	} else {
@@ -155,6 +250,21 @@ export async function collectCommand(options: { global: boolean }) {
 			}
 			divider();
 		}
+		const shownLinks = detectedLinks.filter((l) => includedLinks.has(l.key));
+		const projectLinks = shownLinks.filter((l) => l.scope === "project");
+		const stackLinks = shownLinks.filter((l) => l.scope === "global");
+		if (projectLinks.length > 0) {
+			p.log.step(`${bold("PROJECT")} ${dim("links")}`);
+			divider();
+			lines(projectLinks.map((l) => dim(`  ${l.label}`)));
+			divider();
+		}
+		if (stackLinks.length > 0) {
+			p.log.step(`${bold("STACK")} ${dim(String(stackLinks.length))}`);
+			divider();
+			lines(stackLinks.map((l) => dim(`  ${l.label}`)));
+			divider();
+		}
 	}
 
 	// Action: upload, customize, or cancel
@@ -175,14 +285,27 @@ export async function collectCommand(options: { global: boolean }) {
 	}
 
 	if (action === "customize") {
+		const linkOptions = detectedLinks.map((l) => ({
+			value: l.key,
+			label: l.label,
+			hint: l.scope === "global" ? "stack link" : "project link",
+		}));
 		const selected = await p.multiselect({
 			message: "Select files to include:",
-			options: allFiles.map((f) => ({
-				value: f.relativePath,
-				label: f.relativePath,
-				hint: `${f.type}${f.source === "global" ? " · global" : ""}`,
-			})),
-			initialValues: selectedFiles.map((f) => f.relativePath),
+			options: [
+				...linkOptions,
+				...allFiles.map((f) => ({
+					value: f.relativePath,
+					label: f.relativePath,
+					hint: `${f.type}${f.source === "global" ? " · global" : ""}`,
+				})),
+			],
+			initialValues: [
+				...detectedLinks
+					.filter((l) => includedLinks.has(l.key))
+					.map((l) => l.key),
+				...selectedFiles.map((f) => f.relativePath),
+			],
 		});
 
 		if (p.isCancel(selected)) {
@@ -193,9 +316,13 @@ export async function collectCommand(options: { global: boolean }) {
 		const selectedSet = new Set(selected as string[]);
 		selectedFiles = allFiles.filter((f) => selectedSet.has(f.relativePath));
 		excluded = allFiles.filter((f) => !selectedSet.has(f.relativePath));
-		allResources = classify(selectedFiles);
+		includedLinks.clear();
+		for (const l of detectedLinks) {
+			if (selectedSet.has(l.key)) includedLinks.add(l.key);
+		}
+		allResources = withLinks(classify(selectedFiles));
 
-		if (selectedFiles.length === 0) {
+		if (selectedFiles.length === 0 && includedLinks.size === 0) {
 			p.log.warn("No files selected.");
 			outroSkipped("nothing to collect");
 			process.exit(0);
@@ -209,11 +336,11 @@ export async function collectCommand(options: { global: boolean }) {
 			resources: allResources,
 		});
 		s.stop(lime("Uploaded"));
-		saveProjectSettings(
-			cwd,
-			projectName,
-			excluded.map((f) => f.relativePath),
-		);
+		const excludedKeys = excluded.map((f) => f.relativePath);
+		for (const l of detectedLinks) {
+			if (!includedLinks.has(l.key)) excludedKeys.push(l.key);
+		}
+		saveProjectSettings(cwd, projectName, excludedKeys);
 		p.log.success(dim(result.url));
 		outro(lime("done"));
 	} catch (err) {
@@ -262,7 +389,10 @@ interface DiffResult {
 	details: Array<{ name: string; status: "added" | "changed" | "removed" }>;
 }
 
-function diffResources(current: Resource[], existing: Resource[]): DiffResult {
+export function diffResources(
+	current: Resource[],
+	existing: Resource[],
+): DiffResult {
 	const existingMap = new Map<string, string>();
 	for (const item of existing) {
 		for (const file of item.files ?? []) {
@@ -300,6 +430,41 @@ function diffResources(current: Resource[], existing: Resource[]): DiffResult {
 		if (!currentMap.has(key)) {
 			removed++;
 			details.push({ name: key, status: "removed" });
+		}
+	}
+
+	// Linked resources (GitHub repos AND package refs like MCP servers) carry no
+	// files, so the file maps above can't see them. Diff them by stableKey —
+	// unique for both `linked:<repo>:<path>` and `linked:pkg:<registry>:<id>` —
+	// otherwise a link-only change is invisible and collect wrongly reports
+	// "nothing to upload".
+	const linkLabel = (item: Resource): string => {
+		if (item.upstream)
+			return `link: ${repoNameFromCanonical(item.upstream.repoUrl)}`;
+		if (item.pkg) return `link: ${item.pkg.id}`;
+		return `link: ${item.name}`;
+	};
+	const linkMap = (items: Resource[]): Map<string, Resource> => {
+		const map = new Map<string, Resource>();
+		for (const item of items) {
+			if ((item.upstream || item.pkg) && !item.files?.length) {
+				map.set(item.stableKey, item);
+			}
+		}
+		return map;
+	};
+	const existingLinks = linkMap(existing);
+	const currentLinks = linkMap(current);
+	for (const [key, item] of currentLinks) {
+		if (!existingLinks.has(key)) {
+			added++;
+			details.push({ name: linkLabel(item), status: "added" });
+		}
+	}
+	for (const [key, item] of existingLinks) {
+		if (!currentLinks.has(key)) {
+			removed++;
+			details.push({ name: linkLabel(item), status: "removed" });
 		}
 	}
 

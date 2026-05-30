@@ -312,6 +312,7 @@ export const getByShortId = query({
       stackId: v.id('stacks'),
       source: v.optional(v.string()),
       resources: v.array(ResourceValidator),
+      stackResources: v.array(ResourceValidator),
       createdAt: v.number(),
       updatedAt: v.number(),
     }),
@@ -324,6 +325,13 @@ export const getByShortId = query({
       .first()
     if (!project) return null
     const resources = await resolveLinkedResources(ctx, 'project', project._id)
+    // Stack resources too, so the CLI can diff stack-scoped (global) links —
+    // e.g. installed plugins attach to the stack, not the project.
+    const stackResources = await resolveLinkedResources(
+      ctx,
+      'stack',
+      project.stackId
+    )
     return {
       _id: project._id,
       _creationTime: project._creationTime,
@@ -334,6 +342,7 @@ export const getByShortId = query({
       stackId: project.stackId,
       source: project.source,
       resources,
+      stackResources,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
     }

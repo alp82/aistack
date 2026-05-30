@@ -269,9 +269,13 @@ const groupLabels: Record<string, string> = {
 	cursor: "Cursor",
 	windsurf: "Windsurf",
 	cline: "Cline",
+	roo: "Roo Code",
 	copilot: "Copilot",
 	aider: "Aider",
 	continue: "Continue",
+	gemini: "Gemini",
+	codex: "Codex",
+	vscode: "VS Code",
 	"claude-desktop": "Claude Desktop",
 	generic: "Other",
 };
