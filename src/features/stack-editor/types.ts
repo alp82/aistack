@@ -25,8 +25,7 @@ type KnownResourceType =
 	| "subagent"
 	| "config"
 	| "custom"
-	| "plugin"
-	| "dotfile";
+	| "plugin";
 
 /** Accepts known types with autocomplete, plus any arbitrary string. */
 type ResourceType = KnownResourceType | (string & {});
