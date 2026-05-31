@@ -54,6 +54,7 @@ https://www.conductor.build
 https://penso.github.io/arbor
 https://github.com/ruvnet/ruflo
 https://github.com/stablyai/orca
+https://github.com/maddada/VSmux
 https://github.com/RunMaestro/Maestro
 https://github.com/superset-sh/superset
 https://github.com/RightNow-AI/openfang
@@ -157,6 +158,7 @@ design/frontend:
 gemini 3.1 pro canvas
 https://ui.sh
 https://katagami.ai
+https://getdesign.md
 https://www.typeui.sh
 https://www.pencil.dev
 https://motionsites.ai

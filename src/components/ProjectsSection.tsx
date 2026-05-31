@@ -10,6 +10,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { FormField } from "@/components/ui/form-field";
 import { FormInput } from "@/components/ui/form-input";
 import { FormTextarea } from "@/components/ui/form-textarea";
+import { SectionHeader } from "@/features/stack-view/ui";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 
@@ -58,12 +59,19 @@ export function ProjectsSection({
 	};
 
 	return (
-		<section className="py-12">
-			<div className="mx-auto max-w-content px-6">
+		<section className="bg-bg-panel/30 px-6 py-16 md:py-24">
+			<div className="mx-auto max-w-7xl">
+				<SectionHeader
+					index="01"
+					kicker="// PROJECTS"
+					title="Projects"
+					meta={
+						projects && projects.length > 0
+							? `${projects.length} ${projects.length === 1 ? "project" : "projects"}`
+							: undefined
+					}
+				/>
 				<div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2">
-					<h2 className="font-mono text-sm text-accent-lime">
-						{"// PROJECTS"}
-					</h2>
 					{isOwner && (
 						<button
 							type="button"
