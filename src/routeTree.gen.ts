@@ -28,12 +28,10 @@ import { Route as CliAuthRouteImport } from './routes/cli.auth'
 import { Route as AdminIconsRouteImport } from './routes/admin_.icons'
 import { Route as StacksSlugEditRouteImport } from './routes/stacks.$slug_.edit'
 import { Route as ApiIconsFromUrlRouteImport } from './routes/api.icons.from-url'
+import { Route as ApiCliStacksRouteImport } from './routes/api.cli.stacks'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
-import { Route as StacksSlugProjectsProjectSlugRouteImport } from './routes/stacks.$slug_.projects.$projectSlug'
 import { Route as ApiOgStackSlugRouteImport } from './routes/api.og.stack.$slug'
-import { Route as ApiCliProjectsCollectRouteImport } from './routes/api.cli.projects.collect'
-import { Route as ApiCliProjectsCheckRouteImport } from './routes/api.cli.projects.check'
-import { Route as ApiCliProjectsShortIdRouteImport } from './routes/api.cli.projects.$shortId'
+import { Route as ApiCliStacksCollectRouteImport } from './routes/api.cli.stacks.collect'
 import { Route as ApiCliAuthStartRouteImport } from './routes/api.cli.auth.start'
 import { Route as ApiCliAuthPollRouteImport } from './routes/api.cli.auth.poll'
 
@@ -132,36 +130,25 @@ const ApiIconsFromUrlRoute = ApiIconsFromUrlRouteImport.update({
   path: '/api/icons/from-url',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCliStacksRoute = ApiCliStacksRouteImport.update({
+  id: '/api/cli/stacks',
+  path: '/api/cli/stacks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const StacksSlugProjectsProjectSlugRoute =
-  StacksSlugProjectsProjectSlugRouteImport.update({
-    id: '/stacks/$slug_/projects/$projectSlug',
-    path: '/stacks/$slug/projects/$projectSlug',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiOgStackSlugRoute = ApiOgStackSlugRouteImport.update({
   id: '/api/og/stack/$slug',
   path: '/api/og/stack/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiCliProjectsCollectRoute = ApiCliProjectsCollectRouteImport.update({
-  id: '/api/cli/projects/collect',
-  path: '/api/cli/projects/collect',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiCliProjectsCheckRoute = ApiCliProjectsCheckRouteImport.update({
-  id: '/api/cli/projects/check',
-  path: '/api/cli/projects/check',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiCliProjectsShortIdRoute = ApiCliProjectsShortIdRouteImport.update({
-  id: '/api/cli/projects/$shortId',
-  path: '/api/cli/projects/$shortId',
-  getParentRoute: () => rootRouteImport,
+const ApiCliStacksCollectRoute = ApiCliStacksCollectRouteImport.update({
+  id: '/collect',
+  path: '/collect',
+  getParentRoute: () => ApiCliStacksRoute,
 } as any)
 const ApiCliAuthStartRoute = ApiCliAuthStartRouteImport.update({
   id: '/api/cli/auth/start',
@@ -193,15 +180,13 @@ export interface FileRoutesByFullPath {
   '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
   '/stacks': typeof StacksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cli/stacks': typeof ApiCliStacksRouteWithChildren
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/stacks/$slug/edit': typeof StacksSlugEditRoute
   '/api/cli/auth/poll': typeof ApiCliAuthPollRoute
   '/api/cli/auth/start': typeof ApiCliAuthStartRoute
-  '/api/cli/projects/$shortId': typeof ApiCliProjectsShortIdRoute
-  '/api/cli/projects/check': typeof ApiCliProjectsCheckRoute
-  '/api/cli/projects/collect': typeof ApiCliProjectsCollectRoute
+  '/api/cli/stacks/collect': typeof ApiCliStacksCollectRoute
   '/api/og/stack/$slug': typeof ApiOgStackSlugRoute
-  '/stacks/$slug/projects/$projectSlug': typeof StacksSlugProjectsProjectSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -222,15 +207,13 @@ export interface FileRoutesByTo {
   '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
   '/stacks': typeof StacksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cli/stacks': typeof ApiCliStacksRouteWithChildren
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/stacks/$slug/edit': typeof StacksSlugEditRoute
   '/api/cli/auth/poll': typeof ApiCliAuthPollRoute
   '/api/cli/auth/start': typeof ApiCliAuthStartRoute
-  '/api/cli/projects/$shortId': typeof ApiCliProjectsShortIdRoute
-  '/api/cli/projects/check': typeof ApiCliProjectsCheckRoute
-  '/api/cli/projects/collect': typeof ApiCliProjectsCollectRoute
+  '/api/cli/stacks/collect': typeof ApiCliStacksCollectRoute
   '/api/og/stack/$slug': typeof ApiOgStackSlugRoute
-  '/stacks/$slug/projects/$projectSlug': typeof StacksSlugProjectsProjectSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -252,15 +235,13 @@ export interface FileRoutesById {
   '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
   '/stacks/': typeof StacksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cli/stacks': typeof ApiCliStacksRouteWithChildren
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/stacks/$slug_/edit': typeof StacksSlugEditRoute
   '/api/cli/auth/poll': typeof ApiCliAuthPollRoute
   '/api/cli/auth/start': typeof ApiCliAuthStartRoute
-  '/api/cli/projects/$shortId': typeof ApiCliProjectsShortIdRoute
-  '/api/cli/projects/check': typeof ApiCliProjectsCheckRoute
-  '/api/cli/projects/collect': typeof ApiCliProjectsCollectRoute
+  '/api/cli/stacks/collect': typeof ApiCliStacksCollectRoute
   '/api/og/stack/$slug': typeof ApiOgStackSlugRoute
-  '/stacks/$slug_/projects/$projectSlug': typeof StacksSlugProjectsProjectSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -283,15 +264,13 @@ export interface FileRouteTypes {
     | '/waitlist/$lookupId'
     | '/stacks'
     | '/api/auth/$'
+    | '/api/cli/stacks'
     | '/api/icons/from-url'
     | '/stacks/$slug/edit'
     | '/api/cli/auth/poll'
     | '/api/cli/auth/start'
-    | '/api/cli/projects/$shortId'
-    | '/api/cli/projects/check'
-    | '/api/cli/projects/collect'
+    | '/api/cli/stacks/collect'
     | '/api/og/stack/$slug'
-    | '/stacks/$slug/projects/$projectSlug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -312,15 +291,13 @@ export interface FileRouteTypes {
     | '/waitlist/$lookupId'
     | '/stacks'
     | '/api/auth/$'
+    | '/api/cli/stacks'
     | '/api/icons/from-url'
     | '/stacks/$slug/edit'
     | '/api/cli/auth/poll'
     | '/api/cli/auth/start'
-    | '/api/cli/projects/$shortId'
-    | '/api/cli/projects/check'
-    | '/api/cli/projects/collect'
+    | '/api/cli/stacks/collect'
     | '/api/og/stack/$slug'
-    | '/stacks/$slug/projects/$projectSlug'
   id:
     | '__root__'
     | '/'
@@ -341,15 +318,13 @@ export interface FileRouteTypes {
     | '/waitlist/$lookupId'
     | '/stacks/'
     | '/api/auth/$'
+    | '/api/cli/stacks'
     | '/api/icons/from-url'
     | '/stacks/$slug_/edit'
     | '/api/cli/auth/poll'
     | '/api/cli/auth/start'
-    | '/api/cli/projects/$shortId'
-    | '/api/cli/projects/check'
-    | '/api/cli/projects/collect'
+    | '/api/cli/stacks/collect'
     | '/api/og/stack/$slug'
-    | '/stacks/$slug_/projects/$projectSlug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -371,15 +346,12 @@ export interface RootRouteChildren {
   WaitlistLookupIdRoute: typeof WaitlistLookupIdRoute
   StacksIndexRoute: typeof StacksIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiCliStacksRoute: typeof ApiCliStacksRouteWithChildren
   ApiIconsFromUrlRoute: typeof ApiIconsFromUrlRoute
   StacksSlugEditRoute: typeof StacksSlugEditRoute
   ApiCliAuthPollRoute: typeof ApiCliAuthPollRoute
   ApiCliAuthStartRoute: typeof ApiCliAuthStartRoute
-  ApiCliProjectsShortIdRoute: typeof ApiCliProjectsShortIdRoute
-  ApiCliProjectsCheckRoute: typeof ApiCliProjectsCheckRoute
-  ApiCliProjectsCollectRoute: typeof ApiCliProjectsCollectRoute
   ApiOgStackSlugRoute: typeof ApiOgStackSlugRoute
-  StacksSlugProjectsProjectSlugRoute: typeof StacksSlugProjectsProjectSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -517,18 +489,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIconsFromUrlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cli/stacks': {
+      id: '/api/cli/stacks'
+      path: '/api/cli/stacks'
+      fullPath: '/api/cli/stacks'
+      preLoaderRoute: typeof ApiCliStacksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/stacks/$slug_/projects/$projectSlug': {
-      id: '/stacks/$slug_/projects/$projectSlug'
-      path: '/stacks/$slug/projects/$projectSlug'
-      fullPath: '/stacks/$slug/projects/$projectSlug'
-      preLoaderRoute: typeof StacksSlugProjectsProjectSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/og/stack/$slug': {
@@ -538,26 +510,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOgStackSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/cli/projects/collect': {
-      id: '/api/cli/projects/collect'
-      path: '/api/cli/projects/collect'
-      fullPath: '/api/cli/projects/collect'
-      preLoaderRoute: typeof ApiCliProjectsCollectRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/cli/projects/check': {
-      id: '/api/cli/projects/check'
-      path: '/api/cli/projects/check'
-      fullPath: '/api/cli/projects/check'
-      preLoaderRoute: typeof ApiCliProjectsCheckRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/cli/projects/$shortId': {
-      id: '/api/cli/projects/$shortId'
-      path: '/api/cli/projects/$shortId'
-      fullPath: '/api/cli/projects/$shortId'
-      preLoaderRoute: typeof ApiCliProjectsShortIdRouteImport
-      parentRoute: typeof rootRouteImport
+    '/api/cli/stacks/collect': {
+      id: '/api/cli/stacks/collect'
+      path: '/collect'
+      fullPath: '/api/cli/stacks/collect'
+      preLoaderRoute: typeof ApiCliStacksCollectRouteImport
+      parentRoute: typeof ApiCliStacksRoute
     }
     '/api/cli/auth/start': {
       id: '/api/cli/auth/start'
@@ -575,6 +533,18 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface ApiCliStacksRouteChildren {
+  ApiCliStacksCollectRoute: typeof ApiCliStacksCollectRoute
+}
+
+const ApiCliStacksRouteChildren: ApiCliStacksRouteChildren = {
+  ApiCliStacksCollectRoute: ApiCliStacksCollectRoute,
+}
+
+const ApiCliStacksRouteWithChildren = ApiCliStacksRoute._addFileChildren(
+  ApiCliStacksRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -595,15 +565,12 @@ const rootRouteChildren: RootRouteChildren = {
   WaitlistLookupIdRoute: WaitlistLookupIdRoute,
   StacksIndexRoute: StacksIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiCliStacksRoute: ApiCliStacksRouteWithChildren,
   ApiIconsFromUrlRoute: ApiIconsFromUrlRoute,
   StacksSlugEditRoute: StacksSlugEditRoute,
   ApiCliAuthPollRoute: ApiCliAuthPollRoute,
   ApiCliAuthStartRoute: ApiCliAuthStartRoute,
-  ApiCliProjectsShortIdRoute: ApiCliProjectsShortIdRoute,
-  ApiCliProjectsCheckRoute: ApiCliProjectsCheckRoute,
-  ApiCliProjectsCollectRoute: ApiCliProjectsCollectRoute,
   ApiOgStackSlugRoute: ApiOgStackSlugRoute,
-  StacksSlugProjectsProjectSlugRoute: StacksSlugProjectsProjectSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -37,7 +37,6 @@ describe("buildRepoLinkResource", () => {
 			type: "custom",
 			name: "aistack",
 			group: "generic",
-			scope: "project",
 			stableKey: "linked:https://github.com/alp82/aistack:",
 			upstream: { repoUrl: "https://github.com/alp82/aistack" },
 		});

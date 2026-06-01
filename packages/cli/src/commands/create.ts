@@ -1,13 +1,15 @@
-import * as p from "@clack/prompts";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { projectGet } from "../api.js";
+import * as p from "@clack/prompts";
+import { stackGet } from "../api.js";
+import { getToken } from "../config.js";
 import {
 	bold,
 	dim,
 	divider,
 	intro,
 	lime,
+	limeBold,
 	lines,
 	outro,
 	outroCancel,
@@ -17,57 +19,49 @@ import {
 	yellow,
 } from "../theme.js";
 
-export async function createCommand(slugOrShortId: string) {
+export async function createCommand() {
 	intro("create");
 
+	const token = getToken();
+	if (!token) {
+		p.log.error(
+			`Not authenticated. Run ${limeBold("npx @use-aistack/cli login")} first.`,
+		);
+		outroError("not authenticated");
+		process.exit(1);
+	}
+
 	const s = p.spinner();
-	s.start("Fetching project...");
+	s.start("Fetching stack...");
 
-	const shortId = slugOrShortId.includes("-")
-		? slugOrShortId.slice(slugOrShortId.lastIndexOf("-") + 1)
-		: slugOrShortId;
-
-	let project: Awaited<ReturnType<typeof projectGet>>;
+	let stack: Awaited<ReturnType<typeof stackGet>>;
 	try {
-		project = await projectGet(shortId);
-		if (!project) {
+		stack = await stackGet(token);
+		if (!stack) {
 			s.stop("Not found");
-			p.log.error(`Project "${slugOrShortId}" not found.`);
+			p.log.error("No stack found. Create a stack on aistack.to first.");
 			outroError("not found");
 			process.exit(1);
 		}
-		s.stop(bold(project.name));
+		s.stop(bold(stack.name));
 	} catch (err) {
-		s.stop("Failed to fetch project");
+		s.stop("Failed to fetch stack");
 		p.log.error(err instanceof Error ? err.message : String(err));
 		outroError("error");
 		process.exit(1);
 	}
 
 	const localFiles: FileToWrite[] = [];
-	const globalFiles: FileToWrite[] = [];
 
-	for (const item of project.resources) {
-		const isGlobal = item.scope === "global";
+	for (const item of stack.resources) {
 		for (const file of item.files ?? []) {
-			const writePath = file.path ?? file.name;
-			if (isGlobal) {
-				globalFiles.push({ path: writePath, content: file.content });
-			} else {
-				localFiles.push({ path: writePath, content: file.content });
-			}
+			localFiles.push({ path: file.path ?? file.name, content: file.content });
 		}
-	}
-
-	if (globalFiles.length > 0) {
-		section("global config", globalFiles.length);
-		lines([dim("view only")]);
-		lines(globalFiles.map((f) => dim(f.path)));
 	}
 
 	// Linked resources have no files to write — surface them so they aren't
 	// silently dropped on download (GitHub repos + package refs like MCP servers).
-	const linked = project.resources.filter(
+	const linked = stack.resources.filter(
 		(item) => (item.upstream || item.pkg) && !item.files?.length,
 	);
 	if (linked.length > 0) {

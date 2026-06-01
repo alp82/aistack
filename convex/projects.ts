@@ -6,6 +6,29 @@ import { slugifyAscii } from '../src/lib/slug'
 import { Resource as ResourceValidator } from './schema'
 import { cascadeUnlinkOwner, resolveLinkedResources } from './lib/resourceLinks'
 
+/**
+ * Normalize and validate a project URL submitted by the owner.
+ * - Scheme-less strings (e.g. "example.com") are prefixed with "https://".
+ * - javascript:, data:, and any other non-http(s) scheme throws.
+ * Returns the normalized URL string, or undefined when input is absent/empty.
+ */
+function normalizeProjectUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined
+  const trimmed = url.trim()
+  if (!trimmed) return undefined
+  const normalized = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+  let parsed: URL
+  try {
+    parsed = new URL(normalized)
+  } catch {
+    throw new Error('Invalid URL')
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('Only http and https URLs are allowed')
+  }
+  return parsed.href
+}
+
 export const getBySlug = query({
   args: { slug: v.string() },
   returns: v.union(
@@ -162,73 +185,6 @@ export const listByStack = query({
   },
 })
 
-export const listProjectResourcesByStack = query({
-  args: { stackId: v.id('stacks'), includeUnpublished: v.optional(v.boolean()) },
-  returns: v.array(
-    v.object({
-      projectId: v.id('projects'),
-      projectName: v.string(),
-      projectSlug: v.string(),
-      isOwnProject: v.boolean(),
-      resources: v.array(ResourceValidator),
-    })
-  ),
-  handler: async (ctx, args) => {
-    const user = await ctx.auth.getUserIdentity()
-    const userId = user ? user.tokenIdentifier.split('|')[1] : null
-
-    let projects = await ctx.db
-      .query('projects')
-      .withIndex('by_stackId', (q) => q.eq('stackId', args.stackId))
-      .collect()
-
-    const ownedCreatorIds = new Set<string>()
-    if (userId) {
-      for (const project of projects) {
-        if (ownedCreatorIds.has(project.creatorId)) continue
-        const creator = await ctx.db.get(project.creatorId)
-        if (creator && creator.userId === userId) {
-          ownedCreatorIds.add(project.creatorId)
-        }
-      }
-    }
-
-    if (!args.includeUnpublished) {
-      projects = projects.filter(
-        (p) => p.published === true || ownedCreatorIds.has(p.creatorId)
-      )
-    }
-
-    const mapped = await Promise.all(
-      projects.map(async (project) => ({
-        projectId: project._id,
-        projectName: project.name,
-        projectSlug: `${project.slug}-${project.shortId}`,
-        isOwnProject: ownedCreatorIds.has(project.creatorId),
-        resources: await resolveLinkedResources(ctx, 'project', project._id),
-        order: project.order,
-        createdAt: project.createdAt,
-      })),
-    )
-
-    mapped.sort((a, b) => {
-      const orderA = a.order ?? Infinity
-      const orderB = b.order ?? Infinity
-      if (orderA !== orderB) return orderA - orderB
-      return a.createdAt - b.createdAt
-    })
-
-    return mapped.map(
-      ({ projectId, projectName, projectSlug, isOwnProject, resources }) => ({
-        projectId,
-        projectName,
-        projectSlug,
-        isOwnProject,
-        resources,
-      })
-    )
-  },
-})
 
 export const listByCreator = query({
   args: {},
@@ -377,7 +333,7 @@ export const updateProject = mutation({
       patch.slug = slugifyAscii(args.name, project.slug)
     }
     if (args.description !== undefined) patch.description = args.description
-    if (args.url !== undefined) patch.url = args.url
+    if (args.url !== undefined) patch.url = normalizeProjectUrl(args.url)
     if (args.tags !== undefined) patch.tags = args.tags
     if (args.order !== undefined) patch.order = args.order
     if (args.published !== undefined) patch.published = args.published
@@ -434,7 +390,7 @@ export const createProject = mutation({
       stackId: resolvedStackId,
       source: 'web',
       description: args.description,
-      url: args.url,
+      url: normalizeProjectUrl(args.url),
       tags: args.tags,
       published: false,
       createdAt: now,

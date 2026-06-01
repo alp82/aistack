@@ -49,7 +49,7 @@ export interface LinkSpec {
 	name: string;
 	type: string;
 	group: string;
-	scope: "project" | "global";
+	scope?: "project" | "global";
 	/** Optional pinned commit, stored as upstream.lastCommitSha. */
 	sha?: string;
 }
@@ -59,7 +59,9 @@ export interface LinkSpec {
  * files (upstream presence is the storage discriminator) and the exact
  * `linked:${canonical}:${normPath}` stableKey so the web unlink UI — which
  * matches by stableKey — recognizes it. `path`/`lastCommitSha` are omitted when
- * empty so the by_upstream dedup index matches at both write and query.
+ * empty so the by_upstream dedup index matches at both write and query. `scope`
+ * is emitted only when explicitly set — resources are stack-owned (global)
+ * server-side regardless.
  */
 export function buildLinkResource(spec: LinkSpec): Resource {
 	const normPath = normalizeUpstreamPath(spec.path);
@@ -67,7 +69,7 @@ export function buildLinkResource(spec: LinkSpec): Resource {
 		type: spec.type,
 		name: spec.name,
 		group: spec.group,
-		scope: spec.scope,
+		...(spec.scope ? { scope: spec.scope } : {}),
 		stableKey: `linked:${spec.canonical}:${normPath}`,
 		upstream: {
 			repoUrl: spec.canonical,
@@ -77,13 +79,12 @@ export function buildLinkResource(spec: LinkSpec): Resource {
 	};
 }
 
-/** The repo this project lives in: a project-scoped GitHub link. */
+/** The repo this project lives in: a GitHub link (stack-owned server-side). */
 export function buildRepoLinkResource(canonical: string): Resource {
 	return buildLinkResource({
 		canonical,
 		name: repoNameFromCanonical(canonical),
 		type: "custom",
 		group: "generic",
-		scope: "project",
 	});
 }

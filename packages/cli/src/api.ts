@@ -37,29 +37,11 @@ export async function authPoll(
 	return res.json();
 }
 
-export async function projectsCheck(
+export async function stackCollect(
 	token: string,
-	name: string,
-): Promise<{ exists: boolean; slug?: string }> {
-	const res = await request(
-		`/api/cli/projects/check?name=${encodeURIComponent(name)}`,
-		{
-			headers: authHeaders(token),
-		},
-	);
-	if (res.status === 401)
-		throw new Error(
-			"Authentication expired. Run `npx @use-aistack/cli login` again.",
-		);
-	if (!res.ok) throw new Error(`Project check failed: ${res.status}`);
-	return res.json();
-}
-
-export async function projectsCollect(
-	token: string,
-	data: { name: string; resources: Resource[] },
+	data: { resources: Resource[] },
 ): Promise<{ slug: string; shortId: string; url: string }> {
-	const res = await request("/api/cli/projects/collect", {
+	const res = await request("/api/cli/stacks/collect", {
 		method: "POST",
 		headers: authHeaders(token),
 		body: JSON.stringify(data),
@@ -87,10 +69,16 @@ async function formatHttpError(res: Response, label: string): Promise<string> {
 	return snippet ? `${prefix} — ${snippet}` : prefix;
 }
 
-export async function projectGet(shortId: string): Promise<ProjectData | null> {
-	const res = await request(`/api/cli/projects/${encodeURIComponent(shortId)}`);
+export async function stackGet(token: string): Promise<StackData | null> {
+	const res = await request("/api/cli/stacks", {
+		headers: authHeaders(token),
+	});
+	if (res.status === 401)
+		throw new Error(
+			"Authentication expired. Run `npx @use-aistack/cli login` again.",
+		);
 	if (res.status === 404) return null;
-	if (!res.ok) throw new Error(`Project fetch failed: ${res.status}`);
+	if (!res.ok) throw new Error(`Stack fetch failed: ${res.status}`);
 	return res.json();
 }
 
@@ -126,13 +114,9 @@ export interface Resource {
 	};
 }
 
-export interface ProjectData {
+export interface StackData {
 	name: string;
 	slug: string;
 	shortId: string;
 	resources: Resource[];
-	/** Stack-scoped resources, for diffing global (stack-attached) links. */
-	stackResources?: Resource[];
-	creator?: { name: string };
-	stack?: { name: string; slug: string };
 }

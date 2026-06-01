@@ -112,47 +112,20 @@ export const authPoll = httpAction(async (ctx, request) => {
   return jsonResponse({ status: 'expired' })
 })
 
-export const projectsCheck = httpAction(async (ctx, request) => {
-  const authResult = await validateBearerToken(ctx as any, request)
-  if (authResult instanceof Response) return authResult
-  const { userId } = authResult
-
-  const url = new URL(request.url)
-  const name = url.searchParams.get('name')
-  if (!name) {
-    return jsonResponse({ error: 'Missing name parameter' }, 400)
-  }
-
-  const creator = await ctx.runQuery(internal.httpCliHelpers.getCreatorByUserId, { userId })
-  if (!creator) {
-    return jsonResponse({ error: 'Creator profile not found' }, 404)
-  }
-
-  const project = await ctx.runQuery(internal.httpCliHelpers.getProjectByCreatorAndName, {
-    creatorId: creator._id,
-    name,
-  })
-
-  if (project) {
-    return jsonResponse({ exists: true, slug: `${project.slug}-${project.shortId}` })
-  }
-  return jsonResponse({ exists: false })
-})
-
-export const projectsCollect = httpAction(async (ctx, request) => {
+export const stackCollect = httpAction(async (ctx, request) => {
   const authResult = await validateBearerToken(ctx as any, request)
   if (authResult instanceof Response) return authResult
   const { userId, tokenId } = authResult
 
-  let body: { name: string; resources: any[]; stackShortId?: string; source?: string }
+  let body: { resources: any[] }
   try {
     body = await request.json()
   } catch {
     return jsonResponse({ error: 'Invalid JSON body' }, 400)
   }
 
-  if (!body.name || !body.resources) {
-    return jsonResponse({ error: 'Missing required fields: name, resources' }, 400)
+  if (!body.resources) {
+    return jsonResponse({ error: 'Missing required field: resources' }, 400)
   }
 
   const creator = await ctx.runQuery(internal.httpCliHelpers.getCreatorByUserId, { userId })
@@ -160,40 +133,17 @@ export const projectsCollect = httpAction(async (ctx, request) => {
     return jsonResponse({ error: 'Creator profile not found' }, 404)
   }
 
-  let stackId: string | null = null
-  let stackSlugComposed: string | null = null
-
-  if (body.stackShortId) {
-    const stack = await ctx.runQuery(internal.httpCliHelpers.getStackByShortId, {
-      shortId: body.stackShortId,
-    })
-    if (stack) {
-      if (stack.creatorId !== creator._id) {
-        return jsonResponse({ error: 'Not authorized to write to this stack' }, 403)
-      }
-      stackId = stack._id
-      stackSlugComposed = `${stack.slug}-${stack.shortId}`
-    }
-  }
-
-  if (!stackId) {
-    // TODO: enforce one-stack-per-creator invariant — currently silently picks first
-    const stack = await ctx.runQuery(internal.httpCliHelpers.getFirstStackByCreator, {
-      creatorId: creator._id,
-    })
-    if (!stack) {
-      return jsonResponse({ error: 'No stack found. Create a stack on aistack.to first.' }, 400)
-    }
-    stackId = stack._id
-    stackSlugComposed = `${stack.slug}-${stack.shortId}`
-  }
-
-  const result = await ctx.runMutation(internal.httpCliHelpers.upsertProject, {
+  const stack = await ctx.runQuery(internal.httpCliHelpers.getFirstStackByCreator, {
     creatorId: creator._id,
-    stackId: stackId as Id<'stacks'>,
-    name: body.name,
+  })
+  if (!stack) {
+    return jsonResponse({ error: 'No stack found. Create a stack on aistack.to first.' }, 400)
+  }
+
+  const result = await ctx.runMutation(internal.httpCliHelpers.upsertStackResources, {
+    creatorId: creator._id,
+    stackId: stack._id as Id<'stacks'>,
     resources: body.resources,
-    source: body.source ?? 'cli',
   })
 
   const now = Date.now()
@@ -207,27 +157,26 @@ export const projectsCollect = httpAction(async (ctx, request) => {
   return jsonResponse({
     slug: result.slug,
     shortId: result.shortId,
-    url: `${appUrl}/stacks/${stackSlugComposed}/projects/${result.slug}`,
+    url: `${appUrl}/stacks/${result.slug}`,
   })
 })
 
-export const projectsGet = httpAction(async (ctx, request) => {
-  const url = new URL(request.url)
-  const pathSegments = url.pathname.split('/').filter(Boolean)
-  const shortId = pathSegments[pathSegments.length - 1]
+export const stackGet = httpAction(async (ctx, request) => {
+  const authResult = await validateBearerToken(ctx as any, request)
+  if (authResult instanceof Response) return authResult
+  const { userId } = authResult
 
-  if (!shortId) {
-    return jsonResponse({ error: 'Missing project shortId' }, 400)
+  const creator = await ctx.runQuery(internal.httpCliHelpers.getCreatorByUserId, { userId })
+  if (!creator) {
+    return jsonResponse({ error: 'Creator profile not found' }, 404)
   }
 
-  const project = await ctx.runQuery(api.projects.getByShortId, { shortId })
-  if (!project) {
-    return jsonResponse({ error: 'Project not found' }, 404)
-  }
-
-  await ctx.runMutation(internal.httpCliHelpers.incrementCloneCount, {
-    projectId: project._id,
+  const stack = await ctx.runQuery(internal.httpCliHelpers.getStackWithResourcesByCreator, {
+    creatorId: creator._id,
   })
+  if (!stack) {
+    return jsonResponse({ error: 'No stack found. Create a stack on aistack.to first.' }, 404)
+  }
 
-  return jsonResponse(project)
+  return jsonResponse(stack)
 })

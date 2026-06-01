@@ -1,7 +1,7 @@
 import { Command } from "commander";
-import { loginCommand } from "./commands/login.js";
 import { collectCommand } from "./commands/collect.js";
 import { createCommand } from "./commands/create.js";
+import { loginCommand } from "./commands/login.js";
 
 const program = new Command();
 
@@ -23,8 +23,7 @@ program
 
 program
 	.command("create")
-	.description("Download and write AI config files from a shared project")
-	.argument("<slug>", "Project slug or short ID")
+	.description("Download and write your stack's AI config files")
 	.action(createCommand);
 
 program.parse();

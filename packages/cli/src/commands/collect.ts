@@ -1,18 +1,7 @@
-import { basename } from "node:path";
 import * as p from "@clack/prompts";
-import {
-	projectGet,
-	projectsCheck,
-	projectsCollect,
-	type Resource,
-} from "../api.js";
+import { type Resource, stackCollect, stackGet } from "../api.js";
 import { classify } from "../classifier.js";
-import {
-	getExcludedPaths,
-	getProjectName,
-	getToken,
-	saveProjectSettings,
-} from "../config.js";
+import { getExcludedPaths, getToken, saveExcludedPaths } from "../config.js";
 import { buildRepoLinkResource, detectRepoUrl } from "../git.js";
 import { repoNameFromCanonical } from "../github-repo.js";
 import { detectHooks } from "../hooks.js";
@@ -44,14 +33,12 @@ const REPO_LINK_KEY = "\0repo-link";
 /**
  * A non-file resource surfaced during collect — the repo link, an installed
  * plugin, etc. Toggleable and persisted exactly like a scanned file, keyed by
- * its sentinel. `scope` decides where it attaches: "project" vs "global" (the
- * stack).
+ * its sentinel. Everything attaches to the single stack (global) server-side.
  */
 interface DetectedLink {
 	key: string;
 	resource: Resource;
 	label: string;
-	scope: "project" | "global";
 }
 
 export async function collectCommand(options: { global: boolean }) {
@@ -67,7 +54,6 @@ export async function collectCommand(options: { global: boolean }) {
 	}
 
 	const cwd = process.cwd();
-	const savedName = getProjectName(cwd);
 	const savedExcluded = getExcludedPaths(cwd);
 
 	const s = p.spinner();
@@ -83,25 +69,6 @@ export async function collectCommand(options: { global: boolean }) {
 		return;
 	}
 
-	// Project name
-	let projectName: string;
-	if (savedName) {
-		p.log.info(`${dim("PROJECT")} ${limeBold(savedName)}`);
-		projectName = savedName;
-	} else {
-		const defaultName = basename(cwd);
-		const name = await p.text({
-			message: "Project name:",
-			defaultValue: defaultName,
-			placeholder: defaultName,
-		});
-		if (p.isCancel(name)) {
-			outroCancel();
-			process.exit(0);
-		}
-		projectName = (name as string) || defaultName;
-	}
-
 	// Apply saved exclusions
 	const allFiles = [...localFiles, ...globalFiles];
 	let selectedFiles = allFiles.filter(
@@ -114,9 +81,9 @@ export async function collectCommand(options: { global: boolean }) {
 		`${lime(String(selectedFiles.length))} included${excluded.length > 0 ? ` · ${dim(String(excluded.length) + " excluded")}` : ""}`,
 	);
 
-	// Detect non-file links: the repo this project lives in (project scope) and
-	// installed Claude Code plugins (stack/global scope). Each is toggleable and
-	// included by default unless previously deselected. All graceful no-ops.
+	// Detect non-file links: the repo this lives in, installed Claude Code
+	// plugins, MCP servers, hooks. Each is toggleable and included by default
+	// unless previously deselected. All graceful no-ops.
 	const detectedLinks: DetectedLink[] = [];
 	const repoUrl = detectRepoUrl(cwd);
 	if (repoUrl) {
@@ -124,7 +91,6 @@ export async function collectCommand(options: { global: boolean }) {
 			key: REPO_LINK_KEY,
 			resource: buildRepoLinkResource(repoUrl),
 			label: `repo · ${repoNameFromCanonical(repoUrl)}`,
-			scope: "project",
 		});
 	}
 	for (const resource of detectInstalledPlugins()) {
@@ -132,7 +98,6 @@ export async function collectCommand(options: { global: boolean }) {
 			key: `\0plugin:${resource.stableKey}`,
 			resource,
 			label: `plugin · ${resource.name}`,
-			scope: "global",
 		});
 	}
 	for (const resource of detectMcpServers(cwd)) {
@@ -140,7 +105,6 @@ export async function collectCommand(options: { global: boolean }) {
 			key: `\0mcp:${resource.stableKey}`,
 			resource,
 			label: `mcp · ${resource.name}`,
-			scope: resource.scope === "global" ? "global" : "project",
 		});
 	}
 	for (const resource of detectHooks(cwd)) {
@@ -148,7 +112,6 @@ export async function collectCommand(options: { global: boolean }) {
 			key: `\0hook:${resource.stableKey}`,
 			resource,
 			label: `hook · ${resource.name}`,
-			scope: resource.scope === "global" ? "global" : "project",
 		});
 	}
 
@@ -167,16 +130,10 @@ export async function collectCommand(options: { global: boolean }) {
 	// Classify selected files
 	let allResources = withLinks(classify(selectedFiles));
 
-	// Fetch existing project and diff
-	let existingProject: Awaited<ReturnType<typeof projectGet>> = null;
+	// Fetch the existing stack and diff against its resources.
+	let existingStack: Awaited<ReturnType<typeof stackGet>> = null;
 	try {
-		const check = await projectsCheck(token, projectName);
-		if (check.exists && check.slug) {
-			const shortId = check.slug.includes("-")
-				? check.slug.slice(check.slug.lastIndexOf("-") + 1)
-				: check.slug;
-			existingProject = await projectGet(shortId);
-		}
+		existingStack = await stackGet(token);
 	} catch (err) {
 		p.log.error(err instanceof Error ? err.message : String(err));
 		outroError("error");
@@ -184,27 +141,9 @@ export async function collectCommand(options: { global: boolean }) {
 	}
 
 	// Show file list or diff
-	if (existingProject) {
-		// Scope-aware: project-scoped resources diff against the project's
-		// existing resources; global-scoped ones (global config files, plugin
-		// links) against the stack's. Diffing everything against the project
-		// alone would mark every global item as perpetually "added".
-		const isGlobal = (r: Resource) => r.scope === "global";
-		const projectDiff = diffResources(
-			allResources.filter((r) => !isGlobal(r)),
-			existingProject.resources,
-		);
-		const stackDiff = diffResources(
-			allResources.filter(isGlobal),
-			existingProject.stackResources ?? [],
-		);
-		const changeCount =
-			projectDiff.added +
-			projectDiff.changed +
-			projectDiff.removed +
-			stackDiff.added +
-			stackDiff.changed +
-			stackDiff.removed;
+	if (existingStack) {
+		const diff = diffResources(allResources, existingStack.resources);
+		const changeCount = diff.added + diff.changed + diff.removed;
 
 		if (changeCount === 0) {
 			p.log.info("No changes since last collect.");
@@ -212,20 +151,17 @@ export async function collectCommand(options: { global: boolean }) {
 			return;
 		}
 
-		const details = [...projectDiff.details, ...stackDiff.details];
-		const unchanged = projectDiff.unchanged + stackDiff.unchanged;
-
 		divider();
 		section("changes");
 		lines(
-			details.map((f) => {
+			diff.details.map((f) => {
 				if (f.status === "added") return lime(`+ ${f.name}`);
 				if (f.status === "changed") return yellow(`~ ${f.name}`);
 				return red(`- ${f.name}`);
 			}),
 		);
-		if (unchanged > 0) {
-			lines([dim(`${unchanged} unchanged`)]);
+		if (diff.unchanged > 0) {
+			lines([dim(`${diff.unchanged} unchanged`)]);
 		}
 		divider();
 	} else {
@@ -251,27 +187,19 @@ export async function collectCommand(options: { global: boolean }) {
 			divider();
 		}
 		const shownLinks = detectedLinks.filter((l) => includedLinks.has(l.key));
-		const projectLinks = shownLinks.filter((l) => l.scope === "project");
-		const stackLinks = shownLinks.filter((l) => l.scope === "global");
-		if (projectLinks.length > 0) {
-			p.log.step(`${bold("PROJECT")} ${dim("links")}`);
+		if (shownLinks.length > 0) {
+			p.log.step(`${bold("LINKS")} ${dim(String(shownLinks.length))}`);
 			divider();
-			lines(projectLinks.map((l) => dim(`  ${l.label}`)));
-			divider();
-		}
-		if (stackLinks.length > 0) {
-			p.log.step(`${bold("STACK")} ${dim(String(stackLinks.length))}`);
-			divider();
-			lines(stackLinks.map((l) => dim(`  ${l.label}`)));
+			lines(shownLinks.map((l) => dim(`  ${l.label}`)));
 			divider();
 		}
 	}
 
 	// Action: upload, customize, or cancel
 	const action = await p.select({
-		message: existingProject
+		message: existingStack
 			? "Upload changes?"
-			: `Upload ${bold(String(selectedFiles.length))} files as ${limeBold(projectName)}?`,
+			: `Upload ${bold(String(selectedFiles.length))} files to your stack?`,
 		options: [
 			{ value: "upload", label: "Upload" },
 			{ value: "customize", label: "Select files" },
@@ -288,7 +216,7 @@ export async function collectCommand(options: { global: boolean }) {
 		const linkOptions = detectedLinks.map((l) => ({
 			value: l.key,
 			label: l.label,
-			hint: l.scope === "global" ? "stack link" : "project link",
+			hint: "link",
 		}));
 		const selected = await p.multiselect({
 			message: "Select files to include:",
@@ -331,16 +259,13 @@ export async function collectCommand(options: { global: boolean }) {
 
 	s.start("Uploading...");
 	try {
-		const result = await projectsCollect(token, {
-			name: projectName,
-			resources: allResources,
-		});
+		const result = await stackCollect(token, { resources: allResources });
 		s.stop(lime("Uploaded"));
 		const excludedKeys = excluded.map((f) => f.relativePath);
 		for (const l of detectedLinks) {
 			if (!includedLinks.has(l.key)) excludedKeys.push(l.key);
 		}
-		saveProjectSettings(cwd, projectName, excludedKeys);
+		saveExcludedPaths(cwd, excludedKeys);
 		p.log.success(dim(result.url));
 		outro(lime("done"));
 	} catch (err) {

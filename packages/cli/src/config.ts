@@ -36,7 +36,6 @@ export function clearToken(): void {
 const PROJECTS_FILE = join(CONFIG_DIR, "projects.json");
 
 interface ProjectEntry {
-	name: string;
 	excluded?: string[];
 }
 
@@ -48,13 +47,15 @@ function readProjects(): ProjectsData {
 	if (!existsSync(PROJECTS_FILE)) return {};
 	try {
 		const raw = JSON.parse(readFileSync(PROJECTS_FILE, "utf-8"));
-		// Migrate old format (string values) to new format
+		// Tolerate legacy entries: string values (oldest) and objects that still
+		// carry a `name` field. Only `excluded` is read going forward.
 		const data: ProjectsData = {};
 		for (const [key, value] of Object.entries(raw)) {
 			if (typeof value === "string") {
-				data[key] = { name: value };
-			} else {
-				data[key] = value as ProjectEntry;
+				data[key] = {};
+			} else if (value && typeof value === "object") {
+				const excluded = (value as { excluded?: string[] }).excluded;
+				data[key] = Array.isArray(excluded) ? { excluded } : {};
 			}
 		}
 		return data;
@@ -68,22 +69,13 @@ function writeProjects(data: ProjectsData): void {
 	writeFileSync(PROJECTS_FILE, JSON.stringify(data, null, 2));
 }
 
-export function getProjectName(directory: string): string | null {
-	return readProjects()[directory]?.name ?? null;
-}
-
 export function getExcludedPaths(directory: string): string[] {
 	return readProjects()[directory]?.excluded ?? [];
 }
 
-export function saveProjectSettings(
-	directory: string,
-	name: string,
-	excluded: string[],
-): void {
+export function saveExcludedPaths(directory: string, excluded: string[]): void {
 	const data = readProjects();
 	data[directory] = {
-		name,
 		excluded: excluded.length > 0 ? excluded : undefined,
 	};
 	writeProjects(data);

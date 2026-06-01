@@ -20,6 +20,9 @@ https://index.tego.security/skills/
 https://github.com/eljulians/skillfile
 
 
+skill sharing:
+https://microsoft.github.io/apm/
+
 skill usage & stats:
 https://github.com/av/skilled
 

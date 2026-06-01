@@ -4,6 +4,7 @@ import {
 	ChevronDown,
 	ChevronUp,
 	FileText,
+	Github,
 	Package,
 	Wrench,
 } from "lucide-react";
@@ -12,20 +13,18 @@ import {
 	BundlePicker,
 	type BundleSubscriptionEntry,
 } from "@/components/BundlePicker";
-import { ResourcePanel } from "@/components/ResourcePanel";
 import {
 	ModelPicker,
 	type ModelSubscriptionEntry,
 } from "@/components/ModelPicker";
 import { PriceDisplay } from "@/components/PriceDisplay";
+import { ResourcePanel } from "@/components/ResourcePanel";
+import { LinkResourceDialog } from "@/components/resources/LinkResourceDialog";
 import {
 	ToolPicker,
 	type ToolSubscriptionEntry,
 } from "@/components/ToolPicker";
-import {
-	UnifiedResourceList,
-	type UnifiedResourceListProjectGroup,
-} from "@/components/UnifiedResourceList";
+import { UnifiedResourceList } from "@/components/UnifiedResourceList";
 import { useEditorContext } from "@/features/stack-editor/context/EditorContext";
 import type { Resource } from "@/features/stack-editor/types";
 import { sumNormalizedMonthlyAmounts } from "@/lib/pricing";
@@ -33,13 +32,6 @@ import { cn } from "@/lib/utils";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
 type SidebarSection = "tools" | "bundles" | "models" | "resources" | null;
-
-type ProjectSourcedResource = Resource & {
-	sourceProjectId?: Id<"projects">;
-	sourceProjectName?: string;
-	sourceIsOwnProject?: boolean;
-	sourceStableKey?: string;
-};
 
 type ToolsSidebarProps = {
 	stackId?: Id<"stacks">;
@@ -51,7 +43,6 @@ type ToolsSidebarProps = {
 	onModelsChange: (models: ModelSubscriptionEntry[]) => void;
 	resources: Resource[];
 	onResourcesChange: (resources: Resource[]) => void;
-	projectResources?: ProjectSourcedResource[];
 	guestSession?: boolean;
 	onSignInRequired?: () => void;
 	mobile?: boolean;
@@ -67,18 +58,17 @@ function ToolsSidebar({
 	onModelsChange,
 	resources,
 	onResourcesChange,
-	projectResources,
 	guestSession = false,
 	onSignInRequired,
 	mobile = false,
 }: ToolsSidebarProps) {
-	const projectResourcesList = projectResources ?? [];
 	// Accordion state - only one section open at a time
 	// Tools section starts expanded by default (especially important when no tools exist yet)
 	const [activeSection, setActiveSection] = useState<SidebarSection>("tools");
 	const [editingResource, setEditingResource] = useState<
 		Resource | "new" | null
 	>(null);
+	const [linkOpen, setLinkOpen] = useState(false);
 	const {
 		insertToolCardAtCursor,
 		removeToolFromEditor,
@@ -291,27 +281,6 @@ function ToolsSidebar({
 		]);
 	}, [tools, bundles]);
 
-	// Group flattened project resources back into per-project groups for
-	// the unified file list.
-	const projectGroups = useMemo<UnifiedResourceListProjectGroup[]>(() => {
-		const byProject = new Map<string, UnifiedResourceListProjectGroup>();
-		for (const item of projectResourcesList) {
-			if (!item.sourceProjectId) continue;
-			const pid = String(item.sourceProjectId);
-			const existing = byProject.get(pid);
-			if (existing) {
-				existing.resources.push(item);
-			} else {
-				byProject.set(pid, {
-					sourceId: pid,
-					sourceLabel: item.sourceProjectName ?? "",
-					resources: [item],
-				});
-			}
-		}
-		return Array.from(byProject.values());
-	}, [projectResourcesList]);
-
 	const stackResourcesForList = useMemo(
 		() =>
 			stackId
@@ -353,15 +322,8 @@ function ToolsSidebar({
 			group: string;
 			fileCount: number;
 		}) => {
-			const sourceResources =
-				args.source === "stack"
-					? resources
-					: projectResourcesList.filter(
-							(i) =>
-								(i as ProjectSourcedResource).sourceProjectId === args.sourceId,
-						);
 			const typeCounts = new Map<string, number>();
-			for (const instr of sourceResources) {
+			for (const instr of resources) {
 				if ((instr.group ?? "generic") === args.group) {
 					typeCounts.set(
 						instr.type,
@@ -381,7 +343,7 @@ function ToolsSidebar({
 				typeBreakdown,
 			});
 		},
-		[insertResourceGroup, resources, projectResourcesList],
+		[insertResourceGroup, resources],
 	);
 
 	const showPanel = editingResource !== null;
@@ -592,9 +554,7 @@ function ToolsSidebar({
 					</div>
 					<div className="flex items-center gap-2">
 						<span className="font-mono text-[10px] text-fg-muted">
-							{projectResourcesList.length > 0
-								? `${projectResourcesList.length}+${resources.length}`
-								: resources.length}
+							{resources.length}
 						</span>
 						{activeSection === "resources" ? (
 							<ChevronUp className="size-4 text-accent-lime" />
@@ -604,11 +564,20 @@ function ToolsSidebar({
 					</div>
 				</button>
 				{activeSection === "resources" && (
-					<div className="mt-3">
+					<div className="mt-3 space-y-3">
+						{stackId && !guestSession && (
+							<button
+								type="button"
+								onClick={() => setLinkOpen(true)}
+								className="inline-flex items-center gap-1.5 border border-stroke-subtle px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-lime/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-canvas cursor-pointer"
+							>
+								<Github className="size-3" />
+								Link resource
+							</button>
+						)}
 						<UnifiedResourceList
 							mode="edit"
 							stackResources={stackResourcesForList}
-							projectResources={projectGroups}
 							onInsertFile={handleUnifiedInsertFile}
 							onInsertGroup={handleUnifiedInsertGroup}
 							onAddManual={handleAddResource}
@@ -616,6 +585,13 @@ function ToolsSidebar({
 					</div>
 				)}
 			</div>
+			{stackId && !guestSession && (
+				<LinkResourceDialog
+					open={linkOpen}
+					onClose={() => setLinkOpen(false)}
+					target={{ kind: "stack", id: stackId }}
+				/>
+			)}
 		</>
 	);
 

@@ -1,10 +1,7 @@
 import { useMemo } from "react";
 import { TableOfContents } from "@/components/TableOfContents";
 import { TiptapEditor } from "@/components/TiptapEditor";
-import {
-	UnifiedResourceList,
-	type UnifiedResourceListProjectGroup,
-} from "@/components/UnifiedResourceList";
+import { UnifiedResourceList } from "@/components/UnifiedResourceList";
 import type { Resource } from "@/features/stack-editor/types";
 import { sortToolsByPrice } from "@/lib/pricing";
 import { getResourceTypeLabel } from "@/lib/resource-utils";
@@ -94,61 +91,31 @@ export function ToolsSection({
 // 03 — SETUP (CLI-collected files + linked GitHub resources)
 // ===========================================================================
 
-type ProjectSourcedResource = Resource & {
-	sourceProjectId?: Id<"projects">;
-	sourceProjectName?: string;
-	sourceIsOwnProject?: boolean;
-	sourceStableKey?: string;
-};
-
 export function SetupSection({
 	index,
 	stackId,
 	resources,
-	projectResources,
 }: {
 	index: number;
 	stackId: Id<"stacks">;
 	resources: Resource[];
-	projectResources: ProjectSourcedResource[];
 }) {
-	const totalResourceCount = resources.length + projectResources.length;
+	const totalResourceCount = resources.length;
 
 	const totalFileCount = useMemo(
-		() =>
-			resources.reduce((sum, r) => sum + (r.files?.length ?? 0), 0) +
-			projectResources.reduce((sum, r) => sum + (r.files?.length ?? 0), 0),
-		[resources, projectResources],
+		() => resources.reduce((sum, r) => sum + (r.files?.length ?? 0), 0),
+		[resources],
 	);
 
 	const kindCounts = useMemo(() => {
 		const counts = new Map<string, number>();
-		for (const r of [...resources, ...projectResources]) {
+		for (const r of resources) {
 			counts.set(r.type, (counts.get(r.type) ?? 0) + 1);
 		}
 		return Array.from(counts.entries())
 			.filter(([, c]) => c > 0)
 			.sort(([a], [b]) => a.localeCompare(b));
-	}, [resources, projectResources]);
-
-	const projectGroups = useMemo<UnifiedResourceListProjectGroup[]>(() => {
-		const byProject = new Map<string, UnifiedResourceListProjectGroup>();
-		for (const item of projectResources) {
-			if (!item.sourceProjectId) continue;
-			const pid = String(item.sourceProjectId);
-			const existing = byProject.get(pid);
-			if (existing) {
-				existing.resources.push(item);
-			} else {
-				byProject.set(pid, {
-					sourceId: pid,
-					sourceLabel: item.sourceProjectName ?? "",
-					resources: [item],
-				});
-			}
-		}
-		return Array.from(byProject.values());
-	}, [projectResources]);
+	}, [resources]);
 
 	const stackResourcesForList = useMemo(
 		() =>
@@ -197,7 +164,6 @@ export function SetupSection({
 					<UnifiedResourceList
 						mode="view"
 						stackResources={stackResourcesForList}
-						projectResources={projectGroups}
 					/>
 				</div>
 			) : (

@@ -18,12 +18,6 @@ export interface UnifiedResourceListStackItems {
 	resources: Resource[];
 }
 
-export interface UnifiedResourceListProjectGroup {
-	sourceId: string;
-	sourceLabel: string;
-	resources: Resource[];
-}
-
 export interface UnifiedResourceListInsertFileArgs {
 	source: ResourceLocationKind;
 	sourceId: string;
@@ -42,7 +36,6 @@ export interface UnifiedResourceListInsertGroupArgs {
 
 export interface UnifiedResourceListProps {
 	stackResources?: UnifiedResourceListStackItems | null;
-	projectResources?: UnifiedResourceListProjectGroup[];
 	mode: "edit" | "view";
 	onInsertFile?: (args: UnifiedResourceListInsertFileArgs) => void;
 	onInsertGroup?: (args: UnifiedResourceListInsertGroupArgs) => void;
@@ -52,7 +45,6 @@ export interface UnifiedResourceListProps {
 
 export function UnifiedResourceList({
 	stackResources,
-	projectResources,
 	mode,
 	onInsertFile,
 	onInsertGroup,
@@ -77,8 +69,6 @@ export function UnifiedResourceList({
 		setViewerOpen(true);
 	};
 
-	const projectGroups = projectResources ?? [];
-
 	return (
 		<div className={cn("space-y-3", className)}>
 			{stackResources && stackResources.resources.length > 0 && (
@@ -89,15 +79,6 @@ export function UnifiedResourceList({
 					onInsertGroup={mode === "edit" ? onInsertGroup : undefined}
 				/>
 			)}
-			{projectGroups.map((project) => (
-				<ResourceTree
-					key={project.sourceId}
-					project={project}
-					onSelect={handleSelect}
-					onInsertFile={mode === "edit" ? onInsertFile : undefined}
-					onInsertGroup={mode === "edit" ? onInsertGroup : undefined}
-				/>
-			))}
 			{mode === "edit" && onAddManual && (
 				<button
 					type="button"

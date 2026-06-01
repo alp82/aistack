@@ -102,12 +102,12 @@ type UpsertArgs = {
   ownerKind: OwnerKind
   ownerId: string
   items: ResourceInputItem[]
-  defaultScope: NonNullable<Resource['scope']>
+  defaultScope?: NonNullable<Resource['scope']>
 }
 
 export async function upsertResourcesForOwner(
   ctx: MutationCtx,
-  { addedBy, ownerKind, ownerId, items, defaultScope }: UpsertArgs,
+  { addedBy, ownerKind, ownerId, items, defaultScope = 'global' }: UpsertArgs,
 ): Promise<void> {
   const ownerIdCast = castOwnerId(ownerKind, ownerId)
   const now = Date.now()

@@ -9,7 +9,7 @@ if (!convexSiteUrl) {
 
 const convexOrigin = new URL(convexSiteUrl).origin;
 
-export const Route = createFileRoute("/api/cli/projects/collect")({
+export const Route = createFileRoute("/api/cli/stacks/collect")({
 	server: {
 		handlers: {
 			POST: async ({ request }) => {
@@ -21,7 +21,7 @@ export const Route = createFileRoute("/api/cli/projects/collect")({
 				if (auth) headers.Authorization = auth;
 
 				try {
-					const resp = await fetch(`${convexOrigin}/api/cli/projects/collect`, {
+					const resp = await fetch(`${convexOrigin}/api/cli/stacks/collect`, {
 						method: "POST",
 						headers,
 						body,

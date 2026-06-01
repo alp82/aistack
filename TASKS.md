@@ -1,5 +1,9 @@
 # TODO
-* check CLI still works
+* Project simplification
+    * resources only for stacks
+    * no project page
+    * CLI only for global/stack scope
+* check CLI works
 * stack pages vertical
     * hero
     * projects
@@ -8,6 +12,7 @@
 * API for stacks + tools
 * add github link in footer
 * lazy loading upvotes fails
+* TUI for global + all projects
 * og:image downloadable in profile
 * og:image generation faulty
     * https://aistack.to/stacks/orcdev-u9ckco

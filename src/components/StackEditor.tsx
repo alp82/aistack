@@ -154,23 +154,6 @@ export function StackEditor({
 	const allTools = useQuery(api.tools.listForEditor) ?? [];
 	const allModels = useQuery(api.models.listForEditor) ?? [];
 
-	const projectResourcesByProject = useQuery(
-		api.projects.listProjectResourcesByStack,
-		initialValue?._id
-			? { stackId: initialValue._id, includeUnpublished: true }
-			: "skip",
-	);
-	const flattenedProjectResources = (projectResourcesByProject ?? []).flatMap(
-		(project) =>
-			project.resources.map((inst) => ({
-				...inst,
-				sourceProjectId: project.projectId,
-				sourceProjectName: project.projectName,
-				sourceIsOwnProject: project.isOwnProject,
-				sourceStableKey: inst.stableKey,
-			})),
-	);
-
 	// Use refs to avoid stale closures in the callback passed to the editor
 	const stateRef = useRef(state);
 	const allToolsRef = useRef(allTools);
@@ -616,7 +599,6 @@ export function StackEditor({
 							onModelsChange={setModelSubscriptions}
 							resources={state.resources}
 							onResourcesChange={setResources}
-							projectResources={flattenedProjectResources}
 							guestSession={guestSession}
 							onSignInRequired={() => setShowSignInDialog(true)}
 						/>
@@ -674,7 +656,6 @@ export function StackEditor({
 							onModelsChange={setModelSubscriptions}
 							resources={state.resources}
 							onResourcesChange={setResources}
-							projectResources={flattenedProjectResources}
 							guestSession={guestSession}
 							onSignInRequired={() => setShowSignInDialog(true)}
 							mobile

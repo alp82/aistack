@@ -176,10 +176,6 @@ function StackDetailsPage() {
 		api.stacks.getUpvoteStatus,
 		stack ? { stackId: stack._id } : "skip",
 	);
-	const projectResourcesByProject = useQuery(
-		api.projects.listProjectResourcesByStack,
-		stack ? { stackId: stack._id } : "skip",
-	);
 	const reportStatus = useQuery(
 		api.stacks.getReportStatus,
 		stack ? { stackId: stack._id } : "skip",
@@ -286,16 +282,6 @@ function StackDetailsPage() {
 	}
 
 	const personalPageUrl = stack.personalPageUrl;
-	const flattenedProjectResources = (projectResourcesByProject ?? []).flatMap(
-		(project) =>
-			project.resources.map((inst) => ({
-				...inst,
-				sourceProjectId: project.projectId,
-				sourceProjectName: project.projectName,
-				sourceIsOwnProject: project.isOwnProject,
-				sourceStableKey: inst.stableKey,
-			})),
-	);
 
 	const costText = formatPricingSummary(
 		stack.fixedTotal,
@@ -582,7 +568,6 @@ function StackDetailsPage() {
 				{/* Journey: Projects (01) → Tools (02) → Setup (03) → Models & Bundles (04) → The Details (05) */}
 				<ProjectsSection
 					stackId={stack._id}
-					stackSlug={stack.slug}
 					isOwner={upvoteStatus?.isOwner ?? false}
 				/>
 
@@ -595,7 +580,6 @@ function StackDetailsPage() {
 					index={3}
 					stackId={stack._id}
 					resources={stack.resources ?? []}
-					projectResources={flattenedProjectResources}
 				/>
 				<ModelsBundlesSection
 					index={4}

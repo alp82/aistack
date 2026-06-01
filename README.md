@@ -41,9 +41,9 @@ AI Stack has two surfaces that work together:
 
 Typical flow:
 
-- Sign up on the web app, create a stack, add a project to it.
-- Run `npx @use-aistack/cli collect` inside your repo to upload your `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, skills, MCP configs, etc.
-- Share the project link. Others run `npx @use-aistack/cli create <slug>` to clone your AI setup into their own project.
+- Sign up on the web app and create a stack.
+- Run `npx @use-aistack/cli collect` inside your repo to upload your `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, skills, MCP configs, etc. to your stack.
+- Share the stack link. On another machine, run `npx @use-aistack/cli create` to write your stack's AI setup into the current directory.
 
 ## 💻 CLI
 
@@ -65,7 +65,7 @@ npx @use-aistack/cli login
 
 #### `npx @use-aistack/cli collect`
 
-Scan the current project for AI config files and upload them to one of your projects on aistack.to.
+Scan the current project for AI config files and upload them to your stack on aistack.to.
 
 ```sh
 cd your-project
@@ -74,12 +74,12 @@ npx @use-aistack/cli collect
 
 Detects: `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, `.cursor/rules/`, `mcp.json`, skill directories, prompts, and global configs (`~/.claude/`, `~/.cursor/`, etc).
 
-#### `npx @use-aistack/cli create <slug>`
+#### `npx @use-aistack/cli create`
 
-Clone a shared project's AI config files into your current directory.
+Write your stack's AI config files into the current directory.
 
 ```sh
-npx @use-aistack/cli create alper-ortac-unw0sl
+npx @use-aistack/cli create
 ```
 
 ### Install globally (optional)
@@ -95,7 +95,7 @@ Then the same commands become:
 ```sh
 aistack login
 aistack collect
-aistack create <slug>
+aistack create
 ```
 
 ---

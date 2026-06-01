@@ -1,7 +1,14 @@
-import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { Check, Copy, Download, FolderOpen, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import {
+	ArrowUpRight,
+	Check,
+	Copy,
+	FileCode2,
+	Pencil,
+	Plus,
+	Trash2,
+} from "lucide-react";
+import { useEffect, useId, useState } from "react";
 import { ProjectOrderButtons } from "@/components/ProjectOrderButtons";
 import { TagBadge } from "@/components/TagBadge";
 import { Button } from "@/components/ui/button";
@@ -11,16 +18,46 @@ import { FormField } from "@/components/ui/form-field";
 import { FormInput } from "@/components/ui/form-input";
 import { FormTextarea } from "@/components/ui/form-textarea";
 import { SectionHeader } from "@/features/stack-view/ui";
+import { cn, safeExternalUrl, timeAgo } from "@/lib/utils";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 
+// --- By-tag accent: stable color per project, hashed from its first tag ------
+
+type Accent = { text: string; bg: string; border: string };
+
+const TAG_PALETTE: Accent[] = [
+	{ text: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/40" },
+	{
+		text: "text-violet-400",
+		bg: "bg-violet-500/10",
+		border: "border-violet-500/40",
+	},
+	{
+		text: "text-amber-400",
+		bg: "bg-amber-500/10",
+		border: "border-amber-500/40",
+	},
+	{ text: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/40" },
+	{
+		text: "text-emerald-400",
+		bg: "bg-emerald-500/10",
+		border: "border-emerald-500/40",
+	},
+	{ text: "text-sky-400", bg: "bg-sky-500/10", border: "border-sky-500/40" },
+];
+
+function accentFor(key: string): Accent {
+	let h = 0;
+	for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+	return TAG_PALETTE[h % TAG_PALETTE.length];
+}
+
 export function ProjectsSection({
 	stackId,
-	stackSlug,
 	isOwner,
 }: {
 	stackId: Id<"stacks">;
-	stackSlug: string;
 	isOwner: boolean;
 }) {
 	const projects = useQuery(api.projects.listByStack, {
@@ -31,6 +68,7 @@ export function ProjectsSection({
 	const publishProject = useMutation(api.projects.publishProject);
 	const deleteProjectMutation = useMutation(api.projects.deleteProject);
 	const createProject = useMutation(api.projects.createProject);
+	const updateProject = useMutation(api.projects.updateProject);
 	const [deleteTarget, setDeleteTarget] = useState<{
 		id: Id<"projects">;
 		name: string;
@@ -38,6 +76,7 @@ export function ProjectsSection({
 	const [deleting, setDeleting] = useState(false);
 	const [copied, setCopied] = useState(false);
 	const [createOpen, setCreateOpen] = useState(false);
+	const [editTarget, setEditTarget] = useState<EditProjectTarget | null>(null);
 
 	const hasProjects = projects && projects.length > 0;
 	if (!isOwner && !hasProjects) return null;
@@ -155,110 +194,175 @@ export function ProjectsSection({
 					</div>
 				)}
 				{hasProjects && (
-					<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+					<div className="border-t border-stroke-subtle">
 						{projects.map((project, index) => {
 							const isDraft = project.published !== true;
+							const accent = accentFor(project.tags?.[0] ?? project.name);
+							const shownTags = project.tags?.slice(0, 4) ?? [];
+							const extraTags = (project.tags?.length ?? 0) - shownTags.length;
+							const href = safeExternalUrl(project.url);
 							return (
-								<div key={project._id} className="flex gap-2">
-									{isOwner && projects.length > 1 && (
-										<ProjectOrderButtons
-											index={index}
-											total={projects.length}
-											onMove={(dir) => handleMove(index, dir)}
-										/>
+								<div
+									key={project._id}
+									className={cn(
+										"group relative flex items-stretch border-b border-stroke-subtle transition-colors",
+										href && "hover:bg-bg-panel/40",
 									)}
-									<div
-										className={`flex-1 flex flex-col border-2 bg-bg-canvas transition-all hover:border-accent-lime ${
-											isDraft
-												? "border-dashed border-stroke-subtle"
-												: "border-stroke-strong"
-										}`}
-									>
-										<Link
-											to="/stacks/$slug/projects/$projectSlug"
-											params={{ slug: stackSlug, projectSlug: project.slug }}
-											className="group flex-1 p-5"
-										>
-											<div className="flex items-start gap-3">
-												<div className="flex size-10 shrink-0 items-center justify-center border border-stroke-subtle bg-bg-panel-muted group-hover:border-accent-lime/50">
-													<FolderOpen className="size-5 text-fg-muted group-hover:text-accent-lime" />
-												</div>
+								>
+									<span
+										className={cn(
+											"absolute left-0 top-0 h-full w-0.5 origin-top scale-y-0 bg-accent-lime transition-transform duration-200",
+											href && "group-hover:scale-y-100",
+										)}
+									/>
+									{isOwner && projects.length > 1 && (
+										<div className="flex items-center pl-3">
+											<ProjectOrderButtons
+												index={index}
+												total={projects.length}
+												onMove={(dir) => handleMove(index, dir)}
+											/>
+										</div>
+									)}
+									{(() => {
+										const inner = (
+											<>
+												<span
+													className={cn(
+														"inline-flex size-12 shrink-0 items-center justify-center border font-mono text-base font-bold uppercase",
+														accent.bg,
+														accent.border,
+														accent.text,
+													)}
+												>
+													{project.name.charAt(0)}
+												</span>
 												<div className="min-w-0 flex-1">
-													<div className="flex items-center gap-2">
-														<p className="truncate font-mono text-sm font-semibold text-fg-primary">
+													<div className="flex flex-wrap items-center gap-2">
+														<h3
+															className={cn(
+																"truncate font-mono text-base font-semibold text-fg-primary transition-colors",
+																href && "group-hover:text-accent-lime",
+															)}
+														>
 															{project.name}
-														</p>
+														</h3>
 														{isDraft && (
-															<span className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-wider text-fg-muted border border-dashed border-stroke-subtle px-1.5 py-0.5">
-																Draft
+															<span className="shrink-0 border border-dashed border-amber-500/50 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400">
+																draft
 															</span>
 														)}
 													</div>
 													{project.description && (
-														<p className="mt-1 text-xs text-fg-secondary line-clamp-2">
+														<p className="mt-1 line-clamp-1 text-sm text-fg-secondary">
 															{project.description}
 														</p>
 													)}
-													{project.tags && project.tags.length > 0 && (
-														<div className="mt-2 flex flex-wrap gap-1">
-															{project.tags.map((tag) => (
-																<TagBadge key={tag} tag={tag} size="sm" />
-															))}
+													<div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+														{shownTags.length > 0 && (
+															<div className="flex flex-wrap items-center gap-1">
+																{shownTags.map((tag) => (
+																	<TagBadge key={tag} tag={tag} size="sm" />
+																))}
+																{extraTags > 0 && (
+																	<span className="font-mono text-[10px] text-fg-muted">
+																		+{extraTags}
+																	</span>
+																)}
+															</div>
+														)}
+														<div className="flex items-center gap-2.5 font-mono text-[11px] tabular-nums text-fg-muted">
+															<span className="inline-flex items-center gap-1">
+																<FileCode2 className="size-3" />
+																{project.fileCount}
+															</span>
+															{project.source && (
+																<>
+																	<span className="hidden text-stroke-subtle sm:inline">
+																		·
+																	</span>
+																	<span className="hidden sm:inline">
+																		# {project.source}
+																	</span>
+																</>
+															)}
+															<span className="hidden text-stroke-subtle sm:inline">
+																·
+															</span>
+															<span className="hidden sm:inline">
+																{timeAgo(project.updatedAt)}
+															</span>
 														</div>
-													)}
-													<div className="mt-2 flex items-center gap-3 font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-														<span>{project.fileCount} files</span>
-														{(project.cloneCount ?? 0) > 0 && (
-															<>
-																<span className="text-stroke-subtle">|</span>
-																<span className="inline-flex items-center gap-1">
-																	<Download className="size-3" />
-																	{project.cloneCount}
-																</span>
-															</>
-														)}
-														{project.source && (
-															<>
-																<span className="text-stroke-subtle">|</span>
-																<span>via {project.source}</span>
-															</>
-														)}
 													</div>
 												</div>
+												{href && (
+													<ArrowUpRight className="mt-1 hidden size-4 shrink-0 self-center text-fg-muted transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-accent-lime md:block" />
+												)}
+											</>
+										);
+										return href ? (
+											<a
+												href={href}
+												target="_blank"
+												rel="noopener noreferrer"
+												className="flex min-w-0 flex-1 items-start gap-4 px-3 py-5"
+											>
+												{inner}
+												<span className="sr-only"> (opens in new tab)</span>
+											</a>
+										) : (
+											<div className="flex min-w-0 flex-1 items-start gap-4 px-3 py-5">
+												{inner}
 											</div>
-										</Link>
-										{isOwner && (
-											<div className="flex gap-1 border-t border-stroke-subtle p-2">
+										);
+									})()}
+									{isOwner && (
+										<div className="flex shrink-0 items-center gap-1 pr-3">
+											<button
+												type="button"
+												onClick={() =>
+													setEditTarget({
+														id: project._id,
+														name: project.name,
+														description: project.description ?? "",
+														url: project.url ?? "",
+														tags: project.tags ?? [],
+													})
+												}
+												aria-label={`Edit ${project.name}`}
+												className="border border-stroke-subtle px-1.5 py-1 text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-lime/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-canvas cursor-pointer"
+											>
+												<Pencil className="size-3" />
+											</button>
+											<button
+												type="button"
+												onClick={() =>
+													publishProject({
+														projectId: project._id,
+														published: isDraft,
+													})
+												}
+												className="border border-stroke-subtle px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-lime/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-canvas cursor-pointer"
+											>
+												{isDraft ? "Publish" : "Unpublish"}
+											</button>
+											{isDraft && (
 												<button
 													type="button"
 													onClick={() =>
-														publishProject({
-															projectId: project._id,
-															published: !isDraft ? false : true,
+														setDeleteTarget({
+															id: project._id,
+															name: project.name,
 														})
 													}
-													className="flex-1 font-mono text-[10px] font-semibold uppercase tracking-wider border border-stroke-subtle px-2 py-1 text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime cursor-pointer"
+													aria-label={`Delete ${project.name}`}
+													className="border border-stroke-subtle px-1.5 py-1 text-fg-muted transition-colors hover:border-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-lime/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-canvas cursor-pointer"
 												>
-													{isDraft ? "Publish" : "Unpublish"}
+													<Trash2 className="size-3" />
 												</button>
-												{isDraft && (
-													<button
-														type="button"
-														onClick={() =>
-															setDeleteTarget({
-																id: project._id,
-																name: project.name,
-															})
-														}
-														aria-label={`Delete ${project.name}`}
-														className="font-mono text-[10px] font-semibold uppercase tracking-wider border border-stroke-subtle px-2 py-1 text-fg-muted transition-colors hover:border-destructive hover:text-destructive cursor-pointer"
-													>
-														<Trash2 className="size-3" />
-													</button>
-												)}
-											</div>
-										)}
-									</div>
+											)}
+										</div>
+									)}
 								</div>
 							);
 						})}
@@ -293,10 +397,24 @@ export function ProjectsSection({
 					stackId={stackId}
 					createProject={createProject}
 				/>
+
+				<EditProjectDialog
+					target={editTarget}
+					onClose={() => setEditTarget(null)}
+					updateProject={updateProject}
+				/>
 			</div>
 		</section>
 	);
 }
+
+type EditProjectTarget = {
+	id: Id<"projects">;
+	name: string;
+	description: string;
+	url: string;
+	tags: string[];
+};
 
 function CreateProjectDialog({
 	open,
@@ -315,6 +433,7 @@ function CreateProjectDialog({
 		stackId: Id<"stacks">;
 	}) => Promise<{ _id: Id<"projects">; slug: string }>;
 }) {
+	const tagsId = useId();
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [url, setUrl] = useState("");
@@ -394,9 +513,9 @@ function CreateProjectDialog({
 					onChange={(e) => setUrl(e.target.value)}
 					placeholder="https://..."
 				/>
-				<FormField label="Tags" htmlFor="create-project-tags">
+				<FormField label="Tags" htmlFor={tagsId}>
 					<input
-						id="create-project-tags"
+						id={tagsId}
 						type="text"
 						value={tagInput}
 						onChange={(e) => setTagInput(e.target.value)}
@@ -439,6 +558,164 @@ function CreateProjectDialog({
 						className="font-mono text-xs font-bold uppercase tracking-wider"
 					>
 						{submitting ? "Creating..." : "Create"}
+					</Button>
+				</div>
+			</div>
+		</Dialog>
+	);
+}
+
+function EditProjectDialog({
+	target,
+	onClose,
+	updateProject,
+}: {
+	target: EditProjectTarget | null;
+	onClose: () => void;
+	updateProject: (args: {
+		projectId: Id<"projects">;
+		name?: string;
+		description?: string;
+		url?: string;
+		tags?: string[];
+	}) => Promise<null>;
+}) {
+	const tagsId = useId();
+	const [name, setName] = useState("");
+	const [description, setDescription] = useState("");
+	const [url, setUrl] = useState("");
+	const [tags, setTags] = useState<string[]>([]);
+	const [tagInput, setTagInput] = useState("");
+	const [submitting, setSubmitting] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (target) {
+			setName(target.name);
+			setDescription(target.description);
+			setUrl(target.url);
+			setTags(target.tags);
+			setTagInput("");
+			setError(null);
+		}
+	}, [target]);
+
+	const addTag = () => {
+		const trimmed = tagInput.trim().toLowerCase();
+		if (trimmed && !tags.includes(trimmed)) {
+			setTags([...tags, trimmed]);
+		}
+		setTagInput("");
+	};
+
+	const removeTag = (tag: string) => {
+		setTags(tags.filter((t) => t !== tag));
+	};
+
+	const reset = () => {
+		setTagInput("");
+		setError(null);
+	};
+
+	const handleClose = () => {
+		reset();
+		onClose();
+	};
+
+	const handleSubmit = async () => {
+		const trimmedName = name.trim();
+		if (!target || !trimmedName || submitting) return;
+		setSubmitting(true);
+		setError(null);
+		try {
+			await updateProject({
+				projectId: target.id,
+				name: trimmedName,
+				description: description.trim() || undefined,
+				url: url.trim() || undefined,
+				tags,
+			});
+			reset();
+			onClose();
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to update project");
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
+	return (
+		<Dialog open={target !== null} onClose={handleClose} title="Edit Project">
+			<div className="space-y-4">
+				<FormInput
+					label="Name"
+					required
+					value={name}
+					onChange={(e) => setName(e.target.value)}
+					placeholder="My project"
+				/>
+				<FormTextarea
+					label="Description"
+					rows={2}
+					value={description}
+					onChange={(e) => setDescription(e.target.value)}
+					placeholder="Short description of the project..."
+				/>
+				<FormInput
+					label="URL"
+					value={url}
+					onChange={(e) => setUrl(e.target.value)}
+					placeholder="https://..."
+				/>
+				<FormField label="Tags" htmlFor={tagsId}>
+					<input
+						id={tagsId}
+						type="text"
+						value={tagInput}
+						onChange={(e) => setTagInput(e.target.value)}
+						onKeyDown={(e) => {
+							if (e.key === "Enter") {
+								e.preventDefault();
+								addTag();
+							}
+						}}
+						placeholder="Add tag + Enter"
+						className="w-full border-2 border-stroke-subtle bg-bg-panel px-2 py-1.5 font-mono text-xs text-fg-primary placeholder:text-fg-muted focus:border-accent-lime focus:outline-none"
+					/>
+					{tags.length > 0 && (
+						<div className="mt-2 flex flex-wrap gap-1.5">
+							{tags.map((tag) => (
+								<TagBadge
+									key={tag}
+									tag={tag}
+									size="md"
+									onRemove={() => removeTag(tag)}
+								/>
+							))}
+						</div>
+					)}
+				</FormField>
+				{error && (
+					<p role="alert" className="font-mono text-xs text-destructive">
+						{error}
+					</p>
+				)}
+				<div className="flex justify-end gap-2 pt-2">
+					<Button
+						type="button"
+						variant="outline"
+						onClick={handleClose}
+						className="font-mono text-xs font-bold uppercase tracking-wider"
+					>
+						Cancel
+					</Button>
+					<Button
+						type="button"
+						onClick={handleSubmit}
+						disabled={!name.trim() || submitting}
+						className="font-mono text-xs font-bold uppercase tracking-wider"
+					>
+						{submitting ? "Saving..." : "Save"}
 					</Button>
 				</div>
 			</div>

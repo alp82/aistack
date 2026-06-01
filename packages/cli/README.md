@@ -20,7 +20,7 @@ npx @use-aistack/cli login
 
 ### `npx @use-aistack/cli collect`
 
-Scan your project for AI config files and upload them.
+Scan your project for AI config files and upload them to your stack.
 
 ```sh
 cd your-project
@@ -29,12 +29,12 @@ npx @use-aistack/cli collect
 
 Detects: `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, `.cursor/rules/`, `mcp.json`, skill directories, prompts, and global configs (`~/.claude/`, `~/.cursor/`, etc).
 
-### `npx @use-aistack/cli create <slug>`
+### `npx @use-aistack/cli create`
 
-Clone a shared project's AI config files into your current directory.
+Write your stack's AI config files into the current directory.
 
 ```sh
-npx @use-aistack/cli create my-project-abc123
+npx @use-aistack/cli create
 ```
 
 ## Install globally (optional)
@@ -50,7 +50,7 @@ Then the same commands become:
 ```sh
 aistack login
 aistack collect
-aistack create <slug>
+aistack create
 ```
 
 ## Development
@@ -65,7 +65,7 @@ Test locally:
 ```sh
 node packages/cli/dist/index.js login
 node packages/cli/dist/index.js collect
-node packages/cli/dist/index.js create <slug>
+node packages/cli/dist/index.js create
 ```
 
 Set `AISTACK_URL=http://localhost:3019` to test against local dev server.
