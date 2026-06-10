@@ -1,18 +1,19 @@
 import { useEffect, useReducer, useRef } from "react";
-import type {
-	ModelSubscriptionEntry,
-	Resource,
-	StackEditorInitialValue,
-	StackEditorMode,
-} from "@/features/stack-editor/types";
+import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
+import type { StagedProject } from "@/components/projects/types";
+import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
 import {
 	editorReducer,
 	getDraftKey,
 	getInitialEditorState,
 } from "@/features/stack-editor/state/editorReducer";
 import { selectGuestDraft } from "@/features/stack-editor/state/editorSelectors";
-import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
-import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
+import type {
+	ModelSubscriptionEntry,
+	Resource,
+	StackEditorInitialValue,
+	StackEditorMode,
+} from "@/features/stack-editor/types";
 
 type UseEditorStateArgs = {
 	mode: StackEditorMode;
@@ -88,6 +89,8 @@ function useEditorState({
 			dispatch({ type: "modelSubscriptions/updated", modelSubscriptions }),
 		setResources: (resources: Resource[]) =>
 			dispatch({ type: "resources/updated", resources }),
+		setProjects: (projects: StagedProject[]) =>
+			dispatch({ type: "projects/updated", projects }),
 		setSaving: (saving: boolean) =>
 			dispatch({ type: "ui/saveStateChanged", saving }),
 		setError: (error: string) => dispatch({ type: "ui/errorSet", error }),

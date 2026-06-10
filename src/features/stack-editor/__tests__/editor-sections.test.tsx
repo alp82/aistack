@@ -89,9 +89,15 @@ describe("stack editor sections", () => {
 	});
 
 	it("keeps save and publish guard behavior", () => {
+		// Drafts (publish: false) skip validation entirely.
 		expect(
 			getSaveValidationError({ oneLiner: "", publish: false, toolCount: 0 }),
-		).toBe("One-liner summary is required");
+		).toBe(null);
+		// Publishing requires a one-liner first...
+		expect(
+			getSaveValidationError({ oneLiner: "", publish: true, toolCount: 0 }),
+		).toBe("One-liner summary is required to publish");
+		// ...then at least one tool.
 		expect(
 			getSaveValidationError({
 				oneLiner: "Valid one liner",

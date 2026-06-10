@@ -5,51 +5,22 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { LandingPageShell } from "@/features/landing/LandingPageShell";
 
-vi.mock("@/features/landing/sections/FeedSection", () => ({
-	FeedSection: () => (
-		<section>
-			<h2>Live stack feed</h2>
-			<p>Open stack</p>
-			<p>Open stack</p>
-			<p>Open stack</p>
-			<p>Open stack</p>
-			<p>Open stack</p>
-			<p>Open stack</p>
-		</section>
+// The shell's sections render real tanstack-router <Link>s, which require a
+// RouterProvider. Swap them for plain anchors so the shell renders standalone.
+vi.mock("@tanstack/react-router", () => ({
+	Link: ({ children, to }: { children: ReactNode; to: string }) => (
+		<a href={to}>{children}</a>
 	),
 }));
 
-vi.mock("@tanstack/react-router", async () => {
-	return {
-		Link: ({ children, to }: { children: ReactNode; to: string }) => (
-			<a href={to}>{children}</a>
-		),
-	};
-});
-
-const sampleStacks = Array.from({ length: 7 }, (_, index) => ({
-	_id: `stack-${index}`,
-	_creationTime: Date.now() - index * 100000,
-	name: `Stack ${index}`,
-	slug: `stack-${index}`,
-	oneLiner: `Stack one liner ${index}`,
-	hasUsageComponent: index % 2 === 0,
-	teamSize: index % 3 === 0 ? index + 1 : null,
-	fixedTotal: { amount: index * 25 + 10 },
-	creator: {
-		name: `Creator ${index}`,
-		xHandle: index % 2 === 0 ? `creator${index}` : null,
-		avatarUrl: null,
-	},
-	tools: Array.from({ length: 5 }, (__, toolIndex) => ({
-		_id: `tool-${index}-${toolIndex}`,
-		name: `Tool ${toolIndex}`,
-		categories: ["ide"],
-		iconUrl: null,
-		price: { pricingType: "fixed" as const },
-		priceKind: "regular" as const,
-	})),
-	upvoteCount: index * 2,
+// FeaturedStacksSection renders real StackCards that depend on Convex hooks;
+// stub it to a stable heading so the shell-order test stays isolated.
+vi.mock("@/features/landing/sections/FeaturedStacksSection", () => ({
+	FeaturedStacksSection: () => (
+		<section>
+			<h2>Featured Stacks</h2>
+		</section>
+	),
 }));
 
 afterEach(() => {
@@ -58,39 +29,45 @@ afterEach(() => {
 
 describe("landing sections", () => {
 	it("renders sections in shell order", () => {
-		render(<LandingPageShell stacks={sampleStacks} />);
+		render(<LandingPageShell stacks={[]} />);
 
-		const heroHeading = screen.getByRole("heading", {
+		const hero = screen.getByRole("heading", {
 			level: 1,
-			name: /ship faster from the command line/i,
+			name: /see exactly what/i,
 		});
-		const feedHeading = screen.getByRole("heading", {
+		const featured = screen.getByRole("heading", {
 			level: 2,
-			name: /live stack feed/i,
+			name: /featured stacks/i,
 		});
-		const explainerHeading = screen.getByRole("heading", {
+		const explainer = screen.getByRole("heading", {
 			level: 2,
-			name: /how this works/i,
+			name: /why it works/i,
 		});
-		const waitlistHeading = screen.getByRole("heading", {
+		const cta = screen.getByRole("heading", {
 			level: 2,
-			name: /join the private terminal log/i,
+			name: /publish your/i,
 		});
 
-		expect(heroHeading.compareDocumentPosition(feedHeading)).toBe(
+		expect(hero.compareDocumentPosition(featured)).toBe(
 			Node.DOCUMENT_POSITION_FOLLOWING,
 		);
-		expect(feedHeading.compareDocumentPosition(explainerHeading)).toBe(
+		expect(featured.compareDocumentPosition(explainer)).toBe(
 			Node.DOCUMENT_POSITION_FOLLOWING,
 		);
-		expect(explainerHeading.compareDocumentPosition(waitlistHeading)).toBe(
+		expect(explainer.compareDocumentPosition(cta)).toBe(
 			Node.DOCUMENT_POSITION_FOLLOWING,
 		);
 	});
 
-	it("renders only six stack cards in feed preview", () => {
-		render(<LandingPageShell stacks={sampleStacks} />);
+	it("wires the userStack prop through to the publish CTA", () => {
+		render(<LandingPageShell stacks={[]} userStack={{ slug: "my-stack" }} />);
 
-		expect(screen.getAllByText("Open stack")).toHaveLength(6);
+		// Published state swaps the CTA from "publish" to an "update" affordance.
+		expect(
+			screen.getByRole("link", { name: /update your stack/i }),
+		).toBeInTheDocument();
+		expect(
+			screen.queryByRole("heading", { name: /publish your/i }),
+		).not.toBeInTheDocument();
 	});
 });

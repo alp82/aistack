@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Centered Hero — Edit + Upvote Placement</title>
+<style>
+  /* --- Brand tokens lifted verbatim from src/styles.css (dark theme) --- */
+  :root {
+    --bg-canvas: oklch(0.16 0.008 256);
+    --bg-shell: oklch(0.12 0.01 256);
+    --bg-panel: oklch(0.2 0.009 256);
+    --bg-panel-muted: oklch(0.24 0.009 256);
+    --bg-panel-elevated: oklch(0.28 0.01 256);
+    --fg-primary: oklch(0.96 0.004 256);
+    --fg-secondary: oklch(0.82 0.004 256);
+    --fg-muted: oklch(0.68 0.005 256);
+    --accent-lime-soft: oklch(0.72 0.14 130);
+    --accent-lime: oklch(0.78 0.17 132);
+    --accent-lime-strong: oklch(0.84 0.2 134);
+    --accent-lime-contrast: oklch(0.22 0.02 132);
+    --stroke-subtle: oklch(0.55 0.01 256 / 0.75);
+    --stroke-strong: oklch(0.5 0.015 256 / 0.9);
+    --shadow-brutal-sm: 2px 2px 0 var(--stroke-strong);
+    --shadow-brutal-md: 4px 4px 0 var(--stroke-strong);
+    --shadow-brutal-lime: 3px 3px 0 var(--accent-lime);
+    --shadow-brutal-lime-lg: 4px 4px 0 var(--accent-lime);
+    --amber: oklch(0.78 0.16 75);
+  }
+  * { box-sizing: border-box; border-radius: 0 !important; } /* HARD brand rule: NO border-radius */
+  html, body { margin: 0; background: var(--bg-shell); color: var(--fg-primary); }
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+  /* ---- picker chrome ---- */
+  .chrome { border-bottom: 2px solid var(--stroke-strong); background: var(--bg-canvas); position: sticky; top: 0; z-index: 50; }
+  .chrome-inner { max-width: 80rem; margin: 0 auto; padding: 1rem 1.5rem; }
+  .chrome h1 { font-size: 0.95rem; letter-spacing: 0.04em; margin: 0; text-transform: uppercase; }
+  .chrome h1 .lock { color: var(--accent-lime); }
+  .chrome p { color: var(--fg-muted); font-size: 0.78rem; margin: 0.25rem 0 0; max-width: 70ch; }
+  .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.9rem 1.4rem; margin-top: 1rem; }
+  .ctrl-label { font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg-muted); display: block; margin-bottom: 0.4rem; }
+  .seg { display: inline-flex; border: 1px solid var(--stroke-strong); flex-wrap: wrap; }
+  .seg button {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 0.42rem 0.7rem; background: var(--bg-panel); color: var(--fg-secondary);
+    border: none; border-right: 1px solid var(--stroke-strong); cursor: pointer; transition: all .12s;
+  }
+  .seg button:last-child { border-right: none; }
+  .seg button[aria-pressed="true"] { background: var(--accent-lime); color: var(--accent-lime-contrast); font-weight: 700; }
+  .seg button:hover:not([aria-pressed="true"]) { background: var(--bg-panel-elevated); color: var(--fg-primary); }
+
+  /* locked-spec readout (frozen params, shown not as controls) */
+  .locked { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.4rem 0.5rem; }
+  .locked .pill { font-family: "JetBrains Mono", monospace; font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--fg-muted); border: 1px solid var(--stroke-subtle); padding: 0.22rem 0.45rem; }
+  .locked .pill b { color: var(--fg-secondary); font-weight: 700; }
+  .locked .lk { color: var(--accent-lime); }
+
+  .copybar { max-width: 80rem; margin: 0 auto; padding: 1.25rem 1.5rem 2.5rem; }
+  .copybtn {
+    font-family: "JetBrains Mono", ui-monospace, monospace; font-weight: 700;
+    font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase;
+    background: var(--accent-lime); color: var(--accent-lime-contrast);
+    border: 2px solid var(--accent-lime); box-shadow: var(--shadow-brutal-md); cursor: pointer;
+    padding: 0.7rem 1.3rem; transition: transform .1s, box-shadow .1s;
+  }
+  .copybtn:active { transform: translate(2px,2px); box-shadow: var(--shadow-brutal-sm); }
+  .copyhint { color: var(--fg-muted); font-size: 0.78rem; margin-top: 0.7rem; }
+  .specout { font-family: "JetBrains Mono", monospace; font-size: 0.74rem; color: var(--accent-lime); margin-top: 0.8rem; word-break: break-all; line-height: 1.6; }
+
+  /* ---- preview stage ---- */
+  .stage { background: var(--bg-canvas); padding: 2.5rem 1.5rem; border-bottom: 1px solid var(--stroke-strong); }
+  .frame { max-width: 80rem; margin: 0 auto; } /* mirrors STACK_WIDTH = max-w-7xl */
+
+  /* generic header bits */
+  .byline { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; letter-spacing: 0.04em; color: var(--fg-secondary); }
+  .byline b { color: var(--fg-primary); font-weight: 600; }
+  .oneliner { color: var(--fg-secondary); font-size: 1.05rem; max-width: 46ch; line-height: 1.5; }
+  .h1 { margin: 0; line-height: 0.92; letter-spacing: -0.02em; color: var(--fg-primary); }
+
+  /* LOCKED title treatment: black, font-black uppercase */
+  .h1 { font-weight: 900; text-transform: uppercase; font-size: clamp(2.6rem, 7vw, 5rem); }
+
+  /* avatar (LOCKED: above / lg) */
+  .avatar { width: 5.5rem; height: 5.5rem; flex: none; background: var(--bg-panel-elevated); border: 2px solid var(--stroke-strong);
+    display: grid; place-items: center; font-family: "JetBrains Mono", monospace; font-weight: 800; font-size: 1.7rem; color: var(--accent-lime); }
+
+  /* LOCKED lime keyline divider under title */
+  .keyline-div { width: 3.5rem; height: 4px; background: var(--accent-lime); margin: 0 auto; }
+
+  /* chips / buttons */
+  .btn { font-family: "JetBrains Mono", monospace; font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600;
+    padding: 0.5rem 0.85rem; border: 1px solid var(--stroke-strong); background: var(--bg-panel); color: var(--fg-primary); cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; }
+  .btn.tiny { padding: 0.34rem 0.6rem; font-size: 0.62rem; }
+  .btn.micro { padding: 0.26rem 0.5rem; font-size: 0.58rem; letter-spacing: 0.08em; }
+  .btn.icononly { padding: 0.4rem; }
+  .btn.icononly.tiny { padding: 0.3rem; }
+  /* minimal accent: edit/report read as secondary, lime only on hover/active */
+  .btn-edit { color: var(--fg-secondary); border-color: var(--stroke-strong); }
+  .btn-edit:hover { border-color: var(--accent-lime); color: var(--accent-lime); }
+  .btn-report { color: var(--fg-muted); border-color: var(--stroke-subtle); }
+  .btn-report:hover { border-color: var(--amber); color: var(--amber); }
+  /* edit as a plain inline text link (for the byline-link placement) */
+  .editlink { font-family: "JetBrains Mono", monospace; font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--fg-muted); background: none; border: none; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 0.3rem; }
+  .editlink:hover { color: var(--accent-lime); }
+  .editlink.report:hover { color: var(--amber); }
+
+  /* UPVOTE — primary engagement, gets the lime treatment on its active surface */
+  .upvote { font-family: "JetBrains Mono", monospace; display: inline-flex; flex-direction: column; align-items: center; gap: 0.1rem;
+    border: 1px solid var(--stroke-strong); padding: 0.45rem 0.7rem; color: var(--fg-secondary); cursor: pointer; background: var(--bg-panel); transition: all .12s; }
+  .upvote:hover { border-color: var(--accent-lime); color: var(--accent-lime); }
+  .upvote .n { font-size: 1.05rem; font-weight: 800; color: var(--fg-primary); }
+  .upvote .l { font-size: 0.55rem; letter-spacing: 0.14em; }
+  /* prominent vertical pill: arrow over count, lime-edged, the "primary CTA" feel */
+  .upvote.pill { border-color: var(--accent-lime); box-shadow: var(--shadow-brutal-lime); padding: 0.6rem 0.9rem; gap: 0.25rem; }
+  .upvote.pill .arrow { color: var(--accent-lime); }
+  .upvote.pill .n { font-size: 1.4rem; }
+  .upvote.pill:hover { background: var(--accent-lime); }
+  .upvote.pill:hover .arrow, .upvote.pill:hover .n, .upvote.pill:hover .l { color: var(--accent-lime-contrast); }
+  /* compact horizontal upvote (row) — for inline meta / centered pill */
+  .upvote.row { flex-direction: row; align-items: center; gap: 0.45rem; padding: 0.45rem 0.8rem; }
+  .upvote.row .n { font-size: 0.92rem; }
+  .upvote.row .l { font-size: 0.55rem; letter-spacing: 0.12em; }
+  .upvote.row .arrow { color: var(--accent-lime); display: inline-flex; }
+  /* compact arrow-over-count companion sized to pair with the centered avatar */
+  .upvote.aside { padding: 0.4rem 0.55rem; gap: 0.15rem; }
+  .upvote.aside .arrow { color: var(--accent-lime); display: inline-flex; }
+  .upvote.aside .n { font-size: 1.05rem; }
+  /* avatar + its companion upvote as one centered unit; avatar stays optically centered
+     by absolutely floating the upvote just off its right edge */
+  .avatar-unit { position: relative; display: inline-flex; }
+  .avatar-unit .upvote.aside { position: absolute; left: 100%; top: 50%; transform: translateY(-50%); margin-left: 0.7rem; }
+
+  /* small count+arrow chip pinned top-right */
+  .upvote.tiny { flex-direction: row; align-items: center; gap: 0.35rem; padding: 0.34rem 0.6rem; }
+  .upvote.tiny .n { font-size: 0.8rem; }
+  .upvote.tiny .arrow { color: var(--accent-lime); display: inline-flex; }
+  .upvote.tiny .l { display: none; }
+
+  /* ===== PINNED corner slots (top-right / bottom-right of the hero block) ===== */
+  .pin-tr { position: absolute; top: 0; right: 0; display: inline-flex; align-items: flex-start; gap: 0.5rem; z-index: 3; }
+  .pin-br { position: absolute; bottom: 0; right: 0; display: inline-flex; align-items: center; gap: 0.5rem; z-index: 3; }
+  .pin-tl { position: absolute; top: 0; left: 0; display: inline-flex; align-items: center; gap: 0.5rem; z-index: 3; }
+  /* thin top utility row spanning the header width */
+  .utilrow { display: flex; justify-content: space-between; align-items: center; width: 100%;
+    border-bottom: 1px solid var(--stroke-subtle); padding-bottom: 0.6rem; margin-bottom: 0.4rem; }
+  .utilrow .left, .utilrow .right { display: inline-flex; align-items: center; gap: 0.6rem; }
+  .utilrow .tag { font-family: "JetBrains Mono", monospace; font-size: 0.58rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg-muted); }
+
+  /* ===== PRICE (LOCKED: tile) ===== */
+  .price-tile { background: var(--accent-lime); color: var(--accent-lime-contrast); padding: 0.9rem 1.2rem; box-shadow: var(--shadow-brutal-md); display: inline-block; }
+  .price-tile .p { font-family: "JetBrains Mono", monospace; font-weight: 900; font-size: 1.8rem; line-height: 1; }
+  .price-tile .l { font-family: "JetBrains Mono", monospace; font-size: 0.56rem; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.85; margin-top: 0.25rem; }
+
+  /* ===== STATS (LOCKED: cells) ===== */
+  .stats-cells { display: inline-flex; gap: 0; }
+  .stats-cells > div { display: flex; flex-direction: column; align-items: center; padding: 0.5rem 1.2rem; border-left: 1px solid var(--stroke-strong); }
+  .stats-cells > div:first-child { border-left: none; }
+  .stats-cells .n { font-family: "JetBrains Mono", monospace; font-weight: 900; font-size: 1.5rem; line-height: 1; color: var(--fg-primary); }
+  .stats-cells .l { font-family: "JetBrains Mono", monospace; font-size: 0.54rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted); margin-top: 0.3rem; }
+
+  /* meta row container (LOCKED: row, centered) */
+  .meta-row { display: flex; gap: 1.6rem; justify-content: center; align-items: center; flex-wrap: wrap; }
+
+  /* a centered standalone action row (for centered-pill upvote) */
+  .center-row { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; align-items: center; }
+
+  /* ===== centered hero scaffold (LOCKED frame) ===== */
+  .hero { position: relative; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1.6rem; }
+  .hero .oneliner { margin-inline: auto; }
+  .hero .row { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; align-items: center; }
+  /* extra top padding when a top-pinned control or util row needs clearance */
+  .hero.has-pin-tr { padding-top: 2.6rem; }
+  .hero.has-utilrow { gap: 1.2rem; }
+
+  /* background grid (LOCKED: grid) */
+  .bg-grid { position: relative; }
+  .bg-grid::before {
+    content: ""; position: absolute; inset: -2.5rem -1.5rem; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(to right, var(--stroke-subtle) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--stroke-subtle) 1px, transparent 1px);
+    background-size: 4rem 4rem; opacity: 0.10;
+  }
+  .bg-grid > * { position: relative; z-index: 1; }
+  .shell { background: var(--bg-panel); border: 1px solid var(--stroke-subtle); padding: 2.6rem 2.2rem; position: relative; }
+
+  @media (max-width: 640px) {
+    .stats-cells { transform: scale(0.92); }
+    .pin-tr, .pin-br { position: static; margin: 0.4rem auto 0; }
+  }
+</style>
+</head>
+<body>
+<div class="chrome">
+  <div class="chrome-inner">
+    <h1 class="mono"><span class="lock">EDIT + UPVOTE PLACEMENT</span> — Centered Hero (final pass)</h1>
+    <p>Composition is locked. Explore only where the EDIT action and the UPVOTE control live — they are independent, so any edit placement combines with any upvote placement. Toggle Viewer to see EDIT (owner) vs REPORT (visitor) in the same slot. Pick a pair, hit Copy spec, paste the line back into chat.</p>
+    <div class="controls" id="controls"></div>
+    <div class="locked" id="locked"></div>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="frame" id="frame"></div>
+</div>
+
+<div class="copybar">
+  <button class="copybtn" id="copy">Copy spec</button>
+  <div class="copyhint">Click your favored edit + upvote placement, hit Copy spec, then paste the single line back into chat.</div>
+  <div class="specout mono" id="specout"></div>
+</div>
+
+<script>
+const DATA = {
+  name: "ALPER ORTAC",
+  oneliner: "my dev stack",
+  creator: "Alper Ortac",
+  monogram: "AO",
+  x: "@alperortac",
+  page: "aistack.to",
+  price: "$154", per: "/mo", audience: "SOLO",
+  tools: 11, models: 5, bundles: 1, upvotes: 0,
+};
+
+// ---- LOCKED composition (frozen, not exposed as controls) ----
+const LOCKED = {
+  layout: "centered-hero",
+  avatar: "above",
+  rhythm: "airy",
+  keyline: "on",
+  meta_arrange: "row",
+  price: "tile",
+  stats: "cells",
+  accent: "minimal",
+  background: "grid",
+  title: "black",
+  motion: "off",
+};
+
+// ---- the only live state: edit placement, upvote placement, viewer role ----
+const STATE = {
+  edit: "bottom-right",  // corner | icon | byline-link | utility-row | bottom-right  (LOCKED default)
+  upvote: "by-avatar",   // tr-count | tr-pill | meta-inline | center-pill | byline | by-avatar  (LOCKED default)
+  role: "owner",         // owner | visitor
+};
+
+const CONTROLS = [
+  { key: "edit", label: "Edit / Report placement", opts: [
+    ["corner",        "Top-right micro-button"],
+    ["icon",          "Icon-only pencil TR"],
+    ["byline-link",   "Text link in byline"],
+    ["utility-row",   "Thin top utility row"],
+    ["bottom-right",  "Tucked bottom-right"],
+  ]},
+  { key: "upvote", label: "Upvote placement", opts: [
+    ["tr-count",    "Top-right count+arrow"],
+    ["tr-pill",     "Prominent vertical pill TR"],
+    ["meta-inline", "Inline in meta row"],
+    ["center-pill", "Centered pill below meta"],
+    ["byline",      "Beside the byline"],
+    ["by-avatar",   "Next to the avatar"],
+  ]},
+  { key: "role", label: "Viewer", opts: [["owner","Owner (Edit)"],["visitor","Visitor (Report)"]] },
+];
+
+// ---- controls render ----
+const controlsEl = document.getElementById("controls");
+CONTROLS.forEach(c => {
+  const wrap = document.createElement("div");
+  const lbl = document.createElement("span");
+  lbl.className = "ctrl-label mono"; lbl.textContent = c.label;
+  const seg = document.createElement("div");
+  seg.className = "seg";
+  c.opts.forEach(([val, text]) => {
+    const b = document.createElement("button");
+    b.textContent = text; b.dataset.key = c.key; b.dataset.val = val;
+    b.setAttribute("aria-pressed", STATE[c.key] === val);
+    b.onclick = () => { STATE[c.key] = val; render(); syncControls(); };
+    seg.appendChild(b);
+  });
+  wrap.appendChild(lbl); wrap.appendChild(seg);
+  controlsEl.appendChild(wrap);
+});
+function syncControls() {
+  controlsEl.querySelectorAll("button").forEach(b => {
+    b.setAttribute("aria-pressed", STATE[b.dataset.key] === b.dataset.val);
+  });
+}
+// frozen-spec readout
+const lockedEl = document.getElementById("locked");
+lockedEl.innerHTML = `<span class="pill"><span class="lk">LOCKED</span></span>` +
+  Object.entries(LOCKED).map(([k,v]) => `<span class="pill">${k}: <b>${v}</b></span>`).join("");
+
+// ---- icons ----
+const ICON = {
+  pencil: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  flag: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>',
+  up: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m18 15-6-6-6 6"/></svg>',
+};
+
+const isOwner = () => STATE.role === "owner";
+
+// ---- EDIT / REPORT atoms (REPORT occupies the edit slot for visitors) ----
+function editFull(extra) {
+  return isOwner()
+    ? `<button class="btn btn-edit ${extra||''}">${ICON.pencil} Edit</button>`
+    : `<button class="btn btn-report ${extra||''}">${ICON.flag} Report</button>`;
+}
+function editIcon(extra) {
+  return isOwner()
+    ? `<button class="btn btn-edit icononly ${extra||''}" title="Edit">${ICON.pencil}</button>`
+    : `<button class="btn btn-report icononly ${extra||''}" title="Report">${ICON.flag}</button>`;
+}
+function editLink() {
+  return isOwner()
+    ? `<button class="editlink">${ICON.pencil} Edit</button>`
+    : `<button class="editlink report">${ICON.flag} Report</button>`;
+}
+
+// ---- UPVOTE atoms ----
+function upCount() { // small count + arrow chip
+  return `<button class="upvote tiny" title="Upvote"><span class="arrow">${ICON.up}</span><span class="n">${DATA.upvotes}</span></button>`;
+}
+function upPill() { // prominent vertical pill: arrow over count
+  return `<button class="upvote pill" title="Upvote"><span class="arrow">${ICON.up}</span><span class="n">${DATA.upvotes}</span><span class="l">UPVOTE</span></button>`;
+}
+function upRow() { // horizontal arrow + count + label
+  return `<button class="upvote row" title="Upvote"><span class="arrow">${ICON.up}</span><span class="n">${DATA.upvotes}</span><span class="l">UPVOTE</span></button>`;
+}
+function upAvatar() { // compact vertical arrow-over-count, sized to pair with the avatar
+  return `<button class="upvote aside" title="Upvote"><span class="arrow">${ICON.up}</span><span class="n">${DATA.upvotes}</span></button>`;
+}
+
+// ---- resolve which atoms go into which slot, per the two independent controls ----
+function resolveSlots() {
+  // slots the hero understands
+  const s = {
+    pinTR: [],       // top-right pinned (array, edit + upvote may both land here)
+    pinBR: [],       // bottom-right pinned
+    utilLeft: "",    // thin top utility row, left side
+    utilRight: "",   // thin top utility row, right side
+    bylineExtra: "", // appended beside the byline
+    metaInline: "",  // joins the centered meta row
+    centerRow: "",   // a standalone centered row below meta
+    avatarAside: "", // compact upvote pinned beside the centered avatar
+    useUtilRow: false,
+  };
+
+  // --- EDIT placement ---
+  switch (STATE.edit) {
+    case "corner":       s.pinTR.push(editFull("micro")); break;
+    case "icon":         s.pinTR.push(editIcon("tiny")); break;
+    case "byline-link":  s.bylineExtra += `<span class="byline-sep" style="color:var(--stroke-strong)">·</span>${editLink()}`; break;
+    case "utility-row":  s.useUtilRow = true; s.utilRight += editFull("micro"); break;
+    case "bottom-right": s.pinBR.push(editFull("tiny")); break;
+  }
+
+  // --- UPVOTE placement ---
+  switch (STATE.upvote) {
+    case "tr-count":    s.pinTR.push(upCount()); break;
+    case "tr-pill":     s.pinTR.push(upPill()); break;
+    case "meta-inline": s.metaInline += upRow(); break;
+    case "center-pill": s.centerRow += upRow(); break;
+    case "byline":      s.bylineExtra += upRow(); break;
+    case "by-avatar":   s.avatarAside += upAvatar(); break;
+  }
+  return s;
+}
+
+// ---- byline (LOCKED) with optional appended controls ----
+function bylineBlock(extra) {
+  const tail = extra ? `<span style="display:inline-flex;gap:0.5rem;align-items:center;margin-left:0.5rem">${extra}</span>` : "";
+  return `<div class="row" style="gap:0.5rem"><div class="byline"><b>${DATA.creator}</b> · ${DATA.x} · ${DATA.page}</div>${tail}</div>`;
+}
+
+// ---- LOCKED meta block: price tile + divided stat cells on one centered row ----
+function metaBlock(inline) {
+  const price = `<div class="price-tile"><div class="p">${DATA.price}</div><div class="l">${DATA.per} · ${DATA.audience}</div></div>`;
+  const stats = `<div class="stats-cells">` +
+    [[DATA.tools,"Tools"],[DATA.models,"Models"],[DATA.bundles,"Bundle"]]
+      .map(([n,l]) => `<div><div class="n">${n}</div><div class="l">${l}</div></div>`).join("") + `</div>`;
+  return `<div class="meta-row">${price}${stats}${inline||""}</div>`;
+}
+
+// ---- compose the LOCKED centered hero with the chosen edit/upvote slots ----
+function compose() {
+  const s = resolveSlots();
+  const parts = [];
+
+  // thin top utility row (only when edit chose it); upvote could also be inline elsewhere
+  if (s.useUtilRow) {
+    parts.push(`<div class="utilrow">
+      <div class="left"><span class="tag">STACK</span></div>
+      <div class="right">${s.utilRight}</div>
+    </div>`);
+  }
+
+  // top-right pinned cluster (edit and/or upvote)
+  if (s.pinTR.length) parts.push(`<div class="pin-tr">${s.pinTR.join("")}</div>`);
+  // bottom-right pinned (edit)
+  if (s.pinBR.length) parts.push(`<div class="pin-br">${s.pinBR.join("")}</div>`);
+
+  // avatar above (LOCKED) — optionally paired with a compact upvote beside it
+  parts.push(`<div>${avatar(s.avatarAside)}</div>`);
+
+  // title (LOCKED black) — NO eyebrow (permanently removed)
+  parts.push(`<div><h1 class="h1">${DATA.name}</h1></div>`);
+
+  // lime keyline (LOCKED on)
+  parts.push(`<div><div class="keyline-div"></div></div>`);
+
+  // one-liner
+  parts.push(`<p class="oneliner">${DATA.oneliner}</p>`);
+
+  // byline (+ inline edit-link / byline upvote)
+  parts.push(bylineBlock(s.bylineExtra));
+
+  // meta row (price + stats, + optional inline upvote)
+  parts.push(metaBlock(s.metaInline));
+
+  // standalone centered row (centered-pill upvote)
+  if (s.centerRow) parts.push(`<div class="center-row">${s.centerRow}</div>`);
+
+  const heroCls = ["hero"];
+  if (s.pinTR.length) heroCls.push("has-pin-tr");
+  if (s.useUtilRow) heroCls.push("has-utilrow");
+  return `<div class="${heroCls.join(" ")}">${parts.join("")}</div>`;
+}
+
+function avatar(aside) {
+  const a = `<div class="avatar">${DATA.monogram}</div>`;
+  // when an upvote pairs with the avatar, wrap both in a centered inline unit so the
+  // avatar stays optically centered and the upvote reads as its companion to the right
+  return aside ? `<div class="avatar-unit">${a}${aside}</div>` : a;
+}
+
+function render() {
+  const frame = document.getElementById("frame");
+  // LOCKED: grid background + minimal accent (lime only on interactive states) + panel shell
+  frame.innerHTML = `<div class="bg-grid"><div class="shell">${compose()}</div></div>`;
+  updateSpec();
+}
+
+// ---- spec emit (stable order): full locked spec + the two new keys, no old `actions` ----
+function specString() {
+  return [
+    `layout: ${LOCKED.layout}`,
+    `avatar: ${LOCKED.avatar}`,
+    `rhythm: ${LOCKED.rhythm}`,
+    `keyline: ${LOCKED.keyline}`,
+    `meta_arrange: ${LOCKED.meta_arrange}`,
+    `price: ${LOCKED.price}`,
+    `stats: ${LOCKED.stats}`,
+    `accent: ${LOCKED.accent}`,
+    `background: ${LOCKED.background}`,
+    `title: ${LOCKED.title}`,
+    `motion: ${LOCKED.motion}`,
+    `eyebrow: none`,
+    `edit: ${STATE.edit}`,
+    `upvote: ${STATE.upvote}`,
+  ].join(" | ");
+}
+function updateSpec() { document.getElementById("specout").textContent = specString(); }
+
+document.getElementById("copy").onclick = () => {
+  const str = specString();
+  navigator.clipboard?.writeText(str);
+  const btn = document.getElementById("copy");
+  const old = btn.textContent; btn.textContent = "Copied ✓";
+  setTimeout(() => btn.textContent = old, 1400);
+};
+
+render();
+syncControls();
+</script>
+</body>
+</html>

@@ -1,57 +1,18 @@
 import { useMutation, useQuery } from "convex/react";
-import {
-	ArrowUpRight,
-	Check,
-	Copy,
-	FileCode2,
-	Pencil,
-	Plus,
-	Trash2,
-} from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { ArrowUpRight, FileCode2, Pencil, Plus, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { ProjectOrderButtons } from "@/components/ProjectOrderButtons";
+import { accentFor } from "@/components/projects/accent";
+import { ProjectFormFields } from "@/components/projects/ProjectFormFields";
+import { useTagInput } from "@/components/projects/useTagInput";
 import { TagBadge } from "@/components/TagBadge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Dialog } from "@/components/ui/Dialog";
-import { FormField } from "@/components/ui/form-field";
-import { FormInput } from "@/components/ui/form-input";
-import { FormTextarea } from "@/components/ui/form-textarea";
 import { SectionHeader } from "@/features/stack-view/ui";
 import { cn, safeExternalUrl, timeAgo } from "@/lib/utils";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-
-// --- By-tag accent: stable color per project, hashed from its first tag ------
-
-type Accent = { text: string; bg: string; border: string };
-
-const TAG_PALETTE: Accent[] = [
-	{ text: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/40" },
-	{
-		text: "text-violet-400",
-		bg: "bg-violet-500/10",
-		border: "border-violet-500/40",
-	},
-	{
-		text: "text-amber-400",
-		bg: "bg-amber-500/10",
-		border: "border-amber-500/40",
-	},
-	{ text: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/40" },
-	{
-		text: "text-emerald-400",
-		bg: "bg-emerald-500/10",
-		border: "border-emerald-500/40",
-	},
-	{ text: "text-sky-400", bg: "bg-sky-500/10", border: "border-sky-500/40" },
-];
-
-function accentFor(key: string): Accent {
-	let h = 0;
-	for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
-	return TAG_PALETTE[h % TAG_PALETTE.length];
-}
 
 export function ProjectsSection({
 	stackId,
@@ -74,7 +35,6 @@ export function ProjectsSection({
 		name: string;
 	} | null>(null);
 	const [deleting, setDeleting] = useState(false);
-	const [copied, setCopied] = useState(false);
 	const [createOpen, setCreateOpen] = useState(false);
 	const [editTarget, setEditTarget] = useState<EditProjectTarget | null>(null);
 
@@ -89,12 +49,6 @@ export function ProjectsSection({
 		ids[index] = ids[targetIndex];
 		ids[targetIndex] = temp;
 		reorderProjects({ stackId, projectIds: ids });
-	};
-
-	const copyCliCommand = () => {
-		navigator.clipboard.writeText("npx @use-aistack/cli collect");
-		setCopied(true);
-		setTimeout(() => setCopied(false), 2000);
 	};
 
 	return (
@@ -121,76 +75,21 @@ export function ProjectsSection({
 							New Project
 						</button>
 					)}
-					{isOwner && hasProjects && (
-						<div className="inline-flex items-center gap-2 font-mono text-xs text-fg-muted">
-							<span className="uppercase tracking-wider">Add more:</span>
-							<div className="inline-flex items-center border border-stroke-subtle bg-bg-panel">
-								<code className="px-2 py-1 text-accent-lime">
-									npx @use-aistack/cli collect
-								</code>
-								<button
-									type="button"
-									onClick={copyCliCommand}
-									className="border-l border-stroke-subtle px-1.5 py-1 text-fg-muted hover:text-fg-primary transition-colors cursor-pointer"
-									aria-label="Copy command"
-								>
-									{copied ? (
-										<Check className="size-3.5 text-accent-lime" />
-									) : (
-										<Copy className="size-3.5" />
-									)}
-								</button>
-							</div>
-						</div>
-					)}
 				</div>
 				{isOwner && !hasProjects && (
 					<div className="mb-8 border-2 border-stroke-subtle bg-bg-canvas p-6">
-						<div className="flex items-start gap-4">
-							<span className="mt-0.5 font-mono text-lg text-accent-lime">
-								{">"}
-								<span className="inline-block animate-[blink_2.2s_ease-in-out_infinite]">
-									_
-								</span>
-							</span>
-							<div className="min-w-0 flex-1">
-								<h3 className="font-mono text-sm font-semibold text-fg-primary mb-1">
-									Add projects via CLI
-								</h3>
-								<p className="text-sm text-fg-secondary leading-relaxed">
-									Run the collect command in any project directory to upload its
-									AI configuration files.
-								</p>
-								<div className="mt-3 inline-flex items-center border border-stroke-subtle bg-bg-panel">
-									<code className="font-mono text-sm text-accent-lime px-3 py-1.5">
-										npx @use-aistack/cli collect
-									</code>
-									<button
-										type="button"
-										onClick={copyCliCommand}
-										aria-label="Copy command"
-										className="border-l border-stroke-subtle px-2 py-1.5 text-fg-muted hover:text-fg-primary transition-colors cursor-pointer"
-									>
-										{copied ? (
-											<Check className="size-4 text-accent-lime" />
-										) : (
-											<Copy className="size-4" />
-										)}
-									</button>
-								</div>
-								<p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-									Projects arrive as drafts. Review and publish them here.
-								</p>
-								<button
-									type="button"
-									onClick={() => setCreateOpen(true)}
-									className="mt-4 inline-flex items-center gap-1.5 border border-stroke-subtle px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime cursor-pointer"
-								>
-									<Plus className="size-3" />
-									New Project
-								</button>
-							</div>
-						</div>
+						<p className="text-sm text-fg-secondary leading-relaxed">
+							No projects yet. Add a project to showcase what you build with
+							this stack.
+						</p>
+						<button
+							type="button"
+							onClick={() => setCreateOpen(true)}
+							className="mt-4 inline-flex items-center gap-1.5 border border-stroke-subtle px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime cursor-pointer"
+						>
+							<Plus className="size-3" />
+							Add a project
+						</button>
 					</div>
 				)}
 				{hasProjects && (
@@ -433,33 +332,25 @@ function CreateProjectDialog({
 		stackId: Id<"stacks">;
 	}) => Promise<{ _id: Id<"projects">; slug: string }>;
 }) {
-	const tagsId = useId();
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [url, setUrl] = useState("");
-	const [tags, setTags] = useState<string[]>([]);
-	const [tagInput, setTagInput] = useState("");
+	const {
+		tags,
+		tagInput,
+		setTagInput,
+		addTag,
+		removeTag,
+		reset: resetTags,
+	} = useTagInput([]);
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-
-	const addTag = () => {
-		const trimmed = tagInput.trim().toLowerCase();
-		if (trimmed && !tags.includes(trimmed)) {
-			setTags([...tags, trimmed]);
-		}
-		setTagInput("");
-	};
-
-	const removeTag = (tag: string) => {
-		setTags(tags.filter((t) => t !== tag));
-	};
 
 	const reset = () => {
 		setName("");
 		setDescription("");
 		setUrl("");
-		setTags([]);
-		setTagInput("");
+		resetTags();
 		setError(null);
 	};
 
@@ -493,54 +384,19 @@ function CreateProjectDialog({
 	return (
 		<Dialog open={open} onClose={handleClose} title="New Project">
 			<div className="space-y-4">
-				<FormInput
-					label="Name"
-					required
-					value={name}
-					onChange={(e) => setName(e.target.value)}
-					placeholder="My project"
+				<ProjectFormFields
+					name={name}
+					onNameChange={setName}
+					description={description}
+					onDescriptionChange={setDescription}
+					url={url}
+					onUrlChange={setUrl}
+					tags={tags}
+					tagInput={tagInput}
+					onTagInputChange={setTagInput}
+					onAddTag={addTag}
+					onRemoveTag={removeTag}
 				/>
-				<FormTextarea
-					label="Description"
-					rows={2}
-					value={description}
-					onChange={(e) => setDescription(e.target.value)}
-					placeholder="Short description of the project..."
-				/>
-				<FormInput
-					label="URL"
-					value={url}
-					onChange={(e) => setUrl(e.target.value)}
-					placeholder="https://..."
-				/>
-				<FormField label="Tags" htmlFor={tagsId}>
-					<input
-						id={tagsId}
-						type="text"
-						value={tagInput}
-						onChange={(e) => setTagInput(e.target.value)}
-						onKeyDown={(e) => {
-							if (e.key === "Enter") {
-								e.preventDefault();
-								addTag();
-							}
-						}}
-						placeholder="Add tag + Enter"
-						className="w-full border-2 border-stroke-subtle bg-bg-panel px-2 py-1.5 font-mono text-xs text-fg-primary placeholder:text-fg-muted focus:border-accent-lime focus:outline-none"
-					/>
-					{tags.length > 0 && (
-						<div className="mt-2 flex flex-wrap gap-1.5">
-							{tags.map((tag) => (
-								<TagBadge
-									key={tag}
-									tag={tag}
-									size="md"
-									onRemove={() => removeTag(tag)}
-								/>
-							))}
-						</div>
-					)}
-				</FormField>
 				{error && <p className="font-mono text-xs text-destructive">{error}</p>}
 				<div className="flex justify-end gap-2 pt-2">
 					<Button
@@ -580,12 +436,11 @@ function EditProjectDialog({
 		tags?: string[];
 	}) => Promise<null>;
 }) {
-	const tagsId = useId();
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [url, setUrl] = useState("");
-	const [tags, setTags] = useState<string[]>([]);
-	const [tagInput, setTagInput] = useState("");
+	const { tags, setTags, tagInput, setTagInput, addTag, removeTag } =
+		useTagInput([]);
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -598,19 +453,7 @@ function EditProjectDialog({
 			setTagInput("");
 			setError(null);
 		}
-	}, [target]);
-
-	const addTag = () => {
-		const trimmed = tagInput.trim().toLowerCase();
-		if (trimmed && !tags.includes(trimmed)) {
-			setTags([...tags, trimmed]);
-		}
-		setTagInput("");
-	};
-
-	const removeTag = (tag: string) => {
-		setTags(tags.filter((t) => t !== tag));
-	};
+	}, [target, setTags, setTagInput]);
 
 	const reset = () => {
 		setTagInput("");
@@ -647,54 +490,19 @@ function EditProjectDialog({
 	return (
 		<Dialog open={target !== null} onClose={handleClose} title="Edit Project">
 			<div className="space-y-4">
-				<FormInput
-					label="Name"
-					required
-					value={name}
-					onChange={(e) => setName(e.target.value)}
-					placeholder="My project"
+				<ProjectFormFields
+					name={name}
+					onNameChange={setName}
+					description={description}
+					onDescriptionChange={setDescription}
+					url={url}
+					onUrlChange={setUrl}
+					tags={tags}
+					tagInput={tagInput}
+					onTagInputChange={setTagInput}
+					onAddTag={addTag}
+					onRemoveTag={removeTag}
 				/>
-				<FormTextarea
-					label="Description"
-					rows={2}
-					value={description}
-					onChange={(e) => setDescription(e.target.value)}
-					placeholder="Short description of the project..."
-				/>
-				<FormInput
-					label="URL"
-					value={url}
-					onChange={(e) => setUrl(e.target.value)}
-					placeholder="https://..."
-				/>
-				<FormField label="Tags" htmlFor={tagsId}>
-					<input
-						id={tagsId}
-						type="text"
-						value={tagInput}
-						onChange={(e) => setTagInput(e.target.value)}
-						onKeyDown={(e) => {
-							if (e.key === "Enter") {
-								e.preventDefault();
-								addTag();
-							}
-						}}
-						placeholder="Add tag + Enter"
-						className="w-full border-2 border-stroke-subtle bg-bg-panel px-2 py-1.5 font-mono text-xs text-fg-primary placeholder:text-fg-muted focus:border-accent-lime focus:outline-none"
-					/>
-					{tags.length > 0 && (
-						<div className="mt-2 flex flex-wrap gap-1.5">
-							{tags.map((tag) => (
-								<TagBadge
-									key={tag}
-									tag={tag}
-									size="md"
-									onRemove={() => removeTag(tag)}
-								/>
-							))}
-						</div>
-					)}
-				</FormField>
 				{error && (
 					<p role="alert" className="font-mono text-xs text-destructive">
 						{error}

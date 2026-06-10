@@ -1,6 +1,11 @@
 packages:
   - "packages/*"
 
+allowBuilds:
+  core-js: false
+  esbuild: false
+  sharp: false
+
 onlyBuiltDependencies:
   - core-js
   - esbuild

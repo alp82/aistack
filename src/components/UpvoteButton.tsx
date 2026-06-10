@@ -7,6 +7,7 @@ type UpvoteButtonProps = {
 	size?: "sm" | "md" | "lg";
 	onClick?: (e: React.MouseEvent) => void;
 	onMouseEnter?: () => void;
+	title?: string;
 };
 
 function UpvoteButton({
@@ -16,6 +17,7 @@ function UpvoteButton({
 	size = "lg",
 	onClick,
 	onMouseEnter,
+	title,
 }: UpvoteButtonProps) {
 	return (
 		<button
@@ -23,10 +25,11 @@ function UpvoteButton({
 			onClick={onClick}
 			onMouseEnter={onMouseEnter}
 			disabled={disabled}
+			title={title}
 			aria-label={`${upvoted ? "Remove upvote" : "Upvote"}, ${count} ${count === 1 ? "upvote" : "upvotes"}`}
 			aria-pressed={upvoted}
 			className={cn(
-				"flex flex-col items-center justify-center transition-all disabled:opacity-50 cursor-pointer",
+				"flex flex-col items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
 				size === "sm" && "w-10 py-1",
 				size === "md" && "w-16 py-1.5",
 				size === "lg" && "w-16 sm:w-20 py-2",

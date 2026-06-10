@@ -1,11 +1,13 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
-import type { QueryCtx } from './_generated/server'
+import type { MutationCtx, QueryCtx } from './_generated/server'
+import type { Id } from './_generated/dataModel'
 import { type FixedPrice, sumNormalizedMonthlyAmounts } from '../src/lib/pricing'
 import { slugifyAscii } from '../src/lib/slug'
 import { generateUniqueShortId, extractShortId } from './lib/ids'
 import { Resource as ResourceValidator, ResourceInput } from './schema'
 import { resolveLinkedResources, upsertResourcesForOwner } from './lib/resourceLinks'
+import { normalizeProjectUrl } from './projects'
 
 type ToolSubscriptionLike = {
   price: {
@@ -266,6 +268,56 @@ const ModelSubscriptionInput = v.object({
   description: v.optional(v.string()),
 })
 
+const ProjectInput = v.object({
+  name: v.string(),
+  description: v.optional(v.string()),
+  url: v.optional(v.string()),
+  tags: v.optional(v.array(v.string())),
+})
+
+/**
+ * Insert staged (web-authored) project rows for a freshly created stack.
+ * Mirrors projects.createProject's row shape; no `order` field so listByStack
+ * falls back to createdAt ordering (parity with the view-page create path).
+ */
+async function insertProjectsForStack(
+  ctx: MutationCtx,
+  args: {
+    creatorId: Id<'creators'>
+    stackId: Id<'stacks'>
+    items: Array<{
+      name: string
+      description?: string
+      url?: string
+      tags?: string[]
+    }>
+    published: boolean
+  },
+) {
+  const now = Date.now()
+  const shortIds = await Promise.all(
+    args.items.map(() => generateUniqueShortId(ctx, 'projects'))
+  )
+  for (let i = 0; i < args.items.length; i++) {
+    const item = args.items[i]
+    const slug = slugifyAscii(item.name, 'project')
+    await ctx.db.insert('projects', {
+      name: item.name,
+      slug,
+      shortId: shortIds[i],
+      creatorId: args.creatorId,
+      stackId: args.stackId,
+      source: 'web',
+      description: item.description,
+      url: normalizeProjectUrl(item.url),
+      tags: item.tags,
+      published: args.published,
+      createdAt: now,
+      updatedAt: now,
+    })
+  }
+}
+
 export const create = mutation({
   args: {
     name: v.string(),
@@ -278,6 +330,7 @@ export const create = mutation({
     modelSubscriptions: v.optional(v.array(ModelSubscriptionInput)),
     stackImageUrl: v.optional(v.string()),
     personalPageUrl: v.optional(v.string()),
+    projects: v.optional(v.array(ProjectInput)),
     published: v.boolean(),
   },
   returns: v.object({ _id: v.id('stacks'), slug: v.string() }),
@@ -331,6 +384,15 @@ export const create = mutation({
         ownerId: id,
         items: args.resources,
         defaultScope: 'global',
+      })
+    }
+
+    if (args.projects !== undefined) {
+      await insertProjectsForStack(ctx, {
+        creatorId: creator._id,
+        stackId: id,
+        items: args.projects,
+        published: args.published,
       })
     }
 

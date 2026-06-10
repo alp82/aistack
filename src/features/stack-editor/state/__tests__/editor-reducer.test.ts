@@ -11,6 +11,16 @@ import {
 	selectSaveValidationError,
 } from "@/features/stack-editor/state/editorSelectors";
 
+// ---------------------------------------------------------------------------
+// Shared helper: minimal staged project object for tests below
+// ---------------------------------------------------------------------------
+const STAGED_PROJECT = {
+	name: "My App",
+	description: "A test app",
+	url: "https://example.com",
+	tags: ["react", "typescript"],
+};
+
 describe("editor reducer", () => {
 	it("updates profile and section state with typed transitions", () => {
 		const baseState = getInitialEditorState({ actor: { xHandle: "existing" } });
@@ -160,6 +170,146 @@ describe("editor reducer", () => {
 			},
 		]);
 		expect(payload.published).toBe(true);
+	});
+
+	// -------------------------------------------------------------------------
+	// Group B: projects/updated action
+	// -------------------------------------------------------------------------
+
+	// TC-B-01
+	it("projects/updated with non-empty array stores staged projects", () => {
+		const base = getInitialEditorState({ actor: {} });
+		const next = editorReducer(base, {
+			type: "projects/updated",
+			projects: [STAGED_PROJECT],
+		});
+		expect(next.projects).toHaveLength(1);
+		expect(next.projects[0].name).toBe("My App");
+	});
+
+	// TC-B-02
+	it("projects/updated with [] clears staged projects", () => {
+		const base = getInitialEditorState({ actor: {} });
+		const withProjects = editorReducer(base, {
+			type: "projects/updated",
+			projects: [STAGED_PROJECT],
+		});
+		const cleared = editorReducer(withProjects, {
+			type: "projects/updated",
+			projects: [],
+		});
+		expect(cleared.projects).toEqual([]);
+	});
+
+	// TC-B-03
+	it("projects/updated replaces (not appends) the array", () => {
+		const base = getInitialEditorState({ actor: {} });
+		const first = editorReducer(base, {
+			type: "projects/updated",
+			projects: [STAGED_PROJECT, { ...STAGED_PROJECT, name: "Second App" }],
+		});
+		const replaced = editorReducer(first, {
+			type: "projects/updated",
+			projects: [{ ...STAGED_PROJECT, name: "Only App" }],
+		});
+		expect(replaced.projects).toHaveLength(1);
+		expect(replaced.projects[0].name).toBe("Only App");
+	});
+
+	// -------------------------------------------------------------------------
+	// Group C: selectSavePayload projects
+	// -------------------------------------------------------------------------
+
+	// TC-C-01
+	it("selectSavePayload includes projects when staged; entries have only name/description/url/tags", () => {
+		const base = getInitialEditorState({ actor: {} });
+		const withProjects = editorReducer(base, {
+			type: "projects/updated",
+			projects: [
+				{
+					...STAGED_PROJECT,
+					_id: "stale_id" as never,
+					published: true as never,
+				},
+			],
+		});
+		const payload = selectSavePayload(withProjects, false);
+		expect(payload.projects).toHaveLength(1);
+		const p = payload.projects![0] as Record<string, unknown>;
+		expect(p.name).toBe("My App");
+		expect(p.description).toBe("A test app");
+		expect(p.url).toBe("https://example.com");
+		expect(p.tags).toEqual(["react", "typescript"]);
+		// non-schema keys must be stripped
+		expect(p._id).toBeUndefined();
+		expect(p.published).toBeUndefined();
+	});
+
+	// TC-C-02
+	it("selectSavePayload omits projects (undefined) when staged array empty", () => {
+		const base = getInitialEditorState({ actor: {} });
+		const payload = selectSavePayload(base, false);
+		expect(payload.projects).toBeUndefined();
+	});
+
+	// TC-C-03
+	it("selectSavePayload strips non-schema keys (_id) if present in staged entry", () => {
+		const base = getInitialEditorState({ actor: {} });
+		const withProjects = editorReducer(base, {
+			type: "projects/updated",
+			projects: [{ ...STAGED_PROJECT, _id: "should_be_stripped" as never }],
+		});
+		const payload = selectSavePayload(withProjects, false);
+		const p = payload.projects![0] as Record<string, unknown>;
+		expect(p._id).toBeUndefined();
+	});
+
+	// -------------------------------------------------------------------------
+	// Group D: selectGuestDraft projects round-trip
+	// -------------------------------------------------------------------------
+
+	// TC-D-01
+	it("selectGuestDraft includes projects array matching staged length", () => {
+		const base = getInitialEditorState({ actor: {} });
+		const withProjects = editorReducer(base, {
+			type: "projects/updated",
+			projects: [STAGED_PROJECT],
+		});
+		const draft = selectGuestDraft(withProjects);
+		expect(draft.projects).toHaveLength(1);
+	});
+
+	// TC-D-02
+	it("selectGuestDraft includes projects as [] when none staged", () => {
+		const base = getInitialEditorState({ actor: {} });
+		const draft = selectGuestDraft(base);
+		expect(draft.projects).toEqual([]);
+	});
+
+	// TC-D-03
+	it("guestDraft/loaded restores projects from saved draft", () => {
+		const base = getInitialEditorState({ actor: {} });
+		const restored = editorReducer(base, {
+			type: "guestDraft/loaded",
+			draft: { projects: [STAGED_PROJECT] },
+		});
+		expect(restored.projects).toHaveLength(1);
+		expect(restored.projects[0].name).toBe("My App");
+	});
+
+	// TC-D-04
+	it("guestDraft/loaded with no projects key leaves existing projects unchanged", () => {
+		const base = getInitialEditorState({ actor: {} });
+		const withProjects = editorReducer(base, {
+			type: "projects/updated",
+			projects: [STAGED_PROJECT],
+		});
+		const merged = editorReducer(withProjects, {
+			type: "guestDraft/loaded",
+			draft: { oneLiner: "changed" },
+		});
+		expect(merged.projects).toHaveLength(1);
+		expect(merged.projects[0].name).toBe("My App");
 	});
 
 	it("updates ui flags and merges guest draft values", () => {

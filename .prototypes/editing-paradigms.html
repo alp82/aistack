@@ -1,0 +1,772 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Stack Editing Paradigms — Prototype</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  /* --- Brand tokens lifted from src/styles.css (dark theme) --- */
+  :root {
+    --bg-canvas: oklch(0.16 0.008 256);
+    --bg-panel: oklch(0.2 0.009 256);
+    --bg-panel-muted: oklch(0.24 0.009 256);
+    --bg-panel-elevated: oklch(0.28 0.01 256);
+    --fg-primary: oklch(0.96 0.004 256);
+    --fg-secondary: oklch(0.82 0.004 256);
+    --fg-muted: oklch(0.68 0.005 256);
+    --accent-lime-soft: oklch(0.72 0.14 130);
+    --accent-lime: oklch(0.78 0.17 132);
+    --accent-lime-strong: oklch(0.84 0.2 134);
+    --accent-lime-contrast: oklch(0.22 0.02 132);
+    --stroke-subtle: oklch(0.55 0.01 256 / 0.75);
+    --stroke-strong: oklch(0.5 0.015 256 / 0.9);
+    --amber: oklch(0.78 0.16 75);
+    --cyan: oklch(0.78 0.13 220);
+    --violet: oklch(0.7 0.16 290);
+  }
+  * { border-radius: 0 !important; } /* HARD brand rule: no border-radius anywhere */
+  html { background: var(--bg-canvas); color: var(--fg-primary); }
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; }
+
+  /* token utility classes (Tailwind CDN can't read CSS vars from config easily, so use plain classes) */
+  .bg-canvas { background: var(--bg-canvas); }
+  .bg-panel { background: var(--bg-panel); }
+  .bg-panel-muted { background: var(--bg-panel-muted); }
+  .bg-panel-elev { background: var(--bg-panel-elevated); }
+  .bg-lime { background: var(--accent-lime); }
+  .text-pri { color: var(--fg-primary); }
+  .text-sec { color: var(--fg-secondary); }
+  .text-mut { color: var(--fg-muted); }
+  .text-lime { color: var(--accent-lime); }
+  .text-lime-contrast { color: var(--accent-lime-contrast); }
+  .bd-sub { border-color: var(--stroke-subtle); }
+  .bd-strong { border-color: var(--stroke-strong); }
+  .bd-lime { border-color: var(--accent-lime); }
+
+  .editable-hint { outline: 1px dashed transparent; outline-offset: 2px; transition: outline-color .15s, background .15s; }
+  [data-edit-on] .editable:hover { outline-color: var(--accent-lime); cursor: text; background: rgba(190,242,100,0.04); }
+  .pencil { opacity: 0; transition: opacity .15s; }
+  [data-edit-on] .group-edit:hover .pencil { opacity: 1; }
+
+  .seg { font-family: ui-monospace, monospace; }
+  .grid-bg {
+    background-image:
+      linear-gradient(to right, var(--stroke-subtle) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--stroke-subtle) 1px, transparent 1px);
+    background-size: 4rem 4rem;
+    opacity: 0.08;
+  }
+  @keyframes blink { 0%,100% {opacity:1} 50% {opacity:0} }
+  .blink { animation: blink 2.2s ease-in-out infinite; }
+
+  /* popover */
+  .pop { box-shadow: 6px 6px 0 var(--stroke-strong); }
+  dialog::backdrop { background: rgba(0,0,0,0.6); }
+  dialog { background: var(--bg-panel); color: var(--fg-primary); border: 2px solid var(--stroke-strong); padding: 0; max-width: 32rem; width: 92vw; }
+</style>
+</head>
+<body class="bg-canvas text-pri min-h-screen">
+
+<!-- ===================== TOP CONTROL BAR ===================== -->
+<header class="sticky top-0 z-40 border-b-2 bd-strong bg-canvas">
+  <div class="mx-auto max-w-[80rem] px-4 py-3 flex flex-wrap items-center gap-3 justify-between">
+    <div class="min-w-0">
+      <p class="mono text-[10px] uppercase tracking-[0.25em] text-lime">// design exploration</p>
+      <h1 class="text-lg sm:text-xl font-black tracking-tight uppercase text-pri leading-tight">Stack Editing Paradigms</h1>
+    </div>
+
+    <div class="flex items-center gap-3 flex-wrap">
+      <!-- paradigm segmented control -->
+      <div class="inline-flex border-2 bd-strong seg text-[11px] font-bold uppercase tracking-wider">
+        <button data-paradigm="mirror"  class="px-3 py-2 transition-colors">Mirror</button>
+        <button data-paradigm="live"    class="px-3 py-2 border-l-2 bd-strong transition-colors">Live-preview</button>
+        <button data-paradigm="inline"  class="px-3 py-2 border-l-2 bd-strong transition-colors">Inline</button>
+      </div>
+
+      <!-- create/edit state toggle -->
+      <div class="inline-flex border-2 bd-sub seg text-[10px] font-bold uppercase tracking-wider">
+        <button data-mode="edit"   class="px-3 py-2 transition-colors">Existing stack</button>
+        <button data-mode="create" class="px-3 py-2 border-l-2 bd-sub transition-colors">Blank slate</button>
+      </div>
+    </div>
+  </div>
+  <!-- per-paradigm one-liner -->
+  <div class="mx-auto max-w-[80rem] px-4 pb-3 -mt-1">
+    <p id="paradigm-desc" class="mono text-[11px] text-mut"></p>
+  </div>
+</header>
+
+<main id="stage" class="relative"></main>
+
+<!-- toast -->
+<div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 hidden border-2 bd-lime bg-panel px-4 py-2 mono text-xs text-lime pop"></div>
+
+<!-- ===================== PROJECT EDIT DIALOG (shared) ===================== -->
+<dialog id="projectDialog">
+  <form method="dialog" class="flex flex-col">
+    <div class="flex items-center justify-between border-b-2 bd-sub px-5 py-3">
+      <span id="projectDialogTitle" class="mono text-xs font-bold uppercase tracking-wider text-lime">Edit Project</span>
+      <button value="cancel" class="text-mut hover:text-pri text-lg leading-none">&times;</button>
+    </div>
+    <div class="p-5 space-y-4">
+      <label class="block">
+        <span class="mono text-[10px] uppercase tracking-wider text-mut">Name</span>
+        <input id="pd_name" class="mt-1 w-full border-2 bd-sub bg-panel-muted px-2 py-1.5 mono text-sm text-pri focus:outline-none focus:bd-lime" />
+      </label>
+      <label class="block">
+        <span class="mono text-[10px] uppercase tracking-wider text-mut">Description</span>
+        <textarea id="pd_desc" rows="2" class="mt-1 w-full border-2 bd-sub bg-panel-muted px-2 py-1.5 text-sm text-pri focus:outline-none focus:bd-lime"></textarea>
+      </label>
+      <label class="block">
+        <span class="mono text-[10px] uppercase tracking-wider text-mut">URL</span>
+        <input id="pd_url" class="mt-1 w-full border-2 bd-sub bg-panel-muted px-2 py-1.5 mono text-sm text-pri focus:outline-none focus:bd-lime" />
+      </label>
+      <label class="block">
+        <span class="mono text-[10px] uppercase tracking-wider text-mut">Tags (comma separated)</span>
+        <input id="pd_tags" class="mt-1 w-full border-2 bd-sub bg-panel-muted px-2 py-1.5 mono text-sm text-pri focus:outline-none focus:bd-lime" />
+      </label>
+    </div>
+    <div class="flex justify-end gap-2 border-t-2 bd-sub px-5 py-3">
+      <button value="cancel" class="border-2 bd-sub px-4 py-1.5 mono text-xs font-bold uppercase tracking-wider text-mut hover:text-pri">Cancel</button>
+      <button id="pd_save" value="default" class="border-2 bd-lime bg-lime px-4 py-1.5 mono text-xs font-bold uppercase tracking-wider text-lime-contrast">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ===================== TOOL PICKER DIALOG (shared) ===================== -->
+<dialog id="toolDialog">
+  <form method="dialog" class="flex flex-col">
+    <div class="flex items-center justify-between border-b-2 bd-sub px-5 py-3">
+      <span id="toolDialogTitle" class="mono text-xs font-bold uppercase tracking-wider text-lime">Add / Swap Tool</span>
+      <button value="cancel" class="text-mut hover:text-pri text-lg leading-none">&times;</button>
+    </div>
+    <div class="p-5">
+      <p class="mono text-[10px] uppercase tracking-wider text-mut mb-2">Pick from catalog</p>
+      <div id="toolCatalog" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+    </div>
+  </form>
+</dialog>
+
+<script>
+/* ============================================================
+   SHARED MOCK STACK — every paradigm renders from THIS object.
+   ============================================================ */
+const mock = {
+  name: "Ship-Fast Solo",
+  oneLiner: "The lean AI toolkit I use to design, code, and ship products alone.",
+  xHandle: "alper",
+  team: false,
+  teamSize: 1,
+  workflow:
+    "I start in @Cursor for the bulk of coding, leaning on Claude for architecture and Codex for quick refactors. Designs come out of @v0, then I wire data with Convex. Everything ships through Vercel. The trick is keeping the model context tight — I keep a CLAUDE.md per repo and let @Cursor index it.",
+  tools: [
+    { name: "Cursor", cat: "Editor", catColor: "cyan", tier: "Pro", price: 20, kind: "main" },
+    { name: "v0", cat: "Design", catColor: "violet", tier: "Premium", price: 20, kind: "main" },
+    { name: "Vercel", cat: "Hosting", catColor: "lime", tier: "Pro", price: 20, kind: "main" },
+    { name: "Linear", cat: "PM", catColor: "amber", tier: "Free", price: 0, kind: "misc" },
+  ],
+  models: [
+    { name: "Claude Opus 4", provider: "Anthropic", role: "Primary" },
+    { name: "GPT-5", provider: "OpenAI", role: "Secondary" },
+  ],
+  bundles: [
+    { name: "GitHub Copilot Pro+", tier: "Pro+", price: 39, desc: "Bundles Copilot across editors plus premium model access." },
+  ],
+  projects: [
+    { name: "Pantry", desc: "Recipe app that plans meals from what's in your fridge.", url: "https://example.com", tags: ["mobile", "react-native"], files: 7, draft: false },
+    { name: "Ledgerly", desc: "Tiny double-entry bookkeeping for freelancers.", url: "https://example.com", tags: ["fintech", "saas"], files: 12, draft: false },
+    { name: "Mossgarden", desc: "Generative ambient soundscapes.", url: "", tags: ["audio"], files: 3, draft: true },
+  ],
+};
+
+// catalog of swappable tools (for the picker)
+const catalog = [
+  { name: "Cursor", cat: "Editor", catColor: "cyan", price: 20 },
+  { name: "Windsurf", cat: "Editor", catColor: "cyan", price: 15 },
+  { name: "Zed", cat: "Editor", catColor: "cyan", price: 0 },
+  { name: "v0", cat: "Design", catColor: "violet", price: 20 },
+  { name: "Figma", cat: "Design", catColor: "violet", price: 12 },
+  { name: "Vercel", cat: "Hosting", catColor: "lime", price: 20 },
+  { name: "Railway", cat: "Hosting", catColor: "lime", price: 5 },
+  { name: "Linear", cat: "PM", catColor: "amber", price: 0 },
+];
+
+const catColors = {
+  cyan:   { text: "var(--cyan)",  bg: "color-mix(in oklch, var(--cyan) 12%, transparent)",   bd: "color-mix(in oklch, var(--cyan) 45%, transparent)" },
+  violet: { text: "var(--violet)",bg: "color-mix(in oklch, var(--violet) 12%, transparent)", bd: "color-mix(in oklch, var(--violet) 45%, transparent)" },
+  amber:  { text: "var(--amber)", bg: "color-mix(in oklch, var(--amber) 12%, transparent)",  bd: "color-mix(in oklch, var(--amber) 45%, transparent)" },
+  lime:   { text: "var(--accent-lime)", bg: "color-mix(in oklch, var(--accent-lime) 12%, transparent)", bd: "color-mix(in oklch, var(--accent-lime) 45%, transparent)" },
+};
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let paradigm = "mirror";        // mirror | live | inline
+let mode = "edit";              // edit | create
+let editOn = false;             // inline paradigm: owner edit toggle
+
+function blank() {
+  // create-mode renders an EMPTY copy of the stack
+  return { name: "", oneLiner: "", xHandle: "", team: false, teamSize: 1, workflow: "", tools: [], models: [], bundles: [], projects: [] };
+}
+// working copy (so edits persist while toggling within a session)
+let data = clone(mock);
+
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+
+function activeData(){ return mode === "create" ? (createData ||= blank(), createData) : data; }
+let createData = null;
+
+/* ============================================================
+   HELPERS — small render utilities
+   ============================================================ */
+function esc(s){ return (s||"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.remove("hidden");
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.add("hidden"), 1600);
+}
+function chip(label, color){
+  const c = catColors[color] || catColors.lime;
+  return `<span class="inline-flex items-center border px-2 py-0.5 mono text-[10px] font-semibold uppercase tracking-wider"
+    style="color:${c.text};background:${c.bg};border-color:${c.bd}">${esc(label)}</span>`;
+}
+function icon(name, color, size){
+  const c = catColors[color] || catColors.lime;
+  const sz = size === "lg" ? "h-14 w-14 text-lg" : size === "sm" ? "h-8 w-8 text-sm" : "h-11 w-11 text-base";
+  return `<span class="inline-flex shrink-0 items-center justify-center border mono font-bold uppercase ${sz}"
+    style="color:${c.text};background:${c.bg};border-color:${c.bd}">${esc((name||"?").charAt(0))}</span>`;
+}
+function sectionHeader(index, kicker, title, meta){
+  return `<div class="mb-10 flex items-end gap-5 border-b bd-sub pb-5">
+    <span class="mono text-5xl md:text-7xl font-black leading-none" style="color:var(--stroke-strong)">${index}</span>
+    <div class="flex-1">
+      <p class="mono text-xs font-semibold uppercase tracking-[0.25em] text-lime">${kicker}</p>
+      <h2 class="mt-1 text-3xl md:text-4xl font-black tracking-tight uppercase text-pri">${title}</h2>
+    </div>
+    ${meta ? `<span class="hidden md:block mono text-xs uppercase tracking-wider text-mut">${meta}</span>` : ""}
+  </div>`;
+}
+
+/* ============================================================
+   PARADIGM 1 — COMPOSER MIRROR
+   (two columns: Details + Workflow main | right accordion sidebar.
+    Projects added as a new form-style section in the main column.)
+   ============================================================ */
+function renderMirror(d){
+  const empty = mode === "create";
+  return `
+  <div class="relative">
+    <div class="grid-bg pointer-events-none absolute inset-0"></div>
+    <div class="relative z-10 mx-auto max-w-[80rem] flex">
+      <!-- MAIN COLUMN -->
+      <div class="flex-1 min-w-0 px-4 sm:px-6 py-6">
+        <!-- sticky editor header -->
+        <div class="sticky top-[96px] z-20 bg-canvas border-b-2 bd-sub py-3 mb-8 flex items-center justify-between gap-3">
+          <h2 class="text-xl sm:text-2xl font-black tracking-tighter uppercase text-pri">${empty ? "Create Stack" : "Update Stack"}</h2>
+          <div class="flex items-center gap-2">
+            <button class="border-2 bd-strong px-3 py-2 mono text-[11px] uppercase tracking-wider text-mut hover:bd-lime hover:text-pri">Save Draft</button>
+            <button class="border-2 bd-lime bg-lime px-3 py-2 mono text-[11px] font-bold uppercase tracking-wider text-lime-contrast">Publish</button>
+          </div>
+        </div>
+
+        ${empty ? createBanner("Composer handles the blank slate natively — every field below renders empty with placeholders, so there's nothing to \"reveal.\" You fill the form top-to-bottom.") : ""}
+
+        <!-- DETAILS (form) -->
+        <p class="mb-4 mono text-[10px] uppercase tracking-widest text-lime">// step 01: about</p>
+        <div class="grid sm:grid-cols-[auto_1fr] gap-5 mb-10">
+          <div class="h-20 w-20 border-2 bd-sub bg-panel-muted flex items-center justify-center mono text-2xl font-bold text-mut">${empty ? "+" : esc(d.name.charAt(0) || "S")}</div>
+          <div class="space-y-3">
+            ${formInput("Stack name", d.name, "e.g. Ship-Fast Solo")}
+            ${formInput("One-liner", d.oneLiner, "What is this stack about?")}
+            ${formInput("X handle", d.xHandle, "yourhandle")}
+          </div>
+        </div>
+
+        <hr class="my-8 bd-sub" />
+
+        <!-- NEW: PROJECTS form section -->
+        <div class="mb-10">
+          <div class="flex items-center justify-between mb-4">
+            <p class="mono text-[10px] uppercase tracking-widest text-lime">// step 02: projects</p>
+            <button onclick="openProject()" class="inline-flex items-center gap-1.5 border bd-sub px-2 py-1 mono text-[10px] font-bold uppercase tracking-wider text-mut hover:bd-lime hover:text-lime">+ Add project</button>
+          </div>
+          ${d.projects.length === 0
+            ? `<div class="border-2 border-dashed bd-sub p-5 mono text-xs text-mut">No projects yet. Add a project card, or run the CLI to import one.</div>`
+            : `<div class="space-y-2">${d.projects.map((p,i)=>mirrorProjectRow(p,i)).join("")}</div>`}
+        </div>
+
+        <hr class="my-8 bd-sub" />
+
+        <!-- WORKFLOW (rich text form field) -->
+        <p class="mb-4 mono text-[10px] uppercase tracking-widest text-lime">// step 03: workflow</p>
+        <div class="border-2 bd-sub bg-panel/40">
+          <div class="flex items-center gap-2 border-b bd-sub px-3 py-2 mono text-[10px] uppercase tracking-wider text-mut">
+            <span class="font-bold text-pri">B</span><span class="italic">i</span><span>H1</span><span>•</span>
+            <button onclick="openTool('insert')" class="ml-auto border bd-sub px-2 py-0.5 hover:bd-lime hover:text-lime">@ mention tool</button>
+          </div>
+          <div contenteditable="true" class="p-4 min-h-[120px] text-sm leading-relaxed text-sec focus:outline-none"
+            data-placeholder="Describe how you use this stack...">${empty ? "" : workflowHTML(d.workflow)}</div>
+        </div>
+      </div>
+
+      <!-- RIGHT ACCORDION SIDEBAR -->
+      <aside class="hidden lg:block w-96 border-l bd-sub bg-panel/60">
+        <div class="sticky top-[96px] max-h-[calc(100vh-96px)] overflow-y-auto">
+          <div class="border-b bd-sub bg-panel p-4">
+            <p class="mono text-[10px] uppercase tracking-widest text-lime">// stack costs</p>
+            <p class="mt-2 mono text-2xl font-black text-pri">$${costOf(d)}<span class="text-xs font-normal text-mut">/mo</span></p>
+            <p class="mt-1 mono text-[10px] text-mut">${d.tools.length} tools · ${d.bundles.length} bundles</p>
+          </div>
+          <div class="p-4 space-y-2">
+            ${accordion("tools", "Tools", d.tools.length, mirrorToolList(d), true)}
+            ${accordion("models", "Models", d.models.length, mirrorModelList(d), false)}
+            ${accordion("bundles", "Bundles", d.bundles.length, mirrorBundleList(d), false)}
+            ${accordion("resources", "Resources", 0, `<p class="mono text-[10px] text-mut">No resources. Link a GitHub repo or add manually.</p>`, false)}
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>`;
+}
+
+function formInput(label, val, ph){
+  return `<label class="block">
+    <span class="mono text-[10px] uppercase tracking-wider text-mut">${label}</span>
+    <input value="${esc(val)}" placeholder="${esc(ph)}" class="mt-1 w-full border-2 bd-sub bg-panel-muted px-2 py-1.5 text-sm text-pri placeholder:text-mut focus:outline-none focus:bd-lime" />
+  </label>`;
+}
+function mirrorProjectRow(p, i){
+  return `<div class="group-edit flex items-center gap-3 border bd-sub bg-panel/40 px-3 py-2">
+    ${icon(p.name, "cyan", "sm")}
+    <div class="min-w-0 flex-1">
+      <p class="mono text-sm font-semibold text-pri truncate">${esc(p.name)} ${p.draft?'<span class="ml-1 border border-dashed px-1 text-[9px] uppercase" style="color:var(--amber);border-color:var(--amber)">draft</span>':''}</p>
+      <p class="text-xs text-mut truncate">${esc(p.desc)}</p>
+    </div>
+    <button onclick="openProject(${i})" class="border bd-sub px-1.5 py-1 text-mut hover:bd-lime hover:text-lime mono text-[10px]">edit</button>
+    <button onclick="delProject(${i})" class="border bd-sub px-1.5 py-1 text-mut hover:text-pri mono text-[10px]">×</button>
+  </div>`;
+}
+function accordion(id, label, count, body, open){
+  return `<div>
+    <button onclick="toggleAcc('${id}')" data-acc="${id}" class="flex w-full items-center justify-between border-2 ${open?'bd-lime':'bd-sub'} p-3 transition-all"
+      style="${open?'background:color-mix(in oklch, var(--accent-lime) 5%, transparent)':''}">
+      <span class="mono text-[10px] uppercase tracking-wider ${open?'text-lime':'text-mut'}">${label}</span>
+      <span class="mono text-[10px] text-mut">${count} ▾</span>
+    </button>
+    <div data-acc-body="${id}" class="${open?'':'hidden'} mt-2 mb-1">${body}</div>
+  </div>`;
+}
+function mirrorToolList(d){
+  return `<div class="space-y-2">
+    ${d.tools.map((t,i)=>`<div class="flex items-center gap-2 border bd-sub px-2 py-1.5">
+      ${icon(t.name, t.catColor, "sm")}
+      <div class="min-w-0 flex-1"><p class="mono text-xs font-semibold text-pri truncate">${esc(t.name)}</p><p class="mono text-[9px] uppercase text-mut">${esc(t.tier)}</p></div>
+      <span class="mono text-xs text-pri">${t.price?'$'+t.price:'Free'}</span>
+      <button onclick="openTool('swap',${i})" class="text-mut hover:text-lime mono text-[10px] border bd-sub px-1">swap</button>
+    </div>`).join("")}
+    <button onclick="openTool('add')" class="w-full border-2 border-dashed bd-sub py-1.5 mono text-[10px] uppercase tracking-wider text-mut hover:bd-lime hover:text-lime">+ Add tool</button>
+  </div>`;
+}
+function mirrorModelList(d){
+  return `<div class="space-y-2">${d.models.map(m=>`<div class="flex items-center gap-2 border bd-sub px-2 py-1.5">${icon(m.name,"lime","sm")}<div class="min-w-0 flex-1"><p class="mono text-xs font-semibold text-pri truncate">${esc(m.name)}</p><p class="mono text-[9px] uppercase text-mut">${esc(m.provider)} · ${esc(m.role)}</p></div></div>`).join("")}<button class="w-full border-2 border-dashed bd-sub py-1.5 mono text-[10px] uppercase tracking-wider text-mut hover:bd-lime hover:text-lime">+ Add model</button></div>`;
+}
+function mirrorBundleList(d){
+  return `<div class="space-y-2">${d.bundles.map(b=>`<div class="border bd-sub px-2 py-1.5"><p class="mono text-xs font-semibold text-pri">${esc(b.name)}</p><p class="mono text-[9px] uppercase text-mut">${esc(b.tier)} · $${b.price}/mo</p></div>`).join("")}<button class="w-full border-2 border-dashed bd-sub py-1.5 mono text-[10px] uppercase tracking-wider text-mut hover:bd-lime hover:text-lime">+ Add bundle</button></div>`;
+}
+
+/* ============================================================
+   SHARED — the real VIEW sections (used by Live-preview & Inline)
+   In Live-preview they're always editable; in Inline they're editable
+   only when editOn. We gate via data-edit-on on <main>.
+   ============================================================ */
+function viewHero(d, editable){
+  const empty = mode === "create";
+  return `<header class="relative overflow-hidden border-b bd-strong py-10 px-6">
+    <div class="grid-bg pointer-events-none absolute inset-0"></div>
+    <div class="relative z-10 mx-auto max-w-[80rem]">
+      <p class="mono text-sm text-lime mb-4">// stack_details</p>
+      <div class="grid md:grid-cols-[auto_1fr_auto] gap-6 md:gap-x-10 items-start">
+        <div class="h-16 w-16 border bd-sub bg-panel-muted flex items-center justify-center mono text-lg font-bold text-pri">${empty?'+':esc(d.name.charAt(0)||'S')}</div>
+        <div class="min-w-0">
+          <h1 class="group-edit text-4xl sm:text-6xl font-black tracking-tighter uppercase leading-[0.9] text-pri break-words ${editable?'editable':''}"
+            ${editable?`contenteditable="true" data-field="name"`:''} data-placeholder="STACK NAME">${empty?'':esc(d.name)} ${editable?pencil():''}</h1>
+          <p class="group-edit mt-5 text-base md:text-xl text-sec max-w-2xl border-l-4 bd-lime pl-5 ${editable?'editable':''}"
+            ${editable?`contenteditable="true" data-field="oneLiner"`:''} data-placeholder="One-liner...">${empty?'':esc(d.oneLiner)} ${editable?pencil():''}</p>
+        </div>
+        <div class="border-[3px] bd-strong bg-panel h-28 w-28 flex flex-col items-center justify-center"
+          style="box-shadow:4px 4px 0 var(--stroke-strong)">
+          <span class="mono text-3xl font-black text-pri">$${costOf(d)}</span>
+          <span class="mono text-[10px] uppercase text-lime">${d.team?'Team':'Solo'}</span>
+        </div>
+      </div>
+    </div>
+  </header>`;
+}
+function pencil(){ return `<span class="pencil inline-flex items-center justify-center h-5 w-5 border bd-lime text-lime align-middle ml-2 text-[10px]">✎</span>`; }
+
+function viewProjects(d, editable){
+  const empty = mode === "create";
+  return `<section class="px-6 py-16 md:py-20" style="background:color-mix(in oklch, var(--bg-panel) 30%, transparent)">
+    <div class="mx-auto max-w-[80rem]">
+      ${sectionHeader("01","// PROJECTS","Projects", d.projects.length?`${d.projects.length} projects`:'')}
+      ${editable ? `<button onclick="openProject()" class="mb-6 inline-flex items-center gap-1.5 border bd-sub px-2 py-1 mono text-[10px] font-bold uppercase tracking-wider text-mut hover:bd-lime hover:text-lime">+ New project</button>` : ""}
+      ${empty
+        ? `<div class="border-2 bd-sub bg-canvas p-6">
+            <div class="flex items-start gap-4">
+              <span class="mono text-lg text-lime">&gt;<span class="blink">_</span></span>
+              <div>
+                <h3 class="mono text-sm font-semibold text-pri mb-1">Add projects via CLI</h3>
+                <p class="text-sm text-sec">Run the collect command in any project directory to upload its AI config files.</p>
+                <code class="mt-3 inline-block border bd-sub bg-panel mono text-sm text-lime px-3 py-1.5">npx @use-aistack/cli collect</code>
+              </div>
+            </div>
+          </div>`
+        : `<div class="border-t bd-sub">${d.projects.map((p,i)=>viewProjectRow(p,i,editable)).join("")}</div>`}
+    </div>
+  </section>`;
+}
+function viewProjectRow(p, i, editable){
+  const href = p.url || "";
+  return `<div class="group-edit relative flex items-stretch border-b bd-sub">
+    <span class="absolute left-0 top-0 h-full w-0.5 bg-lime"></span>
+    <div class="flex min-w-0 flex-1 items-start gap-4 px-3 py-5">
+      ${icon(p.name, "cyan", "md")}
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2">
+          <h3 class="mono text-base font-semibold text-pri truncate">${esc(p.name)}</h3>
+          ${p.draft?'<span class="border border-dashed px-1.5 py-0.5 mono text-[10px] font-bold uppercase" style="color:var(--amber);border-color:var(--amber)">draft</span>':''}
+        </div>
+        <p class="mt-1 text-sm text-sec line-clamp-1">${esc(p.desc)}</p>
+        <div class="mt-2 flex flex-wrap items-center gap-1">${(p.tags||[]).map(t=>chip(t,"cyan")).join("")}
+          <span class="ml-1 mono text-[11px] text-mut">⌗ ${p.files}</span></div>
+      </div>
+    </div>
+    ${editable
+      ? `<div class="flex shrink-0 items-center gap-1 pr-3">
+          <button onclick="openProject(${i})" class="border bd-sub px-1.5 py-1 text-mut hover:bd-lime hover:text-lime mono text-[10px]">✎</button>
+          <button onclick="delProject(${i})" class="border bd-sub px-1.5 py-1 text-mut hover:text-pri mono text-[10px]">×</button>
+        </div>`
+      : `<span class="mt-1 hidden md:block self-center text-mut pr-3">↗</span>`}
+  </div>`;
+}
+
+function viewTools(d, editable){
+  if (d.tools.length === 0 && !editable) return "";
+  const main = d.tools.filter(t=>t.kind==="main"), misc = d.tools.filter(t=>t.kind==="misc");
+  return `<section class="px-6 py-16 md:py-20 bg-canvas">
+    <div class="mx-auto max-w-[80rem]">
+      ${sectionHeader("02","// TOOLS","Tools", d.tools.length?`${d.tools.length} items · $${costOf(d)}/mo`:'')}
+      ${editable?`<button onclick="openTool('add')" class="mb-6 inline-flex items-center gap-1.5 border bd-sub px-2 py-1 mono text-[10px] font-bold uppercase tracking-wider text-mut hover:bd-lime hover:text-lime">+ Add tool</button>`:''}
+      ${d.tools.length===0 && editable ? `<p class="mono text-xs text-mut mb-8">No tools yet — add your first.</p>`:''}
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        ${main.map((t,idx)=>toolCardBig(t, d.tools.indexOf(t), editable)).join("")}
+      </div>
+      ${misc.length?`<div class="mt-10"><p class="mb-4 mono text-[11px] font-semibold uppercase tracking-[0.25em] text-mut">// also running</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">${misc.map(t=>toolCardMini(t, d.tools.indexOf(t), editable)).join("")}</div></div>`:''}
+      <!-- Models & Bundles disclosures -->
+      <div class="mt-10 space-y-3">
+        ${disclosure("Models", d.models.length, `<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">${d.models.map(m=>`<div class="flex items-center gap-3 border bd-sub p-4">${icon(m.name,"lime","sm")}<div class="min-w-0"><p class="mono text-sm font-semibold text-pri truncate">${esc(m.name)}</p><p class="mono text-[10px] uppercase text-mut">${esc(m.provider)} · ${esc(m.role)}</p></div></div>`).join("")}${editable?`<button class="border-2 border-dashed bd-sub p-4 mono text-[10px] uppercase tracking-wider text-mut hover:bd-lime hover:text-lime">+ Add model</button>`:''}</div>`)}
+        ${disclosure("Bundles", d.bundles.length, `<div class="space-y-3">${d.bundles.map(b=>`<div class="border bd-sub p-5"><div class="flex items-center gap-4">${icon(b.name,"lime","lg")}<div><p class="mono text-base font-bold text-pri">${esc(b.name)}</p><p class="mono text-[10px] uppercase text-mut">${esc(b.tier)} · $${b.price}/mo</p></div></div><p class="mt-3 text-sm text-sec">${esc(b.desc)}</p></div>`).join("")}${editable?`<button class="w-full border-2 border-dashed bd-sub py-3 mono text-[10px] uppercase tracking-wider text-mut hover:bd-lime hover:text-lime">+ Add bundle</button>`:''}</div>`)}
+      </div>
+    </div>
+  </section>`;
+}
+function toolCardBig(t, i, editable){
+  const c = catColors[t.catColor];
+  return `<div class="group-edit relative flex flex-col border bd-sub p-5">
+    ${editable?`<div class="absolute right-2 top-2 flex gap-1 pencil"><button onclick="openTool('swap',${i})" class="border bd-lime text-lime px-1.5 py-0.5 mono text-[10px]">swap</button><button onclick="delTool(${i})" class="border bd-sub text-mut hover:text-pri px-1.5 py-0.5 mono text-[10px]">×</button></div>`:''}
+    <div class="flex items-start gap-4">
+      ${icon(t.name, t.catColor, "lg")}
+      <div class="min-w-0 flex-1"><div class="flex items-start justify-between gap-3">
+        <div class="min-w-0"><h3 class="mono text-lg font-bold text-pri truncate">${esc(t.name)}</h3><p class="mono text-[10px] uppercase text-mut">${esc(t.tier)}</p></div>
+        <span class="mono text-2xl font-black" style="color:var(--fg-primary)">${t.price?'$'+t.price:'<span style=\"color:var(--accent-lime)\">Free</span>'}</span>
+      </div></div>
+    </div>
+    <div class="mt-4 flex items-center justify-between pt-1">${chip(t.cat, t.catColor)}<span class="mono text-[11px] uppercase text-mut">Visit ↗</span></div>
+  </div>`;
+}
+function toolCardMini(t, i, editable){
+  return `<div class="group-edit relative flex items-center gap-3 border bd-sub p-4">
+    ${icon(t.name, t.catColor, "sm")}
+    <div class="min-w-0 flex-1"><p class="mono text-sm font-semibold text-pri truncate">${esc(t.name)}</p><p class="mono text-[10px] uppercase text-mut">${esc(t.tier)}</p></div>
+    <span class="mono text-sm font-bold text-pri">${t.price?'$'+t.price:'Free'}</span>
+    ${editable?`<button onclick="openTool('swap',${i})" class="pencil border bd-lime text-lime px-1 mono text-[10px]">swap</button>`:''}
+  </div>`;
+}
+function disclosure(label, count, body){
+  return `<div><button onclick="this.nextElementSibling.classList.toggle('hidden')" class="flex w-full items-center gap-2 border bd-sub px-3 py-2 text-left" style="background:color-mix(in oklch, var(--bg-panel-muted) 40%, transparent)">
+    <span class="text-lime">▸</span><span class="mono text-[11px] font-semibold uppercase tracking-[0.25em] text-lime">${label} (${count})</span></button>
+    <div class="hidden mt-3">${body}</div></div>`;
+}
+function viewWorkflow(d, editable){
+  const empty = mode === "create";
+  return `<section class="px-6 py-16 md:py-20" style="background:color-mix(in oklch, var(--bg-panel) 30%, transparent)">
+    <div class="mx-auto max-w-[80rem]">
+      ${sectionHeader("03","// WRITEUP","Workflow","")}
+      <div class="group-edit max-w-3xl ${editable?'editable':''}">
+        ${editable?`<div class="mb-2 flex items-center gap-2 mono text-[10px] uppercase tracking-wider text-mut"><span class="font-bold text-pri">B</span><span class="italic">i</span><span>H1</span><button onclick="openTool('insert')" class="ml-2 border bd-sub px-2 py-0.5 hover:bd-lime hover:text-lime">@ mention tool</button>${pencil()}</div>`:''}
+        <div ${editable?'contenteditable="true" data-field="workflow"':''} class="text-base leading-relaxed text-sec ${editable?'focus:outline-none border bd-sub p-4 bg-panel/30':''}" data-placeholder="Describe how you use this stack...">
+          ${empty? (editable?'':'<span class="mono text-sm text-mut">No details were provided on how to use this stack</span>') : workflowHTML(d.workflow)}
+        </div>
+      </div>
+    </div>
+  </section>`;
+}
+function viewDetails(d){
+  const empty = mode === "create";
+  return `<section class="px-6 py-16 md:py-20 bg-canvas">
+    <div class="mx-auto max-w-[80rem]">
+      ${sectionHeader("05","// META","Details","")}
+      <div class="grid sm:grid-cols-3 gap-4 max-w-3xl">
+        ${detailCell("Maintainer", empty?'—':'@'+d.xHandle)}
+        ${detailCell("Team size", d.team?String(d.teamSize):'Solo')}
+        ${detailCell("Monthly", '$'+costOf(d))}
+      </div>
+    </div>
+  </section>`;
+}
+function detailCell(k,v){ return `<div class="border bd-sub p-4"><p class="mono text-[10px] uppercase tracking-wider text-mut">${k}</p><p class="mt-1 mono text-lg font-bold text-pri">${esc(v)}</p></div>`; }
+
+function workflowHTML(text){
+  // highlight @Mentions as lime tokens
+  return esc(text).replace(/@(\w+)/g, '<span class="mono font-semibold" style="color:var(--accent-lime)">@$1</span>');
+}
+
+/* ============================================================
+   PARADIGM 2 — LIVE-PREVIEW COMPOSER
+   /edit route shell + Save/Publish/View header, but the body
+   is the real view sections, each editable in place (always-on).
+   ============================================================ */
+function renderLive(d){
+  const empty = mode === "create";
+  return `
+  <div data-edit-on>
+    <!-- editor chrome -->
+    <div class="sticky top-[96px] z-30 bg-canvas border-b-2 bd-strong">
+      <div class="mx-auto max-w-[80rem] px-4 py-2.5 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 mono text-[10px] uppercase tracking-wider text-lime">
+          <span class="inline-block h-2 w-2 bg-lime"></span> Editing live preview${empty?' · new stack':''}
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="border-2 bd-sub px-3 py-1.5 mono text-[11px] uppercase tracking-wider text-mut hover:bd-lime hover:text-pri">View</button>
+          <button class="border-2 bd-strong px-3 py-1.5 mono text-[11px] uppercase tracking-wider text-mut hover:bd-lime hover:text-pri">Save Draft</button>
+          <button class="border-2 bd-lime bg-lime px-3 py-1.5 mono text-[11px] font-bold uppercase tracking-wider text-lime-contrast">Publish</button>
+        </div>
+      </div>
+    </div>
+    ${empty ? `<div class="mx-auto max-w-[80rem] px-6 pt-6">${createBanner("Live-preview can host create-from-nothing, but the empty page is mostly placeholders — you're editing a skeleton rather than seeing a real preview. Each section shows its empty state with inline \"+ add\" affordances.")}</div>`:''}
+    ${viewHero(d, true)}
+    ${viewProjects(d, true)}
+    ${viewTools(d, true)}
+    ${viewWorkflow(d, true)}
+    ${viewDetails(d)}
+  </div>`;
+}
+
+/* ============================================================
+   PARADIGM 3 — INLINE-ON-VIEW
+   The real view page + an owner Edit toggle that reveals per-section
+   inline affordances. /edit shrinks to a create blank slate.
+   ============================================================ */
+function renderInline(d){
+  if (mode === "create") {
+    // /edit shrinks to a blank-slate create screen — inline CANNOT host create-from-nothing
+    return `<div class="mx-auto max-w-[40rem] px-6 py-16">
+      <p class="mono text-[10px] uppercase tracking-widest text-lime mb-3">// new stack</p>
+      <h2 class="text-3xl font-black uppercase tracking-tighter text-pri mb-2">Name your stack</h2>
+      <p class="text-sm text-sec mb-8">Inline editing lives on the published view — but there's no view to host it yet. So create-from-nothing falls back to a minimal dedicated screen. Once you name + save, you land on the real page and edit everything inline from there.</p>
+      ${createBanner("This is the key tradeoff: inline editing has nothing to attach to when nothing exists, so the blank slate needs its own small composer screen.")}
+      <div class="mt-6 space-y-4">
+        ${formInput("Stack name", "", "e.g. Ship-Fast Solo")}
+        ${formInput("One-liner", "", "What is this stack about?")}
+        <button class="border-2 bd-lime bg-lime px-4 py-2 mono text-xs font-bold uppercase tracking-wider text-lime-contrast">Create & continue →</button>
+      </div>
+    </div>`;
+  }
+  return `
+  <div ${editOn?'data-edit-on':''}>
+    <!-- owner edit toggle bar -->
+    <div class="sticky top-[96px] z-30 bg-canvas border-b bd-sub">
+      <div class="mx-auto max-w-[80rem] px-6 py-2 flex items-center justify-end gap-3">
+        <span class="mono text-[10px] uppercase tracking-wider ${editOn?'text-lime':'text-mut'}">${editOn?'Edit mode — hover sections to edit':'Viewing as owner'}</span>
+        <button onclick="toggleInlineEdit()" class="inline-flex items-center gap-1.5 border-2 ${editOn?'bd-lime bg-lime text-lime-contrast':'bd-strong text-pri hover:bd-lime hover:text-lime'} px-3 py-1.5 mono text-[11px] font-bold uppercase tracking-wider">
+          ${editOn?'Done':'✎ Edit'}
+        </button>
+      </div>
+    </div>
+    ${viewHero(d, editOn)}
+    ${viewProjects(d, editOn)}
+    ${viewTools(d, editOn)}
+    ${viewWorkflow(d, editOn)}
+    ${viewDetails(d)}
+  </div>`;
+}
+
+function createBanner(text){
+  return `<div class="mb-8 border-2 p-4 flex items-start gap-3" style="border-color:var(--amber);background:color-mix(in oklch, var(--amber) 8%, transparent)">
+    <span class="mono text-sm" style="color:var(--amber)">▲ BLANK SLATE</span>
+    <p class="text-sm text-sec flex-1">${text}</p>
+  </div>`;
+}
+
+/* ============================================================
+   COST
+   ============================================================ */
+function costOf(d){
+  return d.tools.reduce((s,t)=>s+(t.price||0),0) + d.bundles.reduce((s,b)=>s+(b.price||0),0);
+}
+
+/* ============================================================
+   RENDER DISPATCH
+   ============================================================ */
+const descriptions = {
+  mirror: "Composer mirror — the current form-style editor (Details + Workflow main column, accordion sidebar), with a new Projects form section. Editor and view stay separate surfaces.",
+  live:   "Live-preview composer — an /edit route that renders the real view sections, each editable in place. WYSIWYG, contained in a route.",
+  inline: "Inline-on-view — the published page itself with an owner Edit toggle that reveals per-section inline affordances. /edit shrinks to a create-only blank slate.",
+};
+
+function render(){
+  const d = activeData();
+  const stage = document.getElementById("stage");
+  if (paradigm === "mirror") stage.innerHTML = renderMirror(d);
+  else if (paradigm === "live") stage.innerHTML = renderLive(d);
+  else stage.innerHTML = renderInline(d);
+
+  document.getElementById("paradigm-desc").textContent = descriptions[paradigm];
+  syncToggleStyles();
+  wireEditableFields();
+  applyPlaceholders();
+}
+
+function syncToggleStyles(){
+  document.querySelectorAll("[data-paradigm]").forEach(b=>{
+    const on = b.dataset.paradigm === paradigm;
+    b.style.background = on ? "var(--accent-lime)" : "transparent";
+    b.style.color = on ? "var(--accent-lime-contrast)" : "var(--fg-muted)";
+  });
+  document.querySelectorAll("[data-mode]").forEach(b=>{
+    const on = b.dataset.mode === mode;
+    b.style.background = on ? "var(--bg-panel-elevated)" : "transparent";
+    b.style.color = on ? "var(--fg-primary)" : "var(--fg-muted)";
+  });
+}
+
+/* persist contenteditable edits back into the data object */
+function wireEditableFields(){
+  document.querySelectorAll("[data-field]").forEach(el=>{
+    el.addEventListener("blur", ()=>{
+      const d = activeData();
+      const f = el.dataset.field;
+      d[f] = el.innerText.replace(/✎/g,"").trim();
+    });
+  });
+}
+function applyPlaceholders(){
+  // simple contenteditable placeholder behavior
+  document.querySelectorAll("[contenteditable][data-placeholder]").forEach(el=>{
+    const show = ()=>{ if(!el.innerText.trim()){ el.dataset.empty="1"; } else { delete el.dataset.empty; } };
+    show();
+    el.addEventListener("input", show);
+  });
+}
+
+/* ============================================================
+   EVENTS — toggles
+   ============================================================ */
+document.querySelectorAll("[data-paradigm]").forEach(b=>{
+  b.addEventListener("click", ()=>{ paradigm = b.dataset.paradigm; if(paradigm!=="inline") editOn=true; if(paradigm==="inline") editOn=false; render(); });
+});
+document.querySelectorAll("[data-mode]").forEach(b=>{
+  b.addEventListener("click", ()=>{ mode = b.dataset.mode; if(mode==="create") createData = blank(); render(); });
+});
+function toggleInlineEdit(){ editOn = !editOn; render(); }
+function toggleAcc(id){
+  document.querySelectorAll("[data-acc-body]").forEach(el=>{
+    if(el.dataset.accBody===id) el.classList.toggle("hidden");
+  });
+  document.querySelectorAll("[data-acc]").forEach(btn=>{
+    const open = !document.querySelector(`[data-acc-body="${btn.dataset.acc}"]`).classList.contains("hidden");
+    btn.className = `flex w-full items-center justify-between border-2 ${open?'bd-lime':'bd-sub'} p-3 transition-all`;
+    btn.style.background = open ? "color-mix(in oklch, var(--accent-lime) 5%, transparent)" : "";
+    btn.querySelector("span").className = `mono text-[10px] uppercase tracking-wider ${open?'text-lime':'text-mut'}`;
+  });
+}
+
+/* ============================================================
+   PROJECT add/edit (dialog)
+   ============================================================ */
+let editingProjectIndex = null;
+function openProject(i){
+  const d = activeData();
+  editingProjectIndex = (i===undefined) ? null : i;
+  const p = editingProjectIndex===null ? {name:"",desc:"",url:"",tags:[]} : d.projects[i];
+  document.getElementById("projectDialogTitle").textContent = editingProjectIndex===null ? "New Project" : "Edit Project";
+  document.getElementById("pd_name").value = p.name;
+  document.getElementById("pd_desc").value = p.desc;
+  document.getElementById("pd_url").value = p.url;
+  document.getElementById("pd_tags").value = (p.tags||[]).join(", ");
+  document.getElementById("projectDialog").showModal();
+}
+document.getElementById("projectDialog").addEventListener("close", function(){
+  if(this.returnValue==="cancel") return;
+  const d = activeData();
+  const proj = {
+    name: document.getElementById("pd_name").value.trim() || "Untitled",
+    desc: document.getElementById("pd_desc").value.trim(),
+    url: document.getElementById("pd_url").value.trim(),
+    tags: document.getElementById("pd_tags").value.split(",").map(s=>s.trim()).filter(Boolean),
+    files: editingProjectIndex===null ? 0 : (d.projects[editingProjectIndex].files||0),
+    draft: editingProjectIndex===null ? true : d.projects[editingProjectIndex].draft,
+  };
+  if(editingProjectIndex===null) d.projects.push(proj);
+  else d.projects[editingProjectIndex] = proj;
+  toast(editingProjectIndex===null ? "Project added" : "Project saved");
+  render();
+});
+function delProject(i){ activeData().projects.splice(i,1); toast("Project removed"); render(); }
+
+/* ============================================================
+   TOOL add/swap (dialog)
+   ============================================================ */
+let toolAction = null, toolSwapIndex = null;
+function openTool(action, i){
+  toolAction = action; toolSwapIndex = (i===undefined)?null:i;
+  document.getElementById("toolDialogTitle").textContent =
+    action==="swap" ? "Swap Tool" : action==="insert" ? "Mention a Tool" : "Add Tool";
+  const cat = document.getElementById("toolCatalog");
+  cat.innerHTML = catalog.map(c=>`<button type="button" onclick="pickTool('${c.name}')" class="flex items-center gap-3 border-2 bd-sub p-3 text-left hover:bd-lime">
+    ${icon(c.name,c.catColor,"sm")}<div class="min-w-0 flex-1"><p class="mono text-sm font-semibold text-pri truncate">${esc(c.name)}</p><p class="mono text-[10px] uppercase text-mut">${esc(c.cat)} · ${c.price?'$'+c.price:'Free'}</p></div></button>`).join("");
+  document.getElementById("toolDialog").showModal();
+}
+function pickTool(name){
+  const c = catalog.find(x=>x.name===name);
+  const d = activeData();
+  if(toolAction==="swap" && toolSwapIndex!==null){
+    const old = d.tools[toolSwapIndex];
+    d.tools[toolSwapIndex] = {name:c.name,cat:c.cat,catColor:c.catColor,tier:"Pro",price:c.price,kind:old.kind};
+    toast(`Swapped → ${name}`);
+  } else if(toolAction==="insert"){
+    // mention insert into workflow
+    d.workflow = (d.workflow?d.workflow+" ":"") + "@"+c.name;
+    toast(`Mentioned @${name} in workflow`);
+  } else {
+    d.tools.push({name:c.name,cat:c.cat,catColor:c.catColor,tier:"Pro",price:c.price,kind:"main"});
+    toast(`Added ${name}`);
+  }
+  document.getElementById("toolDialog").close("cancel");
+  render();
+}
+
+/* placeholder CSS for contenteditable */
+const style = document.createElement("style");
+style.textContent = `[contenteditable][data-empty]::before{content:attr(data-placeholder);color:var(--fg-muted);opacity:.6;}`;
+document.head.appendChild(style);
+
+/* boot */
+render();
+</script>
+</body>
+</html>

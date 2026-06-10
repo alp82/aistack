@@ -1,4 +1,5 @@
 import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
+import type { StagedProject } from "@/components/projects/types";
 import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
 import type {
 	ModelSubscriptionEntry,
@@ -26,7 +27,8 @@ function getDraftKey(slug?: string): string {
 
 type EditorSection = (typeof sectionOrder)[number];
 
-type EditorState = {
+/** Fields shared between EditorState and the persisted GuestStackDraft. */
+type ProfileFields = {
 	name: string;
 	oneLiner: string;
 	description: string;
@@ -36,10 +38,13 @@ type EditorState = {
 	teamSize: number;
 	toolSubscriptions: ToolSubscriptionEntry[];
 	bundleSubscriptions: BundleSubscriptionEntry[];
+	projects: StagedProject[];
 	xHandle: string;
 	personalPageUrl: string;
-
 	stackImageUrl: string;
+};
+
+type EditorState = ProfileFields & {
 	saving: boolean;
 	error: string;
 	activeSection: EditorSection;
@@ -47,21 +52,7 @@ type EditorState = {
 	restoredFromDraft: boolean;
 };
 
-type GuestStackDraft = {
-	name: string;
-	oneLiner: string;
-	description: string;
-	resources: Resource[];
-	modelSubscriptions: ModelSubscriptionEntry[];
-	isTeam: boolean;
-	teamSize: number;
-	toolSubscriptions: ToolSubscriptionEntry[];
-	bundleSubscriptions: BundleSubscriptionEntry[];
-	xHandle: string;
-	personalPageUrl: string;
-
-	stackImageUrl: string;
-};
+type GuestStackDraft = ProfileFields;
 
 type EditorAction =
 	| {
@@ -98,6 +89,10 @@ type EditorAction =
 	| {
 			type: "resources/updated";
 			resources: Resource[];
+	  }
+	| {
+			type: "projects/updated";
+			projects: StagedProject[];
 	  }
 	| {
 			type: "ui/saveStateChanged";
@@ -203,6 +198,7 @@ function getInitialEditorState(args: {
 			savedDraft?.bundleSubscriptions ??
 			initialValue?.bundleSubscriptions ??
 			[],
+		projects: savedDraft?.projects ?? [],
 		xHandle: savedDraft?.xHandle ?? actor.xHandle ?? "",
 		personalPageUrl:
 			savedDraft?.personalPageUrl ??
@@ -253,6 +249,11 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 				...state,
 				resources: action.resources,
 			};
+		case "projects/updated":
+			return {
+				...state,
+				projects: action.projects,
+			};
 		case "ui/saveStateChanged":
 			return {
 				...state,
@@ -301,6 +302,8 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 					draft.bundleSubscriptions !== undefined
 						? draft.bundleSubscriptions
 						: state.bundleSubscriptions,
+				projects:
+					draft.projects !== undefined ? draft.projects : state.projects,
 				xHandle: draft.xHandle !== undefined ? draft.xHandle : state.xHandle,
 				personalPageUrl:
 					draft.personalPageUrl !== undefined
@@ -326,6 +329,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 				teamSize: iv.teamSize ?? 2,
 				toolSubscriptions: iv.toolSubscriptions ?? [],
 				bundleSubscriptions: iv.bundleSubscriptions ?? [],
+				projects: [],
 				personalPageUrl: iv.personalPageUrl ?? "",
 				stackImageUrl: iv.stackImageUrl ?? "",
 				restoredFromDraft: false,

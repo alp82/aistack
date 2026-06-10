@@ -62,7 +62,7 @@ function WorkflowStep({
 		<div className="space-y-8">
 			<div>
 				<p className="mb-4 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
-					// STEP 02: WORKFLOW
+					// STEP 03: WORKFLOW
 				</p>
 			</div>
 

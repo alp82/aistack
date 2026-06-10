@@ -1,23 +1,11 @@
 import { convexQuery } from "@convex-dev/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import {
-	AlertTriangle,
-	ArrowRight,
-	CheckCircle,
-	Flag,
-	Pencil,
-	User,
-} from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
-import { CostBreakdownTooltip } from "@/components/CostBreakdownTooltip";
 import { JsonLd } from "@/components/JsonLd";
 import type { ModelItemData } from "@/components/ModelItem";
-import { PriceDisplay } from "@/components/PriceDisplay";
 import { ProjectsSection } from "@/components/ProjectsSection";
-import { UpvoteButton } from "@/components/UpvoteButton";
-import { UpvotersTooltip } from "@/components/UpvotersTooltip";
-import HoverCard from "@/components/ui/hover-card";
 import {
 	type BundleLookupData,
 	EditorProvider,
@@ -25,15 +13,13 @@ import {
 	type ToolLookupData,
 	useEditorContext,
 } from "@/features/stack-editor/context/EditorContext";
+import { StackHeader } from "@/features/stack-view/StackHeader";
 import {
 	DescriptionSection,
-	ModelsBundlesSection,
-	SetupSection,
 	ToolsSection,
 } from "@/features/stack-view/sections";
 import { formatPricingSummary } from "@/lib/pricing";
 import { seoMeta } from "@/lib/seo";
-import { cn } from "@/lib/utils";
 import { api } from "../../convex/_generated/api";
 
 type ViewTool = {
@@ -188,6 +174,7 @@ function StackDetailsPage() {
 	const [highlightedBundle, setHighlightedBundle] = useState<string | null>(
 		null,
 	);
+	const [bundlesOpen, setBundlesOpen] = useState(false);
 	const [hasHovered, setHasHovered] = useState(false);
 	const upvotersData = useQuery(
 		api.stacks.getUpvoters,
@@ -195,14 +182,9 @@ function StackDetailsPage() {
 	);
 
 	const scrollToBundle = (bundleSlug: string) => {
-		const element = document.getElementById(`bundle-${bundleSlug}`);
-		if (element) {
-			element.scrollIntoView({ behavior: "smooth", block: "center" });
-			setTimeout(() => {
-				setHighlightedBundle(bundleSlug);
-				setTimeout(() => setHighlightedBundle(null), 1500);
-			}, 300);
-		}
+		setBundlesOpen(true);
+		setHighlightedBundle(bundleSlug);
+		setTimeout(() => setHighlightedBundle(null), 1500);
 	};
 
 	const handleUpvote = async () => {
@@ -281,8 +263,6 @@ function StackDetailsPage() {
 		);
 	}
 
-	const personalPageUrl = stack.personalPageUrl;
-
 	const costText = formatPricingSummary(
 		stack.fixedTotal,
 		stack.hasUsageComponent,
@@ -311,261 +291,20 @@ function StackDetailsPage() {
 				models={stack.models}
 			/>
 			<div className="bg-bg-canvas">
-				{/* Header */}
-				<header className="relative overflow-hidden border-b border-stroke-strong py-8 md:py-12 px-6">
-					<div
-						className="pointer-events-none absolute inset-0 z-0 opacity-10"
-						style={{
-							backgroundImage:
-								"linear-gradient(to right, var(--stroke-subtle) 1px, transparent 1px), linear-gradient(to bottom, var(--stroke-subtle) 1px, transparent 1px)",
-							backgroundSize: "4rem 4rem",
-						}}
-					/>
-					<div className="mx-auto max-w-7xl">
-						{/* Layout: avatar | content | price */}
-						<div className="flex flex-col md:grid md:grid-cols-[auto_1fr_auto] gap-6 md:gap-x-12 items-start">
-							{/* Row 1: Label in second column, Edit button in third column on desktop */}
-							<div className="hidden md:block" />
-							<div className="font-mono text-accent-lime mb-0 md:-mb-2 flex items-center gap-4 text-sm">
-								<span>{"// STACK_DETAILS"}</span>
-							</div>
-							<div className="hidden md:flex justify-end">
-								{upvoteStatus?.isOwner && (
-									<Link
-										to="/stacks/$slug/edit"
-										params={{ slug: stack.slug }}
-										className="inline-flex items-center gap-1.5 border-2 border-stroke-strong bg-bg-panel px-3 py-1 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
-									>
-										<Pencil className="size-3" />
-										Edit
-									</Link>
-								)}
-							</div>
-							{/* Mobile: Edit button below label */}
-							{upvoteStatus?.isOwner && (
-								<Link
-									to="/stacks/$slug/edit"
-									params={{ slug: stack.slug }}
-									className="inline-flex md:hidden items-center gap-1.5 border-2 border-stroke-strong bg-bg-panel px-3 py-1 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime w-fit"
-								>
-									<Pencil className="size-3" />
-									Edit
-								</Link>
-							)}
-
-							{/* Avatar + Upvote stacked */}
-							<div className="flex md:flex-col items-center gap-3 md:gap-2 shrink-0">
-								{stack.creator.avatarUrl ? (
-									<img
-										src={stack.creator.avatarUrl}
-										alt={stack.creator.name}
-										className="size-16 shrink-0 border border-stroke-subtle object-contain p-1"
-									/>
-								) : (
-									<div className="flex size-16 shrink-0 items-center justify-center border border-stroke-subtle bg-bg-panel-muted font-mono text-lg font-bold text-fg-primary">
-										{stack.creator.name.charAt(0)}
-									</div>
-								)}
-								{(upvoteStatus?.count ?? 0) > 0 ? (
-									<HoverCard
-										mode="wrapper"
-										position="below"
-										width={280}
-										height="auto"
-										maxRotation={6}
-										maxOffset={8}
-										renderContent={() => (
-											<UpvotersTooltip
-												upvoters={upvotersData?.upvoters ?? []}
-												totalCount={
-													upvotersData?.totalCount ?? upvoteStatus?.count ?? 0
-												}
-												currentUserId={upvoteStatus?.currentUserId ?? null}
-												loading={upvotersData === undefined}
-											/>
-										)}
-									>
-										<UpvoteButton
-											count={upvoteStatus?.count ?? 0}
-											upvoted={upvoteStatus?.upvoted}
-											disabled={upvoting || upvoteStatus?.isOwner}
-											size="md"
-											onClick={handleUpvote}
-											onMouseEnter={() => setHasHovered(true)}
-										/>
-									</HoverCard>
-								) : (
-									<UpvoteButton
-										count={upvoteStatus?.count ?? 0}
-										upvoted={upvoteStatus?.upvoted}
-										disabled={upvoting || upvoteStatus?.isOwner}
-										size="md"
-										onClick={handleUpvote}
-									/>
-								)}
-								{!upvoteStatus?.isOwner && (
-									<button
-										type="button"
-										onClick={handleReport}
-										disabled={reporting}
-										className={`cursor-pointer w-16 py-1.5 flex flex-col items-center justify-center gap-0.5 transition-all disabled:opacity-50 ${
-											reportStatus?.reported
-												? "bg-orange-500/15 text-orange-400 hover:bg-orange-500/30"
-												: "bg-bg-panel-muted text-fg-muted hover:bg-orange-500/15 hover:text-orange-400"
-										}`}
-									>
-										<Flag className="size-3.5" />
-										<span className="font-mono text-[9px] font-bold uppercase tracking-wide leading-tight text-center">
-											{reportStatus?.reported ? "Unreport" : "Report"}
-										</span>
-									</button>
-								)}
-							</div>
-
-							{/* Title + Links + One-liner */}
-							<div className="flex-1 min-w-0">
-								<h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tighter uppercase leading-[0.9] text-fg-primary break-words">
-									{stack.name}
-								</h1>
-
-								{/* Creator Social Bar */}
-								{(stack.creator.xHandle || personalPageUrl) && (
-									<div className="mt-6 bg-bg-panel-muted inline-flex max-w-full">
-										<div className="flex flex-wrap items-center divide-x divide-stroke-subtle">
-											{stack.creator.xHandle && (
-												<a
-													href={`https://x.com/${stack.creator.xHandle}`}
-													target="_blank"
-													rel="noopener noreferrer"
-													className="flex items-center gap-2 px-3 sm:px-5 py-3 font-mono text-sm text-fg-secondary transition-colors border-t-2 border-t-transparent hover:border-t-accent-lime hover:text-accent-lime hover:bg-bg-panel min-w-0"
-												>
-													<svg
-														className="size-4 shrink-0"
-														viewBox="0 0 24 24"
-														fill="currentColor"
-													>
-														<title>X</title>
-														<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-													</svg>
-													<span className="truncate">
-														@{stack.creator.xHandle}
-													</span>
-												</a>
-											)}
-											{personalPageUrl && (
-												<a
-													href={
-														personalPageUrl.startsWith("http")
-															? personalPageUrl
-															: `https://${personalPageUrl}`
-													}
-													target="_blank"
-													rel="noopener noreferrer"
-													className="flex items-center gap-2 px-3 sm:px-5 py-3 font-mono text-sm text-fg-secondary transition-colors border-t-2 border-t-transparent hover:border-t-accent-lime hover:text-accent-lime hover:bg-bg-panel min-w-0"
-												>
-													<User className="size-4 shrink-0" />
-													<span className="truncate">
-														{
-															personalPageUrl
-																.replace(/^https?:\/\//, "")
-																.split("/")[0]
-														}
-													</span>
-												</a>
-											)}
-										</div>
-									</div>
-								)}
-
-								{stack.creator.verified && (
-									<div className="mt-2 flex items-center gap-1.5 text-accent-lime font-mono text-xs">
-										<CheckCircle className="size-4" />
-										<span>Verified</span>
-									</div>
-								)}
-
-								<p className="mt-4 md:mt-6 text-base md:text-xl text-fg-secondary max-w-2xl border-l-4 border-accent-lime pl-4 md:pl-6">
-									{stack.oneLiner}
-								</p>
-							</div>
-
-							{/* Price Card */}
-							<HoverCard
-								mode="wrapper"
-								position="below"
-								width={320}
-								offset={12}
-								maxRotation={5}
-								maxOffset={10}
-								renderContent={() => (
-									<CostBreakdownTooltip
-										tools={stack.tools}
-										bundles={stack.bundles}
-										fixedTotal={stack.fixedTotal}
-										hasUsageComponent={stack.hasUsageComponent}
-										usageTotalNotes={stack.usageTotalNotes}
-									/>
-								)}
-							>
-								<div className="border-[3px] border-stroke-strong bg-bg-panel shadow-[4px_4px_0_var(--stroke-strong)] shrink-0 flex flex-col items-center justify-center text-center w-32 h-32 p-4 transition-all hover:shadow-[6px_6px_0_var(--stroke-strong)] hover:border-accent-lime">
-									<PriceDisplay
-										amount={stack.fixedTotal?.amount ?? 0}
-										period="month"
-										rounding="floor"
-										hasUsageComponent={stack.hasUsageComponent}
-										size="lg"
-										className="text-fg-primary"
-									/>
-									<span
-										className={cn(
-											"mt-1 font-mono text-[10px] font-semibold uppercase tracking-wide",
-											stack.teamSize ? "text-fg-secondary" : "text-accent-lime",
-										)}
-									>
-										{stack.teamSize ? `Team ${stack.teamSize}` : "Solo"}
-									</span>
-								</div>
-							</HoverCard>
-						</div>
-
-						{/* Quick stats strip */}
-						<div className="mt-10 flex flex-wrap gap-x-8 gap-y-2 font-mono text-xs uppercase tracking-wider text-fg-muted">
-							<span>
-								<span className="text-fg-primary">{stack.tools.length}</span>{" "}
-								{stack.tools.length === 1 ? "tool" : "tools"}
-							</span>
-							{stack.models.length > 0 && (
-								<span>
-									<span className="text-fg-primary">{stack.models.length}</span>{" "}
-									{stack.models.length === 1 ? "model" : "models"}
-								</span>
-							)}
-							{stack.bundles.length > 0 && (
-								<span>
-									<span className="text-fg-primary">
-										{stack.bundles.length}
-									</span>{" "}
-									{stack.bundles.length === 1 ? "bundle" : "bundles"}
-								</span>
-							)}
-						</div>
-
-						{/* Low quality banner */}
-						{(stack.isLowQuality || reportStatus?.reported) && (
-							<div className="mt-6 flex items-center gap-3 border border-orange-400/40 bg-orange-400/5 px-5 py-4">
-								<AlertTriangle className="size-4 text-orange-400 shrink-0" />
-								<p className="font-mono text-sm text-fg-secondary">
-									{stack.isLowQuality
-										? "This stack has been flagged as low quality by the community. The content may be incomplete or inaccurate."
-										: "You reported this stack as low quality. It's pending admin review."}
-								</p>
-							</div>
-						)}
-					</div>
-				</header>
+				<StackHeader
+					stack={stack}
+					upvoteStatus={upvoteStatus}
+					reportStatus={reportStatus}
+					upvotersData={upvotersData}
+					upvoting={upvoting}
+					reporting={reporting}
+					onUpvote={handleUpvote}
+					onReport={handleReport}
+					onUpvoteHover={() => setHasHovered(true)}
+				/>
 			</div>
 			<div className="bg-bg-canvas">
-				{/* Journey: Projects (01) → Tools (02) → Setup (03) → Models & Bundles (04) → The Details (05) */}
+				{/* Journey: Projects (01) → Tools (02, with Models/Bundles disclosures) → Workflow (03). */}
 				<ProjectsSection
 					stackId={stack._id}
 					isOwner={upvoteStatus?.isOwner ?? false}
@@ -574,22 +313,14 @@ function StackDetailsPage() {
 				<ToolsSection
 					index={2}
 					tools={stack.tools}
-					onBundleClick={scrollToBundle}
-				/>
-				<SetupSection
-					index={3}
-					stackId={stack._id}
-					resources={stack.resources ?? []}
-				/>
-				<ModelsBundlesSection
-					index={4}
 					models={stack.models}
 					bundles={stack.bundles}
 					highlightedBundle={highlightedBundle}
+					bundlesOpen={bundlesOpen}
+					onBundlesOpenChange={setBundlesOpen}
+					onBundleClick={scrollToBundle}
 				/>
-				{stack.description && (
-					<DescriptionSection index={5} description={stack.description} />
-				)}
+				<DescriptionSection index={3} description={stack.description} />
 
 				{/* CTA Section - hide if user already published a stack */}
 				{!upvoteStatus?.isOwner && !userStack && (

@@ -10,8 +10,12 @@
     * tools
     * description
 * API for stacks + tools
-* add github link in footer
 * lazy loading upvotes fails
+* shieldcn
+* resend -> namecheap
+* price tiers for sibling products:
+    * claude code vs claude ai
+    * new data model
 * TUI for global + all projects
 * og:image downloadable in profile
 * og:image generation faulty
@@ -39,10 +43,14 @@
     * reorder tools and models
     * project back navigation more obvious
     * mermaid diagrams
-* https://elio.devS
+* integrate with profiles
+    * codex: https://x.com/OpenAIDevs/status/2062674774644687268
+    * cursor: https://x.com/ericzakariasson/status/2062584627928388094
+* design inspiration
+    * https://wc26ai.com
+    * https://elio.dev
 * models page
     * easy adding models
-* price tiers for sibling products: claude code vs claude ai
 * ai stack knowledge/learning area
     * article grid with nice bg borders: https://www.aihero.dev/posts
     * use the same editor. new feature: crosslinking articles

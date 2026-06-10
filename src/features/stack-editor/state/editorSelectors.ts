@@ -3,13 +3,13 @@ import {
 	getSaveValidationError,
 } from "@/features/stack-editor/editor-guards";
 import type {
-	StackEditorInitialValue,
-	StackEditorMode,
-} from "@/features/stack-editor/types";
-import type {
 	EditorState,
 	GuestStackDraft,
 } from "@/features/stack-editor/state/editorReducer";
+import type {
+	StackEditorInitialValue,
+	StackEditorMode,
+} from "@/features/stack-editor/types";
 
 function selectCanPublish(state: EditorState): boolean {
 	return canPublishStack(state.oneLiner, state.toolSubscriptions.length);
@@ -51,16 +51,30 @@ function normalizeResources(
 	}));
 }
 
+function normalizeProjects(
+	projects: EditorState["projects"],
+): EditorState["projects"] {
+	return projects.map((project) => ({
+		name: project.name,
+		description: project.description,
+		url: project.url,
+		tags: project.tags,
+	}));
+}
+
 function selectSavePayload(state: EditorState, published: boolean) {
 	const resources =
 		state.resources.length > 0
 			? normalizeResources(state.resources)
 			: undefined;
+	const projects =
+		state.projects.length > 0 ? normalizeProjects(state.projects) : undefined;
 	return {
 		name: state.name.trim(),
 		oneLiner: state.oneLiner.trim(),
 		description: state.description.trim() || undefined,
 		resources,
+		projects,
 		teamSize: state.isTeam ? state.teamSize : undefined,
 		toolSubscriptions: state.toolSubscriptions.map((tool) => ({
 			toolSlug: tool.toolSlug,
@@ -99,6 +113,7 @@ function selectGuestDraft(state: EditorState): GuestStackDraft {
 		teamSize: state.teamSize,
 		toolSubscriptions: state.toolSubscriptions,
 		bundleSubscriptions: state.bundleSubscriptions,
+		projects: state.projects,
 		xHandle: state.xHandle,
 		personalPageUrl: state.personalPageUrl,
 		stackImageUrl: state.stackImageUrl,

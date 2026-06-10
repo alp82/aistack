@@ -7,6 +7,7 @@ import { GridBackground } from "@/components/GridBackground";
 import { SignInDialog } from "@/components/SignInDialog";
 import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
 import { DetailsStep } from "@/features/stack-editor/components/DetailsStep";
+import { ProjectsStep } from "@/features/stack-editor/components/ProjectsStep";
 import { ToolsSidebar } from "@/features/stack-editor/components/ToolsSidebar";
 import { WorkflowStep } from "@/features/stack-editor/components/WorkflowStep";
 import {
@@ -134,6 +135,7 @@ export function StackEditor({
 		setModelSubscriptions,
 		setName,
 		setOneLiner,
+		setProjects,
 		setSaving,
 		setShowSignInDialog,
 		setTeamSize,
@@ -566,6 +568,17 @@ export function StackEditor({
 								onIsTeamChange={setIsTeam}
 								teamSize={state.teamSize}
 								onTeamSizeChange={setTeamSize}
+							/>
+
+							{/* HR between steps */}
+							<hr className="my-8 sm:my-12 border-stroke-subtle" />
+
+							{/* Projects Section */}
+							<ProjectsStep
+								mode={mode}
+								stackId={initialValue?._id}
+								projects={state.projects}
+								onProjectsChange={setProjects}
 							/>
 
 							{/* HR between steps */}

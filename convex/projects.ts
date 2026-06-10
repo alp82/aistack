@@ -12,7 +12,7 @@ import { cascadeUnlinkOwner, resolveLinkedResources } from './lib/resourceLinks'
  * - javascript:, data:, and any other non-http(s) scheme throws.
  * Returns the normalized URL string, or undefined when input is absent/empty.
  */
-function normalizeProjectUrl(url: string | undefined): string | undefined {
+export function normalizeProjectUrl(url: string | undefined): string | undefined {
   if (!url) return undefined
   const trimmed = url.trim()
   if (!trimmed) return undefined

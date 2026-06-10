@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import {
 	CARD,
@@ -251,8 +252,16 @@ export function BundleCard({
 	bundle: StackBundle;
 	highlighted?: boolean;
 }) {
+	const ref = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		if (highlighted)
+			ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+	}, [highlighted]);
+
 	return (
 		<div
+			ref={ref}
 			id={`bundle-${bundle.slug}`}
 			className={cn(
 				"flex scroll-mt-24 flex-col transition-all",
