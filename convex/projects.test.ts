@@ -179,7 +179,6 @@ test('TC-N-15: updateProject with scheme-less URL stores https-prefixed href', a
       shortId: 'PRJn15',
       creatorId,
       stackId,
-      published: false,
       createdAt: now,
       updatedAt: now,
     })

@@ -27,7 +27,6 @@ type ProjectRow = {
 	description?: string;
 	url?: string;
 	tags?: string[];
-	isDraft: boolean;
 };
 
 function ProjectsStep({
@@ -207,11 +206,6 @@ function ProjectRowItem({
 						<h3 className="truncate font-mono text-base font-semibold text-fg-primary">
 							{row.name}
 						</h3>
-						{row.isDraft && (
-							<span className="shrink-0 border border-dashed border-amber-500/50 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400">
-								draft
-							</span>
-						)}
 					</div>
 					{row.description && (
 						<p className="mt-1 line-clamp-1 text-sm text-fg-secondary">
@@ -368,7 +362,6 @@ function ProjectsStepCreate({
 									description: project.description,
 									url: project.url,
 									tags: project.tags,
-									isDraft: true,
 								}}
 								index={index}
 								total={projects.length}
@@ -408,7 +401,6 @@ function ProjectsStepCreate({
 function ProjectsStepEdit({ stackId }: { stackId: Id<"stacks"> }) {
 	const projects = useQuery(api.projects.listByStack, {
 		stackId,
-		includeUnpublished: true,
 	});
 	const createProject = useMutation(api.projects.createProject);
 	const updateProject = useMutation(api.projects.updateProject);
@@ -501,7 +493,6 @@ function ProjectsStepEdit({ stackId }: { stackId: Id<"stacks"> }) {
 									description: project.description,
 									url: project.url,
 									tags: project.tags,
-									isDraft: project.published !== true,
 								}}
 								index={index}
 								total={list.length}

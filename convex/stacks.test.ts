@@ -82,52 +82,8 @@ test('TC-I-01: create() with projects array inserts matching project rows for th
   // slash - identical to the view-page createProject path (one shared normalizer).
   expect(projects[0].url).toBe('https://x.com/')
   expect(projects[0].tags).toEqual(['web'])
-})
-
-test('TC-I-02: create() with published:false -> inserted project rows have published===false', async () => {
-  const t = convexTest(schema, modules)
-  const { asCreator } = await seedAuthenticatedCreator(t, {
-    userId: 'user-i02',
-    slug: 'creator-i02',
-  })
-
-  const result = await asCreator.mutation(api.stacks.create, {
-    ...minimalCreateArgs,
-    published: false,
-    projects: [{ name: 'P1' }],
-  })
-
-  const projects = await t.run(async (ctx: MutationCtx) =>
-    ctx.db
-      .query('projects')
-      .withIndex('by_stackId', (q) => q.eq('stackId', result._id))
-      .collect(),
-  )
-  expect(projects).toHaveLength(1)
-  expect(projects[0].published).toBe(false)
-})
-
-test('TC-I-03: create() with published:true -> inserted project rows have published===true', async () => {
-  const t = convexTest(schema, modules)
-  const { asCreator } = await seedAuthenticatedCreator(t, {
-    userId: 'user-i03',
-    slug: 'creator-i03',
-  })
-
-  const result = await asCreator.mutation(api.stacks.create, {
-    ...minimalCreateArgs,
-    published: true,
-    projects: [{ name: 'P1' }],
-  })
-
-  const projects = await t.run(async (ctx: MutationCtx) =>
-    ctx.db
-      .query('projects')
-      .withIndex('by_stackId', (q) => q.eq('stackId', result._id))
-      .collect(),
-  )
-  expect(projects).toHaveLength(1)
-  expect(projects[0].published).toBe(true)
+  // Projects no longer carry a publish state - the stack's flag must not propagate.
+  expect(projects[0].published).toBeUndefined()
 })
 
 test('TC-I-04: create() with projects:[] inserts no project rows', async () => {
@@ -249,31 +205,29 @@ test('TC-J-01: stacks.update with only stack fields does not alter any project p
     })
   })
 
-  // Insert two project rows: one published:true, one published:false.
-  const { publishedProjectId, draftProjectId } = await t.run(
+  // Insert two project rows.
+  const { projectId1, projectId2 } = await t.run(
     async (ctx: MutationCtx) => {
       const now = Date.now()
-      const publishedProjectId = await ctx.db.insert('projects', {
-        name: 'Published Project',
-        slug: 'published-project',
+      const projectId1 = await ctx.db.insert('projects', {
+        name: 'Project One',
+        slug: 'project-one',
         shortId: 'PRJ001',
         creatorId,
         stackId,
-        published: true,
         createdAt: now,
         updatedAt: now,
       })
-      const draftProjectId = await ctx.db.insert('projects', {
-        name: 'Draft Project',
-        slug: 'draft-project',
+      const projectId2 = await ctx.db.insert('projects', {
+        name: 'Project Two',
+        slug: 'project-two',
         shortId: 'PRJ002',
         creatorId,
         stackId,
-        published: false,
         createdAt: now,
         updatedAt: now,
       })
-      return { publishedProjectId, draftProjectId }
+      return { projectId1, projectId2 }
     },
   )
 
@@ -283,14 +237,10 @@ test('TC-J-01: stacks.update with only stack fields does not alter any project p
     oneLiner: 'changed one liner',
   })
 
-  // Both project rows must retain their original published values unchanged.
-  const publishedRow = await t.run(async (ctx: MutationCtx) =>
-    ctx.db.get(publishedProjectId),
-  )
-  const draftRow = await t.run(async (ctx: MutationCtx) =>
-    ctx.db.get(draftProjectId),
-  )
+  // Both project rows must still exist with their names unchanged.
+  const row1 = await t.run(async (ctx: MutationCtx) => ctx.db.get(projectId1))
+  const row2 = await t.run(async (ctx: MutationCtx) => ctx.db.get(projectId2))
 
-  expect(publishedRow?.published).toBe(true)
-  expect(draftRow?.published).toBe(false)
+  expect(row1?.name).toBe('Project One')
+  expect(row2?.name).toBe('Project Two')
 })

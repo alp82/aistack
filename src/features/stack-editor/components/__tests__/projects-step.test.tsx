@@ -136,7 +136,6 @@ describe("ProjectsStep – edit mode", () => {
 				name: "Live Project",
 				slug: "live-project-XYZ",
 				shortId: "XYZ",
-				published: true,
 				fileCount: 0,
 				createdAt: Date.now(),
 				updatedAt: Date.now(),
@@ -179,7 +178,6 @@ describe("ProjectsStep – edit mode", () => {
 				name: "Old Name",
 				slug: "old-name-ID",
 				shortId: "ID",
-				published: true,
 				fileCount: 0,
 				createdAt: Date.now(),
 				updatedAt: Date.now(),
@@ -214,7 +212,6 @@ describe("ProjectsStep – edit mode", () => {
 				name: "Deletable",
 				slug: "deletable-ID",
 				shortId: "ID",
-				published: false,
 				fileCount: 0,
 				createdAt: Date.now(),
 				updatedAt: Date.now(),
@@ -242,27 +239,25 @@ describe("ProjectsStep – edit mode", () => {
 	});
 
 	// TC-F-05
-	it("no bulk publishProject mutation called on render or normal interaction", async () => {
-		const publishProject = vi.fn();
+	it("no mutation fires on initial render", async () => {
+		const mutationSpy = vi.fn();
 		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([
 			{
 				_id: PROJECT_ID,
-				name: "Draft One",
-				slug: "draft-one-ID",
+				name: "Live One",
+				slug: "live-one-ID",
 				shortId: "ID",
-				published: false,
-				fileCount: 0,
 				createdAt: Date.now(),
 				updatedAt: Date.now(),
 			},
 		]);
-		useMutation.mockReturnValue(publishProject);
+		useMutation.mockReturnValue(mutationSpy);
 
 		render(<ProjectsStep mode="edit" stackId={STACK_ID} />);
 
-		// On render alone, no publish should be called
-		expect(publishProject).not.toHaveBeenCalled();
+		// Mounting alone must not trigger any mutation
+		expect(mutationSpy).not.toHaveBeenCalled();
 	});
 
 	// TC-F-06
@@ -337,7 +332,6 @@ describe("ProjectsStep – edit mode: add form passes all fields", () => {
 				description: undefined,
 				url: undefined,
 				tags: undefined,
-				published: true,
 				fileCount: 0,
 				createdAt: Date.now(),
 				updatedAt: Date.now(),
@@ -394,7 +388,6 @@ describe("ProjectsStep – edit mode: reorder", () => {
 				name: "Alpha",
 				slug: "alpha-AAA",
 				shortId: "AAA",
-				published: true,
 				fileCount: 0,
 				createdAt: 1000,
 				updatedAt: 1000,
@@ -404,7 +397,6 @@ describe("ProjectsStep – edit mode: reorder", () => {
 				name: "Beta",
 				slug: "beta-BBB",
 				shortId: "BBB",
-				published: true,
 				fileCount: 0,
 				createdAt: 2000,
 				updatedAt: 2000,
@@ -442,7 +434,6 @@ describe("ProjectsStep – edit mode: reorder", () => {
 				name: "Alpha",
 				slug: "alpha-AAA",
 				shortId: "AAA",
-				published: true,
 				fileCount: 0,
 				createdAt: 1000,
 				updatedAt: 1000,
@@ -452,7 +443,6 @@ describe("ProjectsStep – edit mode: reorder", () => {
 				name: "Beta",
 				slug: "beta-BBB",
 				shortId: "BBB",
-				published: true,
 				fileCount: 0,
 				createdAt: 2000,
 				updatedAt: 2000,

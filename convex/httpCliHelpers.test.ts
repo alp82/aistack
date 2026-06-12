@@ -34,7 +34,6 @@ async function seedStackWithResources(
       shortId: `P${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
       creatorId: args.creatorId,
       stackId: args.stackId,
-      published: false,
       createdAt: now,
       updatedAt: now,
     })
@@ -1418,14 +1417,14 @@ test('unlinkResource rejects a non-owner', async () => {
   expect(items).toHaveLength(1)
 })
 
-test('deleteProject rejects a published project and allows an unpublished one', async () => {
+test('deleteProject succeeds for the owner on a previously-published project', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
   await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
 
   const now = Date.now()
-  const { publishedId, draftId } = await t.run(async (ctx: MutationCtx) => {
-    const publishedId = await ctx.db.insert('projects', {
+  const projectId = await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('projects', {
       name: 'Published',
       slug: 'published',
       shortId: 'PUB001',
@@ -1434,36 +1433,18 @@ test('deleteProject rejects a published project and allows an unpublished one', 
       published: true,
       createdAt: now,
       updatedAt: now,
-    })
-    const draftId = await ctx.db.insert('projects', {
-      name: 'Draft',
-      slug: 'draft',
-      shortId: 'DRF001',
-      creatorId,
-      stackId,
-      published: false,
-      createdAt: now,
-      updatedAt: now,
-    })
-    return { publishedId, draftId }
-  })
+    }),
+  )
 
   const asUser = t.withIdentity({ tokenIdentifier: 'convex|user-1' })
 
-  // Published project cannot be hard-deleted.
-  await expect(
-    asUser.mutation(api.projects.deleteProject, { projectId: publishedId }),
-  ).rejects.toThrow(/published/i)
-  const stillThere = await t.run(async (ctx: MutationCtx) => ctx.db.get(publishedId))
-  expect(stillThere).not.toBeNull()
-
-  // Unpublished project deletes successfully and the row is gone.
-  await asUser.mutation(api.projects.deleteProject, { projectId: draftId })
-  const gone = await t.run(async (ctx: MutationCtx) => ctx.db.get(draftId))
+  // Previously-published project must delete without throwing.
+  await asUser.mutation(api.projects.deleteProject, { projectId })
+  const gone = await t.run(async (ctx: MutationCtx) => ctx.db.get(projectId))
   expect(gone).toBeNull()
 })
 
-test('createProject persists a web draft with unique slug+shortId, timestamps, and resolved stack', async () => {
+test('createProject persists a project with unique slug+shortId, no published field, timestamps, and resolved stack', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
   await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
@@ -1486,7 +1467,7 @@ test('createProject persists a web draft with unique slug+shortId, timestamps, a
   expect(projects).toHaveLength(1)
   const project = projects[0]
   expect(project._id).toBe(result._id)
-  expect(project.published).toBe(false)
+  expect(project.published).toBeUndefined()
   expect((project as Record<string, unknown>).source).toBeUndefined()
   expect(project.order).toBeUndefined()
   expect(project.stackId).toBe(stackId)
@@ -1511,7 +1492,6 @@ test('createProject appends to the bottom of listByStack (order undefined)', asy
       shortId: 'EXS001',
       creatorId,
       stackId,
-      published: false,
       createdAt: Date.now() - 10_000,
       updatedAt: Date.now() - 10_000,
     }),
@@ -1524,7 +1504,6 @@ test('createProject appends to the bottom of listByStack (order undefined)', asy
 
   const list = await t.query(api.projects.listByStack, {
     stackId,
-    includeUnpublished: true,
   })
   expect(list).toHaveLength(2)
   expect(list[0]._id).toBe(existingId)
@@ -1533,6 +1512,31 @@ test('createProject appends to the bottom of listByStack (order undefined)', asy
   expect('fileCount' in list[0]).toBe(false)
   expect('source' in list[0]).toBe(false)
   expect('cloneCount' in list[0]).toBe(false)
+})
+
+test('listByStack returns a formerly-draft project to unauthenticated callers', async () => {
+  const t = convexTest(schema, modules)
+  const { creatorId, stackId } = await seedCreatorAndStack(t)
+
+  // Legacy row still carrying published:false (pre-migration shape; the schema
+  // tolerates it as a transient optional field until the Deploy-B narrow).
+  const draftId = await t.run(async (ctx) =>
+    ctx.db.insert('projects', {
+      name: 'Former Draft',
+      slug: 'former-draft',
+      shortId: 'FDR001',
+      creatorId,
+      stackId,
+      published: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }),
+  )
+
+  // No identity: the public/visitor path sees every project now.
+  const list = await t.query(api.projects.listByStack, { stackId })
+  expect(list).toHaveLength(1)
+  expect(list[0]._id).toBe(draftId)
 })
 
 test('createProject auto-resolves the single stack and rejects when the creator has none', async () => {

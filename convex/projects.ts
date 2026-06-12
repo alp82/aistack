@@ -28,7 +28,7 @@ export function normalizeProjectUrl(url: string | undefined): string | undefined
 }
 
 export const listByStack = query({
-  args: { stackId: v.id('stacks'), includeUnpublished: v.optional(v.boolean()) },
+  args: { stackId: v.id('stacks') },
   returns: v.array(
     v.object({
       _id: v.id('projects'),
@@ -39,20 +39,15 @@ export const listByStack = query({
       url: v.optional(v.string()),
       tags: v.optional(v.array(v.string())),
       order: v.optional(v.number()),
-      published: v.optional(v.boolean()),
       createdAt: v.number(),
       updatedAt: v.number(),
     })
   ),
   handler: async (ctx, args) => {
-    let projects = await ctx.db
+    const projects = await ctx.db
       .query('projects')
       .withIndex('by_stackId', (q) => q.eq('stackId', args.stackId))
       .collect()
-
-    if (!args.includeUnpublished) {
-      projects = projects.filter((p) => p.published === true)
-    }
 
     const mapped = projects.map((project) => ({
       _id: project._id,
@@ -63,7 +58,6 @@ export const listByStack = query({
       url: project.url,
       tags: project.tags,
       order: project.order,
-      published: project.published,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
     }))
@@ -87,7 +81,6 @@ export const updateProject = mutation({
     url: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     order: v.optional(v.number()),
-    published: v.optional(v.boolean()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -110,7 +103,6 @@ export const updateProject = mutation({
     if (args.url !== undefined) patch.url = normalizeProjectUrl(args.url)
     if (args.tags !== undefined) patch.tags = args.tags
     if (args.order !== undefined) patch.order = args.order
-    if (args.published !== undefined) patch.published = args.published
 
     await ctx.db.patch(args.projectId, patch)
     return null
@@ -165,37 +157,11 @@ export const createProject = mutation({
       description: args.description,
       url: normalizeProjectUrl(args.url),
       tags: args.tags,
-      published: false,
       createdAt: now,
       updatedAt: now,
     })
 
     return { _id: projectId, slug: `${slug}-${shortId}` }
-  },
-})
-
-export const publishProject = mutation({
-  args: {
-    projectId: v.id('projects'),
-    published: v.boolean(),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const user = await ctx.auth.getUserIdentity()
-    if (!user) throw new Error('Not authenticated')
-    const userId = user.tokenIdentifier.split('|')[1]
-
-    const project = await ctx.db.get(args.projectId)
-    if (!project) throw new Error('Project not found')
-
-    const creator = await ctx.db.get(project.creatorId)
-    if (!creator || creator.userId !== userId) throw new Error('Not authorized')
-
-    await ctx.db.patch(args.projectId, {
-      published: args.published,
-      updatedAt: Date.now(),
-    })
-    return null
   },
 })
 
@@ -240,9 +206,6 @@ export const deleteProject = mutation({
 
     const creator = await ctx.db.get(project.creatorId)
     if (!creator || creator.userId !== userId) throw new Error('Not authorized')
-
-    if (project.published === true)
-      throw new Error('Cannot delete a published project. Unpublish it first.')
 
     await ctx.db.delete(args.projectId)
     return null

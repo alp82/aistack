@@ -359,13 +359,17 @@ export default defineSchema({
     url: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     order: v.optional(v.number()),
-    published: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
     // Transient Deploy-A widening — legacy rows still carry these; remove
     // after migrations/20260612_retire_project_resources runs (see its header).
     source: v.optional(v.string()),
     cloneCount: v.optional(v.number()),
+    // Transient Deploy-A widening — published is now meaningless (every project
+    // is live) but legacy rows still carry it until
+    // migrations/20260612b_drop_project_published has run against every
+    // deployment; drop in the same combined Deploy-B narrow (see its header).
+    published: v.optional(v.boolean()),
   })
     .index('by_slug', ['slug'])
     .index('by_shortId', ['shortId'])

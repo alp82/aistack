@@ -42,12 +42,10 @@ const BASE_PROJECT = {
 	description: "A description of the project",
 	url: "https://example.com",
 	tags: ["react", "typescript"],
-	published: true,
 	updatedAt: Date.now() - 2 * 60 * 60 * 1000, // 2h ago → "2h ago"
 	createdAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
 };
 
-const DRAFT_PROJECT = { ...BASE_PROJECT, published: false };
 const NO_URL_PROJECT = { ...BASE_PROJECT, url: undefined };
 
 const MANY_TAGS_PROJECT = {
@@ -133,26 +131,6 @@ describe("ProjectsSection – Collapsed Row Content", () => {
 		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
 
 		expect(screen.getByText("My Project")).toBeInTheDocument();
-	});
-
-	// TC-CR-02
-	it("TC-CR-02: draft badge present for unpublished project (isOwner=true)", async () => {
-		const { useQuery } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([DRAFT_PROJECT]);
-
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
-
-		expect(screen.getByText(/draft/i)).toBeInTheDocument();
-	});
-
-	// TC-CR-03
-	it("TC-CR-03: draft badge absent for published project", async () => {
-		const { useQuery } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([BASE_PROJECT]);
-
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
-
-		expect(screen.queryByText(/draft/i)).not.toBeInTheDocument();
 	});
 
 	// TC-CR-04
@@ -447,26 +425,9 @@ describe("ProjectsSection – Expanded Panel", () => {
 		expect(screen.getByText(/2h ago/i)).toBeInTheDocument();
 	});
 
-	// TC-EP-05
-	it("TC-EP-05: owner + published → Edit and Unpublish buttons in expanded panel", async () => {
-		await renderAndExpand(BASE_PROJECT, true);
-		expect(screen.getByRole("button", { name: /^edit$/i })).toBeInTheDocument();
-		expect(
-			screen.getByRole("button", { name: /^unpublish$/i }),
-		).toBeInTheDocument();
-	});
-
-	// TC-EP-06
-	it("TC-EP-06: owner + published → no Delete button in expanded panel", async () => {
-		await renderAndExpand(BASE_PROJECT, true);
-		expect(
-			screen.queryByRole("button", { name: /delete/i }),
-		).not.toBeInTheDocument();
-	});
-
 	// TC-EP-07
-	it("TC-EP-07: owner + draft → Delete button present in expanded panel", async () => {
-		await renderAndExpand(DRAFT_PROJECT, true);
+	it("TC-EP-07: owner -> Delete button present in expanded panel (unconditional)", async () => {
+		await renderAndExpand(BASE_PROJECT, true);
 		expect(screen.getByRole("button", { name: /delete/i })).toBeInTheDocument();
 	});
 
@@ -505,57 +466,11 @@ describe("ProjectsSection – Mutations", () => {
 		expect(screen.getByDisplayValue("https://example.com")).toBeInTheDocument();
 	});
 
-	// TC-MUT-02
-	it("TC-MUT-02: draft + Publish click → publishProject called with published:true", async () => {
-		const publishSpy = vi.fn().mockResolvedValue(null);
-		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([DRAFT_PROJECT]);
-		// publishProject is the 2nd useMutation call in the component
-		// (order: reorderProjects, publishProject, deleteProject, createProject, updateProject)
-		useMutation.mockImplementation(() => publishSpy);
-
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
-
-		const toggle = findFirstToggle()!;
-		fireEvent.click(toggle);
-
-		const publishBtn = screen.getByRole("button", { name: /^publish$/i });
-		fireEvent.click(publishBtn);
-
-		expect(publishSpy).toHaveBeenCalledOnce();
-		expect(publishSpy).toHaveBeenCalledWith({
-			projectId: "project_1",
-			published: true,
-		});
-	});
-
-	// TC-MUT-03
-	it("TC-MUT-03: published + Unpublish click → publishProject called with published:false", async () => {
-		const publishSpy = vi.fn().mockResolvedValue(null);
-		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([BASE_PROJECT]);
-		useMutation.mockImplementation(() => publishSpy);
-
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
-
-		const toggle = findFirstToggle()!;
-		fireEvent.click(toggle);
-
-		const unpublishBtn = screen.getByRole("button", { name: /^unpublish$/i });
-		fireEvent.click(unpublishBtn);
-
-		expect(publishSpy).toHaveBeenCalledOnce();
-		expect(publishSpy).toHaveBeenCalledWith({
-			projectId: "project_1",
-			published: false,
-		});
-	});
-
 	// TC-MUT-04
 	it("TC-MUT-04: Delete → ConfirmDialog → confirm → deleteProject called", async () => {
 		const deleteSpy = vi.fn().mockResolvedValue(null);
 		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([DRAFT_PROJECT]);
+		useQuery.mockReturnValue([BASE_PROJECT]);
 		// deleteProject is the 3rd useMutation call
 		useMutation.mockImplementation(() => deleteSpy);
 
@@ -582,7 +497,7 @@ describe("ProjectsSection – Mutations", () => {
 	it("TC-MUT-05: Delete → cancel → deleteProject NOT called, dialog closes", async () => {
 		const deleteSpy = vi.fn().mockResolvedValue(null);
 		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([DRAFT_PROJECT]);
+		useQuery.mockReturnValue([BASE_PROJECT]);
 		useMutation.mockImplementation(() => deleteSpy);
 
 		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
@@ -668,9 +583,9 @@ describe("ProjectsSection – Mutations", () => {
 	});
 
 	// TC-MUT-ORDER: invariant – useMutation hook call order matches the positional keys
-	// relied upon by TC-MUT-02/03/04/08 and TC-DRG-04/05/06/07/09.
-	// Expected order: 1=reorderProjects, 2=publishProject, 3=deleteProject, 4=createProject, 5=updateProject
-	it("TC-MUT-ORDER: useMutation is called in the expected positional order (reorder, publish, delete, create, update)", async () => {
+	// relied upon by TC-MUT-04/08 and TC-DRG-04/05/06/07/09.
+	// Expected order: 1=reorderProjects, 2=deleteProject, 3=createProject, 4=updateProject
+	it("TC-MUT-ORDER: useMutation is called in the expected positional order (reorder, delete, create, update)", async () => {
 		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
@@ -683,15 +598,15 @@ describe("ProjectsSection – Mutations", () => {
 
 		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
 
-		// Component must invoke useMutation exactly 5 times (one per mutation).
-		expect(useMutation).toHaveBeenCalledTimes(5);
+		// Component must invoke useMutation exactly 4 times (one per mutation).
+		expect(useMutation).toHaveBeenCalledTimes(4);
 
-		// The order must be stable: all 5 refs must be distinct
+		// The order must be stable: all 4 refs must be distinct
 		// (each mutation is a different API function object).
-		expect(callRefs).toHaveLength(5);
-		// All five refs must be distinct (each mutation is a different API function)
+		expect(callRefs).toHaveLength(4);
+		// All four refs must be distinct (each mutation is a different API function)
 		const unique = new Set(callRefs);
-		expect(unique.size).toBe(5);
+		expect(unique.size).toBe(4);
 	});
 });
 
@@ -880,24 +795,6 @@ describe("ProjectsSection – Visitor", () => {
 		).not.toBeInTheDocument();
 	});
 
-	// TC-VIS-03
-	it("TC-VIS-03: visitor sees no Publish/Unpublish button after expand", async () => {
-		const { useQuery } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([BASE_PROJECT]);
-
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
-
-		const toggle = findFirstToggle()!;
-		fireEvent.click(toggle);
-
-		expect(
-			screen.queryByRole("button", { name: /^publish$/i }),
-		).not.toBeInTheDocument();
-		expect(
-			screen.queryByRole("button", { name: /^unpublish$/i }),
-		).not.toBeInTheDocument();
-	});
-
 	// TC-VIS-04
 	it("TC-VIS-04: visitor CAN expand row (description appears)", async () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
@@ -1019,13 +916,9 @@ describe("ProjectsSection – Mutation failure feedback", () => {
 	// TC-ERR-02
 	it("TC-ERR-02: delete rejection → status line visible with the server message", async () => {
 		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-		const deleteSpy = vi
-			.fn()
-			.mockRejectedValue(
-				new Error("Cannot delete a published project. Unpublish it first."),
-			);
+		const deleteSpy = vi.fn().mockRejectedValue(new Error("Network error"));
 		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([DRAFT_PROJECT]);
+		useQuery.mockReturnValue([BASE_PROJECT]);
 		useMutation.mockImplementation(() => deleteSpy);
 
 		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
@@ -1047,9 +940,7 @@ describe("ProjectsSection – Mutation failure feedback", () => {
 				/couldn't delete "my project"/i,
 			);
 		});
-		expect(screen.getByRole("alert")).toHaveTextContent(
-			/cannot delete a published project/i,
-		);
+		expect(screen.getByRole("alert")).toHaveTextContent(/network error/i);
 
 		consoleSpy.mockRestore();
 	});
@@ -1381,9 +1272,6 @@ describe("ProjectsSection – Non-reorderable keyboard safety", () => {
 // Group KBD2 – Keyboard reorder while delete in flight (GAP-7)
 // ---------------------------------------------------------------------------
 
-// Draft version of PROJECT_A (published:false) so the Delete button is visible.
-const DRAFT_PROJECT_A = { ...PROJECT_A, published: false };
-
 describe("ProjectsSection – Keyboard reorder while delete in flight", () => {
 	// TC-KBD2-01 (GAP-7): both reorder and delete mutations fire with consistent args
 	// even when a delete is in flight during a keyboard reorder.
@@ -1403,12 +1291,12 @@ describe("ProjectsSection – Keyboard reorder while delete in flight", () => {
 			.mockResolvedValue(null); // reorderProjects call
 
 		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([DRAFT_PROJECT_A, PROJECT_B]);
+		useQuery.mockReturnValue([PROJECT_A, PROJECT_B]);
 		useMutation.mockImplementation(() => sharedSpy);
 
 		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
 
-		// Expand row for DRAFT_PROJECT_A and trigger delete (opens confirm dialog)
+		// Expand row for PROJECT_A and trigger delete (opens confirm dialog)
 		const toggle = findFirstToggle()!;
 		fireEvent.click(toggle);
 

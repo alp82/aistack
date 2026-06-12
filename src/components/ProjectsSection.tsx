@@ -24,7 +24,6 @@ type Project = {
 	description?: string;
 	url?: string;
 	tags?: string[];
-	published?: boolean;
 	updatedAt: number;
 	createdAt: number;
 };
@@ -52,14 +51,12 @@ export function ProjectsSection({
 }) {
 	const projects = useQuery(api.projects.listByStack, {
 		stackId,
-		includeUnpublished: isOwner ? true : undefined,
 	}) as Project[] | undefined;
 
 	// Declaration order is a positional contract mirrored by the test suite's spy
-	// keying and guarded by TC-MUT-ORDER: reorderProjects(1), publishProject(2),
-	// deleteProject(3), createProject(4), updateProject(5).
+	// keying and guarded by TC-MUT-ORDER: reorderProjects(1), deleteProject(2),
+	// createProject(3), updateProject(4).
 	const reorderProjects = useMutation(api.projects.reorderProjects);
-	const publishProject = useMutation(api.projects.publishProject);
 	const deleteProject = useMutation(api.projects.deleteProject);
 	const createProject = useMutation(api.projects.createProject);
 	const updateProject = useMutation(api.projects.updateProject);
@@ -154,12 +151,10 @@ export function ProjectsSection({
 
 	/** Build the shared props for a ProjectRow in both the plain and reorderable paths. */
 	const buildRowProps = (project: Project) => {
-		const isDraft = project.published !== true;
 		const panelId = `project-panel-${project._id}`;
 		return {
 			project,
 			isOwner,
-			isDraft,
 			isExpanded: openId === project._id,
 			panelId,
 			onToggle: () =>
@@ -168,11 +163,6 @@ export function ProjectsSection({
 				setDialog({
 					mode: "edit",
 					initial: { id: project._id, ...toFormValues(project) },
-				}),
-			onPublishToggle: () =>
-				publishProject({
-					projectId: project._id,
-					published: isDraft,
 				}),
 			onDelete: () => setDeleteTarget({ id: project._id, name: project.name }),
 		};
@@ -393,7 +383,6 @@ function ProjectFavicon({ href }: { href: string }) {
 type ProjectRowProps = {
 	project: Project;
 	isOwner: boolean;
-	isDraft: boolean;
 	isExpanded: boolean;
 	panelId: string;
 	onToggle: () => void;
@@ -401,14 +390,12 @@ type ProjectRowProps = {
 	dragControls?: ReturnType<typeof useDragControls>;
 	onKeyReorder?: (e: React.KeyboardEvent<HTMLButtonElement>) => void;
 	onEdit: () => void;
-	onPublishToggle: () => void;
 	onDelete: () => void;
 };
 
 function ProjectRow({
 	project,
 	isOwner,
-	isDraft,
 	isExpanded,
 	panelId,
 	onToggle,
@@ -416,7 +403,6 @@ function ProjectRow({
 	dragControls,
 	onKeyReorder,
 	onEdit,
-	onPublishToggle,
 	onDelete,
 }: ProjectRowProps) {
 	const shownTags = project.tags?.slice(0, 4) ?? [];
@@ -464,11 +450,6 @@ function ProjectRow({
 						<h3 className="truncate font-mono text-base font-semibold text-fg-primary">
 							{project.name}
 						</h3>
-						{isDraft && (
-							<span className="shrink-0 border border-dashed border-amber-500/50 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400">
-								draft
-							</span>
-						)}
 						{shownTags.length > 0 && (
 							<div className="hidden flex-wrap items-center gap-1 sm:flex">
 								{shownTags.map((tag) => (
@@ -515,10 +496,8 @@ function ProjectRow({
 								id={panelId}
 								project={project}
 								isOwner={isOwner}
-								isDraft={isDraft}
 								indent={canReorder}
 								onEdit={onEdit}
-								onPublishToggle={onPublishToggle}
 								onDelete={onDelete}
 							/>
 						</motion.div>
@@ -533,19 +512,15 @@ function ProjectRowPanel({
 	id,
 	project,
 	isOwner,
-	isDraft,
 	indent,
 	onEdit,
-	onPublishToggle,
 	onDelete,
 }: {
 	id: string;
 	project: Project;
 	isOwner: boolean;
-	isDraft: boolean;
 	indent: boolean;
 	onEdit: () => void;
-	onPublishToggle: () => void;
 	onDelete: () => void;
 }) {
 	return (
@@ -559,14 +534,7 @@ function ProjectRowPanel({
 				</p>
 			)}
 			<div className="mt-4 flex flex-wrap items-center gap-3">
-				{isOwner && (
-					<OwnerActions
-						isDraft={isDraft}
-						onEdit={onEdit}
-						onPublishToggle={onPublishToggle}
-						onDelete={onDelete}
-					/>
-				)}
+				{isOwner && <OwnerActions onEdit={onEdit} onDelete={onDelete} />}
 				<div className="ml-auto font-mono text-[11px] tabular-nums text-fg-muted">
 					Updated {timeAgo(project.updatedAt)}
 				</div>
@@ -576,14 +544,10 @@ function ProjectRowPanel({
 }
 
 function OwnerActions({
-	isDraft,
 	onEdit,
-	onPublishToggle,
 	onDelete,
 }: {
-	isDraft: boolean;
 	onEdit: () => void;
-	onPublishToggle: () => void;
 	onDelete: () => void;
 }) {
 	return (
@@ -601,22 +565,11 @@ function OwnerActions({
 				type="button"
 				variant="outline"
 				size="sm"
-				onClick={onPublishToggle}
-				className="border-stroke-subtle bg-transparent font-mono text-xs uppercase tracking-wider text-fg-muted hover:border-accent-lime hover:bg-transparent hover:text-accent-lime"
+				onClick={onDelete}
+				className="border-stroke-subtle bg-transparent font-mono text-xs uppercase tracking-wider text-destructive hover:border-destructive hover:bg-transparent hover:text-destructive"
 			>
-				{isDraft ? "Publish" : "Unpublish"}
+				Delete
 			</Button>
-			{isDraft && (
-				<Button
-					type="button"
-					variant="outline"
-					size="sm"
-					onClick={onDelete}
-					className="border-stroke-subtle bg-transparent font-mono text-xs uppercase tracking-wider text-destructive hover:border-destructive hover:bg-transparent hover:text-destructive"
-				>
-					Delete
-				</Button>
-			)}
 		</div>
 	);
 }

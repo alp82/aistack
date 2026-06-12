@@ -291,7 +291,6 @@ async function insertProjectsForStack(
       url?: string
       tags?: string[]
     }>
-    published: boolean
   },
 ) {
   const now = Date.now()
@@ -310,7 +309,6 @@ async function insertProjectsForStack(
       description: item.description,
       url: normalizeProjectUrl(item.url),
       tags: item.tags,
-      published: args.published,
       createdAt: now,
       updatedAt: now,
     })
@@ -390,7 +388,6 @@ export const create = mutation({
         creatorId: creator._id,
         stackId: id,
         items: args.projects,
-        published: args.published,
       })
     }
 
