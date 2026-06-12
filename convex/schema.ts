@@ -362,6 +362,10 @@ export default defineSchema({
     published: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
+    // Transient Deploy-A widening — legacy rows still carry these; remove
+    // after migrations/20260612_retire_project_resources runs (see its header).
+    source: v.optional(v.string()),
+    cloneCount: v.optional(v.number()),
   })
     .index('by_slug', ['slug'])
     .index('by_shortId', ['shortId'])
@@ -385,6 +389,9 @@ export default defineSchema({
     pkg: v.optional(ResourcePackage),
     deletedAt: v.union(v.number(), v.null()),
     shortId: v.string(),
+    // Transient Deploy-A widening — legacy rows still carry scope; remove
+    // after migrations/20260612_retire_project_resources runs (see its header).
+    scope: v.optional(v.union(v.literal('global'), v.literal('project'))),
   })
     .index('by_addedBy_stableKey', ['addedBy', 'stableKey'])
     .index('by_upstream', ['upstream.repoUrl', 'upstream.path'])
@@ -393,7 +400,9 @@ export default defineSchema({
 
   resourceLinks: defineTable({
     resourceId: v.id('resources'),
-    ownerKind: v.literal('stack'),
+    // Transient Deploy-A widening — 'project' rows may still exist; remove the
+    // union arm after migrations/20260612_retire_project_resources runs.
+    ownerKind: v.union(v.literal('stack'), v.literal('project')),
     ownerId: v.string(),
     order: v.number(),
     addedAt: v.number(),
