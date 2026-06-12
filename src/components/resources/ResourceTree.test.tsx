@@ -44,7 +44,7 @@ describe("ResourceTree", () => {
 	it("renders a file-less linked resource as a github-link singleton under its real group", () => {
 		render(
 			<ResourceTree
-				project={{
+				stack={{
 					sourceId: "project_1",
 					sourceLabel: "My Project",
 					resources: [
@@ -94,7 +94,7 @@ describe("ResourceTree", () => {
 		// so the multi-group GroupBlock → TypeBlock code path is exercised.
 		render(
 			<ResourceTree
-				project={{
+				stack={{
 					sourceId: "project_2",
 					sourceLabel: "My Project",
 					resources: [

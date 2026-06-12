@@ -15,12 +15,16 @@ const StackTarget = v.object({
   id: v.id('stacks'),
 })
 
-const ProjectTarget = v.object({
-  kind: v.literal('project'),
-  id: v.id('projects'),
-})
+const TargetValidator = StackTarget
 
-const TargetValidator = v.union(StackTarget, ProjectTarget)
+// Looser target used only by getResourceBrowserContext so that stale
+// pre-pivot TipTap nodes that stored a projects-table id (data-source-id)
+// degrade to an empty result instead of throwing at the v.id('stacks')
+// arg validator.
+const BrowserTarget = v.object({
+  kind: v.literal('stack'),
+  id: v.string(),
+})
 
 export const updateResourceContent = mutation({
   args: {
@@ -38,7 +42,7 @@ export const updateResourceContent = mutation({
 
     const owner = await ctx.db.get(args.target.id)
     if (!owner) {
-      throw new Error(args.target.kind === 'stack' ? 'Stack not found' : 'Project not found')
+      throw new Error('Stack not found')
     }
 
     const creator = await ctx.db.get(owner.creatorId)
@@ -93,9 +97,7 @@ export const linkResource = mutation({
 
     const owner = await ctx.db.get(args.target.id)
     if (!owner) {
-      throw new Error(
-        args.target.kind === 'stack' ? 'Stack not found' : 'Project not found',
-      )
+      throw new Error('Stack not found')
     }
 
     const creator = await ctx.db.get(owner.creatorId)
@@ -131,10 +133,8 @@ export const linkResource = mutation({
             path: normPath || undefined,
           },
           stableKey,
-          scope: 'global',
         },
       ],
-      defaultScope: 'global',
     })
 
     await ctx.db.patch(args.target.id, { updatedAt: Date.now() })
@@ -156,7 +156,7 @@ export const unlinkResource = mutation({
 
     const owner = await ctx.db.get(args.target.id)
     if (!owner) {
-      throw new Error(args.target.kind === 'stack' ? 'Stack not found' : 'Project not found')
+      throw new Error('Stack not found')
     }
 
     const creator = await ctx.db.get(owner.creatorId)
@@ -179,13 +179,11 @@ export const unlinkResource = mutation({
 
 export const getResourceBrowserContext = query({
   args: {
-    target: TargetValidator,
+    target: BrowserTarget,
   },
   returns: v.object({
     stackResources: v.array(ResourceValidator),
-    projectResources: v.array(ResourceValidator),
     stackName: v.string(),
-    projectName: v.optional(v.string()),
     isOwner: v.boolean(),
     isEditable: v.boolean(),
     stackId: v.optional(v.id('stacks')),
@@ -194,96 +192,41 @@ export const getResourceBrowserContext = query({
     const user = await ctx.auth.getUserIdentity()
     const userId = user ? user.tokenIdentifier.split('|')[1] : null
 
-    if (args.target.kind === 'stack') {
-      const stack = await ctx.db.get(args.target.id)
-      if (!stack) {
-        return {
-          stackResources: [],
-          projectResources: [],
-          stackName: '',
-          projectName: undefined,
-          isOwner: false,
-          isEditable: false,
-          stackId: undefined,
-        }
-      }
-
-      const creator = await ctx.db.get(stack.creatorId)
-      const isOwner = !!(
-        userId && creator && creator.userId === userId
-      )
-
-      if (!stack.published && !isOwner) {
-        return {
-          stackResources: [],
-          projectResources: [],
-          stackName: stack.name,
-          projectName: undefined,
-          isOwner,
-          isEditable: isOwner,
-          stackId: stack._id,
-        }
-      }
-
-      const stackResources = await resolveLinkedResources(ctx, 'stack', stack._id)
-      return {
-        stackResources,
-        projectResources: [],
-        stackName: stack.name,
-        projectName: undefined,
-        isOwner,
-        isEditable: isOwner,
-        stackId: stack._id,
-      }
-    }
-
-    const project = await ctx.db.get(args.target.id)
-    if (!project) {
+    // normalizeId returns null for ids that belong to a different table (e.g.
+    // stale pre-pivot TipTap nodes that stored a projects-table id). Degrade
+    // gracefully to the not-found empty shape instead of throwing.
+    const stackId = ctx.db.normalizeId('stacks', args.target.id)
+    const stack = stackId ? await ctx.db.get(stackId) : null
+    if (!stack) {
       return {
         stackResources: [],
-        projectResources: [],
         stackName: '',
-        projectName: undefined,
         isOwner: false,
         isEditable: false,
         stackId: undefined,
       }
     }
 
-    const creator = await ctx.db.get(project.creatorId)
+    const creator = await ctx.db.get(stack.creatorId)
     const isOwner = !!(userId && creator && creator.userId === userId)
 
-    const stack = await ctx.db.get(project.stackId)
-
-    const projectPublished = project.published === true
-    if (!projectPublished && !isOwner) {
+    if (!stack.published && !isOwner) {
       return {
         stackResources: [],
-        projectResources: [],
-        stackName: stack?.name ?? '',
-        projectName: project.name,
+        stackName: stack.name,
         isOwner,
         isEditable: isOwner,
-        stackId: project.stackId,
+        stackId: stack._id,
       }
     }
 
-    const stackCreator = stack ? await ctx.db.get(stack.creatorId) : null
-    const isStackOwner = !!(userId && stackCreator && stackCreator.userId === userId)
-    const stackResources =
-      stack && (stack.published === true || isStackOwner)
-        ? await resolveLinkedResources(ctx, 'stack', stack._id)
-        : []
-    const projectResources = await resolveLinkedResources(ctx, 'project', project._id)
-
+    const stackResources = await resolveLinkedResources(ctx, 'stack', stack._id)
     return {
       stackResources,
-      projectResources,
-      stackName: stack?.name ?? '',
-      projectName: project.name,
+      stackName: stack.name,
       isOwner,
       isEditable: isOwner,
-      stackId: project.stackId,
+      stackId: stack._id,
     }
   },
 })

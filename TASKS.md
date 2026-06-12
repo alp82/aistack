@@ -4,14 +4,19 @@
     * no project page
     * CLI only for global/stack scope
 * check CLI works
-* stack pages vertical
-    * hero
-    * projects
-    * tools
-    * description
-* API for stacks + tools
 * lazy loading upvotes fails
 * shieldcn
+* custom stack profile image for github
+* shields for aistack
+* custom theme for og image
+* API for stacks + tools
+* og:image downloadable in profile
+* og:image generation faulty
+    * https://aistack.to/stacks/orcdev-u9ckco
+    * logos missing
+    * order wrong
+* github actions security (see below)
+* show real prices without sponsoring/discounts
 * marketplace
     * sell own services and ai expertise
     * full company profile
@@ -25,13 +30,8 @@
     * new data model
 * TUI for global + all projects
 * resend -> namecheap
-* og:image downloadable in profile
-* og:image generation faulty
-    * https://aistack.to/stacks/orcdev-u9ckco
-    * logos missing
-    * order wrong
-* github actions security (see below)
-* show real prices without sponsoring/discounts
+* capture ai usage
+    * stats about token usage, skills
 * CLI workflow
     * uploaded files don't appear in project
     * custom instructions cards disappear after saving and even destroy next header

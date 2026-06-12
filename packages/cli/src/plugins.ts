@@ -112,7 +112,6 @@ export function resolvePluginLinks(
 				name: pluginName,
 				type: "plugin",
 				group: "claude-code",
-				scope: "global",
 				sha: resolved.sha ?? entries[0]?.gitCommitSha,
 			}),
 		);

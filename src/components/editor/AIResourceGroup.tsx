@@ -3,13 +3,14 @@ import type { NodeViewProps } from "@tiptap/react";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import { FolderTree } from "lucide-react";
 import { useState } from "react";
-import type { ResourceLocationKind } from "@/lib/resource-utils";
 import { ResourceBrowserDialog } from "@/components/resources";
-import { getGroupLabel, kindToLocation } from "@/lib/resource-utils";
+import type { ResourceBrowserTarget } from "@/components/resources/ResourceBrowser";
+import { getGroupLabel } from "@/lib/resource-utils";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { BaseCard } from "./BaseCard";
 
 export interface AIResourceGroupAttrs {
-	source: ResourceLocationKind;
+	source: "stack";
 	sourceId: string;
 	group: string;
 	description: string | null;
@@ -30,7 +31,10 @@ function AIResourceGroupView({
 	const isEditable = editor?.isEditable ?? false;
 	const [dialogOpen, setDialogOpen] = useState(false);
 
-	const target = kindToLocation(source, sourceId);
+	const target: ResourceBrowserTarget = {
+		kind: "stack" as const,
+		id: sourceId as Id<"stacks">,
+	};
 
 	const groupLabel = getGroupLabel(group);
 

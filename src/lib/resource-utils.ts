@@ -278,20 +278,3 @@ export function buildManualStableKey(type: string, name: string): string {
 }
 
 export { isKnownType };
-
-import type { Id } from "../../convex/_generated/dataModel";
-
-export type ResourceLocationKind = "stack" | "project";
-
-export type ResourceLocation =
-	| { kind: "stack"; id: Id<"stacks"> }
-	| { kind: "project"; id: Id<"projects"> };
-
-export function kindToLocation(
-	source: ResourceLocationKind,
-	sourceId: string,
-): ResourceLocation {
-	return source === "stack"
-		? { kind: "stack", id: sourceId as Id<"stacks"> }
-		: { kind: "project", id: sourceId as Id<"projects"> };
-}

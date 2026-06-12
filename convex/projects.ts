@@ -1,10 +1,8 @@
 import { mutation, query } from './_generated/server'
-import type { Doc, Id } from './_generated/dataModel'
+import type { Id } from './_generated/dataModel'
 import { v } from 'convex/values'
-import { extractShortId, generateUniqueShortId } from './lib/ids'
+import { generateUniqueShortId } from './lib/ids'
 import { slugifyAscii } from '../src/lib/slug'
-import { Resource as ResourceValidator } from './schema'
-import { cascadeUnlinkOwner, resolveLinkedResources } from './lib/resourceLinks'
 
 /**
  * Normalize and validate a project URL submitted by the owner.
@@ -29,95 +27,6 @@ export function normalizeProjectUrl(url: string | undefined): string | undefined
   return parsed.href
 }
 
-export const getBySlug = query({
-  args: { slug: v.string() },
-  returns: v.union(
-    v.object({
-      _id: v.id('projects'),
-      name: v.string(),
-      slug: v.string(),
-      shortId: v.string(),
-      source: v.optional(v.string()),
-      description: v.optional(v.string()),
-      url: v.optional(v.string()),
-      tags: v.optional(v.array(v.string())),
-      order: v.optional(v.number()),
-      cloneCount: v.optional(v.number()),
-      published: v.optional(v.boolean()),
-      resources: v.array(ResourceValidator),
-      createdAt: v.number(),
-      updatedAt: v.number(),
-      creator: v.object({
-        _id: v.id('creators'),
-        name: v.string(),
-        avatarUrl: v.optional(v.string()),
-        slug: v.string(),
-      }),
-      stack: v.object({
-        _id: v.id('stacks'),
-        name: v.string(),
-        slug: v.string(),
-        shortId: v.string(),
-      }),
-      isOwner: v.boolean(),
-    }),
-    v.null()
-  ),
-  handler: async (ctx, args) => {
-    const shortId = extractShortId(args.slug)
-    const project = await ctx.db
-      .query('projects')
-      .withIndex('by_shortId', (q) => q.eq('shortId', shortId))
-      .first()
-    if (!project) return null
-
-    const creator = await ctx.db.get(project.creatorId)
-    if (!creator) return null
-
-    const stack = await ctx.db.get(project.stackId)
-    if (!stack) return null
-
-    let isOwner = false
-    const user = await ctx.auth.getUserIdentity()
-    if (user) {
-      const userId = user.tokenIdentifier.split('|')[1]
-      isOwner = creator.userId === userId
-    }
-
-    const resources = await resolveLinkedResources(ctx, 'project', project._id)
-
-    return {
-      _id: project._id,
-      name: project.name,
-      slug: `${project.slug}-${project.shortId}`,
-      shortId: project.shortId,
-      source: project.source,
-      description: project.description,
-      url: project.url,
-      tags: project.tags,
-      order: project.order,
-      cloneCount: project.cloneCount,
-      published: project.published,
-      resources,
-      createdAt: project.createdAt,
-      updatedAt: project.updatedAt,
-      creator: {
-        _id: creator._id,
-        name: creator.name,
-        avatarUrl: creator.avatarUrl,
-        slug: creator.slug,
-      },
-      stack: {
-        _id: stack._id,
-        name: stack.name,
-        slug: `${stack.slug}-${stack.shortId}`,
-        shortId: stack.shortId,
-      },
-      isOwner,
-    }
-  },
-})
-
 export const listByStack = query({
   args: { stackId: v.id('stacks'), includeUnpublished: v.optional(v.boolean()) },
   returns: v.array(
@@ -126,14 +35,11 @@ export const listByStack = query({
       name: v.string(),
       slug: v.string(),
       shortId: v.string(),
-      source: v.optional(v.string()),
       description: v.optional(v.string()),
       url: v.optional(v.string()),
       tags: v.optional(v.array(v.string())),
       order: v.optional(v.number()),
-      cloneCount: v.optional(v.number()),
       published: v.optional(v.boolean()),
-      fileCount: v.number(),
       createdAt: v.number(),
       updatedAt: v.number(),
     })
@@ -148,31 +54,19 @@ export const listByStack = query({
       projects = projects.filter((p) => p.published === true)
     }
 
-    const mapped = await Promise.all(
-      projects.map(async (project) => {
-        const resources = await resolveLinkedResources(ctx, 'project', project._id)
-        let fileCount = 0
-        for (const item of resources) {
-          fileCount += item.files?.length ?? 0
-        }
-        return {
-          _id: project._id,
-          name: project.name,
-          slug: `${project.slug}-${project.shortId}`,
-          shortId: project.shortId,
-          source: project.source,
-          description: project.description,
-          url: project.url,
-          tags: project.tags,
-          order: project.order,
-          cloneCount: project.cloneCount,
-          published: project.published,
-          fileCount,
-          createdAt: project.createdAt,
-          updatedAt: project.updatedAt,
-        }
-      }),
-    )
+    const mapped = projects.map((project) => ({
+      _id: project._id,
+      name: project.name,
+      slug: `${project.slug}-${project.shortId}`,
+      shortId: project.shortId,
+      description: project.description,
+      url: project.url,
+      tags: project.tags,
+      order: project.order,
+      published: project.published,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+    }))
 
     mapped.sort((a, b) => {
       const orderA = a.order ?? Infinity
@@ -182,126 +76,6 @@ export const listByStack = query({
     })
 
     return mapped
-  },
-})
-
-
-export const listByCreator = query({
-  args: {},
-  returns: v.array(
-    v.object({
-      projectId: v.id('projects'),
-      projectName: v.string(),
-      projectSlug: v.string(),
-      stackId: v.id('stacks'),
-      stackName: v.string(),
-      stackSlug: v.string(),
-      resources: v.array(ResourceValidator),
-    })
-  ),
-  handler: async (ctx) => {
-    const user = await ctx.auth.getUserIdentity()
-    if (!user) return []
-    const userId = user.tokenIdentifier.split('|')[1]
-
-    const creators = await ctx.db
-      .query('creators')
-      .withIndex('by_userId', (q) => q.eq('userId', userId))
-      .collect()
-    if (creators.length === 0) return []
-
-    const projects: Doc<'projects'>[] = []
-    for (const creator of creators) {
-      const part = await ctx.db
-        .query('projects')
-        .withIndex('by_creatorId', (q) => q.eq('creatorId', creator._id))
-        .take(200)
-      projects.push(...part)
-    }
-
-    projects.sort((a, b) => b.updatedAt - a.updatedAt)
-    const limited = projects.slice(0, 200)
-
-    const stackCache = new Map<string, { name: string; slug: string; shortId: string }>()
-    const results: {
-      projectId: Doc<'projects'>['_id']
-      projectName: string
-      projectSlug: string
-      stackId: Doc<'projects'>['stackId']
-      stackName: string
-      stackSlug: string
-      resources: Awaited<ReturnType<typeof resolveLinkedResources>>
-    }[] = []
-    for (const project of limited) {
-      let stackInfo = stackCache.get(project.stackId)
-      if (!stackInfo) {
-        const stack = await ctx.db.get(project.stackId)
-        if (!stack) continue
-        stackInfo = { name: stack.name, slug: stack.slug, shortId: stack.shortId }
-        stackCache.set(project.stackId, stackInfo)
-      }
-      const resources = await resolveLinkedResources(ctx, 'project', project._id)
-      results.push({
-        projectId: project._id,
-        projectName: project.name,
-        projectSlug: `${project.slug}-${project.shortId}`,
-        stackId: project.stackId,
-        stackName: stackInfo.name,
-        stackSlug: `${stackInfo.slug}-${stackInfo.shortId}`,
-        resources,
-      })
-    }
-    return results
-  },
-})
-
-export const getByShortId = query({
-  args: { shortId: v.string() },
-  returns: v.union(
-    v.object({
-      _id: v.id('projects'),
-      _creationTime: v.number(),
-      name: v.string(),
-      slug: v.string(),
-      shortId: v.string(),
-      creatorId: v.id('creators'),
-      stackId: v.id('stacks'),
-      source: v.optional(v.string()),
-      resources: v.array(ResourceValidator),
-      stackResources: v.array(ResourceValidator),
-      createdAt: v.number(),
-      updatedAt: v.number(),
-    }),
-    v.null()
-  ),
-  handler: async (ctx, args) => {
-    const project = await ctx.db
-      .query('projects')
-      .withIndex('by_shortId', (q) => q.eq('shortId', args.shortId))
-      .first()
-    if (!project) return null
-    const resources = await resolveLinkedResources(ctx, 'project', project._id)
-    // Stack resources too, so the CLI can diff stack-scoped (global) links —
-    // e.g. installed plugins attach to the stack, not the project.
-    const stackResources = await resolveLinkedResources(
-      ctx,
-      'stack',
-      project.stackId
-    )
-    return {
-      _id: project._id,
-      _creationTime: project._creationTime,
-      name: project.name,
-      slug: project.slug,
-      shortId: project.shortId,
-      creatorId: project.creatorId,
-      stackId: project.stackId,
-      source: project.source,
-      resources,
-      stackResources,
-      createdAt: project.createdAt,
-      updatedAt: project.updatedAt,
-    }
   },
 })
 
@@ -388,7 +162,6 @@ export const createProject = mutation({
       shortId,
       creatorId: creator._id,
       stackId: resolvedStackId,
-      source: 'web',
       description: args.description,
       url: normalizeProjectUrl(args.url),
       tags: args.tags,
@@ -471,7 +244,6 @@ export const deleteProject = mutation({
     if (project.published === true)
       throw new Error('Cannot delete a published project. Unpublish it first.')
 
-    await cascadeUnlinkOwner(ctx, 'project', args.projectId)
     await ctx.db.delete(args.projectId)
     return null
   },

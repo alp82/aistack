@@ -30,21 +30,20 @@ function readJson<T>(path: string): T | null {
 
 function hooksFrom(
 	path: string,
-	scope: "project" | "global",
+	source: "local" | "global",
 	out: Resource[],
 	seen: Set<string>,
 ) {
 	const hooks = readJson<SettingsFile>(path)?.hooks;
 	if (!hooks || typeof hooks !== "object") return;
 	for (const [event, config] of Object.entries(hooks)) {
-		const stableKey = `hooks:${scope}:${event}`;
+		const stableKey = `hooks:${source}:${event}`;
 		if (seen.has(stableKey)) continue;
 		seen.add(stableKey);
 		out.push({
 			type: "hook",
 			name: event,
 			group: "claude-code",
-			scope,
 			stableKey,
 			files: [
 				{
@@ -65,8 +64,8 @@ function hooksFrom(
 export function detectHooks(cwd: string, home: string = homedir()): Resource[] {
 	const out: Resource[] = [];
 	const seen = new Set<string>();
-	hooksFrom(join(cwd, ".claude", "settings.json"), "project", out, seen);
-	hooksFrom(join(cwd, ".claude", "settings.local.json"), "project", out, seen);
+	hooksFrom(join(cwd, ".claude", "settings.json"), "local", out, seen);
+	hooksFrom(join(cwd, ".claude", "settings.local.json"), "local", out, seen);
 	hooksFrom(join(home, ".claude", "settings.json"), "global", out, seen);
 	return out;
 }

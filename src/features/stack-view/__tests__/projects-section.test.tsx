@@ -43,8 +43,6 @@ const BASE_PROJECT = {
 	url: "https://example.com",
 	tags: ["react", "typescript"],
 	published: true,
-	fileCount: 3,
-	source: "github",
 	updatedAt: Date.now() - 2 * 60 * 60 * 1000, // 2h ago → "2h ago"
 	createdAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
 };
@@ -208,27 +206,6 @@ describe("ProjectsSection – Collapsed Row Content", () => {
 		expect(
 			screen.queryByText("A description of the project"),
 		).not.toBeInTheDocument();
-	});
-
-	// TC-CR-08
-	it("TC-CR-08: fileCount NOT visible while collapsed", async () => {
-		const { useQuery } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([BASE_PROJECT]);
-
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
-
-		// fileCount is 3; should not appear while collapsed
-		expect(screen.queryByText("3")).not.toBeInTheDocument();
-	});
-
-	// TC-CR-09
-	it("TC-CR-09: source NOT visible while collapsed", async () => {
-		const { useQuery } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([BASE_PROJECT]);
-
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
-
-		expect(screen.queryByText(/#\s*github/i)).not.toBeInTheDocument();
 	});
 
 	// TC-CR-10
@@ -468,19 +445,6 @@ describe("ProjectsSection – Expanded Panel", () => {
 		await renderAndExpand();
 		expect(screen.getByText(/updated/i)).toBeInTheDocument();
 		expect(screen.getByText(/2h ago/i)).toBeInTheDocument();
-	});
-
-	// TC-EP-03
-	it("TC-EP-03: expanded does NOT show fileCount", async () => {
-		await renderAndExpand();
-		// fileCount is 3; should not be displayed
-		expect(screen.queryByText("3")).not.toBeInTheDocument();
-	});
-
-	// TC-EP-04
-	it("TC-EP-04: expanded does NOT show source", async () => {
-		await renderAndExpand();
-		expect(screen.queryByText(/#\s*github/i)).not.toBeInTheDocument();
 	});
 
 	// TC-EP-05

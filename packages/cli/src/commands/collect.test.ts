@@ -14,7 +14,6 @@ const linkResource = (repoUrl: string): Resource => ({
 	type: "custom",
 	name: "repo",
 	group: "generic",
-	scope: "project",
 	stableKey: `linked:${repoUrl}:`,
 	upstream: { repoUrl },
 });

@@ -103,8 +103,8 @@ describe("parseMcpPackage", () => {
 });
 
 describe("buildMcpResource", () => {
-	it("builds a type:mcp pkg link (linked:pkg stableKey, no files/upstream)", () => {
-		const r = buildMcpResource("context7", "claude-code", "project", {
+	it("builds a type:mcp pkg link (linked:pkg stableKey, no files/upstream, no scope)", () => {
+		const r = buildMcpResource("context7", "claude-code", {
 			registry: "npm",
 			id: "@upstash/context7-mcp",
 			transport: "stdio",
@@ -113,12 +113,12 @@ describe("buildMcpResource", () => {
 			type: "mcp",
 			name: "context7",
 			group: "claude-code",
-			scope: "project",
 			stableKey: "linked:pkg:npm:@upstash/context7-mcp",
 			pkg: { registry: "npm", id: "@upstash/context7-mcp", transport: "stdio" },
 		});
 		expect("files" in r).toBe(false);
 		expect("upstream" in r).toBe(false);
+		expect("scope" in r).toBe(false);
 	});
 });
 
@@ -194,15 +194,19 @@ describe("detectMcpServers (cross-tool)", () => {
 		const byKey = new Map(servers.map((s) => [s.stableKey, s]));
 
 		// Claude Code project (npm).
-		expect(byKey.get("linked:pkg:npm:@upstash/context7-mcp")?.scope).toBe(
-			"project",
-		);
+		const ctx7 = byKey.get("linked:pkg:npm:@upstash/context7-mcp");
+		expect(ctx7).toBeDefined();
+		expect("scope" in ctx7! === false).toBe(true);
 		// Continue YAML list shape (pypi), project.
 		expect(byKey.get("linked:pkg:pypi:mcp-server-git")?.group).toBe("continue");
 		// Roo docker (oci), project.
-		expect(byKey.get("linked:pkg:oci:mcp/filesystem")?.scope).toBe("project");
+		const fs = byKey.get("linked:pkg:oci:mcp/filesystem");
+		expect(fs).toBeDefined();
+		expect("scope" in fs! === false).toBe(true);
 		// Windsurf (pypi), global.
-		expect(byKey.get("linked:pkg:pypi:mcp-server-fetch")?.scope).toBe("global");
+		const fetch = byKey.get("linked:pkg:pypi:mcp-server-fetch");
+		expect(fetch).toBeDefined();
+		expect("scope" in fetch! === false).toBe(true);
 		// Gemini (npm), global.
 		expect(
 			byKey.get("linked:pkg:npm:@modelcontextprotocol/server-memory")?.group,

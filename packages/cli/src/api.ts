@@ -95,7 +95,6 @@ export interface Resource {
 	name: string;
 	description?: string;
 	group: string;
-	scope?: "global" | "project";
 	stableKey: string;
 	files?: ResourceFile[];
 	upstream?: {

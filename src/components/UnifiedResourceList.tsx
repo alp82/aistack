@@ -6,11 +6,9 @@ import {
 	type ResourceTreeSelection,
 } from "@/components/resources";
 import type { Resource } from "@/features/stack-editor/types";
-import {
-	kindToLocation,
-	type ResourceLocationKind,
-} from "@/lib/resource-utils";
+import type { ResourceBrowserTarget } from "@/components/resources/ResourceBrowser";
 import { cn } from "@/lib/utils";
+import type { Id } from "../../convex/_generated/dataModel";
 
 export interface UnifiedResourceListStackItems {
 	sourceId: string;
@@ -19,7 +17,7 @@ export interface UnifiedResourceListStackItems {
 }
 
 export interface UnifiedResourceListInsertFileArgs {
-	source: ResourceLocationKind;
+	source: "stack";
 	sourceId: string;
 	stableKey: string;
 	fileName: string;
@@ -28,7 +26,7 @@ export interface UnifiedResourceListInsertFileArgs {
 }
 
 export interface UnifiedResourceListInsertGroupArgs {
-	source: ResourceLocationKind;
+	source: "stack";
 	sourceId: string;
 	group: string;
 	fileCount: number;
@@ -52,15 +50,17 @@ export function UnifiedResourceList({
 	className,
 }: UnifiedResourceListProps) {
 	const [viewerOpen, setViewerOpen] = useState(false);
-	const [viewerTarget, setViewerTarget] = useState<ReturnType<
-		typeof kindToLocation
-	> | null>(null);
+	const [viewerTarget, setViewerTarget] =
+		useState<ResourceBrowserTarget | null>(null);
 	const [viewerInitial, setViewerInitial] = useState<
 		{ stableKey: string; fileName: string } | undefined
 	>(undefined);
 
 	const handleSelect = (selection: ResourceTreeSelection) => {
-		const target = kindToLocation(selection.source, selection.sourceId);
+		const target: ResourceBrowserTarget = {
+			kind: "stack" as const,
+			id: selection.sourceId as Id<"stacks">,
+		};
 		setViewerTarget(target);
 		setViewerInitial({
 			stableKey: selection.stableKey,

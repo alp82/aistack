@@ -13,9 +13,7 @@ import type { Id } from "../../../convex/_generated/dataModel";
 export interface LinkResourceDialogProps {
 	open: boolean;
 	onClose: () => void;
-	target:
-		| { kind: "stack"; id: Id<"stacks"> }
-		| { kind: "project"; id: Id<"projects"> };
+	target: { kind: "stack"; id: Id<"stacks"> };
 }
 
 export function LinkResourceDialog({

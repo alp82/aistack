@@ -307,7 +307,6 @@ async function insertProjectsForStack(
       shortId: shortIds[i],
       creatorId: args.creatorId,
       stackId: args.stackId,
-      source: 'web',
       description: item.description,
       url: normalizeProjectUrl(item.url),
       tags: item.tags,
@@ -383,7 +382,6 @@ export const create = mutation({
         ownerKind: 'stack',
         ownerId: id,
         items: args.resources,
-        defaultScope: 'global',
       })
     }
 
@@ -465,7 +463,6 @@ export const update = mutation({
         ownerKind: 'stack',
         ownerId: args.stackId,
         items: args.resources,
-        defaultScope: 'global',
       })
     }
 

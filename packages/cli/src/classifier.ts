@@ -4,7 +4,7 @@ import { basename, dirname } from "node:path";
 import { computeStableKey } from "./stableKey.js";
 
 export function classify(files: ScannedFile[]): Resource[] {
-	// Group by {group, scope, type, containing directory}
+	// Group by {group, source, type, containing directory}
 	const groups = new Map<string, ScannedFile[]>();
 	const singletons: ScannedFile[] = [];
 
@@ -34,12 +34,9 @@ export function classify(files: ScannedFile[]): Resource[] {
 	}
 
 	const items: Resource[] = [];
-	const scope = (source: string) =>
-		source === "global" ? ("global" as const) : ("project" as const);
 
 	// Singletons: one Resource per file
 	for (const file of singletons) {
-		const s = scope(file.source);
 		const relPath = file.relativePath
 			.replace(/^~\/\.[^/]+\//, "")
 			.replace(/^\.[^/]+\//, "");
@@ -47,7 +44,6 @@ export function classify(files: ScannedFile[]): Resource[] {
 			type: file.type,
 			name: file.relativePath,
 			group: file.group,
-			scope: s,
 			stableKey: computeStableKey(file.group, file.type, relPath),
 			files: [
 				{
@@ -63,7 +59,6 @@ export function classify(files: ScannedFile[]): Resource[] {
 	for (const [, groupFiles] of groups) {
 		const first = groupFiles[0];
 		const dir = dirname(first.relativePath);
-		const s = scope(first.source);
 		const relPath = dir
 			.replace(/^~\/\.claude\//, "")
 			.replace(/^\.claude\//, "")
@@ -77,7 +72,6 @@ export function classify(files: ScannedFile[]): Resource[] {
 			name: dir,
 			description: `${groupFiles.length} ${typeLabel}`,
 			group: first.group,
-			scope: s,
 			stableKey: computeStableKey(first.group, first.type, relPath),
 			files: groupFiles.map((f) => ({
 				name: basename(f.relativePath),

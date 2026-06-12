@@ -18,7 +18,6 @@ import {
 	useState,
 } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { ResourceLocationKind } from "@/lib/resource-utils";
 import type { ResourceType } from "@/features/stack-editor/types";
 import {
 	getResourceTypeColorsSplit,
@@ -45,14 +44,14 @@ export interface BundleData {
 export type SlashFileItem =
 	| {
 			kind: "group";
-			source: ResourceLocationKind;
+			source: "stack";
 			sourceId: string;
 			group: string;
 			fileCount: number;
 	  }
 	| {
 			kind: "file";
-			source: ResourceLocationKind;
+			source: "stack";
 			sourceId: string;
 			stableKey: string;
 			fileName: string;
@@ -711,7 +710,7 @@ export function buildItems(
 				category: "files",
 				id: `group:${file.source}:${file.sourceId}:${file.group}`,
 				name: file.group,
-				subtitle: `${file.source === "stack" ? "Stack" : "Project"} group · ${file.fileCount} ${file.fileCount === 1 ? "file" : "files"}`,
+				subtitle: `Stack group · ${file.fileCount} ${file.fileCount === 1 ? "file" : "files"}`,
 				data: file,
 			});
 		} else {
@@ -719,7 +718,7 @@ export function buildItems(
 				category: "files",
 				id: `file:${file.source}:${file.sourceId}:${file.stableKey}:${file.fileName}`,
 				name: file.fileName,
-				subtitle: `${file.source === "stack" ? "Stack" : "Project"} · ${file.type}`,
+				subtitle: `Stack · ${file.type}`,
 				data: file,
 			});
 		}

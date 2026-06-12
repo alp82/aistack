@@ -14,11 +14,10 @@ import { slugifyAscii } from '../src/lib/slug'
 const modules = import.meta.glob('./**/*.{js,ts}')
 
 /**
- * Test-only seed that reproduces the now-deleted `upsertProject`: insert a
- * project row, then attach project-scoped items to the project and
- * global-scoped items to the stack. Kept tests below relied on that scope split.
+ * Test-only seed: insert a project row, then attach all items to the stack
+ * (stack-only, no project-scoped resources — post-narrowing contract).
  */
-async function seedProjectWithResources(
+async function seedStackWithResources(
   t: ReturnType<typeof convexTest>,
   args: {
     creatorId: Id<'creators'>
@@ -35,29 +34,17 @@ async function seedProjectWithResources(
       shortId: `P${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
       creatorId: args.creatorId,
       stackId: args.stackId,
-      source: 'cli',
       published: false,
       createdAt: now,
       updatedAt: now,
     })
 
-    const projectItems = args.resources.filter((i) => i.scope !== 'global')
-    const globalItems = args.resources.filter((i) => i.scope === 'global')
-
-    await upsertResourcesForOwner(ctx, {
-      addedBy: args.creatorId,
-      ownerKind: 'project',
-      ownerId: projectId,
-      items: projectItems,
-      defaultScope: 'project',
-    })
-    if (globalItems.length > 0) {
+    if (args.resources.length > 0) {
       await upsertResourcesForOwner(ctx, {
         addedBy: args.creatorId,
         ownerKind: 'stack',
         ownerId: args.stackId,
-        items: globalItems,
-        defaultScope: 'global',
+        items: args.resources,
       })
     }
     return projectId
@@ -93,7 +80,7 @@ async function seedCreatorAndStack(t: ReturnType<typeof convexTest>) {
 
 async function resourcesForOwner(
   t: ReturnType<typeof convexTest>,
-  ownerKind: 'stack' | 'project',
+  ownerKind: 'stack',
   ownerId: string,
 ) {
   return await t.run(async (ctx: MutationCtx) => {
@@ -117,7 +104,7 @@ async function resourcesForOwner(
 // upsertStackResources — scope coercion
 // ---------------------------------------------------------------------------
 
-test('TC-01: upsertStackResources coerces scope:project to scope:global on a stack owner', async () => {
+test('TC-01: upsertStackResources with scope:project input lands on stack — no project links', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
 
@@ -140,22 +127,24 @@ test('TC-01: upsertStackResources coerces scope:project to scope:global on a sta
 
   const stackResources = await resourcesForOwner(t, 'stack', stackId)
   expect(stackResources).toHaveLength(1)
-  expect(stackResources[0].scope).toBe('global') // coerced, NOT 'project'
   expect(stackResources[0].storage).toBe('hosted')
 
   // No project links created by this call
   const allLinks = await t.run(async (ctx: MutationCtx) =>
     ctx.db.query('resourceLinks').collect(),
   )
-  const projectLinks = allLinks.filter((l) => l.ownerKind === 'project')
+  const projectLinks = allLinks.filter((l) => (l.ownerKind as string) === 'project')
   expect(projectLinks).toHaveLength(0)
+
+  // All links are stack-owned
+  expect(allLinks.every((l) => l.ownerKind === 'stack')).toBe(true)
 
   // stack.updatedAt bumped
   const stack = await t.run(async (ctx: MutationCtx) => ctx.db.get(stackId))
   expect(stack!.updatedAt).toBeGreaterThan(preCall)
 })
 
-test('TC-02: upsertStackResources with scope:global lands as scope:global', async () => {
+test('TC-02: upsertStackResources with scope:global lands on stack', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
 
@@ -176,7 +165,6 @@ test('TC-02: upsertStackResources with scope:global lands as scope:global', asyn
 
   const stackResources = await resourcesForOwner(t, 'stack', stackId)
   expect(stackResources).toHaveLength(1)
-  expect(stackResources[0].scope).toBe('global')
 
   const allLinks = await t.run(async (ctx: MutationCtx) =>
     ctx.db.query('resourceLinks').collect(),
@@ -185,7 +173,7 @@ test('TC-02: upsertStackResources with scope:global lands as scope:global', asyn
   expect(allLinks[0].ownerKind).toBe('stack')
 })
 
-test('TC-03: upsertStackResources with scope omitted lands as scope:global', async () => {
+test('TC-03: upsertStackResources with scope omitted lands on stack', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
 
@@ -205,10 +193,9 @@ test('TC-03: upsertStackResources with scope omitted lands as scope:global', asy
 
   const stackResources = await resourcesForOwner(t, 'stack', stackId)
   expect(stackResources).toHaveLength(1)
-  expect(stackResources[0].scope).toBe('global')
 })
 
-test('TC-04: upsertStackResources coerces all three scope variants to global in one call', async () => {
+test('TC-04: upsertStackResources three scope variants all land on stack', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
 
@@ -244,9 +231,6 @@ test('TC-04: upsertStackResources coerces all three scope variants to global in 
 
   const stackResources = await resourcesForOwner(t, 'stack', stackId)
   expect(stackResources).toHaveLength(3)
-  for (const res of stackResources) {
-    expect(res.scope).toBe('global')
-  }
 
   const allLinks = await t.run(async (ctx: MutationCtx) =>
     ctx.db.query('resourceLinks').collect(),
@@ -334,11 +318,11 @@ test('TC-06: upsertStackResources first-time upsert creates one resources row an
   expect(links[0].ownerId).toBe(stackId)
 })
 
-test('TC-07: upsertStackResources merge — A preserved, B updated, C added; all scope:global', async () => {
+test('TC-07: upsertStackResources merge — A preserved, B updated, C added', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
 
-  // First call: seed A and B (B has scope:'project' to also test coercion)
+  // First call: seed A and B
   await t.mutation(internal.httpCliHelpers.upsertStackResources, {
     creatorId,
     stackId,
@@ -391,11 +375,6 @@ test('TC-07: upsertStackResources merge — A preserved, B updated, C added; all
   expect(byKey.get('k:rule:A')?.files?.[0]?.content).toBe('A v1')
   expect(byKey.get('k:rule:B')?.files?.[0]?.content).toBe('B v2')
   expect(byKey.get('k:rule:C')?.files?.[0]?.content).toBe('C v1')
-
-  // All coerced to global
-  for (const res of stackResources) {
-    expect(res.scope).toBe('global')
-  }
 })
 
 test('TC-08: upsertStackResources omitting a stableKey on re-upsert keeps its existing link', async () => {
@@ -527,7 +506,6 @@ test('TC-10: upsertStackResources resurrects a soft-deleted resources row and re
   expect(resurrected?.deletedAt).toBeNull()
   expect(resurrected?.name).toBe('R renamed')
   expect(resurrected?.files?.[0]?.content).toBe('R v2')
-  expect(resurrected?.scope).toBe('global')
 
   const newLinks = await resourcesForOwner(t, 'stack', stackId)
   expect(newLinks.map((l) => l._id)).toContainEqual(originalId)
@@ -804,7 +782,7 @@ async function seedBearerToken(
   return token
 }
 
-test('TC-16: stackCollect returns 200 with slug/shortId/url; scope:project coerced to global on resources', async () => {
+test('TC-16: stackCollect returns 200 with slug/shortId/url; resource lands on stack', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
   await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-tc16' }))
@@ -841,10 +819,9 @@ test('TC-16: stackCollect returns 200 with slug/shortId/url; scope:project coerc
   expect(body.url).toMatch(/\/stacks\//)
   expect(body.url).not.toMatch(/\/projects\//)
 
-  // resources row coerced to global
+  // resource row lands on the stack
   const stackResources = await resourcesForOwner(t, 'stack', stackId)
   expect(stackResources).toHaveLength(1)
-  expect(stackResources[0].scope).toBe('global')
 })
 
 test('TC-17: stackCollect returns 400 when creator exists but has no stack', async () => {
@@ -1052,41 +1029,11 @@ test('getResourceBrowserContext returns empty arrays and not-found early returns
     target: { kind: 'stack', id: stackId },
   })
   expect(stackCtx.stackResources).toEqual([])
-  expect(stackCtx.projectResources).toEqual([])
   expect(stackCtx.stackName).toBe('Test Stack')
   expect(stackCtx.stackId).toBe(stackId)
-
-  // Project target with resources.
-  await seedProjectWithResources(t, {
-    creatorId,
-    stackId,
-    name: 'p',
-    resources: [
-      {
-        type: 'rule',
-        name: 'pr',
-        group: 'claude-code',
-        scope: 'project',
-        stableKey: 'claude-code:rule:pr',
-        files: [{ name: 'pr.md', content: 'pr' }],
-      },
-    ],
-  })
-  // Publish so an anon viewer sees it.
-  const project = (await t.run(async (ctx) =>
-    ctx.db
-      .query('projects')
-      .withIndex('by_creatorId', (q) => q.eq('creatorId', creatorId))
-      .first(),
-  ))!
-  await t.run(async (ctx) => ctx.db.patch(project._id, { published: true }))
-
-  const projCtx = await t.query(api.resources.getResourceBrowserContext, {
-    target: { kind: 'project', id: project._id },
-  })
-  expect(projCtx.projectResources).toHaveLength(1)
-  expect(projCtx.projectResources[0].stableKey).toBe('claude-code:rule:pr')
-  expect(projCtx.projectName).toBe('p')
+  // Narrowed contract: project fields must NOT appear on a stack target.
+  expect('projectResources' in stackCtx).toBe(false)
+  expect('projectName' in stackCtx).toBe(false)
 
   // Not-found stack target -> all-empty early return.
   const missingId = await t.run(async (ctx) => {
@@ -1122,17 +1069,16 @@ test('updateResourceContent patches the resources row, not an embedded array', a
     ctx.db.patch(creatorId, { userId: 'user-1' }),
   )
 
-  await seedProjectWithResources(t, {
+  await seedStackWithResources(t, {
     creatorId,
     stackId,
     name: 'p',
     resources: [
       {
         type: 'rule',
-        name: 'global',
+        name: 'stack-rule',
         group: 'claude-code',
-        scope: 'global',
-        stableKey: 'claude-code:rule:global',
+        stableKey: 'claude-code:rule:stack-rule',
         files: [{ name: 'g.md', content: 'before' }],
       },
     ],
@@ -1141,7 +1087,7 @@ test('updateResourceContent patches the resources row, not an embedded array', a
   const asUser = t.withIdentity({ tokenIdentifier: 'convex|user-1' })
   await asUser.mutation(api.resources.updateResourceContent, {
     target: { kind: 'stack', id: stackId },
-    stableKey: 'claude-code:rule:global',
+    stableKey: 'claude-code:rule:stack-rule',
     fileName: 'g.md',
     content: 'after',
   })
@@ -1150,22 +1096,21 @@ test('updateResourceContent patches the resources row, not an embedded array', a
   expect(stackResources[0].files?.[0]?.content).toBe('after')
 })
 
-test('deleteProject cascades: zero links and the row is soft-deleted with no live link', async () => {
+test('deleteProject removes only the project row and leaves stack resources untouched', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
   await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
 
-  await seedProjectWithResources(t, {
+  await seedStackWithResources(t, {
     creatorId,
     stackId,
     name: 'p',
     resources: [
       {
         type: 'rule',
-        name: 'only-here',
+        name: 'stack-only',
         group: 'claude-code',
-        scope: 'project',
-        stableKey: 'claude-code:rule:only-here',
+        stableKey: 'claude-code:rule:stack-only',
         files: [{ name: 'o.md', content: 'o' }],
       },
     ],
@@ -1177,124 +1122,24 @@ test('deleteProject cascades: zero links and the row is soft-deleted with no liv
       .withIndex('by_creatorId', (q) => q.eq('creatorId', creatorId))
       .first(),
   ))!
-  const resourceId = (await resourcesForOwner(t, 'project', project._id))[0]._id
 
   const asUser = t.withIdentity({ tokenIdentifier: 'convex|user-1' })
   await asUser.mutation(api.projects.deleteProject, { projectId: project._id })
 
-  const remainingLinks = await t.run(async (ctx: MutationCtx) =>
-    ctx.db
-      .query('resourceLinks')
-      .withIndex('by_owner', (q) =>
-        q.eq('ownerKind', 'project').eq('ownerId', project._id),
-      )
-      .collect(),
-  )
-  expect(remainingLinks).toHaveLength(0)
+  // Project row gone
+  const gone = await t.run(async (ctx: MutationCtx) => ctx.db.get(project._id))
+  expect(gone).toBeNull()
 
-  const row = await t.run(async (ctx: MutationCtx) => ctx.db.get(resourceId))
-  expect(row?.deletedAt).not.toBeNull()
+  // Stack link still present
+  const stackResources = await resourcesForOwner(t, 'stack', stackId)
+  expect(stackResources).toHaveLength(1)
 
-  const linksToRow = await t.run(async (ctx: MutationCtx) =>
-    ctx.db
-      .query('resourceLinks')
-      .withIndex('by_resourceId', (q) => q.eq('resourceId', resourceId))
-      .collect(),
-  )
-  expect(linksToRow).toHaveLength(0)
+  // Resources row NOT soft-deleted
+  expect(stackResources[0].deletedAt).toBeNull()
 })
 
-test('deleteProject cascades: resource NOT soft-deleted when another owner still holds a link', async () => {
-  // Invariant: cascadeUnlinkOwner only soft-deletes when remaining.length === 0
-  // (resourceLinks.ts ~187-193). This test guards that invariant for multi-owner.
-  const t = convexTest(schema, modules)
-  const { creatorId, stackId } = await seedCreatorAndStack(t)
-  await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
-
-  // Create a resource with a global-scope item so it lands on the stack.
-  await seedProjectWithResources(t, {
-    creatorId,
-    stackId,
-    name: 'shared-project',
-    resources: [
-      {
-        type: 'rule',
-        name: 'shared',
-        group: 'claude-code',
-        scope: 'global',
-        stableKey: 'claude-code:rule:shared',
-        files: [{ name: 'shared.md', content: 'shared' }],
-      },
-    ],
-  })
-
-  // The resource now has a link to the stack.
-  const stackLinked = await resourcesForOwner(t, 'stack', stackId)
-  expect(stackLinked).toHaveLength(1)
-  const resourceId = stackLinked[0]._id
-
-  // Create a project and attach a second resourceLinks row to the same resource.
-  const now = Date.now()
-  const projectId = await t.run(async (ctx: MutationCtx) => {
-    const id = await ctx.db.insert('projects', {
-      name: 'extra-project',
-      slug: 'extra-project',
-      shortId: 'EXT001',
-      creatorId,
-      stackId,
-      published: false,
-      createdAt: now,
-      updatedAt: now,
-    })
-    await ctx.db.insert('resourceLinks', {
-      resourceId,
-      ownerKind: 'project',
-      ownerId: id,
-      order: 0,
-      addedAt: now,
-    })
-    return id
-  })
-
-  // Confirm both links exist.
-  const stackLinks = await t.run(async (ctx: MutationCtx) =>
-    ctx.db
-      .query('resourceLinks')
-      .withIndex('by_resourceId', (q) => q.eq('resourceId', resourceId))
-      .collect(),
-  )
-  expect(stackLinks).toHaveLength(2)
-
-  // Delete the project — should cascade-unlink only the project link.
-  const asUser = t.withIdentity({ tokenIdentifier: 'convex|user-1' })
-  await asUser.mutation(api.projects.deleteProject, { projectId })
-
-  // (a) Project link is gone.
-  const projectLinks = await t.run(async (ctx: MutationCtx) =>
-    ctx.db
-      .query('resourceLinks')
-      .withIndex('by_owner', (q) =>
-        q.eq('ownerKind', 'project').eq('ownerId', projectId),
-      )
-      .collect(),
-  )
-  expect(projectLinks).toHaveLength(0)
-
-  // (b) Stack link remains.
-  const remainingStackLinks = await t.run(async (ctx: MutationCtx) =>
-    ctx.db
-      .query('resourceLinks')
-      .withIndex('by_owner', (q) =>
-        q.eq('ownerKind', 'stack').eq('ownerId', stackId),
-      )
-      .collect(),
-  )
-  expect(remainingStackLinks).toHaveLength(1)
-
-  // (c) Resource row is NOT soft-deleted because the stack link still holds it.
-  const resourceRow = await t.run(async (ctx: MutationCtx) => ctx.db.get(resourceId))
-  expect(resourceRow?.deletedAt).toBeNull()
-})
+// TC-1207: DELETED — subject gone; coverage held by TC-NEW-MIG-02 (migration
+// dual-held test) and the rewritten TC-1450 (unlinkResource shared-row-stays-alive).
 
 test('reset_resources hard-deletes all rows and is idempotent', async () => {
   const t = convexTest(schema, modules)
@@ -1304,7 +1149,6 @@ test('reset_resources hard-deletes all rows and is idempotent', async () => {
   await t.run(async (ctx) => {
     const now = Date.now()
     const resourceId = await ctx.db.insert('resources', {
-      scope: 'project',
       type: 'rule',
       name: 'to-wipe',
       group: 'claude-code',
@@ -1359,7 +1203,7 @@ test('unlinkResource removes one link and leaves the others intact', async () =>
   const { creatorId, stackId } = await seedCreatorAndStack(t)
   await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
 
-  await seedProjectWithResources(t, {
+  await seedStackWithResources(t, {
     creatorId,
     stackId,
     name: 'p',
@@ -1368,7 +1212,6 @@ test('unlinkResource removes one link and leaves the others intact', async () =>
         type: 'rule',
         name: 'A',
         group: 'claude-code',
-        scope: 'project',
         stableKey: 'claude-code:rule:A',
         files: [{ name: 'A.md', content: 'A' }],
       },
@@ -1376,27 +1219,19 @@ test('unlinkResource removes one link and leaves the others intact', async () =>
         type: 'rule',
         name: 'B',
         group: 'claude-code',
-        scope: 'project',
         stableKey: 'claude-code:rule:B',
         files: [{ name: 'B.md', content: 'B' }],
       },
     ],
   })
 
-  const project = (await t.run(async (ctx) =>
-    ctx.db
-      .query('projects')
-      .withIndex('by_creatorId', (q) => q.eq('creatorId', creatorId))
-      .first(),
-  ))!
-
   const asUser = t.withIdentity({ tokenIdentifier: 'convex|user-1' })
   await asUser.mutation(api.resources.unlinkResource, {
-    target: { kind: 'project', id: project._id },
+    target: { kind: 'stack', id: stackId },
     stableKey: 'claude-code:rule:A',
   })
 
-  const items = await resourcesForOwner(t, 'project', project._id)
+  const items = await resourcesForOwner(t, 'stack', stackId)
   expect(items.map((i) => i.stableKey)).toEqual(['claude-code:rule:B'])
 })
 
@@ -1405,7 +1240,7 @@ test('unlinkResource soft-deletes the resource when it drops the last link', asy
   const { creatorId, stackId } = await seedCreatorAndStack(t)
   await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
 
-  await seedProjectWithResources(t, {
+  await seedStackWithResources(t, {
     creatorId,
     stackId,
     name: 'p',
@@ -1414,24 +1249,17 @@ test('unlinkResource soft-deletes the resource when it drops the last link', asy
         type: 'rule',
         name: 'solo',
         group: 'claude-code',
-        scope: 'project',
         stableKey: 'claude-code:rule:solo',
         files: [{ name: 's.md', content: 's' }],
       },
     ],
   })
 
-  const project = (await t.run(async (ctx) =>
-    ctx.db
-      .query('projects')
-      .withIndex('by_creatorId', (q) => q.eq('creatorId', creatorId))
-      .first(),
-  ))!
-  const resourceId = (await resourcesForOwner(t, 'project', project._id))[0]._id
+  const resourceId = (await resourcesForOwner(t, 'stack', stackId))[0]._id
 
   const asUser = t.withIdentity({ tokenIdentifier: 'convex|user-1' })
   await asUser.mutation(api.resources.unlinkResource, {
-    target: { kind: 'project', id: project._id },
+    target: { kind: 'stack', id: stackId },
     stableKey: 'claude-code:rule:solo',
   })
 
@@ -1449,58 +1277,74 @@ test('unlinkResource soft-deletes the resource when it drops the last link', asy
 
 test('unlinkResource keeps a shared resource alive when another owner still links it', async () => {
   const t = convexTest(schema, modules)
-  const { creatorId, stackId } = await seedCreatorAndStack(t)
-  await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
+  const { creatorId: creatorA, stackId: stackA } = await seedCreatorAndStack(t)
+  await t.run(async (ctx) => ctx.db.patch(creatorA, { userId: 'user-a' }))
 
-  // Global item lands on the stack.
-  await seedProjectWithResources(t, {
-    creatorId,
-    stackId,
-    name: 'p',
+  // Seed a second stack (stackB) to act as the second owner.
+  const { stackB } = await t.run(async (ctx) => {
+    const now = Date.now()
+    const creatorB = await ctx.db.insert('creators', {
+      name: 'Creator B 1450',
+      slug: 'creator-b-1450',
+      userId: 'user-b-1450',
+      verified: false,
+      personalPages: [],
+      projectPages: [],
+      createdAt: now,
+    })
+    const stackB = await ctx.db.insert('stacks', {
+      name: 'Stack B 1450',
+      slug: 'stack-b-1450',
+      shortId: 'SKB1450',
+      creatorId: creatorB,
+      oneLiner: 'b',
+      toolSubscriptions: [],
+      hasUsageComponent: false,
+      published: false,
+      createdAt: now,
+      updatedAt: now,
+    })
+    return { creatorB, stackB }
+  })
+
+  // Item lands on stackA.
+  await seedStackWithResources(t, {
+    creatorId: creatorA,
+    stackId: stackA,
+    name: 'p-a',
     resources: [
       {
         type: 'rule',
         name: 'shared',
         group: 'claude-code',
-        scope: 'global',
-        stableKey: 'claude-code:rule:shared',
+        stableKey: 'claude-code:rule:shared-1450',
         files: [{ name: 's.md', content: 's' }],
       },
     ],
   })
-  const resourceId = (await resourcesForOwner(t, 'stack', stackId))[0]._id
+  const resourceId = (await resourcesForOwner(t, 'stack', stackA))[0]._id
 
-  // Attach a second link to the same resource from a project.
+  // Attach a second link to the same resource from stackB.
   const now = Date.now()
-  const projectId = await t.run(async (ctx: MutationCtx) => {
-    const id = await ctx.db.insert('projects', {
-      name: 'extra',
-      slug: 'extra',
-      shortId: 'EXT777',
-      creatorId,
-      stackId,
-      published: false,
-      createdAt: now,
-      updatedAt: now,
-    })
+  await t.run(async (ctx: MutationCtx) => {
     await ctx.db.insert('resourceLinks', {
       resourceId,
-      ownerKind: 'project',
-      ownerId: id,
+      ownerKind: 'stack',
+      ownerId: stackB,
       order: 0,
       addedAt: now,
     })
-    return id
   })
 
-  const asUser = t.withIdentity({ tokenIdentifier: 'convex|user-1' })
-  await asUser.mutation(api.resources.unlinkResource, {
-    target: { kind: 'project', id: projectId },
-    stableKey: 'claude-code:rule:shared',
+  // Unlink from stackB.
+  const asUserB = t.withIdentity({ tokenIdentifier: 'convex|user-b-1450' })
+  await asUserB.mutation(api.resources.unlinkResource, {
+    target: { kind: 'stack', id: stackB },
+    stableKey: 'claude-code:rule:shared-1450',
   })
 
-  expect(await resourcesForOwner(t, 'project', projectId)).toHaveLength(0)
-  expect(await resourcesForOwner(t, 'stack', stackId)).toHaveLength(1)
+  expect(await resourcesForOwner(t, 'stack', stackB)).toHaveLength(0)
+  expect(await resourcesForOwner(t, 'stack', stackA)).toHaveLength(1)
   const row = await t.run(async (ctx: MutationCtx) => ctx.db.get(resourceId))
   expect(row?.deletedAt).toBeNull()
 })
@@ -1510,7 +1354,7 @@ test('unlinkResource is a no-op when the stableKey is not linked', async () => {
   const { creatorId, stackId } = await seedCreatorAndStack(t)
   await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
 
-  await seedProjectWithResources(t, {
+  await seedStackWithResources(t, {
     creatorId,
     stackId,
     name: 'p',
@@ -1519,32 +1363,26 @@ test('unlinkResource is a no-op when the stableKey is not linked', async () => {
         type: 'rule',
         name: 'present',
         group: 'claude-code',
-        scope: 'project',
         stableKey: 'claude-code:rule:present',
         files: [{ name: 'p.md', content: 'p' }],
       },
     ],
   })
-  const project = (await t.run(async (ctx) =>
-    ctx.db
-      .query('projects')
-      .withIndex('by_creatorId', (q) => q.eq('creatorId', creatorId))
-      .first(),
-  ))!
 
-  const before = project.updatedAt
+  const stackBefore = (await t.run(async (ctx: MutationCtx) => ctx.db.get(stackId)))!
+  const before = stackBefore.updatedAt
 
   const asUser = t.withIdentity({ tokenIdentifier: 'convex|user-1' })
   await asUser.mutation(api.resources.unlinkResource, {
-    target: { kind: 'project', id: project._id },
+    target: { kind: 'stack', id: stackId },
     stableKey: 'claude-code:rule:does-not-exist',
   })
 
-  // No-op must not bump the owner's updatedAt.
-  const after = (await t.run(async (ctx: MutationCtx) => ctx.db.get(project._id)))!
-  expect(after.updatedAt).toBe(before)
+  // No-op must not bump the stack's updatedAt.
+  const stackAfter = (await t.run(async (ctx: MutationCtx) => ctx.db.get(stackId)))!
+  expect(stackAfter.updatedAt).toBe(before)
 
-  const items = await resourcesForOwner(t, 'project', project._id)
+  const items = await resourcesForOwner(t, 'stack', stackId)
   expect(items.map((i) => i.stableKey)).toEqual(['claude-code:rule:present'])
 })
 
@@ -1553,7 +1391,7 @@ test('unlinkResource rejects a non-owner', async () => {
   const { creatorId, stackId } = await seedCreatorAndStack(t)
   await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'owner-user' }))
 
-  await seedProjectWithResources(t, {
+  await seedStackWithResources(t, {
     creatorId,
     stackId,
     name: 'p',
@@ -1562,28 +1400,21 @@ test('unlinkResource rejects a non-owner', async () => {
         type: 'rule',
         name: 'x',
         group: 'claude-code',
-        scope: 'project',
         stableKey: 'claude-code:rule:x',
         files: [{ name: 'x.md', content: 'x' }],
       },
     ],
   })
-  const project = (await t.run(async (ctx) =>
-    ctx.db
-      .query('projects')
-      .withIndex('by_creatorId', (q) => q.eq('creatorId', creatorId))
-      .first(),
-  ))!
 
   const asOther = t.withIdentity({ tokenIdentifier: 'convex|intruder' })
   await expect(
     asOther.mutation(api.resources.unlinkResource, {
-      target: { kind: 'project', id: project._id },
+      target: { kind: 'stack', id: stackId },
       stableKey: 'claude-code:rule:x',
     }),
   ).rejects.toThrow('Not authorized')
 
-  const items = await resourcesForOwner(t, 'project', project._id)
+  const items = await resourcesForOwner(t, 'stack', stackId)
   expect(items).toHaveLength(1)
 })
 
@@ -1656,7 +1487,7 @@ test('createProject persists a web draft with unique slug+shortId, timestamps, a
   const project = projects[0]
   expect(project._id).toBe(result._id)
   expect(project.published).toBe(false)
-  expect(project.source).toBe('web')
+  expect((project as Record<string, unknown>).source).toBeUndefined()
   expect(project.order).toBeUndefined()
   expect(project.stackId).toBe(stackId)
   expect(project.description).toBe('d')
@@ -1698,6 +1529,10 @@ test('createProject appends to the bottom of listByStack (order undefined)', asy
   expect(list).toHaveLength(2)
   expect(list[0]._id).toBe(existingId)
   expect(list[list.length - 1]._id).toBe(result._id)
+  // Narrowed contract: retired resource fields must NOT appear on listByStack rows.
+  expect('fileCount' in list[0]).toBe(false)
+  expect('source' in list[0]).toBe(false)
+  expect('cloneCount' in list[0]).toBe(false)
 })
 
 test('createProject auto-resolves the single stack and rejects when the creator has none', async () => {
@@ -1792,18 +1627,17 @@ test('two creators linking the same repo+path share ONE fileless row with two li
     type: 'rule' as const,
     name: 'shared-linked',
     group: 'claude-code',
-    scope: 'project' as const,
     stableKey: 'claude-code:rule:shared-linked',
     upstream: { repoUrl: 'https://github.com/acme/repo', path: 'AGENTS.md' },
   }
 
-  await seedProjectWithResources(t, {
+  await seedStackWithResources(t, {
     creatorId: creatorA,
     stackId: stackA,
     name: 'project-a',
     resources: [linkedItem],
   })
-  await seedProjectWithResources(t, {
+  await seedStackWithResources(t, {
     creatorId: creatorB,
     stackId: stackB,
     name: 'project-b',
@@ -1820,7 +1654,7 @@ test('two creators linking the same repo+path share ONE fileless row with two li
   expect(rows[0].owner).toEqual({ kind: 'github', handle: 'acme' })
   expect(rows[0].upstream?.path).toBe('AGENTS.md')
 
-  // Two links — one per project.
+  // Two links — one per stack.
   const links = await t.run(async (ctx) =>
     ctx.db
       .query('resourceLinks')
@@ -1829,18 +1663,12 @@ test('two creators linking the same repo+path share ONE fileless row with two li
   )
   expect(links).toHaveLength(2)
 
-  const projects = await t.run(async (ctx) =>
-    ctx.db.query('projects').collect(),
-  )
-  const projectA = projects.find((p) => p.name === 'project-a')!
-  const projectB = projects.find((p) => p.name === 'project-b')!
-
-  // Unlink from A — shared row stays alive (B still links it).
+  // Unlink from stackA — shared row stays alive (stackB still links it).
   await t.run(async (ctx: MutationCtx) => {
     const link = await ctx.db
       .query('resourceLinks')
       .withIndex('by_owner', (q) =>
-        q.eq('ownerKind', 'project').eq('ownerId', projectA._id),
+        q.eq('ownerKind', 'stack').eq('ownerId', stackA),
       )
       .first()
     await ctx.db.delete(link!._id)
@@ -1856,12 +1684,12 @@ test('two creators linking the same repo+path share ONE fileless row with two li
     (await t.run(async (ctx: MutationCtx) => ctx.db.get(rows[0]._id)))?.deletedAt,
   ).toBeNull()
 
-  // Unlink from B — last link gone, row soft-deleted.
+  // Unlink from stackB — last link gone, row soft-deleted.
   await t.run(async (ctx: MutationCtx) => {
     const link = await ctx.db
       .query('resourceLinks')
       .withIndex('by_owner', (q) =>
-        q.eq('ownerKind', 'project').eq('ownerId', projectB._id),
+        q.eq('ownerKind', 'stack').eq('ownerId', stackB),
       )
       .first()
     await ctx.db.delete(link!._id)
@@ -1879,45 +1707,16 @@ test('two creators linking the same repo+path share ONE fileless row with two li
 })
 
 
-async function seedOwnedProject(
-  t: ReturnType<typeof convexTest>,
-  creatorId: Id<'creators'>,
-  stackId: Id<'stacks'>,
-  name: string,
-  slug: string,
-  shortId: string,
-) {
-  return await t.run(async (ctx: MutationCtx) => {
-    const now = Date.now()
-    return await ctx.db.insert('projects', {
-      name,
-      slug,
-      shortId,
-      creatorId,
-      stackId,
-      published: false,
-      createdAt: now,
-      updatedAt: now,
-    })
-  })
-}
+// seedOwnedProject DELETED — all linkResource tests target the stack directly.
 
 test('linkResource creates one fileless linked row owned by the github handle', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
   await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
-  const projectId = await seedOwnedProject(
-    t,
-    creatorId,
-    stackId,
-    'p',
-    'p',
-    'PRJ001',
-  )
 
   const asUser = t.withIdentity({ tokenIdentifier: 'convex|user-1' })
   await asUser.mutation(api.resources.linkResource, {
-    target: { kind: 'project', id: projectId },
+    target: { kind: 'stack', id: stackId },
     item: {
       type: 'rule',
       name: 'AGENTS',
@@ -1932,7 +1731,7 @@ test('linkResource creates one fileless linked row owned by the github handle', 
   expect(rows[0].storage).toBe('linked')
   expect(rows[0].files).toBeUndefined()
   expect(rows[0].owner).toEqual({ kind: 'github', handle: 'acme' })
-  expect(rows[0].scope).toBe('global')
+  expect((rows[0] as Record<string, unknown>).scope).toBeUndefined()
   expect(rows[0].addedBy).toBe(creatorId)
   expect(rows[0].upstream?.repoUrl).toBe('https://github.com/acme/repo')
   expect(rows[0].upstream?.path).toBe('src/agents')
@@ -1940,7 +1739,7 @@ test('linkResource creates one fileless linked row owned by the github handle', 
     'linked:https://github.com/acme/repo:src/agents',
   )
 
-  const links = await resourcesForOwner(t, 'project', projectId)
+  const links = await resourcesForOwner(t, 'stack', stackId)
   expect(links).toHaveLength(1)
 })
 
@@ -1948,16 +1747,8 @@ test('linkResource dedups two owners onto ONE row across messy casing/.git/slash
   const t = convexTest(schema, modules)
   const { creatorId: creatorA, stackId: stackA } = await seedCreatorAndStack(t)
   await t.run(async (ctx) => ctx.db.patch(creatorA, { userId: 'user-a' }))
-  const projectA = await seedOwnedProject(
-    t,
-    creatorA,
-    stackA,
-    'project-a',
-    'project-a',
-    'PRJ00A',
-  )
 
-  const { creatorB, stackB } = await t.run(async (ctx) => {
+  const { stackB } = await t.run(async (ctx) => {
     const now = Date.now()
     const creatorB = await ctx.db.insert('creators', {
       name: 'Creator B',
@@ -1980,20 +1771,12 @@ test('linkResource dedups two owners onto ONE row across messy casing/.git/slash
       createdAt: now,
       updatedAt: now,
     })
-    return { creatorB, stackB }
+    return { stackB }
   })
-  const projectB = await seedOwnedProject(
-    t,
-    creatorB,
-    stackB,
-    'project-b',
-    'project-b',
-    'PRJ00B',
-  )
 
   const asA = t.withIdentity({ tokenIdentifier: 'convex|user-a' })
   await asA.mutation(api.resources.linkResource, {
-    target: { kind: 'project', id: projectA },
+    target: { kind: 'stack', id: stackA },
     item: {
       type: 'rule',
       name: 'A names it',
@@ -2007,7 +1790,7 @@ test('linkResource dedups two owners onto ONE row across messy casing/.git/slash
   // mixed case owner/repo, query string, and a leading slash on the path.
   const asB = t.withIdentity({ tokenIdentifier: 'convex|user-b' })
   await asB.mutation(api.resources.linkResource, {
-    target: { kind: 'project', id: projectB },
+    target: { kind: 'stack', id: stackB },
     item: {
       type: 'rule',
       name: 'B names it differently',
@@ -2032,27 +1815,19 @@ test('linkResource dedups two owners onto ONE row across messy casing/.git/slash
       .collect(),
   )
   expect(links).toHaveLength(2)
-  expect(await resourcesForOwner(t, 'project', projectA)).toHaveLength(1)
-  expect(await resourcesForOwner(t, 'project', projectB)).toHaveLength(1)
+  expect(await resourcesForOwner(t, 'stack', stackA)).toHaveLength(1)
+  expect(await resourcesForOwner(t, 'stack', stackB)).toHaveLength(1)
 })
 
 test('linkResource rejects a non-github / repo-less URL and writes nothing', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
   await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
-  const projectId = await seedOwnedProject(
-    t,
-    creatorId,
-    stackId,
-    'p',
-    'p',
-    'PRJ00C',
-  )
 
   const asUser = t.withIdentity({ tokenIdentifier: 'convex|user-1' })
   await expect(
     asUser.mutation(api.resources.linkResource, {
-      target: { kind: 'project', id: projectId },
+      target: { kind: 'stack', id: stackId },
       item: {
         type: 'rule',
         name: 'gitlab',
@@ -2065,7 +1840,7 @@ test('linkResource rejects a non-github / repo-less URL and writes nothing', asy
 
   await expect(
     asUser.mutation(api.resources.linkResource, {
-      target: { kind: 'project', id: projectId },
+      target: { kind: 'stack', id: stackId },
       item: {
         type: 'rule',
         name: 'repo-less',
@@ -2084,19 +1859,11 @@ test('linkResource rejects a non-owner', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
   await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'owner-user' }))
-  const projectId = await seedOwnedProject(
-    t,
-    creatorId,
-    stackId,
-    'p',
-    'p',
-    'PRJ00D',
-  )
 
   const asOther = t.withIdentity({ tokenIdentifier: 'convex|intruder' })
   await expect(
     asOther.mutation(api.resources.linkResource, {
-      target: { kind: 'project', id: projectId },
+      target: { kind: 'stack', id: stackId },
       item: {
         type: 'rule',
         name: 'x',
@@ -2111,23 +1878,50 @@ test('linkResource rejects a non-owner', async () => {
   expect(rows).toHaveLength(0)
 })
 
+test('deleteProject rejects a non-owner with Not authorized', async () => {
+  const t = convexTest(schema, modules)
+  const { creatorId, stackId } = await seedCreatorAndStack(t)
+  await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-owner' }))
+
+  const projectId = await seedStackWithResources(t, {
+    creatorId,
+    stackId,
+    name: 'owned-project',
+    resources: [],
+  })
+
+  // Seed a second creator who does NOT own the stack.
+  await t.run(async (ctx) =>
+    ctx.db.insert('creators', {
+      name: 'Intruder',
+      slug: 'intruder',
+      userId: 'user-intruder',
+      verified: false,
+      personalPages: [],
+      projectPages: [],
+      createdAt: Date.now(),
+    }),
+  )
+
+  const asIntruder = t.withIdentity({ tokenIdentifier: 'convex|user-intruder' })
+  await expect(
+    asIntruder.mutation(api.projects.deleteProject, { projectId }),
+  ).rejects.toThrow('Not authorized')
+
+  // Row is still present.
+  const still = await t.run(async (ctx) => ctx.db.get(projectId))
+  expect(still).not.toBeNull()
+})
+
 test('linkResource throws when upstream is omitted and writes nothing', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
   await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
-  const projectId = await seedOwnedProject(
-    t,
-    creatorId,
-    stackId,
-    'p',
-    'p',
-    'PRJ00E',
-  )
 
   const asUser = t.withIdentity({ tokenIdentifier: 'convex|user-1' })
   await expect(
     asUser.mutation(api.resources.linkResource, {
-      target: { kind: 'project', id: projectId },
+      target: { kind: 'stack', id: stackId },
       item: {
         type: 'rule',
         name: 'no-upstream',

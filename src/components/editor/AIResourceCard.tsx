@@ -2,20 +2,20 @@ import { mergeAttributes, Node } from "@tiptap/core";
 import type { NodeViewProps } from "@tiptap/react";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import { useState } from "react";
-import type { ResourceLocationKind } from "@/lib/resource-utils";
 import { ResourceBrowserDialog } from "@/components/resources";
+import type { ResourceBrowserTarget } from "@/components/resources/ResourceBrowser";
 import {
 	getGroupLabel,
 	getResourceTypeColorsSplit,
 	getResourceTypeIcon,
 	getResourceTypeIconBgClass,
 	getResourceTypeLabel,
-	kindToLocation,
 } from "@/lib/resource-utils";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { BaseCard } from "./BaseCard";
 
 export interface AIResourceCardAttrs {
-	source: ResourceLocationKind;
+	source: "stack";
 	sourceId: string;
 	stableKey: string;
 	fileName: string;
@@ -45,7 +45,10 @@ function AIResourceCardView({
 		updateAttributes({ description: value });
 	};
 
-	const target = kindToLocation(source, sourceId);
+	const target: ResourceBrowserTarget = {
+		kind: "stack" as const,
+		id: sourceId as Id<"stacks">,
+	};
 
 	return (
 		<>
@@ -76,7 +79,7 @@ function AIResourceCardView({
 				}
 				metadataSlot={
 					<span className="font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-						{source === "stack" ? "Stack" : "Project"}
+						Stack
 					</span>
 				}
 				description={description ?? ""}

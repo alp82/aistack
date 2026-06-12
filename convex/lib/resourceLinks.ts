@@ -27,14 +27,12 @@ export {
 
 export type Resource = Infer<typeof ResourceValidator>
 export type ResourceInputItem = Infer<typeof ResourceInput>
-type OwnerKind = 'stack' | 'project'
+type OwnerKind = 'stack'
 
-function castOwnerId(ownerKind: OwnerKind, ownerId: string) {
+function castOwnerId(ownerId: string) {
   // ownerId is a v.string() on the link row; narrow it back to the table id
   // it references. Mirrors how userId: v.string() is treated elsewhere.
-  return ownerKind === 'stack'
-    ? (ownerId as Id<'stacks'>)
-    : (ownerId as Id<'projects'>)
+  return ownerId as Id<'stacks'>
 }
 
 /**
@@ -57,7 +55,6 @@ function toResource(doc: Doc<'resources'>): Resource {
     storage: doc.storage,
     owner: doc.owner,
     addedBy: doc.addedBy,
-    scope: doc.scope,
     ...(doc.files !== undefined ? { files: doc.files } : {}),
     ...(doc.upstream !== undefined ? { upstream: doc.upstream } : {}),
     ...(doc.pkg !== undefined ? { pkg: doc.pkg } : {}),
@@ -102,14 +99,13 @@ type UpsertArgs = {
   ownerKind: OwnerKind
   ownerId: string
   items: ResourceInputItem[]
-  defaultScope?: NonNullable<Resource['scope']>
 }
 
 export async function upsertResourcesForOwner(
   ctx: MutationCtx,
-  { addedBy, ownerKind, ownerId, items, defaultScope = 'global' }: UpsertArgs,
+  { addedBy, ownerKind, ownerId, items }: UpsertArgs,
 ): Promise<void> {
-  const ownerIdCast = castOwnerId(ownerKind, ownerId)
+  const ownerIdCast = castOwnerId(ownerId)
   const now = Date.now()
 
   // Determine the next link order from the owner's existing links so omitted
@@ -124,8 +120,6 @@ export async function upsertResourcesForOwner(
     existingLinks.reduce((max, link) => Math.max(max, link.order), -1) + 1
 
   for (const item of items) {
-    const scope = item.scope ?? defaultScope
-
     // A linked row has exactly one of upstream/pkg and no files; a hosted row
     // has files.
     if (item.upstream || item.pkg) {
@@ -162,7 +156,6 @@ export async function upsertResourcesForOwner(
       } else {
         const shortId = await generateUniqueShortId(ctx, 'resources')
         resourceId = await ctx.db.insert('resources', {
-          scope,
           type: item.type,
           name: item.name,
           description: item.description,
@@ -196,7 +189,6 @@ export async function upsertResourcesForOwner(
       } else {
         const shortId = await generateUniqueShortId(ctx, 'resources')
         resourceId = await ctx.db.insert('resources', {
-          scope,
           type: item.type,
           name: item.name,
           description: item.description,
@@ -224,7 +216,6 @@ export async function upsertResourcesForOwner(
         // resurrect by clearing deletedAt when it was soft-deleted.
         resourceId = existing._id
         await ctx.db.patch(existing._id, {
-          scope,
           type: item.type,
           name: item.name,
           description: item.description,
@@ -239,7 +230,6 @@ export async function upsertResourcesForOwner(
       } else {
         const shortId = await generateUniqueShortId(ctx, 'resources')
         resourceId = await ctx.db.insert('resources', {
-          scope,
           type: item.type,
           name: item.name,
           description: item.description,
@@ -294,31 +284,11 @@ export async function softDeleteIfOrphaned(
   }
 }
 
-export async function cascadeUnlinkOwner(
-  ctx: MutationCtx,
-  ownerKind: OwnerKind,
-  ownerId: string,
-): Promise<void> {
-  const ownerIdCast = castOwnerId(ownerKind, ownerId)
-
-  const links = await ctx.db
-    .query('resourceLinks')
-    .withIndex('by_owner', (q) =>
-      q.eq('ownerKind', ownerKind).eq('ownerId', ownerIdCast),
-    )
-    .collect()
-
-  for (const link of links) {
-    await ctx.db.delete(link._id)
-    await softDeleteIfOrphaned(ctx, link.resourceId)
-  }
-}
-
 /**
  * Remove a single resource (by stableKey) from one owner, leaving every other
  * link untouched. Soft-deletes the resource only when this was its last link
- * (same orphan invariant as cascadeUnlinkOwner). No-op when the owner has no
- * link to that stableKey.
+ * (the orphan invariant enforced by softDeleteIfOrphaned). No-op when the owner
+ * has no link to that stableKey.
  */
 export async function unlinkResourceFromOwner(
   ctx: MutationCtx,
@@ -326,7 +296,7 @@ export async function unlinkResourceFromOwner(
   ownerId: string,
   stableKey: string,
 ): Promise<boolean> {
-  const ownerIdCast = castOwnerId(ownerKind, ownerId)
+  const ownerIdCast = castOwnerId(ownerId)
 
   const links = await ctx.db
     .query('resourceLinks')

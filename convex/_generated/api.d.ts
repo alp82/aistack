@@ -30,6 +30,7 @@ import type * as lib_tiers from "../lib/tiers.js";
 import type * as migrations_20260505_rename_instructions_to_resources from "../migrations/20260505_rename_instructions_to_resources.js";
 import type * as migrations_20260528_clear_embedded_resources from "../migrations/20260528_clear_embedded_resources.js";
 import type * as migrations_20260529_reset_resources from "../migrations/20260529_reset_resources.js";
+import type * as migrations_20260612_retire_project_resources from "../migrations/20260612_retire_project_resources.js";
 import type * as migrations__archived_migrateBlockToReference from "../migrations/_archived/migrateBlockToReference.js";
 import type * as migrations__archived_migrateNotesToDescription from "../migrations/_archived/migrateNotesToDescription.js";
 import type * as migrations__archived_migrateStackDescriptions from "../migrations/_archived/migrateStackDescriptions.js";
@@ -78,6 +79,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/20260505_rename_instructions_to_resources": typeof migrations_20260505_rename_instructions_to_resources;
   "migrations/20260528_clear_embedded_resources": typeof migrations_20260528_clear_embedded_resources;
   "migrations/20260529_reset_resources": typeof migrations_20260529_reset_resources;
+  "migrations/20260612_retire_project_resources": typeof migrations_20260612_retire_project_resources;
   "migrations/_archived/migrateBlockToReference": typeof migrations__archived_migrateBlockToReference;
   "migrations/_archived/migrateNotesToDescription": typeof migrations__archived_migrateNotesToDescription;
   "migrations/_archived/migrateStackDescriptions": typeof migrations__archived_migrateStackDescriptions;

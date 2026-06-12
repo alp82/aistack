@@ -9,9 +9,7 @@ import { ConfirmSwitchDialog } from "./ConfirmSwitchDialog";
 import { ResourceTree, type ResourceTreeSelection } from "./ResourceTree";
 import { ResourceViewer, type ResourceViewerFile } from "./ResourceViewer";
 
-export type ResourceBrowserTarget =
-	| { kind: "stack"; id: Id<"stacks"> }
-	| { kind: "project"; id: Id<"projects"> };
+export type ResourceBrowserTarget = { kind: "stack"; id: Id<"stacks"> };
 
 export interface ResourceBrowserInitialSelection {
 	stableKey: string;
@@ -76,22 +74,10 @@ export function ResourceBrowser({
 				i.stableKey === initialSelection.stableKey &&
 				(i.files ?? []).some((f) => f.name === initialSelection.fileName),
 		);
-		const inProject = context.projectResources.some(
-			(i) =>
-				i.stableKey === initialSelection.stableKey &&
-				(i.files ?? []).some((f) => f.name === initialSelection.fileName),
-		);
 		if (inStack) {
 			setSelection({
 				source: "stack",
-				sourceId: target.kind === "stack" ? target.id : (context.stackId ?? ""),
-				stableKey: initialSelection.stableKey,
-				fileName: initialSelection.fileName,
-			});
-		} else if (inProject) {
-			setSelection({
-				source: "project",
-				sourceId: target.kind === "project" ? target.id : "",
+				sourceId: target.id,
 				stableKey: initialSelection.stableKey,
 				fileName: initialSelection.fileName,
 			});
@@ -101,10 +87,7 @@ export function ResourceBrowser({
 
 	const selectedFile: ResourceViewerFile | null = useMemo(() => {
 		if (!context || !selection) return null;
-		const list =
-			selection.source === "stack"
-				? context.stackResources
-				: context.projectResources;
+		const list = context.stackResources;
 		const item = list.find((i) => i.stableKey === selection.stableKey);
 		const file = item?.files?.find((f) => f.name === selection.fileName);
 		if (!file) return null;
@@ -149,10 +132,7 @@ export function ResourceBrowser({
 		setError(null);
 		try {
 			await updateContent({
-				target:
-					selection.source === "stack"
-						? { kind: "stack", id: selection.sourceId as Id<"stacks"> }
-						: { kind: "project", id: selection.sourceId as Id<"projects"> },
+				target: { kind: "stack", id: selection.sourceId as Id<"stacks"> },
 				stableKey: selection.stableKey,
 				fileName: selection.fileName,
 				content: draftContent,
@@ -212,8 +192,7 @@ export function ResourceBrowser({
 
 	const isEditable = context?.isEditable ?? false;
 
-	const stackSourceId = target.kind === "stack" ? target.id : "";
-	const projectSourceId = target.kind === "project" ? target.id : "";
+	const stackSourceId = target.id;
 
 	const isLoading = context === undefined;
 	const viewerFile: ResourceViewerFile | null = selectedFile
@@ -231,15 +210,6 @@ export function ResourceBrowser({
 							sourceId: stackSourceId,
 							sourceLabel: context.stackName,
 							resources: context.stackResources,
-						}
-					: null
-			}
-			project={
-				context && context.projectResources.length > 0
-					? {
-							sourceId: projectSourceId,
-							sourceLabel: context.projectName ?? "",
-							resources: context.projectResources,
 						}
 					: null
 			}

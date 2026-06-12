@@ -10,12 +10,11 @@ import {
 	getResourceTypeColors,
 	getResourceTypeIcon,
 	getResourceTypeLabel,
-	type ResourceLocationKind,
 } from "@/lib/resource-utils";
 import { cn } from "@/lib/utils";
 
 export interface ResourceTreeSelection {
-	source: ResourceLocationKind;
+	source: "stack";
 	sourceId: string;
 	stableKey: string;
 	fileName: string;
@@ -29,13 +28,12 @@ export interface ResourceTreeSourceItems {
 
 export interface ResourceTreeProps {
 	stack?: ResourceTreeSourceItems | null;
-	project?: ResourceTreeSourceItems | null;
 	selected?: ResourceTreeSelection | null;
 	onSelect?: (selection: ResourceTreeSelection) => void;
 	groupFilter?: string;
 	isLoading?: boolean;
 	onInsertFile?: (args: {
-		source: ResourceLocationKind;
+		source: "stack";
 		sourceId: string;
 		stableKey: string;
 		fileName: string;
@@ -43,7 +41,7 @@ export interface ResourceTreeProps {
 		group: string;
 	}) => void;
 	onInsertGroup?: (args: {
-		source: ResourceLocationKind;
+		source: "stack";
 		sourceId: string;
 		group: string;
 		fileCount: number;
@@ -143,7 +141,6 @@ function groupByGroupAndType(resources: Resource[]): GroupSection[] {
 
 export function ResourceTree({
 	stack,
-	project,
 	selected,
 	onSelect,
 	groupFilter,
@@ -154,7 +151,7 @@ export function ResourceTree({
 }: ResourceTreeProps) {
 	const sections = useMemo(() => {
 		const result: Array<{
-			source: ResourceLocationKind;
+			source: "stack";
 			sourceId: string;
 			sourceLabel: string;
 			groups: GroupSection[];
@@ -173,22 +170,8 @@ export function ResourceTree({
 				});
 			}
 		}
-		if (project && project.resources.length > 0) {
-			let groups = groupByGroupAndType(project.resources);
-			if (groupFilter) {
-				groups = groups.filter((g) => g.group === groupFilter);
-			}
-			if (groups.length > 0) {
-				result.push({
-					source: "project",
-					sourceId: project.sourceId,
-					sourceLabel: project.sourceLabel,
-					groups,
-				});
-			}
-		}
 		return result;
-	}, [stack, project, groupFilter]);
+	}, [stack, groupFilter]);
 
 	if (isLoading) {
 		return (
@@ -231,7 +214,7 @@ export function ResourceTree({
 					<div key={`${section.source}:${section.sourceId}`}>
 						<div className="mb-2 flex items-center justify-between">
 							<span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-accent-lime">
-								{section.source === "stack" ? "Stack" : "Project"}
+								Stack
 							</span>
 							<span className="font-mono text-[10px] text-fg-muted">
 								{section.sourceLabel}
@@ -308,7 +291,7 @@ function GroupBlock({
 	onInsertGroup,
 }: {
 	section: GroupSection;
-	source: ResourceLocationKind;
+	source: "stack";
 	sourceId: string;
 	selected?: ResourceTreeSelection | null;
 	onSelect?: (selection: ResourceTreeSelection) => void;
@@ -408,7 +391,7 @@ function TypeBlock({
 	onInsertFile,
 }: {
 	typeGroup: TypeGroup;
-	source: ResourceLocationKind;
+	source: "stack";
 	sourceId: string;
 	selected?: ResourceTreeSelection | null;
 	onSelect?: (selection: ResourceTreeSelection) => void;
@@ -506,7 +489,7 @@ function FileRow({
 	onSelect,
 	onInsertFile,
 }: {
-	source: ResourceLocationKind;
+	source: "stack";
 	sourceId: string;
 	stableKey: string;
 	fileName: string;

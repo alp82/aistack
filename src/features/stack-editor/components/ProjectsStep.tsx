@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "convex/react";
-import { ArrowUpRight, FileCode2, Pencil, Trash2 } from "lucide-react";
+import { ArrowUpRight, Pencil, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { ProjectOrderButtons } from "@/components/ProjectOrderButtons";
 import { accentFor } from "@/components/projects/accent";
@@ -28,7 +28,6 @@ type ProjectRow = {
 	url?: string;
 	tags?: string[];
 	isDraft: boolean;
-	fileCount?: number;
 };
 
 function ProjectsStep({
@@ -231,12 +230,6 @@ function ProjectRowItem({
 									</span>
 								)}
 							</div>
-						)}
-						{row.fileCount !== undefined && (
-							<span className="inline-flex items-center gap-1 font-mono text-[11px] tabular-nums text-fg-muted">
-								<FileCode2 className="size-3" />
-								{row.fileCount}
-							</span>
 						)}
 						{href && (
 							<a
@@ -509,7 +502,6 @@ function ProjectsStepEdit({ stackId }: { stackId: Id<"stacks"> }) {
 									url: project.url,
 									tags: project.tags,
 									isDraft: project.published !== true,
-									fileCount: project.fileCount,
 								}}
 								index={index}
 								total={list.length}

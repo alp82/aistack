@@ -52,7 +52,6 @@ type Resource = {
 	storage?: "hosted" | "linked";
 	owner?: ResourceOwner;
 	addedBy?: string;
-	scope?: "global" | "project";
 	upstream?: {
 		repoUrl: string;
 		path?: string;

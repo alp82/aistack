@@ -69,13 +69,13 @@ describe("resolvePluginLinks", () => {
 			type: "plugin",
 			name: "alp-river",
 			group: "claude-code",
-			scope: "global",
 			stableKey: "linked:https://github.com/alp82/alp-river:",
 			upstream: {
 				repoUrl: "https://github.com/alp82/alp-river",
 				lastCommitSha: "9e01cbe",
 			},
 		});
+		expect("scope" in byName("alp-river")! === false).toBe(true);
 	});
 
 	it("resolves an object source (different upstream repo) with its own sha", () => {
@@ -83,13 +83,13 @@ describe("resolvePluginLinks", () => {
 			type: "plugin",
 			name: "posthog",
 			group: "claude-code",
-			scope: "global",
 			stableKey: "linked:https://github.com/posthog/ai-plugin:",
 			upstream: {
 				repoUrl: "https://github.com/posthog/ai-plugin",
 				lastCommitSha: "1b743cd", // manifest sha wins over installed gitCommitSha
 			},
 		});
+		expect("scope" in byName("posthog")! === false).toBe(true);
 	});
 
 	it("resolves a './subdir' source to the marketplace repo + path", () => {

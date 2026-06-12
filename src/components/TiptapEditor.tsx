@@ -36,7 +36,6 @@ import {
 	useEditor,
 	useEditorState,
 } from "@tiptap/react";
-import { useQuery } from "convex/react";
 import { common, createLowlight } from "lowlight";
 import {
 	Bold as BoldIcon,
@@ -91,7 +90,6 @@ import { Button } from "@/components/ui/button";
 import { useOptionalEditorContext } from "@/features/stack-editor/context/EditorContext";
 import type { Resource } from "@/features/stack-editor/types";
 import { cn } from "@/lib/utils";
-import { api } from "../../convex/_generated/api";
 
 const lowlight = createLowlight(common);
 
@@ -234,20 +232,14 @@ export function TiptapEditor({
 		}));
 	}, [editorContext?.bundleLookup]);
 
-	const projectFilesData = useQuery(
-		api.projects.listByCreator,
-		editable ? {} : "skip",
-	);
-
 	const slashFiles = useMemo<SlashFileItem[]>(() => {
 		const out: SlashFileItem[] = [];
 
-		// Aggregate groups per source — groups come from both stack and project
-		// levels, keyed by source+sourceId+group.
+		// Aggregate groups per source, keyed by source+sourceId+group.
 		const groupIndex = new Map<
 			string,
 			{
-				source: "stack" | "project";
+				source: "stack";
 				sourceId: string;
 				group: string;
 				fileCount: number;
@@ -255,7 +247,7 @@ export function TiptapEditor({
 		>();
 
 		const addToGroup = (
-			source: "stack" | "project",
+			source: "stack",
 			sourceId: string,
 			group: string,
 			count: number,
@@ -292,31 +284,6 @@ export function TiptapEditor({
 			}
 		}
 
-		// Project-level resources
-		if (projectFilesData) {
-			for (const project of projectFilesData) {
-				for (const resource of project.resources) {
-					addToGroup(
-						"project",
-						project.projectId,
-						resource.group,
-						resource.files?.length ?? 0,
-					);
-					for (const file of resource.files ?? []) {
-						out.push({
-							kind: "file",
-							source: "project",
-							sourceId: project.projectId,
-							stableKey: resource.stableKey,
-							fileName: file.name,
-							type: resource.type,
-							group: resource.group,
-						});
-					}
-				}
-			}
-		}
-
 		// Prepend groups (only include groups with >1 file)
 		const groupItems: SlashFileItem[] = [];
 		for (const g of groupIndex.values()) {
@@ -332,7 +299,7 @@ export function TiptapEditor({
 		}
 
 		return [...groupItems, ...out];
-	}, [projectFilesData, stackResources]);
+	}, [stackResources]);
 
 	const slashBundlesKey = useMemo(
 		() => slashBundles.map((b) => b._id).join(","),

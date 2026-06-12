@@ -80,7 +80,6 @@ export const Resource = v.object({
   storage: v.union(v.literal('hosted'), v.literal('linked')),
   owner: ResourceOwner,
   addedBy: v.string(),
-  scope: v.optional(v.union(v.literal('global'), v.literal('project'))),
   upstream: v.optional(ResourceUpstream),
   pkg: v.optional(ResourcePackage),
 })
@@ -97,6 +96,8 @@ export const ResourceInput = v.object({
   group: v.string(),
   stableKey: v.string(),
   files: v.optional(v.array(ResourceFile)),
+  // Deprecated and ignored: tolerated so old published CLIs that still send
+  // scope keep working. The server discards it; nothing reads this field.
   scope: v.optional(v.union(v.literal('global'), v.literal('project'))),
   upstream: v.optional(ResourceUpstream),
   pkg: v.optional(ResourcePackage),
@@ -354,12 +355,10 @@ export default defineSchema({
     shortId: v.string(),
     creatorId: v.id('creators'),
     stackId: v.id('stacks'),
-    source: v.optional(v.string()),
     description: v.optional(v.string()),
     url: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     order: v.optional(v.number()),
-    cloneCount: v.optional(v.number()),
     published: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -373,7 +372,6 @@ export default defineSchema({
   // and no files; a hosted row carries files. Linked rows are shared globally —
   // deduped by `by_upstream` (repo) or `by_pkg` (package); hosted by creator.
   resources: defineTable({
-    scope: v.union(v.literal('global'), v.literal('project')),
     type: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
@@ -395,7 +393,7 @@ export default defineSchema({
 
   resourceLinks: defineTable({
     resourceId: v.id('resources'),
-    ownerKind: v.union(v.literal('stack'), v.literal('project')),
+    ownerKind: v.literal('stack'),
     ownerId: v.string(),
     order: v.number(),
     addedAt: v.number(),

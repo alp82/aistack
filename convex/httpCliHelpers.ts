@@ -4,7 +4,6 @@ import { Resource as ResourceValidator, ResourceInput } from './schema'
 import {
   resolveLinkedResources,
   upsertResourcesForOwner,
-  type ResourceInputItem,
 } from './lib/resourceLinks'
 
 export const getCreatorByUserId = internalQuery({
@@ -92,19 +91,14 @@ export const upsertStackResources = internalMutation({
       throw new Error('Not authorized to write to this stack')
     }
 
-    // Every resource collected through the CLI is stack-owned and global.
-    // Coerce scope BEFORE the upsert so explicit scope:'project' items still
-    // land as global (upsertResourcesForOwner preserves an incoming scope).
-    const items: ResourceInputItem[] = args.resources.map((item) => ({
-      ...item,
-      scope: 'global',
-    }))
-
+    // Every resource collected through the CLI is stack-owned. Old published
+    // CLIs may still send a scope field on items; ResourceInput tolerates it and
+    // upsertResourcesForOwner ignores it, so the payload passes through as-is.
     await upsertResourcesForOwner(ctx, {
       addedBy: args.creatorId,
       ownerKind: 'stack',
       ownerId: args.stackId,
-      items,
+      items: args.resources,
     })
 
     await ctx.db.patch(args.stackId, { updatedAt: Date.now() })

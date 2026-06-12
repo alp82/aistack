@@ -25,8 +25,6 @@ type Project = {
 	url?: string;
 	tags?: string[];
 	published?: boolean;
-	fileCount: number;
-	source?: string;
 	updatedAt: number;
 	createdAt: number;
 };
@@ -310,7 +308,7 @@ export function ProjectsSection({
 					}
 				}}
 				title="Delete project"
-				description={`This will permanently delete "${deleteTarget?.name}" and all its files. This cannot be undone.`}
+				description={`This will permanently delete "${deleteTarget?.name}". This cannot be undone.`}
 				confirmLabel="Delete"
 				variant="danger"
 				loading={deleting}

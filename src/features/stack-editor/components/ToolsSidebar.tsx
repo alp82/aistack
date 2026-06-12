@@ -295,7 +295,7 @@ function ToolsSidebar({
 
 	const handleUnifiedInsertFile = useCallback(
 		(args: {
-			source: "stack" | "project";
+			source: "stack";
 			sourceId: string;
 			stableKey: string;
 			fileName: string;
@@ -317,7 +317,7 @@ function ToolsSidebar({
 
 	const handleUnifiedInsertGroup = useCallback(
 		(args: {
-			source: "stack" | "project";
+			source: "stack";
 			sourceId: string;
 			group: string;
 			fileCount: number;

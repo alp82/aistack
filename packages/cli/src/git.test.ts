@@ -53,14 +53,12 @@ describe("buildLinkResource", () => {
 			name: "frontend-design",
 			type: "plugin",
 			group: "claude-code",
-			scope: "global",
 			sha: "deadbeef",
 		});
 		expect(r).toEqual({
 			type: "plugin",
 			name: "frontend-design",
 			group: "claude-code",
-			scope: "global",
 			stableKey:
 				"linked:https://github.com/anthropics/claude-plugins-official:plugins/frontend-design",
 			upstream: {
@@ -70,6 +68,7 @@ describe("buildLinkResource", () => {
 			},
 		});
 		expect("files" in r).toBe(false);
+		expect("scope" in r).toBe(false);
 	});
 
 	it("omits path/sha when empty (repo-root link)", () => {
@@ -78,9 +77,9 @@ describe("buildLinkResource", () => {
 			name: "aistack",
 			type: "custom",
 			group: "generic",
-			scope: "project",
 		});
 		expect(r.stableKey).toBe("linked:https://github.com/alp82/aistack:");
 		expect(r.upstream).toEqual({ repoUrl: "https://github.com/alp82/aistack" });
+		expect("scope" in r).toBe(false);
 	});
 });

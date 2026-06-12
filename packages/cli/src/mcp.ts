@@ -159,14 +159,12 @@ export function parseMcpPackage(server: McpServerConfig): PkgRef | null {
 export function buildMcpResource(
 	name: string,
 	group: string,
-	scope: "project" | "global",
 	pkg: PkgRef,
 ): Resource {
 	return {
 		type: "mcp",
 		name,
 		group,
-		scope,
 		stableKey: `linked:pkg:${pkg.registry}:${pkg.id}`,
 		pkg,
 	};
@@ -256,15 +254,11 @@ export function detectMcpServers(
 ): Resource[] {
 	const out: Resource[] = [];
 	const seen = new Set<string>();
-	const add = (
-		servers: ServerMap,
-		group: string,
-		scope: "project" | "global",
-	) => {
+	const add = (servers: ServerMap, group: string) => {
 		for (const [name, cfg] of Object.entries(servers ?? {})) {
 			const pkg = parseMcpPackage(cfg);
 			if (!pkg) continue;
-			const resource = buildMcpResource(name, group, scope, pkg);
+			const resource = buildMcpResource(name, group, pkg);
 			if (seen.has(resource.stableKey)) continue;
 			seen.add(resource.stableKey);
 			out.push(resource);
@@ -272,58 +266,38 @@ export function detectMcpServers(
 	};
 
 	// Project configs first (so they win dedup over global).
-	add(
-		readJson<McpFile>(join(cwd, ".mcp.json"))?.mcpServers,
-		"claude-code",
-		"project",
-	);
-	add(
-		readJson<McpFile>(join(cwd, "mcp.json"))?.mcpServers,
-		"generic",
-		"project",
-	);
+	add(readJson<McpFile>(join(cwd, ".mcp.json"))?.mcpServers, "claude-code");
+	add(readJson<McpFile>(join(cwd, "mcp.json"))?.mcpServers, "generic");
 	add(
 		readJson<McpFile>(join(cwd, ".cursor", "mcp.json"))?.mcpServers,
 		"cursor",
-		"project",
 	);
-	add(
-		readJson<McpFile>(join(cwd, ".vscode", "mcp.json"))?.servers,
-		"generic",
-		"project",
-	);
+	add(readJson<McpFile>(join(cwd, ".vscode", "mcp.json"))?.servers, "generic");
 	add(
 		readJson<McpFile>(join(cwd, "claude_desktop_config.json"))?.mcpServers,
 		"claude-desktop",
-		"project",
 	);
 
 	// Continue (project): a list per YAML file under .continue/mcpServers/.
 	for (const file of listYamlFiles(join(cwd, ".continue", "mcpServers"))) {
-		add(continueListToMap(readYaml<ContinueYaml>(file)), "continue", "project");
+		add(continueListToMap(readYaml<ContinueYaml>(file)), "continue");
 	}
 	// Roo (project).
-	add(
-		readJson<McpFile>(join(cwd, ".roo", "mcp.json"))?.mcpServers,
-		"roo",
-		"project",
-	);
+	add(readJson<McpFile>(join(cwd, ".roo", "mcp.json"))?.mcpServers, "roo");
 
 	// --- Global / stack-scoped: user-level tool configs ---
 	const claudeJson = readJson<ClaudeJson>(join(home, ".claude.json"));
-	add(claudeJson?.projects?.[cwd]?.mcpServers, "claude-code", "project");
-	add(claudeJson?.mcpServers, "claude-code", "global");
+	add(claudeJson?.projects?.[cwd]?.mcpServers, "claude-code");
+	add(claudeJson?.mcpServers, "claude-code");
 	add(
 		readJson<McpFile>(join(home, ".cursor", "mcp.json"))?.mcpServers,
 		"cursor",
-		"global",
 	);
 	// Windsurf (global only).
 	add(
 		readJson<McpFile>(join(home, ".codeium", "windsurf", "mcp_config.json"))
 			?.mcpServers,
 		"windsurf",
-		"global",
 	);
 	// Cline + Roo: VS Code extension globalStorage (OS-specific base).
 	for (const base of vscodeGlobalStorageBases(home)) {
@@ -337,7 +311,6 @@ export function detectMcpServers(
 				),
 			)?.mcpServers,
 			"cline",
-			"global",
 		);
 		add(
 			readJson<McpFile>(
@@ -349,24 +322,21 @@ export function detectMcpServers(
 				),
 			)?.mcpServers,
 			"roo",
-			"global",
 		);
 	}
 	// Continue (global).
 	for (const file of listYamlFiles(join(home, ".continue", "mcpServers"))) {
-		add(continueListToMap(readYaml<ContinueYaml>(file)), "continue", "global");
+		add(continueListToMap(readYaml<ContinueYaml>(file)), "continue");
 	}
 	// Gemini CLI (global).
 	add(
 		readJson<McpFile>(join(home, ".gemini", "settings.json"))?.mcpServers,
 		"gemini",
-		"global",
 	);
 	// Codex CLI (global, TOML).
 	add(
 		readToml<CodexToml>(join(home, ".codex", "config.toml"))?.mcp_servers,
 		"codex",
-		"global",
 	);
 
 	return out;
