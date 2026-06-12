@@ -12,11 +12,19 @@
 * API for stacks + tools
 * lazy loading upvotes fails
 * shieldcn
-* resend -> namecheap
+* marketplace
+    * sell own services and ai expertise
+    * full company profile
+    * revenue, achievements
+    * description is about how you built your biz instead of just the technicalities
+    * how to manage leads / dev / hiring / marketing / sales / ...
+* messaging
+* comments
 * price tiers for sibling products:
     * claude code vs claude ai
     * new data model
 * TUI for global + all projects
+* resend -> namecheap
 * og:image downloadable in profile
 * og:image generation faulty
     * https://aistack.to/stacks/orcdev-u9ckco

@@ -65,6 +65,7 @@ https://github.com/maddada/VSmux
 https://github.com/RunMaestro/Maestro
 https://github.com/superset-sh/superset
 https://github.com/RightNow-AI/openfang
+https://github.com/spot-techno/shelldeck
 https://www.augmentcode.com/product/intent
 https://code.claude.com/docs/en/agent-teams
 https://github.com/GoogleCloudPlatform/scion
@@ -169,6 +170,7 @@ https://animations.dev/vocabulary
 
 videos creation:
 https://editframe.com
+https://github.com/r2hu1/skate
 https://github.com/av/remotion-bits
 https://github.com/heygen-com/hyperframes
 https://github.com/AlemTuzlak/skills/tree/main/skills/remotion-video

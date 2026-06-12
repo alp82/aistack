@@ -306,6 +306,7 @@ function StackDetailsPage() {
 			<div className="bg-bg-canvas">
 				{/* Journey: Projects (01) → Tools (02, with Models/Bundles disclosures) → Workflow (03). */}
 				<ProjectsSection
+					index={1}
 					stackId={stack._id}
 					isOwner={upvoteStatus?.isOwner ?? false}
 				/>

@@ -26,7 +26,7 @@ describe("ProjectsSection – no CLI copy command", () => {
 		// Empty list — owner sees the empty-state UI
 		useQuery.mockReturnValue([]);
 
-		render(<ProjectsSection stackId={STACK_ID} isOwner={true} />);
+		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
 
 		expect(
 			screen.queryByText(/npx @use-aistack\/cli collect/i),
@@ -49,10 +49,105 @@ describe("ProjectsSection – no CLI copy command", () => {
 			},
 		]);
 
-		render(<ProjectsSection stackId={STACK_ID} isOwner={true} />);
+		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
 
 		expect(
 			screen.queryByText(/npx @use-aistack\/cli collect/i),
+		).not.toBeInTheDocument();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Group AE: ProjectsSection – always renders / empty state
+// ---------------------------------------------------------------------------
+
+describe("ProjectsSection – always renders / empty state", () => {
+	// TC-AE-01
+	it("non-owner + loaded empty: section heading is present", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([]);
+
+		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+
+		expect(
+			screen.getByRole("heading", { name: /^projects$/i }),
+		).toBeInTheDocument();
+	});
+
+	// TC-AE-02
+	it("non-owner + loaded empty: non-owner empty-state copy is present", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([]);
+
+		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+
+		expect(
+			screen.getByText(/no projects have been added/i),
+		).toBeInTheDocument();
+	});
+
+	// TC-AE-03
+	it("non-owner + loading: empty-state copy is absent (no flash)", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue(undefined);
+
+		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+
+		expect(
+			screen.queryByText(/no projects have been added/i),
+		).not.toBeInTheDocument();
+	});
+
+	// TC-AE-04
+	it("non-owner + has projects: project name shown, empty-state copy absent", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([
+			{
+				_id: "project_1" as never,
+				name: "Published Project",
+				slug: "published-project-ID",
+				shortId: "ID",
+				published: true,
+				fileCount: 2,
+				createdAt: Date.now(),
+				updatedAt: Date.now(),
+			},
+		]);
+
+		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+
+		expect(screen.getByText("Published Project")).toBeInTheDocument();
+		expect(
+			screen.queryByText(/no projects have been added/i),
+		).not.toBeInTheDocument();
+	});
+
+	// TC-AE-05
+	it("owner + loaded empty: owner 'Add a project' affordance present, non-owner copy absent", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([]);
+
+		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+
+		// The owner empty-state block contains a button with exactly "Add a project"
+		expect(
+			screen.getByRole("button", { name: /^add a project$/i }),
+		).toBeInTheDocument();
+		expect(
+			screen.queryByText(/no projects have been added/i),
+		).not.toBeInTheDocument();
+	});
+
+	// TC-AE-06
+	it("owner + loading: owner empty-state card absent (no owner flash either)", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue(undefined);
+
+		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+
+		// The owner empty-state card contains a button with exactly "Add a project"
+		expect(
+			screen.queryByRole("button", { name: /^add a project$/i }),
 		).not.toBeInTheDocument();
 	});
 });

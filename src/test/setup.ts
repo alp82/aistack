@@ -1,4 +1,9 @@
 import "@testing-library/jest-dom/vitest";
+import { MotionGlobalConfig } from "motion/react";
+
+// Skip all Motion animations in tests so AnimatePresence exits unmount
+// synchronously — accordion assertions check the panel is gone immediately.
+MotionGlobalConfig.skipAnimations = true;
 
 // jsdom does not implement scrollIntoView; components call it inside effects
 // (highlighted BundleCard, editor sidebar nav), so provide a noop to keep
@@ -11,6 +16,18 @@ if (typeof Element !== "undefined") {
 // framer-motion's whileInView/viewport features call IntersectionObserver,
 // which jsdom does not implement. Provide an inert stub so motion components
 // render in tests (the in-view transition simply never fires).
+// motion/react's Reorder.Group uses ResizeObserver internally under jsdom.
+// Provide an inert stub so drag-reorder components render without throwing.
+if (typeof ResizeObserver === "undefined") {
+	class MockResizeObserver {
+		observe() {}
+		unobserve() {}
+		disconnect() {}
+	}
+	globalThis.ResizeObserver =
+		MockResizeObserver as unknown as typeof ResizeObserver;
+}
+
 if (typeof IntersectionObserver === "undefined") {
 	class MockIntersectionObserver {
 		readonly root = null;
