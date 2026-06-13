@@ -83,7 +83,7 @@ test('TC-I-01: create() with projects array inserts matching project rows for th
   expect(projects[0].url).toBe('https://x.com/')
   expect(projects[0].tags).toEqual(['web'])
   // Projects no longer carry a publish state - the stack's flag must not propagate.
-  expect(projects[0].published).toBeUndefined()
+  expect((projects[0] as Record<string, unknown>).published).toBeUndefined()
 })
 
 test('TC-I-04: create() with projects:[] inserts no project rows', async () => {

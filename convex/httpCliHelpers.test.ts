@@ -1140,63 +1140,6 @@ test('deleteProject removes only the project row and leaves stack resources unto
 // TC-1207: DELETED — subject gone; coverage held by TC-NEW-MIG-02 (migration
 // dual-held test) and the rewritten TC-1450 (unlinkResource shared-row-stays-alive).
 
-test('reset_resources hard-deletes all rows and is idempotent', async () => {
-  const t = convexTest(schema, modules)
-  const { creatorId, stackId } = await seedCreatorAndStack(t)
-
-  // Seed one resources row + one resourceLinks row pointing at it.
-  await t.run(async (ctx) => {
-    const now = Date.now()
-    const resourceId = await ctx.db.insert('resources', {
-      type: 'rule',
-      name: 'to-wipe',
-      group: 'claude-code',
-      stableKey: 'claude-code:rule:to-wipe',
-      files: [{ name: 'w.md', content: 'w' }],
-      storage: 'hosted',
-      owner: { kind: 'creator', id: creatorId },
-      addedBy: creatorId,
-      deletedAt: null,
-      shortId: 'RES001',
-    })
-    await ctx.db.insert('resourceLinks', {
-      resourceId,
-      ownerKind: 'stack',
-      ownerId: stackId,
-      order: 0,
-      addedAt: now,
-    })
-  })
-
-  const first = await t.mutation(
-    internal.migrations['20260529_reset_resources'].run,
-    {},
-  )
-  expect(first.resourcesDeleted).toBeGreaterThanOrEqual(1)
-  expect(first.linksDeleted).toBeGreaterThanOrEqual(1)
-
-  // Both tables are empty after the reset.
-  const resourcesAfter = await t.run(async (ctx) =>
-    ctx.db.query('resources').collect(),
-  )
-  const linksAfter = await t.run(async (ctx) =>
-    ctx.db.query('resourceLinks').collect(),
-  )
-  expect(resourcesAfter).toHaveLength(0)
-  expect(linksAfter).toHaveLength(0)
-
-  // Second run deletes nothing and returns zeros.
-  const second = await t.mutation(
-    internal.migrations['20260529_reset_resources'].run,
-    {},
-  )
-  expect(second.resourcesDeleted).toBe(0)
-  expect(second.linksDeleted).toBe(0)
-})
-
-
-
-
 test('unlinkResource removes one link and leaves the others intact', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
@@ -1417,7 +1360,7 @@ test('unlinkResource rejects a non-owner', async () => {
   expect(items).toHaveLength(1)
 })
 
-test('deleteProject succeeds for the owner on a previously-published project', async () => {
+test('deleteProject succeeds for the owner (no draft guard)', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
   await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-1' }))
@@ -1425,12 +1368,11 @@ test('deleteProject succeeds for the owner on a previously-published project', a
   const now = Date.now()
   const projectId = await t.run(async (ctx: MutationCtx) =>
     ctx.db.insert('projects', {
-      name: 'Published',
-      slug: 'published',
-      shortId: 'PUB001',
+      name: 'My Project',
+      slug: 'my-project',
+      shortId: 'PRJ001',
       creatorId,
       stackId,
-      published: true,
       createdAt: now,
       updatedAt: now,
     }),
@@ -1438,7 +1380,7 @@ test('deleteProject succeeds for the owner on a previously-published project', a
 
   const asUser = t.withIdentity({ tokenIdentifier: 'convex|user-1' })
 
-  // Previously-published project must delete without throwing.
+  // Any owned project deletes without throwing - no publish/draft gate remains.
   await asUser.mutation(api.projects.deleteProject, { projectId })
   const gone = await t.run(async (ctx: MutationCtx) => ctx.db.get(projectId))
   expect(gone).toBeNull()
@@ -1467,7 +1409,7 @@ test('createProject persists a project with unique slug+shortId, no published fi
   expect(projects).toHaveLength(1)
   const project = projects[0]
   expect(project._id).toBe(result._id)
-  expect(project.published).toBeUndefined()
+  expect((project as Record<string, unknown>).published).toBeUndefined()
   expect((project as Record<string, unknown>).source).toBeUndefined()
   expect(project.order).toBeUndefined()
   expect(project.stackId).toBe(stackId)
@@ -1512,31 +1454,6 @@ test('createProject appends to the bottom of listByStack (order undefined)', asy
   expect('fileCount' in list[0]).toBe(false)
   expect('source' in list[0]).toBe(false)
   expect('cloneCount' in list[0]).toBe(false)
-})
-
-test('listByStack returns a formerly-draft project to unauthenticated callers', async () => {
-  const t = convexTest(schema, modules)
-  const { creatorId, stackId } = await seedCreatorAndStack(t)
-
-  // Legacy row still carrying published:false (pre-migration shape; the schema
-  // tolerates it as a transient optional field until the Deploy-B narrow).
-  const draftId = await t.run(async (ctx) =>
-    ctx.db.insert('projects', {
-      name: 'Former Draft',
-      slug: 'former-draft',
-      shortId: 'FDR001',
-      creatorId,
-      stackId,
-      published: false,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    }),
-  )
-
-  // No identity: the public/visitor path sees every project now.
-  const list = await t.query(api.projects.listByStack, { stackId })
-  expect(list).toHaveLength(1)
-  expect(list[0]._id).toBe(draftId)
 })
 
 test('createProject auto-resolves the single stack and rejects when the creator has none', async () => {
