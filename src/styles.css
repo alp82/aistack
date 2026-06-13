@@ -74,6 +74,7 @@ code, .font-mono {
   --accent-foreground: var(--accent-lime-contrast);
   --destructive: oklch(0.63 0.2 26);
   --destructive-foreground: oklch(0.97 0.01 26);
+  --destructive-fill: oklch(0.50 0.2 26);
   --border: var(--stroke-subtle);
   --input: var(--stroke-subtle);
   --ring: var(--accent-lime);
@@ -150,6 +151,7 @@ code, .font-mono {
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-fill: var(--destructive-fill);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

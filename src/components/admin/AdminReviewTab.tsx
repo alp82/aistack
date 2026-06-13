@@ -267,7 +267,7 @@ export function AdminReviewTab() {
 											<button
 												type="button"
 												onClick={() => handleRejectTool(tool._id)}
-												className="inline-flex items-center gap-2 border-2 border-destructive bg-destructive px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-destructive/90"
+												className="inline-flex items-center gap-2 border-2 border-destructive-fill bg-destructive-fill px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-destructive-foreground transition-colors hover:bg-destructive-fill/90"
 											>
 												<X className="size-3.5" />
 												Reject
@@ -571,7 +571,7 @@ export function AdminReviewTab() {
 												onClick={() =>
 													handleRejectEditSuggestion(suggestion._id)
 												}
-												className="inline-flex items-center gap-2 border-2 border-destructive bg-destructive px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-destructive/90"
+												className="inline-flex items-center gap-2 border-2 border-destructive-fill bg-destructive-fill px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-destructive-foreground transition-colors hover:bg-destructive-fill/90"
 											>
 												<X className="size-3.5" />
 												Reject
@@ -745,7 +745,7 @@ export function AdminReviewTab() {
 											<button
 												type="button"
 												onClick={() => handleRejectBundle(bundle._id)}
-												className="inline-flex items-center gap-2 border-2 border-destructive bg-destructive px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-destructive/90"
+												className="inline-flex items-center gap-2 border-2 border-destructive-fill bg-destructive-fill px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-destructive-foreground transition-colors hover:bg-destructive-fill/90"
 											>
 												<X className="size-3.5" />
 												Reject
@@ -877,7 +877,7 @@ export function AdminReviewTab() {
 											<button
 												type="button"
 												onClick={() => handleRejectModel(model._id)}
-												className="inline-flex items-center gap-2 border-2 border-destructive bg-destructive px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-destructive/90"
+												className="inline-flex items-center gap-2 border-2 border-destructive-fill bg-destructive-fill px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-destructive-foreground transition-colors hover:bg-destructive-fill/90"
 											>
 												<X className="size-3.5" />
 												Reject

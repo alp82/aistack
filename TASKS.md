@@ -1,20 +1,24 @@
 # TODO
-* Project simplification
-    * resources only for stacks
-    * no project page
-    * CLI only for global/stack scope
-* check CLI works
-* lazy loading upvotes fails
-* shieldcn
+* Projects in edit page
+    * match style
+    * drag and drop
+    * favicons
+    * new project as button and clears after creation/editing
+* stack page
+    * lazy loading upvotes fails
+    * tools, models, bundle are links to smooth scroll
+    * // titles ambigious
+    * tools price is wrong (bundle missing, should use same method as big price display in hero)
 * custom stack profile image for github
-* shields for aistack
-* custom theme for og image
+* custom theme for og/profile images
 * API for stacks + tools
 * og:image downloadable in profile
 * og:image generation faulty
     * https://aistack.to/stacks/orcdev-u9ckco
     * logos missing
     * order wrong
+* aistack on shieldcn
+* shieldcn in readme
 * github actions security (see below)
 * show real prices without sponsoring/discounts
 * marketplace
@@ -25,6 +29,7 @@
     * how to manage leads / dev / hiring / marketing / sales / ...
 * messaging
 * comments
+* check CLI works
 * price tiers for sibling products:
     * claude code vs claude ai
     * new data model

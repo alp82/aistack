@@ -12,7 +12,7 @@ const buttonVariants = cva(
 				default:
 					"border-accent-lime bg-accent-lime text-accent-lime-contrast shadow-terminal-sm hover:border-accent-lime-strong hover:bg-accent-lime-strong",
 				destructive:
-					"border-destructive bg-destructive text-destructive-foreground shadow-terminal-sm hover:bg-destructive/90",
+					"border-destructive-fill bg-destructive-fill text-destructive-foreground shadow-terminal-sm hover:bg-destructive-fill/90",
 				outline:
 					"border-stroke-strong bg-bg-panel text-fg-primary hover:border-accent-lime/60 hover:bg-bg-panel-elevated hover:text-accent-lime",
 				secondary:

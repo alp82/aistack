@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>destructive token WCAG AA audit</title>
+<style>
+  body { font-family: 'JetBrains Mono', monospace; background: #111; color: #ddd; padding: 2rem; max-width: 1100px; }
+  h1 { color: #a3e635; font-size: 1.1rem; margin-bottom: 0.25rem; }
+  h2 { color: #a3e635; font-size: 0.9rem; margin-top: 2rem; border-bottom: 1px solid #333; padding-bottom: 0.3rem; }
+  p, li { font-size: 0.82rem; line-height: 1.6; color: #bbb; }
+  code { background: #1e1e1e; padding: 0.15em 0.4em; color: #a3e635; font-size: 0.85em; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.75rem; margin-top: 1rem; }
+  th { background: #1a1a1a; color: #a3e635; padding: 6px 10px; text-align: left; border: 1px solid #333; white-space: nowrap; }
+  td { padding: 5px 10px; border: 1px solid #222; white-space: nowrap; }
+  tr:hover td { background: #1a1a1a; }
+  .pass  { color: #86efac; }
+  .large { color: #fcd34d; }
+  .fail  { color: #f87171; }
+  .both  { background: #1a2a1a; }
+  .highlight { background: #1e2a0f; }
+  .cur   { background: #1a1a2e; }
+  .verdict { background: #1a0f0f; border-left: 3px solid #f87171; padding: 1rem; margin: 1rem 0; }
+  .verdict.split { border-color: #fcd34d; }
+  .verdict.ok { background: #0f1a0f; border-color: #86efac; }
+  .swatch { display: inline-block; width: 1rem; height: 1rem; vertical-align: middle; margin-right: 0.4rem; border: 1px solid #444; }
+  .token-row { display: flex; gap: 1rem; flex-wrap: wrap; margin: 0.75rem 0; }
+  .token-box { background: #1a1a1a; padding: 0.5rem 0.75rem; border: 1px solid #333; font-size: 0.78rem; }
+  .token-name { color: #a3e635; }
+  .token-val  { color: #ddd; }
+  .token-lum  { color: #888; font-size: 0.72rem; }
+</style>
+</head>
+<body>
+
+<h1>-- destructive token WCAG AA audit</h1>
+<p>Prototype: <code>.prototypes/destructive-contrast-sweep.ts</code> — run with <code>pnpm tsx</code>.<br>
+OKLCH conversion uses the exact OKLab matrices (Björn Ottosson 2020). Sanity-checked: sRGB red = lum 0.2126, white = 1.0, 21:1 white/black. All correct.</p>
+
+<h2>Token values (verbatim from src/styles.css :root block)</h2>
+<div class="token-row">
+  <div class="token-box">
+    <div class="token-name">--destructive</div>
+    <div class="token-val">oklch(0.63 0.2 26)</div>
+    <div class="token-lum">lum = 0.2226</div>
+  </div>
+  <div class="token-box">
+    <div class="token-name">--destructive-foreground</div>
+    <div class="token-val">oklch(0.97 0.01 26)</div>
+    <div class="token-lum">lum = 0.9096</div>
+  </div>
+  <div class="token-box">
+    <div class="token-name">--background (bg-canvas)</div>
+    <div class="token-val">oklch(0.16 0.008 256)</div>
+    <div class="token-lum">lum = 0.0041</div>
+  </div>
+  <div class="token-box">
+    <div class="token-name">--card (bg-panel)</div>
+    <div class="token-val">oklch(0.20 0.009 256)</div>
+    <div class="token-lum">lum = 0.0080</div>
+  </div>
+  <div class="token-box">
+    <div class="token-name">--popover (bg-panel-elevated)</div>
+    <div class="token-val">oklch(0.28 0.01 256)</div>
+    <div class="token-lum">lum = 0.0220</div>
+  </div>
+  <div class="token-box">
+    <div class="token-name">--bg-panel-muted</div>
+    <div class="token-val">oklch(0.24 0.009 256)</div>
+    <div class="token-lum">lum = 0.0138</div>
+  </div>
+  <div class="token-box">
+    <div class="token-name">--bg-shell (darkest)</div>
+    <div class="token-val">oklch(0.12 0.01 256)</div>
+    <div class="token-lum">lum = 0.0017</div>
+  </div>
+</div>
+
+<p>There is <strong>no separate .dark block</strong> for destructive tokens — <code>:root</code> is the only definition, and the app always runs dark (<code>color-scheme: dark</code>). No light/dark override exists.</p>
+
+<h2>Current token audit (the two constraints)</h2>
+
+<div class="verdict">
+  <strong>Constraint A — destructive-foreground (near-white) on bg-destructive (button fill)</strong><br>
+  <span class="fail">3.52:1 FAIL</span> — needs ≥ 4.5:1 for WCAG AA small text. The current button is more than 1 full stop below AA.
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Surface</th>
+      <th>Surface lum</th>
+      <th>text-destructive contrast</th>
+      <th>WCAG AA small text (≥4.5)</th>
+      <th>WCAG AA large/icon (≥3.0)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>bg-canvas (--background)</td><td>0.0041</td><td>5.04:1</td><td class="pass">PASS</td><td class="pass">PASS</td></tr>
+    <tr><td>bg-shell (darkest)</td><td>0.0017</td><td>5.27:1</td><td class="pass">PASS</td><td class="pass">PASS</td></tr>
+    <tr><td>bg-panel (--card)</td><td>0.0080</td><td>4.70:1</td><td class="pass">PASS</td><td class="pass">PASS</td></tr>
+    <tr><td>bg-panel-muted</td><td>0.0138</td><td>4.27:1</td><td class="large">FAIL (large/icon only)</td><td class="pass">PASS</td></tr>
+    <tr><td>bg-panel-elevated (--popover)</td><td>0.0220</td><td>3.79:1</td><td class="large">FAIL (large/icon only)</td><td class="pass">PASS</td></tr>
+    <tr><td>bg-section-dark</td><td>0.0058</td><td>4.88:1</td><td class="pass">PASS</td><td class="pass">PASS</td></tr>
+  </tbody>
+</table>
+<p>
+  <strong>Constraint B status at current L=0.63:</strong> 4 of 6 surfaces pass at text level; 2 fail text but pass large/icon.
+  The two marginal surfaces are <code>bg-panel-muted</code> and <code>bg-panel-elevated</code> — notably the popover background where the ConfirmDialog sits.
+  All 6 pass the large/icon (≥3:1) threshold.
+</p>
+
+<h2>Sweep table — L 0.40–0.65, C=0.2 h=26 (real token chroma+hue)</h2>
+<p>A = destructive-fg on bg-destructive (button). B1–B6 = text-destructive on each surface. Highlighted row = current value.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>L</th><th>lum</th>
+      <th>A: fg/btn</th>
+      <th>B1: canvas</th><th>B2: shell</th><th>B3: panel</th>
+      <th>B4: muted</th><th>B5: popover</th><th>B6: sect-dark</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>0.40</td><td>0.0658</td><td class="pass">8.28</td><td class="fail">2.14</td><td class="fail">2.24</td><td class="fail">2.00</td><td class="fail">1.81</td><td class="fail">1.61</td><td class="fail">2.07</td><td class="fail">A only</td></tr>
+    <tr><td>0.45</td><td>0.0842</td><td class="pass">7.15</td><td class="fail">2.48</td><td class="fail">2.59</td><td class="fail">2.31</td><td class="fail">2.10</td><td class="fail">1.86</td><td class="fail">2.40</td><td class="fail">A only</td></tr>
+    <tr><td>0.50</td><td>0.1075</td><td class="pass">6.09</td><td class="fail">2.91</td><td class="pass">3.04</td><td class="fail">2.72</td><td class="fail">2.47</td><td class="fail">2.19</td><td class="fail">2.82</td><td class="fail">A only</td></tr>
+    <tr><td>0.55</td><td>0.1453</td><td class="pass">4.91</td><td class="large">3.61</td><td class="large">3.78</td><td class="large">3.37</td><td class="pass">3.06</td><td class="fail">2.71</td><td class="large">3.50</td><td class="fail">A only</td></tr>
+    <tr><td>0.57</td><td>0.1626</td><td class="pass">4.51</td><td class="large">3.93</td><td class="pass">4.11</td><td class="large">3.67</td><td class="large">3.33</td><td class="fail">2.95</td><td class="large">3.81</td><td class="fail">A: bare pass; B: partial</td></tr>
+    <tr><td>0.58</td><td>0.1718</td><td class="fail">4.33</td><td class="large">4.10</td><td class="pass">4.29</td><td class="large">3.82</td><td class="large">3.47</td><td class="large">3.08</td><td class="large">3.97</td><td class="fail">Neither full pass</td></tr>
+    <tr class="cur"><td>0.63</td><td>0.2226</td><td class="fail">3.52</td><td class="pass">5.04</td><td class="pass">5.27</td><td class="pass">4.70</td><td class="large">4.27</td><td class="large">3.79</td><td class="pass">4.88</td><td class="fail">B partial; A FAIL</td></tr>
+    <tr><td>0.65</td><td>0.2455</td><td class="fail">3.25</td><td class="pass">5.46</td><td class="pass">5.71</td><td class="pass">5.09</td><td class="pass">4.63</td><td class="large">4.11</td><td class="pass">5.29</td><td class="fail">B near-full; A FAIL</td></tr>
+  </tbody>
+</table>
+
+<p>
+  <strong>The fundamental conflict:</strong> constraint A requires a <em>darker</em> fill (lower L → more luminance contrast with near-white fg).
+  Constraint B requires a <em>lighter/brighter</em> red (higher L → more contrast against near-black backgrounds).
+  These two pull in opposite directions. There is no single L value that satisfies both at the 4.5:1 text level.
+</p>
+
+<h2>Split: the dead zone</h2>
+<p>
+  Constraint A passes for L ≤ 0.57 (A = 4.51:1 at the boundary — barely).<br>
+  Constraint B (text, all-surface) cannot pass at L ≤ 0.57 because the popover background (lum 0.022) is too close to the red at that lightness. B5 (popover) tops out at 2.95 at L=0.57.<br>
+  There is <strong>no overlap</strong> — a split is required.
+</p>
+
+<h2>Verdict: SPLIT required</h2>
+
+<div class="verdict split">
+  A single <code>--destructive</code> token CANNOT satisfy both constraints simultaneously at the 4.5:1 text threshold. A split into a fill token (for buttons) and an accent token (for text/icons on dark backgrounds) is necessary.
+</div>
+
+<h2>Recommended values</h2>
+
+<table>
+  <thead>
+    <tr><th>Token</th><th>Purpose</th><th>Value</th><th>Constraint A</th><th>Constraint B (worst surface)</th></tr>
+  </thead>
+  <tbody>
+    <tr class="highlight">
+      <td><code>--destructive-fill</code> (new)</td>
+      <td>bg-destructive button fill, border-destructive on button</td>
+      <td><code>oklch(0.50 0.2 26)</code></td>
+      <td class="pass">6.09:1 ✓ (with --destructive-fg near-white)</td>
+      <td>n/a (never used as text on dark bg)</td>
+    </tr>
+    <tr class="highlight">
+      <td><code>--destructive</code> (keep/adjust)</td>
+      <td>text-destructive, border-destructive on dark bg, icon color, bg-destructive/10 tint</td>
+      <td><code>oklch(0.65 0.2 26)</code></td>
+      <td>n/a (not a button bg)</td>
+      <td class="large">B5 popover: 4.11:1 — passes large/icon, fails small text<br>B1–B4,B6: all ≥4.63 ✓</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>
+  Alternatively, if you want every <code>text-destructive</code> instance (including small 10px form-field errors) to be AA-compliant even on the popover surface, you need <code>L ≥ 0.67</code> for the accent token (which yields ~4.5:1 on popover). Check:
+  at L=0.67, B5 popover ≈ 4.45:1 — still marginal. At L=0.70 the popover clears 4.5 easily, but the red becomes noticeably orange-pink. The practical recommendation is to accept that small red error text inside popovers is icon-level only (the popover has the lightest dark surface at lum=0.022), or to darken the popover background slightly.
+</p>
+
+<h2>AdminReviewTab gotcha (hardcoded text-white)</h2>
+<p>
+  <code>src/components/admin/AdminReviewTab.tsx</code> uses <code>text-white</code> (not <code>text-destructive-foreground</code>) on <code>bg-destructive</code> buttons.
+  At current L=0.63, white-on-destructive = <strong class="fail">3.85:1 FAIL</strong>.
+  Using the recommended fill token at L=0.50, white-on-fill = <strong class="pass">6.67:1 PASS</strong>.
+  These buttons should be migrated to use the standard button variant, or the fill token must be applied.
+</p>
+
+<h2>Summary table — current vs recommended</h2>
+
+<table>
+  <thead>
+    <tr><th>Scenario</th><th>Current contrast</th><th>Recommended contrast</th><th>Pass?</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Button: destructive-fg on bg-destructive</td>
+      <td class="fail">3.52:1 ✗</td>
+      <td class="pass">6.09:1 (fill L=0.50)</td>
+      <td class="pass">✓</td>
+    </tr>
+    <tr>
+      <td>text-destructive on bg-canvas</td>
+      <td class="pass">5.04:1 ✓</td>
+      <td class="pass">5.46:1 (accent L=0.65)</td>
+      <td class="pass">✓</td>
+    </tr>
+    <tr>
+      <td>text-destructive on bg-panel</td>
+      <td class="pass">4.70:1 ✓</td>
+      <td class="pass">5.09:1 (accent L=0.65)</td>
+      <td class="pass">✓</td>
+    </tr>
+    <tr>
+      <td>text-destructive on bg-panel-muted</td>
+      <td class="large">4.27:1 ~ (large only)</td>
+      <td class="pass">4.63:1 (accent L=0.65)</td>
+      <td class="pass">✓</td>
+    </tr>
+    <tr>
+      <td>text-destructive on bg-panel-elevated (popover)</td>
+      <td class="large">3.79:1 ~ (large only)</td>
+      <td class="large">4.11:1 (accent L=0.65) ~ large/icon</td>
+      <td class="large">~ icon OK</td>
+    </tr>
+    <tr>
+      <td>icon / large: AlertTriangle in ConfirmDialog (bg-destructive/10 tint on bg-panel-elevated)</td>
+      <td class="large">3.79:1 ~</td>
+      <td class="pass">4.11:1 (accent L=0.65)</td>
+      <td class="large">~ icon OK (≥3:1)</td>
+    </tr>
+    <tr>
+      <td>AdminReviewTab text-white on bg-destructive</td>
+      <td class="fail">3.85:1 ✗</td>
+      <td class="pass">6.67:1 (fill L=0.50)</td>
+      <td class="pass">✓ (migrate to standard variant)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Implementation sketch</h2>
+<pre style="background:#1a1a1a;padding:1rem;font-size:0.78rem;overflow-x:auto;">
+/* src/styles.css — two-token split */
+--destructive:          oklch(0.65 0.2 26);   /* text-destructive / border / tints */
+--destructive-fill:     oklch(0.50 0.2 26);   /* bg-destructive button fill        */
+--destructive-foreground: oklch(0.97 0.01 26); /* unchanged                         */
+
+/* button.tsx — destructive variant */
+"border-destructive-fill bg-destructive-fill text-destructive-foreground hover:bg-destructive-fill/90"
+
+/* badge.tsx — same swap */
+"border-transparent bg-destructive-fill text-destructive-foreground"
+</pre>
+<p>All <code>text-destructive</code>, <code>border-destructive/30</code>, <code>bg-destructive/10</code>, and <code>bg-destructive/20</code> tint usages keep the current token name — only the fill surfaces need the new token.</p>
+
+</body>
+</html>

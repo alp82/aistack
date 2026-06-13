@@ -1,6 +1,6 @@
 import { AlertTriangle } from "lucide-react";
-import { Dialog } from "./Dialog";
 import { Button } from "./button";
+import { Dialog } from "./Dialog";
 
 interface ConfirmDialogProps {
 	open: boolean;
@@ -52,13 +52,10 @@ export function ConfirmDialog({
 				</Button>
 				<Button
 					type="button"
+					variant={variant === "danger" ? "destructive" : "default"}
 					onClick={onConfirm}
 					disabled={loading}
-					className={
-						variant === "danger"
-							? "bg-destructive font-mono text-xs font-bold uppercase tracking-wider text-white hover:bg-destructive/90"
-							: "bg-accent-lime font-mono text-xs font-bold uppercase tracking-wider text-black hover:bg-accent-lime-strong"
-					}
+					className="font-mono text-xs font-bold uppercase tracking-wider"
 				>
 					{loading ? "..." : confirmLabel}
 				</Button>
