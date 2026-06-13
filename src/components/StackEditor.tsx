@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
 import { GridBackground } from "@/components/GridBackground";
 import { SignInDialog } from "@/components/SignInDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
 import { DetailsStep } from "@/features/stack-editor/components/DetailsStep";
 import { ProjectsStep } from "@/features/stack-editor/components/ProjectsStep";
@@ -389,6 +390,7 @@ export function StackEditor({
 	);
 
 	const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+	const [showUnpublishConfirm, setShowUnpublishConfirm] = useState(false);
 
 	// Lock body scroll when mobile sidebar is open
 	useEffect(() => {
@@ -427,6 +429,22 @@ export function StackEditor({
 					onClose={() => setShowSignInDialog(false)}
 					message="Please sign in to publish your stack. Your work is saved locally and will be available when you return."
 				/>
+				<ConfirmDialog
+					open={showUnpublishConfirm}
+					onClose={() => setShowUnpublishConfirm(false)}
+					onConfirm={async () => {
+						try {
+							await handleSave(false);
+						} finally {
+							setShowUnpublishConfirm(false);
+						}
+					}}
+					title="Unpublish stack"
+					description="This will hide the stack from everyone and remove it from public listings. You can republish it anytime."
+					confirmLabel="Unpublish"
+					variant="danger"
+					loading={state.saving}
+				/>
 				<div className="relative z-10 mx-auto max-w-content flex flex-col">
 					<div className="flex">
 						<main className="flex-1 px-3 py-4 sm:px-6 sm:py-8 min-w-0">
@@ -456,7 +474,7 @@ export function StackEditor({
 												{/* Published/Unpublish Button - hidden on mobile */}
 												<button
 													type="button"
-													onClick={() => handleSave(false)}
+													onClick={() => setShowUnpublishConfirm(true)}
 													disabled={state.saving}
 													className="group hidden sm:inline-flex items-center gap-2 px-4 py-2 border-2 border-accent-lime font-mono text-xs font-bold uppercase tracking-wider text-accent-lime transition-colors hover:border-destructive hover:text-destructive disabled:opacity-50 cursor-pointer"
 												>
