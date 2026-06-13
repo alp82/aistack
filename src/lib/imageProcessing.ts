@@ -48,13 +48,15 @@ function loadImage(blob: Blob): Promise<HTMLImageElement> {
 }
 
 /**
- * Convert a File or Blob to a WebP Blob, fit-within `maxDim` pixels.
- * Throws if the canvas/encode pipeline fails or the source isn't an image.
+ * Resize a File or Blob within `maxDim` pixels and encode it via canvas to the
+ * given MIME type. Throws if the canvas/encode pipeline fails or the source
+ * isn't an image.
  */
-export async function convertToWebP(
+async function resizeAndEncode(
 	source: File | Blob,
-	maxDim: number = DEFAULT_MAX_DIM,
-	quality: number = DEFAULT_QUALITY,
+	maxDim: number,
+	mimeType: string,
+	quality: number,
 ): Promise<Blob> {
 	if (source.type && !source.type.startsWith("image/")) {
 		throw new Error(`Not an image — content-type is "${source.type}"`);
@@ -81,8 +83,48 @@ export async function convertToWebP(
 				}
 				resolve(blob);
 			},
-			"image/webp",
+			mimeType,
 			quality,
 		);
 	});
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => resolve(reader.result as string);
+		reader.onerror = () => reject(new Error("Failed to read blob as data URL"));
+		reader.readAsDataURL(blob);
+	});
+}
+
+/**
+ * Convert a File or Blob to a WebP Blob, fit-within `maxDim` pixels.
+ * Throws if the canvas/encode pipeline fails or the source isn't an image.
+ */
+export async function convertToWebP(
+	source: File | Blob,
+	maxDim: number = DEFAULT_MAX_DIM,
+	quality: number = DEFAULT_QUALITY,
+): Promise<Blob> {
+	return resizeAndEncode(source, maxDim, "image/webp", quality);
+}
+
+/**
+ * Convert a File or Blob to a compact data-URL string, fit-within `maxDim`
+ * pixels. Defaults to JPEG — Safari's canvas.toBlob has no WebP encoder and
+ * silently falls back to a large PNG, which would blow the localStorage budget
+ * used to stage guest avatars. Throws if the source isn't an image or the
+ * encode pipeline fails.
+ */
+export async function convertToCompactDataUrl(
+	source: Blob | File,
+	opts?: { maxDim?: number; mimeType?: string; quality?: number },
+): Promise<string> {
+	const maxDim = opts?.maxDim ?? DEFAULT_MAX_DIM;
+	const mimeType = opts?.mimeType ?? "image/jpeg";
+	const quality = opts?.quality ?? 0.82;
+
+	const blob = await resizeAndEncode(source, maxDim, mimeType, quality);
+	return blobToDataUrl(blob);
 }

@@ -35,7 +35,9 @@ import {
 	buildManualStableKey,
 	MANUAL_RESOURCE_GROUP,
 } from "@/lib/resource-utils";
+import { isDataUrl, uploadStagedAvatar } from "@/lib/uploadStagedAvatar";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 
 function LookupDataSync({
 	tools,
@@ -125,6 +127,8 @@ export function StackEditor({
 	const createStack = useMutation(api.stacks.create);
 	const updateStack = useMutation(api.stacks.update);
 	const updateCreatorProfile = useMutation(api.creators.updateProfile);
+	const generateUploadUrl = useMutation(api.files.generateUploadUrl);
+	const getFileUrl = useMutation(api.files.getUrl);
 
 	const {
 		state,
@@ -287,6 +291,21 @@ export function StackEditor({
 			}
 
 			const payload = selectSavePayload(state, publish);
+
+			// A staged guest avatar arrives as a data URL — upload it to Convex
+			// storage now so the DB never persists the data URL. A thrown upload
+			// error lands in the catch below, which means disableDraftSaving() is
+			// not reached and the draft survives for retry.
+			if (isDataUrl(payload.stackImageUrl)) {
+				payload.stackImageUrl = await uploadStagedAvatar(
+					payload.stackImageUrl,
+					{
+						generateUploadUrl,
+						getFileUrl: (args) =>
+							getFileUrl({ storageId: args.storageId as Id<"_storage"> }),
+					},
+				);
+			}
 
 			// Disable draft auto-save BEFORE the mutation to prevent race conditions
 			disableDraftSaving();
@@ -586,6 +605,7 @@ export function StackEditor({
 								onIsTeamChange={setIsTeam}
 								teamSize={state.teamSize}
 								onTeamSizeChange={setTeamSize}
+								guestSession={guestSession}
 							/>
 
 							{/* HR between steps */}

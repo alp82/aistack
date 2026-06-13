@@ -23,6 +23,7 @@ type DetailsStepProps = {
 	onIsTeamChange: (value: boolean) => void;
 	teamSize: number;
 	onTeamSizeChange: (value: number) => void;
+	guestSession?: boolean;
 };
 
 function DetailsStep({
@@ -42,6 +43,7 @@ function DetailsStep({
 	onIsTeamChange,
 	teamSize,
 	onTeamSizeChange,
+	guestSession,
 }: DetailsStepProps) {
 	const [isAvatarEditorOpen, setIsAvatarEditorOpen] = useState(false);
 	const [imgError, setImgError] = useState(false);
@@ -72,6 +74,7 @@ function DetailsStep({
 				defaultAvatarUrl={defaultAvatarUrl}
 				creatorName={creator.name}
 				onAvatarChange={onStackImageUrlChange}
+				guestSession={guestSession}
 			/>
 
 			{/* Main layout */}

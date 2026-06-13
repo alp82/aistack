@@ -39,6 +39,7 @@ function NewStackPage() {
 	const [loadingCreator, setLoadingCreator] = useState(true);
 	const [isGuest, setIsGuest] = useState(false);
 	const navigatingRef = useRef(false);
+	const hasResolvedRef = useRef(false);
 
 	// Get user's Google profile image as default
 	const userImageUrl = session.data?.user?.image ?? undefined;
@@ -80,7 +81,11 @@ function NewStackPage() {
 			});
 	}, [isAuthenticated, isLoading, userStack, getOrCreateCreator, navigate]);
 
-	if (isLoading || loadingCreator) {
+	if (creator) {
+		hasResolvedRef.current = true;
+	}
+
+	if ((isLoading || loadingCreator) && !hasResolvedRef.current) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-bg-canvas">
 				<div className="font-mono text-sm text-fg-muted">Loading...</div>

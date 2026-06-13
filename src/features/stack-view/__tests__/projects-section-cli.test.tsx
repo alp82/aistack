@@ -56,6 +56,69 @@ describe("ProjectsSection – no CLI copy command", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Group B — ProjectsSection `header` prop (TC-HDR-01..03)
+// ---------------------------------------------------------------------------
+
+describe("ProjectsSection – header prop", () => {
+	const STACK_ID = "stack_test" as never;
+
+	// TC-HDR-01: no header prop → default '// PROJECTS' kicker present.
+	it("TC-HDR-01: no header prop → default '// PROJECTS' kicker present", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([]);
+
+		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+
+		expect(screen.getByText(/\/\/ PROJECTS/i)).toBeInTheDocument();
+	});
+
+	// TC-HDR-02: header override → custom text present, '// PROJECTS' absent.
+	it("TC-HDR-02: header={<div>CUSTOM HEADER</div>} → 'CUSTOM HEADER' present, '// PROJECTS' absent", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([]);
+
+		render(
+			<ProjectsSection
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+				header={<div>CUSTOM HEADER</div>}
+			/>,
+		);
+
+		expect(screen.getByText("CUSTOM HEADER")).toBeInTheDocument();
+		expect(screen.queryByText(/\/\/ PROJECTS/i)).not.toBeInTheDocument();
+	});
+
+	// TC-HDR-03: header override + one project → project name still renders.
+	it("TC-HDR-03: header override + one project → project name still renders", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([
+			{
+				_id: "project_1" as never,
+				name: "My Project",
+				description: undefined,
+				url: undefined,
+				tags: [],
+				createdAt: Date.now(),
+				updatedAt: Date.now(),
+			},
+		]);
+
+		render(
+			<ProjectsSection
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+				header={<div>CUSTOM HEADER</div>}
+			/>,
+		);
+
+		expect(screen.getByText("My Project")).toBeInTheDocument();
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Group AE: ProjectsSection – always renders / empty state
 // ---------------------------------------------------------------------------
 

@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import {
-	act,
 	cleanup,
 	fireEvent,
 	render,
 	screen,
+	waitFor,
 	within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -37,7 +37,7 @@ const PROJECT_B = {
 };
 
 // ---------------------------------------------------------------------------
-// Group E: ProjectsStep create mode
+// Group E: ProjectsStep create mode — surviving cases
 // ---------------------------------------------------------------------------
 
 describe("ProjectsStep – create mode", () => {
@@ -73,9 +73,112 @@ describe("ProjectsStep – create mode", () => {
 		expect(screen.getByText("Alpha App")).toBeInTheDocument();
 		expect(screen.getByText("Beta Service")).toBeInTheDocument();
 	});
+});
 
-	// TC-E-01
-	it("add a project -> onProjectsChange called with array length 1", () => {
+// ---------------------------------------------------------------------------
+// Group C: ProjectsStep edit mode — delegation to ProjectsSection (NEW)
+// ---------------------------------------------------------------------------
+
+describe("ProjectsStep – edit mode: delegation to ProjectsSection", () => {
+	const STACK_ID = "stack_abc123" as never;
+
+	// TC-NEW-E-01: edit mode + mocked listByStack → live project name visible.
+	it("TC-NEW-E-01: mode='edit' renders project name from listByStack", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([
+			{
+				_id: "p1" as never,
+				name: "Live Project",
+				description: undefined,
+				url: undefined,
+				tags: [],
+				createdAt: Date.now(),
+				updatedAt: Date.now(),
+			},
+		]);
+
+		render(<ProjectsStep mode="edit" stackId={STACK_ID} isOwner={true} />);
+		expect(screen.getByText("Live Project")).toBeInTheDocument();
+	});
+
+	// TC-NEW-E-02: two projects → reorder handle present for each.
+	it("TC-NEW-E-02: two projects → reorder handle with accessible name /reorder alpha/i present", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([
+			{
+				_id: "p1" as never,
+				name: "Alpha",
+				description: undefined,
+				url: undefined,
+				tags: [],
+				createdAt: 1000,
+				updatedAt: 1000,
+			},
+			{
+				_id: "p2" as never,
+				name: "Beta",
+				description: undefined,
+				url: undefined,
+				tags: [],
+				createdAt: 2000,
+				updatedAt: 2000,
+			},
+		]);
+
+		render(<ProjectsStep mode="edit" stackId={STACK_ID} isOwner={true} />);
+		expect(
+			screen.getByRole("button", { name: /reorder alpha/i }),
+		).toBeInTheDocument();
+	});
+
+	// TC-NEW-E-03: editor kicker present; standalone public // PROJECTS kicker absent.
+	it("TC-NEW-E-03: editor kicker '// STEP 02: PROJECTS' present; standalone '// PROJECTS' kicker absent", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([]);
+
+		render(<ProjectsStep mode="edit" stackId={STACK_ID} isOwner={true} />);
+		expect(screen.getByText(/\/\/ STEP 02: PROJECTS/i)).toBeInTheDocument();
+		expect(screen.queryByText(/^\/\/ PROJECTS$/i)).not.toBeInTheDocument();
+	});
+
+	// TC-NEW-E-04: section anchor present in edit mode.
+	it("TC-NEW-E-04: document.getElementById('section-projects') not null in edit mode", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([]);
+
+		render(<ProjectsStep mode="edit" stackId={STACK_ID} isOwner={true} />);
+		expect(document.getElementById("section-projects")).toBeInTheDocument();
+	});
+
+	// TC-NEW-E-05: isOwner wired → "New Project" button present.
+	it("TC-NEW-E-05: isOwner=true → button with accessible name /new project/i present", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([]);
+
+		render(<ProjectsStep mode="edit" stackId={STACK_ID} isOwner={true} />);
+		expect(
+			screen.getByRole("button", { name: /new project/i }),
+		).toBeInTheDocument();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Group D: Create mode — dialog-based UI (targets post-decouple ProjectsManager)
+// ---------------------------------------------------------------------------
+
+describe("ProjectsStep – create mode: dialog-based ProjectsManager UI", () => {
+	// TC-NEW-D-01
+	it("TC-NEW-D-01: 'New Project' → dialog opens with empty name input", async () => {
+		render(
+			<ProjectsStep mode="create" projects={[]} onProjectsChange={vi.fn()} />,
+		);
+		fireEvent.click(screen.getByRole("button", { name: /new project/i }));
+		const nameInput = await screen.findByLabelText(/name/i);
+		expect(nameInput).toHaveValue("");
+	});
+
+	// TC-NEW-D-02
+	it("TC-NEW-D-02: dialog → type name → Create → onProjectsChange called once, arg[0].name === typed name, length 1", async () => {
 		const onProjectsChange = vi.fn();
 		render(
 			<ProjectsStep
@@ -84,23 +187,37 @@ describe("ProjectsStep – create mode", () => {
 				onProjectsChange={onProjectsChange}
 			/>,
 		);
-
-		// Fill in the name field (required)
-		const nameInput = screen.getByPlaceholderText(/project name/i);
-		fireEvent.change(nameInput, { target: { value: "New Project" } });
-
-		// Submit
-		const addButton = screen.getByRole("button", { name: /add/i });
-		fireEvent.click(addButton);
-
-		expect(onProjectsChange).toHaveBeenCalledOnce();
-		const arg = onProjectsChange.mock.calls[0][0];
+		fireEvent.click(screen.getByRole("button", { name: /new project/i }));
+		const nameInput = await screen.findByLabelText(/name/i);
+		fireEvent.change(nameInput, { target: { value: "Dialog Project" } });
+		fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
+		await waitFor(() => expect(onProjectsChange).toHaveBeenCalledOnce());
+		const arg = onProjectsChange.mock.calls[0][0] as { name: string }[];
 		expect(arg).toHaveLength(1);
-		expect(arg[0].name).toBe("New Project");
+		expect(arg[0].name).toBe("Dialog Project");
 	});
 
-	// TC-E-02
-	it("remove a project -> onProjectsChange called with []", () => {
+	// TC-NEW-D-03
+	it("TC-NEW-D-03: one staged item with description → toggle aria-expanded false → click → description visible", async () => {
+		render(
+			<ProjectsStep
+				mode="create"
+				projects={[PROJECT_A]}
+				onProjectsChange={vi.fn()}
+			/>,
+		);
+		const toggle = screen.getByRole("button", {
+			name: /show details for alpha app/i,
+		});
+		expect(toggle).toHaveAttribute("aria-expanded", "false");
+		fireEvent.click(toggle);
+		await waitFor(() =>
+			expect(screen.getByText("First project")).toBeInTheDocument(),
+		);
+	});
+
+	// TC-NEW-D-04
+	it("TC-NEW-D-04: expand staged row → Edit → dialog seeded → change name → Save → onProjectsChange last call has updated name", async () => {
 		const onProjectsChange = vi.fn();
 		render(
 			<ProjectsStep
@@ -109,364 +226,56 @@ describe("ProjectsStep – create mode", () => {
 				onProjectsChange={onProjectsChange}
 			/>,
 		);
-
-		const removeButton = screen.getByRole("button", { name: /remove/i });
-		fireEvent.click(removeButton);
-
-		expect(onProjectsChange).toHaveBeenCalledOnce();
-		const arg = onProjectsChange.mock.calls[0][0];
-		expect(arg).toHaveLength(0);
-	});
-});
-
-// ---------------------------------------------------------------------------
-// Group F: ProjectsStep edit mode (live mutations)
-// ---------------------------------------------------------------------------
-
-describe("ProjectsStep – edit mode", () => {
-	const STACK_ID = "stack_abc123" as never;
-	const PROJECT_ID = "project_xyz" as never;
-
-	// TC-F-01
-	it("renders live list from mocked listByStack ('Live Project' visible)", async () => {
-		const { useQuery } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([
-			{
-				_id: PROJECT_ID,
-				name: "Live Project",
-				slug: "live-project-XYZ",
-				shortId: "XYZ",
-				fileCount: 0,
-				createdAt: Date.now(),
-				updatedAt: Date.now(),
-			},
-		]);
-
-		render(<ProjectsStep mode="edit" stackId={STACK_ID} />);
-		expect(screen.getByText("Live Project")).toBeInTheDocument();
-	});
-
-	// TC-F-02
-	it("submit add form -> createProject mutation called with { name, stackId }", async () => {
-		const createProject = vi
-			.fn()
-			.mockResolvedValue({ _id: PROJECT_ID, slug: "new-project-ID" });
-		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([]);
-		useMutation.mockReturnValue(createProject);
-
-		render(<ProjectsStep mode="edit" stackId={STACK_ID} />);
-
-		const nameInput = screen.getByPlaceholderText(/project name/i);
-		fireEvent.change(nameInput, { target: { value: "Fresh Project" } });
-
-		const addButton = screen.getByRole("button", { name: /add/i });
-		fireEvent.click(addButton);
-
-		expect(createProject).toHaveBeenCalledWith(
-			expect.objectContaining({ name: "Fresh Project", stackId: STACK_ID }),
+		fireEvent.click(
+			screen.getByRole("button", { name: /show details for alpha app/i }),
 		);
-	});
-
-	// TC-F-03
-	it("submit edit form -> updateProject called with new name + project _id", async () => {
-		const updateProject = vi.fn().mockResolvedValue(null);
-		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([
-			{
-				_id: PROJECT_ID,
-				name: "Old Name",
-				slug: "old-name-ID",
-				shortId: "ID",
-				fileCount: 0,
-				createdAt: Date.now(),
-				updatedAt: Date.now(),
-			},
-		]);
-		useMutation.mockReturnValue(updateProject);
-
-		render(<ProjectsStep mode="edit" stackId={STACK_ID} />);
-
-		// Open edit form for the project
-		const editButton = screen.getByRole("button", { name: /edit old name/i });
-		fireEvent.click(editButton);
-
-		const nameInput = screen.getByDisplayValue("Old Name");
-		fireEvent.change(nameInput, { target: { value: "New Name" } });
-
-		const saveButton = screen.getByRole("button", { name: /save/i });
-		fireEvent.click(saveButton);
-
-		expect(updateProject).toHaveBeenCalledWith(
-			expect.objectContaining({ projectId: PROJECT_ID, name: "New Name" }),
+		await waitFor(() =>
+			expect(
+				screen.getByRole("button", { name: /^edit$/i }),
+			).toBeInTheDocument(),
 		);
+		fireEvent.click(screen.getByRole("button", { name: /^edit$/i }));
+		const nameInput = await screen.findByDisplayValue("Alpha App");
+		fireEvent.change(nameInput, { target: { value: "Alpha App Renamed" } });
+		fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+		await waitFor(() => expect(onProjectsChange).toHaveBeenCalled());
+		const lastArg = onProjectsChange.mock.lastCall?.[0] as {
+			name: string;
+		}[];
+		expect(lastArg.some((p) => p.name === "Alpha App Renamed")).toBe(true);
 	});
 
-	// TC-F-04
-	it("confirm delete -> deleteProject called with { projectId }", async () => {
-		const deleteProject = vi.fn().mockResolvedValue(null);
-		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([
-			{
-				_id: PROJECT_ID,
-				name: "Deletable",
-				slug: "deletable-ID",
-				shortId: "ID",
-				fileCount: 0,
-				createdAt: Date.now(),
-				updatedAt: Date.now(),
-			},
-		]);
-		useMutation.mockReturnValue(deleteProject);
-
-		render(<ProjectsStep mode="edit" stackId={STACK_ID} />);
-
-		const deleteButton = screen.getByRole("button", {
-			name: /delete deletable/i,
-		});
-		fireEvent.click(deleteButton);
-
-		// Confirm in the dialog — scope to it so the row's own delete button doesn't also match.
-		const dialog = screen.getByRole("dialog");
-		const confirmButton = within(dialog).getByRole("button", {
-			name: /confirm|delete/i,
-		});
-		await act(async () => {
-			fireEvent.click(confirmButton);
-		});
-
-		expect(deleteProject).toHaveBeenCalledWith({ projectId: PROJECT_ID });
-	});
-
-	// TC-F-05
-	it("no mutation fires on initial render", async () => {
-		const mutationSpy = vi.fn();
-		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([
-			{
-				_id: PROJECT_ID,
-				name: "Live One",
-				slug: "live-one-ID",
-				shortId: "ID",
-				createdAt: Date.now(),
-				updatedAt: Date.now(),
-			},
-		]);
-		useMutation.mockReturnValue(mutationSpy);
-
-		render(<ProjectsStep mode="edit" stackId={STACK_ID} />);
-
-		// Mounting alone must not trigger any mutation
-		expect(mutationSpy).not.toHaveBeenCalled();
-	});
-
-	// TC-F-06
-	it("does NOT contain the text 'npx @use-aistack/cli collect' in edit mode", async () => {
-		const { useQuery } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([]);
-
-		render(<ProjectsStep mode="edit" stackId={STACK_ID} />);
-		expect(
-			screen.queryByText(/npx @use-aistack\/cli collect/i),
-		).not.toBeInTheDocument();
-	});
-});
-
-// ---------------------------------------------------------------------------
-// Group F (continued): field pass-through, reorder, URL validation
-// ---------------------------------------------------------------------------
-
-describe("ProjectsStep – edit mode: add form passes all fields", () => {
-	const STACK_ID = "stack_abc123" as never;
-	const PROJECT_ID = "project_xyz" as never;
-
-	// TC-F-07: createProject receives description, url, and tags in addition to name.
-	it("submit add form with description/url/tags -> createProject called with all fields", async () => {
-		const createProject = vi
-			.fn()
-			.mockResolvedValue({ _id: PROJECT_ID, slug: "full-project-ID" });
-		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([]);
-		useMutation.mockReturnValue(createProject);
-
-		render(<ProjectsStep mode="edit" stackId={STACK_ID} />);
-
-		fireEvent.change(screen.getByPlaceholderText(/project name/i), {
-			target: { value: "Full Project" },
-		});
-		fireEvent.change(screen.getByPlaceholderText(/short description/i), {
-			target: { value: "A great project" },
-		});
-		// URL placeholder is "https://..." — use label to avoid escaping pitfalls.
-		fireEvent.change(screen.getByLabelText(/^url$/i), {
-			target: { value: "https://full.example.com" },
-		});
-		// Add a tag via Enter key
-		const tagInput = screen.getByPlaceholderText(/add tag/i);
-		fireEvent.change(tagInput, { target: { value: "typescript" } });
-		fireEvent.keyDown(tagInput, { key: "Enter" });
-
-		fireEvent.click(screen.getByRole("button", { name: /add/i }));
-
-		expect(createProject).toHaveBeenCalledWith(
-			expect.objectContaining({
-				name: "Full Project",
-				description: "A great project",
-				url: "https://full.example.com",
-				tags: ["typescript"],
-				stackId: STACK_ID,
-			}),
+	// TC-NEW-D-05
+	it("TC-NEW-D-05: expand staged row → Delete → ConfirmDialog Delete → onProjectsChange last call arg length 0", async () => {
+		const onProjectsChange = vi.fn();
+		render(
+			<ProjectsStep
+				mode="create"
+				projects={[PROJECT_A]}
+				onProjectsChange={onProjectsChange}
+			/>,
 		);
-	});
-
-	// TC-F-08: updateProject receives description, url, and tags in addition to name/id.
-	it("submit edit form with description/url/tags -> updateProject called with all fields", async () => {
-		const updateProject = vi.fn().mockResolvedValue(null);
-		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([
-			{
-				_id: PROJECT_ID,
-				name: "Bare Project",
-				slug: "bare-project-ID",
-				shortId: "ID",
-				description: undefined,
-				url: undefined,
-				tags: undefined,
-				fileCount: 0,
-				createdAt: Date.now(),
-				updatedAt: Date.now(),
-			},
-		]);
-		useMutation.mockReturnValue(updateProject);
-
-		render(<ProjectsStep mode="edit" stackId={STACK_ID} />);
-
-		fireEvent.click(screen.getByRole("button", { name: /edit bare project/i }));
-
-		// After opening the edit form, both it and the "Add" form at the bottom are visible.
-		// The edit form is rendered first; use index [0] to scope to it.
-		fireEvent.change(screen.getByDisplayValue("Bare Project"), {
-			target: { value: "Updated Project" },
-		});
-		fireEvent.change(screen.getAllByPlaceholderText(/short description/i)[0], {
-			target: { value: "Now has a description" },
-		});
-		// URL field: use getByLabelText but there are two "URL" labels — take [0] (edit form).
-		fireEvent.change(screen.getAllByLabelText(/^url$/i)[0], {
-			target: { value: "https://updated.example.com" },
-		});
-		const tagInput = screen.getAllByPlaceholderText(/add tag/i)[0];
-		fireEvent.change(tagInput, { target: { value: "react" } });
-		fireEvent.keyDown(tagInput, { key: "Enter" });
-
-		fireEvent.click(screen.getByRole("button", { name: /save/i }));
-
-		expect(updateProject).toHaveBeenCalledWith(
-			expect.objectContaining({
-				projectId: PROJECT_ID,
-				name: "Updated Project",
-				description: "Now has a description",
-				url: "https://updated.example.com",
-				tags: ["react"],
-			}),
+		fireEvent.click(
+			screen.getByRole("button", { name: /show details for alpha app/i }),
 		);
-	});
-});
-
-describe("ProjectsStep – edit mode: reorder", () => {
-	const STACK_ID = "stack_abc123" as never;
-	const PROJECT_A_ID = "project_aaa" as never;
-	const PROJECT_B_ID = "project_bbb" as never;
-
-	// TC-F-09: clicking the down button on the first project calls reorderProjects with swapped order.
-	it("down button on first project -> reorderProjects called with [B, A] order", async () => {
-		const reorderProjects = vi.fn().mockResolvedValue(null);
-		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([
-			{
-				_id: PROJECT_A_ID,
-				name: "Alpha",
-				slug: "alpha-AAA",
-				shortId: "AAA",
-				fileCount: 0,
-				createdAt: 1000,
-				updatedAt: 1000,
-			},
-			{
-				_id: PROJECT_B_ID,
-				name: "Beta",
-				slug: "beta-BBB",
-				shortId: "BBB",
-				fileCount: 0,
-				createdAt: 2000,
-				updatedAt: 2000,
-			},
-		]);
-		useMutation.mockReturnValue(reorderProjects);
-
-		render(<ProjectsStep mode="edit" stackId={STACK_ID} />);
-
-		// The first row's down button is the second button overall (up=disabled at index 0, down=enabled).
-		// We have two rows: [upA(disabled), downA, editA, deleteA, upB, downB(disabled), editB, deleteB]
-		// All buttons without role-label — query by ChevronDown icon or by finding all buttons.
-		const allButtons = screen.getAllByRole("button");
-		// Button order per row: up(0), down(1), edit(pencil), delete(trash)
-		// Row A (index 0): up disabled, down enabled → allButtons[0]=upA, allButtons[1]=downA
-		// Row B (index 1): up enabled, down disabled
-		// Then edit mode "Add a project" form: Add button
-		// Row A's down button is index 1
-		const downButtonA = allButtons[1];
-		fireEvent.click(downButtonA);
-
-		expect(reorderProjects).toHaveBeenCalledWith({
-			stackId: STACK_ID,
-			projectIds: [PROJECT_B_ID, PROJECT_A_ID],
+		await waitFor(() =>
+			expect(
+				screen.getByRole("button", { name: /^delete$/i }),
+			).toBeInTheDocument(),
+		);
+		fireEvent.click(screen.getByRole("button", { name: /^delete$/i }));
+		const dialog = await screen.findByRole("dialog");
+		const confirmBtn = within(dialog).getByRole("button", {
+			name: /^delete$/i,
 		});
+		fireEvent.click(confirmBtn);
+		await waitFor(() => expect(onProjectsChange).toHaveBeenCalled());
+		const lastArg = onProjectsChange.mock.lastCall?.[0] as unknown[];
+		expect(lastArg).toHaveLength(0);
 	});
 
-	// TC-F-10: clicking the up button on the second project calls reorderProjects with swapped order.
-	it("up button on second project -> reorderProjects called with [B, A] order", async () => {
-		const reorderProjects = vi.fn().mockResolvedValue(null);
-		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
-		useQuery.mockReturnValue([
-			{
-				_id: PROJECT_A_ID,
-				name: "Alpha",
-				slug: "alpha-AAA",
-				shortId: "AAA",
-				fileCount: 0,
-				createdAt: 1000,
-				updatedAt: 1000,
-			},
-			{
-				_id: PROJECT_B_ID,
-				name: "Beta",
-				slug: "beta-BBB",
-				shortId: "BBB",
-				fileCount: 0,
-				createdAt: 2000,
-				updatedAt: 2000,
-			},
-		]);
-		useMutation.mockReturnValue(reorderProjects);
-
-		render(<ProjectsStep mode="edit" stackId={STACK_ID} />);
-
-		// Row B's up button: buttons are [upA(0), downA(1), editA(2), deleteA(3), upB(4), downB(5), editB(6), deleteB(7), Add(8)]
-		const allButtons = screen.getAllByRole("button");
-		const upButtonB = allButtons[4];
-		fireEvent.click(upButtonB);
-
-		expect(reorderProjects).toHaveBeenCalledWith({
-			stackId: STACK_ID,
-			projectIds: [PROJECT_B_ID, PROJECT_A_ID],
-		});
-	});
-});
-
-describe("ProjectsStep – create mode: client-side URL validation", () => {
-	// TC-F-11: an unparseable URL shows an error and does NOT call onProjectsChange.
-	it("submitting an invalid URL shows error and blocks onProjectsChange", () => {
+	// TC-NEW-D-06
+	it("TC-NEW-D-06: New Project → name filled → URL set to 'not a valid url !!!' → Create → role='alert' shown AND onProjectsChange NOT called", async () => {
 		const onProjectsChange = vi.fn();
 		render(
 			<ProjectsStep
@@ -475,22 +284,142 @@ describe("ProjectsStep – create mode: client-side URL validation", () => {
 				onProjectsChange={onProjectsChange}
 			/>,
 		);
-
-		fireEvent.change(screen.getByPlaceholderText(/project name/i), {
-			target: { value: "Bad URL Project" },
-		});
-		// A URL with spaces cannot be parsed — safeExternalUrl returns null for it.
-		fireEvent.change(screen.getByLabelText(/^url$/i), {
-			target: { value: "not a valid url !!!" },
-		});
-		fireEvent.click(screen.getByRole("button", { name: /add/i }));
-
+		fireEvent.click(screen.getByRole("button", { name: /new project/i }));
+		const nameInput = await screen.findByLabelText(/name/i);
+		fireEvent.change(nameInput, { target: { value: "Bad URL Project" } });
+		const urlInput = screen.getByLabelText(/^url$/i);
+		fireEvent.change(urlInput, { target: { value: "not a valid url !!!" } });
+		fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
+		await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
 		expect(onProjectsChange).not.toHaveBeenCalled();
-		expect(screen.getByRole("alert")).toBeInTheDocument();
 	});
 
-	// TC-F-12: a valid https URL submits normally.
-	it("submitting a valid https URL calls onProjectsChange with that url", () => {
+	// TC-NEW-D-07
+	it("TC-NEW-D-07: pre-stage [Alpha, Beta] → ArrowDown reorder Alpha → onProjectsChange swapped → expand Beta → Delete → confirm → final onProjectsChange arg length 1 with name 'Alpha'; no console.error", async () => {
+		const consoleError = vi.spyOn(console, "error");
+		const onProjectsChange = vi.fn();
+
+		// Start with two staged items, simulate reorder via prop update
+		const ALPHA = { name: "Alpha", description: "a" };
+		const BETA = { name: "Beta", description: "b" };
+
+		const { rerender } = render(
+			<ProjectsStep
+				mode="create"
+				projects={[ALPHA, BETA]}
+				onProjectsChange={onProjectsChange}
+			/>,
+		);
+
+		// ArrowDown on "Reorder Alpha" handle swaps order
+		const reorderHandle = screen.getByRole("button", {
+			name: /reorder alpha/i,
+		});
+		fireEvent.keyDown(reorderHandle, { key: "ArrowDown" });
+		await waitFor(() => expect(onProjectsChange).toHaveBeenCalled());
+
+		// Simulate parent applying the swapped list
+		const swappedArg = onProjectsChange.mock.lastCall?.[0] as (typeof ALPHA)[];
+		onProjectsChange.mockClear();
+		rerender(
+			<ProjectsStep
+				mode="create"
+				projects={swappedArg}
+				onProjectsChange={onProjectsChange}
+			/>,
+		);
+
+		// Now Beta is first — expand it
+		fireEvent.click(
+			screen.getByRole("button", { name: /show details for beta/i }),
+		);
+		await waitFor(() =>
+			expect(
+				screen.getByRole("button", { name: /^delete$/i }),
+			).toBeInTheDocument(),
+		);
+		fireEvent.click(screen.getByRole("button", { name: /^delete$/i }));
+		const dialog = await screen.findByRole("dialog");
+		fireEvent.click(within(dialog).getByRole("button", { name: /^delete$/i }));
+		await waitFor(() => expect(onProjectsChange).toHaveBeenCalled());
+
+		const finalArg = onProjectsChange.mock.lastCall?.[0] as (typeof ALPHA)[];
+		expect(finalArg).toHaveLength(1);
+		expect(finalArg[0].name).toBe("Alpha");
+		expect(consoleError).not.toHaveBeenCalled();
+
+		consoleError.mockRestore();
+	});
+
+	// TC-NEW-D-08
+	// Proves the PARALLEL STABLE-ID CONTRACT: editing a staged project must NOT
+	// mint a new id for that row. If editing caused a new id (the rejected WeakMap
+	// behavior), Motion's key would change → the row remounts → the accordion panel
+	// closes (openId no longer matches). The row staying expanded after editing its
+	// own name proves the edit preserved the row's stable parallel id (no remount).
+	//
+	// Single-open accordion compatible: we only open ONE row (Alpha), edit Alpha
+	// itself, and assert Alpha's panel is still open. No need to open a second row.
+	it("TC-NEW-D-08: pre-stage [Alpha, Beta] → expand Alpha → open Alpha's own Edit → rename → Save → Alpha row still expanded (proves stable parallel-id; no row remount)", async () => {
+		const onProjectsChange = vi.fn();
+		const ALPHA = { name: "Alpha", description: "alpha desc" };
+		const BETA = { name: "Beta", description: "beta desc" };
+
+		const { rerender } = render(
+			<ProjectsStep
+				mode="create"
+				projects={[ALPHA, BETA]}
+				onProjectsChange={onProjectsChange}
+			/>,
+		);
+
+		// Expand Alpha's row (single-open accordion)
+		fireEvent.click(
+			screen.getByRole("button", { name: /show details for alpha/i }),
+		);
+		await waitFor(() =>
+			expect(
+				screen.getByRole("button", { name: /hide details for alpha/i }),
+			).toHaveAttribute("aria-expanded", "true"),
+		);
+
+		// Open Alpha's own Edit button (now visible inside the expanded panel)
+		fireEvent.click(screen.getByRole("button", { name: /^edit$/i }));
+
+		// Dialog should be seeded with Alpha's current name
+		const nameInput = await screen.findByDisplayValue("Alpha");
+		fireEvent.change(nameInput, { target: { value: "Alpha Renamed" } });
+		fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+
+		await waitFor(() => expect(onProjectsChange).toHaveBeenCalled());
+
+		// Simulate parent applying the updated list (name changed in place)
+		const updatedProjects = onProjectsChange.mock
+			.lastCall?.[0] as (typeof ALPHA)[];
+		rerender(
+			<ProjectsStep
+				mode="create"
+				projects={
+					updatedProjects ?? [
+						{ name: "Alpha Renamed", description: "alpha desc" },
+						BETA,
+					]
+				}
+				onProjectsChange={onProjectsChange}
+			/>,
+		);
+
+		// After save, Alpha's row should STILL be expanded.
+		// If editing had minted a new id, the row would remount and the accordion
+		// panel would close — querying by the updated name proves it stayed open.
+		const updatedToggle = screen.getByRole("button", {
+			name: /hide details for alpha renamed/i,
+		});
+		expect(updatedToggle).toHaveAttribute("aria-expanded", "true");
+	});
+
+	// TC-NEW-D-09
+	it("TC-NEW-D-09: New Project dialog, empty name → Create button disabled; clicking does not call onProjectsChange", async () => {
 		const onProjectsChange = vi.fn();
 		render(
 			<ProjectsStep
@@ -499,73 +428,37 @@ describe("ProjectsStep – create mode: client-side URL validation", () => {
 				onProjectsChange={onProjectsChange}
 			/>,
 		);
-
-		fireEvent.change(screen.getByPlaceholderText(/project name/i), {
-			target: { value: "Good URL Project" },
-		});
-		fireEvent.change(screen.getByLabelText(/^url$/i), {
-			target: { value: "https://valid.example.com" },
-		});
-		fireEvent.click(screen.getByRole("button", { name: /add/i }));
-
-		expect(onProjectsChange).toHaveBeenCalledOnce();
-		const arg = onProjectsChange.mock.calls[0][0];
-		expect(arg[0].url).toBe("https://valid.example.com");
+		fireEvent.click(screen.getByRole("button", { name: /new project/i }));
+		await screen.findByLabelText(/name/i); // dialog open
+		const createBtn = screen.getByRole("button", { name: /^create$/i });
+		expect(createBtn).toBeDisabled();
+		fireEvent.click(createBtn);
+		expect(onProjectsChange).not.toHaveBeenCalled();
 	});
 
-	// TC-F-13: an empty URL submits without error.
-	it("submitting with an empty URL calls onProjectsChange without error", () => {
-		const onProjectsChange = vi.fn();
-		render(
-			<ProjectsStep
-				mode="create"
-				projects={[]}
-				onProjectsChange={onProjectsChange}
-			/>,
-		);
-
-		fireEvent.change(screen.getByPlaceholderText(/project name/i), {
-			target: { value: "No URL Project" },
-		});
-		// Leave URL empty
-		fireEvent.click(screen.getByRole("button", { name: /add/i }));
-
-		expect(onProjectsChange).toHaveBeenCalledOnce();
-		const arg = onProjectsChange.mock.calls[0][0];
-		expect(arg[0].url).toBeUndefined();
-		expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-	});
-});
-
-describe("ProjectFormFields – tag input Enter-key behavior", () => {
-	// TC-G-01: pressing Enter in the tag input calls onAddTag.
-	it("pressing Enter in the tag input fires onAddTag", async () => {
-		// Render ProjectsStep in create mode and interact with the tag input
-		// indirectly via the inline form (ProjectFormFields is not exported standalone).
-		const onProjectsChange = vi.fn();
-		render(
-			<ProjectsStep
-				mode="create"
-				projects={[]}
-				onProjectsChange={onProjectsChange}
-			/>,
-		);
-
-		fireEvent.change(screen.getByPlaceholderText(/project name/i), {
-			target: { value: "Tagged Project" },
-		});
-		const tagInput = screen.getByPlaceholderText(/add tag/i);
-		fireEvent.change(tagInput, { target: { value: "vitest" } });
-		fireEvent.keyDown(tagInput, { key: "Enter" });
-
-		// After Enter the tag badge should appear
-		expect(screen.getByText("vitest")).toBeInTheDocument();
-
-		// Submit and confirm the tag was included
-		fireEvent.click(screen.getByRole("button", { name: /add/i }));
-		expect(onProjectsChange).toHaveBeenCalledOnce();
-		const arg = onProjectsChange.mock.calls[0][0];
-		expect(arg[0].tags).toContain("vitest");
+	// TC-NEW-D-10
+	it("TC-NEW-D-10: 2 staged items → both reorder handles present; rerender 1 item → no reorder handles", () => {
+		const ALPHA = { name: "Alpha" };
+		const BETA = { name: "Beta" };
+		const props = {
+			mode: "create" as const,
+			projects: [ALPHA, BETA],
+			onProjectsChange: vi.fn(),
+		};
+		const { rerender } = render(<ProjectsStep {...props} />);
+		expect(
+			screen.getByRole("button", { name: /reorder alpha/i }),
+		).toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: /reorder beta/i }),
+		).toBeInTheDocument();
+		rerender(<ProjectsStep {...props} projects={[ALPHA]} />);
+		expect(
+			screen.queryByRole("button", { name: /reorder alpha/i }),
+		).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole("button", { name: /reorder beta/i }),
+		).not.toBeInTheDocument();
 	});
 });
 

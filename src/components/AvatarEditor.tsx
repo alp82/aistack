@@ -3,6 +3,7 @@ import { Link2, Upload, User, X } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { Input } from "@/components/ui/input";
+import { convertToCompactDataUrl } from "@/lib/imageProcessing";
 import { cn } from "@/lib/utils";
 
 type AvatarEditorProps = {
@@ -12,6 +13,7 @@ type AvatarEditorProps = {
 	defaultAvatarUrl?: string;
 	creatorName: string;
 	onAvatarChange: (url: string) => void;
+	guestSession?: boolean;
 };
 
 export function AvatarEditor({
@@ -21,6 +23,7 @@ export function AvatarEditor({
 	defaultAvatarUrl,
 	creatorName,
 	onAvatarChange,
+	guestSession = false,
 }: AvatarEditorProps) {
 	const [urlInput, setUrlInput] = useState("");
 	const [isUploading, setIsUploading] = useState(false);
@@ -43,6 +46,22 @@ export function AvatarEditor({
 
 			if (file.size > 5 * 1024 * 1024) {
 				setError("Image must be less than 5MB");
+				return;
+			}
+
+			if (guestSession) {
+				setIsUploading(true);
+				setError("");
+				try {
+					const url = await convertToCompactDataUrl(file);
+					onAvatarChange(url);
+					onClose();
+				} catch (err) {
+					setError("Couldn't process image - try another file");
+					console.error(err);
+				} finally {
+					setIsUploading(false);
+				}
 				return;
 			}
 
@@ -75,7 +94,7 @@ export function AvatarEditor({
 				setIsUploading(false);
 			}
 		},
-		[generateUploadUrl, getFileUrl, onAvatarChange, onClose],
+		[generateUploadUrl, getFileUrl, onAvatarChange, onClose, guestSession],
 	);
 
 	const handleDrop = useCallback(

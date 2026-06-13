@@ -1,42 +1,31 @@
-import { useMutation, useQuery } from "convex/react";
-import { ArrowUpRight, Pencil, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
-import { ProjectOrderButtons } from "@/components/ProjectOrderButtons";
-import { accentFor } from "@/components/projects/accent";
-import { ProjectFormFields } from "@/components/projects/ProjectFormFields";
-import type { StagedProject } from "@/components/projects/types";
-import { useTagInput } from "@/components/projects/useTagInput";
-import { TagBadge } from "@/components/TagBadge";
-import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ProjectsSection } from "@/components/ProjectsSection";
+import { ProjectsManager } from "@/components/projects/ProjectsManager";
+import type {
+	ManagerProject,
+	StagedProject,
+} from "@/components/projects/types";
 import type { StackEditorMode } from "@/features/stack-editor/types";
-import { cn, safeExternalUrl } from "@/lib/utils";
-import { api } from "../../../../convex/_generated/api";
+import { safeExternalUrl } from "@/lib/utils";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
 type ProjectsStepProps = {
 	mode: StackEditorMode;
 	stackId?: Id<"stacks">;
+	isOwner?: boolean;
 	projects?: StagedProject[];
 	onProjectsChange?: (projects: StagedProject[]) => void;
-};
-
-/** A normalized project row rendered by both create (staged) and edit (live) modes. */
-type ProjectRow = {
-	name: string;
-	description?: string;
-	url?: string;
-	tags?: string[];
 };
 
 function ProjectsStep({
 	mode,
 	stackId,
+	isOwner = true,
 	projects,
 	onProjectsChange,
 }: ProjectsStepProps) {
 	if (mode === "edit" && stackId) {
-		return <ProjectsStepEdit stackId={stackId} />;
+		return <ProjectsStepEdit stackId={stackId} isOwner={isOwner} />;
 	}
 	return (
 		<ProjectsStepCreate
@@ -46,238 +35,34 @@ function ProjectsStep({
 	);
 }
 
-// ---------------------------------------------------------------------------
-// Shared section shell + form
-// ---------------------------------------------------------------------------
+/** Editor kicker shared by both modes; mirrors the public section's kicker slot. */
+const EDITOR_KICKER = (
+	<p className="mb-4 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
+		{"// STEP 02: PROJECTS"}
+	</p>
+);
 
-type ProjectFormState = {
-	name: string;
+const INVALID_URL_ERROR =
+	"Invalid URL. Use a valid http:// or https:// address.";
+
+/** Coalesce a manager create/update value into the id-free StagedProject shape. */
+function toStaged(value: {
+	name?: string;
 	description?: string;
 	url?: string;
 	tags?: string[];
-};
-
-/**
- * A ref-based reset handle so the parent can imperatively clear the inline
- * form without unmounting it (it stays mounted for the "Add a project" form).
- */
-type ProjectInlineFormHandle = {
-	reset: () => void;
-};
-
-function ProjectInlineForm({
-	initial,
-	submitLabel,
-	onSubmit,
-	onCancel,
-	error,
-	resetRef,
-}: {
-	initial?: ProjectFormState;
-	submitLabel: string;
-	onSubmit: (value: ProjectFormState) => void;
-	onCancel?: () => void;
-	error?: string | null;
-	resetRef?: React.MutableRefObject<ProjectInlineFormHandle | null>;
-}) {
-	const [name, setName] = useState(initial?.name ?? "");
-	const [description, setDescription] = useState(initial?.description ?? "");
-	const [url, setUrl] = useState(initial?.url ?? "");
-	const {
-		tags,
-		tagInput,
-		setTagInput,
-		addTag,
-		removeTag,
-		reset: resetTags,
-	} = useTagInput(initial?.tags ?? []);
-
-	// Expose reset via ref for parent to call after successful add
-	if (resetRef) {
-		resetRef.current = {
-			reset: () => {
-				setName("");
-				setDescription("");
-				setUrl("");
-				resetTags();
-			},
-		};
-	}
-
-	const handleSubmit = () => {
-		const trimmed = name.trim();
-		if (!trimmed) return;
-		onSubmit({
-			name: trimmed,
-			description: description.trim() || undefined,
-			url: url.trim() || undefined,
-			tags: tags.length ? tags : undefined,
-		});
+}): StagedProject {
+	return {
+		name: (value.name ?? "").trim(),
+		description: value.description?.trim() || undefined,
+		url: value.url?.trim() || undefined,
+		tags: value.tags?.length ? value.tags : undefined,
 	};
-
-	return (
-		<div className="border-2 border-stroke-subtle bg-bg-canvas p-4">
-			<ProjectFormFields
-				name={name}
-				onNameChange={setName}
-				description={description}
-				onDescriptionChange={setDescription}
-				url={url}
-				onUrlChange={setUrl}
-				tags={tags}
-				tagInput={tagInput}
-				onTagInputChange={setTagInput}
-				onAddTag={addTag}
-				onRemoveTag={removeTag}
-			/>
-			{error && (
-				<p role="alert" className="mt-2 font-mono text-xs text-destructive">
-					{error}
-				</p>
-			)}
-			<div className="mt-4 flex justify-end gap-2">
-				{onCancel && (
-					<Button
-						type="button"
-						variant="outline"
-						onClick={onCancel}
-						className="font-mono text-xs font-bold uppercase tracking-wider"
-					>
-						Cancel
-					</Button>
-				)}
-				<Button
-					type="button"
-					onClick={handleSubmit}
-					disabled={!name.trim()}
-					className="font-mono text-xs font-bold uppercase tracking-wider"
-				>
-					{submitLabel}
-				</Button>
-			</div>
-		</div>
-	);
-}
-
-function ProjectRowItem({
-	row,
-	index,
-	total,
-	onMove,
-	onEdit,
-	onDelete,
-	editLabel,
-	deleteLabel,
-}: {
-	row: ProjectRow;
-	index: number;
-	total: number;
-	onMove?: (direction: "up" | "down") => void;
-	onEdit: () => void;
-	onDelete: () => void;
-	editLabel: string;
-	deleteLabel: string;
-}) {
-	const accent = accentFor(row.tags?.[0] ?? row.name);
-	const shownTags = row.tags?.slice(0, 4) ?? [];
-	const extraTags = (row.tags?.length ?? 0) - shownTags.length;
-	const href = safeExternalUrl(row.url);
-
-	return (
-		<div className="group relative flex items-stretch border-b border-stroke-subtle">
-			{onMove && total > 1 && (
-				<div className="flex items-center pl-3">
-					<ProjectOrderButtons index={index} total={total} onMove={onMove} />
-				</div>
-			)}
-			<div className="flex min-w-0 flex-1 items-start gap-4 px-3 py-5">
-				<span
-					className={cn(
-						"inline-flex size-12 shrink-0 items-center justify-center border font-mono text-base font-bold uppercase",
-						accent.bg,
-						accent.border,
-						accent.text,
-					)}
-				>
-					{row.name.charAt(0)}
-				</span>
-				<div className="min-w-0 flex-1">
-					<div className="flex flex-wrap items-center gap-2">
-						<h3 className="truncate font-mono text-base font-semibold text-fg-primary">
-							{row.name}
-						</h3>
-					</div>
-					{row.description && (
-						<p className="mt-1 line-clamp-1 text-sm text-fg-secondary">
-							{row.description}
-						</p>
-					)}
-					<div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-						{shownTags.length > 0 && (
-							<div className="flex flex-wrap items-center gap-1">
-								{shownTags.map((tag) => (
-									<TagBadge key={tag} tag={tag} size="sm" />
-								))}
-								{extraTags > 0 && (
-									<span className="font-mono text-[10px] text-fg-muted">
-										+{extraTags}
-									</span>
-								)}
-							</div>
-						)}
-						{href && (
-							<a
-								href={href}
-								target="_blank"
-								rel="noopener noreferrer"
-								aria-label={`Visit ${row.name}`}
-								className="inline-flex items-center gap-1 font-mono text-[11px] text-fg-muted transition-colors hover:text-accent-lime"
-							>
-								Visit
-								<ArrowUpRight className="size-3" aria-hidden="true" />
-							</a>
-						)}
-					</div>
-				</div>
-			</div>
-			<div className="flex shrink-0 items-center gap-1 pr-3">
-				<button
-					type="button"
-					onClick={onEdit}
-					aria-label={editLabel}
-					className="border border-stroke-subtle px-1.5 py-1 text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime cursor-pointer"
-				>
-					<Pencil className="size-3" />
-				</button>
-				<button
-					type="button"
-					onClick={onDelete}
-					aria-label={deleteLabel}
-					className="border border-stroke-subtle px-1.5 py-1 text-fg-muted transition-colors hover:border-destructive hover:text-destructive cursor-pointer"
-				>
-					<Trash2 className="size-3" />
-				</button>
-			</div>
-		</div>
-	);
-}
-
-function SectionShell({ children }: { children: React.ReactNode }) {
-	return (
-		// biome-ignore lint/correctness/useUniqueElementIds: stable anchor target for in-editor section navigation
-		<section id="section-projects" className="space-y-8">
-			<div>
-				<p className="mb-4 font-mono text-[10px] uppercase tracking-widest text-accent-lime">
-					{"// STEP 02: PROJECTS"}
-				</p>
-			</div>
-			{children}
-		</section>
-	);
 }
 
 // ---------------------------------------------------------------------------
-// Create mode — staged local state
+// Create mode — staged local state, rendered through the shared ProjectsManager
+// with a parallel stable-id array kept in lockstep with the staged projects.
 // ---------------------------------------------------------------------------
 
 function ProjectsStepCreate({
@@ -287,261 +72,117 @@ function ProjectsStepCreate({
 	projects: StagedProject[];
 	onProjectsChange: (projects: StagedProject[]) => void;
 }) {
-	const [editIndex, setEditIndex] = useState<number | null>(null);
-	const [addError, setAddError] = useState<string | null>(null);
-	const [editError, setEditError] = useState<string | null>(null);
-	const addFormRef = useRef<ProjectInlineFormHandle | null>(null);
+	const [ids, setIds] = useState<string[]>(() =>
+		projects.map((_, i) => `p-init-${i}`),
+	);
+	const nextId = useRef(0);
 
-	const handleAdd = (value: ProjectFormState) => {
-		// Client-side URL validation before touching state
-		if (value.url) {
-			const safe = safeExternalUrl(value.url);
-			if (!safe) {
-				setAddError("Invalid URL. Use a valid http:// or https:// address.");
-				return;
-			}
+	// Reconcile the parallel id array with the staged length during render.
+	// In normal flow the parent echoes onProjectsChange straight back, so this is
+	// a no-op; it only fires if `projects` and `ids` momentarily diverge, keeping
+	// every row keyed by a unique, stable id (never undefined).
+	if (ids.length !== projects.length) {
+		const next = projects.map((_, i) => ids[i] ?? `p-${++nextId.current}`);
+		setIds(next);
+	}
+
+	const items: ManagerProject[] = projects.map((p, i) => ({
+		id: ids[i] ?? `p-fallback-${i}`,
+		name: p.name,
+		description: p.description,
+		url: p.url,
+		tags: p.tags,
+	}));
+
+	const handleCreate = async (value: {
+		name: string;
+		description?: string;
+		url?: string;
+		tags?: string[];
+	}) => {
+		if (value.url && !safeExternalUrl(value.url)) {
+			throw new Error(INVALID_URL_ERROR);
 		}
-		setAddError(null);
-		onProjectsChange([...projects, value]);
-		addFormRef.current?.reset();
+		const id = `p-${++nextId.current}`;
+		setIds([...ids, id]);
+		onProjectsChange([...projects, toStaged(value)]);
 	};
 
-	const handleUpdate = (index: number, value: ProjectFormState) => {
-		if (value.url) {
-			const safe = safeExternalUrl(value.url);
-			if (!safe) {
-				setEditError("Invalid URL. Use a valid http:// or https:// address.");
-				return;
-			}
+	const handleUpdate = async (
+		id: string,
+		value: {
+			name?: string;
+			description?: string;
+			url?: string;
+			tags?: string[];
+		},
+	) => {
+		if (value.url && !safeExternalUrl(value.url)) {
+			throw new Error(INVALID_URL_ERROR);
 		}
-		setEditError(null);
-		onProjectsChange(projects.map((p, i) => (i === index ? value : p)));
-		setEditIndex(null);
+		const i = ids.indexOf(id);
+		if (i === -1) return;
+		const staged = toStaged({ ...projects[i], ...value });
+		// Leave `ids` untouched: editing must NOT change a row's parallel id, or
+		// Motion would remount the row and collapse its accordion panel.
+		onProjectsChange(projects.map((p, k) => (k === i ? staged : p)));
 	};
 
-	const handleRemove = (index: number) => {
-		onProjectsChange(projects.filter((_, i) => i !== index));
-		if (editIndex === index) setEditIndex(null);
+	const handleDelete = async (id: string) => {
+		const i = ids.indexOf(id);
+		if (i === -1) return;
+		setIds(ids.filter((_, k) => k !== i));
+		onProjectsChange(projects.filter((_, k) => k !== i));
 	};
 
-	const handleMove = (index: number, direction: "up" | "down") => {
-		const target = direction === "up" ? index - 1 : index + 1;
-		if (target < 0 || target >= projects.length) return;
-		const next = [...projects];
-		[next[index], next[target]] = [next[target], next[index]];
-		onProjectsChange(next);
+	const handleReorder = async (orderedIds: string[]) => {
+		const byId = new Map(ids.map((id, i) => [id, projects[i]]));
+		const reordered = orderedIds
+			.map((id) => byId.get(id))
+			.filter((p): p is StagedProject => p !== undefined);
+		setIds(orderedIds);
+		onProjectsChange(reordered);
 	};
 
 	return (
-		<SectionShell>
-			{projects.length === 0 ? (
-				<p className="text-sm text-fg-secondary">
-					No projects yet. Add a project.
-				</p>
-			) : (
-				<div className="border-t border-stroke-subtle">
-					{projects.map((project, index) =>
-						editIndex === index ? (
-							<div key={`${project.name}-${index}`} className="py-4">
-								<ProjectInlineForm
-									initial={project}
-									submitLabel="Save"
-									onSubmit={(value) => handleUpdate(index, value)}
-									onCancel={() => {
-										setEditError(null);
-										setEditIndex(null);
-									}}
-									error={editError}
-								/>
-							</div>
-						) : (
-							<ProjectRowItem
-								key={`${project.name}-${index}`}
-								row={{
-									name: project.name,
-									description: project.description,
-									url: project.url,
-									tags: project.tags,
-								}}
-								index={index}
-								total={projects.length}
-								onMove={(dir) => handleMove(index, dir)}
-								onEdit={() => {
-									setEditError(null);
-									setEditIndex(index);
-								}}
-								onDelete={() => handleRemove(index)}
-								editLabel={`Edit ${project.name}`}
-								deleteLabel={`Remove ${project.name}`}
-							/>
-						),
-					)}
-				</div>
-			)}
-
-			<div>
-				<p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-fg-muted">
-					Add a project
-				</p>
-				<ProjectInlineForm
-					submitLabel="Add"
-					onSubmit={handleAdd}
-					error={addError}
-					resetRef={addFormRef}
-				/>
-			</div>
-		</SectionShell>
+		// biome-ignore lint/correctness/useUniqueElementIds: stable anchor target for in-editor section navigation
+		<ProjectsManager
+			items={items}
+			keyOf={(it) => it.id}
+			isOwner
+			index={2}
+			loading={false}
+			header={EDITOR_KICKER}
+			id="section-projects"
+			onCreate={handleCreate}
+			onUpdate={handleUpdate}
+			onDelete={handleDelete}
+			onReorder={handleReorder}
+		/>
 	);
 }
 
 // ---------------------------------------------------------------------------
-// Edit mode — live Convex mutations (parity with the view-page ProjectsSection)
+// Edit mode — delegates to the public ProjectsSection (live Convex mutations,
+// Motion reorder, favicon rows, New Project dialog) with the editor kicker.
 // ---------------------------------------------------------------------------
 
-function ProjectsStepEdit({ stackId }: { stackId: Id<"stacks"> }) {
-	const projects = useQuery(api.projects.listByStack, {
-		stackId,
-	});
-	const createProject = useMutation(api.projects.createProject);
-	const updateProject = useMutation(api.projects.updateProject);
-	const deleteProject = useMutation(api.projects.deleteProject);
-	const reorderProjects = useMutation(api.projects.reorderProjects);
-
-	const [editId, setEditId] = useState<Id<"projects"> | null>(null);
-	const [deleteTarget, setDeleteTarget] = useState<{
-		id: Id<"projects">;
-		name: string;
-	} | null>(null);
-	const [deleting, setDeleting] = useState(false);
-	const [addError, setAddError] = useState<string | null>(null);
-	const [editError, setEditError] = useState<string | null>(null);
-
-	const list = projects ?? [];
-
-	const handleAdd = async (value: ProjectFormState) => {
-		setAddError(null);
-		try {
-			await createProject({
-				name: value.name,
-				description: value.description,
-				url: value.url,
-				tags: value.tags,
-				stackId,
-			});
-		} catch (err) {
-			setAddError(
-				err instanceof Error ? err.message : "Failed to create project",
-			);
-		}
-	};
-
-	const handleUpdate = async (id: Id<"projects">, value: ProjectFormState) => {
-		setEditError(null);
-		try {
-			await updateProject({
-				projectId: id,
-				name: value.name,
-				description: value.description,
-				url: value.url,
-				tags: value.tags ?? [],
-			});
-			setEditId(null);
-		} catch (err) {
-			setEditError(
-				err instanceof Error ? err.message : "Failed to update project",
-			);
-		}
-	};
-
-	const handleMove = (index: number, direction: "up" | "down") => {
-		const ids = list.map((p) => p._id);
-		const target = direction === "up" ? index - 1 : index + 1;
-		if (target < 0 || target >= ids.length) return;
-		[ids[index], ids[target]] = [ids[target], ids[index]];
-		reorderProjects({ stackId, projectIds: ids });
-	};
-
+function ProjectsStepEdit({
+	stackId,
+	isOwner,
+}: {
+	stackId: Id<"stacks">;
+	isOwner: boolean;
+}) {
 	return (
-		<SectionShell>
-			{list.length === 0 ? (
-				<p className="text-sm text-fg-secondary">
-					No projects yet. Add a project.
-				</p>
-			) : (
-				<div className="border-t border-stroke-subtle">
-					{list.map((project, index) =>
-						editId === project._id ? (
-							<div key={project._id} className="py-4">
-								<ProjectInlineForm
-									initial={{
-										name: project.name,
-										description: project.description,
-										url: project.url,
-										tags: project.tags,
-									}}
-									submitLabel="Save"
-									onSubmit={(value) => handleUpdate(project._id, value)}
-									onCancel={() => setEditId(null)}
-									error={editError}
-								/>
-							</div>
-						) : (
-							<ProjectRowItem
-								key={project._id}
-								row={{
-									name: project.name,
-									description: project.description,
-									url: project.url,
-									tags: project.tags,
-								}}
-								index={index}
-								total={list.length}
-								onMove={(dir) => handleMove(index, dir)}
-								onEdit={() => setEditId(project._id)}
-								onDelete={() =>
-									setDeleteTarget({ id: project._id, name: project.name })
-								}
-								editLabel={`Edit ${project.name}`}
-								deleteLabel={`Delete ${project.name}`}
-							/>
-						),
-					)}
-				</div>
-			)}
-
-			<div>
-				<p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-fg-muted">
-					Add a project
-				</p>
-				<ProjectInlineForm
-					submitLabel="Add"
-					onSubmit={handleAdd}
-					error={addError}
-				/>
-			</div>
-
-			<ConfirmDialog
-				open={deleteTarget !== null}
-				onClose={() => setDeleteTarget(null)}
-				onConfirm={async () => {
-					if (!deleteTarget) return;
-					setDeleting(true);
-					try {
-						await deleteProject({ projectId: deleteTarget.id });
-					} catch (err) {
-						console.error("Failed to delete project:", err);
-					} finally {
-						setDeleting(false);
-						setDeleteTarget(null);
-					}
-				}}
-				title="Delete project"
-				description={`This will permanently delete "${deleteTarget?.name}". This cannot be undone.`}
-				confirmLabel="Delete"
-				variant="danger"
-				loading={deleting}
-			/>
-		</SectionShell>
+		// biome-ignore lint/correctness/useUniqueElementIds: stable anchor target for in-editor section navigation
+		<ProjectsSection
+			stackId={stackId}
+			isOwner={isOwner}
+			index={2}
+			id="section-projects"
+			header={EDITOR_KICKER}
+		/>
 	);
 }
 

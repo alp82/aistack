@@ -1,9 +1,5 @@
 # TODO
-* Projects in edit page
-    * match style
-    * drag and drop
-    * favicons
-    * new project as button and clears after creation/editing
+* failed to upload image for stack
 * stack page
     * lazy loading upvotes fails
     * tools, models, bundle are links to smooth scroll
