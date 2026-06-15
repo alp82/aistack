@@ -8,6 +8,7 @@ import {
 	useTransform,
 } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 export interface HoverTarget {
@@ -116,9 +117,15 @@ const HoverCard = (props: HoverCardProps) => {
 
 	const [isVisible, setIsVisible] = useState(false);
 	const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+	const [mounted, setMounted] = useState(false);
 	const triggerRef = useRef<HTMLDivElement>(null);
 	const targetRefs = useRef<(HTMLSpanElement | null)[]>([]);
 	const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+	// SSR-safe client mount guard for the portal target (document.body).
+	useEffect(() => {
+		setMounted(true);
+	}, []);
 
 	// Preload images for inline mode
 	useEffect(() => {
@@ -413,6 +420,7 @@ const HoverCard = (props: HoverCardProps) => {
 
 	const previewSurface = (
 		<motion.div
+			data-testid="hover-card-surface"
 			style={{
 				position: "fixed",
 				left: 0,
@@ -462,7 +470,7 @@ const HoverCard = (props: HoverCardProps) => {
 				>
 					{props.children}
 				</div>
-				{previewSurface}
+				{mounted ? createPortal(previewSurface, document.body) : null}
 			</div>
 		);
 	}
@@ -470,7 +478,7 @@ const HoverCard = (props: HoverCardProps) => {
 	return (
 		<div className={cn("relative", className)}>
 			{renderInlineContent()}
-			{previewSurface}
+			{mounted ? createPortal(previewSurface, document.body) : null}
 		</div>
 	);
 };

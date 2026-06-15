@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { FunctionReturnType } from "convex/server";
-import { AlertTriangle, CheckCircle, Flag, Globe, Pencil, User, WholeWord } from "lucide-react";
+import { AlertTriangle, CheckCircle, Flag, Globe, Pencil } from "lucide-react";
 import { CostBreakdownTooltip } from "@/components/CostBreakdownTooltip";
 import { UpvoteButton } from "@/components/UpvoteButton";
 import { UpvotersTooltip } from "@/components/UpvotersTooltip";
@@ -68,39 +68,43 @@ export function StackHeader({
 							size="xl"
 						/>
 						{hasUpvotes ? (
-							<HoverCard
-								mode="wrapper"
-								position="below"
-								width={280}
-								height="auto"
-								maxRotation={6}
-								maxOffset={8}
+							// biome-ignore lint/a11y/noStaticElementInteractions: onMouseEnter is a non-interactive prefetch gate (un-skips the upvoters query), not a user action; positioning wrapper must stay a span
+							<span
 								className="absolute left-full top-1/2 -translate-y-1/2 ml-3 border border-stroke-strong"
-								renderContent={() => (
-									<UpvotersTooltip
-										upvoters={upvotersData?.upvoters ?? []}
-										totalCount={
-											upvotersData?.totalCount ?? upvoteStatus?.count ?? 0
-										}
-										currentUserId={upvoteStatus?.currentUserId ?? null}
-										loading={upvotersData === undefined}
-									/>
-								)}
+								onMouseEnter={onUpvoteHover}
 							>
-								<UpvoteButton
-									count={upvoteStatus?.count ?? 0}
-									upvoted={upvoteStatus?.upvoted}
-									disabled={upvoting || upvoteStatus?.isOwner}
-									size="md"
-									onClick={onUpvote}
-									onMouseEnter={onUpvoteHover}
-									title={
-										upvoteStatus?.isOwner
-											? "You can't upvote your own stack"
-											: undefined
-									}
-								/>
-							</HoverCard>
+								<HoverCard
+									mode="wrapper"
+									position="below"
+									width={280}
+									height="auto"
+									maxRotation={6}
+									maxOffset={8}
+									renderContent={() => (
+										<UpvotersTooltip
+											upvoters={upvotersData?.upvoters ?? []}
+											totalCount={
+												upvotersData?.totalCount ?? upvoteStatus?.count ?? 0
+											}
+											currentUserId={upvoteStatus?.currentUserId ?? null}
+											loading={upvotersData === undefined}
+										/>
+									)}
+								>
+									<UpvoteButton
+										count={upvoteStatus?.count ?? 0}
+										upvoted={upvoteStatus?.upvoted}
+										disabled={upvoting || upvoteStatus?.isOwner}
+										size="md"
+										onClick={onUpvote}
+										title={
+											upvoteStatus?.isOwner
+												? "You can't upvote your own stack"
+												: undefined
+										}
+									/>
+								</HoverCard>
+							</span>
 						) : (
 							<span className="absolute left-full top-1/2 -translate-y-1/2 ml-3 border border-stroke-strong">
 								<UpvoteButton
@@ -148,7 +152,9 @@ export function StackHeader({
 						)}
 						{personalPageUrl && (
 							<>
-								{creator.xHandle && <span className="text-stroke-strong">·</span>}
+								{creator.xHandle && (
+									<span className="text-stroke-strong">·</span>
+								)}
 								<a
 									href={
 										personalPageUrl.startsWith("http")
