@@ -10,6 +10,7 @@ import {
 import { selectGuestDraft } from "@/features/stack-editor/state/editorSelectors";
 import type {
 	ModelSubscriptionEntry,
+	PendingAvatar,
 	Resource,
 	StackEditorInitialValue,
 	StackEditorMode,
@@ -77,8 +78,8 @@ function useEditorState({
 				type: "profile/updated",
 				updates: { personalPageUrl: value },
 			}),
-		setStackImageUrl: (value: string) =>
-			dispatch({ type: "profile/updated", updates: { stackImageUrl: value } }),
+		setAvatar: (pending: PendingAvatar) =>
+			dispatch({ type: "avatar/updated", pending }),
 		setDescription: (value: string) =>
 			dispatch({ type: "description/updated", description: value }),
 		setToolSubscriptions: (tools: ToolSubscriptionEntry[]) =>

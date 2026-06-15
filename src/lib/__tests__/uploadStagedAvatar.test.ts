@@ -1,24 +1,27 @@
 /**
- * RED tests for the new `uploadStagedAvatar` helper (TC-UP-01..04).
- * The implementation does not exist yet — these tests are expected to fail
- * at import time until `src/lib/uploadStagedAvatar.ts` is created.
+ * Tests for `uploadStagedAvatar` (v3 contract).
  *
- * TC-UP-04 cannot be cleanly isolated as a pure unit without extracting a
- * tiny detection predicate from handleSave. It is covered here as a trivial
- * string-check case; if the implementer does not extract it as a separate
- * export, TC-UP-04 should be verified manually.
+ * TC-UP-01 REPLACED: happy path now resolves to a storageId string, not a URL.
+ *   getFileUrl is gone from the signature.
+ * TC-UP-02 KEPT: throws on !ok (getFileUrl assertion dropped).
+ * TC-UP-03 REPLACED: fetch ok but json has no storageId → throws.
+ * TC-UP-04 KEPT: isDataUrl predicate unchanged.
+ *
+ * These tests reference the new signature:
+ *   uploadStagedAvatar(dataUrl, { generateUploadUrl, fetch? }) => Promise<string>
+ * The old { getFileUrl } dep is gone. Tests will fail (RED) until the
+ * implementation is updated to match this contract.
  */
 import { describe, expect, it, vi } from "vitest";
 
-// The helper to be extracted. Import will fail (RED) until the file exists.
 import { isDataUrl, uploadStagedAvatar } from "@/lib/uploadStagedAvatar";
 
 // ---------------------------------------------------------------------------
-// TC-UP-01: happy path
+// TC-UP-01: happy path resolves to storageId string (REPLACED)
 // ---------------------------------------------------------------------------
 
 describe("uploadStagedAvatar", () => {
-	it("TC-UP-01: resolves to the storage URL returned by getFileUrl", async () => {
+	it("TC-UP-01: resolves to the storageId returned by the upload endpoint", async () => {
 		const dataUrl = "data:image/jpeg;base64,AAAA";
 
 		const generateUploadUrl = vi
@@ -26,29 +29,25 @@ describe("uploadStagedAvatar", () => {
 			.mockResolvedValue("https://upload.example.com");
 		const mockFetch = vi.fn().mockResolvedValue({
 			ok: true,
-			json: async () => ({ storageId: "s1" }),
+			json: async () => ({ storageId: "abc123" }),
 		});
-		const getFileUrl = vi
-			.fn()
-			.mockResolvedValue("https://storage.example.com/s1");
 
 		const result = await uploadStagedAvatar(dataUrl, {
 			generateUploadUrl,
-			getFileUrl,
 			fetch: mockFetch,
 		});
 
-		expect(result).toBe("https://storage.example.com/s1");
+		expect(result).toBe("abc123");
 		expect(generateUploadUrl).toHaveBeenCalledTimes(1);
 		expect(mockFetch).toHaveBeenCalledWith(
 			"https://upload.example.com",
 			expect.objectContaining({ method: "POST" }),
 		);
-		expect(getFileUrl).toHaveBeenCalledWith({ storageId: "s1" });
+		// getFileUrl must NOT be called — it no longer exists in the signature
 	});
 
 	// ---------------------------------------------------------------------------
-	// TC-UP-02: non-ok fetch response → throws
+	// TC-UP-02: non-ok fetch response → throws (KEPT)
 	// ---------------------------------------------------------------------------
 
 	it("TC-UP-02: throws when the upload fetch responds with !ok", async () => {
@@ -61,25 +60,20 @@ describe("uploadStagedAvatar", () => {
 			ok: false,
 			json: async () => ({}),
 		});
-		const getFileUrl = vi.fn();
 
 		await expect(
 			uploadStagedAvatar(dataUrl, {
 				generateUploadUrl,
-				getFileUrl,
 				fetch: mockFetch,
 			}),
 		).rejects.toThrow();
-
-		// getFileUrl must NOT have been called — image must not be silently dropped.
-		expect(getFileUrl).not.toHaveBeenCalled();
 	});
 
 	// ---------------------------------------------------------------------------
-	// TC-UP-03: getFileUrl returns null/falsy → throws
+	// TC-UP-03: fetch ok but json has no storageId → throws (REPLACED)
 	// ---------------------------------------------------------------------------
 
-	it("TC-UP-03: throws when getFileUrl returns a falsy URL", async () => {
+	it("TC-UP-03: throws when response json has no storageId field", async () => {
 		const dataUrl = "data:image/jpeg;base64,AAAA";
 
 		const generateUploadUrl = vi
@@ -87,14 +81,13 @@ describe("uploadStagedAvatar", () => {
 			.mockResolvedValue("https://upload.example.com");
 		const mockFetch = vi.fn().mockResolvedValue({
 			ok: true,
-			json: async () => ({ storageId: "s2" }),
+			// storageId deliberately absent
+			json: async () => ({ something: "else" }),
 		});
-		const getFileUrl = vi.fn().mockResolvedValue(null);
 
 		await expect(
 			uploadStagedAvatar(dataUrl, {
 				generateUploadUrl,
-				getFileUrl,
 				fetch: mockFetch,
 			}),
 		).rejects.toThrow();
@@ -102,14 +95,7 @@ describe("uploadStagedAvatar", () => {
 });
 
 // ---------------------------------------------------------------------------
-// TC-UP-04: data: detection predicate
-// A non-data-URL should NOT be treated as a staged avatar and must be left
-// untouched. This is expressed here as a unit on the exported `isDataUrl`
-// predicate that the implementer should extract from handleSave's detection
-// branch. If `isDataUrl` is not exported separately, this test fails at import
-// (RED) and the implementer is guided to extract it. Manual verification note:
-// the handleSave integration (guest → sign-in → persist round-trip) remains
-// a manual test because it requires auth + full-page navigation + Convex.
+// TC-UP-04: data: detection predicate (KEPT, unchanged)
 // ---------------------------------------------------------------------------
 
 describe("isDataUrl", () => {

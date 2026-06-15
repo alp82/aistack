@@ -8,7 +8,6 @@ type StackOgImageProps = {
 		xHandle?: string | null;
 		avatarUrl?: string | null;
 	};
-	stackImageUrl?: string | null;
 	fixedTotal?: {
 		amount: number;
 		period?: "month" | "year" | "one_time";
@@ -63,7 +62,6 @@ export function StackOgImage({
 	name,
 	oneLiner,
 	creator,
-	stackImageUrl,
 	fixedTotal,
 	hasUsageComponent,
 	teamSize,
@@ -126,10 +124,10 @@ export function StackOgImage({
 							minWidth: 0,
 						}}
 					>
-						{stackImageUrl ? (
+						{creator.avatarUrl ? (
 							<img
-								src={stackImageUrl}
-								alt=""
+								src={creator.avatarUrl}
+								alt={creator.name}
 								width={88}
 								height={88}
 								style={{
@@ -154,7 +152,7 @@ export function StackOgImage({
 									flexShrink: 0,
 								}}
 							>
-								{getInitials(name)}
+								{getInitials(creator.name)}
 							</div>
 						)}
 						<div

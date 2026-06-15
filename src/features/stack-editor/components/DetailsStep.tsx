@@ -1,10 +1,13 @@
 import { User } from "lucide-react";
 import { useEffect, useState } from "react";
+import { AvatarEditor } from "@/components/AvatarEditor";
 import XLogoIcon from "@/components/icon/XLogoIcon";
 import { Input } from "@/components/ui/input";
+import type {
+	CreatorProfile,
+	PendingAvatar,
+} from "@/features/stack-editor/types";
 import { cn } from "@/lib/utils";
-import { AvatarEditor } from "@/components/AvatarEditor";
-import type { CreatorProfile } from "@/features/stack-editor/types";
 
 type DetailsStepProps = {
 	creator: CreatorProfile;
@@ -16,8 +19,9 @@ type DetailsStepProps = {
 	onXHandleChange: (value: string) => void;
 	personalPageUrl: string;
 	onPersonalPageUrlChange: (value: string) => void;
-	stackImageUrl: string;
-	onStackImageUrlChange: (value: string) => void;
+	pendingAvatar: PendingAvatar;
+	onAvatarChange: (pending: PendingAvatar, previewUrl?: string) => void;
+	avatarPreviewUrl?: string;
 	defaultAvatarUrl?: string;
 	isTeam: boolean;
 	onIsTeamChange: (value: boolean) => void;
@@ -36,8 +40,9 @@ function DetailsStep({
 	onXHandleChange,
 	personalPageUrl,
 	onPersonalPageUrlChange,
-	stackImageUrl,
-	onStackImageUrlChange,
+	pendingAvatar,
+	onAvatarChange,
+	avatarPreviewUrl,
 	defaultAvatarUrl,
 	isTeam,
 	onIsTeamChange,
@@ -47,10 +52,25 @@ function DetailsStep({
 }: DetailsStepProps) {
 	const [isAvatarEditorOpen, setIsAvatarEditorOpen] = useState(false);
 	const [imgError, setImgError] = useState(false);
+	// A storageId uploaded in this session resolves to a live preview URL the
+	// AvatarEditor hands up (never persisted — the stored avatar is the id).
+	const [sessionPreviewUrl, setSessionPreviewUrl] = useState<
+		string | undefined
+	>(undefined);
 
-	// Display the stackImageUrl directly — no fallback to defaultAvatarUrl
-	// so that "remove avatar" works (shows initials fallback)
-	const displayAvatarUrl = stackImageUrl;
+	// dataUrl → render the inline data URL; storageId → render its resolved
+	// preview (this session's upload, else the read-time URL); none → initials.
+	const displayAvatarUrl =
+		pendingAvatar.kind === "dataUrl"
+			? pendingAvatar.url
+			: pendingAvatar.kind === "storageId"
+				? (sessionPreviewUrl ?? avatarPreviewUrl ?? "")
+				: "";
+
+	const handleAvatarChange = (pending: PendingAvatar, previewUrl?: string) => {
+		setSessionPreviewUrl(previewUrl);
+		onAvatarChange(pending, previewUrl);
+	};
 
 	// Reset error when URL changes
 	useEffect(() => {
@@ -70,10 +90,11 @@ function DetailsStep({
 			<AvatarEditor
 				isOpen={isAvatarEditorOpen}
 				onClose={() => setIsAvatarEditorOpen(false)}
-				currentAvatarUrl={stackImageUrl}
+				currentAvatarUrl={displayAvatarUrl}
 				defaultAvatarUrl={defaultAvatarUrl}
+				pendingAvatarKind={pendingAvatar.kind}
 				creatorName={creator.name}
-				onAvatarChange={onStackImageUrlChange}
+				onAvatarChange={handleAvatarChange}
 				guestSession={guestSession}
 			/>
 
@@ -186,6 +207,15 @@ function DetailsStep({
 							type="text"
 							value={personalPageUrl}
 							onChange={(e) => onPersonalPageUrlChange(e.target.value)}
+							onBlur={(e) => {
+								// The server requires an https URL — normalize a bare
+								// domain ("example.com") to https so the save doesn't fail
+								// at the mutation boundary for the common input.
+								const v = e.target.value.trim();
+								if (v && !/^[a-z][a-z0-9+.-]*:\/\//i.test(v)) {
+									onPersonalPageUrlChange(`https://${v}`);
+								}
+							}}
 							placeholder="https://yourportfolio.com"
 							className="flex-1 bg-transparent border-0 px-2 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:outline-none focus:ring-0"
 						/>

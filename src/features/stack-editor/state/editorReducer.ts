@@ -3,6 +3,7 @@ import type { StagedProject } from "@/components/projects/types";
 import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
 import type {
 	ModelSubscriptionEntry,
+	PendingAvatar,
 	Resource,
 	StackEditorInitialValue,
 } from "@/features/stack-editor/types";
@@ -41,7 +42,7 @@ type ProfileFields = {
 	projects: StagedProject[];
 	xHandle: string;
 	personalPageUrl: string;
-	stackImageUrl: string;
+	pendingAvatar: PendingAvatar;
 };
 
 type EditorState = ProfileFields & {
@@ -66,9 +67,12 @@ type EditorAction =
 					| "isTeam"
 					| "teamSize"
 					| "personalPageUrl"
-					| "stackImageUrl"
 				>
 			>;
+	  }
+	| {
+			type: "avatar/updated";
+			pending: PendingAvatar;
 	  }
 	| {
 			type: "description/updated";
@@ -204,11 +208,9 @@ function getInitialEditorState(args: {
 			savedDraft?.personalPageUrl ??
 			initialValue?.personalPageUrl ??
 			personalPageUrl,
-		stackImageUrl:
-			savedDraft?.stackImageUrl ??
-			initialValue?.stackImageUrl ??
-			actor.avatarUrl ??
-			"",
+		pendingAvatar: initialValue?.avatarStorageId
+			? { kind: "storageId", id: initialValue.avatarStorageId }
+			: (savedDraft?.pendingAvatar ?? { kind: "none" }),
 		saving: false,
 		error: "",
 		activeSection: "profile",
@@ -253,6 +255,11 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 			return {
 				...state,
 				projects: action.projects,
+			};
+		case "avatar/updated":
+			return {
+				...state,
+				pendingAvatar: action.pending,
 			};
 		case "ui/saveStateChanged":
 			return {
@@ -309,10 +316,10 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 					draft.personalPageUrl !== undefined
 						? draft.personalPageUrl
 						: state.personalPageUrl,
-				stackImageUrl:
-					draft.stackImageUrl !== undefined
-						? draft.stackImageUrl
-						: state.stackImageUrl,
+				pendingAvatar:
+					draft.pendingAvatar !== undefined
+						? draft.pendingAvatar
+						: state.pendingAvatar,
 			};
 		}
 		case "draft/reverted": {
@@ -331,7 +338,9 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 				bundleSubscriptions: iv.bundleSubscriptions ?? [],
 				projects: [],
 				personalPageUrl: iv.personalPageUrl ?? "",
-				stackImageUrl: iv.stackImageUrl ?? "",
+				pendingAvatar: iv.avatarStorageId
+					? { kind: "storageId", id: iv.avatarStorageId }
+					: { kind: "none" },
 				restoredFromDraft: false,
 			};
 		}

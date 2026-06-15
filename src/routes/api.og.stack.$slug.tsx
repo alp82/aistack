@@ -35,7 +35,6 @@ export const Route = createFileRoute("/api/og/stack/$slug")({
 							name={stack.name}
 							oneLiner={stack.oneLiner}
 							creator={stack.creator}
-							stackImageUrl={stack.stackImageUrl}
 							fixedTotal={stack.fixedTotal}
 							hasUsageComponent={stack.hasUsageComponent}
 							teamSize={stack.teamSize}

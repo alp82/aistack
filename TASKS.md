@@ -1,5 +1,4 @@
 # TODO
-* failed to upload image for stack
 * stack page
     * lazy loading upvotes fails
     * tools, models, bundle are links to smooth scroll

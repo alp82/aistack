@@ -95,6 +95,11 @@ type CreatorProfile = {
 
 type StackEditorMode = "create" | "edit";
 
+type PendingAvatar =
+	| { kind: "storageId"; id: Id<"_storage"> }
+	| { kind: "dataUrl"; url: string }
+	| { kind: "none" };
+
 type StackEditorInitialValue = {
 	_id: Id<"stacks">;
 	name: string;
@@ -108,7 +113,8 @@ type StackEditorInitialValue = {
 	bundleSubscriptions: BundleSubscriptionEntry[];
 	modelSubscriptions: ModelSubscriptionEntry[];
 	personalPageUrl?: string;
-	stackImageUrl?: string;
+	avatarStorageId?: Id<"_storage">;
+	avatarUrl?: string;
 };
 
 type StackMetadataUpdates = {
@@ -120,6 +126,7 @@ export type {
 	FileEntry,
 	KnownResourceType,
 	ModelSubscriptionEntry,
+	PendingAvatar,
 	Resource,
 	ResourceType,
 	StackEditorInitialValue,

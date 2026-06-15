@@ -33,6 +33,7 @@ import type * as migrations__archived_migrateStackDescriptions from "../migratio
 import type * as migrations__archived_populateShortIds from "../migrations/_archived/populateShortIds.js";
 import type * as migrations_backup from "../migrations/backup.js";
 import type * as migrations_icons from "../migrations/icons.js";
+import type * as migrations_stackImages from "../migrations/stackImages.js";
 import type * as models from "../models.js";
 import type * as projects from "../projects.js";
 import type * as resources from "../resources.js";
@@ -78,6 +79,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/_archived/populateShortIds": typeof migrations__archived_populateShortIds;
   "migrations/backup": typeof migrations_backup;
   "migrations/icons": typeof migrations_icons;
+  "migrations/stackImages": typeof migrations_stackImages;
   models: typeof models;
   projects: typeof projects;
   resources: typeof resources;

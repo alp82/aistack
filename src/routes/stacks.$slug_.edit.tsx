@@ -1,17 +1,17 @@
+import { useConvexAuth } from "@convex-dev/react-query";
 import {
 	createFileRoute,
 	Link,
-	useNavigate,
 	useLocation,
+	useNavigate,
 } from "@tanstack/react-router";
-import { useConvexAuth } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
-import { api } from "../../convex/_generated/api";
 import { StackEditor } from "@/components/StackEditor";
 import type { ModelSubscriptionEntry } from "@/features/stack-editor/types";
 import { authClient } from "@/lib/auth-client";
 import { seoMeta } from "@/lib/seo";
+import { api } from "../../convex/_generated/api";
 
 export const Route = createFileRoute("/stacks/$slug_/edit")({
 	ssr: false,
@@ -33,6 +33,14 @@ function EditStackPage() {
 	const session = authClient.useSession();
 	const getOrCreateCreator = useMutation(api.creators.getOrCreateForUser);
 	const stackData = useQuery(api.stacks.getForEdit, { slug });
+	// getForEdit returns the raw avatar storage id (never a URL — the public
+	// resolvers do that). Resolve it here for the editor's avatar preview.
+	const avatarUrl = useQuery(
+		api.iconStorage.getUrl,
+		stackData?.avatarStorageId
+			? { storageId: stackData.avatarStorageId }
+			: "skip",
+	);
 
 	// Get user's Google profile image as default
 	const userImageUrl = session.data?.user?.image ?? undefined;
@@ -116,7 +124,8 @@ function EditStackPage() {
 				resources: stackData.resources ?? [],
 				teamSize: stackData.teamSize,
 				published: stackData.published,
-				stackImageUrl: stackData.stackImageUrl,
+				avatarStorageId: stackData.avatarStorageId,
+				avatarUrl: avatarUrl ?? undefined,
 				personalPageUrl: stackData.personalPageUrl,
 				toolSubscriptions: stackData.toolSubscriptions.map((t) => ({
 					toolSlug: t.toolSlug,

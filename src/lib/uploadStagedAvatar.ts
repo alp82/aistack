@@ -5,12 +5,11 @@
  * localStorage draft (the DB never stores a data URL). After sign-up, the
  * authed save converts that data URL back to a Blob and pushes it through the
  * same Convex storage upload sequence the signed-in AvatarEditor uses, then
- * returns the canonical storage URL.
+ * returns the canonical storage id (resolved to a trusted URL at read time).
  */
 
 type UploadStagedAvatarDeps = {
 	generateUploadUrl: () => Promise<string>;
-	getFileUrl: (args: { storageId: string }) => Promise<string | null>;
 	fetch?: typeof fetch;
 };
 
@@ -50,11 +49,10 @@ export async function uploadStagedAvatar(
 	}
 
 	const { storageId } = await response.json();
-	const url = await deps.getFileUrl({ storageId });
 
-	if (!url) {
-		throw new Error("Failed to resolve uploaded avatar URL");
+	if (!storageId) {
+		throw new Error("Upload response missing storageId");
 	}
 
-	return url;
+	return storageId;
 }

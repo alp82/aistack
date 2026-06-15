@@ -5,8 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
 import { GridBackground } from "@/components/GridBackground";
 import { SignInDialog } from "@/components/SignInDialog";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DetailsStep } from "@/features/stack-editor/components/DetailsStep";
 import { ProjectsStep } from "@/features/stack-editor/components/ProjectsStep";
 import { ToolsSidebar } from "@/features/stack-editor/components/ToolsSidebar";
@@ -31,11 +31,12 @@ import type {
 	StackEditorInitialValue,
 	StackEditorMode,
 } from "@/features/stack-editor/types";
+import { resolveAvatarForSave } from "@/lib/resolveAvatarForSave";
 import {
 	buildManualStableKey,
 	MANUAL_RESOURCE_GROUP,
 } from "@/lib/resource-utils";
-import { isDataUrl, uploadStagedAvatar } from "@/lib/uploadStagedAvatar";
+import { uploadStagedAvatar } from "@/lib/uploadStagedAvatar";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 
@@ -128,7 +129,6 @@ export function StackEditor({
 	const updateStack = useMutation(api.stacks.update);
 	const updateCreatorProfile = useMutation(api.creators.updateProfile);
 	const generateUploadUrl = useMutation(api.files.generateUploadUrl);
-	const getFileUrl = useMutation(api.files.getUrl);
 
 	const {
 		state,
@@ -147,7 +147,7 @@ export function StackEditor({
 		setToolSubscriptions,
 		setXHandle,
 		setPersonalPageUrl,
-		setStackImageUrl,
+		setAvatar,
 		revertDraft,
 		dismissDraft,
 		disableDraftSaving,
@@ -293,25 +293,29 @@ export function StackEditor({
 			const payload = selectSavePayload(state, publish);
 
 			// A staged guest avatar arrives as a data URL — upload it to Convex
-			// storage now so the DB never persists the data URL. A thrown upload
-			// error lands in the catch below, which means disableDraftSaving() is
-			// not reached and the draft survives for retry.
-			if (isDataUrl(payload.stackImageUrl)) {
-				payload.stackImageUrl = await uploadStagedAvatar(
-					payload.stackImageUrl,
-					{
-						generateUploadUrl,
-						getFileUrl: (args) =>
-							getFileUrl({ storageId: args.storageId as Id<"_storage"> }),
-					},
-				);
+			// storage now (so the DB never persists the data URL) and carry the
+			// resulting id. Other states (an existing id, or cleared) are already
+			// resolved onto the payload by selectSavePayload, so no upload/await is
+			// needed. A thrown upload lands in the catch below, so disableDraftSaving()
+			// is not reached and the draft survives for retry.
+			if (state.pendingAvatar.kind === "dataUrl") {
+				const resolved = await resolveAvatarForSave(state.pendingAvatar, {
+					uploadStagedAvatar: (dataUrl) =>
+						uploadStagedAvatar(dataUrl, { generateUploadUrl }),
+				});
+				payload.avatarStorageId = (resolved?.id as Id<"_storage">) ?? null;
 			}
 
 			// Disable draft auto-save BEFORE the mutation to prevent race conditions
 			disableDraftSaving();
 
 			if (mode === "create") {
-				const result = await createStack(payload);
+				// The create mutation has no null avatar to clear (nothing exists
+				// yet), so map a cleared avatar (null) to undefined.
+				const result = await createStack({
+					...payload,
+					avatarStorageId: payload.avatarStorageId ?? undefined,
+				});
 				localStorage.removeItem(getDraftKey(undefined));
 				onNavigating?.();
 				navigate({ to: "/stacks/$slug", params: { slug: result.slug } });
@@ -598,8 +602,9 @@ export function StackEditor({
 								onXHandleChange={setXHandle}
 								personalPageUrl={state.personalPageUrl}
 								onPersonalPageUrlChange={setPersonalPageUrl}
-								stackImageUrl={state.stackImageUrl}
-								onStackImageUrlChange={setStackImageUrl}
+								pendingAvatar={state.pendingAvatar}
+								onAvatarChange={setAvatar}
+								avatarPreviewUrl={initialValue?.avatarUrl}
 								defaultAvatarUrl={defaultAvatarUrl}
 								isTeam={state.isTeam}
 								onIsTeamChange={setIsTeam}

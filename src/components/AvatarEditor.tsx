@@ -1,18 +1,20 @@
 import { useMutation } from "convex/react";
-import { Link2, Upload, User, X } from "lucide-react";
+import { Upload, User, X } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
-import { api } from "../../convex/_generated/api";
-import { Input } from "@/components/ui/input";
+import type { PendingAvatar } from "@/features/stack-editor/types";
 import { convertToCompactDataUrl } from "@/lib/imageProcessing";
 import { cn } from "@/lib/utils";
+import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 
 type AvatarEditorProps = {
 	isOpen: boolean;
 	onClose: () => void;
 	currentAvatarUrl: string;
 	defaultAvatarUrl?: string;
+	pendingAvatarKind: PendingAvatar["kind"];
 	creatorName: string;
-	onAvatarChange: (url: string) => void;
+	onAvatarChange: (pending: PendingAvatar, previewUrl?: string) => void;
 	guestSession?: boolean;
 };
 
@@ -21,11 +23,11 @@ export function AvatarEditor({
 	onClose,
 	currentAvatarUrl,
 	defaultAvatarUrl,
+	pendingAvatarKind,
 	creatorName,
 	onAvatarChange,
 	guestSession = false,
 }: AvatarEditorProps) {
-	const [urlInput, setUrlInput] = useState("");
 	const [isUploading, setIsUploading] = useState(false);
 	const [error, setError] = useState("");
 	const [dragActive, setDragActive] = useState(false);
@@ -54,7 +56,7 @@ export function AvatarEditor({
 				setError("");
 				try {
 					const url = await convertToCompactDataUrl(file);
-					onAvatarChange(url);
+					onAvatarChange({ kind: "dataUrl", url });
 					onClose();
 				} catch (err) {
 					setError("Couldn't process image - try another file");
@@ -81,12 +83,15 @@ export function AvatarEditor({
 				}
 
 				const { storageId } = await response.json();
-				const url = await getFileUrl({ storageId });
+				// getFileUrl produces a live preview URL handed up for display only —
+				// the stored avatar is the storage id, never this URL.
+				const previewUrl = await getFileUrl({ storageId });
 
-				if (url) {
-					onAvatarChange(url);
-					onClose();
-				}
+				onAvatarChange(
+					{ kind: "storageId", id: storageId as Id<"_storage"> },
+					previewUrl ?? undefined,
+				);
+				onClose();
 			} catch (err) {
 				setError("Failed to upload image");
 				console.error(err);
@@ -130,23 +135,8 @@ export function AvatarEditor({
 		[handleFileUpload],
 	);
 
-	const handleUrlSubmit = useCallback(() => {
-		if (!urlInput.trim()) {
-			setError("Please enter a URL");
-			return;
-		}
-
-		try {
-			new URL(urlInput);
-			onAvatarChange(urlInput.trim());
-			onClose();
-		} catch {
-			setError("Please enter a valid URL");
-		}
-	}, [urlInput, onAvatarChange, onClose]);
-
 	const handleRemoveAvatar = useCallback(() => {
-		onAvatarChange("");
+		onAvatarChange({ kind: "none" });
 		onClose();
 	}, [onAvatarChange, onClose]);
 
@@ -184,12 +174,18 @@ export function AvatarEditor({
 					)}
 				</div>
 
-				{/* Use Profile Picture */}
-				{defaultAvatarUrl && currentAvatarUrl !== defaultAvatarUrl && (
+				{/* Use Profile Picture — clears the stack avatar so the read path
+				    falls back to the creator's profile photo. Gate on pendingAvatarKind
+				    (not URL equality) because currentAvatarUrl is a resolved storage/
+				    preview URL while defaultAvatarUrl is the OAuth URL — different
+				    URL spaces make equality meaningless. Show the button whenever there
+				    IS a default to fall back to AND the pending selection isn't already
+				    "use profile" (kind==='none' means fall back to creator avatar). */}
+				{defaultAvatarUrl && pendingAvatarKind !== "none" && (
 					<button
 						type="button"
 						onClick={() => {
-							onAvatarChange(defaultAvatarUrl);
+							onAvatarChange({ kind: "none" });
 							onClose();
 						}}
 						className="mb-4 flex w-full items-center justify-center gap-2 border-2 border-stroke-subtle px-4 py-2 font-mono text-xs uppercase tracking-wider text-fg-muted hover:border-accent-lime hover:text-accent-lime transition-colors cursor-pointer"
@@ -233,38 +229,6 @@ export function AvatarEditor({
 						onChange={handleFileSelect}
 						className="hidden"
 					/>
-				</div>
-
-				{/* Divider */}
-				<div className="mb-4 flex items-center gap-3">
-					<div className="h-px flex-1 bg-stroke-subtle" />
-					<span className="font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-						or
-					</span>
-					<div className="h-px flex-1 bg-stroke-subtle" />
-				</div>
-
-				{/* URL Input */}
-				<div className="mb-4">
-					<div className="flex gap-2">
-						<div className="flex items-center gap-2 flex-1">
-							<Link2 className="size-4 shrink-0 text-fg-muted" />
-							<Input
-								value={urlInput}
-								onChange={(e) => setUrlInput(e.target.value)}
-								placeholder="Paste image URL"
-								className="flex-1"
-								onKeyDown={(e) => e.key === "Enter" && handleUrlSubmit()}
-							/>
-						</div>
-						<button
-							type="button"
-							onClick={handleUrlSubmit}
-							className="border-2 border-accent-lime bg-accent-lime px-4 font-mono text-xs font-bold uppercase tracking-wider text-accent-lime-contrast hover:bg-accent-lime-strong transition-colors"
-						>
-							Use
-						</button>
-					</div>
 				</div>
 
 				{/* Error */}

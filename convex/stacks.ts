@@ -8,6 +8,7 @@ import { generateUniqueShortId, extractShortId } from './lib/ids'
 import { Resource as ResourceValidator, ResourceInput } from './schema'
 import { resolveLinkedResources, upsertResourcesForOwner } from './lib/resourceLinks'
 import { normalizeProjectUrl } from './projects'
+import { assertValidPersonalPageUrl } from './lib/iconUrl'
 
 type ToolSubscriptionLike = {
   price: {
@@ -204,6 +205,10 @@ export const listPublished = query({
           .withIndex('by_stackId', (q) => q.eq('stackId', stack._id))
           .collect()
 
+        const resolvedAvatar = stack.avatarStorageId
+          ? await ctx.storage.getUrl(stack.avatarStorageId)
+          : null
+
         return {
           _id: stack._id,
           _creationTime: stack._creationTime,
@@ -220,7 +225,7 @@ export const listPublished = query({
             _id: creator._id,
             name: creator.name,
             xHandle: creator.xHandle,
-            avatarUrl: stack.stackImageUrl ?? creator.avatarUrl,
+            avatarUrl: resolvedAvatar ?? creator.avatarUrl,
             verified: creator.verified,
             personalPages: creator.personalPages,
             projectPages: creator.projectPages,
@@ -326,12 +331,14 @@ export const create = mutation({
     bundleSubscriptions: v.optional(v.array(BundleSubscriptionInput)),
     modelSubscriptions: v.optional(v.array(ModelSubscriptionInput)),
     stackImageUrl: v.optional(v.string()),
+    avatarStorageId: v.optional(v.id('_storage')),
     personalPageUrl: v.optional(v.string()),
     projects: v.optional(v.array(ProjectInput)),
     published: v.boolean(),
   },
   returns: v.object({ _id: v.id('stacks'), slug: v.string() }),
   handler: async (ctx, args) => {
+    if (args.personalPageUrl) assertValidPersonalPageUrl(args.personalPageUrl)
     const user = await ctx.auth.getUserIdentity()
     if (!user) throw new Error('Not authenticated')
     const userId = user.tokenIdentifier.split('|')[1]
@@ -365,7 +372,7 @@ export const create = mutation({
       toolSubscriptions: args.toolSubscriptions,
       bundleSubscriptions: args.bundleSubscriptions,
       modelSubscriptions: args.modelSubscriptions,
-      stackImageUrl: args.stackImageUrl,
+      avatarStorageId: args.avatarStorageId,
       personalPageUrl: args.personalPageUrl,
       fixedTotal: pricing.fixedTotal,
       hasUsageComponent: pricing.hasUsageComponent,
@@ -407,11 +414,13 @@ export const update = mutation({
     bundleSubscriptions: v.optional(v.array(BundleSubscriptionInput)),
     modelSubscriptions: v.optional(v.array(ModelSubscriptionInput)),
     stackImageUrl: v.optional(v.string()),
+    avatarStorageId: v.optional(v.union(v.id('_storage'), v.null())),
     personalPageUrl: v.optional(v.string()),
     published: v.optional(v.boolean()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    if (args.personalPageUrl) assertValidPersonalPageUrl(args.personalPageUrl)
     const user = await ctx.auth.getUserIdentity()
     if (!user) throw new Error('Not authenticated')
     const userId = user.tokenIdentifier.split('|')[1]
@@ -442,7 +451,8 @@ export const update = mutation({
     if (args.toolSubscriptions !== undefined) patch.toolSubscriptions = args.toolSubscriptions
     if (args.bundleSubscriptions !== undefined) patch.bundleSubscriptions = args.bundleSubscriptions
     if (args.modelSubscriptions !== undefined) patch.modelSubscriptions = args.modelSubscriptions
-    if (args.stackImageUrl !== undefined) patch.stackImageUrl = args.stackImageUrl
+    if (args.avatarStorageId !== undefined)
+      patch.avatarStorageId = args.avatarStorageId === null ? undefined : args.avatarStorageId
     if (args.personalPageUrl !== undefined) patch.personalPageUrl = args.personalPageUrl
     if (args.published !== undefined) patch.published = args.published
 
@@ -482,6 +492,7 @@ export const getForEdit = query({
       hasUsageComponent: v.boolean(),
       published: v.boolean(),
       stackImageUrl: v.optional(v.string()),
+      avatarStorageId: v.optional(v.id('_storage')),
       personalPageUrl: v.optional(v.string()),
 
       toolSubscriptions: v.array(v.object({
@@ -626,6 +637,7 @@ export const getForEdit = query({
       hasUsageComponent: pricing.hasUsageComponent,
       published: stack.published,
       stackImageUrl: stack.stackImageUrl,
+      avatarStorageId: stack.avatarStorageId,
       personalPageUrl: stack.personalPageUrl,
       toolSubscriptions: toolSubs,
       bundleSubscriptions: bundleSubs,
@@ -910,7 +922,6 @@ export const getBySlug = query({
       fixedTotal: v.optional(MoneyValidator),
       hasUsageComponent: v.boolean(),
       usageTotalNotes: v.optional(v.string()),
-      stackImageUrl: v.optional(v.string()),
       personalPageUrl: v.optional(v.string()),
 
       creator: CreatorValidator,
@@ -1017,6 +1028,9 @@ export const getBySlug = query({
 
     const pricing = await calculateStackPricing(ctx, stack.toolSubscriptions, stack.bundleSubscriptions ?? [])
     const resources = await resolveLinkedResources(ctx, 'stack', stack._id)
+    const resolvedAvatar = stack.avatarStorageId
+      ? await ctx.storage.getUrl(stack.avatarStorageId)
+      : null
 
     return {
       _id: stack._id,
@@ -1031,13 +1045,12 @@ export const getBySlug = query({
       fixedTotal: pricing.fixedTotal,
       hasUsageComponent: pricing.hasUsageComponent,
       usageTotalNotes: stack.usageTotalNotes,
-      stackImageUrl: stack.stackImageUrl,
       personalPageUrl: stack.personalPageUrl,
       creator: {
         _id: creator._id,
         name: creator.name,
         xHandle: creator.xHandle,
-        avatarUrl: stack.stackImageUrl ?? creator.avatarUrl,
+        avatarUrl: resolvedAvatar ?? creator.avatarUrl,
         verified: creator.verified,
         personalPages: creator.personalPages,
         projectPages: creator.projectPages,
