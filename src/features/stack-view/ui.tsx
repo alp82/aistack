@@ -1,7 +1,8 @@
 import { ArrowUpRight } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { categoryConfig } from "@/config/categoryConfig";
 import { formatPriceDisplay } from "@/lib/pricing";
+import { useMediaQuery } from "@/lib/useMediaQuery";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -218,13 +219,34 @@ export function Section({
 	index,
 	children,
 	id,
+	highlighted,
 }: {
 	index: number;
 	children: ReactNode;
 	id?: string;
+	highlighted?: boolean;
 }) {
+	const ref = useRef<HTMLElement>(null);
+	const reduce = useMediaQuery("(prefers-reduced-motion: reduce)");
+
+	useEffect(() => {
+		if (highlighted)
+			ref.current?.scrollIntoView({
+				behavior: reduce ? "auto" : "smooth",
+				block: "start",
+			});
+	}, [highlighted, reduce]);
+
 	return (
-		<section className={cn("px-6 py-16 md:py-24", sectionBg(index))} id={id}>
+		<section
+			ref={ref}
+			className={cn(
+				"scroll-mt-24 px-6 py-16 md:py-24",
+				sectionBg(index),
+				highlighted && !reduce && "ring-2 ring-accent-lime/50 ring-inset",
+			)}
+			id={id}
+		>
 			<div className={cn("mx-auto", STACK_WIDTH)}>{children}</div>
 		</section>
 	);

@@ -1,8 +1,9 @@
-import { ChevronRight } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ChevronRight, Pencil } from "lucide-react";
 import { type ReactNode, useId, useMemo, useState } from "react";
 import { TableOfContents } from "@/components/TableOfContents";
 import { TiptapEditor } from "@/components/TiptapEditor";
-import { sortToolsByPrice } from "@/lib/pricing";
+import { formatPriceDisplay, sortToolsByPrice } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import {
 	BundleCard,
@@ -82,33 +83,37 @@ function Disclosure({
 
 export function ToolsSection({
 	index,
+	id,
+	highlighted,
 	tools,
 	models,
 	bundles,
 	highlightedBundle,
 	bundlesOpen,
 	onBundlesOpenChange,
+	modelsOpen,
+	onModelsOpenChange,
 	onBundleClick,
+	fixedTotal,
 }: {
 	index: number;
+	id?: string;
+	highlighted?: boolean;
 	tools: StackTool[];
 	models: StackModel[];
 	bundles: StackBundle[];
 	highlightedBundle: string | null;
 	bundlesOpen: boolean;
 	onBundlesOpenChange: (open: boolean) => void;
+	modelsOpen?: boolean;
+	onModelsOpenChange?: (open: boolean) => void;
 	onBundleClick?: (bundleSlug: string) => void;
+	fixedTotal?: { amount: number };
 }) {
 	const primary = sortToolsByPrice(tools.filter((t) => t.kind === "main"));
 	const secondary = sortToolsByPrice(tools.filter((t) => t.kind === "misc"));
 
-	const toolCost = tools.reduce(
-		(sum, t) =>
-			t.price.fixed && t.priceKind !== "bundle" && t.priceKind !== "sponsored"
-				? sum + t.price.fixed.amount
-				: sum,
-		0,
-	);
+	const price = formatPriceDisplay(fixedTotal?.amount ?? 0, "month", "floor");
 
 	const sortedModels = useMemo(
 		() =>
@@ -122,19 +127,26 @@ export function ToolsSection({
 	if (tools.length === 0) return null;
 
 	return (
-		<Section index={index}>
+		<Section index={index} id={id} highlighted={highlighted}>
 			<SectionHeader
 				index={String(index).padStart(2, "0")}
-				kicker="// TOOLS"
+				kicker="// AI Components"
 				title="Tools"
 				meta={`${tools.length} ${tools.length === 1 ? "item" : "items"}${
-					toolCost > 0 ? ` · $${toolCost}/mo` : ""
+					(fixedTotal?.amount ?? 0) > 0
+						? ` · $${price.amountText}${price.suffix}`
+						: ""
 				}`}
 			/>
 
 			<div className="mb-10 space-y-3">
 				{models.length > 0 && (
-					<Disclosure label="Models" count={models.length}>
+					<Disclosure
+						label="Models"
+						count={models.length}
+						open={modelsOpen}
+						onOpenChange={onModelsOpenChange}
+					>
 						<div className={cn("grid grid-cols-1 sm:grid-cols-2", GAP)}>
 							{sortedModels.map((m) => (
 								<ModelTile key={m._id} model={m} />
@@ -196,21 +208,25 @@ export function ToolsSection({
 }
 
 // ===========================================================================
-// 03 — WORKFLOW (writeup)
+// 03 — GUIDE (writeup)
 // ===========================================================================
 
-export function DescriptionSection({
+export function GuideSection({
 	index,
 	description,
+	isOwner,
+	slug,
 }: {
 	index: number;
 	description: string | undefined;
+	isOwner: boolean;
+	slug: string;
 }) {
 	return (
 		<Section index={index}>
 			<SectionHeader
 				index={String(index).padStart(2, "0")}
-				kicker="// WRITEUP"
+				kicker="// GUIDE"
 				title="Workflow"
 			/>
 			{description ? (
@@ -224,9 +240,25 @@ export function DescriptionSection({
 						<TiptapEditor content={description} editable={false} />
 					</div>
 				</>
+			) : isOwner ? (
+				<div className="max-w-3xl border border-stroke-subtle bg-bg-canvas p-6">
+					<p className="text-sm text-fg-secondary leading-relaxed">
+						No guide yet. Add setup notes so others can reproduce your stack.
+					</p>
+					<div className="mt-4">
+						<Link
+							to="/stacks/$slug/edit"
+							params={{ slug }}
+							className="inline-flex items-center gap-1.5 border-2 border-stroke-strong px-3 py-1 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
+						>
+							<Pencil className="size-3" />
+							Add a writeup
+						</Link>
+					</div>
+				</div>
 			) : (
 				<p className="max-w-3xl font-mono text-sm text-fg-muted">
-					No details were provided on how to use this stack
+					No setup notes yet.
 				</p>
 			)}
 		</Section>

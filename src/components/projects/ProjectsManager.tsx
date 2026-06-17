@@ -161,7 +161,7 @@ export function ProjectsManager({
 			{header ?? (
 				<SectionHeader
 					index={String(index).padStart(2, "0")}
-					kicker="// PROJECTS"
+					kicker="// Showcase"
 					title="Projects"
 					meta={
 						hasProjects

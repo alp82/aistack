@@ -25,6 +25,7 @@ type StackHeaderProps = {
 	onUpvote: () => void;
 	onReport: () => void;
 	onUpvoteHover: () => void;
+	onTileActivate: (target: "tools" | "models" | "bundles") => void;
 };
 
 export function StackHeader({
@@ -37,6 +38,7 @@ export function StackHeader({
 	onUpvote,
 	onReport,
 	onUpvoteHover,
+	onTileActivate,
 }: StackHeaderProps) {
 	const { creator, personalPageUrl } = stack;
 	const hasUpvotes = (upvoteStatus?.count ?? 0) > 0;
@@ -225,14 +227,17 @@ export function StackHeader({
 						<div className="inline-flex">
 							{(
 								[
-									[stack.tools.length, "Tool", "Tools"],
-									[stack.models.length, "Model", "Models"],
-									[stack.bundles.length, "Bundle", "Bundles"],
+									[stack.tools.length, "Tool", "Tools", "tools"],
+									[stack.models.length, "Model", "Models", "models"],
+									[stack.bundles.length, "Bundle", "Bundles", "bundles"],
 								] as const
-							).map(([n, singular, plural]) => (
-								<div
+							).map(([n, singular, plural, target]) => (
+								<button
+									type="button"
 									key={singular}
-									className="flex flex-col items-center px-5 py-2 border-l border-stroke-strong first:border-l-0"
+									onClick={() => onTileActivate(target)}
+									aria-label={`Jump to ${plural} section`}
+									className="flex flex-col items-center px-5 py-2 border-l border-stroke-strong first:border-l-0 cursor-pointer transition-colors hover:text-accent-lime focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-lime/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-canvas"
 								>
 									<span className="font-mono font-black text-2xl leading-none text-fg-primary">
 										{n}
@@ -240,7 +245,7 @@ export function StackHeader({
 									<span className="mt-1 font-mono text-[10px] tracking-wider uppercase text-fg-muted">
 										{n === 1 ? singular : plural}
 									</span>
-								</div>
+								</button>
 							))}
 						</div>
 					</div>

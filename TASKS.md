@@ -1,9 +1,3 @@
-# TODO
-* stack page
-    * // titles ambigious
-    * tools, models, bundle should be links to smooth scroll and expand respective sections
-    * tools price is wrong (bundle missing, should use same method as big price display in hero)
-    * empty state for Workflow section
 * custom stack profile image for github
 * custom theme for og/profile images
 * API for stacks + tools

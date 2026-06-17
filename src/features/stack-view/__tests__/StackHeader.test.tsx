@@ -117,6 +117,7 @@ function buildProps(
 		onUpvote: vi.fn(),
 		onReport: vi.fn(),
 		onUpvoteHover: vi.fn(),
+		onTileActivate: vi.fn(),
 		...overrides,
 	};
 }
@@ -300,5 +301,100 @@ describe("StackHeader upvote-popover regression", () => {
 			"[class*='absolute'][class*='left-full']",
 		);
 		expect(positionedWrapper).toBeInTheDocument();
+	});
+});
+
+// ===========================================================================
+// GROUP E — Hero stat tiles as interactive buttons (onTileActivate)
+// ===========================================================================
+
+describe("GROUP E — StackHeader hero tiles as buttons", () => {
+	// E-1: all three tiles render as buttons with correct aria-labels, even when count=0
+	it("renders all three stat tiles as buttons named /Jump to .* section/i", () => {
+		render(
+			<StackHeader
+				{...buildProps(UPVOTE_STATUS_ZERO, {
+					onTileActivate: vi.fn(),
+				})}
+			/>,
+		);
+		expect(
+			screen.getByRole("button", { name: /jump to tools section/i }),
+		).toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: /jump to models section/i }),
+		).toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: /jump to bundles section/i }),
+		).toBeInTheDocument();
+	});
+
+	// E-2: all three tiles still render as buttons when all counts are 0
+	it("renders tile buttons even when all counts are 0", () => {
+		const stack = {
+			...BASE_STACK,
+			tools: [],
+			models: [],
+			bundles: [],
+		};
+		render(
+			<StackHeader
+				{...buildProps(UPVOTE_STATUS_ZERO, {
+					stack: stack as never,
+					onTileActivate: vi.fn(),
+				})}
+			/>,
+		);
+		expect(
+			screen.getByRole("button", { name: /jump to tools section/i }),
+		).toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: /jump to models section/i }),
+		).toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: /jump to bundles section/i }),
+		).toBeInTheDocument();
+	});
+
+	// E-3: clicking Tools tile calls onTileActivate("tools") exactly once
+	it("clicking Tools tile calls onTileActivate('tools') once, no cross-fire", () => {
+		const onTileActivate = vi.fn();
+		render(
+			<StackHeader {...buildProps(UPVOTE_STATUS_ZERO, { onTileActivate })} />,
+		);
+		const toolsBtn = screen.getByRole("button", {
+			name: /jump to tools section/i,
+		});
+		fireEvent.click(toolsBtn);
+		expect(onTileActivate).toHaveBeenCalledTimes(1);
+		expect(onTileActivate).toHaveBeenCalledWith("tools");
+	});
+
+	// E-4: clicking Models tile calls onTileActivate("models") exactly once
+	it("clicking Models tile calls onTileActivate('models') once, no cross-fire", () => {
+		const onTileActivate = vi.fn();
+		render(
+			<StackHeader {...buildProps(UPVOTE_STATUS_ZERO, { onTileActivate })} />,
+		);
+		const modelsBtn = screen.getByRole("button", {
+			name: /jump to models section/i,
+		});
+		fireEvent.click(modelsBtn);
+		expect(onTileActivate).toHaveBeenCalledTimes(1);
+		expect(onTileActivate).toHaveBeenCalledWith("models");
+	});
+
+	// E-5: clicking Bundles tile calls onTileActivate("bundles") exactly once
+	it("clicking Bundles tile calls onTileActivate('bundles') once, no cross-fire", () => {
+		const onTileActivate = vi.fn();
+		render(
+			<StackHeader {...buildProps(UPVOTE_STATUS_ZERO, { onTileActivate })} />,
+		);
+		const bundlesBtn = screen.getByRole("button", {
+			name: /jump to bundles section/i,
+		});
+		fireEvent.click(bundlesBtn);
+		expect(onTileActivate).toHaveBeenCalledTimes(1);
+		expect(onTileActivate).toHaveBeenCalledWith("bundles");
 	});
 });

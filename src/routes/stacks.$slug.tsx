@@ -14,10 +14,7 @@ import {
 	useEditorContext,
 } from "@/features/stack-editor/context/EditorContext";
 import { StackHeader } from "@/features/stack-view/StackHeader";
-import {
-	DescriptionSection,
-	ToolsSection,
-} from "@/features/stack-view/sections";
+import { GuideSection, ToolsSection } from "@/features/stack-view/sections";
 import { formatPricingSummary } from "@/lib/pricing";
 import { seoMeta } from "@/lib/seo";
 import { api } from "../../convex/_generated/api";
@@ -175,6 +172,10 @@ function StackDetailsPage() {
 		null,
 	);
 	const [bundlesOpen, setBundlesOpen] = useState(false);
+	const [modelsOpen, setModelsOpen] = useState(false);
+	const [highlightedSection, setHighlightedSection] = useState<"tools" | null>(
+		null,
+	);
 	const [hasHovered, setHasHovered] = useState(false);
 	const upvotersData = useQuery(
 		api.stacks.getUpvoters,
@@ -185,6 +186,15 @@ function StackDetailsPage() {
 		setBundlesOpen(true);
 		setHighlightedBundle(bundleSlug);
 		setTimeout(() => setHighlightedBundle(null), 1500);
+	};
+
+	// All three tiles scroll to the same Components section (id="section-tools").
+	// The `target` arg only determines which disclosure (models/bundles) to auto-open.
+	const handleTileActivate = (target: "tools" | "models" | "bundles") => {
+		setHighlightedSection("tools");
+		setTimeout(() => setHighlightedSection(null), 1500);
+		if (target === "models") setModelsOpen(true);
+		if (target === "bundles") setBundlesOpen(true);
 	};
 
 	const handleUpvote = async () => {
@@ -301,6 +311,7 @@ function StackDetailsPage() {
 					onUpvote={handleUpvote}
 					onReport={handleReport}
 					onUpvoteHover={() => setHasHovered(true)}
+					onTileActivate={handleTileActivate}
 				/>
 			</div>
 			<div className="bg-bg-canvas">
@@ -311,17 +322,28 @@ function StackDetailsPage() {
 					isOwner={upvoteStatus?.isOwner ?? false}
 				/>
 
+				{/* biome-ignore lint/correctness/useUniqueElementIds: stable single-instance scroll anchor for the hero tile jump target */}
 				<ToolsSection
 					index={2}
+					id="section-tools"
+					highlighted={highlightedSection === "tools"}
 					tools={stack.tools}
 					models={stack.models}
 					bundles={stack.bundles}
 					highlightedBundle={highlightedBundle}
 					bundlesOpen={bundlesOpen}
 					onBundlesOpenChange={setBundlesOpen}
+					modelsOpen={modelsOpen}
+					onModelsOpenChange={setModelsOpen}
+					fixedTotal={stack.fixedTotal}
 					onBundleClick={scrollToBundle}
 				/>
-				<DescriptionSection index={3} description={stack.description} />
+				<GuideSection
+					index={3}
+					description={stack.description}
+					isOwner={upvoteStatus?.isOwner ?? false}
+					slug={stack.slug}
+				/>
 
 				{/* CTA Section - hide if user already published a stack */}
 				{!upvoteStatus?.isOwner && !userStack && (
