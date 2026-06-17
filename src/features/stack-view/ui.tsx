@@ -1,8 +1,8 @@
 import { ArrowUpRight } from "lucide-react";
-import { type ReactNode, useEffect, useRef } from "react";
+import type { ReactNode } from "react";
 import { categoryConfig } from "@/config/categoryConfig";
 import { formatPriceDisplay } from "@/lib/pricing";
-import { useMediaQuery } from "@/lib/useMediaQuery";
+import { useScrollHighlight } from "@/lib/useScrollHighlight";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -226,16 +226,9 @@ export function Section({
 	id?: string;
 	highlighted?: boolean;
 }) {
-	const ref = useRef<HTMLElement>(null);
-	const reduce = useMediaQuery("(prefers-reduced-motion: reduce)");
-
-	useEffect(() => {
-		if (highlighted)
-			ref.current?.scrollIntoView({
-				behavior: reduce ? "auto" : "smooth",
-				block: "start",
-			});
-	}, [highlighted, reduce]);
+	const { ref, reduce } = useScrollHighlight<HTMLElement>(highlighted, {
+		block: "start",
+	});
 
 	return (
 		<section

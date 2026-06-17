@@ -62,18 +62,18 @@ describe("ProjectsSection – no CLI copy command", () => {
 describe("ProjectsSection – header prop", () => {
 	const STACK_ID = "stack_test" as never;
 
-	// TC-HDR-01: no header prop → default '// PROJECTS' kicker present.
-	it("TC-HDR-01: no header prop → default '// PROJECTS' kicker present", async () => {
+	// TC-HDR-01: no header prop → default '// Showcase' kicker present.
+	it("TC-HDR-01: no header prop → default '// Showcase' kicker present", async () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([]);
 
 		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
 
-		expect(screen.getByText(/\/\/ PROJECTS/i)).toBeInTheDocument();
+		expect(screen.getByText(/\/\/ Showcase/i)).toBeInTheDocument();
 	});
 
 	// TC-HDR-02: header override → custom text present, '// PROJECTS' absent.
-	it("TC-HDR-02: header={<div>CUSTOM HEADER</div>} → 'CUSTOM HEADER' present, '// PROJECTS' absent", async () => {
+	it("TC-HDR-02: header={<div>CUSTOM HEADER</div>} → 'CUSTOM HEADER' present, '// Showcase' absent", async () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([]);
 
@@ -87,7 +87,7 @@ describe("ProjectsSection – header prop", () => {
 		);
 
 		expect(screen.getByText("CUSTOM HEADER")).toBeInTheDocument();
-		expect(screen.queryByText(/\/\/ PROJECTS/i)).not.toBeInTheDocument();
+		expect(screen.queryByText(/\/\/ Showcase/i)).not.toBeInTheDocument();
 	});
 
 	// TC-HDR-03: header override + one project → project name still renders.

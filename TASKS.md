@@ -1,11 +1,14 @@
-* custom stack profile image for github
-* custom theme for og/profile images
-* API for stacks + tools
-* og:image downloadable in profile
 * og:image generation faulty
     * https://aistack.to/stacks/orcdev-u9ckco
     * logos missing
     * order wrong
+* custom stack profile image for github
+* og:image downloadable in profile
+* custom theme for og/profile images
+* description/workflow:
+    * per project
+    * per tool
+* API for stacks + tools
 * aistack on shieldcn
 * shieldcn in readme
 * github actions security (see below)

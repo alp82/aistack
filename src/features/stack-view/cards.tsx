@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useScrollHighlight } from "@/lib/useScrollHighlight";
 import { cn } from "@/lib/utils";
 import {
 	CARD,
@@ -252,12 +252,9 @@ export function BundleCard({
 	bundle: StackBundle;
 	highlighted?: boolean;
 }) {
-	const ref = useRef<HTMLDivElement>(null);
-
-	useEffect(() => {
-		if (highlighted)
-			ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-	}, [highlighted]);
+	const { ref, reduce } = useScrollHighlight<HTMLDivElement>(highlighted, {
+		block: "center",
+	});
 
 	return (
 		<div
@@ -268,7 +265,10 @@ export function BundleCard({
 				CARD.border,
 				CARD.bg,
 				highlighted
-					? "animate-pulse border-accent-lime ring-2 ring-accent-lime/50"
+					? cn(
+							"border-accent-lime ring-2 ring-accent-lime/50",
+							!reduce && "animate-pulse",
+						)
 					: CARD.hover,
 				PAD,
 			)}

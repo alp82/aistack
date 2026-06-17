@@ -123,9 +123,8 @@ describe("ToolsSection", () => {
 		).not.toBeInTheDocument();
 	});
 
-	// AC 2 — superseded by GROUP A "ToolsSection: heading is /^Components$/i (not
-	// 'Tools')". The section was renamed Tools → Components per the approved plan;
-	// the positive heading assertion now lives there under the new name.
+	// AC 2 — superseded by GROUP A "ToolsSection: heading is /^Tools$/i". The
+	// positive heading assertion now lives there.
 
 	// AC 3
 	it("does not render a Models disclosure button when models=[]", () => {
@@ -344,29 +343,25 @@ describe("BundleCard highlight", () => {
 });
 
 // ===========================================================================
-// GROUP A — Titles (ToolsSection → "Components"; GuideSection → "Guide")
+// GROUP A — Titles (ToolsSection → "Tools" / "// AI Components"; GuideSection → "Workflow" / "// GUIDE")
 // ===========================================================================
 
 describe("GROUP A — Section titles", () => {
-	// A-1: ToolsSection uses "Components" heading and "// COMPONENTS" kicker
-	it("ToolsSection: heading is /^Components$/i (not 'Tools')", () => {
+	// A-1: ToolsSection uses "Tools" heading and "// AI Components" kicker
+	it("ToolsSection: heading is /^Tools$/i", () => {
 		render(<ToolsSection {...defaultProps} />);
 		expect(
-			screen.getByRole("heading", { name: /^Components$/i }),
+			screen.getByRole("heading", { name: /^Tools$/i }),
 		).toBeInTheDocument();
-		expect(
-			screen.queryByRole("heading", { name: /^Tools$/i }),
-		).not.toBeInTheDocument();
 	});
 
-	it("ToolsSection: kicker contains '// COMPONENTS' (not '// TOOLS')", () => {
+	it("ToolsSection: kicker contains '// AI Components'", () => {
 		render(<ToolsSection {...defaultProps} />);
-		expect(screen.getByText(/\/\/ COMPONENTS/i)).toBeInTheDocument();
-		expect(screen.queryByText(/\/\/ TOOLS/i)).not.toBeInTheDocument();
+		expect(screen.getByText(/\/\/ AI Components/i)).toBeInTheDocument();
 	});
 
-	// A-2: GuideSection uses "Guide" heading and "// GUIDE" kicker
-	it("GuideSection: heading is /^Guide$/i (not 'Workflow')", () => {
+	// A-2: GuideSection uses "Workflow" heading and "// GUIDE" kicker
+	it("GuideSection: heading is /^Workflow$/i", () => {
 		render(
 			<GuideSection
 				index={3}
@@ -376,11 +371,8 @@ describe("GROUP A — Section titles", () => {
 			/>,
 		);
 		expect(
-			screen.getByRole("heading", { name: /^Guide$/i }),
+			screen.getByRole("heading", { name: /^Workflow$/i }),
 		).toBeInTheDocument();
-		expect(
-			screen.queryByRole("heading", { name: /^Workflow$/i }),
-		).not.toBeInTheDocument();
 	});
 
 	it("GuideSection: kicker contains '// GUIDE' (not '// WRITEUP')", () => {
