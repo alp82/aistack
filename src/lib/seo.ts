@@ -1,5 +1,5 @@
 const SITE_NAME = "AI Stack";
-const SITE_URL = "https://aistack.to";
+export const SITE_URL = "https://aistack.to";
 const DEFAULT_IMAGE = `${SITE_URL}/banners/aistack.png`;
 const DEFAULT_IMAGE_WIDTH = "802";
 const DEFAULT_IMAGE_HEIGHT = "438";

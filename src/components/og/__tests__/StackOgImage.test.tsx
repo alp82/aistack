@@ -92,4 +92,97 @@ describe("StackOgImage", () => {
 		// @ts-expect-error stackImageUrl must not exist on StackOgImageProps after v3
 		// render(<StackOgImage {...BASE_PROPS} creator={{ name: "A" }} stackImageUrl="https://x.com/img.jpg" />)
 	});
+
+	// ---------------------------------------------------------------------------
+	// TC-OG-04: http iconUrl renders an <img>, not initials (RED until fix lands)
+	// ---------------------------------------------------------------------------
+
+	it("TC-OG-04: tool with http iconUrl renders img, not initials", () => {
+		const HTTP_ICON = "http://localhost:3019/api/storage/abc123";
+		const { container } = render(
+			<StackOgImage
+				{...BASE_PROPS}
+				creator={{ name: "Alp" }}
+				tools={[{ name: "HttpTool", iconUrl: HTTP_ICON }]}
+			/>,
+		);
+
+		const img = document.querySelector(`img[src="${HTTP_ICON}"]`);
+		expect(img).not.toBeNull();
+
+		// Initials must NOT appear when the icon img is rendered
+		expect(container.textContent).not.toContain(
+			// getInitials("HttpTool") = "H"
+			// But "H" is too common — check the full initials fallback div is absent
+			// by verifying the img IS present (already asserted above) and that "HT"
+			// (two-word initials aren't produced here since name is one word, so
+			// initials would be "H") does not appear as the sole icon representation.
+			// We assert the img presence as the primary check above.
+			"HT",
+		);
+	});
+
+	// ---------------------------------------------------------------------------
+	// TC-OG-05: null iconUrl → no tool-icon img; initials shown (regression guard)
+	// ---------------------------------------------------------------------------
+
+	it("TC-OG-05: tool with null iconUrl renders initials, no img", () => {
+		// Two-word name so getInitials() produces two-letter initials "NX"
+		const { container } = render(
+			<StackOgImage
+				{...BASE_PROPS}
+				creator={{ name: "Alp" }}
+				tools={[{ name: "Null Xenon", iconUrl: null }]}
+			/>,
+		);
+
+		// No img element for the tool icon
+		const toolImg = container.querySelector("img[src]");
+		// The only img that could appear is a creator avatar img; creator has no
+		// avatarUrl here, so there should be zero imgs with a src attribute.
+		expect(toolImg).toBeNull();
+
+		// Initials "NX" must appear (getInitials("Null Xenon") = "NX")
+		expect(container.textContent).toContain("NX");
+	});
+
+	// ---------------------------------------------------------------------------
+	// TC-OG-06: empty-string iconUrl → no <img src="">; initials shown (edge guard)
+	// ---------------------------------------------------------------------------
+
+	it("TC-OG-06: tool with empty-string iconUrl renders initials, no img", () => {
+		// Two-word name so getInitials() produces two-letter initials "EZ"
+		const { container } = render(
+			<StackOgImage
+				{...BASE_PROPS}
+				creator={{ name: "Alp" }}
+				tools={[{ name: "Empty Zeta", iconUrl: "" }]}
+			/>,
+		);
+
+		// Must not render an img with src=""
+		const emptyImg = document.querySelector('img[src=""]');
+		expect(emptyImg).toBeNull();
+
+		// Initials "EZ" must appear (getInitials("Empty Zeta") = "EZ")
+		expect(container.textContent).toContain("EZ");
+	});
+
+	// ---------------------------------------------------------------------------
+	// TC-OG-07: data: iconUrl → img rendered (regression guard, currently green)
+	// ---------------------------------------------------------------------------
+
+	it("TC-OG-07: tool with data: iconUrl renders img", () => {
+		const DATA_ICON = "data:image/png;base64,abc";
+		render(
+			<StackOgImage
+				{...BASE_PROPS}
+				creator={{ name: "Alp" }}
+				tools={[{ name: "DataTool", iconUrl: DATA_ICON }]}
+			/>,
+		);
+
+		const img = document.querySelector(`img[src="${DATA_ICON}"]`);
+		expect(img).not.toBeNull();
+	});
 });

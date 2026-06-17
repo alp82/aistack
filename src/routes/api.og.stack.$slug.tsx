@@ -2,7 +2,7 @@ import { ImageResponse } from "@takumi-rs/image-response";
 import { createFileRoute } from "@tanstack/react-router";
 import { ConvexHttpClient } from "convex/browser";
 import { StackOgImage } from "@/components/og/StackOgImage";
-import { sortToolsByPrice } from "@/lib/pricing";
+import { orderToolsForDisplay } from "@/lib/pricing";
 import { api } from "../../convex/_generated/api";
 
 const convexUrl = process.env.VITE_CONVEX_URL;
@@ -38,7 +38,7 @@ export const Route = createFileRoute("/api/og/stack/$slug")({
 							fixedTotal={stack.fixedTotal}
 							hasUsageComponent={stack.hasUsageComponent}
 							teamSize={stack.teamSize}
-							tools={sortToolsByPrice(stack.tools)
+							tools={orderToolsForDisplay(stack.tools)
 								.slice(0, 6)
 								.map((tool) => ({
 									name: tool.name,

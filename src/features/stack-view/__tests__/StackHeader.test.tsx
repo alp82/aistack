@@ -59,6 +59,13 @@ vi.mock("@/components/UpvotersTooltip", () => ({
 	UpvotersTooltip: () => null,
 }));
 
+// Stub ShareMenu — tested separately in ShareMenu.test.tsx.
+vi.mock("@/features/stack-view/ShareMenu", () => ({
+	ShareMenu: ({ slug }: { slug: string }) => (
+		<div data-testid="share-menu" data-slug={slug} />
+	),
+}));
+
 afterEach(() => {
 	cleanup();
 	vi.clearAllMocks();
@@ -87,6 +94,8 @@ const BASE_STACK = {
 	usageTotalNotes: undefined,
 	teamSize: undefined,
 	isLowQuality: false as const,
+	updatedAt: undefined,
+	_creationTime: 0,
 };
 
 const UPVOTE_STATUS_WITH_COUNT = {
@@ -396,5 +405,55 @@ describe("GROUP E — StackHeader hero tiles as buttons", () => {
 		fireEvent.click(bundlesBtn);
 		expect(onTileActivate).toHaveBeenCalledTimes(1);
 		expect(onTileActivate).toHaveBeenCalledWith("bundles");
+	});
+});
+
+// ===========================================================================
+// GROUP F — ShareMenu integration (TC-SH-SHARE-*)
+// ===========================================================================
+
+describe("GROUP F — StackHeader ShareMenu integration", () => {
+	// TC-SH-SHARE-01: owner sees share-menu AND an Edit link.
+	it("TC-SH-SHARE-01: owner → share-menu present and Edit link present", () => {
+		render(
+			<StackHeader
+				{...buildProps(UPVOTE_STATUS_WITH_COUNT, {
+					upvoteStatus: { ...UPVOTE_STATUS_WITH_COUNT, isOwner: true },
+				})}
+			/>,
+		);
+
+		expect(screen.getByTestId("share-menu")).toBeInTheDocument();
+		expect(screen.getByRole("link", { name: /edit/i })).toBeInTheDocument();
+	});
+
+	// TC-SH-SHARE-02: non-owner sees share-menu AND a Report control, but NO Edit link.
+	it("TC-SH-SHARE-02: non-owner → share-menu present, Report present, no Edit link", () => {
+		render(
+			<StackHeader
+				{...buildProps(UPVOTE_STATUS_WITH_COUNT, {
+					upvoteStatus: { ...UPVOTE_STATUS_WITH_COUNT, isOwner: false },
+				})}
+			/>,
+		);
+
+		expect(screen.getByTestId("share-menu")).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /report/i })).toBeInTheDocument();
+		expect(
+			screen.queryByRole("link", { name: /edit/i }),
+		).not.toBeInTheDocument();
+	});
+
+	// TC-SH-SHARE-03: ShareMenu stub receives the stack slug as its slug prop.
+	it("TC-SH-SHARE-03: ShareMenu receives the correct slug prop from the stack", () => {
+		const stack = { ...BASE_STACK, slug: "my-stack" };
+		render(
+			<StackHeader
+				{...buildProps(UPVOTE_STATUS_ZERO, { stack: stack as never })}
+			/>,
+		);
+
+		const shareMenuEl = screen.getByTestId("share-menu");
+		expect(shareMenuEl).toHaveAttribute("data-slug", "my-stack");
 	});
 });

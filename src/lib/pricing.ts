@@ -146,6 +146,14 @@ export function sortToolsByPrice<T extends SortableTool>(tools: T[]): T[] {
 	});
 }
 
+export function orderToolsForDisplay<
+	T extends SortableTool & { kind: "main" | "misc" },
+>(tools: T[]): T[] {
+	const main = tools.filter((t) => t.kind === "main");
+	const misc = tools.filter((t) => t.kind === "misc");
+	return [...sortToolsByPrice(main), ...sortToolsByPrice(misc)];
+}
+
 export function formatPricingSummary(
 	fixedTotal?: FixedPrice | null,
 	hasUsageComponent = false,

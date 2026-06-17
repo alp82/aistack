@@ -44,10 +44,6 @@ function toCategoryLabel(value: string) {
 	return value.charAt(0).toUpperCase() + value.slice(1).replace(/-/g, " ");
 }
 
-function isInlineImageSource(value?: string | null) {
-	return Boolean(value?.startsWith("data:"));
-}
-
 function getInitials(value: string) {
 	const parts = value.split(/\s+/).filter(Boolean).slice(0, 2);
 
@@ -322,9 +318,9 @@ export function StackOgImage({
 									height: "100%",
 								}}
 							>
-								{isInlineImageSource(tool.iconUrl) ? (
+								{tool.iconUrl ? (
 									<img
-										src={tool.iconUrl ?? undefined}
+										src={tool.iconUrl}
 										alt=""
 										width={34}
 										height={34}

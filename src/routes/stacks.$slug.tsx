@@ -16,7 +16,7 @@ import {
 import { StackHeader } from "@/features/stack-view/StackHeader";
 import { GuideSection, ToolsSection } from "@/features/stack-view/sections";
 import { formatPricingSummary } from "@/lib/pricing";
-import { seoMeta } from "@/lib/seo";
+import { SITE_URL, seoMeta } from "@/lib/seo";
 import { api } from "../../convex/_generated/api";
 
 type ViewTool = {
@@ -133,7 +133,7 @@ export const Route = createFileRoute("/stacks/$slug")({
 			stack.hasUsageComponent,
 		);
 		const description = `${stack.oneLiner} • ${toolCount} tools • ${costText}`;
-		const ogImageUrl = `https://aistack.to/api/og/stack/${stack.slug}?v=${stack.updatedAt ?? stack._creationTime}`;
+		const ogImageUrl = `${SITE_URL}/api/og/stack/${stack.slug}?v=${stack.updatedAt ?? stack._creationTime}`;
 
 		return {
 			meta: seoMeta({

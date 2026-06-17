@@ -110,6 +110,9 @@ export function ToolsSection({
 	onBundleClick?: (bundleSlug: string) => void;
 	fixedTotal?: { amount: number };
 }) {
+	// [...primary, ...secondary] is exactly orderToolsForDisplay(tools), the
+	// canonical order the OG image (api.og.stack.$slug) shares. Kept split here
+	// because the page renders the two groups in separate blocks.
 	const primary = sortToolsByPrice(tools.filter((t) => t.kind === "main"));
 	const secondary = sortToolsByPrice(tools.filter((t) => t.kind === "misc"));
 

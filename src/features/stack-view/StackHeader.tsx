@@ -8,6 +8,7 @@ import HoverCard from "@/components/ui/hover-card";
 import { formatPriceDisplay } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import type { api } from "../../../convex/_generated/api";
+import { ShareMenu } from "./ShareMenu";
 import { categoryColor, STACK_WIDTH, StackIcon } from "./ui";
 
 type StackData = NonNullable<FunctionReturnType<typeof api.stacks.getBySlug>>;
@@ -250,8 +251,9 @@ export function StackHeader({
 						</div>
 					</div>
 
-					{/* Edit / report slot */}
-					<div className="flex justify-center mt-2 lg:mt-0 lg:absolute lg:bottom-0 lg:right-0">
+					{/* Share + edit / report slot */}
+					<div className="flex justify-center gap-2 mt-2 lg:mt-0 lg:absolute lg:bottom-0 lg:right-0">
+						<ShareMenu slug={stack.slug} />
 						{upvoteStatus?.isOwner ? (
 							<Link
 								to="/stacks/$slug/edit"

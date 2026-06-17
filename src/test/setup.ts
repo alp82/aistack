@@ -5,6 +5,13 @@ import { MotionGlobalConfig } from "motion/react";
 // synchronously — accordion assertions check the panel is gone immediately.
 MotionGlobalConfig.skipAnimations = true;
 
+// jsdom does not implement document.execCommand; the clipboard fallback path
+// (useClipboard) calls it, and tests spy on it via vi.spyOn — which requires
+// the property to exist. Provide a noop so the spy can replace it.
+if (typeof document !== "undefined" && !document.execCommand) {
+	document.execCommand = () => false;
+}
+
 // jsdom does not implement scrollIntoView; components call it inside effects
 // (highlighted BundleCard, editor sidebar nav), so provide a noop to keep
 // those renders from throwing. Guarded because this setup file also loads for
