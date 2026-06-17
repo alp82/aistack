@@ -1,9 +1,10 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 import { SortDropdown } from "@/components/SortDropdown";
 import { StackCard } from "@/features/landing/components/StackCard";
+import { makeSearchUpdater } from "@/lib/searchParams";
 import { cn } from "@/lib/utils";
 
 const STACKS_PER_PAGE = 9;
@@ -138,9 +139,23 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 ];
 
 function FeaturedStacksSection({ stacks }: FeedSectionProps) {
-	const [toolFilter, setToolFilter] = useState<string>("all");
-	const [sortOption, setSortOption] = useState<SortOption>("upvotes");
-	const [currentPage, setCurrentPage] = useState(1);
+	const navigate = useNavigate({ from: "/" });
+	const {
+		filter: rawFilter,
+		sort: rawSort,
+		page: rawPage,
+	} = useSearch({ from: "/" });
+	const toolFilter = rawFilter ?? "all";
+	const sortOption = rawSort ?? "upvotes";
+	const page = rawPage ?? 1;
+	const setSearch = useMemo(
+		() =>
+			makeSearchUpdater<{ filter: string; sort: SortOption; page: number }>(
+				navigate,
+				{ resetPageKeys: ["filter", "sort"] },
+			),
+		[navigate],
+	);
 
 	const visibleStacks = useMemo(
 		() => stacks.filter((s) => !s.isLowQuality),
@@ -159,11 +174,16 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 		1,
 		Math.ceil(filteredStacks.length / STACKS_PER_PAGE),
 	);
-	const safeCurrentPage = Math.min(currentPage, totalPages);
+	const safeCurrentPage = Math.min(page, totalPages);
 	const paginatedStacks = filteredStacks.slice(
 		(safeCurrentPage - 1) * STACKS_PER_PAGE,
 		safeCurrentPage * STACKS_PER_PAGE,
 	);
+
+	useEffect(() => {
+		if (stacks.length > 0 && page > safeCurrentPage)
+			setSearch({ page: safeCurrentPage });
+	}, [stacks.length, page, safeCurrentPage, setSearch]);
 
 	if (stacks.length === 0) {
 		return null;
@@ -192,10 +212,7 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 							<button
 								key={filter.id}
 								type="button"
-								onClick={() => {
-									setToolFilter(filter.id);
-									setCurrentPage(1);
-								}}
+								onClick={() => setSearch({ filter: filter.id })}
 								className={cn(
 									"px-4 py-2 uppercase font-bold transition-colors",
 									toolFilter === filter.id
@@ -212,10 +229,7 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 					<SortDropdown
 						options={SORT_OPTIONS}
 						value={sortOption}
-						onChange={(v) => {
-							setSortOption(v);
-							setCurrentPage(1);
-						}}
+						onChange={(v) => setSearch({ sort: v })}
 					/>
 				</div>
 
@@ -237,30 +251,36 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 					<div className="mt-12 flex items-center justify-center gap-2">
 						<button
 							type="button"
-							onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+							onClick={() =>
+								setSearch({ page: Math.max(1, safeCurrentPage - 1) })
+							}
 							disabled={safeCurrentPage <= 1}
 							className="flex size-10 items-center justify-center border border-stroke-strong text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime disabled:opacity-30 disabled:cursor-not-allowed"
 						>
 							<ChevronLeft className="size-4" />
 						</button>
-						{Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-							<button
-								key={page}
-								type="button"
-								onClick={() => setCurrentPage(page)}
-								className={cn(
-									"flex size-10 items-center justify-center border font-mono text-sm font-bold transition-colors",
-									page === safeCurrentPage
-										? "border-accent-lime bg-accent-lime text-accent-lime-contrast"
-										: "border-stroke-strong text-fg-muted hover:border-accent-lime hover:text-accent-lime",
-								)}
-							>
-								{page}
-							</button>
-						))}
+						{Array.from({ length: totalPages }, (_, i) => i + 1).map(
+							(pageNum) => (
+								<button
+									key={pageNum}
+									type="button"
+									onClick={() => setSearch({ page: pageNum })}
+									className={cn(
+										"flex size-10 items-center justify-center border font-mono text-sm font-bold transition-colors",
+										pageNum === safeCurrentPage
+											? "border-accent-lime bg-accent-lime text-accent-lime-contrast"
+											: "border-stroke-strong text-fg-muted hover:border-accent-lime hover:text-accent-lime",
+									)}
+								>
+									{pageNum}
+								</button>
+							),
+						)}
 						<button
 							type="button"
-							onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+							onClick={() =>
+								setSearch({ page: Math.min(totalPages, safeCurrentPage + 1) })
+							}
 							disabled={safeCurrentPage >= totalPages}
 							className="flex size-10 items-center justify-center border border-stroke-strong text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime disabled:opacity-30 disabled:cursor-not-allowed"
 						>

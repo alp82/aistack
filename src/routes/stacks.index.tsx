@@ -1,8 +1,11 @@
 import { convexQuery } from "@convex-dev/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "convex/react";
-import { useConvexAuth } from "convex/react";
-import { useMemo, useState } from "react";
+import {
+	createFileRoute,
+	stripSearchParams,
+	useNavigate,
+	useSearch,
+} from "@tanstack/react-router";
+import { useConvexAuth, useQuery } from "convex/react";
 import {
 	AlertTriangle,
 	ChevronLeft,
@@ -10,24 +13,40 @@ import {
 	Plus,
 	Search,
 } from "lucide-react";
-import { api } from "../../convex/_generated/api";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { GridBackground } from "@/components/GridBackground";
 import { JsonLd } from "@/components/JsonLd";
 import { PageHeader } from "@/components/PageHeader";
 import { SortDropdown } from "@/components/SortDropdown";
 import { Input } from "@/components/ui/input";
-import { seoMeta } from "@/lib/seo";
 import { StackCard } from "@/features/landing/components/StackCard";
 import {
 	filterPreviewStacks,
 	getCategoryOptions,
-	SORT_OPTIONS,
 	type LandingStackPreview,
+	SORT_OPTIONS,
 	type SortOption,
 } from "@/features/landing/sections/FeaturedStacksSection";
+import {
+	coerceBool,
+	coerceEnum,
+	coercePage,
+	coerceString,
+	makeSearchUpdater,
+} from "@/lib/searchParams";
+import { seoMeta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
+import { api } from "../../convex/_generated/api";
 
 const STACKS_PER_PAGE = 12;
+
+export const STACKS_SEARCH_DEFAULTS = {
+	filter: "all",
+	sort: "newest" as SortOption,
+	q: "",
+	page: 1,
+	lowQuality: false,
+};
 
 function getCategoryBgColor(category: string): string {
 	const colors: Record<string, string> = {
@@ -95,6 +114,26 @@ function getCategoryBorderColor(category: string): string {
 
 export const Route = createFileRoute("/stacks/")({
 	component: BrowseStacksPage,
+	validateSearch: (
+		search: Record<string, unknown>,
+	): {
+		filter?: string;
+		sort?: SortOption;
+		q?: string;
+		page?: number;
+		lowQuality?: boolean;
+	} => ({
+		filter: coerceString(search.filter, "all"),
+		sort: coerceEnum(
+			search.sort,
+			["upvotes", "newest", "price_low", "price_high"] as const,
+			"newest",
+		),
+		q: coerceString(search.q, ""),
+		page: coercePage(search.page),
+		lowQuality: coerceBool(search.lowQuality, false),
+	}),
+	search: { middlewares: [stripSearchParams(STACKS_SEARCH_DEFAULTS)] },
 	loader: async ({ context }) => {
 		await context.queryClient.ensureQueryData(
 			convexQuery(api.stacks.listPublished, {}),
@@ -115,14 +154,29 @@ export const Route = createFileRoute("/stacks/")({
 function BrowseStacksPage() {
 	const navigate = useNavigate();
 	const { isAuthenticated } = useConvexAuth();
-	const stacks = (useQuery(api.stacks.listPublished) ??
-		[]) as LandingStackPreview[];
+	const rawStacks = useQuery(api.stacks.listPublished);
+	const stacks = (rawStacks ?? []) as LandingStackPreview[];
 	const userStack = useQuery(api.stacks.getUserStack);
-	const [toolFilter, setToolFilter] = useState<string>("all");
-	const [sortOption, setSortOption] = useState<SortOption>("newest");
-	const [searchQuery, setSearchQuery] = useState("");
-	const [currentPage, setCurrentPage] = useState(1);
-	const [showLowQuality, setShowLowQuality] = useState(false);
+	const {
+		filter: rawFilter,
+		sort: rawSort,
+		q: rawQ,
+		page: rawPage,
+		lowQuality: rawLowQuality,
+	} = useSearch({ from: "/stacks/" });
+	const toolFilter = rawFilter ?? STACKS_SEARCH_DEFAULTS.filter;
+	const sortOption = rawSort ?? STACKS_SEARCH_DEFAULTS.sort;
+	const q = rawQ ?? STACKS_SEARCH_DEFAULTS.q;
+	const page = rawPage ?? STACKS_SEARCH_DEFAULTS.page;
+	const showLowQuality = rawLowQuality ?? false;
+	const setSearch = useMemo(
+		() =>
+			makeSearchUpdater<typeof STACKS_SEARCH_DEFAULTS>(navigate, {
+				resetPageKeys: ["filter", "sort", "q"],
+			}),
+		[navigate],
+	);
+	const [searchDraft, setSearchDraft] = useState(q);
 
 	const goodStacks = useMemo(
 		() => stacks.filter((s) => !s.isLowQuality),
@@ -138,24 +192,27 @@ function BrowseStacksPage() {
 		[goodStacks],
 	);
 
-	const searchFilter = (list: LandingStackPreview[]) => {
-		if (!searchQuery.trim()) return list;
-		const q = searchQuery.trim().toLowerCase();
-		return list.filter(
-			(s) =>
-				s.name.toLowerCase().includes(q) ||
-				s.oneLiner.toLowerCase().includes(q) ||
-				s.creator.name.toLowerCase().includes(q) ||
-				s.tools.some((t) => t.name.toLowerCase().includes(q)),
-		);
-	};
+	const searchFilter = useCallback(
+		(list: LandingStackPreview[]) => {
+			if (!q.trim()) return list;
+			const query = q.trim().toLowerCase();
+			return list.filter(
+				(s) =>
+					s.name.toLowerCase().includes(query) ||
+					s.oneLiner.toLowerCase().includes(query) ||
+					s.creator.name.toLowerCase().includes(query) ||
+					s.tools.some((t) => t.name.toLowerCase().includes(query)),
+			);
+		},
+		[q],
+	);
 
 	const filteredStacks = useMemo(
 		() =>
 			searchFilter(
 				filterPreviewStacks(goodStacks, "all", toolFilter, sortOption),
 			),
-		[goodStacks, toolFilter, sortOption, searchQuery],
+		[goodStacks, toolFilter, sortOption, searchFilter],
 	);
 
 	const filteredLowQualityStacks = useMemo(
@@ -163,19 +220,34 @@ function BrowseStacksPage() {
 			searchFilter(
 				filterPreviewStacks(lowQualityStacks, "all", toolFilter, sortOption),
 			),
-		[lowQualityStacks, toolFilter, sortOption, searchQuery],
+		[lowQualityStacks, toolFilter, sortOption, searchFilter],
 	);
 
 	const totalPages = Math.max(
 		1,
 		Math.ceil(filteredStacks.length / STACKS_PER_PAGE),
 	);
-	const isLastPage = currentPage >= totalPages;
-	const safeCurrentPage = Math.min(currentPage, totalPages);
+	const isLastPage = page >= totalPages;
+	const safeCurrentPage = Math.min(page, totalPages);
 	const paginatedStacks = filteredStacks.slice(
 		(safeCurrentPage - 1) * STACKS_PER_PAGE,
 		safeCurrentPage * STACKS_PER_PAGE,
 	);
+
+	useEffect(() => {
+		if (searchDraft === q) return;
+		const handle = setTimeout(() => setSearch({ q: searchDraft }), 300);
+		return () => clearTimeout(handle);
+	}, [searchDraft, q, setSearch]);
+
+	useEffect(() => {
+		setSearchDraft(q);
+	}, [q]);
+
+	useEffect(() => {
+		if (rawStacks !== undefined && page > safeCurrentPage)
+			setSearch({ page: safeCurrentPage });
+	}, [rawStacks, page, safeCurrentPage, setSearch]);
 
 	const allFilters = [
 		{ id: "all", label: "All Stacks", count: goodStacks.length },
@@ -223,11 +295,8 @@ function BrowseStacksPage() {
 						<div className="relative flex-1">
 							<Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-fg-muted" />
 							<Input
-								value={searchQuery}
-								onChange={(e) => {
-									setSearchQuery(e.target.value);
-									setCurrentPage(1);
-								}}
+								value={searchDraft}
+								onChange={(e) => setSearchDraft(e.target.value)}
 								placeholder="Search stacks by name, creator, or tool..."
 								className="h-12 pl-11 border-stroke-strong bg-bg-panel font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
 							/>
@@ -235,10 +304,7 @@ function BrowseStacksPage() {
 						<SortDropdown
 							options={SORT_OPTIONS}
 							value={sortOption}
-							onChange={(v) => {
-								setSortOption(v);
-								setCurrentPage(1);
-							}}
+							onChange={(v) => setSearch({ sort: v })}
 						/>
 					</div>
 
@@ -248,10 +314,7 @@ function BrowseStacksPage() {
 							<button
 								key={filter.id}
 								type="button"
-								onClick={() => {
-									setToolFilter(filter.id);
-									setCurrentPage(1);
-								}}
+								onClick={() => setSearch({ filter: filter.id })}
 								className={cn(
 									"px-4 py-2 uppercase font-bold transition-colors border",
 									toolFilter === filter.id
@@ -277,7 +340,17 @@ function BrowseStacksPage() {
 						</div>
 					) : filteredStacks.length === 0 ? (
 						<div className="border-2 border-dashed border-stroke-subtle px-4 py-8 text-center font-mono text-sm text-fg-muted">
-							No stacks match these filters.
+							<div className="mb-4">No stacks match these filters.</div>
+							<button
+								type="button"
+								onClick={() => {
+									setSearch({ filter: "all", q: "", page: 1 });
+									setSearchDraft("");
+								}}
+								className="px-6 py-3 font-mono text-xs uppercase tracking-widest font-bold border border-stroke-strong text-fg-muted hover:text-fg-primary hover:border-fg-muted transition-colors"
+							>
+								Clear Filters
+							</button>
 						</div>
 					) : (
 						<>
@@ -292,33 +365,37 @@ function BrowseStacksPage() {
 								<div className="mt-12 flex items-center justify-center gap-2">
 									<button
 										type="button"
-										onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+										onClick={() =>
+											setSearch({ page: Math.max(1, safeCurrentPage - 1) })
+										}
 										disabled={safeCurrentPage <= 1}
 										className="flex size-10 items-center justify-center border border-stroke-strong text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime disabled:opacity-30 disabled:cursor-not-allowed"
 									>
 										<ChevronLeft className="size-4" />
 									</button>
 									{Array.from({ length: totalPages }, (_, i) => i + 1).map(
-										(page) => (
+										(pageNum) => (
 											<button
-												key={page}
+												key={pageNum}
 												type="button"
-												onClick={() => setCurrentPage(page)}
+												onClick={() => setSearch({ page: pageNum })}
 												className={cn(
 													"flex size-10 items-center justify-center border font-mono text-sm font-bold transition-colors",
-													page === safeCurrentPage
+													pageNum === safeCurrentPage
 														? "border-accent-lime bg-accent-lime text-accent-lime-contrast"
 														: "border-stroke-strong text-fg-muted hover:border-accent-lime hover:text-accent-lime",
 												)}
 											>
-												{page}
+												{pageNum}
 											</button>
 										),
 									)}
 									<button
 										type="button"
 										onClick={() =>
-											setCurrentPage((p) => Math.min(totalPages, p + 1))
+											setSearch({
+												page: Math.min(totalPages, safeCurrentPage + 1),
+											})
 										}
 										disabled={safeCurrentPage >= totalPages}
 										className="flex size-10 items-center justify-center border border-stroke-strong text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime disabled:opacity-30 disabled:cursor-not-allowed"
@@ -333,7 +410,7 @@ function BrowseStacksPage() {
 									{!showLowQuality ? (
 										<button
 											type="button"
-											onClick={() => setShowLowQuality(true)}
+											onClick={() => setSearch({ lowQuality: true })}
 											className="cursor-pointer w-full flex items-center justify-center gap-3 px-6 py-4 font-mono text-sm text-fg-muted hover:text-fg-secondary transition-colors"
 										>
 											<AlertTriangle className="size-4 text-orange-400" />
@@ -355,7 +432,7 @@ function BrowseStacksPage() {
 												</div>
 												<button
 													type="button"
-													onClick={() => setShowLowQuality(false)}
+													onClick={() => setSearch({ lowQuality: false })}
 													className="cursor-pointer font-mono text-xs text-fg-muted hover:text-fg-primary transition-colors shrink-0"
 												>
 													Hide

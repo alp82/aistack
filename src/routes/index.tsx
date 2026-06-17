@@ -1,15 +1,36 @@
 import { convexQuery } from "@convex-dev/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-
-import { api } from "../../convex/_generated/api";
 import { JsonLd } from "@/components/JsonLd";
 import { LandingPageShell } from "@/features/landing/LandingPageShell";
-import type { LandingStackPreview } from "@/features/landing/sections/FeaturedStacksSection";
+import type {
+	LandingStackPreview,
+	SortOption,
+} from "@/features/landing/sections/FeaturedStacksSection";
+import { coerceEnum, coercePage, coerceString } from "@/lib/searchParams";
 import { seoMeta } from "@/lib/seo";
+import { api } from "../../convex/_generated/api";
+
+export const LANDING_SEARCH_DEFAULTS = {
+	filter: "all",
+	sort: "upvotes" as SortOption,
+	page: 1,
+};
 
 export const Route = createFileRoute("/")({
 	component: IndexRoute,
+	validateSearch: (
+		search: Record<string, unknown>,
+	): { filter?: string; sort?: SortOption; page?: number } => ({
+		filter: coerceString(search.filter, "all"),
+		sort: coerceEnum(
+			search.sort,
+			["upvotes", "newest", "price_low", "price_high"] as const,
+			"upvotes",
+		),
+		page: coercePage(search.page),
+	}),
+	search: { middlewares: [stripSearchParams(LANDING_SEARCH_DEFAULTS)] },
 	loader: async ({ context }) => {
 		await context.queryClient.ensureQueryData(
 			convexQuery(api.stacks.listPublished, {}),

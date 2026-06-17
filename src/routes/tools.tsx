@@ -1,23 +1,34 @@
 import { convexQuery } from "@convex-dev/react-query";
+import {
+	createFileRoute,
+	stripSearchParams,
+	useNavigate,
+	useSearch,
+} from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { LandingStackPreview } from "@/features/landing/sections/FeaturedStacksSection";
 import { api } from "../../convex/_generated/api";
 import { GridBackground } from "../components/GridBackground";
 import { JsonLd } from "../components/JsonLd";
 import { PageHeader } from "../components/PageHeader";
 import { SortDropdown } from "../components/SortDropdown";
-import { Input } from "../components/ui/input";
 import {
 	SuggestEditModal,
 	type ToolForSuggestion,
 } from "../components/SuggestEditModal";
 import { ToolCard } from "../components/ToolCard";
+import { Input } from "../components/ui/input";
 import { categoryConfig, type ToolCategory } from "../config/categoryConfig";
+import {
+	coerceEnum,
+	coercePage,
+	coerceString,
+	makeSearchUpdater,
+} from "../lib/searchParams";
 import { seoMeta } from "../lib/seo";
 import { cn } from "../lib/utils";
-import type { LandingStackPreview } from "@/features/landing/sections/FeaturedStacksSection";
 
 type ToolSortOption = "newest" | "most_used";
 
@@ -28,8 +39,24 @@ const TOOL_SORT_OPTIONS: { value: ToolSortOption; label: string }[] = [
 
 const TOOLS_PER_PAGE = 16;
 
+export const TOOLS_SEARCH_DEFAULTS = {
+	filter: "ALL",
+	sort: "newest" as ToolSortOption,
+	q: "",
+	page: 1,
+};
+
 export const Route = createFileRoute("/tools")({
 	component: ToolsPage,
+	validateSearch: (
+		search: Record<string, unknown>,
+	): { filter?: string; sort?: ToolSortOption; q?: string; page?: number } => ({
+		filter: coerceString(search.filter, "ALL"),
+		sort: coerceEnum(search.sort, ["newest", "most_used"] as const, "newest"),
+		q: coerceString(search.q, ""),
+		page: coercePage(search.page),
+	}),
+	search: { middlewares: [stripSearchParams(TOOLS_SEARCH_DEFAULTS)] },
 	loader: async ({ context }) => {
 		await Promise.all([
 			context.queryClient.ensureQueryData(convexQuery(api.tools.listAll, {})),
@@ -51,14 +78,29 @@ export const Route = createFileRoute("/tools")({
 });
 
 function ToolsPage() {
-	const navigate = useNavigate();
-	const [filter, setFilter] = useState<string>("ALL");
-	const [sortOption, setSortOption] = useState<ToolSortOption>("newest");
-	const [searchQuery, setSearchQuery] = useState("");
-	const [currentPage, setCurrentPage] = useState(1);
+	const navigate = useNavigate({ from: "/tools" });
+	const {
+		filter: rawFilter,
+		sort: rawSort,
+		q: rawQ,
+		page: rawPage,
+	} = useSearch({ from: "/tools" });
+	const filter = rawFilter ?? TOOLS_SEARCH_DEFAULTS.filter;
+	const sort = rawSort ?? TOOLS_SEARCH_DEFAULTS.sort;
+	const q = rawQ ?? TOOLS_SEARCH_DEFAULTS.q;
+	const page = rawPage ?? TOOLS_SEARCH_DEFAULTS.page;
+	const setSearch = useMemo(
+		() =>
+			makeSearchUpdater<typeof TOOLS_SEARCH_DEFAULTS>(navigate, {
+				resetPageKeys: ["filter", "sort", "q"],
+			}),
+		[navigate],
+	);
+	const [searchDraft, setSearchDraft] = useState(q);
 	const [suggestEditTool, setSuggestEditTool] =
 		useState<ToolForSuggestion | null>(null);
-	const tools = useQuery(api.tools.listAll) ?? [];
+	const rawTools = useQuery(api.tools.listAll);
+	const tools = rawTools ?? [];
 	const stacks = (useQuery(api.stacks.listPublished) ??
 		[]) as LandingStackPreview[];
 
@@ -88,17 +130,17 @@ function ToolsPage() {
 				? [...tools]
 				: tools.filter((t) => t.categories.includes(filter));
 
-		if (searchQuery.trim()) {
-			const q = searchQuery.trim().toLowerCase();
+		if (q.trim()) {
+			const query = q.trim().toLowerCase();
 			result = result.filter(
 				(t) =>
-					t.name.toLowerCase().includes(q) ||
-					t.categories.some((c) => c.toLowerCase().includes(q)),
+					t.name.toLowerCase().includes(query) ||
+					t.categories.some((c) => c.toLowerCase().includes(query)),
 			);
 		}
 
 		result.sort((a, b) => {
-			if (sortOption === "most_used") {
+			if (sort === "most_used") {
 				return (
 					(toolUsageCounts.get(b._id) ?? 0) - (toolUsageCounts.get(a._id) ?? 0)
 				);
@@ -107,17 +149,32 @@ function ToolsPage() {
 		});
 
 		return result;
-	}, [tools, filter, searchQuery, sortOption, toolUsageCounts]);
+	}, [tools, filter, q, sort, toolUsageCounts]);
 
 	const totalPages = Math.max(
 		1,
 		Math.ceil(filteredTools.length / TOOLS_PER_PAGE),
 	);
-	const safeCurrentPage = Math.min(currentPage, totalPages);
+	const safeCurrentPage = Math.min(page, totalPages);
 	const paginatedTools = filteredTools.slice(
 		(safeCurrentPage - 1) * TOOLS_PER_PAGE,
 		safeCurrentPage * TOOLS_PER_PAGE,
 	);
+
+	useEffect(() => {
+		if (searchDraft === q) return;
+		const handle = setTimeout(() => setSearch({ q: searchDraft }), 300);
+		return () => clearTimeout(handle);
+	}, [searchDraft, q, setSearch]);
+
+	useEffect(() => {
+		setSearchDraft(q);
+	}, [q]);
+
+	useEffect(() => {
+		if (rawTools !== undefined && page > safeCurrentPage)
+			setSearch({ page: safeCurrentPage });
+	}, [rawTools, page, safeCurrentPage, setSearch]);
 
 	return (
 		<div className="mx-6 min-h-screen bg-bg-canvas">
@@ -154,22 +211,16 @@ function ToolsPage() {
 					<div className="relative flex-1">
 						<Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-fg-muted" />
 						<Input
-							value={searchQuery}
-							onChange={(e) => {
-								setSearchQuery(e.target.value);
-								setCurrentPage(1);
-							}}
+							value={searchDraft}
+							onChange={(e) => setSearchDraft(e.target.value)}
 							placeholder="Search tools by name or category..."
 							className="h-12 pl-11 border-stroke-strong bg-bg-panel font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:border-accent-lime"
 						/>
 					</div>
 					<SortDropdown
 						options={TOOL_SORT_OPTIONS}
-						value={sortOption}
-						onChange={(v) => {
-							setSortOption(v);
-							setCurrentPage(1);
-						}}
+						value={sort}
+						onChange={(v) => setSearch({ sort: v })}
 					/>
 				</div>
 
@@ -179,10 +230,7 @@ function ToolsPage() {
 						<button
 							key={cat}
 							type="button"
-							onClick={() => {
-								setFilter(cat);
-								setCurrentPage(1);
-							}}
+							onClick={() => setSearch({ filter: cat })}
 							className={cn(
 								"px-6 py-3 font-mono text-xs uppercase tracking-widest font-bold border transition-all",
 								filter === cat
@@ -232,30 +280,36 @@ function ToolsPage() {
 					<div className="mt-12 flex items-center justify-center gap-2">
 						<button
 							type="button"
-							onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+							onClick={() =>
+								setSearch({ page: Math.max(1, safeCurrentPage - 1) })
+							}
 							disabled={safeCurrentPage <= 1}
 							className="flex size-10 items-center justify-center border border-stroke-strong text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime disabled:opacity-30 disabled:cursor-not-allowed"
 						>
 							<ChevronLeft className="size-4" />
 						</button>
-						{Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-							<button
-								key={page}
-								type="button"
-								onClick={() => setCurrentPage(page)}
-								className={cn(
-									"flex size-10 items-center justify-center border font-mono text-sm font-bold transition-colors",
-									page === safeCurrentPage
-										? "border-accent-lime bg-accent-lime text-accent-lime-contrast"
-										: "border-stroke-strong text-fg-muted hover:border-accent-lime hover:text-accent-lime",
-								)}
-							>
-								{page}
-							</button>
-						))}
+						{Array.from({ length: totalPages }, (_, i) => i + 1).map(
+							(pageNum) => (
+								<button
+									key={pageNum}
+									type="button"
+									onClick={() => setSearch({ page: pageNum })}
+									className={cn(
+										"flex size-10 items-center justify-center border font-mono text-sm font-bold transition-colors",
+										pageNum === safeCurrentPage
+											? "border-accent-lime bg-accent-lime text-accent-lime-contrast"
+											: "border-stroke-strong text-fg-muted hover:border-accent-lime hover:text-accent-lime",
+									)}
+								>
+									{pageNum}
+								</button>
+							),
+						)}
 						<button
 							type="button"
-							onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+							onClick={() =>
+								setSearch({ page: Math.min(totalPages, safeCurrentPage + 1) })
+							}
 							disabled={safeCurrentPage >= totalPages}
 							className="flex size-10 items-center justify-center border border-stroke-strong text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime disabled:opacity-30 disabled:cursor-not-allowed"
 						>
@@ -272,9 +326,8 @@ function ToolsPage() {
 						<button
 							type="button"
 							onClick={() => {
-								setFilter("ALL");
-								setSearchQuery("");
-								setCurrentPage(1);
+								setSearch({ filter: "ALL", q: "", page: 1 });
+								setSearchDraft("");
 							}}
 							className="px-6 py-3 font-mono text-xs uppercase tracking-widest font-bold border border-stroke-strong text-fg-muted hover:text-fg-primary hover:border-fg-muted transition-colors"
 						>
