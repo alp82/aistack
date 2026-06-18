@@ -1,0 +1,961 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>OG Tools Area — Layout Explorer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #050505;
+    font-family: "Inter", system-ui, sans-serif;
+    color: #e4e4e7;
+    padding: 40px 0 80px;
+  }
+
+  /* ── Page chrome ── */
+  .page-header {
+    padding: 0 48px 36px;
+    border-bottom: 1px solid #1c1c1e;
+    margin-bottom: 36px;
+  }
+  .page-header h1 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: #fafafa;
+  }
+  .page-header p {
+    margin-top: 6px;
+    font-size: 14px;
+    color: #71717a;
+    line-height: 1.5;
+  }
+
+  /* ── Controls ── */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 48px;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+  }
+  .controls label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #71717a;
+    margin-right: 4px;
+  }
+  .btn-group { display: flex; gap: 4px; }
+  .btn {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 6px 14px;
+    border: 1px solid #27272a;
+    background: #18181b;
+    color: #71717a;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .btn:hover { border-color: #3f3f46; color: #a1a1aa; }
+  .btn.active { background: #a3e635; border-color: #a3e635; color: #0a0a0a; }
+
+  .sep {
+    width: 1px;
+    height: 28px;
+    background: #27272a;
+    margin: 0 6px;
+  }
+
+  /* ── Layout section ── */
+  .layout-section {
+    padding: 0 48px;
+    margin-bottom: 72px;
+  }
+  .layout-section.hidden { display: none; }
+
+  .layout-label {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #1c1c1e;
+  }
+  .layout-label h2 {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #a3e635;
+  }
+  .layout-label .rationale {
+    font-size: 13px;
+    color: #52525b;
+  }
+  .layout-label .caveat {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    color: #3f3f46;
+    margin-left: auto;
+  }
+
+  /* ── Count row: single count or all-6 grid ── */
+  .count-grid {
+    display: grid;
+    gap: 20px;
+  }
+  .count-grid.show-all { grid-template-columns: repeat(3, 1fr); }
+  .count-grid.show-one { grid-template-columns: 1fr; }
+
+  .count-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #3f3f46;
+    margin-bottom: 8px;
+  }
+
+  /* ── The OG card wrapper (scale to fit column) ── */
+  .og-wrapper {
+    width: 100%;
+    position: relative;
+    /* true ratio 1200:630 = 40:21 */
+    padding-top: calc(100% * 630 / 1200);
+    overflow: hidden;
+  }
+  .og-wrapper .og-inner {
+    position: absolute;
+    top: 0; left: 0;
+    width: 1200px;
+    height: 630px;
+    transform-origin: top left;
+  }
+
+  /* ── OG card base styles ── */
+  .og-card {
+    width: 1200px;
+    height: 630px;
+    background: #0a0a0a;
+    display: flex;
+    flex-direction: column;
+    font-family: "Inter", system-ui, sans-serif;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .og-accent-bar {
+    height: 14px;
+    width: 100%;
+    background: #a3e635;
+    flex-shrink: 0;
+  }
+
+  .og-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 36px 44px 32px;
+    min-height: 0;
+  }
+
+  /* Header: avatar + name + price */
+  .og-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: 28px;
+    margin-bottom: 20px;
+    flex-shrink: 0;
+  }
+  .og-header-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    flex: 1;
+    min-width: 0;
+  }
+  .og-avatar {
+    width: 88px;
+    height: 88px;
+    background: #27272a;
+    border: 3px solid #3f3f46;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 34px;
+    font-weight: 700;
+    color: #a1a1aa;
+  }
+  .og-name-block {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+  .og-stack-name {
+    font-size: 64px;
+    font-weight: 800;
+    color: #fafafa;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .og-handle {
+    font-size: 20px;
+    color: #71717a;
+    margin-top: 8px;
+  }
+  .og-price-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    min-width: 280px;
+    flex-shrink: 0;
+  }
+  .og-price-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+  }
+  .og-price-amount {
+    font-size: 82px;
+    font-weight: 900;
+    color: #fafafa;
+    line-height: 1;
+  }
+  .og-price-suffix {
+    font-size: 34px;
+    color: #71717a;
+    margin-left: 6px;
+    font-weight: 500;
+    line-height: 1;
+    align-self: flex-end;
+    padding-bottom: 10px;
+  }
+  .og-price-label {
+    font-size: 16px;
+    font-weight: 600;
+    color: #a1a1aa;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 12px;
+    font-family: "JetBrains Mono", monospace;
+  }
+
+  /* Description bar */
+  .og-desc-bar {
+    display: flex;
+    margin-bottom: 22px;
+    flex-shrink: 0;
+  }
+  .og-desc-rule {
+    width: 6px;
+    background: #a3e635;
+    flex-shrink: 0;
+    margin-right: 18px;
+  }
+  .og-desc-text {
+    font-size: 30px;
+    color: #d4d4d8;
+    line-height: 1.28;
+  }
+
+  /* Tools area — outer shell (shared) */
+  .og-tools-outer {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+  .og-tools-label {
+    font-size: 16px;
+    font-weight: 600;
+    color: #71717a;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 14px;
+    font-family: "JetBrains Mono", monospace;
+    flex-shrink: 0;
+  }
+
+  /* Footer */
+  .og-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 18px;
+    border-top: 1px solid #27272a;
+    flex-shrink: 0;
+    margin-top: auto;
+  }
+  .og-cats { display: flex; gap: 10px; }
+  .og-cat {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 9px 14px;
+    border: 2px solid;
+    font-family: "JetBrains Mono", monospace;
+  }
+  .og-cta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #a3e635;
+    padding: 12px 22px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #0a0a0a;
+    font-family: "JetBrains Mono", monospace;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+  }
+
+  /* ──────────────────────────────────────────
+     LAYOUT A — Count-Adaptive Grid
+     Columns derived from count: 1→1col, 2→2col, 3→3col, 4→2col, 5-6→3col
+     Tiles are content-sized (no stretching), icon 48px, name bigger.
+  ────────────────────────────────────────── */
+  .tools-a {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    flex: 1;
+    align-content: flex-start;
+  }
+  /* tile width controlled per data-count via inline style in JS */
+  .tool-tile-a {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #18181b;
+    border: 1px solid #27272a;
+    padding: 16px 20px;
+  }
+  .tool-icon-a {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    color: #fafafa;
+  }
+  .tool-name-a {
+    font-size: 26px;
+    color: #e4e4e7;
+    font-weight: 600;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  /* ──────────────────────────────────────────
+     LAYOUT B — Icon-forward pill row (large logo chips)
+     Single flex row of big square icon+name chips, flex-wrap for 5-6.
+     Icon 64px, name mono-label below — very icon-dominant.
+  ────────────────────────────────────────── */
+  .tools-b {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    flex: 1;
+    align-content: flex-start;
+  }
+  .tool-chip-b {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    background: #18181b;
+    border: 1px solid #27272a;
+    padding: 18px 24px;
+  }
+  .tool-icon-b {
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 22px;
+    color: #fafafa;
+  }
+  .tool-name-b {
+    font-size: 16px;
+    color: #e4e4e7;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    font-family: "JetBrains Mono", monospace;
+    text-transform: uppercase;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  /* ──────────────────────────────────────────
+     LAYOUT C — Horizontal list strip (full-width rows, big left icons)
+     Each tool = full-width row, icon 56px, large name, divider lines.
+     Best for 1-4 tools; 5-6 still fits by reducing padding.
+  ────────────────────────────────────────── */
+  .tools-c {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    flex: 1;
+  }
+  .tool-row-c {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 0 20px;
+    border-bottom: 1px solid #1c1c1e;
+    flex: 1;
+  }
+  .tool-row-c:first-child { border-top: 1px solid #1c1c1e; }
+  .tool-icon-c {
+    width: 56px;
+    height: 56px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 18px;
+    color: #fafafa;
+  }
+  .tool-name-c {
+    font-size: 30px;
+    color: #e4e4e7;
+    font-weight: 600;
+    line-height: 1;
+    flex: 1;
+  }
+  .tool-num-c {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #3f3f46;
+    letter-spacing: 0.08em;
+  }
+
+  /* ──────────────────────────────────────────
+     LAYOUT D — Two-column list with XL icons
+     2-col flex layout, rows fill height, icon 60px.
+     Most like the original grid but with much bigger icons and tighter text.
+  ────────────────────────────────────────── */
+  .tools-d {
+    display: flex;
+    gap: 10px;
+    flex: 1;
+  }
+  .tools-d-col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+  }
+  .tool-tile-d {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #18181b;
+    border: 1px solid #27272a;
+    padding: 0 22px;
+    flex: 1;
+  }
+  .tool-icon-d {
+    width: 60px;
+    height: 60px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 20px;
+    color: #fafafa;
+  }
+  .tool-name-d {
+    font-size: 28px;
+    color: #e4e4e7;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+
+  /* ──────────────────────────────────────────
+     LAYOUT E — Spotlight + overflow list
+     First tool gets a hero treatment (very large icon+name),
+     remaining tools are compact horizontal chips.
+     Works best for 1-2 hero tools; degrades gracefully to 6.
+  ────────────────────────────────────────── */
+  .tools-e {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+  }
+  .tool-hero-e {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    background: #18181b;
+    border: 1px solid #27272a;
+    padding: 20px 28px;
+    border-left: 4px solid #a3e635;
+  }
+  .tool-icon-hero-e {
+    width: 80px;
+    height: 80px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 26px;
+    color: #fafafa;
+  }
+  .tool-name-hero-e {
+    font-size: 40px;
+    color: #fafafa;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .tool-hero-badge {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #a3e635;
+    margin-top: 6px;
+  }
+  .tools-e-rest {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .tool-chip-e {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #18181b;
+    border: 1px solid #27272a;
+    padding: 12px 18px;
+  }
+  .tool-icon-e {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 15px;
+    color: #fafafa;
+  }
+  .tool-name-e {
+    font-size: 22px;
+    color: #e4e4e7;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>OG Card — Tools Area Layout Explorer</h1>
+  <p>Each option renders at all 6 tool counts. Controls let you isolate a count or see all at once.</p>
+</div>
+
+<div class="controls">
+  <label>Tool count:</label>
+  <div class="btn-group" id="count-btns">
+    <button class="btn active" data-count="all">All</button>
+    <button class="btn" data-count="1">1</button>
+    <button class="btn" data-count="2">2</button>
+    <button class="btn" data-count="3">3</button>
+    <button class="btn" data-count="4">4</button>
+    <button class="btn" data-count="5">5</button>
+    <button class="btn" data-count="6">6</button>
+  </div>
+  <div class="sep"></div>
+  <label>Layout:</label>
+  <div class="btn-group" id="layout-btns">
+    <button class="btn active" data-layout="all">All</button>
+    <button class="btn" data-layout="A">A</button>
+    <button class="btn" data-layout="B">B</button>
+    <button class="btn" data-layout="C">C</button>
+    <button class="btn" data-layout="D">D</button>
+    <button class="btn" data-layout="E">E</button>
+  </div>
+</div>
+
+<!-- Layout sections injected here by JS -->
+<div id="sections"></div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────
+const ALL_TOOLS = [
+  { name: "Cursor",      color: "#7c3aed", text: "#fafafa", initials: "Cu" },
+  { name: "Claude Code", color: "#d97706", text: "#fafafa", initials: "CC" },
+  { name: "ChatGPT",     color: "#10b981", text: "#fafafa", initials: "GP" },
+  { name: "v0",          color: "#0ea5e9", text: "#fafafa", initials: "v0" },
+  { name: "Midjourney",  color: "#1d4ed8", text: "#fafafa", initials: "MJ" },
+  { name: "Linear",      color: "#6366f1", text: "#fafafa", initials: "Li" },
+];
+
+const CATEGORIES = [
+  { label: "Coding Agent", border: "#10b981", text: "#34d399" },
+  { label: "App Builder",  border: "#84cc16", text: "#a3e635" },
+];
+
+const LAYOUTS = [
+  {
+    id: "A",
+    name: "A — Count-Adaptive Grid",
+    rationale: "Column count derived from tool count; tiles are content-sized, never over-stretched. Flexbox row-wrapping is takumi-safe.",
+    caveat: "flexbox-safe",
+    render: renderA,
+  },
+  {
+    id: "B",
+    name: "B — Icon-Forward Chip Row",
+    rationale: "Each tool is a tall square chip: big 64px icon above mono label. Chips flex-wrap naturally from 1-6.",
+    caveat: "flexbox-safe",
+    render: renderB,
+  },
+  {
+    id: "C",
+    name: "C — Full-Width Row List",
+    rationale: "Every tool gets its own full-width row at equal height — zero wasted space, 56px icon, 30px name. Rows shrink uniformly at 5-6.",
+    caveat: "flexbox-safe · flex-children need explicit height in takumi",
+    render: renderC,
+  },
+  {
+    id: "D",
+    name: "D — Two-Column XL Icon Grid",
+    rationale: "Same 2-col structure as today but icon 60px (vs 34px), tiles fill height via flex:1, name size up from 24→28px.",
+    caveat: "flexbox-safe · closest to current; easiest migration",
+    render: renderD,
+  },
+  {
+    id: "E",
+    name: "E — Spotlight + Overflow Chips",
+    rationale: "First tool gets a hero row (80px icon, accent left border, 40px name); remaining 2-5 tools become compact chips in a wrap row.",
+    caveat: "flexbox-safe · accent-border on hero needs inline style for takumi",
+    render: renderE,
+  },
+];
+
+// ── OG card shell (everything except the tools area) ──────────────
+function ogShell(toolsHtml) {
+  return `
+<div class="og-card">
+  <div class="og-accent-bar"></div>
+  <div class="og-body">
+    <div class="og-header">
+      <div class="og-header-left">
+        <div class="og-avatar">AO</div>
+        <div class="og-name-block">
+          <span class="og-stack-name">My AI Dev Stack</span>
+          <span class="og-handle">@alper</span>
+        </div>
+      </div>
+      <div class="og-price-block">
+        <div class="og-price-row">
+          <span class="og-price-amount">$154</span>
+          <span class="og-price-suffix">/mo</span>
+        </div>
+        <span class="og-price-label">Solo</span>
+      </div>
+    </div>
+    <div class="og-desc-bar">
+      <div class="og-desc-rule"></div>
+      <span class="og-desc-text">The complete toolkit for solo AI developers — from code generation to design and deployment.</span>
+    </div>
+    <div class="og-tools-outer">
+      <span class="og-tools-label">AI Tools</span>
+      ${toolsHtml}
+    </div>
+    <div class="og-footer">
+      <div class="og-cats">
+        ${CATEGORIES.map(c =>
+          `<span class="og-cat" style="border-color:${c.border};color:${c.text}">${c.label}</span>`
+        ).join('')}
+      </div>
+      <div class="og-cta">Open stack →</div>
+    </div>
+  </div>
+</div>`;
+}
+
+function icon(t, size, fontSize) {
+  return `<div style="width:${size}px;height:${size}px;background:${t.color};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:${fontSize}px;color:${t.text};flex-shrink:0;">${t.initials}</div>`;
+}
+
+// ── Layout renderers ──────────────────────────────────────────────
+
+function renderA(tools) {
+  // count → tile width that fills row cleanly
+  const n = tools.length;
+  let tileStyle;
+  if (n === 1) tileStyle = 'width:100%;';
+  else if (n === 2) tileStyle = 'width:calc(50% - 5px);';
+  else if (n === 3) tileStyle = 'width:calc(33.33% - 7px);';
+  else if (n === 4) tileStyle = 'width:calc(50% - 5px);';
+  else             tileStyle = 'width:calc(33.33% - 7px);';
+
+  const nameSize = n <= 2 ? 32 : n <= 4 ? 28 : 26;
+
+  return `<div class="tools-a">
+    ${tools.map(t => `
+      <div class="tool-tile-a" style="${tileStyle}">
+        ${icon(t, 48, 16)}
+        <span class="tool-name-a" style="font-size:${nameSize}px">${t.name}</span>
+      </div>`).join('')}
+  </div>`;
+}
+
+function renderB(tools) {
+  const chipMinW = tools.length <= 3 ? '180px' : '140px';
+  const iconSize = tools.length <= 3 ? 72 : 60;
+  const fontSize = tools.length <= 3 ? 24 : 20;
+  const nameSize = tools.length <= 3 ? 18 : 14;
+
+  return `<div class="tools-b">
+    ${tools.map(t => `
+      <div class="tool-chip-b" style="min-width:${chipMinW};flex:1;">
+        ${icon(t, iconSize, fontSize)}
+        <span class="tool-name-b" style="font-size:${nameSize}px">${t.name}</span>
+      </div>`).join('')}
+  </div>`;
+}
+
+function renderC(tools) {
+  const iconSize = tools.length <= 4 ? 56 : 44;
+  const nameSize = tools.length <= 4 ? 30 : 24;
+  const padding  = tools.length <= 4 ? '0 20px' : '0 16px';
+
+  return `<div class="tools-c">
+    ${tools.map((t, i) => `
+      <div class="tool-row-c" style="padding:${padding}">
+        ${icon(t, iconSize, Math.round(iconSize * 0.32))}
+        <span class="tool-name-c" style="font-size:${nameSize}px">${t.name}</span>
+        <span class="tool-num-c">0${i+1}</span>
+      </div>`).join('')}
+  </div>`;
+}
+
+function renderD(tools) {
+  const n = tools.length;
+  const mid = Math.ceil(n / 2);
+  const col1 = tools.slice(0, mid);
+  const col2 = tools.slice(mid);
+  const iconSize = n <= 4 ? 60 : 52;
+  const nameSize = n <= 4 ? 30 : 26;
+
+  function col(items) {
+    return `<div class="tools-d-col">
+      ${items.map(t => `
+        <div class="tool-tile-d">
+          ${icon(t, iconSize, Math.round(iconSize * 0.33))}
+          <span class="tool-name-d" style="font-size:${nameSize}px">${t.name}</span>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  return `<div class="tools-d">
+    ${col(col1)}
+    ${col2.length > 0 ? col(col2) : '<div class="tools-d-col"></div>'}
+  </div>`;
+}
+
+function renderE(tools) {
+  const [hero, ...rest] = tools;
+  const heroIconSize = 80;
+  const heroNameSize = tools.length === 1 ? 52 : 42;
+  const restIconSize = 44;
+  const restNameSize = 22;
+
+  return `<div class="tools-e">
+    <div class="tool-hero-e">
+      ${icon(hero, heroIconSize, 26)}
+      <div style="display:flex;flex-direction:column;">
+        <span class="tool-name-hero-e" style="font-size:${heroNameSize}px">${hero.name}</span>
+        <span class="tool-hero-badge">Primary tool</span>
+      </div>
+    </div>
+    ${rest.length > 0 ? `<div class="tools-e-rest">
+      ${rest.map(t => `
+        <div class="tool-chip-e">
+          ${icon(t, restIconSize, 15)}
+          <span class="tool-name-e">${t.name}</span>
+        </div>`).join('')}
+    </div>` : ''}
+  </div>`;
+}
+
+// ── Build DOM ─────────────────────────────────────────────────────
+function buildSections() {
+  const container = document.getElementById('sections');
+  container.innerHTML = '';
+
+  for (const layout of LAYOUTS) {
+    const section = document.createElement('div');
+    section.className = 'layout-section';
+    section.dataset.layout = layout.id;
+
+    section.innerHTML = `
+      <div class="layout-label">
+        <h2>${layout.name}</h2>
+        <span class="rationale">${layout.rationale}</span>
+        <span class="caveat">${layout.caveat}</span>
+      </div>
+      <div class="count-grid show-all" data-countgrid="${layout.id}"></div>
+    `;
+
+    container.appendChild(section);
+
+    const grid = section.querySelector('.count-grid');
+    for (let n = 1; n <= 6; n++) {
+      const tools = ALL_TOOLS.slice(0, n);
+      const cell = document.createElement('div');
+      cell.dataset.count = n;
+
+      const scale = grid.getBoundingClientRect().width > 0
+        ? grid.getBoundingClientRect().width / 1200
+        : 0.3; // fallback, recalculated after append
+
+      cell.innerHTML = `
+        <div class="count-label">${n} tool${n > 1 ? 's' : ''}</div>
+        <div class="og-wrapper">
+          <div class="og-inner" data-layout-id="${layout.id}" data-n="${n}">
+            ${ogShell(layout.render(tools))}
+          </div>
+        </div>
+      `;
+      grid.appendChild(cell);
+    }
+  }
+
+  // Now apply scales after DOM is ready
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.count-grid').forEach(grid => {
+      const colCount = getComputedStyle(grid).gridTemplateColumns.split(' ').length;
+      const cellW = grid.querySelector('.og-wrapper')?.getBoundingClientRect().width || 380;
+      const scale = cellW / 1200;
+      grid.querySelectorAll('.og-inner').forEach(inner => {
+        inner.style.transform = `scale(${scale})`;
+      });
+    });
+  });
+}
+
+// ── Controls ──────────────────────────────────────────────────────
+let activeCount = 'all';
+let activeLayout = 'all';
+
+function applyFilters() {
+  // Count filter
+  document.querySelectorAll('.count-grid [data-count]').forEach(cell => {
+    const n = cell.dataset.count;
+    if (activeCount === 'all' || activeCount === n) {
+      cell.style.display = '';
+    } else {
+      cell.style.display = 'none';
+    }
+  });
+
+  // Update grid mode
+  document.querySelectorAll('.count-grid').forEach(grid => {
+    if (activeCount === 'all') {
+      grid.className = 'count-grid show-all';
+    } else {
+      grid.className = 'count-grid show-one';
+    }
+  });
+
+  // Layout filter
+  document.querySelectorAll('.layout-section').forEach(section => {
+    const id = section.dataset.layout;
+    if (activeLayout === 'all' || activeLayout === id) {
+      section.classList.remove('hidden');
+    } else {
+      section.classList.add('hidden');
+    }
+  });
+
+  // Re-scale after layout changes
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.count-grid').forEach(grid => {
+        const visibleCells = [...grid.querySelectorAll('[data-count]')].filter(c => c.style.display !== 'none');
+        if (visibleCells.length === 0) return;
+        const wrapper = visibleCells[0].querySelector('.og-wrapper');
+        if (!wrapper) return;
+        const cellW = wrapper.getBoundingClientRect().width;
+        if (cellW === 0) return;
+        const scale = cellW / 1200;
+        grid.querySelectorAll('.og-inner').forEach(inner => {
+          inner.style.transform = `scale(${scale})`;
+        });
+      });
+    });
+  });
+}
+
+document.getElementById('count-btns').addEventListener('click', e => {
+  const btn = e.target.closest('.btn');
+  if (!btn) return;
+  activeCount = btn.dataset.count;
+  document.querySelectorAll('#count-btns .btn').forEach(b => b.classList.toggle('active', b === btn));
+  applyFilters();
+});
+
+document.getElementById('layout-btns').addEventListener('click', e => {
+  const btn = e.target.closest('.btn');
+  if (!btn) return;
+  activeLayout = btn.dataset.layout;
+  document.querySelectorAll('#layout-btns .btn').forEach(b => b.classList.toggle('active', b === btn));
+  applyFilters();
+});
+
+// Rescale on window resize
+window.addEventListener('resize', () => {
+  document.querySelectorAll('.count-grid').forEach(grid => {
+    const visibleCells = [...grid.querySelectorAll('[data-count]')].filter(c => c.style.display !== 'none');
+    if (visibleCells.length === 0) return;
+    const wrapper = visibleCells[0].querySelector('.og-wrapper');
+    if (!wrapper) return;
+    const cellW = wrapper.getBoundingClientRect().width;
+    if (cellW === 0) return;
+    const scale = cellW / 1200;
+    grid.querySelectorAll('.og-inner').forEach(inner => {
+      inner.style.transform = `scale(${scale})`;
+    });
+  });
+});
+
+buildSections();
+</script>
+</body>
+</html>

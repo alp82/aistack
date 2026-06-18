@@ -18,32 +18,8 @@ type StackOgImageProps = {
 		name: string;
 		iconUrl?: string | null;
 	}>;
-	categories: string[];
 	accent?: { base: string; contrast: string };
 };
-
-const CATEGORY_COLORS: Record<string, { border: string; text: string }> = {
-	ide: { border: "#22c55e", text: "#4ade80" },
-	"coding-agent": { border: "#10b981", text: "#34d399" },
-	"app-builder": { border: "#84cc16", text: "#a3e635" },
-	reasoning: { border: "#3b82f6", text: "#60a5fa" },
-	research: { border: "#eab308", text: "#facc15" },
-	"image-gen": { border: "#06b6d4", text: "#22d3ee" },
-	"video-gen": { border: "#14b8a6", text: "#2dd4bf" },
-	design: { border: "#d946ef", text: "#e879f9" },
-	automation: { border: "#ef4444", text: "#f87171" },
-	analytics: { border: "#64748b", text: "#94a3b8" },
-	notes: { border: "#ec4899", text: "#f472b6" },
-	default: { border: "#71717a", text: "#a1a1aa" },
-};
-
-function getCategoryStyle(category: string) {
-	return CATEGORY_COLORS[category.toLowerCase()] || CATEGORY_COLORS.default;
-}
-
-function toCategoryLabel(value: string) {
-	return value.charAt(0).toUpperCase() + value.slice(1).replace(/-/g, " ");
-}
 
 function getInitials(value: string) {
 	const parts = value.split(/\s+/).filter(Boolean).slice(0, 2);
@@ -63,11 +39,9 @@ export function StackOgImage({
 	hasUsageComponent,
 	teamSize,
 	tools,
-	categories,
 	accent = { base: "#a3e635", contrast: "#0a0a0a" },
 }: StackOgImageProps) {
 	const displayTools = tools.slice(0, 6);
-	const displayCategories = categories.slice(0, 2);
 	const displayPrice = formatPriceDisplay(
 		fixedTotal?.amount ?? 0,
 		"month",
@@ -76,6 +50,131 @@ export function StackOgImage({
 	const displayName = name.length > 38 ? `${name.slice(0, 36)}...` : name;
 	const displayDescription =
 		oneLiner.length > 120 ? `${oneLiner.slice(0, 120)}...` : oneLiner;
+
+	const GAP = 10;
+
+	const chip = (
+		tool: { name: string; iconUrl?: string | null },
+		iconSize: number,
+		nameSize: number,
+	) => (
+		<div
+			key={tool.name}
+			style={{
+				display: "flex",
+				flexDirection: "column",
+				alignItems: "center",
+				justifyContent: "center",
+				gap: `${Math.round(iconSize * 0.14)}px`,
+				backgroundColor: "#18181b",
+				border: "1px solid #27272a",
+				flex: 1,
+				minWidth: 0,
+				padding: "0 16px",
+			}}
+		>
+			{tool.iconUrl ? (
+				<img
+					src={tool.iconUrl}
+					alt=""
+					width={iconSize}
+					height={iconSize}
+					style={{ objectFit: "contain", flexShrink: 0 }}
+				/>
+			) : (
+				<div
+					style={{
+						display: "flex",
+						width: `${iconSize}px`,
+						height: `${iconSize}px`,
+						backgroundColor: "#3f3f46",
+						alignItems: "center",
+						justifyContent: "center",
+						color: "#d4d4d8",
+						fontWeight: 700,
+						fontSize: `${Math.round(iconSize * 0.34)}px`,
+						flexShrink: 0,
+					}}
+				>
+					{getInitials(tool.name)}
+				</div>
+			)}
+			<span
+				style={{
+					fontSize: `${nameSize}px`,
+					color: "#e4e4e7",
+					fontWeight: 700,
+					lineHeight: 1.1,
+					textAlign: "center",
+					whiteSpace: "nowrap",
+					overflow: "hidden",
+					textOverflow: "ellipsis",
+					maxWidth: "100%",
+				}}
+			>
+				{tool.name}
+			</span>
+		</div>
+	);
+
+	const rowOf = (
+		slice: Array<{ name: string; iconUrl?: string | null }>,
+		iconSize: number,
+		nameSize: number,
+	) => (
+		<div style={{ display: "flex", flex: 1, gap: `${GAP}px` }}>
+			{slice.map((tool) => chip(tool, iconSize, nameSize))}
+		</div>
+	);
+
+	const colOf = (top: React.JSX.Element, bottom: React.JSX.Element) => (
+		<div
+			style={{
+				display: "flex",
+				flexDirection: "column",
+				flex: 1,
+				gap: `${GAP}px`,
+			}}
+		>
+			{top}
+			{bottom}
+		</div>
+	);
+
+	const renderTools = () => {
+		const n = displayTools.length;
+
+		if (n === 1) {
+			return rowOf(displayTools, 120, 44);
+		}
+
+		if (n === 2) {
+			return rowOf(displayTools, 100, 38);
+		}
+
+		if (n === 3) {
+			return rowOf(displayTools, 88, 34);
+		}
+
+		if (n === 4) {
+			return colOf(
+				rowOf(displayTools.slice(0, 2), 80, 30),
+				rowOf(displayTools.slice(2, 4), 80, 30),
+			);
+		}
+
+		if (n === 5) {
+			return colOf(
+				rowOf(displayTools.slice(0, 2), 88, 34),
+				rowOf(displayTools.slice(2, 5), 66, 26),
+			);
+		}
+
+		return colOf(
+			rowOf(displayTools.slice(0, 3), 66, 26),
+			rowOf(displayTools.slice(3, 6), 66, 26),
+		);
+	};
 
 	return (
 		<div
@@ -298,120 +397,7 @@ export function StackOgImage({
 					>
 						AI Tools
 					</span>
-					<div
-						style={{
-							display: "grid",
-							gridTemplateColumns: "1fr 1fr",
-							gridAutoRows: "1fr",
-							gap: "16px",
-							flex: 1,
-						}}
-					>
-						{displayTools.map((tool) => (
-							<div
-								key={tool.name}
-								style={{
-									display: "flex",
-									alignItems: "center",
-									gap: "14px",
-									backgroundColor: "#18181b",
-									padding: "18px 20px",
-									border: "1px solid #27272a",
-									height: "100%",
-								}}
-							>
-								{tool.iconUrl ? (
-									<img
-										src={tool.iconUrl}
-										alt=""
-										width={34}
-										height={34}
-										style={{ objectFit: "contain" }}
-									/>
-								) : (
-									<div
-										style={{
-											width: "34px",
-											height: "34px",
-											backgroundColor: "#3f3f46",
-											borderRadius: "8px",
-											alignItems: "center",
-											justifyContent: "center",
-											display: "flex",
-											color: "#d4d4d8",
-											fontSize: "14px",
-											fontWeight: 700,
-										}}
-									>
-										{getInitials(tool.name)}
-									</div>
-								)}
-								<span
-									style={{
-										fontSize: "24px",
-										color: "#e4e4e7",
-										fontWeight: 600,
-										lineHeight: 1.15,
-									}}
-								>
-									{tool.name}
-								</span>
-							</div>
-						))}
-					</div>
-				</div>
-				<div
-					style={{
-						display: "flex",
-						justifyContent: "space-between",
-						alignItems: "center",
-						paddingTop: "20px",
-						borderTop: "1px solid #27272a",
-					}}
-				>
-					<div style={{ display: "flex", gap: "10px" }}>
-						{displayCategories.map((cat) => {
-							const style = getCategoryStyle(cat);
-							return (
-								<span
-									key={cat}
-									style={{
-										fontSize: "12px",
-										fontWeight: 700,
-										textTransform: "uppercase",
-										letterSpacing: "0.05em",
-										padding: "9px 14px",
-										border: `2px solid ${style.border}`,
-										color: style.text,
-										backgroundColor: "rgba(0,0,0,0.5)",
-									}}
-								>
-									{toCategoryLabel(cat)}
-								</span>
-							);
-						})}
-					</div>
-					<div
-						style={{
-							display: "flex",
-							alignItems: "center",
-							gap: "12px",
-							backgroundColor: accent.base,
-							padding: "12px 22px",
-						}}
-					>
-						<span
-							style={{
-								fontSize: "20px",
-								fontWeight: 700,
-								color: accent.contrast,
-								fontFamily: "Geist Mono",
-								letterSpacing: "0.02em",
-							}}
-						>
-							Open stack →
-						</span>
-					</div>
+					{renderTools()}
 				</div>
 			</div>
 		</div>

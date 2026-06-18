@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>OG accent showcase</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a0a; }
+  .canvas {
+    width: 1240px;
+    background:
+      radial-gradient(120% 80% at 50% -10%, #15170d 0%, #0a0a0a 55%);
+    padding: 60px 56px 52px;
+    font-family: "Inter", system-ui, sans-serif;
+    color: #fafafa;
+  }
+  /* ── Header ── */
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: .34em;
+    text-transform: uppercase;
+    color: #84cc16;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .eyebrow::before { content: ""; width: 30px; height: 3px; background: #84cc16; }
+  h1 {
+    margin-top: 22px;
+    font-size: 74px;
+    line-height: 0.98;
+    font-weight: 900;
+    letter-spacing: -0.025em;
+  }
+  h1 .hl { color: #84cc16; }
+  .sub {
+    margin-top: 20px;
+    font-size: 23px;
+    line-height: 1.45;
+    color: #a3a3a3;
+    max-width: 880px;
+    font-weight: 400;
+  }
+  /* ── Grid ── */
+  .grid {
+    margin-top: 44px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px 32px;
+  }
+  .card { border: 1px solid #262626; background: #111; }
+  .card img { display: block; width: 100%; height: auto; }
+  .cap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-top: 1px solid #1f1f1f;
+    font-family: "JetBrains Mono", monospace;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: #e5e5e5;
+  }
+  .cap .dot { width: 16px; height: 16px; flex: none; border: 1px solid rgba(255,255,255,.25); }
+  .cap .price { color: #6b7280; margin-left: auto; letter-spacing: .08em; font-weight: 500; }
+  /* ── Footer ── */
+  .footer {
+    margin-top: 46px;
+    padding-top: 26px;
+    border-top: 1px solid #1f1f1f;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 17px;
+    color: #737373;
+    letter-spacing: .04em;
+  }
+  .footer b { color: #84cc16; font-weight: 700; }
+</style>
+</head>
+<body>
+  <div class="canvas">
+    <div class="eyebrow">AISTACK · SHARE CARD</div>
+    <h1>One stack,<br><span class="hl">your accent.</span></h1>
+    <p class="sub">Every shared stack generates its own social card — themed end to end by the
+       creator's chosen accent color, from the rule line to the call-to-action.</p>
+
+    <div class="grid" id="grid"></div>
+
+    <div class="footer">
+      <span>/stacks/alper-ortac</span>
+      <span><b>12</b> accents · pick one in the editor</span>
+    </div>
+  </div>
+
+<script>
+  const CARDS = [
+    ["Lime",    "lime",    "#84cc16"],
+    ["Cyan",    "cyan",    "#06b6d4"],
+    ["Blue",    "blue",    "#3b82f6"],
+    ["Violet",  "violet",  "#8b5cf6"],
+    ["Fuchsia", "fuchsia", "#d946ef"],
+    ["Orange",  "orange",  "#f97316"],
+  ];
+  document.getElementById("grid").innerHTML = CARDS.map(([name, key, hex]) => `
+    <div class="card">
+      <img src="og-accents/${key}.png" alt="${name} accent OG card" />
+      <div class="cap">
+        <span class="dot" style="background:${hex}"></span>
+        <span>${name}</span>
+        <span class="price">$154 / mo</span>
+      </div>
+    </div>`).join("");
+</script>
+</body>
+</html>

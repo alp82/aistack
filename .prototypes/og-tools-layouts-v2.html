@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>OG Tools Area — Layout Explorer v2</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #050505;
+    font-family: "Inter", system-ui, sans-serif;
+    color: #e4e4e7;
+    padding: 40px 0 80px;
+  }
+
+  .page-header {
+    padding: 0 48px 32px;
+    border-bottom: 1px solid #1c1c1e;
+    margin-bottom: 32px;
+  }
+  .page-header h1 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: #fafafa;
+  }
+  .page-header p {
+    margin-top: 6px;
+    font-size: 13px;
+    color: #52525b;
+    line-height: 1.5;
+    max-width: 760px;
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 48px;
+    margin-bottom: 36px;
+    flex-wrap: wrap;
+  }
+  .controls label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #71717a;
+    margin-right: 2px;
+  }
+  .btn-group { display: flex; gap: 4px; }
+  .btn {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 6px 14px;
+    border: 1px solid #27272a;
+    background: #18181b;
+    color: #71717a;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .btn:hover { border-color: #3f3f46; color: #a1a1aa; }
+  .btn.active { background: #a3e635; border-color: #a3e635; color: #0a0a0a; }
+  .sep { width: 1px; height: 28px; background: #27272a; margin: 0 8px; }
+
+  .layout-section { padding: 0 48px; margin-bottom: 72px; }
+  .layout-section.hidden { display: none; }
+
+  .layout-label {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #1c1c1e;
+    flex-wrap: wrap;
+  }
+  .layout-label h2 {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #a3e635;
+    white-space: nowrap;
+  }
+  .layout-label .rationale { font-size: 13px; color: #52525b; flex: 1; }
+  .layout-label .caveat {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    color: #3f3f46;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  .count-grid { display: grid; gap: 20px; }
+  .count-grid.show-all { grid-template-columns: repeat(3, 1fr); }
+  .count-grid.show-one { grid-template-columns: 1fr; }
+
+  .count-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #3f3f46;
+    margin-bottom: 8px;
+  }
+
+  .og-wrapper {
+    width: 100%;
+    position: relative;
+    padding-top: calc(100% * 630 / 1200);
+    overflow: hidden;
+  }
+  .og-wrapper .og-inner {
+    position: absolute;
+    top: 0; left: 0;
+    width: 1200px;
+    height: 630px;
+    transform-origin: top left;
+  }
+
+  /* ── OG Card base ── */
+  .og-card {
+    width: 1200px;
+    height: 630px;
+    background: #0a0a0a;
+    display: flex;
+    flex-direction: column;
+    font-family: "Inter", system-ui, sans-serif;
+    overflow: hidden;
+  }
+  .og-accent-bar {
+    height: 14px;
+    width: 100%;
+    background: #a3e635;
+    flex-shrink: 0;
+  }
+  .og-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 32px 44px 36px;
+    min-height: 0;
+  }
+  .og-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 28px;
+    margin-bottom: 18px;
+    flex-shrink: 0;
+  }
+  .og-header-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    flex: 1;
+    min-width: 0;
+  }
+  .og-avatar {
+    width: 82px;
+    height: 82px;
+    background: #27272a;
+    border: 3px solid #3f3f46;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    font-weight: 700;
+    color: #a1a1aa;
+  }
+  .og-name-block {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+    padding-top: 4px;
+  }
+  .og-stack-name {
+    font-size: 58px;
+    font-weight: 800;
+    color: #fafafa;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .og-handle {
+    font-size: 18px;
+    color: #71717a;
+    margin-top: 7px;
+  }
+  .og-price-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+  }
+  .og-price-row {
+    display: flex;
+    align-items: baseline;
+  }
+  .og-price-amount {
+    font-size: 74px;
+    font-weight: 900;
+    color: #fafafa;
+    line-height: 1;
+  }
+  .og-price-suffix {
+    font-size: 30px;
+    color: #71717a;
+    margin-left: 5px;
+    font-weight: 500;
+    line-height: 1;
+    align-self: flex-end;
+    padding-bottom: 8px;
+  }
+  .og-price-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #a1a1aa;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 10px;
+    font-family: "JetBrains Mono", monospace;
+  }
+  .og-desc-bar {
+    display: flex;
+    margin-bottom: 20px;
+    flex-shrink: 0;
+  }
+  .og-desc-rule {
+    width: 5px;
+    background: #a3e635;
+    flex-shrink: 0;
+    margin-right: 16px;
+  }
+  .og-desc-text {
+    font-size: 27px;
+    color: #d4d4d8;
+    line-height: 1.28;
+  }
+
+  /* ── Tools outer shell — takes all remaining flex space (no footer!) ── */
+  .og-tools-outer {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+  .og-tools-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: #71717a;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 12px;
+    font-family: "JetBrains Mono", monospace;
+    flex-shrink: 0;
+  }
+
+  /* ═══════════════════════════════════════════════
+     VARIANT 1 — "CENTERED CHIPS"
+     Centered square chips. Few tools = huge icons and names.
+     Chips grow to fill the row; rows fill the column height.
+     takumi: pure flexbox, all width/height/icon explicit.
+  ═══════════════════════════════════════════════ */
+
+  /* built entirely in JS, no CSS classes needed beyond shell */
+
+  /* ═══════════════════════════════════════════════
+     VARIANT 2 — "FEATURE-FIRST STACK"
+     For counts with uneven distribution: t1 (or t1+t2) get
+     the top prominent row; remaining tools fill a balanced
+     row below. Equal sizes when count fills neatly (1,2,4,6).
+     Centered within each row.
+     takumi: flexbox-only, explicit heights.
+  ═══════════════════════════════════════════════ */
+
+  /* ═══════════════════════════════════════════════
+     VARIANT 3 — "LEFT-ALIGNED GRID" (contrast/reference)
+     Left-aligned tiles, same feature-first logic but flush-left
+     and with a name+subtitle treatment (name + italic category).
+     takumi: flexbox-only.
+  ═══════════════════════════════════════════════ */
+
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>OG Card — Tools Area Layout Explorer v2</h1>
+  <p>
+    Footer (category chips + CTA button) removed. Reclaimed ~72px vertical height redistributed to tools area.
+    3 variants, all feature-first at uneven counts (t1 prominent, not last), centered default (V3 left-aligned for contrast).
+    Tool icon and name sizes scale inversely with count.
+  </p>
+</div>
+
+<div class="controls">
+  <label>Count:</label>
+  <div class="btn-group" id="count-btns">
+    <button class="btn active" data-count="all">All</button>
+    <button class="btn" data-count="1">1</button>
+    <button class="btn" data-count="2">2</button>
+    <button class="btn" data-count="3">3</button>
+    <button class="btn" data-count="4">4</button>
+    <button class="btn" data-count="5">5</button>
+    <button class="btn" data-count="6">6</button>
+  </div>
+  <div class="sep"></div>
+  <label>Variant:</label>
+  <div class="btn-group" id="layout-btns">
+    <button class="btn active" data-layout="all">All</button>
+    <button class="btn" data-layout="V1">V1</button>
+    <button class="btn" data-layout="V2">V2</button>
+    <button class="btn" data-layout="V3">V3</button>
+  </div>
+</div>
+
+<div id="sections"></div>
+
+<script>
+// ── Tool data ─────────────────────────────────────────────────────
+const ALL_TOOLS = [
+  { name: "Cursor",      color: "#7c3aed", text: "#fafafa", initials: "Cu" },
+  { name: "Claude Code", color: "#d97706", text: "#fafafa", initials: "CC" },
+  { name: "ChatGPT",     color: "#10b981", text: "#fafafa", initials: "GP" },
+  { name: "v0",          color: "#0ea5e9", text: "#fafafa", initials: "v0" },
+  { name: "Midjourney",  color: "#1d4ed8", text: "#fafafa", initials: "MJ" },
+  { name: "Linear",      color: "#6366f1", text: "#fafafa", initials: "Li" },
+];
+
+// ── Icon square (inline styles, no border-radius, takumi-safe) ────
+function icon(t, size) {
+  const fs = Math.round(size * 0.34);
+  return `<div style="width:${size}px;height:${size}px;background:${t.color};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:${fs}px;color:${t.text};flex-shrink:0;">${t.initials}</div>`;
+}
+
+// ── Shared OG card shell (NO footer) ─────────────────────────────
+function ogShell(toolsHtml) {
+  return `
+<div class="og-card">
+  <div class="og-accent-bar"></div>
+  <div class="og-body">
+    <div class="og-header">
+      <div class="og-header-left">
+        <div class="og-avatar">AO</div>
+        <div class="og-name-block">
+          <span class="og-stack-name">My AI Dev Stack</span>
+          <span class="og-handle">@alper</span>
+        </div>
+      </div>
+      <div class="og-price-block">
+        <div class="og-price-row">
+          <span class="og-price-amount">$154</span>
+          <span class="og-price-suffix">/mo</span>
+        </div>
+        <span class="og-price-label">Solo</span>
+      </div>
+    </div>
+    <div class="og-desc-bar">
+      <div class="og-desc-rule"></div>
+      <span class="og-desc-text">The complete toolkit for solo AI developers — from code generation to design and deployment.</span>
+    </div>
+    <div class="og-tools-outer">
+      <span class="og-tools-label">AI Tools</span>
+      ${toolsHtml}
+    </div>
+  </div>
+</div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// VARIANT 1 — "CENTERED CHIPS"
+// Chips are square-ish tiles: big icon above name, centered.
+// All chips are equal size, laid out in rows.
+// Per-count strategy:
+//   1 → 1 col, full height, icon ~120px
+//   2 → 2 col, 1 row, icon ~100px
+//   3 → 3 col, 1 row, icon ~88px — OR feature-split (best look after testing: 3-col)
+//   4 → 2×2, icon ~80px
+//   5 → t1 full-width top, t2-5 as 4-col row below, icon top ~88, bottom ~64
+//   6 → 3×2 (2 rows of 3), icon ~64px
+// ═══════════════════════════════════════════════════════════════════
+function renderV1(tools) {
+  const n = tools.length;
+  const GAP = 10;
+
+  // Shared tile builder: centered column chip
+  function chip(t, iconSize, nameSize, flexBasis, height, tileH) {
+    return `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${Math.round(iconSize * 0.14)}px;background:#18181b;border:1px solid #27272a;flex:1;${flexBasis ? `flex-basis:${flexBasis};` : ''}${height ? `height:${height}px;` : ''}${tileH ? `min-height:${tileH}px;` : ''}padding:0 16px;">
+      ${icon(t, iconSize)}
+      <span style="font-size:${nameSize}px;color:#e4e4e7;font-weight:700;line-height:1.1;text-align:center;white-space:nowrap;">${t.name}</span>
+    </div>`;
+  }
+
+  if (n === 1) {
+    return `<div style="display:flex;flex:1;gap:${GAP}px;">
+      ${chip(tools[0], 120, 44, null, null, null)}
+    </div>`;
+  }
+
+  if (n === 2) {
+    return `<div style="display:flex;flex:1;gap:${GAP}px;">
+      ${tools.map(t => chip(t, 100, 38, null, null, null)).join('')}
+    </div>`;
+  }
+
+  if (n === 3) {
+    return `<div style="display:flex;flex:1;gap:${GAP}px;">
+      ${tools.map(t => chip(t, 88, 34, null, null, null)).join('')}
+    </div>`;
+  }
+
+  if (n === 4) {
+    const row = (slice) => `<div style="display:flex;flex:1;gap:${GAP}px;">
+      ${slice.map(t => chip(t, 80, 30, null, null, null)).join('')}
+    </div>`;
+    return `<div style="display:flex;flex-direction:column;flex:1;gap:${GAP}px;">
+      ${row(tools.slice(0, 2))}
+      ${row(tools.slice(2, 4))}
+    </div>`;
+  }
+
+  if (n === 5) {
+    // t1 prominent top row, t2-t5 four-chip bottom row
+    return `<div style="display:flex;flex-direction:column;flex:1;gap:${GAP}px;">
+      <div style="display:flex;flex:1.35;gap:${GAP}px;">
+        ${chip(tools[0], 90, 36, null, null, null)}
+      </div>
+      <div style="display:flex;flex:1;gap:${GAP}px;">
+        ${tools.slice(1).map(t => chip(t, 60, 24, null, null, null)).join('')}
+      </div>
+    </div>`;
+  }
+
+  // n === 6: 2 rows of 3
+  const row6 = (slice) => `<div style="display:flex;flex:1;gap:${GAP}px;">
+    ${slice.map(t => chip(t, 66, 26, null, null, null)).join('')}
+  </div>`;
+  return `<div style="display:flex;flex-direction:column;flex:1;gap:${GAP}px;">
+    ${row6(tools.slice(0, 3))}
+    ${row6(tools.slice(3, 6))}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// VARIANT 2 — "FEATURE-FIRST STACK"
+// Feature tile(s) fill top area (icon+name, horizontal layout, centered).
+// Secondary tiles fill below in balanced rows.
+// Icon is prominent but tools show name to the right (not below).
+// Emphasis comes purely from size difference — no decorations/labels.
+// Per-count:
+//   1 → full-width horizontal, icon 128px, name 52px
+//   2 → 2 equal feature tiles side-by-side, icon 96px, name 40px
+//   3 → t1 large top (icon 96, name 40), t2+t3 two-col row below
+//   4 → 2×2 equal tiles (balanced), icon 72px, name 32px
+//   5 → t1 large top row, t2-t5 2×2 below
+//   6 → 3×2 (2 rows of 3), icon 60px, name 28px
+// ═══════════════════════════════════════════════════════════════════
+function renderV2(tools) {
+  const n = tools.length;
+  const GAP = 10;
+
+  // Horizontal tile: icon on left, name on right
+  function hTile(t, iconSize, nameSize, flexH) {
+    return `
+    <div style="display:flex;align-items:center;justify-content:center;gap:${Math.round(iconSize * 0.22)}px;background:#18181b;border:1px solid #27272a;${flexH ? `flex:${flexH};` : 'flex:1;'}padding:0 28px;">
+      ${icon(t, iconSize)}
+      <span style="font-size:${nameSize}px;color:#e4e4e7;font-weight:700;line-height:1.05;white-space:nowrap;">${t.name}</span>
+    </div>`;
+  }
+
+  // Row wrapper
+  function row(slice, iconSize, nameSize, flexH) {
+    return `<div style="display:flex;${flexH ? `flex:${flexH};` : 'flex:1;'}gap:${GAP}px;">
+      ${slice.map(t => hTile(t, iconSize, nameSize)).join('')}
+    </div>`;
+  }
+
+  if (n === 1) {
+    return `<div style="display:flex;flex:1;gap:${GAP}px;">
+      ${hTile(tools[0], 128, 52)}
+    </div>`;
+  }
+
+  if (n === 2) {
+    return `<div style="display:flex;flex:1;gap:${GAP}px;">
+      ${tools.map(t => hTile(t, 96, 40)).join('')}
+    </div>`;
+  }
+
+  if (n === 3) {
+    // t1 prominent top, t2+t3 smaller row below
+    return `<div style="display:flex;flex-direction:column;flex:1;gap:${GAP}px;">
+      <div style="display:flex;flex:1.4;gap:${GAP}px;">
+        ${hTile(tools[0], 96, 40, 1)}
+      </div>
+      <div style="display:flex;flex:1;gap:${GAP}px;">
+        ${tools.slice(1).map(t => hTile(t, 60, 26)).join('')}
+      </div>
+    </div>`;
+  }
+
+  if (n === 4) {
+    // Balanced 2×2
+    return `<div style="display:flex;flex-direction:column;flex:1;gap:${GAP}px;">
+      ${row(tools.slice(0, 2), 72, 32)}
+      ${row(tools.slice(2, 4), 72, 32)}
+    </div>`;
+  }
+
+  if (n === 5) {
+    // t1 featured top row, t2-t5 in 2×2 below
+    return `<div style="display:flex;flex-direction:column;flex:1;gap:${GAP}px;">
+      <div style="display:flex;flex:1.3;gap:${GAP}px;">
+        ${hTile(tools[0], 88, 36, 1)}
+      </div>
+      <div style="display:flex;flex-direction:column;flex:2;gap:${GAP}px;">
+        ${row(tools.slice(1, 3), 60, 26)}
+        ${row(tools.slice(3, 5), 60, 26)}
+      </div>
+    </div>`;
+  }
+
+  // n === 6: 2 rows of 3
+  return `<div style="display:flex;flex-direction:column;flex:1;gap:${GAP}px;">
+    ${row(tools.slice(0, 3), 60, 28)}
+    ${row(tools.slice(3, 6), 60, 28)}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// VARIANT 3 — "LEFT-ALIGNED FEATURE GRID"
+// Same feature-first logic but left-aligned.
+// Tiles are flush-left: icon + name + muted category below name.
+// Provides contrast against V1/V2's centered aesthetic.
+// Per-count follows same rules as V2 but left-aligned, no centering.
+// ═══════════════════════════════════════════════════════════════════
+const TOOL_CATS = [
+  "Coding agent",
+  "Terminal AI",
+  "Chat assistant",
+  "App builder",
+  "Image gen",
+  "Project mgmt",
+];
+
+function renderV3(tools) {
+  const n = tools.length;
+  const GAP = 10;
+
+  // Left-aligned tile: icon left, name+cat stacked right
+  function lTile(t, idx, iconSize, nameSize, catSize) {
+    const catStr = TOOL_CATS[idx] || "";
+    return `
+    <div style="display:flex;align-items:center;gap:${Math.round(iconSize * 0.26)}px;background:#18181b;border:1px solid #27272a;flex:1;padding:0 24px;">
+      ${icon(t, iconSize)}
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0;">
+        <span style="font-size:${nameSize}px;color:#e4e4e7;font-weight:700;line-height:1.05;white-space:nowrap;">${t.name}</span>
+        <span style="font-size:${catSize}px;color:#52525b;font-family:'JetBrains Mono',monospace;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;">${catStr}</span>
+      </div>
+    </div>`;
+  }
+
+  // Row wrapper
+  function rowL(slice, startIdx, iconSize, nameSize, catSize, flexH) {
+    return `<div style="display:flex;${flexH ? `flex:${flexH};` : 'flex:1;'}gap:${GAP}px;">
+      ${slice.map((t, i) => lTile(t, startIdx + i, iconSize, nameSize, catSize)).join('')}
+    </div>`;
+  }
+
+  if (n === 1) {
+    return `<div style="display:flex;flex:1;gap:${GAP}px;">
+      ${lTile(tools[0], 0, 120, 48, 18)}
+    </div>`;
+  }
+
+  if (n === 2) {
+    return `<div style="display:flex;flex-direction:column;flex:1;gap:${GAP}px;">
+      ${rowL(tools, 0, 92, 38, 14)}
+    </div>`;
+  }
+
+  if (n === 3) {
+    // t1 featured top, t2+t3 row below (left-aligned)
+    return `<div style="display:flex;flex-direction:column;flex:1;gap:${GAP}px;">
+      <div style="display:flex;flex:1.4;gap:${GAP}px;">
+        ${lTile(tools[0], 0, 92, 38, 14)}
+      </div>
+      ${rowL(tools.slice(1), 1, 60, 26, 11, 1)}
+    </div>`;
+  }
+
+  if (n === 4) {
+    return `<div style="display:flex;flex-direction:column;flex:1;gap:${GAP}px;">
+      ${rowL(tools.slice(0, 2), 0, 68, 30, 12)}
+      ${rowL(tools.slice(2, 4), 2, 68, 30, 12)}
+    </div>`;
+  }
+
+  if (n === 5) {
+    return `<div style="display:flex;flex-direction:column;flex:1;gap:${GAP}px;">
+      <div style="display:flex;flex:1.3;gap:${GAP}px;">
+        ${lTile(tools[0], 0, 84, 34, 13)}
+      </div>
+      <div style="display:flex;flex-direction:column;flex:2;gap:${GAP}px;">
+        ${rowL(tools.slice(1, 3), 1, 58, 24, 11)}
+        ${rowL(tools.slice(3, 5), 3, 58, 24, 11)}
+      </div>
+    </div>`;
+  }
+
+  // n === 6: 3×2
+  return `<div style="display:flex;flex-direction:column;flex:1;gap:${GAP}px;">
+    ${rowL(tools.slice(0, 3), 0, 56, 24, 10)}
+    ${rowL(tools.slice(3, 6), 3, 56, 24, 10)}
+  </div>`;
+}
+
+// ── Variant registry ───────────────────────────────────────────────
+const LAYOUTS = [
+  {
+    id: "V1",
+    name: "V1 — Centered Chips",
+    rationale: "Square chips centered in each tile: large icon above name. Chips expand to fill all available space. Drops cleanly from 120px icon (1 tool) to 66px (6 tools). All flexbox.",
+    caveat: "footer removed · flexbox-safe · no grid · icon+name centered-column tiles",
+    render: renderV1,
+  },
+  {
+    id: "V2",
+    name: "V2 — Feature-First Horizontal",
+    rationale: "Horizontal tiles (icon left, name right) with t1 getting the tall top slot at uneven counts. Emphasis via size only — no decoration or labels. Balanced grid at 1/2/4/6.",
+    caveat: "footer removed · flexbox-safe · feature-first at 3 and 5 · no border/badge decoration",
+    render: renderV2,
+  },
+  {
+    id: "V3",
+    name: "V3 — Left-Aligned Feature Grid",
+    rationale: "Same feature-first logic as V2, but flush-left alignment and a muted category label below the tool name adds scannable context. Contrast option against V1/V2 centering.",
+    caveat: "footer removed · flexbox-safe · category labels = prototype-only (not in current data model)",
+    render: renderV3,
+  },
+];
+
+// ── Build DOM ─────────────────────────────────────────────────────
+function buildSections() {
+  const container = document.getElementById('sections');
+  container.innerHTML = '';
+
+  for (const layout of LAYOUTS) {
+    const section = document.createElement('div');
+    section.className = 'layout-section';
+    section.dataset.layout = layout.id;
+
+    section.innerHTML = `
+      <div class="layout-label" style="padding:0 48px 14px;margin:0 -48px 20px;border-bottom:1px solid #1c1c1e;">
+        <h2>${layout.name}</h2>
+        <span class="rationale">${layout.rationale}</span>
+        <span class="caveat">${layout.caveat}</span>
+      </div>
+      <div class="count-grid show-all" data-countgrid="${layout.id}"></div>
+    `;
+
+    container.appendChild(section);
+
+    const grid = section.querySelector('.count-grid');
+    for (let n = 1; n <= 6; n++) {
+      const tools = ALL_TOOLS.slice(0, n);
+      const cell = document.createElement('div');
+      cell.dataset.count = n;
+
+      cell.innerHTML = `
+        <div class="count-label">${n} tool${n > 1 ? 's' : ''}</div>
+        <div class="og-wrapper">
+          <div class="og-inner">
+            ${ogShell(layout.render(tools))}
+          </div>
+        </div>
+      `;
+      grid.appendChild(cell);
+    }
+  }
+
+  scaleAll();
+}
+
+function scaleAll() {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.count-grid').forEach(grid => {
+        const visibleCells = [...grid.querySelectorAll('[data-count]')].filter(c => c.style.display !== 'none');
+        if (visibleCells.length === 0) return;
+        const wrapper = visibleCells[0].querySelector('.og-wrapper');
+        if (!wrapper) return;
+        const cellW = wrapper.getBoundingClientRect().width;
+        if (cellW === 0) return;
+        const scale = cellW / 1200;
+        grid.querySelectorAll('.og-inner').forEach(inner => {
+          inner.style.transform = `scale(${scale})`;
+        });
+      });
+    });
+  });
+}
+
+// ── Controls ──────────────────────────────────────────────────────
+let activeCount = 'all';
+let activeLayout = 'all';
+
+function applyFilters() {
+  document.querySelectorAll('.count-grid [data-count]').forEach(cell => {
+    const n = cell.dataset.count;
+    cell.style.display = (activeCount === 'all' || activeCount === n) ? '' : 'none';
+  });
+
+  document.querySelectorAll('.count-grid').forEach(grid => {
+    grid.className = 'count-grid ' + (activeCount === 'all' ? 'show-all' : 'show-one');
+  });
+
+  document.querySelectorAll('.layout-section').forEach(section => {
+    const id = section.dataset.layout;
+    section.classList.toggle('hidden', !(activeLayout === 'all' || activeLayout === id));
+  });
+
+  scaleAll();
+}
+
+document.getElementById('count-btns').addEventListener('click', e => {
+  const btn = e.target.closest('.btn');
+  if (!btn) return;
+  activeCount = btn.dataset.count;
+  document.querySelectorAll('#count-btns .btn').forEach(b => b.classList.toggle('active', b === btn));
+  applyFilters();
+});
+
+document.getElementById('layout-btns').addEventListener('click', e => {
+  const btn = e.target.closest('.btn');
+  if (!btn) return;
+  activeLayout = btn.dataset.layout;
+  document.querySelectorAll('#layout-btns .btn').forEach(b => b.classList.toggle('active', b === btn));
+  applyFilters();
+});
+
+window.addEventListener('resize', scaleAll);
+
+buildSections();
+</script>
+</body>
+</html>

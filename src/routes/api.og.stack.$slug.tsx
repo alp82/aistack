@@ -17,7 +17,7 @@ const convex = new ConvexHttpClient(convexUrl);
 export const Route = createFileRoute("/api/og/stack/$slug")({
 	server: {
 		handlers: {
-			GET: async ({ params }) => {
+			GET: async ({ params, request }) => {
 				try {
 					const stack = await convex.query(api.stacks.getBySlug, {
 						slug: params.slug,
@@ -27,11 +27,12 @@ export const Route = createFileRoute("/api/og/stack/$slug")({
 						return new Response("Stack not found", { status: 404 });
 					}
 
-					const categories = [
-						...new Set(stack.tools.flatMap((tool) => tool.categories)),
-					].slice(0, 2);
-
-					const ogAccent = ogAccentFor(stack.accentPreset);
+					// Optional ?accent=<preset-key> override lets previews/tests render the
+					// card in any accent; unknown/missing keys fall back to the stack's own.
+					const accentOverride = new URL(request.url).searchParams.get(
+						"accent",
+					);
+					const ogAccent = ogAccentFor(accentOverride ?? stack.accentPreset);
 
 					return new ImageResponse(
 						<StackOgImage
@@ -47,7 +48,6 @@ export const Route = createFileRoute("/api/og/stack/$slug")({
 									name: tool.name,
 									iconUrl: tool.iconUrl,
 								}))}
-							categories={categories}
 							accent={ogAccent}
 						/>,
 						{

@@ -25,7 +25,6 @@ const BASE_PROPS = {
 	oneLiner: "A practical AI stack",
 	hasUsageComponent: false,
 	tools: [] as Array<{ name: string; iconUrl?: string | null }>,
-	categories: [] as string[],
 };
 
 // ---------------------------------------------------------------------------
@@ -179,13 +178,14 @@ describe("StackOgImage", () => {
 	});
 
 	// ---------------------------------------------------------------------------
-	// TC-OG-08: accent prop — custom base color surfaces in CTA bar background
+	// TC-OG-08: accent prop — custom base color surfaces in the card's accent
+	// surfaces (top accent bar / description rule).
 	// jsdom normalises hex to rgb(); #a78bfa = rgb(167, 139, 250)
 	// RED now because the accent prop does not exist yet on StackOgImageProps,
 	// so the violet rgb never appears in the output (only lime does).
 	// ---------------------------------------------------------------------------
 
-	it("TC-OG-08: accent={base:'#a78bfa',contrast:'#ffffff'} surfaces violet rgb(167,139,250) as CTA bar background", () => {
+	it("TC-OG-08: accent={base:'#a78bfa',contrast:'#ffffff'} surfaces violet rgb(167,139,250) in accent surfaces (top accent bar / description rule)", () => {
 		const { container } = render(
 			<StackOgImage
 				{...BASE_PROPS}
@@ -200,7 +200,8 @@ describe("StackOgImage", () => {
 	});
 
 	// ---------------------------------------------------------------------------
-	// TC-OG-09: accent prop omitted → default lime surfaces as CTA bar background
+	// TC-OG-09: accent prop omitted → default lime surfaces in the card's accent
+	// surfaces (top accent bar / description rule).
 	// jsdom normalises #a3e635 to rgb(163, 230, 53).
 	// This is a contract/regression guard: once the accent prop is wired the
 	// default must remain lime. Currently passes because lime is hardcoded;
