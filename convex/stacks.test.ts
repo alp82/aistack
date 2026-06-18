@@ -692,3 +692,209 @@ test('TC-N-07: update with https personalPageUrl is accepted', async () => {
   const row = await t.run(async (ctx: MutationCtx) => ctx.db.get(stackId))
   expect(row?.personalPageUrl).toBe('https://example.com')
 })
+
+// ---------------------------------------------------------------------------
+// Group O — accentPreset key validation, persistence, read (RED)
+// ---------------------------------------------------------------------------
+
+test('TC-O-01: update with accentPreset "violet" persists it', async () => {
+  const t = convexTest(schema, modules)
+  const { stackId, asCreator } = await seedStackForUpdate(t, {
+    userId: 'user-o01',
+    slug: 'creator-o01',
+  })
+
+  await asCreator.mutation(api.stacks.update, {
+    stackId,
+    accentPreset: 'violet',
+  } as never)
+
+  const row = await t.run(async (ctx: MutationCtx) => ctx.db.get(stackId))
+  expect((row as Record<string, unknown>)?.accentPreset).toBe('violet')
+})
+
+test('TC-O-02: create with accentPreset "cyan" persists it on the new row', async () => {
+  const t = convexTest(schema, modules)
+  const { asCreator } = await seedAuthenticatedCreator(t, {
+    userId: 'user-o02',
+    slug: 'creator-o02',
+  })
+
+  const result = await asCreator.mutation(api.stacks.create, {
+    ...minimalCreateArgs,
+    accentPreset: 'cyan',
+  } as never)
+
+  const row = await t.run(async (ctx: MutationCtx) => ctx.db.get(result._id))
+  expect((row as Record<string, unknown>)?.accentPreset).toBe('cyan')
+})
+
+test('TC-O-03: create with unknown accentPreset "notapreset" throws /accentPreset/', async () => {
+  const t = convexTest(schema, modules)
+  const { asCreator } = await seedAuthenticatedCreator(t, {
+    userId: 'user-o03',
+    slug: 'creator-o03',
+  })
+
+  await expect(
+    asCreator.mutation(api.stacks.create, {
+      ...minimalCreateArgs,
+      accentPreset: 'notapreset',
+    } as never),
+  ).rejects.toThrow(/accentPreset/)
+})
+
+test('TC-O-04: update with unknown accentPreset "notapreset" throws /accentPreset/', async () => {
+  const t = convexTest(schema, modules)
+  const { stackId, asCreator } = await seedStackForUpdate(t, {
+    userId: 'user-o04',
+    slug: 'creator-o04',
+  })
+
+  await expect(
+    asCreator.mutation(api.stacks.update, {
+      stackId,
+      accentPreset: 'notapreset',
+    } as never),
+  ).rejects.toThrow(/accentPreset/)
+})
+
+test('TC-O-05: update with accentPreset "" coerces to undefined (clears)', async () => {
+  const t = convexTest(schema, modules)
+  const { stackId, asCreator } = await seedStackForUpdate(t, {
+    userId: 'user-o05',
+    slug: 'creator-o05',
+  })
+
+  // First set a preset
+  await asCreator.mutation(api.stacks.update, {
+    stackId,
+    accentPreset: 'violet',
+  } as never)
+
+  // Then clear with empty string
+  await asCreator.mutation(api.stacks.update, {
+    stackId,
+    accentPreset: '',
+  } as never)
+
+  const row = await t.run(async (ctx: MutationCtx) => ctx.db.get(stackId))
+  expect((row as Record<string, unknown>)?.accentPreset).toBeUndefined()
+})
+
+test('TC-O-06: update omitting accentPreset leaves prior "violet" intact', async () => {
+  const t = convexTest(schema, modules)
+  const { stackId, asCreator } = await seedStackForUpdate(t, {
+    userId: 'user-o06',
+    slug: 'creator-o06',
+  })
+
+  await asCreator.mutation(api.stacks.update, {
+    stackId,
+    accentPreset: 'violet',
+  } as never)
+
+  await asCreator.mutation(api.stacks.update, {
+    stackId,
+    oneLiner: 'changed',
+  })
+
+  const row = await t.run(async (ctx: MutationCtx) => ctx.db.get(stackId))
+  expect((row as Record<string, unknown>)?.accentPreset).toBe('violet')
+})
+
+test('TC-O-07: getForEdit returns accentPreset key when set', async () => {
+  const t = convexTest(schema, modules)
+  const { shortId } = await seedPublishedStack(t, {
+    userId: 'user-o07',
+    slug: 'creator-o07',
+  })
+  const asCreator = t.withIdentity({ tokenIdentifier: 'convex|user-o07' })
+
+  // Patch accentPreset directly for the read test
+  await t.run(async (ctx: MutationCtx) => {
+    const stack = await ctx.db
+      .query('stacks')
+      .withIndex('by_shortId', (q) => q.eq('shortId', shortId))
+      .unique()
+    if (stack) {
+      await ctx.db.patch(stack._id, { accentPreset: 'fuchsia' } as never)
+    }
+  })
+
+  const result = await asCreator.query(api.stacks.getForEdit, {
+    slug: `creator-o07-stack-${shortId}`,
+  }) as Record<string, unknown> | null
+  expect(result).not.toBeNull()
+  expect(result?.accentPreset).toBe('fuchsia')
+})
+
+test('TC-O-08: getForEdit returns accentPreset as undefined when unset', async () => {
+  const t = convexTest(schema, modules)
+  const { shortId } = await seedPublishedStack(t, {
+    userId: 'user-o08',
+    slug: 'creator-o08',
+  })
+  const asCreator = t.withIdentity({ tokenIdentifier: 'convex|user-o08' })
+
+  const result = await asCreator.query(api.stacks.getForEdit, {
+    slug: `creator-o08-stack-${shortId}`,
+  }) as Record<string, unknown> | null
+  expect(result).not.toBeNull()
+  expect(result?.accentPreset).toBeUndefined()
+})
+
+test('TC-O-09: getBySlug returns accentPreset key when set', async () => {
+  const t = convexTest(schema, modules)
+  const { shortId } = await seedPublishedStack(t, {
+    userId: 'user-o09',
+    slug: 'creator-o09',
+  })
+
+  await t.run(async (ctx: MutationCtx) => {
+    const stack = await ctx.db
+      .query('stacks')
+      .withIndex('by_shortId', (q) => q.eq('shortId', shortId))
+      .unique()
+    if (stack) {
+      await ctx.db.patch(stack._id, { accentPreset: 'teal' } as never)
+    }
+  })
+
+  const result = await t.query(api.stacks.getBySlug, {
+    slug: `creator-o09-stack-${shortId}`,
+  }) as Record<string, unknown> | null
+  expect(result).not.toBeNull()
+  expect(result?.accentPreset).toBe('teal')
+})
+
+test('TC-O-10: getBySlug returns accentPreset as undefined when not set', async () => {
+  const t = convexTest(schema, modules)
+  const { shortId } = await seedPublishedStack(t, {
+    userId: 'user-o10',
+    slug: 'creator-o10',
+  })
+
+  const result = await t.query(api.stacks.getBySlug, {
+    slug: `creator-o10-stack-${shortId}`,
+  }) as Record<string, unknown> | null
+  expect(result).not.toBeNull()
+  expect(result?.accentPreset).toBeUndefined()
+})
+
+test('TC-O-11: update by non-owner with accentPreset is rejected', async () => {
+  const t = convexTest(schema, modules)
+  const { stackId } = await seedStackForUpdate(t, {
+    userId: 'user-o11-owner',
+    slug: 'creator-o11-owner',
+  })
+
+  const asStranger = t.withIdentity({ tokenIdentifier: 'convex|user-o11-stranger' })
+
+  await expect(
+    asStranger.mutation(api.stacks.update, {
+      stackId,
+      accentPreset: 'violet',
+    } as never),
+  ).rejects.toThrow()
+})

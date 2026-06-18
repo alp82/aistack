@@ -1,3 +1,5 @@
+import { ACCENT_PRESET_KEYS } from '../../src/features/stack-view/accentPresets'
+
 /**
  * Validate an icon URL accepted from authenticated users.
  *
@@ -39,5 +41,21 @@ export function assertValidPersonalPageUrl(url: string): void {
   }
   if (parsed.protocol !== 'https:') {
     throw new Error('personalPageUrl must be a valid https URL')
+  }
+}
+
+/**
+ * Validate an accent preset key accepted from authenticated users.
+ *
+ * Requirements:
+ *  - Must be one of the known accent preset keys.
+ *
+ * Throws an Error with a stable message on rejection.
+ */
+export function assertValidAccentPreset(key: string): void {
+  if (!ACCENT_PRESET_KEYS.includes(key)) {
+    throw new Error(
+      'accentPreset must be one of: ' + ACCENT_PRESET_KEYS.join(', '),
+    )
   }
 }

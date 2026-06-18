@@ -8,7 +8,7 @@ import { generateUniqueShortId, extractShortId } from './lib/ids'
 import { Resource as ResourceValidator, ResourceInput } from './schema'
 import { resolveLinkedResources, upsertResourcesForOwner } from './lib/resourceLinks'
 import { normalizeProjectUrl } from './projects'
-import { assertValidPersonalPageUrl } from './lib/iconUrl'
+import { assertValidAccentPreset, assertValidPersonalPageUrl } from './lib/iconUrl'
 
 type ToolSubscriptionLike = {
   price: {
@@ -333,12 +333,14 @@ export const create = mutation({
     stackImageUrl: v.optional(v.string()),
     avatarStorageId: v.optional(v.id('_storage')),
     personalPageUrl: v.optional(v.string()),
+    accentPreset: v.optional(v.string()),
     projects: v.optional(v.array(ProjectInput)),
     published: v.boolean(),
   },
   returns: v.object({ _id: v.id('stacks'), slug: v.string() }),
   handler: async (ctx, args) => {
     if (args.personalPageUrl) assertValidPersonalPageUrl(args.personalPageUrl)
+    if (args.accentPreset) assertValidAccentPreset(args.accentPreset)
     const user = await ctx.auth.getUserIdentity()
     if (!user) throw new Error('Not authenticated')
     const userId = user.tokenIdentifier.split('|')[1]
@@ -374,6 +376,7 @@ export const create = mutation({
       modelSubscriptions: args.modelSubscriptions,
       avatarStorageId: args.avatarStorageId,
       personalPageUrl: args.personalPageUrl,
+      accentPreset: args.accentPreset,
       fixedTotal: pricing.fixedTotal,
       hasUsageComponent: pricing.hasUsageComponent,
       published: args.published,
@@ -416,11 +419,13 @@ export const update = mutation({
     stackImageUrl: v.optional(v.string()),
     avatarStorageId: v.optional(v.union(v.id('_storage'), v.null())),
     personalPageUrl: v.optional(v.string()),
+    accentPreset: v.optional(v.string()),
     published: v.optional(v.boolean()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     if (args.personalPageUrl) assertValidPersonalPageUrl(args.personalPageUrl)
+    if (args.accentPreset) assertValidAccentPreset(args.accentPreset)
     const user = await ctx.auth.getUserIdentity()
     if (!user) throw new Error('Not authenticated')
     const userId = user.tokenIdentifier.split('|')[1]
@@ -454,6 +459,7 @@ export const update = mutation({
     if (args.avatarStorageId !== undefined)
       patch.avatarStorageId = args.avatarStorageId === null ? undefined : args.avatarStorageId
     if (args.personalPageUrl !== undefined) patch.personalPageUrl = args.personalPageUrl
+    if (args.accentPreset !== undefined) patch.accentPreset = args.accentPreset || undefined
     if (args.published !== undefined) patch.published = args.published
 
     const subs = args.toolSubscriptions ?? stack.toolSubscriptions
@@ -494,6 +500,7 @@ export const getForEdit = query({
       stackImageUrl: v.optional(v.string()),
       avatarStorageId: v.optional(v.id('_storage')),
       personalPageUrl: v.optional(v.string()),
+      accentPreset: v.optional(v.string()),
 
       toolSubscriptions: v.array(v.object({
         toolSlug: v.string(),
@@ -639,6 +646,7 @@ export const getForEdit = query({
       stackImageUrl: stack.stackImageUrl,
       avatarStorageId: stack.avatarStorageId,
       personalPageUrl: stack.personalPageUrl,
+      accentPreset: stack.accentPreset,
       toolSubscriptions: toolSubs,
       bundleSubscriptions: bundleSubs,
       modelSubscriptions: modelSubs,
@@ -923,6 +931,7 @@ export const getBySlug = query({
       hasUsageComponent: v.boolean(),
       usageTotalNotes: v.optional(v.string()),
       personalPageUrl: v.optional(v.string()),
+      accentPreset: v.optional(v.string()),
 
       creator: CreatorValidator,
       tools: v.array(ToolValidator),
@@ -1046,6 +1055,7 @@ export const getBySlug = query({
       hasUsageComponent: pricing.hasUsageComponent,
       usageTotalNotes: stack.usageTotalNotes,
       personalPageUrl: stack.personalPageUrl,
+      accentPreset: stack.accentPreset,
       creator: {
         _id: creator._id,
         name: creator.name,

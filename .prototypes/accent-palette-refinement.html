@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Accent palette refinement</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    background: #0a0a0a;
+    color: #e5e5e5;
+  }
+  h1 { font-size: 18px; padding: 16px 20px 0; margin: 0; }
+  p.sub { padding: 4px 20px 0; margin: 0; color: #999; font-size: 12px; }
+  .modes { display: flex; flex-wrap: wrap; }
+  .mode {
+    flex: 1 1 460px;
+    padding: 16px 20px 28px;
+  }
+  .mode.dark { background: #0a0a0a; }
+  .mode.light { background: #fafafa; color: #1a1a1a; }
+  .mode h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .12em; margin: 0 0 12px; opacity: .7; }
+  .row {
+    display: grid;
+    grid-template-columns: 92px repeat(3, 1fr) 64px;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .name { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  .swatch { height: 34px; border: 1px solid rgba(128,128,128,.35); }
+  .label { font-size: 9px; opacity: .55; text-align: center; padding-top: 2px; }
+  .hdr { font-size: 9px; opacity: .5; text-transform: uppercase; letter-spacing: .08em; }
+  .og { height: 34px; border: 1px solid rgba(128,128,128,.35); display:flex; align-items:center; justify-content:center; font-size:9px; }
+  hr { border: none; border-top: 1px solid #2a2a2a; margin: 24px 20px; }
+  .legend { padding: 0 20px 8px; font-size: 11px; color: #888; }
+  code { background: rgba(128,128,128,.18); padding: 1px 4px; }
+</style>
+</head>
+<body>
+  <h1>Accent palette refinement</h1>
+  <p class="sub">Each row: -soft / -lime / -strong ladder (the real CSS tokens) + the OG hex. Dark uses L 0.78, light uses L 0.55 (current architecture).</p>
+
+  <div id="root"></div>
+
+<script>
+// Ladder lightness per current architecture
+const DARK  = { soft: 0.72, base: 0.78, strong: 0.84 };
+const LIGHT = { soft: 0.65, base: 0.55, strong: 0.48 };
+
+function oklch(L, C, H) { return `oklch(${L} ${C} ${H})`; }
+
+// ── CURRENT palette (registry order) ────────────────────────────────
+const CURRENT = [
+  ["Lime",132,0.17,"#a3e635"],["Emerald",162,0.15,"#34d399"],["Teal",185,0.12,"#2dd4bf"],
+  ["Sky",230,0.13,"#38bdf8"],["Blue",260,0.15,"#60a5fa"],["Indigo",275,0.16,"#818cf8"],
+  ["Violet",295,0.20,"#a78bfa"],["Fuchsia",330,0.24,"#e879f9"],["Rose",15,0.18,"#fb7185"],
+  ["Amber",75,0.16,"#fbbf24"],["Red",25,0.21,"#f87171"],["Orange",48,0.19,"#fb923c"],
+  ["Yellow",86,0.16,"#facc15"],["Green",150,0.19,"#4ade80"],["Cyan",215,0.13,"#22d3ee"],
+  ["Pink",354,0.21,"#f472b6"],
+];
+
+// ── FINAL palette (matches accentPresets.ts + styles.css exactly): 12 colors,
+//    rainbow loop starting at the brand default (lime, unchanged). Dropped
+//    amber/emerald/sky/rose as near-dupes. Warm hues (orange, yellow) get a
+//    light-mode lightness bump; yellow additionally uses dark text in light.
+const PROPOSED = [
+  // name, hue, chroma, lightLbump(optional override for light base)
+  ["Lime",   132, 0.17],          // brand, unchanged (no override block)
+  ["Green",  150, 0.21],
+  ["Teal",   185, 0.12],
+  ["Cyan",   215, 0.13],
+  ["Blue",   260, 0.15],
+  ["Indigo", 275, 0.16],
+  ["Violet", 295, 0.20],
+  ["Fuchsia",330, 0.24],
+  ["Pink",   354, 0.21],
+  ["Red",     25, 0.21],
+  ["Orange",  48, 0.19, 0.60],
+  ["Yellow",  98, 0.17, 0.66],
+];
+
+function ladderRow(name, H, C, mode, lightBaseOverride, ogHex) {
+  const L = mode === "dark" ? DARK : LIGHT;
+  const base = (mode === "light" && lightBaseOverride != null) ? lightBaseOverride : L.base;
+  const soft = (mode === "light" && lightBaseOverride != null) ? lightBaseOverride + 0.10 : L.soft;
+  const strong = (mode === "light" && lightBaseOverride != null) ? lightBaseOverride - 0.07 : L.strong;
+  const cells = [
+    `<div class="name">${name}</div>`,
+    `<div class="swatch" style="background:${oklch(soft,C,H)}"></div>`,
+    `<div class="swatch" style="background:${oklch(base,C,H)}"></div>`,
+    `<div class="swatch" style="background:${oklch(strong,C,H)}"></div>`,
+    ogHex ? `<div class="og" style="background:${ogHex};color:#0a0a0a">og</div>` : `<div></div>`,
+  ];
+  return `<div class="row">${cells.join("")}</div>`;
+}
+
+function section(title, items, mode, hasOg) {
+  const rows = items.map(it => {
+    if (hasOg) return ladderRow(it[0], it[1], it[2], mode, null, it[3]);
+    return ladderRow(it[0], it[1], it[2], mode, it[3] || null, null);
+  }).join("");
+  return `
+    <div class="mode ${mode}">
+      <h2>${title} — ${mode}</h2>
+      <div class="row"><div></div><div class="hdr">soft</div><div class="hdr">base</div><div class="hdr">strong</div><div class="hdr">og</div></div>
+      ${rows}
+    </div>`;
+}
+
+const root = document.getElementById("root");
+root.innerHTML = `
+  <p class="legend"><b>CURRENT</b> — 16 presets, registry order (note the warm cluster is scattered at the end; yellow reads orange).</p>
+  <div class="modes">
+    ${section("Current", CURRENT, "dark", true)}
+    ${section("Current", CURRENT, "light", true)}
+  </div>
+  <hr/>
+  <p class="legend"><b>FINAL</b> — 12 presets, rainbow loop starting at the brand default (lime, unchanged). Dropped amber/emerald/sky/rose (near-dupes); lifted yellow hue 86→98 + chroma; bumped green chroma; warm colors (orange/yellow) get a light-mode lightness bump so they stay vivid instead of going brown.</p>
+  <div class="modes">
+    ${section("Proposed", PROPOSED, "dark", false)}
+    ${section("Proposed", PROPOSED, "light", false)}
+  </div>
+`;
+</script>
+</body>
+</html>

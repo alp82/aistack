@@ -12,7 +12,7 @@
  * TC-OG-03 is a type-level check; written as it.skip with a tsc note because
  * @ts-expect-error inside a vitest file only fails the build, not the test run.
  */
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { StackOgImage } from "@/components/og/StackOgImage";
 
@@ -24,9 +24,9 @@ const BASE_PROPS = {
 	name: "My Stack",
 	oneLiner: "A practical AI stack",
 	hasUsageComponent: false,
-	tools: [],
-	categories: [],
-} as const;
+	tools: [] as Array<{ name: string; iconUrl?: string | null }>,
+	categories: [] as string[],
+};
 
 // ---------------------------------------------------------------------------
 // TC-OG-01: renders <img src={creator.avatarUrl}> when creator.avatarUrl present
@@ -46,10 +46,7 @@ describe("StackOgImage", () => {
 			/>,
 		);
 
-		const img = screen.getByRole("img", {
-			// The avatar img has no accessible name in OG context — query by src
-			hidden: true,
-		});
+		// The avatar img has no accessible name in OG context — query by src
 		// There may be tool icon imgs too; find the one with the avatar src
 		const avatarImg = document.querySelector(
 			`img[src="https://storage.example.com/avatar.webp"]`,
@@ -83,13 +80,8 @@ describe("StackOgImage", () => {
 	// ---------------------------------------------------------------------------
 
 	it.skip("TC-OG-03 (type-level, verify via tsc): stackImageUrl prop must not exist on StackOgImageProps", () => {
-		// To verify: uncomment the block below and run `pnpm tsc --noEmit`.
-		// If stackImageUrl is still on the type, tsc will error on the usage
-		// (not on the @ts-expect-error), which means the test case fails.
-		// If stackImageUrl is removed, tsc will complain that @ts-expect-error
-		// is unused — flip the comment direction to confirm removal.
-		//
-		// @ts-expect-error stackImageUrl must not exist on StackOgImageProps after v3
+		// To verify: run `pnpm tsc --noEmit` and confirm that passing stackImageUrl
+		// causes a type error (i.e. the prop has been removed from StackOgImageProps).
 		// render(<StackOgImage {...BASE_PROPS} creator={{ name: "A" }} stackImageUrl="https://x.com/img.jpg" />)
 	});
 
@@ -184,5 +176,53 @@ describe("StackOgImage", () => {
 
 		const img = document.querySelector(`img[src="${DATA_ICON}"]`);
 		expect(img).not.toBeNull();
+	});
+
+	// ---------------------------------------------------------------------------
+	// TC-OG-08: accent prop — custom base color surfaces in CTA bar background
+	// jsdom normalises hex to rgb(); #a78bfa = rgb(167, 139, 250)
+	// RED now because the accent prop does not exist yet on StackOgImageProps,
+	// so the violet rgb never appears in the output (only lime does).
+	// ---------------------------------------------------------------------------
+
+	it("TC-OG-08: accent={base:'#a78bfa',contrast:'#ffffff'} surfaces violet rgb(167,139,250) as CTA bar background", () => {
+		const { container } = render(
+			<StackOgImage
+				{...BASE_PROPS}
+				creator={{ name: "Alp" }}
+				accent={{ base: "#a78bfa", contrast: "#ffffff" }}
+			/>,
+		);
+
+		// jsdom converts #a78bfa to rgb(167, 139, 250) in style attributes
+		const html = container.innerHTML;
+		expect(html).toContain("rgb(167, 139, 250)");
+	});
+
+	// ---------------------------------------------------------------------------
+	// TC-OG-09: accent prop omitted → default lime surfaces as CTA bar background
+	// jsdom normalises #a3e635 to rgb(163, 230, 53).
+	// This is a contract/regression guard: once the accent prop is wired the
+	// default must remain lime. Currently passes because lime is hardcoded;
+	// stays green after the accent prop lands with the lime default.
+	// ---------------------------------------------------------------------------
+
+	it("TC-OG-09: accent omitted → default lime rgb(163,230,53) surfaces in rendered output", () => {
+		const { container } = render(
+			<StackOgImage {...BASE_PROPS} creator={{ name: "Alp" }} />,
+		);
+
+		const html = container.innerHTML;
+		expect(html).toContain("rgb(163, 230, 53)");
+	});
+
+	// ---------------------------------------------------------------------------
+	// TC-OG-10: type-level — accent prop shape is {base:string,contrast:string}
+	// Written as it.skip; verify via: pnpm tsc --noEmit
+	// ---------------------------------------------------------------------------
+
+	it.skip("TC-OG-10 (type-level, verify via tsc): accent prop accepts {base,contrast} strings", () => {
+		// Uncomment to verify types compile once implementation lands:
+		// render(<StackOgImage {...BASE_PROPS} creator={{ name: "A" }} accent={{ base: "#a3e635", contrast: "#0a0a0a" }} />)
 	});
 });

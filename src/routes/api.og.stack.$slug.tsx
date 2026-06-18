@@ -2,6 +2,7 @@ import { ImageResponse } from "@takumi-rs/image-response";
 import { createFileRoute } from "@tanstack/react-router";
 import { ConvexHttpClient } from "convex/browser";
 import { StackOgImage } from "@/components/og/StackOgImage";
+import { ogAccentFor } from "@/features/stack-view/accentPresets";
 import { orderToolsForDisplay } from "@/lib/pricing";
 import { api } from "../../convex/_generated/api";
 
@@ -30,6 +31,8 @@ export const Route = createFileRoute("/api/og/stack/$slug")({
 						...new Set(stack.tools.flatMap((tool) => tool.categories)),
 					].slice(0, 2);
 
+					const ogAccent = ogAccentFor(stack.accentPreset);
+
 					return new ImageResponse(
 						<StackOgImage
 							name={stack.name}
@@ -45,6 +48,7 @@ export const Route = createFileRoute("/api/og/stack/$slug")({
 									iconUrl: tool.iconUrl,
 								}))}
 							categories={categories}
+							accent={ogAccent}
 						/>,
 						{
 							width: 1200,

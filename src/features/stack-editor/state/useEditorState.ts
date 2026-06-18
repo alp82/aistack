@@ -78,6 +78,11 @@ function useEditorState({
 				type: "profile/updated",
 				updates: { personalPageUrl: value },
 			}),
+		setAccentPreset: (value: string) =>
+			dispatch({
+				type: "profile/updated",
+				updates: { accentPreset: value },
+			}),
 		setAvatar: (pending: PendingAvatar) =>
 			dispatch({ type: "avatar/updated", pending }),
 		setDescription: (value: string) =>

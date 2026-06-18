@@ -186,6 +186,7 @@ export default defineSchema({
     stackImageUrl: v.optional(v.string()),
     avatarStorageId: v.optional(v.id('_storage')),
     personalPageUrl: v.optional(v.string()),
+    accentPreset: v.optional(v.string()),
     toolSubscriptions: v.array(
       v.object({
         toolSlug: v.string(),

@@ -13,6 +13,7 @@ import {
 	type ToolLookupData,
 	useEditorContext,
 } from "@/features/stack-editor/context/EditorContext";
+import { accentClassFor } from "@/features/stack-view/accentPresets";
 import { StackHeader } from "@/features/stack-view/StackHeader";
 import { GuideSection, ToolsSection } from "@/features/stack-view/sections";
 import { formatPricingSummary } from "@/lib/pricing";
@@ -300,71 +301,73 @@ function StackDetailsPage() {
 				bundles={stack.bundles}
 				models={stack.models}
 			/>
-			<div className="bg-bg-canvas">
-				<StackHeader
-					stack={stack}
-					upvoteStatus={upvoteStatus}
-					reportStatus={reportStatus}
-					upvotersData={upvotersData}
-					upvoting={upvoting}
-					reporting={reporting}
-					onUpvote={handleUpvote}
-					onReport={handleReport}
-					onUpvoteHover={() => setHasHovered(true)}
-					onTileActivate={handleTileActivate}
-				/>
-			</div>
-			<div className="bg-bg-canvas">
-				{/* Journey: Projects (01) → Tools (02, with Models/Bundles disclosures) → Workflow (03). */}
-				<ProjectsSection
-					index={1}
-					stackId={stack._id}
-					isOwner={upvoteStatus?.isOwner ?? false}
-				/>
+			<div className={accentClassFor(stack.accentPreset)}>
+				<div className="bg-bg-canvas">
+					<StackHeader
+						stack={stack}
+						upvoteStatus={upvoteStatus}
+						reportStatus={reportStatus}
+						upvotersData={upvotersData}
+						upvoting={upvoting}
+						reporting={reporting}
+						onUpvote={handleUpvote}
+						onReport={handleReport}
+						onUpvoteHover={() => setHasHovered(true)}
+						onTileActivate={handleTileActivate}
+					/>
+				</div>
+				<div className="bg-bg-canvas">
+					{/* Journey: Projects (01) → Tools (02, with Models/Bundles disclosures) → Workflow (03). */}
+					<ProjectsSection
+						index={1}
+						stackId={stack._id}
+						isOwner={upvoteStatus?.isOwner ?? false}
+					/>
 
-				{/* biome-ignore lint/correctness/useUniqueElementIds: stable single-instance scroll anchor for the hero tile jump target */}
-				<ToolsSection
-					index={2}
-					id="section-tools"
-					highlighted={highlightedSection === "tools"}
-					tools={stack.tools}
-					models={stack.models}
-					bundles={stack.bundles}
-					highlightedBundle={highlightedBundle}
-					bundlesOpen={bundlesOpen}
-					onBundlesOpenChange={setBundlesOpen}
-					modelsOpen={modelsOpen}
-					onModelsOpenChange={setModelsOpen}
-					fixedTotal={stack.fixedTotal}
-					onBundleClick={scrollToBundle}
-				/>
-				<GuideSection
-					index={3}
-					description={stack.description}
-					isOwner={upvoteStatus?.isOwner ?? false}
-					slug={stack.slug}
-				/>
+					{/* biome-ignore lint/correctness/useUniqueElementIds: stable single-instance scroll anchor for the hero tile jump target */}
+					<ToolsSection
+						index={2}
+						id="section-tools"
+						highlighted={highlightedSection === "tools"}
+						tools={stack.tools}
+						models={stack.models}
+						bundles={stack.bundles}
+						highlightedBundle={highlightedBundle}
+						bundlesOpen={bundlesOpen}
+						onBundlesOpenChange={setBundlesOpen}
+						modelsOpen={modelsOpen}
+						onModelsOpenChange={setModelsOpen}
+						fixedTotal={stack.fixedTotal}
+						onBundleClick={scrollToBundle}
+					/>
+					<GuideSection
+						index={3}
+						description={stack.description}
+						isOwner={upvoteStatus?.isOwner ?? false}
+						slug={stack.slug}
+					/>
 
-				{/* CTA Section - hide if user already published a stack */}
-				{!upvoteStatus?.isOwner && !userStack && (
-					<section className="bg-accent-lime py-24 px-6 md:px-16 border-t border-lime-500">
-						<div className="mx-auto max-w-3xl text-center">
-							<h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-6 text-black leading-[0.9] uppercase">
-								Share Your Own Stack
-							</h2>
-							<p className="text-lg md:text-xl text-black/80 mb-10 leading-relaxed">
-								Help other builders by sharing the tools, costs, and workflows
-								you run.
-							</p>
-							<Link to="/stacks/new">
-								<span className="inline-flex items-center gap-3 px-8 py-4 bg-black text-white font-mono font-bold uppercase tracking-widest hover:bg-zinc-800 transition-colors text-base shadow-xl">
-									Create Your Stack
-									<ArrowRight className="size-5" />
-								</span>
-							</Link>
-						</div>
-					</section>
-				)}
+					{/* CTA Section - hide if user already published a stack */}
+					{!upvoteStatus?.isOwner && !userStack && (
+						<section className="bg-accent-lime py-24 px-6 md:px-16 border-t border-accent-lime">
+							<div className="mx-auto max-w-3xl text-center">
+								<h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-6 text-accent-lime-contrast leading-[0.9] uppercase">
+									Share Your Own Stack
+								</h2>
+								<p className="text-lg md:text-xl text-accent-lime-contrast/80 mb-10 leading-relaxed">
+									Help other builders by sharing the tools, costs, and workflows
+									you run.
+								</p>
+								<Link to="/stacks/new">
+									<span className="inline-flex items-center gap-3 px-8 py-4 bg-black text-white font-mono font-bold uppercase tracking-widest hover:bg-zinc-800 transition-colors text-base shadow-xl">
+										Create Your Stack
+										<ArrowRight className="size-5" />
+									</span>
+								</Link>
+							</div>
+						</section>
+					)}
+				</div>
 			</div>
 		</EditorProvider>
 	);

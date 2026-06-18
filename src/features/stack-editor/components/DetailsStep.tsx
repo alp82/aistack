@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { AvatarEditor } from "@/components/AvatarEditor";
 import XLogoIcon from "@/components/icon/XLogoIcon";
 import { Input } from "@/components/ui/input";
+import { AccentPicker } from "@/features/stack-editor/components/AccentPicker";
 import type {
 	CreatorProfile,
 	PendingAvatar,
@@ -19,6 +20,8 @@ type DetailsStepProps = {
 	onXHandleChange: (value: string) => void;
 	personalPageUrl: string;
 	onPersonalPageUrlChange: (value: string) => void;
+	accentPreset: string;
+	onAccentPresetChange: (value: string) => void;
 	pendingAvatar: PendingAvatar;
 	onAvatarChange: (pending: PendingAvatar, previewUrl?: string) => void;
 	avatarPreviewUrl?: string;
@@ -40,6 +43,8 @@ function DetailsStep({
 	onXHandleChange,
 	personalPageUrl,
 	onPersonalPageUrlChange,
+	accentPreset,
+	onAccentPresetChange,
 	pendingAvatar,
 	onAvatarChange,
 	avatarPreviewUrl,
@@ -101,7 +106,7 @@ function DetailsStep({
 			{/* Main layout */}
 			<div className="flex flex-col sm:grid sm:grid-cols-[auto_1fr] gap-4 sm:gap-6">
 				{/* Avatar */}
-				<div className="sm:row-span-2">
+				<div className="sm:row-span-3">
 					<button
 						type="button"
 						onClick={() => setIsAvatarEditorOpen(true)}
@@ -137,12 +142,12 @@ function DetailsStep({
 						className="text-lg font-semibold h-12 flex-1"
 					/>
 					{/* Solo/Team toggle */}
-					<div className="flex shrink-0">
+					<div className="flex shrink-0 sm:w-[176px]">
 						<button
 							type="button"
 							onClick={() => onIsTeamChange(false)}
 							className={cn(
-								"border-2 border-r-0 font-mono text-xs uppercase tracking-wider transition-all px-4 h-12 cursor-pointer flex-1 sm:flex-initial",
+								"border-2 border-r-0 font-mono text-xs uppercase tracking-wider transition-all px-4 h-12 cursor-pointer flex-1",
 								!isTeam
 									? "border-accent-lime bg-accent-lime text-accent-lime-contrast"
 									: "border-stroke-subtle bg-transparent text-fg-muted hover:text-fg-primary",
@@ -175,7 +180,7 @@ function DetailsStep({
 									if (!isTeam) onIsTeamChange(true);
 								}}
 								className={cn(
-									"w-12 h-8 text-center rounded text-xs font-bold transition-colors",
+									"w-12 h-8 text-center rounded-none text-xs font-bold transition-colors",
 									isTeam
 										? "bg-accent-lime-contrast text-accent-lime"
 										: "bg-bg-panel-muted text-fg-muted",
@@ -185,41 +190,49 @@ function DetailsStep({
 					</div>
 				</div>
 
-				{/* Row 2: Social Links - stacked on mobile, row on desktop */}
-				<div className="flex flex-col sm:flex-row">
-					{/* X Handle */}
-					<div className="flex flex-1 items-center border-2 border-stroke-subtle sm:-mr-[2px] -mb-[2px] sm:mb-0 bg-bg-panel-muted px-3 h-12 focus-within:border-accent-lime focus-within:z-10">
-						<XLogoIcon className="size-4 shrink-0 text-fg-muted" />
-						<span className="ml-2 font-mono text-xs text-fg-muted">@</span>
-						<input
-							type="text"
-							value={xHandle}
-							onChange={(e) => onXHandleChange(e.target.value)}
-							placeholder="username"
-							className="flex-1 bg-transparent border-0 px-1 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:outline-none focus:ring-0"
-						/>
+				{/* Row 2: Social links (grouped) + accent, gap-aligned to Row 1 */}
+				<div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+					<div className="flex flex-1 flex-col sm:flex-row min-w-0">
+						{/* X Handle */}
+						<div className="flex flex-1 items-center border-2 border-stroke-subtle sm:-mr-[2px] -mb-[2px] sm:mb-0 bg-bg-panel-muted px-3 h-12 focus-within:border-accent-lime focus-within:z-10">
+							<XLogoIcon className="size-4 shrink-0 text-fg-muted" />
+							<span className="ml-2 font-mono text-xs text-fg-muted">@</span>
+							<input
+								type="text"
+								value={xHandle}
+								onChange={(e) => onXHandleChange(e.target.value)}
+								placeholder="username"
+								className="flex-1 bg-transparent border-0 px-1 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:outline-none focus:ring-0"
+							/>
+						</div>
+
+						{/* Personal Page URL */}
+						<div className="flex flex-1 items-center border-2 border-stroke-subtle bg-bg-panel-muted px-3 h-12 focus-within:border-accent-lime focus-within:z-10">
+							<User className="size-4 shrink-0 text-fg-muted" />
+							<input
+								type="text"
+								value={personalPageUrl}
+								onChange={(e) => onPersonalPageUrlChange(e.target.value)}
+								onBlur={(e) => {
+									// The server requires an https URL — normalize a bare
+									// domain ("example.com") to https so the save doesn't fail
+									// at the mutation boundary for the common input.
+									const v = e.target.value.trim();
+									if (v && !/^[a-z][a-z0-9+.-]*:\/\//i.test(v)) {
+										onPersonalPageUrlChange(`https://${v}`);
+									}
+								}}
+								placeholder="https://yourportfolio.com"
+								className="flex-1 bg-transparent border-0 px-2 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:outline-none focus:ring-0"
+							/>
+						</div>
 					</div>
 
-					{/* Personal Page URL */}
-					<div className="flex flex-1 items-center border-2 border-stroke-subtle bg-bg-panel-muted px-3 h-12 focus-within:border-accent-lime focus-within:z-10">
-						<User className="size-4 shrink-0 text-fg-muted" />
-						<input
-							type="text"
-							value={personalPageUrl}
-							onChange={(e) => onPersonalPageUrlChange(e.target.value)}
-							onBlur={(e) => {
-								// The server requires an https URL — normalize a bare
-								// domain ("example.com") to https so the save doesn't fail
-								// at the mutation boundary for the common input.
-								const v = e.target.value.trim();
-								if (v && !/^[a-z][a-z0-9+.-]*:\/\//i.test(v)) {
-									onPersonalPageUrlChange(`https://${v}`);
-								}
-							}}
-							placeholder="https://yourportfolio.com"
-							className="flex-1 bg-transparent border-0 px-2 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:outline-none focus:ring-0"
-						/>
-					</div>
+					<AccentPicker
+						value={accentPreset}
+						onChange={onAccentPresetChange}
+						className="w-full sm:w-[176px] shrink-0"
+					/>
 				</div>
 			</div>
 

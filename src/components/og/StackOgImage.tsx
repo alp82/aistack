@@ -19,6 +19,7 @@ type StackOgImageProps = {
 		iconUrl?: string | null;
 	}>;
 	categories: string[];
+	accent?: { base: string; contrast: string };
 };
 
 const CATEGORY_COLORS: Record<string, { border: string; text: string }> = {
@@ -63,6 +64,7 @@ export function StackOgImage({
 	teamSize,
 	tools,
 	categories,
+	accent = { base: "#a3e635", contrast: "#0a0a0a" },
 }: StackOgImageProps) {
 	const displayTools = tools.slice(0, 6);
 	const displayCategories = categories.slice(0, 2);
@@ -91,7 +93,7 @@ export function StackOgImage({
 					display: "flex",
 					height: "14px",
 					width: "100%",
-					backgroundColor: "#a3e635",
+					backgroundColor: accent.base,
 				}}
 			/>
 			<div
@@ -216,7 +218,7 @@ export function StackOgImage({
 									style={{
 										fontSize: "82px",
 										fontWeight: 900,
-										color: "#a3e635",
+										color: accent.base,
 										lineHeight: 1,
 									}}
 								>
@@ -260,7 +262,7 @@ export function StackOgImage({
 					<div
 						style={{
 							width: "6px",
-							backgroundColor: "#a3e635",
+							backgroundColor: accent.base,
 							flexShrink: 0,
 							marginRight: "18px",
 						}}
@@ -394,7 +396,7 @@ export function StackOgImage({
 							display: "flex",
 							alignItems: "center",
 							gap: "12px",
-							backgroundColor: "#a3e635",
+							backgroundColor: accent.base,
 							padding: "12px 22px",
 						}}
 					>
@@ -402,7 +404,7 @@ export function StackOgImage({
 							style={{
 								fontSize: "20px",
 								fontWeight: 700,
-								color: "#0a0a0a",
+								color: accent.contrast,
 								fontFamily: "Geist Mono",
 								letterSpacing: "0.02em",
 							}}

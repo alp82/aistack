@@ -31,6 +31,7 @@ import type {
 	StackEditorInitialValue,
 	StackEditorMode,
 } from "@/features/stack-editor/types";
+import { accentClassFor } from "@/features/stack-view/accentPresets";
 import { resolveAvatarForSave } from "@/lib/resolveAvatarForSave";
 import {
 	buildManualStableKey,
@@ -147,6 +148,7 @@ export function StackEditor({
 		setToolSubscriptions,
 		setXHandle,
 		setPersonalPageUrl,
+		setAccentPreset,
 		setAvatar,
 		revertDraft,
 		dismissDraft,
@@ -472,7 +474,9 @@ export function StackEditor({
 					<div className="flex">
 						<main className="flex-1 px-3 py-4 sm:px-6 sm:py-8 min-w-0">
 							{/* Sticky Header with Title and Actions */}
-							<header className="sticky top-16 mb-6 sm:mb-12 py-3 sm:py-4 z-20 bg-bg-canvas border-b-2 border-stroke-subtle">
+							<header
+								className={`sticky top-16 mb-6 sm:mb-12 py-3 sm:py-4 z-20 bg-bg-canvas border-b-2 border-stroke-subtle ${accentClassFor(state.accentPreset)}`}
+							>
 								<div className="flex items-center justify-between gap-2 sm:gap-4">
 									<h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tighter uppercase text-fg-primary">
 										{mode === "create" ? "Create Stack" : "Update Stack"}
@@ -602,6 +606,8 @@ export function StackEditor({
 								onXHandleChange={setXHandle}
 								personalPageUrl={state.personalPageUrl}
 								onPersonalPageUrlChange={setPersonalPageUrl}
+								accentPreset={state.accentPreset}
+								onAccentPresetChange={setAccentPreset}
 								pendingAvatar={state.pendingAvatar}
 								onAvatarChange={setAvatar}
 								avatarPreviewUrl={initialValue?.avatarUrl}

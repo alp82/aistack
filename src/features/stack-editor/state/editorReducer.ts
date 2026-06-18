@@ -42,6 +42,7 @@ type ProfileFields = {
 	projects: StagedProject[];
 	xHandle: string;
 	personalPageUrl: string;
+	accentPreset: string;
 	pendingAvatar: PendingAvatar;
 };
 
@@ -67,6 +68,7 @@ type EditorAction =
 					| "isTeam"
 					| "teamSize"
 					| "personalPageUrl"
+					| "accentPreset"
 				>
 			>;
 	  }
@@ -208,6 +210,7 @@ function getInitialEditorState(args: {
 			savedDraft?.personalPageUrl ??
 			initialValue?.personalPageUrl ??
 			personalPageUrl,
+		accentPreset: savedDraft?.accentPreset ?? initialValue?.accentPreset ?? "",
 		pendingAvatar: initialValue?.avatarStorageId
 			? { kind: "storageId", id: initialValue.avatarStorageId }
 			: (savedDraft?.pendingAvatar ?? { kind: "none" }),
@@ -316,6 +319,10 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 					draft.personalPageUrl !== undefined
 						? draft.personalPageUrl
 						: state.personalPageUrl,
+				accentPreset:
+					draft.accentPreset !== undefined
+						? draft.accentPreset
+						: state.accentPreset,
 				pendingAvatar:
 					draft.pendingAvatar !== undefined
 						? draft.pendingAvatar
@@ -338,6 +345,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 				bundleSubscriptions: iv.bundleSubscriptions ?? [],
 				projects: [],
 				personalPageUrl: iv.personalPageUrl ?? "",
+				accentPreset: iv.accentPreset ?? "",
 				pendingAvatar: iv.avatarStorageId
 					? { kind: "storageId", id: iv.avatarStorageId }
 					: { kind: "none" },

@@ -113,6 +113,7 @@ type StackEditorInitialValue = {
 	bundleSubscriptions: BundleSubscriptionEntry[];
 	modelSubscriptions: ModelSubscriptionEntry[];
 	personalPageUrl?: string;
+	accentPreset?: string;
 	avatarStorageId?: Id<"_storage">;
 	avatarUrl?: string;
 };

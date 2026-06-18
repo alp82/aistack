@@ -127,6 +127,7 @@ function EditStackPage() {
 				avatarStorageId: stackData.avatarStorageId,
 				avatarUrl: avatarUrl ?? undefined,
 				personalPageUrl: stackData.personalPageUrl,
+				accentPreset: stackData.accentPreset,
 				toolSubscriptions: stackData.toolSubscriptions.map((t) => ({
 					toolSlug: t.toolSlug,
 					toolName: t.toolName,

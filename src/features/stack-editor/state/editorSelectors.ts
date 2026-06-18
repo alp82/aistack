@@ -1,4 +1,3 @@
-import type { Id } from "../../../../convex/_generated/dataModel";
 import {
 	canPublishStack,
 	getSaveValidationError,
@@ -11,6 +10,7 @@ import type {
 	StackEditorInitialValue,
 	StackEditorMode,
 } from "@/features/stack-editor/types";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 function selectCanPublish(state: EditorState): boolean {
 	return canPublishStack(state.oneLiner, state.toolSubscriptions.length);
@@ -108,6 +108,7 @@ function selectSavePayload(state: EditorState, published: boolean) {
 		})),
 		avatarStorageId,
 		personalPageUrl: state.personalPageUrl.trim() || undefined,
+		accentPreset: state.accentPreset || undefined,
 		published,
 	};
 }
@@ -126,6 +127,7 @@ function selectGuestDraft(state: EditorState): GuestStackDraft {
 		projects: state.projects,
 		xHandle: state.xHandle,
 		personalPageUrl: state.personalPageUrl,
+		accentPreset: state.accentPreset,
 		pendingAvatar: state.pendingAvatar,
 	};
 }

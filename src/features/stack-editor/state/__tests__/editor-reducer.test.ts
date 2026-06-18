@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { StagedProject } from "@/components/projects/types";
 import {
 	editorReducer,
 	getInitialEditorState,
@@ -228,9 +229,9 @@ describe("editor reducer", () => {
 			projects: [
 				{
 					...STAGED_PROJECT,
-					_id: "stale_id" as never,
-					published: true as never,
-				},
+					_id: "stale_id",
+					published: true,
+				} as StagedProject & Record<string, unknown>,
 			],
 		});
 		const payload = selectSavePayload(withProjects, false);
@@ -257,7 +258,10 @@ describe("editor reducer", () => {
 		const base = getInitialEditorState({ actor: {} });
 		const withProjects = editorReducer(base, {
 			type: "projects/updated",
-			projects: [{ ...STAGED_PROJECT, _id: "should_be_stripped" as never }],
+			projects: [
+				{ ...STAGED_PROJECT, _id: "should_be_stripped" } as StagedProject &
+					Record<string, unknown>,
+			],
 		});
 		const payload = selectSavePayload(withProjects, false);
 		const p = payload.projects![0] as Record<string, unknown>;
@@ -547,5 +551,172 @@ describe("editor reducer", () => {
 			unknown
 		>;
 		expect(payload.avatarStorageId).toBe("sid_orig");
+	});
+
+	// -------------------------------------------------------------------------
+	// Group T: accentPreset key — reducer, selectors, round-trip
+	// -------------------------------------------------------------------------
+
+	// TC-T-01: profile/updated with accentPreset 'violet' → selectSavePayload emits it
+	it("TC-T-01: profile/updated {accentPreset:'violet'} → selectSavePayload.accentPreset === 'violet'", () => {
+		const base = getInitialEditorState({ actor: {} });
+		const withPreset = editorReducer(base, {
+			type: "profile/updated",
+			updates: { accentPreset: "violet" },
+		});
+		const payload = selectSavePayload(withPreset, false) as Record<
+			string,
+			unknown
+		>;
+		expect(payload.accentPreset).toBe("violet");
+	});
+
+	// TC-T-02: empty-string accentPreset (lime/default selection) → selectSavePayload omits it
+	it("TC-T-02: profile/updated {accentPreset:''} → selectSavePayload.accentPreset is undefined", () => {
+		const base = getInitialEditorState({ actor: {} });
+		const withEmpty = editorReducer(base, {
+			type: "profile/updated",
+			updates: { accentPreset: "" },
+		});
+		const payload = selectSavePayload(withEmpty, false) as Record<
+			string,
+			unknown
+		>;
+		expect(payload.accentPreset).toBeUndefined();
+	});
+
+	// TC-T-03: selectGuestDraft serializes accentPreset
+	it("TC-T-03: selectGuestDraft serializes accentPreset 'pink'", () => {
+		const base = getInitialEditorState({ actor: {} });
+		const withPreset = editorReducer(base, {
+			type: "profile/updated",
+			updates: { accentPreset: "pink" },
+		});
+		const draft = selectGuestDraft(withPreset) as Record<string, unknown>;
+		expect(draft.accentPreset).toBe("pink");
+	});
+
+	// TC-T-04: guestDraft/loaded restores accentPreset round-trip
+	it("TC-T-04: guestDraft/loaded {accentPreset:'pink'} restores it", () => {
+		const base = getInitialEditorState({ actor: {} });
+		const restored = editorReducer(base, {
+			type: "guestDraft/loaded",
+			draft: { accentPreset: "pink" },
+		});
+		expect((restored as Record<string, unknown>).accentPreset).toBe("pink");
+	});
+
+	// TC-T-05: guestDraft/loaded without accentPreset key leaves existing unchanged
+	it("TC-T-05: guestDraft/loaded without accentPreset key leaves it unchanged", () => {
+		const base = getInitialEditorState({ actor: {} });
+		const withPreset = editorReducer(base, {
+			type: "profile/updated",
+			updates: { accentPreset: "cyan" },
+		});
+		const merged = editorReducer(withPreset, {
+			type: "guestDraft/loaded",
+			draft: { oneLiner: "changed" },
+		});
+		expect((merged as Record<string, unknown>).accentPreset).toBe("cyan");
+	});
+
+	// TC-T-06: draft/reverted with initialValue.accentPreset restores it
+	it("TC-T-06: draft/reverted with initialValue.accentPreset 'indigo' restores it", () => {
+		const base = getInitialEditorState({
+			actor: {},
+			initialValue: {
+				_id: "stacks:sid" as never,
+				name: "S",
+				slug: "s-SLUG",
+				oneLiner: "o",
+				published: false,
+				toolSubscriptions: [],
+				bundleSubscriptions: [],
+				modelSubscriptions: [],
+				accentPreset: "indigo",
+			},
+			mode: "edit",
+		});
+		const changed = editorReducer(base, {
+			type: "profile/updated",
+			updates: { accentPreset: "orange" },
+		});
+		const reverted = editorReducer(changed, {
+			type: "draft/reverted",
+			initialValue: {
+				_id: "stacks:sid" as never,
+				name: "S",
+				slug: "s-SLUG",
+				oneLiner: "o",
+				published: false,
+				toolSubscriptions: [],
+				bundleSubscriptions: [],
+				modelSubscriptions: [],
+				accentPreset: "indigo",
+			},
+		});
+		expect((reverted as Record<string, unknown>).accentPreset).toBe("indigo");
+	});
+
+	// TC-T-07: draft/reverted without initialValue.accentPreset resets to ''
+	it("TC-T-07: draft/reverted without initialValue.accentPreset resets to ''", () => {
+		const base = getInitialEditorState({ actor: {} });
+		const changed = editorReducer(base, {
+			type: "profile/updated",
+			updates: { accentPreset: "violet" },
+		});
+		const reverted = editorReducer(changed, {
+			type: "draft/reverted",
+			initialValue: {
+				_id: "stacks:sid" as never,
+				name: "S",
+				slug: "s-SLUG",
+				oneLiner: "o",
+				published: false,
+				toolSubscriptions: [],
+				bundleSubscriptions: [],
+				modelSubscriptions: [],
+			},
+		});
+		expect((reverted as Record<string, unknown>).accentPreset).toBe("");
+	});
+
+	// TC-T-08: getInitialEditorState with initialValue.accentPreset seeds state
+	it("TC-T-08: getInitialEditorState with initialValue.accentPreset 'fuchsia' seeds it", () => {
+		const state = getInitialEditorState({
+			actor: {},
+			initialValue: {
+				_id: "stacks:sid" as never,
+				name: "S",
+				slug: "s-SLUG",
+				oneLiner: "o",
+				published: false,
+				toolSubscriptions: [],
+				bundleSubscriptions: [],
+				modelSubscriptions: [],
+				accentPreset: "fuchsia",
+			},
+			mode: "edit",
+		});
+		expect((state as Record<string, unknown>).accentPreset).toBe("fuchsia");
+	});
+
+	// TC-T-09: getInitialEditorState without initialValue.accentPreset seeds ''
+	it("TC-T-09: getInitialEditorState without initialValue.accentPreset seeds ''", () => {
+		const state = getInitialEditorState({
+			actor: {},
+			initialValue: {
+				_id: "stacks:sid" as never,
+				name: "S",
+				slug: "s-SLUG",
+				oneLiner: "o",
+				published: false,
+				toolSubscriptions: [],
+				bundleSubscriptions: [],
+				modelSubscriptions: [],
+			},
+			mode: "edit",
+		});
+		expect((state as Record<string, unknown>).accentPreset).toBe("");
 	});
 });

@@ -1,18 +1,16 @@
-* og:image generation faulty
-    * https://aistack.to/stacks/orcdev-u9ckco
-    * logos missing
-    * order wrong
-* custom stack profile image for github
-* og:image downloadable in profile
-* custom theme for og/profile images
+* og images with better tool display
+* price tiers for sibling products:
+    * claude code vs claude ai
+    * new data model
+* API for stacks + tools
 * description/workflow:
     * per project
     * per tool
-* API for stacks + tools
 * aistack on shieldcn
 * shieldcn in readme
 * github actions security (see below)
 * show real prices without sponsoring/discounts
+    * dev.to
 * marketplace
     * sell own services and ai expertise
     * full company profile
@@ -22,9 +20,6 @@
 * messaging
 * comments
 * check CLI works
-* price tiers for sibling products:
-    * claude code vs claude ai
-    * new data model
 * TUI for global + all projects
 * resend -> namecheap
 * capture ai usage

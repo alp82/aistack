@@ -173,6 +173,7 @@ https://editframe.com
 https://github.com/r2hu1/skate
 https://github.com/av/remotion-bits
 https://github.com/heygen-com/hyperframes
+https://x.com/Marcos12345rico/status/2067264877463261400
 https://github.com/AlemTuzlak/skills/tree/main/skills/remotion-video
 
 imagen / 2d / 3d:

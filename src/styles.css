@@ -119,6 +119,156 @@ code, .font-mono {
   --bg-section-light: oklch(0.99 0.002 256);
 }
 
+/* ── Accent preset overrides (.accent-<key> + .light .accent-<key>) ──
+   Rainbow order from the brand default (lime, no override needed). Warm hues
+   (orange, yellow) carry a higher light-mode lightness so they stay vivid
+   instead of collapsing to brown; everything else uses the 0.65/0.55/0.48
+   light ladder. Keep these in sync with accentPresets.ts (drift test guards). */
+.accent-green {
+  --accent-lime-soft: oklch(0.72 0.21 150);
+  --accent-lime: oklch(0.78 0.21 150);
+  --accent-lime-strong: oklch(0.84 0.21 150);
+  --accent-lime-contrast: oklch(0.22 0.02 150);
+}
+.light .accent-green {
+  --accent-lime-soft: oklch(0.65 0.21 150);
+  --accent-lime: oklch(0.55 0.21 150);
+  --accent-lime-strong: oklch(0.48 0.21 150);
+  --accent-lime-contrast: oklch(0.98 0.01 150);
+}
+
+.accent-teal {
+  --accent-lime-soft: oklch(0.72 0.12 185);
+  --accent-lime: oklch(0.78 0.12 185);
+  --accent-lime-strong: oklch(0.84 0.12 185);
+  --accent-lime-contrast: oklch(0.22 0.02 185);
+}
+.light .accent-teal {
+  --accent-lime-soft: oklch(0.65 0.12 185);
+  --accent-lime: oklch(0.55 0.12 185);
+  --accent-lime-strong: oklch(0.48 0.12 185);
+  --accent-lime-contrast: oklch(0.98 0.01 185);
+}
+
+.accent-cyan {
+  --accent-lime-soft: oklch(0.72 0.13 215);
+  --accent-lime: oklch(0.78 0.13 215);
+  --accent-lime-strong: oklch(0.84 0.13 215);
+  --accent-lime-contrast: oklch(0.22 0.02 215);
+}
+.light .accent-cyan {
+  --accent-lime-soft: oklch(0.65 0.13 215);
+  --accent-lime: oklch(0.55 0.13 215);
+  --accent-lime-strong: oklch(0.48 0.13 215);
+  --accent-lime-contrast: oklch(0.98 0.01 215);
+}
+
+.accent-blue {
+  --accent-lime-soft: oklch(0.72 0.15 260);
+  --accent-lime: oklch(0.78 0.15 260);
+  --accent-lime-strong: oklch(0.84 0.15 260);
+  --accent-lime-contrast: oklch(0.22 0.02 260);
+}
+.light .accent-blue {
+  --accent-lime-soft: oklch(0.65 0.15 260);
+  --accent-lime: oklch(0.55 0.15 260);
+  --accent-lime-strong: oklch(0.48 0.15 260);
+  --accent-lime-contrast: oklch(0.98 0.01 260);
+}
+
+.accent-indigo {
+  --accent-lime-soft: oklch(0.72 0.16 275);
+  --accent-lime: oklch(0.78 0.16 275);
+  --accent-lime-strong: oklch(0.84 0.16 275);
+  --accent-lime-contrast: oklch(0.22 0.02 275);
+}
+.light .accent-indigo {
+  --accent-lime-soft: oklch(0.65 0.16 275);
+  --accent-lime: oklch(0.55 0.16 275);
+  --accent-lime-strong: oklch(0.48 0.16 275);
+  --accent-lime-contrast: oklch(0.98 0.01 275);
+}
+
+.accent-violet {
+  --accent-lime-soft: oklch(0.72 0.2 295);
+  --accent-lime: oklch(0.78 0.2 295);
+  --accent-lime-strong: oklch(0.84 0.2 295);
+  --accent-lime-contrast: oklch(0.22 0.02 295);
+}
+.light .accent-violet {
+  --accent-lime-soft: oklch(0.65 0.2 295);
+  --accent-lime: oklch(0.55 0.2 295);
+  --accent-lime-strong: oklch(0.48 0.2 295);
+  --accent-lime-contrast: oklch(0.98 0.01 295);
+}
+
+.accent-fuchsia {
+  --accent-lime-soft: oklch(0.72 0.24 330);
+  --accent-lime: oklch(0.78 0.24 330);
+  --accent-lime-strong: oklch(0.84 0.24 330);
+  --accent-lime-contrast: oklch(0.22 0.02 330);
+}
+.light .accent-fuchsia {
+  --accent-lime-soft: oklch(0.65 0.24 330);
+  --accent-lime: oklch(0.55 0.24 330);
+  --accent-lime-strong: oklch(0.48 0.24 330);
+  --accent-lime-contrast: oklch(0.98 0.01 330);
+}
+
+.accent-pink {
+  --accent-lime-soft: oklch(0.72 0.21 354);
+  --accent-lime: oklch(0.78 0.21 354);
+  --accent-lime-strong: oklch(0.84 0.21 354);
+  --accent-lime-contrast: oklch(0.22 0.02 354);
+}
+.light .accent-pink {
+  --accent-lime-soft: oklch(0.65 0.21 354);
+  --accent-lime: oklch(0.55 0.21 354);
+  --accent-lime-strong: oklch(0.48 0.21 354);
+  --accent-lime-contrast: oklch(0.98 0.01 354);
+}
+
+.accent-red {
+  --accent-lime-soft: oklch(0.72 0.21 25);
+  --accent-lime: oklch(0.78 0.21 25);
+  --accent-lime-strong: oklch(0.84 0.21 25);
+  --accent-lime-contrast: oklch(0.22 0.02 25);
+}
+.light .accent-red {
+  --accent-lime-soft: oklch(0.65 0.21 25);
+  --accent-lime: oklch(0.55 0.21 25);
+  --accent-lime-strong: oklch(0.48 0.21 25);
+  --accent-lime-contrast: oklch(0.98 0.01 25);
+}
+
+.accent-orange {
+  --accent-lime-soft: oklch(0.72 0.19 48);
+  --accent-lime: oklch(0.78 0.19 48);
+  --accent-lime-strong: oklch(0.84 0.19 48);
+  --accent-lime-contrast: oklch(0.22 0.02 48);
+}
+.light .accent-orange {
+  --accent-lime-soft: oklch(0.7 0.19 48);
+  --accent-lime: oklch(0.6 0.19 48);
+  --accent-lime-strong: oklch(0.53 0.19 48);
+  --accent-lime-contrast: oklch(0.98 0.01 48);
+}
+
+.accent-yellow {
+  --accent-lime-soft: oklch(0.72 0.17 98);
+  --accent-lime: oklch(0.78 0.17 98);
+  --accent-lime-strong: oklch(0.84 0.17 98);
+  --accent-lime-contrast: oklch(0.22 0.02 98);
+}
+.light .accent-yellow {
+  --accent-lime-soft: oklch(0.76 0.17 98);
+  --accent-lime: oklch(0.66 0.17 98);
+  --accent-lime-strong: oklch(0.59 0.17 98);
+  /* Dark text, not the usual near-white: a bumped yellow is too light to carry
+     white foreground at AA. Yellow wants dark text in both modes. */
+  --accent-lime-contrast: oklch(0.22 0.02 98);
+}
+
 @theme inline {
   --color-bg-canvas: var(--bg-canvas);
   --color-bg-shell: var(--bg-shell);
