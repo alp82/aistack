@@ -1,4 +1,3 @@
-* API for stacks + tools
 * email with changes
     * projects
     * shareable stack images

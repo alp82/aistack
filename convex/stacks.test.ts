@@ -1098,7 +1098,7 @@ test('TC-P-04: getPublicSummary resolves by shortId suffix regardless of slug pr
   expect(result!.name).toBe('Stack user-p04')
 })
 
-test('TC-P-05: getPublicSummary monthlyCost deep-equals getBySlug fixedTotal and hasUsageComponent matches', async () => {
+test('TC-P-05: getPublicSummary monthlyCost deep-equals getBySlug fixedTotal and hasUsageComponent is absent', async () => {
   const t = convexTest(schema, modules)
   const { shortId } = await seedPublishedStackWithSubs(t, {
     userId: 'user-p05',
@@ -1115,8 +1115,8 @@ test('TC-P-05: getPublicSummary monthlyCost deep-equals getBySlug fixedTotal and
 
   // monthlyCost must deep-equal getBySlug's fixedTotal
   expect(summary!.monthlyCost).toEqual(full!.fixedTotal)
-  // hasUsageComponent must match
-  expect(summary!.hasUsageComponent).toBe(full!.hasUsageComponent)
+  // hasUsageComponent must NOT be present in the public summary
+  expect(summary).not.toHaveProperty('hasUsageComponent')
 })
 
 test('TC-P-06: upvoteCount equals number of seeded stackUpvotes rows, 0 when none', async () => {
@@ -1202,4 +1202,348 @@ test('TC-P-07: deleted/missing tool slug is filtered out — not in tools[], que
     expect(typeof name).toBe('string')
     expect(name).not.toBe('tool-does-not-exist')
   }
+})
+
+test('TC-P-08: getPublicSummary tools ordered main-group-first then misc, price-desc within group', async () => {
+  const t = convexTest(schema, modules)
+
+  const creatorId = await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('creators', {
+      name: 'Creator user-p08',
+      slug: 'creator-p08',
+      userId: 'user-p08',
+      verified: false,
+      personalPages: [],
+      projectPages: [],
+      createdAt: Date.now(),
+    }),
+  )
+
+  const now = Date.now()
+  // Tool A: main, $5/mo
+  await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('tools', {
+      name: 'Tool-Main-Cheap',
+      slug: 'tool-main-cheap',
+      shortId: 'TLMCHEAP',
+      categories: ['editor'],
+      tiers: [
+        {
+          tierId: 'pro',
+          name: 'Pro',
+          pricing: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 5, period: 'month' } },
+        },
+      ],
+      reviewStatus: 'approved',
+      createdAt: now,
+      updatedAt: now,
+    }),
+  )
+
+  // Tool B: main, $50/mo
+  await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('tools', {
+      name: 'Tool-Main-Expensive',
+      slug: 'tool-main-expensive',
+      shortId: 'TLMEXP',
+      categories: ['editor'],
+      tiers: [
+        {
+          tierId: 'pro',
+          name: 'Pro',
+          pricing: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 50, period: 'month' } },
+        },
+      ],
+      reviewStatus: 'approved',
+      createdAt: now,
+      updatedAt: now,
+    }),
+  )
+
+  // Tool C: misc, $100/mo
+  await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('tools', {
+      name: 'Tool-Misc-Expensive',
+      slug: 'tool-misc-expensive',
+      shortId: 'TLMISCEXP',
+      categories: ['editor'],
+      tiers: [
+        {
+          tierId: 'pro',
+          name: 'Pro',
+          pricing: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 100, period: 'month' } },
+        },
+      ],
+      reviewStatus: 'approved',
+      createdAt: now,
+      updatedAt: now,
+    }),
+  )
+
+  const shortId = 'SPP08XX'
+  const stackId = await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('stacks', {
+      name: 'Stack user-p08',
+      slug: 'creator-p08-stack',
+      shortId,
+      creatorId,
+      oneLiner: 'test',
+      toolSubscriptions: [
+        {
+          toolSlug: 'tool-main-cheap',
+          kind: 'main',
+          primaryUsageLabel: 'Main cheap',
+          price: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 5, period: 'month' } },
+          priceKind: 'regular',
+        },
+        {
+          toolSlug: 'tool-main-expensive',
+          kind: 'main',
+          primaryUsageLabel: 'Main expensive',
+          price: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 50, period: 'month' } },
+          priceKind: 'regular',
+        },
+        {
+          toolSlug: 'tool-misc-expensive',
+          kind: 'misc',
+          primaryUsageLabel: 'Misc expensive',
+          price: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 100, period: 'month' } },
+          priceKind: 'regular',
+        },
+      ],
+      hasUsageComponent: false,
+      published: true,
+      createdAt: now,
+      updatedAt: now,
+    }),
+  )
+  void stackId
+
+  const result = await t.query(api.stacks.getPublicSummary, {
+    slug: `creator-p08-stack-${shortId}`,
+  })
+
+  expect(result).not.toBeNull()
+  // main group price-desc first, then misc group
+  expect(result!.tools).toStrictEqual(['Tool-Main-Expensive', 'Tool-Main-Cheap', 'Tool-Misc-Expensive'])
+  expect(result!.toolCount).toBe(3)
+})
+
+test('TC-P-08b: getPublicSummary all-free tools fall back to name-alphabetical', async () => {
+  const t = convexTest(schema, modules)
+
+  const creatorId = await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('creators', {
+      name: 'Creator user-p08b',
+      slug: 'creator-p08b',
+      userId: 'user-p08b',
+      verified: false,
+      personalPages: [],
+      projectPages: [],
+      createdAt: Date.now(),
+    }),
+  )
+
+  const now = Date.now()
+  await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('tools', {
+      name: 'Zebra',
+      slug: 'tool-zebra',
+      shortId: 'TLZEBRA',
+      categories: ['editor'],
+      tiers: [
+        {
+          tierId: 'free',
+          name: 'Free',
+          pricing: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 0, period: 'month' } },
+        },
+      ],
+      reviewStatus: 'approved',
+      createdAt: now,
+      updatedAt: now,
+    }),
+  )
+
+  await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('tools', {
+      name: 'Alpha',
+      slug: 'tool-alpha',
+      shortId: 'TLALPHA',
+      categories: ['editor'],
+      tiers: [
+        {
+          tierId: 'free',
+          name: 'Free',
+          pricing: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 0, period: 'month' } },
+        },
+      ],
+      reviewStatus: 'approved',
+      createdAt: now,
+      updatedAt: now,
+    }),
+  )
+
+  const shortId = 'SPP08BX'
+  const stackId = await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('stacks', {
+      name: 'Stack user-p08b',
+      slug: 'creator-p08b-stack',
+      shortId,
+      creatorId,
+      oneLiner: 'test',
+      toolSubscriptions: [
+        {
+          toolSlug: 'tool-zebra',
+          kind: 'main',
+          primaryUsageLabel: 'Zebra tool',
+          price: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 0, period: 'month' } },
+          priceKind: 'regular',
+        },
+        {
+          toolSlug: 'tool-alpha',
+          kind: 'main',
+          primaryUsageLabel: 'Alpha tool',
+          price: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 0, period: 'month' } },
+          priceKind: 'regular',
+        },
+      ],
+      hasUsageComponent: false,
+      published: true,
+      createdAt: now,
+      updatedAt: now,
+    }),
+  )
+  void stackId
+
+  const result = await t.query(api.stacks.getPublicSummary, {
+    slug: `creator-p08b-stack-${shortId}`,
+  })
+
+  expect(result).not.toBeNull()
+  // both free same group → alphabetical
+  expect(result!.tools).toStrictEqual(['Alpha', 'Zebra'])
+})
+
+test('TC-P-08c: getPublicSummary bundle-priced tool sorts between paid and free', async () => {
+  const t = convexTest(schema, modules)
+
+  const creatorId = await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('creators', {
+      name: 'Creator user-p08c',
+      slug: 'creator-p08c',
+      userId: 'user-p08c',
+      verified: false,
+      personalPages: [],
+      projectPages: [],
+      createdAt: Date.now(),
+    }),
+  )
+
+  const now = Date.now()
+  // Tool-X: regular, $10/mo
+  await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('tools', {
+      name: 'Tool-X',
+      slug: 'tool-x',
+      shortId: 'TLTOOLX',
+      categories: ['editor'],
+      tiers: [
+        {
+          tierId: 'pro',
+          name: 'Pro',
+          pricing: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 10, period: 'month' } },
+        },
+      ],
+      reviewStatus: 'approved',
+      createdAt: now,
+      updatedAt: now,
+    }),
+  )
+
+  // Tool-Y: bundle-priced, amount 0 in sub price
+  await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('tools', {
+      name: 'Tool-Y',
+      slug: 'tool-y',
+      shortId: 'TLTOOLYU',
+      categories: ['editor'],
+      tiers: [
+        {
+          tierId: 'pro',
+          name: 'Pro',
+          pricing: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 0, period: 'month' } },
+        },
+      ],
+      reviewStatus: 'approved',
+      createdAt: now,
+      updatedAt: now,
+    }),
+  )
+
+  // Tool-Z: regular, $0/mo (free)
+  await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('tools', {
+      name: 'Tool-Z',
+      slug: 'tool-z',
+      shortId: 'TLTOOLZ',
+      categories: ['editor'],
+      tiers: [
+        {
+          tierId: 'free',
+          name: 'Free',
+          pricing: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 0, period: 'month' } },
+        },
+      ],
+      reviewStatus: 'approved',
+      createdAt: now,
+      updatedAt: now,
+    }),
+  )
+
+  const shortId = 'SPP08CX'
+  const stackId = await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('stacks', {
+      name: 'Stack user-p08c',
+      slug: 'creator-p08c-stack',
+      shortId,
+      creatorId,
+      oneLiner: 'test',
+      toolSubscriptions: [
+        {
+          toolSlug: 'tool-x',
+          kind: 'main',
+          primaryUsageLabel: 'Tool X',
+          price: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 10, period: 'month' } },
+          priceKind: 'regular',
+        },
+        {
+          toolSlug: 'tool-y',
+          kind: 'main',
+          primaryUsageLabel: 'Tool Y',
+          price: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 0, period: 'month' } },
+          priceKind: 'bundle',
+        },
+        {
+          toolSlug: 'tool-z',
+          kind: 'main',
+          primaryUsageLabel: 'Tool Z',
+          price: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 0, period: 'month' } },
+          priceKind: 'regular',
+        },
+      ],
+      hasUsageComponent: false,
+      published: true,
+      createdAt: now,
+      updatedAt: now,
+    }),
+  )
+  void stackId
+
+  const result = await t.query(api.stacks.getPublicSummary, {
+    slug: `creator-p08c-stack-${shortId}`,
+  })
+
+  expect(result).not.toBeNull()
+  // paid → bundle → free
+  expect(result!.tools).toStrictEqual(['Tool-X', 'Tool-Y', 'Tool-Z'])
 })

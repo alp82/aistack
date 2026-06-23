@@ -2,7 +2,7 @@ import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 import type { Id } from './_generated/dataModel'
-import { type FixedPrice, sumNormalizedMonthlyAmounts } from '../src/lib/pricing'
+import { type FixedPrice, orderToolsForDisplay, sumNormalizedMonthlyAmounts } from '../src/lib/pricing'
 import { slugifyAscii } from '../src/lib/slug'
 import { generateUniqueShortId, extractShortId } from './lib/ids'
 import { Resource as ResourceValidator, ResourceInput } from './schema'
@@ -1080,7 +1080,6 @@ export const getPublicSummary = query({
       slug: v.string(),
       name: v.string(),
       monthlyCost: MoneyValidator,
-      hasUsageComponent: v.boolean(),
       toolCount: v.number(),
       bundleCount: v.number(),
       modelCount: v.number(),
@@ -1110,13 +1109,26 @@ export const getPublicSummary = query({
       return names.filter((name): name is string => name !== null)
     }
 
-    const tools = await resolveNames(stack.toolSubscriptions, async (sub) => {
-      const tool = await ctx.db
-        .query('tools')
-        .withIndex('by_slug', (q) => q.eq('slug', sub.toolSlug))
-        .first()
-      return tool?.name ?? null
-    })
+    const toolEntries = await Promise.all(
+      stack.toolSubscriptions.map(async (sub) => {
+        const tool = await ctx.db
+          .query('tools')
+          .withIndex('by_slug', (q) => q.eq('slug', sub.toolSlug))
+          .first()
+        if (!tool) return null
+        const tier = sub.tierId ? tool.tiers.find((t) => t.tierId === sub.tierId) : undefined
+        return {
+          name: tool.name,
+          kind: sub.kind,
+          priceKind: sub.priceKind,
+          price: sub.price,
+          originalTierPrice: tier?.pricing.fixed,
+        }
+      })
+    )
+    const tools = orderToolsForDisplay(
+      toolEntries.filter((t): t is NonNullable<typeof t> => t !== null),
+    ).map((t) => t.name)
 
     const models = await resolveNames(stack.modelSubscriptions ?? [], async (ms) => {
       const model = await ctx.db
@@ -1143,7 +1155,6 @@ export const getPublicSummary = query({
       slug: `${stack.slug}-${stack.shortId}`,
       name: stack.name,
       monthlyCost: pricing.fixedTotal,
-      hasUsageComponent: pricing.hasUsageComponent,
       toolCount: tools.length,
       bundleCount: bundles.length,
       modelCount: models.length,
