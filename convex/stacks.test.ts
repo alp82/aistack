@@ -898,3 +898,308 @@ test('TC-O-11: update by non-owner with accentPreset is rejected', async () => {
     } as never),
   ).rejects.toThrow()
 })
+
+// ---------------------------------------------------------------------------
+// Group P — getPublicSummary query (does NOT exist yet — RED)
+// ---------------------------------------------------------------------------
+
+// Helper: seed a published stack with tool/model/bundle subscriptions
+async function seedPublishedStackWithSubs(
+  t: ReturnType<typeof convexTest>,
+  opts: {
+    userId: string
+    slug: string
+    published?: boolean
+  },
+): Promise<{ stackId: Id<'stacks'>; shortId: string }> {
+  const creatorId = await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('creators', {
+      name: `Creator ${opts.userId}`,
+      slug: opts.slug,
+      userId: opts.userId,
+      verified: false,
+      personalPages: [],
+      projectPages: [],
+      createdAt: Date.now(),
+    }),
+  )
+
+  // Seed a tool
+  const toolShortId = `TL${opts.userId.replace(/-/g, '').toUpperCase().slice(0, 5)}`
+  await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('tools', {
+      name: `Tool for ${opts.userId}`,
+      slug: `tool-${opts.userId}`,
+      shortId: toolShortId,
+      categories: ['editor'],
+      tiers: [
+        {
+          tierId: 'free',
+          name: 'Free',
+          pricing: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 0, period: 'month' } },
+        },
+      ],
+      reviewStatus: 'approved',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }),
+  )
+
+  // Seed a model
+  await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('models', {
+      name: `Model for ${opts.userId}`,
+      slug: `model-${opts.userId}`,
+      shortId: `MD${opts.userId.replace(/-/g, '').toUpperCase().slice(0, 5)}`,
+      provider: 'openai',
+      category: 'language',
+      reviewStatus: 'approved',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }),
+  )
+
+  // Seed a bundle
+  await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('bundles', {
+      name: `Bundle for ${opts.userId}`,
+      slug: `bundle-${opts.userId}`,
+      shortId: `BN${opts.userId.replace(/-/g, '').toUpperCase().slice(0, 5)}`,
+      toolSlugs: [],
+      tiers: [
+        {
+          tierId: 'pro',
+          name: 'Pro',
+          pricing: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 10, period: 'month' } },
+        },
+      ],
+      reviewStatus: 'approved',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }),
+  )
+
+  const shortId = `SP${opts.userId.replace(/-/g, '').toUpperCase().slice(0, 6)}`
+  const now = Date.now()
+  const stackId = await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('stacks', {
+      name: `Stack ${opts.userId}`,
+      slug: `${opts.slug}-stack`,
+      shortId,
+      creatorId,
+      oneLiner: 'test stack',
+      toolSubscriptions: [
+        {
+          toolSlug: `tool-${opts.userId}`,
+          kind: 'main',
+          primaryUsageLabel: 'Main editor',
+          price: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 0, period: 'month' } },
+          priceKind: 'regular',
+        },
+      ],
+      bundleSubscriptions: [
+        {
+          bundleSlug: `bundle-${opts.userId}`,
+          tierId: 'pro',
+        },
+      ],
+      modelSubscriptions: [
+        {
+          modelSlug: `model-${opts.userId}`,
+          role: 'primary',
+        },
+      ],
+      hasUsageComponent: false,
+      published: opts.published ?? true,
+      createdAt: now,
+      updatedAt: now,
+    }),
+  )
+  return { stackId, shortId }
+}
+
+test('TC-P-01: getPublicSummary on published stack returns correct shape — name matches, tools/models/bundles are bare string arrays, counts match', async () => {
+  const t = convexTest(schema, modules)
+  const { shortId } = await seedPublishedStackWithSubs(t, {
+    userId: 'user-p01',
+    slug: 'creator-p01',
+  })
+
+  const result = await t.query(api.stacks.getPublicSummary, {
+    slug: `creator-p01-stack-${shortId}`,
+  })
+
+  expect(result).not.toBeNull()
+  expect(result!.name).toBe('Stack user-p01')
+
+  // tools/models/bundles must be string[] of names only — no internal fields
+  expect(Array.isArray(result!.tools)).toBe(true)
+  expect(Array.isArray(result!.models)).toBe(true)
+  expect(Array.isArray(result!.bundles)).toBe(true)
+  for (const toolName of result!.tools) {
+    expect(typeof toolName).toBe('string')
+  }
+  for (const modelName of result!.models) {
+    expect(typeof modelName).toBe('string')
+  }
+  for (const bundleName of result!.bundles) {
+    expect(typeof bundleName).toBe('string')
+  }
+
+  // No internal fields on the bare string elements
+  expect(result!.tools).not.toEqual(
+    expect.arrayContaining([expect.objectContaining({ _id: expect.anything() })]),
+  )
+
+  // Counts equal array lengths
+  expect(result!.toolCount).toBe(result!.tools.length)
+  expect(result!.modelCount).toBe(result!.models.length)
+  expect(result!.bundleCount).toBe(result!.bundles.length)
+})
+
+test('TC-P-02: getPublicSummary on unpublished stack returns null', async () => {
+  const t = convexTest(schema, modules)
+  const { shortId } = await seedPublishedStackWithSubs(t, {
+    userId: 'user-p02',
+    slug: 'creator-p02',
+    published: false,
+  })
+
+  const result = await t.query(api.stacks.getPublicSummary, {
+    slug: `creator-p02-stack-${shortId}`,
+  })
+
+  expect(result).toBeNull()
+})
+
+test('TC-P-03: getPublicSummary with unknown shortId returns null', async () => {
+  const t = convexTest(schema, modules)
+
+  const result = await t.query(api.stacks.getPublicSummary, {
+    slug: 'anything-zzzzzz',
+  })
+
+  expect(result).toBeNull()
+})
+
+test('TC-P-04: getPublicSummary resolves by shortId suffix regardless of slug prefix (tolerant slug)', async () => {
+  const t = convexTest(schema, modules)
+  const { shortId } = await seedPublishedStackWithSubs(t, {
+    userId: 'user-p04',
+    slug: 'creator-p04',
+  })
+
+  // Query with wrong prefix but correct shortId suffix
+  const result = await t.query(api.stacks.getPublicSummary, {
+    slug: `wrong-prefix-${shortId}`,
+  })
+
+  expect(result).not.toBeNull()
+  expect(result!.name).toBe('Stack user-p04')
+})
+
+test('TC-P-05: getPublicSummary monthlyCost deep-equals getBySlug fixedTotal and hasUsageComponent matches', async () => {
+  const t = convexTest(schema, modules)
+  const { shortId } = await seedPublishedStackWithSubs(t, {
+    userId: 'user-p05',
+    slug: 'creator-p05',
+  })
+
+  const slug = `creator-p05-stack-${shortId}`
+
+  const summary = await t.query(api.stacks.getPublicSummary, { slug })
+  const full = await t.query(api.stacks.getBySlug, { slug })
+
+  expect(summary).not.toBeNull()
+  expect(full).not.toBeNull()
+
+  // monthlyCost must deep-equal getBySlug's fixedTotal
+  expect(summary!.monthlyCost).toEqual(full!.fixedTotal)
+  // hasUsageComponent must match
+  expect(summary!.hasUsageComponent).toBe(full!.hasUsageComponent)
+})
+
+test('TC-P-06: upvoteCount equals number of seeded stackUpvotes rows, 0 when none', async () => {
+  const t = convexTest(schema, modules)
+  const { stackId, shortId } = await seedPublishedStackWithSubs(t, {
+    userId: 'user-p06',
+    slug: 'creator-p06',
+  })
+
+  // No upvotes yet
+  const noVotes = await t.query(api.stacks.getPublicSummary, {
+    slug: `creator-p06-stack-${shortId}`,
+  })
+  expect(noVotes).not.toBeNull()
+  expect(noVotes!.upvoteCount).toBe(0)
+
+  // Seed 3 upvotes
+  await t.run(async (ctx: MutationCtx) => {
+    const now = Date.now()
+    await ctx.db.insert('stackUpvotes', { stackId, userId: 'voter-1', createdAt: now })
+    await ctx.db.insert('stackUpvotes', { stackId, userId: 'voter-2', createdAt: now })
+    await ctx.db.insert('stackUpvotes', { stackId, userId: 'voter-3', createdAt: now })
+  })
+
+  const withVotes = await t.query(api.stacks.getPublicSummary, {
+    slug: `creator-p06-stack-${shortId}`,
+  })
+  expect(withVotes).not.toBeNull()
+  expect(withVotes!.upvoteCount).toBe(3)
+})
+
+test('TC-P-07: deleted/missing tool slug is filtered out — not in tools[], query does not throw', async () => {
+  const t = convexTest(schema, modules)
+
+  // Seed a stack whose toolSubscription references a tool that does not exist in tools table
+  const creatorId = await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('creators', {
+      name: 'Creator user-p07',
+      slug: 'creator-p07',
+      userId: 'user-p07',
+      verified: false,
+      personalPages: [],
+      projectPages: [],
+      createdAt: Date.now(),
+    }),
+  )
+
+  const shortId = 'SPP07XX'
+  const now = Date.now()
+  const stackId = await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('stacks', {
+      name: 'Stack user-p07',
+      slug: 'creator-p07-stack',
+      shortId,
+      creatorId,
+      oneLiner: 'test',
+      toolSubscriptions: [
+        {
+          toolSlug: 'tool-does-not-exist',
+          kind: 'main',
+          primaryUsageLabel: 'Ghost tool',
+          price: { pricingType: 'fixed', fixed: { currency: 'USD', amount: 0, period: 'month' } },
+          priceKind: 'regular',
+        },
+      ],
+      hasUsageComponent: false,
+      published: true,
+      createdAt: now,
+      updatedAt: now,
+    }),
+  )
+  void stackId
+
+  // Must not throw, and tools array must not include the missing slug
+  const result = await t.query(api.stacks.getPublicSummary, {
+    slug: `creator-p07-stack-${shortId}`,
+  })
+
+  expect(result).not.toBeNull()
+  expect(result!.tools).not.toContain('tool-does-not-exist')
+  // The phantom entry is filtered; array is empty or contains only real names
+  for (const name of result!.tools) {
+    expect(typeof name).toBe('string')
+    expect(name).not.toBe('tool-does-not-exist')
+  }
+})

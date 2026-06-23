@@ -429,4 +429,12 @@ export default defineSchema({
   })
     .index('by_toolId', ['toolId'])
     .index('by_status', ['status']),
+
+  apiRateLimits: defineTable({
+    ip: v.string(),
+    windowStart: v.number(),
+    count: v.number(),
+  })
+    .index('by_ip', ['ip'])
+    .index('by_windowStart', ['windowStart']),
 })

@@ -1,8 +1,11 @@
-* og images with better tool display
+* API for stacks + tools
+* email with changes
+    * projects
+    * shareable stack images
+    * customize colors
 * price tiers for sibling products:
     * claude code vs claude ai
     * new data model
-* API for stacks + tools
 * description/workflow:
     * per project
     * per tool

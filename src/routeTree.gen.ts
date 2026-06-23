@@ -27,6 +27,7 @@ import { Route as StacksSlugRouteImport } from './routes/stacks.$slug'
 import { Route as CliAuthRouteImport } from './routes/cli.auth'
 import { Route as AdminIconsRouteImport } from './routes/admin_.icons'
 import { Route as StacksSlugEditRouteImport } from './routes/stacks.$slug_.edit'
+import { Route as ApiStacksSlugRouteImport } from './routes/api.stacks.$slug'
 import { Route as ApiIconsFromUrlRouteImport } from './routes/api.icons.from-url'
 import { Route as ApiCliStacksRouteImport } from './routes/api.cli.stacks'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
@@ -125,6 +126,11 @@ const StacksSlugEditRoute = StacksSlugEditRouteImport.update({
   path: '/stacks/$slug/edit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStacksSlugRoute = ApiStacksSlugRouteImport.update({
+  id: '/api/stacks/$slug',
+  path: '/api/stacks/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiIconsFromUrlRoute = ApiIconsFromUrlRouteImport.update({
   id: '/api/icons/from-url',
   path: '/api/icons/from-url',
@@ -182,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/stacks': typeof ApiCliStacksRouteWithChildren
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
+  '/api/stacks/$slug': typeof ApiStacksSlugRoute
   '/stacks/$slug/edit': typeof StacksSlugEditRoute
   '/api/cli/auth/poll': typeof ApiCliAuthPollRoute
   '/api/cli/auth/start': typeof ApiCliAuthStartRoute
@@ -209,6 +216,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/stacks': typeof ApiCliStacksRouteWithChildren
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
+  '/api/stacks/$slug': typeof ApiStacksSlugRoute
   '/stacks/$slug/edit': typeof StacksSlugEditRoute
   '/api/cli/auth/poll': typeof ApiCliAuthPollRoute
   '/api/cli/auth/start': typeof ApiCliAuthStartRoute
@@ -237,6 +245,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/stacks': typeof ApiCliStacksRouteWithChildren
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
+  '/api/stacks/$slug': typeof ApiStacksSlugRoute
   '/stacks/$slug_/edit': typeof StacksSlugEditRoute
   '/api/cli/auth/poll': typeof ApiCliAuthPollRoute
   '/api/cli/auth/start': typeof ApiCliAuthStartRoute
@@ -266,6 +275,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/cli/stacks'
     | '/api/icons/from-url'
+    | '/api/stacks/$slug'
     | '/stacks/$slug/edit'
     | '/api/cli/auth/poll'
     | '/api/cli/auth/start'
@@ -293,6 +303,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/cli/stacks'
     | '/api/icons/from-url'
+    | '/api/stacks/$slug'
     | '/stacks/$slug/edit'
     | '/api/cli/auth/poll'
     | '/api/cli/auth/start'
@@ -320,6 +331,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/cli/stacks'
     | '/api/icons/from-url'
+    | '/api/stacks/$slug'
     | '/stacks/$slug_/edit'
     | '/api/cli/auth/poll'
     | '/api/cli/auth/start'
@@ -348,6 +360,7 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiCliStacksRoute: typeof ApiCliStacksRouteWithChildren
   ApiIconsFromUrlRoute: typeof ApiIconsFromUrlRoute
+  ApiStacksSlugRoute: typeof ApiStacksSlugRoute
   StacksSlugEditRoute: typeof StacksSlugEditRoute
   ApiCliAuthPollRoute: typeof ApiCliAuthPollRoute
   ApiCliAuthStartRoute: typeof ApiCliAuthStartRoute
@@ -482,6 +495,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StacksSlugEditRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/stacks/$slug': {
+      id: '/api/stacks/$slug'
+      path: '/api/stacks/$slug'
+      fullPath: '/api/stacks/$slug'
+      preLoaderRoute: typeof ApiStacksSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/icons/from-url': {
       id: '/api/icons/from-url'
       path: '/api/icons/from-url'
@@ -567,6 +587,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiCliStacksRoute: ApiCliStacksRouteWithChildren,
   ApiIconsFromUrlRoute: ApiIconsFromUrlRoute,
+  ApiStacksSlugRoute: ApiStacksSlugRoute,
   StacksSlugEditRoute: StacksSlugEditRoute,
   ApiCliAuthPollRoute: ApiCliAuthPollRoute,
   ApiCliAuthStartRoute: ApiCliAuthStartRoute,

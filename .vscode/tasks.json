@@ -4,7 +4,10 @@
 		{
 			"label": "convex dev",
 			"type": "shell",
-			"command": "pnpm convex dev",
+			"options": {
+				"shell": { "executable": "bash", "args": ["-c"] }
+			},
+			"command": "trap : INT; pnpm convex dev; exec fish",
 			"isBackground": true,
 			"runOptions": { "runOn": "folderOpen" },
 			"presentation": {
@@ -16,7 +19,10 @@
 		{
 			"label": "vite dev",
 			"type": "shell",
-			"command": "pnpm dev",
+			"options": {
+				"shell": { "executable": "bash", "args": ["-c"] }
+			},
+			"command": "trap : INT; pnpm dev; exec fish",
 			"isBackground": true,
 			"runOptions": { "runOn": "folderOpen" },
 			"presentation": {

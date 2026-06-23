@@ -11,4 +11,12 @@ crons.daily(
   internal.iconStorage.gcOrphans,
 )
 
+// Hourly rate-limit table cleanup. Deletes expired apiRateLimits rows to
+// prevent unbounded table growth.
+crons.interval(
+  'rate-limit-cleanup',
+  { hours: 1 },
+  internal.rateLimit.cleanupExpiredRateLimits,
+)
+
 export default crons

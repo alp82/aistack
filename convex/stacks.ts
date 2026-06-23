@@ -1072,3 +1072,85 @@ export const getBySlug = query({
     }
   },
 })
+
+export const getPublicSummary = query({
+  args: { slug: v.string() },
+  returns: v.union(
+    v.object({
+      slug: v.string(),
+      name: v.string(),
+      monthlyCost: MoneyValidator,
+      hasUsageComponent: v.boolean(),
+      toolCount: v.number(),
+      bundleCount: v.number(),
+      modelCount: v.number(),
+      upvoteCount: v.number(),
+      tools: v.array(v.string()),
+      models: v.array(v.string()),
+      bundles: v.array(v.string()),
+    }),
+    v.null()
+  ),
+  handler: async (ctx, args) => {
+    const shortId = extractShortId(args.slug)
+    const stack = await ctx.db
+      .query('stacks')
+      .withIndex('by_shortId', (q) => q.eq('shortId', shortId))
+      .first()
+
+    if (!stack || !stack.published) return null
+
+    const pricing = await calculateStackPricing(ctx, stack.toolSubscriptions, stack.bundleSubscriptions ?? [])
+
+    async function resolveNames<T>(
+      items: T[],
+      fetchName: (item: T) => Promise<string | null>,
+    ): Promise<string[]> {
+      const names = await Promise.all(items.map(fetchName))
+      return names.filter((name): name is string => name !== null)
+    }
+
+    const tools = await resolveNames(stack.toolSubscriptions, async (sub) => {
+      const tool = await ctx.db
+        .query('tools')
+        .withIndex('by_slug', (q) => q.eq('slug', sub.toolSlug))
+        .first()
+      return tool?.name ?? null
+    })
+
+    const models = await resolveNames(stack.modelSubscriptions ?? [], async (ms) => {
+      const model = await ctx.db
+        .query('models')
+        .withIndex('by_slug', (q) => q.eq('slug', ms.modelSlug))
+        .first()
+      return model?.name ?? null
+    })
+
+    const bundles = await resolveNames(stack.bundleSubscriptions ?? [], async (bs) => {
+      const bundle = await ctx.db
+        .query('bundles')
+        .withIndex('by_slug', (q) => q.eq('slug', bs.bundleSlug))
+        .first()
+      return bundle?.name ?? null
+    })
+
+    const upvotes = await ctx.db
+      .query('stackUpvotes')
+      .withIndex('by_stackId', (q) => q.eq('stackId', stack._id))
+      .collect()
+
+    return {
+      slug: `${stack.slug}-${stack.shortId}`,
+      name: stack.name,
+      monthlyCost: pricing.fixedTotal,
+      hasUsageComponent: pricing.hasUsageComponent,
+      toolCount: tools.length,
+      bundleCount: bundles.length,
+      modelCount: models.length,
+      upvoteCount: upvotes.length,
+      tools,
+      models,
+      bundles,
+    }
+  },
+})

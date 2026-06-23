@@ -36,6 +36,7 @@ import type * as migrations_icons from "../migrations/icons.js";
 import type * as migrations_stackImages from "../migrations/stackImages.js";
 import type * as models from "../models.js";
 import type * as projects from "../projects.js";
+import type * as rateLimit from "../rateLimit.js";
 import type * as resources from "../resources.js";
 import type * as seed from "../seed.js";
 import type * as seeds_bundles from "../seeds/bundles.js";
@@ -82,6 +83,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/stackImages": typeof migrations_stackImages;
   models: typeof models;
   projects: typeof projects;
+  rateLimit: typeof rateLimit;
   resources: typeof resources;
   seed: typeof seed;
   "seeds/bundles": typeof seeds_bundles;

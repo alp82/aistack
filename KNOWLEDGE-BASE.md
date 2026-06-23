@@ -6,6 +6,7 @@ https://github.com/jal-co/jalco-pi-mono
 https://github.com/jal-co/jalco-opencode
 https://github.com/addyosmani/agent-skills
 https://github.com/pskoett/pskoett-ai-skills
+https://github.com/BuilderIO/skills/tree/main
 https://github.com/AlemTuzlak/skills/tree/main
 https://github.com/EveryInc/compound-engineering-plugin
 https://skills.sh/vercel-labs/agent-browser/agent-browser
@@ -52,6 +53,7 @@ https://superterm.dev
 https://www.emdash.sh
 https://paperclip.ing
 https://www.dpcode.cc
+https://nimbalyst.com 
 https://www.omnara.com
 https://www.warp.dev/oz1
 https://getpolyscope.com
@@ -94,6 +96,9 @@ build your own harness:
 https://flueframework.com
 https://momito.co.uk/flue/
 
+planning:
+https://github.com/kunchenguid/lavish-axi
+
 ai database:
 https://dinobase.ai
 
@@ -119,6 +124,7 @@ https://www.agentsh.org
 https://nono.sh
 
 cli vs mcp:
+https://axi.md
 https://github.com/oraios/serena
 https://x.com/i/status/2031813357423247458
 https://x.com/yenkel/status/2032098351567487037
