@@ -20,7 +20,7 @@ function generateToken(): string {
     .join('')
 }
 
-function getAppUrl(): string {
+export function getAppUrl(): string {
   return process.env.APP_URL || process.env.BETTER_AUTH_URL || 'http://localhost:3019'
 }
 

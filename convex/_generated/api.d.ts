@@ -16,6 +16,8 @@ import type * as cliTokens from "../cliTokens.js";
 import type * as creators from "../creators.js";
 import type * as crons from "../crons.js";
 import type * as email from "../email.js";
+import type * as emailToken from "../emailToken.js";
+import type * as emailUnsubscribe from "../emailUnsubscribe.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as httpCli from "../httpCli.js";
@@ -63,6 +65,8 @@ declare const fullApi: ApiFromModules<{
   creators: typeof creators;
   crons: typeof crons;
   email: typeof email;
+  emailToken: typeof emailToken;
+  emailUnsubscribe: typeof emailUnsubscribe;
   files: typeof files;
   http: typeof http;
   httpCli: typeof httpCli;

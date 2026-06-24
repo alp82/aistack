@@ -12,7 +12,15 @@ import {
 	Section,
 	Text,
 } from "@react-email/components";
-import { EMAIL_CONFIG, glowKeyframes, styles, colors, fonts } from "./styles";
+import { EmailFooter } from "./EmailFooter";
+import {
+	colors,
+	EMAIL_CONFIG,
+	fonts,
+	glowKeyframes,
+	styles,
+	UNSUBSCRIBE_PLACEHOLDER,
+} from "./styles";
 
 // Tool logos - popular tools on AI Stack
 // Using public URLs for email compatibility
@@ -29,10 +37,12 @@ const TOOL_LOGOS: { name: string; url: string }[] = [
 export function WaitlistLaunchEmail(props: {
 	productName?: string;
 	ctaUrl?: string;
+	unsubscribeUrl?: string;
 }) {
 	const {
 		productName = EMAIL_CONFIG.productName,
 		ctaUrl = EMAIL_CONFIG.websiteUrl,
+		unsubscribeUrl = UNSUBSCRIBE_PLACEHOLDER,
 	} = props;
 
 	return (
@@ -419,23 +429,10 @@ export function WaitlistLaunchEmail(props: {
 					</Section>
 
 					{/* Footer */}
-					<Section style={styles.footer}>
-						<Text style={styles.footerText}>
-							<Link href={EMAIL_CONFIG.websiteUrl} style={styles.footerLink}>
-								{productName}
-							</Link>{" "}
-							· {new Date().getFullYear()}
-						</Text>
-						<Text
-							style={{
-								...styles.footerText,
-								fontSize: 11,
-								marginTop: 8,
-							}}
-						>
-							You're receiving this because you joined the waitlist.
-						</Text>
-					</Section>
+					<EmailFooter
+						productName={productName}
+						unsubscribeUrl={unsubscribeUrl}
+					/>
 				</Container>
 			</Body>
 		</Html>

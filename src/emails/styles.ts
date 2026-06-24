@@ -5,6 +5,8 @@ export const EMAIL_CONFIG = {
 	websiteUrl: "https://aistack.to",
 };
 
+export const UNSUBSCRIBE_PLACEHOLDER = "%%UNSUBSCRIBE_URL%%";
+
 export const colors = {
 	// Background - high contrast
 	bgBody: "#f5f5f5",

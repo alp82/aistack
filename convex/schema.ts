@@ -291,6 +291,11 @@ export default defineSchema({
     .index('by_status', ['status'])
     .index('by_lookupId', ['lookupId']),
 
+  emailUnsubscribes: defineTable({
+    email: v.string(),
+    unsubscribedAt: v.number(),
+  }).index('by_email', ['email']),
+
   stackUpvotes: defineTable({
     stackId: v.id('stacks'),
     userId: v.string(),

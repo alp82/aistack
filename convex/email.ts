@@ -1,10 +1,90 @@
-import { action, internalQuery } from "./_generated/server";
+import { action, internalMutation, internalQuery, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Resend } from "resend";
 import { render } from "@react-email/render";
 import { WaitlistLaunchEmail } from "../src/emails/WaitlistLaunchEmail";
-// internal import kept for future broadcast queries
-// import { internal } from "./_generated/api";
+import { FeatureUpdateEmail } from "../src/emails/FeatureUpdateEmail";
+import { UNSUBSCRIBE_PLACEHOLDER } from "../src/emails/styles";
+import { signUnsubscribeToken } from "./emailToken";
+import { getAppUrl } from "./httpCli";
+// @ts-ignore - components will be generated after convex dev restarts
+import { internal, components } from "./_generated/api";
+
+// Lowercase + dedupe email lists into their order-stable union (first lowercased occurrence wins; empty/blank dropped).
+export function mergeAudience(...lists: string[][]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const list of lists) {
+    for (const raw of list) {
+      const email = raw?.trim().toLowerCase();
+      if (!email) continue;
+      if (seen.has(email)) continue;
+      seen.add(email);
+      out.push(email);
+    }
+  }
+  return out;
+}
+
+// Remove suppressed (unsubscribed) addresses from an email list, case-insensitively.
+// Order-stable, non-mutating, sync.
+export function subtractSuppressed(
+  emails: string[],
+  suppressed: Set<string> | string[],
+): string[] {
+  const set = new Set<string>();
+  for (const s of suppressed) set.add(s.trim().toLowerCase());
+  return emails.filter((e) => !set.has(e.trim().toLowerCase()));
+}
+
+// Record an unsubscribe. Read-side deduped via getUnsubscribedEmails/subtractSuppressed
+// (Set lookup). Duplicate rows are possible under concurrent inserts but are benign —
+// do NOT attempt a transaction here to prevent them.
+export const recordUnsubscribe = internalMutation({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const e = args.email.trim().toLowerCase();
+    const existing = await ctx.db
+      .query("emailUnsubscribes")
+      .withIndex("by_email", (q) => q.eq("email", e))
+      .first();
+    if (!existing) {
+      await ctx.db.insert("emailUnsubscribes", { email: e, unsubscribedAt: Date.now() });
+    }
+  },
+});
+
+// All unsubscribed email addresses (already stored lowercased).
+export const getUnsubscribedEmails = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const rows = await ctx.db.query("emailUnsubscribes").collect();
+    return rows.map((r) => r.email);
+  },
+});
+
+const BROADCASTS: Record<
+  string,
+  {
+    subject: string;
+    render: () => Promise<string>;
+    audience: "waitlist" | "waitlist+members";
+    alreadySent?: boolean;
+  }
+> = {
+  "waitlist-launch": {
+    subject: "AI Stack is Live! 🚀",
+    render: () => render(WaitlistLaunchEmail({})),
+    audience: "waitlist",
+    // When marking a broadcast sent, also add its id to SENT_BROADCASTS in EmailBroadcastsSection.tsx (UI gate).
+    alreadySent: true,
+  },
+  "feature-update": {
+    subject: "New on AI Stack: Promote, Share & Customize Your Stack",
+    render: () => render(FeatureUpdateEmail({})),
+    audience: "waitlist+members",
+  },
+};
 
 export const sendWaitlistConfirmEmail = action({
   args: {
@@ -86,37 +166,90 @@ export const getWaitlistEmails = internalQuery({
   },
 });
 
+// Enumerate every registered better-auth member's email by paginating the mounted component's
+// user table (members are not in app schema). No `where` = all users. Returns lowercased, non-empty emails.
+// Shared by getMemberEmails (broadcast send) and getBroadcastRecipientCount (admin count) so both
+// resolve the same member set. Works from any ctx with `runQuery` (query or action).
+async function collectMemberEmails(ctx: {
+  runQuery: (...args: any[]) => Promise<any>;
+}): Promise<string[]> {
+  const emails: string[] = [];
+  let cursor: string | null = null;
+  for (;;) {
+    const result: {
+      page: Array<{ email?: string }>;
+      isDone: boolean;
+      continueCursor: string;
+    } = await ctx.runQuery(components.betterAuth.adapter.findMany, {
+      model: "user",
+      paginationOpts: { numItems: 200, cursor },
+    });
+    for (const user of result.page) {
+      const email = user.email?.trim().toLowerCase();
+      if (email) emails.push(email);
+    }
+    if (result.isDone) break;
+    cursor = result.continueCursor;
+  }
+  return emails;
+}
+
+export const getMemberEmails = internalQuery({
+  args: {},
+  handler: async (ctx) => collectMemberEmails(ctx),
+});
+
+// Real recipient count for a broadcast: the deduped, unsubscribe-filtered audience
+// (waitlist [+ members]) — the same set sendBroadcast actually emails, so the admin
+// dialog shows true reach rather than the raw waitlist size. Reactive (query).
+export const getBroadcastRecipientCount = query({
+  args: { broadcastId: v.string() },
+  handler: async (ctx, args) => {
+    const entry = BROADCASTS[args.broadcastId];
+    if (!entry) return 0;
+    const waitlistEmails = (await ctx.db.query("waitlist").collect()).map(
+      (e) => e.email,
+    );
+    const memberEmails =
+      entry.audience === "waitlist+members" ? await collectMemberEmails(ctx) : [];
+    const unsub = (await ctx.db.query("emailUnsubscribes").collect()).map(
+      (r) => r.email,
+    );
+    return subtractSuppressed(mergeAudience(waitlistEmails, memberEmails), unsub)
+      .length;
+  },
+});
+
 // Send test email to the current admin user
 export const sendTestEmail = action({
   args: {
     broadcastId: v.string(),
   },
   handler: async (ctx, args) => {
-    if (!process.env.RESEND_API_KEY) {
-      console.error("RESEND_API_KEY environment variable is not set");
-      return { success: false, message: "Email service not configured" };
-    }
-
     // Get the current user's email from auth
     const identity = await ctx.auth.getUserIdentity();
     if (!identity?.email) {
       return { success: false, message: "Not authenticated or no email found" };
     }
 
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    
-    // For now, only support waitlist-launch broadcast
-    if (args.broadcastId !== "waitlist-launch") {
+    const entry = BROADCASTS[args.broadcastId];
+    if (!entry) {
       return { success: false, message: "Unknown broadcast ID" };
     }
 
-    const html = await render(WaitlistLaunchEmail({}));
+    if (!process.env.RESEND_API_KEY) {
+      console.error("RESEND_API_KEY environment variable is not set");
+      return { success: false, message: "Email service not configured" };
+    }
+
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const html = await entry.render();
 
     try {
       const { error } = await resend.emails.send({
         from: process.env.EMAIL_FROM || "onboarding@resend.dev",
         to: identity.email,
-        subject: "[TEST] AI Stack is Live! 🚀",
+        subject: `[TEST] ${entry.subject}`,
         html,
       });
 
@@ -139,7 +272,22 @@ export const sendTestEmail = action({
 //   const resend = new Resend(process.env.RESEND_API_KEY);
 //   const html = await render(MyEmailTemplate({}));
 //   const result = await sendBroadcastEmails(resend, emails, "Subject", html);
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
+// Unified return type for sendBroadcast — all branches return this shape.
+// Fields that are only present on some branches (early-exit vs. full send) are optional.
+type BroadcastSendResult = {
+  success: boolean;
+  sent: number;
+  failed: number;
+  total?: number;
+  sentEmails?: string[];
+  errors?: { email: string; error: string }[];
+  message?: string;
+  alreadySent?: boolean;
+  suppressed?: number;
+};
+
+// Internal result type for the low-level sender (always has total/sentEmails/errors).
 interface BroadcastResult {
   success: boolean;
   sent: number;
@@ -149,12 +297,29 @@ interface BroadcastResult {
   errors: { email: string; error: string }[];
 }
 
-// @ts-ignore - Kept for future broadcasts
+// Build a signed unsubscribe URL for each recipient concurrently.
+// NOTE: rotating BETTER_AUTH_SECRET invalidates all outstanding unsubscribe
+// links (tokens never expire); only rotate with a dual-verify grace window.
+async function buildUnsubscribeUrls(
+  recipients: string[],
+  secret: string,
+  appUrl: string,
+): Promise<Map<string, string>> {
+  const entries = await Promise.all(
+    recipients.map(async (email) => {
+      const token = await signUnsubscribeToken(email, secret);
+      return [email, `${appUrl}/api/email/unsubscribe?token=${token}`] as const;
+    }),
+  );
+  return new Map(entries);
+}
+
 async function sendBroadcastEmails(
   resend: Resend,
   emails: string[],
   subject: string,
-  html: string
+  html: string,
+  unsubUrlFor: (email: string) => string
 ): Promise<BroadcastResult> {
   let sent = 0;
   let failed = 0;
@@ -166,13 +331,20 @@ async function sendBroadcastEmails(
   for (let i = 0; i < emails.length; i++) {
     const email = emails[i];
     console.log(`Sending ${i + 1}/${emails.length}: ${email}`);
-    
+
+    const url = unsubUrlFor(email);
+    const personalizedHtml = html.replaceAll(UNSUBSCRIBE_PLACEHOLDER, url);
+
     try {
       const { error } = await resend.emails.send({
         from: process.env.EMAIL_FROM || "onboarding@resend.dev",
         to: email,
         subject,
-        html,
+        html: personalizedHtml,
+        headers: {
+          "List-Unsubscribe": `<${url}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
       });
       
       if (error) {
@@ -220,19 +392,87 @@ async function sendBroadcastEmails(
   };
 }
 
-// Send broadcast email to all waitlist subscribers
-// NOTE: This broadcast has been sent to all waitlist subscribers on 2025-03-10
-// The UI should prevent re-sending, but this is a safety check
-export const sendWaitlistLaunchBroadcast = action({
-  args: {},
-  handler: async (_ctx) => {
-    // Broadcast already sent - return immediately
-    return { 
-      success: false, 
-      sent: 0, 
-      failed: 0, 
-      alreadySent: true,
-      message: "This broadcast has already been sent to all waitlist subscribers" 
-    };
+// Send a registered broadcast to all waitlist subscribers.
+// Refuses broadcasts flagged alreadySent as a safety check.
+export const sendBroadcast = action({
+  args: {
+    broadcastId: v.string(),
+  },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<BroadcastSendResult> => {
+    const entry = BROADCASTS[args.broadcastId];
+    if (!entry) {
+      return { success: false, sent: 0, failed: 0, message: "Unknown broadcast ID" };
+    }
+
+    if (entry.alreadySent) {
+      return {
+        success: false,
+        sent: 0,
+        failed: 0,
+        alreadySent: true,
+        message: "This broadcast has already been sent to all subscribers",
+      };
+    }
+
+    if (!process.env.RESEND_API_KEY) {
+      console.error("RESEND_API_KEY environment variable is not set");
+      return { success: false, sent: 0, failed: 0, message: "Email service not configured" };
+    }
+
+    // Never ship unsigned unsubscribe links — without the signing secret we
+    // cannot build verifiable tokens, so refuse like a missing RESEND key.
+    // WARNING: rotating BETTER_AUTH_SECRET invalidates all outstanding
+    // unsubscribe links (tokens never expire). Only rotate with a dual-verify
+    // grace window so existing links remain honored during the transition.
+    const secret = process.env.BETTER_AUTH_SECRET;
+    if (!secret) {
+      console.error("BETTER_AUTH_SECRET environment variable is not set");
+      return { success: false, sent: 0, failed: 0, message: "Email service not configured" };
+    }
+
+    // Refuse to send if APP_URL is not an https URL — localhost or missing
+    // values would ship broken/localhost unsubscribe links and cause
+    // mail clients to drop the List-Unsubscribe header.
+    const appUrl = getAppUrl();
+    if (!appUrl.startsWith("https://")) {
+      console.error("APP_URL is not an https URL — refusing broadcast to prevent broken unsubscribe links");
+      return { success: false, sent: 0, failed: 0, message: "Email service not configured" };
+    }
+
+    const waitlistEmails = await ctx.runQuery(internal.email.getWaitlistEmails, {});
+    const memberEmails =
+      entry.audience === "waitlist+members"
+        ? await ctx.runQuery(internal.email.getMemberEmails, {})
+        : [];
+    const emails = mergeAudience(waitlistEmails, memberEmails);
+
+    const unsub = await ctx.runQuery(internal.email.getUnsubscribedEmails, {});
+    const recipients = subtractSuppressed(emails, unsub);
+    const suppressed = emails.length - recipients.length;
+
+    const html = await entry.render();
+    // Loud pre-send failure: the template MUST carry the placeholder we
+    // personalize per recipient, else everyone gets a dead link.
+    if (!html.includes(UNSUBSCRIBE_PLACEHOLDER)) {
+      console.error("Rendered template is missing the unsubscribe placeholder");
+      return { success: false, sent: 0, failed: 0, message: "Unsubscribe link missing from template" };
+    }
+
+    // Build signed unsubscribe URLs concurrently (signing is async per recipient).
+    const urlByEmail = await buildUnsubscribeUrls(recipients, secret, appUrl);
+    const unsubUrlFor = (e: string) => urlByEmail.get(e) ?? "";
+
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const result = await sendBroadcastEmails(
+      resend,
+      recipients,
+      entry.subject,
+      html,
+      unsubUrlFor,
+    );
+    return { ...result, suppressed };
   },
 });

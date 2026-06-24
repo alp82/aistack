@@ -1,22 +1,23 @@
-import { useState } from "react";
+import { render } from "@react-email/render";
+import { useAction, useQuery } from "convex/react";
 import {
-	Radio,
-	Eye,
-	Code,
-	Send,
-	Users,
-	ChevronDown,
-	ChevronUp,
 	AlertTriangle,
 	CheckCircle,
+	ChevronDown,
+	ChevronUp,
+	Code,
+	Eye,
 	Mail,
+	Radio,
+	Send,
 	ShieldAlert,
 	ToggleLeft,
 	ToggleRight,
+	Users,
 } from "lucide-react";
-import { render } from "@react-email/render";
-import { useAction, useQuery } from "convex/react";
+import { useState } from "react";
 import { api } from "../../../convex/_generated/api";
+import { FeatureUpdateEmail } from "../../emails/FeatureUpdateEmail";
 import { WaitlistLaunchEmail } from "../../emails/WaitlistLaunchEmail";
 import { Dialog } from "../ui/Dialog";
 
@@ -38,9 +39,18 @@ const BROADCAST_EMAILS: BroadcastEmail[] = [
 		audience: "Waitlist",
 		component: <WaitlistLaunchEmail />,
 	},
+	{
+		id: "feature-update",
+		name: "New: Promote, Share & Customize",
+		description:
+			"Announce three new member features (projects, shareable stack image, accent colors) to waitlist subscribers and registered members",
+		audience: "Waitlist + Members",
+		component: <FeatureUpdateEmail />,
+	},
 ];
 
 // Track which broadcasts have already been sent
+// Mirror of the server registry's `alreadySent` flag in convex/email.ts — keep both in sync.
 const SENT_BROADCASTS = new Set(["waitlist-launch"]);
 
 function BroadcastPreviewCard({ broadcast }: { broadcast: BroadcastEmail }) {
@@ -65,9 +75,11 @@ function BroadcastPreviewCard({ broadcast }: { broadcast: BroadcastEmail }) {
 	const [showBroadcastDialog, setShowBroadcastDialog] = useState(false);
 	const [broadcastEnabled, setBroadcastEnabled] = useState(false);
 
-	const waitlistCount = useQuery(api.waitlist.getWaitlistCount);
+	const recipientCount = useQuery(api.email.getBroadcastRecipientCount, {
+		broadcastId: broadcast.id,
+	});
 	const sendTestEmail = useAction(api.email.sendTestEmail);
-	const sendBroadcast = useAction(api.email.sendWaitlistLaunchBroadcast);
+	const sendBroadcast = useAction(api.email.sendBroadcast);
 
 	const handleExpand = async () => {
 		if (!expanded && !htmlContent) {
@@ -115,7 +127,7 @@ function BroadcastPreviewCard({ broadcast }: { broadcast: BroadcastEmail }) {
 		setBroadcastResult(null);
 
 		try {
-			const result = await sendBroadcast({});
+			const result = await sendBroadcast({ broadcastId: broadcast.id });
 			setBroadcastResult(result);
 			if (result.success) {
 				// Close dialog and reset after successful send
@@ -164,7 +176,7 @@ function BroadcastPreviewCard({ broadcast }: { broadcast: BroadcastEmail }) {
 					</div>
 				</div>
 				<div className="flex items-center gap-3">
-					<span className="inline-flex items-center gap-1.5 border border-stroke-subtle bg-bg-panel-muted px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-muted">
+					<span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border border-stroke-subtle bg-bg-panel-muted px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wide text-fg-muted">
 						<Users className="size-3" />
 						{broadcast.audience}
 					</span>
@@ -300,7 +312,7 @@ function BroadcastPreviewCard({ broadcast }: { broadcast: BroadcastEmail }) {
 					<p className="mb-4 font-mono text-sm text-fg-secondary">
 						You are about to send this email to{" "}
 						<span className="font-bold text-fg-primary">
-							{waitlistCount ?? "..."} recipients
+							{recipientCount ?? "..."} recipients
 						</span>
 						. This action cannot be undone.
 					</p>
@@ -402,9 +414,9 @@ function BroadcastPreviewCard({ broadcast }: { broadcast: BroadcastEmail }) {
 							</button>
 						</div>
 						<div className="flex items-center gap-3">
-							{waitlistCount !== undefined && (
+							{recipientCount !== undefined && (
 								<span className="font-mono text-xs text-fg-muted">
-									{waitlistCount} recipients
+									{recipientCount} recipients
 								</span>
 							)}
 							<button
@@ -426,11 +438,11 @@ function BroadcastPreviewCard({ broadcast }: { broadcast: BroadcastEmail }) {
 								</span>
 							</div>
 						) : viewMode === "preview" ? (
-							<div className="mx-auto max-w-[600px] overflow-hidden border border-stroke-subtle bg-white shadow-md">
+							<div className="mx-auto max-w-[768px] overflow-hidden border border-stroke-subtle bg-white shadow-md">
 								<iframe
 									srcDoc={htmlContent}
 									title={`${broadcast.name} Preview`}
-									className="h-[600px] w-full border-0"
+									className="h-[800px] w-full border-0"
 									sandbox="allow-same-origin"
 								/>
 							</div>
@@ -473,7 +485,7 @@ export function EmailBroadcastsSection() {
 			</div>
 
 			<div className="space-y-4">
-				{BROADCAST_EMAILS.map((broadcast) => (
+				{[...BROADCAST_EMAILS].reverse().map((broadcast) => (
 					<BroadcastPreviewCard key={broadcast.id} broadcast={broadcast} />
 				))}
 			</div>
