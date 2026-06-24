@@ -1,16 +1,48 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import {
+	createFileRoute,
+	Navigate,
+	stripSearchParams,
+	useNavigate,
+	useSearch,
+} from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
 import { ClipboardCheck, Flag, Mail } from "lucide-react";
-import { useState } from "react";
-import { AdminReviewTab } from "@/components/admin/AdminReviewTab";
+import { useMemo } from "react";
+import {
+	AdminEmailTab,
+	type EmailSubTab,
+} from "@/components/admin/AdminEmailTab";
 import { AdminQualityTab } from "@/components/admin/AdminQualityTab";
-import { AdminEmailTab } from "@/components/admin/AdminEmailTab";
+import { AdminReviewTab } from "@/components/admin/AdminReviewTab";
+import { coerceEnum } from "@/lib/searchParams";
 import { seoMeta } from "@/lib/seo";
+import { api } from "../../convex/_generated/api";
+
+type AdminTab = "review" | "quality" | "email";
+
+export const ADMIN_SEARCH_DEFAULTS = {
+	tab: "review" as AdminTab,
+	view: "templates" as EmailSubTab,
+};
 
 export const Route = createFileRoute("/admin")({
 	ssr: false,
 	component: AdminPage,
+	validateSearch: (
+		search: Record<string, unknown>,
+	): { tab?: AdminTab; view?: EmailSubTab } => ({
+		tab: coerceEnum(
+			search.tab,
+			["review", "quality", "email"] as const,
+			"review",
+		),
+		view: coerceEnum(
+			search.view,
+			["templates", "broadcasts"] as const,
+			"templates",
+		),
+	}),
+	search: { middlewares: [stripSearchParams(ADMIN_SEARCH_DEFAULTS)] },
 	head: () => ({
 		meta: seoMeta({
 			title: "Admin - AI Stack",
@@ -20,13 +52,22 @@ export const Route = createFileRoute("/admin")({
 	}),
 });
 
-type AdminTab = "review" | "quality" | "email";
-
 function AdminPage() {
 	const isAdmin = useQuery(api.admin.checkIsAdmin);
 	const reviewCount = useQuery(api.admin.getReviewTabCount);
 	const qualityCount = useQuery(api.admin.getQualityTabCount);
-	const [activeTab, setActiveTab] = useState<AdminTab>("review");
+	const navigate = useNavigate({ from: "/admin" });
+	const { tab: rawTab, view: rawView } = useSearch({ from: "/admin" });
+	const tab = rawTab ?? ADMIN_SEARCH_DEFAULTS.tab;
+	const view = rawView ?? ADMIN_SEARCH_DEFAULTS.view;
+	const setSearch = useMemo(
+		() => (patch: Partial<typeof ADMIN_SEARCH_DEFAULTS>) =>
+			navigate({
+				search: (prev) => ({ ...prev, ...patch }),
+				replace: true,
+			}),
+		[navigate],
+	);
 
 	if (isAdmin === undefined) {
 		return (
@@ -48,9 +89,11 @@ function AdminPage() {
 					<div className="flex items-center gap-1">
 						<button
 							type="button"
-							onClick={() => setActiveTab("review")}
+							onClick={() =>
+								setSearch({ tab: "review", view: ADMIN_SEARCH_DEFAULTS.view })
+							}
 							className={`inline-flex items-center gap-2 border-b-2 px-6 py-4 font-mono text-sm font-semibold uppercase tracking-wide transition-colors -mb-[2px] ${
-								activeTab === "review"
+								tab === "review"
 									? "border-accent-lime text-accent-lime"
 									: "border-transparent text-fg-muted hover:text-fg-primary"
 							}`}
@@ -65,9 +108,11 @@ function AdminPage() {
 						</button>
 						<button
 							type="button"
-							onClick={() => setActiveTab("quality")}
+							onClick={() =>
+								setSearch({ tab: "quality", view: ADMIN_SEARCH_DEFAULTS.view })
+							}
 							className={`inline-flex items-center gap-2 border-b-2 px-6 py-4 font-mono text-sm font-semibold uppercase tracking-wide transition-colors -mb-[2px] ${
-								activeTab === "quality"
+								tab === "quality"
 									? "border-accent-lime text-accent-lime"
 									: "border-transparent text-fg-muted hover:text-fg-primary"
 							}`}
@@ -82,9 +127,9 @@ function AdminPage() {
 						</button>
 						<button
 							type="button"
-							onClick={() => setActiveTab("email")}
+							onClick={() => setSearch({ tab: "email" })}
 							className={`inline-flex items-center gap-2 border-b-2 px-6 py-4 font-mono text-sm font-semibold uppercase tracking-wide transition-colors -mb-[2px] ${
-								activeTab === "email"
+								tab === "email"
 									? "border-accent-lime text-accent-lime"
 									: "border-transparent text-fg-muted hover:text-fg-primary"
 							}`}
@@ -97,9 +142,14 @@ function AdminPage() {
 			</div>
 
 			{/* Tab Content */}
-			{activeTab === "review" && <AdminReviewTab />}
-			{activeTab === "quality" && <AdminQualityTab />}
-			{activeTab === "email" && <AdminEmailTab />}
+			{tab === "review" && <AdminReviewTab />}
+			{tab === "quality" && <AdminQualityTab />}
+			{tab === "email" && (
+				<AdminEmailTab
+					view={view}
+					onViewChange={(v) => setSearch({ view: v })}
+				/>
+			)}
 		</div>
 	);
 }

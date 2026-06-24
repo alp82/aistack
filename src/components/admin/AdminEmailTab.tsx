@@ -1,13 +1,15 @@
-import { useState } from "react";
 import { Mail, Radio } from "lucide-react";
-import { EmailTemplatesSection } from "./EmailTemplatesSection";
 import { EmailBroadcastsSection } from "./EmailBroadcastsSection";
+import { EmailTemplatesSection } from "./EmailTemplatesSection";
 
-type EmailSubTab = "templates" | "broadcasts";
+export type EmailSubTab = "templates" | "broadcasts";
 
-export function AdminEmailTab() {
-	const [activeSubTab, setActiveSubTab] = useState<EmailSubTab>("templates");
+interface AdminEmailTabProps {
+	view: EmailSubTab;
+	onViewChange: (view: EmailSubTab) => void;
+}
 
+export function AdminEmailTab({ view, onViewChange }: AdminEmailTabProps) {
 	return (
 		<div className="py-12 sm:py-16">
 			<div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -15,9 +17,9 @@ export function AdminEmailTab() {
 				<div className="mb-8 flex items-center gap-2 border-b-2 border-stroke-subtle">
 					<button
 						type="button"
-						onClick={() => setActiveSubTab("templates")}
+						onClick={() => onViewChange("templates")}
 						className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 font-mono text-sm font-semibold uppercase tracking-wide transition-colors -mb-[2px] ${
-							activeSubTab === "templates"
+							view === "templates"
 								? "border-accent-lime text-accent-lime"
 								: "border-transparent text-fg-muted hover:text-fg-primary"
 						}`}
@@ -27,9 +29,9 @@ export function AdminEmailTab() {
 					</button>
 					<button
 						type="button"
-						onClick={() => setActiveSubTab("broadcasts")}
+						onClick={() => onViewChange("broadcasts")}
 						className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 font-mono text-sm font-semibold uppercase tracking-wide transition-colors -mb-[2px] ${
-							activeSubTab === "broadcasts"
+							view === "broadcasts"
 								? "border-accent-lime text-accent-lime"
 								: "border-transparent text-fg-muted hover:text-fg-primary"
 						}`}
@@ -40,7 +42,7 @@ export function AdminEmailTab() {
 				</div>
 
 				{/* Sub-tab content */}
-				{activeSubTab === "templates" ? (
+				{view === "templates" ? (
 					<EmailTemplatesSection />
 				) : (
 					<EmailBroadcastsSection />

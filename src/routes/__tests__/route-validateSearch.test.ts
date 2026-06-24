@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
+import { ADMIN_SEARCH_DEFAULTS, Route as AdminRoute } from "@/routes/admin";
 import { LANDING_SEARCH_DEFAULTS, Route as LandingRoute } from "@/routes/index";
 import {
 	STACKS_SEARCH_DEFAULTS,
@@ -19,6 +20,7 @@ const validateStacks = StacksRoute.options
 	.validateSearch as unknown as Validate;
 const validateLanding = LandingRoute.options
 	.validateSearch as unknown as Validate;
+const validateAdmin = AdminRoute.options.validateSearch as unknown as Validate;
 
 describe("tools validateSearch", () => {
 	it("empty search deep-equals TOOLS_SEARCH_DEFAULTS (strip alignment)", () => {
@@ -60,6 +62,26 @@ describe("landing validateSearch", () => {
 	});
 	it("sort default is upvotes and bad values fall back", () => {
 		expect(validateLanding({ sort: "bogus" }).sort).toBe("upvotes");
+	});
+});
+
+describe("admin validateSearch", () => {
+	it("empty search deep-equals ADMIN_SEARCH_DEFAULTS (strip alignment)", () => {
+		expect(validateAdmin({})).toEqual(ADMIN_SEARCH_DEFAULTS);
+	});
+	it("keeps valid tab and view", () => {
+		expect(validateAdmin({ tab: "email", view: "broadcasts" })).toEqual({
+			tab: "email",
+			view: "broadcasts",
+		});
+	});
+	it("falls back on invalid tab / view", () => {
+		expect(validateAdmin({ tab: "bogus" }).tab).toBe("review");
+		expect(validateAdmin({ view: "nope" }).view).toBe("templates");
+	});
+	it("defaults are review / templates", () => {
+		expect(validateAdmin({}).tab).toBe("review");
+		expect(validateAdmin({}).view).toBe("templates");
 	});
 });
 

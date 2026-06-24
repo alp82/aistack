@@ -1,7 +1,3 @@
-* email with changes
-    * projects
-    * shareable stack images
-    * customize colors
 * price tiers for sibling products:
     * claude code vs claude ai
     * new data model

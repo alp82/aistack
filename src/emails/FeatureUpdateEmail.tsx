@@ -42,19 +42,19 @@ const FEATURE_CARDS: {
 		imgWidth: 520,
 	},
 	{
-		label: "// Share",
+		label: "// Embed",
 		title: "Share Your Stack As An Image",
 		blurb:
-			"Drop a crisp snapshot of your stack anywhere — a GitHub README, a tweet, a slide. One link, instant flex.",
+			"Drop a crisp snapshot of your stack anywhere - a GitHub README, a tweet or a slide.",
 		img: `${BASE_URL}/email/feature-share.png`,
 		alt: "An AI Stack rendered as a shareable image",
 		imgWidth: 520,
 	},
 	{
-		label: "// Customize",
+		label: "// Your Style",
 		title: "Customize Your Colors",
 		blurb:
-			"Recolor your stack with a tap. Pick from a curated set of accent presets and make it unmistakably yours.",
+			"Recolor your stack. Pick from a curated set of presets and make it unmistakably yours.",
 		img: `${BASE_URL}/email/feature-colors.png`,
 		alt: "Accent color presets for an AI Stack",
 		imgWidth: 180,
@@ -110,7 +110,7 @@ export function FeatureUpdateEmail(props: {
 				<style>{glowKeyframes}</style>
 			</Head>
 			<Preview>
-				Three new ways to build on {productName}: projects, shareable images,
+				Three new ways to stack on {productName}: projects, shareable images,
 				and accent colors
 			</Preview>
 			<Body style={styles.body}>
@@ -130,7 +130,7 @@ export function FeatureUpdateEmail(props: {
 					{/* Main Content */}
 					<Section style={styles.content}>
 						<Text style={styles.sectionLabel}>{"// What's New"}</Text>
-						<Heading style={styles.h1}>Three New Ways To Build</Heading>
+						<Heading style={styles.h1}>Three New Ways To Stack</Heading>
 						<Text style={styles.p}>
 							We've been busy. {productName} just picked up three upgrades to
 							help you show off your work and make your stack your own.

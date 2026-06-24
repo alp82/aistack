@@ -7,6 +7,7 @@ import { FeatureUpdateEmail } from "../src/emails/FeatureUpdateEmail";
 import { UNSUBSCRIBE_PLACEHOLDER } from "../src/emails/styles";
 import { signUnsubscribeToken } from "./emailToken";
 import { getAppUrl } from "./httpCli";
+import { isAdmin } from "./lib/admin";
 // @ts-ignore - components will be generated after convex dev restarts
 import { internal, components } from "./_generated/api";
 
@@ -232,6 +233,10 @@ export const sendTestEmail = action({
       return { success: false, message: "Not authenticated or no email found" };
     }
 
+    if (!(await isAdmin(ctx))) {
+      return { success: false, message: "Unauthorized" };
+    }
+
     const entry = BROADCASTS[args.broadcastId];
     if (!entry) {
       return { success: false, message: "Unknown broadcast ID" };
@@ -242,15 +247,38 @@ export const sendTestEmail = action({
       return { success: false, message: "Email service not configured" };
     }
 
+    const secret = process.env.BETTER_AUTH_SECRET;
+    if (!secret) {
+      console.error("BETTER_AUTH_SECRET environment variable is not set");
+      return { success: false, message: "Email service not configured" };
+    }
+
+    const appUrl = getAppUrl();
+    if (!appUrl.startsWith("https://")) {
+      console.error("APP_URL is not an https URL — refusing test email to prevent broken unsubscribe links");
+      return { success: false, message: "Email service not configured" };
+    }
+
     const resend = new Resend(process.env.RESEND_API_KEY);
     const html = await entry.render();
+    if (!html.includes(UNSUBSCRIBE_PLACEHOLDER)) {
+      console.error("Rendered template is missing the unsubscribe placeholder");
+      return { success: false, message: "Unsubscribe link missing from template" };
+    }
+
+    const url = (await buildUnsubscribeUrls([identity.email], secret, appUrl)).get(identity.email) ?? "";
+    const personalizedHtml = html.replaceAll(UNSUBSCRIBE_PLACEHOLDER, url);
 
     try {
       const { error } = await resend.emails.send({
         from: process.env.EMAIL_FROM || "onboarding@resend.dev",
         to: identity.email,
         subject: `[TEST] ${entry.subject}`,
-        html,
+        html: personalizedHtml,
+        headers: {
+          "List-Unsubscribe": `<${url}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
       });
 
       if (error) {
@@ -402,6 +430,10 @@ export const sendBroadcast = action({
     ctx,
     args,
   ): Promise<BroadcastSendResult> => {
+    if (!(await isAdmin(ctx))) {
+      return { success: false, sent: 0, failed: 0, message: "Unauthorized" };
+    }
+
     const entry = BROADCASTS[args.broadcastId];
     if (!entry) {
       return { success: false, sent: 0, failed: 0, message: "Unknown broadcast ID" };
