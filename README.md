@@ -1,6 +1,6 @@
 <div align="center">
 
-# <img src="public/aistack-logo.png" alt="AI Stack" width="32" /> AI Stack
+# <img src="public/aistack-logo.png" alt="AI Stack" width="24" /> AI Stack
 
 ### Discover, compare, and share AI technology stacks
 
