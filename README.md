@@ -1,134 +1,136 @@
-# AI Stack
-
 <div align="center">
 
-[![Live Page](https://img.shields.io/badge/Live_Page-aistack.to-blue?style=for-the-badge&logo=web)](https://aistack.to)
+<img src="public/aistack-logo.png" alt="AI Stack" width="88" />
+
+# AI Stack
+
+### Discover, compare, and share AI technology stacks
+
+[![Live](https://shieldcn.dev/badge/Live-aistack.to-84CC16.svg?logo=googlechrome&logoColor=white&variant=branded&size=lg&animate=shimmer)](https://aistack.to)
+[![npm](https://shieldcn.dev/npm/v/@use-aistack/cli.svg?variant=branded)](https://www.npmjs.com/package/@use-aistack/cli)
+
+![Stars, Forks, Issues and License](https://shieldcn.dev/group/github/stars/alp82/aistack+github/forks/alp82/aistack+github/open-issues/alp82/aistack+github/license/alp82/aistack.svg?variant=secondary)
+
+<br>
+
+### **Improve your AI workflow**
+
+<br>
 
 [![AI Stack Demo](public/aistack-demo.gif)](https://aistack.to)
 
-**A curated platform for discovering, comparing, and sharing AI technology stacks**
+<br>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-
-[![Discord](https://img.shields.io/badge/Discord-5865F2?logo=discord&logoColor=white&style=for-the-badge)](https://discord.gg/5y4fpyahaF)
-[![Reddit](https://img.shields.io/badge/Reddit-FF4500?logo=reddit&logoColor=white&style=for-the-badge)](https://www.reddit.com/r/aistackcommunity/)
+[![Discord](https://shieldcn.dev/badge/Discord-join-5865F2.svg?logo=discord&logoColor=white&variant=branded&size=lg)](https://discord.gg/5y4fpyahaF)
+[![Reddit](https://shieldcn.dev/badge/Reddit-community-FF4500.svg?logo=reddit&logoColor=white&variant=branded&size=lg)](https://www.reddit.com/r/aistackcommunity/)
 
 </div>
 
-## 🎯 Purpose
+## 🎯 What is AI Stack
 
-AI Stack is a web application designed to help developers and teams discover, compare, and share AI technology stacks. Whether you're building a new AI-powered application or looking to optimize your existing stack, AI Stack provides a curated collection of tools, frameworks, and libraries to make informed decisions.
+AI Stack helps developers and teams **discover, compare, and share AI technology stacks**. Whether you are building a new AI-powered application or optimizing an existing setup, AI Stack is a curated collection of tools, frameworks, and configs that lets you make informed decisions - and carry your own AI config between machines with one command.
 
 ## ✨ Features
 
-- **Discover** AI tools and frameworks organized by stack
-- **Compare** different stacks side by side and cut costs for your own usage
-- **Share** your own AI stacks with the community
-- **Add Missing Tools** inline during stack creation or in batch mode
-- **Stay Updated** with the latest AI technology trends
-- **Authentication** via email/password and Google SSO
+- 🔍 **Discover** AI tools and frameworks organized by stack
+- ⚖️ **Compare** stacks side by side and cut costs for your own usage
+- 🚀 **Share** your own AI stacks with the community
+- ➕ **Add missing tools** inline during stack creation or in batch mode
+- 🔄 **Sync configs** between your repo and the web with the CLI
+- 🔐 **Authentication** via email/password and Google SSO
 
 ## ⚙️ How It Works
 
-AI Stack has two surfaces that work together:
+AI Stack has two surfaces that work together: the **web app** where you browse and publish, and the **CLI** that bridges your local filesystem with your stack.
 
-1. **The web app** ([aistack.to](https://aistack.to)) — where you browse stacks, compare tools, and publish your own setups. Each stack can group multiple **projects**, and each project holds your actual AI configuration files (prompts, rules, skills, MCP servers).
+```mermaid
+flowchart LR
+    dev(["👩‍💻 Your repo"]) -->|aistack collect| stack[("📦 Your Stack<br/>on aistack.to")]
+    stack -->|browse & compare| world(["🌍 Community"])
+    world -->|fork ideas| stack
+    stack -->|aistack create| any(["🖥️ Any machine"])
+```
 
-2. **The CLI** (`@use-aistack/cli`) — a small tool that bridges your local filesystem with your stack on the web. It scans your project for AI config files and uploads them, or clones someone else's configs into your working directory. No manual copy-paste.
+1. **The web app** ([aistack.to](https://aistack.to)) - where you browse stacks, compare tools, and publish your own setups. Each stack groups multiple **projects**, and each project holds your actual AI config files (prompts, rules, skills, MCP servers).
 
-Typical flow:
+2. **The CLI** (`@use-aistack/cli`) - a small tool that scans your project for AI config files and uploads them, or clones someone else's configs into your working directory. No manual copy-paste.
+
+**Typical flow:**
 
 - Sign up on the web app and create a stack.
-- Run `npx @use-aistack/cli collect` inside your repo to upload your `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, skills, MCP configs, etc. to your stack.
-- Share the stack link. On another machine, run `npx @use-aistack/cli create` to write your stack's AI setup into the current directory.
+- Run `npx @use-aistack/cli collect` inside your repo to upload your `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, skills, and MCP configs to your stack.
+- Share the stack link. On another machine, run `npx @use-aistack/cli create` to write that AI setup into the current directory.
 
 ## 💻 CLI
 
-The CLI is published to npm as [`@use-aistack/cli`](https://www.npmjs.com/package/@use-aistack/cli). Run it on-demand with `npx` — no install required:
+The CLI is published to npm as [`@use-aistack/cli`](https://www.npmjs.com/package/@use-aistack/cli). Run it on demand with `npx` - no install required:
 
 ```sh
 npx @use-aistack/cli <command>
 ```
 
-### Commands
+| Command | What it does |
+|---------|--------------|
+| `login` | Authenticate with your AI Stack account via browser |
+| `collect` | Scan the current project for AI config files and upload them to your stack |
+| `create` | Write your stack's AI config files into the current directory |
 
-#### `npx @use-aistack/cli login`
+`collect` detects: `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, `.cursor/rules/`, `mcp.json`, skill directories, prompts, and global configs (`~/.claude/`, `~/.cursor/`, etc).
 
-Authenticate with your AI Stack account via browser.
-
-```sh
-npx @use-aistack/cli login
-```
-
-#### `npx @use-aistack/cli collect`
-
-Scan the current project for AI config files and upload them to your stack on aistack.to.
-
-```sh
-cd your-project
-npx @use-aistack/cli collect
-```
-
-Detects: `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, `.cursor/rules/`, `mcp.json`, skill directories, prompts, and global configs (`~/.claude/`, `~/.cursor/`, etc).
-
-#### `npx @use-aistack/cli create`
-
-Write your stack's AI config files into the current directory.
-
-```sh
-npx @use-aistack/cli create
-```
-
-### Install globally (optional)
-
-If you'd rather type `aistack` instead of `npx @use-aistack/cli` every time, install it globally:
+**Install globally (optional)** - if you would rather type `aistack` than `npx @use-aistack/cli` every time:
 
 ```sh
 npm i -g @use-aistack/cli
-```
-
-Then the same commands become:
-
-```sh
-aistack login
-aistack collect
-aistack create
+# then: aistack login · aistack collect · aistack create
 ```
 
 ---
 
-# Contributing
+<div align="center">
+
+# 🛠 Contributing
 
 The rest of this document is for contributors working on the AI Stack web app or CLI.
 
-## 🛠 Tech Stack
+</div>
+
+## Tech Stack
+
+<p align="center">
+  <img src="https://shieldcn.dev/badge/TanStack-Start-FF4154.svg?logo=reactquery&logoColor=white&variant=branded" alt="TanStack Start" />
+  <img src="https://shieldcn.dev/badge/React-19-149ECA.svg?logo=react&logoColor=white&variant=branded" alt="React 19" />
+  <img src="https://shieldcn.dev/badge/Tailwind-v4-06B6D4.svg?logo=tailwindcss&logoColor=white&variant=branded" alt="Tailwind CSS v4" />
+  <img src="https://shieldcn.dev/badge/TypeScript-5-3178C6.svg?logo=typescript&logoColor=white&variant=branded" alt="TypeScript" />
+  <img src="https://shieldcn.dev/badge/Convex-backend-EE342F.svg?logo=convex&logoColor=white&variant=branded" alt="Convex" />
+  <img src="https://shieldcn.dev/badge/Better_Auth-auth-000000.svg?logo=auth0&logoColor=white&variant=branded" alt="Better Auth" />
+  <img src="https://shieldcn.dev/badge/Vite-build-646CFF.svg?logo=vite&logoColor=white&variant=branded" alt="Vite" />
+  <img src="https://shieldcn.dev/badge/pnpm-pkgs-F69220.svg?logo=pnpm&logoColor=white&variant=branded" alt="pnpm" />
+  <img src="https://shieldcn.dev/badge/Biome-lint-60A5FA.svg?logo=biome&logoColor=white&variant=branded" alt="Biome" />
+  <img src="https://shieldcn.dev/badge/Vitest-test-6E9F18.svg?logo=vitest&logoColor=white&variant=branded" alt="Vitest" />
+  <img src="https://shieldcn.dev/badge/PostHog-analytics-1D4AFF.svg?logo=posthog&logoColor=white&variant=branded" alt="PostHog" />
+</p>
 
 ### Frontend
-- **Framework**: [TanStack Start](https://tanstack.com/start) - Full-stack React framework
-- **UI Library**: [React 19](https://react.dev/) - Latest React with concurrent features
-- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) - Utility-first CSS framework
-- **Icons**: [Lucide React](https://lucide.dev/) - Beautiful & consistent icons
-- **Animations**: [Motion](https://motion.dev/) & [GSAP](https://greensock.com/gsap/) - Smooth animations
-- **Components**: [Radix UI](https://www.radix-ui.com/) - Accessible component primitives
+- **Framework**: [TanStack Start](https://tanstack.com/start) - full-stack React framework
+- **UI Library**: [React 19](https://react.dev/) - latest React with concurrent features
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) - utility-first CSS framework
+- **Icons**: [Lucide React](https://lucide.dev/) - beautiful & consistent icons
+- **Animations**: [Motion](https://motion.dev/) & [GSAP](https://greensock.com/gsap/) - smooth animations
+- **Components**: [Radix UI](https://www.radix-ui.com/) - accessible component primitives
 
 ### Backend & Data
-- **Backend**: [Convex](https://convex.dev/) - Serverless database and backend functions
-- **Authentication**: [Better Auth](https://better-auth.com/) - Modern authentication solution
-- **State Management**: [TanStack Query](https://tanstack.com/query) - Server state management
-- **Forms**: [TanStack Forms](https://tanstack.com/form) - Type-safe form handling
+- **Backend**: [Convex](https://convex.dev/) - serverless database and backend functions
+- **Authentication**: [Better Auth](https://better-auth.com/) - modern authentication solution
+- **State Management**: [TanStack Query](https://tanstack.com/query) - server state management
+- **Forms**: [TanStack Forms](https://tanstack.com/form) - type-safe form handling
 
 ### Development Tools
-- **Language**: [TypeScript](https://www.typescriptlang.org/) - Type-safe JavaScript
-- **Build Tool**: [Vite](https://vitejs.dev/) - Fast build tool and dev server
-- **Package Manager**: [pnpm](https://pnpm.io/) - Fast, disk space efficient package manager
-- **Linting/Formatting**: [Biome](https://biomejs.dev/) - All-in-one toolchain
-- **Testing**: [Vitest](https://vitest.dev/) - Fast unit testing framework
-
-### Analytics
-- **Analytics**: [PostHog](https://posthog.com/) - Product analytics suite
+- **Language**: [TypeScript](https://www.typescriptlang.org/) - type-safe JavaScript
+- **Build Tool**: [Vite](https://vitejs.dev/) - fast build tool and dev server
+- **Package Manager**: [pnpm](https://pnpm.io/) - fast, disk-space-efficient package manager
+- **Linting/Formatting**: [Biome](https://biomejs.dev/) - all-in-one toolchain
+- **Testing**: [Vitest](https://vitest.dev/) - fast unit testing framework
+- **Analytics**: [PostHog](https://posthog.com/) - product analytics suite
 
 ## 📁 Project Structure
 
@@ -144,14 +146,11 @@ aistack/              # Main web application
 └── README.md         # You are here
 ```
 
-### Frontend Architecture Notes
+**Frontend architecture notes**
 
 - Route files should stay composition-focused (data fetch + section orchestration).
 - Landing page is organized under `src/features/landing/*`.
-- Stack editor is organized under `src/features/stack-editor/*` with:
-  - section components in `sections/*`
-  - reducer/selectors/hooks in `state/*`
-  - status computation in `editor-status.ts`
+- Stack editor is organized under `src/features/stack-editor/*` with section components in `sections/*`, reducer/selectors/hooks in `state/*`, and status computation in `editor-status.ts`.
 - Reusable visual wrappers live under `src/components/system/*`.
 
 ## 🚀 Getting Started
@@ -164,40 +163,29 @@ aistack/              # Main web application
 
 ### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/alp82/aistack.git
-   cd aistack
-   ```
+```bash
+# 1. Clone the repository
+git clone https://github.com/alp82/aistack.git
+cd aistack
 
-2. **Install dependencies**
-   ```bash
-   pnpm install
-   ```
+# 2. Install dependencies
+pnpm install
 
-3. **Set up environment variables**
-   ```bash
-   # Copy the example environment file
-   cp .env.example .env.local
-   
-   # Configure your environment variables
-   # VITE_CONVEX_URL and CONVEX_DEPLOYMENT are required
-   ```
+# 3. Set up environment variables
+cp .env.example .env.local
+# VITE_CONVEX_URL and CONVEX_DEPLOYMENT are required
 
-4. **Initialize Convex**
-   ```bash
-   pnpm convex dev
-   ```
-   This will automatically set up your Convex deployment and update your environment variables.
+# 4. Initialize Convex (sets up your deployment + env vars)
+pnpm convex dev
 
-5. **Start the development server**
-   ```bash
-   pnpm dev
-   ```
+# 5. Start the development server
+pnpm dev
+```
 
-   The application will be available at:
-   - Frontend: http://localhost:3019
-   - Convex Dashboard: http://localhost:3210
+The application will be available at:
+
+- **Frontend**: http://localhost:3019
+- **Convex Dashboard**: http://localhost:3210
 
 ## 📜 Available Scripts
 
@@ -221,14 +209,9 @@ pnpm test         # Run unit tests with Vitest
 
 ## 🧪 Testing
 
-The project uses [Vitest](https://vitest.dev/) for unit testing. Tests are located in the `src/**/__tests__` directories.
+The project uses [Vitest](https://vitest.dev/) for unit testing. Tests live in `src/**/__tests__` directories.
 
-Vitest is configured in `vite.config.ts` with:
-
-- `test.environment = "jsdom"`
-- `test.setupFiles = ["./src/test/setup.ts"]`
-
-`src/test/setup.ts` loads `@testing-library/jest-dom/vitest` matchers for DOM assertions.
+Vitest is configured in `vite.config.ts` with `test.environment = "jsdom"` and `test.setupFiles = ["./src/test/setup.ts"]`. `src/test/setup.ts` loads `@testing-library/jest-dom/vitest` matchers for DOM assertions.
 
 ```bash
 # Run all tests
@@ -237,10 +220,10 @@ pnpm test
 # Run a single test file
 pnpm vitest run src/features/stack-editor/state/__tests__/editor-reducer.test.ts
 
-# Run tests in watch mode
+# Watch mode
 pnpm test --watch
 
-# Generate coverage report
+# Coverage report
 pnpm test --coverage
 ```
 
@@ -252,26 +235,17 @@ This project uses [Shadcn UI](https://ui.shadcn.com/) components. Add new compon
 pnpm dlx shadcn@latest add [component-name]
 ```
 
+> **Design note:** No border-radius (sharp corners throughout), monospace fonts for buttons/labels/technical accents, and **lime** as the brand color.
+
 ## 📊 Development Notes
 
-- The development server runs on `http://localhost:3019`
-- The Convex backend runs on `http://localhost:3210`
-- Both servers should remain running during development
-- Use Chrome DevTools MCP for debugging and reviewing code updates
-- **Dev Admin Access**: In development mode, a "Dev Admin Login" button appears on the login page. It signs in as `dev-admin@example.com` with admin privileges. This requires the Convex env var `IS_DEV=true` to be set (email verification is also skipped when `IS_DEV=true`)
+- The development server runs on `http://localhost:3019`; the Convex backend on `http://localhost:3210`. Both should stay running during development.
+- Use Chrome DevTools MCP for debugging and reviewing code updates.
+- **Dev Admin Access**: in development mode, a "Dev Admin Login" button appears on the login page. It signs in as `dev-admin@example.com` with admin privileges. Requires the Convex env var `IS_DEV=true` (email verification is also skipped when `IS_DEV=true`).
 
-## Database Migrations
+## 🗄 Database Migrations
 
-Migration scripts are located in `convex/migrations/`. Run them via the Convex Dashboard or CLI.
-
-### Running Migrations via Convex Dashboard
-
-1. Open your Convex Dashboard at https://dashboard.convex.dev
-2. Navigate to your project → **Functions** tab
-3. Find the migration function under `migrations/`
-4. Click on the function and use **Run Function** to execute it
-
-### Running Migrations via CLI
+Migration scripts live in `convex/migrations/`. Run them via the Convex Dashboard (**Functions** tab → pick the function → **Run Function**) or the CLI:
 
 ```bash
 # Run an internal query (read-only, for previews)
@@ -281,84 +255,82 @@ npx convex run migrations/backup:exportStackDescriptions
 npx convex run migrations/populateShortIds:populateAllShortIds
 ```
 
-### Available Migration Scripts
+### Available migration scripts
 
-#### `migrations/backup.ts` - Backup & Restore
+**`migrations/backup.ts`** - Backup & Restore
 
 | Function | Type | Description |
 |----------|------|-------------|
 | `exportStackDescriptions` | Query | Export all stack descriptions as JSON backup |
 | `exportShortIdMappings` | Query | Export tool/model/bundle shortId mappings |
 | `restoreStackDescription` | Mutation | Restore a single stack from backup |
-| `restoreStackDescriptionsBatch` | Mutation | Restore multiple stacks from backup array |
+| `restoreStackDescriptionsBatch` | Mutation | Restore multiple stacks from a backup array |
 
-#### `migrations/populateShortIds.ts` - ShortId Population
+**`migrations/populateShortIds.ts`** - ShortId Population
 
 | Function | Type | Description |
 |----------|------|-------------|
-| `getMissingCounts` | Query | Check how many records are missing shortId |
+| `getMissingCounts` | Query | Check how many records are missing a shortId |
 | `populateAllShortIds` | Mutation | Populate shortIds for all tools, models, bundles |
 | `populateToolShortIds` | Mutation | Populate shortIds for tools only |
 | `populateModelShortIds` | Mutation | Populate shortIds for models only |
 | `populateBundleShortIds` | Mutation | Populate shortIds for bundles only |
 
-#### `migrations/migrateStackDescriptions.ts` - Description Migration
+**`migrations/migrateStackDescriptions.ts`** - Description Migration
 
 | Function | Type | Description |
 |----------|------|-------------|
-| `getStackCounts` | Query | Count stacks with legacy blocks (iconurl attributes) |
+| `getStackCounts` | Query | Count stacks with legacy blocks (iconUrl attributes) |
 | `dryRunMigration` | Query | Preview what would be migrated without changes |
 | `previewStackMigration` | Query | Preview migration for a single stack |
 | `migrateAllStackDescriptions` | Mutation | Run the actual migration on all stacks |
 
-### Migration Workflow
+### Migration workflow
 
-**Before running migrations on production, always create a backup first!**
+> ⚠️ **Before running migrations on production, always create a backup first.**
 
 ```bash
-# Step 1: Backup existing stack descriptions
+# 1. Backup existing stack descriptions
 npx convex run migrations/backup:exportStackDescriptions > backup-stacks.json
 
-# Step 2: Check how many records need shortId population
+# 2. Check how many records need shortId population
 npx convex run migrations/populateShortIds:getMissingCounts
 
-# Step 3: Populate shortIds for tools, models, and bundles
+# 3. Populate shortIds for tools, models, and bundles
 npx convex run migrations/populateShortIds:populateAllShortIds
 
-# Step 4: Preview description migration (dry run)
+# 4. Preview description migration (dry run)
 npx convex run migrations/migrateStackDescriptions:dryRunMigration
 
-# Step 5: Run the actual description migration
+# 5. Run the actual description migration
 npx convex run migrations/migrateStackDescriptions:migrateAllStackDescriptions
 ```
 
-### Restoring from Backup
-
-If something goes wrong, restore from your backup:
+**Restoring from backup**
 
 ```bash
-# For a single stack
+# Single stack
 npx convex run migrations/backup:restoreStackDescription \
   '{"stackId": "k1234...", "description": "<p>Original content...</p>"}'
 
-# For multiple stacks (pass JSON array)
+# Multiple stacks (pass a JSON array)
 npx convex run migrations/backup:restoreStackDescriptionsBatch \
   '{"backups": [{"stackId": "k1234...", "description": "..."}]}'
 ```
 
-## 🤝 Contributing
+## 🤝 How to Contribute
 
-Contributions are welcome! Please read our contributing guidelines and submit pull requests to the main branch.
+Contributions are welcome.
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+5. Open a Pull Request against `main`
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🔗 Links
 
@@ -367,12 +339,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Tailwind CSS](https://tailwindcss.com/docs)
 - [Better Auth](https://better-auth.com/docs)
 
-## 📞 Support
-
-If you have any questions or need help, please open an issue on GitHub.
-
 ---
 
 <div align="center">
-Made with ❤️ by Alper Ortac: https://x.com/alperortac
+
+**Built with 💚 by Alper Ortac** &middot; [x.com/alperortac](https://x.com/alperortac)
+
+[![Live](https://shieldcn.dev/badge/Visit-aistack.to-84CC16.svg?logo=googlechrome&logoColor=white&variant=branded&size=lg)](https://aistack.to)
+
 </div>

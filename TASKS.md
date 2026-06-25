@@ -4,8 +4,6 @@
 * description/workflow:
     * per project
     * per tool
-* aistack on shieldcn
-* shieldcn in readme
 * github actions security (see below)
 * show real prices without sponsoring/discounts
     * dev.to
@@ -35,11 +33,9 @@
     * npx aistack create
 * stacks and projects structure
     * use https://trees.software
-    * project card ugly
     * nicer description cards - with remove button
     * model card: replace with other version
     * reorder tools and models
-    * project back navigation more obvious
     * mermaid diagrams
 * integrate with profiles
     * codex: https://x.com/OpenAIDevs/status/2062674774644687268
