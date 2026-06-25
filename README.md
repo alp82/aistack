@@ -1,23 +1,21 @@
 <div align="center">
 
-<img src="public/aistack-logo.png" alt="AI Stack" width="88" />
-
-# AI Stack
+# <img src="public/aistack-logo.png" alt="AI Stack" width="32" /> AI Stack
 
 ### Discover, compare, and share AI technology stacks
 
-[![Live](https://shieldcn.dev/badge/Live-aistack.to-84CC16.svg?logo=googlechrome&logoColor=white&variant=branded&size=lg&animate=shimmer)](https://aistack.to)
+[![Live](https://shieldcn.dev/badge/Live-aistack.to-84CC16.svg?logo=googlechrome&logoColor=white&variant=branded&animate=shimmer)](https://aistack.to)
 [![npm](https://shieldcn.dev/npm/v/@use-aistack/cli.svg?variant=branded)](https://www.npmjs.com/package/@use-aistack/cli)
 
 ![Stars, Forks, Issues and License](https://shieldcn.dev/group/github/stars/alp82/aistack+github/forks/alp82/aistack+github/open-issues/alp82/aistack+github/license/alp82/aistack.svg?variant=secondary)
 
 <br>
 
-### **Improve your AI workflow**
+[![AI Stack Demo](public/aistack-demo.gif)](https://aistack.to)
 
 <br>
 
-[![AI Stack Demo](public/aistack-demo.gif)](https://aistack.to)
+### **Improve your AI workflow**
 
 <br>
 
