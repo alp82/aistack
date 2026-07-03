@@ -329,7 +329,7 @@ function BrowseStacksPage() {
 											),
 								)}
 							>
-								{filter.label} {filter.count && `(${filter.count})`}
+								{filter.label} {filter.count > 0 && `(${filter.count})`}
 							</button>
 						))}
 					</div>

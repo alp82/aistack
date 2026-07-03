@@ -1,5 +1,5 @@
-import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import type { ConvexQueryClient } from "@convex-dev/react-query";
+import { ConvexProviderWithAuth } from "convex/react";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
 import {
@@ -17,8 +17,12 @@ import { Footer } from "../components/Footer";
 import Header from "../components/Header";
 import PosthogProvider from "../integrations/posthog/provider";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
-import { authClient } from "../lib/auth-client";
 import { getToken } from "../lib/auth-server";
+import {
+	AUTH_TOKEN_TIMEOUT_MS,
+	useConvexAuthFromBetterAuth,
+	withTimeoutToNull,
+} from "../lib/convex-auth";
 import { ThemeProvider } from "../lib/theme";
 import appCss from "../styles.css?url";
 
@@ -94,7 +98,10 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 	beforeLoad: async (ctx) => {
 		const token = await ctx.context.queryClient.ensureQueryData({
 			queryKey: ["auth-token"],
-			queryFn: async () => (await getAuth()) ?? null,
+			// Bounded so a hung token endpoint can never stall the SSR HTML
+			// response; a rejected server-fn call also degrades to null.
+			queryFn: async () =>
+				(await withTimeoutToNull(getAuth(), AUTH_TOKEN_TIMEOUT_MS)) ?? null,
 			staleTime: Number.POSITIVE_INFINITY,
 		});
 		if (token) {
@@ -111,18 +118,18 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 function RootComponent() {
 	const context = useRouteContext({ from: Route.id });
+	const useAuth = useConvexAuthFromBetterAuth(context.token);
 	return (
-		<ConvexBetterAuthProvider
+		<ConvexProviderWithAuth
 			client={context.convexQueryClient.convexClient}
-			authClient={authClient}
-			initialToken={context.token}
+			useAuth={useAuth}
 		>
 			<PosthogProvider>
 				<RootDocument>
 					<Outlet />
 				</RootDocument>
 			</PosthogProvider>
-		</ConvexBetterAuthProvider>
+		</ConvexProviderWithAuth>
 	);
 }
 

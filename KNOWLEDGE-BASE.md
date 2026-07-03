@@ -1,5 +1,8 @@
 ~/.claude/research/ai-coding-quality-systems-2026-03.md
 
+news:
+https://aicrier.com
+
 individual stacks & workflows:
 https://github.com/mattpocock/skills
 https://github.com/jal-co/jalco-pi-mono
@@ -39,6 +42,7 @@ https://www.youtube.com/watch?v=0cVuMHaYEHE
 https://agentclientprotocol.com/get-started/clients
 
 parallelization, orchestration & agent teams:
+https://omp.sh
 https://air.dev
 https://dmux.ai
 https://cmux.com
@@ -87,6 +91,9 @@ harness alternatives:
 hermes
 opencode
 https://github.com/earendil-works/pi
+
+claude tips:
+https://claudelog.com
 
 codex tips:
 https://x.com/LifeOfShandi/status/2059357818709524740
@@ -175,6 +182,7 @@ animation / motion:
 https://animations.dev/vocabulary
 
 videos creation:
+https://remocn.dev
 https://editframe.com
 https://github.com/r2hu1/skate
 https://github.com/av/remotion-bits
@@ -223,9 +231,10 @@ https://www.aihero.dev/never-run-claude-init
 complexity management
 assign budgets
 
-TDD & SDD:
+TDD & SDD & UX Testing:
 https://openspec.dev
 https://ccforeveryone.com/gsd
+https://github.com/noemit/tardigrade
 https://martinfowler.com/articles/practical-test-pyramid.html
 
 product and documentation:

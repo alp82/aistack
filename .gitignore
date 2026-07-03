@@ -16,3 +16,4 @@ todos.json
 .worktrees/
 .playwright-cli
 .dmux/
+.alp-river/
