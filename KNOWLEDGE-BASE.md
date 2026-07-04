@@ -69,6 +69,7 @@ https://github.com/ruvnet/ruflo
 https://github.com/stablyai/orca
 https://github.com/maddada/VSmux
 https://github.com/RunMaestro/Maestro
+https://vercel.com/blog/introducing-eve
 https://github.com/superset-sh/superset
 https://github.com/RightNow-AI/openfang
 https://github.com/spot-techno/shelldeck
