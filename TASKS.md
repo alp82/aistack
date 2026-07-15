@@ -1,3 +1,4 @@
+* explore aicoolies: https://aicoolies.com/dev/rasitakyol
 * price tiers for sibling products:
     * claude code vs claude ai
     * new data model
