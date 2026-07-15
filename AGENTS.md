@@ -47,6 +47,20 @@ Auth: the script talks HTTP to Convex via `ConvexHttpClient` with admin auth
 (no CLI shelling, no stdout parsing). It auto-detects a local anonymous
 backend when env vars aren't set.
 
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs live in the `alp82/aistack` GitHub Issues, managed via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles, each label string equal to its name. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
 Idempotent — a second run skips every row that already has an
 `iconStorageId`. Data URIs are decoded, http URLs are fetched (8s timeout),
 ICOs are decoded via `decode-ico` (largest entry), and everything is sharp'd
