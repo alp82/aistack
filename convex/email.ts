@@ -1,4 +1,4 @@
-import { action, internalMutation, internalQuery, query } from "./_generated/server";
+import { action, internalAction, internalMutation, internalQuery, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Resend } from "resend";
 import { render } from "@react-email/render";
@@ -87,7 +87,7 @@ const BROADCASTS: Record<
   },
 };
 
-export const sendWaitlistConfirmEmail = action({
+export const sendWaitlistConfirmEmail = internalAction({
   args: {
     email: v.string(),
     lookupId: v.string(),
