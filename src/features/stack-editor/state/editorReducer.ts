@@ -22,8 +22,12 @@ function extractShortId(compositeSlug: string): string {
 	return compositeSlug.slice(lastHyphen + 1);
 }
 
-function getDraftKey(slug?: string): string {
-	return slug ? `stackDraft-${extractShortId(slug)}` : "stackDraft-new";
+// Create drafts are scoped by auth identity so a signed-in user's unsaved
+// draft (name, avatar, tools, …) never surfaces on the guest editor after
+// logout, and guest edits can't clobber the user's draft.
+function getDraftKey(slug?: string, creatorId?: string): string {
+	if (slug) return `stackDraft-${extractShortId(slug)}`;
+	return creatorId ? `stackDraft-new-user:${creatorId}` : "stackDraft-new-guest";
 }
 
 type EditorSection = (typeof sectionOrder)[number];
@@ -139,18 +143,37 @@ function getInitialEditorState(args: {
 	initialValue?: StackEditorInitialValue;
 	mode?: "create" | "edit";
 	guestSession?: boolean;
+	creatorId?: string;
 }): EditorState {
-	const { actor, initialValue, mode } = args;
+	const { actor, initialValue, mode, creatorId } = args;
 
 	// Extract first personal page URL (for X/portfolio)
 	const personalPageUrl =
 		actor.personalPages?.find((p) => p.name !== "X")?.url ?? "";
 
-	// Load from localStorage using scoped key (per-stack for edit, shared for create)
-	const draftKey = getDraftKey(initialValue?.slug);
+	// Load from localStorage using scoped key (per-stack for edit,
+	// per-auth-identity for create)
+	const draftKey = getDraftKey(initialValue?.slug, creatorId);
 	let savedDraft: Partial<GuestStackDraft> | null = null;
 	if ((mode === "create" || mode === "edit") && typeof window !== "undefined") {
-		const saved = localStorage.getItem(draftKey);
+		let saved = localStorage.getItem(draftKey);
+		if (mode === "create") {
+			// A signed-in user with no draft of their own adopts the guest draft —
+			// this is the guest → sign-in → publish continuation. Move semantics:
+			// once adopted, the guest key is cleared so the content doesn't
+			// resurface for later guests.
+			if (!saved && creatorId) {
+				const guestKey = getDraftKey();
+				saved = localStorage.getItem(guestKey);
+				if (saved) {
+					localStorage.setItem(draftKey, saved);
+					localStorage.removeItem(guestKey);
+				}
+			}
+			// The pre-scoping shared key can hold another identity's draft — drop it
+			// rather than adopt it.
+			localStorage.removeItem("stackDraft-new");
+		}
 		if (saved) {
 			try {
 				savedDraft = JSON.parse(saved);

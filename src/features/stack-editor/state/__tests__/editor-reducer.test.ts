@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import type { StagedProject } from "@/components/projects/types";
 import {
 	editorReducer,
@@ -718,5 +718,85 @@ describe("editor reducer", () => {
 			mode: "edit",
 		});
 		expect((state as Record<string, unknown>).accentPreset).toBe("");
+	});
+});
+
+describe("auth-scoped create draft keys", () => {
+	beforeEach(() => {
+		localStorage.clear();
+	});
+
+	const draft = (name: string) => JSON.stringify({ name });
+
+	it("guest create session does not see a signed-in user's draft", () => {
+		localStorage.setItem("stackDraft-new-user:creators:abc", draft("Secret"));
+
+		const state = getInitialEditorState({
+			actor: {},
+			mode: "create",
+			guestSession: true,
+		});
+
+		expect(state.name).not.toBe("Secret");
+		expect(localStorage.getItem("stackDraft-new-user:creators:abc")).toBe(
+			draft("Secret"),
+		);
+	});
+
+	it("signed-in user restores their own scoped draft", () => {
+		localStorage.setItem("stackDraft-new-user:creators:abc", draft("Mine"));
+
+		const state = getInitialEditorState({
+			actor: {},
+			mode: "create",
+			creatorId: "creators:abc",
+		});
+
+		expect(state.name).toBe("Mine");
+	});
+
+	it("signed-in user with no draft adopts the guest draft (move semantics)", () => {
+		localStorage.setItem("stackDraft-new-guest", draft("Guest work"));
+
+		const state = getInitialEditorState({
+			actor: {},
+			mode: "create",
+			creatorId: "creators:abc",
+		});
+
+		expect(state.name).toBe("Guest work");
+		expect(localStorage.getItem("stackDraft-new-guest")).toBeNull();
+		expect(localStorage.getItem("stackDraft-new-user:creators:abc")).toBe(
+			draft("Guest work"),
+		);
+	});
+
+	it("signed-in user's own draft wins over a lingering guest draft", () => {
+		localStorage.setItem("stackDraft-new-user:creators:abc", draft("Mine"));
+		localStorage.setItem("stackDraft-new-guest", draft("Guest work"));
+
+		const state = getInitialEditorState({
+			actor: {},
+			mode: "create",
+			creatorId: "creators:abc",
+		});
+
+		expect(state.name).toBe("Mine");
+		expect(localStorage.getItem("stackDraft-new-guest")).toBe(
+			draft("Guest work"),
+		);
+	});
+
+	it("legacy shared stackDraft-new key is dropped, never adopted", () => {
+		localStorage.setItem("stackDraft-new", draft("Legacy"));
+
+		const guestState = getInitialEditorState({
+			actor: {},
+			mode: "create",
+			guestSession: true,
+		});
+
+		expect(guestState.name).not.toBe("Legacy");
+		expect(localStorage.getItem("stackDraft-new")).toBeNull();
 	});
 });

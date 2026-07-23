@@ -131,6 +131,8 @@ export function StackEditor({
 	const updateCreatorProfile = useMutation(api.creators.updateProfile);
 	const generateUploadUrl = useMutation(api.files.generateUploadUrl);
 
+	const creatorId = guestSession ? undefined : actor._id;
+
 	const {
 		state,
 		setBundleSubscriptions,
@@ -158,6 +160,7 @@ export function StackEditor({
 		guestSession,
 		actor,
 		initialValue,
+		creatorId,
 	});
 
 	const allTools = useQuery(api.tools.listForEditor) ?? [];
@@ -318,7 +321,7 @@ export function StackEditor({
 					...payload,
 					avatarStorageId: payload.avatarStorageId ?? undefined,
 				});
-				localStorage.removeItem(getDraftKey(undefined));
+				localStorage.removeItem(getDraftKey(undefined, creatorId));
 				onNavigating?.();
 				navigate({ to: "/stacks/$slug", params: { slug: result.slug } });
 				return;
