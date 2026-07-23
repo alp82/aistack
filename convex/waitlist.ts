@@ -1,6 +1,6 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
-import { api } from './_generated/api'
+import { internal } from './_generated/api'
 import { v4 as uuidv4 } from 'uuid'
 
 export const joinWaitlist = mutation({
@@ -32,7 +32,7 @@ export const joinWaitlist = mutation({
     })
 
     // Send confirmation email (non-blocking)
-    ctx.scheduler.runAfter(0, api.email.sendWaitlistConfirmEmail, {
+    ctx.scheduler.runAfter(0, internal.email.sendWaitlistConfirmEmail, {
       email: args.email.toLowerCase(),
       lookupId,
     }).catch((error: unknown) => {
@@ -81,7 +81,7 @@ export const joinWaitlistWithAuth = mutation({
     })
 
     // Send confirmation email (non-blocking)
-    ctx.scheduler.runAfter(0, api.email.sendWaitlistConfirmEmail, {
+    ctx.scheduler.runAfter(0, internal.email.sendWaitlistConfirmEmail, {
       email: user.email!,
       lookupId,
     }).catch((error: unknown) => {

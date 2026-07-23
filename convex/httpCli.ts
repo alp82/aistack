@@ -1,5 +1,5 @@
 import { httpAction } from './_generated/server'
-import { api, internal } from './_generated/api'
+import { internal } from './_generated/api'
 import type { Id } from './_generated/dataModel'
 
 const USER_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -75,7 +75,7 @@ export const authPoll = httpAction(async (ctx, request) => {
     return jsonResponse({ error: 'Missing secretId parameter' }, 400)
   }
 
-  const session = await ctx.runQuery(api.cliSessions.getBySecretId, { secretId })
+  const session = await ctx.runQuery(internal.cliSessions.getBySecretId, { secretId })
 
   if (!session || session.expiresAt <= Date.now()) {
     return jsonResponse({ status: 'expired' })
