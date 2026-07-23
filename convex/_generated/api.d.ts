@@ -36,7 +36,6 @@ import type * as migrations__archived_migrateStackDescriptions from "../migratio
 import type * as migrations__archived_populateShortIds from "../migrations/_archived/populateShortIds.js";
 import type * as migrations_backup from "../migrations/backup.js";
 import type * as migrations_icons from "../migrations/icons.js";
-import type * as migrations_profileDecoupling from "../migrations/profileDecoupling.js";
 import type * as models from "../models.js";
 import type * as projects from "../projects.js";
 import type * as rateLimit from "../rateLimit.js";
@@ -86,7 +85,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/_archived/populateShortIds": typeof migrations__archived_populateShortIds;
   "migrations/backup": typeof migrations_backup;
   "migrations/icons": typeof migrations_icons;
-  "migrations/profileDecoupling": typeof migrations_profileDecoupling;
   models: typeof models;
   projects: typeof projects;
   rateLimit: typeof rateLimit;

@@ -184,9 +184,6 @@ export default defineSchema({
     teamSize: v.optional(v.number()),
     oneLiner: v.string(),
     description: v.optional(v.string()),
-    stackImageUrl: v.optional(v.string()),
-    avatarStorageId: v.optional(v.id('_storage')),
-    personalPageUrl: v.optional(v.string()),
     accentPreset: v.optional(v.string()),
     toolSubscriptions: v.array(
       v.object({

@@ -54,7 +54,6 @@ async function seedStack(
   opts: {
     creatorId: Id<'creators'>
     slug: string
-    avatarStorageId?: Id<'_storage'>
   },
 ): Promise<Id<'stacks'>> {
   const now = Date.now()
@@ -68,7 +67,6 @@ async function seedStack(
       toolSubscriptions: [],
       hasUsageComponent: false,
       published: false,
-      avatarStorageId: opts.avatarStorageId,
       createdAt: now,
       updatedAt: now,
     }),
@@ -84,29 +82,15 @@ async function seedBlob(t: ReturnType<typeof convexTest>): Promise<Id<'_storage'
 }
 
 // ---------------------------------------------------------------------------
-// TC-GC-01: _collectReferencedStorageIds includes stacks.avatarStorageId (RED)
+// TC-GC-01: retired with stacks.avatarStorageId (Phase C narrow) — creator
+// avatars are covered by TC-GC-06.
 // ---------------------------------------------------------------------------
 
-test('TC-GC-01: _collectReferencedStorageIds includes a stacks.avatarStorageId', async () => {
-  const t = convexTest(schema, modules)
-  const storageId = await seedBlob(t)
-  const creatorId = await seedCreator(t, 'gc-creator-01')
-  await seedStack(t, { creatorId, slug: 'gc-stack-01', avatarStorageId: storageId })
-
-  // _collectReferencedStorageIds is an internalQuery — call via t.run using
-  // ctx.runQuery on the internal reference (convex-test exposes internal via t.run)
-  const referenced: string[] = await t.run(async (ctx) =>
-    ctx.runQuery(internal.iconStorage._collectReferencedStorageIds, {}),
-  )
-
-  expect(referenced).toContain(storageId)
-})
-
 // ---------------------------------------------------------------------------
-// TC-GC-02: excludes stacks without avatarStorageId; includes tool iconStorageIds; no nulls (RED)
+// TC-GC-02: stacks reference no storage; includes tool iconStorageIds; no nulls
 // ---------------------------------------------------------------------------
 
-test('TC-GC-02: excludes stacks without avatarStorageId; includes tool iconStorageIds; no null entries', async () => {
+test('TC-GC-02: stacks reference no storage; includes tool iconStorageIds; no null entries', async () => {
   const t = convexTest(schema, modules)
   const toolStorageId = await seedBlob(t)
   const creatorId = await seedCreator(t, 'gc-creator-02')

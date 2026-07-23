@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { motion } from "framer-motion";
-import { ArrowRight, Box, User } from "lucide-react";
+import { ArrowRight, Box } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CategoryLabel } from "@/components/CategoryLabel";
 import { PriceDisplay } from "@/components/PriceDisplay";
@@ -43,7 +43,6 @@ function StackCard({ stack }: StackCardProps) {
 	const displayTools = sortToolsByPrice(
 		stack.tools.filter((t) => t.kind === "main"),
 	).slice(0, 6);
-	const personalPageUrl = stack.personalPageUrl;
 	const categories = [
 		...new Set(stack.tools.flatMap((tool) => tool.categories)),
 	].slice(0, 2);
@@ -116,18 +115,6 @@ function StackCard({ stack }: StackCardProps) {
 											</svg>
 											<span className="truncate max-w-[75px]">
 												@{stack.creator.xHandle}
-											</span>
-										</span>
-									)}
-									{personalPageUrl && (
-										<span className="inline-flex items-center gap-1 font-mono text-[10px] text-fg-muted transition-colors shrink-0">
-											<User className="size-3 shrink-0" />
-											<span className="truncate max-w-[75px]">
-												{
-													personalPageUrl
-														.replace(/^https?:\/\//, "")
-														.split("/")[0]
-												}
 											</span>
 										</span>
 									)}

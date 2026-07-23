@@ -261,7 +261,7 @@ test('TC-J-01: stacks.update with only stack fields does not alter any project p
 // Group K — create() with avatarStorageId (RED: arg not yet accepted)
 // ---------------------------------------------------------------------------
 
-test('TC-K-01: create accepts avatarStorageId but no longer persists it (identity lives on the creator)', async () => {
+test('TC-K-01: create rejects the retired avatarStorageId arg (Phase C narrow)', async () => {
   const t = convexTest(schema, modules)
   const { asCreator } = await seedAuthenticatedCreator(t, {
     userId: 'user-k01',
@@ -269,14 +269,12 @@ test('TC-K-01: create accepts avatarStorageId but no longer persists it (identit
   })
   const storageId = await seedStorageBlob(t)
 
-  const result = await asCreator.mutation(api.stacks.create, {
-    ...minimalCreateArgs,
-    // Accepted for stale-tab tolerance (Phase A), ignored by the handler.
-    avatarStorageId: storageId,
-  } as never)
-
-  const row = await t.run(async (ctx: MutationCtx) => ctx.db.get(result._id))
-  expect(row?.avatarStorageId).toBeUndefined()
+  await expect(
+    asCreator.mutation(api.stacks.create, {
+      ...minimalCreateArgs,
+      avatarStorageId: storageId,
+    } as never),
+  ).rejects.toThrow(/unexpected field/i)
 })
 
 test('TC-K-02: create with avatarStorageId omitted → row.avatarStorageId is undefined', async () => {
@@ -315,7 +313,7 @@ test('TC-K-03: create passing a plain string as avatarStorageId → validator th
 
 async function seedStackForUpdate(
   t: ReturnType<typeof convexTest>,
-  opts: { userId: string; slug: string; avatarStorageId?: Id<'_storage'> },
+  opts: { userId: string; slug: string },
 ): Promise<{ stackId: Id<'stacks'>; creatorId: Id<'creators'>; asCreator: ReturnType<typeof t.withIdentity> }> {
   const { creatorId, asCreator } = await seedAuthenticatedCreator(t, opts)
   const now = Date.now()
@@ -331,13 +329,12 @@ async function seedStackForUpdate(
       published: false,
       createdAt: now,
       updatedAt: now,
-      avatarStorageId: opts.avatarStorageId,
     }),
   )
   return { stackId, creatorId, asCreator }
 }
 
-test('TC-L-01: update accepts avatarStorageId but no longer persists it (identity lives on the creator)', async () => {
+test('TC-L-01: update rejects the retired avatarStorageId arg (Phase C narrow)', async () => {
   const t = convexTest(schema, modules)
   const { stackId, asCreator } = await seedStackForUpdate(t, {
     userId: 'user-l01',
@@ -345,65 +342,29 @@ test('TC-L-01: update accepts avatarStorageId but no longer persists it (identit
   })
   const storageId = await seedStorageBlob(t)
 
-  await asCreator.mutation(api.stacks.update, {
-    stackId,
-    // Accepted for stale-tab tolerance (Phase A), ignored by the handler.
-    avatarStorageId: storageId,
-  } as never)
-
-  const row = await t.run(async (ctx: MutationCtx) => ctx.db.get(stackId))
-  expect(row?.avatarStorageId).toBeUndefined()
+  await expect(
+    asCreator.mutation(api.stacks.update, {
+      stackId,
+      avatarStorageId: storageId,
+    } as never),
+  ).rejects.toThrow(/unexpected field/i)
 })
 
-test('TC-L-02: update with avatarStorageId:null leaves a legacy stack avatar untouched (Phase B migration clears it)', async () => {
-  const t = convexTest(schema, modules)
-  const storageId = await seedStorageBlob(t)
-  const { stackId, asCreator } = await seedStackForUpdate(t, {
-    userId: 'user-l02',
-    slug: 'creator-l02',
-    avatarStorageId: storageId,
-  })
-
-  await asCreator.mutation(api.stacks.update, {
-    stackId,
-    avatarStorageId: null,
-  } as never)
-
-  const row = await t.run(async (ctx: MutationCtx) => ctx.db.get(stackId))
-  expect(row?.avatarStorageId).toBe(storageId)
-})
-
-test('TC-L-03: update without avatarStorageId arg leaves existing id intact', async () => {
-  const t = convexTest(schema, modules)
-  const storageId = await seedStorageBlob(t)
-  const { stackId, asCreator } = await seedStackForUpdate(t, {
-    userId: 'user-l03',
-    slug: 'creator-l03',
-    avatarStorageId: storageId,
-  })
-
-  await asCreator.mutation(api.stacks.update, {
-    stackId,
-    oneLiner: 'changed',
-  })
-
-  const row = await t.run(async (ctx: MutationCtx) => ctx.db.get(stackId))
-  expect(row?.avatarStorageId).toBe(storageId)
-})
+// TC-L-02/TC-L-03 retired with stacks.avatarStorageId (Phase C narrow):
+// legacy stack-avatar rows can no longer exist after the migration.
 
 // ---------------------------------------------------------------------------
 // Group M — read resolvers use avatarStorageId, not stackImageUrl (RED)
 // ---------------------------------------------------------------------------
 
-// Helper: seed a published stack with full control over avatarStorageId / stackImageUrl
+// Helper: seed a published stack with full control over the creator's avatar
 async function seedPublishedStack(
   t: ReturnType<typeof convexTest>,
   opts: {
     userId: string
     slug: string
     creatorAvatarUrl?: string
-    avatarStorageId?: Id<'_storage'>
-    stackImageUrl?: string
+    creatorAvatarStorageId?: Id<'_storage'>
   },
 ): Promise<{ stackId: Id<'stacks'>; shortId: string }> {
   const creatorId = await t.run(async (ctx: MutationCtx) =>
@@ -415,6 +376,7 @@ async function seedPublishedStack(
       personalPages: [],
       projectPages: [],
       avatarUrl: opts.creatorAvatarUrl,
+      avatarStorageId: opts.creatorAvatarStorageId,
       createdAt: Date.now(),
     }),
   )
@@ -430,8 +392,6 @@ async function seedPublishedStack(
       toolSubscriptions: [],
       hasUsageComponent: false,
       published: true,
-      avatarStorageId: opts.avatarStorageId,
-      stackImageUrl: opts.stackImageUrl,
       createdAt: now,
       updatedAt: now,
     }),
@@ -439,14 +399,14 @@ async function seedPublishedStack(
   return { stackId, shortId }
 }
 
-test('TC-M-01: getBySlug WITH avatarStorageId → creator.avatarUrl === storage URL', async () => {
+test('TC-M-01: getBySlug WITH creator avatarStorageId → creator.avatarUrl === storage URL', async () => {
   const t = convexTest(schema, modules)
   const storageId = await seedStorageBlob(t)
   const { shortId } = await seedPublishedStack(t, {
     userId: 'user-m01',
     slug: 'creator-m01',
     creatorAvatarUrl: 'https://creator-row.example.com/avatar.jpg',
-    avatarStorageId: storageId,
+    creatorAvatarStorageId: storageId,
   })
 
   const result = await t.query(api.stacks.getBySlug, { slug: `m-stack-${shortId}` })
@@ -469,29 +429,17 @@ test('TC-M-02: getBySlug WITHOUT avatarStorageId → creator.avatarUrl === creat
   expect(result?.creator.avatarUrl).toBe('https://creator-row.example.com/avatar.jpg')
 })
 
-test('TC-M-03: getBySlug WITHOUT avatarStorageId but WITH stackImageUrl → creator row url used (SSRF-close)', async () => {
-  const t = convexTest(schema, modules)
-  const { shortId } = await seedPublishedStack(t, {
-    userId: 'user-m03',
-    slug: 'creator-m03',
-    creatorAvatarUrl: 'https://creator-row.example.com/avatar.jpg',
-    stackImageUrl: 'https://ssrf-target.example.com/secret.jpg',
-  })
+// TC-M-03/TC-M-06 retired with stacks.stackImageUrl (Phase C narrow): the
+// SSRF-prone column no longer exists, so there is nothing to guard against.
 
-  const result = await t.query(api.stacks.getBySlug, { slug: `m-stack-${shortId}` })
-  // Must NOT use stackImageUrl — must use creator row avatarUrl
-  expect(result?.creator.avatarUrl).toBe('https://creator-row.example.com/avatar.jpg')
-  expect(result?.creator.avatarUrl).not.toBe('https://ssrf-target.example.com/secret.jpg')
-})
-
-test('TC-M-04: listPublished WITH avatarStorageId → resolved storage URL', async () => {
+test('TC-M-04: listPublished WITH creator avatarStorageId → resolved storage URL', async () => {
   const t = convexTest(schema, modules)
   const storageId = await seedStorageBlob(t)
   await seedPublishedStack(t, {
     userId: 'user-m04',
     slug: 'creator-m04',
     creatorAvatarUrl: 'https://creator-row.example.com/avatar.jpg',
-    avatarStorageId: storageId,
+    creatorAvatarStorageId: storageId,
   })
 
   const results = await t.query(api.stacks.listPublished, {})
@@ -514,28 +462,11 @@ test('TC-M-05: listPublished WITHOUT avatarStorageId → creator row avatarUrl',
   expect(stack?.creator.avatarUrl).toBe('https://creator-row.example.com/avatar.jpg')
 })
 
-test('TC-M-06: listPublished WITHOUT avatarStorageId but WITH stackImageUrl → creator row url (not stackImageUrl)', async () => {
-  const t = convexTest(schema, modules)
-  await seedPublishedStack(t, {
-    userId: 'user-m06',
-    slug: 'creator-m06',
-    creatorAvatarUrl: 'https://creator-row.example.com/avatar.jpg',
-    stackImageUrl: 'https://ssrf-target.example.com/secret.jpg',
-  })
-
-  const results = await t.query(api.stacks.listPublished, {})
-  const stack = results.find((s) => s.creator.name === 'Creator user-m06')
-  expect(stack?.creator.avatarUrl).toBe('https://creator-row.example.com/avatar.jpg')
-  expect(stack?.creator.avatarUrl).not.toBe('https://ssrf-target.example.com/secret.jpg')
-})
-
 test('TC-M-07: getForEdit no longer surfaces avatarStorageId (editor is artifact-only)', async () => {
   const t = convexTest(schema, modules)
-  const storageId = await seedStorageBlob(t)
   const { stackId: _stackId, shortId } = await seedPublishedStack(t, {
     userId: 'user-m07',
     slug: 'creator-m07',
-    avatarStorageId: storageId,
   })
   const asCreator = t.withIdentity({ tokenIdentifier: 'convex|user-m07' })
 
@@ -562,12 +493,9 @@ test('TC-M-08: getForEdit returns avatarStorageId as undefined when unset', asyn
 
 test('TC-M-09: getForEdit surfaces neither identity ids nor stackImageUrl as avatar fields', async () => {
   const t = convexTest(schema, modules)
-  const storageId = await seedStorageBlob(t)
   const { shortId } = await seedPublishedStack(t, {
     userId: 'user-m09',
     slug: 'creator-m09',
-    avatarStorageId: storageId,
-    stackImageUrl: 'https://ssrf-target.example.com/secret.jpg',
   })
   const asCreator = t.withIdentity({ tokenIdentifier: 'convex|user-m09' })
 
@@ -585,111 +513,41 @@ test('TC-M-09: getForEdit surfaces neither identity ids nor stackImageUrl as ava
 // Group N — personalPageUrl validation via assertValidPersonalPageUrl (RED)
 // ---------------------------------------------------------------------------
 
-test('TC-N-01: create with https personalPageUrl is accepted but no longer persisted (identity lives on the creator)', async () => {
+// Group N (Phase C): personalPageUrl is no longer a stack concept — the arg is
+// rejected outright. Https-only validation of profile links lives in
+// creators.updateProfile (TC-CP-07..09 in creators.test.ts).
+
+test('TC-N-01: create rejects the retired personalPageUrl arg (Phase C narrow)', async () => {
   const t = convexTest(schema, modules)
   const { asCreator } = await seedAuthenticatedCreator(t, {
     userId: 'user-n01',
     slug: 'creator-n01',
   })
 
-  const result = await asCreator.mutation(api.stacks.create, {
-    ...minimalCreateArgs,
-    personalPageUrl: 'https://example.com',
-  })
-
-  const row = await t.run(async (ctx: MutationCtx) => ctx.db.get(result._id))
-  expect(row?.personalPageUrl).toBeUndefined()
-})
-
-test('TC-N-02: create with http personalPageUrl throws', async () => {
-  const t = convexTest(schema, modules)
-  const { asCreator } = await seedAuthenticatedCreator(t, {
-    userId: 'user-n02',
-    slug: 'creator-n02',
-  })
-
   await expect(
     asCreator.mutation(api.stacks.create, {
       ...minimalCreateArgs,
-      personalPageUrl: 'http://example.com',
-    }),
-  ).rejects.toThrow()
+      personalPageUrl: 'https://example.com',
+    } as never),
+  ).rejects.toThrow(/unexpected field/i)
 })
 
-test('TC-N-03: create with javascript: personalPageUrl throws', async () => {
-  const t = convexTest(schema, modules)
-  const { asCreator } = await seedAuthenticatedCreator(t, {
-    userId: 'user-n03',
-    slug: 'creator-n03',
-  })
+// TC-N-02..TC-N-06 retired (Phase C): every personalPageUrl value now fails
+// the same way — the arg itself no longer exists on create/update.
 
-  await expect(
-    asCreator.mutation(api.stacks.create, {
-      ...minimalCreateArgs,
-      personalPageUrl: 'javascript:alert(1)',
-    }),
-  ).rejects.toThrow()
-})
-
-test('TC-N-04: create with data: personalPageUrl throws', async () => {
-  const t = convexTest(schema, modules)
-  const { asCreator } = await seedAuthenticatedCreator(t, {
-    userId: 'user-n04',
-    slug: 'creator-n04',
-  })
-
-  await expect(
-    asCreator.mutation(api.stacks.create, {
-      ...minimalCreateArgs,
-      personalPageUrl: 'data:text/plain,hello',
-    }),
-  ).rejects.toThrow()
-})
-
-test('TC-N-05: create with malformed personalPageUrl throws', async () => {
-  const t = convexTest(schema, modules)
-  const { asCreator } = await seedAuthenticatedCreator(t, {
-    userId: 'user-n05',
-    slug: 'creator-n05',
-  })
-
-  await expect(
-    asCreator.mutation(api.stacks.create, {
-      ...minimalCreateArgs,
-      personalPageUrl: 'not a url!!!',
-    }),
-  ).rejects.toThrow()
-})
-
-test('TC-N-06: update with http personalPageUrl throws', async () => {
-  const t = convexTest(schema, modules)
-  const { stackId, asCreator } = await seedStackForUpdate(t, {
-    userId: 'user-n06',
-    slug: 'creator-n06',
-  })
-
-  await expect(
-    asCreator.mutation(api.stacks.update, {
-      stackId,
-      personalPageUrl: 'http://example.com',
-    }),
-  ).rejects.toThrow()
-})
-
-test('TC-N-07: update with https personalPageUrl is accepted but no longer persisted (identity lives on the creator)', async () => {
+test('TC-N-07: update rejects the retired personalPageUrl arg (Phase C narrow)', async () => {
   const t = convexTest(schema, modules)
   const { stackId, asCreator } = await seedStackForUpdate(t, {
     userId: 'user-n07',
     slug: 'creator-n07',
   })
 
-  await asCreator.mutation(api.stacks.update, {
-    stackId,
-    personalPageUrl: 'https://example.com',
-  })
-
-  const row = await t.run(async (ctx: MutationCtx) => ctx.db.get(stackId))
-  expect(row?.personalPageUrl).toBeUndefined()
+  await expect(
+    asCreator.mutation(api.stacks.update, {
+      stackId,
+      personalPageUrl: 'https://example.com',
+    } as never),
+  ).rejects.toThrow(/unexpected field/i)
 })
 
 // ---------------------------------------------------------------------------
@@ -1579,7 +1437,7 @@ test('TC-PD-01: create() allows a second stack for a creator who already has one
   expect(stacks.map((s) => s.name).sort()).toEqual(['First Stack', 'Second Stack'])
 })
 
-test('TC-PD-02: create() no longer persists avatarStorageId/personalPageUrl/stackImageUrl on the stack row, though the args are still accepted', async () => {
+test('TC-PD-02: create() rejects the retired identity args and writes no identity fields (Phase C narrow)', async () => {
   const t = convexTest(schema, modules)
   const { asCreator } = await seedAuthenticatedCreator(t, {
     userId: 'user-pd02',
@@ -1589,20 +1447,25 @@ test('TC-PD-02: create() no longer persists avatarStorageId/personalPageUrl/stac
     (ctx.storage as StorageActionWriter).store(new Blob(['x'], { type: 'image/webp' })),
   )
 
+  await expect(
+    asCreator.mutation(api.stacks.create, {
+      ...minimalCreateArgs,
+      avatarStorageId: storageId,
+      personalPageUrl: 'https://example.com',
+      stackImageUrl: 'https://example.com/img.png',
+    } as never),
+  ).rejects.toThrow(/unexpected field/i)
+
   const result = await asCreator.mutation(api.stacks.create, {
     ...minimalCreateArgs,
-    avatarStorageId: storageId,
-    personalPageUrl: 'https://example.com',
-    stackImageUrl: 'https://example.com/img.png',
   })
-
   const stack = await t.run(async (ctx: MutationCtx) => ctx.db.get(result._id))
-  expect(stack?.avatarStorageId).toBeUndefined()
-  expect(stack?.personalPageUrl).toBeUndefined()
-  expect(stack?.stackImageUrl).toBeUndefined()
+  expect((stack as Record<string, unknown> | null)?.avatarStorageId).toBeUndefined()
+  expect((stack as Record<string, unknown> | null)?.personalPageUrl).toBeUndefined()
+  expect((stack as Record<string, unknown> | null)?.stackImageUrl).toBeUndefined()
 })
 
-test('TC-PD-03: update() no longer persists avatarStorageId/personalPageUrl on the stack row, though the args are still accepted', async () => {
+test('TC-PD-03: update() rejects the retired identity args (Phase C narrow)', async () => {
   const t = convexTest(schema, modules)
   const { asCreator } = await seedAuthenticatedCreator(t, {
     userId: 'user-pd03',
@@ -1613,13 +1476,11 @@ test('TC-PD-03: update() no longer persists avatarStorageId/personalPageUrl on t
     (ctx.storage as StorageActionWriter).store(new Blob(['y'], { type: 'image/webp' })),
   )
 
-  await asCreator.mutation(api.stacks.update, {
-    stackId: created._id,
-    avatarStorageId: storageId,
-    personalPageUrl: 'https://example.com/personal',
-  })
-
-  const stack = await t.run(async (ctx: MutationCtx) => ctx.db.get(created._id))
-  expect(stack?.avatarStorageId).toBeUndefined()
-  expect(stack?.personalPageUrl).toBeUndefined()
+  await expect(
+    asCreator.mutation(api.stacks.update, {
+      stackId: created._id,
+      avatarStorageId: storageId,
+      personalPageUrl: 'https://example.com/personal',
+    } as never),
+  ).rejects.toThrow(/unexpected field/i)
 })

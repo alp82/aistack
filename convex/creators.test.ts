@@ -55,7 +55,6 @@ async function seedStack(
     slug: string
     published?: boolean
     updatedAt?: number
-    avatarStorageId?: Id<'_storage'>
   },
 ): Promise<Id<'stacks'>> {
   const now = opts.updatedAt ?? Date.now()
@@ -69,7 +68,6 @@ async function seedStack(
       toolSubscriptions: [],
       hasUsageComponent: false,
       published: opts.published ?? true,
-      avatarStorageId: opts.avatarStorageId,
       createdAt: now,
       updatedAt: now,
     }),
@@ -292,7 +290,7 @@ test('TC-GH-02: getByHandle returns published stacks only, most-recent first', a
   expect(result?.stacks.some((s) => s.name === 'Stack gh02-draft')).toBe(false)
 })
 
-test('TC-GH-03: getByHandle resolves avatar creator-first over stack avatar', async () => {
+test('TC-GH-03: getByHandle resolves the creator avatarStorageId to a storage URL', async () => {
   const t = convexTest(schema, modules)
   const creatorAvatarId = await seedBlob(t)
   const { creatorId } = await seedCreator(t, {
@@ -302,12 +300,10 @@ test('TC-GH-03: getByHandle resolves avatar creator-first over stack avatar', as
   await t.run(async (ctx: MutationCtx) =>
     ctx.db.patch(creatorId, { avatarStorageId: creatorAvatarId }),
   )
-  const stackAvatarId = await seedBlob(t)
   await seedStack(t, {
     creatorId,
     slug: 'gh03-stack',
     published: true,
-    avatarStorageId: stackAvatarId,
   })
 
   const result = await t.query(api.creators.getByHandle, { handle: 'creator-gh03' })

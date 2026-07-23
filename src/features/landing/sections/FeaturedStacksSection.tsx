@@ -23,7 +23,6 @@ type LandingStackPreview = {
 		amount: number;
 		period?: "month" | "year" | "one_time";
 	} | null;
-	personalPageUrl?: string | null;
 	creator: {
 		name: string;
 		xHandle?: string | null;

@@ -2,6 +2,8 @@
     * @ in url is encoded
     * header does not show avatar image
     * @alper-ortac below name is not needed
+* stack
+    * image + upload not centered
 * ai live stats: https://github.com/RubricLab/tokenmaxx
 * explore aicoolies: https://aicoolies.com/dev/rasitakyol
 * price tiers for sibling products:

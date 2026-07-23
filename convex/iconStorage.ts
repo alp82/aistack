@@ -56,10 +56,6 @@ export const _collectReferencedStorageIds = internalQuery({
     for (const b of bundles) {
       if (b.iconStorageId) referenced.push(b.iconStorageId)
     }
-    const stacks = await ctx.db.query('stacks').collect()
-    for (const s of stacks) {
-      if (s.avatarStorageId) referenced.push(s.avatarStorageId)
-    }
     const creators = await ctx.db.query('creators').collect()
     for (const c of creators) {
       if (c.avatarStorageId) referenced.push(c.avatarStorageId)

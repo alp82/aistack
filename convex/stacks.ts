@@ -8,8 +8,8 @@ import { generateUniqueShortId, extractShortId } from './lib/ids'
 import { Resource as ResourceValidator, ResourceInput } from './schema'
 import { resolveLinkedResources, upsertResourcesForOwner } from './lib/resourceLinks'
 import { normalizeProjectUrl } from './projects'
-import { assertValidAccentPreset, assertValidPersonalPageUrl } from './lib/iconUrl'
-import { resolveStackAvatarUrl } from './lib/avatar'
+import { assertValidAccentPreset } from './lib/iconUrl'
+import { resolveCreatorAvatarUrl } from './lib/avatar'
 
 type ToolSubscriptionLike = {
   price: {
@@ -151,7 +151,6 @@ export const listPublished = query({
       fixedTotal: v.optional(MoneyValidator),
       hasUsageComponent: v.boolean(),
       usageTotalNotes: v.optional(v.string()),
-      personalPageUrl: v.optional(v.string()),
 
       creator: CreatorValidator,
       tools: v.array(ToolValidator),
@@ -207,7 +206,7 @@ export const listPublished = query({
           .withIndex('by_stackId', (q) => q.eq('stackId', stack._id))
           .collect()
 
-        const resolvedAvatar = await resolveStackAvatarUrl(ctx, creator, stack)
+        const resolvedAvatar = await resolveCreatorAvatarUrl(ctx, creator)
 
         return {
           _id: stack._id,
@@ -219,10 +218,6 @@ export const listPublished = query({
           fixedTotal: pricing.fixedTotal,
           hasUsageComponent: pricing.hasUsageComponent,
           usageTotalNotes: stack.usageTotalNotes,
-          // Transitional: after Phase B, personalPages is merged/deduped
-          // across the creator's stacks, so [0] is an arbitrary merged entry.
-          // Phase C drops this field from the payload entirely.
-          personalPageUrl: creator.personalPages[0]?.url ?? stack.personalPageUrl,
 
           creator: {
             _id: creator._id,
@@ -334,16 +329,12 @@ export const create = mutation({
     toolSubscriptions: v.array(ToolSubscriptionInput),
     bundleSubscriptions: v.optional(v.array(BundleSubscriptionInput)),
     modelSubscriptions: v.optional(v.array(ModelSubscriptionInput)),
-    stackImageUrl: v.optional(v.string()),
-    avatarStorageId: v.optional(v.id('_storage')),
-    personalPageUrl: v.optional(v.string()),
     accentPreset: v.optional(v.string()),
     projects: v.optional(v.array(ProjectInput)),
     published: v.boolean(),
   },
   returns: v.object({ _id: v.id('stacks'), slug: v.string() }),
   handler: async (ctx, args) => {
-    if (args.personalPageUrl) assertValidPersonalPageUrl(args.personalPageUrl)
     if (args.accentPreset) assertValidAccentPreset(args.accentPreset)
     const user = await ctx.auth.getUserIdentity()
     if (!user) throw new Error('Not authenticated')
@@ -372,9 +363,6 @@ export const create = mutation({
       toolSubscriptions: args.toolSubscriptions,
       bundleSubscriptions: args.bundleSubscriptions,
       modelSubscriptions: args.modelSubscriptions,
-      // avatarStorageId/personalPageUrl/stackImageUrl args are still accepted
-      // (stale-tab tolerance until Phase C drops them) but no longer written —
-      // identity lives on the creator now.
       accentPreset: args.accentPreset,
       fixedTotal: pricing.fixedTotal,
       hasUsageComponent: pricing.hasUsageComponent,
@@ -415,15 +403,11 @@ export const update = mutation({
     toolSubscriptions: v.optional(v.array(ToolSubscriptionInput)),
     bundleSubscriptions: v.optional(v.array(BundleSubscriptionInput)),
     modelSubscriptions: v.optional(v.array(ModelSubscriptionInput)),
-    stackImageUrl: v.optional(v.string()),
-    avatarStorageId: v.optional(v.union(v.id('_storage'), v.null())),
-    personalPageUrl: v.optional(v.string()),
     accentPreset: v.optional(v.string()),
     published: v.optional(v.boolean()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    if (args.personalPageUrl) assertValidPersonalPageUrl(args.personalPageUrl)
     if (args.accentPreset) assertValidAccentPreset(args.accentPreset)
     const user = await ctx.auth.getUserIdentity()
     if (!user) throw new Error('Not authenticated')
@@ -455,8 +439,6 @@ export const update = mutation({
     if (args.toolSubscriptions !== undefined) patch.toolSubscriptions = args.toolSubscriptions
     if (args.bundleSubscriptions !== undefined) patch.bundleSubscriptions = args.bundleSubscriptions
     if (args.modelSubscriptions !== undefined) patch.modelSubscriptions = args.modelSubscriptions
-    // avatarStorageId/personalPageUrl args are accepted but ignored (Phase A);
-    // identity lives on the creator now.
     if (args.accentPreset !== undefined) patch.accentPreset = args.accentPreset || undefined
     if (args.published !== undefined) patch.published = args.published
 
@@ -890,7 +872,6 @@ export const getBySlug = query({
       fixedTotal: v.optional(MoneyValidator),
       hasUsageComponent: v.boolean(),
       usageTotalNotes: v.optional(v.string()),
-      personalPageUrl: v.optional(v.string()),
       accentPreset: v.optional(v.string()),
 
       creator: CreatorValidator,
@@ -997,7 +978,7 @@ export const getBySlug = query({
 
     const pricing = await calculateStackPricing(ctx, stack.toolSubscriptions, stack.bundleSubscriptions ?? [])
     const resources = await resolveLinkedResources(ctx, 'stack', stack._id)
-    const resolvedAvatar = await resolveStackAvatarUrl(ctx, creator, stack)
+    const resolvedAvatar = await resolveCreatorAvatarUrl(ctx, creator)
 
     return {
       _id: stack._id,
@@ -1012,7 +993,6 @@ export const getBySlug = query({
       fixedTotal: pricing.fixedTotal,
       hasUsageComponent: pricing.hasUsageComponent,
       usageTotalNotes: stack.usageTotalNotes,
-      personalPageUrl: stack.personalPageUrl,
       accentPreset: stack.accentPreset,
       creator: {
         _id: creator._id,
