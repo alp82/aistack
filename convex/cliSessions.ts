@@ -1,7 +1,7 @@
-import { internalMutation, mutation, query } from './_generated/server'
+import { internalMutation, internalQuery, mutation } from './_generated/server'
 import { v } from 'convex/values'
 
-export const getByUserCode = query({
+export const getByUserCode = internalQuery({
   args: { userCode: v.string() },
   returns: v.union(
     v.object({
@@ -35,7 +35,7 @@ export const getByUserCode = query({
   },
 })
 
-export const getBySecretId = query({
+export const getBySecretId = internalQuery({
   args: { secretId: v.string() },
   returns: v.union(
     v.object({
