@@ -113,8 +113,6 @@ type StackEditorProps = {
 	actor: CreatorProfile;
 	guestSession?: boolean;
 	initialValue?: StackEditorInitialValue;
-	defaultAvatarUrl?: string;
-	onNavigating?: () => void;
 };
 
 export function StackEditor({
@@ -122,13 +120,11 @@ export function StackEditor({
 	actor,
 	initialValue,
 	guestSession = false,
-	defaultAvatarUrl,
-	onNavigating,
 }: StackEditorProps) {
 	const navigate = useNavigate();
 	const createStack = useMutation(api.stacks.create);
 	const updateStack = useMutation(api.stacks.update);
-	const updateCreatorProfile = useMutation(api.creators.updateProfile);
+	const landStagedAvatar = useMutation(api.creators.landStagedAvatar);
 	const generateUploadUrl = useMutation(api.files.generateUploadUrl);
 
 	const creatorId = guestSession ? undefined : actor._id;
@@ -148,8 +144,6 @@ export function StackEditor({
 		setShowSignInDialog,
 		setTeamSize,
 		setToolSubscriptions,
-		setXHandle,
-		setPersonalPageUrl,
 		setAccentPreset,
 		setAvatar,
 		revertDraft,
@@ -289,40 +283,34 @@ export function StackEditor({
 		setSaving(true);
 
 		try {
-			if (state.xHandle !== (actor.xHandle ?? "")) {
-				await updateCreatorProfile({
-					xHandle: state.xHandle.trim() || undefined,
-				});
-			}
-
 			const payload = selectSavePayload(state, publish);
 
-			// A staged guest avatar arrives as a data URL — upload it to Convex
-			// storage now (so the DB never persists the data URL) and carry the
-			// resulting id. Other states (an existing id, or cleared) are already
-			// resolved onto the payload by selectSavePayload, so no upload/await is
-			// needed. A thrown upload lands in the catch below, so disableDraftSaving()
-			// is not reached and the draft survives for retry.
-			if (state.pendingAvatar.kind === "dataUrl") {
+			// A staged guest avatar (adopted from the guest draft after sign-in)
+			// arrives as a data URL — upload it to Convex storage now (so the DB
+			// never persists the data URL) and land it on the creator profile.
+			// landStagedAvatar is skip-if-set on the server, so an existing profile
+			// avatar is never overwritten; `kind: 'none'` means "nothing staged"
+			// (it never clears the creator avatar). A thrown upload lands in the
+			// catch below, so disableDraftSaving() is not reached and the draft
+			// survives for retry.
+			if (mode === "create" && state.pendingAvatar.kind === "dataUrl") {
 				const resolved = await resolveAvatarForSave(state.pendingAvatar, {
 					uploadStagedAvatar: (dataUrl) =>
 						uploadStagedAvatar(dataUrl, { generateUploadUrl }),
 				});
-				payload.avatarStorageId = (resolved?.id as Id<"_storage">) ?? null;
+				if (resolved) {
+					await landStagedAvatar({
+						storageId: resolved.id as Id<"_storage">,
+					});
+				}
 			}
 
 			// Disable draft auto-save BEFORE the mutation to prevent race conditions
 			disableDraftSaving();
 
 			if (mode === "create") {
-				// The create mutation has no null avatar to clear (nothing exists
-				// yet), so map a cleared avatar (null) to undefined.
-				const result = await createStack({
-					...payload,
-					avatarStorageId: payload.avatarStorageId ?? undefined,
-				});
+				const result = await createStack(payload);
 				localStorage.removeItem(getDraftKey(undefined, creatorId));
-				onNavigating?.();
 				navigate({ to: "/stacks/$slug", params: { slug: result.slug } });
 				return;
 			}
@@ -605,16 +593,10 @@ export function StackEditor({
 								onNameChange={setName}
 								oneLiner={state.oneLiner}
 								onOneLinerChange={setOneLiner}
-								xHandle={state.xHandle}
-								onXHandleChange={setXHandle}
-								personalPageUrl={state.personalPageUrl}
-								onPersonalPageUrlChange={setPersonalPageUrl}
 								accentPreset={state.accentPreset}
 								onAccentPresetChange={setAccentPreset}
 								pendingAvatar={state.pendingAvatar}
 								onAvatarChange={setAvatar}
-								avatarPreviewUrl={initialValue?.avatarUrl}
-								defaultAvatarUrl={defaultAvatarUrl}
 								isTeam={state.isTeam}
 								onIsTeamChange={setIsTeam}
 								teamSize={state.teamSize}

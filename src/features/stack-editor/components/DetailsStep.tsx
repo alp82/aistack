@@ -1,7 +1,6 @@
 import { User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AvatarEditor } from "@/components/AvatarEditor";
-import XLogoIcon from "@/components/icon/XLogoIcon";
 import { Input } from "@/components/ui/input";
 import { AccentPicker } from "@/features/stack-editor/components/AccentPicker";
 import type {
@@ -16,16 +15,10 @@ type DetailsStepProps = {
 	onNameChange: (value: string) => void;
 	oneLiner: string;
 	onOneLinerChange: (value: string) => void;
-	xHandle: string;
-	onXHandleChange: (value: string) => void;
-	personalPageUrl: string;
-	onPersonalPageUrlChange: (value: string) => void;
 	accentPreset: string;
 	onAccentPresetChange: (value: string) => void;
 	pendingAvatar: PendingAvatar;
 	onAvatarChange: (pending: PendingAvatar, previewUrl?: string) => void;
-	avatarPreviewUrl?: string;
-	defaultAvatarUrl?: string;
 	isTeam: boolean;
 	onIsTeamChange: (value: boolean) => void;
 	teamSize: number;
@@ -39,16 +32,10 @@ function DetailsStep({
 	onNameChange,
 	oneLiner,
 	onOneLinerChange,
-	xHandle,
-	onXHandleChange,
-	personalPageUrl,
-	onPersonalPageUrlChange,
 	accentPreset,
 	onAccentPresetChange,
 	pendingAvatar,
 	onAvatarChange,
-	avatarPreviewUrl,
-	defaultAvatarUrl,
 	isTeam,
 	onIsTeamChange,
 	teamSize,
@@ -57,25 +44,12 @@ function DetailsStep({
 }: DetailsStepProps) {
 	const [isAvatarEditorOpen, setIsAvatarEditorOpen] = useState(false);
 	const [imgError, setImgError] = useState(false);
-	// A storageId uploaded in this session resolves to a live preview URL the
-	// AvatarEditor hands up (never persisted — the stored avatar is the id).
-	const [sessionPreviewUrl, setSessionPreviewUrl] = useState<
-		string | undefined
-	>(undefined);
 
-	// dataUrl → render the inline data URL; storageId → render its resolved
-	// preview (this session's upload, else the read-time URL); none → initials.
+	// Guest staging only: a dataUrl avatar renders inline; anything else falls
+	// back to initials. The staged avatar lands on the creator profile at the
+	// first authed save (it never becomes stack data).
 	const displayAvatarUrl =
-		pendingAvatar.kind === "dataUrl"
-			? pendingAvatar.url
-			: pendingAvatar.kind === "storageId"
-				? (sessionPreviewUrl ?? avatarPreviewUrl ?? "")
-				: "";
-
-	const handleAvatarChange = (pending: PendingAvatar, previewUrl?: string) => {
-		setSessionPreviewUrl(previewUrl);
-		onAvatarChange(pending, previewUrl);
-	};
+		pendingAvatar.kind === "dataUrl" ? pendingAvatar.url : "";
 
 	// Reset error when URL changes
 	useEffect(() => {
@@ -91,46 +65,54 @@ function DetailsStep({
 				</p>
 			</div>
 
-			{/* Avatar Editor Modal */}
-			<AvatarEditor
-				isOpen={isAvatarEditorOpen}
-				onClose={() => setIsAvatarEditorOpen(false)}
-				currentAvatarUrl={displayAvatarUrl}
-				defaultAvatarUrl={defaultAvatarUrl}
-				pendingAvatarKind={pendingAvatar.kind}
-				creatorName={creator.name}
-				onAvatarChange={handleAvatarChange}
-				guestSession={guestSession}
-			/>
+			{/* Avatar Editor Modal (guest staging path only) */}
+			{guestSession && (
+				<AvatarEditor
+					isOpen={isAvatarEditorOpen}
+					onClose={() => setIsAvatarEditorOpen(false)}
+					currentAvatarUrl={displayAvatarUrl}
+					pendingAvatarKind={pendingAvatar.kind}
+					creatorName={creator.name}
+					onAvatarChange={onAvatarChange}
+					guestSession={guestSession}
+				/>
+			)}
 
 			{/* Main layout */}
-			<div className="flex flex-col sm:grid sm:grid-cols-[auto_1fr] gap-4 sm:gap-6">
-				{/* Avatar */}
-				<div className="sm:row-span-3">
-					<button
-						type="button"
-						onClick={() => setIsAvatarEditorOpen(true)}
-						className="group relative block cursor-pointer"
-						title="Click to edit avatar"
-					>
-						{displayAvatarUrl && !imgError ? (
-							<img
-								src={displayAvatarUrl}
-								alt={creator.name}
-								className="size-20 sm:size-30 border-[3px] border-stroke-strong object-cover bg-bg-panel-muted"
-								onError={() => setImgError(true)}
-							/>
-						) : (
-							<div className="flex size-20 sm:size-30 items-center justify-center border-[3px] border-stroke-strong bg-bg-panel-muted font-mono text-2xl sm:text-3xl font-bold text-fg-primary">
-								{initials}
+			<div
+				className={cn(
+					"flex flex-col gap-4 sm:gap-6",
+					guestSession && "sm:grid sm:grid-cols-[auto_1fr]",
+				)}
+			>
+				{/* Avatar — guest staging only; authed avatars live on the profile */}
+				{guestSession && (
+					<div className="sm:row-span-3">
+						<button
+							type="button"
+							onClick={() => setIsAvatarEditorOpen(true)}
+							className="group relative block cursor-pointer"
+							title="Click to edit avatar"
+						>
+							{displayAvatarUrl && !imgError ? (
+								<img
+									src={displayAvatarUrl}
+									alt={creator.name}
+									className="size-20 sm:size-30 border-[3px] border-stroke-strong object-cover bg-bg-panel-muted"
+									onError={() => setImgError(true)}
+								/>
+							) : (
+								<div className="flex size-20 sm:size-30 items-center justify-center border-[3px] border-stroke-strong bg-bg-panel-muted font-mono text-2xl sm:text-3xl font-bold text-fg-primary">
+									{initials}
+								</div>
+							)}
+							{/* Avatar edit overlay */}
+							<div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity border-[3px] border-accent-lime">
+								<User className="size-6 text-white" />
 							</div>
-						)}
-						{/* Avatar edit overlay */}
-						<div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity border-[3px] border-accent-lime">
-							<User className="size-6 text-white" />
-						</div>
-					</button>
-				</div>
+						</button>
+					</div>
+				)}
 
 				{/* Row 1: Stack Name + Solo/Team */}
 				<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
@@ -190,48 +172,12 @@ function DetailsStep({
 					</div>
 				</div>
 
-				{/* Row 2: Social links (grouped) + accent, gap-aligned to Row 1 */}
+				{/* Row 2: accent picker, gap-aligned to Row 1 */}
 				<div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-					<div className="flex flex-1 flex-col sm:flex-row min-w-0">
-						{/* X Handle */}
-						<div className="flex flex-1 items-center border-2 border-stroke-subtle sm:-mr-[2px] -mb-[2px] sm:mb-0 bg-bg-panel-muted px-3 h-12 focus-within:border-accent-lime focus-within:z-10">
-							<XLogoIcon className="size-4 shrink-0 text-fg-muted" />
-							<span className="ml-2 font-mono text-xs text-fg-muted">@</span>
-							<input
-								type="text"
-								value={xHandle}
-								onChange={(e) => onXHandleChange(e.target.value)}
-								placeholder="username"
-								className="flex-1 bg-transparent border-0 px-1 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:outline-none focus:ring-0"
-							/>
-						</div>
-
-						{/* Personal Page URL */}
-						<div className="flex flex-1 items-center border-2 border-stroke-subtle bg-bg-panel-muted px-3 h-12 focus-within:border-accent-lime focus-within:z-10">
-							<User className="size-4 shrink-0 text-fg-muted" />
-							<input
-								type="text"
-								value={personalPageUrl}
-								onChange={(e) => onPersonalPageUrlChange(e.target.value)}
-								onBlur={(e) => {
-									// The server requires an https URL — normalize a bare
-									// domain ("example.com") to https so the save doesn't fail
-									// at the mutation boundary for the common input.
-									const v = e.target.value.trim();
-									if (v && !/^[a-z][a-z0-9+.-]*:\/\//i.test(v)) {
-										onPersonalPageUrlChange(`https://${v}`);
-									}
-								}}
-								placeholder="https://yourportfolio.com"
-								className="flex-1 bg-transparent border-0 px-2 py-2 font-mono text-sm text-fg-primary placeholder:text-fg-muted focus:outline-none focus:ring-0"
-							/>
-						</div>
-					</div>
-
 					<AccentPicker
 						value={accentPreset}
 						onChange={onAccentPresetChange}
-						className="w-full sm:w-[176px] shrink-0"
+						className="w-full sm:w-[176px] shrink-0 sm:ml-auto"
 					/>
 				</div>
 			</div>

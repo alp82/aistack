@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { FunctionReturnType } from "convex/server";
-import { AlertTriangle, CheckCircle, Flag, Globe, Pencil } from "lucide-react";
+import { AlertTriangle, CheckCircle, Flag, Pencil } from "lucide-react";
 import { CostBreakdownTooltip } from "@/components/CostBreakdownTooltip";
 import { UpvoteButton } from "@/components/UpvoteButton";
 import { UpvotersTooltip } from "@/components/UpvotersTooltip";
@@ -41,7 +41,7 @@ export function StackHeader({
 	onUpvoteHover,
 	onTileActivate,
 }: StackHeaderProps) {
-	const { creator, personalPageUrl } = stack;
+	const { creator } = stack;
 	const hasUpvotes = (upvoteStatus?.count ?? 0) > 0;
 	const price = formatPriceDisplay(
 		stack.fixedTotal?.amount ?? 0,
@@ -131,50 +131,16 @@ export function StackHeader({
 						{stack.name}
 					</h1>
 
-					{/* Byline */}
+					{/* Byline — links up to the creator's profile */}
 					<div className="flex flex-wrap items-center justify-center gap-2 font-mono text-sm">
-						{creator.xHandle && (
-							<>
-								<a
-									href={`https://x.com/${creator.xHandle}`}
-									target="_blank"
-									rel="noopener noreferrer"
-									className="inline-flex items-center gap-1.5 text-fg-secondary transition-colors hover:text-accent-lime"
-								>
-									<svg
-										className="size-3.5 shrink-0"
-										viewBox="0 0 24 24"
-										fill="currentColor"
-									>
-										<title>X</title>
-										<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-									</svg>
-									<span>@{creator.xHandle}</span>
-								</a>
-							</>
-						)}
-						{personalPageUrl && (
-							<>
-								{creator.xHandle && (
-									<span className="text-stroke-strong">·</span>
-								)}
-								<a
-									href={
-										personalPageUrl.startsWith("http")
-											? personalPageUrl
-											: `https://${personalPageUrl}`
-									}
-									target="_blank"
-									rel="noopener noreferrer"
-									className="inline-flex items-center gap-1.5 text-fg-secondary transition-colors hover:text-accent-lime"
-								>
-									<Globe className="size-3.5 shrink-0" />
-									<span>
-										{personalPageUrl.replace(/^https?:\/\//, "").split("/")[0]}
-									</span>
-								</a>
-							</>
-						)}
+						<Link
+							to="/$creator"
+							params={{ creator: `@${creator.handle}` }}
+							className="inline-flex items-center gap-1.5 text-fg-secondary transition-colors hover:text-accent-lime"
+						>
+							<span>{creator.name}</span>
+							<span className="text-fg-muted">@{creator.handle}</span>
+						</Link>
 						{creator.verified && (
 							<>
 								<span className="text-stroke-strong">·</span>

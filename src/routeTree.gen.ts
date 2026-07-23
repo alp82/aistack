@@ -18,6 +18,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as CreatorRouteImport } from './routes/$creator'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StacksIndexRouteImport } from './routes/stacks.index'
 import { Route as WaitlistLookupIdRouteImport } from './routes/waitlist.$lookupId'
@@ -79,6 +80,11 @@ const AdminRoute = AdminRouteImport.update({
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreatorRoute = CreatorRouteImport.update({
+  id: '/$creator',
+  path: '/$creator',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -169,6 +175,7 @@ const ApiCliAuthPollRoute = ApiCliAuthPollRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$creator': typeof CreatorRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
   '/auth-callback': typeof AuthCallbackRoute
@@ -197,6 +204,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$creator': typeof CreatorRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
   '/auth-callback': typeof AuthCallbackRoute
@@ -226,6 +234,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$creator': typeof CreatorRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
   '/auth-callback': typeof AuthCallbackRoute
@@ -256,6 +265,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/$creator'
     | '/about'
     | '/admin'
     | '/auth-callback'
@@ -284,6 +294,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/$creator'
     | '/about'
     | '/admin'
     | '/auth-callback'
@@ -312,6 +323,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/$creator'
     | '/about'
     | '/admin'
     | '/auth-callback'
@@ -341,6 +353,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CreatorRoute: typeof CreatorRoute
   AboutRoute: typeof AboutRoute
   AdminRoute: typeof AdminRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
@@ -430,6 +443,13 @@ declare module '@tanstack/react-router' {
       path: '/about'
       fullPath: '/about'
       preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$creator': {
+      id: '/$creator'
+      path: '/$creator'
+      fullPath: '/$creator'
+      preLoaderRoute: typeof CreatorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -568,6 +588,7 @@ const ApiCliStacksRouteWithChildren = ApiCliStacksRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CreatorRoute: CreatorRoute,
   AboutRoute: AboutRoute,
   AdminRoute: AdminRoute,
   AuthCallbackRoute: AuthCallbackRoute,

@@ -1,6 +1,6 @@
 import { useConvexAuth } from "@convex-dev/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { useEffect, useRef, useState } from "react";
 import { StackEditor } from "@/components/StackEditor";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,6 @@ function NewStackPage() {
 	const { isAuthenticated, isLoading } = useConvexAuth();
 	const session = authClient.useSession();
 	const getOrCreateCreator = useMutation(api.creators.getOrCreateForUser);
-	const userStack = useQuery(api.stacks.getUserStack);
 	const [creator, setCreator] = useState<{
 		_id: any;
 		name: string;
@@ -38,7 +37,6 @@ function NewStackPage() {
 	} | null>(null);
 	const [loadingCreator, setLoadingCreator] = useState(true);
 	const [isGuest, setIsGuest] = useState(false);
-	const navigatingRef = useRef(false);
 	const hasResolvedRef = useRef(false);
 
 	// Get user's Google profile image as default
@@ -59,18 +57,8 @@ function NewStackPage() {
 			return;
 		}
 
-		// Authenticated user - check if they already have a stack
-		// Skip redirect if we just created a stack (handleSave navigates to detail page)
-		if (
-			userStack !== undefined &&
-			userStack !== null &&
-			!navigatingRef.current
-		) {
-			window.location.href = `/stacks/${userStack.slug}/edit`;
-			return;
-		}
-
-		// Create creator profile for authenticated user
+		// Create creator profile for authenticated user. Creators can own any
+		// number of stacks now — no "already has a stack" redirect.
 		getOrCreateCreator({ imageUrl: userImageUrl })
 			.then((c) => {
 				setCreator(c);
@@ -79,7 +67,7 @@ function NewStackPage() {
 			.catch(() => {
 				setLoadingCreator(false);
 			});
-	}, [isAuthenticated, isLoading, userStack, getOrCreateCreator, navigate]);
+	}, [isAuthenticated, isLoading, getOrCreateCreator, navigate]);
 
 	if (creator) {
 		hasResolvedRef.current = true;
@@ -123,10 +111,6 @@ function NewStackPage() {
 			mode="create"
 			actor={creator}
 			guestSession={isGuest}
-			defaultAvatarUrl={userImageUrl}
-			onNavigating={() => {
-				navigatingRef.current = true;
-			}}
 		/>
 	);
 }

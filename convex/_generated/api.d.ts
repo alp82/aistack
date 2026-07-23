@@ -25,6 +25,7 @@ import type * as httpCliHelpers from "../httpCliHelpers.js";
 import type * as iconReports from "../iconReports.js";
 import type * as iconStorage from "../iconStorage.js";
 import type * as lib_admin from "../lib/admin.js";
+import type * as lib_avatar from "../lib/avatar.js";
 import type * as lib_iconUrl from "../lib/iconUrl.js";
 import type * as lib_ids from "../lib/ids.js";
 import type * as lib_resourceLinks from "../lib/resourceLinks.js";
@@ -35,7 +36,7 @@ import type * as migrations__archived_migrateStackDescriptions from "../migratio
 import type * as migrations__archived_populateShortIds from "../migrations/_archived/populateShortIds.js";
 import type * as migrations_backup from "../migrations/backup.js";
 import type * as migrations_icons from "../migrations/icons.js";
-import type * as migrations_stackImages from "../migrations/stackImages.js";
+import type * as migrations_profileDecoupling from "../migrations/profileDecoupling.js";
 import type * as models from "../models.js";
 import type * as projects from "../projects.js";
 import type * as rateLimit from "../rateLimit.js";
@@ -74,6 +75,7 @@ declare const fullApi: ApiFromModules<{
   iconReports: typeof iconReports;
   iconStorage: typeof iconStorage;
   "lib/admin": typeof lib_admin;
+  "lib/avatar": typeof lib_avatar;
   "lib/iconUrl": typeof lib_iconUrl;
   "lib/ids": typeof lib_ids;
   "lib/resourceLinks": typeof lib_resourceLinks;
@@ -84,7 +86,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/_archived/populateShortIds": typeof migrations__archived_populateShortIds;
   "migrations/backup": typeof migrations_backup;
   "migrations/icons": typeof migrations_icons;
-  "migrations/stackImages": typeof migrations_stackImages;
+  "migrations/profileDecoupling": typeof migrations_profileDecoupling;
   models: typeof models;
   projects: typeof projects;
   rateLimit: typeof rateLimit;

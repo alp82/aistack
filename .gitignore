@@ -17,3 +17,5 @@ todos.json
 .playwright-cli
 .dmux/
 .alp-river/
+
+.forge/

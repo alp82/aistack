@@ -9,6 +9,7 @@ import { Resource as ResourceValidator, ResourceInput } from './schema'
 import { resolveLinkedResources, upsertResourcesForOwner } from './lib/resourceLinks'
 import { normalizeProjectUrl } from './projects'
 import { assertValidAccentPreset, assertValidPersonalPageUrl } from './lib/iconUrl'
+import { resolveStackAvatarUrl } from './lib/avatar'
 
 type ToolSubscriptionLike = {
   price: {
@@ -30,7 +31,7 @@ function buildFixedTotal(prices: Array<FixedPrice | undefined>) {
   }
 }
 
-async function calculateStackPricing(
+export async function calculateStackPricing(
   ctx: QueryCtx,
   toolSubscriptions: ToolSubscriptionLike[],
   bundleSubscriptions: BundleSubscriptionLike[] = []
@@ -129,6 +130,7 @@ const ModelValidator = v.object({
 const CreatorValidator = v.object({
   _id: v.id('creators'),
   name: v.string(),
+  handle: v.string(),
   xHandle: v.optional(v.string()),
   avatarUrl: v.optional(v.string()),
   verified: v.boolean(),
@@ -205,9 +207,7 @@ export const listPublished = query({
           .withIndex('by_stackId', (q) => q.eq('stackId', stack._id))
           .collect()
 
-        const resolvedAvatar = stack.avatarStorageId
-          ? await ctx.storage.getUrl(stack.avatarStorageId)
-          : null
+        const resolvedAvatar = await resolveStackAvatarUrl(ctx, creator, stack)
 
         return {
           _id: stack._id,
@@ -219,13 +219,17 @@ export const listPublished = query({
           fixedTotal: pricing.fixedTotal,
           hasUsageComponent: pricing.hasUsageComponent,
           usageTotalNotes: stack.usageTotalNotes,
-          personalPageUrl: stack.personalPageUrl,
+          // Transitional: after Phase B, personalPages is merged/deduped
+          // across the creator's stacks, so [0] is an arbitrary merged entry.
+          // Phase C drops this field from the payload entirely.
+          personalPageUrl: creator.personalPages[0]?.url ?? stack.personalPageUrl,
 
           creator: {
             _id: creator._id,
             name: creator.name,
+            handle: creator.slug,
             xHandle: creator.xHandle,
-            avatarUrl: resolvedAvatar ?? creator.avatarUrl,
+            avatarUrl: resolvedAvatar,
             verified: creator.verified,
             personalPages: creator.personalPages,
             projectPages: creator.projectPages,
@@ -351,12 +355,6 @@ export const create = mutation({
       .first()
     if (!creator) throw new Error('Creator profile not found. Create one first.')
 
-    const existingStack = await ctx.db
-      .query('stacks')
-      .withIndex('by_creatorId', (q) => q.eq('creatorId', creator._id))
-      .first()
-    if (existingStack) throw new Error('You already have a stack. Please edit your existing stack instead.')
-
     // Generate slug and shortId
     const slug = slugifyAscii(args.name, `${creator.slug}-stack`)
     const shortId = await generateUniqueShortId(ctx, 'stacks')
@@ -374,8 +372,9 @@ export const create = mutation({
       toolSubscriptions: args.toolSubscriptions,
       bundleSubscriptions: args.bundleSubscriptions,
       modelSubscriptions: args.modelSubscriptions,
-      avatarStorageId: args.avatarStorageId,
-      personalPageUrl: args.personalPageUrl,
+      // avatarStorageId/personalPageUrl/stackImageUrl args are still accepted
+      // (stale-tab tolerance until Phase C drops them) but no longer written —
+      // identity lives on the creator now.
       accentPreset: args.accentPreset,
       fixedTotal: pricing.fixedTotal,
       hasUsageComponent: pricing.hasUsageComponent,
@@ -456,9 +455,8 @@ export const update = mutation({
     if (args.toolSubscriptions !== undefined) patch.toolSubscriptions = args.toolSubscriptions
     if (args.bundleSubscriptions !== undefined) patch.bundleSubscriptions = args.bundleSubscriptions
     if (args.modelSubscriptions !== undefined) patch.modelSubscriptions = args.modelSubscriptions
-    if (args.avatarStorageId !== undefined)
-      patch.avatarStorageId = args.avatarStorageId === null ? undefined : args.avatarStorageId
-    if (args.personalPageUrl !== undefined) patch.personalPageUrl = args.personalPageUrl
+    // avatarStorageId/personalPageUrl args are accepted but ignored (Phase A);
+    // identity lives on the creator now.
     if (args.accentPreset !== undefined) patch.accentPreset = args.accentPreset || undefined
     if (args.published !== undefined) patch.published = args.published
 
@@ -497,9 +495,6 @@ export const getForEdit = query({
       fixedTotal: v.optional(MoneyValidator),
       hasUsageComponent: v.boolean(),
       published: v.boolean(),
-      stackImageUrl: v.optional(v.string()),
-      avatarStorageId: v.optional(v.id('_storage')),
-      personalPageUrl: v.optional(v.string()),
       accentPreset: v.optional(v.string()),
 
       toolSubscriptions: v.array(v.object({
@@ -643,45 +638,10 @@ export const getForEdit = query({
       fixedTotal: pricing.fixedTotal,
       hasUsageComponent: pricing.hasUsageComponent,
       published: stack.published,
-      stackImageUrl: stack.stackImageUrl,
-      avatarStorageId: stack.avatarStorageId,
-      personalPageUrl: stack.personalPageUrl,
       accentPreset: stack.accentPreset,
       toolSubscriptions: toolSubs,
       bundleSubscriptions: bundleSubs,
       modelSubscriptions: modelSubs,
-    }
-  },
-})
-
-export const getUserStack = query({
-  args: {},
-  returns: v.union(
-    v.object({
-      slug: v.string(),
-    }),
-    v.null()
-  ),
-  handler: async (ctx) => {
-    const user = await ctx.auth.getUserIdentity()
-    if (!user) return null
-    const userId = user.tokenIdentifier.split('|')[1]
-
-    const creator = await ctx.db
-      .query('creators')
-      .withIndex('by_userId', (q) => q.eq('userId', userId))
-      .first()
-    if (!creator) return null
-
-    const stack = await ctx.db
-      .query('stacks')
-      .withIndex('by_creatorId', (q) => q.eq('creatorId', creator._id))
-      .first()
-    
-    if (!stack) return null
-
-    return {
-      slug: `${stack.slug}-${stack.shortId}`,
     }
   },
 })
@@ -1037,9 +997,7 @@ export const getBySlug = query({
 
     const pricing = await calculateStackPricing(ctx, stack.toolSubscriptions, stack.bundleSubscriptions ?? [])
     const resources = await resolveLinkedResources(ctx, 'stack', stack._id)
-    const resolvedAvatar = stack.avatarStorageId
-      ? await ctx.storage.getUrl(stack.avatarStorageId)
-      : null
+    const resolvedAvatar = await resolveStackAvatarUrl(ctx, creator, stack)
 
     return {
       _id: stack._id,
@@ -1059,8 +1017,9 @@ export const getBySlug = query({
       creator: {
         _id: creator._id,
         name: creator.name,
+        handle: creator.slug,
         xHandle: creator.xHandle,
-        avatarUrl: resolvedAvatar ?? creator.avatarUrl,
+        avatarUrl: resolvedAvatar,
         verified: creator.verified,
         personalPages: creator.personalPages,
         projectPages: creator.projectPages,

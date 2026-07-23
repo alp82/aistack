@@ -1,29 +1,31 @@
 /**
- * One-shot stack-avatar backfill.
+ * Profile-first decoupling migration (Phase B).
  *
- * Run with: pnpm tsx scripts/migrate-stack-images.ts
+ * Run with: pnpm tsx scripts/migrate-profile-decoupling.ts [--give-up]
  *
- * Migrates the legacy user-controlled `stackImageUrl` column into a
- * storage-backed `avatarStorageId` so the read path never server-fetches an
- * attacker-controlled URL (SSRF close-out).
+ * Per creator: moves the most-recently-updated stack avatar onto the creator,
+ * merges stack personalPageUrls into creators.personalPages, and clears the
+ * dying stack identity fields. Creators with no storage-backed avatar but a
+ * legacy `stackImageUrl` get an SSRF-guarded fetch → sharp → 512 WebP →
+ * Convex storage upload folded in (finishing the deferred stack-image
+ * backfill).
  *
- * Behaviour per row:
- *   - skip if `avatarStorageId` is already set
- *   - skip if `stackImageUrl` is empty
- *   - if `stackImageUrl.startsWith('data:')`: decode base64 -> sharp -> upload
- *     -> patch row (set avatarStorageId, clear stackImageUrl)
- *   - else (http(s) URL): guarded fetch (SSRF-safe, 8s timeout) -> sharp
- *     -> upload -> patch row (set avatarStorageId, clear stackImageUrl)
- *   - fetch failure: log + leave the row untouched (avatarStorageId stays null)
+ * Behaviour per creator:
+ *   - most-recent stack avatarStorageId wins; creator avatar is skip-if-set
+ *   - a failed image fetch still calls applyForCreator WITHOUT an upload:
+ *     personalPages merge and the stack-avatar move proceed, but the stack
+ *     keeps `stackImageUrl` as the retry source (the creator shows the Google
+ *     avatarUrl fallback meanwhile). Rerunning retries exactly those rows.
+ *   - exits non-zero while any creator remains failed, so the prod checklist
+ *     run makes dirtiness obvious. Phase C's schema narrow self-gates on it.
  *
- * Idempotent: a second run reports every migrated row as skipped.
+ * Escape hatch (--give-up): permanently dead hosts (404, DNS-gone) would keep
+ * rows dirty forever. A run with --give-up clears `stackImageUrl` WITHOUT an
+ * upload for every creator whose fetch fails — logged loudly per creator. Use
+ * only after normal reruns have stopped making progress, right before the
+ * Phase C narrow.
  *
- * DEPLOY ORDERING (two-phase): deploy the widen-phase code FIRST, then run this
- * backfill PROMPTLY. The read resolvers (getBySlug/listPublished) no longer fall
- * back to `stackImageUrl` (to keep the SSRF closed), so between the widen deploy
- * and this backfill, stacks with a legacy `stackImageUrl` show the creator-avatar
- * /initials fallback instead of their uploaded image. The narrow phase (dropping
- * the `stackImageUrl` column) runs only after this backfill completes.
+ * Idempotent: a second run reports every migrated creator as skipped.
  *
  * Auth: talks to Convex over HTTP via ConvexHttpClient with admin auth.
  *   - Self-hosted: set CONVEX_SELF_HOSTED_URL + CONVEX_SELF_HOSTED_ADMIN_KEY.
@@ -32,7 +34,7 @@
  *     when those env vars aren't set.
  */
 
-import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { ConvexHttpClient } from 'convex/browser'
@@ -47,11 +49,15 @@ const MAX_INPUT_PIXELS = 4096 * 4096
 const FETCH_TIMEOUT_MS = 8000
 const MAX_REDIRECTS = 3
 
+const GIVE_UP = process.argv.includes('--give-up')
+
 type Row = {
-  _id: string
+  creatorId: string
   name: string
-  stackImageUrl?: string
-  avatarStorageId?: string
+  hasCreatorAvatar: boolean
+  winningStackAvatarId: string | null
+  fallbackImageUrl: string | null
+  needsWork: boolean
 }
 
 // --- Env / auth resolution --------------------------------------------------
@@ -180,7 +186,7 @@ async function fetchWithTimeout(rawUrl: string): Promise<Buffer> {
 
 async function uploadToStorage(webpBuffer: Buffer): Promise<string> {
   const uploadUrl = await client.mutation(
-    internal.migrations.stackImages.generateUploadUrl,
+    internal.migrations.profileDecoupling.generateUploadUrl,
     {},
   )
   const resp = await fetch(uploadUrl, {
@@ -196,79 +202,112 @@ async function uploadToStorage(webpBuffer: Buffer): Promise<string> {
   return data.storageId
 }
 
-// --- Per-row processing -----------------------------------------------------
-
-async function processRow(row: Row): Promise<'ok' | 'skipped' | 'failed'> {
-  if (row.avatarStorageId) return 'skipped'
-  if (!row.stackImageUrl) return 'skipped'
-
-  const isDataURI = row.stackImageUrl.startsWith('data:')
-
-  let inputBuffer: Buffer
+/**
+ * Fetch + convert + upload the fallback stackImageUrl. A data URI is decoded
+ * inline; an http(s) URL goes through the SSRF-guarded fetch. Returns null on
+ * failure (the creator stays retryable).
+ */
+async function tryUploadFallback(row: Row): Promise<string | null> {
+  const url = row.fallbackImageUrl
+  if (!url) return null
   try {
-    if (isDataURI) {
-      const match = row.stackImageUrl.match(/^data:([^;]+);base64,(.+)$/)
+    let inputBuffer: Buffer
+    if (url.startsWith('data:')) {
+      const match = url.match(/^data:([^;]+);base64,(.+)$/)
       if (!match) throw new Error('Invalid data URI shape')
       inputBuffer = Buffer.from(match[2], 'base64')
     } else {
-      inputBuffer = await fetchWithTimeout(row.stackImageUrl)
+      inputBuffer = await fetchWithTimeout(url)
     }
+    const webp = await toWebP(inputBuffer)
+    return await uploadToStorage(webp)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.error(`  ${row.name} — fetch failed: ${message}`)
-    return 'failed'
+    console.error(`  ${row.name} — image fetch/upload failed: ${message}`)
+    return null
+  }
+}
+
+// --- Per-creator processing -------------------------------------------------
+
+async function processRow(
+  row: Row,
+): Promise<'ok' | 'skipped' | 'failed' | 'gave-up'> {
+  if (!row.needsWork && row.hasCreatorAvatar) return 'skipped'
+  if (!row.needsWork && !row.fallbackImageUrl) return 'skipped'
+
+  let uploadedStorageId: string | null = null
+  let fetchFailed = false
+  if (row.fallbackImageUrl) {
+    uploadedStorageId = await tryUploadFallback(row)
+    fetchFailed = uploadedStorageId === null
   }
 
-  let webp: Buffer
-  try {
-    webp = await toWebP(inputBuffer)
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.error(`  ${row.name} — sharp failed: ${message}`)
-    return 'failed'
-  }
-
-  let storageId: string
-  try {
-    storageId = await uploadToStorage(webp)
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.error(`  ${row.name} — upload failed: ${message}`)
-    return 'failed'
+  const giveUpThisRow = fetchFailed && GIVE_UP
+  if (giveUpThisRow) {
+    console.warn(
+      `  ${row.name} — GIVING UP on dead stackImageUrl (${row.fallbackImageUrl}); clearing without an avatar`,
+    )
   }
 
   try {
-    await client.mutation(internal.migrations.stackImages.patchStackAvatar, {
-      stackId: row._id as Id<'stacks'>,
-      avatarStorageId: storageId as Id<'_storage'>,
+    await client.mutation(internal.migrations.profileDecoupling.applyForCreator, {
+      creatorId: row.creatorId as Id<'creators'>,
+      ...(uploadedStorageId
+        ? { uploadedStorageId: uploadedStorageId as Id<'_storage'> }
+        : {}),
+      ...(giveUpThisRow ? { giveUpImageUrl: true } : {}),
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.error(`  ${row.name} — patch failed: ${message}`)
+    console.error(`  ${row.name} — applyForCreator failed: ${message}`)
     return 'failed'
   }
 
-  console.log(`  ${row.name} — ok (${webp.byteLength} bytes, cleared stackImageUrl)`)
+  if (giveUpThisRow) return 'gave-up'
+  if (fetchFailed) {
+    // personalPages merge + stack-avatar move went through, but the creator
+    // keeps stackImageUrl as the retry source — rerun to retry.
+    return 'failed'
+  }
+  console.log(`  ${row.name} — ok`)
   return 'ok'
 }
 
 async function main(): Promise<void> {
-  console.log('Stack-image migration starting...')
+  console.log(
+    `Profile-decoupling migration starting${GIVE_UP ? ' (--give-up: dead stackImageUrls will be cleared)' : ''}...`,
+  )
   const rows = (await client.query(
-    internal.migrations.stackImages.listStacksToMigrate,
+    internal.migrations.profileDecoupling.listCreatorsToMigrate,
     {},
   )) as Row[]
-  console.log(`[stacks] ${rows.length} rows to migrate`)
+  console.log(`[creators] ${rows.length} creators total`)
   let ok = 0
   let skipped = 0
   let failed = 0
+  let gaveUp = 0
+  const failedNames: string[] = []
   for (const row of rows) {
     const result = await processRow(row)
     if (result === 'ok') ok++
     else if (result === 'skipped') skipped++
-    else failed++
+    else if (result === 'gave-up') gaveUp++
+    else {
+      failed++
+      failedNames.push(row.name)
+    }
   }
-  console.log(`[stacks] summary — ok: ${ok}, skipped: ${skipped}, failed: ${failed}`)
+  console.log(
+    `[creators] summary — ok: ${ok}, skipped: ${skipped}, failed: ${failed}, gave-up: ${gaveUp}`,
+  )
+  if (failed > 0) {
+    console.error(
+      `\nFAILED creators (stackImageUrl kept as retry source — rerun to retry, or use --give-up for permanently dead hosts):`,
+    )
+    for (const name of failedNames) console.error(`  - ${name}`)
+    process.exit(1)
+  }
   console.log('\nDone.')
 }
 

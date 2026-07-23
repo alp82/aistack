@@ -51,7 +51,7 @@ export const Route = createFileRoute("/")({
 function IndexRoute() {
 	const stacks = (useQuery(api.stacks.listPublished) ??
 		[]) as LandingStackPreview[];
-	const userStack = useQuery(api.stacks.getUserStack);
+	const me = useQuery(api.creators.getMe);
 
 	return (
 		<>
@@ -62,7 +62,7 @@ function IndexRoute() {
 						"Explore the AI stacks indie builders run in production. Compare tools, costs, and workflows.",
 				}}
 			/>
-			<LandingPageShell stacks={stacks} userStack={userStack} />
+			<LandingPageShell stacks={stacks} me={me} />
 		</>
 	);
 }

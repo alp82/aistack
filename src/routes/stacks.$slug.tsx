@@ -155,7 +155,7 @@ function StackDetailsPage() {
 	const navigate = useNavigate();
 	const { isAuthenticated } = useConvexAuth();
 	const stack = useQuery(api.stacks.getBySlug, { slug });
-	const userStack = useQuery(api.stacks.getUserStack);
+	const me = useQuery(api.creators.getMe);
 	const upvoteStatus = useQuery(
 		api.stacks.getUpvoteStatus,
 		stack ? { stackId: stack._id } : "skip",
@@ -347,8 +347,8 @@ function StackDetailsPage() {
 						slug={stack.slug}
 					/>
 
-					{/* CTA Section - hide if user already published a stack */}
-					{!upvoteStatus?.isOwner && !userStack && (
+					{/* CTA Section - hide for the owner and for creators who already have a stack */}
+					{!upvoteStatus?.isOwner && !me?.hasStack && (
 						<section className="bg-accent-lime py-24 px-6 md:px-16 border-t border-accent-lime">
 							<div className="mx-auto max-w-3xl text-center">
 								<h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-6 text-accent-lime-contrast leading-[0.9] uppercase">

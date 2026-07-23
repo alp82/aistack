@@ -33,12 +33,21 @@ vi.mock("@tanstack/react-router", () => ({
 	Link: ({
 		children,
 		to,
+		params,
 	}: {
 		children: ReactNode;
 		to: string;
 		params?: Record<string, string>;
 		className?: string;
-	}) => <a href={to}>{children}</a>,
+	}) => {
+		const href = params
+			? Object.entries(params).reduce(
+					(acc, [key, value]) => acc.replace(`$${key}`, value),
+					to,
+				)
+			: to;
+		return <a href={href}>{children}</a>;
+	},
 	useNavigate: () => vi.fn(),
 }));
 
@@ -78,6 +87,7 @@ afterEach(() => {
 const BASE_STACK = {
 	creator: {
 		name: "Test User",
+		handle: "test-user",
 		avatarUrl: undefined,
 		xHandle: undefined,
 		verified: undefined,
@@ -405,6 +415,41 @@ describe("GROUP E — StackHeader hero tiles as buttons", () => {
 		fireEvent.click(bundlesBtn);
 		expect(onTileActivate).toHaveBeenCalledTimes(1);
 		expect(onTileActivate).toHaveBeenCalledWith("bundles");
+	});
+});
+
+// ===========================================================================
+// GROUP P — Byline links up to the creator profile (profile-first decoupling)
+// ===========================================================================
+
+describe("GROUP P — StackHeader byline profile link", () => {
+	it("renders the creator byline as a link to /@handle", () => {
+		render(<StackHeader {...buildProps(UPVOTE_STATUS_ZERO)} />);
+
+		const bylineLink = screen.getByRole("link", {
+			name: /test user\s*@test-user/i,
+		});
+		expect(bylineLink).toHaveAttribute("href", "/@test-user");
+	});
+
+	it("does not render external identity links (X / personal page) in the byline", () => {
+		const stack = {
+			...BASE_STACK,
+			creator: {
+				...BASE_STACK.creator,
+				xHandle: "someone",
+			},
+			personalPageUrl: "https://example.com",
+		};
+		render(
+			<StackHeader
+				{...buildProps(UPVOTE_STATUS_ZERO, { stack: stack as never })}
+			/>,
+		);
+
+		expect(
+			screen.queryByRole("link", { name: /x\.com|example\.com/i }),
+		).not.toBeInTheDocument();
 	});
 });
 

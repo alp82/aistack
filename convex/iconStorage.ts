@@ -60,6 +60,10 @@ export const _collectReferencedStorageIds = internalQuery({
     for (const s of stacks) {
       if (s.avatarStorageId) referenced.push(s.avatarStorageId)
     }
+    const creators = await ctx.db.query('creators').collect()
+    for (const c of creators) {
+      if (c.avatarStorageId) referenced.push(c.avatarStorageId)
+    }
     const editSuggestions = await ctx.db.query('toolEditSuggestions').collect()
     for (const s of editSuggestions) {
       if (s.suggestedIconStorageId) referenced.push(s.suggestedIconStorageId)

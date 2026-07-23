@@ -3,11 +3,11 @@ import { motion } from "framer-motion";
 import { ArrowRight, Pencil } from "lucide-react";
 
 type PublishCTASectionProps = {
-	userStack?: { slug: string } | null;
+	me?: { handle: string; hasStack: boolean } | null;
 };
 
-function PublishCTASection({ userStack }: PublishCTASectionProps) {
-	const hasPublished = !!userStack;
+function PublishCTASection({ me }: PublishCTASectionProps) {
+	const hasPublished = me?.hasStack === true;
 	return (
 		<section className="section-cta py-32 px-6 md:px-16 lg:px-24 flex flex-col items-center text-center relative border-b border-lime-500">
 			<div className="relative z-10 max-w-4xl">
@@ -50,15 +50,15 @@ function PublishCTASection({ userStack }: PublishCTASectionProps) {
 					transition={{ duration: 0.6, delay: 0.2 }}
 					className="flex flex-col md:flex-row gap-6 justify-center"
 				>
-					{hasPublished ? (
-						<Link to="/stacks/$slug/edit" params={{ slug: userStack.slug }}>
+					{hasPublished && me ? (
+						<Link to="/$creator" params={{ creator: `@${me.handle}` }}>
 							<motion.span
 								whileHover={{ y: 2 }}
 								whileTap={{ y: 0 }}
 								transition={{ duration: 0.15 }}
 								className="inline-flex items-center gap-3 px-8 py-5 bg-black text-white font-mono font-bold uppercase tracking-widest hover:bg-zinc-800 transition-colors text-lg shadow-2xl"
 							>
-								Update Your Stack
+								View Your Profile
 								<Pencil className="size-5" />
 							</motion.span>
 						</Link>

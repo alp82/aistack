@@ -59,12 +59,17 @@ describe("landing sections", () => {
 		);
 	});
 
-	it("wires the userStack prop through to the publish CTA", () => {
-		render(<LandingPageShell stacks={[]} userStack={{ slug: "my-stack" }} />);
+	it("wires the me prop through to the publish CTA", () => {
+		render(
+			<LandingPageShell
+				stacks={[]}
+				me={{ handle: "my-handle", hasStack: true }}
+			/>,
+		);
 
-		// Published state swaps the CTA from "publish" to an "update" affordance.
+		// Published state swaps the CTA from "publish" to a profile affordance.
 		expect(
-			screen.getByRole("link", { name: /update your stack/i }),
+			screen.getByRole("link", { name: /view your profile/i }),
 		).toBeInTheDocument();
 		expect(
 			screen.queryByRole("heading", { name: /publish your/i }),

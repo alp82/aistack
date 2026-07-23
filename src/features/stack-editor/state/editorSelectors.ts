@@ -10,7 +10,6 @@ import type {
 	StackEditorInitialValue,
 	StackEditorMode,
 } from "@/features/stack-editor/types";
-import type { Id } from "../../../../convex/_generated/dataModel";
 
 function selectCanPublish(state: EditorState): boolean {
 	return canPublishStack(state.oneLiner, state.toolSubscriptions.length);
@@ -70,15 +69,6 @@ function selectSavePayload(state: EditorState, published: boolean) {
 			: undefined;
 	const projects =
 		state.projects.length > 0 ? normalizeProjects(state.projects) : undefined;
-	// dataUrl avatars are uploaded to a storage id in handleSave before the
-	// mutation runs — the selector emits undefined for dataUrl (to be filled
-	// in by handleSave after the upload), null for none (clear), or the id.
-	const avatarStorageId: Id<"_storage"> | null | undefined =
-		state.pendingAvatar.kind === "none"
-			? null
-			: state.pendingAvatar.kind === "storageId"
-				? (state.pendingAvatar.id as Id<"_storage">)
-				: undefined;
 	return {
 		name: state.name.trim(),
 		oneLiner: state.oneLiner.trim(),
@@ -106,8 +96,6 @@ function selectSavePayload(state: EditorState, published: boolean) {
 			role: model.role,
 			description: model.description,
 		})),
-		avatarStorageId,
-		personalPageUrl: state.personalPageUrl.trim() || undefined,
 		accentPreset: state.accentPreset || undefined,
 		published,
 	};
@@ -125,8 +113,6 @@ function selectGuestDraft(state: EditorState): GuestStackDraft {
 		toolSubscriptions: state.toolSubscriptions,
 		bundleSubscriptions: state.bundleSubscriptions,
 		projects: state.projects,
-		xHandle: state.xHandle,
-		personalPageUrl: state.personalPageUrl,
 		accentPreset: state.accentPreset,
 		pendingAvatar: state.pendingAvatar,
 	};

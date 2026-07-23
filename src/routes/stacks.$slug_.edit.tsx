@@ -33,14 +33,6 @@ function EditStackPage() {
 	const session = authClient.useSession();
 	const getOrCreateCreator = useMutation(api.creators.getOrCreateForUser);
 	const stackData = useQuery(api.stacks.getForEdit, { slug });
-	// getForEdit returns the raw avatar storage id (never a URL — the public
-	// resolvers do that). Resolve it here for the editor's avatar preview.
-	const avatarUrl = useQuery(
-		api.iconStorage.getUrl,
-		stackData?.avatarStorageId
-			? { storageId: stackData.avatarStorageId }
-			: "skip",
-	);
 
 	// Get user's Google profile image as default
 	const userImageUrl = session.data?.user?.image ?? undefined;
@@ -114,7 +106,6 @@ function EditStackPage() {
 		<StackEditor
 			mode="edit"
 			actor={creator}
-			defaultAvatarUrl={userImageUrl}
 			initialValue={{
 				_id: stackData._id,
 				name: stackData.name,
@@ -124,9 +115,6 @@ function EditStackPage() {
 				resources: stackData.resources ?? [],
 				teamSize: stackData.teamSize,
 				published: stackData.published,
-				avatarStorageId: stackData.avatarStorageId,
-				avatarUrl: avatarUrl ?? undefined,
-				personalPageUrl: stackData.personalPageUrl,
 				accentPreset: stackData.accentPreset,
 				toolSubscriptions: stackData.toolSubscriptions.map((t) => ({
 					toolSlug: t.toolSlug,

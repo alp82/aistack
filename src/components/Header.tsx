@@ -115,42 +115,9 @@ export default function Header() {
 		return currentPath === path;
 	};
 
-	const [cachedUserStack, setCachedUserStack] = useState<{
-		slug: string;
-	} | null>(null);
-
-	// Hydrate from localStorage after mount to avoid SSR mismatch
-	useEffect(() => {
-		if (isAuthenticated) {
-			const cached = localStorage.getItem("userStack");
-			if (cached) {
-				setCachedUserStack(JSON.parse(cached));
-			}
-		}
-	}, [isAuthenticated]);
-
-	const userStack = useQuery(api.stacks.getUserStack);
+	const me = useQuery(api.creators.getMe);
 	const isAdmin = useQuery(api.admin.checkIsAdmin) ?? false;
 	const pendingReviewCount = useQuery(api.admin.getPendingReviewCount);
-
-	useEffect(() => {
-		if (userStack !== undefined) {
-			if (userStack) {
-				localStorage.setItem("userStack", JSON.stringify(userStack));
-				setCachedUserStack(userStack);
-			} else {
-				localStorage.removeItem("userStack");
-				setCachedUserStack(null);
-			}
-		}
-	}, [userStack]);
-
-	useEffect(() => {
-		if (!isAuthenticated) {
-			localStorage.removeItem("userStack");
-			setCachedUserStack(null);
-		}
-	}, [isAuthenticated]);
 
 	useEffect(() => {
 		const handleClickOutside = (e: MouseEvent) => {
@@ -169,10 +136,7 @@ export default function Header() {
 		navigate({ to: "/" });
 	};
 
-	const shareStackHref =
-		userStack || cachedUserStack
-			? `/stacks/${(userStack || cachedUserStack)?.slug}/edit`
-			: "/stacks/new";
+	const shareStackHref = me?.hasStack ? `/@${me.handle}` : "/stacks/new";
 
 	return (
 		<>
@@ -281,18 +245,19 @@ export default function Header() {
 							</Link>
 						)}
 
-						{/* Share Stack CTA */}
+						{/* Profile / Share Stack CTA */}
 						{isAuthenticated ? (
 							<>
-								{userStack || cachedUserStack ? (
-									<a
-										href={`/stacks/${(userStack || cachedUserStack)?.slug}/edit`}
+								{me?.hasStack ? (
+									<Link
+										to="/$creator"
+										params={{ creator: `@${me.handle}` }}
 										className="hidden sm:inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
 									>
 										<Pencil className="size-3.5" />
-										Update Stack
-									</a>
-								) : userStack === null ? (
+										Profile
+									</Link>
+								) : me === null || me?.hasStack === false ? (
 									<Link
 										to="/stacks/new"
 										className="hidden sm:inline-flex items-center gap-2 border-2 border-accent-lime bg-accent-lime px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-accent-lime-contrast transition-colors hover:bg-accent-lime-strong"
@@ -446,16 +411,17 @@ export default function Header() {
 						<div className="flex flex-col gap-3">
 							{isAuthenticated ? (
 								<>
-									{userStack || cachedUserStack ? (
-										<a
-											href={`/stacks/${(userStack || cachedUserStack)?.slug}/edit`}
+									{me?.hasStack ? (
+										<Link
+											to="/$creator"
+											params={{ creator: `@${me.handle}` }}
 											onClick={() => setMobileMenuOpen(false)}
 											className="inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-2 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
 										>
 											<Pencil className="size-3.5" />
-											Update Stack
-										</a>
-									) : userStack === null ? (
+											Profile
+										</Link>
+									) : me === null || me?.hasStack === false ? (
 										<Link
 											to="/stacks/new"
 											onClick={() => setMobileMenuOpen(false)}

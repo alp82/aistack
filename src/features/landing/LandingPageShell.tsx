@@ -9,17 +9,17 @@ import { PublishCTASection } from "@/features/landing/sections/PublishCTASection
 
 type LandingPageShellProps = {
 	stacks: LandingStackPreview[];
-	userStack?: { slug: string } | null;
+	me?: { handle: string; hasStack: boolean } | null;
 };
 
-function LandingPageShell({ stacks, userStack }: LandingPageShellProps) {
+function LandingPageShell({ stacks, me }: LandingPageShellProps) {
 	return (
 		<div className="min-h-screen bg-bg-canvas">
 			<GridBackground />
 			<HeroSection />
 			<FeaturedStacksSection stacks={stacks} />
 			<ExplainerSection />
-			<PublishCTASection userStack={userStack} />
+			<PublishCTASection me={me} />
 		</div>
 	);
 }

@@ -164,3 +164,31 @@ test('TC-GC-05: gcOrphans skips an unreferenced blob newer than cutoff (deleted=
   expect(result.deleted).toBe(0)
   expect(result.scanned).toBeGreaterThanOrEqual(1)
 })
+
+// ---------------------------------------------------------------------------
+// TC-GC-06: _collectReferencedStorageIds includes creators.avatarStorageId
+// (plan.md Phase A — profile avatars must survive GC) (RED)
+// ---------------------------------------------------------------------------
+
+test('TC-GC-06: _collectReferencedStorageIds includes a creators.avatarStorageId', async () => {
+  const t = convexTest(schema, modules)
+  const storageId = await seedBlob(t)
+  await t.run(async (ctx: MutationCtx) =>
+    ctx.db.insert('creators', {
+      name: 'GC Creator',
+      slug: 'gc-creator-06',
+      userId: 'gc-creator-06',
+      verified: false,
+      personalPages: [],
+      projectPages: [],
+      avatarStorageId: storageId,
+      createdAt: Date.now(),
+    }),
+  )
+
+  const referenced: string[] = await t.run(async (ctx) =>
+    ctx.runQuery(internal.iconStorage._collectReferencedStorageIds, {}),
+  )
+
+  expect(referenced).toContain(storageId)
+})

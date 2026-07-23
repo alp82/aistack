@@ -156,7 +156,7 @@ function BrowseStacksPage() {
 	const { isAuthenticated } = useConvexAuth();
 	const rawStacks = useQuery(api.stacks.listPublished);
 	const stacks = (rawStacks ?? []) as LandingStackPreview[];
-	const userStack = useQuery(api.stacks.getUserStack);
+	const me = useQuery(api.creators.getMe);
 	const {
 		filter: rawFilter,
 		sort: rawSort,
@@ -255,8 +255,12 @@ function BrowseStacksPage() {
 	];
 
 	const handleAddStack = () => {
-		if (isAuthenticated && userStack) {
-			navigate({ to: `/stacks/${userStack.slug}/edit` });
+		if (isAuthenticated && me?.hasStack) {
+			// Never an arbitrary stack's editor — the profile lists them all.
+			navigate({
+				to: "/$creator",
+				params: { creator: `@${me.handle}` },
+			});
 		} else {
 			navigate({ to: "/stacks/new" });
 		}
@@ -282,9 +286,7 @@ function BrowseStacksPage() {
 						description="See what tools real builders are paying for. Filter, compare, and find the stack that fits your needs."
 						action={{
 							label:
-								isAuthenticated && userStack
-									? "Update Your Stack"
-									: "Add Stack",
+								isAuthenticated && me?.hasStack ? "Your Profile" : "Add Stack",
 							icon: <Plus size={18} />,
 							onClick: handleAddStack,
 						}}

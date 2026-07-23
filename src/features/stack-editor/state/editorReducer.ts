@@ -27,7 +27,9 @@ function extractShortId(compositeSlug: string): string {
 // logout, and guest edits can't clobber the user's draft.
 function getDraftKey(slug?: string, creatorId?: string): string {
 	if (slug) return `stackDraft-${extractShortId(slug)}`;
-	return creatorId ? `stackDraft-new-user:${creatorId}` : "stackDraft-new-guest";
+	return creatorId
+		? `stackDraft-new-user:${creatorId}`
+		: "stackDraft-new-guest";
 }
 
 type EditorSection = (typeof sectionOrder)[number];
@@ -44,8 +46,6 @@ type ProfileFields = {
 	toolSubscriptions: ToolSubscriptionEntry[];
 	bundleSubscriptions: BundleSubscriptionEntry[];
 	projects: StagedProject[];
-	xHandle: string;
-	personalPageUrl: string;
 	accentPreset: string;
 	pendingAvatar: PendingAvatar;
 };
@@ -66,13 +66,7 @@ type EditorAction =
 			updates: Partial<
 				Pick<
 					EditorState,
-					| "name"
-					| "oneLiner"
-					| "xHandle"
-					| "isTeam"
-					| "teamSize"
-					| "personalPageUrl"
-					| "accentPreset"
+					"name" | "oneLiner" | "isTeam" | "teamSize" | "accentPreset"
 				>
 			>;
 	  }
@@ -134,11 +128,7 @@ type EditorAction =
 
 function getInitialEditorState(args: {
 	actor: {
-		xHandle?: string;
 		name?: string;
-		avatarUrl?: string;
-		personalPages?: Array<{ name: string; url: string }>;
-		projectPages?: Array<{ name: string; url: string }>;
 	};
 	initialValue?: StackEditorInitialValue;
 	mode?: "create" | "edit";
@@ -146,10 +136,6 @@ function getInitialEditorState(args: {
 	creatorId?: string;
 }): EditorState {
 	const { actor, initialValue, mode, creatorId } = args;
-
-	// Extract first personal page URL (for X/portfolio)
-	const personalPageUrl =
-		actor.personalPages?.find((p) => p.name !== "X")?.url ?? "";
 
 	// Load from localStorage using scoped key (per-stack for edit,
 	// per-auth-identity for create)
@@ -228,15 +214,8 @@ function getInitialEditorState(args: {
 			initialValue?.bundleSubscriptions ??
 			[],
 		projects: savedDraft?.projects ?? [],
-		xHandle: savedDraft?.xHandle ?? actor.xHandle ?? "",
-		personalPageUrl:
-			savedDraft?.personalPageUrl ??
-			initialValue?.personalPageUrl ??
-			personalPageUrl,
 		accentPreset: savedDraft?.accentPreset ?? initialValue?.accentPreset ?? "",
-		pendingAvatar: initialValue?.avatarStorageId
-			? { kind: "storageId", id: initialValue.avatarStorageId }
-			: (savedDraft?.pendingAvatar ?? { kind: "none" }),
+		pendingAvatar: savedDraft?.pendingAvatar ?? { kind: "none" },
 		saving: false,
 		error: "",
 		activeSection: "profile",
@@ -337,11 +316,6 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 						: state.bundleSubscriptions,
 				projects:
 					draft.projects !== undefined ? draft.projects : state.projects,
-				xHandle: draft.xHandle !== undefined ? draft.xHandle : state.xHandle,
-				personalPageUrl:
-					draft.personalPageUrl !== undefined
-						? draft.personalPageUrl
-						: state.personalPageUrl,
 				accentPreset:
 					draft.accentPreset !== undefined
 						? draft.accentPreset
@@ -367,11 +341,8 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 				toolSubscriptions: iv.toolSubscriptions ?? [],
 				bundleSubscriptions: iv.bundleSubscriptions ?? [],
 				projects: [],
-				personalPageUrl: iv.personalPageUrl ?? "",
 				accentPreset: iv.accentPreset ?? "",
-				pendingAvatar: iv.avatarStorageId
-					? { kind: "storageId", id: iv.avatarStorageId }
-					: { kind: "none" },
+				pendingAvatar: { kind: "none" },
 				restoredFromDraft: false,
 			};
 		}

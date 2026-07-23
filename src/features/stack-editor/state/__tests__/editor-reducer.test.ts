@@ -24,20 +24,18 @@ const STAGED_PROJECT = {
 
 describe("editor reducer", () => {
 	it("updates profile and section state with typed transitions", () => {
-		const baseState = getInitialEditorState({ actor: { xHandle: "existing" } });
+		const baseState = getInitialEditorState({ actor: {} });
 
 		const profileState = editorReducer(baseState, {
 			type: "profile/updated",
 			updates: {
 				oneLiner: "A practical stack",
-				xHandle: "new-handle",
 				isTeam: true,
 				teamSize: 4,
 			},
 		});
 
 		expect(profileState.oneLiner).toBe("A practical stack");
-		expect(profileState.xHandle).toBe("new-handle");
 		expect(profileState.isTeam).toBe(true);
 		expect(profileState.teamSize).toBe(4);
 
@@ -50,13 +48,10 @@ describe("editor reducer", () => {
 	});
 
 	it("computes publish and save selectors from state", () => {
-		const createState = editorReducer(
-			getInitialEditorState({ actor: { xHandle: "" } }),
-			{
-				type: "profile/updated",
-				updates: { oneLiner: "Builder stack" },
-			},
-		);
+		const createState = editorReducer(getInitialEditorState({ actor: {} }), {
+			type: "profile/updated",
+			updates: { oneLiner: "Builder stack" },
+		});
 
 		expect(selectCanPublish(createState)).toBe(false);
 		expect(selectSaveValidationError(createState, true)).toBe(
@@ -91,28 +86,23 @@ describe("editor reducer", () => {
 	});
 
 	it("builds guest draft payload with parity keys", () => {
-		const state = editorReducer(
-			getInitialEditorState({ actor: { xHandle: "" } }),
-			{
-				type: "profile/updated",
-				updates: {
-					oneLiner: "Draft",
-					xHandle: "alp",
-					isTeam: true,
-					teamSize: 3,
-				},
+		const state = editorReducer(getInitialEditorState({ actor: {} }), {
+			type: "profile/updated",
+			updates: {
+				oneLiner: "Draft",
+				isTeam: true,
+				teamSize: 3,
 			},
-		);
+		});
 
 		const draft = selectGuestDraft(state);
 		expect(draft.oneLiner).toBe("Draft");
-		expect(draft.xHandle).toBe("alp");
 		expect(draft.isTeam).toBe(true);
 		expect(draft.teamSize).toBe(3);
 	});
 
 	it("builds save payload with trimmed fields and optional values", () => {
-		const base = getInitialEditorState({ actor: { xHandle: "" } });
+		const base = getInitialEditorState({ actor: {} });
 		const withProfile = editorReducer(base, {
 			type: "profile/updated",
 			updates: {
@@ -317,7 +307,7 @@ describe("editor reducer", () => {
 	});
 
 	it("updates ui flags and merges guest draft values", () => {
-		const base = getInitialEditorState({ actor: { xHandle: "existing" } });
+		const base = getInitialEditorState({ actor: {} });
 		const saving = editorReducer(base, {
 			type: "ui/saveStateChanged",
 			saving: true,
@@ -339,48 +329,44 @@ describe("editor reducer", () => {
 			type: "guestDraft/loaded",
 			draft: {
 				description: "Loaded",
-				xHandle: "new-handle",
 				isTeam: true,
 			},
 		});
 
 		expect(merged.description).toBe("Loaded");
-		expect(merged.xHandle).toBe("new-handle");
 		expect(merged.isTeam).toBe(true);
 		expect(merged.oneLiner).toBe(withDialog.oneLiner);
 	});
 
 	// -------------------------------------------------------------------------
-	// Group P: pendingAvatar init (RED — field does not exist yet)
+	// Group P: pendingAvatar init (guest staging only — stack rows carry no
+	// avatar anymore, so initialValue never seeds one)
 	// -------------------------------------------------------------------------
 
 	// TC-P-01
-	it("TC-P-01: getInitialEditorState edit-mode with avatarStorageId seeds pendingAvatar {kind:'storageId'}", () => {
+	it("TC-P-01: getInitialEditorState restores a staged pendingAvatar from the saved draft", () => {
+		localStorage.setItem(
+			"stackDraft-new-guest",
+			JSON.stringify({
+				pendingAvatar: { kind: "dataUrl", url: "data:image/jpeg;base64,CCCC" },
+			}),
+		);
+
 		const state = getInitialEditorState({
 			actor: {},
-			initialValue: {
-				_id: "stacks:sid" as never,
-				name: "S",
-				slug: "s-SLUG",
-				oneLiner: "o",
-				published: false,
-				toolSubscriptions: [],
-				bundleSubscriptions: [],
-				modelSubscriptions: [],
-				// avatarStorageId is not yet on StackEditorInitialValue → RED
-				avatarStorageId: "sid_abc",
-			} as never,
-			mode: "edit",
+			mode: "create",
+			guestSession: true,
 		});
+		localStorage.removeItem("stackDraft-new-guest");
 
 		expect((state as Record<string, unknown>).pendingAvatar).toEqual({
-			kind: "storageId",
-			id: "sid_abc",
+			kind: "dataUrl",
+			url: "data:image/jpeg;base64,CCCC",
 		});
 	});
 
 	// TC-P-02
-	it("TC-P-02: getInitialEditorState with no avatarStorageId → pendingAvatar {kind:'none'}", () => {
+	it("TC-P-02: getInitialEditorState edit-mode → pendingAvatar {kind:'none'}", () => {
 		const state = getInitialEditorState({
 			actor: {},
 			initialValue: {
@@ -411,25 +397,25 @@ describe("editor reducer", () => {
 	});
 
 	// -------------------------------------------------------------------------
-	// Group Q: selectSavePayload avatar mapping (RED)
+	// Group Q: selectSavePayload never emits identity fields (the staged guest
+	// avatar lands on the creator via landStagedAvatar, not the stack payload)
 	// -------------------------------------------------------------------------
 
 	// TC-Q-01
-	it("TC-Q-01: pendingAvatar none → selectSavePayload.avatarStorageId===null, no stackImageUrl key", () => {
+	it("TC-Q-01: pendingAvatar none → selectSavePayload has no avatarStorageId/stackImageUrl keys", () => {
 		const base = getInitialEditorState({ actor: {} });
-		// Force pendingAvatar to {kind:'none'} via the new action (RED until action exists)
 		const state = editorReducer(base, {
 			type: "avatar/updated",
 			pending: { kind: "none" },
 		} as never);
 
 		const payload = selectSavePayload(state, false) as Record<string, unknown>;
-		expect(payload.avatarStorageId).toBeNull();
+		expect("avatarStorageId" in payload).toBe(false);
 		expect("stackImageUrl" in payload).toBe(false);
 	});
 
 	// TC-Q-02
-	it("TC-Q-02: pendingAvatar storageId 'sid_x' → selectSavePayload.avatarStorageId==='sid_x'", () => {
+	it("TC-Q-02: pendingAvatar storageId → selectSavePayload still emits no avatarStorageId", () => {
 		const base = getInitialEditorState({ actor: {} });
 		const state = editorReducer(base, {
 			type: "avatar/updated",
@@ -437,11 +423,11 @@ describe("editor reducer", () => {
 		} as never);
 
 		const payload = selectSavePayload(state, false) as Record<string, unknown>;
-		expect(payload.avatarStorageId).toBe("sid_x");
+		expect("avatarStorageId" in payload).toBe(false);
 	});
 
 	// TC-Q-03
-	it("TC-Q-03: pendingAvatar dataUrl → selectSavePayload.avatarStorageId is undefined (URL not emitted)", () => {
+	it("TC-Q-03: pendingAvatar dataUrl → selectSavePayload emits neither the URL nor an id", () => {
 		const base = getInitialEditorState({ actor: {} });
 		const state = editorReducer(base, {
 			type: "avatar/updated",
@@ -449,9 +435,8 @@ describe("editor reducer", () => {
 		} as never);
 
 		const payload = selectSavePayload(state, false) as Record<string, unknown>;
-		// dataUrl pending is converted to storageId in handleSave before mutation;
-		// the selector itself must not emit the raw data URL as avatarStorageId.
-		expect(payload.avatarStorageId).toBeUndefined();
+		expect("avatarStorageId" in payload).toBe(false);
+		expect(JSON.stringify(payload)).not.toContain("base64,AAAA");
 	});
 
 	// TC-Q-04
@@ -498,8 +483,7 @@ describe("editor reducer", () => {
 				toolSubscriptions: [],
 				bundleSubscriptions: [],
 				modelSubscriptions: [],
-				avatarStorageId: "sid_orig",
-			} as never,
+			},
 			mode: "edit",
 		});
 
@@ -519,7 +503,7 @@ describe("editor reducer", () => {
 	});
 
 	// TC-R-02
-	it("TC-R-02: after profile/updated, selectSavePayload.avatarStorageId is still 'sid_orig'", () => {
+	it("TC-R-02: after profile/updated, selectGuestDraft still round-trips pendingAvatar 'sid_orig'", () => {
 		const base = getInitialEditorState({
 			actor: {},
 			initialValue: {
@@ -531,8 +515,7 @@ describe("editor reducer", () => {
 				toolSubscriptions: [],
 				bundleSubscriptions: [],
 				modelSubscriptions: [],
-				avatarStorageId: "sid_orig",
-			} as never,
+			},
 			mode: "edit",
 		});
 
@@ -546,11 +529,11 @@ describe("editor reducer", () => {
 			updates: { oneLiner: "new one liner" },
 		});
 
-		const payload = selectSavePayload(afterProfileUpdate, false) as Record<
+		const draft = selectGuestDraft(afterProfileUpdate) as Record<
 			string,
 			unknown
 		>;
-		expect(payload.avatarStorageId).toBe("sid_orig");
+		expect(draft.pendingAvatar).toEqual({ kind: "storageId", id: "sid_orig" });
 	});
 
 	// -------------------------------------------------------------------------

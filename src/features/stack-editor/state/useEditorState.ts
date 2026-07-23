@@ -19,7 +19,7 @@ import type {
 type UseEditorStateArgs = {
 	mode: StackEditorMode;
 	guestSession: boolean;
-	actor: { xHandle?: string };
+	actor: { name?: string };
 	initialValue?: StackEditorInitialValue;
 	/** Auth-scopes the create draft key; undefined for guest sessions. */
 	creatorId?: string;
@@ -71,17 +71,10 @@ function useEditorState({
 			dispatch({ type: "profile/updated", updates: { name: value } }),
 		setOneLiner: (value: string) =>
 			dispatch({ type: "profile/updated", updates: { oneLiner: value } }),
-		setXHandle: (value: string) =>
-			dispatch({ type: "profile/updated", updates: { xHandle: value } }),
 		setIsTeam: (value: boolean) =>
 			dispatch({ type: "profile/updated", updates: { isTeam: value } }),
 		setTeamSize: (value: number) =>
 			dispatch({ type: "profile/updated", updates: { teamSize: value } }),
-		setPersonalPageUrl: (value: string) =>
-			dispatch({
-				type: "profile/updated",
-				updates: { personalPageUrl: value },
-			}),
 		setAccentPreset: (value: string) =>
 			dispatch({
 				type: "profile/updated",

@@ -132,6 +132,7 @@ export default defineSchema({
     userId: v.optional(v.string()),
     xHandle: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),
+    avatarStorageId: v.optional(v.id('_storage')),
     verified: v.boolean(),
     personalPages: v.array(PageLink),
     projectPages: v.array(PageLink),
