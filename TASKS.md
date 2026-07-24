@@ -1,3 +1,4 @@
+* https://x.com/solomonneas/status/2080454372564070873
 * profile
     * @ in url is encoded
     * header does not show avatar image
