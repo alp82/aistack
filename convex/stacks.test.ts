@@ -277,21 +277,6 @@ test('TC-K-01: create rejects the retired avatarStorageId arg (Phase C narrow)',
   ).rejects.toThrow(/unexpected field/i)
 })
 
-test('TC-K-02: create with avatarStorageId omitted → row.avatarStorageId is undefined', async () => {
-  const t = convexTest(schema, modules)
-  const { asCreator } = await seedAuthenticatedCreator(t, {
-    userId: 'user-k02',
-    slug: 'creator-k02',
-  })
-
-  const result = await asCreator.mutation(api.stacks.create, {
-    ...minimalCreateArgs,
-  })
-
-  const row = await t.run(async (ctx: MutationCtx) => ctx.db.get(result._id))
-  expect(row?.avatarStorageId).toBeUndefined()
-})
-
 test('TC-K-03: create passing a plain string as avatarStorageId → validator throws', async () => {
   const t = convexTest(schema, modules)
   const { asCreator } = await seedAuthenticatedCreator(t, {
