@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": 1753440000000,
+  "window": { "days": 30, "from": "2026-06-25", "to": "2026-07-25" },
+  "harness": { "name": "claude-code", "version": "2.1.220" },
+  "pricingTable": "anthropic-list-2026-07-24",
+  "activity": {
+    "sessions": 412,
+    "activeDays": 28,
+    "projects": 17,
+    "totalTokens": 3750182441,
+    "cacheHitShare": 0.945,
+    "subagentShare": 0.344
+  },
+  "models": [
+    {
+      "id": "claude-sonnet-5",
+      "catalogSlug": "claude-sonnet-5",
+      "tokenShare": 0.6134,
+      "tokens": { "input": 1204118, "output": 24918204, "cacheWrite": 88214402, "cacheRead": 2187443190 },
+      "apiEquivalentUSD": 3301.2
+    },
+    {
+      "id": "claude-opus-5",
+      "catalogSlug": "claude-opus-5",
+      "tokenShare": 0.3402,
+      "tokens": { "input": 702441, "output": 13884120, "cacheWrite": 49118203, "cacheRead": 1213004881 },
+      "apiEquivalentUSD": 1902.41
+    },
+    {
+      "id": "claude-haiku-4-5-20251001",
+      "catalogSlug": "claude-haiku-4-5",
+      "tokenShare": 0.0464,
+      "tokens": { "input": 188204, "output": 1904188, "cacheWrite": 7118204, "cacheRead": 165884012 },
+      "apiEquivalentUSD": 203.98
+    }
+  ],
+  "inventory": {
+    "builtinTools": [
+      { "name": "Bash", "callShare": 0.312 },
+      { "name": "Read", "callShare": 0.284 },
+      { "name": "Edit", "callShare": 0.171 },
+      { "name": "Grep", "callShare": 0.118 },
+      { "name": "Write", "callShare": 0.061 }
+    ],
+    "mcpServers": [
+      { "name": "chrome-devtools", "callShare": 0.044 },
+      { "name": "notion", "callShare": 0.006 }
+    ],
+    "skills": [
+      { "name": "forge", "callShare": 0.221 },
+      { "name": "grilling", "callShare": 0.089 },
+      { "name": "research", "callShare": 0.052 }
+    ],
+    "subagents": [
+      { "name": "general-purpose", "callShare": 0.401 },
+      { "name": "Explore", "callShare": 0.288 }
+    ],
+    "slashCommands": [
+      { "name": "wayfinder", "callShare": 0.104 },
+      { "name": "code-review", "callShare": 0.077 }
+    ],
+    "withheld": { "builtinTools": 0, "mcpServers": 7, "skills": 3, "subagents": 0, "slashCommands": 2 }
+  },
+  "coverage": { "filesScanned": 3047, "filesUnreadable": 0, "linesParsed": 216545, "linesFailed": 0 },
+  "excludedTokens": { "unpriced": 1284009, "synthetic": 44120 }
+}

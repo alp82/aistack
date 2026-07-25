@@ -1,0 +1,26 @@
+AI STACK — PUBLISH MEASURED USAGE
+
+Destination:  stack "alps-daily-driver" on aistack.to (bound to this machine's token)
+Window:       30 days (2026-06-25 .. 2026-07-25)
+Harness:      claude-code 2.1.220
+
+MODELS (token share / API-equivalent)
+  claude-sonnet-5               61.3%   $3301.20
+  claude-opus-5                 34.0%   $1902.41
+  claude-haiku-4-5-20251001      4.6%   $203.98
+
+INVENTORY (names that will publish)
+  built-in tools: Bash, Read, Edit, Grep, Write
+  mcp servers:    chrome-devtools, notion
+  skills:         forge, grilling, research
+  subagents:      general-purpose, Explore
+  slash commands: wayfinder, code-review
+  withheld:       7 mcpServers, 3 skills, 2 slashCommands (unmatched names publish as counts only)
+
+ACTIVITY
+  412 sessions over 28 active days, 17 projects (count only, never names)
+  3.75B tokens, 94.5% cache hit, 34.4% subagent
+
+NOT SENT: raw transcripts, prompts, file paths, repo names.
+
+SPIKE-MARKER-SUMMARY-END

@@ -1,0 +1,11 @@
+# The four evidence logs are written during a run and MUST NOT be committed.
+# `.prototypes/` is a tracked directory and the repo root .gitignore has no *.log rule, so
+# without this file a `git add -A` after a spike run would publish the session's shell
+# transcript (spike-hook.log records every gated Bash command line verbatim).
+spike-mcp.log
+spike-hook.log
+spike-cli.log
+spike-async.log
+
+# Screenshots taken while running README.md.
+shot-*.png

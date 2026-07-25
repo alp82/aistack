@@ -1,0 +1,3 @@
+#!/bin/sh
+# Gated by a PreToolUse hook returning permissionDecision:"ask". No matching rule.
+exec node "$(dirname "$0")/_impl.mjs" hookask "$@"

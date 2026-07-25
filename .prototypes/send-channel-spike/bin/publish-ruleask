@@ -1,0 +1,3 @@
+#!/bin/sh
+# Gated by an explicit `ask` permission RULE in .claude/settings.json.
+exec node "$(dirname "$0")/_impl.mjs" ruleask "$@"

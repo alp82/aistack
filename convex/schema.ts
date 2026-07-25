@@ -283,6 +283,18 @@ export default defineSchema({
     teamSize: v.optional(v.number()),
     oneLiner: v.string(),
     description: v.optional(v.string()),
+    // TRANSIENT WIDENING — PHASE A. Delete once the clear pass has run against
+    // every deployment (dev is already clean; prod is what this is for).
+    //
+    // `stackImageUrl` was retired in 64ce4f1 (profile decoupling, #22), but the
+    // Phase B pass that cleared it tested truthiness, not presence:
+    //   if (stack.stackImageUrl && clearImageUrl) patch.stackImageUrl = undefined
+    // A row holding the empty string is present-but-falsy, so it was skipped and
+    // still carries the field — which the narrowed validator then refuses,
+    // failing the push for the whole deployment. Re-widened here only so the
+    // clear pass in migrations/20260725_clear_stack_image_url.ts can deploy and
+    // unset it. See scripts/migrate-clear-stack-image-url.ts for the runbook.
+    stackImageUrl: v.optional(v.string()),
     accentPreset: v.optional(v.string()),
     toolSubscriptions: v.array(
       v.object({

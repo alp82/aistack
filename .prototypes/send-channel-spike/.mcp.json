@@ -1,0 +1,10 @@
+{
+  "_comment": "ABSOLUTE PATH ON PURPOSE. ${CLAUDE_PROJECT_DIR} is NOT expanded in .mcp.json (it is injected only into hook subprocesses) — with the ${...} form node receives the literal string, exits MODULE_NOT_FOUND, and the server silently never connects, which reads as 'Claude Code ignored requiresUserInteraction'. If you moved or renamed this repo, update the path below and re-run the /mcp precondition in README.md.",
+  "mcpServers": {
+    "aistackspike": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/home/alp/dev/projects/aistack/aistack-web/.prototypes/send-channel-spike/mcp/publish-server.mjs"]
+    }
+  }
+}
