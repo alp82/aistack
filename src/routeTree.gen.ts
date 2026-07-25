@@ -26,10 +26,12 @@ import { Route as ToolsNewRouteImport } from './routes/tools_.new'
 import { Route as StacksNewRouteImport } from './routes/stacks.new'
 import { Route as StacksSlugRouteImport } from './routes/stacks.$slug'
 import { Route as CliAuthRouteImport } from './routes/cli.auth'
+import { Route as ApiSyncConfigRouteImport } from './routes/api.sync-config'
 import { Route as AdminIconsRouteImport } from './routes/admin_.icons'
 import { Route as StacksSlugEditRouteImport } from './routes/stacks.$slug_.edit'
 import { Route as ApiStacksSlugRouteImport } from './routes/api.stacks.$slug'
 import { Route as ApiIconsFromUrlRouteImport } from './routes/api.icons.from-url'
+import { Route as ApiCliSyncRouteImport } from './routes/api.cli.sync'
 import { Route as ApiCliStacksRouteImport } from './routes/api.cli.stacks'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 import { Route as ApiOgStackSlugRouteImport } from './routes/api.og.stack.$slug'
@@ -122,6 +124,11 @@ const CliAuthRoute = CliAuthRouteImport.update({
   path: '/cli/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSyncConfigRoute = ApiSyncConfigRouteImport.update({
+  id: '/api/sync-config',
+  path: '/api/sync-config',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminIconsRoute = AdminIconsRouteImport.update({
   id: '/admin_/icons',
   path: '/admin/icons',
@@ -140,6 +147,11 @@ const ApiStacksSlugRoute = ApiStacksSlugRouteImport.update({
 const ApiIconsFromUrlRoute = ApiIconsFromUrlRouteImport.update({
   id: '/api/icons/from-url',
   path: '/api/icons/from-url',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCliSyncRoute = ApiCliSyncRouteImport.update({
+  id: '/api/cli/sync',
+  path: '/api/cli/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCliStacksRoute = ApiCliStacksRouteImport.update({
@@ -186,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
   '/admin/icons': typeof AdminIconsRoute
+  '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
@@ -194,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/stacks': typeof StacksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/stacks': typeof ApiCliStacksRouteWithChildren
+  '/api/cli/sync': typeof ApiCliSyncRoute
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/api/stacks/$slug': typeof ApiStacksSlugRoute
   '/stacks/$slug/edit': typeof StacksSlugEditRoute
@@ -215,6 +229,7 @@ export interface FileRoutesByTo {
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
   '/admin/icons': typeof AdminIconsRoute
+  '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
@@ -223,6 +238,7 @@ export interface FileRoutesByTo {
   '/stacks': typeof StacksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/stacks': typeof ApiCliStacksRouteWithChildren
+  '/api/cli/sync': typeof ApiCliSyncRoute
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/api/stacks/$slug': typeof ApiStacksSlugRoute
   '/stacks/$slug/edit': typeof StacksSlugEditRoute
@@ -245,6 +261,7 @@ export interface FileRoutesById {
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
   '/admin_/icons': typeof AdminIconsRoute
+  '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
@@ -253,6 +270,7 @@ export interface FileRoutesById {
   '/stacks/': typeof StacksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/stacks': typeof ApiCliStacksRouteWithChildren
+  '/api/cli/sync': typeof ApiCliSyncRoute
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/api/stacks/$slug': typeof ApiStacksSlugRoute
   '/stacks/$slug_/edit': typeof StacksSlugEditRoute
@@ -276,6 +294,7 @@ export interface FileRouteTypes {
     | '/test'
     | '/tools'
     | '/admin/icons'
+    | '/api/sync-config'
     | '/cli/auth'
     | '/stacks/$slug'
     | '/stacks/new'
@@ -284,6 +303,7 @@ export interface FileRouteTypes {
     | '/stacks'
     | '/api/auth/$'
     | '/api/cli/stacks'
+    | '/api/cli/sync'
     | '/api/icons/from-url'
     | '/api/stacks/$slug'
     | '/stacks/$slug/edit'
@@ -305,6 +325,7 @@ export interface FileRouteTypes {
     | '/test'
     | '/tools'
     | '/admin/icons'
+    | '/api/sync-config'
     | '/cli/auth'
     | '/stacks/$slug'
     | '/stacks/new'
@@ -313,6 +334,7 @@ export interface FileRouteTypes {
     | '/stacks'
     | '/api/auth/$'
     | '/api/cli/stacks'
+    | '/api/cli/sync'
     | '/api/icons/from-url'
     | '/api/stacks/$slug'
     | '/stacks/$slug/edit'
@@ -334,6 +356,7 @@ export interface FileRouteTypes {
     | '/test'
     | '/tools'
     | '/admin_/icons'
+    | '/api/sync-config'
     | '/cli/auth'
     | '/stacks/$slug'
     | '/stacks/new'
@@ -342,6 +365,7 @@ export interface FileRouteTypes {
     | '/stacks/'
     | '/api/auth/$'
     | '/api/cli/stacks'
+    | '/api/cli/sync'
     | '/api/icons/from-url'
     | '/api/stacks/$slug'
     | '/stacks/$slug_/edit'
@@ -364,6 +388,7 @@ export interface RootRouteChildren {
   TestRoute: typeof TestRoute
   ToolsRoute: typeof ToolsRoute
   AdminIconsRoute: typeof AdminIconsRoute
+  ApiSyncConfigRoute: typeof ApiSyncConfigRoute
   CliAuthRoute: typeof CliAuthRoute
   StacksSlugRoute: typeof StacksSlugRoute
   StacksNewRoute: typeof StacksNewRoute
@@ -372,6 +397,7 @@ export interface RootRouteChildren {
   StacksIndexRoute: typeof StacksIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiCliStacksRoute: typeof ApiCliStacksRouteWithChildren
+  ApiCliSyncRoute: typeof ApiCliSyncRoute
   ApiIconsFromUrlRoute: typeof ApiIconsFromUrlRoute
   ApiStacksSlugRoute: typeof ApiStacksSlugRoute
   StacksSlugEditRoute: typeof StacksSlugEditRoute
@@ -501,6 +527,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CliAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/sync-config': {
+      id: '/api/sync-config'
+      path: '/api/sync-config'
+      fullPath: '/api/sync-config'
+      preLoaderRoute: typeof ApiSyncConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin_/icons': {
       id: '/admin_/icons'
       path: '/admin/icons'
@@ -527,6 +560,13 @@ declare module '@tanstack/react-router' {
       path: '/api/icons/from-url'
       fullPath: '/api/icons/from-url'
       preLoaderRoute: typeof ApiIconsFromUrlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cli/sync': {
+      id: '/api/cli/sync'
+      path: '/api/cli/sync'
+      fullPath: '/api/cli/sync'
+      preLoaderRoute: typeof ApiCliSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/cli/stacks': {
@@ -599,6 +639,7 @@ const rootRouteChildren: RootRouteChildren = {
   TestRoute: TestRoute,
   ToolsRoute: ToolsRoute,
   AdminIconsRoute: AdminIconsRoute,
+  ApiSyncConfigRoute: ApiSyncConfigRoute,
   CliAuthRoute: CliAuthRoute,
   StacksSlugRoute: StacksSlugRoute,
   StacksNewRoute: StacksNewRoute,
@@ -607,6 +648,7 @@ const rootRouteChildren: RootRouteChildren = {
   StacksIndexRoute: StacksIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiCliStacksRoute: ApiCliStacksRouteWithChildren,
+  ApiCliSyncRoute: ApiCliSyncRoute,
   ApiIconsFromUrlRoute: ApiIconsFromUrlRoute,
   ApiStacksSlugRoute: ApiStacksSlugRoute,
   StacksSlugEditRoute: StacksSlugEditRoute,

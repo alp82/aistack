@@ -3,13 +3,14 @@ import {
 	useNavigate,
 	useSearch,
 } from "@tanstack/react-router";
-import { useConvexAuth, useMutation } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { CheckCircle, Terminal, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/button";
 import { seoMeta } from "@/lib/seo";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 
 type CliAuthSearch = {
 	code?: string;
@@ -34,10 +35,33 @@ function CliAuthPage() {
 	const { code } = useSearch({ from: "/cli/auth" });
 	const { isAuthenticated, isLoading } = useConvexAuth();
 	const approveSession = useMutation(api.cliSessions.approveSession);
+	const myStacks = useQuery(api.stacks.listMine, isAuthenticated ? {} : "skip");
 	const [status, setStatus] = useState<
 		"idle" | "approving" | "approved" | "denied" | "error"
 	>("idle");
 	const [error, setError] = useState<string | null>(null);
+	const [selectedStackId, setSelectedStackId] = useState<string | null>(null);
+
+	/**
+	 * The measured layer's destination is bound to the token at link time (#33
+	 * decision 7), so this is the one moment the user is asked. Auto-selected
+	 * when there is exactly one stack — the common case, and a one-option
+	 * dropdown is a question with no information in it.
+	 */
+	const stacks = myStacks ?? [];
+	const soleStackId = useMemo(
+		() => (stacks.length === 1 ? stacks[0]._id : null),
+		[stacks],
+	);
+	useEffect(() => {
+		if (soleStackId && selectedStackId === null) setSelectedStackId(soleStackId);
+	}, [soleStackId, selectedStackId]);
+
+	const stacksLoading = isAuthenticated && myStacks === undefined;
+	const hasStacks = stacks.length > 0;
+	// A profile with no stack can still authorize the CLI for its other commands;
+	// the token simply carries no sync target until it is re-linked.
+	const canApprove = !stacksLoading && (!hasStacks || selectedStackId !== null);
 
 	useEffect(() => {
 		if (!isLoading && !isAuthenticated) {
@@ -52,7 +76,10 @@ function CliAuthPage() {
 		if (!code) return;
 		setStatus("approving");
 		try {
-			await approveSession({ userCode: code });
+			await approveSession({
+				userCode: code,
+				stackId: (selectedStackId as Id<"stacks"> | null) ?? undefined,
+			});
 			setStatus("approved");
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to approve");
@@ -112,11 +139,63 @@ function CliAuthPage() {
 						</span>
 					</div>
 
+					{stacksLoading && (
+						<p className="mb-6 font-mono text-xs text-fg-muted">
+							Loading your stacks…
+						</p>
+					)}
+
+					{!stacksLoading && hasStacks && (
+						<div className="mb-6">
+							<label
+								htmlFor="sync-stack"
+								className="mb-2 block font-mono text-[0.7rem] font-bold uppercase tracking-wider text-fg-muted"
+							>
+								Sync usage data to
+							</label>
+							{stacks.length === 1 ? (
+								<div className="border border-border-subtle bg-bg-subtle p-3">
+									<span className="font-mono text-sm text-fg-primary">
+										{stacks[0].name}
+									</span>
+								</div>
+							) : (
+								<select
+									id="sync-stack"
+									value={selectedStackId ?? ""}
+									onChange={(e) => setSelectedStackId(e.target.value || null)}
+									className="w-full border border-border-subtle bg-bg-subtle p-3 font-mono text-sm text-fg-primary"
+								>
+									<option value="">Select a stack…</option>
+									{stacks.map((s) => (
+										<option key={s._id} value={s._id}>
+											{s.name}
+											{s.published ? "" : " (draft)"}
+										</option>
+									))}
+								</select>
+							)}
+							<p className="mt-2 font-mono text-[0.7rem] leading-relaxed text-fg-muted">
+								This machine will only ever sync to the stack you pick here.
+								Re-run login to change it.
+							</p>
+						</div>
+					)}
+
+					{!stacksLoading && !hasStacks && (
+						<p className="mb-6 font-mono text-[0.7rem] leading-relaxed text-fg-muted">
+							You have no stacks yet, so this machine will authorize without a
+							sync target. Create a stack and run login again to enable usage
+							sync.
+						</p>
+					)}
+
 					<div className="flex gap-3">
 						<Button
 							type="button"
 							onClick={handleApprove}
-							className="flex-1 bg-accent-lime font-mono text-xs font-bold uppercase tracking-wider text-black hover:bg-accent-lime-strong"
+							disabled={!canApprove}
+							className="flex-1 bg-accent-lime font-mono text-xs font-bold uppercase tracking-wider text-black hover:bg-accent-lime-strong disabled:opacity-50"
 						>
 							Approve
 						</Button>

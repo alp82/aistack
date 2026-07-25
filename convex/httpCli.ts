@@ -32,9 +32,20 @@ function jsonResponse(data: unknown, status = 200): Response {
 }
 
 async function validateBearerToken(
-  ctx: { runQuery: (query: typeof internal.cliTokens.getByToken, args: { token: string }) => Promise<{ userId: string; _id: string } | null> },
+  ctx: {
+    runQuery: (
+      query: typeof internal.cliTokens.getByToken,
+      args: { token: string }
+    ) => Promise<{
+      userId: string
+      _id: string
+      stackId?: Id<'stacks'>
+    } | null>
+  },
   request: Request
-): Promise<{ userId: string; tokenId: string } | Response> {
+): Promise<
+  { userId: string; tokenId: string; stackId?: Id<'stacks'> } | Response
+> {
   const authHeader = request.headers.get('Authorization')
   if (!authHeader?.startsWith('Bearer ')) {
     return jsonResponse({ error: 'Missing or invalid Authorization header' }, 401)
@@ -44,7 +55,11 @@ async function validateBearerToken(
   if (!tokenDoc) {
     return jsonResponse({ error: 'Invalid or expired token' }, 401)
   }
-  return { userId: tokenDoc.userId, tokenId: tokenDoc._id as string }
+  return {
+    userId: tokenDoc.userId,
+    tokenId: tokenDoc._id as string,
+    stackId: tokenDoc.stackId,
+  }
 }
 
 export const authStart = httpAction(async (ctx) => {
@@ -115,7 +130,7 @@ export const authPoll = httpAction(async (ctx, request) => {
 export const stackCollect = httpAction(async (ctx, request) => {
   const authResult = await validateBearerToken(ctx as any, request)
   if (authResult instanceof Response) return authResult
-  const { userId, tokenId } = authResult
+  const { userId, tokenId, stackId: tokenStackId } = authResult
 
   let body: { resources: any[] }
   try {
@@ -133,16 +148,23 @@ export const stackCollect = httpAction(async (ctx, request) => {
     return jsonResponse({ error: 'Creator profile not found' }, 404)
   }
 
-  const stack = await ctx.runQuery(internal.httpCliHelpers.getFirstStackByCreator, {
-    creatorId: creator._id,
-  })
-  if (!stack) {
-    return jsonResponse({ error: 'No stack found. Create a stack on aistack.to first.' }, 400)
+  // The token's bound stack (#33 decision 7) replaces the old
+  // `getFirstStackByCreator` guess, which silently picked whichever stack the
+  // by_creatorId index happened to return first — fine while one-stack-per-
+  // creator was assumed, wrong the moment a second stack exists.
+  if (!tokenStackId) {
+    return jsonResponse(
+      {
+        error:
+          'This machine is not linked to a stack. Run `npx @use-aistack/cli login` again to pick one.',
+      },
+      409,
+    )
   }
 
   const result = await ctx.runMutation(internal.httpCliHelpers.upsertStackResources, {
     creatorId: creator._id,
-    stackId: stack._id as Id<'stacks'>,
+    stackId: tokenStackId,
     resources: body.resources,
   })
 
@@ -158,6 +180,101 @@ export const stackCollect = httpAction(async (ctx, request) => {
     slug: result.slug,
     shortId: result.shortId,
     url: `${appUrl}/stacks/${result.slug}`,
+  })
+})
+
+/**
+ * POST /api/cli/sync — publish one approved measured-layer snapshot.
+ *
+ * Wayfinder ticket #38 (map #29). The destination is the stack bound to the
+ * BEARER TOKEN, never anything in the body: a payload that could name its own
+ * target would undo #33 decision 7 and make the approve gate unable to say
+ * truthfully where the data is going.
+ *
+ * The payload is validated against the closed `MeasuredPayload` validator in
+ * the mutation. A validation failure is the client's fault, so it surfaces as
+ * 400 with the reason rather than an opaque 500.
+ */
+export const syncPublish = httpAction(async (ctx, request) => {
+  const authResult = await validateBearerToken(ctx as any, request)
+  if (authResult instanceof Response) return authResult
+  const { tokenId } = authResult
+
+  let body: { payload?: unknown }
+  try {
+    body = await request.json()
+  } catch {
+    return jsonResponse({ error: 'Invalid JSON body' }, 400)
+  }
+  if (!body.payload) {
+    return jsonResponse({ error: 'Missing required field: payload' }, 400)
+  }
+
+  let result: { snapshotId: string; receivedAt: number; stackSlug: string }
+  try {
+    result = await ctx.runMutation(internal.measured.publishForToken, {
+      tokenId: tokenId as Id<'cliTokens'>,
+      payload: body.payload as any,
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    // Not-linked and no-longer-authorized are both actionable by the user, and
+    // both mean "do not retry this payload as-is".
+    const status = /not linked|no longer/i.test(message) ? 409 : 400
+    return jsonResponse({ error: message }, status)
+  }
+
+  const now = Date.now()
+  await ctx.runMutation(internal.cliTokens.refreshToken, {
+    id: tokenId as Id<'cliTokens'>,
+    lastUsedAt: now,
+    expiresAt: now + 90 * 24 * 60 * 60 * 1000,
+  })
+
+  const appUrl = getAppUrl()
+  return jsonResponse({
+    receivedAt: result.receivedAt,
+    stackSlug: result.stackSlug,
+    url: `${appUrl}/stacks/${result.stackSlug}`,
+  })
+})
+
+/**
+ * GET /api/cli/sync-config — the client's pre-send fetch (#33 decision 4).
+ *
+ * The allowlist half is genuinely public: filtering is fail-closed and must run
+ * before the send, so a client that cannot authenticate still needs it.
+ *
+ * `publishCost` is a STACK-level preference, and an unauthenticated caller has
+ * not said which stack it means — so the bearer is OPTIONAL here rather than
+ * required. With a valid token the response carries the bound stack's
+ * preference and name (the gate needs the name to say where the data is going);
+ * without one it fails closed to `publishCost: false`, matching the client's
+ * bundled default. This is the one place #38's "public, unauthenticated" wording
+ * could not be taken literally without making the toggle unresolvable.
+ */
+export const syncConfig = httpAction(async (ctx, request) => {
+  const config = await ctx.runQuery(internal.measured.getPublicSyncConfigInternal, {})
+
+  const authHeader = request.headers.get('Authorization')
+  if (!authHeader?.startsWith('Bearer ')) {
+    return jsonResponse({ ...config, publishCost: false, stack: null })
+  }
+
+  const tokenDoc = await ctx.runQuery(internal.cliTokens.getByToken, {
+    token: authHeader.slice(7),
+  })
+  if (!tokenDoc?.stackId) {
+    return jsonResponse({ ...config, publishCost: false, stack: null })
+  }
+
+  const stackConfig = await ctx.runQuery(internal.measured.getSyncConfigForStack, {
+    stackId: tokenDoc.stackId,
+  })
+  return jsonResponse({
+    ...config,
+    publishCost: stackConfig.publishCost,
+    stack: { name: stackConfig.stackName },
   })
 })
 

@@ -27,25 +27,10 @@ export const getCreatorByUserId = internalQuery({
 })
 
 
-export const getFirstStackByCreator = internalQuery({
-  args: { creatorId: v.id('creators') },
-  returns: v.union(
-    v.object({
-      _id: v.id('stacks'),
-      slug: v.string(),
-      shortId: v.string(),
-    }),
-    v.null()
-  ),
-  handler: async (ctx, args) => {
-    const stack = await ctx.db
-      .query('stacks')
-      .withIndex('by_creatorId', (q) => q.eq('creatorId', args.creatorId))
-      .first()
-    if (!stack) return null
-    return { _id: stack._id, slug: stack.slug, shortId: stack.shortId }
-  },
-})
+// `getFirstStackByCreator` was retired here by #38: it silently picked whichever
+// stack the by_creatorId index returned first, which was tolerable only while
+// one-stack-per-creator was assumed. The CLI now uses the stack bound to the
+// bearer token at link time (#33 decision 7).
 
 export const getStackWithResourcesByCreator = internalQuery({
   args: { creatorId: v.id('creators') },

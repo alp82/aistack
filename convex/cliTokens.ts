@@ -7,6 +7,10 @@ export const getByToken = internalQuery({
     v.object({
       userId: v.string(),
       _id: v.id('cliTokens'),
+      // The stack this machine syncs to, bound at link time (#33 decision 7).
+      // Absent on tokens issued before that binding existed — those must
+      // re-authenticate to pick one; see convex/migrations/20260725_cli_token_stack.ts.
+      stackId: v.optional(v.id('stacks')),
     }),
     v.null()
   ),
@@ -17,7 +21,7 @@ export const getByToken = internalQuery({
       .first()
     if (!doc) return null
     if (doc.expiresAt <= Date.now()) return null
-    return { userId: doc.userId, _id: doc._id }
+    return { userId: doc.userId, _id: doc._id, stackId: doc.stackId }
   },
 })
 

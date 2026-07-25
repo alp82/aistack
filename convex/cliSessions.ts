@@ -68,7 +68,16 @@ export const getBySecretId = internalQuery({
 })
 
 export const approveSession = mutation({
-  args: { userCode: v.string() },
+  args: {
+    userCode: v.string(),
+    /**
+     * The stack this machine will sync its measured layer to (#33 decision 7).
+     * Optional because a profile with no stack yet can still authorize the CLI
+     * for its other commands — such a token simply cannot publish until it is
+     * re-linked.
+     */
+    stackId: v.optional(v.id('stacks')),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await ctx.auth.getUserIdentity()
@@ -83,7 +92,23 @@ export const approveSession = mutation({
     if (session.status !== 'pending') throw new Error('Session is not pending')
     if (session.expiresAt <= Date.now()) throw new Error('Session has expired')
 
-    await ctx.db.patch(session._id, { status: 'approved', userId })
+    // Verify the chosen stack is actually the approving user's. Without this the
+    // selector's value is caller-supplied and a token could be bound to someone
+    // else's stack — and a snapshot written there is immutable.
+    if (args.stackId) {
+      const stack = await ctx.db.get(args.stackId)
+      if (!stack) throw new Error('Stack not found')
+      const creator = await ctx.db.get(stack.creatorId)
+      if (!creator || creator.userId !== userId) {
+        throw new Error('Not authorized to link that stack')
+      }
+    }
+
+    await ctx.db.patch(session._id, {
+      status: 'approved',
+      userId,
+      stackId: args.stackId,
+    })
     return null
   },
 })
@@ -134,6 +159,10 @@ export const issueTokenAndDeleteSession = internalMutation({
     await ctx.db.insert('cliTokens', {
       token: args.token,
       userId: args.userId,
+      // Carried from the approval, which is the only moment the user was asked.
+      // The token is the binding (#33 decision 7) — there is no `primary` flag
+      // anywhere, and most-recent-wins was rejected as a footgun.
+      stackId: session.stackId,
       createdAt: args.createdAt,
       expiresAt: args.expiresAt,
       lastUsedAt: args.lastUsedAt,

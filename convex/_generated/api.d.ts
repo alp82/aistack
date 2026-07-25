@@ -30,6 +30,8 @@ import type * as lib_iconUrl from "../lib/iconUrl.js";
 import type * as lib_ids from "../lib/ids.js";
 import type * as lib_resourceLinks from "../lib/resourceLinks.js";
 import type * as lib_tiers from "../lib/tiers.js";
+import type * as measured from "../measured.js";
+import type * as migrations_20260725_cli_token_stack from "../migrations/20260725_cli_token_stack.js";
 import type * as migrations__archived_migrateBlockToReference from "../migrations/_archived/migrateBlockToReference.js";
 import type * as migrations__archived_migrateNotesToDescription from "../migrations/_archived/migrateNotesToDescription.js";
 import type * as migrations__archived_migrateStackDescriptions from "../migrations/_archived/migrateStackDescriptions.js";
@@ -79,6 +81,8 @@ declare const fullApi: ApiFromModules<{
   "lib/ids": typeof lib_ids;
   "lib/resourceLinks": typeof lib_resourceLinks;
   "lib/tiers": typeof lib_tiers;
+  measured: typeof measured;
+  "migrations/20260725_cli_token_stack": typeof migrations_20260725_cli_token_stack;
   "migrations/_archived/migrateBlockToReference": typeof migrations__archived_migrateBlockToReference;
   "migrations/_archived/migrateNotesToDescription": typeof migrations__archived_migrateNotesToDescription;
   "migrations/_archived/migrateStackDescriptions": typeof migrations__archived_migrateStackDescriptions;

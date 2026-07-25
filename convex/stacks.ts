@@ -138,6 +138,55 @@ const CreatorValidator = v.object({
   projectPages: v.array(v.object({ name: v.string(), url: v.string() })),
 })
 
+/**
+ * The signed-in creator's own stacks, published or not.
+ *
+ * Added for the CLI approval page's stack selector (#38): binding the sync
+ * target at link time (#33 decision 7) requires the user to see and pick from
+ * their stacks. Returns [] rather than throwing when signed out, so the page can
+ * render its own auth redirect without a query error first.
+ */
+export const listMine = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id('stacks'),
+      name: v.string(),
+      slug: v.string(),
+      shortId: v.string(),
+      published: v.boolean(),
+      updatedAt: v.number(),
+    })
+  ),
+  handler: async (ctx) => {
+    const user = await ctx.auth.getUserIdentity()
+    if (!user) return []
+    const userId = user.tokenIdentifier.split('|')[1]
+
+    const creator = await ctx.db
+      .query('creators')
+      .withIndex('by_userId', (q) => q.eq('userId', userId))
+      .first()
+    if (!creator) return []
+
+    const stacks = await ctx.db
+      .query('stacks')
+      .withIndex('by_creatorId', (q) => q.eq('creatorId', creator._id))
+      .collect()
+
+    return stacks
+      .map((s) => ({
+        _id: s._id,
+        name: s.name,
+        slug: s.slug,
+        shortId: s.shortId,
+        published: s.published,
+        updatedAt: s.updatedAt,
+      }))
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+  },
+})
+
 export const listPublished = query({
   args: {},
   returns: v.array(

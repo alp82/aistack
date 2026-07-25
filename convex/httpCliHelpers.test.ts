@@ -763,9 +763,16 @@ test('TC-15: getStackWithResourcesByCreator excludes soft-deleted resources rows
 // registration exist.
 // ---------------------------------------------------------------------------
 
+/**
+ * `stackId` is the sync/collect target bound to the token at link time
+ * (#33 decision 7, wired in #38). It replaced `getFirstStackByCreator`, so a
+ * token without it can no longer write to any stack — pass one for the happy
+ * path, and omit it to exercise the 409.
+ */
 async function seedBearerToken(
   t: ReturnType<typeof convexTest>,
   userId: string,
+  stackId?: Id<'stacks'>,
 ): Promise<string> {
   const token = `test-token-${userId}-${Math.random().toString(36).slice(2)}`
   const now = Date.now()
@@ -773,6 +780,7 @@ async function seedBearerToken(
     await ctx.db.insert('cliTokens', {
       token,
       userId,
+      stackId,
       createdAt: now,
       expiresAt: now + 90 * 24 * 60 * 60 * 1000,
       lastUsedAt: now,
@@ -785,7 +793,7 @@ test('TC-16: stackCollect returns 200 with slug/shortId/url; resource lands on s
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
   await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-tc16' }))
-  const bearerToken = await seedBearerToken(t, 'user-tc16')
+  const bearerToken = await seedBearerToken(t, 'user-tc16', stackId)
 
   const stack = await t.run(async (ctx: MutationCtx) => ctx.db.get(stackId))
   const composedSlug = `${stack!.slug}-${stack!.shortId}`
@@ -823,7 +831,7 @@ test('TC-16: stackCollect returns 200 with slug/shortId/url; resource lands on s
   expect(stackResources).toHaveLength(1)
 })
 
-test('TC-17: stackCollect returns 400 when creator exists but has no stack', async () => {
+test('TC-17: stackCollect returns 409 when the bearer token is not linked to a stack', async () => {
   const t = convexTest(schema, modules)
   await t.run(async (ctx) =>
     ctx.db.insert('creators', {
@@ -847,9 +855,13 @@ test('TC-17: stackCollect returns 400 when creator exists but has no stack', asy
     body: JSON.stringify({ resources: [] }),
   })
 
-  expect(resp.status).toBe(400)
+  // Was a 400 "no stack found" derived from getFirstStackByCreator. Since #38
+  // the target is bound to the token at link time (#33 decision 7), so the
+  // reachable failure is an UNLINKED token — a 409 telling the user to re-run
+  // login, rather than a silent write to whichever stack the index returned.
+  expect(resp.status).toBe(409)
   const body = await resp.json() as Record<string, unknown>
-  expect(JSON.stringify(body)).toMatch(/stack/i)
+  expect(JSON.stringify(body)).toMatch(/not linked to a stack/i)
 })
 
 test('TC-18: stackCollect returns 401 with missing or invalid Authorization header', async () => {
@@ -894,9 +906,9 @@ test('TC-19: stackCollect returns 404 when valid bearer has no creators row', as
 
 test('TC-20: stackCollect url invariant — returned url does NOT contain /projects/', async () => {
   const t = convexTest(schema, modules)
-  const { creatorId } = await seedCreatorAndStack(t)
+  const { creatorId, stackId } = await seedCreatorAndStack(t)
   await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-tc20' }))
-  const bearerToken = await seedBearerToken(t, 'user-tc20')
+  const bearerToken = await seedBearerToken(t, 'user-tc20', stackId)
 
   const resp = await t.fetch('/api/cli/stacks/collect', {
     method: 'POST',

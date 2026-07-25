@@ -55,6 +55,105 @@ const ResourcePackage = v.object({
   ),
 })
 
+// ---------------------------------------------------------------------------
+// The measured layer — wire format fixed by #33, produced by
+// packages/cli/src/transcripts (#37). Keep the two in lockstep: this validator
+// is CLOSED on purpose. The capability research made the closed-aggregate
+// schema load-bearing for the privacy story — a free-form blob would forfeit
+// it, because "we only accept these exact fields" is the claim being made.
+// ---------------------------------------------------------------------------
+
+// Allowlisted names only. Freeform names are filtered CLIENT-side before the
+// send (#33 decisions 2-4); this shape is the second line, not the first.
+const MeasuredAtom = v.object({
+  name: v.string(),
+  // Share, never a raw invocation count — counts are the map's designated
+  // post-P0 headroom metric and are deliberately left unspent.
+  callShare: v.number(),
+})
+
+const MeasuredModel = v.object({
+  // Vendor-assigned id, sanitized client-side. Exempt from the allowlist (#33
+  // decision 3). `catalogSlug` is NOT stored: it is resolved against the models
+  // catalog at READ time, so a later catalog addition retroactively resolves an
+  // old snapshot without a republish.
+  id: v.string(),
+  tokenShare: v.number(),
+  tokens: v.object({
+    input: v.number(),
+    output: v.number(),
+    cacheWrite: v.number(),
+    cacheRead: v.number(),
+  }),
+  // Absent when publishCost is off, or when the model was not fully priced —
+  // never zeroed (#33 decision 11).
+  apiEquivalentUSD: v.optional(v.number()),
+})
+
+export const MeasuredPayload = v.object({
+  schemaVersion: v.number(),
+  capturedAt: v.number(),
+  window: v.object({
+    days: v.number(),
+    from: v.string(),
+    to: v.string(),
+  }),
+  harness: v.object({
+    name: v.string(),
+    version: v.union(v.string(), v.null()),
+  }),
+  pricingTable: v.union(v.string(), v.null()),
+  activity: v.object({
+    sessions: v.number(),
+    activeDays: v.number(),
+    // COUNT only. Project directory names are munged absolute paths and are a
+    // standing non-goal (#13) — they never travel.
+    projects: v.number(),
+    totalTokens: v.number(),
+    cacheHitShare: v.number(),
+    subagentShare: v.number(),
+  }),
+  models: v.array(MeasuredModel),
+  inventory: v.object({
+    builtinTools: v.array(MeasuredAtom),
+    mcpServers: v.array(MeasuredAtom),
+    skills: v.array(MeasuredAtom),
+    subagents: v.array(MeasuredAtom),
+    slashCommands: v.array(MeasuredAtom),
+    // Distinct names withheld per category, so the gap in the shares above is
+    // explained rather than silently absent (#33 decision 2).
+    withheld: v.object({
+      builtinTools: v.number(),
+      mcpServers: v.number(),
+      skills: v.number(),
+      subagents: v.number(),
+      slashCommands: v.number(),
+    }),
+  }),
+  // Scan health (#33 decision 10). Cheap now, impossible later: snapshots are
+  // immutable, so omitting this would leave a permanent hole in the history.
+  coverage: v.object({
+    filesScanned: v.number(),
+    filesUnreadable: v.number(),
+    linesParsed: v.number(),
+    linesFailed: v.number(),
+  }),
+  excludedTokens: v.object({
+    unpriced: v.number(),
+    synthetic: v.number(),
+  }),
+})
+
+// The authored<->measured overlap is catalog slugs only (#33 decision 2), but
+// the dismissal key is kept wider than `tool` so a later surface can dismiss a
+// model or an inventory atom without a migration.
+export const ReconcileAtomKind = v.union(
+  v.literal('model'),
+  v.literal('tool'),
+  v.literal('mcpServer'),
+  v.literal('skill')
+)
+
 const ResourceOwner = v.union(
   v.object({ kind: v.literal('creator'), id: v.id('creators') }),
   v.object({ kind: v.literal('github'), handle: v.string() }),
@@ -224,6 +323,11 @@ export default defineSchema({
     fixedTotal: v.optional(Money),
     usageTotalNotes: v.optional(v.string()),
     hasUsageComponent: v.boolean(),
+    // One opt-out bit, not a control panel (#33 decision 11). Applied
+    // CLIENT-side: off means the cost fields are absent from the payload, never
+    // transmitted, so there is nothing to "reveal" server-side. Absent reads as
+    // opted IN — cost is the default, and this field only records a refusal.
+    publishCost: v.optional(v.boolean()),
     published: v.boolean(),
     isLowQuality: v.optional(v.boolean()),
     createdAt: v.number(),
@@ -336,6 +440,10 @@ export default defineSchema({
     secretId: v.string(),
     status: v.union(v.literal('pending'), v.literal('approved'), v.literal('expired')),
     userId: v.optional(v.string()),
+    // Chosen on the approval page and carried into the issued token. Optional
+    // permanently: a session is created BEFORE the user picks, and a profile
+    // with no stack yet can still authenticate.
+    stackId: v.optional(v.id('stacks')),
     createdAt: v.number(),
     expiresAt: v.number(),
   })
@@ -346,6 +454,16 @@ export default defineSchema({
     token: v.string(),
     userId: v.string(),
     name: v.optional(v.string()),
+    // Target stack, bound to the token AT LINK TIME (#33 decision 7). Every
+    // sync is then unambiguous and the approve gate can name its destination
+    // before the send. Most-recent-wins was rejected as a footgun: editing a
+    // second stack would silently redirect the measured layer.
+    //
+    // PHASE A of a three-phase migration — optional first, because the table
+    // has live rows and the repo's migration gotcha is that the dirty-row check
+    // must test field PRESENCE, not truthiness. Narrowing to required waits
+    // until every live token is relinked; see convex/migrations/20260725_cli_token_stack.ts.
+    stackId: v.optional(v.id('stacks')),
     createdAt: v.number(),
     expiresAt: v.number(),
     lastUsedAt: v.number(),
@@ -440,4 +558,31 @@ export default defineSchema({
   })
     .index('by_ip', ['ip'])
     .index('by_windowStart', ['windowStart']),
+
+  // The measured layer (#33 decision 6). Append-only: one immutable row per
+  // approved sync, and the "current" measured layer is the newest row by
+  // capturedAt. There is deliberately NO denormalised current row — that was
+  // rejected in #33 precisely because it drifts from the history it summarises.
+  measuredSnapshots: defineTable({
+    stackId: v.id('stacks'),
+    // Client clock, from the payload. Ordering key for "current".
+    capturedAt: v.number(),
+    // Server clock. The 7-day living-stacks bar trusts this one, because a
+    // client clock is attacker- and skew-controlled.
+    receivedAt: v.number(),
+    schemaVersion: v.number(),
+    payload: MeasuredPayload,
+  }).index('by_stack_capturedAt', ['stackId', 'capturedAt']),
+
+  // The ONLY durable reconcile state (#33 decision 12). Suggestions themselves
+  // are derived on read from (latest snapshot x authored toolSubscriptions), so
+  // a new sync needs no merge logic — it simply recomputes.
+  reconcileDismissals: defineTable({
+    stackId: v.id('stacks'),
+    atomKind: ReconcileAtomKind,
+    atomKey: v.string(),
+    dismissedAt: v.number(),
+  })
+    .index('by_stack', ['stackId'])
+    .index('by_stack_atom', ['stackId', 'atomKind', 'atomKey']),
 })

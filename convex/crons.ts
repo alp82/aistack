@@ -19,4 +19,14 @@ crons.interval(
   internal.rateLimit.cleanupExpiredRateLimits,
 )
 
+// Nightly measured-snapshot downsample. Keeps every snapshot from the last 90
+// days and only the last of each UTC day beyond that, never deleting a stack's
+// newest row. See convex/measured.ts gcSnapshots for why downsampling beats a
+// hard expiry: the P1 live-stats map inherits this table as a time series.
+crons.daily(
+  'measured-snapshot-gc',
+  { hourUTC: 4, minuteUTC: 30 },
+  internal.measured.gcSnapshots,
+)
+
 export default crons
