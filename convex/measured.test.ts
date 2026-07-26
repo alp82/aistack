@@ -185,6 +185,199 @@ describe('publishSnapshot', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// What a client-supplied string may be (#45)
+// ---------------------------------------------------------------------------
+
+describe('publishSnapshot — string bounds on the payload', () => {
+  const BIDI_OVERRIDE = String.fromCodePoint(0x202e)
+  const NUL = String.fromCodePoint(0x00)
+
+  /** An inventory block carrying one atom in `category` and nothing else. */
+  function inventoryWith(
+    category:
+      | 'builtinTools'
+      | 'mcpServers'
+      | 'skills'
+      | 'subagents'
+      | 'slashCommands',
+    name: string,
+  ) {
+    const base = payload().inventory as Record<string, unknown>
+    for (const key of [
+      'builtinTools',
+      'mcpServers',
+      'skills',
+      'subagents',
+      'slashCommands',
+    ]) {
+      base[key] = []
+    }
+    base[category] = [{ name, callShare: 0.5 }]
+    return base
+  }
+
+  const publish = (t: Ctx, stackId: Id<'stacks'>, over: Record<string, unknown>) =>
+    t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload(over) as never,
+    })
+
+  const CATEGORIES = [
+    'builtinTools',
+    'mcpServers',
+    'skills',
+    'subagents',
+    'slashCommands',
+  ] as const
+
+  test('every one of the five inventory categories is bounded, not just the first', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+
+    for (const category of CATEGORIES) {
+      await expect(
+        publish(t, stackId, { inventory: inventoryWith(category, 'z'.repeat(65)) }),
+      ).rejects.toThrow(new RegExp(`inventory\\.${category}\\[0\\]\\.name`))
+    }
+  })
+
+  test('refuses a name that cannot be rendered safely', async () => {
+    // A bidi override reorders the rest of the line, including the share printed
+    // beside the name (CVE-2021-42574). It survives JSON.stringify.
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+
+    for (const bad of [`safe${BIDI_OVERRIDE}name`, `bell${NUL}`, '', '   ']) {
+      await expect(
+        publish(t, stackId, { inventory: inventoryWith('skills', bad) }),
+      ).rejects.toThrow(/control or bidi/)
+    }
+  })
+
+  test('rejects the snapshot instead of truncating the name', async () => {
+    // Rewriting the name server-side would publish a string the owner never saw
+    // at the approve gate, and a snapshot is immutable.
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+
+    await expect(
+      publish(t, stackId, { inventory: inventoryWith('skills', 'z'.repeat(400)) }),
+    ).rejects.toThrow()
+    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    expect(rows).toHaveLength(0)
+  })
+
+  test('is a bound on the string, NOT a second allowlist check', async () => {
+    // #42 decision 1 exists so a user can publish a name the server has never
+    // heard of. Accents, CJK and parentheses are all names people run, and the
+    // curated charset would refuse every one of them.
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+
+    for (const name of ['(default)', 'dépendances', 'コード', 'alp-river:crossfire']) {
+      await expect(
+        publish(t, stackId, { inventory: inventoryWith('skills', name) }),
+      ).resolves.toBeDefined()
+    }
+  })
+
+  test('holds model ids to the vendor charset, and still exempts unknown ids', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const model = (id: string) => [
+      {
+        id,
+        tokenShare: 1,
+        tokens: { input: 1, output: 1, cacheWrite: 0, cacheRead: 0 },
+      },
+    ]
+
+    for (const bad of ['', 'model id with spaces', `x${BIDI_OVERRIDE}`, 'x'.repeat(65)]) {
+      await expect(publish(t, stackId, { models: model(bad) })).rejects.toThrow(
+        /models\[0\]\.id/,
+      )
+    }
+    // Exempt from the allowlist (#33 decision 3) is untouched: a model the
+    // catalog has never seen still publishes, so its tokens cannot vanish.
+    await expect(
+      publish(t, stackId, { models: model('vendor-model-9.9:preview_2') }),
+    ).resolves.toBeDefined()
+  })
+
+  test('bounds the other rendered strings, not only the names', async () => {
+    // harness.name and pricingTable land on the same public page from the same
+    // untrusted payload.
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+
+    await expect(
+      publish(t, stackId, { harness: { name: 'z'.repeat(65), version: null } }),
+    ).rejects.toThrow(/harness\.name/)
+    await expect(
+      publish(t, stackId, {
+        harness: { name: 'claude-code', version: `2.1${BIDI_OVERRIDE}` },
+      }),
+    ).rejects.toThrow(/harness\.version/)
+    await expect(
+      publish(t, stackId, { pricingTable: 'z'.repeat(65) }),
+    ).rejects.toThrow(/pricingTable/)
+    // Both are legitimately absent, and absent is not a violation.
+    await expect(
+      publish(t, stackId, {
+        harness: { name: 'claude-code', version: null },
+        pricingTable: null,
+      }),
+    ).resolves.toBeDefined()
+  })
+
+  test('window bounds are dates, so the rendered window cannot be arbitrary text', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+
+    await expect(
+      publish(t, stackId, { window: { days: 30, from: 'yesterday', to: '2026-07-25' } }),
+    ).rejects.toThrow(/window\.from/)
+    await expect(
+      publish(t, stackId, {
+        window: { days: 30, from: '2026-06-26', to: '2026-07-25T00:00:00Z' },
+      }),
+    ).rejects.toThrow(/window\.to/)
+  })
+
+  test('the bound sits on the shared insert path, so the token route enforces it too', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const token = `tok_${Math.random().toString(36).slice(2)}`
+    await t.run((ctx) =>
+      ctx.db.insert('cliTokens', {
+        token,
+        userId: USER,
+        stackId,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 90 * DAY,
+        lastUsedAt: Date.now(),
+      }),
+    )
+
+    const resp = await t.fetch('/api/cli/sync', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        payload: payload({ inventory: inventoryWith('mcpServers', 'z'.repeat(200)) }),
+      }),
+    })
+    // A broken client, so 400 with the reason — not an opaque 500.
+    expect(resp.status).toBe(400)
+    expect(JSON.stringify(await resp.json())).toMatch(/inventory\.mcpServers/)
+    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    expect(rows).toHaveLength(0)
+  })
+})
+
 describe('publishForToken — the destination comes from the token', () => {
   async function seedToken(
     t: Ctx,

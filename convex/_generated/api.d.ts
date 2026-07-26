@@ -28,6 +28,7 @@ import type * as lib_admin from "../lib/admin.js";
 import type * as lib_avatar from "../lib/avatar.js";
 import type * as lib_iconUrl from "../lib/iconUrl.js";
 import type * as lib_ids from "../lib/ids.js";
+import type * as lib_names from "../lib/names.js";
 import type * as lib_resourceLinks from "../lib/resourceLinks.js";
 import type * as lib_tiers from "../lib/tiers.js";
 import type * as measured from "../measured.js";
@@ -79,6 +80,7 @@ declare const fullApi: ApiFromModules<{
   "lib/avatar": typeof lib_avatar;
   "lib/iconUrl": typeof lib_iconUrl;
   "lib/ids": typeof lib_ids;
+  "lib/names": typeof lib_names;
   "lib/resourceLinks": typeof lib_resourceLinks;
   "lib/tiers": typeof lib_tiers;
   measured: typeof measured;

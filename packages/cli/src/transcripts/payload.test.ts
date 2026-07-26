@@ -5,7 +5,12 @@ import {
 	type OptInNames,
 	type SyncConfig,
 } from "./allowlist.js";
-import { createAggregate, ingestRecord } from "./analyzer.js";
+import {
+	cleanName,
+	createAggregate,
+	ingestRecord,
+	isDisplaySafeName,
+} from "./analyzer.js";
 import { assistant, slashCommand, toolUse } from "./fixtures.js";
 import {
 	buildPayload,
@@ -324,6 +329,80 @@ describe("model ids are the exempt class (#33 decision 3)", () => {
 		expect(payload.models[0].id).toBe("claude-opus-5");
 		expect(payload.models[0].tokens.output).toBe(2_000_000);
 		expect(payload.models[0].apiEquivalentUSD).toBeCloseTo(75, 2); // $50 fast + $25 standard
+	});
+});
+
+describe("every string in a built payload clears the server's bound (#45)", () => {
+	// The server states what a payload string may be and REJECTS a snapshot that
+	// breaks the bar rather than rewriting it (convex/lib/names.ts). So this is a
+	// liveness test, not a safety one: the safety half lives on the server, and
+	// what is asserted here is that our own client can never trip it.
+	//
+	// The names are ticked, so the hostile strings genuinely reach the payload
+	// instead of being withheld — otherwise the assertion would pass vacuously.
+	const bidiTool = cleanName("Ba\u202Esh");
+	const overlongSkill = cleanName("z".repeat(400));
+
+	const payload = build(
+		[
+			assistant({ content: [toolUse("Ba\u202Esh")] }),
+			assistant({ content: [toolUse("Skill", { skill: "z".repeat(400) })] }),
+			assistant({ content: [toolUse("Skill", { skill: "   " })] }),
+			assistant({
+				model: "claude opus/../5\u0000",
+				usage: { output_tokens: 10 },
+			}),
+			assistant({ model: "a".repeat(200), usage: { output_tokens: 10 } }),
+		],
+		{
+			syncConfig: config({
+				optIns: {
+					...EMPTY_OPT_INS,
+					builtinTools: [bidiTool, "Skill"],
+					skills: [overlongSkill, "(unnamed)"],
+				},
+			}),
+		},
+	);
+
+	it("carried the hostile names through, so the bound is under real load", () => {
+		expect(payload.inventory.builtinTools.map((a) => a.name)).toContain(
+			bidiTool,
+		);
+		expect(payload.inventory.skills.map((a) => a.name)).toContain(
+			overlongSkill,
+		);
+		expect(payload.models.length).toBeGreaterThan(1);
+	});
+
+	it("every inventory name is display-safe and within 64 characters", () => {
+		for (const category of Object.values(payload.inventory)) {
+			if (!Array.isArray(category)) continue;
+			for (const atom of category) {
+				expect(isDisplaySafeName(atom.name)).toBe(true);
+			}
+		}
+	});
+
+	it("every model id is within the vendor charset the server enforces", () => {
+		for (const model of payload.models) {
+			expect(model.id).toMatch(/^[A-Za-z0-9._:-]+$/);
+			expect(model.id.length).toBeLessThanOrEqual(64);
+		}
+	});
+
+	it("bounds the strings that are not names either", () => {
+		// harness.name and pricingTable land on the same public page from the same
+		// payload, so the server holds them to the same bar.
+		expect(isDisplaySafeName(payload.harness.name)).toBe(true);
+		if (payload.harness.version !== null) {
+			expect(isDisplaySafeName(payload.harness.version)).toBe(true);
+		}
+		if (payload.pricingTable !== null) {
+			expect(isDisplaySafeName(payload.pricingTable)).toBe(true);
+		}
+		expect(payload.window.from).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+		expect(payload.window.to).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 	});
 });
 

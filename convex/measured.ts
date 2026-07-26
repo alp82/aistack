@@ -13,6 +13,12 @@ import {
   ReconcileAtomKind,
 } from './schema'
 import { extractShortId } from './lib/ids'
+import {
+  MODEL_ID_MAX,
+  NAME_MAX,
+  isDisplaySafeName,
+  isSanitizedModelId,
+} from './lib/names'
 
 /**
  * The measured layer — append-only snapshots published by the sync client, plus
@@ -44,6 +50,82 @@ const SUPPORTED_SCHEMA_VERSIONS = [1]
 // Publish
 // ---------------------------------------------------------------------------
 
+/** The client emits date-only UTC (`toISOString().slice(0, 10)`). */
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * Say what a string in the payload may be (#45).
+ *
+ * The closed `MeasuredPayload` validator says which FIELDS a snapshot may
+ * carry — #38 called that closedness the privacy claim. It cannot say what may
+ * be inside a `v.string()`, and before #42 it did not have to: only names the
+ * curated list already knew could reach here. #42 made arbitrary user-supplied
+ * names a designed feature, so the public stack page now renders strings we
+ * have never seen, on purpose. This states the bound those strings have.
+ *
+ * Two things it deliberately is NOT:
+ *
+ *   - NOT a re-check against the curated allowlist. That would defeat #42
+ *     decision 1, which exists so a user can publish a name we never listed.
+ *     Which names publish is judged on the machine, before the send, and stays
+ *     there.
+ *   - NOT a sanitizer. A violation REJECTS the snapshot. Rewriting a name
+ *     server-side would publish a string the owner never saw at the approve
+ *     gate, and snapshots are immutable, so there is no taking it back. A
+ *     payload that trips this is a broken client, and the HTTP layer surfaces
+ *     the reason as a 400.
+ *
+ * EVERY client-supplied string is covered, not only the five inventory
+ * categories: `harness.name` and `pricingTable` are rendered on the same public
+ * page from the same untrusted payload, so bounding the names and leaving those
+ * open would close the hole only where it was noticed.
+ *
+ * `catalogSlug` and `catalogName` are NOT bounded here, because they are not in
+ * the payload at all — `resolveModels` reads them from our own models catalog at
+ * read time. They are a different trust class (admin-authored, not client-sent),
+ * and asserting them inside a query would turn a catalog typo into a public page
+ * that throws. Their bound belongs on the catalog write path, if anywhere.
+ */
+function checkPayloadStrings(
+  payload: Doc<'measuredSnapshots'>['payload']
+): void {
+  const requireName = (value: string, where: string): void => {
+    if (!isDisplaySafeName(value)) {
+      throw new Error(
+        `${where} must be 1-${NAME_MAX} characters and carry no control or bidi characters`
+      )
+    }
+  }
+
+  requireName(payload.harness.name, 'harness.name')
+  if (payload.harness.version !== null) {
+    requireName(payload.harness.version, 'harness.version')
+  }
+  if (payload.pricingTable !== null) {
+    requireName(payload.pricingTable, 'pricingTable')
+  }
+
+  for (const key of ['from', 'to'] as const) {
+    if (!ISO_DATE_RE.test(payload.window[key])) {
+      throw new Error(`window.${key} must be an ISO date (YYYY-MM-DD)`)
+    }
+  }
+
+  payload.models.forEach((model, i) => {
+    if (!isSanitizedModelId(model.id)) {
+      throw new Error(
+        `models[${i}].id must be 1-${MODEL_ID_MAX} characters of A-Z a-z 0-9 . _ : -`
+      )
+    }
+  })
+
+  for (const category of NAME_CATEGORIES) {
+    payload.inventory[category].forEach((atom, i) => {
+      requireName(atom.name, `inventory.${category}[${i}].name`)
+    })
+  }
+}
+
 /**
  * Shared insert path.
  *
@@ -62,6 +144,9 @@ async function insertSnapshot(
   if (!SUPPORTED_SCHEMA_VERSIONS.includes(payload.schemaVersion)) {
     throw new Error(`Unsupported payload schemaVersion ${payload.schemaVersion}`)
   }
+  // Here rather than in either mutation: this is the one path into the table, so
+  // a future caller cannot acquire authority over a stack and skip the bound.
+  checkPayloadStrings(payload)
 
   const receivedAt = Date.now()
   const snapshotId = await ctx.db.insert('measuredSnapshots', {
@@ -816,24 +901,6 @@ const emptyOptIns = (): Record<NameCategory, string[]> => ({
   slashCommands: [],
 })
 
-/**
- * The bound on a name a client may tick.
- *
- * NOT the curated list's charset. A curated entry is ours and conventional; an
- * opt-in is the user's own string and may legitimately carry parentheses,
- * accents or CJK — refusing those would refuse names the user genuinely runs.
- * What is refused is what cannot be rendered safely: control characters and
- * bidi overrides, which move a terminal cursor or reorder the count printed
- * beside the name (CVE-2021-42574). This mirrors `cleanName` in
- * packages/cli/src/transcripts/analyzer.ts, which is where an observed name
- * gets the same treatment on the way in.
- */
-const UNSAFE_NAME_RE =
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: refusing them is the point
-  /[\u0000-\u001f\u007f-\u009f\u00ad\u061c\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/
-
-const NAME_MAX = 64
-
 /** A cap per call, so one request cannot write an unbounded transaction. */
 const MAX_NAMES_PER_CALL = 500
 
@@ -844,16 +911,16 @@ function checkNames(entries: ReadonlyArray<{ name: string }>): void {
     throw new Error(`At most ${MAX_NAMES_PER_CALL} names per call`)
   }
   for (const { name } of entries) {
+    // The SAME bar the published payload is held to (convex/lib/names.ts) — a
+    // tick the owner can store but the snapshot would then be rejected for is
+    // worse than no tick at all.
+    //
     // Loud, not silent: a name that cannot be stored is a tick the owner made
     // and would otherwise believe took effect.
-    if (name.length === 0 || name.trim().length === 0) {
-      throw new Error('A published name cannot be blank')
-    }
-    if (name.length > NAME_MAX) {
-      throw new Error(`A published name cannot exceed ${NAME_MAX} characters`)
-    }
-    if (UNSAFE_NAME_RE.test(name)) {
-      throw new Error('A published name cannot contain control characters')
+    if (!isDisplaySafeName(name)) {
+      throw new Error(
+        `A published name must be 1-${NAME_MAX} characters and carry no control or bidi characters`
+      )
     }
   }
 }
