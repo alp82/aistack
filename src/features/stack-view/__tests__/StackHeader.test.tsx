@@ -51,9 +51,9 @@ vi.mock("@tanstack/react-router", () => ({
 	useNavigate: () => vi.fn(),
 }));
 
-// Stub Convex — StackHeader renders ChangesBanner, which queries for the
-// owner's open items. `undefined` is the loading answer, so the banner is
-// absent and these tests keep judging the header alone.
+// Stub Convex — StackHeader renders ChangesBanner and HeroMeasuredStrip, both
+// of which query. `undefined` is the loading answer, so neither renders and
+// these tests keep judging the header alone.
 vi.mock("convex/react", () => ({
 	useQuery: () => undefined,
 }));
@@ -67,6 +67,8 @@ vi.mock("@/components/CostBreakdownTooltip", () => ({
 vi.mock("@/features/stack-view/ui", () => ({
 	StackIcon: () => <div data-testid="stack-icon" />,
 	categoryColor: () => "#000",
+	categoryLabel: (categories: string[] | undefined) =>
+		categories?.[0] ?? "Tool",
 	STACK_WIDTH: "max-w-5xl",
 }));
 
@@ -143,7 +145,7 @@ function buildProps(
 		onUpvote: vi.fn(),
 		onReport: vi.fn(),
 		onUpvoteHover: vi.fn(),
-		onTileActivate: vi.fn(),
+		onToolsActivate: vi.fn(),
 		...overrides,
 	};
 }
@@ -331,97 +333,126 @@ describe("StackHeader upvote-popover regression", () => {
 });
 
 // ===========================================================================
-// GROUP E — Hero stat tiles as interactive buttons (onTileActivate)
+// GROUP E — Hero tool tiles (#40 replaced the count tiles with named tools)
+//
+// The old "11 tools / 5 models / 1 bundle" row is gone on purpose: three
+// numbers that say nothing, in the space three named tools say something. Tools
+// is now journey section 03, so the tools have to surface in the hero.
 // ===========================================================================
 
-describe("GROUP E — StackHeader hero tiles as buttons", () => {
-	// E-1: all three tiles render as buttons with correct aria-labels, even when count=0
-	it("renders all three stat tiles as buttons named /Jump to .* section/i", () => {
-		render(
-			<StackHeader
-				{...buildProps(UPVOTE_STATUS_ZERO, {
-					onTileActivate: vi.fn(),
-				})}
-			/>,
-		);
-		expect(
-			screen.getByRole("button", { name: /jump to tools section/i }),
-		).toBeInTheDocument();
-		expect(
-			screen.getByRole("button", { name: /jump to models section/i }),
-		).toBeInTheDocument();
-		expect(
-			screen.getByRole("button", { name: /jump to bundles section/i }),
-		).toBeInTheDocument();
-	});
+const TOOL = (id: string, name: string, kind: "main" | "misc" = "main") => ({
+	_id: id,
+	name,
+	kind,
+	categories: ["ide"],
+	price: { pricingType: "free" },
+	primaryUsageLabel: "Free",
+});
 
-	// E-2: all three tiles still render as buttons when all counts are 0
-	it("renders tile buttons even when all counts are 0", () => {
+describe("GROUP E — StackHeader hero tool tiles", () => {
+	it("shows the first three tools as buttons into the Tools section", () => {
 		const stack = {
 			...BASE_STACK,
-			tools: [],
-			models: [],
-			bundles: [],
+			tools: [
+				TOOL("t1", "Claude Code"),
+				TOOL("t2", "Convex"),
+				TOOL("t3", "Linear"),
+			],
 		};
+		render(
+			<StackHeader
+				{...buildProps(UPVOTE_STATUS_ZERO, { stack: stack as never })}
+			/>,
+		);
+		for (const name of ["Claude Code", "Convex", "Linear"]) {
+			expect(
+				screen.getByRole("button", {
+					name: new RegExp(`Jump to Tools section: ${name}`),
+				}),
+			).toBeInTheDocument();
+		}
+	});
+
+	it("folds the rest into a single +N more", () => {
+		const stack = {
+			...BASE_STACK,
+			tools: [
+				TOOL("t1", "Claude Code"),
+				TOOL("t2", "Convex"),
+				TOOL("t3", "Linear"),
+				TOOL("t4", "Figma", "misc"),
+				TOOL("t5", "Raycast", "misc"),
+			],
+		};
+		render(
+			<StackHeader
+				{...buildProps(UPVOTE_STATUS_ZERO, { stack: stack as never })}
+			/>,
+		);
+		expect(screen.getByText("+2 more")).toBeInTheDocument();
+		expect(screen.queryByText("Figma")).not.toBeInTheDocument();
+	});
+
+	it("shows no +N more when three tools are all there is", () => {
+		const stack = {
+			...BASE_STACK,
+			tools: [
+				TOOL("t1", "Claude Code"),
+				TOOL("t2", "Convex"),
+				TOOL("t3", "Linear"),
+			],
+		};
+		render(
+			<StackHeader
+				{...buildProps(UPVOTE_STATUS_ZERO, { stack: stack as never })}
+			/>,
+		);
+		expect(screen.queryByText(/more$/)).not.toBeInTheDocument();
+	});
+
+	it("calls onToolsActivate once per tile click", () => {
+		const onToolsActivate = vi.fn();
+		const stack = { ...BASE_STACK, tools: [TOOL("t1", "Convex")] };
 		render(
 			<StackHeader
 				{...buildProps(UPVOTE_STATUS_ZERO, {
 					stack: stack as never,
-					onTileActivate: vi.fn(),
+					onToolsActivate,
 				})}
 			/>,
 		);
-		expect(
-			screen.getByRole("button", { name: /jump to tools section/i }),
-		).toBeInTheDocument();
-		expect(
-			screen.getByRole("button", { name: /jump to models section/i }),
-		).toBeInTheDocument();
-		expect(
-			screen.getByRole("button", { name: /jump to bundles section/i }),
-		).toBeInTheDocument();
+		fireEvent.click(
+			screen.getByRole("button", { name: /Jump to Tools section: Convex/ }),
+		);
+		expect(onToolsActivate).toHaveBeenCalledTimes(1);
 	});
 
-	// E-3: clicking Tools tile calls onTileActivate("tools") exactly once
-	it("clicking Tools tile calls onTileActivate('tools') once, no cross-fire", () => {
-		const onTileActivate = vi.fn();
-		render(
-			<StackHeader {...buildProps(UPVOTE_STATUS_ZERO, { onTileActivate })} />,
-		);
-		const toolsBtn = screen.getByRole("button", {
-			name: /jump to tools section/i,
-		});
-		fireEvent.click(toolsBtn);
-		expect(onTileActivate).toHaveBeenCalledTimes(1);
-		expect(onTileActivate).toHaveBeenCalledWith("tools");
+	it("renders the hero without tiles when the stack lists no tools", () => {
+		render(<StackHeader {...buildProps(UPVOTE_STATUS_ZERO)} />);
+		expect(
+			screen.queryByRole("button", { name: /Jump to Tools section/ }),
+		).not.toBeInTheDocument();
+		expect(screen.getByText("Test Stack")).toBeInTheDocument();
 	});
 
-	// E-4: clicking Models tile calls onTileActivate("models") exactly once
-	it("clicking Models tile calls onTileActivate('models') once, no cross-fire", () => {
-		const onTileActivate = vi.fn();
+	it("no longer offers the tools, models and bundles counts", () => {
+		const stack = {
+			...BASE_STACK,
+			tools: [TOOL("t1", "Convex")],
+			models: [{ _id: "m1", name: "Claude Opus 5" }],
+			bundles: [{ _id: "b1", name: "Max" }],
+		};
 		render(
-			<StackHeader {...buildProps(UPVOTE_STATUS_ZERO, { onTileActivate })} />,
+			<StackHeader
+				{...buildProps(UPVOTE_STATUS_ZERO, { stack: stack as never })}
+			/>,
 		);
-		const modelsBtn = screen.getByRole("button", {
-			name: /jump to models section/i,
-		});
-		fireEvent.click(modelsBtn);
-		expect(onTileActivate).toHaveBeenCalledTimes(1);
-		expect(onTileActivate).toHaveBeenCalledWith("models");
-	});
-
-	// E-5: clicking Bundles tile calls onTileActivate("bundles") exactly once
-	it("clicking Bundles tile calls onTileActivate('bundles') once, no cross-fire", () => {
-		const onTileActivate = vi.fn();
-		render(
-			<StackHeader {...buildProps(UPVOTE_STATUS_ZERO, { onTileActivate })} />,
-		);
-		const bundlesBtn = screen.getByRole("button", {
-			name: /jump to bundles section/i,
-		});
-		fireEvent.click(bundlesBtn);
-		expect(onTileActivate).toHaveBeenCalledTimes(1);
-		expect(onTileActivate).toHaveBeenCalledWith("bundles");
+		expect(
+			screen.queryByRole("button", { name: /Jump to Models section/ }),
+		).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole("button", { name: /Jump to Bundles section/ }),
+		).not.toBeInTheDocument();
 	});
 });
 

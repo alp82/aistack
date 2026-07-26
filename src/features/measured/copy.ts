@@ -1,0 +1,163 @@
+/**
+ * Every user-facing string and number format for the public measured display.
+ *
+ * Wayfinder ticket #46 (map #29), building the H2 + section-02 design locked by
+ * #40. The rules below are decisions, not preferences — each one was checked
+ * against the owner's real payload in #40 and must not be relaxed here:
+ *
+ *   - A dollar figure NEVER renders without its pricing table version, so
+ *     `totalUSD` returns null when `pricingTable` is null (#33 decision 11).
+ *   - `catalogSlug: null` is not an error. The raw vendor id renders, because
+ *     that row may be the largest one (#33 decision 3).
+ *   - Withheld names read as "kept private", plain counts, non-zero only, and
+ *     NEVER as a percentage or a completeness score (#42).
+ *   - Coverage is silent on a clean scan. A degraded scan says the numbers are
+ *     a floor (#33 decision 10).
+ *   - Freshness reads `receivedAt`, the server clock, never `capturedAt` (#38).
+ *   - POSITIVE CLAIMS ONLY. Nothing here may say a listed thing went unused —
+ *     that needs an adapter seam covering every harness the user runs (#40).
+ *
+ * Public voice, distinct from the owner-facing voice in
+ * `src/features/reconcile/copy.ts`: the reader is a stranger, so it is "from
+ * this machine", not "from your machine".
+ */
+import type { FunctionReturnType } from "convex/server";
+import type { api } from "../../../convex/_generated/api";
+
+export type MeasuredSnapshot = NonNullable<
+	FunctionReturnType<typeof api.measured.getCurrentByStackSlug>
+>;
+export type MeasuredModel = MeasuredSnapshot["models"][number];
+
+/** The anchor section 02 mounts on, and the hero strip links down to. */
+export const MEASURED_ANCHOR = "section-measured";
+
+export const KICKER = "// from this machine";
+export const TITLE = "What actually ran";
+export const HARNESS = "Claude Code";
+
+/** Shared mono label treatment, matching the journey's section kickers. */
+export const MONO_LABEL =
+	"font-mono text-[11px] font-semibold uppercase tracking-[0.25em]";
+
+export function fmtTokens(n: number): string {
+	if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
+	if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+	if (n >= 1e3) return `${(n / 1e3).toFixed(0)}K`;
+	return String(n);
+}
+
+export function fmtUSD(n: number): string {
+	return `$${Math.round(n).toLocaleString("en-US")}`;
+}
+
+export function fmtShare(share: number): string {
+	return `${(share * 100).toFixed(1)}%`;
+}
+
+/**
+ * The dollars the whole window cost at API prices, or null.
+ *
+ * Null in two cases, and the display must treat both the same way: the client
+ * withheld cost (`publishCost: false`), or the snapshot carries no pricing
+ * table. The second case is the stricter rule — a price the reader cannot date
+ * is a price we do not print.
+ */
+export function totalUSD(s: MeasuredSnapshot): number | null {
+	if (!s.pricingTable) return null;
+	const priced = s.models.filter((m) => m.apiEquivalentUSD !== undefined);
+	if (priced.length === 0) return null;
+	return priced.reduce((sum, m) => sum + (m.apiEquivalentUSD ?? 0), 0);
+}
+
+/** The catalog name, falling back to the raw vendor id the client published. */
+export function modelLabel(m: MeasuredModel): string {
+	return m.catalogName ?? m.id;
+}
+
+/** "Claude Fable 5 leads at 35%" — the hero's one model fact. */
+export function leadModelLine(s: MeasuredSnapshot): string | null {
+	const lead = [...s.models].sort((a, b) => b.tokenShare - a.tokenShare)[0];
+	if (!lead) return null;
+	return `${modelLabel(lead)} leads at ${(lead.tokenShare * 100).toFixed(0)}%`;
+}
+
+export function sessionsLine(s: MeasuredSnapshot): string {
+	const n = s.activity.sessions;
+	return `${n.toLocaleString("en-US")} ${n === 1 ? "session" : "sessions"}`;
+}
+
+export function activeDaysLine(s: MeasuredSnapshot): string {
+	return `${s.activity.activeDays} of the last ${s.window.days} days`;
+}
+
+const WITHHELD_LABELS: Record<string, string> = {
+	builtinTools: "built-in tools",
+	mcpServers: "MCP servers",
+	skills: "skills",
+	subagents: "subagents",
+	slashCommands: "commands",
+};
+
+/**
+ * "2 MCP servers, 10 skills" — the names the owner has not agreed to publish.
+ *
+ * Counts only, and only the non-zero ones. A percentage here would be a
+ * disclosure ratchet: it would pressure the owner to publish exactly the names
+ * they held back (#42).
+ */
+export function keptPrivate(s: MeasuredSnapshot): string | null {
+	const parts = Object.entries(s.inventory.withheld)
+		.filter(([, n]) => n > 0)
+		.map(([key, n]) => `${n} ${WITHHELD_LABELS[key] ?? key}`);
+	return parts.length > 0 ? parts.join(", ") : null;
+}
+
+/** A failed line in a thousand is noise, not a caveat worth printing. */
+const LINE_FAILURE_FLOOR = 0.001;
+
+/**
+ * The caveat for a degraded scan, or null when the scan was clean.
+ *
+ * Silence is the common case and the correct one. When the scan did lose data,
+ * the caveat says the numbers are a FLOOR, because every unread file can only
+ * ever have added to them.
+ */
+export function coverageCaveat(s: MeasuredSnapshot): string | null {
+	const { filesScanned, filesUnreadable, linesParsed, linesFailed } =
+		s.coverage;
+	const failureRate = linesFailed / Math.max(1, linesParsed);
+	if (filesUnreadable === 0 && failureRate < LINE_FAILURE_FLOOR) return null;
+
+	const bits: string[] = [];
+	if (filesUnreadable > 0) {
+		bits.push(`${filesUnreadable} of ${filesScanned} files could not be read`);
+	}
+	if (linesFailed > 0) bits.push(`${linesFailed} lines did not parse`);
+	return `Partial read — ${bits.join(", ")}. The numbers below are a floor.`;
+}
+
+/**
+ * "read from Claude Code 2.1.220".
+ *
+ * The vocabulary says a harness is called Claude Code, and v1 reads no other
+ * one. A payload naming a different harness prints that name instead, because
+ * the alternative is a sentence that is simply false.
+ */
+export function harnessLine(s: MeasuredSnapshot): string {
+	const name = s.harness.name === "claude-code" ? HARNESS : s.harness.name;
+	return `read from ${name}${s.harness.version ? ` ${s.harness.version}` : ""}`;
+}
+
+/** Said once, next to the number that moves, and nowhere else. */
+export function windowSentence(days: number): string {
+	return `This is a rolling ${days}-day reading, not a running total. It moves every time it is checked, because the window moves with it.`;
+}
+
+/** Only for a reading that has fallen out of the 7-day window (#38). */
+export function stalenessLine(checkedAgo: string): string {
+	return `Last checked ${checkedAgo} — this reading is going stale.`;
+}
+
+export const NEVER_SYNCED_TITLE = "This stack has not been measured yet.";
+export const NEVER_SYNCED_BODY = `Stacks can publish what actually ran on the machine they are built on — sessions, models, tokens and cost at API prices, read from ${HARNESS}.`;

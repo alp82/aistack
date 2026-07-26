@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { JsonLd } from "@/components/JsonLd";
 import type { ModelItemData } from "@/components/ModelItem";
 import { ProjectsSection } from "@/components/ProjectsSection";
+import { MeasuredSection } from "@/features/measured/MeasuredSection";
 import {
 	type BundleLookupData,
 	EditorProvider,
@@ -18,19 +19,6 @@ import { StackHeader } from "@/features/stack-view/StackHeader";
 import { GuideSection, ToolsSection } from "@/features/stack-view/sections";
 import { formatPricingSummary } from "@/lib/pricing";
 import { SITE_URL, seoMeta } from "@/lib/seo";
-// PROTOTYPE — wayfinder #40. Delete with the prototype branch.
-import {
-	HeroH1,
-	HeroH2,
-	HeroH3,
-	MEASURED_ANCHOR,
-} from "../../.prototypes/measured-hero";
-import {
-	buildSnapshot,
-	MeasuredSwitcher,
-	useMeasuredProto,
-	VariantB,
-} from "../../.prototypes/measured-public";
 import { api } from "../../convex/_generated/api";
 
 type ViewTool = {
@@ -191,9 +179,6 @@ function StackDetailsPage() {
 		null,
 	);
 	const [hasHovered, setHasHovered] = useState(false);
-	// PROTOTYPE — wayfinder #40.
-	const proto = useMeasuredProto();
-	const protoSnapshot = buildSnapshot(proto.state);
 	const upvotersData = useQuery(
 		api.stacks.getUpvoters,
 		hasHovered && stack ? { stackId: stack._id } : "skip",
@@ -205,13 +190,12 @@ function StackDetailsPage() {
 		setTimeout(() => setHighlightedBundle(null), 1500);
 	};
 
-	// All three tiles scroll to the same Components section (id="section-tools").
-	// The `target` arg only determines which disclosure (models/bundles) to auto-open.
-	const handleTileActivate = (target: "tools" | "models" | "bundles") => {
+	// The hero's tool tiles all scroll to the same Tools section
+	// (id="section-tools"). Since #40 replaced the count tiles with named tools,
+	// the hero no longer opens the Models or Bundles disclosures directly.
+	const handleToolsActivate = () => {
 		setHighlightedSection("tools");
 		setTimeout(() => setHighlightedSection(null), 1500);
-		if (target === "models") setModelsOpen(true);
-		if (target === "bundles") setBundlesOpen(true);
 	};
 
 	const handleUpvote = async () => {
@@ -319,45 +303,33 @@ function StackDetailsPage() {
 			/>
 			<div className={accentClassFor(stack.accentPreset)}>
 				<div className="bg-bg-canvas">
-					{/* PROTOTYPE #40 — the hero treatments replace StackHeader wholesale. */}
-					{(() => {
-						const heroProps = {
-							stack,
-							upvoteStatus,
-							reportStatus,
-							upvotersData,
-							upvoting,
-							reporting,
-							onUpvote: handleUpvote,
-							onReport: handleReport,
-							onUpvoteHover: () => setHasHovered(true),
-							onTileActivate: handleTileActivate,
-						};
-						if (proto.variant === "H1")
-							return <HeroH1 {...heroProps} snapshot={protoSnapshot} />;
-						if (proto.variant === "H2")
-							return <HeroH2 {...heroProps} snapshot={protoSnapshot} />;
-						if (proto.variant === "H3")
-							return <HeroH3 {...heroProps} snapshot={protoSnapshot} />;
-						return <StackHeader {...heroProps} />;
-					})()}
+					<StackHeader
+						stack={stack}
+						upvoteStatus={upvoteStatus}
+						reportStatus={reportStatus}
+						upvotersData={upvotersData}
+						upvoting={upvoting}
+						reporting={reporting}
+						onUpvote={handleUpvote}
+						onReport={handleReport}
+						onUpvoteHover={() => setHasHovered(true)}
+						onToolsActivate={handleToolsActivate}
+					/>
 				</div>
 				<div className="bg-bg-canvas">
-					{/* PROTOTYPE #40 journey: Projects 01 → What actually ran 02 → Tools 03 → Workflow 04. */}
+					{/* The journey (#40): Projects 01 → What actually ran 02 → Tools 03 →
+					    Workflow 04. What ran comes before what is listed. */}
 					<ProjectsSection
 						index={1}
 						stackId={stack._id}
 						isOwner={upvoteStatus?.isOwner ?? false}
 					/>
 
-					{/* PROTOTYPE #40 — B is now section 02, ahead of Tools. */}
-					{proto.variant !== "off" && (
-						<VariantB snapshot={protoSnapshot} index={2} id={MEASURED_ANCHOR} />
-					)}
+					<MeasuredSection index={2} slug={stack.slug} />
 
 					{/* biome-ignore lint/correctness/useUniqueElementIds: stable single-instance scroll anchor for the hero tile jump target */}
 					<ToolsSection
-						index={proto.variant === "off" ? 2 : 3}
+						index={3}
 						id="section-tools"
 						highlighted={highlightedSection === "tools"}
 						tools={stack.tools}
@@ -372,7 +344,7 @@ function StackDetailsPage() {
 						onBundleClick={scrollToBundle}
 					/>
 					<GuideSection
-						index={proto.variant === "off" ? 3 : 4}
+						index={4}
 						description={stack.description}
 						isOwner={upvoteStatus?.isOwner ?? false}
 						slug={stack.slug}
@@ -399,13 +371,6 @@ function StackDetailsPage() {
 						</section>
 					)}
 				</div>
-				{/* PROTOTYPE #40 — dev-only switcher. */}
-				<MeasuredSwitcher
-					variant={proto.variant}
-					state={proto.state}
-					pick={proto.pick}
-					pickState={proto.pickState}
-				/>
 			</div>
 		</EditorProvider>
 	);

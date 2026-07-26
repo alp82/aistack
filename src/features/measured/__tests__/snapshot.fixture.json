@@ -1,0 +1,274 @@
+{
+	"schemaVersion": 1,
+	"capturedAt": 1785075371435,
+	"window": {
+		"days": 30,
+		"from": "2026-06-27",
+		"to": "2026-07-26"
+	},
+	"harness": {
+		"name": "claude-code",
+		"version": "2.1.220"
+	},
+	"pricingTable": "anthropic-list-2026-07-25",
+	"activity": {
+		"sessions": 382,
+		"activeDays": 22,
+		"projects": 22,
+		"totalTokens": 4270365919,
+		"cacheHitShare": 0.9505,
+		"subagentShare": 0.3251
+	},
+	"models": [
+		{
+			"id": "claude-fable-5",
+			"tokenShare": 0.351,
+			"tokens": {
+				"input": 2167960,
+				"output": 14383138,
+				"cacheWrite": 63980699,
+				"cacheRead": 1418554240
+			},
+			"apiEquivalentUSD": 3225.9
+		},
+		{
+			"id": "claude-opus-4-8",
+			"tokenShare": 0.3023,
+			"tokens": {
+				"input": 1632312,
+				"output": 14258999,
+				"cacheWrite": 66928258,
+				"cacheRead": 1208043845
+			},
+			"apiEquivalentUSD": 1544.16
+		},
+		{
+			"id": "claude-opus-5",
+			"tokenShare": 0.195,
+			"tokens": {
+				"input": 92104,
+				"output": 5187250,
+				"cacheWrite": 22086459,
+				"cacheRead": 805297744
+			},
+			"apiEquivalentUSD": 721.77
+		},
+		{
+			"id": "claude-sonnet-5",
+			"tokenShare": 0.1202,
+			"tokens": {
+				"input": 329279,
+				"output": 6920351,
+				"cacheWrite": 36638978,
+				"cacheRead": 469514227
+			},
+			"apiEquivalentUSD": 255.36
+		},
+		{
+			"id": "claude-haiku-4-5",
+			"tokenShare": 0.0168,
+			"tokens": {
+				"input": 75560,
+				"output": 1106309,
+				"cacheWrite": 7216805,
+				"cacheRead": 63327410
+			},
+			"apiEquivalentUSD": 21.04
+		},
+		{
+			"id": "claude-sonnet-4-6",
+			"tokenShare": 0.0147,
+			"tokens": {
+				"input": 12651,
+				"output": 1728712,
+				"cacheWrite": 7959634,
+				"cacheRead": 52922995
+			},
+			"apiEquivalentUSD": 71.79
+		}
+	],
+	"inventory": {
+		"builtinTools": [
+			{
+				"name": "Bash",
+				"callShare": 0.3991
+			},
+			{
+				"name": "Read",
+				"callShare": 0.3157
+			},
+			{
+				"name": "Edit",
+				"callShare": 0.0905
+			},
+			{
+				"name": "Agent",
+				"callShare": 0.0446
+			},
+			{
+				"name": "Grep",
+				"callShare": 0.0397
+			},
+			{
+				"name": "Write",
+				"callShare": 0.0331
+			},
+			{
+				"name": "Glob",
+				"callShare": 0.0177
+			},
+			{
+				"name": "WebFetch",
+				"callShare": 0.0138
+			},
+			{
+				"name": "AskUserQuestion",
+				"callShare": 0.0071
+			},
+			{
+				"name": "WebSearch",
+				"callShare": 0.0067
+			},
+			{
+				"name": "Skill",
+				"callShare": 0.0042
+			},
+			{
+				"name": "ToolSearch",
+				"callShare": 0.0041
+			},
+			{
+				"name": "TaskOutput",
+				"callShare": 0.0035
+			},
+			{
+				"name": "ScheduleWakeup",
+				"callShare": 0.0019
+			},
+			{
+				"name": "SendUserFile",
+				"callShare": 0.0013
+			},
+			{
+				"name": "TaskStop",
+				"callShare": 0.0008
+			},
+			{
+				"name": "TaskUpdate",
+				"callShare": 0.0007
+			},
+			{
+				"name": "Monitor",
+				"callShare": 0.0004
+			},
+			{
+				"name": "SendMessage",
+				"callShare": 0.0004
+			},
+			{
+				"name": "TaskCreate",
+				"callShare": 0.0004
+			},
+			{
+				"name": "PushNotification",
+				"callShare": 0
+			},
+			{
+				"name": "TaskGet",
+				"callShare": 0
+			}
+		],
+		"mcpServers": [],
+		"skills": [
+			{
+				"name": "grilling",
+				"callShare": 0.251
+			},
+			{
+				"name": "prototype",
+				"callShare": 0.1255
+			},
+			{
+				"name": "research",
+				"callShare": 0.085
+			},
+			{
+				"name": "claude-api",
+				"callShare": 0.0283
+			},
+			{
+				"name": "code-review",
+				"callShare": 0.0243
+			},
+			{
+				"name": "diagnosing-bugs",
+				"callShare": 0.004
+			},
+			{
+				"name": "domain-modeling",
+				"callShare": 0.004
+			}
+		],
+		"subagents": [
+			{
+				"name": "general-purpose",
+				"callShare": 0.1318
+			},
+			{
+				"name": "Explore",
+				"callShare": 0.0123
+			},
+			{
+				"name": "(default)",
+				"callShare": 0.008
+			},
+			{
+				"name": "claude-code-guide",
+				"callShare": 0.0011
+			},
+			{
+				"name": "fork",
+				"callShare": 0.0004
+			}
+		],
+		"slashCommands": [
+			{
+				"name": "clear",
+				"callShare": 0.4368
+			},
+			{
+				"name": "model",
+				"callShare": 0.0575
+			},
+			{
+				"name": "plugin",
+				"callShare": 0.0378
+			},
+			{
+				"name": "effort",
+				"callShare": 0.0345
+			},
+			{
+				"name": "login",
+				"callShare": 0.0016
+			}
+		],
+		"withheld": {
+			"builtinTools": 0,
+			"mcpServers": 2,
+			"skills": 10,
+			"subagents": 47,
+			"slashCommands": 9
+		}
+	},
+	"coverage": {
+		"filesScanned": 3015,
+		"filesUnreadable": 0,
+		"linesParsed": 232107,
+		"linesFailed": 28
+	},
+	"excludedTokens": {
+		"unpriced": 0,
+		"synthetic": 0
+	}
+}

@@ -52,6 +52,23 @@ export const Route = createFileRoute("/admin")({
 	}),
 });
 
+/**
+ * The done-bar of map #29, read straight off `measuredSnapshots`.
+ *
+ * Internal only, and deliberately not an event: with one user, telemetry would
+ * say nothing that this query does not say exactly (#33 decision 13).
+ */
+function LivingStacks() {
+	const counts = useQuery(api.measured.countLivingStacks);
+	if (!counts) return null;
+	return (
+		<span className="ml-auto py-4 font-mono text-xs uppercase tracking-wide text-fg-muted">
+			<span className="font-bold text-accent-lime">{counts.living}</span> living
+			· {counts.everSynced} ever synced
+		</span>
+	);
+}
+
 function AdminPage() {
 	const isAdmin = useQuery(api.admin.checkIsAdmin);
 	const reviewCount = useQuery(api.admin.getReviewTabCount);
@@ -137,6 +154,7 @@ function AdminPage() {
 							<Mail className="size-4" />
 							Email
 						</button>
+						<LivingStacks />
 					</div>
 				</div>
 			</div>

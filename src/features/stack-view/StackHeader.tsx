@@ -5,12 +5,13 @@ import { CostBreakdownTooltip } from "@/components/CostBreakdownTooltip";
 import { UpvoteButton } from "@/components/UpvoteButton";
 import { UpvotersTooltip } from "@/components/UpvotersTooltip";
 import HoverCard from "@/components/ui/hover-card";
+import { HeroMeasuredStrip } from "@/features/measured/HeroMeasuredStrip";
 import { ChangesBanner } from "@/features/reconcile/ChangesBanner";
-import { formatPriceDisplay } from "@/lib/pricing";
+import { formatPriceDisplay, orderToolsForDisplay } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import type { api } from "../../../convex/_generated/api";
 import { ShareMenu } from "./ShareMenu";
-import { categoryColor, STACK_WIDTH, StackIcon } from "./ui";
+import { categoryColor, categoryLabel, STACK_WIDTH, StackIcon } from "./ui";
 
 type StackData = NonNullable<FunctionReturnType<typeof api.stacks.getBySlug>>;
 type UpvoteStatus = FunctionReturnType<typeof api.stacks.getUpvoteStatus>;
@@ -27,8 +28,11 @@ type StackHeaderProps = {
 	onUpvote: () => void;
 	onReport: () => void;
 	onUpvoteHover: () => void;
-	onTileActivate: (target: "tools" | "models" | "bundles") => void;
+	onToolsActivate: () => void;
 };
+
+/** How many tools the hero shows before it folds the rest into "+N more". */
+const HERO_TOOLS = 3;
 
 export function StackHeader({
 	stack,
@@ -40,7 +44,7 @@ export function StackHeader({
 	onUpvote,
 	onReport,
 	onUpvoteHover,
-	onTileActivate,
+	onToolsActivate,
 }: StackHeaderProps) {
 	const { creator } = stack;
 	const hasUpvotes = (upvoteStatus?.count ?? 0) > 0;
@@ -49,6 +53,10 @@ export function StackHeader({
 		"month",
 		"floor",
 	);
+	// The page's canonical tool order, the same one the OG image uses.
+	const orderedTools = orderToolsForDisplay(stack.tools);
+	const heroTools = orderedTools.slice(0, HERO_TOOLS);
+	const restCount = Math.max(0, orderedTools.length - HERO_TOOLS);
 
 	return (
 		<header className="relative border-b border-stroke-strong py-8 md:py-12 px-6">
@@ -161,8 +169,14 @@ export function StackHeader({
 						{stack.oneLiner}
 					</p>
 
-					{/* Meta row: price tile + stat cells */}
-					<div className="flex flex-wrap gap-x-6 gap-y-4 justify-center items-center">
+					{/*
+					 * Meta row: the authored price tile, then the top tools themselves.
+					 * The old "11 tools / 5 models / 1 bundle" counts are gone on
+					 * purpose (#40): three numbers that say nothing, in the space three
+					 * named tools say something. Tools is now section 03, so the tools
+					 * have to surface here.
+					 */}
+					<div className="flex flex-wrap items-stretch justify-center gap-4">
 						<HoverCard
 							mode="wrapper"
 							position="below"
@@ -192,30 +206,41 @@ export function StackHeader({
 							</div>
 						</HoverCard>
 
-						<div className="inline-flex">
-							{(
-								[
-									[stack.tools.length, "Tool", "Tools", "tools"],
-									[stack.models.length, "Model", "Models", "models"],
-									[stack.bundles.length, "Bundle", "Bundles", "bundles"],
-								] as const
-							).map(([n, singular, plural, target]) => (
-								<button
-									type="button"
-									key={singular}
-									onClick={() => onTileActivate(target)}
-									aria-label={`Jump to ${plural} section`}
-									className="flex flex-col items-center px-5 py-2 border-l border-stroke-strong first:border-l-0 cursor-pointer transition-colors hover:text-accent-lime focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-lime/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-canvas"
-								>
-									<span className="font-mono font-black text-2xl leading-none text-fg-primary">
-										{n}
+						{heroTools.map((tool) => (
+							<button
+								type="button"
+								key={tool._id}
+								onClick={onToolsActivate}
+								aria-label={`Jump to Tools section: ${tool.name}`}
+								className="inline-flex min-w-36 items-center gap-3 border border-stroke-strong px-4 py-3 text-left transition-colors hover:border-accent-lime focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-lime/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-canvas"
+							>
+								<StackIcon
+									name={tool.name}
+									src={tool.iconUrl}
+									color={categoryColor(tool.categories)}
+									size="sm"
+								/>
+								<span className="min-w-0">
+									<span className="block truncate text-sm text-fg-primary">
+										{tool.name}
 									</span>
-									<span className="mt-1 font-mono text-[10px] tracking-wider uppercase text-fg-muted">
-										{n === 1 ? singular : plural}
+									<span className="block font-mono text-[10px] uppercase tracking-wider text-fg-muted">
+										{categoryLabel(tool.categories)}
 									</span>
-								</button>
-							))}
-						</div>
+								</span>
+							</button>
+						))}
+
+						{restCount > 0 && (
+							<button
+								type="button"
+								onClick={onToolsActivate}
+								aria-label="Jump to Tools section"
+								className="inline-flex items-center border border-dashed border-stroke-strong px-4 font-mono text-xs uppercase tracking-wider text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-lime/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-canvas"
+							>
+								+{restCount} more
+							</button>
+						)}
 					</div>
 
 					{/* Share + edit / report slot */}
@@ -248,6 +273,9 @@ export function StackHeader({
 						)}
 					</div>
 				</div>
+
+				{/* The public seam into section 02 (#40). Absent until a sync lands. */}
+				<HeroMeasuredStrip slug={stack.slug} />
 
 				{/* The owner's way in to "what's changed" (#43). */}
 				<ChangesBanner
