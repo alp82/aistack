@@ -14,8 +14,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { StackHeader } from "@/features/stack-view/StackHeader";
 import HoverCard from "@/components/ui/hover-card";
+import { StackHeader } from "@/features/stack-view/StackHeader";
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -49,6 +49,13 @@ vi.mock("@tanstack/react-router", () => ({
 		return <a href={href}>{children}</a>;
 	},
 	useNavigate: () => vi.fn(),
+}));
+
+// Stub Convex — StackHeader renders ChangesBanner, which queries for the
+// owner's open items. `undefined` is the loading answer, so the banner is
+// absent and these tests keep judging the header alone.
+vi.mock("convex/react", () => ({
+	useQuery: () => undefined,
 }));
 
 // Stub CostBreakdownTooltip — reached by the price tile HoverCard's renderContent.

@@ -18,6 +18,19 @@ import { StackHeader } from "@/features/stack-view/StackHeader";
 import { GuideSection, ToolsSection } from "@/features/stack-view/sections";
 import { formatPricingSummary } from "@/lib/pricing";
 import { SITE_URL, seoMeta } from "@/lib/seo";
+// PROTOTYPE — wayfinder #40. Delete with the prototype branch.
+import {
+	HeroH1,
+	HeroH2,
+	HeroH3,
+	MEASURED_ANCHOR,
+} from "../../.prototypes/measured-hero";
+import {
+	buildSnapshot,
+	MeasuredSwitcher,
+	useMeasuredProto,
+	VariantB,
+} from "../../.prototypes/measured-public";
 import { api } from "../../convex/_generated/api";
 
 type ViewTool = {
@@ -178,6 +191,9 @@ function StackDetailsPage() {
 		null,
 	);
 	const [hasHovered, setHasHovered] = useState(false);
+	// PROTOTYPE — wayfinder #40.
+	const proto = useMeasuredProto();
+	const protoSnapshot = buildSnapshot(proto.state);
 	const upvotersData = useQuery(
 		api.stacks.getUpvoters,
 		hasHovered && stack ? { stackId: stack._id } : "skip",
@@ -303,30 +319,45 @@ function StackDetailsPage() {
 			/>
 			<div className={accentClassFor(stack.accentPreset)}>
 				<div className="bg-bg-canvas">
-					<StackHeader
-						stack={stack}
-						upvoteStatus={upvoteStatus}
-						reportStatus={reportStatus}
-						upvotersData={upvotersData}
-						upvoting={upvoting}
-						reporting={reporting}
-						onUpvote={handleUpvote}
-						onReport={handleReport}
-						onUpvoteHover={() => setHasHovered(true)}
-						onTileActivate={handleTileActivate}
-					/>
+					{/* PROTOTYPE #40 — the hero treatments replace StackHeader wholesale. */}
+					{(() => {
+						const heroProps = {
+							stack,
+							upvoteStatus,
+							reportStatus,
+							upvotersData,
+							upvoting,
+							reporting,
+							onUpvote: handleUpvote,
+							onReport: handleReport,
+							onUpvoteHover: () => setHasHovered(true),
+							onTileActivate: handleTileActivate,
+						};
+						if (proto.variant === "H1")
+							return <HeroH1 {...heroProps} snapshot={protoSnapshot} />;
+						if (proto.variant === "H2")
+							return <HeroH2 {...heroProps} snapshot={protoSnapshot} />;
+						if (proto.variant === "H3")
+							return <HeroH3 {...heroProps} snapshot={protoSnapshot} />;
+						return <StackHeader {...heroProps} />;
+					})()}
 				</div>
 				<div className="bg-bg-canvas">
-					{/* Journey: Projects (01) → Tools (02, with Models/Bundles disclosures) → Workflow (03). */}
+					{/* PROTOTYPE #40 journey: Projects 01 → What actually ran 02 → Tools 03 → Workflow 04. */}
 					<ProjectsSection
 						index={1}
 						stackId={stack._id}
 						isOwner={upvoteStatus?.isOwner ?? false}
 					/>
 
+					{/* PROTOTYPE #40 — B is now section 02, ahead of Tools. */}
+					{proto.variant !== "off" && (
+						<VariantB snapshot={protoSnapshot} index={2} id={MEASURED_ANCHOR} />
+					)}
+
 					{/* biome-ignore lint/correctness/useUniqueElementIds: stable single-instance scroll anchor for the hero tile jump target */}
 					<ToolsSection
-						index={2}
+						index={proto.variant === "off" ? 2 : 3}
 						id="section-tools"
 						highlighted={highlightedSection === "tools"}
 						tools={stack.tools}
@@ -341,7 +372,7 @@ function StackDetailsPage() {
 						onBundleClick={scrollToBundle}
 					/>
 					<GuideSection
-						index={3}
+						index={proto.variant === "off" ? 3 : 4}
 						description={stack.description}
 						isOwner={upvoteStatus?.isOwner ?? false}
 						slug={stack.slug}
@@ -368,6 +399,13 @@ function StackDetailsPage() {
 						</section>
 					)}
 				</div>
+				{/* PROTOTYPE #40 — dev-only switcher. */}
+				<MeasuredSwitcher
+					variant={proto.variant}
+					state={proto.state}
+					pick={proto.pick}
+					pickState={proto.pickState}
+				/>
 			</div>
 		</EditorProvider>
 	);

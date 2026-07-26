@@ -428,7 +428,12 @@ describe('countLivingStacks', () => {
 // ---------------------------------------------------------------------------
 
 describe('reconcile', () => {
-  async function seedStackWithTool(t: Ctx, usageLabel: string) {
+  /**
+   * `whatFor` seeds `toolSubscriptions[].description` — the field the tool card
+   * renders. `primaryUsageLabel` is the TIER NAME and is deliberately non-blank
+   * in every case here, so a test that passes cannot be reading it.
+   */
+  async function seedStackWithTool(t: Ctx, whatFor: string | undefined) {
     return await t.run(async (ctx) => {
       const creatorId = await ctx.db.insert('creators', {
         name: 'Owner',
@@ -459,7 +464,8 @@ describe('reconcile', () => {
           {
             toolSlug: 'cursor',
             kind: 'main' as const,
-            primaryUsageLabel: usageLabel,
+            primaryUsageLabel: 'Pro',
+            description: whatFor,
             price: {
               pricingType: 'fixed' as const,
               fixed: { currency: 'USD', amount: 20, period: 'month' as const },
@@ -483,6 +489,8 @@ describe('reconcile', () => {
 
     const result = await asOwner.query(api.measured.getReconcileSuggestions, { stackId })
     expect(result.hasSnapshot).toBe(false)
+    expect(result.receivedAt).toBeNull()
+    expect(result.isFresh).toBe(false)
     expect(result.suggestions).toEqual([
       {
         atomKind: 'tool',
@@ -491,6 +499,18 @@ describe('reconcile', () => {
         kind: 'missing_what_for',
       },
     ])
+  })
+
+  test('a tier name in primaryUsageLabel does not count as a what-for', async () => {
+    // The correction that made this ticket buildable: every tool the picker adds
+    // carries a non-blank primaryUsageLabel ("Pro", "Default", "Custom"), so the
+    // old derivation fired almost never.
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStackWithTool(t, undefined)
+    const asOwner = t.withIdentity(IDENTITY)
+    const result = await asOwner.query(api.measured.getReconcileSuggestions, { stackId })
+    expect(result.suggestions).toHaveLength(1)
+    expect(result.suggestions[0].kind).toBe('missing_what_for')
   })
 
   test('does not suggest a what-for that is already written', async () => {
@@ -521,6 +541,8 @@ describe('reconcile', () => {
     const asOwner = t.withIdentity(IDENTITY)
     const result = await asOwner.query(api.measured.getReconcileSuggestions, { stackId })
     expect(result.hasSnapshot).toBe(true)
+    expect(result.isFresh).toBe(true)
+    expect(result.receivedAt).toBeGreaterThan(0)
     expect(result.suggestions).toEqual([
       {
         atomKind: 'model',
@@ -528,8 +550,26 @@ describe('reconcile', () => {
         label: 'Claude Opus 5',
         kind: 'missing_from_authored',
         tokenShare: 1,
+        // The price line the card shows; absent when the client withheld cost.
+        apiEquivalentUSD: 12.34,
       },
     ])
+  })
+
+  test('reports an old snapshot as present but not fresh', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    await t.mutation(internal.measured.publishSnapshot, { stackId, payload: payload() })
+    await t.run(async (ctx) => {
+      const row = await ctx.db.query('measuredSnapshots').first()
+      await ctx.db.patch(row!._id, { receivedAt: Date.now() - 12 * DAY })
+    })
+
+    const result = await t
+      .withIdentity(IDENTITY)
+      .query(api.measured.getReconcileSuggestions, { stackId })
+    expect(result.hasSnapshot).toBe(true)
+    expect(result.isFresh).toBe(false)
   })
 
   test('does not suggest a measured model that resolves to nothing in the catalog', async () => {
@@ -586,6 +626,156 @@ describe('reconcile', () => {
     })
     const rows = await t.run((ctx) => ctx.db.query('reconcileDismissals').collect())
     expect(rows).toHaveLength(1)
+  })
+
+  test('a dismissal carries the catalog name, so the hidden list is readable', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStackWithTool(t, '')
+    const asOwner = t.withIdentity(IDENTITY)
+
+    await asOwner.mutation(api.measured.dismissSuggestion, {
+      stackId,
+      atomKind: 'tool',
+      atomKey: 'cursor',
+    })
+    await asOwner.mutation(api.measured.dismissSuggestion, {
+      stackId,
+      atomKind: 'model',
+      atomKey: 'not-in-the-catalog',
+    })
+
+    const rows = await asOwner.query(api.measured.listDismissals, { stackId })
+    expect(rows.map((r) => r.label).sort()).toEqual([
+      'Cursor',
+      // An unresolved key falls back to itself rather than to nothing.
+      'not-in-the-catalog',
+    ])
+  })
+
+  test('applyWhatFor writes the note the tool card renders, not the tier name', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStackWithTool(t, '')
+    const asOwner = t.withIdentity(IDENTITY)
+
+    await asOwner.mutation(api.measured.applyWhatFor, {
+      stackId,
+      toolSlug: 'cursor',
+      whatFor: '  writing and reviewing code  ',
+    })
+
+    const stack = await t.run((ctx) => ctx.db.get(stackId))
+    expect(stack!.toolSubscriptions[0].description).toBe(
+      'writing and reviewing code',
+    )
+    // The tier name is untouched.
+    expect(stack!.toolSubscriptions[0].primaryUsageLabel).toBe('Pro')
+
+    const result = await asOwner.query(api.measured.getReconcileSuggestions, { stackId })
+    expect(result.suggestions).toEqual([])
+  })
+
+  test('applyWhatFor refuses a blank note and an unsubscribed tool', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStackWithTool(t, '')
+    const asOwner = t.withIdentity(IDENTITY)
+
+    await expect(
+      asOwner.mutation(api.measured.applyWhatFor, {
+        stackId,
+        toolSlug: 'cursor',
+        whatFor: '   ',
+      }),
+    ).rejects.toThrow(/blank/i)
+    await expect(
+      asOwner.mutation(api.measured.applyWhatFor, {
+        stackId,
+        toolSlug: 'linear',
+        whatFor: 'tickets',
+      }),
+    ).rejects.toThrow(/not on this stack/i)
+  })
+
+  test('addMeasuredModel appends once, primary first, and clears the suggestion', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    await t.run(async (ctx) => {
+      await ctx.db.insert('models', {
+        name: 'Claude Opus 5',
+        slug: 'claude-opus-5',
+        shortId: 'mopus5',
+        provider: 'anthropic',
+        category: 'language',
+        reviewStatus: 'approved',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+      await ctx.db.insert('models', {
+        name: 'Claude Haiku 4.5',
+        slug: 'claude-haiku-4-5',
+        shortId: 'mhaiku',
+        provider: 'anthropic',
+        category: 'language',
+        reviewStatus: 'approved',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    })
+    await t.mutation(internal.measured.publishSnapshot, { stackId, payload: payload() })
+    const asOwner = t.withIdentity(IDENTITY)
+
+    await asOwner.mutation(api.measured.addMeasuredModel, {
+      stackId,
+      modelSlug: 'claude-opus-5',
+    })
+    // Idempotent: the same answer twice is one row.
+    await asOwner.mutation(api.measured.addMeasuredModel, {
+      stackId,
+      modelSlug: 'claude-opus-5',
+    })
+    await asOwner.mutation(api.measured.addMeasuredModel, {
+      stackId,
+      modelSlug: 'claude-haiku-4-5',
+    })
+
+    const stack = await t.run((ctx) => ctx.db.get(stackId))
+    expect(stack!.modelSubscriptions).toEqual([
+      { modelSlug: 'claude-opus-5', role: 'primary' },
+      { modelSlug: 'claude-haiku-4-5', role: 'secondary' },
+    ])
+
+    const result = await asOwner.query(api.measured.getReconcileSuggestions, { stackId })
+    expect(result.suggestions).toEqual([])
+  })
+
+  test('addMeasuredModel refuses a model the catalog does not carry', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    await expect(
+      t.withIdentity(IDENTITY).mutation(api.measured.addMeasuredModel, {
+        stackId,
+        modelSlug: 'gpt-9',
+      }),
+    ).rejects.toThrow(/not in the catalog/i)
+  })
+
+  test('the two writes into the authored layer are owner-only', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStackWithTool(t, '')
+    const asStranger = t.withIdentity(OTHER_IDENTITY)
+
+    await expect(
+      asStranger.mutation(api.measured.applyWhatFor, {
+        stackId,
+        toolSlug: 'cursor',
+        whatFor: 'mine now',
+      }),
+    ).rejects.toThrow(/not authorized/i)
+    await expect(
+      asStranger.mutation(api.measured.addMeasuredModel, {
+        stackId,
+        modelSlug: 'claude-opus-5',
+      }),
+    ).rejects.toThrow(/not authorized/i)
   })
 
   test('reconcile state is owner-only for read, dismiss, and undismiss', async () => {

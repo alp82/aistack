@@ -5,6 +5,7 @@ import { CostBreakdownTooltip } from "@/components/CostBreakdownTooltip";
 import { UpvoteButton } from "@/components/UpvoteButton";
 import { UpvotersTooltip } from "@/components/UpvotersTooltip";
 import HoverCard from "@/components/ui/hover-card";
+import { ChangesBanner } from "@/features/reconcile/ChangesBanner";
 import { formatPriceDisplay } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import type { api } from "../../../convex/_generated/api";
@@ -247,6 +248,13 @@ export function StackHeader({
 						)}
 					</div>
 				</div>
+
+				{/* The owner's way in to "what's changed" (#43). */}
+				<ChangesBanner
+					stackId={stack._id}
+					stackSlug={stack.slug}
+					isOwner={upvoteStatus?.isOwner ?? false}
+				/>
 
 				{/* Low-quality / reported banner */}
 				{(stack.isLowQuality || reportStatus?.reported) && (

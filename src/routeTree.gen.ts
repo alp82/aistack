@@ -25,11 +25,11 @@ import { Route as WaitlistLookupIdRouteImport } from './routes/waitlist.$lookupI
 import { Route as ToolsNewRouteImport } from './routes/tools_.new'
 import { Route as StacksNewRouteImport } from './routes/stacks.new'
 import { Route as StacksSlugRouteImport } from './routes/stacks.$slug'
-import { Route as ProtoReconcileRouteImport } from './routes/proto.reconcile'
 import { Route as CliAuthRouteImport } from './routes/cli.auth'
 import { Route as ApiSyncConfigRouteImport } from './routes/api.sync-config'
 import { Route as AdminIconsRouteImport } from './routes/admin_.icons'
 import { Route as StacksSlugEditRouteImport } from './routes/stacks.$slug_.edit'
+import { Route as StacksSlugChangesRouteImport } from './routes/stacks.$slug_.changes'
 import { Route as ApiStacksSlugRouteImport } from './routes/api.stacks.$slug'
 import { Route as ApiIconsFromUrlRouteImport } from './routes/api.icons.from-url'
 import { Route as ApiCliSyncRouteImport } from './routes/api.cli.sync'
@@ -120,11 +120,6 @@ const StacksSlugRoute = StacksSlugRouteImport.update({
   path: '/stacks/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProtoReconcileRoute = ProtoReconcileRouteImport.update({
-  id: '/proto/reconcile',
-  path: '/proto/reconcile',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const CliAuthRoute = CliAuthRouteImport.update({
   id: '/cli/auth',
   path: '/cli/auth',
@@ -143,6 +138,11 @@ const AdminIconsRoute = AdminIconsRouteImport.update({
 const StacksSlugEditRoute = StacksSlugEditRouteImport.update({
   id: '/stacks/$slug_/edit',
   path: '/stacks/$slug/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StacksSlugChangesRoute = StacksSlugChangesRouteImport.update({
+  id: '/stacks/$slug_/changes',
+  path: '/stacks/$slug/changes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiStacksSlugRoute = ApiStacksSlugRouteImport.update({
@@ -206,7 +206,6 @@ export interface FileRoutesByFullPath {
   '/admin/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
-  '/proto/reconcile': typeof ProtoReconcileRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
   '/tools/new': typeof ToolsNewRoute
@@ -217,6 +216,7 @@ export interface FileRoutesByFullPath {
   '/api/cli/sync': typeof ApiCliSyncRoute
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/api/stacks/$slug': typeof ApiStacksSlugRoute
+  '/stacks/$slug/changes': typeof StacksSlugChangesRoute
   '/stacks/$slug/edit': typeof StacksSlugEditRoute
   '/api/cli/auth/poll': typeof ApiCliAuthPollRoute
   '/api/cli/auth/start': typeof ApiCliAuthStartRoute
@@ -238,7 +238,6 @@ export interface FileRoutesByTo {
   '/admin/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
-  '/proto/reconcile': typeof ProtoReconcileRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
   '/tools/new': typeof ToolsNewRoute
@@ -249,6 +248,7 @@ export interface FileRoutesByTo {
   '/api/cli/sync': typeof ApiCliSyncRoute
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/api/stacks/$slug': typeof ApiStacksSlugRoute
+  '/stacks/$slug/changes': typeof StacksSlugChangesRoute
   '/stacks/$slug/edit': typeof StacksSlugEditRoute
   '/api/cli/auth/poll': typeof ApiCliAuthPollRoute
   '/api/cli/auth/start': typeof ApiCliAuthStartRoute
@@ -271,7 +271,6 @@ export interface FileRoutesById {
   '/admin_/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
-  '/proto/reconcile': typeof ProtoReconcileRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
   '/tools_/new': typeof ToolsNewRoute
@@ -282,6 +281,7 @@ export interface FileRoutesById {
   '/api/cli/sync': typeof ApiCliSyncRoute
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/api/stacks/$slug': typeof ApiStacksSlugRoute
+  '/stacks/$slug_/changes': typeof StacksSlugChangesRoute
   '/stacks/$slug_/edit': typeof StacksSlugEditRoute
   '/api/cli/auth/poll': typeof ApiCliAuthPollRoute
   '/api/cli/auth/start': typeof ApiCliAuthStartRoute
@@ -305,7 +305,6 @@ export interface FileRouteTypes {
     | '/admin/icons'
     | '/api/sync-config'
     | '/cli/auth'
-    | '/proto/reconcile'
     | '/stacks/$slug'
     | '/stacks/new'
     | '/tools/new'
@@ -316,6 +315,7 @@ export interface FileRouteTypes {
     | '/api/cli/sync'
     | '/api/icons/from-url'
     | '/api/stacks/$slug'
+    | '/stacks/$slug/changes'
     | '/stacks/$slug/edit'
     | '/api/cli/auth/poll'
     | '/api/cli/auth/start'
@@ -337,7 +337,6 @@ export interface FileRouteTypes {
     | '/admin/icons'
     | '/api/sync-config'
     | '/cli/auth'
-    | '/proto/reconcile'
     | '/stacks/$slug'
     | '/stacks/new'
     | '/tools/new'
@@ -348,6 +347,7 @@ export interface FileRouteTypes {
     | '/api/cli/sync'
     | '/api/icons/from-url'
     | '/api/stacks/$slug'
+    | '/stacks/$slug/changes'
     | '/stacks/$slug/edit'
     | '/api/cli/auth/poll'
     | '/api/cli/auth/start'
@@ -369,7 +369,6 @@ export interface FileRouteTypes {
     | '/admin_/icons'
     | '/api/sync-config'
     | '/cli/auth'
-    | '/proto/reconcile'
     | '/stacks/$slug'
     | '/stacks/new'
     | '/tools_/new'
@@ -380,6 +379,7 @@ export interface FileRouteTypes {
     | '/api/cli/sync'
     | '/api/icons/from-url'
     | '/api/stacks/$slug'
+    | '/stacks/$slug_/changes'
     | '/stacks/$slug_/edit'
     | '/api/cli/auth/poll'
     | '/api/cli/auth/start'
@@ -402,7 +402,6 @@ export interface RootRouteChildren {
   AdminIconsRoute: typeof AdminIconsRoute
   ApiSyncConfigRoute: typeof ApiSyncConfigRoute
   CliAuthRoute: typeof CliAuthRoute
-  ProtoReconcileRoute: typeof ProtoReconcileRoute
   StacksSlugRoute: typeof StacksSlugRoute
   StacksNewRoute: typeof StacksNewRoute
   ToolsNewRoute: typeof ToolsNewRoute
@@ -413,6 +412,7 @@ export interface RootRouteChildren {
   ApiCliSyncRoute: typeof ApiCliSyncRoute
   ApiIconsFromUrlRoute: typeof ApiIconsFromUrlRoute
   ApiStacksSlugRoute: typeof ApiStacksSlugRoute
+  StacksSlugChangesRoute: typeof StacksSlugChangesRoute
   StacksSlugEditRoute: typeof StacksSlugEditRoute
   ApiCliAuthPollRoute: typeof ApiCliAuthPollRoute
   ApiCliAuthStartRoute: typeof ApiCliAuthStartRoute
@@ -533,13 +533,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StacksSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/proto/reconcile': {
-      id: '/proto/reconcile'
-      path: '/proto/reconcile'
-      fullPath: '/proto/reconcile'
-      preLoaderRoute: typeof ProtoReconcileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/cli/auth': {
       id: '/cli/auth'
       path: '/cli/auth'
@@ -566,6 +559,13 @@ declare module '@tanstack/react-router' {
       path: '/stacks/$slug/edit'
       fullPath: '/stacks/$slug/edit'
       preLoaderRoute: typeof StacksSlugEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stacks/$slug_/changes': {
+      id: '/stacks/$slug_/changes'
+      path: '/stacks/$slug/changes'
+      fullPath: '/stacks/$slug/changes'
+      preLoaderRoute: typeof StacksSlugChangesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/stacks/$slug': {
@@ -661,7 +661,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminIconsRoute: AdminIconsRoute,
   ApiSyncConfigRoute: ApiSyncConfigRoute,
   CliAuthRoute: CliAuthRoute,
-  ProtoReconcileRoute: ProtoReconcileRoute,
   StacksSlugRoute: StacksSlugRoute,
   StacksNewRoute: StacksNewRoute,
   ToolsNewRoute: ToolsNewRoute,
@@ -672,6 +671,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCliSyncRoute: ApiCliSyncRoute,
   ApiIconsFromUrlRoute: ApiIconsFromUrlRoute,
   ApiStacksSlugRoute: ApiStacksSlugRoute,
+  StacksSlugChangesRoute: StacksSlugChangesRoute,
   StacksSlugEditRoute: StacksSlugEditRoute,
   ApiCliAuthPollRoute: ApiCliAuthPollRoute,
   ApiCliAuthStartRoute: ApiCliAuthStartRoute,

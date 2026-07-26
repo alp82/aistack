@@ -1,3 +1,5 @@
+* aistack claude.md
+    https://github.com/woosal1337/blog/blob/main/videos/ep01-the-cure-for-ai-slop/ste-writing-skill.md
 * https://x.com/solomonneas/status/2080454372564070873
 * profile
     * @ in url is encoded

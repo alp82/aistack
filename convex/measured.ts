@@ -301,6 +301,12 @@ const ReconcileSuggestion = v.object({
     v.literal('missing_what_for')
   ),
   tokenShare: v.optional(v.number()),
+  /**
+   * API-equivalent dollars for a measured model, straight from the snapshot.
+   * Absent when the client withheld cost (`publishCost: false`, #33 decision
+   * 11) — the surface renders the price line only when it is present.
+   */
+  apiEquivalentUSD: v.optional(v.number()),
 })
 
 /**
@@ -315,11 +321,24 @@ const ReconcileSuggestion = v.object({
  * measured inventory but have nowhere to land in `toolSubscriptions`, so they
  * are deliberately not suggested here even though `ReconcileAtomKind` can name
  * them (#39 locks this).
+ *
+ * THE WHAT-FOR IS `description`, NOT `primaryUsageLabel` (corrects #33/#38/#39).
+ * `primaryUsageLabel` looks like the what-for and is not: the tool picker writes
+ * the TIER NAME into it (`defaultTier.name`, `"Custom"`) and rewrites it on
+ * every tier change, and the stack page renders it as a tier name. Deriving the
+ * suggestion from it would have fired almost never, and answering one would have
+ * written a sentence into the tier line and lost it at the next tier change.
+ * `toolSubscriptions[].description` is the free text the tool card already
+ * renders under the tool name, which is what #39's copy promises the owner.
  */
 export const getReconcileSuggestions = query({
   args: { stackId: v.id('stacks') },
   returns: v.object({
     hasSnapshot: v.boolean(),
+    /** Server clock of the newest snapshot; `null` when none has ever landed. */
+    receivedAt: v.union(v.number(), v.null()),
+    /** True when that snapshot is inside the 7-day living-stacks window. */
+    isFresh: v.boolean(),
     suggestions: v.array(ReconcileSuggestion),
     dismissedCount: v.number(),
   }),
@@ -339,12 +358,13 @@ export const getReconcileSuggestions = query({
       label: string
       kind: 'missing_from_authored' | 'missing_what_for'
       tokenShare?: number
+      apiEquivalentUSD?: number
     }> = []
 
     // Authored-side: a subscribed tool with no what-for. Independent of whether
     // a snapshot exists — an empty what-for is worth filling in either way.
     for (const sub of stack.toolSubscriptions) {
-      if (sub.primaryUsageLabel.trim().length > 0) continue
+      if ((sub.description ?? '').trim().length > 0) continue
       const key = `tool:${sub.toolSlug}`
       if (dismissed.has(key)) continue
       const tool = await ctx.db
@@ -375,6 +395,7 @@ export const getReconcileSuggestions = query({
           label: m.catalogName ?? m.id,
           kind: 'missing_from_authored',
           tokenShare: m.tokenShare,
+          apiEquivalentUSD: m.apiEquivalentUSD,
         })
       }
     }
@@ -385,6 +406,9 @@ export const getReconcileSuggestions = query({
 
     return {
       hasSnapshot: snapshot !== null,
+      receivedAt: snapshot?.receivedAt ?? null,
+      isFresh:
+        snapshot !== null && Date.now() - snapshot.receivedAt <= SEVEN_DAYS_MS,
       suggestions,
       dismissedCount: dismissals.length,
     }
@@ -445,13 +469,21 @@ export const undismissSuggestion = mutation({
   },
 })
 
-/** Everything the reconcile surface needs to render its dismissed list. */
+/**
+ * Everything the reconcile surface needs to render its dismissed list.
+ *
+ * The label is resolved here rather than stored, for the same reason
+ * `catalogSlug` is: a dismissal outlives any one snapshot, and a name that
+ * changes in the catalog should change here too. A key with no catalog row
+ * falls back to the key itself — never to nothing.
+ */
 export const listDismissals = query({
   args: { stackId: v.id('stacks') },
   returns: v.array(
     v.object({
       atomKind: ReconcileAtomKind,
       atomKey: v.string(),
+      label: v.string(),
       dismissedAt: v.number(),
     })
   ),
@@ -461,13 +493,119 @@ export const listDismissals = query({
       .query('reconcileDismissals')
       .withIndex('by_stack', (q) => q.eq('stackId', args.stackId))
       .collect()
-    return rows
-      .map((r) => ({
+    const labelled = await Promise.all(
+      rows.map(async (r) => ({
         atomKind: r.atomKind,
         atomKey: r.atomKey,
+        label: await resolveAtomLabel(ctx, r.atomKind, r.atomKey),
         dismissedAt: r.dismissedAt,
       }))
-      .sort((a, b) => b.dismissedAt - a.dismissedAt)
+    )
+    return labelled.sort((a, b) => b.dismissedAt - a.dismissedAt)
+  },
+})
+
+/** Catalog name for one reconcile atom, falling back to its key. */
+async function resolveAtomLabel(
+  ctx: QueryCtx,
+  atomKind: 'model' | 'tool' | 'mcpServer' | 'skill',
+  atomKey: string
+): Promise<string> {
+  if (atomKind === 'model') {
+    const model = await ctx.db
+      .query('models')
+      .withIndex('by_slug', (q) => q.eq('slug', atomKey))
+      .first()
+    return model?.name ?? atomKey
+  }
+  if (atomKind === 'tool') {
+    const tool = await ctx.db
+      .query('tools')
+      .withIndex('by_slug', (q) => q.eq('slug', atomKey))
+      .first()
+    return tool?.name ?? atomKey
+  }
+  return atomKey
+}
+
+// ---------------------------------------------------------------------------
+// Answering a suggestion — the two writes into the authored layer
+// ---------------------------------------------------------------------------
+
+/**
+ * Write the what-for the owner typed onto one subscribed tool.
+ *
+ * Narrow on purpose. `stacks.update` takes the whole `toolSubscriptions` array,
+ * so answering one suggestion through it would send the entire authored list
+ * back over the wire and overwrite anything a second tab changed meanwhile.
+ *
+ * The target is `description` — the free text the tool card renders — NOT
+ * `primaryUsageLabel`, which carries the tier name. See `getReconcileSuggestions`.
+ */
+export const applyWhatFor = mutation({
+  args: {
+    stackId: v.id('stacks'),
+    toolSlug: v.string(),
+    whatFor: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const stack = await requireStackOwner(ctx, args.stackId)
+    const whatFor = args.whatFor.trim()
+    if (whatFor.length === 0) throw new Error('A what-for cannot be blank')
+
+    const subs = stack.toolSubscriptions
+    if (!subs.some((s) => s.toolSlug === args.toolSlug)) {
+      throw new Error('Tool is not on this stack')
+    }
+    await ctx.db.patch(args.stackId, {
+      toolSubscriptions: subs.map((s) =>
+        s.toolSlug === args.toolSlug ? { ...s, description: whatFor } : s
+      ),
+      updatedAt: Date.now(),
+    })
+    return null
+  },
+})
+
+/**
+ * Add a measured model to the authored model list.
+ *
+ * Idempotent, so answering the same suggestion twice (two tabs, a double click)
+ * adds one row. The role is not asked for at the gate — the surface answers a
+ * yes/no question — so the first model added becomes `primary` and every later
+ * one `secondary`. The owner can change the role in the editor.
+ */
+export const addMeasuredModel = mutation({
+  args: {
+    stackId: v.id('stacks'),
+    modelSlug: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const stack = await requireStackOwner(ctx, args.stackId)
+    const model = await ctx.db
+      .query('models')
+      .withIndex('by_slug', (q) => q.eq('slug', args.modelSlug))
+      .first()
+    if (!model) throw new Error('Model is not in the catalog')
+
+    const existing = stack.modelSubscriptions ?? []
+    if (existing.some((m) => m.modelSlug === args.modelSlug)) return null
+
+    await ctx.db.patch(args.stackId, {
+      modelSubscriptions: [
+        ...existing,
+        {
+          modelSlug: args.modelSlug,
+          role: existing.some((m) => m.role === 'primary')
+            ? ('secondary' as const)
+            : ('primary' as const),
+        },
+      ],
+      updatedAt: Date.now(),
+    })
+    return null
   },
 })
 
@@ -478,12 +616,18 @@ export const listDismissals = query({
 /**
  * The curated allowlist served to sync clients (#33 decision 4).
  *
- * WHAT GOES ON THIS LIST IS NOT DECIDED — that is the open grilling #42. This
- * seed deliberately mirrors the client's bundled fallback
- * (packages/cli/src/transcripts/bundled-allowlist.ts): names that identify a
- * PUBLIC artifact, so publishing one reveals nothing the user hasn't already
- * published themselves. Widening it is a policy change, not a code change, and
- * it belongs to #42.
+ * THE BAR (settled by grilling #42): a name qualifies if the STRING carries no
+ * private information no matter who typed it — a property of the string, not of
+ * the user and not of the artifact. See the long rationale on the client's
+ * bundled fallback (packages/cli/src/transcripts/bundled-allowlist.ts), which
+ * this must stay byte-identical to; the two are the same policy, one served and
+ * one for when the server can't be reached.
+ *
+ * This list is NOT the only road to publishing a name (#42 decision 1): the
+ * approve gate offers every kept-private name as an explicit, default-off tick,
+ * and those per-stack opt-ins ride down with the rest of the sync config for the
+ * client to union in before its fail-closed filter. So this list stays strict —
+ * it exists to spare users from ticking the obvious, not to carry coverage.
  *
  * Serving it from here rather than only bundling it is what makes the list
  * fixable at all: third-party marketplace plugin auto-update defaults to off,
