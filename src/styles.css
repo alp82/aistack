@@ -315,12 +315,16 @@ code, .font-mono {
   --shadow-brutal-sm: var(--shadow-brutal-sm);
   --shadow-brutal-md: var(--shadow-brutal-md);
   --shadow-brutal-lime: var(--shadow-brutal-lime);
-  --spacing-2xs: var(--space-2xs);
-  --spacing-xs: var(--space-xs);
-  --spacing-sm: var(--space-sm);
-  --spacing-md: var(--space-md);
-  --spacing-lg: var(--space-lg);
-  --spacing-xl: var(--space-xl);
+  /*
+   * NOTE: do NOT add --spacing-<name> aliases for the t-shirt sizes
+   * (2xs/xs/sm/md/lg/xl). Tailwind v4 resolves `max-w-*` against the
+   * --spacing-* namespace BEFORE --container-*, so a --spacing-md token
+   * silently turns `max-w-md` into max-width:1rem — which reads as text
+   * wrapping one word per line, far from the token that caused it.
+   * The --space-* values below are still available as var(--space-md) in
+   * hand-written CSS; they just don't generate utilities any more.
+   * Only names that can't collide with the container scale are aliased.
+   */
   --spacing-gutter: var(--space-gutter);
   --spacing-section: var(--space-section);
   --radius-xs: var(--radius-xs);
