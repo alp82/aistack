@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { BUNDLED_SYNC_CONFIG, type SyncConfig } from "./allowlist.js";
+import {
+	BUNDLED_SYNC_CONFIG,
+	EMPTY_OPT_INS,
+	type OptInNames,
+	type SyncConfig,
+} from "./allowlist.js";
 import { createAggregate, ingestRecord } from "./analyzer.js";
 import { assistant, slashCommand, toolUse } from "./fixtures.js";
 import {
@@ -28,6 +33,7 @@ const config = (over: Partial<SyncConfig> = {}): SyncConfig => ({
 		subagents: ["Explore"],
 		slashCommands: ["clear"],
 	},
+	optIns: EMPTY_OPT_INS,
 	...over,
 });
 
@@ -144,6 +150,111 @@ describe("fail-closed names: an invented name CANNOT reach the payload", () => {
 				expect(Object.keys(atom).sort()).toEqual(["callShare", "name"]);
 			}
 		}
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Per-stack opt-ins (#42 decision 1, wired in #44)
+// ---------------------------------------------------------------------------
+
+describe("a ticked name publishes; the same name unticked does not", () => {
+	const records = [
+		assistant({
+			content: [toolUse("Skill", { skill: "alp-river:crossfire" })],
+		}),
+		assistant({ content: [toolUse("mcp__acme-billing-prod__charge")] }),
+	];
+
+	const ticked = (over: Partial<OptInNames>): SyncConfig =>
+		config({ optIns: { ...EMPTY_OPT_INS, ...over } });
+
+	it("keeps the name private with no opt-ins — the state before the gate", () => {
+		const payload = build(records);
+		expect(payload.inventory.skills).toEqual([]);
+		expect(payload.inventory.withheld.skills).toBe(1);
+	});
+
+	it("publishes it once the owner has ticked it", () => {
+		const payload = build(records, {
+			syncConfig: ticked({ skills: ["alp-river:crossfire"] }),
+		});
+		expect(payload.inventory.skills.map((a) => a.name)).toEqual([
+			"alp-river:crossfire",
+		]);
+		expect(payload.inventory.withheld.skills).toBe(0);
+	});
+
+	it("ticks are per class — a skill tick does not free an MCP server", () => {
+		const payload = build(records, {
+			syncConfig: ticked({ skills: ["acme-billing-prod"] }),
+		});
+		expect(payload.inventory.mcpServers).toEqual([]);
+		expect(payload.inventory.withheld.mcpServers).toBe(1);
+	});
+
+	it("reverts to kept-private when the config fetch failed", () => {
+		// The bundled fallback carries no opt-ins, so an offline sync publishes
+		// strictly less than an online one — never more.
+		const payload = build(records, { syncConfig: BUNDLED_SYNC_CONFIG });
+		expect(payload.inventory.skills).toEqual([]);
+		expect(payload.inventory.mcpServers).toEqual([]);
+	});
+});
+
+describe("the gate's review list", () => {
+	it("returns every kept-private name with its plugin group, outside the payload", () => {
+		const agg = createAggregate();
+		for (const r of [
+			assistant({
+				content: [toolUse("Skill", { skill: "alp-river:crossfire" })],
+			}),
+			assistant({ content: [toolUse("Skill", { skill: "grilling" })] }),
+			assistant({ content: [toolUse("mcp__acme-billing-prod__charge")] }),
+		])
+			ingestRecord(agg, r, { projectDir: "-home-u-secret-client" });
+
+		const built = buildPayload({
+			aggregate: agg,
+			stats: CLEAN_STATS,
+			syncConfig: config(),
+			now: NOW,
+			windowDays: 30,
+		});
+
+		expect(built.keptPrivate.skills).toEqual([
+			{ name: "alp-river:crossfire", count: 1, group: "alp-river" },
+		]);
+		expect(built.keptPrivate.mcpServers.map((a) => a.name)).toEqual([
+			"acme-billing-prod",
+		]);
+		// The names the user has NOT agreed to publish stay on the machine; the
+		// payload carries only the count.
+		expect(JSON.stringify(built.payload)).not.toContain("alp-river");
+		expect(built.payload.inventory.withheld.skills).toBe(1);
+	});
+});
+
+describe("plugin-wrapper normalization end to end (#42 decision 5)", () => {
+	it("publishes the curated inner segment, never the plugin's name", () => {
+		const payload = build(
+			[
+				assistant({
+					content: [toolUse("mcp__plugin_acme-secret_stripe__pay")],
+				}),
+			],
+			{
+				syncConfig: config({
+					allowlist: {
+						mcpServers: ["stripe"],
+						skills: [],
+						subagents: [],
+						slashCommands: [],
+					},
+				}),
+			},
+		);
+		expect(payload.inventory.mcpServers.map((a) => a.name)).toEqual(["stripe"]);
+		expect(JSON.stringify(payload)).not.toContain("acme-secret");
 	});
 });
 

@@ -183,6 +183,15 @@ export const stackCollect = httpAction(async (ctx, request) => {
   })
 })
 
+/** The shape a client with no resolvable stack gets: every category, no names. */
+const EMPTY_OPT_INS = {
+  builtinTools: [],
+  mcpServers: [],
+  skills: [],
+  subagents: [],
+  slashCommands: [],
+}
+
 /**
  * POST /api/cli/sync — publish one approved measured-layer snapshot.
  *
@@ -252,20 +261,30 @@ export const syncPublish = httpAction(async (ctx, request) => {
  * without one it fails closed to `publishCost: false`, matching the client's
  * bundled default. This is the one place #38's "public, unauthenticated" wording
  * could not be taken literally without making the toggle unresolvable.
+ *
+ * `optIns` (#42 decision 2, built in #44) is stack-scoped for the same reason
+ * and fails closed the same way: no bearer, no ticked names, so every
+ * user-chosen name reverts to kept-private. Losing the network publishes LESS.
  */
 export const syncConfig = httpAction(async (ctx, request) => {
   const config = await ctx.runQuery(internal.measured.getPublicSyncConfigInternal, {})
+  const anonymous = {
+    ...config,
+    publishCost: false,
+    optIns: EMPTY_OPT_INS,
+    stack: null,
+  }
 
   const authHeader = request.headers.get('Authorization')
   if (!authHeader?.startsWith('Bearer ')) {
-    return jsonResponse({ ...config, publishCost: false, stack: null })
+    return jsonResponse(anonymous)
   }
 
   const tokenDoc = await ctx.runQuery(internal.cliTokens.getByToken, {
     token: authHeader.slice(7),
   })
   if (!tokenDoc?.stackId) {
-    return jsonResponse({ ...config, publishCost: false, stack: null })
+    return jsonResponse(anonymous)
   }
 
   const stackConfig = await ctx.runQuery(internal.measured.getSyncConfigForStack, {
@@ -274,6 +293,7 @@ export const syncConfig = httpAction(async (ctx, request) => {
   return jsonResponse({
     ...config,
     publishCost: stackConfig.publishCost,
+    optIns: stackConfig.optIns,
     stack: { name: stackConfig.stackName },
   })
 })

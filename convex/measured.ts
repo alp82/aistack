@@ -7,7 +7,11 @@ import {
   mutation,
   query,
 } from './_generated/server'
-import { MeasuredPayload, ReconcileAtomKind } from './schema'
+import {
+  MeasuredPayload,
+  PublishedNameCategory,
+  ReconcileAtomKind,
+} from './schema'
 import { extractShortId } from './lib/ids'
 
 /**
@@ -769,16 +773,222 @@ export const getPublicSyncConfigInternal = internalQuery({
   handler: async () => allowlistPayload(),
 })
 
+// ---------------------------------------------------------------------------
+// Published-name opt-ins — the per-stack tick set (#42 decision 2)
+// ---------------------------------------------------------------------------
+
+/**
+ * The names the owner ticked at the approve gate, by inventory class.
+ *
+ * These ride down with the rest of the sync config and the client unions them
+ * into the curated list before its fail-closed filter (#44). Nothing here
+ * changes WHERE filtering happens — it still runs on the machine, before the
+ * send — only what the allowed set contains.
+ *
+ * Three properties this placement buys, all from #42 decision 2: the set
+ * survives a reinstall and a second machine, a failed config fetch reverts every
+ * ticked name to kept-private (losing the network publishes LESS), and the
+ * reconcile page has somewhere to revoke a name the owner regrets.
+ */
+const NAME_CATEGORIES = [
+  'builtinTools',
+  'mcpServers',
+  'skills',
+  'subagents',
+  'slashCommands',
+] as const
+
+type NameCategory = (typeof NAME_CATEGORIES)[number]
+
+const OptInNames = v.object({
+  builtinTools: v.array(v.string()),
+  mcpServers: v.array(v.string()),
+  skills: v.array(v.string()),
+  subagents: v.array(v.string()),
+  slashCommands: v.array(v.string()),
+})
+
+const emptyOptIns = (): Record<NameCategory, string[]> => ({
+  builtinTools: [],
+  mcpServers: [],
+  skills: [],
+  subagents: [],
+  slashCommands: [],
+})
+
+/**
+ * The bound on a name a client may tick.
+ *
+ * NOT the curated list's charset. A curated entry is ours and conventional; an
+ * opt-in is the user's own string and may legitimately carry parentheses,
+ * accents or CJK — refusing those would refuse names the user genuinely runs.
+ * What is refused is what cannot be rendered safely: control characters and
+ * bidi overrides, which move a terminal cursor or reorder the count printed
+ * beside the name (CVE-2021-42574). This mirrors `cleanName` in
+ * packages/cli/src/transcripts/analyzer.ts, which is where an observed name
+ * gets the same treatment on the way in.
+ */
+const UNSAFE_NAME_RE =
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: refusing them is the point
+  /[\u0000-\u001f\u007f-\u009f\u00ad\u061c\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/
+
+const NAME_MAX = 64
+
+/** A cap per call, so one request cannot write an unbounded transaction. */
+const MAX_NAMES_PER_CALL = 500
+
+const OptInName = v.object({ category: PublishedNameCategory, name: v.string() })
+
+function checkNames(entries: ReadonlyArray<{ name: string }>): void {
+  if (entries.length > MAX_NAMES_PER_CALL) {
+    throw new Error(`At most ${MAX_NAMES_PER_CALL} names per call`)
+  }
+  for (const { name } of entries) {
+    // Loud, not silent: a name that cannot be stored is a tick the owner made
+    // and would otherwise believe took effect.
+    if (name.length === 0 || name.trim().length === 0) {
+      throw new Error('A published name cannot be blank')
+    }
+    if (name.length > NAME_MAX) {
+      throw new Error(`A published name cannot exceed ${NAME_MAX} characters`)
+    }
+    if (UNSAFE_NAME_RE.test(name)) {
+      throw new Error('A published name cannot contain control characters')
+    }
+  }
+}
+
+async function findOptIn(
+  ctx: QueryCtx | MutationCtx,
+  stackId: Id<'stacks'>,
+  category: NameCategory,
+  name: string
+) {
+  return await ctx.db
+    .query('publishedNameOptIns')
+    .withIndex('by_stack_name', (q) =>
+      q.eq('stackId', stackId).eq('category', category).eq('name', name)
+    )
+    .first()
+}
+
+/**
+ * Tick one or more names for publication. Owner-only, idempotent.
+ *
+ * Takes an array because the gate's bulk action ("tick all in `alp-river`")
+ * stores every name in the group expanded — one click, 47 rows, one round trip.
+ */
+export const addPublishedNameOptIns = mutation({
+  args: { stackId: v.id('stacks'), names: v.array(OptInName) },
+  returns: v.object({ added: v.number() }),
+  handler: async (ctx, args) => {
+    await requireStackOwner(ctx, args.stackId)
+    checkNames(args.names)
+
+    const now = Date.now()
+    let added = 0
+    for (const entry of args.names) {
+      if (await findOptIn(ctx, args.stackId, entry.category, entry.name)) continue
+      await ctx.db.insert('publishedNameOptIns', {
+        stackId: args.stackId,
+        category: entry.category,
+        name: entry.name,
+        optedInAt: now,
+      })
+      added++
+    }
+    return { added }
+  },
+})
+
+/**
+ * Un-tick names. Owner-only, idempotent.
+ *
+ * This is the revoke path #42 decision 2 promised the reconcile page: the next
+ * sync from ANY machine drops the name back to kept-private, rather than the
+ * owner having to find the machine they ticked it on.
+ */
+export const removePublishedNameOptIns = mutation({
+  args: { stackId: v.id('stacks'), names: v.array(OptInName) },
+  returns: v.object({ removed: v.number() }),
+  handler: async (ctx, args) => {
+    await requireStackOwner(ctx, args.stackId)
+    if (args.names.length > MAX_NAMES_PER_CALL) {
+      throw new Error(`At most ${MAX_NAMES_PER_CALL} names per call`)
+    }
+
+    let removed = 0
+    for (const entry of args.names) {
+      const row = await findOptIn(ctx, args.stackId, entry.category, entry.name)
+      if (!row) continue
+      await ctx.db.delete(row._id)
+      removed++
+    }
+    return { removed }
+  },
+})
+
+/** The owner's own tick set, for a surface that shows or revokes it. */
+export const listPublishedNameOptIns = query({
+  args: { stackId: v.id('stacks') },
+  returns: v.array(
+    v.object({
+      category: PublishedNameCategory,
+      name: v.string(),
+      optedInAt: v.number(),
+    })
+  ),
+  handler: async (ctx, args) => {
+    await requireStackOwner(ctx, args.stackId)
+    const rows = await ctx.db
+      .query('publishedNameOptIns')
+      .withIndex('by_stack', (q) => q.eq('stackId', args.stackId))
+      .collect()
+    return rows
+      .map((r) => ({
+        category: r.category,
+        name: r.name,
+        optedInAt: r.optedInAt,
+      }))
+      .sort(
+        (a, b) =>
+          a.category.localeCompare(b.category) || a.name.localeCompare(b.name)
+      )
+  },
+})
+
+async function optInsForStack(
+  ctx: QueryCtx,
+  stackId: Id<'stacks'>
+): Promise<Record<NameCategory, string[]>> {
+  const out = emptyOptIns()
+  const rows = await ctx.db
+    .query('publishedNameOptIns')
+    .withIndex('by_stack', (q) => q.eq('stackId', stackId))
+    .collect()
+  for (const row of rows) out[row.category].push(row.name)
+  for (const key of NAME_CATEGORIES) out[key].sort()
+  return out
+}
+
 /** The stack-level half, resolved from a bearer token's bound stack. */
 export const getSyncConfigForStack = internalQuery({
   args: { stackId: v.id('stacks') },
-  returns: v.object({ publishCost: v.boolean(), stackName: v.string() }),
+  returns: v.object({
+    publishCost: v.boolean(),
+    stackName: v.string(),
+    optIns: OptInNames,
+  }),
   handler: async (ctx, args) => {
     const stack = await ctx.db.get(args.stackId)
     if (!stack) throw new Error('Stack not found')
     // Absent reads as opted IN: the field records a refusal, and a stack that
     // has never seen the toggle has not refused.
-    return { publishCost: stack.publishCost !== false, stackName: stack.name }
+    return {
+      publishCost: stack.publishCost !== false,
+      stackName: stack.name,
+      optIns: await optInsForStack(ctx, args.stackId),
+    }
   },
 })
 

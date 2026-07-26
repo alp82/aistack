@@ -154,6 +154,17 @@ export const ReconcileAtomKind = v.union(
   v.literal('skill')
 )
 
+// The five inventory classes a published name can belong to — the same five the
+// payload's `inventory` block carries (#33), so an opt-in is addressed exactly
+// the way the client filters.
+export const PublishedNameCategory = v.union(
+  v.literal('builtinTools'),
+  v.literal('mcpServers'),
+  v.literal('skills'),
+  v.literal('subagents'),
+  v.literal('slashCommands')
+)
+
 const ResourceOwner = v.union(
   v.object({ kind: v.literal('creator'), id: v.id('creators') }),
   v.object({ kind: v.literal('github'), handle: v.string() }),
@@ -585,4 +596,26 @@ export default defineSchema({
   })
     .index('by_stack', ['stackId'])
     .index('by_stack_atom', ['stackId', 'atomKind', 'atomKey']),
+
+  // Names the owner ticked for publication at the approve gate (#42 decision 2).
+  // The curated allowlist is a convenience default; this table is where coverage
+  // actually comes from, because every user-chosen name class is unbounded.
+  //
+  // ONE ROW PER NAME, never a pattern (#42 decision 3). The gate groups the
+  // review list by plugin prefix and offers a bulk tick, but a stored `foo:*`
+  // would be a standing grant to names that do not exist yet, and nobody can
+  // consent to a name they have not thought of.
+  //
+  // A TABLE AND NOT A FIELD ON `stacks`, for two reasons. The set only ever
+  // grows — one row per artifact its owner has ever ticked — and a ticked name
+  // that the newest snapshot no longer carries is NOT public; parked on the
+  // stack document it would ride along with every public stack read.
+  publishedNameOptIns: defineTable({
+    stackId: v.id('stacks'),
+    category: PublishedNameCategory,
+    name: v.string(),
+    optedInAt: v.number(),
+  })
+    .index('by_stack', ['stackId'])
+    .index('by_stack_name', ['stackId', 'category', 'name']),
 })

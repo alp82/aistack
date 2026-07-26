@@ -74,6 +74,23 @@ export function cleanName(s: string): string {
 		: stripped;
 }
 
+/**
+ * The same bar as `cleanName`, asked as a question.
+ *
+ * Used on names arriving from the NETWORK — the per-stack opt-ins the sync
+ * config carries (#44). Those are the user's own strings, so the curated list's
+ * conventional charset is the wrong bar: parentheses, accents and CJK are all
+ * legitimate names someone runs. What is refused is what cannot be rendered
+ * safely, which is exactly what `cleanName` strips on the way in.
+ */
+export function isDisplaySafeName(s: string): boolean {
+	if (s.length === 0 || s.trim().length === 0) return false;
+	if (s.length > NAME_MAX) return false;
+	// A `g`-flagged regex carries `lastIndex` across `.test` calls, so this uses
+	// a fresh non-global copy rather than the shared literal.
+	return !new RegExp(NAME_UNSAFE_RE.source).test(s);
+}
+
 /** `asStr` for anything that will be used as a name. */
 const asName = (v: unknown): string | null => {
 	const s = asStr(v);

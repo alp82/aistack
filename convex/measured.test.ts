@@ -17,6 +17,14 @@ const OTHER_IDENTITY = {
 
 const DAY = 24 * 60 * 60 * 1000
 
+const EMPTY_OPT_INS = {
+  builtinTools: [],
+  mcpServers: [],
+  skills: [],
+  subagents: [],
+  slashCommands: [],
+}
+
 /** A minimal but complete #33 payload. Overrides merge at the top level. */
 function payload(over: Record<string, unknown> = {}) {
   return {
@@ -832,7 +840,11 @@ describe('sync config', () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
     const config = await t.query(internal.measured.getSyncConfigForStack, { stackId })
-    expect(config).toEqual({ publishCost: true, stackName: 'My Stack' })
+    expect(config).toEqual({
+      publishCost: true,
+      stackName: 'My Stack',
+      optIns: EMPTY_OPT_INS,
+    })
   })
 
   test('an explicit false is a refusal and is reported as one', async () => {
@@ -841,6 +853,157 @@ describe('sync config', () => {
     await t.run((ctx) => ctx.db.patch(stackId, { publishCost: false }))
     const config = await t.query(internal.measured.getSyncConfigForStack, { stackId })
     expect(config.publishCost).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Published-name opt-ins (#42 decision 2)
+// ---------------------------------------------------------------------------
+
+describe('published-name opt-ins', () => {
+  const skill = (name: string) => ({ category: 'skills' as const, name })
+
+  test('ticked names ride down with the stack half of the sync config', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const as = t.withIdentity(IDENTITY)
+
+    await as.mutation(api.measured.addPublishedNameOptIns, {
+      stackId,
+      names: [
+        skill('alp-river:crossfire'),
+        { category: 'mcpServers', name: 'acme-internal' },
+      ],
+    })
+
+    const config = await t.query(internal.measured.getSyncConfigForStack, { stackId })
+    expect(config.optIns.skills).toEqual(['alp-river:crossfire'])
+    expect(config.optIns.mcpServers).toEqual(['acme-internal'])
+    expect(config.optIns.subagents).toEqual([])
+  })
+
+  test('adding is idempotent, so a second bulk tick writes no duplicates', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const as = t.withIdentity(IDENTITY)
+
+    const first = await as.mutation(api.measured.addPublishedNameOptIns, {
+      stackId,
+      names: [skill('a'), skill('b')],
+    })
+    const second = await as.mutation(api.measured.addPublishedNameOptIns, {
+      stackId,
+      names: [skill('a'), skill('b'), skill('c')],
+    })
+    expect(first.added).toBe(2)
+    expect(second.added).toBe(1)
+    const rows = await t.run((ctx) =>
+      ctx.db.query('publishedNameOptIns').collect(),
+    )
+    expect(rows).toHaveLength(3)
+  })
+
+  test('removing revokes the name for every machine, and is idempotent', async () => {
+    // The revoke path #42 decision 2 promised: un-ticking is a server-side act,
+    // not "find the machine you ticked it on".
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const as = t.withIdentity(IDENTITY)
+
+    await as.mutation(api.measured.addPublishedNameOptIns, {
+      stackId,
+      names: [skill('a'), skill('b')],
+    })
+    const gone = await as.mutation(api.measured.removePublishedNameOptIns, {
+      stackId,
+      names: [skill('a')],
+    })
+    const again = await as.mutation(api.measured.removePublishedNameOptIns, {
+      stackId,
+      names: [skill('a')],
+    })
+    expect(gone.removed).toBe(1)
+    expect(again.removed).toBe(0)
+
+    const config = await t.query(internal.measured.getSyncConfigForStack, { stackId })
+    expect(config.optIns.skills).toEqual(['b'])
+  })
+
+  test('a name is addressed by class, so two classes can carry the same string', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const as = t.withIdentity(IDENTITY)
+
+    await as.mutation(api.measured.addPublishedNameOptIns, {
+      stackId,
+      names: [skill('review'), { category: 'slashCommands', name: 'review' }],
+    })
+    await as.mutation(api.measured.removePublishedNameOptIns, {
+      stackId,
+      names: [skill('review')],
+    })
+
+    const config = await t.query(internal.measured.getSyncConfigForStack, { stackId })
+    expect(config.optIns.skills).toEqual([])
+    expect(config.optIns.slashCommands).toEqual(['review'])
+  })
+
+  test('only the owner can tick, list or revoke', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const stranger = t.withIdentity(OTHER_IDENTITY)
+
+    await expect(
+      stranger.mutation(api.measured.addPublishedNameOptIns, {
+        stackId,
+        names: [skill('a')],
+      }),
+    ).rejects.toThrow(/not authorized/i)
+    await expect(
+      stranger.query(api.measured.listPublishedNameOptIns, { stackId }),
+    ).rejects.toThrow(/not authorized/i)
+    await expect(
+      t.mutation(api.measured.removePublishedNameOptIns, {
+        stackId,
+        names: [skill('a')],
+      }),
+    ).rejects.toThrow(/not authenticated/i)
+  })
+
+  test('a name that could not be delivered is refused loudly, not stored', async () => {
+    // A tick the owner made and believes took effect is worse than an error.
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const as = t.withIdentity(IDENTITY)
+
+    for (const bad of ['', '   ', 'z'.repeat(65), 'bidi‮name']) {
+      await expect(
+        as.mutation(api.measured.addPublishedNameOptIns, {
+          stackId,
+          names: [skill(bad)],
+        }),
+      ).rejects.toThrow()
+    }
+    const rows = await t.run((ctx) =>
+      ctx.db.query('publishedNameOptIns').collect(),
+    )
+    expect(rows).toHaveLength(0)
+  })
+
+  test('accepts a name the curated charset would refuse', async () => {
+    // An opt-in is the USER's own string. Parentheses, accents and CJK are all
+    // names someone genuinely runs.
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const as = t.withIdentity(IDENTITY)
+
+    await as.mutation(api.measured.addPublishedNameOptIns, {
+      stackId,
+      names: [skill('(default)'), skill('dépendances'), skill('コード')],
+    })
+    const listed = await as.query(api.measured.listPublishedNameOptIns, { stackId })
+    expect(listed.map((r) => r.name)).toContain('(default)')
+    expect(listed).toHaveLength(3)
   })
 })
 
@@ -959,11 +1122,48 @@ describe('GET /api/cli/sync-config', () => {
     const body = (await resp.json()) as {
       allowlist: { skills: string[] }
       publishCost: boolean
+      optIns: Record<string, string[]>
       stack: null
     }
     expect(body.allowlist.skills).toContain('grilling')
     expect(body.publishCost).toBe(false)
     expect(body.stack).toBeNull()
+    // Stack-scoped like publishCost, and it fails closed the same way: no
+    // bearer, no ticked names, every user-chosen name kept private.
+    expect(body.optIns).toEqual(EMPTY_OPT_INS)
+  })
+
+  test('carries the bound stack’s ticked names with a valid bearer', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    await t.withIdentity(IDENTITY).mutation(api.measured.addPublishedNameOptIns, {
+      stackId,
+      names: [{ category: 'skills', name: 'alp-river:crossfire' }],
+    })
+    const token = `tok_${Math.random().toString(36).slice(2)}`
+    await t.run((ctx) =>
+      ctx.db.insert('cliTokens', {
+        token,
+        userId: USER,
+        stackId,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 90 * DAY,
+        lastUsedAt: Date.now(),
+      }),
+    )
+
+    const resp = await t.fetch('/api/cli/sync-config', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    const body = (await resp.json()) as {
+      allowlist: { skills: string[] }
+      optIns: Record<string, string[]>
+    }
+    expect(body.optIns.skills).toEqual(['alp-river:crossfire'])
+    // A tick does not widen the curated list — the two are separate on the
+    // wire and the client unions them before its own fail-closed filter.
+    expect(body.allowlist.skills).not.toContain('alp-river:crossfire')
   })
 
   test('adds the bound stack’s cost preference and name with a valid bearer', async () => {

@@ -17,6 +17,8 @@ import {
 	type Atom,
 	BUILTIN_TOOLS,
 	filterAtoms,
+	type KeptPrivateAtom,
+	type NameCategory,
 	type SyncConfig,
 } from "./allowlist.js";
 import {
@@ -137,16 +139,26 @@ const toAtoms = (pairs: ReadonlyArray<readonly [string, number]>): Atom[] =>
  */
 function buildCategory(
 	observed: ReadonlyArray<readonly [string, number]>,
-	allowed: ReadonlySet<string>,
+	curated: ReadonlySet<string>,
+	optIns: readonly string[],
 	denominator: number,
-): { atoms: PayloadAtom[]; withheld: number } {
-	const { allowed: kept, withheld } = filterAtoms(toAtoms(observed), allowed);
+): { atoms: PayloadAtom[]; withheld: number; keptPrivate: KeptPrivateAtom[] } {
+	// The union is where #42 decision 1 lands: a name publishes if it is curated
+	// OR the owner ticked it. Filtering itself is unchanged — still client-side,
+	// still fail-closed, still before the send. What moves is who judged the name.
+	const publishable = new Set([...curated, ...optIns]);
+	const {
+		allowed: kept,
+		keptPrivate,
+		withheld,
+	} = filterAtoms(toAtoms(observed), { publishable, curated });
 	return {
 		atoms: kept.map((a) => ({
 			name: a.name,
 			callShare: denominator ? round4(a.count / denominator) : 0,
 		})),
 		withheld,
+		keptPrivate,
 	};
 }
 
@@ -263,12 +275,21 @@ export type BuiltPayload = {
 	payload: MeasuredPayload;
 	/** The same numbers unfiltered, for the local report and the approve gate. */
 	finalized: Finalized;
+	/**
+	 * Every observed name that will NOT publish, by category — the gate's review
+	 * list (#42 decision 1, wired in #44).
+	 *
+	 * This is the one thing here that is deliberately NOT in the payload. It is
+	 * the list of names the user has not agreed to publish, so it stays on the
+	 * machine; the payload carries only the per-category COUNT.
+	 */
+	keptPrivate: Record<NameCategory, KeptPrivateAtom[]>;
 };
 
 export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 	const { aggregate: agg, stats, syncConfig, now, windowDays } = input;
 	const finalized = finalize(agg);
-	const { publishCost, allowlist } = syncConfig;
+	const { publishCost, allowlist, optIns } = syncConfig;
 
 	const fromMs = windowStartMs(now, windowDays);
 	const from = utcDate(fromMs);
@@ -285,26 +306,31 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 	const builtins = buildCategory(
 		finalized.tools,
 		BUILTIN_TOOLS,
+		optIns.builtinTools,
 		totalToolCalls,
 	);
 	const mcp = buildCategory(
 		finalized.mcpServers,
 		new Set(allowlist.mcpServers),
+		optIns.mcpServers,
 		sumCounts(finalized.mcpServers),
 	);
 	const skills = buildCategory(
 		finalized.skills,
 		new Set(allowlist.skills),
+		optIns.skills,
 		sumCounts(finalized.skills),
 	);
 	const subagents = buildCategory(
 		finalized.subagents,
 		new Set(allowlist.subagents),
+		optIns.subagents,
 		sumCounts(finalized.subagents),
 	);
 	const slash = buildCategory(
 		finalized.slashCommands,
 		new Set(allowlist.slashCommands),
+		optIns.slashCommands,
 		sumCounts(finalized.slashCommands),
 	);
 
@@ -355,5 +381,15 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 		},
 	};
 
-	return { payload, finalized };
+	return {
+		payload,
+		finalized,
+		keptPrivate: {
+			builtinTools: builtins.keptPrivate,
+			mcpServers: mcp.keptPrivate,
+			skills: skills.keptPrivate,
+			subagents: subagents.keptPrivate,
+			slashCommands: slash.keptPrivate,
+		},
+	};
 }

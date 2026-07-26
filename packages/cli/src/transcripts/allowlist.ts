@@ -26,6 +26,7 @@
 // month would never publish. The filtering itself still runs client-side:
 // fail-closed only means something if it happens before the send.
 
+import { isDisplaySafeName } from "./analyzer.js";
 import { BUNDLED_CURATED_ALLOWLIST } from "./bundled-allowlist.js";
 
 /**
@@ -101,6 +102,40 @@ export type CuratedAllowlist = {
 	slashCommands: readonly string[];
 };
 
+/** The five inventory classes the payload carries. */
+export const NAME_CATEGORIES = [
+	"builtinTools",
+	"mcpServers",
+	"skills",
+	"subagents",
+	"slashCommands",
+] as const;
+
+export type NameCategory = (typeof NAME_CATEGORIES)[number];
+
+/**
+ * Names this stack's owner has explicitly ticked for publication (#42
+ * decision 1), served per-stack by the authenticated half of `/api/sync-config`.
+ *
+ * The curated list is a convenience default, not the coverage mechanism: every
+ * user-chosen name class is unbounded and unenumerable, so a hand-curated list
+ * can only ever be a rounding error against the real population. Coverage comes
+ * from here — from the person who knows which of their names are secret.
+ *
+ * `builtinTools` is included for symmetry even though that class is
+ * vendor-assigned: a built-in this version of the client has never heard of is
+ * kept private like anything else, and the owner can tick it.
+ */
+export type OptInNames = Record<NameCategory, readonly string[]>;
+
+export const EMPTY_OPT_INS: OptInNames = {
+	builtinTools: [],
+	mcpServers: [],
+	skills: [],
+	subagents: [],
+	slashCommands: [],
+};
+
 export type SyncConfig = {
 	allowlist: CuratedAllowlist;
 	/**
@@ -108,6 +143,8 @@ export type SyncConfig = {
 	 * cost entirely rather than zeroing it — see payload.ts.
 	 */
 	publishCost: boolean;
+	/** Per-stack ticked names, unioned into the allowlist before filtering. */
+	optIns: OptInNames;
 };
 
 /**
@@ -122,6 +159,10 @@ export type SyncConfig = {
 export const BUNDLED_SYNC_CONFIG: SyncConfig = {
 	allowlist: BUNDLED_CURATED_ALLOWLIST,
 	publishCost: false,
+	// Empty for the same reason, and it is the load-bearing half of #42
+	// decision 2: a failed config fetch reverts every ticked name to
+	// kept-private. Losing the network publishes LESS, never more.
+	optIns: EMPTY_OPT_INS,
 };
 
 // ---------------------------------------------------------------------------
@@ -159,6 +200,37 @@ function readNameList(v: unknown): string[] {
 	return out;
 }
 
+/**
+ * Opt-ins are read against a LOOSER bar than the curated list.
+ *
+ * A curated entry is ours and conventional, so the tight charset costs nothing.
+ * An opt-in is the user's own name — `(default)`, an accented word, a CJK skill
+ * — and dropping it here would silently un-tick a decision they made at the
+ * gate. The bar that survives is the one that matters for a string we print and
+ * store: no control characters, no bidi overrides, bounded length.
+ */
+function readOptInList(v: unknown): string[] {
+	if (!Array.isArray(v)) return [];
+	const out: string[] = [];
+	for (const item of v) {
+		if (typeof item === "string" && isDisplaySafeName(item)) out.push(item);
+	}
+	return out;
+}
+
+function readOptIns(v: unknown): OptInNames {
+	if (typeof v !== "object" || v === null || Array.isArray(v))
+		return EMPTY_OPT_INS;
+	const obj = v as Record<string, unknown>;
+	return {
+		builtinTools: readOptInList(obj.builtinTools),
+		mcpServers: readOptInList(obj.mcpServers),
+		skills: readOptInList(obj.skills),
+		subagents: readOptInList(obj.subagents),
+		slashCommands: readOptInList(obj.slashCommands),
+	};
+}
+
 function readSyncConfig(raw: unknown): SyncConfig | null {
 	if (typeof raw !== "object" || raw === null || Array.isArray(raw))
 		return null;
@@ -175,6 +247,9 @@ function readSyncConfig(raw: unknown): SyncConfig | null {
 		},
 		// Anything other than an explicit `true` fails closed.
 		publishCost: obj.publishCost === true,
+		// Absent means "no stack resolved" — an anonymous fetch, or a token bound
+		// to nothing. Both fail closed to publishing no user-chosen names.
+		optIns: readOptIns(obj.optIns),
 	};
 }
 
@@ -225,30 +300,120 @@ export async function loadSyncConfig(opts: {
 
 export type Atom = { name: string; count: number };
 
+/**
+ * One observed name that will NOT publish, as the approve gate needs to render
+ * it: the raw string, how often it ran, and the plugin it came from.
+ *
+ * Local only — this never enters the payload. It exists because the gate offers
+ * every kept-private name as an explicit, default-off tick (#42 decision 1), and
+ * it cannot offer what the analyzer does not hand back.
+ */
+export type KeptPrivateAtom = {
+	name: string;
+	count: number;
+	/** Plugin prefix, for the gate's grouped bulk tick. `null` when standalone. */
+	group: string | null;
+};
+
 export type FilteredAtoms = {
-	/** Allowlisted names, ordered by count descending. */
+	/** Publishable names, ordered by count descending. */
 	allowed: Atom[];
-	/** How many DISTINCT names were withheld. */
+	/** The rest, with everything the gate needs to offer them as ticks. */
+	keptPrivate: KeptPrivateAtom[];
+	/** How many DISTINCT names were kept private. */
 	withheld: number;
 };
 
 /**
- * Split observed atoms into the allowlisted ones and a count of the rest.
+ * A server an MCP plugin provides is observed as `plugin_<plugin>_<server>`.
+ *
+ * That whole string is GENERATED by Claude Code — the user typed none of it —
+ * which is a different class from a hand-edited `.mcp.json` alias. Strip the
+ * wrapper before matching (#42 decision 5).
+ *
+ * The split takes the FIRST underscore-free segment as the plugin name. A plugin
+ * whose own name carries an underscore therefore splits wrong, the inner segment
+ * matches nothing, and the raw name stays kept private — the same direction
+ * every other miss fails in.
+ */
+const PLUGIN_MCP_RE = /^plugin_([^_]+)_(.+)$/;
+
+/** `plugin:artifact` is the convention for a plugin's skills and subagents. */
+const PLUGIN_PREFIX_RE = /^([^:\s]+):(.+)$/;
+
+/**
+ * The plugin a name came from, for the gate's grouped bulk tick.
+ *
+ * Grouping is a UI affordance only. What the gate STORES is every name in the
+ * group, expanded (#42 decision 3): a stored `alp-river:*` would be a standing
+ * grant to names that do not exist yet, and nobody can consent to a name they
+ * have not thought of.
+ */
+export function pluginGroup(name: string): string | null {
+	return (
+		PLUGIN_MCP_RE.exec(name)?.[1] ?? PLUGIN_PREFIX_RE.exec(name)?.[1] ?? null
+	);
+}
+
+export type FilterSets = {
+	/** Curated list UNION this stack's opt-ins. A match here publishes verbatim. */
+	publishable: ReadonlySet<string>;
+	/**
+	 * The curated list alone — the only target normalization may match.
+	 *
+	 * This is what makes the normalization safe to state in one line:
+	 * normalization can only ever emit a string that is already curated. The
+	 * blast radius of a bug in it is an already-vetted set, by construction.
+	 */
+	curated: ReadonlySet<string>;
+};
+
+/**
+ * Resolve the name an atom would publish under, or `null` to keep it private.
+ *
+ * Raw match first, so a name the owner ticked publishes exactly as they saw it
+ * at the gate. Only an unmatched name is normalized, and only against the
+ * curated list.
+ */
+function publishedName(name: string, sets: FilterSets): string | null {
+	if (sets.publishable.has(name)) return name;
+	const inner = PLUGIN_MCP_RE.exec(name)?.[2];
+	if (inner && sets.curated.has(inner)) return inner;
+	return null;
+}
+
+/**
+ * Split observed atoms into what publishes and what stays on the machine.
  *
  * The withheld figure counts distinct names, not calls: it answers "how much of
  * my inventory is not shown", which is the honesty question, without leaking
- * how heavily any single withheld thing is used.
+ * how heavily any single kept-private thing is used.
+ *
+ * Counts are merged by PUBLISHED name, because normalization can map two
+ * observed names onto one — a plugin-provided `chrome-devtools` and a directly
+ * configured one both publish as `chrome-devtools`, and two rows with the same
+ * name would double-count that server in the rendered inventory.
  */
 export function filterAtoms(
 	atoms: readonly Atom[],
-	allowed: ReadonlySet<string>,
+	sets: FilterSets,
 ): FilteredAtoms {
-	const kept: Atom[] = [];
-	let withheld = 0;
+	const merged = new Map<string, number>();
+	const keptPrivate: KeptPrivateAtom[] = [];
 	for (const atom of atoms) {
-		if (allowed.has(atom.name)) kept.push(atom);
-		else withheld++;
+		const published = publishedName(atom.name, sets);
+		if (published === null) {
+			keptPrivate.push({
+				name: atom.name,
+				count: atom.count,
+				group: pluginGroup(atom.name),
+			});
+			continue;
+		}
+		merged.set(published, (merged.get(published) ?? 0) + atom.count);
 	}
-	kept.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-	return { allowed: kept, withheld };
+	const allowed = [...merged].map(([name, count]) => ({ name, count }));
+	allowed.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+	keptPrivate.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+	return { allowed, keptPrivate, withheld: keptPrivate.length };
 }
