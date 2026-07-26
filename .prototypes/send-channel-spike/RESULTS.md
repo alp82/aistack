@@ -3,8 +3,8 @@
 Fill this in while running `README.md`. It becomes the resolution comment on
 [Task: spike the two send channels head to head, and pick one](https://github.com/alp82/aistack/issues/35).
 
-**Claude Code version:** _(claude --version)_
-**Date:**
+**Claude Code version:** 2.1.220 _(node v24.15.0)_
+**Date:** 2026-07-26
 **Terminal:**
 
 Every "prompt appeared" question takes one of **three** values: **yes / no / void**. Use
@@ -14,11 +14,22 @@ confidently wrong answer.
 
 ## Preconditions
 
-- `node mcp/summary.mjs` run before Round 1 (fixture regenerated): **yes / no**
+- `node mcp/summary.mjs` run before Round 1 (fixture regenerated): **yes** — re-run
+  2026-07-26, output byte-identical to the committed file, so nothing was stale.
 - `/mcp` shows `aistackspike` **connected** with **3 tools**: **yes / no**
   → if no, Rounds 1 and 3 are **void**; do not fill them in.
 - `claude mcp list` printed the absolute server path with no `Missing environment variables`
   warning: **yes / no**
+
+Checked without a human on 2026-07-26 (so a null in Round 1 is attributable):
+
+- The absolute paths in `.mcp.json` and `.claude/settings.json` still match this
+  checkout — the repo has not moved.
+- A direct `initialize` + `tools/list` handshake against `mcp/publish-server.mjs` returns
+  the three tools, with `_meta: {"anthropic/requiresUserInteraction": true}` on
+  `publish_desc` and `publish_input` and **absent** on `publish_ungated`. The server and
+  the marker are therefore not the cause of any missing dialog.
+- `spike-*.log` deleted, so every line in them belongs to the human run.
 
 ---
 
