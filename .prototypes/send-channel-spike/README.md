@@ -134,6 +134,34 @@ line for line. If they are not identical, you skipped precondition 1.
 A screenshot per prompt is worth more than prose here; drop them beside this file as
 `shot-1a.png` etc.
 
+### Round 1E — MCP elicitation (added after Round 1)
+
+Round 1 found two things that neither candidate survives as designed: the tool
+`description` is truncated after two lines, so a server-authored disclosure never reaches
+the user, and **"don't ask again" defeats `requiresUserInteraction`** — it writes a plain
+`mcp__aistackspike__publish_desc` entry into the project's `settings.local.json` and the
+gate is gone for good.
+
+The `initialize` frame shows a way out that the run sheet did not anticipate. Claude Code
+2.1.220 declares `"elicitation": {}`, so a server can raise `elicitation/create` — a
+**server-initiated request, not a tool call**. No permission rule names it and no
+"don't ask again" can allow it, and its `message` is authored by the server.
+
+`publish_elicit` carries **no `_meta` gate**, on purpose. 1C already proved an unmarked tool
+runs silently under bypass, so any dialog this raises comes from the elicitation and nothing
+else. Its `message` is byte-identical to `publish_desc`'s description, so its truncation
+point is directly comparable with 1A and 1B.
+
+> Call the aistackspike publish_elicit tool with confirm set to true.
+
+Record: whether a prompt appeared at all; whether `SPIKE-MARKER-SUMMARY-END` was visible
+(i.e. did the server's own 26-line text render in full, where the description was cut at
+two); whether `SPIKE-MARKER-ELICIT-FIELD` appeared; whether a "don't ask again" was offered;
+and what `spike-mcp.log` recorded as `!! ELICITATION REPLY: action=…`.
+
+Then **decline once** and confirm the log shows `approved=false` with no
+`!! TOOL EXECUTED` line — a gate that cannot refuse is not a gate.
+
 ### Round 2 — candidate B, CLI via Bash, same bypass session
 
 **Run each of these as its own separate prompt and its own separate Bash call.** One combined
