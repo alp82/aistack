@@ -3,6 +3,7 @@ import { convexTest } from 'convex-test'
 import { describe, expect, test } from 'vitest'
 import { internal } from '../_generated/api'
 import schema from '../schema'
+import { FULL_CLI_TOKEN_SCOPES } from '../lib/cliScopes'
 
 /**
  * Phase B of the `cliTokens.scopes` migration — wayfinder #52 (map #29).
@@ -25,21 +26,97 @@ const modules = Object.fromEntries(
   ]),
 )
 
+const DAY = 24 * 60 * 60 * 1000
 const MIGRATION = internal.migrations['20260729_cli_token_scopes']
 
-/**
- * THE SCOPES-BACKFILL TESTS LIVE IN THE PRE-NARROW REVISION, not here.
- *
- * Every one of them seeds a row with no `scopes`, and `scopes` is required in
- * this revision — convexTest refuses the insert. That is not a coverage gap
- * dressed up as a decision: it is the same fact that makes the widen and the
- * narrow two deploys. The backfill is tested against the schema it actually
- * runs against, which is the previous one.
- */
+type Ctx = Awaited<ReturnType<typeof convexTest>>
+
+async function seedToken(t: Ctx, token: string, over: Record<string, unknown> = {}) {
+  return await t.run(async (ctx) =>
+    ctx.db.insert('cliTokens', {
+      token,
+      tokenHash: `hash-${token}`,
+      userId: 'user_owner',
+      createdAt: Date.now(),
+      lastUsedAt: Date.now(),
+      expiresAt: Date.now() + 90 * DAY,
+      ...over,
+    }),
+  )
+}
+
+describe('cliTokens.scopes backfill', () => {
+  test('an unscoped row gets the FULL set', async () => {
+    // Those tokens were issued when there was nothing to restrict, so they hold
+    // a full grant already. Writing anything narrower would revoke access the
+    // user never asked to revoke, on a machine that was working a minute ago.
+    const t = convexTest(schema, modules)
+    const id = await seedToken(t, 'tok_old')
+
+    const result = await t.mutation(MIGRATION.backfill, {})
+    expect(result.patched).toBe(1)
+    expect(result.remaining).toBe(0)
+
+    const row = await t.run(async (ctx) => ctx.db.get(id))
+    expect(row?.scopes).toEqual(FULL_CLI_TOKEN_SCOPES)
+  })
+
+  test('an EMPTY grant is left alone — the check tests presence, not truthiness', async () => {
+    const t = convexTest(schema, modules)
+    const id = await seedToken(t, 'tok_empty', { scopes: [] })
+
+    const result = await t.mutation(MIGRATION.backfill, {})
+    expect(result.patched).toBe(0)
+
+    const row = await t.run(async (ctx) => ctx.db.get(id))
+    expect(row?.scopes).toEqual([])
+  })
+
+  test('a narrower grant is not widened', async () => {
+    const t = convexTest(schema, modules)
+    const id = await seedToken(t, 'tok_narrow', { scopes: ['collect'] })
+
+    await t.mutation(MIGRATION.backfill, {})
+
+    const row = await t.run(async (ctx) => ctx.db.get(id))
+    expect(row?.scopes).toEqual(['collect'])
+  })
+
+  test('a second run finds nothing to do', async () => {
+    const t = convexTest(schema, modules)
+    await seedToken(t, 'tok_a')
+    await seedToken(t, 'tok_b')
+
+    const first = await t.mutation(MIGRATION.backfill, {})
+    const second = await t.mutation(MIGRATION.backfill, {})
+    expect(first.patched).toBe(2)
+    expect(second.patched).toBe(0)
+  })
+
+  test('report counts by PRESENCE', async () => {
+    const t = convexTest(schema, modules)
+    await seedToken(t, 'tok_none')
+    await seedToken(t, 'tok_empty', { scopes: [] })
+    await seedToken(t, 'tok_full', { scopes: FULL_CLI_TOKEN_SCOPES })
+
+    const report = await t.query(MIGRATION.report, {})
+    // The empty grant counts as SCOPED. It is a real answer, not a missing one.
+    expect(report).toEqual({ total: 3, scoped: 2, unscoped: 1 })
+  })
+})
+
 describe('apiRateLimits key rename', () => {
-  test('a keyed row survives the purge', async () => {
+  test('a keyless row is deleted, a keyed row survives', async () => {
+    // Deletes rather than backfills: a row still holding `ip` is by definition
+    // expired, and resurrecting an expired window as a `key` row would hand its
+    // caller a stale count instead of the fresh one they have earned.
     const t = convexTest(schema, modules)
     await t.run(async (ctx) => {
+      await ctx.db.insert('apiRateLimits', {
+        ip: '1.2.3.4',
+        windowStart: Date.now() - 120_000,
+        count: 60,
+      })
       await ctx.db.insert('apiRateLimits', {
         key: 'ip:5.6.7.8',
         windowStart: Date.now(),
@@ -48,10 +125,11 @@ describe('apiRateLimits key rename', () => {
     })
 
     const result = await t.mutation(MIGRATION.purgeKeylessRateLimits, {})
-    expect(result).toEqual({ deleted: 0, remaining: 0 })
+    expect(result).toEqual({ deleted: 1, remaining: 0 })
 
     const left = await t.run(async (ctx) => ctx.db.query('apiRateLimits').collect())
     expect(left).toHaveLength(1)
+    expect(left[0].key).toBe('ip:5.6.7.8')
   })
 
   test('an empty-string key is NOT treated as keyless', async () => {

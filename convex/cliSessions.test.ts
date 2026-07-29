@@ -75,13 +75,14 @@ describe('link-time stack binding (#33 decision 7)', () => {
     const session = await t.query(internal.cliSessions.getBySecretId, { secretId })
     const issued = await t.mutation(internal.cliSessions.issueTokenAndDeleteSession, {
       sessionId: session!._id,
+      token: 'tok_abc',
       tokenHash: 'hash_abc',
       userId: USER,
       createdAt: Date.now(),
       expiresAt: Date.now() + 90 * DAY,
       lastUsedAt: Date.now(),
     })
-    expect(issued).toEqual({ issued: true })
+    expect(issued).toEqual({ token: 'tok_abc' })
 
     // By DIGEST — the plaintext column is gone (#52), so this is the only way
     // to find a token, here and in production alike.
@@ -105,6 +106,7 @@ describe('link-time stack binding (#33 decision 7)', () => {
     const session = await t.query(internal.cliSessions.getBySecretId, { secretId })
     await t.mutation(internal.cliSessions.issueTokenAndDeleteSession, {
       sessionId: session!._id,
+      token: 'tok_nostack',
       tokenHash: 'hash_nostack',
       userId: USER,
       createdAt: Date.now(),

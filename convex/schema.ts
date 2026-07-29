@@ -481,24 +481,28 @@ export default defineSchema({
     .index('by_expiresAt', ['expiresAt']),
 
   cliTokens: defineTable({
-    // Unsalted SHA-256 of the bearer, lowercase hex, and the ONLY form of the
-    // credential this table holds — PHASE C of the hash-at-rest migration
-    // landed (#49 shipped A+B, #52 narrows). A database read no longer
-    // discloses a working token.
+    // PHASE A of the hash-at-rest migration (#49). The plaintext is still
+    // written and still indexed, because a row that only has a digest cannot be
+    // read by a client that predates the change — and because the backfill
+    // needs the plaintext to derive the digest from. Reads already prefer
+    // `tokenHash`; #52's narrow drops this column and `by_token`.
     //
-    // Unsalted is correct here and not an oversight: the token is 256 bits of
-    // `crypto.getRandomValues`, so there is no dictionary to attack and nothing
-    // for a salt to defeat. Password stretching would only make every request
-    // slower.
+    // OPTIONAL, not required, and that is what makes the narrow reachable:
+    // Convex refuses a push while any document carries a field the schema no
+    // longer declares, so `migrations/20260729_cli_token_hash:clearPlaintext`
+    // has to blank this column first — and it cannot write `undefined` into a
+    // required field.
+    //
+    // Until the narrow deploys, a database read still discloses live credentials.
+    token: v.optional(v.string()),
+    // Unsalted SHA-256 of the bearer, lowercase hex. Unsalted is correct here
+    // and not an oversight: the token is 256 bits of `crypto.getRandomValues`,
+    // so there is no dictionary to attack and nothing for a salt to defeat.
+    // Password stretching would only make every request slower.
     //
     // Hashing happens in the `httpAction` (`convex/httpCli.ts`), so the
     // plaintext never crosses into the database layer at all.
-    //
-    // DEPLOY ORDER IS NOT OPTIONAL. The digest is derived FROM the plaintext,
-    // so a column already dropped cannot be backfilled from — deploy a revision
-    // that still has `token`, run
-    // `migrations/20260729_cli_token_hash:backfill`, and only then deploy this.
-    tokenHash: v.string(),
+    tokenHash: v.optional(v.string()),
     userId: v.string(),
     // What the user called this machine at link time (#49), carried from
     // `cliSessions.machineName`. Optional: an older CLI proposes nothing and
@@ -519,16 +523,16 @@ export default defineSchema({
     // full set, so no request is refused today — the value here is the
     // enforcement point and the display line, not a live restriction.
     //
-    // REQUIRED, batched into the same narrow as `tokenHash` above, which is the
-    // whole reason #49 split this ticket off: one deploy cycle instead of two.
-    // Run `migrations/20260729_cli_token_scopes:backfill` before deploying
-    // this. An absent array would otherwise read as full access forever, which
-    // is a permanent bypass rather than a migration step.
-    scopes: v.array(CliTokenScope),
+    // PHASE A: optional, because the table has live rows minted before scopes
+    // existed. An ABSENT array reads as full access, which is what those rows
+    // were granted. `convex/migrations/20260729_cli_token_scopes.ts` fills them
+    // in, and the narrow that follows makes the absent case unreachable.
+    scopes: v.optional(v.array(CliTokenScope)),
     createdAt: v.number(),
     expiresAt: v.number(),
     lastUsedAt: v.number(),
   })
+    .index('by_token', ['token'])
     .index('by_tokenHash', ['tokenHash'])
     .index('by_userId', ['userId']),
 
@@ -617,17 +621,20 @@ export default defineSchema({
   // opaque namespaced key (`ip:1.2.3.4`, `cli-token:<id>`) — rather than one of
   // the things it can hold.
   //
-  // The rename rode along with the `cliTokens` narrow, because it gates the
-  // same deploy. The usual three-phase DATA migration did not apply: every row
-  // is dead 60 seconds after it is written, so there was nothing to preserve —
-  // `migrations/20260729_cli_token_scopes:purgeKeylessRateLimits` deletes the
-  // stragglers, and the hourly cron would have drained them anyway.
+  // PHASE A of the rename: `key` optional, `ip` optional, both indexes live.
+  // The usual three-phase DATA migration does NOT apply, because there is no
+  // data to preserve — every row is dead 60 seconds after it is written and the
+  // hourly cron already deletes them. Writers moved to `key` in this same push,
+  // so `purgeKeylessRateLimits` only has to clear the stragglers before the
+  // narrow.
   apiRateLimits: defineTable({
-    key: v.string(),
+    key: v.optional(v.string()),
+    ip: v.optional(v.string()),
     windowStart: v.number(),
     count: v.number(),
   })
     .index('by_key', ['key'])
+    .index('by_ip', ['ip'])
     .index('by_windowStart', ['windowStart']),
 
   // The measured layer (#33 decision 6). Append-only: one immutable row per
