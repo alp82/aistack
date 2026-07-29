@@ -15,8 +15,9 @@ import { DEFAULT_MAX_REQUESTS, SHARED_BUCKET_MAX_REQUESTS } from './rateLimit'
  * the plaintext never crosses into the database layer. A convexTest that called
  * the queries directly would prove nothing about that.
  *
- * The load-bearing test is `a token minted before the backfill still works` —
- * getting it wrong logs every existing machine out on the phase-A deploy.
+ * The load-bearing test is now `login to approval to token ...`, which asserts
+ * the row carries the digest and NOT the bearer — the property #52's narrow
+ * exists to create.
  */
 
 const modules = import.meta.glob('./**/*.{js,ts}')
@@ -41,15 +42,10 @@ async function seedCreator(t: Ctx) {
   )
 }
 
-async function seedToken(
-  t: Ctx,
-  token: string,
-  opts: { hashed?: boolean; scopes?: CliTokenScope[] } = {},
-) {
+async function seedToken(t: Ctx, token: string, opts: { scopes?: CliTokenScope[] } = {}) {
   return await t.run(async (ctx) =>
     ctx.db.insert('cliTokens', {
-      token,
-      tokenHash: opts.hashed === false ? undefined : await sha256Hex(token),
+      tokenHash: await sha256Hex(token),
       userId: USER,
       scopes: opts.scopes ?? FULL_CLI_TOKEN_SCOPES,
       createdAt: Date.now(),
@@ -71,20 +67,6 @@ describe('bearer resolution', () => {
     })
     // 404 means the bearer RESOLVED and the handler then found no stack. A 401
     // would mean it never got that far.
-    expect(resp.status).toBe(404)
-  })
-
-  test('a token minted before the backfill still works', async () => {
-    // Phase A's whole promise: nobody has to log in again. The row has no
-    // digest, so the hash lookup misses and the plaintext fallback carries it.
-    const t = convexTest(schema, modules)
-    await seedCreator(t)
-    await seedToken(t, 'tok_legacy', { hashed: false })
-
-    const resp = await t.fetch('/api/cli/stacks', {
-      method: 'GET',
-      headers: { Authorization: 'Bearer tok_legacy' },
-    })
     expect(resp.status).toBe(404)
   })
 
@@ -218,15 +200,17 @@ describe('the name reaches the machines list', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0].name).toBe('work laptop')
 
-    // The minted token is stored as a digest, and that digest is what
-    // authenticates it. The plaintext is STILL on the row at this phase — that
-    // is what #52's narrow removes, and what `clearPlaintext` prepares.
+    // The minted token is stored as a digest, that digest is what
+    // authenticates it, and THE PLAINTEXT IS NOWHERE ON THE ROW (#52). The last
+    // assertion is the one the narrow exists for: before it, a database read
+    // disclosed a live credential.
     const stored = await t.run(async (ctx) => {
       const row = await ctx.db.query('cliTokens').first()
-      return { token: row?.token, tokenHash: row?.tokenHash }
+      return row as unknown as Record<string, unknown>
     })
     expect(stored.tokenHash).toBe(await sha256Hex(polled.token))
-    expect(stored.tokenHash).not.toBe(stored.token)
+    expect(stored.token).toBeUndefined()
+    expect(Object.values(stored)).not.toContain(polled.token)
 
     const resp = await t.fetch('/api/cli/stacks', {
       method: 'GET',

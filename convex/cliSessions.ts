@@ -225,25 +225,29 @@ export const deleteSession = internalMutation({
   },
 })
 
+/**
+ * Mint the token and consume the device-code session, in one transaction.
+ *
+ * TAKES THE DIGEST, NEVER THE TOKEN (#52). The raw bearer is generated in the
+ * `httpAction` and hashed there, so it is returned to the CLI by the action
+ * that already holds it and never enters the database layer at all. The
+ * plaintext argument this used to carry went with the column.
+ */
 export const issueTokenAndDeleteSession = internalMutation({
   args: {
     sessionId: v.id('cliSessions'),
-    token: v.string(),
-    // Derived in the httpAction (#49), so the mutation never hashes and the
-    // digest lands in the same insert as the plaintext it will replace.
     tokenHash: v.string(),
     userId: v.string(),
     createdAt: v.number(),
     expiresAt: v.number(),
     lastUsedAt: v.number(),
   },
-  returns: v.union(v.object({ token: v.string() }), v.null()),
+  returns: v.union(v.object({ issued: v.literal(true) }), v.null()),
   handler: async (ctx, args) => {
     const session = await ctx.db.get(args.sessionId)
     if (!session || session.status !== 'approved') return null
 
     await ctx.db.insert('cliTokens', {
-      token: args.token,
       tokenHash: args.tokenHash,
       // Carried from the approval, which is the one moment the user was asked
       // what to call this machine (#49).
@@ -262,6 +266,6 @@ export const issueTokenAndDeleteSession = internalMutation({
     })
 
     await ctx.db.delete(args.sessionId)
-    return { token: args.token }
+    return { issued: true as const }
   },
 })

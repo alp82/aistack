@@ -58,12 +58,12 @@ type TokenLookupCtx = {
 }
 
 /**
- * Resolve a raw bearer to its stored row, by digest first.
+ * Resolve a raw bearer to its stored row, BY DIGEST AND NOTHING ELSE.
  *
- * PHASE A of the hash migration: a token minted before the backfill has no
- * `tokenHash`, so it is absent from the sparse `by_tokenHash` index and the
- * digest lookup misses. Falling back to the plaintext read is what keeps every
- * already-linked machine working without a re-login. #52's narrow deletes it.
+ * The plaintext fallback phase A needed is gone with the column (#52). The
+ * digest is computed here, in the action, which is the whole point: the raw
+ * bearer never crosses into the database layer, so a `runQuery` argument log
+ * cannot leak one.
  */
 async function resolveToken(
   ctx: TokenLookupCtx,
@@ -72,13 +72,11 @@ async function resolveToken(
   userId: string
   _id: string
   stackId?: Id<'stacks'>
-  scopes?: CliTokenScope[]
+  scopes: CliTokenScope[]
 } | null> {
-  const byHash = await ctx.runQuery(internal.cliTokens.getByTokenHash, {
+  return await ctx.runQuery(internal.cliTokens.getByTokenHash, {
     tokenHash: await sha256Hex(rawToken),
   })
-  if (byHash) return byHash
-  return await ctx.runQuery(internal.cliTokens.getByToken, { token: rawToken })
 }
 
 /**
@@ -118,7 +116,7 @@ async function validateBearerToken(
   if (!tokenDoc) {
     return jsonResponse({ error: 'Invalid or expired token' }, 401)
   }
-  if (tokenDoc.scopes && !tokenDoc.scopes.includes(requiredScope)) {
+  if (!tokenDoc.scopes.includes(requiredScope)) {
     // 403, not 401: the credential is good and re-authenticating with the same
     // one changes nothing. Naming the scope keeps the message actionable
     // without disclosing what else the token can reach.
@@ -310,10 +308,9 @@ export const authPoll = httpAction(async (ctx, request) => {
 
     const result = await ctx.runMutation(internal.cliSessions.issueTokenAndDeleteSession, {
       sessionId: session._id,
-      token,
-      // Derived HERE so the mutation never has to hash, and so the digest and
-      // the plaintext are written in the same insert. The narrow drops the
-      // plaintext argument; the digest is already the real key.
+      // The DIGEST is all the mutation gets (#52). The raw token was generated
+      // three lines up and is returned from here, so the plaintext lives in
+      // this action's memory and nowhere else on the server.
       tokenHash: await sha256Hex(token),
       userId: session.userId,
       createdAt: now,
@@ -327,7 +324,7 @@ export const authPoll = httpAction(async (ctx, request) => {
 
     return jsonResponse({
       status: 'approved',
-      token: result.token,
+      token,
       userId: session.userId,
     })
   }
@@ -511,7 +508,7 @@ export const syncConfig = httpAction(async (ctx, request) => {
   // client that cannot fetch the allowlist publishes nothing it should have
   // held back only if the filter is fail-closed on its own, which it is, but
   // only because it still HAS a list.
-  if (tokenDoc.scopes && !tokenDoc.scopes.includes('sync')) {
+  if (!tokenDoc.scopes.includes('sync')) {
     return jsonResponse(anonymous)
   }
 
