@@ -1,6 +1,6 @@
 import { internalMutation, internalQuery, mutation, query } from './_generated/server'
 import { v } from 'convex/values'
-import { CliTokenScope, FULL_CLI_TOKEN_SCOPES } from './lib/cliScopes'
+import { CliTokenScope } from './lib/cliScopes'
 
 /**
  * The stored shape of a validated bearer, shared by both lookup paths.
@@ -17,43 +17,21 @@ const TOKEN_LOOKUP = v.union(
     // Absent on tokens issued before that binding existed — those must
     // re-authenticate to pick one; see convex/migrations/20260725_cli_token_stack.ts.
     stackId: v.optional(v.id('stacks')),
-    // What this machine may do (#52). Absent on rows the scopes backfill has
-    // not reached, which the enforcement point reads as full access — those
-    // tokens were minted before any scope existed and were granted everything.
-    scopes: v.optional(v.array(CliTokenScope)),
+    // What this machine may do (#52). Required since the narrow, so the
+    // enforcement point has no "absent means everything" branch left to be a
+    // permanent bypass.
+    scopes: v.array(CliTokenScope),
   }),
   v.null(),
 )
 
 /**
- * PHASE A FALLBACK ONLY — the plaintext read, kept alive so a token minted
- * before the backfill still authenticates.
+ * The ONLY read path (#49, narrowed in #52). The caller hashes in the
+ * `httpAction` and passes only the digest, so plaintext never reaches the
+ * database layer — and there is no longer a plaintext column for it to reach.
  *
- * This is the function whose existence is the security hole the migration
- * closes, so #52's narrow deletes it rather than leaving it to rot. Do not add
- * callers.
- */
-export const getByToken = internalQuery({
-  args: { token: v.string() },
-  returns: TOKEN_LOOKUP,
-  handler: async (ctx, args) => {
-    const doc = await ctx.db
-      .query('cliTokens')
-      .withIndex('by_token', (q) => q.eq('token', args.token))
-      .first()
-    if (!doc) return null
-    if (doc.expiresAt <= Date.now()) return null
-    return { userId: doc.userId, _id: doc._id, stackId: doc.stackId, scopes: doc.scopes }
-  },
-})
-
-/**
- * The read path (#49). The caller hashes in the `httpAction` and passes only the
- * digest, so plaintext never reaches the database layer.
- *
- * `by_tokenHash` is a sparse index while `tokenHash` is optional: rows the
- * backfill has not reached yet are simply absent from it, which is why
- * `getByToken` still exists as a fallback until #52 runs the narrow.
+ * The plaintext fallback that phase A needed is gone with the column. Do not
+ * reintroduce a lookup that takes a raw bearer.
  */
 export const getByTokenHash = internalQuery({
   args: { tokenHash: v.string() },
@@ -94,10 +72,7 @@ export const listByUser = query({
       // link-time binding, or when the stack has since been deleted — both of
       // which render as "not linked to a stack".
       stack: v.union(v.object({ name: v.string(), slug: v.string() }), v.null()),
-      // What this machine may do (#52). Resolved to the full set for a row the
-      // backfill has not reached, because that is what the page must say: an
-      // unscoped token really can do everything, and rendering an empty line
-      // would understate what the user is looking at.
+      // What this machine may do (#52).
       scopes: v.array(CliTokenScope),
     }),
   ),
@@ -121,7 +96,7 @@ export const listByUser = query({
         lastUsedAt: t.lastUsedAt,
         expiresAt: t.expiresAt,
         stack: stack ? { name: stack.name, slug: stack.slug } : null,
-        scopes: t.scopes ?? FULL_CLI_TOKEN_SCOPES,
+        scopes: t.scopes,
       })
     }
     // Most recently used first — the machine you are sitting at is the one you
@@ -165,35 +140,14 @@ export const revokeToken = mutation({
 })
 
 /**
- * DELETED BY #52's NARROW. No callers — `cliSessions.issueTokenAndDeleteSession`
- * is the one path that mints a token — but it does carry a `token: v.string()`
- * argument writing the plaintext column, so a dead second writer surviving the
- * narrow would be a way to put the credential back.
+ * `createToken` was deleted in #52's narrow.
+ *
+ * It had no callers — `cliSessions.issueTokenAndDeleteSession` is the one path
+ * that mints a token, because minting and consuming the device-code session
+ * have to be one transaction. What `createToken` did have was a `token:
+ * v.string()` argument writing the plaintext column, so keeping a dead second
+ * writer past the narrow would have been a way to put the credential back.
  */
-export const createToken = internalMutation({
-  args: {
-    token: v.string(),
-    tokenHash: v.string(),
-    userId: v.string(),
-    name: v.optional(v.string()),
-    createdAt: v.number(),
-    expiresAt: v.number(),
-    lastUsedAt: v.number(),
-  },
-  returns: v.id('cliTokens'),
-  handler: async (ctx, args) => {
-    return await ctx.db.insert('cliTokens', {
-      token: args.token,
-      tokenHash: args.tokenHash,
-      userId: args.userId,
-      name: args.name,
-      scopes: FULL_CLI_TOKEN_SCOPES,
-      createdAt: args.createdAt,
-      expiresAt: args.expiresAt,
-      lastUsedAt: args.lastUsedAt,
-    })
-  },
-})
 
 export const refreshToken = internalMutation({
   args: {
