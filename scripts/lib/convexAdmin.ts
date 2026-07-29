@@ -95,6 +95,11 @@ export type AdminConvexClient = {
   query: (fn: any, args: Record<string, unknown>) => Promise<any>
   // biome-ignore lint/suspicious/noExplicitAny: internal-fn polymorphism
   mutation: (fn: any, args: Record<string, unknown>) => Promise<any>
+  // Actions run in a different runtime, and a migration needs one whenever it
+  // touches WebCrypto — `20260729_cli_token_hash:backfill` derives SHA-256
+  // digests, which a mutation cannot reach.
+  // biome-ignore lint/suspicious/noExplicitAny: internal-fn polymorphism
+  action: (fn: any, args: Record<string, unknown>) => Promise<any>
 }
 
 export function createAdminClient(): {
