@@ -76,6 +76,7 @@ describe('link-time stack binding (#33 decision 7)', () => {
     const issued = await t.mutation(internal.cliSessions.issueTokenAndDeleteSession, {
       sessionId: session!._id,
       token: 'tok_abc',
+      tokenHash: 'hash_abc',
       userId: USER,
       createdAt: Date.now(),
       expiresAt: Date.now() + 90 * DAY,
@@ -83,7 +84,11 @@ describe('link-time stack binding (#33 decision 7)', () => {
     })
     expect(issued).toEqual({ token: 'tok_abc' })
 
-    const tokenDoc = await t.query(internal.cliTokens.getByToken, { token: 'tok_abc' })
+    // By DIGEST — the plaintext column is gone (#52), so this is the only way
+    // to find a token, here and in production alike.
+    const tokenDoc = await t.query(internal.cliTokens.getByTokenHash, {
+      tokenHash: 'hash_abc',
+    })
     // The SECOND stack, not whichever the by_creatorId index happens to return
     // first — which is what the retired getFirstStackByCreator would have given.
     expect(tokenDoc?.stackId).toBe(stackIds[1])
@@ -102,21 +107,22 @@ describe('link-time stack binding (#33 decision 7)', () => {
     await t.mutation(internal.cliSessions.issueTokenAndDeleteSession, {
       sessionId: session!._id,
       token: 'tok_nostack',
+      tokenHash: 'hash_nostack',
       userId: USER,
       createdAt: Date.now(),
       expiresAt: Date.now() + 90 * DAY,
       lastUsedAt: Date.now(),
     })
 
-    const tokenDoc = await t.query(internal.cliTokens.getByToken, {
-      token: 'tok_nostack',
+    const tokenDoc = await t.query(internal.cliTokens.getByTokenHash, {
+      tokenHash: 'hash_nostack',
     })
     expect(tokenDoc?.stackId).toBeUndefined()
 
     const tokenId = await t.run(async (ctx) => {
       const row = await ctx.db
         .query('cliTokens')
-        .withIndex('by_token', (q) => q.eq('token', 'tok_nostack'))
+        .withIndex('by_tokenHash', (q) => q.eq('tokenHash', 'hash_nostack'))
         .first()
       return row!._id
     })
@@ -199,5 +205,81 @@ describe('stacks.listMine — the selector source', () => {
         .withIdentity({ tokenIdentifier: 'convex|nobody', subject: 'nobody' })
         .query(api.stacks.listMine, {}),
     ).toEqual([])
+  })
+})
+
+/**
+ * The device-code cleanup cron (#52).
+ *
+ * `authStart` is unauthenticated and inserts one row per call, and nothing ever
+ * collected them — so this table is the unbounded-growth half of the login
+ * path. A rate limit does not close it: even at the cap, a 15-minute TTL is
+ * long enough to accumulate a great many rows.
+ */
+describe('cleanupExpiredSessions', () => {
+  const MINUTE = 60 * 1000
+
+  async function seed(
+    t: Awaited<ReturnType<typeof convexTest>>,
+    userCode: string,
+    expiresAt: number,
+    over: Record<string, unknown> = {},
+  ) {
+    return await t.run(async (ctx) =>
+      ctx.db.insert('cliSessions', {
+        userCode,
+        secretId: `secret-${userCode}`,
+        status: 'pending' as const,
+        createdAt: Date.now() - 20 * MINUTE,
+        expiresAt,
+        ...over,
+      }),
+    )
+  }
+
+  test('deletes an expired session and keeps a live one', async () => {
+    const t = convexTest(schema, modules)
+    await seed(t, 'DEAD01', Date.now() - MINUTE)
+    await seed(t, 'LIVE01', Date.now() + 10 * MINUTE)
+
+    const result = await t.mutation(internal.cliSessions.cleanupExpiredSessions, {})
+    expect(result.deleted).toBe(1)
+
+    const left = await t.run(async (ctx) => ctx.db.query('cliSessions').collect())
+    expect(left.map((r) => r.userCode)).toEqual(['LIVE01'])
+  })
+
+  test('the abandoned machine name leaves with the row', async () => {
+    // #49 stores the CLI's proposed hostname on the PENDING session, so a login
+    // the user never approves parks that string on the server. This is the only
+    // thing that collects it.
+    const t = convexTest(schema, modules)
+    await seed(t, 'DEAD02', Date.now() - MINUTE, { machineName: 'alp-desktop' })
+
+    await t.mutation(internal.cliSessions.cleanupExpiredSessions, {})
+
+    const left = await t.run(async (ctx) => ctx.db.query('cliSessions').collect())
+    expect(left).toHaveLength(0)
+  })
+
+  test('an approved session that outlived its TTL is collected too', async () => {
+    // `issueTokenAndDeleteSession` deletes an approved row on success, so an
+    // approved row still here after its TTL is one the CLI stopped polling for.
+    const t = convexTest(schema, modules)
+    await seed(t, 'DEAD03', Date.now() - MINUTE, {
+      status: 'approved' as const,
+      userId: 'user_owner',
+    })
+
+    const result = await t.mutation(internal.cliSessions.cleanupExpiredSessions, {})
+    expect(result.deleted).toBe(1)
+  })
+
+  test('a second run is a no-op', async () => {
+    const t = convexTest(schema, modules)
+    await seed(t, 'DEAD04', Date.now() - MINUTE)
+    await t.mutation(internal.cliSessions.cleanupExpiredSessions, {})
+    const second = await t.mutation(internal.cliSessions.cleanupExpiredSessions, {})
+    expect(second.deleted).toBe(0)
   })
 })

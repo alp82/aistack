@@ -79,6 +79,30 @@ export function headline(args: {
 		: "Your stack matches how you work";
 }
 
+/**
+ * The `Kept private` view — wayfinder #51, strings fixed by the grilling #48.
+ *
+ * The owner made the exact wording binding, so these are quoted, not authored.
+ * They are short on purpose: the switch has to state what it does in the two
+ * lines a person reads before their machine uploads anything.
+ *
+ * `KEEP_PRIVATE` is the one string #48 did not fix. It is the inverse of
+ * `PUBLISH` — the same action read backwards — and it says the state the row
+ * returns to, in the vocabulary the rest of the feature already uses.
+ */
+export const KEPT_PRIVATE = {
+	SWITCH: "Review kept-private names here",
+	SWITCH_HELP:
+		"Your machine sends them so you can publish them. Off means we never see them.",
+	TAB: "Kept private",
+	PUBLISH: "publish",
+	PUBLISH_ALL: "publish all",
+	KEEP_PRIVATE: "keep private",
+	TICKED: "Publishes on your next sync.",
+	EMPTY: "Nothing kept private.",
+	NEVER_SYNCED: "Sync to see names.",
+} as const;
+
 /** How long ago we last looked, said the way a person would say it. */
 export function lastCheckedLine(
 	hasSnapshot: boolean,

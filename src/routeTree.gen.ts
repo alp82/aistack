@@ -25,6 +25,7 @@ import { Route as WaitlistLookupIdRouteImport } from './routes/waitlist.$lookupI
 import { Route as ToolsNewRouteImport } from './routes/tools_.new'
 import { Route as StacksNewRouteImport } from './routes/stacks.new'
 import { Route as StacksSlugRouteImport } from './routes/stacks.$slug'
+import { Route as SettingsMachinesRouteImport } from './routes/settings.machines'
 import { Route as CliAuthRouteImport } from './routes/cli.auth'
 import { Route as ApiSyncConfigRouteImport } from './routes/api.sync-config'
 import { Route as AdminIconsRouteImport } from './routes/admin_.icons'
@@ -120,6 +121,11 @@ const StacksSlugRoute = StacksSlugRouteImport.update({
   path: '/stacks/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsMachinesRoute = SettingsMachinesRouteImport.update({
+  id: '/settings/machines',
+  path: '/settings/machines',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CliAuthRoute = CliAuthRouteImport.update({
   id: '/cli/auth',
   path: '/cli/auth',
@@ -206,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/admin/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
+  '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
   '/tools/new': typeof ToolsNewRoute
@@ -238,6 +245,7 @@ export interface FileRoutesByTo {
   '/admin/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
+  '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
   '/tools/new': typeof ToolsNewRoute
@@ -271,6 +279,7 @@ export interface FileRoutesById {
   '/admin_/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
+  '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
   '/tools_/new': typeof ToolsNewRoute
@@ -305,6 +314,7 @@ export interface FileRouteTypes {
     | '/admin/icons'
     | '/api/sync-config'
     | '/cli/auth'
+    | '/settings/machines'
     | '/stacks/$slug'
     | '/stacks/new'
     | '/tools/new'
@@ -337,6 +347,7 @@ export interface FileRouteTypes {
     | '/admin/icons'
     | '/api/sync-config'
     | '/cli/auth'
+    | '/settings/machines'
     | '/stacks/$slug'
     | '/stacks/new'
     | '/tools/new'
@@ -369,6 +380,7 @@ export interface FileRouteTypes {
     | '/admin_/icons'
     | '/api/sync-config'
     | '/cli/auth'
+    | '/settings/machines'
     | '/stacks/$slug'
     | '/stacks/new'
     | '/tools_/new'
@@ -402,6 +414,7 @@ export interface RootRouteChildren {
   AdminIconsRoute: typeof AdminIconsRoute
   ApiSyncConfigRoute: typeof ApiSyncConfigRoute
   CliAuthRoute: typeof CliAuthRoute
+  SettingsMachinesRoute: typeof SettingsMachinesRoute
   StacksSlugRoute: typeof StacksSlugRoute
   StacksNewRoute: typeof StacksNewRoute
   ToolsNewRoute: typeof ToolsNewRoute
@@ -533,6 +546,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StacksSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings/machines': {
+      id: '/settings/machines'
+      path: '/settings/machines'
+      fullPath: '/settings/machines'
+      preLoaderRoute: typeof SettingsMachinesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cli/auth': {
       id: '/cli/auth'
       path: '/cli/auth'
@@ -661,6 +681,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminIconsRoute: AdminIconsRoute,
   ApiSyncConfigRoute: ApiSyncConfigRoute,
   CliAuthRoute: CliAuthRoute,
+  SettingsMachinesRoute: SettingsMachinesRoute,
   StacksSlugRoute: StacksSlugRoute,
   StacksNewRoute: StacksNewRoute,
   ToolsNewRoute: ToolsNewRoute,

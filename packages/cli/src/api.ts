@@ -17,13 +17,48 @@ function authHeaders(token: string): HeadersInit {
 	return { Authorization: `Bearer ${token}` };
 }
 
-export async function authStart(): Promise<{
+/**
+ * Turn the two statuses #52 introduced into sentences.
+ *
+ * A bare `429` tells the user nothing they can act on, and a bare `403` reads
+ * like a bug rather than a machine that is no longer allowed to do this. Every
+ * other status keeps its number, because the number is all we know about it.
+ */
+function failure(what: string, res: Response): Error {
+	if (res.status === 429) {
+		const retry = res.headers.get("Retry-After");
+		return new Error(
+			retry
+				? `${what}: too many requests. Try again in ${retry} seconds.`
+				: `${what}: too many requests. Try again in a minute.`,
+		);
+	}
+	if (res.status === 403) {
+		return new Error(
+			`${what}: this machine is not allowed to do that. Run \`aistack login\` again to re-link it.`,
+		);
+	}
+	return new Error(`${what}: ${res.status}`);
+}
+
+/**
+ * Open a device-code session.
+ *
+ * `machineName` is a PROPOSAL, not a fact: the approval page renders it in an
+ * editable field, so the user sees the string before it is stored and can
+ * overwrite or clear it. That is why the hostname may be sent automatically —
+ * the consent happens in the browser, a moment later, with the string on screen.
+ */
+export async function authStart(machineName?: string): Promise<{
 	secretId: string;
 	userCode: string;
 	authUrl: string;
 }> {
-	const res = await request("/api/cli/auth/start", { method: "POST" });
-	if (!res.ok) throw new Error(`Auth start failed: ${res.status}`);
+	const res = await request("/api/cli/auth/start", {
+		method: "POST",
+		body: JSON.stringify(machineName ? { machineName } : {}),
+	});
+	if (!res.ok) throw failure("Auth start failed", res);
 	return res.json();
 }
 
@@ -33,7 +68,7 @@ export async function authPoll(
 	const res = await request(
 		`/api/cli/auth/poll?secretId=${encodeURIComponent(secretId)}`,
 	);
-	if (!res.ok) throw new Error(`Auth poll failed: ${res.status}`);
+	if (!res.ok) throw failure("Auth poll failed", res);
 	return res.json();
 }
 
@@ -78,7 +113,7 @@ export async function stackGet(token: string): Promise<StackData | null> {
 			"Authentication expired. Run `npx @use-aistack/cli login` again.",
 		);
 	if (res.status === 404) return null;
-	if (!res.ok) throw new Error(`Stack fetch failed: ${res.status}`);
+	if (!res.ok) throw failure("Stack fetch failed", res);
 	return res.json();
 }
 

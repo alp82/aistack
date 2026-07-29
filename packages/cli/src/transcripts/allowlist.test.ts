@@ -303,6 +303,27 @@ describe("loadSyncConfig", () => {
 		expect(loaded.config.publishCost).toBe(false);
 	});
 
+	it("requires reviewKeptPrivate to be exactly true, and defaults it off", async () => {
+		// The switch is ON server-side by default, so the only way it reads false
+		// here is a config the machine could not read. That direction keeps the
+		// names on the machine and costs the owner one retry.
+		expect(BUNDLED_SYNC_CONFIG.reviewKeptPrivate).toBe(false);
+
+		const read = async (value: unknown) => {
+			const loaded = await loadSyncConfig({
+				baseUrl: "https://aistack.to",
+				fetchImpl: (() =>
+					Promise.resolve(
+						jsonResponse({ ...GOOD_BODY, reviewKeptPrivate: value }),
+					)) as unknown as typeof fetch,
+			});
+			return loaded.config.reviewKeptPrivate;
+		};
+		expect(await read(true)).toBe(true);
+		expect(await read("yes")).toBe(false);
+		expect(await read(undefined)).toBe(false);
+	});
+
 	it("drops names from the server that fail the charset or length bound", async () => {
 		// A server-supplied list can widen what publishes — that is accepted,
 		// because the gate renders every name. It cannot smuggle a control

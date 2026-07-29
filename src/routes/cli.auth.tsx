@@ -5,9 +5,9 @@ import {
 } from "@tanstack/react-router";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { CheckCircle, Terminal, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { Dialog } from "@/components/ui/Dialog";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/Dialog";
 import { seoMeta } from "@/lib/seo";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -43,6 +43,26 @@ function CliAuthPage() {
 	const [selectedStackId, setSelectedStackId] = useState<string | null>(null);
 
 	/**
+	 * What to call this machine on `/settings/machines` (#49).
+	 *
+	 * The CLI proposes its hostname; this field is where the user sees that
+	 * string and gets the final say. `null` means "not prefilled yet" and is
+	 * distinct from `""`, which means the user deliberately cleared it — without
+	 * that distinction the prefill effect would keep refilling a field the user
+	 * just emptied.
+	 */
+	const pending = useQuery(
+		api.cliSessions.getPendingMachineName,
+		isAuthenticated && code ? { userCode: code } : "skip",
+	);
+	const [machineName, setMachineName] = useState<string | null>(null);
+	const machineNameId = useId();
+	const proposedName = pending?.machineName;
+	useEffect(() => {
+		if (proposedName && machineName === null) setMachineName(proposedName);
+	}, [proposedName, machineName]);
+
+	/**
 	 * The measured layer's destination is bound to the token at link time (#33
 	 * decision 7), so this is the one moment the user is asked. Auto-selected
 	 * when there is exactly one stack — the common case, and a one-option
@@ -54,7 +74,8 @@ function CliAuthPage() {
 		[stacks],
 	);
 	useEffect(() => {
-		if (soleStackId && selectedStackId === null) setSelectedStackId(soleStackId);
+		if (soleStackId && selectedStackId === null)
+			setSelectedStackId(soleStackId);
 	}, [soleStackId, selectedStackId]);
 
 	const stacksLoading = isAuthenticated && myStacks === undefined;
@@ -76,9 +97,11 @@ function CliAuthPage() {
 		if (!code) return;
 		setStatus("approving");
 		try {
+			const trimmed = (machineName ?? "").trim();
 			await approveSession({
 				userCode: code,
 				stackId: (selectedStackId as Id<"stacks"> | null) ?? undefined,
+				machineName: trimmed.length > 0 ? trimmed : undefined,
 			});
 			setStatus("approved");
 		} catch (err) {
@@ -137,6 +160,28 @@ function CliAuthPage() {
 						<span className="font-mono text-3xl font-black tracking-[0.3em] text-accent-lime">
 							{code}
 						</span>
+					</div>
+
+					<div className="mb-6">
+						<label
+							htmlFor={machineNameId}
+							className="mb-2 block font-mono text-[0.7rem] font-bold uppercase tracking-wider text-fg-muted"
+						>
+							Name this machine
+						</label>
+						<input
+							id={machineNameId}
+							type="text"
+							maxLength={64}
+							value={machineName ?? ""}
+							onChange={(e) => setMachineName(e.target.value)}
+							placeholder="work laptop"
+							className="w-full border border-border-subtle bg-bg-subtle p-3 font-mono text-sm text-fg-primary placeholder:text-fg-muted"
+						/>
+						<p className="mt-2 font-mono text-[0.7rem] leading-relaxed text-fg-muted">
+							Only you ever see this. It is how you tell your machines apart
+							when you revoke one.
+						</p>
 					</div>
 
 					{stacksLoading && (

@@ -145,6 +145,12 @@ export type SyncConfig = {
 	publishCost: boolean;
 	/** Per-stack ticked names, unioned into the allowlist before filtering. */
 	optIns: OptInNames;
+	/**
+	 * Whether this stack stages its kept-private names on the web so the owner
+	 * can tick them there (#48). Off means the machine sends the payload alone
+	 * and the names never leave it.
+	 */
+	reviewKeptPrivate: boolean;
 };
 
 /**
@@ -163,6 +169,10 @@ export const BUNDLED_SYNC_CONFIG: SyncConfig = {
 	// decision 2: a failed config fetch reverts every ticked name to
 	// kept-private. Losing the network publishes LESS, never more.
 	optIns: EMPTY_OPT_INS,
+	// Same direction again (#48): a machine that cannot read the switch does not
+	// upload the names it is holding back. The default is ON server-side, so this
+	// costs the owner one retry and never costs them a name.
+	reviewKeptPrivate: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -250,6 +260,8 @@ function readSyncConfig(raw: unknown): SyncConfig | null {
 		// Absent means "no stack resolved" — an anonymous fetch, or a token bound
 		// to nothing. Both fail closed to publishing no user-chosen names.
 		optIns: readOptIns(obj.optIns),
+		// Anything other than an explicit `true` keeps the names on the machine.
+		reviewKeptPrivate: obj.reviewKeptPrivate === true,
 	};
 }
 

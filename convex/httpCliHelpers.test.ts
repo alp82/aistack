@@ -2,6 +2,7 @@
 import { convexTest } from 'convex-test'
 import { expect, test } from 'vitest'
 import schema from './schema'
+import { sha256Hex } from './httpCli'
 import { api, internal } from './_generated/api'
 import type { MutationCtx } from './_generated/server'
 import type { Doc, Id } from './_generated/dataModel'
@@ -778,7 +779,8 @@ async function seedBearerToken(
   const now = Date.now()
   await t.run(async (ctx: MutationCtx) => {
     await ctx.db.insert('cliTokens', {
-      token,
+      tokenHash: await sha256Hex(token),
+      scopes: ['collect', 'sync'],
       userId,
       stackId,
       createdAt: now,

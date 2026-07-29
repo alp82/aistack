@@ -64,7 +64,8 @@ async function seedToken(
 ): Promise<Id<'cliTokens'>> {
   return await t.run((ctx) =>
     ctx.db.insert('cliTokens', {
-      token: `tok_${userId}_${Math.random().toString(36).slice(2)}`,
+      tokenHash: `hash_${userId}_${Math.random().toString(36).slice(2)}`,
+      scopes: ['collect', 'sync'],
       userId,
       stackId,
       createdAt: Date.now(),

@@ -393,3 +393,29 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 		},
 	};
 }
+
+/** What `POST /api/cli/sync` takes: one sealed payload, one unsealed half. */
+export type SyncBody = {
+	payload: MeasuredPayload;
+	keptPrivate?: Record<NameCategory, KeptPrivateAtom[]>;
+};
+
+/**
+ * Assemble the request body from a built payload.
+ *
+ * The two halves ride in ONE request (#48): a second call would let them drift
+ * against a newer snapshot. They stay SEPARATE objects because the payload's
+ * validator is closed and rejects any extra key — that closedness is the privacy
+ * claim, so a kept-private name may sit beside the payload and never inside it.
+ *
+ * The switch is read from the sync config the server just served. Off — or a
+ * config the machine could not fetch, which reads as off — sends the payload
+ * alone and the names stay on the machine.
+ */
+export function buildSyncBody(
+	built: BuiltPayload,
+	syncConfig: SyncConfig,
+): SyncBody {
+	if (!syncConfig.reviewKeptPrivate) return { payload: built.payload };
+	return { payload: built.payload, keptPrivate: built.keptPrivate };
+}

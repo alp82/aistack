@@ -4,6 +4,7 @@ import { describe, expect, test } from 'vitest'
 import { api, internal } from './_generated/api'
 import type { Id } from './_generated/dataModel'
 import schema from './schema'
+import { sha256Hex } from './httpCli'
 
 const modules = import.meta.glob('./**/*.{js,ts}')
 
@@ -349,9 +350,10 @@ describe('publishSnapshot — string bounds on the payload', () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
     const token = `tok_${Math.random().toString(36).slice(2)}`
-    await t.run((ctx) =>
+    await t.run(async (ctx) =>
       ctx.db.insert('cliTokens', {
-        token,
+        tokenHash: await sha256Hex(token),
+        scopes: ['collect', 'sync'],
         userId: USER,
         stackId,
         createdAt: Date.now(),
@@ -385,7 +387,8 @@ describe('publishForToken — the destination comes from the token', () => {
   ) {
     return await t.run(async (ctx) =>
       ctx.db.insert('cliTokens', {
-        token: `tok_${Math.random().toString(36).slice(2)}`,
+        tokenHash: await sha256Hex(`tok_${Math.random().toString(36).slice(2)}`),
+        scopes: ['collect', 'sync'],
         userId: opts.userId ?? USER,
         stackId: opts.stackId,
         createdAt: Date.now(),
@@ -1035,6 +1038,8 @@ describe('sync config', () => {
     const config = await t.query(internal.measured.getSyncConfigForStack, { stackId })
     expect(config).toEqual({
       publishCost: true,
+      // #48 mirrors the same rule field-for-field: absent is on.
+      reviewKeptPrivate: true,
       stackName: 'My Stack',
       optIns: EMPTY_OPT_INS,
     })
@@ -1207,9 +1212,10 @@ describe('published-name opt-ins', () => {
 describe('POST /api/cli/sync', () => {
   async function seedLinkedToken(t: Ctx, stackId?: Id<'stacks'>) {
     const token = `tok_${Math.random().toString(36).slice(2)}`
-    await t.run((ctx) =>
+    await t.run(async (ctx) =>
       ctx.db.insert('cliTokens', {
-        token,
+        tokenHash: await sha256Hex(token),
+        scopes: ['collect', 'sync'],
         userId: USER,
         stackId,
         createdAt: Date.now(),
@@ -1246,10 +1252,12 @@ describe('POST /api/cli/sync', () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
     const token = await seedLinkedToken(t, stackId)
+    // By DIGEST — the plaintext column is gone (#52).
+    const tokenHash = await sha256Hex(token)
     await t.run(async (ctx) => {
       const row = await ctx.db
         .query('cliTokens')
-        .withIndex('by_token', (q) => q.eq('token', token))
+        .withIndex('by_tokenHash', (q) => q.eq('tokenHash', tokenHash))
         .first()
       await ctx.db.patch(row!._id, { lastUsedAt: 0 })
     })
@@ -1258,7 +1266,7 @@ describe('POST /api/cli/sync', () => {
     const row = await t.run(async (ctx) =>
       ctx.db
         .query('cliTokens')
-        .withIndex('by_token', (q) => q.eq('token', token))
+        .withIndex('by_tokenHash', (q) => q.eq('tokenHash', tokenHash))
         .first(),
     )
     expect(row!.lastUsedAt).toBeGreaterThan(0)
@@ -1334,9 +1342,10 @@ describe('GET /api/cli/sync-config', () => {
       names: [{ category: 'skills', name: 'alp-river:crossfire' }],
     })
     const token = `tok_${Math.random().toString(36).slice(2)}`
-    await t.run((ctx) =>
+    await t.run(async (ctx) =>
       ctx.db.insert('cliTokens', {
-        token,
+        tokenHash: await sha256Hex(token),
+        scopes: ['collect', 'sync'],
         userId: USER,
         stackId,
         createdAt: Date.now(),
@@ -1363,9 +1372,10 @@ describe('GET /api/cli/sync-config', () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t, { name: 'Owner Stack' })
     const token = `tok_${Math.random().toString(36).slice(2)}`
-    await t.run((ctx) =>
+    await t.run(async (ctx) =>
       ctx.db.insert('cliTokens', {
-        token,
+        tokenHash: await sha256Hex(token),
+        scopes: ['collect', 'sync'],
         userId: USER,
         stackId,
         createdAt: Date.now(),
@@ -1504,5 +1514,420 @@ describe('gcSnapshots', () => {
     // Each stack keeps one old-day row + its recent row.
     expect(rows.filter((r) => r.stackId === a.stackId)).toHaveLength(2)
     expect(rows.filter((r) => r.stackId === b.stackId)).toHaveLength(2)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Kept-private staging (#51, building #48)
+// ---------------------------------------------------------------------------
+
+const EMPTY_KEPT_PRIVATE = {
+  builtinTools: [],
+  mcpServers: [],
+  skills: [],
+  subagents: [],
+  slashCommands: [],
+}
+
+function keptPrivate(over: Record<string, unknown> = {}) {
+  return { ...EMPTY_KEPT_PRIVATE, ...over }
+}
+
+const atom = (name: string, count = 1, group: string | null = null) => ({
+  name,
+  count,
+  group,
+})
+
+async function seedTokenFor(t: Ctx, stackId?: Id<'stacks'>) {
+  const token = `tok_${Math.random().toString(36).slice(2)}`
+  await t.run(async (ctx) =>
+    ctx.db.insert('cliTokens', {
+      tokenHash: await sha256Hex(token),
+      scopes: ['collect', 'sync'],
+      userId: USER,
+      stackId,
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 90 * DAY,
+      lastUsedAt: Date.now(),
+    }),
+  )
+  return token
+}
+
+const postSync = (t: Ctx, body: unknown, token?: string) =>
+  t.fetch('/api/cli/sync', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  })
+
+describe('the unsealed kept-private half of a sync', () => {
+  test('stages the names beside the snapshot, outside the sealed payload', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const token = await seedTokenFor(t, stackId)
+
+    const resp = await postSync(
+      t,
+      {
+        payload: payload(),
+        keptPrivate: keptPrivate({
+          skills: [atom('alp-river:crossfire', 12, 'alp-river')],
+          mcpServers: [atom('acme-internal', 3)],
+        }),
+      },
+      token,
+    )
+    expect(resp.status).toBe(200)
+    expect((await resp.json()) as Record<string, unknown>).toMatchObject({
+      keptPrivate: { stored: 2, refused: false },
+    })
+
+    const rows = await t.run((ctx) => ctx.db.query('keptPrivateNames').collect())
+    expect(rows.map((r) => r.name).sort()).toEqual([
+      'acme-internal',
+      'alp-river:crossfire',
+    ])
+    // The sealed payload is untouched by any of it — the closed validator is
+    // the privacy claim, and a kept-private name never enters it.
+    const snapshot = await t.run((ctx) =>
+      ctx.db.query('measuredSnapshots').first(),
+    )
+    expect(JSON.stringify(snapshot!.payload)).not.toContain('alp-river')
+  })
+
+  test('replaces the whole list every sync rather than accumulating', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const token = await seedTokenFor(t, stackId)
+
+    await postSync(
+      t,
+      { payload: payload(), keptPrivate: keptPrivate({ skills: [atom('old')] }) },
+      token,
+    )
+    await postSync(
+      t,
+      { payload: payload(), keptPrivate: keptPrivate({ skills: [atom('new')] }) },
+      token,
+    )
+
+    const rows = await t.run((ctx) => ctx.db.query('keptPrivateNames').collect())
+    // A name outside the current window is not in the snapshot either, so
+    // ticking it would publish nothing. The list means exactly "names in your
+    // current window you have not published".
+    expect(rows.map((r) => r.name)).toEqual(['new'])
+  })
+
+  test('an absent half leaves the staged list alone', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const token = await seedTokenFor(t, stackId)
+
+    await postSync(
+      t,
+      { payload: payload(), keptPrivate: keptPrivate({ skills: [atom('kept')] }) },
+      token,
+    )
+    const resp = await postSync(t, { payload: payload() }, token)
+    expect((await resp.json()) as Record<string, unknown>).toMatchObject({
+      keptPrivate: { stored: 0, refused: false },
+    })
+    const rows = await t.run((ctx) => ctx.db.query('keptPrivateNames').collect())
+    expect(rows).toHaveLength(1)
+  })
+
+  test('refuses the half — not the sync — when the switch is off', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const token = await seedTokenFor(t, stackId)
+    await t.run((ctx) => ctx.db.patch(stackId, { reviewKeptPrivate: false }))
+
+    const resp = await postSync(
+      t,
+      { payload: payload(), keptPrivate: keptPrivate({ skills: [atom('nope')] }) },
+      token,
+    )
+    // The snapshot still lands: an owner who flips the switch mid-sync must not
+    // lose the measurement over it.
+    expect(resp.status).toBe(200)
+    expect((await resp.json()) as Record<string, unknown>).toMatchObject({
+      keptPrivate: { stored: 0, refused: true },
+    })
+    expect(
+      await t.run((ctx) => ctx.db.query('keptPrivateNames').collect()),
+    ).toHaveLength(0)
+    expect(
+      await t.run((ctx) => ctx.db.query('measuredSnapshots').collect()),
+    ).toHaveLength(1)
+  })
+
+  test('bounds the unsealed half — #45 bounds the payload, not this', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const token = await seedTokenFor(t, stackId)
+
+    const unrenderable = await postSync(
+      t,
+      {
+        payload: payload(),
+        keptPrivate: keptPrivate({ skills: [atom('bad‮name')] }),
+      },
+      token,
+    )
+    expect(unrenderable.status).toBe(400)
+
+    const tooMany = await postSync(
+      t,
+      {
+        payload: payload(),
+        keptPrivate: keptPrivate({
+          skills: Array.from({ length: 501 }, (_, i) => atom(`s${i}`)),
+        }),
+      },
+      token,
+    )
+    expect(tooMany.status).toBe(400)
+
+    const badGroup = await postSync(
+      t,
+      {
+        payload: payload(),
+        keptPrivate: keptPrivate({ skills: [atom('fine', 1, 'gr oup')] }),
+      },
+      token,
+    )
+    expect(badGroup.status).toBe(400)
+
+    const badCount = await postSync(
+      t,
+      {
+        payload: payload(),
+        keptPrivate: keptPrivate({ skills: [atom('fine', -1)] }),
+      },
+      token,
+    )
+    expect(badCount.status).toBe(400)
+
+    // A rejected half must not leave a snapshot behind either: the two travel
+    // in one request and one transaction.
+    expect(
+      await t.run((ctx) => ctx.db.query('measuredSnapshots').collect()),
+    ).toHaveLength(0)
+    expect(
+      await t.run((ctx) => ctx.db.query('keptPrivateNames').collect()),
+    ).toHaveLength(0)
+  })
+})
+
+describe('the review switch', () => {
+  test('rides down the authenticated half of sync-config, absent means on', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const token = await seedTokenFor(t, stackId)
+
+    const read = async () => {
+      const resp = await t.fetch('/api/cli/sync-config', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      return (await resp.json()) as { reviewKeptPrivate: boolean }
+    }
+    expect((await read()).reviewKeptPrivate).toBe(true)
+
+    await t.run((ctx) => ctx.db.patch(stackId, { reviewKeptPrivate: false }))
+    expect((await read()).reviewKeptPrivate).toBe(false)
+  })
+
+  test('fails closed without a bearer, exactly like publishCost', async () => {
+    const t = convexTest(schema, modules)
+    const resp = await t.fetch('/api/cli/sync-config', { method: 'GET' })
+    const body = (await resp.json()) as { reviewKeptPrivate: boolean }
+    expect(body.reviewKeptPrivate).toBe(false)
+  })
+
+  test('flipping it off deletes the staged list; ticks survive', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const token = await seedTokenFor(t, stackId)
+    const as = t.withIdentity(IDENTITY)
+
+    await postSync(
+      t,
+      {
+        payload: payload(),
+        keptPrivate: keptPrivate({ skills: [atom('alp-river:crossfire', 4)] }),
+      },
+      token,
+    )
+    await as.mutation(api.measured.addPublishedNameOptIns, {
+      stackId,
+      names: [{ category: 'skills', name: 'alp-river:crossfire' }],
+    })
+
+    const result = await as.mutation(api.measured.setReviewKeptPrivate, {
+      stackId,
+      enabled: false,
+    })
+    expect(result.deleted).toBe(1)
+    expect(
+      await t.run((ctx) => ctx.db.query('keptPrivateNames').collect()),
+    ).toHaveLength(0)
+    // A tick is a standing permission and outlives the staging store entirely.
+    expect(
+      await as.query(api.measured.listPublishedNameOptIns, { stackId }),
+    ).toHaveLength(1)
+  })
+
+  test('only the owner may flip it or read the staged names', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const stranger = t.withIdentity(OTHER_IDENTITY)
+
+    await expect(
+      stranger.mutation(api.measured.setReviewKeptPrivate, {
+        stackId,
+        enabled: false,
+      }),
+    ).rejects.toThrow(/not authorized/i)
+    await expect(
+      stranger.query(api.measured.listKeptPrivate, { stackId }),
+    ).rejects.toThrow(/not authorized/i)
+  })
+
+  test('the staged names never reach a public read', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const token = await seedTokenFor(t, stackId)
+    await postSync(
+      t,
+      {
+        payload: payload(),
+        keptPrivate: keptPrivate({ mcpServers: [atom('acme-internal')] }),
+      },
+      token,
+    )
+
+    const publicRead = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(JSON.stringify(publicRead)).not.toContain('acme-internal')
+  })
+})
+
+describe('listKeptPrivate', () => {
+  test('returns the staged names with their counts and groups', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const token = await seedTokenFor(t, stackId)
+    await postSync(
+      t,
+      {
+        payload: payload(),
+        keptPrivate: keptPrivate({
+          skills: [atom('alp-river:crossfire', 4, 'alp-river'), atom('solo', 9)],
+        }),
+      },
+      token,
+    )
+
+    const listed = await t
+      .withIdentity(IDENTITY)
+      .query(api.measured.listKeptPrivate, { stackId })
+    expect(listed.reviewEnabled).toBe(true)
+    expect(listed.stagedAt).toBeGreaterThan(0)
+    // Most-used first, the order the gate showed them in.
+    expect(listed.names.map((n) => n.name)).toEqual(['solo', 'alp-river:crossfire'])
+    expect(listed.names[1]).toMatchObject({
+      category: 'skills',
+      count: 4,
+      group: 'alp-river',
+      published: false,
+    })
+  })
+
+  test('carries ticked names too, so a tick can be taken back', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const as = t.withIdentity(IDENTITY)
+    await as.mutation(api.measured.addPublishedNameOptIns, {
+      stackId,
+      names: [{ category: 'skills', name: 'alp-river:crossfire' }],
+    })
+
+    // A ticked name PUBLISHES, so the machine never stages it — the tick set is
+    // the only place it can be revoked from.
+    const listed = await as.query(api.measured.listKeptPrivate, { stackId })
+    expect(listed.names).toHaveLength(1)
+    expect(listed.names[0]).toMatchObject({
+      name: 'alp-river:crossfire',
+      published: true,
+      group: 'alp-river',
+    })
+  })
+
+  test('a name that is both staged and ticked appears once, as published', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const token = await seedTokenFor(t, stackId)
+    const as = t.withIdentity(IDENTITY)
+    await postSync(
+      t,
+      { payload: payload(), keptPrivate: keptPrivate({ skills: [atom('dup', 7)] }) },
+      token,
+    )
+    await as.mutation(api.measured.addPublishedNameOptIns, {
+      stackId,
+      names: [{ category: 'skills', name: 'dup' }],
+    })
+
+    const listed = await as.query(api.measured.listKeptPrivate, { stackId })
+    expect(listed.names).toHaveLength(1)
+    expect(listed.names[0]).toMatchObject({ published: true, count: 7 })
+  })
+})
+
+describe('kept-private expiry', () => {
+  test('the retention cron drops a list older than 30 days', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const token = await seedTokenFor(t, stackId)
+    await postSync(
+      t,
+      { payload: payload(), keptPrivate: keptPrivate({ skills: [atom('stale')] }) },
+      token,
+    )
+    await t.run(async (ctx) => {
+      for (const row of await ctx.db.query('keptPrivateNames').collect()) {
+        await ctx.db.patch(row._id, { stagedAt: Date.now() - 31 * DAY })
+      }
+    })
+
+    const result = await t.mutation(internal.measured.gcSnapshots, {})
+    expect(result.keptPrivateDeleted).toBe(1)
+    expect(
+      await t.run((ctx) => ctx.db.query('keptPrivateNames').collect()),
+    ).toHaveLength(0)
+  })
+
+  test('a fresh list survives the cron', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const token = await seedTokenFor(t, stackId)
+    await postSync(
+      t,
+      { payload: payload(), keptPrivate: keptPrivate({ skills: [atom('fresh')] }) },
+      token,
+    )
+
+    const result = await t.mutation(internal.measured.gcSnapshots, {})
+    expect(result.keptPrivateDeleted).toBe(0)
+    expect(
+      await t.run((ctx) => ctx.db.query('keptPrivateNames').collect()),
+    ).toHaveLength(1)
   })
 })

@@ -1,8 +1,31 @@
+import { hostname } from "node:os";
 import * as p from "@clack/prompts";
 import open from "open";
-import { authStart, authPoll } from "../api.js";
+import { authPoll, authStart } from "../api.js";
 import { saveToken } from "../config.js";
 import { dim, intro, lime, limeBold, outro, outroError } from "../theme.js";
+
+/**
+ * What to call this machine on the account's linked-machines list (#49).
+ *
+ * The hostname is only a proposal — the approval page shows it in an editable
+ * field before anything is stored. Trimmed to the server's 64-character bound so
+ * a long hostname is dropped by us rather than silently by the server, and
+ * `.local` is stripped because mDNS suffixes carry no information for a reader.
+ */
+export function proposedMachineName(
+	read: () => string = hostname,
+): string | undefined {
+	try {
+		const name = read()
+			.trim()
+			.replace(/\.local$/i, "");
+		if (!name || name.length > 64) return undefined;
+		return name;
+	} catch {
+		return undefined;
+	}
+}
 
 export async function loginCommand() {
 	intro("login");
@@ -12,7 +35,7 @@ export async function loginCommand() {
 
 	let session: Awaited<ReturnType<typeof authStart>>;
 	try {
-		session = await authStart();
+		session = await authStart(proposedMachineName());
 		s.stop("Session created");
 	} catch (err) {
 		s.stop("Failed to start authentication");

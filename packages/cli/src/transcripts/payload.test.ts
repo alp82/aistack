@@ -14,6 +14,7 @@ import {
 import { assistant, slashCommand, toolUse } from "./fixtures.js";
 import {
 	buildPayload,
+	buildSyncBody,
 	type MeasuredPayload,
 	sanitizeModelId,
 } from "./payload.js";
@@ -39,6 +40,7 @@ const config = (over: Partial<SyncConfig> = {}): SyncConfig => ({
 		slashCommands: ["clear"],
 	},
 	optIns: EMPTY_OPT_INS,
+	reviewKeptPrivate: false,
 	...over,
 });
 
@@ -236,6 +238,48 @@ describe("the gate's review list", () => {
 		// payload carries only the count.
 		expect(JSON.stringify(built.payload)).not.toContain("alp-river");
 		expect(built.payload.inventory.withheld.skills).toBe(1);
+	});
+});
+
+describe("buildSyncBody — the unsealed half (#48)", () => {
+	const built = () => {
+		const agg = createAggregate();
+		for (const r of [
+			assistant({
+				content: [toolUse("Skill", { skill: "alp-river:crossfire" })],
+			}),
+		])
+			ingestRecord(agg, r, { projectDir: "-home-u-secret-client" });
+		return buildPayload({
+			aggregate: agg,
+			stats: CLEAN_STATS,
+			syncConfig: config(),
+			now: NOW,
+			windowDays: 30,
+		});
+	};
+
+	it("sends the payload alone when the switch is off", () => {
+		const body = buildSyncBody(built(), config({ reviewKeptPrivate: false }));
+		expect(body.keptPrivate).toBeUndefined();
+		expect(JSON.stringify(body)).not.toContain("alp-river");
+	});
+
+	it("sends the names beside the payload, never inside it, when it is on", () => {
+		const body = buildSyncBody(built(), config({ reviewKeptPrivate: true }));
+		expect(body.keptPrivate?.skills).toEqual([
+			{ name: "alp-river:crossfire", count: 1, group: "alp-river" },
+		]);
+		// The closed payload validator is the privacy claim (#38/#45). The name
+		// rides in the request, outside the object that validator guards.
+		expect(JSON.stringify(body.payload)).not.toContain("alp-river");
+	});
+
+	it("keeps the names home when the config could not be fetched", () => {
+		// The bundled fallback fails closed on this exactly like publishCost and
+		// optIns: losing the network transmits LESS.
+		const body = buildSyncBody(built(), BUNDLED_SYNC_CONFIG);
+		expect(body.keptPrivate).toBeUndefined();
 	});
 });
 

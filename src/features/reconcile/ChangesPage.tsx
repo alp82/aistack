@@ -3,7 +3,8 @@ import { ArrowLeft, Rows3, Square } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { headline, KICKER } from "./copy";
+import { headline, KEPT_PRIVATE, KICKER } from "./copy";
+import { KeptPrivatePane } from "./KeptPrivatePane";
 import {
 	AddedPane,
 	FreshLine,
@@ -14,6 +15,7 @@ import {
 	OneItem,
 	WholeList,
 } from "./parts";
+import { useKeptPrivate } from "./useKeptPrivate";
 import { useReconcileRun } from "./useReconcileRun";
 
 /**
@@ -33,7 +35,7 @@ import { useReconcileRun } from "./useReconcileRun";
  * the authored tools with no snapshot involved, so a stack that has never
  * synced still has real work here.
  */
-type View = "one" | "list" | "added" | "hidden";
+type View = "one" | "list" | "added" | "hidden" | "keptPrivate";
 
 export function ChangesPage({
 	stackId,
@@ -45,6 +47,7 @@ export function ChangesPage({
 	stackSlug: string;
 }) {
 	const run = useReconcileRun(stackId);
+	const kept = useKeptPrivate(stackId);
 	const [view, setView] = useState<View>("one");
 
 	return (
@@ -116,6 +119,9 @@ export function ChangesPage({
 							[
 								["added", "Added", run.added.length],
 								["hidden", "Hidden", run.hidden.length],
+								// Third secondary counter (#51). These already sit OUTSIDE
+								// the meter, which is exactly what makes room for it.
+								["keptPrivate", KEPT_PRIVATE.TAB, kept.count],
 							] as const
 						).map(([key, label, count]) => (
 							<button
@@ -161,6 +167,9 @@ export function ChangesPage({
 						{view === "list" && <WholeList run={run} />}
 						{view === "added" && <AddedPane run={run} />}
 						{view === "hidden" && <HiddenPane run={run} />}
+						{view === "keptPrivate" && (
+							<KeptPrivatePane run={kept} hasSnapshot={run.hasSnapshot} />
+						)}
 					</>
 				)}
 			</div>

@@ -49,12 +49,14 @@ export {
 export { BUNDLED_CURATED_ALLOWLIST } from "./bundled-allowlist.js";
 export {
 	buildPayload,
+	buildSyncBody,
 	HARNESS_NAME,
 	type MeasuredPayload,
 	type PayloadAtom,
 	type PayloadInventory,
 	type PayloadModel,
 	SCHEMA_VERSION,
+	type SyncBody,
 	sanitizeModelId,
 } from "./payload.js";
 export {

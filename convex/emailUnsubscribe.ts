@@ -99,7 +99,9 @@ export const unsubscribe = httpAction(async (ctx, request) => {
 
   if (email === null) {
     const ip = ipFromForwardedFor(request)
-    const rl = await ctx.runMutation(api.rateLimit.checkApiRateLimit, { ip })
+    // Namespaced, because the same table now also holds bearer-token buckets
+    // (#52) and two kinds of caller must never collide.
+    const rl = await ctx.runMutation(api.rateLimit.checkApiRateLimit, { key: `ip:${ip}` })
     if (!rl.allowed) {
       if (isPost) {
         return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), {

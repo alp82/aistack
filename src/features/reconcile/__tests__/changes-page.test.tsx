@@ -12,7 +12,13 @@
  *   3. ONE METER ACROSS BOTH VIEWS. Answering a row in the list has to move the
  *      same percentage answering the card would.
  */
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+	act,
+	cleanup,
+	fireEvent,
+	render,
+	screen,
+} from "@testing-library/react";
 import { getFunctionName } from "convex/server";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -72,28 +78,58 @@ type Dismissal = {
 	dismissedAt: number;
 };
 
-/** Wire the two queries and hand back a spy per mutation. */
+type KeptPrivate = {
+	reviewEnabled: boolean;
+	stagedAt: number | null;
+	names: Array<{
+		category: "skills" | "mcpServers";
+		name: string;
+		count?: number;
+		group: string | null;
+		published: boolean;
+	}>;
+};
+
+const NO_KEPT_PRIVATE: KeptPrivate = {
+	reviewEnabled: true,
+	stagedAt: null,
+	names: [],
+};
+
+/** Wire the three queries and hand back a spy per mutation. */
 function setup(opts: {
 	data?: Suggestions | undefined;
 	dismissals?: Dismissal[];
+	keptPrivate?: KeptPrivate;
 }) {
 	const spies = {
 		applyWhatFor: vi.fn().mockResolvedValue(null),
 		addMeasuredModel: vi.fn().mockResolvedValue(null),
 		dismissSuggestion: vi.fn().mockResolvedValue(null),
 		undismissSuggestion: vi.fn().mockResolvedValue(null),
+		addPublishedNameOptIns: vi.fn().mockResolvedValue({ added: 1 }),
+		removePublishedNameOptIns: vi.fn().mockResolvedValue({ removed: 1 }),
+		setReviewKeptPrivate: vi.fn().mockResolvedValue({ deleted: 0 }),
 	};
 	// Route by function name: the generated `api` is a proxy that hands back a
 	// fresh object per property access, so `===` on the reference never matches.
-	queryMock.mockImplementation((ref: never) =>
-		getFunctionName(ref).endsWith("getReconcileSuggestions")
-			? opts.data
-			: (opts.dismissals ?? []),
-	);
+	queryMock.mockImplementation((ref: never) => {
+		const name = getFunctionName(ref);
+		if (name.endsWith("getReconcileSuggestions")) return opts.data;
+		if (name.endsWith("listKeptPrivate"))
+			return opts.keptPrivate ?? NO_KEPT_PRIVATE;
+		return opts.dismissals ?? [];
+	});
 	mutationMock.mockImplementation((ref: never) => {
 		const name = getFunctionName(ref);
 		if (name.endsWith("applyWhatFor")) return spies.applyWhatFor;
 		if (name.endsWith("addMeasuredModel")) return spies.addMeasuredModel;
+		if (name.endsWith("addPublishedNameOptIns"))
+			return spies.addPublishedNameOptIns;
+		if (name.endsWith("removePublishedNameOptIns"))
+			return spies.removePublishedNameOptIns;
+		if (name.endsWith("setReviewKeptPrivate"))
+			return spies.setReviewKeptPrivate;
 		// Order matters: "undismissSuggestion" also ends with "dismissSuggestion".
 		if (name.endsWith("undismissSuggestion")) return spies.undismissSuggestion;
 		return spies.dismissSuggestion;
@@ -277,5 +313,171 @@ describe("the vocabulary binds", () => {
 		}
 		// The two kept on purpose, because replacing them would be a lie.
 		expect(text).toContain("API prices");
+	});
+});
+
+describe("the Kept private view", () => {
+	const STAGED: KeptPrivate = {
+		reviewEnabled: true,
+		stagedAt: Date.now() - HOUR,
+		names: [
+			{
+				category: "skills",
+				name: "alp-river:crossfire",
+				count: 12,
+				group: "alp-river",
+				published: false,
+			},
+			{
+				category: "skills",
+				name: "alp-river:wayfinder",
+				count: 4,
+				group: "alp-river",
+				published: false,
+			},
+			{
+				category: "mcpServers",
+				name: "acme-internal",
+				count: 3,
+				group: null,
+				published: false,
+			},
+		],
+	};
+
+	const open = () => fireEvent.click(screen.getByText(/Kept private/));
+
+	it("counts only what is still held back", () => {
+		setup({
+			data: FRESH,
+			keptPrivate: {
+				...STAGED,
+				names: [
+					...STAGED.names,
+					{
+						category: "skills",
+						name: "already-out",
+						count: 1,
+						group: null,
+						published: true,
+					},
+				],
+			},
+		});
+		// A published name shows in the view so it can be taken back, but it is
+		// not kept private — counting it would make the number contradict its own
+		// label.
+		expect(screen.getByText("Kept private (3)")).toBeTruthy();
+	});
+
+	it("groups by plugin and publishes every name in the group expanded", async () => {
+		const spies = setup({ data: FRESH, keptPrivate: STAGED });
+		open();
+
+		expect(screen.getByText("alp-river")).toBeTruthy();
+		await act(async () => {
+			fireEvent.click(screen.getByText("publish all"));
+		});
+
+		// #42 decision 3: the group is a way to LOOK at the list, never a way to
+		// store it. A stored `alp-river:*` would grant names nobody has thought of.
+		expect(spies.addPublishedNameOptIns).toHaveBeenCalledWith({
+			stackId: STACK_ID,
+			names: [
+				{ category: "skills", name: "alp-river:crossfire" },
+				{ category: "skills", name: "alp-river:wayfinder" },
+			],
+		});
+	});
+
+	it("publishes one name, and says when it takes effect", async () => {
+		const spies = setup({
+			data: FRESH,
+			keptPrivate: { ...STAGED, names: [STAGED.names[2]] },
+		});
+		open();
+
+		await act(async () => {
+			fireEvent.click(screen.getByText("publish"));
+		});
+		expect(spies.addPublishedNameOptIns).toHaveBeenCalledWith({
+			stackId: STACK_ID,
+			names: [{ category: "mcpServers", name: "acme-internal" }],
+		});
+		// Nothing is published NOW. A tick is a standing permission, and writing a
+		// snapshot here would let a web checkbox fake the 7-day living bar (#48).
+		expect(
+			await screen.findByText("Publishes on your next sync."),
+		).toBeTruthy();
+	});
+
+	it("takes a published name back", async () => {
+		const spies = setup({
+			data: FRESH,
+			keptPrivate: {
+				...STAGED,
+				names: [
+					{
+						category: "skills",
+						name: "already-out",
+						count: 2,
+						group: null,
+						published: true,
+					},
+				],
+			},
+		});
+		open();
+
+		await act(async () => {
+			fireEvent.click(screen.getByText("keep private"));
+		});
+		expect(spies.removePublishedNameOptIns).toHaveBeenCalledWith({
+			stackId: STACK_ID,
+			names: [{ category: "skills", name: "already-out" }],
+		});
+	});
+
+	it("renders the switch, and flips it", async () => {
+		const spies = setup({ data: FRESH, keptPrivate: STAGED });
+		open();
+
+		expect(screen.getByText("Review kept-private names here")).toBeTruthy();
+		expect(
+			screen.getByText(
+				"Your machine sends them so you can publish them. Off means we never see them.",
+			),
+		).toBeTruthy();
+
+		const box = screen.getByRole("checkbox") as HTMLInputElement;
+		expect(box.checked).toBe(true);
+		await act(async () => {
+			fireEvent.click(box);
+		});
+		expect(spies.setReviewKeptPrivate).toHaveBeenCalledWith({
+			stackId: STACK_ID,
+			enabled: false,
+		});
+	});
+
+	it("asks a never-synced stack to sync rather than calling it empty", () => {
+		setup({
+			data: {
+				hasSnapshot: false,
+				receivedAt: null,
+				isFresh: false,
+				suggestions: [TOOL_ITEM],
+				dismissedCount: 0,
+			},
+			keptPrivate: NO_KEPT_PRIVATE,
+		});
+		open();
+		expect(screen.getByText("Sync to see names.")).toBeTruthy();
+	});
+
+	it("says nothing is kept private once a sync has arrived", () => {
+		setup({ data: FRESH, keptPrivate: NO_KEPT_PRIVATE });
+		open();
+		expect(screen.getByText("Nothing kept private.")).toBeTruthy();
 	});
 });

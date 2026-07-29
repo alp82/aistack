@@ -319,7 +319,7 @@ describe("GET handler — 200 via peer address when no XFF (local dev)", () => {
 		expect(response.status).toBe(200);
 
 		expect(mockMutation).toHaveBeenCalledWith(expect.anything(), {
-			ip: "127.0.0.1",
+			key: "ip:127.0.0.1",
 		});
 
 		const body = await response.json();

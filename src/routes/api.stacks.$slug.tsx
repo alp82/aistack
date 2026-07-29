@@ -115,8 +115,10 @@ export const Route = createFileRoute("/api/stacks/$slug")({
 				const ip = clientIp(request);
 				if (!ip) return jsonError(400, "Could not determine client address");
 				try {
+					// Namespaced, because the same table now also holds bearer-token
+					// buckets (#52) and two kinds of caller must never collide.
 					const rl = await convex.mutation(api.rateLimit.checkApiRateLimit, {
-						ip,
+						key: `ip:${ip}`,
 					});
 					if (!rl.allowed) {
 						return jsonError(429, "Rate limit exceeded", {

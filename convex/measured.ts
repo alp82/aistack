@@ -1043,6 +1043,7 @@ export const getSyncConfigForStack = internalQuery({
   args: { stackId: v.id('stacks') },
   returns: v.object({
     publishCost: v.boolean(),
+    reviewKeptPrivate: v.boolean(),
     stackName: v.string(),
     optIns: OptInNames,
   }),
@@ -1053,8 +1054,236 @@ export const getSyncConfigForStack = internalQuery({
     // has never seen the toggle has not refused.
     return {
       publishCost: stack.publishCost !== false,
+      // Same rule, same shape, deliberately (#48): absent means on, and the
+      // approve gate names the switch before the first upload.
+      reviewKeptPrivate: stack.reviewKeptPrivate !== false,
       stackName: stack.name,
       optIns: await optInsForStack(ctx, args.stackId),
+    }
+  },
+})
+
+// ---------------------------------------------------------------------------
+// Kept-private staging — the names the owner has NOT published (#48)
+// ---------------------------------------------------------------------------
+
+/**
+ * The unsealed half of a sync body.
+ *
+ * #38 and #45 hold that a payload carrying an extra key is REJECTED, and that
+ * closedness is the privacy claim. So the staged names could not ride inside
+ * the payload without breaking the sentence — they ride beside it, in the same
+ * request, so the two halves can never drift against a newer snapshot.
+ *
+ * Every field is client-supplied and every field is bounded (`checkStagedNames`).
+ * #45 bounds the payload; this is a second surface and needs its own assertion.
+ */
+const KeptPrivateAtom = v.object({
+  name: v.string(),
+  count: v.number(),
+  group: v.union(v.string(), v.null()),
+})
+
+const KeptPrivateNames = v.object({
+  builtinTools: v.array(KeptPrivateAtom),
+  mcpServers: v.array(KeptPrivateAtom),
+  skills: v.array(KeptPrivateAtom),
+  subagents: v.array(KeptPrivateAtom),
+  slashCommands: v.array(KeptPrivateAtom),
+})
+
+type StagedAtom = { name: string; count: number; group: string | null }
+
+/** A staged list is thrown away this long after the sync that wrote it. */
+const KEPT_PRIVATE_TTL_MS = 30 * 24 * 60 * 60 * 1000
+
+function flattenStaged(
+  names: Record<NameCategory, StagedAtom[]>
+): Array<StagedAtom & { category: NameCategory }> {
+  const out: Array<StagedAtom & { category: NameCategory }> = []
+  for (const category of NAME_CATEGORIES) {
+    for (const atom of names[category]) out.push({ ...atom, category })
+  }
+  return out
+}
+
+/**
+ * The bound on the unsealed half.
+ *
+ * `checkNames` is reused rather than reimplemented so a name the owner can tick
+ * and a name their machine can stage are held to ONE bar — two copies would
+ * drift into a name that stages but can never be ticked. The group and the count
+ * are bounded here because they are client strings and numbers too: #45's rule
+ * is that EVERY client-supplied field gets a bound, not only the interesting one.
+ */
+function checkStagedNames(
+  entries: ReadonlyArray<StagedAtom & { category: NameCategory }>
+): void {
+  checkNames(entries)
+  for (const entry of entries) {
+    if (entry.group !== null && !isDisplaySafeName(entry.group)) {
+      throw new Error(
+        `A group must be 1-${NAME_MAX} characters and carry no control or bidi characters`
+      )
+    }
+    if (!Number.isInteger(entry.count) || entry.count < 0) {
+      throw new Error('A kept-private count must be a non-negative integer')
+    }
+  }
+}
+
+/**
+ * Replace a stack's staged list.
+ *
+ * REPLACE, never merge. A name outside the current rolling window is not in the
+ * snapshot either, so ticking it would publish nothing — which is what makes the
+ * list mean exactly "names in your current window you have not published".
+ */
+async function replaceKeptPrivate(
+  ctx: MutationCtx,
+  stackId: Id<'stacks'>,
+  names: Record<NameCategory, StagedAtom[]>,
+  stagedAt: number
+): Promise<number> {
+  await deleteKeptPrivate(ctx, stackId)
+  const flat = flattenStaged(names)
+  checkStagedNames(flat)
+  for (const entry of flat) {
+    await ctx.db.insert('keptPrivateNames', {
+      stackId,
+      category: entry.category,
+      name: entry.name,
+      count: entry.count,
+      group: entry.group,
+      stagedAt,
+    })
+  }
+  return flat.length
+}
+
+async function deleteKeptPrivate(
+  ctx: MutationCtx,
+  stackId: Id<'stacks'>
+): Promise<number> {
+  const rows = await ctx.db
+    .query('keptPrivateNames')
+    .withIndex('by_stack', (q) => q.eq('stackId', stackId))
+    .collect()
+  for (const row of rows) await ctx.db.delete(row._id)
+  return rows.length
+}
+
+/**
+ * Turn staging on or off. Owner-only.
+ *
+ * Off DELETES the list, in the same transaction. The switch says "off means we
+ * never see them", and a switch that leaves the last upload sitting in the
+ * database would make that sentence false the moment it is flipped.
+ */
+export const setReviewKeptPrivate = mutation({
+  args: { stackId: v.id('stacks'), enabled: v.boolean() },
+  returns: v.object({ deleted: v.number() }),
+  handler: async (ctx, args) => {
+    await requireStackOwner(ctx, args.stackId)
+    await ctx.db.patch(args.stackId, { reviewKeptPrivate: args.enabled })
+    // Ticks are untouched: a tick is a standing permission, not a name we hold.
+    const deleted = args.enabled ? 0 : await deleteKeptPrivate(ctx, args.stackId)
+    return { deleted }
+  },
+})
+
+/**
+ * The plugin a ticked name came from.
+ *
+ * The machine is the authority on grouping and sends `group` with every staged
+ * name, so this covers only the other half of the view: a name that is already
+ * ticked PUBLISHES, so it is never staged, so it arrives here with no group at
+ * all. Mirrors `pluginGroup` in packages/cli/src/transcripts/allowlist.ts.
+ */
+function groupOfTickedName(name: string): string | null {
+  return (
+    /^plugin_([^_]+)_(.+)$/.exec(name)?.[1] ??
+    /^([^:\s]+):(.+)$/.exec(name)?.[1] ??
+    null
+  )
+}
+
+const KeptPrivateRow = v.object({
+  category: PublishedNameCategory,
+  name: v.string(),
+  /** Absent for a ticked name: it publishes, so no sync ever staged a count. */
+  count: v.optional(v.number()),
+  group: v.union(v.string(), v.null()),
+  /** True when the owner has ticked it — the row the revoke action acts on. */
+  published: v.boolean(),
+})
+
+/**
+ * What the `Kept private` view renders. Owner-only, and joined into NO public
+ * read — this store is the thing #48 rejected read-time promotion FROM.
+ *
+ * It is a union of two sets, because they are two halves of one question:
+ * what the machine staged (not published), and what the owner has ticked
+ * (published, and revocable only from here — a ticked name never stages again).
+ */
+export const listKeptPrivate = query({
+  args: { stackId: v.id('stacks') },
+  returns: v.object({
+    reviewEnabled: v.boolean(),
+    /** When the staged list arrived, or null when nothing is staged. */
+    stagedAt: v.union(v.number(), v.null()),
+    names: v.array(KeptPrivateRow),
+  }),
+  handler: async (ctx, args) => {
+    const stack = await requireStackOwner(ctx, args.stackId)
+
+    const staged = await ctx.db
+      .query('keptPrivateNames')
+      .withIndex('by_stack', (q) => q.eq('stackId', args.stackId))
+      .collect()
+    const optIns = await ctx.db
+      .query('publishedNameOptIns')
+      .withIndex('by_stack', (q) => q.eq('stackId', args.stackId))
+      .collect()
+
+    type Row = {
+      category: NameCategory
+      name: string
+      count?: number
+      group: string | null
+      published: boolean
+    }
+    const rows = new Map<string, Row>()
+    for (const row of staged) {
+      rows.set(`${row.category}:${row.name}`, {
+        category: row.category,
+        name: row.name,
+        count: row.count,
+        group: row.group,
+        published: false,
+      })
+    }
+    for (const row of optIns) {
+      const key = `${row.category}:${row.name}`
+      const held = rows.get(key)
+      // A staged row that is ALSO ticked keeps its count — the count is real
+      // and the tick is what changed. It shows once, as published.
+      rows.set(key, {
+        category: row.category,
+        name: row.name,
+        count: held?.count,
+        group: held?.group ?? groupOfTickedName(row.name),
+        published: true,
+      })
+    }
+
+    return {
+      reviewEnabled: stack.reviewKeptPrivate !== false,
+      stagedAt: staged[0]?.stagedAt ?? null,
+      names: [...rows.values()].sort(
+        (a, b) =>
+          (b.count ?? 0) - (a.count ?? 0) || a.name.localeCompare(b.name)
+      ),
     }
   },
 })
@@ -1087,7 +1316,12 @@ const utcDay = (ms: number): string => new Date(ms).toISOString().slice(0, 10)
  */
 export const gcSnapshots = internalMutation({
   args: {},
-  returns: v.object({ scanned: v.number(), deleted: v.number() }),
+  returns: v.object({
+    scanned: v.number(),
+    deleted: v.number(),
+    /** Staged kept-private names aged out — see the note below. */
+    keptPrivateDeleted: v.number(),
+  }),
   handler: async (ctx) => {
     const cutoff = Date.now() - FINE_GRAIN_MS
     const old = await ctx.db
@@ -1126,20 +1360,55 @@ export const gcSnapshots = internalMutation({
       deleted++
     }
 
-    return { scanned: old.length, deleted }
+    return {
+      scanned: old.length,
+      deleted,
+      keptPrivateDeleted: await gcKeptPrivate(ctx),
+    }
   },
 })
+
+/**
+ * Age out staged kept-private names, in the same cron rather than a second one.
+ *
+ * The opposite policy to the snapshots above: these are DELETED, not
+ * downsampled. They are strings the owner never agreed to publish, and after 30
+ * days every one of them is outside any rolling window it could describe — a
+ * tick on it would publish nothing, so holding it buys the owner nothing and
+ * costs them a name we should not have.
+ *
+ * This is also what covers a deleted stack. There is no stack-delete path in the
+ * codebase today, so there is nothing to cascade from; if one lands, its rows
+ * are already unreachable (every read is owner-gated) and expire within 30 days.
+ */
+async function gcKeptPrivate(ctx: MutationCtx): Promise<number> {
+  const cutoff = Date.now() - KEPT_PRIVATE_TTL_MS
+  const stale = await ctx.db
+    .query('keptPrivateNames')
+    .withIndex('by_stagedAt', (q) => q.lt('stagedAt', cutoff))
+    .take(GC_BATCH)
+  for (const row of stale) await ctx.db.delete(row._id)
+  return stale.length
+}
 
 /** Convenience for the HTTP layer: publish + report what the gate should show. */
 export const publishForToken = internalMutation({
   args: {
     tokenId: v.id('cliTokens'),
     payload: MeasuredPayload,
+    /**
+     * The unsealed half (#48). Optional, because a client with the switch off
+     * sends the payload alone — and because #41's gate must be able to sync
+     * before this half exists on the machine.
+     */
+    keptPrivate: v.optional(KeptPrivateNames),
   },
   returns: v.object({
     snapshotId: v.id('measuredSnapshots'),
     receivedAt: v.number(),
     stackSlug: v.string(),
+    /** How many staged names landed, and whether the switch refused them. */
+    keptPrivate: v.object({ stored: v.number(), refused: v.boolean() }),
   }),
   handler: async (ctx, args) => {
     const token = await ctx.db.get(args.tokenId)
@@ -1165,6 +1434,22 @@ export const publishForToken = internalMutation({
       stack._id,
       args.payload
     )
-    return { snapshotId, receivedAt, stackSlug: `${stack.slug}-${stack.shortId}` }
+
+    // The switch is not client-side-only. A client that sends the half anyway —
+    // a stale config fetch, or the owner flipping the switch mid-sync — has the
+    // HALF refused, not the sync: losing the measurement over a race would cost
+    // the owner the one thing they approved.
+    const refused = args.keptPrivate !== undefined && stack.reviewKeptPrivate === false
+    const stored =
+      args.keptPrivate && !refused
+        ? await replaceKeptPrivate(ctx, stack._id, args.keptPrivate, receivedAt)
+        : 0
+
+    return {
+      snapshotId,
+      receivedAt,
+      stackSlug: `${stack.slug}-${stack.shortId}`,
+      keptPrivate: { stored, refused },
+    }
   },
 })

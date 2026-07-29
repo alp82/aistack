@@ -19,6 +19,16 @@ crons.interval(
   internal.rateLimit.cleanupExpiredRateLimits,
 )
 
+// Hourly device-code session cleanup (#52). `authStart` is unauthenticated and
+// inserts one 15-minute row per call, and nothing collected them — so this is
+// the unbounded-growth half of the login path, which a rate limit alone does
+// not close. It also GCs the machine name an abandoned login left behind.
+crons.interval(
+  'cli-session-cleanup',
+  { hours: 1 },
+  internal.cliSessions.cleanupExpiredSessions,
+)
+
 // Nightly measured-snapshot downsample. Keeps every snapshot from the last 90
 // days and only the last of each UTC day beyond that, never deleting a stack's
 // newest row. See convex/measured.ts gcSnapshots for why downsampling beats a

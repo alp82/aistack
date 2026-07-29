@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
+import { CliTokenScope } from './lib/cliScopes'
 
 const PageLink = v.object({
   name: v.string(),
@@ -339,6 +340,13 @@ export default defineSchema({
     // transmitted, so there is nothing to "reveal" server-side. Absent reads as
     // opted IN — cost is the default, and this field only records a refusal.
     publishCost: v.optional(v.boolean()),
+    // Whether the machine stages its kept-private names here so the owner can
+    // tick them on the web (#48). Absent reads as ON, mirroring `publishCost`
+    // field-for-field: default-off would reproduce the very complaint #48 was
+    // opened for — "publishes less, forever" — one layer later. Default-on
+    // survives ONLY because the approve gate names the switch before the first
+    // upload, so the two hold each other up.
+    reviewKeptPrivate: v.optional(v.boolean()),
     published: v.boolean(),
     isLowQuality: v.optional(v.boolean()),
     createdAt: v.number(),
@@ -455,15 +463,51 @@ export default defineSchema({
     // permanently: a session is created BEFORE the user picks, and a profile
     // with no stack yet can still authenticate.
     stackId: v.optional(v.id('stacks')),
+    // What this machine calls itself, so `/settings/machines` can tell three
+    // rows apart (#49). The CLI proposes `os.hostname()` at authStart and the
+    // approval page shows it in an editable field, so the stored string is
+    // always one the user saw and could overwrite. Optional permanently: an
+    // older CLI sends nothing, and the user may clear the field.
+    machineName: v.optional(v.string()),
     createdAt: v.number(),
     expiresAt: v.number(),
   })
     .index('by_userCode', ['userCode'])
-    .index('by_secretId', ['secretId']),
+    .index('by_secretId', ['secretId'])
+    // Feeds the hourly cleanup cron (#52). `authStart` is unauthenticated and
+    // inserts one row per call with a 15-minute TTL, and nothing ever collected
+    // them — so this table grew without bound. The index also lets the cron GC
+    // the machine name an abandoned login left behind.
+    .index('by_expiresAt', ['expiresAt']),
 
   cliTokens: defineTable({
-    token: v.string(),
+    // PHASE A of the hash-at-rest migration (#49). The plaintext is still
+    // written and still indexed, because a row that only has a digest cannot be
+    // read by a client that predates the change — and because the backfill
+    // needs the plaintext to derive the digest from. Reads already prefer
+    // `tokenHash`; #52's narrow drops this column and `by_token`.
+    //
+    // OPTIONAL, not required, and that is what makes the narrow reachable:
+    // Convex refuses a push while any document carries a field the schema no
+    // longer declares, so `migrations/20260729_cli_token_hash:clearPlaintext`
+    // has to blank this column first — and it cannot write `undefined` into a
+    // required field.
+    //
+    // Until the narrow deploys, a database read still discloses live credentials.
+    token: v.optional(v.string()),
+    // Unsalted SHA-256 of the bearer, lowercase hex. Unsalted is correct here
+    // and not an oversight: the token is 256 bits of `crypto.getRandomValues`,
+    // so there is no dictionary to attack and nothing for a salt to defeat.
+    // Password stretching would only make every request slower.
+    //
+    // Hashing happens in the `httpAction` (`convex/httpCli.ts`), so the
+    // plaintext never crosses into the database layer at all.
+    tokenHash: v.optional(v.string()),
     userId: v.string(),
+    // What the user called this machine at link time (#49), carried from
+    // `cliSessions.machineName`. Optional: an older CLI proposes nothing and
+    // the field can be cleared, so `/settings/machines` falls back to the
+    // linked date.
     name: v.optional(v.string()),
     // Target stack, bound to the token AT LINK TIME (#33 decision 7). Every
     // sync is then unambiguous and the approve gate can name its destination
@@ -475,11 +519,21 @@ export default defineSchema({
     // must test field PRESENCE, not truthiness. Narrowing to required waits
     // until every live token is relinked; see convex/migrations/20260725_cli_token_stack.ts.
     stackId: v.optional(v.id('stacks')),
+    // What this machine is allowed to do (#52). Every token is minted with the
+    // full set, so no request is refused today — the value here is the
+    // enforcement point and the display line, not a live restriction.
+    //
+    // PHASE A: optional, because the table has live rows minted before scopes
+    // existed. An ABSENT array reads as full access, which is what those rows
+    // were granted. `convex/migrations/20260729_cli_token_scopes.ts` fills them
+    // in, and the narrow that follows makes the absent case unreachable.
+    scopes: v.optional(v.array(CliTokenScope)),
     createdAt: v.number(),
     expiresAt: v.number(),
     lastUsedAt: v.number(),
   })
     .index('by_token', ['token'])
+    .index('by_tokenHash', ['tokenHash'])
     .index('by_userId', ['userId']),
 
   projects: defineTable({
@@ -562,11 +616,24 @@ export default defineSchema({
     .index('by_toolId', ['toolId'])
     .index('by_status', ['status']),
 
+  // One fixed window per caller. The caller used to be an IP and only an IP;
+  // #52 adds bearer-token buckets, so the column names what it holds — an
+  // opaque namespaced key (`ip:1.2.3.4`, `cli-token:<id>`) — rather than one of
+  // the things it can hold.
+  //
+  // PHASE A of the rename: `key` optional, `ip` optional, both indexes live.
+  // The usual three-phase DATA migration does NOT apply, because there is no
+  // data to preserve — every row is dead 60 seconds after it is written and the
+  // hourly cron already deletes them. Writers moved to `key` in this same push,
+  // so `purgeKeylessRateLimits` only has to clear the stragglers before the
+  // narrow.
   apiRateLimits: defineTable({
-    ip: v.string(),
+    key: v.optional(v.string()),
+    ip: v.optional(v.string()),
     windowStart: v.number(),
     count: v.number(),
   })
+    .index('by_key', ['key'])
     .index('by_ip', ['ip'])
     .index('by_windowStart', ['windowStart']),
 
@@ -618,4 +685,34 @@ export default defineSchema({
   })
     .index('by_stack', ['stackId'])
     .index('by_stack_name', ['stackId', 'category', 'name']),
+
+  // Names the owner has NOT published, staged so they can be ticked on the web
+  // (#48). This is the one store in the measured layer that holds strings the
+  // owner never agreed to publish, and everything about it is shaped by that.
+  //
+  // A TABLE AND NOT A FIELD ON `stacks`, for the #44 reason exactly: this is the
+  // mechanism that holds names back, so it must never ride along on a public
+  // stack read. It is owner-only and joins into NO public query.
+  //
+  // THROWN AWAY, NOT ACCUMULATED. The whole list is replaced on every sync,
+  // deleted the moment the switch flips off, and aged out after 30 days idle —
+  // a name outside the rolling window is not in the snapshot either, so ticking
+  // it would publish nothing. That is what makes the list mean exactly "names in
+  // your current window you have not published". Ticks in `publishedNameOptIns`
+  // survive all of it, which is why read-time promotion was rejected: it would
+  // read from the one store designed to be discarded.
+  keptPrivateNames: defineTable({
+    stackId: v.id('stacks'),
+    category: PublishedNameCategory,
+    name: v.string(),
+    /** How often it ran in the reported window — the gate's ordering signal. */
+    count: v.number(),
+    /** Plugin prefix, for the grouped bulk tick. `null` when standalone. */
+    group: v.union(v.string(), v.null()),
+    /** When the sync that staged this list arrived. Drives the 30-day expiry. */
+    stagedAt: v.number(),
+  })
+    .index('by_stack', ['stackId'])
+    // The expiry sweep's index. Age is the only thing it asks about.
+    .index('by_stagedAt', ['stagedAt']),
 })

@@ -1,6 +1,9 @@
 import { httpAction } from './_generated/server'
 import { internal } from './_generated/api'
 import type { Id } from './_generated/dataModel'
+import { isDisplaySafeName } from './lib/names'
+import type { CliTokenScope } from './lib/cliScopes'
+import { DEFAULT_MAX_REQUESTS, SHARED_BUCKET_MAX_REQUESTS } from './rateLimit'
 
 const USER_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
@@ -31,18 +34,79 @@ function jsonResponse(data: unknown, status = 200): Response {
   })
 }
 
+/**
+ * Unsalted SHA-256, lowercase hex — the at-rest form of a bearer token (#49).
+ *
+ * Unsalted is the right primitive, not a shortcut: the token is 256 bits of
+ * `crypto.getRandomValues`, so there is no dictionary to attack and a salt
+ * defeats nothing. Password stretching would only tax every request.
+ *
+ * This runs in the `httpAction`, which is the whole point — the plaintext never
+ * crosses into the database layer, so a `runQuery` argument log cannot leak one.
+ */
+export async function sha256Hex(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input))
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+/** The narrow slice of an httpAction ctx these helpers need. */
+type TokenLookupCtx = {
+  runQuery: (query: any, args: any) => Promise<any>
+  runMutation: (mutation: any, args: any) => Promise<any>
+}
+
+/**
+ * Resolve a raw bearer to its stored row, by digest first.
+ *
+ * PHASE A of the hash migration: a token minted before the backfill has no
+ * `tokenHash`, so it is absent from the sparse `by_tokenHash` index and the
+ * digest lookup misses. Falling back to the plaintext read is what keeps every
+ * already-linked machine working without a re-login. #52's narrow deletes it.
+ */
+async function resolveToken(
+  ctx: TokenLookupCtx,
+  rawToken: string,
+): Promise<{
+  userId: string
+  _id: string
+  stackId?: Id<'stacks'>
+  scopes?: CliTokenScope[]
+} | null> {
+  const byHash = await ctx.runQuery(internal.cliTokens.getByTokenHash, {
+    tokenHash: await sha256Hex(rawToken),
+  })
+  if (byHash) return byHash
+  return await ctx.runQuery(internal.cliTokens.getByToken, { token: rawToken })
+}
+
+/**
+ * ONE choke point for every authenticated CLI route: identity, scope, budget.
+ *
+ * SCOPES ARE LATENT. Every token is minted with the full set, so no live
+ * request is refused — what exists here is the enforcement point, so a narrower
+ * token later needs no server change. An ABSENT `scopes` array is a token
+ * minted before the field existed, and those were granted everything; the
+ * scopes narrow makes that case unreachable rather than leaving it as a
+ * permanent bypass.
+ *
+ * THE BUDGET KEYS ON THE TOKEN, NOT THE IP (#52). `/api/cli/*` are thin
+ * TanStack proxies and the Convex site URL is directly reachable, so an
+ * IP-keyed limit here is walked around by talking to Convex directly — while
+ * the proxy forwards only `Authorization` and `Content-Type`, so a Convex-side
+ * IP limiter would see one address for every user and throttle the world as a
+ * single caller. The token id is already in hand at this exact line and
+ * behaves identically down both paths.
+ *
+ * The key uses the token ID rather than its digest deliberately: the digest is
+ * the credential-equivalent after phase C, and a rate-limit row is a second
+ * place it would sit.
+ */
 async function validateBearerToken(
-  ctx: {
-    runQuery: (
-      query: typeof internal.cliTokens.getByToken,
-      args: { token: string }
-    ) => Promise<{
-      userId: string
-      _id: string
-      stackId?: Id<'stacks'>
-    } | null>
-  },
-  request: Request
+  ctx: TokenLookupCtx,
+  request: Request,
+  requiredScope: CliTokenScope,
 ): Promise<
   { userId: string; tokenId: string; stackId?: Id<'stacks'> } | Response
 > {
@@ -50,11 +114,39 @@ async function validateBearerToken(
   if (!authHeader?.startsWith('Bearer ')) {
     return jsonResponse({ error: 'Missing or invalid Authorization header' }, 401)
   }
-  const token = authHeader.slice(7)
-  const tokenDoc = await ctx.runQuery(internal.cliTokens.getByToken, { token })
+  const tokenDoc = await resolveToken(ctx, authHeader.slice(7))
   if (!tokenDoc) {
     return jsonResponse({ error: 'Invalid or expired token' }, 401)
   }
+  if (tokenDoc.scopes && !tokenDoc.scopes.includes(requiredScope)) {
+    // 403, not 401: the credential is good and re-authenticating with the same
+    // one changes nothing. Naming the scope keeps the message actionable
+    // without disclosing what else the token can reach.
+    return jsonResponse(
+      { error: `This machine is not allowed to ${requiredScope}. Run login again to re-link it.` },
+      403,
+    )
+  }
+
+  const rl = await ctx.runMutation(internal.rateLimit.checkRateLimit, {
+    key: `cli-token:${tokenDoc._id}`,
+  })
+  if (!rl.allowed) {
+    return new Response(
+      JSON.stringify({ error: 'Rate limit exceeded', retryAfterSeconds: rl.retryAfterSeconds }),
+      {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': String(rl.retryAfterSeconds),
+          'RateLimit-Limit': String(rl.limit),
+          'RateLimit-Remaining': String(rl.remaining),
+          'RateLimit-Reset': String(rl.retryAfterSeconds),
+        },
+      },
+    )
+  }
+
   return {
     userId: tokenDoc.userId,
     tokenId: tokenDoc._id as string,
@@ -62,15 +154,127 @@ async function validateBearerToken(
   }
 }
 
-export const authStart = httpAction(async (ctx) => {
+/** The header pair the TanStack proxy uses to hand Convex the real caller. */
+const CLIENT_IP_HEADER = 'x-aistack-client-ip'
+const PROXY_AUTH_HEADER = 'x-aistack-proxy-auth'
+
+/**
+ * The rightmost X-Forwarded-For hop.
+ *
+ * A deliberate duplicate of `ipFromForwardedFor` in
+ * `src/routes/api.stacks.$slug.tsx`: Convex functions cannot import from `src`,
+ * and this is four lines. Same precondition — the rightmost hop is the real
+ * address only because Coolify's Traefik APPENDS it and does not trust a
+ * client-supplied header.
+ */
+function rightmostForwardedHop(xff: string | null): string | null {
+  if (!xff) return null
+  const hops = xff.split(',')
+  for (let i = hops.length - 1; i >= 0; i--) {
+    const hop = hops[i]?.trim()
+    if (hop) return hop
+  }
+  return null
+}
+
+/**
+ * Who to charge for an unauthenticated `authStart`, and how hard (#52).
+ *
+ * The proxy destroys the client address — it forwards only `Authorization` and
+ * `Content-Type` — so Convex is handed it in a custom header AUTHENTICATED BY A
+ * SHARED SECRET. Without the secret the header is ignored completely, so a
+ * caller hitting `.convex.site` directly cannot claim to be any address it
+ * likes.
+ *
+ * THE FALLBACK MATTERS MORE THAN THE HAPPY PATH. With no secret configured,
+ * every proxied login on earth lands in ONE bucket, so it takes a HIGH cap and
+ * a SEPARATE key namespace. At 60/min a missing env var would break login for
+ * everybody at once — a misconfiguration must degrade, not lock out.
+ *
+ * The secret is compared as DIGESTS. A plain `===` on strings short-circuits at
+ * the first differing byte; comparing SHA-256 output leaks only digest
+ * prefixes, which say nothing about the secret.
+ */
+async function authStartBudget(
+  request: Request,
+): Promise<{ key: string; limit: number; trusted: boolean }> {
+  const secret = process.env.CLI_PROXY_SECRET
+  const presented = request.headers.get(PROXY_AUTH_HEADER)
+  const claimed = request.headers.get(CLIENT_IP_HEADER)?.trim()
+
+  if (secret && presented && claimed) {
+    const [a, b] = await Promise.all([sha256Hex(presented), sha256Hex(secret)])
+    if (a === b) {
+      return { key: `cli-auth-ip:${claimed}`, limit: DEFAULT_MAX_REQUESTS, trusted: true }
+    }
+  }
+
+  const hop = rightmostForwardedHop(request.headers.get('x-forwarded-for'))
+  return {
+    key: `cli-auth-hop:${hop ?? 'unknown'}`,
+    limit: SHARED_BUCKET_MAX_REQUESTS,
+    trusted: false,
+  }
+}
+
+/**
+ * POST /api/cli/auth/start — open a device-code session.
+ *
+ * The body is OPTIONAL and carries one field: `machineName`, the CLI's proposal
+ * for what to call this machine (#49). It is a proposal, not a fact — the
+ * approval page renders it in an editable field, so the string that reaches
+ * `cliTokens.name` is always one the user saw and could overwrite.
+ *
+ * A name that fails the display bound is DROPPED, not rejected. Refusing the
+ * whole login because a hostname carries a control character would break
+ * authentication over a cosmetic field, and the user can type a name on the
+ * approval page regardless.
+ */
+export const authStart = httpAction(async (ctx, request) => {
+  // The abuse target on this whole surface (#36): unauthenticated, one
+  // `cliSessions` row per call. The limit bounds the rate; the hourly cleanup
+  // cron bounds the total.
+  const budget = await authStartBudget(request)
+  const rl = await ctx.runMutation(internal.rateLimit.checkRateLimit, {
+    key: budget.key,
+    limit: budget.limit,
+  })
+  if (!rl.allowed) {
+    return new Response(
+      JSON.stringify({ error: 'Too many login attempts. Try again in a minute.' }),
+      {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': String(rl.retryAfterSeconds),
+          'RateLimit-Limit': String(rl.limit),
+          'RateLimit-Remaining': String(rl.remaining),
+          'RateLimit-Reset': String(rl.retryAfterSeconds),
+        },
+      },
+    )
+  }
+
   const userCode = generateUserCode()
   const secretId = crypto.randomUUID()
   const now = Date.now()
+
+  let machineName: string | undefined
+  try {
+    const body = (await request.json()) as { machineName?: unknown }
+    if (typeof body?.machineName === 'string') {
+      const trimmed = body.machineName.trim()
+      if (isDisplaySafeName(trimmed)) machineName = trimmed
+    }
+  } catch {
+    // No body, or not JSON — an older CLI. Proceed nameless.
+  }
 
   await ctx.runMutation(internal.cliSessions.createSession, {
     userCode,
     secretId,
     status: 'pending',
+    machineName,
     createdAt: now,
     expiresAt: now + 15 * 60 * 1000,
   })
@@ -107,6 +311,10 @@ export const authPoll = httpAction(async (ctx, request) => {
     const result = await ctx.runMutation(internal.cliSessions.issueTokenAndDeleteSession, {
       sessionId: session._id,
       token,
+      // Derived HERE so the mutation never has to hash, and so the digest and
+      // the plaintext are written in the same insert. The narrow drops the
+      // plaintext argument; the digest is already the real key.
+      tokenHash: await sha256Hex(token),
       userId: session.userId,
       createdAt: now,
       expiresAt: now + 90 * 24 * 60 * 60 * 1000,
@@ -128,7 +336,7 @@ export const authPoll = httpAction(async (ctx, request) => {
 })
 
 export const stackCollect = httpAction(async (ctx, request) => {
-  const authResult = await validateBearerToken(ctx as any, request)
+  const authResult = await validateBearerToken(ctx as any, request, 'collect')
   if (authResult instanceof Response) return authResult
   const { userId, tokenId, stackId: tokenStackId } = authResult
 
@@ -205,11 +413,11 @@ const EMPTY_OPT_INS = {
  * 400 with the reason rather than an opaque 500.
  */
 export const syncPublish = httpAction(async (ctx, request) => {
-  const authResult = await validateBearerToken(ctx as any, request)
+  const authResult = await validateBearerToken(ctx as any, request, 'sync')
   if (authResult instanceof Response) return authResult
   const { tokenId } = authResult
 
-  let body: { payload?: unknown }
+  let body: { payload?: unknown; keptPrivate?: unknown }
   try {
     body = await request.json()
   } catch {
@@ -219,11 +427,17 @@ export const syncPublish = httpAction(async (ctx, request) => {
     return jsonResponse({ error: 'Missing required field: payload' }, 400)
   }
 
-  let result: { snapshotId: string; receivedAt: number; stackSlug: string }
+  let result: {
+    snapshotId: string
+    receivedAt: number
+    stackSlug: string
+    keptPrivate: { stored: number; refused: boolean }
+  }
   try {
     result = await ctx.runMutation(internal.measured.publishForToken, {
       tokenId: tokenId as Id<'cliTokens'>,
       payload: body.payload as any,
+      keptPrivate: body.keptPrivate as any,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
@@ -245,6 +459,10 @@ export const syncPublish = httpAction(async (ctx, request) => {
     receivedAt: result.receivedAt,
     stackSlug: result.stackSlug,
     url: `${appUrl}/stacks/${result.stackSlug}`,
+    // Reported rather than assumed: a client whose config fetch was stale needs
+    // to know its staged names went nowhere, and the owner needs the switch to
+    // be observably in force.
+    keptPrivate: result.keptPrivate,
   })
 })
 
@@ -271,6 +489,9 @@ export const syncConfig = httpAction(async (ctx, request) => {
   const anonymous = {
     ...config,
     publishCost: false,
+    // Fails closed with the rest of the stack-level half (#48): with no bearer
+    // there is no stack to ask, and the direction that transmits LESS is off.
+    reviewKeptPrivate: false,
     optIns: EMPTY_OPT_INS,
     stack: null,
   }
@@ -280,10 +501,17 @@ export const syncConfig = httpAction(async (ctx, request) => {
     return jsonResponse(anonymous)
   }
 
-  const tokenDoc = await ctx.runQuery(internal.cliTokens.getByToken, {
-    token: authHeader.slice(7),
-  })
+  const tokenDoc = await resolveToken(ctx as any, authHeader.slice(7))
   if (!tokenDoc?.stackId) {
+    return jsonResponse(anonymous)
+  }
+  // NO 401 AND NO 403 ON THIS ROUTE, ever (#52). A token without `sync` gets
+  // the anonymous fail-closed body, because refusing it outright would break
+  // the pre-send filter for exactly the tokens we most want filtered — and a
+  // client that cannot fetch the allowlist publishes nothing it should have
+  // held back only if the filter is fail-closed on its own, which it is, but
+  // only because it still HAS a list.
+  if (tokenDoc.scopes && !tokenDoc.scopes.includes('sync')) {
     return jsonResponse(anonymous)
   }
 
@@ -293,13 +521,14 @@ export const syncConfig = httpAction(async (ctx, request) => {
   return jsonResponse({
     ...config,
     publishCost: stackConfig.publishCost,
+    reviewKeptPrivate: stackConfig.reviewKeptPrivate,
     optIns: stackConfig.optIns,
     stack: { name: stackConfig.stackName },
   })
 })
 
 export const stackGet = httpAction(async (ctx, request) => {
-  const authResult = await validateBearerToken(ctx as any, request)
+  const authResult = await validateBearerToken(ctx as any, request, 'collect')
   if (authResult instanceof Response) return authResult
   const { userId } = authResult
 
