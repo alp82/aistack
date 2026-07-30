@@ -15,6 +15,7 @@
   },
   "files": [
     "dist",
+    "skills",
     "README.md"
   ],
   "publishConfig": {

@@ -1,4 +1,4 @@
-const BASE_URL = process.env.AISTACK_URL || "https://aistack.to";
+export const BASE_URL = process.env.AISTACK_URL || "https://aistack.to";
 
 async function request(
 	path: string,
@@ -102,6 +102,41 @@ async function formatHttpError(res: Response, label: string): Promise<string> {
 	} catch {}
 	const snippet = text.trim().slice(0, 500);
 	return snippet ? `${prefix} — ${snippet}` : prefix;
+}
+
+export type SyncPublishResult = {
+	receivedAt: number;
+	stackSlug: string;
+	url: string;
+	keptPrivate: { stored: number; refused: boolean };
+};
+
+/**
+ * Publish one approved snapshot.
+ *
+ * Takes the staged body as an ALREADY-SERIALIZED string: the bytes the user
+ * approved at the gate are the bytes on the wire, with no re-serialization
+ * step between them (#35's binding constraint, #41).
+ */
+export async function syncPublish(
+	token: string,
+	bodyJson: string,
+): Promise<SyncPublishResult> {
+	const res = await request("/api/cli/sync", {
+		method: "POST",
+		headers: authHeaders(token),
+		body: bodyJson,
+	});
+	if (res.status === 401)
+		throw new Error(
+			"Authentication expired. Run `npx @use-aistack/cli login` again.",
+		);
+	if (res.status === 403 || res.status === 429)
+		throw failure("Sync failed", res);
+	if (!res.ok) {
+		throw new Error(await formatHttpError(res, "Sync failed"));
+	}
+	return res.json();
 }
 
 export async function stackGet(token: string): Promise<StackData | null> {

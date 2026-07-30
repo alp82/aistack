@@ -151,6 +151,16 @@ export type SyncConfig = {
 	 * and the names never leave it.
 	 */
 	reviewKeptPrivate: boolean;
+	/**
+	 * The stack the bearer token is bound to — where a publish would land.
+	 *
+	 * The approve gate must name its destination BEFORE the send (#33
+	 * decision 7, #41), and beat one points at `/stacks/{slug}/changes` (#48),
+	 * so both ride on the authenticated half of the config fetch. `null` when
+	 * the fetch was anonymous, failed, or the token resolved no stack — and a
+	 * gate that cannot name its destination must not publish.
+	 */
+	stack: { name: string; slug: string } | null;
 };
 
 /**
@@ -173,6 +183,8 @@ export const BUNDLED_SYNC_CONFIG: SyncConfig = {
 	// upload the names it is holding back. The default is ON server-side, so this
 	// costs the owner one retry and never costs them a name.
 	reviewKeptPrivate: false,
+	// No fetch, no destination — and the gate refuses to publish without one.
+	stack: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -241,6 +253,21 @@ function readOptIns(v: unknown): OptInNames {
 	};
 }
 
+/**
+ * A slug becomes a URL path segment the gate prints, so it gets the tightest
+ * bar of any string here. The name is display text and gets `isDisplaySafeName`.
+ */
+const STACK_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
+
+function readStack(v: unknown): SyncConfig["stack"] {
+	if (typeof v !== "object" || v === null || Array.isArray(v)) return null;
+	const obj = v as Record<string, unknown>;
+	if (typeof obj.name !== "string" || !isDisplaySafeName(obj.name)) return null;
+	if (typeof obj.slug !== "string" || !STACK_SLUG_RE.test(obj.slug))
+		return null;
+	return { name: obj.name, slug: obj.slug };
+}
+
 function readSyncConfig(raw: unknown): SyncConfig | null {
 	if (typeof raw !== "object" || raw === null || Array.isArray(raw))
 		return null;
@@ -262,6 +289,7 @@ function readSyncConfig(raw: unknown): SyncConfig | null {
 		optIns: readOptIns(obj.optIns),
 		// Anything other than an explicit `true` keeps the names on the machine.
 		reviewKeptPrivate: obj.reviewKeptPrivate === true,
+		stack: readStack(obj.stack),
 	};
 }
 
@@ -272,6 +300,12 @@ function readSyncConfig(raw: unknown): SyncConfig | null {
  */
 export async function loadSyncConfig(opts: {
 	baseUrl: string;
+	/**
+	 * Bearer for the authenticated half: `publishCost`, `optIns`,
+	 * `reviewKeptPrivate` and the destination stack. Absent, the server answers
+	 * with the anonymous fail-closed body — same allowlist, everything else off.
+	 */
+	token?: string;
 	fetchImpl?: typeof fetch;
 	timeoutMs?: number;
 }): Promise<LoadedSyncConfig> {
@@ -279,7 +313,10 @@ export async function loadSyncConfig(opts: {
 	try {
 		const res = await doFetch(`${opts.baseUrl}${SYNC_CONFIG_PATH}`, {
 			signal: AbortSignal.timeout(opts.timeoutMs ?? FETCH_TIMEOUT_MS),
-			headers: { Accept: "application/json" },
+			headers: {
+				Accept: "application/json",
+				...(opts.token ? { Authorization: `Bearer ${opts.token}` } : {}),
+			},
 		});
 		if (!res.ok) {
 			return {

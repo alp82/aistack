@@ -1045,6 +1045,7 @@ export const getSyncConfigForStack = internalQuery({
     publishCost: v.boolean(),
     reviewKeptPrivate: v.boolean(),
     stackName: v.string(),
+    stackSlug: v.string(),
     optIns: OptInNames,
   }),
   handler: async (ctx, args) => {
@@ -1058,6 +1059,11 @@ export const getSyncConfigForStack = internalQuery({
       // approve gate names the switch before the first upload.
       reviewKeptPrivate: stack.reviewKeptPrivate !== false,
       stackName: stack.name,
+      // The approve gate points at `/stacks/{slug}/changes` BEFORE the first
+      // send (#48 beat one), so the slug must be readable pre-publish (#41).
+      // Composite like every public stack URL: the bare `slug` field is not
+      // routable on its own — `publishForToken` below does the same.
+      stackSlug: `${stack.slug}-${stack.shortId}`,
       optIns: await optInsForStack(ctx, args.stackId),
     }
   },

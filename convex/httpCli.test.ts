@@ -2,6 +2,7 @@
 import { convexTest } from 'convex-test'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { api, internal } from './_generated/api'
+import type { Id } from './_generated/dataModel'
 import schema from './schema'
 import { sha256Hex } from './httpCli'
 import { FULL_CLI_TOKEN_SCOPES, type CliTokenScope } from './lib/cliScopes'
@@ -42,15 +43,37 @@ async function seedCreator(t: Ctx) {
   )
 }
 
-async function seedToken(t: Ctx, token: string, opts: { scopes?: CliTokenScope[] } = {}) {
+async function seedToken(
+  t: Ctx,
+  token: string,
+  opts: { scopes?: CliTokenScope[]; stackId?: Id<'stacks'> } = {},
+) {
   return await t.run(async (ctx) =>
     ctx.db.insert('cliTokens', {
       tokenHash: await sha256Hex(token),
       userId: USER,
       scopes: opts.scopes ?? FULL_CLI_TOKEN_SCOPES,
+      ...(opts.stackId ? { stackId: opts.stackId } : {}),
       createdAt: Date.now(),
       lastUsedAt: Date.now(),
       expiresAt: Date.now() + 90 * DAY,
+    }),
+  )
+}
+
+async function seedStack(t: Ctx, creatorId: Id<'creators'>) {
+  return await t.run(async (ctx) =>
+    ctx.db.insert('stacks', {
+      name: 'Main Stack',
+      slug: 'main-stack',
+      shortId: 'sid-owner',
+      creatorId,
+      oneLiner: 'A stack',
+      toolSubscriptions: [],
+      hasUsageComponent: false,
+      published: true,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     }),
   )
 }
@@ -109,6 +132,24 @@ describe('bearer resolution', () => {
     const body = await resp.json()
     expect(body.publishCost).toBe(false)
     expect(body.stack).toBeNull()
+  })
+
+  test('sync-config names the destination stack — name AND slug (#41)', async () => {
+    // The approve gate must name where the data goes and point at
+    // `/stacks/{slug}/changes` BEFORE the first send, so both ride on the
+    // authenticated half of the config fetch.
+    const t = convexTest(schema, modules)
+    const creatorId = await seedCreator(t)
+    const stackId = await seedStack(t, creatorId)
+    await seedToken(t, 'tok_bound', { stackId })
+
+    const resp = await t.fetch('/api/cli/sync-config', {
+      method: 'GET',
+      headers: { Authorization: 'Bearer tok_bound' },
+    })
+    expect(resp.status).toBe(200)
+    const body = await resp.json()
+    expect(body.stack).toEqual({ name: 'Main Stack', slug: 'main-stack-sid-owner' })
   })
 })
 

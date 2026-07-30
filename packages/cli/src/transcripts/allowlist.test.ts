@@ -455,3 +455,59 @@ describe("bundled curated allowlist", () => {
 		}
 	});
 });
+
+describe("the destination stack on the authenticated half (#41)", () => {
+	const jsonResponse = (body: unknown, status = 200) =>
+		new Response(JSON.stringify(body), { status });
+
+	it("sends the bearer when a token is given, and never otherwise", async () => {
+		const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(GOOD_BODY));
+		await loadSyncConfig({
+			baseUrl: "https://aistack.to",
+			token: "tok_1",
+			fetchImpl: fetchImpl as unknown as typeof fetch,
+		});
+		expect(fetchImpl).toHaveBeenCalledWith(
+			"https://aistack.to/api/sync-config",
+			expect.objectContaining({
+				headers: expect.objectContaining({ Authorization: "Bearer tok_1" }),
+			}),
+		);
+		fetchImpl.mockClear();
+		await loadSyncConfig({
+			baseUrl: "https://aistack.to",
+			fetchImpl: fetchImpl as unknown as typeof fetch,
+		});
+		const headers = (fetchImpl.mock.calls[0][1] as RequestInit)
+			.headers as Record<string, string>;
+		expect(headers.Authorization).toBeUndefined();
+	});
+
+	it("reads a well-formed stack and fails closed on anything else", async () => {
+		const load = async (stack: unknown) => {
+			const loaded = await loadSyncConfig({
+				baseUrl: "https://aistack.to",
+				fetchImpl: (() =>
+					Promise.resolve(
+						jsonResponse({ ...GOOD_BODY, stack }),
+					)) as unknown as typeof fetch,
+			});
+			return loaded.config.stack;
+		};
+		expect(await load({ name: "My Stack", slug: "my-stack" })).toEqual({
+			name: "My Stack",
+			slug: "my-stack",
+		});
+		// Absent, null, or malformed all read as "no destination" — and the
+		// gate refuses to publish without one.
+		expect(await load(undefined)).toBeNull();
+		expect(await load(null)).toBeNull();
+		expect(await load({ name: "x" })).toBeNull();
+		expect(await load({ name: "x", slug: "Bad Slug!" })).toBeNull();
+		expect(await load({ name: "x‮gnp.exe", slug: "ok" })).toBeNull();
+	});
+
+	it("the bundled fallback carries no stack", () => {
+		expect(BUNDLED_SYNC_CONFIG.stack).toBeNull();
+	});
+});

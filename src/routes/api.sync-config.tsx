@@ -55,8 +55,11 @@ export const Route = createFileRoute("/api/sync-config")({
 				const ip = clientIp(request);
 				if (!ip) return jsonError(400, "Could not determine client address");
 				try {
+					// Namespaced like api.stacks.$slug: the same table also holds
+					// bearer-token buckets (#52). This call passed `{ ip }` until #41,
+					// which the renamed mutation rejects — every fetch would have 500'd.
 					const rl = await convex.mutation(api.rateLimit.checkApiRateLimit, {
-						ip,
+						key: `ip:${ip}`,
 					});
 					if (!rl.allowed) {
 						return jsonError(429, "Rate limit exceeded", {

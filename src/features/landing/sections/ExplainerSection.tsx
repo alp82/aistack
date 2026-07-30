@@ -4,7 +4,7 @@ const valueProps = [
 	{
 		index: "01",
 		title: "Real Costs",
-		body: "See what founders actually pay. No estimates, no ranges — exact monthly numbers from real credit card statements.",
+		body: "See what builders actually pay. Exact monthly numbers, plus a rolling 30-day usage reading synced from their machines.",
 		icon: LayoutTemplate,
 	},
 	{

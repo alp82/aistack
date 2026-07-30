@@ -41,6 +41,7 @@ const config = (over: Partial<SyncConfig> = {}): SyncConfig => ({
 	},
 	optIns: EMPTY_OPT_INS,
 	reviewKeptPrivate: false,
+	stack: null,
 	...over,
 });
 

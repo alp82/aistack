@@ -1034,13 +1034,15 @@ describe('sync config', () => {
 
   test('publishCost defaults to opted-IN when the stack has never set it', async () => {
     const t = convexTest(schema, modules)
-    const { stackId } = await seedStack(t)
+    const { stackId, shortId } = await seedStack(t)
     const config = await t.query(internal.measured.getSyncConfigForStack, { stackId })
     expect(config).toEqual({
       publishCost: true,
       // #48 mirrors the same rule field-for-field: absent is on.
       reviewKeptPrivate: true,
       stackName: 'My Stack',
+      // Composite, like every public stack URL — the gate prints it (#41).
+      stackSlug: `my-stack-${shortId}`,
       optIns: EMPTY_OPT_INS,
     })
   })

@@ -520,7 +520,7 @@ export const syncConfig = httpAction(async (ctx, request) => {
     publishCost: stackConfig.publishCost,
     reviewKeptPrivate: stackConfig.reviewKeptPrivate,
     optIns: stackConfig.optIns,
-    stack: { name: stackConfig.stackName },
+    stack: { name: stackConfig.stackName, slug: stackConfig.stackSlug },
   })
 })
 
