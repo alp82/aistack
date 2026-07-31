@@ -1,7 +1,7 @@
 {
   "name": "@use-aistack/cli",
-  "version": "0.3.0",
-  "description": "Share and clone AI development configurations",
+  "version": "0.4.0",
+  "description": "Measure and share your AI stack from your terminal",
   "type": "module",
   "license": "MIT",
   "repository": {

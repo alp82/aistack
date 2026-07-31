@@ -32,9 +32,19 @@ export type MeasuredModel = MeasuredSnapshot["models"][number];
 /** The anchor section 02 mounts on, and the hero strip links down to. */
 export const MEASURED_ANCHOR = "section-measured";
 
-export const KICKER = "// from this machine";
-export const TITLE = "What actually ran";
+export const KICKER = "// sync";
+export const TITLE = "Actual Usage";
 export const HARNESS = "Claude Code";
+
+/**
+ * The two commands the site teaches, verbatim (#57 made the npx form the
+ * documented default). The CLI blocks `sync` on an unlinked machine, so honest
+ * teaching is always both commands in this order.
+ */
+export const LOGIN_CMD = "npx @use-aistack/cli login";
+export const SYNC_CMD = "npx @use-aistack/cli sync";
+export const LOGIN_CMD_COMMENT = "link this machine to your stack";
+export const SYNC_CMD_COMMENT = "scan, review, approve";
 
 /** Shared mono label treatment, matching the journey's section kickers. */
 export const MONO_LABEL =
@@ -161,3 +171,14 @@ export function stalenessLine(checkedAgo: string): string {
 
 export const NEVER_SYNCED_TITLE = "This stack has not been measured yet.";
 export const NEVER_SYNCED_BODY = `Stacks can publish what actually ran on the machine they are built on — sessions, models, tokens and cost at API prices, read from ${HARNESS}.`;
+
+/**
+ * The owner's never-measured box (#58/#59): the site teaches the two commands
+ * inline, on the page where the owner meets the gap. The visitor never sees
+ * this — their variant stays the invitation above (#40: invite the reader,
+ * never judge the author).
+ */
+export const OWNER_NOT_MEASURED_TITLE = "Your stack has not been measured yet.";
+export const OWNER_NOT_MEASURED_BODY = `One command reads your ${HARNESS} history on your machine, shows you the full summary first, and publishes only what you approve.`;
+export const PRIVACY_FOOTNOTE =
+	"runs on your machine · you see everything before it sends · cancel sends nothing";

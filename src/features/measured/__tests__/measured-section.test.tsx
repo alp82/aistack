@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 /**
- * Journey section 02 — "What actually ran" (#46, building #40's variant B).
+ * Journey section 01 — "Actual Usage" (#46, building #40's variant B;
+ * renamed and moved to the front by #58/#59).
  *
  * Four of these tests guard decisions rather than layout:
  *
@@ -24,14 +25,25 @@ vi.mock("convex/react", () => ({
 	useQuery: (ref: unknown, args: unknown) => queryMock(ref, args),
 }));
 
+vi.mock("@tanstack/react-router", () => ({
+	Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
+		<a href={to}>{children}</a>
+	),
+}));
+
 afterEach(() => {
 	cleanup();
 	vi.clearAllMocks();
 });
 
-function setup(snapshot: MeasuredSnapshot | null | undefined) {
+function setup(
+	snapshot: MeasuredSnapshot | null | undefined,
+	{ isOwner = false }: { isOwner?: boolean } = {},
+) {
 	queryMock.mockReturnValue(snapshot);
-	render(<MeasuredSection index={2} slug="alps-stack-ab12" />);
+	render(
+		<MeasuredSection index={1} slug="alps-stack-ab12" isOwner={isOwner} />,
+	);
 }
 
 describe("the reading", () => {
@@ -127,7 +139,7 @@ describe("what the reading admits", () => {
 	});
 });
 
-describe("a stack that has never synced", () => {
+describe("a stack that has never synced, seen by a visitor", () => {
 	it("invites the reader instead of marking the author down", () => {
 		setup(null);
 		expect(
@@ -136,9 +148,21 @@ describe("a stack that has never synced", () => {
 		expect(
 			screen.getByText(/Stacks can publish what actually ran/),
 		).toBeInTheDocument();
-		// The section keeps its place in the journey either way.
-		expect(screen.getByText("What actually ran")).toBeInTheDocument();
-		expect(screen.getByText("02")).toBeInTheDocument();
+		// The section keeps its place in the journey either way — and since #58
+		// it leads the journey.
+		expect(screen.getByText("Actual Usage")).toBeInTheDocument();
+		expect(screen.getByText("01")).toBeInTheDocument();
+	});
+
+	it("hands the reader the command for their own stack, and the guide", () => {
+		// #58: the visitor line is addressed to the READER ("a stack of your
+		// own"), never to the author of this one.
+		setup(null);
+		expect(screen.getByText(/have a stack of your own/)).toBeInTheDocument();
+		expect(screen.getByText("npx @use-aistack/cli sync")).toBeInTheDocument();
+		expect(
+			screen.getByText("how measuring works").closest("a"),
+		).toHaveAttribute("href", "/sync");
 	});
 
 	it("says nothing at all while the query is still out", () => {
@@ -148,7 +172,55 @@ describe("a stack that has never synced", () => {
 		expect(
 			screen.queryByText("This stack has not been measured yet."),
 		).not.toBeInTheDocument();
-		expect(screen.getByText("What actually ran")).toBeInTheDocument();
+		expect(screen.getByText("Actual Usage")).toBeInTheDocument();
+	});
+});
+
+describe("a stack that has never synced, seen by its owner", () => {
+	it("teaches both commands inline, in order", () => {
+		// #58: the CLI blocks `sync` on an unlinked machine, so honest teaching
+		// is two commands — login first, then sync.
+		setup(null, { isOwner: true });
+		expect(
+			screen.getByText("Your stack has not been measured yet."),
+		).toBeInTheDocument();
+		const login = screen.getByText("npx @use-aistack/cli login");
+		const sync = screen.getByText("npx @use-aistack/cli sync");
+		// Login renders before sync — the order the commands must run in.
+		expect(
+			login.compareDocumentPosition(sync) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+	});
+
+	it("states the privacy footnote and links the guide", () => {
+		setup(null, { isOwner: true });
+		expect(
+			screen.getByText(
+				"runs on your machine · you see everything before it sends · cancel sends nothing",
+			),
+		).toBeInTheDocument();
+		expect(screen.getByText("how syncing works").closest("a")).toHaveAttribute(
+			"href",
+			"/sync",
+		);
+	});
+
+	it("offers a copy button per command", () => {
+		setup(null, { isOwner: true });
+		expect(
+			screen.getByLabelText("Copy npx @use-aistack/cli login"),
+		).toBeInTheDocument();
+		expect(
+			screen.getByLabelText("Copy npx @use-aistack/cli sync"),
+		).toBeInTheDocument();
+	});
+
+	it("shows the reading, not the teaching box, once a snapshot exists", () => {
+		setup(buildSnapshot(), { isOwner: true });
+		expect(
+			screen.queryByText("Your stack has not been measured yet."),
+		).not.toBeInTheDocument();
+		expect(screen.getByText("≈$5,840")).toBeInTheDocument();
 	});
 });
 

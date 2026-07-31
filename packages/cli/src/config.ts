@@ -33,6 +33,36 @@ export function clearToken(): void {
 	}
 }
 
+const SETTINGS_FILE = join(CONFIG_DIR, "settings.json");
+
+/**
+ * Machine-local switches (#56). A separate file from credentials.json so a
+ * login overwrite never resets an answered upsell, and clearing settings never
+ * touches the token.
+ */
+export interface Settings {
+	/** The post-sync connect-claude upsell was answered (either way). */
+	connectClaudeAnswered?: boolean;
+}
+
+export function getSettings(): Settings {
+	if (!existsSync(SETTINGS_FILE)) return {};
+	try {
+		const raw = JSON.parse(readFileSync(SETTINGS_FILE, "utf-8"));
+		return raw && typeof raw === "object" ? (raw as Settings) : {};
+	} catch {
+		return {};
+	}
+}
+
+export function saveSettings(patch: Partial<Settings>): void {
+	mkdirSync(CONFIG_DIR, { recursive: true });
+	writeFileSync(
+		SETTINGS_FILE,
+		JSON.stringify({ ...getSettings(), ...patch }, null, 2),
+	);
+}
+
 const PROJECTS_FILE = join(CONFIG_DIR, "projects.json");
 
 interface ProjectEntry {

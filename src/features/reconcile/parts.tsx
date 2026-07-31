@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import {
 	ArrowRight,
 	Check,
@@ -8,6 +9,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect } from "react";
+import { SYNC_CMD } from "@/features/measured/copy";
 import { cn } from "@/lib/utils";
 import {
 	askLine,
@@ -108,12 +110,21 @@ export function Meter({ run }: { run: ReconcileRun }) {
 	);
 }
 
-/** The freshness line, in words rather than a status chip. */
+/**
+ * The freshness line, in words rather than a status chip. "Never checked"
+ * names the command that changes that, and links the page that explains it
+ * (#58) — the reader should never have to guess what a check is.
+ */
 export function FreshLine({ run }: { run: ReconcileRun }) {
 	if (!run.hasSnapshot) {
 		return (
-			<span className="font-mono text-[11px] uppercase tracking-[0.12em] text-fg-muted">
-				{run.checkedLine}
+			<span className="inline-flex flex-wrap items-center gap-x-2 font-mono text-[11px] uppercase tracking-[0.12em] text-fg-muted">
+				<span>{run.checkedLine}</span>
+				<span aria-hidden="true">—</span>
+				<code className="normal-case text-fg-secondary">{SYNC_CMD}</code>
+				<Link to="/sync" className="text-accent-lime hover:underline">
+					how syncing works
+				</Link>
 			</span>
 		);
 	}
@@ -150,8 +161,15 @@ export function NeverCheckedBox() {
 			</p>
 			<div className="mt-4 flex items-center gap-2 border border-stroke-strong bg-bg-canvas px-3 py-2">
 				<Terminal className="size-3.5 shrink-0 text-accent-lime" />
-				<code className="font-mono text-xs text-fg-primary">aistack sync</code>
+				<code className="font-mono text-xs text-fg-primary">{SYNC_CMD}</code>
 			</div>
+			<Link
+				to="/sync"
+				className="mt-3 inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-accent-lime hover:underline"
+			>
+				how syncing works
+				<ArrowRight className="size-3" />
+			</Link>
 		</div>
 	);
 }

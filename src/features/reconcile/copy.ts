@@ -30,11 +30,12 @@
 /**
  * The kicker every surface of this feature leads with. A string rather than
  * JSX text because the `//` prefix reads as a comment to the linter.
+ * Renamed by #58 to follow the shared section vocabulary (`// sync`).
  */
-export const KICKER = "// from your machine";
+export const KICKER = "// sync";
 
 /** The same, for the state where nothing has arrived yet. */
-export const KICKER_EMPTY = "// nothing from your machine yet";
+export const KICKER_EMPTY = "// nothing synced yet";
 
 export type ReconcileItem = {
 	atomKind: "model" | "tool" | "mcpServer" | "skill";

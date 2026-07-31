@@ -108,8 +108,8 @@ export function MachinesPage() {
 			<p className="mt-3 max-w-prose text-sm leading-relaxed text-fg-secondary">
 				Every machine where you ran{" "}
 				<code className="font-mono">aistack login</code>. Each one can read your
-				stack and publish what it measured. Revoke one and it stops working
-				straight away.
+				stack and publish what <code className="font-mono">aistack sync</code>{" "}
+				measured there. Revoke one and it stops working straight away.
 			</p>
 
 			{error && (
@@ -129,7 +129,9 @@ export function MachinesPage() {
 					</p>
 					<p className="mt-2 text-sm text-fg-secondary">
 						Run <code className="font-mono">npx @use-aistack/cli login</code> on
-						a machine to link it.
+						a machine to link it, then{" "}
+						<code className="font-mono">npx @use-aistack/cli sync</code> to
+						publish what ran there.
 					</p>
 				</div>
 			)}

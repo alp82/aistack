@@ -10,7 +10,7 @@ Why us:
 
 > **You get the full picture: what they run, what they pay, and how they put it together.**
 
-Decided in [#11](https://github.com/alp82/aistack/issues/11). The live hero already carries this promise; the only residual copy work is the subline's "founders publish" self-report framing, whose rewrite to measured-from-real-usage is gated on auto-sync (execution-map hand-off).
+Decided in [#11](https://github.com/alp82/aistack/issues/11). The live hero carries this promise, and the subline's rewrite to measured-from-real-usage shipped with auto-sync ([#47](https://github.com/alp82/aistack/issues/47), 2026-07-30).
 
 ## Identity: one position, three faces
 
@@ -26,14 +26,16 @@ Consultant marketplace: **parked** (P3), as a measured "available for hire" affo
 
 The evidence engine behind face 1, decided in [#8](https://github.com/alp82/aistack/issues/8) and [#13](https://github.com/alp82/aistack/issues/13): a **Claude-Code-first Skill** that analyzes transcripts **locally**, computes usage-share + recency + cost **deterministically** (measured, not claimed; an LLM only drafts qualitative what-for notes), and sends **only user-approved derived aggregates** through an explicit local approve-gate into an editable web draft. Capture-not-carry: the old CLI's config-carry job is retired. Atomic unit: the `(user, tool)` pair; the stack is a derived rollup. Pluggable per-agent adapter seam; Claude Code is the beachhead.
 
+Channel mix, decided 2026-07-31 in [#56](https://github.com/alp82/aistack/issues/56): the terminal command `npx @use-aistack/cli sync` is the primary surface. The in-session MCP+Skill flow is an opt-in convenience, offered once after a successful sync and installed via `aistack connect claude`. Auto-sync (the fast-follow) is silent background re-sync under one standing, revocable opt-in — no session greetings, no per-send dialogs. Fail-closed name filtering is what makes the unattended repeat sync safe: it can only refresh data the user already approved.
+
 ## Roadmap
 
 ### P0 — the USP gate (strictly sequenced)
 
-1. **Profile-first decoupling migration** ([#16](https://github.com/alp82/aistack/issues/16)) — decouple the person (profile) from the stack (an artifact on the profile), N stacks per profile. Fixes the live identity confusions (self-promo "stacks", stack image/name doubling as profile image/name). **Must land before auto-sync** — capture keys to a stack, and decoupling afterwards would force a second migration of captured data.
-2. **Auto-sync** ([#8](https://github.com/alp82/aistack/issues/8), [#13](https://github.com/alp82/aistack/issues/13)) — the Skill above. P0 capture set: inventory + usage-share + recency + cost + one-line authored what-for. Skills/MCP invocation counts are the first extension after.
+1. **Profile-first decoupling migration** ([#16](https://github.com/alp82/aistack/issues/16)) — **SHIPPED 2026-07-24** ([map #20](https://github.com/alp82/aistack/issues/20)). Decouple the person (profile) from the stack (an artifact on the profile), N stacks per profile. Fixes the live identity confusions (self-promo "stacks", stack image/name doubling as profile image/name). **Must land before auto-sync** — capture keys to a stack, and decoupling afterwards would force a second migration of captured data.
+2. **Auto-sync** ([#8](https://github.com/alp82/aistack/issues/8), [#13](https://github.com/alp82/aistack/issues/13)) — **SHIPPED 2026-07-30** ([map #29](https://github.com/alp82/aistack/issues/29)): living stacks 1/1 on prod after the first real sync ([#53](https://github.com/alp82/aistack/issues/53)). The Skill above. P0 capture set: inventory + usage-share + recency + cost + one-line authored what-for. Skills/MCP invocation counts are the first extension after.
 
-P0 is deliberately two items. Everything measured is invisible until auto-sync ships; nothing else joins P0.
+P0 is deliberately two items, and both have shipped. The open remainder of [map #29](https://github.com/alp82/aistack/issues/29) is the sync channel mix (#54/#55/#56), not new scope. The follow-up ledger on that map is the canonical hand-off list.
 
 ### P1 — in order
 
@@ -69,7 +71,7 @@ P0 is deliberately two items. Everything measured is invisible until auto-sync s
 | Bet | Signal |
 |---|---|
 | Profile-first migration | none — prerequisite, done-or-not |
-| Auto-sync | first approve-and-sends; **repeat sync in a later week** (the direct staleness-treadmill test) |
+| Auto-sync | first approve-and-sends (**first: 2026-07-30**); **repeat sync in a later week** (the direct staleness-treadmill test, still open) |
 | Weekly digest | new signups attributable to digest issues |
 | View analytics | creators who view their dashboard, then edit/share |
 | Live stack-page stats | creator return visits to their own stack page |
@@ -100,5 +102,5 @@ Parked work the follow-up *execution* map inherits:
 
 - **Minimal event instrumentation** — ~6 custom events + per-stack view counters (from the [analytics ticket #5](https://github.com/alp82/aistack/issues/5)).
 - **aicoolies counter-moves, remainder** — tool↔stack↔person cross-link surfaces ("N stacks use this" + avatars); llms.txt + Graveyard-style freshness/AEO signals (from [#9](https://github.com/alp82/aistack/issues/9)). The third counter-move (aggregate spend page) graduated into P1.
-- **Hero subline swap** — "founders publish" → measured-from-real-usage, gated on auto-sync ([#11](https://github.com/alp82/aistack/issues/11)).
-- **Auto-sync build details** deferred by [#13](https://github.com/alp82/aistack/issues/13) — send wire-format, SessionEnd hook wiring, adapter interface shape, the review UI, optional zero-install web upload.
+- **Hero subline swap** — DONE 2026-07-30 ([#47](https://github.com/alp82/aistack/issues/47)).
+- **Auto-sync build details** deferred by [#13](https://github.com/alp82/aistack/issues/13) — mostly closed by [map #29](https://github.com/alp82/aistack/issues/29): wire format ([#33](https://github.com/alp82/aistack/issues/33)), review UI (the reconcile page, [#43](https://github.com/alp82/aistack/issues/43)). Still open: background auto-resync under a standing opt-in (reshaped by [#56](https://github.com/alp82/aistack/issues/56) — silent, no session prompts; fast-follow per the map's ledger), adapter interface shape (fog), zero-install web upload (undecided).

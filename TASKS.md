@@ -1,3 +1,13 @@
+* stack page
+    switch projects with what actually ran
+    change what actually ran and from this machine to easier titles
+* pi
+    https://www.youtube.com/watch?v=5Qu2SkSQeBU
+    https://lazypi.org
+    https://github.com/franky47/dotfiles/tree/main/dot-pi/agent
+    https://github.com/jal-co/jalco-pi-mono
+    https://pi.dev/packages/pi-remote-control
+    https://github.com/davis7dotsh/my-pi-setup
 * aistack claude.md
     https://github.com/woosal1337/blog/blob/main/videos/ep01-the-cure-for-ai-slop/ste-writing-skill.md
 * https://x.com/solomonneas/status/2080454372564070873

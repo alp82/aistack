@@ -1,16 +1,18 @@
 import { Command } from "commander";
 import { BASE_URL } from "./api.js";
 import { collectCommand } from "./commands/collect.js";
+import { connectCommand } from "./commands/connect.js";
 import { createCommand } from "./commands/create.js";
 import { loginCommand } from "./commands/login.js";
+import { syncCommand } from "./commands/sync.js";
 import { runStdioSyncServer } from "./sync/server.js";
 
 const program = new Command();
 
 program
 	.name("aistack")
-	.description("Share and clone AI development configurations")
-	.version("0.1.0");
+	.description("Measure and share your AI stack from your terminal")
+	.version("0.4.0");
 
 program
 	.command("login")
@@ -40,5 +42,17 @@ program
 			log: (line) => process.stderr.write(`[aistack-mcp] ${line}\n`),
 		});
 	});
+
+// The documented default sync surface (#56): terminal-first, TTY gate.
+program
+	.command("sync")
+	.description("Scan, preview, and publish measured usage (rolling 30 days)")
+	.action(syncCommand);
+
+program
+	.command("connect")
+	.description("Install the in-session sync surface (MCP server + Skill)")
+	.argument("<harness>", 'the harness to connect ("claude")')
+	.action(connectCommand);
 
 program.parse();

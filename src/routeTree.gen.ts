@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ToolsRouteImport } from './routes/tools'
 import { Route as TestRouteImport } from './routes/test'
+import { Route as SyncRouteImport } from './routes/sync'
 import { Route as SigninPublishRouteImport } from './routes/signin-publish'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -49,6 +50,11 @@ const ToolsRoute = ToolsRouteImport.update({
 const TestRoute = TestRouteImport.update({
   id: '/test',
   path: '/test',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SyncRoute = SyncRouteImport.update({
+  id: '/sync',
+  path: '/sync',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SigninPublishRoute = SigninPublishRouteImport.update({
@@ -207,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signin': typeof SigninRoute
   '/signin-publish': typeof SigninPublishRoute
+  '/sync': typeof SyncRoute
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
   '/admin/icons': typeof AdminIconsRoute
@@ -240,6 +247,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signin': typeof SigninRoute
   '/signin-publish': typeof SigninPublishRoute
+  '/sync': typeof SyncRoute
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
   '/admin/icons': typeof AdminIconsRoute
@@ -274,6 +282,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signin': typeof SigninRoute
   '/signin-publish': typeof SigninPublishRoute
+  '/sync': typeof SyncRoute
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
   '/admin_/icons': typeof AdminIconsRoute
@@ -309,6 +318,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signin'
     | '/signin-publish'
+    | '/sync'
     | '/test'
     | '/tools'
     | '/admin/icons'
@@ -342,6 +352,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signin'
     | '/signin-publish'
+    | '/sync'
     | '/test'
     | '/tools'
     | '/admin/icons'
@@ -375,6 +386,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signin'
     | '/signin-publish'
+    | '/sync'
     | '/test'
     | '/tools'
     | '/admin_/icons'
@@ -409,6 +421,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SigninRoute: typeof SigninRoute
   SigninPublishRoute: typeof SigninPublishRoute
+  SyncRoute: typeof SyncRoute
   TestRoute: typeof TestRoute
   ToolsRoute: typeof ToolsRoute
   AdminIconsRoute: typeof AdminIconsRoute
@@ -446,6 +459,13 @@ declare module '@tanstack/react-router' {
       path: '/test'
       fullPath: '/test'
       preLoaderRoute: typeof TestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sync': {
+      id: '/sync'
+      path: '/sync'
+      fullPath: '/sync'
+      preLoaderRoute: typeof SyncRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signin-publish': {
@@ -676,6 +696,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SigninRoute: SigninRoute,
   SigninPublishRoute: SigninPublishRoute,
+  SyncRoute: SyncRoute,
   TestRoute: TestRoute,
   ToolsRoute: ToolsRoute,
   AdminIconsRoute: AdminIconsRoute,

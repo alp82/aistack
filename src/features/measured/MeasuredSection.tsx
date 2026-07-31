@@ -1,7 +1,10 @@
+import { Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
+import { ArrowRight } from "lucide-react";
 import { Section, SectionHeader } from "@/features/stack-view/ui";
 import { cn, timeAgo } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
+import { CommandBlock } from "./CommandLine";
 import {
 	coverageCaveat,
 	fmtShare,
@@ -10,6 +13,8 @@ import {
 	harnessLine,
 	KICKER,
 	keptPrivate,
+	LOGIN_CMD,
+	LOGIN_CMD_COMMENT,
 	MEASURED_ANCHOR,
 	type MeasuredModel,
 	type MeasuredSnapshot,
@@ -17,6 +22,11 @@ import {
 	modelLabel,
 	NEVER_SYNCED_BODY,
 	NEVER_SYNCED_TITLE,
+	OWNER_NOT_MEASURED_BODY,
+	OWNER_NOT_MEASURED_TITLE,
+	PRIVACY_FOOTNOTE,
+	SYNC_CMD,
+	SYNC_CMD_COMMENT,
 	stalenessLine,
 	TITLE,
 	totalUSD,
@@ -24,23 +34,26 @@ import {
 } from "./copy";
 
 /**
- * Journey section 02 — the public measured display.
+ * Journey section 01 — the public measured display.
  *
- * Wayfinder ticket #46 (map #29), building variant B locked by #40. It sits
- * ahead of Tools, because what ran outranks what is listed.
+ * Wayfinder ticket #46 (map #29), building variant B locked by #40; #58 moved
+ * it to the front of the journey. What ran now literally comes first.
  *
  * Public and unauthenticated: `getCurrentByStackSlug` answers for any published
  * stack and returns null for one that has never synced. That null renders an
  * INVITATION addressed to the reader, never a demerit on the author — every
  * stack but one is in that state, and a page that scolded them for it would be
- * scolding almost everybody.
+ * scolding almost everybody. The one exception is the owner looking at their
+ * own unsynced stack: they get the two commands that close the gap (#58).
  */
 export function MeasuredSection({
 	index,
 	slug,
+	isOwner,
 }: {
 	index: number;
 	slug: string;
+	isOwner: boolean;
 }) {
 	const snapshot = useQuery(api.measured.getCurrentByStackSlug, { slug });
 
@@ -55,7 +68,11 @@ export function MeasuredSection({
 			{/* Undefined is "not answered yet", and it must not read as "never
 			    measured" — the invitation waits until the query has spoken. */}
 			{snapshot === undefined ? null : snapshot === null ? (
-				<NeverMeasured />
+				isOwner ? (
+					<OwnerNotMeasured />
+				) : (
+					<NeverMeasured />
+				)
 			) : (
 				<Reading snapshot={snapshot} />
 			)}
@@ -195,6 +212,11 @@ function Stat({ label, value }: { label: string; value: string }) {
 	);
 }
 
+/**
+ * The visitor's invitation, addressed to the reader (#40): it says what stacks
+ * can do and hands the reader the command for their own stack, and never
+ * judges the author of this one.
+ */
 function NeverMeasured() {
 	return (
 		<div className="border border-dashed border-stroke-strong px-6 py-10 text-center">
@@ -202,6 +224,43 @@ function NeverMeasured() {
 			<p className="mx-auto mt-2 max-w-md text-sm text-fg-muted">
 				{NEVER_SYNCED_BODY}
 			</p>
+			<p className={cn(MONO_LABEL, "mt-6 text-fg-muted")}>
+				have a stack of your own? —{" "}
+				<code className="text-fg-primary">{SYNC_CMD}</code>
+			</p>
+			<Link
+				to="/sync"
+				className="mt-4 inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-accent-lime hover:underline"
+			>
+				how measuring works <ArrowRight size={12} />
+			</Link>
+		</div>
+	);
+}
+
+/** The owner's teaching box (#58): the two commands, on the page with the gap. */
+function OwnerNotMeasured() {
+	return (
+		<div className="border border-stroke-strong px-6 py-10 md:px-10">
+			<p className="text-lg text-fg-primary">{OWNER_NOT_MEASURED_TITLE}</p>
+			<p className="mt-2 max-w-xl text-sm text-fg-muted">
+				{OWNER_NOT_MEASURED_BODY}
+			</p>
+			<div className="mt-6 max-w-xl">
+				<CommandBlock
+					commands={[
+						{ cmd: LOGIN_CMD, comment: LOGIN_CMD_COMMENT },
+						{ cmd: SYNC_CMD, comment: SYNC_CMD_COMMENT },
+					]}
+				/>
+			</div>
+			<p className={cn(MONO_LABEL, "mt-4 text-fg-muted")}>{PRIVACY_FOOTNOTE}</p>
+			<Link
+				to="/sync"
+				className="mt-6 inline-flex items-center gap-2 bg-accent-lime px-5 py-2.5 font-mono text-xs font-semibold uppercase tracking-widest text-accent-lime-contrast transition-opacity hover:opacity-90"
+			>
+				how syncing works <ArrowRight size={14} />
+			</Link>
 		</div>
 	);
 }

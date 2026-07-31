@@ -170,8 +170,16 @@ describe("the never-checked stack", () => {
 			screen.getByText("You haven't said what you use this for"),
 		).toBeTruthy();
 		expect(screen.getByText("Convex")).toBeTruthy();
+		// The banner and the teaching box both name the documented command (#58),
+		// and both point at the canonical /sync page.
 		expect(screen.getByText("Never checked")).toBeTruthy();
-		expect(screen.getByText("aistack sync")).toBeTruthy();
+		expect(
+			screen.getAllByText("npx @use-aistack/cli sync").length,
+		).toBeGreaterThan(0);
+		const guideLinks = screen
+			.getAllByText("how syncing works")
+			.map((el) => el.closest("a")?.getAttribute("href"));
+		expect(guideLinks).toContain("/sync");
 	});
 
 	it("counts only the authored half in the meter", () => {

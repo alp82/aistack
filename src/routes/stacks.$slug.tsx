@@ -317,15 +317,19 @@ function StackDetailsPage() {
 					/>
 				</div>
 				<div className="bg-bg-canvas">
-					{/* The journey (#40): Projects 01 → What actually ran 02 → Tools 03 →
-					    Workflow 04. What ran comes before what is listed. */}
-					<ProjectsSection
+					{/* The journey (#40, reordered by #58): Actual Usage 01 → Projects 02
+					    → Tools 03 → Workflow 04. What ran now literally comes first. */}
+					<MeasuredSection
 						index={1}
-						stackId={stack._id}
+						slug={stack.slug}
 						isOwner={upvoteStatus?.isOwner ?? false}
 					/>
 
-					<MeasuredSection index={2} slug={stack.slug} />
+					<ProjectsSection
+						index={2}
+						stackId={stack._id}
+						isOwner={upvoteStatus?.isOwner ?? false}
+					/>
 
 					{/* biome-ignore lint/correctness/useUniqueElementIds: stable single-instance scroll anchor for the hero tile jump target */}
 					<ToolsSection
