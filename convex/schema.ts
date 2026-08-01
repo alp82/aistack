@@ -644,9 +644,8 @@ export default defineSchema({
     schemaVersion: v.number(),
     // Denormalized copy of payload.harness.name (#66 decision 1), so "current
     // per harness" is one indexed read. A plain string, not a union literal —
-    // a third harness must not need a schema migration. OPTIONAL while the
-    // 20260801 backfill runs (3-phase rule); narrows to required after.
-    harness: v.optional(v.string()),
+    // a third harness must not need a schema migration.
+    harness: v.string(),
     payload: MeasuredPayload,
   })
     .index('by_stack_capturedAt', ['stackId', 'capturedAt'])

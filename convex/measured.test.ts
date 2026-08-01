@@ -2126,28 +2126,4 @@ describe('batch publish + per-harness aggregation (#67)', () => {
     expect(current?.models[0].apiEquivalentUSD).toBeUndefined()
   })
 
-  test('the 20260801 backfill copies payload.harness.name onto old rows, idempotently', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId } = await seedStack(t)
-    await t.mutation(internal.measured.publishSnapshot, { stackId, payload: payload() })
-    // Simulate a pre-#67 row: strip the denormalized column.
-    await t.run(async (ctx) => {
-      const row = await ctx.db.query('measuredSnapshots').first()
-      await ctx.db.patch(row!._id, { harness: undefined })
-    })
-
-    const first = await t.mutation(
-      internal.migrations['20260801_snapshot_harness'].run,
-      {},
-    )
-    expect(first).toEqual({ patched: 1, skipped: 0 })
-    const second = await t.mutation(
-      internal.migrations['20260801_snapshot_harness'].run,
-      {},
-    )
-    expect(second).toEqual({ patched: 0, skipped: 1 })
-
-    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
-    expect(rows[0].harness).toBe('claude-code')
-  })
 })

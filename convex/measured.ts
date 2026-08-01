@@ -245,8 +245,7 @@ async function resolveModels(
   )
 }
 
-const harnessOf = (row: Doc<'measuredSnapshots'>): string =>
-  row.harness ?? row.payload.harness.name
+const harnessOf = (row: Doc<'measuredSnapshots'>): string => row.harness
 
 /**
  * The newest snapshot of EACH harness (#66 decisions 1-2). "Current" became
