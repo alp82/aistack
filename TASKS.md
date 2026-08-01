@@ -1,6 +1,3 @@
-* stack page
-    switch projects with what actually ran
-    change what actually ran and from this machine to easier titles
 * pi
     https://www.youtube.com/watch?v=5Qu2SkSQeBU
     https://lazypi.org
