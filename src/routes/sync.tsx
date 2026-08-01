@@ -42,7 +42,7 @@ const STEPS: { title: string; body: string; cmd?: string }[] = [
 	},
 	{
 		title: "Sync",
-		body: `Scans your local ${HARNESS} history and shows you the full summary in the terminal — every number, every name.`,
+		body: `Scans your local ${HARNESS} and Codex history and shows you the full summary in the terminal — every number, every name.`,
 		cmd: SYNC_CMD,
 	},
 	{

@@ -3,14 +3,20 @@
 // stage that cannot name its destination is blocked before any gate.
 
 import { describe, expect, test } from "vitest";
-import type { LoadedSyncConfig, SyncConfig } from "../transcripts/allowlist.js";
+import { createAggregate, ingestRecord } from "../harness/claude/analyzer.js";
+import { assistant } from "../harness/claude/fixtures.js";
+import type {
+	LoadedSyncConfig,
+	SyncConfig,
+} from "../harness/shared/allowlist.js";
 import {
+	BUILTIN_TOOLS,
 	BUNDLED_SYNC_CONFIG,
 	EMPTY_OPT_INS,
-} from "../transcripts/allowlist.js";
-import { ingestRecord } from "../transcripts/analyzer.js";
-import { assistant } from "../transcripts/fixtures.js";
-import type { ScanStats } from "../transcripts/scan.js";
+} from "../harness/shared/allowlist.js";
+import { PRICING_TABLE_VERSION } from "../harness/shared/pricing.js";
+import type { ScanStats } from "../harness/shared/window.js";
+import type { HarnessAdapter } from "../harness/types.js";
 import { type StageDeps, stageId, stageSync } from "./stage.js";
 
 const NOW = Date.parse("2026-07-30T12:00:00.000Z");
@@ -40,15 +46,27 @@ function deps(
 		getTokenImpl: () => "tok_1",
 		loadConfigImpl: async () =>
 			over.config ?? { config: FETCHED, source: "fetched" },
-		scanImpl: async (agg) => {
-			ingestRecord(agg, assistant({ timestamp: "2026-07-20T12:00:00.000Z" }), {
-				projectDir: "-home-u-p",
-			});
-			return STATS;
-		},
+		adaptersImpl: async () => [FAKE_CLAUDE_ADAPTER],
 		...over,
 	};
 }
+
+/** A one-record fake Claude adapter, so the stage tests need no filesystem. */
+const FAKE_CLAUDE_ADAPTER: HarnessAdapter = {
+	name: "claude-code",
+	builtinTools: BUILTIN_TOOLS,
+	pricingTableVersion: PRICING_TABLE_VERSION,
+	detect: async () => true,
+	scan: async () => {
+		const aggregate = createAggregate();
+		ingestRecord(
+			aggregate,
+			assistant({ timestamp: "2026-07-20T12:00:00.000Z" }),
+			{ projectDir: "-home-u-p" },
+		);
+		return { aggregate, stats: STATS };
+	},
+};
 
 describe("stageSync", () => {
 	test("bodyJson is the exact serialization and the id derives from it", async () => {

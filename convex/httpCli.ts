@@ -414,18 +414,21 @@ export const syncPublish = httpAction(async (ctx, request) => {
   if (authResult instanceof Response) return authResult
   const { tokenId } = authResult
 
-  let body: { payload?: unknown; keptPrivate?: unknown }
+  let body: { payload?: unknown; payloads?: unknown; keptPrivate?: unknown }
   try {
     body = await request.json()
   } catch {
     return jsonResponse({ error: 'Invalid JSON body' }, 400)
   }
-  if (!body.payload) {
-    return jsonResponse({ error: 'Missing required field: payload' }, 400)
+  // `payloads` is the batch a #67 client sends — one per detected harness.
+  // The old single `payload` stays accepted for installed CLIs (same wire
+  // tolerance as ResourceInput.scope) until a wire bump retires it.
+  if (!body.payload && !(Array.isArray(body.payloads) && body.payloads.length > 0)) {
+    return jsonResponse({ error: 'Missing required field: payloads' }, 400)
   }
 
   let result: {
-    snapshotId: string
+    snapshotIds: string[]
     receivedAt: number
     stackSlug: string
     keptPrivate: { stored: number; refused: boolean }
@@ -434,6 +437,7 @@ export const syncPublish = httpAction(async (ctx, request) => {
     result = await ctx.runMutation(internal.measured.publishForToken, {
       tokenId: tokenId as Id<'cliTokens'>,
       payload: body.payload as any,
+      payloads: body.payloads as any,
       keptPrivate: body.keptPrivate as any,
     })
   } catch (err) {

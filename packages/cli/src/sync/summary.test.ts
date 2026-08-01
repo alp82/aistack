@@ -8,9 +8,9 @@ import type {
 	KeptPrivateAtom,
 	NameCategory,
 	SyncConfig,
-} from "../transcripts/allowlist.js";
-import { EMPTY_OPT_INS } from "../transcripts/allowlist.js";
-import type { MeasuredPayload, SyncBody } from "../transcripts/payload.js";
+} from "../harness/shared/allowlist.js";
+import { EMPTY_OPT_INS } from "../harness/shared/allowlist.js";
+import type { MeasuredPayload, SyncBody } from "../harness/shared/payload.js";
 import {
 	buildGateDialog,
 	buildGateSummary,
@@ -93,8 +93,8 @@ function ctx(over: {
 }): GateContext {
 	const p = payload(over.payload);
 	const body: SyncBody = over.withKeptPrivateHalf
-		? { payload: p, keptPrivate: over.keptPrivate ?? NO_KEPT_PRIVATE }
-		: { payload: p };
+		? { payloads: [p], keptPrivate: over.keptPrivate ?? NO_KEPT_PRIVATE }
+		: { payloads: [p] };
 	return {
 		body,
 		keptPrivate: over.keptPrivate ?? NO_KEPT_PRIVATE,

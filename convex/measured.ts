@@ -157,6 +157,9 @@ async function insertSnapshot(
     capturedAt: payload.capturedAt,
     receivedAt,
     schemaVersion: payload.schemaVersion,
+    // Denormalized discriminator (#66 decision 1) — "current per harness" is
+    // one indexed read. Old rows get theirs from the 20260801 backfill.
+    harness: payload.harness.name,
     payload,
   })
   return { snapshotId, receivedAt }
@@ -242,18 +245,47 @@ async function resolveModels(
   )
 }
 
-async function newestSnapshot(
+const harnessOf = (row: Doc<'measuredSnapshots'>): string =>
+  row.harness ?? row.payload.harness.name
+
+/**
+ * The newest snapshot of EACH harness (#66 decisions 1-2). "Current" became
+ * per-harness the day snapshots did: each harness syncs independently, so its
+ * freshness and failures stay attributable.
+ *
+ * One collect over the stack's rows rather than one indexed read per harness,
+ * because the harness set is open (a plain string, deliberately) and the
+ * retention policy bounds a stack to roughly one row per day — the collect is
+ * small by construction. Claude Code sorts first (the documented default),
+ * then alphabetical, so the display order is stable.
+ */
+async function newestSnapshotsPerHarness(
   ctx: QueryCtx,
   stackId: Id<'stacks'>
-): Promise<Doc<'measuredSnapshots'> | null> {
-  return await ctx.db
+): Promise<Doc<'measuredSnapshots'>[]> {
+  const rows = await ctx.db
     .query('measuredSnapshots')
     .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', stackId))
-    .order('desc')
-    .first()
+    .collect()
+  const byHarness = new Map<string, Doc<'measuredSnapshots'>>()
+  for (const row of rows) {
+    const held = byHarness.get(harnessOf(row))
+    if (!held || row.capturedAt > held.capturedAt) {
+      byHarness.set(harnessOf(row), row)
+    }
+  }
+  return [...byHarness.values()].sort((a, b) => {
+    const ha = harnessOf(a)
+    const hb = harnessOf(b)
+    if (ha === hb) return 0
+    if (ha === 'claude-code') return -1
+    if (hb === 'claude-code') return 1
+    return ha.localeCompare(hb)
+  })
 }
 
-const CurrentSnapshot = v.object({
+/** One harness's current snapshot — the old CurrentSnapshot, one per harness. */
+const HarnessSnapshot = v.object({
   capturedAt: v.number(),
   receivedAt: v.number(),
   schemaVersion: v.number(),
@@ -300,15 +332,112 @@ const CurrentSnapshot = v.object({
 })
 
 /**
+ * The combined headline plus the per-harness sections (#66 decision 2).
+ *
+ * The headline SUMS what sums honestly — a session belongs to exactly one
+ * harness, so tokens, sessions and dollars cannot double-count even when the
+ * windows overlap. What cannot merge stays per-harness: inventory atoms carry
+ * normalized `callShare` only (no weights, so a cross-harness number would be
+ * fabricated), and day-sets/project-sets can overlap, so the headline shows
+ * `max` for those, labeled as such by the display.
+ */
+const CurrentMeasured = v.object({
+  /** Newest across harnesses; the freshness the page leads with. */
+  receivedAt: v.number(),
+  capturedAt: v.number(),
+  /** True when ANY harness synced inside the 7-day window. */
+  isFresh: v.boolean(),
+  /** Envelope: max days, earliest from, latest to. */
+  window: v.object({ days: v.number(), from: v.string(), to: v.string() }),
+  /** Every cited price table, joined for display; null when none published cost. */
+  pricingTable: v.union(v.string(), v.null()),
+  activity: v.object({
+    sessions: v.number(),
+    /** MAX across harnesses, not a sum — the same day can appear in both. */
+    activeDays: v.number(),
+    /** MAX across harnesses — the same project can appear in both. */
+    projects: v.number(),
+    totalTokens: v.number(),
+    cacheHitShare: v.number(),
+    subagentShare: v.number(),
+  }),
+  /** Merged by id: absolute token objects summed, tokenShare recomputed. */
+  models: v.array(ResolvedModel),
+  harnesses: v.array(HarnessSnapshot),
+})
+
+async function toHarnessSnapshot(
+  ctx: QueryCtx,
+  snapshot: Doc<'measuredSnapshots'>
+) {
+  const p = snapshot.payload
+  return {
+    capturedAt: snapshot.capturedAt,
+    receivedAt: snapshot.receivedAt,
+    schemaVersion: snapshot.schemaVersion,
+    isFresh: Date.now() - snapshot.receivedAt <= SEVEN_DAYS_MS,
+    window: p.window,
+    harness: p.harness,
+    pricingTable: p.pricingTable,
+    activity: p.activity,
+    models: await resolveModels(ctx, p.models),
+    inventory: p.inventory,
+    coverage: p.coverage,
+    excludedTokens: p.excludedTokens,
+  }
+}
+
+type Resolved = Awaited<ReturnType<typeof resolveModels>>[number]
+
+/**
+ * Merge per-harness model lists by id, summing the absolute token objects and
+ * recomputing `tokenShare` over the combined total. Dollars sum only while
+ * every contributor priced — a merged row that mixed a priced and an unpriced
+ * half would understate without saying so, so it drops the field instead.
+ */
+function mergeModels(lists: Resolved[][]): Resolved[] {
+  const merged = new Map<string, Resolved>()
+  for (const list of lists) {
+    for (const m of list) {
+      const held = merged.get(m.id)
+      if (!held) {
+        merged.set(m.id, { ...m, tokens: { ...m.tokens } })
+        continue
+      }
+      held.tokens.input += m.tokens.input
+      held.tokens.output += m.tokens.output
+      held.tokens.cacheWrite += m.tokens.cacheWrite
+      held.tokens.cacheRead += m.tokens.cacheRead
+      if (held.apiEquivalentUSD !== undefined && m.apiEquivalentUSD !== undefined) {
+        held.apiEquivalentUSD += m.apiEquivalentUSD
+      } else {
+        held.apiEquivalentUSD = undefined
+      }
+      if (held.catalogSlug === null) {
+        held.catalogSlug = m.catalogSlug
+        held.catalogName = m.catalogName
+      }
+    }
+  }
+  const tokensOf = (r: Resolved) =>
+    r.tokens.input + r.tokens.output + r.tokens.cacheWrite + r.tokens.cacheRead
+  const total = [...merged.values()].reduce((a, r) => a + tokensOf(r), 0)
+  return [...merged.values()]
+    .map((r) => ({ ...r, tokenShare: total ? tokensOf(r) / total : 0 }))
+    .sort((a, b) => tokensOf(b) - tokensOf(a) || a.id.localeCompare(b.id))
+}
+
+/**
  * The current measured layer for a published stack, by public slug.
  *
  * Public and unauthenticated, matching the minimal public display this map
  * pulls forward (#34). Returns null for an unpublished stack or one that has
- * never synced — the display decides how to render the silence.
+ * never synced — the display decides how to render the silence. No merged row
+ * is ever stored: this aggregation exists only at read time (#66 decision 2).
  */
 export const getCurrentByStackSlug = query({
   args: { slug: v.string() },
-  returns: v.union(CurrentSnapshot, v.null()),
+  returns: v.union(CurrentMeasured, v.null()),
   handler: async (ctx, args) => {
     const shortId = extractShortId(args.slug)
     const stack = await ctx.db
@@ -317,23 +446,58 @@ export const getCurrentByStackSlug = query({
       .first()
     if (!stack || !stack.published) return null
 
-    const snapshot = await newestSnapshot(ctx, stack._id)
-    if (!snapshot) return null
+    const snapshots = await newestSnapshotsPerHarness(ctx, stack._id)
+    if (snapshots.length === 0) return null
 
-    const p = snapshot.payload
+    const harnesses = []
+    for (const snapshot of snapshots) {
+      harnesses.push(await toHarnessSnapshot(ctx, snapshot))
+    }
+
+    const totalTokens = harnesses.reduce(
+      (a, h) => a + h.activity.totalTokens,
+      0
+    )
+    // Cache-hit share recomputes from the summed model tokens — the same
+    // input-class formula each client used, over the merged absolute counts.
+    const models = mergeModels(harnesses.map((h) => h.models))
+    let cacheRead = 0
+    let inputClass = 0
+    for (const m of models) {
+      cacheRead += m.tokens.cacheRead
+      inputClass += m.tokens.input + m.tokens.cacheRead + m.tokens.cacheWrite
+    }
+    const pricingTables = [
+      ...new Set(
+        harnesses.map((h) => h.pricingTable).filter((t): t is string => t !== null)
+      ),
+    ]
+
     return {
-      capturedAt: snapshot.capturedAt,
-      receivedAt: snapshot.receivedAt,
-      schemaVersion: snapshot.schemaVersion,
-      isFresh: Date.now() - snapshot.receivedAt <= SEVEN_DAYS_MS,
-      window: p.window,
-      harness: p.harness,
-      pricingTable: p.pricingTable,
-      activity: p.activity,
-      models: await resolveModels(ctx, p.models),
-      inventory: p.inventory,
-      coverage: p.coverage,
-      excludedTokens: p.excludedTokens,
+      receivedAt: Math.max(...harnesses.map((h) => h.receivedAt)),
+      capturedAt: Math.max(...harnesses.map((h) => h.capturedAt)),
+      isFresh: harnesses.some((h) => h.isFresh),
+      window: {
+        days: Math.max(...harnesses.map((h) => h.window.days)),
+        from: harnesses.map((h) => h.window.from).sort()[0],
+        to: harnesses.map((h) => h.window.to).sort()[harnesses.length - 1],
+      },
+      pricingTable: pricingTables.length > 0 ? pricingTables.join(' + ') : null,
+      activity: {
+        sessions: harnesses.reduce((a, h) => a + h.activity.sessions, 0),
+        activeDays: Math.max(...harnesses.map((h) => h.activity.activeDays)),
+        projects: Math.max(...harnesses.map((h) => h.activity.projects)),
+        totalTokens,
+        cacheHitShare: inputClass ? cacheRead / inputClass : 0,
+        subagentShare: totalTokens
+          ? harnesses.reduce(
+              (a, h) => a + h.activity.subagentShare * h.activity.totalTokens,
+              0
+            ) / totalTokens
+          : 0,
+      },
+      models,
+      harnesses,
     }
   },
 })
@@ -433,7 +597,9 @@ export const getReconcileSuggestions = query({
   }),
   handler: async (ctx, args) => {
     const stack = await requireStackOwner(ctx, args.stackId)
-    const snapshot = await newestSnapshot(ctx, args.stackId)
+    // One snapshot per harness (#66): a model measured by ANY harness is a
+    // reconcile candidate, and the surface's freshness reads the newest sync.
+    const snapshots = await newestSnapshotsPerHarness(ctx, args.stackId)
 
     const dismissals = await ctx.db
       .query('reconcileDismissals')
@@ -468,16 +634,20 @@ export const getReconcileSuggestions = query({
       })
     }
 
-    // Measured-side: a model that resolves to the catalog but is absent from the
-    // authored model list.
-    if (snapshot) {
-      const authoredModels = new Set(
-        (stack.modelSubscriptions ?? []).map((m) => m.modelSlug)
-      )
+    // Measured-side: a model that resolves to the catalog but is absent from
+    // the authored model list. Across harnesses the first (freshest-ordered)
+    // sighting wins — the suggestion is "you ran this", not a share ranking.
+    const authoredModels = new Set(
+      (stack.modelSubscriptions ?? []).map((m) => m.modelSlug)
+    )
+    const suggestedSlugs = new Set<string>()
+    for (const snapshot of snapshots) {
       for (const m of await resolveModels(ctx, snapshot.payload.models)) {
         if (m.catalogSlug === null) continue
         if (authoredModels.has(m.catalogSlug)) continue
         if (dismissed.has(`model:${m.catalogSlug}`)) continue
+        if (suggestedSlugs.has(m.catalogSlug)) continue
+        suggestedSlugs.add(m.catalogSlug)
         suggestions.push({
           atomKind: 'model',
           atomKey: m.catalogSlug,
@@ -493,11 +663,16 @@ export const getReconcileSuggestions = query({
       (a, b) => (b.tokenShare ?? 0) - (a.tokenShare ?? 0) || a.label.localeCompare(b.label)
     )
 
+    const newestReceivedAt =
+      snapshots.length > 0
+        ? Math.max(...snapshots.map((s) => s.receivedAt))
+        : null
     return {
-      hasSnapshot: snapshot !== null,
-      receivedAt: snapshot?.receivedAt ?? null,
+      hasSnapshot: snapshots.length > 0,
+      receivedAt: newestReceivedAt,
       isFresh:
-        snapshot !== null && Date.now() - snapshot.receivedAt <= SEVEN_DAYS_MS,
+        newestReceivedAt !== null &&
+        Date.now() - newestReceivedAt <= SEVEN_DAYS_MS,
       suggestions,
       dismissedCount: dismissals.length,
     }
@@ -1397,26 +1572,60 @@ async function gcKeptPrivate(ctx: MutationCtx): Promise<number> {
   return stale.length
 }
 
+/**
+ * Payloads per publish. Two harnesses exist today; the cap only bounds the
+ * transaction a hostile client could ask for.
+ */
+const MAX_PAYLOADS_PER_PUBLISH = 8
+
 /** Convenience for the HTTP layer: publish + report what the gate should show. */
 export const publishForToken = internalMutation({
   args: {
     tokenId: v.id('cliTokens'),
-    payload: MeasuredPayload,
     /**
-     * The unsealed half (#48). Optional, because a client with the switch off
-     * sends the payload alone — and because #41's gate must be able to sync
+     * Pre-#67 clients send exactly one payload here. Tolerated like
+     * `ResourceInput.scope` — an installed CLI keeps working until a wire
+     * bump retires the field.
+     */
+    payload: v.optional(MeasuredPayload),
+    /**
+     * The batch (#66 decision 5): one payload per detected harness, landed in
+     * ONE atomic mutation. Atomicity is what closes the staged-names wipe
+     * hazard — `replaceKeptPrivate` is a whole-list replace per stack, so two
+     * sequential per-harness publishes would have the second wipe the first's
+     * names.
+     */
+    payloads: v.optional(v.array(MeasuredPayload)),
+    /**
+     * The unsealed half (#48), ONE union across harnesses — consent is per
+     * name, not per harness. Optional, because a client with the switch off
+     * sends the payloads alone — and because #41's gate must be able to sync
      * before this half exists on the machine.
      */
     keptPrivate: v.optional(KeptPrivateNames),
   },
   returns: v.object({
-    snapshotId: v.id('measuredSnapshots'),
+    snapshotIds: v.array(v.id('measuredSnapshots')),
     receivedAt: v.number(),
     stackSlug: v.string(),
     /** How many staged names landed, and whether the switch refused them. */
     keptPrivate: v.object({ stored: v.number(), refused: v.boolean() }),
   }),
   handler: async (ctx, args) => {
+    const payloads = args.payloads ?? (args.payload ? [args.payload] : [])
+    if (payloads.length === 0) {
+      throw new Error('A publish needs at least one payload')
+    }
+    if (payloads.length > MAX_PAYLOADS_PER_PUBLISH) {
+      throw new Error(`At most ${MAX_PAYLOADS_PER_PUBLISH} payloads per publish`)
+    }
+    // One snapshot per harness per publish. Two payloads claiming the same
+    // harness would make "current per harness" depend on insert order.
+    const harnesses = new Set(payloads.map((p) => p.harness.name))
+    if (harnesses.size !== payloads.length) {
+      throw new Error('Each payload must name a distinct harness')
+    }
+
     const token = await ctx.db.get(args.tokenId)
     if (!token) throw new Error('Token not found')
     if (!token.stackId) {
@@ -1435,11 +1644,13 @@ export const publishForToken = internalMutation({
       throw new Error('Token is no longer authorized for its linked stack')
     }
 
-    const { snapshotId, receivedAt } = await insertSnapshot(
-      ctx,
-      stack._id,
-      args.payload
-    )
+    const snapshotIds: Id<'measuredSnapshots'>[] = []
+    let receivedAt = 0
+    for (const payload of payloads) {
+      const inserted = await insertSnapshot(ctx, stack._id, payload)
+      snapshotIds.push(inserted.snapshotId)
+      receivedAt = inserted.receivedAt
+    }
 
     // The switch is not client-side-only. A client that sends the half anyway —
     // a stale config fetch, or the owner flipping the switch mid-sync — has the
@@ -1452,7 +1663,7 @@ export const publishForToken = internalMutation({
         : 0
 
     return {
-      snapshotId,
+      snapshotIds,
       receivedAt,
       stackSlug: `${stack.slug}-${stack.shortId}`,
       keptPrivate: { stored, refused },

@@ -42,7 +42,7 @@ export const ELICIT_TIMEOUT_MS = 10 * 60 * 1000;
 const PREVIEW_TOOL = {
 	name: "sync_preview",
 	description:
-		"Scan local Claude Code transcripts and stage a measured-usage snapshot for aistack. " +
+		"Scan local agent transcripts (Claude Code, Codex) and stage a measured-usage snapshot for aistack. " +
 		"Returns the full preview of exactly what would publish. " +
 		"Show the returned text to the user VERBATIM — it is the review surface. Nothing is sent.",
 	inputSchema: { type: "object", properties: {} },

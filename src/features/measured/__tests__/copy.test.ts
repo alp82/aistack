@@ -15,7 +15,7 @@ import {
 	modelLabel,
 	totalUSD,
 } from "../copy";
-import { buildSnapshot, withoutCost } from "./fixture";
+import { buildHarness, buildSnapshot, withoutCost } from "./fixture";
 
 describe("the dollar figure", () => {
 	it("adds up every priced model", () => {
@@ -64,13 +64,13 @@ describe("a model the catalog has never heard of", () => {
 describe("kept private", () => {
 	it("names the categories that held something back, and no others", () => {
 		// builtinTools is 0 on this window and must not appear.
-		expect(keptPrivate(buildSnapshot())).toBe(
+		expect(keptPrivate(buildHarness())).toBe(
 			"2 MCP servers, 10 skills, 47 subagents, 9 commands",
 		);
 	});
 
 	it("is silent when nothing was held back", () => {
-		const s = buildSnapshot();
+		const s = buildHarness();
 		const withheld = { ...s.inventory.withheld };
 		for (const key of Object.keys(withheld) as Array<keyof typeof withheld>) {
 			withheld[key] = 0;
@@ -83,19 +83,19 @@ describe("kept private", () => {
 	it("is never a percentage", () => {
 		// #42: a completeness score is a disclosure ratchet — it pressures the
 		// owner to publish exactly the names they held back.
-		expect(keptPrivate(buildSnapshot())).not.toMatch(/%/);
+		expect(keptPrivate(buildHarness())).not.toMatch(/%/);
 	});
 });
 
 describe("coverage", () => {
 	it("says nothing about a clean scan", () => {
 		// 28 failed lines in 232,107 is noise, not a caveat.
-		expect(coverageCaveat(buildSnapshot())).toBeNull();
+		expect(coverageCaveat(buildHarness())).toBeNull();
 	});
 
 	it("calls a degraded scan a floor", () => {
 		const caveat = coverageCaveat(
-			buildSnapshot({
+			buildHarness({
 				coverage: {
 					filesScanned: 3015,
 					filesUnreadable: 61,
@@ -112,7 +112,7 @@ describe("coverage", () => {
 	it("speaks up for an unreadable file even when every parsed line was fine", () => {
 		expect(
 			coverageCaveat(
-				buildSnapshot({
+				buildHarness({
 					coverage: {
 						filesScanned: 3015,
 						filesUnreadable: 1,
@@ -127,15 +127,20 @@ describe("coverage", () => {
 
 describe("the harness", () => {
 	it("is called Claude Code, with its version", () => {
-		expect(harnessLine(buildSnapshot())).toBe("read from Claude Code 2.1.220");
+		expect(harnessLine(buildHarness())).toBe("read from Claude Code 2.1.220");
 	});
 
-	it("keeps its own name when the payload names another one", () => {
-		// v1 reads only Claude Code. Printing that name for a different adapter
-		// would be a sentence that is simply false.
+	it("names Codex properly, and keeps an unknown discriminator verbatim", () => {
+		// A payload naming a harness we have no display name for prints that
+		// name, because the alternative is a sentence that is simply false.
 		expect(
-			harnessLine(buildSnapshot({ harness: { name: "codex", version: null } })),
-		).toBe("read from codex");
+			harnessLine(buildHarness({ harness: { name: "codex", version: null } })),
+		).toBe("read from Codex");
+		expect(
+			harnessLine(
+				buildHarness({ harness: { name: "cursor-cli", version: null } }),
+			),
+		).toBe("read from cursor-cli");
 	});
 });
 

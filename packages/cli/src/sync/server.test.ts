@@ -10,8 +10,8 @@ import type { SyncPublishResult } from "../api.js";
 import type {
 	KeptPrivateAtom,
 	NameCategory,
-} from "../transcripts/allowlist.js";
-import type { SyncBody } from "../transcripts/payload.js";
+} from "../harness/shared/allowlist.js";
+import type { SyncBody } from "../harness/shared/payload.js";
 import { createSyncServer, STAGE_TTL_MS } from "./server.js";
 import { type StagedSend, stageId } from "./stage.js";
 

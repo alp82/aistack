@@ -642,8 +642,15 @@ export default defineSchema({
     // client clock is attacker- and skew-controlled.
     receivedAt: v.number(),
     schemaVersion: v.number(),
+    // Denormalized copy of payload.harness.name (#66 decision 1), so "current
+    // per harness" is one indexed read. A plain string, not a union literal —
+    // a third harness must not need a schema migration. OPTIONAL while the
+    // 20260801 backfill runs (3-phase rule); narrows to required after.
+    harness: v.optional(v.string()),
     payload: MeasuredPayload,
-  }).index('by_stack_capturedAt', ['stackId', 'capturedAt']),
+  })
+    .index('by_stack_capturedAt', ['stackId', 'capturedAt'])
+    .index('by_stack_harness_capturedAt', ['stackId', 'harness', 'capturedAt']),
 
   // The ONLY durable reconcile state (#33 decision 12). Suggestions themselves
   // are derived on read from (latest snapshot x authored toolSubscriptions), so

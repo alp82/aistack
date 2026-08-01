@@ -26,7 +26,7 @@
 // month would never publish. The filtering itself still runs client-side:
 // fail-closed only means something if it happens before the send.
 
-import { isDisplaySafeName } from "./analyzer.js";
+import { isDisplaySafeName } from "./aggregate.js";
 import { BUNDLED_CURATED_ALLOWLIST } from "./bundled-allowlist.js";
 
 /**

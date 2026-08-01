@@ -15,7 +15,14 @@ import { homedir } from "node:os";
 import path from "node:path";
 import readline from "node:readline";
 
+import {
+	emptyScanStats,
+	type ScanStats,
+	windowStartMs,
+} from "../shared/window.js";
 import { type Aggregate, ingestRecord } from "./analyzer.js";
+
+export { type ScanStats, windowStartMs };
 
 /** Discovery order mirrors ccusage's adapter: CLAUDE_CONFIG_DIR, then the defaults. */
 export function transcriptRoots(): string[] {
@@ -31,23 +38,6 @@ export function transcriptRoots(): string[] {
 	const xdg = process.env.XDG_CONFIG_HOME ?? path.join(homedir(), ".config");
 	roots.push(path.join(xdg, "claude", "projects"));
 	return roots;
-}
-
-/**
- * UTC midnight opening a rolling window of `days` calendar days ending on the
- * day containing `now` (inclusive). `days = 30` therefore spans today plus the
- * 29 preceding days.
- *
- * Defined once and shared by the scan filter and the payload's `window.from`, so
- * the reported window and the records actually counted cannot drift apart.
- */
-export function windowStartMs(now: number, days: number): number {
-	const startOfToday = Date.UTC(
-		new Date(now).getUTCFullYear(),
-		new Date(now).getUTCMonth(),
-		new Date(now).getUTCDate(),
-	);
-	return startOfToday - (days - 1) * 86_400_000;
 }
 
 /** Recursive *.jsonl walk — the nested `<sessionId>/subagents/` layout is real. */
@@ -71,24 +61,6 @@ export type ScanOptions = {
 	onProgress?: (files: number) => void;
 	/** Override the discovered roots. Tests only. */
 	roots?: string[];
-};
-
-export type ScanStats = {
-	/** Files found on disk before any window filter. */
-	filesFound: number;
-	/** Files actually opened and read. */
-	filesRead: number;
-	/** Files skipped because their mtime predates the window. */
-	filesSkippedByMtime: number;
-	/** Files skipped because a resolved path was already scanned (overlapping roots). */
-	filesSkippedAsDuplicate: number;
-	/**
-	 * Files that could not be read (permissions, or pruned mid-scan). Counted
-	 * rather than thrown: an unhandled read error would surface the absolute path
-	 * AND the munged project directory in the crash output, which is exactly what
-	 * this tool promises never to emit.
-	 */
-	filesUnreadable: number;
 };
 
 /**
@@ -116,13 +88,7 @@ export async function scan(
 	agg: Aggregate,
 	opts: ScanOptions = {},
 ): Promise<ScanStats> {
-	const stats: ScanStats = {
-		filesFound: 0,
-		filesRead: 0,
-		filesSkippedByMtime: 0,
-		filesSkippedAsDuplicate: 0,
-		filesUnreadable: 0,
-	};
+	const stats: ScanStats = emptyScanStats();
 	// Roots can overlap (CLAUDE_CONFIG_DIR may repeat a dir; ~/.claude and
 	// ~/.config/claude may be symlinked together). Without this guard the same
 	// file is ingested twice and the record/line/block counters silently double.

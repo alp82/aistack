@@ -1,17 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
+	cleanName,
+	createAggregate,
+	ingestRecord,
+	isDisplaySafeName,
+} from "../claude/analyzer.js";
+import { assistant, slashCommand, toolUse } from "../claude/fixtures.js";
+import {
+	BUILTIN_TOOLS,
 	BUNDLED_SYNC_CONFIG,
 	EMPTY_OPT_INS,
 	type OptInNames,
 	type SyncConfig,
 } from "./allowlist.js";
-import {
-	cleanName,
-	createAggregate,
-	ingestRecord,
-	isDisplaySafeName,
-} from "./analyzer.js";
-import { assistant, slashCommand, toolUse } from "./fixtures.js";
 import {
 	buildPayload,
 	buildSyncBody,
@@ -19,7 +20,7 @@ import {
 	sanitizeModelId,
 } from "./payload.js";
 import { PRICING_TABLE_VERSION } from "./pricing.js";
-import type { ScanStats } from "./scan.js";
+import type { ScanStats } from "./window.js";
 
 const NOW = Date.UTC(2026, 6, 25, 12, 0, 0); // 2026-07-25
 
@@ -30,6 +31,12 @@ const CLEAN_STATS: ScanStats = {
 	filesSkippedAsDuplicate: 0,
 	filesUnreadable: 0,
 };
+
+const HARNESS_PARAMS = {
+	harnessName: "claude-code",
+	builtinTools: BUILTIN_TOOLS,
+	pricingTableVersion: PRICING_TABLE_VERSION,
+} as const;
 
 const config = (over: Partial<SyncConfig> = {}): SyncConfig => ({
 	publishCost: true,
@@ -62,6 +69,7 @@ function build(
 		syncConfig: opts.syncConfig ?? config(),
 		now: NOW,
 		windowDays: opts.windowDays ?? 30,
+		...HARNESS_PARAMS,
 	}).payload;
 }
 
@@ -227,6 +235,7 @@ describe("the gate's review list", () => {
 			syncConfig: config(),
 			now: NOW,
 			windowDays: 30,
+			...HARNESS_PARAMS,
 		});
 
 		expect(built.keptPrivate.skills).toEqual([
@@ -257,29 +266,30 @@ describe("buildSyncBody — the unsealed half (#48)", () => {
 			syncConfig: config(),
 			now: NOW,
 			windowDays: 30,
+			...HARNESS_PARAMS,
 		});
 	};
 
 	it("sends the payload alone when the switch is off", () => {
-		const body = buildSyncBody(built(), config({ reviewKeptPrivate: false }));
+		const body = buildSyncBody([built()], config({ reviewKeptPrivate: false }));
 		expect(body.keptPrivate).toBeUndefined();
 		expect(JSON.stringify(body)).not.toContain("alp-river");
 	});
 
 	it("sends the names beside the payload, never inside it, when it is on", () => {
-		const body = buildSyncBody(built(), config({ reviewKeptPrivate: true }));
+		const body = buildSyncBody([built()], config({ reviewKeptPrivate: true }));
 		expect(body.keptPrivate?.skills).toEqual([
 			{ name: "alp-river:crossfire", count: 1, group: "alp-river" },
 		]);
 		// The closed payload validator is the privacy claim (#38/#45). The name
 		// rides in the request, outside the object that validator guards.
-		expect(JSON.stringify(body.payload)).not.toContain("alp-river");
+		expect(JSON.stringify(body.payloads)).not.toContain("alp-river");
 	});
 
 	it("keeps the names home when the config could not be fetched", () => {
 		// The bundled fallback fails closed on this exactly like publishCost and
 		// optIns: losing the network transmits LESS.
-		const body = buildSyncBody(built(), BUNDLED_SYNC_CONFIG);
+		const body = buildSyncBody([built()], BUNDLED_SYNC_CONFIG);
 		expect(body.keptPrivate).toBeUndefined();
 	});
 });
@@ -512,6 +522,7 @@ describe("coverage block (#33 decision 10)", () => {
 			syncConfig: config(),
 			now: NOW,
 			windowDays: 30,
+			...HARNESS_PARAMS,
 		});
 		expect(payload.coverage).toEqual({
 			filesScanned: 42,
@@ -558,6 +569,7 @@ describe("window and activity", () => {
 			syncConfig: config(),
 			now: NOW,
 			windowDays: 30,
+			...HARNESS_PARAMS,
 		});
 		expect(payload.activity.projects).toBe(2);
 		expect(JSON.stringify(payload)).not.toContain("acme-secret");

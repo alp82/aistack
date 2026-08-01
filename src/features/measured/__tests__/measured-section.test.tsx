@@ -119,14 +119,17 @@ describe("what the reading admits", () => {
 
 	it("calls a degraded scan a floor", () => {
 		setup(
-			buildSnapshot({
-				coverage: {
-					filesScanned: 3015,
-					filesUnreadable: 61,
-					linesParsed: 232058,
-					linesFailed: 4192,
+			buildSnapshot(
+				{},
+				{
+					coverage: {
+						filesScanned: 3015,
+						filesUnreadable: 61,
+						linesParsed: 232058,
+						linesFailed: 4192,
+					},
 				},
-			}),
+			),
 		);
 		expect(
 			screen.getByText(/The numbers below are a floor/),
@@ -134,7 +137,12 @@ describe("what the reading admits", () => {
 	});
 
 	it("admits when the reading is going stale", () => {
-		setup(buildSnapshot({ receivedAt: Date.now() - 19 * DAY, isFresh: false }));
+		setup(
+			buildSnapshot(
+				{ receivedAt: Date.now() - 19 * DAY, isFresh: false },
+				{ receivedAt: Date.now() - 19 * DAY, isFresh: false },
+			),
+		);
 		expect(screen.getByText(/this reading is going stale/)).toBeInTheDocument();
 	});
 });

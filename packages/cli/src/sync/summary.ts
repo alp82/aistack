@@ -15,14 +15,14 @@ import type {
 	NameCategory,
 	SyncConfig,
 	SyncConfigSource,
-} from "../transcripts/allowlist.js";
-import { NAME_CATEGORIES } from "../transcripts/allowlist.js";
-import type { MeasuredPayload, SyncBody } from "../transcripts/payload.js";
+} from "../harness/shared/allowlist.js";
+import { NAME_CATEGORIES } from "../harness/shared/allowlist.js";
+import type { MeasuredPayload, SyncBody } from "../harness/shared/payload.js";
 
 export type GateContext = {
 	/** The exact request body a publish would send. */
 	body: SyncBody;
-	/** The local-only review list — never inside `body.payload` (#44). */
+	/** The local-only review list — never inside any payload (#44). */
 	keptPrivate: Record<NameCategory, KeptPrivateAtom[]>;
 	config: SyncConfig;
 	source: SyncConfigSource;
@@ -87,15 +87,20 @@ export function withheldCount(payload: MeasuredPayload): number {
 // ---------------------------------------------------------------------------
 
 export function buildGateDialog(ctx: GateContext): string {
-	const { payload, keptPrivate } = ctx.body;
-	const usd = totalUSD(payload);
+	const { payloads, keptPrivate } = ctx.body;
+	const tokens = payloads.reduce((a, p) => a + p.activity.totalTokens, 0);
+	const usds = payloads
+		.map((p) => totalUSD(p))
+		.filter((u): u is number => u !== null);
+	const usd = usds.length > 0 ? usds.reduce((a, b) => a + b, 0) : null;
+	const days = payloads[0]?.window.days ?? 0;
 	const facts = [
-		`${fmtTokens(payload.activity.totalTokens)} tokens`,
-		`${payload.window.days} days`,
+		`${fmtTokens(tokens)} tokens`,
+		`${days} days`,
 		...(usd === null ? [] : [fmtUSD(usd)]),
 	].join(" · ");
 
-	const n = withheldCount(payload);
+	const n = payloads.reduce((a, p) => a + withheldCount(p), 0);
 	const lines = [`Publish to aistack? ${facts}`];
 	if (n > 0) {
 		lines.push(
@@ -139,20 +144,19 @@ export function keptPrivateRows(
 
 const KEPT_PRIVATE_ROWS_SHOWN = 6;
 
-export function buildGateSummary(ctx: GateContext): string {
-	const { body, keptPrivate, config, source, baseUrl } = ctx;
-	const { payload } = body;
-	const host = baseUrl.replace(/^https?:\/\//, "");
+/** Display name for a harness discriminator the gate prints. */
+export function harnessLabel(name: string): string {
+	if (name === "claude-code") return "Claude Code";
+	if (name === "codex") return "Codex";
+	return name;
+}
+
+/** One harness's payload block: window, activity, cost, models, inventory. */
+function payloadBlock(payload: MeasuredPayload, showHeader: boolean): string[] {
 	const out: string[] = [];
-
-	out.push("from your machine — sync preview");
-	out.push("");
-
-	if (config.stack === null) {
-		out.push("to        (no linked stack — publish is unavailable)");
-	} else {
+	if (showHeader) {
 		out.push(
-			`to        ${config.stack.name} · ${host}/stacks/${config.stack.slug}`,
+			`— ${harnessLabel(payload.harness.name)}${payload.harness.version ? ` ${payload.harness.version}` : ""}`,
 		);
 	}
 	out.push(
@@ -194,8 +198,35 @@ export function buildGateSummary(ctx: GateContext): string {
 		const names = atoms.map((a) => a.name).join(", ");
 		out.push(`  ${CATEGORY_LABEL[category].padEnd(9)} ${names}`);
 	}
+	return out;
+}
 
-	const n = withheldCount(payload);
+export function buildGateSummary(ctx: GateContext): string {
+	const { body, keptPrivate, config, source, baseUrl } = ctx;
+	const { payloads } = body;
+	const host = baseUrl.replace(/^https?:\/\//, "");
+	const out: string[] = [];
+
+	out.push("from your machine — sync preview");
+	out.push("");
+
+	if (config.stack === null) {
+		out.push("to        (no linked stack — publish is unavailable)");
+	} else {
+		out.push(
+			`to        ${config.stack.name} · ${host}/stacks/${config.stack.slug}`,
+		);
+	}
+
+	// One block per detected harness. With a single harness the header line is
+	// dropped, so the single-harness preview reads exactly as it always did.
+	for (const payload of payloads) {
+		out.push(...payloadBlock(payload, payloads.length > 1));
+		out.push("");
+	}
+	if (out[out.length - 1] === "") out.pop();
+
+	const n = payloads.reduce((a, p) => a + withheldCount(p), 0);
 	if (n > 0) {
 		out.push("");
 		out.push(`kept private: ${n} name${n === 1 ? "" : "s"}`);

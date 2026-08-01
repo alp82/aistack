@@ -1933,3 +1933,221 @@ describe('kept-private expiry', () => {
     ).toHaveLength(1)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Per-harness snapshots (#66, built in #67)
+// ---------------------------------------------------------------------------
+
+describe('batch publish + per-harness aggregation (#67)', () => {
+  async function seedToken(
+    t: Ctx,
+    opts: { stackId?: Id<'stacks'>; userId?: string } = {},
+  ) {
+    return await t.run(async (ctx) =>
+      ctx.db.insert('cliTokens', {
+        tokenHash: await sha256Hex(`tok_${Math.random().toString(36).slice(2)}`),
+        scopes: ['collect', 'sync'],
+        userId: opts.userId ?? USER,
+        stackId: opts.stackId,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 90 * DAY,
+        lastUsedAt: Date.now(),
+      }),
+    )
+  }
+
+  const codexPayload = (over: Record<string, unknown> = {}) =>
+    payload({
+      harness: { name: 'codex', version: '0.146.0' },
+      pricingTable: 'openai-list-2026-08-01',
+      activity: {
+        sessions: 3,
+        activeDays: 4,
+        projects: 2,
+        totalTokens: 500_000,
+        cacheHitShare: 0.5,
+        subagentShare: 0,
+      },
+      models: [
+        {
+          id: 'gpt-5.5',
+          tokenShare: 1,
+          tokens: { input: 100, output: 50, cacheWrite: 0, cacheRead: 200 },
+          apiEquivalentUSD: 2,
+        },
+      ],
+      ...over,
+    })
+
+  test('payloads[] lands one snapshot per harness, atomically, with the harness column', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const tokenId = await seedToken(t, { stackId })
+
+    const result = await t.mutation(internal.measured.publishForToken, {
+      tokenId,
+      payloads: [payload(), codexPayload()],
+    })
+    expect(result.snapshotIds).toHaveLength(2)
+
+    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    expect(rows.map((r) => r.harness).sort()).toEqual(['claude-code', 'codex'])
+  })
+
+  test('two payloads naming the same harness are refused', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const tokenId = await seedToken(t, { stackId })
+
+    await expect(
+      t.mutation(internal.measured.publishForToken, {
+        tokenId,
+        payloads: [payload(), payload()],
+      }),
+    ).rejects.toThrow(/distinct harness/i)
+  })
+
+  test('the legacy single-payload field still publishes (wire tolerance)', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const tokenId = await seedToken(t, { stackId })
+
+    const result = await t.mutation(internal.measured.publishForToken, {
+      tokenId,
+      payload: payload(),
+    })
+    expect(result.snapshotIds).toHaveLength(1)
+  })
+
+  test('a batch with no payloads is refused', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const tokenId = await seedToken(t, { stackId })
+
+    await expect(
+      t.mutation(internal.measured.publishForToken, { tokenId, payloads: [] }),
+    ).rejects.toThrow(/at least one payload/i)
+  })
+
+  test('the combined headline sums tokens/sessions and keeps per-harness sections', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload(), // claude: 1M tokens, 12 sessions, opus @ $12.34
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: codexPayload(), // codex: 500k tokens, 3 sessions, gpt-5.5 @ $2
+    })
+
+    const current = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(current?.activity.totalTokens).toBe(1_500_000)
+    expect(current?.activity.sessions).toBe(15)
+    // Day and project sets can overlap across harnesses: max, never a sum.
+    expect(current?.activity.activeDays).toBe(9)
+    expect(current?.activity.projects).toBe(3)
+    // Both price tables cited.
+    expect(current?.pricingTable).toContain('anthropic-list')
+    expect(current?.pricingTable).toContain('openai-list')
+    // Models merged by id with recomputed shares over summed absolute tokens.
+    expect(current?.models.map((m) => m.id).sort()).toEqual([
+      'claude-opus-5',
+      'gpt-5.5',
+    ])
+    const shareSum = current?.models.reduce((a, m) => a + m.tokenShare, 0)
+    expect(shareSum).toBeCloseTo(1, 6)
+    // Per-harness sections keep their own inventory and freshness.
+    expect(current?.harnesses.map((h) => h.harness.name)).toEqual([
+      'claude-code',
+      'codex',
+    ])
+    expect(current?.harnesses[0].inventory.builtinTools[0].name).toBe('Bash')
+  })
+
+  test('the newest snapshot of EACH harness wins, independently', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({ capturedAt: 1000 }),
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({
+        capturedAt: 2000,
+        activity: { ...payload().activity, sessions: 42 },
+      }),
+    })
+    // A codex snapshot OLDER than claude's newest must still appear.
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: codexPayload({ capturedAt: 500 }),
+    })
+
+    const current = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(current?.harnesses).toHaveLength(2)
+    const claude = current?.harnesses.find((h) => h.harness.name === 'claude-code')
+    expect(claude?.activity.sessions).toBe(42)
+    expect(current?.activity.sessions).toBe(42 + 3)
+  })
+
+  test('a mixed priced/unpriced merged model drops its dollars rather than understating', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload(), // claude-opus-5 with apiEquivalentUSD 12.34
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: codexPayload({
+        models: [
+          {
+            id: 'claude-opus-5', // same id, cost withheld on this side
+            tokenShare: 1,
+            tokens: { input: 1, output: 1, cacheWrite: 0, cacheRead: 0 },
+          },
+        ],
+      }),
+    })
+
+    const current = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(current?.models).toHaveLength(1)
+    expect(current?.models[0].apiEquivalentUSD).toBeUndefined()
+  })
+
+  test('the 20260801 backfill copies payload.harness.name onto old rows, idempotently', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    await t.mutation(internal.measured.publishSnapshot, { stackId, payload: payload() })
+    // Simulate a pre-#67 row: strip the denormalized column.
+    await t.run(async (ctx) => {
+      const row = await ctx.db.query('measuredSnapshots').first()
+      await ctx.db.patch(row!._id, { harness: undefined })
+    })
+
+    const first = await t.mutation(
+      internal.migrations['20260801_snapshot_harness'].run,
+      {},
+    )
+    expect(first).toEqual({ patched: 1, skipped: 0 })
+    const second = await t.mutation(
+      internal.migrations['20260801_snapshot_harness'].run,
+      {},
+    )
+    expect(second).toEqual({ patched: 0, skipped: 1 })
+
+    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    expect(rows[0].harness).toBe('claude-code')
+  })
+})

@@ -10,6 +10,7 @@ import {
 	fmtShare,
 	fmtTokens,
 	fmtUSD,
+	type HarnessSnapshot,
 	harnessLine,
 	KICKER,
 	keptPrivate,
@@ -81,9 +82,10 @@ export function MeasuredSection({
 }
 
 function Reading({ snapshot }: { snapshot: MeasuredSnapshot }) {
+	// The COMBINED headline (#66 decision 2): tokens, sessions and dollars sum
+	// honestly across harnesses; each harness keeps its own section below.
 	const cost = totalUSD(snapshot);
-	const caveat = coverageCaveat(snapshot);
-	const privateCounts = keptPrivate(snapshot);
+	const multiHarness = snapshot.harnesses.length > 1;
 
 	return (
 		<div className="grid gap-10 md:grid-cols-[minmax(0,22rem)_1fr]">
@@ -108,9 +110,11 @@ function Reading({ snapshot }: { snapshot: MeasuredSnapshot }) {
 					<p className={cn(MONO_LABEL, "text-fg-muted")}>
 						{snapshot.window.from} → {snapshot.window.to}
 					</p>
-					<p className={cn(MONO_LABEL, "text-fg-muted")}>
-						{harnessLine(snapshot)}
-					</p>
+					{snapshot.harnesses.map((h) => (
+						<p key={h.harness.name} className={cn(MONO_LABEL, "text-fg-muted")}>
+							{harnessLine(h)}
+						</p>
+					))}
 					{/* A price the reader cannot date is a price we do not print, so
 					    this line is present whenever the figure above is. */}
 					{cost !== null && snapshot.pricingTable && (
@@ -135,7 +139,7 @@ function Reading({ snapshot }: { snapshot: MeasuredSnapshot }) {
 						value={snapshot.activity.sessions.toLocaleString("en-US")}
 					/>
 					<Stat
-						label="active days"
+						label={multiHarness ? "active days (max)" : "active days"}
 						value={`${snapshot.activity.activeDays} of ${snapshot.window.days}`}
 					/>
 					<Stat
@@ -148,20 +152,56 @@ function Reading({ snapshot }: { snapshot: MeasuredSnapshot }) {
 					/>
 				</div>
 
-				<div className="mt-4 space-y-1">
-					{privateCounts && (
-						<p className={cn(MONO_LABEL, "text-fg-muted")}>
-							kept private: {privateCounts}
-						</p>
-					)}
-					{caveat && <p className="text-[11px] text-orange-400">{caveat}</p>}
-					{!snapshot.isFresh && (
-						<p className="text-[11px] text-orange-400">
-							{stalenessLine(timeAgo(snapshot.receivedAt))}
-						</p>
-					)}
+				<div className="mt-4 space-y-2">
+					{snapshot.harnesses.map((h) => (
+						<HarnessFootnote
+							key={h.harness.name}
+							harness={h}
+							named={multiHarness}
+						/>
+					))}
 				</div>
 			</div>
+		</div>
+	);
+}
+
+/**
+ * One harness's own caveat block: kept-private counts, coverage, staleness.
+ * These CANNOT merge across harnesses — callShares are normalized per harness
+ * and freshness is per sync — so each harness speaks for itself (#66).
+ */
+function HarnessFootnote({
+	harness,
+	named,
+}: {
+	harness: HarnessSnapshot;
+	named: boolean;
+}) {
+	const caveat = coverageCaveat(harness);
+	const privateCounts = keptPrivate(harness);
+	const prefix = named
+		? `${harnessLine(harness).replace("read from ", "")}: `
+		: "";
+	return (
+		<div className="space-y-1">
+			{privateCounts && (
+				<p className={cn(MONO_LABEL, "text-fg-muted")}>
+					{prefix}kept private: {privateCounts}
+				</p>
+			)}
+			{caveat && (
+				<p className="text-[11px] text-orange-400">
+					{prefix}
+					{caveat}
+				</p>
+			)}
+			{!harness.isFresh && (
+				<p className="text-[11px] text-orange-400">
+					{prefix}
+					{stalenessLine(timeAgo(harness.receivedAt))}
+				</p>
+			)}
 		</div>
 	);
 }

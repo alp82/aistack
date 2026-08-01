@@ -13,7 +13,6 @@
 
 import {
 	appendFileSync,
-	existsSync,
 	mkdirSync,
 	readFileSync,
 	writeFileSync,

@@ -1,28 +1,39 @@
-// Stage one send: scan → build → derive the gate's text from the exact bytes.
+// Stage one send: scan every detected harness → build → derive the gate's
+// text from the exact bytes.
 //
-// Wayfinder ticket #41 (map #29). The staged `bodyJson` string IS what a
-// publish transmits — the summary and the dialog are derived from it and from
-// nothing else, so the user can never approve a sentence about different bytes
-// (#35's binding constraint). The publish tool takes only the stage id; it can
-// name WHICH staged send to release, never what is in it.
+// Wayfinder ticket #41 (map #29), widened to the adapter seam by #67 (map
+// #60). The staged `bodyJson` string IS what a publish transmits — the summary
+// and the dialog are derived from it and from nothing else, so the user can
+// never approve a sentence about different bytes (#35's binding constraint).
+// The publish tool takes only the stage id; it can name WHICH staged send to
+// release, never what is in it.
+//
+// One stage covers ALL detected harnesses (#66 decision 4): the payloads ride
+// in one request so the server can land them atomically, and the kept-private
+// union is one list because consent is per name, not per harness.
 
 import { createHash } from "node:crypto";
 import { getToken } from "../config.js";
+import { detectedAdapters } from "../harness/index.js";
 import {
 	type KeptPrivateAtom,
 	type LoadedSyncConfig,
 	loadSyncConfig,
 	type NameCategory,
 	type SyncConfig,
-} from "../transcripts/allowlist.js";
-import { createAggregate } from "../transcripts/analyzer.js";
-import { DEFAULT_WINDOW_DAYS } from "../transcripts/index.js";
+} from "../harness/shared/allowlist.js";
 import {
+	type BuiltPayload,
 	buildPayload,
 	buildSyncBody,
+	mergeKeptPrivate,
 	type SyncBody,
-} from "../transcripts/payload.js";
-import { type ScanStats, scan, windowStartMs } from "../transcripts/scan.js";
+} from "../harness/shared/payload.js";
+import {
+	DEFAULT_WINDOW_DAYS,
+	windowStartMs,
+} from "../harness/shared/window.js";
+import type { HarnessAdapter } from "../harness/types.js";
 import { buildGateDialog, buildGateSummary } from "./summary.js";
 
 export type StagedSend = {
@@ -53,7 +64,8 @@ export type StageDeps = {
 		baseUrl: string;
 		token?: string;
 	}) => Promise<LoadedSyncConfig>;
-	scanImpl?: typeof scan;
+	/** Override the adapter set. Tests only. */
+	adaptersImpl?: () => Promise<HarnessAdapter[]>;
 	windowDays?: number;
 };
 
@@ -65,7 +77,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	const now = (deps.now ?? Date.now)();
 	const token = (deps.getTokenImpl ?? getToken)();
 	const loadConfig = deps.loadConfigImpl ?? loadSyncConfig;
-	const doScan = deps.scanImpl ?? scan;
+	const adapters = deps.adaptersImpl ?? detectedAdapters;
 	const windowDays = deps.windowDays ?? DEFAULT_WINDOW_DAYS;
 
 	const { config, source } = await loadConfig({
@@ -73,31 +85,41 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		...(token ? { token } : {}),
 	});
 
-	const aggregate = createAggregate();
-	const stats: ScanStats = await doScan(aggregate, {
-		sinceMs: windowStartMs(now, windowDays),
-	});
+	const built: BuiltPayload[] = [];
+	const sinceMs = windowStartMs(now, windowDays);
+	for (const adapter of await adapters()) {
+		const { aggregate, stats } = await adapter.scan({ sinceMs });
+		built.push(
+			buildPayload({
+				aggregate,
+				stats,
+				syncConfig: config,
+				now,
+				windowDays,
+				harnessName: adapter.name,
+				builtinTools: adapter.builtinTools,
+				pricingTableVersion: adapter.pricingTableVersion,
+			}),
+		);
+	}
 
-	const built = buildPayload({
-		aggregate,
-		stats,
-		syncConfig: config,
-		now,
-		windowDays,
-	});
 	const body = buildSyncBody(built, config);
 	const bodyJson = JSON.stringify(body);
+	const keptPrivate = mergeKeptPrivate(built.map((b) => b.keptPrivate));
 
 	const ctx = {
 		body,
-		keptPrivate: built.keptPrivate,
+		keptPrivate,
 		config,
 		source,
 		baseUrl: deps.baseUrl,
 	};
 
 	let blockedReason: string | null = null;
-	if (token === null) {
+	if (built.length === 0) {
+		blockedReason =
+			"No supported harness was found on this machine — no Claude Code and no Codex logs to read.";
+	} else if (token === null) {
 		blockedReason =
 			"This machine is not linked. Run `npx @use-aistack/cli login` first.";
 	} else if (config.stack === null) {
@@ -111,7 +133,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		id: stageId(bodyJson),
 		bodyJson,
 		body,
-		keptPrivate: built.keptPrivate,
+		keptPrivate,
 		summary: buildGateSummary(ctx),
 		dialog: buildGateDialog(ctx),
 		config,

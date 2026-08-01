@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SONNET_5_INTRO_ENDS_MS } from "../shared/pricing.js";
 import {
 	type Aggregate,
 	cleanName,
@@ -8,7 +9,6 @@ import {
 	newestVersion,
 } from "./analyzer.js";
 import { assistant, slashCommand, toolUse } from "./fixtures.js";
-import { SONNET_5_INTRO_ENDS_MS } from "./pricing.js";
 
 const ingest = (agg: Aggregate, ...recs: unknown[]) => {
 	for (const r of recs) ingestRecord(agg, r, { projectDir: "-home-u-proj" });

@@ -15,11 +15,20 @@
 // accumulate at ingest (see analyzer.ts) — summing tokens per model and pricing
 // once at the end cannot express a mid-window rate change.
 //
-// Source: Anthropic public list prices as of 2026-07-25. Cache multipliers from
-// https://platform.claude.com/docs/en/build-with-claude/prompt-caching:
-//   5m cache write = 1.25x input, 1h cache write = 2x input, read = 0.1x input.
+// Sources: Anthropic public list prices as of 2026-07-25 (cache multipliers
+// from https://platform.claude.com/docs/en/build-with-claude/prompt-caching:
+// 5m cache write = 1.25x input, 1h cache write = 2x input, read = 0.1x input)
+// and OpenAI public list prices as of 2026-08-01
+// (https://developers.openai.com/api/docs/pricing — cached input is 10% of
+// input, the same multiplier `cacheRead` already uses; Codex reports no cache
+// writes, so the write multipliers never fire for OpenAI rows).
+//
+// Each harness's payload is stamped with ITS vendor's table id — the id is a
+// citation for the dollars in that payload, and one payload never mixes
+// vendors.
 
 export const PRICING_TABLE_VERSION = "anthropic-list-2026-07-25";
+export const OPENAI_PRICING_TABLE_VERSION = "openai-list-2026-08-01";
 
 export const CACHE_WRITE_5M_MULTIPLIER = 1.25;
 export const CACHE_WRITE_1H_MULTIPLIER = 2.0;
@@ -69,6 +78,12 @@ const PRICES: Record<string, PricePeriod[]> = {
 	// Opus 4.7 fast mode was removed, so there is deliberately no 4-7 entry.
 	"claude-opus-5#fast": [{ from: null, to: null, input: 10, output: 50 }],
 	"claude-opus-4-8#fast": [{ from: null, to: null, input: 10, output: 50 }],
+	// OpenAI (Codex) — standard-context tier (<272K; observed context window is
+	// 258,400). gpt-5.3-codex and the 5.6 line have NO published price yet, so
+	// they are deliberately absent and surface as unpriced (#66 decision 6).
+	"gpt-5.5": [{ from: null, to: null, input: 5, output: 30 }],
+	"gpt-5.4": [{ from: null, to: null, input: 2.5, output: 15 }],
+	"gpt-5.4-mini": [{ from: null, to: null, input: 0.75, output: 4.5 }],
 };
 
 export type TokenCounts = {

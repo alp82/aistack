@@ -28,6 +28,8 @@ export type MeasuredSnapshot = NonNullable<
 	FunctionReturnType<typeof api.measured.getCurrentByStackSlug>
 >;
 export type MeasuredModel = MeasuredSnapshot["models"][number];
+/** One harness's own section (#66 decision 2) — the pre-#67 snapshot shape. */
+export type HarnessSnapshot = MeasuredSnapshot["harnesses"][number];
 
 /** The anchor section 02 mounts on, and the hero strip links down to. */
 export const MEASURED_ANCHOR = "section-measured";
@@ -73,7 +75,10 @@ export function fmtShare(share: number): string {
  * table. The second case is the stricter rule — a price the reader cannot date
  * is a price we do not print.
  */
-export function totalUSD(s: MeasuredSnapshot): number | null {
+export function totalUSD(s: {
+	pricingTable: string | null;
+	models: Array<{ apiEquivalentUSD?: number }>;
+}): number | null {
 	if (!s.pricingTable) return null;
 	const priced = s.models.filter((m) => m.apiEquivalentUSD !== undefined);
 	if (priced.length === 0) return null;
@@ -116,7 +121,7 @@ const WITHHELD_LABELS: Record<string, string> = {
  * disclosure ratchet: it would pressure the owner to publish exactly the names
  * they held back (#42).
  */
-export function keptPrivate(s: MeasuredSnapshot): string | null {
+export function keptPrivate(s: HarnessSnapshot): string | null {
 	const parts = Object.entries(s.inventory.withheld)
 		.filter(([, n]) => n > 0)
 		.map(([key, n]) => `${n} ${WITHHELD_LABELS[key] ?? key}`);
@@ -133,7 +138,7 @@ const LINE_FAILURE_FLOOR = 0.001;
  * the caveat says the numbers are a FLOOR, because every unread file can only
  * ever have added to them.
  */
-export function coverageCaveat(s: MeasuredSnapshot): string | null {
+export function coverageCaveat(s: HarnessSnapshot): string | null {
 	const { filesScanned, filesUnreadable, linesParsed, linesFailed } =
 		s.coverage;
 	const failureRate = linesFailed / Math.max(1, linesParsed);
@@ -147,15 +152,16 @@ export function coverageCaveat(s: MeasuredSnapshot): string | null {
 	return `Partial read — ${bits.join(", ")}. The numbers below are a floor.`;
 }
 
-/**
- * "read from Claude Code 2.1.220".
- *
- * The vocabulary says a harness is called Claude Code, and v1 reads no other
- * one. A payload naming a different harness prints that name instead, because
- * the alternative is a sentence that is simply false.
- */
-export function harnessLine(s: MeasuredSnapshot): string {
-	const name = s.harness.name === "claude-code" ? HARNESS : s.harness.name;
+/** Display name for a harness discriminator. */
+export function harnessLabel(name: string): string {
+	if (name === "claude-code") return HARNESS;
+	if (name === "codex") return "Codex";
+	return name;
+}
+
+/** "read from Claude Code 2.1.220" — one line per harness (#66 decision 2). */
+export function harnessLine(s: HarnessSnapshot): string {
+	const name = harnessLabel(s.harness.name);
 	return `read from ${name}${s.harness.version ? ` ${s.harness.version}` : ""}`;
 }
 

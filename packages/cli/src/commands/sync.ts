@@ -12,6 +12,11 @@
 import * as p from "@clack/prompts";
 import { BASE_URL, syncPublish } from "../api.js";
 import {
+	CODEX_TRUST_INSTRUCTION,
+	codexAutoSyncHookInstalled,
+	codexHookTrusted,
+} from "../autosync/codexHook.js";
+import {
 	disableAutoSync,
 	enableAutoSync,
 	offerAutoSyncOptIn,
@@ -73,6 +78,13 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 		p.log.message(dim(`auto-sync: ${lastAuto}`));
 	}
 
+	// The Codex hook does not run until the user trusts it via /hooks (#65 §6).
+	// Repeat the one-time instruction while the hook is installed but the trust
+	// hash is verifiably absent; an unreadable config stays silent.
+	if (codexAutoSyncHookInstalled() && codexHookTrusted() === false) {
+		p.log.warn(CODEX_TRUST_INSTRUCTION);
+	}
+
 	// The whole premise of this channel is a human at a terminal. A pipe or a
 	// model-launched Bash call has no TTY, and a gate that cannot ask must not
 	// send (#31) — refuse before scanning anything.
@@ -83,7 +95,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 	}
 
 	const s = p.spinner();
-	s.start("Scanning local Claude Code transcripts");
+	s.start("Scanning local agent transcripts");
 	let staged: Awaited<ReturnType<typeof stageSync>>;
 	try {
 		staged = await stageSync({ baseUrl: BASE_URL });

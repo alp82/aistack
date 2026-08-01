@@ -14,25 +14,24 @@
 //      "reveal" server-side, because nothing was transmitted.
 
 import {
-	type Atom,
-	BUILTIN_TOOLS,
-	filterAtoms,
-	type KeptPrivateAtom,
-	type NameCategory,
-	type SyncConfig,
-} from "./allowlist.js";
-import {
 	type Aggregate,
 	cleanName,
 	type Finalized,
 	finalize,
 	type ModelRow,
-} from "./analyzer.js";
-import { baseModelId, PRICING_TABLE_VERSION } from "./pricing.js";
-import { type ScanStats, windowStartMs } from "./scan.js";
+} from "./aggregate.js";
+import {
+	type Atom,
+	filterAtoms,
+	type KeptPrivateAtom,
+	NAME_CATEGORIES,
+	type NameCategory,
+	type SyncConfig,
+} from "./allowlist.js";
+import { baseModelId } from "./pricing.js";
+import { type ScanStats, windowStartMs } from "./window.js";
 
 export const SCHEMA_VERSION = 1;
-export const HARNESS_NAME = "claude-code";
 
 export type PayloadModel = {
 	/** Vendor-assigned id, sanitized. `catalogSlug` is resolved SERVER-side at read time. */
@@ -269,6 +268,12 @@ export type BuildPayloadInput = {
 	/** Client clock, epoch ms. The same value used to derive the scan window. */
 	now: number;
 	windowDays: number;
+	/** The adapter's payload discriminator, e.g. `"claude-code"` (#66). */
+	harnessName: string;
+	/** The adapter's fail-closed vendor tool set (#66 decision 3). */
+	builtinTools: ReadonlySet<string>;
+	/** The adapter's pinned price-table id, stamped only when cost publishes. */
+	pricingTableVersion: string;
 };
 
 export type BuiltPayload = {
@@ -287,7 +292,16 @@ export type BuiltPayload = {
 };
 
 export function buildPayload(input: BuildPayloadInput): BuiltPayload {
-	const { aggregate: agg, stats, syncConfig, now, windowDays } = input;
+	const {
+		aggregate: agg,
+		stats,
+		syncConfig,
+		now,
+		windowDays,
+		harnessName,
+		builtinTools,
+		pricingTableVersion,
+	} = input;
 	const finalized = finalize(agg);
 	const { publishCost, allowlist, optIns } = syncConfig;
 
@@ -305,7 +319,7 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 	const totalToolCalls = finalized.totalToolCalls;
 	const builtins = buildCategory(
 		finalized.tools,
-		BUILTIN_TOOLS,
+		builtinTools,
 		optIns.builtinTools,
 		totalToolCalls,
 	);
@@ -339,13 +353,13 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 		capturedAt: now,
 		window: { days: windowDays, from, to },
 		harness: {
-			name: HARNESS_NAME,
+			name: harnessName,
 			version:
 				finalized.harnessVersion === null
 					? null
 					: sanitizeModelId(finalized.harnessVersion),
 		},
-		pricingTable: publishCost ? PRICING_TABLE_VERSION : null,
+		pricingTable: publishCost ? pricingTableVersion : null,
 		activity: {
 			sessions: finalized.sessions,
 			activeDays,
@@ -394,28 +408,65 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 	};
 }
 
-/** What `POST /api/cli/sync` takes: one sealed payload, one unsealed half. */
+/**
+ * What `POST /api/cli/sync` takes: one sealed payload PER DETECTED HARNESS,
+ * one unsealed half shared across them (#66 decision 5). The batch is atomic
+ * server-side, so two harnesses cannot wipe each other's staged names — which
+ * is what two sequential per-harness publishes would have done, because the
+ * staged list is a whole-list replace per stack.
+ */
 export type SyncBody = {
-	payload: MeasuredPayload;
+	payloads: MeasuredPayload[];
 	keptPrivate?: Record<NameCategory, KeptPrivateAtom[]>;
 };
 
 /**
- * Assemble the request body from a built payload.
+ * Union the per-harness kept-private lists into the one list the wire carries.
+ *
+ * One list, not one per harness, because consent is per NAME (#66 decision 5):
+ * the owner ticks "alp-river", not "alp-river as seen by Codex". Counts merge
+ * by (category, name); the group survives from whichever harness saw it first.
+ */
+export function mergeKeptPrivate(
+	halves: ReadonlyArray<Record<NameCategory, KeptPrivateAtom[]>>,
+): Record<NameCategory, KeptPrivateAtom[]> {
+	const out = {} as Record<NameCategory, KeptPrivateAtom[]>;
+	for (const category of NAME_CATEGORIES) {
+		const merged = new Map<string, KeptPrivateAtom>();
+		for (const half of halves) {
+			for (const atom of half[category]) {
+				const held = merged.get(atom.name);
+				if (held) held.count += atom.count;
+				else merged.set(atom.name, { ...atom });
+			}
+		}
+		out[category] = [...merged.values()].sort(
+			(a, b) => b.count - a.count || a.name.localeCompare(b.name),
+		);
+	}
+	return out;
+}
+
+/**
+ * Assemble the request body from the built payloads, one per detected harness.
  *
  * The two halves ride in ONE request (#48): a second call would let them drift
  * against a newer snapshot. They stay SEPARATE objects because the payload's
  * validator is closed and rejects any extra key — that closedness is the privacy
- * claim, so a kept-private name may sit beside the payload and never inside it.
+ * claim, so a kept-private name may sit beside the payloads and never inside one.
  *
  * The switch is read from the sync config the server just served. Off — or a
- * config the machine could not fetch, which reads as off — sends the payload
+ * config the machine could not fetch, which reads as off — sends the payloads
  * alone and the names stay on the machine.
  */
 export function buildSyncBody(
-	built: BuiltPayload,
+	built: readonly BuiltPayload[],
 	syncConfig: SyncConfig,
 ): SyncBody {
-	if (!syncConfig.reviewKeptPrivate) return { payload: built.payload };
-	return { payload: built.payload, keptPrivate: built.keptPrivate };
+	const payloads = built.map((b) => b.payload);
+	if (!syncConfig.reviewKeptPrivate) return { payloads };
+	return {
+		payloads,
+		keptPrivate: mergeKeptPrivate(built.map((b) => b.keptPrivate)),
+	};
 }
