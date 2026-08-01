@@ -27,6 +27,16 @@ The local database lags behind prod. Before work that depends on real rows (cata
 
 **Prod deploys run through GitHub Actions exclusively.** A push to `main` triggers `.github/workflows/deploy-convex.yml`, which pulls the `~/aistack` checkout on the server and runs `pnpm convex deploy` there. Never run `npx convex deploy` against prod from a local machine. To run a new migration on prod: push to `main`, wait for the workflow, then `scripts/convex-prod.sh run migrations/<name>:run`.
 
+## CLI release
+
+Publish `@use-aistack/cli` to npm after the version bump lands on `main`:
+
+```sh
+cd packages/cli && pnpm publish
+```
+
+`prepublishOnly` runs the build. npm asks for a one-time password, so the owner must run the command in an interactive terminal. In a Claude Code session, type `! cd packages/cli && pnpm publish` so the OTP prompt reaches the owner. Deploy the backend first when the release changes the wire format - old clients must keep working, new clients need the new endpoint behavior.
+
 ## Styling Guidelines
 * **No border-radius** - Use sharp corners throughout the design
 * Use monospace fonts for buttons, labels, and technical accents
