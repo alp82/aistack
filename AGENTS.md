@@ -25,6 +25,8 @@ scripts/sync-prod-db.sh
 
 The local database lags behind prod. Before work that depends on real rows (catalog data entry, migration dry runs), run `scripts/sync-prod-db.sh` first.
 
+**Prod deploys run through GitHub Actions exclusively.** A push to `main` triggers `.github/workflows/deploy-convex.yml`, which pulls the `~/aistack` checkout on the server and runs `pnpm convex deploy` there. Never run `npx convex deploy` against prod from a local machine. To run a new migration on prod: push to `main`, wait for the workflow, then `scripts/convex-prod.sh run migrations/<name>:run`.
+
 ## Styling Guidelines
 * **No border-radius** - Use sharp corners throughout the design
 * Use monospace fonts for buttons, labels, and technical accents
