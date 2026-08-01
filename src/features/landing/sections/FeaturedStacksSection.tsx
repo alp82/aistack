@@ -1,6 +1,6 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { SortDropdown } from "@/components/SortDropdown";
 import { StackCard } from "@/features/landing/components/StackCard";
@@ -151,10 +151,17 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 		() =>
 			makeSearchUpdater<{ filter: string; sort: SortOption; page: number }>(
 				navigate,
-				{ resetPageKeys: ["filter", "sort"] },
+				// resetScroll: false — this section sits below the hero; jumping to
+				// the page top on filter/sort/page changes loses the user's place.
+				{ resetPageKeys: ["filter", "sort"], resetScroll: false },
 			),
 		[navigate],
 	);
+	const gridRef = useRef<HTMLDivElement>(null);
+	const goToPage = (nextPage: number) => {
+		setSearch({ page: nextPage });
+		gridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+	};
 
 	const visibleStacks = useMemo(
 		() => stacks.filter((s) => !s.isLowQuality),
@@ -233,7 +240,10 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 				</div>
 
 				{/* Stack Grid */}
-				<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+				<div
+					ref={gridRef}
+					className="scroll-mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8"
+				>
 					{paginatedStacks.map((stack) => (
 						<StackCard key={stack._id} stack={stack} />
 					))}
@@ -250,9 +260,7 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 					<div className="mt-12 flex items-center justify-center gap-2">
 						<button
 							type="button"
-							onClick={() =>
-								setSearch({ page: Math.max(1, safeCurrentPage - 1) })
-							}
+							onClick={() => goToPage(Math.max(1, safeCurrentPage - 1))}
 							disabled={safeCurrentPage <= 1}
 							className="flex size-10 items-center justify-center border border-stroke-strong text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime disabled:opacity-30 disabled:cursor-not-allowed"
 						>
@@ -263,7 +271,7 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 								<button
 									key={pageNum}
 									type="button"
-									onClick={() => setSearch({ page: pageNum })}
+									onClick={() => goToPage(pageNum)}
 									className={cn(
 										"flex size-10 items-center justify-center border font-mono text-sm font-bold transition-colors",
 										pageNum === safeCurrentPage
@@ -278,7 +286,7 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 						<button
 							type="button"
 							onClick={() =>
-								setSearch({ page: Math.min(totalPages, safeCurrentPage + 1) })
+								goToPage(Math.min(totalPages, safeCurrentPage + 1))
 							}
 							disabled={safeCurrentPage >= totalPages}
 							className="flex size-10 items-center justify-center border border-stroke-strong text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime disabled:opacity-30 disabled:cursor-not-allowed"

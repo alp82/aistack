@@ -10,7 +10,8 @@
  *   - coerceBool: true/"true"/false/"false" passthrough; anything else → fallback
  *   - makeSearchUpdater: navigate called with replace:true; patch merges over prev;
  *     page resets when a resetPageKey is touched (and "page" not explicit);
- *     no reset when page is explicit; no reset for non-reset keys; custom resetPageKeys
+ *     no reset when page is explicit; no reset for non-reset keys; custom resetPageKeys;
+ *     resetScroll defaults to true and passes through as false when set
  *
  * NOT covered here (integration / manual only):
  *   - URL round-trip (serialisation/deserialisation via TanStack Router)
@@ -414,5 +415,24 @@ describe("makeSearchUpdater", () => {
 		setSearch({});
 		expect(navigate.mock.calls[0][0].replace).toBe(true);
 		expect(resolveSearch(navigate, prev).page).toBe(2);
+	});
+
+	it("passes resetScroll: true by default", () => {
+		const navigate = vi.fn();
+		const setSearch = makeSearchUpdater<FullSearch>(navigate, {
+			resetPageKeys: RESET_KEYS,
+		});
+		setSearch({ sort: "upvotes" });
+		expect(navigate.mock.calls[0][0].resetScroll).toBe(true);
+	});
+
+	it("passes resetScroll: false through when set", () => {
+		const navigate = vi.fn();
+		const setSearch = makeSearchUpdater<FullSearch>(navigate, {
+			resetPageKeys: RESET_KEYS,
+			resetScroll: false,
+		});
+		setSearch({ sort: "upvotes" });
+		expect(navigate.mock.calls[0][0].resetScroll).toBe(false);
 	});
 });

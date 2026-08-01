@@ -52,10 +52,14 @@ type NavigateFn = ReturnType<typeof useNavigate>;
  * functional updater and navigates with `replace: true`. When the patch touches
  * any `resetPageKeys` key (and does not set `page` explicitly), `page` resets
  * to 1 so changing a filter/sort/query starts at the first page.
+ *
+ * `resetScroll: false` keeps the viewport in place on navigation — for sections
+ * below the fold (e.g. landing Featured Stacks) where jumping to the page top
+ * would lose the user's place.
  */
 export function makeSearchUpdater<S extends { page: number }>(
 	navigate: NavigateFn,
-	opts: { resetPageKeys: (keyof S)[] },
+	opts: { resetPageKeys: (keyof S)[]; resetScroll?: boolean },
 ): (patch: Partial<S>) => void {
 	return (patch: Partial<S>) => {
 		const shouldResetPage =
@@ -67,6 +71,7 @@ export function makeSearchUpdater<S extends { page: number }>(
 				...(shouldResetPage ? { page: 1 } : {}),
 			}),
 			replace: true,
+			resetScroll: opts.resetScroll ?? true,
 		} as Parameters<NavigateFn>[0]);
 	};
 }
