@@ -8,6 +8,23 @@ This is a webapp for sharing AI Stacks so that users can compare and choose the 
 * Schema changes are often required and okay
 * Avoid backwards-compat, prefer convex migrations
 
+## Prod database access
+
+**Never point the local Convex CLI at prod.** That broke the local setup multiple times. All prod operations run on the server over ssh (`root@10.0.0.20`). Two scripts wrap this:
+
+```sh
+# Any Convex CLI command against prod, executed on the server.
+# The admin key is minted on the server per call and never stored here.
+scripts/convex-prod.sh data models --limit 20
+scripts/convex-prod.sh run migrations/<name>:run
+
+# Replace the local dev database with a fresh prod export.
+# Destructive locally (auth tables included - log in again). Prod is only read.
+scripts/sync-prod-db.sh
+```
+
+The local database lags behind prod. Before work that depends on real rows (catalog data entry, migration dry runs), run `scripts/sync-prod-db.sh` first.
+
 ## Styling Guidelines
 * **No border-radius** - Use sharp corners throughout the design
 * Use monospace fonts for buttons, labels, and technical accents
@@ -35,12 +52,9 @@ moved into Convex storage), run:
 # from ~/.convex/anonymous-convex-backend-state/<deployment>/config.json
 pnpm tsx scripts/migrate-icons.ts
 
-# Self-hosted prod — set self-hosted env vars (in .env.local or shell), deploy
-# code first so the migration functions exist, then run:
-export CONVEX_SELF_HOSTED_URL=http://10.0.0.20:3210
-export CONVEX_SELF_HOSTED_ADMIN_KEY=convex-self-hosted...
-npx convex deploy
-pnpm tsx scripts/migrate-icons.ts
+# Self-hosted prod — see "Prod database access": run prod operations on the
+# server over ssh, not with local env vars. Deploy code first so the migration
+# functions exist, then run the script from the server side.
 ```
 
 Auth: the script talks HTTP to Convex via `ConvexHttpClient` with admin auth
