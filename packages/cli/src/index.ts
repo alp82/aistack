@@ -12,7 +12,7 @@ const program = new Command();
 program
 	.name("aistack")
 	.description("Measure and share your AI stack from your terminal")
-	.version("0.4.0");
+	.version("0.5.0");
 
 program
 	.command("login")
