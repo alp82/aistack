@@ -47,7 +47,15 @@ program
 program
 	.command("sync")
 	.description("Scan, preview, and publish measured usage (rolling 30 days)")
-	.action(syncCommand);
+	.option(
+		"--auto [state]",
+		"silent background sync; 'on' enables the SessionStart hook, 'off' revokes it",
+	)
+	.option(
+		"--every <hours>",
+		"with --auto on: hours between auto-syncs (default 24)",
+	)
+	.action((options) => syncCommand(options));
 
 program
 	.command("connect")

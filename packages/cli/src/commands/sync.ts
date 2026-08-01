@@ -11,12 +11,67 @@
 
 import * as p from "@clack/prompts";
 import { BASE_URL, syncPublish } from "../api.js";
+import {
+	disableAutoSync,
+	enableAutoSync,
+	offerAutoSyncOptIn,
+} from "../autosync/optin.js";
+import { runAutoSync } from "../autosync/run.js";
+import { DEFAULT_FREQUENCY_HOURS, getSettings } from "../config.js";
 import { stageSync } from "../sync/stage.js";
 import { dim, intro, lime, outro, outroCancel, outroError } from "../theme.js";
 import { offerConnectUpsell } from "./connect.js";
 
-export async function syncCommand(): Promise<void> {
+export interface SyncOptions {
+	/** `--auto` → true, `--auto on` → "on", `--auto off` → "off". */
+	auto?: boolean | string;
+	/** `--every <hours>`, applied with `--auto on`. */
+	every?: string;
+}
+
+export async function syncCommand(options: SyncOptions = {}): Promise<void> {
+	// The silent path (#62): no TTY, no prompts, no upsells. Publishes only
+	// under the standing opt-in and always exits 0 — the hook command's `||`
+	// offline fallback must never fire on a mere sync failure.
+	if (options.auto === true) {
+		await runAutoSync({ baseUrl: BASE_URL });
+		return;
+	}
+
+	if (options.auto === "on" || options.auto === "off") {
+		intro("sync");
+		const result =
+			options.auto === "on"
+				? enableAutoSync(
+						options.every
+							? Number.parseInt(options.every, 10) || DEFAULT_FREQUENCY_HOURS
+							: DEFAULT_FREQUENCY_HOURS,
+					)
+				: disableAutoSync();
+		if (result.ok) {
+			p.log.success(result.message);
+			outro("done");
+		} else {
+			outroError(result.message);
+			process.exitCode = 1;
+		}
+		return;
+	}
+	if (options.auto !== undefined) {
+		intro("sync");
+		outroError(`unknown --auto value "${options.auto}" — use on or off`);
+		process.exitCode = 1;
+		return;
+	}
+
 	intro("sync");
+
+	// The interactive surface is where a silent failure becomes visible (#62):
+	// report the last auto-sync outcome, whatever it was.
+	const lastAuto = getSettings().autoSyncState?.lastResult;
+	if (lastAuto !== undefined) {
+		p.log.message(dim(`auto-sync: ${lastAuto}`));
+	}
 
 	// The whole premise of this channel is a human at a terminal. A pipe or a
 	// model-launched Bash call has no TTY, and a gate that cannot ask must not
@@ -85,7 +140,10 @@ export async function syncCommand(): Promise<void> {
 			);
 		}
 		p.log.message(lines.join("\n"));
-		await offerConnectUpsell();
+		// At most one ask per sync (#62): the auto-sync opt-in is the primary
+		// ask; the connect upsell yields and waits for a later sync.
+		const asked = await offerAutoSyncOptIn();
+		if (!asked) await offerConnectUpsell();
 		outro("done");
 	} catch (e) {
 		s.stop("Publish failed");
