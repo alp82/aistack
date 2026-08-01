@@ -109,26 +109,54 @@ const SETTINGS_FILE = join(CONFIG_DIR, "settings.json");
  * login overwrite never resets an answered upsell, and clearing settings never
  * touches the token.
  */
+export interface AutoSyncConfig {
+	/** The standing opt-in. `sync --auto` publishes nothing when false. */
+	enabled: boolean;
+	/** Minimum hours between auto-sync attempts. Default 24. */
+	frequencyHours: number;
+}
+
+/** Bookkeeping the `sync --auto` runs write. Separate from the opt-in. */
+export interface AutoSyncState {
+	/** Epoch ms of the last attempt (success or failure). The freshness gate. */
+	lastRunAt?: number;
+	lastSuccessAt?: number;
+	/** One line about the last run, shown on the next interactive sync. */
+	lastResult?: string;
+	consecutiveFailures?: number;
+	/** The 3-failure systemMessage went out. Reset on success. */
+	failureWarned?: boolean;
+}
+
+export const DEFAULT_FREQUENCY_HOURS = 24;
+
 export interface Settings {
 	/** The post-sync connect-claude upsell was answered (either way). */
 	connectClaudeAnswered?: boolean;
+	/** The post-sync auto-sync ask was answered (either way). */
+	autoSyncAnswered?: boolean;
+	autoSync?: AutoSyncConfig;
+	autoSyncState?: AutoSyncState;
 }
 
-export function getSettings(): Settings {
-	if (!existsSync(SETTINGS_FILE)) return {};
+export function getSettings(file: string = SETTINGS_FILE): Settings {
+	if (!existsSync(file)) return {};
 	try {
-		const raw = JSON.parse(readFileSync(SETTINGS_FILE, "utf-8"));
+		const raw = JSON.parse(readFileSync(file, "utf-8"));
 		return raw && typeof raw === "object" ? (raw as Settings) : {};
 	} catch {
 		return {};
 	}
 }
 
-export function saveSettings(patch: Partial<Settings>): void {
-	mkdirSync(CONFIG_DIR, { recursive: true });
+export function saveSettings(
+	patch: Partial<Settings>,
+	file: string = SETTINGS_FILE,
+): void {
+	mkdirSync(dirname(file), { recursive: true });
 	writeFileSync(
-		SETTINGS_FILE,
-		JSON.stringify({ ...getSettings(), ...patch }, null, 2),
+		file,
+		JSON.stringify({ ...getSettings(file), ...patch }, null, 2),
 	);
 }
 

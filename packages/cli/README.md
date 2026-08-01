@@ -20,6 +20,18 @@ npx @use-aistack/cli sync
 
 Requires a one-time `login` first.
 
+### `npx @use-aistack/cli sync --auto on` / `off`
+
+Optional: keep your stack fresh without manual syncs. `on` writes a `SessionStart` hook (`async: true`) into `~/.claude/settings.json`. The hook runs a silent sync at most once per day when a Claude Code session starts. `off` removes the hook and revokes the standing opt-in.
+
+```sh
+npx @use-aistack/cli sync --auto on            # enable, default every 24h
+npx @use-aistack/cli sync --auto on --every 12 # custom frequency in hours
+npx @use-aistack/cli sync --auto off           # revoke
+```
+
+The silent run (`sync --auto`) never prompts and publishes only under this opt-in. Each run appends one line to `~/.config/aistack/sync.log` (capped at 200 lines). The next interactive `sync` reports the last result. After 3 failures in a row, one visible message appears in Claude Code and names the fix. No email, no dialogs.
+
 ### `npx @use-aistack/cli login`
 
 Link this machine to your AI Stack account via browser.
