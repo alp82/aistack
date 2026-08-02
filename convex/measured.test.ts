@@ -2127,3 +2127,95 @@ describe('batch publish + per-harness aggregation (#67)', () => {
   })
 
 })
+
+// ---------------------------------------------------------------------------
+// Read-time repricing (#72)
+// ---------------------------------------------------------------------------
+
+describe('read-time repricing of unpriced OpenAI rows (#72)', () => {
+  const codexPayload = (over: Record<string, unknown> = {}) =>
+    payload({
+      harness: { name: 'codex', version: '0.146.0' },
+      pricingTable: 'openai-list-2026-08-01',
+      models: [
+        {
+          id: 'gpt-5.6-sol',
+          tokenShare: 1,
+          // No apiEquivalentUSD: the 0.6.0 CLI had no rate for this id.
+          tokens: {
+            input: 1_000_000,
+            output: 100_000,
+            cacheWrite: 0,
+            cacheRead: 400_000,
+          },
+        },
+      ],
+      excludedTokens: { unpriced: 1_500_000, synthetic: 0 },
+      ...over,
+    })
+
+  test('prices a landed gpt-5.6-sol row and shrinks the unpriced counter', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: codexPayload(),
+    })
+
+    const current = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    // 1M in × $5 + 100k out × $30 + 400k cached × $0.50, per 1M.
+    expect(current?.models[0].apiEquivalentUSD).toBeCloseTo(5 + 3 + 0.2, 6)
+    const harness = current?.harnesses[0]
+    expect(harness?.models[0].apiEquivalentUSD).toBeCloseTo(8.2, 6)
+    expect(harness?.excludedTokens.unpriced).toBe(0)
+    // The footer must cite the table the read-time dollars came from.
+    expect(harness?.pricingTable).toBe(
+      'openai-list-2026-08-01 + openai-list-2026-08-02',
+    )
+  })
+
+  test('never reprices when the payload published no cost at all', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      // publishCost off: pricingTable null is the owner's choice, and
+      // read-time dollars would override it.
+      payload: codexPayload({ pricingTable: null }),
+    })
+
+    const current = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(current?.models[0].apiEquivalentUSD).toBeUndefined()
+    expect(current?.harnesses[0].pricingTable).toBeNull()
+    expect(current?.harnesses[0].excludedTokens.unpriced).toBe(1_500_000)
+  })
+
+  test('leaves ids outside the read-time table unpriced', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: codexPayload({
+        models: [
+          {
+            id: 'gpt-5.7-unreleased',
+            tokenShare: 1,
+            tokens: { input: 100, output: 10, cacheWrite: 0, cacheRead: 0 },
+          },
+        ],
+        excludedTokens: { unpriced: 110, synthetic: 0 },
+      }),
+    })
+
+    const current = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(current?.models[0].apiEquivalentUSD).toBeUndefined()
+    expect(current?.harnesses[0].excludedTokens.unpriced).toBe(110)
+    expect(current?.harnesses[0].pricingTable).toBe('openai-list-2026-08-01')
+  })
+})

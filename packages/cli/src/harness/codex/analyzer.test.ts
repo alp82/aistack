@@ -144,12 +144,29 @@ describe("usage — sum last_token_usage deltas, never the cumulative total", ()
 		const agg = createAggregate();
 		foldFile(agg, [
 			sessionMeta(),
-			turnContext("gpt-5.3-codex"),
+			// gpt-5.3-codex played this role until its price landed on the list
+			// page (#72); any id absent from the table works.
+			turnContext("gpt-5.7-unreleased"),
 			tokenCount({ input: 500 }),
 		]);
 		const f = finalize(agg);
 		expect(f.models[0].costUSD).toBeNull();
 		expect(f.unpricedTokens).toBe(500);
+	});
+
+	it("prices the gpt-5.6 family and codex-auto-review at the pinned rates", () => {
+		const agg = createAggregate();
+		foldFile(agg, [
+			sessionMeta(),
+			turnContext("gpt-5.6-sol"),
+			tokenCount({ input: 1_000_000, output: 100_000 }),
+			turnContext("codex-auto-review"),
+			tokenCount({ input: 1_000_000, output: 100_000 }),
+		]);
+		const f = finalize(agg);
+		// sol: 1M × $5 + 100k × $30; auto-review: 1M × $2.50 + 100k × $15.
+		expect(f.totalCostUSD).toBeCloseTo(5 + 3 + 2.5 + 1.5, 6);
+		expect(f.unpricedTokens).toBe(0);
 	});
 
 	it("skips zero deltas — a rate-limit refresh is not a response", () => {

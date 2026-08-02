@@ -18,7 +18,7 @@
 // Sources: Anthropic public list prices as of 2026-07-25 (cache multipliers
 // from https://platform.claude.com/docs/en/build-with-claude/prompt-caching:
 // 5m cache write = 1.25x input, 1h cache write = 2x input, read = 0.1x input)
-// and OpenAI public list prices as of 2026-08-01
+// and OpenAI public list prices as of 2026-08-02
 // (https://developers.openai.com/api/docs/pricing — cached input is 10% of
 // input, the same multiplier `cacheRead` already uses; Codex reports no cache
 // writes, so the write multipliers never fire for OpenAI rows).
@@ -28,7 +28,7 @@
 // vendors.
 
 export const PRICING_TABLE_VERSION = "anthropic-list-2026-07-25";
-export const OPENAI_PRICING_TABLE_VERSION = "openai-list-2026-08-01";
+export const OPENAI_PRICING_TABLE_VERSION = "openai-list-2026-08-02";
 
 export const CACHE_WRITE_5M_MULTIPLIER = 1.25;
 export const CACHE_WRITE_1H_MULTIPLIER = 2.0;
@@ -79,11 +79,23 @@ const PRICES: Record<string, PricePeriod[]> = {
 	"claude-opus-5#fast": [{ from: null, to: null, input: 10, output: 50 }],
 	"claude-opus-4-8#fast": [{ from: null, to: null, input: 10, output: 50 }],
 	// OpenAI (Codex) — standard-context tier (<272K; observed context window is
-	// 258,400). gpt-5.3-codex and the 5.6 line have NO published price yet, so
-	// they are deliberately absent and surface as unpriced (#66 decision 6).
+	// 258,400).
 	"gpt-5.5": [{ from: null, to: null, input: 5, output: 30 }],
 	"gpt-5.4": [{ from: null, to: null, input: 2.5, output: 15 }],
 	"gpt-5.4-mini": [{ from: null, to: null, input: 0.75, output: 4.5 }],
+	"gpt-5.3-codex": [{ from: null, to: null, input: 1.75, output: 14 }],
+	// The gpt-5.6 family launched 2026-07-29; Terra and Luna were repriced on
+	// 2026-07-30 (-20% / -80%). The one-day launch rates are not on the list
+	// page and are NOT encoded — a July-29 Terra/Luna record underprices for
+	// one day rather than carrying a rate we cannot cite (#72).
+	"gpt-5.6-sol": [{ from: null, to: null, input: 5, output: 30 }],
+	"gpt-5.6-terra": [{ from: null, to: null, input: 2, output: 12 }],
+	"gpt-5.6-luna": [{ from: null, to: null, input: 0.2, output: 1.2 }],
+	// NOT on OpenAI's list page — an internal Codex routing label with no
+	// official price (openai/codex#20981). Rate is the aggregator consensus
+	// ($2.50 / $15.00), scoped in explicitly by ticket #72 because it carries
+	// real token volume in Codex rollouts.
+	"codex-auto-review": [{ from: null, to: null, input: 2.5, output: 15 }],
 };
 
 export type TokenCounts = {

@@ -245,6 +245,73 @@ async function resolveModels(
   )
 }
 
+/**
+ * Read-time repricing for rows that landed before the CLI knew their price
+ * (#72). The Codex live test published `gpt-5.6-*` and `codex-auto-review`
+ * rows with tokens but no `apiEquivalentUSD` — the CLI's pinned table had no
+ * rate for them — and snapshots are immutable, so the fix has to happen where
+ * catalog resolution already does: at read time.
+ *
+ * Rates mirror the CLI's `openai-list-2026-08-02` table (source:
+ * https://developers.openai.com/api/docs/pricing; cached input is 10% of
+ * input; `codex-auto-review` is the aggregator-consensus rate, see the CLI
+ * table comment). Only ids with a single open-ended price period are safe
+ * here — per-response timestamps are gone by publish time, so a repriced
+ * model must cost the same at every moment the window can cover.
+ *
+ * Two guards keep this honest:
+ *   - it never fires when the payload published no cost at all
+ *     (`pricingTable === null` — the owner turned cost publishing off, and
+ *     read-time dollars would override that choice), and
+ *   - it skips rows with cache-write tokens: OpenAI publishes no cache-write
+ *     rate, and Codex never reports writes, so a row that has them is not a
+ *     row this table can price.
+ */
+const READTIME_OPENAI_PRICES: Record<string, { input: number; output: number }> =
+  {
+    'gpt-5.6-sol': { input: 5, output: 30 },
+    'gpt-5.6-terra': { input: 2, output: 12 },
+    'gpt-5.6-luna': { input: 0.2, output: 1.2 },
+    'gpt-5.3-codex': { input: 1.75, output: 14 },
+    'codex-auto-review': { input: 2.5, output: 15 },
+  }
+const READTIME_PRICING_TABLE = 'openai-list-2026-08-02'
+const READTIME_CACHE_READ_MULTIPLIER = 0.1
+
+/**
+ * Price unpriced rows from `READTIME_OPENAI_PRICES`, in place on a copy.
+ * Returns the repriced list plus the token total that moved from unpriced to
+ * priced, so the caller can shrink `excludedTokens.unpriced` to match.
+ */
+function applyReadTimePrices<
+  T extends {
+    id: string
+    tokens: {
+      input: number
+      output: number
+      cacheWrite: number
+      cacheRead: number
+    }
+    apiEquivalentUSD?: number
+  },
+>(models: T[]): { models: T[]; repricedTokens: number } {
+  let repricedTokens = 0
+  const out = models.map((m) => {
+    if (m.apiEquivalentUSD !== undefined) return m
+    const rate = READTIME_OPENAI_PRICES[m.id]
+    if (!rate || m.tokens.cacheWrite > 0) return m
+    const usd =
+      (m.tokens.input * rate.input +
+        m.tokens.output * rate.output +
+        m.tokens.cacheRead * rate.input * READTIME_CACHE_READ_MULTIPLIER) /
+      1_000_000
+    repricedTokens +=
+      m.tokens.input + m.tokens.output + m.tokens.cacheRead
+    return { ...m, apiEquivalentUSD: usd }
+  })
+  return { models: out, repricedTokens }
+}
+
 const harnessOf = (row: Doc<'measuredSnapshots'>): string => row.harness
 
 /**
@@ -370,6 +437,11 @@ async function toHarnessSnapshot(
   snapshot: Doc<'measuredSnapshots'>
 ) {
   const p = snapshot.payload
+  const resolved = await resolveModels(ctx, p.models)
+  const { models, repricedTokens } =
+    p.pricingTable !== null
+      ? applyReadTimePrices(resolved)
+      : { models: resolved, repricedTokens: 0 }
   return {
     capturedAt: snapshot.capturedAt,
     receivedAt: snapshot.receivedAt,
@@ -377,12 +449,20 @@ async function toHarnessSnapshot(
     isFresh: Date.now() - snapshot.receivedAt <= SEVEN_DAYS_MS,
     window: p.window,
     harness: p.harness,
-    pricingTable: p.pricingTable,
+    // A repriced row's dollars are cited by OUR table, not the payload's —
+    // the footer must name both.
+    pricingTable:
+      repricedTokens > 0 && p.pricingTable !== READTIME_PRICING_TABLE
+        ? `${p.pricingTable} + ${READTIME_PRICING_TABLE}`
+        : p.pricingTable,
     activity: p.activity,
-    models: await resolveModels(ctx, p.models),
+    models,
     inventory: p.inventory,
     coverage: p.coverage,
-    excludedTokens: p.excludedTokens,
+    excludedTokens: {
+      unpriced: Math.max(0, p.excludedTokens.unpriced - repricedTokens),
+      synthetic: p.excludedTokens.synthetic,
+    },
   }
 }
 
@@ -641,7 +721,12 @@ export const getReconcileSuggestions = query({
     )
     const suggestedSlugs = new Set<string>()
     for (const snapshot of snapshots) {
-      for (const m of await resolveModels(ctx, snapshot.payload.models)) {
+      const resolved = await resolveModels(ctx, snapshot.payload.models)
+      const repriced =
+        snapshot.payload.pricingTable !== null
+          ? applyReadTimePrices(resolved).models
+          : resolved
+      for (const m of repriced) {
         if (m.catalogSlug === null) continue
         if (authoredModels.has(m.catalogSlug)) continue
         if (dismissed.has(`model:${m.catalogSlug}`)) continue
