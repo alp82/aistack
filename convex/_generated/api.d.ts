@@ -38,6 +38,7 @@ import type * as migrations_20260729_cli_token_hash from "../migrations/20260729
 import type * as migrations_20260729_cli_token_scopes from "../migrations/20260729_cli_token_scopes.js";
 import type * as migrations_20260801_measured_model_catalog from "../migrations/20260801_measured_model_catalog.js";
 import type * as migrations_20260801_openai_models from "../migrations/20260801_openai_models.js";
+import type * as migrations_20260802_gpt56_models from "../migrations/20260802_gpt56_models.js";
 import type * as migrations__archived_migrateBlockToReference from "../migrations/_archived/migrateBlockToReference.js";
 import type * as migrations__archived_migrateNotesToDescription from "../migrations/_archived/migrateNotesToDescription.js";
 import type * as migrations__archived_migrateStackDescriptions from "../migrations/_archived/migrateStackDescriptions.js";
@@ -95,6 +96,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/20260729_cli_token_scopes": typeof migrations_20260729_cli_token_scopes;
   "migrations/20260801_measured_model_catalog": typeof migrations_20260801_measured_model_catalog;
   "migrations/20260801_openai_models": typeof migrations_20260801_openai_models;
+  "migrations/20260802_gpt56_models": typeof migrations_20260802_gpt56_models;
   "migrations/_archived/migrateBlockToReference": typeof migrations__archived_migrateBlockToReference;
   "migrations/_archived/migrateNotesToDescription": typeof migrations__archived_migrateNotesToDescription;
   "migrations/_archived/migrateStackDescriptions": typeof migrations__archived_migrateStackDescriptions;

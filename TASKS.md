@@ -1,5 +1,6 @@
 * pi
     https://www.youtube.com/watch?v=5Qu2SkSQeBU
+    https://x.com/kunchenguid/status/2083611681868107857
     https://lazypi.org
     https://github.com/franky47/dotfiles/tree/main/dot-pi/agent
     https://github.com/jal-co/jalco-pi-mono
