@@ -14,8 +14,6 @@ import {
 	harnessLine,
 	KICKER,
 	keptPrivate,
-	LOGIN_CMD,
-	LOGIN_CMD_COMMENT,
 	MEASURED_ANCHOR,
 	type MeasuredModel,
 	type MeasuredSnapshot,
@@ -278,7 +276,7 @@ function NeverMeasured() {
 	);
 }
 
-/** The owner's teaching box (#58): the two commands, on the page with the gap. */
+/** The owner's teaching box (#58): the one command, on the page with the gap. */
 function OwnerNotMeasured() {
 	return (
 		<div className="border border-stroke-strong px-6 py-10 md:px-10">
@@ -288,10 +286,7 @@ function OwnerNotMeasured() {
 			</p>
 			<div className="mt-6 max-w-xl">
 				<CommandBlock
-					commands={[
-						{ cmd: LOGIN_CMD, comment: LOGIN_CMD_COMMENT },
-						{ cmd: SYNC_CMD, comment: SYNC_CMD_COMMENT },
-					]}
+					commands={[{ cmd: SYNC_CMD, comment: SYNC_CMD_COMMENT }]}
 				/>
 			</div>
 			<p className={cn(MONO_LABEL, "mt-4 text-fg-muted")}>{PRIVACY_FOOTNOTE}</p>

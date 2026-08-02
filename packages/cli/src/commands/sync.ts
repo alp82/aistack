@@ -22,10 +22,11 @@ import {
 	offerAutoSyncOptIn,
 } from "../autosync/optin.js";
 import { runAutoSync } from "../autosync/run.js";
-import { DEFAULT_FREQUENCY_HOURS, getSettings } from "../config.js";
+import { DEFAULT_FREQUENCY_HOURS, getSettings, getToken } from "../config.js";
 import { stageSync } from "../sync/stage.js";
 import { dim, intro, lime, outro, outroCancel, outroError } from "../theme.js";
 import { offerConnectUpsell } from "./connect.js";
+import { performLogin } from "./login.js";
 
 export interface SyncOptions {
 	/** `--auto` → true, `--auto on` → "on", `--auto off` → "off". */
@@ -92,6 +93,20 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 		outroError("sync needs an interactive terminal — nothing was sent");
 		process.exitCode = 1;
 		return;
+	}
+
+	// An unlinked machine used to hard-block with "run login first" (#74). The
+	// TTY gate above guarantees a human is present, so the device-auth browser
+	// hop fits here — `sync` is the whole onboarding command.
+	if (getToken() === null) {
+		p.log.message(
+			"This machine is not linked to an aistack account yet — linking it first.",
+		);
+		if (!(await performLogin())) {
+			outroError("login failed — nothing was sent");
+			process.exitCode = 1;
+			return;
+		}
 	}
 
 	const s = p.spinner();

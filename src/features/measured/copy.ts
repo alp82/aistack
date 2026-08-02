@@ -39,14 +39,12 @@ export const TITLE = "Actual Usage";
 export const HARNESS = "Claude Code";
 
 /**
- * The two commands the site teaches, verbatim (#57 made the npx form the
- * documented default). The CLI blocks `sync` on an unlinked machine, so honest
- * teaching is always both commands in this order.
+ * The one command the site teaches, verbatim (#57 made the npx form the
+ * documented default). Since #74 the CLI starts the login flow inline when the
+ * machine is unlinked, so honest teaching is this single command.
  */
-export const LOGIN_CMD = "npx @use-aistack/cli login";
 export const SYNC_CMD = "npx @use-aistack/cli sync";
-export const LOGIN_CMD_COMMENT = "link this machine to your stack";
-export const SYNC_CMD_COMMENT = "scan, review, approve";
+export const SYNC_CMD_COMMENT = "link, scan, review, approve";
 
 /** Shared mono label treatment, matching the journey's section kickers. */
 export const MONO_LABEL =

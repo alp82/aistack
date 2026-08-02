@@ -18,7 +18,7 @@ The default command. Scan your local transcripts (rolling 30 days), review the f
 npx @use-aistack/cli sync
 ```
 
-Requires a one-time `login` first.
+On an unlinked machine, `sync` starts the login flow inline — your browser opens to approve the machine, then the sync continues. One command is the whole onboarding.
 
 ### `npx @use-aistack/cli sync --auto on` / `off`
 
@@ -34,7 +34,7 @@ The silent run (`sync --auto`) never prompts and publishes only under this opt-i
 
 ### `npx @use-aistack/cli login`
 
-Link this machine to your AI Stack account via browser.
+Link this machine to your AI Stack account via browser. Optional — `sync` runs this inline when the machine is not linked yet.
 
 ```sh
 npx @use-aistack/cli login

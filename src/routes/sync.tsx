@@ -10,7 +10,6 @@ import { CommandLine } from "@/features/measured/CommandLine";
 import {
 	HARNESS,
 	KICKER,
-	LOGIN_CMD,
 	MONO_LABEL,
 	SYNC_CMD,
 } from "@/features/measured/copy";
@@ -36,13 +35,8 @@ export const Route = createFileRoute("/sync")({
 
 const STEPS: { title: string; body: string; cmd?: string }[] = [
 	{
-		title: "Link this machine",
-		body: "Opens your browser to approve the machine. You name it, and you can revoke it any time.",
-		cmd: LOGIN_CMD,
-	},
-	{
 		title: "Sync",
-		body: `Scans your local ${HARNESS} and Codex history and shows you the full summary in the terminal — every number, every name.`,
+		body: `Scans your local ${HARNESS} and Codex history and shows you the full summary in the terminal — every number, every name. On the first run it opens your browser to link this machine; you name it, and you can revoke it any time.`,
 		cmd: SYNC_CMD,
 	},
 	{

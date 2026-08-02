@@ -110,12 +110,12 @@ describe("stageSync", () => {
 		expect(staged.blockedReason).toContain("destination stack is unknown");
 	});
 
-	test("a fetched config without a stack blocks with the re-link instruction", async () => {
+	test("a fetched config without a stack blocks and names the create-stack URL", async () => {
 		const staged = await stageSync(
 			deps({
 				config: { config: { ...FETCHED, stack: null }, source: "fetched" },
 			}),
 		);
-		expect(staged.blockedReason).toContain("re-link");
+		expect(staged.blockedReason).toContain("/stacks/new");
 	});
 });

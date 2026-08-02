@@ -185,19 +185,17 @@ describe("a stack that has never synced, seen by a visitor", () => {
 });
 
 describe("a stack that has never synced, seen by its owner", () => {
-	it("teaches both commands inline, in order", () => {
-		// #58: the CLI blocks `sync` on an unlinked machine, so honest teaching
-		// is two commands — login first, then sync.
+	it("teaches the one command inline", () => {
+		// #74: `sync` starts the login flow inline on an unlinked machine, so
+		// honest teaching is one command.
 		setup(null, { isOwner: true });
 		expect(
 			screen.getByText("Your stack has not been measured yet."),
 		).toBeInTheDocument();
-		const login = screen.getByText("npx @use-aistack/cli login");
-		const sync = screen.getByText("npx @use-aistack/cli sync");
-		// Login renders before sync — the order the commands must run in.
+		expect(screen.getByText("npx @use-aistack/cli sync")).toBeInTheDocument();
 		expect(
-			login.compareDocumentPosition(sync) & Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBeTruthy();
+			screen.queryByText("npx @use-aistack/cli login"),
+		).not.toBeInTheDocument();
 	});
 
 	it("states the privacy footnote and links the guide", () => {
@@ -213,11 +211,8 @@ describe("a stack that has never synced, seen by its owner", () => {
 		);
 	});
 
-	it("offers a copy button per command", () => {
+	it("offers a copy button for the command", () => {
 		setup(null, { isOwner: true });
-		expect(
-			screen.getByLabelText("Copy npx @use-aistack/cli login"),
-		).toBeInTheDocument();
 		expect(
 			screen.getByLabelText("Copy npx @use-aistack/cli sync"),
 		).toBeInTheDocument();

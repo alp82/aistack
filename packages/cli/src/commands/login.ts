@@ -27,9 +27,13 @@ export function proposedMachineName(
 	}
 }
 
-export async function loginCommand() {
-	intro("login");
-
+/**
+ * The device-auth flow itself, without intro/outro framing or process.exit —
+ * so `sync` can run it inline on an unlinked machine (#74) and `login` stays
+ * the standalone command. Logs its own progress and errors; returns whether a
+ * token was saved.
+ */
+export async function performLogin(): Promise<boolean> {
 	const s = p.spinner();
 	s.start("Starting authentication...");
 
@@ -40,8 +44,7 @@ export async function loginCommand() {
 	} catch (err) {
 		s.stop("Failed to start authentication");
 		p.log.error(err instanceof Error ? err.message : String(err));
-		outroError("error");
-		process.exit(1);
+		return false;
 	}
 
 	p.log.info(`${dim("CODE")} ${limeBold(session.userCode)}`);
@@ -67,29 +70,36 @@ export async function loginCommand() {
 			if (result.status === "approved" && result.token) {
 				s.stop(lime("Authenticated"));
 				saveToken(result.token, result.userId);
-				p.log.success(
-					`Token saved. Run ${limeBold("npx @use-aistack/cli collect")} to get started.`,
-				);
-				outro(lime("done"));
-				return;
+				return true;
 			}
 
 			if (result.status === "expired") {
 				s.stop("Session expired");
 				p.log.error("Authentication session expired. Please try again.");
-				outroError("expired");
-				process.exit(1);
+				return false;
 			}
 		} catch (err) {
 			s.stop("Error polling");
 			p.log.error(err instanceof Error ? err.message : String(err));
-			outroError("error");
-			process.exit(1);
+			return false;
 		}
 	}
 
 	s.stop("Timed out");
 	p.log.error("Authentication timed out after 3 minutes. Please try again.");
-	outroError("timed out");
-	process.exit(1);
+	return false;
+}
+
+export async function loginCommand() {
+	intro("login");
+
+	if (!(await performLogin())) {
+		outroError("error");
+		process.exit(1);
+	}
+
+	p.log.success(
+		`Token saved. Run ${limeBold("npx @use-aistack/cli sync")} to publish your usage.`,
+	);
+	outro(lime("done"));
 }
