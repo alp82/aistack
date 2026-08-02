@@ -11,6 +11,7 @@ import type {
 } from "../harness/shared/allowlist.js";
 import { EMPTY_OPT_INS } from "../harness/shared/allowlist.js";
 import type { MeasuredPayload, SyncBody } from "../harness/shared/payload.js";
+import { emptyScanStats } from "../harness/shared/window.js";
 import {
 	buildGateDialog,
 	buildGateSummary,
@@ -18,6 +19,7 @@ import {
 	fmtUSD,
 	type GateContext,
 	keptPrivateRows,
+	scanNoteLines,
 	totalUSD,
 	withheldCount,
 } from "./summary.js";
@@ -260,6 +262,44 @@ describe("beat one — the summary", () => {
 		);
 		expect(degraded).toContain(
 			"coverage  3 files unreadable · 12 lines failed — this reading is a floor",
+		);
+	});
+
+	test("local scan notes name unreadable files and foreign rollouts (#75)", () => {
+		const stats = emptyScanStats();
+		stats.filesUnreadable = 1;
+		stats.unreadableFiles.push({
+			path: "2026/07/28/rollout-x.jsonl",
+			reason: "ENOENT",
+		});
+		stats.filesForeign = 3;
+		stats.foreignOriginators.set("codexmate", 2);
+		stats.foreignOriginators.set("(none)", 1);
+		const lines = scanNoteLines(stats, "Codex");
+		expect(lines).toContain("          2026/07/28/rollout-x.jsonl (ENOENT)");
+		expect(lines).toContain(
+			"skipped   3 files not written by Codex — left out (originators: codexmate ×2, (none))",
+		);
+	});
+
+	test("scan notes render inside the harness block when stats ride in the context", () => {
+		const stats = emptyScanStats();
+		stats.filesForeign = 1;
+		stats.foreignOriginators.set("impostor", 1);
+		const summary = buildGateSummary({
+			...ctx({}),
+			scanStats: { "claude-code": stats },
+		});
+		expect(summary).toContain(
+			"skipped   1 file not written by Claude Code — left out (originators: impostor)",
+		);
+	});
+
+	test("scan notes report .zst rollouts an old runtime cannot read", () => {
+		const stats = emptyScanStats();
+		stats.filesZstdUnsupported = 2;
+		expect(scanNoteLines(stats, "Codex")).toContain(
+			"          2 compressed rollouts need Node 22.15 or newer",
 		);
 	});
 

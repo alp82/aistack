@@ -38,6 +38,23 @@ export type ScanStats = {
 	 * this tool promises never to emit.
 	 */
 	filesUnreadable: number;
+	/**
+	 * Files excluded because they fail the genuine-rollout fingerprint (#73):
+	 * another tool wrote them into the harness's log directory, so their usage
+	 * would distort the numbers. Codex sets this; Claude has no known impostors.
+	 */
+	filesForeign: number;
+	/**
+	 * LOCAL-ONLY detail behind the counts above. `buildPayload` copies coverage
+	 * fields one by one, so nothing below can reach the wire.
+	 *
+	 * `session_meta.originator` values seen on foreign files, value → file count.
+	 */
+	foreignOriginators: Map<string, number>;
+	/** LOCAL-ONLY: one `{path relative to the scan root, error class}` per unreadable file. */
+	unreadableFiles: Array<{ path: string; reason: string }>;
+	/** Subset of `filesUnreadable`: `.zst` rollouts this Node runtime cannot decompress. */
+	filesZstdUnsupported: number;
 };
 
 export function emptyScanStats(): ScanStats {
@@ -47,5 +64,9 @@ export function emptyScanStats(): ScanStats {
 		filesSkippedByMtime: 0,
 		filesSkippedAsDuplicate: 0,
 		filesUnreadable: 0,
+		filesForeign: 0,
+		foreignOriginators: new Map(),
+		unreadableFiles: [],
+		filesZstdUnsupported: 0,
 	};
 }

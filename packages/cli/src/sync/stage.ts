@@ -31,6 +31,7 @@ import {
 } from "../harness/shared/payload.js";
 import {
 	DEFAULT_WINDOW_DAYS,
+	type ScanStats,
 	windowStartMs,
 } from "../harness/shared/window.js";
 import type { HarnessAdapter } from "../harness/types.js";
@@ -86,9 +87,11 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	});
 
 	const built: BuiltPayload[] = [];
+	const scanStats: Record<string, ScanStats> = {};
 	const sinceMs = windowStartMs(now, windowDays);
 	for (const adapter of await adapters()) {
 		const { aggregate, stats } = await adapter.scan({ sinceMs });
+		scanStats[adapter.name] = stats;
 		built.push(
 			buildPayload({
 				aggregate,
@@ -113,6 +116,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		config,
 		source,
 		baseUrl: deps.baseUrl,
+		scanStats,
 	};
 
 	let blockedReason: string | null = null;

@@ -17,6 +17,7 @@ import * as zlib from "node:zlib";
 
 import { parse as parseToml } from "smol-toml";
 
+import { asObj, asStr } from "../shared/aggregate.js";
 import { emptyScanStats, type ScanStats } from "../shared/window.js";
 import {
 	type Aggregate,
@@ -79,6 +80,8 @@ export type ScanOptions = {
 	roots?: string[];
 	/** Override the config.toml path. Tests only. */
 	configFile?: string;
+	/** Override the file reader. Tests only. */
+	readFileImpl?: (file: string) => Buffer | string;
 };
 
 export async function scan(
@@ -99,11 +102,18 @@ export async function scan(
 			} catch {
 				resolved = file;
 			}
-			if (visited.has(resolved)) {
+			// Dedup key = resolved path with `.zst` stripped. Codex's compression
+			// worker leaves `foo.jsonl` and `foo.jsonl.zst` coexisting for a moment
+			// (rename before unlink, #73 §4) — one session, two names. Keying on
+			// the stem makes the second listing a duplicate, not a double count.
+			const dedupKey = resolved.endsWith(".zst")
+				? resolved.slice(0, -".zst".length)
+				: resolved;
+			if (visited.has(dedupKey)) {
 				stats.filesSkippedAsDuplicate++;
 				continue;
 			}
-			visited.add(resolved);
+			visited.add(dedupKey);
 
 			// Rollouts are append-only and chronological, so a file untouched since
 			// the window opened cannot hold an in-window record.
@@ -122,12 +132,24 @@ export async function scan(
 			agg.files++;
 			stats.filesRead++;
 			if (opts.onProgress && agg.files % 200 === 0) opts.onProgress(agg.files);
-			try {
-				ingestFile(agg, file, opts.sinceMs);
-			} catch {
-				// Swallow deliberately: the error object carries the absolute path.
+			const outcome = ingestWithRetry(agg, file, opts);
+			if (!outcome.ok) {
+				// Never rethrown: the error object carries the absolute path. The
+				// stats keep a relative path and a bare error class instead (#75).
 				stats.filesUnreadable++;
 				stats.filesRead--;
+				if (outcome.reason === "zstd-unsupported") stats.filesZstdUnsupported++;
+				stats.unreadableFiles.push({
+					path: path.relative(root, file),
+					reason: outcome.reason,
+				});
+			} else if (!outcome.genuine) {
+				// Fingerprint failure (#73): another tool wrote this file. Its usage
+				// stayed out of the aggregate entirely.
+				stats.filesForeign++;
+				stats.filesRead--;
+				const seen = stats.foreignOriginators.get(outcome.originator) ?? 0;
+				stats.foreignOriginators.set(outcome.originator, seen + 1);
 			}
 		}
 	}
@@ -145,35 +167,136 @@ async function exists(p: string): Promise<boolean> {
 	}
 }
 
+type IngestOutcome =
+	| { ok: true; genuine: true }
+	| { ok: true; genuine: false; originator: string }
+	| { ok: false; reason: string };
+
+/**
+ * A read failure classified WITHOUT the error object's message or stack —
+ * both carry the absolute path, which never leaves this module. `code` is a
+ * bare class name (`ENOENT`, `EACCES`, `zstd-unsupported`, `zstd-corrupt`).
+ */
+function errorClass(e: unknown): string {
+	const code = (e as { code?: unknown } | null)?.code;
+	if (typeof code === "string" && code.length > 0) return code;
+	return e instanceof Error ? e.constructor.name : "unknown";
+}
+
+const readError = (reason: string): Error =>
+	Object.assign(new Error(reason), { code: reason });
+
+/**
+ * The compression race (#73 §4): codex's background worker compresses a
+ * rollout to `.zst` and then unlinks the plain `.jsonl`, so a file listed by
+ * the walk can be gone at read time. Mirror codex's own reader: on `ENOENT`,
+ * try the `.zst` sibling once before counting the file unreadable.
+ */
+function ingestWithRetry(
+	agg: Aggregate,
+	file: string,
+	opts: ScanOptions,
+): IngestOutcome {
+	try {
+		return ingestFile(agg, file, opts);
+	} catch (e) {
+		if (errorClass(e) === "ENOENT" && !file.endsWith(".zst")) {
+			try {
+				return ingestFile(agg, `${file}.zst`, opts);
+			} catch (e2) {
+				return { ok: false, reason: errorClass(e2) };
+			}
+		}
+		return { ok: false, reason: errorClass(e) };
+	}
+}
+
 /**
  * Whole-file read rather than a stream: a `.zst` rollout must be decompressed
  * as one buffer anyway, and rollout files are single sessions — megabytes,
- * not gigabytes.
+ * not gigabytes. The lines are parsed BEFORE any of them folds into the
+ * aggregate, because the fingerprint verdict (#73) arrives only at end of
+ * file: a foreign file must leave the aggregate untouched.
  */
-function ingestFile(agg: Aggregate, file: string, sinceMs?: number): void {
+function ingestFile(
+	agg: Aggregate,
+	file: string,
+	opts: ScanOptions,
+): IngestOutcome {
+	const readFile = opts.readFileImpl ?? readFileSync;
 	let text: string;
 	if (file.endsWith(".zst")) {
-		if (zstdDecompress === null) {
-			throw new Error("zstd not supported by this Node runtime");
+		if (zstdDecompress === null) throw readError("zstd-unsupported");
+		const raw = readFile(file);
+		try {
+			text = zstdDecompress(
+				Buffer.isBuffer(raw) ? raw : Buffer.from(raw),
+			).toString("utf8");
+		} catch {
+			throw readError("zstd-corrupt");
 		}
-		text = zstdDecompress(readFileSync(file)).toString("utf8");
 	} else {
-		text = readFileSync(file, "utf8");
+		text = readFile(file).toString("utf8");
 	}
 
-	const state = createFileState();
+	const records: unknown[] = [];
+	let nonEmptyLines = 0;
+	let parseErrors = 0;
 	for (const line of text.split("\n")) {
 		if (!line) continue;
-		agg.lines++;
-		let rec: unknown;
+		nonEmptyLines++;
 		try {
-			rec = JSON.parse(line);
+			records.push(JSON.parse(line));
 		} catch {
-			agg.parseErrors++;
-			continue;
+			parseErrors++;
 		}
-		ingestLine(agg, rec, state, sinceMs);
 	}
+
+	const verdict = classifyRollout(records);
+	if (!verdict.genuine) return { ok: true, ...verdict };
+
+	agg.lines += nonEmptyLines;
+	agg.parseErrors += parseErrors;
+	const state = createFileState();
+	for (const rec of records) ingestLine(agg, rec, state, opts.sinceMs);
+	return { ok: true, genuine: true };
+}
+
+/**
+ * The genuine-rollout fingerprint (#73, source-pinned at rust-v0.146.0): the
+ * codex-rs recorder always writes `session_meta` first, and every real user
+ * turn persists a `turn_context` before any usage lands. A file whose first
+ * parsed line is not `session_meta`, or that carries a `token_count` with no
+ * preceding `turn_context`, was not written by Codex CLI. Negative by
+ * construction — it detects "not genuine", never "written by tool X"; the
+ * originator label is diagnostic only.
+ */
+function classifyRollout(
+	records: readonly unknown[],
+): { genuine: true } | { genuine: false; originator: string } {
+	let originator: string | null = null;
+	let sawTurnContext = false;
+	let genuine = records.length > 0;
+	for (const [i, raw] of records.entries()) {
+		const rec = asObj(raw);
+		const type = rec ? asStr(rec.type) : null;
+		const payload = rec ? asObj(rec.payload) : null;
+		if (i === 0 && type !== "session_meta") genuine = false;
+		if (type === "session_meta" && payload && originator === null) {
+			originator = asStr(payload.originator);
+		} else if (type === "turn_context") {
+			sawTurnContext = true;
+		} else if (
+			type === "event_msg" &&
+			payload &&
+			asStr(payload.type) === "token_count" &&
+			!sawTurnContext
+		) {
+			genuine = false;
+		}
+	}
+	if (genuine) return { genuine: true };
+	return { genuine: false, originator: originator ?? "(none)" };
 }
 
 /**

@@ -30,6 +30,10 @@ const CLEAN_STATS: ScanStats = {
 	filesSkippedByMtime: 2,
 	filesSkippedAsDuplicate: 0,
 	filesUnreadable: 0,
+	filesForeign: 0,
+	foreignOriginators: new Map(),
+	unreadableFiles: [],
+	filesZstdUnsupported: 0,
 };
 
 const HARNESS_PARAMS = {

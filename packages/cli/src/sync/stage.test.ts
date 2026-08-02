@@ -35,6 +35,10 @@ const STATS: ScanStats = {
 	filesSkippedByMtime: 0,
 	filesSkippedAsDuplicate: 0,
 	filesUnreadable: 0,
+	filesForeign: 0,
+	foreignOriginators: new Map(),
+	unreadableFiles: [],
+	filesZstdUnsupported: 0,
 };
 
 function deps(

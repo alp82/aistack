@@ -18,6 +18,7 @@ import type {
 } from "../harness/shared/allowlist.js";
 import { NAME_CATEGORIES } from "../harness/shared/allowlist.js";
 import type { MeasuredPayload, SyncBody } from "../harness/shared/payload.js";
+import type { ScanStats } from "../harness/shared/window.js";
 
 export type GateContext = {
 	/** The exact request body a publish would send. */
@@ -28,6 +29,13 @@ export type GateContext = {
 	source: SyncConfigSource;
 	/** Web origin for the URLs the gate prints, e.g. https://aistack.to */
 	baseUrl: string;
+	/**
+	 * Per-harness scan stats, keyed by harness name — the LOCAL-ONLY detail
+	 * behind the payload's bare coverage counts (#75): unreadable file names,
+	 * error classes, foreign-file originators. Like `keptPrivate`, it rides
+	 * beside the body and never inside it.
+	 */
+	scanStats?: Record<string, ScanStats>;
 };
 
 // ---------------------------------------------------------------------------
@@ -151,8 +159,48 @@ export function harnessLabel(name: string): string {
 	return name;
 }
 
+/** How many unreadable files get named before the list truncates. */
+const UNREADABLE_FILES_SHOWN = 5;
+
+/**
+ * The local-only lines behind the bare coverage counts (#75). Everything here
+ * stays on this machine: relative paths, error classes, and originator names
+ * never enter the payload.
+ */
+export function scanNoteLines(stats: ScanStats, label: string): string[] {
+	const out: string[] = [];
+	const shown = stats.unreadableFiles.slice(0, UNREADABLE_FILES_SHOWN);
+	for (const f of shown) {
+		out.push(`          ${f.path} (${f.reason})`);
+	}
+	if (stats.unreadableFiles.length > shown.length) {
+		out.push(
+			`          ...${stats.unreadableFiles.length - shown.length} more`,
+		);
+	}
+	if (stats.filesZstdUnsupported > 0) {
+		out.push(
+			`          ${stats.filesZstdUnsupported} compressed rollout${stats.filesZstdUnsupported === 1 ? "" : "s"} need Node 22.15 or newer`,
+		);
+	}
+	if (stats.filesForeign > 0) {
+		const origins = [...stats.foreignOriginators]
+			.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+			.map(([name, n]) => (n > 1 ? `${name} ×${n}` : name))
+			.join(", ");
+		out.push(
+			`skipped   ${stats.filesForeign} file${stats.filesForeign === 1 ? "" : "s"} not written by ${label} — left out (originators: ${origins})`,
+		);
+	}
+	return out;
+}
+
 /** One harness's payload block: window, activity, cost, models, inventory. */
-function payloadBlock(payload: MeasuredPayload, showHeader: boolean): string[] {
+function payloadBlock(
+	payload: MeasuredPayload,
+	showHeader: boolean,
+	stats?: ScanStats,
+): string[] {
 	const out: string[] = [];
 	if (showHeader) {
 		out.push(
@@ -178,6 +226,11 @@ function payloadBlock(payload: MeasuredPayload, showHeader: boolean): string[] {
 		out.push(
 			`coverage  ${cov.filesUnreadable} files unreadable · ${cov.linesFailed} lines failed — this reading is a floor`,
 		);
+	}
+	// Local-only detail behind those counts (#75): file names, error classes,
+	// and the foreign-file line. Printed, never sent.
+	if (stats) {
+		out.push(...scanNoteLines(stats, harnessLabel(payload.harness.name)));
 	}
 
 	out.push("");
@@ -221,7 +274,8 @@ export function buildGateSummary(ctx: GateContext): string {
 	// One block per detected harness. With a single harness the header line is
 	// dropped, so the single-harness preview reads exactly as it always did.
 	for (const payload of payloads) {
-		out.push(...payloadBlock(payload, payloads.length > 1));
+		const stats = ctx.scanStats?.[payload.harness.name];
+		out.push(...payloadBlock(payload, payloads.length > 1, stats));
 		out.push("");
 	}
 	if (out[out.length - 1] === "") out.pop();
