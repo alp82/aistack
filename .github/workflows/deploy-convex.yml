@@ -36,6 +36,17 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.PROD_SSH_HOST }} >> ~/.ssh/known_hosts
           
+      # FETCH AND RESET, never `git pull`.
+      #
+      # `pnpm convex deploy` REGENERATES `convex/_generated/`, which is tracked.
+      # So every successful deploy leaves the server's working tree dirty, and
+      # the next `git pull` aborts with "local changes would be overwritten".
+      # That silently froze production at #72 while three deploys reported
+      # failure and nobody was blocked by it.
+      #
+      # A hard reset makes the checkout match origin exactly, whatever the last
+      # deploy wrote. It does not touch untracked files, so the server's `.env`
+      # is safe.
       - name: Deploy to production
         run: |
-          ssh ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "bash -l -c 'cd ~/aistack && git pull && /root/.local/share/pnpm/pnpm i && /root/.local/share/pnpm/pnpm convex deploy'"
+          ssh ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "bash -l -c 'cd ~/aistack && git fetch origin main && git reset --hard origin/main && /root/.local/share/pnpm/pnpm i && /root/.local/share/pnpm/pnpm convex deploy'"
