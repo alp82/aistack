@@ -32,6 +32,7 @@ import type {
 	StackEditorMode,
 } from "@/features/stack-editor/types";
 import { accentClassFor } from "@/features/stack-view/accentPresets";
+import { captureStackCreated, captureStackPublished } from "@/lib/analytics";
 import { resolveAvatarForSave } from "@/lib/resolveAvatarForSave";
 import {
 	buildManualStableKey,
@@ -310,6 +311,20 @@ export function StackEditor({
 
 			if (mode === "create") {
 				const result = await createStack(payload);
+				// After the mutation resolves, never before: an event fired on intent
+				// counts attempts, not stacks.
+				captureStackCreated({
+					toolCount: payload.toolSubscriptions.length,
+					published: payload.published,
+				});
+				if (payload.published) {
+					// A new stack cannot set the cost toggle, so it is always the
+					// default here: opted in.
+					captureStackPublished({
+						toolCount: payload.toolSubscriptions.length,
+						publishCost: true,
+					});
+				}
 				localStorage.removeItem(getDraftKey(undefined, creatorId));
 				navigate({ to: "/stacks/$slug", params: { slug: result.slug } });
 				return;
@@ -320,6 +335,14 @@ export function StackEditor({
 					stackId: initialValue._id,
 					...payload,
 				});
+				// Only the TRANSITION from draft to published. An edit to a stack that
+				// was already public is not a publish.
+				if (payload.published && !initialValue.published) {
+					captureStackPublished({
+						toolCount: payload.toolSubscriptions.length,
+						publishCost: initialValue.publishCost ?? true,
+					});
+				}
 				localStorage.removeItem(getDraftKey(initialValue.slug));
 				if (publish) {
 					navigate({

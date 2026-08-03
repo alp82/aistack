@@ -1,3 +1,5 @@
+import { CLI_VERSION } from "./version.js";
+
 export const BASE_URL = process.env.AISTACK_URL || "https://aistack.to";
 
 async function request(
@@ -56,7 +58,14 @@ export async function authStart(machineName?: string): Promise<{
 }> {
 	const res = await request("/api/cli/auth/start", {
 		method: "POST",
-		body: JSON.stringify(machineName ? { machineName } : {}),
+		// `cliVersion` rides along so `cli_login_completed` can report which
+		// version linked the machine (#78). The server carries it on the pending
+		// session and reads it at the token exchange.
+		body: JSON.stringify(
+			machineName
+				? { machineName, cliVersion: CLI_VERSION }
+				: { cliVersion: CLI_VERSION },
+		),
 	});
 	if (!res.ok) throw failure("Auth start failed", res);
 	return res.json();

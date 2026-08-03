@@ -3,6 +3,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { ProfilePage } from "@/features/profile/ProfilePage";
 import { seoMeta } from "@/lib/seo";
+import { useRecordView } from "@/lib/useRecordView";
 import { api } from "../../convex/_generated/api";
 
 /**
@@ -55,6 +56,9 @@ function CreatorProfileRoute() {
 	// Client-only owner query — never part of the SSR payload, so the shared
 	// cache can't seed with an owner view.
 	const ownProfile = useQuery(api.creators.getOwnProfileView, { handle });
+	// Deduped daily visitors (#78). Before the early returns below, because a
+	// hook cannot be called conditionally.
+	useRecordView("creator", data?.profile._id);
 
 	if (data === undefined) {
 		return (

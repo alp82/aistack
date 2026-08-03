@@ -13,7 +13,7 @@
 // union is one list because consent is per name, not per harness.
 
 import { createHash } from "node:crypto";
-import { getToken } from "../config.js";
+import { getSettings, getToken, type Settings } from "../config.js";
 import { detectedAdapters } from "../harness/index.js";
 import {
 	type KeptPrivateAtom,
@@ -67,6 +67,7 @@ export type StageDeps = {
 	}) => Promise<LoadedSyncConfig>;
 	/** Override the adapter set. Tests only. */
 	adaptersImpl?: () => Promise<HarnessAdapter[]>;
+	getSettingsImpl?: () => Settings;
 	windowDays?: number;
 };
 
@@ -106,7 +107,11 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		);
 	}
 
-	const body = buildSyncBody(built, config);
+	// The opt-in the machine currently holds, read at stage time so the gate's
+	// bytes are the bytes sent (#78). Absent from the settings file means this
+	// machine has never answered, which the backend reads as "never told us".
+	const settings = (deps.getSettingsImpl ?? getSettings)();
+	const body = buildSyncBody(built, config, settings.autoSync);
 	const bodyJson = JSON.stringify(body);
 	const keptPrivate = mergeKeptPrivate(built.map((b) => b.keptPrivate));
 

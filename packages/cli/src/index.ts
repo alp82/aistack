@@ -6,13 +6,14 @@ import { createCommand } from "./commands/create.js";
 import { loginCommand } from "./commands/login.js";
 import { syncCommand } from "./commands/sync.js";
 import { runStdioSyncServer } from "./sync/server.js";
+import { CLI_VERSION } from "./version.js";
 
 const program = new Command();
 
 program
 	.name("aistack")
 	.description("Measure and share your AI stack from your terminal")
-	.version("0.5.0");
+	.version(CLI_VERSION);
 
 program
 	.command("login")

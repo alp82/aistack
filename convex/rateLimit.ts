@@ -41,7 +41,7 @@ type RateLimitResult = {
  * `key` is opaque and namespaced by its caller (`ip:1.2.3.4`,
  * `cli-token:<id>`), so two kinds of caller can never collide in one bucket.
  */
-async function consume(
+export async function consume(
   ctx: MutationCtx,
   key: string,
   maxRequests: number,

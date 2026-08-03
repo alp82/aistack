@@ -8,7 +8,9 @@
  * @module
  */
 
+import type * as activity from "../activity.js";
 import type * as admin from "../admin.js";
+import type * as analytics from "../analytics.js";
 import type * as auth from "../auth.js";
 import type * as bundles from "../bundles.js";
 import type * as cliSessions from "../cliSessions.js";
@@ -57,6 +59,7 @@ import type * as seeds_stacks from "../seeds/stacks.js";
 import type * as seeds_tools from "../seeds/tools.js";
 import type * as stacks from "../stacks.js";
 import type * as tools from "../tools.js";
+import type * as views from "../views.js";
 import type * as waitlist from "../waitlist.js";
 
 import type {
@@ -66,7 +69,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  activity: typeof activity;
   admin: typeof admin;
+  analytics: typeof analytics;
   auth: typeof auth;
   bundles: typeof bundles;
   cliSessions: typeof cliSessions;
@@ -115,6 +120,7 @@ declare const fullApi: ApiFromModules<{
   "seeds/tools": typeof seeds_tools;
   stacks: typeof stacks;
   tools: typeof tools;
+  views: typeof views;
   waitlist: typeof waitlist;
 }>;
 

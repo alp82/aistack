@@ -1,5 +1,6 @@
 import { PostHogProvider as PHProvider } from "posthog-js/react";
 import { type FC, type ReactNode, useEffect, useState } from "react";
+import { IdentifyUser } from "./IdentifyUser";
 
 interface PosthogProviderProps {
 	children: ReactNode;
@@ -48,6 +49,7 @@ const PosthogProvider: FC<PosthogProviderProps> = ({ children }) => {
 				debug: import.meta.env.MODE === "development",
 			}}
 		>
+			<IdentifyUser />
 			{children}
 		</PHProvider>
 	);
