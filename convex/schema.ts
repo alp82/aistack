@@ -166,6 +166,91 @@ export const PublishedNameCategory = v.union(
   v.literal('slashCommands')
 )
 
+// ---------------------------------------------------------------------------
+// Instrumentation — the three signal families (#77, map #76).
+// ---------------------------------------------------------------------------
+
+/**
+ * What a view counter counts. Polymorphic on purpose: all three kinds exist on
+ * day one, and `aggregate` has no document to type against at all — typed
+ * optional columns would force its row to carry every id field absent.
+ */
+export const ViewTargetKind = v.union(
+  v.literal('stack'),
+  v.literal('creator'),
+  v.literal('aggregate')
+)
+
+/**
+ * Where a session came from, decided ONCE per session from `document.referrer`
+ * and carried on every later page as `internal` (#77). `ai` is split out of
+ * `search` because "did an assistant send someone here" is the question the
+ * aggregate page exists to answer, and it cannot be added retroactively.
+ */
+export const ReferrerBucket = v.union(
+  v.literal('direct'),
+  v.literal('search'),
+  v.literal('ai'),
+  v.literal('social'),
+  v.literal('internal'),
+  v.literal('other')
+)
+
+/**
+ * A tool, model or bundle named in a composition change, with its display name
+ * FROZEN at write time. The feed is a historical record, so the name at the
+ * moment of the change is the correct value — and freezing it also kills a
+ * per-row catalog lookup on the read path.
+ */
+export const ActivityAtom = v.object({
+  kind: v.union(v.literal('tool'), v.literal('model'), v.literal('bundle')),
+  slug: v.string(),
+  name: v.string(),
+})
+
+/**
+ * ONE discriminated union, not a top-level `type` plus a separate payload
+ * validator (#77). Two independent discriminators make a mismatched row legal,
+ * and a reader switching on `type` then gets the wrong payload shape.
+ *
+ * There is no cost field. `apiEquivalentUSD` is stored PER MODEL and is absent
+ * when a model is unpriced, so there is no snapshot-level total to copy —
+ * summing the model values would present a partial sum as a total. Adding cost
+ * later needs a `costComplete` flag alongside it.
+ */
+export const ActivityEvent = v.union(
+  v.object({
+    type: v.literal('stack.published'),
+    toolCount: v.number(),
+  }),
+  v.object({
+    type: v.literal('stack.composition_changed'),
+    added: v.array(ActivityAtom),
+    removed: v.array(ActivityAtom),
+  }),
+  v.object({
+    type: v.literal('sync.landed'),
+    // The WHOLE batch. `publishForToken` lands up to 8 payloads in one atomic
+    // mutation, so a per-snapshot event would fire up to 8 times for one sync.
+    harnesses: v.array(
+      v.object({
+        harness: v.string(),
+        windowDays: v.number(),
+        sessions: v.number(),
+        activeDays: v.number(),
+        projects: v.number(),
+        totalTokens: v.number(),
+      })
+    ),
+  })
+)
+
+/** What the CLI reports about its standing auto-sync opt-in (#77). */
+export const AutoSyncState = v.object({
+  enabled: v.boolean(),
+  frequencyHours: v.number(),
+})
+
 const ResourceOwner = v.union(
   v.object({ kind: v.literal('creator'), id: v.id('creators') }),
   v.object({ kind: v.literal('github'), handle: v.string() }),
@@ -469,6 +554,14 @@ export default defineSchema({
     // always one the user saw and could overwrite. Optional permanently: an
     // older CLI sends nothing, and the user may clear the field.
     machineName: v.optional(v.string()),
+    // What the CLI calls itself, carried from `authStart` to the token exchange
+    // so `cli_login_completed` can report it (#77). Optional permanently: an
+    // older CLI sends nothing, and the login must still work.
+    //
+    // Recorded HERE and not on the poll, because the poll is a bare GET with a
+    // secretId — adding a query parameter to it would be a second wire change
+    // for a field the session already had a place to hold.
+    cliVersion: v.optional(v.string()),
     createdAt: v.number(),
     expiresAt: v.number(),
   })
@@ -525,6 +618,14 @@ export default defineSchema({
     // this. An absent array would otherwise read as full access forever, which
     // is a permanent bypass rather than a migration step.
     scopes: v.array(CliTokenScope),
+    // The last auto-sync opt-in state this machine reported (#77). The opt-in
+    // itself lives in `~/.config/aistack/settings.json` and the backend never
+    // learned about it, so `auto_sync_enabled` had nothing to fire on.
+    //
+    // Held per TOKEN and not per stack, because the opt-in is a property of a
+    // machine. Absent means "never reported", which is what makes the
+    // unknown-or-off → on transition detectable exactly once.
+    autoSync: v.optional(AutoSyncState),
     createdAt: v.number(),
     expiresAt: v.number(),
     lastUsedAt: v.number(),
@@ -714,4 +815,61 @@ export default defineSchema({
     .index('by_stack', ['stackId'])
     // The expiry sweep's index. Age is the only thing it asks about.
     .index('by_stagedAt', ['stagedAt']),
+
+  // -------------------------------------------------------------------------
+  // Views (#77). Two tables: a PERMANENT counter and a DISPOSABLE marker.
+  //
+  // Deduping one visitor per target per day already forces one marker row per
+  // (visitor, target, day), so a counter saves no rows. What it buys is the
+  // right to throw the markers away after a day — which keeps the permanent
+  // table bounded by `targets x days x buckets` instead of by traffic, and
+  // keeps the visitor hash out of the permanent record entirely.
+  // -------------------------------------------------------------------------
+  viewCounters: defineTable({
+    targetKind: ViewTargetKind,
+    // The DOCUMENT id, never the slug, so a rename does not orphan history.
+    // The aggregate page has no document and uses the sentinel `'global'`.
+    targetId: v.string(),
+    /** UTC midnight of the day being counted. */
+    dayStartMs: v.number(),
+    referrerBucket: ReferrerBucket,
+    count: v.number(),
+  }).index('by_target_day', ['targetKind', 'targetId', 'dayStartMs']),
+
+  // The dedupe marker. Names its target in real columns rather than burying it
+  // in an opaque digest, so the query semantics are visible in the index.
+  //
+  // `visitorHash` is HMAC(secret, ip + userAgent + target + day) computed in the
+  // web server. The raw IP never reaches Convex.
+  viewDedupe: defineTable({
+    targetKind: ViewTargetKind,
+    targetId: v.string(),
+    dayStartMs: v.number(),
+    visitorHash: v.string(),
+  })
+    .index('by_target_day_hash', ['targetKind', 'targetId', 'dayStartMs', 'visitorHash'])
+    // The hourly GC's index. Age is the only thing it asks about.
+    .index('by_day', ['dayStartMs']),
+
+  // -------------------------------------------------------------------------
+  // The activity feed (#77). Append-only, written at the moment things happen —
+  // NOT derived at read time from `measuredSnapshots`/`stacks`, because
+  // derivation gets expensive and cannot express "tool X added" at all.
+  //
+  // Visibility is enforced at READ time, which is the only place it can be
+  // correct: a stack can be unpublished after the event is written and this
+  // table never mutates. The write side still gates on drafts, so a week of
+  // drafting cannot fill the table with rows that can never be shown.
+  // -------------------------------------------------------------------------
+  activityEvents: defineTable({
+    stackId: v.id('stacks'),
+    // EXPLICIT, not Convex's implicit `_creationTime`: seeding the feed from
+    // existing snapshots is likely, and backfilled rows would all carry today's
+    // insert time and sort wrong.
+    createdAt: v.number(),
+    event: ActivityEvent,
+  })
+    // The feed's only query. `by_stack_createdAt` is deliberately NOT built —
+    // nothing on this map reads per-stack activity. Add it when something does.
+    .index('by_createdAt', ['createdAt']),
 })

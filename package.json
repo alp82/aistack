@@ -75,6 +75,7 @@
     "decode-ico": "^0.4.1",
     "framer-motion": "^12.34.2",
     "gsap": "^3.14.2",
+    "isbot": "^5.2.1",
     "lowlight": "^3.3.0",
     "lucide-react": "^0.561.0",
     "motion": "^12.23.26",

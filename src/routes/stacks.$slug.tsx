@@ -19,6 +19,7 @@ import { StackHeader } from "@/features/stack-view/StackHeader";
 import { GuideSection, ToolsSection } from "@/features/stack-view/sections";
 import { formatPricingSummary } from "@/lib/pricing";
 import { SITE_URL, seoMeta } from "@/lib/seo";
+import { useRecordView } from "@/lib/useRecordView";
 import { api } from "../../convex/_generated/api";
 
 type ViewTool = {
@@ -156,6 +157,9 @@ function StackDetailsPage() {
 	const navigate = useNavigate();
 	const { isAuthenticated } = useConvexAuth();
 	const stack = useQuery(api.stacks.getBySlug, { slug });
+	// Deduped daily visitors (#78). Counted on MOUNT and keyed by document id, so
+	// a slug rename keeps the page's history.
+	useRecordView("stack", stack?._id);
 	const me = useQuery(api.creators.getMe);
 	const upvoteStatus = useQuery(
 		api.stacks.getUpvoteStatus,

@@ -305,6 +305,16 @@ export function buildGateSummary(ctx: GateContext): string {
 		}
 	}
 
+	// Named at the gate because it is in the bytes (#78). It is not measurement
+	// and not a name, but the rule is that the preview describes what goes, so a
+	// field nobody can see in the preview does not get to ride along.
+	if (body.autoSync !== undefined) {
+		out.push("");
+		out.push(
+			`auto-sync ${body.autoSync.enabled ? `on, about every ${body.autoSync.frequencyHours}h` : "off"}`,
+		);
+	}
+
 	if (source === "bundled") {
 		out.push("");
 		out.push(

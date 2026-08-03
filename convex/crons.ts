@@ -39,4 +39,10 @@ crons.daily(
   internal.measured.gcSnapshots,
 )
 
+// Hourly view-dedupe cleanup (#77, map #76). The markers exist only to make a
+// visitor count once per target per UTC day, so they are dead the moment the
+// day closes. Keeping today and yesterday means a delayed retry crossing
+// midnight cannot double-count. `viewCounters` is permanent and is NOT touched.
+crons.interval('view-dedupe-cleanup', { hours: 1 }, internal.views.gcDedupe)
+
 export default crons

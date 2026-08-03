@@ -418,6 +418,15 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 export type SyncBody = {
 	payloads: MeasuredPayload[];
 	keptPrivate?: Record<NameCategory, KeptPrivateAtom[]>;
+	/**
+	 * The machine's standing auto-sync opt-in (#78). Not measurement and not a
+	 * name — it is the one bit of local state the backend cannot otherwise see,
+	 * and `auto_sync_enabled` has nothing to fire on without it.
+	 *
+	 * It rides BESIDE the payloads, never inside one: the payload validator is
+	 * closed, and that closedness is the privacy claim.
+	 */
+	autoSync?: { enabled: boolean; frequencyHours: number };
 };
 
 /**
@@ -462,11 +471,13 @@ export function mergeKeptPrivate(
 export function buildSyncBody(
 	built: readonly BuiltPayload[],
 	syncConfig: SyncConfig,
+	autoSync?: { enabled: boolean; frequencyHours: number },
 ): SyncBody {
 	const payloads = built.map((b) => b.payload);
-	if (!syncConfig.reviewKeptPrivate) return { payloads };
+	const base: SyncBody = autoSync ? { payloads, autoSync } : { payloads };
+	if (!syncConfig.reviewKeptPrivate) return base;
 	return {
-		payloads,
+		...base,
 		keptPrivate: mergeKeptPrivate(built.map((b) => b.keptPrivate)),
 	};
 }

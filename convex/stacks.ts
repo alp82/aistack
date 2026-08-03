@@ -10,6 +10,7 @@ import { resolveLinkedResources, upsertResourcesForOwner } from './lib/resourceL
 import { normalizeProjectUrl } from './projects'
 import { assertValidAccentPreset } from './lib/iconUrl'
 import { resolveCreatorAvatarUrl } from './lib/avatar'
+import { diffComposition, emitActivityEvent } from './activity'
 
 type ToolSubscriptionLike = {
   price: {
@@ -420,6 +421,19 @@ export const create = mutation({
       updatedAt: now,
     })
 
+    // `stack.published` fires from create as well as update: this mutation takes
+    // `published` as an argument and writes it directly, so stacks are NOT
+    // always created as drafts and a flip-only fire point would miss every
+    // stack created public (#77).
+    if (args.published) {
+      await emitActivityEvent(
+        ctx,
+        id,
+        { type: 'stack.published', toolCount: args.toolSubscriptions.length },
+        now,
+      )
+    }
+
     if (args.resources !== undefined) {
       await upsertResourcesForOwner(ctx, {
         addedBy: creator._id,
@@ -499,6 +513,43 @@ export const update = mutation({
 
     await ctx.db.patch(args.stackId, patch)
 
+    // THE DRAFT GATE READS RESULTING STATE, not the pre-mutation value (#77).
+    // Reading the old value has a live bug: one update that changes composition
+    // and sets `published: false` would write an event the reader hides, and a
+    // republish months later would surface that stale event as current public
+    // activity.
+    const willBePublished = args.published ?? stack.published
+    if (willBePublished) {
+      if (!stack.published) {
+        // Publishing a draft emits ONLY this, even when the same call also
+        // changed composition. The publish already tells the reader everything.
+        await emitActivityEvent(ctx, args.stackId, {
+          type: 'stack.published',
+          toolCount: subs.length,
+        })
+      } else {
+        // Composition only — a tool, model or bundle added or removed. Prose
+        // edits are excluded, which keeps authoring noise out of a feed that
+        // will be thin at launch.
+        const { added, removed } = await diffComposition(
+          ctx,
+          stack,
+          {
+            toolSubscriptions: subs,
+            modelSubscriptions: args.modelSubscriptions ?? stack.modelSubscriptions,
+            bundleSubscriptions: bSubs,
+          },
+        )
+        if (added.length > 0 || removed.length > 0) {
+          await emitActivityEvent(ctx, args.stackId, {
+            type: 'stack.composition_changed',
+            added,
+            removed,
+          })
+        }
+      }
+    }
+
     if (args.resources !== undefined) {
       await upsertResourcesForOwner(ctx, {
         addedBy: stack.creatorId,
@@ -526,6 +577,7 @@ export const getForEdit = query({
       fixedTotal: v.optional(MoneyValidator),
       hasUsageComponent: v.boolean(),
       published: v.boolean(),
+      publishCost: v.optional(v.boolean()),
       accentPreset: v.optional(v.string()),
 
       toolSubscriptions: v.array(v.object({
@@ -669,6 +721,9 @@ export const getForEdit = query({
       fixedTotal: pricing.fixedTotal,
       hasUsageComponent: pricing.hasUsageComponent,
       published: stack.published,
+      // Carried so `stack_published` can report it (#77). Absent reads as opted
+      // IN — the field only ever records a refusal.
+      publishCost: stack.publishCost,
       accentPreset: stack.accentPreset,
       toolSubscriptions: toolSubs,
       bundleSubscriptions: bundleSubs,

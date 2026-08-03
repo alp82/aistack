@@ -2,6 +2,7 @@ import { internalMutation, internalQuery, mutation, query } from './_generated/s
 import { v } from 'convex/values'
 import { isDisplaySafeName } from './lib/names'
 import { FULL_CLI_TOKEN_SCOPES } from './lib/cliScopes'
+import { captureServerEvent } from './analytics'
 
 export const getByUserCode = internalQuery({
   args: { userCode: v.string() },
@@ -163,6 +164,7 @@ export const createSession = internalMutation({
     secretId: v.string(),
     status: v.union(v.literal('pending'), v.literal('approved'), v.literal('expired')),
     machineName: v.optional(v.string()),
+    cliVersion: v.optional(v.string()),
     createdAt: v.number(),
     expiresAt: v.number(),
   },
@@ -173,6 +175,7 @@ export const createSession = internalMutation({
       secretId: args.secretId,
       status: args.status,
       machineName: args.machineName,
+      cliVersion: args.cliVersion,
       createdAt: args.createdAt,
       expiresAt: args.expiresAt,
     })
@@ -266,6 +269,14 @@ export const issueTokenAndDeleteSession = internalMutation({
     })
 
     await ctx.db.delete(args.sessionId)
+
+    // HERE, and not on gate approval (#77). Approving the page in a browser does
+    // not mean the CLI ever came back for the token — this is the first moment a
+    // machine is actually linked.
+    await captureServerEvent(ctx, 'cli_login_completed', args.userId, {
+      cliVersion: session.cliVersion ?? null,
+    })
+
     return { issued: true as const }
   },
 })

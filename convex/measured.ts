@@ -8,10 +8,13 @@ import {
   query,
 } from './_generated/server'
 import {
+  AutoSyncState,
   MeasuredPayload,
   PublishedNameCategory,
   ReconcileAtomKind,
 } from './schema'
+import { captureServerEvent } from './analytics'
+import { emitActivityEvent } from './activity'
 import { extractShortId } from './lib/ids'
 import {
   MODEL_ID_MAX,
@@ -1687,6 +1690,12 @@ export const publishForToken = internalMutation({
      * before this half exists on the machine.
      */
     keptPrivate: v.optional(KeptPrivateNames),
+    /**
+     * The machine's standing auto-sync opt-in, as it currently stands (#77).
+     * Optional: the opt-in lives in `~/.config/aistack/settings.json` and older
+     * clients report nothing, which reads as "never told us".
+     */
+    autoSync: v.optional(AutoSyncState),
   },
   returns: v.object({
     snapshotIds: v.array(v.id('measuredSnapshots')),
@@ -1728,12 +1737,68 @@ export const publishForToken = internalMutation({
       throw new Error('Token is no longer authorized for its linked stack')
     }
 
+    // Asked BEFORE the inserts, or every sync looks like the first one.
+    const priorSnapshot = await ctx.db
+      .query('measuredSnapshots')
+      .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', stack._id))
+      .first()
+    const isFirstSync = priorSnapshot === null
+
     const snapshotIds: Id<'measuredSnapshots'>[] = []
     let receivedAt = 0
     for (const payload of payloads) {
       const inserted = await insertSnapshot(ctx, stack._id, payload)
       snapshotIds.push(inserted.snapshotId)
       receivedAt = inserted.receivedAt
+    }
+
+    // ONE event per approved sync, never one per snapshot: this mutation lands
+    // up to 8 payloads atomically, so a per-snapshot emit would fire 8 times for
+    // one sync (#77). Summarizing the whole batch is also what lets the read
+    // path drop its broken cross-page dedupe.
+    //
+    // Skipped for a draft. Visibility is re-checked at read time — this gate
+    // only stops a week of drafting from filling the table with rows that can
+    // never be shown.
+    if (stack.published) {
+      await emitActivityEvent(
+        ctx,
+        stack._id,
+        {
+          type: 'sync.landed',
+          harnesses: payloads.map((p) => ({
+            harness: p.harness.name,
+            windowDays: p.window.days,
+            sessions: p.activity.sessions,
+            activeDays: p.activity.activeDays,
+            projects: p.activity.projects,
+            totalTokens: p.activity.totalTokens,
+          })),
+        },
+        receivedAt,
+      )
+    }
+
+    if (isFirstSync) {
+      await captureServerEvent(ctx, 'first_sync_completed', token.userId, {
+        harnesses: payloads.map((p) => p.harness.name),
+        windowDays: payloads[0]?.window.days ?? 0,
+      })
+    }
+
+    // The transition from unknown-or-off to on, as the BACKEND sees it — so it
+    // fires once and not on every subsequent sync.
+    if (args.autoSync?.enabled && token.autoSync?.enabled !== true) {
+      await captureServerEvent(ctx, 'auto_sync_enabled', token.userId, {
+        frequencyHours: args.autoSync.frequencyHours,
+      })
+    }
+    if (
+      args.autoSync !== undefined &&
+      (token.autoSync?.enabled !== args.autoSync.enabled ||
+        token.autoSync?.frequencyHours !== args.autoSync.frequencyHours)
+    ) {
+      await ctx.db.patch(token._id, { autoSync: args.autoSync })
     }
 
     // The switch is not client-side-only. A client that sends the half anyway —

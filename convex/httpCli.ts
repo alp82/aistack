@@ -258,11 +258,22 @@ export const authStart = httpAction(async (ctx, request) => {
   const now = Date.now()
 
   let machineName: string | undefined
+  let cliVersion: string | undefined
   try {
-    const body = (await request.json()) as { machineName?: unknown }
+    const body = (await request.json()) as {
+      machineName?: unknown
+      cliVersion?: unknown
+    }
     if (typeof body?.machineName === 'string') {
       const trimmed = body.machineName.trim()
       if (isDisplaySafeName(trimmed)) machineName = trimmed
+    }
+    // Carried to the token exchange, where `cli_login_completed` reports it
+    // (#77). Bounded and dropped when malformed, like the name above: a version
+    // string must never be able to fail a login.
+    if (typeof body?.cliVersion === 'string') {
+      const trimmed = body.cliVersion.trim()
+      if (trimmed.length > 0 && trimmed.length <= 32) cliVersion = trimmed
     }
   } catch {
     // No body, or not JSON — an older CLI. Proceed nameless.
@@ -273,6 +284,7 @@ export const authStart = httpAction(async (ctx, request) => {
     secretId,
     status: 'pending',
     machineName,
+    cliVersion,
     createdAt: now,
     expiresAt: now + 15 * 60 * 1000,
   })
@@ -398,6 +410,24 @@ const EMPTY_OPT_INS = {
 }
 
 /**
+ * Read the auto-sync half of a sync body.
+ *
+ * A malformed value is DROPPED, not rejected. Refusing the whole sync because a
+ * telemetry field is the wrong shape would cost the owner the one thing they
+ * approved, over a field nothing user-facing reads.
+ */
+function parseAutoSync(
+  raw: unknown,
+): { enabled: boolean; frequencyHours: number } | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined
+  const value = raw as { enabled?: unknown; frequencyHours?: unknown }
+  if (typeof value.enabled !== 'boolean') return undefined
+  if (typeof value.frequencyHours !== 'number') return undefined
+  if (!Number.isFinite(value.frequencyHours)) return undefined
+  return { enabled: value.enabled, frequencyHours: value.frequencyHours }
+}
+
+/**
  * POST /api/cli/sync — publish one approved measured-layer snapshot.
  *
  * Wayfinder ticket #38 (map #29). The destination is the stack bound to the
@@ -414,7 +444,12 @@ export const syncPublish = httpAction(async (ctx, request) => {
   if (authResult instanceof Response) return authResult
   const { tokenId } = authResult
 
-  let body: { payload?: unknown; payloads?: unknown; keptPrivate?: unknown }
+  let body: {
+    payload?: unknown
+    payloads?: unknown
+    keptPrivate?: unknown
+    autoSync?: unknown
+  }
   try {
     body = await request.json()
   } catch {
@@ -439,6 +474,9 @@ export const syncPublish = httpAction(async (ctx, request) => {
       payload: body.payload as any,
       payloads: body.payloads as any,
       keptPrivate: body.keptPrivate as any,
+      // Additive and optional (#77): an installed CLI sends nothing here and
+      // keeps working, which reads as "this machine has never told us".
+      autoSync: parseAutoSync(body.autoSync),
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

@@ -14,7 +14,8 @@ import { ResetPasswordEmail } from '../src/emails/ResetPasswordEmail'
 import { MagicLinkEmail } from '../src/emails/MagicLinkEmail'
 
 // @ts-ignore - components will be generated after convex dev restarts
-import { components } from './_generated/api'
+import { components, internal } from './_generated/api'
+import { signupMethodFromPath } from './analytics'
 
 const appUrl = process.env.APP_URL || process.env.BETTER_AUTH_URL!
 
@@ -25,6 +26,39 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     baseURL: appUrl,
     trustedOrigins: [process.env.APP_URL || process.env.BETTER_AUTH_URL || 'http://localhost:3019'],
     database: authComponent.adapter(ctx),
+    databaseHooks: {
+      user: {
+        create: {
+          /**
+           * `signup_completed` (#77, map #76). Server-side, because the browser
+           * cannot honestly observe this transition — an OAuth callback and a
+           * magic-link verify both create the user without the app ever seeing
+           * a "signup succeeded" moment it could trust.
+           *
+           * The user id becomes the PostHog `distinct_id`, which is the same id
+           * posthog-js identifies the browser with once authenticated. That is
+           * what keeps the client and server halves of the funnel one person.
+           *
+           * Fails SILENTLY. A telemetry seam must never be able to fail a
+           * signup, and by the time this runs the user row already exists.
+           */
+          after: async (user, context) => {
+            try {
+              const runMutation = (
+                ctx as { runMutation?: (ref: unknown, args: unknown) => Promise<unknown> }
+              ).runMutation
+              if (typeof runMutation !== 'function') return
+              await runMutation(internal.analytics.recordSignup, {
+                userId: user.id,
+                method: signupMethodFromPath(context?.path ?? undefined),
+              })
+            } catch (err) {
+              console.error('[auth] signup_completed capture failed:', err)
+            }
+          },
+        },
+      },
+    },
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: true,
@@ -110,6 +144,24 @@ export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
     return await authComponent.getAuthUser(ctx)
+  },
+})
+
+/**
+ * The viewer's user id — the SAME string every server-side capture uses as its
+ * PostHog `distinct_id` (#77).
+ *
+ * It has to be this exact value and not the creator profile id: the four
+ * server events are keyed on `tokenIdentifier.split('|')[1]`, and a browser
+ * identified under any other id splits the funnel into two strangers.
+ */
+export const getViewerId = query({
+  args: {},
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx) => {
+    const user = await ctx.auth.getUserIdentity()
+    if (!user) return null
+    return user.tokenIdentifier.split('|')[1] ?? null
   },
 })
 
