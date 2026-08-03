@@ -6,7 +6,9 @@ import { useEffect, useState } from "react";
 import { JsonLd } from "@/components/JsonLd";
 import type { ModelItemData } from "@/components/ModelItem";
 import { ProjectsSection } from "@/components/ProjectsSection";
-import { MeasuredSection } from "@/features/measured/MeasuredSection";
+// PROTOTYPE (wayfinder #80) — renders the shipped MeasuredSection unless
+// `?proto=A|B|C` is present. Remove with the rest of `history-proto/`.
+import { MeasuredHistoryProto } from "@/features/measured/history-proto/HistoryProto";
 import {
 	type BundleLookupData,
 	EditorProvider,
@@ -323,7 +325,7 @@ function StackDetailsPage() {
 				<div className="bg-bg-canvas">
 					{/* The journey (#40, reordered by #58): Actual Usage 01 → Projects 02
 					    → Tools 03 → Workflow 04. What ran now literally comes first. */}
-					<MeasuredSection
+					<MeasuredHistoryProto
 						index={1}
 						slug={stack.slug}
 						isOwner={upvoteStatus?.isOwner ?? false}
