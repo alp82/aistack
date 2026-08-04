@@ -18,6 +18,13 @@ import { cn } from "@/lib/utils";
 import { MONO_LABEL } from "../copy";
 import { fmtUSD, PROTO_SERIES_COLORS, type ProtoPoint } from "./fixtures";
 import {
+	ClockIcon,
+	EiffelIcon,
+	GlassesBoltIcon,
+	GlobeWIcon,
+	RoadIcon,
+} from "./TipIcons";
+import {
 	EIFFEL_M,
 	fmtCount,
 	fmtDuration,
@@ -100,29 +107,36 @@ export function TokenTip({
 	shuffling?: boolean;
 }) {
 	const body = BODIES[tip];
+	const tokens = point.tokens.toLocaleString("en-US");
 	return (
 		<div className="border-[3px] border-stroke-strong bg-bg-panel p-4 shadow-[6px_6px_0_var(--stroke-strong)]">
-			<p className="mb-2 border-b-2 border-stroke-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-accent-lime">
+			<p className="mb-3 border-b-2 border-stroke-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-accent-lime">
 				{body.title}
 			</p>
 
-			{/* The exact count, always, before any framing of it. */}
-			<p className="font-mono text-sm font-bold leading-tight text-fg-primary">
-				{point.tokens.toLocaleString("en-US")}{" "}
-				<span className="font-normal text-fg-muted">tokens</span>
-			</p>
-			<p className={cn(MONO_LABEL, "mt-1 text-[10px] text-fg-muted")}>
-				{point.from} to {point.to}
-			</p>
+			{body.render(point)}
 
-			<div className="mt-4">{body.render(point)}</div>
-
-			<div className="mt-3 space-y-1 border-t-2 border-dashed border-stroke-subtle pt-2">
-				{point.usd !== null && (
+			{/* The exact count is no longer a header of its own. It reads better as
+			    the subject of the disclaimer, which is the one line that has to name
+			    it precisely anyway. */}
+			<div className="mt-5 space-y-1.5 border-t-2 border-dashed border-stroke-subtle pt-4">
+				{point.usd !== null ? (
 					<p className="text-xs leading-relaxed text-fg-secondary">
 						<span className="font-bold text-accent-lime">Not money spent.</span>{" "}
-						{fmtUSD(point.usd)} is what those tokens would cost at public list
-						prices.
+						{fmtUSD(point.usd)} is what{" "}
+						<span className="font-mono font-bold text-fg-primary">
+							{tokens}
+						</span>{" "}
+						tokens would cost at public list prices, measured between{" "}
+						{point.from} and {point.to}.
+					</p>
+				) : (
+					<p className="text-xs leading-relaxed text-fg-secondary">
+						<span className="font-mono font-bold text-fg-primary">
+							{tokens}
+						</span>{" "}
+						tokens, measured between {point.from} and {point.to}. This stack
+						does not publish a cost.
 					</p>
 				)}
 				<p className="font-mono text-[10px] leading-relaxed text-fg-muted">
@@ -130,7 +144,7 @@ export function TokenTip({
 					that, so treat it as a feeling and not a figure.
 					{shuffling && index !== undefined && total !== undefined && (
 						<span className="ml-1 text-fg-secondary">
-							({index + 1} of {total}, roll for another)
+							({index + 1} of {total}, click for another)
 						</span>
 					)}
 				</p>
@@ -139,11 +153,23 @@ export function TokenTip({
 	);
 }
 
-function Big({ children }: { children: React.ReactNode }) {
+/** The headline number and its mark, on one line. */
+function Headline({
+	children,
+	icon,
+}: {
+	children: React.ReactNode;
+	icon: React.ReactNode;
+}) {
 	return (
-		<p className="font-mono text-3xl font-black leading-none text-fg-primary">
-			{children}
-		</p>
+		<div className="flex items-start justify-between gap-4">
+			<p className="font-mono text-3xl font-black leading-none text-fg-primary">
+				{children}
+			</p>
+			<span aria-hidden="true" className="shrink-0 text-accent-lime">
+				{icon}
+			</span>
+		</div>
 	);
 }
 
@@ -175,7 +201,9 @@ function BooksBody({ point }: { point: ProtoPoint }) {
 	const s = tokenScale(point.tokens);
 	return (
 		<>
-			<Big>{fmtCount(s.novels)} novels</Big>
+			<Headline icon={<GlassesBoltIcon />}>
+				{fmtCount(s.novels)} novels
+			</Headline>
 			<Sub>
 				{fmtCount(s.words)} words, at the length of an average novel. Read all
 				seven Harry Potter books back to back and you would have to do it{" "}
@@ -210,7 +238,7 @@ function TimeBody({ point }: { point: ProtoPoint }) {
 	const s = tokenScale(point.tokens);
 	return (
 		<>
-			<Big>{fmtDuration(s.readYears)}</Big>
+			<Headline icon={<ClockIcon />}>{fmtDuration(s.readYears)}</Headline>
 			<Sub>
 				of reading, at a good silent pace, without ever stopping to sleep.
 			</Sub>
@@ -239,11 +267,11 @@ function WikiBody({ point }: { point: ProtoPoint }) {
 	const pct = s.wikipedia * 100;
 	return (
 		<>
-			<Big>
+			<Headline icon={<GlobeWIcon />}>
 				{over
 					? `${s.wikipedia.toFixed(1)}x`
 					: `${pct < 1 ? pct.toFixed(2) : pct.toFixed(0)}%`}
-			</Big>
+			</Headline>
 			<Sub>
 				{over
 					? `more words than the whole English Wikipedia. Every article, every edit war, every list of railway stations, ${s.wikipedia.toFixed(1)} times over.`
@@ -280,7 +308,7 @@ function PaperBody({ point }: { point: ProtoPoint }) {
 
 	return (
 		<>
-			<Big>{fmtMeters(s.paperMeters)}</Big>
+			<Headline icon={<EiffelIcon />}>{fmtMeters(s.paperMeters)}</Headline>
 			<Sub>
 				printed double-sided, {fmtCount(s.pages)} pages make a stack that tall.{" "}
 				{ratio >= 1
@@ -318,7 +346,7 @@ function RoadBody({ point }: { point: ProtoPoint }) {
 	const s = tokenScale(point.tokens);
 	return (
 		<>
-			<Big>{fmtMeters(s.roadMeters)}</Big>
+			<Headline icon={<RoadIcon />}>{fmtMeters(s.roadMeters)}</Headline>
 			<Sub>
 				of paper, if you laid every printed page end to end along the ground.{" "}
 				{s.marathons >= 1
