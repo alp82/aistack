@@ -54,6 +54,22 @@ cd packages/cli && pnpm publish
 * Better Auth
 * Resend
 
+## Charts
+
+All charts come from `src/features/charts`. It is the only place that imports
+`@tanstack/charts`, and the version is pinned exactly, with no caret. Import the
+components, never the library.
+
+* **One series wears the page accent** (`--accent-lime`, re-pointed per stack).
+  **Two or more wear the validated palette** (`--chart-1` … `--chart-6`) and
+  never the accent.
+* The palette is validated, not chosen by eye. Change a slot and the tests in
+  `src/features/charts/__tests__/palette.test.ts` re-run the six checks. The
+  canonical validator is the `dataviz` skill's `scripts/validate_palette.js`.
+* Square ends everywhere. No mark sets a corner radius.
+* Every chart server-renders complete SVG. `ssr.test.tsx` asserts real marks, so
+  a library regression fails the build instead of shipping blank charts.
+
 ## Icon Migration
 
 After seeding (or any time `iconUrl` rows on tools/models/bundles need to be
