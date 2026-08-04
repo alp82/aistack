@@ -26,7 +26,7 @@ import {
 import { MEASURED_ANCHOR } from "../copy";
 import { MeasuredSection } from "../MeasuredSection";
 import { DATASETS, type DatasetKey, readingsFor, toPoints } from "./fixtures";
-import { TIPS, type TipKey } from "./TokenTips";
+import { ICON_LOOKS, type IconLook, TIPS, type TipKey } from "./TokenTips";
 import { VARIANT_A_NAME, VariantA } from "./VariantA";
 import { VARIANT_B_NAME, VariantB } from "./VariantB";
 import { VARIANT_C_NAME, VariantC } from "./VariantC";
@@ -98,7 +98,14 @@ const TIP_AXIS: ProtoAxis = {
 	],
 };
 
-const AXES = [VARIANT_AXIS, DATA_AXIS, TIP_AXIS];
+/** Where the popup puts its mark, and how loud it is. */
+const ICON_AXIS: ProtoAxis = {
+	param: "icon",
+	title: "icon",
+	options: ICON_LOOKS.map((i) => ({ key: i.key, label: i.label })),
+};
+
+const AXES = [VARIANT_AXIS, DATA_AXIS, TIP_AXIS, ICON_AXIS];
 
 export function MeasuredHistoryProto({
 	index,
@@ -115,6 +122,7 @@ export function MeasuredHistoryProto({
 	// `shuffle` is the default: the popup deals from a shuffled deck and the
 	// block click advances it. Any other value pins one framing.
 	const tip = axes.tip === "shuffle" ? undefined : (axes.tip as TipKey);
+	const iconLook = (axes.icon ?? "aside") as IconLook;
 	const points = toPoints(readingsFor(dataset));
 
 	const RoundTwo = ROUND_TWO[variant as keyof typeof ROUND_TWO];
@@ -127,6 +135,7 @@ export function MeasuredHistoryProto({
 					anchor={MEASURED_ANCHOR}
 					points={points}
 					tip={tip}
+					iconLook={iconLook}
 				/>
 			) : variant === "A" ? (
 				<VariantA index={index} anchor={MEASURED_ANCHOR} points={points} />

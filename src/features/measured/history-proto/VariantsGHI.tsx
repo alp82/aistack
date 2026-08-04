@@ -30,7 +30,7 @@ import {
 	type ProtoPoint,
 } from "./fixtures";
 import { MetricBlock } from "./MetricBlock";
-import type { TipKey } from "./TokenTips";
+import type { IconLook, TipKey } from "./TokenTips";
 
 export const VARIANT_G_NAME = "Solid bars, trail behind";
 export const VARIANT_H_NAME = "Solid bars, trail beside";
@@ -52,6 +52,7 @@ function Shell({
 	anchor,
 	points,
 	tip,
+	iconLook,
 	renderRow,
 	historyNote,
 }: {
@@ -59,6 +60,7 @@ function Shell({
 	anchor: string;
 	points: ProtoPoint[];
 	tip?: TipKey;
+	iconLook?: IconLook;
 	renderRow: (props: RowProps) => React.ReactNode;
 	historyNote: string;
 }) {
@@ -82,6 +84,7 @@ function Shell({
 					<MetricBlock
 						point={now}
 						tip={tip}
+						iconLook={iconLook}
 						backdrop={
 							multi ? (
 								<Sparkline
@@ -225,11 +228,13 @@ export function VariantG({
 	anchor,
 	points,
 	tip,
+	iconLook,
 }: {
 	index: number;
 	anchor: string;
 	points: ProtoPoint[];
 	tip?: TipKey;
+	iconLook?: IconLook;
 }) {
 	return (
 		<Shell
@@ -237,6 +242,7 @@ export function VariantG({
 			anchor={anchor}
 			points={points}
 			tip={tip}
+			iconLook={iconLook}
 			historyNote="the faint fill behind each bar is that model's share over time"
 			renderRow={({ id, series, points: pts, multi }) => (
 				<div className="flex items-center gap-3 py-3">
@@ -278,11 +284,13 @@ export function VariantH({
 	anchor,
 	points,
 	tip,
+	iconLook,
 }: {
 	index: number;
 	anchor: string;
 	points: ProtoPoint[];
 	tip?: TipKey;
+	iconLook?: IconLook;
 }) {
 	return (
 		<Shell
@@ -290,6 +298,7 @@ export function VariantH({
 			anchor={anchor}
 			points={points}
 			tip={tip}
+			iconLook={iconLook}
 			historyNote="the gray mark at the end of each row is that model's share over time"
 			renderRow={({ id, series, points: pts, multi }) => (
 				<div className="flex items-center gap-3 py-3">
@@ -331,11 +340,13 @@ export function VariantI({
 	anchor,
 	points,
 	tip,
+	iconLook,
 }: {
 	index: number;
 	anchor: string;
 	points: ProtoPoint[];
 	tip?: TipKey;
+	iconLook?: IconLook;
 }) {
 	return (
 		<Shell
@@ -343,6 +354,7 @@ export function VariantI({
 			anchor={anchor}
 			points={points}
 			tip={tip}
+			iconLook={iconLook}
 			historyNote={`the hatched notch marks where each share stood on ${fmtDay(points[0].at)}`}
 			renderRow={({ id, series, points: pts, multi }) => {
 				const share = series.shareAt(series.newest, id);

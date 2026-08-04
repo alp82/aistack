@@ -20,6 +20,7 @@ import { fmtUSD, PROTO_SERIES_COLORS, type ProtoPoint } from "./fixtures";
 import {
 	EiffelTowerIcon,
 	HourglassIcon,
+	type IconProps,
 	RoadIcon,
 	WikipediaIcon,
 	WizardHatIcon,
@@ -93,33 +94,83 @@ export function useTipDeck(pinned?: TipKey) {
 // The card
 // ---------------------------------------------------------------------------
 
+export type IconLook =
+	| "aside"
+	| "large"
+	| "header"
+	| "banner"
+	| "watermark"
+	| "bleed";
+
+export const ICON_LOOKS: { key: IconLook; label: string }[] = [
+	{ key: "aside", label: "48px beside the headline" },
+	{ key: "large", label: "76px beside the headline" },
+	{ key: "header", label: "small, inline in the title row" },
+	{ key: "banner", label: "centered on a full-width band" },
+	{ key: "watermark", label: "huge, faint, bleeding off the corner" },
+	{ key: "bleed", label: "full width, faint, behind the whole card" },
+];
+
 export function TokenTip({
 	point,
 	tip,
-	index,
-	total,
-	shuffling,
+	iconLook = "aside",
 }: {
 	point: ProtoPoint;
 	tip: TipKey;
-	index?: number;
-	total?: number;
-	shuffling?: boolean;
+	iconLook?: IconLook;
 }) {
 	const body = BODIES[tip];
+	const Icon = body.Icon;
 	const tokens = point.tokens.toLocaleString("en-US");
+
+	// Only two treatments sit in the headline row. The rest place themselves.
+	const headlineIcon =
+		iconLook === "aside" ? (
+			<Icon size={48} />
+		) : iconLook === "large" ? (
+			<Icon size={76} />
+		) : null;
+
 	return (
-		<div className="border-[3px] border-stroke-strong bg-bg-panel p-4 shadow-[6px_6px_0_var(--stroke-strong)]">
-			<p className="mb-3 border-b-2 border-stroke-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-accent-lime">
+		<div className="relative overflow-hidden border-[3px] border-stroke-strong bg-bg-panel p-4 shadow-[6px_6px_0_var(--stroke-strong)]">
+			{iconLook === "bleed" && (
+				<span
+					aria-hidden="true"
+					className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 text-accent-lime opacity-[0.07]"
+				>
+					<Icon className="h-auto w-full" />
+				</span>
+			)}
+			{iconLook === "watermark" && (
+				<span
+					aria-hidden="true"
+					className="pointer-events-none absolute -bottom-6 -right-6 text-accent-lime opacity-[0.12]"
+				>
+					<Icon size={150} />
+				</span>
+			)}
+
+			<p className="relative mb-3 flex items-center gap-2 border-b-2 border-stroke-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-accent-lime">
+				{iconLook === "header" && <Icon size={16} />}
 				{body.title}
 			</p>
 
-			{body.render(point)}
+			{iconLook === "banner" && (
+				<span
+					aria-hidden="true"
+					className="relative mb-4 flex items-center justify-center border border-stroke-subtle bg-bg-canvas py-3 text-accent-lime"
+				>
+					<Icon size={56} />
+				</span>
+			)}
+
+			<div className="relative">{body.render(point, headlineIcon)}</div>
 
 			{/* The exact count is no longer a header of its own. It reads better as
 			    the subject of the disclaimer, which is the one line that has to name
 			    it precisely anyway. */}
-			<div className="mt-5 space-y-1.5 border-t-2 border-dashed border-stroke-subtle pt-4">
+			<div className="relative mt-7 space-y-1.5 border-t-2 border-dashed border-stroke-subtle pt-5">
 				{point.usd !== null ? (
 					<p className="text-xs leading-relaxed text-fg-secondary">
 						<span className="font-bold text-accent-lime">Not money spent.</span>{" "}
@@ -127,33 +178,25 @@ export function TokenTip({
 						<span className="font-mono font-bold text-fg-primary">
 							{tokens}
 						</span>{" "}
-						tokens would cost at public list prices, measured between{" "}
-						{point.from} and {point.to}.
+						tokens would cost at public list prices.
 					</p>
 				) : (
 					<p className="text-xs leading-relaxed text-fg-secondary">
 						<span className="font-mono font-bold text-fg-primary">
 							{tokens}
 						</span>{" "}
-						tokens, measured between {point.from} and {point.to}. This stack
-						does not publish a cost.
+						tokens. This stack does not publish a cost.
 					</p>
 				)}
 				<p className="font-mono text-[10px] leading-relaxed text-fg-muted">
-					rough: about 0.75 words per token. Code and cached traffic do not obey
-					that, so treat it as a feeling and not a figure.
-					{shuffling && index !== undefined && total !== undefined && (
-						<span className="ml-1 text-fg-secondary">
-							({index + 1} of {total}, click for another)
-						</span>
-					)}
+					rough: about 0.75 words per token.
 				</p>
 			</div>
 		</div>
 	);
 }
 
-/** The headline number and its mark, on one line. */
+/** The headline number, and its mark when the treatment puts one here. */
 function Headline({
 	children,
 	icon,
@@ -166,9 +209,11 @@ function Headline({
 			<p className="font-mono text-3xl font-black leading-none text-fg-primary">
 				{children}
 			</p>
-			<span aria-hidden="true" className="shrink-0 text-accent-lime">
-				{icon}
-			</span>
+			{icon && (
+				<span aria-hidden="true" className="shrink-0 text-accent-lime">
+					{icon}
+				</span>
+			)}
 		</div>
 	);
 }
@@ -184,24 +229,50 @@ function Sub({ children }: { children: React.ReactNode }) {
 // of yardsticks makes the reader do the work the card was supposed to do.
 // ---------------------------------------------------------------------------
 
-const BODIES: Record<
-	TipKey,
-	{ title: string; render: (point: ProtoPoint) => React.ReactNode }
-> = {
-	books: { title: "In books", render: (p) => <BooksBody point={p} /> },
-	time: { title: "In human time", render: (p) => <TimeBody point={p} /> },
-	wiki: { title: "Against Wikipedia", render: (p) => <WikiBody point={p} /> },
-	paper: { title: "On paper", render: (p) => <PaperBody point={p} /> },
-	road: { title: "End to end", render: (p) => <RoadBody point={p} /> },
+type Body = {
+	title: string;
+	Icon: (props: IconProps) => React.ReactNode;
+	/** `icon` is whatever the treatment wants placed in the headline row. */
+	render: (point: ProtoPoint, icon: React.ReactNode) => React.ReactNode;
 };
+
+const BODIES: Record<TipKey, Body> = {
+	books: {
+		title: "In books",
+		Icon: WizardHatIcon,
+		render: (p, icon) => <BooksBody point={p} icon={icon} />,
+	},
+	time: {
+		title: "In human time",
+		Icon: HourglassIcon,
+		render: (p, icon) => <TimeBody point={p} icon={icon} />,
+	},
+	wiki: {
+		title: "Against Wikipedia",
+		Icon: WikipediaIcon,
+		render: (p, icon) => <WikiBody point={p} icon={icon} />,
+	},
+	paper: {
+		title: "On paper",
+		Icon: EiffelTowerIcon,
+		render: (p, icon) => <PaperBody point={p} icon={icon} />,
+	},
+	road: {
+		title: "End to end",
+		Icon: RoadIcon,
+		render: (p, icon) => <RoadBody point={p} icon={icon} />,
+	},
+};
+
+type BodyProps = { point: ProtoPoint; icon: React.ReactNode };
 
 const SPINES = 26;
 
-function BooksBody({ point }: { point: ProtoPoint }) {
+function BooksBody({ point, icon }: BodyProps) {
 	const s = tokenScale(point.tokens);
 	return (
 		<>
-			<Headline icon={<WizardHatIcon />}>{fmtCount(s.novels)} novels</Headline>
+			<Headline icon={icon}>{fmtCount(s.novels)} novels</Headline>
 			<Sub>
 				{fmtCount(s.words)} words, at the length of an average novel. Read all
 				seven Harry Potter books back to back and you would have to do it{" "}
@@ -232,11 +303,11 @@ function BooksBody({ point }: { point: ProtoPoint }) {
 	);
 }
 
-function TimeBody({ point }: { point: ProtoPoint }) {
+function TimeBody({ point, icon }: BodyProps) {
 	const s = tokenScale(point.tokens);
 	return (
 		<>
-			<Headline icon={<HourglassIcon />}>{fmtDuration(s.readYears)}</Headline>
+			<Headline icon={icon}>{fmtDuration(s.readYears)}</Headline>
 			<Sub>
 				of reading, at a good silent pace, without ever stopping to sleep.
 			</Sub>
@@ -259,13 +330,13 @@ function TimeRow({ label, value }: { label: string; value: string }) {
 	);
 }
 
-function WikiBody({ point }: { point: ProtoPoint }) {
+function WikiBody({ point, icon }: BodyProps) {
 	const s = tokenScale(point.tokens);
 	const over = s.wikipedia >= 1;
 	const pct = s.wikipedia * 100;
 	return (
 		<>
-			<Headline icon={<WikipediaIcon />}>
+			<Headline icon={icon}>
 				{over
 					? `${s.wikipedia.toFixed(1)}x`
 					: `${pct < 1 ? pct.toFixed(2) : pct.toFixed(0)}%`}
@@ -297,7 +368,7 @@ function WikiBody({ point }: { point: ProtoPoint }) {
 	);
 }
 
-function PaperBody({ point }: { point: ProtoPoint }) {
+function PaperBody({ point, icon }: BodyProps) {
 	const s = tokenScale(point.tokens);
 	const ratio = s.paperMeters / EIFFEL_M;
 	const maxH = 64;
@@ -306,7 +377,7 @@ function PaperBody({ point }: { point: ProtoPoint }) {
 
 	return (
 		<>
-			<Headline icon={<EiffelTowerIcon />}>{fmtMeters(s.paperMeters)}</Headline>
+			<Headline icon={icon}>{fmtMeters(s.paperMeters)}</Headline>
 			<Sub>
 				printed double-sided, {fmtCount(s.pages)} pages make a stack that tall.{" "}
 				{ratio >= 1
@@ -340,11 +411,11 @@ function PaperBody({ point }: { point: ProtoPoint }) {
 	);
 }
 
-function RoadBody({ point }: { point: ProtoPoint }) {
+function RoadBody({ point, icon }: BodyProps) {
 	const s = tokenScale(point.tokens);
 	return (
 		<>
-			<Headline icon={<RoadIcon />}>{fmtMeters(s.roadMeters)}</Headline>
+			<Headline icon={icon}>{fmtMeters(s.roadMeters)}</Headline>
 			<Sub>
 				of paper, if you laid every printed page end to end along the ground.{" "}
 				{s.marathons >= 1

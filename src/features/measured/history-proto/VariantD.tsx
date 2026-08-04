@@ -22,7 +22,7 @@ import {
 	type ProtoPoint,
 } from "./fixtures";
 import { MetricBlock } from "./MetricBlock";
-import type { TipKey } from "./TokenTips";
+import type { IconLook, TipKey } from "./TokenTips";
 
 export const VARIANT_D_NAME = "Then / now: mix as two bars";
 
@@ -31,11 +31,13 @@ export function VariantD({
 	anchor,
 	points,
 	tip,
+	iconLook,
 }: {
 	index: number;
 	anchor: string;
 	points: ProtoPoint[];
 	tip?: TipKey;
+	iconLook?: IconLook;
 }) {
 	const now = points[points.length - 1];
 	const first = points[0];
@@ -54,7 +56,7 @@ export function VariantD({
 
 			<div className="grid gap-10 md:grid-cols-[minmax(0,24rem)_1fr]">
 				<div>
-					<MetricBlock point={now} tip={tip}>
+					<MetricBlock point={now} tip={tip} iconLook={iconLook}>
 						{multi && (
 							<div className="mt-5 border-t border-stroke-subtle pt-3">
 								<Sparkline
