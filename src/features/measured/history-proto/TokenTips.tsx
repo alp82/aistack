@@ -727,9 +727,7 @@ function VideoBody({ point }: BodyProps) {
 		<>
 			<Headline>{runtime}</Headline>
 			<Sub>
-				of full HD video. There is no video input: a model reads video as still
-				frames, about one a second, and every 1920x1080 frame costs 2,691 visual
-				tokens. That is{" "}
+				of full HD video, or{" "}
 				<Key>
 					{s.lotrTrilogies >= 1
 						? `${fmtCount(s.lotrTrilogies)} runs through the extended Lord of the Rings trilogy`
