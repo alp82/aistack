@@ -10,9 +10,11 @@
  *     popup, which says the dollar figure is not real money spent.
  *   - CLICKING THE BLOCK deals the next framing. No separate button, because a
  *     control beside the number sat too far from what it changed.
- *   - The affordance is the SWAP: on hover the number takes a dashed lime
- *     underline and the caption under it turns into "random fun fact". It costs
- *     no extra row, and it lands where the eye already is after the number.
+ *   - The affordance is the SWAP, and only the swap: on hover the caption under
+ *     the number turns into "random fun fact". It costs no extra row, and it
+ *     lands where the eye already is after reading the number. A dashed
+ *     underline on the number was tried alongside it and dropped - the number
+ *     is the one thing on the block that should never look like a control.
  *
  * THE ROW MUST NOT RESIZE. Both captions are stacked in one grid cell, so the
  * row is always as tall as the taller of the two and only opacity changes. The
@@ -87,15 +89,7 @@ export function MetricBlock({
 				)}
 
 				<p className="relative font-mono text-5xl font-black leading-none text-fg-primary md:text-6xl">
-					<span
-						className={cn(
-							"inline-block border-b-2 border-transparent pb-1 transition-colors",
-							canRoll &&
-								"group-hover:border-dashed group-hover:border-accent-lime",
-						)}
-					>
-						{fmtTokens(point.tokens)}
-					</span>
+					{fmtTokens(point.tokens)}
 				</p>
 
 				{/* Both captions share one grid cell: the row keeps the height of the
