@@ -59,6 +59,7 @@ import type * as seeds_stacks from "../seeds/stacks.js";
 import type * as seeds_tools from "../seeds/tools.js";
 import type * as stacks from "../stacks.js";
 import type * as tools from "../tools.js";
+import type * as viewAnalytics from "../viewAnalytics.js";
 import type * as views from "../views.js";
 import type * as waitlist from "../waitlist.js";
 
@@ -120,6 +121,7 @@ declare const fullApi: ApiFromModules<{
   "seeds/tools": typeof seeds_tools;
   stacks: typeof stacks;
   tools: typeof tools;
+  viewAnalytics: typeof viewAnalytics;
   views: typeof views;
   waitlist: typeof waitlist;
 }>;
