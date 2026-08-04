@@ -17,15 +17,18 @@ import { type ClockKey, DENSITY_LABEL, type DensityKey } from "./fixtures";
 import { VARIANT_A_NAME } from "./VariantA";
 import { VARIANT_B_NAME } from "./VariantB";
 import { VARIANT_C_NAME } from "./VariantC";
+import { VARIANT_C2_NAME, VARIANT_C3_NAME } from "./VariantC2";
 
-export type VariantKey = "A" | "B" | "C";
+export type VariantKey = "A" | "B" | "C" | "C2" | "C3";
 
-export const VARIANT_KEYS: readonly VariantKey[] = ["A", "B", "C"];
+export const VARIANT_KEYS: readonly VariantKey[] = ["C2", "C3", "C", "A", "B"];
 
 const NAMES: Record<VariantKey, string> = {
 	A: VARIANT_A_NAME,
 	B: VARIANT_B_NAME,
 	C: VARIANT_C_NAME,
+	C2: VARIANT_C2_NAME,
+	C3: VARIANT_C3_NAME,
 };
 
 const CLOCK_LABEL: Record<ClockKey, string> = {

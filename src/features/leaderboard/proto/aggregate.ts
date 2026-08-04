@@ -34,6 +34,12 @@ export type RankedStack = ProtoStack & {
 	readonly activeHarnesses: readonly string[];
 	/** Dollars per million measured tokens, or null without a published cost. */
 	readonly costPerMtok: number | null;
+	/**
+	 * Change across the readings this stack has, as a share of the first one.
+	 * `null` with fewer than two readings — no trend exists, and a zero there
+	 * would claim a flat line nobody observed.
+	 */
+	readonly trend: number | null;
 };
 
 export type Ranking = {
@@ -125,6 +131,11 @@ export function aggregate(
 		costPerMtok:
 			s.spendLowerBound !== null && s.tokens > 0
 				? s.spendLowerBound / (s.tokens / 1_000_000)
+				: null,
+		trend:
+			s.history.length >= 2 && s.history[0].value > 0
+				? (s.history[s.history.length - 1].value - s.history[0].value) /
+					s.history[0].value
 				: null,
 	});
 

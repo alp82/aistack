@@ -56,6 +56,16 @@ export type ProtoStack = {
 	readonly models: readonly ProtoModel[];
 	readonly harnesses: readonly ProtoHarness[];
 	readonly tools: readonly string[];
+	/**
+	 * Every published snapshot inside the window, oldest first.
+	 *
+	 * The value is the **rolling 30-day total as it stood that day**, which is
+	 * what `measuredSnapshots` holds — so the last point always equals `tokens`.
+	 * It is a level and not a rate, so it can fall: a quiet week drops the far
+	 * end out of the window. #80 measured the best history on the site at 7
+	 * readings over 5 days, and one real stack has exactly one reading.
+	 */
+	readonly history: readonly { readonly at: number; readonly value: number }[];
 };
 
 const B = 1_000_000_000;
@@ -103,6 +113,13 @@ const REAL_STACKS: readonly ProtoStack[] = [
 			{ name: "claude-code", tokens: 12.03 * B },
 		],
 		tools: ["Codex", "Claude Code", "Linear", "Vercel", "Neon"],
+		history: [
+			{ at: day(7, 29), value: 240.1 * B },
+			{ at: day(7, 30), value: 255.4 * B },
+			{ at: day(7, 31), value: 267.9 * B },
+			{ at: day(8, 1), value: 279.2 * B },
+			{ at: day(8, 2), value: 291.35 * B },
+		],
 	},
 	{
 		id: "gvaste",
@@ -125,6 +142,12 @@ const REAL_STACKS: readonly ProtoStack[] = [
 		],
 		harnesses: [{ name: "codex", tokens: 5.88 * B }],
 		tools: ["Codex", "Cursor", "Supabase"],
+		// Falling. The window forgot a busy week at its far end, so the total
+		// dropped without anyone doing less today.
+		history: [
+			{ at: day(7, 27), value: 7.42 * B },
+			{ at: day(8, 1), value: 5.88 * B },
+		],
 	},
 	{
 		id: "brilliant-insane",
@@ -146,6 +169,8 @@ const REAL_STACKS: readonly ProtoStack[] = [
 		],
 		harnesses: [{ name: "codex", tokens: 4.77 * B }],
 		tools: ["Codex", "Claude Code", "Railway"],
+		// One reading. A line needs two, so this row can draw no trend at all.
+		history: [{ at: day(8, 2), value: 4.77 * B }],
 	},
 	{
 		id: "alper",
@@ -174,6 +199,15 @@ const REAL_STACKS: readonly ProtoStack[] = [
 			{ name: "gemini", tokens: 0 },
 		],
 		tools: ["Claude Code", "Codex", "Convex", "Better Auth", "Resend", "Biome"],
+		history: [
+			{ at: day(7, 28), value: 3.11 * B },
+			{ at: day(7, 29), value: 3.58 * B },
+			{ at: day(7, 30), value: 4.02 * B },
+			{ at: day(7, 31), value: 4.35 * B },
+			{ at: day(8, 1), value: 4.6 * B },
+			{ at: day(8, 2), value: 4.68 * B },
+			{ at: day(8, 3), value: 4.71 * B },
+		],
 	},
 ];
 
@@ -432,6 +466,20 @@ function generate(count: number, seed: number, nowMs: number): ProtoStack[] {
 		const creator = `${pick(r, FIRST)} ${pick(r, LAST)}`;
 		const handle = creator.toLowerCase().replace(/[^a-z]/g, "");
 
+		// A short walk backwards from the last sync, one reading per day, ending
+		// on today's total. A fifth of them trend down.
+		const readings = 1 + Math.floor(r() * 13);
+		const direction = r() < 0.2 ? -1 : 1;
+		const history: { at: number; value: number }[] = [];
+		let level = tokens;
+		for (let k = 0; k < readings; k++) {
+			history.unshift({
+				at: lastSyncMs - k * 24 * 60 * 60 * 1000,
+				value: Math.max(tokens * 0.05, level),
+			});
+			level -= direction * tokens * (0.02 + r() * 0.09);
+		}
+
 		out.push({
 			id: `gen-${seed}-${i}`,
 			name,
@@ -448,6 +496,7 @@ function generate(count: number, seed: number, nowMs: number): ProtoStack[] {
 			models,
 			harnesses,
 			tools,
+			history,
 		});
 	}
 	return out;

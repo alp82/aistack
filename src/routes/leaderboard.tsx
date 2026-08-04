@@ -36,10 +36,11 @@ import {
 import { VariantA } from "@/features/leaderboard/proto/VariantA";
 import { VariantB } from "@/features/leaderboard/proto/VariantB";
 import { VariantC } from "@/features/leaderboard/proto/VariantC";
+import { VariantC2 } from "@/features/leaderboard/proto/VariantC2";
 import { coerceEnum, coercePage } from "@/lib/searchParams";
 
 const DEFAULTS = {
-	variant: "A" as VariantKey,
+	variant: "C2" as VariantKey,
 	density: "real" as DensityKey,
 	weight: "tokens" as Weight,
 	clock: "now" as ClockKey,
@@ -58,7 +59,7 @@ export const Route = createFileRoute("/leaderboard")({
 		clock?: ClockKey;
 		page?: number;
 	} => ({
-		variant: coerceEnum(search.variant, VARIANT_KEYS, "A"),
+		variant: coerceEnum(search.variant, VARIANT_KEYS, "C2"),
 		density: coerceEnum(
 			search.density,
 			["real", "grown", "scale"] as const,
@@ -137,6 +138,15 @@ function LeaderboardPrototype() {
 					weight={weight}
 					page={page}
 					onPage={(p) => set({ page: p })}
+				/>
+			)}
+			{(variant === "C2" || variant === "C3") && (
+				<VariantC2
+					agg={agg}
+					weight={weight}
+					page={page}
+					onPage={(p) => set({ page: p })}
+					quietGroup={variant === "C2" ? "list" : "line"}
 				/>
 			)}
 			<div className="h-32" />
