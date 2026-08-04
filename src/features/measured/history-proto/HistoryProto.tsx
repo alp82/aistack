@@ -29,15 +29,31 @@ import { DATASETS, type DatasetKey, readingsFor, toPoints } from "./fixtures";
 import { VARIANT_A_NAME, VariantA } from "./VariantA";
 import { VARIANT_B_NAME, VariantB } from "./VariantB";
 import { VARIANT_C_NAME, VariantC } from "./VariantC";
+import { VARIANT_D_NAME, VariantD } from "./VariantD";
+import { VARIANT_E_NAME, VariantE } from "./VariantE";
+import { VARIANT_F_NAME, VariantF } from "./VariantF";
+
+/**
+ * Round two starts at D. The owner picked C's direction and locked the headline
+ * (tokens leading, spend under it, one hover area over both — see MetricBlock),
+ * so D, E and F share that block and differ only in how much space the model
+ * mix earns. A, B and C stay listed for comparison.
+ */
+const ROUND_TWO = { D: VariantD, E: VariantE, F: VariantF } as const;
 
 const VARIANT_AXIS: ProtoAxis = {
 	param: "proto",
 	title: "variant",
 	options: [
+		// `off` stays first so it is the default: a stack page with no `?proto=`
+		// must still render the shipped section.
 		{ key: "off", label: "shipped today (no history)" },
-		{ key: "A", label: VARIANT_A_NAME },
-		{ key: "B", label: VARIANT_B_NAME },
-		{ key: "C", label: VARIANT_C_NAME },
+		{ key: "D", label: VARIANT_D_NAME },
+		{ key: "E", label: VARIANT_E_NAME },
+		{ key: "F", label: VARIANT_F_NAME },
+		{ key: "A", label: `round 1 · ${VARIANT_A_NAME}` },
+		{ key: "B", label: `round 1 · ${VARIANT_B_NAME}` },
+		{ key: "C", label: `round 1 · ${VARIANT_C_NAME}` },
 	],
 };
 
@@ -63,16 +79,20 @@ export function MeasuredHistoryProto({
 	const dataset = (axes.d ?? "real") as DatasetKey;
 	const points = toPoints(readingsFor(dataset));
 
+	const RoundTwo = ROUND_TWO[variant as keyof typeof ROUND_TWO];
+
 	return (
 		<>
-			{variant === "off" ? (
-				<MeasuredSection index={index} slug={slug} isOwner={isOwner} />
+			{RoundTwo ? (
+				<RoundTwo index={index} anchor={MEASURED_ANCHOR} points={points} />
 			) : variant === "A" ? (
 				<VariantA index={index} anchor={MEASURED_ANCHOR} points={points} />
 			) : variant === "B" ? (
 				<VariantB index={index} anchor={MEASURED_ANCHOR} points={points} />
-			) : (
+			) : variant === "C" ? (
 				<VariantC index={index} anchor={MEASURED_ANCHOR} points={points} />
+			) : (
+				<MeasuredSection index={index} slug={slug} isOwner={isOwner} />
 			)}
 			<PrototypeSwitcher
 				axes={AXES}

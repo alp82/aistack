@@ -6,12 +6,22 @@ import { DATASETS, readingsFor, toPoints } from "./fixtures";
 import { VariantA } from "./VariantA";
 import { VariantB } from "./VariantB";
 import { VariantC } from "./VariantC";
+import { VariantD } from "./VariantD";
+import { VariantE } from "./VariantE";
+import { VariantF } from "./VariantF";
 
 vi.mock("@/lib/useScrollHighlight", () => ({
 	useScrollHighlight: () => ({ ref: { current: null }, reduce: true }),
 }));
 
-const VARIANTS = { A: VariantA, B: VariantB, C: VariantC };
+const VARIANTS = {
+	A: VariantA,
+	B: VariantB,
+	C: VariantC,
+	D: VariantD,
+	E: VariantE,
+	F: VariantF,
+};
 
 describe("history prototype", () => {
 	for (const [key, Variant] of Object.entries(VARIANTS)) {

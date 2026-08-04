@@ -216,10 +216,12 @@ export function MixRibbon({
 	points,
 	height = 150,
 	topN = 5,
+	legend = true,
 }: {
 	points: ProtoPoint[];
 	height?: number;
 	topN?: number;
+	legend?: boolean;
 }) {
 	if (points.length === 0) return null;
 
@@ -292,7 +294,12 @@ export function MixRibbon({
 					<path key={b.id} d={b.d} fill={b.color} fillOpacity={0.85} />
 				))}
 			</svg>
-			<ul className="mt-3 flex list-none flex-wrap gap-x-5 gap-y-1 p-0">
+			<ul
+				className={cn(
+					"mt-3 flex list-none flex-wrap gap-x-5 gap-y-1 p-0",
+					!legend && "hidden",
+				)}
+			>
 				{bands.map((b) => {
 					const nowShare = shareAt(newest, b.id);
 					const thenShare = shareAt(points[0], b.id);
@@ -322,6 +329,95 @@ export function MixRibbon({
 				})}
 			</ul>
 		</figure>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// The compact mix family (D / E / F).
+//
+// The full-height ribbon was judged "semi-interesting, and too much space,
+// especially when little moved". Everything below expresses the same fact in a
+// fraction of the height, and F suppresses it entirely when nothing moved.
+// ---------------------------------------------------------------------------
+
+export type MixSeries = {
+	ids: string[];
+	labelOf: (id: string) => string;
+	colorOf: (id: string) => string;
+	shareAt: (p: ProtoPoint, id: string) => number;
+	/** Share change from the first reading to the newest, in points. */
+	driftOf: (id: string) => number;
+	/** The largest single drift across all series, in points. */
+	maxDrift: number;
+};
+
+/** One ranking, one color map, shared by every compact mix view. */
+export function mixSeries(points: ProtoPoint[], topN = 5): MixSeries {
+	const newest = points[points.length - 1];
+	const ranked = newest.mix.map((m) => m.id);
+	for (const p of points) {
+		for (const m of p.mix) if (!ranked.includes(m.id)) ranked.push(m.id);
+	}
+	const keep = ranked.slice(0, topN);
+	const ids = ranked.length > topN ? [...keep, "__rest"] : keep;
+
+	const shareAt = (p: ProtoPoint, id: string) =>
+		id === "__rest"
+			? p.mix
+					.filter((m) => !keep.includes(m.id))
+					.reduce((a, m) => a + m.share, 0)
+			: (p.mix.find((m) => m.id === id)?.share ?? 0);
+
+	const driftOf = (id: string) =>
+		(shareAt(newest, id) - shareAt(points[0], id)) * 100;
+
+	return {
+		ids,
+		labelOf: (id) =>
+			id === "__rest"
+				? "everything else"
+				: (points.flatMap((p) => p.mix).find((m) => m.id === id)?.label ?? id),
+		colorOf: (id) => {
+			const i = ids.indexOf(id);
+			return i === 0
+				? ACCENT
+				: PROTO_SERIES_COLORS[(i - 1) % PROTO_SERIES_COLORS.length];
+		},
+		shareAt,
+		driftOf,
+		maxDrift: Math.max(0, ...ids.map((id) => Math.abs(driftOf(id)))),
+	};
+}
+
+/** One 100%-stacked horizontal bar — the whole mix of one reading, in one row. */
+export function MixBar({
+	point,
+	series,
+	height = 10,
+	className,
+}: {
+	point: ProtoPoint;
+	series: MixSeries;
+	height?: number;
+	className?: string;
+}) {
+	return (
+		<div
+			className={cn("flex w-full overflow-hidden", className)}
+			style={{ height }}
+		>
+			{series.ids.map((id) => {
+				const share = series.shareAt(point, id);
+				if (share <= 0) return null;
+				return (
+					<span
+						key={id}
+						title={`${series.labelOf(id)} ${Math.round(share * 100)}%`}
+						style={{ width: `${share * 100}%`, background: series.colorOf(id) }}
+					/>
+				);
+			})}
+		</div>
 	);
 }
 
