@@ -17,6 +17,7 @@
  *
  * The headline trail is a watermark in all three, for the same reason.
  */
+import HoverCard from "@/components/ui/hover-card";
 import { Section, SectionHeader } from "@/features/stack-view/ui";
 import { cn, timeAgo } from "@/lib/utils";
 import { MONO_LABEL } from "../copy";
@@ -328,36 +329,157 @@ export function VariantI({
 			index={index}
 			anchor={anchor}
 			points={points}
-			historyNote={`the notch marks where each share stood on ${fmtDay(points[0].at)}`}
-			renderRow={({ id, series, multi }) => {
+			historyNote={`the hatched notch marks where each share stood on ${fmtDay(points[0].at)}`}
+			renderRow={({ id, series, points: pts, multi }) => {
 				const share = series.shareAt(series.newest, id);
-				const then = series.shareAt(points[0], id);
+				const then = series.shareAt(pts[0], id);
 				const moved = multi && Math.abs(share - then) >= 0.005;
 				return (
 					<div className="flex items-center gap-3 py-3">
 						<RowHead id={id} series={series} />
-						<span className="relative h-7 flex-1 bg-bg-panel">
-							<span
-								className="absolute inset-y-0 left-0"
-								style={{
-									width: `${Math.max(1, share * 100)}%`,
-									background: series.colorOf(id),
-								}}
-							/>
-							{moved && (
-								<span
-									aria-hidden="true"
-									title={`was ${(then * 100).toFixed(1)}%`}
-									className="absolute inset-y-0 w-0.5 bg-fg-primary/70"
-									style={{ left: `${Math.max(0, then * 100)}%` }}
-								/>
+
+						{/* The bar is the hover target: the whole history lives in the
+						    popup, so the row itself stays one solid bar and a number. */}
+						<HoverCard
+							mode="wrapper"
+							position="below"
+							width={300}
+							height="auto"
+							maxRotation={4}
+							maxOffset={6}
+							offset={10}
+							className="flex-1"
+							renderContent={() => (
+								<BarTooltip id={id} series={series} points={pts} />
 							)}
-						</span>
+						>
+							<div className="relative h-7 w-full cursor-help bg-bg-panel">
+								<div
+									className="absolute inset-y-0 left-0"
+									style={{
+										width: `${Math.max(1, share * 100)}%`,
+										background: series.colorOf(id),
+									}}
+								/>
+								{moved && <WasHereTick at={then} />}
+							</div>
+						</HoverCard>
+
 						<RowTail id={id} series={series} multi={multi} />
 					</div>
 				);
 			}}
 		/>
+	);
+}
+
+/**
+ * The "was here" marker: where this share stood at the first reading.
+ *
+ * Hatched rather than solid, and taller than the bar, so it reads as a ruler
+ * mark laid over the data and never as a slice of the data. The stripes are
+ * opaque, so it stays legible over the filled part of the bar and over the
+ * empty track alike.
+ */
+function WasHereTick({ at }: { at: number }) {
+	return (
+		<span
+			aria-hidden="true"
+			className="absolute -top-1 -bottom-1 w-[6px] -translate-x-1/2"
+			style={{
+				left: `${Math.min(100, Math.max(0, at * 100))}%`,
+				backgroundImage:
+					"repeating-linear-gradient(135deg, var(--fg-primary) 0 2px, var(--bg-canvas) 2px 4px)",
+			}}
+		/>
+	);
+}
+
+/**
+ * One model's history, on hover. The row shows the current share; everything
+ * about the past lives here, including what the notch means.
+ */
+function BarTooltip({
+	id,
+	series,
+	points,
+}: {
+	id: string;
+	series: MixSeries;
+	points: ProtoPoint[];
+}) {
+	const share = series.shareAt(series.newest, id);
+	const then = series.shareAt(points[0], id);
+	const drift = series.driftOf(id);
+	const multi = points.length > 1;
+	const moved = multi && Math.abs(share - then) >= 0.005;
+
+	return (
+		<div className="border-[3px] border-stroke-strong bg-bg-panel p-4 shadow-[6px_6px_0_var(--stroke-strong)]">
+			<div className="mb-3 flex items-center gap-2 border-b-2 border-stroke-strong pb-2">
+				<span
+					aria-hidden="true"
+					className="size-3 shrink-0"
+					style={{ background: series.colorOf(id) }}
+				/>
+				<span className="flex-1 truncate text-sm font-bold text-fg-primary">
+					{series.labelOf(id)}
+				</span>
+				<span className="font-mono text-sm font-black text-fg-primary">
+					{(share * 100).toFixed(1)}%
+				</span>
+			</div>
+
+			{multi ? (
+				<>
+					<Sparkline
+						values={points.map((p) => series.shareAt(p, id))}
+						width={264}
+						height={44}
+						color={series.colorOf(id)}
+						className="w-full"
+						area
+					/>
+					<p
+						className={cn(
+							MONO_LABEL,
+							"mt-1.5 flex justify-between text-[10px] text-fg-muted",
+						)}
+					>
+						<span>{fmtDay(points[0].at)}</span>
+						<span>{points.length} readings</span>
+						<span>now</span>
+					</p>
+
+					<p className="mt-3 border-t-2 border-dashed border-stroke-subtle pt-2 text-xs leading-relaxed text-fg-muted">
+						{moved ? (
+							<>
+								<span className="font-bold text-fg-primary">The notch</span> on
+								the bar marks {(then * 100).toFixed(1)}% — this share on{" "}
+								{fmtDay(points[0].at)}. It has moved{" "}
+								<span
+									className={drift > 0 ? "text-accent-lime" : "text-orange-400"}
+								>
+									{drift > 0 ? "up" : "down"} {Math.abs(drift).toFixed(1)}{" "}
+									points
+								</span>{" "}
+								since.
+							</>
+						) : (
+							<>
+								This share has held at about {(share * 100).toFixed(1)}% across
+								every reading, so no notch is drawn.
+							</>
+						)}
+					</p>
+				</>
+			) : (
+				<p className="text-xs leading-relaxed text-fg-muted">
+					One reading so far. A second sync starts this model's history, and
+					draws a notch where the share stood.
+				</p>
+			)}
+		</div>
 	);
 }
 
