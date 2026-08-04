@@ -105,3 +105,123 @@ export function RoadIcon({ size = 48, className }: IconProps) {
 		/>
 	);
 }
+
+/** mdi:keyboard */
+export function KeyboardIcon({ size = 48, className }: IconProps) {
+	return (
+		<Mdi
+			size={size}
+			className={className}
+			label="a keyboard"
+			d="M19 10h-2V8h2m0 5h-2v-2h2m-3-1h-2V8h2m0 5h-2v-2h2m0 6H8v-2h8m-9-5H5V8h2m0 5H5v-2h2m1 0h2v2H8m0-5h2v2H8m3 1h2v2h-2m0-5h2v2h-2m9-5H4c-1.11 0-2 .89-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2"
+		/>
+	);
+}
+
+/** mdi:floppy */
+export function FloppyIcon({ size = 48, className }: IconProps) {
+	return (
+		<Mdi
+			size={size}
+			className={className}
+			label="a floppy disk"
+			d="M5 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5.5L18.5 3H17v6a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V3zm7 1v5h3V4zm-5 8h10a1 1 0 0 1 1 1v6H6v-6a1 1 0 0 1 1-1"
+		/>
+	);
+}
+
+/** mdi:drama-masks */
+export function DramaMasksIcon({ size = 48, className }: IconProps) {
+	return (
+		<Mdi
+			size={size}
+			className={className}
+			label="theatre masks"
+			d="M8.11 19.45a6.95 6.95 0 0 1-4.4-5.1L2.05 6.54c-.24-1.08.45-2.14 1.53-2.37l9.77-2.07l.03-.01c1.07-.21 2.12.48 2.34 1.54l.35 1.67l4.35.93h.03c1.05.24 1.73 1.3 1.51 2.36l-1.66 7.82a6.993 6.993 0 0 1-8.3 5.38a6.9 6.9 0 0 1-3.89-2.34M20 8.18L10.23 6.1l-1.66 7.82v.03c-.57 2.68 1.16 5.32 3.85 5.89s5.35-1.15 5.92-3.84zm-4 8.32a2.96 2.96 0 0 1-3.17 1.39a2.97 2.97 0 0 1-2.33-2.55zM8.47 5.17L4 6.13l1.66 7.81l.01.03c.15.71.45 1.35.86 1.9c-.1-.77-.08-1.57.09-2.37l.43-2c-.45-.08-.84-.33-1.05-.69c.06-.61.56-1.15 1.25-1.31h.25l.78-3.81c.04-.19.1-.36.19-.52m6.56 7.06c.32-.53 1-.81 1.69-.66c.69.14 1.19.67 1.28 1.29c-.33.52-1 .8-1.7.64c-.69-.13-1.19-.66-1.27-1.27m-4.88-1.04c.32-.53.99-.81 1.68-.66c.67.14 1.2.68 1.28 1.29c-.33.52-1 .81-1.69.68c-.69-.17-1.19-.7-1.27-1.31m1.82-6.76l1.96.42l-.16-.8z"
+		/>
+	);
+}
+
+/** mdi:feather */
+export function FeatherIcon({ size = 48, className }: IconProps) {
+	return (
+		<Mdi
+			size={size}
+			className={className}
+			label="a quill"
+			d="M22 2s-7.64-.37-13.66 7.88C3.72 16.21 2 22 2 22l1.94-1c1.44-2.5 2.19-3.53 3.6-5c2.53.74 5.17.65 7.46-2c-2-.56-3.6-.43-5.96-.19C11.69 12 13.5 11.6 16 12l1-2c-1.8-.34-3-.37-4.78.04C14.19 8.65 15.56 7.87 18 8l1.21-1.93c-1.56-.11-2.5.06-4.29.5c1.61-1.46 3.08-2.12 5.22-2.25c0 0 1.05-1.89 1.86-2.32"
+		/>
+	);
+}
+
+/** mdi:message-text */
+export function MessageIcon({ size = 48, className }: IconProps) {
+	return (
+		<Mdi
+			size={size}
+			className={className}
+			label="a message bubble"
+			d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2M6 9h12v2H6m8 3H6v-2h8m4-4H6V6h12"
+		/>
+	);
+}
+
+/** mdi:pine-tree */
+export function PineTreeIcon({ size = 48, className }: IconProps) {
+	return (
+		<Mdi
+			size={size}
+			className={className}
+			label="a tree"
+			d="M10 21v-3H3l5-5H5l5-5H7l5-5l5 5h-3l5 5h-3l5 5h-7v3z"
+		/>
+	);
+}
+
+/** mdi:lightning-bolt */
+export function BoltIcon({ size = 48, className }: IconProps) {
+	return (
+		<Mdi
+			size={size}
+			className={className}
+			label="a lightning bolt"
+			d="M11 15H6l7-14v8h5l-7 14z"
+		/>
+	);
+}
+
+/** mdi:book-clock */
+export function BookClockIcon({ size = 48, className }: IconProps) {
+	return (
+		<Mdi
+			size={size}
+			className={className}
+			label="a book and a clock"
+			d="m16.5 17.25l2.86 1.69l-.75 1.22L15 18v-5h1.5zM23 17c0 3.87-3.13 7-7 7c-1.91 0-3.63-.76-4.89-2H6c-1.11 0-2-.89-2-2V4a2 2 0 0 1 2-2h1v7l2.5-1.5L12 9V2h6a2 2 0 0 1 2 2v7.26c1.81 1.27 3 3.36 3 5.74m-2 0c0-2.76-2.24-5-5-5s-5 2.24-5 5s2.24 5 5 5s5-2.24 5-5"
+		/>
+	);
+}
+
+/** mdi:earth */
+export function EarthIcon({ size = 48, className }: IconProps) {
+	return (
+		<Mdi
+			size={size}
+			className={className}
+			label="the Earth"
+			d="M17.9 17.39c-.26-.8-1.01-1.39-1.9-1.39h-1v-3a1 1 0 0 0-1-1H8v-2h2a1 1 0 0 0 1-1V7h2a2 2 0 0 0 2-2v-.41a7.984 7.984 0 0 1 2.9 12.8M11 19.93c-3.95-.49-7-3.85-7-7.93c0-.62.08-1.22.21-1.79L9 15v1a2 2 0 0 0 2 2m1-16A10 10 0 0 0 2 12a10 10 0 0 0 10 10a10 10 0 0 0 10-10A10 10 0 0 0 12 2"
+		/>
+	);
+}
+
+/** mdi:movie-open */
+export function MovieIcon({ size = 48, className }: IconProps) {
+	return (
+		<Mdi
+			size={size}
+			className={className}
+			label="a film reel"
+			d="m20.84 2.18l-3.93.78l2.74 3.54l1.97-.4zm-6.87 1.36L12 3.93l2.75 3.53l1.96-.39zm-4.9.96l-1.97.41l2.75 3.53l1.96-.39zm-4.91 1l-.98.19a2 2 0 0 0-1.57 2.35L2 10l4.9-.97zM2 10v10a2 2 0 0 0 2 2h16c1.11 0 2-.89 2-2V10z"
+		/>
+	);
+}

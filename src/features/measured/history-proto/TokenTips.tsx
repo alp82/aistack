@@ -18,22 +18,50 @@ import { cn } from "@/lib/utils";
 import { MONO_LABEL } from "../copy";
 import { fmtUSD, PROTO_SERIES_COLORS, type ProtoPoint } from "./fixtures";
 import {
+	BoltIcon,
+	BookClockIcon,
+	DramaMasksIcon,
+	EarthIcon,
 	EiffelTowerIcon,
+	FeatherIcon,
+	FloppyIcon,
 	HourglassIcon,
 	type IconProps,
+	KeyboardIcon,
+	MessageIcon,
+	MovieIcon,
+	PineTreeIcon,
 	RoadIcon,
 	WikipediaIcon,
 	WizardHatIcon,
 } from "./TipIcons";
 import {
+	EARTH_KM,
 	EIFFEL_M,
+	fmtBytes,
 	fmtCount,
 	fmtDuration,
+	fmtKm,
 	fmtMeters,
 	tokenScale,
 } from "./tokenScale";
 
-export type TipKey = "books" | "time" | "wiki" | "paper" | "road";
+export type TipKey =
+	| "books"
+	| "time"
+	| "wiki"
+	| "paper"
+	| "road"
+	| "keys"
+	| "floppy"
+	| "bard"
+	| "scribe"
+	| "texts"
+	| "trees"
+	| "power"
+	| "lifetimes"
+	| "equator"
+	| "films";
 
 export const TIPS: { key: TipKey; label: string }[] = [
 	{ key: "books", label: "books: a shelf of novels" },
@@ -41,6 +69,16 @@ export const TIPS: { key: TipKey; label: string }[] = [
 	{ key: "wiki", label: "wikipedia: share of every article" },
 	{ key: "paper", label: "paper: printed and stacked" },
 	{ key: "road", label: "road: pages laid end to end" },
+	{ key: "keys", label: "keys: keyboards worn out typing it" },
+	{ key: "floppy", label: "floppy: the stack of disks it fills" },
+	{ key: "bard", label: "bard: times over all of Shakespeare" },
+	{ key: "scribe", label: "scribe: centuries of copying by hand" },
+	{ key: "texts", label: "texts: messages at 160 characters" },
+	{ key: "trees", label: "trees: what printing it would fell" },
+	{ key: "power", label: "power: the electricity it took" },
+	{ key: "lifetimes", label: "lifetimes: whole reading lives" },
+	{ key: "equator", label: "equator: one line around the Earth" },
+	{ key: "films", label: "films: screen time as scripts" },
 ];
 
 const TIP_KEYS = TIPS.map((t) => t.key);
@@ -139,7 +177,7 @@ export function TokenTip({ point, tip }: { point: ProtoPoint; tip: TipKey }) {
 					</p>
 				)}
 				<p className="font-mono text-[10px] leading-relaxed text-fg-muted">
-					rough: about 0.75 words per token.
+					{body.note ?? "rough: about 0.75 words per token."}
 				</p>
 			</div>
 		</div>
@@ -169,6 +207,8 @@ type Body = {
 	title: string;
 	Icon: (props: IconProps) => React.ReactNode;
 	render: (point: ProtoPoint) => React.ReactNode;
+	/** Replaces the words-per-token caveat when a card rests on something else. */
+	note?: string;
 };
 
 const BODIES: Record<TipKey, Body> = {
@@ -196,6 +236,57 @@ const BODIES: Record<TipKey, Body> = {
 		title: "End to end",
 		Icon: RoadIcon,
 		render: (p) => <RoadBody point={p} />,
+	},
+	keys: {
+		title: "In keystrokes",
+		Icon: KeyboardIcon,
+		render: (p) => <KeysBody point={p} />,
+	},
+	floppy: {
+		title: "On floppy disks",
+		Icon: FloppyIcon,
+		render: (p) => <FloppyBody point={p} />,
+	},
+	bard: {
+		title: "Against Shakespeare",
+		Icon: DramaMasksIcon,
+		render: (p) => <BardBody point={p} />,
+	},
+	scribe: {
+		title: "Copied by hand",
+		Icon: FeatherIcon,
+		render: (p) => <ScribeBody point={p} />,
+	},
+	texts: {
+		title: "In text messages",
+		Icon: MessageIcon,
+		render: (p) => <TextsBody point={p} />,
+	},
+	trees: {
+		title: "In trees",
+		Icon: PineTreeIcon,
+		render: (p) => <TreesBody point={p} />,
+	},
+	power: {
+		title: "In electricity",
+		Icon: BoltIcon,
+		render: (p) => <PowerBody point={p} />,
+		note: "very rough: about 0.3 Wh per 1,000 tokens. No vendor publishes a per-token figure, and the real one swings by an order of magnitude with the model and the hardware.",
+	},
+	lifetimes: {
+		title: "In reading lifetimes",
+		Icon: BookClockIcon,
+		render: (p) => <LifetimesBody point={p} />,
+	},
+	equator: {
+		title: "Around the Earth",
+		Icon: EarthIcon,
+		render: (p) => <EquatorBody point={p} />,
+	},
+	films: {
+		title: "In screen time",
+		Icon: MovieIcon,
+		render: (p) => <FilmsBody point={p} />,
 	},
 };
 
@@ -372,6 +463,182 @@ function RoadBody({ point }: BodyProps) {
 			<p className={cn(MONO_LABEL, "mt-2 text-[10px] text-fg-muted")}>
 				a marathon is 42.2 km
 			</p>
+		</>
+	);
+}
+
+// --- the second wave -------------------------------------------------------
+
+function KeysBody({ point }: BodyProps) {
+	const s = tokenScale(point.tokens);
+	return (
+		<>
+			<Headline>{fmtCount(s.keystrokes)} keystrokes</Headline>
+			<Sub>
+				to type every character of it by hand. A keyboard switch is rated for
+				about 50 million presses, so{" "}
+				{s.keyboards >= 1
+					? `that is ${fmtCount(s.keyboards)} keyboards worn out.`
+					: `that is ${Math.round(s.keyboards * 100)}% of one keyboard's whole life.`}
+			</Sub>
+		</>
+	);
+}
+
+function FloppyBody({ point }: BodyProps) {
+	const s = tokenScale(point.tokens);
+	return (
+		<>
+			<Headline>{fmtCount(s.floppies)} floppies</Headline>
+			<Sub>
+				As plain text the whole thing is {fmtBytes(s.bytes)}. The last floppy
+				disks were made in 2011, so you would be buying {fmtCount(s.floppies)}{" "}
+				of them second hand.
+			</Sub>
+		</>
+	);
+}
+
+function BardBody({ point }: BodyProps) {
+	const s = tokenScale(point.tokens);
+	return (
+		<>
+			<Headline>{fmtCount(s.shakespeare)} times</Headline>
+			<Sub>
+				the complete works of Shakespeare. Every play, every sonnet, about
+				885,000 words, {fmtCount(s.shakespeare)} times over.
+			</Sub>
+		</>
+	);
+}
+
+function ScribeBody({ point }: BodyProps) {
+	const s = tokenScale(point.tokens);
+	const startYear = Math.round(2026 - s.scribeYears);
+	return (
+		<>
+			<Headline>{fmtDuration(s.scribeYears)}</Headline>
+			<Sub>
+				of a medieval scribe copying 3,000 words a day, every working day.
+				{s.scribeYears >= 100 &&
+					` To have finished by now, they would have had to start in ${
+						startYear < 0
+							? `${Math.abs(startYear)} BC`
+							: `the year ${startYear}`
+					}.`}
+			</Sub>
+		</>
+	);
+}
+
+function TextsBody({ point }: BodyProps) {
+	const s = tokenScale(point.tokens);
+	const yearsAtOnePerMinute = s.texts / (60 * 24 * 365);
+	return (
+		<>
+			<Headline>{fmtCount(s.texts)} texts</Headline>
+			<Sub>
+				at 160 characters each. Send one every minute, day and night, and you
+				would be at it for {fmtDuration(yearsAtOnePerMinute)}.
+			</Sub>
+		</>
+	);
+}
+
+function TreesBody({ point }: BodyProps) {
+	const s = tokenScale(point.tokens);
+	return (
+		<>
+			<Headline>
+				{s.trees >= 1 ? `${fmtCount(s.trees)} trees` : "under one tree"}
+			</Headline>
+			<Sub>
+				if every page were really printed, double-sided. One tree gives about
+				8,300 sheets of A4, and this needs {fmtCount(s.pages / 2)} of them.
+			</Sub>
+		</>
+	);
+}
+
+function PowerBody({ point }: BodyProps) {
+	const s = tokenScale(point.tokens);
+	return (
+		<>
+			<Headline>{fmtCount(s.kwh)} kWh</Headline>
+			<Sub>
+				of electricity, give or take a lot. The same charge would drive an
+				electric car {fmtKm(s.evKm)}
+				{s.homeYears >= 1 / 24
+					? `, or run a European home for ${fmtDuration(s.homeYears)}.`
+					: "."}
+			</Sub>
+		</>
+	);
+}
+
+function LifetimesBody({ point }: BodyProps) {
+	const s = tokenScale(point.tokens);
+	return (
+		<>
+			<Headline>
+				{s.readingLifetimes >= 1
+					? `${fmtCount(s.readingLifetimes)} lifetimes`
+					: `${Math.round(s.readingLifetimes * 100)}% of a lifetime`}
+			</Headline>
+			<Sub>
+				of reading. Somebody who finishes a book a month for sixty years gets
+				through about 720 of them. This is {fmtCount(s.novels)} novels.
+			</Sub>
+		</>
+	);
+}
+
+function EquatorBody({ point }: BodyProps) {
+	const s = tokenScale(point.tokens);
+	const pct = s.earthLaps * 100;
+	return (
+		<>
+			<Headline>
+				{s.earthLaps >= 1
+					? `${s.earthLaps.toFixed(1)} laps`
+					: `${pct < 1 ? pct.toFixed(2) : pct.toFixed(0)}% of a lap`}
+			</Headline>
+			<Sub>
+				of the Earth. Set every character in one unbroken line of monospace and
+				it runs {fmtKm(s.lineKm)}. The equator is{" "}
+				{EARTH_KM.toLocaleString("en-US")} km.
+			</Sub>
+
+			<div className="mt-4">
+				<div className="h-4 w-full border border-stroke-strong bg-bg-canvas">
+					<div
+						className="h-full bg-accent-lime"
+						style={{ width: `${Math.min(100, pct)}%` }}
+					/>
+				</div>
+				<p
+					className={cn(
+						MONO_LABEL,
+						"mt-2 flex justify-between text-[10px] text-fg-muted",
+					)}
+				>
+					<span>this stack</span>
+					<span>once around</span>
+				</p>
+			</div>
+		</>
+	);
+}
+
+function FilmsBody({ point }: BodyProps) {
+	const s = tokenScale(point.tokens);
+	return (
+		<>
+			<Headline>{fmtCount(s.films)} films</Headline>
+			<Sub>
+				A feature film script runs about 20,000 words. Watching every one of
+				them back to back would take {fmtDuration(s.filmHours / 24 / 365)}.
+			</Sub>
 		</>
 	);
 }
