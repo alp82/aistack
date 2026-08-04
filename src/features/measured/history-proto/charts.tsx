@@ -27,6 +27,7 @@ export function Sparkline({
 	area = false,
 	dot = true,
 	strokeWidth = 1.5,
+	stretch = false,
 }: {
 	values: number[];
 	width?: number;
@@ -38,6 +39,14 @@ export function Sparkline({
 	/** The marker on the newest reading. Drop it when the trail is a backdrop. */
 	dot?: boolean;
 	strokeWidth?: number;
+	/**
+	 * Fill the container in both axes instead of preserving the aspect ratio.
+	 *
+	 * Required for a backdrop: letterboxed inside a tall block, the curve floats
+	 * in the middle and its fill stops short of the bottom edge, which reads as a
+	 * box drawn around some of the text and not others.
+	 */
+	stretch?: boolean;
 }) {
 	if (values.length === 0) return null;
 	const min = Math.min(...values);
@@ -72,6 +81,7 @@ export function Sparkline({
 			width={width}
 			height={height}
 			className={className}
+			preserveAspectRatio={stretch ? "none" : undefined}
 			role="img"
 			aria-label="trend of recent readings"
 		>

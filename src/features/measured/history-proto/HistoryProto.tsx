@@ -26,6 +26,7 @@ import {
 import { MEASURED_ANCHOR } from "../copy";
 import { MeasuredSection } from "../MeasuredSection";
 import { DATASETS, type DatasetKey, readingsFor, toPoints } from "./fixtures";
+import { ROLLS, type RollKey } from "./MetricBlock";
 import { TIPS, type TipKey } from "./TokenTips";
 import { VARIANT_A_NAME, VariantA } from "./VariantA";
 import { VARIANT_B_NAME, VariantB } from "./VariantB";
@@ -98,7 +99,14 @@ const TIP_AXIS: ProtoAxis = {
 	],
 };
 
-const AXES = [VARIANT_AXIS, DATA_AXIS, TIP_AXIS];
+/** How the reader asks the popup for another framing. Hover-only, all four. */
+const ROLL_AXIS: ProtoAxis = {
+	param: "roll",
+	title: "reroll",
+	options: ROLLS.map((r) => ({ key: r.key, label: r.label })),
+};
+
+const AXES = [VARIANT_AXIS, DATA_AXIS, TIP_AXIS, ROLL_AXIS];
 
 export function MeasuredHistoryProto({
 	index,
@@ -115,6 +123,7 @@ export function MeasuredHistoryProto({
 	// `shuffle` is the default: the popup deals from a shuffled deck and the
 	// dice on the block advance it. Any other value pins one framing.
 	const tip = axes.tip === "shuffle" ? undefined : (axes.tip as TipKey);
+	const roll = (axes.roll ?? "inline") as RollKey;
 	const points = toPoints(readingsFor(dataset));
 
 	const RoundTwo = ROUND_TWO[variant as keyof typeof ROUND_TWO];
@@ -127,6 +136,7 @@ export function MeasuredHistoryProto({
 					anchor={MEASURED_ANCHOR}
 					points={points}
 					tip={tip}
+					roll={roll}
 				/>
 			) : variant === "A" ? (
 				<VariantA index={index} anchor={MEASURED_ANCHOR} points={points} />
