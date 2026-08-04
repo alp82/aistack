@@ -1,5 +1,5 @@
 /**
- * PROTOTYPE tooling — the floating variant bar. Throwaway.
+ * PROTOTYPE tooling - the floating variant bar. Throwaway.
  *
  * Shared by every `/prototype` run in this repo. It never renders in a
  * production build, so a stray merge cannot ship it to a visitor.
@@ -23,7 +23,7 @@ export const IS_PROTOTYPE_ENABLED = process.env.NODE_ENV !== "production";
  * Reads the prototype axes out of the URL and keeps them there.
  *
  * The router owns `searchStr` and is SSR-safe, so the first paint already has
- * the right variant — no post-hydration flip. Writes go through
+ * the right variant - no post-hydration flip. Writes go through
  * `history.replaceState` so the typed route's search schema is untouched.
  */
 export function useProtoAxes<T extends Record<string, string>>(
@@ -124,7 +124,7 @@ export function PrototypeSwitcher({
 								)}
 							>
 								<span className="text-fuchsia-500/60">{axis.title} </span>
-								{opt.key} — {opt.label}
+								{opt.key} - {opt.label}
 							</span>
 							<button
 								type="button"

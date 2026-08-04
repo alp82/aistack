@@ -1,9 +1,9 @@
 /**
- * PROTOTYPE — Variant C: NOW, WITH A TRAIL. Wayfinder ticket #80.
+ * PROTOTYPE - Variant C: NOW, WITH A TRAIL. Wayfinder ticket #80.
  *
  * Number-first, and the smallest possible displacement of what shipped in P0.2.
  * The current reading keeps the whole layout it has today; history arrives as
- * texture — a delta chip on the headline, a sparkline under it, a micro-trend
+ * texture - a delta chip on the headline, a sparkline under it, a micro-trend
  * in each stat tile, a share arrow on each model row.
  *
  * The one full chart is the mix ribbon, because in the real five-day history
@@ -24,7 +24,7 @@ import {
 	type ProtoPoint,
 } from "./fixtures";
 
-export const VARIANT_C_NAME = "Now, with a trail — history as texture";
+export const VARIANT_C_NAME = "Now, with a trail: history as texture";
 
 export function VariantC({
 	index,
@@ -95,7 +95,7 @@ export function VariantC({
 						</div>
 					) : (
 						<p className={cn(MONO_LABEL, "mt-5 text-fg-muted")}>
-							first reading — a second sync starts the trail
+							first reading - a second sync starts the trail
 						</p>
 					)}
 
@@ -146,7 +146,7 @@ export function VariantC({
 												{Math.abs(Math.round(d * 100))}pt
 											</span>
 										) : (
-											<span className="text-fg-muted">—</span>
+											<span className="text-fg-muted">-</span>
 										)}
 									</span>
 								</div>

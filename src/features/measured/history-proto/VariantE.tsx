@@ -1,10 +1,10 @@
 /**
- * PROTOTYPE — Variant E: PER-MODEL TRAILS. Wayfinder ticket #80, second round.
+ * PROTOTYPE - Variant E: PER-MODEL TRAILS. Wayfinder ticket #80, second round.
  *
  * C-family. The owner's locked headline, and the mix chart deleted outright:
  * every model row carries its OWN share trail, inline, at 18px tall. The mix
  * over time costs zero extra vertical space, and it becomes per-model instead
- * of one blob — "Opus 4.8 has been sliding for five days" is a claim a reader
+ * of one blob - "Opus 4.8 has been sliding for five days" is a claim a reader
  * can attach to a name.
  *
  * The bet: a mix chart is only interesting one model at a time, so put it where
@@ -22,17 +22,20 @@ import {
 	type ProtoPoint,
 } from "./fixtures";
 import { MetricBlock } from "./MetricBlock";
+import type { TipKey } from "./TokenTips";
 
-export const VARIANT_E_NAME = "Per-model trails — no mix chart at all";
+export const VARIANT_E_NAME = "Per-model trails: no mix chart at all";
 
 export function VariantE({
 	index,
 	anchor,
 	points,
+	tip,
 }: {
 	index: number;
 	anchor: string;
 	points: ProtoPoint[];
+	tip?: TipKey;
 }) {
 	const now = points[points.length - 1];
 	const prev = points.length > 1 ? points[points.length - 2] : null;
@@ -50,7 +53,7 @@ export function VariantE({
 
 			<div className="grid gap-10 md:grid-cols-[minmax(0,24rem)_1fr]">
 				<div>
-					<MetricBlock point={now}>
+					<MetricBlock point={now} tip={tip}>
 						{multi && (
 							<div className="mt-5 border-t border-stroke-subtle pt-3">
 								<Sparkline
@@ -161,7 +164,7 @@ export function VariantE({
 												{Math.abs(Math.round(drift))}pt
 											</span>
 										) : (
-											<span className="text-fg-muted">—</span>
+											<span className="text-fg-muted">-</span>
 										)}
 									</span>
 								</div>

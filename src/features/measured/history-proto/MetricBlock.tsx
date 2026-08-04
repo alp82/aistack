@@ -1,5 +1,5 @@
 /**
- * PROTOTYPE — the headline metric block. Wayfinder ticket #80.
+ * PROTOTYPE - the headline metric block. Wayfinder ticket #80.
  *
  * LOCKED BY THE OWNER, so it is shared by every C-family variant instead of
  * being varied:
@@ -10,18 +10,20 @@
  *     popup, which says the dollar figure is not real money spent.
  *
  * What varies between D, E and F is how history and the model mix are
- * expressed around this block — not the block itself.
+ * expressed around this block - not the block itself.
  */
 import HoverCard from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 import { MONO_LABEL } from "../copy";
 import { fmtTokens, fmtUSD, type ProtoPoint } from "./fixtures";
+import { type TipKey, TokenTip } from "./TokenTips";
 
 export function MetricBlock({
 	point,
 	children,
 	backdrop,
 	className,
+	tip = "plain",
 }: {
 	point: ProtoPoint;
 	/** Trail rendered inside the hover area, under the two numbers. */
@@ -29,18 +31,20 @@ export function MetricBlock({
 	/** Trail rendered BEHIND the numbers, so history costs no vertical space. */
 	backdrop?: React.ReactNode;
 	className?: string;
+	/** Which framing the popup uses to make the token count tangible. */
+	tip?: TipKey;
 }) {
 	return (
 		<HoverCard
 			mode="wrapper"
 			position="below"
-			width={320}
+			width={340}
 			height="auto"
 			maxRotation={5}
 			maxOffset={8}
 			offset={12}
 			className={cn("w-full", className)}
-			renderContent={() => <MeasuredNumbersTooltip point={point} />}
+			renderContent={() => <TokenTip point={point} tip={tip} />}
 		>
 			{/* The hover area is the whole block, so the tooltip explains the pair
 			    and not just the dollar line. */}
@@ -73,33 +77,5 @@ export function MetricBlock({
 	);
 }
 
-/**
- * The one place the site explains what the dollar figure is: a conversion of
- * measured tokens at published list prices, not a bill.
- *
- * Two sentences, no label/value table. The numbers are already an inch away
- * under the reader's cursor, so restating them in a grid only adds furniture.
- */
-function MeasuredNumbersTooltip({ point }: { point: ProtoPoint }) {
-	return (
-		<div className="border-[3px] border-stroke-strong bg-bg-panel p-4 shadow-[6px_6px_0_var(--stroke-strong)]">
-			<p className="mb-3 border-b-2 border-stroke-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-accent-lime">
-				What these numbers are
-			</p>
-
-			<p className="text-sm leading-relaxed text-fg-secondary">
-				<span className="font-mono font-bold text-fg-primary">
-					{point.tokens.toLocaleString("en-US")}
-				</span>{" "}
-				tokens, measured between {point.from} and {point.to}.
-			</p>
-
-			{point.usd !== null && (
-				<p className="mt-2 text-sm leading-relaxed text-fg-secondary">
-					<span className="font-bold text-accent-lime">Not money spent</span> —
-					it is what those tokens would cost at public list prices.
-				</p>
-			)}
-		</div>
-	);
-}
+// The popup itself lives in TokenTips.tsx, because its whole job is now under
+// test: six ways to make a token count tangible, switchable with `tip=`.

@@ -1,5 +1,5 @@
 /**
- * PROTOTYPE — Variant B: THE LOG. Wayfinder ticket #80.
+ * PROTOTYPE - Variant B: THE LOG. Wayfinder ticket #80.
  *
  * List-first, and deliberately CHART-FREE as the primary object. The bet: at 2
  * to 8 readings a line chart is decoration, and what actually proves the page
@@ -21,7 +21,7 @@ import {
 	type ProtoPoint,
 } from "./fixtures";
 
-export const VARIANT_B_NAME = "The log — every reading, newest first";
+export const VARIANT_B_NAME = "The log: every reading, newest first";
 
 const DAY = 86_400_000;
 const MAX_ROWS = 12;
@@ -34,7 +34,7 @@ type Row = {
 
 /**
  * Rows, newest first. Above ~20 readings the log collapses to one row per UTC
- * day — the same grain the nightly GC will eventually enforce anyway — and says
+ * day - the same grain the nightly GC will eventually enforce anyway - and says
  * how many checks that day held.
  */
 function buildRows(points: ProtoPoint[]): { rows: Row[]; collapsed: boolean } {
@@ -214,7 +214,7 @@ function LogRow({ row, priced }: { row: Row; priced: boolean }) {
 			</span>
 
 			<span className="text-right font-mono text-sm text-fg-primary">
-				{priced && p.usd !== null ? fmtUSD(p.usd) : "—"}
+				{priced && p.usd !== null ? fmtUSD(p.usd) : "-"}
 				{usdDelta !== null && Math.round(usdDelta) !== 0 && (
 					<span className="ml-2 text-[11px] text-fg-muted">
 						{fmtDelta(usdDelta, fmtUSD)}

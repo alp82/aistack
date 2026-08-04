@@ -1,5 +1,5 @@
 /**
- * PROTOTYPE — Variant A: THE RATE. Wayfinder ticket #80.
+ * PROTOTYPE - Variant A: THE RATE. Wayfinder ticket #80.
  *
  * Chart-first. The series is promoted to the primary object on the section and
  * the current reading demoted to a caption, on the bet that a stack page which
@@ -22,7 +22,7 @@ import {
 	type ProtoPoint,
 } from "./fixtures";
 
-export const VARIANT_A_NAME = "The rate — chart leads";
+export const VARIANT_A_NAME = "The rate: chart leads";
 
 export function VariantA({
 	index,
@@ -73,7 +73,7 @@ export function VariantA({
 				<p className="max-w-md text-sm leading-relaxed text-fg-muted">
 					Each point is a whole {now.windowDays}-day window, read at that
 					moment. The line moves when the window moves, so a lower point means
-					older days fell off the back — not that the machine slowed down.
+					older days fell off the back - not that the machine slowed down.
 				</p>
 			</div>
 

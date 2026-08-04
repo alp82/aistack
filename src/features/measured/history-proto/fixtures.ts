@@ -1,5 +1,5 @@
 /**
- * PROTOTYPE — throwaway. Wayfinder ticket #80 (map #76).
+ * PROTOTYPE - throwaway. Wayfinder ticket #80 (map #76).
  *
  * Fixtures for "the living stack page". Every number in `REAL_SYNCS` is copied
  * from the production `measuredSnapshots` table on 2026-08-04, so the shapes the
@@ -24,7 +24,7 @@ export type ProtoModel = {
 	usd: number | null;
 };
 
-/** One row of `measuredSnapshots` — one harness, one sync. */
+/** One row of `measuredSnapshots` - one harness, one sync. */
 export type ProtoReading = {
 	at: number;
 	harness: string;
@@ -40,7 +40,7 @@ export type ProtoReading = {
 	models: ProtoModel[];
 };
 
-/** One sync event — every harness row that shares a capturedAt, merged. */
+/** One sync event - every harness row that shares a capturedAt, merged. */
 export type ProtoPoint = {
 	at: number;
 	tokens: number;
@@ -135,7 +135,7 @@ function codex(
 
 /**
  * The real production history of the one stack that has one, verbatim.
- * Note the 15:35 / 15:36 pair on 08-01 — two syncs a minute apart, which the
+ * Note the 15:35 / 15:36 pair on 08-01 - two syncs a minute apart, which the
  * chart has to survive, and the 08-03 pair 4.5 hours apart.
  */
 export const REAL_SYNCS: ProtoReading[] = [
@@ -241,7 +241,7 @@ export const REAL_SYNCS: ProtoReading[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Synthesis — the futures we cannot observe yet.
+// Synthesis - the futures we cannot observe yet.
 //
 // Deterministic on purpose (a fixed LCG, no Math.random), so flipping between
 // variants compares the same series and not two different draws.
@@ -347,7 +347,7 @@ export type DatasetKey =
 	| "quarter";
 
 export const DATASETS: { key: DatasetKey; label: string }[] = [
-	{ key: "first", label: "1 reading — just synced" },
+	{ key: "first", label: "1 reading - just synced" },
 	{ key: "two", label: "2 readings" },
 	{ key: "real", label: "7 readings / 5 days (REAL, today)" },
 	{ key: "nocost", label: "7 readings, cost kept private" },
@@ -504,8 +504,8 @@ export function harnessLabel(name: string): string {
 }
 
 /**
- * PROVISIONAL palette. The real one is decided and validated in ticket #91 —
- * do not copy these hexes into production. Lime stays the single-series color,
+ * PROVISIONAL palette. The real one is decided and validated in ticket #91.
+ * Do not copy these hexes into production. Lime stays the single-series color,
  * so it is not in this categorical ramp.
  */
 export const PROTO_SERIES_COLORS = [

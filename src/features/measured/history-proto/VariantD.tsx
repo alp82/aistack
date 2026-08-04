@@ -1,5 +1,5 @@
 /**
- * PROTOTYPE — Variant D: THEN / NOW. Wayfinder ticket #80, second round.
+ * PROTOTYPE - Variant D: THEN / NOW. Wayfinder ticket #80, second round.
  *
  * C-family. The owner's locked headline (tokens leading, spend under it, one
  * hover area over both) plus the smallest possible answer to the mix question:
@@ -22,17 +22,20 @@ import {
 	type ProtoPoint,
 } from "./fixtures";
 import { MetricBlock } from "./MetricBlock";
+import type { TipKey } from "./TokenTips";
 
-export const VARIANT_D_NAME = "Then / now — mix as two bars";
+export const VARIANT_D_NAME = "Then / now: mix as two bars";
 
 export function VariantD({
 	index,
 	anchor,
 	points,
+	tip,
 }: {
 	index: number;
 	anchor: string;
 	points: ProtoPoint[];
+	tip?: TipKey;
 }) {
 	const now = points[points.length - 1];
 	const first = points[0];
@@ -51,7 +54,7 @@ export function VariantD({
 
 			<div className="grid gap-10 md:grid-cols-[minmax(0,24rem)_1fr]">
 				<div>
-					<MetricBlock point={now}>
+					<MetricBlock point={now} tip={tip}>
 						{multi && (
 							<div className="mt-5 border-t border-stroke-subtle pt-3">
 								<Sparkline
@@ -153,7 +156,7 @@ export function VariantD({
 												{Math.abs(Math.round(drift))}pt
 											</span>
 										) : (
-											<span className="text-fg-muted">—</span>
+											<span className="text-fg-muted">-</span>
 										)}
 									</span>
 								</div>

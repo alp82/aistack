@@ -1,5 +1,5 @@
 /**
- * PROTOTYPE — Variant F: EARN THE SPACE. Wayfinder ticket #80, second round.
+ * PROTOTYPE - Variant F: EARN THE SPACE. Wayfinder ticket #80, second round.
  *
  * C-family, and the most aggressive answer to "the mix uses too much space,
  * especially with very little movement":
@@ -25,8 +25,9 @@ import {
 	type ProtoPoint,
 } from "./fixtures";
 import { MetricBlock } from "./MetricBlock";
+import type { TipKey } from "./TokenTips";
 
-export const VARIANT_F_NAME = "Earn the space — mix only when it moved";
+export const VARIANT_F_NAME = "Earn the space: mix only when it moved";
 
 /** Share points a model must move before the ribbon is worth its height. */
 const MIN_DRIFT = 3;
@@ -35,10 +36,12 @@ export function VariantF({
 	index,
 	anchor,
 	points,
+	tip,
 }: {
 	index: number;
 	anchor: string;
 	points: ProtoPoint[];
+	tip?: TipKey;
 }) {
 	const now = points[points.length - 1];
 	const prev = points.length > 1 ? points[points.length - 2] : null;
@@ -65,6 +68,7 @@ export function VariantF({
 			<div className="grid items-end gap-8 border-b border-stroke-subtle pb-8 lg:grid-cols-[minmax(0,26rem)_1fr]">
 				<MetricBlock
 					point={now}
+					tip={tip}
 					backdrop={
 						multi ? (
 							<Sparkline
@@ -172,7 +176,7 @@ export function VariantF({
 				{ribbonEarned && (
 					<div className="mt-6">
 						<p className={cn(MONO_LABEL, "mb-2 text-fg-muted")}>
-							the mix moved {Math.round(series.maxDrift)} points — shown over
+							the mix moved {Math.round(series.maxDrift)} points - shown over
 							time
 						</p>
 						<MixRibbon points={points} height={90} legend={false} />

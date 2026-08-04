@@ -1,8 +1,9 @@
-// PROTOTYPE smoke check — delete with the prototype. Renders every variant at
+// PROTOTYPE smoke check - delete with the prototype. Renders every variant at
 // every dataset so a crash shows up here and not in the owner's browser.
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { DATASETS, readingsFor, toPoints } from "./fixtures";
+import { TIPS, TokenTip } from "./TokenTips";
 import { VariantA } from "./VariantA";
 import { VariantB } from "./VariantB";
 import { VariantC } from "./VariantC";
@@ -26,6 +27,22 @@ const VARIANTS = {
 	H: VariantH,
 	I: VariantI,
 };
+
+describe("token tips", () => {
+	for (const t of TIPS) {
+		for (const d of ["first", "real", "quarter"] as const) {
+			it(`${t.key} renders on ${d}`, () => {
+				const points = toPoints(readingsFor(d));
+				const { container } = render(
+					<TokenTip point={points[points.length - 1]} tip={t.key} />,
+				);
+				// A tip that silently renders "NaN" or "Infinity" is worse than none.
+				expect(container.textContent).not.toMatch(/NaN|Infinity|undefined/);
+				expect(container.textContent?.length).toBeGreaterThan(20);
+			});
+		}
+	}
+});
 
 describe("history prototype", () => {
 	for (const [key, Variant] of Object.entries(VARIANTS)) {

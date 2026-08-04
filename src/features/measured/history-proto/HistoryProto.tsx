@@ -1,5 +1,5 @@
 /**
- * PROTOTYPE — throwaway. Wayfinder ticket #80 (map #76).
+ * PROTOTYPE - throwaway. Wayfinder ticket #80 (map #76).
  *
  * Three variants of section 01 ("Actual Usage") once the stack page shows its
  * measured HISTORY and not only its newest snapshot. Mounted on the real
@@ -26,6 +26,7 @@ import {
 import { MEASURED_ANCHOR } from "../copy";
 import { MeasuredSection } from "../MeasuredSection";
 import { DATASETS, type DatasetKey, readingsFor, toPoints } from "./fixtures";
+import { TIPS, type TipKey } from "./TokenTips";
 import { VARIANT_A_NAME, VariantA } from "./VariantA";
 import { VARIANT_B_NAME, VariantB } from "./VariantB";
 import { VARIANT_C_NAME, VariantC } from "./VariantC";
@@ -43,7 +44,7 @@ import {
 
 /**
  * Round two starts at D. The owner picked C's direction and locked the headline
- * (tokens leading, spend under it, one hover area over both — see MetricBlock),
+ * (tokens leading, spend under it, one hover area over both - see MetricBlock),
  * so D, E and F share that block and differ only in how much space the model
  * mix earns. A, B and C stay listed for comparison.
  */
@@ -51,7 +52,7 @@ const ROUND_TWO = {
 	D: VariantD,
 	E: VariantE,
 	F: VariantF,
-	// Round three: E's structure with the emphasis inverted — solid current
+	// Round three: E's structure with the emphasis inverted - solid current
 	// bars in front, history receding.
 	G: VariantG,
 	H: VariantH,
@@ -83,7 +84,18 @@ const DATA_AXIS: ProtoAxis = {
 	options: DATASETS.map((d) => ({ key: d.key, label: d.label })),
 };
 
-const AXES = [VARIANT_AXIS, DATA_AXIS];
+/**
+ * Round four. The headline popup is its own question now: six ways to make a
+ * token count tangible. It is a third axis rather than six more variants,
+ * because the page layout does not change with it.
+ */
+const TIP_AXIS: ProtoAxis = {
+	param: "tip",
+	title: "tooltip",
+	options: TIPS.map((t) => ({ key: t.key, label: t.label })),
+};
+
+const AXES = [VARIANT_AXIS, DATA_AXIS, TIP_AXIS];
 
 export function MeasuredHistoryProto({
 	index,
@@ -97,6 +109,7 @@ export function MeasuredHistoryProto({
 	const [axes, set] = useProtoAxes(AXES);
 	const variant = axes.proto ?? "off";
 	const dataset = (axes.d ?? "real") as DatasetKey;
+	const tip = (axes.tip ?? "plain") as TipKey;
 	const points = toPoints(readingsFor(dataset));
 
 	const RoundTwo = ROUND_TWO[variant as keyof typeof ROUND_TWO];
@@ -104,7 +117,12 @@ export function MeasuredHistoryProto({
 	return (
 		<>
 			{RoundTwo ? (
-				<RoundTwo index={index} anchor={MEASURED_ANCHOR} points={points} />
+				<RoundTwo
+					index={index}
+					anchor={MEASURED_ANCHOR}
+					points={points}
+					tip={tip}
+				/>
 			) : variant === "A" ? (
 				<VariantA index={index} anchor={MEASURED_ANCHOR} points={points} />
 			) : variant === "B" ? (
@@ -120,7 +138,7 @@ export function MeasuredHistoryProto({
 				onChange={set}
 				note={
 					variant === "off"
-						? "wayfinder #80 · ← → variant · ↑ ↓ data"
+						? "wayfinder #80 · ← → variant · ↑ ↓ data · click for tooltip"
 						: "wayfinder #80 · FIXTURE DATA, not this stack"
 				}
 			/>

@@ -1,8 +1,8 @@
 /**
- * PROTOTYPE — Variants G, H, I. Wayfinder ticket #80, third round.
+ * PROTOTYPE - Variants G, H, I. Wayfinder ticket #80, third round.
  *
  * E won on structure: no mix chart, every model row carries its own history.
- * The correction is emphasis — in E the trail was drawn ON TOP of a 30%-opacity
+ * The correction is emphasis - in E the trail was drawn ON TOP of a 30%-opacity
  * share bar, so history read as the foreground. Here that is inverted:
  *
  *   THE CURRENT SHARE BAR IS SOLID, FULL COLOR AND THE TALLEST THING IN THE ROW.
@@ -30,6 +30,7 @@ import {
 	type ProtoPoint,
 } from "./fixtures";
 import { MetricBlock } from "./MetricBlock";
+import type { TipKey } from "./TokenTips";
 
 export const VARIANT_G_NAME = "Solid bars, trail behind";
 export const VARIANT_H_NAME = "Solid bars, trail beside";
@@ -43,19 +44,21 @@ type RowProps = {
 };
 
 // ---------------------------------------------------------------------------
-// The shell — identical in all three, so only the row treatment is under test.
+// The shell - identical in all three, so only the row treatment is under test.
 // ---------------------------------------------------------------------------
 
 function Shell({
 	index,
 	anchor,
 	points,
+	tip,
 	renderRow,
 	historyNote,
 }: {
 	index: number;
 	anchor: string;
 	points: ProtoPoint[];
+	tip?: TipKey;
 	renderRow: (props: RowProps) => React.ReactNode;
 	historyNote: string;
 }) {
@@ -75,9 +78,10 @@ function Shell({
 
 			<div className="grid gap-10 md:grid-cols-[minmax(0,22rem)_1fr]">
 				<div>
-					{/* The headline trail is a watermark too — history behind, not beside. */}
+					{/* The headline trail is a watermark too - history behind, not beside. */}
 					<MetricBlock
 						point={now}
+						tip={tip}
 						backdrop={
 							multi ? (
 								<Sparkline
@@ -204,7 +208,7 @@ function RowTail({
 						{Math.abs(Math.round(drift))}
 					</span>
 				) : (
-					<span className="text-fg-muted">—</span>
+					<span className="text-fg-muted">-</span>
 				)}
 			</span>
 		</>
@@ -212,23 +216,26 @@ function RowTail({
 }
 
 // ---------------------------------------------------------------------------
-// G — the trail sits BEHIND the solid bar, in the same track.
+// G - the trail sits BEHIND the solid bar, in the same track.
 // ---------------------------------------------------------------------------
 
 export function VariantG({
 	index,
 	anchor,
 	points,
+	tip,
 }: {
 	index: number;
 	anchor: string;
 	points: ProtoPoint[];
+	tip?: TipKey;
 }) {
 	return (
 		<Shell
 			index={index}
 			anchor={anchor}
 			points={points}
+			tip={tip}
 			historyNote="the faint fill behind each bar is that model's share over time"
 			renderRow={({ id, series, points: pts, multi }) => (
 				<div className="flex items-center gap-3 py-3">
@@ -262,23 +269,26 @@ export function VariantG({
 }
 
 // ---------------------------------------------------------------------------
-// H — the trail is evicted from the bar and parked at the row's edge, in gray.
+// H - the trail is evicted from the bar and parked at the row's edge, in gray.
 // ---------------------------------------------------------------------------
 
 export function VariantH({
 	index,
 	anchor,
 	points,
+	tip,
 }: {
 	index: number;
 	anchor: string;
 	points: ProtoPoint[];
+	tip?: TipKey;
 }) {
 	return (
 		<Shell
 			index={index}
 			anchor={anchor}
 			points={points}
+			tip={tip}
 			historyNote="the gray mark at the end of each row is that model's share over time"
 			renderRow={({ id, series, points: pts, multi }) => (
 				<div className="flex items-center gap-3 py-3">
@@ -312,23 +322,26 @@ export function VariantH({
 }
 
 // ---------------------------------------------------------------------------
-// I — history collapses to ONE marker: where this model's share started.
+// I - history collapses to ONE marker: where this model's share started.
 // ---------------------------------------------------------------------------
 
 export function VariantI({
 	index,
 	anchor,
 	points,
+	tip,
 }: {
 	index: number;
 	anchor: string;
 	points: ProtoPoint[];
+	tip?: TipKey;
 }) {
 	return (
 		<Shell
 			index={index}
 			anchor={anchor}
 			points={points}
+			tip={tip}
 			historyNote={`the hatched notch marks where each share stood on ${fmtDay(points[0].at)}`}
 			renderRow={({ id, series, points: pts, multi }) => {
 				const share = series.shareAt(series.newest, id);
@@ -401,7 +414,7 @@ function WasHereTick({ at }: { at: number }) {
  *
  * The sentence deliberately carries no arithmetic. "More Opus 5 than before" is
  * the thing a reader wants; the exact drift is already on the row, and repeating
- * it here only makes the popup read like a report. Public voice throughout — the
+ * it here only makes the popup read like a report. Public voice throughout - the
  * reader is a stranger, so it is "this machine", never "you".
  */
 function BarTooltip({

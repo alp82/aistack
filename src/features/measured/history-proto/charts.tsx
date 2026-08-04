@@ -1,5 +1,5 @@
 /**
- * PROTOTYPE — throwaway hand-rolled SVG. Wayfinder ticket #80.
+ * PROTOTYPE - throwaway hand-rolled SVG. Wayfinder ticket #80.
  *
  * No chart library is installed yet; ticket #91 builds the real one on TanStack
  * Charts with a validated palette. These primitives exist only so the variants
@@ -227,7 +227,7 @@ export function RateChart({
 }
 
 /**
- * The 100% stacked mix ribbon — which models the tokens went to, over time.
+ * The 100% stacked mix ribbon - which models the tokens went to, over time.
  *
  * This is the one series on the page that visibly moves at five days of
  * history: in the real data Opus 4.8 fell from 18% to 13% while Opus 5 rose
@@ -413,7 +413,7 @@ export function mixSeries(points: ProtoPoint[], topN = 5): MixSeries {
 	};
 }
 
-/** One 100%-stacked horizontal bar — the whole mix of one reading, in one row. */
+/** One 100%-stacked horizontal bar - the whole mix of one reading, in one row. */
 export function MixBar({
 	point,
 	series,
@@ -445,7 +445,7 @@ export function MixBar({
 	);
 }
 
-/** A delta chip. Neutral by default — a falling rolling window is not a fault. */
+/** A delta chip. Neutral by default - a falling rolling window is not a fault. */
 export function DeltaChip({
 	children,
 	tone = "neutral",
