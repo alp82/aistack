@@ -18,11 +18,11 @@ import { cn } from "@/lib/utils";
 import { MONO_LABEL } from "../copy";
 import { fmtUSD, PROTO_SERIES_COLORS, type ProtoPoint } from "./fixtures";
 import {
-	ClockIcon,
-	EiffelIcon,
-	GlassesBoltIcon,
-	GlobeWIcon,
+	EiffelTowerIcon,
+	HourglassIcon,
 	RoadIcon,
+	WikipediaIcon,
+	WizardHatIcon,
 } from "./TipIcons";
 import {
 	EIFFEL_M,
@@ -201,9 +201,7 @@ function BooksBody({ point }: { point: ProtoPoint }) {
 	const s = tokenScale(point.tokens);
 	return (
 		<>
-			<Headline icon={<GlassesBoltIcon />}>
-				{fmtCount(s.novels)} novels
-			</Headline>
+			<Headline icon={<WizardHatIcon />}>{fmtCount(s.novels)} novels</Headline>
 			<Sub>
 				{fmtCount(s.words)} words, at the length of an average novel. Read all
 				seven Harry Potter books back to back and you would have to do it{" "}
@@ -238,7 +236,7 @@ function TimeBody({ point }: { point: ProtoPoint }) {
 	const s = tokenScale(point.tokens);
 	return (
 		<>
-			<Headline icon={<ClockIcon />}>{fmtDuration(s.readYears)}</Headline>
+			<Headline icon={<HourglassIcon />}>{fmtDuration(s.readYears)}</Headline>
 			<Sub>
 				of reading, at a good silent pace, without ever stopping to sleep.
 			</Sub>
@@ -267,7 +265,7 @@ function WikiBody({ point }: { point: ProtoPoint }) {
 	const pct = s.wikipedia * 100;
 	return (
 		<>
-			<Headline icon={<GlobeWIcon />}>
+			<Headline icon={<WikipediaIcon />}>
 				{over
 					? `${s.wikipedia.toFixed(1)}x`
 					: `${pct < 1 ? pct.toFixed(2) : pct.toFixed(0)}%`}
@@ -308,7 +306,7 @@ function PaperBody({ point }: { point: ProtoPoint }) {
 
 	return (
 		<>
-			<Headline icon={<EiffelIcon />}>{fmtMeters(s.paperMeters)}</Headline>
+			<Headline icon={<EiffelTowerIcon />}>{fmtMeters(s.paperMeters)}</Headline>
 			<Sub>
 				printed double-sided, {fmtCount(s.pages)} pages make a stack that tall.{" "}
 				{ratio >= 1
