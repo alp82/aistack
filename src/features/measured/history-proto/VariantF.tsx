@@ -24,7 +24,7 @@ import {
 	harnessLabel,
 	type ProtoPoint,
 } from "./fixtures";
-import { type LookKey, MetricBlock } from "./MetricBlock";
+import { MetricBlock } from "./MetricBlock";
 import type { TipKey } from "./TokenTips";
 
 export const VARIANT_F_NAME = "Earn the space: mix only when it moved";
@@ -37,13 +37,11 @@ export function VariantF({
 	anchor,
 	points,
 	tip,
-	look,
 }: {
 	index: number;
 	anchor: string;
 	points: ProtoPoint[];
 	tip?: TipKey;
-	look?: LookKey;
 }) {
 	const now = points[points.length - 1];
 	const prev = points.length > 1 ? points[points.length - 2] : null;
@@ -71,7 +69,6 @@ export function VariantF({
 				<MetricBlock
 					point={now}
 					tip={tip}
-					look={look}
 					backdrop={
 						multi ? (
 							<Sparkline

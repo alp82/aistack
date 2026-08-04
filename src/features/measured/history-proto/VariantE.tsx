@@ -21,7 +21,7 @@ import {
 	harnessLabel,
 	type ProtoPoint,
 } from "./fixtures";
-import { type LookKey, MetricBlock } from "./MetricBlock";
+import { MetricBlock } from "./MetricBlock";
 import type { TipKey } from "./TokenTips";
 
 export const VARIANT_E_NAME = "Per-model trails: no mix chart at all";
@@ -31,13 +31,11 @@ export function VariantE({
 	anchor,
 	points,
 	tip,
-	look,
 }: {
 	index: number;
 	anchor: string;
 	points: ProtoPoint[];
 	tip?: TipKey;
-	look?: LookKey;
 }) {
 	const now = points[points.length - 1];
 	const prev = points.length > 1 ? points[points.length - 2] : null;
@@ -55,7 +53,7 @@ export function VariantE({
 
 			<div className="grid gap-10 md:grid-cols-[minmax(0,24rem)_1fr]">
 				<div>
-					<MetricBlock point={now} tip={tip} look={look}>
+					<MetricBlock point={now} tip={tip}>
 						{multi && (
 							<div className="mt-5 border-t border-stroke-subtle pt-3">
 								<Sparkline
