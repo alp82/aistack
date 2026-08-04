@@ -29,7 +29,7 @@ import {
 	harnessLabel,
 	type ProtoPoint,
 } from "./fixtures";
-import { MetricBlock, type RollKey } from "./MetricBlock";
+import { type LookKey, MetricBlock } from "./MetricBlock";
 import type { TipKey } from "./TokenTips";
 
 export const VARIANT_G_NAME = "Solid bars, trail behind";
@@ -52,7 +52,7 @@ function Shell({
 	anchor,
 	points,
 	tip,
-	roll,
+	look,
 	renderRow,
 	historyNote,
 }: {
@@ -60,7 +60,7 @@ function Shell({
 	anchor: string;
 	points: ProtoPoint[];
 	tip?: TipKey;
-	roll?: RollKey;
+	look?: LookKey;
 	renderRow: (props: RowProps) => React.ReactNode;
 	historyNote: string;
 }) {
@@ -84,7 +84,7 @@ function Shell({
 					<MetricBlock
 						point={now}
 						tip={tip}
-						roll={roll}
+						look={look}
 						backdrop={
 							multi ? (
 								<Sparkline
@@ -228,13 +228,13 @@ export function VariantG({
 	anchor,
 	points,
 	tip,
-	roll,
+	look,
 }: {
 	index: number;
 	anchor: string;
 	points: ProtoPoint[];
 	tip?: TipKey;
-	roll?: RollKey;
+	look?: LookKey;
 }) {
 	return (
 		<Shell
@@ -242,7 +242,7 @@ export function VariantG({
 			anchor={anchor}
 			points={points}
 			tip={tip}
-			roll={roll}
+			look={look}
 			historyNote="the faint fill behind each bar is that model's share over time"
 			renderRow={({ id, series, points: pts, multi }) => (
 				<div className="flex items-center gap-3 py-3">
@@ -284,13 +284,13 @@ export function VariantH({
 	anchor,
 	points,
 	tip,
-	roll,
+	look,
 }: {
 	index: number;
 	anchor: string;
 	points: ProtoPoint[];
 	tip?: TipKey;
-	roll?: RollKey;
+	look?: LookKey;
 }) {
 	return (
 		<Shell
@@ -298,7 +298,7 @@ export function VariantH({
 			anchor={anchor}
 			points={points}
 			tip={tip}
-			roll={roll}
+			look={look}
 			historyNote="the gray mark at the end of each row is that model's share over time"
 			renderRow={({ id, series, points: pts, multi }) => (
 				<div className="flex items-center gap-3 py-3">
@@ -340,13 +340,13 @@ export function VariantI({
 	anchor,
 	points,
 	tip,
-	roll,
+	look,
 }: {
 	index: number;
 	anchor: string;
 	points: ProtoPoint[];
 	tip?: TipKey;
-	roll?: RollKey;
+	look?: LookKey;
 }) {
 	return (
 		<Shell
@@ -354,7 +354,7 @@ export function VariantI({
 			anchor={anchor}
 			points={points}
 			tip={tip}
-			roll={roll}
+			look={look}
 			historyNote={`the hatched notch marks where each share stood on ${fmtDay(points[0].at)}`}
 			renderRow={({ id, series, points: pts, multi }) => {
 				const share = series.shareAt(series.newest, id);

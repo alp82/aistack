@@ -8,33 +8,34 @@
  *   - Spend sits below it, a bit smaller, over the same width.
  *   - One hover area covers BOTH numbers and opens the site's usual animated
  *     popup, which says the dollar figure is not real money spent.
+ *   - CLICKING THE BLOCK deals the next framing. No separate button, because a
+ *     control beside the number sat too far from what it changed.
  *
- * What varies between D, E and F is how history and the model mix are
- * expressed around this block - not the block itself.
- *
- * The one thing still under test here is HOW A READER REROLLS THE POPUP. The
- * corner dice sat too far from what it changed, so `roll=` offers four
- * treatments, and every one of them is invisible until the block is hovered.
+ * The open question is only what that click LOOKS like before you make it.
+ * Six affordances, on the `look=` axis, every one of them invisible until the
+ * block is hovered.
  */
-import { Dices, RefreshCw } from "lucide-react";
+import { Dices } from "lucide-react";
 import HoverCard from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 import { MONO_LABEL } from "../copy";
 import { fmtTokens, fmtUSD, type ProtoPoint } from "./fixtures";
 import { type TipKey, TokenTip, useTipDeck } from "./TokenTips";
 
-export type RollKey = "inline" | "under" | "block" | "hover";
+export type LookKey = "hint" | "dice" | "frame" | "chip" | "underline" | "lift";
 
-export const ROLLS: { key: RollKey; label: string }[] = [
-	{ key: "inline", label: "dice beside the number" },
-	{ key: "under", label: "strip along the bottom edge" },
-	{ key: "block", label: "click anywhere on the block" },
-	{ key: "hover", label: "no control, each hover deals the next" },
+export const LOOKS: { key: LookKey; label: string }[] = [
+	{ key: "hint", label: "corner text: click to reroll" },
+	{ key: "dice", label: "dice in the corner, no words" },
+	{ key: "frame", label: "the border turns lime and dashed" },
+	{ key: "chip", label: "a bordered chip at the bottom" },
+	{ key: "underline", label: "the number gets a dashed underline" },
+	{ key: "lift", label: "the block lifts on a brutal shadow" },
 ];
 
 /** Hidden until the block is hovered, per the owner's rule. */
 const ON_HOVER =
-	"opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-visible:opacity-100";
+	"opacity-0 transition-opacity duration-150 group-hover:opacity-100";
 
 export function MetricBlock({
 	point,
@@ -42,7 +43,7 @@ export function MetricBlock({
 	backdrop,
 	className,
 	tip,
-	roll = "inline",
+	look = "hint",
 }: {
 	point: ProtoPoint;
 	/** Trail rendered inside the hover area, under the two numbers. */
@@ -52,8 +53,8 @@ export function MetricBlock({
 	className?: string;
 	/** Pins one framing. Left undefined, the popup deals from a shuffled deck. */
 	tip?: TipKey;
-	/** How the reader asks for another framing. */
-	roll?: RollKey;
+	/** How the block announces that clicking it deals another framing. */
+	look?: LookKey;
 }) {
 	const deck = useTipDeck(tip);
 	const canRoll = deck.shuffling;
@@ -78,15 +79,20 @@ export function MetricBlock({
 				/>
 			)}
 		>
-			{/* biome-ignore lint/a11y/noStaticElementInteractions: prototype-only reroll surface, superseded by the chosen `roll` treatment */}
+			{/* biome-ignore lint/a11y/noStaticElementInteractions: prototype-only click surface; the shipped version gets a real button */}
 			{/* biome-ignore lint/a11y/useKeyWithClickEvents: same */}
 			<div
+				onClick={canRoll ? deck.next : undefined}
 				className={cn(
-					"group relative w-full border border-transparent px-3 py-3 transition-colors hover:border-stroke-subtle hover:bg-bg-panel/40",
-					canRoll && roll === "block" ? "cursor-pointer" : "cursor-help",
+					"group relative w-full border px-3 py-3 transition-all duration-150",
+					canRoll ? "cursor-pointer" : "cursor-help",
+					// The resting state is identical in every look. Only the hover differs.
+					look === "frame" && canRoll
+						? "border-transparent hover:border-dashed hover:border-accent-lime hover:bg-accent-lime/5"
+						: look === "lift" && canRoll
+							? "border-transparent hover:-translate-x-[3px] hover:-translate-y-[3px] hover:border-stroke-strong hover:shadow-[3px_3px_0_var(--accent-lime)]"
+							: "border-transparent hover:border-stroke-subtle hover:bg-bg-panel/40",
 				)}
-				onClick={canRoll && roll === "block" ? deck.next : undefined}
-				onMouseEnter={canRoll && roll === "hover" ? deck.next : undefined}
 			>
 				{/* The backdrop stretches to the block's bottom edge. Letterboxed, its
 				    fill stopped mid-block and read as a box around part of the text. */}
@@ -99,25 +105,29 @@ export function MetricBlock({
 					</div>
 				)}
 
-				<p className="relative flex items-center gap-3 font-mono text-5xl font-black leading-none text-fg-primary md:text-6xl">
-					{fmtTokens(point.tokens)}
-					{canRoll && roll === "inline" && (
-						<button
-							type="button"
-							title="another way to picture it"
-							aria-label="another way to picture it"
-							onClick={(e) => {
-								e.stopPropagation();
-								deck.next();
-							}}
-							className={cn(
-								ON_HOVER,
-								"cursor-pointer border border-stroke-subtle p-1.5 text-fg-muted hover:border-accent-lime hover:text-accent-lime",
-							)}
-						>
-							<Dices size={16} />
-						</button>
-					)}
+				{canRoll && look === "dice" && (
+					<span
+						aria-hidden="true"
+						className={cn(
+							ON_HOVER,
+							"pointer-events-none absolute right-3 top-3 text-accent-lime",
+						)}
+					>
+						<Dices size={18} />
+					</span>
+				)}
+
+				<p className="relative font-mono text-5xl font-black leading-none text-fg-primary md:text-6xl">
+					<span
+						className={cn(
+							"inline-block border-b-2 border-transparent pb-1",
+							canRoll &&
+								look === "underline" &&
+								"transition-colors group-hover:border-dashed group-hover:border-accent-lime",
+						)}
+					>
+						{fmtTokens(point.tokens)}
+					</span>
 				</p>
 				<p className={cn(MONO_LABEL, "relative mt-2 text-fg-muted")}>
 					tokens · last {point.windowDays} days
@@ -132,26 +142,23 @@ export function MetricBlock({
 
 				{children}
 
-				{canRoll && roll === "under" && (
-					<button
-						type="button"
-						onClick={(e) => {
-							e.stopPropagation();
-							deck.next();
-						}}
+				{canRoll && look === "chip" && (
+					<span
+						aria-hidden="true"
 						className={cn(
 							ON_HOVER,
 							MONO_LABEL,
-							"relative mt-3 flex w-full cursor-pointer items-center justify-center gap-2 border border-stroke-subtle py-1.5 text-fg-muted hover:border-accent-lime hover:text-accent-lime",
+							"relative mt-4 inline-flex items-center gap-2 border border-accent-lime/50 px-2.5 py-1 text-accent-lime",
 						)}
 					>
-						<RefreshCw size={11} />
+						<Dices size={12} />
 						another way to picture it
-					</button>
+					</span>
 				)}
 
-				{canRoll && roll === "block" && (
-					<p
+				{canRoll && look === "hint" && (
+					<span
+						aria-hidden="true"
 						className={cn(
 							ON_HOVER,
 							MONO_LABEL,
@@ -159,7 +166,7 @@ export function MetricBlock({
 						)}
 					>
 						click to reroll
-					</p>
+					</span>
 				)}
 			</div>
 		</HoverCard>
