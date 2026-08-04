@@ -92,7 +92,10 @@ const DATA_AXIS: ProtoAxis = {
 const TIP_AXIS: ProtoAxis = {
 	param: "tip",
 	title: "tooltip",
-	options: TIPS.map((t) => ({ key: t.key, label: t.label })),
+	options: [
+		{ key: "shuffle", label: "shuffle: one at a time, roll for another" },
+		...TIPS.map((t) => ({ key: t.key, label: t.label })),
+	],
 };
 
 const AXES = [VARIANT_AXIS, DATA_AXIS, TIP_AXIS];
@@ -109,7 +112,9 @@ export function MeasuredHistoryProto({
 	const [axes, set] = useProtoAxes(AXES);
 	const variant = axes.proto ?? "off";
 	const dataset = (axes.d ?? "real") as DatasetKey;
-	const tip = (axes.tip ?? "plain") as TipKey;
+	// `shuffle` is the default: the popup deals from a shuffled deck and the
+	// dice on the block advance it. Any other value pins one framing.
+	const tip = axes.tip === "shuffle" ? undefined : (axes.tip as TipKey);
 	const points = toPoints(readingsFor(dataset));
 
 	const RoundTwo = ROUND_TWO[variant as keyof typeof ROUND_TWO];

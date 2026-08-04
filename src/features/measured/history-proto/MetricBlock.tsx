@@ -12,18 +12,19 @@
  * What varies between D, E and F is how history and the model mix are
  * expressed around this block - not the block itself.
  */
+import { Dices } from "lucide-react";
 import HoverCard from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 import { MONO_LABEL } from "../copy";
 import { fmtTokens, fmtUSD, type ProtoPoint } from "./fixtures";
-import { type TipKey, TokenTip } from "./TokenTips";
+import { type TipKey, TokenTip, useTipDeck } from "./TokenTips";
 
 export function MetricBlock({
 	point,
 	children,
 	backdrop,
 	className,
-	tip = "plain",
+	tip,
 }: {
 	point: ProtoPoint;
 	/** Trail rendered inside the hover area, under the two numbers. */
@@ -31,9 +32,11 @@ export function MetricBlock({
 	/** Trail rendered BEHIND the numbers, so history costs no vertical space. */
 	backdrop?: React.ReactNode;
 	className?: string;
-	/** Which framing the popup uses to make the token count tangible. */
+	/** Pins one framing. Left undefined, the popup deals from a shuffled deck. */
 	tip?: TipKey;
 }) {
+	const deck = useTipDeck(tip);
+
 	return (
 		<HoverCard
 			mode="wrapper"
@@ -44,11 +47,19 @@ export function MetricBlock({
 			maxOffset={8}
 			offset={12}
 			className={cn("w-full", className)}
-			renderContent={() => <TokenTip point={point} tip={tip} />}
+			renderContent={() => (
+				<TokenTip
+					point={point}
+					tip={deck.tip}
+					index={deck.index}
+					total={deck.total}
+					shuffling={deck.shuffling}
+				/>
+			)}
 		>
 			{/* The hover area is the whole block, so the tooltip explains the pair
 			    and not just the dollar line. */}
-			<div className="relative w-full cursor-help border border-transparent px-3 py-3 transition-colors hover:border-stroke-subtle hover:bg-bg-panel/40">
+			<div className="group relative w-full cursor-help border border-transparent px-3 py-3 transition-colors hover:border-stroke-subtle hover:bg-bg-panel/40">
 				{backdrop && (
 					<div
 						aria-hidden="true"
@@ -57,6 +68,24 @@ export function MetricBlock({
 						{backdrop}
 					</div>
 				)}
+
+				{/* The dice sit ON THE BLOCK, not in the popup: the hover surface is
+				    pointer-events-none, so a button inside it could never be clicked. */}
+				{deck.shuffling && (
+					<button
+						type="button"
+						title="another way to picture it"
+						aria-label="another way to picture it"
+						onClick={(e) => {
+							e.stopPropagation();
+							deck.next();
+						}}
+						className="absolute right-2 top-2 z-10 cursor-pointer border border-stroke-subtle p-1.5 text-fg-muted opacity-40 transition-all hover:border-accent-lime hover:text-accent-lime focus-visible:opacity-100 group-hover:opacity-100"
+					>
+						<Dices size={14} />
+					</button>
+				)}
+
 				<p className="relative font-mono text-5xl font-black leading-none text-fg-primary md:text-6xl">
 					{fmtTokens(point.tokens)}
 				</p>
@@ -76,6 +105,3 @@ export function MetricBlock({
 		</HoverCard>
 	);
 }
-
-// The popup itself lives in TokenTips.tsx, because its whole job is now under
-// test: six ways to make a token count tangible, switchable with `tip=`.

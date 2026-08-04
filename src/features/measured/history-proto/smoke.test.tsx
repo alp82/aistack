@@ -34,7 +34,13 @@ describe("token tips", () => {
 			it(`${t.key} renders on ${d}`, () => {
 				const points = toPoints(readingsFor(d));
 				const { container } = render(
-					<TokenTip point={points[points.length - 1]} tip={t.key} />,
+					<TokenTip
+						point={points[points.length - 1]}
+						tip={t.key}
+						index={0}
+						total={TIPS.length}
+						shuffling
+					/>,
 				);
 				// A tip that silently renders "NaN" or "Infinity" is worse than none.
 				expect(container.textContent).not.toMatch(/NaN|Infinity|undefined/);

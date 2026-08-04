@@ -1,15 +1,19 @@
 /**
- * PROTOTYPE - tooltip variations for the headline token count.
- * Wayfinder ticket #80, fourth round.
+ * PROTOTYPE - the headline popup. Wayfinder ticket #80, fifth round.
  *
- * "4.71B tokens" means nothing to a reader. Each tip below converts it into
- * something they have held, read, said or walked past. Flip between them with
- * the `tip=` axis on the prototype switcher.
+ * "4.71B tokens" means nothing to a reader, so every card converts it into
+ * something they have held, read, said or walked past. One framing at a time,
+ * never a pile of them, and the dice button on the block deals the next one.
  *
- * Every one of them carries the same footnote, because every one of them rests
- * on the same soft assumption: roughly 0.75 English words per token. The fun is
- * allowed. Pretending to precision is not.
+ * THE SHELL CARRIES THE FACTS, THE BODY CARRIES THE FEELING. Every card opens
+ * with the full token count and the window, and closes with the price caveat
+ * and the words-per-token rule. That is what the old "plain" card used to say
+ * on its own, so it no longer needs to be a card.
+ *
+ * Every framing rests on the same soft assumption: roughly 0.75 English words
+ * per token. The fun is allowed. Pretending to precision is not.
  */
+import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { MONO_LABEL } from "../copy";
 import { fmtUSD, PROTO_SERIES_COLORS, type ProtoPoint } from "./fixtures";
@@ -21,51 +25,116 @@ import {
 	tokenScale,
 } from "./tokenScale";
 
-export type TipKey = "plain" | "books" | "time" | "wiki" | "paper" | "all";
+export type TipKey = "books" | "time" | "wiki" | "paper" | "road";
 
 export const TIPS: { key: TipKey; label: string }[] = [
-	{ key: "plain", label: "plain: what these numbers are" },
 	{ key: "books", label: "books: a shelf of novels" },
-	{ key: "time", label: "time: years of reading out loud" },
+	{ key: "time", label: "time: years of reading" },
 	{ key: "wiki", label: "wikipedia: share of every article" },
-	{ key: "paper", label: "paper: printed, stacked, measured" },
-	{ key: "all", label: "everything: the whole pile" },
+	{ key: "paper", label: "paper: printed and stacked" },
+	{ key: "road", label: "road: pages laid end to end" },
 ];
 
-export function TokenTip({ point, tip }: { point: ProtoPoint; tip: TipKey }) {
-	if (tip === "plain") return <PlainTip point={point} />;
-	if (tip === "books") return <BooksTip point={point} />;
-	if (tip === "time") return <TimeTip point={point} />;
-	if (tip === "wiki") return <WikiTip point={point} />;
-	if (tip === "paper") return <PaperTip point={point} />;
-	return <EverythingTip point={point} />;
+const TIP_KEYS = TIPS.map((t) => t.key);
+
+// ---------------------------------------------------------------------------
+// The deck
+// ---------------------------------------------------------------------------
+
+function shuffled<T>(items: T[]): T[] {
+	const out = [...items];
+	for (let i = out.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[out[i], out[j]] = [out[j], out[i]];
+	}
+	return out;
+}
+
+/**
+ * One shuffled deck per page load, walked in order and looped.
+ *
+ * The shuffle happens in an effect, never in render, so the server and the
+ * first client render agree and hydration stays quiet. The deck's order is not
+ * rendered anywhere before that effect runs, so the swap is invisible.
+ *
+ * `pinned` comes from the prototype switcher and takes over completely, which
+ * is how a single framing gets inspected without fighting the dice.
+ */
+export function useTipDeck(pinned?: TipKey) {
+	const [deck, setDeck] = useState<TipKey[]>(TIP_KEYS);
+	const [dealt, setDealt] = useState(0);
+
+	useEffect(() => {
+		setDeck(shuffled(TIP_KEYS));
+		setDealt(0);
+	}, []);
+
+	const next = useCallback(() => setDealt((n) => n + 1), []);
+	const index = dealt % deck.length;
+
+	return {
+		tip: pinned ?? deck[index],
+		index,
+		total: deck.length,
+		next,
+		/** False when the switcher has pinned one framing. */
+		shuffling: !pinned,
+	};
 }
 
 // ---------------------------------------------------------------------------
-// Shared shell
+// The card
 // ---------------------------------------------------------------------------
 
-function Card({
-	title,
-	children,
-	footnote = true,
+export function TokenTip({
+	point,
+	tip,
+	index,
+	total,
+	shuffling,
 }: {
-	title: string;
-	children: React.ReactNode;
-	footnote?: boolean;
+	point: ProtoPoint;
+	tip: TipKey;
+	index?: number;
+	total?: number;
+	shuffling?: boolean;
 }) {
+	const body = BODIES[tip];
 	return (
 		<div className="border-[3px] border-stroke-strong bg-bg-panel p-4 shadow-[6px_6px_0_var(--stroke-strong)]">
-			<p className="mb-3 border-b-2 border-stroke-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-accent-lime">
-				{title}
+			<p className="mb-2 border-b-2 border-stroke-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-accent-lime">
+				{body.title}
 			</p>
-			{children}
-			{footnote && (
-				<p className="mt-3 border-t-2 border-dashed border-stroke-subtle pt-2 font-mono text-[10px] leading-relaxed text-fg-muted">
+
+			{/* The exact count, always, before any framing of it. */}
+			<p className="font-mono text-sm font-bold leading-tight text-fg-primary">
+				{point.tokens.toLocaleString("en-US")}{" "}
+				<span className="font-normal text-fg-muted">tokens</span>
+			</p>
+			<p className={cn(MONO_LABEL, "mt-1 text-[10px] text-fg-muted")}>
+				{point.from} to {point.to}
+			</p>
+
+			<div className="mt-4">{body.render(point)}</div>
+
+			<div className="mt-3 space-y-1 border-t-2 border-dashed border-stroke-subtle pt-2">
+				{point.usd !== null && (
+					<p className="text-xs leading-relaxed text-fg-secondary">
+						<span className="font-bold text-accent-lime">Not money spent.</span>{" "}
+						{fmtUSD(point.usd)} is what those tokens would cost at public list
+						prices.
+					</p>
+				)}
+				<p className="font-mono text-[10px] leading-relaxed text-fg-muted">
 					rough: about 0.75 words per token. Code and cached traffic do not obey
-					that, so treat it as a feeling, not a figure.
+					that, so treat it as a feeling and not a figure.
+					{shuffling && index !== undefined && total !== undefined && (
+						<span className="ml-1 text-fg-secondary">
+							({index + 1} of {total}, roll for another)
+						</span>
+					)}
 				</p>
-			)}
+			</div>
 		</div>
 	);
 }
@@ -85,45 +154,32 @@ function Sub({ children }: { children: React.ReactNode }) {
 }
 
 // ---------------------------------------------------------------------------
-// plain: the baseline, no fun facts at all
+// The framings. One comparison each, never two - a card that offers a choice
+// of yardsticks makes the reader do the work the card was supposed to do.
 // ---------------------------------------------------------------------------
 
-function PlainTip({ point }: { point: ProtoPoint }) {
-	return (
-		<Card title="What these numbers are" footnote={false}>
-			<p className="text-sm leading-relaxed text-fg-secondary">
-				<span className="font-mono font-bold text-fg-primary">
-					{point.tokens.toLocaleString("en-US")}
-				</span>{" "}
-				tokens, measured between {point.from} and {point.to}.
-			</p>
-			{point.usd !== null && (
-				<p className="mt-2 text-sm leading-relaxed text-fg-secondary">
-					<span className="font-bold text-accent-lime">Not money spent.</span>{" "}
-					It is what those tokens would cost at public list prices.
-				</p>
-			)}
-		</Card>
-	);
-}
-
-// ---------------------------------------------------------------------------
-// books: a shelf you can picture
-// ---------------------------------------------------------------------------
+const BODIES: Record<
+	TipKey,
+	{ title: string; render: (point: ProtoPoint) => React.ReactNode }
+> = {
+	books: { title: "In books", render: (p) => <BooksBody point={p} /> },
+	time: { title: "In human time", render: (p) => <TimeBody point={p} /> },
+	wiki: { title: "Against Wikipedia", render: (p) => <WikiBody point={p} /> },
+	paper: { title: "On paper", render: (p) => <PaperBody point={p} /> },
+	road: { title: "End to end", render: (p) => <RoadBody point={p} /> },
+};
 
 const SPINES = 26;
 
-function BooksTip({ point }: { point: ProtoPoint }) {
+function BooksBody({ point }: { point: ProtoPoint }) {
 	const s = tokenScale(point.tokens);
-	const perSpine = s.novels / SPINES;
-
 	return (
-		<Card title="In books">
+		<>
 			<Big>{fmtCount(s.novels)} novels</Big>
 			<Sub>
-				{fmtCount(s.words)} words, at the length of an average novel. That is{" "}
-				{fmtCount(s.warAndPeace)} copies of War and Peace, or{" "}
-				{fmtCount(s.harryPotter)} runs through all seven Harry Potter books.
+				{fmtCount(s.words)} words, at the length of an average novel. Read all
+				seven Harry Potter books back to back and you would have to do it{" "}
+				{fmtCount(s.harryPotter)} times over.
 			</Sub>
 
 			{/* A shelf. Deterministic heights, so the same count draws the same shelf. */}
@@ -144,25 +200,19 @@ function BooksTip({ point }: { point: ProtoPoint }) {
 				})}
 			</div>
 			<p className={cn(MONO_LABEL, "mt-2 text-[10px] text-fg-muted")}>
-				each spine ≈ {fmtCount(perSpine)} novels
+				each spine is about {fmtCount(s.novels / SPINES)} novels
 			</p>
-		</Card>
+		</>
 	);
 }
 
-// ---------------------------------------------------------------------------
-// time: how long a person would need
-// ---------------------------------------------------------------------------
-
-function TimeTip({ point }: { point: ProtoPoint }) {
+function TimeBody({ point }: { point: ProtoPoint }) {
 	const s = tokenScale(point.tokens);
 	return (
-		<Card title="In human time">
+		<>
 			<Big>{fmtDuration(s.readYears)}</Big>
 			<Sub>
-				of reading, without sleeping, at a good silent pace. Say it out loud
-				instead and it takes {fmtDuration(s.speakYears)}. Type it yourself and
-				you need {fmtDuration(s.typeYears)}.
+				of reading, at a good silent pace, without ever stopping to sleep.
 			</Sub>
 
 			<dl className="mt-4 space-y-1.5">
@@ -170,7 +220,7 @@ function TimeTip({ point }: { point: ProtoPoint }) {
 				<TimeRow label="read out loud" value={fmtDuration(s.speakYears)} />
 				<TimeRow label="typed by hand" value={fmtDuration(s.typeYears)} />
 			</dl>
-		</Card>
+		</>
 	);
 }
 
@@ -183,32 +233,21 @@ function TimeRow({ label, value }: { label: string; value: string }) {
 	);
 }
 
-// ---------------------------------------------------------------------------
-// wiki: the one reference everybody has a size for
-// ---------------------------------------------------------------------------
-
-function WikiTip({ point }: { point: ProtoPoint }) {
+function WikiBody({ point }: { point: ProtoPoint }) {
 	const s = tokenScale(point.tokens);
 	const over = s.wikipedia >= 1;
 	const pct = s.wikipedia * 100;
-
 	return (
-		<Card title="Against Wikipedia">
+		<>
 			<Big>
 				{over
-					? `${s.wikipedia.toFixed(1)}×`
+					? `${s.wikipedia.toFixed(1)}x`
 					: `${pct < 1 ? pct.toFixed(2) : pct.toFixed(0)}%`}
 			</Big>
 			<Sub>
-				{over ? (
-					<>
-						more words than the entire English Wikipedia. Every article, every
-						edit war, every list of railway stations, {s.wikipedia.toFixed(1)}{" "}
-						times over.
-					</>
-				) : (
-					"of every word in the English Wikipedia. All 7 million articles come to about 4.9 billion words."
-				)}
+				{over
+					? `more words than the whole English Wikipedia. Every article, every edit war, every list of railway stations, ${s.wikipedia.toFixed(1)} times over.`
+					: "of every word in the English Wikipedia. All 7 million articles come to about 4.9 billion words."}
 			</Sub>
 
 			<div className="mt-4">
@@ -228,46 +267,35 @@ function WikiTip({ point }: { point: ProtoPoint }) {
 					<span>all of Wikipedia</span>
 				</p>
 			</div>
-		</Card>
+		</>
 	);
 }
 
-// ---------------------------------------------------------------------------
-// paper: the physical pile
-// ---------------------------------------------------------------------------
-
-function PaperTip({ point }: { point: ProtoPoint }) {
+function PaperBody({ point }: { point: ProtoPoint }) {
 	const s = tokenScale(point.tokens);
-	const tall = s.paperMeters >= EIFFEL_M;
 	const ratio = s.paperMeters / EIFFEL_M;
 	const maxH = 64;
 	const stackH = Math.max(2, Math.min(maxH, maxH * Math.min(1, ratio)));
 	const towerH = Math.max(2, Math.min(maxH, maxH / Math.max(1, ratio)));
 
 	return (
-		<Card title="On paper">
+		<>
 			<Big>{fmtMeters(s.paperMeters)}</Big>
 			<Sub>
-				printed double-sided, that is {fmtCount(s.pages)} pages in a stack{" "}
-				{fmtMeters(s.paperMeters)} tall.{" "}
-				{tall ? (
-					<>It clears the Eiffel Tower {ratio.toFixed(1)} times over.</>
-				) : (
-					<>
-						The Eiffel Tower is 330 m, so you are {(ratio * 100).toFixed(0)}% of
-						the way up.
-					</>
-				)}
+				printed double-sided, {fmtCount(s.pages)} pages make a stack that tall.{" "}
+				{ratio >= 1
+					? `It clears the Eiffel Tower ${ratio.toFixed(1)} times over.`
+					: `The Eiffel Tower is 330 m, so it reaches ${(ratio * 100).toFixed(0)}% of the way up.`}
 			</Sub>
 
 			<div className="mt-4 flex h-16 items-end gap-6 border-b-2 border-stroke-strong px-2">
-				<div className="flex flex-1 flex-col items-center justify-end">
+				<span className="flex flex-1 justify-center">
 					<span
 						className="w-8 bg-accent-lime"
 						style={{ height: `${stackH}px` }}
 					/>
-				</div>
-				<div className="flex flex-1 flex-col items-center justify-end">
+				</span>
+				<span className="flex flex-1 justify-center">
 					<span
 						className="w-8"
 						style={{
@@ -276,57 +304,42 @@ function PaperTip({ point }: { point: ProtoPoint }) {
 								"repeating-linear-gradient(135deg, var(--fg-muted) 0 2px, transparent 2px 5px)",
 						}}
 					/>
-				</div>
+				</span>
 			</div>
 			<p className={cn(MONO_LABEL, "mt-2 flex text-[10px] text-fg-muted")}>
 				<span className="flex-1 text-center">the stack</span>
 				<span className="flex-1 text-center">Eiffel Tower</span>
 			</p>
-		</Card>
+		</>
 	);
 }
 
-// ---------------------------------------------------------------------------
-// everything: no single framing wins, so show the pile
-// ---------------------------------------------------------------------------
-
-function EverythingTip({ point }: { point: ProtoPoint }) {
+function RoadBody({ point }: { point: ProtoPoint }) {
 	const s = tokenScale(point.tokens);
-	const facts = [
-		`${fmtCount(s.words)} words`,
-		`${fmtCount(s.novels)} novels`,
-		`${fmtCount(s.warAndPeace)} copies of War and Peace`,
-		s.wikipedia >= 1
-			? `${s.wikipedia.toFixed(1)}× the English Wikipedia`
-			: `${(s.wikipedia * 100).toFixed(0)}% of the English Wikipedia`,
-		`${fmtDuration(s.speakYears)} of talking without stopping`,
-		`${fmtMeters(s.paperMeters)} of paper, printed`,
-	];
-
 	return (
-		<Card title="Pick a way to feel it">
-			<Big>{fmtCount(s.words)}</Big>
-			<Sub>words, roughly. Which is also:</Sub>
-			<ul className="mt-3 list-none space-y-1 p-0">
-				{facts.slice(1).map((f) => (
-					<li
-						key={f}
-						className="flex gap-2 text-sm leading-relaxed text-fg-secondary"
-					>
-						<span aria-hidden="true" className="text-accent-lime">
-							›
-						</span>
-						{f}
-					</li>
-				))}
-			</ul>
-			{point.usd !== null && (
-				<p className="mt-3 text-sm leading-relaxed text-fg-secondary">
-					<span className="font-bold text-accent-lime">Not money spent.</span>{" "}
-					{fmtUSD(point.usd)} is what those tokens would cost at public list
-					prices.
-				</p>
-			)}
-		</Card>
+		<>
+			<Big>{fmtMeters(s.roadMeters)}</Big>
+			<Sub>
+				of paper, if you laid every printed page end to end along the ground.{" "}
+				{s.marathons >= 1
+					? `That is ${fmtCount(s.marathons)} marathons of reading material.`
+					: "That is not yet a marathon, but it is a long walk."}
+			</Sub>
+
+			{/* A road. The dashes are the pages. */}
+			<div className="mt-4 h-8 border-y-2 border-stroke-strong bg-bg-canvas">
+				<div
+					className="h-full w-full"
+					style={{
+						backgroundImage:
+							"repeating-linear-gradient(90deg, var(--accent-lime) 0 10px, transparent 10px 22px)",
+						opacity: 0.8,
+					}}
+				/>
+			</div>
+			<p className={cn(MONO_LABEL, "mt-2 text-[10px] text-fg-muted")}>
+				a marathon is 42.2 km
+			</p>
+		</>
 	);
 }

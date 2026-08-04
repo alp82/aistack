@@ -29,6 +29,8 @@ const TYPE_WPM = 40;
 const WORDS_PER_PAGE = 500;
 /** Sheet thickness of ordinary 80gsm paper. */
 const SHEET_MM = 0.1;
+/** The long side of an A4 sheet, for pages laid end to end. */
+const A4_HEIGHT_M = 0.297;
 
 export const EIFFEL_M = 330;
 export const MARATHON_M = 42_195;
@@ -48,6 +50,10 @@ export type TokenScale = {
 	pages: number;
 	/** Height of the printed stack, double-sided, in meters. */
 	paperMeters: number;
+	/** The same pages laid end to end, in meters. */
+	roadMeters: number;
+	/** That length, counted in marathons. */
+	marathons: number;
 };
 
 export function tokenScale(tokens: number): TokenScale {
@@ -67,6 +73,8 @@ export function tokenScale(tokens: number): TokenScale {
 		typeYears: minutesToYears(words / TYPE_WPM),
 		pages,
 		paperMeters: (pages / 2) * SHEET_MM * 0.001,
+		roadMeters: (pages / 2) * A4_HEIGHT_M,
+		marathons: ((pages / 2) * A4_HEIGHT_M) / MARATHON_M,
 	};
 }
 
@@ -94,7 +102,9 @@ export function fmtDuration(years: number): string {
 }
 
 export function fmtMeters(m: number): string {
-	if (m >= 1000) return `${(m / 1000).toFixed(1)} km`;
+	const km = m / 1000;
+	if (km >= 100) return `${Math.round(km).toLocaleString("en-US")} km`;
+	if (km >= 1) return `${km.toFixed(1)} km`;
 	if (m >= 1) return `${Math.round(m).toLocaleString("en-US")} m`;
 	return `${Math.round(m * 100)} cm`;
 }
