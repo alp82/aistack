@@ -396,8 +396,13 @@ function WasHereTick({ at }: { at: number }) {
 }
 
 /**
- * One model's history, on hover. The row shows the current share; everything
- * about the past lives here, including what the notch means.
+ * One model's history, on hover: the trail, and one plain sentence saying which
+ * way it went.
+ *
+ * The sentence deliberately carries no arithmetic. "More Opus 5 than before" is
+ * the thing a reader wants; the exact drift is already on the row, and repeating
+ * it here only makes the popup read like a report. Public voice throughout — the
+ * reader is a stranger, so it is "this machine", never "you".
  */
 function BarTooltip({
 	id,
@@ -440,43 +445,32 @@ function BarTooltip({
 						className="w-full"
 						area
 					/>
-					<p
-						className={cn(
-							MONO_LABEL,
-							"mt-1.5 flex justify-between text-[10px] text-fg-muted",
-						)}
-					>
-						<span>{fmtDay(points[0].at)}</span>
-						<span>{points.length} readings</span>
-						<span>now</span>
+					<p className={cn(MONO_LABEL, "mt-1.5 text-[10px] text-fg-muted")}>
+						{points.length} readings since {fmtDay(points[0].at)}
 					</p>
 
-					<p className="mt-3 border-t-2 border-dashed border-stroke-subtle pt-2 text-xs leading-relaxed text-fg-muted">
+					<p className="mt-3 text-sm leading-relaxed text-fg-secondary">
 						{moved ? (
 							<>
-								<span className="font-bold text-fg-primary">The notch</span> on
-								the bar marks {(then * 100).toFixed(1)}% — this share on{" "}
-								{fmtDay(points[0].at)}. It has moved{" "}
+								This machine is using{" "}
 								<span
 									className={drift > 0 ? "text-accent-lime" : "text-orange-400"}
 								>
-									{drift > 0 ? "up" : "down"} {Math.abs(drift).toFixed(1)}{" "}
-									points
+									{drift > 0 ? "more" : "less"}
 								</span>{" "}
-								since.
+								{series.labelOf(id)} than before. The notch marks where it
+								started.
 							</>
 						) : (
 							<>
-								This share has held at about {(share * 100).toFixed(1)}% across
-								every reading, so no notch is drawn.
+								{series.labelOf(id)} has held about the same share throughout.
 							</>
 						)}
 					</p>
 				</>
 			) : (
-				<p className="text-xs leading-relaxed text-fg-muted">
-					One reading so far. A second sync starts this model's history, and
-					draws a notch where the share stood.
+				<p className="text-sm leading-relaxed text-fg-secondary">
+					One reading so far. The next sync starts this line.
 				</p>
 			)}
 		</div>

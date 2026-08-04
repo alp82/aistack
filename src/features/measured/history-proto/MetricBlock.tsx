@@ -74,11 +74,11 @@ export function MetricBlock({
 }
 
 /**
- * The one place the site explains what the dollar figure is.
+ * The one place the site explains what the dollar figure is: a conversion of
+ * measured tokens at published list prices, not a bill.
  *
- * It is a conversion of measured tokens at published list prices, not a bill.
- * Subscriptions, plan allowances and discounts are invisible from the machine,
- * so the real amount paid is almost always lower and we never claim it.
+ * Two sentences, no label/value table. The numbers are already an inch away
+ * under the reader's cursor, so restating them in a grid only adds furniture.
  */
 function MeasuredNumbersTooltip({ point }: { point: ProtoPoint }) {
 	return (
@@ -87,33 +87,19 @@ function MeasuredNumbersTooltip({ point }: { point: ProtoPoint }) {
 				What these numbers are
 			</p>
 
-			<div className="space-y-1 text-sm">
-				<Line label="tokens" value={point.tokens.toLocaleString("en-US")} />
-				{point.usd !== null && (
-					<Line label="at list prices" value={`≈${fmtUSD(point.usd)}`} />
-				)}
-				<Line label="window" value={`${point.from} → ${point.to}`} />
-			</div>
+			<p className="text-sm leading-relaxed text-fg-secondary">
+				<span className="font-mono font-bold text-fg-primary">
+					{point.tokens.toLocaleString("en-US")}
+				</span>{" "}
+				tokens, measured between {point.from} and {point.to}.
+			</p>
 
 			{point.usd !== null && (
-				<p className="mt-3 border-t-2 border-dashed border-stroke-subtle pt-2 text-xs leading-relaxed text-fg-muted">
-					<span className="font-bold text-accent-lime">Not money spent.</span>{" "}
-					It is what these tokens would cost at public list prices. A
-					subscription, an included allowance or a discount is invisible from
-					the machine, so the real bill is usually lower.
+				<p className="mt-2 text-sm leading-relaxed text-fg-secondary">
+					<span className="font-bold text-accent-lime">Not money spent</span> —
+					it is what those tokens would cost at public list prices.
 				</p>
 			)}
-		</div>
-	);
-}
-
-function Line({ label, value }: { label: string; value: string }) {
-	return (
-		<div className="flex items-baseline justify-between gap-3">
-			<span className="truncate text-fg-secondary">{label}</span>
-			<span className="shrink-0 font-mono text-xs font-bold text-fg-primary">
-				{value}
-			</span>
 		</div>
 	);
 }
