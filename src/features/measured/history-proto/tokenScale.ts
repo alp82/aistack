@@ -72,6 +72,8 @@ export const EARTH_KM = 40_075;
 /** Words in a feature film script, and its running time in minutes. */
 const FILM_WORDS = 20_000;
 const FILM_MINUTES = 110;
+/** The Lord of the Rings, extended editions, all three, in hours. */
+const LOTR_TRILOGY_HOURS = 11.37;
 
 export type TokenScale = {
 	tokens: number;
@@ -119,6 +121,8 @@ export type TokenScale = {
 	/** Feature film scripts, and the hours of cinema they would run to. */
 	films: number;
 	filmHours: number;
+	/** Those hours, counted in extended Lord of the Rings trilogies. */
+	lotrTrilogies: number;
 };
 
 export function tokenScale(tokens: number): TokenScale {
@@ -159,6 +163,8 @@ export function tokenScale(tokens: number): TokenScale {
 		earthLaps: (chars * CHAR_WIDTH_MM) / 1_000_000 / EARTH_KM,
 		films: words / FILM_WORDS,
 		filmHours: (words / FILM_WORDS) * (FILM_MINUTES / 60),
+		lotrTrilogies:
+			((words / FILM_WORDS) * (FILM_MINUTES / 60)) / LOTR_TRILOGY_HOURS,
 	};
 }
 

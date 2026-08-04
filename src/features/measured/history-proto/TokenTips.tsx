@@ -238,7 +238,7 @@ const BODIES: Record<TipKey, Body> = {
 		render: (p) => <RoadBody point={p} />,
 	},
 	keys: {
-		title: "In keystrokes",
+		title: "In keyboards",
 		Icon: KeyboardIcon,
 		render: (p) => <KeysBody point={p} />,
 	},
@@ -294,6 +294,65 @@ type BodyProps = { point: ProtoPoint };
 
 const SPINES = 26;
 
+/** The one phrase in a card's prose the reader is meant to leave with. */
+function Key({ children }: { children: React.ReactNode }) {
+	return <strong className="font-bold text-fg-primary">{children}</strong>;
+}
+
+/**
+ * A bar that survives values over 100%.
+ *
+ * The track is the LARGER of the value and its reference, so a stack at 1.3
+ * laps of the Earth fills the whole bar and the hatched notch marks where one
+ * lap falls. A bar clamped at 100% said "1.3 laps" over a full bar, which is
+ * the same picture it draws for 74 laps.
+ */
+function RatioBar({
+	ratio,
+	leftLabel,
+	rightLabel,
+}: {
+	ratio: number;
+	leftLabel: string;
+	rightLabel: string;
+}) {
+	const scale = Math.max(1, ratio);
+	const fill = (ratio / scale) * 100;
+	const mark = (1 / scale) * 100;
+	const over = ratio > 1;
+
+	return (
+		<div className="mt-4">
+			<div className="relative h-4 w-full border border-stroke-strong bg-bg-canvas">
+				<div
+					className="absolute inset-y-0 left-0 bg-accent-lime"
+					style={{ width: `${fill}%` }}
+				/>
+				{over && (
+					<span
+						aria-hidden="true"
+						className="absolute -top-1 -bottom-1 w-[5px] -translate-x-1/2"
+						style={{
+							left: `${mark}%`,
+							backgroundImage:
+								"repeating-linear-gradient(135deg, var(--fg-primary) 0 2px, var(--bg-canvas) 2px 4px)",
+						}}
+					/>
+				)}
+			</div>
+			<p
+				className={cn(
+					MONO_LABEL,
+					"mt-2 flex justify-between text-[10px] text-fg-muted",
+				)}
+			>
+				<span>{leftLabel}</span>
+				<span>{over ? `notch = ${rightLabel}` : rightLabel}</span>
+			</p>
+		</div>
+	);
+}
+
 function BooksBody({ point }: BodyProps) {
 	const s = tokenScale(point.tokens);
 	return (
@@ -302,7 +361,7 @@ function BooksBody({ point }: BodyProps) {
 			<Sub>
 				{fmtCount(s.words)} words, at the length of an average novel. Read all
 				seven Harry Potter books back to back and you would have to do it{" "}
-				{fmtCount(s.harryPotter)} times over.
+				<Key>{fmtCount(s.harryPotter)} times over</Key>.
 			</Sub>
 
 			{/* A shelf. Deterministic heights, so the same count draws the same shelf. */}
@@ -335,7 +394,8 @@ function TimeBody({ point }: BodyProps) {
 		<>
 			<Headline>{fmtDuration(s.readYears)}</Headline>
 			<Sub>
-				of reading, at a good silent pace, without ever stopping to sleep.
+				of reading, at a good silent pace,{" "}
+				<Key>without ever stopping to sleep</Key>.
 			</Sub>
 
 			<dl className="mt-4 space-y-1.5">
@@ -368,28 +428,25 @@ function WikiBody({ point }: BodyProps) {
 					: `${pct < 1 ? pct.toFixed(2) : pct.toFixed(0)}%`}
 			</Headline>
 			<Sub>
-				{over
-					? `more words than the whole English Wikipedia. Every article, every edit war, every list of railway stations, ${s.wikipedia.toFixed(1)} times over.`
-					: "of every word in the English Wikipedia. All 7 million articles come to about 4.9 billion words."}
+				{over ? (
+					<>
+						more words than the whole English Wikipedia. Every article, every
+						edit war, every list of railway stations,{" "}
+						<Key>{s.wikipedia.toFixed(1)} times over</Key>.
+					</>
+				) : (
+					<>
+						of every word in the English Wikipedia. All 7 million articles come
+						to <Key>about 4.9 billion words</Key>.
+					</>
+				)}
 			</Sub>
 
-			<div className="mt-4">
-				<div className="h-4 w-full border border-stroke-strong bg-bg-canvas">
-					<div
-						className="h-full bg-accent-lime"
-						style={{ width: `${Math.min(100, pct)}%` }}
-					/>
-				</div>
-				<p
-					className={cn(
-						MONO_LABEL,
-						"mt-2 flex justify-between text-[10px] text-fg-muted",
-					)}
-				>
-					<span>this stack</span>
-					<span>all of Wikipedia</span>
-				</p>
-			</div>
+			<RatioBar
+				ratio={s.wikipedia}
+				leftLabel="this stack"
+				rightLabel="all of Wikipedia"
+			/>
 		</>
 	);
 }
@@ -406,9 +463,16 @@ function PaperBody({ point }: BodyProps) {
 			<Headline>{fmtMeters(s.paperMeters)}</Headline>
 			<Sub>
 				printed double-sided, {fmtCount(s.pages)} pages make a stack that tall.{" "}
-				{ratio >= 1
-					? `It clears the Eiffel Tower ${ratio.toFixed(1)} times over.`
-					: `The Eiffel Tower is 330 m, so it reaches ${(ratio * 100).toFixed(0)}% of the way up.`}
+				{ratio >= 1 ? (
+					<>
+						It <Key>clears the Eiffel Tower {ratio.toFixed(1)} times over</Key>.
+					</>
+				) : (
+					<>
+						The Eiffel Tower is 330 m, so it reaches{" "}
+						<Key>{(ratio * 100).toFixed(0)}% of the way up</Key>.
+					</>
+				)}
 			</Sub>
 
 			<div className="mt-4 flex h-16 items-end gap-6 border-b-2 border-stroke-strong px-2">
@@ -444,9 +508,16 @@ function RoadBody({ point }: BodyProps) {
 			<Headline>{fmtMeters(s.roadMeters)}</Headline>
 			<Sub>
 				of paper, if you laid every printed page end to end along the ground.{" "}
-				{s.marathons >= 1
-					? `That is ${fmtCount(s.marathons)} marathons of reading material.`
-					: "That is not yet a marathon, but it is a long walk."}
+				{s.marathons >= 1 ? (
+					<>
+						That is <Key>{fmtCount(s.marathons)} marathons</Key> of reading
+						material.
+					</>
+				) : (
+					<>
+						That is <Key>not yet a marathon</Key>, but it is a long walk.
+					</>
+				)}
 			</Sub>
 
 			{/* A road. The dashes are the pages. */}
@@ -473,13 +544,18 @@ function KeysBody({ point }: BodyProps) {
 	const s = tokenScale(point.tokens);
 	return (
 		<>
-			<Headline>{fmtCount(s.keystrokes)} keystrokes</Headline>
-			<Sub>
-				to type every character of it by hand. A keyboard switch is rated for
-				about 50 million presses, so{" "}
+			<Headline>
 				{s.keyboards >= 1
-					? `that is ${fmtCount(s.keyboards)} keyboards worn out.`
-					: `that is ${Math.round(s.keyboards * 100)}% of one keyboard's whole life.`}
+					? `${fmtCount(s.keyboards)} keyboards`
+					: "one keyboard"}
+			</Headline>
+			<Sub>
+				worn out typing it. Every character by hand comes to{" "}
+				<Key>{fmtCount(s.keystrokes)} keystrokes</Key>, and a switch is rated
+				for about 50 million presses
+				{s.keyboards >= 1
+					? "."
+					: `, so this would use up ${Math.round(s.keyboards * 100)}% of one.`}
 			</Sub>
 		</>
 	);
@@ -491,9 +567,9 @@ function FloppyBody({ point }: BodyProps) {
 		<>
 			<Headline>{fmtCount(s.floppies)} floppies</Headline>
 			<Sub>
-				As plain text the whole thing is {fmtBytes(s.bytes)}. The last floppy
-				disks were made in 2011, so you would be buying {fmtCount(s.floppies)}{" "}
-				of them second hand.
+				As plain text the whole thing is <Key>{fmtBytes(s.bytes)}</Key>. The
+				last floppy disks were made in 2011, so you would be buying them second
+				hand.
 			</Sub>
 		</>
 	);
@@ -505,8 +581,9 @@ function BardBody({ point }: BodyProps) {
 		<>
 			<Headline>{fmtCount(s.shakespeare)} times</Headline>
 			<Sub>
-				the complete works of Shakespeare. Every play, every sonnet, about
-				885,000 words, {fmtCount(s.shakespeare)} times over.
+				the complete works of Shakespeare. Every play and every sonnet he wrote
+				comes to about 885,000 words, and this is{" "}
+				<Key>{fmtCount(s.shakespeare)} of those</Key>.
 			</Sub>
 		</>
 	);
@@ -520,12 +597,19 @@ function ScribeBody({ point }: BodyProps) {
 			<Headline>{fmtDuration(s.scribeYears)}</Headline>
 			<Sub>
 				of a medieval scribe copying 3,000 words a day, every working day.
-				{s.scribeYears >= 100 &&
-					` To have finished by now, they would have had to start in ${
-						startYear < 0
-							? `${Math.abs(startYear)} BC`
-							: `the year ${startYear}`
-					}.`}
+				{s.scribeYears >= 100 && (
+					<>
+						{" "}
+						To have finished by now, they would have had to{" "}
+						<Key>
+							start in{" "}
+							{startYear < 0
+								? `${Math.abs(startYear)} BC`
+								: `the year ${startYear}`}
+						</Key>
+						.
+					</>
+				)}
 			</Sub>
 		</>
 	);
@@ -539,7 +623,7 @@ function TextsBody({ point }: BodyProps) {
 			<Headline>{fmtCount(s.texts)} texts</Headline>
 			<Sub>
 				at 160 characters each. Send one every minute, day and night, and you
-				would be at it for {fmtDuration(yearsAtOnePerMinute)}.
+				would be at it for <Key>{fmtDuration(yearsAtOnePerMinute)}</Key>.
 			</Sub>
 		</>
 	);
@@ -554,7 +638,8 @@ function TreesBody({ point }: BodyProps) {
 			</Headline>
 			<Sub>
 				if every page were really printed, double-sided. One tree gives about
-				8,300 sheets of A4, and this needs {fmtCount(s.pages / 2)} of them.
+				8,300 sheets of A4, and this needs{" "}
+				<Key>{fmtCount(s.pages / 2)} of them</Key>.
 			</Sub>
 		</>
 	);
@@ -567,10 +652,14 @@ function PowerBody({ point }: BodyProps) {
 			<Headline>{fmtCount(s.kwh)} kWh</Headline>
 			<Sub>
 				of electricity, give or take a lot. The same charge would drive an
-				electric car {fmtKm(s.evKm)}
-				{s.homeYears >= 1 / 24
-					? `, or run a European home for ${fmtDuration(s.homeYears)}.`
-					: "."}
+				electric car <Key>{fmtKm(s.evKm)}</Key>
+				{s.homeYears >= 1 / 24 ? (
+					<>
+						, or run a European home for <Key>{fmtDuration(s.homeYears)}</Key>.
+					</>
+				) : (
+					"."
+				)}
 			</Sub>
 		</>
 	);
@@ -587,7 +676,8 @@ function LifetimesBody({ point }: BodyProps) {
 			</Headline>
 			<Sub>
 				of reading. Somebody who finishes a book a month for sixty years gets
-				through about 720 of them. This is {fmtCount(s.novels)} novels.
+				through about <Key>720 books</Key>, and this is {fmtCount(s.novels)}{" "}
+				novels.
 			</Sub>
 		</>
 	);
@@ -605,27 +695,15 @@ function EquatorBody({ point }: BodyProps) {
 			</Headline>
 			<Sub>
 				of the Earth. Set every character in one unbroken line of monospace and
-				it runs {fmtKm(s.lineKm)}. The equator is{" "}
+				it runs <Key>{fmtKm(s.lineKm)}</Key>. The equator is{" "}
 				{EARTH_KM.toLocaleString("en-US")} km.
 			</Sub>
 
-			<div className="mt-4">
-				<div className="h-4 w-full border border-stroke-strong bg-bg-canvas">
-					<div
-						className="h-full bg-accent-lime"
-						style={{ width: `${Math.min(100, pct)}%` }}
-					/>
-				</div>
-				<p
-					className={cn(
-						MONO_LABEL,
-						"mt-2 flex justify-between text-[10px] text-fg-muted",
-					)}
-				>
-					<span>this stack</span>
-					<span>once around</span>
-				</p>
-			</div>
+			<RatioBar
+				ratio={s.earthLaps}
+				leftLabel="this stack"
+				rightLabel="once around"
+			/>
 		</>
 	);
 }
@@ -634,10 +712,12 @@ function FilmsBody({ point }: BodyProps) {
 	const s = tokenScale(point.tokens);
 	return (
 		<>
-			<Headline>{fmtCount(s.films)} films</Headline>
+			<Headline>{fmtDuration(s.filmHours / 24 / 365)}</Headline>
 			<Sub>
-				A feature film script runs about 20,000 words. Watching every one of
-				them back to back would take {fmtDuration(s.filmHours / 24 / 365)}.
+				of watching, without a break. A feature script runs about 20,000 words,
+				so this is {fmtCount(s.films)} films. Put the extended Lord of the Rings
+				trilogy on a loop and you would need{" "}
+				<Key>{fmtCount(s.lotrTrilogies)} runs of it</Key>.
 			</Sub>
 		</>
 	);
