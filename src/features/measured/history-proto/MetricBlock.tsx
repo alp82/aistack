@@ -25,7 +25,7 @@ import HoverCard from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 import { MONO_LABEL } from "../copy";
 import { fmtTokens, fmtUSD, type ProtoPoint } from "./fixtures";
-import { type IconLook, type TipKey, TokenTip, useTipDeck } from "./TokenTips";
+import { type TipKey, TokenTip, useTipDeck } from "./TokenTips";
 
 const HINT = "random fun fact";
 
@@ -35,7 +35,6 @@ export function MetricBlock({
 	backdrop,
 	className,
 	tip,
-	iconLook,
 }: {
 	point: ProtoPoint;
 	/** Trail rendered inside the hover area, under the two numbers. */
@@ -45,8 +44,6 @@ export function MetricBlock({
 	className?: string;
 	/** Pins one framing. Left undefined, the popup deals from a shuffled deck. */
 	tip?: TipKey;
-	/** How the popup places its mark. */
-	iconLook?: IconLook;
 }) {
 	const deck = useTipDeck(tip);
 	const canRoll = deck.shuffling;
@@ -61,9 +58,7 @@ export function MetricBlock({
 			maxOffset={8}
 			offset={12}
 			className={cn("w-full", className)}
-			renderContent={() => (
-				<TokenTip point={point} tip={deck.tip} iconLook={iconLook} />
-			)}
+			renderContent={() => <TokenTip point={point} tip={deck.tip} />}
 		>
 			{/* biome-ignore lint/a11y/noStaticElementInteractions: prototype-only click surface; the shipped version gets a real button */}
 			{/* biome-ignore lint/a11y/useKeyWithClickEvents: same */}

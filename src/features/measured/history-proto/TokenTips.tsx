@@ -94,78 +94,28 @@ export function useTipDeck(pinned?: TipKey) {
 // The card
 // ---------------------------------------------------------------------------
 
-export type IconLook =
-	| "aside"
-	| "large"
-	| "header"
-	| "banner"
-	| "watermark"
-	| "bleed";
-
-export const ICON_LOOKS: { key: IconLook; label: string }[] = [
-	{ key: "aside", label: "48px beside the headline" },
-	{ key: "large", label: "76px beside the headline" },
-	{ key: "header", label: "small, inline in the title row" },
-	{ key: "banner", label: "centered on a full-width band" },
-	{ key: "watermark", label: "huge, faint, bleeding off the corner" },
-	{ key: "bleed", label: "full width, faint, behind the whole card" },
-];
-
-export function TokenTip({
-	point,
-	tip,
-	iconLook = "aside",
-}: {
-	point: ProtoPoint;
-	tip: TipKey;
-	iconLook?: IconLook;
-}) {
+export function TokenTip({ point, tip }: { point: ProtoPoint; tip: TipKey }) {
 	const body = BODIES[tip];
 	const Icon = body.Icon;
 	const tokens = point.tokens.toLocaleString("en-US");
 
-	// Only two treatments sit in the headline row. The rest place themselves.
-	const headlineIcon =
-		iconLook === "aside" ? (
-			<Icon size={48} />
-		) : iconLook === "large" ? (
-			<Icon size={76} />
-		) : null;
-
 	return (
 		<div className="relative overflow-hidden border-[3px] border-stroke-strong bg-bg-panel p-4 shadow-[6px_6px_0_var(--stroke-strong)]">
-			{iconLook === "bleed" && (
-				<span
-					aria-hidden="true"
-					className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 text-accent-lime opacity-[0.07]"
-				>
-					<Icon className="h-auto w-full" />
-				</span>
-			)}
-			{iconLook === "watermark" && (
-				<span
-					aria-hidden="true"
-					className="pointer-events-none absolute -bottom-6 -right-6 text-accent-lime opacity-[0.12]"
-				>
-					<Icon size={150} />
-				</span>
-			)}
+			{/* The mark is a WATERMARK and nothing else. Every treatment that took
+			    layout space pushed the card's content around, and the content is the
+			    point. Pinned top right, bleeding past the padding, behind the text. */}
+			<span
+				aria-hidden="true"
+				className="pointer-events-none absolute -right-5 -top-5 text-accent-lime opacity-20"
+			>
+				<Icon size={150} />
+			</span>
 
-			<p className="relative mb-3 flex items-center gap-2 border-b-2 border-stroke-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-accent-lime">
-				{iconLook === "header" && <Icon size={16} />}
+			<p className="relative mb-3 border-b-2 border-stroke-strong pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-accent-lime">
 				{body.title}
 			</p>
 
-			{iconLook === "banner" && (
-				<span
-					aria-hidden="true"
-					className="relative mb-4 flex items-center justify-center border border-stroke-subtle bg-bg-canvas py-3 text-accent-lime"
-				>
-					<Icon size={56} />
-				</span>
-			)}
-
-			<div className="relative">{body.render(point, headlineIcon)}</div>
+			<div className="relative">{body.render(point)}</div>
 
 			{/* The exact count is no longer a header of its own. It reads better as
 			    the subject of the disclaimer, which is the one line that has to name
@@ -196,25 +146,11 @@ export function TokenTip({
 	);
 }
 
-/** The headline number, and its mark when the treatment puts one here. */
-function Headline({
-	children,
-	icon,
-}: {
-	children: React.ReactNode;
-	icon: React.ReactNode;
-}) {
+function Headline({ children }: { children: React.ReactNode }) {
 	return (
-		<div className="flex items-start justify-between gap-4">
-			<p className="font-mono text-3xl font-black leading-none text-fg-primary">
-				{children}
-			</p>
-			{icon && (
-				<span aria-hidden="true" className="shrink-0 text-accent-lime">
-					{icon}
-				</span>
-			)}
-		</div>
+		<p className="font-mono text-3xl font-black leading-none text-fg-primary">
+			{children}
+		</p>
 	);
 }
 
@@ -232,47 +168,46 @@ function Sub({ children }: { children: React.ReactNode }) {
 type Body = {
 	title: string;
 	Icon: (props: IconProps) => React.ReactNode;
-	/** `icon` is whatever the treatment wants placed in the headline row. */
-	render: (point: ProtoPoint, icon: React.ReactNode) => React.ReactNode;
+	render: (point: ProtoPoint) => React.ReactNode;
 };
 
 const BODIES: Record<TipKey, Body> = {
 	books: {
 		title: "In books",
 		Icon: WizardHatIcon,
-		render: (p, icon) => <BooksBody point={p} icon={icon} />,
+		render: (p) => <BooksBody point={p} />,
 	},
 	time: {
 		title: "In human time",
 		Icon: HourglassIcon,
-		render: (p, icon) => <TimeBody point={p} icon={icon} />,
+		render: (p) => <TimeBody point={p} />,
 	},
 	wiki: {
 		title: "Against Wikipedia",
 		Icon: WikipediaIcon,
-		render: (p, icon) => <WikiBody point={p} icon={icon} />,
+		render: (p) => <WikiBody point={p} />,
 	},
 	paper: {
 		title: "On paper",
 		Icon: EiffelTowerIcon,
-		render: (p, icon) => <PaperBody point={p} icon={icon} />,
+		render: (p) => <PaperBody point={p} />,
 	},
 	road: {
 		title: "End to end",
 		Icon: RoadIcon,
-		render: (p, icon) => <RoadBody point={p} icon={icon} />,
+		render: (p) => <RoadBody point={p} />,
 	},
 };
 
-type BodyProps = { point: ProtoPoint; icon: React.ReactNode };
+type BodyProps = { point: ProtoPoint };
 
 const SPINES = 26;
 
-function BooksBody({ point, icon }: BodyProps) {
+function BooksBody({ point }: BodyProps) {
 	const s = tokenScale(point.tokens);
 	return (
 		<>
-			<Headline icon={icon}>{fmtCount(s.novels)} novels</Headline>
+			<Headline>{fmtCount(s.novels)} novels</Headline>
 			<Sub>
 				{fmtCount(s.words)} words, at the length of an average novel. Read all
 				seven Harry Potter books back to back and you would have to do it{" "}
@@ -303,11 +238,11 @@ function BooksBody({ point, icon }: BodyProps) {
 	);
 }
 
-function TimeBody({ point, icon }: BodyProps) {
+function TimeBody({ point }: BodyProps) {
 	const s = tokenScale(point.tokens);
 	return (
 		<>
-			<Headline icon={icon}>{fmtDuration(s.readYears)}</Headline>
+			<Headline>{fmtDuration(s.readYears)}</Headline>
 			<Sub>
 				of reading, at a good silent pace, without ever stopping to sleep.
 			</Sub>
@@ -330,13 +265,13 @@ function TimeRow({ label, value }: { label: string; value: string }) {
 	);
 }
 
-function WikiBody({ point, icon }: BodyProps) {
+function WikiBody({ point }: BodyProps) {
 	const s = tokenScale(point.tokens);
 	const over = s.wikipedia >= 1;
 	const pct = s.wikipedia * 100;
 	return (
 		<>
-			<Headline icon={icon}>
+			<Headline>
 				{over
 					? `${s.wikipedia.toFixed(1)}x`
 					: `${pct < 1 ? pct.toFixed(2) : pct.toFixed(0)}%`}
@@ -368,7 +303,7 @@ function WikiBody({ point, icon }: BodyProps) {
 	);
 }
 
-function PaperBody({ point, icon }: BodyProps) {
+function PaperBody({ point }: BodyProps) {
 	const s = tokenScale(point.tokens);
 	const ratio = s.paperMeters / EIFFEL_M;
 	const maxH = 64;
@@ -377,7 +312,7 @@ function PaperBody({ point, icon }: BodyProps) {
 
 	return (
 		<>
-			<Headline icon={icon}>{fmtMeters(s.paperMeters)}</Headline>
+			<Headline>{fmtMeters(s.paperMeters)}</Headline>
 			<Sub>
 				printed double-sided, {fmtCount(s.pages)} pages make a stack that tall.{" "}
 				{ratio >= 1
@@ -411,11 +346,11 @@ function PaperBody({ point, icon }: BodyProps) {
 	);
 }
 
-function RoadBody({ point, icon }: BodyProps) {
+function RoadBody({ point }: BodyProps) {
 	const s = tokenScale(point.tokens);
 	return (
 		<>
-			<Headline icon={icon}>{fmtMeters(s.roadMeters)}</Headline>
+			<Headline>{fmtMeters(s.roadMeters)}</Headline>
 			<Sub>
 				of paper, if you laid every printed page end to end along the ground.{" "}
 				{s.marathons >= 1
