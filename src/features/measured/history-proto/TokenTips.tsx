@@ -61,7 +61,7 @@ export type TipKey =
 	| "power"
 	| "lifetimes"
 	| "equator"
-	| "films";
+	| "video";
 
 export const TIPS: { key: TipKey; label: string }[] = [
 	{ key: "books", label: "books: a shelf of novels" },
@@ -78,7 +78,7 @@ export const TIPS: { key: TipKey; label: string }[] = [
 	{ key: "power", label: "power: the electricity it took" },
 	{ key: "lifetimes", label: "lifetimes: whole reading lives" },
 	{ key: "equator", label: "equator: one line around the Earth" },
-	{ key: "films", label: "films: screen time as scripts" },
+	{ key: "video", label: "video: hours of full HD footage" },
 ];
 
 const TIP_KEYS = TIPS.map((t) => t.key);
@@ -283,10 +283,11 @@ const BODIES: Record<TipKey, Body> = {
 		Icon: EarthIcon,
 		render: (p) => <EquatorBody point={p} />,
 	},
-	films: {
-		title: "In screen time",
+	video: {
+		title: "As video",
 		Icon: MovieIcon,
-		render: (p) => <FilmsBody point={p} />,
+		render: (p) => <VideoBody point={p} />,
+		note: "vision math, not words: a frame costs ceil(w/28) x ceil(h/28) visual tokens, so 1920x1080 is 2,691. Video is read as still frames sampled about once a second.",
 	},
 };
 
@@ -704,17 +705,49 @@ function EquatorBody({ point }: BodyProps) {
 	);
 }
 
-function FilmsBody({ point }: BodyProps) {
+/**
+ * The one card that does not run on words per token.
+ *
+ * The first version of this card converted words into film SCRIPTS and then
+ * reported the running time of those films, which is a modality jump: reading a
+ * screenplay is not watching the film. This one stays in one modality. A model
+ * reads video as sampled still frames, each frame costs real visual tokens, so
+ * "how much video would this many tokens buy" is a question the same number can
+ * actually answer.
+ */
+function VideoBody({ point }: BodyProps) {
 	const s = tokenScale(point.tokens);
+	// Hours, not the shared duration formatter: video is the one card where the
+	// natural unit is smaller than a day.
+	const runtime =
+		s.videoHours >= 2
+			? `${fmtCount(s.videoHours)} hours`
+			: `${Math.round(s.videoHours * 60)} minutes`;
 	return (
 		<>
-			<Headline>{fmtDuration(s.filmHours / 24 / 365)}</Headline>
+			<Headline>{runtime}</Headline>
 			<Sub>
-				of watching, without a break. A feature script runs about 20,000 words,
-				so this is {fmtCount(s.films)} films. Put the extended Lord of the Rings
-				trilogy on a loop and you would need{" "}
-				<Key>{fmtCount(s.lotrTrilogies)} runs of it</Key>.
+				of full HD video. There is no video input: a model reads video as still
+				frames, about one a second, and every 1920x1080 frame costs 2,691 visual
+				tokens. That is{" "}
+				<Key>
+					{s.lotrTrilogies >= 1
+						? `${fmtCount(s.lotrTrilogies)} runs through the extended Lord of the Rings trilogy`
+						: `${Math.round(s.lotrTrilogies * 100)}% of the extended Lord of the Rings trilogy`}
+				</Key>
+				.
 			</Sub>
+
+			<dl className="mt-4 space-y-1.5">
+				<TimeRow label="frames read" value={fmtCount(s.videoFrames)} />
+				<TimeRow label="tokens per frame" value="2,691" />
+				{s.videoHours >= 24 && (
+					<TimeRow
+						label="watched non-stop"
+						value={fmtDuration(s.videoHours / 24 / 365)}
+					/>
+				)}
+			</dl>
 		</>
 	);
 }

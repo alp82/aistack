@@ -69,9 +69,18 @@ const READING_LIFETIME_BOOKS = 12 * 60;
 /** Width of one character set in 12pt monospace. */
 const CHAR_WIDTH_MM = 2.5;
 export const EARTH_KM = 40_075;
-/** Words in a feature film script, and its running time in minutes. */
-const FILM_WORDS = 20_000;
-const FILM_MINUTES = 110;
+/**
+ * VISION, not text. A model reads an image in 28x28 pixel patches, so a frame
+ * costs ceil(w/28) * ceil(h/28) visual tokens: 1920x1080 comes to 2,691 on the
+ * high-resolution tier (Claude 4.7 and later), which does not downscale it.
+ *
+ * There is no video input. Video is read as sampled still frames, and one frame
+ * a second is the usual sampling rate. So this is the one conversion in the
+ * file that does NOT go through words per token, and the card that uses it says
+ * so instead of borrowing the shared caveat.
+ */
+const HD_FRAME_TOKENS = 2_691;
+const VIDEO_FPS = 1;
 /** The Lord of the Rings, extended editions, all three, in hours. */
 const LOTR_TRILOGY_HOURS = 11.37;
 
@@ -118,9 +127,9 @@ export type TokenScale = {
 	/** Every character set in one line: its length in km, and laps of the Earth. */
 	lineKm: number;
 	earthLaps: number;
-	/** Feature film scripts, and the hours of cinema they would run to. */
-	films: number;
-	filmHours: number;
+	/** Full HD video the same token count would buy, sampled at one frame a second. */
+	videoFrames: number;
+	videoHours: number;
 	/** Those hours, counted in extended Lord of the Rings trilogies. */
 	lotrTrilogies: number;
 };
@@ -161,10 +170,10 @@ export function tokenScale(tokens: number): TokenScale {
 		readingLifetimes: words / NOVEL / READING_LIFETIME_BOOKS,
 		lineKm: (chars * CHAR_WIDTH_MM) / 1_000_000,
 		earthLaps: (chars * CHAR_WIDTH_MM) / 1_000_000 / EARTH_KM,
-		films: words / FILM_WORDS,
-		filmHours: (words / FILM_WORDS) * (FILM_MINUTES / 60),
+		videoFrames: tokens / HD_FRAME_TOKENS,
+		videoHours: tokens / HD_FRAME_TOKENS / VIDEO_FPS / 3600,
 		lotrTrilogies:
-			((words / FILM_WORDS) * (FILM_MINUTES / 60)) / LOTR_TRILOGY_HOURS,
+			tokens / HD_FRAME_TOKENS / VIDEO_FPS / 3600 / LOTR_TRILOGY_HOURS,
 	};
 }
 
@@ -189,7 +198,8 @@ export function fmtDuration(years: number): string {
 	if (months >= 2) return `${Math.round(months)} months`;
 	const days = years * 365;
 	if (days >= 2) return `${Math.round(days)} days`;
-	return `${Math.round(days * 24)} hours`;
+	const hours = Math.round(days * 24);
+	return `${hours} ${hours === 1 ? "hour" : "hours"}`;
 }
 
 /** Bytes as a size a person recognises. */
