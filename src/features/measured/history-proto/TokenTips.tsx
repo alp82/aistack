@@ -505,19 +505,15 @@ function RoadBody({ point }: BodyProps) {
 	const s = tokenScale(point.tokens);
 	return (
 		<>
-			<Headline>{fmtMeters(s.roadMeters)}</Headline>
+			<Headline>
+				{s.marathons >= 1
+					? `${fmtCount(s.marathons)} marathons`
+					: "under one marathon"}
+			</Headline>
 			<Sub>
-				of paper, if you laid every printed page end to end along the ground.{" "}
-				{s.marathons >= 1 ? (
-					<>
-						That is <Key>{fmtCount(s.marathons)} marathons</Key> of reading
-						material.
-					</>
-				) : (
-					<>
-						That is <Key>not yet a marathon</Key>, but it is a long walk.
-					</>
-				)}
+				of paper, if you laid every printed page end to end along the ground.
+				That comes to <Key>{fmtKm(s.roadMeters / 1000)}</Key>, and a marathon is
+				42.2 km.
 			</Sub>
 
 			{/* A road. The dashes are the pages. */}
@@ -532,7 +528,7 @@ function RoadBody({ point }: BodyProps) {
 				/>
 			</div>
 			<p className={cn(MONO_LABEL, "mt-2 text-[10px] text-fg-muted")}>
-				a marathon is 42.2 km
+				every dash is a page
 			</p>
 		</>
 	);
