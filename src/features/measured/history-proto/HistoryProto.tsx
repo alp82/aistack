@@ -127,7 +127,7 @@ export function MeasuredHistoryProto({
 	// `shuffle` is the default: the popup deals from a shuffled deck and the
 	// block click advances it. Any other value pins one framing.
 	const tip = axes.tip === "shuffle" ? undefined : (axes.tip as TipKey);
-	const look = (axes.look ?? "hint") as LookKey;
+	const look = (axes.look ?? "both") as LookKey;
 	const points = toPoints(readingsFor(dataset));
 
 	const RoundTwo = ROUND_TWO[variant as keyof typeof ROUND_TWO];

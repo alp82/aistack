@@ -12,8 +12,10 @@
  *     control beside the number sat too far from what it changed.
  *
  * The open question is only what that click LOOKS like before you make it.
- * Six affordances, on the `look=` axis, every one of them invisible until the
- * block is hovered.
+ * Three ingredients survived the last round - the dice, the dashed underline on
+ * the number, and a worded hint - so every option below is built from those,
+ * with the hint moved up beside the number it belongs to. All six are invisible
+ * until the block is hovered.
  */
 import { Dices } from "lucide-react";
 import HoverCard from "@/components/ui/hover-card";
@@ -22,16 +24,25 @@ import { MONO_LABEL } from "../copy";
 import { fmtTokens, fmtUSD, type ProtoPoint } from "./fixtures";
 import { type TipKey, TokenTip, useTipDeck } from "./TokenTips";
 
-export type LookKey = "hint" | "dice" | "frame" | "chip" | "underline" | "lift";
+export type LookKey =
+	| "dice"
+	| "underline"
+	| "both"
+	| "beside"
+	| "swap"
+	| "below";
 
 export const LOOKS: { key: LookKey; label: string }[] = [
-	{ key: "hint", label: "corner text: click to reroll" },
 	{ key: "dice", label: "dice in the corner, no words" },
-	{ key: "frame", label: "the border turns lime and dashed" },
-	{ key: "chip", label: "a bordered chip at the bottom" },
-	{ key: "underline", label: "the number gets a dashed underline" },
-	{ key: "lift", label: "the block lifts on a brutal shadow" },
+	{ key: "underline", label: "dashed underline on the number" },
+	{ key: "both", label: "underline plus dice at the number" },
+	{ key: "beside", label: "underline, dice and words beside the number" },
+	{ key: "swap", label: "the caption swaps to the words on hover" },
+	{ key: "below", label: "a chip right under the caption" },
 ];
+
+/** One wording everywhere, so the placement is the only thing being judged. */
+const HINT = "random fun fact";
 
 /** Hidden until the block is hovered, per the owner's rule. */
 const ON_HOVER =
@@ -43,7 +54,7 @@ export function MetricBlock({
 	backdrop,
 	className,
 	tip,
-	look = "hint",
+	look = "both",
 }: {
 	point: ProtoPoint;
 	/** Trail rendered inside the hover area, under the two numbers. */
@@ -58,6 +69,7 @@ export function MetricBlock({
 }) {
 	const deck = useTipDeck(tip);
 	const canRoll = deck.shuffling;
+	const on = (...keys: LookKey[]) => canRoll && keys.includes(look);
 
 	return (
 		<HoverCard
@@ -84,14 +96,8 @@ export function MetricBlock({
 			<div
 				onClick={canRoll ? deck.next : undefined}
 				className={cn(
-					"group relative w-full border px-3 py-3 transition-all duration-150",
+					"group relative w-full border border-transparent px-3 py-3 transition-colors hover:border-stroke-subtle hover:bg-bg-panel/40",
 					canRoll ? "cursor-pointer" : "cursor-help",
-					// The resting state is identical in every look. Only the hover differs.
-					look === "frame" && canRoll
-						? "border-transparent hover:border-dashed hover:border-accent-lime hover:bg-accent-lime/5"
-						: look === "lift" && canRoll
-							? "border-transparent hover:-translate-x-[3px] hover:-translate-y-[3px] hover:border-stroke-strong hover:shadow-[3px_3px_0_var(--accent-lime)]"
-							: "border-transparent hover:border-stroke-subtle hover:bg-bg-panel/40",
 				)}
 			>
 				{/* The backdrop stretches to the block's bottom edge. Letterboxed, its
@@ -105,7 +111,7 @@ export function MetricBlock({
 					</div>
 				)}
 
-				{canRoll && look === "dice" && (
+				{on("dice") && (
 					<span
 						aria-hidden="true"
 						className={cn(
@@ -117,21 +123,63 @@ export function MetricBlock({
 					</span>
 				)}
 
-				<p className="relative font-mono text-5xl font-black leading-none text-fg-primary md:text-6xl">
+				<p className="relative flex flex-wrap items-center gap-x-3 font-mono text-5xl font-black leading-none text-fg-primary md:text-6xl">
 					<span
 						className={cn(
 							"inline-block border-b-2 border-transparent pb-1",
-							canRoll &&
-								look === "underline" &&
+							on("underline", "both", "beside") &&
 								"transition-colors group-hover:border-dashed group-hover:border-accent-lime",
 						)}
 					>
 						{fmtTokens(point.tokens)}
 					</span>
+
+					{on("both", "beside") && (
+						<span
+							aria-hidden="true"
+							className={cn(
+								ON_HOVER,
+								"pointer-events-none inline-flex items-center gap-2 text-accent-lime",
+							)}
+						>
+							<Dices size={20} />
+							{look === "beside" && (
+								<span className={cn(MONO_LABEL, "font-semibold")}>{HINT}</span>
+							)}
+						</span>
+					)}
 				</p>
+
+				{/* The caption line. `swap` borrows it rather than adding a row. */}
 				<p className={cn(MONO_LABEL, "relative mt-2 text-fg-muted")}>
-					tokens · last {point.windowDays} days
+					{on("swap") ? (
+						<>
+							<span className="group-hover:hidden">
+								tokens · last {point.windowDays} days
+							</span>
+							<span className="hidden items-center gap-2 text-accent-lime group-hover:inline-flex">
+								<Dices size={12} />
+								{HINT}
+							</span>
+						</>
+					) : (
+						<>tokens · last {point.windowDays} days</>
+					)}
 				</p>
+
+				{on("below") && (
+					<span
+						aria-hidden="true"
+						className={cn(
+							ON_HOVER,
+							MONO_LABEL,
+							"pointer-events-none relative mt-2 inline-flex items-center gap-2 border border-accent-lime/50 px-2 py-1 text-accent-lime",
+						)}
+					>
+						<Dices size={12} />
+						{HINT}
+					</span>
+				)}
 
 				<p className="relative mt-4 font-mono text-2xl font-black leading-none text-fg-secondary md:text-3xl">
 					{point.usd !== null ? `≈${fmtUSD(point.usd)}` : "kept private"}
@@ -141,33 +189,6 @@ export function MetricBlock({
 				</p>
 
 				{children}
-
-				{canRoll && look === "chip" && (
-					<span
-						aria-hidden="true"
-						className={cn(
-							ON_HOVER,
-							MONO_LABEL,
-							"relative mt-4 inline-flex items-center gap-2 border border-accent-lime/50 px-2.5 py-1 text-accent-lime",
-						)}
-					>
-						<Dices size={12} />
-						another way to picture it
-					</span>
-				)}
-
-				{canRoll && look === "hint" && (
-					<span
-						aria-hidden="true"
-						className={cn(
-							ON_HOVER,
-							MONO_LABEL,
-							"pointer-events-none absolute bottom-2 right-3 text-fg-muted",
-						)}
-					>
-						click to reroll
-					</span>
-				)}
 			</div>
 		</HoverCard>
 	);
