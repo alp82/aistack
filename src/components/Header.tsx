@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import {
+	ChartLine,
 	Home,
 	Laptop,
 	Layers,
@@ -299,6 +300,15 @@ export default function Header() {
 														</p>
 													)}
 											</div>
+											{/* The only way into the private view numbers (#86). */}
+											<Link
+												to="/settings/analytics"
+												onClick={() => setMenuOpen(false)}
+												className="flex w-full items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-wide text-fg-secondary transition-colors hover:bg-bg-panel-muted hover:text-fg-primary"
+											>
+												<ChartLine className="size-3.5" />
+												Views
+											</Link>
 											{/* The only way into the revoke surface (#49). */}
 											<Link
 												to="/settings/machines"
