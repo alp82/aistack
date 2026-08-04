@@ -32,6 +32,14 @@ import { VARIANT_C_NAME, VariantC } from "./VariantC";
 import { VARIANT_D_NAME, VariantD } from "./VariantD";
 import { VARIANT_E_NAME, VariantE } from "./VariantE";
 import { VARIANT_F_NAME, VariantF } from "./VariantF";
+import {
+	VARIANT_G_NAME,
+	VARIANT_H_NAME,
+	VARIANT_I_NAME,
+	VariantG,
+	VariantH,
+	VariantI,
+} from "./VariantsGHI";
 
 /**
  * Round two starts at D. The owner picked C's direction and locked the headline
@@ -39,7 +47,16 @@ import { VARIANT_F_NAME, VariantF } from "./VariantF";
  * so D, E and F share that block and differ only in how much space the model
  * mix earns. A, B and C stay listed for comparison.
  */
-const ROUND_TWO = { D: VariantD, E: VariantE, F: VariantF } as const;
+const ROUND_TWO = {
+	D: VariantD,
+	E: VariantE,
+	F: VariantF,
+	// Round three: E's structure with the emphasis inverted — solid current
+	// bars in front, history receding.
+	G: VariantG,
+	H: VariantH,
+	I: VariantI,
+} as const;
 
 const VARIANT_AXIS: ProtoAxis = {
 	param: "proto",
@@ -48,9 +65,12 @@ const VARIANT_AXIS: ProtoAxis = {
 		// `off` stays first so it is the default: a stack page with no `?proto=`
 		// must still render the shipped section.
 		{ key: "off", label: "shipped today (no history)" },
-		{ key: "D", label: VARIANT_D_NAME },
-		{ key: "E", label: VARIANT_E_NAME },
-		{ key: "F", label: VARIANT_F_NAME },
+		{ key: "G", label: VARIANT_G_NAME },
+		{ key: "H", label: VARIANT_H_NAME },
+		{ key: "I", label: VARIANT_I_NAME },
+		{ key: "E", label: `round 2 · ${VARIANT_E_NAME}` },
+		{ key: "D", label: `round 2 · ${VARIANT_D_NAME}` },
+		{ key: "F", label: `round 2 · ${VARIANT_F_NAME}` },
 		{ key: "A", label: `round 1 · ${VARIANT_A_NAME}` },
 		{ key: "B", label: `round 1 · ${VARIANT_B_NAME}` },
 		{ key: "C", label: `round 1 · ${VARIANT_C_NAME}` },

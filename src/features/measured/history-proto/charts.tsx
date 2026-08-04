@@ -24,12 +24,20 @@ export function Sparkline({
 	height = 24,
 	color = ACCENT,
 	className,
+	area = false,
+	dot = true,
+	strokeWidth = 1.5,
 }: {
 	values: number[];
 	width?: number;
 	height?: number;
 	color?: string;
 	className?: string;
+	/** Fill under the curve. Reads as background texture, not as a second line. */
+	area?: boolean;
+	/** The marker on the newest reading. Drop it when the trail is a backdrop. */
+	dot?: boolean;
+	strokeWidth?: number;
 }) {
 	if (values.length === 0) return null;
 	const min = Math.min(...values);
@@ -67,18 +75,31 @@ export function Sparkline({
 			role="img"
 			aria-label="trend of recent readings"
 		>
+			{area && (
+				<polygon
+					points={[
+						`0,${height}`,
+						...pts.map(([x, y]) => `${x},${y}`),
+						`${width},${height}`,
+					].join(" ")}
+					fill={color}
+					fillOpacity={0.35}
+				/>
+			)}
 			<polyline
 				points={pts.map(([x, y]) => `${x},${y}`).join(" ")}
 				fill="none"
 				stroke={color}
-				strokeWidth={1.5}
+				strokeWidth={strokeWidth}
 			/>
-			<circle
-				cx={pts[pts.length - 1][0]}
-				cy={pts[pts.length - 1][1]}
-				r={2}
-				fill={color}
-			/>
+			{dot && (
+				<circle
+					cx={pts[pts.length - 1][0]}
+					cy={pts[pts.length - 1][1]}
+					r={2}
+					fill={color}
+				/>
+			)}
 		</svg>
 	);
 }
@@ -342,6 +363,8 @@ export function MixRibbon({
 
 export type MixSeries = {
 	ids: string[];
+	/** The reading the row's headline percentage speaks for. */
+	newest: ProtoPoint;
 	labelOf: (id: string) => string;
 	colorOf: (id: string) => string;
 	shareAt: (p: ProtoPoint, id: string) => number;
@@ -373,6 +396,7 @@ export function mixSeries(points: ProtoPoint[], topN = 5): MixSeries {
 
 	return {
 		ids,
+		newest,
 		labelOf: (id) =>
 			id === "__rest"
 				? "everything else"

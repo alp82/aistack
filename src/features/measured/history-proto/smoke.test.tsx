@@ -9,6 +9,7 @@ import { VariantC } from "./VariantC";
 import { VariantD } from "./VariantD";
 import { VariantE } from "./VariantE";
 import { VariantF } from "./VariantF";
+import { VariantG, VariantH, VariantI } from "./VariantsGHI";
 
 vi.mock("@/lib/useScrollHighlight", () => ({
 	useScrollHighlight: () => ({ ref: { current: null }, reduce: true }),
@@ -21,6 +22,9 @@ const VARIANTS = {
 	D: VariantD,
 	E: VariantE,
 	F: VariantF,
+	G: VariantG,
+	H: VariantH,
+	I: VariantI,
 };
 
 describe("history prototype", () => {
