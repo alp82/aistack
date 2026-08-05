@@ -108,6 +108,7 @@ function ctx(over: {
 				slashCommands: [],
 			},
 			publishCost: true,
+			autoSync: null,
 			optIns: EMPTY_OPT_INS,
 			reviewKeptPrivate: false,
 			stack: { name: "Alp's Daily Driver", slug: "alps-daily-driver" },

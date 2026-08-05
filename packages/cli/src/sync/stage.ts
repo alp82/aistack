@@ -30,6 +30,7 @@ import {
 	buildSyncBody,
 	mergeKeptPrivate,
 	type SyncBody,
+	type SyncTrigger,
 } from "../harness/shared/payload.js";
 import {
 	DEFAULT_WINDOW_DAYS,
@@ -71,6 +72,11 @@ export type StageDeps = {
 	adaptersImpl?: (sinceMs: number) => Promise<HarnessAdapter[]>;
 	getSettingsImpl?: () => Settings;
 	windowDays?: number;
+	/**
+	 * How this sync fired (#103). Defaults to `manual`, because every caller but
+	 * the background run has a human at the keyboard.
+	 */
+	trigger?: SyncTrigger;
 };
 
 export function stageId(bodyJson: string): string {
@@ -115,7 +121,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	// bytes are the bytes sent (#78). Absent from the settings file means this
 	// machine has never answered, which the backend reads as "never told us".
 	const settings = (deps.getSettingsImpl ?? getSettings)();
-	const body = buildSyncBody(built, config, settings.autoSync);
+	const body = buildSyncBody(built, config, settings.autoSync, deps.trigger);
 	const bodyJson = JSON.stringify(body);
 	const keptPrivate = mergeKeptPrivate(built.map((b) => b.keptPrivate));
 

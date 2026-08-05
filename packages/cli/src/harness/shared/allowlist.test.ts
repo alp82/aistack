@@ -324,6 +324,58 @@ describe("loadSyncConfig", () => {
 		expect(await read(undefined)).toBe(false);
 	});
 
+	it("reads the server auto-sync permission, and tells absent from off", async () => {
+		// Three states, not two (#103). Absent is the ONE state a local opt-in may
+		// still seed, so it must never be folded into off.
+		const read = async (value: unknown) => {
+			const loaded = await loadSyncConfig({
+				baseUrl: "https://aistack.to",
+				fetchImpl: (() =>
+					Promise.resolve(
+						jsonResponse({ ...GOOD_BODY, autoSync: value }),
+					)) as unknown as typeof fetch,
+			});
+			return loaded.config.autoSync;
+		};
+		expect(await read({ enabled: true, frequencyHours: 12 })).toEqual({
+			enabled: true,
+			frequencyHours: 12,
+		});
+		expect(await read({ enabled: false, frequencyHours: 24 })).toEqual({
+			enabled: false,
+			frequencyHours: 24,
+		});
+		expect(await read(null)).toBeNull();
+		expect(await read(undefined)).toBeNull();
+	});
+
+	it("reads an unreadable auto-sync permission as off, not as absent", async () => {
+		// A permission the machine cannot read is a permission it does not hold.
+		// Absent would let a local flag seed the server, which is the one thing a
+		// garbled value must not be allowed to do.
+		const read = async (value: unknown) => {
+			const loaded = await loadSyncConfig({
+				baseUrl: "https://aistack.to",
+				fetchImpl: (() =>
+					Promise.resolve(
+						jsonResponse({ ...GOOD_BODY, autoSync: value }),
+					)) as unknown as typeof fetch,
+			});
+			return loaded.config.autoSync;
+		};
+		// The frequency is left OUT, not guessed: an unreadable value tells us
+		// nothing about a schedule, and off has no schedule to keep anyway.
+		for (const value of ["on", 1, [], {}, { enabled: "yes" }]) {
+			expect(await read(value)).toEqual({ enabled: false });
+		}
+	});
+
+	it("holds no auto-sync permission when the config could not be read", () => {
+		// Bundled means the fetch failed. `stack` is null there too, so the stage
+		// blocks before any publish — this only has to not claim a permission.
+		expect(BUNDLED_SYNC_CONFIG.autoSync).toBeNull();
+	});
+
 	it("drops names from the server that fail the charset or length bound", async () => {
 		// A server-supplied list can widen what publishes — that is accepted,
 		// because the gate renders every name. It cannot smuggle a control

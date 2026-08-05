@@ -1,3 +1,4 @@
+import { PRICING_TABLE_VERSION } from "@aistack/pricing";
 import { describe, expect, it } from "vitest";
 import {
 	cleanName,
@@ -19,7 +20,6 @@ import {
 	type MeasuredPayload,
 	sanitizeModelId,
 } from "./payload.js";
-import { PRICING_TABLE_VERSION } from "@aistack/pricing";
 import type { ScanStats } from "./window.js";
 
 const NOW = Date.UTC(2026, 6, 25, 12, 0, 0); // 2026-07-25
@@ -44,6 +44,7 @@ const HARNESS_PARAMS = {
 
 const config = (over: Partial<SyncConfig> = {}): SyncConfig => ({
 	publishCost: true,
+	autoSync: null,
 	allowlist: {
 		mcpServers: ["github"],
 		skills: ["grilling"],

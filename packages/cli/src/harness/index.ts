@@ -26,6 +26,21 @@ import { CODEX_HARNESS_NAME, codexAdapter } from "./codex/adapter.js";
 import { DEFAULT_WINDOW_DAYS, windowStartMs } from "./shared/window.js";
 import type { HarnessAdapter } from "./types.js";
 
+export {
+	apiEquivalentCost,
+	baseModelId,
+	CACHE_READ_MULTIPLIER,
+	CACHE_WRITE_1H_MULTIPLIER,
+	CACHE_WRITE_5M_MULTIPLIER,
+	isPricedModel,
+	normalizeModel,
+	OPENAI_PRICING_TABLE_VERSION,
+	PRICING_TABLE_VERSION,
+	type PricePeriod,
+	priceAt,
+	SONNET_5_INTRO_ENDS_MS,
+	type TokenCounts,
+} from "@aistack/pricing";
 export { CLAUDE_HARNESS_NAME, claudeAdapter } from "./claude/adapter.js";
 export {
 	type Aggregate as ClaudeAggregate,
@@ -47,6 +62,7 @@ export {
 } from "./shared/aggregate.js";
 export {
 	type Atom,
+	type AutoSyncPermission,
 	BUILTIN_TOOLS,
 	BUNDLED_SYNC_CONFIG,
 	type CuratedAllowlist,
@@ -79,21 +95,6 @@ export {
 	type SyncBody,
 	sanitizeModelId,
 } from "./shared/payload.js";
-export {
-	apiEquivalentCost,
-	baseModelId,
-	CACHE_READ_MULTIPLIER,
-	CACHE_WRITE_1H_MULTIPLIER,
-	CACHE_WRITE_5M_MULTIPLIER,
-	isPricedModel,
-	normalizeModel,
-	OPENAI_PRICING_TABLE_VERSION,
-	PRICING_TABLE_VERSION,
-	type PricePeriod,
-	priceAt,
-	SONNET_5_INTRO_ENDS_MS,
-	type TokenCounts,
-} from "@aistack/pricing";
 export { hasRecentFile } from "./shared/recency.js";
 export {
 	DEFAULT_WINDOW_DAYS,

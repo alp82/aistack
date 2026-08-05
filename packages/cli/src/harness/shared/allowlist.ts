@@ -161,6 +161,24 @@ export type SyncConfig = {
 	 * gate that cannot name its destination must not publish.
 	 */
 	stack: { name: string; slug: string } | null;
+	/**
+	 * The auto-sync permission the STACK holds (#102, read by #103).
+	 *
+	 * Three states, not two, and the third is the whole point. `null` means no
+	 * owner has ever decided, and that is the one state a machine's local opt-in
+	 * may still seed. `{ enabled: false }` means the owner said no, and
+	 * `sync --auto` publishes nothing on this machine until they say otherwise.
+	 *
+	 * `frequencyHours` is absent when the value could not be read — see
+	 * `readAutoSync`.
+	 */
+	autoSync: AutoSyncPermission | null;
+};
+
+/** What the stack allows, as the CLI reads it off the wire. */
+export type AutoSyncPermission = {
+	enabled: boolean;
+	frequencyHours?: number;
 };
 
 /**
@@ -185,6 +203,9 @@ export const BUNDLED_SYNC_CONFIG: SyncConfig = {
 	reviewKeptPrivate: false,
 	// No fetch, no destination — and the gate refuses to publish without one.
 	stack: null,
+	// No fetch, no permission either. This costs nothing on its own: `stack` is
+	// null in the same breath, so the stage blocks before any publish.
+	autoSync: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -268,6 +289,29 @@ function readStack(v: unknown): SyncConfig["stack"] {
 	return { name: obj.name, slug: obj.slug };
 }
 
+/**
+ * Read the stack's auto-sync permission (#103).
+ *
+ * ABSENT AND OFF ARE DIFFERENT ANSWERS. Absent — the key is missing or null —
+ * means no owner has decided, and only that lets a local flag seed the server.
+ * A value that is PRESENT but unreadable is not that state: a permission the
+ * machine cannot read is a permission it does not hold, so it reads as off.
+ * The frequency is left out there rather than guessed, because off keeps no
+ * schedule and a made-up number would outlive the garbled value that caused it.
+ */
+function readAutoSync(v: unknown): AutoSyncPermission | null {
+	if (v === undefined || v === null) return null;
+	if (typeof v !== "object" || Array.isArray(v)) return { enabled: false };
+	const obj = v as Record<string, unknown>;
+	if (typeof obj.enabled !== "boolean") return { enabled: false };
+	if (
+		typeof obj.frequencyHours !== "number" ||
+		!Number.isFinite(obj.frequencyHours)
+	)
+		return { enabled: false };
+	return { enabled: obj.enabled, frequencyHours: obj.frequencyHours };
+}
+
 function readSyncConfig(raw: unknown): SyncConfig | null {
 	if (typeof raw !== "object" || raw === null || Array.isArray(raw))
 		return null;
@@ -290,6 +334,7 @@ function readSyncConfig(raw: unknown): SyncConfig | null {
 		// Anything other than an explicit `true` keeps the names on the machine.
 		reviewKeptPrivate: obj.reviewKeptPrivate === true,
 		stack: readStack(obj.stack),
+		autoSync: readAutoSync(obj.autoSync),
 	};
 }
 
