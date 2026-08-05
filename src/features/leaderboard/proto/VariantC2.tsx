@@ -143,7 +143,7 @@ function Row({
 	readonly nowMs: number;
 }) {
 	return (
-		<li className="grid grid-cols-[2.5rem_minmax(0,1fr)_9rem_auto] items-baseline gap-x-5 gap-y-1 border-b border-stroke-subtle py-4 hover:bg-bg-panel">
+		<li className="grid grid-cols-[2rem_minmax(0,1fr)_9rem] items-baseline gap-x-4 gap-y-1 border-b border-stroke-subtle py-4 hover:bg-bg-panel md:grid-cols-[2.5rem_minmax(0,1fr)_9rem_14rem] md:gap-x-5">
 			<span className="row-span-2 font-mono text-xl font-black text-fg-muted">
 				{s.rank}
 			</span>
@@ -154,7 +154,9 @@ function Row({
 				className="min-w-0 truncate font-mono text-sm font-bold text-fg-primary hover:text-accent-lime"
 			>
 				{s.name}
-				<span className="ml-2 font-normal text-fg-muted">@{s.handle}</span>
+				<span className="ml-2 hidden font-normal text-fg-muted sm:inline">
+					@{s.handle}
+				</span>
 			</Link>
 
 			<Trend s={s} />
@@ -164,6 +166,7 @@ function Row({
 			</span>
 
 			<span className="min-w-0 truncate font-mono text-xs text-fg-muted">
+				<span className="md:hidden">{trendWords(s)} · </span>
 				{s.topModel
 					? `${s.topModel.name} ${f.pct(s.topModel.share)} · `
 					: "no model named · "}
@@ -188,6 +191,13 @@ function Row({
 	);
 }
 
+/** The trend in words, for the narrow layout that has no room to draw it. */
+function trendWords(s: RankedStack): string {
+	if (s.history.length < 2 || s.trend === null) return "1 sync";
+	const up = s.trend >= 0;
+	return `${up ? "+" : "−"}${f.pct(Math.abs(s.trend))} over ${s.history.length} syncs`;
+}
+
 /**
  * The sparkline cell.
  *
@@ -203,7 +213,7 @@ function Trend({ s }: { readonly s: RankedStack }) {
 		// wraps, whether the stack has one reading, and whether it publishes a
 		// cost. Nothing here may size itself off its own content.
 		<span
-			className="row-span-2 flex flex-col items-end justify-center self-center"
+			className="row-span-2 hidden flex-col items-end justify-center self-center md:flex"
 			style={{ height: `${CELL_HEIGHT}px` }}
 		>
 			<span
