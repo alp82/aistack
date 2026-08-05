@@ -30,6 +30,7 @@ import { Route as StacksNewRouteImport } from './routes/stacks.new'
 import { Route as StacksSlugRouteImport } from './routes/stacks.$slug'
 import { Route as SettingsMachinesRouteImport } from './routes/settings.machines'
 import { Route as SettingsAnalyticsRouteImport } from './routes/settings.analytics'
+import { Route as PrototypeFreshnessRouteImport } from './routes/prototype.freshness'
 import { Route as CliAuthRouteImport } from './routes/cli.auth'
 import { Route as ApiSyncConfigRouteImport } from './routes/api.sync-config'
 import { Route as AdminIconsRouteImport } from './routes/admin_.icons'
@@ -151,6 +152,11 @@ const SettingsAnalyticsRoute = SettingsAnalyticsRouteImport.update({
   path: '/settings/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrototypeFreshnessRoute = PrototypeFreshnessRouteImport.update({
+  id: '/prototype/freshness',
+  path: '/prototype/freshness',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CliAuthRoute = CliAuthRouteImport.update({
   id: '/cli/auth',
   path: '/cli/auth',
@@ -245,6 +251,7 @@ export interface FileRoutesByFullPath {
   '/admin/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
+  '/prototype/freshness': typeof PrototypeFreshnessRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -283,6 +290,7 @@ export interface FileRoutesByTo {
   '/admin/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
+  '/prototype/freshness': typeof PrototypeFreshnessRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -322,6 +330,7 @@ export interface FileRoutesById {
   '/admin_/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
+  '/prototype/freshness': typeof PrototypeFreshnessRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -362,6 +371,7 @@ export interface FileRouteTypes {
     | '/admin/icons'
     | '/api/sync-config'
     | '/cli/auth'
+    | '/prototype/freshness'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -400,6 +410,7 @@ export interface FileRouteTypes {
     | '/admin/icons'
     | '/api/sync-config'
     | '/cli/auth'
+    | '/prototype/freshness'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -438,6 +449,7 @@ export interface FileRouteTypes {
     | '/admin_/icons'
     | '/api/sync-config'
     | '/cli/auth'
+    | '/prototype/freshness'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -477,6 +489,7 @@ export interface RootRouteChildren {
   AdminIconsRoute: typeof AdminIconsRoute
   ApiSyncConfigRoute: typeof ApiSyncConfigRoute
   CliAuthRoute: typeof CliAuthRoute
+  PrototypeFreshnessRoute: typeof PrototypeFreshnessRoute
   SettingsAnalyticsRoute: typeof SettingsAnalyticsRoute
   SettingsMachinesRoute: typeof SettingsMachinesRoute
   StacksSlugRoute: typeof StacksSlugRoute
@@ -646,6 +659,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/prototype/freshness': {
+      id: '/prototype/freshness'
+      path: '/prototype/freshness'
+      fullPath: '/prototype/freshness'
+      preLoaderRoute: typeof PrototypeFreshnessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cli/auth': {
       id: '/cli/auth'
       path: '/cli/auth'
@@ -784,6 +804,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminIconsRoute: AdminIconsRoute,
   ApiSyncConfigRoute: ApiSyncConfigRoute,
   CliAuthRoute: CliAuthRoute,
+  PrototypeFreshnessRoute: PrototypeFreshnessRoute,
   SettingsAnalyticsRoute: SettingsAnalyticsRoute,
   SettingsMachinesRoute: SettingsMachinesRoute,
   StacksSlugRoute: StacksSlugRoute,
