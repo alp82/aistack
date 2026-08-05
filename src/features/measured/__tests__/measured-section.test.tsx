@@ -65,13 +65,13 @@ function live(options: Parameters<typeof buildHistory>[0] = {}) {
 }
 
 describe("the reading", () => {
-	it("leads with tokens and puts spend underneath", () => {
+	it("leads with tokens and puts a lower-bound spend underneath", () => {
 		const { current, history } = live({ claudeCodeOnly: true });
 		setup(current, history);
 		expect(screen.getByText("4.70B")).toBeInTheDocument();
 		expect(screen.getByText("tokens · last 30 days")).toBeInTheDocument();
-		expect(screen.getByText("≈$6,014")).toBeInTheDocument();
-		expect(screen.getByText("at api list prices")).toBeInTheDocument();
+		expect(screen.getByText("≥$6,014")).toBeInTheDocument();
+		expect(screen.getByText("at least, at api list prices")).toBeInTheDocument();
 	});
 
 	it("names the window as the thing that moves", () => {
@@ -97,6 +97,23 @@ describe("the reading", () => {
 		expect(screen.getByText("4.71B")).toBeInTheDocument();
 		expect(screen.getByText("cost not published")).toBeInTheDocument();
 		expect(document.body.textContent).not.toContain("$");
+	});
+
+	it("prints no dollars at all when no table cites them", () => {
+		// The per-model column has to go too, not just the headline. A cost block
+		// that names no table is the one shape that must never reach the page:
+		// a price the reader cannot date is a price we do not print.
+		const { current, history } = live({ claudeCodeOnly: true });
+		setup(
+			{
+				...current,
+				pricingTable: null,
+				cost: current.cost && { ...current.cost, pricingTables: [] },
+			},
+			history,
+		);
+		expect(document.body.textContent).not.toContain("$");
+		expect(screen.getByText("4.70B")).toBeInTheDocument();
 	});
 
 	it("shows the model split, raw vendor id and all", () => {

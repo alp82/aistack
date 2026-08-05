@@ -19,7 +19,7 @@ import {
 	type MeasuredPayload,
 	sanitizeModelId,
 } from "./payload.js";
-import { PRICING_TABLE_VERSION } from "./pricing.js";
+import { PRICING_TABLE_VERSION } from "@aistack/pricing";
 import type { ScanStats } from "./window.js";
 
 const NOW = Date.UTC(2026, 6, 25, 12, 0, 0); // 2026-07-25

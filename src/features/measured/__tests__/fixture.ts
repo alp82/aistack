@@ -30,25 +30,58 @@ const CATALOG: Record<string, string> = {
 export const HOUR = 60 * 60 * 1000;
 export const DAY = 24 * HOUR;
 
+const tokensOf = (m: HarnessSnapshot["models"][number]) =>
+	m.tokens.input + m.tokens.output + m.tokens.cacheWrite + m.tokens.cacheRead;
+
+/**
+ * The cost block the query derives from these models (#93). Every model here
+ * was priced by the CLI that produced the fixture, so the whole reading is
+ * published rather than estimated — and coverage is whatever share of the
+ * tokens those rows carry.
+ */
+function costOf(
+	models: HarnessSnapshot["models"],
+	pricingTable: string | null,
+): MeasuredSnapshot["cost"] {
+	const priced = models.filter((m) => m.apiEquivalentUSD !== undefined);
+	if (priced.length === 0) return null;
+	const measuredTokens = models.reduce((a, m) => a + tokensOf(m), 0);
+	const pricedTokens = priced.reduce((a, m) => a + tokensOf(m), 0);
+	const usd = priced.reduce((a, m) => a + (m.apiEquivalentUSD ?? 0), 0);
+	return {
+		lowerBoundUSD: usd,
+		publishedUSD: usd,
+		estimatedUSD: 0,
+		coverage: measuredTokens > 0 ? pricedTokens / measuredTokens : 0,
+		pricedTokens,
+		measuredTokens,
+		pricingTables: pricingTable ? [pricingTable] : [],
+	};
+}
+
 /** One harness's own section, resolved the way the query resolves it. */
 export function buildHarness(
 	overrides: Partial<HarnessSnapshot> = {},
 ): HarnessSnapshot {
 	const payload = raw as unknown as Omit<
 		HarnessSnapshot,
-		"receivedAt" | "isFresh" | "models"
+		"receivedAt" | "isFresh" | "models" | "cost"
 	> & { models: Array<Omit<HarnessSnapshot["models"][number], never>> };
 	const receivedAt = Date.now() - 2 * HOUR;
+
+	const models = payload.models.map((m) => ({
+		...m,
+		catalogSlug: CATALOG[m.id] ? m.id : null,
+		catalogName: CATALOG[m.id] ?? null,
+		costEstimated: false,
+	}));
 
 	return {
 		...payload,
 		receivedAt,
 		isFresh: true,
-		models: payload.models.map((m) => ({
-			...m,
-			catalogSlug: CATALOG[m.id] ? m.id : null,
-			catalogName: CATALOG[m.id] ?? null,
-		})),
+		models,
+		cost: costOf(models, payload.pricingTable),
 		...overrides,
 	};
 }
@@ -68,6 +101,7 @@ export function buildSnapshot(
 		isFresh: h.isFresh,
 		window: h.window,
 		pricingTable: h.pricingTable,
+		cost: h.cost,
 		activity: h.activity,
 		models: h.models,
 		harnesses: [h],
@@ -85,10 +119,12 @@ export function withoutCost(
 	return {
 		...base,
 		pricingTable: null,
+		cost: null,
 		models: stripModels(base.models),
 		harnesses: base.harnesses.map((h) => ({
 			...h,
 			pricingTable: null,
+			cost: null,
 			models: stripModels(h.models),
 		})),
 	};

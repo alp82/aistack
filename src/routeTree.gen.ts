@@ -15,6 +15,7 @@ import { Route as SyncRouteImport } from './routes/sync'
 import { Route as SigninPublishRouteImport } from './routes/signin-publish'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -71,6 +72,11 @@ const SigninRoute = SigninRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaderboardRoute = LeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -216,6 +222,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signin': typeof SigninRoute
   '/signin-publish': typeof SigninPublishRoute
@@ -251,6 +258,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signin': typeof SigninRoute
   '/signin-publish': typeof SigninPublishRoute
@@ -287,6 +295,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signin': typeof SigninRoute
   '/signin-publish': typeof SigninPublishRoute
@@ -324,6 +333,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth-callback'
     | '/forgot-password'
+    | '/leaderboard'
     | '/reset-password'
     | '/signin'
     | '/signin-publish'
@@ -359,6 +369,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth-callback'
     | '/forgot-password'
+    | '/leaderboard'
     | '/reset-password'
     | '/signin'
     | '/signin-publish'
@@ -394,6 +405,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth-callback'
     | '/forgot-password'
+    | '/leaderboard'
     | '/reset-password'
     | '/signin'
     | '/signin-publish'
@@ -430,6 +442,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  LeaderboardRoute: typeof LeaderboardRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SigninRoute: typeof SigninRoute
   SigninPublishRoute: typeof SigninPublishRoute
@@ -500,6 +513,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leaderboard': {
+      id: '/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof LeaderboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -713,6 +733,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  LeaderboardRoute: LeaderboardRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SigninRoute: SigninRoute,
   SigninPublishRoute: SigninPublishRoute,

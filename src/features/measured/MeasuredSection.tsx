@@ -23,6 +23,7 @@ import {
 	OWNER_NOT_MEASURED_BODY,
 	OWNER_NOT_MEASURED_TITLE,
 	PRIVACY_FOOTNOTE,
+	pricedShareLine,
 	readingsLine,
 	SYNC_CMD,
 	SYNC_CMD_COMMENT,
@@ -104,6 +105,7 @@ function Reading({
 	// The COMBINED headline (#66 decision 2): tokens, sessions and dollars sum
 	// honestly across harnesses; each harness keeps its own section below.
 	const cost = totalUSD(snapshot);
+	const pricedShare = pricedShareLine(snapshot);
 	const multiHarness = snapshot.harnesses.length > 1;
 	const trails = modelTrails(snapshot.models, points);
 	const firstAt = points.length > 0 ? points[0].at : null;
@@ -157,6 +159,11 @@ function Reading({
 						<p className={cn(MONO_LABEL, "text-fg-muted")}>
 							prices: {snapshot.pricingTable}
 						</p>
+					)}
+					{/* What the figure above leaves out. Silent at full coverage —
+					    "priced 100%" is noise, and the ≥ already carries the rest. */}
+					{pricedShare !== null && (
+						<p className={cn(MONO_LABEL, "text-fg-muted")}>{pricedShare}</p>
 					)}
 				</div>
 			</div>

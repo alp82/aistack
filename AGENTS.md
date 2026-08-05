@@ -54,6 +54,23 @@ cd packages/cli && pnpm publish
 * Better Auth
 * Resend
 
+## Pricing
+
+There is ONE price table, in `packages/pricing` (`@aistack/pricing`). The CLI
+and the Convex backend both import it. It is a private workspace package and is
+never published — `tsup` bundles it into the CLI's `dist`.
+
+* The CLI prices each response at its own timestamp, at ingest. That figure is
+  exact and always wins.
+* The backend re-prices at READ time in `convex/lib/reprice.ts`, filling gaps
+  only. Its figures are LOWER BOUNDS: the wire carries one merged `cacheWrite`
+  (so it charges the cheap 5-minute tier, about 8% low for Claude Code), and it
+  has no per-response timestamps (so a window straddling a repricing pays the
+  cheaper rate).
+* Every surface that prints dollars prints the price-table id and the share of
+  tokens the figure covers. `publishCost` on the stack is the consent gate —
+  check the flag, never the presence of dollars.
+
 ## Charts
 
 All charts come from `src/features/charts`. It is the only place that imports

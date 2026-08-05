@@ -48,7 +48,7 @@ import {
 	apiEquivalentCost,
 	normalizeModel,
 	type TokenCounts,
-} from "../shared/pricing.js";
+} from "@aistack/pricing";
 
 // Re-exported for the existing import sites (tests, stage, summary); the
 // definitions moved to ../shared/aggregate.ts in #67.

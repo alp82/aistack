@@ -268,6 +268,7 @@ export function currentFromHistory(history: MeasuredHistory): MeasuredSnapshot {
 
 	const models = point.models.map((m) => ({
 		...m,
+		costEstimated: false,
 		tokens: {
 			input: Math.round(point.tokens * m.tokenShare * 0.01),
 			output: Math.round(point.tokens * m.tokenShare * 0.01),
@@ -285,6 +286,20 @@ export function currentFromHistory(history: MeasuredHistory): MeasuredSnapshot {
 		isFresh: true,
 		window: { days: point.windowDays, from: point.from, to: point.to },
 		pricingTable: point.pricingTable,
+		cost:
+			point.usd === null
+				? null
+				: {
+						lowerBoundUSD: point.usd,
+						publishedUSD: point.usd,
+						estimatedUSD: 0,
+						coverage: 1,
+						pricedTokens: point.tokens,
+						measuredTokens: point.tokens,
+						pricingTables: point.pricingTable
+							? point.pricingTable.split(" + ")
+							: [],
+					},
 		activity: {
 			...base.activity,
 			sessions: point.sessions,
