@@ -5,8 +5,9 @@
  *
  * The same 24-hour claim opens the page: live dot, three activity counts in
  * the header bar, four measured tiles, watermark. Below it the full stream,
- * grouped by day, paged with an "older" button (10 at a time) — the shape the
- * `by_createdAt` index serves directly.
+ * grouped by day, paged with an "older" button (25 at a time) — the shape the
+ * `by_createdAt` index serves directly. Owner round 1: F won every axis;
+ * chips came over from C, and the page size went up.
  *
  * The bet: the visitor who pressed "all activity" wants MORE of the same
  * room, and the numbers keep the thin case warm — three rows under four big
@@ -32,8 +33,21 @@ import {
 import { Row } from "../landing/feed-prototype/rows";
 import type { DisplayRow } from "./useActivityPrototype";
 
-const PAGE = 10;
+const PAGE = 25;
 const WATERMARK_MIN_DAYS = 3;
+
+type Filter =
+	| "all"
+	| "sync.landed"
+	| "stack.published"
+	| "stack.composition_changed";
+
+const FILTERS: { key: Filter; label: string }[] = [
+	{ key: "all", label: "all" },
+	{ key: "sync.landed", label: "syncs" },
+	{ key: "stack.published", label: "new stacks" },
+	{ key: "stack.composition_changed", label: "changes" },
+];
 
 function Stat({
 	value,
@@ -60,20 +74,26 @@ function Stat({
 
 export function VariantF({ rows }: { rows: DisplayRow[] }) {
 	const [limit, setLimit] = useState(PAGE);
+	const [filter, setFilter] = useState<Filter>("all");
 	const now = Date.now();
+	// The band states the whole site's 24 hours. Filters narrow the STREAM
+	// only — a chip must never rewrite the site's headline numbers.
 	const totals = totalsFor(rows, 1440);
 	const usage = usageFor(rows, 1440);
 	const quiet = usage.stacks === 0;
 	const updates = totals.published + totals.changed;
 	const points = tokensPerDay(rows, now);
 	const showWatermark = liveDays(points) >= WATERMARK_MIN_DAYS;
-	const shown = rows.slice(0, limit);
+	const filtered = rows.filter(
+		(r) => filter === "all" || r.event.type === filter,
+	);
+	const shown = filtered.slice(0, limit);
 
 	let lastDay = "";
 
 	return (
 		<div className="min-h-screen bg-bg-canvas">
-			<section className="relative overflow-hidden border-b-2 border-stroke-strong bg-bg-panel px-6 py-16">
+			<section className="relative overflow-hidden border-b-2 border-stroke-strong bg-bg-panel px-6 py-10">
 				{showWatermark ? (
 					<div
 						aria-hidden="true"
@@ -89,10 +109,10 @@ export function VariantF({ rows }: { rows: DisplayRow[] }) {
 					</div>
 				) : null}
 				<div className="relative mx-auto w-full max-w-content">
-					<h1 className="mb-10 text-4xl font-black tracking-tighter text-fg-primary md:text-5xl">
+					<h1 className="mb-6 text-4xl font-black tracking-tighter text-fg-primary md:text-5xl">
 						ACTIVITY
 					</h1>
-					<div className="mb-12 flex flex-wrap items-baseline justify-between gap-x-10 gap-y-3">
+					<div className="mb-8 flex flex-wrap items-baseline justify-between gap-x-10 gap-y-3">
 						<span className="flex items-center gap-3">
 							<span className="relative flex h-2 w-2">
 								<span className="absolute inline-flex h-full w-full animate-ping bg-accent-lime opacity-60" />
@@ -143,15 +163,37 @@ export function VariantF({ rows }: { rows: DisplayRow[] }) {
 						/>
 						<Stat value={quiet ? "—" : fmtCount(usage.tools)} label="tools" />
 					</div>
-					<div className="mt-10 font-mono text-xs text-fg-muted/50">
-						measured across {totals.stacksSeen}{" "}
-						{totals.stacksSeen === 1 ? "stack" : "stacks"}
-					</div>
 				</div>
 			</section>
 
 			<div className="px-6 py-16">
 				<div className="mx-auto w-full max-w-content">
+					<div className="mb-12 flex flex-wrap gap-2">
+						{FILTERS.map((f) => (
+							<button
+								type="button"
+								key={f.key}
+								onClick={() => {
+									setFilter(f.key);
+									setLimit(PAGE);
+								}}
+								className={`${MONO_LABEL} border-2 px-3 py-2 transition-colors ${
+									filter === f.key
+										? "border-accent-lime bg-accent-lime text-accent-lime-contrast"
+										: "border-stroke-strong text-fg-muted hover:border-accent-lime hover:text-accent-lime"
+								}`}
+							>
+								{f.label}
+							</button>
+						))}
+					</div>
+
+					{shown.length === 0 ? (
+						<p className="font-mono text-sm text-fg-muted/60">
+							nothing here yet.
+						</p>
+					) : null}
+
 					{shown.map((row) => {
 						const day = dayBucket(row.minutesAgo, now);
 						const isNewDay = day !== lastDay;
@@ -172,7 +214,7 @@ export function VariantF({ rows }: { rows: DisplayRow[] }) {
 						);
 					})}
 
-					{rows.length > limit ? (
+					{filtered.length > limit ? (
 						<button
 							type="button"
 							onClick={() => setLimit((l) => l + PAGE)}
