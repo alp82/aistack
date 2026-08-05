@@ -200,9 +200,10 @@ export function AnalyticsPage() {
  *
  * A draft says why its number can only be zero. Without that, an owner reads a
  * zero as "nobody is interested" when the truth is that the page cannot be
- * reached at all.
+ * reached at all. Exported because the profile panel and the stack-page line
+ * (#112) say the same three things, and one wording is the whole point.
  */
-function targetNote(openable: boolean, total: number): string {
+export function targetNote(openable: boolean, total: number): string {
 	if (!openable) return "Draft — nobody can open it yet";
 	if (total === 0) return "Nobody has opened it yet";
 	return "deduped daily visitors";
