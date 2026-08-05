@@ -1,13 +1,13 @@
 /**
- * A sparkline for one row of a list.
+ * A sparkline for one row of a list, or one behind a headline.
  *
- * No axes, no grid, no tooltip and no tab stop: the row around it already
+ * No axes, no grid, no tooltip and no tab stop: whatever surrounds it already
  * carries the numbers and the name. It is a shape, not a chart to read values
- * off. Fixed width and height, so the server needs no measurement and a list of
- * a hundred rows does not schedule a hundred resize observers.
+ * off. Fixed width and height by default, so the server needs no measurement and
+ * a list of a hundred rows does not schedule a hundred resize observers.
  */
 
-import { defineChart, lineY } from "@tanstack/charts";
+import { areaY, defineChart, lineY } from "@tanstack/charts";
 import { Chart } from "@tanstack/react-charts";
 import { scaleLinear, scaleUtc } from "d3-scale";
 import { useMemo } from "react";
@@ -20,10 +20,26 @@ type SparklineProps = {
 	readonly width?: number;
 	readonly height?: number;
 	readonly className?: string;
+	/**
+	 * The paint the line wears. Defaults to the page accent, which is right for a
+	 * sparkline standing on its own. A sparkline inside a row that already wears a
+	 * palette slot must be handed THAT slot: one entity, one color.
+	 */
+	readonly paint?: string;
+	/** Fill under the line. Reads as texture, never as a second series. */
+	readonly area?: boolean;
+	/**
+	 * Fill the container's width instead of holding a fixed one, for a trail used
+	 * as a backdrop. The server draws it at `width` and the browser widens it on
+	 * mount, so the SVG is still complete in the first HTML.
+	 */
+	readonly fluid?: boolean;
 };
 
 const DEFAULT_WIDTH = 120;
 const DEFAULT_HEIGHT = 28;
+/** Same weight as the area under a `TimeSeriesChart` line. */
+const AREA_OPACITY = 0.16;
 
 function Sparkline({
 	points,
@@ -31,6 +47,9 @@ function Sparkline({
 	width = DEFAULT_WIDTH,
 	height = DEFAULT_HEIGHT,
 	className,
+	paint = ACCENT_PAINT,
+	area = false,
+	fluid = false,
 }: SparklineProps) {
 	const rows = useMemo(
 		() =>
@@ -43,7 +62,19 @@ function Sparkline({
 	const definition = useMemo(
 		() =>
 			defineChart({
-				marks: [lineY(rows, { x: "at", y: "value", stroke: ACCENT_PAINT })],
+				marks: [
+					...(area
+						? [
+								areaY(rows, {
+									x: "at",
+									y: "value",
+									fill: paint,
+									fillOpacity: AREA_OPACITY,
+								}),
+							]
+						: []),
+					lineY(rows, { x: "at", y: "value", stroke: paint }),
+				],
 				x: { scale: scaleUtc },
 				y: { scale: scaleLinear },
 				// No axes, no grid, no implicit margin: the line fills the box.
@@ -51,7 +82,7 @@ function Sparkline({
 				margin: 2,
 				keyboard: false,
 			}),
-		[rows],
+		[rows, paint, area],
 	);
 
 	// A line needs two readings. One draws nothing worth a box.
@@ -61,7 +92,7 @@ function Sparkline({
 		<Chart
 			definition={definition}
 			ariaLabel={ariaLabel}
-			width={width}
+			{...(fluid ? { initialWidth: width } : { width })}
 			height={height}
 			className={className}
 		/>

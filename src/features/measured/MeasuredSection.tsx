@@ -7,23 +7,23 @@ import { api } from "../../../convex/_generated/api";
 import { CommandBlock } from "./CommandLine";
 import {
 	coverageCaveat,
-	fmtShare,
 	fmtTokens,
-	fmtUSD,
 	type HarnessSnapshot,
 	harnessLine,
 	KICKER,
 	keptPrivate,
+	lastCheckLine,
 	MEASURED_ANCHOR,
-	type MeasuredModel,
 	type MeasuredSnapshot,
+	MIX_KICKER,
 	MONO_LABEL,
-	modelLabel,
 	NEVER_SYNCED_BODY,
 	NEVER_SYNCED_TITLE,
+	notchNote,
 	OWNER_NOT_MEASURED_BODY,
 	OWNER_NOT_MEASURED_TITLE,
 	PRIVACY_FOOTNOTE,
+	readingsLine,
 	SYNC_CMD,
 	SYNC_CMD_COMMENT,
 	stalenessLine,
@@ -31,19 +31,33 @@ import {
 	totalUSD,
 	windowSentence,
 } from "./copy";
+import {
+	type MeasuredHistoryPoint,
+	modelTrails,
+	tokenDelta,
+	tokenTrail,
+} from "./history";
+import { MetricBlock } from "./MetricBlock";
+import { ModelShareRows } from "./ModelShareRows";
 
 /**
- * Journey section 01 — the public measured display.
+ * Journey section 01 — the public measured display, living (#81, map #76).
  *
- * Wayfinder ticket #46 (map #29), building variant B locked by #40; #58 moved
- * it to the front of the journey. What ran now literally comes first.
+ * #46 built the still version off #40's variant B; #58 moved it to the front of
+ * the journey; #80 gave it its history as variant I. What ran now literally
+ * comes first, and it moves.
  *
- * Public and unauthenticated: `getCurrentByStackSlug` answers for any published
- * stack and returns null for one that has never synced. That null renders an
- * INVITATION addressed to the reader, never a demerit on the author — every
- * stack but one is in that state, and a page that scolded them for it would be
- * scolding almost everybody. The one exception is the owner looking at their
- * own unsynced stack: they get the two commands that close the gap (#58).
+ * TWO QUERIES, AND ONE OF THEM IS OPTIONAL. The current reading renders the
+ * whole section: headline, model rows, stats, caveats. The series only ADDS the
+ * watermark, the delta, the readings line and the notch. A stack with one sync,
+ * or a page whose series has not answered yet, is a complete page and not a
+ * broken one — which matters because two to five readings is what stacks have.
+ *
+ * Public and unauthenticated. A null current reading renders an INVITATION
+ * addressed to the reader, never a demerit on the author — every stack but a few
+ * is in that state, and a page that scolded them would be scolding almost
+ * everybody. The one exception is the owner looking at their own unsynced stack:
+ * they get the command that closes the gap (#58).
  */
 export function MeasuredSection({
 	index,
@@ -55,6 +69,7 @@ export function MeasuredSection({
 	isOwner: boolean;
 }) {
 	const snapshot = useQuery(api.measured.getCurrentByStackSlug, { slug });
+	const history = useQuery(api.measured.getHistoryByStackSlug, { slug });
 
 	return (
 		<Section index={index} id={MEASURED_ANCHOR}>
@@ -73,38 +88,61 @@ export function MeasuredSection({
 					<NeverMeasured />
 				)
 			) : (
-				<Reading snapshot={snapshot} />
+				<Reading snapshot={snapshot} points={history?.points ?? []} />
 			)}
 		</Section>
 	);
 }
 
-function Reading({ snapshot }: { snapshot: MeasuredSnapshot }) {
+function Reading({
+	snapshot,
+	points,
+}: {
+	snapshot: MeasuredSnapshot;
+	points: readonly MeasuredHistoryPoint[];
+}) {
 	// The COMBINED headline (#66 decision 2): tokens, sessions and dollars sum
 	// honestly across harnesses; each harness keeps its own section below.
 	const cost = totalUSD(snapshot);
 	const multiHarness = snapshot.harnesses.length > 1;
+	const trails = modelTrails(snapshot.models, points);
+	const firstAt = points.length > 0 ? points[0].at : null;
+	const sinceLast = lastCheckLine(tokenDelta(points), fmtTokens);
 
 	return (
 		<div className="grid gap-10 md:grid-cols-[minmax(0,22rem)_1fr]">
 			{/* The reading. The one place on the page a measured dollar appears. */}
 			<div>
-				<p className="font-mono text-5xl font-black leading-none text-fg-primary md:text-6xl">
-					{cost !== null
-						? `≈${fmtUSD(cost)}`
-						: fmtTokens(snapshot.activity.totalTokens)}
-				</p>
-				<p className="mt-2 text-sm text-fg-muted">
-					{cost !== null
-						? `at API prices, over the last ${snapshot.window.days} days`
-						: `tokens over the last ${snapshot.window.days} days`}
-				</p>
+				<MetricBlock
+					tokens={snapshot.activity.totalTokens}
+					usd={cost}
+					windowDays={snapshot.window.days}
+					trail={tokenTrail(points)}
+				/>
 
-				<p className="mt-6 max-w-sm text-sm leading-relaxed text-fg-muted">
+				<div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 px-3">
+					{sinceLast && (
+						<span
+							className={cn(
+								MONO_LABEL,
+								"inline-flex items-center border border-stroke-subtle px-1.5 py-0.5 text-[10px] tracking-wider text-fg-muted",
+							)}
+						>
+							{sinceLast}
+						</span>
+					)}
+					{firstAt !== null && (
+						<span className={cn(MONO_LABEL, "text-fg-muted")}>
+							{readingsLine(points.length, firstAt)}
+						</span>
+					)}
+				</div>
+
+				<p className="mt-6 max-w-sm px-3 text-sm leading-relaxed text-fg-muted">
 					{windowSentence(snapshot.window.days)}
 				</p>
 
-				<div className="mt-6 space-y-1">
+				<div className="mt-6 space-y-1 px-3">
 					<p className={cn(MONO_LABEL, "text-fg-muted")}>
 						{snapshot.window.from} → {snapshot.window.to}
 					</p>
@@ -125,11 +163,16 @@ function Reading({ snapshot }: { snapshot: MeasuredSnapshot }) {
 
 			{/* The split, then the activity stats. */}
 			<div>
-				<div className="space-y-3">
-					{snapshot.models.map((m) => (
-						<ModelRow key={m.id} model={m} showCost={cost !== null} />
-					))}
+				<div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+					<p className={cn(MONO_LABEL, "text-accent-lime")}>{MIX_KICKER}</p>
+					{firstAt !== null && points.length > 1 && (
+						<p className="font-mono text-[11px] text-fg-muted">
+							{notchNote(firstAt)}
+						</p>
+					)}
 				</div>
+
+				<ModelShareRows trails={trails} firstAt={firstAt} />
 
 				<div className="mt-8 grid grid-cols-2 gap-px border border-stroke-subtle bg-stroke-subtle sm:grid-cols-4">
 					<Stat
@@ -199,43 +242,6 @@ function HarnessFootnote({
 					{prefix}
 					{stalenessLine(timeAgo(harness.receivedAt))}
 				</p>
-			)}
-		</div>
-	);
-}
-
-/**
- * One model's share of the window.
- *
- * `catalogName` is null for a model the catalog has never heard of, and its
- * tokens are as real as any other row's — on the owner's own window that row is
- * the biggest one. It renders as the raw vendor id, with no error state.
- */
-function ModelRow({
-	model,
-	showCost,
-}: {
-	model: MeasuredModel;
-	showCost: boolean;
-}) {
-	return (
-		<div className="flex items-center gap-4">
-			<span className="w-44 shrink-0 truncate font-mono text-xs text-fg-primary">
-				{modelLabel(model)}
-			</span>
-			<span className="h-2 flex-1 bg-bg-panel">
-				<span
-					className="block h-full bg-accent-lime"
-					style={{ width: `${Math.max(1, model.tokenShare * 100)}%` }}
-				/>
-			</span>
-			<span className="w-14 shrink-0 text-right font-mono text-xs text-fg-muted">
-				{fmtShare(model.tokenShare)}
-			</span>
-			{showCost && model.apiEquivalentUSD !== undefined && (
-				<span className="w-20 shrink-0 text-right font-mono text-xs text-fg-primary">
-					{fmtUSD(model.apiEquivalentUSD)}
-				</span>
 			)}
 		</div>
 	);

@@ -12,6 +12,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, test } from "vitest";
 import { BarsChart } from "../BarsChart";
 import type { ChartSeries } from "../data";
+import { CHART_PAINTS } from "../palette";
 import { Sparkline } from "../Sparkline";
 import { StackedAreaChart } from "../StackedAreaChart";
 import { TimeSeriesChart } from "../TimeSeriesChart";
@@ -81,6 +82,31 @@ describe("server rendering", () => {
 		expect(count(html, "path")).toBe(1);
 		expect(count(html, "text")).toBe(0);
 		expect(html).toContain('viewBox="0 0 120 28"');
+	});
+
+	test("a sparkline wears the accent, or the slot its row already wears", () => {
+		// A sparkline inside a row that is already painted from the palette must
+		// wear that same slot: two paints for one entity is two entities.
+		expect(
+			renderToString(<Sparkline points={days(4, 10)} ariaLabel="a" />),
+		).toContain("var(--accent-lime");
+		expect(
+			renderToString(
+				<Sparkline
+					points={days(4, 10)}
+					ariaLabel="a"
+					paint={CHART_PAINTS[2]}
+				/>,
+			),
+		).toContain("var(--chart-3");
+	});
+
+	test("a backdrop sparkline fills its box and carries a fill under the line", () => {
+		const html = renderToString(
+			<Sparkline points={days(4, 10)} ariaLabel="a" area fluid height={140} />,
+		);
+		// Two paths: the fill and the line. A bare sparkline draws only the line.
+		expect(count(html, "path")).toBe(2);
 	});
 });
 

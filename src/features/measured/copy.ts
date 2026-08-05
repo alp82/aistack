@@ -66,6 +66,54 @@ export function fmtShare(share: number): string {
 }
 
 /**
+ * A move, signed. A rolling window is a LEVEL, so a minus sign here is ordinary
+ * — the window forgot a busy day at its far end — and the wording around it must
+ * never dress a fall as a fault.
+ */
+export function fmtDelta(n: number, fmt: (v: number) => string): string {
+	const sign = n > 0 ? "+" : n < 0 ? "−" : "±";
+	return `${sign}${fmt(Math.abs(n))}`;
+}
+
+/** "Jul 30" — a reading's day, always read as UTC. */
+export function fmtDay(at: number): string {
+	return new Date(at).toLocaleDateString("en-US", {
+		month: "short",
+		day: "numeric",
+		timeZone: "UTC",
+	});
+}
+
+/** "7 readings since Jul 30" — how alive the page is, in one line. */
+export function readingsLine(count: number, firstAt: number): string {
+	return `${count} ${count === 1 ? "reading" : "readings"} since ${fmtDay(firstAt)}`;
+}
+
+/** The delta chip beside the headline. Null on a first reading. */
+export function lastCheckLine(
+	delta: number | null,
+	fmt: (v: number) => string,
+): string | null {
+	if (delta === null) return null;
+	return `${fmtDelta(delta, fmt)} since the last check`;
+}
+
+/** The kicker over the model rows, and the note that explains the notch. */
+export const MIX_KICKER = "where the tokens went";
+export function notchNote(firstAt: number): string {
+	return `the hatched notch marks where each share stood on ${fmtDay(firstAt)}`;
+}
+
+/** The captions under the two headline numbers. */
+export const TOKENS_CAPTION = (days: number) => `tokens · last ${days} days`;
+export const COST_CAPTION = "at api list prices";
+export const COST_PRIVATE = "kept private";
+export const COST_PRIVATE_CAPTION = "cost not published";
+/** The hover swap under the number, and the accessible name of the control. */
+export const DECK_HINT = "random fun fact";
+export const DECK_LABEL = "Show another way to picture these tokens";
+
+/**
  * The dollars the whole window cost at API prices, or null.
  *
  * Null in two cases, and the display must treat both the same way: the client

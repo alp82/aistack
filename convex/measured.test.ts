@@ -591,6 +591,368 @@ describe('getCurrentByStackSlug', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// Read — the series (#81)
+// ---------------------------------------------------------------------------
+
+describe('getHistoryByStackSlug', () => {
+  const HOUR = 60 * 60 * 1000
+
+  /** Tokens split across the four input classes, so totals stay checkable. */
+  function models(over: Array<{ id: string; share: number; usd?: number }>) {
+    return over.map((m) => ({
+      id: m.id,
+      tokenShare: m.share,
+      tokens: { input: 1, output: 1, cacheWrite: 0, cacheRead: 0 },
+      ...(m.usd === undefined ? {} : { apiEquivalentUSD: m.usd }),
+    }))
+  }
+
+  test('returns one point per sync, oldest first', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const now = Date.now()
+
+    for (const [ago, tokens] of [
+      [3 * DAY, 100],
+      [2 * DAY, 220],
+      [1 * DAY, 180],
+    ] as const) {
+      await t.mutation(internal.measured.publishSnapshot, {
+        stackId,
+        payload: payload({
+          capturedAt: now - ago,
+          activity: { ...payload().activity, totalTokens: tokens },
+        }),
+      })
+    }
+
+    const history = await t.query(api.measured.getHistoryByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    // A rolling window is a level, so it may fall. The series says so.
+    expect(history?.points.map((p) => p.tokens)).toEqual([100, 220, 180])
+    expect(history?.points.map((p) => p.at)).toEqual([
+      now - 3 * DAY,
+      now - 2 * DAY,
+      now - 1 * DAY,
+    ])
+  })
+
+  test('returns null for an unpublished stack, and for one that never synced', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t, { published: false })
+    await t.mutation(internal.measured.publishSnapshot, { stackId, payload: payload() })
+    expect(
+      await t.query(api.measured.getHistoryByStackSlug, { slug: `my-stack-${shortId}` }),
+    ).toBeNull()
+
+    const other = await seedStack(t)
+    expect(
+      await t.query(api.measured.getHistoryByStackSlug, {
+        slug: `my-stack-${other.shortId}`,
+      }),
+    ).toBeNull()
+  })
+
+  test('two syncs a minute apart are one reading, not two', async () => {
+    // Real, from prod: 15:35 and 15:36 on 2026-08-01.
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const at = Date.now() - HOUR
+
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({ capturedAt: at }),
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({
+        capturedAt: at + 61_000,
+        activity: { ...payload().activity, totalTokens: 2_000_000 },
+      }),
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      // Same minute as the second: an amended sync, not a new reading.
+      payload: payload({
+        capturedAt: at + 61_500,
+        activity: { ...payload().activity, totalTokens: 3_000_000 },
+      }),
+    })
+
+    const history = await t.query(api.measured.getHistoryByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(history?.points).toHaveLength(2)
+    expect(history?.points[1].tokens).toBe(3_000_000)
+  })
+
+  test('carries a harness that did not sync into the next reading', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const now = Date.now()
+
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({
+        capturedAt: now - 2 * DAY,
+        activity: { ...payload().activity, totalTokens: 1_000, sessions: 10 },
+      }),
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({
+        capturedAt: now - HOUR,
+        harness: { name: 'codex', version: '0.9' },
+        activity: { ...payload().activity, totalTokens: 40, sessions: 2 },
+      }),
+    })
+
+    const history = await t.query(api.measured.getHistoryByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    const last = history?.points[1]
+    // Claude Code did not sync in this minute, and dropping it would make the
+    // stack look like it shrank by three orders of magnitude.
+    expect(last?.tokens).toBe(1_040)
+    expect(last?.sessions).toBe(12)
+    expect(last?.harnesses.map((h) => h.name).sort()).toEqual([
+      'claude-code',
+      'codex',
+    ])
+    // The carried reading says when it was actually taken.
+    const cc = last?.harnesses.find((h) => h.name === 'claude-code')
+    expect(cc?.capturedAt).toBe(now - 2 * DAY)
+    expect(last?.at).toBe(now - HOUR)
+  })
+
+  test('the newest point states exactly what the headline states', async () => {
+    // The page shows the headline and the trail together. If these two merges
+    // could disagree, the number would restate itself differently every scroll.
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const now = Date.now()
+
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({
+        capturedAt: now - 3 * DAY,
+        models: models([{ id: 'claude-opus-5', share: 1, usd: 5 }]),
+      }),
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({
+        capturedAt: now - 2 * DAY,
+        harness: { name: 'codex', version: '0.9' },
+        activity: { ...payload().activity, totalTokens: 500_000, sessions: 4 },
+        models: models([{ id: 'gpt-5.5', share: 1, usd: 3 }]),
+      }),
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({
+        capturedAt: now - HOUR,
+        models: models([
+          { id: 'claude-opus-5', share: 0.8, usd: 8 },
+          { id: 'claude-haiku-4-5', share: 0.2, usd: 1 },
+        ]),
+      }),
+    })
+
+    const slug = `my-stack-${shortId}`
+    const current = await t.query(api.measured.getCurrentByStackSlug, { slug })
+    const history = await t.query(api.measured.getHistoryByStackSlug, { slug })
+    const points = history?.points ?? []
+    const last = points[points.length - 1]
+
+    expect(last.tokens).toBe(current?.activity.totalTokens)
+    expect(last.sessions).toBe(current?.activity.sessions)
+    expect(last.usd).toBe(
+      current?.models.reduce((a, m) => a + (m.apiEquivalentUSD ?? 0), 0),
+    )
+    expect(last.models.map((m) => m.id)).toEqual(current?.models.map((m) => m.id))
+    expect(last.models.map((m) => m.tokenShare)).toEqual(
+      current?.models.map((m) => m.tokenShare),
+    )
+  })
+
+  test('seeds the carry-forward from before the window', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const now = Date.now()
+
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({
+        capturedAt: now - 200 * DAY,
+        activity: { ...payload().activity, totalTokens: 1_000 },
+      }),
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({
+        capturedAt: now - HOUR,
+        harness: { name: 'codex', version: '0.9' },
+        activity: { ...payload().activity, totalTokens: 40 },
+      }),
+    })
+
+    const history = await t.query(api.measured.getHistoryByStackSlug, {
+      slug: `my-stack-${shortId}`,
+      days: 30,
+    })
+    // One point — the old row is out of the window — but it still contributes,
+    // exactly as it does to the headline.
+    expect(history?.points).toHaveLength(1)
+    expect(history?.points[0].tokens).toBe(1_040)
+    expect(history?.windowDays).toBe(30)
+  })
+
+  test('narrows to one harness, unmerged, when asked', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const now = Date.now()
+
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({
+        capturedAt: now - 2 * DAY,
+        activity: { ...payload().activity, totalTokens: 1_000 },
+      }),
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({
+        capturedAt: now - HOUR,
+        harness: { name: 'codex', version: '0.9' },
+        activity: { ...payload().activity, totalTokens: 40 },
+      }),
+    })
+
+    const history = await t.query(api.measured.getHistoryByStackSlug, {
+      slug: `my-stack-${shortId}`,
+      harness: 'codex',
+    })
+    expect(history?.harness).toBe('codex')
+    expect(history?.points).toHaveLength(1)
+    expect(history?.points[0].tokens).toBe(40)
+    expect(history?.points[0].harnesses.map((h) => h.name)).toEqual(['codex'])
+  })
+
+  test('resolves the catalog at read time and keeps an unknown id as itself', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    await t.run(async (ctx) => {
+      await ctx.db.insert('models', {
+        name: 'Claude Opus 5',
+        slug: 'claude-opus-5',
+        shortId: 'mopus5',
+        provider: 'anthropic',
+        category: 'language',
+        reviewStatus: 'approved',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({
+        capturedAt: Date.now() - HOUR,
+        models: models([
+          { id: 'claude-opus-5', share: 0.5, usd: 1 },
+          { id: 'some-unlisted-model', share: 0.5, usd: 1 },
+        ]),
+      }),
+    })
+
+    const history = await t.query(api.measured.getHistoryByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(history?.points[0].models).toEqual([
+      {
+        id: 'claude-opus-5',
+        catalogSlug: 'claude-opus-5',
+        catalogName: 'Claude Opus 5',
+        tokenShare: 0.5,
+      },
+      {
+        id: 'some-unlisted-model',
+        catalogSlug: null,
+        catalogName: null,
+        tokenShare: 0.5,
+      },
+    ])
+  })
+
+  test('publishes no cost for a reading that published no pricing table', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const now = Date.now()
+
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({
+        capturedAt: now - DAY,
+        pricingTable: null,
+        models: models([{ id: 'claude-opus-5', share: 1 }]),
+      }),
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({
+        capturedAt: now - HOUR,
+        models: models([{ id: 'claude-opus-5', share: 1, usd: 7 }]),
+      }),
+    })
+
+    const history = await t.query(api.measured.getHistoryByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(history?.points[0].usd).toBeNull()
+    expect(history?.points[0].pricingTable).toBeNull()
+    expect(history?.points[1].usd).toBe(7)
+    expect(history?.points[1].pricingTable).toBe('anthropic-list-2026-07-25')
+  })
+
+  test('reprices an old unpriced row at read time, and says which table did it', async () => {
+    // #72: rows landed before the CLI knew the price. Snapshots are immutable,
+    // so the fix is at read time — and the trail must reprice too, or a page
+    // shows dollars today and a gap for the same reading in its own history.
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({
+        capturedAt: Date.now() - HOUR,
+        pricingTable: 'openai-list-2026-07-25',
+        models: [
+          {
+            id: 'gpt-5.6-luna',
+            tokenShare: 1,
+            tokens: {
+              input: 1_000_000,
+              output: 1_000_000,
+              cacheWrite: 0,
+              cacheRead: 0,
+            },
+          },
+        ],
+      }),
+    })
+
+    const history = await t.query(api.measured.getHistoryByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    // 1M input at $0.20 + 1M output at $1.20.
+    expect(history?.points[0].usd).toBeCloseTo(1.4, 6)
+    expect(history?.points[0].pricingTable).toBe(
+      'openai-list-2026-07-25 + openai-list-2026-08-02',
+    )
+  })
+})
+
 describe('countLivingStacks', () => {
   test('counts distinct stacks whose newest sync landed within 7 days', async () => {
     const t = convexTest(schema, modules)

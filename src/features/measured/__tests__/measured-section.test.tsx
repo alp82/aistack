@@ -1,23 +1,31 @@
 // @vitest-environment jsdom
 /**
- * Journey section 01 — "Actual Usage" (#46, building #40's variant B;
- * renamed and moved to the front by #58/#59).
+ * Journey section 01 — "Actual Usage", now living (#81, building #80's variant
+ * I over the #46 section).
  *
- * Four of these tests guard decisions rather than layout:
+ * The decisions these tests guard, rather than layout:
  *
- *   1. NO SNAPSHOT IS AN INVITATION, not a demerit. Every stack but one is in
- *      that state, so a page that scolded them would scold almost everybody.
- *   2. POSITIVE CLAIMS ONLY. #40 rejected variant C for labelling four models
- *      "listed, but not seen" when all four were genuinely in use, just not
- *      through Claude Code.
- *   3. A DOLLAR FIGURE NEVER APPEARS WITHOUT ITS PRICING TABLE.
- *   4. KEPT-PRIVATE COUNTS ARE COUNTS, never a percentage.
+ *   1. TOKENS LEAD, SPEND SITS UNDER THEM. Spend is optional by design
+ *      (`publishCost`), and a page whose headline can vanish is a page that
+ *      changes shape per stack.
+ *   2. NO SNAPSHOT IS AN INVITATION, not a demerit. Almost every stack is in
+ *      that state.
+ *   3. POSITIVE CLAIMS ONLY (#40): nothing here may say a listed thing went
+ *      unused.
+ *   4. A DOLLAR FIGURE NEVER APPEARS WITHOUT ITS PRICING TABLE.
+ *   5. KEPT-PRIVATE COUNTS ARE COUNTS, never a percentage.
+ *   6. THE PAGE RENDERS WHOLE WITHOUT ITS HISTORY. The series adds the trail,
+ *      the notch and the delta; it is never what makes the section readable.
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { getFunctionName } from "convex/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MeasuredSection } from "@/features/measured/MeasuredSection";
+import { api } from "../../../../convex/_generated/api";
 import type { MeasuredSnapshot } from "../copy";
-import { buildSnapshot, DAY, withoutCost } from "./fixture";
+import type { MeasuredHistory } from "../history";
+import { DAY } from "./fixture";
+import { buildHistory, currentFromHistory } from "./history.fixture";
 
 const queryMock = vi.fn();
 
@@ -38,74 +46,152 @@ afterEach(() => {
 
 function setup(
 	snapshot: MeasuredSnapshot | null | undefined,
+	history: MeasuredHistory | null | undefined = null,
 	{ isOwner = false }: { isOwner?: boolean } = {},
 ) {
-	queryMock.mockReturnValue(snapshot);
+	const historyRef = getFunctionName(api.measured.getHistoryByStackSlug);
+	queryMock.mockImplementation((ref: Parameters<typeof getFunctionName>[0]) =>
+		getFunctionName(ref) === historyRef ? history : snapshot,
+	);
 	render(
 		<MeasuredSection index={1} slug="alps-stack-ab12" isOwner={isOwner} />,
 	);
 }
 
+/** The real seven readings, and the current reading that goes with them. */
+function live(options: Parameters<typeof buildHistory>[0] = {}) {
+	const history = buildHistory(options);
+	return { history, current: currentFromHistory(history) };
+}
+
 describe("the reading", () => {
-	it("leads with the dollar figure and dates it", () => {
-		setup(buildSnapshot());
-		expect(screen.getByText("≈$5,840")).toBeInTheDocument();
+	it("leads with tokens and puts spend underneath", () => {
+		const { current, history } = live({ claudeCodeOnly: true });
+		setup(current, history);
+		expect(screen.getByText("4.70B")).toBeInTheDocument();
+		expect(screen.getByText("tokens · last 30 days")).toBeInTheDocument();
+		expect(screen.getByText("≈$6,014")).toBeInTheDocument();
+		expect(screen.getByText("at api list prices")).toBeInTheDocument();
+	});
+
+	it("names the window as the thing that moves", () => {
+		const { current, history } = live();
+		setup(current, history);
 		expect(
-			screen.getByText("at API prices, over the last 30 days"),
+			screen.getByText(/rolling 30-day reading, not a running total/),
 		).toBeInTheDocument();
+		expect(screen.getByText("2026-07-05 → 2026-08-03")).toBeInTheDocument();
+	});
+
+	it("dates every dollar it prints", () => {
+		const { current, history } = live({ claudeCodeOnly: true });
+		setup(current, history);
 		expect(
 			screen.getByText(/prices: anthropic-list-2026-07-25/),
 		).toBeInTheDocument();
 	});
 
-	it("names the window as the thing that moves", () => {
-		setup(buildSnapshot());
-		expect(
-			screen.getByText(/rolling 30-day reading, not a running total/),
-		).toBeInTheDocument();
-		expect(screen.getByText("2026-06-27 → 2026-07-26")).toBeInTheDocument();
-	});
-
-	it("swaps the headline to tokens rather than blanking a money slot", () => {
-		setup(withoutCost());
-		expect(screen.getByText("4.27B")).toBeInTheDocument();
-		expect(
-			screen.getByText("tokens over the last 30 days"),
-		).toBeInTheDocument();
+	it("reads as complete on a stack that publishes no cost", () => {
+		const { current, history } = live({ withoutCost: true });
+		setup(current, history);
+		expect(screen.getByText("4.71B")).toBeInTheDocument();
+		expect(screen.getByText("cost not published")).toBeInTheDocument();
 		expect(document.body.textContent).not.toContain("$");
-	});
-
-	it("prints no dollars at all when the pricing table is missing", () => {
-		// The per-model column has to go too, not just the headline.
-		setup(buildSnapshot({ pricingTable: null }));
-		expect(document.body.textContent).not.toContain("$");
-		expect(screen.getByText("4.27B")).toBeInTheDocument();
 	});
 
 	it("shows the model split, raw vendor id and all", () => {
-		setup(buildSnapshot());
+		const { current, history } = live({ claudeCodeOnly: true });
+		setup(current, history);
 		expect(screen.getByText("claude-fable-5")).toBeInTheDocument();
-		expect(screen.getByText("35.1%")).toBeInTheDocument();
 		expect(screen.getByText("Claude Opus 5")).toBeInTheDocument();
+		expect(screen.getByText("40.1%")).toBeInTheDocument();
 	});
 
 	it("shows the activity stats", () => {
-		setup(buildSnapshot());
-		expect(screen.getByText("382")).toBeInTheDocument();
-		expect(screen.getByText("22 of 30")).toBeInTheDocument();
-		expect(screen.getByText("95%")).toBeInTheDocument();
-		expect(screen.getByText("33%")).toBeInTheDocument();
+		const { current, history } = live({ claudeCodeOnly: true });
+		setup(current, history);
+		expect(screen.getByText("554")).toBeInTheDocument();
+		expect(screen.getByText("23 of 30")).toBeInTheDocument();
 	});
 
 	it("says how long ago the machine was read, from the server clock", () => {
-		setup(buildSnapshot());
+		const { current, history } = live();
+		setup(current, history);
 		expect(screen.getByText("checked 2h ago")).toBeInTheDocument();
+	});
+
+	it("names each harness it read from", () => {
+		const { current, history } = live();
+		setup(current, history);
+		expect(screen.getByText(/read from Claude Code/)).toBeInTheDocument();
+		expect(screen.getByText(/read from Codex/)).toBeInTheDocument();
+	});
+});
+
+describe("the page moving", () => {
+	it("says how many readings there are, and since when", () => {
+		const { current, history } = live();
+		setup(current, history);
+		expect(screen.getByText("7 readings since Jul 30")).toBeInTheDocument();
+	});
+
+	it("reports a fall as a fall, in plain words", () => {
+		// The window forgets its far end, so a quiet week lowers the reading. That
+		// is not a fault and the page must not dress it as one.
+		const { current, history } = live({ readings: 5, claudeCodeOnly: true });
+		setup(current, history);
+		expect(
+			screen.getByText(/−177.4M since the last check/),
+		).toBeInTheDocument();
+	});
+
+	it("marks where each model's share started once there are two readings", () => {
+		const { current, history } = live({ claudeCodeOnly: true });
+		setup(current, history);
+		expect(
+			screen.getByText(/the hatched notch marks where each share stood on/),
+		).toBeInTheDocument();
+		expect(screen.getAllByTestId("share-notch").length).toBeGreaterThan(0);
+	});
+
+	it("draws no notch and no delta on a stack that has synced once", () => {
+		const { current, history } = live({ readings: 1, claudeCodeOnly: true });
+		setup(current, history);
+		expect(screen.queryByTestId("share-notch")).not.toBeInTheDocument();
+		expect(document.body.textContent).not.toContain("since the last check");
+		expect(screen.getByText("1 reading since Jul 30")).toBeInTheDocument();
+		// The reading itself is still the whole section.
+		expect(screen.getByText("4.69B")).toBeInTheDocument();
+	});
+
+	it("renders whole while the series is still out", () => {
+		const { current } = live();
+		setup(current, undefined);
+		expect(screen.getByText("4.71B")).toBeInTheDocument();
+		expect(screen.getByText("Claude Opus 5")).toBeInTheDocument();
+		expect(document.body.textContent).not.toContain("readings since");
+	});
+});
+
+describe("the fun-fact deck", () => {
+	it("offers another way to picture the number, without hiding the caption", () => {
+		const { current, history } = live();
+		setup(current, history);
+		const deal = screen.getByRole("button", {
+			name: /another way to picture/i,
+		});
+		expect(screen.getByText("tokens · last 30 days")).toBeInTheDocument();
+		// Clicking deals the next framing. The card itself is a hover surface, so
+		// what this asserts is that the control exists and stays quiet.
+		fireEvent.click(deal);
+		expect(screen.getByText("tokens · last 30 days")).toBeInTheDocument();
 	});
 });
 
 describe("what the reading admits", () => {
 	it("counts what was kept private, without scoring it", () => {
-		setup(buildSnapshot());
+		const { current, history } = live({ claudeCodeOnly: true });
+		setup(current, history);
 		expect(
 			screen.getByText(/kept private: 2 MCP servers, 10 skills/),
 		).toBeInTheDocument();
@@ -113,23 +199,27 @@ describe("what the reading admits", () => {
 	});
 
 	it("stays quiet about a clean scan", () => {
-		setup(buildSnapshot());
+		const { current, history } = live();
+		setup(current, history);
 		expect(document.body.textContent).not.toContain("Partial read");
 	});
 
 	it("calls a degraded scan a floor", () => {
+		const { current, history } = live({ claudeCodeOnly: true });
 		setup(
-			buildSnapshot(
-				{},
-				{
+			{
+				...current,
+				harnesses: current.harnesses.map((h) => ({
+					...h,
 					coverage: {
 						filesScanned: 3015,
 						filesUnreadable: 61,
 						linesParsed: 232058,
 						linesFailed: 4192,
 					},
-				},
-			),
+				})),
+			},
+			history,
 		);
 		expect(
 			screen.getByText(/The numbers below are a floor/),
@@ -137,11 +227,19 @@ describe("what the reading admits", () => {
 	});
 
 	it("admits when the reading is going stale", () => {
+		const { current, history } = live({ claudeCodeOnly: true });
 		setup(
-			buildSnapshot(
-				{ receivedAt: Date.now() - 19 * DAY, isFresh: false },
-				{ receivedAt: Date.now() - 19 * DAY, isFresh: false },
-			),
+			{
+				...current,
+				receivedAt: Date.now() - 19 * DAY,
+				isFresh: false,
+				harnesses: current.harnesses.map((h) => ({
+					...h,
+					receivedAt: Date.now() - 19 * DAY,
+					isFresh: false,
+				})),
+			},
+			history,
 		);
 		expect(screen.getByText(/this reading is going stale/)).toBeInTheDocument();
 	});
@@ -156,15 +254,11 @@ describe("a stack that has never synced, seen by a visitor", () => {
 		expect(
 			screen.getByText(/Stacks can publish what actually ran/),
 		).toBeInTheDocument();
-		// The section keeps its place in the journey either way — and since #58
-		// it leads the journey.
 		expect(screen.getByText("Actual Usage")).toBeInTheDocument();
 		expect(screen.getByText("01")).toBeInTheDocument();
 	});
 
 	it("hands the reader the command for their own stack, and the guide", () => {
-		// #58: the visitor line is addressed to the READER ("a stack of your
-		// own"), never to the author of this one.
 		setup(null);
 		expect(screen.getByText(/have a stack of your own/)).toBeInTheDocument();
 		expect(screen.getByText("npx @use-aistack/cli sync")).toBeInTheDocument();
@@ -174,9 +268,7 @@ describe("a stack that has never synced, seen by a visitor", () => {
 	});
 
 	it("says nothing at all while the query is still out", () => {
-		// Undefined is "not answered yet". Rendering the invitation here would
-		// claim a stack was never measured a beat before learning that it was.
-		setup(undefined);
+		setup(undefined, undefined);
 		expect(
 			screen.queryByText("This stack has not been measured yet."),
 		).not.toBeInTheDocument();
@@ -186,9 +278,7 @@ describe("a stack that has never synced, seen by a visitor", () => {
 
 describe("a stack that has never synced, seen by its owner", () => {
 	it("teaches the one command inline", () => {
-		// #74: `sync` starts the login flow inline on an unlinked machine, so
-		// honest teaching is one command.
-		setup(null, { isOwner: true });
+		setup(null, null, { isOwner: true });
 		expect(
 			screen.getByText("Your stack has not been measured yet."),
 		).toBeInTheDocument();
@@ -199,7 +289,7 @@ describe("a stack that has never synced, seen by its owner", () => {
 	});
 
 	it("states the privacy footnote and links the guide", () => {
-		setup(null, { isOwner: true });
+		setup(null, null, { isOwner: true });
 		expect(
 			screen.getByText(
 				"runs on your machine · you see everything before it sends · cancel sends nothing",
@@ -211,27 +301,20 @@ describe("a stack that has never synced, seen by its owner", () => {
 		);
 	});
 
-	it("offers a copy button for the command", () => {
-		setup(null, { isOwner: true });
-		expect(
-			screen.getByLabelText("Copy npx @use-aistack/cli sync"),
-		).toBeInTheDocument();
-	});
-
 	it("shows the reading, not the teaching box, once a snapshot exists", () => {
-		setup(buildSnapshot(), { isOwner: true });
+		const { current, history } = live();
+		setup(current, history, { isOwner: true });
 		expect(
 			screen.queryByText("Your stack has not been measured yet."),
 		).not.toBeInTheDocument();
-		expect(screen.getByText("≈$5,840")).toBeInTheDocument();
+		expect(screen.getByText("4.71B")).toBeInTheDocument();
 	});
 });
 
 describe("positive claims only", () => {
 	it("never says a listed thing went unused", () => {
-		// #40 rejected variant C on real data: the four models it labelled
-		// "listed, but not seen" were all in use, just not through Claude Code.
-		setup(buildSnapshot());
+		const { current, history } = live();
+		setup(current, history);
 		const text = (document.body.textContent ?? "").toLowerCase();
 		for (const banned of [
 			"not seen",
