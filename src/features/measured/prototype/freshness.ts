@@ -140,7 +140,7 @@ export function ownerOffLine(f: Freshness): string {
  * the web does not know for this reader.
  */
 export const AUTO_SYNC_EXPLAINER =
-	"It publishes when a session starts on a machine you have linked, at most once a day. Turning it off revokes it everywhere, from the switch or with `npx @use-aistack/cli sync --auto off`.";
+	"It publishes when a session starts on a machine you have linked, at most once a day. Turning it off revokes it everywhere, from this switch or with `npx @use-aistack/cli sync --auto off`.";
 
 /** The command, verbatim from `copy.ts` and the CLI. */
 export const AUTO_ON_CMD = "npx @use-aistack/cli sync --auto on";
