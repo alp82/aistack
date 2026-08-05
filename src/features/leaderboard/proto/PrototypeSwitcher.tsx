@@ -21,7 +21,7 @@ import { VARIANT_C2_NAME, VARIANT_C3_NAME } from "./VariantC2";
 
 export type VariantKey = "A" | "B" | "C" | "C2" | "C3";
 
-export const VARIANT_KEYS: readonly VariantKey[] = ["C2", "C3", "C", "A", "B"];
+export const VARIANT_KEYS: readonly VariantKey[] = ["C3", "C2", "C", "A", "B"];
 
 const NAMES: Record<VariantKey, string> = {
 	A: VARIANT_A_NAME,

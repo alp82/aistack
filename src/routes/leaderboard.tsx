@@ -40,7 +40,7 @@ import { VariantC2 } from "@/features/leaderboard/proto/VariantC2";
 import { coerceEnum, coercePage } from "@/lib/searchParams";
 
 const DEFAULTS = {
-	variant: "C2" as VariantKey,
+	variant: "C3" as VariantKey,
 	density: "real" as DensityKey,
 	weight: "tokens" as Weight,
 	clock: "now" as ClockKey,
@@ -59,7 +59,7 @@ export const Route = createFileRoute("/leaderboard")({
 		clock?: ClockKey;
 		page?: number;
 	} => ({
-		variant: coerceEnum(search.variant, VARIANT_KEYS, "C2"),
+		variant: coerceEnum(search.variant, VARIANT_KEYS, "C3"),
 		density: coerceEnum(
 			search.density,
 			["real", "grown", "scale"] as const,

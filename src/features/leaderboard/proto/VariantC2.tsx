@@ -34,6 +34,11 @@ import * as f from "./format";
 
 const PAGE_SIZE = 10;
 
+/** The trend cell is fixed at every size, so the column reads as a column. */
+const SPARK_WIDTH = 128;
+const SPARK_HEIGHT = 26;
+const CELL_HEIGHT = SPARK_HEIGHT + 16;
+
 export const VARIANT_C2_NAME =
 	"C refined — wide gutter, sparklines, quiet list";
 export const VARIANT_C3_NAME = "C refined — same, quiet group as one line";
@@ -138,7 +143,7 @@ function Row({
 	readonly nowMs: number;
 }) {
 	return (
-		<li className="grid grid-cols-[2.5rem_minmax(0,1fr)_7rem_auto] items-baseline gap-x-5 gap-y-1 border-b border-stroke-subtle py-4 hover:bg-bg-panel">
+		<li className="grid grid-cols-[2.5rem_minmax(0,1fr)_9rem_auto] items-baseline gap-x-5 gap-y-1 border-b border-stroke-subtle py-4 hover:bg-bg-panel">
 			<span className="row-span-2 font-mono text-xl font-black text-fg-muted">
 				{s.rank}
 			</span>
@@ -152,9 +157,7 @@ function Row({
 				<span className="ml-2 font-normal text-fg-muted">@{s.handle}</span>
 			</Link>
 
-			<span className="row-span-2 self-center">
-				<Trend s={s} />
-			</span>
+			<Trend s={s} />
 
 			<span className="whitespace-nowrap text-right font-mono text-base font-black text-fg-primary">
 				{f.tokens(s.tokens)}
@@ -192,30 +195,49 @@ function Row({
  * stroke that would claim days nobody measured.
  */
 function Trend({ s }: { readonly s: RankedStack }) {
-	if (s.history.length < 2 || s.trend === null) {
-		return (
-			<span className="block text-right font-mono text-[10px] leading-tight text-fg-muted">
-				one reading
-				<br />
-				no trend yet
-			</span>
-		);
-	}
-	const up = s.trend >= 0;
+	const drawable = s.history.length >= 2 && s.trend !== null;
+	const up = (s.trend ?? 0) >= 0;
 	return (
-		<span className="block">
-			<Sparkline
-				points={s.history}
-				ariaLabel={`${s.name} measured tokens across ${s.history.length} syncs`}
-				width={108}
-				height={26}
-			/>
-			<span className="mt-0.5 block font-mono text-[10px] leading-tight text-fg-muted">
-				<span className={up ? "text-accent-lime" : "text-fg-secondary"}>
-					{up ? "+" : "−"}
-					{f.pct(Math.abs(s.trend))}
-				</span>{" "}
-				over {s.history.length} syncs
+		// row-span-2 with a fixed height and a reserved SPARK_HEIGHT strip: the
+		// line sits on the same baseline in every row, whether the row below it
+		// wraps, whether the stack has one reading, and whether it publishes a
+		// cost. Nothing here may size itself off its own content.
+		<span
+			className="row-span-2 flex flex-col items-end justify-center self-center"
+			style={{ height: `${CELL_HEIGHT}px` }}
+		>
+			<span
+				className="flex w-full items-center justify-end"
+				style={{ height: `${SPARK_HEIGHT}px` }}
+			>
+				{drawable ? (
+					<Sparkline
+						points={s.history}
+						ariaLabel={`${s.name} measured tokens across ${s.history.length} syncs`}
+						width={SPARK_WIDTH}
+						height={SPARK_HEIGHT}
+					/>
+				) : (
+					// A rule, not a line: it says "no reading to draw" without
+					// claiming a flat trend across days nobody measured.
+					<span
+						aria-hidden="true"
+						className="w-8 border-t border-dashed border-stroke-strong"
+					/>
+				)}
+			</span>
+			<span className="mt-1 block whitespace-nowrap font-mono text-[10px] leading-none text-fg-muted">
+				{drawable ? (
+					<>
+						<span className={up ? "text-accent-lime" : "text-fg-secondary"}>
+							{up ? "+" : "−"}
+							{f.pct(Math.abs(s.trend ?? 0))}
+						</span>{" "}
+						· {s.history.length} syncs
+					</>
+				) : (
+					"1 sync · no trend"
+				)}
 			</span>
 		</span>
 	);
