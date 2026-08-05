@@ -32,7 +32,6 @@ export type MeasuredHistory = NonNullable<
 	FunctionReturnType<typeof api.measured.getHistoryByStackSlug>
 >;
 export type MeasuredHistoryPoint = MeasuredHistory["points"][number];
-export type MeasuredHistoryModel = MeasuredHistoryPoint["models"][number];
 
 /** The id the folded tail carries. Never a model id. */
 const REST_ID = "__rest";

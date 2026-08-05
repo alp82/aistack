@@ -773,11 +773,12 @@ export const getHistoryByStackSlug = query({
     )
     const cutoff = Date.now() - windowDays * 24 * 60 * 60 * 1000
 
-    const rows = args.harness
+    const only = args.harness
+    const rows = only
       ? await ctx.db
           .query('measuredSnapshots')
           .withIndex('by_stack_harness_capturedAt', (q) =>
-            q.eq('stackId', stack._id).eq('harness', args.harness as string)
+            q.eq('stackId', stack._id).eq('harness', only)
           )
           .collect()
       : await ctx.db

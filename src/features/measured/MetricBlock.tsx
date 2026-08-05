@@ -78,7 +78,7 @@ export function MetricBlock({
 				>
 					<Sparkline
 						points={trail}
-						ariaLabel=""
+						ariaLabel="tokens at every reading"
 						area
 						fluid
 						width={400}
