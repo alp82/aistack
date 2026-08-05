@@ -23,6 +23,7 @@ import {
 	EntryE1,
 	EntryE2,
 	EntryE3,
+	EntryE4,
 	type EntryKey,
 } from "@/features/profile/prototype/EntryVariants";
 import {
@@ -41,7 +42,7 @@ export const Route = createFileRoute("/prototype/views-entry")({
 	validateSearch: (search: Record<string, unknown>): Search => ({
 		entry: ENTRIES.includes(search.entry as EntryKey)
 			? (search.entry as EntryKey)
-			: "E1",
+			: "E4",
 		data: DATA_STATES.includes(search.data as DataState)
 			? (search.data as DataState)
 			: "thin",
@@ -114,8 +115,10 @@ function PrototypeViewsEntry() {
 			<EntryE1 />
 		) : entry === "E2" ? (
 			<EntryE2 data={data} />
-		) : (
+		) : entry === "E3" ? (
 			<EntryE3 data={data} />
+		) : (
+			<EntryE4 data={data} />
 		);
 
 	return (

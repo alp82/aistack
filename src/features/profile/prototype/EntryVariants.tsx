@@ -19,10 +19,11 @@ import { formatExact, Sparkline } from "@/features/charts";
 import { REFERRER_LABELS, rangeLabel } from "@/features/settings/AnalyticsPage";
 import type { AnalyticsData } from "@/features/settings/prototype/fixtures";
 
-export const ENTRIES = ["E1", "E2", "E3"] as const;
+export const ENTRIES = ["E4", "E1", "E2", "E3"] as const;
 export type EntryKey = (typeof ENTRIES)[number];
 
 export const ENTRY_LABELS: Record<EntryKey, string> = {
+	E4: "E4 · Picked",
 	E1: "E1 · Link",
 	E2: "E2 · Summary",
 	E3: "E3 · Inline",
@@ -225,6 +226,96 @@ export function EntryE3({ data }: { readonly data: AnalyticsData }) {
 				phone and a laptop counts twice. Visits you make while signed in are
 				left out. These are not page loads.
 			</p>
+		</PrivateFence>
+	);
+}
+
+/* -------------------------------------------------------------------- E4 */
+
+/**
+ * E4 — the picked shape: E2 with the inline boxes from E3.
+ *
+ * The owner gets the headline total AND every page as its own box, on the
+ * profile, inside the private fence. `/settings/analytics` stays, because the
+ * day-by-day reading and the referrer split do not fit here and do not belong
+ * on a public page even behind a gate.
+ *
+ * The draft box stays in the list. A draft that reads zero is the one number an
+ * owner most needs explained, and dropping it makes the list lie by omission.
+ */
+export function EntryE4({ data }: { readonly data: AnalyticsData }) {
+	const range = rangeLabel(
+		data.firstCountedDayMs,
+		data.windowStartMs,
+		data.windowDays,
+	);
+
+	return (
+		<PrivateFence title="Views">
+			{data.total === 0 ? (
+				<p className="mt-3 text-sm leading-relaxed text-fg-secondary">
+					Nobody has opened your pages yet. Counting starts the first time
+					somebody who is not you opens one. Your own visits never count while
+					you are signed in.
+				</p>
+			) : (
+				<>
+					<p className="mt-3 font-mono text-3xl font-black text-accent">
+						{formatExact(data.total)}
+					</p>
+					<p className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-fg-muted">
+						deduped daily visitors · {range}
+					</p>
+				</>
+			)}
+
+			<ul className="mt-4 space-y-2">
+				{data.targets.map((t) => (
+					<li
+						key={t.targetId}
+						className="flex items-center justify-between gap-3 border border-stroke-subtle bg-bg-panel px-3 py-2"
+					>
+						<span className="min-w-0">
+							<span className="block truncate font-mono text-xs font-bold text-fg-primary">
+								{t.label}
+							</span>
+							<span className="mt-0.5 block font-mono text-[10px] text-fg-muted">
+								{!t.openable
+									? "Draft — nobody can open it yet"
+									: t.total === 0
+										? "Nobody has opened it yet"
+										: "deduped daily visitors"}
+							</span>
+						</span>
+						<span className="flex shrink-0 items-center gap-3">
+							<Sparkline
+								points={t.days}
+								ariaLabel={`Daily visitors for ${t.label}`}
+								width={72}
+								height={20}
+								area
+							/>
+							<span className="font-mono text-sm font-black text-fg-primary">
+								{formatExact(t.total)}
+							</span>
+						</span>
+					</li>
+				))}
+			</ul>
+
+			<p className="mt-3 max-w-prose text-xs leading-relaxed text-fg-muted">
+				One page counts one visitor once per day. A visitor is a browser on a
+				network, not a person. Visits you make while signed in are left out.
+				These are not page loads.
+			</p>
+
+			<Link
+				to="/settings/analytics"
+				className="mt-4 inline-flex items-center gap-1.5 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-secondary hover:text-accent-lime"
+			>
+				Day by day, and where they came from
+				<ArrowRight aria-hidden="true" className="size-3" />
+			</Link>
 		</PrivateFence>
 	);
 }
