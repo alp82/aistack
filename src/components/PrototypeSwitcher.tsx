@@ -17,7 +17,14 @@ type Axis = {
 	readonly arrowKeys?: boolean;
 };
 
-function PrototypeSwitcher({ axes }: { readonly axes: readonly Axis[] }) {
+function PrototypeSwitcher({
+	axes,
+	label = "Prototype #98",
+}: {
+	readonly axes: readonly Axis[];
+	/** Which prototype this bar belongs to, so two of them never look alike. */
+	readonly label?: string;
+}) {
 	const keyed = axes.find((a) => a.arrowKeys);
 
 	useEffect(() => {
@@ -49,7 +56,7 @@ function PrototypeSwitcher({ axes }: { readonly axes: readonly Axis[] }) {
 	return (
 		<div className="fixed inset-x-0 bottom-0 z-50 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t-2 border-accent-lime bg-bg-canvas/95 px-3 py-2 shadow-[0_-6px_0_rgba(0,0,0,0.25)] backdrop-blur">
 			<span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-accent-lime">
-				Prototype #98
+				{label}
 			</span>
 			{axes.map((axis) => (
 				<div key={axis.name} className="flex items-center gap-1.5">

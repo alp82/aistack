@@ -33,6 +33,7 @@ import { Route as SettingsAnalyticsRouteImport } from './routes/settings.analyti
 import { Route as PrototypeViewsStackRouteImport } from './routes/prototype.views-stack'
 import { Route as PrototypeViewsEntryRouteImport } from './routes/prototype.views-entry'
 import { Route as PrototypeViewsRouteImport } from './routes/prototype.views'
+import { Route as PrototypeFreshnessRouteImport } from './routes/prototype.freshness'
 import { Route as CliAuthRouteImport } from './routes/cli.auth'
 import { Route as ApiSyncConfigRouteImport } from './routes/api.sync-config'
 import { Route as AdminIconsRouteImport } from './routes/admin_.icons'
@@ -169,6 +170,11 @@ const PrototypeViewsRoute = PrototypeViewsRouteImport.update({
   path: '/prototype/views',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrototypeFreshnessRoute = PrototypeFreshnessRouteImport.update({
+  id: '/prototype/freshness',
+  path: '/prototype/freshness',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CliAuthRoute = CliAuthRouteImport.update({
   id: '/cli/auth',
   path: '/cli/auth',
@@ -263,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/admin/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
+  '/prototype/freshness': typeof PrototypeFreshnessRoute
   '/prototype/views': typeof PrototypeViewsRoute
   '/prototype/views-entry': typeof PrototypeViewsEntryRoute
   '/prototype/views-stack': typeof PrototypeViewsStackRoute
@@ -304,6 +311,7 @@ export interface FileRoutesByTo {
   '/admin/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
+  '/prototype/freshness': typeof PrototypeFreshnessRoute
   '/prototype/views': typeof PrototypeViewsRoute
   '/prototype/views-entry': typeof PrototypeViewsEntryRoute
   '/prototype/views-stack': typeof PrototypeViewsStackRoute
@@ -346,6 +354,7 @@ export interface FileRoutesById {
   '/admin_/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
+  '/prototype/freshness': typeof PrototypeFreshnessRoute
   '/prototype/views': typeof PrototypeViewsRoute
   '/prototype/views-entry': typeof PrototypeViewsEntryRoute
   '/prototype/views-stack': typeof PrototypeViewsStackRoute
@@ -389,6 +398,7 @@ export interface FileRouteTypes {
     | '/admin/icons'
     | '/api/sync-config'
     | '/cli/auth'
+    | '/prototype/freshness'
     | '/prototype/views'
     | '/prototype/views-entry'
     | '/prototype/views-stack'
@@ -430,6 +440,7 @@ export interface FileRouteTypes {
     | '/admin/icons'
     | '/api/sync-config'
     | '/cli/auth'
+    | '/prototype/freshness'
     | '/prototype/views'
     | '/prototype/views-entry'
     | '/prototype/views-stack'
@@ -471,6 +482,7 @@ export interface FileRouteTypes {
     | '/admin_/icons'
     | '/api/sync-config'
     | '/cli/auth'
+    | '/prototype/freshness'
     | '/prototype/views'
     | '/prototype/views-entry'
     | '/prototype/views-stack'
@@ -513,6 +525,7 @@ export interface RootRouteChildren {
   AdminIconsRoute: typeof AdminIconsRoute
   ApiSyncConfigRoute: typeof ApiSyncConfigRoute
   CliAuthRoute: typeof CliAuthRoute
+  PrototypeFreshnessRoute: typeof PrototypeFreshnessRoute
   PrototypeViewsRoute: typeof PrototypeViewsRoute
   PrototypeViewsEntryRoute: typeof PrototypeViewsEntryRoute
   PrototypeViewsStackRoute: typeof PrototypeViewsStackRoute
@@ -706,6 +719,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrototypeViewsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/prototype/freshness': {
+      id: '/prototype/freshness'
+      path: '/prototype/freshness'
+      fullPath: '/prototype/freshness'
+      preLoaderRoute: typeof PrototypeFreshnessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cli/auth': {
       id: '/cli/auth'
       path: '/cli/auth'
@@ -844,6 +864,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminIconsRoute: AdminIconsRoute,
   ApiSyncConfigRoute: ApiSyncConfigRoute,
   CliAuthRoute: CliAuthRoute,
+  PrototypeFreshnessRoute: PrototypeFreshnessRoute,
   PrototypeViewsRoute: PrototypeViewsRoute,
   PrototypeViewsEntryRoute: PrototypeViewsEntryRoute,
   PrototypeViewsStackRoute: PrototypeViewsStackRoute,
