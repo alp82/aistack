@@ -48,7 +48,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 		intro("sync");
 		const result =
 			options.auto === "on"
-				? enableAutoSync(
+				? await enableAutoSync(
 						options.every
 							? Number.parseInt(options.every, 10) || DEFAULT_FREQUENCY_HOURS
 							: DEFAULT_FREQUENCY_HOURS,

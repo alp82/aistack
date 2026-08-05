@@ -40,6 +40,11 @@ export function transcriptRoots(): string[] {
 	return roots;
 }
 
+/** What counts as a Claude Code transcript. Shared with `detect` (#101). */
+export function isTranscriptFile(basename: string): boolean {
+	return basename.endsWith(".jsonl");
+}
+
 /** Recursive *.jsonl walk — the nested `<sessionId>/subagents/` layout is real. */
 async function* walkJsonl(dir: string): AsyncGenerator<string> {
 	let entries: Dirent[];
@@ -51,7 +56,7 @@ async function* walkJsonl(dir: string): AsyncGenerator<string> {
 	for (const e of entries) {
 		const full = path.join(dir, e.name);
 		if (e.isDirectory()) yield* walkJsonl(full);
-		else if (e.isFile() && e.name.endsWith(".jsonl")) yield full;
+		else if (e.isFile() && isTranscriptFile(e.name)) yield full;
 	}
 }
 
