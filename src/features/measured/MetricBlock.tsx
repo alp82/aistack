@@ -63,16 +63,15 @@ export function MetricBlock({
 				<TokenTip tokens={tokens} usd={usd} tip={deck.tip} />
 			)}
 		>
-			<button
-				type="button"
-				onClick={deck.next}
-				aria-label={DECK_LABEL}
-				className="group relative block w-full cursor-pointer border border-transparent px-3 py-3 text-left transition-colors hover:border-stroke-subtle hover:bg-bg-panel/40"
-			>
-				{/* The watermark stretches to the block's bottom edge. Letterboxed, its
-				    fill stopped mid-block and read as a box drawn around part of the
-				    text and not the rest. */}
-				<span
+			<div className="group relative w-full">
+				{/* The watermark runs off the block's bottom edge, which is why it is
+				    drawn taller than the block and cropped. Letterboxed inside the
+				    block, its fill stopped mid-way and read as a box drawn around part
+				    of the text and not the rest.
+
+				    It sits OUTSIDE the button: the chart renders a `div`, and a button
+				    may only contain phrasing content. */}
+				<div
 					aria-hidden="true"
 					className="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.16]"
 				>
@@ -82,47 +81,61 @@ export function MetricBlock({
 						area
 						fluid
 						width={400}
-						height={150}
-						className="h-full w-full"
+						height={WATERMARK_HEIGHT}
 					/>
-				</span>
+				</div>
 
-				<span className="relative block font-mono text-5xl font-black leading-none text-fg-primary md:text-6xl">
-					{fmtTokens(tokens)}
-				</span>
+				<button
+					type="button"
+					onClick={deck.next}
+					aria-label={DECK_LABEL}
+					className="relative block w-full cursor-pointer border border-transparent px-3 py-3 text-left transition-colors hover:border-stroke-subtle hover:bg-bg-panel/40"
+				>
+					<span className="relative block font-mono text-5xl font-black leading-none text-fg-primary md:text-6xl">
+						{fmtTokens(tokens)}
+					</span>
 
-				{/* Both captions share one grid cell: the row keeps the height of the
+					{/* Both captions share one grid cell: the row keeps the height of the
 				    taller one at rest, so nothing below it can move. */}
-				<span className="relative mt-2 grid">
-					<span
-						className={cn(
-							MONO_LABEL,
-							"col-start-1 row-start-1 flex items-center text-fg-muted transition-opacity duration-150 group-hover:opacity-0",
-						)}
-					>
-						{TOKENS_CAPTION(windowDays)}
+					<span className="relative mt-2 grid">
+						<span
+							className={cn(
+								MONO_LABEL,
+								"col-start-1 row-start-1 flex items-center text-fg-muted transition-opacity duration-150 group-hover:opacity-0",
+							)}
+						>
+							{TOKENS_CAPTION(windowDays)}
+						</span>
+						<span
+							aria-hidden="true"
+							className={cn(
+								MONO_LABEL,
+								"pointer-events-none col-start-1 row-start-1 flex items-center gap-2 font-semibold text-accent-lime opacity-0 transition-opacity duration-150 group-hover:opacity-100",
+							)}
+						>
+							<Dices size={18} />
+							{DECK_HINT}
+						</span>
 					</span>
-					<span
-						aria-hidden="true"
-						className={cn(
-							MONO_LABEL,
-							"pointer-events-none col-start-1 row-start-1 flex items-center gap-2 font-semibold text-accent-lime opacity-0 transition-opacity duration-150 group-hover:opacity-100",
-						)}
-					>
-						<Dices size={18} />
-						{DECK_HINT}
-					</span>
-				</span>
 
-				{/* Roomier than the caption gap above, so the swapped row never crowds
+					{/* Roomier than the caption gap above, so the swapped row never crowds
 				    the second number. */}
-				<span className="relative mt-6 block font-mono text-2xl font-black leading-none text-fg-secondary md:text-3xl">
-					{usd !== null ? `≈${fmtUSD(usd)}` : COST_PRIVATE}
-				</span>
-				<span className={cn(MONO_LABEL, "relative mt-1.5 block text-fg-muted")}>
-					{usd !== null ? COST_CAPTION : COST_PRIVATE_CAPTION}
-				</span>
-			</button>
+					<span className="relative mt-6 block font-mono text-2xl font-black leading-none text-fg-secondary md:text-3xl">
+						{usd !== null ? `≈${fmtUSD(usd)}` : COST_PRIVATE}
+					</span>
+					<span
+						className={cn(MONO_LABEL, "relative mt-1.5 block text-fg-muted")}
+					>
+						{usd !== null ? COST_CAPTION : COST_PRIVATE_CAPTION}
+					</span>
+				</button>
+			</div>
 		</HoverCard>
 	);
 }
+
+/**
+ * Taller than the block on purpose: cropped by the wrapper, the fill bleeds off
+ * the bottom edge instead of ending in a line across the middle of the text.
+ */
+const WATERMARK_HEIGHT = 200;
