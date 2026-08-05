@@ -29,6 +29,7 @@ import { Route as StacksNewRouteImport } from './routes/stacks.new'
 import { Route as StacksSlugRouteImport } from './routes/stacks.$slug'
 import { Route as SettingsMachinesRouteImport } from './routes/settings.machines'
 import { Route as SettingsAnalyticsRouteImport } from './routes/settings.analytics'
+import { Route as PrototypeViewsStackRouteImport } from './routes/prototype.views-stack'
 import { Route as PrototypeViewsEntryRouteImport } from './routes/prototype.views-entry'
 import { Route as PrototypeViewsRouteImport } from './routes/prototype.views'
 import { Route as CliAuthRouteImport } from './routes/cli.auth'
@@ -146,6 +147,11 @@ const SettingsAnalyticsRoute = SettingsAnalyticsRouteImport.update({
   path: '/settings/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrototypeViewsStackRoute = PrototypeViewsStackRouteImport.update({
+  id: '/prototype/views-stack',
+  path: '/prototype/views-stack',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrototypeViewsEntryRoute = PrototypeViewsEntryRouteImport.update({
   id: '/prototype/views-entry',
   path: '/prototype/views-entry',
@@ -246,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/cli/auth': typeof CliAuthRoute
   '/prototype/views': typeof PrototypeViewsRoute
   '/prototype/views-entry': typeof PrototypeViewsEntryRoute
+  '/prototype/views-stack': typeof PrototypeViewsStackRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -284,6 +291,7 @@ export interface FileRoutesByTo {
   '/cli/auth': typeof CliAuthRoute
   '/prototype/views': typeof PrototypeViewsRoute
   '/prototype/views-entry': typeof PrototypeViewsEntryRoute
+  '/prototype/views-stack': typeof PrototypeViewsStackRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -323,6 +331,7 @@ export interface FileRoutesById {
   '/cli/auth': typeof CliAuthRoute
   '/prototype/views': typeof PrototypeViewsRoute
   '/prototype/views-entry': typeof PrototypeViewsEntryRoute
+  '/prototype/views-stack': typeof PrototypeViewsStackRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -363,6 +372,7 @@ export interface FileRouteTypes {
     | '/cli/auth'
     | '/prototype/views'
     | '/prototype/views-entry'
+    | '/prototype/views-stack'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -401,6 +411,7 @@ export interface FileRouteTypes {
     | '/cli/auth'
     | '/prototype/views'
     | '/prototype/views-entry'
+    | '/prototype/views-stack'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -439,6 +450,7 @@ export interface FileRouteTypes {
     | '/cli/auth'
     | '/prototype/views'
     | '/prototype/views-entry'
+    | '/prototype/views-stack'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -478,6 +490,7 @@ export interface RootRouteChildren {
   CliAuthRoute: typeof CliAuthRoute
   PrototypeViewsRoute: typeof PrototypeViewsRoute
   PrototypeViewsEntryRoute: typeof PrototypeViewsEntryRoute
+  PrototypeViewsStackRoute: typeof PrototypeViewsStackRoute
   SettingsAnalyticsRoute: typeof SettingsAnalyticsRoute
   SettingsMachinesRoute: typeof SettingsMachinesRoute
   StacksSlugRoute: typeof StacksSlugRoute
@@ -639,6 +652,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/prototype/views-stack': {
+      id: '/prototype/views-stack'
+      path: '/prototype/views-stack'
+      fullPath: '/prototype/views-stack'
+      preLoaderRoute: typeof PrototypeViewsStackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/prototype/views-entry': {
       id: '/prototype/views-entry'
       path: '/prototype/views-entry'
@@ -785,6 +805,7 @@ const rootRouteChildren: RootRouteChildren = {
   CliAuthRoute: CliAuthRoute,
   PrototypeViewsRoute: PrototypeViewsRoute,
   PrototypeViewsEntryRoute: PrototypeViewsEntryRoute,
+  PrototypeViewsStackRoute: PrototypeViewsStackRoute,
   SettingsAnalyticsRoute: SettingsAnalyticsRoute,
   SettingsMachinesRoute: SettingsMachinesRoute,
   StacksSlugRoute: StacksSlugRoute,
