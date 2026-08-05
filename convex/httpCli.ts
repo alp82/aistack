@@ -428,6 +428,19 @@ function parseAutoSync(
 }
 
 /**
+ * Read how the sync fired (#102).
+ *
+ * ONE UNKNOWN VALUE READS AS MANUAL, exactly like an absent field. A stamp that
+ * says "a machine published on its own" is a claim the web switch renders, so
+ * anything the server cannot name must not make it — and the sync itself is
+ * never refused over the field, for the same reason `parseAutoSync` drops
+ * rather than rejects.
+ */
+function parseTrigger(raw: unknown): 'manual' | 'auto' | undefined {
+  return raw === 'manual' || raw === 'auto' ? raw : undefined
+}
+
+/**
  * POST /api/cli/sync — publish one approved measured-layer snapshot.
  *
  * Wayfinder ticket #38 (map #29). The destination is the stack bound to the
@@ -449,6 +462,7 @@ export const syncPublish = httpAction(async (ctx, request) => {
     payloads?: unknown
     keptPrivate?: unknown
     autoSync?: unknown
+    trigger?: unknown
   }
   try {
     body = await request.json()
@@ -477,12 +491,16 @@ export const syncPublish = httpAction(async (ctx, request) => {
       // Additive and optional (#77): an installed CLI sends nothing here and
       // keeps working, which reads as "this machine has never told us".
       autoSync: parseAutoSync(body.autoSync),
+      // Additive and optional (#102): a 0.6.x CLI sends nothing and its syncs
+      // read as manual, which is what keeps the switch honest until #103 ships.
+      trigger: parseTrigger(body.trigger),
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    // Not-linked and no-longer-authorized are both actionable by the user, and
-    // both mean "do not retry this payload as-is".
-    const status = /not linked|no longer/i.test(message) ? 409 : 400
+    // Not-linked, no-longer-authorized and auto-sync-off are all actionable by
+    // the user, and all mean "do not retry this payload as-is". The third is
+    // the server-side half of the web revoke (#102).
+    const status = /not linked|no longer|auto-sync is off/i.test(message) ? 409 : 400
     return jsonResponse({ error: message }, status)
   }
 
@@ -533,6 +551,9 @@ export const syncConfig = httpAction(async (ctx, request) => {
     reviewKeptPrivate: false,
     optIns: EMPTY_OPT_INS,
     stack: null,
+    // Fails closed too (#102): with no stack in hand there is no permission to
+    // publish on a timer, and `sync --auto` reads that as "do not publish".
+    autoSync: null,
   }
 
   const authHeader = request.headers.get('Authorization')
@@ -563,7 +584,58 @@ export const syncConfig = httpAction(async (ctx, request) => {
     reviewKeptPrivate: stackConfig.reviewKeptPrivate,
     optIns: stackConfig.optIns,
     stack: { name: stackConfig.stackName, slug: stackConfig.stackSlug },
+    // What gates `sync --auto` (#103). Null means the stack has never had a
+    // flag, which is the one state a local opt-in may still seed.
+    autoSync: stackConfig.autoSync,
   })
+})
+
+/**
+ * POST /api/cli/auto-sync — a machine sets the permission on its bound stack.
+ *
+ * Wayfinder ticket #102 (map #76), from #100 decision 2. The destination is the
+ * stack bound to the BEARER, never anything in the body — the same rule the
+ * publish route follows, and for the same reason.
+ *
+ * A MALFORMED BODY IS REFUSED HERE, unlike the telemetry fields on a sync. This
+ * route changes a standing permission, so a value the server cannot read must
+ * not be guessed at: "off" and "on every hour" are both wrong answers to an
+ * unreadable one. A sync drops such a field instead, because there the cost of
+ * refusing is the measurement the owner already approved.
+ */
+export const autoSyncSet = httpAction(async (ctx, request) => {
+  const authResult = await validateBearerToken(ctx as any, request, 'sync')
+  if (authResult instanceof Response) return authResult
+  const { tokenId } = authResult
+
+  let body: { enabled?: unknown; frequencyHours?: unknown }
+  try {
+    body = await request.json()
+  } catch {
+    return jsonResponse({ error: 'Invalid JSON body' }, 400)
+  }
+  if (typeof body.enabled !== 'boolean') {
+    return jsonResponse({ error: 'Missing required field: enabled' }, 400)
+  }
+  if (
+    body.frequencyHours !== undefined &&
+    (typeof body.frequencyHours !== 'number' || !Number.isFinite(body.frequencyHours))
+  ) {
+    return jsonResponse({ error: 'frequencyHours must be a number' }, 400)
+  }
+
+  try {
+    const result = await ctx.runMutation(internal.autoSync.setForToken, {
+      tokenId: tokenId as Id<'cliTokens'>,
+      enabled: body.enabled,
+      frequencyHours: body.frequencyHours,
+    })
+    return jsonResponse(result)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    const status = /not linked|no longer/i.test(message) ? 409 : 400
+    return jsonResponse({ error: message }, status)
+  }
 })
 
 export const stackGet = httpAction(async (ctx, request) => {

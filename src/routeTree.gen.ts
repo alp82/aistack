@@ -38,6 +38,7 @@ import { Route as ApiStacksSlugRouteImport } from './routes/api.stacks.$slug'
 import { Route as ApiIconsFromUrlRouteImport } from './routes/api.icons.from-url'
 import { Route as ApiCliSyncRouteImport } from './routes/api.cli.sync'
 import { Route as ApiCliStacksRouteImport } from './routes/api.cli.stacks'
+import { Route as ApiCliAutoSyncRouteImport } from './routes/api.cli.auto-sync'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 import { Route as ApiOgStackSlugRouteImport } from './routes/api.og.stack.$slug'
 import { Route as ApiCliStacksCollectRouteImport } from './routes/api.cli.stacks.collect'
@@ -189,6 +190,11 @@ const ApiCliStacksRoute = ApiCliStacksRouteImport.update({
   path: '/api/cli/stacks',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCliAutoSyncRoute = ApiCliAutoSyncRouteImport.update({
+  id: '/api/cli/auto-sync',
+  path: '/api/cli/auto-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -240,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
   '/stacks': typeof StacksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cli/auto-sync': typeof ApiCliAutoSyncRoute
   '/api/cli/stacks': typeof ApiCliStacksRouteWithChildren
   '/api/cli/sync': typeof ApiCliSyncRoute
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
@@ -276,6 +283,7 @@ export interface FileRoutesByTo {
   '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
   '/stacks': typeof StacksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cli/auto-sync': typeof ApiCliAutoSyncRoute
   '/api/cli/stacks': typeof ApiCliStacksRouteWithChildren
   '/api/cli/sync': typeof ApiCliSyncRoute
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
@@ -313,6 +321,7 @@ export interface FileRoutesById {
   '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
   '/stacks/': typeof StacksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cli/auto-sync': typeof ApiCliAutoSyncRoute
   '/api/cli/stacks': typeof ApiCliStacksRouteWithChildren
   '/api/cli/sync': typeof ApiCliSyncRoute
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
@@ -351,6 +360,7 @@ export interface FileRouteTypes {
     | '/waitlist/$lookupId'
     | '/stacks'
     | '/api/auth/$'
+    | '/api/cli/auto-sync'
     | '/api/cli/stacks'
     | '/api/cli/sync'
     | '/api/icons/from-url'
@@ -387,6 +397,7 @@ export interface FileRouteTypes {
     | '/waitlist/$lookupId'
     | '/stacks'
     | '/api/auth/$'
+    | '/api/cli/auto-sync'
     | '/api/cli/stacks'
     | '/api/cli/sync'
     | '/api/icons/from-url'
@@ -423,6 +434,7 @@ export interface FileRouteTypes {
     | '/waitlist/$lookupId'
     | '/stacks/'
     | '/api/auth/$'
+    | '/api/cli/auto-sync'
     | '/api/cli/stacks'
     | '/api/cli/sync'
     | '/api/icons/from-url'
@@ -460,6 +472,7 @@ export interface RootRouteChildren {
   WaitlistLookupIdRoute: typeof WaitlistLookupIdRoute
   StacksIndexRoute: typeof StacksIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiCliAutoSyncRoute: typeof ApiCliAutoSyncRoute
   ApiCliStacksRoute: typeof ApiCliStacksRouteWithChildren
   ApiCliSyncRoute: typeof ApiCliSyncRoute
   ApiIconsFromUrlRoute: typeof ApiIconsFromUrlRoute
@@ -676,6 +689,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCliStacksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cli/auto-sync': {
+      id: '/api/cli/auto-sync'
+      path: '/api/cli/auto-sync'
+      fullPath: '/api/cli/auto-sync'
+      preLoaderRoute: typeof ApiCliAutoSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -751,6 +771,7 @@ const rootRouteChildren: RootRouteChildren = {
   WaitlistLookupIdRoute: WaitlistLookupIdRoute,
   StacksIndexRoute: StacksIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiCliAutoSyncRoute: ApiCliAutoSyncRoute,
   ApiCliStacksRoute: ApiCliStacksRouteWithChildren,
   ApiCliSyncRoute: ApiCliSyncRoute,
   ApiIconsFromUrlRoute: ApiIconsFromUrlRoute,

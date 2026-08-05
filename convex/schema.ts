@@ -251,6 +251,15 @@ export const AutoSyncState = v.object({
   frequencyHours: v.number(),
 })
 
+/**
+ * How a sync fired (#100 decision 5, built in #102).
+ *
+ * OPTIONAL ON THE WIRE, and absent reads as `manual`: a 0.6.x CLI sends no
+ * trigger at all, and the honest reading of silence is the one that claims
+ * nothing about automation.
+ */
+export const SyncTrigger = v.union(v.literal('manual'), v.literal('auto'))
+
 const ResourceOwner = v.union(
   v.object({ kind: v.literal('creator'), id: v.id('creators') }),
   v.object({ kind: v.literal('github'), handle: v.string() }),
@@ -433,6 +442,24 @@ export default defineSchema({
     // upload, so the two hold each other up.
     reviewKeptPrivate: v.optional(v.boolean()),
     published: v.boolean(),
+    // WHO MAY AUTO-SYNC INTO THIS STACK, and how often (#100 decision 2, built
+    // in #102). The permission used to live only in the machine's settings file
+    // and its hook, so the web could not read it and could not revoke it.
+    //
+    // The server is now the authority: `sync --auto` asks before it publishes,
+    // and off means every stale hook on every machine publishes nothing.
+    //
+    // Absent means "never set", which is what the seed reads (#102): the first
+    // sync from a machine whose local flag is ON writes the field. After that
+    // the server always wins, so a machine can no longer turn itself back on.
+    autoSync: v.optional(AutoSyncState),
+    // When a sync last arrived stamped `trigger: "auto"` (#100 decision 5).
+    //
+    // A FACT, not a preference, so it sits beside the flag and not inside it: a
+    // revoke clears the permission and must not erase what already happened.
+    // The switch reads the pair — on with a stamp is on-and-working, on without
+    // one is on-but-never-fired, which is the state an unupgraded CLI leaves.
+    lastAutoSyncAt: v.optional(v.number()),
     isLowQuality: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
