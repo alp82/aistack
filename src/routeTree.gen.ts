@@ -19,6 +19,7 @@ import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthCallbackRouteImport } from './routes/auth-callback'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as CreatorRouteImport } from './routes/$creator'
 import { Route as IndexRouteImport } from './routes/index'
@@ -96,6 +97,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ActivityRoute = ActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -243,6 +249,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$creator': typeof CreatorRoute
   '/about': typeof AboutRoute
+  '/activity': typeof ActivityRoute
   '/admin': typeof AdminRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -283,6 +290,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$creator': typeof CreatorRoute
   '/about': typeof AboutRoute
+  '/activity': typeof ActivityRoute
   '/admin': typeof AdminRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -324,6 +332,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/$creator': typeof CreatorRoute
   '/about': typeof AboutRoute
+  '/activity': typeof ActivityRoute
   '/admin': typeof AdminRoute
   '/auth-callback': typeof AuthCallbackRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -366,6 +375,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$creator'
     | '/about'
+    | '/activity'
     | '/admin'
     | '/auth-callback'
     | '/forgot-password'
@@ -406,6 +416,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$creator'
     | '/about'
+    | '/activity'
     | '/admin'
     | '/auth-callback'
     | '/forgot-password'
@@ -446,6 +457,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$creator'
     | '/about'
+    | '/activity'
     | '/admin'
     | '/auth-callback'
     | '/forgot-password'
@@ -487,6 +499,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CreatorRoute: typeof CreatorRoute
   AboutRoute: typeof AboutRoute
+  ActivityRoute: typeof ActivityRoute
   AdminRoute: typeof AdminRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
@@ -593,6 +606,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/activity': {
+      id: '/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof ActivityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -810,6 +830,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CreatorRoute: CreatorRoute,
   AboutRoute: AboutRoute,
+  ActivityRoute: ActivityRoute,
   AdminRoute: AdminRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
