@@ -26,10 +26,15 @@ export const Route = createFileRoute("/leaderboard")({
 	}),
 	search: { middlewares: [stripSearchParams(DEFAULTS)] },
 	loaderDeps: ({ search }) => ({ page: search.page ?? 1 }),
+	// The loader RETURNS the board so the first HTML carries the whole page —
+	// rows, sparklines and JSON-LD. This page exists to be cited, and a citable
+	// figure should not require a hydrated client. The component upgrades to
+	// the live subscription once mounted.
 	loader: async ({ context, deps }) => {
-		await context.queryClient.ensureQueryData(
+		const board = await context.queryClient.ensureQueryData(
 			convexQuery(api.leaderboard.get, { page: deps.page }),
 		);
+		return { board };
 	},
 	head: () => ({
 		meta: seoMeta({
@@ -47,11 +52,10 @@ function Leaderboard() {
 	const navigate = useNavigate({ from: "/leaderboard" });
 	const { page: rawPage } = useSearch({ from: "/leaderboard" });
 	const page = rawPage ?? DEFAULTS.page;
-	const board = useQuery(api.leaderboard.get, { page });
+	const { board: loadedBoard } = Route.useLoaderData();
+	const board = useQuery(api.leaderboard.get, { page }) ?? loadedBoard;
 	// One clock per mount: "synced Nd ago" must not drift between rows.
 	const nowMs = useMemo(() => Date.now(), []);
-
-	if (!board) return <div className="min-h-screen bg-bg-canvas" />;
 
 	return (
 		<>
