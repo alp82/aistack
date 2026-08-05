@@ -249,7 +249,7 @@ type ModelCatalog = {
   byAlias: Map<string, Doc<'models'>>
 }
 
-async function loadModelCatalog(ctx: QueryCtx): Promise<ModelCatalog> {
+export async function loadModelCatalog(ctx: QueryCtx): Promise<ModelCatalog> {
   const rows = await ctx.db.query('models').collect()
   const bySlug = new Map<string, Doc<'models'>>()
   const byAlias = new Map<string, Doc<'models'>>()
@@ -829,14 +829,24 @@ export const countLivingStacks = query({
   args: {},
   returns: v.object({ living: v.number(), everSynced: v.number() }),
   handler: async (ctx) => {
+    // Driven by the stacks table with one indexed read per stack (#83), not a
+    // full `measuredSnapshots` scan: the population grows by stacks, but the
+    // snapshot table grows by stacks x days, and it is the one that was going
+    // to hurt. A snapshot whose stack row is gone no longer counts, which is
+    // the more honest reading anyway.
     const cutoff = Date.now() - SEVEN_DAYS_MS
-    const seen = new Set<string>()
-    const fresh = new Set<string>()
-    for (const row of await ctx.db.query('measuredSnapshots').collect()) {
-      seen.add(row.stackId)
-      if (row.receivedAt > cutoff) fresh.add(row.stackId)
+    let living = 0
+    let everSynced = 0
+    for (const stack of await ctx.db.query('stacks').collect()) {
+      const rows = await ctx.db
+        .query('measuredSnapshots')
+        .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', stack._id))
+        .collect()
+      if (rows.length === 0) continue
+      everSynced += 1
+      if (rows.some((r) => r.receivedAt > cutoff)) living += 1
     }
-    return { living: fresh.size, everSynced: seen.size }
+    return { living, everSynced }
   },
 })
 
