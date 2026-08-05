@@ -1,6 +1,6 @@
 // The Codex CLI harness behind the seam (#66 decision 6, built in #67).
 
-import { OPENAI_PRICING_TABLE_VERSION } from "../shared/pricing.js";
+import { OPENAI_PRICING_TABLE_VERSION } from "@aistack/pricing";
 import { hasRecentFile } from "../shared/recency.js";
 import type {
 	HarnessAdapter,

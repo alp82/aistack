@@ -33,8 +33,8 @@ export default defineConfig({
       {
         extends: true,
         test: {
-          name: 'cli',
-          include: ['packages/cli/**/*.test.ts'],
+          name: 'packages',
+          include: ['packages/**/*.test.ts'],
           environment: 'node',
         },
       },

@@ -6,7 +6,9 @@
  * against the owner's real payload in #40 and must not be relaxed here:
  *
  *   - A dollar figure NEVER renders without its pricing table version, so
- *     `totalUSD` returns null when `pricingTable` is null (#33 decision 11).
+ *     `totalUSD` returns null when no table cites it (#33 decision 11).
+ *   - A dollar figure is a LOWER BOUND and reads as one, with the share of
+ *     tokens it covers beside it (#93).
  *   - `catalogSlug: null` is not an error. The raw vendor id renders, because
  *     that row may be the largest one (#33 decision 3).
  *   - Withheld names read as "kept private", plain counts, non-zero only, and
@@ -106,7 +108,7 @@ export function notchNote(firstAt: number): string {
 
 /** The captions under the two headline numbers. */
 export const TOKENS_CAPTION = (days: number) => `tokens · last ${days} days`;
-export const COST_CAPTION = "at api list prices";
+export const COST_CAPTION = "at least, at api list prices";
 export const COST_PRIVATE = "kept private";
 export const COST_PRIVATE_CAPTION = "cost not published";
 /** The hover swap under the number, and the accessible name of the control. */
@@ -116,19 +118,41 @@ export const DECK_LABEL = "Show another way to picture these tokens";
 /**
  * The dollars the whole window cost at API prices, or null.
  *
- * Null in two cases, and the display must treat both the same way: the client
- * withheld cost (`publishCost: false`), or the snapshot carries no pricing
- * table. The second case is the stricter rule — a price the reader cannot date
- * is a price we do not print.
+ * A LOWER BOUND, never an equality (#93). The server fills the gaps a stale CLI
+ * price table left behind, and both facts the wire loses — the cache-write TTL
+ * split and the per-response timestamps — resolve downward. Tokens no table can
+ * price are simply missing from it, which is what `coverageLine` reports.
+ *
+ * Null in two cases, and the display treats both the same way: the owner has
+ * cost publishing off, or nothing in the window carries a citable price. The
+ * empty-table guard is the stricter rule — a price the reader cannot date is a
+ * price we do not print.
  */
 export function totalUSD(s: {
-	pricingTable: string | null;
-	models: Array<{ apiEquivalentUSD?: number }>;
+	cost: {
+		lowerBoundUSD: number;
+		pricingTables: string[];
+	} | null;
 }): number | null {
-	if (!s.pricingTable) return null;
-	const priced = s.models.filter((m) => m.apiEquivalentUSD !== undefined);
-	if (priced.length === 0) return null;
-	return priced.reduce((sum, m) => sum + (m.apiEquivalentUSD ?? 0), 0);
+	if (!s.cost || s.cost.pricingTables.length === 0) return null;
+	return s.cost.lowerBoundUSD;
+}
+
+/**
+ * "priced 85% of measured tokens" — the caveat that makes the figure above it
+ * readable, or null on a fully priced window.
+ *
+ * Named for the price, not for "coverage": `coverageCaveat` above already means
+ * SCAN coverage, and the two must not share a word.
+ *
+ * Rounded DOWN, because a rounded-up share claims more of the spend is
+ * accounted for than is.
+ */
+export function pricedShareLine(s: {
+	cost: { coverage: number } | null;
+}): string | null {
+	if (!s.cost || s.cost.coverage >= 1) return null;
+	return `priced ${Math.floor(s.cost.coverage * 100)}% of measured tokens`;
 }
 
 /** The catalog name, falling back to the raw vendor id the client published. */

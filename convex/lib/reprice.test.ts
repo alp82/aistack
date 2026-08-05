@@ -1,0 +1,239 @@
+import { OPENAI_PRICING_TABLE_VERSION, PRICING_TABLE_VERSION } from '@aistack/pricing'
+import { describe, expect, it } from 'vitest'
+import { repriceSnapshot, type WireModel } from './reprice'
+
+const MTOK = 1_000_000
+
+const tokens = (t: Partial<WireModel['tokens']> = {}) => ({
+  input: 0,
+  output: 0,
+  cacheWrite: 0,
+  cacheRead: 0,
+  ...t,
+})
+
+/** A window entirely inside one price period for every model used here. */
+const JULY = { from: '2026-07-01', to: '2026-07-31' }
+
+describe('repriceSnapshot — the gap filler (#93)', () => {
+  it('returns a fully-priced snapshot unchanged', () => {
+    // The regression that matters most: repricing must be invisible where the
+    // CLI already did the job. Its dollars are per-response and cache-TTL
+    // aware, so they are exact and ours are not.
+    const models: WireModel[] = [
+      {
+        id: 'claude-opus-5',
+        tokens: tokens({ input: MTOK, output: MTOK }),
+        apiEquivalentUSD: 30,
+      },
+      {
+        id: 'claude-haiku-4-5',
+        tokens: tokens({ input: MTOK }),
+        apiEquivalentUSD: 1,
+      },
+    ]
+    const out = repriceSnapshot({
+      models,
+      window: JULY,
+      publishedTable: PRICING_TABLE_VERSION,
+      publishCost: true,
+    })
+
+    expect(out.models.map((m) => m.apiEquivalentUSD)).toEqual([30, 1])
+    expect(out.models.every((m) => m.costEstimated === false)).toBe(true)
+    expect(out.repricedTokens).toBe(0)
+    expect(out.cost).toEqual({
+      lowerBoundUSD: 31,
+      publishedUSD: 31,
+      estimatedUSD: 0,
+      coverage: 1,
+      pricedTokens: 3 * MTOK,
+      measuredTokens: 3 * MTOK,
+      pricingTables: [PRICING_TABLE_VERSION],
+    })
+  })
+
+  it('prices a model the syncing CLI had no rate for', () => {
+    // The prod defect: `openai-list-2026-08-01` does not price the gpt-5.6
+    // family, so three of four stacks published a fraction of their real cost.
+    const out = repriceSnapshot({
+      models: [
+        { id: 'gpt-5.6-sol', tokens: tokens({ input: MTOK, output: MTOK }) },
+      ],
+      window: JULY,
+      publishedTable: 'openai-list-2026-08-01',
+      publishCost: true,
+    })
+
+    expect(out.models[0].apiEquivalentUSD).toBeCloseTo(35, 9) // $5 in + $30 out
+    expect(out.models[0].costEstimated).toBe(true)
+    expect(out.repricedTokens).toBe(2 * MTOK)
+    expect(out.cost).toMatchObject({
+      lowerBoundUSD: 35,
+      publishedUSD: 0,
+      estimatedUSD: 35,
+      coverage: 1,
+    })
+    // The estimate is cited by OUR table. The payload's table priced nothing
+    // here, so naming it would date a figure it did not produce.
+    expect(out.cost?.pricingTables).toEqual([OPENAI_PRICING_TABLE_VERSION])
+  })
+
+  it('mixes an exact row and an estimated row in one reading', () => {
+    const out = repriceSnapshot({
+      models: [
+        {
+          id: 'claude-opus-5',
+          tokens: tokens({ output: MTOK }),
+          apiEquivalentUSD: 25,
+        },
+        { id: 'gpt-5.6-luna', tokens: tokens({ output: MTOK }) },
+      ],
+      window: JULY,
+      publishedTable: PRICING_TABLE_VERSION,
+      publishCost: true,
+    })
+
+    expect(out.cost).toMatchObject({
+      publishedUSD: 25,
+      estimatedUSD: 1.2,
+      lowerBoundUSD: 26.2,
+      coverage: 1,
+    })
+    expect(out.cost?.pricingTables).toEqual([
+      PRICING_TABLE_VERSION,
+      OPENAI_PRICING_TABLE_VERSION,
+    ])
+  })
+
+  it('leaves `unknown` unpriced forever, and says so in the coverage', () => {
+    // `unknown` is not a model, so no rate can ever apply. OrcDev's coverage
+    // caps at 85.2% for exactly this reason, and the number has to show it.
+    const out = repriceSnapshot({
+      models: [
+        { id: 'gpt-5.6-sol', tokens: tokens({ input: 8 * MTOK }) },
+        { id: 'unknown', tokens: tokens({ input: 2 * MTOK }) },
+      ],
+      window: JULY,
+      publishedTable: 'openai-list-2026-08-01',
+      publishCost: true,
+    })
+
+    expect(out.models[1].apiEquivalentUSD).toBeUndefined()
+    expect(out.models[1].costEstimated).toBe(false)
+    expect(out.cost?.coverage).toBeCloseTo(0.8, 9)
+  })
+
+  it('publishes no cost at all when the owner turned cost off', () => {
+    // The flag is the gate, not the presence of dollars. A stack that switched
+    // `publishCost` off still has dollars in its stored payloads.
+    const out = repriceSnapshot({
+      models: [
+        {
+          id: 'claude-opus-5',
+          tokens: tokens({ output: MTOK }),
+          apiEquivalentUSD: 25,
+        },
+        { id: 'gpt-5.6-sol', tokens: tokens({ output: MTOK }) },
+      ],
+      window: JULY,
+      publishedTable: PRICING_TABLE_VERSION,
+      publishCost: false,
+    })
+
+    expect(out.cost).toBeNull()
+    expect(out.models.every((m) => m.apiEquivalentUSD === undefined)).toBe(true)
+    expect(out.repricedTokens).toBe(0)
+  })
+
+  it('reports no cost when nothing in the window can be priced', () => {
+    const out = repriceSnapshot({
+      models: [{ id: 'unknown', tokens: tokens({ input: MTOK }) }],
+      window: JULY,
+      publishedTable: null,
+      publishCost: true,
+    })
+    expect(out.cost).toBeNull()
+  })
+
+  it('charges a merged cache write at the CHEAP tier', () => {
+    // The wire carries one `cacheWrite`, so the 5m/1h split the CLI priced from
+    // is gone. Assuming the 1.25x tier under-reports Claude Code by ~8%, which
+    // is what keeps every server-side figure a lower bound.
+    const out = repriceSnapshot({
+      models: [{ id: 'claude-opus-5', tokens: tokens({ cacheWrite: MTOK }) }],
+      window: JULY,
+      publishedTable: 'anthropic-list-2026-01-01',
+      publishCost: true,
+    })
+    expect(out.models[0].apiEquivalentUSD).toBeCloseTo(6.25, 9) // $5 x 1.25
+  })
+
+  it('charges a cache read at a tenth of the input rate', () => {
+    const out = repriceSnapshot({
+      models: [{ id: 'claude-opus-5', tokens: tokens({ cacheRead: MTOK }) }],
+      window: JULY,
+      publishedTable: 'anthropic-list-2026-01-01',
+      publishCost: true,
+    })
+    expect(out.models[0].apiEquivalentUSD).toBeCloseTo(0.5, 9)
+  })
+
+  it('takes the CHEAPER rate when the window straddles a repricing', () => {
+    // A published snapshot has no per-response timestamps, so the split across
+    // the boundary is unknowable. Picking the cheap side keeps the figure a
+    // lower bound instead of a guess that can overstate.
+    const straddling = { from: '2026-08-20', to: '2026-09-05' }
+    const out = repriceSnapshot({
+      models: [
+        { id: 'claude-sonnet-5', tokens: tokens({ input: MTOK, output: MTOK }) },
+      ],
+      window: straddling,
+      publishedTable: null,
+      publishCost: true,
+    })
+    expect(out.models[0].apiEquivalentUSD).toBeCloseTo(12, 9) // $2 + $10, not $3 + $15
+  })
+
+  it('uses the only rate the window can pay when it straddles nothing', () => {
+    const after = { from: '2026-09-05', to: '2026-10-05' }
+    const out = repriceSnapshot({
+      models: [
+        { id: 'claude-sonnet-5', tokens: tokens({ input: MTOK, output: MTOK }) },
+      ],
+      window: after,
+      publishedTable: null,
+      publishCost: true,
+    })
+    expect(out.models[0].apiEquivalentUSD).toBeCloseTo(18, 9)
+  })
+
+  it('estimates nothing from a window it cannot read', () => {
+    const out = repriceSnapshot({
+      models: [
+        { id: 'gpt-5.6-sol', tokens: tokens({ input: MTOK }) },
+        {
+          id: 'claude-opus-5',
+          tokens: tokens({ input: MTOK }),
+          apiEquivalentUSD: 5,
+        },
+      ],
+      window: { from: 'not-a-date', to: '2026-07-31' },
+      publishedTable: PRICING_TABLE_VERSION,
+      publishCost: true,
+    })
+    expect(out.models[0].apiEquivalentUSD).toBeUndefined()
+    expect(out.cost).toMatchObject({ estimatedUSD: 0, publishedUSD: 5 })
+    expect(out.cost?.coverage).toBeCloseTo(0.5, 9)
+  })
+
+  it('reports full coverage for a snapshot with no tokens at all', () => {
+    const out = repriceSnapshot({
+      models: [],
+      window: JULY,
+      publishedTable: null,
+      publishCost: true,
+    })
+    expect(out.cost).toBeNull()
+  })
+})

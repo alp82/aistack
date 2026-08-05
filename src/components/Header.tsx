@@ -22,7 +22,6 @@ import { cn } from "@/lib/utils";
 import { api } from "../../convex/_generated/api";
 import { authClient } from "../lib/auth-client";
 import { useTheme } from "../lib/theme";
-import { Button } from "./ui/button";
 
 const XIcon = () => (
 	<svg
@@ -185,6 +184,17 @@ export default function Header() {
 							>
 								Tools
 							</Link>
+							<Link
+								to="/leaderboard"
+								className={cn(
+									"font-mono text-xs font-semibold uppercase tracking-[0.15em] transition-colors",
+									isActive("/leaderboard")
+										? "text-accent-lime"
+										: "text-fg-muted hover:text-fg-primary",
+								)}
+							>
+								Leaderboard
+							</Link>
 							{/* <Link
 							to="/about"
 							className={cn(
@@ -318,14 +328,14 @@ export default function Header() {
 												<Laptop className="size-3.5" />
 												Machines
 											</Link>
-											<Button
-												variant="ghost"
+											<button
+												type="button"
 												onClick={handleSignOut}
-												className="w-full justify-start rounded-none font-mono text-xs uppercase tracking-wide text-fg-secondary hover:bg-bg-panel-muted hover:text-fg-primary"
+												className="flex w-full items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-wide text-fg-secondary transition-colors hover:bg-bg-panel-muted hover:text-fg-primary"
 											>
 												<LogOut className="size-3.5" />
 												Sign Out
-											</Button>
+											</button>
 										</div>
 									)}
 								</div>
@@ -404,6 +414,18 @@ export default function Header() {
 								)}
 							>
 								Tools
+							</Link>
+							<Link
+								to="/leaderboard"
+								onClick={() => setMobileMenuOpen(false)}
+								className={cn(
+									"font-mono text-sm font-semibold uppercase tracking-[0.15em] transition-colors",
+									isActive("/leaderboard")
+										? "text-accent-lime"
+										: "text-fg-muted hover:text-fg-primary",
+								)}
+							>
+								Leaderboard
 							</Link>
 							{isAdmin && (
 								<Link

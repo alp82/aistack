@@ -93,7 +93,7 @@ export {
 	priceAt,
 	SONNET_5_INTRO_ENDS_MS,
 	type TokenCounts,
-} from "./shared/pricing.js";
+} from "@aistack/pricing";
 export { hasRecentFile } from "./shared/recency.js";
 export {
 	DEFAULT_WINDOW_DAYS,

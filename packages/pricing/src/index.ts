@@ -1,6 +1,15 @@
 // Time-aware pinned price table for API-equivalent cost.
 //
 // Wayfinder ticket #37 (map #29), decision 8 of the wire-format grilling #33.
+// Moved out of the CLI by ticket #93 (map #76).
+//
+// WHY THIS IS A PACKAGE AND NOT A CLI FILE
+// Two programs price the same tokens. The CLI prices each response at ingest,
+// where the per-response timestamp still exists. The backend re-prices a
+// published snapshot at READ time, to fill the gaps a stale CLI table left
+// behind — one day of table drift published a stack at $14,764 when the same
+// tokens are worth at least $167,331 (#93). Two copies of a price table drift
+// against each other by construction, so there is one copy and both import it.
 //
 // WHY THIS IS A LIST OF PERIODS AND NOT A FLAT MAP
 // A published "API-equivalent cost" covers a rolling 30-day window, and a
@@ -25,7 +34,8 @@
 //
 // Each harness's payload is stamped with ITS vendor's table id — the id is a
 // citation for the dollars in that payload, and one payload never mixes
-// vendors.
+// vendors. A read-time estimate cites the table of the model it priced, which
+// is why the table id sits on the rate rather than beside it.
 
 export const PRICING_TABLE_VERSION = "anthropic-list-2026-07-25";
 export const OPENAI_PRICING_TABLE_VERSION = "openai-list-2026-08-02";
@@ -56,46 +66,65 @@ export type PricePeriod = {
 	output: number;
 };
 
+/** One model's rates, plus the table that cites them. */
+type PriceEntry = {
+	/** The citation printed next to any dollar figure these rates produce. */
+	table: string;
+	periods: PricePeriod[];
+};
+
+const anthropic = (periods: PricePeriod[]): PriceEntry => ({
+	table: PRICING_TABLE_VERSION,
+	periods,
+});
+const openai = (periods: PricePeriod[]): PriceEntry => ({
+	table: OPENAI_PRICING_TABLE_VERSION,
+	periods,
+});
+const flat = (input: number, output: number): PricePeriod[] => [
+	{ from: null, to: null, input, output },
+];
+
 /**
  * Only rates we can actually cite are encoded. Inventing historical periods to
  * make the table look complete would fabricate cost for old records, so every
  * model with one known rate gets one open-ended period.
  */
-const PRICES: Record<string, PricePeriod[]> = {
-	"claude-fable-5": [{ from: null, to: null, input: 10, output: 50 }],
-	"claude-mythos-5": [{ from: null, to: null, input: 10, output: 50 }],
-	"claude-opus-5": [{ from: null, to: null, input: 5, output: 25 }],
-	"claude-opus-4-8": [{ from: null, to: null, input: 5, output: 25 }],
-	"claude-opus-4-7": [{ from: null, to: null, input: 5, output: 25 }],
-	"claude-opus-4-6": [{ from: null, to: null, input: 5, output: 25 }],
-	"claude-sonnet-5": [
+const PRICES: Record<string, PriceEntry> = {
+	"claude-fable-5": anthropic(flat(10, 50)),
+	"claude-mythos-5": anthropic(flat(10, 50)),
+	"claude-opus-5": anthropic(flat(5, 25)),
+	"claude-opus-4-8": anthropic(flat(5, 25)),
+	"claude-opus-4-7": anthropic(flat(5, 25)),
+	"claude-opus-4-6": anthropic(flat(5, 25)),
+	"claude-sonnet-5": anthropic([
 		{ from: null, to: SONNET_5_INTRO_ENDS_MS, input: 2, output: 10 },
 		{ from: SONNET_5_INTRO_ENDS_MS, to: null, input: 3, output: 15 },
-	],
-	"claude-sonnet-4-6": [{ from: null, to: null, input: 3, output: 15 }],
-	"claude-haiku-4-5": [{ from: null, to: null, input: 1, output: 5 }],
+	]),
+	"claude-sonnet-4-6": anthropic(flat(3, 15)),
+	"claude-haiku-4-5": anthropic(flat(1, 5)),
 	// Fast mode (research preview) — Claude API only, Opus 5 / Opus 4.8 only.
 	// Opus 4.7 fast mode was removed, so there is deliberately no 4-7 entry.
-	"claude-opus-5#fast": [{ from: null, to: null, input: 10, output: 50 }],
-	"claude-opus-4-8#fast": [{ from: null, to: null, input: 10, output: 50 }],
+	"claude-opus-5#fast": anthropic(flat(10, 50)),
+	"claude-opus-4-8#fast": anthropic(flat(10, 50)),
 	// OpenAI (Codex) — standard-context tier (<272K; observed context window is
 	// 258,400).
-	"gpt-5.5": [{ from: null, to: null, input: 5, output: 30 }],
-	"gpt-5.4": [{ from: null, to: null, input: 2.5, output: 15 }],
-	"gpt-5.4-mini": [{ from: null, to: null, input: 0.75, output: 4.5 }],
-	"gpt-5.3-codex": [{ from: null, to: null, input: 1.75, output: 14 }],
+	"gpt-5.5": openai(flat(5, 30)),
+	"gpt-5.4": openai(flat(2.5, 15)),
+	"gpt-5.4-mini": openai(flat(0.75, 4.5)),
+	"gpt-5.3-codex": openai(flat(1.75, 14)),
 	// The gpt-5.6 family launched 2026-07-29; Terra and Luna were repriced on
 	// 2026-07-30 (-20% / -80%). The one-day launch rates are not on the list
 	// page and are NOT encoded — a July-29 Terra/Luna record underprices for
 	// one day rather than carrying a rate we cannot cite (#72).
-	"gpt-5.6-sol": [{ from: null, to: null, input: 5, output: 30 }],
-	"gpt-5.6-terra": [{ from: null, to: null, input: 2, output: 12 }],
-	"gpt-5.6-luna": [{ from: null, to: null, input: 0.2, output: 1.2 }],
+	"gpt-5.6-sol": openai(flat(5, 30)),
+	"gpt-5.6-terra": openai(flat(2, 12)),
+	"gpt-5.6-luna": openai(flat(0.2, 1.2)),
 	// NOT on OpenAI's list page — an internal Codex routing label with no
 	// official price (openai/codex#20981). Rate is the aggregator consensus
 	// ($2.50 / $15.00), scoped in explicitly by ticket #72 because it carries
 	// real token volume in Codex rollouts.
-	"codex-auto-review": [{ from: null, to: null, input: 2.5, output: 15 }],
+	"codex-auto-review": openai(flat(2.5, 15)),
 };
 
 export type TokenCounts = {
@@ -137,9 +166,9 @@ export function priceAt(
 	atMs: number | null,
 ): PricePeriod | null {
 	if (atMs === null) return null;
-	const periods = PRICES[modelKey];
-	if (!periods) return null;
-	for (const p of periods) {
+	const entry = PRICES[modelKey];
+	if (!entry) return null;
+	for (const p of entry.periods) {
 		if ((p.from === null || atMs >= p.from) && (p.to === null || atMs < p.to)) {
 			return p;
 		}
@@ -150,6 +179,40 @@ export function priceAt(
 /** True when we hold at least one citable rate for this model, at any time. */
 export function isPricedModel(modelKey: string): boolean {
 	return PRICES[modelKey] !== undefined;
+}
+
+/**
+ * The table id that cites this model's rates, or `null` when it has none.
+ *
+ * The citation belongs to the rate, not to the harness that reported it: a
+ * read-time estimate is cited by the table it was drawn from, and one stack can
+ * carry Anthropic and OpenAI rows at once.
+ */
+export function pricingTableFor(modelKey: string): string | null {
+	return PRICES[modelKey]?.table ?? null;
+}
+
+/**
+ * Every rate that applies to `modelKey` anywhere inside `[fromMs, toMs]`.
+ *
+ * This is the read-time counterpart of `priceAt`. A published snapshot has no
+ * per-response timestamps left — it carries one merged token total over a
+ * window — so a re-pricer cannot ask "what did this response cost". It can only
+ * ask "which rates could this window have paid", and then choose. Returns an
+ * empty list for an unknown model and for a window that closes before the
+ * model's first citable rate opens.
+ */
+export function pricePeriodsInWindow(
+	modelKey: string,
+	fromMs: number,
+	toMs: number,
+): PricePeriod[] {
+	const entry = PRICES[modelKey];
+	if (!entry) return [];
+	return entry.periods.filter(
+		(p) =>
+			(p.from === null || p.from <= toMs) && (p.to === null || p.to > fromMs),
+	);
 }
 
 /**

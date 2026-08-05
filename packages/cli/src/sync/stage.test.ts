@@ -14,7 +14,7 @@ import {
 	BUNDLED_SYNC_CONFIG,
 	EMPTY_OPT_INS,
 } from "../harness/shared/allowlist.js";
-import { PRICING_TABLE_VERSION } from "../harness/shared/pricing.js";
+import { PRICING_TABLE_VERSION } from "@aistack/pricing";
 import type { ScanStats } from "../harness/shared/window.js";
 import {
 	DEFAULT_WINDOW_DAYS,

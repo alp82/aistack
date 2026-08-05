@@ -121,7 +121,7 @@ export function MetricBlock({
 					{/* Roomier than the caption gap above, so the swapped row never crowds
 				    the second number. */}
 					<span className="relative mt-6 block font-mono text-2xl font-black leading-none text-fg-secondary md:text-3xl">
-						{usd !== null ? `≈${fmtUSD(usd)}` : COST_PRIVATE}
+						{usd !== null ? `≥${fmtUSD(usd)}` : COST_PRIVATE}
 					</span>
 					<span
 						className={cn(MONO_LABEL, "relative mt-1.5 block text-fg-muted")}

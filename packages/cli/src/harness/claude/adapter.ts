@@ -3,7 +3,7 @@
 // gives it the adapter shape.
 
 import { BUILTIN_TOOLS } from "../shared/allowlist.js";
-import { PRICING_TABLE_VERSION } from "../shared/pricing.js";
+import { PRICING_TABLE_VERSION } from "@aistack/pricing";
 import { hasRecentFile } from "../shared/recency.js";
 import type {
 	HarnessAdapter,

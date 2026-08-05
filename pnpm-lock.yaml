@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@aistack/pricing':
+        specifier: workspace:*
+        version: link:packages/pricing
       '@convex-dev/better-auth':
         specifier: ^0.10.9
         version: 0.10.9(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.3.4))(jose@6.1.3)(kysely@0.28.9)(nanostores@1.1.0))(@better-auth/utils@0.3.0)(@standard-schema/spec@1.1.0)(better-auth@1.4.10(@tanstack/react-start@1.145.3(crossws@0.4.10(srvx@0.11.16))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@7.3.0(@types/node@24.13.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.0)))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.10)(vitest@3.2.4(@edge-runtime/vm@5.0.0)(@types/debug@4.1.12)(@types/node@24.13.0)(jsdom@27.4.0)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.9.0)))(better-call@1.1.7(zod@4.3.4))(convex@1.32.0(react@19.2.3))(nanostores@1.1.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
@@ -349,6 +352,9 @@ importers:
         specifier: ^2.9.0
         version: 2.9.0
     devDependencies:
+      '@aistack/pricing':
+        specifier: workspace:*
+        version: link:../pricing
       '@types/node':
         specifier: ^24
         version: 24.13.0
@@ -358,6 +364,8 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
+
+  packages/pricing: {}
 
 packages:
 

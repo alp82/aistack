@@ -6,7 +6,7 @@
 // inheriting Claude's record-dedup logic. Everything here is pure — no I/O,
 // no console.
 
-import { isPricedModel, type TokenCounts } from "./pricing.js";
+import { isPricedModel, type TokenCounts } from "@aistack/pricing";
 
 // ---------------------------------------------------------------------------
 // Narrowing helpers — records are untrusted external JSON
