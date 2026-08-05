@@ -43,6 +43,11 @@ export function rolloutRoots(): string[] {
 
 const ROLLOUT_RE = /^rollout-.*\.jsonl(\.zst)?$/;
 
+/** What counts as a Codex rollout. Shared with `detect` (#101). */
+export function isRolloutFile(basename: string): boolean {
+	return ROLLOUT_RE.test(basename);
+}
+
 /** Recursive rollout walk — the YYYY/MM/DD nesting is real. */
 async function* walkRollouts(dir: string): AsyncGenerator<string> {
 	let entries: Dirent[];
@@ -54,7 +59,7 @@ async function* walkRollouts(dir: string): AsyncGenerator<string> {
 	for (const e of entries) {
 		const full = path.join(dir, e.name);
 		if (e.isDirectory()) yield* walkRollouts(full);
-		else if (e.isFile() && ROLLOUT_RE.test(e.name)) yield full;
+		else if (e.isFile() && isRolloutFile(e.name)) yield full;
 	}
 }
 

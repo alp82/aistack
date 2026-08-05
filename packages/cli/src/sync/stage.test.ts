@@ -16,6 +16,10 @@ import {
 } from "../harness/shared/allowlist.js";
 import { PRICING_TABLE_VERSION } from "@aistack/pricing";
 import type { ScanStats } from "../harness/shared/window.js";
+import {
+	DEFAULT_WINDOW_DAYS,
+	windowStartMs,
+} from "../harness/shared/window.js";
 import type { HarnessAdapter } from "../harness/types.js";
 import { type StageDeps, stageId, stageSync } from "./stage.js";
 
@@ -121,5 +125,36 @@ describe("stageSync", () => {
 			}),
 		);
 		expect(staged.blockedReason).toContain("/stacks/new");
+	});
+
+	// #101: detection and the scan read ONE window start, so a harness that
+	// counts as detected is exactly a harness with something in the window.
+	test("detection gets the same window start the scan gets", async () => {
+		let detectSince: number | null = null;
+		let scanSince: number | null = null;
+		await stageSync(
+			deps({
+				adaptersImpl: async (sinceMs) => {
+					detectSince = sinceMs;
+					return [
+						{
+							...FAKE_CLAUDE_ADAPTER,
+							scan: async (opts) => {
+								scanSince = opts.sinceMs;
+								return FAKE_CLAUDE_ADAPTER.scan(opts);
+							},
+						},
+					];
+				},
+			}),
+		);
+		expect(detectSince).toBe(windowStartMs(NOW, DEFAULT_WINDOW_DAYS));
+		expect(scanSince).toBe(detectSince);
+	});
+
+	test("no active harness blocks, and the reason names the window", async () => {
+		const staged = await stageSync(deps({ adaptersImpl: async () => [] }));
+		expect(staged.blockedReason).toContain("No active harness");
+		expect(staged.blockedReason).toContain("last 30 days");
 	});
 });

@@ -1,12 +1,23 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { saveSettings } from "../config.js";
 import {
 	claudeOnPath,
 	findSkillSource,
 	installClaudeConnect,
+	offerConnectUpsell,
 	type Runner,
 	type RunResult,
 } from "./connect.js";
+
+const selectMock = vi.hoisted(() => vi.fn());
+vi.mock("@clack/prompts", () => ({
+	select: selectMock,
+	isCancel: (v: unknown) => typeof v === "symbol",
+	log: { success: vi.fn(), error: vi.fn(), message: vi.fn(), warn: vi.fn() },
+}));
 
 const ok = (output = ""): RunResult => ({ notFound: false, status: 0, output });
 const fail = (output: string): RunResult => ({
@@ -27,6 +38,67 @@ function recordingRunner(results: RunResult[]): {
 	};
 	return { run, calls };
 }
+
+/**
+ * The upsell gate — wayfinder #101 (map #76). A Codex-only user with a
+ * months-old Claude Code install got this ask, which is what opened #100. The
+ * gate is now Claude activity inside the window, THEN the binary on PATH.
+ */
+describe("offerConnectUpsell", () => {
+	let dir: string;
+	let settingsFile: string;
+
+	beforeEach(() => {
+		dir = mkdtempSync(join(tmpdir(), "aistack-upsell-"));
+		settingsFile = join(dir, "settings.json");
+		selectMock.mockReset();
+		selectMock.mockResolvedValue("later");
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	it("does not ask when Claude Code has not run inside the window", async () => {
+		const claudeOnPathImpl = vi.fn(() => true);
+		await offerConnectUpsell({
+			settingsFile,
+			claudeActiveImpl: async () => false,
+			claudeOnPathImpl,
+		});
+		expect(selectMock).not.toHaveBeenCalled();
+		// The stale check comes first, so the subprocess never even runs.
+		expect(claudeOnPathImpl).not.toHaveBeenCalled();
+	});
+
+	it("does not ask when claude is not on PATH, however recent the logs", async () => {
+		await offerConnectUpsell({
+			settingsFile,
+			claudeActiveImpl: async () => true,
+			claudeOnPathImpl: () => false,
+		});
+		expect(selectMock).not.toHaveBeenCalled();
+	});
+
+	it("asks when Claude Code is both active and installed", async () => {
+		await offerConnectUpsell({
+			settingsFile,
+			claudeActiveImpl: async () => true,
+			claudeOnPathImpl: () => true,
+		});
+		expect(selectMock).toHaveBeenCalledOnce();
+	});
+
+	it("does not ask twice", async () => {
+		saveSettings({ connectClaudeAnswered: true }, settingsFile);
+		await offerConnectUpsell({
+			settingsFile,
+			claudeActiveImpl: async () => true,
+			claudeOnPathImpl: () => true,
+		});
+		expect(selectMock).not.toHaveBeenCalled();
+	});
+});
 
 describe("findSkillSource", () => {
 	it("finds the bundled Skill from the source tree (dev layout)", () => {

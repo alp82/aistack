@@ -1,4 +1,4 @@
-// The auto-sync opt-in (#62, map #60).
+// The auto-sync opt-in (#62, map #60), narrowed to active harnesses by #101.
 //
 // This ask is the PRIMARY post-sync ask: it runs first, and the connect-claude
 // upsell yields to a later sync (at most one ask per sync, each asked once,
@@ -12,9 +12,16 @@ import {
 	getSettings,
 	saveSettings,
 } from "../config.js";
+import { CLAUDE_HARNESS_NAME } from "../harness/claude/adapter.js";
+import { CODEX_HARNESS_NAME } from "../harness/codex/adapter.js";
+import {
+	DEFAULT_WINDOW_DAYS,
+	detectedAdapters,
+	harnessListLabel,
+} from "../harness/index.js";
+import type { HarnessAdapter } from "../harness/types.js";
 import { dim, limeBold } from "../theme.js";
 import {
-	codexPresent,
 	installCodexAutoSyncHook,
 	removeCodexAutoSyncHook,
 } from "./codexHook.js";
@@ -30,28 +37,39 @@ export interface EnableDeps {
 	removeHook?: () => HookResult;
 	installCodexHook?: () => HookResult;
 	removeCodexHook?: () => HookResult;
-	codexPresentImpl?: () => boolean;
+	/** Override the detected harness set. Tests only. */
+	detectedImpl?: () => Promise<HarnessAdapter[]>;
 }
+
+/** The message when the machine has no active harness to trigger anything. */
+export const NOTHING_TO_TRIGGER = `No Claude Code or Codex session on this machine in the last ${DEFAULT_WINDOW_DAYS} days, so nothing would trigger an auto-sync. Nothing was changed.`;
 
 /**
  * Turn the standing opt-in on: persist the flag, write the SessionStart hooks
- * — Claude Code always, Codex when it is on this machine (#66 decision 4; one
- * `sync --auto` covers all detected harnesses, so both hooks run the same
- * command). When a hook write fails, the flag is NOT persisted — a
- * half-enabled state (flag on, no hook) would claim a freshness the machine
- * cannot deliver.
+ * — one per DETECTED harness (#101). A hook for a harness whose last session
+ * predates the window is a trigger that will never fire, and its install is the
+ * step that made a dead Claude Code install look alive.
+ *
+ * When a hook write fails, the flag is NOT persisted — a half-enabled state
+ * (flag on, no hook) would claim a freshness the machine cannot deliver.
  */
-export function enableAutoSync(
+export async function enableAutoSync(
 	frequencyHours: number = DEFAULT_FREQUENCY_HOURS,
 	deps: EnableDeps = {},
-): HookResult {
-	const install = deps.installHook ?? installAutoSyncHook;
-	const result = install();
-	if (!result.ok) return result;
+): Promise<HookResult> {
+	const detected = await (deps.detectedImpl ?? detectedAdapters)();
+	if (detected.length === 0) {
+		return { ok: false, message: NOTHING_TO_TRIGGER };
+	}
+	const names = new Set(detected.map((a) => a.name));
 
-	const hasCodex = (deps.codexPresentImpl ?? codexPresent)();
+	if (names.has(CLAUDE_HARNESS_NAME)) {
+		const result = (deps.installHook ?? installAutoSyncHook)();
+		if (!result.ok) return result;
+	}
+
 	let trustLine: string | null = null;
-	if (hasCodex) {
+	if (names.has(CODEX_HARNESS_NAME)) {
 		const codexResult = (deps.installCodexHook ?? installCodexAutoSyncHook)();
 		if (!codexResult.ok) return codexResult;
 		// The one-time /hooks trust step (#65 §6) — repeated by the next
@@ -66,23 +84,24 @@ export function enableAutoSync(
 		},
 		deps.settingsFile,
 	);
-	const sessionWord = hasCodex ? "Claude Code or Codex" : "Claude Code";
 	return {
 		ok: true,
 		message: [
-			`Auto-sync is on — about every ${frequencyHours}h when a ${sessionWord} session starts. Turn it off any time: npx @use-aistack/cli sync --auto off`,
+			`Auto-sync is on — about every ${frequencyHours}h when a ${harnessListLabel(detected)} session starts. Turn it off any time: npx @use-aistack/cli sync --auto off`,
 			...(trustLine ? [trustLine] : []),
 		].join("\n"),
 	};
 }
 
 /**
- * Revoke: remove the hook AND flip the flag. The flag flips even when the
- * hook file cannot be edited, because `sync --auto` gates on the flag — a
- * stale hook without the flag publishes nothing.
+ * Revoke: remove the hooks AND flip the flag. The flag flips even when a hook
+ * file cannot be edited, because `sync --auto` gates on the flag — a stale hook
+ * without the flag publishes nothing.
+ *
+ * Removal is unconditional, unlike install: a revoke must reach the hook of a
+ * harness that has since gone quiet, and removing an absent hook is success.
  */
 export function disableAutoSync(deps: EnableDeps = {}): HookResult {
-	const remove = deps.removeHook ?? removeAutoSyncHook;
 	const settings = getSettings(deps.settingsFile);
 	saveSettings(
 		{
@@ -95,10 +114,8 @@ export function disableAutoSync(deps: EnableDeps = {}): HookResult {
 		},
 		deps.settingsFile,
 	);
-	const result = remove();
-	const codexResult = (deps.codexPresentImpl ?? codexPresent)()
-		? (deps.removeCodexHook ?? removeCodexAutoSyncHook)()
-		: { ok: true, message: "" };
+	const result = (deps.removeHook ?? removeAutoSyncHook)();
+	const codexResult = (deps.removeCodexHook ?? removeCodexAutoSyncHook)();
 	const failures = [result, codexResult]
 		.filter((r) => !r.ok)
 		.map((r) => r.message);
@@ -114,9 +131,18 @@ export function disableAutoSync(deps: EnableDeps = {}): HookResult {
 /**
  * The post-sync ask. Returns true when it asked (so the caller skips the
  * connect upsell this sync), false when it had nothing to ask.
+ *
+ * The hint names the harnesses this machine actually runs (#101): a Codex-only
+ * user is told "when a Codex session starts", not a Claude Code sentence that
+ * describes nothing they do.
  */
-export async function offerAutoSyncOptIn(): Promise<boolean> {
-	if (getSettings().autoSyncAnswered === true) return false;
+export async function offerAutoSyncOptIn(
+	deps: EnableDeps = {},
+): Promise<boolean> {
+	if (getSettings(deps.settingsFile).autoSyncAnswered === true) return false;
+
+	const detected = await (deps.detectedImpl ?? detectedAdapters)();
+	if (detected.length === 0) return false;
 
 	const answer = await p.select({
 		message: "Keep this stack fresh automatically?",
@@ -129,7 +155,7 @@ export async function offerAutoSyncOptIn(): Promise<boolean> {
 			{
 				value: "enable",
 				label: "Enable",
-				hint: "a silent daily sync when a Claude Code session starts",
+				hint: `a silent daily sync when a ${harnessListLabel(detected)} session starts`,
 			},
 		],
 		initialValue: "later",
@@ -138,7 +164,11 @@ export async function offerAutoSyncOptIn(): Promise<boolean> {
 	if (p.isCancel(answer)) return true;
 
 	if (answer === "enable") {
-		const result = enableAutoSync();
+		// The set is reused, not re-detected: the user answered the hint they saw.
+		const result = await enableAutoSync(DEFAULT_FREQUENCY_HOURS, {
+			...deps,
+			detectedImpl: async () => detected,
+		});
 		if (result.ok) {
 			p.log.success(result.message);
 		} else {
@@ -147,7 +177,7 @@ export async function offerAutoSyncOptIn(): Promise<boolean> {
 		return true;
 	}
 
-	saveSettings({ autoSyncAnswered: true });
+	saveSettings({ autoSyncAnswered: true }, deps.settingsFile);
 	p.log.message(
 		`If you change your mind: ${limeBold("npx @use-aistack/cli sync --auto on")} ${dim(
 			"(and --auto off to revoke)",

@@ -10,6 +10,7 @@
 // Nothing in this file is accepted as a caller-supplied argument beside the
 // payload — the spike promoted that from a caution to a demonstrated property.
 
+import { harnessLabel } from "../harness/index.js";
 import type {
 	KeptPrivateAtom,
 	NameCategory,
@@ -152,12 +153,10 @@ export function keptPrivateRows(
 
 const KEPT_PRIVATE_ROWS_SHOWN = 6;
 
-/** Display name for a harness discriminator the gate prints. */
-export function harnessLabel(name: string): string {
-	if (name === "claude-code") return "Claude Code";
-	if (name === "codex") return "Codex";
-	return name;
-}
+// The harness display names live with the harness names themselves (#101), so
+// one harness has one label everywhere. Re-exported: this module is where the
+// gate's renderers reach for it.
+export { harnessLabel };
 
 /** How many unreadable files get named before the list truncates. */
 const UNREADABLE_FILES_SHOWN = 5;

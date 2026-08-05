@@ -8,11 +8,10 @@
 // Typical use:
 //
 //   const now = Date.now();
+//   const sinceMs = windowStartMs(now, DEFAULT_WINDOW_DAYS);
 //   const { config } = await loadSyncConfig({ baseUrl });
-//   for (const adapter of await detectedAdapters()) {
-//     const { aggregate, stats } = await adapter.scan({
-//       sinceMs: windowStartMs(now, DEFAULT_WINDOW_DAYS),
-//     });
+//   for (const adapter of await detectedAdapters(sinceMs)) {
+//     const { aggregate, stats } = await adapter.scan({ sinceMs });
 //     const built = buildPayload({
 //       aggregate, stats, syncConfig: config, now,
 //       windowDays: DEFAULT_WINDOW_DAYS,
@@ -22,8 +21,9 @@
 //     });
 //   }
 
-import { claudeAdapter } from "./claude/adapter.js";
-import { codexAdapter } from "./codex/adapter.js";
+import { CLAUDE_HARNESS_NAME, claudeAdapter } from "./claude/adapter.js";
+import { CODEX_HARNESS_NAME, codexAdapter } from "./codex/adapter.js";
+import { DEFAULT_WINDOW_DAYS, windowStartMs } from "./shared/window.js";
 import type { HarnessAdapter } from "./types.js";
 
 export { CLAUDE_HARNESS_NAME, claudeAdapter } from "./claude/adapter.js";
@@ -94,6 +94,7 @@ export {
 	SONNET_5_INTRO_ENDS_MS,
 	type TokenCounts,
 } from "@aistack/pricing";
+export { hasRecentFile } from "./shared/recency.js";
 export {
 	DEFAULT_WINDOW_DAYS,
 	type ScanStats,
@@ -101,6 +102,7 @@ export {
 } from "./shared/window.js";
 export type {
 	HarnessAdapter,
+	HarnessDetectOptions,
 	HarnessScan,
 	HarnessScanOptions,
 } from "./types.js";
@@ -115,11 +117,37 @@ export const HARNESS_ADAPTERS: readonly HarnessAdapter[] = [
 	codexAdapter,
 ];
 
-/** The adapters whose log roots exist on this machine. */
-export async function detectedAdapters(): Promise<HarnessAdapter[]> {
+/** Display name for a harness discriminator. One name per harness, defined here. */
+export function harnessLabel(name: string): string {
+	if (name === CLAUDE_HARNESS_NAME) return "Claude Code";
+	if (name === CODEX_HARNESS_NAME) return "Codex";
+	return name;
+}
+
+/** The detected harnesses as one phrase: "Claude Code or Codex". */
+export function harnessListLabel(adapters: readonly HarnessAdapter[]): string {
+	return adapters.map((a) => harnessLabel(a.name)).join(" or ");
+}
+
+/**
+ * The window every detection uses when the caller has no scan in hand. The
+ * scan passes its own window start instead, which is the same number.
+ */
+export function detectionSinceMs(now: number = Date.now()): number {
+	return windowStartMs(now, DEFAULT_WINDOW_DAYS);
+}
+
+/**
+ * The adapters that wrote a transcript inside the window — the machine's LIVE
+ * harnesses (#101). A stale one is skipped everywhere this is read: it does not
+ * scan, it does not publish, it earns no upsell and it gets no hook.
+ */
+export async function detectedAdapters(
+	sinceMs: number = detectionSinceMs(),
+): Promise<HarnessAdapter[]> {
 	const out: HarnessAdapter[] = [];
 	for (const adapter of HARNESS_ADAPTERS) {
-		if (await adapter.detect()) out.push(adapter);
+		if (await adapter.detect({ sinceMs })) out.push(adapter);
 	}
 	return out;
 }

@@ -12,6 +12,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as p from "@clack/prompts";
 import { getSettings, saveSettings } from "../config.js";
+import { claudeAdapter, detectionSinceMs } from "../harness/index.js";
 import {
 	dim,
 	intro,
@@ -174,15 +175,34 @@ export async function connectCommand(harness: string): Promise<void> {
 	outro("done");
 }
 
+export interface UpsellDeps {
+	/** Override the Claude activity check. Tests only. */
+	claudeActiveImpl?: () => Promise<boolean>;
+	/** Override the PATH check. Tests only. */
+	claudeOnPathImpl?: () => boolean;
+	/** Override the settings file. Tests only. */
+	settingsFile?: string;
+}
+
+/** Has Claude Code written a transcript inside the sync window? */
+export function claudeRecentlyActive(): Promise<boolean> {
+	return claudeAdapter.detect({ sinceMs: detectionSinceMs() });
+}
+
 /**
  * The post-sync upsell (#56 decision 2), asked once per machine. Any explicit
  * answer persists to ~/.config/aistack/settings.json; ctrl-C is not an answer
- * and the question returns on the next sync. Skipped silently when claude is
- * not on PATH — the offer would be noise on a machine that cannot take it.
+ * and the question returns on the next sync.
+ *
+ * Two gates, both silent. The offer needs a Claude Code the user actually runs
+ * (#101) — a months-old install asked a Codex-only user to connect a harness
+ * they had left behind, which is what opened #100. It also needs `claude` on
+ * PATH, because that binary is what installs the MCP server.
  */
-export async function offerConnectUpsell(): Promise<void> {
-	if (getSettings().connectClaudeAnswered === true) return;
-	if (!claudeOnPath()) return;
+export async function offerConnectUpsell(deps: UpsellDeps = {}): Promise<void> {
+	if (getSettings(deps.settingsFile).connectClaudeAnswered === true) return;
+	if (!(await (deps.claudeActiveImpl ?? claudeRecentlyActive)())) return;
+	if (!(deps.claudeOnPathImpl ?? claudeOnPath)()) return;
 
 	const answer = await p.select({
 		message: "Sync from inside Claude Code too?",
@@ -202,7 +222,7 @@ export async function offerConnectUpsell(): Promise<void> {
 	});
 
 	if (p.isCancel(answer)) return;
-	saveSettings({ connectClaudeAnswered: true });
+	saveSettings({ connectClaudeAnswered: true }, deps.settingsFile);
 
 	if (answer === "install") {
 		const result = installClaudeConnect();
