@@ -13,6 +13,7 @@
 //      not in the payload at all (#33 decision 11) — there is nothing to
 //      "reveal" server-side, because nothing was transmitted.
 
+import { baseModelId } from "@aistack/pricing";
 import {
 	type Aggregate,
 	cleanName,
@@ -28,7 +29,6 @@ import {
 	type NameCategory,
 	type SyncConfig,
 } from "./allowlist.js";
-import { baseModelId } from "@aistack/pricing";
 import { type ScanStats, windowStartMs } from "./window.js";
 
 export const SCHEMA_VERSION = 1;
@@ -427,7 +427,19 @@ export type SyncBody = {
 	 * closed, and that closedness is the privacy claim.
 	 */
 	autoSync?: { enabled: boolean; frequencyHours: number };
+	/**
+	 * How this sync fired (#102, sent by #103). `auto` means a SessionStart hook
+	 * ran it with nobody watching; `manual` means a human typed the command.
+	 *
+	 * The server stamps `lastAutoSyncAt` from it, so the web switch can tell
+	 * on-and-working from on-but-never-fired. It rides beside the payloads for
+	 * the same reason `autoSync` does: the payload validator is closed.
+	 */
+	trigger?: SyncTrigger;
 };
+
+/** The two ways a sync can fire. Absent on an old CLI, and that reads as manual. */
+export type SyncTrigger = "manual" | "auto";
 
 /**
  * Union the per-harness kept-private lists into the one list the wire carries.
@@ -472,9 +484,12 @@ export function buildSyncBody(
 	built: readonly BuiltPayload[],
 	syncConfig: SyncConfig,
 	autoSync?: { enabled: boolean; frequencyHours: number },
+	trigger: SyncTrigger = "manual",
 ): SyncBody {
 	const payloads = built.map((b) => b.payload);
-	const base: SyncBody = autoSync ? { payloads, autoSync } : { payloads };
+	const base: SyncBody = autoSync
+		? { payloads, autoSync, trigger }
+		: { payloads, trigger };
 	if (!syncConfig.reviewKeptPrivate) return base;
 	return {
 		...base,

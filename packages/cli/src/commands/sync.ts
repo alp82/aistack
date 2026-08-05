@@ -19,7 +19,7 @@ import {
 import {
 	disableAutoSync,
 	enableAutoSync,
-	offerAutoSyncOptIn,
+	settleAutoSync,
 } from "../autosync/optin.js";
 import { runAutoSync } from "../autosync/run.js";
 import { DEFAULT_FREQUENCY_HOURS, getSettings, getToken } from "../config.js";
@@ -53,7 +53,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 							? Number.parseInt(options.every, 10) || DEFAULT_FREQUENCY_HOURS
 							: DEFAULT_FREQUENCY_HOURS,
 					)
-				: disableAutoSync();
+				: await disableAutoSync();
 		if (result.ok) {
 			p.log.success(result.message);
 			outro("done");
@@ -167,9 +167,15 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 			);
 		}
 		p.log.message(lines.join("\n"));
+		// EVERY interactive sync settles auto-sync against the stack's own
+		// answer (#103): it reconciles the missing triggers when the switch is
+		// on, keeps quiet when it is off, and asks only when nobody has decided.
+		// This is what completes a web-first enable, and what gives a harness
+		// adopted months later its trigger.
+		//
 		// At most one ask per sync (#62): the auto-sync opt-in is the primary
 		// ask; the connect upsell yields and waits for a later sync.
-		const asked = await offerAutoSyncOptIn();
+		const asked = await settleAutoSync(staged.config.autoSync);
 		if (!asked) await offerConnectUpsell();
 		outro("done");
 	} catch (e) {

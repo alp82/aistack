@@ -189,6 +189,14 @@ describe("a machine with only stale Claude logs", () => {
 		const installCodexHook = vi.fn(() => ({ ok: true, message: "" }));
 		const result = await enableAutoSync(24, {
 			settingsFile,
+			// The permission lives on the stack now (#103). This machine is
+			// linked and aistack.to says yes, so what is left to check is which
+			// harness gets a trigger.
+			getTokenImpl: () => "tok",
+			setAutoSyncImpl: async () => ({
+				autoSync: { enabled: true, frequencyHours: 24 },
+				lastAutoSyncAt: null,
+			}),
 			installHook,
 			installCodexHook,
 		});

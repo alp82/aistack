@@ -2,6 +2,7 @@
 // staged bodyJson IS the serialized body, the id is derived from it, and a
 // stage that cannot name its destination is blocked before any gate.
 
+import { PRICING_TABLE_VERSION } from "@aistack/pricing";
 import { describe, expect, test } from "vitest";
 import { createAggregate, ingestRecord } from "../harness/claude/analyzer.js";
 import { assistant } from "../harness/claude/fixtures.js";
@@ -14,7 +15,6 @@ import {
 	BUNDLED_SYNC_CONFIG,
 	EMPTY_OPT_INS,
 } from "../harness/shared/allowlist.js";
-import { PRICING_TABLE_VERSION } from "@aistack/pricing";
 import type { ScanStats } from "../harness/shared/window.js";
 import {
 	DEFAULT_WINDOW_DAYS,
@@ -31,6 +31,7 @@ const FETCHED: SyncConfig = {
 	optIns: EMPTY_OPT_INS,
 	reviewKeptPrivate: true,
 	stack: { name: "Alp's Daily Driver", slug: "alps-daily-driver" },
+	autoSync: null,
 };
 
 const STATS: ScanStats = {
@@ -97,6 +98,47 @@ describe("stageSync", () => {
 			}),
 		);
 		expect(off.body.keptPrivate).toBeUndefined();
+	});
+
+	// The seed (#102's acceptance, #103's send): the first sync from a machine
+	// whose local flag is ON, against a stack with no flag, sets the server
+	// flag. The server only seeds an ABSENT field, so the machine sends its own
+	// flag on every sync and lets the stack decide whether it means anything.
+	test("the machine's own opt-in rides on the body, so a first sync can seed the stack", async () => {
+		const staged = await stageSync(
+			deps({
+				getSettingsImpl: () => ({
+					autoSync: { enabled: true, frequencyHours: 12 },
+				}),
+			}),
+		);
+		expect(staged.body.autoSync).toEqual({
+			enabled: true,
+			frequencyHours: 12,
+		});
+		expect(JSON.parse(staged.bodyJson).autoSync).toEqual({
+			enabled: true,
+			frequencyHours: 12,
+		});
+	});
+
+	test("a machine that never opted in sends no flag, and seeds nothing", async () => {
+		const staged = await stageSync(deps({ getSettingsImpl: () => ({}) }));
+		expect(staged.body.autoSync).toBeUndefined();
+	});
+
+	// #102 put `trigger` on the wire; #103 sends it. The stamp rides in the
+	// STAGED bytes, so what the gate shows and what the server records agree.
+	test("a stage says the sync is manual unless the caller says otherwise", async () => {
+		const staged = await stageSync(deps({}));
+		expect(staged.body.trigger).toBe("manual");
+		expect(JSON.parse(staged.bodyJson).trigger).toBe("manual");
+	});
+
+	test("the background run stamps its stage auto", async () => {
+		const staged = await stageSync(deps({ trigger: "auto" }));
+		expect(staged.body.trigger).toBe("auto");
+		expect(JSON.parse(staged.bodyJson).trigger).toBe("auto");
 	});
 
 	test("summary and dialog derive from the staged content", async () => {

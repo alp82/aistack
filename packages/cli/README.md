@@ -22,7 +22,7 @@ On an unlinked machine, `sync` starts the login flow inline — your browser ope
 
 ### `npx @use-aistack/cli sync --auto on` / `off`
 
-Optional: keep your stack fresh without manual syncs. `on` writes a `SessionStart` hook (`async: true`) into `~/.claude/settings.json`. The hook runs a silent sync at most once per day when a Claude Code session starts. `off` removes the hook and revokes the standing opt-in.
+Optional: keep your stack fresh without manual syncs. `on` asks your stack for the permission, then writes a `SessionStart` hook into the harnesses you actually use — `~/.claude/settings.json` for Claude Code, `~/.codex/hooks.json` for Codex. The hook runs a silent sync at most once per day when a session starts. `off` removes the hooks and takes the permission back.
 
 ```sh
 npx @use-aistack/cli sync --auto on            # enable, default every 24h
@@ -30,7 +30,9 @@ npx @use-aistack/cli sync --auto on --every 12 # custom frequency in hours
 npx @use-aistack/cli sync --auto off           # revoke
 ```
 
-The silent run (`sync --auto`) never prompts and publishes only under this opt-in. Each run appends one line to `~/.config/aistack/sync.log` (capped at 200 lines). The next interactive `sync` reports the last result. After 3 failures in a row, one visible message appears in Claude Code and names the fix. No email, no dialogs.
+**Your stack owns the permission, not this machine.** The silent run asks aistack.to before it publishes anything, so the switch on your stack page is a complete revoke: it stops every machine, even one whose hooks are still installed. It works the other way too — turn the switch on, run one `sync`, and that machine installs its own triggers. A harness you adopt months later gets its trigger the same way.
+
+The silent run (`sync --auto`) never prompts and never installs a hook. Each run appends one line to `~/.config/aistack/sync.log` (capped at 200 lines). The next interactive `sync` reports the last result. After 3 failures in a row, one visible message appears in Claude Code and names the fix. No email, no dialogs.
 
 ### `npx @use-aistack/cli login`
 

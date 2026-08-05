@@ -148,6 +148,44 @@ export async function syncPublish(
 	return res.json();
 }
 
+export type AutoSyncSetResult = {
+	autoSync: { enabled: boolean; frequencyHours: number };
+	lastAutoSyncAt: number | null;
+};
+
+/**
+ * Set the auto-sync permission on the stack this machine is linked to (#103).
+ *
+ * The destination is the stack bound to the BEARER, exactly like a publish —
+ * the body says what the permission is, never whose it is. The frequency goes
+ * out only when the flag goes on: off keeps no schedule, and sending a number
+ * with it would overwrite the interval the owner picked for the next enable.
+ */
+export async function setAutoSync(
+	token: string,
+	flag: { enabled: boolean; frequencyHours?: number },
+): Promise<AutoSyncSetResult> {
+	const res = await request("/api/cli/auto-sync", {
+		method: "POST",
+		headers: authHeaders(token),
+		body: JSON.stringify(
+			flag.enabled && flag.frequencyHours !== undefined
+				? { enabled: true, frequencyHours: flag.frequencyHours }
+				: { enabled: flag.enabled },
+		),
+	});
+	if (res.status === 401)
+		throw new Error(
+			"Authentication expired. Run `npx @use-aistack/cli login` again.",
+		);
+	if (res.status === 403 || res.status === 429)
+		throw failure("Auto-sync update failed", res);
+	if (!res.ok) {
+		throw new Error(await formatHttpError(res, "Auto-sync update failed"));
+	}
+	return res.json();
+}
+
 export async function stackGet(token: string): Promise<StackData | null> {
 	const res = await request("/api/cli/stacks", {
 		headers: authHeaders(token),
