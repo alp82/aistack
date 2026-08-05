@@ -21,6 +21,17 @@ export type HarnessScanOptions = {
 	onProgress?: (files: number) => void;
 };
 
+export type HarnessDetectOptions = {
+	/**
+	 * The harness counts as present only when it wrote a transcript at or after
+	 * this epoch ms. Callers pass the window start the scan uses, so "detected"
+	 * and "in window" are the same number by construction (#101).
+	 */
+	sinceMs: number;
+	/** Override the discovered roots. Tests only. */
+	roots?: string[];
+};
+
 export interface HarnessAdapter {
 	/** The payload discriminator: `"claude-code"` | `"codex"`. */
 	readonly name: string;
@@ -34,7 +45,11 @@ export interface HarnessAdapter {
 	 * harness because the vendors publish their lists separately.
 	 */
 	readonly pricingTableVersion: string;
-	/** True when this harness's log roots exist on this machine. */
-	detect(): Promise<boolean>;
+	/**
+	 * True when this harness wrote a transcript inside the sync window. A log
+	 * root that merely exists is NOT detection (#101): a months-old install
+	 * leaves one behind forever, and it used to scan, publish, ask and hook.
+	 */
+	detect(opts: HarnessDetectOptions): Promise<boolean>;
 	scan(opts: HarnessScanOptions): Promise<HarnessScan>;
 }

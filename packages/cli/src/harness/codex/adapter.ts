@@ -1,15 +1,15 @@
 // The Codex CLI harness behind the seam (#66 decision 6, built in #67).
 
-import { stat } from "node:fs/promises";
-
 import { OPENAI_PRICING_TABLE_VERSION } from "../shared/pricing.js";
+import { hasRecentFile } from "../shared/recency.js";
 import type {
 	HarnessAdapter,
+	HarnessDetectOptions,
 	HarnessScan,
 	HarnessScanOptions,
 } from "../types.js";
 import { createAggregate } from "./analyzer.js";
-import { rolloutRoots, scan } from "./scan.js";
+import { isRolloutFile, rolloutRoots, scan } from "./scan.js";
 
 export const CODEX_HARNESS_NAME = "codex";
 
@@ -44,25 +44,17 @@ export const CODEX_BUILTIN_TOOLS: ReadonlySet<string> = new Set([
 	"tool_search",
 ]);
 
-async function exists(p: string): Promise<boolean> {
-	try {
-		await stat(p);
-		return true;
-	} catch {
-		return false;
-	}
-}
-
 export const codexAdapter: HarnessAdapter = {
 	name: CODEX_HARNESS_NAME,
 	builtinTools: CODEX_BUILTIN_TOOLS,
 	pricingTableVersion: OPENAI_PRICING_TABLE_VERSION,
 
-	async detect(): Promise<boolean> {
-		for (const root of rolloutRoots()) {
-			if (await exists(root)) return true;
-		}
-		return false;
+	async detect(opts: HarnessDetectOptions): Promise<boolean> {
+		return hasRecentFile(
+			opts.roots ?? rolloutRoots(),
+			isRolloutFile,
+			opts.sinceMs,
+		);
 	},
 
 	async scan(opts: HarnessScanOptions): Promise<HarnessScan> {

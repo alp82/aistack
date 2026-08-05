@@ -2,38 +2,31 @@
 // analyzer.ts/scan.ts, unchanged from the single-harness era; this file only
 // gives it the adapter shape.
 
-import { stat } from "node:fs/promises";
 import { BUILTIN_TOOLS } from "../shared/allowlist.js";
 import { PRICING_TABLE_VERSION } from "../shared/pricing.js";
+import { hasRecentFile } from "../shared/recency.js";
 import type {
 	HarnessAdapter,
+	HarnessDetectOptions,
 	HarnessScan,
 	HarnessScanOptions,
 } from "../types.js";
 import { createAggregate } from "./analyzer.js";
-import { scan, transcriptRoots } from "./scan.js";
+import { isTranscriptFile, scan, transcriptRoots } from "./scan.js";
 
 export const CLAUDE_HARNESS_NAME = "claude-code";
-
-async function exists(p: string): Promise<boolean> {
-	try {
-		await stat(p);
-		return true;
-	} catch {
-		return false;
-	}
-}
 
 export const claudeAdapter: HarnessAdapter = {
 	name: CLAUDE_HARNESS_NAME,
 	builtinTools: BUILTIN_TOOLS,
 	pricingTableVersion: PRICING_TABLE_VERSION,
 
-	async detect(): Promise<boolean> {
-		for (const root of transcriptRoots()) {
-			if (await exists(root)) return true;
-		}
-		return false;
+	async detect(opts: HarnessDetectOptions): Promise<boolean> {
+		return hasRecentFile(
+			opts.roots ?? transcriptRoots(),
+			isTranscriptFile,
+			opts.sinceMs,
+		);
 	},
 
 	async scan(opts: HarnessScanOptions): Promise<HarnessScan> {

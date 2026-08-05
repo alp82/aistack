@@ -1,5 +1,7 @@
-// Stage one send: scan every detected harness → build → derive the gate's
-// text from the exact bytes.
+// Stage one send: scan every ACTIVE harness → build → derive the gate's text
+// from the exact bytes. Active, not installed: a harness with nothing in the
+// window is not scanned and does not publish, so a dead Claude Code install no
+// longer lands a stale snapshot next to a live Codex one (#101).
 //
 // Wayfinder ticket #41 (map #29), widened to the adapter seam by #67 (map
 // #60). The staged `bodyJson` string IS what a publish transmits — the summary
@@ -66,7 +68,7 @@ export type StageDeps = {
 		token?: string;
 	}) => Promise<LoadedSyncConfig>;
 	/** Override the adapter set. Tests only. */
-	adaptersImpl?: () => Promise<HarnessAdapter[]>;
+	adaptersImpl?: (sinceMs: number) => Promise<HarnessAdapter[]>;
 	getSettingsImpl?: () => Settings;
 	windowDays?: number;
 };
@@ -89,8 +91,10 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 
 	const built: BuiltPayload[] = [];
 	const scanStats: Record<string, ScanStats> = {};
+	// One window start for detection AND for the scan (#101), so a harness that
+	// counts as detected is exactly a harness with something in the window.
 	const sinceMs = windowStartMs(now, windowDays);
-	for (const adapter of await adapters()) {
+	for (const adapter of await adapters(sinceMs)) {
 		const { aggregate, stats } = await adapter.scan({ sinceMs });
 		scanStats[adapter.name] = stats;
 		built.push(
@@ -126,8 +130,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 
 	let blockedReason: string | null = null;
 	if (built.length === 0) {
-		blockedReason =
-			"No supported harness was found on this machine — no Claude Code and no Codex logs to read.";
+		blockedReason = `No active harness on this machine — no Claude Code and no Codex transcript from the last ${windowDays} days to read.`;
 	} else if (token === null) {
 		blockedReason =
 			"This machine is not linked. Run `npx @use-aistack/cli login` first.";

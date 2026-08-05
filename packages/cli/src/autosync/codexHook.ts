@@ -29,14 +29,10 @@ export function codexHooksFile(): string {
 	return join(codexHome(), "hooks.json");
 }
 
-/**
- * Is Codex on this machine at all? Keyed on $CODEX_HOME existing, not on
- * session logs: a hook belongs wherever Codex will RUN, including a fresh
- * install that has no sessions yet.
- */
-export function codexPresent(): boolean {
-	return existsSync(codexHome());
-}
+// `codexPresent()` lived here and keyed on $CODEX_HOME existing. #101 replaced
+// it with `codexAdapter.detect()`: a directory proves an install, and an
+// install is not a user. A fresh Codex with no sessions yet gets its hook from
+// the interactive sync that reconciles hooks (#103), one session later.
 
 export function codexConfigFile(): string {
 	return join(codexHome(), "config.toml");
