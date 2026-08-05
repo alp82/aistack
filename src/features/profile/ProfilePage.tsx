@@ -31,6 +31,14 @@ type ProfilePageProps = {
 	stacks: ProfileStackCard[];
 	/** Owner-only companion data (null for visitors/guests). */
 	ownProfile: OwnProfileData | null;
+	/**
+	 * PROTOTYPE (#98) — what the owner-only view-analytics region renders.
+	 *
+	 * Rendered only when `ownProfile` says the reader owns this profile, so a
+	 * visitor never receives it. Falls back to today's planned-seam when nothing
+	 * is passed. The prototype route feeds this; #98 decides what ships here.
+	 */
+	ownerViewsSlot?: React.ReactNode;
 };
 
 function formatUpdatedAt(updatedAt: number): string {
@@ -87,7 +95,12 @@ function Seam({ label, note }: { label: string; note: string }) {
  * full-width callout. Owner affordances (New stack, Edit profile, draft
  * cards) are gated on `ownProfile`.
  */
-function ProfilePage({ profile, stacks, ownProfile }: ProfilePageProps) {
+function ProfilePage({
+	profile,
+	stacks,
+	ownProfile,
+	ownerViewsSlot,
+}: ProfilePageProps) {
 	const isOwner = ownProfile?.isOwner === true;
 	const draftStacks = ownProfile?.draftStacks ?? [];
 	const stackCount = stacks.length + draftStacks.length;
@@ -164,12 +177,13 @@ function ProfilePage({ profile, stacks, ownProfile }: ProfilePageProps) {
 							label="Live stats"
 							note="Measured usage per stack — lands with auto-sync."
 						/>
-						{isOwner && (
-							<Seam
-								label="View analytics (owner-only)"
-								note="Private per-profile dashboard — planned."
-							/>
-						)}
+						{isOwner &&
+							(ownerViewsSlot ?? (
+								<Seam
+									label="View analytics (owner-only)"
+									note="Private per-profile dashboard — planned."
+								/>
+							))}
 					</div>
 				</main>
 			</div>
