@@ -35,9 +35,10 @@ type Search = { variant: VariantKey; data: DataState };
 export const Route = createFileRoute("/prototype/views")({
 	component: PrototypeViews,
 	validateSearch: (search: Record<string, unknown>): Search => ({
+		// B is the picked design (#98). A and C stay reachable for comparison.
 		variant: VARIANTS.includes(search.variant as VariantKey)
 			? (search.variant as VariantKey)
-			: "A",
+			: "B",
 		data: DATA_STATES.includes(search.data as DataState)
 			? (search.data as DataState)
 			: "thin",
