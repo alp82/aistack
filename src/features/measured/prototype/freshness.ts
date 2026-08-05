@@ -170,6 +170,71 @@ export function ownerOnLine(f: Freshness): string {
 export const NEVER_SYNCED_AUTO_NOTE =
 	"After that first sync, this stack can keep itself current on a schedule.";
 
+/* --------------------------------------------------------------- windows -- */
+
+/**
+ * THE SECOND QUESTION, made visible (asked by the owner at the C answer).
+ *
+ * The 48-hour line does not arrive on an empty page. The stack page already
+ * carries a hero dot that turns orange at 7 days and a per-harness footnote
+ * that says "going stale" at 7 days, and the leaderboard ranks living stacks
+ * and lists quiet ones below, split at 7 days.
+ *
+ *   page — the page speaks with one window. The dot follows the stamp at 48
+ *          hours and the 7-day footnote is deleted. The board keeps 7 days,
+ *          because that rule ranks rows and #82 set it.
+ *   all  — the same page, and the board splits at 48 hours too.
+ *   both — the stamp at 48 hours, the dot and the footnote at 7 days.
+ */
+export const WINDOW_MODES = ["page", "all", "both"] as const;
+export type WindowMode = (typeof WINDOW_MODES)[number];
+
+export const WINDOW_LABELS: Record<WindowMode, string> = {
+	page: "Page 48h · board 7d",
+	all: "48h everywhere",
+	both: "Keep both · 48h + 7d",
+};
+
+const SEVEN_DAYS_HOURS = 7 * 24;
+
+/** The hero dot: lime while fresh, orange past the window this mode uses. */
+export function dotIsStale(f: Freshness, mode: WindowMode): boolean {
+	if (f.lastSyncAt === null) return false;
+	const hours = (Date.now() - f.lastSyncAt) / HOUR;
+	return hours > (mode === "both" ? SEVEN_DAYS_HOURS : STALE_AFTER_HOURS);
+}
+
+/** The per-harness footnote that ships today. Deleted in the one-window modes. */
+export function footnoteShown(f: Freshness, mode: WindowMode): boolean {
+	if (mode !== "both" || f.lastSyncAt === null) return false;
+	return (Date.now() - f.lastSyncAt) / HOUR > SEVEN_DAYS_HOURS;
+}
+
+export function footnoteLine(f: Freshness): string {
+	return `Last checked ${f.ago} — this reading is going stale.`;
+}
+
+/**
+ * THE BOARD, with the four real stacks and the real last syncs #92 recorded on
+ * 2026-08-04. Every one of them is older than 48 hours, which is what makes
+ * the board question concrete: at 48 hours nothing ranks today.
+ */
+export const BOARD = [
+	{ name: "OrcDev", tokens: "291.35B", ageHours: 3 * 24, day: "Aug 2" },
+	{ name: "GVASTE", tokens: "5.88B", ageHours: 4 * 24, day: "Aug 1" },
+	{ name: "Brilliant Insane", tokens: "4.77B", ageHours: 3 * 24, day: "Aug 2" },
+	{
+		name: "Alper's Agent Stack",
+		tokens: "4.71B",
+		ageHours: 2 * 24,
+		day: "Aug 3",
+	},
+] as const;
+
+export function boardRanks(ageHours: number, mode: WindowMode): boolean {
+	return ageHours <= (mode === "all" ? STALE_AFTER_HOURS : SEVEN_DAYS_HOURS);
+}
+
 /* --------------------------------------------------------------- reading -- */
 
 /** One plausible reading, so the variants are judged at real density. */

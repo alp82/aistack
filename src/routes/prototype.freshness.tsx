@@ -19,7 +19,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PrototypeSwitcher } from "@/components/PrototypeSwitcher";
 import {
+	BoardStrip,
 	FreshnessSection,
+	HeroStrip,
 	VARIANT_LABELS,
 	VARIANTS,
 	type VariantKey,
@@ -33,9 +35,17 @@ import {
 	VIEWER_LABELS,
 	VIEWERS,
 	type ViewerKey,
+	WINDOW_LABELS,
+	WINDOW_MODES,
+	type WindowMode,
 } from "@/features/measured/prototype/freshness";
 
-type Search = { variant: VariantKey; as: ViewerKey; state: FreshnessKey };
+type Search = {
+	variant: VariantKey;
+	as: ViewerKey;
+	state: FreshnessKey;
+	windows: WindowMode;
+};
 
 export const Route = createFileRoute("/prototype/freshness")({
 	component: PrototypeFreshness,
@@ -49,11 +59,14 @@ export const Route = createFileRoute("/prototype/freshness")({
 		state: FRESHNESS_STATES.includes(search.state as FreshnessKey)
 			? (search.state as FreshnessKey)
 			: "stale",
+		windows: WINDOW_MODES.includes(search.windows as WindowMode)
+			? (search.windows as WindowMode)
+			: "page",
 	}),
 });
 
 /** A stand-in for the stack hero: same weight and order, none of the wiring. */
-function MockHero() {
+function MockHero({ children }: { children?: React.ReactNode }) {
 	return (
 		<header className="border-b border-stroke-strong bg-bg-panel px-6 py-10 md:px-16">
 			<div className="mx-auto max-w-content">
@@ -75,6 +88,7 @@ function MockHero() {
 						<span className="text-[10px] text-fg-muted">+/mo</span>
 					</span>
 				</div>
+				{children}
 			</div>
 		</header>
 	);
@@ -97,22 +111,34 @@ function MockNextSection() {
 }
 
 function PrototypeFreshness() {
-	const { variant, as, state } = Route.useSearch();
+	const { variant, as, state, windows } = Route.useSearch();
 	const navigate = useNavigate({ from: Route.fullPath });
 	const f = freshness(state, Date.now());
 
 	return (
 		<>
 			<div className="min-h-screen bg-bg-canvas pb-28 text-fg-primary">
-				<MockHero />
-				<FreshnessSection variant={variant} viewer={as} f={f} />
+				<MockHero>
+					<HeroStrip f={f} windows={windows} />
+				</MockHero>
+				<FreshnessSection
+					variant={variant}
+					viewer={as}
+					f={f}
+					windows={windows}
+				/>
 				<MockNextSection />
+				<BoardStrip windows={windows} />
 				<div className="mx-auto max-w-content px-6 pb-6 md:px-16">
 					<p className="border border-dashed border-stroke-subtle px-4 py-3 font-mono text-[11px] leading-relaxed text-fg-muted">
 						reading the prototype — the state shows past {STALE_AFTER_HOURS}{" "}
 						hours, so “Fresh · 5h” draws nothing beyond the “checked 5 hours
 						ago” meta that already ships. “No sync ever” draws the empty box
 						that already ships, with no age and no warning, in every variant.
+						The Windows axis moves the two OTHER age claims: the dot in the hero
+						strip, and the orange “going stale” line under the stats at 7 days.
+						Read the dot at “Stale · 3d” and the orange line at “Quiet · 19d”.
+						The board below shows what each window ranks.
 					</p>
 				</div>
 			</div>
@@ -126,7 +152,9 @@ function PrototypeFreshness() {
 						current: variant,
 						arrowKeys: true,
 						onPick: (k) =>
-							navigate({ search: { variant: k as VariantKey, as, state } }),
+							navigate({
+								search: { variant: k as VariantKey, as, state, windows },
+							}),
 					},
 					{
 						name: "Seen as",
@@ -134,7 +162,9 @@ function PrototypeFreshness() {
 						labels: VIEWER_LABELS,
 						current: as,
 						onPick: (k) =>
-							navigate({ search: { variant, as: k as ViewerKey, state } }),
+							navigate({
+								search: { variant, as: k as ViewerKey, state, windows },
+							}),
 					},
 					{
 						name: "State",
@@ -142,7 +172,19 @@ function PrototypeFreshness() {
 						labels: FRESHNESS_LABELS,
 						current: state,
 						onPick: (k) =>
-							navigate({ search: { variant, as, state: k as FreshnessKey } }),
+							navigate({
+								search: { variant, as, state: k as FreshnessKey, windows },
+							}),
+					},
+					{
+						name: "Windows",
+						keys: WINDOW_MODES,
+						labels: WINDOW_LABELS,
+						current: windows,
+						onPick: (k) =>
+							navigate({
+								search: { variant, as, state, windows: k as WindowMode },
+							}),
 					},
 				]}
 			/>

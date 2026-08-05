@@ -42,15 +42,22 @@ import {
 import {
 	AUTO_ON_CMD,
 	AUTO_SYNC_EXPLAINER,
+	BOARD,
+	boardRanks,
+	dotIsStale,
 	type Freshness,
+	footnoteLine,
+	footnoteShown,
 	isOwner,
 	NEVER_SYNCED_AUTO_NOTE,
 	ownerOffLine,
 	ownerOnLine,
 	READING,
+	STALE_AFTER_HOURS,
 	SYNC_CMD,
 	type ViewerKey,
 	visitorLine,
+	type WindowMode,
 } from "./freshness";
 
 export const VARIANTS = ["A", "B", "C"] as const;
@@ -66,11 +73,12 @@ type Props = {
 	readonly variant: VariantKey;
 	readonly viewer: ViewerKey;
 	readonly f: Freshness;
+	readonly windows: WindowMode;
 };
 
 /* -------------------------------------------------------------- the page -- */
 
-export function FreshnessSection({ variant, viewer, f }: Props) {
+export function FreshnessSection({ variant, viewer, f, windows }: Props) {
 	const owner = isOwner(viewer);
 	const never = f.state === "never";
 	const show = f.isStale;
@@ -99,7 +107,16 @@ export function FreshnessSection({ variant, viewer, f }: Props) {
 						<VisitorEmpty />
 					)
 				) : (
-					<Reading stamp={variant === "C" && show ? <Stamp f={f} /> : null} />
+					<Reading
+						stamp={variant === "C" && show ? <Stamp f={f} /> : null}
+						footnote={
+							footnoteShown(f, windows) ? (
+								<p className="mt-4 text-[11px] text-orange-400">
+									{footnoteLine(f)}
+								</p>
+							) : null
+						}
+					/>
 				)}
 
 				{owner && !(variant === "C" && show) && (
@@ -327,7 +344,13 @@ function SectionHead({ meta, flagged }: { meta?: string; flagged?: boolean }) {
 }
 
 /** A stand-in for the live reading: same order, weight and density as #81. */
-function Reading({ stamp }: { stamp: React.ReactNode }) {
+function Reading({
+	stamp,
+	footnote,
+}: {
+	stamp: React.ReactNode;
+	footnote: React.ReactNode;
+}) {
 	return (
 		<div className="grid gap-10 md:grid-cols-[minmax(0,22rem)_1fr]">
 			<div>
@@ -399,6 +422,9 @@ function Reading({ stamp }: { stamp: React.ReactNode }) {
 						value={`${Math.round(READING.subagents * 100)}%`}
 					/>
 				</div>
+				{/* The 7-day per-harness line that ships today. It survives only in
+				    the "keep both" window mode. */}
+				{footnote}
 			</div>
 		</div>
 	);
@@ -410,6 +436,118 @@ function Stat({ label, value }: { label: string; value: string }) {
 			<p className="font-mono text-xl font-black text-fg-primary">{value}</p>
 			<p className={cn(MONO_LABEL, "mt-1 text-fg-muted")}>{label}</p>
 		</div>
+	);
+}
+
+/* ---------------------------------------------------- the other surfaces -- */
+
+/**
+ * The hero strip that ships today, with its freshness dot.
+ *
+ * The dot is the second age claim on the page and it is the one the reader
+ * meets first. It turns orange at 7 days today. In the one-window modes it
+ * follows the stamp and turns at 48 hours instead.
+ */
+export function HeroStrip({
+	f,
+	windows,
+}: {
+	f: Freshness;
+	windows: WindowMode;
+}) {
+	if (f.lastSyncAt === null) return null;
+	const stale = dotIsStale(f, windows);
+	return (
+		<div className="mt-8 flex w-full flex-wrap items-center gap-x-4 gap-y-2 border-y border-accent-lime/40 bg-accent-lime/5 px-5 py-3">
+			<span
+				className={cn(
+					MONO_LABEL,
+					"inline-flex items-center gap-2 text-accent-lime",
+				)}
+			>
+				<span
+					aria-hidden="true"
+					className={cn(
+						"inline-block size-1.5 shrink-0",
+						stale ? "bg-orange-400" : "bg-accent-lime",
+					)}
+				/>
+				{KICKER}
+			</span>
+			<span className="font-mono text-sm text-fg-primary">
+				{READING.sessions} sessions
+			</span>
+			<span aria-hidden="true" className="text-stroke-strong">
+				·
+			</span>
+			<span className="font-mono text-sm text-fg-primary">
+				{READING.activeDays} of the last {READING.windowDays} days
+			</span>
+			<span aria-hidden="true" className="text-stroke-strong">
+				·
+			</span>
+			<span className="font-mono text-sm text-fg-primary">
+				{READING.models[0].name} leads at{" "}
+				{(READING.models[0].share * 100).toFixed(0)}%
+			</span>
+			<span className={cn(MONO_LABEL, "ml-auto text-fg-muted")}>
+				checked {f.ago}
+			</span>
+		</div>
+	);
+}
+
+/**
+ * The leaderboard split, on the four real stacks and their real last syncs
+ * (#92, 2026-08-04). Every one of them is older than 48 hours, so the "48h
+ * everywhere" mode ranks nothing today. That is the whole board question.
+ */
+export function BoardStrip({ windows }: { windows: WindowMode }) {
+	const ranked = BOARD.filter((s) => boardRanks(s.ageHours, windows));
+	const quiet = BOARD.filter((s) => !boardRanks(s.ageHours, windows));
+	const cut = windows === "all" ? `${STALE_AFTER_HOURS} hours` : "7 days";
+
+	return (
+		<section className="border-t border-stroke-subtle px-6 py-12 md:px-16">
+			<div className="mx-auto max-w-content">
+				<p className={cn(MONO_LABEL, "text-fg-muted")}>
+					/leaderboard · split at {cut}
+				</p>
+				<p className={cn(MONO_LABEL, "mt-2 text-fg-muted")}>
+					{ranked.length} ranked · {quiet.length} quiet
+				</p>
+				<div className="mt-4 border border-stroke-strong">
+					{ranked.length === 0 ? (
+						<p className="px-4 py-6 text-sm text-fg-muted">
+							Nothing to rank — every measured stack has been quiet for longer
+							than that.
+						</p>
+					) : (
+						ranked.map((s, i) => (
+							<div
+								key={s.name}
+								className="flex items-baseline gap-4 border-b border-stroke-subtle px-4 py-3 last:border-b-0"
+							>
+								<span className="font-mono text-sm font-black text-accent-lime">
+									{i + 1}
+								</span>
+								<span className="text-sm text-fg-primary">{s.name}</span>
+								<span className={cn(MONO_LABEL, "ml-auto text-fg-muted")}>
+									{s.tokens} · synced {s.day}
+								</span>
+							</div>
+						))
+					)}
+				</div>
+				{quiet.length > 0 && (
+					<p className="mt-3 max-w-prose text-sm text-fg-muted">
+						{quiet.length} measured{" "}
+						{quiet.length === 1 ? "stack has" : "stacks have"} been quiet for
+						longer than that: {quiet.map((s) => s.name).join(", ")}.
+					</p>
+				)}
+			</div>
+		</section>
 	);
 }
 
