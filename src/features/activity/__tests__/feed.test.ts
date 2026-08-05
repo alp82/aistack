@@ -38,6 +38,14 @@ describe("relative time", () => {
 		expect(relativeLabel(NOW - 21 * DAY, NOW)).toBe("3w ago");
 	});
 
+	it("never overstates an age, at any boundary", () => {
+		expect(relativeLabel(NOW - 59.9 * MINUTE, NOW)).toBe("59m ago");
+		expect(relativeLabel(NOW - 23.9 * HOUR, NOW)).toBe("23h ago");
+		// The row a day kicker calls YESTERDAY must not call itself two days old.
+		expect(relativeLabel(NOW - 1.6 * DAY, NOW)).toBe("1d ago");
+		expect(relativeLabel(NOW - 13.9 * DAY, NOW)).toBe("1w ago");
+	});
+
 	it("never runs forward when a client clock lags the server", () => {
 		expect(relativeLabel(NOW + 5 * MINUTE, NOW)).toBe("just now");
 	});

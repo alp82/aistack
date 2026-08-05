@@ -50,11 +50,14 @@ export function fmtCount(n: number): string {
 export function relativeLabel(at: number, now: number): string {
 	const ms = Math.max(0, now - at);
 	if (ms < MINUTE_MS) return "just now";
-	if (ms < HOUR_MS) return `${Math.round(ms / MINUTE_MS)}m ago`;
-	if (ms < DAY_MS) return `${Math.round(ms / HOUR_MS)}h ago`;
-	const days = ms / DAY_MS;
-	if (days < 7) return `${Math.round(days)}d ago`;
-	return `${Math.round(days / 7)}w ago`;
+	// FLOOR, never round. Rounding overstates age at every boundary — it prints
+	// "60m ago" instead of "1h ago", and it puts "2d ago" on a row the day
+	// kicker above it calls YESTERDAY.
+	if (ms < HOUR_MS) return `${Math.floor(ms / MINUTE_MS)}m ago`;
+	if (ms < DAY_MS) return `${Math.floor(ms / HOUR_MS)}h ago`;
+	const days = Math.floor(ms / DAY_MS);
+	if (days < 7) return `${days}d ago`;
+	return `${Math.floor(days / 7)}w ago`;
 }
 
 /** The calendar kicker over a group of rows: TODAY, YESTERDAY, WED 05 AUG. */
