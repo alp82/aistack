@@ -37,6 +37,7 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
+    "@aistack/pricing": "workspace:*",
     "@types/node": "^24",
     "tsup": "^8.4.0",
     "typescript": "^5.7.2"

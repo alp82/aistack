@@ -16,6 +16,7 @@ import {
 import { captureServerEvent } from './analytics'
 import { emitActivityEvent } from './activity'
 import { extractShortId } from './lib/ids'
+import { type RepricedModel, repriceSnapshot, round2 } from './lib/reprice'
 import {
   MODEL_ID_MAX,
   NAME_MAX,
@@ -210,6 +211,28 @@ const ResolvedModel = v.object({
     cacheRead: v.number(),
   }),
   apiEquivalentUSD: v.optional(v.number()),
+  /**
+   * True when the dollars above were priced server-side from the shared table
+   * rather than by the syncing CLI (#93). An estimate is a lower bound: the
+   * wire carries one merged `cacheWrite`, so it charges the cheap tier.
+   */
+  costEstimated: v.boolean(),
+})
+
+/**
+ * What a surface needs to print money honestly (#93). `null` when the owner
+ * has `publishCost` off, and when nothing in the snapshot carries a citable
+ * price. Every dollar figure here is a LOWER BOUND — see `convex/lib/reprice.ts`
+ * for the two facts the wire loses and why both resolve downward.
+ */
+const Cost = v.object({
+  lowerBoundUSD: v.number(),
+  publishedUSD: v.number(),
+  estimatedUSD: v.number(),
+  coverage: v.number(),
+  pricedTokens: v.number(),
+  measuredTokens: v.number(),
+  pricingTables: v.array(v.string()),
 })
 
 /**
@@ -246,73 +269,6 @@ async function resolveModels(
       }
     })
   )
-}
-
-/**
- * Read-time repricing for rows that landed before the CLI knew their price
- * (#72). The Codex live test published `gpt-5.6-*` and `codex-auto-review`
- * rows with tokens but no `apiEquivalentUSD` — the CLI's pinned table had no
- * rate for them — and snapshots are immutable, so the fix has to happen where
- * catalog resolution already does: at read time.
- *
- * Rates mirror the CLI's `openai-list-2026-08-02` table (source:
- * https://developers.openai.com/api/docs/pricing; cached input is 10% of
- * input; `codex-auto-review` is the aggregator-consensus rate, see the CLI
- * table comment). Only ids with a single open-ended price period are safe
- * here — per-response timestamps are gone by publish time, so a repriced
- * model must cost the same at every moment the window can cover.
- *
- * Two guards keep this honest:
- *   - it never fires when the payload published no cost at all
- *     (`pricingTable === null` — the owner turned cost publishing off, and
- *     read-time dollars would override that choice), and
- *   - it skips rows with cache-write tokens: OpenAI publishes no cache-write
- *     rate, and Codex never reports writes, so a row that has them is not a
- *     row this table can price.
- */
-const READTIME_OPENAI_PRICES: Record<string, { input: number; output: number }> =
-  {
-    'gpt-5.6-sol': { input: 5, output: 30 },
-    'gpt-5.6-terra': { input: 2, output: 12 },
-    'gpt-5.6-luna': { input: 0.2, output: 1.2 },
-    'gpt-5.3-codex': { input: 1.75, output: 14 },
-    'codex-auto-review': { input: 2.5, output: 15 },
-  }
-const READTIME_PRICING_TABLE = 'openai-list-2026-08-02'
-const READTIME_CACHE_READ_MULTIPLIER = 0.1
-
-/**
- * Price unpriced rows from `READTIME_OPENAI_PRICES`, in place on a copy.
- * Returns the repriced list plus the token total that moved from unpriced to
- * priced, so the caller can shrink `excludedTokens.unpriced` to match.
- */
-function applyReadTimePrices<
-  T extends {
-    id: string
-    tokens: {
-      input: number
-      output: number
-      cacheWrite: number
-      cacheRead: number
-    }
-    apiEquivalentUSD?: number
-  },
->(models: T[]): { models: T[]; repricedTokens: number } {
-  let repricedTokens = 0
-  const out = models.map((m) => {
-    if (m.apiEquivalentUSD !== undefined) return m
-    const rate = READTIME_OPENAI_PRICES[m.id]
-    if (!rate || m.tokens.cacheWrite > 0) return m
-    const usd =
-      (m.tokens.input * rate.input +
-        m.tokens.output * rate.output +
-        m.tokens.cacheRead * rate.input * READTIME_CACHE_READ_MULTIPLIER) /
-      1_000_000
-    repricedTokens +=
-      m.tokens.input + m.tokens.output + m.tokens.cacheRead
-    return { ...m, apiEquivalentUSD: usd }
-  })
-  return { models: out, repricedTokens }
 }
 
 const harnessOf = (row: Doc<'measuredSnapshots'>): string => row.harness
@@ -366,6 +322,7 @@ const HarnessSnapshot = v.object({
     version: v.union(v.string(), v.null()),
   }),
   pricingTable: v.union(v.string(), v.null()),
+  cost: v.union(Cost, v.null()),
   activity: v.object({
     sessions: v.number(),
     activeDays: v.number(),
@@ -420,6 +377,8 @@ const CurrentMeasured = v.object({
   window: v.object({ days: v.number(), from: v.string(), to: v.string() }),
   /** Every cited price table, joined for display; null when none published cost. */
   pricingTable: v.union(v.string(), v.null()),
+  /** The whole stack's money, summed across harnesses. Null when cost is off. */
+  cost: v.union(Cost, v.null()),
   activity: v.object({
     sessions: v.number(),
     /** MAX across harnesses, not a sum — the same day can appear in both. */
@@ -437,14 +396,17 @@ const CurrentMeasured = v.object({
 
 async function toHarnessSnapshot(
   ctx: QueryCtx,
-  snapshot: Doc<'measuredSnapshots'>
+  snapshot: Doc<'measuredSnapshots'>,
+  publishCost: boolean
 ) {
   const p = snapshot.payload
   const resolved = await resolveModels(ctx, p.models)
-  const { models, repricedTokens } =
-    p.pricingTable !== null
-      ? applyReadTimePrices(resolved)
-      : { models: resolved, repricedTokens: 0 }
+  const { models, cost, repricedTokens } = repriceSnapshot({
+    models: resolved,
+    window: p.window,
+    publishedTable: p.pricingTable,
+    publishCost,
+  })
   return {
     capturedAt: snapshot.capturedAt,
     receivedAt: snapshot.receivedAt,
@@ -452,12 +414,11 @@ async function toHarnessSnapshot(
     isFresh: Date.now() - snapshot.receivedAt <= SEVEN_DAYS_MS,
     window: p.window,
     harness: p.harness,
-    // A repriced row's dollars are cited by OUR table, not the payload's —
-    // the footer must name both.
-    pricingTable:
-      repricedTokens > 0 && p.pricingTable !== READTIME_PRICING_TABLE
-        ? `${p.pricingTable} + ${READTIME_PRICING_TABLE}`
-        : p.pricingTable,
+    // The tables that dated the dollars, which is not always the payload's own:
+    // an estimated row is cited by OUR table. A table that priced nothing is
+    // not named at all.
+    pricingTable: cost ? cost.pricingTables.join(' + ') : null,
+    cost,
     activity: p.activity,
     models,
     inventory: p.inventory,
@@ -470,15 +431,19 @@ async function toHarnessSnapshot(
 }
 
 type Resolved = Awaited<ReturnType<typeof resolveModels>>[number]
+type Priced = RepricedModel<Resolved>
 
 /**
  * Merge per-harness model lists by id, summing the absolute token objects and
  * recomputing `tokenShare` over the combined total. Dollars sum only while
  * every contributor priced — a merged row that mixed a priced and an unpriced
  * half would understate without saying so, so it drops the field instead.
+ *
+ * A merged row is "estimated" as soon as ANY half is: the sum is only as exact
+ * as its weakest term.
  */
-function mergeModels(lists: Resolved[][]): Resolved[] {
-  const merged = new Map<string, Resolved>()
+function mergeModels(lists: Priced[][]): Priced[] {
+  const merged = new Map<string, Priced>()
   for (const list of lists) {
     for (const m of list) {
       const held = merged.get(m.id)
@@ -492,8 +457,10 @@ function mergeModels(lists: Resolved[][]): Resolved[] {
       held.tokens.cacheRead += m.tokens.cacheRead
       if (held.apiEquivalentUSD !== undefined && m.apiEquivalentUSD !== undefined) {
         held.apiEquivalentUSD += m.apiEquivalentUSD
+        held.costEstimated = held.costEstimated || m.costEstimated
       } else {
         held.apiEquivalentUSD = undefined
+        held.costEstimated = false
       }
       if (held.catalogSlug === null) {
         held.catalogSlug = m.catalogSlug
@@ -531,9 +498,12 @@ export const getCurrentByStackSlug = query({
     const snapshots = await newestSnapshotsPerHarness(ctx, stack._id)
     if (snapshots.length === 0) return null
 
+    // The flag is the gate, not the presence of dollars (#93): an owner who
+    // turned cost off after a sync has turned it off for the rows already sent.
+    const publishCost = stack.publishCost !== false
     const harnesses = []
     for (const snapshot of snapshots) {
-      harnesses.push(await toHarnessSnapshot(ctx, snapshot))
+      harnesses.push(await toHarnessSnapshot(ctx, snapshot, publishCost))
     }
 
     const totalTokens = harnesses.reduce(
@@ -549,11 +519,30 @@ export const getCurrentByStackSlug = query({
       cacheRead += m.tokens.cacheRead
       inputClass += m.tokens.input + m.tokens.cacheRead + m.tokens.cacheWrite
     }
+    // Money sums across harnesses without double-counting: a session belongs to
+    // exactly one harness. Coverage re-divides over the combined token mass
+    // rather than averaging the per-harness shares, which would weight a tiny
+    // harness the same as a huge one.
+    const costs = harnesses.map((h) => h.cost).filter((c) => c !== null)
+    const sum = (pick: (c: (typeof costs)[number]) => number) =>
+      costs.reduce((a, c) => a + pick(c), 0)
+    const pricedTokens = sum((c) => c.pricedTokens)
+    const measuredTokens = sum((c) => c.measuredTokens)
     const pricingTables = [
-      ...new Set(
-        harnesses.map((h) => h.pricingTable).filter((t): t is string => t !== null)
-      ),
+      ...new Set(costs.flatMap((c) => c.pricingTables)),
     ]
+    const cost =
+      costs.length === 0
+        ? null
+        : {
+            lowerBoundUSD: round2(sum((c) => c.lowerBoundUSD)),
+            publishedUSD: round2(sum((c) => c.publishedUSD)),
+            estimatedUSD: round2(sum((c) => c.estimatedUSD)),
+            coverage: measuredTokens > 0 ? pricedTokens / measuredTokens : 0,
+            pricedTokens,
+            measuredTokens,
+            pricingTables,
+          }
 
     return {
       receivedAt: Math.max(...harnesses.map((h) => h.receivedAt)),
@@ -565,6 +554,7 @@ export const getCurrentByStackSlug = query({
         to: harnesses.map((h) => h.window.to).sort()[harnesses.length - 1],
       },
       pricingTable: pricingTables.length > 0 ? pricingTables.join(' + ') : null,
+      cost,
       activity: {
         sessions: harnesses.reduce((a, h) => a + h.activity.sessions, 0),
         activeDays: Math.max(...harnesses.map((h) => h.activity.activeDays)),
@@ -725,10 +715,12 @@ export const getReconcileSuggestions = query({
     const suggestedSlugs = new Set<string>()
     for (const snapshot of snapshots) {
       const resolved = await resolveModels(ctx, snapshot.payload.models)
-      const repriced =
-        snapshot.payload.pricingTable !== null
-          ? applyReadTimePrices(resolved).models
-          : resolved
+      const { models: repriced } = repriceSnapshot({
+        models: resolved,
+        window: snapshot.payload.window,
+        publishedTable: snapshot.payload.pricingTable,
+        publishCost: stack.publishCost !== false,
+      })
       for (const m of repriced) {
         if (m.catalogSlug === null) continue
         if (authoredModels.has(m.catalogSlug)) continue

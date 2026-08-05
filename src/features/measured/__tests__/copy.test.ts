@@ -13,6 +13,7 @@ import {
 	keptPrivate,
 	leadModelLine,
 	modelLabel,
+	pricedShareLine,
 	totalUSD,
 } from "../copy";
 import { buildHarness, buildSnapshot, withoutCost } from "./fixture";
@@ -27,17 +28,33 @@ describe("the dollar figure", () => {
 		expect(totalUSD(withoutCost())).toBeNull();
 	});
 
-	it("is absent when the snapshot carries no pricing table", () => {
+	it("is absent when no table cites the figure", () => {
 		// A price the reader cannot date is a price we do not print. Without this
 		// the display would show dollars with no version beside them.
-		const s = buildSnapshot({ pricingTable: null });
+		const base = buildSnapshot();
+		const s = buildSnapshot({
+			cost: base.cost && { ...base.cost, pricingTables: [] },
+		});
 		expect(s.models.some((m) => m.apiEquivalentUSD !== undefined)).toBe(true);
 		expect(totalUSD(s)).toBeNull();
 	});
 
-	it("never rounds an empty set to zero", () => {
-		const s = buildSnapshot({ models: [] });
-		expect(totalUSD(s)).toBeNull();
+	it("never rounds an unpriceable window to zero", () => {
+		// The server returns no cost block at all when nothing carries a citable
+		// price, so there is no zero for the display to round to.
+		expect(totalUSD(buildSnapshot({ models: [], cost: null }))).toBeNull();
+	});
+
+	it("says what share of the tokens the figure covers", () => {
+		const base = buildSnapshot();
+		const partial = buildSnapshot({
+			cost: base.cost && { ...base.cost, coverage: 0.8529 },
+		});
+		expect(pricedShareLine(partial)).toBe("priced 85% of measured tokens");
+	});
+
+	it("stays silent on a fully priced window", () => {
+		expect(pricedShareLine(buildSnapshot())).toBeNull();
 	});
 
 	it("reads as dollars, not cents", () => {

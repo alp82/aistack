@@ -49,9 +49,9 @@ function setup(
 describe("the reading", () => {
 	it("leads with the dollar figure and dates it", () => {
 		setup(buildSnapshot());
-		expect(screen.getByText("≈$5,840")).toBeInTheDocument();
+		expect(screen.getByText("≥$5,840")).toBeInTheDocument();
 		expect(
-			screen.getByText("at API prices, over the last 30 days"),
+			screen.getByText("at least, at API prices, over the last 30 days"),
 		).toBeInTheDocument();
 		expect(
 			screen.getByText(/prices: anthropic-list-2026-07-25/),
@@ -75,9 +75,17 @@ describe("the reading", () => {
 		expect(document.body.textContent).not.toContain("$");
 	});
 
-	it("prints no dollars at all when the pricing table is missing", () => {
-		// The per-model column has to go too, not just the headline.
-		setup(buildSnapshot({ pricingTable: null }));
+	it("prints no dollars at all when no table cites them", () => {
+		// The per-model column has to go too, not just the headline. A cost block
+		// that names no table is the one shape that must never reach the page:
+		// a price the reader cannot date is a price we do not print.
+		const base = buildSnapshot();
+		setup(
+			buildSnapshot({
+				pricingTable: null,
+				cost: base.cost && { ...base.cost, pricingTables: [] },
+			}),
+		);
 		expect(document.body.textContent).not.toContain("$");
 		expect(screen.getByText("4.27B")).toBeInTheDocument();
 	});
@@ -223,7 +231,7 @@ describe("a stack that has never synced, seen by its owner", () => {
 		expect(
 			screen.queryByText("Your stack has not been measured yet."),
 		).not.toBeInTheDocument();
-		expect(screen.getByText("≈$5,840")).toBeInTheDocument();
+		expect(screen.getByText("≥$5,840")).toBeInTheDocument();
 	});
 });
 

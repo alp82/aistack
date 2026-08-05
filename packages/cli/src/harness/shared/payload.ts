@@ -28,7 +28,7 @@ import {
 	type NameCategory,
 	type SyncConfig,
 } from "./allowlist.js";
-import { baseModelId } from "./pricing.js";
+import { baseModelId } from "@aistack/pricing";
 import { type ScanStats, windowStartMs } from "./window.js";
 
 export const SCHEMA_VERSION = 1;

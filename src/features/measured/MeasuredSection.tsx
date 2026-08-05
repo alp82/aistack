@@ -24,6 +24,7 @@ import {
 	OWNER_NOT_MEASURED_BODY,
 	OWNER_NOT_MEASURED_TITLE,
 	PRIVACY_FOOTNOTE,
+	pricedShareLine,
 	SYNC_CMD,
 	SYNC_CMD_COMMENT,
 	stalenessLine,
@@ -83,6 +84,7 @@ function Reading({ snapshot }: { snapshot: MeasuredSnapshot }) {
 	// The COMBINED headline (#66 decision 2): tokens, sessions and dollars sum
 	// honestly across harnesses; each harness keeps its own section below.
 	const cost = totalUSD(snapshot);
+	const pricedShare = pricedShareLine(snapshot);
 	const multiHarness = snapshot.harnesses.length > 1;
 
 	return (
@@ -91,12 +93,12 @@ function Reading({ snapshot }: { snapshot: MeasuredSnapshot }) {
 			<div>
 				<p className="font-mono text-5xl font-black leading-none text-fg-primary md:text-6xl">
 					{cost !== null
-						? `≈${fmtUSD(cost)}`
+						? `≥${fmtUSD(cost)}`
 						: fmtTokens(snapshot.activity.totalTokens)}
 				</p>
 				<p className="mt-2 text-sm text-fg-muted">
 					{cost !== null
-						? `at API prices, over the last ${snapshot.window.days} days`
+						? `at least, at API prices, over the last ${snapshot.window.days} days`
 						: `tokens over the last ${snapshot.window.days} days`}
 				</p>
 
@@ -119,6 +121,11 @@ function Reading({ snapshot }: { snapshot: MeasuredSnapshot }) {
 						<p className={cn(MONO_LABEL, "text-fg-muted")}>
 							prices: {snapshot.pricingTable}
 						</p>
+					)}
+					{/* What the figure above leaves out. Silent at full coverage —
+					    "priced 100%" is noise, and the ≥ already carries the rest. */}
+					{pricedShare !== null && (
+						<p className={cn(MONO_LABEL, "text-fg-muted")}>{pricedShare}</p>
 					)}
 				</div>
 			</div>

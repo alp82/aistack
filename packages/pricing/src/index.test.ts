@@ -7,10 +7,14 @@ import {
 	CACHE_WRITE_5M_MULTIPLIER,
 	isPricedModel,
 	normalizeModel,
+	OPENAI_PRICING_TABLE_VERSION,
+	PRICING_TABLE_VERSION,
 	priceAt,
+	pricePeriodsInWindow,
+	pricingTableFor,
 	SONNET_5_INTRO_ENDS_MS,
 	type TokenCounts,
-} from "./pricing.js";
+} from "./index.js";
 
 const noTokens: TokenCounts = {
 	input: 0,
@@ -126,5 +130,61 @@ describe("apiEquivalentCost", () => {
 		expect(
 			apiEquivalentCost("claude-unreleased-9", t, Date.UTC(2026, 6, 20)),
 		).toBeNull();
+	});
+});
+
+describe("pricingTableFor — the citation rides on the rate (#93)", () => {
+	it("cites each vendor's own table", () => {
+		expect(pricingTableFor("claude-opus-5")).toBe(PRICING_TABLE_VERSION);
+		expect(pricingTableFor("gpt-5.6-sol")).toBe(OPENAI_PRICING_TABLE_VERSION);
+	});
+
+	it("cites nothing for a model it cannot price", () => {
+		expect(pricingTableFor("unknown")).toBeNull();
+	});
+});
+
+describe("pricePeriodsInWindow — read-time rate lookup (#93)", () => {
+	const DAY = 86_400_000;
+
+	it("returns the one rate a window inside a single period can pay", () => {
+		const periods = pricePeriodsInWindow(
+			"claude-sonnet-5",
+			SONNET_5_INTRO_ENDS_MS - 30 * DAY,
+			SONNET_5_INTRO_ENDS_MS - DAY,
+		);
+		expect(periods).toHaveLength(1);
+		expect(periods[0]).toMatchObject({ input: 2, output: 10 });
+	});
+
+	it("returns BOTH rates when the window straddles a repricing", () => {
+		// The reprice has no per-response timestamps, so it cannot know the split.
+		// Handing it both is what lets it choose the cheaper one and stay a lower
+		// bound.
+		const periods = pricePeriodsInWindow(
+			"claude-sonnet-5",
+			SONNET_5_INTRO_ENDS_MS - 25 * DAY,
+			SONNET_5_INTRO_ENDS_MS + 5 * DAY,
+		);
+		expect(periods.map((p) => p.input)).toEqual([2, 3]);
+	});
+
+	it("excludes a period the window closes before", () => {
+		const periods = pricePeriodsInWindow(
+			"claude-sonnet-5",
+			SONNET_5_INTRO_ENDS_MS - 40 * DAY,
+			SONNET_5_INTRO_ENDS_MS - 10 * DAY,
+		);
+		expect(periods.map((p) => p.input)).toEqual([2]);
+	});
+
+	it("returns nothing for a model with no citable rate", () => {
+		expect(
+			pricePeriodsInWindow(
+				"unknown",
+				Date.UTC(2026, 6, 1),
+				Date.UTC(2026, 7, 1),
+			),
+		).toEqual([]);
 	});
 });

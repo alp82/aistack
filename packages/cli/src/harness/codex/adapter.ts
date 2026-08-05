@@ -2,7 +2,7 @@
 
 import { stat } from "node:fs/promises";
 
-import { OPENAI_PRICING_TABLE_VERSION } from "../shared/pricing.js";
+import { OPENAI_PRICING_TABLE_VERSION } from "@aistack/pricing";
 import type {
 	HarnessAdapter,
 	HarnessScan,

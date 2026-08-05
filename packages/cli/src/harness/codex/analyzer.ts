@@ -39,7 +39,7 @@ import {
 	apiEquivalentCost,
 	normalizeModel,
 	type TokenCounts,
-} from "../shared/pricing.js";
+} from "@aistack/pricing";
 
 /** Codex needs no response dedup bookkeeping — deltas count once by construction. */
 export type Aggregate = SharedAggregate<never>;

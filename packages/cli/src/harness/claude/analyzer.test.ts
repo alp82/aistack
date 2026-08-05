@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SONNET_5_INTRO_ENDS_MS } from "../shared/pricing.js";
+import { SONNET_5_INTRO_ENDS_MS } from "@aistack/pricing";
 import {
 	type Aggregate,
 	cleanName,

@@ -4,7 +4,7 @@
 
 import { stat } from "node:fs/promises";
 import { BUILTIN_TOOLS } from "../shared/allowlist.js";
-import { PRICING_TABLE_VERSION } from "../shared/pricing.js";
+import { PRICING_TABLE_VERSION } from "@aistack/pricing";
 import type {
 	HarnessAdapter,
 	HarnessScan,
