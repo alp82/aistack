@@ -213,6 +213,33 @@ const ResolvedModel = v.object({
 })
 
 /**
+ * The models catalog, read once and indexed in memory.
+ *
+ * READ ONCE, NOT ONCE PER MODEL. A single reading resolves a handful of ids, so
+ * a per-id indexed read was fine; the series (#81) resolves every reading in the
+ * window, and a per-id read there would multiply one page view by the number of
+ * syncs. One collect answers all of them, and it is what the alias fallback
+ * already did on every miss.
+ */
+type ModelCatalog = {
+  bySlug: Map<string, Doc<'models'>>
+  byAlias: Map<string, Doc<'models'>>
+}
+
+async function loadModelCatalog(ctx: QueryCtx): Promise<ModelCatalog> {
+  const rows = await ctx.db.query('models').collect()
+  const bySlug = new Map<string, Doc<'models'>>()
+  const byAlias = new Map<string, Doc<'models'>>()
+  for (const row of rows) {
+    if (!bySlug.has(row.slug)) bySlug.set(row.slug, row)
+    for (const alias of row.aliases ?? []) {
+      if (!byAlias.has(alias)) byAlias.set(alias, row)
+    }
+  }
+  return { bySlug, byAlias }
+}
+
+/**
  * Resolve published model ids against the catalog at read time.
  *
  * Matches the slug first, then the `aliases` array — the analyzer publishes a
@@ -223,29 +250,18 @@ const ResolvedModel = v.object({
  * is the honest failure: the alternative — dropping it — is exactly the silent
  * disappearance #33 decision 3 exempted model ids to prevent.
  */
-async function resolveModels(
-  ctx: QueryCtx,
+function resolveModels(
+  catalog: ModelCatalog,
   models: Doc<'measuredSnapshots'>['payload']['models']
 ) {
-  return await Promise.all(
-    models.map(async (m) => {
-      const bySlug = await ctx.db
-        .query('models')
-        .withIndex('by_slug', (q) => q.eq('slug', m.id))
-        .first()
-      const match =
-        bySlug ??
-        (await ctx.db
-          .query('models')
-          .collect()
-          .then((all) => all.find((row) => row.aliases?.includes(m.id)) ?? null))
-      return {
-        ...m,
-        catalogSlug: match?.slug ?? null,
-        catalogName: match?.name ?? null,
-      }
-    })
-  )
+  return models.map((m) => {
+    const match = catalog.bySlug.get(m.id) ?? catalog.byAlias.get(m.id) ?? null
+    return {
+      ...m,
+      catalogSlug: match?.slug ?? null,
+      catalogName: match?.name ?? null,
+    }
+  })
 }
 
 /**
@@ -435,12 +451,12 @@ const CurrentMeasured = v.object({
   harnesses: v.array(HarnessSnapshot),
 })
 
-async function toHarnessSnapshot(
-  ctx: QueryCtx,
+function toHarnessSnapshot(
+  catalog: ModelCatalog,
   snapshot: Doc<'measuredSnapshots'>
 ) {
   const p = snapshot.payload
-  const resolved = await resolveModels(ctx, p.models)
+  const resolved = resolveModels(catalog, p.models)
   const { models, repricedTokens } =
     p.pricingTable !== null
       ? applyReadTimePrices(resolved)
@@ -509,6 +525,87 @@ function mergeModels(lists: Resolved[][]): Resolved[] {
     .sort((a, b) => tokensOf(b) - tokensOf(a) || a.id.localeCompare(b.id))
 }
 
+type HarnessReading = ReturnType<typeof toHarnessSnapshot>
+
+/**
+ * Merge a set of per-harness readings into the one figure the page states.
+ *
+ * Split out of `getCurrentByStackSlug` for #81: the series is this same merge
+ * evaluated at every sync, so the headline is the last point of its own trail by
+ * construction rather than by agreement between two pieces of arithmetic.
+ */
+function mergeHarnesses(harnesses: HarnessReading[]) {
+  const totalTokens = harnesses.reduce((a, h) => a + h.activity.totalTokens, 0)
+  // Cache-hit share recomputes from the summed model tokens — the same
+  // input-class formula each client used, over the merged absolute counts.
+  const models = mergeModels(harnesses.map((h) => h.models))
+  let cacheRead = 0
+  let inputClass = 0
+  for (const m of models) {
+    cacheRead += m.tokens.cacheRead
+    inputClass += m.tokens.input + m.tokens.cacheRead + m.tokens.cacheWrite
+  }
+  const pricingTables = [
+    ...new Set(
+      harnesses.map((h) => h.pricingTable).filter((t): t is string => t !== null)
+    ),
+  ]
+
+  return {
+    receivedAt: Math.max(...harnesses.map((h) => h.receivedAt)),
+    capturedAt: Math.max(...harnesses.map((h) => h.capturedAt)),
+    isFresh: harnesses.some((h) => h.isFresh),
+    window: {
+      days: Math.max(...harnesses.map((h) => h.window.days)),
+      from: harnesses.map((h) => h.window.from).sort()[0],
+      to: harnesses.map((h) => h.window.to).sort()[harnesses.length - 1],
+    },
+    pricingTable: pricingTables.length > 0 ? pricingTables.join(' + ') : null,
+    activity: {
+      sessions: harnesses.reduce((a, h) => a + h.activity.sessions, 0),
+      activeDays: Math.max(...harnesses.map((h) => h.activity.activeDays)),
+      projects: Math.max(...harnesses.map((h) => h.activity.projects)),
+      totalTokens,
+      cacheHitShare: inputClass ? cacheRead / inputClass : 0,
+      subagentShare: totalTokens
+        ? harnesses.reduce(
+            (a, h) => a + h.activity.subagentShare * h.activity.totalTokens,
+            0
+          ) / totalTokens
+        : 0,
+    },
+    models,
+    harnesses,
+  }
+}
+
+/**
+ * The dollars a merged reading cost, or null.
+ *
+ * The same rule the display carries (`src/features/measured/copy.ts`): a price
+ * the reader cannot date is a price this site does not print, and a reading with
+ * no priced row at all publishes no cost.
+ */
+function mergedUSD(merged: {
+  pricingTable: string | null
+  models: Array<{ apiEquivalentUSD?: number }>
+}): number | null {
+  if (merged.pricingTable === null) return null
+  const priced = merged.models.filter((m) => m.apiEquivalentUSD !== undefined)
+  if (priced.length === 0) return null
+  return priced.reduce((sum, m) => sum + (m.apiEquivalentUSD ?? 0), 0)
+}
+
+/** The published stack behind a public slug, or null. */
+async function publishedStackBySlug(ctx: QueryCtx, slug: string) {
+  const stack = await ctx.db
+    .query('stacks')
+    .withIndex('by_shortId', (q) => q.eq('shortId', extractShortId(slug)))
+    .first()
+  if (!stack || !stack.published) return null
+  return stack
+}
+
 /**
  * The current measured layer for a published stack, by public slug.
  *
@@ -521,65 +618,212 @@ export const getCurrentByStackSlug = query({
   args: { slug: v.string() },
   returns: v.union(CurrentMeasured, v.null()),
   handler: async (ctx, args) => {
-    const shortId = extractShortId(args.slug)
-    const stack = await ctx.db
-      .query('stacks')
-      .withIndex('by_shortId', (q) => q.eq('shortId', shortId))
-      .first()
-    if (!stack || !stack.published) return null
+    const stack = await publishedStackBySlug(ctx, args.slug)
+    if (!stack) return null
 
     const snapshots = await newestSnapshotsPerHarness(ctx, stack._id)
     if (snapshots.length === 0) return null
 
-    const harnesses = []
-    for (const snapshot of snapshots) {
-      harnesses.push(await toHarnessSnapshot(ctx, snapshot))
-    }
+    const catalog = await loadModelCatalog(ctx)
+    return mergeHarnesses(snapshots.map((s) => toHarnessSnapshot(catalog, s)))
+  },
+})
 
-    const totalTokens = harnesses.reduce(
-      (a, h) => a + h.activity.totalTokens,
-      0
+// ---------------------------------------------------------------------------
+// Read — the series (#81, building the #80 design)
+// ---------------------------------------------------------------------------
+
+/** The default lookback: the span the GC keeps at full grain. */
+const HISTORY_DEFAULT_DAYS = 90
+const HISTORY_MAX_DAYS = 365
+/**
+ * The most points one answer carries. A stack that syncs on every session can
+ * pass this inside a week, and a page cannot draw a thousand readings anyway.
+ * The newest are kept and `truncated` says so — a silently cut series would let
+ * "N readings since X" name a day the series does not reach back to.
+ */
+const HISTORY_MAX_POINTS = 180
+/** Rows captured inside the same minute are one sync, not several readings. */
+const SYNC_BUCKET_MS = 60_000
+
+/**
+ * One model at one reading. Deliberately thinner than `ResolvedModel`: the trail
+ * behind a model row is a share over time, and shipping every reading's absolute
+ * token counts and dollars would multiply the payload for numbers no reading but
+ * the newest displays.
+ */
+const HistoryModel = v.object({
+  id: v.string(),
+  catalogSlug: v.union(v.string(), v.null()),
+  catalogName: v.union(v.string(), v.null()),
+  tokenShare: v.number(),
+})
+
+/**
+ * One reading of the whole stack — the figure the page stated at that moment.
+ *
+ * `at` is the sync minute, `harnesses[].capturedAt` is when that harness last
+ * spoke. The two differ whenever a harness did not sync in this minute, which is
+ * how the display can say which reading actually moved.
+ */
+const HistoryPoint = v.object({
+  at: v.number(),
+  tokens: v.number(),
+  usd: v.union(v.number(), v.null()),
+  sessions: v.number(),
+  activeDays: v.number(),
+  projects: v.number(),
+  windowDays: v.number(),
+  from: v.string(),
+  to: v.string(),
+  pricingTable: v.union(v.string(), v.null()),
+  harnesses: v.array(
+    v.object({
+      name: v.string(),
+      version: v.union(v.string(), v.null()),
+      capturedAt: v.number(),
+      tokens: v.number(),
+      usd: v.union(v.number(), v.null()),
+    })
+  ),
+  models: v.array(HistoryModel),
+})
+
+const MeasuredHistory = v.object({
+  /** The lookback the series covers, in days. */
+  windowDays: v.number(),
+  /** True when older readings exist but were dropped to bound the answer. */
+  truncated: v.boolean(),
+  /** Only this harness, when the caller asked for one. */
+  harness: v.union(v.string(), v.null()),
+  points: v.array(HistoryPoint),
+})
+
+/** Strip a merged reading down to what a point on the trail needs. */
+function toHistoryPoint(
+  at: number,
+  merged: ReturnType<typeof mergeHarnesses>
+) {
+  return {
+    at,
+    tokens: merged.activity.totalTokens,
+    usd: mergedUSD(merged),
+    sessions: merged.activity.sessions,
+    activeDays: merged.activity.activeDays,
+    projects: merged.activity.projects,
+    windowDays: merged.window.days,
+    from: merged.window.from,
+    to: merged.window.to,
+    pricingTable: merged.pricingTable,
+    harnesses: merged.harnesses.map((h) => ({
+      name: h.harness.name,
+      version: h.harness.version,
+      capturedAt: h.capturedAt,
+      tokens: h.activity.totalTokens,
+      usd: mergedUSD(h),
+    })),
+    models: merged.models.map((m) => ({
+      id: m.id,
+      catalogSlug: m.catalogSlug,
+      catalogName: m.catalogName,
+      tokenShare: m.tokenShare,
+    })),
+  }
+}
+
+/**
+ * The measured history of a published stack, by public slug.
+ *
+ * WHAT A POINT IS. Not one row: one sync, merged exactly the way the headline
+ * merges (`mergeHarnesses`), over the newest reading of every harness AS OF that
+ * moment. So the last point equals `getCurrentByStackSlug` — the page's big
+ * number is the end of its own trail, and no figure on the page restates a
+ * different arithmetic. A harness that did not sync in a given minute carries
+ * its previous reading forward, which is the same thing the headline does today;
+ * `harnesses[].capturedAt` keeps that visible.
+ *
+ * WHY IT NEEDS A SEED. The carry-forward starts before the window: a stack whose
+ * Codex reading is four months old still shows Codex in every point, so the
+ * series does not open by silently dropping a harness the headline includes.
+ *
+ * `harness` narrows the series to one harness through
+ * `by_stack_harness_capturedAt`, with no carry-forward and no merge — that is
+ * one machine's own trail, which is the only honest way to read a per-harness
+ * number (call shares and freshness never merge, #66).
+ *
+ * Rows inside 90 days are one per sync and rows beyond it are one per UTC day
+ * (`gcSnapshots`), so the spacing is irregular by construction. The series
+ * carries real timestamps and the display scales time, rather than pretending
+ * the readings are evenly spaced.
+ */
+export const getHistoryByStackSlug = query({
+  args: {
+    slug: v.string(),
+    days: v.optional(v.number()),
+    harness: v.optional(v.string()),
+  },
+  returns: v.union(MeasuredHistory, v.null()),
+  handler: async (ctx, args) => {
+    const stack = await publishedStackBySlug(ctx, args.slug)
+    if (!stack) return null
+
+    const windowDays = Math.min(
+      HISTORY_MAX_DAYS,
+      Math.max(1, Math.round(args.days ?? HISTORY_DEFAULT_DAYS))
     )
-    // Cache-hit share recomputes from the summed model tokens — the same
-    // input-class formula each client used, over the merged absolute counts.
-    const models = mergeModels(harnesses.map((h) => h.models))
-    let cacheRead = 0
-    let inputClass = 0
-    for (const m of models) {
-      cacheRead += m.tokens.cacheRead
-      inputClass += m.tokens.input + m.tokens.cacheRead + m.tokens.cacheWrite
-    }
-    const pricingTables = [
-      ...new Set(
-        harnesses.map((h) => h.pricingTable).filter((t): t is string => t !== null)
-      ),
-    ]
+    const cutoff = Date.now() - windowDays * 24 * 60 * 60 * 1000
 
+    const only = args.harness
+    const rows = only
+      ? await ctx.db
+          .query('measuredSnapshots')
+          .withIndex('by_stack_harness_capturedAt', (q) =>
+            q.eq('stackId', stack._id).eq('harness', only)
+          )
+          .collect()
+      : await ctx.db
+          .query('measuredSnapshots')
+          .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', stack._id))
+          .collect()
+    if (rows.length === 0) return null
+
+    const catalog = await loadModelCatalog(ctx)
+    const ordered = [...rows].sort((a, b) => a.capturedAt - b.capturedAt)
+
+    // Fold the rows forward, holding the newest reading of each harness. Rows
+    // older than the window are folded in but emit no point: they are the seed
+    // the first point inside the window carries.
+    const held = new Map<string, HarnessReading>()
+    const points: ReturnType<typeof toHistoryPoint>[] = []
+    let bucket: number | null = null
+    let bucketAt = 0
+
+    const flush = () => {
+      if (bucket === null) return
+      if (bucketAt >= cutoff) {
+        points.push(toHistoryPoint(bucketAt, mergeHarnesses([...held.values()])))
+      }
+      bucket = null
+    }
+
+    for (const row of ordered) {
+      const key = Math.floor(row.capturedAt / SYNC_BUCKET_MS)
+      if (key !== bucket) {
+        flush()
+        bucket = key
+        bucketAt = row.capturedAt
+      }
+      held.set(harnessOf(row), toHarnessSnapshot(catalog, row))
+    }
+    flush()
+
+    if (points.length === 0) return null
+    const truncated = points.length > HISTORY_MAX_POINTS
     return {
-      receivedAt: Math.max(...harnesses.map((h) => h.receivedAt)),
-      capturedAt: Math.max(...harnesses.map((h) => h.capturedAt)),
-      isFresh: harnesses.some((h) => h.isFresh),
-      window: {
-        days: Math.max(...harnesses.map((h) => h.window.days)),
-        from: harnesses.map((h) => h.window.from).sort()[0],
-        to: harnesses.map((h) => h.window.to).sort()[harnesses.length - 1],
-      },
-      pricingTable: pricingTables.length > 0 ? pricingTables.join(' + ') : null,
-      activity: {
-        sessions: harnesses.reduce((a, h) => a + h.activity.sessions, 0),
-        activeDays: Math.max(...harnesses.map((h) => h.activity.activeDays)),
-        projects: Math.max(...harnesses.map((h) => h.activity.projects)),
-        totalTokens,
-        cacheHitShare: inputClass ? cacheRead / inputClass : 0,
-        subagentShare: totalTokens
-          ? harnesses.reduce(
-              (a, h) => a + h.activity.subagentShare * h.activity.totalTokens,
-              0
-            ) / totalTokens
-          : 0,
-      },
-      models,
-      harnesses,
+      windowDays,
+      truncated,
+      harness: args.harness ?? null,
+      points: truncated ? points.slice(-HISTORY_MAX_POINTS) : points,
     }
   },
 })
@@ -723,8 +967,9 @@ export const getReconcileSuggestions = query({
       (stack.modelSubscriptions ?? []).map((m) => m.modelSlug)
     )
     const suggestedSlugs = new Set<string>()
+    const catalog = await loadModelCatalog(ctx)
     for (const snapshot of snapshots) {
-      const resolved = await resolveModels(ctx, snapshot.payload.models)
+      const resolved = resolveModels(catalog, snapshot.payload.models)
       const repriced =
         snapshot.payload.pricingTable !== null
           ? applyReadTimePrices(resolved).models

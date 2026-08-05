@@ -213,8 +213,10 @@ const HoverCard = (props: HoverCardProps) => {
 		};
 	}, [isVisible, getCurrentAnchorElement, updateAnchorFromElement]);
 
+	// Takes any synthetic event, because focus opens the card too and only the
+	// event's currentTarget is read.
 	const handleMouseEnter = useCallback(
-		(event: React.MouseEvent<HTMLElement>, index?: number) => {
+		(event: React.SyntheticEvent<HTMLElement>, index?: number) => {
 			if (hideTimeoutRef.current) {
 				clearTimeout(hideTimeoutRef.current);
 				hideTimeoutRef.current = null;
@@ -462,11 +464,16 @@ const HoverCard = (props: HoverCardProps) => {
 	if (props.mode === "wrapper") {
 		return (
 			<div className={cn("relative inline-block", className)}>
+				{/* Focus opens the card as hover does, so a keyboard reader reaches
+				    content a mouse reader gets for free. React's onFocus is focusin,
+				    so a focusable child inside the trigger counts. */}
 				<div
 					ref={triggerRef}
 					onMouseEnter={(e) => handleMouseEnter(e)}
 					onMouseMove={(e) => handleMouseMove(e)}
 					onMouseLeave={handleMouseLeave}
+					onFocus={(e) => handleMouseEnter(e)}
+					onBlur={handleMouseLeave}
 				>
 					{props.children}
 				</div>

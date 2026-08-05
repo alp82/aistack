@@ -276,3 +276,49 @@ describe("TC-HC-07: inline mode also portals the surface out of container", () =
 		expect(surfaceInContainer).toBeNull();
 	});
 });
+
+// ---------------------------------------------------------------------------
+// TC-HC-08  (wrapper) — a keyboard reader reaches the card
+//
+// The card is mouse-only otherwise: a focusable trigger (the #81 headline block
+// is a button) would deal a card nobody could read. Focus opens it and blur
+// closes it, on the same wrapper that owns the mouse handlers.
+// ---------------------------------------------------------------------------
+describe("TC-HC-08: content shows on focus and hides on blur", () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it("focusing a control inside the trigger opens the card", async () => {
+		render(
+			<HoverCard
+				mode="wrapper"
+				renderContent={() => <div data-testid="focus-content" />}
+			>
+				<button type="button" data-testid="trigger">
+					T
+				</button>
+			</HoverCard>,
+		);
+
+		const trigger = screen.getByTestId("trigger");
+		expect(screen.queryByTestId("focus-content")).toBeNull();
+
+		act(() => {
+			fireEvent.focus(trigger);
+		});
+		expect(screen.queryByTestId("focus-content")).not.toBeNull();
+
+		act(() => {
+			fireEvent.blur(trigger);
+		});
+		await act(async () => {
+			vi.runAllTimers();
+		});
+		expect(screen.queryByTestId("focus-content")).toBeNull();
+	});
+});
