@@ -547,3 +547,53 @@ test('nobody but the owner reads or writes the schedule', async () => {
     t.mutation(api.autoSync.set, { stackId, enabled: true }),
   ).rejects.toThrow()
 })
+
+/**
+ * The done-bar of #104, end to end: a revoke made FROM THE WEB stops the next
+ * `--auto` publish.
+ *
+ * The pieces exist separately — #102 proved the 409 against a flag patched
+ * straight into the row, and the owner's setter against a query. This joins
+ * them, because the switch is only a revoke if the mutation it calls is the one
+ * the wire refuses on. It also checks what the machine itself is told, since
+ * #103's client-side gate reads `sync-config` and not this route's status.
+ */
+test('a revoke from the web stops the next automatic publish', async () => {
+  const t = convexTest(schema, modules)
+  const { stackId, tokenId, bearer, asCreator } = await seedStack(t, 'web1')
+
+  await asCreator.mutation(api.autoSync.set, { stackId, enabled: true })
+  const landed = await t.mutation(internal.measured.publishForToken, {
+    tokenId,
+    payloads: [payload('claude-code', 1)],
+    trigger: 'auto',
+  })
+
+  // The owner flips the switch off in the browser.
+  await asCreator.mutation(api.autoSync.set, { stackId, enabled: false })
+
+  // A machine whose hook is still installed fires anyway (#103: stale hooks).
+  const res = await asMachine(t, bearer).post('/api/cli/sync', {
+    payloads: [payload('claude-code', 2)],
+    trigger: 'auto',
+  })
+  expect(res.status).toBe(409)
+
+  // Nothing new was stored, and the reading from before the revoke is intact:
+  // a revoke takes the permission, never the record.
+  const snapshots = await t.run((ctx: MutationCtx) =>
+    ctx.db.query('measuredSnapshots').collect(),
+  )
+  expect(snapshots).toHaveLength(1)
+  expect(await asCreator.query(api.autoSync.get, { stackId })).toEqual({
+    autoSync: { enabled: false, frequencyHours: 24 },
+    lastAutoSyncAt: landed.receivedAt,
+  })
+
+  // And the machine's own gate sees the off, so #103 exits before it publishes.
+  const config = await asMachine(t, bearer).get('/api/cli/sync-config')
+  expect((await config.json()).autoSync).toEqual({
+    enabled: false,
+    frequencyHours: 24,
+  })
+})

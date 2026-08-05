@@ -6,6 +6,7 @@ import {
 	useRouter,
 } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import { AutoSyncNote } from "@/features/measured/AutoSyncNote";
 import { CommandLine } from "@/features/measured/CommandLine";
 import {
 	HARNESS,
@@ -122,6 +123,10 @@ function SyncPage() {
 						</ul>
 					</div>
 				</div>
+
+				{/* The switch itself lives in the owner box on a stack page (#104).
+				    This page names it and points at it. It never repeats it. */}
+				<AutoSyncNote />
 
 				<Link
 					to="/settings/machines"
