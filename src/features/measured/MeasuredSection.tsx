@@ -4,6 +4,8 @@ import { ArrowRight } from "lucide-react";
 import { Section, SectionHeader } from "@/features/stack-view/ui";
 import { cn, timeAgo } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+import { AutoSyncBox } from "./AutoSyncBox";
 import { CommandBlock } from "./CommandLine";
 import {
 	coverageCaveat,
@@ -63,10 +65,12 @@ import { ModelShareRows } from "./ModelShareRows";
 export function MeasuredSection({
 	index,
 	slug,
+	stackId,
 	isOwner,
 }: {
 	index: number;
 	slug: string;
+	stackId: Id<"stacks">;
 	isOwner: boolean;
 }) {
 	const snapshot = useQuery(api.measured.getCurrentByStackSlug, { slug });
@@ -91,6 +95,11 @@ export function MeasuredSection({
 			) : (
 				<Reading snapshot={snapshot} points={history?.points ?? []} />
 			)}
+			{/* The owner box (#104). It sits inside the section it governs —
+			    automation is what keeps this reading arriving — and it does NOT
+			    wait for a reading, because it is the fix for a stack that has
+			    none. Renders nothing for a visitor, query and all. */}
+			<AutoSyncBox stackId={stackId} isOwner={isOwner} />
 		</Section>
 	);
 }

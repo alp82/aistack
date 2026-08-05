@@ -22,6 +22,7 @@ import { getFunctionName } from "convex/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MeasuredSection } from "@/features/measured/MeasuredSection";
 import { api } from "../../../../convex/_generated/api";
+import type { AutoSyncFlag } from "../autoSync";
 import type { MeasuredSnapshot } from "../copy";
 import type { MeasuredHistory } from "../history";
 import { DAY } from "./fixture";
@@ -31,6 +32,7 @@ const queryMock = vi.fn();
 
 vi.mock("convex/react", () => ({
 	useQuery: (ref: unknown, args: unknown) => queryMock(ref, args),
+	useMutation: () => vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -47,14 +49,26 @@ afterEach(() => {
 function setup(
 	snapshot: MeasuredSnapshot | null | undefined,
 	history: MeasuredHistory | null | undefined = null,
-	{ isOwner = false }: { isOwner?: boolean } = {},
+	{
+		isOwner = false,
+		autoSync = { autoSync: null, lastAutoSyncAt: null },
+	}: { isOwner?: boolean; autoSync?: AutoSyncFlag } = {},
 ) {
 	const historyRef = getFunctionName(api.measured.getHistoryByStackSlug);
-	queryMock.mockImplementation((ref: Parameters<typeof getFunctionName>[0]) =>
-		getFunctionName(ref) === historyRef ? history : snapshot,
-	);
+	const autoSyncRef = getFunctionName(api.autoSync.get);
+	queryMock.mockImplementation((ref: Parameters<typeof getFunctionName>[0]) => {
+		const name = getFunctionName(ref);
+		if (name === historyRef) return history;
+		if (name === autoSyncRef) return autoSync;
+		return snapshot;
+	});
 	render(
-		<MeasuredSection index={1} slug="alps-stack-ab12" isOwner={isOwner} />,
+		<MeasuredSection
+			index={1}
+			slug="alps-stack-ab12"
+			stackId={"stack_ab12" as never}
+			isOwner={isOwner}
+		/>,
 	);
 }
 
@@ -71,7 +85,9 @@ describe("the reading", () => {
 		expect(screen.getByText("4.70B")).toBeInTheDocument();
 		expect(screen.getByText("tokens · last 30 days")).toBeInTheDocument();
 		expect(screen.getByText("≥$6,014")).toBeInTheDocument();
-		expect(screen.getByText("at least, at api list prices")).toBeInTheDocument();
+		expect(
+			screen.getByText("at least, at api list prices"),
+		).toBeInTheDocument();
 	});
 
 	it("names the window as the thing that moves", () => {
@@ -325,6 +341,31 @@ describe("a stack that has never synced, seen by its owner", () => {
 			screen.queryByText("Your stack has not been measured yet."),
 		).not.toBeInTheDocument();
 		expect(screen.getByText("4.71B")).toBeInTheDocument();
+	});
+});
+
+/**
+ * The auto-sync switch (#104) lives in the owner box, inside the section it
+ * governs: automation is what keeps this reading arriving.
+ */
+describe("the auto-sync switch", () => {
+	it("reaches the owner of a stack that has readings", () => {
+		const { current, history } = live();
+		setup(current, history, { isOwner: true });
+		expect(screen.getByText("// auto-sync")).toBeInTheDocument();
+	});
+
+	// The switch is the fix for a stack with no readings, so it must not wait
+	// for the readings it exists to produce.
+	it("reaches the owner of a stack that has none", () => {
+		setup(null, null, { isOwner: true });
+		expect(screen.getByText("// auto-sync")).toBeInTheDocument();
+	});
+
+	it("is absent for a visitor", () => {
+		const { current, history } = live();
+		setup(current, history);
+		expect(screen.queryByText("// auto-sync")).not.toBeInTheDocument();
 	});
 });
 

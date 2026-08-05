@@ -326,6 +326,7 @@ function StackDetailsPage() {
 					<MeasuredSection
 						index={1}
 						slug={stack.slug}
+						stackId={stack._id}
 						isOwner={upvoteStatus?.isOwner ?? false}
 					/>
 
