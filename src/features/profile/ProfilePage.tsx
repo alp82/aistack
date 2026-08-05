@@ -32,11 +32,11 @@ type ProfilePageProps = {
 	/** Owner-only companion data (null for visitors/guests). */
 	ownProfile: OwnProfileData | null;
 	/**
-	 * PROTOTYPE (#98) — what the owner-only view-analytics region renders.
+	 * The owner-private views panel (#112). The route passes the real panel.
 	 *
 	 * Rendered only when `ownProfile` says the reader owns this profile, so a
-	 * visitor never receives it. Falls back to today's planned-seam when nothing
-	 * is passed. The prototype route feeds this; #98 decides what ships here.
+	 * visitor never receives the markup. It arrives as a slot because this
+	 * component is pure and the panel reads a Convex query.
 	 */
 	ownerViewsSlot?: React.ReactNode;
 };
@@ -177,13 +177,7 @@ function ProfilePage({
 							label="Live stats"
 							note="Measured usage per stack — lands with auto-sync."
 						/>
-						{isOwner &&
-							(ownerViewsSlot ?? (
-								<Seam
-									label="View analytics (owner-only)"
-									note="Private per-profile dashboard — planned."
-								/>
-							))}
+						{isOwner && ownerViewsSlot}
 					</div>
 				</main>
 			</div>

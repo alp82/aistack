@@ -1,5 +1,8 @@
 /**
- * PROTOTYPE (#98) — the floating bar that flips between variants.
+ * PROTOTYPE (#107) — the floating bar that flips between variants.
+ *
+ * Lifted from the #98 prototype, which main has since deleted. It lives with
+ * the prototype it serves now, and it goes when this folder goes.
  *
  * Throwaway. It is deliberately loud, so nobody mistakes it for the design it
  * is showing. Hidden in a production build, so a stray merge cannot ship it.
@@ -19,7 +22,7 @@ type Axis = {
 
 function PrototypeSwitcher({
 	axes,
-	label = "Prototype #98",
+	label = "Prototype",
 }: {
 	readonly axes: readonly Axis[];
 	/** Which prototype this bar belongs to, so two of them never look alike. */

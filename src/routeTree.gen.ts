@@ -30,9 +30,6 @@ import { Route as StacksNewRouteImport } from './routes/stacks.new'
 import { Route as StacksSlugRouteImport } from './routes/stacks.$slug'
 import { Route as SettingsMachinesRouteImport } from './routes/settings.machines'
 import { Route as SettingsAnalyticsRouteImport } from './routes/settings.analytics'
-import { Route as PrototypeViewsStackRouteImport } from './routes/prototype.views-stack'
-import { Route as PrototypeViewsEntryRouteImport } from './routes/prototype.views-entry'
-import { Route as PrototypeViewsRouteImport } from './routes/prototype.views'
 import { Route as PrototypeFreshnessRouteImport } from './routes/prototype.freshness'
 import { Route as CliAuthRouteImport } from './routes/cli.auth'
 import { Route as ApiSyncConfigRouteImport } from './routes/api.sync-config'
@@ -155,21 +152,6 @@ const SettingsAnalyticsRoute = SettingsAnalyticsRouteImport.update({
   path: '/settings/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PrototypeViewsStackRoute = PrototypeViewsStackRouteImport.update({
-  id: '/prototype/views-stack',
-  path: '/prototype/views-stack',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrototypeViewsEntryRoute = PrototypeViewsEntryRouteImport.update({
-  id: '/prototype/views-entry',
-  path: '/prototype/views-entry',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrototypeViewsRoute = PrototypeViewsRouteImport.update({
-  id: '/prototype/views',
-  path: '/prototype/views',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PrototypeFreshnessRoute = PrototypeFreshnessRouteImport.update({
   id: '/prototype/freshness',
   path: '/prototype/freshness',
@@ -270,9 +252,6 @@ export interface FileRoutesByFullPath {
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
   '/prototype/freshness': typeof PrototypeFreshnessRoute
-  '/prototype/views': typeof PrototypeViewsRoute
-  '/prototype/views-entry': typeof PrototypeViewsEntryRoute
-  '/prototype/views-stack': typeof PrototypeViewsStackRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -312,9 +291,6 @@ export interface FileRoutesByTo {
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
   '/prototype/freshness': typeof PrototypeFreshnessRoute
-  '/prototype/views': typeof PrototypeViewsRoute
-  '/prototype/views-entry': typeof PrototypeViewsEntryRoute
-  '/prototype/views-stack': typeof PrototypeViewsStackRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -355,9 +331,6 @@ export interface FileRoutesById {
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
   '/prototype/freshness': typeof PrototypeFreshnessRoute
-  '/prototype/views': typeof PrototypeViewsRoute
-  '/prototype/views-entry': typeof PrototypeViewsEntryRoute
-  '/prototype/views-stack': typeof PrototypeViewsStackRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -399,9 +372,6 @@ export interface FileRouteTypes {
     | '/api/sync-config'
     | '/cli/auth'
     | '/prototype/freshness'
-    | '/prototype/views'
-    | '/prototype/views-entry'
-    | '/prototype/views-stack'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -441,9 +411,6 @@ export interface FileRouteTypes {
     | '/api/sync-config'
     | '/cli/auth'
     | '/prototype/freshness'
-    | '/prototype/views'
-    | '/prototype/views-entry'
-    | '/prototype/views-stack'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -483,9 +450,6 @@ export interface FileRouteTypes {
     | '/api/sync-config'
     | '/cli/auth'
     | '/prototype/freshness'
-    | '/prototype/views'
-    | '/prototype/views-entry'
-    | '/prototype/views-stack'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -526,9 +490,6 @@ export interface RootRouteChildren {
   ApiSyncConfigRoute: typeof ApiSyncConfigRoute
   CliAuthRoute: typeof CliAuthRoute
   PrototypeFreshnessRoute: typeof PrototypeFreshnessRoute
-  PrototypeViewsRoute: typeof PrototypeViewsRoute
-  PrototypeViewsEntryRoute: typeof PrototypeViewsEntryRoute
-  PrototypeViewsStackRoute: typeof PrototypeViewsStackRoute
   SettingsAnalyticsRoute: typeof SettingsAnalyticsRoute
   SettingsMachinesRoute: typeof SettingsMachinesRoute
   StacksSlugRoute: typeof StacksSlugRoute
@@ -698,27 +659,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/prototype/views-stack': {
-      id: '/prototype/views-stack'
-      path: '/prototype/views-stack'
-      fullPath: '/prototype/views-stack'
-      preLoaderRoute: typeof PrototypeViewsStackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/prototype/views-entry': {
-      id: '/prototype/views-entry'
-      path: '/prototype/views-entry'
-      fullPath: '/prototype/views-entry'
-      preLoaderRoute: typeof PrototypeViewsEntryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/prototype/views': {
-      id: '/prototype/views'
-      path: '/prototype/views'
-      fullPath: '/prototype/views'
-      preLoaderRoute: typeof PrototypeViewsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/prototype/freshness': {
       id: '/prototype/freshness'
       path: '/prototype/freshness'
@@ -865,9 +805,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSyncConfigRoute: ApiSyncConfigRoute,
   CliAuthRoute: CliAuthRoute,
   PrototypeFreshnessRoute: PrototypeFreshnessRoute,
-  PrototypeViewsRoute: PrototypeViewsRoute,
-  PrototypeViewsEntryRoute: PrototypeViewsEntryRoute,
-  PrototypeViewsStackRoute: PrototypeViewsStackRoute,
   SettingsAnalyticsRoute: SettingsAnalyticsRoute,
   SettingsMachinesRoute: SettingsMachinesRoute,
   StacksSlugRoute: StacksSlugRoute,

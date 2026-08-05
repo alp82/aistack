@@ -2,6 +2,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { ProfilePage } from "@/features/profile/ProfilePage";
+import { OwnerViewsPanel } from "@/features/view-analytics/OwnerViewsPanel";
 import { seoMeta } from "@/lib/seo";
 import { useRecordView } from "@/lib/useRecordView";
 import { api } from "../../convex/_generated/api";
@@ -93,6 +94,9 @@ function CreatorProfileRoute() {
 			profile={data.profile}
 			stacks={data.stacks}
 			ownProfile={ownProfile ?? null}
+			// ProfilePage renders this only for the owner, so a visitor never
+			// mounts the panel and never fires its query (#112).
+			ownerViewsSlot={<OwnerViewsPanel />}
 		/>
 	);
 }

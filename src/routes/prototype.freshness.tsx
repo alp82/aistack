@@ -17,7 +17,6 @@
  */
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { PrototypeSwitcher } from "@/components/PrototypeSwitcher";
 import {
 	BoardStrip,
 	FreshnessSection,
@@ -39,6 +38,7 @@ import {
 	WINDOW_MODES,
 	type WindowMode,
 } from "@/features/measured/prototype/freshness";
+import { PrototypeSwitcher } from "@/features/measured/prototype/Switcher";
 
 type Search = {
 	variant: VariantKey;
