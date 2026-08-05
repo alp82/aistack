@@ -1,14 +1,7 @@
-/**
- * PROTOTYPE — throwaway. Wayfinder ticket #92 (map #76).
- *
- * The one thing all three variants share: a pager that stays one line at 50
- * pages. Everything else about layout is a variant's own business.
- */
-
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/** first · … · n-1 · n · n+1 · … · last */
+/** first · … · n-1 · n · n+1 · … · last — one line even at 50 pages. */
 function pageWindow(page: number, total: number): (number | "gap")[] {
 	if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
 	const out: (number | "gap")[] = [1];
@@ -58,6 +51,7 @@ export function Pager({
 						key={p}
 						type="button"
 						onClick={() => onPage(p)}
+						aria-current={p === page ? "page" : undefined}
 						className={cn(
 							"flex h-9 min-w-9 items-center justify-center border px-2 font-mono text-sm font-bold transition-colors",
 							p === page

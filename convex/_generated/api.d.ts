@@ -26,6 +26,7 @@ import type * as httpCli from "../httpCli.js";
 import type * as httpCliHelpers from "../httpCliHelpers.js";
 import type * as iconReports from "../iconReports.js";
 import type * as iconStorage from "../iconStorage.js";
+import type * as leaderboard from "../leaderboard.js";
 import type * as lib_admin from "../lib/admin.js";
 import type * as lib_avatar from "../lib/avatar.js";
 import type * as lib_cliScopes from "../lib/cliScopes.js";
@@ -89,6 +90,7 @@ declare const fullApi: ApiFromModules<{
   httpCliHelpers: typeof httpCliHelpers;
   iconReports: typeof iconReports;
   iconStorage: typeof iconStorage;
+  leaderboard: typeof leaderboard;
   "lib/admin": typeof lib_admin;
   "lib/avatar": typeof lib_avatar;
   "lib/cliScopes": typeof lib_cliScopes;

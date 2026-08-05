@@ -1,5 +1,5 @@
 import { v } from 'convex/values'
-import type { Doc, Id } from './_generated/dataModel'
+import type { Doc } from './_generated/dataModel'
 import type { QueryCtx } from './_generated/server'
 import { query } from './_generated/server'
 import { repriceSnapshot, round2 } from './lib/reprice'
