@@ -1,0 +1,478 @@
+/// <reference types="vite/client" />
+import { convexTest } from 'convex-test'
+import { describe, expect, test } from 'vitest'
+import { api } from './_generated/api'
+import type { Id } from './_generated/dataModel'
+import schema from './schema'
+import type { ActivityEventValue } from './activity'
+
+const modules = import.meta.glob('./**/*.{js,ts}')
+
+type Ctx = ReturnType<typeof convexTest>
+
+const MINUTE = 60 * 1000
+const HOUR = 60 * MINUTE
+const DAY = 24 * HOUR
+
+let seedCounter = 0
+
+async function seedStack(
+  t: Ctx,
+  opts: { name?: string; published?: boolean; isLowQuality?: boolean } = {}
+): Promise<Id<'stacks'>> {
+  seedCounter += 1
+  const n = seedCounter
+  return await t.run(async (ctx) => {
+    const creatorId = await ctx.db.insert('creators', {
+      name: `Creator ${n}`,
+      slug: `creator-${n}`,
+      userId: `user_${n}`,
+      verified: false,
+      personalPages: [],
+      projectPages: [],
+      createdAt: Date.now(),
+    })
+    return await ctx.db.insert('stacks', {
+      name: opts.name ?? `Stack ${n}`,
+      slug: `stack-${n}`,
+      shortId: `sid${n}`,
+      creatorId,
+      oneLiner: 'A stack',
+      toolSubscriptions: [],
+      hasUsageComponent: false,
+      published: opts.published ?? true,
+      ...(opts.isLowQuality === undefined
+        ? {}
+        : { isLowQuality: opts.isLowQuality }),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    })
+  })
+}
+
+function syncEvent(over: {
+  harness?: string
+  sessions?: number
+  projects?: number
+  totalTokens?: number
+}): ActivityEventValue {
+  return {
+    type: 'sync.landed',
+    harnesses: [
+      {
+        harness: over.harness ?? 'claude-code',
+        windowDays: 30,
+        sessions: over.sessions ?? 10,
+        activeDays: 5,
+        projects: over.projects ?? 2,
+        totalTokens: over.totalTokens ?? 1000,
+      },
+    ],
+  }
+}
+
+async function emit(
+  t: Ctx,
+  stackId: Id<'stacks'>,
+  createdAt: number,
+  event: ActivityEventValue
+) {
+  await t.run(async (ctx) => {
+    await ctx.db.insert('activityEvents', { stackId, createdAt, event })
+  })
+}
+
+/** A snapshot carrying the models and tools the band unions. */
+async function snapshot(
+  t: Ctx,
+  stackId: Id<'stacks'>,
+  over: {
+    capturedAt?: number
+    harness?: string
+    models?: string[]
+    tools?: string[]
+    totalTokens?: number
+  }
+) {
+  await t.run(async (ctx) => {
+    const harness = over.harness ?? 'claude-code'
+    await ctx.db.insert('measuredSnapshots', {
+      stackId,
+      capturedAt: over.capturedAt ?? Date.now(),
+      receivedAt: over.capturedAt ?? Date.now(),
+      schemaVersion: 1,
+      harness,
+      payload: {
+        schemaVersion: 1,
+        capturedAt: over.capturedAt ?? Date.now(),
+        window: { days: 30, from: '2026-07-05', to: '2026-08-03' },
+        harness: { name: harness, version: '1.0.0' },
+        pricingTable: null,
+        activity: {
+          sessions: 10,
+          activeDays: 5,
+          projects: 2,
+          totalTokens: over.totalTokens ?? 1000,
+          cacheHitShare: 0.9,
+          subagentShare: 0.1,
+        },
+        models: (over.models ?? ['opus']).map((id) => ({
+          id,
+          tokenShare: 1,
+          tokens: { input: 1, output: 0, cacheWrite: 0, cacheRead: 0 },
+        })),
+        inventory: {
+          builtinTools: (over.tools ?? ['Bash']).map((name) => ({
+            name,
+            callShare: 1,
+          })),
+          mcpServers: [],
+          skills: [],
+          subagents: [],
+          slashCommands: [],
+          withheld: {
+            builtinTools: 0,
+            mcpServers: 0,
+            skills: 0,
+            subagents: 0,
+            slashCommands: 0,
+          },
+        },
+        coverage: {
+          filesScanned: 1,
+          filesUnreadable: 0,
+          linesParsed: 1,
+          linesFailed: 0,
+        },
+        excludedTokens: { unpriced: 0, synthetic: 0 },
+      },
+    })
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Visibility — the sharp edge (#85). An event written while a stack was public
+// must not leak after the stack goes private.
+// ---------------------------------------------------------------------------
+
+describe('visibility', () => {
+  test('an event stops showing the moment its stack goes private', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t, { name: 'Goes Private' })
+    await emit(t, stackId, Date.now() - HOUR, { type: 'stack.published', toolCount: 3 })
+
+    const before = await t.query(api.activityFeed.stream, {})
+    expect(before.rows.map((r) => r.stack.name)).toEqual(['Goes Private'])
+
+    await t.run(async (ctx) => {
+      await ctx.db.patch(stackId, { published: false })
+    })
+
+    const after = await t.query(api.activityFeed.stream, {})
+    expect(after.rows).toEqual([])
+    const band = await t.query(api.activityFeed.band, {})
+    expect(band.rows).toEqual([])
+    expect(band.totals.updates).toBe(0)
+  })
+
+  test('a flagged stack is hidden from the feed the same way', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t, { name: 'Flagged' })
+    await emit(t, stackId, Date.now() - HOUR, { type: 'stack.published', toolCount: 1 })
+    await t.run(async (ctx) => {
+      await ctx.db.patch(stackId, { isLowQuality: true })
+    })
+
+    const feed = await t.query(api.activityFeed.stream, {})
+    expect(feed.rows).toEqual([])
+  })
+
+  test('an event whose stack was deleted is dropped, not thrown', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    await emit(t, stackId, Date.now() - HOUR, { type: 'stack.published', toolCount: 1 })
+    await t.run(async (ctx) => {
+      await ctx.db.delete(stackId)
+    })
+
+    const feed = await t.query(api.activityFeed.stream, {})
+    expect(feed.rows).toEqual([])
+  })
+
+  test('hidden rows do not eat the page — the scan refills it', async () => {
+    const t = convexTest(schema, modules)
+    const hidden = await seedStack(t, { name: 'Hidden', published: false })
+    const shown = await seedStack(t, { name: 'Shown' })
+    const now = Date.now()
+    // Newest first: three hidden rows sit above the one visible row.
+    for (let i = 0; i < 3; i += 1) {
+      await emit(t, hidden, now - i * MINUTE, { type: 'stack.published', toolCount: 1 })
+    }
+    await emit(t, shown, now - 10 * MINUTE, { type: 'stack.published', toolCount: 2 })
+
+    const feed = await t.query(api.activityFeed.stream, { limit: 1 })
+    expect(feed.rows.map((r) => r.stack.name)).toEqual(['Shown'])
+    expect(feed.hasMore).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The stream — reverse-chronological, paged 25 at a time, filtered by chip.
+// ---------------------------------------------------------------------------
+
+describe('the stream', () => {
+  test('reads newest first and reports whether more exist', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    const now = Date.now()
+    await emit(t, stackId, now - 3 * HOUR, { type: 'stack.published', toolCount: 1 })
+    await emit(t, stackId, now - 2 * HOUR, syncEvent({ totalTokens: 100 }))
+    await emit(t, stackId, now - HOUR, syncEvent({ totalTokens: 300 }))
+
+    const page = await t.query(api.activityFeed.stream, { limit: 2 })
+    expect(page.rows.map((r) => r.at)).toEqual([now - HOUR, now - 2 * HOUR])
+    expect(page.hasMore).toBe(true)
+
+    const all = await t.query(api.activityFeed.stream, { limit: 25 })
+    expect(all.rows).toHaveLength(3)
+    expect(all.hasMore).toBe(false)
+  })
+
+  test('a chip narrows the stream to one event type', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    const now = Date.now()
+    await emit(t, stackId, now - 3 * HOUR, { type: 'stack.published', toolCount: 1 })
+    await emit(t, stackId, now - 2 * HOUR, syncEvent({}))
+    await emit(t, stackId, now - HOUR, {
+      type: 'stack.composition_changed',
+      added: [{ kind: 'tool', slug: 'zed', name: 'Zed' }],
+      removed: [],
+    })
+
+    const syncs = await t.query(api.activityFeed.stream, { type: 'sync.landed' })
+    expect(syncs.rows.map((r) => r.event.type)).toEqual(['sync.landed'])
+
+    const changes = await t.query(api.activityFeed.stream, {
+      type: 'stack.composition_changed',
+    })
+    expect(changes.rows.map((r) => r.event.type)).toEqual([
+      'stack.composition_changed',
+    ])
+  })
+
+  test('a row links the stack by its public slug and names its creator', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t, { name: 'Named' })
+    await emit(t, stackId, Date.now() - HOUR, { type: 'stack.published', toolCount: 1 })
+
+    const feed = await t.query(api.activityFeed.stream, {})
+    expect(feed.rows[0].stack.slug).toMatch(/^stack-\d+-sid\d+$/)
+    expect(feed.rows[0].stack.creator).toMatch(/^Creator /)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Movement — the delta is computed across the rows; the table has no delta
+// column (#84).
+// ---------------------------------------------------------------------------
+
+describe('movement', () => {
+  test('a sync reports its movement against the stack previous sync', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    const now = Date.now()
+    await emit(t, stackId, now - 2 * HOUR, syncEvent({ totalTokens: 1_000 }))
+    await emit(t, stackId, now - HOUR, syncEvent({ totalTokens: 1_285 }))
+
+    const feed = await t.query(api.activityFeed.stream, {})
+    expect(feed.rows[0].deltaTokens).toBe(285)
+    expect(feed.rows[0].firstReading).toBe(false)
+  })
+
+  test('the first sync a stack ever published has no movement to claim', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    await emit(t, stackId, Date.now() - HOUR, syncEvent({ totalTokens: 1_000 }))
+
+    const feed = await t.query(api.activityFeed.stream, {})
+    expect(feed.rows[0].deltaTokens).toBeNull()
+    expect(feed.rows[0].firstReading).toBe(true)
+  })
+
+  test('movement can fall — a 30-day window forgets its far end', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    const now = Date.now()
+    await emit(t, stackId, now - 2 * HOUR, syncEvent({ totalTokens: 2_000 }))
+    await emit(t, stackId, now - HOUR, syncEvent({ totalTokens: 1_800 }))
+
+    const feed = await t.query(api.activityFeed.stream, {})
+    expect(feed.rows[0].deltaTokens).toBe(-200)
+  })
+
+  test('movement is measured per stack, never across stacks', async () => {
+    const t = convexTest(schema, modules)
+    const a = await seedStack(t, { name: 'A' })
+    const b = await seedStack(t, { name: 'B' })
+    const now = Date.now()
+    await emit(t, a, now - 3 * HOUR, syncEvent({ totalTokens: 1_000 }))
+    await emit(t, b, now - 2 * HOUR, syncEvent({ totalTokens: 9_000 }))
+    await emit(t, a, now - HOUR, syncEvent({ totalTokens: 1_400 }))
+
+    const feed = await t.query(api.activityFeed.stream, {})
+    const rowA = feed.rows.find((r) => r.stack.name === 'A' && r.at === now - HOUR)
+    expect(rowA?.deltaTokens).toBe(400)
+  })
+
+  test('a predecessor below the page still answers the row above it', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    const now = Date.now()
+    await emit(t, stackId, now - 3 * HOUR, syncEvent({ totalTokens: 1_000 }))
+    await emit(t, stackId, now - 2 * HOUR, syncEvent({ totalTokens: 1_100 }))
+    await emit(t, stackId, now - HOUR, syncEvent({ totalTokens: 1_500 }))
+
+    const page = await t.query(api.activityFeed.stream, { limit: 1 })
+    expect(page.rows[0].deltaTokens).toBe(400)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The band — the last 24 hours, four measured numbers and three counts (#84).
+// ---------------------------------------------------------------------------
+
+describe('the band', () => {
+  test('counts syncs and updates inside the 24-hour window only', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    const now = Date.now()
+    await emit(t, stackId, now - 30 * HOUR, syncEvent({ totalTokens: 500 }))
+    await emit(t, stackId, now - 2 * HOUR, syncEvent({ totalTokens: 800 }))
+    await emit(t, stackId, now - HOUR, {
+      type: 'stack.composition_changed',
+      added: [{ kind: 'tool', slug: 'zed', name: 'Zed' }],
+      removed: [],
+    })
+
+    const band = await t.query(api.activityFeed.band, {})
+    expect(band.totals.syncs).toBe(1)
+    expect(band.totals.updates).toBe(1)
+  })
+
+  test('tokens measured is the movement the whole site gained, floored at zero', async () => {
+    const t = convexTest(schema, modules)
+    const a = await seedStack(t, { name: 'Up' })
+    const b = await seedStack(t, { name: 'Down' })
+    const now = Date.now()
+    await emit(t, a, now - 4 * HOUR, syncEvent({ totalTokens: 1_000 }))
+    await emit(t, a, now - 2 * HOUR, syncEvent({ totalTokens: 1_300 }))
+    await emit(t, b, now - 4 * HOUR, syncEvent({ totalTokens: 5_000 }))
+    await emit(t, b, now - 2 * HOUR, syncEvent({ totalTokens: 4_000 }))
+
+    const band = await t.query(api.activityFeed.band, {})
+    // 300 gained, and the stack that fell contributes nothing rather than -1000.
+    expect(band.totals.movedTokens).toBe(300)
+  })
+
+  test('sessions and projects SUM, models and tools UNION', async () => {
+    const t = convexTest(schema, modules)
+    const a = await seedStack(t, { name: 'A' })
+    const b = await seedStack(t, { name: 'B' })
+    const now = Date.now()
+    await snapshot(t, a, { models: ['opus', 'sonnet'], tools: ['Bash', 'Read'] })
+    await snapshot(t, b, { models: ['opus'], tools: ['Bash', 'Edit'] })
+    await emit(t, a, now - 2 * HOUR, syncEvent({ sessions: 100, projects: 5 }))
+    await emit(t, b, now - HOUR, syncEvent({ sessions: 60, projects: 3 }))
+
+    const band = await t.query(api.activityFeed.band, {})
+    expect(band.usage.sessions).toBe(160)
+    expect(band.usage.projects).toBe(8)
+    // Two people running Opus is ONE model; two people running Bash is ONE tool.
+    expect(band.usage.models).toBe(2)
+    expect(band.usage.tools).toBe(3)
+    expect(band.usage.stacks).toBe(2)
+  })
+
+  test('each stack contributes only its latest sync in the window', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    const now = Date.now()
+    await snapshot(t, stackId, {})
+    await emit(t, stackId, now - 20 * HOUR, syncEvent({ sessions: 596, projects: 41 }))
+    await emit(t, stackId, now - HOUR, syncEvent({ sessions: 596, projects: 41 }))
+
+    const band = await t.query(api.activityFeed.band, {})
+    // Two syncs 19 hours apart are one reading, not 1192 sessions.
+    expect(band.totals.syncs).toBe(2)
+    expect(band.usage.sessions).toBe(596)
+    expect(band.usage.projects).toBe(41)
+  })
+
+  test('an unnamed model never counts as a model', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    await snapshot(t, stackId, { models: ['opus', 'unknown'] })
+    await emit(t, stackId, Date.now() - HOUR, syncEvent({}))
+
+    const band = await t.query(api.activityFeed.band, {})
+    expect(band.usage.models).toBe(1)
+  })
+
+  test('a quiet window reports no stacks, so the surface can render an em dash', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    await snapshot(t, stackId, {})
+    await emit(t, stackId, Date.now() - 30 * HOUR, syncEvent({ sessions: 100 }))
+
+    const band = await t.query(api.activityFeed.band, {})
+    expect(band.usage.stacks).toBe(0)
+    expect(band.usage.sessions).toBe(0)
+    expect(band.totals.movedTokens).toBe(0)
+    // The rows themselves still show: the band is quiet, not empty.
+    expect(band.rows).toHaveLength(1)
+  })
+
+  test('carries at most four rows, newest first', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    const now = Date.now()
+    for (let i = 0; i < 6; i += 1) {
+      await emit(t, stackId, now - i * HOUR, { type: 'stack.published', toolCount: i })
+    }
+
+    const band = await t.query(api.activityFeed.band, {})
+    expect(band.rows).toHaveLength(4)
+    expect(band.rows[0].at).toBe(now)
+  })
+
+  test('the watermark is one daily bucket of gained tokens per day', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    const now = Date.now()
+    await emit(t, stackId, now - 3 * DAY, syncEvent({ totalTokens: 1_000 }))
+    await emit(t, stackId, now - 2 * DAY, syncEvent({ totalTokens: 1_500 }))
+    await emit(t, stackId, now - HOUR, syncEvent({ totalTokens: 2_000 }))
+
+    const band = await t.query(api.activityFeed.band, {})
+    expect(band.points).toHaveLength(14)
+    expect(band.points[band.points.length - 1].at).toBeGreaterThan(
+      band.points[0].at
+    )
+    const gained = band.points.reduce((sum, p) => sum + p.value, 0)
+    // The first sync has nothing to compare against, so it gains nothing.
+    expect(gained).toBe(1_000)
+  })
+
+  test('counts the stacks it measured across', async () => {
+    const t = convexTest(schema, modules)
+    const a = await seedStack(t)
+    const b = await seedStack(t)
+    const now = Date.now()
+    await emit(t, a, now - 2 * DAY, syncEvent({}))
+    await emit(t, b, now - HOUR, syncEvent({}))
+
+    const band = await t.query(api.activityFeed.band, {})
+    expect(band.totals.stacksSeen).toBe(2)
+  })
+})

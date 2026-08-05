@@ -31,10 +31,19 @@ export const Route = createFileRoute("/")({
 		page: coercePage(search.page),
 	}),
 	search: { middlewares: [stripSearchParams(LANDING_SEARCH_DEFAULTS)] },
+	// The band ships in the first HTML like the featured stacks do: the pulse is
+	// what a first-time visitor reads above the fold, and it should not wait for
+	// a hydrated client.
 	loader: async ({ context }) => {
-		await context.queryClient.ensureQueryData(
-			convexQuery(api.stacks.listPublished, {}),
-		);
+		const [, band] = await Promise.all([
+			context.queryClient.ensureQueryData(
+				convexQuery(api.stacks.listPublished, {}),
+			),
+			context.queryClient.ensureQueryData(
+				convexQuery(api.activityFeed.band, {}),
+			),
+		]);
+		return { band };
 	},
 	head: () => ({
 		meta: seoMeta({
@@ -52,6 +61,8 @@ function IndexRoute() {
 	const stacks = (useQuery(api.stacks.listPublished) ??
 		[]) as LandingStackPreview[];
 	const me = useQuery(api.creators.getMe);
+	const { band: loadedBand } = Route.useLoaderData();
+	const band = useQuery(api.activityFeed.band, {}) ?? loadedBand;
 
 	return (
 		<>
@@ -62,7 +73,7 @@ function IndexRoute() {
 						"Explore the AI stacks indie builders run in production. Compare tools, costs, and workflows.",
 				}}
 			/>
-			<LandingPageShell stacks={stacks} me={me} />
+			<LandingPageShell stacks={stacks} me={me} band={band} />
 		</>
 	);
 }

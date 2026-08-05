@@ -195,6 +195,17 @@ export default function Header() {
 							>
 								Leaderboard
 							</Link>
+							<Link
+								to="/activity"
+								className={cn(
+									"font-mono text-xs font-semibold uppercase tracking-[0.15em] transition-colors",
+									isActive("/activity")
+										? "text-accent-lime"
+										: "text-fg-muted hover:text-fg-primary",
+								)}
+							>
+								Activity
+							</Link>
 							{/* <Link
 							to="/about"
 							className={cn(
@@ -426,6 +437,18 @@ export default function Header() {
 								)}
 							>
 								Leaderboard
+							</Link>
+							<Link
+								to="/activity"
+								onClick={() => setMobileMenuOpen(false)}
+								className={cn(
+									"font-mono text-sm font-semibold uppercase tracking-[0.15em] transition-colors",
+									isActive("/activity")
+										? "text-accent-lime"
+										: "text-fg-muted hover:text-fg-primary",
+								)}
+							>
+								Activity
 							</Link>
 							{isAdmin && (
 								<Link
