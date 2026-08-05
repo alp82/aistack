@@ -365,6 +365,11 @@ async function usageFor(
  * It reads the watermark window rather than the 24 hours it claims, because the
  * shape behind the numbers is 14 days long and the four evidence rows must
  * still show on a day nothing happened.
+ *
+ * The read is bounded at `MAX_ROWS` events, which is about two months of the
+ * current volume. Past that the WATERMARK loses its oldest days — never the
+ * 24-hour claim, which sits at the top of a newest-first walk. The map already
+ * carries when read-time aggregation has to become a rollup.
  */
 export const band = query({
   args: {},
