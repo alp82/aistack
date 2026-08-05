@@ -1406,6 +1406,9 @@ describe('sync config', () => {
       // Composite, like every public stack URL — the gate prints it (#41).
       stackSlug: `my-stack-${shortId}`,
       optIns: EMPTY_OPT_INS,
+      // The auto-sync permission (#102). Null, not `{enabled: false}`: the CLI
+      // has to tell "nobody has decided" from "the owner said no".
+      autoSync: null,
     })
   })
 

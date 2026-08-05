@@ -3,6 +3,7 @@ import { authComponent, createAuth } from './auth'
 import {
   authStart,
   authPoll,
+  autoSyncSet,
   stackCollect,
   stackGet,
   syncConfig,
@@ -20,6 +21,7 @@ http.route({ path: '/api/cli/stacks/collect', method: 'POST', handler: stackColl
 http.route({ path: '/api/cli/stacks', method: 'GET', handler: stackGet })
 http.route({ path: '/api/cli/sync', method: 'POST', handler: syncPublish })
 http.route({ path: '/api/cli/sync-config', method: 'GET', handler: syncConfig })
+http.route({ path: '/api/cli/auto-sync', method: 'POST', handler: autoSyncSet })
 http.route({ path: '/api/email/unsubscribe', method: 'GET', handler: unsubscribe })
 http.route({ path: '/api/email/unsubscribe', method: 'POST', handler: unsubscribe })
 

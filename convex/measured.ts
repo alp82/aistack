@@ -12,9 +12,11 @@ import {
   MeasuredPayload,
   PublishedNameCategory,
   ReconcileAtomKind,
+  SyncTrigger,
 } from './schema'
 import { captureServerEvent } from './analytics'
 import { emitActivityEvent } from './activity'
+import { normalizeFrequencyHours } from './lib/autoSync'
 import { extractShortId } from './lib/ids'
 import {
   MODEL_ID_MAX,
@@ -853,7 +855,7 @@ export const countLivingStacks = query({
 // Reconcile — suggestions derived on read, dismissals persisted
 // ---------------------------------------------------------------------------
 
-async function requireStackOwner(
+export async function requireStackOwner(
   ctx: QueryCtx | MutationCtx,
   stackId: Id<'stacks'>
 ): Promise<Doc<'stacks'>> {
@@ -1554,6 +1556,13 @@ export const getSyncConfigForStack = internalQuery({
     stackName: v.string(),
     stackSlug: v.string(),
     optIns: OptInNames,
+    /**
+     * The server-side auto-sync permission (#102), or null when the stack has
+     * never had one. NULL IS NOT `{enabled: false}` — the CLI has to tell
+     * "nobody has decided yet", which its local flag may still seed, from "the
+     * owner said no", which nothing on a machine may override.
+     */
+    autoSync: v.union(AutoSyncState, v.null()),
   }),
   handler: async (ctx, args) => {
     const stack = await ctx.db.get(args.stackId)
@@ -1572,6 +1581,7 @@ export const getSyncConfigForStack = internalQuery({
       // routable on its own — `publishForToken` below does the same.
       stackSlug: `${stack.slug}-${stack.shortId}`,
       optIns: await optInsForStack(ctx, args.stackId),
+      autoSync: stack.autoSync ?? null,
     }
   },
 })
@@ -1941,6 +1951,11 @@ export const publishForToken = internalMutation({
      * clients report nothing, which reads as "never told us".
      */
     autoSync: v.optional(AutoSyncState),
+    /**
+     * How this sync fired (#102). Absent reads as `manual` — a 0.6.x CLI sends
+     * nothing, and silence must not be read as a machine publishing on its own.
+     */
+    trigger: v.optional(SyncTrigger),
   },
   returns: v.object({
     snapshotIds: v.array(v.id('measuredSnapshots')),
@@ -1980,6 +1995,22 @@ export const publishForToken = internalMutation({
     const creator = await ctx.db.get(stack.creatorId)
     if (!creator || creator.userId !== token.userId) {
       throw new Error('Token is no longer authorized for its linked stack')
+    }
+
+    // THE REVOKE IS ENFORCED HERE, not only in the client (#102). #103 makes
+    // `sync --auto` exit before it reaches this route, so this is the second
+    // lock: a machine with stale hooks and a stale answer publishes nothing.
+    //
+    // ONLY AN EXPLICIT `false` refuses. An absent field is "nobody has decided",
+    // and refusing that would deadlock the seed below — the field is only ever
+    // written by a sync that is allowed to land.
+    //
+    // A manual sync is untouched. The switch revokes automation, not the
+    // owner's own `npx @use-aistack/cli sync`.
+    if (args.trigger === 'auto' && stack.autoSync?.enabled === false) {
+      throw new Error(
+        'Auto-sync is off for this stack. Nothing was published. Turn it back on from the stack page, or run a sync yourself.'
+      )
     }
 
     // Asked BEFORE the inserts, or every sync looks like the first one.
@@ -2044,6 +2075,33 @@ export const publishForToken = internalMutation({
         token.autoSync?.frequencyHours !== args.autoSync.frequencyHours)
     ) {
       await ctx.db.patch(token._id, { autoSync: args.autoSync })
+    }
+
+    // SEED FROM LOCAL, ONCE (#102). A machine that opted in before the server
+    // owned the permission would otherwise have its standing choice silently
+    // dropped the moment the flag moved. The first sync that reports an ON
+    // local flag against a stack that has never had one writes it.
+    //
+    // Only ON seeds. A reported OFF is indistinguishable from "this machine
+    // never chose", and writing it would spend the one seed the stack gets on
+    // an answer nobody gave.
+    //
+    // After this the SERVER ALWAYS WINS: no later sync touches the field, so a
+    // web revoke cannot be undone by a machine that still has its local flag.
+    if (stack.autoSync === undefined && args.autoSync?.enabled === true) {
+      await ctx.db.patch(stack._id, {
+        autoSync: {
+          enabled: true,
+          frequencyHours: normalizeFrequencyHours(args.autoSync.frequencyHours),
+        },
+      })
+    }
+
+    // The stamp the web switch reads (#102). Written only by an automatic sync,
+    // so the switch can tell on-and-working from on-but-never-fired — the state
+    // an unupgraded CLI leaves behind, and the one a hint has to name.
+    if (args.trigger === 'auto') {
+      await ctx.db.patch(stack._id, { lastAutoSyncAt: receivedAt })
     }
 
     // The switch is not client-side-only. A client that sends the half anyway —
