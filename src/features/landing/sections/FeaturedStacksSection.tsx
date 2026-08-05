@@ -1,10 +1,12 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
+import { ArrowRight } from "lucide-react";
+import { useEffect, useMemo } from "react";
 
+import { Pagination } from "@/components/Pagination";
 import { SortDropdown } from "@/components/SortDropdown";
 import { StackCard } from "@/features/landing/components/StackCard";
 import { makeSearchUpdater } from "@/lib/searchParams";
+import { usePaginationScroll } from "@/lib/usePaginationScroll";
 import { cn } from "@/lib/utils";
 
 const STACKS_PER_PAGE = 9;
@@ -157,10 +159,10 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 			),
 		[navigate],
 	);
-	const gridRef = useRef<HTMLDivElement>(null);
+	const { ref: headerRef, scrollToTop } = usePaginationScroll<HTMLDivElement>();
 	const goToPage = (nextPage: number) => {
 		setSearch({ page: nextPage });
-		gridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+		scrollToTop();
 	};
 
 	const visibleStacks = useMemo(
@@ -203,8 +205,11 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 	return (
 		<section className="section-dark py-32 px-6 md:px-16 lg:px-24 relative overflow-hidden border-b border-zinc-300">
 			<div className="mx-auto max-w-content py-24">
-				{/* Section Header */}
-				<div className="flex items-baseline gap-4 mb-12 border-b-2 border-stroke-strong pb-4">
+				{/* Section Header — pagination scroll target, so the heading stays visible */}
+				<div
+					ref={headerRef}
+					className="scroll-mt-20 flex items-baseline gap-4 mb-12 border-b-2 border-stroke-strong pb-4"
+				>
 					<span className="font-mono text-accent-lime text-xl">/01</span>
 					<h2 className="text-4xl md:text-6xl font-bold tracking-tighter uppercase text-fg-primary">
 						Featured Stacks
@@ -240,10 +245,7 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 				</div>
 
 				{/* Stack Grid */}
-				<div
-					ref={gridRef}
-					className="scroll-mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8"
-				>
+				<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
 					{paginatedStacks.map((stack) => (
 						<StackCard key={stack._id} stack={stack} />
 					))}
@@ -255,46 +257,11 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 					</div>
 				)}
 
-				{/* Pagination */}
-				{totalPages > 1 && (
-					<div className="mt-12 flex items-center justify-center gap-2">
-						<button
-							type="button"
-							onClick={() => goToPage(Math.max(1, safeCurrentPage - 1))}
-							disabled={safeCurrentPage <= 1}
-							className="flex size-10 items-center justify-center border border-stroke-strong text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime disabled:opacity-30 disabled:cursor-not-allowed"
-						>
-							<ChevronLeft className="size-4" />
-						</button>
-						{Array.from({ length: totalPages }, (_, i) => i + 1).map(
-							(pageNum) => (
-								<button
-									key={pageNum}
-									type="button"
-									onClick={() => goToPage(pageNum)}
-									className={cn(
-										"flex size-10 items-center justify-center border font-mono text-sm font-bold transition-colors",
-										pageNum === safeCurrentPage
-											? "border-accent-lime bg-accent-lime text-accent-lime-contrast"
-											: "border-stroke-strong text-fg-muted hover:border-accent-lime hover:text-accent-lime",
-									)}
-								>
-									{pageNum}
-								</button>
-							),
-						)}
-						<button
-							type="button"
-							onClick={() =>
-								goToPage(Math.min(totalPages, safeCurrentPage + 1))
-							}
-							disabled={safeCurrentPage >= totalPages}
-							className="flex size-10 items-center justify-center border border-stroke-strong text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime disabled:opacity-30 disabled:cursor-not-allowed"
-						>
-							<ChevronRight className="size-4" />
-						</button>
-					</div>
-				)}
+				<Pagination
+					currentPage={safeCurrentPage}
+					totalPages={totalPages}
+					onPageChange={goToPage}
+				/>
 
 				{/* View All Link */}
 				<div className="mt-12 flex justify-center">

@@ -6,17 +6,12 @@ import {
 	useSearch,
 } from "@tanstack/react-router";
 import { useConvexAuth, useQuery } from "convex/react";
-import {
-	AlertTriangle,
-	ChevronLeft,
-	ChevronRight,
-	Plus,
-	Search,
-} from "lucide-react";
+import { AlertTriangle, Plus, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { GridBackground } from "@/components/GridBackground";
 import { JsonLd } from "@/components/JsonLd";
 import { PageHeader } from "@/components/PageHeader";
+import { Pagination } from "@/components/Pagination";
 import { SortDropdown } from "@/components/SortDropdown";
 import { Input } from "@/components/ui/input";
 import { StackCard } from "@/features/landing/components/StackCard";
@@ -35,6 +30,7 @@ import {
 	makeSearchUpdater,
 } from "@/lib/searchParams";
 import { seoMeta } from "@/lib/seo";
+import { usePaginationScroll } from "@/lib/usePaginationScroll";
 import { cn } from "@/lib/utils";
 import { api } from "../../convex/_generated/api";
 
@@ -172,10 +168,18 @@ function BrowseStacksPage() {
 	const setSearch = useMemo(
 		() =>
 			makeSearchUpdater<typeof STACKS_SEARCH_DEFAULTS>(navigate, {
+				// resetScroll: false — filter/sort/search changes keep the viewport
+				// in place; only pagination scrolls, back to the page header.
 				resetPageKeys: ["filter", "sort", "q"],
+				resetScroll: false,
 			}),
 		[navigate],
 	);
+	const { ref: headerRef, scrollToTop } = usePaginationScroll<HTMLDivElement>();
+	const goToPage = (nextPage: number) => {
+		setSearch({ page: nextPage });
+		scrollToTop();
+	};
 	const [searchDraft, setSearchDraft] = useState(q);
 
 	const goodStacks = useMemo(
@@ -279,7 +283,7 @@ function BrowseStacksPage() {
 			/>
 			<GridBackground />
 			<section className="relative z-10 py-24 px-6 md:px-12">
-				<div className="mx-auto max-w-content">
+				<div ref={headerRef} className="scroll-mt-20 mx-auto max-w-content">
 					<PageHeader
 						label="STACK_BROWSER"
 						title="ALL STACKS"
@@ -362,50 +366,11 @@ function BrowseStacksPage() {
 								))}
 							</div>
 
-							{/* Pagination */}
-							{totalPages > 1 && (
-								<div className="mt-12 flex items-center justify-center gap-2">
-									<button
-										type="button"
-										onClick={() =>
-											setSearch({ page: Math.max(1, safeCurrentPage - 1) })
-										}
-										disabled={safeCurrentPage <= 1}
-										className="flex size-10 items-center justify-center border border-stroke-strong text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime disabled:opacity-30 disabled:cursor-not-allowed"
-									>
-										<ChevronLeft className="size-4" />
-									</button>
-									{Array.from({ length: totalPages }, (_, i) => i + 1).map(
-										(pageNum) => (
-											<button
-												key={pageNum}
-												type="button"
-												onClick={() => setSearch({ page: pageNum })}
-												className={cn(
-													"flex size-10 items-center justify-center border font-mono text-sm font-bold transition-colors",
-													pageNum === safeCurrentPage
-														? "border-accent-lime bg-accent-lime text-accent-lime-contrast"
-														: "border-stroke-strong text-fg-muted hover:border-accent-lime hover:text-accent-lime",
-												)}
-											>
-												{pageNum}
-											</button>
-										),
-									)}
-									<button
-										type="button"
-										onClick={() =>
-											setSearch({
-												page: Math.min(totalPages, safeCurrentPage + 1),
-											})
-										}
-										disabled={safeCurrentPage >= totalPages}
-										className="flex size-10 items-center justify-center border border-stroke-strong text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime disabled:opacity-30 disabled:cursor-not-allowed"
-									>
-										<ChevronRight className="size-4" />
-									</button>
-								</div>
-							)}
+							<Pagination
+								currentPage={safeCurrentPage}
+								totalPages={totalPages}
+								onPageChange={goToPage}
+							/>
 
 							{isLastPage && filteredLowQualityStacks.length > 0 && (
 								<div className="mt-16 border border-dashed border-stroke-subtle">

@@ -6,9 +6,11 @@ import {
 	useSearch,
 } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { Pagination } from "@/components/Pagination";
 import type { LandingStackPreview } from "@/features/landing/sections/FeaturedStacksSection";
+import { usePaginationScroll } from "@/lib/usePaginationScroll";
 import { api } from "../../convex/_generated/api";
 import { GridBackground } from "../components/GridBackground";
 import { JsonLd } from "../components/JsonLd";
@@ -92,10 +94,18 @@ function ToolsPage() {
 	const setSearch = useMemo(
 		() =>
 			makeSearchUpdater<typeof TOOLS_SEARCH_DEFAULTS>(navigate, {
+				// resetScroll: false — filter/sort/search changes keep the viewport
+				// in place; only pagination scrolls, back to the page header.
 				resetPageKeys: ["filter", "sort", "q"],
+				resetScroll: false,
 			}),
 		[navigate],
 	);
+	const { ref: headerRef, scrollToTop } = usePaginationScroll<HTMLDivElement>();
+	const goToPage = (nextPage: number) => {
+		setSearch({ page: nextPage });
+		scrollToTop();
+	};
 	const [searchDraft, setSearchDraft] = useState(q);
 	const [suggestEditTool, setSuggestEditTool] =
 		useState<ToolForSuggestion | null>(null);
@@ -189,7 +199,10 @@ function ToolsPage() {
 			/>
 			<GridBackground />
 
-			<div className="relative z-10 max-w-content mx-auto py-24">
+			<div
+				ref={headerRef}
+				className="scroll-mt-20 relative z-10 max-w-content mx-auto py-24"
+			>
 				<PageHeader
 					label="TOOLS"
 					title={
@@ -275,48 +288,11 @@ function ToolsPage() {
 					/>
 				)}
 
-				{/* Pagination */}
-				{totalPages > 1 && (
-					<div className="mt-12 flex items-center justify-center gap-2">
-						<button
-							type="button"
-							onClick={() =>
-								setSearch({ page: Math.max(1, safeCurrentPage - 1) })
-							}
-							disabled={safeCurrentPage <= 1}
-							className="flex size-10 items-center justify-center border border-stroke-strong text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime disabled:opacity-30 disabled:cursor-not-allowed"
-						>
-							<ChevronLeft className="size-4" />
-						</button>
-						{Array.from({ length: totalPages }, (_, i) => i + 1).map(
-							(pageNum) => (
-								<button
-									key={pageNum}
-									type="button"
-									onClick={() => setSearch({ page: pageNum })}
-									className={cn(
-										"flex size-10 items-center justify-center border font-mono text-sm font-bold transition-colors",
-										pageNum === safeCurrentPage
-											? "border-accent-lime bg-accent-lime text-accent-lime-contrast"
-											: "border-stroke-strong text-fg-muted hover:border-accent-lime hover:text-accent-lime",
-									)}
-								>
-									{pageNum}
-								</button>
-							),
-						)}
-						<button
-							type="button"
-							onClick={() =>
-								setSearch({ page: Math.min(totalPages, safeCurrentPage + 1) })
-							}
-							disabled={safeCurrentPage >= totalPages}
-							className="flex size-10 items-center justify-center border border-stroke-strong text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime disabled:opacity-30 disabled:cursor-not-allowed"
-						>
-							<ChevronRight className="size-4" />
-						</button>
-					</div>
-				)}
+				<Pagination
+					currentPage={safeCurrentPage}
+					totalPages={totalPages}
+					onPageChange={goToPage}
+				/>
 
 				{filteredTools.length === 0 && (
 					<div className="py-24 text-center border-2 border-dashed border-stroke-strong">
