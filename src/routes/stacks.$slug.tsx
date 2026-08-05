@@ -17,6 +17,7 @@ import {
 import { accentClassFor } from "@/features/stack-view/accentPresets";
 import { StackHeader } from "@/features/stack-view/StackHeader";
 import { GuideSection, ToolsSection } from "@/features/stack-view/sections";
+import { StackViewsLine } from "@/features/view-analytics/StackViewsLine";
 import { formatPricingSummary } from "@/lib/pricing";
 import { SITE_URL, seoMeta } from "@/lib/seo";
 import { useRecordView } from "@/lib/useRecordView";
@@ -321,6 +322,13 @@ function StackDetailsPage() {
 					/>
 				</div>
 				<div className="bg-bg-canvas">
+					{/* Owner-private, under the hero and above the first numbered
+					    section (#112). A visitor renders nothing here. */}
+					<StackViewsLine
+						stackId={stack._id}
+						isOwner={upvoteStatus?.isOwner ?? false}
+					/>
+
 					{/* The journey (#40, reordered by #58): Actual Usage 01 → Projects 02
 					    → Tools 03 → Workflow 04. What ran now literally comes first. */}
 					<MeasuredSection
