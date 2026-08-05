@@ -29,6 +29,9 @@ import { Route as StacksNewRouteImport } from './routes/stacks.new'
 import { Route as StacksSlugRouteImport } from './routes/stacks.$slug'
 import { Route as SettingsMachinesRouteImport } from './routes/settings.machines'
 import { Route as SettingsAnalyticsRouteImport } from './routes/settings.analytics'
+import { Route as PrototypeViewsStackRouteImport } from './routes/prototype.views-stack'
+import { Route as PrototypeViewsEntryRouteImport } from './routes/prototype.views-entry'
+import { Route as PrototypeViewsRouteImport } from './routes/prototype.views'
 import { Route as CliAuthRouteImport } from './routes/cli.auth'
 import { Route as ApiSyncConfigRouteImport } from './routes/api.sync-config'
 import { Route as AdminIconsRouteImport } from './routes/admin_.icons'
@@ -145,6 +148,21 @@ const SettingsAnalyticsRoute = SettingsAnalyticsRouteImport.update({
   path: '/settings/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrototypeViewsStackRoute = PrototypeViewsStackRouteImport.update({
+  id: '/prototype/views-stack',
+  path: '/prototype/views-stack',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrototypeViewsEntryRoute = PrototypeViewsEntryRouteImport.update({
+  id: '/prototype/views-entry',
+  path: '/prototype/views-entry',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrototypeViewsRoute = PrototypeViewsRouteImport.update({
+  id: '/prototype/views',
+  path: '/prototype/views',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CliAuthRoute = CliAuthRouteImport.update({
   id: '/cli/auth',
   path: '/cli/auth',
@@ -238,6 +256,9 @@ export interface FileRoutesByFullPath {
   '/admin/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
+  '/prototype/views': typeof PrototypeViewsRoute
+  '/prototype/views-entry': typeof PrototypeViewsEntryRoute
+  '/prototype/views-stack': typeof PrototypeViewsStackRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -275,6 +296,9 @@ export interface FileRoutesByTo {
   '/admin/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
+  '/prototype/views': typeof PrototypeViewsRoute
+  '/prototype/views-entry': typeof PrototypeViewsEntryRoute
+  '/prototype/views-stack': typeof PrototypeViewsStackRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -313,6 +337,9 @@ export interface FileRoutesById {
   '/admin_/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
+  '/prototype/views': typeof PrototypeViewsRoute
+  '/prototype/views-entry': typeof PrototypeViewsEntryRoute
+  '/prototype/views-stack': typeof PrototypeViewsStackRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -352,6 +379,9 @@ export interface FileRouteTypes {
     | '/admin/icons'
     | '/api/sync-config'
     | '/cli/auth'
+    | '/prototype/views'
+    | '/prototype/views-entry'
+    | '/prototype/views-stack'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -389,6 +419,9 @@ export interface FileRouteTypes {
     | '/admin/icons'
     | '/api/sync-config'
     | '/cli/auth'
+    | '/prototype/views'
+    | '/prototype/views-entry'
+    | '/prototype/views-stack'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -426,6 +459,9 @@ export interface FileRouteTypes {
     | '/admin_/icons'
     | '/api/sync-config'
     | '/cli/auth'
+    | '/prototype/views'
+    | '/prototype/views-entry'
+    | '/prototype/views-stack'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -464,6 +500,9 @@ export interface RootRouteChildren {
   AdminIconsRoute: typeof AdminIconsRoute
   ApiSyncConfigRoute: typeof ApiSyncConfigRoute
   CliAuthRoute: typeof CliAuthRoute
+  PrototypeViewsRoute: typeof PrototypeViewsRoute
+  PrototypeViewsEntryRoute: typeof PrototypeViewsEntryRoute
+  PrototypeViewsStackRoute: typeof PrototypeViewsStackRoute
   SettingsAnalyticsRoute: typeof SettingsAnalyticsRoute
   SettingsMachinesRoute: typeof SettingsMachinesRoute
   StacksSlugRoute: typeof StacksSlugRoute
@@ -626,6 +665,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/prototype/views-stack': {
+      id: '/prototype/views-stack'
+      path: '/prototype/views-stack'
+      fullPath: '/prototype/views-stack'
+      preLoaderRoute: typeof PrototypeViewsStackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prototype/views-entry': {
+      id: '/prototype/views-entry'
+      path: '/prototype/views-entry'
+      fullPath: '/prototype/views-entry'
+      preLoaderRoute: typeof PrototypeViewsEntryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prototype/views': {
+      id: '/prototype/views'
+      path: '/prototype/views'
+      fullPath: '/prototype/views'
+      preLoaderRoute: typeof PrototypeViewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cli/auth': {
       id: '/cli/auth'
       path: '/cli/auth'
@@ -763,6 +823,9 @@ const rootRouteChildren: RootRouteChildren = {
   AdminIconsRoute: AdminIconsRoute,
   ApiSyncConfigRoute: ApiSyncConfigRoute,
   CliAuthRoute: CliAuthRoute,
+  PrototypeViewsRoute: PrototypeViewsRoute,
+  PrototypeViewsEntryRoute: PrototypeViewsEntryRoute,
+  PrototypeViewsStackRoute: PrototypeViewsStackRoute,
   SettingsAnalyticsRoute: SettingsAnalyticsRoute,
   SettingsMachinesRoute: SettingsMachinesRoute,
   StacksSlugRoute: StacksSlugRoute,
