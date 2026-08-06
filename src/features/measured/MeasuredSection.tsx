@@ -83,6 +83,13 @@ export function MeasuredSection({
 	const staleSince =
 		snapshot && isStale(snapshot.receivedAt) ? snapshot.receivedAt : null;
 
+	// WHICH SIDE OF THE READING THE BOX SITS ON IS THE SNAPSHOT'S ANSWER, so the
+	// box waits for that answer the way the invitation below does. Drawing it
+	// first and moving it when the query lands would jump the page under the
+	// owner on every load. It still does not wait for a READING (#104): a null
+	// snapshot is an answer, and the box is the fix for exactly that stack.
+	const placed = snapshot !== undefined;
+
 	return (
 		<Section index={index} id={MEASURED_ANCHOR}>
 			<SectionHeader
@@ -95,7 +102,7 @@ export function MeasuredSection({
 			    automation is what keeps this reading arriving — and it does NOT
 			    wait for a reading, because it is the fix for a stack that has
 			    none. Renders nothing for a visitor, query and all. */}
-			{staleSince !== null && (
+			{placed && staleSince !== null && (
 				<AutoSyncBox
 					stackId={stackId}
 					isOwner={isOwner}
@@ -113,7 +120,7 @@ export function MeasuredSection({
 			) : (
 				<Reading snapshot={snapshot} points={history?.points ?? []} />
 			)}
-			{staleSince === null && (
+			{placed && staleSince === null && (
 				<AutoSyncBox stackId={stackId} isOwner={isOwner} />
 			)}
 		</Section>

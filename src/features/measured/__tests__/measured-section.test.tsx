@@ -468,6 +468,14 @@ describe("the auto-sync switch", () => {
 		setup(current, history);
 		expect(screen.queryByText("// auto-sync")).not.toBeInTheDocument();
 	});
+
+	// Which side of the reading it sits on is the snapshot's answer, so it waits
+	// for that answer rather than drawing below and jumping above when the query
+	// lands. A null snapshot IS an answer — #104 keeps the box there.
+	it("waits for the snapshot query before it takes a side", () => {
+		setup(undefined, undefined, { isOwner: true });
+		expect(screen.queryByText("// auto-sync")).not.toBeInTheDocument();
+	});
 });
 
 describe("positive claims only", () => {
