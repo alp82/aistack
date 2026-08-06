@@ -98,3 +98,48 @@ export const NEVER_FIRED_FIX =
 
 export const ON_NOTE =
 	"A sync fires when a session starts on a linked machine, and at most once per interval. Turn this off and it stops everywhere.";
+
+/* ------------------------------------- the switch as the remedy (#107 C) -- */
+
+/**
+ * The two CLI forms of this switch. #102 moved the permission onto the stack,
+ * so these and the toggle above write the same flag.
+ */
+export const AUTO_ON_CMD = "npx @use-aistack/cli sync --auto on";
+export const AUTO_OFF_CMD = "npx @use-aistack/cli sync --auto off";
+
+/**
+ * WHAT THE OWNER READS WHEN THE PAGE IS PAST 48 HOURS AND AUTOMATION IS OFF.
+ *
+ * #107 answered "one element or two?" with ONE: the page shows a dated stamp
+ * and no sentence, and this switch — promoted above the reading — is the only
+ * place that asks for anything. The remedy lives on the control, so there is
+ * never a callout and a switch selling the same feature.
+ *
+ * It states the age and what turning this on would do. It does not say why the
+ * stack went quiet, because a browser cannot know that (#40).
+ */
+export function stalePromptLine(syncedAgo: string): string {
+	return `Last synced ${syncedAgo}. Auto-sync keeps this page current without you running anything.`;
+}
+
+/**
+ * WHAT AUTO-SYNC IS, in the CLI's own terms — the trigger, the ceiling and the
+ * revoke, in one sentence.
+ *
+ * The CLI says "a silent daily sync when a Claude Code session starts", and on
+ * enable "about every 24h when a Claude Code session starts. Turn it off any
+ * time". The harness name is dropped, because this reader may publish from
+ * several and the browser does not know which.
+ *
+ * The ceiling follows the STORED interval. A stack that chose six hours and
+ * then turned the switch off would restore six hours, so a fixed "once a day"
+ * here would promise a schedule the toggle does not set.
+ */
+export function autoSyncExplainer(frequencyHours: number): string {
+	const cadence =
+		frequencyHours === 24
+			? "once a day"
+			: `once ${frequencyLabel(frequencyHours)}`;
+	return `It publishes when a session starts on a machine you have linked, at most ${cadence}. Turning it off revokes it everywhere, from this switch or with ${AUTO_OFF_CMD}.`;
+}

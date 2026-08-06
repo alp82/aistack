@@ -6,6 +6,8 @@ import { cn, timeAgo } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import {
+	AUTO_ON_CMD,
+	autoSyncExplainer,
 	autoSyncState,
 	frequencyChoices,
 	frequencyLabel,
@@ -16,9 +18,11 @@ import {
 	ON_NOTE,
 	runningLine,
 	SWITCH_TITLE,
+	stalePromptLine,
 } from "./autoSync";
 import { CommandBlock } from "./CommandLine";
 import { MONO_LABEL, SYNC_CMD } from "./copy";
+import { syncAgo } from "./freshness";
 
 /**
  * The auto-sync switch in the owner box (#104, map #76, from #100 decision 5).
@@ -36,13 +40,22 @@ import { MONO_LABEL, SYNC_CMD } from "./copy";
  * are dumb local triggers. They keep firing on machines this browser has never
  * seen, and #102 refuses what they send, so the honest sentence is "they
  * publish nothing" and not "remove them".
+ *
+ * IT IS ALSO THE PAGE'S ONE REMEDY (#108, from #107 decision 1). Past 48 hours
+ * the section promotes this box above the reading and passes `staleSince`, and
+ * the box leads with the prompt instead of its resting sentence. Nothing else
+ * on the page asks the owner for anything, which is what keeps the switch and a
+ * callout from reading as two features.
  */
 export function AutoSyncBox({
 	stackId,
 	isOwner,
+	staleSince = null,
 }: {
 	stackId: Id<"stacks">;
 	isOwner: boolean;
+	/** The last sync, when it is past 48 hours old. Null is the resting box. */
+	staleSince?: number | null;
 }) {
 	const flag = useQuery(api.autoSync.get, isOwner ? { stackId } : "skip");
 	const set = useMutation(api.autoSync.set);
@@ -72,14 +85,35 @@ export function AutoSyncBox({
 		}
 	}
 
+	// Leading only means the box speaks first. It never changes what the switch
+	// does, and an owner whose automation is already on gets no second ask —
+	// their box states its last automatic sync and stops (#107 decision 4).
+	const lead = staleSince !== null;
+
 	return (
-		<div className="mt-10 border border-stroke-strong bg-bg-panel px-6 py-6 md:px-8">
+		<div
+			className={cn(
+				"border bg-bg-panel px-6 py-6 md:px-8",
+				lead ? "mb-10 border-accent-lime" : "mt-10 border-stroke-strong",
+			)}
+		>
 			<div className="flex flex-wrap items-center justify-between gap-4">
 				<div>
-					<p className={cn(MONO_LABEL, "text-fg-muted")}>{SWITCH_TITLE}</p>
+					<p
+						className={cn(
+							MONO_LABEL,
+							lead ? "text-accent-lime" : "text-fg-muted",
+						)}
+					>
+						{SWITCH_TITLE}
+					</p>
 					<p className="mt-2 text-sm text-fg-primary">
 						{state.kind === "off" ? (
-							OFF_LINE
+							lead ? (
+								stalePromptLine(syncAgo(staleSince))
+							) : (
+								OFF_LINE
+							)
 						) : state.kind === "running" ? (
 							<>
 								{runningLine(state.frequencyHours)}{" "}
@@ -120,10 +154,24 @@ export function AutoSyncBox({
 				</div>
 			</div>
 
+			{/* Off and resting says what a revoke leaves behind. Off and leading
+			    says what turning it on would do, and hands over the command that
+			    writes the same flag as the toggle. */}
 			{state.kind === "off" && (
-				<p className="mt-3 max-w-prose text-xs leading-relaxed text-fg-muted">
-					{OFF_REVOKE_NOTE}
-				</p>
+				<>
+					<p className="mt-3 max-w-prose text-xs leading-relaxed text-fg-muted">
+						{lead ? autoSyncExplainer(hours) : OFF_REVOKE_NOTE}
+					</p>
+					{lead && (
+						<div className="mt-4 max-w-xl">
+							<CommandBlock
+								commands={[
+									{ cmd: AUTO_ON_CMD, comment: "same switch, from the CLI" },
+								]}
+							/>
+						</div>
+					)}
+				</>
 			)}
 
 			{state.kind === "never-fired" && (

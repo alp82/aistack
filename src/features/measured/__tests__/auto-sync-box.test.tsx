@@ -51,11 +51,22 @@ const STACK_ID = "stack_abc" as never;
 
 function setup(
 	flag: AutoSyncFlag | undefined,
-	{ isOwner = true }: { isOwner?: boolean } = {},
+	{
+		isOwner = true,
+		staleSince = null,
+	}: { isOwner?: boolean; staleSince?: number | null } = {},
 ) {
 	queryMock.mockReturnValue(flag);
-	render(<AutoSyncBox stackId={STACK_ID} isOwner={isOwner} />);
+	render(
+		<AutoSyncBox
+			stackId={STACK_ID}
+			isOwner={isOwner}
+			staleSince={staleSince}
+		/>,
+	);
 }
+
+const THREE_DAYS_AGO = Date.now() - 3 * 24 * 60 * 60 * 1000;
 
 /** The last argument the switch handed `autoSync.set`. */
 function lastSet(): SetArgs | undefined {
@@ -170,6 +181,104 @@ describe("the switch", () => {
 		});
 		fireEvent.click(screen.getByRole("button", { name: /^on$/i }));
 		expect(lastSet()).toMatchObject({ enabled: true, frequencyHours: 6 });
+	});
+});
+
+/**
+ * The switch as the page's one remedy (#108, from #107 decision 1). Past 48
+ * hours the section promotes this box and it leads with the prompt — and that
+ * is the ONLY thing on the page that asks for anything, which is what keeps the
+ * switch and a callout from reading as two features.
+ */
+describe("leading, past 48 hours", () => {
+	it("states the age and what auto-sync would do", () => {
+		setup(
+			{ autoSync: null, lastAutoSyncAt: null },
+			{
+				staleSince: THREE_DAYS_AGO,
+			},
+		);
+		expect(
+			screen.getByText(
+				/Last synced 3 days ago\. Auto-sync keeps this page current/i,
+			),
+		).toBeTruthy();
+	});
+
+	it("hands over the command that writes the same flag", () => {
+		setup(
+			{ autoSync: null, lastAutoSyncAt: null },
+			{
+				staleSince: THREE_DAYS_AGO,
+			},
+		);
+		expect(
+			screen.getByText("npx @use-aistack/cli sync --auto on"),
+		).toBeTruthy();
+	});
+
+	it("names the trigger, the ceiling and the revoke", () => {
+		setup(
+			{ autoSync: null, lastAutoSyncAt: null },
+			{
+				staleSince: THREE_DAYS_AGO,
+			},
+		);
+		expect(
+			screen.getByText(
+				/publishes when a session starts on a machine you have linked, at most once a day/i,
+			),
+		).toBeTruthy();
+		expect(
+			screen.getByText(/npx @use-aistack\/cli sync --auto off/),
+		).toBeTruthy();
+	});
+
+	// A stack that chose six hours and then turned the switch off restores six
+	// hours, so the ceiling must follow the stored interval.
+	it("names the stored interval, not the default", () => {
+		setup(
+			{ autoSync: { enabled: false, frequencyHours: 6 }, lastAutoSyncAt: null },
+			{ staleSince: THREE_DAYS_AGO },
+		);
+		expect(screen.getByText(/at most once every 6 hours/i)).toBeTruthy();
+	});
+
+	// #107 decision 4: a page cannot know whether a machine stayed off, a hook
+	// went away or no session started. Naming any of them would be a claim we
+	// cannot support (#40).
+	it("asks for nothing extra when automation is already on", () => {
+		setup(
+			{ autoSync: { enabled: true, frequencyHours: 24 }, lastAutoSyncAt: 1 },
+			{ staleSince: THREE_DAYS_AGO },
+		);
+		expect(screen.getByText(/last automatic sync/i)).toBeTruthy();
+		expect(
+			screen.queryByText("npx @use-aistack/cli sync --auto on"),
+		).toBeNull();
+		expect(screen.queryByText(/keeps this page current/i)).toBeNull();
+	});
+
+	it("says none of it while the reading is inside 48 hours", () => {
+		setup({ autoSync: null, lastAutoSyncAt: null });
+		expect(screen.queryByText(/keeps this page current/i)).toBeNull();
+		expect(
+			screen.queryByText("npx @use-aistack/cli sync --auto on"),
+		).toBeNull();
+		expect(
+			screen.getByText(/only a sync you run yourself publishes/i),
+		).toBeTruthy();
+	});
+
+	// The word reaches no surface (#107 decision 5).
+	it("never says stale", () => {
+		setup(
+			{ autoSync: null, lastAutoSyncAt: null },
+			{
+				staleSince: THREE_DAYS_AGO,
+			},
+		);
+		expect(document.body.textContent?.toLowerCase()).not.toContain("stale");
 	});
 });
 

@@ -25,7 +25,7 @@ import { api } from "../../../../convex/_generated/api";
 import type { AutoSyncFlag } from "../autoSync";
 import type { MeasuredSnapshot } from "../copy";
 import type { MeasuredHistory } from "../history";
-import { DAY } from "./fixture";
+import { HOUR } from "./fixture";
 import { buildHistory, currentFromHistory } from "./history.fixture";
 
 const queryMock = vi.fn();
@@ -258,23 +258,100 @@ describe("what the reading admits", () => {
 			screen.getByText(/The numbers below are a floor/),
 		).toBeInTheDocument();
 	});
+});
 
-	it("admits when the reading is going stale", () => {
+/**
+ * The page's age, said once (#108, building #107 decisions 1 and 2).
+ *
+ * The stamp replaced three age claims that disagreed: a hero dot at 7 days, a
+ * per-harness "going stale" line at 7 days, and no line at all at 48 hours. The
+ * page now speaks at 48 hours, at the number, to every reader.
+ */
+describe("how old the reading is", () => {
+	function aged(ageMs: number, options: { isOwner?: boolean } = {}) {
 		const { current, history } = live({ claudeCodeOnly: true });
+		const receivedAt = Date.now() - ageMs;
 		setup(
 			{
 				...current,
-				receivedAt: Date.now() - 19 * DAY,
-				isFresh: false,
-				harnesses: current.harnesses.map((h) => ({
-					...h,
-					receivedAt: Date.now() - 19 * DAY,
-					isFresh: false,
-				})),
+				receivedAt,
+				harnesses: current.harnesses.map((h) => ({ ...h, receivedAt })),
 			},
 			history,
+			options,
 		);
-		expect(screen.getByText(/this reading is going stale/)).toBeInTheDocument();
+	}
+
+	/**
+	 * The same, with the clock stopped. The boundary case cannot survive real
+	 * time: the milliseconds between building the snapshot and rendering it
+	 * would decide it.
+	 */
+	function agedExactly(ageMs: number) {
+		vi.useFakeTimers();
+		try {
+			aged(ageMs);
+		} finally {
+			vi.useRealTimers();
+		}
+	}
+
+	it("stamps the age on the number once it is past 48 hours", () => {
+		aged(3 * 24 * HOUR);
+		expect(screen.getByText(/3 days ago · 30-day window/)).toBeInTheDocument();
+	});
+
+	it("stamps nothing on a reading inside 48 hours", () => {
+		aged(47 * HOUR);
+		expect(document.body.textContent).not.toContain("-day window");
+	});
+
+	// The boundary itself is still current: "older than 48 hours" excludes 48.
+	it("stamps nothing at exactly 48 hours", () => {
+		agedExactly(48 * HOUR);
+		expect(document.body.textContent).not.toContain("-day window");
+	});
+
+	it("stamps a reading one millisecond past the line", () => {
+		agedExactly(48 * HOUR + 1);
+		expect(screen.getByText(/2 days ago · 30-day window/)).toBeInTheDocument();
+	});
+
+	// #107 decision 2 deleted it. Three windows for one sync taught nobody
+	// anything, and the leaderboard keeps 7 days because it ranks rows (#82).
+	it("carries no per-harness going-stale line any more", () => {
+		aged(19 * 24 * HOUR);
+		expect(document.body.textContent).not.toContain("going stale");
+	});
+
+	it("never says stale, to anyone", () => {
+		aged(19 * 24 * HOUR, { isOwner: true });
+		expect(document.body.textContent?.toLowerCase()).not.toContain("stale");
+	});
+
+	// One element for every reader (#107 decision 1). The visitor reads the age
+	// and no sentence about it, so the page never sells them a fix they cannot
+	// apply.
+	it("gives a visitor the stamp and no remedy", () => {
+		aged(3 * 24 * HOUR);
+		expect(screen.getByText(/3 days ago · 30-day window/)).toBeInTheDocument();
+		expect(document.body.textContent).not.toContain("keeps this page current");
+	});
+
+	it("promotes the switch for an owner, and asks once", () => {
+		aged(3 * 24 * HOUR, { isOwner: true });
+		expect(
+			screen.getByText(/Auto-sync keeps this page current/),
+		).toBeInTheDocument();
+		expect(
+			screen.getAllByText("npx @use-aistack/cli sync --auto on"),
+		).toHaveLength(1);
+	});
+
+	it("leaves the switch resting for an owner inside 48 hours", () => {
+		aged(5 * HOUR, { isOwner: true });
+		expect(screen.getByText("// auto-sync")).toBeInTheDocument();
+		expect(document.body.textContent).not.toContain("keeps this page current");
 	});
 });
 
@@ -332,6 +409,30 @@ describe("a stack that has never synced, seen by its owner", () => {
 			"href",
 			"/sync",
 		);
+	});
+
+	// A stack that never synced is NOT a late stack — it may be hand-curated and
+	// complete — so this box carries no age and no warning (#107 decision 3).
+	it("carries no age and no warning", () => {
+		setup(null, null, { isOwner: true });
+		const text = (document.body.textContent ?? "").toLowerCase();
+		expect(text).not.toContain("stale");
+		expect(text).not.toContain("days ago");
+		expect(text).not.toContain("-day window");
+	});
+
+	// It cannot offer the switch as the fix either: `enableAutoSync` refuses a
+	// machine that is not linked yet. One line, and the one command above it.
+	it("says what becomes possible after the first sync", () => {
+		setup(null, null, { isOwner: true });
+		expect(
+			screen.getByText(
+				"After that first sync, this stack can keep itself current on a schedule.",
+			),
+		).toBeInTheDocument();
+		expect(
+			screen.queryByText("npx @use-aistack/cli sync --auto on"),
+		).not.toBeInTheDocument();
 	});
 
 	it("shows the reading, not the teaching box, once a snapshot exists", () => {

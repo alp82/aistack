@@ -19,6 +19,7 @@ import {
 	type MeasuredSnapshot,
 	MIX_KICKER,
 	MONO_LABEL,
+	NEVER_SYNCED_AUTO_NOTE,
 	NEVER_SYNCED_BODY,
 	NEVER_SYNCED_TITLE,
 	notchNote,
@@ -29,11 +30,11 @@ import {
 	readingsLine,
 	SYNC_CMD,
 	SYNC_CMD_COMMENT,
-	stalenessLine,
 	TITLE,
 	totalUSD,
 	windowSentence,
 } from "./copy";
+import { freshnessStamp, isStale } from "./freshness";
 import {
 	type MeasuredHistoryPoint,
 	modelTrails,
@@ -76,6 +77,12 @@ export function MeasuredSection({
 	const snapshot = useQuery(api.measured.getCurrentByStackSlug, { slug });
 	const history = useQuery(api.measured.getHistoryByStackSlug, { slug });
 
+	// Past 48 hours the switch is the page's remedy, so it stands BEFORE the
+	// reading it keeps arriving. A stack that never synced is not late — it may
+	// be hand-curated — so it never promotes anything (#107 decisions 1 and 3).
+	const staleSince =
+		snapshot && isStale(snapshot.receivedAt) ? snapshot.receivedAt : null;
+
 	return (
 		<Section index={index} id={MEASURED_ANCHOR}>
 			<SectionHeader
@@ -84,6 +91,17 @@ export function MeasuredSection({
 				title={TITLE}
 				meta={snapshot ? `checked ${timeAgo(snapshot.receivedAt)}` : undefined}
 			/>
+			{/* The owner box (#104). It sits inside the section it governs —
+			    automation is what keeps this reading arriving — and it does NOT
+			    wait for a reading, because it is the fix for a stack that has
+			    none. Renders nothing for a visitor, query and all. */}
+			{staleSince !== null && (
+				<AutoSyncBox
+					stackId={stackId}
+					isOwner={isOwner}
+					staleSince={staleSince}
+				/>
+			)}
 			{/* Undefined is "not answered yet", and it must not read as "never
 			    measured" — the invitation waits until the query has spoken. */}
 			{snapshot === undefined ? null : snapshot === null ? (
@@ -95,11 +113,9 @@ export function MeasuredSection({
 			) : (
 				<Reading snapshot={snapshot} points={history?.points ?? []} />
 			)}
-			{/* The owner box (#104). It sits inside the section it governs —
-			    automation is what keeps this reading arriving — and it does NOT
-			    wait for a reading, because it is the fix for a stack that has
-			    none. Renders nothing for a visitor, query and all. */}
-			<AutoSyncBox stackId={stackId} isOwner={isOwner} />
+			{staleSince === null && (
+				<AutoSyncBox stackId={stackId} isOwner={isOwner} />
+			)}
 		</Section>
 	);
 }
@@ -119,6 +135,7 @@ function Reading({
 	const trails = modelTrails(snapshot.models, points);
 	const firstAt = points.length > 0 ? points[0].at : null;
 	const sinceLast = lastCheckLine(tokenDelta(points), fmtTokens);
+	const stale = isStale(snapshot.receivedAt);
 
 	return (
 		<div className="grid gap-10 md:grid-cols-[minmax(0,22rem)_1fr]">
@@ -130,6 +147,15 @@ function Reading({
 					windowDays={snapshot.window.days}
 					trail={tokenTrail(points)}
 				/>
+
+				{/* The one age claim the reading carries, stamped on the number it
+				    qualifies (#107 decision 1). Every reader gets the same one, and
+				    a reading inside 48 hours gets none. */}
+				{stale && (
+					<p className={cn(MONO_LABEL, "mt-3 px-3 text-fg-muted")}>
+						{freshnessStamp(snapshot.receivedAt, snapshot.window.days)}
+					</p>
+				)}
 
 				<div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 px-3">
 					{sinceLast && (
@@ -224,9 +250,13 @@ function Reading({
 }
 
 /**
- * One harness's own caveat block: kept-private counts, coverage, staleness.
- * These CANNOT merge across harnesses — callShares are normalized per harness
- * and freshness is per sync — so each harness speaks for itself (#66).
+ * One harness's own caveat block: kept-private counts and coverage. These
+ * CANNOT merge across harnesses — callShares are normalized per harness — so
+ * each harness speaks for itself (#66).
+ *
+ * AGE IS NOT ONE OF THEM ANY MORE (#107 decision 2). A per-harness "going
+ * stale" line at 7 days sat under a stamp and a dot that speak at 48 hours. The
+ * page says the age once, at the number.
  */
 function HarnessFootnote({
 	harness,
@@ -251,12 +281,6 @@ function HarnessFootnote({
 				<p className="text-[11px] text-orange-400">
 					{prefix}
 					{caveat}
-				</p>
-			)}
-			{!harness.isFresh && (
-				<p className="text-[11px] text-orange-400">
-					{prefix}
-					{stalenessLine(timeAgo(harness.receivedAt))}
 				</p>
 			)}
 		</div>
@@ -312,6 +336,13 @@ function OwnerNotMeasured() {
 				/>
 			</div>
 			<p className={cn(MONO_LABEL, "mt-4 text-fg-muted")}>{PRIVACY_FOOTNOTE}</p>
+			{/* Automation gets one line here and no switch of its own, because
+			    `enableAutoSync` refuses a machine that is not linked yet (#107
+			    decision 3). The switch below still renders — #104 made it
+			    independent of a reading — it just cannot be the fix for this. */}
+			<p className="mt-4 max-w-xl text-sm text-fg-muted">
+				{NEVER_SYNCED_AUTO_NOTE}
+			</p>
 			<Link
 				to="/sync"
 				className="mt-6 inline-flex items-center gap-2 bg-accent-lime px-5 py-2.5 font-mono text-xs font-semibold uppercase tracking-widest text-accent-lime-contrast transition-opacity hover:opacity-90"

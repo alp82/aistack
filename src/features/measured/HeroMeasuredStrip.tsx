@@ -11,6 +11,7 @@ import {
 	sessionsLine,
 	TITLE,
 } from "./copy";
+import { isStale } from "./freshness";
 
 /**
  * The hero's measured strip — the seam between what a stack claims and what ran.
@@ -23,6 +24,10 @@ import {
  *      02, beside the sentence that names the window as the thing that moves.
  *   2. NOTHING WITHOUT A SNAPSHOT. A hero stamp reading "not measured" would
  *      make not installing a CLI a public demerit on every stack but one.
+ *   3. THE DOT TURNS AT 48 HOURS, with the stamp in section 02 (#107 decision
+ *      2). It used to read the snapshot's own `isFresh`, which is the 7-day
+ *      window the leaderboard ranks on — a second age for one sync, on the line
+ *      the reader meets first.
  *
  * It carries only measured facts. The authored tool and model counts are
  * deliberately absent: inside a band labelled "from this machine" they would
@@ -49,7 +54,7 @@ export function HeroMeasuredStrip({ slug }: { slug: string }) {
 					aria-hidden="true"
 					className={cn(
 						"inline-block size-1.5 shrink-0",
-						snapshot.isFresh ? "bg-accent-lime" : "bg-orange-400",
+						isStale(snapshot.receivedAt) ? "bg-orange-400" : "bg-accent-lime",
 					)}
 				/>
 				{KICKER}
