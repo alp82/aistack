@@ -8,6 +8,7 @@
  * fails loudly instead of the site quietly shipping blank charts.
  */
 
+import { render } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, test } from "vitest";
 import { BarsChart } from "../BarsChart";
@@ -145,6 +146,46 @@ describe("house style", () => {
 			<StackedAreaChart series={two} ariaLabel="Tokens by harness" />,
 		);
 		expect(html).toContain("var(--chart-1, #69a621)");
+	});
+});
+
+describe("where the paint lives (#95)", () => {
+	// The paint is a `var()` inside an SVG *presentation attribute*, which is the
+	// library's documented theming path and the only way light and dark stay a
+	// pure CSS concern: the server cannot know the theme, so a baked hex would
+	// paint one of the two modes wrong on first paint.
+	//
+	// The DOM host repaints the scene after mount, so the attribute has to
+	// survive that. These tests pin both sides to the SAME place, because a fix
+	// that moved the paint into a `style` declaration would have to move it on
+	// both — a server attribute and a client style is a mark that changes color
+	// at hydration.
+
+	test("the server writes the paint into a fill attribute, not a style", () => {
+		const html = renderToString(
+			<StackedAreaChart series={two} ariaLabel="Tokens by harness" />,
+		);
+		expect(html).toMatch(/<path[^>]*\sfill="var\(--chart-1, #69a621\)"/);
+	});
+
+	test("the client repaint puts it in the same place the server did", () => {
+		const { container } = render(
+			<StackedAreaChart series={two} ariaLabel="Tokens by harness" />,
+		);
+		const marks = container.querySelectorAll("path[data-ts-key]");
+		expect(marks.length).toBeGreaterThanOrEqual(2);
+		const paints = Array.from(marks, (m) => m.getAttribute("fill"));
+		expect(paints).toContain("var(--chart-1, #69a621)");
+		expect(paints).toContain("var(--chart-2, #9e71fd)");
+		// No mark carries a competing paint in a style declaration.
+		for (const m of marks) expect(m.getAttribute("style")).toBeNull();
+	});
+
+	test("a line series travels by stroke, which is a separate attribute", () => {
+		const html = renderToString(
+			<TimeSeriesChart series={two} ariaLabel="Tokens by harness" />,
+		);
+		expect(html).toMatch(/<path[^>]*\sstroke="var\(--chart-1, #69a621\)"/);
 	});
 });
 
