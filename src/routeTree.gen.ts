@@ -30,7 +30,6 @@ import { Route as StacksNewRouteImport } from './routes/stacks.new'
 import { Route as StacksSlugRouteImport } from './routes/stacks.$slug'
 import { Route as SettingsMachinesRouteImport } from './routes/settings.machines'
 import { Route as SettingsAnalyticsRouteImport } from './routes/settings.analytics'
-import { Route as PrototypeFreshnessRouteImport } from './routes/prototype.freshness'
 import { Route as PrototypeChartPaletteRouteImport } from './routes/prototype.chart-palette'
 import { Route as CliAuthRouteImport } from './routes/cli.auth'
 import { Route as ApiSyncConfigRouteImport } from './routes/api.sync-config'
@@ -153,11 +152,6 @@ const SettingsAnalyticsRoute = SettingsAnalyticsRouteImport.update({
   path: '/settings/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PrototypeFreshnessRoute = PrototypeFreshnessRouteImport.update({
-  id: '/prototype/freshness',
-  path: '/prototype/freshness',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PrototypeChartPaletteRoute = PrototypeChartPaletteRouteImport.update({
   id: '/prototype/chart-palette',
   path: '/prototype/chart-palette',
@@ -258,7 +252,6 @@ export interface FileRoutesByFullPath {
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
   '/prototype/chart-palette': typeof PrototypeChartPaletteRoute
-  '/prototype/freshness': typeof PrototypeFreshnessRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -298,7 +291,6 @@ export interface FileRoutesByTo {
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
   '/prototype/chart-palette': typeof PrototypeChartPaletteRoute
-  '/prototype/freshness': typeof PrototypeFreshnessRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -339,7 +331,6 @@ export interface FileRoutesById {
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
   '/prototype/chart-palette': typeof PrototypeChartPaletteRoute
-  '/prototype/freshness': typeof PrototypeFreshnessRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -381,7 +372,6 @@ export interface FileRouteTypes {
     | '/api/sync-config'
     | '/cli/auth'
     | '/prototype/chart-palette'
-    | '/prototype/freshness'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -421,7 +411,6 @@ export interface FileRouteTypes {
     | '/api/sync-config'
     | '/cli/auth'
     | '/prototype/chart-palette'
-    | '/prototype/freshness'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -461,7 +450,6 @@ export interface FileRouteTypes {
     | '/api/sync-config'
     | '/cli/auth'
     | '/prototype/chart-palette'
-    | '/prototype/freshness'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -502,7 +490,6 @@ export interface RootRouteChildren {
   ApiSyncConfigRoute: typeof ApiSyncConfigRoute
   CliAuthRoute: typeof CliAuthRoute
   PrototypeChartPaletteRoute: typeof PrototypeChartPaletteRoute
-  PrototypeFreshnessRoute: typeof PrototypeFreshnessRoute
   SettingsAnalyticsRoute: typeof SettingsAnalyticsRoute
   SettingsMachinesRoute: typeof SettingsMachinesRoute
   StacksSlugRoute: typeof StacksSlugRoute
@@ -672,13 +659,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/prototype/freshness': {
-      id: '/prototype/freshness'
-      path: '/prototype/freshness'
-      fullPath: '/prototype/freshness'
-      preLoaderRoute: typeof PrototypeFreshnessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/prototype/chart-palette': {
       id: '/prototype/chart-palette'
       path: '/prototype/chart-palette'
@@ -825,7 +805,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSyncConfigRoute: ApiSyncConfigRoute,
   CliAuthRoute: CliAuthRoute,
   PrototypeChartPaletteRoute: PrototypeChartPaletteRoute,
-  PrototypeFreshnessRoute: PrototypeFreshnessRoute,
   SettingsAnalyticsRoute: SettingsAnalyticsRoute,
   SettingsMachinesRoute: SettingsMachinesRoute,
   StacksSlugRoute: StacksSlugRoute,

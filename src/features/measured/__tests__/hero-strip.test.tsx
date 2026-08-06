@@ -14,7 +14,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HeroMeasuredStrip } from "@/features/measured/HeroMeasuredStrip";
 import type { MeasuredSnapshot } from "../copy";
-import { buildSnapshot, DAY } from "./fixture";
+import { buildSnapshot, DAY, HOUR } from "./fixture";
 
 const queryMock = vi.fn();
 
@@ -59,15 +59,38 @@ describe("with a snapshot", () => {
 		expect(document.body.textContent).not.toMatch(/\d+ tools/);
 	});
 
-	it("marks a reading that has fallen out of the week", () => {
+	// The dot reads the 48-hour line the stamp in section 02 reads (#107
+	// decision 2). It used to read `isFresh`, the snapshot's own 7-day flag,
+	// which the leaderboard still ranks on — one page, two ages for one sync.
+	it("marks a reading past 48 hours", () => {
 		const { container } = renderWith(
-			buildSnapshot({ receivedAt: Date.now() - 19 * DAY, isFresh: false }),
+			buildSnapshot({ receivedAt: Date.now() - 19 * DAY }),
 		);
 		expect(container.querySelector(".bg-orange-400")).not.toBeNull();
 	});
 
 	it("marks a fresh reading in lime", () => {
 		const { container } = renderWith(buildSnapshot());
+		expect(container.querySelector(".bg-orange-400")).toBeNull();
+	});
+
+	// The clock is frozen for the boundary itself: the milliseconds between
+	// building the snapshot and rendering it would otherwise decide the case.
+	it("holds the lime dot at exactly 48 hours", () => {
+		const container = atExactly(48 * HOUR);
+		expect(container.querySelector(".bg-orange-400")).toBeNull();
+	});
+
+	it("turns the dot one millisecond past 48 hours", () => {
+		const container = atExactly(48 * HOUR + 1);
+		expect(container.querySelector(".bg-orange-400")).not.toBeNull();
+	});
+
+	// The snapshot's 7-day flag no longer moves it either way.
+	it("ignores the snapshot's own 7-day flag", () => {
+		const { container } = renderWith(
+			buildSnapshot({ receivedAt: Date.now() - 5 * HOUR, isFresh: false }),
+		);
 		expect(container.querySelector(".bg-orange-400")).toBeNull();
 	});
 });
@@ -84,6 +107,19 @@ describe("without a snapshot", () => {
 		expect(document.body.textContent).toBe("");
 	});
 });
+
+/** The strip rendered with the clock stopped, so an age is exactly an age. */
+function atExactly(ageMs: number) {
+	vi.useFakeTimers();
+	try {
+		const { container } = renderWith(
+			buildSnapshot({ receivedAt: Date.now() - ageMs }),
+		);
+		return container;
+	} finally {
+		vi.useRealTimers();
+	}
+}
 
 function renderWith(snapshot: MeasuredSnapshot) {
 	queryMock.mockReturnValue(snapshot);

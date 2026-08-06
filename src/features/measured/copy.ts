@@ -240,10 +240,12 @@ export function windowSentence(days: number): string {
 	return `This is a rolling ${days}-day reading, not a running total. It moves every time it is checked, because the window moves with it.`;
 }
 
-/** Only for a reading that has fallen out of the 7-day window (#38). */
-export function stalenessLine(checkedAgo: string): string {
-	return `Last checked ${checkedAgo} — this reading is going stale.`;
-}
+/*
+ * THE PER-HARNESS "going stale" LINE IS GONE (#107 decision 2). It spoke at 7
+ * days, next to a hero dot and a stamp that speak at 48 hours, and three ages
+ * for one sync on one page taught the reader nothing. The page's age now lives
+ * in `freshness.ts` and is said once.
+ */
 
 export const NEVER_SYNCED_TITLE = "This stack has not been measured yet.";
 export const NEVER_SYNCED_BODY = `Stacks can publish what actually ran on the machine they are built on — sessions, models, tokens and cost at API prices, read from ${HARNESS}.`;
@@ -258,3 +260,16 @@ export const OWNER_NOT_MEASURED_TITLE = "Your stack has not been measured yet.";
 export const OWNER_NOT_MEASURED_BODY = `One command reads your ${HARNESS} history on your machine, shows you the full summary first, and publishes only what you approve.`;
 export const PRIVACY_FOOTNOTE =
 	"runs on your machine · you see everything before it sends · cancel sends nothing";
+
+/**
+ * The one mention automation gets before a first sync exists (#107 decision 3).
+ *
+ * A stack that never synced is NOT a quiet stack — it may be hand-curated and
+ * complete — so this box carries no age and no warning. And it cannot offer the
+ * switch as a fix: `enableAutoSync` refuses a machine that is not linked, and
+ * the CLI's own answer there is "Run `npx @use-aistack/cli sync` first". So the
+ * box teaches the one command, and this line says what becomes possible after
+ * it.
+ */
+export const NEVER_SYNCED_AUTO_NOTE =
+	"After that first sync, this stack can keep itself current on a schedule.";
