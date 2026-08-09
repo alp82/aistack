@@ -1,4 +1,9 @@
-import { OPENAI_PRICING_TABLE_VERSION, PRICING_TABLE_VERSION } from '@aistack/pricing'
+import {
+  GOOGLE_PRICING_TABLE_VERSION,
+  LOCAL_PRICING_TABLE_VERSION,
+  OPENAI_PRICING_TABLE_VERSION,
+  PRICING_TABLE_VERSION,
+} from '@aistack/pricing'
 import { describe, expect, it } from 'vitest'
 import { repriceSnapshot, type WireModel } from './reprice'
 
@@ -235,5 +240,92 @@ describe('repriceSnapshot — the gap filler (#93)', () => {
       publishCost: true,
     })
     expect(out.cost).toBeNull()
+  })
+})
+
+describe('provider-qualified ids from a multi-provider harness (#123)', () => {
+  it('estimates a Google row at the Google list rate', () => {
+    const out = repriceSnapshot({
+      models: [
+        {
+          id: 'google:gemini-3-pro-preview',
+          tokens: tokens({ input: MTOK, output: MTOK }),
+        },
+      ],
+      window: JULY,
+      publishedTable: null,
+      publishCost: true,
+    })
+    // $2 in + $12 out.
+    expect(out.models[0].apiEquivalentUSD).toBe(14)
+    expect(out.cost?.pricingTables).toEqual([GOOGLE_PRICING_TABLE_VERSION])
+  })
+
+  it('charges a Google cache write as plain input, not at Anthropic 1.25x', () => {
+    // The lower-bound tenet: Google bills cache storage by the hour and charges
+    // the standard input rate to write. 1.25x would put the estimate ABOVE the
+    // real cost.
+    const out = repriceSnapshot({
+      models: [
+        {
+          id: 'google:gemini-3.6-flash',
+          tokens: tokens({ cacheWrite: MTOK, cacheRead: MTOK }),
+        },
+      ],
+      window: JULY,
+      publishedTable: null,
+      publishCost: true,
+    })
+    // $1.50 write + $0.15 read.
+    expect(out.models[0].apiEquivalentUSD).toBe(1.65)
+  })
+
+  it('leaves a gateway row unpriced instead of borrowing the vendor rate', () => {
+    // github-copilot re-serves `gemini-3-pro-preview` at terms no list page
+    // states (#122). An estimate here would be invented, and could overstate.
+    const out = repriceSnapshot({
+      models: [
+        {
+          id: 'github-copilot:gemini-3-pro-preview',
+          tokens: tokens({ input: MTOK }),
+        },
+        { id: 'opencode:big-pickle', tokens: tokens({ input: MTOK }) },
+        {
+          id: 'anthropic:claude-opus-5',
+          tokens: tokens({ input: MTOK }),
+          apiEquivalentUSD: 5,
+        },
+      ],
+      window: JULY,
+      publishedTable: PRICING_TABLE_VERSION,
+      publishCost: true,
+    })
+    expect(out.models[0].apiEquivalentUSD).toBeUndefined()
+    expect(out.models[1].apiEquivalentUSD).toBeUndefined()
+    expect(out.repricedTokens).toBe(0)
+    expect(out.cost?.coverage).toBeCloseTo(1 / 3, 9)
+  })
+
+  it('counts a local model as covered at zero rather than as a table gap', () => {
+    const out = repriceSnapshot({
+      models: [
+        { id: 'ollama:qwen3-coder', tokens: tokens({ input: MTOK }) },
+        {
+          id: 'anthropic:claude-opus-5',
+          tokens: tokens({ input: MTOK }),
+          apiEquivalentUSD: 5,
+        },
+      ],
+      window: JULY,
+      publishedTable: PRICING_TABLE_VERSION,
+      publishCost: true,
+    })
+    expect(out.models[0].apiEquivalentUSD).toBe(0)
+    expect(out.cost?.coverage).toBe(1)
+    expect(out.cost?.lowerBoundUSD).toBe(5)
+    expect(out.cost?.pricingTables).toEqual([
+      PRICING_TABLE_VERSION,
+      LOCAL_PRICING_TABLE_VERSION,
+    ])
   })
 })

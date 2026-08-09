@@ -39,8 +39,7 @@
  */
 
 import {
-  CACHE_READ_MULTIPLIER,
-  CACHE_WRITE_5M_MULTIPLIER,
+  cacheMultipliersFor,
   pricePeriodsInWindow,
   pricingTableFor,
 } from '@aistack/pricing'
@@ -129,12 +128,15 @@ export function estimateModelUSD(
   if (!range) return null
   const periods = pricePeriodsInWindow(id, range.from, range.to)
   if (periods.length === 0) return null
+  // The multipliers are the model's vendor's, not Anthropic's — a Google cache
+  // write is charged as plain input, and 1.25x there would overstate.
+  const c = cacheMultipliersFor(id)
   const costs = periods.map(
     (p) =>
       (t.input * p.input +
         t.output * p.output +
-        t.cacheWrite * p.input * CACHE_WRITE_5M_MULTIPLIER +
-        t.cacheRead * p.input * CACHE_READ_MULTIPLIER) /
+        t.cacheWrite * p.input * c.write5m +
+        t.cacheRead * p.input * c.read) /
       M
   )
   return round2(Math.min(...costs))

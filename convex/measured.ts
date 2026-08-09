@@ -1,3 +1,4 @@
+import { vendorModelId } from '@aistack/pricing'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
@@ -271,6 +272,11 @@ export async function loadModelCatalog(ctx: QueryCtx): Promise<ModelCatalog> {
  * normalized vendor id (`claude-haiku-4-5`, dated suffix stripped) and the
  * catalog may carry the dated spelling as an alias, or vice versa.
  *
+ * A multi-provider harness publishes `provider:model` (#123), so the plain
+ * vendor id is tried second. Identity and price part ways here on purpose: a
+ * model re-served by a gateway IS that model in the catalog, and still holds no
+ * citable rate.
+ *
  * An unresolved id keeps its tokens and its cost and reports a null slug. That
  * is the honest failure: the alternative — dropping it — is exactly the silent
  * disappearance #33 decision 3 exempted model ids to prevent.
@@ -280,7 +286,13 @@ function resolveModels(
   models: Doc<'measuredSnapshots'>['payload']['models']
 ) {
   return models.map((m) => {
-    const match = catalog.bySlug.get(m.id) ?? catalog.byAlias.get(m.id) ?? null
+    const bare = vendorModelId(m.id)
+    const match =
+      catalog.bySlug.get(m.id) ??
+      catalog.byAlias.get(m.id) ??
+      catalog.bySlug.get(bare) ??
+      catalog.byAlias.get(bare) ??
+      null
     return {
       ...m,
       catalogSlug: match?.slug ?? null,
