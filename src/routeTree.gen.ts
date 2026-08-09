@@ -30,7 +30,6 @@ import { Route as StacksNewRouteImport } from './routes/stacks.new'
 import { Route as StacksSlugRouteImport } from './routes/stacks.$slug'
 import { Route as SettingsMachinesRouteImport } from './routes/settings.machines'
 import { Route as SettingsAnalyticsRouteImport } from './routes/settings.analytics'
-import { Route as PrototypeChartPaletteRouteImport } from './routes/prototype.chart-palette'
 import { Route as CliAuthRouteImport } from './routes/cli.auth'
 import { Route as ApiSyncConfigRouteImport } from './routes/api.sync-config'
 import { Route as AdminIconsRouteImport } from './routes/admin_.icons'
@@ -152,11 +151,6 @@ const SettingsAnalyticsRoute = SettingsAnalyticsRouteImport.update({
   path: '/settings/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PrototypeChartPaletteRoute = PrototypeChartPaletteRouteImport.update({
-  id: '/prototype/chart-palette',
-  path: '/prototype/chart-palette',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const CliAuthRoute = CliAuthRouteImport.update({
   id: '/cli/auth',
   path: '/cli/auth',
@@ -251,7 +245,6 @@ export interface FileRoutesByFullPath {
   '/admin/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
-  '/prototype/chart-palette': typeof PrototypeChartPaletteRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -290,7 +283,6 @@ export interface FileRoutesByTo {
   '/admin/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
-  '/prototype/chart-palette': typeof PrototypeChartPaletteRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -330,7 +322,6 @@ export interface FileRoutesById {
   '/admin_/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
-  '/prototype/chart-palette': typeof PrototypeChartPaletteRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
@@ -371,7 +362,6 @@ export interface FileRouteTypes {
     | '/admin/icons'
     | '/api/sync-config'
     | '/cli/auth'
-    | '/prototype/chart-palette'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -410,7 +400,6 @@ export interface FileRouteTypes {
     | '/admin/icons'
     | '/api/sync-config'
     | '/cli/auth'
-    | '/prototype/chart-palette'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -449,7 +438,6 @@ export interface FileRouteTypes {
     | '/admin_/icons'
     | '/api/sync-config'
     | '/cli/auth'
-    | '/prototype/chart-palette'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
@@ -489,7 +477,6 @@ export interface RootRouteChildren {
   AdminIconsRoute: typeof AdminIconsRoute
   ApiSyncConfigRoute: typeof ApiSyncConfigRoute
   CliAuthRoute: typeof CliAuthRoute
-  PrototypeChartPaletteRoute: typeof PrototypeChartPaletteRoute
   SettingsAnalyticsRoute: typeof SettingsAnalyticsRoute
   SettingsMachinesRoute: typeof SettingsMachinesRoute
   StacksSlugRoute: typeof StacksSlugRoute
@@ -659,13 +646,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/prototype/chart-palette': {
-      id: '/prototype/chart-palette'
-      path: '/prototype/chart-palette'
-      fullPath: '/prototype/chart-palette'
-      preLoaderRoute: typeof PrototypeChartPaletteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/cli/auth': {
       id: '/cli/auth'
       path: '/cli/auth'
@@ -804,7 +784,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminIconsRoute: AdminIconsRoute,
   ApiSyncConfigRoute: ApiSyncConfigRoute,
   CliAuthRoute: CliAuthRoute,
-  PrototypeChartPaletteRoute: PrototypeChartPaletteRoute,
   SettingsAnalyticsRoute: SettingsAnalyticsRoute,
   SettingsMachinesRoute: SettingsMachinesRoute,
   StacksSlugRoute: StacksSlugRoute,
