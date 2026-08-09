@@ -32,14 +32,23 @@ export {
 	CACHE_READ_MULTIPLIER,
 	CACHE_WRITE_1H_MULTIPLIER,
 	CACHE_WRITE_5M_MULTIPLIER,
+	type CacheMultipliers,
+	cacheMultipliersFor,
+	GOOGLE_PRICING_TABLE_VERSION,
+	isLocalModel,
 	isPricedModel,
+	LOCAL_PRICING_TABLE_VERSION,
+	modelKeyFor,
 	normalizeModel,
 	OPENAI_PRICING_TABLE_VERSION,
 	PRICING_TABLE_VERSION,
+	PROVIDER_SEPARATOR,
 	type PricePeriod,
 	priceAt,
 	SONNET_5_INTRO_ENDS_MS,
+	splitModelKey,
 	type TokenCounts,
+	vendorModelId,
 } from "@aistack/pricing";
 export { CLAUDE_HARNESS_NAME, claudeAdapter } from "./claude/adapter.js";
 export {

@@ -1,4 +1,8 @@
-import { PRICING_TABLE_VERSION } from "@aistack/pricing";
+import {
+	apiEquivalentCost,
+	PRICING_TABLE_VERSION,
+	type TokenCounts,
+} from "@aistack/pricing";
 import { describe, expect, it } from "vitest";
 import {
 	cleanName,
@@ -7,6 +11,10 @@ import {
 	isDisplaySafeName,
 } from "../claude/analyzer.js";
 import { assistant, slashCommand, toolUse } from "../claude/fixtures.js";
+import {
+	addModelUsage,
+	createAggregate as sharedAggregate,
+} from "./aggregate.js";
 import {
 	BUILTIN_TOOLS,
 	BUNDLED_SYNC_CONFIG,
@@ -463,6 +471,85 @@ describe("every string in a built payload clears the server's bound (#45)", () =
 		}
 		expect(payload.window.from).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 		expect(payload.window.to).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+	});
+});
+
+describe("a multi-provider harness prices at ingest (#123)", () => {
+	// opencode and pi-mono route several providers through one payload, so their
+	// rows are keyed `provider:model`. There is no adapter yet (#124, #126), so
+	// these drive the shared aggregate directly — the seam every adapter uses.
+	function buildProvided(
+		rows: ReadonlyArray<{ key: string; input: number; output: number }>,
+	): MeasuredPayload {
+		const agg = sharedAggregate();
+		for (const r of rows) {
+			const counts: TokenCounts = {
+				input: r.input,
+				output: r.output,
+				cacheWrite5m: 0,
+				cacheWrite1h: 0,
+				cacheWriteUnsplit: 0,
+				cacheRead: 0,
+			};
+			addModelUsage(agg, r.key, counts, apiEquivalentCost(r.key, counts, NOW));
+		}
+		return buildPayload({
+			aggregate: agg,
+			stats: CLEAN_STATS,
+			syncConfig: config(),
+			now: NOW,
+			windowDays: 30,
+			...HARNESS_PARAMS,
+		}).payload;
+	}
+
+	it("publishes exact dollars for a newly covered provider", () => {
+		// The point of adding Google to the table: this figure is priced at the
+		// response's own timestamp, so the backend never has to fall back to its
+		// lower bound.
+		const payload = buildProvided([
+			{
+				key: "google:gemini-3-pro-preview",
+				input: 1_000_000,
+				output: 1_000_000,
+			},
+		]);
+		expect(payload.models[0].id).toBe("google:gemini-3-pro-preview");
+		expect(payload.models[0].apiEquivalentUSD).toBeCloseTo(14, 2);
+		expect(payload.excludedTokens.unpriced).toBe(0);
+	});
+
+	it("keeps the provider prefix intact through the id sanitizer", () => {
+		// `:` is in the server's model-id charset and `/` is not. That is why the
+		// pricing key uses a colon — a rewritten id would not find its rate again
+		// at read time.
+		expect(sanitizeModelId("google:gemini-3-pro-preview")).toBe(
+			"google:gemini-3-pro-preview",
+		);
+	});
+
+	it("publishes the Google dollars while a gateway row stays unpriced", () => {
+		// Per-model gating was already correct; this proves the new keys ride it.
+		const payload = buildProvided([
+			{ key: "google:gemini-3-pro-preview", input: 1_000_000, output: 0 },
+			{ key: "github-copilot:gemini-3-pro-preview", input: 500_000, output: 0 },
+		]);
+		const byId = new Map(payload.models.map((m) => [m.id, m]));
+		expect(
+			byId.get("google:gemini-3-pro-preview")?.apiEquivalentUSD,
+		).toBeCloseTo(2, 2);
+		expect(byId.get("github-copilot:gemini-3-pro-preview")).not.toHaveProperty(
+			"apiEquivalentUSD",
+		);
+		expect(payload.excludedTokens.unpriced).toBe(500_000);
+	});
+
+	it("publishes $0.00 for a local model, which is a figure and not a gap", () => {
+		const payload = buildProvided([
+			{ key: "ollama:qwen3-coder", input: 1_000_000, output: 1_000_000 },
+		]);
+		expect(payload.models[0].apiEquivalentUSD).toBe(0);
+		expect(payload.excludedTokens.unpriced).toBe(0);
 	});
 });
 

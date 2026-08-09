@@ -70,6 +70,12 @@ never published — `tsup` bundles it into the CLI's `dist`.
 * Every surface that prints dollars prints the price-table id and the share of
   tokens the figure covers. `publishCost` on the stack is the consent gate —
   check the flag, never the presence of dollars.
+* A harness that routes several providers keys its rows `provider:model`
+  (`google:gemini-3.6-flash`). Only a provider the table maps to a vendor gets
+  that vendor's rates, so a gateway re-serving someone else's model stays
+  unpriced. Local providers hold a real zero rate, cited `local-no-charge` —
+  free is a fact about the machine, unpriced is a fact about the table. Use
+  `vendorModelId()` for display and catalog lookups.
 
 ## Charts
 
