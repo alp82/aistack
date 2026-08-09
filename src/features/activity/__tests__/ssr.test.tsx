@@ -24,7 +24,7 @@ describe("server rendering", () => {
 			<PulseBand band={band({ rows: [syncRow()] })} variant="landing" />,
 		);
 
-		expect(html).toContain("+512M");
+		expect(html).toContain("512M");
 		// Uppercased by CSS, so the markup carries the words as written.
 		expect(html).toContain("tokens measured");
 		expect(html).toContain("596");

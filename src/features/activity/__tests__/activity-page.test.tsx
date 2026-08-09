@@ -53,7 +53,7 @@ describe("the page", () => {
 		expect(
 			screen.getByRole("heading", { name: "ACTIVITY" }),
 		).toBeInTheDocument();
-		expect(screen.getByText("+512M")).toBeInTheDocument();
+		expect(screen.getByText("512M")).toBeInTheDocument();
 		expect(screen.getByText("tokens measured")).toBeInTheDocument();
 	});
 

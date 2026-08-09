@@ -25,7 +25,12 @@ export function trendOf(points: readonly SeriesPoint[]): number | null {
 
 /**
  * The trend in words, for the narrow layout that has no room to draw it.
- * `syncCount` is the row's full reading count — `points` may be capped.
+ *
+ * The percentage is labelled with the span it actually covers, `points.length`,
+ * NOT with `syncCount` (#129). The server caps `points` at 60 while reporting
+ * the row's true reading count, so a stack past 60 syncs printed
+ * `−7% over 84 syncs` for a percentage that spanned 60. `syncCount` still
+ * carries the one-reading case, where nothing is capped.
  */
 export function trendWords(
 	points: readonly SeriesPoint[],
@@ -34,7 +39,7 @@ export function trendWords(
 	const trend = trendOf(points);
 	if (trend === null) return syncCount === 1 ? "1 sync" : "no trend";
 	const sign = trend >= 0 ? "+" : "−";
-	return `${sign}${Math.abs(Math.round(trend * 100))}% over ${syncCount} syncs`;
+	return `${sign}${Math.abs(Math.round(trend * 100))}% over ${points.length} syncs`;
 }
 
 /** Wire names in words. An unknown harness keeps its wire spelling. */

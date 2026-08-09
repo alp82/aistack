@@ -32,6 +32,12 @@ import { ActivityEvent } from './schema'
  * people running Opus is one model and two people running Bash is one tool.
  * Each stack contributes only its LATEST sync in the window, or a stack that
  * synced twice would report its sessions twice.
+ *
+ * A LEVEL OR A MOVEMENT, NEVER A THIRD THING (#128, built in #129). The band's
+ * five tiles and the watermark behind them are LEVELS — they take no sign and
+ * they may fall. The rows under them are MOVEMENTS, and a movement always
+ * carries its sign. Nothing floors, and nothing drops the fallers before
+ * summing.
  */
 
 const HOUR_MS = 60 * 60 * 1000
@@ -90,8 +96,6 @@ const Band = v.object({
     syncs: v.number(),
     /** Stacks published plus compositions changed — one number on the surface. */
     updates: v.number(),
-    /** Movement the whole site gained in the window; a fall contributes zero. */
-    movedTokens: v.number(),
     /** Distinct stacks with any activity in the watermark window. */
     stacksSeen: v.number(),
   }),
@@ -100,10 +104,17 @@ const Band = v.object({
     projects: v.number(),
     models: v.number(),
     tools: v.number(),
+    /**
+     * The total the stacks that synced in the window are carrying — a LEVEL,
+     * like its three neighbors, so it takes no sign and may fall (#128). It is
+     * NOT a movement: the tile used to sum the risers and delete the fallers,
+     * which no true sentence described.
+     */
+    tokens: v.number(),
     /** Stacks that synced in the window. Zero means quiet, and quiet is not 0. */
     stacks: v.number(),
   }),
-  /** One point per UTC day, oldest first. Tokens gained that day. */
+  /** One point per UTC day, oldest first. The level measured that day. */
   points: v.array(v.object({ at: v.number(), value: v.number() })),
   rows: v.array(FeedRow),
 })
@@ -178,17 +189,13 @@ async function scanFeed(
   /** Set once nothing below can be wanted. The walk then only settles deltas. */
   let closed = false
   let scanned = 0
-  let exhausted = true
 
   for await (const event of ctx.db
     .query('activityEvents')
     .withIndex('by_createdAt')
     .order('desc')) {
     scanned += 1
-    if (scanned > SCAN_CAP) {
-      exhausted = false
-      break
-    }
+    if (scanned > SCAN_CAP) break
 
     const stack = await visibleStack(ctx, cache, event.stackId)
     if (!stack) continue
@@ -228,20 +235,56 @@ async function scanFeed(
       }
     }
 
-    if (closed && pending.size === 0) {
-      exhausted = false
-      break
-    }
+    if (closed && pending.size === 0) break
   }
 
-  // A row still parked when the TABLE ran out has no earlier sync at all, which
-  // is what makes "first reading" true. A row still parked because the walk hit
-  // its bound knows nothing, and says nothing.
-  if (exhausted) {
-    for (const { index } of pending.values()) rows[index].firstReading = true
+  // A row still parked found no earlier sync EVENT, which is not the same as no
+  // earlier sync (#129). The events table starts where #78 turned
+  // instrumentation on, and the walk is bounded, so neither the end of the
+  // table nor the end of the walk can settle the claim. The snapshots can, so
+  // the claim rests on them.
+  for (const parked of pending.values()) {
+    const row = rows[parked.index]
+    const prior = await priorTotal(ctx, row.stackId, row.at)
+    if (prior === null) row.firstReading = true
+    else row.deltaTokens = parked.tokens - prior
   }
 
   return { rows, hasMore }
+}
+
+/**
+ * The rolling total this stack carried BEFORE the sync stamped `before`, read
+ * from `measuredSnapshots` — or null when no earlier reading exists at all.
+ *
+ * This is what makes "first reading" a fact (#129). `activityEvents` only
+ * reaches back to #78, so a stack that synced nine times before that had every
+ * one of those readings claimed as its first. The snapshots hold one immutable
+ * row per approved sync since the stack began, and nothing prunes them.
+ *
+ * `receivedAt` is the server clock the event is stamped with, and every
+ * snapshot of one batch shares it — so a strict `<` drops this sync's own rows
+ * and keeps every earlier one. `capturedAt` is the client clock and cannot be
+ * compared to an event timestamp at all.
+ *
+ * One indexed read per parked row, which is at most one per distinct stack in
+ * the walk — the same bound `usageFor` already pays for the band.
+ */
+async function priorTotal(
+  ctx: QueryCtx,
+  stackId: Id<'stacks'>,
+  before: number
+): Promise<number | null> {
+  const snapshots = await ctx.db
+    .query('measuredSnapshots')
+    .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', stackId))
+    .collect()
+  const earlier = snapshots.filter((row) => row.receivedAt < before)
+  if (earlier.length === 0) return null
+  return newestPerHarness(earlier).reduce(
+    (sum, row) => sum + row.payload.activity.totalTokens,
+    0
+  )
 }
 
 function toPublic(row: ScanRow) {
@@ -261,10 +304,17 @@ function dayStart(at: number): number {
 }
 
 /**
- * One bucket per UTC day, oldest first, holding the tokens the site GAINED that
- * day. A fall contributes zero rather than a negative: the watermark is a shape
- * behind a headline, and a line that dips below its own baseline reads as a
- * second series.
+ * One bucket per UTC day, oldest first, holding the LEVEL the stacks that
+ * synced that day were carrying (#128, built in #129). The line therefore draws
+ * the same quantity the tile above it states, and its last point IS the tile.
+ *
+ * It used to plot the tokens the site GAINED, floored at zero — a movement
+ * under a tile that is a level, so the two were unrelated numbers stacked on
+ * each other. Nothing floors anything now: a level cannot go negative, so the
+ * old fear of a line dipping below its own baseline does not arise.
+ *
+ * A stack that synced twice in one day counts once, at that day's newest
+ * reading — the same rule `usageFor` applies to the window.
  */
 function pointsFor(
   rows: ScanRow[],
@@ -275,10 +325,18 @@ function pointsFor(
   for (let back = WATERMARK_DAYS - 1; back >= 0; back -= 1) {
     buckets.set(today - back * DAY_MS, 0)
   }
+  // Rows arrive newest-first, so the first sync seen per stack per day is that
+  // day's latest reading.
+  const counted = new Set<string>()
   for (const row of rows) {
+    const tokens = syncTokens(row.event)
+    if (tokens === null) continue
     const key = dayStart(row.at)
     if (!buckets.has(key)) continue
-    buckets.set(key, (buckets.get(key) ?? 0) + Math.max(row.deltaTokens ?? 0, 0))
+    const mark = `${key}:${row.stackId}`
+    if (counted.has(mark)) continue
+    counted.add(mark)
+    buckets.set(key, (buckets.get(key) ?? 0) + tokens)
   }
   return [...buckets.entries()]
     .sort((a, b) => a[0] - b[0])
@@ -298,7 +356,8 @@ function newestPerHarness(
 }
 
 /**
- * The four measured numbers, joined from `measuredSnapshots`.
+ * The five measured numbers. Four are joined from `measuredSnapshots`; the
+ * token level comes off the sync events, which already carry it.
  *
  * The join is paid ONCE, here, for the whole band — which is exactly why the
  * rows below it stay on event-only facts (#84, #96). One indexed read per stack
@@ -313,6 +372,7 @@ async function usageFor(
   projects: number
   models: number
   tools: number
+  tokens: number
   stacks: number
 }> {
   // Rows arrive newest-first, so the first sync seen per stack is its latest.
@@ -325,11 +385,13 @@ async function usageFor(
 
   let sessions = 0
   let projects = 0
+  let tokens = 0
   const models = new Set<string>()
   const tools = new Set<string>()
 
   for (const row of latest.values()) {
     if (row.event.type !== 'sync.landed') continue
+    tokens += syncTokens(row.event) ?? 0
     for (const harness of row.event.harnesses) {
       sessions += harness.sessions
       projects += harness.projects
@@ -355,6 +417,7 @@ async function usageFor(
     projects,
     models: models.size,
     tools: tools.size,
+    tokens,
     stacks: latest.size,
   }
 }
@@ -388,10 +451,6 @@ export const band = query({
       totals: {
         syncs: inWindow.filter((r) => r.event.type === 'sync.landed').length,
         updates: inWindow.filter((r) => r.event.type !== 'sync.landed').length,
-        movedTokens: inWindow.reduce(
-          (sum, r) => sum + Math.max(r.deltaTokens ?? 0, 0),
-          0
-        ),
         stacksSeen: new Set(rows.map((r) => r.stackId as string)).size,
       },
       usage: await usageFor(ctx, rows, windowStart),

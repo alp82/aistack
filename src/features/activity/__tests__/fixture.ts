@@ -81,9 +81,6 @@ export function band(over: Partial<Band> = {}): Band {
 		totals: {
 			syncs: 2,
 			updates: 1,
-			// Deliberately NOT one row's delta: the tile is the whole site's
-			// movement, and a test that shares a number cannot tell them apart.
-			movedTokens: 512_000_000,
 			stacksSeen: 4,
 		},
 		usage: {
@@ -91,6 +88,10 @@ export function band(over: Partial<Band> = {}): Band {
 			projects: 41,
 			models: 8,
 			tools: 22,
+			// Deliberately NOT one row's delta: the tile is the level the whole
+			// site carries, and a test that shares a number cannot tell them
+			// apart.
+			tokens: 512_000_000,
 			stacks: 2,
 		},
 		points: points([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1e8, 2e8, 0, 3e8]),

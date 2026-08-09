@@ -14,7 +14,7 @@ afterEach(cleanup);
 describe("the band", () => {
 	it("leads with what the site measured, tokens on the accent", () => {
 		render(<PulseBand band={band()} variant="landing" />);
-		const tokens = screen.getByText("+512M");
+		const tokens = screen.getByText("512M");
 		expect(tokens).toHaveClass("text-accent-lime");
 		expect(screen.getByText("tokens measured")).toBeInTheDocument();
 		expect(screen.getByText("596")).toBeInTheDocument();
@@ -37,7 +37,6 @@ describe("the band", () => {
 					totals: {
 						syncs: 0,
 						updates: 0,
-						movedTokens: 0,
 						stacksSeen: 4,
 					},
 					usage: {
@@ -45,6 +44,7 @@ describe("the band", () => {
 						projects: 0,
 						models: 0,
 						tools: 0,
+						tokens: 0,
 						stacks: 0,
 					},
 				})}
@@ -55,6 +55,31 @@ describe("the band", () => {
 		// numeric: "0 syncs" counts what happened, it does not measure anything.
 		expect(screen.getAllByText("—")).toHaveLength(5);
 		expect(screen.getAllByText("0")).toHaveLength(2);
+	});
+
+	it("states the token tile as a level, so it carries no sign (#129)", () => {
+		render(<PulseBand band={band()} variant="landing" />);
+		expect(screen.queryByText("+512M")).not.toBeInTheDocument();
+	});
+
+	it("takes the same quiet guard as its neighbors, not its own value", () => {
+		// A window with syncs in it says what it measured, even at zero tokens.
+		render(
+			<PulseBand
+				band={band({
+					usage: {
+						sessions: 596,
+						projects: 41,
+						models: 8,
+						tools: 22,
+						tokens: 0,
+						stacks: 2,
+					},
+				})}
+				variant="landing"
+			/>,
+		);
+		expect(screen.getByText("0")).toBeInTheDocument();
 	});
 
 	it("drops the watermark below three days with a reading", () => {
