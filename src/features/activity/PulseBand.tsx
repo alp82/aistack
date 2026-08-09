@@ -12,7 +12,7 @@ import { fmtCount, fmtTokens, liveDays, MONO_LABEL } from "./feed";
  *
  *   // the last 24 hours              2 syncs · 1 stack update · 8 models
  *
- *   +285M            596              41               22
+ *   4.99B            596              41               22
  *   TOKENS MEASURED  SESSIONS         PROJECTS         TOOLS
  *
  *   as it lands
@@ -29,7 +29,14 @@ import { fmtCount, fmtTokens, liveDays, MONO_LABEL } from "./feed";
  * rows keep their left border.
  *
  * QUIET IS NOT ZERO. With no sync in the window every measured tile renders an
- * em dash. A row of zeroes reads as a broken site rather than a quiet one.
+ * em dash. A row of zeroes reads as a broken site rather than a quiet one. All
+ * four tiles take the SAME guard — the token tile once tested its own value,
+ * so it read as quiet whenever the number happened to be zero.
+ *
+ * ALL FOUR TILES ARE LEVELS (#128, built in #129). The token tile carries no
+ * sign and may fall. It used to print a movement with a `+`, summed over the
+ * risers only, which no true sentence described — and it sat above rows that
+ * are movements and could point the other way.
  *
  * The two `page` trims (#96): a tighter header, and no footer row — the page
  * does not repeat the landing band's footnote, and the button that led there
@@ -151,11 +158,7 @@ export function PulseBand({
 
 				<div className="grid grid-cols-2 gap-x-8 gap-y-12 md:grid-cols-4">
 					<Stat
-						value={
-							totals.movedTokens === 0
-								? "—"
-								: `+${fmtTokens(totals.movedTokens)}`
-						}
+						value={quiet ? "—" : fmtTokens(usage.tokens)}
 						label="tokens measured"
 						accent
 					/>

@@ -71,6 +71,14 @@ function syncEvent(over: {
   }
 }
 
+/** The watermark bucket holding `at`, keyed the way the query keys it: UTC day. */
+function valueOn(
+  points: { at: number; value: number }[],
+  at: number
+): number | undefined {
+  return points.find((p) => p.at === Math.floor(at / DAY) * DAY)?.value
+}
+
 async function emit(
   t: Ctx,
   stackId: Id<'stacks'>,
@@ -293,11 +301,90 @@ describe('movement', () => {
   test('the first sync a stack ever published has no movement to claim', async () => {
     const t = convexTest(schema, modules)
     const stackId = await seedStack(t)
-    await emit(t, stackId, Date.now() - HOUR, syncEvent({ totalTokens: 1_000 }))
+    const now = Date.now()
+    await snapshot(t, stackId, { capturedAt: now - HOUR, totalTokens: 1_000 })
+    await emit(t, stackId, now - HOUR, syncEvent({ totalTokens: 1_000 }))
 
     const feed = await t.query(api.activityFeed.stream, {})
     expect(feed.rows[0].deltaTokens).toBeNull()
     expect(feed.rows[0].firstReading).toBe(true)
+  })
+
+  // -------------------------------------------------------------------------
+  // "first reading" rests on the SNAPSHOTS, not on the events (#129).
+  // `activityEvents` starts where #78 turned instrumentation on, so every
+  // stack older than that had its first post-instrumentation sync called its
+  // first reading. On prod the feed said so about OrcDev while its stack page
+  // showed nine readings over six days.
+  // -------------------------------------------------------------------------
+
+  test('a sync with readings older than the events table is not a first reading', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    const now = Date.now()
+    // Three syncs the events table never saw.
+    await snapshot(t, stackId, { capturedAt: now - 4 * DAY, totalTokens: 400 })
+    await snapshot(t, stackId, { capturedAt: now - 3 * DAY, totalTokens: 700 })
+    await snapshot(t, stackId, { capturedAt: now - 2 * DAY, totalTokens: 900 })
+    await snapshot(t, stackId, { capturedAt: now - HOUR, totalTokens: 1_000 })
+    await emit(t, stackId, now - HOUR, syncEvent({ totalTokens: 1_000 }))
+
+    const feed = await t.query(api.activityFeed.stream, {})
+    expect(feed.rows[0].firstReading).toBe(false)
+    // And it carries the real movement against the newest of those readings.
+    expect(feed.rows[0].deltaTokens).toBe(100)
+  })
+
+  test('a movement recovered from the snapshots may fall', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    const now = Date.now()
+    await snapshot(t, stackId, { capturedAt: now - 2 * DAY, totalTokens: 2_000 })
+    await snapshot(t, stackId, { capturedAt: now - HOUR, totalTokens: 1_800 })
+    await emit(t, stackId, now - HOUR, syncEvent({ totalTokens: 1_800 }))
+
+    const feed = await t.query(api.activityFeed.stream, {})
+    expect(feed.rows[0].deltaTokens).toBe(-200)
+    expect(feed.rows[0].firstReading).toBe(false)
+  })
+
+  test('the prior reading is the newest per harness, summed', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    const now = Date.now()
+    await snapshot(t, stackId, {
+      capturedAt: now - 3 * DAY,
+      harness: 'claude-code',
+      totalTokens: 600,
+    })
+    await snapshot(t, stackId, {
+      capturedAt: now - 2 * DAY,
+      harness: 'codex',
+      totalTokens: 400,
+    })
+    await snapshot(t, stackId, {
+      capturedAt: now - HOUR,
+      harness: 'claude-code',
+      totalTokens: 900,
+    })
+    await emit(t, stackId, now - HOUR, syncEvent({ totalTokens: 1_300 }))
+
+    const feed = await t.query(api.activityFeed.stream, {})
+    // 600 + 400 stood before this sync, so a 1,300 reading moved +300.
+    expect(feed.rows[0].deltaTokens).toBe(300)
+  })
+
+  test('a sync that has an earlier EVENT never reads the snapshots', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    const now = Date.now()
+    // A snapshot that disagrees with the events, to prove which one is used.
+    await snapshot(t, stackId, { capturedAt: now - 3 * HOUR, totalTokens: 99 })
+    await emit(t, stackId, now - 2 * HOUR, syncEvent({ totalTokens: 1_000 }))
+    await emit(t, stackId, now - HOUR, syncEvent({ totalTokens: 1_285 }))
+
+    const feed = await t.query(api.activityFeed.stream, {})
+    expect(feed.rows[0].deltaTokens).toBe(285)
   })
 
   test('movement can fall — a 30-day window forgets its far end', async () => {
@@ -360,7 +447,7 @@ describe('the band', () => {
     expect(band.totals.updates).toBe(1)
   })
 
-  test('tokens measured is the movement the whole site gained, floored at zero', async () => {
+  test('tokens measured is a LEVEL — the total the window carries, fallers and all', async () => {
     const t = convexTest(schema, modules)
     const a = await seedStack(t, { name: 'Up' })
     const b = await seedStack(t, { name: 'Down' })
@@ -371,8 +458,20 @@ describe('the band', () => {
     await emit(t, b, now - 2 * HOUR, syncEvent({ totalTokens: 4_000 }))
 
     const band = await t.query(api.activityFeed.band, {})
-    // 300 gained, and the stack that fell contributes nothing rather than -1000.
-    expect(band.totals.movedTokens).toBe(300)
+    // The latest reading of each stack, summed. The stack that FELL is in it at
+    // its 4,000 — it is not deleted, and neither is it counted at -1,000 (#128).
+    expect(band.usage.tokens).toBe(5_300)
+  })
+
+  test('a stack that synced twice in the window counts once, at its latest', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    const now = Date.now()
+    await emit(t, stackId, now - 4 * HOUR, syncEvent({ totalTokens: 1_000 }))
+    await emit(t, stackId, now - 2 * HOUR, syncEvent({ totalTokens: 1_300 }))
+
+    const band = await t.query(api.activityFeed.band, {})
+    expect(band.usage.tokens).toBe(1_300)
   })
 
   test('sessions and projects SUM, models and tools UNION', async () => {
@@ -428,7 +527,7 @@ describe('the band', () => {
     const band = await t.query(api.activityFeed.band, {})
     expect(band.usage.stacks).toBe(0)
     expect(band.usage.sessions).toBe(0)
-    expect(band.totals.movedTokens).toBe(0)
+    expect(band.usage.tokens).toBe(0)
     // The rows themselves still show: the band is quiet, not empty.
     expect(band.rows).toHaveLength(1)
   })
@@ -446,7 +545,7 @@ describe('the band', () => {
     expect(band.rows[0].at).toBe(now)
   })
 
-  test('the watermark is one daily bucket of gained tokens per day', async () => {
+  test('the watermark plots the level measured each day, so its last point is the tile', async () => {
     const t = convexTest(schema, modules)
     const stackId = await seedStack(t)
     const now = Date.now()
@@ -459,9 +558,29 @@ describe('the band', () => {
     expect(band.points[band.points.length - 1].at).toBeGreaterThan(
       band.points[0].at
     )
-    const gained = band.points.reduce((sum, p) => sum + p.value, 0)
-    // The first sync has nothing to compare against, so it gains nothing.
-    expect(gained).toBe(1_000)
+    // Each day carries what it measured, not what it gained — so the first sync
+    // is 1,000 rather than nothing, and the newest day equals the tile.
+    expect(band.points.map((p) => p.value).filter((v) => v > 0)).toEqual([
+      1_000, 1_500, 2_000,
+    ])
+    expect(valueOn(band.points, now - HOUR)).toBe(band.usage.tokens)
+  })
+
+  test('a day two stacks synced sums their levels, each at its latest', async () => {
+    const t = convexTest(schema, modules)
+    const a = await seedStack(t, { name: 'A' })
+    const b = await seedStack(t, { name: 'B' })
+    // Yesterday noon UTC: always in the past, always inside the watermark, and
+    // far enough from a bucket boundary that the three events land together
+    // whatever time of day the test runs.
+    const noon = Math.floor(Date.now() / DAY) * DAY - 12 * HOUR
+    await emit(t, a, noon - 3 * HOUR, syncEvent({ totalTokens: 1_000 }))
+    await emit(t, a, noon - 2 * HOUR, syncEvent({ totalTokens: 1_200 }))
+    await emit(t, b, noon - HOUR, syncEvent({ totalTokens: 500 }))
+
+    const band = await t.query(api.activityFeed.band, {})
+    // A's older 1,000 is dropped for its own 1,200; B adds its 500.
+    expect(valueOn(band.points, noon)).toBe(1_700)
   })
 
   test('counts the stacks it measured across', async () => {

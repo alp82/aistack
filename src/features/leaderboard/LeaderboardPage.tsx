@@ -167,6 +167,11 @@ function Row({
 /**
  * The sparkline cell. One reading is not a trend, and the row says so rather
  * than drawing a flat stroke that would claim days nobody measured.
+ *
+ * A RISE AND A FALL WEAR THE SAME COLOR (#128, built in #129). The sign carries
+ * the direction. Grey is this page's muted color, so a grey fall read as "this
+ * row is fading" rather than as "down" — and the feed already treats a fall as
+ * a fact, not as a demotion.
  */
 function Trend({ row }: { readonly row: BoardRow }) {
 	const trend = trendOf(row.points);
@@ -187,7 +192,7 @@ function Trend({ row }: { readonly row: BoardRow }) {
 				{drawable ? (
 					<Sparkline
 						points={row.points.map((p) => ({ at: p.at, value: p.tokens }))}
-						ariaLabel={`${row.name} measured tokens across ${row.syncCount} syncs`}
+						ariaLabel={`${row.name} measured tokens across ${row.points.length} syncs`}
 						width={SPARK_WIDTH}
 						height={SPARK_HEIGHT}
 					/>
@@ -203,11 +208,11 @@ function Trend({ row }: { readonly row: BoardRow }) {
 			<span className="mt-1 block whitespace-nowrap font-mono text-[10px] leading-none text-fg-muted">
 				{drawable ? (
 					<>
-						<span className={up ? "text-accent-lime" : "text-fg-secondary"}>
+						<span className="text-accent-lime">
 							{up ? "+" : "−"}
 							{f.pct(Math.abs(trend ?? 0))}
 						</span>{" "}
-						· {row.syncCount} syncs
+						· {row.points.length} syncs
 					</>
 				) : (
 					`${row.syncCount === 1 ? "1 sync" : `${row.syncCount} syncs`} · no trend`

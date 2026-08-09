@@ -43,6 +43,16 @@ describe("the trend", () => {
 		).toBe("−21% over 2 syncs");
 		expect(trendWords([{ at: 1, tokens: 100 }])).toBe("1 sync");
 	});
+
+	it("labels the percentage with the span it covers, not the sync count", () => {
+		// The server caps `points` at 60 while reporting the true count, so a
+		// stack past the cap used to print a span it never measured (#129).
+		const points = Array.from({ length: 60 }, (_, i) => ({
+			at: i,
+			tokens: 100 - i,
+		}));
+		expect(trendWords(points, 84)).toBe("−59% over 60 syncs");
+	});
 });
 
 describe("the board", () => {
@@ -74,6 +84,14 @@ describe("the board", () => {
 		setup();
 		// Alper's trail goes 10M -> 8M: −20% over 2 syncs.
 		expect(screen.getAllByText(/−20%/).length).toBeGreaterThan(0);
+	});
+
+	it("colors a fall like a rise — the sign carries the direction (#129)", () => {
+		setup();
+		// Anchored: the drawn cell states the percentage alone, the narrow
+		// layout states it inside a sentence.
+		expect(screen.getByText(/^−20%$/)).toHaveClass("text-accent-lime");
+		expect(screen.getByText(/^\+17%$/)).toHaveClass("text-accent-lime");
 	});
 
 	it("prints spend as a lower bound with its coverage, or exactly", () => {
