@@ -124,6 +124,11 @@ function checkPayloadStrings(
         `models[${i}].id must be 1-${MODEL_ID_MAX} characters of A-Z a-z 0-9 . _ : -`
       )
     }
+    // The per-model citation (#136) renders on the same public page as the
+    // payload-level one, so it clears the same bar.
+    if (model.pricingTable !== undefined) {
+      requireName(model.pricingTable, `models[${i}].pricingTable`)
+    }
   })
 
   for (const category of NAME_CATEGORIES) {
@@ -214,6 +219,11 @@ const ResolvedModel = v.object({
     cacheRead: v.number(),
   }),
   apiEquivalentUSD: v.optional(v.number()),
+  /**
+   * The table citing the dollars above, per model (#136) — the payload's own
+   * for a published figure, ours for an estimated one. Absent with the dollars.
+   */
+  pricingTable: v.optional(v.string()),
   /**
    * True when the dollars above were priced server-side from the shared table
    * rather than by the syncing CLI (#93). An estimate is a lower bound: the
@@ -488,9 +498,14 @@ function mergeModels(lists: Priced[][]): Priced[] {
       if (held.apiEquivalentUSD !== undefined && m.apiEquivalentUSD !== undefined) {
         held.apiEquivalentUSD += m.apiEquivalentUSD
         held.costEstimated = held.costEstimated || m.costEstimated
+        // A merged figure keeps its citation only while every contributor
+        // cites the same table (#136); the headline's `pricingTables` still
+        // names them all either way.
+        if (held.pricingTable !== m.pricingTable) held.pricingTable = undefined
       } else {
         held.apiEquivalentUSD = undefined
         held.costEstimated = false
+        held.pricingTable = undefined
       }
       if (held.catalogSlug === null) {
         held.catalogSlug = m.catalogSlug

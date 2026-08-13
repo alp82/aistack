@@ -31,6 +31,11 @@
 // cost is computed as it is ingested and un-applied on replace.
 
 import {
+	apiEquivalentCost,
+	normalizeModel,
+	type TokenCounts,
+} from "@aistack/pricing";
+import {
 	asArr,
 	asName,
 	asNum,
@@ -44,11 +49,6 @@ import {
 	type Obj,
 	type Aggregate as SharedAggregate,
 } from "../shared/aggregate.js";
-import {
-	apiEquivalentCost,
-	normalizeModel,
-	type TokenCounts,
-} from "@aistack/pricing";
 
 // Re-exported for the existing import sites (tests, stage, summary); the
 // definitions moved to ../shared/aggregate.ts in #67.

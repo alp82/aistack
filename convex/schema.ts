@@ -89,6 +89,11 @@ const MeasuredModel = v.object({
   // Absent when publishCost is off, or when the model was not fully priced —
   // never zeroed (#33 decision 11).
   apiEquivalentUSD: v.optional(v.number()),
+  // The table that produced the dollars above, riding on the model (#136): one
+  // opencode payload mixes vendors, so the payload-level `pricingTable` cannot
+  // cite every figure. Present exactly when the dollars are. Absent on
+  // payloads from before the mixed-vendor wire change.
+  pricingTable: v.optional(v.string()),
 })
 
 export const MeasuredPayload = v.object({

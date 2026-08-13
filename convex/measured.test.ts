@@ -340,6 +340,36 @@ describe('publishSnapshot — string bounds on the payload', () => {
     ).resolves.toBeDefined()
   })
 
+  test('accepts and bounds a per-model pricingTable (#136)', async () => {
+    // A mixed-vendor payload cites the table on the model, not on the payload.
+    // The string renders on the same public page as the rest, so it clears the
+    // same bar.
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const model = (pricingTable: string) => [
+      {
+        id: 'openai:gpt-5.4',
+        tokenShare: 1,
+        tokens: { input: 1, output: 1, cacheWrite: 0, cacheRead: 0 },
+        apiEquivalentUSD: 2.5,
+        pricingTable,
+      },
+    ]
+
+    await expect(
+      publish(t, stackId, {
+        pricingTable: null,
+        models: model('openai-list-2026-08-02'),
+      }),
+    ).resolves.toBeDefined()
+    await expect(
+      publish(t, stackId, { models: model('z'.repeat(65)) }),
+    ).rejects.toThrow(/models\[0\]\.pricingTable/)
+    await expect(
+      publish(t, stackId, { models: model(`x${BIDI_OVERRIDE}`) }),
+    ).rejects.toThrow(/models\[0\]\.pricingTable/)
+  })
+
   test('window bounds are dates, so the rendered window cannot be arbitrary text', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
@@ -556,6 +586,48 @@ describe('getCurrentByStackSlug', () => {
       slug: `my-stack-${shortId}`,
     })
     expect(current?.models[0].catalogSlug).toBe('claude-haiku-4-5-20251001')
+  })
+
+  test('cites every per-model table in the cost reading (#136)', async () => {
+    // One opencode snapshot prices OpenAI and Google rows from two tables and
+    // its top-level pricingTable is null. Both citations must survive to the
+    // surface — the old shape stamped one string over both.
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({
+        pricingTable: null,
+        models: [
+          {
+            id: 'openai:gpt-5.4',
+            tokenShare: 0.5,
+            tokens: { input: 10, output: 10, cacheWrite: 0, cacheRead: 0 },
+            apiEquivalentUSD: 2.5,
+            pricingTable: 'openai-list-2026-08-02',
+          },
+          {
+            id: 'google:gemini-3.6-flash',
+            tokenShare: 0.5,
+            tokens: { input: 10, output: 10, cacheWrite: 0, cacheRead: 0 },
+            apiEquivalentUSD: 1.5,
+            pricingTable: 'google-list-2026-08-09',
+          },
+        ],
+      }) as never,
+    })
+
+    const current = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(current?.cost?.pricingTables).toEqual([
+      'openai-list-2026-08-02',
+      'google-list-2026-08-09',
+    ])
+    expect(current?.pricingTable).toBe(
+      'openai-list-2026-08-02 + google-list-2026-08-09',
+    )
+    expect(current?.cost?.publishedUSD).toBe(4)
   })
 
   test('reports isFresh from the SERVER clock', async () => {

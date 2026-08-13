@@ -17,7 +17,6 @@
 //       windowDays: DEFAULT_WINDOW_DAYS,
 //       harnessName: adapter.name,
 //       builtinTools: adapter.builtinTools,
-//       pricingTableVersion: adapter.pricingTableVersion,
 //     });
 //   }
 

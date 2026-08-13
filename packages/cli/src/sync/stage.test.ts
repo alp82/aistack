@@ -2,7 +2,6 @@
 // staged bodyJson IS the serialized body, the id is derived from it, and a
 // stage that cannot name its destination is blocked before any gate.
 
-import { PRICING_TABLE_VERSION } from "@aistack/pricing";
 import { describe, expect, test } from "vitest";
 import { createAggregate, ingestRecord } from "../harness/claude/analyzer.js";
 import { assistant } from "../harness/claude/fixtures.js";
@@ -64,7 +63,6 @@ function deps(
 const FAKE_CLAUDE_ADAPTER: HarnessAdapter = {
 	name: "claude-code",
 	builtinTools: BUILTIN_TOOLS,
-	pricingTableVersion: PRICING_TABLE_VERSION,
 	detect: async () => true,
 	scan: async () => {
 		const aggregate = createAggregate();

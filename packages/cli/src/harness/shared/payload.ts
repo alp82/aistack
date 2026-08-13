@@ -13,7 +13,7 @@
 //      not in the payload at all (#33 decision 11) — there is nothing to
 //      "reveal" server-side, because nothing was transmitted.
 
-import { baseModelId } from "@aistack/pricing";
+import { baseModelId, pricingTableFor } from "@aistack/pricing";
 import {
 	type Aggregate,
 	cleanName,
@@ -44,6 +44,13 @@ export type PayloadModel = {
 		cacheRead: number;
 	};
 	apiEquivalentUSD?: number;
+	/**
+	 * The table that produced `apiEquivalentUSD` — present exactly when the
+	 * dollars are (#136). Per model, not per payload: one opencode payload mixes
+	 * vendors, so a single top-level id would cite one table for dollars drawn
+	 * from two.
+	 */
+	pricingTable?: string;
 };
 
 export type PayloadAtom = { name: string; callShare: number };
@@ -70,7 +77,12 @@ export type MeasuredPayload = {
 	capturedAt: number;
 	window: { days: number; from: string; to: string };
 	harness: { name: string; version: string | null };
-	/** `null` when `publishCost` is off — no cost was computed into the payload. */
+	/**
+	 * The one table the models' citations agree on, or `null` — when
+	 * `publishCost` is off, when nothing priced, and when a mixed-vendor payload
+	 * cites several tables (the per-model `pricingTable` fields carry the truth,
+	 * and joining them here would blow the server's 64-character name bound).
+	 */
 	pricingTable: string | null;
 	activity: {
 		sessions: number;
@@ -181,6 +193,8 @@ type ModelGroup = {
 	costUSD: number;
 	unpricedTokens: number;
 	anyUnpriceable: boolean;
+	/** The table citing this group's rates; every row shares it (one base model). */
+	table: string | null;
 };
 
 /**
@@ -211,9 +225,11 @@ function groupModels(rows: readonly ModelRow[]): ModelGroup[] {
 				costUSD: 0,
 				unpricedTokens: 0,
 				anyUnpriceable: false,
+				table: null,
 			};
 			groups.set(id, g);
 		}
+		g.table ??= pricingTableFor(r.modelKey);
 		g.totalTokens += r.totalTokens;
 		g.input += r.tokens.input;
 		g.output += r.tokens.output;
@@ -249,9 +265,16 @@ function buildModels(
 		};
 		// Absent, not zero: a partially-priced model reporting a dollar figure
 		// would understate without saying so. `excludedTokens.unpriced` carries
-		// the tokens that were left out.
-		if (publishCost && !g.anyUnpriceable && g.unpricedTokens === 0) {
+		// the tokens that were left out. Dollars and their citation travel
+		// together (#136) — a figure without its table may not render anywhere.
+		if (
+			publishCost &&
+			!g.anyUnpriceable &&
+			g.unpricedTokens === 0 &&
+			g.table !== null
+		) {
 			model.apiEquivalentUSD = round2(g.costUSD);
+			model.pricingTable = g.table;
 		}
 		return model;
 	});
@@ -272,8 +295,6 @@ export type BuildPayloadInput = {
 	harnessName: string;
 	/** The adapter's fail-closed vendor tool set (#66 decision 3). */
 	builtinTools: ReadonlySet<string>;
-	/** The adapter's pinned price-table id, stamped only when cost publishes. */
-	pricingTableVersion: string;
 };
 
 export type BuiltPayload = {
@@ -300,7 +321,6 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 		windowDays,
 		harnessName,
 		builtinTools,
-		pricingTableVersion,
 	} = input;
 	const finalized = finalize(agg);
 	const { publishCost, allowlist, optIns } = syncConfig;
@@ -348,6 +368,18 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 		sumCounts(finalized.slashCommands),
 	);
 
+	const models = buildModels(
+		finalized.models,
+		finalized.totalTokens,
+		publishCost,
+	);
+	// The citation lives on each model (#136). The top-level field survives for
+	// readers of the old shape and states the one table everything agrees on —
+	// never a false single citation over a mixed payload.
+	const citedTables = [
+		...new Set(models.flatMap((m) => (m.pricingTable ? [m.pricingTable] : []))),
+	];
+
 	const payload: MeasuredPayload = {
 		schemaVersion: SCHEMA_VERSION,
 		capturedAt: now,
@@ -359,7 +391,7 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 					? null
 					: sanitizeModelId(finalized.harnessVersion),
 		},
-		pricingTable: publishCost ? pricingTableVersion : null,
+		pricingTable: citedTables.length === 1 ? citedTables[0] : null,
 		activity: {
 			sessions: finalized.sessions,
 			activeDays,
@@ -368,7 +400,7 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 			cacheHitShare: round4(finalized.cacheHitShare),
 			subagentShare: round4(finalized.sidechainShare),
 		},
-		models: buildModels(finalized.models, finalized.totalTokens, publishCost),
+		models,
 		inventory: {
 			builtinTools: builtins.atoms,
 			mcpServers: mcp.atoms,
