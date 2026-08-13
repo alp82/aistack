@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { SONNET_5_INTRO_ENDS_MS } from "@aistack/pricing";
+import { describe, expect, it } from "vitest";
 import {
 	type Aggregate,
 	cleanName,

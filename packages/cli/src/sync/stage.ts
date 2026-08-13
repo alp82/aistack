@@ -112,7 +112,6 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 				windowDays,
 				harnessName: adapter.name,
 				builtinTools: adapter.builtinTools,
-				pricingTableVersion: adapter.pricingTableVersion,
 			}),
 		);
 	}
