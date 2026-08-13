@@ -18,6 +18,7 @@ import Header from "../components/Header";
 import PosthogProvider from "../integrations/posthog/provider";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import { getToken } from "../lib/auth-server";
+import { useRecordView } from "../lib/useRecordView";
 import {
 	AUTH_TOKEN_TIMEOUT_MS,
 	useConvexAuthFromBetterAuth,
@@ -119,6 +120,12 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 function RootComponent() {
 	const context = useRouteContext({ from: Route.id });
 	const useAuth = useConvexAuthFromBetterAuth(context.token);
+	// The site-wide counter (#132). One visitor counts once per UTC day across
+	// the whole site, under the sentinel target `global` — the number the
+	// admin-only Views tab reads. Fired from the root so EVERY page counts;
+	// until this call existed the sentinel had a writer capability and no
+	// caller, and the counter stayed empty.
+	useRecordView("aggregate", "global");
 	return (
 		<ConvexProviderWithAuth
 			client={context.convexQueryClient.convexClient}

@@ -5,6 +5,7 @@ import schema from './schema'
 import { api, internal } from './_generated/api'
 import type { MutationCtx } from './_generated/server'
 import type { Id } from './_generated/dataModel'
+import { ADMIN_EMAILS } from './lib/admin'
 
 const modules = import.meta.glob('./**/*.{js,ts}')
 
@@ -222,6 +223,43 @@ test('a signed-in user counts on the aggregate page — it has no owner', async 
     ...baseArgs,
     targetKind: 'aggregate',
     targetId: 'global',
+  })
+
+  expect(result.counted).toBe(true)
+})
+
+test('a signed-in admin does not count on the aggregate page — they own the site', async () => {
+  // The per-target rule already excludes an owner from their own counter. The
+  // aggregate counter's owner is the site's admin, and the number exists so the
+  // admin can read a send — their own browsing must not be in it.
+  const t = convexTest(schema, modules)
+  const asAdmin = t.withIdentity({
+    tokenIdentifier: 'convex|admin',
+    email: ADMIN_EMAILS[0],
+  })
+
+  const result = await asAdmin.mutation(api.views.record, {
+    ...baseArgs,
+    targetKind: 'aggregate',
+    targetId: 'global',
+  })
+
+  expect(result.counted).toBe(false)
+})
+
+test("an admin still counts on another owner's stack, like any visitor", async () => {
+  // Admin-exclusion is scoped to the aggregate target. On a per-target counter
+  // the admin is an ordinary visitor, and dropping them would undercount.
+  const t = convexTest(schema, modules)
+  const { stackId } = await seedStack(t, { userId: 'u-any', slug: 'creator-any' })
+  const asAdmin = t.withIdentity({
+    tokenIdentifier: 'convex|admin',
+    email: ADMIN_EMAILS[0],
+  })
+
+  const result = await asAdmin.mutation(api.views.record, {
+    ...baseArgs,
+    targetId: stackId,
   })
 
   expect(result.counted).toBe(true)

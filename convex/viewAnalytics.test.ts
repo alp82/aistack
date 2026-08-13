@@ -14,6 +14,7 @@ import schema from './schema'
 import { api } from './_generated/api'
 import type { MutationCtx } from './_generated/server'
 import type { Id } from './_generated/dataModel'
+import { ADMIN_EMAILS } from './lib/admin'
 
 const modules = import.meta.glob('./**/*.{js,ts}')
 
@@ -359,4 +360,166 @@ test('an owner with nothing counted reports no first day at all', async () => {
   const asM = t.withIdentity({ tokenIdentifier: 'convex|owner-m' })
   const result = await asM.query(api.viewAnalytics.mine, {})
   expect(result?.firstCountedDayMs).toBeNull()
+})
+
+// ---------------------------------------------------------------------------
+// The site-wide reader (#132) — the guard
+//
+// The `global` counter belongs to nobody, so its reader is gated on
+// `isAdmin(ctx)` INSIDE the query. A client-side `/admin` route guard protects
+// nothing — any authed client can call a public function directly.
+// ---------------------------------------------------------------------------
+
+test('siteWide: a signed-out caller gets nothing', async () => {
+  const t = convexTest(schema, modules)
+  expect(await t.query(api.viewAnalytics.siteWide, {})).toBeNull()
+})
+
+test('siteWide: a signed-in non-admin gets nothing, even with a creator profile', async () => {
+  const t = convexTest(schema, modules)
+  await seedCreator(t, { userId: 'owner-n', slug: 'owner-n' })
+  const asOwner = t.withIdentity({ tokenIdentifier: 'convex|owner-n' })
+  expect(await asOwner.query(api.viewAnalytics.siteWide, {})).toBeNull()
+})
+
+test('siteWide: an admin gets an answer', async () => {
+  const t = convexTest(schema, modules)
+  const asAdmin = t.withIdentity({
+    tokenIdentifier: 'convex|admin',
+    email: ADMIN_EMAILS[0],
+  })
+  const result = await asAdmin.query(api.viewAnalytics.siteWide, {})
+  expect(result).not.toBeNull()
+})
+
+// ---------------------------------------------------------------------------
+// The site-wide reader — what it counts
+// ---------------------------------------------------------------------------
+
+function asAdminOn(t: ReturnType<typeof convexTest>) {
+  return t.withIdentity({
+    tokenIdentifier: 'convex|admin',
+    email: ADMIN_EMAILS[0],
+  })
+}
+
+test('siteWide: reads the global counter only, never a sum of per-target rows', async () => {
+  // The global counter dedupes one visitor once per day across the site. A sum
+  // over per-target rows would count one visitor once per page they opened, so
+  // the per-target rows must not leak into this number.
+  const t = convexTest(schema, modules)
+  const { stackId } = await seedCreator(t, { userId: 'owner-o', slug: 'owner-o' })
+  const day = today()
+  await seedCounter(t, {
+    targetKind: 'stack',
+    targetId: stackId,
+    dayStartMs: day,
+    referrerBucket: 'direct',
+    count: 40,
+  })
+  await seedCounter(t, {
+    targetKind: 'aggregate',
+    targetId: 'global',
+    dayStartMs: day,
+    referrerBucket: 'direct',
+    count: 7,
+  })
+
+  const result = await asAdminOn(t).query(api.viewAnalytics.siteWide, {})
+  expect(result?.total).toBe(7)
+  expect(result?.days).toEqual([{ at: day, value: 7 }])
+})
+
+test('siteWide: a day sums its buckets, and quiet days between counted ones read as zero', async () => {
+  const t = convexTest(schema, modules)
+  const day = today()
+  await seedCounter(t, {
+    targetKind: 'aggregate',
+    targetId: 'global',
+    dayStartMs: day - 2 * DAY_MS,
+    referrerBucket: 'social',
+    count: 4,
+  })
+  await seedCounter(t, {
+    targetKind: 'aggregate',
+    targetId: 'global',
+    dayStartMs: day,
+    referrerBucket: 'social',
+    count: 2,
+  })
+  await seedCounter(t, {
+    targetKind: 'aggregate',
+    targetId: 'global',
+    dayStartMs: day,
+    referrerBucket: 'direct',
+    count: 1,
+  })
+
+  const result = await asAdminOn(t).query(api.viewAnalytics.siteWide, {})
+  expect(result?.days).toEqual([
+    { at: day - 2 * DAY_MS, value: 4 },
+    { at: day - 1 * DAY_MS, value: 0 },
+    { at: day, value: 3 },
+  ])
+  expect(result?.firstCountedDayMs).toBe(day - 2 * DAY_MS)
+})
+
+test('siteWide: referrer buckets are split out, largest first, empty ones dropped', async () => {
+  const t = convexTest(schema, modules)
+  const day = today()
+  await seedCounter(t, {
+    targetKind: 'aggregate',
+    targetId: 'global',
+    dayStartMs: day,
+    referrerBucket: 'ai',
+    count: 5,
+  })
+  await seedCounter(t, {
+    targetKind: 'aggregate',
+    targetId: 'global',
+    dayStartMs: day - DAY_MS,
+    referrerBucket: 'search',
+    count: 2,
+  })
+
+  const result = await asAdminOn(t).query(api.viewAnalytics.siteWide, {})
+  expect(result?.referrers).toEqual([
+    { bucket: 'ai', count: 5 },
+    { bucket: 'search', count: 2 },
+  ])
+})
+
+test('siteWide: days older than the window are left out of every number', async () => {
+  const t = convexTest(schema, modules)
+  const day = today()
+  await seedCounter(t, {
+    targetKind: 'aggregate',
+    targetId: 'global',
+    dayStartMs: day - 40 * DAY_MS,
+    referrerBucket: 'direct',
+    count: 99,
+  })
+  await seedCounter(t, {
+    targetKind: 'aggregate',
+    targetId: 'global',
+    dayStartMs: day,
+    referrerBucket: 'direct',
+    count: 1,
+  })
+
+  const result = await asAdminOn(t).query(api.viewAnalytics.siteWide, {})
+  expect(result?.total).toBe(1)
+  expect(result?.windowDays).toBe(30)
+})
+
+test('siteWide: with nothing counted, the answer is an honest empty, not a fabricated zero-series', async () => {
+  // The counter starts existing the day this ships. An empty series and a null
+  // first day let the page say "counting starts now" instead of drawing a flat
+  // zero line over days nobody was counting.
+  const t = convexTest(schema, modules)
+  const result = await asAdminOn(t).query(api.viewAnalytics.siteWide, {})
+  expect(result?.total).toBe(0)
+  expect(result?.days).toEqual([])
+  expect(result?.firstCountedDayMs).toBeNull()
+  expect(result?.referrers).toEqual([])
 })
