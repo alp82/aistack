@@ -21,6 +21,7 @@ import { claudeRecentlyActive } from "../commands/connect.js";
 import { claudeAdapter } from "./claude/adapter.js";
 import { codexAdapter } from "./codex/adapter.js";
 import { detectedAdapters, detectionSinceMs } from "./index.js";
+import { piAdapter } from "./pi/adapter.js";
 
 const NOW = Date.UTC(2026, 7, 5, 12, 0, 0);
 const DAY = 86_400_000;
@@ -32,6 +33,8 @@ const savedEnv = {
 	CODEX_HOME: process.env.CODEX_HOME,
 	XDG_DATA_HOME: process.env.XDG_DATA_HOME,
 	OPENCODE_DB: process.env.OPENCODE_DB,
+	PI_CODING_AGENT_DIR: process.env.PI_CODING_AGENT_DIR,
+	PI_CODING_AGENT_SESSION_DIR: process.env.PI_CODING_AGENT_SESSION_DIR,
 };
 
 beforeEach(() => {
@@ -40,6 +43,8 @@ beforeEach(() => {
 	// never leaks its own installs into `detectedAdapters`.
 	process.env.XDG_DATA_HOME = join(dir, "xdg-data");
 	delete process.env.OPENCODE_DB;
+	process.env.PI_CODING_AGENT_SESSION_DIR = join(dir, "pi-sessions");
+	delete process.env.PI_CODING_AGENT_DIR;
 });
 
 /** A minimal real opencode store with one message at `tsMs`. */
@@ -158,6 +163,32 @@ describe("codexAdapter.detect", () => {
 	});
 });
 
+describe("piAdapter.detect", () => {
+	const PI_FILE =
+		"2026-08-04T09-00-00-000Z_019f8fe5-f4d5-744d-9b02-4a9bad77279d.jsonl";
+
+	it("an existing root with only stale sessions is not detected", async () => {
+		write(`pi/--home-u-proj--/${PI_FILE}`, NOW - 90 * DAY);
+		expect(
+			await piAdapter.detect({ sinceMs: SINCE, roots: [join(dir, "pi")] }),
+		).toBe(false);
+	});
+
+	it("one in-window session detects the harness", async () => {
+		write(`pi/--home-u-proj--/${PI_FILE}`, NOW - DAY);
+		expect(
+			await piAdapter.detect({ sinceMs: SINCE, roots: [join(dir, "pi")] }),
+		).toBe(true);
+	});
+
+	it("a recent file that is not a pi session does not detect the harness", async () => {
+		write("pi/--home-u-proj--/notes.jsonl", NOW);
+		expect(
+			await piAdapter.detect({ sinceMs: SINCE, roots: [join(dir, "pi")] }),
+		).toBe(false);
+	});
+});
+
 describe("detectedAdapters", () => {
 	it("skips the stale harness and keeps the live one", async () => {
 		process.env.CLAUDE_CONFIG_DIR = join(dir, "claude-home");
@@ -187,6 +218,19 @@ describe("detectedAdapters", () => {
 
 		const names = (await detectedAdapters(SINCE)).map((a) => a.name);
 		expect(names).toEqual(["claude-code", "opencode"]);
+	});
+
+	it("an in-window pi session detects, last in gate order", async () => {
+		process.env.CLAUDE_CONFIG_DIR = join(dir, "claude-home");
+		process.env.CODEX_HOME = join(dir, "codex-home");
+		write("claude-home/projects/proj-a/sess-1.jsonl", NOW - DAY);
+		write(
+			"pi-sessions/--home-u-proj--/2026-08-04T09-00-00-000Z_019f8fe5-f4d5-744d-9b02-4a9bad77279d.jsonl",
+			NOW - DAY,
+		);
+
+		const names = (await detectedAdapters(SINCE)).map((a) => a.name);
+		expect(names).toEqual(["claude-code", "pi-mono"]);
 	});
 
 	it("an opencode store with only stale rows stays undetected", async () => {
