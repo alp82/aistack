@@ -15,6 +15,7 @@ import { emptyScanStats } from "../harness/shared/window.js";
 import {
 	buildGateDialog,
 	buildGateSummary,
+	fmtReceivedAt,
 	fmtTokens,
 	fmtUSD,
 	type GateContext,
@@ -141,6 +142,12 @@ describe("formatting", () => {
 	test("dollars are whole with a ≈", () => {
 		expect(fmtUSD(5839.75)).toBe("≈$5,840");
 	});
+
+	test("the received stamp drops the milliseconds and the T/Z machine form (#130)", () => {
+		expect(fmtReceivedAt(Date.UTC(2026, 7, 10, 21, 3, 44, 123))).toBe(
+			"2026-08-10 21:03 UTC",
+		);
+	});
 });
 
 describe("totalUSD — never a dollar without its pricing table (#46)", () => {
@@ -207,6 +214,22 @@ describe("beat two — the dialog (binding copy, #48)", () => {
 });
 
 describe("beat one — the summary", () => {
+	test("the searched line names every harness this build looks for (#130)", () => {
+		const summary = buildGateSummary(ctx({}));
+		const lines = summary.split("\n");
+		const toIdx = lines.findIndex((l) => l.startsWith("to        "));
+		expect(lines[toIdx + 1]).toBe(
+			"searched  claude code, codex, opencode, pi-mono",
+		);
+	});
+
+	test("the harness header prints even for a single harness (#130)", () => {
+		// A `searched` line naming four harnesses followed by one unlabeled block
+		// is unreadable, so the header is unconditional — an intentional output
+		// change for every single-harness user.
+		expect(buildGateSummary(ctx({}))).toContain("— Claude Code 2.1.220");
+	});
+
 	test("names the destination and the changes URL before any send", () => {
 		const summary = buildGateSummary(
 			ctx({ withKeptPrivateHalf: true, keptPrivate: KEPT }),

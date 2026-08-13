@@ -10,7 +10,7 @@
 // Nothing in this file is accepted as a caller-supplied argument beside the
 // payload — the spike promoted that from a caution to a demonstrated property.
 
-import { harnessLabel } from "../harness/index.js";
+import { HARNESS_ADAPTERS, harnessLabel } from "../harness/index.js";
 import type {
 	KeptPrivateAtom,
 	NameCategory,
@@ -61,6 +61,15 @@ export function fmtUSD(n: number): string {
 }
 
 const fmtPct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+
+/**
+ * `2026-08-10 21:03 UTC` — the publish receipt's stamp (#130). Milliseconds
+ * and the ISO `T`/`Z` machine form dropped: the last thing a person reads
+ * should be the result, not a receipt.
+ */
+export function fmtReceivedAt(ms: number): string {
+	return `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
+}
 
 /**
  * The dollar figure the gate names, or `null` when none may render.
@@ -196,17 +205,14 @@ export function scanNoteLines(stats: ScanStats, label: string): string[] {
 }
 
 /** One harness's payload block: window, activity, cost, models, inventory. */
-function payloadBlock(
-	payload: MeasuredPayload,
-	showHeader: boolean,
-	stats?: ScanStats,
-): string[] {
+function payloadBlock(payload: MeasuredPayload, stats?: ScanStats): string[] {
 	const out: string[] = [];
-	if (showHeader) {
-		out.push(
-			`— ${harnessLabel(payload.harness.name)}${payload.harness.version ? ` ${payload.harness.version}` : ""}`,
-		);
-	}
+	// The header is unconditional (#130): the `searched` line above names four
+	// harnesses, so an unlabeled block would be unreadable even when only one
+	// harness was found.
+	out.push(
+		`— ${harnessLabel(payload.harness.name)}${payload.harness.version ? ` ${payload.harness.version}` : ""}`,
+	);
 	out.push(
 		`window    ${payload.window.days} days · ${payload.window.from} → ${payload.window.to}`,
 	);
@@ -271,12 +277,18 @@ export function buildGateSummary(ctx: GateContext): string {
 		);
 	}
 
-	// One block per detected harness. With a single harness the header line is
-	// dropped, so the single-harness preview reads exactly as it always did.
+	// What the CLI LOOKED FOR, in search order — a claim about the CLI, never
+	// about the person's behavior, so it stays inside #40 (#130). Without it, a
+	// harness the scan misses reads identically to a harness never installed.
+	out.push(
+		`searched  ${HARNESS_ADAPTERS.map((a) => harnessLabel(a.name).toLowerCase()).join(", ")}`,
+	);
+
+	// One block per detected harness, each under its own header.
 	for (const payload of payloads) {
 		const stats = ctx.scanStats?.[payload.harness.name];
-		out.push(...payloadBlock(payload, payloads.length > 1, stats));
 		out.push("");
+		out.push(...payloadBlock(payload, stats));
 	}
 	if (out[out.length - 1] === "") out.pop();
 

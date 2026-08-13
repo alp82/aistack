@@ -8,12 +8,7 @@ import {
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { AutoSyncNote } from "@/features/measured/AutoSyncNote";
 import { CommandLine } from "@/features/measured/CommandLine";
-import {
-	HARNESS,
-	KICKER,
-	MONO_LABEL,
-	SYNC_CMD,
-} from "@/features/measured/copy";
+import { KICKER, MONO_LABEL, SYNC_CMD } from "@/features/measured/copy";
 import { seoMeta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
@@ -26,23 +21,26 @@ export const Route = createFileRoute("/sync")({
 	component: SyncPage,
 	head: () => ({
 		meta: seoMeta({
-			title: "Sync your stack - AI Stack",
+			title: "Show what actually ran - AI Stack",
 			description:
-				"Publish a rolling 30-day reading of what actually ran, straight from your own machine. One command, an approval gate, nothing else.",
+				"Publish the reading behind your stack — sessions, models, tokens, and cost at API prices — straight from your own machine. One command, an approval gate, nothing else.",
 			url: "/sync",
 		}),
 	}),
 });
 
+// Copy locked by #130 (docs/prototypes/sync-path-2026-08.md). Proof leads,
+// discovery rides underneath; cancel is the safety line under the ask, never
+// the ask. The harness list lives in the boundary band and nowhere else.
 const STEPS: { title: string; body: string; cmd?: string }[] = [
 	{
 		title: "Sync",
-		body: `Scans your local ${HARNESS} and Codex history and shows you the full summary in the terminal — every number, every name. On the first run it opens your browser to link this machine; you name it, and you can revoke it any time.`,
+		body: "Scans your local agent history and prints the full summary in your terminal — every number, every name. On the first run it opens your browser to link this machine. You name it, and you can revoke it any time.",
 		cmd: SYNC_CMD,
 	},
 	{
 		title: "Approve",
-		body: "Nothing sends until you pick Publish. Cancel sends nothing. The exact bytes you approved go on the wire.",
+		body: "Nothing sends until you pick Publish. Cancel sends nothing, and you keep the reading you just saw. The exact bytes you approved go on the wire.",
 	},
 ];
 
@@ -73,12 +71,30 @@ function SyncPage() {
 					{KICKER}
 				</p>
 				<h1 className="mt-2 text-4xl font-black tracking-tighter text-fg-primary md:text-6xl">
-					Sync your stack
+					Show what actually ran
 				</h1>
 				<p className="mt-4 max-w-xl text-fg-muted">
-					A rolling 30-day reading of what actually ran, published from your own
-					machine. One command, an approval gate, nothing else.
+					You listed the tools you use. This publishes the reading behind the
+					list — sessions, models, tokens, and cost at API prices — straight
+					from your own machine.
 				</p>
+
+				{/* The boundary band (#130): what the tool READS comes before what it
+				    sends. One boundary, stated once — it is why raw data never leaves
+				    the machine, and why chat apps cannot be measured. The page never
+				    names the chat apps: the boundary sentence carries the fact. */}
+				<div className="mt-10 border border-stroke-strong bg-bg-panel p-6">
+					<p className="font-mono text-xs font-semibold uppercase tracking-widest text-accent-lime">
+						what it reads
+					</p>
+					<p className="mt-3 max-w-lg text-sm text-fg-primary">
+						aistack reads files your agents already wrote on this machine. That
+						is all it reads.
+					</p>
+					<p className="mt-2 max-w-lg text-sm text-fg-muted">
+						Claude Code, Codex, opencode and pi-mono write those files.
+					</p>
+				</div>
 
 				<div className="mt-10 space-y-8">
 					{STEPS.map((s, i) => (
