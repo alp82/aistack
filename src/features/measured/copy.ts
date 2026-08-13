@@ -226,6 +226,8 @@ export function coverageCaveat(s: HarnessSnapshot): string | null {
 export function harnessLabel(name: string): string {
 	if (name === "claude-code") return HARNESS;
 	if (name === "codex") return "Codex";
+	// The brand spells itself lowercase, so the discriminator is the label.
+	if (name === "opencode") return "opencode";
 	return name;
 }
 
