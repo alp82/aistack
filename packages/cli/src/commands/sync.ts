@@ -24,6 +24,7 @@ import {
 import { runAutoSync } from "../autosync/run.js";
 import { DEFAULT_FREQUENCY_HOURS, getSettings, getToken } from "../config.js";
 import { stageSync } from "../sync/stage.js";
+import { fmtReceivedAt } from "../sync/summary.js";
 import { dim, intro, lime, outro, outroCancel, outroError } from "../theme.js";
 import { offerConnectUpsell } from "./connect.js";
 import { performLogin } from "./login.js";
@@ -153,8 +154,13 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 	try {
 		const res = await syncPublish(staged.token as string, staged.bodyJson);
 		s.stop("Published");
+		// The last thing read is the result, not a receipt (#130): the stamp is
+		// human-form, and the link gets its own line under a sentence that names
+		// the proof. The path stays in the terminal — no browser is opened.
 		const lines = [
-			`Snapshot received at ${new Date(res.receivedAt).toISOString()}`,
+			`Snapshot received ${fmtReceivedAt(res.receivedAt)}`,
+			"",
+			"Your stack now shows what actually ran:",
 			lime(res.url),
 		];
 		if (res.keptPrivate.refused && staged.body.keptPrivate !== undefined) {

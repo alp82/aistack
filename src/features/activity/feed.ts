@@ -81,6 +81,10 @@ export function dayBucket(at: number, now: number): string {
 const HARNESS_LABELS: Record<string, string> = {
 	"claude-code": "Claude Code",
 	codex: "Codex",
+	// Lowercase brands: the wire name is the label, but each is an explicit
+	// row so a rename cannot silently leak a raw slug (#130).
+	opencode: "opencode",
+	"pi-mono": "pi-mono",
 };
 
 /** Wire names in words. An unknown harness keeps its wire spelling. */

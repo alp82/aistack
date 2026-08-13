@@ -25,6 +25,7 @@
 
 import { type SyncPublishResult, syncPublish } from "../api.js";
 import { type StageDeps, type StagedSend, stageSync } from "./stage.js";
+import { fmtReceivedAt } from "./summary.js";
 
 const SERVER_NAME = "aistack";
 const SERVER_VERSION = "0.3.0";
@@ -254,8 +255,12 @@ export function createSyncServer(
 				publish(approvedStage.token as string, approvedStage.bodyJson).then(
 					(res) => {
 						if (staged?.id === approvedStage.id) staged = null;
+						// Same ending as the terminal channel (#130): the result last,
+						// the stamp in human form.
 						const lines = [
-							`Published. Snapshot received at ${new Date(res.receivedAt).toISOString()}.`,
+							`Published. Snapshot received ${fmtReceivedAt(res.receivedAt)}.`,
+							"",
+							"Your stack now shows what actually ran:",
 							res.url,
 						];
 						const kp = approvedStage.body.keptPrivate;
