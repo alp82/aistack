@@ -23,6 +23,7 @@
 import { CLAUDE_HARNESS_NAME, claudeAdapter } from "./claude/adapter.js";
 import { CODEX_HARNESS_NAME, codexAdapter } from "./codex/adapter.js";
 import { OPENCODE_HARNESS_NAME, opencodeAdapter } from "./opencode/adapter.js";
+import { PI_HARNESS_NAME, piAdapter } from "./pi/adapter.js";
 import { DEFAULT_WINDOW_DAYS, windowStartMs } from "./shared/window.js";
 import type { HarnessAdapter } from "./types.js";
 
@@ -64,6 +65,11 @@ export {
 	OPENCODE_HARNESS_NAME,
 	opencodeAdapter,
 } from "./opencode/adapter.js";
+export {
+	PI_BUILTIN_TOOLS,
+	PI_HARNESS_NAME,
+	piAdapter,
+} from "./pi/adapter.js";
 export {
 	type Aggregate,
 	cleanName,
@@ -131,14 +137,17 @@ export const HARNESS_ADAPTERS: readonly HarnessAdapter[] = [
 	claudeAdapter,
 	codexAdapter,
 	opencodeAdapter,
+	piAdapter,
 ];
 
 /** Display name for a harness discriminator. One name per harness, defined here. */
 export function harnessLabel(name: string): string {
 	if (name === CLAUDE_HARNESS_NAME) return "Claude Code";
 	if (name === CODEX_HARNESS_NAME) return "Codex";
-	// The brand spells itself lowercase, so the discriminator IS the label.
+	// These brands spell themselves lowercase, so the discriminator IS the
+	// label — but each is an explicit row, so a rename cannot leak a raw slug.
 	if (name === OPENCODE_HARNESS_NAME) return "opencode";
+	if (name === PI_HARNESS_NAME) return "pi-mono";
 	return name;
 }
 
