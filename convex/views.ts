@@ -10,6 +10,7 @@ import { internalMutation, mutation } from './_generated/server'
 import type { MutationCtx } from './_generated/server'
 import { ReferrerBucket, ViewTargetKind } from './schema'
 import { consume } from './rateLimit'
+import { isAdmin } from './lib/admin'
 import type { Infer } from 'convex/values'
 
 type ViewTargetKindValue = Infer<typeof ViewTargetKind>
@@ -106,6 +107,14 @@ export const record = mutation({
     const identity = await ctx.auth.getUserIdentity()
     const viewerId = identity?.tokenIdentifier.split('|')[1] ?? null
     if (viewerId !== null && viewerId === target.userId) {
+      return { counted: false }
+    }
+
+    // The aggregate counter's owner is the site's admin (#132). It exists so
+    // the admin can read a campaign, and their own browsing must not be in it.
+    // Per-target counters are untouched — there the admin is an ordinary
+    // visitor.
+    if (args.targetKind === 'aggregate' && (await isAdmin(ctx))) {
       return { counted: false }
     }
 

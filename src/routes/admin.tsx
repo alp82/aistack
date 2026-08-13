@@ -6,7 +6,7 @@ import {
 	useSearch,
 } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { ClipboardCheck, Flag, Mail } from "lucide-react";
+import { ChartNoAxesColumn, ClipboardCheck, Flag, Mail } from "lucide-react";
 import { useMemo } from "react";
 import {
 	AdminEmailTab,
@@ -14,11 +14,12 @@ import {
 } from "@/components/admin/AdminEmailTab";
 import { AdminQualityTab } from "@/components/admin/AdminQualityTab";
 import { AdminReviewTab } from "@/components/admin/AdminReviewTab";
+import { AdminViewsTab } from "@/components/admin/AdminViewsTab";
 import { coerceEnum } from "@/lib/searchParams";
 import { seoMeta } from "@/lib/seo";
 import { api } from "../../convex/_generated/api";
 
-type AdminTab = "review" | "quality" | "email";
+type AdminTab = "review" | "quality" | "email" | "views";
 
 export const ADMIN_SEARCH_DEFAULTS = {
 	tab: "review" as AdminTab,
@@ -33,7 +34,7 @@ export const Route = createFileRoute("/admin")({
 	): { tab?: AdminTab; view?: EmailSubTab } => ({
 		tab: coerceEnum(
 			search.tab,
-			["review", "quality", "email"] as const,
+			["review", "quality", "email", "views"] as const,
 			"review",
 		),
 		view: coerceEnum(
@@ -154,6 +155,18 @@ function AdminPage() {
 							<Mail className="size-4" />
 							Email
 						</button>
+						<button
+							type="button"
+							onClick={() => setSearch({ tab: "views" })}
+							className={`inline-flex items-center gap-2 border-b-2 px-6 py-4 font-mono text-sm font-semibold uppercase tracking-wide transition-colors -mb-[2px] ${
+								tab === "views"
+									? "border-accent-lime text-accent-lime"
+									: "border-transparent text-fg-muted hover:text-fg-primary"
+							}`}
+						>
+							<ChartNoAxesColumn className="size-4" />
+							Views
+						</button>
 						<LivingStacks />
 					</div>
 				</div>
@@ -168,6 +181,7 @@ function AdminPage() {
 					onViewChange={(v) => setSearch({ view: v })}
 				/>
 			)}
+			{tab === "views" && <AdminViewsTab />}
 		</div>
 	);
 }

@@ -16,7 +16,8 @@ import { query } from './_generated/server'
 import type { QueryCtx } from './_generated/server'
 import type { Doc } from './_generated/dataModel'
 import { ReferrerBucket } from './schema'
-import { utcDayStart } from './views'
+import { AGGREGATE_TARGET_ID, utcDayStart } from './views'
+import { isAdmin } from './lib/admin'
 
 type ReferrerBucketValue = Infer<typeof ReferrerBucket>
 
@@ -188,6 +189,86 @@ export const mine = query({
       firstCountedDayMs,
       total,
       targets,
+      referrers: [...referrers.entries()]
+        .map(([bucket, count]) => ({ bucket, count }))
+        .sort((a, b) => b.count - a.count || a.bucket.localeCompare(b.bucket)),
+    }
+  },
+})
+
+/**
+ * The site-wide reader (#132, map #121) — the first reader the `global`
+ * counter has ever had.
+ *
+ * ADMIN-ONLY, and gated HERE. A client-side `/admin` route guard protects
+ * nothing — any authed client can call a public function directly — so the
+ * query itself refuses a non-admin with `null`, exactly as `admin.ts` does.
+ * Kept admin-only on purpose: it leaves "do view counts ever become public"
+ * an open question rather than answering it by accident.
+ *
+ * It reads ONLY the `aggregate`/`global` rows, never a sum over the per-target
+ * counters. The global counter dedupes one visitor once per day across the
+ * whole site, so it is the honest arrivals number; summing per-target rows
+ * would count one visitor once per page they opened.
+ */
+export const siteWide = query({
+  args: {},
+  returns: v.union(
+    v.object({
+      windowDays: v.number(),
+      /** UTC midnight of the oldest day the window can hold. */
+      windowStartMs: v.number(),
+      /** UTC midnight of today, the last day of the series. */
+      endDayMs: v.number(),
+      /** The oldest day with a counted visit, or null when there are none. */
+      firstCountedDayMs: v.union(v.number(), v.null()),
+      total: v.number(),
+      /** Empty when nothing was ever counted. Otherwise one entry per day. */
+      days: v.array(DayPoint),
+      /** Non-empty buckets only, largest first. */
+      referrers: v.array(v.object({ bucket: ReferrerBucket, count: v.number() })),
+    }),
+    v.null()
+  ),
+  handler: async (ctx) => {
+    if (!(await isAdmin(ctx))) return null
+
+    const endDayMs = utcDayStart(Date.now())
+    const windowStartMs = endDayMs - (WINDOW_DAYS - 1) * DAY_MS
+
+    const rows = await ctx.db
+      .query('viewCounters')
+      .withIndex('by_target_day', (q) =>
+        q
+          .eq('targetKind', 'aggregate')
+          .eq('targetId', AGGREGATE_TARGET_ID)
+          .gte('dayStartMs', windowStartMs)
+      )
+      .collect()
+
+    const byDay = new Map<number, number>()
+    const referrers = new Map<ReferrerBucketValue, number>()
+    let total = 0
+    let firstCountedDayMs: number | null = null
+    for (const row of rows) {
+      byDay.set(row.dayStartMs, (byDay.get(row.dayStartMs) ?? 0) + row.count)
+      referrers.set(
+        row.referrerBucket,
+        (referrers.get(row.referrerBucket) ?? 0) + row.count
+      )
+      total += row.count
+      if (firstCountedDayMs === null || row.dayStartMs < firstCountedDayMs) {
+        firstCountedDayMs = row.dayStartMs
+      }
+    }
+
+    return {
+      windowDays: WINDOW_DAYS,
+      windowStartMs,
+      endDayMs,
+      firstCountedDayMs,
+      total,
+      days: fillDays(byDay, endDayMs),
       referrers: [...referrers.entries()]
         .map(([bucket, count]) => ({ bucket, count }))
         .sort((a, b) => b.count - a.count || a.bucket.localeCompare(b.bucket)),
