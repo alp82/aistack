@@ -56,6 +56,12 @@ export type WireModel = {
   id: string
   tokens: WireTokens
   apiEquivalentUSD?: number
+  /**
+   * The table that produced `apiEquivalentUSD`, riding on the model (#136).
+   * Absent on payloads from before the mixed-vendor wire change — those cite
+   * every published figure with the payload-level `pricingTable` instead.
+   */
+  pricingTable?: string
 }
 
 /** The reported window, as the two UTC date strings the payload carries. */
@@ -63,6 +69,8 @@ export type SnapshotWindow = { from: string; to: string }
 
 export type RepricedModel<T> = T & {
   apiEquivalentUSD?: number
+  /** The table citing the dollars above, whether published or estimated. */
+  pricingTable?: string
   /** True when the dollars above came from this module, not from the CLI. */
   costEstimated: boolean
 }
@@ -162,7 +170,9 @@ export function repriceSnapshot<T extends WireModel>(input: {
   if (!publishCost) {
     return {
       models: models.map((m) => {
-        const { apiEquivalentUSD: _dropped, ...rest } = m
+        // The citation strips with the dollars: cost is absent, not zeroed,
+        // and a table with nothing to cite would leak that a figure existed.
+        const { apiEquivalentUSD: _dropped, pricingTable: _table, ...rest } = m
         return { ...(rest as T), costEstimated: false }
       }),
       cost: null,
@@ -175,6 +185,11 @@ export function repriceSnapshot<T extends WireModel>(input: {
   let pricedTokens = 0
   let repricedTokens = 0
   let totalTokens = 0
+  // The published citations lead, in model order: they date the exact dollars,
+  // and the estimates are the addition. A model with no citation of its own is
+  // from before the mixed-vendor wire change (#136) and cites the payload's
+  // one table.
+  const publishedTables = new Set<string>()
   const estimateTables = new Set<string>()
 
   const out = models.map((m): RepricedModel<T> => {
@@ -184,6 +199,8 @@ export function repriceSnapshot<T extends WireModel>(input: {
     if (m.apiEquivalentUSD !== undefined) {
       publishedUSD += m.apiEquivalentUSD
       pricedTokens += size
+      const table = m.pricingTable ?? publishedTable
+      if (table) publishedTables.add(table)
       return { ...m, costEstimated: false }
     }
 
@@ -195,18 +212,20 @@ export function repriceSnapshot<T extends WireModel>(input: {
     repricedTokens += size
     const table = pricingTableFor(m.id)
     if (table) estimateTables.add(table)
-    return { ...m, apiEquivalentUSD: usd, costEstimated: true }
+    return {
+      ...m,
+      apiEquivalentUSD: usd,
+      costEstimated: true,
+      // The estimate is cited per model exactly the way a published figure is.
+      ...(table ? { pricingTable: table } : {}),
+    }
   })
 
   if (pricedTokens === 0) return { models: out, cost: null, repricedTokens: 0 }
 
-  // The payload's own table leads: it cites the exact dollars, and the estimate
-  // is the addition. A table already named by the payload is not repeated.
   const pricingTables = [
-    ...(publishedUSD > 0 && publishedTable ? [publishedTable] : []),
-    ...[...estimateTables].filter(
-      (t) => !(publishedUSD > 0 && t === publishedTable)
-    ),
+    ...publishedTables,
+    ...[...estimateTables].filter((t) => !publishedTables.has(t)),
   ]
 
   return {

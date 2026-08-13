@@ -1,6 +1,5 @@
 // The Codex CLI harness behind the seam (#66 decision 6, built in #67).
 
-import { OPENAI_PRICING_TABLE_VERSION } from "@aistack/pricing";
 import { hasRecentFile } from "../shared/recency.js";
 import type {
 	HarnessAdapter,
@@ -47,7 +46,6 @@ export const CODEX_BUILTIN_TOOLS: ReadonlySet<string> = new Set([
 export const codexAdapter: HarnessAdapter = {
 	name: CODEX_HARNESS_NAME,
 	builtinTools: CODEX_BUILTIN_TOOLS,
-	pricingTableVersion: OPENAI_PRICING_TABLE_VERSION,
 
 	async detect(opts: HarnessDetectOptions): Promise<boolean> {
 		return hasRecentFile(

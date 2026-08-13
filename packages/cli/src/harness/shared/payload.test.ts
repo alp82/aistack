@@ -1,5 +1,8 @@
 import {
 	apiEquivalentCost,
+	GOOGLE_PRICING_TABLE_VERSION,
+	LOCAL_PRICING_TABLE_VERSION,
+	OPENAI_PRICING_TABLE_VERSION,
 	PRICING_TABLE_VERSION,
 	type TokenCounts,
 } from "@aistack/pricing";
@@ -47,7 +50,6 @@ const CLEAN_STATS: ScanStats = {
 const HARNESS_PARAMS = {
 	harnessName: "claude-code",
 	builtinTools: BUILTIN_TOOLS,
-	pricingTableVersion: PRICING_TABLE_VERSION,
 } as const;
 
 const config = (over: Partial<SyncConfig> = {}): SyncConfig => ({
@@ -550,6 +552,107 @@ describe("a multi-provider harness prices at ingest (#123)", () => {
 		]);
 		expect(payload.models[0].apiEquivalentUSD).toBe(0);
 		expect(payload.excludedTokens.unpriced).toBe(0);
+	});
+});
+
+describe("the citation rides on the rate (#136)", () => {
+	// One opencode payload mixes vendors. A single top-level table id cannot
+	// cite dollars drawn from two tables, so each priced model carries the table
+	// that produced its own figure.
+	function buildProvided(
+		rows: ReadonlyArray<{ key: string; input: number; output: number }>,
+		syncConfig: SyncConfig = config(),
+	): MeasuredPayload {
+		const agg = sharedAggregate();
+		for (const r of rows) {
+			const counts: TokenCounts = {
+				input: r.input,
+				output: r.output,
+				cacheWrite5m: 0,
+				cacheWrite1h: 0,
+				cacheWriteUnsplit: 0,
+				cacheRead: 0,
+			};
+			addModelUsage(agg, r.key, counts, apiEquivalentCost(r.key, counts, NOW));
+		}
+		return buildPayload({
+			aggregate: agg,
+			stats: CLEAN_STATS,
+			syncConfig,
+			now: NOW,
+			windowDays: 30,
+			...HARNESS_PARAMS,
+		}).payload;
+	}
+
+	it("cites each priced model's own table in a mixed-vendor payload", () => {
+		const payload = buildProvided([
+			{ key: "openai:gpt-5.4", input: 1_000_000, output: 0 },
+			{ key: "google:gemini-3.6-flash", input: 1_000_000, output: 0 },
+		]);
+		const byId = new Map(payload.models.map((m) => [m.id, m]));
+		expect(byId.get("openai:gpt-5.4")?.pricingTable).toBe(
+			OPENAI_PRICING_TABLE_VERSION,
+		);
+		expect(byId.get("google:gemini-3.6-flash")?.pricingTable).toBe(
+			GOOGLE_PRICING_TABLE_VERSION,
+		);
+	});
+
+	it("nulls the top-level table when the models cite more than one", () => {
+		// A single string over a mixed payload is a false citation — the defect
+		// this ticket exists to remove. The per-model fields carry the truth.
+		const payload = buildProvided([
+			{ key: "openai:gpt-5.4", input: 1_000_000, output: 0 },
+			{ key: "google:gemini-3.6-flash", input: 1_000_000, output: 0 },
+		]);
+		expect(payload.pricingTable).toBeNull();
+	});
+
+	it("keeps the single table id top-level when only one is cited", () => {
+		// A Claude Code payload reads exactly as it always did.
+		const payload = build([
+			assistant({
+				model: "claude-opus-5",
+				usage: { output_tokens: 1_000_000 },
+			}),
+		]);
+		expect(payload.pricingTable).toBe(PRICING_TABLE_VERSION);
+		expect(payload.models[0].pricingTable).toBe(PRICING_TABLE_VERSION);
+	});
+
+	it("pairs the citation with the dollars — an unpriced model carries neither", () => {
+		const payload = buildProvided([
+			{ key: "google:gemini-3.6-flash", input: 1_000_000, output: 0 },
+			{ key: "github-copilot:gemini-3-pro-preview", input: 500_000, output: 0 },
+		]);
+		const byId = new Map(payload.models.map((m) => [m.id, m]));
+		expect(byId.get("github-copilot:gemini-3-pro-preview")).not.toHaveProperty(
+			"pricingTable",
+		);
+		expect(byId.get("google:gemini-3.6-flash")?.pricingTable).toBe(
+			GOOGLE_PRICING_TABLE_VERSION,
+		);
+	});
+
+	it("cites local-no-charge for a $0 local row", () => {
+		// Free is a fact about the machine, and it has a citation like any other
+		// figure — that is what separates it from unpriced.
+		const payload = buildProvided([
+			{ key: "ollama:qwen3-coder", input: 1_000_000, output: 0 },
+		]);
+		expect(payload.models[0].apiEquivalentUSD).toBe(0);
+		expect(payload.models[0].pricingTable).toBe(LOCAL_PRICING_TABLE_VERSION);
+	});
+
+	it("omits every citation when publishCost is off", () => {
+		const payload = buildProvided(
+			[{ key: "openai:gpt-5.4", input: 1_000_000, output: 0 }],
+			config({ publishCost: false }),
+		);
+		expect(payload.pricingTable).toBeNull();
+		expect(payload.models[0]).not.toHaveProperty("pricingTable");
+		expect(JSON.stringify(payload)).not.toContain(OPENAI_PRICING_TABLE_VERSION);
 	});
 });
 

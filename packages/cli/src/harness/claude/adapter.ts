@@ -3,7 +3,6 @@
 // gives it the adapter shape.
 
 import { BUILTIN_TOOLS } from "../shared/allowlist.js";
-import { PRICING_TABLE_VERSION } from "@aistack/pricing";
 import { hasRecentFile } from "../shared/recency.js";
 import type {
 	HarnessAdapter,
@@ -19,7 +18,6 @@ export const CLAUDE_HARNESS_NAME = "claude-code";
 export const claudeAdapter: HarnessAdapter = {
 	name: CLAUDE_HARNESS_NAME,
 	builtinTools: BUILTIN_TOOLS,
-	pricingTableVersion: PRICING_TABLE_VERSION,
 
 	async detect(opts: HarnessDetectOptions): Promise<boolean> {
 		return hasRecentFile(

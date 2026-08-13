@@ -71,14 +71,15 @@ const fmtPct = (share: number): string => `${(share * 100).toFixed(1)}%`;
  * dollars.
  */
 export function totalUSD(payload: MeasuredPayload): number | null {
-	if (payload.pricingTable === null) return null;
 	let sum = 0;
 	let any = false;
 	for (const m of payload.models) {
-		if (m.apiEquivalentUSD !== undefined) {
-			sum += m.apiEquivalentUSD;
-			any = true;
-		}
+		if (m.apiEquivalentUSD === undefined) continue;
+		// The citation may sit on the model (#136) or, in the old single-vendor
+		// shape, on the payload. A figure neither cites stays unrendered.
+		if (m.pricingTable === undefined && payload.pricingTable === null) continue;
+		sum += m.apiEquivalentUSD;
+		any = true;
 	}
 	return any ? sum : null;
 }

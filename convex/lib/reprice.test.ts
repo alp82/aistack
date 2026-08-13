@@ -243,6 +243,106 @@ describe('repriceSnapshot — the gap filler (#93)', () => {
   })
 })
 
+describe('per-model citations from a mixed-vendor payload (#136)', () => {
+  it('cites each published figure by the table the model carries', () => {
+    // One opencode payload prices OpenAI and Google rows from two tables. The
+    // old shape stamped one id over both — a false citation. The new shape
+    // carries the table on the model, and the top-level field is null.
+    const out = repriceSnapshot({
+      models: [
+        {
+          id: 'openai:gpt-5.4',
+          tokens: tokens({ input: MTOK }),
+          apiEquivalentUSD: 2.5,
+          pricingTable: OPENAI_PRICING_TABLE_VERSION,
+        },
+        {
+          id: 'google:gemini-3.6-flash',
+          tokens: tokens({ input: MTOK }),
+          apiEquivalentUSD: 1.5,
+          pricingTable: GOOGLE_PRICING_TABLE_VERSION,
+        },
+      ],
+      window: JULY,
+      publishedTable: null,
+      publishCost: true,
+    })
+    expect(out.cost?.publishedUSD).toBe(4)
+    expect(out.cost?.pricingTables).toEqual([
+      OPENAI_PRICING_TABLE_VERSION,
+      GOOGLE_PRICING_TABLE_VERSION,
+    ])
+  })
+
+  it('falls back to the payload table for a model with no citation of its own', () => {
+    // The old wire shape: dollars on the model, one table on the payload.
+    const out = repriceSnapshot({
+      models: [
+        {
+          id: 'claude-opus-5',
+          tokens: tokens({ output: MTOK }),
+          apiEquivalentUSD: 25,
+        },
+      ],
+      window: JULY,
+      publishedTable: PRICING_TABLE_VERSION,
+      publishCost: true,
+    })
+    expect(out.cost?.pricingTables).toEqual([PRICING_TABLE_VERSION])
+  })
+
+  it('does not repeat a table cited by both a published and an estimated row', () => {
+    const out = repriceSnapshot({
+      models: [
+        {
+          id: 'openai:gpt-5.4',
+          tokens: tokens({ input: MTOK }),
+          apiEquivalentUSD: 2.5,
+          pricingTable: OPENAI_PRICING_TABLE_VERSION,
+        },
+        { id: 'gpt-5.6-luna', tokens: tokens({ output: MTOK }) },
+      ],
+      window: JULY,
+      publishedTable: null,
+      publishCost: true,
+    })
+    expect(out.cost?.pricingTables).toEqual([OPENAI_PRICING_TABLE_VERSION])
+  })
+
+  it('strips the citation with the dollars when cost is off', () => {
+    // Cost is absent, not zeroed — and a citation with nothing to cite would
+    // leak that a figure existed.
+    const out = repriceSnapshot({
+      models: [
+        {
+          id: 'openai:gpt-5.4',
+          tokens: tokens({ input: MTOK }),
+          apiEquivalentUSD: 2.5,
+          pricingTable: OPENAI_PRICING_TABLE_VERSION,
+        },
+      ],
+      window: JULY,
+      publishedTable: null,
+      publishCost: false,
+    })
+    expect(out.models[0].apiEquivalentUSD).toBeUndefined()
+    expect(out.models[0].pricingTable).toBeUndefined()
+  })
+
+  it('stamps the citing table onto a row it estimates', () => {
+    // An estimated figure is cited by OUR table, per model, the same way a
+    // published figure is cited by the CLI's.
+    const out = repriceSnapshot({
+      models: [{ id: 'gpt-5.6-sol', tokens: tokens({ input: MTOK }) }],
+      window: JULY,
+      publishedTable: null,
+      publishCost: true,
+    })
+    expect(out.models[0].costEstimated).toBe(true)
+    expect(out.models[0].pricingTable).toBe(OPENAI_PRICING_TABLE_VERSION)
+  })
+})
+
 describe('provider-qualified ids from a multi-provider harness (#123)', () => {
   it('estimates a Google row at the Google list rate', () => {
     const out = repriceSnapshot({

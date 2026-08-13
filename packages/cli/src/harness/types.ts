@@ -41,11 +41,6 @@ export interface HarnessAdapter {
 	 */
 	readonly builtinTools: ReadonlySet<string>;
 	/**
-	 * The pinned price-table id stamped into this harness's payloads. Per
-	 * harness because the vendors publish their lists separately.
-	 */
-	readonly pricingTableVersion: string;
-	/**
 	 * True when this harness wrote a transcript inside the sync window. A log
 	 * root that merely exists is NOT detection (#101): a months-old install
 	 * leaves one behind forever, and it used to scan, publish, ask and hook.

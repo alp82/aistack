@@ -23,6 +23,11 @@
 // zero write prices correctly with zero pricing-code changes.
 
 import {
+	apiEquivalentCost,
+	normalizeModel,
+	type TokenCounts,
+} from "@aistack/pricing";
+import {
 	addModelUsage,
 	asName,
 	asNum,
@@ -35,11 +40,6 @@ import {
 	type Obj,
 	type Aggregate as SharedAggregate,
 } from "../shared/aggregate.js";
-import {
-	apiEquivalentCost,
-	normalizeModel,
-	type TokenCounts,
-} from "@aistack/pricing";
 
 /** Codex needs no response dedup bookkeeping — deltas count once by construction. */
 export type Aggregate = SharedAggregate<never>;
