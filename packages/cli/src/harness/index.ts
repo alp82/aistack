@@ -22,6 +22,7 @@
 
 import { CLAUDE_HARNESS_NAME, claudeAdapter } from "./claude/adapter.js";
 import { CODEX_HARNESS_NAME, codexAdapter } from "./codex/adapter.js";
+import { OPENCODE_HARNESS_NAME, opencodeAdapter } from "./opencode/adapter.js";
 import { DEFAULT_WINDOW_DAYS, windowStartMs } from "./shared/window.js";
 import type { HarnessAdapter } from "./types.js";
 
@@ -58,6 +59,11 @@ export {
 } from "./claude/analyzer.js";
 export { type ScanOptions, scan, transcriptRoots } from "./claude/scan.js";
 export { CODEX_HARNESS_NAME, codexAdapter } from "./codex/adapter.js";
+export {
+	OPENCODE_BUILTIN_TOOLS,
+	OPENCODE_HARNESS_NAME,
+	opencodeAdapter,
+} from "./opencode/adapter.js";
 export {
 	type Aggregate,
 	cleanName,
@@ -124,12 +130,15 @@ export type {
 export const HARNESS_ADAPTERS: readonly HarnessAdapter[] = [
 	claudeAdapter,
 	codexAdapter,
+	opencodeAdapter,
 ];
 
 /** Display name for a harness discriminator. One name per harness, defined here. */
 export function harnessLabel(name: string): string {
 	if (name === CLAUDE_HARNESS_NAME) return "Claude Code";
 	if (name === CODEX_HARNESS_NAME) return "Codex";
+	// The brand spells itself lowercase, so the discriminator IS the label.
+	if (name === OPENCODE_HARNESS_NAME) return "opencode";
 	return name;
 }
 

@@ -14,6 +14,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { enableAutoSync } from "../autosync/optin.js";
 import { claudeRecentlyActive } from "../commands/connect.js";
@@ -29,11 +30,46 @@ let dir: string;
 const savedEnv = {
 	CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR,
 	CODEX_HOME: process.env.CODEX_HOME,
+	XDG_DATA_HOME: process.env.XDG_DATA_HOME,
+	OPENCODE_DB: process.env.OPENCODE_DB,
 };
 
 beforeEach(() => {
 	dir = mkdtempSync(join(tmpdir(), "aistack-detect-"));
+	// Point every harness at the temp dir so the machine running the tests
+	// never leaks its own installs into `detectedAdapters`.
+	process.env.XDG_DATA_HOME = join(dir, "xdg-data");
+	delete process.env.OPENCODE_DB;
 });
+
+/** A minimal real opencode store with one message at `tsMs`. */
+function writeOpencodeDb(tsMs: number): void {
+	const dataDir = join(dir, "xdg-data", "opencode");
+	mkdirSync(dataDir, { recursive: true });
+	const db = new DatabaseSync(join(dataDir, "opencode.db"));
+	db.exec(`
+		create table migration (id text primary key, time_completed integer);
+		create table session (id text primary key, parent_id text, version text);
+		create table message (id text primary key, session_id text,
+			time_created integer, time_updated integer, data text);
+		create table part (id text primary key, message_id text, session_id text,
+			time_created integer, time_updated integer, data text);
+		create table session_message (id text primary key, session_id text,
+			type text, time_created integer, time_updated integer, data text, seq integer);
+	`);
+	db.prepare("insert into migration values (?, ?)").run(
+		"20260622202450_simplify_session_input",
+		tsMs,
+	);
+	db.prepare("insert into message values (?, ?, ?, ?, ?)").run(
+		"msg_1",
+		"ses_1",
+		tsMs,
+		tsMs,
+		JSON.stringify({ role: "assistant", time: { created: tsMs } }),
+	);
+	db.close();
+}
 
 afterEach(() => {
 	rmSync(dir, { recursive: true, force: true });
@@ -141,6 +177,24 @@ describe("detectedAdapters", () => {
 
 		const names = (await detectedAdapters(SINCE)).map((a) => a.name);
 		expect(names).toEqual(["claude-code", "codex"]);
+	});
+
+	it("an in-window opencode store detects, after the other two", async () => {
+		process.env.CLAUDE_CONFIG_DIR = join(dir, "claude-home");
+		process.env.CODEX_HOME = join(dir, "codex-home");
+		write("claude-home/projects/proj-a/sess-1.jsonl", NOW - DAY);
+		writeOpencodeDb(NOW - DAY);
+
+		const names = (await detectedAdapters(SINCE)).map((a) => a.name);
+		expect(names).toEqual(["claude-code", "opencode"]);
+	});
+
+	it("an opencode store with only stale rows stays undetected", async () => {
+		process.env.CLAUDE_CONFIG_DIR = join(dir, "claude-home");
+		process.env.CODEX_HOME = join(dir, "codex-home");
+		writeOpencodeDb(NOW - 90 * DAY);
+
+		expect(await detectedAdapters(SINCE)).toEqual([]);
 	});
 
 	it("returns nothing when every harness is stale", async () => {
