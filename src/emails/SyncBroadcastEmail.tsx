@@ -222,6 +222,13 @@ export function SyncBroadcastEmail(props: {
 							</Section>
 						))}
 
+						{/* Closing CTA */}
+						<Section style={styles.ctaWrap}>
+							<Link href={`${ctaUrl}/sync`} style={styles.ctaAnimated}>
+								Sync your usage ⟶
+							</Link>
+						</Section>
+
 						{/* Privacy boundary */}
 						<Text
 							style={{
