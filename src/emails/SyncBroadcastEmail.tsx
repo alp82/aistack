@@ -24,11 +24,12 @@ import {
 
 const BASE_URL = "https://aistack.to";
 
-// The sync-broadcast design was locked in wayfinder ticket #133: terminal
-// hero with the owner's real reading, one CTA to /sync, then one row per
-// gain, each backed by a screenshot captured from the live site
-// (2026-08-15, stored in /public/email/). Recapture before sending if the
-// numbers have drifted - the copy claims they are real.
+// The sync-broadcast design was locked in wayfinder ticket #133: an
+// animated hero (the start page's live token counter, recorded as a GIF),
+// the terminal mock with the owner's real reading, one CTA to /sync, then
+// one row per gain, each backed by a screenshot captured from the live
+// site (2026-08-17, stored in /public/email/). Recapture before sending
+// if the numbers have drifted - the copy claims they are real.
 
 const termLine: React.CSSProperties = {
 	fontFamily: fonts.mono,
@@ -134,6 +135,22 @@ export function SyncBroadcastEmail(props: {
 						</Row>
 					</Section>
 
+					{/* Hero - the start page's token counter, recorded live. Clickable
+					    like the waitlist-launch hero. */}
+					<Link href={`${ctaUrl}/sync`} style={{ display: "block" }}>
+						<Img
+							src={`${BASE_URL}/email/sync-hero.gif`}
+							alt="106 billion tokens measured in the last 24 hours on AI Stack"
+							width={560}
+							height={256}
+							style={{
+								width: "100%",
+								height: "auto",
+								display: "block",
+							}}
+						/>
+					</Link>
+
 					{/* Main Content */}
 					<Section style={styles.content}>
 						<Text style={styles.sectionLabel}>{"// aistack sync"}</Text>
@@ -160,9 +177,9 @@ export function SyncBroadcastEmail(props: {
 							<Text style={termLine}>
 								searched claude code, codex, opencode, pi-mono
 							</Text>
-							<Text style={termLine}>sessions 565 · 30 days</Text>
-							<Text style={termLine}>tokens 4.23B</Text>
-							<Text style={termLine}>cost $4,827 at API prices</Text>
+							<Text style={termLine}>sessions 572 · 30 days</Text>
+							<Text style={termLine}>tokens 4.26B</Text>
+							<Text style={termLine}>cost $4,907 at API prices</Text>
 						</Section>
 						<Text style={{ ...styles.small, margin: "0 0 32px" }}>
 							These are real numbers from my own machine. The CLI shows your
