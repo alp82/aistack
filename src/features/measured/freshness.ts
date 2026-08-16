@@ -4,7 +4,7 @@
  * THE PAGE SPEAKS AT 48 HOURS, AND THE BOARD KEEPS SEVEN DAYS. Three windows
  * already existed around this reading, and #107 cut the page down to one:
  *
- *   - 48 hours - here. The hero dot and the stamp under the headline number.
+ *   - 48 hours - here. The hero dot, and the switch the section promotes.
  *   - 7 days - `isFresh` on the snapshot (`convex/measured.ts`), which the
  *     leaderboard still uses to rank a row (#82) and the owner's reconcile page
  *     still uses for its own run. Neither is this page.
@@ -18,8 +18,6 @@
  * THE CLOCK IS `receivedAt`, THE SERVER CLOCK, never `capturedAt` (#38). A
  * machine with a wrong clock must not be able to date this page.
  */
-import { fmtDay } from "./copy";
-
 /** Older than this and the page names the age. #107 set the number. */
 export const STALE_AFTER_HOURS = 48;
 
@@ -53,24 +51,4 @@ export function syncAgo(receivedAt: number, now: number = Date.now()): string {
 	}
 	const days = Math.floor(ms / DAY);
 	return days === 1 ? "yesterday" : `${days} days ago`;
-}
-
-/**
- * The stamp under the headline number: "as of Aug 2 · 3 days ago · 30-day
- * window".
- *
- * ONE ELEMENT FOR EVERY READER (#107 decision 1). The visitor reads no sentence
- * about the age, and the owner reads no second copy of it - the remedy lives on
- * the auto-sync switch, so the page never carries two things promoting one
- * feature.
- *
- * It names the window it dates, which is what keeps the 48-hour display line
- * from reading as the 30-day window the numbers cover.
- */
-export function freshnessStamp(
-	receivedAt: number,
-	windowDays: number,
-	now: number = Date.now(),
-): string {
-	return `as of ${fmtDay(receivedAt)} · ${syncAgo(receivedAt, now)} · ${windowDays}-day window`;
 }

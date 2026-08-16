@@ -8,12 +8,8 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { AutoSyncBox } from "./AutoSyncBox";
 import { CommandBlock } from "./CommandLine";
 import {
-	coverageCaveat,
 	fmtTokens,
-	type HarnessSnapshot,
-	harnessLine,
 	KICKER,
-	keptPrivate,
 	lastCheckLine,
 	MEASURED_ANCHOR,
 	type MeasuredSnapshot,
@@ -26,15 +22,12 @@ import {
 	OWNER_NOT_MEASURED_BODY,
 	OWNER_NOT_MEASURED_TITLE,
 	PRIVACY_FOOTNOTE,
-	pricedShareLine,
-	readingsLine,
 	SYNC_CMD,
 	SYNC_CMD_COMMENT,
 	TITLE,
 	totalUSD,
-	windowSentence,
 } from "./copy";
-import { freshnessStamp, isStale } from "./freshness";
+import { isStale } from "./freshness";
 import {
 	type MeasuredHistoryPoint,
 	modelTrails,
@@ -137,12 +130,10 @@ function Reading({
 	// The COMBINED headline (#66 decision 2): tokens, sessions and dollars sum
 	// honestly across harnesses; each harness keeps its own section below.
 	const cost = totalUSD(snapshot);
-	const pricedShare = pricedShareLine(snapshot);
 	const multiHarness = snapshot.harnesses.length > 1;
 	const trails = modelTrails(snapshot.models, points);
 	const firstAt = points.length > 0 ? points[0].at : null;
 	const sinceLast = lastCheckLine(tokenDelta(points), fmtTokens);
-	const stale = isStale(snapshot.receivedAt);
 
 	return (
 		<div className="grid gap-10 md:grid-cols-[minmax(0,22rem)_1fr]">
@@ -155,17 +146,8 @@ function Reading({
 					trail={tokenTrail(points)}
 				/>
 
-				{/* The one age claim the reading carries, stamped on the number it
-				    qualifies (#107 decision 1). Every reader gets the same one, and
-				    a reading inside 48 hours gets none. */}
-				{stale && (
-					<p className={cn(MONO_LABEL, "mt-3 px-3 text-fg-muted")}>
-						{freshnessStamp(snapshot.receivedAt, snapshot.window.days)}
-					</p>
-				)}
-
-				<div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 px-3">
-					{sinceLast && (
+				{sinceLast && (
+					<p className="mt-3 px-3">
 						<span
 							className={cn(
 								MONO_LABEL,
@@ -174,40 +156,8 @@ function Reading({
 						>
 							{sinceLast}
 						</span>
-					)}
-					{firstAt !== null && (
-						<span className={cn(MONO_LABEL, "text-fg-muted")}>
-							{readingsLine(points.length, firstAt)}
-						</span>
-					)}
-				</div>
-
-				<p className="mt-6 max-w-sm px-3 text-sm leading-relaxed text-fg-muted">
-					{windowSentence(snapshot.window.days)}
-				</p>
-
-				<div className="mt-6 space-y-1 px-3">
-					<p className={cn(MONO_LABEL, "text-fg-muted")}>
-						{snapshot.window.from} → {snapshot.window.to}
 					</p>
-					{snapshot.harnesses.map((h) => (
-						<p key={h.harness.name} className={cn(MONO_LABEL, "text-fg-muted")}>
-							{harnessLine(h)}
-						</p>
-					))}
-					{/* A price the reader cannot date is a price we do not print, so
-					    this line is present whenever the figure above is. */}
-					{cost !== null && snapshot.pricingTable && (
-						<p className={cn(MONO_LABEL, "text-fg-muted")}>
-							prices: {snapshot.pricingTable}
-						</p>
-					)}
-					{/* What the figure above leaves out. Silent at full coverage -
-					    "priced 100%" is noise, and the ≥ already carries the rest. */}
-					{pricedShare !== null && (
-						<p className={cn(MONO_LABEL, "text-fg-muted")}>{pricedShare}</p>
-					)}
-				</div>
+				)}
 			</div>
 
 			{/* The split, then the activity stats. */}
@@ -241,55 +191,7 @@ function Reading({
 						value={`${Math.round(snapshot.activity.subagentShare * 100)}%`}
 					/>
 				</div>
-
-				<div className="mt-4 space-y-2">
-					{snapshot.harnesses.map((h) => (
-						<HarnessFootnote
-							key={h.harness.name}
-							harness={h}
-							named={multiHarness}
-						/>
-					))}
-				</div>
 			</div>
-		</div>
-	);
-}
-
-/**
- * One harness's own caveat block: kept-private counts and coverage. These
- * CANNOT merge across harnesses - callShares are normalized per harness - so
- * each harness speaks for itself (#66).
- *
- * AGE IS NOT ONE OF THEM ANY MORE (#107 decision 2). A per-harness "going
- * stale" line at 7 days sat under a stamp and a dot that speak at 48 hours. The
- * page says the age once, at the number.
- */
-function HarnessFootnote({
-	harness,
-	named,
-}: {
-	harness: HarnessSnapshot;
-	named: boolean;
-}) {
-	const caveat = coverageCaveat(harness);
-	const privateCounts = keptPrivate(harness);
-	const prefix = named
-		? `${harnessLine(harness).replace("read from ", "")}: `
-		: "";
-	return (
-		<div className="space-y-1">
-			{privateCounts && (
-				<p className={cn(MONO_LABEL, "text-fg-muted")}>
-					{prefix}kept private: {privateCounts}
-				</p>
-			)}
-			{caveat && (
-				<p className="text-[11px] text-orange-400">
-					{prefix}
-					{caveat}
-				</p>
-			)}
 		</div>
 	);
 }

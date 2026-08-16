@@ -12,9 +12,8 @@
  *      that state.
  *   3. POSITIVE CLAIMS ONLY (#40): nothing here may say a listed thing went
  *      unused.
- *   4. A DOLLAR FIGURE NEVER APPEARS WITHOUT ITS PRICING TABLE.
- *   5. KEPT-PRIVATE COUNTS ARE COUNTS, never a percentage.
- *   6. THE PAGE RENDERS WHOLE WITHOUT ITS HISTORY. The series adds the trail,
+ *   4. A DOLLAR FIGURE NEVER RENDERS WHEN NO PRICING TABLE CITES IT.
+ *   5. THE PAGE RENDERS WHOLE WITHOUT ITS HISTORY. The series adds the trail,
  *      the notch and the delta; it is never what makes the section readable.
  */
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -90,23 +89,6 @@ describe("the reading", () => {
 		).toBeInTheDocument();
 	});
 
-	it("names the window as the thing that moves", () => {
-		const { current, history } = live();
-		setup(current, history);
-		expect(
-			screen.getByText(/rolling 30-day reading, not a running total/),
-		).toBeInTheDocument();
-		expect(screen.getByText("2026-07-05 → 2026-08-03")).toBeInTheDocument();
-	});
-
-	it("dates every dollar it prints", () => {
-		const { current, history } = live({ claudeCodeOnly: true });
-		setup(current, history);
-		expect(
-			screen.getByText(/prices: anthropic-list-2026-07-25/),
-		).toBeInTheDocument();
-	});
-
 	it("reads as complete on a stack that publishes no cost", () => {
 		const { current, history } = live({ withoutCost: true });
 		setup(current, history);
@@ -152,22 +134,9 @@ describe("the reading", () => {
 		setup(current, history);
 		expect(screen.getByText("checked 2h ago")).toBeInTheDocument();
 	});
-
-	it("names each harness it read from", () => {
-		const { current, history } = live();
-		setup(current, history);
-		expect(screen.getByText(/read from Claude Code/)).toBeInTheDocument();
-		expect(screen.getByText(/read from Codex/)).toBeInTheDocument();
-	});
 });
 
 describe("the page moving", () => {
-	it("says how many readings there are, and since when", () => {
-		const { current, history } = live();
-		setup(current, history);
-		expect(screen.getByText("7 readings since Jul 30")).toBeInTheDocument();
-	});
-
 	it("reports a fall as a fall, in plain words", () => {
 		// The window forgets its far end, so a quiet week lowers the reading. That
 		// is not a fault and the page must not dress it as one.
@@ -182,7 +151,7 @@ describe("the page moving", () => {
 		const { current, history } = live({ claudeCodeOnly: true });
 		setup(current, history);
 		expect(
-			screen.getByText(/the hatched notch marks where each share stood on/),
+			screen.getByText(/the notch marks where each share stood on/),
 		).toBeInTheDocument();
 		expect(screen.getAllByTestId("share-notch").length).toBeGreaterThan(0);
 	});
@@ -192,7 +161,6 @@ describe("the page moving", () => {
 		setup(current, history);
 		expect(screen.queryByTestId("share-notch")).not.toBeInTheDocument();
 		expect(document.body.textContent).not.toContain("since the last check");
-		expect(screen.getByText("1 reading since Jul 30")).toBeInTheDocument();
 		// The reading itself is still the whole section.
 		expect(screen.getByText("4.69B")).toBeInTheDocument();
 	});
@@ -221,51 +189,10 @@ describe("the fun-fact deck", () => {
 	});
 });
 
-describe("what the reading admits", () => {
-	it("counts what was kept private, without scoring it", () => {
-		const { current, history } = live({ claudeCodeOnly: true });
-		setup(current, history);
-		expect(
-			screen.getByText(/kept private: 2 MCP servers, 10 skills/),
-		).toBeInTheDocument();
-		expect(document.body.textContent).not.toMatch(/kept private[^.]*%/);
-	});
-
-	it("stays quiet about a clean scan", () => {
-		const { current, history } = live();
-		setup(current, history);
-		expect(document.body.textContent).not.toContain("Partial read");
-	});
-
-	it("calls a degraded scan a floor", () => {
-		const { current, history } = live({ claudeCodeOnly: true });
-		setup(
-			{
-				...current,
-				harnesses: current.harnesses.map((h) => ({
-					...h,
-					coverage: {
-						filesScanned: 3015,
-						filesUnreadable: 61,
-						linesParsed: 232058,
-						linesFailed: 4192,
-					},
-				})),
-			},
-			history,
-		);
-		expect(
-			screen.getByText(/The numbers below are a floor/),
-		).toBeInTheDocument();
-	});
-});
-
 /**
- * The page's age, said once (#108, building #107 decisions 1 and 2).
- *
- * The stamp replaced three age claims that disagreed: a hero dot at 7 days, a
- * per-harness "going stale" line at 7 days, and no line at all at 48 hours. The
- * page now speaks at 48 hours, at the number, to every reader.
+ * The page's age (#108, cut down again in the declutter pass). The header's
+ * "checked Nh ago" is the one age claim every reader gets; past 48 hours the
+ * owner's remedy is the auto-sync switch, promoted above the reading.
  */
 describe("how old the reading is", () => {
 	function aged(ageMs: number, options: { isOwner?: boolean } = {}) {
@@ -282,39 +209,13 @@ describe("how old the reading is", () => {
 		);
 	}
 
-	/**
-	 * The same, with the clock stopped. The boundary case cannot survive real
-	 * time: the milliseconds between building the snapshot and rendering it
-	 * would decide it.
-	 */
-	function agedExactly(ageMs: number) {
-		vi.useFakeTimers();
-		try {
-			aged(ageMs);
-		} finally {
-			vi.useRealTimers();
-		}
-	}
-
-	it("stamps the age on the number once it is past 48 hours", () => {
+	// The stamp under the headline number is gone: the header's "checked" line
+	// already dates the reading, and two ages for one sync taught nobody
+	// anything.
+	it("carries no age stamp under the number", () => {
 		aged(3 * 24 * HOUR);
-		expect(screen.getByText(/3 days ago · 30-day window/)).toBeInTheDocument();
-	});
-
-	it("stamps nothing on a reading inside 48 hours", () => {
-		aged(47 * HOUR);
 		expect(document.body.textContent).not.toContain("-day window");
-	});
-
-	// The boundary itself is still current: "older than 48 hours" excludes 48.
-	it("stamps nothing at exactly 48 hours", () => {
-		agedExactly(48 * HOUR);
-		expect(document.body.textContent).not.toContain("-day window");
-	});
-
-	it("stamps a reading one millisecond past the line", () => {
-		agedExactly(48 * HOUR + 1);
-		expect(screen.getByText(/2 days ago · 30-day window/)).toBeInTheDocument();
+		expect(document.body.textContent).not.toContain("days ago ·");
 	});
 
 	// #107 decision 2 deleted it. Three windows for one sync taught nobody
@@ -329,12 +230,10 @@ describe("how old the reading is", () => {
 		expect(document.body.textContent?.toLowerCase()).not.toContain("stale");
 	});
 
-	// One element for every reader (#107 decision 1). The visitor reads the age
-	// and no sentence about it, so the page never sells them a fix they cannot
-	// apply.
-	it("gives a visitor the stamp and no remedy", () => {
+	// The visitor reads the age in the header and no sentence about it, so the
+	// page never sells them a fix they cannot apply.
+	it("gives a visitor no remedy", () => {
 		aged(3 * 24 * HOUR);
-		expect(screen.getByText(/3 days ago · 30-day window/)).toBeInTheDocument();
 		expect(document.body.textContent).not.toContain("keeps this page current");
 	});
 

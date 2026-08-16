@@ -7,12 +7,7 @@
  * one is pinned where it is used.
  */
 import { describe, expect, it } from "vitest";
-import {
-	freshnessStamp,
-	isStale,
-	STALE_AFTER_HOURS,
-	syncAgo,
-} from "../freshness";
+import { isStale, STALE_AFTER_HOURS, syncAgo } from "../freshness";
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
@@ -71,20 +66,5 @@ describe("the age in words", () => {
 
 	it("says just now under an hour", () => {
 		expect(syncAgo(NOW - 20 * 60 * 1000, NOW)).toBe("just now");
-	});
-});
-
-describe("the stamp", () => {
-	it("dates the reading and names the window it covers", () => {
-		expect(freshnessStamp(Date.UTC(2026, 7, 2, 9, 0, 0), 30, NOW)).toBe(
-			"as of Aug 2 · 3 days ago · 30-day window",
-		);
-	});
-
-	// The 48-hour line is a DISPLAY threshold. The 30 days is what the numbers
-	// cover. The stamp carries the second so the reader cannot read the first as
-	// the window.
-	it("never says stale", () => {
-		expect(freshnessStamp(NOW - 19 * DAY, 30, NOW)).not.toContain("stale");
 	});
 });

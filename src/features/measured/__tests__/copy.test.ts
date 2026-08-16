@@ -6,17 +6,13 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-	coverageCaveat,
 	fmtTokens,
 	fmtUSD,
-	harnessLine,
-	keptPrivate,
 	leadModelLine,
 	modelLabel,
-	pricedShareLine,
 	totalUSD,
 } from "../copy";
-import { buildHarness, buildSnapshot, withoutCost } from "./fixture";
+import { buildSnapshot, withoutCost } from "./fixture";
 
 describe("the dollar figure", () => {
 	it("adds up every priced model", () => {
@@ -45,18 +41,6 @@ describe("the dollar figure", () => {
 		expect(totalUSD(buildSnapshot({ models: [], cost: null }))).toBeNull();
 	});
 
-	it("says what share of the tokens the figure covers", () => {
-		const base = buildSnapshot();
-		const partial = buildSnapshot({
-			cost: base.cost && { ...base.cost, coverage: 0.8529 },
-		});
-		expect(pricedShareLine(partial)).toBe("priced 85% of measured tokens");
-	});
-
-	it("stays silent on a fully priced window", () => {
-		expect(pricedShareLine(buildSnapshot())).toBeNull();
-	});
-
 	it("reads as dollars, not cents", () => {
 		expect(fmtUSD(5840.02)).toBe("$5,840");
 	});
@@ -75,89 +59,6 @@ describe("a model the catalog has never heard of", () => {
 		const s = buildSnapshot();
 		const known = s.models.find((m) => m.id === "claude-opus-5");
 		expect(known && modelLabel(known)).toBe("Claude Opus 5");
-	});
-});
-
-describe("kept private", () => {
-	it("names the categories that held something back, and no others", () => {
-		// builtinTools is 0 on this window and must not appear.
-		expect(keptPrivate(buildHarness())).toBe(
-			"2 MCP servers, 10 skills, 47 subagents, 9 commands",
-		);
-	});
-
-	it("is silent when nothing was held back", () => {
-		const s = buildHarness();
-		const withheld = { ...s.inventory.withheld };
-		for (const key of Object.keys(withheld) as Array<keyof typeof withheld>) {
-			withheld[key] = 0;
-		}
-		expect(
-			keptPrivate({ ...s, inventory: { ...s.inventory, withheld } }),
-		).toBeNull();
-	});
-
-	it("is never a percentage", () => {
-		// #42: a completeness score is a disclosure ratchet - it pressures the
-		// owner to publish exactly the names they held back.
-		expect(keptPrivate(buildHarness())).not.toMatch(/%/);
-	});
-});
-
-describe("coverage", () => {
-	it("says nothing about a clean scan", () => {
-		// 28 failed lines in 232,107 is noise, not a caveat.
-		expect(coverageCaveat(buildHarness())).toBeNull();
-	});
-
-	it("calls a degraded scan a floor", () => {
-		const caveat = coverageCaveat(
-			buildHarness({
-				coverage: {
-					filesScanned: 3015,
-					filesUnreadable: 61,
-					linesParsed: 232058,
-					linesFailed: 4192,
-				},
-			}),
-		);
-		expect(caveat).toContain("61 of 3015 files could not be read");
-		expect(caveat).toContain("4192 lines did not parse");
-		expect(caveat).toContain("floor");
-	});
-
-	it("speaks up for an unreadable file even when every parsed line was fine", () => {
-		expect(
-			coverageCaveat(
-				buildHarness({
-					coverage: {
-						filesScanned: 3015,
-						filesUnreadable: 1,
-						linesParsed: 232107,
-						linesFailed: 0,
-					},
-				}),
-			),
-		).toContain("1 of 3015 files could not be read");
-	});
-});
-
-describe("the harness", () => {
-	it("is called Claude Code, with its version", () => {
-		expect(harnessLine(buildHarness())).toBe("read from Claude Code 2.1.220");
-	});
-
-	it("names Codex properly, and keeps an unknown discriminator verbatim", () => {
-		// A payload naming a harness we have no display name for prints that
-		// name, because the alternative is a sentence that is simply false.
-		expect(
-			harnessLine(buildHarness({ harness: { name: "codex", version: null } })),
-		).toBe("read from Codex");
-		expect(
-			harnessLine(
-				buildHarness({ harness: { name: "cursor-cli", version: null } }),
-			),
-		).toBe("read from cursor-cli");
 	});
 });
 

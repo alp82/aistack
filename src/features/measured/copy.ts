@@ -11,10 +11,6 @@
  *     tokens it covers beside it (#93).
  *   - `catalogSlug: null` is not an error. The raw vendor id renders, because
  *     that row may be the largest one (#33 decision 3).
- *   - Withheld names read as "kept private", plain counts, non-zero only, and
- *     NEVER as a percentage or a completeness score (#42).
- *   - Coverage is silent on a clean scan. A degraded scan says the numbers are
- *     a floor (#33 decision 10).
  *   - Freshness reads `receivedAt`, the server clock, never `capturedAt` (#38).
  *   - POSITIVE CLAIMS ONLY. Nothing here may say a listed thing went unused -
  *     that needs an adapter seam covering every harness the user runs (#40).
@@ -103,7 +99,7 @@ export function lastCheckLine(
 /** The kicker over the model rows, and the note that explains the notch. */
 export const MIX_KICKER = "where the tokens went";
 export function notchNote(firstAt: number): string {
-	return `the hatched notch marks where each share stood on ${fmtDay(firstAt)}`;
+	return `the notch marks where each share stood on ${fmtDay(firstAt)}`;
 }
 
 /** The captions under the two headline numbers. */
@@ -138,23 +134,6 @@ export function totalUSD(s: {
 	return s.cost.lowerBoundUSD;
 }
 
-/**
- * "priced 85% of measured tokens" - the caveat that makes the figure above it
- * readable, or null on a fully priced window.
- *
- * Named for the price, not for "coverage": `coverageCaveat` above already means
- * SCAN coverage, and the two must not share a word.
- *
- * Rounded DOWN, because a rounded-up share claims more of the spend is
- * accounted for than is.
- */
-export function pricedShareLine(s: {
-	cost: { coverage: number } | null;
-}): string | null {
-	if (!s.cost || s.cost.coverage >= 1) return null;
-	return `priced ${Math.floor(s.cost.coverage * 100)}% of measured tokens`;
-}
-
 /** The catalog name, falling back to the raw vendor id the client published. */
 export function modelLabel(m: MeasuredModel): string {
 	return m.catalogName ?? m.id;
@@ -175,81 +154,6 @@ export function sessionsLine(s: MeasuredSnapshot): string {
 export function activeDaysLine(s: MeasuredSnapshot): string {
 	return `${s.activity.activeDays} of the last ${s.window.days} days`;
 }
-
-const WITHHELD_LABELS: Record<string, string> = {
-	builtinTools: "built-in tools",
-	mcpServers: "MCP servers",
-	skills: "skills",
-	subagents: "subagents",
-	slashCommands: "commands",
-};
-
-/**
- * "2 MCP servers, 10 skills" - the names the owner has not agreed to publish.
- *
- * Counts only, and only the non-zero ones. A percentage here would be a
- * disclosure ratchet: it would pressure the owner to publish exactly the names
- * they held back (#42).
- */
-export function keptPrivate(s: HarnessSnapshot): string | null {
-	const parts = Object.entries(s.inventory.withheld)
-		.filter(([, n]) => n > 0)
-		.map(([key, n]) => `${n} ${WITHHELD_LABELS[key] ?? key}`);
-	return parts.length > 0 ? parts.join(", ") : null;
-}
-
-/** A failed line in a thousand is noise, not a caveat worth printing. */
-const LINE_FAILURE_FLOOR = 0.001;
-
-/**
- * The caveat for a degraded scan, or null when the scan was clean.
- *
- * Silence is the common case and the correct one. When the scan did lose data,
- * the caveat says the numbers are a FLOOR, because every unread file can only
- * ever have added to them.
- */
-export function coverageCaveat(s: HarnessSnapshot): string | null {
-	const { filesScanned, filesUnreadable, linesParsed, linesFailed } =
-		s.coverage;
-	const failureRate = linesFailed / Math.max(1, linesParsed);
-	if (filesUnreadable === 0 && failureRate < LINE_FAILURE_FLOOR) return null;
-
-	const bits: string[] = [];
-	if (filesUnreadable > 0) {
-		bits.push(`${filesUnreadable} of ${filesScanned} files could not be read`);
-	}
-	if (linesFailed > 0) bits.push(`${linesFailed} lines did not parse`);
-	return `Partial read: ${bits.join(", ")}. The numbers below are a floor.`;
-}
-
-/** Display name for a harness discriminator. */
-export function harnessLabel(name: string): string {
-	if (name === "claude-code") return HARNESS;
-	if (name === "codex") return "Codex";
-	// These brands spell themselves lowercase, so the discriminator is the
-	// label - but each is an explicit row, so a rename cannot leak a raw slug.
-	if (name === "opencode") return "opencode";
-	if (name === "pi-mono") return "pi-mono";
-	return name;
-}
-
-/** "read from Claude Code 2.1.220" - one line per harness (#66 decision 2). */
-export function harnessLine(s: HarnessSnapshot): string {
-	const name = harnessLabel(s.harness.name);
-	return `read from ${name}${s.harness.version ? ` ${s.harness.version}` : ""}`;
-}
-
-/** Said once, next to the number that moves, and nowhere else. */
-export function windowSentence(days: number): string {
-	return `This is a rolling ${days}-day reading, not a running total. It moves every time it is checked, because the window moves with it.`;
-}
-
-/*
- * THE PER-HARNESS "going stale" LINE IS GONE (#107 decision 2). It spoke at 7
- * days, next to a hero dot and a stamp that speak at 48 hours, and three ages
- * for one sync on one page taught the reader nothing. The page's age now lives
- * in `freshness.ts` and is said once.
- */
 
 export const NEVER_SYNCED_TITLE = "This stack has not been measured yet.";
 export const NEVER_SYNCED_BODY = `Stacks can publish what actually ran on the machine they are built on: sessions, models, tokens, and cost at API prices, read from ${HARNESS}.`;
