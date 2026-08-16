@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import SpeedingText from "@/components/speeding-text";
 import {
 	BrutalistSelect,
@@ -249,11 +249,15 @@ export function PulseHero({ band }: { readonly band: Band }) {
 	// `usage.tokens` under an open tab. The counter then races FROM the reading
 	// the viewer is already looking at, not from zero — a replay of the whole
 	// count-up would claim the day started over. First paint still runs 0 → value.
-	const lastTokens = useRef(0);
-	const countFrom = lastTokens.current;
-	useEffect(() => {
-		lastTokens.current = usage.tokens;
-	}, [usage.tokens]);
+	//
+	// The pair lives in STATE and advances only when the level changes. The
+	// query re-delivers an identical band right after hydration; a ref updated
+	// per render fed that re-render from = value, which cancelled the race
+	// before it drew a frame.
+	const [run, setRun] = useState({ from: 0, to: usage.tokens });
+	if (run.to !== usage.tokens) {
+		setRun({ from: run.to, to: usage.tokens });
+	}
 	const reel = [
 		`${fmtCount(usage.sessions)} sessions`,
 		`${fmtCount(usage.projects)} projects`,
@@ -298,8 +302,8 @@ export function PulseHero({ band }: { readonly band: Band }) {
 						>
 							<div className="hidden md:block">
 								<SpeedingText
-									value={usage.tokens}
-									from={countFrom}
+									value={run.to}
+									from={run.from}
 									suffix=" tokens"
 									duration={2600}
 									italic={false}
@@ -311,8 +315,8 @@ export function PulseHero({ band }: { readonly band: Band }) {
 							</div>
 							<div className="md:hidden">
 								<SpeedingText
-									value={usage.tokens}
-									from={countFrom}
+									value={run.to}
+									from={run.from}
 									suffix=" tokens"
 									duration={2600}
 									italic={false}
