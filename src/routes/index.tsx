@@ -35,7 +35,7 @@ export const Route = createFileRoute("/")({
 	// what a first-time visitor reads above the fold, and it should not wait for
 	// a hydrated client.
 	loader: async ({ context }) => {
-		const [, band] = await Promise.all([
+		const [stacks, band] = await Promise.all([
 			context.queryClient.ensureQueryData(
 				convexQuery(api.stacks.listPublished, {}),
 			),
@@ -43,7 +43,7 @@ export const Route = createFileRoute("/")({
 				convexQuery(api.activityFeed.band, {}),
 			),
 		]);
-		return { band };
+		return { stacks, band };
 	},
 	head: () => ({
 		meta: seoMeta({
@@ -58,10 +58,15 @@ export const Route = createFileRoute("/")({
 });
 
 function IndexRoute() {
+	// Both reads fall back to the loader snapshot, so the server and the
+	// hydrating client render the SAME page. Reading the live query alone left
+	// the SSR HTML without the featured stacks — a hydration mismatch that made
+	// React regenerate the tree and remount the route (double-running the
+	// hero's counter).
+	const { stacks: loadedStacks, band: loadedBand } = Route.useLoaderData();
 	const stacks = (useQuery(api.stacks.listPublished) ??
-		[]) as LandingStackPreview[];
+		loadedStacks) as LandingStackPreview[];
 	const me = useQuery(api.creators.getMe);
-	const { band: loadedBand } = Route.useLoaderData();
 	const band = useQuery(api.activityFeed.band, {}) ?? loadedBand;
 
 	return (
