@@ -24,6 +24,29 @@ describe("the hero", () => {
 		expect(reading?.textContent).toContain("41 projects");
 	});
 
+	it("keeps the canonical reading current when the live band moves", () => {
+		// The band is a live subscription; a landing sync re-renders the hero
+		// with a new level and the sr-only record follows it.
+		const { container, rerender } = render(<PulseHero band={band()} />);
+		rerender(
+			<PulseHero
+				band={band({
+					usage: {
+						sessions: 601,
+						projects: 41,
+						models: 8,
+						tools: 22,
+						tokens: 900_000_000,
+						stacks: 2,
+					},
+				})}
+			/>,
+		);
+		expect(container.querySelector(".sr-only")?.textContent).toContain(
+			"900M tokens measured",
+		);
+	});
+
 	it("names its window in the kicker", () => {
 		render(<PulseHero band={band()} />);
 		expect(screen.getByText("Usage in the last 24 hours")).toBeInTheDocument();
