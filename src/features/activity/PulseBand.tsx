@@ -1,32 +1,25 @@
-import { Link } from "@tanstack/react-router";
-import { ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Sparkline } from "@/features/charts";
-import { FeedRowItem } from "./FeedRows";
 import type { Band } from "./feed";
 import { fmtCount, fmtTokens, liveDays, MONO_LABEL } from "./feed";
 
 /**
- * The pulse of the site — variant E1, locked in #84 over four rounds, and
- * carried verbatim onto `/activity` by #96.
+ * The measured header of `/activity` — variant E1, locked in #84 over four
+ * rounds, carried onto the page by #96, and PAGE-ONLY since #147: the landing
+ * now opens with `PulseHero`, so the landing-only feed rows and footer left
+ * with it and the `variant` prop is gone.
  *
+ *   ACTIVITY
  *   // the last 24 hours              2 syncs · 1 stack update · 8 models
  *
  *   4.99B            596              41               22
  *   TOKENS MEASURED  SESSIONS         PROJECTS         TOOLS
- *
- *   as it lands
- *     AI Stack measured usage moved +285M ...
- *
- *   measured across 4 stacks                        [ ALL ACTIVITY → ]
  *
  * HEADLINE IS WHAT THE SITE MEASURED, secondary is what the site did. A visitor
  * who reads only the big row learns how much real work these machines carry,
  * and never has to care that a sync is the mechanism that reported it.
  *
  * RULE BUDGET — ONE horizontal line inside the band, the one across the tile
- * tops. Everything below is separated by space. Vertical rules stay: the feed
- * rows keep their left border.
+ * tops. Everything below is separated by space.
  *
  * QUIET IS NOT ZERO. With no sync in the window every measured tile renders an
  * em dash. A row of zeroes reads as a broken site rather than a quiet one. All
@@ -37,10 +30,6 @@ import { fmtCount, fmtTokens, liveDays, MONO_LABEL } from "./feed";
  * sign and may fall. It used to print a movement with a `+`, summed over the
  * risers only, which no true sentence described — and it sat above rows that
  * are movements and could point the other way.
- *
- * The two `page` trims (#96): a tighter header, and no footer row — the page
- * does not repeat the landing band's footnote, and the button that led there
- * has nowhere left to go.
  */
 
 const WATERMARK_MIN_DAYS = 3;
@@ -86,24 +75,13 @@ function Fact({
 	);
 }
 
-export function PulseBand({
-	band,
-	variant,
-}: {
-	readonly band: Band;
-	readonly variant: "landing" | "page";
-}) {
-	const { totals, usage, points, rows } = band;
+export function PulseBand({ band }: { readonly band: Band }) {
+	const { totals, usage, points } = band;
 	const quiet = usage.stacks === 0;
 	const showWatermark = liveDays(points) >= WATERMARK_MIN_DAYS;
-	const onPage = variant === "page";
 
 	return (
-		<section
-			className={`relative overflow-hidden border-b-2 border-stroke-strong bg-bg-panel px-6 ${
-				onPage ? "py-10" : "py-20"
-			}`}
-		>
+		<section className="relative overflow-hidden border-b-2 border-stroke-strong bg-bg-panel px-6 py-10">
 			{showWatermark ? (
 				<div
 					aria-hidden="true"
@@ -121,19 +99,13 @@ export function PulseBand({
 			) : null}
 
 			<div className="relative mx-auto w-full max-w-content">
-				{onPage ? (
-					<h1 className="mb-6 text-4xl font-black tracking-tighter text-fg-primary md:text-5xl">
-						ACTIVITY
-					</h1>
-				) : null}
+				<h1 className="mb-6 text-4xl font-black tracking-tighter text-fg-primary md:text-5xl">
+					ACTIVITY
+				</h1>
 
 				{/* The secondary three live HERE, in a row the band already pays for:
 				    no extra rule, no extra row of vertical space. */}
-				<div
-					className={`flex flex-wrap items-baseline justify-between gap-x-10 gap-y-3 ${
-						onPage ? "mb-8" : "mb-12"
-					}`}
-				>
+				<div className="mb-8 flex flex-wrap items-baseline justify-between gap-x-10 gap-y-3">
 					<span className="flex items-center gap-3">
 						<span className="relative flex h-2 w-2">
 							<span className="absolute inline-flex h-full w-full animate-ping bg-accent-lime opacity-60" />
@@ -172,33 +144,6 @@ export function PulseBand({
 					/>
 					<Stat value={quiet ? "—" : fmtCount(usage.tools)} label="tools" />
 				</div>
-
-				{onPage ? null : (
-					<>
-						<div className="mt-16">
-							<div className={`${MONO_LABEL} mb-6 text-fg-muted`}>
-								as it lands
-							</div>
-							<ul className="space-y-2">
-								{rows.map((row) => (
-									<FeedRowItem key={row.id} row={row} />
-								))}
-							</ul>
-						</div>
-
-						<div className="mt-10 flex flex-wrap items-center justify-between gap-6">
-							<span className="font-mono text-xs text-fg-muted/50">
-								measured across {totals.stacksSeen}{" "}
-								{totals.stacksSeen === 1 ? "stack" : "stacks"}
-							</span>
-							<Button asChild variant="outline" size="lg">
-								<Link to="/activity" className={MONO_LABEL}>
-									all activity <ArrowRight className="h-3 w-3" />
-								</Link>
-							</Button>
-						</div>
-					</>
-				)}
 			</div>
 		</section>
 	);

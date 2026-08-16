@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { FeedRowItem } from "../FeedRows";
 import { PulseBand } from "../PulseBand";
 import { band, points, syncRow } from "./fixture";
 
@@ -13,7 +14,7 @@ afterEach(cleanup);
 
 describe("the band", () => {
 	it("leads with what the site measured, tokens on the accent", () => {
-		render(<PulseBand band={band()} variant="landing" />);
+		render(<PulseBand band={band()} />);
 		const tokens = screen.getByText("512M");
 		expect(tokens).toHaveClass("text-accent-lime");
 		expect(screen.getByText("tokens measured")).toBeInTheDocument();
@@ -23,7 +24,7 @@ describe("the band", () => {
 	});
 
 	it("puts what the site DID in the header bar, at kicker size", () => {
-		render(<PulseBand band={band()} variant="landing" />);
+		render(<PulseBand band={band()} />);
 		expect(screen.getByText("syncs")).toBeInTheDocument();
 		expect(screen.getByText("stack update")).toBeInTheDocument();
 		expect(screen.getByText("models")).toBeInTheDocument();
@@ -48,7 +49,6 @@ describe("the band", () => {
 						stacks: 0,
 					},
 				})}
-				variant="landing"
 			/>,
 		);
 		// Four measured tiles plus the model count. The two event COUNTS stay
@@ -58,7 +58,7 @@ describe("the band", () => {
 	});
 
 	it("states the token tile as a level, so it carries no sign (#129)", () => {
-		render(<PulseBand band={band()} variant="landing" />);
+		render(<PulseBand band={band()} />);
 		expect(screen.queryByText("+512M")).not.toBeInTheDocument();
 	});
 
@@ -76,7 +76,6 @@ describe("the band", () => {
 						stacks: 2,
 					},
 				})}
-				variant="landing"
 			/>,
 		);
 		expect(screen.getByText("0")).toBeInTheDocument();
@@ -84,53 +83,42 @@ describe("the band", () => {
 
 	it("drops the watermark below three days with a reading", () => {
 		const { container } = render(
-			<PulseBand
-				band={band({ points: points([0, 0, 5, 0, 0]) })}
-				variant="landing"
-			/>,
+			<PulseBand band={band({ points: points([0, 0, 5, 0, 0]) })} />,
 		);
 		expect(container.querySelector('[aria-hidden="true"] svg')).toBeNull();
 	});
 
 	it("draws the watermark once there is a shape to draw", () => {
 		const { container } = render(
-			<PulseBand
-				band={band({ points: points([1, 0, 5, 2, 0]) })}
-				variant="landing"
-			/>,
+			<PulseBand band={band({ points: points([1, 0, 5, 2, 0]) })} />,
 		);
 		expect(container.querySelector('[aria-hidden="true"] svg')).not.toBeNull();
 	});
 
-	it("sends the landing reader on to the whole stream", () => {
-		render(<PulseBand band={band()} variant="landing" />);
-		const button = screen.getByText(/all activity/i).closest("a");
-		expect(button).toHaveAttribute("href", "/activity");
-		expect(screen.getByText("measured across 4 stacks")).toBeInTheDocument();
-	});
-
-	it("drops the footnote row on the page, which does not repeat itself", () => {
-		render(<PulseBand band={band()} variant="page" />);
-		expect(screen.queryByText(/all activity/i)).not.toBeInTheDocument();
-		expect(screen.queryByText(/measured across/)).not.toBeInTheDocument();
+	it("carries the page heading — it IS the page header since #147", () => {
+		render(<PulseBand band={band()} />);
 		expect(
 			screen.getByRole("heading", { name: "ACTIVITY" }),
 		).toBeInTheDocument();
-	});
-
-	it("shows its evidence rows on the landing page only", () => {
-		const only = { rows: [syncRow()] };
-		render(<PulseBand band={band(only)} variant="landing" />);
-		expect(screen.getByText("AI Stack")).toBeInTheDocument();
-		cleanup();
-		render(<PulseBand band={band(only)} variant="page" />);
-		expect(screen.queryByText("AI Stack")).not.toBeInTheDocument();
+		// The landing-only footer left with the landing variant.
+		expect(screen.queryByText(/all activity/i)).not.toBeInTheDocument();
+		expect(screen.queryByText(/measured across/)).not.toBeInTheDocument();
 	});
 });
 
+// The row grammar is shared by the /activity stream and the landing hero's
+// summary line, so it is tested on the row component itself.
 describe("a row", () => {
+	function renderRow(row = syncRow()) {
+		return render(
+			<ul>
+				<FeedRowItem row={row} />
+			</ul>,
+		);
+	}
+
 	it("leads with movement and demotes the total", () => {
-		render(<PulseBand band={band({ rows: [syncRow()] })} variant="landing" />);
+		renderRow();
 		expect(screen.getByText(/measured usage moved/)).toBeInTheDocument();
 		expect(screen.getByText("+285M")).toBeInTheDocument();
 		expect(
@@ -141,7 +129,7 @@ describe("a row", () => {
 	});
 
 	it("links the stack, not the person", () => {
-		render(<PulseBand band={band({ rows: [syncRow()] })} variant="landing" />);
+		renderRow();
 		expect(screen.getByText("AI Stack").closest("a")).toHaveAttribute(
 			"href",
 			"/stacks/$slug",
@@ -149,26 +137,12 @@ describe("a row", () => {
 	});
 
 	it("says first reading only when it is one", () => {
-		render(
-			<PulseBand
-				band={band({
-					rows: [syncRow({ deltaTokens: null, firstReading: true })],
-				})}
-				variant="landing"
-			/>,
-		);
+		renderRow(syncRow({ deltaTokens: null, firstReading: true }));
 		expect(screen.getByText(/first reading/)).toBeInTheDocument();
 	});
 
 	it("claims nothing about movement it could not measure", () => {
-		render(
-			<PulseBand
-				band={band({
-					rows: [syncRow({ deltaTokens: null, firstReading: false })],
-				})}
-				variant="landing"
-			/>,
-		);
+		renderRow(syncRow({ deltaTokens: null, firstReading: false }));
 		expect(screen.queryByText(/first reading/)).not.toBeInTheDocument();
 		expect(screen.queryByText(/moved/)).not.toBeInTheDocument();
 		expect(screen.getByText("4.99B tokens")).toBeInTheDocument();

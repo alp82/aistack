@@ -113,6 +113,40 @@ export function syncTokens(row: FeedRow): number {
 	return row.event.harnesses.reduce((sum, h) => sum + h.totalTokens, 0);
 }
 
+/** `alp/ai-stack-ab12` — the compact identity a one-line surface has room for. */
+export function rowHandle(row: FeedRow): string {
+	return `${row.stack.creator}/${row.stack.slug}`;
+}
+
+/**
+ * The event in a few words, for surfaces that demote the feed to a single
+ * line (the landing hero's `latest:`). Same grammar as the full row: movement
+ * leads, and nothing claims a movement it could not measure (#84, #129).
+ */
+export function rowSummary(row: FeedRow): string {
+	const event = row.event;
+	if (event.type === "sync.landed") {
+		if (row.firstReading) {
+			return `first reading — ${fmtTokens(syncTokens(row))}`;
+		}
+		const delta = row.deltaTokens;
+		return delta === null
+			? `${fmtTokens(syncTokens(row))} measured`
+			: `${fmtDelta(delta)} measured`;
+	}
+	if (event.type === "stack.published") {
+		return `joined with ${event.toolCount} ${
+			event.toolCount === 1 ? "tool" : "tools"
+		}`;
+	}
+	const added = event.added[0]?.name;
+	const removed = event.removed[0]?.name;
+	if (added && removed) return `picked up ${added} · dropped ${removed}`;
+	if (added) return `picked up ${added}`;
+	if (removed) return `dropped ${removed}`;
+	return "changed composition";
+}
+
 /**
  * The facts under a sync row — EVENT-ONLY, all three of them (#84, #96).
  * Anything richer needs the snapshot join, and the band already pays for that
