@@ -99,7 +99,7 @@ const HARNESS_LOGOS: { name: string; url: string }[] = [
 	{ name: "Claude Code", url: `${BASE_URL}/email/claude-logo.png` },
 	{ name: "Codex", url: `${BASE_URL}/email/codex-logo.png` },
 	{ name: "opencode", url: `${BASE_URL}/email/opencode-logo.png` },
-	{ name: "pi-mono", url: `${BASE_URL}/email/pi-mono-logo.png` },
+	{ name: "Pi", url: `${BASE_URL}/email/pi-mono-logo.png` },
 ];
 
 export function SyncBroadcastEmail(props: {
@@ -120,7 +120,7 @@ export function SyncBroadcastEmail(props: {
 			</Head>
 			<Preview>
 				The aistack CLI reads your local usage from Claude Code, Codex, opencode
-				and pi-mono and adds it to your stack page.
+				and Pi and adds it to your stack page.
 			</Preview>
 			<Body style={styles.body}>
 				<Container style={styles.container}>
@@ -159,8 +159,8 @@ export function SyncBroadcastEmail(props: {
 						<Text style={styles.p}>
 							On top of the tools you use, now you can also show how much you
 							use them. The aistack CLI reads your local usage data from Claude
-							Code, Codex, opencode and pi-mono. It adds session and token count
-							to your profile page.
+							Code, Codex, opencode and Pi. It adds session and token count to
+							your profile page.
 						</Text>
 
 						{/* Terminal mock with the owner's real reading */}
@@ -176,7 +176,7 @@ export function SyncBroadcastEmail(props: {
 							<Text style={termDim}>from your machine · sync preview</Text>
 							<Text style={termLine}>&nbsp;</Text>
 							<Text style={termLine}>
-								searched claude code, codex, opencode, pi-mono
+								searched claude code, codex, opencode, pi
 							</Text>
 							<Text style={termLine}>* sessions 572 · 30 days</Text>
 							<Text style={termLine}>* tokens 4.26B</Text>
@@ -228,7 +228,7 @@ export function SyncBroadcastEmail(props: {
 								Supported harnesses
 							</Text>
 							<Text style={unlockText}>
-								The CLI reads Claude Code, Codex, opencode and pi-mono.
+								The CLI reads Claude Code, Codex, opencode and Pi.
 							</Text>
 							<Row style={{ marginTop: 16 }}>
 								{HARNESS_LOGOS.map((harness) => (

@@ -52,7 +52,7 @@ const BROADCAST_EMAILS: BroadcastEmail[] = [
 		id: "sync-broadcast",
 		name: "Show Your Real Usage",
 		description:
-			"Call to sync: the CLI reads Claude Code, Codex, opencode and pi-mono and adds real usage to the stack page",
+			"Call to sync: the CLI reads Claude Code, Codex, opencode and Pi and adds real usage to the stack page",
 		audience: "Waitlist + Members",
 		component: <SyncBroadcastEmail />,
 	},
