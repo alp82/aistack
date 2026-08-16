@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import SpeedingText from "@/components/speeding-text";
 import {
 	BrutalistSelect,
@@ -244,6 +244,16 @@ export function PulseHero({ band }: { readonly band: Band }) {
 	const { totals, usage, points, rows } = band;
 	const quiet = usage.stacks === 0;
 	const latest = rows[0];
+
+	// The band is a live Convex subscription, so a landing sync changes
+	// `usage.tokens` under an open tab. The counter then races FROM the reading
+	// the viewer is already looking at, not from zero — a replay of the whole
+	// count-up would claim the day started over. First paint still runs 0 → value.
+	const lastTokens = useRef(0);
+	const countFrom = lastTokens.current;
+	useEffect(() => {
+		lastTokens.current = usage.tokens;
+	}, [usage.tokens]);
 	const reel = [
 		`${fmtCount(usage.sessions)} sessions`,
 		`${fmtCount(usage.projects)} projects`,
@@ -289,6 +299,7 @@ export function PulseHero({ band }: { readonly band: Band }) {
 							<div className="hidden md:block">
 								<SpeedingText
 									value={usage.tokens}
+									from={countFrom}
 									suffix=" tokens"
 									duration={2600}
 									italic={false}
@@ -301,6 +312,7 @@ export function PulseHero({ band }: { readonly band: Band }) {
 							<div className="md:hidden">
 								<SpeedingText
 									value={usage.tokens}
+									from={countFrom}
 									suffix=" tokens"
 									duration={2600}
 									italic={false}
