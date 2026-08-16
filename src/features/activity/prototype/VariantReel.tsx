@@ -8,10 +8,10 @@
 
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
+import SpeedingText from "@/components/speeding-text";
 import { Button } from "@/components/ui/button";
 import type { Band } from "../feed";
 import { fmtCount, fmtTokens, MONO_LABEL } from "../feed";
-import SpeedingText from "./speeding-text";
 
 export const VARIANT_REEL_NAME = "Reel — insights take turns";
 

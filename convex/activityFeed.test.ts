@@ -554,7 +554,7 @@ describe('the band', () => {
     await emit(t, stackId, now - HOUR, syncEvent({ totalTokens: 2_000 }))
 
     const band = await t.query(api.activityFeed.band, {})
-    expect(band.points).toHaveLength(14)
+    expect(band.points).toHaveLength(30)
     expect(band.points[band.points.length - 1].at).toBeGreaterThan(
       band.points[0].at
     )

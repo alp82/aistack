@@ -1,15 +1,3 @@
-/**
- * PROTOTYPE — throwaway. Variant D: "One Number" (D+E combined).
- *
- * The 24-hour token count colossal at the top via SpeedingText's counter,
- * the reel of other insights toggling under it, then a 7-day chart titled
- * "Usage in the last 7 days" with min/max bubbles and a hover/tap tooltip.
- *
- * SpeedingText sets `display: flex` inline, which beats Tailwind's `hidden`
- * class — so the responsive pair is wrapped in plain divs, never classed
- * directly on the component.
- */
-
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
@@ -19,41 +7,65 @@ import {
 	type BrutalistSelectOption,
 } from "@/components/ui/brutalist-select";
 import { Button } from "@/components/ui/button";
-import { Sparkline } from "@/features/charts";
-import type { Band, DayPoint } from "../feed";
-import { fmtCount, fmtTokens, liveDays, MONO_LABEL } from "../feed";
-import { RelativeTime } from "../RelativeTime";
-import { rowHandle, rowSummary } from "./summary";
+import { formatDay, Sparkline } from "@/features/charts";
+import type { Band, DayPoint } from "./feed";
+import {
+	fmtCount,
+	fmtTokens,
+	liveDays,
+	MONO_LABEL,
+	rowHandle,
+	rowSummary,
+} from "./feed";
+import { RelativeTime } from "./RelativeTime";
 
-export const VARIANT_ONE_NUMBER_NAME = "One Number — count on top, reel below";
+/**
+ * The landing pulse — one bold number (#147, locked from the pulse-band
+ * prototype's variant D after the E1 band was judged too busy).
+ *
+ *   ■ USAGE IN THE LAST 24 HOURS
+ *
+ *          106,299,666,998 tokens        ← SpeedingText counter
+ *              596 sessions              ← SpeedingText reel
+ *
+ *          USAGE IN THE [ last 7 days ▾ ]
+ *          ~~~~~~~/\~~~~ with high/low bubbles + hover tooltip
+ *
+ *   latest: alp/ai-stack +285M measured · 4h ago
+ *          [ ADD YOUR TOKENS → ]  all activity
+ *
+ * ONE INSIGHT AT A TIME. The old band's four tiles and four feed rows each
+ * competed for the same glance; here the token count is the only headline,
+ * the other levels take turns in the reel, and the whole feed is one line.
+ *
+ * THE ANIMATION IS NOT THE RECORD. SpeedingText paints its digits from an
+ * effect, so the first HTML carries them nowhere a crawler or screen reader
+ * looks. The sr-only sentence below the count is the canonical server-rendered
+ * reading; the animated pair is aria-hidden and exists for sighted visitors.
+ *
+ * QUIET IS NOT ZERO (#84): with no sync in the window the count renders an em
+ * dash and the reel does not mount — a counter racing to zero reads as a
+ * broken site, not a quiet one.
+ *
+ * The tooltip chips are QUIET GLASS — translucent canvas, no border, no solid
+ * fill. Bordered means control (the range select), filled means nothing here:
+ * a white brick is too heavy on the dark canvas and a lime fill fights the
+ * lime line. The hover chip is marked by a small lime square instead.
+ */
 
-const CHART_HEIGHT = 144;
+const TREND_HEIGHT = 144;
 
-type ChartRange = "7" | "30";
+type TrendRange = "7" | "30";
 
-const RANGE_OPTIONS: BrutalistSelectOption<ChartRange>[] = [
+const RANGE_OPTIONS: BrutalistSelectOption<TrendRange>[] = [
 	{ value: "7", label: "last 7 days" },
 	{ value: "30", label: "last 30 days" },
 ];
 
-function subPhrases(band: Band): string[] {
-	const { totals, usage } = band;
-	return [
-		`${fmtCount(usage.sessions)} sessions`,
-		`${fmtCount(usage.projects)} projects`,
-		`${fmtCount(usage.tools)} tools`,
-		`${totals.stacksSeen} ${totals.stacksSeen === 1 ? "stack" : "stacks"}`,
-	];
-}
-
-function fmtDay(at: number): string {
-	return new Date(at).toLocaleDateString("en-US", {
-		month: "short",
-		day: "numeric",
-	});
-}
-
-/** x,y in 0..1 chart space, assuming the y domain runs 0..max like the area. */
+/**
+ * x,y in 0..1 chart space. The y mapping assumes the domain runs 0..max,
+ * which is what the Sparkline's area baseline draws.
+ */
 function positionOf(
 	point: DayPoint,
 	index: number,
@@ -66,36 +78,32 @@ function positionOf(
 	};
 }
 
-function Bubble({
+function Chip({
 	x,
 	y,
 	label,
 	value,
 	below,
-	accent,
+	live,
 }: {
 	readonly x: number;
 	readonly y: number;
 	readonly label: string;
 	readonly value: string;
 	readonly below?: boolean;
-	readonly accent?: boolean;
+	readonly live?: boolean;
 }) {
 	return (
 		<div
-			className="pointer-events-none absolute z-10 -translate-x-1/2"
+			className="pointer-events-none absolute z-10"
 			style={{
 				left: `${Math.min(Math.max(x, 0.08), 0.92) * 100}%`,
 				top: `${y * 100}%`,
 				transform: `translate(-50%, ${below ? "10px" : "calc(-100% - 10px)"})`,
 			}}
 		>
-			{/* Quiet glass chips, no border — the dropdown owns the bordered look.
-			    No solid fills: white bricks are too heavy on the dark canvas and a
-			    lime fill fights the lime line. The hover chip is marked by a small
-			    lime square instead. */}
 			<div className="flex items-center gap-1.5 bg-bg-canvas/85 px-2 py-1 font-mono text-[11px] whitespace-nowrap backdrop-blur-[2px]">
-				{accent ? (
+				{live ? (
 					<span aria-hidden="true" className="h-1.5 w-1.5 bg-accent-lime" />
 				) : null}
 				<span>
@@ -107,29 +115,28 @@ function Bubble({
 	);
 }
 
-function SevenDayChart({ points }: { readonly points: readonly DayPoint[] }) {
+function TokenTrend({ points }: { readonly points: readonly DayPoint[] }) {
 	const ref = useRef<HTMLDivElement>(null);
 	const [hover, setHover] = useState<number | null>(null);
-	const [range, setRange] = useState<ChartRange>("7");
+	const [range, setRange] = useState<TrendRange>("7");
 
-	// The band serves 14 daily points today, so "30" shows all it has. Real
-	// 30-day depth needs the query's window widened at fold-in time.
-	const week = useMemo(
+	const days = useMemo(
 		() => [...points].sort((a, b) => a.at - b.at).slice(-Number(range)),
 		[points, range],
 	);
-	const maxValue = Math.max(...week.map((p) => p.value), 1);
+	const maxValue = Math.max(...days.map((p) => p.value), 1);
 	const { minIdx, maxIdx } = useMemo(() => {
 		let lo = 0;
 		let hi = 0;
-		week.forEach((p, i) => {
-			if (p.value < week[lo].value) lo = i;
-			if (p.value > week[hi].value) hi = i;
+		days.forEach((p, i) => {
+			if (p.value < days[lo].value) lo = i;
+			if (p.value > days[hi].value) hi = i;
 		});
 		return { minIdx: lo, maxIdx: hi };
-	}, [week]);
+	}, [days]);
 
-	if (liveDays(week) < 2) return null;
+	// Below two live readings there is no shape to draw (#84's watermark rule).
+	if (liveDays(days) < 2) return null;
 
 	const pick = (clientX: number) => {
 		const rect = ref.current?.getBoundingClientRect();
@@ -137,18 +144,20 @@ function SevenDayChart({ points }: { readonly points: readonly DayPoint[] }) {
 		const ratio = (clientX - rect.left) / rect.width;
 		setHover(
 			Math.min(
-				week.length - 1,
-				Math.max(0, Math.round(ratio * (week.length - 1))),
+				days.length - 1,
+				Math.max(0, Math.round(ratio * (days.length - 1))),
 			),
 		);
 	};
 
-	const minPos = positionOf(week[minIdx], minIdx, week.length, maxValue);
-	const maxPos = positionOf(week[maxIdx], maxIdx, week.length, maxValue);
+	const minPos = positionOf(days[minIdx], minIdx, days.length, maxValue);
+	const maxPos = positionOf(days[maxIdx], maxIdx, days.length, maxValue);
 	const hoverPos =
 		hover !== null
-			? positionOf(week[hover], hover, week.length, maxValue)
+			? positionOf(days[hover], hover, days.length, maxValue)
 			: null;
+	// The live chip replaces a standing chip it would cover; a flat range has
+	// no distinct low to call out.
 	const hideMin = hover === minIdx || minIdx === maxIdx;
 	const hideMax = hover === maxIdx;
 
@@ -170,35 +179,35 @@ function SevenDayChart({ points }: { readonly points: readonly DayPoint[] }) {
 			<div
 				ref={ref}
 				className="relative touch-none"
-				style={{ height: CHART_HEIGHT }}
+				style={{ height: TREND_HEIGHT }}
 				onPointerMove={(e) => pick(e.clientX)}
 				onPointerDown={(e) => pick(e.clientX)}
 				onPointerLeave={() => setHover(null)}
 			>
 				<Sparkline
-					points={week}
-					ariaLabel="Tokens measured per day, last 7 days"
+					points={days}
+					ariaLabel={`Tokens measured per day, last ${range} days`}
 					width={640}
-					height={CHART_HEIGHT}
+					height={TREND_HEIGHT}
 					fluid
 					area
 					className="h-full w-full"
 				/>
 
 				{hideMax ? null : (
-					<Bubble
+					<Chip
 						x={maxPos.x}
 						y={maxPos.y}
-						value={fmtTokens(week[maxIdx].value)}
-						label={`high · ${fmtDay(week[maxIdx].at)}`}
+						value={fmtTokens(days[maxIdx].value)}
+						label={`high · ${formatDay(new Date(days[maxIdx].at))}`}
 					/>
 				)}
 				{hideMin ? null : (
-					<Bubble
+					<Chip
 						x={minPos.x}
 						y={minPos.y}
-						value={fmtTokens(week[minIdx].value)}
-						label={`low · ${fmtDay(week[minIdx].at)}`}
+						value={fmtTokens(days[minIdx].value)}
+						label={`low · ${formatDay(new Date(days[minIdx].at))}`}
 						below={minPos.y < 0.55}
 					/>
 				)}
@@ -216,13 +225,13 @@ function SevenDayChart({ points }: { readonly points: readonly DayPoint[] }) {
 								top: `${hoverPos.y * 100}%`,
 							}}
 						/>
-						<Bubble
+						<Chip
 							x={hoverPos.x}
 							y={hoverPos.y}
-							value={fmtTokens(week[hover].value)}
-							label={fmtDay(week[hover].at)}
+							value={fmtTokens(days[hover].value)}
+							label={formatDay(new Date(days[hover].at))}
 							below={hoverPos.y < 0.55}
-							accent
+							live
 						/>
 					</>
 				) : null}
@@ -231,11 +240,16 @@ function SevenDayChart({ points }: { readonly points: readonly DayPoint[] }) {
 	);
 }
 
-export function VariantOneNumber({ band }: { readonly band: Band }) {
-	const { usage, points, rows } = band;
+export function PulseHero({ band }: { readonly band: Band }) {
+	const { totals, usage, points, rows } = band;
 	const quiet = usage.stacks === 0;
 	const latest = rows[0];
-	const phrases = subPhrases(band);
+	const reel = [
+		`${fmtCount(usage.sessions)} sessions`,
+		`${fmtCount(usage.projects)} projects`,
+		`${fmtCount(usage.tools)} tools`,
+		`${totals.stacksSeen} ${totals.stacksSeen === 1 ? "stack" : "stacks"}`,
+	];
 
 	return (
 		<section className="border-b-2 border-stroke-strong bg-bg-panel px-6 py-14">
@@ -250,11 +264,28 @@ export function VariantOneNumber({ band }: { readonly band: Band }) {
 					</span>
 				</span>
 
-				<div className="mt-6 w-full tracking-tighter text-fg-primary">
-					{quiet ? (
-						<div className="text-8xl font-black leading-none">—</div>
-					) : (
-						<>
+				{quiet ? (
+					<div className="mt-6 text-8xl font-black leading-none tracking-tighter text-fg-primary">
+						—
+					</div>
+				) : (
+					<>
+						{/* The canonical reading, for the first HTML. */}
+						<p className="sr-only">
+							{fmtTokens(usage.tokens)} tokens measured in the last 24 hours,
+							across {fmtCount(usage.sessions)} sessions,{" "}
+							{fmtCount(usage.projects)} projects and {fmtCount(usage.tools)}{" "}
+							tools, from {totals.stacksSeen}{" "}
+							{totals.stacksSeen === 1 ? "stack" : "stacks"}.
+						</p>
+
+						{/* SpeedingText sets `display: flex` inline, which beats a
+						    `hidden` utility on the component itself — the responsive
+						    pair needs wrapper divs. */}
+						<div
+							aria-hidden="true"
+							className="mt-6 w-full tracking-tighter text-fg-primary"
+						>
 							<div className="hidden md:block">
 								<SpeedingText
 									value={usage.tokens}
@@ -279,42 +310,43 @@ export function VariantOneNumber({ band }: { readonly band: Band }) {
 									height="3rem"
 								/>
 							</div>
-						</>
-					)}
-				</div>
+						</div>
 
-				{quiet ? null : (
-					<div className="mt-2 tracking-tighter text-fg-secondary">
-						<div className="hidden md:block">
-							<SpeedingText
-								words={phrases}
-								interval={2200}
-								swapDuration={520}
-								travel={70}
-								italic={false}
-								fontWeight={900}
-								fontSize={44}
-								textColor="currentColor"
-								height="3.5rem"
-							/>
+						<div
+							aria-hidden="true"
+							className="mt-2 tracking-tighter text-fg-secondary"
+						>
+							<div className="hidden md:block">
+								<SpeedingText
+									words={reel}
+									interval={2200}
+									swapDuration={520}
+									travel={70}
+									italic={false}
+									fontWeight={900}
+									fontSize={44}
+									textColor="currentColor"
+									height="3.5rem"
+								/>
+							</div>
+							<div className="md:hidden">
+								<SpeedingText
+									words={reel}
+									interval={2200}
+									swapDuration={520}
+									travel={50}
+									italic={false}
+									fontWeight={900}
+									fontSize={28}
+									textColor="currentColor"
+									height="2.5rem"
+								/>
+							</div>
 						</div>
-						<div className="md:hidden">
-							<SpeedingText
-								words={phrases}
-								interval={2200}
-								swapDuration={520}
-								travel={50}
-								italic={false}
-								fontWeight={900}
-								fontSize={28}
-								textColor="currentColor"
-								height="2.5rem"
-							/>
-						</div>
-					</div>
+					</>
 				)}
 
-				<SevenDayChart points={points} />
+				<TokenTrend points={points} />
 
 				{latest ? (
 					<div className="mt-6 font-mono text-xs text-fg-muted">

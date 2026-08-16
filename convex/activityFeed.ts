@@ -45,8 +45,12 @@ const DAY_MS = 24 * HOUR_MS
 
 /** The band's claim, in words on the surface: "the last 24 hours". */
 const BAND_WINDOW_MS = 24 * HOUR_MS
-/** How far back the watermark behind the numbers reaches. */
-const WATERMARK_DAYS = 14
+/**
+ * How far back the daily points reach. They feed the /activity watermark and
+ * the landing hero's trend chart, whose range select offers 30 days (#147) —
+ * the SCAN_CAP below still bounds the walk.
+ */
+const WATERMARK_DAYS = 30
 /** Evidence rows under the band. Four, locked in #84. */
 const BAND_ROWS = 4
 /** One click of "older" (#96). */

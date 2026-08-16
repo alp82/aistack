@@ -1,11 +1,12 @@
 /**
- * PROTOTYPE — throwaway. Three variants of the landing pulse band, switchable
- * via `?variant=A|B|C` on `/`. Without the param (or in production) the real
- * `PulseBand` renders and nothing else mounts.
+ * PROTOTYPE — the pulse-band variant switcher (`?variant=A|B|C|D|E` on `/`).
+ * Variant D won and became `PulseHero` (#147); without the param (or in
+ * production) that winner renders and nothing else mounts. The variants stay
+ * in main as the record of the exploration.
  */
 
 import type { Band } from "../feed";
-import { PulseBand } from "../PulseBand";
+import { PulseHero } from "../PulseHero";
 import { PulsePrototypeSwitcher } from "./PulsePrototypeSwitcher";
 import { usePulsePrototype } from "./usePulsePrototype";
 import { VariantAnnotated } from "./VariantAnnotated";
@@ -18,7 +19,7 @@ export function PulsePrototype({ band }: { readonly band: Band }) {
 	const { variant, cycle } = usePulsePrototype();
 
 	if (import.meta.env.PROD || variant === null) {
-		return <PulseBand band={band} variant="landing" />;
+		return <PulseHero band={band} />;
 	}
 
 	return (

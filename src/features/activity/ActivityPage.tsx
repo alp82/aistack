@@ -44,7 +44,7 @@ export function ActivityPage({
 
 	return (
 		<div className="min-h-screen bg-bg-canvas">
-			<PulseBand band={band} variant="page" />
+			<PulseBand band={band} />
 
 			<div className="px-6 py-16">
 				<div className="mx-auto w-full max-w-content">

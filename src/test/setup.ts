@@ -50,3 +50,20 @@ if (typeof IntersectionObserver === "undefined") {
 	globalThis.IntersectionObserver =
 		MockIntersectionObserver as unknown as typeof IntersectionObserver;
 }
+
+// jsdom does not implement window.matchMedia; SpeedingText reads it for
+// prefers-reduced-motion. Report "no preference" so components animate the
+// way a default browser would.
+if (typeof window !== "undefined" && !window.matchMedia) {
+	window.matchMedia = (query: string) =>
+		({
+			matches: false,
+			media: query,
+			onchange: null,
+			addListener: () => {},
+			removeListener: () => {},
+			addEventListener: () => {},
+			removeEventListener: () => {},
+			dispatchEvent: () => false,
+		}) as MediaQueryList;
+}
