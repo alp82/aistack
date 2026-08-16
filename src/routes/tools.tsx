@@ -60,12 +60,13 @@ export const Route = createFileRoute("/tools")({
 	}),
 	search: { middlewares: [stripSearchParams(TOOLS_SEARCH_DEFAULTS)] },
 	loader: async ({ context }) => {
-		await Promise.all([
+		const [tools, stacks] = await Promise.all([
 			context.queryClient.ensureQueryData(convexQuery(api.tools.listAll, {})),
 			context.queryClient.ensureQueryData(
 				convexQuery(api.stacks.listPublished, {}),
 			),
 		]);
+		return { tools, stacks };
 	},
 	head: () => ({
 		meta: seoMeta({
@@ -109,10 +110,14 @@ function ToolsPage() {
 	const [searchDraft, setSearchDraft] = useState(q);
 	const [suggestEditTool, setSuggestEditTool] =
 		useState<ToolForSuggestion | null>(null);
+	// Falls back to the loader snapshot (same pattern as the landing page):
+	// the live query returns undefined until the Convex WebSocket delivers,
+	// and a wedged connection must show the SSR'd lists, not an empty page.
+	const { tools: loadedTools, stacks: loadedStacks } = Route.useLoaderData();
 	const rawTools = useQuery(api.tools.listAll);
-	const tools = rawTools ?? [];
+	const tools = rawTools ?? loadedTools;
 	const stacks = (useQuery(api.stacks.listPublished) ??
-		[]) as LandingStackPreview[];
+		loadedStacks) as LandingStackPreview[];
 
 	const toolUsageCounts = useMemo(() => {
 		const counts = new Map<string, number>();

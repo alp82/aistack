@@ -157,7 +157,11 @@ function StackDetailsPage() {
 	const { slug } = Route.useParams();
 	const navigate = useNavigate();
 	const { isAuthenticated } = useConvexAuth();
-	const stack = useQuery(api.stacks.getBySlug, { slug });
+	// Falls back to the loader snapshot (same pattern as the landing page):
+	// the live query returns undefined until the Convex WebSocket delivers,
+	// and a wedged connection must show the SSR'd stack, not a loading state.
+	const { stack: loadedStack } = Route.useLoaderData();
+	const stack = useQuery(api.stacks.getBySlug, { slug }) ?? loadedStack;
 	// Deduped daily visitors (#78). Counted on MOUNT and keyed by document id, so
 	// a slug rename keeps the page's history.
 	useRecordView("stack", stack?._id);

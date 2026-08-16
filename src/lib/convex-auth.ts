@@ -20,12 +20,18 @@
  * 5. The token cache is keyed on `sessionId` (upstream cleared only on a null
  *    session), so a direct A→B account swap with no null pass never serves
  *    user A's cached JWT under user B's cookie.
+ * 6. A failed token fetch while a session exists schedules a backoff retry
+ *    (1s doubling to a 30s cap) that bumps the returned hook's identity.
+ *    `ConvexProviderWithAuth` re-arms `client.setAuth` only when
+ *    `fetchAccessToken`'s identity changes, so without this a single timed-out
+ *    fetch (fix 4 resolving `null`) left the client unauthenticated until a
+ *    full reload — the "randomly logged out" symptom on flaky connections.
  *
  * Deliberate omission: upstream's `ott`/crossDomain one-time-token effect is
  * dropped; this app's authClient (src/lib/auth-client.ts) has only
  * `convexClient()` + `magicLinkClient()`, so that path is dead code here.
  */
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { authClient } from "./auth-client";
 
 /**
@@ -35,6 +41,11 @@ import { authClient } from "./auth-client";
  * inside the ~10s recovery bound; ~8s would give 16s and miss it.
  */
 export const AUTH_TOKEN_TIMEOUT_MS = 4000;
+
+/** Fix 6 backoff: first retry after 1s, doubling per failure. */
+export const AUTH_RETRY_BASE_MS = 1000;
+/** Fix 6 backoff ceiling: retry at most every 30s while the endpoint is down. */
+export const AUTH_RETRY_MAX_MS = 30_000;
 
 /**
  * Race a promise against a timer that resolves `null`. Never rejects, never
@@ -118,6 +129,26 @@ export function useConvexAuthFromBetterAuth(
 				// biome-ignore lint/correctness/useHookAtTopLevel: useAuthFromBetterAuth is a hook returned from a memoized factory, mirroring upstream
 				const { data: session, isPending } = authClient.useSession();
 				const sessionId = session?.session?.id;
+				// Fix 6: bumped after a backoff delay when a token fetch fails
+				// with a live session. It feeds fetchAccessToken's deps, so the
+				// bump hands ConvexProviderWithAuth a new identity and re-arms
+				// client.setAuth — the only thing that makes Convex fetch again.
+				// biome-ignore lint/correctness/useHookAtTopLevel: useAuthFromBetterAuth is a hook returned from a memoized factory, mirroring upstream
+				const [retryTick, setRetryTick] = useState(0);
+				// biome-ignore lint/correctness/useHookAtTopLevel: useAuthFromBetterAuth is a hook returned from a memoized factory, mirroring upstream
+				const retryAttemptsRef = useRef(0);
+				// biome-ignore lint/correctness/useHookAtTopLevel: useAuthFromBetterAuth is a hook returned from a memoized factory, mirroring upstream
+				const retryTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+					undefined,
+				);
+				// biome-ignore lint/correctness/useHookAtTopLevel: useAuthFromBetterAuth is a hook returned from a memoized factory, mirroring upstream
+				useEffect(
+					() => () => {
+						clearTimeout(retryTimerRef.current);
+						retryTimerRef.current = undefined;
+					},
+					[],
+				);
 				// Bind the SSR-seeded token to the first real session observed on
 				// the client (its rightful owner), so a later account swap (which
 				// changes sessionId) invalidates it via the cache-match check
@@ -137,8 +168,11 @@ export function useConvexAuthFromBetterAuth(
 				// Keyed on sessionId: the callback both reads it (to match the
 				// cached token's owner) and gets a fresh identity whenever the
 				// session changes, which re-triggers setAuth() so users
-				// re-authenticate once the endpoint recovers.
+				// re-authenticate once the endpoint recovers. retryTick is
+				// deliberately unread in the body: its whole job is forcing a new
+				// identity per scheduled retry so setAuth re-arms (fix 6).
 				// biome-ignore lint/correctness/useHookAtTopLevel: useAuthFromBetterAuth is a hook returned from a memoized factory, mirroring upstream
+				// biome-ignore lint/correctness/useExhaustiveDependencies: retryTick forces a fresh identity per retry
 				const fetchAccessToken = useCallback(
 					async ({
 						forceRefreshToken = false,
@@ -159,9 +193,25 @@ export function useConvexAuthFromBetterAuth(
 						const token = await fetchConvexTokenWithTimeout();
 						tokenRef.current = token;
 						tokenSessionIdRef.current = sessionId;
+						if (token) {
+							retryAttemptsRef.current = 0;
+						} else if (sessionId && retryTimerRef.current === undefined) {
+							// Fix 6: a session cookie exists but the token fetch failed
+							// (timeout, abort, network). Convex now sits unauthenticated
+							// and will never ask again on its own — schedule one bump.
+							const delay = Math.min(
+								AUTH_RETRY_MAX_MS,
+								AUTH_RETRY_BASE_MS * 2 ** retryAttemptsRef.current,
+							);
+							retryAttemptsRef.current += 1;
+							retryTimerRef.current = setTimeout(() => {
+								retryTimerRef.current = undefined;
+								setRetryTick((tick) => tick + 1);
+							}, delay);
+						}
 						return token;
 					},
-					[sessionId],
+					[sessionId, retryTick],
 				);
 				// biome-ignore lint/correctness/useHookAtTopLevel: useAuthFromBetterAuth is a hook returned from a memoized factory, mirroring upstream
 				// biome-ignore lint/correctness/useExhaustiveDependencies: sessionId stands in for the session object to keep identity stable across refetches

@@ -131,9 +131,10 @@ export const Route = createFileRoute("/stacks/")({
 	}),
 	search: { middlewares: [stripSearchParams(STACKS_SEARCH_DEFAULTS)] },
 	loader: async ({ context }) => {
-		await context.queryClient.ensureQueryData(
+		const stacks = await context.queryClient.ensureQueryData(
 			convexQuery(api.stacks.listPublished, {}),
 		);
+		return { stacks };
 	},
 	head: () => ({
 		meta: seoMeta({
@@ -150,8 +151,12 @@ export const Route = createFileRoute("/stacks/")({
 function BrowseStacksPage() {
 	const navigate = useNavigate();
 	const { isAuthenticated } = useConvexAuth();
+	// Falls back to the loader snapshot (same pattern as the landing page):
+	// the live query returns undefined until the Convex WebSocket delivers,
+	// and a wedged connection must show the SSR'd list, not an empty page.
+	const { stacks: loadedStacks } = Route.useLoaderData();
 	const rawStacks = useQuery(api.stacks.listPublished);
-	const stacks = (rawStacks ?? []) as LandingStackPreview[];
+	const stacks = (rawStacks ?? loadedStacks) as LandingStackPreview[];
 	const me = useQuery(api.creators.getMe);
 	const {
 		filter: rawFilter,

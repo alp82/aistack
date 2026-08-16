@@ -60,8 +60,8 @@ describe("landing validateSearch", () => {
 		expect(validateLanding({})).toEqual(LANDING_SEARCH_DEFAULTS);
 		expect(validateLanding({})).not.toHaveProperty("q");
 	});
-	it("sort default is upvotes and bad values fall back", () => {
-		expect(validateLanding({ sort: "bogus" }).sort).toBe("upvotes");
+	it("sort default is updated and bad values fall back", () => {
+		expect(validateLanding({ sort: "bogus" }).sort).toBe("updated");
 	});
 });
 

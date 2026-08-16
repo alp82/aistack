@@ -23,6 +23,7 @@ vi.mock("@/lib/auth-client", () => ({
 }));
 
 import {
+	AUTH_RETRY_BASE_MS,
 	AUTH_TOKEN_TIMEOUT_MS,
 	fetchConvexTokenWithTimeout,
 	useConvexAuthFromBetterAuth,
@@ -36,9 +37,12 @@ const signedInSession = (id = "session-1") => ({
 
 afterEach(async () => {
 	// Flush timers past the timeout so the module-level in-flight dedup
-	// promise always settles between tests.
+	// promise always settles between tests. Wrapped in act: the flush can
+	// fire a scheduled auth retry tick (fix 6), which is a React state update.
 	if (vi.isFakeTimers()) {
-		await vi.advanceTimersByTimeAsync(AUTH_TOKEN_TIMEOUT_MS + 1);
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(AUTH_TOKEN_TIMEOUT_MS + 1);
+		});
 		vi.useRealTimers();
 	}
 	vi.restoreAllMocks();
@@ -232,6 +236,84 @@ describe("useConvexAuthFromBetterAuth", () => {
 		// never A's still-cached JWT.
 		await expect(result.current.fetchAccessToken()).resolves.toBe("token-B");
 		expect(mocks.token).toHaveBeenCalledTimes(1);
+	});
+
+	it("a failed fetch with a live session schedules a retry that re-arms setAuth (new fetchAccessToken identity), and recovery resets the backoff", async () => {
+		vi.useFakeTimers();
+		mocks.useSession.mockReturnValue(signedInSession());
+		mocks.token.mockRejectedValue(new Error("network down"));
+
+		const { result } = setup(null);
+		const initialFetch = result.current.fetchAccessToken;
+
+		await act(async () => {
+			await expect(initialFetch()).resolves.toBeNull();
+		});
+		// Identity is stable until the backoff elapses...
+		expect(result.current.fetchAccessToken).toBe(initialFetch);
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(AUTH_RETRY_BASE_MS);
+		});
+		// ...then the tick hands ConvexProviderWithAuth a fresh identity, which
+		// is what re-runs client.setAuth and makes Convex fetch again.
+		const second = result.current.fetchAccessToken;
+		expect(second).not.toBe(initialFetch);
+
+		// The retried fetch succeeds → authenticated again, backoff reset.
+		mocks.token.mockResolvedValue({ data: { token: "recovered-token" } });
+		await act(async () => {
+			await expect(second()).resolves.toBe("recovered-token");
+		});
+	});
+
+	it("doubles the retry delay on consecutive failures", async () => {
+		vi.useFakeTimers();
+		mocks.useSession.mockReturnValue(signedInSession());
+		mocks.token.mockRejectedValue(new Error("still down"));
+
+		const { result } = setup(null);
+
+		// First failure → retry after BASE.
+		await act(async () => {
+			await result.current.fetchAccessToken();
+		});
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(AUTH_RETRY_BASE_MS);
+		});
+		const afterFirstRetry = result.current.fetchAccessToken;
+
+		// Second failure → retry after 2×BASE: nothing at BASE...
+		await act(async () => {
+			await afterFirstRetry();
+		});
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(AUTH_RETRY_BASE_MS);
+		});
+		expect(result.current.fetchAccessToken).toBe(afterFirstRetry);
+
+		// ...the bump lands at 2×BASE.
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(AUTH_RETRY_BASE_MS);
+		});
+		expect(result.current.fetchAccessToken).not.toBe(afterFirstRetry);
+	});
+
+	it("does not schedule a retry when there is no session (null token is the correct answer)", async () => {
+		vi.useFakeTimers();
+		mocks.useSession.mockReturnValue({ data: null, isPending: false });
+		mocks.token.mockRejectedValue(new Error("network down"));
+
+		const { result } = setup(null);
+		const initialFetch = result.current.fetchAccessToken;
+
+		await act(async () => {
+			await expect(initialFetch()).resolves.toBeNull();
+		});
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(AUTH_RETRY_BASE_MS * 64);
+		});
+		expect(result.current.fetchAccessToken).toBe(initialFetch);
 	});
 
 	it("two concurrent forced calls share one token fetch (dedup)", async () => {
