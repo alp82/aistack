@@ -35,6 +35,7 @@ const stacks: LandingStackPreview[] = [
 		creator: { name: "Solo Auto", xHandle: null, avatarUrl: null },
 		tools: [tool("t1", "n8n", ["automation"]), tool("t2", "Cursor", ["ide"])],
 		upvoteCount: 0,
+		updatedAt: 1000,
 	},
 	{
 		_id: "team-automation",
@@ -51,6 +52,7 @@ const stacks: LandingStackPreview[] = [
 			tool("t4", "Notion", ["notes"]),
 		],
 		upvoteCount: 5,
+		updatedAt: 2000,
 	},
 	{
 		_id: "team-design",
@@ -67,6 +69,7 @@ const stacks: LandingStackPreview[] = [
 			tool("t6", "Framer", ["app-builder"]),
 		],
 		upvoteCount: 10,
+		updatedAt: 3000,
 	},
 ];
 

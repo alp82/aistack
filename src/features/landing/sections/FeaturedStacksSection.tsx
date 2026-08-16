@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 const STACKS_PER_PAGE = 9;
 
-type SortOption = "upvotes" | "newest" | "price_low" | "price_high";
+type SortOption = "updated" | "upvotes" | "newest" | "price_low" | "price_high";
 
 type LandingStackPreview = {
 	_id: string;
@@ -58,6 +58,8 @@ type LandingStackPreview = {
 	}>;
 	upvoteCount: number;
 	isLowQuality?: boolean | null;
+	// Newest of authored edits and measured syncs — merged server-side.
+	updatedAt: number;
 };
 
 type FeedSectionProps = {
@@ -118,6 +120,8 @@ function filterPreviewStacks(
 
 	return filtered.sort((a, b) => {
 		switch (sortOption) {
+			case "updated":
+				return b.updatedAt - a.updatedAt;
 			case "upvotes":
 				return b.upvoteCount - a.upvoteCount;
 			case "newest":
@@ -133,6 +137,7 @@ function filterPreviewStacks(
 }
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+	{ value: "updated", label: "Last Updated" },
 	{ value: "upvotes", label: "Most Upvoted" },
 	{ value: "newest", label: "Newest" },
 	{ value: "price_low", label: "Price: Low → High" },
@@ -147,7 +152,7 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 		page: rawPage,
 	} = useSearch({ from: "/" });
 	const toolFilter = rawFilter ?? "all";
-	const sortOption = rawSort ?? "upvotes";
+	const sortOption = rawSort ?? "updated";
 	const page = rawPage ?? 1;
 	const setSearch = useMemo(
 		() =>

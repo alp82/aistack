@@ -206,6 +206,11 @@ export const listPublished = query({
       tools: v.array(ToolValidator),
       upvoteCount: v.number(),
       isLowQuality: v.optional(v.boolean()),
+      // Newest activity of ANY kind: authored edits (stack.updatedAt) or a
+      // measured sync (snapshot receivedAt — server clock, since capturedAt is
+      // client-controlled). Syncs never bump stack.updatedAt, so the merge
+      // happens here.
+      updatedAt: v.number(),
     })
   ),
   handler: async (ctx) => {
@@ -258,6 +263,12 @@ export const listPublished = query({
 
         const resolvedAvatar = await resolveCreatorAvatarUrl(ctx, creator)
 
+        const latestSnapshot = await ctx.db
+          .query('measuredSnapshots')
+          .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', stack._id))
+          .order('desc')
+          .first()
+
         return {
           _id: stack._id,
           _creationTime: stack._creationTime,
@@ -282,6 +293,7 @@ export const listPublished = query({
           tools,
           upvoteCount: upvotes.length,
           isLowQuality: stack.isLowQuality,
+          updatedAt: Math.max(stack.updatedAt, latestSnapshot?.receivedAt ?? 0),
         }
       })
     )

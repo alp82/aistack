@@ -122,7 +122,7 @@ export const Route = createFileRoute("/stacks/")({
 		filter: coerceString(search.filter, "all"),
 		sort: coerceEnum(
 			search.sort,
-			["upvotes", "newest", "price_low", "price_high"] as const,
+			["updated", "upvotes", "newest", "price_low", "price_high"] as const,
 			"newest",
 		),
 		q: coerceString(search.q, ""),

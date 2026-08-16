@@ -13,7 +13,7 @@ import { api } from "../../convex/_generated/api";
 
 export const LANDING_SEARCH_DEFAULTS = {
 	filter: "all",
-	sort: "upvotes" as SortOption,
+	sort: "updated" as SortOption,
 	page: 1,
 };
 
@@ -25,8 +25,8 @@ export const Route = createFileRoute("/")({
 		filter: coerceString(search.filter, "all"),
 		sort: coerceEnum(
 			search.sort,
-			["upvotes", "newest", "price_low", "price_high"] as const,
-			"upvotes",
+			["updated", "upvotes", "newest", "price_low", "price_high"] as const,
+			"updated",
 		),
 		page: coercePage(search.page),
 	}),
