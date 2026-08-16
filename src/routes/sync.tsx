@@ -158,7 +158,7 @@ function CommandHero() {
 						{copied ? <Check size={14} /> : <Copy size={14} />}
 						{/* The idle label stays in the grid invisibly so the button
 						    keeps its width when the shorter "copied" swaps in. */}
-						<span className="inline-grid text-left">
+						<span className="inline-grid text-center">
 							<span className="invisible col-start-1 row-start-1" aria-hidden>
 								copy command
 							</span>
