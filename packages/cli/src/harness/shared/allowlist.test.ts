@@ -56,7 +56,7 @@ describe("BUILTIN_TOOLS", () => {
 		for (const name of observed) expect(BUILTIN_TOOLS.has(name)).toBe(true);
 	});
 
-	it("is a literal set, not a pattern — a plausible fake is not a member", () => {
+	it("is a literal set, not a pattern - a plausible fake is not a member", () => {
 		expect(BUILTIN_TOOLS.has("ReadFile")).toBe(false);
 		expect(BUILTIN_TOOLS.has("BashPlus")).toBe(false);
 		expect(BUILTIN_TOOLS.has("bash")).toBe(false); // case-sensitive
@@ -188,7 +188,7 @@ describe("plugin-wrapper normalization (#42 decision 5)", () => {
 	});
 
 	it("publishes the raw wrapper when the owner ticked that exact string", () => {
-		// Consent is to the string as rendered at the gate — including the plugin
+		// Consent is to the string as rendered at the gate - including the plugin
 		// name it carries.
 		const result = filterAtoms(
 			[{ name: "plugin_acme-internal_billing", count: 4 }],
@@ -214,7 +214,7 @@ describe("plugin-wrapper normalization (#42 decision 5)", () => {
 
 	it("keeps a wrapper private when the plugin name carries an underscore", () => {
 		// The split takes the first underscore-free segment, so this one splits
-		// wrong — and fails in the same direction every other miss does.
+		// wrong - and fails in the same direction every other miss does.
 		const result = filterAtoms(
 			[{ name: "plugin_acme_secret_stripe", count: 4 }],
 			sets(["stripe"]),
@@ -253,7 +253,7 @@ describe("loadSyncConfig", () => {
 
 	it("falls back to the bundled copy on a network error, without throwing", async () => {
 		// A bundled-only list is, for a user whose plugin never auto-updates,
-		// frozen forever — but an unreachable aistack must never break the scan.
+		// frozen forever - but an unreachable aistack must never break the scan.
 		const loaded = await loadSyncConfig({
 			baseUrl: "https://aistack.to",
 			fetchImpl: (() =>
@@ -372,12 +372,12 @@ describe("loadSyncConfig", () => {
 
 	it("holds no auto-sync permission when the config could not be read", () => {
 		// Bundled means the fetch failed. `stack` is null there too, so the stage
-		// blocks before any publish — this only has to not claim a permission.
+		// blocks before any publish - this only has to not claim a permission.
 		expect(BUNDLED_SYNC_CONFIG.autoSync).toBeNull();
 	});
 
 	it("drops names from the server that fail the charset or length bound", async () => {
-		// A server-supplied list can widen what publishes — that is accepted,
+		// A server-supplied list can widen what publishes - that is accepted,
 		// because the gate renders every name. It cannot smuggle a control
 		// character, a wildcard, or an unbounded string.
 		const loaded = await loadSyncConfig({
@@ -426,7 +426,7 @@ describe("loadSyncConfig", () => {
 		});
 		expect(loaded.config.optIns.skills).toEqual(["alp-river:crossfire"]);
 		// A ticked name is the USER's string, so the curated list's conventional
-		// charset is the wrong bar — parentheses are a legitimate name.
+		// charset is the wrong bar - parentheses are a legitimate name.
 		expect(loaded.config.optIns.subagents).toEqual(["(default)"]);
 	});
 
@@ -483,7 +483,7 @@ describe("loadSyncConfig", () => {
 });
 
 describe("bundled curated allowlist", () => {
-	it("holds only public artifacts — no author-specific plugin names", () => {
+	it("holds only public artifacts - no author-specific plugin names", () => {
 		const all = [
 			...BUNDLED_CURATED_ALLOWLIST.mcpServers,
 			...BUNDLED_CURATED_ALLOWLIST.skills,
@@ -550,7 +550,7 @@ describe("the destination stack on the authenticated half (#41)", () => {
 			name: "My Stack",
 			slug: "my-stack",
 		});
-		// Absent, null, or malformed all read as "no destination" — and the
+		// Absent, null, or malformed all read as "no destination" - and the
 		// gate refuses to publish without one.
 		expect(await load(undefined)).toBeNull();
 		expect(await load(null)).toBeNull();

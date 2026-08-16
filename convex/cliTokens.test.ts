@@ -6,7 +6,7 @@ import type { Id } from './_generated/dataModel'
 import schema from './schema'
 
 /**
- * CLI token hardening — wayfinder #49, narrowed in #52 (map #29).
+ * CLI token hardening - wayfinder #49, narrowed in #52 (map #29).
  *
  * The test that guards a decision rather than behaviour: THE LIST NEVER ECHOES
  * A CREDENTIAL. `/settings/machines` renders rows for every linked machine, so
@@ -15,7 +15,7 @@ import schema from './schema'
  *
  * The phase-A fallback tests are gone with the plaintext column. `getByToken`
  * no longer exists and a row cannot hold a raw bearer, so there is nothing left
- * to fall back to — which is the outcome, not an omission.
+ * to fall back to - which is the outcome, not an omission.
  */
 
 const modules = import.meta.glob('./**/*.{js,ts}')
@@ -161,7 +161,7 @@ describe('revokeToken', () => {
     expect(
       await t.query(internal.cliTokens.getByTokenHash, { tokenHash: 'digest' }),
     ).toBeNull()
-    // Deleted, not flagged — there is no revoked state to leave behind.
+    // Deleted, not flagged - there is no revoked state to leave behind.
     expect(await t.run(async (ctx) => ctx.db.get(id))).toBeNull()
   })
 
@@ -199,7 +199,7 @@ describe('revokeToken', () => {
 describe('refreshToken', () => {
   test('a revoked machine with a request in flight does not resurrect itself', async () => {
     // The sliding TTL runs AFTER the request is served, so a revoke landing
-    // mid-request would otherwise patch a deleted row and throw a 500 — or
+    // mid-request would otherwise patch a deleted row and throw a 500 - or
     // worse, recreate it.
     const t = convexTest(schema, modules)
     const id = await seedToken(t, { tokenHash: 'digest' })

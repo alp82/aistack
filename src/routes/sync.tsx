@@ -14,8 +14,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * The canonical "how syncing works" page (#58/#59). Every surface that teaches
- * the sync command points here — the stack page boxes, the reconcile banner,
- * the landing hero — so the full story lives in exactly one place.
+ * the sync command points here - the stack page boxes, the reconcile banner,
+ * the landing hero - so the full story lives in exactly one place.
  */
 export const Route = createFileRoute("/sync")({
 	component: SyncPage,
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/sync")({
 		meta: seoMeta({
 			title: "Show what actually ran - AI Stack",
 			description:
-				"Publish the reading behind your stack — sessions, models, tokens, and cost at API prices — straight from your own machine. One command, an approval gate, nothing else.",
+				"Publish the sessions, models, tokens, and cost behind your stack, straight from your own machine. One command with an approval gate.",
 			url: "/sync",
 		}),
 	}),
@@ -35,7 +35,7 @@ export const Route = createFileRoute("/sync")({
 const STEPS: { title: string; body: string; cmd?: string }[] = [
 	{
 		title: "Sync",
-		body: "Scans your local agent history and prints the full summary in your terminal — every number, every name. On the first run it opens your browser to link this machine. You name it, and you can revoke it any time.",
+		body: "Scans your local agent history and prints the full summary, every number and every name, in your terminal. On the first run it opens your browser to link this machine. You name the machine and can revoke it any time.",
 		cmd: SYNC_CMD,
 	},
 	{
@@ -74,13 +74,13 @@ function SyncPage() {
 					Show what actually ran
 				</h1>
 				<p className="mt-4 max-w-xl text-fg-muted">
-					You listed the tools you use. This publishes the reading behind the
-					list — sessions, models, tokens, and cost at API prices — straight
+					You listed the tools you use. This publishes what actually ran behind
+					that list: sessions, models, tokens, and cost at API prices, straight
 					from your own machine.
 				</p>
 
 				{/* The boundary band (#130): what the tool READS comes before what it
-				    sends. One boundary, stated once — it is why raw data never leaves
+				    sends. One boundary, stated once - it is why raw data never leaves
 				    the machine, and why chat apps cannot be measured. The page never
 				    names the chat apps: the boundary sentence carries the fact. */}
 				<div className="mt-10 border border-stroke-strong bg-bg-panel p-6">

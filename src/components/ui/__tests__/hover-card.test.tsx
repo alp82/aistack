@@ -2,13 +2,13 @@
 /**
  * Portal-fix tests for HoverCard.
  *
- * The component currently renders its previewSurface INLINE (un-portaled) —
+ * The component currently renders its previewSurface INLINE (un-portaled) -
  * it lives inside the component's own returned div. These tests are RED now
  * and go GREEN once the previewSurface is portaled to document.body via
  * ReactDOM.createPortal.
  *
  * IMPLEMENTER NOTE: Add `data-testid="hover-card-surface"` to the
- * previewSurface motion.div in hover-card.tsx. This is required — the tests
+ * previewSurface motion.div in hover-card.tsx. This is required - the tests
  * prefer `screen.queryByTestId('hover-card-surface')` and fall back to the
  * style selector only as a secondary path. The testid is low-risk and
  * significantly improves testability.
@@ -58,7 +58,7 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------------
-// TC-HC-01  (wrapper) — position:fixed surface exists in the document
+// TC-HC-01  (wrapper) - position:fixed surface exists in the document
 //
 // NOTE: This case is intentionally weak: RTL appends the render container to
 // body, so document.body.querySelector finds the surface even when un-portaled.
@@ -90,13 +90,13 @@ describe("TC-HC-01: position:fixed surface exists in document after mount (smoke
 			styleAttr.includes("9999") ||
 			inlineStyle?.zIndex === "9999" ||
 			inlineStyle?.zIndex === "var(--z-hover-card)" /* if refactored */;
-		// zIndex guard is advisory — don't hard-fail if implementation varies
+		// zIndex guard is advisory - don't hard-fail if implementation varies
 		void hasZIndex;
 	});
 });
 
 // ---------------------------------------------------------------------------
-// TC-HC-02  (wrapper, PRIMARY RED GUARD) — surface is NOT inside container
+// TC-HC-02  (wrapper, PRIMARY RED GUARD) - surface is NOT inside container
 //
 // Arrange: render in wrapper mode. The container is the RTL-managed div that
 // holds the component's returned JSX tree.
@@ -125,7 +125,7 @@ describe("TC-HC-02: surface is NOT a descendant of the component wrapper (primar
 });
 
 // ---------------------------------------------------------------------------
-// TC-HC-03  (wrapper, STRONG RED GUARD) — surface's parentElement is document.body
+// TC-HC-03  (wrapper, STRONG RED GUARD) - surface's parentElement is document.body
 //
 // RED now: surface.parentElement is the component's own motion wrapper div,
 // not document.body.
@@ -152,7 +152,7 @@ describe("TC-HC-03: surface parentElement is document.body", () => {
 });
 
 // ---------------------------------------------------------------------------
-// TC-HC-05  (wrapper) — content appears on hover AND is portaled out
+// TC-HC-05  (wrapper) - content appears on hover AND is portaled out
 //
 // After mouseEnter on the trigger, the renderContent node must be visible AND:
 //   - document.body.contains(contentEl) === true  (it reached the DOM)
@@ -190,7 +190,7 @@ describe("TC-HC-05: content shows on hover and is portaled out of component tree
 });
 
 // ---------------------------------------------------------------------------
-// TC-HC-06  (wrapper) — mouseLeave removes content after 50 ms timeout
+// TC-HC-06  (wrapper) - mouseLeave removes content after 50 ms timeout
 //
 // Uses fake timers. Verifies the portal lifecycle: content appears → leave →
 // advance 50 ms → content gone.
@@ -227,7 +227,7 @@ describe("TC-HC-06: content is removed after mouseLeave + 50ms debounce", () => 
 		});
 		expect(screen.queryByTestId("leave-content")).not.toBeNull();
 
-		// Leave — starts the 50ms timeout. Fire on the wrapper div that owns the handler.
+		// Leave - starts the 50ms timeout. Fire on the wrapper div that owns the handler.
 		act(() => {
 			fireEvent.mouseLeave(triggerWrapper);
 		});
@@ -249,7 +249,7 @@ describe("TC-HC-06: content is removed after mouseLeave + 50ms debounce", () => 
 });
 
 // ---------------------------------------------------------------------------
-// TC-HC-07  (inline mode) — both branches portal the surface
+// TC-HC-07  (inline mode) - both branches portal the surface
 //
 // Confirms that inline mode ALSO portals the previewSurface out of container.
 //
@@ -278,7 +278,7 @@ describe("TC-HC-07: inline mode also portals the surface out of container", () =
 });
 
 // ---------------------------------------------------------------------------
-// TC-HC-08  (wrapper) — a keyboard reader reaches the card
+// TC-HC-08  (wrapper) - a keyboard reader reaches the card
 //
 // The card is mouse-only otherwise: a focusable trigger (the #81 headline block
 // is a button) would deal a card nobody could read. Focus opens it and blur

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Linked machines — wayfinder #49 (map #29).
+ * Linked machines - wayfinder #49 (map #29).
  *
  * Two tests guard decisions rather than behaviour:
  *
@@ -114,7 +114,7 @@ describe("MachinesPage", () => {
 	it("shows a loading state rather than an empty one while the query answers", () => {
 		// `useQuery` answers undefined first. Rendering "no machines linked" then
 		// tells the user nothing is linked a beat before learning that something
-		// is — the same trap #46 caught on the measured display.
+		// is - the same trap #46 caught on the measured display.
 		setup(undefined);
 		expect(screen.getByText("Loading...")).toBeTruthy();
 		expect(screen.queryByText(/No machines linked/)).toBeNull();
@@ -133,7 +133,7 @@ describe("copy helpers", () => {
 
 	it("says what a machine may do in plain words, never the word scope", () => {
 		// Every token is minted with both today, so this line reads the same on
-		// every row — and it is still worth printing, because the page tells the
+		// every row - and it is still worth printing, because the page tells the
 		// user what a machine can reach.
 		const line = scopeLine(["collect", "sync"]);
 		expect(line).toBe(
@@ -141,7 +141,7 @@ describe("copy helpers", () => {
 		);
 		expect(line).not.toMatch(/scope/i);
 		expect(scopeLine(["sync"])).toBe("Can publish what it measured");
-		// An empty grant is a real stored value, not a missing one — and a
+		// An empty grant is a real stored value, not a missing one - and a
 		// machine that can do nothing is worth saying out loud.
 		expect(scopeLine([])).toMatch(/revoke it/);
 	});
@@ -149,7 +149,7 @@ describe("copy helpers", () => {
 	it("never promises an expiry date, because the TTL slides", () => {
 		// `refreshToken` pushes `expiresAt` out on every request, so a machine in
 		// weekly use never reaches it. Printing a date would be a promise the
-		// system does not keep — which is the whole argument for revoke.
+		// system does not keep - which is the whole argument for revoke.
 		const label = expiryLabel(now + 90 * DAY, now);
 		expect(label).toMatch(/after its last use/);
 		expect(expiryLabel(now - 1000, now)).toBe("Expired");

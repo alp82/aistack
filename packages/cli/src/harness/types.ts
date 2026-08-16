@@ -2,8 +2,8 @@
 //
 // One adapter per harness. The adapter owns everything up to the aggregate:
 // finding the logs, parsing them, usage dedup, model-id normalization, and
-// version discovery. Everything after — fail-closed name filtering, payload
-// building, pricing lookups, the approve gate, the batch publish — is shared
+// version discovery. Everything after - fail-closed name filtering, payload
+// building, pricing lookups, the approve gate, the batch publish - is shared
 // and takes the adapter's output plus its declared constants.
 
 import type { Aggregate } from "./shared/aggregate.js";

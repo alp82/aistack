@@ -14,7 +14,7 @@ const TOKEN_LOOKUP = v.union(
     userId: v.string(),
     _id: v.id('cliTokens'),
     // The stack this machine syncs to, bound at link time (#33 decision 7).
-    // Absent on tokens issued before that binding existed — those must
+    // Absent on tokens issued before that binding existed - those must
     // re-authenticate to pick one; see convex/migrations/20260725_cli_token_stack.ts.
     stackId: v.optional(v.id('stacks')),
     // What this machine may do (#52). Required since the narrow, so the
@@ -28,7 +28,7 @@ const TOKEN_LOOKUP = v.union(
 /**
  * The ONLY read path (#49, narrowed in #52). The caller hashes in the
  * `httpAction` and passes only the digest, so plaintext never reaches the
- * database layer — and there is no longer a plaintext column for it to reach.
+ * database layer - and there is no longer a plaintext column for it to reach.
  *
  * The plaintext fallback that phase A needed is gone with the column. Do not
  * reintroduce a lookup that takes a raw bearer.
@@ -50,7 +50,7 @@ export const getByTokenHash = internalQuery({
 /**
  * The machines linked to the signed-in account, for `/settings/machines` (#49).
  *
- * Values-free by construction — no `token`, no `tokenHash`. A revoke surface
+ * Values-free by construction - no `token`, no `tokenHash`. A revoke surface
  * that echoed the credential back would hand every XSS a live bearer.
  *
  * The list is ACCOUNT-scoped, not stack-scoped, which is why this page exists
@@ -69,7 +69,7 @@ export const listByUser = query({
       expiresAt: v.number(),
       // Resolved here rather than in the client: the page shows where a machine
       // publishes, and a raw Id says nothing. Null when the token predates
-      // link-time binding, or when the stack has since been deleted — both of
+      // link-time binding, or when the stack has since been deleted - both of
       // which render as "not linked to a stack".
       stack: v.union(v.object({ name: v.string(), slug: v.string() }), v.null()),
       // What this machine may do (#52).
@@ -99,7 +99,7 @@ export const listByUser = query({
         scopes: t.scopes,
       })
     }
-    // Most recently used first — the machine you are sitting at is the one you
+    // Most recently used first - the machine you are sitting at is the one you
     // are most likely to recognize, and it anchors the rest of the list.
     rows.sort((a, b) => b.lastUsedAt - a.lastUsedAt)
     return rows
@@ -111,7 +111,7 @@ export const listByUser = query({
  *
  * DELETES THE ROW rather than flagging it. A revoked-but-present row can be
  * resurrected by a bug, nothing in the tree reads a revocation audit trail, and
- * after phase C the row holds no recoverable secret anyway — so keeping it would
+ * after phase C the row holds no recoverable secret anyway - so keeping it would
  * buy a history no surface shows. Deletion is also exactly what the button
  * promises the user.
  *
@@ -142,7 +142,7 @@ export const revokeToken = mutation({
 /**
  * `createToken` was deleted in #52's narrow.
  *
- * It had no callers — `cliSessions.issueTokenAndDeleteSession` is the one path
+ * It had no callers - `cliSessions.issueTokenAndDeleteSession` is the one path
  * that mints a token, because minting and consuming the device-code session
  * have to be one transaction. What `createToken` did have was a `token:
  * v.string()` argument writing the plaintext column, so keeping a dead second

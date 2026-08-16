@@ -52,7 +52,7 @@ describe('normalizeProjectUrl', () => {
     expect(result).toBe('http://x.com/page')
   })
 
-  // TC-N-08: "javascript:alert(1)" is disallowed — it becomes "https://javascript:alert(1)"
+  // TC-N-08: "javascript:alert(1)" is disallowed - it becomes "https://javascript:alert(1)"
   //   which fails URL parsing (invalid port), so normalizeProjectUrl throws 'Invalid URL'.
   test('TC-N-08: "javascript:alert(1)" (scheme-less interpretation) throws Invalid URL', () => {
     expect(() => normalizeProjectUrl('javascript:alert(1)')).toThrow()
@@ -63,14 +63,14 @@ describe('normalizeProjectUrl', () => {
     expect(() => normalizeProjectUrl('not a url at all !!!')).toThrow('Invalid URL')
   })
 
-  // TC-N-10: "data:text/plain,hello" — not http(s), throws "Only http and https URLs are allowed"
+  // TC-N-10: "data:text/plain,hello" - not http(s), throws "Only http and https URLs are allowed"
   //   "data:text/plain,hello" matches https?:// ? No → becomes "https://data:text/plain,hello"
   //   which fails parse → throws Invalid URL. Behavior: throws (either message is fine).
   test('TC-N-10: "data:text/plain,hello" throws', () => {
     expect(() => normalizeProjectUrl('data:text/plain,hello')).toThrow()
   })
 
-  // TC-N-11: "ftp://example.com" — does not start with https?://, so is treated as a scheme-less
+  // TC-N-11: "ftp://example.com" - does not start with https?://, so is treated as a scheme-less
   //   string and prefixed with "https://", yielding "https://ftp://example.com". The URL parser
   //   accepts this as host="ftp", path="//example.com", so it returns a mangled-but-valid https URL
   //   rather than throwing. This documents the actual behavior (no SSRF risk since protocol is https).
@@ -89,7 +89,7 @@ describe('normalizeProjectUrl', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Integration tests via convex-test — createProject normalizes URLs at the DB layer
+// Integration tests via convex-test - createProject normalizes URLs at the DB layer
 // ---------------------------------------------------------------------------
 
 async function seedAuthenticatedCreator(

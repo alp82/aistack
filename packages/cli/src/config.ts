@@ -57,7 +57,7 @@ function readCredentials(file: string): {
 				legacy: true,
 			};
 		}
-		// A cleared legacy file is `{}` — empty, but safe to rewrite.
+		// A cleared legacy file is `{}` - empty, but safe to rewrite.
 		return { data: { servers: {} }, legacy: true };
 	} catch {
 		// Do not rewrite an unreadable file. It may still hold a token that a

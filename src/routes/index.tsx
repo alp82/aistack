@@ -49,7 +49,7 @@ export const Route = createFileRoute("/")({
 		meta: seoMeta({
 			title: "AI Stack - See What Real Builders Use to Ship",
 			description:
-				"Explore the AI stacks indie builders run in production. Compare tools, costs, and workflows — then build your own.",
+				"Explore the AI stacks indie builders run in production. Compare tools, costs, and workflows, then build your own.",
 			url: "/",
 			keywords:
 				"AI stacks, AI tools, AI workflows, indie builders, AI tooling costs, developer tools",
@@ -60,7 +60,7 @@ export const Route = createFileRoute("/")({
 function IndexRoute() {
 	// Both reads fall back to the loader snapshot, so the server and the
 	// hydrating client render the SAME page. Reading the live query alone left
-	// the SSR HTML without the featured stacks — a hydration mismatch that made
+	// the SSR HTML without the featured stacks - a hydration mismatch that made
 	// React regenerate the tree and remount the route (double-running the
 	// hero's counter).
 	const { stacks: loadedStacks, band: loadedBand } = Route.useLoaderData();

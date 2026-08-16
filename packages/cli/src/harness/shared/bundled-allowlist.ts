@@ -1,11 +1,11 @@
-// The bundled curated allowlist — the fallback copy for `/api/sync-config`.
+// The bundled curated allowlist - the fallback copy for `/api/sync-config`.
 //
 // Wayfinder ticket #37 (map #29), decision 4 of the wire-format grilling #33.
 //
 // WHAT BELONGS HERE, AND WHY IT IS SHORT
 // These four classes of name are user-chosen. A Skill called `acme-q3-pricing`,
 // an MCP server called `internal-billing`, a subagent called `client-migration`
-// — each is a real leak, and none of them is distinguishable from a public name
+// - each is a real leak, and none of them is distinguishable from a public name
 // by shape.
 //
 // THE BAR (grilling #42): a name qualifies if the STRING carries no private
@@ -15,7 +15,7 @@
 // The bar is deliberately NOT "the name identifies a public artifact, so
 // publishing it reveals nothing the user hasn't already published". That was the
 // original wording and it is wrong: `stripe` is on this list, and publishing it
-// plainly does reveal something the user never published — that they use Stripe.
+// plainly does reveal something the user never published - that they use Stripe.
 // It cannot be the harm, because revealing what you use is the entire product.
 // The harm is narrower: strings drawn from the user's private vocabulary, which
 // leak a relationship (an employer, a client, a codename) rather than a
@@ -32,7 +32,7 @@
 // It is no longer the only road to publishing a name. The approve gate offers
 // every kept-private name as an explicit, default-off tick, and the tick set
 // comes back down with the rest of the sync config. This list only exists to
-// spare a user from ticking boxes nobody would think twice about — so it can
+// spare a user from ticking boxes nobody would think twice about - so it can
 // stay strict, and every user-chosen name goes through the person who knows
 // whether it is a secret.
 //
@@ -134,7 +134,7 @@ const BUILTIN_SLASH_COMMANDS = [
  * MCP servers with a public first-party endpoint.
  *
  * Matched against the server segment the analyzer parses out of an
- * `mcp__<server>__<tool>` name, which is the LOCAL alias the user configured —
+ * `mcp__<server>__<tool>` name, which is the LOCAL alias the user configured -
  * so this only fires when the user kept the conventional name. A renamed server
  * is kept private, which is the correct direction to fail.
  *
@@ -142,8 +142,8 @@ const BUILTIN_SLASH_COMMANDS = [
  * plugin is observed as `plugin_<plugin>_<server>`, a string Claude Code
  * generates rather than one the user typed. Strip that wrapper before matching,
  * and publish the NORMALIZED name. The safety property is that normalization can
- * only ever emit a string already on this list — a non-matching inner segment
- * emits nothing and the raw name falls through to the gate's review list — so a
+ * only ever emit a string already on this list - a non-matching inner segment
+ * emits nothing and the raw name falls through to the gate's review list - so a
  * bug here is bounded by an already-vetted set. If the upstream convention
  * changes, matching reverts to keeping names private: a fail-safe regression.
  */

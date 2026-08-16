@@ -199,7 +199,7 @@ export function ResourceBrowser({
 		? { ...selectedFile, content: draftContent }
 		: null;
 
-	// Hoisted tree node — rendered once and reused across the desktop/mobile
+	// Hoisted tree node - rendered once and reused across the desktop/mobile
 	// branches so a viewport flip doesn't unmount the ResourceTree (preserving
 	// expand/collapse state).
 	const tree = (

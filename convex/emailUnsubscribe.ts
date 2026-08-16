@@ -79,7 +79,7 @@ export const unsubscribe = httpAction(async (ctx, request) => {
   const token = new URL(request.url).searchParams.get('token')
   const secret = process.env.BETTER_AUTH_SECRET
 
-  // Secret guard — never 500. Without the signing secret we cannot verify any
+  // Secret guard - never 500. Without the signing secret we cannot verify any
   // token, so refuse loudly but gracefully.
   if (!secret) {
     if (isPost) return jsonError('Email service not configured', 400)
@@ -136,7 +136,7 @@ export const unsubscribe = httpAction(async (ctx, request) => {
   // Valid token below.
   if (isPost) {
     // Mail-client one-click POSTs here directly with body
-    // 'List-Unsubscribe=One-Click' — we ignore the body; the token in the URL
+    // 'List-Unsubscribe=One-Click' - we ignore the body; the token in the URL
     // is the auth.
     await ctx.runMutation(internal.email.recordUnsubscribe, { email })
     return htmlResponse(
@@ -149,7 +149,7 @@ export const unsubscribe = httpAction(async (ctx, request) => {
     )
   }
 
-  // GET on a valid token — confirm page, NO DB write.
+  // GET on a valid token - confirm page, NO DB write.
   return htmlResponse(
     brandedPage({
       label: '// Unsubscribe',

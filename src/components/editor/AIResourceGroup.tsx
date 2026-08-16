@@ -14,7 +14,7 @@ export interface AIResourceGroupAttrs {
 	sourceId: string;
 	group: string;
 	description: string | null;
-	// Snapshot at insert time — avoids per-card live queries. Accepts staleness
+	// Snapshot at insert time - avoids per-card live queries. Accepts staleness
 	// if files are added after the group card is inserted.
 	fileCount: number;
 	typeBreakdown: Array<{ type: string; count: number }>;

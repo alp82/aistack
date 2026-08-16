@@ -55,7 +55,7 @@ export function ResetPasswordEmail(props: {
 						</Section>
 
 						<Text style={styles.small}>
-							Didn't request this? Ignore this email — your password stays the
+							Didn't request this? Ignore this email. Your password stays the
 							same.
 						</Text>
 

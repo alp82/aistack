@@ -12,16 +12,16 @@ import { loadModelCatalog } from './measured'
  * READS ARE LIVE, NOT PRECOMPUTED (#82, recorded consequence). No rollup table
  * and no cron: every figure is derived from `measuredSnapshots` at read time,
  * so the page can never disagree with the stack pages. The cost of that choice
- * is stated in #82 — one indexed read per measured stack caps this in the low
+ * is stated in #82 - one indexed read per measured stack caps this in the low
  * thousands of stacks, and a later rollup must reproduce these numbers exactly.
  * The shape here is the middle option the ticket named: INDEXED per-stack
- * reads over the population, never a full `measuredSnapshots` scan — the
+ * reads over the population, never a full `measuredSnapshots` scan - the
  * population table (`stacks`) is the driver, and each stack's rows come from
  * `by_stack_capturedAt`, bounded by the GC to about one row per harness per
  * day.
  *
  * EXCLUSIONS (#82, applied here once so every figure agrees):
- *   - unpublished stacks and `isLowQuality` stacks do not exist here at all —
+ *   - unpublished stacks and `isLowQuality` stacks do not exist here at all -
  *     the board is discovery, and the flag means hidden from discovery;
  *   - a harness reporting zero tokens is not a harness;
  *   - `unknown` is not a model name: its tokens count toward totals and the
@@ -32,7 +32,7 @@ import { loadModelCatalog } from './measured'
  * THE SERIES is the same fold `getHistoryByStackSlug` performs, reduced to the
  * one number a sparkline draws: the rolling 30-day total as it stood at each
  * sync, a harness that did not sync carrying its previous reading forward.
- * Tokens only — no catalog resolution and no pricing per point — so ten rows
+ * Tokens only - no catalog resolution and no pricing per point - so ten rows
  * cost ten short folds, not ten stack-page reads.
  */
 
@@ -53,13 +53,13 @@ const Ranking = v.object({
   /** Models: share of attributed tokens. Harnesses: share of all tokens. */
   tokenShare: v.number(),
   stackCount: v.number(),
-  /** How many stacks it leads — the honest population claim (#92). */
+  /** How many stacks it leads - the honest population claim (#92). */
   leadsCount: v.number(),
 })
 
 const Row = v.object({
   rank: v.number(),
-  /** Public slug, `${slug}-${shortId}` — what `/stacks/$slug` resolves. */
+  /** Public slug, `${slug}-${shortId}` - what `/stacks/$slug` resolves. */
   slug: v.string(),
   name: v.string(),
   creatorName: v.string(),
@@ -77,7 +77,7 @@ const Row = v.object({
     v.object({
       lowerBoundUSD: v.number(),
       coverage: v.number(),
-      /** True when the CLI priced every token — no "≥" needed. */
+      /** True when the CLI priced every token - no "≥" needed. */
       exact: v.boolean(),
     }),
     v.null()
@@ -90,7 +90,7 @@ const Board = v.object({
   livingCount: v.number(),
   totalTokens: v.number(),
   totalSessions: v.number(),
-  /** Sum of every published lower bound — itself a lower bound. */
+  /** Sum of every published lower bound - itself a lower bound. */
   spendLowerBoundUSD: v.number(),
   costPublishers: v.number(),
   /** Share of measured tokens carrying no model name. */
@@ -274,7 +274,7 @@ export const get = query({
     const now = Date.now()
 
     // The population: published, not flagged. `by_published` narrows to the
-    // public set; the quality flag is enforced HERE, not left to the client —
+    // public set; the quality flag is enforced HERE, not left to the client -
     // the board is discovery (#82), and a filter the frontend applies is a
     // filter a crawler does not.
     const stacks = await ctx.db

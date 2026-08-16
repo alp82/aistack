@@ -4,14 +4,14 @@ import { dayBucket, MONO_LABEL } from "./feed";
 import { PulseBand } from "./PulseBand";
 
 /**
- * `/activity` — variant F of the #96 prototype, sibling of `/leaderboard`.
+ * `/activity` - variant F of the #96 prototype, sibling of `/leaderboard`.
  *
  * THE BAND TRAVELS. The page opens with the same 24-hour claim the landing page
  * makes, and that is what keeps the thin case warm: three rows under four big
  * numbers read as a quiet site, not a broken page.
  *
  * THE CHIPS NARROW THE STREAM ONLY. The band always states the whole site's
- * last 24 hours — a filter must never rewrite the headline numbers.
+ * last 24 hours - a filter must never rewrite the headline numbers.
  *
  * ROWS STAY ON EVENT-ONLY FACTS. A joined fact line per row lost in the
  * prototype; the snapshot join stays paid once, in the band.

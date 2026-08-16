@@ -9,11 +9,11 @@ import { sha256Hex } from './httpCli'
 import type { CliTokenScope } from './lib/cliScopes'
 
 /**
- * The server-side auto-sync permission — wayfinder #102 (map #76).
+ * The server-side auto-sync permission - wayfinder #102 (map #76).
  *
  * #100 decision 2 moved the permission off the machine: the stack owns it, and
  * `sync --auto` asks the server before it publishes. These tests hold the three
- * halves of that move — the seed from a local flag, the "server always wins"
+ * halves of that move - the seed from a local flag, the "server always wins"
  * rule that follows it, and the trigger stamp the web switch reads.
  */
 
@@ -165,7 +165,7 @@ test('a sync reporting a local opt-OUT seeds nothing', async () => {
   expect((await stack(t, stackId))?.autoSync).toBeUndefined()
 })
 
-test('once the flag exists the server wins — a later sync cannot move it', async () => {
+test('once the flag exists the server wins - a later sync cannot move it', async () => {
   const t = convexTest(schema, modules)
   const { stackId, tokenId } = await seedStack(t, 'seed3')
   await t.run((ctx: MutationCtx) =>
@@ -259,7 +259,7 @@ test('a later manual sync does not erase the automatic stamp', async () => {
 })
 
 // ---------------------------------------------------------------------------
-// The wire — the trigger a real machine sends over POST /api/cli/sync
+// The wire - the trigger a real machine sends over POST /api/cli/sync
 // ---------------------------------------------------------------------------
 
 test('the sync route carries the trigger through to the stamp', async () => {
@@ -287,7 +287,7 @@ test('a trigger the server does not know is read as manual, and the sync still l
   })
 
   // Losing the measurement over an unreadable telemetry field would cost the
-  // owner the one thing they approved — the same rule `autoSync` already has.
+  // owner the one thing they approved - the same rule `autoSync` already has.
   expect(res.status).toBe(200)
   expect((await stack(t, stackId))?.lastAutoSyncAt).toBeUndefined()
 })
@@ -348,7 +348,7 @@ test('a stack with no flag accepts the automatic sync that seeds it', async () =
 })
 
 // ---------------------------------------------------------------------------
-// Reading the flag — what gates `sync --auto` before it publishes
+// Reading the flag - what gates `sync --auto` before it publishes
 // ---------------------------------------------------------------------------
 
 test('sync-config answers the bound stack flag', async () => {
@@ -381,7 +381,7 @@ test('a stack with no flag answers null, and so does a caller with no bearer', a
 })
 
 // ---------------------------------------------------------------------------
-// Setting the flag from a machine — the opt-in ask and `sync --auto on/off`
+// Setting the flag from a machine - the opt-in ask and `sync --auto on/off`
 // ---------------------------------------------------------------------------
 
 test('a machine turns the flag on for its bound stack', async () => {
@@ -440,7 +440,7 @@ test('a collect-only machine cannot set the flag', async () => {
   })
 
   // The permission to publish on a timer is part of syncing, so it takes the
-  // `sync` scope — the same one the publish route takes.
+  // `sync` scope - the same one the publish route takes.
   expect(res.status).toBe(403)
   expect((await stack(t, stackId))?.autoSync).toBeUndefined()
 })
@@ -471,7 +471,7 @@ test('a body without a boolean is refused, and the flag stands', async () => {
   })
 
   // This route CHANGES a permission, so a value the server cannot read is
-  // refused outright — unlike the telemetry fields on a sync, which are
+  // refused outright - unlike the telemetry fields on a sync, which are
   // dropped so the measurement still lands.
   expect(res.status).toBe(400)
   expect((await stack(t, stackId))?.autoSync).toEqual({
@@ -481,7 +481,7 @@ test('a body without a boolean is refused, and the flag stands', async () => {
 })
 
 // ---------------------------------------------------------------------------
-// The owner's seam — what the switch in the owner box calls (#104)
+// The owner's seam - what the switch in the owner box calls (#104)
 // ---------------------------------------------------------------------------
 
 test('the owner sets the flag and reads back the pair the switch renders', async () => {
@@ -498,7 +498,7 @@ test('the owner sets the flag and reads back the pair the switch renders', async
     enabled: true,
     frequencyHours: 12,
   })
-  // On, but no machine has fired yet — the state the switch has to name.
+  // On, but no machine has fired yet - the state the switch has to name.
   expect(await asCreator.query(api.autoSync.get, { stackId })).toEqual({
     autoSync: { enabled: true, frequencyHours: 12 },
     lastAutoSyncAt: null,
@@ -552,7 +552,7 @@ test('nobody but the owner reads or writes the schedule', async () => {
  * The done-bar of #104, end to end: a revoke made FROM THE WEB stops the next
  * `--auto` publish.
  *
- * The pieces exist separately — #102 proved the 409 against a flag patched
+ * The pieces exist separately - #102 proved the 409 against a flag patched
  * straight into the row, and the owner's setter against a query. This joins
  * them, because the switch is only a revoke if the mutation it calls is the one
  * the wire refuses on. It also checks what the machine itself is told, since

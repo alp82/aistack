@@ -130,8 +130,8 @@ export type {
 
 /**
  * Every harness this build can read, in the order their payloads publish.
- * Registration order is also display order at the gate, so Claude Code — the
- * documented default — stays first.
+ * Registration order is also display order at the gate, so Claude Code - the
+ * documented default - stays first.
  */
 export const HARNESS_ADAPTERS: readonly HarnessAdapter[] = [
 	claudeAdapter,
@@ -145,7 +145,7 @@ export function harnessLabel(name: string): string {
 	if (name === CLAUDE_HARNESS_NAME) return "Claude Code";
 	if (name === CODEX_HARNESS_NAME) return "Codex";
 	// These brands spell themselves lowercase, so the discriminator IS the
-	// label — but each is an explicit row, so a rename cannot leak a raw slug.
+	// label - but each is an explicit row, so a rename cannot leak a raw slug.
 	if (name === OPENCODE_HARNESS_NAME) return "opencode";
 	if (name === PI_HARNESS_NAME) return "pi-mono";
 	return name;
@@ -165,7 +165,7 @@ export function detectionSinceMs(now: number = Date.now()): number {
 }
 
 /**
- * The adapters that wrote a transcript inside the window — the machine's LIVE
+ * The adapters that wrote a transcript inside the window - the machine's LIVE
  * harnesses (#101). A stale one is skipped everywhere this is read: it does not
  * scan, it does not publish, it earns no upsell and it gets no hook.
  */

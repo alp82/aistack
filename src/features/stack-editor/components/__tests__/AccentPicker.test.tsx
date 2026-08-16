@@ -9,10 +9,10 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------------
-// A — Closed / default state
+// A - Closed / default state
 // ---------------------------------------------------------------------------
 
-describe("AccentPicker — closed/default", () => {
+describe("AccentPicker - closed/default", () => {
 	it("TC-01: queryByRole('listbox') is null on initial render (value='')", () => {
 		render(<AccentPicker value="" onChange={vi.fn()} />);
 		expect(screen.queryByRole("listbox")).toBeNull();
@@ -56,10 +56,10 @@ describe("AccentPicker — closed/default", () => {
 });
 
 // ---------------------------------------------------------------------------
-// B — Open state (after clicking the trigger)
+// B - Open state (after clicking the trigger)
 // ---------------------------------------------------------------------------
 
-describe("AccentPicker — open state", () => {
+describe("AccentPicker - open state", () => {
 	it("TC-08: getByRole('listbox') present after trigger click", () => {
 		render(<AccentPicker value="" onChange={vi.fn()} />);
 		const trigger = screen.getByRole("button", { name: /Accent color: Lime/i });
@@ -135,7 +135,7 @@ describe("AccentPicker — open state", () => {
 });
 
 // ---------------------------------------------------------------------------
-// C — Selection behaviour
+// C - Selection behaviour
 // ---------------------------------------------------------------------------
 
 // Each option is a <button role="option"> (role lives on the button itself,
@@ -152,7 +152,7 @@ function clickOptionButton(name: string) {
 	fireEvent.click(btn as HTMLElement);
 }
 
-describe("AccentPicker — selection", () => {
+describe("AccentPicker - selection", () => {
 	it("TC-16: value='', click Violet option → onChange called once with 'violet'", () => {
 		const onChange = vi.fn();
 		render(<AccentPicker value="" onChange={onChange} />);
@@ -189,7 +189,7 @@ describe("AccentPicker — selection", () => {
 		const trigger = screen.getByRole("button", { name: /Accent color: Lime/i });
 		fireEvent.click(trigger);
 		clickOptionButton("Violet");
-		// Re-query trigger — accessible name may have changed; query by haspopup attr
+		// Re-query trigger - accessible name may have changed; query by haspopup attr
 		const newTrigger = screen
 			.getAllByRole("button")
 			.find((b) => b.getAttribute("aria-haspopup") === "listbox");
@@ -198,10 +198,10 @@ describe("AccentPicker — selection", () => {
 });
 
 // ---------------------------------------------------------------------------
-// D — Escape key
+// D - Escape key
 // ---------------------------------------------------------------------------
 
-describe("AccentPicker — Escape key", () => {
+describe("AccentPicker - Escape key", () => {
 	it("TC-20: open, Escape → listbox removed from DOM", () => {
 		render(<AccentPicker value="" onChange={vi.fn()} />);
 		fireEvent.click(
@@ -229,10 +229,10 @@ describe("AccentPicker — Escape key", () => {
 });
 
 // ---------------------------------------------------------------------------
-// E — Arrow key navigation
+// E - Arrow key navigation
 // ---------------------------------------------------------------------------
 
-describe("AccentPicker — arrow key navigation", () => {
+describe("AccentPicker - arrow key navigation", () => {
 	function getOptionButtons() {
 		// Return the focusable <button> elements inside the listbox
 		const listbox = screen.getByRole("listbox");
@@ -263,10 +263,10 @@ describe("AccentPicker — arrow key navigation", () => {
 });
 
 // ---------------------------------------------------------------------------
-// F — Outside click closes
+// F - Outside click closes
 // ---------------------------------------------------------------------------
 
-describe("AccentPicker — outside mousedown closes", () => {
+describe("AccentPicker - outside mousedown closes", () => {
 	it("TC-25: open, mousedown on document.body → listbox removed from DOM", () => {
 		render(<AccentPicker value="" onChange={vi.fn()} />);
 		fireEvent.click(

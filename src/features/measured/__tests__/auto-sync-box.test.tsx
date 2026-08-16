@@ -4,7 +4,7 @@
  *
  * The decisions these tests guard, rather than layout:
  *
- *   1. STRICTLY OWNER-ONLY. The pair says when this person's machines run — a
+ *   1. STRICTLY OWNER-ONLY. The pair says when this person's machines run - a
  *      schedule nobody else has a reason to read. A visitor's render carries no
  *      box, and the query is never even asked.
  *   2. THREE HONEST STATES, from the pair and not from the flag alone. On with
@@ -186,7 +186,7 @@ describe("the switch", () => {
 
 /**
  * The switch as the page's one remedy (#108, from #107 decision 1). Past 48
- * hours the section promotes this box and it leads with the prompt — and that
+ * hours the section promotes this box and it leads with the prompt - and that
  * is the ONLY thing on the page that asks for anything, which is what keeps the
  * switch and a callout from reading as two features.
  */

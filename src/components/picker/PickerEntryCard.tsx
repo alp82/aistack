@@ -63,7 +63,7 @@ export function PickerEntryCard({
 					</button>
 				)}
 
-				{/* Clickable Icon + Name area — toggles edit */}
+				{/* Clickable Icon + Name area - toggles edit */}
 				<button
 					type="button"
 					onClick={onEditClick ?? onClick}

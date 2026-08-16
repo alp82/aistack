@@ -1,5 +1,5 @@
 /**
- * The owner-private views panel on a profile page — shape E4 (#98, built in
+ * The owner-private views panel on a profile page - shape E4 (#98, built in
  * #112, map #76).
  *
  * STRICTLY PRIVATE ON A PUBLIC PAGE. `/@handle` is open to anyone, so this
@@ -28,7 +28,7 @@ const PER_PAGE_LIST = "Views per page";
 /**
  * The width the sparkline column holds whether or not a line draws.
  *
- * A target with one reading draws nothing — `Sparkline` needs two points — and
+ * A target with one reading draws nothing - `Sparkline` needs two points - and
  * most targets have one or two. Holding the width keeps every total in one
  * column instead of ragging the list by how much history a page happens to have.
  */
@@ -54,7 +54,7 @@ function OwnerViewsPanelView({ data }: { readonly data: ViewAnalytics }) {
 			<div className="flex items-center gap-1.5">
 				<Lock aria-hidden="true" className="size-3 text-fg-muted" />
 				<h2 className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-fg-muted">
-					Views — only you can see this
+					Views - only you can see this
 				</h2>
 			</div>
 

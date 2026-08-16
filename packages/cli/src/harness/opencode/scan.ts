@@ -10,7 +10,7 @@
 // also holds `account.refresh_token`, `credential.value`,
 // `session_input.prompt` and full file contents in `session.summary_diffs`
 // and `part.data.state.output`. The rule that keeps them out: never
-// `SELECT *` — every query names its columns, and `part.data` reaches JS only
+// `SELECT *` - every query names its columns, and `part.data` reaches JS only
 // as four json_extract'ed scalars. Errors are swallowed, not thrown, because
 // a node:sqlite error message carries the DB path.
 
@@ -33,12 +33,12 @@ import {
 /**
  * Newest migration id this build understands, from the probe DB (research
  * §1). A DB migrated past it may hold the same table names with different
- * semantics, so it counts as UNREADABLE — a visible coverage figure — rather
+ * semantics, so it counts as UNREADABLE - a visible coverage figure - rather
  * than being read on the guess that nothing moved.
  */
 export const OPENCODE_MIGRATION_CEILING = 20260622202450;
 
-/** `$XDG_DATA_HOME/opencode` or `~/.local/share/opencode` — opencode's own rule. */
+/** `$XDG_DATA_HOME/opencode` or `~/.local/share/opencode` - opencode's own rule. */
 export function opencodeDataDirs(): string[] {
 	const xdg = process.env.XDG_DATA_HOME;
 	const base = xdg || path.join(homedir(), ".local", "share");
@@ -83,7 +83,7 @@ type SqliteDb = {
 /**
  * `node:sqlite` landed in Node 22.5 while this CLI's floor is 18, so it is
  * feature-detected in the shape of the codex scanner's zstd check. On a
- * runtime without it, a found DB counts as unreadable — a visible coverage
+ * runtime without it, a found DB counts as unreadable - a visible coverage
  * figure, never a silent skip.
  */
 async function loadSqlite(): Promise<((file: string) => SqliteDb) | null> {
@@ -99,7 +99,7 @@ async function loadSqlite(): Promise<((file: string) => SqliteDb) | null> {
 }
 
 /**
- * A read failure classified WITHOUT the error object's message or stack —
+ * A read failure classified WITHOUT the error object's message or stack -
  * both can carry the absolute DB path, which never leaves this module.
  */
 function errorClass(e: unknown): string {
@@ -222,7 +222,7 @@ function readDb(
 			});
 		}
 
-		// v2 (`session_message`) — the other live generation (research §1: which
+		// v2 (`session_message`) - the other live generation (research §1: which
 		// one current opencode writes is unproven, so both are read and message
 		// ids dedup across them). The assistant shape differs: `model: {id,
 		// providerID}`, role in the `type` column.
@@ -256,7 +256,7 @@ function readDb(
 		}
 
 		// v1 tool parts. Only these four scalar paths of `part.data` ever reach
-		// JS — `$.state.output` holds full command output and stays in SQLite.
+		// JS - `$.state.output` holds full command output and stays in SQLite.
 		const parts = db.prepare(
 			`select id,
 				json_extract(data, '$.type') as part_type,
@@ -281,7 +281,7 @@ function readDb(
 
 		// v2 inline tool content, same named-scalar rule via json_each. The v2
 		// content shape is unverified on any real machine, so a query error here
-		// is tolerated — the tokens above are the load-bearing read.
+		// is tolerated - the tokens above are the load-bearing read.
 		try {
 			const v2parts = db.prepare(
 				`select sm.id || ':' || je.key as id,
@@ -304,7 +304,7 @@ function readDb(
 				});
 			}
 		} catch {
-			/* v2 content unreadable — the message tokens already counted */
+			/* v2 content unreadable - the message tokens already counted */
 		}
 	} finally {
 		try {
@@ -327,7 +327,7 @@ function pickTs(jsonTs: unknown, columnTs: unknown): number | null {
 }
 
 // ---------------------------------------------------------------------------
-// Config — the static MCP inventory
+// Config - the static MCP inventory
 // ---------------------------------------------------------------------------
 
 /** `$XDG_CONFIG_HOME/opencode/opencode.json` or `~/.config/opencode/opencode.json`. */
@@ -338,8 +338,8 @@ export function opencodeConfigFile(): string {
 }
 
 /**
- * The real config is JSONC — comments and trailing commas (research
- * §inventory) — so `JSON.parse` alone throws on it. The strip below is
+ * The real config is JSONC - comments and trailing commas (research
+ * §inventory) - so `JSON.parse` alone throws on it. The strip below is
  * string-aware: a `//` inside a quoted URL survives. Any remaining parse
  * failure is silence, not an error: the observed half of the MCP inventory
  * stands on its own.
@@ -402,7 +402,7 @@ export function stripJsonc(text: string): string {
 
 /**
  * Detection is a QUERY, not a stat walk (#101, research §6): every opencode
- * start — including `opencode --version` — touches the DB file, and the probe
+ * start - including `opencode --version` - touches the DB file, and the probe
  * machine showed a four-month gap between the file's mtime and the newest
  * real message. The indexed probe costs 0.02 ms.
  */
@@ -428,7 +428,7 @@ export async function detectOpencode(opts: {
 						.get(opts.sinceMs) !== undefined;
 				if (probe("message") || probe("session_message")) return true;
 			} catch {
-				/* unreadable or foreign DB — not detection */
+				/* unreadable or foreign DB - not detection */
 			} finally {
 				try {
 					db?.close();

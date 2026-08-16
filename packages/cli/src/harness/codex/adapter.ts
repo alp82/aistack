@@ -15,14 +15,14 @@ export const CODEX_HARNESS_NAME = "codex";
 /**
  * Codex's vendor-assigned tool surface, as observed in rollouts and pinned in
  * the Codex source (#65 §4). Same fail-closed mechanism as Claude's
- * BUILTIN_TOOLS: a literal set, never a pattern — an unknown-but-real
+ * BUILTIN_TOOLS: a literal set, never a pattern - an unknown-but-real
  * built-in withheld as a count is a small loss; an unknown-and-user-named
  * tool published verbatim is the leak this prevents. The last four are the
  * stable synthetic names the analyzer assigns to non-`function_call` items.
  *
  * Codex v1 publishes builtinTools and mcpServers ONLY (#66 decision 3):
  * slash commands verifiably never reach rollouts, and the skill/subagent
- * surfaces are unverified — those categories ship as empty arrays, absorbed
+ * surfaces are unverified - those categories ship as empty arrays, absorbed
  * with no schema change if a later Codex version logs them.
  */
 export const CODEX_BUILTIN_TOOLS: ReadonlySet<string> = new Set([

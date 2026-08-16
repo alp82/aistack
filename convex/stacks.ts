@@ -207,7 +207,7 @@ export const listPublished = query({
       upvoteCount: v.number(),
       isLowQuality: v.optional(v.boolean()),
       // Newest activity of ANY kind: authored edits (stack.updatedAt) or a
-      // measured sync (snapshot receivedAt — server clock, since capturedAt is
+      // measured sync (snapshot receivedAt - server clock, since capturedAt is
       // client-controlled). Syncs never bump stack.updatedAt, so the merge
       // happens here.
       updatedAt: v.number(),
@@ -540,7 +540,7 @@ export const update = mutation({
           toolCount: subs.length,
         })
       } else {
-        // Composition only — a tool, model or bundle added or removed. Prose
+        // Composition only - a tool, model or bundle added or removed. Prose
         // edits are excluded, which keeps authoring noise out of a feed that
         // will be thin at launch.
         const { added, removed } = await diffComposition(
@@ -734,7 +734,7 @@ export const getForEdit = query({
       hasUsageComponent: pricing.hasUsageComponent,
       published: stack.published,
       // Carried so `stack_published` can report it (#77). Absent reads as opted
-      // IN — the field only ever records a refusal.
+      // IN - the field only ever records a refusal.
       publishCost: stack.publishCost,
       accentPreset: stack.accentPreset,
       toolSubscriptions: toolSubs,

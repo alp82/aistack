@@ -61,7 +61,7 @@ describe("with a snapshot", () => {
 
 	// The dot reads the 48-hour line the stamp in section 02 reads (#107
 	// decision 2). It used to read `isFresh`, the snapshot's own 7-day flag,
-	// which the leaderboard still ranks on — one page, two ages for one sync.
+	// which the leaderboard still ranks on - one page, two ages for one sync.
 	it("marks a reading past 48 hours", () => {
 		const { container } = renderWith(
 			buildSnapshot({ receivedAt: Date.now() - 19 * DAY }),

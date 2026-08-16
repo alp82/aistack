@@ -7,7 +7,7 @@
 
 ### The Instruction Budget Problem
 - Frontier LLMs reliably follow ~150-200 instructions. Claude Code's system prompt consumes ~50 of those.
-- Every line in CLAUDE.md competes for that budget. Adding instructions doesn't cause Claude to skip new ones — it causes **uniform degradation across ALL instructions**.
+- Every line in CLAUDE.md competes for that budget. Adding instructions doesn't cause Claude to skip new ones - it causes **uniform degradation across ALL instructions**.
 - A focused 50-line file typically outperforms a sprawling 1,000-line one.
 
 ### Proven Structure
@@ -17,10 +17,10 @@
 - **Import syntax**: Use `@path/to/file` references to pull in specific docs on demand.
 
 ### What NOT to Put in Rules Files
-- Code style rules that a linter can enforce (use hooks instead — they are deterministic, 100% compliance).
+- Code style rules that a linter can enforce (use hooks instead - they are deterministic, 100% compliance).
 - Anything the model already does correctly without the instruction.
 - Detailed API documentation (link to docs instead).
-- Auto-generated content from `/init` — CLAUDE.md is "the highest leverage point of the harness" and deserves hand-crafted attention.
+- Auto-generated content from `/init` - CLAUDE.md is "the highest leverage point of the harness" and deserves hand-crafted attention.
 
 ### Anti-Pattern: "AI as a Linter"
 Never use rule files for formatting/style. Instead: use deterministic formatters, implement PostToolUse hooks to run linters after every edit, create Stop hooks to present errors back to the model.
@@ -42,8 +42,8 @@ Never use rule files for formatting/style. Instead: use deterministic formatters
 
 ### Deterministic vs. Advisory Split
 The most important architectural decision for quality systems:
-- **Rule files are advisory** — the model follows them ~80% of the time.
-- **Hooks are deterministic** — 100% compliance.
+- **Rule files are advisory** - the model follows them ~80% of the time.
+- **Hooks are deterministic** - 100% compliance.
 - Rule of thumb: If something MUST happen every time without exception, make it a hook. If it's guidance the model should consider, rule files are fine.
 
 ### Stop Hook Verification Loop ("Ralph Wiggum Technique")
@@ -52,7 +52,7 @@ A powerful community-discovered pattern:
 - The hook runs tests.
 - If tests fail, it returns `{"decision": "block", "reason": "Tests failing: ..."}` and the model keeps working.
 - A "completion promise" word/phrase signals genuine completion.
-- Critical: check a `stop_hook_active` flag to prevent infinite loops — when true, the model is already in a forced continuation state.
+- Critical: check a `stop_hook_active` flag to prevent infinite loops - when true, the model is already in a forced continuation state.
 
 ### Agent-Based Hooks
 For verification requiring judgment (not just pass/fail), use agent-type hooks that spawn a subagent with tool access to inspect files, run commands, and verify conditions. Up to 50 tool-use turns per hook invocation.
@@ -179,12 +179,12 @@ Windsurf and Cursor impose character limits: individual files capped at 6,000 ch
 ## 6. AI Code Review Patterns
 
 ### Beyond Diff-Only Review (Augment Code)
-Most AI review tools operate on the PR diff alone and use grep for context — this breaks down in large codebases. Better approach: semantic code search that understands cross-repository relationships, historical patterns, and architectural context.
+Most AI review tools operate on the PR diff alone and use grep for context - this breaks down in large codebases. Better approach: semantic code search that understands cross-repository relationships, historical patterns, and architectural context.
 
 ### Four Components of Review Quality
 1. **Tools**: Semantic retrieval, file browsing, symbol search with minimal overlap. Deterministic injection of large inputs (diffs, existing comments) rather than tool-based retrieval.
 2. **Prompts**: System prompts that tune precision-recall tradeoff, specifying which comment categories to avoid.
-3. **Model selection**: Models differ in how they interpret instructions and trade off precision vs recall — continuous benchmarking required.
+3. **Model selection**: Models differ in how they interpret instructions and trade off precision vs recall - continuous benchmarking required.
 4. **Guardrails**: Narrow tool operations, restricted shell access, deterministic components.
 
 ### Attribution-Based Review
@@ -237,14 +237,14 @@ Dedicated security/performance/accessibility agents catch issues that generalist
 ### Five Core Strategies
 1. **Selection**: Choose which information enters context (progressive disclosure, lazy-loading).
 2. **Compression**: Reduce token footprint (intentional compaction, commit messages as progress summaries).
-3. **Ordering**: Exploit peripheral bias — LLMs prioritize instructions at prompt extremities.
+3. **Ordering**: Exploit peripheral bias - LLMs prioritize instructions at prompt extremities.
 4. **Isolation**: Use subagents to keep noisy discovery work out of the main context.
 5. **Format optimization**: Markdown with clear headers, bullet points, and file:line references.
 
 ### Hierarchy of Context Problems (worst to least damaging)
-1. **Incorrect information** — actively misleading.
-2. **Missing information** — model guesses wrong.
-3. **Excessive noise** — dilutes important instructions.
+1. **Incorrect information** - actively misleading.
+2. **Missing information** - model guesses wrong.
+3. **Excessive noise** - dilutes important instructions.
 
 ### The "Illusion of Control" Insight
 Despite the term "engineering," outcomes remain probabilistic. Context engineering increases success probability, not guarantee. Avoid promises like "ensure it does X." Instead, optimize for highest probability through layered defenses (rules + hooks + verification + review).

@@ -4,7 +4,7 @@ import { useMediaQuery } from "@/lib/useMediaQuery";
 
 /**
  * Scroll target for pagination. Put `ref` on the element that should be
- * visible after a page change — the section header, not the grid, so the
+ * visible after a page change - the section header, not the grid, so the
  * user keeps the context of what they are paging through. The element needs
  * a `scroll-mt-*` large enough to clear the sticky site header (h-16).
  *

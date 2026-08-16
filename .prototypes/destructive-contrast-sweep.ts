@@ -2,7 +2,7 @@
  * WCAG AA contrast audit for --destructive token
  *
  * Correct OKLCH → linear sRGB → relative luminance pipeline.
- * No external dependencies — matrices implemented directly.
+ * No external dependencies - matrices implemented directly.
  *
  * Token values pulled VERBATIM from src/styles.css (dark theme, :root block):
  *   --destructive:            oklch(0.63 0.2 26)
@@ -144,9 +144,9 @@ const currentButtonContrast = contrastRatio(currentFgLum, currentDestructiveLum)
 
 console.log(`Luminance of --destructive (0.63 0.2 26): ${fmt(currentDestructiveLum)}`);
 console.log(`Luminance of --destructive-foreground (0.97 0.01 26): ${fmt(currentFgLum)}`);
-console.log(`CONSTRAINT A — destructive-fg ON bg-destructive: ${fmt(currentButtonContrast, 2)}:1  ${currentButtonContrast >= 4.5 ? "✓ PASS" : "✗ FAIL (<4.5)"}`);
+console.log(`CONSTRAINT A - destructive-fg ON bg-destructive: ${fmt(currentButtonContrast, 2)}:1  ${currentButtonContrast >= 4.5 ? "✓ PASS" : "✗ FAIL (<4.5)"}`);
 console.log();
-console.log("CONSTRAINT B — text-destructive (red) ON dark surfaces:");
+console.log("CONSTRAINT B - text-destructive (red) ON dark surfaces:");
 for (const s of surfaceLums) {
   const cr = contrastRatio(currentDestructiveLum, s.lum);
   const textPass  = cr >= 4.5;
@@ -242,7 +242,7 @@ if (bothPassRows.length > 0) {
   console.log(`Range of L values that pass constraint A (button):  ${fmt(lowestA.L,2)} – ${fmt(highestA.L,2)}`);
 
 } else {
-  // Single token can't satisfy both — find split recommendation
+  // Single token can't satisfy both - find split recommendation
   console.log("VERDICT: A SINGLE token CANNOT satisfy both constraints simultaneously.");
   console.log();
 
@@ -278,7 +278,7 @@ if (bothPassRows.length > 0) {
 }
 
 // ---------------------------------------------------------------------------
-// AdminReviewTab uses text-white ON bg-destructive — check that too
+// AdminReviewTab uses text-white ON bg-destructive - check that too
 // ---------------------------------------------------------------------------
 
 console.log();

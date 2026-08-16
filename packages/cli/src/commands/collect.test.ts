@@ -55,7 +55,7 @@ describe("diffResources", () => {
 		expect(diff.changed).toBe(0);
 	});
 
-	it("detects a pkg-only (MCP) addition — no files, no upstream", () => {
+	it("detects a pkg-only (MCP) addition - no files, no upstream", () => {
 		const pkg = (id: string): Resource => ({
 			type: "mcp",
 			name: id,

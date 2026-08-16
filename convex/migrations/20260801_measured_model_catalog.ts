@@ -16,7 +16,7 @@ import { generateUniqueShortId } from '../lib/ids'
  * - `claude-haiku-4-5` → no catalog row; insert one.
  *
  * Read-time resolution means every old immutable snapshot is fixed the moment
- * these rows exist — no republish.
+ * these rows exist - no republish.
  *
  * IDEMPOTENT. Aliases are only appended when absent, and a row is only
  * inserted when its slug is absent. A second run reports zero changes.
@@ -123,7 +123,7 @@ export const run = internalMutation({
     }
 
     for (const { slug, alias, fallback } of ALIASES) {
-      // Already resolvable — as a slug or as an alias anywhere — is a skip,
+      // Already resolvable - as a slug or as an alias anywhere - is a skip,
       // not an error: resolution scans every row's aliases, so a duplicate
       // entry would only add ambiguity.
       const resolvable =

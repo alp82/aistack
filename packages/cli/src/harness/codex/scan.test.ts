@@ -132,7 +132,7 @@ describe("compressed rollouts", () => {
 		expect(finalize(agg).models[0].tokens.output).toBe(100);
 	});
 
-	it("counts a .jsonl and its .zst sibling once — the compression-worker window", async () => {
+	it("counts a .jsonl and its .zst sibling once - the compression-worker window", async () => {
 		writeRollout("2026/07/20/rollout-a.jsonl", GENUINE);
 		writeRollout("2026/07/20/rollout-a.jsonl.zst", GENUINE);
 		const agg = createAggregate();

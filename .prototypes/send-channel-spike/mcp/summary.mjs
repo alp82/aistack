@@ -1,10 +1,10 @@
-// The human-readable rendering of the aggregate — what the approve gate is supposed to
+// The human-readable rendering of the aggregate - what the approve gate is supposed to
 // show. Deliberately long and multi-line: if a consent dialog renders it, we learn both
 // that it can carry our own body text AND where it truncates.
 //
 // Shared by the MCP server (as tool `description`) and by fixtures/summary.txt (as tool
 // input), so both candidate-A variants are compared on byte-identical text. That identity
-// is only real if the fixture is current — run `node mcp/summary.mjs` (see README Round 1
+// is only real if the fixture is current - run `node mcp/summary.mjs` (see README Round 1
 // precondition) to rewrite fixtures/summary.txt from this function, with no trailing
 // newline so it matches the description byte for byte.
 
@@ -14,7 +14,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 export function buildSummary(payload) {
   return [
-    'AI STACK — PUBLISH MEASURED USAGE',
+    'AI STACK - PUBLISH MEASURED USAGE',
     '',
     'Destination:  stack "alps-daily-driver" on aistack.to (bound to this machine\'s token)',
     `Window:       ${payload.window.days} days (${payload.window.from} .. ${payload.window.to})`,
@@ -47,7 +47,7 @@ export function buildSummary(payload) {
 }
 
 // Run directly to regenerate the fixture: `node mcp/summary.mjs`
-// (No top-level await here — publish-server.mjs imports this module.)
+// (No top-level await here - publish-server.mjs imports this module.)
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
   const payload = JSON.parse(readFileSync(join(ROOT, 'fixtures/payload.json'), 'utf8'))

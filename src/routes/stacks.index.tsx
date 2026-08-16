@@ -173,7 +173,7 @@ function BrowseStacksPage() {
 	const setSearch = useMemo(
 		() =>
 			makeSearchUpdater<typeof STACKS_SEARCH_DEFAULTS>(navigate, {
-				// resetScroll: false — filter/sort/search changes keep the viewport
+				// resetScroll: false - filter/sort/search changes keep the viewport
 				// in place; only pagination scrolls, back to the page header.
 				resetPageKeys: ["filter", "sort", "q"],
 				resetScroll: false,
@@ -265,7 +265,7 @@ function BrowseStacksPage() {
 
 	const handleAddStack = () => {
 		if (isAuthenticated && me?.hasStack) {
-			// Never an arbitrary stack's editor — the profile lists them all.
+			// Never an arbitrary stack's editor - the profile lists them all.
 			navigate({
 				to: "/$creator",
 				params: { creator: `@${me.handle}` },
@@ -389,7 +389,7 @@ function BrowseStacksPage() {
 											<span>
 												{filteredLowQualityStacks.length} stack
 												{filteredLowQualityStacks.length !== 1 ? "s" : ""}{" "}
-												hidden due to low quality reports — click to show
+												hidden due to low quality reports - click to show
 											</span>
 										</button>
 									) : (

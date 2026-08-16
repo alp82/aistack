@@ -57,7 +57,7 @@ const minimalCreateArgs = {
 }
 
 // ---------------------------------------------------------------------------
-// Group I — create() with a `projects` argument
+// Group I - create() with a `projects` argument
 // ---------------------------------------------------------------------------
 
 test('TC-I-01: create() with projects array inserts matching project rows for the new stack', async () => {
@@ -189,7 +189,7 @@ test('TC-I-07: each inserted project row carries the correct stackId and creator
 })
 
 // ---------------------------------------------------------------------------
-// Group J — update() does NOT bulk-publish project rows
+// Group J - update() does NOT bulk-publish project rows
 // ---------------------------------------------------------------------------
 
 test('TC-J-01: stacks.update with only stack fields does not alter any project published value', async () => {
@@ -258,7 +258,7 @@ test('TC-J-01: stacks.update with only stack fields does not alter any project p
 })
 
 // ---------------------------------------------------------------------------
-// Group K — create() with avatarStorageId (RED: arg not yet accepted)
+// Group K - create() with avatarStorageId (RED: arg not yet accepted)
 // ---------------------------------------------------------------------------
 
 test('TC-K-01: create rejects the retired avatarStorageId arg (Phase C narrow)', async () => {
@@ -293,7 +293,7 @@ test('TC-K-03: create passing a plain string as avatarStorageId → validator th
 })
 
 // ---------------------------------------------------------------------------
-// Group L — update() with avatarStorageId (RED: arg not yet accepted)
+// Group L - update() with avatarStorageId (RED: arg not yet accepted)
 // ---------------------------------------------------------------------------
 
 async function seedStackForUpdate(
@@ -339,7 +339,7 @@ test('TC-L-01: update rejects the retired avatarStorageId arg (Phase C narrow)',
 // legacy stack-avatar rows can no longer exist after the migration.
 
 // ---------------------------------------------------------------------------
-// Group M — read resolvers use avatarStorageId, not stackImageUrl (RED)
+// Group M - read resolvers use avatarStorageId, not stackImageUrl (RED)
 // ---------------------------------------------------------------------------
 
 // Helper: seed a published stack with full control over the creator's avatar
@@ -495,10 +495,10 @@ test('TC-M-09: getForEdit surfaces neither identity ids nor stackImageUrl as ava
 })
 
 // ---------------------------------------------------------------------------
-// Group N — personalPageUrl validation via assertValidPersonalPageUrl (RED)
+// Group N - personalPageUrl validation via assertValidPersonalPageUrl (RED)
 // ---------------------------------------------------------------------------
 
-// Group N (Phase C): personalPageUrl is no longer a stack concept — the arg is
+// Group N (Phase C): personalPageUrl is no longer a stack concept - the arg is
 // rejected outright. Https-only validation of profile links lives in
 // creators.updateProfile (TC-CP-07..09 in creators.test.ts).
 
@@ -518,7 +518,7 @@ test('TC-N-01: create rejects the retired personalPageUrl arg (Phase C narrow)',
 })
 
 // TC-N-02..TC-N-06 retired (Phase C): every personalPageUrl value now fails
-// the same way — the arg itself no longer exists on create/update.
+// the same way - the arg itself no longer exists on create/update.
 
 test('TC-N-07: update rejects the retired personalPageUrl arg (Phase C narrow)', async () => {
   const t = convexTest(schema, modules)
@@ -536,7 +536,7 @@ test('TC-N-07: update rejects the retired personalPageUrl arg (Phase C narrow)',
 })
 
 // ---------------------------------------------------------------------------
-// Group O — accentPreset key validation, persistence, read (RED)
+// Group O - accentPreset key validation, persistence, read (RED)
 // ---------------------------------------------------------------------------
 
 test('TC-O-01: update with accentPreset "violet" persists it', async () => {
@@ -742,7 +742,7 @@ test('TC-O-11: update by non-owner with accentPreset is rejected', async () => {
 })
 
 // ---------------------------------------------------------------------------
-// Group P — getPublicSummary query (does NOT exist yet — RED)
+// Group P - getPublicSummary query (does NOT exist yet - RED)
 // ---------------------------------------------------------------------------
 
 // Helper: seed a published stack with tool/model/bundle subscriptions
@@ -860,7 +860,7 @@ async function seedPublishedStackWithSubs(
   return { stackId, shortId }
 }
 
-test('TC-P-01: getPublicSummary on published stack returns correct shape — name matches, tools/models/bundles are bare string arrays, counts match', async () => {
+test('TC-P-01: getPublicSummary on published stack returns correct shape - name matches, tools/models/bundles are bare string arrays, counts match', async () => {
   const t = convexTest(schema, modules)
   const { shortId } = await seedPublishedStackWithSubs(t, {
     userId: 'user-p01',
@@ -874,7 +874,7 @@ test('TC-P-01: getPublicSummary on published stack returns correct shape — nam
   expect(result).not.toBeNull()
   expect(result!.name).toBe('Stack user-p01')
 
-  // tools/models/bundles must be string[] of names only — no internal fields
+  // tools/models/bundles must be string[] of names only - no internal fields
   expect(Array.isArray(result!.tools)).toBe(true)
   expect(Array.isArray(result!.models)).toBe(true)
   expect(Array.isArray(result!.bundles)).toBe(true)
@@ -990,7 +990,7 @@ test('TC-P-06: upvoteCount equals number of seeded stackUpvotes rows, 0 when non
   expect(withVotes!.upvoteCount).toBe(3)
 })
 
-test('TC-P-07: deleted/missing tool slug is filtered out — not in tools[], query does not throw', async () => {
+test('TC-P-07: deleted/missing tool slug is filtered out - not in tools[], query does not throw', async () => {
   const t = convexTest(schema, modules)
 
   // Seed a stack whose toolSubscription references a tool that does not exist in tools table
@@ -1391,7 +1391,7 @@ test('TC-P-08c: getPublicSummary bundle-priced tool sorts between paid and free'
 })
 
 // ---------------------------------------------------------------------------
-// Group PD — profile-first decoupling (plan.md Phase A)
+// Group PD - profile-first decoupling (plan.md Phase A)
 // ---------------------------------------------------------------------------
 
 test('TC-PD-01: create() allows a second stack for a creator who already has one', async () => {

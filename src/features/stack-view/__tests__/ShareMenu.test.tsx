@@ -71,7 +71,7 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("ShareMenu", () => {
-	// TC-SM-01 (AC1): Initially closed — no menu content, trigger present and collapsed.
+	// TC-SM-01 (AC1): Initially closed - no menu content, trigger present and collapsed.
 	it("TC-SM-01: initially no share items visible and Share trigger has aria-expanded=false", () => {
 		render(<ShareMenu slug="my-stack" />);
 
@@ -269,7 +269,7 @@ describe("ShareMenu", () => {
 		expect(trigger).toHaveAttribute("aria-expanded", "true");
 	});
 
-	// TC-SM-12 (AC5): component-level failure state — failed=true shows "Copy failed", not "Copied!".
+	// TC-SM-12 (AC5): component-level failure state - failed=true shows "Copy failed", not "Copied!".
 	it("TC-SM-12: when page clipboard failed=true, shows Copy failed text and no Copied! text", async () => {
 		clipboardInstances = [];
 

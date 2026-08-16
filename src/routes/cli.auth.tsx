@@ -47,7 +47,7 @@ function CliAuthPage() {
 	 *
 	 * The CLI proposes its hostname; this field is where the user sees that
 	 * string and gets the final say. `null` means "not prefilled yet" and is
-	 * distinct from `""`, which means the user deliberately cleared it — without
+	 * distinct from `""`, which means the user deliberately cleared it - without
 	 * that distinction the prefill effect would keep refilling a field the user
 	 * just emptied.
 	 */
@@ -65,7 +65,7 @@ function CliAuthPage() {
 	/**
 	 * The measured layer's destination is bound to the token at link time (#33
 	 * decision 7), so this is the one moment the user is asked. Auto-selected
-	 * when there is exactly one stack — the common case, and a one-option
+	 * when there is exactly one stack - the common case, and a one-option
 	 * dropdown is a question with no information in it.
 	 */
 	const stacks = myStacks ?? [];

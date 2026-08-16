@@ -61,7 +61,7 @@ function toStaged(value: {
 }
 
 // ---------------------------------------------------------------------------
-// Create mode — staged local state, rendered through the shared ProjectsManager
+// Create mode - staged local state, rendered through the shared ProjectsManager
 // with a parallel stable-id array kept in lockstep with the staged projects.
 // ---------------------------------------------------------------------------
 
@@ -163,7 +163,7 @@ function ProjectsStepCreate({
 }
 
 // ---------------------------------------------------------------------------
-// Edit mode — delegates to the public ProjectsSection (live Convex mutations,
+// Edit mode - delegates to the public ProjectsSection (live Convex mutations,
 // Motion reorder, favicon rows, New Project dialog) with the editor kicker.
 // ---------------------------------------------------------------------------
 

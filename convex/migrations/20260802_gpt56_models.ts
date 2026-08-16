@@ -9,7 +9,7 @@ import { generateUniqueShortId } from '../lib/ids'
  * `gpt-5.6-terra` in real rollouts; none resolve against the catalog, so the
  * public page renders the raw ids. These rows make them resolve, and
  * read-time resolution fixes every already-published snapshot with no
- * republish — the same shape as 20260801_openai_models.
+ * republish - the same shape as 20260801_openai_models.
  *
  * `codex-auto-review` is deliberately NOT added: it is an internal Codex
  * routing label, not a public model (openai/codex#20981). It gets a price in

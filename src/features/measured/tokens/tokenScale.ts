@@ -12,7 +12,7 @@
  * quietly pretends to be precise would spend that credit.
  *
  * EVERY CONSTANT CARRIES ITS SOURCE, in a comment beside it. Two of them do not
- * rest on words per token at all — electricity and vision — and the cards that
+ * rest on words per token at all - electricity and vision - and the cards that
  * use those carry their own caveat instead of the shared one.
  */
 

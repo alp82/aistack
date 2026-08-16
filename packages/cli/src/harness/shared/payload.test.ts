@@ -93,7 +93,7 @@ function build(
 // ---------------------------------------------------------------------------
 
 describe("fail-closed names: an invented name CANNOT reach the payload", () => {
-	// The prototype's equivalent run confirmed it could — `toolCalls` was a
+	// The prototype's equivalent run confirmed it could - `toolCalls` was a
 	// catch-all, so anything unclassified fell THROUGH into the payload.
 	const hostile = [
 		// A plausible-looking but invented built-in tool name.
@@ -199,7 +199,7 @@ describe("a ticked name publishes; the same name unticked does not", () => {
 	const ticked = (over: Partial<OptInNames>): SyncConfig =>
 		config({ optIns: { ...EMPTY_OPT_INS, ...over } });
 
-	it("keeps the name private with no opt-ins — the state before the gate", () => {
+	it("keeps the name private with no opt-ins - the state before the gate", () => {
 		const payload = build(records);
 		expect(payload.inventory.skills).toEqual([]);
 		expect(payload.inventory.withheld.skills).toBe(1);
@@ -215,7 +215,7 @@ describe("a ticked name publishes; the same name unticked does not", () => {
 		expect(payload.inventory.withheld.skills).toBe(0);
 	});
 
-	it("ticks are per class — a skill tick does not free an MCP server", () => {
+	it("ticks are per class - a skill tick does not free an MCP server", () => {
 		const payload = build(records, {
 			syncConfig: ticked({ skills: ["acme-billing-prod"] }),
 		});
@@ -225,7 +225,7 @@ describe("a ticked name publishes; the same name unticked does not", () => {
 
 	it("reverts to kept-private when the config fetch failed", () => {
 		// The bundled fallback carries no opt-ins, so an offline sync publishes
-		// strictly less than an online one — never more.
+		// strictly less than an online one - never more.
 		const payload = build(records, { syncConfig: BUNDLED_SYNC_CONFIG });
 		expect(payload.inventory.skills).toEqual([]);
 		expect(payload.inventory.mcpServers).toEqual([]);
@@ -266,7 +266,7 @@ describe("the gate's review list", () => {
 	});
 });
 
-describe("buildSyncBody — the unsealed half (#48)", () => {
+describe("buildSyncBody - the unsealed half (#48)", () => {
 	const built = () => {
 		const agg = createAggregate();
 		for (const r of [
@@ -376,14 +376,14 @@ describe("model ids are the exempt class (#33 decision 3)", () => {
 		expect(payload.excludedTokens.unpriced).toBe(1_000);
 	});
 
-	it("does not carry catalogSlug — that is resolved server-side at read time", () => {
+	it("does not carry catalogSlug - that is resolved server-side at read time", () => {
 		const payload = build([assistant({ model: "claude-opus-5" })]);
 		expect(payload.models[0]).not.toHaveProperty("catalogSlug");
 	});
 
 	it("merges fast mode back onto the vendor id so the catalog can resolve it", () => {
 		// `#fast` is OUR suffix; publishing it would yield catalogSlug: null for a
-		// model that is in the catalog. Cost stays exact — it accumulated at the
+		// model that is in the catalog. Cost stays exact - it accumulated at the
 		// fast rate during ingest.
 		const payload = build([
 			assistant({
@@ -409,7 +409,7 @@ describe("every string in a built payload clears the server's bound (#45)", () =
 	// what is asserted here is that our own client can never trip it.
 	//
 	// The names are ticked, so the hostile strings genuinely reach the payload
-	// instead of being withheld — otherwise the assertion would pass vacuously.
+	// instead of being withheld - otherwise the assertion would pass vacuously.
 	const bidiTool = cleanName("Ba\u202Esh");
 	const overlongSkill = cleanName("z".repeat(400));
 
@@ -479,7 +479,7 @@ describe("every string in a built payload clears the server's bound (#45)", () =
 describe("a multi-provider harness prices at ingest (#123)", () => {
 	// opencode and pi-mono route several providers through one payload, so their
 	// rows are keyed `provider:model`. There is no adapter yet (#124, #126), so
-	// these drive the shared aggregate directly — the seam every adapter uses.
+	// these drive the shared aggregate directly - the seam every adapter uses.
 	function buildProvided(
 		rows: ReadonlyArray<{ key: string; input: number; output: number }>,
 	): MeasuredPayload {
@@ -523,7 +523,7 @@ describe("a multi-provider harness prices at ingest (#123)", () => {
 
 	it("keeps the provider prefix intact through the id sanitizer", () => {
 		// `:` is in the server's model-id charset and `/` is not. That is why the
-		// pricing key uses a colon — a rewritten id would not find its rate again
+		// pricing key uses a colon - a rewritten id would not find its rate again
 		// at read time.
 		expect(sanitizeModelId("google:gemini-3-pro-preview")).toBe(
 			"google:gemini-3-pro-preview",
@@ -600,7 +600,7 @@ describe("the citation rides on the rate (#136)", () => {
 	});
 
 	it("nulls the top-level table when the models cite more than one", () => {
-		// A single string over a mixed payload is a false citation — the defect
+		// A single string over a mixed payload is a false citation - the defect
 		// this ticket exists to remove. The per-model fields carry the truth.
 		const payload = buildProvided([
 			{ key: "openai:gpt-5.4", input: 1_000_000, output: 0 },
@@ -621,7 +621,7 @@ describe("the citation rides on the rate (#136)", () => {
 		expect(payload.models[0].pricingTable).toBe(PRICING_TABLE_VERSION);
 	});
 
-	it("pairs the citation with the dollars — an unpriced model carries neither", () => {
+	it("pairs the citation with the dollars - an unpriced model carries neither", () => {
 		const payload = buildProvided([
 			{ key: "google:gemini-3.6-flash", input: 1_000_000, output: 0 },
 			{ key: "github-copilot:gemini-3-pro-preview", input: 500_000, output: 0 },
@@ -637,7 +637,7 @@ describe("the citation rides on the rate (#136)", () => {
 
 	it("cites local-no-charge for a $0 local row", () => {
 		// Free is a fact about the machine, and it has a citation like any other
-		// figure — that is what separates it from unpriced.
+		// figure - that is what separates it from unpriced.
 		const payload = buildProvided([
 			{ key: "ollama:qwen3-coder", input: 1_000_000, output: 0 },
 		]);

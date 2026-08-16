@@ -21,7 +21,7 @@ import { StackEditor } from "@/components/StackEditor";
 // Module mocks
 // ---------------------------------------------------------------------------
 
-// Stub router — StackEditor calls useNavigate() and renders <Link>
+// Stub router - StackEditor calls useNavigate() and renders <Link>
 vi.mock("@tanstack/react-router", () => ({
 	Link: ({
 		children,
@@ -36,7 +36,7 @@ vi.mock("@tanstack/react-router", () => ({
 	useNavigate: () => vi.fn(),
 }));
 
-// Stub Convex hooks — same mechanism as projects-section.test.tsx
+// Stub Convex hooks - same mechanism as projects-section.test.tsx
 vi.mock("convex/react", () => ({
 	useQuery: vi.fn(() => []),
 	useMutation: vi.fn(() => vi.fn()),

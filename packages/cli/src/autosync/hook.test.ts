@@ -10,7 +10,7 @@ import {
 } from "./hook.js";
 
 /**
- * SessionStart hook install/remove — wayfinder #62 (map #60).
+ * SessionStart hook install/remove - wayfinder #62 (map #60).
  *
  * ~/.claude/settings.json belongs to the user. The two rules these tests pin:
  * never rewrite a file we cannot parse, and never touch hooks that are not
@@ -75,7 +75,7 @@ describe("installAutoSyncHook", () => {
 		expect(settings.hooks.SessionStart).toHaveLength(2);
 	});
 
-	test("is idempotent — a second install does not duplicate the hook", () => {
+	test("is idempotent - a second install does not duplicate the hook", () => {
 		installAutoSyncHook(file);
 		installAutoSyncHook(file);
 		const settings = read() as {

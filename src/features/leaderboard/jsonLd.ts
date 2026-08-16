@@ -6,7 +6,7 @@ import type { Board } from "./board";
  *
  * Spend is a `PropertyValue` carrying `minValue` AND NO `value` while coverage
  * is under 100%. A consumer that understands `minValue` reports "at least
- * $167,331"; one that does not reports nothing for that row — both outcomes
+ * $167,331"; one that does not reports nothing for that row - both outcomes
  * are true. A plain `value` was rejected because it states a figure the
  * visible page refuses to state.
  */
@@ -30,7 +30,7 @@ export function leaderboardJsonLd(board: Board) {
 	return {
 		"@context": "https://schema.org" as const,
 		"@type": "Dataset" as const,
-		name: "AI Stack leaderboard — measured tokens over 30 days",
+		name: "AI Stack leaderboard - measured tokens over 30 days",
 		description:
 			`Published AI coding stacks ranked by measured token volume over their ` +
 			`rolling 30-day windows, counted on ${board.stackCount} builders' own machines. ` +

@@ -1,5 +1,5 @@
 /**
- * PROTOTYPE — throwaway. The floating bar. Deliberately ugly against the site
+ * PROTOTYPE - throwaway. The floating bar. Deliberately ugly against the site
  * so nobody judges it as part of the design. Hidden in production builds.
  */
 

@@ -1,9 +1,9 @@
 /**
- * The owner's auto-sync switch — its state machine and its words (#104, map
+ * The owner's auto-sync switch - its state machine and its words (#104, map
  * #76, building #100 decision 5).
  *
  * The permission moved to the stack in #102. This file is the web half: it
- * turns the pair the server keeps — `autoSync` and `lastAutoSyncAt` — into the
+ * turns the pair the server keeps - `autoSync` and `lastAutoSyncAt` - into the
  * one honest sentence the owner box prints.
  *
  * THE PAIR IS THE POINT. The flag says what is allowed. The stamp says what
@@ -17,7 +17,7 @@
  * owns the machines and the stack, so it is "your machines", not "this machine".
  */
 
-/** What `autoSync.get` answers — the flag and the stamp, together. */
+/** What `autoSync.get` answers - the flag and the stamp, together. */
 export type AutoSyncFlag = {
 	autoSync: { enabled: boolean; frequencyHours: number } | null;
 	lastAutoSyncAt: number | null;
@@ -80,7 +80,7 @@ export const OFF_LINE = "Off. Only a sync you run yourself publishes.";
 /**
  * What a revoke leaves behind (#103). Hooks are dumb local triggers, and a
  * browser cannot reach the machines that hold them, so the honest sentence is
- * that they keep firing and land nothing — not "go remove them".
+ * that they keep firing and land nothing - not "go remove them".
  */
 export const OFF_REVOKE_NOTE =
 	"Machines that still have a hook keep firing on their own schedule. They publish nothing while this is off.";
@@ -112,7 +112,7 @@ export const AUTO_OFF_CMD = "npx @use-aistack/cli sync --auto off";
  * WHAT THE OWNER READS WHEN THE PAGE IS PAST 48 HOURS AND AUTOMATION IS OFF.
  *
  * #107 answered "one element or two?" with ONE: the page shows a dated stamp
- * and no sentence, and this switch — promoted above the reading — is the only
+ * and no sentence, and this switch - promoted above the reading - is the only
  * place that asks for anything. The remedy lives on the control, so there is
  * never a callout and a switch selling the same feature.
  *
@@ -124,7 +124,7 @@ export function stalePromptLine(syncedAgo: string): string {
 }
 
 /**
- * WHAT AUTO-SYNC IS, in the CLI's own terms — the trigger, the ceiling and the
+ * WHAT AUTO-SYNC IS, in the CLI's own terms - the trigger, the ceiling and the
  * revoke, in one sentence.
  *
  * The CLI says "a silent daily sync when a Claude Code session starts", and on

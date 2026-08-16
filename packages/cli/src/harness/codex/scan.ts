@@ -26,7 +26,7 @@ import {
 	noteConfiguredMcpServers,
 } from "./analyzer.js";
 
-/** `$CODEX_HOME` honored, `~/.codex` the default — mirrors the Codex source. */
+/** `$CODEX_HOME` honored, `~/.codex` the default - mirrors the Codex source. */
 export function codexHome(): string {
 	return process.env.CODEX_HOME || path.join(homedir(), ".codex");
 }
@@ -48,7 +48,7 @@ export function isRolloutFile(basename: string): boolean {
 	return ROLLOUT_RE.test(basename);
 }
 
-/** Recursive rollout walk — the YYYY/MM/DD nesting is real. */
+/** Recursive rollout walk - the YYYY/MM/DD nesting is real. */
 async function* walkRollouts(dir: string): AsyncGenerator<string> {
 	let entries: Dirent[];
 	try {
@@ -66,7 +66,7 @@ async function* walkRollouts(dir: string): AsyncGenerator<string> {
 /**
  * zstd support landed in node:zlib after the CLI's floor (`engines: >=18`),
  * so it is feature-detected. On an old runtime a `.zst` rollout counts as
- * unreadable — a visible coverage figure, never a silent skip.
+ * unreadable - a visible coverage figure, never a silent skip.
  */
 const zstdDecompress: ((buf: Buffer) => Buffer) | null =
 	typeof (zlib as { zstdDecompressSync?: unknown }).zstdDecompressSync ===
@@ -109,7 +109,7 @@ export async function scan(
 			}
 			// Dedup key = resolved path with `.zst` stripped. Codex's compression
 			// worker leaves `foo.jsonl` and `foo.jsonl.zst` coexisting for a moment
-			// (rename before unlink, #73 §4) — one session, two names. Keying on
+			// (rename before unlink, #73 §4) - one session, two names. Keying on
 			// the stem makes the second listing a duplicate, not a double count.
 			const dedupKey = resolved.endsWith(".zst")
 				? resolved.slice(0, -".zst".length)
@@ -130,7 +130,7 @@ export async function scan(
 						continue;
 					}
 				} catch {
-					/* unreadable stat — fall through and try to read it */
+					/* unreadable stat - fall through and try to read it */
 				}
 			}
 
@@ -178,7 +178,7 @@ type IngestOutcome =
 	| { ok: false; reason: string };
 
 /**
- * A read failure classified WITHOUT the error object's message or stack —
+ * A read failure classified WITHOUT the error object's message or stack -
  * both carry the absolute path, which never leaves this module. `code` is a
  * bare class name (`ENOENT`, `EACCES`, `zstd-unsupported`, `zstd-corrupt`).
  */
@@ -218,7 +218,7 @@ function ingestWithRetry(
 
 /**
  * Whole-file read rather than a stream: a `.zst` rollout must be decompressed
- * as one buffer anyway, and rollout files are single sessions — megabytes,
+ * as one buffer anyway, and rollout files are single sessions - megabytes,
  * not gigabytes. The lines are parsed BEFORE any of them folds into the
  * aggregate, because the fingerprint verdict (#73) arrives only at end of
  * file: a foreign file must leave the aggregate untouched.
@@ -273,7 +273,7 @@ function ingestFile(
  * turn persists a `turn_context` before any usage lands. A file whose first
  * parsed line is not `session_meta`, or that carries a `token_count` with no
  * preceding `turn_context`, was not written by Codex CLI. Negative by
- * construction — it detects "not genuine", never "written by tool X"; the
+ * construction - it detects "not genuine", never "written by tool X"; the
  * originator label is diagnostic only.
  */
 function classifyRollout(
@@ -307,7 +307,7 @@ function classifyRollout(
 /**
  * The static half of the MCP inventory (#66 decision 3): `[mcp_servers.*]`
  * in `~/.codex/config.toml`. Unreadable or absent config is silence, not an
- * error — the observed half stands on its own.
+ * error - the observed half stands on its own.
  */
 function readConfiguredMcpServers(agg: Aggregate, configFile?: string): void {
 	const file = configFile ?? path.join(codexHome(), "config.toml");

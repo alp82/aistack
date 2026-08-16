@@ -18,7 +18,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-// This import will fail until the module exists — that is the intended RED state.
+// This import will fail until the module exists - that is the intended RED state.
 import { ProjectsManager } from "@/components/projects/ProjectsManager";
 
 afterEach(() => {

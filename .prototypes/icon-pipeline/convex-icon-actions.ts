@@ -11,10 +11,10 @@
  *   sharp bundles libvips statically so no system lib deps. The pnpm postinstall downloads
  *   a prebuilt binary for the target platform (linux-x64 in this project's case).
  *   Size on disk: ~70 MB in node_modules (libvips + sharp binding).
- *   Convex uploads the sharp binary as a Node.js external package — first deploy may be slow.
+ *   Convex uploads the sharp binary as a Node.js external package - first deploy may be slow.
  *
  * Jimp was evaluated as a fallback but jimp v1 has no WebP encode support (@jimp/js-webp
- * package does not exist). Jimp is therefore eliminated — sharp is the only viable option.
+ * package does not exist). Jimp is therefore eliminated - sharp is the only viable option.
  *
  * GOTCHAS:
  *   1. "use node" directive is REQUIRED at top of file. Without it the Convex bundler targets
@@ -27,7 +27,7 @@
  *   4. Convex actions have a 2-minute execution timeout. Fetching a slow external URL +
  *      sharp processing is well within this limit for images under a few MB.
  *   5. CORS: actions run server-side so CORS does not apply to fetch(url).
- *      However some icon CDNs block non-browser User-Agents — pass a browser UA if needed.
+ *      However some icon CDNs block non-browser User-Agents - pass a browser UA if needed.
  *   6. Action invocation cost: Convex charges per action call, not per byte processed.
  *      The storage write itself counts toward storage billing.
  *   7. sharp's resize({ fit: 'inside', withoutEnlargement: true }) is the correct option
@@ -83,13 +83,13 @@ export const storeIconFromDataURI = action({
     // Parse data URI: "data:<mimeType>;base64,<base64data>"
     const match = args.dataURI.match(/^data:([^;]+);base64,(.+)$/);
     if (!match) {
-      throw new Error("Invalid data URI — expected data:<mime>;base64,<data>");
+      throw new Error("Invalid data URI - expected data:<mime>;base64,<data>");
     }
     const inputBuffer = Buffer.from(match[2], "base64");
 
     const webpBuffer = await toWebP(inputBuffer);
 
-    // ctx.storage.store() requires a browser Blob — Node >= 18 has global Blob
+    // ctx.storage.store() requires a browser Blob - Node >= 18 has global Blob
     const blob = new Blob([webpBuffer], { type: "image/webp" });
     const storageId = await ctx.storage.store(blob);
 
@@ -125,7 +125,7 @@ export const storeIconFromURL = action({
 
     if (!response.ok) {
       throw new Error(
-        `Failed to fetch icon: ${response.status} ${response.statusText} — ${args.url}`
+        `Failed to fetch icon: ${response.status} ${response.statusText} - ${args.url}`
       );
     }
 
@@ -137,7 +137,7 @@ export const storeIconFromURL = action({
       !contentType.includes("svg")
     ) {
       throw new Error(
-        `URL did not return an image — content-type: ${contentType}`
+        `URL did not return an image - content-type: ${contentType}`
       );
     }
 

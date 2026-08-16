@@ -1,5 +1,5 @@
 /**
- * PROTOTYPE — throwaway. Variant A: "Ground".
+ * PROTOTYPE - throwaway. Variant A: "Ground".
  *
  * The token graph stops being a watermark and becomes the section's ground:
  * a full-bleed, full-strength area chart the content stands ON. One giant
@@ -16,7 +16,7 @@ import { fmtCount, fmtTokens, liveDays, MONO_LABEL } from "../feed";
 import { RelativeTime } from "../RelativeTime";
 import { rowHandle, rowSummary } from "./summary";
 
-export const VARIANT_GROUND_NAME = "Ground — chart as the floor";
+export const VARIANT_GROUND_NAME = "Ground - chart as the floor";
 
 export function VariantGround({ band }: { readonly band: Band }) {
 	const { totals, usage, points, rows } = band;
@@ -70,7 +70,7 @@ export function VariantGround({ band }: { readonly band: Band }) {
 
 				<div className="mt-6">
 					<div className="text-7xl font-black leading-none tracking-tighter tabular-nums text-fg-primary md:text-8xl">
-						{quiet ? "—" : fmtTokens(usage.tokens)}
+						{quiet ? "-" : fmtTokens(usage.tokens)}
 					</div>
 					<div className={`${MONO_LABEL} mt-3 text-fg-muted`}>
 						tokens measured · {totals.stacksSeen}{" "}
@@ -78,10 +78,10 @@ export function VariantGround({ band }: { readonly band: Band }) {
 						behind it
 					</div>
 					<div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 font-mono text-sm tabular-nums text-fg-secondary">
-						<span>{quiet ? "—" : fmtCount(usage.sessions)} sessions</span>
-						<span>{quiet ? "—" : fmtCount(usage.projects)} projects</span>
-						<span>{quiet ? "—" : fmtCount(usage.tools)} tools</span>
-						<span>{quiet ? "—" : fmtCount(usage.models)} models</span>
+						<span>{quiet ? "-" : fmtCount(usage.sessions)} sessions</span>
+						<span>{quiet ? "-" : fmtCount(usage.projects)} projects</span>
+						<span>{quiet ? "-" : fmtCount(usage.tools)} tools</span>
+						<span>{quiet ? "-" : fmtCount(usage.models)} models</span>
 					</div>
 				</div>
 

@@ -82,7 +82,7 @@ code, .font-mono {
      Six slots on the site's own accent hues, validated with the dataviz
      script: worst adjacent CVD dE 15.5, normal-vision dE 18.4, every slot in
      the dark lightness band, above the chroma floor and above 3:1 on both
-     #13161a and #0b0d11. Hue 25 (red) is left out on purpose — it is the
+     #13161a and #0b0d11. Hue 25 (red) is left out on purpose - it is the
      --destructive hue, and a status color must never look like a series.
      The order is the safety mechanism. Keep it in sync with
      src/features/charts/palette.ts and re-run the validator before changing a
@@ -347,7 +347,7 @@ code, .font-mono {
    * NOTE: do NOT add --spacing-<name> aliases for the t-shirt sizes
    * (2xs/xs/sm/md/lg/xl). Tailwind v4 resolves `max-w-*` against the
    * --spacing-* namespace BEFORE --container-*, so a --spacing-md token
-   * silently turns `max-w-md` into max-width:1rem — which reads as text
+   * silently turns `max-w-md` into max-width:1rem - which reads as text
    * wrapping one word per line, far from the token that caused it.
    * The --space-* values below are still available as var(--space-md) in
    * hand-written CSS; they just don't generate utilities any more.
@@ -548,7 +548,7 @@ code, .font-mono {
   padding-left: 0;
 }
 
-/* Blockquote — decorative large quote character */
+/* Blockquote - decorative large quote character */
 .ProseMirror blockquote {
   position: relative;
   overflow: hidden;
@@ -653,7 +653,7 @@ code, .font-mono {
   vertical-align: middle;
 }
 
-/* Tiptap drag handle — grip bar with centered dots */
+/* Tiptap drag handle - grip bar with centered dots */
 .tiptap-drag-handle {
   display: flex;
   align-items: center;
@@ -695,7 +695,7 @@ code, .font-mono {
   opacity: 0.4;
 }
 
-/* Drop cursor — lime indicator line when dragging blocks */
+/* Drop cursor - lime indicator line when dragging blocks */
 .ProseMirror .drop-cursor-lime {
   background-color: #84cc16 !important;
   height: 3px !important;

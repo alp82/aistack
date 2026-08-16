@@ -33,7 +33,7 @@ export interface KnownMarketplace {
 
 export type KnownMarketplaces = Record<string, KnownMarketplace>;
 
-/** A plugin's source in marketplace.json — polymorphic. */
+/** A plugin's source in marketplace.json - polymorphic. */
 type PluginSource =
 	| string
 	| {

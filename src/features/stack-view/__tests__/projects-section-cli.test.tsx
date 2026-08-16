@@ -23,7 +23,7 @@ describe("ProjectsSection – no CLI copy command", () => {
 	// TC-G-01
 	it("does not render 'npx @use-aistack/cli collect' when isOwner=true and list is empty", async () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
-		// Empty list — owner sees the empty-state UI
+		// Empty list - owner sees the empty-state UI
 		useQuery.mockReturnValue([]);
 
 		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
@@ -56,7 +56,7 @@ describe("ProjectsSection – no CLI copy command", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Group B — ProjectsSection `header` prop (TC-HDR-01..03)
+// Group B - ProjectsSection `header` prop (TC-HDR-01..03)
 // ---------------------------------------------------------------------------
 
 describe("ProjectsSection – header prop", () => {

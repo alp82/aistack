@@ -1,4 +1,4 @@
-// The pi scanner's file-level behavior — wayfinder ticket #126 (map #121):
+// The pi scanner's file-level behavior - wayfinder ticket #126 (map #121):
 // the vendor's own version header as the genuineness fingerprint, the
 // version ceiling (a newer schema reads as unreadable, never as zero), the
 // cross-file /fork dedup, and swallowed-not-thrown read failures.
@@ -148,7 +148,7 @@ describe("version-header gate", () => {
 		expect(finalize(agg).totalTokens).toBe(0);
 	});
 
-	it("still reads the older v1/v2 formats — their usage fields never changed", async () => {
+	it("still reads the older v1/v2 formats - their usage fields never changed", async () => {
 		writeSession("--home-u-secret-project--", FILE_A, [
 			header({ version: 1 }),
 			assistant("a1", 50),

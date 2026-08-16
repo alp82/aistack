@@ -1,5 +1,5 @@
 /**
- * PROTOTYPE — throwaway. Variant B: "Annotated".
+ * PROTOTYPE - throwaway. Variant B: "Annotated".
  *
  * The feed and the chart fuse into one instrument: each feed event becomes a
  * marker pinned onto the 14-day token line at its moment, with a hover card
@@ -16,7 +16,7 @@ import { fmtCount, fmtTokens, liveDays, MONO_LABEL } from "../feed";
 import { RelativeTime } from "../RelativeTime";
 import { rowHandle, rowSummary } from "./summary";
 
-export const VARIANT_ANNOTATED_NAME = "Annotated — events pinned on the line";
+export const VARIANT_ANNOTATED_NAME = "Annotated - events pinned on the line";
 
 const CHART_HEIGHT = 300;
 
@@ -98,7 +98,7 @@ export function VariantAnnotated({ band }: { readonly band: Band }) {
 					</span>
 
 					<div className="mt-6 text-6xl font-black leading-none tracking-tighter tabular-nums text-accent-lime">
-						{quiet ? "—" : fmtTokens(usage.tokens)}
+						{quiet ? "-" : fmtTokens(usage.tokens)}
 					</div>
 					<div className={`${MONO_LABEL} mt-2 text-fg-muted`}>
 						tokens measured
@@ -106,15 +106,15 @@ export function VariantAnnotated({ band }: { readonly band: Band }) {
 
 					<div className="mt-6">
 						<RailStat
-							value={quiet ? "—" : fmtCount(usage.sessions)}
+							value={quiet ? "-" : fmtCount(usage.sessions)}
 							label="sessions"
 						/>
 						<RailStat
-							value={quiet ? "—" : fmtCount(usage.projects)}
+							value={quiet ? "-" : fmtCount(usage.projects)}
 							label="projects"
 						/>
 						<RailStat
-							value={quiet ? "—" : fmtCount(usage.tools)}
+							value={quiet ? "-" : fmtCount(usage.tools)}
 							label="tools"
 						/>
 						<RailStat
@@ -162,7 +162,7 @@ export function VariantAnnotated({ band }: { readonly band: Band }) {
 							/>
 						) : (
 							<div className="flex h-full items-center justify-center font-mono text-xs text-fg-muted">
-								not enough readings yet — sync a stack to draw the line
+								not enough readings yet - sync a stack to draw the line
 							</div>
 						)}
 
@@ -177,7 +177,7 @@ export function VariantAnnotated({ band }: { readonly band: Band }) {
 							>
 								<button
 									type="button"
-									aria-label={`${rowHandle(marker.row)} — ${rowSummary(marker.row)}`}
+									aria-label={`${rowHandle(marker.row)} - ${rowSummary(marker.row)}`}
 									className="-translate-x-1/2 -translate-y-1/2 block h-3 w-3 bg-accent-lime ring-2 ring-bg-panel transition-transform group-hover:scale-150 focus-visible:scale-150"
 								/>
 								<div

@@ -6,7 +6,7 @@ import type { api } from "../../../convex/_generated/api";
  * formatters both surfaces share.
  *
  * The server owns every figure and every exclusion. This module only decides
- * how a figure reads on screen — and the row GRAMMAR, which #84 locked:
+ * how a figure reads on screen - and the row GRAMMAR, which #84 locked:
  * movement leads, the total is demoted, the stack name is the link.
  */
 
@@ -45,12 +45,12 @@ export function fmtCount(n: number): string {
 
 /**
  * Relative time. The feed lives or dies on this feeling true, so it is computed
- * against a clock that ticks — never baked into the HTML and left there.
+ * against a clock that ticks - never baked into the HTML and left there.
  */
 export function relativeLabel(at: number, now: number): string {
 	const ms = Math.max(0, now - at);
 	if (ms < MINUTE_MS) return "just now";
-	// FLOOR, never round. Rounding overstates age at every boundary — it prints
+	// FLOOR, never round. Rounding overstates age at every boundary - it prints
 	// "60m ago" instead of "1h ago", and it puts "2d ago" on a row the day
 	// kicker above it calls YESTERDAY.
 	if (ms < HOUR_MS) return `${Math.floor(ms / MINUTE_MS)}m ago`;
@@ -113,7 +113,7 @@ export function syncTokens(row: FeedRow): number {
 	return row.event.harnesses.reduce((sum, h) => sum + h.totalTokens, 0);
 }
 
-/** `alp/ai-stack-ab12` — the compact identity a one-line surface has room for. */
+/** `alp/ai-stack-ab12` - the compact identity a one-line surface has room for. */
 export function rowHandle(row: FeedRow): string {
 	return `${row.stack.creator}/${row.stack.slug}`;
 }
@@ -127,7 +127,7 @@ export function rowSummary(row: FeedRow): string {
 	const event = row.event;
 	if (event.type === "sync.landed") {
 		if (row.firstReading) {
-			return `first reading — ${fmtTokens(syncTokens(row))}`;
+			return `first reading - ${fmtTokens(syncTokens(row))}`;
 		}
 		const delta = row.deltaTokens;
 		return delta === null
@@ -148,7 +148,7 @@ export function rowSummary(row: FeedRow): string {
 }
 
 /**
- * The facts under a sync row — EVENT-ONLY, all three of them (#84, #96).
+ * The facts under a sync row - EVENT-ONLY, all three of them (#84, #96).
  * Anything richer needs the snapshot join, and the band already pays for that
  * once; paying per row turns a four-row strip into forty document reads.
  */

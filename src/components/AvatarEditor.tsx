@@ -59,7 +59,7 @@ export function AvatarEditor({
 					onAvatarChange({ kind: "dataUrl", url });
 					onClose();
 				} catch (err) {
-					setError("Couldn't process image - try another file");
+					setError("Couldn't process the image. Try another file.");
 					console.error(err);
 				} finally {
 					setIsUploading(false);
@@ -83,7 +83,7 @@ export function AvatarEditor({
 				}
 
 				const { storageId } = await response.json();
-				// getFileUrl produces a live preview URL handed up for display only —
+				// getFileUrl produces a live preview URL handed up for display only -
 				// the stored avatar is the storage id, never this URL.
 				const previewUrl = await getFileUrl({ storageId });
 
@@ -174,10 +174,10 @@ export function AvatarEditor({
 					)}
 				</div>
 
-				{/* Use Profile Picture — clears the stack avatar so the read path
+				{/* Use Profile Picture - clears the stack avatar so the read path
 				    falls back to the creator's profile photo. Gate on pendingAvatarKind
 				    (not URL equality) because currentAvatarUrl is a resolved storage/
-				    preview URL while defaultAvatarUrl is the OAuth URL — different
+				    preview URL while defaultAvatarUrl is the OAuth URL - different
 				    URL spaces make equality meaningless. Show the button whenever there
 				    IS a default to fall back to AND the pending selection isn't already
 				    "use profile" (kind==='none' means fall back to creator avatar). */}

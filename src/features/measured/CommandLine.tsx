@@ -4,7 +4,7 @@ import { useState } from "react";
 /**
  * One copyable shell command, shared by the owner's never-measured box and the
  * /sync guide page (#59). The comment column names what the command does and
- * yields on small screens — the command itself never truncates its meaning.
+ * yields on small screens - the command itself never truncates its meaning.
  */
 export function CommandLine({
 	cmd,

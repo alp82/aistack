@@ -28,7 +28,7 @@ import {
 } from './lib/names'
 
 /**
- * The measured layer — append-only snapshots published by the sync client, plus
+ * The measured layer - append-only snapshots published by the sync client, plus
  * the reconcile state that sits over the authored<->measured overlap.
  *
  * Wayfinder ticket #38 (map #29). Shape and semantics fixed by the wire-format
@@ -41,7 +41,7 @@ import {
  *      "current" measured layer is a query for the newest row, not a column.
  *   2. `catalogSlug` IS RESOLVED AT READ TIME, never stored. A model that isn't
  *      in the catalog today resolves for free the day it is added, with no
- *      republish — which is why decision 3 could exempt model ids from the
+ *      republish - which is why decision 3 could exempt model ids from the
  *      allowlist without their tokens silently vanishing.
  *   3. THE SERVER CLOCK DECIDES FRESHNESS. `capturedAt` comes from the client
  *      and orders the series; `receivedAt` is ours and is what the living-stacks
@@ -64,7 +64,7 @@ const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
  * Say what a string in the payload may be (#45).
  *
  * The closed `MeasuredPayload` validator says which FIELDS a snapshot may
- * carry — #38 called that closedness the privacy claim. It cannot say what may
+ * carry - #38 called that closedness the privacy claim. It cannot say what may
  * be inside a `v.string()`, and before #42 it did not have to: only names the
  * curated list already knew could reach here. #42 made arbitrary user-supplied
  * names a designed feature, so the public stack page now renders strings we
@@ -88,7 +88,7 @@ const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
  * open would close the hole only where it was noticed.
  *
  * `catalogSlug` and `catalogName` are NOT bounded here, because they are not in
- * the payload at all — `resolveModels` reads them from our own models catalog at
+ * the payload at all - `resolveModels` reads them from our own models catalog at
  * read time. They are a different trust class (admin-authored, not client-sent),
  * and asserting them inside a query would turn a catalog typo into a public page
  * that throws. Their bound belongs on the catalog write path, if anywhere.
@@ -144,7 +144,7 @@ function checkPayloadStrings(
  * A plain function, not a mutation the other mutation calls: routing this
  * through `ctx.runMutation(internal.measured.publishSnapshot, ...)` makes
  * `measured.ts` reference its own module through the generated API, and TS
- * resolves that circularity by degrading the entire `internal` type to `any` —
+ * resolves that circularity by degrading the entire `internal` type to `any` -
  * which silently breaks inference in unrelated files (it took out `ctx.db.get`
  * narrowing across four other test files before this was extracted).
  */
@@ -169,7 +169,7 @@ async function insertSnapshot(
     capturedAt: payload.capturedAt,
     receivedAt,
     schemaVersion: payload.schemaVersion,
-    // Denormalized discriminator (#66 decision 1) — "current per harness" is
+    // Denormalized discriminator (#66 decision 1) - "current per harness" is
     // one indexed read. Old rows get theirs from the 20260801 backfill.
     harness: payload.harness.name,
     payload,
@@ -182,7 +182,7 @@ async function insertSnapshot(
  *
  * `publishForToken` is the path the HTTP layer actually uses; this one exists
  * for tests and for any future caller that has already established authority
- * over the target by other means. The payload never names its own destination —
+ * over the target by other means. The payload never names its own destination -
  * that is the whole point of binding the stack at link time (#33 decision 7).
  */
 export const publishSnapshot = internalMutation({
@@ -202,7 +202,7 @@ export const publishSnapshot = internalMutation({
 })
 
 // ---------------------------------------------------------------------------
-// Read — current snapshot, with catalog resolution
+// Read - current snapshot, with catalog resolution
 // ---------------------------------------------------------------------------
 
 /** One published model, with the catalog resolved as of NOW. */
@@ -220,7 +220,7 @@ const ResolvedModel = v.object({
   }),
   apiEquivalentUSD: v.optional(v.number()),
   /**
-   * The table citing the dollars above, per model (#136) — the payload's own
+   * The table citing the dollars above, per model (#136) - the payload's own
    * for a published figure, ours for an estimated one. Absent with the dollars.
    */
   pricingTable: v.optional(v.string()),
@@ -235,7 +235,7 @@ const ResolvedModel = v.object({
 /**
  * What a surface needs to print money honestly (#93). `null` when the owner
  * has `publishCost` off, and when nothing in the snapshot carries a citable
- * price. Every dollar figure here is a LOWER BOUND — see `convex/lib/reprice.ts`
+ * price. Every dollar figure here is a LOWER BOUND - see `convex/lib/reprice.ts`
  * for the two facts the wire loses and why both resolve downward.
  */
 const Cost = v.object({
@@ -278,7 +278,7 @@ export async function loadModelCatalog(ctx: QueryCtx): Promise<ModelCatalog> {
 /**
  * Resolve published model ids against the catalog at read time.
  *
- * Matches the slug first, then the `aliases` array — the analyzer publishes a
+ * Matches the slug first, then the `aliases` array - the analyzer publishes a
  * normalized vendor id (`claude-haiku-4-5`, dated suffix stripped) and the
  * catalog may carry the dated spelling as an alias, or vice versa.
  *
@@ -288,7 +288,7 @@ export async function loadModelCatalog(ctx: QueryCtx): Promise<ModelCatalog> {
  * citable rate.
  *
  * An unresolved id keeps its tokens and its cost and reports a null slug. That
- * is the honest failure: the alternative — dropping it — is exactly the silent
+ * is the honest failure: the alternative - dropping it - is exactly the silent
  * disappearance #33 decision 3 exempted model ids to prevent.
  */
 function resolveModels(
@@ -320,7 +320,7 @@ const harnessOf = (row: Doc<'measuredSnapshots'>): string => row.harness
  *
  * One collect over the stack's rows rather than one indexed read per harness,
  * because the harness set is open (a plain string, deliberately) and the
- * retention policy bounds a stack to roughly one row per day — the collect is
+ * retention policy bounds a stack to roughly one row per day - the collect is
  * small by construction. Claude Code sorts first (the documented default),
  * then alphabetical, so the display order is stable.
  */
@@ -349,7 +349,7 @@ async function newestSnapshotsPerHarness(
   })
 }
 
-/** One harness's current snapshot — the old CurrentSnapshot, one per harness. */
+/** One harness's current snapshot - the old CurrentSnapshot, one per harness. */
 const HarnessSnapshot = v.object({
   capturedAt: v.number(),
   receivedAt: v.number(),
@@ -400,7 +400,7 @@ const HarnessSnapshot = v.object({
 /**
  * The combined headline plus the per-harness sections (#66 decision 2).
  *
- * The headline SUMS what sums honestly — a session belongs to exactly one
+ * The headline SUMS what sums honestly - a session belongs to exactly one
  * harness, so tokens, sessions and dollars cannot double-count even when the
  * windows overlap. What cannot merge stays per-harness: inventory atoms carry
  * normalized `callShare` only (no weights, so a cross-harness number would be
@@ -421,9 +421,9 @@ const CurrentMeasured = v.object({
   cost: v.union(Cost, v.null()),
   activity: v.object({
     sessions: v.number(),
-    /** MAX across harnesses, not a sum — the same day can appear in both. */
+    /** MAX across harnesses, not a sum - the same day can appear in both. */
     activeDays: v.number(),
-    /** MAX across harnesses — the same project can appear in both. */
+    /** MAX across harnesses - the same project can appear in both. */
     projects: v.number(),
     totalTokens: v.number(),
     cacheHitShare: v.number(),
@@ -476,7 +476,7 @@ type Priced = RepricedModel<Resolved>
 /**
  * Merge per-harness model lists by id, summing the absolute token objects and
  * recomputing `tokenShare` over the combined total. Dollars sum only while
- * every contributor priced — a merged row that mixed a priced and an unpriced
+ * every contributor priced - a merged row that mixed a priced and an unpriced
  * half would understate without saying so, so it drops the field instead.
  *
  * A merged row is "estimated" as soon as ANY half is: the sum is only as exact
@@ -532,7 +532,7 @@ type HarnessReading = ReturnType<typeof toHarnessSnapshot>
  */
 function mergeHarnesses(harnesses: HarnessReading[]) {
   const totalTokens = harnesses.reduce((a, h) => a + h.activity.totalTokens, 0)
-  // Cache-hit share recomputes from the summed model tokens — the same
+  // Cache-hit share recomputes from the summed model tokens - the same
   // input-class formula each client used, over the merged absolute counts.
   const models = mergeModels(harnesses.map((h) => h.models))
   let cacheRead = 0
@@ -598,7 +598,7 @@ function mergeHarnesses(harnesses: HarnessReading[]) {
 /**
  * The dollars a merged reading cost, or null.
  *
- * The lower bound from the repriced cost reading (#93) — the same figure the
+ * The lower bound from the repriced cost reading (#93) - the same figure the
  * headline prints, so a point on the trail never states dollars the page
  * itself refuses to state.
  */
@@ -623,7 +623,7 @@ async function publishedStackBySlug(ctx: QueryCtx, slug: string) {
  *
  * Public and unauthenticated, matching the minimal public display this map
  * pulls forward (#34). Returns null for an unpublished stack or one that has
- * never synced — the display decides how to render the silence. No merged row
+ * never synced - the display decides how to render the silence. No merged row
  * is ever stored: this aggregation exists only at read time (#66 decision 2).
  */
 export const getCurrentByStackSlug = query({
@@ -647,7 +647,7 @@ export const getCurrentByStackSlug = query({
 })
 
 // ---------------------------------------------------------------------------
-// Read — the series (#81, building the #80 design)
+// Read - the series (#81, building the #80 design)
 // ---------------------------------------------------------------------------
 
 /** The default lookback: the span the GC keeps at full grain. */
@@ -656,7 +656,7 @@ const HISTORY_MAX_DAYS = 365
 /**
  * The most points one answer carries. A stack that syncs on every session can
  * pass this inside a week, and a page cannot draw a thousand readings anyway.
- * The newest are kept and `truncated` says so — a silently cut series would let
+ * The newest are kept and `truncated` says so - a silently cut series would let
  * "N readings since X" name a day the series does not reach back to.
  */
 const HISTORY_MAX_POINTS = 180
@@ -677,7 +677,7 @@ const HistoryModel = v.object({
 })
 
 /**
- * One reading of the whole stack — the figure the page stated at that moment.
+ * One reading of the whole stack - the figure the page stated at that moment.
  *
  * `at` is the sync minute, `harnesses[].capturedAt` is when that harness last
  * spoke. The two differ whenever a harness did not sync in this minute, which is
@@ -753,7 +753,7 @@ function toHistoryPoint(
  *
  * WHAT A POINT IS. Not one row: one sync, merged exactly the way the headline
  * merges (`mergeHarnesses`), over the newest reading of every harness AS OF that
- * moment. So the last point equals `getCurrentByStackSlug` — the page's big
+ * moment. So the last point equals `getCurrentByStackSlug` - the page's big
  * number is the end of its own trail, and no figure on the page restates a
  * different arithmetic. A harness that did not sync in a given minute carries
  * its previous reading forward, which is the same thing the headline does today;
@@ -764,7 +764,7 @@ function toHistoryPoint(
  * series does not open by silently dropping a harness the headline includes.
  *
  * `harness` narrows the series to one harness through
- * `by_stack_harness_capturedAt`, with no carry-forward and no merge — that is
+ * `by_stack_harness_capturedAt`, with no carry-forward and no merge - that is
  * one machine's own trail, which is the only honest way to read a per-harness
  * number (call shares and freshness never merge, #66).
  *
@@ -851,7 +851,7 @@ export const getHistoryByStackSlug = query({
 /**
  * The done-bar counter: stacks whose newest snapshot landed within 7 days.
  *
- * A query over `measuredSnapshots`, not a telemetry event — with n=1 user an
+ * A query over `measuredSnapshots`, not a telemetry event - with n=1 user an
  * event would say nothing, and this reads the fact directly (#33 decision 13).
  */
 export const countLivingStacks = query({
@@ -880,7 +880,7 @@ export const countLivingStacks = query({
 })
 
 // ---------------------------------------------------------------------------
-// Reconcile — suggestions derived on read, dismissals persisted
+// Reconcile - suggestions derived on read, dismissals persisted
 // ---------------------------------------------------------------------------
 
 export async function requireStackOwner(
@@ -913,7 +913,7 @@ const ReconcileSuggestion = v.object({
   /**
    * API-equivalent dollars for a measured model, straight from the snapshot.
    * Absent when the client withheld cost (`publishCost: false`, #33 decision
-   * 11) — the surface renders the price line only when it is present.
+   * 11) - the surface renders the price line only when it is present.
    */
   apiEquivalentUSD: v.optional(v.number()),
 })
@@ -921,7 +921,7 @@ const ReconcileSuggestion = v.object({
 /**
  * Recompute the reconcile suggestions for a stack.
  *
- * Derived on read (#33 decision 12) — there is no queue and no merge step, so a
+ * Derived on read (#33 decision 12) - there is no queue and no merge step, so a
  * new sync needs no reconciliation logic of its own. The only durable state is
  * the dismissal set, which is exactly the state that should be durable: the
  * user's own explicit decisions.
@@ -973,7 +973,7 @@ export const getReconcileSuggestions = query({
     }> = []
 
     // Authored-side: a subscribed tool with no what-for. Independent of whether
-    // a snapshot exists — an empty what-for is worth filling in either way.
+    // a snapshot exists - an empty what-for is worth filling in either way.
     for (const sub of stack.toolSubscriptions) {
       if ((sub.description ?? '').trim().length > 0) continue
       const key = `tool:${sub.toolSlug}`
@@ -992,7 +992,7 @@ export const getReconcileSuggestions = query({
 
     // Measured-side: a model that resolves to the catalog but is absent from
     // the authored model list. Across harnesses the first (freshest-ordered)
-    // sighting wins — the suggestion is "you ran this", not a share ranking.
+    // sighting wins - the suggestion is "you ran this", not a share ranking.
     const authoredModels = new Set(
       (stack.modelSubscriptions ?? []).map((m) => m.modelSlug)
     )
@@ -1043,7 +1043,7 @@ export const getReconcileSuggestions = query({
   },
 })
 
-/** Dismiss one suggestion. Idempotent — re-dismissing is a no-op, not a duplicate. */
+/** Dismiss one suggestion. Idempotent - re-dismissing is a no-op, not a duplicate. */
 export const dismissSuggestion = mutation({
   args: {
     stackId: v.id('stacks'),
@@ -1103,7 +1103,7 @@ export const undismissSuggestion = mutation({
  * The label is resolved here rather than stored, for the same reason
  * `catalogSlug` is: a dismissal outlives any one snapshot, and a name that
  * changes in the catalog should change here too. A key with no catalog row
- * falls back to the key itself — never to nothing.
+ * falls back to the key itself - never to nothing.
  */
 export const listDismissals = query({
   args: { stackId: v.id('stacks') },
@@ -1157,7 +1157,7 @@ async function resolveAtomLabel(
 }
 
 // ---------------------------------------------------------------------------
-// Answering a suggestion — the two writes into the authored layer
+// Answering a suggestion - the two writes into the authored layer
 // ---------------------------------------------------------------------------
 
 /**
@@ -1167,7 +1167,7 @@ async function resolveAtomLabel(
  * so answering one suggestion through it would send the entire authored list
  * back over the wire and overwrite anything a second tab changed meanwhile.
  *
- * The target is `description` — the free text the tool card renders — NOT
+ * The target is `description` - the free text the tool card renders - NOT
  * `primaryUsageLabel`, which carries the tier name. See `getReconcileSuggestions`.
  */
 export const applyWhatFor = mutation({
@@ -1200,8 +1200,8 @@ export const applyWhatFor = mutation({
  * Add a measured model to the authored model list.
  *
  * Idempotent, so answering the same suggestion twice (two tabs, a double click)
- * adds one row. The role is not asked for at the gate — the surface answers a
- * yes/no question — so the first model added becomes `primary` and every later
+ * adds one row. The role is not asked for at the gate - the surface answers a
+ * yes/no question - so the first model added becomes `primary` and every later
  * one `secondary`. The owner can change the role in the editor.
  */
 export const addMeasuredModel = mutation({
@@ -1238,14 +1238,14 @@ export const addMeasuredModel = mutation({
 })
 
 // ---------------------------------------------------------------------------
-// Sync config — the client's pre-send fetch
+// Sync config - the client's pre-send fetch
 // ---------------------------------------------------------------------------
 
 /**
  * The curated allowlist served to sync clients (#33 decision 4).
  *
  * THE BAR (settled by grilling #42): a name qualifies if the STRING carries no
- * private information no matter who typed it — a property of the string, not of
+ * private information no matter who typed it - a property of the string, not of
  * the user and not of the artifact. See the long rationale on the client's
  * bundled fallback (packages/cli/src/transcripts/bundled-allowlist.ts), which
  * this must stay byte-identical to; the two are the same policy, one served and
@@ -1254,7 +1254,7 @@ export const addMeasuredModel = mutation({
  * This list is NOT the only road to publishing a name (#42 decision 1): the
  * approve gate offers every kept-private name as an explicit, default-off tick,
  * and those per-stack opt-ins ride down with the rest of the sync config for the
- * client to union in before its fail-closed filter. So this list stays strict —
+ * client to union in before its fail-closed filter. So this list stays strict -
  * it exists to spare users from ticking the obvious, not to carry coverage.
  *
  * Serving it from here rather than only bundling it is what makes the list
@@ -1367,7 +1367,7 @@ const AllowlistValidator = v.object({
 /**
  * Public, unauthenticated: the allowlist alone.
  *
- * `publishCost` is NOT here, and cannot be — it is a stack-level preference and
+ * `publishCost` is NOT here, and cannot be - it is a stack-level preference and
  * an unauthenticated caller has not said which stack it is. See
  * `getSyncConfigForToken` for the authenticated half; the HTTP route merges
  * them so a client with a bearer gets both in one request, and a client without
@@ -1398,7 +1398,7 @@ export const getPublicSyncConfigInternal = internalQuery({
 })
 
 // ---------------------------------------------------------------------------
-// Published-name opt-ins — the per-stack tick set (#42 decision 2)
+// Published-name opt-ins - the per-stack tick set (#42 decision 2)
 // ---------------------------------------------------------------------------
 
 /**
@@ -1406,8 +1406,8 @@ export const getPublicSyncConfigInternal = internalQuery({
  *
  * These ride down with the rest of the sync config and the client unions them
  * into the curated list before its fail-closed filter (#44). Nothing here
- * changes WHERE filtering happens — it still runs on the machine, before the
- * send — only what the allowed set contains.
+ * changes WHERE filtering happens - it still runs on the machine, before the
+ * send - only what the allowed set contains.
  *
  * Three properties this placement buys, all from #42 decision 2: the set
  * survives a reinstall and a second machine, a failed config fetch reverts every
@@ -1450,7 +1450,7 @@ function checkNames(entries: ReadonlyArray<{ name: string }>): void {
     throw new Error(`At most ${MAX_NAMES_PER_CALL} names per call`)
   }
   for (const { name } of entries) {
-    // The SAME bar the published payload is held to (convex/lib/names.ts) — a
+    // The SAME bar the published payload is held to (convex/lib/names.ts) - a
     // tick the owner can store but the snapshot would then be rejected for is
     // worse than no tick at all.
     //
@@ -1482,7 +1482,7 @@ async function findOptIn(
  * Tick one or more names for publication. Owner-only, idempotent.
  *
  * Takes an array because the gate's bulk action ("tick all in `alp-river`")
- * stores every name in the group expanded — one click, 47 rows, one round trip.
+ * stores every name in the group expanded - one click, 47 rows, one round trip.
  */
 export const addPublishedNameOptIns = mutation({
   args: { stackId: v.id('stacks'), names: v.array(OptInName) },
@@ -1588,7 +1588,7 @@ export const getSyncConfigForStack = internalQuery({
     optIns: OptInNames,
     /**
      * The server-side auto-sync permission (#102), or null when the stack has
-     * never had one. NULL IS NOT `{enabled: false}` — the CLI has to tell
+     * never had one. NULL IS NOT `{enabled: false}` - the CLI has to tell
      * "nobody has decided yet", which its local flag may still seed, from "the
      * owner said no", which nothing on a machine may override.
      */
@@ -1608,7 +1608,7 @@ export const getSyncConfigForStack = internalQuery({
       // The approve gate points at `/stacks/{slug}/changes` BEFORE the first
       // send (#48 beat one), so the slug must be readable pre-publish (#41).
       // Composite like every public stack URL: the bare `slug` field is not
-      // routable on its own — `publishForToken` below does the same.
+      // routable on its own - `publishForToken` below does the same.
       stackSlug: `${stack.slug}-${stack.shortId}`,
       optIns: await optInsForStack(ctx, args.stackId),
       autoSync: stack.autoSync ?? null,
@@ -1617,7 +1617,7 @@ export const getSyncConfigForStack = internalQuery({
 })
 
 // ---------------------------------------------------------------------------
-// Kept-private staging — the names the owner has NOT published (#48)
+// Kept-private staging - the names the owner has NOT published (#48)
 // ---------------------------------------------------------------------------
 
 /**
@@ -1625,7 +1625,7 @@ export const getSyncConfigForStack = internalQuery({
  *
  * #38 and #45 hold that a payload carrying an extra key is REJECTED, and that
  * closedness is the privacy claim. So the staged names could not ride inside
- * the payload without breaking the sentence — they ride beside it, in the same
+ * the payload without breaking the sentence - they ride beside it, in the same
  * request, so the two halves can never drift against a newer snapshot.
  *
  * Every field is client-supplied and every field is bounded (`checkStagedNames`).
@@ -1664,7 +1664,7 @@ function flattenStaged(
  * The bound on the unsealed half.
  *
  * `checkNames` is reused rather than reimplemented so a name the owner can tick
- * and a name their machine can stage are held to ONE bar — two copies would
+ * and a name their machine can stage are held to ONE bar - two copies would
  * drift into a name that stages but can never be ticked. The group and the count
  * are bounded here because they are client strings and numbers too: #45's rule
  * is that EVERY client-supplied field gets a bound, not only the interesting one.
@@ -1689,7 +1689,7 @@ function checkStagedNames(
  * Replace a stack's staged list.
  *
  * REPLACE, never merge. A name outside the current rolling window is not in the
- * snapshot either, so ticking it would publish nothing — which is what makes the
+ * snapshot either, so ticking it would publish nothing - which is what makes the
  * list mean exactly "names in your current window you have not published".
  */
 async function replaceKeptPrivate(
@@ -1767,17 +1767,17 @@ const KeptPrivateRow = v.object({
   /** Absent for a ticked name: it publishes, so no sync ever staged a count. */
   count: v.optional(v.number()),
   group: v.union(v.string(), v.null()),
-  /** True when the owner has ticked it — the row the revoke action acts on. */
+  /** True when the owner has ticked it - the row the revoke action acts on. */
   published: v.boolean(),
 })
 
 /**
  * What the `Kept private` view renders. Owner-only, and joined into NO public
- * read — this store is the thing #48 rejected read-time promotion FROM.
+ * read - this store is the thing #48 rejected read-time promotion FROM.
  *
  * It is a union of two sets, because they are two halves of one question:
  * what the machine staged (not published), and what the owner has ticked
- * (published, and revocable only from here — a ticked name never stages again).
+ * (published, and revocable only from here - a ticked name never stages again).
  */
 export const listKeptPrivate = query({
   args: { stackId: v.id('stacks') },
@@ -1819,7 +1819,7 @@ export const listKeptPrivate = query({
     for (const row of optIns) {
       const key = `${row.category}:${row.name}`
       const held = rows.get(key)
-      // A staged row that is ALSO ticked keeps its count — the count is real
+      // A staged row that is ALSO ticked keeps its count - the count is real
       // and the tick is what changed. It shows once, as published.
       rows.set(key, {
         category: row.category,
@@ -1860,19 +1860,19 @@ const utcDay = (ms: number): string => new Date(ms).toISOString().slice(0, 10)
  * Why downsample rather than expire: the P1 live-stats map inherits this table
  * as a time series, and a hard cutoff would put a cliff in it. A day is the
  * finest grain any chart of a rolling-30-day metric can use meaningfully, so
- * beyond the fine-grain window the extra rows carry no signal — while inside it
+ * beyond the fine-grain window the extra rows carry no signal - while inside it
  * they are what makes a bad sync debuggable. There is no absolute age cap: one
  * row per stack per day is ~365 rows a year, which never needs one.
  *
  * Deleting the newest row is guarded separately because "current" is a query
- * for it — GC must never be able to empty the measured layer of a live stack.
+ * for it - GC must never be able to empty the measured layer of a live stack.
  */
 export const gcSnapshots = internalMutation({
   args: {},
   returns: v.object({
     scanned: v.number(),
     deleted: v.number(),
-    /** Staged kept-private names aged out — see the note below. */
+    /** Staged kept-private names aged out - see the note below. */
     keptPrivateDeleted: v.number(),
   }),
   handler: async (ctx) => {
@@ -1926,7 +1926,7 @@ export const gcSnapshots = internalMutation({
  *
  * The opposite policy to the snapshots above: these are DELETED, not
  * downsampled. They are strings the owner never agreed to publish, and after 30
- * days every one of them is outside any rolling window it could describe — a
+ * days every one of them is outside any rolling window it could describe - a
  * tick on it would publish nothing, so holding it buys the owner nothing and
  * costs them a name we should not have.
  *
@@ -1956,22 +1956,22 @@ export const publishForToken = internalMutation({
     tokenId: v.id('cliTokens'),
     /**
      * Pre-#67 clients send exactly one payload here. Tolerated like
-     * `ResourceInput.scope` — an installed CLI keeps working until a wire
+     * `ResourceInput.scope` - an installed CLI keeps working until a wire
      * bump retires the field.
      */
     payload: v.optional(MeasuredPayload),
     /**
      * The batch (#66 decision 5): one payload per detected harness, landed in
      * ONE atomic mutation. Atomicity is what closes the staged-names wipe
-     * hazard — `replaceKeptPrivate` is a whole-list replace per stack, so two
+     * hazard - `replaceKeptPrivate` is a whole-list replace per stack, so two
      * sequential per-harness publishes would have the second wipe the first's
      * names.
      */
     payloads: v.optional(v.array(MeasuredPayload)),
     /**
-     * The unsealed half (#48), ONE union across harnesses — consent is per
+     * The unsealed half (#48), ONE union across harnesses - consent is per
      * name, not per harness. Optional, because a client with the switch off
-     * sends the payloads alone — and because #41's gate must be able to sync
+     * sends the payloads alone - and because #41's gate must be able to sync
      * before this half exists on the machine.
      */
     keptPrivate: v.optional(KeptPrivateNames),
@@ -1982,7 +1982,7 @@ export const publishForToken = internalMutation({
      */
     autoSync: v.optional(AutoSyncState),
     /**
-     * How this sync fired (#102). Absent reads as `manual` — a 0.6.x CLI sends
+     * How this sync fired (#102). Absent reads as `manual` - a 0.6.x CLI sends
      * nothing, and silence must not be read as a machine publishing on its own.
      */
     trigger: v.optional(SyncTrigger),
@@ -2032,7 +2032,7 @@ export const publishForToken = internalMutation({
     // lock: a machine with stale hooks and a stale answer publishes nothing.
     //
     // ONLY AN EXPLICIT `false` refuses. An absent field is "nobody has decided",
-    // and refusing that would deadlock the seed below — the field is only ever
+    // and refusing that would deadlock the seed below - the field is only ever
     // written by a sync that is allowed to land.
     //
     // A manual sync is untouched. The switch revokes automation, not the
@@ -2063,7 +2063,7 @@ export const publishForToken = internalMutation({
     // one sync (#77). Summarizing the whole batch is also what lets the read
     // path drop its broken cross-page dedupe.
     //
-    // Skipped for a draft. Visibility is re-checked at read time — this gate
+    // Skipped for a draft. Visibility is re-checked at read time - this gate
     // only stops a week of drafting from filling the table with rows that can
     // never be shown.
     if (stack.published) {
@@ -2092,7 +2092,7 @@ export const publishForToken = internalMutation({
       })
     }
 
-    // The transition from unknown-or-off to on, as the BACKEND sees it — so it
+    // The transition from unknown-or-off to on, as the BACKEND sees it - so it
     // fires once and not on every subsequent sync.
     if (args.autoSync?.enabled && token.autoSync?.enabled !== true) {
       await captureServerEvent(ctx, 'auto_sync_enabled', token.userId, {
@@ -2128,14 +2128,14 @@ export const publishForToken = internalMutation({
     }
 
     // The stamp the web switch reads (#102). Written only by an automatic sync,
-    // so the switch can tell on-and-working from on-but-never-fired — the state
+    // so the switch can tell on-and-working from on-but-never-fired - the state
     // an unupgraded CLI leaves behind, and the one a hint has to name.
     if (args.trigger === 'auto') {
       await ctx.db.patch(stack._id, { lastAutoSyncAt: receivedAt })
     }
 
-    // The switch is not client-side-only. A client that sends the half anyway —
-    // a stale config fetch, or the owner flipping the switch mid-sync — has the
+    // The switch is not client-side-only. A client that sends the half anyway -
+    // a stale config fetch, or the owner flipping the switch mid-sync - has the
     // HALF refused, not the sync: losing the measurement over a race would cost
     // the owner the one thing they approved.
     const refused = args.keptPrivate !== undefined && stack.reviewKeptPrivate === false

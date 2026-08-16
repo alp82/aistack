@@ -2,13 +2,13 @@
 //
 // Wayfinder ticket #41 (map #29), shape fixed by the spike #35 and the copy
 // locked in #48. Beat one is the FULL summary, printed as ordinary scrollable
-// transcript output. Beat two is the SHORT elicitation message — it must stay
+// transcript output. Beat two is the SHORT elicitation message - it must stay
 // short, or `Accept` falls below the fold and the gate times out (#35, 1H).
 //
 // Everything here derives from the exact bytes that will be sent (`body`),
 // plus the local-only kept-private list that deliberately never enters them.
 // Nothing in this file is accepted as a caller-supplied argument beside the
-// payload — the spike promoted that from a caution to a demonstrated property.
+// payload - the spike promoted that from a caution to a demonstrated property.
 
 import { HARNESS_ADAPTERS, harnessLabel } from "../harness/index.js";
 import type {
@@ -24,14 +24,14 @@ import type { ScanStats } from "../harness/shared/window.js";
 export type GateContext = {
 	/** The exact request body a publish would send. */
 	body: SyncBody;
-	/** The local-only review list — never inside any payload (#44). */
+	/** The local-only review list - never inside any payload (#44). */
 	keptPrivate: Record<NameCategory, KeptPrivateAtom[]>;
 	config: SyncConfig;
 	source: SyncConfigSource;
 	/** Web origin for the URLs the gate prints, e.g. https://aistack.to */
 	baseUrl: string;
 	/**
-	 * Per-harness scan stats, keyed by harness name — the LOCAL-ONLY detail
+	 * Per-harness scan stats, keyed by harness name - the LOCAL-ONLY detail
 	 * behind the payload's bare coverage counts (#75): unreadable file names,
 	 * error classes, foreign-file originators. Like `keptPrivate`, it rides
 	 * beside the body and never inside it.
@@ -43,7 +43,7 @@ export type GateContext = {
 // Formatting
 // ---------------------------------------------------------------------------
 
-/** `4.27B`, `40.7M`, `216k`, `950` — three significant digits, like #40. */
+/** `4.27B`, `40.7M`, `216k`, `950` - three significant digits, like #40. */
 export function fmtTokens(n: number): string {
 	const sig = (v: number): string => {
 		const s = v.toPrecision(3);
@@ -55,7 +55,7 @@ export function fmtTokens(n: number): string {
 	return String(n);
 }
 
-/** `≈$5,840` — whole dollars; the ≈ and "at API prices" wording are #37's. */
+/** `≈$5,840` - whole dollars; the ≈ and "at API prices" wording are #37's. */
 export function fmtUSD(n: number): string {
 	return `≈$${Math.round(n).toLocaleString("en-US")}`;
 }
@@ -63,7 +63,7 @@ export function fmtUSD(n: number): string {
 const fmtPct = (share: number): string => `${(share * 100).toFixed(1)}%`;
 
 /**
- * `2026-08-10 21:03 UTC` — the publish receipt's stamp (#130). Milliseconds
+ * `2026-08-10 21:03 UTC` - the publish receipt's stamp (#130). Milliseconds
  * and the ISO `T`/`Z` machine form dropped: the last thing a person reads
  * should be the result, not a receipt.
  */
@@ -76,7 +76,7 @@ export function fmtReceivedAt(ms: number): string {
  *
  * Mirrors the public display's rule (#46): a dollar figure never renders
  * without its pricing table. Summing only the models that carry the field
- * matches what actually goes up — an unpriceable model publishes tokens, not
+ * matches what actually goes up - an unpriceable model publishes tokens, not
  * dollars.
  */
 export function totalUSD(payload: MeasuredPayload): number | null {
@@ -102,7 +102,7 @@ export function withheldCount(payload: MeasuredPayload): number {
 }
 
 // ---------------------------------------------------------------------------
-// Beat two — the elicitation message. Copy locked in #48; keep it SHORT.
+// Beat two - the elicitation message. Copy locked in #48; keep it SHORT.
 // ---------------------------------------------------------------------------
 
 export function buildGateDialog(ctx: GateContext): string {
@@ -132,7 +132,7 @@ export function buildGateDialog(ctx: GateContext): string {
 }
 
 // ---------------------------------------------------------------------------
-// Beat one — the full summary, transcript output.
+// Beat one - the full summary, transcript output.
 // ---------------------------------------------------------------------------
 
 const CATEGORY_LABEL: Record<NameCategory, string> = {
@@ -198,7 +198,7 @@ export function scanNoteLines(stats: ScanStats, label: string): string[] {
 			.map(([name, n]) => (n > 1 ? `${name} ×${n}` : name))
 			.join(", ");
 		out.push(
-			`skipped   ${stats.filesForeign} file${stats.filesForeign === 1 ? "" : "s"} not written by ${label} — left out (originators: ${origins})`,
+			`skipped   ${stats.filesForeign} file${stats.filesForeign === 1 ? "" : "s"} not written by ${label} (originators: ${origins})`,
 		);
 	}
 	return out;
@@ -211,7 +211,7 @@ function payloadBlock(payload: MeasuredPayload, stats?: ScanStats): string[] {
 	// harnesses, so an unlabeled block would be unreadable even when only one
 	// harness was found.
 	out.push(
-		`— ${harnessLabel(payload.harness.name)}${payload.harness.version ? ` ${payload.harness.version}` : ""}`,
+		`- ${harnessLabel(payload.harness.name)}${payload.harness.version ? ` ${payload.harness.version}` : ""}`,
 	);
 	out.push(
 		`window    ${payload.window.days} days · ${payload.window.from} → ${payload.window.to}`,
@@ -230,7 +230,7 @@ function payloadBlock(payload: MeasuredPayload, stats?: ScanStats): string[] {
 	const cov = payload.coverage;
 	if (cov.filesUnreadable > 0 || cov.linesFailed > 0) {
 		out.push(
-			`coverage  ${cov.filesUnreadable} files unreadable · ${cov.linesFailed} lines failed — this reading is a floor`,
+			`coverage  ${cov.filesUnreadable} files unreadable · ${cov.linesFailed} lines failed · this reading is a floor`,
 		);
 	}
 	// Local-only detail behind those counts (#75): file names, error classes,
@@ -266,18 +266,18 @@ export function buildGateSummary(ctx: GateContext): string {
 	const host = baseUrl.replace(/^https?:\/\//, "");
 	const out: string[] = [];
 
-	out.push("from your machine — sync preview");
+	out.push("from your machine · sync preview");
 	out.push("");
 
 	if (config.stack === null) {
-		out.push("to        (no linked stack — publish is unavailable)");
+		out.push("to        (no linked stack; publish is unavailable)");
 	} else {
 		out.push(
 			`to        ${config.stack.name} · ${host}/stacks/${config.stack.slug}`,
 		);
 	}
 
-	// What the CLI LOOKED FOR, in search order — a claim about the CLI, never
+	// What the CLI LOOKED FOR, in search order - a claim about the CLI, never
 	// about the person's behavior, so it stays inside #40 (#130). Without it, a
 	// harness the scan misses reads identically to a harness never installed.
 	out.push(
@@ -310,7 +310,7 @@ export function buildGateSummary(ctx: GateContext): string {
 		if (body.keptPrivate !== undefined && config.stack !== null) {
 			out.push(`  publish them at ${host}/stacks/${config.stack.slug}/changes`);
 			out.push(
-				"  (they go up for you to review — turn off: Review kept-private names, on your stack)",
+				"  (they go up for you to review - turn off: Review kept-private names, on your stack)",
 			);
 		} else {
 			out.push("  they stay on this machine");
@@ -330,7 +330,7 @@ export function buildGateSummary(ctx: GateContext): string {
 	if (source === "bundled") {
 		out.push("");
 		out.push(
-			"! could not fetch your settings from aistack — using the bundled list.",
+			"! could not fetch your settings from aistack - using the bundled list.",
 		);
 		out.push(
 			"  This publishes less: no cost, no ticked names, nothing staged for review.",

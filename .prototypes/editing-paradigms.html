@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Stack Editing Paradigms — Prototype</title>
+<title>Stack Editing Paradigms - Prototype</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   /* --- Brand tokens lifted from src/styles.css (dark theme) --- */
@@ -151,7 +151,7 @@
 
 <script>
 /* ============================================================
-   SHARED MOCK STACK — every paradigm renders from THIS object.
+   SHARED MOCK STACK - every paradigm renders from THIS object.
    ============================================================ */
 const mock = {
   name: "Ship-Fast Solo",
@@ -160,7 +160,7 @@ const mock = {
   team: false,
   teamSize: 1,
   workflow:
-    "I start in @Cursor for the bulk of coding, leaning on Claude for architecture and Codex for quick refactors. Designs come out of @v0, then I wire data with Convex. Everything ships through Vercel. The trick is keeping the model context tight — I keep a CLAUDE.md per repo and let @Cursor index it.",
+    "I start in @Cursor for the bulk of coding, leaning on Claude for architecture and Codex for quick refactors. Designs come out of @v0, then I wire data with Convex. Everything ships through Vercel. The trick is keeping the model context tight - I keep a CLAUDE.md per repo and let @Cursor index it.",
   tools: [
     { name: "Cursor", cat: "Editor", catColor: "cyan", tier: "Pro", price: 20, kind: "main" },
     { name: "v0", cat: "Design", catColor: "violet", tier: "Premium", price: 20, kind: "main" },
@@ -220,7 +220,7 @@ function activeData(){ return mode === "create" ? (createData ||= blank(), creat
 let createData = null;
 
 /* ============================================================
-   HELPERS — small render utilities
+   HELPERS - small render utilities
    ============================================================ */
 function esc(s){ return (s||"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 function toast(msg){
@@ -251,7 +251,7 @@ function sectionHeader(index, kicker, title, meta){
 }
 
 /* ============================================================
-   PARADIGM 1 — COMPOSER MIRROR
+   PARADIGM 1 - COMPOSER MIRROR
    (two columns: Details + Workflow main | right accordion sidebar.
     Projects added as a new form-style section in the main column.)
    ============================================================ */
@@ -272,7 +272,7 @@ function renderMirror(d){
           </div>
         </div>
 
-        ${empty ? createBanner("Composer handles the blank slate natively — every field below renders empty with placeholders, so there's nothing to \"reveal.\" You fill the form top-to-bottom.") : ""}
+        ${empty ? createBanner("Composer handles the blank slate natively - every field below renders empty with placeholders, so there's nothing to \"reveal.\" You fill the form top-to-bottom.") : ""}
 
         <!-- DETAILS (form) -->
         <p class="mb-4 mono text-[10px] uppercase tracking-widest text-lime">// step 01: about</p>
@@ -378,7 +378,7 @@ function mirrorBundleList(d){
 }
 
 /* ============================================================
-   SHARED — the real VIEW sections (used by Live-preview & Inline)
+   SHARED - the real VIEW sections (used by Live-preview & Inline)
    In Live-preview they're always editable; in Inline they're editable
    only when editOn. We gate via data-edit-on on <main>.
    ============================================================ */
@@ -460,7 +460,7 @@ function viewTools(d, editable){
     <div class="mx-auto max-w-[80rem]">
       ${sectionHeader("02","// TOOLS","Tools", d.tools.length?`${d.tools.length} items · $${costOf(d)}/mo`:'')}
       ${editable?`<button onclick="openTool('add')" class="mb-6 inline-flex items-center gap-1.5 border bd-sub px-2 py-1 mono text-[10px] font-bold uppercase tracking-wider text-mut hover:bd-lime hover:text-lime">+ Add tool</button>`:''}
-      ${d.tools.length===0 && editable ? `<p class="mono text-xs text-mut mb-8">No tools yet — add your first.</p>`:''}
+      ${d.tools.length===0 && editable ? `<p class="mono text-xs text-mut mb-8">No tools yet - add your first.</p>`:''}
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         ${main.map((t,idx)=>toolCardBig(t, d.tools.indexOf(t), editable)).join("")}
       </div>
@@ -521,7 +521,7 @@ function viewDetails(d){
     <div class="mx-auto max-w-[80rem]">
       ${sectionHeader("05","// META","Details","")}
       <div class="grid sm:grid-cols-3 gap-4 max-w-3xl">
-        ${detailCell("Maintainer", empty?'—':'@'+d.xHandle)}
+        ${detailCell("Maintainer", empty?'-':'@'+d.xHandle)}
         ${detailCell("Team size", d.team?String(d.teamSize):'Solo')}
         ${detailCell("Monthly", '$'+costOf(d))}
       </div>
@@ -536,7 +536,7 @@ function workflowHTML(text){
 }
 
 /* ============================================================
-   PARADIGM 2 — LIVE-PREVIEW COMPOSER
+   PARADIGM 2 - LIVE-PREVIEW COMPOSER
    /edit route shell + Save/Publish/View header, but the body
    is the real view sections, each editable in place (always-on).
    ============================================================ */
@@ -557,7 +557,7 @@ function renderLive(d){
         </div>
       </div>
     </div>
-    ${empty ? `<div class="mx-auto max-w-[80rem] px-6 pt-6">${createBanner("Live-preview can host create-from-nothing, but the empty page is mostly placeholders — you're editing a skeleton rather than seeing a real preview. Each section shows its empty state with inline \"+ add\" affordances.")}</div>`:''}
+    ${empty ? `<div class="mx-auto max-w-[80rem] px-6 pt-6">${createBanner("Live-preview can host create-from-nothing, but the empty page is mostly placeholders - you're editing a skeleton rather than seeing a real preview. Each section shows its empty state with inline \"+ add\" affordances.")}</div>`:''}
     ${viewHero(d, true)}
     ${viewProjects(d, true)}
     ${viewTools(d, true)}
@@ -567,17 +567,17 @@ function renderLive(d){
 }
 
 /* ============================================================
-   PARADIGM 3 — INLINE-ON-VIEW
+   PARADIGM 3 - INLINE-ON-VIEW
    The real view page + an owner Edit toggle that reveals per-section
    inline affordances. /edit shrinks to a create blank slate.
    ============================================================ */
 function renderInline(d){
   if (mode === "create") {
-    // /edit shrinks to a blank-slate create screen — inline CANNOT host create-from-nothing
+    // /edit shrinks to a blank-slate create screen - inline CANNOT host create-from-nothing
     return `<div class="mx-auto max-w-[40rem] px-6 py-16">
       <p class="mono text-[10px] uppercase tracking-widest text-lime mb-3">// new stack</p>
       <h2 class="text-3xl font-black uppercase tracking-tighter text-pri mb-2">Name your stack</h2>
-      <p class="text-sm text-sec mb-8">Inline editing lives on the published view — but there's no view to host it yet. So create-from-nothing falls back to a minimal dedicated screen. Once you name + save, you land on the real page and edit everything inline from there.</p>
+      <p class="text-sm text-sec mb-8">Inline editing lives on the published view - but there's no view to host it yet. So create-from-nothing falls back to a minimal dedicated screen. Once you name + save, you land on the real page and edit everything inline from there.</p>
       ${createBanner("This is the key tradeoff: inline editing has nothing to attach to when nothing exists, so the blank slate needs its own small composer screen.")}
       <div class="mt-6 space-y-4">
         ${formInput("Stack name", "", "e.g. Ship-Fast Solo")}
@@ -591,7 +591,7 @@ function renderInline(d){
     <!-- owner edit toggle bar -->
     <div class="sticky top-[96px] z-30 bg-canvas border-b bd-sub">
       <div class="mx-auto max-w-[80rem] px-6 py-2 flex items-center justify-end gap-3">
-        <span class="mono text-[10px] uppercase tracking-wider ${editOn?'text-lime':'text-mut'}">${editOn?'Edit mode — hover sections to edit':'Viewing as owner'}</span>
+        <span class="mono text-[10px] uppercase tracking-wider ${editOn?'text-lime':'text-mut'}">${editOn?'Edit mode - hover sections to edit':'Viewing as owner'}</span>
         <button onclick="toggleInlineEdit()" class="inline-flex items-center gap-1.5 border-2 ${editOn?'bd-lime bg-lime text-lime-contrast':'bd-strong text-pri hover:bd-lime hover:text-lime'} px-3 py-1.5 mono text-[11px] font-bold uppercase tracking-wider">
           ${editOn?'Done':'✎ Edit'}
         </button>
@@ -623,9 +623,9 @@ function costOf(d){
    RENDER DISPATCH
    ============================================================ */
 const descriptions = {
-  mirror: "Composer mirror — the current form-style editor (Details + Workflow main column, accordion sidebar), with a new Projects form section. Editor and view stay separate surfaces.",
-  live:   "Live-preview composer — an /edit route that renders the real view sections, each editable in place. WYSIWYG, contained in a route.",
-  inline: "Inline-on-view — the published page itself with an owner Edit toggle that reveals per-section inline affordances. /edit shrinks to a create-only blank slate.",
+  mirror: "Composer mirror - the current form-style editor (Details + Workflow main column, accordion sidebar), with a new Projects form section. Editor and view stay separate surfaces.",
+  live:   "Live-preview composer - an /edit route that renders the real view sections, each editable in place. WYSIWYG, contained in a route.",
+  inline: "Inline-on-view - the published page itself with an owner Edit toggle that reveals per-section inline affordances. /edit shrinks to a create-only blank slate.",
 };
 
 function render(){
@@ -674,7 +674,7 @@ function applyPlaceholders(){
 }
 
 /* ============================================================
-   EVENTS — toggles
+   EVENTS - toggles
    ============================================================ */
 document.querySelectorAll("[data-paradigm]").forEach(b=>{
   b.addEventListener("click", ()=>{ paradigm = b.dataset.paradigm; if(paradigm!=="inline") editOn=true; if(paradigm==="inline") editOn=false; render(); });

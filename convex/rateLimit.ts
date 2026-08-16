@@ -13,7 +13,7 @@ export const DEFAULT_MAX_REQUESTS = 60
  *
  * `/api/cli/auth/start` reaches Convex through the TanStack proxy, so without a
  * trusted client-address header EVERY proxied login on earth shares one bucket.
- * Keyed at 60 there, one busy minute locks out login for everybody at once — a
+ * Keyed at 60 there, one busy minute locks out login for everybody at once - a
  * missing env var must degrade, not lock out. This number still bounds a
  * runaway loop, which is the growth this limiter exists to stop.
  */
@@ -52,7 +52,7 @@ export async function consume(
     .withIndex('by_key', (q) => q.eq('key', key))
     .first()
 
-  // FRESH — no row, or the existing window has elapsed.
+  // FRESH - no row, or the existing window has elapsed.
   if (!row || now - row.windowStart >= WINDOW_MS) {
     if (row) {
       await ctx.db.patch(row._id, { windowStart: now, count: 1 })
@@ -71,7 +71,7 @@ export async function consume(
   const resetAt = row.windowStart + WINDOW_MS
   const retryAfterSeconds = Math.max(0, Math.ceil((resetAt - now) / 1000))
 
-  // LIVE UNDER LIMIT — window active, still has headroom.
+  // LIVE UNDER LIMIT - window active, still has headroom.
   if (row.count < maxRequests) {
     const newCount = row.count + 1
     await ctx.db.patch(row._id, { count: newCount })
@@ -84,13 +84,13 @@ export async function consume(
     }
   }
 
-  // LIVE SATURATED — window active and at/over the cap; do not increment.
+  // LIVE SATURATED - window active and at/over the cap; do not increment.
   return { allowed: false, limit: maxRequests, remaining: 0, resetAt, retryAfterSeconds }
 }
 
 /**
  * The PUBLIC entry point, called from the TanStack server routes through
- * `ConvexHttpClient` — which can only reach public functions, which is the only
+ * `ConvexHttpClient` - which can only reach public functions, which is the only
  * reason this one is not internal.
  *
  * IT TAKES NO CAP. A caller-supplied limit on a public mutation is a

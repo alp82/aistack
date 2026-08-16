@@ -106,7 +106,7 @@ function StackedAreaChart({
 				formatDayFull(d),
 				...folded.map((s) => {
 					const hit = s.points.find((p) => p.at === d.getTime());
-					return hit ? formatExact(hit.value) : "—";
+					return hit ? formatExact(hit.value) : "-";
 				}),
 			])}
 		/>

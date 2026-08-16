@@ -89,7 +89,7 @@ function Seam({ label, note }: { label: string; note: string }) {
 }
 
 /**
- * Public profile surface at `/@handle` — "Dossier split" layout: a sticky
+ * Public profile surface at `/@handle` - "Dossier split" layout: a sticky
  * identity sidebar on the left, the working column (stacks grid + seams for
  * future measured surfaces) on the right. The most-recent stack renders as a
  * full-width callout. Owner affordances (New stack, Edit profile, draft
@@ -119,7 +119,7 @@ function ProfilePage({
 								aria-hidden="true"
 								className="mr-1.5 inline size-3.5 align-[-2px]"
 							/>
-							Stacks — {stackCount}
+							Stacks - {stackCount}
 						</h2>
 						{isOwner && (
 							<Link
@@ -175,7 +175,7 @@ function ProfilePage({
 					<div className="mt-8 space-y-4">
 						<Seam
 							label="Live stats"
-							note="Measured usage per stack — lands with auto-sync."
+							note="Measured usage per stack arrives with auto-sync."
 						/>
 						{isOwner && ownerViewsSlot}
 					</div>

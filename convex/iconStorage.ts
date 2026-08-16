@@ -116,7 +116,7 @@ export const gcOrphans = internalAction({
           await ctx.storage.delete(blob._id as never)
           deleted++
         } catch {
-          // ignore — best-effort
+          // ignore - best-effort
         }
       }
 

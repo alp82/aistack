@@ -7,7 +7,7 @@ import { normalizeFrequencyHours } from './lib/autoSync'
 import { requireStackOwner } from './measured'
 
 /**
- * The auto-sync permission — wayfinder #102 (map #76), from #100 decision 2.
+ * The auto-sync permission - wayfinder #102 (map #76), from #100 decision 2.
  *
  * The permission used to live on the machine: a flag in
  * `~/.config/aistack/settings.json` plus a SessionStart hook. The web could
@@ -18,7 +18,7 @@ import { requireStackOwner } from './measured'
  *
  *   - the SEED, once, from a machine that opted in before the move
  *     (`publishForToken` in measured.ts, so it rides the sync it arrived on);
- *   - a MACHINE, over `POST /api/cli/auto-sync` — the opt-in ask and
+ *   - a MACHINE, over `POST /api/cli/auto-sync` - the opt-in ask and
  *     `sync --auto on/off` (#103);
  *   - the OWNER, from the switch in the owner box (#104).
  *
@@ -90,7 +90,7 @@ export const setForToken = internalMutation({
   },
 })
 
-/** The owner's setter, behind the session — the switch in the owner box (#104). */
+/** The owner's setter, behind the session - the switch in the owner box (#104). */
 export const set = mutation({
   args: {
     stackId: v.id('stacks'),
@@ -107,7 +107,7 @@ export const set = mutation({
 /**
  * What the owner's switch renders (#104): the flag and the stamp, together.
  *
- * OWNER-ONLY, because the pair says when this person's machines are running —
+ * OWNER-ONLY, because the pair says when this person's machines are running -
  * a schedule nobody else has a reason to read. A stack that has never had a
  * flag answers `autoSync: null`, which the switch draws as off.
  */

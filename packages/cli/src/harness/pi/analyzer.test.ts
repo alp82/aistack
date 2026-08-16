@@ -1,12 +1,12 @@
-// The pi fold — wayfinder ticket #126 (map #121). The properties that matter
+// The pi fold - wayfinder ticket #126 (map #121). The properties that matter
 // most, from docs/research/harness-adapters-2026-08.md (§pi-mono):
-//   - `usage.input` already EXCLUDES cache traffic — no subtraction (the
+//   - `usage.input` already EXCLUDES cache traffic - no subtraction (the
 //     opposite of Codex);
 //   - `cacheWrite1h` is a SUBSET of `cacheWrite`, so pi carries the exact TTL
 //     split the re-pricer normally has to guess;
 //   - /fork and /clone copy entries into a second file KEEPING ids, so usage
 //     dedup is cross-file and the 8-hex id alone is not enough;
-//   - `retainedTail` embeds already-counted assistant messages — never descend.
+//   - `retainedTail` embeds already-counted assistant messages - never descend.
 
 import { describe, expect, it } from "vitest";
 import {
@@ -105,7 +105,7 @@ describe("usage", () => {
 
 		const row = agg.byModel.get("anthropic:claude-fable-5");
 		expect(row).toBeDefined();
-		// input is already exclusive of cache traffic — no subtraction.
+		// input is already exclusive of cache traffic - no subtraction.
 		expect(row?.input).toBe(100);
 		expect(row?.output).toBe(200);
 		expect(row?.cacheRead).toBe(1000);
@@ -141,7 +141,7 @@ describe("usage", () => {
 	});
 
 	it("counts equal ids with different timestamps or totals as distinct responses", () => {
-		// 8-hex ids collide at corpus scale — the composite key must not fold
+		// 8-hex ids collide at corpus scale - the composite key must not fold
 		// two genuinely different responses that happen to share an id.
 		const { agg } = ingestAll([
 			header(),
@@ -203,7 +203,7 @@ describe("usage", () => {
 		expect(agg.mainTokens).toBe(150 + 15 + 28 + 6);
 	});
 
-	it("never descends into retainedTail — its assistant messages are already counted", () => {
+	it("never descends into retainedTail - its assistant messages are already counted", () => {
 		const inner = assistant("acf8635a", { input: 100, output: 50 });
 		const { agg } = ingestAll([
 			header(),
@@ -420,7 +420,7 @@ describe("window and activity", () => {
 			{ type: "text", text: "hi" },
 			{ type: "toolCall", id: "call_1", name: "bash", arguments: {} },
 			{ type: "toolCall", id: "call_2", name: "read", arguments: {} },
-			// a user extension's tool — kept as a plain count, fail-closed
+			// a user extension's tool - kept as a plain count, fail-closed
 			{
 				type: "toolCall",
 				id: "call_3",
@@ -431,7 +431,7 @@ describe("window and activity", () => {
 		const { agg } = ingestAll([
 			header(),
 			assistant("a1", { input: 10 }, { content }),
-			// the /fork duplicate carries the same call ids — not double counted
+			// the /fork duplicate carries the same call ids - not double counted
 			assistant("a1", { input: 10 }, { content }),
 		]);
 		expect(agg.toolCalls.get("bash")).toBe(1);

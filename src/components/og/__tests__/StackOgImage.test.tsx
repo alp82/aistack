@@ -40,12 +40,12 @@ describe("StackOgImage", () => {
 					name: "Alp",
 					avatarUrl: "https://storage.example.com/avatar.webp",
 				}}
-				// stackImageUrl must NOT appear here — the prop is removed in v3.
+				// stackImageUrl must NOT appear here - the prop is removed in v3.
 				// If the type still includes it the implementation hasn't landed yet.
 			/>,
 		);
 
-		// The avatar img has no accessible name in OG context — query by src
+		// The avatar img has no accessible name in OG context - query by src
 		// There may be tool icon imgs too; find the one with the avatar src
 		const avatarImg = document.querySelector(
 			`img[src="https://storage.example.com/avatar.webp"]`,
@@ -104,7 +104,7 @@ describe("StackOgImage", () => {
 		// Initials must NOT appear when the icon img is rendered
 		expect(container.textContent).not.toContain(
 			// getInitials("HttpTool") = "H"
-			// But "H" is too common — check the full initials fallback div is absent
+			// But "H" is too common - check the full initials fallback div is absent
 			// by verifying the img IS present (already asserted above) and that "HT"
 			// (two-word initials aren't produced here since name is one word, so
 			// initials would be "H") does not appear as the sole icon representation.
@@ -178,7 +178,7 @@ describe("StackOgImage", () => {
 	});
 
 	// ---------------------------------------------------------------------------
-	// TC-OG-08: accent prop — custom base color surfaces in the card's accent
+	// TC-OG-08: accent prop - custom base color surfaces in the card's accent
 	// surfaces (top accent bar / description rule).
 	// jsdom normalises hex to rgb(); #a78bfa = rgb(167, 139, 250)
 	// RED now because the accent prop does not exist yet on StackOgImageProps,
@@ -218,7 +218,7 @@ describe("StackOgImage", () => {
 	});
 
 	// ---------------------------------------------------------------------------
-	// TC-OG-10: type-level — accent prop shape is {base:string,contrast:string}
+	// TC-OG-10: type-level - accent prop shape is {base:string,contrast:string}
 	// Written as it.skip; verify via: pnpm tsc --noEmit
 	// ---------------------------------------------------------------------------
 

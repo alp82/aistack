@@ -115,7 +115,7 @@ async function fetchWithTimeout(rawUrl: string): Promise<Buffer> {
     }
     if (!response.ok) {
       throw new Error(
-        `${response.status} ${response.statusText} — ${currentUrl.slice(0, 80)}`,
+        `${response.status} ${response.statusText} - ${currentUrl.slice(0, 80)}`,
       )
     }
     const ab = await response.arrayBuffer()
@@ -164,7 +164,7 @@ async function processRow(
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.error(`  [${table}] ${row.name} — fetch failed: ${message}`)
+    console.error(`  [${table}] ${row.name} - fetch failed: ${message}`)
     return 'failed'
   }
 
@@ -173,7 +173,7 @@ async function processRow(
     webp = await toWebP(inputBuffer)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.error(`  [${table}] ${row.name} — sharp failed: ${message}`)
+    console.error(`  [${table}] ${row.name} - sharp failed: ${message}`)
     return 'failed'
   }
 
@@ -182,7 +182,7 @@ async function processRow(
     storageId = await uploadToStorage(webp)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.error(`  [${table}] ${row.name} — upload failed: ${message}`)
+    console.error(`  [${table}] ${row.name} - upload failed: ${message}`)
     return 'failed'
   }
 
@@ -205,12 +205,12 @@ async function processRow(
     await client.mutation(internal.migrations.icons.patchIcon, args)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.error(`  [${table}] ${row.name} — patch failed: ${message}`)
+    console.error(`  [${table}] ${row.name} - patch failed: ${message}`)
     return 'failed'
   }
 
   console.log(
-    `  [${table}] ${row.name} — ok (${webp.byteLength} bytes${isDataURI ? ', cleared iconUrl' : ', kept iconUrl'})`,
+    `  [${table}] ${row.name} - ok (${webp.byteLength} bytes${isDataURI ? ', cleared iconUrl' : ', kept iconUrl'})`,
   )
   return 'ok'
 }
@@ -234,7 +234,7 @@ async function processTable(
     else failed++
   }
   console.log(
-    `[${table}] summary — ok: ${ok}, skipped: ${skipped}, failed: ${failed}`,
+    `[${table}] summary - ok: ${ok}, skipped: ${skipped}, failed: ${failed}`,
   )
 }
 

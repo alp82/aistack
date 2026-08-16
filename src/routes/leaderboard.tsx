@@ -26,7 +26,7 @@ export const Route = createFileRoute("/leaderboard")({
 	}),
 	search: { middlewares: [stripSearchParams(DEFAULTS)] },
 	loaderDeps: ({ search }) => ({ page: search.page ?? 1 }),
-	// The loader RETURNS the board so the first HTML carries the whole page —
+	// The loader RETURNS the board so the first HTML carries the whole page -
 	// rows, sparklines and JSON-LD. This page exists to be cited, and a citable
 	// figure should not require a hydrated client. The component upgrades to
 	// the live subscription once mounted.
@@ -40,7 +40,7 @@ export const Route = createFileRoute("/leaderboard")({
 		meta: seoMeta({
 			title: "AI Coding Leaderboard - Measured Stacks Ranked by Token Volume",
 			description:
-				"Published AI coding stacks ranked by measured token volume over the last 30 days — counted on each builder's own machine, with model shares, harnesses and lower-bound API-equivalent spend.",
+				"Published AI coding stacks ranked by measured token volume over the last 30 days, counted on each builder's own machine, with model shares, harnesses, and lower-bound API-equivalent spend.",
 			url: "/leaderboard",
 			keywords:
 				"AI leaderboard, AI coding stats, token usage, AI spend, Claude Code, Codex, measured stacks",

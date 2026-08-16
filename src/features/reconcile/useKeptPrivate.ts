@@ -25,7 +25,7 @@ export type KeptPrivateGroup = {
 };
 
 /**
- * The `Kept private` view's state — wayfinder #51, building #48.
+ * The `Kept private` view's state - wayfinder #51, building #48.
  *
  * Two things are worth stating, because both are decisions rather than detail:
  *
@@ -34,7 +34,7 @@ export type KeptPrivateGroup = {
  *      the near-miss: a server-side snapshot on tick would bump `receivedAt` and
  *      let a web checkbox fake the 7-day living-stacks bar.
  *   2. A BULK TICK STORES EVERY NAME EXPANDED (#42 decision 3). The group is a
- *      way to look at the list, never a way to store it — a stored `foo:*` would
+ *      way to look at the list, never a way to store it - a stored `foo:*` would
  *      be a standing grant to names that do not exist yet.
  */
 export function useKeptPrivate(stackId: Id<"stacks"> | undefined) {
@@ -99,7 +99,7 @@ export function useKeptPrivate(stackId: Id<"stacks"> | undefined) {
 				() =>
 					addOptIns({
 						stackId: stackId as Id<"stacks">,
-						// Expanded, one row per name — never the group.
+						// Expanded, one row per name - never the group.
 						names: rows.map((r) => ({ category: r.category, name: r.name })),
 					}),
 				rows,
@@ -142,7 +142,7 @@ export function useKeptPrivate(stackId: Id<"stacks"> | undefined) {
 		reviewEnabled: data?.reviewEnabled ?? true,
 		groups,
 		/**
-		 * The tab's number. It counts what is still held back — a published name
+		 * The tab's number. It counts what is still held back - a published name
 		 * shows in this view so it can be taken back, but it is not kept private,
 		 * and counting it would make the number say the opposite of its label.
 		 */

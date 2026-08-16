@@ -45,7 +45,7 @@ export function isTranscriptFile(basename: string): boolean {
 	return basename.endsWith(".jsonl");
 }
 
-/** Recursive *.jsonl walk — the nested `<sessionId>/subagents/` layout is real. */
+/** Recursive *.jsonl walk - the nested `<sessionId>/subagents/` layout is real. */
 async function* walkJsonl(dir: string): AsyncGenerator<string> {
 	let entries: Dirent[];
 	try {
@@ -69,18 +69,18 @@ export type ScanOptions = {
 };
 
 /**
- * KNOWN PERFORMANCE FLOOR — measured, decided, deliberately not fixed.
+ * KNOWN PERFORMANCE FLOOR - measured, decided, deliberately not fixed.
  *
  * Enumeration walks every project directory and `realpath`+`stat`s every file
  * BEFORE the mtime filter can skip anything, so a narrow window still pays a
  * floor proportional to TOTAL history (~60 ms over 3,206 files today, growing
- * linearly). The obvious fix — prune whole project directories by directory
- * mtime — is UNSOUND, and this was verified rather than assumed: appending to a
+ * linearly). The obvious fix - prune whole project directories by directory
+ * mtime - is UNSOUND, and this was verified rather than assumed: appending to a
  * file does not update its parent directory's mtime (only adding, removing, or
  * renaming an entry does). A session resumed with `--resume` appends to a
  * transcript created before the window opened, inside a directory whose mtime
  * never moves, so dir-mtime pruning would silently drop live in-window records
- * — a wrong number, which is worse than a slow one for a tool whose whole claim
+ * - a wrong number, which is worse than a slow one for a tool whose whole claim
  * is measured-not-claimed.
  *
  * The sound version is a persisted enumeration cache, which cuts against #33
@@ -127,7 +127,7 @@ export async function scan(
 						continue;
 					}
 				} catch {
-					/* unreadable stat — fall through and try to read it */
+					/* unreadable stat - fall through and try to read it */
 				}
 			}
 

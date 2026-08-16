@@ -11,7 +11,7 @@ import {
 import { api } from "../../../convex/_generated/api";
 
 /**
- * Views — the owner-private read surface over the view counters (#86, map #76).
+ * Views - the owner-private read surface over the view counters (#86, map #76).
  *
  * PRIVATE BY DECISION, not by obscurity. `viewAnalytics.mine` takes no target
  * argument and answers for the signed-in creator alone, so this page cannot be
@@ -204,7 +204,7 @@ export function AnalyticsPage() {
  * (#112) say the same three things, and one wording is the whole point.
  */
 export function targetNote(openable: boolean, total: number): string {
-	if (!openable) return "Draft — nobody can open it yet";
+	if (!openable) return "Draft: nobody can open it yet";
 	if (total === 0) return "Nobody has opened it yet";
 	return "deduped daily visitors";
 }
@@ -222,7 +222,7 @@ function Shell({ children }: { readonly children: React.ReactNode }) {
 			</p>
 			<p className="mt-3 max-w-prose text-sm leading-relaxed text-fg-muted">
 				One page counts one visitor once per day. A visitor is a browser on a
-				network, not a person — an office shares one number and one person on a
+				network, not a person - an office shares one number and one person on a
 				phone and a laptop counts twice. Visits you make while signed in are
 				left out. These are not page loads.
 			</p>

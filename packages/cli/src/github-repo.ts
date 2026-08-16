@@ -1,5 +1,5 @@
 /**
- * Trimmed copy of `src/lib/github-repo.ts` — the CANONICAL parser, whose
+ * Trimmed copy of `src/lib/github-repo.ts` - the CANONICAL parser, whose
  * `github-repo.test.ts` is the canonical test table. Copied (not imported)
  * because the CLI ships as an independent npm package and its tsconfig
  * (`rootDir: "src"` + `declaration: true`) forbids cross-rootDir imports.

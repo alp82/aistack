@@ -17,7 +17,7 @@ vi.mock("convex/browser", () => ({
 	})),
 }));
 
-// Now import the route — the module does NOT exist yet, so these tests are RED.
+// Now import the route - the module does NOT exist yet, so these tests are RED.
 // biome-ignore lint: dynamic import required for post-mock load order
 let Route: typeof import("../api.stacks.$slug")["Route"];
 // biome-ignore lint: dynamic import required for post-mock load order
@@ -30,7 +30,7 @@ beforeAll(async () => {
 });
 
 // ---------------------------------------------------------------------------
-// Pure helpers — ipFromForwardedFor
+// Pure helpers - ipFromForwardedFor
 // ---------------------------------------------------------------------------
 
 describe("ipFromForwardedFor", () => {
@@ -70,11 +70,11 @@ describe("ipFromForwardedFor", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Pure helpers — clientIp
+// Pure helpers - clientIp
 // ---------------------------------------------------------------------------
 
 describe("clientIp", () => {
-	it("XFF present — delegates to ipFromForwardedFor (rightmost hop)", () => {
+	it("XFF present - delegates to ipFromForwardedFor (rightmost hop)", () => {
 		const req = new Request("http://x/api/stacks/s", {
 			headers: { "x-forwarded-for": "9.9.9.9, 1.2.3.4" },
 		});
@@ -102,7 +102,7 @@ describe("clientIp", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Pure helpers — rateLimitHeaders
+// Pure helpers - rateLimitHeaders
 // ---------------------------------------------------------------------------
 
 describe("rateLimitHeaders", () => {
@@ -131,10 +131,10 @@ describe("rateLimitHeaders", () => {
 });
 
 // ---------------------------------------------------------------------------
-// GET handler — allowed request with summary returned (200)
+// GET handler - allowed request with summary returned (200)
 // ---------------------------------------------------------------------------
 
-describe("GET handler — 200 on allowed + found stack", () => {
+describe("GET handler - 200 on allowed + found stack", () => {
 	it("returns 200 with correct headers and body JSON equal to the summary", async () => {
 		const summary = {
 			slug: "my-stack-abc123",
@@ -182,10 +182,10 @@ describe("GET handler — 200 on allowed + found stack", () => {
 });
 
 // ---------------------------------------------------------------------------
-// GET handler — rate limited (429)
+// GET handler - rate limited (429)
 // ---------------------------------------------------------------------------
 
-describe("GET handler — 429 when rate limited", () => {
+describe("GET handler - 429 when rate limited", () => {
 	it("returns 429 with Retry-After + RateLimit-* headers; does NOT call query", async () => {
 		const retryAfterSeconds = 37;
 
@@ -221,10 +221,10 @@ describe("GET handler — 429 when rate limited", () => {
 });
 
 // ---------------------------------------------------------------------------
-// GET handler — stack not found (404)
+// GET handler - stack not found (404)
 // ---------------------------------------------------------------------------
 
-describe("GET handler — 404 when stack not found", () => {
+describe("GET handler - 404 when stack not found", () => {
 	it("returns 404 with jsonError body and RateLimit-* headers; query was called", async () => {
 		mockMutation.mockResolvedValueOnce({
 			allowed: true,
@@ -256,10 +256,10 @@ describe("GET handler — 404 when stack not found", () => {
 });
 
 // ---------------------------------------------------------------------------
-// GET handler — fail-closed when neither XFF nor peer address is present (400)
+// GET handler - fail-closed when neither XFF nor peer address is present (400)
 // ---------------------------------------------------------------------------
 
-describe("GET handler — 400 when no XFF and no peer address", () => {
+describe("GET handler - 400 when no XFF and no peer address", () => {
 	it("no XFF and no peer address => 400 and does NOT call the rate-limit mutation", async () => {
 		mockMutation.mockClear();
 
@@ -280,10 +280,10 @@ describe("GET handler — 400 when no XFF and no peer address", () => {
 });
 
 // ---------------------------------------------------------------------------
-// GET handler — dev / non-proxied: peer address used when XFF absent (200)
+// GET handler - dev / non-proxied: peer address used when XFF absent (200)
 // ---------------------------------------------------------------------------
 
-describe("GET handler — 200 via peer address when no XFF (local dev)", () => {
+describe("GET handler - 200 via peer address when no XFF (local dev)", () => {
 	it("no XFF but .ip set => rate-limit mutation called with that ip; 200 returned", async () => {
 		const summary = {
 			slug: "dev-stack-abc123",
@@ -328,10 +328,10 @@ describe("GET handler — 200 via peer address when no XFF (local dev)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// OPTIONS handler — preflight (204)
+// OPTIONS handler - preflight (204)
 // ---------------------------------------------------------------------------
 
-describe("OPTIONS handler — 204 preflight", () => {
+describe("OPTIONS handler - 204 preflight", () => {
 	it("returns 204 with CORS headers and null body", async () => {
 		const handler = Route.options.server.handlers.OPTIONS;
 		const response = await handler();
@@ -348,10 +348,10 @@ describe("OPTIONS handler — 204 preflight", () => {
 });
 
 // ---------------------------------------------------------------------------
-// GET handler — mutation rejects (500)
+// GET handler - mutation rejects (500)
 // ---------------------------------------------------------------------------
 
-describe("GET handler — 500 when convex.mutation rejects", () => {
+describe("GET handler - 500 when convex.mutation rejects", () => {
 	it("returns 500 with {error:'Internal error'} when the mutation throws", async () => {
 		mockMutation.mockRejectedValueOnce(new Error("Convex unreachable"));
 

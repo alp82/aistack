@@ -14,7 +14,7 @@ const convex = new ConvexHttpClient(convexUrl);
 const convexOrigin = new URL(convexSiteUrl).origin;
 
 /**
- * GET /api/sync-config — what a sync client fetches immediately before it
+ * GET /api/sync-config - what a sync client fetches immediately before it
  * builds a payload.
  *
  * Wayfinder ticket #38 (map #29), decision 4 of the wire-format grilling #33.
@@ -22,7 +22,7 @@ const convexOrigin = new URL(convexSiteUrl).origin;
  *
  *   - The ALLOWLIST is public. Fail-closed name filtering only means something
  *     if it runs before the send, so a client must be able to fetch it without
- *     credentials — and it is not secret, since the approve gate renders every
+ *     credentials - and it is not secret, since the approve gate renders every
  *     name it will publish anyway.
  *   - `publishCost` is a STACK-level preference, so it needs to know which
  *     stack. The bearer is therefore OPTIONAL: present and valid, the response
@@ -31,7 +31,7 @@ const convexOrigin = new URL(convexSiteUrl).origin;
  *
  * Rate-limited on the same IP-keyed `apiRateLimits` limiter as
  * `/api/stacks/{slug}`, and with the same load-bearing precondition about which
- * X-Forwarded-For hop is trustworthy — see `clientIp` in that module.
+ * X-Forwarded-For hop is trustworthy - see `clientIp` in that module.
  */
 function jsonError(
 	status: number,
@@ -57,7 +57,7 @@ export const Route = createFileRoute("/api/sync-config")({
 				try {
 					// Namespaced like api.stacks.$slug: the same table also holds
 					// bearer-token buckets (#52). This call passed `{ ip }` until #41,
-					// which the renamed mutation rejects — every fetch would have 500'd.
+					// which the renamed mutation rejects - every fetch would have 500'd.
 					const rl = await convex.mutation(api.rateLimit.checkApiRateLimit, {
 						key: `ip:${ip}`,
 					});

@@ -1,5 +1,5 @@
 /**
- * PROTOTYPE — Projects List redesign  [SHIPPED 2026-05-31]
+ * PROTOTYPE - Projects List redesign  [SHIPPED 2026-05-31]
  * ---------------------------------------------------------------------------
  * CHOSEN: "editorial" layout, Air density, by-tag accent. Folded into the real
  * src/components/ProjectsSection.tsx on 2026-05-31. Kept here as the archived
@@ -11,22 +11,22 @@
  *
  * Each layout maps to a proven industry pattern, tuned to this brand
  * (terminal / monospace, sharp corners, lime-on-dark):
- *   1. editorial  — GitHub-style stacked rows           (readable, mid-density)
- *   2. cards      — Vercel / Notion gallery + stat bar   (visual browse)
- *   3. table      — `ls -la` dense table                 (power users, 20+)
- *   4. terminal   — shell window, ls listing             (signature novelty)
- *   5. bento      — asymmetric grid w/ featured hero      (overview / landing)
- *   6. board      — Kanban by draft/published            (publish pipeline)
+ *   1. editorial  - GitHub-style stacked rows           (readable, mid-density)
+ *   2. cards      - Vercel / Notion gallery + stat bar   (visual browse)
+ *   3. table      - `ls -la` dense table                 (power users, 20+)
+ *   4. terminal   - shell window, ls listing             (signature novelty)
+ *   5. bento      - asymmetric grid w/ featured hero      (overview / landing)
+ *   6. board      - Kanban by draft/published            (publish pipeline)
  *
  * Switch everything live from the control panel (bottom-right): layout,
  * density, accent (lime vs per-tag color), dataset size (incl. empty state),
- * and viewer (visitor vs owner — owner reveals reorder/publish/delete).
+ * and viewer (visitor vs owner - owner reveals reorder/publish/delete).
  *
  * Self-contained: mock data is inline, no DB.
  *
  * TO VIEW: TanStack uses file-based routing (scans src/routes/ only), so a
  * thin bridge route in src/routes/ is needed to mount this in the browser.
- * That bridge is throwaway plumbing — create it only while viewing, delete
+ * That bridge is throwaway plumbing - create it only while viewing, delete
  * before committing. See .prototypes/README.md for the copy-paste snippet,
  * or just ask Claude to "mount the projects prototype".
  * ---------------------------------------------------------------------------
@@ -82,7 +82,7 @@ type ProtoConfig = {
 };
 
 // ---------------------------------------------------------------------------
-// Mock data — shape mirrors convex projects.listByStack
+// Mock data - shape mirrors convex projects.listByStack
 // ---------------------------------------------------------------------------
 
 type Project = {
@@ -103,7 +103,7 @@ const PROJECTS: Project[] = [
 		id: "p1",
 		name: "claude-code-dotfiles",
 		description:
-			"Personal Claude Code setup — custom hooks, slash commands, and an opinionated settings.json tuned for TypeScript monorepos.",
+			"Personal Claude Code setup - custom hooks, slash commands, and an opinionated settings.json tuned for TypeScript monorepos.",
 		tags: ["cli", "hooks", "automation"],
 		fileCount: 12,
 		cloneCount: 1340,
@@ -176,7 +176,7 @@ const PROJECTS: Project[] = [
 		id: "p7",
 		name: "agent-eval-suite",
 		description:
-			"Automated evaluation suite for LLM agents — task scoring, regression tracking, and CI integration.",
+			"Automated evaluation suite for LLM agents - task scoring, regression tracking, and CI integration.",
 		tags: ["evals", "testing"],
 		fileCount: 18,
 		cloneCount: 42,
@@ -199,7 +199,7 @@ const PROJECTS: Project[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Accent system — lime everywhere, or a stable per-tag color
+// Accent system - lime everywhere, or a stable per-tag color
 // ---------------------------------------------------------------------------
 
 type Accent = { text: string; bg: string; border: string; solid: string };
@@ -326,7 +326,7 @@ function Monogram({
 	);
 }
 
-/** Drafts get a dashed amber tag — never opacity alone (research). */
+/** Drafts get a dashed amber tag - never opacity alone (research). */
 function DraftTag() {
 	return (
 		<span className="shrink-0 border border-dashed border-amber-500/50 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400">
@@ -361,7 +361,7 @@ function Tags({
 	);
 }
 
-/** clones (hero) · files · source · updated — monospace, tabular. */
+/** clones (hero) · files · source · updated - monospace, tabular. */
 function MetaStrip({
 	p,
 	className,
@@ -454,7 +454,7 @@ function BlinkCaret({ className }: { className?: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// 1 — Editorial rows (GitHub-style)
+// 1 - Editorial rows (GitHub-style)
 // ---------------------------------------------------------------------------
 
 function EditorialLayout({
@@ -510,7 +510,7 @@ function EditorialLayout({
 }
 
 // ---------------------------------------------------------------------------
-// 2 — Spec cards (Vercel / Notion gallery)
+// 2 - Spec cards (Vercel / Notion gallery)
 // ---------------------------------------------------------------------------
 
 function CardsLayout({
@@ -569,7 +569,7 @@ function CardsLayout({
 }
 
 // ---------------------------------------------------------------------------
-// 3 — Dense table (`ls -la`)
+// 3 - Dense table (`ls -la`)
 // ---------------------------------------------------------------------------
 
 const TABLE_COLS =
@@ -659,7 +659,7 @@ function TableLayout({
 }
 
 // ---------------------------------------------------------------------------
-// 4 — Terminal window (signature view)
+// 4 - Terminal window (signature view)
 // ---------------------------------------------------------------------------
 
 function TerminalLayout({
@@ -753,7 +753,7 @@ function TerminalLayout({
 }
 
 // ---------------------------------------------------------------------------
-// 5 — Bento showcase (asymmetric grid)
+// 5 - Bento showcase (asymmetric grid)
 // ---------------------------------------------------------------------------
 
 function bentoSpan(i: number, featured: boolean | undefined): string {
@@ -845,7 +845,7 @@ function BentoLayout({
 }
 
 // ---------------------------------------------------------------------------
-// 6 — Status board (Kanban by published/draft)
+// 6 - Status board (Kanban by published/draft)
 // ---------------------------------------------------------------------------
 
 function BoardLayout({
@@ -895,7 +895,7 @@ function BoardLayout({
 						<div className="flex flex-1 flex-col gap-2 p-3">
 							{col.items.length === 0 && (
 								<p className="px-1 py-8 text-center font-mono text-xs text-fg-muted">
-									— empty —
+									- empty -
 								</p>
 							)}
 							{col.items.map((p) => {
@@ -935,7 +935,7 @@ function BoardLayout({
 }
 
 // ---------------------------------------------------------------------------
-// Empty state — fake prompt, single CTA
+// Empty state - fake prompt, single CTA
 // ---------------------------------------------------------------------------
 
 function EmptyState() {
@@ -1014,7 +1014,7 @@ const LAYOUT_META: Record<LayoutId, { label: string; blurb: string }> = {
 	editorial: {
 		label: "Editorial",
 		blurb:
-			"GitHub-style stacked rows. Readable, mid-density — best for 5–20 projects.",
+			"GitHub-style stacked rows. Readable, mid-density - best for 5–20 projects.",
 	},
 	cards: {
 		label: "Cards",
@@ -1029,7 +1029,7 @@ const LAYOUT_META: Record<LayoutId, { label: string; blurb: string }> = {
 	terminal: {
 		label: "Terminal",
 		blurb:
-			"Signature shell view — projects as an ls listing in a window. On-brand novelty.",
+			"Signature shell view - projects as an ls listing in a window. On-brand novelty.",
 	},
 	bento: {
 		label: "Bento",

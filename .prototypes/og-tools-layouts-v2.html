@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>OG Tools Area — Layout Explorer v2</title>
+<title>OG Tools Area - Layout Explorer v2</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -250,7 +250,7 @@
     line-height: 1.28;
   }
 
-  /* ── Tools outer shell — takes all remaining flex space (no footer!) ── */
+  /* ── Tools outer shell - takes all remaining flex space (no footer!) ── */
   .og-tools-outer {
     display: flex;
     flex-direction: column;
@@ -269,7 +269,7 @@
   }
 
   /* ═══════════════════════════════════════════════
-     VARIANT 1 — "CENTERED CHIPS"
+     VARIANT 1 - "CENTERED CHIPS"
      Centered square chips. Few tools = huge icons and names.
      Chips grow to fill the row; rows fill the column height.
      takumi: pure flexbox, all width/height/icon explicit.
@@ -278,7 +278,7 @@
   /* built entirely in JS, no CSS classes needed beyond shell */
 
   /* ═══════════════════════════════════════════════
-     VARIANT 2 — "FEATURE-FIRST STACK"
+     VARIANT 2 - "FEATURE-FIRST STACK"
      For counts with uneven distribution: t1 (or t1+t2) get
      the top prominent row; remaining tools fill a balanced
      row below. Equal sizes when count fills neatly (1,2,4,6).
@@ -287,7 +287,7 @@
   ═══════════════════════════════════════════════ */
 
   /* ═══════════════════════════════════════════════
-     VARIANT 3 — "LEFT-ALIGNED GRID" (contrast/reference)
+     VARIANT 3 - "LEFT-ALIGNED GRID" (contrast/reference)
      Left-aligned tiles, same feature-first logic but flush-left
      and with a name+subtitle treatment (name + italic category).
      takumi: flexbox-only.
@@ -298,7 +298,7 @@
 <body>
 
 <div class="page-header">
-  <h1>OG Card — Tools Area Layout Explorer v2</h1>
+  <h1>OG Card - Tools Area Layout Explorer v2</h1>
   <p>
     Footer (category chips + CTA button) removed. Reclaimed ~72px vertical height redistributed to tools area.
     3 variants, all feature-first at uneven counts (t1 prominent, not last), centered default (V3 left-aligned for contrast).
@@ -370,7 +370,7 @@ function ogShell(toolsHtml) {
     </div>
     <div class="og-desc-bar">
       <div class="og-desc-rule"></div>
-      <span class="og-desc-text">The complete toolkit for solo AI developers — from code generation to design and deployment.</span>
+      <span class="og-desc-text">The complete toolkit for solo AI developers - from code generation to design and deployment.</span>
     </div>
     <div class="og-tools-outer">
       <span class="og-tools-label">AI Tools</span>
@@ -381,13 +381,13 @@ function ogShell(toolsHtml) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// VARIANT 1 — "CENTERED CHIPS"
+// VARIANT 1 - "CENTERED CHIPS"
 // Chips are square-ish tiles: big icon above name, centered.
 // All chips are equal size, laid out in rows.
 // Per-count strategy:
 //   1 → 1 col, full height, icon ~120px
 //   2 → 2 col, 1 row, icon ~100px
-//   3 → 3 col, 1 row, icon ~88px — OR feature-split (best look after testing: 3-col)
+//   3 → 3 col, 1 row, icon ~88px - OR feature-split (best look after testing: 3-col)
 //   4 → 2×2, icon ~80px
 //   5 → t1 full-width top, t2-5 as 4-col row below, icon top ~88, bottom ~64
 //   6 → 3×2 (2 rows of 3), icon ~64px
@@ -456,11 +456,11 @@ function renderV1(tools) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// VARIANT 2 — "FEATURE-FIRST STACK"
+// VARIANT 2 - "FEATURE-FIRST STACK"
 // Feature tile(s) fill top area (icon+name, horizontal layout, centered).
 // Secondary tiles fill below in balanced rows.
 // Icon is prominent but tools show name to the right (not below).
-// Emphasis comes purely from size difference — no decorations/labels.
+// Emphasis comes purely from size difference - no decorations/labels.
 // Per-count:
 //   1 → full-width horizontal, icon 128px, name 52px
 //   2 → 2 equal feature tiles side-by-side, icon 96px, name 40px
@@ -542,7 +542,7 @@ function renderV2(tools) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// VARIANT 3 — "LEFT-ALIGNED FEATURE GRID"
+// VARIANT 3 - "LEFT-ALIGNED FEATURE GRID"
 // Same feature-first logic but left-aligned.
 // Tiles are flush-left: icon + name + muted category below name.
 // Provides contrast against V1/V2's centered aesthetic.
@@ -633,21 +633,21 @@ function renderV3(tools) {
 const LAYOUTS = [
   {
     id: "V1",
-    name: "V1 — Centered Chips",
+    name: "V1 - Centered Chips",
     rationale: "Square chips centered in each tile: large icon above name. Chips expand to fill all available space. Drops cleanly from 120px icon (1 tool) to 66px (6 tools). All flexbox.",
     caveat: "footer removed · flexbox-safe · no grid · icon+name centered-column tiles",
     render: renderV1,
   },
   {
     id: "V2",
-    name: "V2 — Feature-First Horizontal",
-    rationale: "Horizontal tiles (icon left, name right) with t1 getting the tall top slot at uneven counts. Emphasis via size only — no decoration or labels. Balanced grid at 1/2/4/6.",
+    name: "V2 - Feature-First Horizontal",
+    rationale: "Horizontal tiles (icon left, name right) with t1 getting the tall top slot at uneven counts. Emphasis via size only - no decoration or labels. Balanced grid at 1/2/4/6.",
     caveat: "footer removed · flexbox-safe · feature-first at 3 and 5 · no border/badge decoration",
     render: renderV2,
   },
   {
     id: "V3",
-    name: "V3 — Left-Aligned Feature Grid",
+    name: "V3 - Left-Aligned Feature Grid",
     rationale: "Same feature-first logic as V2, but flush-left alignment and a muted category label below the tool name adds scannable context. Contrast option against V1/V2 centering.",
     caveat: "footer removed · flexbox-safe · category labels = prototype-only (not in current data model)",
     render: renderV3,

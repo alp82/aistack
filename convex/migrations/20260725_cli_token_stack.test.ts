@@ -6,7 +6,7 @@ import type { Id } from '../_generated/dataModel'
 import schema from '../schema'
 
 // Vite keys same-directory files as './x.ts' while convex-test derives its
-// module root ('../') from the _generated path — remap the sibling keys so
+// module root ('../') from the _generated path - remap the sibling keys so
 // 'migrations/20260725_cli_token_stack' resolves. Same remap the retired
 // profileDecoupling test needed; it is a convex-test quirk, not a repo one.
 const modules = Object.fromEntries(
@@ -97,7 +97,7 @@ describe('cliTokens.stackId relink (phase B)', () => {
 
   test('leaves an ambiguous owner unlinked rather than guessing', async () => {
     // Guessing would point a machine's measured layer at a stack the user never
-    // chose, permanently — snapshots are immutable.
+    // chose, permanently - snapshots are immutable.
     const t = convexTest(schema, modules)
     await seedOwner(t, 'multi', 3)
     const tokenId = await seedToken(t, 'multi')
@@ -133,7 +133,7 @@ describe('cliTokens.stackId relink (phase B)', () => {
     })
   })
 
-  test('is idempotent — a second run links nothing and changes nothing', async () => {
+  test('is idempotent - a second run links nothing and changes nothing', async () => {
     const t = convexTest(schema, modules)
     const [stackId] = await seedOwner(t, 'solo', 1)
     const tokenId = await seedToken(t, 'solo')

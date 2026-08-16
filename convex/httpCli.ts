@@ -35,13 +35,13 @@ function jsonResponse(data: unknown, status = 200): Response {
 }
 
 /**
- * Unsalted SHA-256, lowercase hex — the at-rest form of a bearer token (#49).
+ * Unsalted SHA-256, lowercase hex - the at-rest form of a bearer token (#49).
  *
  * Unsalted is the right primitive, not a shortcut: the token is 256 bits of
  * `crypto.getRandomValues`, so there is no dictionary to attack and a salt
  * defeats nothing. Password stretching would only tax every request.
  *
- * This runs in the `httpAction`, which is the whole point — the plaintext never
+ * This runs in the `httpAction`, which is the whole point - the plaintext never
  * crosses into the database layer, so a `runQuery` argument log cannot leak one.
  */
 export async function sha256Hex(input: string): Promise<string> {
@@ -83,7 +83,7 @@ async function resolveToken(
  * ONE choke point for every authenticated CLI route: identity, scope, budget.
  *
  * SCOPES ARE LATENT. Every token is minted with the full set, so no live
- * request is refused — what exists here is the enforcement point, so a narrower
+ * request is refused - what exists here is the enforcement point, so a narrower
  * token later needs no server change. An ABSENT `scopes` array is a token
  * minted before the field existed, and those were granted everything; the
  * scopes narrow makes that case unreachable rather than leaving it as a
@@ -91,7 +91,7 @@ async function resolveToken(
  *
  * THE BUDGET KEYS ON THE TOKEN, NOT THE IP (#52). `/api/cli/*` are thin
  * TanStack proxies and the Convex site URL is directly reachable, so an
- * IP-keyed limit here is walked around by talking to Convex directly — while
+ * IP-keyed limit here is walked around by talking to Convex directly - while
  * the proxy forwards only `Authorization` and `Content-Type`, so a Convex-side
  * IP limiter would see one address for every user and throttle the world as a
  * single caller. The token id is already in hand at this exact line and
@@ -161,7 +161,7 @@ const PROXY_AUTH_HEADER = 'x-aistack-proxy-auth'
  *
  * A deliberate duplicate of `ipFromForwardedFor` in
  * `src/routes/api.stacks.$slug.tsx`: Convex functions cannot import from `src`,
- * and this is four lines. Same precondition — the rightmost hop is the real
+ * and this is four lines. Same precondition - the rightmost hop is the real
  * address only because Coolify's Traefik APPENDS it and does not trust a
  * client-supplied header.
  */
@@ -178,8 +178,8 @@ function rightmostForwardedHop(xff: string | null): string | null {
 /**
  * Who to charge for an unauthenticated `authStart`, and how hard (#52).
  *
- * The proxy destroys the client address — it forwards only `Authorization` and
- * `Content-Type` — so Convex is handed it in a custom header AUTHENTICATED BY A
+ * The proxy destroys the client address - it forwards only `Authorization` and
+ * `Content-Type` - so Convex is handed it in a custom header AUTHENTICATED BY A
  * SHARED SECRET. Without the secret the header is ignored completely, so a
  * caller hitting `.convex.site` directly cannot claim to be any address it
  * likes.
@@ -187,7 +187,7 @@ function rightmostForwardedHop(xff: string | null): string | null {
  * THE FALLBACK MATTERS MORE THAN THE HAPPY PATH. With no secret configured,
  * every proxied login on earth lands in ONE bucket, so it takes a HIGH cap and
  * a SEPARATE key namespace. At 60/min a missing env var would break login for
- * everybody at once — a misconfiguration must degrade, not lock out.
+ * everybody at once - a misconfiguration must degrade, not lock out.
  *
  * The secret is compared as DIGESTS. A plain `===` on strings short-circuits at
  * the first differing byte; comparing SHA-256 output leaks only digest
@@ -216,10 +216,10 @@ async function authStartBudget(
 }
 
 /**
- * POST /api/cli/auth/start — open a device-code session.
+ * POST /api/cli/auth/start - open a device-code session.
  *
  * The body is OPTIONAL and carries one field: `machineName`, the CLI's proposal
- * for what to call this machine (#49). It is a proposal, not a fact — the
+ * for what to call this machine (#49). It is a proposal, not a fact - the
  * approval page renders it in an editable field, so the string that reaches
  * `cliTokens.name` is always one the user saw and could overwrite.
  *
@@ -276,7 +276,7 @@ export const authStart = httpAction(async (ctx, request) => {
       if (trimmed.length > 0 && trimmed.length <= 32) cliVersion = trimmed
     }
   } catch {
-    // No body, or not JSON — an older CLI. Proceed nameless.
+    // No body, or not JSON - an older CLI. Proceed nameless.
   }
 
   await ctx.runMutation(internal.cliSessions.createSession, {
@@ -367,7 +367,7 @@ export const stackCollect = httpAction(async (ctx, request) => {
 
   // The token's bound stack (#33 decision 7) replaces the old
   // `getFirstStackByCreator` guess, which silently picked whichever stack the
-  // by_creatorId index happened to return first — fine while one-stack-per-
+  // by_creatorId index happened to return first - fine while one-stack-per-
   // creator was assumed, wrong the moment a second stack exists.
   if (!tokenStackId) {
     return jsonResponse(
@@ -432,7 +432,7 @@ function parseAutoSync(
  *
  * ONE UNKNOWN VALUE READS AS MANUAL, exactly like an absent field. A stamp that
  * says "a machine published on its own" is a claim the web switch renders, so
- * anything the server cannot name must not make it — and the sync itself is
+ * anything the server cannot name must not make it - and the sync itself is
  * never refused over the field, for the same reason `parseAutoSync` drops
  * rather than rejects.
  */
@@ -441,7 +441,7 @@ function parseTrigger(raw: unknown): 'manual' | 'auto' | undefined {
 }
 
 /**
- * POST /api/cli/sync — publish one approved measured-layer snapshot.
+ * POST /api/cli/sync - publish one approved measured-layer snapshot.
  *
  * Wayfinder ticket #38 (map #29). The destination is the stack bound to the
  * BEARER TOKEN, never anything in the body: a payload that could name its own
@@ -469,7 +469,7 @@ export const syncPublish = httpAction(async (ctx, request) => {
   } catch {
     return jsonResponse({ error: 'Invalid JSON body' }, 400)
   }
-  // `payloads` is the batch a #67 client sends — one per detected harness.
+  // `payloads` is the batch a #67 client sends - one per detected harness.
   // The old single `payload` stays accepted for installed CLIs (same wire
   // tolerance as ResourceInput.scope) until a wire bump retires it.
   if (!body.payload && !(Array.isArray(body.payloads) && body.payloads.length > 0)) {
@@ -524,13 +524,13 @@ export const syncPublish = httpAction(async (ctx, request) => {
 })
 
 /**
- * GET /api/cli/sync-config — the client's pre-send fetch (#33 decision 4).
+ * GET /api/cli/sync-config - the client's pre-send fetch (#33 decision 4).
  *
  * The allowlist half is genuinely public: filtering is fail-closed and must run
  * before the send, so a client that cannot authenticate still needs it.
  *
  * `publishCost` is a STACK-level preference, and an unauthenticated caller has
- * not said which stack it means — so the bearer is OPTIONAL here rather than
+ * not said which stack it means - so the bearer is OPTIONAL here rather than
  * required. With a valid token the response carries the bound stack's
  * preference and name (the gate needs the name to say where the data is going);
  * without one it fails closed to `publishCost: false`, matching the client's
@@ -567,7 +567,7 @@ export const syncConfig = httpAction(async (ctx, request) => {
   }
   // NO 401 AND NO 403 ON THIS ROUTE, ever (#52). A token without `sync` gets
   // the anonymous fail-closed body, because refusing it outright would break
-  // the pre-send filter for exactly the tokens we most want filtered — and a
+  // the pre-send filter for exactly the tokens we most want filtered - and a
   // client that cannot fetch the allowlist publishes nothing it should have
   // held back only if the filter is fail-closed on its own, which it is, but
   // only because it still HAS a list.
@@ -591,10 +591,10 @@ export const syncConfig = httpAction(async (ctx, request) => {
 })
 
 /**
- * POST /api/cli/auto-sync — a machine sets the permission on its bound stack.
+ * POST /api/cli/auto-sync - a machine sets the permission on its bound stack.
  *
  * Wayfinder ticket #102 (map #76), from #100 decision 2. The destination is the
- * stack bound to the BEARER, never anything in the body — the same rule the
+ * stack bound to the BEARER, never anything in the body - the same rule the
  * publish route follows, and for the same reason.
  *
  * A MALFORMED BODY IS REFUSED HERE, unlike the telemetry fields on a sync. This

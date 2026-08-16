@@ -1,8 +1,8 @@
-// The opencode fold — wayfinder ticket #124 (map #121). The properties that
+// The opencode fold - wayfinder ticket #124 (map #121). The properties that
 // matter most, from docs/research/harness-adapters-2026-08.md:
 //   - every model key carries the harness's own provider id (#123): a gateway
 //     re-serving a vendor's model must NOT price at that vendor's list rate;
-//   - the four token counters are disjoint deltas — map straight through,
+//   - the four token counters are disjoint deltas - map straight through,
 //     never read `tokens.total`, never add `reasoning`;
 //   - opencode's own `cost` field is 0.0 on every record and never publishes.
 
@@ -19,7 +19,7 @@ import {
 	type ToolPartRow,
 } from "./analyzer.js";
 
-// 2026-07-20T12:00:00Z — inside every rate period the table cites today.
+// 2026-07-20T12:00:00Z - inside every rate period the table cites today.
 const TS = Date.UTC(2026, 6, 20, 12, 0, 0);
 
 function row(over: Partial<MessageRow> = {}): MessageRow {
@@ -71,7 +71,7 @@ describe("ingestMessageRow", () => {
 		expect(agg.projectDirs.size).toBe(1);
 	});
 
-	it("a gateway re-serving a vendor's model stays unpriced — never the vendor's list rate", () => {
+	it("a gateway re-serving a vendor's model stays unpriced - never the vendor's list rate", () => {
 		const agg = createAggregate();
 		const state = createDbFoldState();
 
@@ -190,7 +190,7 @@ function part(over: Partial<ToolPartRow> = {}): ToolPartRow {
 describe("ingestToolPart", () => {
 	it("a built-in name containing an underscore never invents an MCP server", () => {
 		// Splitting `apply_patch` on the first `_` would publish a fake server
-		// named `apply` (research §inventory) — the literal built-in set wins.
+		// named `apply` (research §inventory) - the literal built-in set wins.
 		const agg = createAggregate();
 		const state = createDbFoldState();
 
@@ -261,7 +261,7 @@ describe("ingestToolPart", () => {
 		expect(agg.toolCalls.get("bash")).toBe(1);
 	});
 
-	it("a step-finish part never counts — its tokens repeat the message's", () => {
+	it("a step-finish part never counts - its tokens repeat the message's", () => {
 		const agg = createAggregate();
 		const state = createDbFoldState();
 

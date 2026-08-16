@@ -24,7 +24,7 @@ import {
 
 const OG_CONTRAST = "#0a0a0a";
 
-// Authoritative expectation table — registry order is the rainbow loop from the
+// Authoritative expectation table - registry order is the rainbow loop from the
 // brand default (lime). `lightL` is only set on warm presets.
 const EXPECTED = [
 	{

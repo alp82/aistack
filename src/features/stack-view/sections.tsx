@@ -17,7 +17,7 @@ import {
 import { GAP, Section, SectionHeader } from "./ui";
 
 // ---------------------------------------------------------------------------
-// Disclosure — file-private collapsible row (aria-expanded + ChevronRight
+// Disclosure - file-private collapsible row (aria-expanded + ChevronRight
 // rotate), matching the codebase pattern in components/resources/ResourceTree.
 // Controlled when `open` is provided, otherwise internally stateful.
 // ---------------------------------------------------------------------------
@@ -78,7 +78,7 @@ function Disclosure({
 }
 
 // ===========================================================================
-// 02 — TOOLS (hosts Models / Bundles disclosures)
+// 02 - TOOLS (hosts Models / Bundles disclosures)
 // ===========================================================================
 
 export function ToolsSection({
@@ -211,7 +211,7 @@ export function ToolsSection({
 }
 
 // ===========================================================================
-// 03 — GUIDE (writeup)
+// 03 - GUIDE (writeup)
 // ===========================================================================
 
 export function GuideSection({

@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 /**
  * Tests for the profile-first decoupling additions to convex/creators.ts
- * (plan.md Phase A). All of these functions are new — this file is RED
+ * (plan.md Phase A). All of these functions are new - this file is RED
  * until updateProfile is extended and getByHandle/getOwnProfileView/
  * checkHandle/landStagedAvatar are added.
  *

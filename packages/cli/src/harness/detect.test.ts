@@ -1,4 +1,4 @@
-// Window-based harness detection — wayfinder #101 (map #76), decided in #100.
+// Window-based harness detection - wayfinder #101 (map #76), decided in #100.
 //
 // "Detected" means active in the sync window, not "the log directory is still
 // on disk". The machine this exists for: a Codex-only user whose months-old
@@ -254,7 +254,7 @@ describe("detectedAdapters", () => {
 /**
  * The ticket's done-bar (#101), on a real filesystem and the real wall clock:
  * a machine with only stale Claude Code logs gets no Claude scan, no Claude
- * upsell, and no Claude hook. This is the machine from #100 — a Codex-only user
+ * upsell, and no Claude hook. This is the machine from #100 - a Codex-only user
  * whose months-old Claude Code install drove all three.
  */
 describe("a machine with only stale Claude logs", () => {

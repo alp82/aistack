@@ -21,7 +21,7 @@ export type ViewTargetKind = "stack" | "creator" | "aggregate";
 
 export interface RecordViewInput {
 	targetKind: ViewTargetKind;
-	/** The Convex document id — never the slug, so a rename keeps its history. */
+	/** The Convex document id - never the slug, so a rename keeps its history. */
 	targetId: string;
 	referrerBucket: ReferrerBucket;
 }
@@ -32,7 +32,7 @@ export interface RecordViewInput {
  * Called from a MOUNT EFFECT, never a route loader. `defaultPreload: "viewport"`
  * runs the loader for every card scrolled into view, and
  * `defaultPreloadStaleTime: 30_000` means a preloaded route that is then clicked
- * does not re-run its loader — so a loader write both invents views and misses
+ * does not re-run its loader - so a loader write both invents views and misses
  * real ones. Mount is the only event that means a person is looking at the page.
  *
  * Always resolves. A failed count must never surface to the reader.
@@ -54,7 +54,7 @@ export const recordView = createServerFn({ method: "POST" })
 
 			const secret = hashSecret();
 			if (!secret) {
-				console.error("[views] VIEW_HASH_SECRET unset — not counting views");
+				console.error("[views] VIEW_HASH_SECRET unset - not counting views");
 				return { counted: false };
 			}
 
@@ -64,7 +64,7 @@ export const recordView = createServerFn({ method: "POST" })
 			const dayStartMs = Math.floor(Date.now() / DAY_MS) * DAY_MS;
 
 			// The viewer identity is NOT passed. `fetchAuthMutation` forwards this
-			// request's session, so Convex derives the viewer itself — a
+			// request's session, so Convex derives the viewer itself - a
 			// caller-supplied `viewerUserId` would let anyone suppress a
 			// competitor's views or attribute their own.
 			return await fetchAuthMutation(api.views.record, {

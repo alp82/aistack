@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * The changes page — wayfinder #43, building variant J locked by #39.
+ * The changes page - wayfinder #43, building variant J locked by #39.
  *
  * Three of these tests guard decisions rather than behaviour, and are the
  * reason this file exists at all:
@@ -373,7 +373,7 @@ describe("the Kept private view", () => {
 			},
 		});
 		// A published name shows in the view so it can be taken back, but it is
-		// not kept private — counting it would make the number contradict its own
+		// not kept private - counting it would make the number contradict its own
 		// label.
 		expect(screen.getByText("Kept private (3)")).toBeTruthy();
 	});

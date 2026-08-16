@@ -1,6 +1,6 @@
-// The Codex fold — wayfinder ticket #67 (map #60). The property that matters
+// The Codex fold - wayfinder ticket #67 (map #60). The property that matters
 // most: usage comes from SUMMING `last_token_usage` deltas, never from the
-// cumulative `total_token_usage` (Claude's dedup gotcha, inverted — #65 §2).
+// cumulative `total_token_usage` (Claude's dedup gotcha, inverted - #65 §2).
 
 import { describe, expect, it } from "vitest";
 import { finalize } from "../shared/aggregate.js";
@@ -82,7 +82,7 @@ function foldFile(
 	return state;
 }
 
-describe("usage — sum last_token_usage deltas, never the cumulative total", () => {
+describe("usage - sum last_token_usage deltas, never the cumulative total", () => {
 	it("sums deltas and ignores total_token_usage entirely", () => {
 		const agg = createAggregate();
 		foldFile(agg, [
@@ -169,7 +169,7 @@ describe("usage — sum last_token_usage deltas, never the cumulative total", ()
 		expect(f.unpricedTokens).toBe(0);
 	});
 
-	it("skips zero deltas — a rate-limit refresh is not a response", () => {
+	it("skips zero deltas - a rate-limit refresh is not a response", () => {
 		const agg = createAggregate();
 		foldFile(agg, [sessionMeta(), turnContext("gpt-5.5"), tokenCount({})]);
 		expect(agg.distinctResponses).toBe(0);
@@ -234,7 +234,7 @@ describe("inventory", () => {
 		expect(f.totalToolCalls).toBe(4);
 	});
 
-	it("dedups repeated call ids — forked-session history replays count once", () => {
+	it("dedups repeated call ids - forked-session history replays count once", () => {
 		const agg = createAggregate();
 		foldFile(agg, [sessionMeta(), functionCall("exec_command", "call_1")]);
 		foldFile(agg, [sessionMeta(), functionCall("exec_command", "call_1")]);

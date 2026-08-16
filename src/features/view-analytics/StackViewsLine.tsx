@@ -1,5 +1,5 @@
 /**
- * The owner-private view line on a public stack page — shape S1 (#98, built in
+ * The owner-private view line on a public stack page - shape S1 (#98, built in
  * #112, map #76).
  *
  * A stack page is the page a creator screenshots and posts, so the number on it

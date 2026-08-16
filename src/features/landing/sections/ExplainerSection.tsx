@@ -16,7 +16,7 @@ const valueProps = [
 	{
 		index: "03",
 		title: "Share Yours",
-		body: "Publish your stack and help others skip the guesswork. One page, your tools, your costs — signal that actually helps.",
+		body: "Publish your stack and help others skip the guesswork: one page with your tools and your costs.",
 		icon: Share2,
 	},
 ];

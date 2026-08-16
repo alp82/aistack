@@ -1,6 +1,6 @@
 /**
  * RED tests for the new `orderToolsForDisplay` export (TC-PRICE-01..09).
- * The implementation does not exist yet — these tests are expected to fail
+ * The implementation does not exist yet - these tests are expected to fail
  * until `orderToolsForDisplay` is added to src/lib/pricing.ts.
  */
 import { describe, expect, it } from "vitest";
@@ -125,7 +125,7 @@ describe("orderToolsForDisplay", () => {
 	});
 
 	// ---------------------------------------------------------------------------
-	// TC-PRICE-09: yearly billing normalized — $240/year ($20/mo) loses to $30/month
+	// TC-PRICE-09: yearly billing normalized - $240/year ($20/mo) loses to $30/month
 	// ---------------------------------------------------------------------------
 
 	it("TC-PRICE-09: yearly price normalized to monthly for sorting ($240/year < $30/month)", () => {
@@ -144,7 +144,7 @@ describe("orderToolsForDisplay", () => {
 	//              within-group price sort together
 	// ---------------------------------------------------------------------------
 
-	it("TC-PRICE-10: >2 interleaved tools — main-before-misc partition AND within-group price desc", () => {
+	it("TC-PRICE-10: >2 interleaved tools - main-before-misc partition AND within-group price desc", () => {
 		// Passed shuffled: misc-high, main-low, misc-mid, main-high
 		const input: DisplayTool[] = [
 			makeTool("Pricey Misc", "misc", 100, "month"),
@@ -170,7 +170,7 @@ describe("orderToolsForDisplay", () => {
 	//              order when a stack has more than 6 tools
 	// ---------------------------------------------------------------------------
 
-	it("TC-PRICE-11: order-then-slice(0,6) mirrors OG handler — correct top-6 from 8 tools", () => {
+	it("TC-PRICE-11: order-then-slice(0,6) mirrors OG handler - correct top-6 from 8 tools", () => {
 		// 4 main tools and 4 misc tools, passed shuffled
 		const input: DisplayTool[] = [
 			makeTool("Misc15", "misc", 15, "month"),
@@ -183,7 +183,7 @@ describe("orderToolsForDisplay", () => {
 			makeTool("Main20", "main", 20, "month"),
 		];
 		// This mirrors exactly what src/routes/api.og.stack.$slug.tsx does
-		// before .map — the helper is the unit under test; slice is the
+		// before .map - the helper is the unit under test; slice is the
 		// std-lib cap the handler applies.
 		const top6 = orderToolsForDisplay(input).slice(0, 6);
 		// All 4 main tools first (price desc), then top-2 misc by price;

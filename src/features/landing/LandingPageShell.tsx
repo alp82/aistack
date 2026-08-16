@@ -21,10 +21,10 @@ function LandingPageShell({ stacks, me, band }: LandingPageShellProps) {
 			<GridBackground />
 			<HeroSection />
 			{/* The pulse sits between the hero and the featured stacks (#84). A site
-			    with nothing to report shows no band at all — four em dashes under a
+			    with nothing to report shows no band at all - four em dashes under a
 			    live dot is a claim about nothing. */}
 			{/* The pulse sits between the hero and the featured stacks (#84). A site
-			    with nothing to report shows no band at all — an em dash under a
+			    with nothing to report shows no band at all - an em dash under a
 			    live dot is a claim about nothing. PulsePrototype renders PulseHero
 			    (#147's winner) and keeps the dev-only ?variant= switcher alive. */}
 			{band && band.rows.length > 0 ? <PulsePrototype band={band} /> : null}

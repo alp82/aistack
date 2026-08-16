@@ -48,7 +48,7 @@ describe("cumulative-usage dedup", () => {
 		expect(agg.supersededByLarger).toBe(2);
 	});
 
-	it("is order-independent — a smaller later record does not win", () => {
+	it("is order-independent - a smaller later record does not win", () => {
 		const agg = createAggregate();
 		ingest(
 			agg,
@@ -287,7 +287,7 @@ describe("cost accumulates at ingest, per record", () => {
 			}),
 		);
 		const f = finalize(agg);
-		// $10 at the intro rate + $15 after — not 2 x either rate.
+		// $10 at the intro rate + $15 after - not 2 x either rate.
 		expect(f.totalCostUSD).toBeCloseTo(25, 6);
 		expect(f.models[0].tokens.output).toBe(2_000_000);
 	});

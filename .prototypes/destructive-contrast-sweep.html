@@ -33,7 +33,7 @@
 <body>
 
 <h1>-- destructive token WCAG AA audit</h1>
-<p>Prototype: <code>.prototypes/destructive-contrast-sweep.ts</code> — run with <code>pnpm tsx</code>.<br>
+<p>Prototype: <code>.prototypes/destructive-contrast-sweep.ts</code> - run with <code>pnpm tsx</code>.<br>
 OKLCH conversion uses the exact OKLab matrices (Björn Ottosson 2020). Sanity-checked: sRGB red = lum 0.2126, white = 1.0, 21:1 white/black. All correct.</p>
 
 <h2>Token values (verbatim from src/styles.css :root block)</h2>
@@ -75,13 +75,13 @@ OKLCH conversion uses the exact OKLab matrices (Björn Ottosson 2020). Sanity-ch
   </div>
 </div>
 
-<p>There is <strong>no separate .dark block</strong> for destructive tokens — <code>:root</code> is the only definition, and the app always runs dark (<code>color-scheme: dark</code>). No light/dark override exists.</p>
+<p>There is <strong>no separate .dark block</strong> for destructive tokens - <code>:root</code> is the only definition, and the app always runs dark (<code>color-scheme: dark</code>). No light/dark override exists.</p>
 
 <h2>Current token audit (the two constraints)</h2>
 
 <div class="verdict">
-  <strong>Constraint A — destructive-foreground (near-white) on bg-destructive (button fill)</strong><br>
-  <span class="fail">3.52:1 FAIL</span> — needs ≥ 4.5:1 for WCAG AA small text. The current button is more than 1 full stop below AA.
+  <strong>Constraint A - destructive-foreground (near-white) on bg-destructive (button fill)</strong><br>
+  <span class="fail">3.52:1 FAIL</span> - needs ≥ 4.5:1 for WCAG AA small text. The current button is more than 1 full stop below AA.
 </div>
 
 <table>
@@ -105,11 +105,11 @@ OKLCH conversion uses the exact OKLab matrices (Björn Ottosson 2020). Sanity-ch
 </table>
 <p>
   <strong>Constraint B status at current L=0.63:</strong> 4 of 6 surfaces pass at text level; 2 fail text but pass large/icon.
-  The two marginal surfaces are <code>bg-panel-muted</code> and <code>bg-panel-elevated</code> — notably the popover background where the ConfirmDialog sits.
+  The two marginal surfaces are <code>bg-panel-muted</code> and <code>bg-panel-elevated</code> - notably the popover background where the ConfirmDialog sits.
   All 6 pass the large/icon (≥3:1) threshold.
 </p>
 
-<h2>Sweep table — L 0.40–0.65, C=0.2 h=26 (real token chroma+hue)</h2>
+<h2>Sweep table - L 0.40–0.65, C=0.2 h=26 (real token chroma+hue)</h2>
 <p>A = destructive-fg on bg-destructive (button). B1–B6 = text-destructive on each surface. Highlighted row = current value.</p>
 
 <table>
@@ -142,9 +142,9 @@ OKLCH conversion uses the exact OKLab matrices (Björn Ottosson 2020). Sanity-ch
 
 <h2>Split: the dead zone</h2>
 <p>
-  Constraint A passes for L ≤ 0.57 (A = 4.51:1 at the boundary — barely).<br>
+  Constraint A passes for L ≤ 0.57 (A = 4.51:1 at the boundary - barely).<br>
   Constraint B (text, all-surface) cannot pass at L ≤ 0.57 because the popover background (lum 0.022) is too close to the red at that lightness. B5 (popover) tops out at 2.95 at L=0.57.<br>
-  There is <strong>no overlap</strong> — a split is required.
+  There is <strong>no overlap</strong> - a split is required.
 </p>
 
 <h2>Verdict: SPLIT required</h2>
@@ -172,14 +172,14 @@ OKLCH conversion uses the exact OKLab matrices (Björn Ottosson 2020). Sanity-ch
       <td>text-destructive, border-destructive on dark bg, icon color, bg-destructive/10 tint</td>
       <td><code>oklch(0.65 0.2 26)</code></td>
       <td>n/a (not a button bg)</td>
-      <td class="large">B5 popover: 4.11:1 — passes large/icon, fails small text<br>B1–B4,B6: all ≥4.63 ✓</td>
+      <td class="large">B5 popover: 4.11:1 - passes large/icon, fails small text<br>B1–B4,B6: all ≥4.63 ✓</td>
     </tr>
   </tbody>
 </table>
 
 <p>
   Alternatively, if you want every <code>text-destructive</code> instance (including small 10px form-field errors) to be AA-compliant even on the popover surface, you need <code>L ≥ 0.67</code> for the accent token (which yields ~4.5:1 on popover). Check:
-  at L=0.67, B5 popover ≈ 4.45:1 — still marginal. At L=0.70 the popover clears 4.5 easily, but the red becomes noticeably orange-pink. The practical recommendation is to accept that small red error text inside popovers is icon-level only (the popover has the lightest dark surface at lum=0.022), or to darken the popover background slightly.
+  at L=0.67, B5 popover ≈ 4.45:1 - still marginal. At L=0.70 the popover clears 4.5 easily, but the red becomes noticeably orange-pink. The practical recommendation is to accept that small red error text inside popovers is icon-level only (the popover has the lightest dark surface at lum=0.022), or to darken the popover background slightly.
 </p>
 
 <h2>AdminReviewTab gotcha (hardcoded text-white)</h2>
@@ -190,7 +190,7 @@ OKLCH conversion uses the exact OKLab matrices (Björn Ottosson 2020). Sanity-ch
   These buttons should be migrated to use the standard button variant, or the fill token must be applied.
 </p>
 
-<h2>Summary table — current vs recommended</h2>
+<h2>Summary table - current vs recommended</h2>
 
 <table>
   <thead>
@@ -244,18 +244,18 @@ OKLCH conversion uses the exact OKLab matrices (Björn Ottosson 2020). Sanity-ch
 
 <h2>Implementation sketch</h2>
 <pre style="background:#1a1a1a;padding:1rem;font-size:0.78rem;overflow-x:auto;">
-/* src/styles.css — two-token split */
+/* src/styles.css - two-token split */
 --destructive:          oklch(0.65 0.2 26);   /* text-destructive / border / tints */
 --destructive-fill:     oklch(0.50 0.2 26);   /* bg-destructive button fill        */
 --destructive-foreground: oklch(0.97 0.01 26); /* unchanged                         */
 
-/* button.tsx — destructive variant */
+/* button.tsx - destructive variant */
 "border-destructive-fill bg-destructive-fill text-destructive-foreground hover:bg-destructive-fill/90"
 
-/* badge.tsx — same swap */
+/* badge.tsx - same swap */
 "border-transparent bg-destructive-fill text-destructive-foreground"
 </pre>
-<p>All <code>text-destructive</code>, <code>border-destructive/30</code>, <code>bg-destructive/10</code>, and <code>bg-destructive/20</code> tint usages keep the current token name — only the fill surfaces need the new token.</p>
+<p>All <code>text-destructive</code>, <code>border-destructive/30</code>, <code>bg-destructive/10</code>, and <code>bg-destructive/20</code> tint usages keep the current token name - only the fill surfaces need the new token.</p>
 
 </body>
 </html>

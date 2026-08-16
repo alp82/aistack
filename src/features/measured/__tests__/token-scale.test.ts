@@ -2,7 +2,7 @@
  * Making a token count tangible (#80's deck, built by #81).
  *
  * The expected values here are the ones #80 published while the owner judged
- * the cards — 4,709,720,000 real tokens reading as 39,000 novels, 72% of
+ * the cards - 4,709,720,000 real tokens reading as 39,000 novels, 72% of
  * Wikipedia, 21.2 GB and 486 hours of video. They are the specification, not a
  * recomputation of the code.
  *

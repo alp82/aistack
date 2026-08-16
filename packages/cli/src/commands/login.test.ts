@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { proposedMachineName } from "./login.js";
 
 /**
- * The machine name the CLI proposes at login — wayfinder #49 (map #29).
+ * The machine name the CLI proposes at login - wayfinder #49 (map #29).
  *
  * It is a PROPOSAL. The approval page shows it in an editable field, so the
  * user sees this string before anything is stored. That is what makes sending

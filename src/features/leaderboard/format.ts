@@ -1,5 +1,5 @@
 /**
- * Number formatting for the leaderboard, fixed to `en-US` and UTC — the same
+ * Number formatting for the leaderboard, fixed to `en-US` and UTC - the same
  * rule the chart module follows: the server cannot know a visitor's locale,
  * and a mismatch is a hydration error.
  */

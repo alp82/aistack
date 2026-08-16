@@ -1,4 +1,4 @@
-// The Codex hook file surgery — wayfinder #67 (map #60). Mirrors hook.test.ts:
+// The Codex hook file surgery - wayfinder #67 (map #60). Mirrors hook.test.ts:
 // idempotent install, surgical remove, never rewrite unparseable JSON. Plus
 // the two Codex-only properties: the self-detaching command text and the
 // trust-hash check.
@@ -29,7 +29,7 @@ afterEach(() => {
 });
 
 describe("the command text", () => {
-	test("self-detaches and exits — Codex does not honor async (#65 §6)", () => {
+	test("self-detaches and exits - Codex does not honor async (#65 §6)", () => {
 		expect(CODEX_HOOK_COMMAND).toContain("setsid nohup");
 		expect(CODEX_HOOK_COMMAND).toContain("&'");
 		expect(CODEX_HOOK_COMMAND).toContain(">/dev/null 2>&1");
@@ -112,7 +112,7 @@ describe("removeCodexAutoSyncHook", () => {
 		expect(codexAutoSyncHookInstalled(file)).toBe(false);
 	});
 
-	test("a missing file is success — the goal state holds", () => {
+	test("a missing file is success - the goal state holds", () => {
 		expect(removeCodexAutoSyncHook(file).ok).toBe(true);
 	});
 });

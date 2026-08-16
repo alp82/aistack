@@ -5,7 +5,7 @@ import { fmtDay, fmtShare, MONO_LABEL, readingsLine } from "./copy";
 import type { ModelTrail } from "./history";
 
 /**
- * Where the tokens went — one row per model, locked as variant I by #80.
+ * Where the tokens went - one row per model, locked as variant I by #80.
  *
  * THE CURRENT SHARE IS THE LOUDEST THING IN THE ROW: a solid, full-color bar.
  * History recedes to a single hatched notch marking where that share stood at
@@ -122,7 +122,7 @@ function WasHereNotch({ at }: { at: number }) {
  *
  * The sentence carries no arithmetic on purpose. "More Opus 5 than before" is
  * what a reader wants; the exact drift is already on the row, and repeating it
- * here only makes the card read like a report. Public voice throughout — the
+ * here only makes the card read like a report. Public voice throughout - the
  * reader is a stranger, so it is "this machine", never "you".
  */
 function TrailCard({

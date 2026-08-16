@@ -1,4 +1,4 @@
-/** A project staged in create mode (no stackId yet) — metadata only. */
+/** A project staged in create mode (no stackId yet) - metadata only. */
 type StagedProject = {
 	name: string;
 	description?: string;
@@ -6,7 +6,7 @@ type StagedProject = {
 	tags?: string[];
 };
 
-/** A project shaped for the presentational ProjectsManager — id-keyed, Convex-free. */
+/** A project shaped for the presentational ProjectsManager - id-keyed, Convex-free. */
 export type ManagerProject = {
 	id: string;
 	name: string;

@@ -20,7 +20,7 @@ crons.interval(
 )
 
 // Hourly device-code session cleanup (#52). `authStart` is unauthenticated and
-// inserts one 15-minute row per call, and nothing collected them — so this is
+// inserts one 15-minute row per call, and nothing collected them - so this is
 // the unbounded-growth half of the login path, which a rate limit alone does
 // not close. It also GCs the machine name an abandoned login left behind.
 crons.interval(

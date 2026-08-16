@@ -11,12 +11,12 @@ import {
 } from "../../../convex/lib/cliScopes";
 
 /**
- * Linked machines — the revoke surface (#49).
+ * Linked machines - the revoke surface (#49).
  *
  * ACCOUNT-scoped, not stack-scoped, and that is the reason it is its own page
  * rather than a section on `/stacks/{slug}/changes`. `approveSession` allows a
  * machine to link without picking a stack, so a per-stack list would leave those
- * tokens with no page to appear on and therefore no way to revoke them — a
+ * tokens with no page to appear on and therefore no way to revoke them - a
  * revoke surface with a class of unrevokeable credentials is not one.
  *
  * Revoking DELETES the row. There is no revoked state to render, because a
@@ -42,7 +42,7 @@ export function relativeDay(ts: number, now: number): string {
 /**
  * The expiry line.
  *
- * The 90-day TTL SLIDES — every successful request pushes it out — so for a
+ * The 90-day TTL SLIDES - every successful request pushes it out - so for a
  * machine in regular use this date never arrives. Saying "expires in 90 days"
  * would therefore be a promise the system does not keep, which is exactly why
  * revoke exists. The copy says what is true instead.
@@ -57,13 +57,13 @@ export function expiryLabel(expiresAt: number, now: number): string {
  * What this machine may do, in plain words (#52).
  *
  * Every token is minted with both scopes today, so this line reads the same on
- * every row — and it is still worth printing, because the page tells the user
+ * every row - and it is still worth printing, because the page tells the user
  * what a machine can reach and "everything the CLI does" is the honest answer
  * rather than an absent one.
  */
 export function scopeLine(scopes: CliTokenScope[]): string {
 	const labels = scopes.map((s) => CLI_SCOPE_LABELS[s]).filter(Boolean);
-	if (labels.length === 0) return "Cannot do anything — revoke it";
+	if (labels.length === 0) return "Cannot do anything; revoke it";
 	if (labels.length === 1) return `Can ${labels[0]}`;
 	return `Can ${labels.slice(0, -1).join(", ")} and ${labels.at(-1)}`;
 }
@@ -157,7 +157,7 @@ export function MachinesPage() {
 								<p className="mt-1 font-mono text-xs text-fg-muted">
 									{m.stack
 										? `Publishes to ${m.stack.name}`
-										: "Not linked to a stack — it cannot publish"}
+										: "Not linked to a stack, so it cannot publish"}
 								</p>
 								<p className="mt-1 font-mono text-xs text-fg-muted">
 									{scopeLine(m.scopes)}

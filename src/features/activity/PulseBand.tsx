@@ -3,7 +3,7 @@ import type { Band } from "./feed";
 import { fmtCount, fmtTokens, liveDays, MONO_LABEL } from "./feed";
 
 /**
- * The measured header of `/activity` — variant E1, locked in #84 over four
+ * The measured header of `/activity` - variant E1, locked in #84 over four
  * rounds, carried onto the page by #96, and PAGE-ONLY since #147: the landing
  * now opens with `PulseHero`, so the landing-only feed rows and footer left
  * with it and the `variant` prop is gone.
@@ -18,17 +18,17 @@ import { fmtCount, fmtTokens, liveDays, MONO_LABEL } from "./feed";
  * who reads only the big row learns how much real work these machines carry,
  * and never has to care that a sync is the mechanism that reported it.
  *
- * RULE BUDGET — ONE horizontal line inside the band, the one across the tile
+ * RULE BUDGET - ONE horizontal line inside the band, the one across the tile
  * tops. Everything below is separated by space.
  *
  * QUIET IS NOT ZERO. With no sync in the window every measured tile renders an
  * em dash. A row of zeroes reads as a broken site rather than a quiet one. All
- * four tiles take the SAME guard — the token tile once tested its own value,
+ * four tiles take the SAME guard - the token tile once tested its own value,
  * so it read as quiet whenever the number happened to be zero.
  *
  * ALL FOUR TILES ARE LEVELS (#128, built in #129). The token tile carries no
  * sign and may fall. It used to print a movement with a `+`, summed over the
- * risers only, which no true sentence described — and it sat above rows that
+ * risers only, which no true sentence described - and it sat above rows that
  * are movements and could point the other way.
  */
 
@@ -124,25 +124,25 @@ export function PulseBand({ band }: { readonly band: Band }) {
 							value={String(totals.updates)}
 							label={totals.updates === 1 ? "stack update" : "stack updates"}
 						/>
-						<Fact value={quiet ? "—" : String(usage.models)} label="models" />
+						<Fact value={quiet ? "-" : String(usage.models)} label="models" />
 					</span>
 				</div>
 
 				<div className="grid grid-cols-2 gap-x-8 gap-y-12 md:grid-cols-4">
 					<Stat
-						value={quiet ? "—" : fmtTokens(usage.tokens)}
+						value={quiet ? "-" : fmtTokens(usage.tokens)}
 						label="tokens measured"
 						accent
 					/>
 					<Stat
-						value={quiet ? "—" : fmtCount(usage.sessions)}
+						value={quiet ? "-" : fmtCount(usage.sessions)}
 						label="sessions"
 					/>
 					<Stat
-						value={quiet ? "—" : fmtCount(usage.projects)}
+						value={quiet ? "-" : fmtCount(usage.projects)}
 						label="projects"
 					/>
-					<Stat value={quiet ? "—" : fmtCount(usage.tools)} label="tools" />
+					<Stat value={quiet ? "-" : fmtCount(usage.tools)} label="tools" />
 				</div>
 			</div>
 		</section>

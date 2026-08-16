@@ -110,9 +110,9 @@ function findToggleForProject(name: string) {
 // reference on every access, so spies cannot be keyed by reference identity; and
 // a cumulative per-call counter drifts whenever the component re-renders between
 // mount and the user action. Each test below exercises exactly one mutation, so
-// returning a single spy from every useMutation call is sufficient — mirroring
+// returning a single spy from every useMutation call is sufficient - mirroring
 // the convention in
-// features/stack-editor/components/__tests__/projects-step.test.tsx — and the
+// features/stack-editor/components/__tests__/projects-step.test.tsx - and the
 // argument assertions (toHaveBeenCalledWith) remain exact. We use
 // mockImplementation(() => spy) rather than mockReturnValue(spy) so the mock's
 // return type stays loose enough for tsc (a bare vi.fn() lacks the
@@ -1067,7 +1067,7 @@ describe("ProjectsSection – Edit Submit", () => {
 		const editBtn = screen.getByRole("button", { name: /^edit$/i });
 		fireEvent.click(editBtn);
 
-		// Name is seeded; do not change it — just submit
+		// Name is seeded; do not change it - just submit
 		const saveBtn = screen.getByRole("button", { name: /^save$/i });
 		fireEvent.click(saveBtn);
 
@@ -1143,7 +1143,7 @@ describe("ProjectsSection – Edit Submit", () => {
 		const nameInput = screen.getByDisplayValue("My Project");
 		fireEvent.change(nameInput, { target: { value: "" } });
 
-		// Attempt to click save — button is disabled; even if forced, handleSubmit guards
+		// Attempt to click save - button is disabled; even if forced, handleSubmit guards
 		const saveBtn = screen.getByRole("button", { name: /^save$/i });
 		// Fire click directly to exercise the handleSubmit guard
 		fireEvent.click(saveBtn);
@@ -1186,7 +1186,7 @@ describe("ProjectsSection – Dialog mode-switch without leakage", () => {
 		const newBtn = screen.getByRole("button", { name: /^new project$/i });
 		fireEvent.click(newBtn);
 
-		// The name field must be empty — not seeded with the prior edit's project name
+		// The name field must be empty - not seeded with the prior edit's project name
 		const dialog = screen.getByRole("dialog");
 		const nameInput = within(dialog).getByRole("textbox", { name: /name/i });
 		expect(nameInput).toHaveValue("");
@@ -1233,7 +1233,7 @@ describe("ProjectsSection – Dialog mode-switch without leakage", () => {
 describe("ProjectsSection – Non-reorderable keyboard safety", () => {
 	// TC-KBD-01 (GAP-6): visitor + 2 projects → no reorder handles; pressing ArrowUp/Down on
 	// the accordion toggle fires no reorderProjects call and causes no crash.
-	it("TC-KBD-01: visitor with 2 projects — ArrowDown on toggle does not call reorderProjects", async () => {
+	it("TC-KBD-01: visitor with 2 projects - ArrowDown on toggle does not call reorderProjects", async () => {
 		const reorderSpy = vi.fn().mockResolvedValue(null);
 		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([PROJECT_A, PROJECT_B]);
@@ -1251,7 +1251,7 @@ describe("ProjectsSection – Non-reorderable keyboard safety", () => {
 
 	// TC-KBD-02 (GAP-6): owner + 1 project → no reorder handles; pressing ArrowUp/Down on
 	// the accordion toggle fires no reorderProjects call and causes no crash.
-	it("TC-KBD-02: owner with 1 project — ArrowDown/ArrowUp on toggle does not call reorderProjects", async () => {
+	it("TC-KBD-02: owner with 1 project - ArrowDown/ArrowUp on toggle does not call reorderProjects", async () => {
 		const reorderSpy = vi.fn().mockResolvedValue(null);
 		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([PROJECT_A]);
@@ -1278,7 +1278,7 @@ describe("ProjectsSection – Keyboard reorder while delete in flight", () => {
 	// We assert only that both mutations fire with consistent args, not UI state.
 	// A single shared spy is used (same as other MUT tests); both calls are verified
 	// via toHaveBeenCalledWith assertions covering the expected arg shapes.
-	it("TC-KBD2-01: reorder fires while delete confirm is in flight — both mutations called with consistent args", async () => {
+	it("TC-KBD2-01: reorder fires while delete confirm is in flight - both mutations called with consistent args", async () => {
 		let resolveDelete!: () => void;
 		const deletePromise = new Promise<null>((resolve) => {
 			resolveDelete = () => resolve(null);
@@ -1303,7 +1303,7 @@ describe("ProjectsSection – Keyboard reorder while delete in flight", () => {
 		const deleteBtn = screen.getByRole("button", { name: /delete/i });
 		fireEvent.click(deleteBtn);
 
-		// Confirm delete — starts the in-flight delete promise
+		// Confirm delete - starts the in-flight delete promise
 		const confirmDialog = await screen.findByRole("dialog");
 		const confirmBtn = within(confirmDialog).getByRole("button", {
 			name: /^delete$/i,

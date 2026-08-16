@@ -9,7 +9,7 @@ import { MachinesPage } from "@/features/settings/MachinesPage";
 import { seoMeta } from "@/lib/seo";
 
 /**
- * `/settings/machines` — the revoke surface for CLI tokens (#49).
+ * `/settings/machines` - the revoke surface for CLI tokens (#49).
  *
  * The gate is plain authentication rather than an owner check on some other
  * document: `cliTokens.listByUser` is keyed on the signed-in identity, so the

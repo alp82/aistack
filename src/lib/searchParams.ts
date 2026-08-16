@@ -53,7 +53,7 @@ type NavigateFn = ReturnType<typeof useNavigate>;
  * any `resetPageKeys` key (and does not set `page` explicitly), `page` resets
  * to 1 so changing a filter/sort/query starts at the first page.
  *
- * `resetScroll: false` keeps the viewport in place on navigation — for sections
+ * `resetScroll: false` keeps the viewport in place on navigation - for sections
  * below the fold (e.g. landing Featured Stacks) where jumping to the page top
  * would lose the user's place.
  */

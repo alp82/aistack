@@ -14,19 +14,19 @@ import { ADMIN_EMAILS } from './lib/admin'
 
 const modules = import.meta.glob('./**/*.{js,ts}')
 
-// Ensure RESEND_API_KEY is absent for every test — convexTest runs in the
+// Ensure RESEND_API_KEY is absent for every test - convexTest runs in the
 // same process as the test runner, so process.env mutations are visible.
 beforeEach(() => {
   delete process.env.RESEND_API_KEY
 })
 
 // ---------------------------------------------------------------------------
-// GROUP Q — sendBroadcast
+// GROUP Q - sendBroadcast
 // ---------------------------------------------------------------------------
 
-describe('GROUP Q — sendBroadcast', () => {
+describe('GROUP Q - sendBroadcast', () => {
   // TC-Q-01: alreadySent guard fires for "waitlist-launch" without any
-  // waitlist rows and without an API key — never reaches env/DB checks.
+  // waitlist rows and without an API key - never reaches env/DB checks.
   test('TC-Q-01: sendBroadcast("waitlist-launch") returns alreadySent:true, success:false; does not throw', async () => {
     const t = convexTest(schema, modules)
     const asAdmin = t.withIdentity({ tokenIdentifier: 'convex|admin', email: ADMIN_EMAILS[0] })
@@ -88,7 +88,7 @@ describe('GROUP Q — sendBroadcast', () => {
     }
   })
 
-  // TC-Q-05: seeding waitlist rows does not change the "waitlist-launch" outcome —
+  // TC-Q-05: seeding waitlist rows does not change the "waitlist-launch" outcome -
   // the alreadySent guard fires before any DB enumeration.
   test('TC-Q-05: sendBroadcast("waitlist-launch") with seeded waitlist rows still returns alreadySent:true', async () => {
     const t = convexTest(schema, modules)
@@ -140,15 +140,15 @@ describe('GROUP Q — sendBroadcast', () => {
 })
 
 // ---------------------------------------------------------------------------
-// GROUP R — sendTestEmail
+// GROUP R - sendTestEmail
 // ---------------------------------------------------------------------------
 
-describe('GROUP R — sendTestEmail', () => {
+describe('GROUP R - sendTestEmail', () => {
   // TC-R-01: no identity → auth guard fires first.
   test('TC-R-01: sendTestEmail("waitlist-launch") with no identity returns "Not authenticated" failure', async () => {
     const t = convexTest(schema, modules)
 
-    // Call without withIdentity — unauthenticated
+    // Call without withIdentity - unauthenticated
     const result = await t.action(api.email.sendTestEmail, { broadcastId: 'waitlist-launch' })
 
     expect(result.success).toBe(false)
@@ -254,46 +254,46 @@ describe('GROUP R — sendTestEmail', () => {
 })
 
 // ---------------------------------------------------------------------------
-// GROUP S — mergeAudience
+// GROUP S - mergeAudience
 // ---------------------------------------------------------------------------
 
-describe('GROUP S — mergeAudience', () => {
-  // TC-S-01: disjoint lists — waitlist-first order preserved.
+describe('GROUP S - mergeAudience', () => {
+  // TC-S-01: disjoint lists - waitlist-first order preserved.
   test('TC-S-01: mergeAudience(["a@x.com"], ["b@x.com"]) → ["a@x.com","b@x.com"]', () => {
     const result = mergeAudience(['a@x.com'], ['b@x.com'])
 
     expect(result).toEqual(['a@x.com', 'b@x.com'])
   })
 
-  // TC-S-02: intra-list dedupe — duplicate within a single list collapses.
+  // TC-S-02: intra-list dedupe - duplicate within a single list collapses.
   test('TC-S-02: mergeAudience(["a@x.com","a@x.com"]) → ["a@x.com"]', () => {
     const result = mergeAudience(['a@x.com', 'a@x.com'])
 
     expect(result).toEqual(['a@x.com'])
   })
 
-  // TC-S-03: inter-list overlap — b appears in both lists; first occurrence wins, order stable.
+  // TC-S-03: inter-list overlap - b appears in both lists; first occurrence wins, order stable.
   test('TC-S-03: mergeAudience(["a@x.com","b@x.com"], ["b@x.com","c@x.com"]) → ["a@x.com","b@x.com","c@x.com"]', () => {
     const result = mergeAudience(['a@x.com', 'b@x.com'], ['b@x.com', 'c@x.com'])
 
     expect(result).toEqual(['a@x.com', 'b@x.com', 'c@x.com'])
   })
 
-  // TC-S-04: case-insensitive dedupe — ADA@x.com and ada@x.com are the same address; output lowercased.
+  // TC-S-04: case-insensitive dedupe - ADA@x.com and ada@x.com are the same address; output lowercased.
   test('TC-S-04: mergeAudience(["ADA@x.com"], ["ada@x.com"]) → ["ada@x.com"]', () => {
     const result = mergeAudience(['ADA@x.com'], ['ada@x.com'])
 
     expect(result).toEqual(['ada@x.com'])
   })
 
-  // TC-S-05: inverted-order case dedupe — lowercase list first, uppercase second.
+  // TC-S-05: inverted-order case dedupe - lowercase list first, uppercase second.
   test('TC-S-05: mergeAudience(["ada@x.com"], ["ADA@X.COM"]) → ["ada@x.com"]', () => {
     const result = mergeAudience(['ada@x.com'], ['ADA@X.COM'])
 
     expect(result).toEqual(['ada@x.com'])
   })
 
-  // TC-S-06: trim before dedupe — leading/trailing whitespace stripped before comparison and output.
+  // TC-S-06: trim before dedupe - leading/trailing whitespace stripped before comparison and output.
   test('TC-S-06: mergeAudience(["  a@x.com  "], ["a@x.com"]) → ["a@x.com"]', () => {
     const result = mergeAudience(['  a@x.com  '], ['a@x.com'])
 
@@ -328,14 +328,14 @@ describe('GROUP S — mergeAudience', () => {
     expect(result).toEqual([])
   })
 
-  // TC-S-11: single list — entries lowercased and order kept.
+  // TC-S-11: single list - entries lowercased and order kept.
   test('TC-S-11: mergeAudience(["A@X.COM","B@X.COM"]) → ["a@x.com","b@x.com"]', () => {
     const result = mergeAudience(['A@X.COM', 'B@X.COM'])
 
     expect(result).toEqual(['a@x.com', 'b@x.com'])
   })
 
-  // TC-S-12: all members list entries are dupes of the waitlist — result is only the first (waitlist) set.
+  // TC-S-12: all members list entries are dupes of the waitlist - result is only the first (waitlist) set.
   test('TC-S-12: mergeAudience(["x@a.com","y@a.com"], ["X@A.COM","Y@A.COM","x@a.com"]) → ["x@a.com","y@a.com"]', () => {
     const result = mergeAudience(['x@a.com', 'y@a.com'], ['X@A.COM', 'Y@A.COM', 'x@a.com'])
 
@@ -353,11 +353,11 @@ describe('GROUP S — mergeAudience', () => {
 })
 
 // ---------------------------------------------------------------------------
-// GROUP T — subtractSuppressed (sync, pure)
+// GROUP T - subtractSuppressed (sync, pure)
 // ---------------------------------------------------------------------------
 
-describe('GROUP T — subtractSuppressed', () => {
-  // TC-T-01: disjoint suppressed set — all emails pass through unchanged.
+describe('GROUP T - subtractSuppressed', () => {
+  // TC-T-01: disjoint suppressed set - all emails pass through unchanged.
   test('TC-T-01: disjoint suppressed set → identity (all emails returned)', () => {
     const result = subtractSuppressed(['a@x.com', 'b@x.com'], new Set(['c@x.com']))
 
@@ -371,14 +371,14 @@ describe('GROUP T — subtractSuppressed', () => {
     expect(result).toEqual(['a@x.com', 'c@x.com'])
   })
 
-  // TC-T-03: case-insensitive removal — suppressed "ADA@x.com" removes "ada@x.com".
+  // TC-T-03: case-insensitive removal - suppressed "ADA@x.com" removes "ada@x.com".
   test('TC-T-03: suppressed "ADA@x.com" removes "ada@x.com" from emails list', () => {
     const result = subtractSuppressed(['ada@x.com', 'other@x.com'], new Set(['ADA@x.com']))
 
     expect(result).toEqual(['other@x.com'])
   })
 
-  // TC-T-04: case-insensitive removal — suppressed "ada@x.com" removes "ADA@X.COM".
+  // TC-T-04: case-insensitive removal - suppressed "ada@x.com" removes "ADA@X.COM".
   test('TC-T-04: suppressed "ada@x.com" removes "ADA@X.COM" from emails list', () => {
     const result = subtractSuppressed(['ADA@X.COM', 'other@x.com'], new Set(['ada@x.com']))
 
@@ -392,7 +392,7 @@ describe('GROUP T — subtractSuppressed', () => {
     expect(result).toEqual(['a@x.com'])
   })
 
-  // TC-T-06: order-stable — remaining addresses keep their original order.
+  // TC-T-06: order-stable - remaining addresses keep their original order.
   test('TC-T-06: result preserves original order of non-suppressed emails', () => {
     const result = subtractSuppressed(
       ['c@x.com', 'a@x.com', 'b@x.com'],
@@ -435,10 +435,10 @@ describe('GROUP T — subtractSuppressed', () => {
 })
 
 // ---------------------------------------------------------------------------
-// GROUP U — recordUnsubscribe / getUnsubscribedEmails (convexTest)
+// GROUP U - recordUnsubscribe / getUnsubscribedEmails (convexTest)
 // ---------------------------------------------------------------------------
 
-describe('GROUP U — recordUnsubscribe / getUnsubscribedEmails', () => {
+describe('GROUP U - recordUnsubscribe / getUnsubscribedEmails', () => {
   // TC-U-01: inserted email is stored lowercase.
   test('TC-U-01: insert lowercases the email address', async () => {
     const t = convexTest(schema, modules)
@@ -500,10 +500,10 @@ describe('GROUP U — recordUnsubscribe / getUnsubscribedEmails', () => {
 })
 
 // ---------------------------------------------------------------------------
-// GROUP V — suppression integration (convexTest, env-guard-bounded)
+// GROUP V - suppression integration (convexTest, env-guard-bounded)
 // ---------------------------------------------------------------------------
 
-describe('GROUP V — suppression integration', () => {
+describe('GROUP V - suppression integration', () => {
   // TC-V-01: subtractSuppressed(mergeAudience([...]), seeded suppressed set)
   // excludes the suppressed address.
   test('TC-V-01: subtractSuppressed filters seeded unsubscribed address out of merged audience', async () => {
@@ -537,7 +537,7 @@ describe('GROUP V — suppression integration', () => {
   })
 
   // TC-V-03: sendBroadcast("sync-broadcast") with no RESEND_API_KEY → env-guard failure.
-  // (Mirrors TC-Q-03 — verifies suppression path doesn't accidentally bypass env guard.)
+  // (Mirrors TC-Q-03 - verifies suppression path doesn't accidentally bypass env guard.)
   test('TC-V-03: sendBroadcast("sync-broadcast") no API key → {success:false, message contains "Email service not configured"}', async () => {
     const t = convexTest(schema, modules)
     const asAdmin = t.withIdentity({ tokenIdentifier: 'convex|admin', email: ADMIN_EMAILS[0] })
@@ -549,7 +549,7 @@ describe('GROUP V — suppression integration', () => {
   })
 
   // TC-V-04: sendTestEmail("sync-broadcast") with identity, no API key → env-guard failure
-  // (not a suppression error — suppression must not surface before env guard).
+  // (not a suppression error - suppression must not surface before env guard).
   test('TC-V-04: sendTestEmail("sync-broadcast") with identity, no key → env-guard failure, not suppression error', async () => {
     const t = convexTest(schema, modules)
     const asAdmin = t.withIdentity({ tokenIdentifier: 'convex|admin', email: ADMIN_EMAILS[0] })
@@ -567,10 +567,10 @@ describe('GROUP V — suppression integration', () => {
 })
 
 // ---------------------------------------------------------------------------
-// GROUP W — template render (vitest + @react-email/render)
+// GROUP W - template render (vitest + @react-email/render)
 // ---------------------------------------------------------------------------
 
-describe('GROUP W — template render', () => {
+describe('GROUP W - template render', () => {
   // TC-W-00: UNSUBSCRIBE_PLACEHOLDER must be exported and equal '%%UNSUBSCRIBE_URL%%'.
   // Without this guard, TC-W-05/06 degrade to `.not.toContain("undefined")` which passes
   // vacuously. This test ensures the whole group is honestly RED until the export exists.
@@ -612,7 +612,7 @@ describe('GROUP W — template render', () => {
     expect(html).toContain(UNSUBSCRIBE_PLACEHOLDER)
   })
 
-  // TC-W-05: FeatureUpdateEmail with prop — placeholder is GONE (replaced by real URL).
+  // TC-W-05: FeatureUpdateEmail with prop - placeholder is GONE (replaced by real URL).
   test('TC-W-05: FeatureUpdateEmail(unsubscribeUrl) does NOT contain the placeholder', async () => {
     const url = 'https://aistack.to/unsubscribe?token=ABC'
     const html = await render(FeatureUpdateEmail({ unsubscribeUrl: url }))
@@ -620,7 +620,7 @@ describe('GROUP W — template render', () => {
     expect(html).not.toContain(UNSUBSCRIBE_PLACEHOLDER)
   })
 
-  // TC-W-06: WaitlistLaunchEmail with prop — placeholder is GONE (replaced by real URL).
+  // TC-W-06: WaitlistLaunchEmail with prop - placeholder is GONE (replaced by real URL).
   test('TC-W-06: WaitlistLaunchEmail(unsubscribeUrl) does NOT contain the placeholder', async () => {
     const url = 'https://aistack.to/unsubscribe?token=XYZ'
     const html = await render(WaitlistLaunchEmail({ unsubscribeUrl: url }))
@@ -657,7 +657,7 @@ describe('GROUP W — template render', () => {
     expect(finalHtml).not.toContain(UNSUBSCRIBE_PLACEHOLDER)
   })
 
-  // TC-W-09: SyncBroadcastEmail default (no prop) contains the placeholder —
+  // TC-W-09: SyncBroadcastEmail default (no prop) contains the placeholder -
   // the send-time guard refuses the template without it.
   test('TC-W-09: SyncBroadcastEmail() with no prop contains UNSUBSCRIBE_PLACEHOLDER', async () => {
     const html = await render(SyncBroadcastEmail({}))
@@ -665,7 +665,7 @@ describe('GROUP W — template render', () => {
     expect(html).toContain(UNSUBSCRIBE_PLACEHOLDER)
   })
 
-  // TC-W-10: SyncBroadcastEmail with prop — placeholder replaced by the URL.
+  // TC-W-10: SyncBroadcastEmail with prop - placeholder replaced by the URL.
   test('TC-W-10: SyncBroadcastEmail(unsubscribeUrl) renders URL, placeholder is gone', async () => {
     const url = 'https://aistack.to/api/email/unsubscribe?token=TESTTOKEN'
     const html = await render(SyncBroadcastEmail({ unsubscribeUrl: url }))
@@ -677,9 +677,9 @@ describe('GROUP W — template render', () => {
 })
 
 // ---------------------------------------------------------------------------
-// GROUP X — getBroadcastRecipientCount (convexTest)
+// GROUP X - getBroadcastRecipientCount (convexTest)
 // Tested via the "waitlist" audience (waitlist-launch) which resolves from
-// ctx.db only — the "waitlist+members" path enumerates the better-auth
+// ctx.db only - the "waitlist+members" path enumerates the better-auth
 // component, which convexTest does not mount (covered by manual/integration).
 // ---------------------------------------------------------------------------
 
@@ -700,7 +700,7 @@ async function seedWaitlist(
   })
 }
 
-describe('GROUP X — getBroadcastRecipientCount', () => {
+describe('GROUP X - getBroadcastRecipientCount', () => {
   // TC-X-01: unknown broadcast id → 0.
   test('TC-X-01: unknown broadcastId → 0', async () => {
     const t = convexTest(schema, modules)

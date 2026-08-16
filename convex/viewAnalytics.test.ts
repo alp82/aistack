@@ -94,7 +94,7 @@ test('the query takes no target argument, so it cannot be pointed at anyone', as
   const { stackId } = await seedCreator(t, { userId: 'victim', slug: 'victim' })
   const asStranger = t.withIdentity({ tokenIdentifier: 'convex|stranger' })
   await expect(
-    // @ts-expect-error — proving the argument does not exist
+    // @ts-expect-error - proving the argument does not exist
     asStranger.query(api.viewAnalytics.mine, { targetId: stackId }),
   ).rejects.toThrow()
 })
@@ -363,11 +363,11 @@ test('an owner with nothing counted reports no first day at all', async () => {
 })
 
 // ---------------------------------------------------------------------------
-// The site-wide reader (#132) — the guard
+// The site-wide reader (#132) - the guard
 //
 // The `global` counter belongs to nobody, so its reader is gated on
 // `isAdmin(ctx)` INSIDE the query. A client-side `/admin` route guard protects
-// nothing — any authed client can call a public function directly.
+// nothing - any authed client can call a public function directly.
 // ---------------------------------------------------------------------------
 
 test('siteWide: a signed-out caller gets nothing', async () => {
@@ -393,7 +393,7 @@ test('siteWide: an admin gets an answer', async () => {
 })
 
 // ---------------------------------------------------------------------------
-// The site-wide reader — what it counts
+// The site-wide reader - what it counts
 // ---------------------------------------------------------------------------
 
 function asAdminOn(t: ReturnType<typeof convexTest>) {

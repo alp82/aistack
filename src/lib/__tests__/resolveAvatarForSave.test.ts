@@ -78,7 +78,7 @@ describe("resolveAvatarForSave", () => {
 });
 
 // -------------------------------------------------------------------------
-// TC-HS-01: MANUAL — handleSave dataUrl→upload integration
+// TC-HS-01: MANUAL - handleSave dataUrl→upload integration
 // -------------------------------------------------------------------------
 
 it.skip("TC-HS-01 (MANUAL): handleSave with pendingAvatar {kind:'dataUrl'} calls uploadStagedAvatar and passes avatarStorageId to stacks.update", () => {

@@ -1,4 +1,4 @@
-// The detection primitive — wayfinder #101 (map #76), decided in #100.
+// The detection primitive - wayfinder #101 (map #76), decided in #100.
 //
 // The property under test: recency, not existence. A root full of old files is
 // the exact machine that used to scan, publish, ask and hook for a harness its

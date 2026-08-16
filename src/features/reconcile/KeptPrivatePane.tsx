@@ -5,7 +5,7 @@ import { MONO_LABEL, PBtn } from "./parts";
 import type { KeptPrivateName, KeptPrivateRun } from "./useKeptPrivate";
 
 /**
- * The third secondary view — wayfinder #51, building the grilling #48.
+ * The third secondary view - wayfinder #51, building the grilling #48.
  *
  * It sits beside `Added` and `Hidden`, which already live OUTSIDE the progress
  * meter. That is what makes room for it: these names are not work the meter is
@@ -14,7 +14,7 @@ import type { KeptPrivateName, KeptPrivateRun } from "./useKeptPrivate";
  *
  * The whole view exists because of one property #44 made true and #48 had to
  * pay for: a kept-private name never crosses the wire, so ticking names on the
- * web is not a placement decision — it is a decision to upload the names the
+ * web is not a placement decision - it is a decision to upload the names the
  * owner has not agreed to publish. The switch is the price, and it is rendered
  * first, above the names, so it is read before it matters.
  */
@@ -108,7 +108,7 @@ export function KeptPrivatePane({
 
 			{empty ? (
 				<p className="border border-stroke-subtle p-6 text-sm text-fg-secondary">
-					{/* A never-synced stack is not an empty page (#43) — it has an
+					{/* A never-synced stack is not an empty page (#43) - it has an
 					    instruction, not a verdict. */}
 					{hasSnapshot ? KEPT_PRIVATE.EMPTY : KEPT_PRIVATE.NEVER_SYNCED}
 				</p>

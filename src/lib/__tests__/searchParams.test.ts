@@ -6,7 +6,7 @@
  *   - coerceEnum: member / non-member / wrong type / case-sensitivity
  *   - coerceString: string passthrough including empty string; non-string fallback
  *   - coercePage: integer ≥1 passthrough; fractions, negatives, non-numeric → 1
- *     (PINNED: 3.7 → 1, "3.7" → 1, "  2  " → 2 — Number() trims whitespace)
+ *     (PINNED: 3.7 → 1, "3.7" → 1, "  2  " → 2 - Number() trims whitespace)
  *   - coerceBool: true/"true"/false/"false" passthrough; anything else → fallback
  *   - makeSearchUpdater: navigate called with replace:true; patch merges over prev;
  *     page resets when a resetPageKey is touched (and "page" not explicit);
@@ -109,7 +109,7 @@ describe("coerceString", () => {
 });
 
 // ---------------------------------------------------------------------------
-// coercePage  (PINNED rules — assert exact values)
+// coercePage  (PINNED rules - assert exact values)
 // ---------------------------------------------------------------------------
 
 describe("coercePage", () => {
@@ -137,15 +137,15 @@ describe("coercePage", () => {
 		expect(coercePage("abc")).toBe(1);
 	});
 
-	it("coerces 3.7 (float) to 1 (not an integer) — PINNED", () => {
+	it("coerces 3.7 (float) to 1 (not an integer) - PINNED", () => {
 		expect(coercePage(3.7)).toBe(1);
 	});
 
-	it('coerces "3.7" (string float) to 1 — PINNED', () => {
+	it('coerces "3.7" (string float) to 1 - PINNED', () => {
 		expect(coercePage("3.7")).toBe(1);
 	});
 
-	it('coerces "  2  " (whitespace-padded) to 2 — Number() trims — PINNED', () => {
+	it('coerces "  2  " (whitespace-padded) to 2 - Number() trims - PINNED', () => {
 		expect(coercePage("  2  ")).toBe(2);
 	});
 

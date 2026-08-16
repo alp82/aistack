@@ -5,7 +5,7 @@ import { authPoll, authStart, setAutoSync, stackGet } from "./api";
  * The two statuses #52 introduced, as the user reads them.
  *
  * A bare `429` or `403` in a terminal tells nobody what to do next. These
- * assert the sentence, not the number, because the sentence is the feature —
+ * assert the sentence, not the number, because the sentence is the feature -
  * the rate limit and the scope check are both invisible until one fires.
  */
 
@@ -99,7 +99,7 @@ describe("setAutoSync", () => {
 		});
 	});
 
-	test("a revoke sends no frequency — off keeps no schedule", async () => {
+	test("a revoke sends no frequency - off keeps no schedule", async () => {
 		const fetchMock = vi.fn(() =>
 			Promise.resolve(
 				new Response(
@@ -130,7 +130,7 @@ describe("setAutoSync", () => {
 		);
 	});
 
-	test("409 carries the server's reason — the token has no stack", async () => {
+	test("409 carries the server's reason - the token has no stack", async () => {
 		vi.stubGlobal(
 			"fetch",
 			vi.fn(() =>

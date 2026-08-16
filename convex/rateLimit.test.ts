@@ -11,7 +11,7 @@ const WINDOW_MS = 60_000
 const MAX_REQUESTS = 60
 
 // ---------------------------------------------------------------------------
-// Group RL — checkApiRateLimit mutation
+// Group RL - checkApiRateLimit mutation
 // ---------------------------------------------------------------------------
 
 test('TC-RL-01: first call for a fresh IP returns allowed:true, remaining:59', async () => {
@@ -57,7 +57,7 @@ test('TC-RL-03: 61st call same IP within window returns allowed:false, remaining
   expect(result.retryAfterSeconds).toBeGreaterThan(0)
 })
 
-test('TC-RL-04: two distinct IPs are independent — exhausting one does not affect the other', async () => {
+test('TC-RL-04: two distinct IPs are independent - exhausting one does not affect the other', async () => {
   const t = convexTest(schema, modules)
   const ipA = '1.2.3.4'
   const ipB = '5.6.7.8'
@@ -88,7 +88,7 @@ test('TC-RL-05: same ip string is a shared bucket that saturates and rejects (ge
   expect(result.allowed).toBe(false)
 })
 
-test('TC-RL-06: expired window row resets — allowed:true, remaining:59 (lazy reset)', async () => {
+test('TC-RL-06: expired window row resets - allowed:true, remaining:59 (lazy reset)', async () => {
   const t = convexTest(schema, modules)
   const ip = '10.0.0.6'
 
@@ -115,12 +115,12 @@ test('TC-RL-07: cleanupExpiredRateLimits deletes expired rows and leaves live ro
   await t.run(async (ctx: MutationCtx) => {
     await ctx.db.insert('apiRateLimits', {
       key: 'ip:expired',
-      windowStart: Date.now() - (WINDOW_MS + 1_000), // 61 seconds ago — expired
+      windowStart: Date.now() - (WINDOW_MS + 1_000), // 61 seconds ago - expired
       count: 5,
     })
     await ctx.db.insert('apiRateLimits', {
       key: 'ip:live',
-      windowStart: Date.now(), // just started — live
+      windowStart: Date.now(), // just started - live
       count: 3,
     })
   })

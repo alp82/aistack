@@ -9,7 +9,7 @@ import { AnalyticsPage } from "@/features/settings/AnalyticsPage";
 import { seoMeta } from "@/lib/seo";
 
 /**
- * `/settings/analytics` — the owner-private view numbers (#86, map #76).
+ * `/settings/analytics` - the owner-private view numbers (#86, map #76).
  *
  * `/settings` is where account-scoped surfaces already live, so this is a
  * sibling of `/settings/machines` rather than a new `/dashboard`. A dashboard
@@ -18,7 +18,7 @@ import { seoMeta } from "@/lib/seo";
  *
  * The gate here is plain authentication and nothing more. `viewAnalytics.mine`
  * takes no target argument and answers for the signed-in creator alone, so the
- * privacy lives in the query — this redirect only saves a signed-out visitor a
+ * privacy lives in the query - this redirect only saves a signed-out visitor a
  * blank page.
  */
 export const Route = createFileRoute("/settings/analytics")({

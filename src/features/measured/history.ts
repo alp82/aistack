@@ -1,5 +1,5 @@
 /**
- * The living stack page's derivations — the series, read as the page reads it.
+ * The living stack page's derivations - the series, read as the page reads it.
  *
  * Wayfinder ticket #81 (map #76), building the variant I design locked by #80.
  * Three rules come from the data and not from taste:
@@ -9,7 +9,7 @@
  *      difference is days added minus days dropped. Every figure here is a level
  *      and it falls as often as it rises.
  *   2. THE ROWS ARE THE NEWEST READING'S MODELS. A model an older reading
- *      carried and the newest does not gets no row of its own — a 0% bar with a
+ *      carried and the newest does not gets no row of its own - a 0% bar with a
  *      downward arrow beside it says a listed thing went unused, and positive
  *      claims only (#40) forbids that until the adapter seam covers every
  *      harness the reader runs.
@@ -49,7 +49,7 @@ export type ModelTrail = {
 	readonly paint: string;
 	/** Share of tokens at the newest reading. */
 	readonly share: number;
-	/** Share at the first reading in the window — where the notch sits. */
+	/** Share at the first reading in the window - where the notch sits. */
 	readonly first: number;
 	/** Share change across the window, in percentage points. */
 	readonly driftPoints: number;
@@ -85,7 +85,7 @@ export type RankedModel = {
  *
  * THE ROWS COME FROM `models`, NOT FROM THE SERIES. The page renders whole from
  * the current reading and the series only adds history to it, so a page whose
- * history has not arrived yet — or a stack that has synced once — still shows
+ * history has not arrived yet - or a stack that has synced once - still shows
  * every row, with no notch and no drift.
  *
  * At most `max` rows: the palette has six validated slots and a seventh series
@@ -134,7 +134,7 @@ export function modelTrails(
 	});
 }
 
-/** The token reading at every sync — the trail behind the headline. */
+/** The token reading at every sync - the trail behind the headline. */
 export function tokenTrail(
 	points: readonly MeasuredHistoryPoint[],
 ): ChartPointInput[] {

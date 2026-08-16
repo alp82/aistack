@@ -54,7 +54,7 @@ export function VerifyEmail(props: {
 						</Section>
 
 						<Text style={styles.small}>
-							Didn't sign up? Ignore this email — no action needed.
+							Didn't sign up? Ignore this email. No action is needed.
 						</Text>
 					</Section>
 

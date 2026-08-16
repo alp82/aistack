@@ -1,4 +1,4 @@
-// "Is this harness alive?" — the detection primitive behind every adapter's
+// "Is this harness alive?" - the detection primitive behind every adapter's
 // `detect()` (#101, decided in #100).
 //
 // A directory that merely exists proves nothing: a Claude Code install from
@@ -7,7 +7,7 @@
 // its owner to connect a harness they had stopped using.
 //
 // So detection asks the same question the scan asks: did this harness write
-// anything inside the rolling window? It answers with `stat` calls only —
+// anything inside the rolling window? It answers with `stat` calls only -
 // nothing is opened, nothing is parsed. A live harness answers on the first
 // recent file it meets, which is usually the first file it meets. A dead
 // harness pays a full walk of stats to say no, which is the cost the old
@@ -31,7 +31,7 @@ export type RecencyOptions = {
 /**
  * True when any file under `roots` whose basename passes `matches` was modified
  * at or after `sinceMs`. Unreadable directories and files are silence, not an
- * error — the same fail-quiet rule the scanners hold, and for the same reason:
+ * error - the same fail-quiet rule the scanners hold, and for the same reason:
  * the error object carries the absolute path.
  */
 export async function hasRecentFile(
@@ -69,7 +69,7 @@ export async function hasRecentFile(
 				const st = await statFile(full);
 				if (st.mtimeMs >= sinceMs) return true;
 			} catch {
-				/* unreadable file — it proves nothing either way */
+				/* unreadable file - it proves nothing either way */
 			}
 		}
 	}

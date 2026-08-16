@@ -2,7 +2,7 @@
 //
 // Events are written at the moment things happen, inside the same mutation as
 // the thing they record, so a failed write cannot produce a phantom event.
-// Nothing here reads the table — the feed's read path is a separate ticket.
+// Nothing here reads the table - the feed's read path is a separate ticket.
 
 import type { Infer } from 'convex/values'
 import type { Id } from './_generated/dataModel'
@@ -61,7 +61,7 @@ const CATALOG_TABLE = {
  * The stored name is the name at the moment of the change, which is both the
  * cheap answer (no per-row catalog lookup on the read path) and the correct
  * one: the feed is a historical record. A slug with no catalog row keeps the
- * slug as its name rather than dropping the atom — a change the owner made is
+ * slug as its name rather than dropping the atom - a change the owner made is
  * still a change that happened.
  */
 async function toAtoms(

@@ -41,11 +41,11 @@ type ChartRow = {
 /**
  * How much furniture a chart draws.
  *
- * `none` — one reading. A line needs two points, so a single reading draws one
+ * `none` - one reading. A line needs two points, so a single reading draws one
  * dot with its value beside it and no axes at all.
- * `sparse` — two to four readings. Line, area and a dot per reading, ticks only
+ * `sparse` - two to four readings. Line, area and a dot per reading, ticks only
  * on the days that carry data, and no grid.
- * `full` — five or more. The usual chart.
+ * `full` - five or more. The usual chart.
  */
 type ChartDensity = "empty" | "none" | "sparse" | "full";
 
@@ -100,7 +100,7 @@ function toRows(series: readonly ChartSeries[]): ChartRow[] {
  * Keep the first `CHART_SLOT_COUNT - 1` series and sum the rest into "Other".
  *
  * A ninth series is never a generated hue. Folding is a sum per timestamp,
- * which is honest for every measure this site charts — tokens, dollars, views,
+ * which is honest for every measure this site charts - tokens, dollars, views,
  * sessions are all additive. Do not use it for a rate or an average.
  */
 function foldToOther(

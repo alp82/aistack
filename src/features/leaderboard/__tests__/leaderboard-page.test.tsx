@@ -20,7 +20,7 @@ function setup(b = board()) {
 }
 
 describe("the trend", () => {
-	it("is null below two readings — one dot is not a trend", () => {
+	it("is null below two readings - one dot is not a trend", () => {
 		expect(trendOf([{ at: 1, tokens: 100 }])).toBeNull();
 		expect(trendOf([])).toBeNull();
 	});
@@ -86,7 +86,7 @@ describe("the board", () => {
 		expect(screen.getAllByText(/−20%/).length).toBeGreaterThan(0);
 	});
 
-	it("colors a fall like a rise — the sign carries the direction (#129)", () => {
+	it("colors a fall like a rise - the sign carries the direction (#129)", () => {
 		setup();
 		// Anchored: the drawn cell states the percentage alone, the narrow
 		// layout states it inside a sentence.
@@ -123,7 +123,7 @@ describe("the board", () => {
 		setup(board({ rows: [], livingCount: 0 }));
 		expect(
 			screen.getByText(
-				"Nothing to rank — every measured stack has been quiet for more than seven days.",
+				"Nothing to rank - every measured stack has been quiet for more than seven days.",
 			),
 		).toBeInTheDocument();
 	});

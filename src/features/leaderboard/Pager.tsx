@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/** first · … · n-1 · n · n+1 · … · last — one line even at 50 pages. */
+/** first · … · n-1 · n · n+1 · … · last - one line even at 50 pages. */
 function pageWindow(page: number, total: number): (number | "gap")[] {
 	if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
 	const out: (number | "gap")[] = [1];

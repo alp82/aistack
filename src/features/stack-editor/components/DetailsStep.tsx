@@ -85,7 +85,7 @@ function DetailsStep({
 					guestSession && "sm:grid sm:grid-cols-[auto_1fr]",
 				)}
 			>
-				{/* Avatar — guest staging only; authed avatars live on the profile */}
+				{/* Avatar - guest staging only; authed avatars live on the profile */}
 				{guestSession && (
 					<div className="sm:row-span-3">
 						<button

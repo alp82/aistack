@@ -282,7 +282,7 @@ export function AddModelForm({
 						</div>
 					</div>
 
-					{/* Website URL — only for "Other" provider or admin edit */}
+					{/* Website URL - only for "Other" provider or admin edit */}
 					{(provider === "Other" || (isEditMode && isAdmin)) && (
 						<div className="space-y-2">
 							<Label
@@ -308,7 +308,7 @@ export function AddModelForm({
 						</div>
 					)}
 
-					{/* Icon — admin edit only */}
+					{/* Icon - admin edit only */}
 					{isEditMode && isAdmin && (
 						<IconUploadField
 							label="Icon"
@@ -344,7 +344,7 @@ export function AddModelForm({
 							{showDetails ? "Hide details" : "Add more details"}
 						</span>
 						{!showDetails && (
-							<span className="normal-case tracking-normal">— category</span>
+							<span className="normal-case tracking-normal">- category</span>
 						)}
 					</button>
 				)}

@@ -73,7 +73,7 @@ export const getBySecretId = internalQuery({
 /**
  * What a pending session will call this machine, for the approval page (#49).
  *
- * Returns ONLY the proposed name — never the secretId, never the status. The
+ * Returns ONLY the proposed name - never the secretId, never the status. The
  * user code is a shared secret shown in the terminal, but it is six characters,
  * so this is gated on being signed in as well: a guessed code should not read
  * back a stranger's hostname.
@@ -102,14 +102,14 @@ export const approveSession = mutation({
     /**
      * The stack this machine will sync its measured layer to (#33 decision 7).
      * Optional because a profile with no stack yet can still authorize the CLI
-     * for its other commands — such a token simply cannot publish until it is
+     * for its other commands - such a token simply cannot publish until it is
      * re-linked.
      */
     stackId: v.optional(v.id('stacks')),
     /**
      * The name the user settled on for this machine (#49), prefilled from the
      * CLI's proposal and editable. Optional because clearing the field is a
-     * legitimate answer — `/settings/machines` then falls back to the linked
+     * legitimate answer - `/settings/machines` then falls back to the linked
      * date.
      */
     machineName: v.optional(v.string()),
@@ -130,7 +130,7 @@ export const approveSession = mutation({
 
     // Verify the chosen stack is actually the approving user's. Without this the
     // selector's value is caller-supplied and a token could be bound to someone
-    // else's stack — and a snapshot written there is immutable.
+    // else's stack - and a snapshot written there is immutable.
     if (args.stackId) {
       const stack = await ctx.db.get(args.stackId)
       if (!stack) throw new Error('Stack not found')
@@ -142,7 +142,7 @@ export const approveSession = mutation({
 
     // The name is the user's own string typed into a form, so it gets the same
     // bound as every other client-supplied name (#45). A blank field clears the
-    // CLI's proposal rather than keeping it — the user deleted it on purpose.
+    // CLI's proposal rather than keeping it - the user deleted it on purpose.
     const proposed = args.machineName?.trim() ?? ''
     if (proposed.length > 0 && !isDisplaySafeName(proposed)) {
       throw new Error('Machine name must be 64 characters or fewer and printable')
@@ -194,7 +194,7 @@ export const createSession = internalMutation({
  * hostname on the pending session, so a login the user never approves leaves
  * that string on the server indefinitely. Here it leaves with the row.
  *
- * A row is collectible once `expiresAt` has passed — `authPoll` already treats
+ * A row is collectible once `expiresAt` has passed - `authPoll` already treats
  * that as expired, so nothing readable is lost. An APPROVED row is collected on
  * the same terms: `issueTokenAndDeleteSession` deletes it on success, so an
  * approved row that outlives its TTL is one the CLI stopped polling for.
@@ -256,11 +256,11 @@ export const issueTokenAndDeleteSession = internalMutation({
       // what to call this machine (#49).
       name: session.machineName,
       userId: args.userId,
-      // Full, always (#52) — see convex/lib/cliScopes.ts for why there is no
+      // Full, always (#52) - see convex/lib/cliScopes.ts for why there is no
       // grant picker on the approval page.
       scopes: FULL_CLI_TOKEN_SCOPES,
       // Carried from the approval, which is the only moment the user was asked.
-      // The token is the binding (#33 decision 7) — there is no `primary` flag
+      // The token is the binding (#33 decision 7) - there is no `primary` flag
       // anywhere, and most-recent-wins was rejected as a footgun.
       stackId: session.stackId,
       createdAt: args.createdAt,
@@ -271,7 +271,7 @@ export const issueTokenAndDeleteSession = internalMutation({
     await ctx.db.delete(args.sessionId)
 
     // HERE, and not on gate approval (#77). Approving the page in a browser does
-    // not mean the CLI ever came back for the token — this is the first moment a
+    // not mean the CLI ever came back for the token - this is the first moment a
     // machine is actually linked.
     await captureServerEvent(ctx, 'cli_login_completed', args.userId, {
       cliVersion: session.cliVersion ?? null,

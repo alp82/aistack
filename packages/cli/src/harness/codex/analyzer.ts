@@ -5,10 +5,10 @@
 // wire-format grilling #66. Every field is untrusted and optional: lines
 // arrive as `unknown` and are narrowed here.
 //
-// THE LOAD-BEARING SUBTLETY — Claude's cumulative gotcha, INVERTED.
+// THE LOAD-BEARING SUBTLETY - Claude's cumulative gotcha, INVERTED.
 // Claude Code logs per-message usage that can repeat across snapshot records,
 // so its analyzer dedups by message id. Codex logs a `token_count` event whose
-// `total_token_usage` is the CUMULATIVE session sum — summing it across a
+// `total_token_usage` is the CUMULATIVE session sum - summing it across a
 // session's 20+ events overcounts by orders of magnitude. The rule locked in
 // #66: sum `last_token_usage` (the per-response delta) and never read the
 // totals. Deltas also carry the cached/non-cached split each response's cost
@@ -19,7 +19,7 @@
 //
 // TokenCounts mapping (#66 decision 6): `cached_input_tokens` is a SUBSET of
 // `input_tokens`, so `input = input_tokens - cached_input`, `cacheRead =
-// cached_input`, and `cacheWrite = 0` — Codex reports no cache writes, and a
+// cached_input`, and `cacheWrite = 0` - Codex reports no cache writes, and a
 // zero write prices correctly with zero pricing-code changes.
 
 import {
@@ -41,7 +41,7 @@ import {
 	type Aggregate as SharedAggregate,
 } from "../shared/aggregate.js";
 
-/** Codex needs no response dedup bookkeeping — deltas count once by construction. */
+/** Codex needs no response dedup bookkeeping - deltas count once by construction. */
 export type Aggregate = SharedAggregate<never>;
 
 export function createAggregate(): Aggregate {
@@ -79,7 +79,7 @@ export function createFileState(): FileState {
  *
  * `sinceMs` is applied HERE rather than in the scanner because context lines
  * (session_meta, turn_context) must update `state` even when they predate the
- * window — a session resumed today attributes today's deltas to a model named
+ * window - a session resumed today attributes today's deltas to a model named
  * last week.
  */
 export function ingestLine(
@@ -132,12 +132,12 @@ function noteActivity(agg: Aggregate, state: FileState): void {
 	state.counted = true;
 	if (state.sessionId) agg.sessions.add(state.sessionId);
 	if (state.cliVersion) agg.ccVersions.add(cleanName(state.cliVersion));
-	// Counted, never published — same standing non-goal as Claude project dirs.
+	// Counted, never published - same standing non-goal as Claude project dirs.
 	agg.projectDirs.add(state.cwd ?? "(unknown)");
 }
 
 // ---------------------------------------------------------------------------
-// Usage — token_count deltas
+// Usage - token_count deltas
 // ---------------------------------------------------------------------------
 
 function ingestEvent(
@@ -181,7 +181,7 @@ function ingestEvent(
 }
 
 // ---------------------------------------------------------------------------
-// Inventory — response_item tool calls
+// Inventory - response_item tool calls
 // ---------------------------------------------------------------------------
 
 /**

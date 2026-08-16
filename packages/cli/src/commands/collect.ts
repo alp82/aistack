@@ -31,7 +31,7 @@ import {
 const REPO_LINK_KEY = "\0repo-link";
 
 /**
- * A non-file resource surfaced during collect — the repo link, an installed
+ * A non-file resource surfaced during collect - the repo link, an installed
  * plugin, etc. Toggleable and persisted exactly like a scanned file, keyed by
  * its sentinel. Everything attaches to the single stack (global) server-side.
  */
@@ -359,8 +359,8 @@ export function diffResources(
 	}
 
 	// Linked resources (GitHub repos AND package refs like MCP servers) carry no
-	// files, so the file maps above can't see them. Diff them by stableKey —
-	// unique for both `linked:<repo>:<path>` and `linked:pkg:<registry>:<id>` —
+	// files, so the file maps above can't see them. Diff them by stableKey -
+	// unique for both `linked:<repo>:<path>` and `linked:pkg:<registry>:<id>` -
 	// otherwise a link-only change is invisible and collect wrongly reports
 	// "nothing to upload".
 	const linkLabel = (item: Resource): string => {

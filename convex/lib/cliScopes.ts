@@ -8,7 +8,7 @@ import { v } from 'convex/values'
  * test, and a line on `/settings/machines`. A narrower token later then needs
  * no server change.
  *
- * A grant picker on `/cli/auth` was rejected in the same grilling — a
+ * A grant picker on `/cli/auth` was rejected in the same grilling - a
  * permissions checklist is a question most users cannot answer, and it trains
  * people to click through.
  *
@@ -27,7 +27,7 @@ export const FULL_CLI_TOKEN_SCOPES: CliTokenScope[] = ['collect', 'sync']
  * Plain-language names for `/settings/machines`.
  *
  * The page speaks the reconcile vocabulary #39 locked, so neither string says
- * "scope" — the user is being told what a machine can reach, not read a grant
+ * "scope" - the user is being told what a machine can reach, not read a grant
  * table.
  */
 export const CLI_SCOPE_LABELS: Record<CliTokenScope, string> = {

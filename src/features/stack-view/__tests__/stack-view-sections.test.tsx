@@ -123,7 +123,7 @@ describe("ToolsSection", () => {
 		).not.toBeInTheDocument();
 	});
 
-	// AC 2 — superseded by GROUP A "ToolsSection: heading is /^Tools$/i". The
+	// AC 2 - superseded by GROUP A "ToolsSection: heading is /^Tools$/i". The
 	// positive heading assertion now lives there.
 
 	// AC 3
@@ -168,7 +168,7 @@ describe("ToolsSection", () => {
 		expect(screen.queryAllByRole("button")).toHaveLength(0);
 	});
 
-	// AC 8 — REWRITTEN to controlled contract (modelsOpen prop)
+	// AC 8 - REWRITTEN to controlled contract (modelsOpen prop)
 	it("Models toggle has aria-expanded=false when modelsOpen=false (controlled)", () => {
 		const onModelsOpenChange = vi.fn();
 		render(
@@ -183,7 +183,7 @@ describe("ToolsSection", () => {
 		expect(toggle).toHaveAttribute("aria-expanded", "false");
 	});
 
-	// AC 9 — REWRITTEN to controlled contract
+	// AC 9 - REWRITTEN to controlled contract
 	it("clicking Models toggle calls onModelsOpenChange(true); aria-expanded does NOT self-flip (controlled)", () => {
 		const onModelsOpenChange = vi.fn();
 		render(
@@ -197,11 +197,11 @@ describe("ToolsSection", () => {
 		const toggle = screen.getByRole("button", { name: /models/i });
 		fireEvent.click(toggle);
 		expect(onModelsOpenChange).toHaveBeenCalledWith(true);
-		// Controlled — does not self-flip
+		// Controlled - does not self-flip
 		expect(toggle).toHaveAttribute("aria-expanded", "false");
 	});
 
-	// AC 10 — REWRITTEN to controlled contract: modelsOpen=true, clicking calls onModelsOpenChange(false)
+	// AC 10 - REWRITTEN to controlled contract: modelsOpen=true, clicking calls onModelsOpenChange(false)
 	it("Models panel present when modelsOpen=true; clicking calls onModelsOpenChange(false)", () => {
 		const onModelsOpenChange = vi.fn();
 		const model = makeModel();
@@ -288,7 +288,7 @@ describe("ToolsSection", () => {
 		expect(document.getElementById("bundle-cursor-max")).toBeInTheDocument();
 	});
 
-	// AC 15 — REWRITTEN to controlled contract for Models (mirrors GROUP C)
+	// AC 15 - REWRITTEN to controlled contract for Models (mirrors GROUP C)
 	it("clicking Models toggle does not call onBundlesOpenChange and does not change Bundles aria-expanded", () => {
 		const bundle = makeBundle({ slug: "cursor-max" });
 		const model = makeModel();
@@ -343,10 +343,10 @@ describe("BundleCard highlight", () => {
 });
 
 // ===========================================================================
-// GROUP A — Titles (ToolsSection → "Tools" / "// AI Components"; GuideSection → "Workflow" / "// GUIDE")
+// GROUP A - Titles (ToolsSection → "Tools" / "// AI Components"; GuideSection → "Workflow" / "// GUIDE")
 // ===========================================================================
 
-describe("GROUP A — Section titles", () => {
+describe("GROUP A - Section titles", () => {
 	// A-1: ToolsSection uses "Tools" heading and "// AI Components" kicker
 	it("ToolsSection: heading is /^Tools$/i", () => {
 		render(<ToolsSection {...defaultProps} />);
@@ -390,10 +390,10 @@ describe("GROUP A — Section titles", () => {
 });
 
 // ===========================================================================
-// GROUP B — Pricing (ToolsSection fixedTotal prop)
+// GROUP B - Pricing (ToolsSection fixedTotal prop)
 // ===========================================================================
 
-describe("GROUP B — ToolsSection pricing via fixedTotal", () => {
+describe("GROUP B - ToolsSection pricing via fixedTotal", () => {
 	// B-1: fixedTotal.amount=60 → meta shows $60 total (not tool-only $20)
 	it("fixedTotal={amount:60}: meta shows the $60 total, NOT the tool-only cost", () => {
 		// tool $20/mo, but fixedTotal includes bundle too → $60
@@ -465,10 +465,10 @@ describe("GROUP B — ToolsSection pricing via fixedTotal", () => {
 });
 
 // ===========================================================================
-// GROUP C — Controlled Models disclosure (new tests mirroring Bundles pattern)
+// GROUP C - Controlled Models disclosure (new tests mirroring Bundles pattern)
 // ===========================================================================
 
-describe("GROUP C — ToolsSection controlled Models disclosure", () => {
+describe("GROUP C - ToolsSection controlled Models disclosure", () => {
 	// C-1: modelsOpen=false → Models toggle aria-expanded "false", model content absent
 	it("modelsOpen=false: toggle aria-expanded false and model content absent", () => {
 		const model = makeModel({ name: "GPT-4o" });
@@ -545,10 +545,10 @@ describe("GROUP C — ToolsSection controlled Models disclosure", () => {
 });
 
 // ===========================================================================
-// GROUP E — ToolsSection uncontrolled Models disclosure (optional-prop fallback)
+// GROUP E - ToolsSection uncontrolled Models disclosure (optional-prop fallback)
 // ===========================================================================
 
-describe("GROUP E — ToolsSection uncontrolled Models disclosure", () => {
+describe("GROUP E - ToolsSection uncontrolled Models disclosure", () => {
 	// E-1: render WITHOUT modelsOpen/onModelsOpenChange → internal state governs;
 	//       clicking the toggle opens the panel (model name becomes visible).
 	it("uncontrolled: clicking Models toggle opens the panel (model content appears)", () => {
@@ -582,10 +582,10 @@ describe("GROUP E — ToolsSection uncontrolled Models disclosure", () => {
 });
 
 // ===========================================================================
-// GROUP D — GuideSection ("Guide") empty state
+// GROUP D - GuideSection ("Guide") empty state
 // ===========================================================================
 
-describe("GROUP D — GuideSection Guide empty state", () => {
+describe("GROUP D - GuideSection Guide empty state", () => {
 	// D-1: description undefined, isOwner=true, slug="my-stack" →
 	//       link /add a writeup/i to /stacks/my-stack/edit; no "No setup notes yet."
 	it("isOwner=true, no description: renders link /add a writeup/i to /stacks/my-stack/edit", () => {

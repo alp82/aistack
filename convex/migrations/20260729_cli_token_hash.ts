@@ -4,13 +4,13 @@ import { internal } from '../_generated/api'
 import { sha256Hex } from '../httpCli'
 
 /**
- * `cliTokens.tokenHash` — PHASE B of the repo's three-phase schema migration.
+ * `cliTokens.tokenHash` - PHASE B of the repo's three-phase schema migration.
  *
  * Wayfinder ticket #49 (map #29). `cliTokens.token` holds the raw bearer with a
  * `by_token` index, so a database read discloses live credentials. Phase A
  * (optional `tokenHash` + `by_tokenHash`, dual write, read-by-hash-with-
  * fallback) is already in schema.ts; this file derives the digest for rows that
- * predate it. Phase C — narrow to required, drop `token` and `by_token` — is
+ * predate it. Phase C - narrow to required, drop `token` and `by_token` - is
  * ticket #52, batched with the scopes narrow so the two share one deploy cycle.
  *
  * NOBODY HAS TO LOG IN AGAIN, and that is the reason the plaintext column is
@@ -71,7 +71,7 @@ export const listUnhashed = internalQuery({
       .slice(0, BATCH)
       // Read through the document rather than the schema type. The narrow this
       // migration exists to unblock DELETES `token` from schema.ts, and this
-      // file must still compile afterwards — see `clearPlaintext` for why the
+      // file must still compile afterwards - see `clearPlaintext` for why the
       // two cannot land in one deploy.
       .map((t) => ({ id: t._id, token: String((t as Record<string, unknown>).token ?? '') }))
       .filter((t) => t.token.length > 0)
@@ -101,7 +101,7 @@ export const setHashes = internalMutation({
  * THE STEP BETWEEN THE BACKFILL AND THE NARROW (#52).
  *
  * Convex validates every existing document against the new schema on push, and
- * a document carrying a field the schema no longer declares FAILS that check —
+ * a document carrying a field the schema no longer declares FAILS that check -
  * so dropping `token` from schema.ts is refused while any row still holds one.
  * This blanks the column so the narrow can land.
  *
@@ -110,7 +110,7 @@ export const setHashes = internalMutation({
  * backfill destroys the only copy of the plaintext and logs every machine out.
  *
  * PRESENCE, NOT TRUTHINESS. A row whose token is somehow `''` passes
- * `!row.token` and survives straight into a refused push — the exact failure
+ * `!row.token` and survives straight into a refused push - the exact failure
  * this repo has already hit twice.
  *
  * IDEMPOTENT. A second run finds nothing to clear.
@@ -172,7 +172,7 @@ export const backfill = internalAction({
       )
       patched += result.patched
 
-      // Every row came back unhashed and none could be written — a revoked or
+      // Every row came back unhashed and none could be written - a revoked or
       // concurrently-hashed batch. Without this the loop would spin forever on
       // the same rows.
       if (result.patched === 0) break

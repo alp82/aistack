@@ -1,4 +1,4 @@
-// Staging — wayfinder ticket #41 (map #29). The property that matters: the
+// Staging - wayfinder ticket #41 (map #29). The property that matters: the
 // staged bodyJson IS the serialized body, the id is derived from it, and a
 // stage that cannot name its destination is blocked before any gate.
 
@@ -151,7 +151,7 @@ describe("stageSync", () => {
 		expect(staged.blockedReason).toContain("login");
 	});
 
-	test("a bundled fallback blocks — the gate cannot name its destination", async () => {
+	test("a bundled fallback blocks - the gate cannot name its destination", async () => {
 		const staged = await stageSync(
 			deps({ config: { config: BUNDLED_SYNC_CONFIG, source: "bundled" } }),
 		);

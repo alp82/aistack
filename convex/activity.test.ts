@@ -233,7 +233,7 @@ test('a composition change on a DRAFT emits nothing', async () => {
   expect(await events(t)).toHaveLength(0)
 })
 
-test('an update that unpublishes while changing composition emits nothing — the gate reads resulting state', async () => {
+test('an update that unpublishes while changing composition emits nothing - the gate reads resulting state', async () => {
   const t = convexTest(schema, modules)
   const { asCreator } = await seedCreator(t, { userId: 'b4', slug: 'creator-b4' })
   await seedTool(t, 'cursor', 'Cursor')
@@ -432,7 +432,7 @@ test('a sync to a DRAFT stack lands the snapshot but no feed event', async () =>
   expect(await events(t)).toHaveLength(0)
 })
 
-test('the second sync emits a second event — there is no read-time collapsing to work around', async () => {
+test('the second sync emits a second event - there is no read-time collapsing to work around', async () => {
   const t = convexTest(schema, modules)
   const { asCreator } = await seedCreator(t, { userId: 'c3', slug: 'creator-c3' })
   const created = await asCreator.mutation(api.stacks.create, {

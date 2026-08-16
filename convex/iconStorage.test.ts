@@ -82,7 +82,7 @@ async function seedBlob(t: ReturnType<typeof convexTest>): Promise<Id<'_storage'
 }
 
 // ---------------------------------------------------------------------------
-// TC-GC-01: retired with stacks.avatarStorageId (Phase C narrow) — creator
+// TC-GC-01: retired with stacks.avatarStorageId (Phase C narrow) - creator
 // avatars are covered by TC-GC-06.
 // ---------------------------------------------------------------------------
 
@@ -111,7 +111,7 @@ test('TC-GC-02: stacks reference no storage; includes tool iconStorageIds; no nu
 })
 
 // ---------------------------------------------------------------------------
-// TC-GC-03: MANUAL — gcOrphans does NOT delete a referenced avatarStorageId
+// TC-GC-03: MANUAL - gcOrphans does NOT delete a referenced avatarStorageId
 // _creationTime cannot be backdated in convex-test (system-assigned), so the
 // "older than 24h" cutoff cannot be triggered deterministically in unit tests.
 // Verify manually: seed a stack with avatarStorageId, set clock past cutoff,
@@ -119,16 +119,16 @@ test('TC-GC-02: stacks reference no storage; includes tool iconStorageIds; no nu
 // ---------------------------------------------------------------------------
 
 test.skip('TC-GC-03 (MANUAL): gcOrphans does NOT delete a referenced avatarStorageId older than 24h cutoff', () => {
-  // Cannot backdate _creationTime in convex-test — verify manually.
+  // Cannot backdate _creationTime in convex-test - verify manually.
 })
 
 // ---------------------------------------------------------------------------
-// TC-GC-04: MANUAL — gcOrphans DOES delete an unreferenced blob older than cutoff
+// TC-GC-04: MANUAL - gcOrphans DOES delete an unreferenced blob older than cutoff
 // Same _creationTime limitation as TC-GC-03.
 // ---------------------------------------------------------------------------
 
 test.skip('TC-GC-04 (MANUAL): gcOrphans DOES delete an unreferenced blob older than 24h cutoff', () => {
-  // Cannot backdate _creationTime in convex-test — verify manually.
+  // Cannot backdate _creationTime in convex-test - verify manually.
 })
 
 // ---------------------------------------------------------------------------
@@ -139,7 +139,7 @@ test.skip('TC-GC-04 (MANUAL): gcOrphans DOES delete an unreferenced blob older t
 
 test('TC-GC-05: gcOrphans skips an unreferenced blob newer than cutoff (deleted===0)', async () => {
   const t = convexTest(schema, modules)
-  // Seed a blob but reference nothing — it stays unreferenced
+  // Seed a blob but reference nothing - it stays unreferenced
   await seedBlob(t)
 
   const result = await t.action(internal.iconStorage.gcOrphans, {})
@@ -151,7 +151,7 @@ test('TC-GC-05: gcOrphans skips an unreferenced blob newer than cutoff (deleted=
 
 // ---------------------------------------------------------------------------
 // TC-GC-06: _collectReferencedStorageIds includes creators.avatarStorageId
-// (plan.md Phase A — profile avatars must survive GC) (RED)
+// (plan.md Phase A - profile avatars must survive GC) (RED)
 // ---------------------------------------------------------------------------
 
 test('TC-GC-06: _collectReferencedStorageIds includes a creators.avatarStorageId', async () => {

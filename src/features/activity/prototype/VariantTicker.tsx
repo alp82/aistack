@@ -1,5 +1,5 @@
 /**
- * PROTOTYPE — throwaway. Variant C: "Ticker".
+ * PROTOTYPE - throwaway. Variant C: "Ticker".
  *
  * Trading-floor shape. The feed is demoted to a single scrolling ticker strip
  * along the section's top edge; the body is a readable token chart (axes,
@@ -15,7 +15,7 @@ import { fmtCount, fmtTokens, MONO_LABEL } from "../feed";
 import { RelativeTime } from "../RelativeTime";
 import { rowHandle, rowSummary } from "./summary";
 
-export const VARIANT_TICKER_NAME = "Ticker — trading floor";
+export const VARIANT_TICKER_NAME = "Ticker - trading floor";
 
 export function VariantTicker({ band }: { readonly band: Band }) {
 	const { totals, usage, points, rows } = band;
@@ -91,16 +91,16 @@ export function VariantTicker({ band }: { readonly band: Band }) {
 
 				<div className="flex flex-col md:col-span-4">
 					<div className="text-6xl font-black leading-none tracking-tighter tabular-nums text-accent-lime">
-						{quiet ? "—" : fmtTokens(usage.tokens)}
+						{quiet ? "-" : fmtTokens(usage.tokens)}
 					</div>
 					<div className={`${MONO_LABEL} mt-2 text-fg-muted`}>
 						tokens · last 24 hours
 					</div>
 
 					<div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-3 font-mono text-sm tabular-nums text-fg-secondary">
-						<span>{quiet ? "—" : fmtCount(usage.sessions)} sessions</span>
-						<span>{quiet ? "—" : fmtCount(usage.projects)} projects</span>
-						<span>{quiet ? "—" : fmtCount(usage.tools)} tools</span>
+						<span>{quiet ? "-" : fmtCount(usage.sessions)} sessions</span>
+						<span>{quiet ? "-" : fmtCount(usage.projects)} projects</span>
+						<span>{quiet ? "-" : fmtCount(usage.tools)} tools</span>
 						<span>
 							{totals.stacksSeen} {totals.stacksSeen === 1 ? "stack" : "stacks"}
 						</span>

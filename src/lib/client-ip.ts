@@ -53,7 +53,7 @@ interface SrvxRequest {
 /**
  * Resolve the best available client IP:
  *
- * 1. Prefer the rightmost X-Forwarded-For hop — Coolify's Traefik APPENDS the
+ * 1. Prefer the rightmost X-Forwarded-For hop - Coolify's Traefik APPENDS the
  *    real client IP in prod, so this is the trusted value when running behind
  *    the proxy.
  * 2. Fall back to the real TCP connection IP exposed by srvx (`request.ip` or

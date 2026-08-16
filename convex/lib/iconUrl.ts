@@ -5,7 +5,7 @@ import { ACCENT_PRESET_KEYS } from '../../src/features/stack-view/accentPresets'
  *
  * Requirements:
  *  - Must parse as a URL.
- *  - Must use the `https:` protocol — rejects `data:`, `javascript:`,
+ *  - Must use the `https:` protocol - rejects `data:`, `javascript:`,
  *    `file:`, `ftp:`, plain `http:`, etc.
  *
  * Throws an Error with a stable message on rejection.
@@ -27,7 +27,7 @@ export function assertValidIconUrl(url: string): void {
  *
  * Requirements mirror assertValidIconUrl:
  *  - Must parse as a URL.
- *  - Must use the `https:` protocol — rejects `data:`, `javascript:`,
+ *  - Must use the `https:` protocol - rejects `data:`, `javascript:`,
  *    `file:`, `ftp:`, plain `http:`, etc.
  *
  * Throws an Error with a stable message on rejection.

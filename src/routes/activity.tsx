@@ -8,7 +8,7 @@ import { seoMeta } from "@/lib/seo";
 import { api } from "../../convex/_generated/api";
 
 /**
- * `/activity` — the whole stream behind the landing band's "all activity"
+ * `/activity` - the whole stream behind the landing band's "all activity"
  * button (#96), sibling of `/leaderboard`.
  *
  * The loader returns both reads, so the first HTML carries the band and the
@@ -34,7 +34,7 @@ export const Route = createFileRoute("/activity")({
 		meta: seoMeta({
 			title: "Activity - Syncs, New Stacks and Changes as They Land",
 			description:
-				"Every sync, new stack and composition change across published AI stacks, newest first — with the measured tokens, sessions and projects of the last 24 hours.",
+				"Every sync, new stack and composition change across published AI stacks, newest first, with the measured tokens, sessions and projects of the last 24 hours.",
 			url: "/activity",
 			keywords:
 				"AI stack activity, developer tool changes, measured usage, Claude Code, Codex",

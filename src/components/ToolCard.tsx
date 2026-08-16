@@ -40,7 +40,7 @@ interface ToolCardProps<TId = string> {
 
 function formatPrice(tier: ToolCardTier) {
 	if (tier.pricing.pricingType === "usage") return "Usage";
-	if (!tier.pricing.fixed) return "—";
+	if (!tier.pricing.fixed) return "-";
 	const { amount, period } = tier.pricing.fixed;
 	if (amount === 0) return "Free";
 	const periodLabel =

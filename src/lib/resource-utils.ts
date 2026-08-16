@@ -133,7 +133,7 @@ export const knownResourceTypes: KnownResourceType[] = [
 	"plugin",
 ];
 
-/** Pill colors for inline references and card headers — dimmer than tool/model/bundle pills. */
+/** Pill colors for inline references and card headers - dimmer than tool/model/bundle pills. */
 const knownTypePillColors: Record<
 	KnownResourceType,
 	{ border: string; bg: string; hoverBg: string; hoverText: string }

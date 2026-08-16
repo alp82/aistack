@@ -13,7 +13,7 @@ import { generateUniqueShortId } from '../lib/ids'
  *
  * Slugs come from the observed rollout corpus and `models_cache.json`
  * (docs/research/codex-session-log-anatomy-2026-08.md §3). Only models
- * actually observed in rollouts are added — the catalog is not a mirror of
+ * actually observed in rollouts are added - the catalog is not a mirror of
  * the vendor's whole lineup.
  *
  * IDEMPOTENT. A row is only inserted when its slug resolves to nothing.

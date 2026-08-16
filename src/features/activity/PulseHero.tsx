@@ -20,7 +20,7 @@ import {
 import { RelativeTime } from "./RelativeTime";
 
 /**
- * The landing pulse — one bold number (#147, locked from the pulse-band
+ * The landing pulse - one bold number (#147, locked from the pulse-band
  * prototype's variant D after the E1 band was judged too busy).
  *
  *   ■ USAGE IN THE LAST 24 HOURS
@@ -44,10 +44,10 @@ import { RelativeTime } from "./RelativeTime";
  * reading; the animated pair is aria-hidden and exists for sighted visitors.
  *
  * QUIET IS NOT ZERO (#84): with no sync in the window the count renders an em
- * dash and the reel does not mount — a counter racing to zero reads as a
+ * dash and the reel does not mount - a counter racing to zero reads as a
  * broken site, not a quiet one.
  *
- * The tooltip chips are QUIET GLASS — translucent canvas, no border, no solid
+ * The tooltip chips are QUIET GLASS - translucent canvas, no border, no solid
  * fill. Bordered means control (the range select), filled means nothing here:
  * a white brick is too heavy on the dark canvas and a lime fill fights the
  * lime line. The hover chip is marked by a small lime square instead.
@@ -247,7 +247,7 @@ export function PulseHero({ band }: { readonly band: Band }) {
 
 	// The band is a live Convex subscription, so a landing sync changes
 	// `usage.tokens` under an open tab. The counter then races FROM the reading
-	// the viewer is already looking at, not from zero — a replay of the whole
+	// the viewer is already looking at, not from zero - a replay of the whole
 	// count-up would claim the day started over. First paint still runs 0 → value.
 	//
 	// The pair lives in STATE and advances only when the level changes. The
@@ -280,7 +280,7 @@ export function PulseHero({ band }: { readonly band: Band }) {
 
 				{quiet ? (
 					<div className="mt-6 text-8xl font-black leading-none tracking-tighter text-fg-primary">
-						—
+						-
 					</div>
 				) : (
 					<>
@@ -294,7 +294,7 @@ export function PulseHero({ band }: { readonly band: Band }) {
 						</p>
 
 						{/* SpeedingText sets `display: flex` inline, which beats a
-						    `hidden` utility on the component itself — the responsive
+						    `hidden` utility on the component itself - the responsive
 						    pair needs wrapper divs. */}
 						<div
 							aria-hidden="true"

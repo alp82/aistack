@@ -1,7 +1,7 @@
 // The background trigger (#62, map #60): a `SessionStart` hook in
 // ~/.claude/settings.json, `async: true`.
 //
-// SessionStart, not SessionEnd — teardown is not guaranteed (crash, SIGKILL,
+// SessionStart, not SessionEnd - teardown is not guaranteed (crash, SIGKILL,
 // closed terminal), and at start-of-session the previous sessions are fully on
 // disk. The command runs `@latest` through npx, so unattended machines update
 // by construction. The `||` fallback covers the offline case: when the network
@@ -58,9 +58,9 @@ function readClaudeSettings(
 		}
 		return { error: `${file} does not hold a JSON object` };
 	} catch {
-		// Never rewrite a file we cannot parse — it is the user's Claude Code
+		// Never rewrite a file we cannot parse - it is the user's Claude Code
 		// configuration, and a rewrite would destroy whatever is in it.
-		return { error: `${file} is not valid JSON — fix it, then retry` };
+		return { error: `${file} is not valid JSON - fix it, then retry` };
 	}
 }
 
@@ -100,7 +100,7 @@ export function installAutoSyncHook(
 
 /**
  * Remove only our hook. Other SessionStart hooks and other events stay. A
- * missing file or an absent hook is success — the goal state already holds.
+ * missing file or an absent hook is success - the goal state already holds.
  */
 export function removeAutoSyncHook(
 	file: string = CLAUDE_SETTINGS_FILE,

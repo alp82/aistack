@@ -164,7 +164,7 @@ const allPrefixKeys = Object.keys(categoryPrefixes).sort(
 function findPrefixMatch(input: string): string | undefined {
 	// Exact match first
 	if (categoryPrefixes[input]) return input;
-	// Then startsWith — first match wins (longest keys checked first)
+	// Then startsWith - first match wins (longest keys checked first)
 	return allPrefixKeys.find((key) => key.startsWith(input));
 }
 
@@ -261,7 +261,7 @@ export function SlashCommandDropdown({
 			const matchedKey = findPrefixMatch(trimmed);
 			if (matchedKey) {
 				return {
-					// Don't filter by category — show all items
+					// Don't filter by category - show all items
 					categoryFilter: null,
 					fileSubtype: fileSubtypePrefixes[matchedKey] ?? undefined,
 					// Use the typed text as search text for fuzzy matching
@@ -292,7 +292,7 @@ export function SlashCommandDropdown({
 				if (data.kind === "file") {
 					return data.type === fileSubtype;
 				}
-				// Groups don't have a single type — keep them visible
+				// Groups don't have a single type - keep them visible
 				return true;
 			});
 		}
@@ -319,7 +319,7 @@ export function SlashCommandDropdown({
 		return result;
 	}, [items, categoryFilter, fileSubtype, searchText]);
 
-	// Group by category — groups (files.kind === 'group') render first inside files
+	// Group by category - groups (files.kind === 'group') render first inside files
 	const grouped = useMemo(() => {
 		const groups: { category: SlashItemCategory; items: SlashItem[] }[] = [];
 		const order: SlashItemCategory[] = ["tool", "model", "bundle", "files"];
@@ -431,7 +431,7 @@ export function SlashCommandDropdown({
 
 	// Targeted label + style for the "Add new" button
 	const { addMissingLabel, addMissingStyle } = useMemo(() => {
-		// Resource subtype — use its specific color
+		// Resource subtype - use its specific color
 		if (addMissingHint.resourceType) {
 			const it = addMissingHint.resourceType;
 			const colors = getResourceTypeColorsSplit(it);
@@ -446,7 +446,7 @@ export function SlashCommandDropdown({
 				},
 			};
 		}
-		// Category-level — use the category color
+		// Category-level - use the category color
 		if (addMissingHint.category) {
 			const catColor = categoryConfig[addMissingHint.category]?.color ?? "";
 			const catLabel =
@@ -856,7 +856,7 @@ export function insertBlockForItem(
 			const payload = item.data as SlashFileItem;
 			if (payload.kind === "group") {
 				// Compute typeBreakdown from the slashFiles list at insert time so the
-				// group card doesn't need its own live query (snapshot — accepts staleness
+				// group card doesn't need its own live query (snapshot - accepts staleness
 				// if files are uploaded after the card is inserted).
 				const typeCounts = new Map<string, number>();
 				for (const f of slashFiles ?? []) {

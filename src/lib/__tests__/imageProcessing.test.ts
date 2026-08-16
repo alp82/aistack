@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * RED tests for the new `convertToCompactDataUrl` export (TC-IMG-01..04).
- * The implementation does not exist yet — these tests are expected to fail
+ * The implementation does not exist yet - these tests are expected to fail
  * until `convertToCompactDataUrl` is added to src/lib/imageProcessing.ts.
  *
  * TC-IMG-04 also serves as a regression guard for the existing `convertToWebP`.
@@ -56,7 +56,7 @@ afterEach(() => {
 // given natural dimensions when its `src` is set.
 function makeImageStub(naturalWidth: number, naturalHeight: number) {
 	const proto = HTMLImageElement.prototype;
-	// Intercept Image() constructor via prototype descriptor trick — we patch
+	// Intercept Image() constructor via prototype descriptor trick - we patch
 	// the `src` setter on instances created during the test.
 	const originalDescriptor = Object.getOwnPropertyDescriptor(proto, "src");
 	Object.defineProperty(proto, "src", {

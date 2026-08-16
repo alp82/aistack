@@ -7,7 +7,7 @@
 //
 // The value is client-supplied and therefore spoofable. That is accepted: it
 // selects one of six buckets on the spoofer's own view, and the raw referrer is
-// never stored — only the bucket travels.
+// never stored - only the bucket travels.
 
 export type ReferrerBucket =
 	| "direct"
@@ -23,7 +23,7 @@ const STORAGE_KEY = "aistack:referrer-bucket";
  * Assistants get their own bucket, split out of `search`.
  *
  * "Did an assistant send someone here" is the question the aggregate page
- * exists to answer, and the split cannot be applied retroactively — a view
+ * exists to answer, and the split cannot be applied retroactively - a view
  * filed under `search` today can never be recovered as `ai`.
  */
 const AI_HOSTS = [
@@ -113,7 +113,7 @@ export function classifyReferrer(
  * and a returning visitor next week arrived from somewhere new.
  *
  * A session whose first page was same-origin resolves to `internal`, which is
- * correct — the visitor was already here.
+ * correct - the visitor was already here.
  */
 export function sessionReferrerBucket(): ReferrerBucket {
 	if (typeof window === "undefined") return "direct";
@@ -123,7 +123,7 @@ export function sessionReferrerBucket(): ReferrerBucket {
 		if (held) return held as ReferrerBucket;
 	} catch {
 		// Storage denied (private mode, blocked cookies). Classify every page,
-		// which reads as `internal` after the first — undercounting the source
+		// which reads as `internal` after the first - undercounting the source
 		// rather than inventing one.
 	}
 

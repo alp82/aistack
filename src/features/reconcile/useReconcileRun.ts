@@ -23,15 +23,15 @@ export type AddedItem = {
 /**
  * One pass over what's changed, bound to the server.
  *
- * Everything durable lives in Convex — the open items are derived on read (#33
+ * Everything durable lives in Convex - the open items are derived on read (#33
  * decision 12) and the hidden list is the only stored state. Three things are
  * session-local on purpose:
  *
- *   1. `notes` — what the owner is typing, before they save it.
- *   2. `added` — what they answered in THIS pass. Once answered, an item leaves
+ *   1. `notes` - what the owner is typing, before they save it.
+ *   2. `added` - what they answered in THIS pass. Once answered, an item leaves
  *      the server's list for good, so the server cannot tell us what was just
  *      done and what was done last month.
- *   3. `answered` — the meter's denominator. It counts this pass, not all time,
+ *   3. `answered` - the meter's denominator. It counts this pass, not all time,
  *      which is what makes 100% reachable.
  *
  * `answered` also hides an item the moment it is answered, so the card does not

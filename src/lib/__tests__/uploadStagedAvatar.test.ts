@@ -43,7 +43,7 @@ describe("uploadStagedAvatar", () => {
 			"https://upload.example.com",
 			expect.objectContaining({ method: "POST" }),
 		);
-		// getFileUrl must NOT be called — it no longer exists in the signature
+		// getFileUrl must NOT be called - it no longer exists in the signature
 	});
 
 	// ---------------------------------------------------------------------------

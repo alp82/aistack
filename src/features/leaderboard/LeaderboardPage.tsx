@@ -1,5 +1,5 @@
 /**
- * `/leaderboard` — variant C3 of the #92 prototype, rewritten for the live
+ * `/leaderboard` - variant C3 of the #92 prototype, rewritten for the live
  * read model. A sticky statistics rail beside the ranked board, neither
  * dominating: a rank means nothing without the population it ranks inside, so
  * the population stays on screen next to every row.
@@ -13,7 +13,7 @@
  *      the handle hides, and the meta line carries the trend in words.
  *
  * The sparkline refuses rather than guesses: fewer than two readings draws no
- * line at all — a flat stroke through one dot claims days nobody measured —
+ * line at all - a flat stroke through one dot claims days nobody measured -
  * and because the 30-day total is a level, a fall renders as a fall.
  */
 
@@ -77,7 +77,7 @@ export function LeaderboardPage({
 
 						{board.rows.length === 0 && (
 							<p className="mt-4 border-t border-stroke-subtle py-6 font-mono text-sm text-fg-muted">
-								Nothing to rank — every measured stack has been quiet for more
+								Nothing to rank - every measured stack has been quiet for more
 								than seven days.
 							</p>
 						)}
@@ -170,7 +170,7 @@ function Row({
  *
  * A RISE AND A FALL WEAR THE SAME COLOR (#128, built in #129). The sign carries
  * the direction. Grey is this page's muted color, so a grey fall read as "this
- * row is fading" rather than as "down" — and the feed already treats a fall as
+ * row is fading" rather than as "down" - and the feed already treats a fall as
  * a fact, not as a demotion.
  */
 function Trend({ row }: { readonly row: BoardRow }) {

@@ -40,7 +40,7 @@ function recordingRunner(results: RunResult[]): {
 }
 
 /**
- * The upsell gate — wayfinder #101 (map #76). A Codex-only user with a
+ * The upsell gate - wayfinder #101 (map #76). A Codex-only user with a
  * months-old Claude Code install got this ask, which is what opened #100. The
  * gate is now Claude activity inside the window, THEN the binary on PATH.
  */

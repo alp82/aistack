@@ -3,7 +3,7 @@
  *
  * The hero is what a first-time visitor reads above the featured stacks, and a
  * crawler reads nothing else. The visible count animates in (#147), so the
- * canonical reading rides an sr-only sentence — these assertions pin that the
+ * canonical reading rides an sr-only sentence - these assertions pin that the
  * figures, the latest line and real SVG marks all arrive server-rendered.
  */
 

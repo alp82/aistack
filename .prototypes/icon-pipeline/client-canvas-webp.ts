@@ -6,7 +6,7 @@
  *   (b) Optimal quality value for small logos (256x256)
  *   (c) SVG rasterization via Image element
  *
- * This is a pure browser utility — no DOM imports needed beyond what the browser provides.
+ * This is a pure browser utility - no DOM imports needed beyond what the browser provides.
  * Run in a browser console or in a test with jsdom + canvas polyfill.
  *
  * API shape:
@@ -18,7 +18,7 @@
  *   - Safari: works since Safari 14 (earlier versions silently fall back to PNG)
  *     GOTCHA: Safari returns a PNG blob even when you pass 'image/webp' on older versions.
  *     Detect by checking blob.type === 'image/webp' after the call.
- *   - SVG: draw into Image element first, then drawImage onto canvas — works in all modern browsers
+ *   - SVG: draw into Image element first, then drawImage onto canvas - works in all modern browsers
  *   - Quality 0.8 gives ~30-50% size reduction vs PNG for icons with few colors, visually lossless
  *   - Quality 0.6 barely smaller and sometimes visually degraded for logos with text/sharp edges
  *   - Recommendation: use quality 0.85 for the icon pipeline
@@ -30,7 +30,7 @@ const DEFAULT_QUALITY = 0.85;
 
 /**
  * Fits dimensions within maxDim x maxDim, preserving aspect ratio.
- * Never upscales — if both dimensions are already within bounds, returns them unchanged.
+ * Never upscales - if both dimensions are already within bounds, returns them unchanged.
  */
 function fitWithin(
   width: number,
@@ -50,7 +50,7 @@ function fitWithin(
 /**
  * Load a File/Blob into an HTMLImageElement.
  * For SVGs: the browser rasterizes at the image's intrinsic size (from viewBox / width/height attrs).
- * If the SVG has no intrinsic size, the canvas will be 0x0 — in that case we default to maxDim x maxDim.
+ * If the SVG has no intrinsic size, the canvas will be 0x0 - in that case we default to maxDim x maxDim.
  */
 function loadImage(blob: Blob): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -83,7 +83,7 @@ export async function convertToWebP(
 ): Promise<Blob> {
   const img = await loadImage(source);
 
-  // SVGs with no intrinsic size report 0 — fall back to maxDim
+  // SVGs with no intrinsic size report 0 - fall back to maxDim
   const naturalWidth = img.naturalWidth || maxDim;
   const naturalHeight = img.naturalHeight || maxDim;
 
@@ -108,7 +108,7 @@ export async function convertToWebP(
         // Safari fallback detection: if browser returned PNG instead of WebP
         if (blob.type !== "image/webp") {
           console.warn(
-            `Browser returned ${blob.type} instead of image/webp — WebP encoding not supported`
+            `Browser returned ${blob.type} instead of image/webp - WebP encoding not supported`
           );
         }
         resolve(blob);

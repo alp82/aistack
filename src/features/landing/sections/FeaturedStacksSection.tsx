@@ -58,7 +58,7 @@ type LandingStackPreview = {
 	}>;
 	upvoteCount: number;
 	isLowQuality?: boolean | null;
-	// Newest of authored edits and measured syncs — merged server-side.
+	// Newest of authored edits and measured syncs - merged server-side.
 	updatedAt: number;
 };
 
@@ -158,7 +158,7 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 		() =>
 			makeSearchUpdater<{ filter: string; sort: SortOption; page: number }>(
 				navigate,
-				// resetScroll: false — this section sits below the hero; jumping to
+				// resetScroll: false - this section sits below the hero; jumping to
 				// the page top on filter/sort/page changes loses the user's place.
 				{ resetPageKeys: ["filter", "sort"], resetScroll: false },
 			),
@@ -210,7 +210,7 @@ function FeaturedStacksSection({ stacks }: FeedSectionProps) {
 	return (
 		<section className="section-dark py-32 px-6 md:px-16 lg:px-24 relative overflow-hidden border-b border-zinc-300">
 			<div className="mx-auto max-w-content py-24">
-				{/* Section Header — pagination scroll target, so the heading stays visible */}
+				{/* Section Header - pagination scroll target, so the heading stays visible */}
 				<div
 					ref={headerRef}
 					className="scroll-mt-20 flex items-baseline gap-4 mb-12 border-b-2 border-stroke-strong pb-4"

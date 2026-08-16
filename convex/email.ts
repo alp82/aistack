@@ -40,7 +40,7 @@ export function subtractSuppressed(
 }
 
 // Record an unsubscribe. Read-side deduped via getUnsubscribedEmails/subtractSuppressed
-// (Set lookup). Duplicate rows are possible under concurrent inserts but are benign —
+// (Set lookup). Duplicate rows are possible under concurrent inserts but are benign -
 // do NOT attempt a transaction here to prevent them.
 export const recordUnsubscribe = internalMutation({
   args: { email: v.string() },
@@ -209,7 +209,7 @@ export const getMemberEmails = internalQuery({
 });
 
 // Real recipient count for a broadcast: the deduped, unsubscribe-filtered audience
-// (waitlist [+ members]) — the same set sendBroadcast actually emails, so the admin
+// (waitlist [+ members]) - the same set sendBroadcast actually emails, so the admin
 // dialog shows true reach rather than the raw waitlist size. Reactive (query).
 export const getBroadcastRecipientCount = query({
   args: { broadcastId: v.string() },
@@ -263,7 +263,7 @@ export const sendTestEmail = action({
 
     const appUrl = getAppUrl();
     if (!appUrl.startsWith("https://")) {
-      console.error("APP_URL is not an https URL — refusing test email to prevent broken unsubscribe links");
+      console.error("APP_URL is not an https URL - refusing test email to prevent broken unsubscribe links");
       return { success: false, message: "Email service not configured" };
     }
 
@@ -309,7 +309,7 @@ export const sendTestEmail = action({
 //   const html = await render(MyEmailTemplate({}));
 //   const result = await sendBroadcastEmails(resend, emails, "Subject", html);
 
-// Unified return type for sendBroadcast — all branches return this shape.
+// Unified return type for sendBroadcast - all branches return this shape.
 // Fields that are only present on some branches (early-exit vs. full send) are optional.
 type BroadcastSendResult = {
   success: boolean;
@@ -462,7 +462,7 @@ export const sendBroadcast = action({
       return { success: false, sent: 0, failed: 0, message: "Email service not configured" };
     }
 
-    // Never ship unsigned unsubscribe links — without the signing secret we
+    // Never ship unsigned unsubscribe links - without the signing secret we
     // cannot build verifiable tokens, so refuse like a missing RESEND key.
     // WARNING: rotating BETTER_AUTH_SECRET invalidates all outstanding
     // unsubscribe links (tokens never expire). Only rotate with a dual-verify
@@ -473,12 +473,12 @@ export const sendBroadcast = action({
       return { success: false, sent: 0, failed: 0, message: "Email service not configured" };
     }
 
-    // Refuse to send if APP_URL is not an https URL — localhost or missing
+    // Refuse to send if APP_URL is not an https URL - localhost or missing
     // values would ship broken/localhost unsubscribe links and cause
     // mail clients to drop the List-Unsubscribe header.
     const appUrl = getAppUrl();
     if (!appUrl.startsWith("https://")) {
-      console.error("APP_URL is not an https URL — refusing broadcast to prevent broken unsubscribe links");
+      console.error("APP_URL is not an https URL - refusing broadcast to prevent broken unsubscribe links");
       return { success: false, sent: 0, failed: 0, message: "Email service not configured" };
     }
 

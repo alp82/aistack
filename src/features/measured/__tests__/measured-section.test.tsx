@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Journey section 01 — "Actual Usage", now living (#81, building #80's variant
+ * Journey section 01 - "Actual Usage", now living (#81, building #80's variant
  * I over the #46 section).
  *
  * The decisions these tests guard, rather than layout:
@@ -411,8 +411,8 @@ describe("a stack that has never synced, seen by its owner", () => {
 		);
 	});
 
-	// A stack that never synced is NOT a late stack — it may be hand-curated and
-	// complete — so this box carries no age and no warning (#107 decision 3).
+	// A stack that never synced is NOT a late stack - it may be hand-curated and
+	// complete - so this box carries no age and no warning (#107 decision 3).
 	it("carries no age and no warning", () => {
 		setup(null, null, { isOwner: true });
 		const text = (document.body.textContent ?? "").toLowerCase();
@@ -471,7 +471,7 @@ describe("the auto-sync switch", () => {
 
 	// Which side of the reading it sits on is the snapshot's answer, so it waits
 	// for that answer rather than drawing below and jumping above when the query
-	// lands. A null snapshot IS an answer — #104 keeps the box there.
+	// lands. A null snapshot IS an answer - #104 keeps the box there.
 	it("waits for the snapshot query before it takes a side", () => {
 		setup(undefined, undefined, { isOwner: true });
 		expect(screen.queryByText("// auto-sync")).not.toBeInTheDocument();

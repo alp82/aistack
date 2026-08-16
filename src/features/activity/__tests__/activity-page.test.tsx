@@ -80,7 +80,7 @@ describe("the page", () => {
 		expect(chip("changes")).toBeInTheDocument();
 	});
 
-	it("narrows the stream only — the band still states the whole site", () => {
+	it("narrows the stream only - the band still states the whole site", () => {
 		setup({
 			filter: "sync.landed",
 			streamOver: { rows: [syncRow()] },

@@ -1,4 +1,4 @@
-// The opencode harness behind the seam (#66 decision 6) — wayfinder ticket
+// The opencode harness behind the seam (#66 decision 6) - wayfinder ticket
 // #124 (map #121).
 
 import type {

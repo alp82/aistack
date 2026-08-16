@@ -1,23 +1,23 @@
-// The local stdio MCP server — the send channel picked by the spike #35.
+// The local stdio MCP server - the send channel picked by the spike #35.
 //
 // Wayfinder ticket #41 (map #29). Two tools, two beats:
 //
-//   sync_preview  — scans locally, stages the exact send bytes, returns the
+//   sync_preview  - scans locally, stages the exact send bytes, returns the
 //                   full summary as ordinary transcript output (beat one).
-//   sync_publish  — takes the stage id, raises a SHORT `elicitation/create`
+//   sync_publish  - takes the stage id, raises a SHORT `elicitation/create`
 //                   with an ENUM field (beat two), and sends only on
 //                   `decision: "publish"`.
 //
 // Why elicitation and not `requiresUserInteraction`: the spike showed the
 // permission dialog can be silenced forever with one click and writes a grant
 // broader than the sentence shown, while an elicitation is raised INSIDE the
-// call — there is no string a model can spell to route around it, and no
+// call - there is no string a model can spell to route around it, and no
 // "don't ask again" exists for it. The enum widget is the working one; the
 // boolean widget is dead in 2.1.220 and must never ship.
 //
 // Fail-closed, by construction: ESC, a timeout, a headless auto-cancel, an
 // error reply, or a client that never declared the elicitation capability all
-// resolve to "nothing was sent". The model's arguments count for nothing —
+// resolve to "nothing was sent". The model's arguments count for nothing -
 // the only path to a send runs through the user's own keystrokes.
 //
 // Hand-rolled JSON-RPC over stdio, zero dependencies, structured so tests can
@@ -45,10 +45,10 @@ const PREVIEW_TOOL = {
 	description:
 		"Scan local agent transcripts (Claude Code, Codex) and stage a measured-usage snapshot for aistack. " +
 		"Returns the full preview of exactly what would publish. " +
-		"Show the returned text to the user VERBATIM — it is the review surface. Nothing is sent.",
+		"Show the returned text to the user VERBATIM - it is the review surface. Nothing is sent.",
 	inputSchema: { type: "object", properties: {} },
 	annotations: {
-		title: "aistack — preview sync (sends nothing)",
+		title: "aistack - preview sync (sends nothing)",
 		readOnlyHint: true,
 		openWorldHint: true,
 	},
@@ -71,7 +71,7 @@ const PUBLISH_TOOL = {
 		required: ["preview_id"],
 	},
 	annotations: {
-		title: "aistack — publish measured usage (asks the user first)",
+		title: "aistack - publish measured usage (asks the user first)",
 		destructiveHint: false,
 		openWorldHint: true,
 	},
@@ -92,7 +92,7 @@ export type SyncServerDeps = {
 	publishImpl?: (token: string, bodyJson: string) => Promise<SyncPublishResult>;
 	now?: () => number;
 	elicitTimeoutMs?: number;
-	/** Diagnostics only. NEVER stdout — that would corrupt the protocol. */
+	/** Diagnostics only. NEVER stdout - that would corrupt the protocol. */
 	log?: (line: string) => void;
 };
 
@@ -175,7 +175,7 @@ export function createSyncServer(
 				id,
 				textResult(
 					"Not published: this Claude Code version did not declare the elicitation capability, " +
-						"so the approve dialog cannot be shown. The gate never degrades silently — " +
+						"so the approve dialog cannot be shown. The gate never degrades silently - " +
 						"update Claude Code and try again.",
 					true,
 				),
@@ -266,7 +266,7 @@ export function createSyncServer(
 						const kp = approvedStage.body.keptPrivate;
 						if (res.keptPrivate.refused && kp !== undefined) {
 							lines.push(
-								"Note: the kept-private names were refused by the server — the review switch is off there now. They stayed on this machine.",
+								"Note: the server refused the kept-private names because its review switch is off. They stayed on this machine.",
 							);
 						} else if (res.keptPrivate.stored > 0) {
 							lines.push(

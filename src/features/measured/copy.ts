@@ -2,7 +2,7 @@
  * Every user-facing string and number format for the public measured display.
  *
  * Wayfinder ticket #46 (map #29), building the H2 + section-02 design locked by
- * #40. The rules below are decisions, not preferences — each one was checked
+ * #40. The rules below are decisions, not preferences - each one was checked
  * against the owner's real payload in #40 and must not be relaxed here:
  *
  *   - A dollar figure NEVER renders without its pricing table version, so
@@ -16,7 +16,7 @@
  *   - Coverage is silent on a clean scan. A degraded scan says the numbers are
  *     a floor (#33 decision 10).
  *   - Freshness reads `receivedAt`, the server clock, never `capturedAt` (#38).
- *   - POSITIVE CLAIMS ONLY. Nothing here may say a listed thing went unused —
+ *   - POSITIVE CLAIMS ONLY. Nothing here may say a listed thing went unused -
  *     that needs an adapter seam covering every harness the user runs (#40).
  *
  * Public voice, distinct from the owner-facing voice in
@@ -30,7 +30,7 @@ export type MeasuredSnapshot = NonNullable<
 	FunctionReturnType<typeof api.measured.getCurrentByStackSlug>
 >;
 export type MeasuredModel = MeasuredSnapshot["models"][number];
-/** One harness's own section (#66 decision 2) — the pre-#67 snapshot shape. */
+/** One harness's own section (#66 decision 2) - the pre-#67 snapshot shape. */
 export type HarnessSnapshot = MeasuredSnapshot["harnesses"][number];
 
 /** The anchor section 02 mounts on, and the hero strip links down to. */
@@ -69,7 +69,7 @@ export function fmtShare(share: number): string {
 
 /**
  * A move, signed. A rolling window is a LEVEL, so a minus sign here is ordinary
- * — the window forgot a busy day at its far end — and the wording around it must
+ * - the window forgot a busy day at its far end - and the wording around it must
  * never dress a fall as a fault.
  */
 export function fmtDelta(n: number, fmt: (v: number) => string): string {
@@ -77,7 +77,7 @@ export function fmtDelta(n: number, fmt: (v: number) => string): string {
 	return `${sign}${fmt(Math.abs(n))}`;
 }
 
-/** "Jul 30" — a reading's day, always read as UTC. */
+/** "Jul 30" - a reading's day, always read as UTC. */
 export function fmtDay(at: number): string {
 	return new Date(at).toLocaleDateString("en-US", {
 		month: "short",
@@ -86,7 +86,7 @@ export function fmtDay(at: number): string {
 	});
 }
 
-/** "7 readings since Jul 30" — how alive the page is, in one line. */
+/** "7 readings since Jul 30" - how alive the page is, in one line. */
 export function readingsLine(count: number, firstAt: number): string {
 	return `${count} ${count === 1 ? "reading" : "readings"} since ${fmtDay(firstAt)}`;
 }
@@ -119,13 +119,13 @@ export const DECK_LABEL = "Show another way to picture these tokens";
  * The dollars the whole window cost at API prices, or null.
  *
  * A LOWER BOUND, never an equality (#93). The server fills the gaps a stale CLI
- * price table left behind, and both facts the wire loses — the cache-write TTL
- * split and the per-response timestamps — resolve downward. Tokens no table can
+ * price table left behind, and both facts the wire loses - the cache-write TTL
+ * split and the per-response timestamps - resolve downward. Tokens no table can
  * price are simply missing from it, which is what `coverageLine` reports.
  *
  * Null in two cases, and the display treats both the same way: the owner has
  * cost publishing off, or nothing in the window carries a citable price. The
- * empty-table guard is the stricter rule — a price the reader cannot date is a
+ * empty-table guard is the stricter rule - a price the reader cannot date is a
  * price we do not print.
  */
 export function totalUSD(s: {
@@ -139,7 +139,7 @@ export function totalUSD(s: {
 }
 
 /**
- * "priced 85% of measured tokens" — the caveat that makes the figure above it
+ * "priced 85% of measured tokens" - the caveat that makes the figure above it
  * readable, or null on a fully priced window.
  *
  * Named for the price, not for "coverage": `coverageCaveat` above already means
@@ -160,7 +160,7 @@ export function modelLabel(m: MeasuredModel): string {
 	return m.catalogName ?? m.id;
 }
 
-/** "Claude Fable 5 leads at 35%" — the hero's one model fact. */
+/** "Claude Fable 5 leads at 35%" - the hero's one model fact. */
 export function leadModelLine(s: MeasuredSnapshot): string | null {
 	const lead = [...s.models].sort((a, b) => b.tokenShare - a.tokenShare)[0];
 	if (!lead) return null;
@@ -185,7 +185,7 @@ const WITHHELD_LABELS: Record<string, string> = {
 };
 
 /**
- * "2 MCP servers, 10 skills" — the names the owner has not agreed to publish.
+ * "2 MCP servers, 10 skills" - the names the owner has not agreed to publish.
  *
  * Counts only, and only the non-zero ones. A percentage here would be a
  * disclosure ratchet: it would pressure the owner to publish exactly the names
@@ -219,7 +219,7 @@ export function coverageCaveat(s: HarnessSnapshot): string | null {
 		bits.push(`${filesUnreadable} of ${filesScanned} files could not be read`);
 	}
 	if (linesFailed > 0) bits.push(`${linesFailed} lines did not parse`);
-	return `Partial read — ${bits.join(", ")}. The numbers below are a floor.`;
+	return `Partial read: ${bits.join(", ")}. The numbers below are a floor.`;
 }
 
 /** Display name for a harness discriminator. */
@@ -227,13 +227,13 @@ export function harnessLabel(name: string): string {
 	if (name === "claude-code") return HARNESS;
 	if (name === "codex") return "Codex";
 	// These brands spell themselves lowercase, so the discriminator is the
-	// label — but each is an explicit row, so a rename cannot leak a raw slug.
+	// label - but each is an explicit row, so a rename cannot leak a raw slug.
 	if (name === "opencode") return "opencode";
 	if (name === "pi-mono") return "pi-mono";
 	return name;
 }
 
-/** "read from Claude Code 2.1.220" — one line per harness (#66 decision 2). */
+/** "read from Claude Code 2.1.220" - one line per harness (#66 decision 2). */
 export function harnessLine(s: HarnessSnapshot): string {
 	const name = harnessLabel(s.harness.name);
 	return `read from ${name}${s.harness.version ? ` ${s.harness.version}` : ""}`;
@@ -252,12 +252,12 @@ export function windowSentence(days: number): string {
  */
 
 export const NEVER_SYNCED_TITLE = "This stack has not been measured yet.";
-export const NEVER_SYNCED_BODY = `Stacks can publish what actually ran on the machine they are built on — sessions, models, tokens and cost at API prices, read from ${HARNESS}.`;
+export const NEVER_SYNCED_BODY = `Stacks can publish what actually ran on the machine they are built on: sessions, models, tokens, and cost at API prices, read from ${HARNESS}.`;
 
 /**
  * The owner's never-measured box (#58/#59): the site teaches the two commands
  * inline, on the page where the owner meets the gap. The visitor never sees
- * this — their variant stays the invitation above (#40: invite the reader,
+ * this - their variant stays the invitation above (#40: invite the reader,
  * never judge the author).
  */
 export const OWNER_NOT_MEASURED_TITLE = "Your stack has not been measured yet.";
@@ -268,8 +268,8 @@ export const PRIVACY_FOOTNOTE =
 /**
  * The one mention automation gets before a first sync exists (#107 decision 3).
  *
- * A stack that never synced is NOT a quiet stack — it may be hand-curated and
- * complete — so this box carries no age and no warning. And it cannot offer the
+ * A stack that never synced is NOT a quiet stack - it may be hand-curated and
+ * complete - so this box carries no age and no warning. And it cannot offer the
  * switch as a fix: `enableAutoSync` refuses a machine that is not linked, and
  * the CLI's own answer there is "Run `npx @use-aistack/cli sync` first". So the
  * box teaches the one command, and this line says what becomes possible after

@@ -37,7 +37,7 @@ afterAll(() => {
 });
 
 describe("detectHooks", () => {
-	it("emits one hosted hook resource per event, keyed by local/global source — no scope field", () => {
+	it("emits one hosted hook resource per event, keyed by local/global source - no scope field", () => {
 		const hooks = detectHooks(cwd, home);
 		const byKey = new Map(hooks.map((h) => [h.stableKey, h]));
 
@@ -57,7 +57,7 @@ describe("detectHooks", () => {
 		expect(hooks).toHaveLength(3);
 	});
 
-	it("TC-HOOKS-02: same event in both local and global settings — returns 2 with distinct keys and no scope", () => {
+	it("TC-HOOKS-02: same event in both local and global settings - returns 2 with distinct keys and no scope", () => {
 		const localCwd = mkdtempSync(join(tmpdir(), "aistack-hooks-tc02-cwd-"));
 		const globalHome = mkdtempSync(join(tmpdir(), "aistack-hooks-tc02-home-"));
 		mkdirSync(join(localCwd, ".claude"), { recursive: true });

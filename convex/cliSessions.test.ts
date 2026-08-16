@@ -83,13 +83,13 @@ describe('link-time stack binding (#33 decision 7)', () => {
     })
     expect(issued).toEqual({ issued: true })
 
-    // By DIGEST — the plaintext column is gone (#52), so this is the only way
+    // By DIGEST - the plaintext column is gone (#52), so this is the only way
     // to find a token, here and in production alike.
     const tokenDoc = await t.query(internal.cliTokens.getByTokenHash, {
       tokenHash: 'hash_abc',
     })
     // The SECOND stack, not whichever the by_creatorId index happens to return
-    // first — which is what the retired getFirstStackByCreator would have given.
+    // first - which is what the retired getFirstStackByCreator would have given.
     expect(tokenDoc?.stackId).toBe(stackIds[1])
   })
 
@@ -134,7 +134,7 @@ describe('link-time stack binding (#33 decision 7)', () => {
 
   test('refuses to bind a stack the approving user does not own', async () => {
     // Without this the selector's value is caller-supplied, and a token could be
-    // bound to a stranger's stack — where snapshots are immutable.
+    // bound to a stranger's stack - where snapshots are immutable.
     const t = convexTest(schema, modules)
     const mine = await seedCreatorWithStacks(t, { count: 1 })
     const theirs = await seedCreatorWithStacks(t, {
@@ -175,7 +175,7 @@ describe('link-time stack binding (#33 decision 7)', () => {
   })
 })
 
-describe('stacks.listMine — the selector source', () => {
+describe('stacks.listMine - the selector source', () => {
   test('returns the signed-in creator’s stacks, newest-updated first', async () => {
     const t = convexTest(schema, modules)
     await seedCreatorWithStacks(t, { count: 2 })
@@ -210,7 +210,7 @@ describe('stacks.listMine — the selector source', () => {
  * The device-code cleanup cron (#52).
  *
  * `authStart` is unauthenticated and inserts one row per call, and nothing ever
- * collected them — so this table is the unbounded-growth half of the login
+ * collected them - so this table is the unbounded-growth half of the login
  * path. A rate limit does not close it: even at the cap, a 15-minute TTL is
  * long enough to accumulate a great many rows.
  */

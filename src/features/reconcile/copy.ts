@@ -23,7 +23,7 @@
  *   harness .................. Claude Code
  *
  * Two terms are deliberately KEPT, because replacing them would be a lie:
- * "at API prices" (the dollar figure is not a bill — #37 was explicit) and
+ * "at API prices" (the dollar figure is not a bill - #37 was explicit) and
  * "Claude Code" (a product name, not jargon).
  */
 
@@ -53,13 +53,13 @@ export function askLine(item: ReconcileItem): string {
 		: "You haven't said what you use this for";
 }
 
-/** "62% of everything you ran" — a share, never a raw token count. */
+/** "62% of everything you ran" - a share, never a raw token count. */
 export function usageLine(item: ReconcileItem): string | null {
 	if (item.tokenShare === undefined) return null;
 	return `${Math.round(item.tokenShare * 100)}% of everything you ran`;
 }
 
-/** "≈$3,402 at API prices" — absent when the sync withheld cost. */
+/** "≈$3,402 at API prices" - absent when the sync withheld cost. */
 export function priceLine(item: ReconcileItem): string | null {
 	if (item.apiEquivalentUSD === undefined) return null;
 	return `≈$${Math.round(item.apiEquivalentUSD).toLocaleString("en-US")} at API prices`;
@@ -81,14 +81,14 @@ export function headline(args: {
 }
 
 /**
- * The `Kept private` view — wayfinder #51, strings fixed by the grilling #48.
+ * The `Kept private` view - wayfinder #51, strings fixed by the grilling #48.
  *
  * The owner made the exact wording binding, so these are quoted, not authored.
  * They are short on purpose: the switch has to state what it does in the two
  * lines a person reads before their machine uploads anything.
  *
  * `KEEP_PRIVATE` is the one string #48 did not fix. It is the inverse of
- * `PUBLISH` — the same action read backwards — and it says the state the row
+ * `PUBLISH` - the same action read backwards - and it says the state the row
  * returns to, in the vocabulary the rest of the feature already uses.
  */
 export const KEPT_PRIVATE = {

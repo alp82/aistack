@@ -272,7 +272,7 @@ export function AddBundleForm({
 						</div>
 					</div>
 
-					{/* Icon — admin edit only */}
+					{/* Icon - admin edit only */}
 					{isEditMode && isAdmin && (
 						<IconUploadField
 							label="Icon"
@@ -292,7 +292,7 @@ export function AddBundleForm({
 					)}
 				</fieldset>
 
-				{/* More Details Toggle — only for new submissions */}
+				{/* More Details Toggle - only for new submissions */}
 				{!isEditMode && (
 					<button
 						type="button"
@@ -308,12 +308,12 @@ export function AddBundleForm({
 							{showDetails ? "Hide details" : "Add more details"}
 						</span>
 						{!showDetails && (
-							<span className="normal-case tracking-normal">— pricing</span>
+							<span className="normal-case tracking-normal">- pricing</span>
 						)}
 					</button>
 				)}
 
-				{/* Pricing Tiers — always shown in edit mode */}
+				{/* Pricing Tiers - always shown in edit mode */}
 				{(showDetails || isEditMode) && (
 					<fieldset className="space-y-4">
 						<div className="flex items-center justify-between">

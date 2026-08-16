@@ -21,7 +21,7 @@ import { TokenTip, useTipDeck } from "./tokens/TokenTips";
  *
  * Locked by #80 and unchanged here:
  *
- *   - TOKENS LEAD. Spend sits below, smaller, over the same width — it is
+ *   - TOKENS LEAD. Spend sits below, smaller, over the same width - it is
  *     optional by design (`publishCost`), so it can never be the thing the
  *     layout rests on.
  *   - HISTORY IS A WATERMARK, stretched to the block's bottom edge, never a row

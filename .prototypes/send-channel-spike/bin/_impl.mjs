@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Spike CLI for wayfinder ticket #35 — candidate B (bundled CLI called via Bash).
+// Spike CLI for wayfinder ticket #35 - candidate B (bundled CLI called via Bash).
 //
 // Stands in for the real `aistack-sync publish`. It sends nothing; it prints the
 // summary it *would* show and records the attempt. The point of the spike is that
-// this process has no TTY under the Bash tool, so it structurally cannot prompt —
+// this process has no TTY under the Bash tool, so it structurally cannot prompt -
 // whatever consent the user gives has to come from the harness, before this runs.
 
 import { readFileSync, appendFileSync } from 'node:fs'
@@ -30,5 +30,5 @@ for (const m of payload.models) {
   console.log(`  ${m.id.padEnd(28)} ${(m.tokenShare * 100).toFixed(1).padStart(5)}%  $${m.apiEquivalentUSD.toFixed(2)}`)
 }
 console.log(`withheld: ${JSON.stringify(payload.inventory.withheld)}`)
-console.log('NOTHING WAS SENT — this is a spike.')
+console.log('NOTHING WAS SENT - this is a spike.')
 console.log('SPIKE-MARKER-CLI-STDOUT-END')

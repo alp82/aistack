@@ -3,7 +3,7 @@
 //
 // WHERE THE PERMISSION LIVES: on the stack, in Convex (#100 decision 2, #102).
 // The local flag and the SessionStart hooks are what this machine holds, and
-// neither of them grants anything — `sync --auto` asks the stack before it
+// neither of them grants anything - `sync --auto` asks the stack before it
 // publishes. So enable grants on the stack first, revoke revokes here first,
 // and `reconcileAutoSync` brings a machine in line with an answer the owner
 // gave somewhere else.
@@ -13,7 +13,7 @@
 // each persisted). Any explicit answer persists to
 // ~/.config/aistack/settings.json; ctrl-C is not an answer and the question
 // returns on the next sync. A stack that has already decided is never asked at
-// all — `settleAutoSync` reconciles it instead.
+// all - `settleAutoSync` reconciles it instead.
 
 import * as p from "@clack/prompts";
 import { setAutoSync } from "../api.js";
@@ -71,12 +71,12 @@ export const NOTHING_TO_TRIGGER = `No Claude Code or Codex session on this machi
 
 /**
  * Turn auto-sync on: grant the permission on the STACK, then write the
- * SessionStart hooks — one per DETECTED harness (#101). A hook for a harness
+ * SessionStart hooks - one per DETECTED harness (#101). A hook for a harness
  * whose last session predates the window is a trigger that will never fire, and
  * its install is the step that made a dead Claude Code install look alive.
  *
  * THE STACK IS ASKED FIRST (#103). The permission is the thing that lets a
- * publish happen, and the hooks are dumb local triggers for it — so a refusal
+ * publish happen, and the hooks are dumb local triggers for it - so a refusal
  * from aistack.to leaves the machine exactly as it was, with no hook running an
  * npx at every session start for a permission nobody granted.
  *
@@ -117,7 +117,7 @@ export async function enableAutoSync(
 	if (names.has(CODEX_HARNESS_NAME)) {
 		const codexResult = (deps.installCodexHook ?? installCodexAutoSyncHook)();
 		if (!codexResult.ok) return codexResult;
-		// The one-time /hooks trust step (#65 §6) — repeated by the next
+		// The one-time /hooks trust step (#65 §6) - repeated by the next
 		// interactive sync while the hook stays untrusted.
 		trustLine = codexResult.message;
 	}
@@ -132,7 +132,7 @@ export async function enableAutoSync(
 	return {
 		ok: true,
 		message: [
-			`Auto-sync is on — about every ${frequencyHours}h when a ${harnessListLabel(detected)} session starts. Turn it off any time: npx @use-aistack/cli sync --auto off`,
+			`Auto-sync is on. It runs about every ${frequencyHours}h when a ${harnessListLabel(detected)} session starts. Turn it off any time: npx @use-aistack/cli sync --auto off`,
 			...(trustLine ? [trustLine] : []),
 		].join("\n"),
 	};
@@ -141,7 +141,7 @@ export async function enableAutoSync(
 /**
  * Revoke: flip the local flag, remove the hooks, then take the permission off
  * the stack. The flag flips even when a hook file cannot be edited, because
- * `sync --auto` gates on it — a stale hook without the flag publishes nothing.
+ * `sync --auto` gates on it - a stale hook without the flag publishes nothing.
  *
  * THE LOCAL HALF RUNS FIRST, the mirror image of enable (#103). A revoke must
  * never be blocked by an unreachable network: this machine stops publishing the
@@ -179,7 +179,7 @@ export async function disableAutoSync(
 			await (deps.setAutoSyncImpl ?? setAutoSync)(token, { enabled: false });
 		} catch (e) {
 			failures.push(
-				`aistack.to was not told (${e instanceof Error ? e.message : String(e)}) — your other machines keep the permission`,
+				`aistack.to was not told (${e instanceof Error ? e.message : String(e)}); your other machines keep the permission`,
 			);
 		}
 	}
@@ -202,15 +202,15 @@ export async function disableAutoSync(
  * This is not an ask and never prompts. The owner already answered, on the web
  * switch or on another machine, and this is the machine catching up with them:
  *
- *   - flag ON  — install a trigger for every DETECTED harness that lacks one,
+ *   - flag ON  - install a trigger for every DETECTED harness that lacks one,
  *                and mirror the flag locally so `sync --auto` passes its own
  *                gate. That is what makes "flip the web switch, run one sync"
  *                the whole enable story, and it is also what gives a harness
  *                adopted months later its trigger.
- *   - flag OFF — touch nothing. The revoke is already in force: `sync --auto`
+ *   - flag OFF - touch nothing. The revoke is already in force: `sync --auto`
  *                asks the stack before it publishes, so a live hook on this
  *                machine publishes nothing.
- *   - ABSENT   — touch nothing. Nobody has decided, and the post-sync ask still
+ *   - ABSENT   - touch nothing. Nobody has decided, and the post-sync ask still
  *                owns that case.
  *
  * Returns the one line to print, or `null` when there was nothing to do.
@@ -274,8 +274,8 @@ export async function reconcileAutoSync(
 		ok: true,
 		message:
 			installed.length > 0
-				? `Auto-sync is on for this stack — installed the ${installed.join(" and ")} trigger on this machine. About every ${frequencyHours}h when a session starts.`
-				: `Auto-sync is on for this stack — about every ${frequencyHours}h when a ${harnessListLabel(detected)} session starts.`,
+				? `Auto-sync is on for this stack. Installed the ${installed.join(" and ")} trigger on this machine; it runs about every ${frequencyHours}h when a session starts.`
+				: `Auto-sync is on for this stack. It runs about every ${frequencyHours}h when a ${harnessListLabel(detected)} session starts.`,
 	};
 }
 
@@ -285,7 +285,7 @@ export async function reconcileAutoSync(
  * One step with three inputs, because the stack's answer is what decides which
  * of them applies (#103): a stack that has decided is reconciled and never
  * asked again, and only a stack nobody has decided for reaches the ask. The ask
- * asked once and persisted is #62's rule, and the switch now outranks it —
+ * asked once and persisted is #62's rule, and the switch now outranks it -
  * re-asking an owner who already answered on the web is asking them twice.
  *
  * Returns true when it ASKED, so the caller knows to hold the connect upsell

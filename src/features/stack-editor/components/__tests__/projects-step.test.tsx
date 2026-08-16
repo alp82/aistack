@@ -10,7 +10,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProjectsStep } from "@/features/stack-editor/components/ProjectsStep";
 
-// Stub Convex hooks — the component uses them only in edit mode.
+// Stub Convex hooks - the component uses them only in edit mode.
 vi.mock("convex/react", () => ({
 	useQuery: vi.fn(() => undefined),
 	useMutation: vi.fn(() => vi.fn()),
@@ -37,7 +37,7 @@ const PROJECT_B = {
 };
 
 // ---------------------------------------------------------------------------
-// Group E: ProjectsStep create mode — surviving cases
+// Group E: ProjectsStep create mode - surviving cases
 // ---------------------------------------------------------------------------
 
 describe("ProjectsStep – create mode", () => {
@@ -76,7 +76,7 @@ describe("ProjectsStep – create mode", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Group C: ProjectsStep edit mode — delegation to ProjectsSection (NEW)
+// Group C: ProjectsStep edit mode - delegation to ProjectsSection (NEW)
 // ---------------------------------------------------------------------------
 
 describe("ProjectsStep – edit mode: delegation to ProjectsSection", () => {
@@ -163,7 +163,7 @@ describe("ProjectsStep – edit mode: delegation to ProjectsSection", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Group D: Create mode — dialog-based UI (targets post-decouple ProjectsManager)
+// Group D: Create mode - dialog-based UI (targets post-decouple ProjectsManager)
 // ---------------------------------------------------------------------------
 
 describe("ProjectsStep – create mode: dialog-based ProjectsManager UI", () => {
@@ -329,7 +329,7 @@ describe("ProjectsStep – create mode: dialog-based ProjectsManager UI", () => 
 			/>,
 		);
 
-		// Now Beta is first — expand it
+		// Now Beta is first - expand it
 		fireEvent.click(
 			screen.getByRole("button", { name: /show details for beta/i }),
 		);
@@ -411,7 +411,7 @@ describe("ProjectsStep – create mode: dialog-based ProjectsManager UI", () => 
 
 		// After save, Alpha's row should STILL be expanded.
 		// If editing had minted a new id, the row would remount and the accordion
-		// panel would close — querying by the updated name proves it stayed open.
+		// panel would close - querying by the updated name proves it stayed open.
 		const updatedToggle = screen.getByRole("button", {
 			name: /hide details for alpha renamed/i,
 		});

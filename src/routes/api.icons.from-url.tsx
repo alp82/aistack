@@ -148,7 +148,7 @@ export const Route = createFileRoute("/api/icons/from-url")({
 					return jsonError(response.status === 404 ? 404 : 502, "Fetch failed");
 				}
 
-				// Strict content-type validation (F-H) — fail closed
+				// Strict content-type validation (F-H) - fail closed
 				const upstreamContentType = (response.headers.get("content-type") ?? "")
 					.split(";")[0]
 					.trim()
@@ -171,7 +171,7 @@ export const Route = createFileRoute("/api/icons/from-url")({
 					) {
 						return jsonError(
 							413,
-							`Image too large — exceeds ${MAX_INPUT_BYTES} byte limit`,
+							`Image too large - exceeds ${MAX_INPUT_BYTES} byte limit`,
 						);
 					}
 				}
@@ -180,7 +180,7 @@ export const Route = createFileRoute("/api/icons/from-url")({
 				if (arrayBuffer.byteLength > MAX_INPUT_BYTES) {
 					return jsonError(
 						413,
-						`Image too large — ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(1)} MB exceeds 5 MB limit`,
+						`Image too large - ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(1)} MB exceeds 5 MB limit`,
 					);
 				}
 				const inputBuffer = Buffer.from(arrayBuffer);

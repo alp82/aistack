@@ -173,7 +173,7 @@ describe("useClipboard", () => {
 		});
 		expect(result.current.copied).toBe(true);
 
-		// Second copy — should restart the timer
+		// Second copy - should restart the timer
 		await act(async () => {
 			await result.current.copy("hello again");
 		});

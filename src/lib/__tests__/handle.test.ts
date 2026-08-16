@@ -4,7 +4,7 @@
  * Design contract (plan.md Phase A, `src/lib/handle.ts`):
  *   HANDLE_PATTERN = /^[a-z0-9-]+$/, length 3-40, no leading/trailing `-`
  *   RESERVED_HANDLES = every root route segment + infra words
- *   validateHandle(handle): string | null — human-readable error, or null when valid
+ *   validateHandle(handle): string | null - human-readable error, or null when valid
  *
  * Will fail at import (RED) until src/lib/handle.ts is created and exports
  * these three members.

@@ -54,7 +54,7 @@ export function MagicLinkEmail(props: {
 						</Section>
 
 						<Text style={styles.small}>
-							Didn't request this? Ignore this email — your account is safe.
+							Didn't request this? Ignore this email. Your account is safe.
 						</Text>
 					</Section>
 

@@ -1,12 +1,12 @@
-# Claude Code transcripts as a metrics source — primary-source research
+# Claude Code transcripts as a metrics source - primary-source research
 
 Research for auto-sync v1 (issue #30, wayfinder map #29). Question: what do `~/.claude`
-transcripts actually contain, and how does prior art turn that into usage/cost numbers —
+transcripts actually contain, and how does prior art turn that into usage/cost numbers -
 so a local analyzer can compute the P0 capture set (tool inventory, usage-share, recency,
 cost) deterministically and honestly?
 
 Method: direct inspection of local transcripts on this machine (structure only, via
-`jq`/`grep` over field names — no content values reproduced here), plus source reading of
+`jq`/`grep` over field names - no content values reproduced here), plus source reading of
 ccusage (Rust rewrite) and OpenUsage (Go). Date: 2026-07-24.
 
 **Local evidence base:** ~3,200 JSONL files across 22 project directories, Claude Code
@@ -27,11 +27,11 @@ older formats are covered only via prior-art source code and flagged as such.
   and `rust/crates/ccusage/src/adapter/claude/README.md`).
 - One directory per project, named by **munging the working directory path**: `/` and `.`
   become `-` (e.g. a cwd of `/home/<u>/dev/<proj>` becomes `-home-<u>-dev-<proj>`)
-  (observed). The directory name is therefore itself a filesystem path in disguise —
+  (observed). The directory name therefore encodes a filesystem path and is
   privacy-sensitive.
 - Inside a project dir (observed):
-  - `<sessionId>.jsonl` — the main session transcript (`sessionId` is a UUID).
-  - `<sessionId>/subagents/agent-<hex>.jsonl` — one transcript per subagent (Task/Agent
+  - `<sessionId>.jsonl` - the main session transcript (`sessionId` is a UUID).
+  - `<sessionId>/subagents/agent-<hex>.jsonl` - one transcript per subagent (Task/Agent
     tool) launched by that session. Subagent records carry an extra `agentId` field and
     `isSidechain: true` on assistant records.
 - ccusage's adapter also documents a legacy nested shape
@@ -64,26 +64,26 @@ Each line is one JSON object with a `type` discriminator. Types observed locally
 
 Not observed locally but documented in prior art for older versions: a `summary` record
 type (compaction summaries). Zero `"type":"summary"` hits across all ~3,200 local files
-(observed) — treat as version-dependent; do not rely on it.
+(observed) - treat as version-dependent; do not rely on it.
 
 ### 1.3 Common envelope fields (per record)
 
 Observed on `user`/`assistant`/`system` records:
 
-- `uuid` — record id; `parentUuid` — previous record in the thread (linked-list
+- `uuid` - record id; `parentUuid` - previous record in the thread (linked-list
   threading; `null` at session start). Enables reconstructing turn structure and
   detecting branches (e.g. after edits/rewinds).
-- `sessionId` — the session UUID (matches filename). A duplicated snake_case
+- `sessionId` - the session UUID (matches filename). A duplicated snake_case
   `session_id` also appears on some records (observed; redundant).
-- `timestamp` — ISO-8601 UTC with milliseconds (e.g. `2026-07-24T00:29:42.472Z`).
+- `timestamp` - ISO-8601 UTC with milliseconds (e.g. `2026-07-24T00:29:42.472Z`).
 - `type`, `userType` (observed value: `external`), `entrypoint` (observed value: `cli`),
   `isSidechain` (bool; `true` in subagent files), `version` (Claude Code version string),
-  `cwd` (absolute working directory — **privacy-sensitive**), `gitBranch` (branch name —
+  `cwd` (absolute working directory - **privacy-sensitive**), `gitBranch` (branch name -
   privacy-sensitive-ish).
 
 Assistant-record extras (observed): `requestId` (per-API-call id, dedup key), `message`
 (the API message), `effort` (e.g. reasoning-effort setting), and occasional attribution
-fields `attributionSkill` / `attributionPlugin` / `attributionAgent` — these attribute a
+fields `attributionSkill` / `attributionPlugin` / `attributionAgent` - these attribute a
 response to the skill/plugin/agent context that produced it (recent additions; presence
 varies across 2.1.x, do not assume).
 
@@ -101,26 +101,26 @@ Subagent-file extras (observed): `agentId` on every record.
 
 `message.usage` keys observed (all assistant records in the local version range):
 
-- `input_tokens`, `output_tokens` — non-cached input / output.
-- `cache_creation_input_tokens` — total cache-write tokens.
-- `cache_read_input_tokens` — cache-hit tokens.
-- `cache_creation` — object breaking writes down by TTL:
+- `input_tokens`, `output_tokens` - non-cached input / output.
+- `cache_creation_input_tokens` - total cache-write tokens.
+- `cache_read_input_tokens` - cache-hit tokens.
+- `cache_creation` - object breaking writes down by TTL:
   `{ ephemeral_5m_input_tokens, ephemeral_1h_input_tokens }`.
 - `service_tier` (observed value: `standard`), `speed` (observed value: `standard`;
   ccusage also handles a `fast` value with a per-model price multiplier), `inference_geo`.
-- `server_tool_use` — `{ web_search_requests, web_fetch_requests }` counters.
-- `iterations[]` — sub-records for multi-iteration responses; each has its own `type`
+- `server_tool_use` - `{ web_search_requests, web_fetch_requests }` counters.
+- `iterations[]` - sub-records for multi-iteration responses; each has its own `type`
   (observed: `message`) and its own token-usage keys. ccusage's adapter README documents
   an `advisor_message` iteration type carrying its own model, priced separately.
 
 `message.model` is present on **every** assistant record (observed). Model ids seen
 locally: `claude-fable-5`, `claude-opus-4-8`, `claude-sonnet-5`, `claude-sonnet-4-6`,
-`claude-haiku-4-5-20251001` — i.e. both dateless aliases and date-suffixed ids occur, so
+`claude-haiku-4-5-20251001` - i.e. both dateless aliases and date-suffixed ids occur, so
 normalization is required for pricing lookup.
 
 **`costUSD` is absent from all local transcripts** (0 of ~3,200 files contain the key;
 observed). Older Claude Code versions wrote a pre-computed `costUSD` per assistant record
-— ccusage's `display`/`auto` cost modes exist precisely because of this drift
+- ccusage's `display`/`auto` cost modes exist precisely because of this drift
 (https://ccusage.com/guide/cost-modes). A 2026-era analyzer must compute cost from tokens;
 it cannot rely on the field.
 
@@ -133,7 +133,7 @@ it cannot rely on the field.
 - Tool `name` values observed locally: built-ins (`Bash`, `Read`, `Edit`, `Write`,
   `WebFetch`, `WebSearch`, `AskUserQuestion`, `ToolSearch`, `Monitor`, `ScheduleWakeup`,
   `SendUserFile`, `TaskCreate`/`TaskOutput`/`TaskStop`), subagent launch (`Agent`, with
-  `input` keys `description`, `prompt`, `subagent_type` — note older versions called this
+  `input` keys `description`, `prompt`, `subagent_type` - note older versions called this
   tool `Task`), `Skill`, and MCP tools.
 - MCP naming (observed): `mcp__<server>__<tool>` for directly configured servers, and
   `mcp__plugin_<plugin-name>_<server>__<tool>` for plugin-bundled MCP servers. Splitting
@@ -143,12 +143,12 @@ it cannot rely on the field.
 
 Three distinct signals (all observed):
 
-1. **`Skill` tool_use blocks** — `input: { skill, args }`; the skill name is directly in
+1. **`Skill` tool_use blocks** - `input: { skill, args }`; the skill name is directly in
    `input.skill`. Deterministic invocation count.
 2. **`<command-name>/<name></command-name>` markers** inside user `message.content`
-   text — slash commands (built-ins like `/clear`, `/model` and custom/plugin commands)
+   text - slash commands (built-ins like `/clear`, `/model` and custom/plugin commands)
    are echoed this way, alongside `system` records with `subtype: local_command`.
-3. **`attributionSkill` / `attributionPlugin`** fields on assistant records — attribute
+3. **`attributionSkill` / `attributionPlugin`** fields on assistant records - attribute
    generated messages to the loaded skill/plugin (recent versions only).
 
 Signal 1 is the reliable one for "which Skills does this user actually run"; 2 adds
@@ -156,7 +156,7 @@ slash-command coverage; 3 is a bonus where present.
 
 ### 1.7 Other `~/.claude` artifacts relevant to metrics
 
-- **`~/.claude/stats-cache.json`** (observed) — Claude Code's own precomputed stats:
+- **`~/.claude/stats-cache.json`** (observed) - Claude Code's own precomputed stats:
   `dailyActivity[]` (`date`, `messageCount`, `sessionCount`, `toolCallCount`),
   `dailyModelTokens[]` (`date`, `tokensByModel{model: n}`), `hourCounts` (activity
   histogram by hour-of-day), `modelUsage{model: {inputTokens, outputTokens,
@@ -164,10 +164,10 @@ slash-command coverage; 3 is a bonus where present.
   contextWindow}}`, `totalSessions`, `totalMessages`, `firstSessionDate`,
   `longestSession`, `version`. Notes: it reaches further back than surviving transcripts
   (useful for recency/active-days), but its `costUSD` was `0` for all models on this
-  machine, and its provenance/refresh cadence is undocumented — good cross-check, not a
+  machine, and its provenance/refresh cadence is undocumented - a good cross-check rather than a
   primary source. OpenUsage reads it as one of its inputs (`local_paths.go`).
-- **`~/.claude/history.jsonl`** (observed) — one line per submitted prompt: `display`
-  (the raw prompt text — **high sensitivity**), `pastedContents`, `project` (path),
+- **`~/.claude/history.jsonl`** (observed) - one line per submitted prompt: `display`
+  (the raw prompt text - **high sensitivity**), `pastedContents`, `project` (path),
   `sessionId`, `timestamp`. Useful only for prompt-count/recency; an analyzer should
   prefer transcripts and never ship anything from `display`.
 
@@ -222,7 +222,7 @@ Now a monorepo with the production implementation in Rust
   `cost = input·p_in + output·p_out + cache_5m·p_cache_create + cache_1h·(2·p_in) +
   cache_read·p_cache_read`. LiteLLM's `cache_creation_input_token_cost` is the 5-minute
   rate (1.25× input); the 1-hour rate isn't in LiteLLM, so ccusage hardcodes
-  `CACHE_CREATE_1H_INPUT_MULTIPLIER = 2.0` on the base input price — matching Anthropic's
+  `CACHE_CREATE_1H_INPUT_MULTIPLIER = 2.0` on the base input price - matching Anthropic's
   documented multipliers (5m write = 1.25×, 1h write = 2×, read = 0.1×). Without the
   `cache_creation` breakdown it falls back to pricing all of
   `cache_creation_input_tokens` at the 5m rate. Long-context tiering: marginal
@@ -245,7 +245,7 @@ Go terminal dashboard covering ~35 tools; Claude Code provider in
 - **Dedup** (`conversation_records.go`): usage key = `requestId` if present, else
   `message.id`, else `sessionId|timestamp|token-tuple`. Separate per-tool-call dedup key:
   `(requestId||messageId||sessionId+timestamp) + "|tool|" + tool_use.id` (or
-  `name+index` fallback) — so tool counts survive record replays.
+  `name+index` fallback) - so tool counts survive record replays.
 - **Aggregation** (`conversation_usage.go`): totals per model, per project (from `cwd`),
   per agent (main vs named subagent via `agentId`/path), per service_tier and
   inference_geo; daily maps (tokens, messages, cost, per-model tokens); 5-hour billing
@@ -254,22 +254,22 @@ Go terminal dashboard covering ~35 tools; Claude Code provider in
 - **Goes further than tokens** (same file): counts tool_use per (lowercased) tool name,
   infers programming languages from file-path arguments inside tool inputs, tracks
   changed-file sets and estimated lines added/removed for mutating tools, and counts
-  `git commit` commands in Bash inputs. Note: these mine tool `input` payloads — exactly
+  `git commit` commands in Bash inputs. Note: these mine tool `input` payloads - exactly
   the high-sensitivity zone aistack's analyzer must treat as local-only.
 - **Real quota data** (`usage_api.go`): also calls Anthropic's OAuth-scoped usage
   endpoint `https://api.anthropic.com/api/oauth/usage` (and a cookie-authenticated org
   endpoint) to get actual subscription utilization buckets (e.g. `seven_day_oauth_apps`,
-  `extra_usage`) — i.e. real rate-limit consumption rather than notional dollars. This
+  `extra_usage`) - i.e. real rate-limit consumption rather than notional dollars. This
   endpoint is undocumented/private; useful signal but fragile to rely on.
 - **Pricing** (`internal/pricing/`): LiteLLM + OpenRouter + hardcoded tables with fuzzy
   model matching and override files.
 
 ### 2.3 Other prior art (brief)
 
-- `phuryn/claude-usage` — local dashboard, same JSONL parsing approach, adds a
+- `phuryn/claude-usage` - local dashboard, same JSONL parsing approach, adds a
   plan-progress bar for Pro/Max.
-- `658jjh/claude-usage-tracker`, `junhoyeo/tokscale`, `juliantanx/aiusage` — multi-tool
-  aggregators in the same family (tokscale adds a public leaderboard — a cautionary
+- `658jjh/claude-usage-tracker`, `junhoyeo/tokscale`, `juliantanx/aiusage` - multi-tool
+  aggregators in the same family (tokscale adds a public leaderboard - a cautionary
   example of publishing raw cost numbers).
 - Claude-Monitor-style tools focus on live rate-limit windows rather than transcript
   history.
@@ -293,7 +293,7 @@ Facts:
 
 Recommendation for aistack's public measured layer:
 
-1. **Lead with usage-share, not dollars.** Share-of-tokens per model / per tool and
+1. **Lead with usage-share rather than dollars.** Share-of-tokens per model / per tool and
    activity recency are fully deterministic and honest for every account type.
 2. Where a dollar figure is shown, label it **"API-equivalent cost"** with a fixed
    definition ("what this usage would cost at Anthropic's public API list prices,
@@ -323,18 +323,18 @@ Deterministically extractable from transcripts:
 
 Not extractable (or not honestly):
 
-- **Editor/IDE identity** — `entrypoint` only says `cli` here; IDE integrations may
+- **Editor/IDE identity** - `entrypoint` only says `cli` here; IDE integrations may
   differ but weren't observable. `~/.claude/ide/` existence hints at IDE use, unverified.
-- **Non-Claude tools** (Cursor, Codex, Copilot…) — out of scope of `~/.claude`; would
+- **Non-Claude tools** (Cursor, Codex, Copilot…) - out of scope of `~/.claude`; would
   need their own adapters (this is exactly what OpenUsage/tokscale do).
-- **Languages/frameworks** — only via mining tool-input file paths (OpenUsage does this);
+- **Languages/frameworks** - only via mining tool-input file paths (OpenUsage does this);
   heuristic and high-sensitivity, keep out of P0 publish set.
-- **Actual spend** — see section 3.
-- **Team/org context** — nothing in the transcript identifies an org.
+- **Actual spend** - see section 3.
+- **Team/org context** - nothing in the transcript identifies an org.
 
 Caveat: MCP server names and especially Skill/command names are user-chosen strings and
 can leak project/client names. The publish step needs either a known-tool allowlist
-(match against aistack's catalog) or explicit per-name user approval — never auto-publish
+(match against aistack's catalog) or explicit per-name user approval - never auto-publish
 arbitrary local names.
 
 ## 5. Metric-candidate catalog
@@ -370,7 +370,7 @@ without a scan.
 | Turn duration stats | `system.subtype == turn_duration` (`durationMs`) | D (recent versions only) | low | linear |
 | Messages by role | record `type` | D | low | linear |
 | 5-hour billing blocks / burn rate | timestamps bucketed per ccusage/OpenUsage block logic | E | low | linear |
-| Projects count / per-project split | project dir names or `cwd` | D | **high** (path/repo names) — publish count only, never names | linear |
+| Projects count / per-project split | project dir names or `cwd` | D | **high** (path/repo names) - publish count only, never names | linear |
 
 ### Tools, skills, agents
 
@@ -386,14 +386,14 @@ without a scan.
 | Hook activity (hooks configured & firing) | `attachment` hook records, `stop_hook_summary` | D (recent versions) | med | linear |
 | Files changed / lines added-removed / commit counts | mining `tool_use.input` (OpenUsage-style) | H | **high** (requires reading inputs; outputs leak repo scale) | linear |
 | Languages used | file extensions inside tool inputs | H | high | linear |
-| Compaction events / context pressure | version-dependent (`summary` records, compact markers) — not present in local range | H | low | linear |
+| Compaction events / context pressure | version-dependent (`summary` records, compact markers) - not present in local range | H | low | linear |
 
 ### Cross-checks
 
 | metric | source | notes |
 |---|---|---|
-| Lifetime totals (sessions, messages, per-model tokens, daily activity, hour histogram) | `~/.claude/stats-cache.json` | trivial read; longer history than surviving transcripts; undocumented refresh semantics — use to sanity-check the scan, flag drift |
-| Prompt count / recency | `~/.claude/history.jsonl` | contains raw prompt text — count/timestamps only, never content |
+| Lifetime totals (sessions, messages, per-model tokens, daily activity, hour histogram) | `~/.claude/stats-cache.json` | trivial read; longer history than surviving transcripts; undocumented refresh semantics - use to sanity-check the scan, flag drift |
+| Prompt count / recency | `~/.claude/history.jsonl` | contains raw prompt text - count/timestamps only, never content |
 
 **P0 capture set is fully covered by D-tier rows:** tool inventory (tools/skills/MCP/
 models), usage-share (tokens + tool-call shares), recency (active days, last-activity),
@@ -411,7 +411,7 @@ and cost (API-equivalent, labeled). Everything H-tier or path-derived stays loca
    cleanup (`cleanupPeriodDays`), and why `modelUsage[].costUSD` is 0 here are all
    unverified. Worth a follow-up before using it as the recency source of record.
 3. **Transcript retention.** Claude Code prunes old sessions (retention setting);
-   effective lookback window per machine is unknown — measured metrics should state
+   effective lookback window per machine is unknown - measured metrics should state
    their observation window rather than implying lifetime totals.
 4. **IDE/entrypoint values.** Only `entrypoint: "cli"` observed; the value set for IDE
    extensions/SDK use is unverified.
@@ -431,7 +431,7 @@ and cost (API-equivalent, labeled). Everything H-tier or path-derived stays loca
 ## Source index
 
 - Local: `~/.claude/projects/**/*.jsonl` (v2.1.185–2.1.218, 2026-06/07),
-  `~/.claude/stats-cache.json`, `~/.claude/history.jsonl` — structure inspection only.
+  `~/.claude/stats-cache.json`, `~/.claude/history.jsonl` - structure inspection only.
 - ccusage: `rust/crates/ccusage/src/adapter/claude/{README.md,paths.rs,mod.rs}`,
   `rust/crates/ccusage/src/{cost.rs,pricing.rs}` @ main (2026-07-24),
   https://ccusage.com/guide/ and https://ccusage.com/guide/cost-modes.

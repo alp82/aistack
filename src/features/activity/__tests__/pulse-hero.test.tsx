@@ -14,7 +14,7 @@ afterEach(cleanup);
 describe("the hero", () => {
 	it("carries the canonical reading where the animation cannot", () => {
 		// SpeedingText paints its digits from an effect, so the crawler-facing
-		// sentence is the sr-only line — it holds every figure the reel will show.
+		// sentence is the sr-only line - it holds every figure the reel will show.
 		const { container } = render(<PulseHero band={band()} />);
 		const reading = container.querySelector(".sr-only");
 		expect(reading?.textContent).toContain(
@@ -67,7 +67,7 @@ describe("the hero", () => {
 				})}
 			/>,
 		);
-		expect(screen.getByText("—")).toBeInTheDocument();
+		expect(screen.getByText("-")).toBeInTheDocument();
 		expect(screen.queryByText(/tokens measured/)).not.toBeInTheDocument();
 	});
 
@@ -119,7 +119,7 @@ describe("the trend chart", () => {
 		expect(screen.getByText("300M")).toBeInTheDocument();
 	});
 
-	it("draws nothing below two live days — no shape, no chart", () => {
+	it("draws nothing below two live days - no shape, no chart", () => {
 		render(<PulseHero band={band({ points: points([0, 0, 5, 0, 0]) })} />);
 		expect(screen.queryByText("Usage in the")).not.toBeInTheDocument();
 	});

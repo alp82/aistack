@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Spike probe for wayfinder ticket #35 — does an `async: true` hook outlive the session?
+// Spike probe for wayfinder ticket #35 - does an `async: true` hook outlive the session?
 //
 // The Stop hook fires on EVERY turn, so a bare start/complete pair proves nothing: a
 // `completed` line written while the session was still alive is indistinguishable from one
@@ -8,7 +8,7 @@
 //   1. Every line carries the `session_id` from the hook's stdin JSON, so a `completed` line
 //      can be tied to the session you actually quit.
 //   2. It ticks once a second while it waits. If Claude Code tears the process down at quit,
-//      the ticks stop at the quit moment and there is no `completed` — that is a *killed at
+//      the ticks stop at the quit moment and there is no `completed` - that is a *killed at
 //      teardown* reading. If ticks stop with no explanation and no `completed`, that is a
 //      *timeout* reading. "Async hooks do not outlive the session" is only supportable when
 //      ticks continue past the quit time and then stop short of DELAY_MS.
@@ -32,7 +32,7 @@ const note = (line) => {
 }
 
 // Claude Code writes the hook input then closes stdin, so this resolves. The race is a
-// belt-and-braces guard: if the input never arrives we still log, marked session=unknown —
+// belt-and-braces guard: if the input never arrives we still log, marked session=unknown -
 // and a session=unknown run means Round 4 is void, not that async hooks died.
 const stdin = await Promise.race([
   text(process.stdin).catch(() => ''),
@@ -54,5 +54,5 @@ const ticker = setInterval(() => {
 
 setTimeout(() => {
   clearInterval(ticker)
-  note(`completed ${tag} — survived ${DELAY_MS}ms after Stop`)
+  note(`completed ${tag} - survived ${DELAY_MS}ms after Stop`)
 }, DELAY_MS)

@@ -95,7 +95,7 @@ function ToolsPage() {
 	const setSearch = useMemo(
 		() =>
 			makeSearchUpdater<typeof TOOLS_SEARCH_DEFAULTS>(navigate, {
-				// resetScroll: false — filter/sort/search changes keep the viewport
+				// resetScroll: false - filter/sort/search changes keep the viewport
 				// in place; only pagination scrolls, back to the page header.
 				resetPageKeys: ["filter", "sort", "q"],
 				resetScroll: false,

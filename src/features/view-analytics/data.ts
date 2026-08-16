@@ -1,7 +1,7 @@
 /**
  * The shape `viewAnalytics.mine` answers with, named once.
  *
- * Both owner-private surfaces — the profile panel and the stack-page line —
+ * Both owner-private surfaces - the profile panel and the stack-page line -
  * read the same query, so they read the same type. Deriving it from the
  * generated api means a change to the query is a type error here and not a
  * surface that quietly drops a field.

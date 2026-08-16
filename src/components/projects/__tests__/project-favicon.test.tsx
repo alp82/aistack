@@ -8,7 +8,7 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------------
-// Group A — ProjectFavicon shared module
+// Group A - ProjectFavicon shared module
 // ---------------------------------------------------------------------------
 // The inline ProjectFavicon in ProjectsSection.tsx builds the URL as:
 //   `https://www.google.com/s2/favicons?domain=${new URL(href).hostname}&sz=64`
@@ -18,7 +18,7 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("ProjectFavicon", () => {
-	// TC-FAV-01: basic render — src shape, referrerpolicy, loading, size class.
+	// TC-FAV-01: basic render - src shape, referrerpolicy, loading, size class.
 	it("TC-FAV-01: renders one img with google s2/favicons src, domain=example.com, referrerpolicy, loading=lazy, size-5 class", () => {
 		render(<ProjectFavicon href="https://example.com" />);
 		const img = screen.getByTestId("project-favicon");

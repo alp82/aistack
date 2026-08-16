@@ -165,7 +165,7 @@ function TimeSeriesChart({
 	);
 }
 
-/** One table row per day, one column per series. Missing readings read "—". */
+/** One table row per day, one column per series. Missing readings read "-". */
 function tableRows(
 	series: readonly ChartSeries[],
 	days: readonly Date[],
@@ -176,7 +176,7 @@ function tableRows(
 			formatDayFull(d),
 			...series.map((s) => {
 				const hit = s.points.find((p) => p.at === at);
-				return hit ? formatExact(hit.value) : "—";
+				return hit ? formatExact(hit.value) : "-";
 			}),
 		];
 	});

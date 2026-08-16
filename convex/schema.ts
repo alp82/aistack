@@ -57,10 +57,10 @@ const ResourcePackage = v.object({
 })
 
 // ---------------------------------------------------------------------------
-// The measured layer — wire format fixed by #33, produced by
+// The measured layer - wire format fixed by #33, produced by
 // packages/cli/src/transcripts (#37). Keep the two in lockstep: this validator
 // is CLOSED on purpose. The capability research made the closed-aggregate
-// schema load-bearing for the privacy story — a free-form blob would forfeit
+// schema load-bearing for the privacy story - a free-form blob would forfeit
 // it, because "we only accept these exact fields" is the claim being made.
 // ---------------------------------------------------------------------------
 
@@ -68,7 +68,7 @@ const ResourcePackage = v.object({
 // send (#33 decisions 2-4); this shape is the second line, not the first.
 const MeasuredAtom = v.object({
   name: v.string(),
-  // Share, never a raw invocation count — counts are the map's designated
+  // Share, never a raw invocation count - counts are the map's designated
   // post-P0 headroom metric and are deliberately left unspent.
   callShare: v.number(),
 })
@@ -86,7 +86,7 @@ const MeasuredModel = v.object({
     cacheWrite: v.number(),
     cacheRead: v.number(),
   }),
-  // Absent when publishCost is off, or when the model was not fully priced —
+  // Absent when publishCost is off, or when the model was not fully priced -
   // never zeroed (#33 decision 11).
   apiEquivalentUSD: v.optional(v.number()),
   // The table that produced the dollars above, riding on the model (#136): one
@@ -113,7 +113,7 @@ export const MeasuredPayload = v.object({
     sessions: v.number(),
     activeDays: v.number(),
     // COUNT only. Project directory names are munged absolute paths and are a
-    // standing non-goal (#13) — they never travel.
+    // standing non-goal (#13) - they never travel.
     projects: v.number(),
     totalTokens: v.number(),
     cacheHitShare: v.number(),
@@ -160,7 +160,7 @@ export const ReconcileAtomKind = v.union(
   v.literal('skill')
 )
 
-// The five inventory classes a published name can belong to — the same five the
+// The five inventory classes a published name can belong to - the same five the
 // payload's `inventory` block carries (#33), so an opt-in is addressed exactly
 // the way the client filters.
 export const PublishedNameCategory = v.union(
@@ -172,12 +172,12 @@ export const PublishedNameCategory = v.union(
 )
 
 // ---------------------------------------------------------------------------
-// Instrumentation — the three signal families (#77, map #76).
+// Instrumentation - the three signal families (#77, map #76).
 // ---------------------------------------------------------------------------
 
 /**
  * What a view counter counts. Polymorphic on purpose: all three kinds exist on
- * day one, and `aggregate` has no document to type against at all — typed
+ * day one, and `aggregate` has no document to type against at all - typed
  * optional columns would force its row to carry every id field absent.
  */
 export const ViewTargetKind = v.union(
@@ -204,7 +204,7 @@ export const ReferrerBucket = v.union(
 /**
  * A tool, model or bundle named in a composition change, with its display name
  * FROZEN at write time. The feed is a historical record, so the name at the
- * moment of the change is the correct value — and freezing it also kills a
+ * moment of the change is the correct value - and freezing it also kills a
  * per-row catalog lookup on the read path.
  */
 export const ActivityAtom = v.object({
@@ -219,7 +219,7 @@ export const ActivityAtom = v.object({
  * and a reader switching on `type` then gets the wrong payload shape.
  *
  * There is no cost field. `apiEquivalentUSD` is stored PER MODEL and is absent
- * when a model is unpriced, so there is no snapshot-level total to copy —
+ * when a model is unpriced, so there is no snapshot-level total to copy -
  * summing the model values would present a partial sum as a total. Adding cost
  * later needs a `costComplete` flag alongside it.
  */
@@ -277,7 +277,7 @@ const ResourceOwner = v.union(
  *   - CLI items: `${group}:${type}:${relPath}` via computeStableKey in packages/cli/src/stableKey.ts
  *
  * A linked reference carries exactly one of `upstream` (GitHub repo) or `pkg`
- * (a package — npm/PyPI/OCI/url, e.g. an MCP server) and no files; a hosted
+ * (a package - npm/PyPI/OCI/url, e.g. an MCP server) and no files; a hosted
  * resource carries files (per-creator). Presence of either ref => linked.
  */
 export const Resource = v.object({
@@ -437,12 +437,12 @@ export default defineSchema({
     // One opt-out bit, not a control panel (#33 decision 11). Applied
     // CLIENT-side: off means the cost fields are absent from the payload, never
     // transmitted, so there is nothing to "reveal" server-side. Absent reads as
-    // opted IN — cost is the default, and this field only records a refusal.
+    // opted IN - cost is the default, and this field only records a refusal.
     publishCost: v.optional(v.boolean()),
     // Whether the machine stages its kept-private names here so the owner can
     // tick them on the web (#48). Absent reads as ON, mirroring `publishCost`
     // field-for-field: default-off would reproduce the very complaint #48 was
-    // opened for — "publishes less, forever" — one layer later. Default-on
+    // opened for - "publishes less, forever" - one layer later. Default-on
     // survives ONLY because the approve gate names the switch before the first
     // upload, so the two hold each other up.
     reviewKeptPrivate: v.optional(v.boolean()),
@@ -462,7 +462,7 @@ export default defineSchema({
     //
     // A FACT, not a preference, so it sits beside the flag and not inside it: a
     // revoke clears the permission and must not erase what already happened.
-    // The switch reads the pair — on with a stamp is on-and-working, on without
+    // The switch reads the pair - on with a stamp is on-and-working, on without
     // one is on-but-never-fired, which is the state an unupgraded CLI leaves.
     lastAutoSyncAt: v.optional(v.number()),
     isLowQuality: v.optional(v.boolean()),
@@ -591,7 +591,7 @@ export default defineSchema({
     // older CLI sends nothing, and the login must still work.
     //
     // Recorded HERE and not on the poll, because the poll is a bare GET with a
-    // secretId — adding a query parameter to it would be a second wire change
+    // secretId - adding a query parameter to it would be a second wire change
     // for a field the session already had a place to hold.
     cliVersion: v.optional(v.string()),
     createdAt: v.number(),
@@ -601,13 +601,13 @@ export default defineSchema({
     .index('by_secretId', ['secretId'])
     // Feeds the hourly cleanup cron (#52). `authStart` is unauthenticated and
     // inserts one row per call with a 15-minute TTL, and nothing ever collected
-    // them — so this table grew without bound. The index also lets the cron GC
+    // them - so this table grew without bound. The index also lets the cron GC
     // the machine name an abandoned login left behind.
     .index('by_expiresAt', ['expiresAt']),
 
   cliTokens: defineTable({
     // Unsalted SHA-256 of the bearer, lowercase hex, and the ONLY form of the
-    // credential this table holds — PHASE C of the hash-at-rest migration
+    // credential this table holds - PHASE C of the hash-at-rest migration
     // landed (#49 shipped A+B, #52 narrows). A database read no longer
     // discloses a working token.
     //
@@ -620,7 +620,7 @@ export default defineSchema({
     // plaintext never crosses into the database layer at all.
     //
     // DEPLOY ORDER IS NOT OPTIONAL. The digest is derived FROM the plaintext,
-    // so a column already dropped cannot be backfilled from — deploy a revision
+    // so a column already dropped cannot be backfilled from - deploy a revision
     // that still has `token`, run
     // `migrations/20260729_cli_token_hash:backfill`, and only then deploy this.
     tokenHash: v.string(),
@@ -635,13 +635,13 @@ export default defineSchema({
     // before the send. Most-recent-wins was rejected as a footgun: editing a
     // second stack would silently redirect the measured layer.
     //
-    // PHASE A of a three-phase migration — optional first, because the table
+    // PHASE A of a three-phase migration - optional first, because the table
     // has live rows and the repo's migration gotcha is that the dirty-row check
     // must test field PRESENCE, not truthiness. Narrowing to required waits
     // until every live token is relinked; see convex/migrations/20260725_cli_token_stack.ts.
     stackId: v.optional(v.id('stacks')),
     // What this machine is allowed to do (#52). Every token is minted with the
-    // full set, so no request is refused today — the value here is the
+    // full set, so no request is refused today - the value here is the
     // enforcement point and the display line, not a live restriction.
     //
     // REQUIRED, batched into the same narrow as `tokenHash` above, which is the
@@ -684,7 +684,7 @@ export default defineSchema({
     .index('by_stackId', ['stackId']),
 
   // A linked row carries exactly one of `upstream` (GitHub) or `pkg` (package)
-  // and no files; a hosted row carries files. Linked rows are shared globally —
+  // and no files; a hosted row carries files. Linked rows are shared globally -
   // deduped by `by_upstream` (repo) or `by_pkg` (package); hosted by creator.
   resources: defineTable({
     type: v.string(),
@@ -746,13 +746,13 @@ export default defineSchema({
     .index('by_status', ['status']),
 
   // One fixed window per caller. The caller used to be an IP and only an IP;
-  // #52 adds bearer-token buckets, so the column names what it holds — an
-  // opaque namespaced key (`ip:1.2.3.4`, `cli-token:<id>`) — rather than one of
+  // #52 adds bearer-token buckets, so the column names what it holds - an
+  // opaque namespaced key (`ip:1.2.3.4`, `cli-token:<id>`) - rather than one of
   // the things it can hold.
   //
   // The rename rode along with the `cliTokens` narrow, because it gates the
   // same deploy. The usual three-phase DATA migration did not apply: every row
-  // is dead 60 seconds after it is written, so there was nothing to preserve —
+  // is dead 60 seconds after it is written, so there was nothing to preserve -
   // `migrations/20260729_cli_token_scopes:purgeKeylessRateLimits` deletes the
   // stragglers, and the hourly cron would have drained them anyway.
   apiRateLimits: defineTable({
@@ -765,7 +765,7 @@ export default defineSchema({
 
   // The measured layer (#33 decision 6). Append-only: one immutable row per
   // approved sync, and the "current" measured layer is the newest row by
-  // capturedAt. There is deliberately NO denormalised current row — that was
+  // capturedAt. There is deliberately NO denormalised current row - that was
   // rejected in #33 precisely because it drifts from the history it summarises.
   measuredSnapshots: defineTable({
     stackId: v.id('stacks'),
@@ -776,7 +776,7 @@ export default defineSchema({
     receivedAt: v.number(),
     schemaVersion: v.number(),
     // Denormalized copy of payload.harness.name (#66 decision 1), so "current
-    // per harness" is one indexed read. A plain string, not a union literal —
+    // per harness" is one indexed read. A plain string, not a union literal -
     // a third harness must not need a schema migration.
     harness: v.string(),
     payload: MeasuredPayload,
@@ -786,7 +786,7 @@ export default defineSchema({
 
   // The ONLY durable reconcile state (#33 decision 12). Suggestions themselves
   // are derived on read from (latest snapshot x authored toolSubscriptions), so
-  // a new sync needs no merge logic — it simply recomputes.
+  // a new sync needs no merge logic - it simply recomputes.
   reconcileDismissals: defineTable({
     stackId: v.id('stacks'),
     atomKind: ReconcileAtomKind,
@@ -806,7 +806,7 @@ export default defineSchema({
   // consent to a name they have not thought of.
   //
   // A TABLE AND NOT A FIELD ON `stacks`, for two reasons. The set only ever
-  // grows — one row per artifact its owner has ever ticked — and a ticked name
+  // grows - one row per artifact its owner has ever ticked - and a ticked name
   // that the newest snapshot no longer carries is NOT public; parked on the
   // stack document it would ride along with every public stack read.
   publishedNameOptIns: defineTable({
@@ -827,7 +827,7 @@ export default defineSchema({
   // stack read. It is owner-only and joins into NO public query.
   //
   // THROWN AWAY, NOT ACCUMULATED. The whole list is replaced on every sync,
-  // deleted the moment the switch flips off, and aged out after 30 days idle —
+  // deleted the moment the switch flips off, and aged out after 30 days idle -
   // a name outside the rolling window is not in the snapshot either, so ticking
   // it would publish nothing. That is what makes the list mean exactly "names in
   // your current window you have not published". Ticks in `publishedNameOptIns`
@@ -837,7 +837,7 @@ export default defineSchema({
     stackId: v.id('stacks'),
     category: PublishedNameCategory,
     name: v.string(),
-    /** How often it ran in the reported window — the gate's ordering signal. */
+    /** How often it ran in the reported window - the gate's ordering signal. */
     count: v.number(),
     /** Plugin prefix, for the grouped bulk tick. `null` when standalone. */
     group: v.union(v.string(), v.null()),
@@ -853,7 +853,7 @@ export default defineSchema({
   //
   // Deduping one visitor per target per day already forces one marker row per
   // (visitor, target, day), so a counter saves no rows. What it buys is the
-  // right to throw the markers away after a day — which keeps the permanent
+  // right to throw the markers away after a day - which keeps the permanent
   // table bounded by `targets x days x buckets` instead of by traffic, and
   // keeps the visitor hash out of the permanent record entirely.
   // -------------------------------------------------------------------------
@@ -884,7 +884,7 @@ export default defineSchema({
     .index('by_day', ['dayStartMs']),
 
   // -------------------------------------------------------------------------
-  // The activity feed (#77). Append-only, written at the moment things happen —
+  // The activity feed (#77). Append-only, written at the moment things happen -
   // NOT derived at read time from `measuredSnapshots`/`stacks`, because
   // derivation gets expensive and cannot express "tool X added" at all.
   //
@@ -901,7 +901,7 @@ export default defineSchema({
     createdAt: v.number(),
     event: ActivityEvent,
   })
-    // The feed's only query. `by_stack_createdAt` is deliberately NOT built —
+    // The feed's only query. `by_stack_createdAt` is deliberately NOT built -
     // nothing on this map reads per-stack activity. Add it when something does.
     .index('by_createdAt', ['createdAt']),
 })

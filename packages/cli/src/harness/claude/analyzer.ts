@@ -6,10 +6,10 @@
 // optional: records arrive as `unknown` and are narrowed here.
 //
 // The shared aggregate/finalize machinery lives in ../shared/aggregate.ts
-// (#67); this file owns what is CLAUDE-specific — the record shapes, and the
+// (#67); this file owns what is CLAUDE-specific - the record shapes, and the
 // response dedup below.
 //
-// THE LOAD-BEARING SUBTLETY — read before touching `ingestAssistant`.
+// THE LOAD-BEARING SUBTLETY - read before touching `ingestAssistant`.
 // Claude Code writes ONE API response as SEVERAL JSONL records: each carries a
 // distinct content block (thinking, then tool_use, then tool_use...) and a
 // *cumulative* `usage` snapshot that grows with each record. Measured on a real
@@ -24,7 +24,7 @@
 // Keeping the largest total is also ccusage's documented rule
 // (`should_replace_deduped_entry`).
 //
-// THE SECOND SUBTLETY — cost accumulates HERE, not in `finalize`.
+// THE SECOND SUBTLETY - cost accumulates HERE, not in `finalize`.
 // Decision 8 of #33 made pricing time-aware, so a response is priced at the
 // rate in effect at its own timestamp. Summing tokens per model and pricing
 // once at the end cannot express a mid-window rate change, so each response's
@@ -80,7 +80,7 @@ type Contribution = {
 	mirroredIterationTypes: Array<[string, number]>;
 	/** Iterations naming a different model, attributed to that model (#33 dec. 9). */
 	fallbackAttempts: number;
-	/** Mirror-suspected iterations with no `model` field — skipped, not billed. */
+	/** Mirror-suspected iterations with no `model` field - skipped, not billed. */
 	untypedMirrors: number;
 };
 
@@ -150,7 +150,7 @@ function ingestAssistant(agg: Aggregate, rec: Obj, tsMs: number | null): void {
 
 	// Content blocks are counted per RECORD, deliberately outside the token
 	// fold: the records of ONE response carry disjoint blocks (verified across
-	// 44,478 groups — zero overlap), so folding them would drop real blocks.
+	// 44,478 groups - zero overlap), so folding them would drop real blocks.
 	// Replays are the exception and must be skipped, because `tool_use` has
 	// `block.id` to dedup on but thinking/text blocks have no identity at all.
 	if (!isReplay) ingestContentBlocks(agg, msg.content);
@@ -160,7 +160,7 @@ function ingestAssistant(agg: Aggregate, rec: Obj, tsMs: number | null): void {
 
 	const model = asName(msg.model) ?? "(unknown)";
 	// `<synthetic>` is the harness's own pseudo-model for records it generates
-	// itself. Not a tool the user chose — excluded from inventory and pricing,
+	// itself. Not a tool the user chose - excluded from inventory and pricing,
 	// but its tokens are surfaced rather than silently dropped.
 	if (model.startsWith("<")) {
 		agg.syntheticRecords++;
@@ -174,7 +174,7 @@ function ingestAssistant(agg: Aggregate, rec: Obj, tsMs: number | null): void {
 	const contribution = buildContribution(usage, model, sidechain, tsMs);
 
 	if (messageId === null) {
-		// No dedup key available — count it and record that we were unprotected.
+		// No dedup key available - count it and record that we were unprotected.
 		agg.unkeyedResponses++;
 		acceptContribution(agg, contribution);
 		return;
@@ -198,7 +198,7 @@ function ingestAssistant(agg: Aggregate, rec: Obj, tsMs: number | null): void {
 	// Keep the FIRST-seen requestId, not this record's. If a genuine replay wins
 	// on tokens, overwriting it would make the replay's own later records compare
 	// equal to the stored id, read as continuations, and get their thinking/text
-	// blocks counted a second time — reopening exactly what the `isReplay` gate
+	// blocks counted a second time - reopening exactly what the `isReplay` gate
 	// above exists to close. (tool_use survives either way via `block.id`.)
 	agg.seen.set(messageId, { requestId: existing.requestId, contribution });
 }
@@ -206,7 +206,7 @@ function ingestAssistant(agg: Aggregate, rec: Obj, tsMs: number | null): void {
 /**
  * Apply a contribution and tally its diagnostics. Paired with
  * `retractContribution` so every per-response census stays per-RESPONSE rather
- * than per-record — these used to be bumped while merely *building* a
+ * than per-record - these used to be bumped while merely *building* a
  * contribution, which counted every folded continuation too.
  */
 function acceptContribution(agg: Aggregate, c: Contribution): void {
@@ -294,7 +294,7 @@ function buildContribution(
 			continue;
 		}
 
-		// #33 decision 9, SHARPENED — read the whole comment before touching this.
+		// #33 decision 9, SHARPENED - read the whole comment before touching this.
 		//
 		// The prototype skipped EVERY `type: "message"` iteration as a mirror of
 		// top-level usage, which was correct by luck rather than construction: a
@@ -307,7 +307,7 @@ function buildContribution(
 		// #33 phrased the fix as "skip it only when `iter.model === message.model`".
 		// Taken literally that is a ~2x overcount, because the corpus says the
 		// `model` field is almost never there: of 63,638 non-advisor iterations,
-		// 63,634 carry NO `model` at all — and all 63,634 are byte-exact mirrors of
+		// 63,634 carry NO `model` at all - and all 63,634 are byte-exact mirrors of
 		// their record's top-level usage (measured: zero differ). They carry 7.24
 		// BILLION tokens, nearly double the corpus total, so attributing them as
 		// separate entries would roughly double both tokens and cost. Only 8
@@ -315,7 +315,7 @@ function buildContribution(
 		// 4 differing (the real first attempts).
 		//
 		// So the operative rule is: SKIP UNLESS THE ITERATION NAMES A DIFFERENT
-		// MODEL. Absent is treated as matching — mis-attributing is a double-bill,
+		// MODEL. Absent is treated as matching - mis-attributing is a double-bill,
 		// skipping is at worst an undercount, and the measurement above says it is
 		// not even that.
 		if (itKey === null) {
@@ -357,7 +357,7 @@ function applyContribution(
 			agg.byModel.set(modelKey, m);
 		}
 		// One response is one message, even when a fallback attempt or an advisor
-		// iteration attributes tokens to a second model — counting per entry would
+		// iteration attributes tokens to a second model - counting per entry would
 		// inflate the response total past distinctResponses.
 		if (i === 0) m.messages += sign;
 		m.input += sign * counts.input;

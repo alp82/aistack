@@ -337,7 +337,7 @@ export function AddToolForm({
 					)}
 				</fieldset>
 
-				{/* More Details Toggle — hidden in edit mode since all fields are always shown */}
+				{/* More Details Toggle - hidden in edit mode since all fields are always shown */}
 				{!isEditMode && (
 					<button
 						type="button"
@@ -354,7 +354,7 @@ export function AddToolForm({
 						</span>
 						{!showDetails && (
 							<span className="normal-case tracking-normal">
-								— categories, pricing
+								- categories, pricing
 							</span>
 						)}
 					</button>

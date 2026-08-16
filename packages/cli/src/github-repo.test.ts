@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { canonicalizeRepoUrl, repoNameFromCanonical } from "./github-repo.js";
 
-// Trimmed copy of the canonical parser — re-assert the cases the CLI relies on
+// Trimmed copy of the canonical parser - re-assert the cases the CLI relies on
 // so drift from src/lib/github-repo.ts surfaces in `pnpm test`.
 describe("canonicalizeRepoUrl", () => {
 	const cases: Array<[string, string | null]> = [

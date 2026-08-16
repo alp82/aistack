@@ -1,7 +1,7 @@
 // The pure half of view counting (#78, map #76).
 //
 // Split out of the server function so the rules can be tested without a request
-// context. Everything here runs on the SERVER only — the raw IP and the raw
+// context. Everything here runs on the SERVER only - the raw IP and the raw
 // User-Agent must never reach the browser bundle or Convex.
 
 import { createHmac } from "node:crypto";
@@ -12,7 +12,7 @@ export const DAY_MS = 24 * 60 * 60 * 1000;
 /**
  * Length-delimited join.
  *
- * Raw concatenation lets two different input tuples collide — `("ab", "c")` and
+ * Raw concatenation lets two different input tuples collide - `("ab", "c")` and
  * `("a", "bc")` hash the same. Prefixing each part with its length removes the
  * ambiguity.
  */
@@ -23,7 +23,7 @@ export function delimitedJoin(parts: readonly string[]): string {
 export function hashSecret(): string | null {
 	const secret = process.env.VIEW_HASH_SECRET;
 	if (secret) return secret;
-	// Dev has no secret to keep — there is no shared database and no visitor to
+	// Dev has no secret to keep - there is no shared database and no visitor to
 	// re-identify. Production without the variable counts nothing rather than
 	// storing a guessable pseudonym.
 	if (process.env.NODE_ENV !== "production") return "dev-view-hash-secret";

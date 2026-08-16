@@ -5,7 +5,7 @@
 // token, a first sync landing, or a machine turning auto-sync on.
 //
 // Nothing in the app ever READS these back. PostHog is the funnel, not a data
-// source — every number the product displays comes from Convex.
+// source - every number the product displays comes from Convex.
 
 import posthog from "posthog-js";
 
@@ -16,7 +16,7 @@ import posthog from "posthog-js";
  *
  * The three events below all fire on user-initiated actions well after mount,
  * so this is not a live risk today. Any FUTURE client event on a callback or
- * redirect path must be checked against it — that is what this note is for.
+ * redirect path must be checked against it - that is what this note is for.
  */
 function capture(
 	event: string,
@@ -57,8 +57,8 @@ export function captureStackCreated(input: {
 export function captureStackPublished(input: {
 	toolCount: number;
 	/**
-	 * The stack's cost-publication preference. Absent reads as opted IN — the
-	 * field only ever records a refusal — so the funnel sees `true` by default.
+	 * The stack's cost-publication preference. Absent reads as opted IN - the
+	 * field only ever records a refusal - so the funnel sees `true` by default.
 	 */
 	publishCost: boolean;
 }): void {

@@ -19,7 +19,7 @@ import { useKeptPrivate } from "./useKeptPrivate";
 import { useReconcileRun } from "./useReconcileRun";
 
 /**
- * "What's changed" — variant J, locked by prototype #39.
+ * "What's changed" - variant J, locked by prototype #39.
  *
  * Three things are load-bearing and were each chosen over an alternative:
  *
@@ -28,7 +28,7 @@ import { useReconcileRun } from "./useReconcileRun";
  *   2. THE BANNER IS THE PAGE NAV. It sticks, so the meter and the freshness
  *      line are never more than a glance away while you work.
  *   3. ONE METER ACROSS BOTH VIEWS. Answering a row in the list moves exactly
- *      what answering the card moves. The per-item stepper is gone — it lost
+ *      what answering the card moves. The per-item stepper is gone - it lost
  *      all sense of progress the moment you switched to the list.
  *
  * `hasSnapshot: false` IS NOT AN EMPTY PAGE. The what-for half is derived from

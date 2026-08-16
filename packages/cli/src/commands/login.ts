@@ -8,7 +8,7 @@ import { dim, intro, lime, limeBold, outro, outroError } from "../theme.js";
 /**
  * What to call this machine on the account's linked-machines list (#49).
  *
- * The hostname is only a proposal — the approval page shows it in an editable
+ * The hostname is only a proposal - the approval page shows it in an editable
  * field before anything is stored. Trimmed to the server's 64-character bound so
  * a long hostname is dropped by us rather than silently by the server, and
  * `.local` is stripped because mDNS suffixes carry no information for a reader.
@@ -28,7 +28,7 @@ export function proposedMachineName(
 }
 
 /**
- * The device-auth flow itself, without intro/outro framing or process.exit —
+ * The device-auth flow itself, without intro/outro framing or process.exit -
  * so `sync` can run it inline on an unlinked machine (#74) and `login` stays
  * the standalone command. Logs its own progress and errors; returns whether a
  * token was saved.

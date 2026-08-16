@@ -83,7 +83,7 @@ export async function verifyUnsubscribeToken(
     if (!emailLower) return null
 
     const key = await hmacKey(secret, 'verify')
-    // crypto.subtle.verify does the comparison in constant time — do NOT
+    // crypto.subtle.verify does the comparison in constant time - do NOT
     // hand-roll a string compare.
     const ok = await crypto.subtle.verify(
       'HMAC',

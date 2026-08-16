@@ -58,7 +58,7 @@ function isBlockedV6(ip: string): boolean {
 	if (normalized === "::1") return true; // loopback
 	if (normalized === "::") return true; // unspecified
 	if (normalized.startsWith("::ffff:")) {
-		// IPv4-mapped — extract the v4 portion and check that
+		// IPv4-mapped - extract the v4 portion and check that
 		const v4 = normalized.slice("::ffff:".length);
 		return isBlockedV4(v4);
 	}

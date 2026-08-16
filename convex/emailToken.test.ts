@@ -2,7 +2,7 @@
 import { describe, expect, test } from 'vitest'
 import { signUnsubscribeToken, verifyUnsubscribeToken } from './emailToken'
 
-// Fixed test secret used throughout — 32 ASCII bytes (exact length not enforced by impl, but explicit here).
+// Fixed test secret used throughout - 32 ASCII bytes (exact length not enforced by impl, but explicit here).
 const SECRET = 'test-secret-32-bytes-padded-here'
 const WRONG_SECRET = 'wrong-secret-32-bytes-padded-xxx'
 
@@ -28,7 +28,7 @@ test('TC-ET-02: mixed-case "Ada@X.COM" → verify returns "ada@x.com"', async ()
 })
 
 // ---------------------------------------------------------------------------
-// TC-ET-03: sign is case-normalized — same token regardless of input case
+// TC-ET-03: sign is case-normalized - same token regardless of input case
 // ---------------------------------------------------------------------------
 test('TC-ET-03: sign("ADA@X.COM") === sign("ada@x.com") (normalized; same token)', async () => {
   const tokenUpper = await signUnsubscribeToken('ADA@X.COM', SECRET)
@@ -80,7 +80,7 @@ test('TC-ET-06: sign with one secret, verify with different secret → null', as
 })
 
 // ---------------------------------------------------------------------------
-// TC-ET-07..09,12: garbage tokens — all return null, never throw
+// TC-ET-07..09,12: garbage tokens - all return null, never throw
 // ---------------------------------------------------------------------------
 describe('TC-ET-07..09,12: garbage tokens return null, never throw', () => {
   const garbageTokens = [
@@ -130,7 +130,7 @@ test('TC-ET-11: mac segment too long → null', async () => {
 })
 
 // ---------------------------------------------------------------------------
-// TC-ET-DS: domain separation — mac over unprefixed email must NOT verify
+// TC-ET-DS: domain separation - mac over unprefixed email must NOT verify
 //
 // Strategy: sign normally, then independently compute HMAC over the RAW
 // (unprefixed) lowercased email via Web Crypto and confirm the resulting
@@ -138,7 +138,7 @@ test('TC-ET-11: mac segment too long → null', async () => {
 // the impl uses the "unsubscribe:v1:" prefix (and a token hand-built with
 // the unprefixed mac would not pass verify).
 // ---------------------------------------------------------------------------
-test('TC-ET-DS: domain separation — mac over unprefixed email differs from mac in token', async () => {
+test('TC-ET-DS: domain separation - mac over unprefixed email differs from mac in token', async () => {
   const email = 'user@example.com'
   const emailLower = email.toLowerCase()
   const token = await signUnsubscribeToken(email, SECRET)

@@ -48,7 +48,7 @@ function failure(what: string, res: Response): Error {
  *
  * `machineName` is a PROPOSAL, not a fact: the approval page renders it in an
  * editable field, so the user sees the string before it is stored and can
- * overwrite or clear it. That is why the hostname may be sent automatically —
+ * overwrite or clear it. That is why the hostname may be sent automatically -
  * the consent happens in the browser, a moment later, with the string on screen.
  */
 export async function authStart(machineName?: string): Promise<{
@@ -107,10 +107,10 @@ async function formatHttpError(res: Response, label: string): Promise<string> {
 	try {
 		const body = JSON.parse(text) as { error?: string; message?: string };
 		const detail = body.error || body.message;
-		if (detail) return `${prefix} — ${detail}`;
+		if (detail) return `${prefix} - ${detail}`;
 	} catch {}
 	const snippet = text.trim().slice(0, 500);
-	return snippet ? `${prefix} — ${snippet}` : prefix;
+	return snippet ? `${prefix} - ${snippet}` : prefix;
 }
 
 export type SyncPublishResult = {
@@ -156,7 +156,7 @@ export type AutoSyncSetResult = {
 /**
  * Set the auto-sync permission on the stack this machine is linked to (#103).
  *
- * The destination is the stack bound to the BEARER, exactly like a publish —
+ * The destination is the stack bound to the BEARER, exactly like a publish -
  * the body says what the permission is, never whose it is. The frequency goes
  * out only when the flag goes on: off keeps no schedule, and sending a number
  * with it would overwrite the interval the owner picked for the next enable.

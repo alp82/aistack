@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 //
 // These are the *locked* Editorial values (style: editorial, rhythm:
 // alternating, accent: category, density: comfortable, width: wide,
-// splitTools: true) — distilled from the throwaway prototype, now archived
+// splitTools: true) - distilled from the throwaway prototype, now archived
 // at .prototypes/stack-view-redesign.tsx.
 // No runtime switching: this is the chosen design.
 // ---------------------------------------------------------------------------
@@ -29,7 +29,7 @@ export const GAP = "gap-4 md:gap-5";
 export const HEADING =
 	"text-3xl md:text-4xl font-black tracking-tight uppercase text-fg-primary";
 
-/** Shared card surface — thin rule, transparent, subtle hover lift. */
+/** Shared card surface - thin rule, transparent, subtle hover lift. */
 export const CARD = {
 	border: "border border-stroke-subtle",
 	bg: "bg-transparent",

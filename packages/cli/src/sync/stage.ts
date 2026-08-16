@@ -4,7 +4,7 @@
 // longer lands a stale snapshot next to a live Codex one (#101).
 //
 // Wayfinder ticket #41 (map #29), widened to the adapter seam by #67 (map
-// #60). The staged `bodyJson` string IS what a publish transmits — the summary
+// #60). The staged `bodyJson` string IS what a publish transmits - the summary
 // and the dialog are derived from it and from nothing else, so the user can
 // never approve a sentence about different bytes (#35's binding constraint).
 // The publish tool takes only the stage id; it can name WHICH staged send to
@@ -135,7 +135,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 
 	let blockedReason: string | null = null;
 	if (built.length === 0) {
-		blockedReason = `No active harness on this machine — no Claude Code and no Codex transcript from the last ${windowDays} days to read.`;
+		blockedReason = `No active harness on this machine - no Claude Code and no Codex transcript from the last ${windowDays} days to read.`;
 	} else if (token === null) {
 		blockedReason =
 			"This machine is not linked. Run `npx @use-aistack/cli login` first.";

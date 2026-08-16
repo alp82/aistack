@@ -6,7 +6,7 @@
  * A snapshot's cost is frozen at whatever price table the syncing CLI happened
  * to ship. One day of drift produced this on prod (2026-08-04): a stack with
  * 279B Codex tokens published $14,764 when the same tokens are worth at least
- * $167,331, and a second stack published nothing at all — because
+ * $167,331, and a second stack published nothing at all - because
  * `openai-list-2026-08-01` has no rate for the gpt-5.6 family. Snapshots are
  * immutable, so the repair happens where catalog resolution already happens: at
  * read time, against the shared table in `@aistack/pricing`.
@@ -21,7 +21,7 @@
  * downward so the result stays a lower bound:
  *
  *   1. The wire carries ONE merged `cacheWrite`. The 5m tier costs 1.25x input
- *      and the 1h tier 2.0x, and the split is gone — so everything charges the
+ *      and the 1h tier 2.0x, and the split is gone - so everything charges the
  *      5m rate. Measured against a stack the CLI priced exactly, this
  *      under-reports Claude Code by roughly 8%. Codex is exact, because every
  *      Codex row carries `cacheWrite: 0`.
@@ -34,7 +34,7 @@
  *
  * CONSENT IS A FLAG, NOT AN ABSENCE. Cost publishes only when the owner has
  * `publishCost` on. This module takes that flag and strips every dollar when it
- * is off, including dollars already stored in the payload — an owner who turns
+ * is off, including dollars already stored in the payload - an owner who turns
  * cost off after a sync has turned it off for the rows already sent.
  */
 
@@ -44,7 +44,7 @@ import {
   pricingTableFor,
 } from '@aistack/pricing'
 
-/** The token block on the wire — one merged `cacheWrite`, no TTL split. */
+/** The token block on the wire - one merged `cacheWrite`, no TTL split. */
 export type WireTokens = {
   input: number
   output: number
@@ -58,7 +58,7 @@ export type WireModel = {
   apiEquivalentUSD?: number
   /**
    * The table that produced `apiEquivalentUSD`, riding on the model (#136).
-   * Absent on payloads from before the mixed-vendor wire change — those cite
+   * Absent on payloads from before the mixed-vendor wire change - those cite
    * every published figure with the payload-level `pricingTable` instead.
    */
   pricingTable?: string
@@ -80,7 +80,7 @@ export type RepricedModel<T> = T & {
  * snapshot's own window.
  */
 export type CostReading = {
-  /** `published + estimated`. Never an equality — always "at least this much". */
+  /** `published + estimated`. Never an equality - always "at least this much". */
   lowerBoundUSD: number
   /** The part the CLI priced exactly. */
   publishedUSD: number
@@ -88,14 +88,14 @@ export type CostReading = {
   estimatedUSD: number
   /**
    * Share of measured tokens carrying a citable price, 0..1. Below 1 the
-   * missing tokens are real spend that no table can name — `unknown` rows and
+   * missing tokens are real spend that no table can name - `unknown` rows and
    * models no vendor list page covers. A surface that prints dollars must print
    * this too.
    */
   coverage: number
   /** The numerator of `coverage`. Carried so several readings can merge exactly. */
   pricedTokens: number
-  /** The denominator of `coverage` — every token the snapshot's models report. */
+  /** The denominator of `coverage` - every token the snapshot's models report. */
   measuredTokens: number
   /** Every table cited by the dollars above, in payload-then-estimate order. */
   pricingTables: string[]
@@ -109,7 +109,7 @@ const tokensOf = (t: WireTokens) =>
   t.input + t.output + t.cacheWrite + t.cacheRead
 
 /**
- * The window as an epoch-ms range. `null` when either end is unreadable — an
+ * The window as an epoch-ms range. `null` when either end is unreadable - an
  * undated window cannot pick a rate, and substituting "now" would attribute
  * today's price to a record that may predate it.
  */
@@ -136,7 +136,7 @@ export function estimateModelUSD(
   if (!range) return null
   const periods = pricePeriodsInWindow(id, range.from, range.to)
   if (periods.length === 0) return null
-  // The multipliers are the model's vendor's, not Anthropic's — a Google cache
+  // The multipliers are the model's vendor's, not Anthropic's - a Google cache
   // write is charged as plain input, and 1.25x there would overstate.
   const c = cacheMultipliersFor(id)
   const costs = periods.map(
@@ -153,7 +153,7 @@ export function estimateModelUSD(
 export function repriceSnapshot<T extends WireModel>(input: {
   models: readonly T[]
   window: SnapshotWindow
-  /** `payload.pricingTable` — the citation for the dollars already on the wire. */
+  /** `payload.pricingTable` - the citation for the dollars already on the wire. */
   publishedTable: string | null
   /** `stacks.publishCost`, absent reading as ON. */
   publishCost: boolean

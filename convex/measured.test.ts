@@ -134,12 +134,12 @@ describe('publishSnapshot', () => {
     expect(result.receivedAt).toBeGreaterThan(clientClock)
     const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
     expect(rows).toHaveLength(1)
-    // capturedAt is NOT clamped to the server clock — the divergence is signal.
+    // capturedAt is NOT clamped to the server clock - the divergence is signal.
     expect(rows[0].capturedAt).toBe(clientClock)
     expect(rows[0].receivedAt).toBe(result.receivedAt)
   })
 
-  test('appends rather than replacing — history is the point', async () => {
+  test('appends rather than replacing - history is the point', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
 
@@ -198,7 +198,7 @@ describe('publishSnapshot', () => {
 // What a client-supplied string may be (#45)
 // ---------------------------------------------------------------------------
 
-describe('publishSnapshot — string bounds on the payload', () => {
+describe('publishSnapshot - string bounds on the payload', () => {
   const BIDI_OVERRIDE = String.fromCodePoint(0x202e)
   const NUL = String.fromCodePoint(0x00)
 
@@ -410,7 +410,7 @@ describe('publishSnapshot — string bounds on the payload', () => {
         payload: payload({ inventory: inventoryWith('mcpServers', 'z'.repeat(200)) }),
       }),
     })
-    // A broken client, so 400 with the reason — not an opaque 500.
+    // A broken client, so 400 with the reason - not an opaque 500.
     expect(resp.status).toBe(400)
     expect(JSON.stringify(await resp.json())).toMatch(/inventory\.mcpServers/)
     const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
@@ -418,7 +418,7 @@ describe('publishSnapshot — string bounds on the payload', () => {
   })
 })
 
-describe('publishForToken — the destination comes from the token', () => {
+describe('publishForToken - the destination comes from the token', () => {
   async function seedToken(
     t: Ctx,
     opts: { stackId?: Id<'stacks'>; userId?: string } = {},
@@ -498,7 +498,7 @@ describe('getCurrentByStackSlug', () => {
       stackId,
       payload: payload({ capturedAt: 5000, activity: { ...payload().activity, sessions: 1 } }),
     })
-    // Inserted second but OLDER — must not win.
+    // Inserted second but OLDER - must not win.
     await t.mutation(internal.measured.publishSnapshot, {
       stackId,
       payload: payload({ capturedAt: 1000, activity: { ...payload().activity, sessions: 99 } }),
@@ -529,7 +529,7 @@ describe('getCurrentByStackSlug', () => {
     })
     expect(current?.models[0].tokens.output).toBe(20)
 
-    // Add the model to the catalog. The SAME immutable snapshot now resolves —
+    // Add the model to the catalog. The SAME immutable snapshot now resolves -
     // no republish. This is what let #33 exempt model ids from the allowlist.
     await t.run(async (ctx) => {
       await ctx.db.insert('models', {
@@ -591,7 +591,7 @@ describe('getCurrentByStackSlug', () => {
   test('cites every per-model table in the cost reading (#136)', async () => {
     // One opencode snapshot prices OpenAI and Google rows from two tables and
     // its top-level pricingTable is null. Both citations must survive to the
-    // surface — the old shape stamped one string over both.
+    // surface - the old shape stamped one string over both.
     const t = convexTest(schema, modules)
     const { stackId, shortId } = await seedStack(t)
     await t.mutation(internal.measured.publishSnapshot, {
@@ -672,7 +672,7 @@ describe('getCurrentByStackSlug', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Read — the series (#81)
+// Read - the series (#81)
 // ---------------------------------------------------------------------------
 
 describe('getHistoryByStackSlug', () => {
@@ -883,7 +883,7 @@ describe('getHistoryByStackSlug', () => {
       slug: `my-stack-${shortId}`,
       days: 30,
     })
-    // One point — the old row is out of the window — but it still contributes,
+    // One point - the old row is out of the window - but it still contributes,
     // exactly as it does to the headline.
     expect(history?.points).toHaveLength(1)
     expect(history?.points[0].tokens).toBe(1_040)
@@ -994,7 +994,7 @@ describe('getHistoryByStackSlug', () => {
       slug: `my-stack-${shortId}`,
     })
     // Two tokens of claude-opus-5 estimate to fractions of a cent, and the
-    // estimate rounds to cents — so the honest figure here is $0, not null.
+    // estimate rounds to cents - so the honest figure here is $0, not null.
     expect(history?.points[0].usd).toBe(0)
     expect(history?.points[0].pricingTable).toBe('anthropic-list-2026-07-25')
     expect(history?.points[1].usd).toBe(7)
@@ -1003,7 +1003,7 @@ describe('getHistoryByStackSlug', () => {
 
   test('reprices an old unpriced row at read time, and says which table did it', async () => {
     // #72: rows landed before the CLI knew the price. Snapshots are immutable,
-    // so the fix is at read time — and the trail must reprice too, or a page
+    // so the fix is at read time - and the trail must reprice too, or a page
     // shows dollars today and a gap for the same reading in its own history.
     const t = convexTest(schema, modules)
     const { stackId, shortId } = await seedStack(t)
@@ -1031,7 +1031,7 @@ describe('getHistoryByStackSlug', () => {
       slug: `my-stack-${shortId}`,
     })
     // 1M input at $0.20 + 1M output at $1.20. The payload's own table priced
-    // nothing here, so it is not cited (#93) — only the estimating table is.
+    // nothing here, so it is not cited (#93) - only the estimating table is.
     expect(history?.points[0].usd).toBeCloseTo(1.4, 6)
     expect(history?.points[0].pricingTable).toBe('openai-list-2026-08-02')
   })
@@ -1079,7 +1079,7 @@ describe('countLivingStacks', () => {
 
 describe('reconcile', () => {
   /**
-   * `whatFor` seeds `toolSubscriptions[].description` — the field the tool card
+   * `whatFor` seeds `toolSubscriptions[].description` - the field the tool card
    * renders. `primaryUsageLabel` is the TIER NAME and is deliberately non-blank
    * in every case here, so a test that passes cannot be reading it.
    */
@@ -1223,7 +1223,7 @@ describe('reconcile', () => {
   })
 
   test('does not suggest a measured model that resolves to nothing in the catalog', async () => {
-    // The overlap is catalog slugs only — an unresolved id has nowhere to land.
+    // The overlap is catalog slugs only - an unresolved id has nowhere to land.
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
     await t.mutation(internal.measured.publishSnapshot, { stackId, payload: payload() })
@@ -1246,7 +1246,7 @@ describe('reconcile', () => {
     expect(result.suggestions).toEqual([])
     expect(result.dismissedCount).toBe(1)
 
-    // A new sync must not resurrect it — there is no pending state to merge.
+    // A new sync must not resurrect it - there is no pending state to merge.
     await t.mutation(internal.measured.publishSnapshot, { stackId, payload: payload() })
     result = await asOwner.query(api.measured.getReconcileSuggestions, { stackId })
     expect(result.suggestions).toEqual([])
@@ -1487,7 +1487,7 @@ describe('sync config', () => {
       // #48 mirrors the same rule field-for-field: absent is on.
       reviewKeptPrivate: true,
       stackName: 'My Stack',
-      // Composite, like every public stack URL — the gate prints it (#41).
+      // Composite, like every public stack URL - the gate prints it (#41).
       stackSlug: `my-stack-${shortId}`,
       optIns: EMPTY_OPT_INS,
       // The auto-sync permission (#102). Null, not `{enabled: false}`: the CLI
@@ -1703,7 +1703,7 @@ describe('POST /api/cli/sync', () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
     const token = await seedLinkedToken(t, stackId)
-    // By DIGEST — the plaintext column is gone (#52).
+    // By DIGEST - the plaintext column is gone (#52).
     const tokenHash = await sha256Hex(token)
     await t.run(async (ctx) => {
       const row = await ctx.db
@@ -1814,7 +1814,7 @@ describe('GET /api/cli/sync-config', () => {
       optIns: Record<string, string[]>
     }
     expect(body.optIns.skills).toEqual(['alp-river:crossfire'])
-    // A tick does not widen the curated list — the two are separate on the
+    // A tick does not widen the curated list - the two are separate on the
     // wire and the client unions them before its own fail-closed filter.
     expect(body.allowlist.skills).not.toContain('alp-river:crossfire')
   })
@@ -1926,7 +1926,7 @@ describe('gcSnapshots', () => {
   })
 
   test('never deletes a stack’s newest row, however old it is', async () => {
-    // "Current" is a query for this row — GC must not be able to empty the
+    // "Current" is a query for this row - GC must not be able to empty the
     // measured layer of a stack that simply stopped syncing.
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
@@ -2043,7 +2043,7 @@ describe('the unsealed kept-private half of a sync', () => {
       'acme-internal',
       'alp-river:crossfire',
     ])
-    // The sealed payload is untouched by any of it — the closed validator is
+    // The sealed payload is untouched by any of it - the closed validator is
     // the privacy claim, and a kept-private name never enters it.
     const snapshot = await t.run((ctx) =>
       ctx.db.query('measuredSnapshots').first(),
@@ -2092,7 +2092,7 @@ describe('the unsealed kept-private half of a sync', () => {
     expect(rows).toHaveLength(1)
   })
 
-  test('refuses the half — not the sync — when the switch is off', async () => {
+  test('refuses the half - not the sync - when the switch is off', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
     const token = await seedTokenFor(t, stackId)
@@ -2117,7 +2117,7 @@ describe('the unsealed kept-private half of a sync', () => {
     ).toHaveLength(1)
   })
 
-  test('bounds the unsealed half — #45 bounds the payload, not this', async () => {
+  test('bounds the unsealed half - #45 bounds the payload, not this', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
     const token = await seedTokenFor(t, stackId)
@@ -2310,7 +2310,7 @@ describe('listKeptPrivate', () => {
       names: [{ category: 'skills', name: 'alp-river:crossfire' }],
     })
 
-    // A ticked name PUBLISHES, so the machine never stages it — the tick set is
+    // A ticked name PUBLISHES, so the machine never stages it - the tick set is
     // the only place it can be revoked from.
     const listed = await as.query(api.measured.listKeptPrivate, { stackId })
     expect(listed.names).toHaveLength(1)
@@ -2552,7 +2552,7 @@ describe('batch publish + per-harness aggregation (#67)', () => {
     const { stackId, shortId } = await seedStack(t)
 
     // A model NO table can price, so the read-time gap filler cannot rescue the
-    // silent half — which is the only way the halves still disagree after #93.
+    // silent half - which is the only way the halves still disagree after #93.
     // It happens when the syncing CLI ships a newer table than the server holds.
     const unpriceable = 'gpt-5.7-unreleased'
     await t.mutation(internal.measured.publishSnapshot, {

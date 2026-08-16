@@ -10,7 +10,7 @@ if (!convexSiteUrl) {
 const convexOrigin = new URL(convexSiteUrl).origin;
 
 /**
- * POST /api/cli/auto-sync — a machine sets the auto-sync permission on its
+ * POST /api/cli/auto-sync - a machine sets the auto-sync permission on its
  * bound stack.
  *
  * Wayfinder ticket #102 (map #76), from #100 decision 2. A thin proxy to the

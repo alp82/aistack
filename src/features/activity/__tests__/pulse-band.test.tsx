@@ -53,7 +53,7 @@ describe("the band", () => {
 		);
 		// Four measured tiles plus the model count. The two event COUNTS stay
 		// numeric: "0 syncs" counts what happened, it does not measure anything.
-		expect(screen.getAllByText("—")).toHaveLength(5);
+		expect(screen.getAllByText("-")).toHaveLength(5);
 		expect(screen.getAllByText("0")).toHaveLength(2);
 	});
 
@@ -95,7 +95,7 @@ describe("the band", () => {
 		expect(container.querySelector('[aria-hidden="true"] svg')).not.toBeNull();
 	});
 
-	it("carries the page heading — it IS the page header since #147", () => {
+	it("carries the page heading - it IS the page header since #147", () => {
 		render(<PulseBand band={band()} />);
 		expect(
 			screen.getByRole("heading", { name: "ACTIVITY" }),

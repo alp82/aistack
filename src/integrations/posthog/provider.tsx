@@ -11,7 +11,7 @@ interface PosthogProviderProps {
 // + flag fetch don't compete with first-paint resources. Falls back to a 2s
 // timeout in browsers without `requestIdleCallback` (Safari < 18).
 //
-// Only the init is deferred — the React tree is IDENTICAL before and after.
+// Only the init is deferred - the React tree is IDENTICAL before and after.
 // This used to render `<>{children}</>` until idle and then swap in the
 // provider element, which reparented every route under a new element type and
 // made React unmount and remount the whole page ~450ms after load (visible as

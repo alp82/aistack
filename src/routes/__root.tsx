@@ -121,7 +121,7 @@ function RootComponent() {
 	const context = useRouteContext({ from: Route.id });
 	const useAuth = useConvexAuthFromBetterAuth(context.token);
 	// The site-wide counter (#132). One visitor counts once per UTC day across
-	// the whole site, under the sentinel target `global` — the number the
+	// the whole site, under the sentinel target `global` - the number the
 	// admin-only Views tab reads. Fired from the root so EVERY page counts;
 	// until this call existed the sentinel had a writer capability and no
 	// caller, and the counter stayed empty.

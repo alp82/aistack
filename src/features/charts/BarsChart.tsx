@@ -1,7 +1,7 @@
 /**
  * Horizontal bars: one measure across named things.
  *
- * The categories are nominal — stack names, model names, harnesses — so every
+ * The categories are nominal - stack names, model names, harnesses - so every
  * bar wears the same paint. Coloring a nominal bar by its own value spends the
  * identity channel on what the bar length already shows.
  */

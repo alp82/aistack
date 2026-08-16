@@ -55,7 +55,7 @@ function answerMine(data: unknown) {
 const PER_PAGE_LIST = "Views per page";
 
 // ---------------------------------------------------------------------------
-// The profile panel — shape E4
+// The profile panel - shape E4
 // ---------------------------------------------------------------------------
 
 describe("OwnerViewsPanel", () => {
@@ -152,7 +152,7 @@ describe("OwnerViewsPanel", () => {
 });
 
 // ---------------------------------------------------------------------------
-// The stack-page line — shape S1
+// The stack-page line - shape S1
 // ---------------------------------------------------------------------------
 
 describe("StackViewsLine", () => {
@@ -221,7 +221,7 @@ describe("StackViewsLine", () => {
 
 	it("renders nothing for a stack the answer does not contain", () => {
 		// The owner of OTHER stacks opening this one. `mine` never carries this
-		// id, so the selection has nothing to find — the gate is the data, not a
+		// id, so the selection has nothing to find - the gate is the data, not a
 		// flag on the client.
 		answerMine(analytics());
 		const { container } = render(

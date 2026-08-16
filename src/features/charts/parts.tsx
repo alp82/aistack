@@ -22,7 +22,7 @@ type LegendItem = {
 
 /**
  * The legend. Present whenever a chart carries two or more series, so identity
- * is never color alone. One series needs no legend — the caption names it.
+ * is never color alone. One series needs no legend - the caption names it.
  */
 function ChartLegend({ items }: { items: readonly LegendItem[] }) {
 	if (items.length < 2) return null;

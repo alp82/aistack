@@ -41,7 +41,7 @@ describe("assertSafePublicUrl", () => {
 	});
 
 	it("rejects IPv4 outside private ranges only when blocked", async () => {
-		// 11.0.0.0 is not in any blocked CIDR — should NOT throw blocked
+		// 11.0.0.0 is not in any blocked CIDR - should NOT throw blocked
 		// (DNS lookup is skipped for IP literals, so this would resolve to itself)
 		await expect(
 			assertSafePublicUrl("http://11.0.0.1/"),

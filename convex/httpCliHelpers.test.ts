@@ -16,7 +16,7 @@ const modules = import.meta.glob('./**/*.{js,ts}')
 
 /**
  * Test-only seed: insert a project row, then attach all items to the stack
- * (stack-only, no project-scoped resources — post-narrowing contract).
+ * (stack-only, no project-scoped resources - post-narrowing contract).
  */
 async function seedStackWithResources(
   t: ReturnType<typeof convexTest>,
@@ -101,10 +101,10 @@ async function resourcesForOwner(
 }
 
 // ---------------------------------------------------------------------------
-// upsertStackResources — scope coercion
+// upsertStackResources - scope coercion
 // ---------------------------------------------------------------------------
 
-test('TC-01: upsertStackResources with scope:project input lands on stack — no project links', async () => {
+test('TC-01: upsertStackResources with scope:project input lands on stack - no project links', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
 
@@ -284,7 +284,7 @@ test('TC-05: upsertStackResources bumps stack.updatedAt on each successive call'
 })
 
 // ---------------------------------------------------------------------------
-// upsertStackResources — merge-by-stableKey
+// upsertStackResources - merge-by-stableKey
 // ---------------------------------------------------------------------------
 
 test('TC-06: upsertStackResources first-time upsert creates one resources row and one stack link', async () => {
@@ -318,7 +318,7 @@ test('TC-06: upsertStackResources first-time upsert creates one resources row an
   expect(links[0].ownerId).toBe(stackId)
 })
 
-test('TC-07: upsertStackResources merge — A preserved, B updated, C added', async () => {
+test('TC-07: upsertStackResources merge - A preserved, B updated, C added', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
 
@@ -581,7 +581,7 @@ test('TC-11: upsertStackResources pkg (MCP) resource is deduped by (registry,id)
   })
   expect(rows[0].files).toBeUndefined()
 
-  // Two resourceLinks rows — one per stack
+  // Two resourceLinks rows - one per stack
   const links = await t.run(async (ctx) =>
     ctx.db
       .query('resourceLinks')
@@ -594,7 +594,7 @@ test('TC-11: upsertStackResources pkg (MCP) resource is deduped by (registry,id)
   expect(ownerIds).toContain(stackB)
 })
 
-test('TC-12: upsertStackResources guard — linked-with-files throws; hosted-without-files throws', async () => {
+test('TC-12: upsertStackResources guard - linked-with-files throws; hosted-without-files throws', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
 
@@ -767,7 +767,7 @@ test('TC-15: getStackWithResourcesByCreator excludes soft-deleted resources rows
 /**
  * `stackId` is the sync/collect target bound to the token at link time
  * (#33 decision 7, wired in #38). It replaced `getFirstStackByCreator`, so a
- * token without it can no longer write to any stack — pass one for the happy
+ * token without it can no longer write to any stack - pass one for the happy
  * path, and omit it to exercise the 409.
  */
 async function seedBearerToken(
@@ -859,7 +859,7 @@ test('TC-17: stackCollect returns 409 when the bearer token is not linked to a s
 
   // Was a 400 "no stack found" derived from getFirstStackByCreator. Since #38
   // the target is bound to the token at link time (#33 decision 7), so the
-  // reachable failure is an UNLINKED token — a 409 telling the user to re-run
+  // reachable failure is an UNLINKED token - a 409 telling the user to re-run
   // login, rather than a silent write to whichever stack the index returned.
   expect(resp.status).toBe(409)
   const body = await resp.json() as Record<string, unknown>
@@ -906,7 +906,7 @@ test('TC-19: stackCollect returns 404 when valid bearer has no creators row', as
   expect(resp.status).toBe(404)
 })
 
-test('TC-20: stackCollect url invariant — returned url does NOT contain /projects/', async () => {
+test('TC-20: stackCollect url invariant - returned url does NOT contain /projects/', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
   await t.run(async (ctx) => ctx.db.patch(creatorId, { userId: 'user-tc20' }))
@@ -937,7 +937,7 @@ test('TC-20: stackCollect url invariant — returned url does NOT contain /proje
 })
 
 // ---------------------------------------------------------------------------
-// stackGet (httpAction) — GET /api/cli/stacks
+// stackGet (httpAction) - GET /api/cli/stacks
 // ---------------------------------------------------------------------------
 
 test('TC-21: stackGet returns 200 with name/slug/shortId/resources for a valid bearer', async () => {
@@ -1151,7 +1151,7 @@ test('deleteProject removes only the project row and leaves stack resources unto
   expect(stackResources[0].deletedAt).toBeNull()
 })
 
-// TC-1207: DELETED — subject gone; coverage held by TC-NEW-MIG-02 (migration
+// TC-1207: DELETED - subject gone; coverage held by TC-NEW-MIG-02 (migration
 // dual-held test) and the rewritten TC-1450 (unlinkResource shared-row-stays-alive).
 
 test('unlinkResource removes one link and leaves the others intact', async () => {
@@ -1589,7 +1589,7 @@ test('two creators linking the same repo+path share ONE fileless row with two li
   expect(rows[0].owner).toEqual({ kind: 'github', handle: 'acme' })
   expect(rows[0].upstream?.path).toBe('AGENTS.md')
 
-  // Two links — one per stack.
+  // Two links - one per stack.
   const links = await t.run(async (ctx) =>
     ctx.db
       .query('resourceLinks')
@@ -1598,7 +1598,7 @@ test('two creators linking the same repo+path share ONE fileless row with two li
   )
   expect(links).toHaveLength(2)
 
-  // Unlink from stackA — shared row stays alive (stackB still links it).
+  // Unlink from stackA - shared row stays alive (stackB still links it).
   await t.run(async (ctx: MutationCtx) => {
     const link = await ctx.db
       .query('resourceLinks')
@@ -1619,7 +1619,7 @@ test('two creators linking the same repo+path share ONE fileless row with two li
     (await t.run(async (ctx: MutationCtx) => ctx.db.get(rows[0]._id)))?.deletedAt,
   ).toBeNull()
 
-  // Unlink from stackB — last link gone, row soft-deleted.
+  // Unlink from stackB - last link gone, row soft-deleted.
   await t.run(async (ctx: MutationCtx) => {
     const link = await ctx.db
       .query('resourceLinks')
@@ -1642,7 +1642,7 @@ test('two creators linking the same repo+path share ONE fileless row with two li
 })
 
 
-// seedOwnedProject DELETED — all linkResource tests target the stack directly.
+// seedOwnedProject DELETED - all linkResource tests target the stack directly.
 
 test('linkResource creates one fileless linked row owned by the github handle', async () => {
   const t = convexTest(schema, modules)

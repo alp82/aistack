@@ -10,7 +10,7 @@ import { RelativeTime } from "./RelativeTime";
  *   Claude Code + Codex · 4.99B over 30 days · 596 sessions          4h ago
  *
  * MOVEMENT LEADS and the total is demoted, because `alp synced 4.99B` is the
- * same sentence every day — a snapshot is a rolling 30-day total, and a number
+ * same sentence every day - a snapshot is a rolling 30-day total, and a number
  * that never changes is a status light, not news.
  *
  * THE STACK NAME IS THE LINK, not the person. The feed is about what the site
@@ -36,7 +36,7 @@ function Headline({ row }: { readonly row: FeedRow }) {
 		// case that says "first".
 		return (
 			<>
-				{row.firstReading ? "first reading — " : "measured "}
+				{row.firstReading ? "first reading: " : "measured "}
 				<span className="font-semibold text-accent-lime">
 					{fmtTokens(syncTokens(row))} tokens
 				</span>

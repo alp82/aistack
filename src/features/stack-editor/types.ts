@@ -109,7 +109,7 @@ type StackEditorInitialValue = {
 	resources?: Resource[];
 	teamSize?: number;
 	published: boolean;
-	/** Absent reads as opted IN — the field only ever records a refusal (#33). */
+	/** Absent reads as opted IN - the field only ever records a refusal (#33). */
 	publishCost?: boolean;
 	toolSubscriptions: ToolSubscriptionEntry[];
 	bundleSubscriptions: BundleSubscriptionEntry[];

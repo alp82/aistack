@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Spike hook for wayfinder ticket #35 — candidate B, gate variant "PreToolUse returns ask".
+// Spike hook for wayfinder ticket #35 - candidate B, gate variant "PreToolUse returns ask".
 //
 // Returns `ask` only for publish-hookask, so the ask-RULE variant and the HOOK variant stay
 // distinguishable within one session. Everything else passes through untouched.
@@ -8,8 +8,8 @@
 //
 // The matcher in .claude/settings.json is an unscoped "Bash", so this runs for EVERY Bash
 // call in the spike session. It therefore logs the verbatim command line only for the three
-// spike binaries — the exact text is needed to cross-check the `ask` rule prefixes in Round 2
-// — and redacts everything else to a length, so unrelated shell commands (which can carry
+// spike binaries - the exact text is needed to cross-check the `ask` rule prefixes in Round 2
+// - and redacts everything else to a length, so unrelated shell commands (which can carry
 // tokens, admin keys, etc.) are never transcribed into spike-hook.log. See also the
 // .gitignore beside this directory: the logs must never be committed.
 
@@ -51,7 +51,7 @@ if (!command.includes('publish-hookask')) process.exit(0)
 note('-> returning permissionDecision:"ask"')
 
 // No process.exit() after this write: node's stdout is async when piped, and exit() does not
-// flush pending writes — a truncated decision JSON would be read as malformed hook output, no
+// flush pending writes - a truncated decision JSON would be read as malformed hook output, no
 // `ask` would be applied, and Round 2B (the load-bearing question) would silently answer wrong.
 // Let the process end naturally once stdout has drained.
 process.stdout.write(
@@ -60,7 +60,7 @@ process.stdout.write(
       hookEventName: 'PreToolUse',
       permissionDecision: 'ask',
       permissionDecisionReason:
-        'SPIKE-MARKER-HOOK-REASON — publish 30d measured usage to stack "alps-daily-driver". 3 models, 5 built-in tools, 2 MCP servers, 3 skills; 12 names withheld. $5,407.59 API-equivalent. No transcripts, prompts, paths or repo names leave this machine.',
+        'SPIKE-MARKER-HOOK-REASON - publish 30d measured usage to stack "alps-daily-driver". 3 models, 5 built-in tools, 2 MCP servers, 3 skills; 12 names withheld. $5,407.59 API-equivalent. No transcripts, prompts, paths or repo names leave this machine.',
     },
   }),
 )

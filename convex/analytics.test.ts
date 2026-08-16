@@ -66,7 +66,7 @@ test('cli_login_completed fires on the token exchange, not on gate approval', as
 
   expect(result).toEqual({ issued: true })
   // The session is consumed, which is what "the CLI came back for its token"
-  // means — a browser approval alone leaves the row in place.
+  // means - a browser approval alone leaves the row in place.
   const left = await t.run((ctx: MutationCtx) =>
     ctx.db.get(sessionId as Id<'cliSessions'>),
   )

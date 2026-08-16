@@ -14,7 +14,7 @@ import {
 } from "./ui";
 
 // ---------------------------------------------------------------------------
-// Data shapes — mirror convex/stacks.ts `getBySlug` so cards bind directly.
+// Data shapes - mirror convex/stacks.ts `getBySlug` so cards bind directly.
 // ---------------------------------------------------------------------------
 
 type Money = {

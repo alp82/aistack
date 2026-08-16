@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest'
 import { internal } from '../_generated/api'
 import schema from '../schema'
 
-// Same key remap every migrations test needs — see 20260725_cli_token_stack.
+// Same key remap every migrations test needs - see 20260725_cli_token_stack.
 const modules = Object.fromEntries(
   Object.entries(import.meta.glob('../**/*.{js,ts}')).map(([key, loader]) => [
     key.replace(/^\.\//, '../migrations/'),

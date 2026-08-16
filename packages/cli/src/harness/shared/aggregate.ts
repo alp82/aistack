@@ -3,13 +3,13 @@
 //
 // Extracted from the Claude analyzer by ticket #67 (map #60) so the Codex
 // adapter can reuse the same totals, name hygiene, and model rows without
-// inheriting Claude's record-dedup logic. Everything here is pure — no I/O,
+// inheriting Claude's record-dedup logic. Everything here is pure - no I/O,
 // no console.
 
 import { isPricedModel, type TokenCounts } from "@aistack/pricing";
 
 // ---------------------------------------------------------------------------
-// Narrowing helpers — records are untrusted external JSON
+// Narrowing helpers - records are untrusted external JSON
 // ---------------------------------------------------------------------------
 
 export type Obj = Record<string, unknown>;
@@ -28,7 +28,7 @@ export const asArr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
  * These are user-chosen strings (skill names, MCP servers, subagent types,
  * slash commands, model ids) and a hostile one is a real vector: control
  * characters move a terminal cursor, and an unterminated bidi override (U+202E)
- * reorders the rest of the rendered line — including the count and percentage
+ * reorders the rest of the rendered line - including the count and percentage
  * printed beside the name. Both survive `JSON.stringify`, which escapes C0 but
  * not bidi. See CVE-2021-42574 ("Trojan Source").
  *
@@ -52,7 +52,7 @@ export function cleanName(s: string): string {
 /**
  * The same bar as `cleanName`, asked as a question.
  *
- * Used on names arriving from the NETWORK — the per-stack opt-ins the sync
+ * Used on names arriving from the NETWORK - the per-stack opt-ins the sync
  * config carries (#44). Those are the user's own strings, so the curated list's
  * conventional charset is the wrong bar: parentheses, accents and CJK are all
  * legitimate names someone runs. What is refused is what cannot be rendered
@@ -89,8 +89,8 @@ export type ModelUsage = TokenCounts & {
 };
 
 /**
- * The fold target. `Seen` is the adapter's own dedup bookkeeping type —
- * Claude keys responses by `message.id`, Codex needs none — kept generic so
+ * The fold target. `Seen` is the adapter's own dedup bookkeeping type -
+ * Claude keys responses by `message.id`, Codex needs none - kept generic so
  * the shared shape does not import any one harness's record semantics.
  */
 export type Aggregate<Seen = unknown> = {
@@ -104,11 +104,11 @@ export type Aggregate<Seen = unknown> = {
 	distinctResponses: number;
 	/** Extra records of a response already counted (same message.id AND requestId). */
 	continuationsFolded: number;
-	/** Same message.id under a NEW requestId — a genuine replay (e.g. /btw sidechain). */
+	/** Same message.id under a NEW requestId - a genuine replay (e.g. /btw sidechain). */
 	realReplaysFolded: number;
 	/** Times a later record superseded an earlier one because it carried a larger total. */
 	supersededByLarger: number;
-	/** Assistant records with no message.id — counted without dedup protection. */
+	/** Assistant records with no message.id - counted without dedup protection. */
 	unkeyedResponses: number;
 	syntheticRecords: number;
 	syntheticTokens: number;
@@ -116,9 +116,9 @@ export type Aggregate<Seen = unknown> = {
 	/** Responses whose first attempt ran on a different model (#33 decision 9). */
 	fallbackAttempts: number;
 	untypedMirrors: number;
-	/** Records with no parseable timestamp — cannot be priced time-awarely. */
+	/** Records with no parseable timestamp - cannot be priced time-awarely. */
 	untimestampedResponses: number;
-	projectDirs: Set<string>; // held only to count — names never leave this module
+	projectDirs: Set<string>; // held only to count - names never leave this module
 	ccVersions: Set<string>;
 	mirroredIterationTypes: Map<string, number>;
 
@@ -223,7 +223,7 @@ export const countsTotal = (t: TokenCounts): number =>
 /**
  * Fold one priced usage delta into the per-model totals. The Claude adapter
  * has its own apply/retract pair (dedup can un-count a response); an adapter
- * whose records are already deltas — Codex — adds through here.
+ * whose records are already deltas - Codex - adds through here.
  */
 export function addModelUsage(
 	agg: Aggregate<never> | Aggregate<unknown>,
@@ -249,7 +249,7 @@ export function addModelUsage(
 }
 
 // ---------------------------------------------------------------------------
-// Finalize — the shape the wire payload is derived from
+// Finalize - the shape the wire payload is derived from
 // ---------------------------------------------------------------------------
 
 export type ModelRow = {

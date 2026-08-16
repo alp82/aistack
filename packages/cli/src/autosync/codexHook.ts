@@ -3,15 +3,15 @@
 //
 // Two ways this differs from the Claude hook (hook.ts):
 //
-//   1. THE COMMAND SELF-DETACHES. Codex parses `async` but does not honor it —
+//   1. THE COMMAND SELF-DETACHES. Codex parses `async` but does not honor it -
 //      the runner awaits the hook with a timeout and kill_on_drop (#65 §6).
 //      So the command backgrounds the real work under `setsid nohup … &` and
 //      exits 0 immediately; kill_on_drop kills only the already-exited shell.
 //   2. THE TRUST GATE. Codex pins each hook command's sha256 as a
 //      `trusted_hash` in config.toml. An untrusted or CHANGED command silently
 //      does not run, and only the user can trust it, via /hooks inside Codex.
-//      That is why the command text uses `@latest` — the text (and therefore
-//      the hash) stays stable across CLI updates — and why install prints the
+//      That is why the command text uses `@latest` - the text (and therefore
+//      the hash) stays stable across CLI updates - and why install prints the
 //      one-time trust instruction.
 
 import { createHash } from "node:crypto";
@@ -42,7 +42,7 @@ export function codexConfigFile(): string {
  * EXACT quoting, settled here (#66 left it to this ticket): the outer layer is
  * a JSON string in hooks.json; Codex runs it through a shell, and the single
  * `sh -c '…'` wrapper makes the detach group unambiguous regardless of how
- * that outer shell tokenizes. No `||` fallback like the Claude command — the
+ * that outer shell tokenizes. No `||` fallback like the Claude command - the
  * fallback semantics live INSIDE the detached shell so the hook process itself
  * still exits instantly.
  *
@@ -88,15 +88,15 @@ function readHooksJson(
 		}
 		return { error: `${file} does not hold a JSON object` };
 	} catch {
-		// Never rewrite a file we cannot parse — it is the user's Codex
+		// Never rewrite a file we cannot parse - it is the user's Codex
 		// configuration, and a rewrite would destroy whatever is in it.
-		return { error: `${file} is not valid JSON — fix it, then retry` };
+		return { error: `${file} is not valid JSON - fix it, then retry` };
 	}
 }
 
 /** The instruction install prints; the interactive sync repeats it while untrusted. */
 export const CODEX_TRUST_INSTRUCTION =
-	"Codex hook written — open Codex and run /hooks once to trust it, or it will not run.";
+	"Codex hook written - open Codex and run /hooks once to trust it, or it will not run.";
 
 /**
  * Add the SessionStart auto-sync hook, matcher `startup` only (resume/clear/
@@ -135,7 +135,7 @@ export function installCodexAutoSyncHook(
 
 /**
  * Remove only our hook. Other hooks and events stay. A missing file or an
- * absent hook is success — the goal state already holds.
+ * absent hook is success - the goal state already holds.
  */
 export function removeCodexAutoSyncHook(
 	file: string = codexHooksFile(),
@@ -188,7 +188,7 @@ export function codexAutoSyncHookInstalled(
 /**
  * Best-effort trust check: Codex pins each trusted hook's sha256 under
  * `[hooks.state]` in config.toml, so the command's hash appearing anywhere in
- * that file reads as trusted. `null` when the file cannot be read — unknown,
+ * that file reads as trusted. `null` when the file cannot be read - unknown,
  * not untrusted, so the caller does not nag on a parse quirk.
  */
 export function codexHookTrusted(

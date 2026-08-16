@@ -15,13 +15,13 @@ import {
 } from "./optin.js";
 
 /**
- * Enable/disable the standing opt-in — wayfinder #62 (map #60), Codex half
+ * Enable/disable the standing opt-in - wayfinder #62 (map #60), Codex half
  * added by #67, narrowed to ACTIVE harnesses by #101.
  *
  * The invariants: enable is flag+hooks or neither, a hook goes only to a
  * harness that ran inside the window, disable removes every hook it can reach,
  * and the flag flips even when a hook file resists (the flag is the publish
- * gate, the hooks are just the triggers). Every dep is injected — a test that
+ * gate, the hooks are just the triggers). Every dep is injected - a test that
  * touches the REAL ~/.claude/settings.json or ~/.codex/hooks.json is a bug.
  */
 
@@ -118,7 +118,7 @@ describe("enableAutoSync", () => {
 		const installCodexHook = vi.fn(() => ({
 			ok: true,
 			message:
-				"Codex hook written — open Codex and run /hooks once to trust it, or it will not run.",
+				"Codex hook written - open Codex and run /hooks once to trust it, or it will not run.",
 		}));
 		const res = await enableAutoSync(24, {
 			settingsFile,
@@ -352,7 +352,7 @@ describe("the server half of enable and revoke", () => {
 
 	test("a revoke lands on this machine even when the server cannot be told", async () => {
 		// A revoke must never be blocked by the network. The local half runs
-		// first and is complete on its own — `sync --auto` gates on it.
+		// first and is complete on its own - `sync --auto` gates on it.
 		setAutoSyncMock = vi.fn(async () => {
 			throw new Error("ENOTFOUND");
 		});
@@ -552,7 +552,7 @@ describe("settleAutoSync", () => {
 	});
 });
 
-/** The hint the ask renders — #101's fifth bullet. */
+/** The hint the ask renders - #101's fifth bullet. */
 function hintOfEnableOption(): string {
 	const arg = selectMock.mock.calls[0]?.[0] as {
 		options: Array<{ value: string; hint?: string }>;

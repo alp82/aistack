@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Centered Hero — Edit + Upvote Placement</title>
+<title>Centered Hero - Edit + Upvote Placement</title>
 <style>
   /* --- Brand tokens lifted verbatim from src/styles.css (dark theme) --- */
   :root {
@@ -108,7 +108,7 @@
   .editlink:hover { color: var(--accent-lime); }
   .editlink.report:hover { color: var(--amber); }
 
-  /* UPVOTE — primary engagement, gets the lime treatment on its active surface */
+  /* UPVOTE - primary engagement, gets the lime treatment on its active surface */
   .upvote { font-family: "JetBrains Mono", monospace; display: inline-flex; flex-direction: column; align-items: center; gap: 0.1rem;
     border: 1px solid var(--stroke-strong); padding: 0.45rem 0.7rem; color: var(--fg-secondary); cursor: pointer; background: var(--bg-panel); transition: all .12s; }
   .upvote:hover { border-color: var(--accent-lime); color: var(--accent-lime); }
@@ -120,7 +120,7 @@
   .upvote.pill .n { font-size: 1.4rem; }
   .upvote.pill:hover { background: var(--accent-lime); }
   .upvote.pill:hover .arrow, .upvote.pill:hover .n, .upvote.pill:hover .l { color: var(--accent-lime-contrast); }
-  /* compact horizontal upvote (row) — for inline meta / centered pill */
+  /* compact horizontal upvote (row) - for inline meta / centered pill */
   .upvote.row { flex-direction: row; align-items: center; gap: 0.45rem; padding: 0.45rem 0.8rem; }
   .upvote.row .n { font-size: 0.92rem; }
   .upvote.row .l { font-size: 0.55rem; letter-spacing: 0.12em; }
@@ -197,8 +197,8 @@
 <body>
 <div class="chrome">
   <div class="chrome-inner">
-    <h1 class="mono"><span class="lock">EDIT + UPVOTE PLACEMENT</span> — Centered Hero (final pass)</h1>
-    <p>Composition is locked. Explore only where the EDIT action and the UPVOTE control live — they are independent, so any edit placement combines with any upvote placement. Toggle Viewer to see EDIT (owner) vs REPORT (visitor) in the same slot. Pick a pair, hit Copy spec, paste the line back into chat.</p>
+    <h1 class="mono"><span class="lock">EDIT + UPVOTE PLACEMENT</span> - Centered Hero (final pass)</h1>
+    <p>Composition is locked. Explore only where the EDIT action and the UPVOTE control live - they are independent, so any edit placement combines with any upvote placement. Toggle Viewer to see EDIT (owner) vs REPORT (visitor) in the same slot. Pick a pair, hit Copy spec, paste the line back into chat.</p>
     <div class="controls" id="controls"></div>
     <div class="locked" id="locked"></div>
   </div>
@@ -404,10 +404,10 @@ function compose() {
   // bottom-right pinned (edit)
   if (s.pinBR.length) parts.push(`<div class="pin-br">${s.pinBR.join("")}</div>`);
 
-  // avatar above (LOCKED) — optionally paired with a compact upvote beside it
+  // avatar above (LOCKED) - optionally paired with a compact upvote beside it
   parts.push(`<div>${avatar(s.avatarAside)}</div>`);
 
-  // title (LOCKED black) — NO eyebrow (permanently removed)
+  // title (LOCKED black) - NO eyebrow (permanently removed)
   parts.push(`<div><h1 class="h1">${DATA.name}</h1></div>`);
 
   // lime keyline (LOCKED on)

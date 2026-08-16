@@ -7,28 +7,28 @@
 // Two programs price the same tokens. The CLI prices each response at ingest,
 // where the per-response timestamp still exists. The backend re-prices a
 // published snapshot at READ time, to fill the gaps a stale CLI table left
-// behind — one day of table drift published a stack at $14,764 when the same
+// behind - one day of table drift published a stack at $14,764 when the same
 // tokens are worth at least $167,331 (#93). Two copies of a price table drift
 // against each other by construction, so there is one copy and both import it.
 //
 // WHY THIS IS A LIST OF PERIODS AND NOT A FLAT MAP
 // A published "API-equivalent cost" covers a rolling 30-day window, and a
 // window can straddle a repricing. On 2026-09-05 the window covers Aug 6 →
-// Sep 5, but `claude-sonnet-5`'s introductory rate ends Aug 31 — so 25 days
+// Sep 5, but `claude-sonnet-5`'s introductory rate ends Aug 31 - so 25 days
 // price at $2/$10 and 5 days at $3/$15. A flat table misprices one side or the
 // other for a month after every repricing, which breaks the honesty tenet the
 // measured layer is built on.
 //
 // So each model's price is a list of effective-from ranges, and every response
 // is priced at the rate in effect at ITS OWN timestamp. Cost therefore has to
-// accumulate at ingest (see analyzer.ts) — summing tokens per model and pricing
+// accumulate at ingest (see analyzer.ts) - summing tokens per model and pricing
 // once at the end cannot express a mid-window rate change.
 //
 // Sources: Anthropic public list prices as of 2026-07-25 (cache multipliers
 // from https://platform.claude.com/docs/en/build-with-claude/prompt-caching:
 // 5m cache write = 1.25x input, 1h cache write = 2x input, read = 0.1x input)
 // and OpenAI public list prices as of 2026-08-02
-// (https://developers.openai.com/api/docs/pricing — cached input is 10% of
+// (https://developers.openai.com/api/docs/pricing - cached input is 10% of
 // input, the same multiplier `cacheRead` already uses; Codex reports no cache
 // writes, so the write multipliers never fire for OpenAI rows).
 // Google public list prices as of 2026-08-09
@@ -48,7 +48,7 @@
 //
 // So a multi-provider adapter keys its rows `provider:model`, and only a
 // provider this table maps to a vendor reaches that vendor's rates. Everything
-// else — gateways, unknown providers — holds no rate and lands in
+// else - gateways, unknown providers - holds no rate and lands in
 // `unpricedTokens`, which is the honest outcome and needs no new machinery.
 //
 // The separator is `:` and not `/` on purpose: `sanitizeModelId` in the CLI
@@ -58,8 +58,8 @@
 //
 // A LOCAL MODEL IS FREE, WHICH IS NOT THE SAME FACT AS UNPRICED
 // `ollama:qwen3-coder` costs nothing per token. `openrouter:qwen3-coder` costs
-// something this table cannot name. Both used to look identical — no row, no
-// rate, tokens excluded from coverage — so a local run read as a hole in the
+// something this table cannot name. Both used to look identical - no row, no
+// rate, tokens excluded from coverage - so a local run read as a hole in the
 // table. Local providers now hold a real zero rate, cited as
 // `LOCAL_PRICING_TABLE_VERSION`. Their tokens count as covered and add $0.
 
@@ -68,7 +68,7 @@ export const OPENAI_PRICING_TABLE_VERSION = "openai-list-2026-08-02";
 export const GOOGLE_PRICING_TABLE_VERSION = "google-list-2026-08-09";
 /**
  * The citation for a model that runs on the user's own machine. It is not a
- * vendor list — it is the statement that no per-token charge exists.
+ * vendor list - it is the statement that no per-token charge exists.
  */
 export const LOCAL_PRICING_TABLE_VERSION = "local-no-charge";
 
@@ -86,7 +86,7 @@ export const PROVIDER_SEPARATOR = ":";
  *
  * The boundary is approximated in UTC because the announcement names a date,
  * not a timezone. A response written within a few hours of the boundary can
- * therefore be priced on the wrong side of it — worth a handful of cents on a
+ * therefore be priced on the wrong side of it - worth a handful of cents on a
  * single day, and the alternative (guessing US/Pacific) is no more defensible.
  */
 export const SONNET_5_INTRO_ENDS_MS = Date.UTC(2026, 8, 1); // 2026-09-01T00:00:00Z
@@ -106,7 +106,7 @@ export type PricePeriod = {
  *
  * Anthropic is the shape the constants above describe. Google charges the
  * standard input rate to write a cache and bills storage by the hour instead,
- * so a Google cache write must NOT carry Anthropic's 1.25x — that would
+ * so a Google cache write must NOT carry Anthropic's 1.25x - that would
  * overstate, and every estimate here is a lower bound by construction. The
  * hourly storage fee is real spend this table cannot see, which keeps the
  * Google figure below the true one rather than above it.
@@ -138,7 +138,7 @@ const FREE_CACHE_MULTIPLIERS: CacheMultipliers = {
 
 /**
  * Who sets the rate. A provider only reaches a vendor's rows when it IS that
- * vendor — a gateway re-serving the same model is a different price.
+ * vendor - a gateway re-serving the same model is a different price.
  */
 type Vendor = "anthropic" | "openai" | "google" | "local";
 
@@ -189,12 +189,12 @@ const FREE: PriceEntry = {
  * Providers that ARE the vendor, so their rows price at that vendor's list.
  *
  * Deliberately absent, and each absence is a decision from ticket #122's
- * measurements: `opencode` (the opencode-zen gateway — `glm-4.7-free`,
+ * measurements: `opencode` (the opencode-zen gateway - `glm-4.7-free`,
  * `kimi-k2.5-free` and the unbranded `big-pickle` have no public list price),
  * `github-copilot` (re-serves other vendors' slugs at its own terms),
  * `openrouter`, `azure`, `bedrock` and `vercel-ai-gateway` (resellers).
  * A provider joins this map when a harness is measured emitting it, never
- * speculatively — an unused rate is a maintenance liability on a table that is
+ * speculatively - an unused rate is a maintenance liability on a table that is
  * updated by hand.
  */
 const PROVIDER_VENDOR: Record<string, Vendor> = {
@@ -233,11 +233,11 @@ const PRICES: Record<string, PriceEntry> = {
 	]),
 	"claude-sonnet-4-6": anthropic(flat(3, 15)),
 	"claude-haiku-4-5": anthropic(flat(1, 5)),
-	// Fast mode (research preview) — Claude API only, Opus 5 / Opus 4.8 only.
+	// Fast mode (research preview) - Claude API only, Opus 5 / Opus 4.8 only.
 	// Opus 4.7 fast mode was removed, so there is deliberately no 4-7 entry.
 	"claude-opus-5#fast": anthropic(flat(10, 50)),
 	"claude-opus-4-8#fast": anthropic(flat(10, 50)),
-	// OpenAI (Codex) — standard-context tier (<272K; observed context window is
+	// OpenAI (Codex) - standard-context tier (<272K; observed context window is
 	// 258,400).
 	"gpt-5.5": openai(flat(5, 30)),
 	"gpt-5.4": openai(flat(2.5, 15)),
@@ -245,21 +245,21 @@ const PRICES: Record<string, PriceEntry> = {
 	"gpt-5.3-codex": openai(flat(1.75, 14)),
 	// The gpt-5.6 family launched 2026-07-29; Terra and Luna were repriced on
 	// 2026-07-30 (-20% / -80%). The one-day launch rates are not on the list
-	// page and are NOT encoded — a July-29 Terra/Luna record underprices for
+	// page and are NOT encoded - a July-29 Terra/Luna record underprices for
 	// one day rather than carrying a rate we cannot cite (#72).
 	"gpt-5.6-sol": openai(flat(5, 30)),
 	"gpt-5.6-terra": openai(flat(2, 12)),
 	"gpt-5.6-luna": openai(flat(0.2, 1.2)),
-	// NOT on OpenAI's list page — an internal Codex routing label with no
+	// NOT on OpenAI's list page - an internal Codex routing label with no
 	// official price (openai/codex#20981). Rate is the aggregator consensus
 	// ($2.50 / $15.00), scoped in explicitly by ticket #72 because it carries
 	// real token volume in Codex rollouts.
 	"codex-auto-review": openai(flat(2.5, 15)),
-	// Google (opencode, pi-mono) — Standard tier. Where a model is
+	// Google (opencode, pi-mono) - Standard tier. Where a model is
 	// context-tiered, the <=200K rate is encoded, exactly as the OpenAI rows
 	// encode the standard-context tier: the payload carries no per-response
 	// context length, so the cheaper side keeps the figure a lower bound. Only
-	// the Pro and Flash families are here — image, TTS, embedding, Live and
+	// the Pro and Flash families are here - image, TTS, embedding, Live and
 	// robotics models are not what a coding harness selects.
 	"gemini-3.1-pro-preview": google(flat(2, 12)),
 	"gemini-3.6-flash": google(flat(1.5, 7.5)),
@@ -364,7 +364,7 @@ export function baseModelId(modelKey: string): string {
 }
 
 /**
- * The vendor-assigned id alone — no provider prefix, no `#fast`. This is the id
+ * The vendor-assigned id alone - no provider prefix, no `#fast`. This is the id
  * to show a reader and to match against the models catalog.
  */
 export function vendorModelId(modelKey: string): string {
@@ -432,8 +432,8 @@ export function pricingTableFor(modelKey: string): string | null {
  * Every rate that applies to `modelKey` anywhere inside `[fromMs, toMs]`.
  *
  * This is the read-time counterpart of `priceAt`. A published snapshot has no
- * per-response timestamps left — it carries one merged token total over a
- * window — so a re-pricer cannot ask "what did this response cost". It can only
+ * per-response timestamps left - it carries one merged token total over a
+ * window - so a re-pricer cannot ask "what did this response cost". It can only
  * ask "which rates could this window have paid", and then choose. Returns an
  * empty list for an unknown model and for a window that closes before the
  * model's first citable rate opens.
@@ -453,7 +453,7 @@ export function pricePeriodsInWindow(
 
 /**
  * Cost of one response's tokens at the rate in effect at its own timestamp.
- * Returns `null` when no rate applies — the caller must surface that as
+ * Returns `null` when no rate applies - the caller must surface that as
  * unpriced tokens rather than zeroing it.
  */
 export function apiEquivalentCost(

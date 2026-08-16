@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 /**
- * Tests for src/features/profile/ProfilePage.tsx (plan.md Phase A — the
+ * Tests for src/features/profile/ProfilePage.tsx (plan.md Phase A - the
  * dossier-split profile surface at /@handle).
  *
  * RED until src/features/profile/ProfilePage.tsx is created.
  *
- * VALIDATION: test — profile dossier renders full and sparse profiles;
+ * VALIDATION: test - profile dossier renders full and sparse profiles;
  * most-recent stack is the full-width callout; owner-only New/Edit
  * affordances gated on getOwnProfileView.
  */
@@ -15,7 +15,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProfilePage } from "@/features/profile/ProfilePage";
 
 // ProfilePage renders real tanstack-router <Link>s for stack cards and the
-// New-stack / Edit affordances — swap for plain anchors, matching the
+// New-stack / Edit affordances - swap for plain anchors, matching the
 // StackHeader.test.tsx / landing-sections.test.tsx precedent.
 vi.mock("@tanstack/react-router", () => ({
 	Link: ({
@@ -88,7 +88,7 @@ const SPARSE_PROFILE = {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("ProfilePage — full profile (visitor)", () => {
+describe("ProfilePage - full profile (visitor)", () => {
 	it("renders name, handle, bio, x handle, and a personal page link", () => {
 		render(
 			<ProfilePage
@@ -160,7 +160,7 @@ describe("ProfilePage — full profile (visitor)", () => {
 	});
 });
 
-describe("ProfilePage — sparse profile (visitor)", () => {
+describe("ProfilePage - sparse profile (visitor)", () => {
 	it("renders presentably with no bio/links and exactly one stack", () => {
 		render(
 			<ProfilePage
@@ -186,7 +186,7 @@ describe("ProfilePage — sparse profile (visitor)", () => {
 	});
 });
 
-describe("ProfilePage — owner view", () => {
+describe("ProfilePage - owner view", () => {
 	it("shows a New-stack link and an Edit affordance when ownProfile is present", () => {
 		render(
 			<ProfilePage

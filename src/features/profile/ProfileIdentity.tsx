@@ -41,7 +41,7 @@ function ProfileAvatar({
 	className?: string;
 }) {
 	const [imgError, setImgError] = useState(false);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: avatarUrl isn't read in the body, it's the reset trigger — clear a stale load-error when the source URL changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: avatarUrl isn't read in the body, it's the reset trigger - clear a stale load-error when the source URL changes
 	useEffect(() => {
 		setImgError(false);
 	}, [avatarUrl]);
@@ -170,7 +170,7 @@ function ProfileIdentity({ profile, isOwner }: ProfileIdentityProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Owner editor (mounted only when editing — keeps Convex/router hooks out of
+// Owner editor (mounted only when editing - keeps Convex/router hooks out of
 // the always-rendered view path)
 // ---------------------------------------------------------------------------
 
@@ -237,7 +237,7 @@ function ProfileIdentityEditor({
 		} else if (pending.kind === "none") {
 			setAvatar({ kind: "cleared" });
 		}
-		// dataUrl never happens here — this editor is authed-only.
+		// dataUrl never happens here - this editor is authed-only.
 	};
 
 	const updatePage = (
@@ -275,7 +275,7 @@ function ProfileIdentityEditor({
 						: {}),
 			});
 			if (handle.trim() !== profile.handle) {
-				// The old handle 404s after a rename — move to the new URL.
+				// The old handle 404s after a rename - move to the new URL.
 				navigate({
 					to: "/$creator",
 					params: { creator: `@${handle.trim()}` },

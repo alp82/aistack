@@ -1,4 +1,4 @@
-// The opencode I/O shell against REAL temp SQLite files — wayfinder #124
+// The opencode I/O shell against REAL temp SQLite files - wayfinder #124
 // (map #121). The store is `opencode*.db` under the data dir (the JSON tree
 // is dead storage, research §1); a locked, corrupt, or newer-schema DB counts
 // as UNREADABLE, never as zero.
@@ -146,7 +146,7 @@ describe("scan", () => {
 		expect(agg.ccVersions).toEqual(new Set(["1.18.11"]));
 	});
 
-	it("the window filter runs in SQL — an out-of-window row never reaches the fold", async () => {
+	it("the window filter runs in SQL - an out-of-window row never reaches the fold", async () => {
 		const { db } = createDb();
 		insertSession(db, "ses_1", null);
 		insertAssistant(db, { id: "msg_old", ts: NOW - 90 * DAY });
@@ -346,7 +346,7 @@ describe("detectOpencode", () => {
 		expect(await detectOpencode({ sinceMs: SINCE, roots: [dir] })).toBe(false);
 	});
 
-	it("a fresh DB mtime with no in-window rows is NOT detection — the probe is a query", async () => {
+	it("a fresh DB mtime with no in-window rows is NOT detection - the probe is a query", async () => {
 		// The #101 failure mode: `opencode --version` touches the DB file.
 		const { db } = createDb();
 		insertSession(db, "ses_1", null);

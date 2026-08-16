@@ -9,7 +9,7 @@ import { api } from "../../convex/_generated/api";
 
 /**
  * Public creator profile at `/@<handle>` (e.g. /@alper-ortac). The dynamic
- * `$creator` param must carry the leading `@` — any other single-segment
+ * `$creator` param must carry the leading `@` - any other single-segment
  * path 404s, so profile URLs can't shadow future root routes.
  */
 export const Route = createFileRoute("/$creator")({
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/$creator")({
 	},
 	loader: async ({ context, params }) => {
 		const handle = params.creator.slice(1);
-		// Auth-independent query — safe to seed the SSR cache (owner state
+		// Auth-independent query - safe to seed the SSR cache (owner state
 		// lives in the client-only getOwnProfileView, per the stacks.$slug
 		// precedent).
 		const data = await context.queryClient.ensureQueryData(
@@ -42,7 +42,7 @@ export const Route = createFileRoute("/$creator")({
 				title: `${profile.name} (@${profile.handle}) - AI Stack`,
 				description:
 					profile.bio ??
-					`${profile.name}'s AI stacks — the tools, costs, and workflows they run.`,
+					`${profile.name}'s AI stacks - the tools, costs, and workflows they run.`,
 				url: `/@${profile.handle}`,
 			}),
 		};
@@ -54,7 +54,7 @@ function CreatorProfileRoute() {
 	const { creator } = Route.useParams();
 	const handle = creator.slice(1);
 	const data = useQuery(api.creators.getByHandle, { handle });
-	// Client-only owner query — never part of the SSR payload, so the shared
+	// Client-only owner query - never part of the SSR payload, so the shared
 	// cache can't seed with an owner view.
 	const ownProfile = useQuery(api.creators.getOwnProfileView, { handle });
 	// Deduped daily visitors (#78). Before the early returns below, because a

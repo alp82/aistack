@@ -5,7 +5,7 @@
 // THE INVERSION THIS FILE EXISTS TO PERFORM
 // The prototype's `toolCalls` map was a catch-all: anything that wasn't an
 // `mcp__*` tool, a Skill, or an Agent fell THROUGH into it, and from there into
-// the payload. That is denylist-shaped — a tool name nobody anticipated
+// the payload. That is denylist-shaped - a tool name nobody anticipated
 // publishes by default. Here a name publishes only if it matches a known list,
 // and everything else is withheld and published as a per-category count.
 //
@@ -17,12 +17,12 @@
 //     They match a curated list fetched from aistack, with the bundled copy
 //     below as the fallback.
 //
-// Model ids are exempt from all of this — see decision 3 and payload.ts.
+// Model ids are exempt from all of this - see decision 3 and payload.ts.
 //
 // WHY FETCHED AND NOT ONLY BUNDLED (decision 4)
 // Third-party marketplace plugin auto-update defaults to OFF, and a
 // `plugin.json` whose `version` isn't bumped ships nothing. A bundled-only list
-// is, for an installed user, frozen forever — a Skill that becomes public next
+// is, for an installed user, frozen forever - a Skill that becomes public next
 // month would never publish. The filtering itself still runs client-side:
 // fail-closed only means something if it happens before the send.
 
@@ -35,7 +35,7 @@ import { BUNDLED_CURATED_ALLOWLIST } from "./bundled-allowlist.js";
  * Deliberately a literal set and not a pattern: a pattern is a denylist wearing
  * a hat. Grounded in the observed corpus (22 distinct names across 235,961
  * records) plus the documented tool surface, including tools that are deferred
- * or unavailable in most sessions — an unknown-but-real built-in withheld as a
+ * or unavailable in most sessions - an unknown-but-real built-in withheld as a
  * count is a small loss; an unknown-and-user-named tool published verbatim is
  * the leak this whole file prevents.
  *
@@ -120,7 +120,7 @@ export type NameCategory = (typeof NAME_CATEGORIES)[number];
  * The curated list is a convenience default, not the coverage mechanism: every
  * user-chosen name class is unbounded and unenumerable, so a hand-curated list
  * can only ever be a rounding error against the real population. Coverage comes
- * from here — from the person who knows which of their names are secret.
+ * from here - from the person who knows which of their names are secret.
  *
  * `builtinTools` is included for symmetry even though that class is
  * vendor-assigned: a built-in this version of the client has never heard of is
@@ -140,7 +140,7 @@ export type SyncConfig = {
 	allowlist: CuratedAllowlist;
 	/**
 	 * Stack-level cost preference (decision 11). When false the payload omits
-	 * cost entirely rather than zeroing it — see payload.ts.
+	 * cost entirely rather than zeroing it - see payload.ts.
 	 */
 	publishCost: boolean;
 	/** Per-stack ticked names, unioned into the allowlist before filtering. */
@@ -152,12 +152,12 @@ export type SyncConfig = {
 	 */
 	reviewKeptPrivate: boolean;
 	/**
-	 * The stack the bearer token is bound to — where a publish would land.
+	 * The stack the bearer token is bound to - where a publish would land.
 	 *
 	 * The approve gate must name its destination BEFORE the send (#33
 	 * decision 7, #41), and beat one points at `/stacks/{slug}/changes` (#48),
 	 * so both ride on the authenticated half of the config fetch. `null` when
-	 * the fetch was anonymous, failed, or the token resolved no stack — and a
+	 * the fetch was anonymous, failed, or the token resolved no stack - and a
 	 * gate that cannot name its destination must not publish.
 	 */
 	stack: { name: string; slug: string } | null;
@@ -169,7 +169,7 @@ export type SyncConfig = {
 	 * may still seed. `{ enabled: false }` means the owner said no, and
 	 * `sync --auto` publishes nothing on this machine until they say otherwise.
 	 *
-	 * `frequencyHours` is absent when the value could not be read — see
+	 * `frequencyHours` is absent when the value could not be read - see
 	 * `readAutoSync`.
 	 */
 	autoSync: AutoSyncPermission | null;
@@ -187,8 +187,8 @@ export type AutoSyncPermission = {
  * `publishCost: false` is deliberate. The toggle is a stack-level preference we
  * do not hold locally, and the fail-closed default for a preference we can't
  * read is the one that transmits less. A user whose fetch failed sees cost
- * missing from the gate and can retry; the reverse — publishing cost the stack
- * had opted out of — is not recoverable, because the snapshot is immutable.
+ * missing from the gate and can retry; the reverse - publishing cost the stack
+ * had opted out of - is not recoverable, because the snapshot is immutable.
  */
 export const BUNDLED_SYNC_CONFIG: SyncConfig = {
 	allowlist: BUNDLED_CURATED_ALLOWLIST,
@@ -201,7 +201,7 @@ export const BUNDLED_SYNC_CONFIG: SyncConfig = {
 	// upload the names it is holding back. The default is ON server-side, so this
 	// costs the owner one retry and never costs them a name.
 	reviewKeptPrivate: false,
-	// No fetch, no destination — and the gate refuses to publish without one.
+	// No fetch, no destination - and the gate refuses to publish without one.
 	stack: null,
 	// No fetch, no permission either. This costs nothing on its own: `stack` is
 	// null in the same breath, so the stage blocks before any publish.
@@ -227,7 +227,7 @@ export type LoadedSyncConfig = {
 /**
  * A name arriving from the network is no more trusted than one from a
  * transcript. Names are matched by exact equality, so a hostile list can widen
- * what publishes but can never smuggle a wildcard — and the approve gate
+ * what publishes but can never smuggle a wildcard - and the approve gate
  * renders every name that will publish, which is what defuses that residual
  * trust (decision 4). Charset and length are still bounded so a pathological
  * entry can't reach a terminal or a database column.
@@ -247,8 +247,8 @@ function readNameList(v: unknown): string[] {
  * Opt-ins are read against a LOOSER bar than the curated list.
  *
  * A curated entry is ours and conventional, so the tight charset costs nothing.
- * An opt-in is the user's own name — `(default)`, an accented word, a CJK skill
- * — and dropping it here would silently un-tick a decision they made at the
+ * An opt-in is the user's own name - `(default)`, an accented word, a CJK skill
+ * - and dropping it here would silently un-tick a decision they made at the
  * gate. The bar that survives is the one that matters for a string we print and
  * store: no control characters, no bidi overrides, bounded length.
  */
@@ -292,7 +292,7 @@ function readStack(v: unknown): SyncConfig["stack"] {
 /**
  * Read the stack's auto-sync permission (#103).
  *
- * ABSENT AND OFF ARE DIFFERENT ANSWERS. Absent — the key is missing or null —
+ * ABSENT AND OFF ARE DIFFERENT ANSWERS. Absent - the key is missing or null -
  * means no owner has decided, and only that lets a local flag seed the server.
  * A value that is PRESENT but unreadable is not that state: a permission the
  * machine cannot read is a permission it does not hold, so it reads as off.
@@ -328,7 +328,7 @@ function readSyncConfig(raw: unknown): SyncConfig | null {
 		},
 		// Anything other than an explicit `true` fails closed.
 		publishCost: obj.publishCost === true,
-		// Absent means "no stack resolved" — an anonymous fetch, or a token bound
+		// Absent means "no stack resolved" - an anonymous fetch, or a token bound
 		// to nothing. Both fail closed to publishing no user-chosen names.
 		optIns: readOptIns(obj.optIns),
 		// Anything other than an explicit `true` keeps the names on the machine.
@@ -340,7 +340,7 @@ function readSyncConfig(raw: unknown): SyncConfig | null {
 
 /**
  * Fetch the curated allowlist and the cost preference, falling back to the
- * bundled copy on any failure. Never throws — an unreachable aistack must not
+ * bundled copy on any failure. Never throws - an unreachable aistack must not
  * prevent a local analysis from running, it must only narrow what could publish.
  */
 export async function loadSyncConfig(opts: {
@@ -348,7 +348,7 @@ export async function loadSyncConfig(opts: {
 	/**
 	 * Bearer for the authenticated half: `publishCost`, `optIns`,
 	 * `reviewKeptPrivate` and the destination stack. Absent, the server answers
-	 * with the anonymous fail-closed body — same allowlist, everything else off.
+	 * with the anonymous fail-closed body - same allowlist, everything else off.
 	 */
 	token?: string;
 	fetchImpl?: typeof fetch;
@@ -398,7 +398,7 @@ export type Atom = { name: string; count: number };
  * One observed name that will NOT publish, as the approve gate needs to render
  * it: the raw string, how often it ran, and the plugin it came from.
  *
- * Local only — this never enters the payload. It exists because the gate offers
+ * Local only - this never enters the payload. It exists because the gate offers
  * every kept-private name as an explicit, default-off tick (#42 decision 1), and
  * it cannot offer what the analyzer does not hand back.
  */
@@ -421,13 +421,13 @@ export type FilteredAtoms = {
 /**
  * A server an MCP plugin provides is observed as `plugin_<plugin>_<server>`.
  *
- * That whole string is GENERATED by Claude Code — the user typed none of it —
+ * That whole string is GENERATED by Claude Code - the user typed none of it -
  * which is a different class from a hand-edited `.mcp.json` alias. Strip the
  * wrapper before matching (#42 decision 5).
  *
  * The split takes the FIRST underscore-free segment as the plugin name. A plugin
  * whose own name carries an underscore therefore splits wrong, the inner segment
- * matches nothing, and the raw name stays kept private — the same direction
+ * matches nothing, and the raw name stays kept private - the same direction
  * every other miss fails in.
  */
 const PLUGIN_MCP_RE = /^plugin_([^_]+)_(.+)$/;
@@ -453,7 +453,7 @@ export type FilterSets = {
 	/** Curated list UNION this stack's opt-ins. A match here publishes verbatim. */
 	publishable: ReadonlySet<string>;
 	/**
-	 * The curated list alone — the only target normalization may match.
+	 * The curated list alone - the only target normalization may match.
 	 *
 	 * This is what makes the normalization safe to state in one line:
 	 * normalization can only ever emit a string that is already curated. The
@@ -484,7 +484,7 @@ function publishedName(name: string, sets: FilterSets): string | null {
  * how heavily any single kept-private thing is used.
  *
  * Counts are merged by PUBLISHED name, because normalization can map two
- * observed names onto one — a plugin-provided `chrome-devtools` and a directly
+ * observed names onto one - a plugin-provided `chrome-devtools` and a directly
  * configured one both publish as `chrome-devtools`, and two rows with the same
  * name would double-count that server in the rendered inventory.
  */

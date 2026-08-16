@@ -45,7 +45,7 @@ import { MetricBlock } from "./MetricBlock";
 import { ModelShareRows } from "./ModelShareRows";
 
 /**
- * Journey section 01 — the public measured display, living (#81, map #76).
+ * Journey section 01 - the public measured display, living (#81, map #76).
  *
  * #46 built the still version off #40's variant B; #58 moved it to the front of
  * the journey; #80 gave it its history as variant I. What ran now literally
@@ -55,10 +55,10 @@ import { ModelShareRows } from "./ModelShareRows";
  * whole section: headline, model rows, stats, caveats. The series only ADDS the
  * watermark, the delta, the readings line and the notch. A stack with one sync,
  * or a page whose series has not answered yet, is a complete page and not a
- * broken one — which matters because two to five readings is what stacks have.
+ * broken one - which matters because two to five readings is what stacks have.
  *
  * Public and unauthenticated. A null current reading renders an INVITATION
- * addressed to the reader, never a demerit on the author — every stack but a few
+ * addressed to the reader, never a demerit on the author - every stack but a few
  * is in that state, and a page that scolded them would be scolding almost
  * everybody. The one exception is the owner looking at their own unsynced stack:
  * they get the command that closes the gap (#58).
@@ -78,8 +78,8 @@ export function MeasuredSection({
 	const history = useQuery(api.measured.getHistoryByStackSlug, { slug });
 
 	// Past 48 hours the switch is the page's remedy, so it stands BEFORE the
-	// reading it keeps arriving. A stack that never synced is not late — it may
-	// be hand-curated — so it never promotes anything (#107 decisions 1 and 3).
+	// reading it keeps arriving. A stack that never synced is not late - it may
+	// be hand-curated - so it never promotes anything (#107 decisions 1 and 3).
 	const staleSince =
 		snapshot && isStale(snapshot.receivedAt) ? snapshot.receivedAt : null;
 
@@ -98,8 +98,8 @@ export function MeasuredSection({
 				title={TITLE}
 				meta={snapshot ? `checked ${timeAgo(snapshot.receivedAt)}` : undefined}
 			/>
-			{/* The owner box (#104). It sits inside the section it governs —
-			    automation is what keeps this reading arriving — and it does NOT
+			{/* The owner box (#104). It sits inside the section it governs -
+			    automation is what keeps this reading arriving - and it does NOT
 			    wait for a reading, because it is the fix for a stack that has
 			    none. Renders nothing for a visitor, query and all. */}
 			{placed && staleSince !== null && (
@@ -110,7 +110,7 @@ export function MeasuredSection({
 				/>
 			)}
 			{/* Undefined is "not answered yet", and it must not read as "never
-			    measured" — the invitation waits until the query has spoken. */}
+			    measured" - the invitation waits until the query has spoken. */}
 			{snapshot === undefined ? null : snapshot === null ? (
 				isOwner ? (
 					<OwnerNotMeasured />
@@ -202,7 +202,7 @@ function Reading({
 							prices: {snapshot.pricingTable}
 						</p>
 					)}
-					{/* What the figure above leaves out. Silent at full coverage —
+					{/* What the figure above leaves out. Silent at full coverage -
 					    "priced 100%" is noise, and the ≥ already carries the rest. */}
 					{pricedShare !== null && (
 						<p className={cn(MONO_LABEL, "text-fg-muted")}>{pricedShare}</p>
@@ -258,7 +258,7 @@ function Reading({
 
 /**
  * One harness's own caveat block: kept-private counts and coverage. These
- * CANNOT merge across harnesses — callShares are normalized per harness — so
+ * CANNOT merge across harnesses - callShares are normalized per harness - so
  * each harness speaks for itself (#66).
  *
  * AGE IS NOT ONE OF THEM ANY MORE (#107 decision 2). A per-harness "going
@@ -316,7 +316,7 @@ function NeverMeasured() {
 				{NEVER_SYNCED_BODY}
 			</p>
 			<p className={cn(MONO_LABEL, "mt-6 text-fg-muted")}>
-				have a stack of your own? —{" "}
+				have a stack of your own?{" "}
 				<code className="text-fg-primary">{SYNC_CMD}</code>
 			</p>
 			<Link
@@ -345,8 +345,8 @@ function OwnerNotMeasured() {
 			<p className={cn(MONO_LABEL, "mt-4 text-fg-muted")}>{PRIVACY_FOOTNOTE}</p>
 			{/* Automation gets one line here and no switch of its own, because
 			    `enableAutoSync` refuses a machine that is not linked yet (#107
-			    decision 3). The switch below still renders — #104 made it
-			    independent of a reading — it just cannot be the fix for this. */}
+			    decision 3). The switch below still renders - #104 made it
+			    independent of a reading - it just cannot be the fix for this. */}
 			<p className="mt-4 max-w-xl text-sm text-fg-muted">
 				{NEVER_SYNCED_AUTO_NOTE}
 			</p>

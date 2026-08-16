@@ -69,7 +69,7 @@ describe("sessionReferrerBucket", () => {
 		expect(sessionReferrerBucket()).toBe("social");
 
 		// A later page in the same session has a same-origin referrer, which would
-		// classify as `internal` — the stored first touch must win.
+		// classify as `internal` - the stored first touch must win.
 		Object.defineProperty(document, "referrer", {
 			value: window.location.origin,
 			configurable: true,

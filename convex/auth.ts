@@ -31,7 +31,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
         create: {
           /**
            * `signup_completed` (#77, map #76). Server-side, because the browser
-           * cannot honestly observe this transition — an OAuth callback and a
+           * cannot honestly observe this transition - an OAuth callback and a
            * magic-link verify both create the user without the app ever seeing
            * a "signup succeeded" moment it could trust.
            *
@@ -148,7 +148,7 @@ export const getCurrentUser = query({
 })
 
 /**
- * The viewer's user id — the SAME string every server-side capture uses as its
+ * The viewer's user id - the SAME string every server-side capture uses as its
  * PostHog `distinct_id` (#77).
  *
  * It has to be this exact value and not the creator profile id: the four

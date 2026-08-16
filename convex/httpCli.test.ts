@@ -9,7 +9,7 @@ import { FULL_CLI_TOKEN_SCOPES, type CliTokenScope } from './lib/cliScopes'
 import { DEFAULT_MAX_REQUESTS, SHARED_BUCKET_MAX_REQUESTS } from './rateLimit'
 
 /**
- * The CLI bearer path over HTTP — wayfinder #49 (map #29).
+ * The CLI bearer path over HTTP - wayfinder #49 (map #29).
  *
  * These tests exercise the real `httpAction`s through `t.fetch`, because the
  * property being asserted only exists there: hashing happens in the ACTION, so
@@ -17,7 +17,7 @@ import { DEFAULT_MAX_REQUESTS, SHARED_BUCKET_MAX_REQUESTS } from './rateLimit'
  * the queries directly would prove nothing about that.
  *
  * The load-bearing test is now `login to approval to token ...`, which asserts
- * the row carries the digest and NOT the bearer — the property #52's narrow
+ * the row carries the digest and NOT the bearer - the property #52's narrow
  * exists to create.
  */
 
@@ -134,7 +134,7 @@ describe('bearer resolution', () => {
     expect(body.stack).toBeNull()
   })
 
-  test('sync-config names the destination stack — name AND slug (#41)', async () => {
+  test('sync-config names the destination stack - name AND slug (#41)', async () => {
     // The approve gate must name where the data goes and point at
     // `/stacks/{slug}/changes` BEFORE the first send, so both ride on the
     // authenticated half of the config fetch.
@@ -261,7 +261,7 @@ describe('the name reaches the machines list', () => {
   })
 
   test('clearing the field leaves the machine unnamed', async () => {
-    // An empty field is a deliberate answer, not a missing one — it must not
+    // An empty field is a deliberate answer, not a missing one - it must not
     // fall back to the hostname the user just deleted.
     const t = convexTest(schema, modules)
     await seedCreator(t)
@@ -322,7 +322,7 @@ describe('the name reaches the machines list', () => {
  * Scopes at the choke point (#52).
  *
  * Every token is minted with the full set, so nothing here is a live
- * restriction — these tests exist so that a narrower token later needs no
+ * restriction - these tests exist so that a narrower token later needs no
  * server change, and so the enforcement point cannot be deleted by accident.
  */
 describe('scopes', () => {
@@ -337,7 +337,7 @@ describe('scopes', () => {
       body: JSON.stringify({ payload: {} }),
     })
     // 403 and not 401: the credential is good, and presenting it again changes
-    // nothing. 403 and not 400 is the load-bearing half — it proves the scope
+    // nothing. 403 and not 400 is the load-bearing half - it proves the scope
     // check runs BEFORE the payload is looked at, which is what makes this a
     // choke point rather than a check one route could forget.
     expect(resp.status).toBe(403)
@@ -383,7 +383,7 @@ describe('scopes', () => {
   test('sync-config answers a scope-less token anonymously, never 401 or 403', async () => {
     // The one route that must NOT refuse. Filtering is fail-closed and runs
     // BEFORE the send, so a client that cannot fetch the list is the client we
-    // most want to have it — refusing it would publish more, not less.
+    // most want to have it - refusing it would publish more, not less.
     const t = convexTest(schema, modules)
     await seedCreator(t)
     await seedToken(t, 'tok_no_sync', { scopes: ['collect'] })
@@ -424,7 +424,7 @@ describe('scopes', () => {
  * The authenticated budget (#52).
  *
  * Keyed on the TOKEN, not the IP: `/api/cli/*` are thin proxies and the Convex
- * site URL is directly reachable, so an IP key is walked around — while the
+ * site URL is directly reachable, so an IP key is walked around - while the
  * proxy forwards only `Authorization`, so a Convex-side IP limiter would see
  * one address for every user on earth.
  */
@@ -489,7 +489,7 @@ describe('token-keyed rate limit', () => {
 })
 
 /**
- * `authStart` — the real abuse target on this surface (#36/#52).
+ * `authStart` - the real abuse target on this surface (#36/#52).
  *
  * Unauthenticated, one `cliSessions` row per call, and the caller has no token
  * to be charged against, so the client address is the only thing left to key
@@ -555,7 +555,7 @@ describe('authStart budget', () => {
 
   test('no secret configured falls back to the shared bucket at the HIGH cap', async () => {
     // THE FALLBACK MATTERS MORE THAN THE HAPPY PATH. With no secret, every
-    // proxied login on earth lands in this one bucket — at 60/min a missing env
+    // proxied login on earth lands in this one bucket - at 60/min a missing env
     // var would break login for everybody at once.
     vi.stubEnv('CLI_PROXY_SECRET', '')
     const t = convexTest(schema, modules)

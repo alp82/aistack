@@ -12,7 +12,7 @@
 // parses. The analyzer reads named fields only; the directory name is never
 // even counted (the header's `cwd` is, as an opaque key). Streaming line by
 // line keeps a pasted screenshot from pulling megabytes into memory.
-// `~/.pi/agent/auth.json` holds credentials — only `sessions/` is ever walked.
+// `~/.pi/agent/auth.json` holds credentials - only `sessions/` is ever walked.
 // Read errors are swallowed, not thrown: the error object carries the path.
 
 import { createReadStream, type Dirent } from "node:fs";
@@ -36,12 +36,12 @@ import {
  * states the ladder (v1 linear, v2 tree, v3 renamed hookMessage to custom);
  * none of the changes touched `usage`, `model` or `timestamp`, so v1-v3 all
  * read with one fold. A file ABOVE the ceiling may have reshaped those fields,
- * so it counts as unreadable — a visible coverage figure — rather than being
+ * so it counts as unreadable - a visible coverage figure - rather than being
  * misread as zeros.
  */
 export const MAX_SESSION_VERSION = 3;
 
-/** `PI_CODING_AGENT_DIR` honored, `~/.pi/agent` the default — mirrors pi. */
+/** `PI_CODING_AGENT_DIR` honored, `~/.pi/agent` the default - mirrors pi. */
 export function piAgentDir(): string {
 	return (
 		process.env.PI_CODING_AGENT_DIR || path.join(homedir(), ".pi", "agent")
@@ -49,10 +49,10 @@ export function piAgentDir(): string {
 }
 
 /**
- * Only `sessions/` is read — `auth.json` (credentials), `settings.json` and
+ * Only `sessions/` is read - `auth.json` (credentials), `settings.json` and
  * the ACP session map live beside it and are out of bounds. A run started
  * with `--session-dir` writes outside every discoverable root and is
- * invisible, which is silence — the direction #40 permits.
+ * invisible, which is silence - the direction #40 permits.
  */
 export function sessionRoots(): string[] {
 	const override = process.env.PI_CODING_AGENT_SESSION_DIR;
@@ -71,7 +71,7 @@ export function isSessionFile(basename: string): boolean {
 	return SESSION_FILE_RE.test(basename);
 }
 
-/** Recursive walk — the real layout is two levels (one directory per cwd). */
+/** Recursive walk - the real layout is two levels (one directory per cwd). */
 async function* walkSessions(dir: string): AsyncGenerator<string> {
 	let entries: Dirent[];
 	try {
@@ -131,7 +131,7 @@ export async function scan(
 						continue;
 					}
 				} catch {
-					/* unreadable stat — fall through and try to read it */
+					/* unreadable stat - fall through and try to read it */
 				}
 			}
 
@@ -180,7 +180,7 @@ async function exists(p: string): Promise<boolean> {
 
 /**
  * Stream one session file through the fold. The vendor put the fingerprint on
- * line 1 — `{"type":"session"}` with a numeric `version` — so the verdict
+ * line 1 - `{"type":"session"}` with a numeric `version` - so the verdict
  * lands before any usage is folded, and a foreign or too-new file leaves the
  * aggregate untouched by construction (no parse-then-fold buffering needed).
  */

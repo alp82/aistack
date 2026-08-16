@@ -21,7 +21,7 @@ export {
  * Owner-scoped resource access. Hosted `resources` rows are shared per
  * `(addedBy, stableKey)`; linked rows are shared GLOBALLY per
  * `(upstream.repoUrl, upstream.path)`. `resourceLinks` rows attach a resource
- * to a stack or project owner. Neither owner owns the row — it lives until the
+ * to a stack or project owner. Neither owner owns the row - it lives until the
  * last link is removed, at which point it is soft-deleted (`deletedAt`).
  */
 

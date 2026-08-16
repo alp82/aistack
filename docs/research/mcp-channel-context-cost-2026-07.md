@@ -1,7 +1,7 @@
-# What the MCP channel costs a session — measured
+# What the MCP channel costs a session - measured
 
 Wayfinder ticket [#54](https://github.com/alp82/aistack/issues/54) (map [#29](https://github.com/alp82/aistack/issues/29)).
-This document records measurements. It decides nothing. It feeds the channel-mix grilling ([#56](https://github.com/alp82/aistack/issues/56)).
+This document records measurements only and makes no decisions. It feeds the channel-mix grilling ([#56](https://github.com/alp82/aistack/issues/56)).
 
 Environment: Claude Code **2.1.220** on Linux, `claude --version`, 2026-07-30.
 Server under test: `aistack mcp` from the local build (`packages/cli/dist/index.js`, source `packages/cli/src/sync/server.ts`, 2 tools).
@@ -16,7 +16,7 @@ Server under test: `aistack mcp` from the local build (`packages/cli/dist/index.
 | Skill listing line (`aistack-sync` description) | ~40–60 tokens (est.) | frontmatter of `packages/cli/skills/aistack-sync/SKILL.md` |
 | Server spawn → `initialize` response | 36–41 ms (5 runs) | stdio probe |
 
-Token estimates use two heuristics (chars/4 and words×1.3) because no `ANTHROPIC_API_KEY` was available for the count-tokens endpoint. The 28-token figure is not an estimate. It comes from the API's own usage report.
+Token estimates use two heuristics (chars/4 and words×1.3) because no `ANTHROPIC_API_KEY` was available for the count-tokens endpoint. The 28-token figure is exact: it comes from the API's own usage report.
 
 ## 1. The measured in-session delta: 28 tokens
 
@@ -28,7 +28,7 @@ Method: `claude -p 'say ok' --output-format json` with `--strict-mcp-config` and
 | aistack attached | 21,567 | 21,567 |
 | **Delta** | **+28** | **+28** |
 
-The delta is stable across runs and across cache states (run 1 wrote cache, run 2 read it — the totals did not move). 28 tokens is consistent with the server name plus two tool names and nothing else: the tool descriptions and schemas (~110–240 tokens by themselves) never entered the context.
+The delta is stable across runs and across cache states (run 1 wrote cache, run 2 read it - the totals did not move). 28 tokens is consistent with the server name plus two tool names and nothing else: the tool descriptions and schemas (~110–240 tokens by themselves) never entered the context.
 
 ## 2. Why the delta is small: deferral is the default
 
@@ -37,14 +37,14 @@ Claude Code defers MCP tool schemas by default. Only tool names and server instr
 - Official docs, [Scale with MCP tool search](https://code.claude.com/docs/en/mcp#scale-with-mcp-tool-search): "Tool search keeps MCP context usage low by deferring tool definitions until Claude needs them. Only tool names and server instructions load at session start" and "Tool search is enabled by default."
 - Primary in-context evidence: the session that produced this document lists `mcp__aistack__sync_preview` / `mcp__aistack__sync_publish` as deferred, name-only tools that need a `ToolSearch` fetch before use.
 - [CHANGELOG](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md) timeline:
-  - **2.1.7** — MCP tool search auto mode on by default, deferral when descriptions exceed 10% of the context window.
-  - **2.1.9** — `auto:N` custom threshold.
-  - Later builds (current docs) — full deferral is the unset-default; `auto` is the opt-in threshold mode.
-  - **2.1.84** — global system-prompt caching works with `ToolSearch` plus MCP tools.
-  - **2.1.119** — off by default on Vertex AI (opt back in with `ENABLE_TOOL_SEARCH`).
-  - **2.1.121** — `alwaysLoad` per-server opt-out of deferral.
+  - **2.1.7** - MCP tool search auto mode on by default, deferral when descriptions exceed 10% of the context window.
+  - **2.1.9** - `auto:N` custom threshold.
+  - Later builds (current docs) - full deferral is the unset-default; `auto` is the opt-in threshold mode.
+  - **2.1.84** - global system-prompt caching works with `ToolSearch` plus MCP tools.
+  - **2.1.119** - off by default on Vertex AI (opt back in with `ENABLE_TOOL_SEARCH`).
+  - **2.1.121** - `alwaysLoad` per-server opt-out of deferral.
 
-Deferral is NOT universal. It needs a first-party endpoint and a model with `tool_reference` support (Sonnet 4.5 / Haiku 4.5 / Opus 4.5 and later). It is off on Google Cloud's Agent Platform, on non-first-party `ANTHROPIC_BASE_URL` proxies, under `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS`, and on Microsoft Foundry Azure-hosted deployments (server-side rejection). In those configurations the full schema cost below applies instead of 28 tokens. Known bug class: HTTP-transport tools loaded upfront despite tool search ([anthropics/claude-code#40314](https://github.com/anthropics/claude-code/issues/40314)) — our server is stdio, so this class does not apply to it.
+Deferral is NOT universal. It needs a first-party endpoint and a model with `tool_reference` support (Sonnet 4.5 / Haiku 4.5 / Opus 4.5 and later). It is off on Google Cloud's Agent Platform, on non-first-party `ANTHROPIC_BASE_URL` proxies, under `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS`, and on Microsoft Foundry Azure-hosted deployments (server-side rejection). In those configurations the full schema cost below applies instead of 28 tokens. Known bug class: HTTP-transport tools loaded upfront despite tool search ([anthropics/claude-code#40314](https://github.com/anthropics/claude-code/issues/40314)) - our server is stdio, so this class does not apply to it.
 
 ## 3. Full schema cost, with scale
 
@@ -65,7 +65,7 @@ The `aistack-sync` Skill contributes one description line to the skills list eve
 
 ## 5. Idle vs use
 
-- **Idle** (installed, never synced): 28 tokens for the MCP server, plus the Skill line if the Skill is installed — **under ~90 tokens per session** all-in.
+- **Idle** (installed, never synced): 28 tokens for the MCP server, plus the Skill line if the Skill is installed - **under ~90 tokens per session** all-in.
 - **Use** (a sync runs): beat one is deliberately the full review surface and enters the transcript. Measured live against the owner's real corpus (461 sessions, 4.7B tokens window): **1,606 bytes, 36 lines**, ~230–400 tokens (est.). Beat two is the short elicitation dialog and does not enter the transcript as tool output. Add the two fetched tool schemas (~110–240 tokens) that `ToolSearch` pulls in when the tools are used. A syncing session therefore spends roughly **400–700 tokens** on the whole exchange, once.
 
 ## 6. Startup cost
@@ -79,15 +79,15 @@ The dominant complaint is **tokens**, not setup friction and not trust prompts:
 - 67k tokens consumed by four servers before the first prompt ([Your MCP Servers Are Eating Your Context](https://medium.com/@lakshminp/your-mcp-servers-are-eating-your-context-549c472beaf2)).
 - Tool search cut a 51k-token MCP load to 8.5k ([write-up](https://medium.com/@joe.njenga/claude-code-just-cut-mcp-context-bloat-by-46-9-51k-tokens-down-to-8-5k-with-new-tool-search-ddf9e905f734)).
 - Bug reports are about deferral failing, not about deferral existing: threshold not activating ([#18298](https://github.com/anthropics/claude-code/issues/18298), [#19560](https://github.com/anthropics/claude-code/issues/19560)), HTTP tools loaded upfront ([#40314](https://github.com/anthropics/claude-code/issues/40314)).
-- A secondary complaint is **misreporting**: `/context` in the VS Code extension counted deferred tools as if loaded ([#24081](https://github.com/anthropics/claude-code/issues/24081)), and users ask for deferred overhead to be visible at all ([#21966](https://github.com/anthropics/claude-code/issues/21966)). Perception of bloat can outlive the bloat.
+- A secondary complaint is **misreporting**: `/context` in the VS Code extension counted deferred tools as if loaded ([#24081](https://github.com/anthropics/claude-code/issues/24081)), and users ask for deferred overhead to be visible at all ([#21966](https://github.com/anthropics/claude-code/issues/21966)). Users may keep perceiving bloat after it has been removed.
 
 Mitigation levers that exist today, all first-party:
 
-- **Tool search / deferral** — default on, `ENABLE_TOOL_SEARCH` (`auto`, `auto:N`, `false`) to tune ([docs](https://code.claude.com/docs/en/mcp#configure-tool-search)).
-- **`alwaysLoad: true`** per server to opt out of deferral (2.1.121) — the inverse lever; we would not set it.
-- **Scopes** — `local` / `project` / `user` registration, so a user can confine the server to one project ([docs](https://code.claude.com/docs/en/mcp)).
-- **Per-project enable/disable** — `/mcp` panel and `enabledMcpjsonServers` / `disabledMcpjsonServers` in settings.
-- **Server instructions** — with deferral on, the docs advise instructions that tell Claude when to search for the tools; our server currently sends none (`initialize` result in `server.ts` carries no `instructions` field).
+- **Tool search / deferral** - default on, `ENABLE_TOOL_SEARCH` (`auto`, `auto:N`, `false`) to tune ([docs](https://code.claude.com/docs/en/mcp#configure-tool-search)).
+- **`alwaysLoad: true`** per server to opt out of deferral (2.1.121) - the inverse lever; we would not set it.
+- **Scopes** - `local` / `project` / `user` registration, so a user can confine the server to one project ([docs](https://code.claude.com/docs/en/mcp)).
+- **Per-project enable/disable** - `/mcp` panel and `enabledMcpjsonServers` / `disabledMcpjsonServers` in settings.
+- **Server instructions** - with deferral on, the docs advise instructions that tell Claude when to search for the tools; our server currently sends none (`initialize` result in `server.ts` carries no `instructions` field).
 - No lazy *registration* exists: a configured stdio server is spawned per session. The ~40 ms spawn is the whole of that cost.
 
 ## What this means for the channel-mix grilling (facts only)

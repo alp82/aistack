@@ -124,7 +124,7 @@ describe("the trail behind the headline", () => {
 		expect(trail[0].value).toBe(history.points[0].tokens);
 	});
 
-	it("reports a fall as a fall — the window forgets its far end", () => {
+	it("reports a fall as a fall - the window forgets its far end", () => {
 		const history = buildHistory({ readings: 5, claudeCodeOnly: true });
 		expect(tokenDelta(history.points)).toBe(4_427_010_000 - 4_604_390_000);
 	});

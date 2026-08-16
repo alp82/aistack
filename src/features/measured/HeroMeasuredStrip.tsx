@@ -14,7 +14,7 @@ import {
 import { isStale } from "./freshness";
 
 /**
- * The hero's measured strip — the seam between what a stack claims and what ran.
+ * The hero's measured strip - the seam between what a stack claims and what ran.
  *
  * Wayfinder ticket #46 (map #29), building the H2 hero locked by #40. Two rules
  * shape it, and both are decisions:
@@ -26,7 +26,7 @@ import { isStale } from "./freshness";
  *      make not installing a CLI a public demerit on every stack but one.
  *   3. THE DOT TURNS AT 48 HOURS, with the stamp in section 02 (#107 decision
  *      2). It used to read the snapshot's own `isFresh`, which is the 7-day
- *      window the leaderboard ranks on — a second age for one sync, on the line
+ *      window the leaderboard ranks on - a second age for one sync, on the line
  *      the reader meets first.
  *
  * It carries only measured facts. The authored tool and model counts are

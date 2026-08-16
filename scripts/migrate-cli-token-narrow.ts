@@ -1,5 +1,5 @@
 /**
- * `cliTokens` hash + scopes narrow — the PHASE B driver.
+ * `cliTokens` hash + scopes narrow - the PHASE B driver.
  *
  * Run with: pnpm tsx scripts/migrate-cli-token-narrow.ts          (report only)
  *           pnpm tsx scripts/migrate-cli-token-narrow.ts --apply
@@ -11,14 +11,14 @@
  *
  * WHY A SCRIPT AND NOT `npx convex run`. Production is self-hosted, and the
  * repo's documented path for reaching it is a `scripts/migrate-*.ts` driver over
- * `createAdminClient()` — the same shape as `migrate-cli-token-stack.ts` and
+ * `createAdminClient()` - the same shape as `migrate-cli-token-stack.ts` and
  * `migrate-icons.ts`. The CLI's `run` subcommand is the dev-backend path.
  *
  * DEPLOY ORDER, and none of it is optional:
  *
  *   1. Deploy the PRE-NARROW revision (commit 00fbdf0). It widens the schema so
  *      old rows still validate, and it is what puts the four functions below on
- *      the backend — you cannot run a migration that is not deployed.
+ *      the backend - you cannot run a migration that is not deployed.
  *   2. Run this script with --apply.
  *   3. Deploy the NARROW revision (commit 5efdc9a).
  *
@@ -69,7 +69,7 @@ async function main(): Promise<void> {
   console.log(`\n1. hash backfill      patched ${hashed.patched} in ${hashed.rounds} round(s)`)
 
   // 2. Scopes. Every existing token was issued when there was nothing to
-  //    restrict, so it gets the FULL set — anything narrower would revoke
+  //    restrict, so it gets the FULL set - anything narrower would revoke
   //    access the user never asked to revoke.
   const scoped = await client.mutation(SCOPES.backfill, {})
   console.log(`2. scopes backfill    patched ${scoped.patched}, remaining ${scoped.remaining}`)
@@ -79,7 +79,7 @@ async function main(): Promise<void> {
   if (cleared.unhashed > 0) {
     console.error(
       `\nREFUSED: ${cleared.unhashed} token(s) are still unhashed, so the plaintext\n` +
-        'was NOT cleared — clearing one of those would leave a token that can never\n' +
+        'was NOT cleared - clearing one of those would leave a token that can never\n' +
         'authenticate and can never be repaired. Rerun step 1 and try again.',
     )
     process.exitCode = 1

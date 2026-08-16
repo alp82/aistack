@@ -59,7 +59,7 @@ async function resizeAndEncode(
 	quality: number,
 ): Promise<Blob> {
 	if (source.type && !source.type.startsWith("image/")) {
-		throw new Error(`Not an image — content-type is "${source.type}"`);
+		throw new Error(`Not an image - content-type is "${source.type}"`);
 	}
 
 	const img = await loadImage(source);
@@ -112,7 +112,7 @@ export async function convertToWebP(
 
 /**
  * Convert a File or Blob to a compact data-URL string, fit-within `maxDim`
- * pixels. Defaults to JPEG — Safari's canvas.toBlob has no WebP encoder and
+ * pixels. Defaults to JPEG - Safari's canvas.toBlob has no WebP encoder and
  * silently falls back to a large PNG, which would blow the localStorage budget
  * used to stage guest avatars. Throws if the source isn't an image or the
  * encode pipeline fails.

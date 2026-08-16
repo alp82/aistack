@@ -1,8 +1,8 @@
 /**
  * The page's 48-hour line (#108, from #107 decision 2).
  *
- * The boundary is the whole test. Two other windows live in this repo — the
- * leaderboard's 7 days (#82) and the CLI's 30-day detection gate (#100) — and
+ * The boundary is the whole test. Two other windows live in this repo - the
+ * leaderboard's 7 days (#82) and the CLI's 30-day detection gate (#100) - and
  * the only thing that stops them from drifting into one another is that each
  * one is pinned where it is used.
  */
@@ -27,7 +27,7 @@ describe("the 48-hour line", () => {
 		expect(isStale(NOW - 2 * HOUR, NOW)).toBe(false);
 	});
 
-	// "Older than 48 hours" — so 48 hours exactly is still current, and one
+	// "Older than 48 hours" - so 48 hours exactly is still current, and one
 	// millisecond past it is not. A page that flipped AT the boundary would call
 	// a reading late while the owner's daily schedule was still on time.
 	it("holds at exactly 48 hours", () => {

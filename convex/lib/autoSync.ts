@@ -6,7 +6,7 @@
  * stack, `sync --auto` asks for it before it publishes, and the local flag
  * degrades to a seed source.
  *
- * These are the pure parts — no Convex context — because both writers need
+ * These are the pure parts - no Convex context - because both writers need
  * them: the publish path that seeds from a wire field, and the two setters
  * (the CLI route and the owner's switch).
  */
@@ -26,7 +26,7 @@ export const MAX_FREQUENCY_HOURS = 168
  * CLAMPED, NEVER REFUSED. Every caller here is either a sync that the owner
  * already approved or a switch the owner is holding, so rejecting the whole
  * request over an out-of-range number would cost them the thing they asked for
- * — and the field it lands in is a schedule hint, not a claim about data.
+ * - and the field it lands in is a schedule hint, not a claim about data.
  */
 export function normalizeFrequencyHours(raw: number | undefined): number {
   if (raw === undefined || !Number.isFinite(raw)) return DEFAULT_FREQUENCY_HOURS

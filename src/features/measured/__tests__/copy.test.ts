@@ -98,7 +98,7 @@ describe("kept private", () => {
 	});
 
 	it("is never a percentage", () => {
-		// #42: a completeness score is a disclosure ratchet — it pressures the
+		// #42: a completeness score is a disclosure ratchet - it pressures the
 		// owner to publish exactly the names they held back.
 		expect(keptPrivate(buildHarness())).not.toMatch(/%/);
 	});

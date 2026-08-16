@@ -62,7 +62,7 @@ export function ProjectsManager({
 	// Reconcile local order with server order during render (adjust-state-during-render).
 	// Adopt server membership unless a drag is in flight.
 	// If dragging is active but membership changed (an id no longer exists in
-	// serverIds), the previously-dragged state can't be trusted — reset the drag
+	// serverIds), the previously-dragged state can't be trusted - reset the drag
 	// flag and adopt server order so reconciliation is never permanently disabled.
 	{
 		const serverIds = items.map(keyOf);
@@ -96,7 +96,7 @@ export function ProjectsManager({
 		onReorder(ids).catch((err) => {
 			console.error("Failed to reorder projects:", err);
 			setLocalOrder(items.map(keyOf));
-			setActionError("Couldn't save the new order — try again");
+			setActionError("Couldn't save the new order - try again");
 		});
 	};
 
@@ -122,7 +122,7 @@ export function ProjectsManager({
 		onReorder(next).catch((err) => {
 			console.error("Failed to reorder projects:", err);
 			setLocalOrder(items.map(keyOf));
-			setActionError("Couldn't save the new order — try again");
+			setActionError("Couldn't save the new order - try again");
 		});
 	};
 
@@ -277,7 +277,7 @@ export function ProjectsManager({
 						if (openId === deleteTarget.id) setOpenId(null);
 					} catch (err) {
 						console.error("Failed to delete project:", err);
-						const detail = err instanceof Error ? ` — ${err.message}` : "";
+						const detail = err instanceof Error ? ` - ${err.message}` : "";
 						setActionError(`Couldn't delete "${deleteTarget.name}"${detail}`);
 					} finally {
 						setDeleting(false);

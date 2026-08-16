@@ -20,7 +20,7 @@ const tokens = (t: Partial<WireModel['tokens']> = {}) => ({
 /** A window entirely inside one price period for every model used here. */
 const JULY = { from: '2026-07-01', to: '2026-07-31' }
 
-describe('repriceSnapshot — the gap filler (#93)', () => {
+describe('repriceSnapshot - the gap filler (#93)', () => {
   it('returns a fully-priced snapshot unchanged', () => {
     // The regression that matters most: repricing must be invisible where the
     // CLI already did the job. Its dollars are per-response and cache-TTL
@@ -246,7 +246,7 @@ describe('repriceSnapshot — the gap filler (#93)', () => {
 describe('per-model citations from a mixed-vendor payload (#136)', () => {
   it('cites each published figure by the table the model carries', () => {
     // One opencode payload prices OpenAI and Google rows from two tables. The
-    // old shape stamped one id over both — a false citation. The new shape
+    // old shape stamped one id over both - a false citation. The new shape
     // carries the table on the model, and the top-level field is null.
     const out = repriceSnapshot({
       models: [
@@ -310,7 +310,7 @@ describe('per-model citations from a mixed-vendor payload (#136)', () => {
   })
 
   it('strips the citation with the dollars when cost is off', () => {
-    // Cost is absent, not zeroed — and a citation with nothing to cite would
+    // Cost is absent, not zeroed - and a citation with nothing to cite would
     // leak that a figure existed.
     const out = repriceSnapshot({
       models: [

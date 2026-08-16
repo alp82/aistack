@@ -1,17 +1,17 @@
 #!/usr/bin/env node
-// Spike server for wayfinder ticket #35 — candidate A (local stdio MCP + requiresUserInteraction).
+// Spike server for wayfinder ticket #35 - candidate A (local stdio MCP + requiresUserInteraction).
 //
 // Hand-rolled JSON-RPC over stdio so the spike has zero dependencies and nothing
 // between us and the wire. Three tools, each probing a different rendering surface
 // of the consent dialog:
 //
-//   publish_desc   — body text lives in the tool `description`
-//   publish_input  — body text lives in a `humanSummary` input param, alongside the
+//   publish_desc   - body text lives in the tool `description`
+//   publish_input  - body text lives in a `humanSummary` input param, alongside the
 //                    full nested payload (probes serialization + truncation)
-//   publish_ungated — byte-identical to publish_desc except for its `name` and the missing
+//   publish_ungated - byte-identical to publish_desc except for its `name` and the missing
 //                    `_meta` marker (control). Nothing else may differ, or 1C stops being a
 //                    one-variable control: identify it in the dialog by the tool name.
-//   publish_elicit — added after Round 1. Deliberately carries NO `_meta` gate: 1C already
+//   publish_elicit - added after Round 1. Deliberately carries NO `_meta` gate: 1C already
 //                    proved an unmarked tool runs silently under bypass, so any prompt this
 //                    one raises comes from the mid-call `elicitation/create` and nothing
 //                    else. Its message is byte-identical to publish_desc's description, so
@@ -42,7 +42,7 @@ const log = (direction, msg) => {
 const SUMMARY = buildSummary(payload)
 
 // The description IS the summary, with no headline prefix. 1A (description) and 1B (input)
-// must be compared on byte-identical text — a prepended headline would push 1A's truncation
+// must be compared on byte-identical text - a prepended headline would push 1A's truncation
 // point two lines later than 1B's and make the comparison read backwards. `fixtures/summary.txt`
 // is regenerated from this same function (`node mcp/summary.mjs`), so the two are equal by
 // construction, not by hand.
@@ -71,7 +71,7 @@ const GATE = { 'anthropic/requiresUserInteraction': true }
 const TOOLS = [
   {
     name: 'publish_desc',
-    title: 'SPIKE-MARKER-TITLE — Publish measured usage (description variant)',
+    title: 'SPIKE-MARKER-TITLE - Publish measured usage (description variant)',
     description: DESCRIPTION,
     inputSchema: minimalSchema,
     annotations: { title: 'SPIKE-MARKER-ANNOTATION-TITLE (desc variant)', destructiveHint: false, openWorldHint: true },
@@ -79,42 +79,42 @@ const TOOLS = [
   },
   {
     name: 'publish_input',
-    title: 'SPIKE-MARKER-TITLE — Publish measured usage (input variant)',
+    title: 'SPIKE-MARKER-TITLE - Publish measured usage (input variant)',
     description: 'Publish the approved measured-usage aggregate. The exact bytes are in the arguments.',
     inputSchema,
     annotations: { title: 'SPIKE-MARKER-ANNOTATION-TITLE (input variant)', destructiveHint: false, openWorldHint: true },
     _meta: { ...GATE },
   },
   // CONTROL. Deliberately a byte-for-byte clone of publish_desc above except for `name` and
-  // the absent `_meta` — that single difference is the whole experiment. Do not "clarify" the
+  // the absent `_meta` - that single difference is the whole experiment. Do not "clarify" the
   // title or description here: any extra difference gives 1C a second variable and the marker
   // stops being provably the thing that produces the prompt.
   {
     name: 'publish_ungated',
-    title: 'SPIKE-MARKER-TITLE — Publish measured usage (description variant)',
+    title: 'SPIKE-MARKER-TITLE - Publish measured usage (description variant)',
     description: DESCRIPTION,
     inputSchema: minimalSchema,
     annotations: { title: 'SPIKE-MARKER-ANNOTATION-TITLE (desc variant)', destructiveHint: false, openWorldHint: true },
   },
-  // NO `_meta` gate, on purpose — see the header. This tool asks the CLIENT for consent
+  // NO `_meta` gate, on purpose - see the header. This tool asks the CLIENT for consent
   // mid-call via `elicitation/create`, which is a server-initiated request rather than a
   // tool invocation, so no permission rule names it and no "don't ask again" can allow it.
   {
     name: 'publish_elicit',
-    title: 'SPIKE-MARKER-TITLE — Publish measured usage (elicitation variant)',
+    title: 'SPIKE-MARKER-TITLE - Publish measured usage (elicitation variant)',
     description: 'Publish the measured-usage aggregate. Asks for confirmation during the call.',
     inputSchema: minimalSchema,
     annotations: { title: 'SPIKE-MARKER-ANNOTATION-TITLE (elicit variant)', destructiveHint: false, openWorldHint: true },
   },
   // 1F. The 26-line message in publish_elicit rendered in full and then could not be
-  // answered — no visible control, keyboard did nothing, ESC resolved it to `cancel`. Two
+  // answered - no visible control, keyboard did nothing, ESC resolved it to `cancel`. Two
   // candidate causes: the form is unusable in this client, or the long message pushed the
   // control out of the viewport. This variant changes ONE thing, the message length. If it
   // is answerable, the cause is length and the aggregate has to live somewhere else; if it
   // is not, elicitation cannot carry consent at all in 2.1.220.
   {
     name: 'publish_elicit_short',
-    title: 'SPIKE-MARKER-TITLE — Publish measured usage (short elicitation variant)',
+    title: 'SPIKE-MARKER-TITLE - Publish measured usage (short elicitation variant)',
     description: 'Publish the measured-usage aggregate. Asks a one-line confirmation during the call.',
     inputSchema: minimalSchema,
     annotations: { title: 'SPIKE-MARKER-ANNOTATION-TITLE (elicit short variant)', destructiveHint: false, openWorldHint: true },
@@ -127,11 +127,11 @@ const TOOLS = [
 // 2.1.220" from "the boolean widget is unusable". Last elicitation probe either way.
 // 1H. The enum widget accepts input (1G) but was only ever shown with the one-line message,
 // and the 26-line message was only ever shown with the dead boolean widget (1E). The
-// combination that the shipped design actually wants — whole aggregate AND an answerable
-// control — is therefore still untested. This is that combination and nothing else.
+// combination that the shipped design actually wants - whole aggregate AND an answerable
+// control - is therefore still untested. This is that combination and nothing else.
 TOOLS.push({
   name: 'publish_elicit_full',
-  title: 'SPIKE-MARKER-TITLE — Publish measured usage (full message + enum)',
+  title: 'SPIKE-MARKER-TITLE - Publish measured usage (full message + enum)',
   description: 'Publish the measured-usage aggregate. Shows the whole summary and asks a single-choice confirmation.',
   inputSchema: minimalSchema,
   annotations: { title: 'SPIKE-MARKER-ANNOTATION-TITLE (elicit full variant)', destructiveHint: false, openWorldHint: true },
@@ -139,7 +139,7 @@ TOOLS.push({
 
 TOOLS.push({
   name: 'publish_elicit_enum',
-  title: 'SPIKE-MARKER-TITLE — Publish measured usage (enum elicitation variant)',
+  title: 'SPIKE-MARKER-TITLE - Publish measured usage (enum elicitation variant)',
   description: 'Publish the measured-usage aggregate. Asks a single-choice confirmation during the call.',
   inputSchema: minimalSchema,
   annotations: { title: 'SPIKE-MARKER-ANNOTATION-TITLE (elicit enum variant)', destructiveHint: false, openWorldHint: true },
@@ -235,7 +235,7 @@ const handle = (msg) => {
                     decision: {
                       type: 'string',
                       enum: ['publish', 'cancel'],
-                      title: 'SPIKE-MARKER-ELICIT-FIELD — publish this aggregate?',
+                      title: 'SPIKE-MARKER-ELICIT-FIELD - publish this aggregate?',
                       description: 'Approve the send described above.',
                     },
                   },
@@ -246,7 +246,7 @@ const handle = (msg) => {
                   properties: {
                     confirm: {
                       type: 'boolean',
-                      title: 'SPIKE-MARKER-ELICIT-FIELD — publish this aggregate?',
+                      title: 'SPIKE-MARKER-ELICIT-FIELD - publish this aggregate?',
                       description: 'Approve the send described above.',
                     },
                   },

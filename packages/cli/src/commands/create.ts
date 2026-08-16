@@ -59,7 +59,7 @@ export async function createCommand() {
 		}
 	}
 
-	// Linked resources have no files to write — surface them so they aren't
+	// Linked resources have no files to write - surface them so they aren't
 	// silently dropped on download (GitHub repos + package refs like MCP servers).
 	const linked = stack.resources.filter(
 		(item) => (item.upstream || item.pkg) && !item.files?.length,

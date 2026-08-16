@@ -22,8 +22,8 @@ the same ground.
 **Every claim here is measured against real files on the author's machine.** All three
 harnesses have live local data, so this is empirical, not a documentation summary. Vendor
 docs and upstream source are cited where they explain what the bytes mean. Where a harness
-could not answer a question, the report says so plainly. An unanswerable question is a
-finding, and it changes what the adapter is allowed to claim.
+could not answer a question, the report says so plainly; that inability is itself a
+result, and it changes what the adapter is allowed to claim.
 
 The spec is written against the existing seam in `packages/cli/src/harness/`:
 `types.ts` is the contract, `claude/` and `codex/` are the two working adapters, `shared/`
@@ -48,11 +48,11 @@ both double counts. The adapter reads the database and needs a new I/O primitive
 **2. Cursor cannot report tokens, so it is weaker than the case the map locked.** The map
 locked that "a subscription harness reports tokens and sessions with no dollars". Cursor
 reports **sessions with no tokens and no dollars**. *(This is the finding that got Cursor cut
-— see the note at the top.)* The one field that ever held tokens,
+- see the note at the top.)* The one field that ever held tokens,
 `tokenCount` on chat bubbles, is populated on **12 of 39,060 records**, the newest dated
 **2026-01-13**, and every one of the twelve has `modelInfo: null`. There is no cache-read or
 cache-write field at any grain. This was verified twice, independently. The locked shape
-still stands, but Cursor sits one rung below it, and that is an owner decision (see
+still stands, but Cursor falls short of it, and that is an owner decision (see
 [Open decisions](#open-decisions-this-report-cannot-make)).
 
 **3. Two seam changes are needed, and neither belongs inside an adapter ticket.**
@@ -112,8 +112,8 @@ Root overrides the adapter must honor (`docs/environment-variables.md` lines
 - `PI_CODING_AGENT_DIR` overrides `~/.pi/agent`.
 - `PI_CODING_AGENT_SESSION_DIR` overrides the session store.
 - `--session-dir <dir>` overrides both, per run. A run started that way writes
-  outside every discoverable root, so it is invisible. That is silence, which
-  the positive-claims rule permits.
+  outside every discoverable root, so it is invisible to the adapter; the
+  positive-claims rule permits that silence.
 
 **Version marker: yes, and it is explicit.** The first line of every file is a
 header carrying `version`. Real line from disk:
@@ -137,13 +137,13 @@ That is the same negative test `classifyRollout` performs, with a field the
 vendor put there on purpose.
 
 Also on disk, and NOT session history:
-- `~/.pi/agent/settings.json` — default provider and model. Real content:
+- `~/.pi/agent/settings.json` - default provider and model. Real content:
   `{"lastChangelogVersion":"0.70.2","defaultProvider":"anthropic","defaultModel":"claude-opus-4-7","defaultThinkingLevel":"medium"}`.
   Usable as a static inventory hint, the way `codex/scan.ts` reads
   `config.toml`. It is a stated preference, not measured work.
-- `~/.pi/agent/models-store.json` — the model catalog cache. Empty (`{}`) here.
-- `~/.pi/agent/auth.json` — credentials. **Never open it.**
-- `~/.pi/pi-acp/session-map.json` — ACP bridge index. It holds absolute
+- `~/.pi/agent/models-store.json` - the model catalog cache. Empty (`{}`) here.
+- `~/.pi/agent/auth.json` - credentials. **Never open it.**
+- `~/.pi/pi-acp/session-map.json` - ACP bridge index. It holds absolute
   `sessionFile` and `cwd` paths. It is an index, not usage. Skip it.
 
 ### 2. Token counts
@@ -200,7 +200,7 @@ output.usage.totalTokens = input + output + cacheRead + cacheWrite;
 Three consequences that matter for the adapter:
 
 1. `usage.input` is the Anthropic `input_tokens`, which already EXCLUDES cache
-   read and cache write. **No subtraction.** This is the opposite of Codex,
+   read and cache write, so **no subtraction is needed**. This is the opposite of Codex,
    where `cached_input_tokens` is a subset of `input_tokens` and
    `codex/analyzer.ts` must subtract.
 2. `cacheWrite1h` is a SUBSET of `cacheWrite`. pi's own cost function proves it:
@@ -217,13 +217,13 @@ Three consequences that matter for the adapter:
 
 Grain: per assistant response, written once, append-only. There is no cumulative
 total anywhere in the file, so neither Claude's message-id dedup nor Codex's
-"sum the delta, never the total" applies. Deltas by construction.
+"sum the delta, never the total" applies. The values are deltas by construction.
 
 **But there are four other places `usage` appears, and they are all real spend.**
 From session-format.md:
-- `toolResult` messages carry an optional `usage` — "Nested LLM work performed by
+- `toolResult` messages carry an optional `usage` - "Nested LLM work performed by
   the tool" (line 99). An extension that calls a model bills through here.
-- `compaction` entries carry an optional `usage` — the summary generation
+- `compaction` entries carry an optional `usage` - the summary generation
   (line 244).
 - `branch_summary` entries carry an optional `usage` (line 259).
 - `compaction.retainedTail` is a materialized `AgentMessage[]` (line 240). Those
@@ -307,7 +307,7 @@ when a message lacks `model`:
 ```
 
 Prefer `message.model`. It is authoritative per response. Use `model_change` the
-way `codex/analyzer.ts` uses `turn_context` — as context only.
+way `codex/analyzer.ts` uses `turn_context` - as context only.
 
 ### 4. Per-response timestamps
 
@@ -322,7 +322,7 @@ Yes, twice, in two different units. Both are on the real records above.
 
 They are close but not equal. In the real record the entry timestamp is
 `16:54:02.344Z` and the message timestamp is `1784825641388` =
-`16:54:01.388Z` — a 956 ms gap, because the message timestamp is stamped when
+`16:54:01.388Z` - a 956 ms gap, because the message timestamp is stamped when
 the API call starts and the entry timestamp when the line is appended.
 
 Use `entry.timestamp` for the window filter and for `activeDays`. It is a string
@@ -330,7 +330,7 @@ in the same shape the Claude and Codex analyzers already `Date.parse`, and it
 exists on every entry type, including `compaction` and `branch_summary`, which
 also carry priceable `usage`. Fall back to `message.timestamp` when the entry
 timestamp is missing or unparseable. This gives per-response, time-aware pricing
-through `apiEquivalentCost(modelKey, counts, tsMs)` with no gaps —
+through `apiEquivalentCost(modelKey, counts, tsMs)` with no gaps -
 `agg.untimestampedResponses` should stay 0 in practice.
 
 ### 5. Pricing
@@ -357,12 +357,12 @@ So:
   fireworks, huggingface, nvidia, radius, opencode, llama.cpp, and every custom
   provider.
 
-There is a second, tempting option: **pi already priced it.** Every assistant
+There is a second option: **pi already priced it.** Every assistant
 message carries `usage.cost.total`, computed at ingest by `calculateCost(model,
 usage)` against `model.cost` from pi's own catalog, including tiered pricing.
 That covers all 25 providers for free.
 
-Do not use it as the published figure. Three reasons.
+Do not use it as the published figure, for three reasons.
 1. It is an unpinned third-party table refreshed over the network
    (`pi update --models`), so it is uncitable. The whole point of
    `PRICING_TABLE_VERSION` is that a dollar figure carries the table that
@@ -375,15 +375,15 @@ Do not use it as the published figure. Three reasons.
 The honest design: price with `@aistack/pricing` exactly as Claude and Codex do.
 Tokens from an unpriced provider land in `unpricedTokens` and are reported as
 covered-share, never as `$0`. That is already the machinery
-`addModelUsage` / `isPricedModel` provide. Leave `usage.cost` on the floor.
+`addModelUsage` / `isPricedModel` provide. Ignore `usage.cost`.
 
 ### 6. Detection cost
 
 pi is the CHEAPEST of the three harnesses to detect, by a wide margin.
 
 The walk `hasRecentFile` (`shared/recency.ts`) would perform:
-1. `readdir` of `~/.pi/agent/sessions` — one call.
-2. `readdir` of each cwd directory — one call each. Depth stops here. There are
+1. `readdir` of `~/.pi/agent/sessions` - one call.
+2. `readdir` of each cwd directory - one call each. Depth stops here. There are
    no deeper directories.
 3. `stat` each `*.jsonl` until one has `mtimeMs >= sinceMs`, then return true.
 
@@ -486,7 +486,7 @@ back out with `JSON.stringify(entry)`. Neither regenerates `id`. Both stamp
 tokens, can exist in two files inside one window. A per-file fold double-counts
 it.
 
-Dedup is required, and the entry `id` alone is not enough — it is only 8 hex
+Dedup is required, and the entry `id` alone is not enough - it is only 8 hex
 characters (about 4.3e9 values), so a 100k-entry corpus has a birthday collision
 probability near 70%. Use a composite key:
 `${entry.id}:${message.timestamp}:${usage.totalTokens}`. This is the same shape
@@ -503,7 +503,7 @@ Reasons, in order of weight.
 1. The data model is the best of the three. Per-response `usage` with a real
    four-way split, a per-response `model`, a per-response ISO timestamp, and an
    explicit `provider`. No cumulative-total trap (Codex), no snapshot-replay
-   dedup (Claude Code). Deltas by construction.
+   dedup (Claude Code). The values are deltas by construction.
 2. The cache-write TTL split (`cacheWrite` plus `cacheWrite1h` as a subset)
    maps onto `TokenCounts` exactly. pi is the only harness of the three that
    removes the backend re-pricer's lower-bound guess instead of adding to it.
@@ -512,7 +512,7 @@ Reasons, in order of weight.
 4. Detection is trivially cheap. Two levels, no nesting, tiny file counts.
 5. A vendor-documented format with an explicit `version` field and a
    vendor-documented migration ladder. Codex needed a reverse-engineered
-   fingerprint. pi hands one over in line 1.
+   fingerprint. pi provides one in line 1.
 6. `builtinTools` is seven names, published by the vendor.
 
 The four things that make it cheap and not trivial, all bounded and all known
@@ -615,7 +615,7 @@ Tables that matter (read from `sqlite_master` on the real file):
 
 **Version markers exist and are usable.** Three of them:
 
-1. `session.version` — the opencode version that wrote the session. Observed values:
+1. `session.version` - the opencode version that wrote the session. Observed values:
    `1.1.27`, `1.1.65`, `1.2.6`, `1.2.25`, `1.2.27`, `1.3.1`, `1.3.7`.
 2. `migration` table (drizzle-era `__drizzle_migrations` plus a newer `migration` table of
    38 rows, latest `20260622202450_simplify_session_input`). This is a real schema marker.
@@ -633,7 +633,7 @@ v2 assistant record has a **different shape**
 export const Assistant = Schema.Struct({
   ...Base, type: Schema.Literal("assistant"),
   agent: Schema.String,
-  model: Model.Ref,                       // { id, providerID }  — NOT modelID/providerID
+  model: Model.Ref,                       // { id, providerID }  - NOT modelID/providerID
   content: AssistantContent.pipe(Schema.Array),   // inline, not `part` rows
   cost: Schema.Finite.pipe(optional),
   tokens: Schema.Struct({ input, output, reasoning, cache: { read, write } }).pipe(optional),
@@ -643,7 +643,7 @@ export const Assistant = Schema.Struct({
 
 The token shape is identical. The model reference and the tool-call location are not. This
 machine has 0 v2 rows, so I could not verify which table opencode 1.18.x writes. **Treat a
-two-generation reader as a requirement, not an option.**
+two-generation reader as a requirement.**
 
 **The `storage/` JSON tree named in the ticket is legacy.** It holds 233 files
 (`project/`, `session/`, `message/`, `part/`, `session_diff/`, plus a `migration` file whose
@@ -691,7 +691,7 @@ Semantics, verified against the real data:
 
 * **The four counters are disjoint.** `input + output + cache.read + cache.write` equals
   `tokens.total` on every record where `total` is present and the provider is not Google.
-  So there is **no Codex-style subtraction** — `input` already excludes the cached prefix.
+  So there is **no Codex-style subtraction** - `input` already excludes the cached prefix.
   Map straight through: `input -> input`, `output -> output`, `cache.read -> cacheRead`,
   `cache.write -> cacheWriteUnsplit`.
 * **These are deltas, not cumulative sums.** `session.tokens_input` (a denormalized column)
@@ -701,7 +701,7 @@ Semantics, verified against the real data:
   rows it exceeds the four-part sum by exactly `tokens.reasoning`. Compute the sum yourself.
 * **Never add `reasoning`.** For `openai` and `anthropic` rows it is a subset of `output`.
   For `google` rows it is additive. Publishing it would be wrong for one vendor either way.
-  Positive-claims-only says: stay silent about reasoning.
+  Under positive-claims-only, stay silent about reasoning.
 * **Cache writes carry no TTL split.** One merged `cache.write`, same lower-bound problem the
   backend re-pricer already documents. `cacheWriteUnsplit` in `packages/pricing/src/index.ts`
   is the right field, and it prices at the 5-minute rate. Observed 460,451 cache-write tokens
@@ -748,8 +748,8 @@ dated-suffix rule already handles `claude-opus-4-5-20251101`. The gap is coverag
 
 Yes, two of them, both **epoch milliseconds**:
 
-* `message.data.time.created` — request start. Present on all 925 assistant records.
-* `message.data.time.completed` — response end. Present on 924 of 925.
+* `message.data.time.created` - request start. Present on all 925 assistant records.
+* `message.data.time.completed` - response end. Present on 924 of 925.
 
 The SQLite row also carries indexed integer columns `message.time_created` and
 `message.time_updated`, in ms, usable in the `WHERE` clause so the window filter runs in the
@@ -772,12 +772,12 @@ Absent from `packages/pricing/src/index.ts`:
 
 * **Google / Gemini.** `gemini-3-pro-preview` carries 10.9M tokens here, 20.5% of the total.
   This is the single largest coverage hole.
-* **The `opencode` gateway models** — `glm-4.7-free`, `kimi-k2.5-free`, `big-pickle`. The
+* **The `opencode` gateway models** - `glm-4.7-free`, `kimi-k2.5-free`, `big-pickle`. The
   `-free` names and the always-zero `cost` say these are promotional. `big-pickle` is an
   unbranded gateway codename with no public list price. Do not invent one.
 * **`github-copilot`** as a provider. It re-serves other vendors' models under their own
   slugs, so the same `modelID` can arrive at a different real price. Do not price it.
-* `claude-opus-4-5` — a real Anthropic model with no row in the table.
+* `claude-opus-4-5` - a real Anthropic model with no row in the table.
 
 Two structural consequences for the payload:
 
@@ -792,7 +792,7 @@ Two structural consequences for the payload:
    and `publishCost` only survives when `g.unpricedTokens === 0`. So a mixed-provider opencode
    scan simply publishes **no cost** and reports `excludedTokens.unpriced`. That is the
    positive-claims-only behavior, already built. The adapter needs no new machinery to be
-   honest, only the discipline not to reach for opencode's own zero `cost`.
+   honest; it only has to avoid opencode's own zero `cost`.
 
 ---
 
@@ -800,7 +800,7 @@ Two structural consequences for the payload:
 
 **The `stat` walk from #101 does not apply, and a naive port of it is wrong twice.**
 
-Wrong once, on directory existence. `packages/core/src/global.ts` runs at module import:
+First, it is wrong on directory existence. `packages/core/src/global.ts` runs at module import:
 
 ```ts
 await Promise.all([
@@ -814,7 +814,7 @@ Every opencode start, including `opencode --version`, creates the whole tree. Th
 then opens `opencode.db` and applies migrations. So the directory and the file both exist
 after any invocation at all. This is the exact failure #101 was written against.
 
-Wrong twice, on file mtime. Measured on this machine:
+Second, it is wrong on file mtime. Measured on this machine:
 
 * `opencode.db` mtime: **2026-07-24 00:06**.
 * Newest session message: `time_created = 1774941217060` = **2026-03-31 09:13**.
@@ -841,7 +841,7 @@ Filesystem work for detection: **one `readdir` of `Global.Path.data` (7 entries 
 Claude Code, which recurse the whole session tree and `stat` every file to answer "no".
 
 For completeness, the dead JSON tree: 233 files, 45 directories, `find` over all of it takes
-**13 ms**. Not worth walking, and it double counts if you do.
+**13 ms**. It is not worth walking, and it double counts if you do.
 
 Full scan cost is likewise trivial. Projecting every message through `json_extract` in SQL:
 
@@ -850,7 +850,7 @@ Full scan cost is likewise trivial. Projecting every message through `json_extra
 1201 tool part rows -> tool name / callID / skill name        9.3 ms
 ```
 
-Sub-15 ms for a full 30-day scan against a 2.5-month history. Codex and Claude Code both pay
+Sub-15 ms for a full 30-day scan against a 2.5-month history. Codex and Claude Code both take
 seconds.
 
 ---
@@ -890,13 +890,13 @@ chrome-devtools_evaluate_script 16  chrome-devtools_wait_for 11  ... (13 MCP nam
 
 ### Constraint violations and hazards
 
-**Raw data never leaves the machine — the DB is a minefield, so select named columns only.**
+**Raw data never leaves the machine: the DB holds many sensitive fields, so select named columns only.**
 `opencode.db` also contains, in the same file the adapter opens:
 
 * `account.access_token`, `account.refresh_token`, `control_account.*`, `credential.value`
-* `session_input.prompt` — raw user prompt text
-* `session.title`, `message.data.summary.title` — model-written titles of user prompts
-* `session.summary_diffs`, `part.data.state.output` — **full file contents and command output**
+* `session_input.prompt` - raw user prompt text
+* `session.title`, `message.data.summary.title` - model-written titles of user prompts
+* `session.summary_diffs`, `part.data.state.output` - **full file contents and command output**
 
 Verified: `storage/session_diff/ses_3949aca89ffev5TSKB3c51chik.json` on this machine holds the
 complete source of `convex/admin.ts`, including `ADMIN_EMAILS = ['alportac@gmail.com']`, in a
@@ -922,7 +922,7 @@ Rules that follow:
   it stand in for "free".
 * `session.tokens_*` columns default to `0 NOT NULL`. A session opencode never priced looks
   identical to a session that cost nothing. Never read the denormalized columns as a fast
-  path — use them only as a cross-check, as I did above.
+  path - use them only as a cross-check, as I did above.
 * 21.8% of tokens here belong to unpriced providers. The correct output is no dollar figure
   plus `excludedTokens.unpriced`, which `shared/payload.ts` already does. Do not fill the gap
   with a Gemini price scraped from anywhere.
@@ -990,7 +990,7 @@ generations at once** and they disagree. See §1.
 Three stores, all local. Two are current, one is dead-but-still-on-disk.
 
 **(a) `~/.cursor/projects/<sanitized-workspace>/agent-transcripts/<id>/<id>.jsonl`
-— JSONL, current, written by BOTH surfaces.**
+- JSONL, current, written by BOTH surfaces.**
 
 The path is built in the CLI bundle: `const Qn=".cursor/projects", Dn="agent-transcripts"`,
 and the workspace segment is `path.replace(/[^a-zA-Z0-9]/g,"-")` (grep hit in
@@ -1026,7 +1026,7 @@ Sibling dirs in the same project tree: `subagents/` (same JSONL shape),
 `agent-tools/*.txt` (raw tool output), `assets/`, `canvases/`, `mcps/`,
 `terminals/`.
 
-**(b) `~/.config/Cursor/User/globalStorage/state.vscdb` — SQLite, IDE only, 1.5 GB here.**
+**(b) `~/.config/Cursor/User/globalStorage/state.vscdb` - SQLite, IDE only, 1.5 GB here.**
 
 ```sql
 CREATE TABLE ItemTable (key TEXT UNIQUE ON CONFLICT REPLACE, value BLOB);
@@ -1042,16 +1042,16 @@ CREATE INDEX idx_composerHeaders_1 ON composerHeaders (recency, composerId);
 `checkpointId:` 1,241, `codeBlockPartialInlineDiffFates:` 827, `ofsContent:` 528,
 `composerData:` 379, `inlineDiff:` 110.
 
-**The shape is NOT stable across versions. It changed under me, in this data.**
+**The shape is NOT stable across versions. It changed during this investigation, in this data.**
 `bubbleId:` records (the old per-message store, 84 distinct JSON keys including
 `tokenCount` and `modelInfo`) stop at **2026-07-23**. `composerHeaders` runs to
-**2026-08-05**. The newer generation writes `agentKv:blob:<sha256>` — a
+**2026-08-05**. The newer generation writes `agentKv:blob:<sha256>` - a
 content-addressed store whose values are bare `{"role":..., "content":...}`
 objects with **no tokens, no model, and no timestamp**. Cursor migrated the
 message store during the observation window and dropped the only two fields an
 adapter would want.
 
-**(c) `~/.config/Cursor/User/globalStorage/conversation-search.db` — SQLite, 13 MB.**
+**(c) `~/.config/Cursor/User/globalStorage/conversation-search.db` - SQLite, 13 MB.**
 
 ```sql
 CREATE TABLE conversations (fts_rowid INTEGER PRIMARY KEY, source TEXT
@@ -1070,7 +1070,7 @@ holds `ItemTable['aiService.generations']`: a 50-entry ring buffer of
 `{unixMs, generationUUID, type, textDescription}`. `textDescription` is the raw
 prompt. `type` is `composer` or `bugbot`. No tokens. Out of bounds under #13.
 
-**(e) `~/.cursor/ai-tracking/ai-code-tracking.db` — SQLite, 4.2 MB. A dead end.**
+**(e) `~/.cursor/ai-tracking/ai-code-tracking.db` - SQLite, 4.2 MB. It is a dead end.**
 
 Tables: `ai_code_hashes`, `scored_commits`, `tracking_state`,
 `conversation_summaries`, `tracked_file_content`, `ai_deleted_files`. This is
@@ -1087,8 +1087,8 @@ not tokens. Real row:
 198 rows. `conversation_summaries` is empty (0 rows). Every `ai_code_hashes.model`
 value on this machine is the literal string `"default"`. `scored_commits` has
 `linesAdded`/`tabLinesAdded`/`composerLinesAdded`/`humanLinesAdded` and
-`v1AiPercentage`/`v2AiPercentage`. Useful for a different product. Nothing for
-this one. It also stores absolute source paths and full file contents
+`v1AiPercentage`/`v2AiPercentage`. It is useful for a different product but has
+nothing for this one. It also stores absolute source paths and full file contents
 (`tracked_file_content.content`), so it is a privacy hazard the adapter should
 simply never open.
 
@@ -1096,7 +1096,7 @@ simply never open.
 
 ### 2. Token counts
 
-**No. Not usably, and never for cache.**
+**No: not usably, and never for cache.**
 
 The only field is `cursorDiskKV['bubbleId:...'].tokenCount`, and its shape is
 exactly two integers:
@@ -1133,7 +1133,7 @@ Two near-misses worth naming so nobody re-checks them:
   how full the prompt is right now. It is not cumulative and summing it across
   conversations would fabricate a number.
 
-**Tokens exist in memory, and only hooks see them.** The `cursor-agent` bundle
+**Tokens exist in memory and are exposed only to hooks.** The `cursor-agent` bundle
 receives a `turnEnded` protobuf message carrying `inputTokens`, `outputTokens`,
 `cacheReadTokens`, `cacheWriteTokens`, normalizes it, and forwards it to the
 `afterAgentResponse` and `stop` hooks as:
@@ -1149,7 +1149,7 @@ cache_creation_input_tokens: cacheWriteTokens, cache_read_input_tokens: cacheRea
 Cursor's public hook docs list `conversation_id`, `generation_id`, `model`,
 `model_id`, `model_params`, `hook_event_name`, `cursor_version`,
 `workspace_roots`, `user_email`, `transcript_path` as the common input to all
-hooks, and document `afterAgentResponse` input as only `{"text": ...}` — the
+hooks, and document `afterAgentResponse` input as only `{"text": ...}` - the
 token fields are **shipped but undocumented**
 (https://cursor.com/docs/hooks.md, common-schema section and the
 `afterAgentResponse` / `stop` sections).
@@ -1211,7 +1211,7 @@ trailing `-YYYYMMDD`, so matching is exact-string. **238 of 954 (25%) match a
    included usage", not a per-token rate (https://cursor.com/docs/account/pricing).
 3. **Third-party models outside the table's two vendors.** `grok-4.5`. The price
    table is Anthropic + OpenAI only.
-4. **`default`** (83 hits) — auto-routing. The actual model is unknowable from disk.
+4. **`default`** (83 hits) - auto-routing. The actual model is unknowable from disk.
 
 Cursor's pricing page does publish a per-million-token table with input / cache
 write / cache read / output columns for third-party models
@@ -1224,18 +1224,18 @@ built. It would be pointless: there are no tokens to multiply it by.
 
 Mixed, and none of them sit next to a token count.
 
-* `bubbleId:*.createdAt` — **present on all 39,060 bubbles**, an **ISO 8601 UTC
+* `bubbleId:*.createdAt` - **present on all 39,060 bubbles**, an **ISO 8601 UTC
   string**, for example `"2026-07-23T09:15:15.288Z"`. Not epoch ms. Range on
   this machine: 2025-11-26 to 2026-07-23.
-* `bubbleId:*.timingInfo` — sparse, epoch **ms** numbers:
+* `bubbleId:*.timingInfo` - sparse, epoch **ms** numbers:
   `{"clientStartTime":165658.8,"clientRpcSendTime":1764180657974,
   "clientSettleTime":1764180775214,"clientEndTime":1764180775214}`. Note
   `clientStartTime` is a monotonic uptime reading, not a wall clock. It was
   `null` on all 12 token-bearing bubbles.
-* `composerHeaders.createdAt` / `.lastUpdatedAt` / `.recency` — epoch **ms**
+* `composerHeaders.createdAt` / `.lastUpdatedAt` / `.recency` - epoch **ms**
   integers, indexed. Session grain, not response grain.
-* `conversations.updated_at` — epoch **ms** integer, indexed.
-* `ai_code_hashes.timestamp` / `.createdAt` — epoch **ms**.
+* `conversations.updated_at` - epoch **ms** integer, indexed.
+* `ai_code_hashes.timestamp` / `.createdAt` - epoch **ms**.
 * **The JSONL transcripts have no timestamps at all.** The only time signal
   there is the file mtime, which is turn-level at best and session-level in
   practice.
@@ -1272,18 +1272,18 @@ silence, and a zero would be a lie about a harness the user is heavily using.
 
 That set matches the map's locked shape for a subscription harness: sessions and
 models, no dollars. Note the model list is "what the user picked", not "what ran"
-— label it that way. `default` (83 hits) means auto-routing and should publish as
+- label it that way. `default` (83 hits) means auto-routing and should publish as
 `default`, not be dropped and not be guessed.
 
 ---
 
-### 6. Detection cost — measured
+### 6. Detection cost - measured
 
 `#101` wants a `stat` walk that stops at the first in-window file. Cursor can
 satisfy that, but only if the walk is pruned. Measurements below are **warm
 page cache**, wall-clock, median of 3, on this machine.
 
-**Option A — the transcript walk (recommended).**
+**Option A - the transcript walk (recommended).**
 Glob `~/.cursor/projects/*/agent-transcripts/*/*.jsonl` and `stat` each.
 
 ```
@@ -1292,7 +1292,7 @@ naive recursive walk of ~/.cursor/projects       18-29 ms
 ```
 
 The naive walk is 10x worse because `~/.cursor/projects` holds **7,152 files
-across 647 directories**, and **7,042 of them are under `mcps/`** — MCP server
+across 647 directories**, and **7,042 of them are under `mcps/`** - MCP server
 caches that have nothing to do with sessions. `agent-transcripts` accounts for
 429. **The adapter must prune to `*/agent-transcripts/` and never recurse the
 project root.** `hasRecentFile()` in `shared/recency.ts` recurses everything it
@@ -1302,7 +1302,7 @@ deeper.
 `recency.ts`'s existing warning applies unchanged: appending to a transcript does
 not move its parent directory's mtime, so directory mtimes cannot prune further.
 
-**Option B — SQLite. Cheap to query, expensive to depend on.**
+**Option B - SQLite. Cheap to query, expensive to depend on.**
 
 ```
 sqlite3 'file:...state.vscdb?mode=ro'
@@ -1312,7 +1312,7 @@ sqlite3 'file:...conversation-search.db?mode=ro'
    and source='local' limit 1;"                                          1 ms
 ```
 
-Both hit a covering index, so the 1.5 GB file size does not matter — this is a
+Both hit a covering index, so the 1.5 GB file size does not matter - this is a
 B-tree seek, not a scan. It is genuinely fast, **and it is still the wrong
 choice**, for four reasons:
 
@@ -1324,7 +1324,7 @@ choice**, for four reasons:
    raises the engine floor). Shelling out to a system `sqlite3` is not portable.
 2. **Locking.** Cursor was running during every read here (14 processes) and
    `mode=ro` worked. That is not a guarantee. The safe fallback, `immutable=1`,
-   **ignores the WAL** — there were 6.6 MB of pending WAL bytes at read time, so
+   **ignores the WAL** - there were 6.6 MB of pending WAL bytes at read time, so
    a session written minutes ago can be invisible. Detection would then say "not
    present" for a live harness, which is exactly the bug #101 fixed.
 3. **`state.vscdb` mtime is not a usable proxy.** The file is touched by editor
@@ -1358,8 +1358,8 @@ here, and the hazards are in the files an adapter is most tempted to open.
   source files) and absolute `fileName` paths. Never opened.
 * The **project directory names are the user's absolute paths** with separators
   replaced by dashes: `home-alp-dev-work-genius-repos-genius-prism` is
-  `/home/alp/dev/work/genius/repos/genius-prism`. This is a repo-name leak
-  dressed up as a directory name. Path handling in error strings must follow the
+  `/home/alp/dev/work/genius/repos/genius-prism`. The directory names therefore
+  leak the user's repo paths. Path handling in error strings must follow the
   same rule `codex/scan.ts` already follows: swallow the error, keep only the
   error class, never the path.
 * `ItemTable` also holds `cursorAuth/accessToken` and `cursorAuth/refreshToken`.
@@ -1433,7 +1433,7 @@ citation, not the dollars.
 
 ## Costed build order
 
-### 1. pi-mono — cheapest, build first
+### 1. pi-mono - cheapest, build first
 
 The best data model of the three. Per-response `usage` with a four-way split, a per-response
 `model` and `provider`, a per-response ISO timestamp, and no cumulative-total trap. Anthropic
@@ -1446,7 +1446,7 @@ exactly. Every other harness makes the re-pricer guess the cheap tier. pi remove
 
 Format risk is the lowest available: line 1 of every file is a vendor-written header with an
 explicit `"version": 3` and a published migration ladder. Codex needed a reverse-engineered
-fingerprint. pi hands one over.
+fingerprint. pi provides one.
 
 Four bounded hazards, all known before a line is written: the `/fork` and `/clone` cross-file
 duplicate needing a composite dedup key, the `compaction.retainedTail` embedded-message
@@ -1457,7 +1457,7 @@ Both sessions are failed smoke tests with every count at 0. The field set is ver
 magnitudes are not. Record one real pi session before shipping, or the first honest
 end-to-end check happens in front of a user.
 
-### 2. opencode — medium, build second
+### 2. opencode - medium, build second
 
 The data itself is excellent, and in three ways it is the richest of the three: skills,
 subagents and MCP names all come free from the `part` rows, and `subagentShare` is a real
@@ -1479,10 +1479,10 @@ Three things keep it off "cheap", and the third is the one that must be settled 
 Detection needs its own attention. The `stat` walk from
 [#101](https://github.com/alp82/aistack/issues/101) is wrong twice here. `global.ts` creates
 the whole directory tree on every start including `opencode --version`, and the database
-mtime read 2026-07-24 while the newest session message was 2026-03-31 — a four-month false
+mtime read 2026-07-24 while the newest session message was 2026-03-31 - a four-month false
 positive. Detection must be an indexed query, measured at 0.02 ms.
 
-### 3. cursor — riskiest, build last, and build something smaller than an adapter
+### 3. cursor - riskiest, build last, and build something smaller than an adapter
 
 Cursor is the only one of the three that cannot answer the question the CLI exists to answer.
 No tokens, no cost, no price table, and the model ids on disk are what the user *selected*,
@@ -1548,8 +1548,8 @@ because in each case the sensitive content sits in the same file the scanner mus
   `SELECT *`.
 - **cursor**'s transcripts carry raw prompt text and `tool_use.input` with absolute paths and
   full shell commands. Read `tool_use.name` only. The project directory names *are* the
-  user's absolute paths with separators replaced by dashes, which is a repo-name leak dressed
-  up as a directory name. `ItemTable` holds `cursorAuth/accessToken`, which is an independent
+  user's absolute paths with separators replaced by dashes, so the directory names themselves
+  leak the user's repo paths. `ItemTable` holds `cursorAuth/accessToken`, which is an independent
   argument for the JSONL route.
 
 **Positive claims only ([#40](https://github.com/alp82/aistack/issues/40)).** Three new

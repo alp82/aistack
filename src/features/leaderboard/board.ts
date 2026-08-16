@@ -11,7 +11,7 @@ export type BoardRow = Board["rows"][number];
 export type SeriesPoint = BoardRow["points"][number];
 
 /**
- * Change across the readings that exist, as a share of the first — `null`
+ * Change across the readings that exist, as a share of the first - `null`
  * below two readings, because a zero there would claim a flat line nobody
  * observed (#92). The total is a level, not a rate, so a fall is real and
  * renders as one.

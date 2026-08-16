@@ -20,19 +20,19 @@ The panel renders in the owner region of `ProfilePage`, where the "View analytic
 (owner-only)" seam sits today. It carries, in this order:
 
 1. The headline total, in the accent, with `deduped daily visitors · <range>` under it.
-2. One box per target — the profile and every stack, drafts included — with the
+2. One box per target - the profile and every stack, drafts included - with the
    page name, its note, its sparkline and its own total.
 3. The short honest-labeling paragraph.
 4. A link to `/settings/analytics`, labeled for what that page adds: the day-by-day
    reading and the referrer split.
 
 The draft box stays in the list. A draft that reads zero is the number an owner most
-needs explained, and dropping it makes the list lie by omission.
+needs explained, and dropping it makes the list misleading by omission.
 
 The whole panel sits inside a private fence: a dashed border, a lock icon, and the
 words "only you can see this". That is the same treatment the draft-stack cards
-already use, so "private" is a shape the owner knows on this page and not a sentence
-they have to find.
+already use, so the owner already recognizes it on this page as meaning private,
+without having to read an explanation.
 
 `ProfilePage` already carries the prop the build needs. `ownerViewsSlot` is optional,
 gated on `isOwner`, and falls back to today's seam.
@@ -56,8 +56,8 @@ total) were rejected. They live on branch `curia/98` if the question reopens.
 - **The profile gets the panel above.**
 - **A stack page gets a private line for its owner.**
 
-`/stacks/{slug}/changes` gets nothing. It is already owner-only, so it adds a fourth
-door without adding a reader.
+`/stacks/{slug}/changes` gets nothing. It is already owner-only, so a line there
+would add a fourth entry point without reaching any new reader.
 
 ### 4. The stack-page line is shape S1
 
@@ -87,7 +87,7 @@ subject is the stack and not its audience.
 ## What the build has to solve
 
 **The stack-page line needs a number for one stack, and `mine` answers for all of
-them.** Two ways out, and the build picks one:
+them.** There are two options, and the build picks one:
 
 1. Call `mine` on the stack page and select the entry whose `targetId` matches. No
    query change, one extra read of every counter the owner has, on a page that does
@@ -100,9 +100,9 @@ Option 1 is the smaller change and is right at this size. Option 2 is right once
 creator has enough stacks that reading all of them per stack page stops being free.
 
 **The thin-data cases are the normal case, not the edge.** Prod holds 14 counter rows.
-A target with one reading draws no sparkline — `Sparkline` returns null below two
-points — so every surface needs a shape for that. The existing empty states on
-`/settings/analytics` are decisions and they keep working.
+A target with one reading draws no sparkline - `Sparkline` returns null below two
+points - so every surface needs a shape for that. The existing empty states on
+`/settings/analytics` were deliberate decisions and they keep working.
 
 ## What was NOT decided
 

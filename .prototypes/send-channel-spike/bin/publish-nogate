@@ -1,4 +1,4 @@
 #!/bin/sh
-# CONTROL: no rule, no hook. Under bypassPermissions this should run silently —
+# CONTROL: no rule, no hook. Under bypassPermissions this should run silently -
 # demonstrating the hole candidate B has to close.
 exec node "$(dirname "$0")/_impl.mjs" nogate "$@"

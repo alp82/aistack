@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>OG Tools Area — Layout Explorer</title>
+<title>OG Tools Area - Layout Explorer</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -275,7 +275,7 @@
     line-height: 1.28;
   }
 
-  /* Tools area — outer shell (shared) */
+  /* Tools area - outer shell (shared) */
   .og-tools-outer {
     display: flex;
     flex-direction: column;
@@ -328,7 +328,7 @@
   }
 
   /* ──────────────────────────────────────────
-     LAYOUT A — Count-Adaptive Grid
+     LAYOUT A - Count-Adaptive Grid
      Columns derived from count: 1→1col, 2→2col, 3→3col, 4→2col, 5-6→3col
      Tiles are content-sized (no stretching), icon 48px, name bigger.
   ────────────────────────────────────────── */
@@ -368,9 +368,9 @@
   }
 
   /* ──────────────────────────────────────────
-     LAYOUT B — Icon-forward pill row (large logo chips)
+     LAYOUT B - Icon-forward pill row (large logo chips)
      Single flex row of big square icon+name chips, flex-wrap for 5-6.
-     Icon 64px, name mono-label below — very icon-dominant.
+     Icon 64px, name mono-label below - very icon-dominant.
   ────────────────────────────────────────── */
   .tools-b {
     display: flex;
@@ -411,7 +411,7 @@
   }
 
   /* ──────────────────────────────────────────
-     LAYOUT C — Horizontal list strip (full-width rows, big left icons)
+     LAYOUT C - Horizontal list strip (full-width rows, big left icons)
      Each tool = full-width row, icon 56px, large name, divider lines.
      Best for 1-4 tools; 5-6 still fits by reducing padding.
   ────────────────────────────────────────── */
@@ -457,7 +457,7 @@
   }
 
   /* ──────────────────────────────────────────
-     LAYOUT D — Two-column list with XL icons
+     LAYOUT D - Two-column list with XL icons
      2-col flex layout, rows fill height, icon 60px.
      Most like the original grid but with much bigger icons and tighter text.
   ────────────────────────────────────────── */
@@ -500,7 +500,7 @@
   }
 
   /* ──────────────────────────────────────────
-     LAYOUT E — Spotlight + overflow list
+     LAYOUT E - Spotlight + overflow list
      First tool gets a hero treatment (very large icon+name),
      remaining tools are compact horizontal chips.
      Works best for 1-2 hero tools; degrades gracefully to 6.
@@ -582,7 +582,7 @@
 <body>
 
 <div class="page-header">
-  <h1>OG Card — Tools Area Layout Explorer</h1>
+  <h1>OG Card - Tools Area Layout Explorer</h1>
   <p>Each option renders at all 6 tool counts. Controls let you isolate a count or see all at once.</p>
 </div>
 
@@ -631,35 +631,35 @@ const CATEGORIES = [
 const LAYOUTS = [
   {
     id: "A",
-    name: "A — Count-Adaptive Grid",
+    name: "A - Count-Adaptive Grid",
     rationale: "Column count derived from tool count; tiles are content-sized, never over-stretched. Flexbox row-wrapping is takumi-safe.",
     caveat: "flexbox-safe",
     render: renderA,
   },
   {
     id: "B",
-    name: "B — Icon-Forward Chip Row",
+    name: "B - Icon-Forward Chip Row",
     rationale: "Each tool is a tall square chip: big 64px icon above mono label. Chips flex-wrap naturally from 1-6.",
     caveat: "flexbox-safe",
     render: renderB,
   },
   {
     id: "C",
-    name: "C — Full-Width Row List",
-    rationale: "Every tool gets its own full-width row at equal height — zero wasted space, 56px icon, 30px name. Rows shrink uniformly at 5-6.",
+    name: "C - Full-Width Row List",
+    rationale: "Every tool gets its own full-width row at equal height - zero wasted space, 56px icon, 30px name. Rows shrink uniformly at 5-6.",
     caveat: "flexbox-safe · flex-children need explicit height in takumi",
     render: renderC,
   },
   {
     id: "D",
-    name: "D — Two-Column XL Icon Grid",
+    name: "D - Two-Column XL Icon Grid",
     rationale: "Same 2-col structure as today but icon 60px (vs 34px), tiles fill height via flex:1, name size up from 24→28px.",
     caveat: "flexbox-safe · closest to current; easiest migration",
     render: renderD,
   },
   {
     id: "E",
-    name: "E — Spotlight + Overflow Chips",
+    name: "E - Spotlight + Overflow Chips",
     rationale: "First tool gets a hero row (80px icon, accent left border, 40px name); remaining 2-5 tools become compact chips in a wrap row.",
     caveat: "flexbox-safe · accent-border on hero needs inline style for takumi",
     render: renderE,
@@ -690,7 +690,7 @@ function ogShell(toolsHtml) {
     </div>
     <div class="og-desc-bar">
       <div class="og-desc-rule"></div>
-      <span class="og-desc-text">The complete toolkit for solo AI developers — from code generation to design and deployment.</span>
+      <span class="og-desc-text">The complete toolkit for solo AI developers - from code generation to design and deployment.</span>
     </div>
     <div class="og-tools-outer">
       <span class="og-tools-label">AI Tools</span>

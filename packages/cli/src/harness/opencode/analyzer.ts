@@ -1,5 +1,5 @@
 // Pure fold over rows projected out of opencode's SQLite store. No I/O, no
-// console — the scanner owns the database and hands this module plain values.
+// console - the scanner owns the database and hands this module plain values.
 //
 // Wayfinder ticket #124 (map #121). Field semantics come from
 // docs/research/harness-adapters-2026-08.md (§opencode), keyed by #123's
@@ -11,9 +11,9 @@
 // THE LOAD-BEARING FACTS (research §2):
 //   - the four token counters are DISJOINT deltas: input, output, cache.read,
 //     cache.write map straight onto TokenCounts with no arithmetic;
-//   - `tokens.total` is absent on some rows and wrong on Google rows — never
+//   - `tokens.total` is absent on some rows and wrong on Google rows - never
 //     read it; `reasoning` is a subset of `output` for two vendors and
-//     additive for one — never add it;
+//     additive for one - never add it;
 //   - opencode's own `cost` is 0.0 on every record (subscription/OAuth auth);
 //     a zero is not a measurement, so cost comes from @aistack/pricing only.
 
@@ -36,7 +36,7 @@ import {
 /**
  * opencode's vendor-assigned tool surface, as observed in the probe DB and
  * pinned against the opencode source. Same fail-closed mechanism as the other
- * adapters: a literal set, never a pattern. It doubles as the MCP guard —
+ * adapters: a literal set, never a pattern. It doubles as the MCP guard -
  * MCP tool names are `sanitize(server) + "_" + sanitize(tool)` and built-in
  * names contain `_` too, so a name must miss this set AND carry a configured
  * server's prefix before any split is attempted.
@@ -77,7 +77,7 @@ export type SessionInfo = {
 /**
  * Per-database fold state. Sessions are loaded up front (a message's session
  * may predate the window); message ids are deduped across the v1 and v2
- * tables because v2 is described in the opencode source as a projection —
+ * tables because v2 is described in the opencode source as a projection -
  * reading a row from both would double count.
  */
 export type DbFoldState = {
@@ -106,8 +106,8 @@ export function noteSessions(
 }
 
 /**
- * One projected message row. Every value is untrusted — `json_extract` returns
- * whatever the blob holds — so the fold narrows each field itself.
+ * One projected message row. Every value is untrusted - `json_extract` returns
+ * whatever the blob holds - so the fold narrows each field itself.
  */
 export type MessageRow = {
 	id: unknown;
@@ -151,7 +151,7 @@ export function ingestMessageRow(
 		agg.sessions.add(sessionId);
 		if (session?.version) agg.ccVersions.add(cleanName(session.version));
 	}
-	// Counted, never published — same standing non-goal as Claude project dirs.
+	// Counted, never published - same standing non-goal as Claude project dirs.
 	const cwd = asStr(row.cwd);
 	if (cwd) agg.projectDirs.add(cwd);
 
@@ -169,7 +169,7 @@ export function ingestMessageRow(
 		cacheRead: asNum(row.cacheRead),
 	};
 
-	// A session with a parent is a subagent's — an honest measurement here,
+	// A session with a parent is a subagent's - an honest measurement here,
 	// unlike Codex's structural 0 (research §inventory: 21.4% on the probe DB).
 	const total =
 		counts.input + counts.output + counts.cacheWriteUnsplit + counts.cacheRead;
@@ -191,7 +191,7 @@ export function ingestMessageRow(
 }
 
 // ---------------------------------------------------------------------------
-// Inventory — `part` rows of type "tool"
+// Inventory - `part` rows of type "tool"
 // ---------------------------------------------------------------------------
 
 /**
@@ -204,7 +204,7 @@ const sanitizeMcpName = (name: string): string =>
 
 /**
  * One projected `part` row. The scanner extracts these named paths and
- * nothing else — `part.data.state.output` holds full command output and never
+ * nothing else - `part.data.state.output` holds full command output and never
  * materializes in JS.
  */
 export type ToolPartRow = {
@@ -212,9 +212,9 @@ export type ToolPartRow = {
 	partType: unknown;
 	tool: unknown;
 	callId: unknown;
-	/** `$.state.input.name` — the skill tool's skill. */
+	/** `$.state.input.name` - the skill tool's skill. */
 	inputName: unknown;
-	/** `$.state.input.subagent_type` — the task tool's agent. */
+	/** `$.state.input.subagent_type` - the task tool's agent. */
 	subagentType: unknown;
 };
 
@@ -238,7 +238,7 @@ export function ingestToolPart(
 
 	// Fail-closed order (research §inventory): the literal built-in set first,
 	// then configured MCP server prefixes, then a plain count the shared
-	// payload filter withholds — never a split that invents a server name.
+	// payload filter withholds - never a split that invents a server name.
 	if (OPENCODE_BUILTIN_TOOLS.has(name)) {
 		bump(agg.toolCalls, name);
 		if (name === "skill") {
@@ -261,7 +261,7 @@ export function ingestToolPart(
 }
 
 /**
- * Static MCP inventory from `~/.config/opencode/opencode.json` (JSONC — the
+ * Static MCP inventory from `~/.config/opencode/opencode.json` (JSONC - the
  * scanner owns the tolerant parse). A configured server the window never
  * called still exists: zero-count entries ride into the inventory. The
  * sanitized form is what tool-name prefixes are matched against, longest

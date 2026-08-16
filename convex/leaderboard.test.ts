@@ -139,7 +139,7 @@ async function sync(
   })
 }
 
-/** A snapshot whose server clock is in the past — only a direct insert can. */
+/** A snapshot whose server clock is in the past - only a direct insert can. */
 async function staleSync(
   t: Ctx,
   stackId: Id<'stacks'>,
@@ -340,7 +340,7 @@ describe('leaderboard.get', () => {
 
     const board = await t.query(api.leaderboard.get, {})
     const gptX = board.models.find((m) => m.key === 'gpt-x')
-    // 400 of 600 attributed tokens, on both stacks, leading one of them —
+    // 400 of 600 attributed tokens, on both stacks, leading one of them -
     // and the catalog names it.
     expect(gptX).toEqual({
       key: 'gpt-x',

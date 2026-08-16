@@ -6,9 +6,9 @@
  * nothing checked. So the checks live here and run on every push.
  *
  * The canonical implementation is the `dataviz` skill's
- * `scripts/validate_palette.js`. The math below is the same math — OKLab
+ * `scripts/validate_palette.js`. The math below is the same math - OKLab
  * distance times 100, color vision simulated with Machado-Oliveira-Fernandes
- * 2009 at severity 1.0 — carried into the repo so a palette edit cannot ship
+ * 2009 at severity 1.0 - carried into the repo so a palette edit cannot ship
  * without passing. Recorded run, 2026-08-04:
  *
  *   dark  surface #13161a  worst adjacent CVD dE 15.5, normal 18.4, all >= 3:1

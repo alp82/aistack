@@ -15,11 +15,11 @@ interface EntityPillProps {
 	icon?: ReactNode;
 	colors: EntityPillColors;
 	onNameClick?: () => void;
-	/** Arrow button — scrolls to the card (for references) */
+	/** Arrow button - scrolls to the card (for references) */
 	onLocate?: () => void;
-	/** Expand button — expands reference to card (shown when no card exists) */
+	/** Expand button - expands reference to card (shown when no card exists) */
 	onExpand?: () => void;
-	/** Collapse button — collapses card to inline reference */
+	/** Collapse button - collapses card to inline reference */
 	onCollapse?: () => void;
 	tooltipContent?: () => ReactNode;
 	onNameHoverStart?: () => void;

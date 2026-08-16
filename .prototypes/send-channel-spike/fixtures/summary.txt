@@ -1,4 +1,4 @@
-AI STACK — PUBLISH MEASURED USAGE
+AI STACK - PUBLISH MEASURED USAGE
 
 Destination:  stack "alps-daily-driver" on aistack.to (bound to this machine's token)
 Window:       30 days (2026-06-25 .. 2026-07-25)

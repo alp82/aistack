@@ -144,7 +144,7 @@ function getInitialEditorState(args: {
 	if ((mode === "create" || mode === "edit") && typeof window !== "undefined") {
 		let saved = localStorage.getItem(draftKey);
 		if (mode === "create") {
-			// A signed-in user with no draft of their own adopts the guest draft —
+			// A signed-in user with no draft of their own adopts the guest draft -
 			// this is the guest → sign-in → publish continuation. Move semantics:
 			// once adopted, the guest key is cleared so the content doesn't
 			// resurface for later guests.
@@ -156,7 +156,7 @@ function getInitialEditorState(args: {
 					localStorage.removeItem(guestKey);
 				}
 			}
-			// The pre-scoping shared key can hold another identity's draft — drop it
+			// The pre-scoping shared key can hold another identity's draft - drop it
 			// rather than adopt it.
 			localStorage.removeItem("stackDraft-new");
 		}

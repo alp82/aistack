@@ -133,7 +133,7 @@ test('two referrer buckets on one target-day are two counter rows', async () => 
 })
 
 // ---------------------------------------------------------------------------
-// Owner exclusion — the identity is derived, never an argument
+// Owner exclusion - the identity is derived, never an argument
 // ---------------------------------------------------------------------------
 
 test('the authenticated owner of a stack does not count as a view', async () => {
@@ -215,7 +215,7 @@ test("the aggregate page counts under the 'global' sentinel and nothing else", a
   expect(bad.counted).toBe(false)
 })
 
-test('a signed-in user counts on the aggregate page — it has no owner', async () => {
+test('a signed-in user counts on the aggregate page - it has no owner', async () => {
   const t = convexTest(schema, modules)
   const asSomeone = t.withIdentity({ tokenIdentifier: 'convex|anyone' })
 
@@ -228,10 +228,10 @@ test('a signed-in user counts on the aggregate page — it has no owner', async 
   expect(result.counted).toBe(true)
 })
 
-test('a signed-in admin does not count on the aggregate page — they own the site', async () => {
+test('a signed-in admin does not count on the aggregate page - they own the site', async () => {
   // The per-target rule already excludes an owner from their own counter. The
   // aggregate counter's owner is the site's admin, and the number exists so the
-  // admin can read a send — their own browsing must not be in it.
+  // admin can read a send - their own browsing must not be in it.
   const t = convexTest(schema, modules)
   const asAdmin = t.withIdentity({
     tokenIdentifier: 'convex|admin',

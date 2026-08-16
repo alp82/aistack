@@ -42,6 +42,14 @@ cd packages/cli && pnpm publish
 * Use monospace fonts for buttons, labels, and technical accents
 * Brand color: lime
 
+## Writing Guidelines
+* **No em dashes (U+2014) anywhere**: not in user-facing copy, CLI output, code
+  comments, or docs. Use a period, colon, comma, or parentheses instead.
+  `src/__tests__/no-em-dash.test.ts` enforces this.
+* Write plain, direct sentences in copy and docs. Avoid aphorisms, rhetorical
+  fragments, and "X, not Y" constructions unless the prohibition itself is the
+  point.
+
 ## Tech Stack
 * `pnpm`
 * TypeScript / Vite / Biome
@@ -58,7 +66,7 @@ cd packages/cli && pnpm publish
 
 There is ONE price table, in `packages/pricing` (`@aistack/pricing`). The CLI
 and the Convex backend both import it. It is a private workspace package and is
-never published — `tsup` bundles it into the CLI's `dist`.
+never published - `tsup` bundles it into the CLI's `dist`.
 
 * The CLI prices each response at its own timestamp, at ingest. That figure is
   exact and always wins.
@@ -68,14 +76,15 @@ never published — `tsup` bundles it into the CLI's `dist`.
   has no per-response timestamps (so a window straddling a repricing pays the
   cheaper rate).
 * Every surface that prints dollars prints the price-table id and the share of
-  tokens the figure covers. `publishCost` on the stack is the consent gate —
-  check the flag, never the presence of dollars.
+  tokens the figure covers. `publishCost` on the stack is the consent gate:
+  check the flag. The presence of dollars in the data is not consent.
 * A harness that routes several providers keys its rows `provider:model`
   (`google:gemini-3.6-flash`). Only a provider the table maps to a vendor gets
   that vendor's rates, so a gateway re-serving someone else's model stays
-  unpriced. Local providers hold a real zero rate, cited `local-no-charge` —
-  free is a fact about the machine, unpriced is a fact about the table. Use
-  `vendorModelId()` for display and catalog lookups.
+  unpriced. Local providers hold a real zero rate, cited `local-no-charge`:
+  free (the machine charges nothing) and unpriced (the table has no rate) are
+  different states and must render differently. Use `vendorModelId()` for
+  display and catalog lookups.
 
 ## Charts
 
@@ -103,7 +112,7 @@ moved into Convex storage), run:
 # from ~/.convex/anonymous-convex-backend-state/<deployment>/config.json
 pnpm tsx scripts/migrate-icons.ts
 
-# Self-hosted prod — see "Prod database access": run prod operations on the
+# Self-hosted prod - see "Prod database access": run prod operations on the
 # server over ssh, not with local env vars. Deploy code first so the migration
 # functions exist, then run the script from the server side.
 ```
@@ -126,7 +135,7 @@ The five canonical triage roles, each label string equal to its name. See `docs/
 
 Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
-Idempotent — a second run skips every row that already has an
+Idempotent - a second run skips every row that already has an
 `iconStorageId`. Data URIs are decoded, http URLs are fetched (8s timeout),
 ICOs are decoded via `decode-ico` (largest entry), and everything is sharp'd
 to 512×512 WebP q80 and uploaded. Data-URI sources are cleared from

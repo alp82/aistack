@@ -7,7 +7,7 @@
 // the repo's earlier public functions that leaned on a client-side route guard.
 //
 // What the number means, in one sentence the page repeats: deduped daily
-// visitors — approximate browser and network combinations per UTC day, per page,
+// visitors - approximate browser and network combinations per UTC day, per page,
 // with authenticated owner views excluded. Never people, never impressions.
 
 import { v } from 'convex/values'
@@ -64,7 +64,7 @@ async function callerCreator(ctx: QueryCtx): Promise<Doc<'creators'> | null> {
 /**
  * Fill every day from the first counted one through today.
  *
- * A quiet day is a real zero and has to be drawn as one — a line jumped straight
+ * A quiet day is a real zero and has to be drawn as one - a line jumped straight
  * from Monday to Friday claims visits on Wednesday. The fill starts at the first
  * counted day and NOT at the window start, because counting began on a date and
  * "0 views" for a day nobody was counting is a claim rather than a gap.
@@ -197,11 +197,11 @@ export const mine = query({
 })
 
 /**
- * The site-wide reader (#132, map #121) — the first reader the `global`
+ * The site-wide reader (#132, map #121) - the first reader the `global`
  * counter has ever had.
  *
  * ADMIN-ONLY, and gated HERE. A client-side `/admin` route guard protects
- * nothing — any authed client can call a public function directly — so the
+ * nothing - any authed client can call a public function directly - so the
  * query itself refuses a non-admin with `null`, exactly as `admin.ts` does.
  * Kept admin-only on purpose: it leaves "do view counts ever become public"
  * an open question rather than answering it by accident.

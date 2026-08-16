@@ -4,11 +4,11 @@
  * THE PAGE SPEAKS AT 48 HOURS, AND THE BOARD KEEPS SEVEN DAYS. Three windows
  * already existed around this reading, and #107 cut the page down to one:
  *
- *   - 48 hours — here. The hero dot and the stamp under the headline number.
- *   - 7 days — `isFresh` on the snapshot (`convex/measured.ts`), which the
+ *   - 48 hours - here. The hero dot and the stamp under the headline number.
+ *   - 7 days - `isFresh` on the snapshot (`convex/measured.ts`), which the
  *     leaderboard still uses to rank a row (#82) and the owner's reconcile page
  *     still uses for its own run. Neither is this page.
- *   - 30 days — the CLI's detection gate (#100). It gates a scan, not a display.
+ *   - 30 days - the CLI's detection gate (#100). It gates a scan, not a display.
  *
  * WHAT THE PAGE SAYS IS AN AGE, NEVER A JUDGEMENT. The word "stale" reaches no
  * surface. Every string below states when the last sync landed and what the
@@ -39,7 +39,7 @@ export function isStale(receivedAt: number, now: number = Date.now()): boolean {
 }
 
 /**
- * "3 days ago" — the long form the approved strings use.
+ * "3 days ago" - the long form the approved strings use.
  *
  * FLOORED, LIKE `timeAgo`. The hero prints "2d ago" from the same instant, and
  * a page that rounded here would carry two different ages for one sync.
@@ -60,7 +60,7 @@ export function syncAgo(receivedAt: number, now: number = Date.now()): string {
  * window".
  *
  * ONE ELEMENT FOR EVERY READER (#107 decision 1). The visitor reads no sentence
- * about the age, and the owner reads no second copy of it — the remedy lives on
+ * about the age, and the owner reads no second copy of it - the remedy lives on
  * the auto-sync switch, so the page never carries two things promoting one
  * feature.
  *

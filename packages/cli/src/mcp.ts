@@ -7,7 +7,7 @@ import type { Resource } from "./api.js";
 
 /**
  * Detect configured MCP servers and resolve each to a `pkg` reference (its
- * package identity), parsed from the launch `command`/`args` — npm/PyPI/OCI for
+ * package identity), parsed from the launch `command`/`args` - npm/PyPI/OCI for
  * stdio servers, or a URL for remote (http/sse) servers. `env` is intentionally
  * dropped (it carries secrets), so this is a safer representation than uploading
  * the raw config file.

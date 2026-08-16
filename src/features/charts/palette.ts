@@ -70,7 +70,7 @@ const CHART_PAINTS: readonly string[] = CHART_SLOTS.map(
  *
  * `--accent-lime` is re-pointed by the `.accent-<key>` class on an ancestor, so
  * one series follows the page it sits on. A multi-series chart must never use
- * it — categorical color follows the entity and has to stay fixed.
+ * it - categorical color follows the entity and has to stay fixed.
  */
 const ACCENT_PAINT = "var(--accent-lime, #8dcd50)";
 

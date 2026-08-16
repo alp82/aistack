@@ -150,7 +150,7 @@ export const getOrCreateForUser = mutation({
 })
 
 /**
- * Single write path for the profile editor. Every arg is optional — only the
+ * Single write path for the profile editor. Every arg is optional - only the
  * provided fields are patched. The handle is validated only when it actually
  * changes, so grandfathered legacy slugs (short, pre-format) never brick
  * unrelated profile edits.
@@ -227,7 +227,7 @@ export const landStagedAvatar = mutation({
 })
 
 /**
- * Public profile payload for `/@handle`. Auth-independent — the SSR prefetch
+ * Public profile payload for `/@handle`. Auth-independent - the SSR prefetch
  * runs unauthenticated, so this never varies by viewer (owner state lives in
  * the client-only `getOwnProfileView`, mirroring the stacks.$slug precedent).
  * Published stacks only, most-recent first.
@@ -317,7 +317,7 @@ export const getOwnProfileView = query({
 /**
  * Live availability feedback for the profile editor's handle input. Excludes
  * the caller's own creator row, so your current handle always reads available
- * — even a grandfathered one that would fail today's format rules.
+ * - even a grandfathered one that would fail today's format rules.
  */
 export const checkHandle = query({
   args: { handle: v.string() },
@@ -346,7 +346,7 @@ export const checkHandle = query({
 })
 
 /**
- * The caller's own lightweight identity — the single replacement for the
+ * The caller's own lightweight identity - the single replacement for the
  * retired one-stack-per-creator lookup in every "your stack" affordance.
  */
 export const getMe = query({

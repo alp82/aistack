@@ -58,7 +58,7 @@ function NewStackPage() {
 		}
 
 		// Create creator profile for authenticated user. Creators can own any
-		// number of stacks now — no "already has a stack" redirect.
+		// number of stacks now - no "already has a stack" redirect.
 		getOrCreateCreator({ imageUrl: userImageUrl })
 			.then((c) => {
 				setCreator(c);
@@ -105,7 +105,7 @@ function NewStackPage() {
 		<StackEditor
 			// Re-key by identity (stable "guest" or creator id) so the editor
 			// reinitializes with the right auth-scoped draft when the signed-in
-			// identity actually changes — transient auth isLoading flips don't
+			// identity actually changes - transient auth isLoading flips don't
 			// change creator, so this can't reintroduce the refocus-remount bug.
 			key={creator._id}
 			mode="create"

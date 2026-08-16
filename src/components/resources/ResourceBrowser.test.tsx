@@ -129,7 +129,7 @@ describe("ResourceBrowser", () => {
 		fireEvent.change(textarea, { target: { value: "dirty draft" } });
 		expect(textarea.value).toBe("dirty draft");
 
-		// Try to switch to the cursor rules file — the tree shows file rows; click rules.mdc.
+		// Try to switch to the cursor rules file - the tree shows file rows; click rules.mdc.
 		fireEvent.click(screen.getByText("rules.mdc"));
 
 		// The ConfirmSwitchDialog should now be visible with both Save and Discard.
@@ -171,7 +171,7 @@ describe("ResourceBrowser", () => {
 		) as HTMLTextAreaElement;
 		fireEvent.change(textarea, { target: { value: "saved draft" } });
 
-		// Try to switch — confirm dialog appears.
+		// Try to switch - confirm dialog appears.
 		fireEvent.click(screen.getByText("rules.mdc"));
 		expect(
 			screen.getByRole("heading", { name: /UNSAVED CHANGES/i }),
@@ -181,7 +181,7 @@ describe("ResourceBrowser", () => {
 		// (the inline viewer's footer + dialog), but the only enabled one in the
 		// dialog is the dialog Save. Find it within the dialog by the label match.
 		const dialogSaveButtons = screen.getAllByRole("button", { name: /save/i });
-		// Use the last one — the dialog renders later in the tree.
+		// Use the last one - the dialog renders later in the tree.
 		const dialogSave = dialogSaveButtons[dialogSaveButtons.length - 1];
 		await act(async () => {
 			fireEvent.click(dialogSave);

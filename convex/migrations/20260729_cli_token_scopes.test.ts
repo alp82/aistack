@@ -5,17 +5,17 @@ import { internal } from '../_generated/api'
 import schema from '../schema'
 
 /**
- * Phase B of the `cliTokens.scopes` migration — wayfinder #52 (map #29).
+ * Phase B of the `cliTokens.scopes` migration - wayfinder #52 (map #29).
  *
  * The load-bearing test is `an EMPTY grant is left alone`. `scopes` is an
  * array, so `[]` is truthy in JavaScript while an empty grant is a perfectly
- * real value to store — a truthiness check would be wrong in both directions,
+ * real value to store - a truthiness check would be wrong in both directions,
  * and a presence check that drifts back to truthiness is the exact failure that
  * blocked a schema push on this repo once already.
  */
 
 // Vite keys same-directory files as './x.ts' while convex-test derives its
-// module root ('../') from the _generated path — remap the sibling keys so
+// module root ('../') from the _generated path - remap the sibling keys so
 // 'migrations/20260729_cli_token_scopes' resolves. Same remap the sibling
 // 20260729 hash test needed; it is a convex-test quirk, not a repo one.
 const modules = Object.fromEntries(
@@ -31,7 +31,7 @@ const MIGRATION = internal.migrations['20260729_cli_token_scopes']
  * THE SCOPES-BACKFILL TESTS LIVE IN THE PRE-NARROW REVISION, not here.
  *
  * Every one of them seeds a row with no `scopes`, and `scopes` is required in
- * this revision — convexTest refuses the insert. That is not a coverage gap
+ * this revision - convexTest refuses the insert. That is not a coverage gap
  * dressed up as a decision: it is the same fact that makes the widen and the
  * narrow two deploys. The backfill is tested against the schema it actually
  * runs against, which is the previous one.

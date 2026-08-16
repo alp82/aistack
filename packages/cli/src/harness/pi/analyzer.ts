@@ -7,24 +7,24 @@
 // arrive as `unknown` and are narrowed here.
 //
 // THE LOAD-BEARING FACTS (research §2-§3):
-//   - `usage.input` already EXCLUDES cache traffic — no subtraction (Codex,
-//     inverted); `reasoning` is a subset of `output` — never add it;
+//   - `usage.input` already EXCLUDES cache traffic - no subtraction (Codex,
+//     inverted); `reasoning` is a subset of `output` - never add it;
 //   - `cacheWrite1h` is a SUBSET of `cacheWrite`, so the TTL split maps onto
 //     TokenCounts exactly: pi is the only harness that hands the re-pricer
 //     the split instead of a lower bound;
 //   - /fork and /clone copy entries into a second file KEEPING entry ids, so
 //     usage dedup is cross-file, and the 8-hex id alone collides at corpus
-//     scale — the key is `${id}:${timestamp}:${totalTokens}`;
+//     scale - the key is `${id}:${timestamp}:${totalTokens}`;
 //   - `compaction.retainedTail` embeds assistant messages that already appear
-//     as their own entries earlier in the same file — never descend into it;
+//     as their own entries earlier in the same file - never descend into it;
 //   - pi's own `usage.cost` is computed against an unpinned network-refreshed
-//     table — uncitable, so cost comes from @aistack/pricing only.
+//     table - uncitable, so cost comes from @aistack/pricing only.
 //
 // Pricing keys follow #123's binding rule: every row is keyed
 // `modelKeyFor(provider, model)` with pi's own provider id verbatim. Only
 // `anthropic`/`openai`/`google` reach vendor rates; a router-billed response
 // (`openrouter:anthropic/claude-opus-4.6`) stays unpriced, which is the safe
-// direction — it did not pay vendor list price.
+// direction - it did not pay vendor list price.
 
 import {
 	apiEquivalentCost,
@@ -84,7 +84,7 @@ export function createFileState(): FileState {
  *
  * `sinceMs` is applied HERE rather than in the scanner because context entries
  * (the header, `model_change`) must update `state` even when they predate the
- * window — a session resumed today bills today's usage to a model named last
+ * window - a session resumed today bills today's usage to a model named last
  * week. The window filter reads the entry's ISO timestamp first and falls back
  * to the message's Unix-ms timestamp, the same order pricing uses.
  */
@@ -139,7 +139,7 @@ export function ingestEntry(
 		agg.assistantRecords++;
 		// `model` is what pi asked for, `responseModel` what the API says it
 		// served. Routers make them differ, and then the rate for `model`
-		// cannot be cited — the tokens surface as unpriced instead.
+		// cannot be cited - the tokens surface as unpriced instead.
 		const served = asStr(message.responseModel);
 		const priceable = served === null || served === asStr(message.model);
 		const outcome = countUsage(
@@ -156,14 +156,14 @@ export function ingestEntry(
 		// already covers tool calls, but the thinking/text tallies have no ids.
 		if (outcome !== "duplicate") ingestContent(agg, message.content);
 	} else if (role === "toolResult" && message) {
-		// "Nested LLM work performed by the tool" — real spend, counted by
+		// "Nested LLM work performed by the tool" - real spend, counted by
 		// pi's own footer. No model of its own, so it bills to the model in
 		// effect, the way Codex deltas bill to the nearest turn_context.
 		countUsage(agg, fold, rec, msgTs, message.usage, state.modelKey, tsMs);
 	} else if (type === "compaction" || type === "branch_summary") {
 		// Summary generation is real spend (optional `usage` on the entry). The
 		// materialized `retainedTail` embeds assistant messages that already
-		// appear as their own entries — deliberately never walked.
+		// appear as their own entries - deliberately never walked.
 		countUsage(agg, fold, rec, 0, rec.usage, state.modelKey, tsMs);
 	}
 }
@@ -173,7 +173,7 @@ function noteActivity(agg: Aggregate, state: FileState): void {
 	if (state.counted) return;
 	state.counted = true;
 	if (state.sessionId) agg.sessions.add(state.sessionId);
-	// Counted, never published — same standing non-goal as Claude project dirs.
+	// Counted, never published - same standing non-goal as Claude project dirs.
 	agg.projectDirs.add(state.cwd ?? "(unknown)");
 }
 
@@ -196,7 +196,7 @@ function countUsage(
 	// /fork and /clone write the same entry into a second file with its id
 	// intact, so dedup is cross-file. The 8-hex id alone has a real birthday
 	// collision at corpus scale, so the timestamps and the token total ride
-	// along — two genuinely different responses sharing an id stay two.
+	// along - two genuinely different responses sharing an id stay two.
 	const id = asStr(rec.id);
 	if (id) {
 		const key = `${id}:${asStr(rec.timestamp) ?? ""}:${msgTsMs}:${total}`;
@@ -218,7 +218,7 @@ function countUsage(
 		counts,
 		priceable ? apiEquivalentCost(key, counts, tsMs) : null,
 	);
-	// pi has no subagents by vendor design — everything is the main thread,
+	// pi has no subagents by vendor design - everything is the main thread,
 	// which keeps `subagentShare` an honest 0 (same case as Codex).
 	agg.mainTokens += total;
 	return "counted";
@@ -241,11 +241,11 @@ function toPricingKey(provider: string, model: string): string {
 /**
  * Assistant content blocks: tool calls plus the thinking/text tallies.
  *
- * `bashExecution` entries are deliberately NOT counted as tool calls — they
+ * `bashExecution` entries are deliberately NOT counted as tool calls - they
  * are user-typed `!` commands, not something the model chose. A name outside
  * PI_BUILTIN_TOOLS is a user extension's tool; it stays a plain count and the
  * shared fail-closed payload filter withholds the name. pi has no MCP, no
- * subagents and no skill tool by vendor design, so those maps stay EMPTY —
+ * subagents and no skill tool by vendor design, so those maps stay EMPTY -
  * absent from the payload, never zero (#40).
  */
 function ingestContent(agg: Aggregate, contentRaw: unknown): void {
@@ -285,9 +285,9 @@ function readCounts(usageRaw: unknown): TokenCounts | null {
 		? Math.min(Math.max(u.cacheWrite1h as number, 0), cacheWrite)
 		: 0;
 	return {
-		// Already exclusive of cache traffic — no subtraction (research §2).
+		// Already exclusive of cache traffic - no subtraction (research §2).
 		input: asNum(u.input),
-		// `reasoning` is a subset of `output` — never added.
+		// `reasoning` is a subset of `output` - never added.
 		output: asNum(u.output),
 		cacheWrite5m: split ? cacheWrite - cacheWrite1h : 0,
 		cacheWrite1h,

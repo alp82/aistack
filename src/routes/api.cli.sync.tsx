@@ -10,7 +10,7 @@ if (!convexSiteUrl) {
 const convexOrigin = new URL(convexSiteUrl).origin;
 
 /**
- * POST /api/cli/sync — publish one approved measured-layer snapshot.
+ * POST /api/cli/sync - publish one approved measured-layer snapshot.
  *
  * Wayfinder ticket #38 (map #29). A thin proxy to the Convex HTTP action, same
  * shape as the other `/api/cli/*` routes, so the sync client talks to one

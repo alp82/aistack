@@ -1,5 +1,5 @@
 /**
- * PROTOTYPE — throwaway. Three replacements for the landing PulseBand:
+ * PROTOTYPE - throwaway. Three replacements for the landing PulseBand:
  * less height, chart promoted to the primary object, feed demoted.
  *
  * Switchable via `?variant=` on the existing `/` route. This deliberately does

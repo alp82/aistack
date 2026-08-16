@@ -69,7 +69,7 @@ export function AutoSyncBox({
 	const state = autoSyncState(flag);
 	const on = state.kind !== "off";
 	// An off stack still remembers its interval, and the switch sends what it is
-	// showing — turning automation back on must not move a machine that chose six
+	// showing - turning automation back on must not move a machine that chose six
 	// hours onto the default.
 	const hours = flag.autoSync?.frequencyHours ?? 24;
 
@@ -86,7 +86,7 @@ export function AutoSyncBox({
 	}
 
 	// Leading only means the box speaks first. It never changes what the switch
-	// does, and an owner whose automation is already on gets no second ask —
+	// does, and an owner whose automation is already on gets no second ask -
 	// their box states its last automatic sync and stops (#107 decision 4).
 	const lead = staleSince !== null;
 

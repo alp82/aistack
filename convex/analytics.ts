@@ -1,7 +1,7 @@
 // Server-side PostHog capture (#77, map #76).
 //
 // Four of the seven product events fire on transitions the browser cannot
-// honestly observe — a signup completing, a CLI storing a token, a first sync
+// honestly observe - a signup completing, a CLI storing a token, a first sync
 // landing, a machine turning auto-sync on. Keeping them client-side would ship
 // four wrong numbers, and a funnel with a wrong number is worse than a funnel
 // with fewer steps.
@@ -19,7 +19,7 @@ import { internal } from './_generated/api'
 import type { MutationCtx } from './_generated/server'
 
 /**
- * The four events the server owns. Closed on purpose — the three client events
+ * The four events the server owns. Closed on purpose - the three client events
  * (`stack_created`, `stack_published`, `leaderboard_stack_clicked`) go through
  * posthog-js in the browser and never reach here.
  */
@@ -79,7 +79,7 @@ export async function captureServerEvent(
  * Signup, from the better-auth user-create hook.
  *
  * A mutation and not a direct capture, because the hook holds an auth context
- * rather than a Convex mutation context — this is the seam that turns one into
+ * rather than a Convex mutation context - this is the seam that turns one into
  * the other.
  *
  * `method` is derived from the request path, so a provider added later reports
@@ -119,7 +119,7 @@ export function signupMethodFromPath(path: string | undefined): string {
  *
  * A failure LOGS and returns. It never throws, because a dropped analytics
  * event must not retry-loop a scheduled function, and the mutation that
- * scheduled it has already committed — there is nothing left to undo.
+ * scheduled it has already committed - there is nothing left to undo.
  */
 export const capture = internalAction({
   args: {
@@ -132,7 +132,7 @@ export const capture = internalAction({
     const key = process.env.POSTHOG_PROJECT_API_KEY
     const host = process.env.POSTHOG_HOST
     if (!key || !host) {
-      // Not configured — local dev and the test backend both land here. Say so
+      // Not configured - local dev and the test backend both land here. Say so
       // once per event rather than failing a real user action over telemetry.
       console.log(
         `[analytics] POSTHOG_PROJECT_API_KEY/POSTHOG_HOST unset, dropping ${args.event}`

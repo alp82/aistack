@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run a Convex CLI command against the PROD self-hosted backend.
 #
-# The command runs ON THE SERVER over ssh — never point the local CLI at prod
+# The command runs ON THE SERVER over ssh - never point the local CLI at prod
 # from this machine (it has broken the local setup before). The admin key is
 # minted on the server per invocation and never touches this repo.
 #
@@ -20,7 +20,7 @@ printf -v REMOTE_ARGS '%q ' "$@"
 ssh "$HOST" "
   set -euo pipefail
   KEY=\$(docker exec $BACKEND_CONTAINER ./generate_admin_key.sh | tail -1)
-  # Minimal project dir — the Convex CLI refuses to run without a package.json.
+  # Minimal project dir - the Convex CLI refuses to run without a package.json.
   mkdir -p /root/.aistack-convex-cli && cd /root/.aistack-convex-cli
   [ -f package.json ] || echo '{\"name\":\"aistack-convex-cli\",\"private\":true}' > package.json
   [ -d node_modules/convex ] || npm install --no-fund --no-audit convex >/dev/null

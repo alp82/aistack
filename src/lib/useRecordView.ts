@@ -12,7 +12,7 @@ import { sessionReferrerBucket } from "./referrer";
  * route that is then clicked does not re-run its loader. Mount is the only
  * event that means a person is looking at the page.
  *
- * Pass `null` while the target id is still loading — the effect waits for it.
+ * Pass `null` while the target id is still loading - the effect waits for it.
  * Fires ONCE per target: React remounts the tree on refocus-driven auth
  * transitions, and a remount is not a second visit.
  */

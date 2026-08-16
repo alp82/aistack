@@ -3,7 +3,7 @@
  * returns it.
  *
  * Every reading below is copied from the production `measuredSnapshots` table
- * as it stood on 2026-08-04 — the whole history that exists: seven readings over
+ * as it stood on 2026-08-04 - the whole history that exists: seven readings over
  * five days, two of them 60 seconds apart, and a second harness three orders of
  * magnitude smaller than the first. #80 designed against these numbers, so the
  * display is tested against them too.
@@ -218,7 +218,7 @@ function mergePoint(sync: { at: number; rows: Row[] }): MeasuredHistoryPoint {
 }
 
 /**
- * The real history, optionally cut to its first `readings` syncs — one reading
+ * The real history, optionally cut to its first `readings` syncs - one reading
  * and two readings are the states almost every stack is actually in.
  */
 export function buildHistory({
@@ -252,7 +252,7 @@ export function buildHistory({
 export const NEWEST_AT = SYNCS[SYNCS.length - 1].at;
 
 /**
- * The current reading that goes with a history — the newest point, as
+ * The current reading that goes with a history - the newest point, as
  * `getCurrentByStackSlug` returns it.
  *
  * The server guarantees these two agree: the headline is the merge of the newest

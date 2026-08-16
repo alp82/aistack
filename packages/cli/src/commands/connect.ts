@@ -1,4 +1,4 @@
-// `aistack connect claude` — the opt-in in-session sync surface (#56, #57).
+// `aistack connect claude` - the opt-in in-session sync surface (#56, #57).
 //
 // Installs BOTH halves or NEITHER: the user-scoped MCP server registration and
 // the Skill copy travel together, because the Skill drives `sync_preview` /
@@ -95,7 +95,7 @@ export interface ConnectOutcome {
 
 /**
  * Install the server registration, then the Skill. If the Skill copy fails
- * after a fresh registration, the registration is rolled back — both halves
+ * after a fresh registration, the registration is rolled back - both halves
  * or neither.
  */
 export function installClaudeConnect(
@@ -108,7 +108,7 @@ export function installClaudeConnect(
 		return {
 			ok: false,
 			message:
-				"this install is missing its bundled Skill (skills/aistack-sync) — nothing was installed",
+				"this install is missing its bundled Skill (skills/aistack-sync) - nothing was installed",
 		};
 	}
 
@@ -116,7 +116,7 @@ export function installClaudeConnect(
 	if (add.notFound) {
 		return {
 			ok: false,
-			message: `claude was not found on PATH — nothing was installed. Manual install:\n${MANUAL_MCP_ADD}`,
+			message: `claude was not found on PATH - nothing was installed. Manual install:\n${MANUAL_MCP_ADD}`,
 		};
 	}
 	const alreadyRegistered =
@@ -124,7 +124,7 @@ export function installClaudeConnect(
 	if (add.status !== 0 && !alreadyRegistered) {
 		return {
 			ok: false,
-			message: `claude mcp add failed — nothing was installed.\n${add.output.trim()}`,
+			message: `claude mcp add failed - nothing was installed.\n${add.output.trim()}`,
 		};
 	}
 
@@ -136,7 +136,7 @@ export function installClaudeConnect(
 		if (!alreadyRegistered) run(MCP_REMOVE_ARGS);
 		return {
 			ok: false,
-			message: `copying the Skill to ${SKILL_DEST} failed — the MCP registration was ${
+			message: `copying the Skill to ${SKILL_DEST} failed - the MCP registration was ${
 				alreadyRegistered ? "left as it was" : "rolled back"
 			}.\n${e instanceof Error ? e.message : String(e)}`,
 		};
@@ -152,7 +152,7 @@ export async function connectCommand(harness: string): Promise<void> {
 	intro("connect");
 
 	if (harness !== "claude") {
-		outroError(`unknown harness "${harness}" — supported: claude`);
+		outroError(`unknown harness "${harness}" - supported: claude`);
 		process.exitCode = 1;
 		return;
 	}
@@ -195,7 +195,7 @@ export function claudeRecentlyActive(): Promise<boolean> {
  * and the question returns on the next sync.
  *
  * Two gates, both silent. The offer needs a Claude Code the user actually runs
- * (#101) — a months-old install asked a Codex-only user to connect a harness
+ * (#101) - a months-old install asked a Codex-only user to connect a harness
  * they had left behind, which is what opened #100. It also needs `claude` on
  * PATH, because that binary is what installs the MCP server.
  */

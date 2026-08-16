@@ -287,7 +287,7 @@ export function StackEditor({
 			const payload = selectSavePayload(state, publish);
 
 			// A staged guest avatar (adopted from the guest draft after sign-in)
-			// arrives as a data URL — upload it to Convex storage now (so the DB
+			// arrives as a data URL - upload it to Convex storage now (so the DB
 			// never persists the data URL) and land it on the creator profile.
 			// landStagedAvatar is skip-if-set on the server, so an existing profile
 			// avatar is never overwritten; `kind: 'none'` means "nothing staged"

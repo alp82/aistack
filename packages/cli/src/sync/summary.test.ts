@@ -1,4 +1,4 @@
-// The gate's two beats — wayfinder ticket #41 (map #29).
+// The gate's two beats - wayfinder ticket #41 (map #29).
 //
 // The copy under test is BINDING (#48): the owner fixed the exact strings, so
 // these tests hold sentences, not just numbers.
@@ -150,7 +150,7 @@ describe("formatting", () => {
 	});
 });
 
-describe("totalUSD — never a dollar without its pricing table (#46)", () => {
+describe("totalUSD - never a dollar without its pricing table (#46)", () => {
 	test("sums the per-model figures", () => {
 		expect(totalUSD(payload())).toBeCloseTo(5839.75);
 	});
@@ -166,7 +166,7 @@ describe("totalUSD — never a dollar without its pricing table (#46)", () => {
 	});
 });
 
-describe("beat two — the dialog (binding copy, #48)", () => {
+describe("beat two - the dialog (binding copy, #48)", () => {
 	test("the locked shape: facts line, then the review line", () => {
 		expect(buildGateDialog(ctx({ withKeptPrivateHalf: true }))).toBe(
 			"Publish to aistack? 4.27B tokens · 30 days · ≈$5,840\n" +
@@ -207,13 +207,13 @@ describe("beat two — the dialog (binding copy, #48)", () => {
 		expect(dialog).toBe("Publish to aistack? 4.27B tokens · 30 days · ≈$5,840");
 	});
 
-	test("stays two lines — a long dialog is an unanswerable gate (#35 1H)", () => {
+	test("stays two lines - a long dialog is an unanswerable gate (#35 1H)", () => {
 		const dialog = buildGateDialog(ctx({ withKeptPrivateHalf: true }));
 		expect(dialog.split("\n").length).toBeLessThanOrEqual(2);
 	});
 });
 
-describe("beat one — the summary", () => {
+describe("beat one - the summary", () => {
 	test("the searched line names every harness this build looks for (#130)", () => {
 		const summary = buildGateSummary(ctx({}));
 		const lines = summary.split("\n");
@@ -225,9 +225,9 @@ describe("beat one — the summary", () => {
 
 	test("the harness header prints even for a single harness (#130)", () => {
 		// A `searched` line naming four harnesses followed by one unlabeled block
-		// is unreadable, so the header is unconditional — an intentional output
+		// is unreadable, so the header is unconditional - an intentional output
 		// change for every single-harness user.
-		expect(buildGateSummary(ctx({}))).toContain("— Claude Code 2.1.220");
+		expect(buildGateSummary(ctx({}))).toContain("- Claude Code 2.1.220");
 	});
 
 	test("names the destination and the changes URL before any send", () => {
@@ -259,7 +259,7 @@ describe("beat one — the summary", () => {
 	});
 
 	test("withheld count derives from the send bytes, not the local list", () => {
-		// 67 from inventory.withheld even though the local list has 4 names —
+		// 67 from inventory.withheld even though the local list has 4 names -
 		// the sentence the user approves must describe the bytes.
 		expect(withheldCount(payload())).toBe(67);
 	});
@@ -285,7 +285,7 @@ describe("beat one — the summary", () => {
 			}),
 		);
 		expect(degraded).toContain(
-			"coverage  3 files unreadable · 12 lines failed — this reading is a floor",
+			"coverage  3 files unreadable · 12 lines failed · this reading is a floor",
 		);
 	});
 
@@ -302,7 +302,7 @@ describe("beat one — the summary", () => {
 		const lines = scanNoteLines(stats, "Codex");
 		expect(lines).toContain("          2026/07/28/rollout-x.jsonl (ENOENT)");
 		expect(lines).toContain(
-			"skipped   3 files not written by Codex — left out (originators: codexmate ×2, (none))",
+			"skipped   3 files not written by Codex (originators: codexmate ×2, (none))",
 		);
 	});
 
@@ -315,7 +315,7 @@ describe("beat one — the summary", () => {
 			scanStats: { "claude-code": stats },
 		});
 		expect(summary).toContain(
-			"skipped   1 file not written by Claude Code — left out (originators: impostor)",
+			"skipped   1 file not written by Claude Code (originators: impostor)",
 		);
 	});
 
@@ -333,7 +333,7 @@ describe("beat one — the summary", () => {
 		);
 		expect(summary).toContain("using the bundled list");
 		expect(summary).toContain("publishes less");
-		expect(summary).toContain("no linked stack — publish is unavailable");
+		expect(summary).toContain("no linked stack; publish is unavailable");
 	});
 
 	test("a dollar figure never renders without its pricing table, per model either", () => {

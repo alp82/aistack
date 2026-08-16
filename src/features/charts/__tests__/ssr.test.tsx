@@ -2,8 +2,8 @@
  * The property the whole library choice rests on: every chart arrives from the
  * server as complete SVG, not as an empty box that fills in after an effect.
  *
- * These assertions are deliberately about real marks — `<path>`, `<rect>`,
- * `<text>` — and not about a wrapper element. Recharts renders a wrapper too.
+ * These assertions are deliberately about real marks - `<path>`, `<rect>`,
+ * `<text>` - and not about a wrapper element. Recharts renders a wrapper too.
  * If a future version of the library regresses server rendering, this file
  * fails loudly instead of the site quietly shipping blank charts.
  */
@@ -158,7 +158,7 @@ describe("where the paint lives (#95)", () => {
 	// The DOM host repaints the scene after mount, so the attribute has to
 	// survive that. These tests pin both sides to the SAME place, because a fix
 	// that moved the paint into a `style` declaration would have to move it on
-	// both — a server attribute and a client style is a mark that changes color
+	// both - a server attribute and a client style is a mark that changes color
 	// at hydration.
 
 	test("the server writes the paint into a fill attribute, not a style", () => {
@@ -252,7 +252,7 @@ describe("what the library does not ship", () => {
 		expect(html).toContain("Codex");
 	});
 
-	test("one series gets no legend box — the caption names it", () => {
+	test("one series gets no legend box - the caption names it", () => {
 		const html = renderToString(
 			<TimeSeriesChart series={one} caption="Tokens" ariaLabel="Tokens" />,
 		);

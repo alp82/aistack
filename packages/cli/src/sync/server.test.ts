@@ -1,4 +1,4 @@
-// The send channel and its gate — wayfinder ticket #41 (map #29).
+// The send channel and its gate - wayfinder ticket #41 (map #29).
 //
 // The properties under test are the spike's (#35): consent is collected by an
 // ENUM elicitation raised inside the call; every non-accept outcome resolves
@@ -177,7 +177,7 @@ describe("protocol basics", () => {
 	});
 });
 
-describe("the gate — consent path", () => {
+describe("the gate - consent path", () => {
 	test("accept + publish sends the EXACT staged bytes with the staged token", async () => {
 		const staged = makeStaged();
 		const s = makeServer({ staged });
@@ -187,7 +187,7 @@ describe("the gate — consent path", () => {
 
 		const req = elicitationRequest(s);
 		expect(req?.params.message).toBe(staged.dialog);
-		// Enum, never boolean — the boolean widget is dead (#35, 1G).
+		// Enum, never boolean - the boolean widget is dead (#35, 1G).
 		expect(JSON.stringify(req?.params.requestedSchema)).toContain(
 			'"enum":["publish","cancel"]',
 		);
@@ -225,12 +225,12 @@ describe("the gate — consent path", () => {
 			content: { decision: "publish" },
 		});
 		await tick();
-		expect(publishResultText(s)).toContain("refused by the server");
+		expect(publishResultText(s)).toContain("refused the kept-private names");
 		expect(publishResultText(s)).toContain("stayed on this machine");
 	});
 });
 
-describe("the gate — every other outcome sends nothing", () => {
+describe("the gate - every other outcome sends nothing", () => {
 	async function expectNothingSent(
 		s: ReturnType<typeof makeServer>,
 		fragment: string,
@@ -250,7 +250,7 @@ describe("the gate — every other outcome sends nothing", () => {
 		await expectNothingSent(s, "Not published");
 	});
 
-	test("accept with decision=cancel — the widget's other answer", async () => {
+	test("accept with decision=cancel - the widget's other answer", async () => {
 		const staged = makeStaged();
 		const s = makeServer({ staged });
 		init(s.server);
@@ -287,7 +287,7 @@ describe("the gate — every other outcome sends nothing", () => {
 		await expectNothingSent(s, "nothing is staged");
 	});
 
-	test("a wrong preview id is refused — the model cannot name other bytes", async () => {
+	test("a wrong preview id is refused - the model cannot name other bytes", async () => {
 		const staged = makeStaged();
 		const s = makeServer({ staged });
 		init(s.server);

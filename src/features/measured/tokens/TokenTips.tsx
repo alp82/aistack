@@ -1,5 +1,5 @@
 /**
- * The headline popup — fifteen ways to feel a token count. Locked by #80, built
+ * The headline popup - fifteen ways to feel a token count. Locked by #80, built
  * by #81.
  *
  * "4.71B tokens" means nothing to a reader, so every card converts it into
@@ -8,7 +8,7 @@
  *
  * THE SHELL CARRIES THE FACTS, THE BODY CARRIES THE FEELING. Every card closes
  * with the exact count, the price caveat and the assumption it rests on. Two
- * cards do not rest on words per token — electricity and video — and each says
+ * cards do not rest on words per token - electricity and video - and each says
  * so in place of the shared rule.
  *
  * Every framing rests on the same soft assumption: roughly 0.75 English words
@@ -102,7 +102,7 @@ function shuffled<T>(items: T[]): T[] {
  *
  * THE SHUFFLE RUNS IN AN EFFECT, never in render, so the server and the first
  * client render agree and hydration stays quiet. The card itself never exists in
- * the server HTML — the popup mounts on hover — so the reshuffle is invisible.
+ * the server HTML - the popup mounts on hover - so the reshuffle is invisible.
  */
 export function useTipDeck() {
 	const [deck, setDeck] = useState<TipKey[]>(TIP_KEYS);
@@ -196,7 +196,7 @@ function Sub({ children }: { children: React.ReactNode }) {
 }
 
 // ---------------------------------------------------------------------------
-// The framings. One comparison each, never two — a card that offers a choice of
+// The framings. One comparison each, never two - a card that offers a choice of
 // yardsticks makes the reader do the work the card was supposed to do.
 // ---------------------------------------------------------------------------
 

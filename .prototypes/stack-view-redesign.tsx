@@ -1,5 +1,5 @@
 /**
- * ARCHIVED PROTOTYPE — Stack-view redesign explorer (single-file snapshot)
+ * ARCHIVED PROTOTYPE - Stack-view redesign explorer (single-file snapshot)
  *
  * Self-contained consolidation of the throwaway `/proto/stack` prototype that
  * formerly lived at `src/features/stack-proto/` (config / data / ui /
@@ -10,8 +10,8 @@
  * driven by the bottom-right ControlPanel. Mock data (`MOCK_STACK`) mirrors
  * `convex/stacks.ts` getBySlug, so it renders with no DB.
  *
- * OUTCOME: the chosen design — `editorial / alternating / category /
- * comfortable / wide / splitTools` (= DEFAULT_CONFIG) — was ported to
+ * OUTCOME: the chosen design - `editorial / alternating / category /
+ * comfortable / wide / splitTools` (= DEFAULT_CONFIG) - was ported to
  * production in `src/features/stack-view/` and shipped on
  * `src/routes/stacks.$slug.tsx` (2026-05-31). This file is the frozen
  * reference; it is no longer routed.
@@ -46,7 +46,7 @@ import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
-// Style presets — four distinct, opinionated design directions for the journey.
+// Style presets - four distinct, opinionated design directions for the journey.
 // Cross-cutting params (rhythm / accent / density / width) layer on top of any
 // style so you can mix-and-match while evaluating.
 // ---------------------------------------------------------------------------
@@ -94,7 +94,7 @@ export const STYLE_META: Record<StyleId, { label: string; blurb: string }> = {
 	bento: {
 		label: "Bento",
 		blurb:
-			"Dashboard grid. Cost-weighted tiles — pricier tools get bigger cells.",
+			"Dashboard grid. Cost-weighted tiles - pricier tools get bigger cells.",
 	},
 };
 
@@ -454,7 +454,7 @@ export const MOCK_STACK: ProtoStack = {
 			primaryUsageLabel: "FREE",
 			tierName: "FREE",
 			priceKind: "regular",
-			description: "$15 of free credits daily — good for a dozen prompts.",
+			description: "$15 of free credits daily - good for a dozen prompts.",
 		},
 		{
 			_id: "t8",
@@ -554,7 +554,7 @@ export const MOCK_STACK: ProtoStack = {
 			category: "reasoning",
 			role: "specialized",
 			description:
-				"High Thinking — exceptional for narrowing scope on planning tasks.",
+				"High Thinking - exceptional for narrowing scope on planning tasks.",
 		},
 	],
 	bundles: [
@@ -640,14 +640,14 @@ export const MOCK_STACK: ProtoStack = {
 			items: [
 				[
 					{ ref: "Opencode" },
-					" — reuse existing subscriptions, no extra spend",
+					" - reuse existing subscriptions, no extra spend",
 				],
-				[{ ref: "Ampcode" }, " — $15 of free credits daily, ~a dozen prompts"],
+				[{ ref: "Ampcode" }, " - $15 of free credits daily, ~a dozen prompts"],
 			],
 		},
 		{
 			kind: "quote",
-			text: "Lately I'm also using GPT 5.4 (High Thinking) for planning — the way it asks questions to narrow down scope is exceptional.",
+			text: "Lately I'm also using GPT 5.4 (High Thinking) for planning - the way it asks questions to narrow down scope is exceptional.",
 		},
 	],
 };
@@ -971,7 +971,7 @@ function PriceBadge({
 			</div>
 		);
 	}
-	// editorial / bento — clean stat
+	// editorial / bento - clean stat
 	return (
 		<div className="flex flex-col items-end">
 			<ProtoPrice
@@ -1163,7 +1163,7 @@ function Projects({
 }
 
 // ===========================================================================
-// TOOLS — price tag + big/mini cards + four layouts
+// TOOLS - price tag + big/mini cards + four layouts
 // ===========================================================================
 
 function PriceTag({
@@ -1476,7 +1476,7 @@ function ToolsGrid({
 			</div>
 		);
 	}
-	// editorial / cards2 — big two-column cards
+	// editorial / cards2 - big two-column cards
 	return (
 		<div className={cn("grid grid-cols-1 lg:grid-cols-2", tokens.gap)}>
 			{tools.map((t) => (
@@ -1552,7 +1552,7 @@ function Tools({
 }
 
 // ===========================================================================
-// MODELS + BUNDLES — smaller cards
+// MODELS + BUNDLES - smaller cards
 // ===========================================================================
 
 const ROLE_LABEL: Record<ProtoModel["role"], string> = {
@@ -2142,7 +2142,7 @@ export function ControlPanel({
 }
 
 // ===========================================================================
-// PAGE — interactive harness (default export; was src/routes/proto.stack.tsx)
+// PAGE - interactive harness (default export; was src/routes/proto.stack.tsx)
 // ===========================================================================
 
 export default function ProtoStackPage() {

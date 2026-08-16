@@ -27,7 +27,7 @@ vi.mock("@/components/ui/hover-card", () => ({
 	default: vi.fn(({ children }: { children?: ReactNode }) => <>{children}</>),
 }));
 
-// Stub router — StackHeader renders a <Link> in the edit slot when isOwner=true.
+// Stub router - StackHeader renders a <Link> in the edit slot when isOwner=true.
 // Matches the pattern in stack-editor-unpublish-confirm.test.tsx.
 vi.mock("@tanstack/react-router", () => ({
 	Link: ({
@@ -51,14 +51,14 @@ vi.mock("@tanstack/react-router", () => ({
 	useNavigate: () => vi.fn(),
 }));
 
-// Stub Convex — StackHeader renders ChangesBanner and HeroMeasuredStrip, both
+// Stub Convex - StackHeader renders ChangesBanner and HeroMeasuredStrip, both
 // of which query. `undefined` is the loading answer, so neither renders and
 // these tests keep judging the header alone.
 vi.mock("convex/react", () => ({
 	useQuery: () => undefined,
 }));
 
-// Stub CostBreakdownTooltip — reached by the price tile HoverCard's renderContent.
+// Stub CostBreakdownTooltip - reached by the price tile HoverCard's renderContent.
 vi.mock("@/components/CostBreakdownTooltip", () => ({
 	CostBreakdownTooltip: () => null,
 }));
@@ -72,12 +72,12 @@ vi.mock("@/features/stack-view/ui", () => ({
 	STACK_WIDTH: "max-w-5xl",
 }));
 
-// Stub UpvotersTooltip — reached by the upvote HoverCard's renderContent.
+// Stub UpvotersTooltip - reached by the upvote HoverCard's renderContent.
 vi.mock("@/components/UpvotersTooltip", () => ({
 	UpvotersTooltip: () => null,
 }));
 
-// Stub ShareMenu — tested separately in ShareMenu.test.tsx.
+// Stub ShareMenu - tested separately in ShareMenu.test.tsx.
 vi.mock("@/features/stack-view/ShareMenu", () => ({
 	ShareMenu: ({ slug }: { slug: string }) => (
 		<div data-testid="share-menu" data-slug={slug} />
@@ -155,7 +155,7 @@ function buildProps(
 // ---------------------------------------------------------------------------
 
 describe("StackHeader upvote-popover regression", () => {
-	// TC-SH-01 (Bug 1 guard — RED now)
+	// TC-SH-01 (Bug 1 guard - RED now)
 	// In the buggy code, HoverCard wrapper mode applies className directly on its
 	// root div, so a call to HoverCard will have className matching /absolute|left-full|-translate-y/.
 	// After the fix, absolute/left-full classes move to an outer span and HoverCard
@@ -175,7 +175,7 @@ describe("StackHeader upvote-popover regression", () => {
 		}
 	});
 
-	// TC-SH-02 (Bug 1 structural guard — RED now)
+	// TC-SH-02 (Bug 1 structural guard - RED now)
 	// In the buggy code, the absolute/left-full wrapper is the HoverCard's own root div
 	// (rendered by our stub as a fragment, so no element carries those classes in DOM).
 	// After the fix, there will be an explicit span/div wrapping HoverCard with those classes.
@@ -192,7 +192,7 @@ describe("StackHeader upvote-popover regression", () => {
 		// After the fix there must be an ancestor element carrying `absolute` AND `left-full`
 		// that is NOT the HoverCard stub fragment (which renders as <>children</>).
 		// In the buggy code the classes are on HoverCard's className prop which our stub
-		// doesn't mount as a DOM element — so the only element carrying `absolute` is
+		// doesn't mount as a DOM element - so the only element carrying `absolute` is
 		// the header's `relative` container, not a direct upvote-wrapper ancestor.
 		// We assert the button has a direct wrapper with both `absolute` and `left-full`.
 		const absoluteAncestor = btn.closest(
@@ -201,7 +201,7 @@ describe("StackHeader upvote-popover regression", () => {
 		expect(absoluteAncestor).toBeInTheDocument();
 	});
 
-	// TC-SH-03 (Bug 2 guard — RED now)
+	// TC-SH-03 (Bug 2 guard - RED now)
 	// In the buggy code, onUpvoteHover is only on the UpvoteButton's onMouseEnter.
 	// The outer wrapper (currently HoverCard, which in the fix becomes a span) does NOT
 	// fire onUpvoteHover on mouseEnter. After the fix, the span carries onMouseEnter={onUpvoteHover}.
@@ -223,7 +223,7 @@ describe("StackHeader upvote-popover regression", () => {
 		expect(onUpvoteHover).toHaveBeenCalled();
 	});
 
-	// TC-SH-04 (Bug 2 completeness — GREEN now and after fix)
+	// TC-SH-04 (Bug 2 completeness - GREEN now and after fix)
 	// After the fix the handler is on the span and bubbles up, so mouseEnter on the
 	// button itself also triggers it. We use toHaveBeenCalled (not toHaveBeenCalledOnce)
 	// because bubbling may cause multiple invocations.
@@ -240,7 +240,7 @@ describe("StackHeader upvote-popover regression", () => {
 		expect(onUpvoteHover).toHaveBeenCalled();
 	});
 
-	// TC-SH-05 (no-upvotes branch unaffected — GREEN now and after fix)
+	// TC-SH-05 (no-upvotes branch unaffected - GREEN now and after fix)
 	// When count=0, HoverCard is NOT rendered for the upvote button (plain span branch).
 	// The price-tile HoverCard may still be called, but its className must not contain
 	// upvote-positioning classes.
@@ -265,7 +265,7 @@ describe("StackHeader upvote-popover regression", () => {
 		}
 	});
 
-	// TC-SH-06 (no hover on render — GREEN now and after fix)
+	// TC-SH-06 (no hover on render - GREEN now and after fix)
 	// onUpvoteHover must never be called as a side-effect of rendering.
 	it("TC-SH-06: onUpvoteHover is not called during initial render (count=0)", () => {
 		const onUpvoteHover = vi.fn();
@@ -275,7 +275,7 @@ describe("StackHeader upvote-popover regression", () => {
 		expect(onUpvoteHover).not.toHaveBeenCalled();
 	});
 
-	// TC-SH-07 (MATERIAL — upvote HoverCard functional props guard)
+	// TC-SH-07 (MATERIAL - upvote HoverCard functional props guard)
 	// After the className was removed from the upvote HoverCard, we must verify its
 	// OTHER functional props are still present. A silently dropped `renderContent`
 	// would make the upvoters tooltip never render (defeats bug-2's fix); a changed
@@ -314,7 +314,7 @@ describe("StackHeader upvote-popover regression", () => {
 		expect(p.className).toBeUndefined();
 	});
 
-	// TC-SH-08 (nice-to-have — count=0 branch keeps positioning classes)
+	// TC-SH-08 (nice-to-have - count=0 branch keeps positioning classes)
 	// When count=0, the upvote button is wrapped in a plain span (no HoverCard).
 	// That span must still carry the absolute/left-full positioning classes so the
 	// control doesn't jump position compared with the hasUpvotes branch.
@@ -333,7 +333,7 @@ describe("StackHeader upvote-popover regression", () => {
 });
 
 // ===========================================================================
-// GROUP E — Hero tool tiles (#40 replaced the count tiles with named tools)
+// GROUP E - Hero tool tiles (#40 replaced the count tiles with named tools)
 //
 // The old "11 tools / 5 models / 1 bundle" row is gone on purpose: three
 // numbers that say nothing, in the space three named tools say something. Tools
@@ -349,7 +349,7 @@ const TOOL = (id: string, name: string, kind: "main" | "misc" = "main") => ({
 	primaryUsageLabel: "Free",
 });
 
-describe("GROUP E — StackHeader hero tool tiles", () => {
+describe("GROUP E - StackHeader hero tool tiles", () => {
 	it("shows the first three tools as buttons into the Tools section", () => {
 		const stack = {
 			...BASE_STACK,
@@ -457,10 +457,10 @@ describe("GROUP E — StackHeader hero tool tiles", () => {
 });
 
 // ===========================================================================
-// GROUP P — Byline links up to the creator profile (profile-first decoupling)
+// GROUP P - Byline links up to the creator profile (profile-first decoupling)
 // ===========================================================================
 
-describe("GROUP P — StackHeader byline profile link", () => {
+describe("GROUP P - StackHeader byline profile link", () => {
 	it("renders the creator byline as a link to /@handle", () => {
 		render(<StackHeader {...buildProps(UPVOTE_STATUS_ZERO)} />);
 
@@ -492,10 +492,10 @@ describe("GROUP P — StackHeader byline profile link", () => {
 });
 
 // ===========================================================================
-// GROUP F — ShareMenu integration (TC-SH-SHARE-*)
+// GROUP F - ShareMenu integration (TC-SH-SHARE-*)
 // ===========================================================================
 
-describe("GROUP F — StackHeader ShareMenu integration", () => {
+describe("GROUP F - StackHeader ShareMenu integration", () => {
 	// TC-SH-SHARE-01: owner sees share-menu AND an Edit link.
 	it("TC-SH-SHARE-01: owner → share-menu present and Edit link present", () => {
 		render(

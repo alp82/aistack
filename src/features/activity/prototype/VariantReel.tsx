@@ -1,8 +1,8 @@
 /**
- * PROTOTYPE — throwaway. Variant E: "Reel".
+ * PROTOTYPE - throwaway. Variant E: "Reel".
  *
  * Key insights take turns on one bold stage, cycled by React Bits Pro's
- * SpeedingText in words mode — each phrase races out and the next smears in.
+ * SpeedingText in words mode - each phrase races out and the next smears in.
  * Left-anchored so it reads like a headline ticker. One CTA. No feed.
  */
 
@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import type { Band } from "../feed";
 import { fmtCount, fmtTokens, MONO_LABEL } from "../feed";
 
-export const VARIANT_REEL_NAME = "Reel — insights take turns";
+export const VARIANT_REEL_NAME = "Reel - insights take turns";
 
 function phrasesFor(band: Band): string[] {
 	const { totals, usage } = band;

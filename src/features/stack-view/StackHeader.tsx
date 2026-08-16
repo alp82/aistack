@@ -140,7 +140,7 @@ export function StackHeader({
 						{stack.name}
 					</h1>
 
-					{/* Byline — links up to the creator's profile */}
+					{/* Byline - links up to the creator's profile */}
 					<div className="flex flex-wrap items-center justify-center gap-2 font-mono text-sm">
 						<Link
 							to="/$creator"

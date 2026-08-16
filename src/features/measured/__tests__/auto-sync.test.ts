@@ -7,9 +7,9 @@
  * what happened and a revoke only takes the permission away. So the flag alone
  * cannot say whether automation is working, and the pair can:
  *
- *   off          — nobody decided, or the owner said no.
- *   never-fired  — on, and no machine has ever fired one.
- *   running      — on, and a machine fired one at this time.
+ *   off          - nobody decided, or the owner said no.
+ *   never-fired  - on, and no machine has ever fired one.
+ *   running      - on, and a machine fired one at this time.
  */
 import { describe, expect, it } from "vitest";
 import { autoSyncState, frequencyChoices, frequencyLabel } from "../autoSync";
@@ -66,7 +66,7 @@ describe("autoSyncState", () => {
 
 /**
  * The interval the owner edits. A machine may already hold an interval this
- * list never offers — the CLI took any number and #102 clamps to 1..168 — so
+ * list never offers - the CLI took any number and #102 clamps to 1..168 - so
  * the select has to be able to draw what is stored, or the box would silently
  * misreport the schedule it is showing.
  */

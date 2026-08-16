@@ -5,7 +5,7 @@ import type { Resource } from "./api.js";
 
 /**
  * Extract hooks defined inline in Claude Code settings as discrete `hook`
- * resources — one per event (PreToolUse, PostToolUse, …). Without this they
+ * resources - one per event (PreToolUse, PostToolUse, …). Without this they
  * only ride inside the collected settings.json config blob and never surface as
  * first-class hooks.
  *

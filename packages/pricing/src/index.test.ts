@@ -196,7 +196,7 @@ describe("Google rates (#123)", () => {
 	});
 });
 
-describe("priceAt — time-aware periods (#33 decision 8)", () => {
+describe("priceAt - time-aware periods (#33 decision 8)", () => {
 	it("prices sonnet-5 at the introductory rate before the cutover", () => {
 		const p = priceAt("claude-sonnet-5", SONNET_5_INTRO_ENDS_MS - 1);
 		expect(p).toEqual({
@@ -273,7 +273,7 @@ describe("apiEquivalentCost", () => {
 		expect(apiEquivalentCost("claude-opus-5#fast", t, at)).toBeCloseTo(50, 9);
 	});
 
-	it("returns null — not zero — for a model with no citable rate", () => {
+	it("returns null - not zero - for a model with no citable rate", () => {
 		const t: TokenCounts = { ...noTokens, input: MTOK };
 		expect(
 			apiEquivalentCost("claude-unreleased-9", t, Date.UTC(2026, 6, 20)),
@@ -281,7 +281,7 @@ describe("apiEquivalentCost", () => {
 	});
 });
 
-describe("pricingTableFor — the citation rides on the rate (#93)", () => {
+describe("pricingTableFor - the citation rides on the rate (#93)", () => {
 	it("cites each vendor's own table", () => {
 		expect(pricingTableFor("claude-opus-5")).toBe(PRICING_TABLE_VERSION);
 		expect(pricingTableFor("gpt-5.6-sol")).toBe(OPENAI_PRICING_TABLE_VERSION);
@@ -292,7 +292,7 @@ describe("pricingTableFor — the citation rides on the rate (#93)", () => {
 	});
 });
 
-describe("pricePeriodsInWindow — read-time rate lookup (#93)", () => {
+describe("pricePeriodsInWindow - read-time rate lookup (#93)", () => {
 	const DAY = 86_400_000;
 
 	it("returns the one rate a window inside a single period can pay", () => {

@@ -104,7 +104,7 @@ function section(title, items, mode, hasOg) {
   }).join("");
   return `
     <div class="mode ${mode}">
-      <h2>${title} — ${mode}</h2>
+      <h2>${title} - ${mode}</h2>
       <div class="row"><div></div><div class="hdr">soft</div><div class="hdr">base</div><div class="hdr">strong</div><div class="hdr">og</div></div>
       ${rows}
     </div>`;
@@ -112,13 +112,13 @@ function section(title, items, mode, hasOg) {
 
 const root = document.getElementById("root");
 root.innerHTML = `
-  <p class="legend"><b>CURRENT</b> — 16 presets, registry order (note the warm cluster is scattered at the end; yellow reads orange).</p>
+  <p class="legend"><b>CURRENT</b> - 16 presets, registry order (note the warm cluster is scattered at the end; yellow reads orange).</p>
   <div class="modes">
     ${section("Current", CURRENT, "dark", true)}
     ${section("Current", CURRENT, "light", true)}
   </div>
   <hr/>
-  <p class="legend"><b>FINAL</b> — 12 presets, rainbow loop starting at the brand default (lime, unchanged). Dropped amber/emerald/sky/rose (near-dupes); lifted yellow hue 86→98 + chroma; bumped green chroma; warm colors (orange/yellow) get a light-mode lightness bump so they stay vivid instead of going brown.</p>
+  <p class="legend"><b>FINAL</b> - 12 presets, rainbow loop starting at the brand default (lime, unchanged). Dropped amber/emerald/sky/rose (near-dupes); lifted yellow hue 86→98 + chroma; bumped green chroma; warm colors (orange/yellow) get a light-mode lightness bump so they stay vivid instead of going brown.</p>
   <div class="modes">
     ${section("Proposed", PROPOSED, "dark", false)}
     ${section("Proposed", PROPOSED, "light", false)}

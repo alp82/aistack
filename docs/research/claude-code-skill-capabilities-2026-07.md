@@ -1,13 +1,13 @@
-# What a Claude Code Skill can actually do — primary-source research
+# What a Claude Code Skill can actually do - primary-source research
 
 Research for auto-sync v1 (issue #31, wayfinder map #29). Question: for each capability
-auto-sync needs — get an explicit local approval, send approved aggregates to our backend
-as this user, ship and update the thing, and optionally analyze at session end — **what do
+auto-sync needs - get an explicit local approval, send approved aggregates to our backend
+as this user, ship and update the thing, and optionally analyze at session end - **what do
 Claude Code Skills, hooks, MCP servers and plugins actually provide**, and where is the
 line between "the model cooperates" and "the harness enforces it"?
 
 The point is to let a design grilling pick a **send channel** and an **approve-gate design**
-from documented facts. Where something doesn't exist, that is stated plainly.
+from documented facts. Where something doesn't exist, this doc says so.
 
 Standing product constraint checked throughout: **raw transcripts, prompt text, filesystem
 paths and repo names never leave the machine.**
@@ -23,7 +23,7 @@ paths and repo names never leave the machine.**
   `claude plugin --help`, `~/.claude/` layout, `~/.claude/settings.json`,
   `~/.claude/plugins/`. Plus four live experiments (§1.6) run with `claude -p`.
 - **This repo**: `src/routes/api.cli.*`, `convex/httpCli.ts`, `convex/cliTokens.ts`,
-  `convex/cliSessions.ts`, `convex/schema.ts` — the existing `/api/cli/*` precedent.
+  `convex/cliSessions.ts`, `convex/schema.ts` - the existing `/api/cli/*` precedent.
 
 Markers used on every load-bearing claim:
 
@@ -34,7 +34,7 @@ Markers used on every load-bearing claim:
 | **(underspecified)** | The docs touch it but don't pin down the behaviour we need |
 | **(unverified)** | Claim we could not confirm from a primary source |
 
-Claude Code moves fast — the docs are dense with `min-version` notes across 2.1.126–2.1.219.
+Claude Code moves fast - the docs are dense with `min-version` notes across 2.1.126–2.1.219.
 Treat every behaviour below as pinned to the 2.1.21x line.
 
 ---
@@ -43,19 +43,19 @@ Treat every behaviour below as pinned to the 2.1.21x line.
 
 ### 1.1 `AskUserQuestion`
 
-The built-in multiple-choice prompt. It is the *nicest* confirm UI available, and the
-*weakest* guarantee.
+The built-in multiple-choice prompt. It is the nicest confirm UI available, but it
+provides the weakest guarantee.
 
 | Fact | Marker | Source |
 |---|---|---|
 | Asks multiple-choice questions; user answers by picking an option or typing free text via the `Other` row / notes field | documented | [tools-reference § AskUserQuestion](https://code.claude.com/docs/en/tools-reference#askuserquestion-tool-behavior) |
-| `Permission required: No` — the tool itself never goes through the permission engine | documented | [tools-reference tool table](https://code.claude.com/docs/en/tools-reference) |
+| `Permission required: No` - the tool itself never goes through the permission engine | documented | [tools-reference tool table](https://code.claude.com/docs/en/tools-reference) |
 | Questions stay open until answered, unless `askUserQuestionTimeout` is set to `60s` / `5m` / `10m`; default `"never"`. Not read from project or local settings | documented | [tools-reference](https://code.claude.com/docs/en/tools-reference#question-auto-continue-timeout), [settings](https://code.claude.com/docs/en/settings) |
 | On timeout it "submits any options you'd already selected and tells Claude you may be away from your keyboard, so Claude proceeds on its own judgment" | documented | tools-reference |
 | **Removed from every subagent**, "even when listed in the `tools` field" | documented | [sub-agents § Available tools](https://code.claude.com/docs/en/sub-agents#control-subagent-capabilities) |
 | **Absent in `claude -p` / print mode.** The `system/init` tool list on 2.1.219 contains no `AskUserQuestion` | **observed** | experiment E1, §1.6 |
 | Denied in `dontAsk` mode "even if you've allowed them" | documented | [permission-modes § dontAsk](https://code.claude.com/docs/en/permission-modes#allow-only-pre-approved-tools-with-dontask-mode) |
-| Input schema (max questions, max options, multi-select support) | **underspecified** — the docs describe the UX, not the wire schema | — |
+| Input schema (max questions, max options, multi-select support) | **underspecified** - the docs describe the UX, not the wire schema | - |
 
 **Design consequences.**
 
@@ -63,8 +63,8 @@ The built-in multiple-choice prompt. It is the *nicest* confirm UI available, an
    auto-sync wants a question, the asking must happen in the main-loop turn.
 2. `AskUserQuestion` is *model-invoked*. Nothing forces the model to call it, and nothing
    stops the model from proceeding after a timeout or an ambiguous answer. It is an
-   **affordance, not a gate**.
-3. In `-p` mode there is no ask at all — a skill body that says "ask the user, then send"
+   **affordance only, and cannot serve as the gate**.
+3. In `-p` mode there is no ask at all - a skill body that says "ask the user, then send"
    degrades silently into "send" unless something else blocks.
 
 ### 1.2 The permission engine (the strong layer)
@@ -102,8 +102,8 @@ one-time acceptance dialog in interactive mode (none in headless).
 
 Relevant rule syntax for a send channel (documented, [permissions](https://code.claude.com/docs/en/permissions)):
 
-- `WebFetch(domain:aistack.to)` — hostname matching, `*` wildcards, no dot-crossing.
-- `Bash(<prefix> *)` — leading env assignments stripped, each `&&`-subcommand checked,
+- `WebFetch(domain:aistack.to)` - hostname matching, `*` wildcards, no dot-crossing.
+- `Bash(<prefix> *)` - leading env assignments stripped, each `&&`-subcommand checked,
   `$( )` and backtick contents checked; **filters fail open when Bash can't be parsed**.
 - `mcp__<server>` / `mcp__<server>__<tool>` / `mcp__<server>__*`. Allow rules accept a
   tool-name glob *only after a literal `mcp__<server>__` prefix*; an unanchored `mcp__*`
@@ -114,7 +114,7 @@ Relevant rule syntax for a send channel (documented, [permissions](https://code.
 
 A `PreToolUse` hook can return `hookSpecificOutput.permissionDecision` of
 `"deny" | "allow" | "ask" | "defer"` with a `permissionDecisionReason`, or exit 2 to hard-block
-(stdout ignored, stderr becomes the reason). Exit code **1 is non-blocking** — only exit 2
+(stdout ignored, stderr becomes the reason). Exit code **1 is non-blocking** - only exit 2
 blocks (documented, [hooks](https://code.claude.com/docs/en/hooks)).
 
 The precedence rules are the important part (documented, [permissions § Extend permissions with hooks](https://code.claude.com/docs/en/permissions#extend-permissions-with-hooks)):
@@ -129,12 +129,12 @@ The precedence rules are the important part (documented, [permissions § Extend 
 So the ordering is: **hook exit-2 block > deny rules > ask rules > hook allow > allow rules
 > mode default.**
 
-Can a hook *force a prompt the user must answer*? Yes in interactive mode — `permissionDecision: "ask"`
+Can a hook *force a prompt the user must answer*? Yes in interactive mode - `permissionDecision: "ask"`
 routes into the permission flow. **Observed (E3, §1.6): under `--permission-mode bypassPermissions`
 in headless, a `PreToolUse` hook returning `"ask"` prevented the Bash call from running and
 the call was recorded in `permission_denials`.** That means the hook's `ask` is honoured over
 bypass mode. Whether it renders as an interactive prompt (rather than a deny) in an
-*interactive* bypass session is **unverified** — headless has no human, so an `ask` can only
+*interactive* bypass session is **unverified** - headless has no human, so an `ask` can only
 resolve as a denial there.
 
 Hooks a plugin ships: `hooks/hooks.json` in the plugin root, or inline in `plugin.json`
@@ -142,9 +142,9 @@ Hooks a plugin ships: `hooks/hooks.json` in the plugin root, or inline in `plugi
 Skills can also declare hooks in frontmatter, scoped to the skill's lifecycle, with `once: true`
 supported *only* in skill frontmatter (documented, [hooks § Hooks in skills and agents](https://code.claude.com/docs/en/hooks)).
 
-### 1.4 MCP `requiresUserInteraction` — the strongest in-harness gate
+### 1.4 MCP `requiresUserInteraction` - the strongest in-harness gate
 
-This is the single most load-bearing finding for the approve gate.
+This is the single most important finding for the approve gate.
 
 An MCP server marks a tool in its `tools/list` entry:
 
@@ -178,22 +178,22 @@ requires **v2.1.199+**; earlier versions silently ignore it):
 The one documented hole: **the Agent SDK's `canUseTool` callback does receive these calls
 and can approve them**, "because your SDK application is expected to show them to a user."
 So an SDK host embedding Claude Code can still auto-approve. This is a real but narrow
-escape hatch — it requires someone to write an SDK app around auto-sync.
+escape hatch - it requires someone to write an SDK app around auto-sync.
 
 The value must be the JSON boolean `true`; any other value is ignored.
 
-### 1.5 Terminal fallbacks — there are none
+### 1.5 Terminal fallbacks - there are none
 
 | Fact | Marker |
 |---|---|
 | Hooks: "On macOS and Linux, command hooks run in their own session without a controlling terminal as of v2.1.139. The hook process and any child processes can't open `/dev/tty` or send escape sequences directly to the Claude Code interface. Windows has no `/dev/tty`." | documented ([hooks](https://code.claude.com/docs/en/hooks)) |
-| A hook's only channels back to the human are `systemMessage` (a warning line) and `terminalSequence` (OSC 0/1/2/9/99/777 + BEL only — bell, window title, desktop notification) | documented |
+| A hook's only channels back to the human are `systemMessage` (a warning line) and `terminalSequence` (OSC 0/1/2/9/99/777 + BEL only - bell, window title, desktop notification) | documented |
 | **Bash tool calls have no TTY either**: `test -t 0` and `test -t 1` both false; `exec 3<>/dev/tty` fails with `no such device or address`; stdin reads EOF immediately | **observed** (E4, §1.6) |
 | Hook JSON output strings are capped at 10,000 chars; `additionalContext` same cap | documented |
 
 **A bundled CLI launched via the Bash tool therefore cannot prompt interactively.** Any
 `readline`, `inquirer`, `read -p`, or `/dev/tty` confirm inside it will either hang until the
-600 s hook/tool timeout or read EOF and fall through — the classic "EOF means yes" bug. This
+600 s hook/tool timeout or read EOF and fall through - the classic "EOF means yes" bug. This
 rules out the obvious "our CLI asks for confirmation" design *inside a Claude Code session*.
 
 The only truly out-of-band confirm is the user running the CLI **themselves, in their own
@@ -201,31 +201,31 @@ terminal**, outside Claude Code.
 
 ### 1.6 Experiments run (all on Claude Code 2.1.219, this machine, 2026-07-24)
 
-**E1 — is `AskUserQuestion` available in `-p`?** No.
+**E1 - is `AskUserQuestion` available in `-p`?** No.
 `claude -p "say hi" --output-format stream-json --verbose --setting-sources ""` → the
 `system/init` event's `tools` array was:
 `Task, Bash, CronCreate, CronDelete, CronList, DesignSync, Edit, EnterWorktree, ExitWorktree,
 Monitor, NotebookEdit, PushNotification, Read, RemoteTrigger, ReportFindings, ScheduleWakeup,
 SendMessage, Skill, TaskCreate, TaskGet, TaskList, TaskOutput, TaskStop, TaskUpdate, ToolSearch,
-WebFetch, WebSearch, Workflow, Write` — no `AskUserQuestion`, no `EnterPlanMode`/`ExitPlanMode`.
+WebFetch, WebSearch, Workflow, Write` - no `AskUserQuestion`, no `EnterPlanMode`/`ExitPlanMode`.
 A direct instruction to call it produced: *"I don't have the AskUserQuestion tool available in
 this session."*
 
-**E2 — does an explicit `ask` rule survive `bypassPermissions` in headless?** Yes, as a denial.
+**E2 - does an explicit `ask` rule survive `bypassPermissions` in headless?** Yes, as a denial.
 `claude -p "Run exactly: echo hello-gate" --permission-mode bypassPermissions --settings
 '{"permissions":{"ask":["Bash"]}}'` → command not run; `permission_denials` contained the
 Bash call.
 
-**E3 — does a `PreToolUse` hook returning `permissionDecision:"ask"` survive `bypassPermissions`
+**E3 - does a `PreToolUse` hook returning `permissionDecision:"ask"` survive `bypassPermissions`
 in headless?** Yes, as a denial. Same shape as E2, with a hook script emitting
 `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"gate test"}}`
 → command not run, recorded in `permission_denials`.
 
-**E4 — TTY availability inside a Bash tool call.** See §1.5.
+**E4 - TTY availability inside a Bash tool call.** See §1.5.
 
-**E5 — real `SessionEnd` / `Stop` payloads.** See §4.2.
+**E5 - real `SessionEnd` / `Stop` payloads.** See §4.2.
 
-### 1.7 Where the guarantee lives — threat enumeration
+### 1.7 Where the guarantee lives - threat enumeration
 
 Enumerating the ways a well-meaning-but-confused agent could send without a human "yes",
 and what actually forecloses each:
@@ -238,27 +238,27 @@ and what actually forecloses each:
 | 4 | User is in `auto` or `acceptEdits` mode; the send is "just another Bash/WebFetch call" | `requiresUserInteraction`, or an explicit `ask` rule. Allow rules and mode defaults do **not** hold. |
 | 5 | User runs `--dangerously-skip-permissions` / `bypassPermissions` | `requiresUserInteraction` (documented) and explicit `ask` rules (documented + observed E2); a `PreToolUse` `ask` also held (observed E3). A plain deny/allow-rule design does not hold. |
 | 6 | Auto-sync is invoked headlessly (`claude -p`, CI, a scheduled task) | `requiresUserInteraction` → denied. `ask` rule → denied (E2). `AskUserQuestion` → not even present (E1). All three fail *closed*, which is the correct direction. |
-| 7 | Skill declares `allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/publish.sh *)` and the send runs with no prompt at all | Nothing — this is a self-inflicted wound. **Do not put the send command in `allowed-tools`.** See §3.2. |
+| 7 | Skill declares `allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/publish.sh *)` and the send runs with no prompt at all | Nothing; this failure is self-inflicted. **Do not put the send command in `allowed-tools`.** See §3.2. |
 | 8 | User `dontAsk` mode | Everything interactive is denied. Fails closed. |
 | 9 | Someone embeds auto-sync in an Agent SDK app and auto-approves via `canUseTool` | Nothing in Claude Code. Documented escape hatch for `requiresUserInteraction`. |
-| 10 | Prompt injection from repo content steers the model into sending | Same as #1 — the gate must be on the action, not in the prompt. |
+| 10 | Prompt injection from repo content steers the model into sending | Same as #1 - the gate must be on the action, not in the prompt. |
 
 **Verdict for the grilling.** The guarantee ladder, weakest to strongest:
 
-1. *Skill prose telling the model to ask* — no guarantee. Fails #1, #2, #3, #4, #5, #6, #10.
-2. *`AskUserQuestion`* — a good UI, no guarantee. Fails #1–#3, #6.
-3. *A `PreToolUse` hook* — real, but the hook is itself user-installable config that can be
+1. *Skill prose telling the model to ask* - no guarantee. Fails #1, #2, #3, #4, #5, #6, #10.
+2. *`AskUserQuestion`* - a good UI, no guarantee. Fails #1–#3, #6.
+3. *A `PreToolUse` hook* - real, but the hook is itself user-installable config that can be
    disabled (`disableAllHooks`, `--bare`, `--safe-mode`, no plugin enabled). Holds #4/#5 when
    present (E3).
-4. *Permission `ask` rule on the send action* — strong, survives bypass (E2), but lives in the
+4. *Permission `ask` rule on the send action* - strong, survives bypass (E2), but lives in the
    user's settings and can be edited away by the user (or by an agent with `.claude` write
-   access — though `.claude` is a protected path in every mode except `bypassPermissions`).
-5. *MCP tool marked `requiresUserInteraction`* — **strongest in-harness option**. The guarantee
-   ships with *our* server, not with the user's config; it cannot be allow-ruled away, survives
+   access - though `.claude` is a protected path in every mode except `bypassPermissions`).
+5. *MCP tool marked `requiresUserInteraction`* - **strongest in-harness option**. The guarantee
+   ships with *our* server rather than with the user's config; it cannot be allow-ruled away, survives
    every permission mode, and fails closed in headless. Only the Agent-SDK `canUseTool` path
    bypasses it.
-6. *A separate out-of-band step the user runs in their own terminal* — strongest overall,
-   because the confirm happens outside the agent loop entirely. Costs the most UX.
+6. *A separate out-of-band step the user runs in their own terminal* - strongest overall,
+   because the confirm happens outside the agent loop entirely. It costs the most UX.
 
 Note that 5 and 6 are not exclusive: an MCP `publish_metrics` tool marked
 `requiresUserInteraction` gives an in-session, human-answered prompt whose text we control,
@@ -283,7 +283,7 @@ which is very close to 6's guarantee with 2's ergonomics.
 | Where *server config* rests | Local & user scope → `~/.claude.json`; project scope → `.mcp.json` in the repo root (prompts for approval; reset with `claude mcp reset-project-choices`). |
 | Tool naming | `mcp__<server>__<tool>`; plugin-bundled servers become `mcp__plugin_<plugin-name>_<server-name>__<tool>` and hooks/`if` matchers must use that scoped form. |
 
-**Plugin `userConfig`** — a first-class secret prompt, and an under-appreciated option
+**Plugin `userConfig`** - a first-class secret prompt, and an under-appreciated option
 (documented, [plugins-reference § User configuration](https://code.claude.com/docs/en/plugins-reference)):
 
 ```json
@@ -295,7 +295,7 @@ which is very close to 6's guarantee with 2's ergonomics.
 - Claude Code prompts the user for these values when the plugin is enabled.
 - `sensitive: true` masks input and stores the value in the **macOS Keychain, or
   `~/.claude/.credentials.json`** where no keychain exists. Shared ~2 KB budget with OAuth
-  tokens — keep tokens short.
+  tokens - keep tokens short.
 - Substitutable as `${user_config.KEY}` in MCP/LSP configs and hook commands; exported to
   hook processes as `CLAUDE_PLUGIN_OPTION_<KEY>`.
 - **Shell-form hook commands, monitor commands, and `headersHelper` reject `${user_config.*}`**
@@ -305,7 +305,7 @@ which is very close to 6's guarantee with 2's ergonomics.
 - Non-sensitive values land in `settings.json` under `pluginConfigs[<plugin-id>].options`
   (user settings only from v2.1.207).
 
-### 2.2 The existing aistack precedent — a working device-code flow
+### 2.2 The existing aistack precedent - a working device-code flow
 
 **This already exists and works.** It is a textbook OAuth-style device-authorization flow.
 
@@ -364,7 +364,7 @@ cliTokens:   { token, userId, name?, createdAt, expiresAt, lastUsedAt }
 ```
 
 `cliTokens.listByUser` (`:24-53`) is a public query returning the caller's tokens
-**without the token value** — a revocation UI can be built on it, though no revoke mutation
+**without the token value** - a revocation UI can be built on it, though no revoke mutation
 exists yet.
 
 **Assessment for the grilling.**
@@ -377,14 +377,14 @@ Gaps to name before extending it:
 - **Tokens are stored in plaintext** in the `cliTokens` table (`token: v.string()` with a
   `by_token` index). A DB read discloses live credentials. Hashing would break the index
   lookup as written.
-- **No revoke mutation** — `listByUser` exists, delete does not.
+- **No revoke mutation** - `listByUser` exists, delete does not.
 - **No scopes.** A token minted for "collect resources" would also authorize a future
   "publish metrics" endpoint unless scopes are added.
 - **No rate limiting** on `/api/cli/*`. Contrast with `/api/stacks/{slug}`, which has the
   hand-rolled `apiRateLimits` fixed-window limiter. `authStart` is unauthenticated and mints
   a DB row per call.
 - **One stack per creator is assumed** (`getFirstStackByCreator`) and unenforced.
-- `authPoll` mints the token on *poll*, not on approve — so the token exists only after the
+- `authPoll` mints the token on *poll*, not on approve - so the token exists only after the
   CLI polls. Fine, but it means a stale `secretId` is the only thing standing between an
   approved session and a token; the `secretId` is a UUID, unguessable, and the session row is
   deleted on issue.
@@ -393,9 +393,9 @@ Gaps to name before extending it:
 
 | Approach | Headless? | Steps for user | Where the secret rests | Revocable? | Notes |
 |---|---|---|---|---|---|
-| Device-code (what we have) | Auth step needs a browser once; subsequent sends fully headless | 1 (open URL, click approve) | our choice — currently the CLI's problem | server-side, needs a mutation | Already built. |
+| Device-code (what we have) | Auth step needs a browser once; subsequent sends fully headless | 1 (open URL, click approve) | our choice - currently the CLI's problem | server-side, needs a mutation | Already built. |
 | PAT pasted once | Yes, after the paste | 2 (generate on site, paste) | wherever the CLI writes it | trivially (delete row) | Simplest; user friction is a page visit + copy. |
-| Plugin `userConfig` `sensitive: true` | Yes | 1 (type into the plugin dialog at enable time) | **OS keychain, or `~/.claude/.credentials.json`** — managed by Claude Code, ~2 KB shared budget | server-side | The only option where *Claude Code stores the secret for us*. Pairs naturally with a PAT. |
+| Plugin `userConfig` `sensitive: true` | Yes | 1 (type into the plugin dialog at enable time) | **OS keychain, or `~/.claude/.credentials.json`** - managed by Claude Code, ~2 KB shared budget | server-side | The only option where *Claude Code stores the secret for us*. Pairs naturally with a PAT. |
 | MCP OAuth (DCR) | Login needs an interactive terminal or browser; sends headless after | 1 (`/mcp` or `claude mcp login`) | Claude Code's credential store, auto-refreshed | `claude mcp logout` + server-side | Most "native", most implementation work (we'd have to run an OAuth AS). |
 | `headersHelper` script | Yes | depends | our file | our problem | Useful if we already have a token file; 10 s budget, shell-executed, and can't read `${user_config.*}`. |
 | Env var (`${API_KEY}` in `.mcp.json`) | Yes | user edits shell profile | shell rc / process env | our problem | Leaks into every subprocess and into `ps`-visible environments. Weakest. |
@@ -403,7 +403,7 @@ Gaps to name before extending it:
 | OS keychain via `keytar` | Yes | 1 paste | OS keychain | our problem | Native module, install friction, no first-party support in Claude Code. |
 
 **Privacy note that applies to all of them:** none of these leak anything by themselves. The
-leak risk is in the *payload* and in what the transport sees — see §5.
+leak risk is in the *payload* and in what the transport sees - see §5.
 
 ---
 
@@ -429,9 +429,9 @@ Two more facts that matter for auto-sync:
   loads as a plugin named `<name>@skills-dir`, so it can bundle agents, hooks, and MCP
   servers." (documented, skills). `claude plugin init|new <name>` "Scaffold a new plugin at
   `~/.claude/skills/<name>/` (auto-loads next session as `<name>@skills-dir`)" (observed,
-  `claude plugin --help`). **This is the first-party blessed way to write into `~/.claude`.**
+  `claude plugin --help`). **This is the first-party sanctioned way to write into `~/.claude`.**
 - **Cowork / cloud / routines don't read `~/.claude/skills/`** (documented, skills). A
-  personal-skill install is invisible to scheduled cloud runs — irrelevant for a
+  personal-skill install is invisible to scheduled cloud runs - irrelevant for a
   local-transcript analyzer, but worth knowing.
 
 ### 3.2 Frontmatter that matters for a shipped skill
@@ -440,7 +440,7 @@ From the [frontmatter reference](https://code.claude.com/docs/en/skills#frontmat
 
 | Field | Why it matters here |
 |---|---|
-| `name` | In a **personal/project** skill this is only a display label — the command comes from the directory name. In a **plugin** skill it replaces the last segment: `my-plugin/skills/review` with `name: fancy` → `/my-plugin:fancy` (v2.1.216+ keeps the prefix). |
+| `name` | In a **personal/project** skill this is only a display label - the command comes from the directory name. In a **plugin** skill it replaces the last segment: `my-plugin/skills/review` with `name: fancy` → `/my-plugin:fancy` (v2.1.216+ keeps the prefix). |
 | `description` (+ `when_to_use`) | Combined text truncated at **1,536 chars** in the skill listing. |
 | `disable-model-invocation: true` | **Only the user can invoke it.** Docs explicitly recommend it "for workflows with side effects… like `/commit`, `/deploy`, or `/send-slack-message`. You don't want Claude deciding to deploy because your code looks ready." Also removes the description from Claude's context and blocks Skill-tool invocation, scheduled-task firing (v2.1.196+), and subagent preloading. **This is a genuine gate primitive: the user typing `/aistack:sync` is a human action.** |
 | `allowed-tools` | Grants tools **without prompting** for the turn that invokes the skill; clears on the next user message. `${CLAUDE_SKILL_DIR}` and `${CLAUDE_PROJECT_DIR}` are substituted here *and* in the body (v2.1.129+), so `allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/x.sh *)` runs a bundled script with **no prompt**. Convenient for the *scan* step; a footgun for the *send* step (threat #7). |
@@ -449,7 +449,7 @@ From the [frontmatter reference](https://code.claude.com/docs/en/skills#frontmat
 | `hooks` | Skill-scoped hooks, cleaned up when the skill finishes; `once: true` honoured only here. |
 | `model`, `effort`, `paths`, `user-invocable`, `argument-hint`, `arguments` | Ancillary. |
 
-**Bundled scripts**: yes — a skill directory can hold `scripts/`, and the docs' own examples
+**Bundled scripts**: yes - a skill directory can hold `scripts/`, and the docs' own examples
 run them (`allowed-tools: Bash(python3 *)`, `${CLAUDE_SKILL_DIR}/scripts/render.sh`). Skill
 content lifecycle note: the rendered `SKILL.md` "enters the conversation as a single message
 and stays there for the rest of the session… Claude Code does not re-read the skill file on
@@ -457,16 +457,16 @@ later turns."
 
 ### 3.3 Plugin + marketplace
 
-Plugin manifest `.claude-plugin/plugin.json` — **optional**; only `name` is required if
+Plugin manifest `.claude-plugin/plugin.json` - **optional**; only `name` is required if
 present; unrecognized top-level fields are ignored (so one file can double as a
 `package.json`). Component paths: `skills`, `commands`, `agents`, `hooks`, `mcpServers`,
 `outputStyles`, `lspServers`, `experimental`, `dependencies`, `userConfig`, `channels`
 (documented, [plugins-reference](https://code.claude.com/docs/en/plugins-reference)).
 
 A plugin can bundle **skills + hooks + MCP servers + commands + agents + LSP + monitors +
-themes** — i.e. everything auto-sync could want in one installable unit.
+themes** - i.e. everything auto-sync could want in one installable unit.
 
-Marketplace `.claude-plugin/marketplace.json` — required `name`, `owner`, `plugins[]`; each
+Marketplace `.claude-plugin/marketplace.json` - required `name`, `owner`, `plugins[]`; each
 plugin entry needs `name` + `source` and may carry any manifest field plus `category`, `tags`,
 `strict`, `relevance`, `displayName`, `defaultEnabled`, `version`. Sources: `github`
 (`owner/repo` + `ref`/`sha`), `git`, `git-subdir`, `url`, `npm` (`package`/`version`/`registry`),
@@ -484,7 +484,7 @@ claude plugin install aistack@aistack-plugins --scope user   # non-interactive
 
 Team/auto path: `extraKnownMarketplaces` + `enabledPlugins` in `.claude/settings.json`; from
 v2.1.195 an externally-sourced plugin that only project settings enable **doesn't load until
-the member runs `claude plugin install`** — Claude Code prints the command.
+the member runs `claude plugin install`** - Claude Code prints the command.
 
 (observed) On this machine `~/.claude/plugins/` holds `known_marketplaces.json`,
 `installed_plugins.json` (records `installPath`, `version`, `installedAt`, `lastUpdated`,
@@ -494,7 +494,7 @@ the member runs `claude plugin install`** — Claude Code prints the command.
 
 ### 3.4 An `npx`-style installer
 
-**No first-party guidance for or against was found** in the docs (unverified — searched
+**No first-party guidance for or against was found** in the docs (unverified - searched
 skills, plugins, plugins-reference, plugin-marketplaces, setup). What such an installer would
 have to do: create `~/.claude/skills/<name>/` (or a plugin dir), write `SKILL.md` + scripts,
 optionally register an MCP server (better done via `claude mcp add-json` than by hand-editing
@@ -503,7 +503,7 @@ optionally register an MCP server (better done via `claude mcp add-json` than by
 Two things push against hand-rolling it:
 
 - `claude plugin init` already scaffolds into `~/.claude/skills/<name>/` and auto-loads it as
-  `<name>@skills-dir` (observed) — the first-party motion exists.
+  `<name>@skills-dir` (observed) - the first-party motion exists.
 - An npx installer gets **no update story for free** (§3.5) and no `/plugin` inventory,
   context-cost estimate, or "Will install" review pane.
 
@@ -519,7 +519,7 @@ visible. An installer the *user* runs in their own shell sidesteps that; an inst
 |---|---|---|---|
 | Personal skill copied to `~/.claude/skills/` | Only if the user re-copies | **No** | none |
 | Project skill in `.claude/skills/` | `git pull` | With the repo | git |
-| Skills-dir plugin (`<name>@skills-dir`) | Local dir — no upstream | **No** | none |
+| Skills-dir plugin (`<name>@skills-dir`) | Local dir - no upstream | **No** | none |
 | Plugin from a marketplace | `/plugin update`, or background auto-update | **Yes, if enabled** | `version` in `plugin.json` → marketplace entry `version` → git SHA → `unknown` |
 | npm-sourced plugin | `claude plugin update` | same as above | `version` / semver range in the source; resolves to `unknown` for cache purposes |
 | npx installer | user re-runs `npx` | **No** | npm dist-tag |
@@ -535,13 +535,13 @@ Auto-update specifics (documented, [discover-plugins § Configure auto-updates](
 - `DISABLE_AUTOUPDATER` kills both Claude Code and plugin updates; `FORCE_AUTOUPDATE_PLUGINS=1`
   keeps plugin updates alive alongside it.
 - Private-repo background pulls disable git credential helpers by default and fall back to a
-  re-clone — flaky. Irrelevant if our marketplace is public.
+  re-clone - flaky. Irrelevant if our marketplace is public.
 
 **Version pinning trap** (documented, [plugin-marketplaces § Version resolution](https://code.claude.com/docs/en/plugin-marketplaces#version-resolution-and-release-channels)):
 if `plugin.json` declares `"version": "1.0.0"` and we push commits without bumping it,
 existing users get nothing and `/plugin update` says "already at the latest version". Either
-bump religiously or omit `version` entirely so the commit SHA is the version. Never set
-`version` in both `plugin.json` and the marketplace entry — `plugin.json` silently wins.
+bump it on every release or omit `version` entirely so the commit SHA is the version. Never set
+`version` in both `plugin.json` and the marketplace entry - `plugin.json` silently wins.
 
 ---
 
@@ -553,19 +553,19 @@ There are ~30 hook events. The ones relevant to "analyze at session end, approve
 
 | Event | Fires | Can block? | Can inject context to the model? | Can reach the user? |
 |---|---|---|---|---|
-| `SessionStart` | session begins/resumes; matchers `startup\|resume\|clear\|compact\|fork` | **No** | **Yes** — `additionalContext` (≤10,000 chars), also `initialUserMessage` (applies in `-p`), `sessionTitle` | `systemMessage`, `terminalSequence` |
-| `SessionEnd` | session terminates; matchers `clear\|resume\|logout\|prompt_input_exit\|bypass_permissions_disabled\|other` | **No** — "No decision control. Used for side effects like logging or cleanup." | **No** | user only (a hook-error notice; `systemMessage`) |
-| `Stop` | Claude finishes responding | **Yes** (`decision: "block"` + `reason`) | **Yes** — `additionalContext` | yes |
+| `SessionStart` | session begins/resumes; matchers `startup\|resume\|clear\|compact\|fork` | **No** | **Yes** - `additionalContext` (≤10,000 chars), also `initialUserMessage` (applies in `-p`), `sessionTitle` | `systemMessage`, `terminalSequence` |
+| `SessionEnd` | session terminates; matchers `clear\|resume\|logout\|prompt_input_exit\|bypass_permissions_disabled\|other` | **No** - "No decision control. Used for side effects like logging or cleanup." | **No** | user only (a hook-error notice; `systemMessage`) |
+| `Stop` | Claude finishes responding | **Yes** (`decision: "block"` + `reason`) | **Yes** - `additionalContext` | yes |
 | `SubagentStop` | subagent finishes | **Yes** | **Yes** | yes |
 | `UserPromptSubmit` | before Claude processes a prompt | **Yes** | **Yes** | yes |
 | `PreToolUse` | before a tool call | **Yes** (+ `permissionDecision`, `updatedInput`) | **Yes** | yes |
 | `PostToolUse` | after a tool succeeds | No (has `decision: "block"` for feedback) | **Yes** (+ `updatedToolOutput`) | yes |
-| `PreCompact` / `PostCompact` | around compaction | Pre: yes / Post: no | — | yes |
+| `PreCompact` / `PostCompact` | around compaction | Pre: yes / Post: no | - | yes |
 | `Notification` | Claude Code sends a notification | **No** | No | logging only |
 
 Source: [hooks](https://code.claude.com/docs/en/hooks).
 
-### 4.2 `SessionEnd` — observed payload
+### 4.2 `SessionEnd` - observed payload
 
 Captured on this machine (E5, Claude Code 2.1.219, headless `claude -p` run):
 
@@ -592,11 +592,11 @@ The paired `Stop` payload from the same run, for contrast:
 ```
 
 Two things to notice. `SessionEnd` gets **no** `permission_mode`, and `reason` was `"other"`
-for a normal headless completion — the documented value set is
+for a normal headless completion - the documented value set is
 `clear | resume | logout | prompt_input_exit | bypass_permissions_disabled | other`, so
 "the session simply finished" has no dedicated value. And **both payloads hand the hook an
 absolute `cwd` and an absolute `transcript_path`** whose parent directory is the munged
-project path — see §5.
+project path - see §5.
 
 ### 4.3 Can a `SessionEnd` hook be interactive? No.
 
@@ -609,7 +609,7 @@ project path — see §5.
 **Therefore the realistic "analyze at end, approve later" shape is:**
 
 1. `SessionEnd` hook (or, better, an `async` hook so it doesn't hold session teardown) runs
-   the local analyzer and **writes a pending draft to disk** — e.g.
+   the local analyzer and **writes a pending draft to disk** - e.g.
    `${CLAUDE_PLUGIN_DATA}/pending-sync.json`. Zero network.
 2. Next `SessionStart`, a hook reads the draft and returns
    `hookSpecificOutput.additionalContext` (≤10,000 chars) saying "an auto-sync draft is
@@ -631,7 +631,7 @@ user isn't waiting.
 | Environment | inherits Claude Code's environment; exports `CLAUDE_PROJECT_DIR`, `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`, `CLAUDE_EFFORT`, `CLAUDE_CODE_REMOTE` (remote only), `CLAUDE_PLUGIN_OPTION_<KEY>`. **"Claude Code strips `OTEL_*` exporter variables from all subprocess spawns"** | documented |
 | Headless | Hooks run in `-p` unless `--bare` (skips hooks/skills/plugins/MCP/CLAUDE.md), `--safe-mode`, or `disableAllHooks`. `SessionEnd` explicitly runs on SIGTERM: "Claude Code aborts the in-progress turn, terminates the process tree of any running Bash command, runs `SessionEnd` hooks, and exits with code 143" | documented ([headless](https://code.claude.com/docs/en/headless)) |
 | Background / detach | `async: true` runs in the background without blocking; `asyncRewake: true` additionally wakes Claude on exit 2 | documented |
-| **Do async hooks outlive the session?** | The docs do not say. Related: a background *Bash task* in `-p` is "terminated about five seconds after Claude has returned its final result and stdin has closed", and SIGTERM "terminates the process tree of any running Bash command" — which suggests process-tree teardown, but says nothing about async hooks specifically | **unverified** — needs a spike |
+| **Do async hooks outlive the session?** | The docs do not say. Related: a background *Bash task* in `-p` is "terminated about five seconds after Claude has returned its final result and stdin has closed", and SIGTERM "terminates the process tree of any running Bash command" - which suggests process-tree teardown, but says nothing about async hooks specifically | **unverified** - needs a spike |
 | Exec form vs shell form | With `args` present the command is resolved as an executable and spawned with no shell (no globbing, no re-parsing). Recommended for `${CLAUDE_PLUGIN_ROOT}` paths | documented |
 | Output cap | Hook JSON output strings capped at 10,000 chars; excess written to a file with a preview | documented |
 
@@ -651,7 +651,7 @@ managed `disableAllHooks` disables everything). Enterprise `allowManagedHooksOnl
 blocks user, project and plugin hooks except plugins force-enabled via managed `enabledPlugins`.
 
 **On the "snapshot at startup" behaviour**: the current docs say the opposite of the older
-folklore — *"Direct edits to hooks in settings files are normally picked up automatically by
+folklore - *"Direct edits to hooks in settings files are normally picked up automatically by
 the file watcher."* There is no snapshot-at-startup statement on the 2026-07-24 hooks page
 (documented; flagging because a design that relies on "hooks are frozen at startup, so they
 can't be tampered with mid-session" would be **wrong**). The `ConfigChange` hook exists
@@ -672,15 +672,15 @@ leave the machine". Here is where a naive implementation would break it.
 
 | Mechanism | What it incidentally exposes | Severity |
 |---|---|---|
-| **Hook input JSON** | Every hook (including `SessionEnd`) receives `cwd` (absolute path) and `transcript_path` (absolute path whose parent dir is the munged project path, e.g. `-home-alp-dev-projects-aistack-aistack-web`) — **observed**, §4.2. A hook that POSTs its own stdin anywhere ships the user's directory tree and repo name. | **High** — the single easiest way to violate the constraint. A `type: "http"` hook pointed at our backend would do it by construction. |
-| **`type: "http"` hooks** | POSTs the *entire event JSON* to a URL. For `PostToolUse` that includes `tool_input` and tool results. | **High** — do not use HTTP hooks for anything that touches our servers. |
-| **MCP servers** | See the full `input` of every tool call routed to them, plus `roots/list` returns the session's working directories. A remote MCP server we host therefore learns paths unless we design the tool schema to accept **only** the aggregate. | **Medium** — controllable: define the publish tool's input as a closed aggregate schema with no free-form fields, and validate server-side. |
-| **`stdio` MCP server (local process)** | Sees the same inputs, but never leaves the machine; it decides what to send. | **Low** — this is the privacy-preferable MCP shape. |
+| **Hook input JSON** | Every hook (including `SessionEnd`) receives `cwd` (absolute path) and `transcript_path` (absolute path whose parent dir is the munged project path, e.g. `-home-alp-dev-projects-aistack-aistack-web`) - **observed**, §4.2. A hook that POSTs its own stdin anywhere ships the user's directory tree and repo name. | **High** - the single easiest way to violate the constraint. A `type: "http"` hook pointed at our backend would do it by construction. |
+| **`type: "http"` hooks** | POSTs the *entire event JSON* to a URL. For `PostToolUse` that includes `tool_input` and tool results. | **High** - do not use HTTP hooks for anything that touches our servers. |
+| **MCP servers** | See the full `input` of every tool call routed to them, plus `roots/list` returns the session's working directories. A remote MCP server we host therefore learns paths unless we design the tool schema to accept **only** the aggregate. | **Medium** - controllable: define the publish tool's input as a closed aggregate schema with no free-form fields, and validate server-side. |
+| **`stdio` MCP server (local process)** | Sees the same inputs, but never leaves the machine; it decides what to send. | **Low** - this is the privacy-preferable MCP shape. |
 | **`headersHelper`** | Runs a shell command from the session cwd on every connection. Doesn't transmit anything itself. | Low |
-| **The transcripts themselves** | `~/.claude/projects/<munged-abs-path>/*.jsonl` contain `cwd`, `gitBranch`, prompt text, and tool inputs; `~/.claude/history.jsonl` contains raw prompt text in `display`. The analyzer must read these and publish **only** derived counts. | **High** — the core of the feature; covered in `docs/research/claude-code-transcripts-2026-07.md`. |
-| **Tool/skill/MCP-server names** | User-chosen strings that can encode client or project names (`mcp__acme-internal__…`, `/deploy-bigcorp`). Publishing an inventory of names is a leak vector even though no path is involved. | **Medium** — needs an allowlist against aistack's catalog or per-name approval. |
+| **The transcripts themselves** | `~/.claude/projects/<munged-abs-path>/*.jsonl` contain `cwd`, `gitBranch`, prompt text, and tool inputs; `~/.claude/history.jsonl` contains raw prompt text in `display`. The analyzer must read these and publish **only** derived counts. | **High** - the core of the feature; covered in `docs/research/claude-code-transcripts-2026-07.md`. |
+| **Tool/skill/MCP-server names** | User-chosen strings that can encode client or project names (`mcp__acme-internal__…`, `/deploy-bigcorp`). Publishing an inventory of names is a leak vector even though no path is involved. | **Medium** - needs an allowlist against aistack's catalog or per-name approval. |
 | **Project count vs project names** | Count is safe; the munged directory names are absolute paths. | Publish counts only. |
-| **OpenTelemetry** | If the user has `CLAUDE_CODE_ENABLE_TELEMETRY=1`, Claude Code exports metrics/events to *their* collector, not ours. `OTEL_LOG_USER_PROMPTS`, `OTEL_LOG_TOOL_DETAILS`, `OTEL_LOG_TOOL_CONTENT`, `OTEL_LOG_RAW_API_BODIES` are all **off by default** and redact to `<REDACTED>`. Attributes include `user.email`, `user.account_uuid`, `organization.id`, and `workspace.host_paths`. Claude Code **strips `OTEL_*` from subprocess spawns**, so our scripts can't accidentally inherit an exporter endpoint. | Not our transport; noted so nobody proposes reading OTEL as a metrics source — it would be a *bigger* privacy surface, not a smaller one. |
+| **OpenTelemetry** | If the user has `CLAUDE_CODE_ENABLE_TELEMETRY=1`, Claude Code exports metrics/events to *their* collector, not ours. `OTEL_LOG_USER_PROMPTS`, `OTEL_LOG_TOOL_DETAILS`, `OTEL_LOG_TOOL_CONTENT`, `OTEL_LOG_RAW_API_BODIES` are all **off by default** and redact to `<REDACTED>`. Attributes include `user.email`, `user.account_uuid`, `organization.id`, and `workspace.host_paths`. Claude Code **strips `OTEL_*` from subprocess spawns**, so our scripts can't accidentally inherit an exporter endpoint. | Not our transport; noted so nobody proposes reading OTEL as a metrics source - it would be a *bigger* privacy surface. |
 | **`--debug` / `--debug-file`** | Writes debug logs including hook and MCP traffic to disk. | Local only. |
 | **Plugin `userConfig` non-sensitive values** | Land in `settings.json` in plaintext. Anything secret must set `sensitive: true`. | Low if used correctly. |
 
@@ -705,7 +705,7 @@ tool posts to our backend. Auth via OAuth (DCR) or a `${user_config.token}` bear
 ### B. Local stdio MCP server (bundled in the plugin) with the same marker
 
 Same gate. The server is a local process we ship; it reads transcripts and does the HTTPS call
-itself. Nothing about the tool input crosses the wire — only the server's own request does.
+itself. Nothing about the tool input crosses the wire - only the server's own request does.
 
 ### C. Bundled CLI called via the Bash tool
 
@@ -724,11 +724,11 @@ this", or to writing the draft file.
 
 | Axis | A. Remote MCP | B. Local stdio MCP | C. Bundled CLI via Bash | D. HTTP/WebFetch | E. Out-of-band |
 |---|---|---|---|---|---|
-| **Approve guarantee** | **Strongest in-harness.** Survives `bypassPermissions`, `auto`, `acceptEdits`; allow rules can't skip it; fails closed in `dontAsk` and headless. Ships with *our* server, not the user's config. Hole: Agent SDK `canUseTool`. | Same as A (the marker is a server-side `tools/list` property, transport-independent) | Medium. Depends on an `ask` rule or hook the *user* has installed and hasn't disabled; `--bare`/`--safe-mode`/`disableAllHooks` remove hooks. An `allow` rule or `allowed-tools` entry silently defeats it. | Weakest. Same dependency as C, plus `WebFetch` prompts are easy to blanket-allow. | **Strongest overall** — the confirm is outside the agent loop entirely |
-| **Auth effort** | Highest — we'd host an OAuth AS, or accept a header token via `userConfig` | Medium — server reads a token from `userConfig` env / token file | Low — reuse the existing device-code flow verbatim (§2.2) | Low–medium — token must reach the script/headers | Low — reuse device-code flow |
-| **Install / update friction** | `claude mcp add` or plugin-bundled `.mcp.json`; plugin auto-update works but is **off by default for third-party marketplaces** | Same, plus a runtime dependency (node/binary) shipped in the plugin; `${CLAUDE_PLUGIN_DATA}` for deps | Skill or plugin; a binary to build/ship per platform | Lightest — a skill + a script | User must remember to run it; no discovery |
+| **Approve guarantee** | **Strongest in-harness.** Survives `bypassPermissions`, `auto`, `acceptEdits`; allow rules can't skip it; fails closed in `dontAsk` and headless. Ships with *our* server rather than the user's config. Hole: Agent SDK `canUseTool`. | Same as A (the marker is a server-side `tools/list` property, transport-independent) | Medium. Depends on an `ask` rule or hook the *user* has installed and hasn't disabled; `--bare`/`--safe-mode`/`disableAllHooks` remove hooks. An `allow` rule or `allowed-tools` entry silently defeats it. | Weakest. Same dependency as C, plus `WebFetch` prompts are easy to blanket-allow. | **Strongest overall** - the confirm is outside the agent loop entirely |
+| **Auth effort** | Highest - we'd host an OAuth AS, or accept a header token via `userConfig` | Medium - server reads a token from `userConfig` env / token file | Low - reuse the existing device-code flow verbatim (§2.2) | Low–medium - token must reach the script/headers | Low - reuse device-code flow |
+| **Install / update friction** | `claude mcp add` or plugin-bundled `.mcp.json`; plugin auto-update works but is **off by default for third-party marketplaces** | Same, plus a runtime dependency (node/binary) shipped in the plugin; `${CLAUDE_PLUGIN_DATA}` for deps | Skill or plugin; a binary to build/ship per platform | Lightest - a skill + a script | User must remember to run it; no discovery |
 | **Headless** | Denied (correctly). `--permission-prompt-tool` allow is converted to a deny | Same | Ask rule → denied (observed E2); hook ask → denied (observed E3); an allow rule → **sends silently** | Same as C, and more likely to be blanket-allowed | N/A (a human is typing) |
-| **Privacy exposure** | Server sees only the tool input — safe **if** the schema is a closed aggregate. `roots/list` would expose working dirs if we ever call it | **Best**: nothing crosses the wire except the request the local server chooses to make | Good: the CLI decides the payload; the Bash *command string* appears in the transcript and (if the user has `OTEL_LOG_TOOL_DETAILS=1`) in their telemetry | Model-composed payloads are the riskiest — the model could inline paths into a `WebFetch` body | Best |
+| **Privacy exposure** | Server sees only the tool input - safe **if** the schema is a closed aggregate. `roots/list` would expose working dirs if we ever call it | **Best**: nothing crosses the wire except the request the local server chooses to make | Good: the CLI decides the payload; the Bash *command string* appears in the transcript and (if the user has `OTEL_LOG_TOOL_DETAILS=1`) in their telemetry | Model-composed payloads are the riskiest - the model could inline paths into a `WebFetch` body | Best |
 | **Steps for the user (happy path)** | install plugin → auth once → confirm per publish | same | same | same | install → run command → confirm in-terminal |
 
 **What the facts favour, without deciding.** B and A are the only options where the approve
@@ -736,10 +736,10 @@ guarantee lives in code *we* control rather than in configuration the user can w
 the best privacy story because the aggregate never has to traverse a tool boundary we don't own.
 C and D are cheaper to build and reuse the existing `/api/cli/*` plumbing unchanged, at the cost
 of a gate that any allow rule, `--bare`, or `disableAllHooks` removes. E is unbeatable on
-guarantee and worst on adoption. A hybrid — plugin ships a local stdio MCP server whose single
+guarantee and worst on adoption. A hybrid - plugin ships a local stdio MCP server whose single
 `publish` tool is marked `requiresUserInteraction` and which authenticates with a token obtained
-through the existing device-code flow — collects most of the wins, and is the shape the facts
-point at.
+through the existing device-code flow - collects most of the wins, and is the strongest
+candidate on these facts.
 
 Caveat to carry into the grilling: `requiresUserInteraction` requires **Claude Code v2.1.199+**;
 earlier versions "ignore it and apply the standard permission flow", i.e. the gate silently
@@ -767,7 +767,7 @@ depend on it, we must detect and refuse to run on older versions.
    security page. The ~2 KB shared budget with `userConfig` sensitive values is documented but
    its enforcement behaviour on overflow is not.
 6. **Whether a `requiresUserInteraction` prompt can carry our own body text.** The docs say
-   Claude Code "shows the tool's full permission prompt" — whether the tool `description` or an
+   Claude Code "shows the tool's full permission prompt" - whether the tool `description` or an
    input field is what the user reads (i.e. whether we can render the aggregate *inside* the
    consent dialog) is unverified, and it materially changes the UX.
 7. **Version floor.** `requiresUserInteraction` needs 2.1.199+; `${CLAUDE_SKILL_DIR}` in
@@ -778,7 +778,7 @@ depend on it, we must detect and refuse to run on older versions.
    version-check-and-nag into the skill itself?
 9. **Token model on the backend.** Whether to extend `cliTokens` (plaintext, no scopes, no
    revoke) or introduce a scoped, hashed token for metrics publishing. Not a Claude Code
-   question — but the answer gates §2's channel choice.
+   question - but the answer gates §2's channel choice.
 10. **Multi-machine dedup.** Unchanged from the transcripts research: nothing links two machines'
     histories, so server-side merge semantics for one user with several machines remain open.
 

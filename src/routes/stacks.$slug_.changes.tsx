@@ -12,11 +12,11 @@ import { seoMeta } from "@/lib/seo";
 import { api } from "../../convex/_generated/api";
 
 /**
- * "What's changed" — the owner-only page locked by prototype #39 (variant J).
+ * "What's changed" - the owner-only page locked by prototype #39 (variant J).
  *
  * `getForEdit` is the owner gate as well as the identity lookup: it returns null
  * for a stranger, for a signed-out visitor, and for a stack that does not exist,
- * and unlike `getBySlug` it also answers for an UNPUBLISHED stack — which an
+ * and unlike `getBySlug` it also answers for an UNPUBLISHED stack - which an
  * owner filling in what-fors before publishing very much is.
  */
 export const Route = createFileRoute("/stacks/$slug_/changes")({

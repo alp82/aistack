@@ -2,7 +2,7 @@
 # Replace the LOCAL dev database with a fresh export of prod.
 #
 # DESTRUCTIVE LOCALLY: every local table is replaced (--replace-all), including
-# auth tables — log in again locally afterwards. Prod is only read.
+# auth tables - log in again locally afterwards. Prod is only read.
 #
 # The export runs on the server over ssh (never point the local CLI at prod
 # from this machine). The local `convex dev` backend must be running.
@@ -21,7 +21,7 @@ echo "==> Exporting prod on the server..."
 ssh "$HOST" "
   set -euo pipefail
   KEY=\$(docker exec $BACKEND_CONTAINER ./generate_admin_key.sh | tail -1)
-  # Minimal project dir — the Convex CLI refuses to run without a package.json.
+  # Minimal project dir - the Convex CLI refuses to run without a package.json.
   mkdir -p /root/.aistack-convex-cli && cd /root/.aistack-convex-cli
   [ -f package.json ] || echo '{\"name\":\"aistack-convex-cli\",\"private\":true}' > package.json
   [ -d node_modules/convex ] || npm install --no-fund --no-audit convex >/dev/null
@@ -40,4 +40,4 @@ npx convex import --replace-all -y "$LOCAL_ZIP"
 
 rm -rf "$LOCAL_DIR"
 echo "==> Done. Local dev database now mirrors prod as of $STAMP."
-echo "    Local sessions were replaced — log in again in the local app."
+echo "    Local sessions were replaced - log in again in the local app."

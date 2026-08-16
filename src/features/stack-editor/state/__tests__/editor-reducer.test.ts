@@ -339,7 +339,7 @@ describe("editor reducer", () => {
 	});
 
 	// -------------------------------------------------------------------------
-	// Group P: pendingAvatar init (guest staging only — stack rows carry no
+	// Group P: pendingAvatar init (guest staging only - stack rows carry no
 	// avatar anymore, so initialValue never seeds one)
 	// -------------------------------------------------------------------------
 
@@ -467,7 +467,7 @@ describe("editor reducer", () => {
 	});
 
 	// -------------------------------------------------------------------------
-	// Group R: BLOCKER-2 regression — profile/updated must not clobber pendingAvatar
+	// Group R: BLOCKER-2 regression - profile/updated must not clobber pendingAvatar
 	// -------------------------------------------------------------------------
 
 	// TC-R-01
@@ -537,7 +537,7 @@ describe("editor reducer", () => {
 	});
 
 	// -------------------------------------------------------------------------
-	// Group T: accentPreset key — reducer, selectors, round-trip
+	// Group T: accentPreset key - reducer, selectors, round-trip
 	// -------------------------------------------------------------------------
 
 	// TC-T-01: profile/updated with accentPreset 'violet' → selectSavePayload emits it

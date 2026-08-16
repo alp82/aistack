@@ -17,7 +17,7 @@ import { autoSyncHookInstalled, installAutoSyncHook } from "./hook.js";
 import { appendLogLine, runAutoSync, SYNC_LOG_MAX_LINES } from "./run.js";
 
 /**
- * The silent background run — wayfinder #62 (map #60).
+ * The silent background run - wayfinder #62 (map #60).
  *
  * The properties these tests pin: no opt-in means no publish (the hard gate),
  * a fresh run exits without work, every real run leaves one log line, and the
@@ -81,7 +81,7 @@ function deps(over: Partial<Parameters<typeof runAutoSync>[0]> = {}) {
 		logFile,
 		emit: vi.fn(),
 		getTokenImpl: () => "tok",
-		// No stack has ever set the flag — the state a local opt-in still seeds.
+		// No stack has ever set the flag - the state a local opt-in still seeds.
 		loadConfigImpl: vi.fn(async () => serverConfig(null)),
 		stageImpl: vi.fn(async () => stagedOk()),
 		publishImpl: vi.fn(publishOk),
@@ -201,11 +201,11 @@ describe("the server gate", () => {
 /**
  * #103's done-bar, on a real filesystem: a web-side revoke stops a machine
  * with LIVE HOOKS from publishing. This is the state the old design could not
- * reach — the hooks are on disk, the local flag says yes, and the machine still
+ * reach - the hooks are on disk, the local flag says yes, and the machine still
  * publishes nothing, because the stack is what decides.
  */
 describe("the done-bar: a revoke reaches a machine with live hooks", () => {
-	test("hooks installed, local flag on, stack off — nothing is published", async () => {
+	test("hooks installed, local flag on, stack off - nothing is published", async () => {
 		const claudeSettings = join(dir, "claude-settings.json");
 		const codexHooks = join(dir, "codex-hooks.json");
 		expect(installAutoSyncHook(claudeSettings).ok).toBe(true);
@@ -226,7 +226,7 @@ describe("the done-bar: a revoke reaches a machine with live hooks", () => {
 
 		expect(d.publishImpl).not.toHaveBeenCalled();
 		// The hooks are untouched. They are dumb triggers, and the revoke does
-		// not depend on reaching them — `--auto` never edits a hook file.
+		// not depend on reaching them - `--auto` never edits a hook file.
 		expect(autoSyncHookInstalled(claudeSettings)).toBe(true);
 		expect(codexAutoSyncHookInstalled(codexHooks)).toBe(true);
 	});
@@ -293,7 +293,7 @@ describe("a successful run", () => {
 		expect(d.publishImpl).toHaveBeenCalledWith("tok", '{"x":1}');
 		const lines = logLines();
 		expect(lines).toHaveLength(1);
-		expect(lines[0]).toContain("ok — published");
+		expect(lines[0]).toContain("ok - published");
 	});
 
 	test("records state and resets the failure streak", async () => {

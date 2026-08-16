@@ -159,7 +159,7 @@ async function snapshot(
 }
 
 // ---------------------------------------------------------------------------
-// Visibility — the sharp edge (#85). An event written while a stack was public
+// Visibility - the sharp edge (#85). An event written while a stack was public
 // must not leak after the stack goes private.
 // ---------------------------------------------------------------------------
 
@@ -207,7 +207,7 @@ describe('visibility', () => {
     expect(feed.rows).toEqual([])
   })
 
-  test('hidden rows do not eat the page — the scan refills it', async () => {
+  test('hidden rows do not eat the page - the scan refills it', async () => {
     const t = convexTest(schema, modules)
     const hidden = await seedStack(t, { name: 'Hidden', published: false })
     const shown = await seedStack(t, { name: 'Shown' })
@@ -225,7 +225,7 @@ describe('visibility', () => {
 })
 
 // ---------------------------------------------------------------------------
-// The stream — reverse-chronological, paged 25 at a time, filtered by chip.
+// The stream - reverse-chronological, paged 25 at a time, filtered by chip.
 // ---------------------------------------------------------------------------
 
 describe('the stream', () => {
@@ -281,7 +281,7 @@ describe('the stream', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Movement — the delta is computed across the rows; the table has no delta
+// Movement - the delta is computed across the rows; the table has no delta
 // column (#84).
 // ---------------------------------------------------------------------------
 
@@ -387,7 +387,7 @@ describe('movement', () => {
     expect(feed.rows[0].deltaTokens).toBe(285)
   })
 
-  test('movement can fall — a 30-day window forgets its far end', async () => {
+  test('movement can fall - a 30-day window forgets its far end', async () => {
     const t = convexTest(schema, modules)
     const stackId = await seedStack(t)
     const now = Date.now()
@@ -426,7 +426,7 @@ describe('movement', () => {
 })
 
 // ---------------------------------------------------------------------------
-// The band — the last 24 hours, four measured numbers and three counts (#84).
+// The band - the last 24 hours, four measured numbers and three counts (#84).
 // ---------------------------------------------------------------------------
 
 describe('the band', () => {
@@ -447,7 +447,7 @@ describe('the band', () => {
     expect(band.totals.updates).toBe(1)
   })
 
-  test('tokens measured is a LEVEL — the total the window carries, fallers and all', async () => {
+  test('tokens measured is a LEVEL - the total the window carries, fallers and all', async () => {
     const t = convexTest(schema, modules)
     const a = await seedStack(t, { name: 'Up' })
     const b = await seedStack(t, { name: 'Down' })
@@ -459,7 +459,7 @@ describe('the band', () => {
 
     const band = await t.query(api.activityFeed.band, {})
     // The latest reading of each stack, summed. The stack that FELL is in it at
-    // its 4,000 — it is not deleted, and neither is it counted at -1,000 (#128).
+    // its 4,000 - it is not deleted, and neither is it counted at -1,000 (#128).
     expect(band.usage.tokens).toBe(5_300)
   })
 
@@ -558,7 +558,7 @@ describe('the band', () => {
     expect(band.points[band.points.length - 1].at).toBeGreaterThan(
       band.points[0].at
     )
-    // Each day carries what it measured, not what it gained — so the first sync
+    // Each day carries what it measured, not what it gained - so the first sync
     // is 1,000 rather than nothing, and the newest day equals the tile.
     expect(band.points.map((p) => p.value).filter((v) => v > 0)).toEqual([
       1_000, 1_500, 2_000,

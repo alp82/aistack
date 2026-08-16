@@ -1,4 +1,4 @@
-// The wire payload builder — the only thing in this module that decides what
+// The wire payload builder - the only thing in this module that decides what
 // leaves the machine.
 //
 // Wayfinder ticket #37 (map #29). Shape fixed by the wire-format grilling #33;
@@ -10,7 +10,7 @@
 //      per-category counts (#33 decisions 2-4). Model ids are the sole exempt
 //      class (decision 3) and are charset/length sanitized instead.
 //   2. COST IS ABSENT, NOT ZEROED. With `publishCost` off, the cost fields are
-//      not in the payload at all (#33 decision 11) — there is nothing to
+//      not in the payload at all (#33 decision 11) - there is nothing to
 //      "reveal" server-side, because nothing was transmitted.
 
 import { baseModelId, pricingTableFor } from "@aistack/pricing";
@@ -45,7 +45,7 @@ export type PayloadModel = {
 	};
 	apiEquivalentUSD?: number;
 	/**
-	 * The table that produced `apiEquivalentUSD` — present exactly when the
+	 * The table that produced `apiEquivalentUSD` - present exactly when the
 	 * dollars are (#136). Per model, not per payload: one opencode payload mixes
 	 * vendors, so a single top-level id would cite one table for dollars drawn
 	 * from two.
@@ -78,7 +78,7 @@ export type MeasuredPayload = {
 	window: { days: number; from: string; to: string };
 	harness: { name: string; version: string | null };
 	/**
-	 * The one table the models' citations agree on, or `null` — when
+	 * The one table the models' citations agree on, or `null` - when
 	 * `publishCost` is off, when nothing priced, and when a mixed-vendor payload
 	 * cites several tables (the per-model `pricingTable` fields carry the truth,
 	 * and joining them here would blow the server's 64-character name bound).
@@ -112,7 +112,7 @@ export type MeasuredPayload = {
  * Model ids are exempt from the allowlist (#33 decision 3) precisely because
  * they are vendor-assigned: on the day a new Claude model ships, fail-closing it
  * would make its tokens silently vanish from every sync and understate cost with
- * no visible cause. Exempt is not unchecked, though — the id still becomes a
+ * no visible cause. Exempt is not unchecked, though - the id still becomes a
  * database key and a rendered string, so charset and length are bounded here.
  */
 const MODEL_ID_UNSAFE_RE = /[^A-Za-z0-9._:-]+/g;
@@ -143,7 +143,7 @@ const toAtoms = (pairs: ReadonlyArray<readonly [string, number]>): Atom[] =>
  * Shares are computed over ALL observed calls, including withheld ones.
  *
  * Renormalizing over only the allowlisted atoms would make the published shares
- * sum to 1.0 and read as a complete inventory — a withheld MCP server carrying
+ * sum to 1.0 and read as a complete inventory - a withheld MCP server carrying
  * 90% of the calls would leave no trace. Keeping the true denominator means the
  * shares sum to less than 1 exactly when something was withheld, and the
  * `withheld` counts say how many things.
@@ -155,7 +155,7 @@ function buildCategory(
 	denominator: number,
 ): { atoms: PayloadAtom[]; withheld: number; keptPrivate: KeptPrivateAtom[] } {
 	// The union is where #42 decision 1 lands: a name publishes if it is curated
-	// OR the owner ticked it. Filtering itself is unchanged — still client-side,
+	// OR the owner ticked it. Filtering itself is unchanged - still client-side,
 	// still fail-closed, still before the send. What moves is who judged the name.
 	const publishable = new Set([...curated, ...optIns]);
 	const {
@@ -203,7 +203,7 @@ type ModelGroup = {
  * The analyzer prices fast mode under a synthetic `claude-opus-5#fast` key
  * because it bills at a different rate ($10/$50 vs $5/$25). That suffix is OURS,
  * not the vendor's, so publishing it would hand the server an id that cannot
- * resolve against the models catalog — the exact silent-disappearance failure
+ * resolve against the models catalog - the exact silent-disappearance failure
  * decision 3 exists to prevent. The rows are therefore merged back onto the base
  * id here. Cost stays exact because it was already accumulated per response at
  * the fast rate; what is lost is the fast-mode share itself, which the payload
@@ -266,7 +266,7 @@ function buildModels(
 		// Absent, not zero: a partially-priced model reporting a dollar figure
 		// would understate without saying so. `excludedTokens.unpriced` carries
 		// the tokens that were left out. Dollars and their citation travel
-		// together (#136) — a figure without its table may not render anywhere.
+		// together (#136) - a figure without its table may not render anywhere.
 		if (
 			publishCost &&
 			!g.anyUnpriceable &&
@@ -302,7 +302,7 @@ export type BuiltPayload = {
 	/** The same numbers unfiltered, for the local report and the approve gate. */
 	finalized: Finalized;
 	/**
-	 * Every observed name that will NOT publish, by category — the gate's review
+	 * Every observed name that will NOT publish, by category - the gate's review
 	 * list (#42 decision 1, wired in #44).
 	 *
 	 * This is the one thing here that is deliberately NOT in the payload. It is
@@ -374,7 +374,7 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 		publishCost,
 	);
 	// The citation lives on each model (#136). The top-level field survives for
-	// readers of the old shape and states the one table everything agrees on —
+	// readers of the old shape and states the one table everything agrees on -
 	// never a false single citation over a mixed payload.
 	const citedTables = [
 		...new Set(models.flatMap((m) => (m.pricingTable ? [m.pricingTable] : []))),
@@ -443,7 +443,7 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 /**
  * What `POST /api/cli/sync` takes: one sealed payload PER DETECTED HARNESS,
  * one unsealed half shared across them (#66 decision 5). The batch is atomic
- * server-side, so two harnesses cannot wipe each other's staged names — which
+ * server-side, so two harnesses cannot wipe each other's staged names - which
  * is what two sequential per-harness publishes would have done, because the
  * staged list is a whole-list replace per stack.
  */
@@ -452,7 +452,7 @@ export type SyncBody = {
 	keptPrivate?: Record<NameCategory, KeptPrivateAtom[]>;
 	/**
 	 * The machine's standing auto-sync opt-in (#78). Not measurement and not a
-	 * name — it is the one bit of local state the backend cannot otherwise see,
+	 * name - it is the one bit of local state the backend cannot otherwise see,
 	 * and `auto_sync_enabled` has nothing to fire on without it.
 	 *
 	 * It rides BESIDE the payloads, never inside one: the payload validator is
@@ -505,11 +505,11 @@ export function mergeKeptPrivate(
  *
  * The two halves ride in ONE request (#48): a second call would let them drift
  * against a newer snapshot. They stay SEPARATE objects because the payload's
- * validator is closed and rejects any extra key — that closedness is the privacy
+ * validator is closed and rejects any extra key - that closedness is the privacy
  * claim, so a kept-private name may sit beside the payloads and never inside one.
  *
- * The switch is read from the sync config the server just served. Off — or a
- * config the machine could not fetch, which reads as off — sends the payloads
+ * The switch is read from the sync config the server just served. Off - or a
+ * config the machine could not fetch, which reads as off - sends the payloads
  * alone and the names stay on the machine.
  */
 export function buildSyncBody(

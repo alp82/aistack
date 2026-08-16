@@ -10,7 +10,7 @@ import { relativeLabel } from "./feed";
  *
  * The snapshot is the FORMATTED STRING, not the clock. React bails out of a
  * re-render when a snapshot is unchanged, so a tick re-renders only the rows
- * whose words actually moved — a page of 25 rows mostly hours old re-renders
+ * whose words actually moved - a page of 25 rows mostly hours old re-renders
  * nothing at all, while "just now" still becomes "1m ago" on time.
  */
 

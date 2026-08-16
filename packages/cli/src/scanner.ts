@@ -41,7 +41,7 @@ const LOCAL_PATTERNS: FilePattern[] = [
 	{ path: ".clinerules", type: "rule", group: "cline" },
 	{ path: ".roorules", type: "rule", group: "roo" },
 	{ path: ".github/copilot-instructions.md", type: "rule", group: "copilot" },
-	// MCP servers are detected separately as pkg-reference links (see mcp.ts) —
+	// MCP servers are detected separately as pkg-reference links (see mcp.ts) -
 	// their config files are intentionally NOT collected as content here (which
 	// would also upload `env` secrets).
 	// Config

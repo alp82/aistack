@@ -1,12 +1,12 @@
 /**
- * PROTOTYPE — throwaway. Variant D: "One Number" (D+E combined).
+ * PROTOTYPE - throwaway. Variant D: "One Number" (D+E combined).
  *
  * The 24-hour token count colossal at the top via SpeedingText's counter,
  * the reel of other insights toggling under it, then a 7-day chart titled
  * "Usage in the last 7 days" with min/max bubbles and a hover/tap tooltip.
  *
  * SpeedingText sets `display: flex` inline, which beats Tailwind's `hidden`
- * class — so the responsive pair is wrapped in plain divs, never classed
+ * class - so the responsive pair is wrapped in plain divs, never classed
  * directly on the component.
  */
 
@@ -25,7 +25,7 @@ import { fmtCount, fmtTokens, liveDays, MONO_LABEL } from "../feed";
 import { RelativeTime } from "../RelativeTime";
 import { rowHandle, rowSummary } from "./summary";
 
-export const VARIANT_ONE_NUMBER_NAME = "One Number — count on top, reel below";
+export const VARIANT_ONE_NUMBER_NAME = "One Number - count on top, reel below";
 
 const CHART_HEIGHT = 144;
 
@@ -90,7 +90,7 @@ function Bubble({
 				transform: `translate(-50%, ${below ? "10px" : "calc(-100% - 10px)"})`,
 			}}
 		>
-			{/* Quiet glass chips, no border — the dropdown owns the bordered look.
+			{/* Quiet glass chips, no border - the dropdown owns the bordered look.
 			    No solid fills: white bricks are too heavy on the dark canvas and a
 			    lime fill fights the lime line. The hover chip is marked by a small
 			    lime square instead. */}
@@ -252,7 +252,7 @@ export function VariantOneNumber({ band }: { readonly band: Band }) {
 
 				<div className="mt-6 w-full tracking-tighter text-fg-primary">
 					{quiet ? (
-						<div className="text-8xl font-black leading-none">—</div>
+						<div className="text-8xl font-black leading-none">-</div>
 					) : (
 						<>
 							<div className="hidden md:block">

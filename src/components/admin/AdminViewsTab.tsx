@@ -10,17 +10,17 @@ import { REFERRER_LABELS, rangeLabel } from "@/features/settings/AnalyticsPage";
 import { api } from "../../../convex/_generated/api";
 
 /**
- * Views — the admin-only site-wide read surface (#132, map #121).
+ * Views - the admin-only site-wide read surface (#132, map #121).
  *
  * The FIRST reader the `global` counter has ever had, built so a broadcast can
  * be read at all: site-wide arrivals by day, split by where the visit came
- * from. The real guard is `isAdmin(ctx)` inside `viewAnalytics.siteWide` — the
+ * from. The real guard is `isAdmin(ctx)` inside `viewAnalytics.siteWide` - the
  * `/admin` route gate above this component is a convenience, never the
  * protection.
  *
  * Two honesty rules carry over from the owner-private page. The number is
  * deduped daily visitors, never people and never page loads. And a day nobody
- * was counting is a gap, not a zero — the series starts at the first counted
+ * was counting is a gap, not a zero - the series starts at the first counted
  * day.
  *
  * One rule is new: DO NOT QUOTE THIS FIGURE PUBLICLY. `views.record` accepts a
@@ -141,7 +141,7 @@ function Shell({ children }: { readonly children: React.ReactNode }) {
 				admin are left out. These are not page loads.
 			</p>
 			<p className="mt-3 max-w-prose text-sm leading-relaxed text-fg-muted">
-				Admin-only, and the figure is inflatable by anyone who wants to — do not
+				Admin-only, and the figure is inflatable by anyone who wants to - do not
 				quote it anywhere public.
 			</p>
 			{children}

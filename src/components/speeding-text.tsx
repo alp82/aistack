@@ -1,9 +1,9 @@
-// Vendor source, kept verbatim — see the license note below.
+// Vendor source, kept verbatim - see the license note below.
 // biome-ignore-all lint/complexity/useOptionalChain: vendor source kept verbatim
 // biome-ignore-all lint/a11y/noSvgWithoutTitle: decorative filter defs, aria-hidden
 // biome-ignore-all lint/suspicious/noArrayIndexKey: static lane count, never reordered
 /**
- * PROTOTYPE — licensed copy from the owner's React Bits Pro account
+ * PROTOTYPE - licensed copy from the owner's React Bits Pro account
  * (https://pro.reactbits.dev/docs/components/speeding-text), added directly
  * because the shadcn registry needs REACTBITS_LICENSE_KEY at install time.
  * Do not redistribute outside this repo.

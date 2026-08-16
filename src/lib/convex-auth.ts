@@ -25,7 +25,7 @@
  *    `ConvexProviderWithAuth` re-arms `client.setAuth` only when
  *    `fetchAccessToken`'s identity changes, so without this a single timed-out
  *    fetch (fix 4 resolving `null`) left the client unauthenticated until a
- *    full reload — the "randomly logged out" symptom on flaky connections.
+ *    full reload - the "randomly logged out" symptom on flaky connections.
  *
  * Deliberate omission: upstream's `ott`/crossDomain one-time-token effect is
  * dropped; this app's authClient (src/lib/auth-client.ts) has only
@@ -132,7 +132,7 @@ export function useConvexAuthFromBetterAuth(
 				// Fix 6: bumped after a backoff delay when a token fetch fails
 				// with a live session. It feeds fetchAccessToken's deps, so the
 				// bump hands ConvexProviderWithAuth a new identity and re-arms
-				// client.setAuth — the only thing that makes Convex fetch again.
+				// client.setAuth - the only thing that makes Convex fetch again.
 				// biome-ignore lint/correctness/useHookAtTopLevel: useAuthFromBetterAuth is a hook returned from a memoized factory, mirroring upstream
 				const [retryTick, setRetryTick] = useState(0);
 				// biome-ignore lint/correctness/useHookAtTopLevel: useAuthFromBetterAuth is a hook returned from a memoized factory, mirroring upstream
@@ -198,7 +198,7 @@ export function useConvexAuthFromBetterAuth(
 						} else if (sessionId && retryTimerRef.current === undefined) {
 							// Fix 6: a session cookie exists but the token fetch failed
 							// (timeout, abort, network). Convex now sits unauthenticated
-							// and will never ask again on its own — schedule one bump.
+							// and will never ask again on its own - schedule one bump.
 							const delay = Math.min(
 								AUTH_RETRY_MAX_MS,
 								AUTH_RETRY_BASE_MS * 2 ** retryAttemptsRef.current,

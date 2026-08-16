@@ -1,5 +1,5 @@
 /**
- * PROTOTYPE — the pulse-band variant switcher (`?variant=A|B|C|D|E` on `/`).
+ * PROTOTYPE - the pulse-band variant switcher (`?variant=A|B|C|D|E` on `/`).
  * Variant D won and became `PulseHero` (#147); without the param (or in
  * production) that winner renders and nothing else mounts. The variants stay
  * in main as the record of the exploration.

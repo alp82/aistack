@@ -38,7 +38,7 @@ export interface SyncOptions {
 
 export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 	// The silent path (#62): no TTY, no prompts, no upsells. Publishes only
-	// under the standing opt-in and always exits 0 — the hook command's `||`
+	// under the standing opt-in and always exits 0 - the hook command's `||`
 	// offline fallback must never fire on a mere sync failure.
 	if (options.auto === true) {
 		await runAutoSync({ baseUrl: BASE_URL });
@@ -66,7 +66,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 	}
 	if (options.auto !== undefined) {
 		intro("sync");
-		outroError(`unknown --auto value "${options.auto}" — use on or off`);
+		outroError(`unknown --auto value "${options.auto}" (use on or off)`);
 		process.exitCode = 1;
 		return;
 	}
@@ -89,22 +89,22 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 
 	// The whole premise of this channel is a human at a terminal. A pipe or a
 	// model-launched Bash call has no TTY, and a gate that cannot ask must not
-	// send (#31) — refuse before scanning anything.
+	// send (#31) - refuse before scanning anything.
 	if (!process.stdin.isTTY || !process.stdout.isTTY) {
-		outroError("sync needs an interactive terminal — nothing was sent");
+		outroError("sync needs an interactive terminal. Nothing was sent.");
 		process.exitCode = 1;
 		return;
 	}
 
 	// An unlinked machine used to hard-block with "run login first" (#74). The
 	// TTY gate above guarantees a human is present, so the device-auth browser
-	// hop fits here — `sync` is the whole onboarding command.
+	// hop fits here - `sync` is the whole onboarding command.
 	if (getToken() === null) {
 		p.log.message(
-			"This machine is not linked to an aistack account yet — linking it first.",
+			"This machine is not linked to an aistack account yet. Linking it now.",
 		);
 		if (!(await performLogin())) {
-			outroError("login failed — nothing was sent");
+			outroError("login failed. Nothing was sent.");
 			process.exitCode = 1;
 			return;
 		}
@@ -123,7 +123,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 	}
 	s.stop("Scan complete");
 
-	// Beat one — the same full summary the MCP preview returns, verbatim,
+	// Beat one - the same full summary the MCP preview returns, verbatim,
 	// printed behind the clack bar so it reads as one flow.
 	p.log.message(staged.summary.split("\n").join("\n"));
 
@@ -133,7 +133,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 		return;
 	}
 
-	// Beat two — the same short dialog text, as a select. The enum mirrors the
+	// Beat two - the same short dialog text, as a select. The enum mirrors the
 	// elicitation's {publish, cancel}; cancel is the initial value, so Enter
 	// alone publishes nothing.
 	const decision = await p.select({
@@ -156,7 +156,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 		s.stop("Published");
 		// The last thing read is the result, not a receipt (#130): the stamp is
 		// human-form, and the link gets its own line under a sentence that names
-		// the proof. The path stays in the terminal — no browser is opened.
+		// the proof. The path stays in the terminal - no browser is opened.
 		const lines = [
 			`Snapshot received ${fmtReceivedAt(res.receivedAt)}`,
 			"",
@@ -165,7 +165,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 		];
 		if (res.keptPrivate.refused && staged.body.keptPrivate !== undefined) {
 			lines.push(
-				"Note: the kept-private names were refused by the server — the review switch is off there now. They stayed on this machine.",
+				"Note: the server refused the kept-private names because its review switch is off. They stayed on this machine.",
 			);
 		} else if (res.keptPrivate.stored > 0) {
 			lines.push(

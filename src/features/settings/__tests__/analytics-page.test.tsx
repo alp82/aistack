@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Views — wayfinder #86 (map #76).
+ * Views - wayfinder #86 (map #76).
  *
  * The map locked this surface as strictly private and as honestly labeled, so
  * the tests guard those two decisions rather than the layout:

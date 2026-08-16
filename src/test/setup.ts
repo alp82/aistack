@@ -2,11 +2,11 @@ import "@testing-library/jest-dom/vitest";
 import { MotionGlobalConfig } from "motion/react";
 
 // Skip all Motion animations in tests so AnimatePresence exits unmount
-// synchronously — accordion assertions check the panel is gone immediately.
+// synchronously - accordion assertions check the panel is gone immediately.
 MotionGlobalConfig.skipAnimations = true;
 
 // jsdom does not implement document.execCommand; the clipboard fallback path
-// (useClipboard) calls it, and tests spy on it via vi.spyOn — which requires
+// (useClipboard) calls it, and tests spy on it via vi.spyOn - which requires
 // the property to exist. Provide a noop so the spy can replace it.
 if (typeof document !== "undefined" && !document.execCommand) {
 	document.execCommand = () => false;

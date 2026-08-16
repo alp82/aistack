@@ -18,7 +18,7 @@ I keep subscriptions to **Claude**, **ChatGPT**, and **Gemini** because each mod
 
 ### The Lenny's Bundle Advantage
 
-The bundle is incredible value — for $15/mo I get access to Replit, Bolt, Lovable, Notion AI, Perplexity, PostHog, and more. I mainly use:
+The bundle is incredible value - for $15/mo I get access to Replit, Bolt, Lovable, Notion AI, Perplexity, PostHog, and more. I mainly use:
 
 - **Perplexity** for research and staying up to date
 - **Notion AI** for documentation and project management
@@ -193,7 +193,7 @@ I went all-in on Claude Max at $200/month and it's been worth every penny. Here'
 
 ### Why Claude Max?
 
-The **Claude Max** plan gives me unlimited access to Claude's most powerful models. I don't have to think about rate limits or switching between tools — it's just one subscription that handles everything.
+The **Claude Max** plan gives me unlimited access to Claude's most powerful models. I don't have to think about rate limits or switching between tools - it's just one subscription that handles everything.
 
 ### Terminal-First Workflow
 
@@ -260,7 +260,7 @@ I keep my AI coding costs under control with a simple two-tool setup.
 
 ### Cursor Pro with Auto Mode
 
-**Cursor Pro** at $20/month is my main IDE. The key to staying within budget is using **Auto Mode** — it automatically picks the best model for each task, balancing quality and cost.
+**Cursor Pro** at $20/month is my main IDE. The key to staying within budget is using **Auto Mode** - it automatically picks the best model for each task, balancing quality and cost.
 
 When I need maximum power for complex refactoring or architecture decisions, I manually switch to **Claude Opus 4.5**. This adds to my usage costs but it's worth it for the hard problems.
 
@@ -273,7 +273,7 @@ I also run the **Codex extension** powered by ChatGPT Plus. It provides inline c
 - Base: $40/month (Cursor Pro + ChatGPT Plus)
 - Variable: Up to $30 extra when I use premium models heavily
 
-This setup gives me flexibility — I can keep costs low during routine work and scale up when I need more power.`,
+This setup gives me flexibility - I can keep costs low during routine work and scale up when I need more power.`,
     toolSubscriptions: [
       {
         toolSlug: "cursor",

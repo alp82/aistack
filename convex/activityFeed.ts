@@ -16,14 +16,14 @@ import { ActivityEvent } from './schema'
  * VISIBILITY IS ENFORCED HERE, at read time (#77). That is the only place it
  * can be correct: a stack can be unpublished after its event is written, and
  * this table never mutates. A row shows only while its stack is `published` and
- * not `isLowQuality` — a deleted stack hides its rows the same way. The write
+ * not `isLowQuality` - a deleted stack hides its rows the same way. The write
  * side's draft gate is not redundant, it only stops a week of drafting from
  * filling the table with rows that can never be shown.
  *
  * MOVEMENT IS DERIVED, NOT STORED (#84). `alp synced 4.99B` is the same
  * sentence every day, because a snapshot is a rolling 30-day total. What is
  * news is the change, so a sync row carries the difference against that stack's
- * previous visible sync — computed across the rows the scan already walks, so
+ * previous visible sync - computed across the rows the scan already walks, so
  * the table needs no delta column and no second index.
  *
  * THE BAND'S FOUR NUMBERS COME FROM `measuredSnapshots`, not from the events
@@ -34,7 +34,7 @@ import { ActivityEvent } from './schema'
  * synced twice would report its sessions twice.
  *
  * A LEVEL OR A MOVEMENT, NEVER A THIRD THING (#128, built in #129). The band's
- * five tiles and the watermark behind them are LEVELS — they take no sign and
+ * five tiles and the watermark behind them are LEVELS - they take no sign and
  * they may fall. The rows under them are MOVEMENTS, and a movement always
  * carries its sign. Nothing floors, and nothing drops the fallers before
  * summing.
@@ -47,7 +47,7 @@ const DAY_MS = 24 * HOUR_MS
 const BAND_WINDOW_MS = 24 * HOUR_MS
 /**
  * How far back the daily points reach. They feed the /activity watermark and
- * the landing hero's trend chart, whose range select offers 30 days (#147) —
+ * the landing hero's trend chart, whose range select offers 30 days (#147) -
  * the SCAN_CAP below still bounds the walk.
  */
 const WATERMARK_DAYS = 30
@@ -70,12 +70,12 @@ const EventType = v.union(
 )
 
 const FeedRow = v.object({
-  /** The event document id — stable, so a live insert keys correctly. */
+  /** The event document id - stable, so a live insert keys correctly. */
   id: v.string(),
   at: v.number(),
   stack: v.object({
     name: v.string(),
-    /** Public slug, `${slug}-${shortId}` — what `/stacks/$slug` resolves. */
+    /** Public slug, `${slug}-${shortId}` - what `/stacks/$slug` resolves. */
     slug: v.string(),
     creator: v.string(),
   }),
@@ -87,7 +87,7 @@ const FeedRow = v.object({
   deltaTokens: v.union(v.number(), v.null()),
   /**
    * True only when the walk reached the end of the table without finding an
-   * earlier sync — so "first reading" is a fact, not the absence of one. A
+   * earlier sync - so "first reading" is a fact, not the absence of one. A
    * `deltaTokens` of null with this false means the predecessor sits beyond the
    * scan bound, and the surface says nothing about movement rather than
    * claiming a first.
@@ -98,7 +98,7 @@ const FeedRow = v.object({
 const Band = v.object({
   totals: v.object({
     syncs: v.number(),
-    /** Stacks published plus compositions changed — one number on the surface. */
+    /** Stacks published plus compositions changed - one number on the surface. */
     updates: v.number(),
     /** Distinct stacks with any activity in the watermark window. */
     stacksSeen: v.number(),
@@ -109,7 +109,7 @@ const Band = v.object({
     models: v.number(),
     tools: v.number(),
     /**
-     * The total the stacks that synced in the window are carrying — a LEVEL,
+     * The total the stacks that synced in the window are carrying - a LEVEL,
      * like its three neighbors, so it takes no sign and may fall (#128). It is
      * NOT a movement: the tile used to sum the risers and delete the fallers,
      * which no true sentence described.
@@ -178,7 +178,7 @@ async function visibleStack(
  * One walk answers three questions at once, which is why it is not three
  * queries: which rows are visible, whether more exist below them, and what each
  * sync moved. The delta needs the NEXT older sync of the same stack, which the
- * descending walk reaches after the row itself — so a row is parked in
+ * descending walk reaches after the row itself - so a row is parked in
  * `pending` until its predecessor turns up, and the walk keeps going while any
  * row is still parked.
  */
@@ -259,7 +259,7 @@ async function scanFeed(
 
 /**
  * The rolling total this stack carried BEFORE the sync stamped `before`, read
- * from `measuredSnapshots` — or null when no earlier reading exists at all.
+ * from `measuredSnapshots` - or null when no earlier reading exists at all.
  *
  * This is what makes "first reading" a fact (#129). `activityEvents` only
  * reaches back to #78, so a stack that synced nine times before that had every
@@ -267,12 +267,12 @@ async function scanFeed(
  * row per approved sync since the stack began, and nothing prunes them.
  *
  * `receivedAt` is the server clock the event is stamped with, and every
- * snapshot of one batch shares it — so a strict `<` drops this sync's own rows
+ * snapshot of one batch shares it - so a strict `<` drops this sync's own rows
  * and keeps every earlier one. `capturedAt` is the client clock and cannot be
  * compared to an event timestamp at all.
  *
  * One indexed read per parked row, which is at most one per distinct stack in
- * the walk — the same bound `usageFor` already pays for the band.
+ * the walk - the same bound `usageFor` already pays for the band.
  */
 async function priorTotal(
   ctx: QueryCtx,
@@ -312,13 +312,13 @@ function dayStart(at: number): number {
  * synced that day were carrying (#128, built in #129). The line therefore draws
  * the same quantity the tile above it states, and its last point IS the tile.
  *
- * It used to plot the tokens the site GAINED, floored at zero — a movement
+ * It used to plot the tokens the site GAINED, floored at zero - a movement
  * under a tile that is a level, so the two were unrelated numbers stacked on
  * each other. Nothing floors anything now: a level cannot go negative, so the
  * old fear of a line dipping below its own baseline does not arise.
  *
  * A stack that synced twice in one day counts once, at that day's newest
- * reading — the same rule `usageFor` applies to the window.
+ * reading - the same rule `usageFor` applies to the window.
  */
 function pointsFor(
   rows: ScanRow[],
@@ -347,7 +347,7 @@ function pointsFor(
     .map(([at, value]) => ({ at, value }))
 }
 
-/** The newest snapshot of each harness — the same rule every other surface reads. */
+/** The newest snapshot of each harness - the same rule every other surface reads. */
 function newestPerHarness(
   rows: Doc<'measuredSnapshots'>[]
 ): Doc<'measuredSnapshots'>[] {
@@ -363,7 +363,7 @@ function newestPerHarness(
  * The five measured numbers. Four are joined from `measuredSnapshots`; the
  * token level comes off the sync events, which already carry it.
  *
- * The join is paid ONCE, here, for the whole band — which is exactly why the
+ * The join is paid ONCE, here, for the whole band - which is exactly why the
  * rows below it stay on event-only facts (#84, #96). One indexed read per stack
  * that synced in the window, and nothing per row.
  */
@@ -434,7 +434,7 @@ async function usageFor(
  * still show on a day nothing happened.
  *
  * The read is bounded at `MAX_ROWS` events, which is about two months of the
- * current volume. Past that the WATERMARK loses its oldest days — never the
+ * current volume. Past that the WATERMARK loses its oldest days - never the
  * 24-hour claim, which sits at the top of a newest-first walk. The map already
  * carries when read-time aggregation has to become a rollup.
  */
@@ -467,7 +467,7 @@ export const band = query({
 /**
  * The day-grouped stream under the band on `/activity` (#96).
  *
- * `limit` grows by `PAGE_SIZE` on every "older" — one cursor read, no numbered
+ * `limit` grows by `PAGE_SIZE` on every "older" - one cursor read, no numbered
  * pages and no infinite scroll, which is the shape `by_createdAt` serves
  * directly. A chip narrows the stream through `type`; it never touches the
  * band, because the band states the whole site's 24 hours.

@@ -1,4 +1,4 @@
-// `sync --auto` — the silent background run (#62, map #60).
+// `sync --auto` - the silent background run (#62, map #60).
 //
 // The tenets from map #29 hold: passive analysis, never passive publish. TWO
 // gates let this path publish, and either one closes it:
@@ -10,7 +10,7 @@
 //      revoke reaches a machine whose hooks are still live.
 //
 // No prompts, no upsells, no email, no dialogs. This path also never installs
-// or removes a hook — the interactive sync owns that (`reconcileAutoSync`).
+// or removes a hook - the interactive sync owns that (`reconcileAutoSync`).
 // The escalation ladder is: one log line per run → the next interactive sync
 // reports the last result → after 3 consecutive failures, one visible
 // systemMessage line.
@@ -60,7 +60,7 @@ export type AutoSyncDeps = {
 };
 
 /** What the next interactive sync says when the stack has taken the permission away. */
-export const REVOKED_RESULT = "off — auto-sync is switched off for this stack";
+export const REVOKED_RESULT = "off - auto-sync is switched off for this stack";
 
 export function appendLogLine(file: string, line: string): void {
 	mkdirSync(dirname(file), { recursive: true });
@@ -84,7 +84,7 @@ export async function runAutoSync(deps: AutoSyncDeps): Promise<void> {
 
 	// The hard gate. A hook left behind after a revoke publishes nothing.
 	if (config?.enabled !== true) {
-		appendLogLine(logFile, `${stamp} skipped — auto-sync is not enabled`);
+		appendLogLine(logFile, `${stamp} skipped - auto-sync is not enabled`);
 		return;
 	}
 
@@ -147,7 +147,7 @@ export async function runAutoSync(deps: AutoSyncDeps): Promise<void> {
 			},
 			settingsFile,
 		);
-		appendLogLine(logFile, `${stamp} skipped — ${REVOKED_RESULT}`);
+		appendLogLine(logFile, `${stamp} skipped - ${REVOKED_RESULT}`);
 		return;
 	}
 
@@ -157,14 +157,14 @@ export async function runAutoSync(deps: AutoSyncDeps): Promise<void> {
 				autoSyncState: {
 					lastRunAt: now,
 					lastSuccessAt: now,
-					lastResult: `ok — published at ${stamp}`,
+					lastResult: `ok - published at ${stamp}`,
 					consecutiveFailures: 0,
 					failureWarned: false,
 				},
 			},
 			settingsFile,
 		);
-		appendLogLine(logFile, `${stamp} ok — published${url ? ` ${url}` : ""}`);
+		appendLogLine(logFile, `${stamp} ok - published${url ? ` ${url}` : ""}`);
 		return;
 	}
 
@@ -175,7 +175,7 @@ export async function runAutoSync(deps: AutoSyncDeps): Promise<void> {
 			autoSyncState: {
 				...state,
 				lastRunAt: now,
-				lastResult: `failed at ${stamp} — ${failure}`,
+				lastResult: `failed at ${stamp} - ${failure}`,
 				consecutiveFailures,
 				failureWarned: state.failureWarned === true || shouldWarn,
 			},
@@ -184,7 +184,7 @@ export async function runAutoSync(deps: AutoSyncDeps): Promise<void> {
 	);
 	appendLogLine(
 		logFile,
-		`${stamp} fail (${consecutiveFailures} in a row) — ${failure}`,
+		`${stamp} fail (${consecutiveFailures} in a row) - ${failure}`,
 	);
 
 	// One visible line, once per failure streak. SessionStart hook JSON:

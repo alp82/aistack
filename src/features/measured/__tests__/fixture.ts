@@ -3,14 +3,14 @@
  *
  * `snapshot.fixture.json` is not invented data: the shipped analyzer
  * (`packages/cli/src/harness`) produced it from the owner's own Claude Code
- * history on 2026-07-26 — 382 sessions, 4.27B tokens, 6 models, $5,840 at API
+ * history on 2026-07-26 - 382 sessions, 4.27B tokens, 6 models, $5,840 at API
  * prices, fail-closed filtering applied, and real withheld counts. #40 drove
  * both prototype rounds off it, so every rule the display honours was checked
  * against these numbers rather than against a convenient invention.
  *
  * The stored file is the CLIENT payload. The query adds the server clock,
  * resolves model ids against the catalog, and since #67 wraps it as ONE
- * harness section under a combined headline — which is what `buildHarness` +
+ * harness section under a combined headline - which is what `buildHarness` +
  * `buildSnapshot` do here. `claude-fable-5` is deliberately absent from the
  * catalog: it is the largest row in this window, so it exercises
  * `catalogSlug: null` on the one row where getting it wrong would be most
@@ -36,7 +36,7 @@ const tokensOf = (m: HarnessSnapshot["models"][number]) =>
 /**
  * The cost block the query derives from these models (#93). Every model here
  * was priced by the CLI that produced the fixture, so the whole reading is
- * published rather than estimated — and coverage is whatever share of the
+ * published rather than estimated - and coverage is whatever share of the
  * tokens those rows carry.
  */
 function costOf(

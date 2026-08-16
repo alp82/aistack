@@ -413,7 +413,7 @@ export function AdminReviewTab() {
 												<p>
 													<span className="text-fg-muted">URL:</span>{" "}
 													<span className="text-fg-primary">
-														{suggestion.originalTool?.websiteUrl || "—"}
+														{suggestion.originalTool?.websiteUrl || "-"}
 													</span>
 												</p>
 												<div className="flex items-center gap-2">
@@ -478,7 +478,7 @@ export function AdminReviewTab() {
 																: "text-fg-primary"
 														}
 													>
-														{suggestion.suggestedWebsiteUrl || "—"}
+														{suggestion.suggestedWebsiteUrl || "-"}
 													</span>
 												</p>
 												{(() => {

@@ -72,7 +72,7 @@ export function IconUploadField({
 
 			if (file.size > MAX_FILE_BYTES) {
 				setLocalError(
-					`File too large — ${(file.size / 1024 / 1024).toFixed(1)} MB exceeds 5 MB limit`,
+					`File too large - ${(file.size / 1024 / 1024).toFixed(1)} MB exceeds 5 MB limit`,
 				);
 				return;
 			}
@@ -80,7 +80,7 @@ export function IconUploadField({
 			const lowerName = file.name.toLowerCase();
 			if (REJECTED_EXTENSIONS.some((ext) => lowerName.endsWith(ext))) {
 				setLocalError(
-					"HEIC/HEIF/AVIF aren't supported — convert to PNG/JPEG/WebP first",
+					"HEIC/HEIF/AVIF aren't supported. Convert to PNG/JPEG/WebP first.",
 				);
 				return;
 			}

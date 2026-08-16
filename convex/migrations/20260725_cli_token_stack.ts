@@ -2,7 +2,7 @@ import { v } from 'convex/values'
 import { internalMutation, internalQuery } from '../_generated/server'
 
 /**
- * `cliTokens.stackId` — PHASE B of the repo's three-phase schema migration.
+ * `cliTokens.stackId` - PHASE B of the repo's three-phase schema migration.
  *
  * Wayfinder ticket #38 (map #29), decision 7 of the wire-format grilling #33:
  * the sync target is bound to the token at link time, so `cliTokens` gains a
@@ -12,14 +12,14 @@ import { internalMutation, internalQuery } from '../_generated/server'
  * WHY THREE PHASES EVEN THOUGH THE FIELD IS NEW
  * The repo's migration gotcha, learned the hard way: convexTest runs in-memory
  * against a fresh database and passes green, while the real `convex deploy`
- * refuses a schema that existing rows violate — surfacing as an
+ * refuses a schema that existing rows violate - surfacing as an
  * ArgumentValidationError in the browser, not at deploy time. `cliTokens` has
  * live rows (every machine that ever ran `aistack login`), so a required field
  * cannot land in one step.
  *
  * THE DIRTY-ROW CHECK TESTS PRESENCE, NOT TRUTHINESS
  * `stackId` is an Id, so `!row.stackId` and `row.stackId === undefined` happen
- * to agree here — but the check is written as a presence test anyway, because
+ * to agree here - but the check is written as a presence test anyway, because
  * the last time this rule was ignored an empty-string field passed a truthiness
  * check and blocked the narrow.
  *
@@ -32,13 +32,13 @@ import { internalMutation, internalQuery } from '../_generated/server'
  *     tolerable in the first place.
  *   - The owner has zero or several. There is no safe guess. Guessing here would
  *     silently point a machine's measured layer at a stack the user never chose,
- *     and snapshots are immutable — so the token is left unlinked and reported.
+ *     and snapshots are immutable - so the token is left unlinked and reported.
  *     `publishForToken` rejects it with an actionable message ("run login
  *     again"), and the user re-links by re-authenticating.
  *
  * Phase C is therefore gated on the ambiguous set being empty, which in practice
  * means waiting for those users to re-authenticate. Until then the field stays
- * optional — which is correct, not a leftover: a profile with no stack at all
+ * optional - which is correct, not a leftover: a profile with no stack at all
  * has nothing to bind, so `stackId` may be legitimately absent forever. See the
  * deferral note in the resolution comment on #38.
  */

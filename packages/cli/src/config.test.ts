@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { clearToken, getToken, saveToken } from "./config.js";
 
 /**
- * Credentials keyed by server URL — wayfinder #61 (map #60).
+ * Credentials keyed by server URL - wayfinder #61 (map #60).
  *
  * The file holds the only plaintext copy of each token (#52 hashed the server
  * side). The old flat form let a localhost login destroy the prod token. These

@@ -113,14 +113,14 @@ export function Meter({ run }: { run: ReconcileRun }) {
 /**
  * The freshness line, in words rather than a status chip. "Never checked"
  * names the command that changes that, and links the page that explains it
- * (#58) — the reader should never have to guess what a check is.
+ * (#58) - the reader should never have to guess what a check is.
  */
 export function FreshLine({ run }: { run: ReconcileRun }) {
 	if (!run.hasSnapshot) {
 		return (
 			<span className="inline-flex flex-wrap items-center gap-x-2 font-mono text-[11px] uppercase tracking-[0.12em] text-fg-muted">
 				<span>{run.checkedLine}</span>
-				<span aria-hidden="true">—</span>
+				<span aria-hidden="true">-</span>
 				<code className="normal-case text-fg-secondary">{SYNC_CMD}</code>
 				<Link to="/sync" className="text-accent-lime hover:underline">
 					how syncing works
@@ -143,7 +143,7 @@ export function FreshLine({ run }: { run: ReconcileRun }) {
 			{run.checkedLine}
 			{!run.isFresh && (
 				<span className="normal-case tracking-normal text-fg-muted">
-					— your stack stops counting as up to date after a week
+					- your stack stops counting as up to date after a week
 				</span>
 			)}
 		</span>
@@ -156,7 +156,7 @@ export function NeverCheckedBox() {
 			<p className={cn(MONO_LABEL, "text-accent-lime")}>{KICKER_EMPTY}</p>
 			<p className="mt-3 max-w-xl text-sm leading-relaxed text-fg-secondary">
 				Your stack is here, but we have not looked at how you actually work yet.
-				Run this on the machine you code on — it reads your Claude Code history
+				Run this on the machine you code on - it reads your Claude Code history
 				locally and shows you everything before any of it leaves.
 			</p>
 			<div className="mt-4 flex items-center gap-2 border border-stroke-strong bg-bg-canvas px-3 py-2">
@@ -411,7 +411,7 @@ export function AddedPane({ run }: { run: ReconcileRun }) {
 	);
 }
 
-/** Undoing is a view of its own, not a drawer — "Bring it back" (#39). */
+/** Undoing is a view of its own, not a drawer - "Bring it back" (#39). */
 export function HiddenPane({ run }: { run: ReconcileRun }) {
 	if (run.hidden.length === 0) {
 		return (

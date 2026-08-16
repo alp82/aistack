@@ -15,7 +15,7 @@ export type GitRemoteRunner = (cwd: string) => string | null;
 
 export const defaultGitRemoteRunner: GitRemoteRunner = (cwd) => {
 	try {
-		// argv form (no shell) — git walks up to the repo root itself, and
+		// argv form (no shell) - git walks up to the repo root itself, and
 		// stderr is swallowed so "not a git repository" never leaks into the
 		// CLI's output. git missing / no repo / no origin all throw → null.
 		return execFileSync("git", ["-C", cwd, "remote", "get-url", "origin"], {
@@ -56,8 +56,8 @@ export interface LinkSpec {
 /**
  * Build a linked-resource payload. Mirrors the web `linkResource` mutation: no
  * files (upstream presence is the storage discriminator) and the exact
- * `linked:${canonical}:${normPath}` stableKey so the web unlink UI — which
- * matches by stableKey — recognizes it. `path`/`lastCommitSha` are omitted when
+ * `linked:${canonical}:${normPath}` stableKey so the web unlink UI - which
+ * matches by stableKey - recognizes it. `path`/`lastCommitSha` are omitted when
  * empty so the by_upstream dedup index matches at both write and query.
  */
 export function buildLinkResource(spec: LinkSpec): Resource {

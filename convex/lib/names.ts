@@ -4,7 +4,7 @@
  * Wayfinder ticket #45 (map #29).
  *
  * All filtering of WHICH names publish stays client-side, on the machine, before
- * the send (#33 decisions 2-4, #42 decision 1) — the server deliberately never
+ * the send (#33 decisions 2-4, #42 decision 1) - the server deliberately never
  * re-checks a name against the curated list, because the whole point of the
  * per-user opt-in is that the user may publish names the server has never heard
  * of. This module is the other question: not whether a name is allowed, but
@@ -24,7 +24,7 @@
  * Characters that cannot be rendered safely anywhere.
  *
  * Control characters move a terminal cursor, and an unterminated bidi override
- * (U+202E) reorders the rest of the rendered line — including the share printed
+ * (U+202E) reorders the rest of the rendered line - including the share printed
  * beside the name. Both survive `JSON.stringify`, which escapes C0 but not bidi.
  * See CVE-2021-42574 ("Trojan Source").
  */
@@ -59,14 +59,14 @@ export const MODEL_ID_MAX = 64
  * A model id is a different trust class from a name: it is exempt from the
  * allowlist (#33 decision 3) because fail-closing a model the day it ships would
  * make its tokens silently vanish and understate cost with no visible cause.
- * Exempt is not unchecked — the id becomes a lookup key against the models
+ * Exempt is not unchecked - the id becomes a lookup key against the models
  * catalog and a rendered string, so it gets the tighter machine charset a vendor
  * id actually uses.
  *
  * Leading and trailing hyphens are accepted even though the client's sanitizer
  * strips them. That stripping is cosmetic, and it does not survive the
  * sanitizer's own truncation step, so asserting it here would reject payloads
- * the client considers valid — coupling the server to a detail that is not a
+ * the client considers valid - coupling the server to a detail that is not a
  * bound.
  */
 export function isSanitizedModelId(s: string): boolean {

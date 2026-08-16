@@ -40,7 +40,7 @@ describe("buildRepoLinkResource", () => {
 			stableKey: "linked:https://github.com/alp82/aistack:",
 			upstream: { repoUrl: "https://github.com/alp82/aistack" },
 		});
-		// upstream presence is the storage discriminator — a link must carry no files.
+		// upstream presence is the storage discriminator - a link must carry no files.
 		expect("files" in resource).toBe(false);
 	});
 });

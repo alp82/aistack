@@ -2,7 +2,7 @@
 //
 // What the number means: `IP + User-Agent` merges people behind one NAT and
 // splits one person across networks. Every surface calls this **deduped daily
-// visitors** — approximate browser and network combinations per UTC day. It is
+// visitors** - approximate browser and network combinations per UTC day. It is
 // never presented as people, and never as impressions.
 
 import { v } from 'convex/values'
@@ -29,8 +29,8 @@ export const AGGREGATE_TARGET_ID = 'global'
  * Views one address may file per minute.
  *
  * Set well above real reading speed and well below what a loop can do. It does
- * not stop a determined inflater — they can vary `visitorHash` freely within
- * the cap — it stops one from filling the table.
+ * not stop a determined inflater - they can vary `visitorHash` freely within
+ * the cap - it stops one from filling the table.
  */
 const VIEWS_PER_MINUTE = 120
 
@@ -67,7 +67,7 @@ async function ownerOf(
  *
  * THE VIEWER IDENTITY IS NEVER AN ARGUMENT. A public mutation taking a
  * `viewerUserId` would let any caller suppress a competitor's views or
- * attribute their own — the same shape as this repo's existing
+ * attribute their own - the same shape as this repo's existing
  * public-function auth gap. The identity is read from the authenticated
  * session the web server forwards, and from nowhere else.
  *
@@ -87,7 +87,7 @@ export const record = mutation({
     targetId: v.string(),
     visitorHash: v.string(),
     /**
-     * A per-address pseudonym — HMAC over the client IP alone, with no target
+     * A per-address pseudonym - HMAC over the client IP alone, with no target
      * and no day in it, so one caller shares one bucket across every page.
      * Bounds row growth from a loop that varies `visitorHash` on every call.
      */
@@ -112,7 +112,7 @@ export const record = mutation({
 
     // The aggregate counter's owner is the site's admin (#132). It exists so
     // the admin can read a campaign, and their own browsing must not be in it.
-    // Per-target counters are untouched — there the admin is an ordinary
+    // Per-target counters are untouched - there the admin is an ordinary
     // visitor.
     if (args.targetKind === 'aggregate' && (await isAdmin(ctx))) {
       return { counted: false }
@@ -175,7 +175,7 @@ const GC_BATCH = 1000
  *
  * TODAY AND YESTERDAY SURVIVE. A marker only has to outlive the day it guards,
  * but keeping one extra day means a delayed retry crossing UTC midnight cannot
- * double-count. `viewCounters` is permanent and never downsampled — it grows
+ * double-count. `viewCounters` is permanent and never downsampled - it grows
  * with `targets x active days x buckets used`, not with traffic.
  */
 export const gcDedupe = internalMutation({

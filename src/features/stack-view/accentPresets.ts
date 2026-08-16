@@ -5,12 +5,12 @@
 //
 // OG images use each preset's bright dark anchor (the Tailwind-400 family),
 // matching lime's existing OG color; the web view uses the mode-aware oklch
-// ladder in styles.css. The hue/chroma values here are authoritative — the
+// ladder in styles.css. The hue/chroma values here are authoritative - the
 // `.accent-<key>` blocks in styles.css are hand-authored to match them, and a
 // drift test guards rule PRESENCE. The values test (accent.test.ts) guards the
 // actual hue/chroma/lightL numbers.
 //
-// Imported by the Convex bundle (convex/lib/iconUrl.ts) — keep this module
+// Imported by the Convex bundle (convex/lib/iconUrl.ts) - keep this module
 // free of React/DOM/client-only imports.
 
 type AccentPreset = {
@@ -135,7 +135,7 @@ const DEFAULT_ACCENT_KEY = "lime";
 
 /**
  * Map an accent key to the CSS class that re-themes the accent ladder. Returns
- * "" for the default (lime), unset, or any unknown key — the default tokens
+ * "" for the default (lime), unset, or any unknown key - the default tokens
  * already serve lime, so no ruleless `.accent-lime` class is emitted.
  */
 function accentClassFor(key?: string): string {

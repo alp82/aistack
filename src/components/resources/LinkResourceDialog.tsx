@@ -55,7 +55,7 @@ export function LinkResourceDialog({
 		const trimmedName = name.trim();
 		if (!trimmedRepoUrl || !trimmedName || submitting) return;
 		if (!isGithubRepoUrl(trimmedRepoUrl)) {
-			setError("Enter a GitHub repository URL — github.com/owner/repo");
+			setError("Enter a GitHub repository URL - github.com/owner/repo");
 			return;
 		}
 		setSubmitting(true);
