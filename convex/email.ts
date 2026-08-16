@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { Resend } from "resend";
 import { render } from "@react-email/render";
 import { WaitlistLaunchEmail } from "../src/emails/WaitlistLaunchEmail";
+import { FeatureUpdateEmail } from "../src/emails/FeatureUpdateEmail";
 import { SyncBroadcastEmail } from "../src/emails/SyncBroadcastEmail";
 import { UNSUBSCRIBE_PLACEHOLDER } from "../src/emails/styles";
 import { signUnsubscribeToken } from "./emailToken";
@@ -80,8 +81,13 @@ const BROADCASTS: Record<
     // When marking a broadcast sent, also add its id to SENT_BROADCASTS in EmailBroadcastsSection.tsx (UI gate).
     alreadySent: true,
   },
-  // "feature-update" was retired unsent (map #121): its items (projects,
-  // accent colors) are deferred to a later email. The template file stays.
+  // Registered and never sent. Its items (projects, accent colors) wait for
+  // their own send; the owner keeps it visible in the admin UI meanwhile.
+  "feature-update": {
+    subject: "New on AI Stack: Promote, Share & Customize Your Stack",
+    render: () => render(FeatureUpdateEmail({})),
+    audience: "waitlist+members",
+  },
   "sync-broadcast": {
     subject: "Show your real usage on your stack",
     render: () => render(SyncBroadcastEmail({})),
