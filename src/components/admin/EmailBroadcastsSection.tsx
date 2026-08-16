@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../../convex/_generated/api";
+import { FeatureUpdateEmail } from "../../emails/FeatureUpdateEmail";
 import { SyncBroadcastEmail } from "../../emails/SyncBroadcastEmail";
 import { WaitlistLaunchEmail } from "../../emails/WaitlistLaunchEmail";
 import { Dialog } from "../ui/Dialog";
@@ -39,8 +40,14 @@ const BROADCAST_EMAILS: BroadcastEmail[] = [
 		audience: "Waitlist",
 		component: <WaitlistLaunchEmail />,
 	},
-	// "feature-update" retired unsent (map #121); its items are deferred to a
-	// later email. The template file stays in src/emails.
+	{
+		id: "feature-update",
+		name: "New: Promote, Share & Customize",
+		description:
+			"Announce three new member features (projects, shareable stack image, accent colors) to waitlist subscribers and registered members",
+		audience: "Waitlist + Members",
+		component: <FeatureUpdateEmail />,
+	},
 	{
 		id: "sync-broadcast",
 		name: "Show Your Real Usage",
