@@ -49,7 +49,7 @@ const HARNESS_LABELS: Record<string, string> = {
 	// Lowercase brands: the wire name is the label, but each is an explicit
 	// row so a rename cannot silently leak a raw slug (#130).
 	opencode: "opencode",
-	"pi-mono": "pi-mono",
+	"pi-mono": "Pi",
 };
 
 export function harnessLabel(name: string): string {

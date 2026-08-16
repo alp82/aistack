@@ -81,8 +81,8 @@ function SyncPage() {
 					<Fold label="what it reads">
 						<p>
 							aistack reads files your agents already wrote on this machine.
-							That is all it reads. Claude Code, Codex, opencode and pi-mono
-							write those files.
+							That is all it reads. Claude Code, Codex, opencode and Pi write
+							those files.
 						</p>
 						<p className="mt-2">
 							On the first run it opens your browser to link this machine. You
