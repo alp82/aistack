@@ -154,12 +154,12 @@ export function SyncBroadcastEmail(props: {
 					{/* Main Content */}
 					<Section style={styles.content}>
 						<Text style={styles.sectionLabel}>{"// aistack sync"}</Text>
-						<Heading style={styles.h1}>Show your real usage</Heading>
+						<Heading style={styles.h1}>Share your real usage</Heading>
 						<Text style={styles.p}>
-							Your stack page lists the tools you use. Now it can also show how
+							On top of the tools you use, now you can also show how
 							much you use them. The aistack CLI reads your local usage data
-							from Claude Code, Codex, opencode and pi-mono, and adds sessions,
-							tokens and cost to your stack page.
+							from Claude Code, Codex, opencode and pi-mono. It adds session and
+							token count to your profile page.
 						</Text>
 
 						{/* Terminal mock with the owner's real reading */}
@@ -177,13 +177,15 @@ export function SyncBroadcastEmail(props: {
 							<Text style={termLine}>
 								searched claude code, codex, opencode, pi-mono
 							</Text>
-							<Text style={termLine}>sessions 572 · 30 days</Text>
-							<Text style={termLine}>tokens 4.26B</Text>
-							<Text style={termLine}>cost $4,907 at API prices</Text>
+							<Text style={termLine}>* sessions 572 · 30 days</Text>
+							<Text style={termLine}>* tokens 4.26B</Text>
+							<Text style={termLine}>* cost $4,907 at API prices</Text>
+							<Text style={termLime}>
+								Auto-sync turned on
+							</Text>
 						</Section>
 						<Text style={{ ...styles.small, margin: "0 0 32px" }}>
-							These are real numbers from my own machine. The CLI shows your
-							full summary before anything is sent.
+							These are real numbers from my own machine.
 						</Text>
 
 						{/* CTA */}
@@ -228,10 +230,8 @@ export function SyncBroadcastEmail(props: {
 								paddingTop: 20,
 							}}
 						>
-							The CLI only reads files that your harness already stores on your
-							machine. Your raw data never leaves your machine. The CLI shows
-							the full summary in your terminal, and nothing is sent until you
-							confirm. If you cancel, nothing is sent.
+							The CLI only reads token and session statistics. Your chat data never leaves your machine.
+							You'll see the full summary in your terminal, and you have to confirm the sync before publishing.
 						</Text>
 					</Section>
 

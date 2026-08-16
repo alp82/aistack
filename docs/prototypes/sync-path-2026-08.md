@@ -86,10 +86,9 @@ New. Sits directly under the hero, above the steps, because what the tool
 ```
 WHAT IT READS
 
-aistack reads files your agents already wrote on this machine.
-That is all it reads.
+AI Stack reads files your agents already wrote on this machine.
 
-Claude Code, Codex, opencode and pi-mono write those files.
+Claude Code, Codex, opencode and pi-mono create those files automatically.
 ```
 
 The harness list lives here and nowhere else on the page. Step 1 loses its
