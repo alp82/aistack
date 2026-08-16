@@ -7,6 +7,7 @@ import { api, internal } from './_generated/api'
 import type { MutationCtx } from './_generated/server'
 import { mergeAudience, subtractSuppressed } from './email'
 import { FeatureUpdateEmail } from '../src/emails/FeatureUpdateEmail'
+import { SyncBroadcastEmail } from '../src/emails/SyncBroadcastEmail'
 import { WaitlistLaunchEmail } from '../src/emails/WaitlistLaunchEmail'
 import { UNSUBSCRIBE_PLACEHOLDER } from '../src/emails/styles'
 import { ADMIN_EMAILS } from './lib/admin'
@@ -48,37 +49,37 @@ describe('GROUP Q — sendBroadcast', () => {
     expect(result.alreadySent).not.toBe(true)
   })
 
-  // TC-Q-03: "feature-update" with no API key hits the env guard.
-  test('TC-Q-03: sendBroadcast("feature-update") with no RESEND_API_KEY returns env-guard failure', async () => {
+  // TC-Q-03: "sync-broadcast" with no API key hits the env guard.
+  test('TC-Q-03: sendBroadcast("sync-broadcast") with no RESEND_API_KEY returns env-guard failure', async () => {
     const t = convexTest(schema, modules)
     const asAdmin = t.withIdentity({ tokenIdentifier: 'convex|admin', email: ADMIN_EMAILS[0] })
 
-    const result = await asAdmin.action(api.email.sendBroadcast, { broadcastId: 'feature-update' })
+    const result = await asAdmin.action(api.email.sendBroadcast, { broadcastId: 'sync-broadcast' })
 
     expect(result.success).toBe(false)
     expect(result.message).toContain('Email service not configured')
   })
 
-  // TC-Q-04: the "feature-update" refusal is an env-guard refusal, NOT alreadySent.
-  test('TC-Q-04: sendBroadcast("feature-update") refusal does NOT carry alreadySent:true', async () => {
+  // TC-Q-04: the "sync-broadcast" refusal is an env-guard refusal, NOT alreadySent.
+  test('TC-Q-04: sendBroadcast("sync-broadcast") refusal does NOT carry alreadySent:true', async () => {
     const t = convexTest(schema, modules)
     const asAdmin = t.withIdentity({ tokenIdentifier: 'convex|admin', email: ADMIN_EMAILS[0] })
 
-    const result = await asAdmin.action(api.email.sendBroadcast, { broadcastId: 'feature-update' })
+    const result = await asAdmin.action(api.email.sendBroadcast, { broadcastId: 'sync-broadcast' })
 
     expect(result.alreadySent).not.toBe(true)
   })
 
-  // TC-Q-NEW: sendBroadcast("feature-update") with a fake RESEND_API_KEY but no
+  // TC-Q-NEW: sendBroadcast("sync-broadcast") with a fake RESEND_API_KEY but no
   // BETTER_AUTH_SECRET hits the secret guard and returns the configured fail-closed shape.
-  test('TC-Q-NEW: sendBroadcast("feature-update") with RESEND key but no BETTER_AUTH_SECRET returns secret-guard failure', async () => {
+  test('TC-Q-NEW: sendBroadcast("sync-broadcast") with RESEND key but no BETTER_AUTH_SECRET returns secret-guard failure', async () => {
     const t = convexTest(schema, modules)
     const asAdmin = t.withIdentity({ tokenIdentifier: 'convex|admin', email: ADMIN_EMAILS[0] })
     const savedSecret = process.env.BETTER_AUTH_SECRET
     process.env.RESEND_API_KEY = 'fake-key-for-test'
     delete process.env.BETTER_AUTH_SECRET
     try {
-      const result = await asAdmin.action(api.email.sendBroadcast, { broadcastId: 'feature-update' })
+      const result = await asAdmin.action(api.email.sendBroadcast, { broadcastId: 'sync-broadcast' })
       expect(result.success).toBe(false)
       expect(result.message).toContain('Email service not configured')
     } finally {
@@ -119,7 +120,7 @@ describe('GROUP Q — sendBroadcast', () => {
     const t = convexTest(schema, modules)
     const asUser = t.withIdentity({ tokenIdentifier: 'convex|intruder', email: 'intruder@example.com' })
 
-    const result = await asUser.action(api.email.sendBroadcast, { broadcastId: 'feature-update' })
+    const result = await asUser.action(api.email.sendBroadcast, { broadcastId: 'sync-broadcast' })
 
     expect(result.success).toBe(false)
     expect(result.message).toMatch(/unauthorized/i)
@@ -131,7 +132,7 @@ describe('GROUP Q — sendBroadcast', () => {
   test('TC-Q-AUTH-ANON: sendBroadcast with no identity returns {success:false, message:/unauthorized/i}', async () => {
     const t = convexTest(schema, modules)
 
-    const result = await t.action(api.email.sendBroadcast, { broadcastId: 'feature-update' })
+    const result = await t.action(api.email.sendBroadcast, { broadcastId: 'sync-broadcast' })
 
     expect(result.success).toBe(false)
     expect(result.message).toMatch(/unauthorized/i)
@@ -161,7 +162,7 @@ describe('GROUP R — sendTestEmail', () => {
     const t = convexTest(schema, modules)
     const asUser = t.withIdentity({ tokenIdentifier: 'convex|intruder', email: 'intruder@example.com' })
 
-    const result = await asUser.action(api.email.sendTestEmail, { broadcastId: 'feature-update' })
+    const result = await asUser.action(api.email.sendTestEmail, { broadcastId: 'sync-broadcast' })
 
     expect(result.success).toBe(false)
     expect(result.message).toMatch(/unauthorized/i)
@@ -191,19 +192,19 @@ describe('GROUP R — sendTestEmail', () => {
     expect(result.message).toContain('Email service not configured')
   })
 
-  // TC-R-04: "feature-update" with identity and no API key also hits env guard.
-  test('TC-R-04: sendTestEmail("feature-update") with identity and no API key returns env-guard failure', async () => {
+  // TC-R-04: "sync-broadcast" with identity and no API key also hits env guard.
+  test('TC-R-04: sendTestEmail("sync-broadcast") with identity and no API key returns env-guard failure', async () => {
     const t = convexTest(schema, modules)
     const asAdmin = t.withIdentity({ tokenIdentifier: 'convex|admin', email: ADMIN_EMAILS[0] })
 
-    const result = await asAdmin.action(api.email.sendTestEmail, { broadcastId: 'feature-update' })
+    const result = await asAdmin.action(api.email.sendTestEmail, { broadcastId: 'sync-broadcast' })
 
     expect(result.success).toBe(false)
     expect(result.message).not.toBe('Unknown broadcast ID')
   })
 
   // TC-R-05: BETTER_AUTH_SECRET guard fires when secret is missing (API key present).
-  test('TC-R-05: sendTestEmail("feature-update") with RESEND key but no BETTER_AUTH_SECRET returns secret-guard failure', async () => {
+  test('TC-R-05: sendTestEmail("sync-broadcast") with RESEND key but no BETTER_AUTH_SECRET returns secret-guard failure', async () => {
     const t = convexTest(schema, modules)
     const asAdmin = t.withIdentity({ tokenIdentifier: 'convex|admin', email: ADMIN_EMAILS[0] })
     // beforeEach already deleted RESEND_API_KEY; set it now so the env guard passes
@@ -211,7 +212,7 @@ describe('GROUP R — sendTestEmail', () => {
     const savedSecret = process.env.BETTER_AUTH_SECRET
     delete process.env.BETTER_AUTH_SECRET
     try {
-      const result = await asAdmin.action(api.email.sendTestEmail, { broadcastId: 'feature-update' })
+      const result = await asAdmin.action(api.email.sendTestEmail, { broadcastId: 'sync-broadcast' })
       expect(result.success).toBe(false)
       expect(result.message).toContain('Email service not configured')
     } finally {
@@ -222,7 +223,7 @@ describe('GROUP R — sendTestEmail', () => {
   })
 
   // TC-R-06: Non-https appUrl guard fires when APP_URL is http (secret + key present).
-  test('TC-R-06: sendTestEmail("feature-update") with http appUrl returns appUrl-guard failure', async () => {
+  test('TC-R-06: sendTestEmail("sync-broadcast") with http appUrl returns appUrl-guard failure', async () => {
     const t = convexTest(schema, modules)
     const asAdmin = t.withIdentity({ tokenIdentifier: 'convex|admin', email: ADMIN_EMAILS[0] })
     // beforeEach already deleted RESEND_API_KEY; set it so env guard passes
@@ -237,7 +238,7 @@ describe('GROUP R — sendTestEmail', () => {
     process.env.APP_URL = 'http://localhost:3019'
     delete process.env.BETTER_AUTH_URL
     try {
-      const result = await asAdmin.action(api.email.sendTestEmail, { broadcastId: 'feature-update' })
+      const result = await asAdmin.action(api.email.sendTestEmail, { broadcastId: 'sync-broadcast' })
       expect(result.success).toBe(false)
       expect(result.message).toContain('Email service not configured')
     } finally {
@@ -535,25 +536,25 @@ describe('GROUP V — suppression integration', () => {
     expect(result).toEqual(['bob@x.com', 'carol@x.com'])
   })
 
-  // TC-V-03: sendBroadcast("feature-update") with no RESEND_API_KEY → env-guard failure.
+  // TC-V-03: sendBroadcast("sync-broadcast") with no RESEND_API_KEY → env-guard failure.
   // (Mirrors TC-Q-03 — verifies suppression path doesn't accidentally bypass env guard.)
-  test('TC-V-03: sendBroadcast("feature-update") no API key → {success:false, message contains "Email service not configured"}', async () => {
+  test('TC-V-03: sendBroadcast("sync-broadcast") no API key → {success:false, message contains "Email service not configured"}', async () => {
     const t = convexTest(schema, modules)
     const asAdmin = t.withIdentity({ tokenIdentifier: 'convex|admin', email: ADMIN_EMAILS[0] })
 
-    const result = await asAdmin.action(api.email.sendBroadcast, { broadcastId: 'feature-update' })
+    const result = await asAdmin.action(api.email.sendBroadcast, { broadcastId: 'sync-broadcast' })
 
     expect(result.success).toBe(false)
     expect(result.message).toContain('Email service not configured')
   })
 
-  // TC-V-04: sendTestEmail("feature-update") with identity, no API key → env-guard failure
+  // TC-V-04: sendTestEmail("sync-broadcast") with identity, no API key → env-guard failure
   // (not a suppression error — suppression must not surface before env guard).
-  test('TC-V-04: sendTestEmail("feature-update") with identity, no key → env-guard failure, not suppression error', async () => {
+  test('TC-V-04: sendTestEmail("sync-broadcast") with identity, no key → env-guard failure, not suppression error', async () => {
     const t = convexTest(schema, modules)
     const asAdmin = t.withIdentity({ tokenIdentifier: 'convex|admin', email: ADMIN_EMAILS[0] })
 
-    const result = await asAdmin.action(api.email.sendTestEmail, { broadcastId: 'feature-update' })
+    const result = await asAdmin.action(api.email.sendTestEmail, { broadcastId: 'sync-broadcast' })
 
     expect(result.success).toBe(false)
     expect(result.message).toContain('Email service not configured')
@@ -654,6 +655,24 @@ describe('GROUP W — template render', () => {
 
     expect(finalHtml).toContain(url)
     expect(finalHtml).not.toContain(UNSUBSCRIBE_PLACEHOLDER)
+  })
+
+  // TC-W-09: SyncBroadcastEmail default (no prop) contains the placeholder —
+  // the send-time guard refuses the template without it.
+  test('TC-W-09: SyncBroadcastEmail() with no prop contains UNSUBSCRIBE_PLACEHOLDER', async () => {
+    const html = await render(SyncBroadcastEmail({}))
+
+    expect(html).toContain(UNSUBSCRIBE_PLACEHOLDER)
+  })
+
+  // TC-W-10: SyncBroadcastEmail with prop — placeholder replaced by the URL.
+  test('TC-W-10: SyncBroadcastEmail(unsubscribeUrl) renders URL, placeholder is gone', async () => {
+    const url = 'https://aistack.to/api/email/unsubscribe?token=TESTTOKEN'
+    const html = await render(SyncBroadcastEmail({ unsubscribeUrl: url }))
+
+    expect(html).toContain(url)
+    expect(html).toContain('Unsubscribe')
+    expect(html).not.toContain(UNSUBSCRIBE_PLACEHOLDER)
   })
 })
 
