@@ -20,6 +20,7 @@ import { api } from "../../../convex/_generated/api";
 import { FeatureUpdateEmail } from "../../emails/FeatureUpdateEmail";
 import { WaitlistLaunchEmail } from "../../emails/WaitlistLaunchEmail";
 import { Dialog } from "../ui/Dialog";
+import { SyncBroadcastPrototypeSection } from "./SyncBroadcastPrototype";
 
 type ViewMode = "preview" | "html";
 
@@ -483,6 +484,9 @@ export function EmailBroadcastsSection() {
 					</p>
 				</div>
 			</div>
+
+			{/* PROTOTYPE #133 — remove with SyncBroadcastPrototypeSection once a variant wins */}
+			<SyncBroadcastPrototypeSection />
 
 			<div className="space-y-4">
 				{[...BROADCAST_EMAILS].reverse().map((broadcast) => (
