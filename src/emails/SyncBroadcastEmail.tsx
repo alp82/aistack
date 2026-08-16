@@ -93,12 +93,13 @@ const UNLOCKS: { label: string; text: string; img: string; alt: string }[] = [
 		img: `${BASE_URL}/email/sync-share.png`,
 		alt: "A stack rendered as a shareable image",
 	},
-	{
-		label: "Supported harnesses",
-		text: "The CLI reads Claude Code, Codex, opencode and pi-mono.",
-		img: `${BASE_URL}/email/sync-harnesses.png`,
-		alt: "The list of files the sync CLI reads",
-	},
+];
+
+const HARNESS_LOGOS: { name: string; url: string }[] = [
+	{ name: "Claude Code", url: `${BASE_URL}/email/claude-logo.png` },
+	{ name: "Codex", url: `${BASE_URL}/email/codex-logo.png` },
+	{ name: "opencode", url: `${BASE_URL}/email/opencode-logo.png` },
+	{ name: "pi-mono", url: `${BASE_URL}/email/pi-mono-logo.png` },
 ];
 
 export function SyncBroadcastEmail(props: {
@@ -156,10 +157,10 @@ export function SyncBroadcastEmail(props: {
 						<Text style={styles.sectionLabel}>{"// aistack sync"}</Text>
 						<Heading style={styles.h1}>Share your real usage</Heading>
 						<Text style={styles.p}>
-							On top of the tools you use, now you can also show how
-							much you use them. The aistack CLI reads your local usage data
-							from Claude Code, Codex, opencode and pi-mono. It adds session and
-							token count to your profile page.
+							On top of the tools you use, now you can also show how much you
+							use them. The aistack CLI reads your local usage data from Claude
+							Code, Codex, opencode and pi-mono. It adds session and token count
+							to your profile page.
 						</Text>
 
 						{/* Terminal mock with the owner's real reading */}
@@ -180,9 +181,7 @@ export function SyncBroadcastEmail(props: {
 							<Text style={termLine}>* sessions 572 · 30 days</Text>
 							<Text style={termLine}>* tokens 4.26B</Text>
 							<Text style={termLine}>* cost $4,907 at API prices</Text>
-							<Text style={termLime}>
-								Auto-sync turned on
-							</Text>
+							<Text style={termLime}>Auto-sync turned on</Text>
 						</Section>
 						<Text style={{ ...styles.small, margin: "0 0 32px" }}>
 							These are real numbers from my own machine.
@@ -222,6 +221,54 @@ export function SyncBroadcastEmail(props: {
 							</Section>
 						))}
 
+						{/* Supported harnesses - logo grid instead of a screenshot */}
+						<Section style={{ marginBottom: 36 }}>
+							<Text style={unlockLabel}>
+								<span style={limeSquare} />
+								Supported harnesses
+							</Text>
+							<Text style={unlockText}>
+								The CLI reads Claude Code, Codex, opencode and pi-mono.
+							</Text>
+							<Row style={{ marginTop: 16 }}>
+								{HARNESS_LOGOS.map((harness) => (
+									<Column
+										key={harness.name}
+										style={{
+											width: "25%",
+											padding: "0 6px",
+											textAlign: "center" as const,
+											verticalAlign: "top" as const,
+										}}
+									>
+										<Img
+											src={harness.url}
+											alt={harness.name}
+											width={72}
+											height={72}
+											style={{
+												display: "inline-block",
+												width: 72,
+												height: 72,
+												objectFit: "contain" as const,
+											}}
+										/>
+										<Text
+											style={{
+												fontFamily: fonts.mono,
+												fontSize: 12,
+												fontWeight: 600,
+												color: colors.textSecondary,
+												margin: "6px 0 0",
+											}}
+										>
+											{harness.name}
+										</Text>
+									</Column>
+								))}
+							</Row>
+						</Section>
+
 						{/* Closing CTA */}
 						<Section style={styles.ctaWrap}>
 							<Link href={`${ctaUrl}/sync`} style={styles.ctaAnimated}>
@@ -237,8 +284,9 @@ export function SyncBroadcastEmail(props: {
 								paddingTop: 20,
 							}}
 						>
-							The CLI only reads token and session statistics. Your chat data never leaves your machine.
-							You'll see the full summary in your terminal, and you have to confirm the sync before publishing.
+							The CLI only reads token and session statistics. Your chat data
+							never leaves your machine. You'll see the full summary in your
+							terminal, and you have to confirm the sync before publishing.
 						</Text>
 					</Section>
 
