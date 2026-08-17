@@ -7,7 +7,8 @@
  * hanging forever. Signed-in flow: SSR-seeded token, caching, force-refresh,
  * session-driven state, and in-flight dedup all stay intact.
  */
-import { act, renderHook } from "@testing-library/react";
+import { act, render, renderHook } from "@testing-library/react";
+import { useLayoutEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -314,6 +315,83 @@ describe("useConvexAuthFromBetterAuth", () => {
 			await vi.advanceTimersByTimeAsync(AUTH_RETRY_BASE_MS * 64);
 		});
 		expect(result.current.fetchAccessToken).toBe(initialFetch);
+	});
+
+	// A syntactically valid JWT whose exp lies `expSecFromNow` in the future,
+	// for the failed-refresh fallback's isNearExpiry gate.
+	const fakeJwt = (expSecFromNow: number) =>
+		`e30.${btoa(
+			JSON.stringify({ exp: Math.floor(Date.now() / 1000) + expSecFromNow }),
+		)}.sig`;
+
+	it("serves the SSR seed when called before the binding effect commits (the wedge's guest-on-reload race)", async () => {
+		// ConvexProviderWithAuth calls fetchAccessToken from an effect that can
+		// run before this module's passive binding effect. Pre-fix, that call
+		// treated the unbound seed as a cache miss, fetched (here: hung/failed),
+		// and wiped the seed with null. useLayoutEffect reproduces the ordering.
+		mocks.useSession.mockReturnValue(signedInSession());
+		mocks.token.mockRejectedValue(new Error("wedged"));
+
+		const tokens: Array<string | null> = [];
+		function Probe() {
+			const useAuth = useConvexAuthFromBetterAuth("ssr-token");
+			const auth = useAuth();
+			// biome-ignore lint/correctness/useExhaustiveDependencies: fire once, before passive effects
+			useLayoutEffect(() => {
+				auth.fetchAccessToken().then((t) => tokens.push(t));
+			}, []);
+			return null;
+		}
+		await act(async () => {
+			render(<Probe />);
+		});
+
+		expect(tokens).toEqual(["ssr-token"]);
+		expect(mocks.token).not.toHaveBeenCalled();
+	});
+
+	it("a failed forced refresh re-serves a still-valid cached token instead of wiping it, and schedules a retry", async () => {
+		vi.useFakeTimers();
+		mocks.useSession.mockReturnValue(signedInSession());
+		mocks.token.mockRejectedValue(new Error("wedged"));
+		const seed = fakeJwt(900);
+
+		const { result } = setup(seed);
+		const initialFetch = result.current.fetchAccessToken;
+
+		// Bind the seed, then hit the Convex client's mandatory forced refetch
+		// while the endpoint is down: the just-validated token must survive.
+		await act(async () => {
+			await expect(initialFetch()).resolves.toBe(seed);
+			await expect(initialFetch({ forceRefreshToken: true })).resolves.toBe(
+				seed,
+			);
+		});
+		// A later non-forced call still hits the cache.
+		await act(async () => {
+			await expect(initialFetch()).resolves.toBe(seed);
+		});
+		// The failure still armed the fix-6 backoff, so a real refresh happens
+		// once the transport heals.
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(AUTH_RETRY_BASE_MS);
+		});
+		expect(result.current.fetchAccessToken).not.toBe(initialFetch);
+	});
+
+	it("a failed forced refresh with a near-expiry cached token resolves null (no rejected-token loop)", async () => {
+		mocks.useSession.mockReturnValue(signedInSession());
+		mocks.token.mockRejectedValue(new Error("wedged"));
+		const stale = fakeJwt(30);
+
+		const { result } = setup(stale);
+
+		await act(async () => {
+			await expect(result.current.fetchAccessToken()).resolves.toBe(stale);
+			await expect(
+				result.current.fetchAccessToken({ forceRefreshToken: true }),
+			).resolves.toBeNull();
+		});
 	});
 
 	it("two concurrent forced calls share one token fetch (dedup)", async () => {

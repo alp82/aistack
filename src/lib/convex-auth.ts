@@ -74,6 +74,25 @@ export async function withTimeoutToNull<T>(
 	}
 }
 
+/**
+ * True when the JWT is expired, unreadable, or within `marginMs` of expiry.
+ * Gate for the failed-refresh fallback: a token past this check must never be
+ * re-served, or a server-side rejection could loop.
+ */
+export function isNearExpiry(jwt: string, marginMs = 60_000): boolean {
+	try {
+		const payload = JSON.parse(
+			atob(jwt.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")),
+		);
+		return (
+			typeof payload.exp !== "number" ||
+			payload.exp * 1000 - marginMs <= Date.now()
+		);
+	} catch {
+		return true;
+	}
+}
+
 // Concurrent callers share one raced fetch; cleared on settle. Safe because
 // the raced promise always settles within AUTH_TOKEN_TIMEOUT_MS (no
 // hung-promise pinning), a post-timeout call starts a fresh fetch, which is
@@ -179,26 +198,11 @@ export function useConvexAuthFromBetterAuth(
 					}: {
 						forceRefreshToken?: boolean;
 					} = {}) => {
-						// Serve the cache only when it belongs to the current
-						// session (a sessionId mismatch: sign-out/sign-in OR a
-						// direct A→B swap with no null pass) forces a re-fetch and
-						// subsumes the old null-session clear.
-						if (
-							tokenRef.current &&
-							!forceRefreshToken &&
-							tokenSessionIdRef.current === sessionId
-						) {
-							return tokenRef.current;
-						}
-						const token = await fetchConvexTokenWithTimeout();
-						tokenRef.current = token;
-						tokenSessionIdRef.current = sessionId;
-						if (token) {
-							retryAttemptsRef.current = 0;
-						} else if (sessionId && retryTimerRef.current === undefined) {
-							// Fix 6: a session cookie exists but the token fetch failed
-							// (timeout, abort, network). Convex now sits unauthenticated
-							// and will never ask again on its own - schedule one bump.
+						// Fix 6: after a failed fetch with a live session, Convex
+						// sits unauthenticated (or on the fallback token) and never
+						// asks again on its own - schedule one bump.
+						const scheduleRetry = () => {
+							if (!sessionId || retryTimerRef.current !== undefined) return;
 							const delay = Math.min(
 								AUTH_RETRY_MAX_MS,
 								AUTH_RETRY_BASE_MS * 2 ** retryAttemptsRef.current,
@@ -208,6 +212,52 @@ export function useConvexAuthFromBetterAuth(
 								retryTimerRef.current = undefined;
 								setRetryTick((tick) => tick + 1);
 							}, delay);
+						};
+						// Serve the cache only when it belongs to the current
+						// session (a sessionId mismatch: sign-out/sign-in OR a
+						// direct A→B swap with no null pass) forces a re-fetch and
+						// subsumes the old null-session clear.
+						// An unbound cache (`boundSid === undefined`) is the SSR seed
+						// before any bind: the binding effect below runs after paint,
+						// but ConvexProviderWithAuth can call in before that commit,
+						// and treating the seed as a miss here wiped it with the
+						// failed fetch's null - a wedged token endpoint then meant
+						// GUEST forever even though every reload delivered a valid
+						// seed. Bind lazily on first serve instead; `undefined` can
+						// only match before the first bind, so the A→B swap guard
+						// (bound id must equal the live session id) is unaffected.
+						if (
+							tokenRef.current &&
+							!forceRefreshToken &&
+							(tokenSessionIdRef.current === sessionId ||
+								(tokenSessionIdRef.current === undefined && sessionId))
+						) {
+							tokenSessionIdRef.current = sessionId;
+							return tokenRef.current;
+						}
+						const token = await fetchConvexTokenWithTimeout();
+						// Failed fetch with a still-valid cached token for the live
+						// session: serve the cache instead of wiping it. The Convex
+						// client's mandatory post-auth forced refetch otherwise
+						// destroys a token the server just validated whenever the
+						// token endpoint is unreachable (the Vivaldi wedge), turning
+						// one transport failure into "guest until browser restart".
+						// Expiry-guarded so a genuinely rejected token can't loop.
+						if (
+							!token &&
+							tokenRef.current &&
+							tokenSessionIdRef.current === sessionId &&
+							!isNearExpiry(tokenRef.current)
+						) {
+							scheduleRetry();
+							return tokenRef.current;
+						}
+						tokenRef.current = token;
+						tokenSessionIdRef.current = sessionId;
+						if (token) {
+							retryAttemptsRef.current = 0;
+						} else {
+							scheduleRetry();
 						}
 						return token;
 					},

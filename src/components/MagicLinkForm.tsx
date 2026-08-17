@@ -56,7 +56,7 @@ export function MagicLinkForm({ callbackURL, disabled }: MagicLinkFormProps) {
 						setSent(false);
 						setEmail("");
 					}}
-					className="font-mono text-xs text-fg-muted hover:text-accent-lime transition-colors"
+					className="font-mono text-xs text-fg-muted hover:text-accent-lime transition-colors cursor-pointer"
 				>
 					Use a different email
 				</button>
@@ -93,7 +93,7 @@ export function MagicLinkForm({ callbackURL, disabled }: MagicLinkFormProps) {
 			<button
 				type="submit"
 				disabled={loading || disabled}
-				className="w-full flex items-center justify-center gap-3 border-2 border-stroke-strong bg-bg-canvas px-4 py-4 font-mono text-sm font-semibold uppercase tracking-wide text-fg-primary transition-all hover:border-accent-lime hover:text-accent-lime disabled:opacity-50"
+				className="w-full flex items-center justify-center gap-3 border-2 border-stroke-strong bg-bg-canvas px-4 py-4 font-mono text-sm font-semibold uppercase tracking-wide text-fg-primary transition-all hover:border-accent-lime hover:text-accent-lime disabled:opacity-50 cursor-pointer disabled:cursor-default"
 			>
 				<Mail className="size-4" />
 				{loading ? "Sending..." : "Send Magic Link"}

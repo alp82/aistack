@@ -144,7 +144,7 @@ export function AuthForm({
 				type="button"
 				onClick={() => handleSocialSignIn("google")}
 				disabled={loading}
-				className="w-full flex items-center justify-center gap-3 border-2 border-stroke-strong bg-bg-canvas px-4 py-4 font-mono text-sm font-semibold uppercase tracking-wide text-fg-primary transition-all hover:border-accent-lime hover:text-accent-lime disabled:opacity-50"
+				className="w-full flex items-center justify-center gap-3 border-2 border-stroke-strong bg-bg-canvas px-4 py-4 font-mono text-sm font-semibold uppercase tracking-wide text-fg-primary transition-all hover:border-accent-lime hover:text-accent-lime disabled:opacity-50 cursor-pointer disabled:cursor-default"
 			>
 				<GoogleIcon />
 				Continue with Google
@@ -154,7 +154,7 @@ export function AuthForm({
 				type="button"
 				onClick={() => handleSocialSignIn("github")}
 				disabled={loading}
-				className="w-full flex items-center justify-center gap-3 border-2 border-stroke-strong bg-bg-canvas px-4 py-4 font-mono text-sm font-semibold uppercase tracking-wide text-fg-primary transition-all hover:border-accent-lime hover:text-accent-lime disabled:opacity-50"
+				className="w-full flex items-center justify-center gap-3 border-2 border-stroke-strong bg-bg-canvas px-4 py-4 font-mono text-sm font-semibold uppercase tracking-wide text-fg-primary transition-all hover:border-accent-lime hover:text-accent-lime disabled:opacity-50 cursor-pointer disabled:cursor-default"
 			>
 				<GitHubIcon />
 				Continue with GitHub
@@ -255,7 +255,7 @@ export function AuthForm({
 				<button
 					type="submit"
 					disabled={loading}
-					className="w-full border-2 border-accent-lime bg-accent-lime px-4 py-4 font-mono text-sm font-bold uppercase tracking-widest text-accent-lime-contrast transition-all hover:bg-accent-lime-strong disabled:opacity-50"
+					className="w-full border-2 border-accent-lime bg-accent-lime px-4 py-4 font-mono text-sm font-bold uppercase tracking-widest text-accent-lime-contrast transition-all hover:bg-accent-lime-strong disabled:opacity-50 cursor-pointer disabled:cursor-default"
 				>
 					{loading
 						? "Loading..."
@@ -273,7 +273,7 @@ export function AuthForm({
 						setError("");
 						setInfo("");
 					}}
-					className="font-mono text-sm text-fg-muted hover:text-accent-lime transition-colors"
+					className="font-mono text-sm text-fg-muted hover:text-accent-lime transition-colors cursor-pointer"
 				>
 					{isSignUp
 						? "Already have an account? Sign in"
