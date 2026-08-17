@@ -60,7 +60,7 @@ const BROADCAST_EMAILS: BroadcastEmail[] = [
 
 // Track which broadcasts have already been sent
 // Mirror of the server registry's `alreadySent` flag in convex/email.ts - keep both in sync.
-const SENT_BROADCASTS = new Set(["waitlist-launch"]);
+const SENT_BROADCASTS = new Set(["waitlist-launch", "sync-broadcast"]);
 
 function BroadcastPreviewCard({ broadcast }: { broadcast: BroadcastEmail }) {
 	const [expanded, setExpanded] = useState(false);
