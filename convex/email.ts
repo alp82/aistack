@@ -92,6 +92,8 @@ const BROADCASTS: Record<
     subject: "Show your real usage on your stack",
     render: () => render(SyncBroadcastEmail({})),
     audience: "waitlist+members",
+    // Sent 2026-08-17 to the deduped waitlist+members audience (177 addresses).
+    alreadySent: true,
   },
 };
 
