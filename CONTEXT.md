@@ -48,6 +48,14 @@ _Avoid_: tag, category
 **Publish**:
 The per-projection act that makes stream content public. Approval alone publishes nothing.
 
+### Discord bot
+
+**Stack card**:
+The shareable image for one stack, with the stack name, the creator, and the tool icons.
+
+**Linked account**:
+A Discord user tied to a creator through the /link flow.
+
 ### Email
 
 **Transactional mail**:
