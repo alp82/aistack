@@ -101,7 +101,7 @@ per-adapter support table and a determinism checklist.
 Three of the four surfaces are public and server-rendered. Only the private view
 analytics dashboard is not, because `/settings/*` routes already set
 `ssr: false` (`src/routes/settings.machines.tsx:19`). Server-rendered SVG carries
-real `<text>` nodes, which matters because `docs/direction.md` treats citable,
+real `<text>` nodes, which matters because `DIRECTION.md` treats citable,
 crawlable numbers as the point of the aggregate page.
 
 **2. It ships no visual theme to override.** The house style is unusual for chart
