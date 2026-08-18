@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Prototype · alp82/aistack#164 · the workflow surface</title>
+<!--
+  PROTOTYPE. Throwaway. alp82/aistack#164: the workflow surface on the stack page.
+  One self-contained file. Three variants, switchable with the bar at the bottom
+  or with ?variant=loop|ledger|rhythm.
+
+  Data provenance: hand-extracted, not a live sync. Sources:
+  - one real agent session in this repo (2026-08-04, 51 min, 158 tool calls)
+  - this repo's real commit history, 2026-07-19 to 2026-08-18 (110 commits)
+  - the owner's real skill roster and real MCP configuration
+  - remaining shares are hand-made to look like a plausible 30-day window
+-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    color-scheme: dark;
+    --bg-canvas: oklch(0.16 0.008 256);
+    --bg-shell: oklch(0.12 0.01 256);
+    --bg-panel: oklch(0.2 0.009 256);
+    --bg-panel-muted: oklch(0.24 0.009 256);
+    --bg-panel-elevated: oklch(0.28 0.01 256);
+    --fg-primary: oklch(0.96 0.004 256);
+    --fg-secondary: oklch(0.82 0.004 256);
+    --fg-muted: oklch(0.68 0.005 256);
+    --accent-lime: oklch(0.78 0.17 132);
+    --accent-lime-strong: oklch(0.84 0.2 134);
+    --accent-lime-contrast: oklch(0.22 0.02 132);
+    --stroke-subtle: oklch(0.55 0.01 256 / 0.45);
+    --stroke-strong: oklch(0.5 0.015 256 / 0.9);
+    --chart-1: #69a621;
+    --chart-2: #9e71fd;
+    --chart-3: #c21977;
+    --chart-4: #4278d2;
+    --chart-5: #00a99b;
+    --chart-6: #e66700;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg-canvas);
+    color: var(--fg-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: 'JetBrains Mono', Menlo, Consolas, monospace; }
+
+  /* ---------- prototype chrome (not part of the design under review) ------ */
+  .ticket-strip {
+    background: var(--bg-shell);
+    border-bottom: 1px solid var(--stroke-subtle);
+    padding: 10px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+  }
+  .ticket-strip b { color: var(--accent-lime); font-weight: 700; }
+  .context-note {
+    margin: 0 auto;
+    max-width: 80rem;
+    padding: 10px 24px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    opacity: 0.7;
+  }
+
+  /* ---------- shared section shell (mirrors the real stack page) --------- */
+  section.journey { padding: 56px 24px; }
+  @media (min-width: 768px) { section.journey { padding: 88px 24px; } }
+  section.alt { background: color-mix(in oklab, var(--bg-panel) 30%, var(--bg-canvas)); }
+  .shell { max-width: 80rem; margin: 0 auto; }
+  .sec-head {
+    display: flex; align-items: flex-end; gap: 20px;
+    border-bottom: 1px solid var(--stroke-subtle);
+    padding-bottom: 20px; margin-bottom: 40px;
+  }
+  .sec-index {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 48px; font-weight: 800; line-height: 1;
+    color: var(--stroke-strong);
+  }
+  @media (min-width: 768px) { .sec-index { font-size: 72px; } }
+  .sec-kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 600;
+    letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--accent-lime); margin: 0;
+  }
+  .sec-title {
+    font-size: 30px; font-weight: 900; letter-spacing: -0.02em;
+    text-transform: uppercase; margin: 4px 0 0; line-height: 1;
+  }
+  @media (min-width: 768px) { .sec-title { font-size: 40px; } }
+  .sec-meta {
+    display: none; font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--fg-muted);
+  }
+  @media (min-width: 768px) { .sec-meta { display: block; } }
+  .head-copy { flex: 1; }
+
+  .mono-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+
+  /* dimmed context sections above and below the prototype section */
+  .dimmed { opacity: 0.45; pointer-events: none; }
+
+  /* ---------- compressed existing page bits ------------------------------ */
+  .hero-mini { padding: 40px 24px 32px; border-bottom: 1px solid var(--stroke-subtle); }
+  .hero-mini h1 { font-size: 34px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; margin: 0; line-height: 0.95; }
+  .hero-mini p { color: var(--fg-muted); margin: 8px 0 0; font-size: 14px; max-width: 34rem; }
+  .hero-chips { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: inline-flex; align-items: center;
+    border: 1px solid var(--stroke-subtle);
+    padding: 3px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--fg-muted);
+  }
+
+  .stat-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 1px; border: 1px solid var(--stroke-subtle);
+    background: var(--stroke-subtle);
+  }
+  @media (min-width: 640px) { .stat-grid { grid-template-columns: repeat(4, 1fr); } }
+  .stat { background: var(--bg-canvas); padding: 16px; }
+  .stat .v { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 800; }
+  .stat .l { margin-top: 4px; }
+
+  .model-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .model-row .name { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--fg-secondary); width: 10.5rem; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .model-row .track { flex: 1; height: 10px; background: var(--bg-panel); }
+  .model-row .fill { height: 100%; background: var(--accent-lime); }
+  .model-row .pct { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); width: 2.6rem; text-align: right; }
+
+  .big-number { font-family: 'JetBrains Mono', monospace; font-size: 44px; font-weight: 800; line-height: 1; }
+  .big-number small { font-size: 16px; font-weight: 400; color: var(--fg-muted); }
+
+  .grid-2 { display: grid; gap: 40px; }
+  @media (min-width: 768px) { .grid-2 { grid-template-columns: minmax(0, 22rem) 1fr; } }
+
+  /* ---------- variant framework ------------------------------------------ */
+  .variant { display: none; }
+  .variant.active { display: block; }
+
+  /* ---------- variant LOOP ----------------------------------------------- */
+  .loop-flow { display: grid; gap: 0; }
+  .phase {
+    border: 1px solid var(--stroke-subtle);
+    padding: 18px;
+    background: var(--bg-canvas);
+    position: relative;
+  }
+  .phase + .phase { margin-top: 26px; }
+  .phase::after {
+    content: '↓';
+    position: absolute; left: 22px; bottom: -24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px; color: var(--accent-lime); z-index: 2;
+  }
+  .phase:last-child::after { content: none; }
+  @media (min-width: 900px) {
+    .loop-flow { grid-template-columns: repeat(3, 1fr); gap: 26px; }
+    .phase + .phase { margin-top: 0; }
+    .phase::after { content: '→'; left: auto; right: -22px; bottom: auto; top: 18px; }
+    .phase:nth-child(3)::after { content: '↓'; right: 18px; top: auto; bottom: -24px; }
+    .phase:nth-child(4)::after, .phase:nth-child(5)::after { content: '←'; left: -22px; right: auto; top: 18px; }
+    .phase:nth-child(6)::after { content: none; }
+    .phase:nth-child(4) { grid-column: 3; grid-row: 2; }
+    .phase:nth-child(5) { grid-column: 2; grid-row: 2; }
+    .phase:nth-child(6) { grid-column: 1; grid-row: 2; }
+  }
+  .phase .step {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--fg-muted); letter-spacing: 0.14em;
+  }
+  .phase h3 {
+    margin: 6px 0 0; font-size: 20px; font-weight: 900;
+    text-transform: uppercase; letter-spacing: -0.01em;
+  }
+  .phase .drivers { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .phase .drivers .chip { color: var(--fg-secondary); }
+  .phase .drivers .chip.lime { color: var(--accent-lime); border-color: color-mix(in oklab, var(--accent-lime) 40%, transparent); background: color-mix(in oklab, var(--accent-lime) 10%, transparent); }
+  .phase .fact { margin: 12px 0 0; font-size: 13px; line-height: 1.5; color: var(--fg-secondary); }
+  .phase .fact b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+  .loop-return {
+    margin-top: 26px;
+    border: 1px dashed var(--stroke-strong);
+    padding: 12px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+  .loop-return b { color: var(--accent-lime); font-weight: 700; }
+
+  /* ---------- variant LEDGER --------------------------------------------- */
+  .ledger-grid { display: grid; gap: 26px; }
+  @media (min-width: 900px) { .ledger-grid { grid-template-columns: 1fr 1fr; } }
+  .ledger {
+    border: 1px solid var(--stroke-subtle);
+    padding: 18px;
+  }
+  .ledger h3 {
+    margin: 0 0 4px; font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--accent-lime);
+  }
+  .ledger .sub { margin: 0 0 14px; font-size: 12px; color: var(--fg-muted); }
+  .lrow { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+  .lrow .rank { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--fg-muted); width: 1.4rem; flex-shrink: 0; }
+  .lrow .name { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--fg-primary); width: 10rem; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lrow .track { flex: 1; height: 8px; background: var(--bg-panel); min-width: 40px; }
+  .lrow .fill { height: 100%; background: var(--accent-lime); }
+  .lrow .pct { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); width: 2.6rem; text-align: right; flex-shrink: 0; }
+  .lrow.withheld { border: 1px dashed var(--stroke-strong); padding: 6px 8px; margin-top: 8px; }
+  .lrow.withheld .name { color: var(--fg-muted); font-style: normal; width: auto; flex: 1; }
+
+  .moves { margin-top: 32px; }
+  .moves-grid { display: grid; gap: 1px; border: 1px solid var(--stroke-subtle); background: var(--stroke-subtle); }
+  @media (min-width: 768px) { .moves-grid { grid-template-columns: repeat(2, 1fr); } }
+  .move { background: var(--bg-canvas); padding: 16px 18px; }
+  .move p { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--fg-secondary); }
+  .move b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+  .move .src { display: block; margin-top: 8px; }
+
+  /* ---------- variant RHYTHM --------------------------------------------- */
+  .heat-wrap { overflow-x: auto; border: 1px solid var(--stroke-subtle); padding: 16px; }
+  .heat { min-width: 580px; }
+  .heat-grid { display: grid; grid-template-columns: 2.4rem repeat(24, 1fr); gap: 2px; }
+  .heat-cell { aspect-ratio: 1 / 1; background: var(--bg-panel); min-width: 14px; }
+  .heat-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: var(--fg-muted); display: flex; align-items: center;
+  }
+  .heat-x { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--fg-muted); display: flex; align-items: flex-start; padding-top: 4px; }
+  .heat-legend { display: flex; align-items: center; gap: 6px; margin-top: 12px; }
+  .heat-legend .cellbox { width: 12px; height: 12px; }
+
+  .sess { border: 1px solid var(--stroke-subtle); padding: 18px; margin-top: 26px; }
+  .sess-strip { display: flex; height: 34px; gap: 2px; margin-top: 14px; }
+  .sess-seg { height: 100%; }
+  .sess-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
+  .sess-legend span { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-secondary); }
+  .sess-legend i { width: 10px; height: 10px; display: inline-block; }
+  .sess-facts { margin: 14px 0 0; font-size: 13px; line-height: 1.6; color: var(--fg-secondary); }
+  .sess-facts b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+
+  .fired { margin-top: 26px; }
+  .fired .row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+  /* ---------- consent footnote (shared, part of the section design) ------ */
+  .consent {
+    margin-top: 36px;
+    border-top: 1px solid var(--stroke-subtle);
+    padding-top: 14px;
+    font-size: 12px; line-height: 1.6; color: var(--fg-muted);
+    max-width: 46rem;
+  }
+  .consent .mono-label { color: var(--fg-muted); }
+
+  /* ---------- switcher bar ----------------------------------------------- */
+  .switcher {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+    display: flex; align-items: stretch;
+    background: var(--bg-panel-elevated);
+    border: 2px solid var(--stroke-strong);
+    box-shadow: 4px 4px 0 var(--accent-lime);
+    z-index: 50;
+  }
+  .switcher button {
+    appearance: none; border: 0; background: transparent;
+    color: var(--fg-primary); font-family: 'JetBrains Mono', monospace;
+    font-size: 16px; font-weight: 700;
+    width: 46px; height: 46px; cursor: pointer;
+  }
+  .switcher button:active { background: var(--bg-panel-muted); }
+  .switcher .label {
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    min-width: 11rem; padding: 0 10px;
+    border-left: 2px solid var(--stroke-strong);
+    border-right: 2px solid var(--stroke-strong);
+  }
+  .switcher .label .k { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.18em; color: var(--fg-muted); text-transform: uppercase; }
+  .switcher .label .n { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; color: var(--accent-lime); text-transform: uppercase; }
+  .page-end-pad { height: 90px; }
+</style>
+</head>
+<body>
+
+<div class="ticket-strip">
+  PROTOTYPE · <b>alp82/aistack#164</b> · the workflow surface on the stack page · three variants, switch with the bar below
+</div>
+
+<!-- ======================================================================
+     Compressed context: the stack page as it exists today, dimmed.
+     The prototype section sits inside this journey at full opacity.
+====================================================================== -->
+<p class="context-note">existing page, compressed and dimmed for context</p>
+
+<div class="dimmed">
+  <div class="hero-mini shell">
+    <h1>Fable-First Solo Stack</h1>
+    <p>One founder, one agent harness, everything measured. Claude Code drives the work. The tracker and the review gate hold the reins.</p>
+    <div class="hero-chips">
+      <span class="chip">Claude Code</span><span class="chip">Convex</span><span class="chip">TanStack</span><span class="chip">Resend</span><span class="chip">+9 tools</span>
+    </div>
+  </div>
+
+  <section class="journey alt">
+    <div class="shell">
+      <div class="sec-head">
+        <span class="sec-index">01</span>
+        <div class="head-copy">
+          <p class="sec-kicker">// MEASURED</p>
+          <h2 class="sec-title">Actual Usage</h2>
+        </div>
+        <span class="sec-meta">checked 2 hours ago</span>
+      </div>
+      <div class="grid-2">
+        <div>
+          <p class="mono-label">tokens · 30 days</p>
+          <p class="big-number" style="margin:6px 0 0">1.9B</p>
+          <p class="mono-label" style="margin-top:8px">$182 api-equivalent · anthropic-2026-08</p>
+        </div>
+        <div>
+          <p class="mono-label" style="color:var(--accent-lime)">// MODEL MIX</p>
+          <div class="model-row"><span class="name">claude-fable-5</span><div class="track"><div class="fill" style="width:62%"></div></div><span class="pct">62%</span></div>
+          <div class="model-row"><span class="name">claude-opus-5</span><div class="track"><div class="fill" style="width:21%"></div></div><span class="pct">21%</span></div>
+          <div class="model-row"><span class="name">claude-sonnet-5</span><div class="track"><div class="fill" style="width:12%"></div></div><span class="pct">12%</span></div>
+          <div class="model-row"><span class="name">claude-haiku-4-5</span><div class="track"><div class="fill" style="width:5%"></div></div><span class="pct">5%</span></div>
+          <div class="stat-grid" style="margin-top:26px">
+            <div class="stat"><p class="v">142</p><p class="l mono-label">sessions</p></div>
+            <div class="stat"><p class="v">27 of 30</p><p class="l mono-label">active days</p></div>
+            <div class="stat"><p class="v">87%</p><p class="l mono-label">cache hits</p></div>
+            <div class="stat"><p class="v">34%</p><p class="l mono-label">run by subagents</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ======================================================================
+     THE PROTOTYPE SECTION. Slots in as journey section 02, directly under
+     the numbers it explains. Three variants of the same section.
+====================================================================== -->
+
+<!-- ················· VARIANT: LOOP ················· -->
+<section class="journey variant" id="v-loop">
+  <div class="shell">
+    <div class="sec-head">
+      <span class="sec-index">02</span>
+      <div class="head-copy">
+        <p class="sec-kicker">// MEASURED WORKFLOW</p>
+        <h2 class="sec-title">The Loop</h2>
+      </div>
+      <span class="sec-meta">window · 30 days</span>
+    </div>
+
+    <p style="max-width:44rem; margin:0 0 32px; font-size:15px; line-height:1.6; color:var(--fg-secondary)">
+      The numbers above come from one repeating loop. Each step below names the skills, agents and MCP servers that run it, with their measured share of the window.
+    </p>
+
+    <div class="loop-flow">
+      <div class="phase">
+        <span class="step mono">STEP 1</span>
+        <h3>Chart</h3>
+        <div class="drivers">
+          <span class="chip lime">skill · wayfinder</span>
+          <span class="chip">agent · research ×22%</span>
+        </div>
+        <p class="fact"><b>6 maps</b> opened this window. A map opens before <b>8 of 10</b> build streaks.</p>
+      </div>
+      <div class="phase">
+        <span class="step mono">STEP 2</span>
+        <h3>Grill</h3>
+        <div class="drivers">
+          <span class="chip lime">skill · grilling ×24%</span>
+          <span class="chip lime">skill · domain-modeling</span>
+        </div>
+        <p class="fact">The most-fired skill. domain-modeling rides along in <b>74%</b> of grillings.</p>
+      </div>
+      <div class="phase">
+        <span class="step mono">STEP 3</span>
+        <h3>Prove</h3>
+        <div class="drivers">
+          <span class="chip lime">skill · prototype ×11%</span>
+          <span class="chip lime">skill · research ×9%</span>
+        </div>
+        <p class="fact"><b>9 prototypes</b> this window. Every one is a throwaway file on a throwaway branch.</p>
+      </div>
+      <div class="phase">
+        <span class="step mono">STEP 4</span>
+        <h3>Build</h3>
+        <div class="drivers">
+          <span class="chip lime">skill · tdd ×17%</span>
+          <span class="chip">agent · Explore ×41%</span>
+        </div>
+        <p class="fact">Red, green, refactor. <b>58%</b> of all tokens burn here. Subagents run <b>34%</b> of them.</p>
+      </div>
+      <div class="phase">
+        <span class="step mono">STEP 5</span>
+        <h3>Gate</h3>
+        <div class="drivers">
+          <span class="chip lime">skill · code-review ×7%</span>
+          <span class="chip">mcp · curia ×78%</span>
+        </div>
+        <p class="fact"><b>15 of 15</b> merges this window passed a human review gate first.</p>
+      </div>
+      <div class="phase">
+        <span class="step mono">STEP 6</span>
+        <h3>Ship</h3>
+        <div class="drivers">
+          <span class="chip">git · squash merge</span>
+          <span class="chip">deploy · via CI only</span>
+        </div>
+        <p class="fact"><b>110 commits</b> landed on main. The map gets its next ticket, and the loop restarts.</p>
+      </div>
+    </div>
+
+    <div class="loop-return mono">↩ SHIP FEEDS CHART · <b>the loop closed 15 times this window</b></div>
+
+    <div class="moves">
+      <p class="mono-label" style="color:var(--accent-lime); margin-bottom:12px">// THE HABITS BEHIND IT</p>
+      <div class="stat-grid">
+        <div class="stat"><p class="v">42%</p><p class="l mono-label">commits between 23:00 and 03:00</p></div>
+        <div class="stat"><p class="v">Sunday</p><p class="l mono-label">heaviest day · 28% of commits</p></div>
+        <div class="stat"><p class="v">47 min</p><p class="l mono-label">longest unbroken agent turn</p></div>
+        <div class="stat"><p class="v">100%</p><p class="l mono-label">merges behind a human gate</p></div>
+      </div>
+    </div>
+
+    <div class="consent">
+      <span class="mono-label">// HOW TO READ THIS</span><br>
+      Shares, never raw counts. A skill, agent or server name appears here only after the owner approves it at the sync gate. 4 names are withheld and stay counted in the shares. This prototype runs on hand-extracted data: one real session, the repo's real commit history, the owner's real roster. No live sync feeds it yet.
+    </div>
+  </div>
+</section>
+
+<!-- ················· VARIANT: LEDGER ················· -->
+<section class="journey variant" id="v-ledger">
+  <div class="shell">
+    <div class="sec-head">
+      <span class="sec-index">02</span>
+      <div class="head-copy">
+        <p class="sec-kicker">// MEASURED WORKFLOW</p>
+        <h2 class="sec-title">How This Person Works</h2>
+      </div>
+      <span class="sec-meta">window · 30 days</span>
+    </div>
+
+    <div class="ledger-grid">
+      <div class="ledger">
+        <h3>Skills</h3>
+        <p class="sub">Share of 412 skill runs</p>
+        <div class="lrow"><span class="rank">01</span><span class="name">grilling</span><div class="track"><div class="fill" style="width:96%"></div></div><span class="pct">24%</span></div>
+        <div class="lrow"><span class="rank">02</span><span class="name">tdd</span><div class="track"><div class="fill" style="width:68%"></div></div><span class="pct">17%</span></div>
+        <div class="lrow"><span class="rank">03</span><span class="name">wayfinder</span><div class="track"><div class="fill" style="width:52%"></div></div><span class="pct">13%</span></div>
+        <div class="lrow"><span class="rank">04</span><span class="name">prototype</span><div class="track"><div class="fill" style="width:44%"></div></div><span class="pct">11%</span></div>
+        <div class="lrow"><span class="rank">05</span><span class="name">research</span><div class="track"><div class="fill" style="width:36%"></div></div><span class="pct">9%</span></div>
+        <div class="lrow"><span class="rank">06</span><span class="name">domain-modeling</span><div class="track"><div class="fill" style="width:32%"></div></div><span class="pct">8%</span></div>
+        <div class="lrow"><span class="rank">07</span><span class="name">code-review</span><div class="track"><div class="fill" style="width:28%"></div></div><span class="pct">7%</span></div>
+        <div class="lrow"><span class="rank">08</span><span class="name">writing-for-agents</span><div class="track"><div class="fill" style="width:16%"></div></div><span class="pct">4%</span></div>
+        <div class="lrow"><span class="rank">09</span><span class="name">diagnosing-bugs</span><div class="track"><div class="fill" style="width:12%"></div></div><span class="pct">3%</span></div>
+        <div class="lrow"><span class="rank">10</span><span class="name">simplify</span><div class="track"><div class="fill" style="width:8%"></div></div><span class="pct">2%</span></div>
+        <div class="lrow withheld"><span class="name">2 names withheld by the owner</span><span class="pct">2%</span></div>
+      </div>
+
+      <div class="ledger">
+        <h3>Agents</h3>
+        <p class="sub">Share of 620 subagent runs</p>
+        <div class="lrow"><span class="rank">01</span><span class="name">Explore</span><div class="track"><div class="fill" style="width:96%"></div></div><span class="pct">41%</span></div>
+        <div class="lrow"><span class="rank">02</span><span class="name">research</span><div class="track"><div class="fill" style="width:56%"></div></div><span class="pct">24%</span></div>
+        <div class="lrow"><span class="rank">03</span><span class="name">Plan</span><div class="track"><div class="fill" style="width:35%"></div></div><span class="pct">15%</span></div>
+        <div class="lrow"><span class="rank">04</span><span class="name">general-purpose</span><div class="track"><div class="fill" style="width:28%"></div></div><span class="pct">12%</span></div>
+        <div class="lrow withheld"><span class="name">1 name withheld by the owner</span><span class="pct">8%</span></div>
+
+        <h3 style="margin-top:26px">MCP Servers</h3>
+        <p class="sub">Share of MCP tool calls</p>
+        <div class="lrow"><span class="rank">01</span><span class="name">curia</span><div class="track"><div class="fill" style="width:96%"></div></div><span class="pct">78%</span></div>
+        <div class="lrow"><span class="rank">02</span><span class="name">convex</span><div class="track"><div class="fill" style="width:24%"></div></div><span class="pct">19%</span></div>
+        <div class="lrow withheld"><span class="name">1 name withheld by the owner</span><span class="pct">3%</span></div>
+
+        <h3 style="margin-top:26px">Slash Commands</h3>
+        <p class="sub">Share of typed commands</p>
+        <div class="lrow"><span class="rank">01</span><span class="name">/wayfinder</span><div class="track"><div class="fill" style="width:96%"></div></div><span class="pct">31%</span></div>
+        <div class="lrow"><span class="rank">02</span><span class="name">/grilling</span><div class="track"><div class="fill" style="width:68%"></div></div><span class="pct">22%</span></div>
+        <div class="lrow"><span class="rank">03</span><span class="name">/tdd</span><div class="track"><div class="fill" style="width:56%"></div></div><span class="pct">18%</span></div>
+        <div class="lrow"><span class="rank">04</span><span class="name">/code-review</span><div class="track"><div class="fill" style="width:50%"></div></div><span class="pct">16%</span></div>
+        <div class="lrow"><span class="rank">05</span><span class="name">/prototype</span><div class="track"><div class="fill" style="width:40%"></div></div><span class="pct">13%</span></div>
+      </div>
+    </div>
+
+    <div class="moves">
+      <p class="mono-label" style="color:var(--accent-lime); margin-bottom:12px">// SIGNATURE MOVES</p>
+      <div class="moves-grid">
+        <div class="move">
+          <p>Plans before code. A wayfinder map opens before <b>8 of 10</b> build streaks. Decisions land as closed tickets on the map, one per session.</p>
+          <span class="src mono-label">from skill sequencing</span>
+        </div>
+        <div class="move">
+          <p>Grillings come paired. <b>74%</b> pull domain-modeling into the same session, and the answer lands in an ADR.</p>
+          <span class="src mono-label">from same-session skill pairs</span>
+        </div>
+        <div class="move">
+          <p>Nothing merges alone. <b>15 of 15</b> merges this window followed a human review gate on the curia seam.</p>
+          <span class="src mono-label">from mcp call order</span>
+        </div>
+        <div class="move">
+          <p>Night shift. <b>42%</b> of commits land between 23:00 and 03:00, and Sunday carries <b>28%</b> of the week.</p>
+          <span class="src mono-label">from commit timestamps</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="consent">
+      <span class="mono-label">// HOW TO READ THIS</span><br>
+      Shares, never raw counts. A skill, agent or server name appears here only after the owner approves it at the sync gate. 4 names are withheld and stay counted in the shares. This prototype runs on hand-extracted data: one real session, the repo's real commit history, the owner's real roster. No live sync feeds it yet.
+    </div>
+  </div>
+</section>
+
+<!-- ················· VARIANT: RHYTHM ················· -->
+<section class="journey variant" id="v-rhythm">
+  <div class="shell">
+    <div class="sec-head">
+      <span class="sec-index">02</span>
+      <div class="head-copy">
+        <p class="sec-kicker">// MEASURED WORKFLOW</p>
+        <h2 class="sec-title">The Rhythm</h2>
+      </div>
+      <span class="sec-meta">window · 30 days</span>
+    </div>
+
+    <p class="mono-label" style="color:var(--accent-lime); margin-bottom:12px">// WHEN THE WORK HAPPENS</p>
+    <div class="heat-wrap">
+      <div class="heat">
+        <div class="heat-grid" id="heatmap"></div>
+        <div class="heat-legend">
+          <span class="mono-label">quiet</span>
+          <div class="cellbox" style="background:var(--bg-panel)"></div>
+          <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 18%, var(--bg-panel))"></div>
+          <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 38%, var(--bg-panel))"></div>
+          <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 62%, var(--bg-panel))"></div>
+          <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 90%, var(--bg-panel))"></div>
+          <span class="mono-label">heavy</span>
+        </div>
+      </div>
+    </div>
+    <p style="margin:10px 0 0; font-size:13px; color:var(--fg-secondary); max-width:44rem; line-height:1.55">
+      The midnight block is real. <b class="mono" style="color:var(--fg-primary)">42%</b> of commits land between 23:00 and 03:00. Sunday carries <b class="mono" style="color:var(--fg-primary)">28%</b> of the week.
+    </p>
+
+    <div class="sess">
+      <p class="mono-label" style="color:var(--accent-lime)">// ONE SESSION, ANATOMIZED · 2026-08-04 · 51 MIN · 158 TOOL CALLS</p>
+      <div class="sess-strip">
+        <div class="sess-seg" style="flex:8; background:var(--chart-4)"></div>
+        <div class="sess-seg" style="flex:27; background:var(--chart-1)"></div>
+        <div class="sess-seg" style="flex:11; background:var(--chart-5)"></div>
+        <div class="sess-seg" style="flex:5; background:var(--chart-2)"></div>
+      </div>
+      <div class="sess-legend">
+        <span><i style="background:var(--chart-4)"></i>orient · 8 min</span>
+        <span><i style="background:var(--chart-1)"></i>build · 27 min</span>
+        <span><i style="background:var(--chart-5)"></i>verify · 11 min</span>
+        <span><i style="background:var(--chart-2)"></i>gate · 5 min</span>
+      </div>
+      <p class="sess-facts">
+        Reads first, then a long edit burst: <b>79× Bash</b>, <b>54× Edit</b>, <b>17× Read</b>. The session ends on the curia seam: pull request, review gate, report. One agent turn ran <b>47 minutes</b> unbroken.
+      </p>
+    </div>
+
+    <div class="fired">
+      <p class="mono-label" style="color:var(--accent-lime)">// WHAT FIRES THE MOST</p>
+      <div class="row">
+        <span class="chip" style="color:var(--fg-secondary)">skill · grilling 24%</span>
+        <span class="chip" style="color:var(--fg-secondary)">skill · tdd 17%</span>
+        <span class="chip" style="color:var(--fg-secondary)">skill · wayfinder 13%</span>
+        <span class="chip" style="color:var(--fg-secondary)">agent · Explore 41%</span>
+        <span class="chip" style="color:var(--fg-secondary)">agent · research 24%</span>
+        <span class="chip" style="color:var(--fg-secondary)">mcp · curia 78%</span>
+        <span class="chip" style="color:var(--fg-secondary)">mcp · convex 19%</span>
+        <span class="chip" style="color:var(--fg-muted); border-style:dashed">4 names withheld</span>
+      </div>
+    </div>
+
+    <div class="moves" style="margin-top:26px">
+      <div class="stat-grid">
+        <div class="stat"><p class="v">142</p><p class="l mono-label">sessions this window</p></div>
+        <div class="stat"><p class="v">38</p><p class="l mono-label">median tool calls per session</p></div>
+        <div class="stat"><p class="v">27 of 30</p><p class="l mono-label">active days</p></div>
+        <div class="stat"><p class="v">34%</p><p class="l mono-label">run by subagents</p></div>
+      </div>
+    </div>
+
+    <div class="consent">
+      <span class="mono-label">// HOW TO READ THIS</span><br>
+      Shares, never raw counts. A skill, agent or server name appears here only after the owner approves it at the sync gate. 4 names are withheld and stay counted in the shares. This prototype runs on hand-extracted data: one real session, the repo's real commit history, the owner's real roster. No live sync feeds it yet.
+    </div>
+  </div>
+</section>
+
+<!-- Downstream journey, dimmed -->
+<div class="dimmed">
+  <section class="journey alt">
+    <div class="shell">
+      <div class="sec-head" style="margin-bottom:0">
+        <span class="sec-index">03</span>
+        <div class="head-copy">
+          <p class="sec-kicker">// BUILT</p>
+          <h2 class="sec-title">Projects</h2>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="journey" style="padding-top:40px; padding-bottom:40px">
+    <div class="shell">
+      <p class="mono-label">the journey continues · 04 tools · 05 workflow guide</p>
+    </div>
+  </section>
+</div>
+
+<div class="page-end-pad"></div>
+
+<!-- floating variant switcher (prototype chrome, not part of the design) -->
+<div class="switcher" role="navigation" aria-label="variant switcher">
+  <button type="button" id="prev" aria-label="previous variant">←</button>
+  <div class="label">
+    <span class="k" id="sw-k">variant 1 / 3</span>
+    <span class="n" id="sw-n">the loop</span>
+  </div>
+  <button type="button" id="next" aria-label="next variant">→</button>
+</div>
+
+<script>
+  var VARIANTS = [
+    { key: 'loop',   id: 'v-loop',   name: 'the loop' },
+    { key: 'ledger', id: 'v-ledger', name: 'the ledger' },
+    { key: 'rhythm', id: 'v-rhythm', name: 'the rhythm' }
+  ];
+  var current = 0;
+
+  function show(i) {
+    current = (i + VARIANTS.length) % VARIANTS.length;
+    VARIANTS.forEach(function (v, j) {
+      document.getElementById(v.id).classList.toggle('active', j === current);
+    });
+    document.getElementById('sw-k').textContent = 'variant ' + (current + 1) + ' / 3';
+    document.getElementById('sw-n').textContent = VARIANTS[current].name;
+    var url = new URL(window.location.href);
+    url.searchParams.set('variant', VARIANTS[current].key);
+    history.replaceState(null, '', url.toString());
+  }
+
+  document.getElementById('prev').addEventListener('click', function () { show(current - 1); });
+  document.getElementById('next').addEventListener('click', function () { show(current + 1); });
+  document.addEventListener('keydown', function (e) {
+    if (e.target && /^(input|textarea)$/i.test(e.target.tagName)) return;
+    if (e.key === 'ArrowLeft') show(current - 1);
+    if (e.key === 'ArrowRight') show(current + 1);
+  });
+
+  /* Heatmap: hour-of-day profile from the repo's real commit history,
+     spread across weekdays with the real weekday weights. */
+  (function () {
+    var hours = [21,16,3,0,1,0,0,1,2,1,1,8,3,6,5,1,6,6,1,1,5,7,9,6]; /* real: git log by hour */
+    var dayW = { Mon: 19, Tue: 4, Wed: 12, Thu: 12, Fri: 15, Sat: 17, Sun: 31 }; /* real: git log by weekday */
+    var days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    var grid = document.getElementById('heatmap');
+    var maxV = 0, cells = [];
+    days.forEach(function (d) {
+      hours.forEach(function (h) {
+        var v = h * dayW[d];
+        maxV = Math.max(maxV, v);
+        cells.push(v);
+      });
+    });
+    var html = '<div class="heat-label"></div>';
+    for (var h = 0; h < 24; h++) {
+      html += '<div class="heat-x">' + (h % 6 === 0 ? String(h).padStart(2, '0') : '') + '</div>';
+    }
+    days.forEach(function (d, di) {
+      html += '<div class="heat-label">' + d + '</div>';
+      for (var h = 0; h < 24; h++) {
+        var v = cells[di * 24 + h] / maxV;
+        var mix = v === 0 ? 0 : v < 0.12 ? 18 : v < 0.3 ? 38 : v < 0.6 ? 62 : 90;
+        var bg = mix === 0 ? 'var(--bg-panel)' : 'color-mix(in oklab, var(--accent-lime) ' + mix + '%, var(--bg-panel))';
+        html += '<div class="heat-cell" style="background:' + bg + '"></div>';
+      }
+    });
+    grid.innerHTML = html;
+  })();
+
+  /* initial variant from the URL */
+  (function () {
+    var q = new URL(window.location.href).searchParams.get('variant');
+    var idx = VARIANTS.findIndex(function (v) { return v.key === q; });
+    show(idx >= 0 ? idx : 0);
+  })();
+</script>
+
+</body>
+</html>
