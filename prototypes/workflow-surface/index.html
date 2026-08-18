@@ -4,21 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Prototype · alp82/aistack#164 · the workflow surface · round 2</title>
+<title>Prototype · alp82/aistack#164 · the workflow surface · round 3</title>
 <!--
   PROTOTYPE. Throwaway. alp82/aistack#164: the workflow surface on the stack page.
-  ROUND 2. Operator feedback on round 1: the loop idea is great but its display
-  is not, the ledger has barchart overload (merge skills and commands), the
-  rhythm is the favorite and its session stacked chart could replace the loop
-  rendering. Five widely explorative alternatives follow.
-  Switch with the bar at the bottom or ?variant=reel|trace|kit|console|week.
+  ROUND 3. Operator feedback on round 2: round 1 was better. Combine the elements
+  that work in different constellations, sprinkle new ideas. Per-day session
+  framing is out (the signal does not depend on the day). Cross-session traces
+  are hard to derive and not a priority. Console and week are out.
+  Loved blocks: the heatmap, the anatomized session, the ledger display,
+  selective percentages.
+  Switch with the bar at the bottom or ?variant=headline|rhythm|trails.
 
   Data provenance: hand-extracted, not a live sync. Sources:
   - one real agent session in this repo (2026-08-04, 51 min, 158 tool calls)
   - this repo's real commit history, 2026-07-19 to 2026-08-18 (110 commits)
-  - one real shipped ticket journey (#160, charted 2026-08-17, merged 2026-08-18)
   - the owner's real skill roster and real MCP configuration
-  - remaining shares and session shapes are hand-made to look like a 30-day window
+  - remaining shares, trails and pair rates are hand-made for a 30-day window
 -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
@@ -38,13 +39,11 @@
     --accent-lime-contrast: oklch(0.22 0.02 132);
     --stroke-subtle: oklch(0.55 0.01 256 / 0.45);
     --stroke-strong: oklch(0.5 0.015 256 / 0.9);
-    /* loop phases wear the validated chart palette, fixed assignment */
-    --ph-chart: #4278d2;
-    --ph-grill: #9e71fd;
-    --ph-prove: #00a99b;
-    --ph-build: #69a621;
-    --ph-gate:  #c21977;
-    --ph-ship:  #e66700;
+    /* session phases wear the validated chart palette, fixed assignment */
+    --ph-orient: #4278d2;
+    --ph-build:  #69a621;
+    --ph-verify: #00a99b;
+    --ph-gate:   #c21977;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
@@ -153,83 +152,82 @@
   .variant { display: none; }
   .variant.active { display: block; }
 
-  /* ---------- shared: phase legend --------------------------------------- */
-  .phase-legend { display: flex; flex-wrap: wrap; gap: 12px 18px; margin: 0 0 18px; }
-  .phase-legend span { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-secondary); }
-  .phase-legend i { width: 10px; height: 10px; display: inline-block; }
+  /* ---------- block: anatomized session ----------------------------------- */
+  .sess { border: 1px solid var(--stroke-subtle); padding: 18px; }
+  .sess-strip { display: flex; height: 34px; gap: 2px; margin-top: 14px; }
+  .sess-seg { height: 100%; }
+  .sess-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
+  .sess-legend span { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-secondary); }
+  .sess-legend i { width: 10px; height: 10px; display: inline-block; }
+  .sess-facts { margin: 14px 0 0; font-size: 13px; line-height: 1.6; color: var(--fg-secondary); }
+  .sess-facts b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
 
-  /* ---------- shared: kit chips row --------------------------------------- */
-  .kitline { margin-top: 30px; }
-  .kitline .row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  /* ---------- block: heatmap ---------------------------------------------- */
+  .heat-wrap { overflow-x: auto; border: 1px solid var(--stroke-subtle); padding: 16px; }
+  .heat { min-width: 580px; }
+  .heat-grid { display: grid; grid-template-columns: 2.4rem repeat(24, 1fr); gap: 2px; }
+  .heat-cell { aspect-ratio: 1 / 1; background: var(--bg-panel); min-width: 14px; }
+  .heat-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--fg-muted); display: flex; align-items: center; }
+  .heat-x { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--fg-muted); display: flex; align-items: flex-start; padding-top: 4px; }
+  .heat-legend { display: flex; align-items: center; gap: 6px; margin-top: 12px; }
+  .heat-legend .cellbox { width: 12px; height: 12px; }
 
-  /* ---------- variant REEL ------------------------------------------------ */
-  .reel { border: 1px solid var(--stroke-subtle); padding: 18px; }
-  .reel-row { display: grid; grid-template-columns: 5.2rem 1fr 2.8rem; gap: 10px; align-items: center; padding: 5px 0; }
-  .reel-row .when { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--fg-muted); }
-  .reel-row .strip { display: flex; height: 22px; gap: 2px; }
-  .reel-row .seg { height: 100%; }
-  .reel-row .mins { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--fg-muted); text-align: right; }
-  .reel-row.is-real .when { color: var(--accent-lime); }
-  .reel-note { margin: 14px 0 0; font-size: 13px; line-height: 1.55; color: var(--fg-secondary); max-width: 46rem; }
-  .reel-note b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+  /* ---------- block: 24-hour band (day-independent) ------------------------ */
+  .band-wrap { border: 1px solid var(--stroke-subtle); padding: 16px; }
+  .band { display: flex; align-items: flex-end; gap: 2px; height: 90px; }
+  .band .col { flex: 1; background: var(--accent-lime); min-width: 4px; }
+  .band .col.off { background: var(--bg-panel-muted); }
+  .band-x { display: flex; gap: 2px; margin-top: 6px; }
+  .band-x span { flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--fg-muted); text-align: left; }
+  .band-note { margin: 12px 0 0; font-size: 13px; line-height: 1.55; color: var(--fg-secondary); }
+  .band-note b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
 
-  /* ---------- variant TRACE ----------------------------------------------- */
-  .trace-head { margin: 0 0 22px; font-size: 14.5px; line-height: 1.6; color: var(--fg-secondary); max-width: 46rem; }
-  .trace-head b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
-  .trace { border-left: 2px solid var(--stroke-strong); margin-left: 7px; }
-  .tev { position: relative; padding: 0 0 26px 26px; }
-  .tev:last-child { padding-bottom: 0; }
-  .tev .dot {
-    position: absolute; left: -9px; top: 2px;
-    width: 14px; height: 14px; border: 2px solid var(--bg-canvas);
-  }
-  .tev .when { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); }
-  .tev h3 { margin: 3px 0 0; font-size: 17px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.01em; }
-  .tev p { margin: 5px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--fg-secondary); max-width: 42rem; }
-  .tev p b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
-  .tev .atoms { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+  /* ---------- block: merged inventory (ledger display, fewer bars) --------- */
+  .inv { border: 1px solid var(--stroke-subtle); padding: 18px; }
+  .inv h3 { margin: 0 0 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent-lime); }
+  .inv .sub { margin: 0 0 14px; font-size: 12px; color: var(--fg-muted); }
+  .lrow { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+  .lrow .rank { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--fg-muted); width: 1.4rem; flex-shrink: 0; }
+  .lrow .name { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--fg-primary); width: 10rem; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lrow .track { flex: 1; height: 8px; background: var(--bg-panel); min-width: 40px; }
+  .lrow .fill { height: 100%; background: var(--accent-lime); }
+  .lrow .pct { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); width: 2.6rem; text-align: right; flex-shrink: 0; }
+  .lrow .spark { width: 64px; height: 18px; flex-shrink: 0; }
+  .lrow .spark polyline { fill: none; stroke: var(--accent-lime); stroke-width: 1.5; }
+  .inv-rest { margin: 12px 0 0; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 1.8; color: var(--fg-muted); }
+  .inv-rest b { color: var(--fg-secondary); font-weight: 600; }
+  .inv-line { display: grid; grid-template-columns: 8.4rem 1fr; gap: 12px; padding: 10px 0 0; margin-top: 12px; border-top: 1px solid var(--stroke-subtle); }
+  .inv-line .k { align-self: center; }
+  .inv-line .v { margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; color: var(--fg-secondary); }
+  .inv-line .v b { color: var(--fg-primary); }
 
-  /* ---------- variant KIT ------------------------------------------------- */
-  .kit-index { line-height: 1.2; max-width: 54rem; }
-  .kit-index .item { display: inline-block; margin: 0 22px 14px 0; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--fg-primary); white-space: nowrap; }
-  .kit-index .item sup { font-size: 11px; font-weight: 400; color: var(--fg-muted); margin-left: 4px; }
-  .kit-index .item.dim { color: var(--fg-muted); font-weight: 400; }
-  .kit-rows { margin-top: 26px; border-top: 1px solid var(--stroke-subtle); }
-  .kit-row { display: grid; grid-template-columns: 8.4rem 1fr; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--stroke-subtle); }
-  .kit-row .k { align-self: center; }
-  .kit-row .v { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.7; color: var(--fg-secondary); }
-  .kit-row .v b { color: var(--fg-primary); }
-  .kit-stmts { margin-top: 32px; display: grid; gap: 1px; border: 1px solid var(--stroke-subtle); background: var(--stroke-subtle); }
-  @media (min-width: 768px) { .kit-stmts { grid-template-columns: repeat(2, 1fr); } }
-  .kit-stmt { background: var(--bg-canvas); padding: 20px; }
-  .kit-stmt .n { font-family: 'JetBrains Mono', monospace; font-size: 34px; font-weight: 800; line-height: 1; color: var(--accent-lime); margin: 0; }
-  .kit-stmt p { margin: 8px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--fg-secondary); }
-
-  /* ---------- variant CONSOLE --------------------------------------------- */
-  .console {
-    background: var(--bg-shell);
-    border: 1px solid var(--stroke-strong);
-    padding: 18px;
+  /* ---------- block: colossal insight -------------------------------------- */
+  .colossal { padding: 8px 0 4px; }
+  .colossal .n {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 12.5px; line-height: 1.75;
-    color: var(--fg-secondary);
-    overflow-x: auto;
+    font-size: clamp(64px, 14vw, 128px);
+    font-weight: 800; line-height: 0.95; letter-spacing: -0.03em;
+    color: var(--fg-primary); margin: 0;
   }
-  .console pre { margin: 0; white-space: pre; }
-  .console .cmd { color: var(--accent-lime); font-weight: 700; }
-  .console .dim { color: var(--fg-muted); }
-  .console .hi { color: var(--fg-primary); font-weight: 700; }
-  .console .bar { color: var(--accent-lime); }
+  .colossal .s { margin: 10px 0 0; font-size: 16px; line-height: 1.5; color: var(--fg-secondary); max-width: 34rem; }
+  .colossal .s b { color: var(--accent-lime); }
+  .sub-facts { display: grid; gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); margin-top: 28px; }
+  @media (min-width: 640px) { .sub-facts { grid-template-columns: repeat(3, 1fr); } }
+  .sub-fact { background: var(--bg-canvas); padding: 16px; }
+  .sub-fact .n { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 800; margin: 0; }
+  .sub-fact p { margin: 4px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--fg-muted); }
 
-  /* ---------- variant WEEK ------------------------------------------------ */
-  .week-wrap { border: 1px solid var(--stroke-subtle); padding: 18px; }
-  .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; align-items: end; min-height: 240px; }
-  .day { display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; }
-  .day .blk { width: 100%; }
-  .day .dl { margin-top: 8px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); }
-  .day.heavy .dl { color: var(--accent-lime); font-weight: 700; }
-  .week-note { margin: 14px 0 0; font-size: 13px; line-height: 1.55; color: var(--fg-secondary); max-width: 46rem; }
-  .week-note b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+  /* ---------- block: combos ------------------------------------------------ */
+  .combos { display: grid; gap: 1px; border: 1px solid var(--stroke-subtle); background: var(--stroke-subtle); }
+  @media (min-width: 768px) { .combos { grid-template-columns: repeat(2, 1fr); } }
+  .combo { background: var(--bg-canvas); padding: 14px 16px; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .combo .pair { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--fg-primary); }
+  .combo .pair .plus { color: var(--accent-lime); }
+  .combo .rate { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--fg-muted); white-space: nowrap; }
+
+  .block-gap { margin-top: 26px; }
+  .lead { margin: 0 0 26px; font-size: 14.5px; line-height: 1.6; color: var(--fg-secondary); max-width: 46rem; }
+  .lead b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
 
   /* ---------- consent footnote -------------------------------------------- */
   .consent {
@@ -270,7 +268,7 @@
 <body>
 
 <div class="ticket-strip">
-  PROTOTYPE · <b>alp82/aistack#164</b> · the workflow surface · round 2 · five variants, switch with the bar below
+  PROTOTYPE · <b>alp82/aistack#164</b> · the workflow surface · round 3 · three constellations, switch with the bar below
 </div>
 
 <!-- ======================================================================
@@ -322,54 +320,147 @@
 </div>
 
 <!-- ======================================================================
-     ROUND 2 VARIANTS. Journey section 02, under the numbers it explains.
+     ROUND 3 CONSTELLATIONS. Journey section 02, under the numbers.
 ====================================================================== -->
 
-<!-- ················· VARIANT: REEL ················· -->
-<section class="journey variant" id="v-reel">
+<!-- ················· VARIANT: HEADLINE ················· -->
+<section class="journey variant" id="v-headline">
   <div class="shell">
     <div class="sec-head">
       <span class="sec-index">02</span>
       <div class="head-copy">
         <p class="sec-kicker">// MEASURED WORKFLOW</p>
-        <h2 class="sec-title">The Reel</h2>
+        <h2 class="sec-title">How This Person Works</h2>
       </div>
       <span class="sec-meta">window · 30 days</span>
     </div>
 
-    <p class="trace-head">Nine sessions from the window, each one a strip of loop phases. The same shape keeps returning: chart, grill, prove, build, gate, ship.</p>
-
-    <div class="phase-legend">
-      <span><i style="background:var(--ph-chart)"></i>chart · wayfinder</span>
-      <span><i style="background:var(--ph-grill)"></i>grill · grilling</span>
-      <span><i style="background:var(--ph-prove)"></i>prove · prototype, research</span>
-      <span><i style="background:var(--ph-build)"></i>build · tdd</span>
-      <span><i style="background:var(--ph-gate)"></i>gate · code-review, curia</span>
-      <span><i style="background:var(--ph-ship)"></i>ship</span>
+    <div class="colossal">
+      <p class="n">15<span style="color:var(--fg-muted)">/</span>15</p>
+      <p class="s">merges this window passed a <b>human review gate</b> first. Nothing ships alone.</p>
     </div>
 
-    <div class="reel">
-      <div class="reel-row"><span class="when">Sun 00:12</span><div class="strip" style="width:100%"><div class="seg" style="flex:12; background:var(--ph-chart)"></div><div class="seg" style="flex:26; background:var(--ph-grill)"></div><div class="seg" style="flex:8; background:var(--ph-prove)"></div><div class="seg" style="flex:28; background:transparent"></div></div><span class="mins">46m</span></div>
-      <div class="reel-row"><span class="when">Sun 23:41</span><div class="strip" style="width:100%"><div class="seg" style="flex:30; background:var(--ph-prove)"></div><div class="seg" style="flex:12; background:var(--ph-build)"></div><div class="seg" style="flex:6; background:var(--ph-gate)"></div><div class="seg" style="flex:26; background:transparent"></div></div><span class="mins">48m</span></div>
-      <div class="reel-row"><span class="when">Mon 00:58</span><div class="strip" style="width:100%"><div class="seg" style="flex:52; background:var(--ph-build)"></div><div class="seg" style="flex:6; background:var(--ph-gate)"></div><div class="seg" style="flex:16; background:transparent"></div></div><span class="mins">58m</span></div>
-      <div class="reel-row"><span class="when">Wed 13:20</span><div class="strip" style="width:100%"><div class="seg" style="flex:18; background:var(--ph-grill)"></div><div class="seg" style="flex:6; background:var(--ph-prove)"></div><div class="seg" style="flex:50; background:transparent"></div></div><span class="mins">24m</span></div>
-      <div class="reel-row"><span class="when">Thu 22:05</span><div class="strip" style="width:100%"><div class="seg" style="flex:34; background:var(--ph-build)"></div><div class="seg" style="flex:4; background:var(--ph-ship)"></div><div class="seg" style="flex:36; background:transparent"></div></div><span class="mins">38m</span></div>
-      <div class="reel-row"><span class="when">Fri 23:30</span><div class="strip" style="width:100%"><div class="seg" style="flex:22; background:var(--ph-prove)"></div><div class="seg" style="flex:52; background:transparent"></div></div><span class="mins">22m</span></div>
-      <div class="reel-row is-real"><span class="when">✓ Aug 04</span><div class="strip" style="width:100%"><div class="seg" style="flex:8; background:var(--ph-chart)"></div><div class="seg" style="flex:38; background:var(--ph-build)"></div><div class="seg" style="flex:5; background:var(--ph-gate)"></div><div class="seg" style="flex:23; background:transparent"></div></div><span class="mins">51m</span></div>
-      <div class="reel-row"><span class="when">Sat 21:44</span><div class="strip" style="width:100%"><div class="seg" style="flex:41; background:var(--ph-build)"></div><div class="seg" style="flex:8; background:var(--ph-gate)"></div><div class="seg" style="flex:3; background:var(--ph-ship)"></div><div class="seg" style="flex:22; background:transparent"></div></div><span class="mins">52m</span></div>
-      <div class="reel-row"><span class="when">Sun 01:15</span><div class="strip" style="width:100%"><div class="seg" style="flex:9; background:var(--ph-gate)"></div><div class="seg" style="flex:3; background:var(--ph-ship)"></div><div class="seg" style="flex:62; background:transparent"></div></div><span class="mins">12m</span></div>
+    <div class="sub-facts">
+      <div class="sub-fact"><p class="n">8 of 10</p><p>build streaks start from a wayfinder map</p></div>
+      <div class="sub-fact"><p class="n">42%</p><p>of commits land between 23:00 and 03:00</p></div>
+      <div class="sub-fact"><p class="n">47 min</p><p>longest unbroken agent turn</p></div>
     </div>
-    <p class="reel-note">The row marked <b>✓</b> is a real measured session: <b>51 min</b>, <b>158 tool calls</b>, one agent turn of <b>47 minutes</b> unbroken. Build carries <b>58%</b> of all tokens. Subagents run <b>34%</b>.</p>
 
-    <div class="kitline">
-      <p class="mono-label kicker-line">// THE KIT BEHIND THE PHASES</p>
-      <div class="row">
+    <div class="sess block-gap">
+      <p class="mono-label kicker-line">// ONE SESSION, ANATOMIZED · 2026-08-04 · 51 MIN · 158 TOOL CALLS</p>
+      <div class="sess-strip">
+        <div class="sess-seg" style="flex:8; background:var(--ph-orient)"></div>
+        <div class="sess-seg" style="flex:27; background:var(--ph-build)"></div>
+        <div class="sess-seg" style="flex:11; background:var(--ph-verify)"></div>
+        <div class="sess-seg" style="flex:5; background:var(--ph-gate)"></div>
+      </div>
+      <div class="sess-legend">
+        <span><i style="background:var(--ph-orient)"></i>orient · 8 min</span>
+        <span><i style="background:var(--ph-build)"></i>build · 27 min</span>
+        <span><i style="background:var(--ph-verify)"></i>verify · 11 min</span>
+        <span><i style="background:var(--ph-gate)"></i>gate · 5 min</span>
+      </div>
+      <p class="sess-facts">Reads first, then a long edit burst: <b>79× Bash</b>, <b>54× Edit</b>, <b>17× Read</b>. The session ends on the review seam.</p>
+    </div>
+
+    <div class="inv block-gap">
+      <h3>The Kit</h3>
+      <p class="sub">Skills and commands merged · share of 412 runs</p>
+      <div class="lrow"><span class="rank">01</span><span class="name">grilling</span><div class="track"><div class="fill" style="width:96%"></div></div><span class="pct">24%</span></div>
+      <div class="lrow"><span class="rank">02</span><span class="name">tdd</span><div class="track"><div class="fill" style="width:68%"></div></div><span class="pct">17%</span></div>
+      <div class="lrow"><span class="rank">03</span><span class="name">wayfinder</span><div class="track"><div class="fill" style="width:52%"></div></div><span class="pct">13%</span></div>
+      <div class="lrow"><span class="rank">04</span><span class="name">prototype</span><div class="track"><div class="fill" style="width:44%"></div></div><span class="pct">11%</span></div>
+      <div class="lrow"><span class="rank">05</span><span class="name">research</span><div class="track"><div class="fill" style="width:36%"></div></div><span class="pct">9%</span></div>
+      <p class="inv-rest">also: <b>domain-modeling</b> 8% · <b>code-review</b> 7% · <b>writing-for-agents</b> 4% · <b>diagnosing-bugs</b> 3% · <b>simplify</b> 2% · 2 withheld 2%</p>
+      <div class="inv-line">
+        <span class="k mono-label">agents</span>
+        <p class="v"><b>Explore</b> 41% · <b>research</b> 24% · <b>Plan</b> 15% · <b>general-purpose</b> 12% · 1 withheld 8%</p>
+      </div>
+      <div class="inv-line">
+        <span class="k mono-label">mcp servers</span>
+        <p class="v"><b>curia</b> 78% · <b>convex</b> 19% · 1 withheld 3%</p>
+      </div>
+    </div>
+
+    <div class="consent">
+      <span class="mono-label">// HOW TO READ THIS</span><br>
+      Shares, never raw counts. A skill, agent or server name appears here only after the owner approves it at the sync gate. 4 names are withheld and stay counted in the shares. This prototype runs on hand-extracted data: one real session, the repo's real commit history, the owner's real roster. No live sync feeds it yet.
+    </div>
+  </div>
+</section>
+
+<!-- ················· VARIANT: RHYTHM PLUS ················· -->
+<section class="journey variant" id="v-rhythm">
+  <div class="shell">
+    <div class="sec-head">
+      <span class="sec-index">02</span>
+      <div class="head-copy">
+        <p class="sec-kicker">// MEASURED WORKFLOW</p>
+        <h2 class="sec-title">The Rhythm</h2>
+      </div>
+      <span class="sec-meta">window · 30 days</span>
+    </div>
+
+    <p class="mono-label kicker-line">// WHEN THE WORK HAPPENS</p>
+    <div class="heat-wrap">
+      <div class="heat">
+        <div class="heat-grid" id="heatmap"></div>
+        <div class="heat-legend">
+          <span class="mono-label">quiet</span>
+          <div class="cellbox" style="background:var(--bg-panel)"></div>
+          <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 18%, var(--bg-panel))"></div>
+          <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 38%, var(--bg-panel))"></div>
+          <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 62%, var(--bg-panel))"></div>
+          <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 90%, var(--bg-panel))"></div>
+          <span class="mono-label">heavy</span>
+        </div>
+      </div>
+    </div>
+    <p class="band-note">The midnight block is real. <b>42%</b> of commits land between 23:00 and 03:00.</p>
+
+    <div class="sess block-gap">
+      <p class="mono-label kicker-line">// ONE SESSION, ANATOMIZED · 2026-08-04 · 51 MIN · 158 TOOL CALLS</p>
+      <div class="sess-strip">
+        <div class="sess-seg" style="flex:8; background:var(--ph-orient)"></div>
+        <div class="sess-seg" style="flex:27; background:var(--ph-build)"></div>
+        <div class="sess-seg" style="flex:11; background:var(--ph-verify)"></div>
+        <div class="sess-seg" style="flex:5; background:var(--ph-gate)"></div>
+      </div>
+      <div class="sess-legend">
+        <span><i style="background:var(--ph-orient)"></i>orient · 8 min</span>
+        <span><i style="background:var(--ph-build)"></i>build · 27 min</span>
+        <span><i style="background:var(--ph-verify)"></i>verify · 11 min</span>
+        <span><i style="background:var(--ph-gate)"></i>gate · 5 min</span>
+      </div>
+      <p class="sess-facts">Reads first, then a long edit burst: <b>79× Bash</b>, <b>54× Edit</b>, <b>17× Read</b>. One agent turn ran <b>47 minutes</b> unbroken.</p>
+    </div>
+
+    <div class="block-gap">
+      <p class="mono-label kicker-line">// COMBOS · PAIRS FROM THE SAME SESSION</p>
+      <div class="combos">
+        <div class="combo"><span class="pair">grilling <span class="plus">+</span> domain-modeling</span><span class="rate">74% of grillings</span></div>
+        <div class="combo"><span class="pair">tdd <span class="plus">+</span> Explore subagents</span><span class="rate">61% of build sessions</span></div>
+        <div class="combo"><span class="pair">prototype <span class="plus">→</span> one throwaway file</span><span class="rate">9 of 9</span></div>
+        <div class="combo"><span class="pair">code-review <span class="plus">→</span> human gate</span><span class="rate">15 of 15 merges</span></div>
+      </div>
+    </div>
+
+    <div class="stat-grid block-gap">
+      <div class="stat"><p class="v">142</p><p class="l mono-label">sessions this window</p></div>
+      <div class="stat"><p class="v">38</p><p class="l mono-label">median tool calls per session</p></div>
+      <div class="stat"><p class="v">27 of 30</p><p class="l mono-label">active days</p></div>
+      <div class="stat"><p class="v">34%</p><p class="l mono-label">run by subagents</p></div>
+    </div>
+
+    <div class="kitline block-gap">
+      <p class="mono-label kicker-line">// THE KIT · SKILLS AND COMMANDS MERGED</p>
+      <div class="hero-chips">
         <span class="chip" style="color:var(--fg-secondary)">grilling 24%</span>
         <span class="chip" style="color:var(--fg-secondary)">tdd 17%</span>
         <span class="chip" style="color:var(--fg-secondary)">wayfinder 13%</span>
         <span class="chip" style="color:var(--fg-secondary)">prototype 11%</span>
+        <span class="chip" style="color:var(--fg-secondary)">research 9%</span>
         <span class="chip" style="color:var(--fg-secondary)">agent · Explore 41%</span>
-        <span class="chip" style="color:var(--fg-secondary)">agent · research 24%</span>
         <span class="chip" style="color:var(--fg-secondary)">mcp · curia 78%</span>
         <span class="chip" style="color:var(--fg-secondary)">mcp · convex 19%</span>
         <span class="chip" style="color:var(--fg-muted); border-style:dashed">4 names withheld</span>
@@ -378,249 +469,80 @@
 
     <div class="consent">
       <span class="mono-label">// HOW TO READ THIS</span><br>
-      Shares, never raw counts. A skill, agent or server name appears here only after the owner approves it at the sync gate. 4 names are withheld and stay counted in the shares. This prototype runs on hand-extracted data: one real session, one real ticket journey, the repo's real commit history, the owner's real roster. No live sync feeds it yet.
+      Shares, never raw counts. A skill, agent or server name appears here only after the owner approves it at the sync gate. 4 names are withheld and stay counted in the shares. This prototype runs on hand-extracted data: one real session, the repo's real commit history, the owner's real roster. No live sync feeds it yet.
     </div>
   </div>
 </section>
 
-<!-- ················· VARIANT: TRACE ················· -->
-<section class="journey variant" id="v-trace">
+<!-- ················· VARIANT: TRAILS ················· -->
+<section class="journey variant" id="v-trails">
   <div class="shell">
     <div class="sec-head">
       <span class="sec-index">02</span>
       <div class="head-copy">
         <p class="sec-kicker">// MEASURED WORKFLOW</p>
-        <h2 class="sec-title">One Ticket's Trace</h2>
-      </div>
-      <span class="sec-meta">#160 · 14 hours</span>
-    </div>
-
-    <p class="trace-head">The loop, told through one real ticket: <b>#160</b>, the direction-doc rebuild. Charted on a Sunday evening, merged the next morning. Every step names what ran it.</p>
-
-    <div class="trace">
-      <div class="tev">
-        <span class="dot" style="background:var(--ph-chart)"></span>
-        <span class="when">Sun Aug 17 · evening</span>
-        <h3>Chart</h3>
-        <p>The wayfinder map opens with three explorations. Ticket <b>#160</b> is cut first. A map opens before <b>8 of 10</b> build streaks.</p>
-        <div class="atoms"><span class="chip">skill · wayfinder</span></div>
-      </div>
-      <div class="tev">
-        <span class="dot" style="background:var(--ph-grill)"></span>
-        <span class="when">Sun Aug 17 · late</span>
-        <h3>Grill</h3>
-        <p>A grilling pins the destination: the USP stays, the rest is rewritten. The decision lands in the record, the way <b>74%</b> of grillings do.</p>
-        <div class="atoms"><span class="chip">skill · grilling</span><span class="chip">skill · domain-modeling</span></div>
-      </div>
-      <div class="tev">
-        <span class="dot" style="background:var(--ph-prove)"></span>
-        <span class="when">overnight</span>
-        <h3>Prove</h3>
-        <p>Research subagents sweep four old maps and one dead chat for user feedback. Findings land as a committed file, sources cited.</p>
-        <div class="atoms"><span class="chip">agent · research</span><span class="chip">agent · Explore</span></div>
-      </div>
-      <div class="tev">
-        <span class="dot" style="background:var(--ph-build)"></span>
-        <span class="when">Mon Aug 18 · night shift</span>
-        <h3>Build</h3>
-        <p>DIRECTION.md is rebuilt at the repo root: a five-point feedback summary and an eleven-headline missing list. Build carries <b>58%</b> of all tokens in this window.</p>
-        <div class="atoms"><span class="chip">skill · tdd</span></div>
-      </div>
-      <div class="tev">
-        <span class="dot" style="background:var(--ph-gate)"></span>
-        <span class="when">Mon Aug 18 · 07:50</span>
-        <h3>Gate</h3>
-        <p>The review gate shows the diff and the preview. A human approves. <b>15 of 15</b> merges this window passed this gate first.</p>
-        <div class="atoms"><span class="chip">mcp · curia</span><span class="chip">skill · code-review</span></div>
-      </div>
-      <div class="tev">
-        <span class="dot" style="background:var(--ph-ship)"></span>
-        <span class="when">Mon Aug 18 · 08:00</span>
-        <h3>Ship</h3>
-        <p>PR <b>#170</b> squash-merges onto main. The map gets its decision line, and the next ticket is already waiting.</p>
-        <div class="atoms"><span class="chip">git · squash merge</span><span class="chip">deploy · CI only</span></div>
-      </div>
-    </div>
-
-    <div class="kitline">
-      <p class="mono-label kicker-line">// THE SAME LOOP, 15 TIMES THIS WINDOW</p>
-      <div class="stat-grid">
-        <div class="stat"><p class="v">6</p><p class="l mono-label">maps opened</p></div>
-        <div class="stat"><p class="v">9</p><p class="l mono-label">prototypes, all throwaway</p></div>
-        <div class="stat"><p class="v">15 of 15</p><p class="l mono-label">merges behind a human gate</p></div>
-        <div class="stat"><p class="v">42%</p><p class="l mono-label">commits between 23:00 and 03:00</p></div>
-      </div>
-    </div>
-
-    <div class="consent">
-      <span class="mono-label">// HOW TO READ THIS</span><br>
-      Shares, never raw counts. A skill, agent or server name appears here only after the owner approves it at the sync gate. 4 names are withheld and stay counted in the shares. This prototype runs on hand-extracted data: one real session, one real ticket journey, the repo's real commit history, the owner's real roster. No live sync feeds it yet.
-    </div>
-  </div>
-</section>
-
-<!-- ················· VARIANT: KIT ················· -->
-<section class="journey variant" id="v-kit">
-  <div class="shell">
-    <div class="sec-head">
-      <span class="sec-index">02</span>
-      <div class="head-copy">
-        <p class="sec-kicker">// MEASURED WORKFLOW</p>
-        <h2 class="sec-title">The Kit</h2>
+        <h2 class="sec-title">The Trails</h2>
       </div>
       <span class="sec-meta">window · 30 days</span>
     </div>
 
-    <p class="mono-label kicker-line">// SKILLS AND COMMANDS, SIZED BY SHARE OF 412 RUNS</p>
-    <div class="kit-index">
-      <span class="item" style="font-size:34px">grilling<sup>24%</sup></span>
-      <span class="item" style="font-size:28px">tdd<sup>17%</sup></span>
-      <span class="item" style="font-size:25px">wayfinder<sup>13%</sup></span>
-      <span class="item" style="font-size:23px">prototype<sup>11%</sup></span>
-      <span class="item" style="font-size:21px">research<sup>9%</sup></span>
-      <span class="item" style="font-size:20px">domain-modeling<sup>8%</sup></span>
-      <span class="item" style="font-size:19px">code-review<sup>7%</sup></span>
-      <span class="item" style="font-size:16px">writing-for-agents<sup>4%</sup></span>
-      <span class="item" style="font-size:15px">diagnosing-bugs<sup>3%</sup></span>
-      <span class="item" style="font-size:14px">simplify<sup>2%</sup></span>
-      <span class="item dim" style="font-size:14px">2 withheld<sup>2%</sup></span>
-    </div>
+    <p class="lead">The kit, with its history. Every trail is the last 30 days of that row, the same way the model mix above draws its trails.</p>
 
-    <div class="kit-rows">
-      <div class="kit-row">
+    <div class="inv">
+      <h3>Skills and Commands</h3>
+      <p class="sub">Merged · share of 412 runs · 30-day trail</p>
+      <div class="lrow"><span class="rank">01</span><span class="name">grilling</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="3,4,2,5,6,4,7,5,8,6,9,7,8,9,10"></svg><div class="track"><div class="fill" style="width:96%"></div></div><span class="pct">24%</span></div>
+      <div class="lrow"><span class="rank">02</span><span class="name">tdd</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="6,5,7,4,6,3,5,4,6,5,4,6,5,7,6"></svg><div class="track"><div class="fill" style="width:68%"></div></div><span class="pct">17%</span></div>
+      <div class="lrow"><span class="rank">03</span><span class="name">wayfinder</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="2,3,2,4,3,5,4,4,5,6,5,6,7,6,8"></svg><div class="track"><div class="fill" style="width:52%"></div></div><span class="pct">13%</span></div>
+      <div class="lrow"><span class="rank">04</span><span class="name">prototype</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="1,2,1,3,2,4,3,5,4,6,5,7,6,8,9"></svg><div class="track"><div class="fill" style="width:44%"></div></div><span class="pct">11%</span></div>
+      <div class="lrow"><span class="rank">05</span><span class="name">research</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="5,6,4,5,3,4,3,4,2,3,3,2,3,2,2"></svg><div class="track"><div class="fill" style="width:36%"></div></div><span class="pct">9%</span></div>
+      <div class="lrow"><span class="rank">06</span><span class="name">domain-modeling</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="2,3,3,4,3,4,5,4,5,4,5,6,5,6,6"></svg><div class="track"><div class="fill" style="width:32%"></div></div><span class="pct">8%</span></div>
+      <p class="inv-rest">also: <b>code-review</b> 7% · <b>writing-for-agents</b> 4% · <b>diagnosing-bugs</b> 3% · <b>simplify</b> 2% · 2 withheld 2%</p>
+      <div class="inv-line">
         <span class="k mono-label">agents</span>
         <p class="v"><b>Explore</b> 41% · <b>research</b> 24% · <b>Plan</b> 15% · <b>general-purpose</b> 12% · 1 withheld 8%</p>
       </div>
-      <div class="kit-row">
+      <div class="inv-line">
         <span class="k mono-label">mcp servers</span>
         <p class="v"><b>curia</b> 78% · <b>convex</b> 19% · 1 withheld 3%</p>
       </div>
-      <div class="kit-row">
-        <span class="k mono-label">models</span>
-        <p class="v"><b>claude-fable-5</b> 62% · <b>claude-opus-5</b> 21% · <b>claude-sonnet-5</b> 12% · <b>claude-haiku-4-5</b> 5%</p>
+    </div>
+
+    <div class="block-gap">
+      <p class="mono-label kicker-line">// THE HOURS · ALL DAYS SUMMED</p>
+      <div class="band-wrap">
+        <div class="band" id="hourband"></div>
+        <div class="band-x"><span>00</span><span></span><span></span><span></span><span></span><span></span><span>06</span><span></span><span></span><span></span><span></span><span></span><span>12</span><span></span><span></span><span></span><span></span><span></span><span>18</span><span></span><span></span><span></span><span></span><span></span></div>
+        <p class="band-note"><b>42%</b> of commits land between <b>23:00 and 03:00</b>. The histogram sums all days, because the hour is the signal and the weekday is noise.</p>
       </div>
     </div>
 
-    <div class="kit-stmts">
-      <div class="kit-stmt">
-        <p class="n">8 of 10</p>
-        <p>build streaks start from a wayfinder map. Decisions land as closed tickets, one per session.</p>
+    <div class="sess block-gap">
+      <p class="mono-label kicker-line">// ONE SESSION, ANATOMIZED · 2026-08-04 · 51 MIN · 158 TOOL CALLS</p>
+      <div class="sess-strip">
+        <div class="sess-seg" style="flex:8; background:var(--ph-orient)"></div>
+        <div class="sess-seg" style="flex:27; background:var(--ph-build)"></div>
+        <div class="sess-seg" style="flex:11; background:var(--ph-verify)"></div>
+        <div class="sess-seg" style="flex:5; background:var(--ph-gate)"></div>
       </div>
-      <div class="kit-stmt">
-        <p class="n">74%</p>
-        <p>of grillings pull domain-modeling into the same session. The answer lands in an ADR.</p>
+      <div class="sess-legend">
+        <span><i style="background:var(--ph-orient)"></i>orient · 8 min</span>
+        <span><i style="background:var(--ph-build)"></i>build · 27 min</span>
+        <span><i style="background:var(--ph-verify)"></i>verify · 11 min</span>
+        <span><i style="background:var(--ph-gate)"></i>gate · 5 min</span>
       </div>
-      <div class="kit-stmt">
-        <p class="n">15 of 15</p>
-        <p>merges this window passed a human review gate on the curia seam. Nothing merges alone.</p>
-      </div>
-      <div class="kit-stmt">
-        <p class="n">42%</p>
-        <p>of commits land between 23:00 and 03:00. Sunday carries 28% of the week.</p>
-      </div>
+      <p class="sess-facts">Reads first, then a long edit burst: <b>79× Bash</b>, <b>54× Edit</b>, <b>17× Read</b>. The session ends on the review seam.</p>
     </div>
 
-    <div class="consent">
-      <span class="mono-label">// HOW TO READ THIS</span><br>
-      Shares, never raw counts. A skill, agent or server name appears here only after the owner approves it at the sync gate. 4 names are withheld and stay counted in the shares. This prototype runs on hand-extracted data: one real session, one real ticket journey, the repo's real commit history, the owner's real roster. No live sync feeds it yet.
-    </div>
-  </div>
-</section>
-
-<!-- ················· VARIANT: CONSOLE ················· -->
-<section class="journey variant" id="v-console">
-  <div class="shell">
-    <div class="sec-head">
-      <span class="sec-index">02</span>
-      <div class="head-copy">
-        <p class="sec-kicker">// MEASURED WORKFLOW</p>
-        <h2 class="sec-title">The Console</h2>
-      </div>
-      <span class="sec-meta">window · 30 days</span>
-    </div>
-
-    <div class="console"><pre><span class="cmd">$ aistack workflow --window 30d</span>
-<span class="dim"># 2026-07-19 .. 2026-08-18 · shares, not counts · 4 names withheld</span>
-
-<span class="hi">skills + commands</span>              <span class="dim">share of 412 runs</span>
-  grilling             <span class="bar">████████████</span> 24%
-  tdd                  <span class="bar">████████▌</span>    17%
-  wayfinder            <span class="bar">██████▌</span>      13%
-  prototype            <span class="bar">█████▌</span>       11%
-  research             <span class="bar">████▌</span>         9%
-  domain-modeling      <span class="bar">████</span>          8%
-  code-review          <span class="bar">███▌</span>          7%
-  writing-for-agents   <span class="bar">██</span>            4%
-  <span class="dim">+ 2 more · 2 withheld            7%</span>
-
-<span class="hi">agents</span>     Explore 41% · research 24% · Plan 15% · general-purpose 12% <span class="dim">· 1 withheld 8%</span>
-<span class="hi">mcp</span>        curia 78% · convex 19% <span class="dim">· 1 withheld 3%</span>
-
-<span class="dim"># habits, from timestamps</span>
-<span class="dim">#</span> 42% of commits land 23:00..03:00 · sunday carries 28%
-<span class="dim">#</span> longest unbroken agent turn: 47 min
-<span class="dim">#</span> every merge passed a human gate: 15 of 15
-<span class="cmd">$</span> █</pre></div>
-
-    <div class="consent">
-      <span class="mono-label">// HOW TO READ THIS</span><br>
-      Shares, never raw counts. A skill, agent or server name appears here only after the owner approves it at the sync gate. 4 names are withheld and stay counted in the shares. This prototype runs on hand-extracted data: one real session, one real ticket journey, the repo's real commit history, the owner's real roster. No live sync feeds it yet.
-    </div>
-  </div>
-</section>
-
-<!-- ················· VARIANT: WEEK ················· -->
-<section class="journey variant" id="v-week">
-  <div class="shell">
-    <div class="sec-head">
-      <span class="sec-index">02</span>
-      <div class="head-copy">
-        <p class="sec-kicker">// MEASURED WORKFLOW</p>
-        <h2 class="sec-title">The Week</h2>
-      </div>
-      <span class="sec-meta">window · 30 days</span>
-    </div>
-
-    <p class="trace-head">A typical week from the window. Every block is one session, sized by length, colored by the phase that dominated it.</p>
-
-    <div class="phase-legend">
-      <span><i style="background:var(--ph-chart)"></i>chart</span>
-      <span><i style="background:var(--ph-grill)"></i>grill</span>
-      <span><i style="background:var(--ph-prove)"></i>prove</span>
-      <span><i style="background:var(--ph-build)"></i>build</span>
-      <span><i style="background:var(--ph-gate)"></i>gate</span>
-      <span><i style="background:var(--ph-ship)"></i>ship</span>
-    </div>
-
-    <div class="week-wrap">
-      <div class="week">
-        <div class="day"><div class="blk" style="height:58px; background:var(--ph-build)"></div><div class="blk" style="height:24px; background:var(--ph-grill)"></div><div class="blk" style="height:12px; background:var(--ph-gate)"></div><div class="dl">Mon</div></div>
-        <div class="day"><div class="blk" style="height:14px; background:var(--ph-prove)"></div><div class="dl">Tue</div></div>
-        <div class="day"><div class="blk" style="height:38px; background:var(--ph-build)"></div><div class="blk" style="height:18px; background:var(--ph-grill)"></div><div class="dl">Wed</div></div>
-        <div class="day"><div class="blk" style="height:38px; background:var(--ph-build)"></div><div class="blk" style="height:10px; background:var(--ph-ship)"></div><div class="dl">Thu</div></div>
-        <div class="day"><div class="blk" style="height:42px; background:var(--ph-build)"></div><div class="blk" style="height:22px; background:var(--ph-prove)"></div><div class="dl">Fri</div></div>
-        <div class="day"><div class="blk" style="height:52px; background:var(--ph-build)"></div><div class="blk" style="height:14px; background:var(--ph-gate)"></div><div class="blk" style="height:8px; background:var(--ph-ship)"></div><div class="dl">Sat</div></div>
-        <div class="day heavy"><div class="blk" style="height:46px; background:var(--ph-chart)"></div><div class="blk" style="height:40px; background:var(--ph-grill)"></div><div class="blk" style="height:48px; background:var(--ph-build)"></div><div class="blk" style="height:16px; background:var(--ph-gate)"></div><div class="dl">Sun</div></div>
-      </div>
-    </div>
-    <p class="week-note"><b>Sunday</b> carries <b>28%</b> of the week and is where maps get charted. <b>42%</b> of commits land between <b>23:00 and 03:00</b>. The week closed with <b>15 of 15</b> merges behind a human gate.</p>
-
-    <div class="kitline">
-      <p class="mono-label kicker-line">// THE KIT</p>
-      <div class="row">
-        <span class="chip" style="color:var(--fg-secondary)">grilling 24%</span>
-        <span class="chip" style="color:var(--fg-secondary)">tdd 17%</span>
-        <span class="chip" style="color:var(--fg-secondary)">wayfinder 13%</span>
-        <span class="chip" style="color:var(--fg-secondary)">prototype 11%</span>
-        <span class="chip" style="color:var(--fg-secondary)">agent · Explore 41%</span>
-        <span class="chip" style="color:var(--fg-secondary)">mcp · curia 78%</span>
-        <span class="chip" style="color:var(--fg-muted); border-style:dashed">4 names withheld</span>
-      </div>
+    <div class="sub-facts block-gap">
+      <div class="sub-fact"><p class="n">15 of 15</p><p>merges behind a human review gate</p></div>
+      <div class="sub-fact"><p class="n">8 of 10</p><p>build streaks start from a wayfinder map</p></div>
+      <div class="sub-fact"><p class="n">74%</p><p>of grillings pull domain-modeling into the same session</p></div>
     </div>
 
     <div class="consent">
       <span class="mono-label">// HOW TO READ THIS</span><br>
-      Shares, never raw counts. A skill, agent or server name appears here only after the owner approves it at the sync gate. 4 names are withheld and stay counted in the shares. This prototype runs on hand-extracted data: one real session, one real ticket journey, the repo's real commit history, the owner's real roster. No live sync feeds it yet.
+      Shares, never raw counts. A skill, agent or server name appears here only after the owner approves it at the sync gate. 4 names are withheld and stay counted in the shares. This prototype runs on hand-extracted data: one real session, the repo's real commit history, the owner's real roster. No live sync feeds it yet.
     </div>
   </div>
 </section>
@@ -651,19 +573,17 @@
 <div class="switcher" role="navigation" aria-label="variant switcher">
   <button type="button" id="prev" aria-label="previous variant">←</button>
   <div class="label">
-    <span class="k" id="sw-k">variant 1 / 5</span>
-    <span class="n" id="sw-n">the reel</span>
+    <span class="k" id="sw-k">variant 1 / 3</span>
+    <span class="n" id="sw-n">the headline</span>
   </div>
   <button type="button" id="next" aria-label="next variant">→</button>
 </div>
 
 <script>
   var VARIANTS = [
-    { key: 'reel',    id: 'v-reel',    name: 'the reel' },
-    { key: 'trace',   id: 'v-trace',   name: "one ticket's trace" },
-    { key: 'kit',     id: 'v-kit',     name: 'the kit' },
-    { key: 'console', id: 'v-console', name: 'the console' },
-    { key: 'week',    id: 'v-week',    name: 'the week' }
+    { key: 'headline', id: 'v-headline', name: 'the headline' },
+    { key: 'rhythm',   id: 'v-rhythm',   name: 'rhythm plus' },
+    { key: 'trails',   id: 'v-trails',   name: 'the trails' }
   ];
   var current = 0;
 
@@ -686,6 +606,69 @@
     if (e.key === 'ArrowLeft') show(current - 1);
     if (e.key === 'ArrowRight') show(current + 1);
   });
+
+  /* Heatmap: hour-of-day profile from the repo's real commit history,
+     spread across weekdays with the real weekday weights. */
+  (function () {
+    var hours = [21,16,3,0,1,0,0,1,2,1,1,8,3,6,5,1,6,6,1,1,5,7,9,6]; /* real: git log by hour */
+    var dayW = { Mon: 19, Tue: 4, Wed: 12, Thu: 12, Fri: 15, Sat: 17, Sun: 31 }; /* real: git log by weekday */
+    var days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    var grid = document.getElementById('heatmap');
+    var maxV = 0, cells = [];
+    days.forEach(function (d) {
+      hours.forEach(function (h) {
+        var v = h * dayW[d];
+        maxV = Math.max(maxV, v);
+        cells.push(v);
+      });
+    });
+    var html = '<div class="heat-label"></div>';
+    for (var h = 0; h < 24; h++) {
+      html += '<div class="heat-x">' + (h % 6 === 0 ? String(h).padStart(2, '0') : '') + '</div>';
+    }
+    days.forEach(function (d, di) {
+      html += '<div class="heat-label">' + d + '</div>';
+      for (var h2 = 0; h2 < 24; h2++) {
+        var v = cells[di * 24 + h2] / maxV;
+        var mix = v === 0 ? 0 : v < 0.12 ? 18 : v < 0.3 ? 38 : v < 0.6 ? 62 : 90;
+        var bg = mix === 0 ? 'var(--bg-panel)' : 'color-mix(in oklab, var(--accent-lime) ' + mix + '%, var(--bg-panel))';
+        html += '<div class="heat-cell" style="background:' + bg + '"></div>';
+      }
+    });
+    grid.innerHTML = html;
+  })();
+
+  /* 24-hour band: the same real hour profile, all days summed. */
+  (function () {
+    var hours = [21,16,3,0,1,0,0,1,2,1,1,8,3,6,5,1,6,6,1,1,5,7,9,6];
+    var band = document.getElementById('hourband');
+    if (!band) return;
+    var maxH = Math.max.apply(null, hours);
+    var html = '';
+    hours.forEach(function (v, h) {
+      var pct = v === 0 ? 2 : Math.round((v / maxH) * 100);
+      var off = v === 0 ? ' off' : '';
+      html += '<div class="col' + off + '" style="height:' + pct + '%"></div>';
+    });
+    band.innerHTML = html;
+  })();
+
+  /* Sparkline trails: polyline from each svg's data-trail. */
+  (function () {
+    document.querySelectorAll('svg.spark').forEach(function (svg) {
+      var vals = (svg.getAttribute('data-trail') || '').split(',').map(Number);
+      if (!vals.length) return;
+      var maxV = Math.max.apply(null, vals);
+      var pts = vals.map(function (v, i) {
+        var x = (i / (vals.length - 1)) * 64;
+        var y = 16 - (v / maxV) * 14;
+        return x.toFixed(1) + ',' + y.toFixed(1);
+      }).join(' ');
+      var pl = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      pl.setAttribute('points', pts);
+      svg.appendChild(pl);
+    });
+  })();
 
   (function () {
     var q = new URL(window.location.href).searchParams.get('variant');
