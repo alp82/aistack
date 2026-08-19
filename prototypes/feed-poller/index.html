@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed poller prototype (#177)</title>
+<style>
+  * { box-sizing: border-box; border-radius: 0; }
+  body { margin: 0; background: #0c0e0c; color: #d8ddd8; font: 15px/1.5 system-ui, sans-serif; }
+  main { max-width: 900px; margin: 0 auto; padding: 1rem; }
+  header { border-bottom: 2px solid #a3e635; padding: 1rem 0; margin-bottom: 1rem; }
+  h1, h2, h3, .meta, .tag, .date, table { font-family: ui-monospace, monospace; }
+  h1 { font-size: 1.2rem; margin: 0; }
+  header p { margin: .4rem 0 0; color: #9aa39a; }
+  .big { color: #a3e635; font-weight: bold; }
+  table { border-collapse: collapse; width: 100%; font-size: .8rem; }
+  th, td { border: 1px solid #2a2f2a; padding: .3rem .5rem; text-align: left; }
+  td.num { text-align: right; }
+  tr.fail td { color: #f87171; }
+  .wrap { overflow-x: auto; }
+  .card { border: 1px solid #2a2f2a; border-left: 4px solid #a3e635; padding: .8rem 1rem; margin: 1rem 0; }
+  .card.fail { border-left-color: #f87171; }
+  .card h3 { margin: 0 0 .2rem; font-size: 1rem; }
+  .tag { color: #0c0e0c; background: #a3e635; padding: 0 .4rem; font-size: .7rem; vertical-align: middle; }
+  .card.fail .tag { background: #f87171; }
+  .meta { color: #9aa39a; font-size: .75rem; margin: 0 0 .5rem; word-break: break-all; }
+  .note { color: #eab308; font-size: .75rem; margin: 0 0 .5rem; word-break: break-all; }
+  ul { margin: 0; padding-left: 1.2rem; }
+  li { margin: .25rem 0; }
+  a { color: #a3e635; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .date { color: #9aa39a; font-size: .75rem; margin-right: .3rem; }
+  .err { color: #f87171; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Feed poller prototype · alp82/aistack#177</h1>
+  <p>One generic RSS/Atom poller over the phase-1 source list from the news pipeline spec.
+     Real items, fetched live at 2026-08-19T13:48:09.460Z.
+     Result: <span class="big">14 of 14 sources work</span>.</p>
+</header>
+
+<h2>Sources where the generic poller fails</h2>
+<p>None. Every source returned a parseable feed with items.</p>
+
+<h2>Findings</h2>
+<ul>
+  <li>openai.com sits behind Cloudflare. A browser user agent was enough, no block from this datacenter IP.</li>
+  <li>Redirects matter. blog.google moved its RSS path, and sst/opencode moved to anomalyco/opencode. The poller follows both 301s.</li>
+  <li>The AI News Buttondown feed is dormant. The newsletter moved to news.smol.ai in 2025. The feed still parses, and the item dates expose the dormancy. Computer Things proves a live Buttondown feed.</li>
+  <li>The OpenAI feed returns its full archive (1139 items). The real collector needs a date cutoff or a seen-item store, not a count limit.</li>
+  <li>Both formats appear in the wild set: RSS 2.0 on the blogs and newsletters, Atom on GitHub, YouTube, and simonwillison.net. One parser with two entry shapes covers all 14.</li>
+</ul>
+
+<h2>All sources</h2>
+<div class="wrap">
+<table>
+  <tr><th></th><th>source</th><th>kind</th><th>format</th><th>items</th><th>ms</th><th>error</th></tr>
+<tr class="ok">
+  <td>OK</td>
+  <td>openai-news</td>
+  <td>vendor blog</td>
+  <td>rss</td>
+  <td class="num">1139</td>
+  <td class="num">361</td>
+  <td></td>
+</tr>
+<tr class="ok">
+  <td>OK</td>
+  <td>google-ai-blog</td>
+  <td>vendor blog</td>
+  <td>rss</td>
+  <td class="num">20</td>
+  <td class="num">527</td>
+  <td></td>
+</tr>
+<tr class="ok">
+  <td>OK</td>
+  <td>latent-space</td>
+  <td>Substack</td>
+  <td>rss</td>
+  <td class="num">20</td>
+  <td class="num">289</td>
+  <td></td>
+</tr>
+<tr class="ok">
+  <td>OK</td>
+  <td>404-media</td>
+  <td>Ghost</td>
+  <td>rss</td>
+  <td class="num">15</td>
+  <td class="num">212</td>
+  <td></td>
+</tr>
+<tr class="ok">
+  <td>OK</td>
+  <td>ainews</td>
+  <td>Buttondown</td>
+  <td>rss</td>
+  <td class="num">10</td>
+  <td class="num">1089</td>
+  <td></td>
+</tr>
+<tr class="ok">
+  <td>OK</td>
+  <td>computer-things</td>
+  <td>Buttondown</td>
+  <td>rss</td>
+  <td class="num">30</td>
+  <td class="num">337</td>
+  <td></td>
+</tr>
+<tr class="ok">
+  <td>OK</td>
+  <td>simonwillison</td>
+  <td>personal blog</td>
+  <td>atom</td>
+  <td class="num">30</td>
+  <td class="num">210</td>
+  <td></td>
+</tr>
+<tr class="ok">
+  <td>OK</td>
+  <td>youtube-channel</td>
+  <td>YouTube channel</td>
+  <td>atom</td>
+  <td class="num">15</td>
+  <td class="num">189</td>
+  <td></td>
+</tr>
+<tr class="ok">
+  <td>OK</td>
+  <td>aicrier</td>
+  <td>aggregator</td>
+  <td>rss</td>
+  <td class="num">100</td>
+  <td class="num">261</td>
+  <td></td>
+</tr>
+<tr class="ok">
+  <td>OK</td>
+  <td>claude-code</td>
+  <td>GitHub releases</td>
+  <td>atom</td>
+  <td class="num">10</td>
+  <td class="num">305</td>
+  <td></td>
+</tr>
+<tr class="ok">
+  <td>OK</td>
+  <td>codex</td>
+  <td>GitHub releases</td>
+  <td>atom</td>
+  <td class="num">10</td>
+  <td class="num">679</td>
+  <td></td>
+</tr>
+<tr class="ok">
+  <td>OK</td>
+  <td>gemini-cli</td>
+  <td>GitHub releases</td>
+  <td>atom</td>
+  <td class="num">10</td>
+  <td class="num">115</td>
+  <td></td>
+</tr>
+<tr class="ok">
+  <td>OK</td>
+  <td>opencode</td>
+  <td>GitHub releases</td>
+  <td>atom</td>
+  <td class="num">10</td>
+  <td class="num">196</td>
+  <td></td>
+</tr>
+<tr class="ok">
+  <td>OK</td>
+  <td>pi</td>
+  <td>GitHub releases</td>
+  <td>atom</td>
+  <td class="num">10</td>
+  <td class="num">132</td>
+  <td></td>
+</tr>
+</table>
+</div>
+
+<h2>Fetched items (5 newest per source)</h2>
+<section class="card ok">
+  <h3>OpenAI News <span class="tag">vendor blog</span></h3>
+  <p class="meta">https://openai.com/news/rss.xml · rss · HTTP 200 · 1139 items · 361ms</p>
+  
+  <ul><li><span class="date">2026-08-18</span> <a href="https://openai.com/index/chatgpt-ads-expands-across-europe">ChatGPT Ads expands across Europe</a></li>
+<li><span class="date">2026-08-18</span> <a href="https://openai.com/index/strengthening-democratic-oversight-in-national-security">Strengthening democratic oversight in national security</a></li>
+<li><span class="date">2026-08-18</span> <a href="https://openai.com/index/partnering-with-codeai">Partnering with CodeAI to prepare the first AI generation</a></li>
+<li><span class="date">2026-08-18</span> <a href="https://openai.com/index/pacing-model-development-cyber-capabilities">Pacing model development in an era of cyber-critical capabilities</a></li>
+<li><span class="date">2026-08-18</span> <a href="https://openai.com/index/chatgpt-for-teens">Introducing ChatGPT for Teens: Built for learning, backed by protections</a></li></ul>
+</section>
+<section class="card ok">
+  <h3>AI <span class="tag">vendor blog</span></h3>
+  <p class="meta">https://blog.google/technology/ai/rss/ · rss · HTTP 200 · 20 items · 527ms</p>
+  <p class="note">redirected to https://blog.google/innovation-and-ai/technology/ai/rss/</p>
+  <ul><li><span class="date">2026-08-17</span> <a href="https://blog.google/products-and-platforms/products/gemini/google-gemini-pixel-football-club-partnerships/">Get closer to the game with Gemini and Pixel</a></li>
+<li><span class="date">2026-08-13</span> <a href="https://blog.google/products-and-platforms/products/workspace/sheets-canvas-for-google-sheets-spreadsheets/">Bring your spreadsheet data to life with Sheets canvas</a></li>
+<li><span class="date">2026-08-11</span> <a href="https://blog.google/innovation-and-ai/models-and-research/google-research/amie-video-consultations/">AMIE, our research medical AI system, demonstrates real-time clinical video consultation capabilities in a first-of-its-kind study.</a></li>
+<li><span class="date">2026-08-10</span> <a href="https://blog.google/products/ads-commerce/google-ads-analytics-ai-updates/">Evolve your marketing with new AI tools</a></li>
+<li><span class="date">2026-08-04</span> <a href="https://blog.google/innovation-and-ai/technology/ai/google-ai-updates-july-2026/">The latest AI news we announced in July 2026</a></li></ul>
+</section>
+<section class="card ok">
+  <h3>Latent.Space <span class="tag">Substack</span></h3>
+  <p class="meta">https://www.latent.space/feed · rss · HTTP 200 · 20 items · 289ms</p>
+  
+  <ul><li><span class="date">2026-08-19</span> <a href="https://www.latent.space/p/ainews-memory-prices-up-500-in-12">[AINews] Memory prices up 500% in 12 months</a></li>
+<li><span class="date">2026-08-18</span> <a href="https://www.latent.space/p/glean-model-routing">Frontier Model Cost and Open-Weights Popularity is Driving Demand for Model Routing</a></li>
+<li><span class="date">2026-08-17</span> <a href="https://www.latent.space/p/ainews-stripe-buys-openrouter-for">[AINews] Stripe buys OpenRouter for $7B</a></li>
+<li><span class="date">2026-08-15</span> <a href="https://www.latent.space/p/flue-2">React for Agents: Astro Creator Brings Hooks to his Meta-Harness, Flue</a></li>
+<li><span class="date">2026-08-14</span> <a href="https://www.latent.space/p/ainews-cursors-60b-acquisition-by">[AINews] Cursor's $60B acquisition by SpaceXai closes</a></li></ul>
+</section>
+<section class="card ok">
+  <h3>404 Media <span class="tag">Ghost</span></h3>
+  <p class="meta">https://www.404media.co/rss/ · rss · HTTP 200 · 15 items · 212ms</p>
+  
+  <ul><li><span class="date">2026-08-18</span> <a href="https://www.404media.co/anthropics-text-watermarking-proves-ai-companies-do-not-care-at-all-about-writing/">Anthropic’s Text Watermarking Proves AI Companies Do Not Care at All About Writing</a></li>
+<li><span class="date">2026-08-18</span> <a href="https://www.404media.co/xs-algorithm-feeds-off-ragebait-and-impacts-democrats-more-study-finds/">X's Algorithm Feeds Off Ragebait and Impacts Democrats More, Study Finds</a></li>
+<li><span class="date">2026-08-18</span> <a href="https://www.404media.co/the-national-park-service-is-using-flock-rangers-are-pissed/">The National Park Service Is Using Flock. Rangers Are Pissed</a></li>
+<li><span class="date">2026-08-17</span> <a href="https://www.404media.co/pornhubs-parent-company-to-pay-120-million-to-settle-child-sexual-abuse-lawsuits/">Pornhub's Parent Company to Pay $120 Million to Settle Child Sexual Abuse Lawsuits</a></li>
+<li><span class="date">2026-08-17</span> <a href="https://www.404media.co/show-how-3m-is-0-at-fault-expert-witness-used-chatgpt-to-write-report-defending-company-in-deadly-explosion-lawsuit/">‘Show How 3M Is 0% at Fault:’ Expert Witness Used ChatGPT to Write Report Defending Company in Deadly Explosion Lawsuit</a></li></ul>
+</section>
+<section class="card ok">
+  <h3>AI News (MOVED TO news.smol.ai!) <span class="tag">Buttondown</span></h3>
+  <p class="meta">https://buttondown.com/ainews/rss · rss · HTTP 200 · 10 items · 1089ms</p>
+  
+  <ul><li><span class="date">2025-04-25</span> <a href="https://buttondown.com/ainews/archive/ainews-we-have-moved-please-help-us-move/">[AINews] We have moved!! Please help us move!</a></li>
+<li><span class="date">2025-04-19</span> <a href="https://buttondown.com/ainews/archive/ainews-grok-3-3-mini-now-api-available/">[AINews] Grok 3 &amp; 3-mini now API Available</a></li>
+<li><span class="date">2025-04-18</span> <a href="https://buttondown.com/ainews/archive/ainews-gemini-25-flash-completes-the-total/">[AINews] Gemini 2.5 Flash completes the total domination of the Pareto Frontier</a></li>
+<li><span class="date">2025-04-17</span> <a href="https://buttondown.com/ainews/archive/ainews-openai-o3-o4-mini-and-codex-cli/">[AINews] OpenAI o3, o4-mini, and Codex CLI</a></li>
+<li><span class="date">2025-04-16</span> <a href="https://buttondown.com/ainews/archive/ainews-sota-video-gen-veo-2-and-kling-2-are-ga/">[AINews] SOTA Video Gen: Veo 2 and Kling 2 are GA for developers</a></li></ul>
+</section>
+<section class="card ok">
+  <h3>Computer Things <span class="tag">Buttondown</span></h3>
+  <p class="meta">https://buttondown.com/hillelwayne/rss · rss · HTTP 200 · 30 items · 337ms</p>
+  
+  <ul><li><span class="date">2026-08-18</span> <a href="https://buttondown.com/hillelwayne/archive/vim-wants-you-to-control-vscode-wants-you-to/">Vim wants you to control, VSCode wants you to consume</a></li>
+<li><span class="date">2026-07-29</span> <a href="https://buttondown.com/hillelwayne/archive/logic-for-programmers-is-done/">Logic for Programmers is Done</a></li>
+<li><span class="date">2026-07-14</span> <a href="https://buttondown.com/hillelwayne/archive/im-still-alive/">I'm still alive</a></li>
+<li><span class="date">2026-06-17</span> <a href="https://buttondown.com/hillelwayne/archive/logic-for-programmers-v015-livecoding/">Logic for Programmers v0.15, Livecoding</a></li>
+<li><span class="date">2026-06-10</span> <a href="https://buttondown.com/hillelwayne/archive/nontrailing-separators-do-not-spark-joy/">Nontrailing separators do not spark joy</a></li></ul>
+</section>
+<section class="card ok">
+  <h3>Simon Willison's Weblog <span class="tag">personal blog</span></h3>
+  <p class="meta">https://simonwillison.net/atom/everything/ · atom · HTTP 200 · 30 items · 210ms</p>
+  
+  <ul><li><span class="date">2026-08-18</span> <a href="https://simonwillison.net/2026/Aug/18/mojo-is-now-open-source/">Mojo🔥 is now open source</a></li>
+<li><span class="date">2026-08-17</span> <a href="https://simonwillison.net/2026/Aug/17/qwen-38-27b-scores-52/">Qwen 3.8 27B scores 52 on the Artificial Analysis Intelligence Index</a></li>
+<li><span class="date">2026-08-17</span> <a href="https://simonwillison.net/2026/Aug/17/we-tracked-a-shipment-of-rare-books-it-ended-at-an-amazon-ai-tra/">We Tracked a Shipment of Rare Books. It Ended at an Amazon AI Training Facility</a></li>
+<li><span class="date">2026-08-16</span> <a href="https://simonwillison.net/2026/Aug/16/markdown-svg-upgrades/">Markdown SVG upgrades</a></li>
+<li><span class="date">2026-08-16</span> <a href="https://simonwillison.net/2026/Aug/16/qwen-38-27b/">Qwen 3.8 27B is excellent, but it defaults to wildly overthinking things</a></li></ul>
+</section>
+<section class="card ok">
+  <h3>AI News &amp; Strategy Daily | Nate B Jones <span class="tag">YouTube channel</span></h3>
+  <p class="meta">https://www.youtube.com/feeds/videos.xml?channel_id=UC0C-17n9iuUQPylguM1d-lQ · atom · HTTP 200 · 15 items · 189ms</p>
+  
+  <ul><li><span class="date">2026-08-17</span> <a href="https://www.youtube.com/watch?v=4f5AJrJPilM">One Cancelled Gym Class. That's How Agent Swarm Attacks Start.</a></li>
+<li><span class="date">2026-08-17</span> <a href="https://www.youtube.com/shorts/0QCoAfMzSJE">Stop overthinking which AI to use. Do this.</a></li>
+<li><span class="date">2026-08-16</span> <a href="https://www.youtube.com/watch?v=a-LF8VhwMeA">AI Isn't A Bubble. That's How NVIDIA's $500 Billion Push Ends Up In Your Retirement.</a></li>
+<li><span class="date">2026-08-14</span> <a href="https://www.youtube.com/watch?v=LM7Ft7g8qJw">Grok Bot Is The First AI Agent You Just Install. Is It Worth $200?</a></li>
+<li><span class="date">2026-08-14</span> <a href="https://www.youtube.com/shorts/bC2VZlkvWXQ">Protect your family from voice AI scams. Here's how  #AI #scams #voicecloning #deepfakes</a></li></ul>
+</section>
+<section class="card ok">
+  <h3>AICrier — AI developer news <span class="tag">aggregator</span></h3>
+  <p class="meta">https://aicrier.com/feed.xml · rss · HTTP 200 · 100 items · 261ms</p>
+  
+  <ul><li><span class="date">2026-08-19</span> <a href="https://aicrier.com/post/jqc2jrxkpkcm0n0m6ej2">Cursor Voice Prompts Double Developer Speed</a></li>
+<li><span class="date">2026-08-19</span> <a href="https://aicrier.com/post/rr968777z1fc5g83spbd">Grok improves iOS dictation bar</a></li>
+<li><span class="date">2026-08-19</span> <a href="https://aicrier.com/post/gakfagjn0zba5bhp8zco">Codex adds remote control, multi-account connectors</a></li>
+<li><span class="date">2026-08-19</span> <a href="https://aicrier.com/post/b319zysij7ulzny0zz2g">Fable-agents splits Claude Code work across three agents</a></li>
+<li><span class="date">2026-08-19</span> <a href="https://aicrier.com/post/86q99sjw2acllvg312ts">B.AI Guide Maps TRON’s Agent Economy</a></li></ul>
+</section>
+<section class="card ok">
+  <h3>Release notes from claude-code <span class="tag">GitHub releases</span></h3>
+  <p class="meta">https://github.com/anthropics/claude-code/releases.atom · atom · HTTP 200 · 10 items · 305ms</p>
+  
+  <ul><li><span class="date">2026-08-18</span> <a href="https://github.com/anthropics/claude-code/releases/tag/v2.1.235">v2.1.235</a></li>
+<li><span class="date">2026-08-17</span> <a href="https://github.com/anthropics/claude-code/releases/tag/v2.1.234">v2.1.234</a></li>
+<li><span class="date">2026-08-14</span> <a href="https://github.com/anthropics/claude-code/releases/tag/v2.1.233">v2.1.233</a></li>
+<li><span class="date">2026-08-13</span> <a href="https://github.com/anthropics/claude-code/releases/tag/v2.1.232">v2.1.232</a></li>
+<li><span class="date">2026-08-13</span> <a href="https://github.com/anthropics/claude-code/releases/tag/v2.1.231">v2.1.231</a></li></ul>
+</section>
+<section class="card ok">
+  <h3>Release notes from codex <span class="tag">GitHub releases</span></h3>
+  <p class="meta">https://github.com/openai/codex/releases.atom · atom · HTTP 200 · 10 items · 679ms</p>
+  
+  <ul><li><span class="date">2026-08-19</span> <a href="https://github.com/openai/codex/releases/tag/rust-v0.149.0-alpha.2">rust-v0.149.0-alpha.2</a></li>
+<li><span class="date">2026-08-19</span> <a href="https://github.com/openai/codex/releases/tag/rust-v0.149.0-alpha.1">0.149.0-alpha.1</a></li>
+<li><span class="date">2026-08-18</span> <a href="https://github.com/openai/codex/releases/tag/rust-v0.148.0">0.148.0</a></li>
+<li><span class="date">2026-08-18</span> <a href="https://github.com/openai/codex/releases/tag/rust-v0.148.0-alpha.23">0.148.0-alpha.23</a></li>
+<li><span class="date">2026-08-18</span> <a href="https://github.com/openai/codex/releases/tag/rust-v0.148.0-alpha.22">0.148.0-alpha.22</a></li></ul>
+</section>
+<section class="card ok">
+  <h3>Release notes from gemini-cli <span class="tag">GitHub releases</span></h3>
+  <p class="meta">https://github.com/google-gemini/gemini-cli/releases.atom · atom · HTTP 200 · 10 items · 115ms</p>
+  
+  <ul><li><span class="date">2026-08-19</span> <a href="https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0-nightly.20260819.g571851b10">Release v0.56.0-nightly.20260819.g571851b10</a></li>
+<li><span class="date">2026-08-18</span> <a href="https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0-nightly.20260818.g194edea47">Release v0.56.0-nightly.20260818.g194edea47</a></li>
+<li><span class="date">2026-08-17</span> <a href="https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0-nightly.20260817.g9a15c45fb">Release v0.56.0-nightly.20260817.g9a15c45fb</a></li>
+<li><span class="date">2026-08-16</span> <a href="https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0-nightly.20260816.g2a87e7be1">Release v0.56.0-nightly.20260816.g2a87e7be1</a></li>
+<li><span class="date">2026-08-15</span> <a href="https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0-nightly.20260815.g2a87e7be1">Release v0.56.0-nightly.20260815.g2a87e7be1</a></li></ul>
+</section>
+<section class="card ok">
+  <h3>Release notes from opencode <span class="tag">GitHub releases</span></h3>
+  <p class="meta">https://github.com/sst/opencode/releases.atom · atom · HTTP 200 · 10 items · 196ms</p>
+  <p class="note">redirected to https://github.com/anomalyco/opencode/releases.atom</p>
+  <ul><li><span class="date">2026-08-13</span> <a href="https://github.com/anomalyco/opencode/releases/tag/v1.18.18">v1.18.18</a></li>
+<li><span class="date">2026-08-12</span> <a href="https://github.com/anomalyco/opencode/releases/tag/v1.18.17">v1.18.17</a></li>
+<li><span class="date">2026-08-10</span> <a href="https://github.com/anomalyco/opencode/releases/tag/v1.18.16">v1.18.16</a></li>
+<li><span class="date">2026-08-07</span> <a href="https://github.com/anomalyco/opencode/releases/tag/v1.18.15">v1.18.15</a></li>
+<li><span class="date">2026-08-05</span> <a href="https://github.com/anomalyco/opencode/releases/tag/v1.18.14">v1.18.14</a></li></ul>
+</section>
+<section class="card ok">
+  <h3>Release notes from pi <span class="tag">GitHub releases</span></h3>
+  <p class="meta">https://github.com/earendil-works/pi/releases.atom · atom · HTTP 200 · 10 items · 132ms</p>
+  
+  <ul><li><span class="date">2026-08-14</span> <a href="https://github.com/earendil-works/pi/releases/tag/v0.84.2">v0.84.2</a></li>
+<li><span class="date">2026-08-07</span> <a href="https://github.com/earendil-works/pi/releases/tag/v0.84.1">v0.84.1</a></li>
+<li><span class="date">2026-08-06</span> <a href="https://github.com/earendil-works/pi/releases/tag/v0.84.0">v0.84.0</a></li>
+<li><span class="date">2026-07-29</span> <a href="https://github.com/earendil-works/pi/releases/tag/v0.83.0">v0.83.0</a></li>
+<li><span class="date">2026-07-25</span> <a href="https://github.com/earendil-works/pi/releases/tag/v0.82.1">v0.82.1</a></li></ul>
+</section>
+
+<footer>
+  <p class="meta">PROTOTYPE, throwaway. Regenerate with: node prototypes/feed-poller/poller.mjs</p>
+</footer>
+</main>
+</body>
+</html>

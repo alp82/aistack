@@ -1,0 +1,565 @@
+{
+  "fetchedAt": "2026-08-19T13:48:09.460Z",
+  "results": [
+    {
+      "id": "openai-news",
+      "kind": "vendor blog",
+      "url": "https://openai.com/news/rss.xml",
+      "ok": true,
+      "status": 200,
+      "finalUrl": "https://openai.com/news/rss.xml",
+      "format": "rss",
+      "feedTitle": "OpenAI News",
+      "itemCount": 1139,
+      "items": [
+        {
+          "title": "ChatGPT Ads expands across Europe",
+          "link": "https://openai.com/index/chatgpt-ads-expands-across-europe",
+          "date": "2026-08-18T22:00:00.000Z"
+        },
+        {
+          "title": "Strengthening democratic oversight in national security",
+          "link": "https://openai.com/index/strengthening-democratic-oversight-in-national-security",
+          "date": "2026-08-18T19:00:00.000Z"
+        },
+        {
+          "title": "Partnering with CodeAI to prepare the first AI generation",
+          "link": "https://openai.com/index/partnering-with-codeai",
+          "date": "2026-08-18T11:00:00.000Z"
+        },
+        {
+          "title": "Pacing model development in an era of cyber-critical capabilities",
+          "link": "https://openai.com/index/pacing-model-development-cyber-capabilities",
+          "date": "2026-08-18T11:00:00.000Z"
+        },
+        {
+          "title": "Introducing ChatGPT for Teens: Built for learning, backed by protections",
+          "link": "https://openai.com/index/chatgpt-for-teens",
+          "date": "2026-08-18T11:00:00.000Z"
+        }
+      ],
+      "error": null,
+      "ms": 361
+    },
+    {
+      "id": "google-ai-blog",
+      "kind": "vendor blog",
+      "url": "https://blog.google/technology/ai/rss/",
+      "ok": true,
+      "status": 200,
+      "finalUrl": "https://blog.google/innovation-and-ai/technology/ai/rss/",
+      "format": "rss",
+      "feedTitle": "AI",
+      "itemCount": 20,
+      "items": [
+        {
+          "title": "Get closer to the game with Gemini and Pixel",
+          "link": "https://blog.google/products-and-platforms/products/gemini/google-gemini-pixel-football-club-partnerships/",
+          "date": "2026-08-17T08:00:00.000Z"
+        },
+        {
+          "title": "Bring your spreadsheet data to life with Sheets canvas",
+          "link": "https://blog.google/products-and-platforms/products/workspace/sheets-canvas-for-google-sheets-spreadsheets/",
+          "date": "2026-08-13T16:45:00.000Z"
+        },
+        {
+          "title": "AMIE, our research medical AI system, demonstrates real-time clinical video consultation capabilities in a first-of-its-kind study.",
+          "link": "https://blog.google/innovation-and-ai/models-and-research/google-research/amie-video-consultations/",
+          "date": "2026-08-11T17:00:00.000Z"
+        },
+        {
+          "title": "Evolve your marketing with new AI tools",
+          "link": "https://blog.google/products/ads-commerce/google-ads-analytics-ai-updates/",
+          "date": "2026-08-10T14:30:00.000Z"
+        },
+        {
+          "title": "The latest AI news we announced in July 2026",
+          "link": "https://blog.google/innovation-and-ai/technology/ai/google-ai-updates-july-2026/",
+          "date": "2026-08-04T13:00:00.000Z"
+        }
+      ],
+      "error": null,
+      "ms": 527
+    },
+    {
+      "id": "latent-space",
+      "kind": "Substack",
+      "url": "https://www.latent.space/feed",
+      "ok": true,
+      "status": 200,
+      "finalUrl": "https://www.latent.space/feed",
+      "format": "rss",
+      "feedTitle": "Latent.Space",
+      "itemCount": 20,
+      "items": [
+        {
+          "title": "[AINews] Memory prices up 500% in 12 months",
+          "link": "https://www.latent.space/p/ainews-memory-prices-up-500-in-12",
+          "date": "2026-08-19T08:44:52.000Z"
+        },
+        {
+          "title": "Frontier Model Cost and Open-Weights Popularity is Driving Demand for Model Routing",
+          "link": "https://www.latent.space/p/glean-model-routing",
+          "date": "2026-08-18T21:41:10.000Z"
+        },
+        {
+          "title": "[AINews] Stripe buys OpenRouter for $7B",
+          "link": "https://www.latent.space/p/ainews-stripe-buys-openrouter-for",
+          "date": "2026-08-17T23:13:41.000Z"
+        },
+        {
+          "title": "React for Agents: Astro Creator Brings Hooks to his Meta-Harness, Flue",
+          "link": "https://www.latent.space/p/flue-2",
+          "date": "2026-08-15T15:46:22.000Z"
+        },
+        {
+          "title": "[AINews] Cursor's $60B acquisition by SpaceXai closes",
+          "link": "https://www.latent.space/p/ainews-cursors-60b-acquisition-by",
+          "date": "2026-08-14T06:16:00.000Z"
+        }
+      ],
+      "error": null,
+      "ms": 289
+    },
+    {
+      "id": "404-media",
+      "kind": "Ghost",
+      "url": "https://www.404media.co/rss/",
+      "ok": true,
+      "status": 200,
+      "finalUrl": "https://www.404media.co/rss/",
+      "format": "rss",
+      "feedTitle": "404 Media",
+      "itemCount": 15,
+      "items": [
+        {
+          "title": "Anthropic’s Text Watermarking Proves AI Companies Do Not Care at All About Writing",
+          "link": "https://www.404media.co/anthropics-text-watermarking-proves-ai-companies-do-not-care-at-all-about-writing/",
+          "date": "2026-08-18T15:54:15.000Z"
+        },
+        {
+          "title": "X's Algorithm Feeds Off Ragebait and Impacts Democrats More, Study Finds",
+          "link": "https://www.404media.co/xs-algorithm-feeds-off-ragebait-and-impacts-democrats-more-study-finds/",
+          "date": "2026-08-18T13:27:22.000Z"
+        },
+        {
+          "title": "The National Park Service Is Using Flock. Rangers Are Pissed",
+          "link": "https://www.404media.co/the-national-park-service-is-using-flock-rangers-are-pissed/",
+          "date": "2026-08-18T13:21:29.000Z"
+        },
+        {
+          "title": "Pornhub's Parent Company to Pay $120 Million to Settle Child Sexual Abuse Lawsuits",
+          "link": "https://www.404media.co/pornhubs-parent-company-to-pay-120-million-to-settle-child-sexual-abuse-lawsuits/",
+          "date": "2026-08-17T21:04:53.000Z"
+        },
+        {
+          "title": "‘Show How 3M Is 0% at Fault:’ Expert Witness Used ChatGPT to Write Report Defending Company in Deadly Explosion Lawsuit",
+          "link": "https://www.404media.co/show-how-3m-is-0-at-fault-expert-witness-used-chatgpt-to-write-report-defending-company-in-deadly-explosion-lawsuit/",
+          "date": "2026-08-17T14:56:24.000Z"
+        }
+      ],
+      "error": null,
+      "ms": 212
+    },
+    {
+      "id": "ainews",
+      "kind": "Buttondown",
+      "url": "https://buttondown.com/ainews/rss",
+      "ok": true,
+      "status": 200,
+      "finalUrl": "https://buttondown.com/ainews/rss",
+      "format": "rss",
+      "feedTitle": "AI News (MOVED TO news.smol.ai!)",
+      "itemCount": 10,
+      "items": [
+        {
+          "title": "[AINews] We have moved!! Please help us move!",
+          "link": "https://buttondown.com/ainews/archive/ainews-we-have-moved-please-help-us-move/",
+          "date": "2025-04-25T03:14:18.000Z"
+        },
+        {
+          "title": "[AINews] Grok 3 & 3-mini now API Available",
+          "link": "https://buttondown.com/ainews/archive/ainews-grok-3-3-mini-now-api-available/",
+          "date": "2025-04-19T05:44:39.000Z"
+        },
+        {
+          "title": "[AINews] Gemini 2.5 Flash completes the total domination of the Pareto Frontier",
+          "link": "https://buttondown.com/ainews/archive/ainews-gemini-25-flash-completes-the-total/",
+          "date": "2025-04-18T02:06:17.000Z"
+        },
+        {
+          "title": "[AINews] OpenAI o3, o4-mini, and Codex CLI",
+          "link": "https://buttondown.com/ainews/archive/ainews-openai-o3-o4-mini-and-codex-cli/",
+          "date": "2025-04-17T03:17:29.000Z"
+        },
+        {
+          "title": "[AINews] SOTA Video Gen: Veo 2 and Kling 2 are GA for developers",
+          "link": "https://buttondown.com/ainews/archive/ainews-sota-video-gen-veo-2-and-kling-2-are-ga/",
+          "date": "2025-04-16T05:55:06.000Z"
+        }
+      ],
+      "error": null,
+      "ms": 1089
+    },
+    {
+      "id": "computer-things",
+      "kind": "Buttondown",
+      "url": "https://buttondown.com/hillelwayne/rss",
+      "ok": true,
+      "status": 200,
+      "finalUrl": "https://buttondown.com/hillelwayne/rss",
+      "format": "rss",
+      "feedTitle": "Computer Things",
+      "itemCount": 30,
+      "items": [
+        {
+          "title": "Vim wants you to control, VSCode wants you to consume",
+          "link": "https://buttondown.com/hillelwayne/archive/vim-wants-you-to-control-vscode-wants-you-to/",
+          "date": "2026-08-18T16:26:05.000Z"
+        },
+        {
+          "title": "Logic for Programmers is Done",
+          "link": "https://buttondown.com/hillelwayne/archive/logic-for-programmers-is-done/",
+          "date": "2026-07-29T15:43:52.000Z"
+        },
+        {
+          "title": "I'm still alive",
+          "link": "https://buttondown.com/hillelwayne/archive/im-still-alive/",
+          "date": "2026-07-14T16:15:07.000Z"
+        },
+        {
+          "title": "Logic for Programmers v0.15, Livecoding",
+          "link": "https://buttondown.com/hillelwayne/archive/logic-for-programmers-v015-livecoding/",
+          "date": "2026-06-17T16:40:09.000Z"
+        },
+        {
+          "title": "Nontrailing separators do not spark joy",
+          "link": "https://buttondown.com/hillelwayne/archive/nontrailing-separators-do-not-spark-joy/",
+          "date": "2026-06-10T12:22:04.000Z"
+        }
+      ],
+      "error": null,
+      "ms": 337
+    },
+    {
+      "id": "simonwillison",
+      "kind": "personal blog",
+      "url": "https://simonwillison.net/atom/everything/",
+      "ok": true,
+      "status": 200,
+      "finalUrl": "https://simonwillison.net/atom/everything/",
+      "format": "atom",
+      "feedTitle": "Simon Willison's Weblog",
+      "itemCount": 30,
+      "items": [
+        {
+          "title": "Mojo🔥 is now open source",
+          "link": "https://simonwillison.net/2026/Aug/18/mojo-is-now-open-source/",
+          "date": "2026-08-18T21:39:20.000Z"
+        },
+        {
+          "title": "Qwen 3.8 27B scores 52 on the Artificial Analysis Intelligence Index",
+          "link": "https://simonwillison.net/2026/Aug/17/qwen-38-27b-scores-52/",
+          "date": "2026-08-17T23:58:14.000Z"
+        },
+        {
+          "title": "We Tracked a Shipment of Rare Books. It Ended at an Amazon AI Training Facility",
+          "link": "https://simonwillison.net/2026/Aug/17/we-tracked-a-shipment-of-rare-books-it-ended-at-an-amazon-ai-tra/",
+          "date": "2026-08-17T15:21:29.000Z"
+        },
+        {
+          "title": "Markdown SVG upgrades",
+          "link": "https://simonwillison.net/2026/Aug/16/markdown-svg-upgrades/",
+          "date": "2026-08-16T23:59:37.000Z"
+        },
+        {
+          "title": "Qwen 3.8 27B is excellent, but it defaults to wildly overthinking things",
+          "link": "https://simonwillison.net/2026/Aug/16/qwen-38-27b/",
+          "date": "2026-08-16T22:00:39.000Z"
+        }
+      ],
+      "error": null,
+      "ms": 210
+    },
+    {
+      "id": "youtube-channel",
+      "kind": "YouTube channel",
+      "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC0C-17n9iuUQPylguM1d-lQ",
+      "ok": true,
+      "status": 200,
+      "finalUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC0C-17n9iuUQPylguM1d-lQ",
+      "format": "atom",
+      "feedTitle": "AI News & Strategy Daily | Nate B Jones",
+      "itemCount": 15,
+      "items": [
+        {
+          "title": "One Cancelled Gym Class. That's How Agent Swarm Attacks Start.",
+          "link": "https://www.youtube.com/watch?v=4f5AJrJPilM",
+          "date": "2026-08-17T14:00:26.000Z"
+        },
+        {
+          "title": "Stop overthinking which AI to use. Do this.",
+          "link": "https://www.youtube.com/shorts/0QCoAfMzSJE",
+          "date": "2026-08-17T03:00:05.000Z"
+        },
+        {
+          "title": "AI Isn't A Bubble. That's How NVIDIA's $500 Billion Push Ends Up In Your Retirement.",
+          "link": "https://www.youtube.com/watch?v=a-LF8VhwMeA",
+          "date": "2026-08-16T17:00:14.000Z"
+        },
+        {
+          "title": "Grok Bot Is The First AI Agent You Just Install. Is It Worth $200?",
+          "link": "https://www.youtube.com/watch?v=LM7Ft7g8qJw",
+          "date": "2026-08-14T14:00:09.000Z"
+        },
+        {
+          "title": "Protect your family from voice AI scams. Here's how  #AI #scams #voicecloning #deepfakes",
+          "link": "https://www.youtube.com/shorts/bC2VZlkvWXQ",
+          "date": "2026-08-14T03:00:29.000Z"
+        }
+      ],
+      "error": null,
+      "ms": 189
+    },
+    {
+      "id": "aicrier",
+      "kind": "aggregator",
+      "url": "https://aicrier.com/feed.xml",
+      "ok": true,
+      "status": 200,
+      "finalUrl": "https://aicrier.com/feed.xml",
+      "format": "rss",
+      "feedTitle": "AICrier — AI developer news",
+      "itemCount": 100,
+      "items": [
+        {
+          "title": "Cursor Voice Prompts Double Developer Speed",
+          "link": "https://aicrier.com/post/jqc2jrxkpkcm0n0m6ej2",
+          "date": "2026-08-19T13:30:26.000Z"
+        },
+        {
+          "title": "Grok improves iOS dictation bar",
+          "link": "https://aicrier.com/post/rr968777z1fc5g83spbd",
+          "date": "2026-08-19T12:55:12.000Z"
+        },
+        {
+          "title": "Codex adds remote control, multi-account connectors",
+          "link": "https://aicrier.com/post/gakfagjn0zba5bhp8zco",
+          "date": "2026-08-19T12:52:16.000Z"
+        },
+        {
+          "title": "Fable-agents splits Claude Code work across three agents",
+          "link": "https://aicrier.com/post/b319zysij7ulzny0zz2g",
+          "date": "2026-08-19T12:42:49.000Z"
+        },
+        {
+          "title": "B.AI Guide Maps TRON’s Agent Economy",
+          "link": "https://aicrier.com/post/86q99sjw2acllvg312ts",
+          "date": "2026-08-19T12:28:56.000Z"
+        }
+      ],
+      "error": null,
+      "ms": 261
+    },
+    {
+      "id": "claude-code",
+      "kind": "GitHub releases",
+      "url": "https://github.com/anthropics/claude-code/releases.atom",
+      "ok": true,
+      "status": 200,
+      "finalUrl": "https://github.com/anthropics/claude-code/releases.atom",
+      "format": "atom",
+      "feedTitle": "Release notes from claude-code",
+      "itemCount": 10,
+      "items": [
+        {
+          "title": "v2.1.235",
+          "link": "https://github.com/anthropics/claude-code/releases/tag/v2.1.235",
+          "date": "2026-08-18T20:38:54.000Z"
+        },
+        {
+          "title": "v2.1.234",
+          "link": "https://github.com/anthropics/claude-code/releases/tag/v2.1.234",
+          "date": "2026-08-17T20:20:58.000Z"
+        },
+        {
+          "title": "v2.1.233",
+          "link": "https://github.com/anthropics/claude-code/releases/tag/v2.1.233",
+          "date": "2026-08-14T22:20:57.000Z"
+        },
+        {
+          "title": "v2.1.232",
+          "link": "https://github.com/anthropics/claude-code/releases/tag/v2.1.232",
+          "date": "2026-08-13T23:29:59.000Z"
+        },
+        {
+          "title": "v2.1.231",
+          "link": "https://github.com/anthropics/claude-code/releases/tag/v2.1.231",
+          "date": "2026-08-13T08:38:50.000Z"
+        }
+      ],
+      "error": null,
+      "ms": 305
+    },
+    {
+      "id": "codex",
+      "kind": "GitHub releases",
+      "url": "https://github.com/openai/codex/releases.atom",
+      "ok": true,
+      "status": 200,
+      "finalUrl": "https://github.com/openai/codex/releases.atom",
+      "format": "atom",
+      "feedTitle": "Release notes from codex",
+      "itemCount": 10,
+      "items": [
+        {
+          "title": "rust-v0.149.0-alpha.2",
+          "link": "https://github.com/openai/codex/releases/tag/rust-v0.149.0-alpha.2",
+          "date": "2026-08-19T09:07:48.000Z"
+        },
+        {
+          "title": "0.149.0-alpha.1",
+          "link": "https://github.com/openai/codex/releases/tag/rust-v0.149.0-alpha.1",
+          "date": "2026-08-19T00:57:19.000Z"
+        },
+        {
+          "title": "0.148.0",
+          "link": "https://github.com/openai/codex/releases/tag/rust-v0.148.0",
+          "date": "2026-08-18T22:27:29.000Z"
+        },
+        {
+          "title": "0.148.0-alpha.23",
+          "link": "https://github.com/openai/codex/releases/tag/rust-v0.148.0-alpha.23",
+          "date": "2026-08-18T21:26:38.000Z"
+        },
+        {
+          "title": "0.148.0-alpha.22",
+          "link": "https://github.com/openai/codex/releases/tag/rust-v0.148.0-alpha.22",
+          "date": "2026-08-18T13:40:10.000Z"
+        }
+      ],
+      "error": null,
+      "ms": 679
+    },
+    {
+      "id": "gemini-cli",
+      "kind": "GitHub releases",
+      "url": "https://github.com/google-gemini/gemini-cli/releases.atom",
+      "ok": true,
+      "status": 200,
+      "finalUrl": "https://github.com/google-gemini/gemini-cli/releases.atom",
+      "format": "atom",
+      "feedTitle": "Release notes from gemini-cli",
+      "itemCount": 10,
+      "items": [
+        {
+          "title": "Release v0.56.0-nightly.20260819.g571851b10",
+          "link": "https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0-nightly.20260819.g571851b10",
+          "date": "2026-08-19T01:07:23.000Z"
+        },
+        {
+          "title": "Release v0.56.0-nightly.20260818.g194edea47",
+          "link": "https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0-nightly.20260818.g194edea47",
+          "date": "2026-08-18T01:00:05.000Z"
+        },
+        {
+          "title": "Release v0.56.0-nightly.20260817.g9a15c45fb",
+          "link": "https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0-nightly.20260817.g9a15c45fb",
+          "date": "2026-08-17T01:08:01.000Z"
+        },
+        {
+          "title": "Release v0.56.0-nightly.20260816.g2a87e7be1",
+          "link": "https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0-nightly.20260816.g2a87e7be1",
+          "date": "2026-08-16T01:09:18.000Z"
+        },
+        {
+          "title": "Release v0.56.0-nightly.20260815.g2a87e7be1",
+          "link": "https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0-nightly.20260815.g2a87e7be1",
+          "date": "2026-08-15T01:15:26.000Z"
+        }
+      ],
+      "error": null,
+      "ms": 115
+    },
+    {
+      "id": "opencode",
+      "kind": "GitHub releases",
+      "url": "https://github.com/sst/opencode/releases.atom",
+      "ok": true,
+      "status": 200,
+      "finalUrl": "https://github.com/anomalyco/opencode/releases.atom",
+      "format": "atom",
+      "feedTitle": "Release notes from opencode",
+      "itemCount": 10,
+      "items": [
+        {
+          "title": "v1.18.18",
+          "link": "https://github.com/anomalyco/opencode/releases/tag/v1.18.18",
+          "date": "2026-08-13T01:39:55.000Z"
+        },
+        {
+          "title": "v1.18.17",
+          "link": "https://github.com/anomalyco/opencode/releases/tag/v1.18.17",
+          "date": "2026-08-12T20:25:07.000Z"
+        },
+        {
+          "title": "v1.18.16",
+          "link": "https://github.com/anomalyco/opencode/releases/tag/v1.18.16",
+          "date": "2026-08-10T06:07:08.000Z"
+        },
+        {
+          "title": "v1.18.15",
+          "link": "https://github.com/anomalyco/opencode/releases/tag/v1.18.15",
+          "date": "2026-08-07T06:49:55.000Z"
+        },
+        {
+          "title": "v1.18.14",
+          "link": "https://github.com/anomalyco/opencode/releases/tag/v1.18.14",
+          "date": "2026-08-05T20:58:55.000Z"
+        }
+      ],
+      "error": null,
+      "ms": 196
+    },
+    {
+      "id": "pi",
+      "kind": "GitHub releases",
+      "url": "https://github.com/earendil-works/pi/releases.atom",
+      "ok": true,
+      "status": 200,
+      "finalUrl": "https://github.com/earendil-works/pi/releases.atom",
+      "format": "atom",
+      "feedTitle": "Release notes from pi",
+      "itemCount": 10,
+      "items": [
+        {
+          "title": "v0.84.2",
+          "link": "https://github.com/earendil-works/pi/releases/tag/v0.84.2",
+          "date": "2026-08-14T10:14:32.000Z"
+        },
+        {
+          "title": "v0.84.1",
+          "link": "https://github.com/earendil-works/pi/releases/tag/v0.84.1",
+          "date": "2026-08-07T06:07:00.000Z"
+        },
+        {
+          "title": "v0.84.0",
+          "link": "https://github.com/earendil-works/pi/releases/tag/v0.84.0",
+          "date": "2026-08-06T11:07:05.000Z"
+        },
+        {
+          "title": "v0.83.0",
+          "link": "https://github.com/earendil-works/pi/releases/tag/v0.83.0",
+          "date": "2026-07-29T22:30:33.000Z"
+        },
+        {
+          "title": "v0.82.1",
+          "link": "https://github.com/earendil-works/pi/releases/tag/v0.82.1",
+          "date": "2026-07-25T12:47:23.000Z"
+        }
+      ],
+      "error": null,
+      "ms": 132
+    }
+  ]
+}
