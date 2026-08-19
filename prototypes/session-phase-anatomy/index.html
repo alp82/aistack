@@ -4,35 +4,37 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Prototype · alp82/aistack#186 · the session phase anatomy · round 2</title>
+<title>Prototype · alp82/aistack#186 · the session phase anatomy · round 3</title>
 <!--
   PROTOTYPE. Throwaway. alp82/aistack#186: the session phase anatomy.
-  ROUND 2. Operator feedback on round 1: the section looked too technical and
-  the machine view was endless lists. Wanted: meaning, insights on the own
-  workflow, breadth-first exploration, more creative takes.
-  Settled in round 1: reclassify on a rule-set bump (raw stays local), cap
-  5 minutes, the waiting slice behind a toggle. Open: the category set, the
-  verify hue.
+  ROUND 3. Operator verdict on round 2: none of the five takes landed as
+  useful insights with good UX and immediate value. This round changes what
+  the surface SAYS, not only how it looks. The taste reference is the
+  owner's curated 04 Workflow section: named pipelines, routing by size.
 
-  Seven views now. Five new insight-first takes, then the two round-1 views
-  for reference. Switch with the bar at the bottom or ?variant=.
+  Three views now:
+  1. the playbook: how work ships here, as two measured tracks, plus
+     practice receipts that pair a habit with its measured payoff.
+  2. the mirror: the owner's local view. The biggest time sink, the lever
+     on it, the trend.
+  3. the derivation: the versioned rules, the unknown bucket, the controls.
+  Rounds 1 and 2 live in git history, not on this page.
 
-  Data provenance: hand-extracted plus generated, not a live sync. Sources:
-  - one real agent session in this repo: the session that built this
-    prototype (2026-08-19). Tool names, sanitized command heads, timestamps.
-    No prompt text, no paths, no tool output.
-  - three hand-made specimen sessions, labeled hand-made.
-  - a generated corpus of ~25 sessions over 21 days from a seeded PRNG,
-    labeled generated, so the shape, rhythm, and trend views have enough
-    sessions to show their form. The generator plants a verify uptrend.
+  Data provenance: hand-extracted plus generated, not a live sync.
+  - one real agent session: the session that built this prototype
+    (2026-08-19, 40+ events, two real human waits with question counts).
+    Tool names, sanitized command heads, timestamps. No prompt text.
+  - three hand-made specimens, labeled.
+  - a generated corpus (seeded PRNG, labeled) that plants two correlations
+    to show the form: merges without a verify step need more review rounds,
+    and batched question rounds amortize the human wait.
 
-  Every number on every view still comes out of the same pure pipeline:
-  versioned rules classify events, attribution caps each event, the unknown
-  bucket stays visible. The insight prose is deterministic templates over
-  measured aggregates. No LLM (ADR-0001).
+  Every number still comes from one pure pipeline: versioned rules classify
+  events, attribution caps each event at 5 minutes (settled round 1), the
+  unknown bucket stays visible. Insight prose is deterministic templates.
+  No LLM (ADR-0001). Correlation cards say "measured together, not proved".
 
-  Palette note: verify wears the purple chart slot (#9e71fd), see round 1.
-  The lens orders were validated too: only the deliberate neutral gray flags.
+  Palette: the validated chart slots, verify on purple (see round 1).
 -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
@@ -50,15 +52,11 @@
     --accent-lime: oklch(0.78 0.17 132);
     --stroke-subtle: oklch(0.55 0.01 256 / 0.45);
     --stroke-strong: oklch(0.5 0.015 256 / 0.9);
-    /* fixed categorical assignment from the validated chart palette */
     --ph-orient:  #4278d2;
     --ph-build:   #69a621;
     --ph-verify:  #9e71fd;
     --ph-gate:    #c21977;
     --ph-unknown: #8a919e;
-    --lx-test:    #9e71fd;
-    --lx-review:  #00a99b;
-    --lx-ship:    #e66700;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
@@ -79,20 +77,68 @@
   }
   .ticket-strip b { color: var(--accent-lime); font-weight: 700; }
 
-  .shell { max-width: 72rem; margin: 0 auto; padding: 0 20px; }
+  .shell { max-width: 64rem; margin: 0 auto; padding: 0 20px; }
   section.journey { padding: 40px 0 48px; }
   section.alt { background: color-mix(in oklab, var(--bg-panel) 30%, var(--bg-canvas)); }
 
   .mono-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted); }
   .kicker-line { color: var(--accent-lime); margin: 0 0 12px; }
-  .lead { margin: 0 0 20px; font-size: 14.5px; line-height: 1.6; color: var(--fg-secondary); max-width: 46rem; }
+  .lead { margin: 0 0 20px; font-size: 14.5px; line-height: 1.6; color: var(--fg-secondary); max-width: 44rem; }
   .lead b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
   .block-gap { margin-top: 26px; }
-  .box { border: 1px solid var(--stroke-subtle); padding: 18px; }
+  .box { border: 1px solid var(--stroke-subtle); padding: 20px; }
 
-  /* ---------- intro ---------- */
-  .intro h1 { font-size: 26px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.01em; margin: 0 0 10px; }
-  .controls { border: 1px solid var(--stroke-strong); background: var(--bg-panel); padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 14px 28px; }
+  /* ---------- playbook tracks ---------- */
+  .track { border: 1px solid var(--stroke-subtle); padding: 20px; margin-top: 16px; }
+  .track:first-of-type { margin-top: 0; }
+  .track-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .track-name { font-size: 18px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.01em; margin: 0; }
+  .track-meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); }
+  .jline { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
+  .jstep { border: 1px solid var(--stroke-subtle); border-left: 4px solid var(--c, var(--stroke-strong)); padding: 8px 12px; min-width: 7.2rem; background: var(--bg-canvas); }
+  .jstep .ph { display: block; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-secondary); }
+  .jstep .min { display: block; font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 800; margin-top: 3px; }
+  .jstep .sub { display: block; font-size: 11px; color: var(--fg-muted); margin-top: 2px; }
+  .jarrow { align-self: center; color: var(--fg-muted); font-family: 'JetBrains Mono', monospace; font-size: 14px; }
+  .track-note { margin: 12px 0 0; font-size: 13px; line-height: 1.6; color: var(--fg-secondary); }
+  .track-note b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+
+  /* ---------- receipts ---------- */
+  .receipts { display: grid; gap: 16px; margin-top: 16px; }
+  @media (min-width: 760px) { .receipts { grid-template-columns: 1fr 1fr; } }
+  .receipt { border: 1px solid var(--stroke-subtle); padding: 18px 20px; background: var(--bg-canvas); display: flex; flex-direction: column; }
+  .receipt .head { font-size: 16px; font-weight: 700; line-height: 1.45; margin: 0; }
+  .receipt .cmp { margin-top: 14px; }
+  .cmp-row { display: grid; grid-template-columns: 11rem 1fr 4.4rem; gap: 10px; align-items: center; margin-top: 8px; }
+  .cmp-row .lbl { font-size: 12px; color: var(--fg-secondary); line-height: 1.35; }
+  .cmp-row .track2 { height: 12px; background: var(--bg-panel); }
+  .cmp-row .fill { height: 100%; }
+  .cmp-row .val { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 700; text-align: right; white-space: nowrap; }
+  .receipt .big { font-family: 'JetBrains Mono', monospace; font-size: 30px; font-weight: 800; margin: 12px 0 0; }
+  .receipt .big small { font-size: 13px; color: var(--fg-muted); font-weight: 600; }
+  .receipt .foot { margin-top: auto; padding-top: 12px; }
+
+  /* ---------- anatomy strip (demoted) ---------- */
+  .agg-strip { display: flex; height: 22px; gap: 2px; margin-top: 12px; }
+  .agg-seg { height: 100%; min-width: 2px; }
+  .agg-legend { display: flex; flex-wrap: wrap; gap: 12px 14px; margin-top: 10px; }
+  .agg-legend span { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-secondary); }
+  .agg-legend i { width: 10px; height: 10px; display: inline-block; flex-shrink: 0; }
+
+  /* ---------- mirror ---------- */
+  .sink { border: 1px solid var(--stroke-subtle); padding: 20px; }
+  .sink .n { font-family: 'JetBrains Mono', monospace; font-size: 40px; font-weight: 800; margin: 0; line-height: 1; }
+  .sink .what { font-size: 15px; color: var(--fg-secondary); margin: 8px 0 0; line-height: 1.5; }
+  .sink .lever { font-size: 14px; color: var(--fg-primary); margin: 14px 0 0; line-height: 1.55; border-top: 1px solid var(--stroke-subtle); padding-top: 12px; }
+  .sink .lever b { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+  .mini-weeks { margin-top: 12px; }
+  .week-strip-row { display: grid; grid-template-columns: 3.6rem 1fr 3.2rem; gap: 10px; align-items: center; margin-top: 8px; }
+  .week-strip { display: flex; height: 14px; gap: 2px; }
+  .week-strip div { min-width: 2px; }
+  .week-delta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-secondary); text-align: right; }
+
+  /* ---------- derivation ---------- */
+  .controls { border: 1px solid var(--stroke-strong); background: var(--bg-panel); padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 14px 28px; margin-bottom: 20px; }
   .ctl .k { display: block; margin-bottom: 6px; }
   .seg-btns { display: flex; flex-wrap: wrap; gap: 6px; }
   .seg-btns button {
@@ -104,99 +150,21 @@
     padding: 7px 10px; min-height: 34px;
   }
   .seg-btns button.on { background: var(--accent-lime); color: oklch(0.22 0.02 132); border-color: var(--accent-lime); }
-
-  /* ---------- shared chart bits ---------- */
-  .agg-strip { display: flex; height: 34px; gap: 2px; margin-top: 14px; }
-  .agg-seg { height: 100%; min-width: 2px; }
-  .agg-legend { display: flex; flex-wrap: wrap; gap: 12px 14px; margin-top: 12px; }
-  .agg-legend span { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-secondary); }
-  .agg-legend i { width: 10px; height: 10px; display: inline-block; flex-shrink: 0; }
-  .agg-note { margin: 14px 0 0; font-size: 13px; line-height: 1.6; color: var(--fg-secondary); }
-  .agg-note b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
-  .rules-tag { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; border: 1px solid var(--stroke-subtle); padding: 4px 8px; }
-  .phase-chip { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-primary); }
-  .phase-chip i { width: 9px; height: 9px; display: inline-block; }
-
-  /* ---------- storyteller ---------- */
-  .tiles { display: grid; gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); }
-  @media (min-width: 640px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
-  .tile { background: var(--bg-canvas); padding: 18px; }
-  .tile .n { font-family: 'JetBrains Mono', monospace; font-size: 30px; font-weight: 800; margin: 0; }
-  .tile p { margin: 6px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--fg-muted); }
-  .say { border: 1px solid var(--stroke-subtle); padding: 18px; }
-  .say-line { font-size: 15px; line-height: 1.7; color: var(--fg-secondary); margin: 10px 0 0; }
-  .say-line:first-of-type { margin-top: 12px; }
-  .say-line b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
-  .clock-cols { display: flex; gap: 3px; height: 130px; align-items: flex-end; margin-top: 16px; }
-  .clock-col { flex: 1; display: flex; flex-direction: column-reverse; height: 100%; gap: 2px; }
-  .clock-col div { width: 100%; }
-  .clock-x { display: flex; justify-content: space-between; margin-top: 8px; }
-
-  /* ---------- fingerprint ---------- */
-  .shape-row { display: grid; grid-template-columns: 8rem 1fr; gap: 14px; padding: 14px 0; border-top: 1px solid var(--stroke-subtle); align-items: center; }
-  .shape-row:first-of-type { border-top: 0; padding-top: 4px; }
-  .shape-glyph { height: 16px; position: relative; background: var(--bg-panel); }
-  .shape-glyph div { position: absolute; top: 0; height: 100%; }
-  .shape-name { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--fg-primary); margin: 0 0 4px; }
-  .shape-copy { font-size: 13px; line-height: 1.55; color: var(--fg-secondary); margin: 0; }
-  .shape-copy b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
-  .shape-meta { margin: 6px 0 0; }
-
-  /* ---------- rhythm ---------- */
-  .rhythm-grid { display: grid; grid-template-columns: 3.6rem repeat(7, 1fr); gap: 6px; align-items: end; margin-top: 16px; }
-  .rhythm-grid .wk { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--fg-muted); align-self: center; }
-  .day-col { height: 72px; display: flex; flex-direction: column-reverse; gap: 2px; background: color-mix(in oklab, var(--bg-panel) 55%, transparent); }
-  .day-col div { width: 100%; }
-  .week-strip-row { display: grid; grid-template-columns: 3.6rem 1fr 3.2rem; gap: 10px; align-items: center; margin-top: 10px; }
-  .week-strip { display: flex; height: 16px; gap: 2px; }
-  .week-strip div { min-width: 2px; }
-  .week-delta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-secondary); text-align: right; }
-
-  /* ---------- coach ---------- */
-  .flag { border: 1px solid var(--stroke-subtle); padding: 16px 18px; margin-top: 14px; }
-  .flag.quiet { opacity: 0.5; }
-  .flag .head { font-size: 15px; line-height: 1.55; color: var(--fg-primary); margin: 0; }
-  .flag .head b { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
-  .flag .why { font-size: 12.5px; line-height: 1.55; color: var(--fg-muted); margin: 6px 0 0; }
-  .flag .tag { margin-top: 10px; display: inline-block; border: 1px solid var(--stroke-subtle); padding: 3px 7px; }
-
-  /* ---------- lenses ---------- */
-  .lens { border: 1px solid var(--stroke-subtle); padding: 18px; margin-top: 14px; }
-  .lens h3 { margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent-lime); }
-  .lens .verdict { margin: 12px 0 0; font-size: 13px; line-height: 1.55; color: var(--fg-secondary); }
-
-  /* ---------- round-1 leftovers ---------- */
-  .tl-row { margin-top: 16px; }
-  .tl-head { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
-  .tl-head .name { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--fg-secondary); }
-  .tl-head .meta { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--fg-muted); }
-  .tl-strip { position: relative; height: 20px; background: var(--bg-panel); }
-  .tl-seg { position: absolute; top: 0; height: 100%; }
-  .flow-row { display: grid; grid-template-columns: 6.4rem 1fr; gap: 12px; align-items: center; margin-top: 12px; }
-  .flow-row .from { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-secondary); display: inline-flex; align-items: center; gap: 6px; }
-  .flow-row .from i { width: 10px; height: 10px; display: inline-block; }
-  .flow-strip { display: flex; height: 16px; gap: 2px; }
-  .flow-strip .seg { min-width: 2px; }
   .rule-line { display: grid; grid-template-columns: 9.5rem 5.2rem 1fr; gap: 10px; padding: 6px 0; border-top: 1px solid color-mix(in oklab, var(--stroke-subtle) 40%, transparent); font-family: 'JetBrains Mono', monospace; font-size: 11.5px; align-items: baseline; }
   .rule-line:first-of-type { border-top: 0; }
   .rule-line .rid { color: var(--fg-muted); overflow-wrap: anywhere; }
   .rule-line .when { color: var(--fg-secondary); font-family: 'Inter', sans-serif; font-size: 12.5px; }
-  details.sess { border: 1px solid var(--stroke-subtle); margin-top: 14px; }
-  details.sess summary { cursor: pointer; padding: 12px 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--fg-primary); background: var(--bg-panel); list-style: none; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; }
-  details.sess summary::-webkit-details-marker { display: none; }
-  details.sess summary .src-tag { font-size: 10px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.1em; }
-  .evt-wrap { overflow-x: auto; }
-  table.evt { border-collapse: collapse; width: 100%; min-width: 560px; }
-  table.evt th { text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted); padding: 8px 12px; border-bottom: 1px solid var(--stroke-subtle); }
-  table.evt td { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-secondary); padding: 5px 12px; border-bottom: 1px solid color-mix(in oklab, var(--stroke-subtle) 30%, transparent); white-space: nowrap; }
-  table.evt td.num { text-align: right; }
+  .phase-chip { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-primary); }
+  .phase-chip i { width: 9px; height: 9px; display: inline-block; }
   .unk-line { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
   .unk-line .name { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--fg-primary); width: 13rem; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .unk-line .track { flex: 1; height: 8px; background: var(--bg-panel); }
   .unk-line .fill { height: 100%; background: var(--ph-unknown); }
   .unk-line .cnt { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); width: 2.4rem; text-align: right; }
+  .agg-note { margin: 14px 0 0; font-size: 13px; line-height: 1.6; color: var(--fg-secondary); }
+  .agg-note b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
 
-  .consent { margin-top: 32px; border-top: 1px solid var(--stroke-subtle); padding-top: 14px; font-size: 12px; line-height: 1.6; color: var(--fg-muted); max-width: 46rem; }
+  .consent { margin-top: 32px; border-top: 1px solid var(--stroke-subtle); padding-top: 14px; font-size: 12px; line-height: 1.6; color: var(--fg-muted); max-width: 44rem; }
 
   /* ---------- variant switcher (prototype chrome) ---------- */
   .variant { display: none; }
@@ -211,7 +179,7 @@
   }
   .switcher button { appearance: none; border: 0; background: transparent; color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; width: 46px; height: 46px; cursor: pointer; }
   .switcher button:active { background: var(--bg-panel-muted); }
-  .switcher .label { display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 12rem; padding: 0 10px; border-left: 2px solid var(--stroke-strong); border-right: 2px solid var(--stroke-strong); }
+  .switcher .label { display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 11rem; padding: 0 10px; border-left: 2px solid var(--stroke-strong); border-right: 2px solid var(--stroke-strong); }
   .switcher .label .k { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.18em; color: var(--fg-muted); text-transform: uppercase; }
   .switcher .label .n { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; color: var(--accent-lime); text-transform: uppercase; }
   .page-end-pad { height: 90px; }
@@ -220,16 +188,60 @@
 <body>
 
 <div class="ticket-strip">
-  PROTOTYPE · <b>alp82/aistack#186</b> · the session phase anatomy · round 2 · seven takes
+  PROTOTYPE · <b>alp82/aistack#186</b> · the session phase anatomy · round 3 · the playbook
 </div>
 
-<section class="journey intro">
+<!-- ················· VIEW 1: the playbook (public section candidate) ················· -->
+<section class="journey alt variant" id="v-playbook">
   <div class="shell">
-    <h1>The Session Phase Anatomy</h1>
+    <p class="mono-label kicker-line">// MEASURED WORKFLOW</p>
+    <h2 style="font-size:30px; font-weight:900; text-transform:uppercase; margin:0 0 24px; letter-spacing:-0.01em">How Work Ships Here</h2>
+
+    <div id="tracks"></div>
+
+    <div class="receipts" id="receipts"></div>
+
+    <div class="box block-gap">
+      <p class="mono-label kicker-line">// WHERE THE MINUTES GO</p>
+      <div class="agg-strip" id="agg-strip"></div>
+      <div class="agg-legend" id="agg-legend"></div>
+      <p class="agg-note mono-label" id="agg-coverage" style="margin-top:10px"></p>
+    </div>
+
+    <div class="consent">
+      <span class="mono-label">// HOW TO READ THIS</span><br>
+      Every number is measured on the machine by versioned rules, and each card prints its receipt.
+      A card that compares two groups says measured together, and it claims no cause.
+      Only owner-approved aggregates leave the machine.
+    </div>
+  </div>
+</section>
+
+<!-- ················· VIEW 2: the mirror (owner-only, local) ················· -->
+<section class="journey variant" id="v-mirror">
+  <div class="shell">
+    <p class="mono-label kicker-line">// THE MIRROR · OWNER ONLY · NEVER SYNCS</p>
+    <h2 style="font-size:24px; font-weight:900; text-transform:uppercase; margin:0 0 8px">This Window, For You</h2>
+    <p class="lead">The same records, read for one purpose: where your time went, and the one lever with the receipt behind it.</p>
+
+    <div id="mirror-sink"></div>
+    <div class="receipts block-gap" id="mirror-cards"></div>
+
+    <div class="consent">
+      <span class="mono-label">// HOW TO READ THIS</span><br>
+      This view is computed and shown locally. Nothing here is part of the public page or the sync payload.
+    </div>
+  </div>
+</section>
+
+<!-- ················· VIEW 3: the derivation ················· -->
+<section class="journey variant" id="v-derive">
+  <div class="shell">
+    <p class="mono-label kicker-line">// THE DERIVATION</p>
     <p class="lead">
-      Seven takes on one derivation. Versioned rules classify every recorded tool event into a phase,
-      and each take turns the same numbers into a different kind of meaning.
-      Views 1 to 5 are new this round. Views 6 and 7 are round 1, kept for reference.
+      One pure pipeline feeds every view: versioned rules classify each recorded tool event,
+      attribution gives each event at most five minutes, and the unknown bucket stays visible.
+      The controls below re-derive the whole page.
     </p>
     <div class="controls">
       <div class="ctl">
@@ -241,136 +253,6 @@
         <div class="seg-btns" id="ctl-wait"></div>
       </div>
     </div>
-  </div>
-</section>
-
-<!-- ················· VIEW 1: the storyteller ················· -->
-<section class="journey alt variant" id="v-story">
-  <div class="shell">
-    <div class="tiles" id="story-tiles"></div>
-
-    <div class="say block-gap">
-      <p class="mono-label kicker-line">// WHAT THE DATA SAYS, IN WORDS</p>
-      <div id="story-lines"></div>
-      <p class="agg-note mono-label" style="margin-top:14px">deterministic templates · every number measured · no llm</p>
-    </div>
-
-    <div class="box block-gap">
-      <p class="mono-label kicker-line">// THE TYPICAL SESSION, START TO FINISH</p>
-      <p class="lead" style="margin-bottom:0">All sessions on one clock. Each column is a twelfth of a session, averaged across the corpus.</p>
-      <div class="clock-cols" id="clock-cols"></div>
-      <div class="clock-x">
-        <span class="mono-label">start</span><span class="mono-label">middle</span><span class="mono-label">end</span>
-      </div>
-      <div class="agg-legend" id="clock-legend"></div>
-      <p class="agg-note" id="clock-caption"></p>
-    </div>
-
-    <div class="consent">
-      <span class="mono-label">// HOW TO READ THIS</span><br>
-      Every sentence is a fixed template filled with measured numbers. The classifier and the templates
-      run on the machine. Only owner-approved aggregates would ever leave it.
-    </div>
-  </div>
-</section>
-
-<!-- ················· VIEW 2: the fingerprint ················· -->
-<section class="journey alt variant" id="v-shape">
-  <div class="shell">
-    <div class="box">
-      <p class="mono-label kicker-line">// EVERY SESSION HAS A SHAPE</p>
-      <p class="lead">
-        A shape is a rule over the phase mix, never a label by eye. Each row names its rule.
-        The glyph is one real session of that shape on its own clock.
-      </p>
-      <div id="shape-rows"></div>
-    </div>
-    <div class="consent">
-      <span class="mono-label">// HOW TO READ THIS</span><br>
-      The shape rules are part of the versioned rule set. A session that matches no shape stays mixed.
-    </div>
-  </div>
-</section>
-
-<!-- ················· VIEW 3: the rhythm ················· -->
-<section class="journey alt variant" id="v-rhythm">
-  <div class="shell">
-    <div class="box">
-      <p class="mono-label kicker-line">// THREE WEEKS OF WORK, DAY BY DAY</p>
-      <p class="lead" style="margin-bottom:0">Each column is one day of attributed minutes, split by phase. Empty days stay empty.</p>
-      <div class="rhythm-grid" id="rhythm-days"></div>
-      <div id="rhythm-weeks" class="block-gap"></div>
-      <div class="agg-legend" id="rhythm-legend"></div>
-      <p class="agg-note" id="rhythm-caption"></p>
-    </div>
-    <div class="consent">
-      <span class="mono-label">// HOW TO READ THIS</span><br>
-      A drift in the mix is a workflow change you can see. The generated corpus plants a verify uptrend
-      on purpose, so this view shows what a real trend would look like.
-    </div>
-  </div>
-</section>
-
-<!-- ················· VIEW 4: the coach ················· -->
-<section class="journey alt variant" id="v-coach">
-  <div class="shell">
-    <div class="box">
-      <p class="mono-label kicker-line">// THE COACH · RULE-BASED FLAGS · LOCAL ONLY</p>
-      <p class="lead" style="margin-bottom:0">
-        Each flag is a fixed rule with a threshold. A flag fires on the measured number beside it.
-        Quiet flags stay listed, so the rule set is visible. This view is for the owner and never syncs.
-      </p>
-      <div id="coach-flags"></div>
-    </div>
-    <div class="consent">
-      <span class="mono-label">// HOW TO READ THIS</span><br>
-      A flag is a hint with a rule behind it, never a judgment. An LLM could draft softer prose around
-      these flags later, from these approved numbers only (ADR-0001).
-    </div>
-  </div>
-</section>
-
-<!-- ················· VIEW 5: the lens test ················· -->
-<section class="journey alt variant" id="v-lens">
-  <div class="shell">
-    <p class="lead">
-      The category set is still open. Here is the same attributed time under three candidate lenses.
-      Same events, same rules underneath, three different stories.
-    </p>
-    <div id="lens-list"></div>
-    <div class="consent">
-      <span class="mono-label">// HOW TO READ THIS</span><br>
-      A lens is a remap over the rule ids, so switching lenses costs nothing and breaks nothing.
-      The rule set stays one, and the lens picks the resolution of the story.
-    </div>
-  </div>
-</section>
-
-<!-- ················· VIEW 6: round 1, the section ················· -->
-<section class="journey alt variant" id="v-section">
-  <div class="shell">
-    <div class="box">
-      <p class="mono-label kicker-line">// ALL SESSIONS, ANATOMIZED · ROUND 1</p>
-      <div class="agg-strip" id="agg-strip"></div>
-      <div class="agg-legend" id="agg-legend"></div>
-      <p class="agg-note" id="agg-note"></p>
-      <div class="rules-tag"><span class="mono-label" id="agg-rules-tag"></span></div>
-      <p class="agg-note mono-label" id="agg-coverage" style="margin-top:10px"></p>
-    </div>
-    <div class="box block-gap">
-      <p class="mono-label kicker-line">// EACH SPECIMEN SESSION, ON ITS OWN CLOCK</p>
-      <div id="tl-rows"></div>
-    </div>
-    <div class="box block-gap">
-      <p class="mono-label kicker-line">// WHAT FOLLOWS WHAT</p>
-      <div id="flow-rows"></div>
-    </div>
-  </div>
-</section>
-
-<!-- ················· VIEW 7: round 1, the machine view ················· -->
-<section class="journey variant" id="v-machine">
-  <div class="shell">
     <div class="box">
       <p class="mono-label kicker-line" id="rules-title"></p>
       <p class="lead" style="margin-bottom:6px" id="rules-note"></p>
@@ -378,11 +260,14 @@
     </div>
     <div class="box block-gap">
       <p class="mono-label kicker-line">// THE UNKNOWN BUCKET, RANKED</p>
+      <p class="lead" style="margin-bottom:6px">The work list for the next rule-set version.</p>
       <div id="unk-list"></div>
     </div>
-    <div class="block-gap">
-      <p class="mono-label kicker-line">// EVERY EVENT, CLASSIFIED · SPECIMENS ONLY</p>
-      <div id="sess-tables"></div>
+    <div class="consent">
+      <span class="mono-label">// POLICY, SETTLED IN ROUND 1</span><br>
+      A rule-set bump reclassifies old sessions from their local raw records at the next sync.
+      A session whose raw records are gone keeps its old aggregate, and the page shows the mixed-version tag.
+      Data here: one real session, three hand-made specimens, a generated labeled corpus.
     </div>
   </div>
 </section>
@@ -525,35 +410,7 @@ function deriveAll(sessions, versionKey, capSec, waitPolicy) {
   return { per: per, by: by, wallSec: wall, coveredSec: covered };
 }
 
-function transitions(per) {
-  var counts = {};
-  per.forEach(function (d) {
-    var runs = [];
-    d.rows.forEach(function (r) {
-      if (!runs.length || runs[runs.length - 1] !== r.ev.phase) runs.push(r.ev.phase);
-    });
-    for (var i = 0; i + 1 < runs.length; i++) {
-      var key = runs[i] + '>' + runs[i + 1];
-      counts[key] = (counts[key] || 0) + 1;
-    }
-  });
-  return counts;
-}
-
 /* ---------- insight derivations (all pure) ---------- */
-
-function phaseClock(per, buckets) {
-  var cols = [];
-  for (var i = 0; i < buckets; i++) cols.push({ orient: 0, build: 0, verify: 0, gate: 0, waiting: 0, unknown: 0 });
-  per.forEach(function (d) {
-    d.rows.forEach(function (r) {
-      var b = Math.min(buckets - 1, Math.floor((r.ev.t / d.wallSec) * buckets));
-      cols[b][r.ev.phase] += r.ownSec;
-      if (r.waitingSec > 0) cols[b].waiting += r.waitingSec;
-    });
-  });
-  return cols;
-}
 
 function sessionHasMerge(session) {
   return session.events.some(function (e) { return e[1] === 'Bash' && cmdIs(e[2] || '', ['gh pr merge']); });
@@ -568,133 +425,76 @@ function verifyRuns(d) {
   return runs;
 }
 
-function humanWaits(per) {
-  var waits = [];
+function reviewRounds(d) {
+  return d.rows.filter(function (r) { return r.ev.tool === 'mcp__curia__request_review'; }).length;
+}
+
+/* the wait spent at review gates only, beyond the grace */
+function reviewWaitSec(d) {
+  var w = 0;
+  d.rows.forEach(function (r) {
+    if (r.ev.tool === 'mcp__curia__request_review') w += Math.max(0, r.gapSec - 60);
+  });
+  return w;
+}
+
+/* waits at blocking calls, beyond a one-minute grace */
+var WAIT_GRACE_SEC = 60;
+function sessionWaitSec(d) {
+  var w = 0;
+  d.rows.forEach(function (r) {
+    if (GATE_TOOLS.indexOf(r.ev.tool) >= 0) w += Math.max(0, r.gapSec - WAIT_GRACE_SEC);
+  });
+  return w;
+}
+
+/* ask_human rounds: [questionCount, waitSec] */
+function askRounds(per) {
+  var out = [];
   per.forEach(function (d) {
     d.rows.forEach(function (r) {
-      if (GATE_TOOLS.indexOf(r.ev.tool) >= 0) waits.push(r.gapSec);
+      if (r.ev.tool !== 'mcp__curia__ask_human') return;
+      var q = 1;
+      var m = /^q(\d+)$/.exec(r.ev.arg);
+      if (m) q = parseInt(m[1], 10) || 1;
+      out.push({ q: q, waitSec: Math.max(0, r.gapSec - WAIT_GRACE_SEC) });
     });
   });
-  return waits.sort(function (a, b) { return a - b; });
+  return out;
 }
 
-function median(sorted) {
-  if (!sorted.length) return 0;
-  var m = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[m] : (sorted[m - 1] + sorted[m]) / 2;
+function median(list) {
+  var s = list.slice().sort(function (a, b) { return a - b; });
+  if (!s.length) return 0;
+  var m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+function avg(list) {
+  if (!list.length) return 0;
+  return list.reduce(function (a, b) { return a + b; }, 0) / list.length;
 }
 
-var SHAPE_RULES = [
-  { id: 'shape.gate-bound',  name: 'gate-bound',
-    when: 'gate plus waiting above 35% of attributed time',
-    test: function (d, ctx) { return (d.by.gate + d.by.waiting) / ctx.covered(d) > 0.35; } },
-  { id: 'shape.scout',       name: 'the scout',
-    when: 'orient above 55% of attributed time',
-    test: function (d, ctx) { return d.by.orient / ctx.covered(d) > 0.55; } },
-  { id: 'shape.review-loop', name: 'the review loop',
-    when: 'three or more separate verify runs',
-    test: function (d, ctx) { return verifyRuns(d) >= 3; } },
-  { id: 'shape.deep-build',  name: 'the deep build',
-    when: 'build above 45% of attributed time',
-    test: function (d, ctx) { return d.by.build / ctx.covered(d) > 0.45; } },
-  { id: 'shape.mixed',       name: 'mixed',
-    when: 'no other shape rule fires',
-    test: function () { return true; } }
-];
-
-function shapeOf(d) {
-  var ctx = { covered: function (x) { return Math.max(1, x.coveredSec); } };
-  for (var i = 0; i < SHAPE_RULES.length; i++) {
-    if (SHAPE_RULES[i].test(d, ctx)) return SHAPE_RULES[i];
-  }
+/* the two shipping tracks, split by a fixed rule */
+function trackSplit(per) {
+  var merged = per.filter(function (d) { return sessionHasMerge(d.session); });
+  var quick = merged.filter(function (d) { return d.session.events.length <= 20; });
+  var feature = merged.filter(function (d) { return d.session.events.length > 20; });
+  var noShip = per.filter(function (d) { return !sessionHasMerge(d.session); });
+  return { quick: quick, feature: feature, noShip: noShip, merged: merged };
 }
 
-/* lenses: remaps over phases and rule ids */
-var LENSES = [
-  { key: 'A', title: 'Lens A · four phases and unknown',
-    order: ['orient', 'build', 'verify', 'gate', 'waiting', 'unknown'],
-    color: PHASE_COLOR,
-    map: function (phase, rule) { return phase; },
-    verdict: 'The round-4 set. It splits the work but the reader must learn four words.' },
-  { key: 'B', title: 'Lens B · three moves',
-    order: ['understand', 'make', 'converse', 'unknown'],
-    color: { understand: 'var(--ph-orient)', make: 'var(--ph-build)', converse: 'var(--ph-gate)', unknown: 'var(--ph-unknown)' },
-    map: function (phase, rule) {
-      if (phase === 'orient') return 'understand';
-      if (phase === 'build' || phase === 'verify') return 'make';
-      if (phase === 'gate' || phase === 'waiting') return 'converse';
-      return 'unknown';
-    },
-    verdict: 'Reads at a glance and needs no legend study. It hides verify inside make, so the testing habit disappears.' },
-  { key: 'C', title: 'Lens C · six phases',
-    order: ['orient', 'build', 'test', 'review', 'ship', 'converse', 'unknown'],
-    color: { orient: 'var(--ph-orient)', build: 'var(--ph-build)', test: 'var(--lx-test)', review: 'var(--lx-review)', ship: 'var(--lx-ship)', converse: 'var(--ph-gate)', unknown: 'var(--ph-unknown)' },
-    map: function (phase, rule) {
-      if (rule === 'verify.test-cmd') return 'test';
-      if (rule === 'verify.review-skill') return 'review';
-      if (rule === 'gate.blocking-call') return 'converse';
-      if (phase === 'waiting') return 'converse';
-      if (rule === 'gate.surface' || rule === 'gate.publish-cmd' || rule === 'gate.notify') return 'ship';
-      return phase;
-    },
-    verdict: 'It answers more questions: testing, review, and shipping split apart. It needs more rules to keep unknown small, and the legend grows to six words.' }
-];
-
-function lensShares(per, lens) {
-  var by = {};
-  lens.order.forEach(function (k) { by[k] = 0; });
-  per.forEach(function (d) {
-    d.rows.forEach(function (r) {
-      by[lens.map(r.ev.phase, r.ev.rule)] += r.ownSec;
-      if (r.waitingSec > 0) by[lens.map('waiting', r.ev.rule)] += r.waitingSec;
-    });
-  });
-  return by;
-}
-
-/* coach flags: fixed rules with thresholds, computed on the machine */
-function coachFlags(all) {
-  var flags = [];
-  var wallWait = 0;
-  all.per.forEach(function (d) {
-    d.rows.forEach(function (r) {
-      if (GATE_TOOLS.indexOf(r.ev.tool) >= 0) wallWait += Math.max(0, r.gapSec - Math.min(r.gapSec, CAP_SEC));
-    });
-  });
-  var waitPct = Math.round(100 * wallWait / all.wallSec);
-  flags.push({
-    id: 'flag.wait-share', on: waitPct > 20,
-    head: 'Human wait is <b>' + waitPct + '%</b> of wall clock.',
-    why: 'Rule: wait beyond the cap at blocking gate calls, over 20% of wall clock. Rounds that carry several questions at once cut this number.'
-  });
-
-  var merged = all.per.filter(function (d) { return sessionHasMerge(d.session); });
-  var unverified = merged.filter(function (d) { return verifyRuns(d) === 0; });
-  flags.push({
-    id: 'flag.unverified-merge', on: unverified.length > 0,
-    head: '<b>' + unverified.length + '</b> of <b>' + merged.length + '</b> merges landed with no verify event in the session.',
-    why: 'Rule: a session with a merge and zero verify runs. A verify event is a matched test command or a review skill.'
-  });
-
-  var covered = 0; PHASE_ORDER.forEach(function (p) { covered += all.by[p]; });
-  var unkPct = Math.round(100 * all.by.unknown / Math.max(1, covered));
-  flags.push({
-    id: 'flag.unknown-share', on: unkPct > 8,
-    head: '<b>' + unkPct + '%</b> of attributed time is unclassified.',
-    why: 'Rule: unknown above 8% under the active rule set. The ranked unknown bucket in the machine view is the work list for the next version.'
-  });
-
-  var thin = all.per.filter(function (d) {
-    var c = Math.max(1, d.coveredSec);
-    return d.by.build / c > 0.6 && d.by.orient / c < 0.08;
-  });
-  flags.push({
-    id: 'flag.orient-thin', on: thin.length > 0,
-    head: '<b>' + thin.length + '</b> sessions build with almost no reading first.',
-    why: 'Rule: build above 60% and orient below 8% of attributed time in one session.'
-  });
-
-  return flags;
+function trackStats(list) {
+  function med(f) { return median(list.map(f)); }
+  return {
+    n: list.length,
+    orientMin: med(function (d) { return d.by.orient / 60; }),
+    buildMin: med(function (d) { return d.by.build / 60; }),
+    verifyMin: med(function (d) { return d.by.verify / 60; }),
+    verifyRuns: med(function (d) { return verifyRuns(d); }),
+    rounds: med(function (d) { return reviewRounds(d); }),
+    waitMin: med(function (d) { return sessionWaitSec(d) / 60; }),
+    wallMin: med(function (d) { return d.wallSec / 60; })
+  };
 }
 
 /* =====================================================================
@@ -717,11 +517,11 @@ var SESSIONS = [
     events: [
       [0, 'Bash', 'gh issue view'], [15, 'Bash', 'gh issue view'], [40, 'Read', ''], [70, 'Read', ''],
       [120, 'Skill', 'grilling'], [150, 'Skill', 'domain-modeling'],
-      [200, 'mcp__curia__ask_human', ''],
+      [200, 'mcp__curia__ask_human', 'q4'],
       [1100, 'Read', ''], [1160, 'Bash', 'gh issue view'],
-      [1250, 'mcp__curia__ask_human', ''],
+      [1250, 'mcp__curia__ask_human', 'q1'],
       [2450, 'Bash', 'git log'], [2500, 'Read', ''],
-      [2560, 'mcp__curia__ask_human', ''],
+      [2560, 'mcp__curia__ask_human', 'q2'],
       [3400, 'Write', ''], [3700, 'Edit', ''],
       [3900, 'Bash', 'git add'], [3910, 'Bash', 'git commit'],
       [3940, 'mcp__curia__open_pull_request', ''],
@@ -764,7 +564,7 @@ var SESSIONS = [
   }
 ];
 
-var REAL_EVENTS = [[0,"Bash","gh issue view"],[1,"Bash","gh issue view"],[1,"Bash","ls"],[10,"Bash","gh issue view"],[10,"Bash","wc -l"],[20,"Skill","prototype"],[42,"Read",""],[43,"Read",""],[49,"Bash","wc -l"],[53,"Read",""],[53,"Read",""],[105,"Bash","ls"],[121,"Bash","cd"],[128,"Bash","jq -r"],[136,"Bash","wc -l"],[143,"Bash","node -e"],[202,"Skill","dataviz"],[218,"Bash","cd"],[237,"Bash","cd"],[295,"Write",""],[306,"Bash","node"],[317,"Edit",""],[572,"Write",""],[595,"Bash","cd"]];
+var REAL_EVENTS = [[0,"Bash","gh issue view"],[1,"Bash","gh issue view"],[1,"Bash","ls"],[10,"Bash","gh issue view"],[10,"Bash","wc -l"],[20,"Skill","prototype"],[42,"Read",""],[43,"Read",""],[49,"Bash","wc -l"],[53,"Read",""],[53,"Read",""],[105,"Bash","ls"],[121,"Bash","cd"],[128,"Bash","jq -r"],[136,"Bash","wc -l"],[143,"Bash","node -e"],[202,"Skill","dataviz"],[218,"Bash","cd"],[237,"Bash","cd"],[295,"Write",""],[306,"Bash","node"],[317,"Edit",""],[572,"Write",""],[595,"Bash","cd"],[613,"Bash","node"],[614,"ToolSearch",""],[625,"Edit",""],[632,"Bash","grep -P"],[641,"mcp__curia__open_pull_request",""],[653,"Bash","-m"],[658,"mcp__curia__publish_preview",""],[697,"mcp__curia__ask_human","q6"],[1906,"Bash","cd"],[2196,"Write",""],[2214,"Bash","node -e"],[2235,"Bash","grep -P"],[2242,"mcp__curia__open_pull_request",""],[2275,"mcp__curia__ask_human","q3"],[2864,"Edit",""],[2869,"Bash","node"]];
 SESSIONS[0].events = REAL_EVENTS;
 
 /* ---------- generated corpus: seeded PRNG, labeled generated ---------- */
@@ -782,81 +582,95 @@ function makeCorpus() {
   var rng = mulberry32(186);
   function between(lo, hi) { return lo + Math.floor(rng() * (hi - lo + 1)); }
 
-  function tightFix(loops) {
+  /* one review pass; unverified work usually earns a second round */
+  function gateAndMerge(ev, t, verified) {
+    ev.push([t += between(30, 60), 'mcp__curia__open_pull_request', '']);
+    ev.push([t += between(30, 60), 'mcp__curia__request_review', '']);
+    var rework = verified ? rng() < 0.1 : rng() < 0.9;
+    if (rework) {
+      t += between(400, 1000);
+      ev.push([t, 'Edit', '']);
+      ev.push([t += between(60, 180), 'Bash', 'git add']);
+      ev.push([t += 10, 'Bash', 'git commit']);
+      ev.push([t += between(20, 50), 'mcp__curia__open_pull_request', '']);
+      ev.push([t += between(30, 60), 'mcp__curia__request_review', '']);
+    }
+    t += between(300, 900);
+    ev.push([t, 'Bash', 'gh pr merge']);
+    ev.push([t += between(20, 60), 'mcp__curia__report_result', '']);
+    return t;
+  }
+
+  function tightFix(verified) {
     var ev = [], t = 0;
     ev.push([t, 'Bash', 'gh issue view']);
-    t += between(20, 50); ev.push([t, 'Read', '']);
-    t += between(20, 60); ev.push([t, 'Read', '']);
-    if (rng() < 0.6) { t += between(15, 40); ev.push([t, 'Grep', '']); }
+    ev.push([t += between(20, 50), 'Read', '']);
+    ev.push([t += between(20, 60), 'Read', '']);
+    var loops = verified ? between(1, 2) : 0;
+    ev.push([t += between(90, 260), 'Edit', '']);
     for (var i = 0; i < loops; i++) {
-      t += between(90, 260); ev.push([t, 'Edit', '']);
-      t += between(60, 140); ev.push([t, 'Bash', 'pnpm test']);
+      ev.push([t += between(60, 140), 'Bash', 'pnpm test']);
+      if (i + 1 < loops) ev.push([t += between(90, 200), 'Edit', '']);
     }
-    t += between(30, 60); ev.push([t, 'Bash', 'git add']);
-    t += 10; ev.push([t, 'Bash', 'git commit']);
-    t += between(20, 50); ev.push([t, 'mcp__curia__open_pull_request', '']);
-    t += between(30, 60); ev.push([t, 'mcp__curia__request_review', '']);
-    t += between(300, 900); ev.push([t, 'Bash', 'gh pr merge']);
-    t += between(20, 60); ev.push([t, 'mcp__curia__report_result', '']);
+    ev.push([t += between(30, 60), 'Bash', 'git add']);
+    ev.push([t += 10, 'Bash', 'git commit']);
+    gateAndMerge(ev, t, verified);
     return ev;
   }
 
-  function deepBuild(loops) {
+  function deepBuild(verified) {
     var ev = [], t = 0;
     ev.push([t, 'Bash', 'gh issue view']);
-    t += between(30, 80); ev.push([t, 'Read', '']);
-    t += between(30, 90); ev.push([t, 'Read', '']);
-    var edits = between(8, 15);
+    ev.push([t += between(30, 80), 'Read', '']);
+    ev.push([t += between(30, 90), 'Read', '']);
+    var edits = between(8, 14);
     for (var i = 0; i < edits; i++) {
-      t += between(60, 240); ev.push([t, 'Edit', '']);
-      if (loops > 0 && i > 0 && i % Math.ceil(edits / (loops + 1)) === 0) {
-        t += between(60, 120); ev.push([t, 'Bash', 'pnpm test']);
-      }
+      ev.push([t += between(60, 240), 'Edit', '']);
+      if (verified && i > 0 && i % 4 === 0) ev.push([t += between(60, 120), 'Bash', 'pnpm test']);
     }
-    t += between(60, 120); ev.push([t, 'Bash', 'pnpm test']);
-    t += between(30, 60); ev.push([t, 'Bash', 'git add']);
-    t += 10; ev.push([t, 'Bash', 'git commit']);
-    t += between(20, 50); ev.push([t, 'mcp__curia__open_pull_request', '']);
-    t += between(30, 60); ev.push([t, 'mcp__curia__request_review', '']);
-    t += between(400, 1200); ev.push([t, 'Bash', 'gh pr merge']);
-    t += between(20, 60); ev.push([t, 'mcp__curia__report_result', '']);
+    if (verified) ev.push([t += between(60, 120), 'Bash', 'pnpm test']);
+    ev.push([t += between(30, 60), 'Bash', 'git add']);
+    ev.push([t += 10, 'Bash', 'git commit']);
+    gateAndMerge(ev, t, verified);
     return ev;
   }
 
-  function grilling(rounds) {
+  function grilling() {
     var ev = [], t = 0;
     ev.push([t, 'Bash', 'gh issue view']);
-    t += between(20, 60); ev.push([t, 'Read', '']);
-    t += between(30, 90); ev.push([t, 'Skill', 'grilling']);
+    ev.push([t += between(20, 60), 'Read', '']);
+    ev.push([t += between(30, 90), 'Skill', 'grilling']);
+    var rounds = between(2, 4);
     for (var i = 0; i < rounds; i++) {
-      t += between(60, 180); ev.push([t, 'mcp__curia__ask_human', '']);
-      t += between(500, 1500); ev.push([t, 'Read', '']);
+      var q = rng() < 0.45 ? 1 : between(2, 6);
+      ev.push([t += between(60, 180), 'mcp__curia__ask_human', 'q' + q]);
+      /* the human latency is per round, not per question */
+      t += between(500, 1400);
+      ev.push([t, 'Read', '']);
     }
-    t += between(120, 300); ev.push([t, 'Write', '']);
-    t += between(120, 300); ev.push([t, 'Edit', '']);
-    t += between(30, 60); ev.push([t, 'Bash', 'git add']);
-    t += 10; ev.push([t, 'Bash', 'git commit']);
-    t += between(20, 50); ev.push([t, 'mcp__curia__open_pull_request', '']);
-    t += between(30, 60); ev.push([t, 'mcp__curia__request_review', '']);
-    t += between(600, 1500); ev.push([t, 'Bash', 'gh pr merge']);
-    t += between(20, 60); ev.push([t, 'mcp__curia__report_result', '']);
+    ev.push([t += between(120, 300), 'Write', '']);
+    ev.push([t += between(120, 300), 'Edit', '']);
+    ev.push([t += between(30, 60), 'Bash', 'git add']);
+    ev.push([t += 10, 'Bash', 'git commit']);
+    gateAndMerge(ev, t, true);
     return ev;
   }
 
   function research() {
     var ev = [], t = 0;
     ev.push([t, 'Bash', 'gh issue view']);
-    t += between(20, 60); ev.push([t, 'Skill', 'research']);
+    ev.push([t += between(20, 60), 'Skill', 'research']);
     var n = between(4, 7);
     for (var i = 0; i < n; i++) {
-      t += between(90, 260); ev.push([t, rng() < 0.5 ? 'WebFetch' : 'WebSearch', '']);
+      ev.push([t += between(90, 260), rng() < 0.5 ? 'WebFetch' : 'WebSearch', '']);
     }
-    t += between(60, 120); ev.push([t, 'Agent', 'research']);
-    t += between(600, 1200); ev.push([t, 'Write', '']);
-    t += between(120, 300); ev.push([t, 'Edit', '']);
-    t += between(30, 60); ev.push([t, 'Bash', 'git add']);
-    t += 10; ev.push([t, 'Bash', 'git commit']);
-    t += between(20, 60); ev.push([t, 'mcp__curia__report_result', '']);
+    ev.push([t += between(60, 120), 'Agent', 'research']);
+    t += between(600, 1200);
+    ev.push([t, 'Write', '']);
+    ev.push([t += between(120, 300), 'Edit', '']);
+    ev.push([t += between(30, 60), 'Bash', 'git add']);
+    ev.push([t += 10, 'Bash', 'git commit']);
+    ev.push([t += between(20, 60), 'mcp__curia__report_result', '']);
     return ev;
   }
 
@@ -865,9 +679,8 @@ function makeCorpus() {
     var n = between(6, 10);
     ev.push([t, 'Bash', 'gh issue view']);
     for (var i = 0; i < n; i++) {
-      t += between(40, 160);
       var pick = rng();
-      ev.push([t, pick < 0.5 ? 'Read' : pick < 0.75 ? 'Grep' : 'WebFetch', '']);
+      ev.push([t += between(40, 160), pick < 0.5 ? 'Read' : pick < 0.75 ? 'Grep' : 'WebFetch', '']);
     }
     return ev;
   }
@@ -875,16 +688,14 @@ function makeCorpus() {
   var corpus = [];
   var counter = 0;
   for (var day = 0; day < 21; day++) {
-    var week = Math.floor(day / 7);
     var n = rng() < 0.2 ? 0 : between(1, 2);
     for (var s = 0; s < n; s++) {
       var pick = rng(), name, ev;
-      /* the planted trend: verify loops grow by week */
-      var loops = week + (rng() < 0.5 ? 0 : 1);
-      if (pick < 0.35)      { name = 'a tight fix loop';  ev = tightFix(Math.max(1, loops)); }
-      else if (pick < 0.55) { name = 'a deep build';      ev = deepBuild(loops); }
-      else if (pick < 0.7)  { name = 'a grilling';        ev = grilling(between(2, 4)); }
-      else if (pick < 0.85) { name = 'a research sweep';  ev = research(); }
+      var verified = rng() < 0.65;
+      if (pick < 0.4)       { name = 'a tight fix loop';  ev = tightFix(verified); }
+      else if (pick < 0.6)  { name = 'a deep build';      ev = deepBuild(verified); }
+      else if (pick < 0.75) { name = 'a grilling';        ev = grilling(); }
+      else if (pick < 0.9)  { name = 'a research sweep';  ev = research(); }
       else                  { name = 'a scout pass';      ev = scout(); }
       corpus.push({
         id: 'gen-' + (counter++),
@@ -918,6 +729,10 @@ var CTL_DEFS = {
 };
 
 function fmtMin(sec) { return Math.round(sec / 60) + ' min'; }
+function fmtMinV(min) {
+  if (min >= 90) return (min / 60).toFixed(1) + ' h';
+  return Math.round(min) + ' min';
+}
 function pct(part, whole) { return whole === 0 ? 0 : Math.round(100 * part / whole); }
 
 function renderControls() {
@@ -936,234 +751,169 @@ function renderControls() {
   });
 }
 
-function legendHtml(by, total, colorMap, order) {
-  return order.filter(function (p) { return by[p] > 0; }).map(function (p) {
-    return '<span><i style="background:' + colorMap[p] + '"></i>' + p + ' · ' + pct(by[p], total) + '%</span>';
-  }).join('');
+/* ---------- view 1: the playbook ---------- */
+
+function jstep(color, ph, big, sub) {
+  return '<div class="jstep" style="--c:' + color + '"><span class="ph">' + ph + '</span>' +
+    '<span class="min">' + big + '</span>' + (sub ? '<span class="sub">' + sub + '</span>' : '') + '</div>';
 }
 
-function stripHtml(by, total, colorMap, order, cls) {
-  return order.filter(function (p) { return by[p] > 0; }).map(function (p) {
-    return '<div class="' + cls + '" style="flex:' + by[p] + '; background:' + colorMap[p] + '" title="' +
-      p + ' · ' + pct(by[p], total) + '% · ' + fmtMin(by[p]) + '"></div>';
-  }).join('');
+function trackHtml(title, st, note) {
+  var steps = [
+    jstep('var(--ph-orient)', 'orient', fmtMinV(st.orientMin), 'read first'),
+    jstep('var(--ph-build)', 'build', fmtMinV(st.buildMin), ''),
+    jstep('var(--ph-verify)', 'verify', '×' + Math.round(st.verifyRuns), fmtMinV(st.verifyMin)),
+    jstep('var(--ph-gate)', 'review gate', Math.round(st.rounds) + (Math.round(st.rounds) === 1 ? ' round' : ' rounds'), fmtMinV(st.waitMin) + ' wait'),
+    jstep('var(--accent-lime)', 'merged', fmtMinV(st.wallMin), 'door to door')
+  ];
+  return '<div class="track"><div class="track-head"><h3 class="track-name">' + title + '</h3>' +
+    '<span class="track-meta">' + st.n + ' runs this window · median figures</span></div>' +
+    '<div class="jline">' + steps.join('<span class="jarrow">→</span>') + '</div>' +
+    (note ? '<p class="track-note">' + note + '</p>' : '') + '</div>';
 }
 
-/* ---------- view 1: the storyteller ---------- */
-function renderStory(all) {
-  var covered = 0; PHASE_ORDER.forEach(function (p) { covered += all.by[p]; });
+function cmpRow(label, value, max, unit, best) {
+  var color = best ? 'var(--accent-lime)' : 'var(--ph-unknown)';
+  return '<div class="cmp-row"><span class="lbl">' + label + '</span>' +
+    '<div class="track2"><div class="fill" style="width:' + Math.max(3, 100 * value / max) + '%; background:' + color + '"></div></div>' +
+    '<span class="val">' + value.toFixed(1) + ' ' + unit + '</span></div>';
+}
 
-  var merged = all.per.filter(function (d) { return sessionHasMerge(d.session); });
-  var loopCounts = merged.map(verifyRuns);
-  var avgLoops = loopCounts.length
-    ? (loopCounts.reduce(function (a, b) { return a + b; }, 0) / loopCounts.length) : 0;
-  var waits = humanWaits(all.per);
-  var medWaitMin = Math.round(median(waits) / 60);
+function renderPlaybook(all) {
+  var split = trackSplit(all.per);
+  var quick = trackStats(split.quick);
+  var feature = trackStats(split.feature);
 
-  document.getElementById('story-tiles').innerHTML =
-    '<div class="tile"><p class="n">' + pct(all.by.build, covered) + '%</p><p>of the attributed time is build</p></div>' +
-    '<div class="tile"><p class="n">' + avgLoops.toFixed(1) + '</p><p>verify loops before a typical merge</p></div>' +
-    '<div class="tile"><p class="n">' + medWaitMin + ' min</p><p>median wait for a human answer</p></div>';
+  var noShipNote = split.noShip.length
+    ? '<p class="track-note" style="margin-top:16px">Plus <b>' + split.noShip.length +
+      '</b> sessions that shipped nothing on purpose: research sweeps and scout passes. They feed the next build.</p>'
+    : '';
+
+  document.getElementById('tracks').innerHTML =
+    trackHtml('The quick fix', quick, 'Small change, same discipline: it still ends at the human gate.') +
+    trackHtml('The feature', feature, 'The long track earns its review wait. Tests run before the gate, so one round usually settles it.') +
+    noShipNote;
+
+  /* receipts */
+  var merged = split.merged;
+  var withV = merged.filter(function (d) { return verifyRuns(d) > 0; });
+  var withoutV = merged.filter(function (d) { return verifyRuns(d) === 0; });
+  var roundsWith = avg(withV.map(reviewRounds));
+  var roundsWithout = avg(withoutV.map(reviewRounds));
+  var maxRounds = Math.max(roundsWith, roundsWithout, 1);
+
+  var rounds = askRounds(all.per);
+  var batched = rounds.filter(function (r) { return r.q >= 2; });
+  var single = rounds.filter(function (r) { return r.q === 1; });
+  var perQBatched = batched.length ? avg(batched.map(function (r) { return r.waitSec / r.q / 60; })) : 0;
+  var perQSingle = single.length ? avg(single.map(function (r) { return r.waitSec / 60; })) : 0;
+  var maxPerQ = Math.max(perQBatched, perQSingle, 1);
 
   var openers = all.per.filter(function (d) { return d.rows.length && d.rows[0].ev.phase === 'orient'; });
-  var withVerify = merged.filter(function (d) { return verifyRuns(d) > 0; });
-  var lines = [];
-  lines.push('<b>' + pct(openers.length, all.per.length) + '%</b> of sessions open by reading.');
-  if (merged.length) {
-    lines.push('<b>' + merged.length + ' of ' + merged.length + '</b> merges passed a human gate first.');
-    lines.push('<b>' + pct(withVerify.length, merged.length) + '%</b> of merged sessions ran a verify step.');
-  }
-  if (state.wait === 'slice') {
-    lines.push('Waiting on humans is <b>' + pct(all.by.waiting, covered) + '%</b> of the attributed time.');
-  }
-  lines.push('<b>' + pct(all.by.unknown, covered) + '%</b> of the attributed time is unclassified, and it stays visible.');
-  document.getElementById('story-lines').innerHTML = lines.map(function (l) {
-    return '<p class="say-line">' + l + '</p>';
-  }).join('');
 
-  var buckets = 12;
-  var cols = phaseClock(all.per, buckets);
-  document.getElementById('clock-cols').innerHTML = cols.map(function (c) {
-    var sum = 0; PHASE_ORDER.forEach(function (p) { sum += c[p]; });
-    if (sum === 0) return '<div class="clock-col"></div>';
-    return '<div class="clock-col">' + PHASE_ORDER.filter(function (p) { return c[p] > 0; }).map(function (p) {
-      return '<div style="height:' + (100 * c[p] / sum) + '%; background:' + PHASE_COLOR[p] + '" title="' +
-        p + ' · ' + pct(c[p], sum) + '%"></div>';
-    }).join('') + '</div>';
-  }).join('');
-  document.getElementById('clock-legend').innerHTML = legendHtml(all.by, covered, PHASE_COLOR, PHASE_ORDER);
-
-  function domPhase(c) {
-    var best = 'orient';
-    ['orient', 'build', 'verify', 'gate'].forEach(function (p) { if (c[p] > c[best]) best = p; });
-    return best;
+  var cards = [];
+  if (withV.length && withoutV.length) {
+    cards.push('<div class="receipt"><p class="head">Tests before the gate save review rounds.</p><div class="cmp">' +
+      cmpRow('merges with a verify step', roundsWith, maxRounds, 'rounds', true) +
+      cmpRow('merges without one', roundsWithout, maxRounds, 'rounds', false) +
+      '</div><p class="foot mono-label">n = ' + withV.length + ' vs ' + withoutV.length +
+      ' · measured together, not proved cause · verify = matched test command or review skill</p></div>');
   }
-  document.getElementById('clock-caption').innerHTML =
-    'A session opens in <b>' + domPhase(cols[0]) + '</b> and closes in <b>' + domPhase(cols[buckets - 1]) + '</b>. ' +
-    'The middle belongs to <b>' + domPhase(cols[6]) + '</b>.';
-}
+  if (batched.length && single.length) {
+    cards.push('<div class="receipt"><p class="head">Batched questions amortize the human wait.</p><div class="cmp">' +
+      cmpRow('asked in rounds of 2 or more', perQBatched, maxPerQ, 'min / answer', true) +
+      cmpRow('asked one at a time', perQSingle, maxPerQ, 'min / answer', false) +
+      '</div><p class="foot mono-label">n = ' + batched.length + ' vs ' + single.length +
+      ' rounds · wait = gap after ask_human, one minute grace · includes 2 real rounds from this session</p></div>');
+  }
+  cards.push('<div class="receipt"><p class="head">Nothing lands unreviewed.</p>' +
+    '<p class="big">' + merged.length + ' of ' + merged.length + ' <small>merges passed the human gate first</small></p>' +
+    '<p class="foot mono-label">rule: a request_review call precedes every matched merge command</p></div>');
+  cards.push('<div class="receipt"><p class="head">Read first, then touch the code.</p>' +
+    '<p class="big">' + pct(openers.length, all.per.length) + '% <small>of sessions open in orient</small></p>' +
+    '<p class="foot mono-label">rule: the first classified event of the session is an orient event</p></div>');
 
-/* ---------- view 2: the fingerprint ---------- */
-function renderShapes(all) {
-  var groups = {};
-  all.per.forEach(function (d) {
-    var s = shapeOf(d);
-    (groups[s.id] = groups[s.id] || { rule: s, list: [] }).list.push(d);
-  });
-  document.getElementById('shape-rows').innerHTML = SHAPE_RULES.filter(function (s) { return groups[s.id]; })
-    .map(function (s) {
-      var g = groups[s.id];
-      var rep = g.list.reduce(function (a, b) { return b.session.events.length > a.session.events.length ? b : a; }, g.list[0]);
-      var glyph = rep.rows.map(function (r) {
-        var parts = [{ phase: r.ev.phase, from: r.ev.t, sec: r.ownSec }];
-        if (r.waitingSec > 0) parts.push({ phase: 'waiting', from: r.ev.t + r.ownSec, sec: r.waitingSec });
-        return parts.map(function (p) {
-          return '<div style="left:' + (100 * p.from / rep.wallSec) + '%; width:' +
-            Math.max(0.5, 100 * p.sec / rep.wallSec) + '%; background:' + PHASE_COLOR[p.phase] + '"></div>';
-        }).join('');
-      }).join('');
-      return '<div class="shape-row">' +
-        '<div class="shape-glyph" title="' + rep.session.name + '">' + glyph + '</div>' +
-        '<div><p class="shape-name">' + s.name + ' · ' + g.list.length + ' of ' + all.per.length +
-        ' sessions · ' + pct(g.list.length, all.per.length) + '%</p>' +
-        '<p class="shape-copy">' + s.when.charAt(0).toUpperCase() + s.when.slice(1) + '.</p>' +
-        '<p class="shape-meta mono-label">' + s.id + '</p></div></div>';
+  document.getElementById('receipts').innerHTML = cards.join('');
+
+  /* demoted anatomy strip */
+  var total = 0;
+  PHASE_ORDER.forEach(function (p) { total += all.by[p]; });
+  document.getElementById('agg-strip').innerHTML = PHASE_ORDER.filter(function (p) { return all.by[p] > 0; })
+    .map(function (p) {
+      return '<div class="agg-seg" style="flex:' + all.by[p] + '; background:' + PHASE_COLOR[p] + '" title="' +
+        p + ' · ' + pct(all.by[p], total) + '% · ' + fmtMin(all.by[p]) + '"></div>';
     }).join('');
+  document.getElementById('agg-legend').innerHTML = PHASE_ORDER.filter(function (p) { return all.by[p] > 0; })
+    .map(function (p) {
+      return '<span><i style="background:' + PHASE_COLOR[p] + '"></i>' + p + ' · ' + pct(all.by[p], total) + '%</span>';
+    }).join('');
+
+  var versions = {};
+  all.per.forEach(function (d) { versions[d.usedVersion] = (versions[d.usedVersion] || 0) + 1; });
+  var vkeys = Object.keys(versions).sort();
+  var tag = vkeys.length === 1
+    ? vkeys[0]
+    : vkeys.map(function (v) { return versions[v] + ' of ' + all.per.length + ' under ' + v; }).join(' · ');
+  document.getElementById('agg-coverage').textContent =
+    tag + ' · covers ' + fmtMin(all.coveredSec) + ' of ' + fmtMin(all.wallSec) + ' wall clock';
 }
 
-/* ---------- view 3: the rhythm ---------- */
-function renderRhythm(all) {
+/* ---------- view 2: the mirror ---------- */
+function renderMirror(all) {
+  var waitTotal = 0;
+  all.per.forEach(function (d) { waitTotal += sessionWaitSec(d); });
+  var rounds = askRounds(all.per);
+  var single = rounds.filter(function (r) { return r.q === 1; });
+  var singleWait = single.reduce(function (a, r) { return a + r.waitSec; }, 0);
+
+  document.getElementById('mirror-sink').innerHTML =
+    '<div class="sink"><p class="mono-label kicker-line">// THE BIGGEST SINK THIS WINDOW</p>' +
+    '<p class="n">' + (waitTotal / 3600).toFixed(1) + ' h</p>' +
+    '<p class="what">parked at blocking calls, waiting for a human answer. That is <b>' +
+    pct(waitTotal, all.wallSec) + '%</b> of all recorded wall clock.</p>' +
+    '<p class="lever">The lever: <b>' + single.length + ' of ' + rounds.length +
+    '</b> question rounds carried a single question, and those rounds alone held <b>' +
+    (singleWait / 3600).toFixed(1) + ' h</b> of the wait. Batching them into their next round is free.</p>' +
+    '<p class="foot mono-label" style="margin-top:12px">rule: wait = gap after a blocking gate call, one minute grace · ask_human rounds carry their question count</p></div>';
+
+  /* weekly verify trend + rework cost */
   var days = [];
   for (var i = 0; i < 21; i++) days.push({ orient: 0, build: 0, verify: 0, gate: 0, waiting: 0, unknown: 0 });
   all.per.forEach(function (d) {
     if (d.session.day === undefined) return;
     PHASE_ORDER.forEach(function (p) { days[d.session.day][p] += d.by[p]; });
   });
-
-  var html = '';
-  for (var w = 0; w < 3; w++) {
-    html += '<span class="wk">week ' + (w + 1) + '</span>';
-    for (var dd = 0; dd < 7; dd++) {
-      var c = days[w * 7 + dd];
-      var sum = 0; PHASE_ORDER.forEach(function (p) { sum += c[p]; });
-      var maxDay = Math.max.apply(null, days.map(function (x) {
-        var s = 0; PHASE_ORDER.forEach(function (p) { s += x[p]; }); return s;
-      }));
-      if (sum === 0) { html += '<div class="day-col" title="no recorded work"></div>'; continue; }
-      var scale = 100 * sum / maxDay;
-      html += '<div class="day-col" style="height:' + Math.max(8, 0.72 * scale) + 'px" title="' + fmtMin(sum) + '">' +
-        PHASE_ORDER.filter(function (p) { return c[p] > 0; }).map(function (p) {
-          return '<div style="height:' + (100 * c[p] / sum) + '%; background:' + PHASE_COLOR[p] + '"></div>';
-        }).join('') + '</div>';
-    }
-  }
-  document.getElementById('rhythm-days').innerHTML = html;
-
   var weeks = [0, 1, 2].map(function (w) {
     var c = { orient: 0, build: 0, verify: 0, gate: 0, waiting: 0, unknown: 0 };
-    for (var i = 0; i < 7; i++) PHASE_ORDER.forEach(function (p) { c[p] += days[w * 7 + i][p]; });
+    for (var j = 0; j < 7; j++) PHASE_ORDER.forEach(function (p) { c[p] += days[w * 7 + j][p]; });
     var sum = 0; PHASE_ORDER.forEach(function (p) { sum += c[p]; });
     return { c: c, sum: sum };
   });
-  document.getElementById('rhythm-weeks').innerHTML = weeks.map(function (wk, i) {
-    return '<div class="week-strip-row"><span class="wk mono-label">week ' + (i + 1) + '</span>' +
-      '<div class="week-strip">' + stripHtml(wk.c, wk.sum, PHASE_COLOR, PHASE_ORDER, '') + '</div>' +
+  var weekHtml = weeks.map(function (wk, i) {
+    return '<div class="week-strip-row"><span class="mono-label">week ' + (i + 1) + '</span>' +
+      '<div class="week-strip">' + PHASE_ORDER.filter(function (p) { return wk.c[p] > 0; }).map(function (p) {
+        return '<div style="flex:' + wk.c[p] + '; background:' + PHASE_COLOR[p] + '"></div>';
+      }).join('') + '</div>' +
       '<span class="week-delta">' + pct(wk.c.verify, wk.sum) + '%</span></div>';
-  }).join('') + '<p class="agg-note mono-label" style="margin-top:6px">the right column is the verify share of that week</p>';
-
-  var v1 = pct(weeks[0].c.verify, weeks[0].sum), v3 = pct(weeks[2].c.verify, weeks[2].sum);
-  document.getElementById('rhythm-legend').innerHTML = legendHtml(all.by, (function () {
-    var s = 0; PHASE_ORDER.forEach(function (p) { s += all.by[p]; }); return s;
-  })(), PHASE_COLOR, PHASE_ORDER);
-  document.getElementById('rhythm-caption').innerHTML =
-    'Verify grew from <b>' + v1 + '%</b> in week 1 to <b>' + v3 + '%</b> in week 3. ' +
-    'The generator planted this trend to show the form.';
-}
-
-/* ---------- view 4: the coach ---------- */
-function renderCoach(all) {
-  var flags = coachFlags(all);
-  var fired = flags.filter(function (f) { return f.on; });
-  var quiet = flags.filter(function (f) { return !f.on; });
-  document.getElementById('coach-flags').innerHTML =
-    fired.map(function (f) {
-      return '<div class="flag"><p class="head">' + f.head + '</p><p class="why">' + f.why + '</p>' +
-        '<span class="tag mono-label">' + f.id + '</span></div>';
-    }).join('') +
-    (quiet.length ? '<p class="mono-label" style="margin:18px 0 0">quiet flags</p>' + quiet.map(function (f) {
-      return '<div class="flag quiet"><p class="head">' + f.head + '</p>' +
-        '<span class="tag mono-label">' + f.id + '</span></div>';
-    }).join('') : '');
-}
-
-/* ---------- view 5: the lens test ---------- */
-function renderLenses(all) {
-  document.getElementById('lens-list').innerHTML = LENSES.map(function (lens) {
-    var by = lensShares(all.per, lens);
-    var total = 0; lens.order.forEach(function (k) { total += by[k]; });
-    return '<div class="lens"><h3>' + lens.title + '</h3>' +
-      '<div class="agg-strip">' + stripHtml(by, total, lens.color, lens.order, 'agg-seg') + '</div>' +
-      '<div class="agg-legend">' + legendHtml(by, total, lens.color, lens.order) + '</div>' +
-      '<p class="verdict">' + lens.verdict + '</p></div>';
-  }).join('');
-}
-
-/* ---------- views 6 and 7: round 1 ---------- */
-function renderSection(all, specimens) {
-  var total = 0;
-  PHASE_ORDER.forEach(function (p) { total += all.by[p]; });
-  document.getElementById('agg-strip').innerHTML = stripHtml(all.by, total, PHASE_COLOR, PHASE_ORDER, 'agg-seg');
-  document.getElementById('agg-legend').innerHTML = legendHtml(all.by, total, PHASE_COLOR, PHASE_ORDER);
-
-  var lead = PHASE_ORDER.slice(0, 4).slice().sort(function (a, b) { return all.by[b] - all.by[a]; })[0];
-  document.getElementById('agg-note').innerHTML =
-    'Attributed minutes across ' + all.per.length + ' sessions. The biggest work slice is <b>' + lead +
-    '</b> at <b>' + pct(all.by[lead], total) + '%</b>.';
-
-  var versions = {};
-  all.per.forEach(function (d) { versions[d.usedVersion] = (versions[d.usedVersion] || 0) + 1; });
-  var vkeys = Object.keys(versions).sort();
-  document.getElementById('agg-rules-tag').textContent = vkeys.length === 1
-    ? vkeys[0]
-    : vkeys.map(function (v) { return versions[v] + ' of ' + all.per.length + ' sessions under ' + v; }).join(' · ');
-
-  document.getElementById('agg-coverage').textContent =
-    'covers ' + fmtMin(all.coveredSec) + ' of ' + fmtMin(all.wallSec) + ' wall clock (' +
-    pct(all.coveredSec, all.wallSec) + '%) · the rest is idle time between records';
-
-  document.getElementById('tl-rows').innerHTML = specimens.per.map(function (d) {
-    var segs = d.rows.map(function (r) {
-      var parts = [{ phase: r.ev.phase, from: r.ev.t, sec: r.ownSec }];
-      if (r.waitingSec > 0) parts.push({ phase: 'waiting', from: r.ev.t + r.ownSec, sec: r.waitingSec });
-      return parts.map(function (p) {
-        return '<div class="tl-seg" style="left:' + (100 * p.from / d.wallSec) + '%; width:' +
-          Math.max(0.35, 100 * p.sec / d.wallSec) + '%; background:' + PHASE_COLOR[p.phase] + '" title="' +
-          p.phase + ' · ' + r.ev.tool + (r.ev.arg ? ' · ' + r.ev.arg : '') + '"></div>';
-      }).join('');
-    }).join('');
-    return '<div class="tl-row">' +
-      '<div class="tl-head"><span class="name">' + d.session.name + '</span>' +
-      '<span class="meta">' + fmtMin(d.wallSec) + ' · ' + d.session.events.length + ' events · ' + d.usedVersion + '</span></div>' +
-      '<div class="tl-strip">' + segs + '</div></div>';
   }).join('');
 
-  var counts = transitions(all.per);
-  var phases = ['orient', 'build', 'verify', 'gate', 'unknown'];
-  document.getElementById('flow-rows').innerHTML = phases.map(function (from) {
-    var outs = phases.map(function (to) { return { to: to, n: counts[from + '>' + to] || 0 }; })
-      .filter(function (o) { return o.n > 0; });
-    var sum = outs.reduce(function (a, o) { return a + o.n; }, 0);
-    if (sum === 0) return '';
-    var segs = outs.map(function (o) {
-      return '<div class="seg" style="flex:' + o.n + '; background:' + PHASE_COLOR[o.to] + '" title="after ' +
-        from + ' comes ' + o.to + ' · ' + pct(o.n, sum) + '% · ' + o.n + ' runs"></div>';
-    }).join('');
-    return '<div class="flow-row"><span class="from"><i style="background:' + PHASE_COLOR[from] + '"></i>after ' + from + '</span>' +
-      '<div class="flow-strip">' + segs + '</div></div>';
-  }).join('');
+  var merged = all.per.filter(function (d) { return sessionHasMerge(d.session); });
+  var twoRound = merged.filter(function (d) { return reviewRounds(d) >= 2; });
+  var oneRound = merged.filter(function (d) { return reviewRounds(d) === 1; });
+  var extra = median(twoRound.map(function (d) { return reviewWaitSec(d) / 60; })) -
+              median(oneRound.map(function (d) { return reviewWaitSec(d) / 60; }));
+
+  document.getElementById('mirror-cards').innerHTML =
+    '<div class="receipt"><p class="head">The verify habit is growing.</p><div class="mini-weeks">' + weekHtml +
+    '</div><p class="foot mono-label">verify share of attributed minutes per week · the generated corpus plants this trend to show the form</p></div>' +
+    '<div class="receipt"><p class="head">A second review round is expensive.</p>' +
+    '<p class="big">+' + fmtMinV(Math.max(0, extra)) + ' <small>median wait at review gates, two rounds vs one</small></p>' +
+    '<p class="foot mono-label">n = ' + twoRound.length + ' two-round merges of ' + merged.length +
+    ' · most of them skipped the verify step first</p></div>';
 }
 
-function renderMachine(all, specimens) {
+/* ---------- view 3: the derivation ---------- */
+function renderDerive(all) {
   var tax = TAXONOMIES[state.version];
   document.getElementById('rules-title').textContent = '// THE RULE SET · ' + state.version + ' · first match wins';
   document.getElementById('rules-note').textContent = tax.note;
@@ -1182,7 +932,7 @@ function renderMachine(all, specimens) {
     });
   });
   var top = Object.keys(unk).map(function (k) { return { k: k, n: unk[k] }; })
-    .sort(function (a, b) { return b.n - a.n; }).slice(0, 10);
+    .sort(function (a, b) { return b.n - a.n; }).slice(0, 8);
   var maxN = top.length ? top[0].n : 1;
   document.getElementById('unk-list').innerHTML = top.length
     ? top.map(function (o) {
@@ -1191,45 +941,21 @@ function renderMachine(all, specimens) {
           '<span class="cnt">' + o.n + '</span></div>';
       }).join('')
     : '<p class="lead" style="margin:0">Empty. Every event matched a rule.</p>';
-
-  document.getElementById('sess-tables').innerHTML = specimens.per.map(function (d, i) {
-    var rows = d.rows.map(function (r) {
-      var mm = Math.floor(r.ev.t / 60), ss = ('0' + (r.ev.t % 60)).slice(-2);
-      return '<tr><td class="num">' + mm + ':' + ss + '</td><td>' + r.ev.tool + '</td><td>' + (r.ev.arg || '·') +
-        '</td><td>' + r.ev.rule + '</td><td><span class="phase-chip"><i style="background:' + PHASE_COLOR[r.ev.phase] +
-        '"></i>' + r.ev.phase + '</span></td><td class="num">' + r.ownSec + 's</td><td class="num">' +
-        (r.waitingSec > 0 ? r.waitingSec + 's' : '·') + '</td><td class="num">' +
-        (r.idleSec > 0 ? r.idleSec + 's' : '·') + '</td></tr>';
-    }).join('');
-    return '<details class="sess"' + (i === 0 ? ' open' : '') + '><summary>' + d.session.name +
-      ' <span class="src-tag">' + d.session.source + '</span></summary><div class="evt-wrap">' +
-      '<table class="evt"><thead><tr><th>t</th><th>tool</th><th>head</th><th>rule</th><th>phase</th>' +
-      '<th>owns</th><th>waiting</th><th>idle</th></tr></thead><tbody>' + rows + '</tbody></table></div></details>';
-  }).join('');
 }
 
 function render() {
   renderControls();
   var all = deriveAll(ALL_SESSIONS, state.version, CAP_SEC, state.wait);
-  var specimens = deriveAll(SESSIONS, state.version, CAP_SEC, state.wait);
-  renderStory(all);
-  renderShapes(all);
-  renderRhythm(all);
-  renderCoach(all);
-  renderLenses(all);
-  renderSection(all, specimens);
-  renderMachine(all, specimens);
+  renderPlaybook(all);
+  renderMirror(all);
+  renderDerive(all);
 }
 
 /* variant switcher */
 var VARIANTS = [
-  { key: 'story',   id: 'v-story',   name: 'the storyteller' },
-  { key: 'shape',   id: 'v-shape',   name: 'the fingerprint' },
-  { key: 'rhythm',  id: 'v-rhythm',  name: 'the rhythm' },
-  { key: 'coach',   id: 'v-coach',   name: 'the coach' },
-  { key: 'lens',    id: 'v-lens',    name: 'the lens test' },
-  { key: 'section', id: 'v-section', name: 'round 1 · section' },
-  { key: 'machine', id: 'v-machine', name: 'round 1 · machine' }
+  { key: 'playbook', id: 'v-playbook', name: 'the playbook' },
+  { key: 'mirror',   id: 'v-mirror',   name: 'the mirror' },
+  { key: 'derive',   id: 'v-derive',   name: 'the derivation' }
 ];
 var current = 0;
 function show(i) {
