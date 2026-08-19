@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>alp82/aistack#179 - X owner-paste flow with oEmbed rendering</title>
+<style>
+  :root {
+    --bg: #0d0f0c;
+    --panel: #141712;
+    --panel2: #1a1e17;
+    --line: #2a3024;
+    --text: #e6e9e2;
+    --dim: #9aa392;
+    --lime: #b4f234;
+    --red: #f27a6a;
+    --amber: #e8c15a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; border-radius: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 16px;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+  .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  header { border: 1px solid var(--line); padding: 14px 16px; margin-bottom: 20px; background: var(--panel); }
+  header .ticket { color: var(--lime); font-size: 13px; letter-spacing: .04em; font-family: ui-monospace, Menlo, Consolas, monospace; }
+  header h1 { font-size: 20px; margin-top: 4px; font-weight: 650; }
+  header p { color: var(--dim); font-size: 14px; margin-top: 8px; }
+  h2 { font-size: 15px; margin: 26px 0 10px; color: var(--lime); font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: .05em; text-transform: uppercase; }
+  h2:first-of-type { margin-top: 0; }
+  button {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+    font: 13px ui-monospace, Menlo, Consolas, monospace; padding: 9px 12px; cursor: pointer;
+  }
+  button:active { background: var(--lime); color: #10130c; }
+  button.primary { background: var(--lime); color: #10130c; border-color: var(--lime); font-weight: 700; }
+  .pasteRow { display: flex; gap: 8px; }
+  .pasteRow input {
+    flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--line); color: var(--text);
+    font: 13px ui-monospace, Menlo, Consolas, monospace; padding: 10px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .chips button { font-size: 12px; padding: 7px 10px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tabs button.on { background: var(--lime); color: #10130c; border-color: var(--lime); font-weight: 700; }
+  .scenario { border: 1px solid var(--line); border-top: none; padding: 14px 16px; background: var(--panel); }
+  .scenario p { font-size: 14px; color: var(--dim); margin-bottom: 12px; }
+  .steps { display: flex; flex-direction: column; gap: 8px; }
+  .steps button { text-align: left; }
+  .steps button.done { opacity: .45; }
+  .steps button.next { border-color: var(--lime); }
+  .item { border: 1px solid var(--line); background: var(--panel); margin-bottom: 16px; }
+  .item .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .badge { font: 700 11px ui-monospace, Menlo, Consolas, monospace; padding: 3px 8px; letter-spacing: .06em; }
+  .badge.stored { background: var(--lime); color: #10130c; }
+  .badge.fetching { background: var(--amber); color: #10130c; }
+  .badge.failed { background: var(--red); color: #10130c; }
+  .fields { padding: 10px 12px; font-size: 13px; }
+  .fields dt { color: var(--dim); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; margin-top: 8px; }
+  .fields dt:first-child { margin-top: 0; }
+  .fields dd { word-break: break-all; }
+  .fields dd.big { white-space: pre-wrap; background: var(--panel2); border: 1px solid var(--line); padding: 8px; font: 11px/1.5 ui-monospace, Menlo, Consolas, monospace; max-height: 130px; overflow: auto; }
+  .embed { padding: 4px 12px 12px; }
+  .embed .twitter-tweet { margin: 8px auto !important; }
+  .note { border: 1px solid var(--line); border-left: 3px solid var(--lime); background: var(--panel); padding: 10px 12px; font-size: 13px; color: var(--dim); margin: 10px 0; }
+  .note.bad { border-left-color: var(--red); }
+  .rejectLog { border: 1px solid var(--red); background: var(--panel); padding: 10px 12px; font-size: 13px; margin-bottom: 16px; }
+  .rejectLog .mono { color: var(--red); font-size: 12px; }
+  details { border: 1px solid var(--line); background: var(--panel); margin: 8px 0; }
+  details summary { cursor: pointer; padding: 9px 12px; font: 12px ui-monospace, Menlo, Consolas, monospace; color: var(--dim); }
+  details pre { padding: 10px 12px; border-top: 1px solid var(--line); font: 11px/1.5 ui-monospace, Menlo, Consolas, monospace; overflow-x: auto; color: var(--text); background: var(--panel2); }
+  .facts { font-size: 14px; }
+  .facts li { margin: 8px 0 8px 18px; }
+  .facts .mono { font-size: 12px; color: var(--lime); }
+  .empty { color: var(--dim); font-size: 14px; border: 1px dashed var(--line); padding: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="ticket">alp82/aistack#179 &middot; prototype &middot; map #159</div>
+  <h1>X owner-paste flow with oEmbed rendering</h1>
+  <p>The question: does the owner-paste lane from the news pipeline spec work end to end?
+  Paste a real X post link. The page fetches the free oEmbed endpoint live, stores the
+  post ID with the official embed, and renders it. The page also shows the failure
+  cases: a deleted post, a profile link, and a broken link.</p>
+</header>
+
+<h2>Paste a link</h2>
+<div class="pasteRow">
+  <input id="pasteInput" class="mono" placeholder="https://x.com/user/status/..." autocomplete="off">
+  <button class="primary" onclick="page.pasteFromInput()">Paste</button>
+</div>
+<div class="chips" id="chips"></div>
+
+<h2>Guided walkthroughs</h2>
+<div class="tabs" id="tabs"></div>
+<div class="scenario" id="scenarioBox"></div>
+
+<h2>Inbox (the stored items)</h2>
+<div id="inbox"></div>
+
+<h2>What the backend sees</h2>
+<p style="font-size:14px;color:var(--dim);margin-bottom:10px">
+This page fetches with JSONP, because the endpoint sends no CORS headers. JSONP hides
+the HTTP status code, so the browser only knows that a fetch failed. The real collector
+is a Convex action. It sees the full response. These are real responses, captured with
+curl on 2026-08-19.</p>
+<div id="captures"></div>
+
+<h2>Facts this prototype settled</h2>
+<ul class="facts">
+  <li><span class="mono">publish.twitter.com</span> answers 301 to <span class="mono">publish.x.com</span>. The collector calls the new host directly.</li>
+  <li>A live post answers 200 JSON. The <span class="mono">html</span> field is a blockquote with the full post text, plus one <span class="mono">widgets.js</span> script tag. <span class="mono">omit_script=1</span> removes the script tag, so the page loads it once.</li>
+  <li>A deleted or nonexistent post answers 404 with an HTML error page, not JSON. The collector must branch on the status code before it parses.</li>
+  <li>A broken URL answers 400 JSON: <span class="mono">{"message":"bad url, ..."}</span>.</li>
+  <li>A profile link without a status ID answers 200 with a timeline widget. The lane must reject these before the fetch, or it stores the wrong thing. This page rejects them in the parser.</li>
+  <li>The endpoint accepts <span class="mono">x.com</span>, <span class="mono">twitter.com</span>, and links with tracking params. The parser normalizes all of them to one canonical URL, so one post never stores twice.</li>
+  <li>No CORS, but JSONP works with <span class="mono">callback=</span>. A browser page can fetch live. The spec still routes collection through a Convex action, which is the better place: it sees status codes.</li>
+  <li>If a post dies after we stored it, the stored blockquote keeps the text and the link. Only the hydration to a styled card fails. The stored item stays readable.</li>
+</ul>
+
+<script>
+/* ---------------------------------------------------------------
+   pasteLane: the pure module. No DOM in here. This is the part
+   that lifts into the real collector later.
+   --------------------------------------------------------------- */
+const pasteLane = (() => {
+  const HOSTS = new Set(["x.com", "www.x.com", "twitter.com", "www.twitter.com", "mobile.twitter.com", "mobile.x.com"]);
+
+  // parsePaste(raw) -> {ok:true, statusId, screenName, canonicalUrl}
+  //                 | {ok:false, reason}
+  function parsePaste(raw) {
+    const input = (raw || "").trim();
+    if (!input) return { ok: false, reason: "empty input" };
+    let u;
+    try { u = new URL(input); } catch { return { ok: false, reason: "not a link" }; }
+    if (!HOSTS.has(u.hostname)) return { ok: false, reason: "not an X link (host " + u.hostname + ")" };
+    const m = u.pathname.match(/^\/([A-Za-z0-9_]{1,15})\/status(?:es)?\/(\d+)/);
+    if (!m) return { ok: false, reason: "no status ID in the link. A profile or search link is not a post." };
+    const screenName = m[1], statusId = m[2];
+    return { ok: true, statusId, screenName, canonicalUrl: "https://x.com/" + screenName + "/status/" + statusId };
+  }
+
+  // The inbox store. State: { items: [], rejects: [] }.
+  // An item: { statusId, screenName, pastedUrl, canonicalUrl, state,
+  //            fetchCount, fetchedAt, embed, failure }
+  // item.state: "fetching" | "stored" | "failed"
+  // embed: { authorName, authorUrl, url, html } - the official oEmbed payload,
+  //        cut to what the re-serving policy allows: the ID and the embed.
+  function initialState() { return { items: [], rejects: [] }; }
+
+  function reduce(state, action) {
+    const s = { items: state.items.map(i => ({ ...i })), rejects: state.rejects.slice() };
+    switch (action.type) {
+      case "PASTE": {
+        const p = parsePaste(action.input);
+        if (!p.ok) {
+          s.rejects.unshift({ input: action.input, reason: p.reason });
+          return s;
+        }
+        const existing = s.items.find(i => i.statusId === p.statusId);
+        if (existing) {
+          existing.state = "fetching";
+          existing.fetchCount += 1;
+          existing.failure = null;
+          return s;
+        }
+        s.items.unshift({
+          statusId: p.statusId, screenName: p.screenName,
+          pastedUrl: action.input.trim(), canonicalUrl: p.canonicalUrl,
+          state: "fetching", fetchCount: 1, fetchedAt: null, embed: null, failure: null,
+        });
+        return s;
+      }
+      case "FETCH_OK": {
+        const it = s.items.find(i => i.statusId === action.statusId);
+        if (!it) return s;
+        it.state = "stored";
+        it.fetchedAt = action.at;
+        it.embed = {
+          authorName: action.payload.author_name,
+          authorUrl: action.payload.author_url,
+          url: action.payload.url,
+          html: action.payload.html,
+        };
+        return s;
+      }
+      case "FETCH_FAIL": {
+        const it = s.items.find(i => i.statusId === action.statusId);
+        if (!it) return s;
+        it.state = "failed";
+        it.failure = action.kind;
+        return s;
+      }
+      case "REMOVE": {
+        s.items = s.items.filter(i => i.statusId !== action.statusId);
+        return s;
+      }
+      case "RESET": return initialState();
+      default: return s;
+    }
+  }
+
+  return { parsePaste, initialState, reduce };
+})();
+
+/* ---------------------------------------------------------------
+   Captured real responses (curl, 2026-08-19). Shown so the page
+   can tell the truth about what the backend sees, which JSONP hides.
+   --------------------------------------------------------------- */
+const CAPTURES = [
+  { title: "200 - live post (x.com/jack/status/20)",
+    body: '{"url":"https://x.com/jack/status/20","author_name":"jack",\n "author_url":"https://x.com/jack",\n "html":"<blockquote class=\\"twitter-tweet\\" data-dnt=\\"true\\">\n   <p lang=\\"en\\" dir=\\"ltr\\">just setting up my twttr</p>\n   &mdash; jack (@jack)\n   <a href=\\"https://x.com/jack/status/20?ref_src=twsrc%5Etfw\\">March 21, 2006</a>\n </blockquote>",\n "width":550,"height":null,"type":"rich",\n "cache_age":"3153600000","provider_name":"X",\n "provider_url":"https://x.com","version":"1.0"}' },
+  { title: "404 - deleted or nonexistent post (HTML, not JSON)",
+    body: '<!DOCTYPE html>\n<html lang="en" class="dog">\n  <head>\n    <meta http-equiv="Content-Type" ...>\n    <title>X / ?</title>\n    ...full-screen X error page...\n\nThe collector must check the status code first.\nres.json() on this body throws.' },
+  { title: "400 - broken URL (JSON)",
+    body: '{"message":"bad url, reason: no protocol: not-a-url"}' },
+  { title: "200 - profile link WITHOUT a status ID (the trap)",
+    body: '{"url":"https://x.com/jack","title":"",\n "html":"<a class=\\"twitter-timeline\\" href=\\"https://x.com/jack?ref_src=twsrc%5Etfw\\">Posts by jack</a>...",\n "type":"rich",...}\n\nThe endpoint happily returns a TIMELINE widget.\nThe parser must reject profile links before the fetch.' },
+  { title: "301 - the old host (publish.twitter.com)",
+    body: 'HTTP/2 301\nlocation: https://publish.x.com/oembed?url=...\n\nThe documented host redirects. The collector calls publish.x.com.' },
+];
+
+/* ---------------------------------------------------------------
+   The page shell. Throwaway. Calls into pasteLane, renders state,
+   runs the live JSONP fetches.
+   --------------------------------------------------------------- */
+const EXAMPLES = [
+  { label: "live post (jack, 2006)", value: "https://x.com/jack/status/20" },
+  { label: "live post with an image (Obama)", value: "https://x.com/BarackObama/status/896523232098078720" },
+  { label: "live post, messy link with tracking params", value: "https://twitter.com/elonmusk/status/1519480761749016577?s=46&t=abc123" },
+  { label: "deleted / nonexistent post", value: "https://x.com/jack/status/99999999999999999999" },
+  { label: "profile link, no status ID", value: "https://x.com/jack" },
+  { label: "not a link at all", value: "just some text" },
+];
+
+const SCENARIOS = [
+  { name: "Happy path",
+    blurb: "The owner pastes a live post link. The page fetches oEmbed, stores the ID and the official embed, and renders the card. Watch the item appear as FETCHING, then flip to STORED, then hydrate into a styled card.",
+    steps: [
+      { label: "Reset the inbox", act: () => page.dispatch({ type: "RESET" }) },
+      { label: "Paste https://x.com/jack/status/20", act: () => page.paste("https://x.com/jack/status/20") },
+      { label: "Paste the Obama post (image inside)", act: () => page.paste("https://x.com/BarackObama/status/896523232098078720") },
+    ] },
+  { name: "Deleted post",
+    blurb: "The owner pastes a link to a post that no longer exists. The endpoint answers 404 with an HTML page. This browser page only sees a failed fetch. The item is kept and marked FAILED, so the owner sees what did not make it. Nothing renders, nothing reaches the stream.",
+    steps: [
+      { label: "Reset the inbox", act: () => page.dispatch({ type: "RESET" }) },
+      { label: "Paste a dead post link", act: () => page.paste("https://x.com/jack/status/99999999999999999999") },
+      { label: "Read the 404 capture under 'What the backend sees'", act: () => document.getElementById("captures").scrollIntoView({ behavior: "smooth" }) },
+    ] },
+  { name: "The profile trap",
+    blurb: "A profile link has no status ID, but the endpoint still answers 200, with a timeline widget instead of a post. If the lane fetched first and validated later, it would store the wrong thing. So the parser rejects the link before any fetch happens.",
+    steps: [
+      { label: "Reset the inbox", act: () => page.dispatch({ type: "RESET" }) },
+      { label: "Paste https://x.com/jack (a profile)", act: () => page.paste("https://x.com/jack") },
+      { label: "Paste 'just some text'", act: () => page.paste("just some text") },
+    ] },
+  { name: "Messy links and re-paste",
+    blurb: "Real pasted links carry tracking params and old hosts. The parser normalizes twitter.com and x.com to one canonical URL keyed by the status ID. Pasting the same post twice refetches the one item. It never duplicates.",
+    steps: [
+      { label: "Reset the inbox", act: () => page.dispatch({ type: "RESET" }) },
+      { label: "Paste the messy twitter.com link", act: () => page.paste("https://twitter.com/elonmusk/status/1519480761749016577?s=46&t=abc123") },
+      { label: "Paste the same post as a clean x.com link", act: () => page.paste("https://x.com/elonmusk/status/1519480761749016577") },
+      { label: "See: one item, fetch count 2", act: () => document.getElementById("inbox").scrollIntoView({ behavior: "smooth" }) },
+    ] },
+];
+
+const page = {
+  state: pasteLane.initialState(),
+  scenario: 0,
+  stepDone: 0,
+  widgetsLoaded: false,
+
+  dispatch(action) {
+    this.state = pasteLane.reduce(this.state, action);
+    this.render();
+  },
+
+  pasteFromInput() {
+    const el = document.getElementById("pasteInput");
+    this.paste(el.value);
+    el.value = "";
+  },
+
+  paste(input) {
+    this.dispatch({ type: "PASTE", input });
+    const p = pasteLane.parsePaste(input);
+    if (p.ok) this.fetchOembed(p.statusId, p.canonicalUrl);
+  },
+
+  // Live JSONP fetch against publish.x.com. The real collector does an
+  // HTTP fetch in a Convex action instead, and branches on the status code.
+  fetchOembed(statusId, canonicalUrl) {
+    const cb = "oembed_cb_" + statusId + "_" + Math.floor(Math.random() * 1e9);
+    const script = document.createElement("script");
+    let settled = false;
+    const fail = (kind) => {
+      if (settled) return; settled = true;
+      delete window[cb]; script.remove();
+      this.dispatch({ type: "FETCH_FAIL", statusId, kind });
+    };
+    window[cb] = (payload) => {
+      if (settled) return; settled = true;
+      delete window[cb]; script.remove();
+      this.dispatch({ type: "FETCH_OK", statusId, payload, at: new Date().toISOString() });
+      this.hydrate();
+    };
+    script.onerror = () => fail("fetch failed. JSONP hides the status code. The captured curl shows 404 with an HTML body.");
+    setTimeout(() => fail("timeout after 12s. The endpoint did not answer."), 12000);
+    script.src = "https://publish.x.com/oembed?url=" + encodeURIComponent(canonicalUrl)
+      + "&omit_script=1&dnt=1&theme=dark&callback=" + cb;
+    document.body.appendChild(script);
+  },
+
+  hydrate() {
+    if (!this.widgetsLoaded) {
+      this.widgetsLoaded = true;
+      const s = document.createElement("script");
+      s.src = "https://platform.x.com/widgets.js";
+      s.async = true;
+      document.body.appendChild(s);
+      return; // widgets.js scans the page on load
+    }
+    if (window.twttr && twttr.widgets) twttr.widgets.load(document.getElementById("inbox"));
+  },
+
+  runStep(i) {
+    const sc = SCENARIOS[this.scenario];
+    if (i !== this.stepDone) return;
+    sc.steps[i].act();
+    this.stepDone = i + 1;
+    this.render();
+  },
+
+  pickScenario(i) {
+    this.scenario = i;
+    this.stepDone = 0;
+    this.render();
+  },
+
+  esc(t) { const d = document.createElement("div"); d.textContent = t == null ? "" : String(t); return d.innerHTML; },
+
+  render() {
+    // chips
+    document.getElementById("chips").innerHTML = EXAMPLES.map((e, i) =>
+      '<button onclick="page.paste(EXAMPLES[' + i + '].value)">' + this.esc(e.label) + "</button>").join("");
+
+    // tabs + scenario
+    document.getElementById("tabs").innerHTML = SCENARIOS.map((s, i) =>
+      '<button class="' + (i === this.scenario ? "on" : "") + '" onclick="page.pickScenario(' + i + ')">' + this.esc(s.name) + "</button>").join("");
+    const sc = SCENARIOS[this.scenario];
+    document.getElementById("scenarioBox").innerHTML =
+      "<p>" + this.esc(sc.blurb) + '</p><div class="steps">' +
+      sc.steps.map((st, i) => {
+        const cls = i < this.stepDone ? "done" : (i === this.stepDone ? "next" : "");
+        return '<button class="' + cls + '" onclick="page.runStep(' + i + ')">' + (i + 1) + ". " + this.esc(st.label) + "</button>";
+      }).join("") + "</div>";
+
+    // inbox
+    const box = document.getElementById("inbox");
+    const rejects = this.state.rejects.map(r =>
+      '<div class="rejectLog">Rejected before any fetch: <span class="mono">' + this.esc(r.input) + "</span><br>Reason: " + this.esc(r.reason) + "</div>").join("");
+    const items = this.state.items.map(it => {
+      const badge = '<span class="badge ' + it.state + '">' + it.state.toUpperCase() + "</span>";
+      let fields =
+        "<dt>status ID (the stored key)</dt><dd class='mono'>" + this.esc(it.statusId) + "</dd>" +
+        "<dt>canonical URL</dt><dd class='mono'>" + this.esc(it.canonicalUrl) + "</dd>" +
+        "<dt>pasted as</dt><dd class='mono'>" + this.esc(it.pastedUrl) + "</dd>" +
+        "<dt>fetch count</dt><dd class='mono'>" + it.fetchCount + "</dd>";
+      if (it.embed) fields +=
+        "<dt>author</dt><dd>" + this.esc(it.embed.authorName) + " (<span class='mono'>" + this.esc(it.embed.authorUrl) + "</span>)</dd>" +
+        "<dt>fetched at</dt><dd class='mono'>" + this.esc(it.fetchedAt) + "</dd>" +
+        "<dt>official embed html (stored verbatim)</dt><dd class='big'>" + this.esc(it.embed.html) + "</dd>";
+      if (it.failure) fields += "<dt>failure</dt><dd style='color:var(--red)'>" + this.esc(it.failure) + "</dd>";
+      const embed = it.embed
+        ? '<div class="embed">' + it.embed.html + "</div>"
+        : (it.state === "failed"
+          ? '<div class="note bad" style="margin:10px 12px">Nothing renders. The item stays in the inbox as FAILED, so the owner can see it and remove it.</div>'
+          : "");
+      const remove = '<button onclick="page.dispatch({type:\'REMOVE\',statusId:\'' + it.statusId + '\'})">remove</button>';
+      return '<div class="item"><div class="head"><span class="mono" style="font-size:12px">@' + this.esc(it.screenName) + "/" + this.esc(it.statusId) + "</span><span>" + badge + " " + remove + "</span></div><dl class='fields'>" + fields + "</dl>" + embed + "</div>";
+    }).join("");
+    box.innerHTML = rejects + (items || '<div class="empty">Nothing stored yet. Paste a link or run a walkthrough.</div>');
+    this.hydrate();
+  },
+};
+
+document.getElementById("captures").innerHTML = CAPTURES.map(c =>
+  "<details><summary>" + page.esc(c.title) + "</summary><pre>" + page.esc(c.body) + "</pre></details>").join("");
+document.getElementById("pasteInput").addEventListener("keydown", e => { if (e.key === "Enter") page.pasteFromInput(); });
+page.render();
+</script>
+</body>
+</html>
