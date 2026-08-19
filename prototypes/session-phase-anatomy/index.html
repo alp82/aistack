@@ -234,15 +234,17 @@
   </div>
 </section>
 
-<!-- ················· VIEW 3: the derivation ················· -->
+<!-- ················· VIEW 3: the small print ················· -->
 <section class="journey variant" id="v-derive">
-  <div class="shell">
-    <p class="mono-label kicker-line">// THE DERIVATION</p>
+  <div class="shell" style="max-width:44rem">
+    <p class="mono-label kicker-line">// THE SMALL PRINT</p>
     <p class="lead">
-      One pure pipeline feeds every view: versioned rules classify each recorded tool event,
-      attribution gives each event at most five minutes, and the unknown bucket stays visible.
-      The controls below re-derive the whole page.
+      Fixed rules read the recorded tool events and sort each one into a phase.
+      An event owns at most five minutes. Time no rule can name stays visible as unknown.
+      When the rules improve, the machine reclassifies old sessions from their local records.
     </p>
+    <div class="agg-legend" id="phase-defs" style="margin:0 0 20px"></div>
+    <p class="lead" id="smallprint-line" style="margin-bottom:20px"></p>
     <div class="controls">
       <div class="ctl">
         <span class="k mono-label">rule set</span>
@@ -253,21 +255,11 @@
         <div class="seg-btns" id="ctl-wait"></div>
       </div>
     </div>
-    <div class="box">
-      <p class="mono-label kicker-line" id="rules-title"></p>
-      <p class="lead" style="margin-bottom:6px" id="rules-note"></p>
-      <div id="rules-list"></div>
-    </div>
-    <div class="box block-gap">
-      <p class="mono-label kicker-line">// THE UNKNOWN BUCKET, RANKED</p>
-      <p class="lead" style="margin-bottom:6px">The work list for the next rule-set version.</p>
-      <div id="unk-list"></div>
-    </div>
     <div class="consent">
-      <span class="mono-label">// POLICY, SETTLED IN ROUND 1</span><br>
-      A rule-set bump reclassifies old sessions from their local raw records at the next sync.
-      A session whose raw records are gone keeps its old aggregate, and the page shows the mixed-version tag.
-      Data here: one real session, three hand-made specimens, a generated labeled corpus.
+      <span class="mono-label">// DATA IN THIS PROTOTYPE</span><br>
+      One real session (the session that built this page), three hand-made specimens, and a
+      generated labeled corpus. Raw records never leave the machine. Only owner-approved
+      aggregates sync.
     </div>
   </div>
 </section>
@@ -564,7 +556,7 @@ var SESSIONS = [
   }
 ];
 
-var REAL_EVENTS = [[0,"Bash","gh issue view"],[1,"Bash","gh issue view"],[1,"Bash","ls"],[10,"Bash","gh issue view"],[10,"Bash","wc -l"],[20,"Skill","prototype"],[42,"Read",""],[43,"Read",""],[49,"Bash","wc -l"],[53,"Read",""],[53,"Read",""],[105,"Bash","ls"],[121,"Bash","cd"],[128,"Bash","jq -r"],[136,"Bash","wc -l"],[143,"Bash","node -e"],[202,"Skill","dataviz"],[218,"Bash","cd"],[237,"Bash","cd"],[295,"Write",""],[306,"Bash","node"],[317,"Edit",""],[572,"Write",""],[595,"Bash","cd"],[613,"Bash","node"],[614,"ToolSearch",""],[625,"Edit",""],[632,"Bash","grep -P"],[641,"mcp__curia__open_pull_request",""],[653,"Bash","-m"],[658,"mcp__curia__publish_preview",""],[697,"mcp__curia__ask_human","q6"],[1906,"Bash","cd"],[2196,"Write",""],[2214,"Bash","node -e"],[2235,"Bash","grep -P"],[2242,"mcp__curia__open_pull_request",""],[2275,"mcp__curia__ask_human","q3"],[2864,"Edit",""],[2869,"Bash","node"]];
+var REAL_EVENTS = [[0,"Bash","gh issue view"],[1,"Bash","gh issue view"],[1,"Bash","ls"],[10,"Bash","gh issue view"],[10,"Bash","wc -l"],[20,"Skill","prototype"],[42,"Read",""],[43,"Read",""],[49,"Bash","wc -l"],[53,"Read",""],[53,"Read",""],[105,"Bash","ls"],[121,"Bash","cd"],[128,"Bash","jq -r"],[136,"Bash","wc -l"],[143,"Bash","node -e"],[202,"Skill","dataviz"],[218,"Bash","cd"],[237,"Bash","cd"],[295,"Write",""],[306,"Bash","node"],[317,"Edit",""],[572,"Write",""],[595,"Bash","cd"],[613,"Bash","node"],[614,"ToolSearch",""],[625,"Edit",""],[632,"Bash","grep -P"],[641,"mcp__curia__open_pull_request",""],[653,"Bash","-m"],[658,"mcp__curia__publish_preview",""],[697,"mcp__curia__ask_human","q6"],[1906,"Bash","cd"],[2196,"Write",""],[2214,"Bash","node -e"],[2235,"Bash","grep -P"],[2242,"mcp__curia__open_pull_request",""],[2275,"mcp__curia__ask_human","q3"],[2864,"Edit",""],[2869,"Bash","node"],[3106,"Write",""],[3122,"Bash","node -e"],[3153,"Edit",""],[3155,"Edit",""],[3157,"Edit",""],[3166,"Edit",""],[3170,"Edit",""],[3181,"Bash","node -e"],[3192,"Bash","grep -P"],[3200,"mcp__curia__open_pull_request",""],[3220,"mcp__curia__ask_human","q3"],[3521,"Bash","grep -n"],[3526,"Read",""],[3541,"Edit",""],[3557,"Edit",""],[3567,"Edit",""],[3569,"Bash","node"],[3579,"Bash","cd"]];
 SESSIONS[0].events = REAL_EVENTS;
 
 /* ---------- generated corpus: seeded PRNG, labeled generated ---------- */
@@ -914,33 +906,35 @@ function renderMirror(all) {
 
 /* ---------- view 3: the derivation ---------- */
 function renderDerive(all) {
-  var tax = TAXONOMIES[state.version];
-  document.getElementById('rules-title').textContent = '// THE RULE SET · ' + state.version + ' · first match wins';
-  document.getElementById('rules-note').textContent = tax.note;
-  document.getElementById('rules-list').innerHTML = tax.rules.map(function (r) {
-    return '<div class="rule-line"><span class="rid">' + r.id + '</span>' +
-      '<span class="phase-chip"><i style="background:' + PHASE_COLOR[r.phase] + '"></i>' + r.phase + '</span>' +
-      '<span class="when">' + r.when + '</span></div>';
+  var defs = {
+    orient: 'reading and searching',
+    build: 'changing files',
+    verify: 'tests and review',
+    gate: 'the human loop',
+    waiting: 'parked on an answer',
+    unknown: 'no rule matched'
+  };
+  document.getElementById('phase-defs').innerHTML = PHASE_ORDER.map(function (p) {
+    return '<span><i style="background:' + PHASE_COLOR[p] + '"></i>' + p + ' = ' + defs[p] + '</span>';
   }).join('');
 
+  var covered = 0;
+  PHASE_ORDER.forEach(function (p) { covered += all.by[p]; });
   var unk = {};
   all.per.forEach(function (d) {
     d.rows.forEach(function (r) {
       if (r.ev.phase !== 'unknown') return;
-      var sig = r.ev.tool === 'Bash' ? 'shell: ' + (r.ev.arg || '(empty)') : r.ev.tool + (r.ev.arg ? ': ' + r.ev.arg : '');
+      var sig = r.ev.tool === 'Bash' ? 'shell: ' + (r.ev.arg || '(empty)') : r.ev.tool;
       unk[sig] = (unk[sig] || 0) + 1;
     });
   });
   var top = Object.keys(unk).map(function (k) { return { k: k, n: unk[k] }; })
-    .sort(function (a, b) { return b.n - a.n; }).slice(0, 8);
-  var maxN = top.length ? top[0].n : 1;
-  document.getElementById('unk-list').innerHTML = top.length
-    ? top.map(function (o) {
-        return '<div class="unk-line"><span class="name">' + o.k + '</span>' +
-          '<div class="track"><div class="fill" style="width:' + (100 * o.n / maxN) + '%"></div></div>' +
-          '<span class="cnt">' + o.n + '</span></div>';
-      }).join('')
-    : '<p class="lead" style="margin:0">Empty. Every event matched a rule.</p>';
+    .sort(function (a, b) { return b.n - a.n; }).slice(0, 3).map(function (o) { return o.k; });
+  document.getElementById('smallprint-line').innerHTML =
+    'Right now: <b>' + state.version + '</b> leaves <b>' + pct(all.by.unknown, covered) +
+    '%</b> of the minutes unknown' +
+    (top.length ? ', mostly <b>' + top.join('</b>, <b>') + '</b>.' : '.') +
+    ' That list is the work order for the next rule-set version.';
 }
 
 function render() {
@@ -955,7 +949,7 @@ function render() {
 var VARIANTS = [
   { key: 'playbook', id: 'v-playbook', name: 'the playbook' },
   { key: 'mirror',   id: 'v-mirror',   name: 'the mirror' },
-  { key: 'derive',   id: 'v-derive',   name: 'the derivation' }
+  { key: 'derive',   id: 'v-derive',   name: 'the small print' }
 ];
 var current = 0;
 function show(i) {
