@@ -17,7 +17,7 @@ import { createServer } from "node:http";
 import { createPublicKey, verify } from "node:crypto";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { payloads } from "./payloads.mjs";
+import { reply, patchLeaderboard } from "./routing.mjs";
 
 const PORT = Number(process.env.PORT ?? 9003);
 const PUBLIC_KEY_HEX = process.env.DISCORD_PUBLIC_KEY ?? "";
@@ -48,41 +48,6 @@ function verifySignature(req, rawBody) {
 	} catch {
 		return false;
 	}
-}
-
-const optionValue = (interaction, name) =>
-	interaction.data?.options?.find((o) => o.name === name)?.value;
-
-// The routing a real handler would do, reduced to the showcase cases.
-function reply(interaction) {
-	const command = interaction.data?.name;
-	if (command === "stack" || command === "tokens") {
-		const slug = optionValue(interaction, "stack");
-		if (!slug) return payloads.unlinked;
-		if (slug === "my-cool-stack") return payloads.errorUnknownStack;
-		if (slug === "empty-stack") return payloads.errorNoData;
-		return command === "stack" ? payloads.stack : payloads.tokens;
-	}
-	if (command === "model") {
-		const name = optionValue(interaction, "model");
-		if (name === "gpt-9") return payloads.errorUnknownModel;
-		return payloads.model;
-	}
-	if (command === "link") return payloads.link;
-	return { flags: 64, content: `Unknown command: ${command}` };
-}
-
-// The spec's hosting model: answer type 5 inside the 3-second window, compute,
-// then patch the original reply through the webhook. /leaderboard walks it.
-async function deferThenPatch(interaction) {
-	await new Promise((r) => setTimeout(r, 1500));
-	const url = `https://discord.com/api/v10/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`;
-	const res = await fetch(url, {
-		method: "PATCH",
-		headers: { "content-type": "application/json" },
-		body: JSON.stringify(payloads.leaderboard),
-	});
-	console.log(`patched /leaderboard reply: ${res.status}`);
 }
 
 const json = (res, status, body) => {
@@ -121,7 +86,7 @@ createServer((req, res) => {
 			console.log(`command: /${command}`);
 			if (command === "leaderboard") {
 				json(res, 200, { type: 5 });
-				deferThenPatch(interaction).catch((e) => console.log(`patch failed: ${e}`));
+				patchLeaderboard(interaction).catch((e) => console.log(`patch failed: ${e}`));
 				return;
 			}
 			json(res, 200, { type: 4, data: reply(interaction) });

@@ -9,19 +9,26 @@ No dependencies. Node 20+.
 ## Files
 
 - `payloads.mjs` - one payload per message type. The single source of truth.
-- `server.mjs` - demo page on GET `/`, real interactions endpoint on POST `/interactions`.
-  Verifies the Ed25519 signature, answers the ping, replies to the commands.
-  `/leaderboard` defers and then patches, which walks the spec's hosting model.
+- `routing.mjs` - the command routing, shared by both transports.
+- `gateway.mjs` - receives interactions over the gateway websocket, an outbound
+  connection, so no public URL is needed. The transport used for the showcase.
+- `server.mjs` - demo page on GET `/`, plus the spec's transport: an
+  interactions endpoint on POST `/interactions` with Ed25519 verification.
+  Needs a publicly reachable URL, which this container does not have.
 - `register.mjs` - registers the five commands on one test guild.
 - `post-messages.mjs` - fallback: posts the four public types as plain bot messages.
 - `gen-demo.mjs` - writes `index.html` from `payloads.mjs`.
 - `index.html` - the generated demo page.
 
+`/leaderboard` defers and then patches the reply, which walks the spec's
+hosting model. The rendering in Discord is identical on either transport.
+
 ## Run
 
-1. `DISCORD_PUBLIC_KEY=<hex> PORT=9003 node server.mjs`
-2. Point the Discord app's Interactions Endpoint URL at `<public-url>/interactions`.
-3. `DISCORD_APP_ID=... DISCORD_BOT_TOKEN=... DISCORD_GUILD_ID=... node register.mjs`
+1. `PORT=9003 node server.mjs` serves the demo page.
+2. `DISCORD_APP_ID=... DISCORD_BOT_TOKEN=... DISCORD_GUILD_ID=... node register.mjs`
+3. `DISCORD_BOT_TOKEN=... node gateway.mjs` (leave the app's Interactions
+   Endpoint URL empty, so interactions flow to the gateway).
 4. Type the invocations from the demo page in the test channel.
 
 Secrets stay in the environment. Nothing here stores them.
