@@ -68,3 +68,27 @@ important updates. Every non-transactional send belongs to exactly one category.
 
 **Important updates**:
 The email category for product announcements outside the newsletter.
+
+### Workflow surface
+
+**Pool**:
+The full set of workflow metrics a stack can show. The composed section surfaces a few of
+them and the pool view lists all of them.
+_Avoid_: candidates, extractables
+
+**Metric box**:
+One workflow metric rendered as a number with a label and its source rule.
+
+**Exact metric**:
+A metric the harness records or local Git history proves directly.
+
+**Proxy metric**:
+A metric a versioned matching rule derives from transcript events. Its label names the rule.
+
+**Coverage tag**:
+The label on a metric that names the harnesses it counts, when not all synced harnesses
+record it.
+
+**Workflow draft**:
+LLM prose over approved aggregates. It is labeled as a draft, the owner edits it, and the
+measured facts stay beside it.
