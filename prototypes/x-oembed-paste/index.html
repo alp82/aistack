@@ -87,7 +87,9 @@
   <p>The question: does the owner-paste lane from the news pipeline spec work end to end?
   Paste a real X post link. The page fetches the free oEmbed endpoint live, stores the
   post ID with the official embed, and renders it. The page also shows the failure
-  cases: a deleted post, a profile link, and a broken link.</p>
+  cases: a deleted post and a broken link. Round two adds profile paste: a profile link
+  stores as its own kind, the page renders what X still gives for it, and a captured
+  timeline lets you pick recent posts from the profile.</p>
 </header>
 
 <h2>Paste a link</h2>
@@ -118,7 +120,9 @@ curl on 2026-08-19.</p>
   <li>A live post answers 200 JSON. The <span class="mono">html</span> field is a blockquote with the full post text, plus one <span class="mono">widgets.js</span> script tag. <span class="mono">omit_script=1</span> removes the script tag, so the page loads it once.</li>
   <li>A deleted or nonexistent post answers 404 with an HTML error page, not JSON. The collector must branch on the status code before it parses.</li>
   <li>A broken URL answers 400 JSON: <span class="mono">{"message":"bad url, ..."}</span>.</li>
-  <li>A profile link without a status ID answers 200 with a timeline widget. The lane must reject these before the fetch, or it stores the wrong thing. This page rejects them in the parser.</li>
+  <li>A profile link is accepted too, as its own kind. The endpoint answers 200 with a timeline anchor. A profile link must never pass as a post, or the lane stores the wrong thing.</li>
+  <li>A profile embed cannot show a feed anymore. X cut embedded timelines in 2023, and the data endpoint behind them answers an empty body today. The profile card renders the live answer, so judge it there.</li>
+  <li>Profile paste CAN still simplify the flow another way: an unofficial endpoint returns the last ~100 posts of a profile with IDs and text. Free, rate limited, undocumented. Paste a profile, pick posts from that list, and each pick runs the normal post lane. Whether the pipeline may build on that endpoint is the X research lane question in the spec.</li>
   <li>The endpoint accepts <span class="mono">x.com</span>, <span class="mono">twitter.com</span>, and links with tracking params. The parser normalizes all of them to one canonical URL, so one post never stores twice.</li>
   <li>No CORS, but JSONP works with <span class="mono">callback=</span>. A browser page can fetch live. The spec still routes collection through a Convex action, which is the better place: it sees status codes.</li>
   <li>If a post dies after we stored it, the stored blockquote keeps the text and the link. Only the hydration to a styled card fails. The stored item stays readable.</li>
@@ -132,7 +136,11 @@ curl on 2026-08-19.</p>
 const pasteLane = (() => {
   const HOSTS = new Set(["x.com", "www.x.com", "twitter.com", "www.twitter.com", "mobile.twitter.com", "mobile.x.com"]);
 
-  // parsePaste(raw) -> {ok:true, statusId, screenName, canonicalUrl}
+  // Paths that look like a username but are not one.
+  const RESERVED = new Set(["home", "explore", "search", "notifications", "messages", "settings", "i", "hashtag", "intent", "compose"]);
+
+  // parsePaste(raw) -> {ok:true, kind:"post", key, statusId, screenName, canonicalUrl}
+  //                 | {ok:true, kind:"profile", key, screenName, canonicalUrl}
   //                 | {ok:false, reason}
   function parsePaste(raw) {
     const input = (raw || "").trim();
@@ -140,15 +148,25 @@ const pasteLane = (() => {
     let u;
     try { u = new URL(input); } catch { return { ok: false, reason: "not a link" }; }
     if (!HOSTS.has(u.hostname)) return { ok: false, reason: "not an X link (host " + u.hostname + ")" };
-    const m = u.pathname.match(/^\/([A-Za-z0-9_]{1,15})\/status(?:es)?\/(\d+)/);
-    if (!m) return { ok: false, reason: "no status ID in the link. A profile or search link is not a post." };
-    const screenName = m[1], statusId = m[2];
-    return { ok: true, statusId, screenName, canonicalUrl: "https://x.com/" + screenName + "/status/" + statusId };
+    const post = u.pathname.match(/^\/([A-Za-z0-9_]{1,15})\/status(?:es)?\/(\d+)/);
+    if (post) {
+      const screenName = post[1], statusId = post[2];
+      return { ok: true, kind: "post", key: statusId, statusId, screenName,
+               canonicalUrl: "https://x.com/" + screenName + "/status/" + statusId };
+    }
+    const prof = u.pathname.match(/^\/([A-Za-z0-9_]{1,15})\/?$/);
+    if (prof && !RESERVED.has(prof[1].toLowerCase())) {
+      const screenName = prof[1];
+      return { ok: true, kind: "profile", key: "profile:" + screenName.toLowerCase(),
+               screenName, canonicalUrl: "https://x.com/" + screenName };
+    }
+    return { ok: false, reason: "neither a post nor a profile link" };
   }
 
   // The inbox store. State: { items: [], rejects: [] }.
-  // An item: { statusId, screenName, pastedUrl, canonicalUrl, state,
-  //            fetchCount, fetchedAt, embed, failure }
+  // An item: { key, kind, statusId?, screenName, pastedUrl, canonicalUrl,
+  //            state, fetchCount, fetchedAt, embed, failure }
+  // item.kind: "post" (key = statusId) | "profile" (key = "profile:" + name)
   // item.state: "fetching" | "stored" | "failed"
   // embed: { authorName, authorUrl, url, html } - the official oEmbed payload,
   //        cut to what the re-serving policy allows: the ID and the embed.
@@ -163,7 +181,7 @@ const pasteLane = (() => {
           s.rejects.unshift({ input: action.input, reason: p.reason });
           return s;
         }
-        const existing = s.items.find(i => i.statusId === p.statusId);
+        const existing = s.items.find(i => i.key === p.key);
         if (existing) {
           existing.state = "fetching";
           existing.fetchCount += 1;
@@ -171,34 +189,34 @@ const pasteLane = (() => {
           return s;
         }
         s.items.unshift({
-          statusId: p.statusId, screenName: p.screenName,
+          key: p.key, kind: p.kind, statusId: p.statusId || null, screenName: p.screenName,
           pastedUrl: action.input.trim(), canonicalUrl: p.canonicalUrl,
           state: "fetching", fetchCount: 1, fetchedAt: null, embed: null, failure: null,
         });
         return s;
       }
       case "FETCH_OK": {
-        const it = s.items.find(i => i.statusId === action.statusId);
+        const it = s.items.find(i => i.key === action.key);
         if (!it) return s;
         it.state = "stored";
         it.fetchedAt = action.at;
         it.embed = {
-          authorName: action.payload.author_name,
-          authorUrl: action.payload.author_url,
+          authorName: action.payload.author_name || null,
+          authorUrl: action.payload.author_url || null,
           url: action.payload.url,
           html: action.payload.html,
         };
         return s;
       }
       case "FETCH_FAIL": {
-        const it = s.items.find(i => i.statusId === action.statusId);
+        const it = s.items.find(i => i.key === action.key);
         if (!it) return s;
         it.state = "failed";
         it.failure = action.kind;
         return s;
       }
       case "REMOVE": {
-        s.items = s.items.filter(i => i.statusId !== action.statusId);
+        s.items = s.items.filter(i => i.key !== action.key);
         return s;
       }
       case "RESET": return initialState();
@@ -220,10 +238,16 @@ const CAPTURES = [
     body: '<!DOCTYPE html>\n<html lang="en" class="dog">\n  <head>\n    <meta http-equiv="Content-Type" ...>\n    <title>X / ?</title>\n    ...full-screen X error page...\n\nThe collector must check the status code first.\nres.json() on this body throws.' },
   { title: "400 - broken URL (JSON)",
     body: '{"message":"bad url, reason: no protocol: not-a-url"}' },
-  { title: "200 - profile link WITHOUT a status ID (the trap)",
-    body: '{"url":"https://x.com/jack","title":"",\n "html":"<a class=\\"twitter-timeline\\" href=\\"https://x.com/jack?ref_src=twsrc%5Etfw\\">Posts by jack</a>...",\n "type":"rich",...}\n\nThe endpoint happily returns a TIMELINE widget.\nThe parser must reject profile links before the fetch.' },
+  { title: "200 - profile link WITHOUT a status ID",
+    body: '{"url":"https://x.com/jack","title":"",\n "html":"<a class=\\"twitter-timeline\\" href=\\"https://x.com/jack?ref_src=twsrc%5Etfw\\">Posts by jack</a>...",\n "type":"rich",...}\n\nThe endpoint returns a TIMELINE anchor, not a post.\nA profile is a different thing, so the lane stores it\nas its own kind. It must never pass as a post.' },
   { title: "301 - the old host (publish.twitter.com)",
     body: 'HTTP/2 301\nlocation: https://publish.x.com/oembed?url=...\n\nThe documented host redirects. The collector calls publish.x.com.' },
+  { title: "200, 0 bytes - the official timeline data endpoint is dead",
+    body: 'GET https://cdn.syndication.twimg.com/timeline/profile?screen_name=jack\nHTTP 200, empty body.\n\nThis is the endpoint the embedded timeline widget used\nto fill itself with posts. It answers nothing now, which\nis why a profile embed cannot show a feed anymore.' },
+  { title: "200 - the unofficial timeline page (rate limited)",
+    body: 'GET https://syndication.twitter.com/srv/timeline-profile/screen-name/AnthropicAI\nFirst call: HTTP 429 "Rate limit exceeded".\nRetry: HTTP 200, a 95 KB Next.js page. Its __NEXT_DATA__\nJSON carries the last ~100 timeline entries with id_str,\ncreated_at and full_text.\n\nFree, no auth, undocumented, rate limited. This is the\nsource of the captured recent-posts list on the profile\ncard. Whether the pipeline may build on it is the X\nresearch lane question, not this ticket.' },
+  { title: "200 - single post JSON without auth (tweet-result)",
+    body: 'GET https://cdn.syndication.twimg.com/tweet-result?id=20&token=a\nHTTP 200:\n{"__typename":"Tweet","favorite_count":308612,\n "created_at":"2006-03-21T20:50:14.000Z",\n "id_str":"20","text":"just setting up my twttr",\n "user":{"screen_name":"jack",...},...}\n\nAlso unofficial. Same research-lane question.' },
 ];
 
 /* ---------------------------------------------------------------
@@ -235,9 +259,25 @@ const EXAMPLES = [
   { label: "live post with an image (Obama)", value: "https://x.com/BarackObama/status/896523232098078720" },
   { label: "live post, messy link with tracking params", value: "https://twitter.com/elonmusk/status/1519480761749016577?s=46&t=abc123" },
   { label: "deleted / nonexistent post", value: "https://x.com/jack/status/99999999999999999999" },
-  { label: "profile link, no status ID", value: "https://x.com/jack" },
+  { label: "profile (AnthropicAI)", value: "https://x.com/AnthropicAI" },
+  { label: "profile (jack)", value: "https://x.com/jack" },
   { label: "not a link at all", value: "just some text" },
 ];
+
+// The last posts of a profile, pulled from the unofficial syndication timeline
+// endpoint with curl on 2026-08-19. That endpoint is free but rate limited and
+// undocumented, so the browser cannot call it. Text is cut and cleaned here.
+// A real collector would pull this list in a backend action, if the X research
+// lane clears that endpoint for use.
+const TIMELINE_FIXTURE = {
+  anthropicai: [
+    { id: "2089842395722678689", date: "2026-08-18", text: "We're also publishing a technical report: https://t.co/Ltcqemzn5Z  And open-sourcing our prompts and data here..." },
+    { id: "2089842393218777151", date: "2026-08-18", text: "One of our highest priorities remains launching an access program for scientists to use our most capable model..." },
+    { id: "2089842391918563599", date: "2026-08-18", text: "Importantly, protein binders are not drugs. Designing a high-affinity binder is just the first step in the pro..." },
+    { id: "2088343978873966687", date: "2026-08-14", text: "We've written an FAQ to answer some of the questions we've received about watermarking. In summary: We're..." },
+    { id: "2088324824863236248", date: "2026-08-14", text: "As part of our Responsible Scaling Policy, we publish regular Risk Reports. These share detailed information o..." },
+  ],
+};
 
 const SCENARIOS = [
   { name: "Happy path",
@@ -254,12 +294,13 @@ const SCENARIOS = [
       { label: "Paste a dead post link", act: () => page.paste("https://x.com/jack/status/99999999999999999999") },
       { label: "Read the 404 capture under 'What the backend sees'", act: () => document.getElementById("captures").scrollIntoView({ behavior: "smooth" }) },
     ] },
-  { name: "The profile trap",
-    blurb: "A profile link has no status ID, but the endpoint still answers 200, with a timeline widget instead of a post. If the lane fetched first and validated later, it would store the wrong thing. So the parser rejects the link before any fetch happens.",
+  { name: "Profile paste",
+    blurb: "Round two, after the first review. Paste a profile link. It stores as its own kind, not as a post. The page renders what X still returns for a profile embed. Judge it on this page: since 2023, X has cut embedded timelines down. Then use the captured recent-posts list on the profile card to pick single posts. Each pick runs the normal post lane, live.",
     steps: [
       { label: "Reset the inbox", act: () => page.dispatch({ type: "RESET" }) },
-      { label: "Paste https://x.com/jack (a profile)", act: () => page.paste("https://x.com/jack") },
-      { label: "Paste 'just some text'", act: () => page.paste("just some text") },
+      { label: "Paste https://x.com/AnthropicAI (a profile)", act: () => page.paste("https://x.com/AnthropicAI") },
+      { label: "Pick the first recent post on the profile card", act: () => { const p = TIMELINE_FIXTURE.anthropicai[0]; page.paste("https://x.com/AnthropicAI/status/" + p.id); } },
+      { label: "Paste 'just some text' (still rejected)", act: () => page.paste("just some text") },
     ] },
   { name: "Messy links and re-paste",
     blurb: "Real pasted links carry tracking params and old hosts. The parser normalizes twitter.com and x.com to one canonical URL keyed by the status ID. Pasting the same post twice refetches the one item. It never duplicates.",
@@ -291,24 +332,24 @@ const page = {
   paste(input) {
     this.dispatch({ type: "PASTE", input });
     const p = pasteLane.parsePaste(input);
-    if (p.ok) this.fetchOembed(p.statusId, p.canonicalUrl);
+    if (p.ok) this.fetchOembed(p.key, p.canonicalUrl);
   },
 
   // Live JSONP fetch against publish.x.com. The real collector does an
   // HTTP fetch in a Convex action instead, and branches on the status code.
-  fetchOembed(statusId, canonicalUrl) {
-    const cb = "oembed_cb_" + statusId + "_" + Math.floor(Math.random() * 1e9);
+  fetchOembed(key, canonicalUrl) {
+    const cb = "oembed_cb_" + key.replace(/[^A-Za-z0-9]/g, "_") + "_" + Math.floor(Math.random() * 1e9);
     const script = document.createElement("script");
     let settled = false;
     const fail = (kind) => {
       if (settled) return; settled = true;
       delete window[cb]; script.remove();
-      this.dispatch({ type: "FETCH_FAIL", statusId, kind });
+      this.dispatch({ type: "FETCH_FAIL", key, kind });
     };
     window[cb] = (payload) => {
       if (settled) return; settled = true;
       delete window[cb]; script.remove();
-      this.dispatch({ type: "FETCH_OK", statusId, payload, at: new Date().toISOString() });
+      this.dispatch({ type: "FETCH_OK", key, payload, at: new Date().toISOString() });
       this.hydrate();
     };
     script.onerror = () => fail("fetch failed. JSONP hides the status code. The captured curl shows 404 with an HTML body.");
@@ -369,22 +410,35 @@ const page = {
     const items = this.state.items.map(it => {
       const badge = '<span class="badge ' + it.state + '">' + it.state.toUpperCase() + "</span>";
       let fields =
-        "<dt>status ID (the stored key)</dt><dd class='mono'>" + this.esc(it.statusId) + "</dd>" +
+        "<dt>kind</dt><dd class='mono'>" + this.esc(it.kind) + "</dd>" +
+        (it.kind === "post"
+          ? "<dt>status ID (the stored key)</dt><dd class='mono'>" + this.esc(it.statusId) + "</dd>"
+          : "<dt>stored key</dt><dd class='mono'>" + this.esc(it.key) + "</dd>") +
         "<dt>canonical URL</dt><dd class='mono'>" + this.esc(it.canonicalUrl) + "</dd>" +
         "<dt>pasted as</dt><dd class='mono'>" + this.esc(it.pastedUrl) + "</dd>" +
         "<dt>fetch count</dt><dd class='mono'>" + it.fetchCount + "</dd>";
       if (it.embed) fields +=
-        "<dt>author</dt><dd>" + this.esc(it.embed.authorName) + " (<span class='mono'>" + this.esc(it.embed.authorUrl) + "</span>)</dd>" +
+        (it.embed.authorName ? "<dt>author</dt><dd>" + this.esc(it.embed.authorName) + " (<span class='mono'>" + this.esc(it.embed.authorUrl) + "</span>)</dd>" : "") +
         "<dt>fetched at</dt><dd class='mono'>" + this.esc(it.fetchedAt) + "</dd>" +
         "<dt>official embed html (stored verbatim)</dt><dd class='big'>" + this.esc(it.embed.html) + "</dd>";
       if (it.failure) fields += "<dt>failure</dt><dd style='color:var(--red)'>" + this.esc(it.failure) + "</dd>";
-      const embed = it.embed
+      let embed = it.embed
         ? '<div class="embed">' + it.embed.html + "</div>"
         : (it.state === "failed"
           ? '<div class="note bad" style="margin:10px 12px">Nothing renders. The item stays in the inbox as FAILED, so the owner can see it and remove it.</div>'
           : "");
-      const remove = '<button onclick="page.dispatch({type:\'REMOVE\',statusId:\'' + it.statusId + '\'})">remove</button>';
-      return '<div class="item"><div class="head"><span class="mono" style="font-size:12px">@' + this.esc(it.screenName) + "/" + this.esc(it.statusId) + "</span><span>" + badge + " " + remove + "</span></div><dl class='fields'>" + fields + "</dl>" + embed + "</div>";
+      if (it.kind === "profile" && it.embed) {
+        embed += '<div class="note" style="margin:0 12px 10px">Above is everything the official embed still gives for a profile. X cut embedded timelines down in 2023. What you see here is the live answer, today.</div>';
+        const fx = TIMELINE_FIXTURE[it.screenName.toLowerCase()];
+        embed += fx
+          ? '<div style="padding:0 12px 12px"><div class="mono" style="font-size:11px;color:var(--dim);letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px">Recent posts (captured 2026-08-19, unofficial endpoint)</div><div class="steps">'
+            + fx.map(p => '<button onclick="page.paste(\'https://x.com/' + this.esc(it.screenName) + '/status/' + p.id + '\')">' + this.esc(p.date) + " &middot; " + this.esc(p.text) + "</button>").join("")
+            + "</div></div>"
+          : '<div class="note" style="margin:0 12px 10px">No captured timeline for this profile. The recent-posts list comes from an unofficial, rate-limited endpoint. The browser cannot call it, so this demo carries a capture for AnthropicAI only.</div>';
+      }
+      const remove = '<button onclick="page.dispatch({type:\'REMOVE\',key:\'' + it.key + '\'})">remove</button>';
+      const head = it.kind === "post" ? "@" + this.esc(it.screenName) + "/" + this.esc(it.statusId) : "@" + this.esc(it.screenName) + " (profile)";
+      return '<div class="item"><div class="head"><span class="mono" style="font-size:12px">' + head + "</span><span>" + badge + " " + remove + "</span></div><dl class='fields'>" + fields + "</dl>" + embed + "</div>";
     }).join("");
     box.innerHTML = rejects + (items || '<div class="empty">Nothing stored yet. Paste a link or run a walkthrough.</div>');
     this.hydrate();
