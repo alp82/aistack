@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Prototype · alp82/aistack#186 · the session phase anatomy · round 1</title>
+<!--
+  PROTOTYPE. Throwaway. alp82/aistack#186: the session phase anatomy.
+  ROUND 1. The round-4 workflow-surface bar (PR #171) showed orient, build,
+  verify, gate as a hand-made split. This prototype makes the split real:
+  a versioned rule set classifies recorded tool events, an unknown bucket
+  holds what no rule matches, and the section renders the result.
+
+  Data provenance: hand-extracted, not a live sync. Sources:
+  - one real agent session in this repo: the session that built this very
+    prototype (2026-08-19). Tool names, sanitized command heads, timestamps.
+    No prompt text, no paths, no tool output.
+  - three hand-made sessions, labeled hand-made, shaped after real curia
+    sessions in this repo (a HITL grilling, a tight fix loop, an AFK research
+    sweep).
+
+  Palette note: verify wears the purple chart slot (#9e71fd) here, not the
+  teal of round 4. The dataviz validator failed the green/teal adjacency in
+  the stacked order (normal-vision dE 13.6 < 15). With purple every hue check
+  passes. The unknown bucket is a deliberate neutral gray: it marks absence
+  of identity, so the chroma-floor flag on it is intended.
+-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    color-scheme: dark;
+    --bg-canvas: oklch(0.16 0.008 256);
+    --bg-shell: oklch(0.12 0.01 256);
+    --bg-panel: oklch(0.2 0.009 256);
+    --bg-panel-muted: oklch(0.24 0.009 256);
+    --bg-panel-elevated: oklch(0.28 0.01 256);
+    --fg-primary: oklch(0.96 0.004 256);
+    --fg-secondary: oklch(0.82 0.004 256);
+    --fg-muted: oklch(0.68 0.005 256);
+    --accent-lime: oklch(0.78 0.17 132);
+    --stroke-subtle: oklch(0.55 0.01 256 / 0.45);
+    --stroke-strong: oklch(0.5 0.015 256 / 0.9);
+    /* fixed categorical assignment from the validated chart palette */
+    --ph-orient:  #4278d2;
+    --ph-build:   #69a621;
+    --ph-verify:  #9e71fd;
+    --ph-gate:    #c21977;
+    --ph-unknown: #8a919e;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg-canvas);
+    color: var(--fg-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: 'JetBrains Mono', Menlo, Consolas, monospace; }
+
+  .ticket-strip {
+    background: var(--bg-shell);
+    border-bottom: 1px solid var(--stroke-subtle);
+    padding: 10px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.08em;
+    color: var(--fg-muted); text-transform: uppercase;
+  }
+  .ticket-strip b { color: var(--accent-lime); font-weight: 700; }
+
+  .shell { max-width: 72rem; margin: 0 auto; padding: 0 20px; }
+  section.journey { padding: 40px 0 48px; }
+  section.alt { background: color-mix(in oklab, var(--bg-panel) 30%, var(--bg-canvas)); }
+
+  .mono-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted); }
+  .kicker-line { color: var(--accent-lime); margin: 0 0 12px; }
+  .lead { margin: 0 0 20px; font-size: 14.5px; line-height: 1.6; color: var(--fg-secondary); max-width: 46rem; }
+  .lead b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+  .block-gap { margin-top: 26px; }
+
+  /* ---------- intro ---------- */
+  .intro h1 { font-size: 26px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.01em; margin: 0 0 10px; }
+  .intro p { max-width: 46rem; }
+
+  /* ---------- control strip ---------- */
+  .controls { border: 1px solid var(--stroke-strong); background: var(--bg-panel); padding: 14px 16px; display: flex; flex-wrap: wrap; gap: 18px 28px; }
+  .ctl .k { display: block; margin-bottom: 6px; }
+  .seg-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg-btns button {
+    appearance: none; cursor: pointer;
+    background: var(--bg-canvas); color: var(--fg-secondary);
+    border: 1px solid var(--stroke-subtle);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 7px 10px; min-height: 34px;
+  }
+  .seg-btns button.on { background: var(--accent-lime); color: oklch(0.22 0.02 132); border-color: var(--accent-lime); }
+
+  /* ---------- guided reads ---------- */
+  .reads { margin-top: 14px; }
+  .reads .seg-btns button { text-transform: none; letter-spacing: 0.02em; }
+  .read-note { border: 1px solid var(--stroke-subtle); border-top: 0; background: var(--bg-panel); padding: 12px 16px; font-size: 13px; line-height: 1.6; color: var(--fg-secondary); max-width: 100%; display: none; }
+  .read-note.show { display: block; }
+
+  /* ---------- the aggregate bar ---------- */
+  .agg { border: 1px solid var(--stroke-subtle); padding: 18px; }
+  .agg-strip { display: flex; height: 34px; gap: 2px; margin-top: 14px; }
+  .agg-seg { height: 100%; min-width: 2px; }
+  .agg-legend { display: flex; flex-wrap: wrap; gap: 12px 14px; margin-top: 12px; }
+  .agg-legend span { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-secondary); }
+  .agg-legend i { width: 10px; height: 10px; display: inline-block; flex-shrink: 0; }
+  .agg-note { margin: 14px 0 0; font-size: 13px; line-height: 1.6; color: var(--fg-secondary); }
+  .agg-note b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+  .rules-tag { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; border: 1px solid var(--stroke-subtle); padding: 4px 8px; }
+
+  /* ---------- timelines ---------- */
+  .tl { border: 1px solid var(--stroke-subtle); padding: 18px; }
+  .tl-row { margin-top: 16px; }
+  .tl-row:first-of-type { margin-top: 12px; }
+  .tl-head { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+  .tl-head .name { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--fg-secondary); }
+  .tl-head .meta { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--fg-muted); }
+  .tl-strip { position: relative; height: 20px; background: var(--bg-panel); }
+  .tl-seg { position: absolute; top: 0; height: 100%; }
+
+  /* ---------- transitions ---------- */
+  .flow { border: 1px solid var(--stroke-subtle); padding: 18px; }
+  .flow-row { display: grid; grid-template-columns: 6.4rem 1fr; gap: 12px; align-items: center; margin-top: 12px; }
+  .flow-row .from { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-secondary); display: inline-flex; align-items: center; gap: 6px; }
+  .flow-row .from i { width: 10px; height: 10px; display: inline-block; }
+  .flow-strip { display: flex; height: 16px; gap: 2px; }
+  .flow-strip .seg { min-width: 2px; }
+
+  /* ---------- machine view ---------- */
+  .rulebox { border: 1px solid var(--stroke-subtle); padding: 18px; }
+  .rule-line { display: grid; grid-template-columns: 9.5rem 5.2rem 1fr; gap: 10px; padding: 6px 0; border-top: 1px solid color-mix(in oklab, var(--stroke-subtle) 40%, transparent); font-family: 'JetBrains Mono', monospace; font-size: 11.5px; align-items: baseline; }
+  .rule-line:first-of-type { border-top: 0; }
+  .rule-line .rid { color: var(--fg-muted); overflow-wrap: anywhere; }
+  .rule-line .when { color: var(--fg-secondary); font-family: 'Inter', sans-serif; font-size: 12.5px; }
+  .phase-chip { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-primary); }
+  .phase-chip i { width: 9px; height: 9px; display: inline-block; }
+
+  details.sess { border: 1px solid var(--stroke-subtle); margin-top: 14px; }
+  details.sess summary { cursor: pointer; padding: 12px 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--fg-primary); background: var(--bg-panel); list-style: none; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; }
+  details.sess summary::-webkit-details-marker { display: none; }
+  details.sess summary .src-tag { font-size: 10px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.1em; }
+  .evt-wrap { overflow-x: auto; }
+  table.evt { border-collapse: collapse; width: 100%; min-width: 560px; }
+  table.evt th { text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted); padding: 8px 12px; border-bottom: 1px solid var(--stroke-subtle); }
+  table.evt td { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-secondary); padding: 5px 12px; border-bottom: 1px solid color-mix(in oklab, var(--stroke-subtle) 30%, transparent); white-space: nowrap; }
+  table.evt td.num { text-align: right; }
+
+  .unk { border: 1px solid var(--stroke-subtle); padding: 18px; }
+  .unk-line { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+  .unk-line .name { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--fg-primary); width: 13rem; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .unk-line .track { flex: 1; height: 8px; background: var(--bg-panel); }
+  .unk-line .fill { height: 100%; background: var(--ph-unknown); }
+  .unk-line .cnt { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); width: 2.4rem; text-align: right; }
+
+  .consent { margin-top: 32px; border-top: 1px solid var(--stroke-subtle); padding-top: 14px; font-size: 12px; line-height: 1.6; color: var(--fg-muted); max-width: 46rem; }
+
+  /* ---------- variant switcher (prototype chrome) ---------- */
+  .variant { display: none; }
+  .variant.active { display: block; }
+  .switcher {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+    display: flex; align-items: stretch;
+    background: var(--bg-panel-elevated);
+    border: 2px solid var(--stroke-strong);
+    box-shadow: 4px 4px 0 var(--accent-lime);
+    z-index: 50;
+  }
+  .switcher button { appearance: none; border: 0; background: transparent; color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; width: 46px; height: 46px; cursor: pointer; }
+  .switcher button:active { background: var(--bg-panel-muted); }
+  .switcher .label { display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 11rem; padding: 0 10px; border-left: 2px solid var(--stroke-strong); border-right: 2px solid var(--stroke-strong); }
+  .switcher .label .k { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.18em; color: var(--fg-muted); text-transform: uppercase; }
+  .switcher .label .n { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; color: var(--accent-lime); text-transform: uppercase; }
+  .page-end-pad { height: 90px; }
+</style>
+</head>
+<body>
+
+<div class="ticket-strip">
+  PROTOTYPE · <b>alp82/aistack#186</b> · the session phase anatomy · round 1
+</div>
+
+<section class="journey intro">
+  <div class="shell">
+    <h1>The Session Phase Anatomy</h1>
+    <p class="lead">
+      The round-4 bar split session time into orient, build, verify, and gate. That split was hand-made.
+      This demo makes it real. A <b>versioned rule set</b> reads recorded tool events and gives each event a phase.
+      No rule match puts the event in the <b>unknown</b> bucket, which stays visible.
+      The controls below change the rules and the time attribution. Every chart on this page re-derives live.
+    </p>
+
+    <div class="controls">
+      <div class="ctl">
+        <span class="k mono-label">rule set</span>
+        <div class="seg-btns" id="ctl-version"></div>
+      </div>
+      <div class="ctl">
+        <span class="k mono-label">cap per event</span>
+        <div class="seg-btns" id="ctl-cap"></div>
+      </div>
+      <div class="ctl">
+        <span class="k mono-label">human wait at a gate call</span>
+        <div class="seg-btns" id="ctl-wait"></div>
+      </div>
+    </div>
+
+    <div class="reads">
+      <span class="mono-label" style="display:block; margin-bottom:6px">guided reads · each button sets the controls</span>
+      <div class="seg-btns" id="ctl-reads"></div>
+      <div class="read-note" id="read-note"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ················· VIEW 1: the section, as the stack page would show it ················· -->
+<section class="journey alt variant" id="v-section">
+  <div class="shell">
+
+    <div class="agg">
+      <p class="mono-label kicker-line">// ALL SESSIONS, ANATOMIZED</p>
+      <div class="agg-strip" id="agg-strip"></div>
+      <div class="agg-legend" id="agg-legend"></div>
+      <p class="agg-note" id="agg-note"></p>
+      <div class="rules-tag">
+        <span class="mono-label" id="agg-rules-tag"></span>
+      </div>
+      <p class="agg-note mono-label" id="agg-coverage" style="margin-top:10px"></p>
+    </div>
+
+    <div class="tl block-gap">
+      <p class="mono-label kicker-line">// EACH SESSION, ON ITS OWN CLOCK</p>
+      <p class="lead" style="margin-bottom:0">Every strip is one session, normalized to its own length. The dark gaps are idle time between records.</p>
+      <div id="tl-rows"></div>
+    </div>
+
+    <div class="flow block-gap">
+      <p class="mono-label kicker-line">// WHAT FOLLOWS WHAT</p>
+      <p class="lead" style="margin-bottom:0">Consecutive events of one phase collapse into a run. Each row splits what comes after that phase.</p>
+      <div id="flow-rows"></div>
+    </div>
+
+    <div class="consent">
+      <span class="mono-label">// HOW TO READ THIS</span><br>
+      Shares of attributed minutes, never raw counts. Every figure names its rule-set version.
+      The unknown bucket is part of the bar and never hides. The classifier runs on the machine.
+      Only these aggregates would ever leave it, and only after the owner approves them at the sync gate.
+    </div>
+  </div>
+</section>
+
+<!-- ················· VIEW 2: the machine view (stays local in the real build) ················· -->
+<section class="journey variant" id="v-machine">
+  <div class="shell">
+
+    <div class="rulebox">
+      <p class="mono-label kicker-line" id="rules-title"></p>
+      <p class="lead" style="margin-bottom:6px" id="rules-note"></p>
+      <div id="rules-list"></div>
+    </div>
+
+    <div class="unk block-gap">
+      <p class="mono-label kicker-line">// THE UNKNOWN BUCKET, RANKED</p>
+      <p class="lead" style="margin-bottom:6px">The signals no active rule matches, by event count. This list is the work list for the next rule-set version.</p>
+      <div id="unk-list"></div>
+    </div>
+
+    <div class="block-gap">
+      <p class="mono-label kicker-line">// EVERY EVENT, CLASSIFIED</p>
+      <p class="lead" style="margin-bottom:0">
+        One table per session: the event, the rule that matched, and the seconds the event owns under the current controls.
+        In the real build this table never leaves the machine. The section view ships shares only.
+      </p>
+      <div id="sess-tables"></div>
+    </div>
+
+    <div class="consent">
+      <span class="mono-label">// DERIVATION NOTES</span><br>
+      A subagent call owns only its capped gap here. In the real build the harness records each subagent
+      in its own nested file, so its events classify on their own and the parent call stays thin.
+      A session whose raw records are gone keeps the aggregate of the rule-set version that saw them.
+      The demo marks one hand-made session this way to show the mixed-version coverage line.
+    </div>
+  </div>
+</section>
+
+<div class="page-end-pad"></div>
+
+<div class="switcher" role="navigation" aria-label="variant switcher">
+  <button type="button" id="prev" aria-label="previous view">←</button>
+  <div class="label">
+    <span class="k" id="sw-k">view 1 / 2</span>
+    <span class="n" id="sw-n">the section</span>
+  </div>
+  <button type="button" id="next" aria-label="next view">→</button>
+</div>
+
+<script>
+/* =====================================================================
+   PURE MODULE. The liftable part: taxonomy, classifier, attribution.
+   No DOM in this block.
+===================================================================== */
+
+var PHASE_COLOR = {
+  orient:  'var(--ph-orient)',
+  build:   'var(--ph-build)',
+  verify:  'var(--ph-verify)',
+  gate:    'var(--ph-gate)',
+  waiting: 'repeating-linear-gradient(135deg, rgba(194,25,119,0.5) 0 4px, rgba(194,25,119,0.12) 4px 8px)',
+  unknown: 'var(--ph-unknown)'
+};
+var PHASE_ORDER = ['orient', 'build', 'verify', 'gate', 'waiting', 'unknown'];
+
+/* An event is [tSec, tool, arg]. arg is a sanitized head: a command head for
+   Bash, a skill name for Skill, an agent type for Agent, else empty. */
+
+function cmdIs(arg, heads) {
+  for (var i = 0; i < heads.length; i++) {
+    if (arg === heads[i] || arg.indexOf(heads[i] + ' ') === 0) return true;
+  }
+  return false;
+}
+
+var GATE_TOOLS = ['mcp__curia__ask_human', 'mcp__curia__request_review', 'AskUserQuestion', 'ExitPlanMode'];
+var GATE_SURFACE_TOOLS = ['mcp__curia__open_pull_request', 'mcp__curia__publish_preview', 'mcp__curia__report_result'];
+var ORIENT_TOOLS = ['Read', 'Grep', 'Glob', 'WebFetch', 'WebSearch', 'ToolSearch'];
+var EDIT_TOOLS = ['Edit', 'Write', 'NotebookEdit'];
+var REVIEW_SKILLS = ['code-review', 'security-review', 'review'];
+var ORIENT_AGENTS = ['Explore', 'Plan', 'research'];
+
+var MARKER_RULES = [
+  { id: 'gate.blocking-call',  phase: 'gate',    when: 'a tool that blocks on a human: ask_human, request_review, AskUserQuestion, ExitPlanMode',
+    test: function (tool, arg) { return GATE_TOOLS.indexOf(tool) >= 0; } },
+  { id: 'gate.surface',        phase: 'gate',    when: 'a tool that builds the gate surface: open_pull_request, publish_preview, report_result',
+    test: function (tool, arg) { return GATE_SURFACE_TOOLS.indexOf(tool) >= 0; } },
+  { id: 'verify.review-skill', phase: 'verify',  when: 'a review skill loads: code-review, security-review, review',
+    test: function (tool, arg) { return tool === 'Skill' && REVIEW_SKILLS.indexOf(arg) >= 0; } },
+  { id: 'build.edit-tool',     phase: 'build',   when: 'a file changes: Edit, Write, NotebookEdit',
+    test: function (tool, arg) { return EDIT_TOOLS.indexOf(tool) >= 0; } },
+  { id: 'orient.read-tool',    phase: 'orient',  when: 'a read or search tool: Read, Grep, Glob, WebFetch, WebSearch, ToolSearch',
+    test: function (tool, arg) { return ORIENT_TOOLS.indexOf(tool) >= 0; } },
+  { id: 'orient.skill-load',   phase: 'orient',  when: 'any other skill loads: the agent reads instructions',
+    test: function (tool, arg) { return tool === 'Skill'; } },
+  { id: 'orient.scout-agent',  phase: 'orient',  when: 'a scout subagent starts: Explore, Plan, research',
+    test: function (tool, arg) { return tool === 'Agent' && ORIENT_AGENTS.indexOf(arg) >= 0; } }
+];
+
+var V2_COMMAND_RULES = [
+  { id: 'verify.test-cmd',     phase: 'verify',  when: 'a shell command matches the test list: pnpm test, vitest, tsc, biome, pnpm build, pnpm lint',
+    test: function (tool, arg) { return tool === 'Bash' && cmdIs(arg, ['pnpm test', 'vitest', 'tsc', 'biome', 'pnpm build', 'pnpm lint', 'pnpm typecheck']); } },
+  { id: 'gate.publish-cmd',    phase: 'gate',    when: 'a shell command publishes to the human: git push, gh pr create, gh pr merge',
+    test: function (tool, arg) { return tool === 'Bash' && cmdIs(arg, ['git push', 'gh pr create', 'gh pr merge']); } },
+  { id: 'build.change-cmd',    phase: 'build',   when: 'a shell command changes files or the index: git add, git commit, mkdir, cp, mv, rm, touch, sed, pnpm add',
+    test: function (tool, arg) { return tool === 'Bash' && cmdIs(arg, ['git add', 'git commit', 'mkdir', 'cp', 'mv', 'rm', 'touch', 'sed', 'pnpm add', 'npm install']); } },
+  { id: 'orient.read-cmd',     phase: 'orient',  when: 'a shell command reads: ls, cat, head, tail, wc, grep, rg, find, git log, git show, git diff, git status, gh issue view, gh issue list, gh pr view, gh pr list, curl',
+    test: function (tool, arg) { return tool === 'Bash' && cmdIs(arg, ['ls', 'cat', 'head', 'tail', 'wc', 'grep', 'rg', 'find', 'git log', 'git show', 'git diff', 'git status', 'gh issue view', 'gh issue list', 'gh pr view', 'gh pr list', 'curl']); } },
+  { id: 'gate.notify',         phase: 'gate',    when: 'a status line goes to the human: notify',
+    test: function (tool, arg) { return tool === 'mcp__curia__notify'; } }
+];
+
+var UNKNOWN_RULES = [
+  { id: 'unknown.shell',       phase: 'unknown', when: 'a shell command no rule matches',
+    test: function (tool, arg) { return tool === 'Bash'; } },
+  { id: 'unknown.agent',       phase: 'unknown', when: 'a non-scout subagent: its work classifies from its own records in the real build',
+    test: function (tool, arg) { return tool === 'Agent'; } },
+  { id: 'unknown.tool',        phase: 'unknown', when: 'any other tool',
+    test: function (tool, arg) { return true; } }
+];
+
+var TAXONOMIES = {
+  'phase-rules/v1': {
+    note: 'Tool identity markers only. Command text is not consulted, so every shell call is unknown.',
+    rules: MARKER_RULES.concat(UNKNOWN_RULES)
+  },
+  'phase-rules/v2': {
+    note: 'The v1 markers, plus fixed command-head rules. The heads are matched on the machine.',
+    rules: MARKER_RULES.concat(V2_COMMAND_RULES, UNKNOWN_RULES)
+  }
+};
+
+function classify(events, versionKey) {
+  var rules = TAXONOMIES[versionKey].rules;
+  return events.map(function (e) {
+    for (var i = 0; i < rules.length; i++) {
+      if (rules[i].test(e[1], e[2] || '')) {
+        return { t: e[0], tool: e[1], arg: e[2] || '', rule: rules[i].id, phase: rules[i].phase };
+      }
+    }
+  });
+}
+
+var TAIL_SEC = 60;
+
+/* Attribution: an event owns the gap to the next event, capped. The last event
+   owns the tail. waitPolicy applies to blocking gate tools only:
+   'capped'  the cap applies like everywhere, overflow is idle.
+   'counted' the gate event owns the full gap.
+   'slice'   the gate event owns the cap, overflow becomes the waiting class. */
+function attribute(classified, capSec, waitPolicy) {
+  return classified.map(function (ev, i) {
+    var gap = i + 1 < classified.length ? classified[i + 1].t - ev.t : TAIL_SEC;
+    var cap = capSec === 0 ? gap : Math.min(gap, capSec);
+    var own = cap, waiting = 0;
+    var blocking = GATE_TOOLS.indexOf(ev.tool) >= 0;
+    if (blocking && waitPolicy === 'counted') own = gap;
+    if (blocking && waitPolicy === 'slice') { own = cap; waiting = gap - cap; }
+    return { ev: ev, gapSec: gap, ownSec: own, waitingSec: waiting, idleSec: gap - own - waiting };
+  });
+}
+
+function deriveSession(session, versionKey, capSec, waitPolicy) {
+  var usedVersion = session.rawGone ? 'phase-rules/v1' : versionKey;
+  var rows = attribute(classify(session.events, usedVersion), capSec, waitPolicy);
+  var by = { orient: 0, build: 0, verify: 0, gate: 0, waiting: 0, unknown: 0 };
+  var idle = 0;
+  rows.forEach(function (r) { by[r.ev.phase] += r.ownSec; by.waiting += r.waitingSec; idle += r.idleSec; });
+  var wall = session.events[session.events.length - 1][0] + TAIL_SEC;
+  return { session: session, usedVersion: usedVersion, rows: rows, by: by, idleSec: idle, wallSec: wall,
+           coveredSec: wall - idle };
+}
+
+function deriveAll(sessions, versionKey, capSec, waitPolicy) {
+  var per = sessions.map(function (s) { return deriveSession(s, versionKey, capSec, waitPolicy); });
+  var by = { orient: 0, build: 0, verify: 0, gate: 0, waiting: 0, unknown: 0 };
+  var wall = 0, covered = 0;
+  per.forEach(function (d) {
+    PHASE_ORDER.forEach(function (p) { by[p] += d.by[p]; });
+    wall += d.wallSec; covered += d.coveredSec;
+  });
+  return { per: per, by: by, wallSec: wall, coveredSec: covered };
+}
+
+function transitions(per) {
+  var counts = {};
+  per.forEach(function (d) {
+    var runs = [];
+    d.rows.forEach(function (r) {
+      if (!runs.length || runs[runs.length - 1] !== r.ev.phase) runs.push(r.ev.phase);
+    });
+    for (var i = 0; i + 1 < runs.length; i++) {
+      var key = runs[i] + '>' + runs[i + 1];
+      counts[key] = (counts[key] || 0) + 1;
+    }
+  });
+  return counts;
+}
+
+/* =====================================================================
+   DATA. One real session, three hand-made sessions.
+===================================================================== */
+
+var SESSIONS = [
+  {
+    id: 'real-186',
+    name: 'this very session: the ticket 186 build',
+    source: 'real · extracted from this session’s transcript · 2026-08-19',
+    rawGone: false,
+    events: [] /* REAL_EVENTS is injected below, extracted before commit */
+  },
+  {
+    id: 'hitl-grilling',
+    name: 'a wayfinder grilling, three rounds',
+    source: 'hand-made · shaped after real curia HITL sessions',
+    rawGone: false,
+    events: [
+      [0, 'Bash', 'gh issue view'], [15, 'Bash', 'gh issue view'], [40, 'Read', ''], [70, 'Read', ''],
+      [120, 'Skill', 'grilling'], [150, 'Skill', 'domain-modeling'],
+      [200, 'mcp__curia__ask_human', ''],
+      [1100, 'Read', ''], [1160, 'Bash', 'gh issue view'],
+      [1250, 'mcp__curia__ask_human', ''],
+      [2450, 'Bash', 'git log'], [2500, 'Read', ''],
+      [2560, 'mcp__curia__ask_human', ''],
+      [3400, 'Write', ''], [3700, 'Edit', ''],
+      [3900, 'Bash', 'git add'], [3910, 'Bash', 'git commit'],
+      [3940, 'mcp__curia__open_pull_request', ''],
+      [3980, 'mcp__curia__request_review', ''],
+      [5300, 'Bash', 'gh pr merge'],
+      [5330, 'Bash', 'gh issue comment'], [5360, 'Bash', 'gh issue close'],
+      [5390, 'mcp__curia__report_result', '']
+    ]
+  },
+  {
+    id: 'tight-fix',
+    name: 'a small fix, tight loop',
+    source: 'hand-made · shaped after real curia fix sessions',
+    rawGone: false,
+    events: [
+      [0, 'Bash', 'gh issue view'], [25, 'Read', ''], [60, 'Read', ''], [90, 'Grep', ''],
+      [130, 'Edit', ''], [340, 'Bash', 'pnpm test'],
+      [420, 'Edit', ''], [560, 'Bash', 'pnpm test'],
+      [640, 'Edit', ''], [700, 'Bash', 'pnpm test'],
+      [780, 'Bash', 'git add'], [790, 'Bash', 'git commit'],
+      [820, 'mcp__curia__open_pull_request', ''],
+      [870, 'mcp__curia__request_review', ''],
+      [1310, 'Bash', 'gh pr merge'], [1350, 'mcp__curia__report_result', '']
+    ]
+  },
+  {
+    id: 'afk-research',
+    name: 'an AFK research sweep',
+    source: 'hand-made · raw records gone · aggregate kept at phase-rules/v1',
+    rawGone: true,
+    events: [
+      [0, 'Bash', 'gh issue view'], [30, 'Skill', 'research'],
+      [90, 'WebSearch', ''], [180, 'WebFetch', ''], [360, 'WebFetch', ''], [600, 'Read', ''],
+      [660, 'Agent', 'research'],
+      [1500, 'WebFetch', ''], [1700, 'WebSearch', ''],
+      [1900, 'Write', ''], [2300, 'Edit', ''],
+      [2500, 'Bash', 'git add'], [2510, 'Bash', 'git commit'],
+      [2560, 'mcp__curia__report_result', '']
+    ]
+  }
+];
+
+var REAL_EVENTS = [[0,"Bash","gh issue view"],[1,"Bash","gh issue view"],[1,"Bash","ls"],[10,"Bash","gh issue view"],[10,"Bash","wc -l"],[20,"Skill","prototype"],[42,"Read",""],[43,"Read",""],[49,"Bash","wc -l"],[53,"Read",""],[53,"Read",""],[105,"Bash","ls"],[121,"Bash","cd"],[128,"Bash","jq -r"],[136,"Bash","wc -l"],[143,"Bash","node -e"],[202,"Skill","dataviz"],[218,"Bash","cd"],[237,"Bash","cd"],[295,"Write",""],[306,"Bash","node"],[317,"Edit",""],[572,"Write",""],[595,"Bash","cd"]];
+SESSIONS[0].events = REAL_EVENTS;
+
+/* =====================================================================
+   PAGE. Controls, rendering. Throwaway.
+===================================================================== */
+
+var state = { version: 'phase-rules/v2', cap: 300, wait: 'capped' };
+
+var CTL_DEFS = {
+  version: { el: 'ctl-version', options: [
+    { v: 'phase-rules/v1', label: 'v1 · markers only' },
+    { v: 'phase-rules/v2', label: 'v2 · + command rules' }
+  ]},
+  cap: { el: 'ctl-cap', options: [
+    { v: 120, label: '2 min' }, { v: 300, label: '5 min' }, { v: 0, label: 'none' }
+  ]},
+  wait: { el: 'ctl-wait', options: [
+    { v: 'capped', label: 'capped like all' },
+    { v: 'counted', label: 'counted as gate' },
+    { v: 'slice', label: 'its own slice' }
+  ]}
+};
+
+var READS = [
+  { label: 'the default read', set: { version: 'phase-rules/v2', cap: 300, wait: 'capped' },
+    note: 'Rule set v2, a 5 minute cap, human wait capped. Watch the bar: the unknown segment stays visible, and the coverage line below it says how much wall clock the bar speaks for.' },
+  { label: 'what v1 alone sees', set: { version: 'phase-rules/v1', cap: 300, wait: 'capped' },
+    note: 'Rule set v1 reads tool identity only, so every shell command lands in unknown. The gray segment grows and the version tag changes. One session stays at v1 in every read: its raw records are gone, so v2 can never reclassify it.' },
+  { label: 'the human wait question', set: { version: 'phase-rules/v2', cap: 300, wait: 'counted' },
+    note: 'A blocking gate call now owns its full wait. In the grilling session the human answered one round after 20 minutes, so gate swallows the bar. This is honest wall clock and a distorted work profile at the same time.' },
+  { label: 'waiting as its own slice', set: { version: 'phase-rules/v2', cap: 300, wait: 'slice' },
+    note: 'The wait beyond the cap becomes a striped waiting slice instead of vanishing into idle. The four work phases keep their shape, and the human loop stays visible. This is the candidate answer to the previous read.' }
+];
+
+function fmtMin(sec) { return Math.round(sec / 60) + ' min'; }
+function pct(part, whole) { return whole === 0 ? 0 : Math.round(100 * part / whole); }
+
+function renderControls() {
+  Object.keys(CTL_DEFS).forEach(function (key) {
+    var def = CTL_DEFS[key];
+    var host = document.getElementById(def.el);
+    host.innerHTML = '';
+    def.options.forEach(function (o) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = o.label;
+      b.className = state[key] === o.v ? 'on' : '';
+      b.addEventListener('click', function () { state[key] = o.v; render(); });
+      host.appendChild(b);
+    });
+  });
+  var reads = document.getElementById('ctl-reads');
+  reads.innerHTML = '';
+  READS.forEach(function (r, i) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = r.label;
+    b.className = state.readIdx === i ? 'on' : '';
+    b.addEventListener('click', function () {
+      state.version = r.set.version; state.cap = r.set.cap; state.wait = r.set.wait;
+      state.readIdx = i;
+      render();
+    });
+    reads.appendChild(b);
+  });
+  var note = document.getElementById('read-note');
+  if (state.readIdx !== undefined) {
+    note.className = 'read-note show';
+    note.textContent = READS[state.readIdx].note;
+  } else {
+    note.className = 'read-note';
+  }
+}
+
+function legendHtml(by, total) {
+  return PHASE_ORDER.filter(function (p) { return by[p] > 0; }).map(function (p) {
+    return '<span><i style="background:' + PHASE_COLOR[p] + '"></i>' + p + ' · ' + pct(by[p], total) + '%</span>';
+  }).join('');
+}
+
+function renderSection(all) {
+  var total = 0;
+  PHASE_ORDER.forEach(function (p) { total += all.by[p]; });
+
+  var strip = document.getElementById('agg-strip');
+  strip.innerHTML = PHASE_ORDER.filter(function (p) { return all.by[p] > 0; }).map(function (p) {
+    return '<div class="agg-seg" style="flex:' + all.by[p] + '; background:' + PHASE_COLOR[p] + '" title="' +
+      p + ' · ' + pct(all.by[p], total) + '% · ' + fmtMin(all.by[p]) + '"></div>';
+  }).join('');
+
+  document.getElementById('agg-legend').innerHTML = legendHtml(all.by, total);
+
+  var lead = PHASE_ORDER.slice(0, 4).slice().sort(function (a, b) { return all.by[b] - all.by[a]; })[0];
+  document.getElementById('agg-note').innerHTML =
+    'Attributed minutes across ' + all.per.length + ' sessions, split by what the recorded tools were doing. ' +
+    'The biggest work slice is <b>' + lead + '</b> at <b>' + pct(all.by[lead], total) + '%</b>.';
+
+  var versions = {};
+  all.per.forEach(function (d) { versions[d.usedVersion] = (versions[d.usedVersion] || 0) + 1; });
+  var vkeys = Object.keys(versions).sort();
+  var tag = vkeys.length === 1
+    ? vkeys[0]
+    : vkeys.map(function (v) { return versions[v] + ' of ' + all.per.length + ' sessions under ' + v; }).join(' · ');
+  document.getElementById('agg-rules-tag').textContent = tag;
+
+  document.getElementById('agg-coverage').textContent =
+    'covers ' + fmtMin(all.coveredSec) + ' of ' + fmtMin(all.wallSec) + ' wall clock (' +
+    pct(all.coveredSec, all.wallSec) + '%) · the rest is idle time between records';
+
+  document.getElementById('tl-rows').innerHTML = all.per.map(function (d) {
+    var segs = d.rows.map(function (r) {
+      var parts = [
+        { phase: r.ev.phase, from: r.ev.t, sec: r.ownSec }
+      ];
+      if (r.waitingSec > 0) parts.push({ phase: 'waiting', from: r.ev.t + r.ownSec, sec: r.waitingSec });
+      return parts.map(function (p) {
+        return '<div class="tl-seg" style="left:' + (100 * p.from / d.wallSec) + '%; width:' +
+          Math.max(0.35, 100 * p.sec / d.wallSec) + '%; background:' + PHASE_COLOR[p.phase] + '" title="' +
+          p.phase + ' · ' + r.ev.tool + (r.ev.arg ? ' · ' + r.ev.arg : '') + '"></div>';
+      }).join('');
+    }).join('');
+    return '<div class="tl-row">' +
+      '<div class="tl-head"><span class="name">' + d.session.name + '</span>' +
+      '<span class="meta">' + fmtMin(d.wallSec) + ' · ' + d.session.events.length + ' events · ' + d.usedVersion + '</span></div>' +
+      '<div class="tl-strip">' + segs + '</div></div>';
+  }).join('');
+
+  var counts = transitions(all.per);
+  var phases = ['orient', 'build', 'verify', 'gate', 'unknown'];
+  document.getElementById('flow-rows').innerHTML = phases.map(function (from) {
+    var outs = phases.map(function (to) { return { to: to, n: counts[from + '>' + to] || 0 }; })
+      .filter(function (o) { return o.n > 0; });
+    var sum = outs.reduce(function (a, o) { return a + o.n; }, 0);
+    if (sum === 0) return '';
+    var segs = outs.map(function (o) {
+      return '<div class="seg" style="flex:' + o.n + '; background:' + PHASE_COLOR[o.to] + '" title="after ' +
+        from + ' comes ' + o.to + ' · ' + pct(o.n, sum) + '% · ' + o.n + ' runs"></div>';
+    }).join('');
+    return '<div class="flow-row"><span class="from"><i style="background:' + PHASE_COLOR[from] + '"></i>after ' + from + '</span>' +
+      '<div class="flow-strip">' + segs + '</div></div>';
+  }).join('');
+}
+
+function renderMachine(all) {
+  var tax = TAXONOMIES[state.version];
+  document.getElementById('rules-title').textContent = '// THE RULE SET · ' + state.version + ' · first match wins';
+  document.getElementById('rules-note').textContent = tax.note;
+  document.getElementById('rules-list').innerHTML = tax.rules.map(function (r) {
+    return '<div class="rule-line"><span class="rid">' + r.id + '</span>' +
+      '<span class="phase-chip"><i style="background:' + PHASE_COLOR[r.phase] + '"></i>' + r.phase + '</span>' +
+      '<span class="when">' + r.when + '</span></div>';
+  }).join('');
+
+  var unk = {};
+  all.per.forEach(function (d) {
+    d.rows.forEach(function (r) {
+      if (r.ev.phase !== 'unknown') return;
+      var sig = r.ev.tool === 'Bash' ? 'shell: ' + (r.ev.arg || '(empty)') : r.ev.tool + (r.ev.arg ? ': ' + r.ev.arg : '');
+      unk[sig] = (unk[sig] || 0) + 1;
+    });
+  });
+  var top = Object.keys(unk).map(function (k) { return { k: k, n: unk[k] }; })
+    .sort(function (a, b) { return b.n - a.n; }).slice(0, 10);
+  var maxN = top.length ? top[0].n : 1;
+  document.getElementById('unk-list').innerHTML = top.length
+    ? top.map(function (o) {
+        return '<div class="unk-line"><span class="name">' + o.k + '</span>' +
+          '<div class="track"><div class="fill" style="width:' + (100 * o.n / maxN) + '%"></div></div>' +
+          '<span class="cnt">' + o.n + '</span></div>';
+      }).join('')
+    : '<p class="lead" style="margin:0">Empty. Every event matched a rule.</p>';
+
+  document.getElementById('sess-tables').innerHTML = all.per.map(function (d, i) {
+    var rows = d.rows.map(function (r) {
+      var mm = Math.floor(r.ev.t / 60), ss = ('0' + (r.ev.t % 60)).slice(-2);
+      return '<tr><td class="num">' + mm + ':' + ss + '</td><td>' + r.ev.tool + '</td><td>' + (r.ev.arg || '·') +
+        '</td><td>' + r.ev.rule + '</td><td><span class="phase-chip"><i style="background:' + PHASE_COLOR[r.ev.phase] +
+        '"></i>' + r.ev.phase + '</span></td><td class="num">' + r.ownSec + 's</td><td class="num">' +
+        (r.waitingSec > 0 ? r.waitingSec + 's' : '·') + '</td><td class="num">' +
+        (r.idleSec > 0 ? r.idleSec + 's' : '·') + '</td></tr>';
+    }).join('');
+    return '<details class="sess"' + (i === 0 ? ' open' : '') + '><summary>' + d.session.name +
+      ' <span class="src-tag">' + d.session.source + '</span></summary><div class="evt-wrap">' +
+      '<table class="evt"><thead><tr><th>t</th><th>tool</th><th>head</th><th>rule</th><th>phase</th>' +
+      '<th>owns</th><th>waiting</th><th>idle</th></tr></thead><tbody>' + rows + '</tbody></table></div></details>';
+  }).join('');
+}
+
+function render() {
+  renderControls();
+  var all = deriveAll(SESSIONS, state.version, state.cap, state.wait);
+  renderSection(all);
+  renderMachine(all);
+}
+
+/* variant switcher */
+var VARIANTS = [
+  { key: 'section', id: 'v-section', name: 'the section' },
+  { key: 'machine', id: 'v-machine', name: 'the machine view' }
+];
+var current = 0;
+function show(i) {
+  current = (i + VARIANTS.length) % VARIANTS.length;
+  VARIANTS.forEach(function (v, j) {
+    document.getElementById(v.id).classList.toggle('active', j === current);
+  });
+  document.getElementById('sw-k').textContent = 'view ' + (current + 1) + ' / ' + VARIANTS.length;
+  document.getElementById('sw-n').textContent = VARIANTS[current].name;
+  var url = new URL(window.location.href);
+  url.searchParams.set('variant', VARIANTS[current].key);
+  history.replaceState(null, '', url.toString());
+}
+document.getElementById('prev').addEventListener('click', function () { show(current - 1); });
+document.getElementById('next').addEventListener('click', function () { show(current + 1); });
+document.addEventListener('keydown', function (e) {
+  if (e.target && /^(input|textarea)$/i.test(e.target.tagName)) return;
+  if (e.key === 'ArrowLeft') show(current - 1);
+  if (e.key === 'ArrowRight') show(current + 1);
+});
+
+(function () {
+  var q = new URL(window.location.href).searchParams.get('variant');
+  var idx = VARIANTS.findIndex(function (v) { return v.key === q; });
+  show(idx >= 0 ? idx : 0);
+  render();
+})();
+</script>
+
+</body>
+</html>
