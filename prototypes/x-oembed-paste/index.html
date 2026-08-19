@@ -122,7 +122,7 @@ curl on 2026-08-19.</p>
   <li>A broken URL answers 400 JSON: <span class="mono">{"message":"bad url, ..."}</span>.</li>
   <li>A profile link is accepted too, as its own kind. The endpoint answers 200 with a timeline anchor. A profile link must never pass as a post, or the lane stores the wrong thing.</li>
   <li>A profile embed cannot show a feed anymore. X cut embedded timelines in 2023, and the data endpoint behind them answers an empty body today. The profile card renders the live answer, so judge it there.</li>
-  <li>Profile paste CAN still simplify the flow another way: an unofficial endpoint returns the last ~100 posts of a profile with IDs and text. Free, rate limited, undocumented. The demo server runs that pull live for any pasted profile. Pick posts from the list, and each pick runs the normal post lane. Whether the pipeline may build on that endpoint is the X research lane question, and docs/research/x-profile-posts-2026-08.md weighs the options.</li>
+  <li>Profile paste CAN still simplify the flow: the demo server pulls the last posts of any pasted profile live, and each pick from that list runs the normal post lane. The research file (docs/research/x-profile-posts-2026-08.md) probed every free path. The FxTwitter API is the one that works from a Node runtime, so a Convex action can call it. The unofficial syndication endpoint blocks Node clients by TLS fingerprint (curl passes, Node gets 429), so the demo server shells out to curl for that fallback. All of these are unofficial. Whether the pipeline builds on one is the X research lane decision.</li>
   <li>The endpoint accepts <span class="mono">x.com</span>, <span class="mono">twitter.com</span>, and links with tracking params. The parser normalizes all of them to one canonical URL, so one post never stores twice.</li>
   <li>No CORS, but JSONP works with <span class="mono">callback=</span>. A browser page can fetch live. The spec still routes collection through a Convex action, which is the better place: it sees status codes.</li>
   <li>If a post dies after we stored it, the stored blockquote keeps the text and the link. Only the hydration to a styled card fails. The stored item stays readable.</li>
@@ -359,7 +359,7 @@ const page = {
       .then(r => r.json().then(body => ({ ok: r.ok, body })))
       .then(({ ok, body }) => {
         if (!ok || body.error || !body.posts) return fallback(body.error || "no data");
-        this.timelines[key] = { status: "live", posts: body.posts, cached: Boolean(body.cached) };
+        this.timelines[key] = { status: "live", posts: body.posts, source: body.source || "unknown", cached: Boolean(body.cached) };
         this.render();
       })
       .catch(() => fallback("no live server behind this page"));
@@ -470,7 +470,7 @@ const page = {
         if (!tl || tl.status === "loading") {
           embed += '<div class="note" style="margin:0 12px 10px">Fetching the last posts of this profile live, through the demo server. The unofficial endpoint often answers 429 first, so this can take some retries.</div>';
         } else if (tl.status === "live") {
-          embed += pickList(tl.posts, "Recent posts, fetched LIVE just now (unofficial syndication endpoint" + (tl.cached ? ", server cache" : "") + "). Tap one to run the post lane.");
+          embed += pickList(tl.posts, "Recent posts, fetched LIVE just now via " + this.esc(tl.source) + (tl.cached ? " (server cache)" : "") + ". Tap one to run the post lane.");
         } else if (tl.status === "captured") {
           embed += pickList(tl.posts, "Recent posts (captured 2026-08-19). No live server behind this page, so a canned capture shows.");
         } else {

@@ -49,9 +49,38 @@ async function curlWithRetry(url, tries) {
   return last;
 }
 
-// Primary path: the unofficial syndication timeline page. The __NEXT_DATA__
+// Primary path, per docs/research/x-profile-posts-2026-08.md: the FxTwitter
+// API. Clean JSON, no auth, and it answers plain Node fetch, so a Convex
+// action can call it directly.
+async function fxTwitterPosts(name) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 10000);
+  try {
+    const res = await fetch("https://api.fxtwitter.com/2/profile/" + encodeURIComponent(name) + "/statuses",
+      { headers: { "user-agent": "aistack-news-prototype/1.0" }, signal: ctl.signal });
+    if (res.status !== 200) return { error: "fxtwitter answered " + res.status };
+    const data = await res.json();
+    const posts = (data.results || []).map(t => ({
+      id: t.id,
+      screenName: (t.author && t.author.screen_name) || name,
+      date: t.created_at || null,
+      text: String(t.text || "").slice(0, 200),
+      isReply: Boolean(t.replying_to),
+      isRepost: false,
+    }));
+    posts.sort((a, b) => new Date(b.date) - new Date(a.date));
+    if (!posts.length) return { error: "fxtwitter carried no posts" };
+    return { posts: posts.slice(0, 25), source: "fxtwitter" };
+  } catch (e) {
+    return { error: "fxtwitter: " + String(e && e.message || e) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Fallback: the unofficial syndication timeline page. The __NEXT_DATA__
 // JSON carries the last ~100 timeline entries.
-async function profilePosts(name) {
+async function syndicationPosts(name) {
   const url = "https://syndication.twitter.com/srv/timeline-profile/screen-name/" + encodeURIComponent(name);
   const res = await curlWithRetry(url, 3);
   if (res.status !== 200) return { error: "timeline endpoint answered " + res.status };
@@ -77,7 +106,18 @@ async function profilePosts(name) {
     if (posts.length >= 25) break;
   }
   if (!posts.length) return { error: "the timeline page carried no posts" };
-  return { posts };
+  return { posts, source: "syndication" };
+}
+
+// The cascade the research file recommends: fxtwitter first, syndication
+// as the fallback. Nitter RSS (the third rung there) is left out of the
+// demo: it needs a curl-like client too, and two rungs show the shape.
+async function profilePosts(name) {
+  const primary = await fxTwitterPosts(name);
+  if (!primary.error) return primary;
+  const fallback = await syndicationPosts(name);
+  if (!fallback.error) return fallback;
+  return { error: primary.error + ", then " + fallback.error };
 }
 
 const server = http.createServer(async (req, res) => {
