@@ -1,0 +1,81 @@
+{
+  "anthropic-news": [
+    {
+      "url": "https://www.anthropic.com/news/claude-text-watermark",
+      "headline": "How Claude's text watermarking works",
+      "published": null,
+      "lastmod": "2026-08-15T05:53:01.000Z"
+    },
+    {
+      "url": "https://www.anthropic.com/news/claude-sonnet-5",
+      "headline": "Introducing Claude Sonnet 5",
+      "published": null,
+      "lastmod": "2026-08-10T19:00:15.000Z"
+    },
+    {
+      "url": "https://www.anthropic.com/news/improving-fable-5-s-biology-safeguards",
+      "headline": "Improving Fable 5 Safeguards",
+      "published": null,
+      "lastmod": "2026-08-07T03:05:42.000Z"
+    },
+    {
+      "url": "https://www.anthropic.com/news/tino-cuellar",
+      "headline": "Tino Cuellar joins Anthropic as Chief Global Affairs Officer",
+      "published": null,
+      "lastmod": "2026-08-04T17:40:15.000Z"
+    },
+    {
+      "url": "https://www.anthropic.com/news/claude-for-nonprofits",
+      "headline": "Introducing Claude for Nonprofits",
+      "published": null,
+      "lastmod": "2026-08-03T16:00:43.000Z"
+    }
+  ],
+  "claude-blog": [
+    {
+      "url": "https://claude.com/blog/1m-context",
+      "headline": "Claude Sonnet 4 now supports 1M tokens of context",
+      "published": "Aug 12, 2025"
+    },
+    {
+      "url": "https://claude.com/blog/claude-enterprise-inference-hooks",
+      "headline": "Inference hooks: inline data loss prevention for Claude Enterprise",
+      "published": "Aug 05, 2026"
+    },
+    {
+      "url": "https://claude.com/blog/how-a-non-technical-project-manager-built-and-shipped-a-stress-management-app-with-claude-code-in-six-weeks",
+      "headline": "How a non-technical project manager built and shipped a stress management app with Claude Code in six weeks",
+      "published": "May 01, 2026"
+    },
+    {
+      "url": "https://claude.com/blog/onboarding-claude-code-like-a-new-developer-lessons-from-17-years-of-development",
+      "headline": "Onboarding Claude Code like a new developer: Lessons from 17 years of development",
+      "published": "Apr 28, 2026"
+    },
+    {
+      "url": "https://claude.com/blog/zero-trust-for-ai-agents",
+      "headline": "Zero Trust for AI agents",
+      "published": "May 27, 2026"
+    }
+  ],
+  "gemini-changelog": [
+    {
+      "url": "https://ai.google.dev/gemini-api/docs/changelog?hl=en#08-13-2026",
+      "headline": "Gemini API changelog: August 13, 2026",
+      "date": "2026-08-13",
+      "fullText": "Gemini 3.7 Flash generally available (GA) : Released our most intelligent workhorse model yet for coding and agents: Gemini 3.7 Flash ( gemini-3.7-flash ): Substantial improvements across software engineering, web development, and agentic workflows, available at an introductory price through December 31, 2026. To get started, see the Gemini 3.7 Flash model page and the Latest model guide ."
+    },
+    {
+      "url": "https://ai.google.dev/gemini-api/docs/changelog?hl=en#07-30-2026",
+      "headline": "Gemini API changelog: July 30, 2026",
+      "date": "2026-07-30",
+      "fullText": "Gemini Robotics ER 2 in public preview : Released two new embodied reasoning model endpoints for robotics: gemini-robotics-er-2-preview : Advanced spatial reasoning, agentic code execution, multi-step tool orchestration, video moment finding, progress classification, and multi-robot coordination. gemini-robotics-er-2-streaming-preview : Optimized for real-time text streaming using the Live API, enabling low-latency robot agents with bidirectional audio and video input. Both model endpoints accept text, image, video, and audio inputs and support function calling with blocking behavior for physical robot actions. To get started, see the Gemini Robotics ER overview . For real-time streaming use cases, see Robotics with streaming . Deprecation announcement : The gemini-robotics-er-1.6-preview model will be shut down on August 31, 2026."
+    },
+    {
+      "url": "https://ai.google.dev/gemini-api/docs/changelog?hl=en#07-21-2026",
+      "headline": "Gemini API changelog: July 21, 2026",
+      "date": "2026-07-21",
+      "fullText": "Gemini 3.6 Flash and Gemini 3.5 Flash-Lite generally available (GA) : Released stable, production-ready versions of our latest 3.x Flash models: Gemini 3.6 Flash ( gemini-3.6-flash ): Features improved token efficiency and code/agentic planning capabilities at a lower price point than 3.5 Flash, resolving developer feedback around output verbosity. Gemini 3.5 Flash-Lite ( gemini-3.5-flash-lite ): Offers a low-latency, highly cost-effective subagent option designed for high-volume automation. To learn more, see the Latest Gemini model guide. Deprecated parameters : The sampling parameters temperature , top_p and top_k are now deprecated. See the Latest Gemini Model for details."
+    }
+  ]
+}

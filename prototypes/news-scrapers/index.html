@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototype: news scrapers (alp82/aistack#180)</title>
+<style>
+  :root { --lime: #a3e635; --bg: #0a0a0a; --card: #161616; --line: #2a2a2a; --text: #e5e5e5; --dim: #8a8a8a; }
+  * { box-sizing: border-box; border-radius: 0 !important; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, sans-serif; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 16px; }
+  header { border-bottom: 2px solid var(--lime); padding: 20px 0 14px; margin-bottom: 20px; }
+  header .kicker { font-family: ui-monospace, monospace; color: var(--lime); font-size: 13px; letter-spacing: .06em; }
+  h1 { font-size: 22px; margin: 6px 0 2px; }
+  header .sub { color: var(--dim); font-size: 14px; }
+  .verdict { background: var(--card); border-left: 4px solid var(--lime); padding: 14px 16px; margin-bottom: 20px; }
+  .verdict strong { color: var(--lime); font-family: ui-monospace, monospace; }
+  .card { background: var(--card); border: 1px solid var(--line); padding: 16px; margin-bottom: 20px; }
+  h2 { font-size: 18px; margin: 0 0 2px; }
+  h3 { font-size: 13px; font-family: ui-monospace, monospace; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; margin: 18px 0 8px; }
+  .mech { font-family: ui-monospace, monospace; font-size: 12px; color: var(--bg); background: var(--lime); padding: 2px 6px; vertical-align: middle; margin-left: 6px; }
+  .target { font-family: ui-monospace, monospace; font-size: 12px; color: var(--dim); word-break: break-all; margin-bottom: 8px; }
+  p { margin: 8px 0; font-size: 14.5px; }
+  table.runs { width: 100%; border-collapse: collapse; font-size: 14px; margin: 10px 0; }
+  table.runs th { font-family: ui-monospace, monospace; font-size: 12px; color: var(--lime); text-align: left; vertical-align: top; padding: 6px 10px 6px 0; white-space: nowrap; }
+  table.runs td { padding: 6px 0; border-bottom: 1px solid var(--line); }
+  code { font-family: ui-monospace, monospace; font-size: 12.5px; color: var(--text); background: #222; padding: 1px 4px; word-break: break-all; }
+  .item { border: 1px solid var(--line); padding: 10px 12px; margin-bottom: 8px; }
+  .item-head { font-weight: 600; font-size: 14.5px; }
+  .item-meta { margin-top: 2px; }
+  .date { font-family: ui-monospace, monospace; font-size: 12px; color: var(--lime); }
+  .tag { font-family: ui-monospace, monospace; font-size: 11px; color: var(--dim); border: 1px solid var(--line); padding: 0 4px; }
+  .item-text { font-size: 13.5px; color: #c8c8c8; margin-top: 6px; }
+  .item-url { font-family: ui-monospace, monospace; font-size: 11px; color: var(--dim); word-break: break-all; margin-top: 6px; }
+  ul.findings { padding-left: 18px; font-size: 14.5px; }
+  ul.findings li { margin-bottom: 8px; }
+  footer { color: var(--dim); font-size: 13px; font-family: ui-monospace, monospace; padding: 8px 0 30px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">PROTOTYPE &middot; alp82/aistack#180 &middot; news pipeline, phase 3</div>
+    <h1>Working scrapers: Anthropic news, Claude blog, Gemini changelog</h1>
+    <div class="sub">All data on this page came from the live sites on 2026-08-19. Nothing is mocked.</div>
+  </header>
+
+  <div class="verdict">
+    <strong>VERDICT: all three scrapers work.</strong>
+    <p>Each scraper ran three times against the live pages. The cold run seeds the baseline. The steady run reports zero new items. The detection run finds an entry that the test removed from the stored state, and extracts the real item from the live page.</p>
+  </div>
+
+  
+  <section class="card">
+    <h2>anthropic.com/news <span class="mech">sitemap-diff</span></h2>
+    <div class="target">https://www.anthropic.com/sitemap.xml</div>
+    <p>The scraper reads the sitemap and keeps the /news/ URLs. A URL that was not in the last run is a new item. The scraper then fetches that page and extracts the headline from og:title. The date comes from the sitemap lastmod.</p>
+    <table class="runs">
+      <tr><th>Run 1, cold</th><td>514 sitemap URLs, 255 matched. The run seeds the baseline and emits no items. 328 ms.</td></tr>
+      <tr><th>Run 2, steady</th><td>0 new. The live page did not change. 326 ms.</td></tr>
+      <tr><th>Run 3, detection</th><td>The test dropped <code>https://www.anthropic.com/news/donation-public-first-action</code> from the stored state. The run found it on the live page and emitted 1 new item. 521 ms.</td></tr>
+    </table>
+    <h3>The item from run 3</h3>
+      <div class="item">
+        <div class="item-head">Donating another $20 million to Public First Action</div>
+        <div class="item-meta"><span class="date">2026-07-22T10:14:58.000Z</span> <span class="tag">sitemap lastmod</span></div>
+        
+        <div class="item-url">https://www.anthropic.com/news/donation-public-first-action</div>
+      </div>
+    <h3>Sample items, extracted live</h3>
+      <div class="item">
+        <div class="item-head">How Claude's text watermarking works</div>
+        <div class="item-meta"><span class="date">2026-08-15T05:53:01.000Z</span></div>
+        
+        <div class="item-url">https://www.anthropic.com/news/claude-text-watermark</div>
+      </div>
+      <div class="item">
+        <div class="item-head">Introducing Claude Sonnet 5</div>
+        <div class="item-meta"><span class="date">2026-08-10T19:00:15.000Z</span></div>
+        
+        <div class="item-url">https://www.anthropic.com/news/claude-sonnet-5</div>
+      </div>
+      <div class="item">
+        <div class="item-head">Improving Fable 5 Safeguards</div>
+        <div class="item-meta"><span class="date">2026-08-07T03:05:42.000Z</span></div>
+        
+        <div class="item-url">https://www.anthropic.com/news/improving-fable-5-s-biology-safeguards</div>
+      </div>
+      <div class="item">
+        <div class="item-head">Tino Cuellar joins Anthropic as Chief Global Affairs Officer</div>
+        <div class="item-meta"><span class="date">2026-08-04T17:40:15.000Z</span></div>
+        
+        <div class="item-url">https://www.anthropic.com/news/tino-cuellar</div>
+      </div>
+      <div class="item">
+        <div class="item-head">Introducing Claude for Nonprofits</div>
+        <div class="item-meta"><span class="date">2026-08-03T16:00:43.000Z</span></div>
+        
+        <div class="item-url">https://www.anthropic.com/news/claude-for-nonprofits</div>
+      </div>
+  </section>
+
+  <section class="card">
+    <h2>claude.com/blog <span class="mech">sitemap-diff</span></h2>
+    <div class="target">https://claude.com/sitemap.xml</div>
+    <p>Same mechanism. The filter keeps only default-locale /blog/ URLs, because the sitemap lists five localized copies of each post. The date comes from the JSON-LD datePublished on the article page, because this sitemap has no lastmod.</p>
+    <table class="runs">
+      <tr><th>Run 1, cold</th><td>3415 sitemap URLs, 217 matched. The run seeds the baseline and emits no items. 671 ms.</td></tr>
+      <tr><th>Run 2, steady</th><td>0 new. The live page did not change. 1329 ms.</td></tr>
+      <tr><th>Run 3, detection</th><td>The test dropped <code>https://claude.com/blog/how-a-non-technical-project-manager-built-and-shipped-a-stress-management-app-with-claude-code-in-six-weeks</code> from the stored state. The run found it on the live page and emitted 1 new item. 1128 ms.</td></tr>
+    </table>
+    <h3>The item from run 3</h3>
+      <div class="item">
+        <div class="item-head">How a non-technical project manager built and shipped a stress management app with Claude Code in six weeks</div>
+        <div class="item-meta"><span class="date">May 01, 2026</span> <span class="tag">datePublished</span></div>
+        
+        <div class="item-url">https://claude.com/blog/how-a-non-technical-project-manager-built-and-shipped-a-stress-management-app-with-claude-code-in-six-weeks</div>
+      </div>
+    <h3>Sample items, extracted live</h3>
+      <div class="item">
+        <div class="item-head">Claude Sonnet 4 now supports 1M tokens of context</div>
+        <div class="item-meta"><span class="date">Aug 12, 2025</span></div>
+        
+        <div class="item-url">https://claude.com/blog/1m-context</div>
+      </div>
+      <div class="item">
+        <div class="item-head">Inference hooks: inline data loss prevention for Claude Enterprise</div>
+        <div class="item-meta"><span class="date">Aug 05, 2026</span></div>
+        
+        <div class="item-url">https://claude.com/blog/claude-enterprise-inference-hooks</div>
+      </div>
+      <div class="item">
+        <div class="item-head">How a non-technical project manager built and shipped a stress management app with Claude Code in six weeks</div>
+        <div class="item-meta"><span class="date">May 01, 2026</span></div>
+        
+        <div class="item-url">https://claude.com/blog/how-a-non-technical-project-manager-built-and-shipped-a-stress-management-app-with-claude-code-in-six-weeks</div>
+      </div>
+      <div class="item">
+        <div class="item-head">Onboarding Claude Code like a new developer: Lessons from 17 years of development</div>
+        <div class="item-meta"><span class="date">Apr 28, 2026</span></div>
+        
+        <div class="item-url">https://claude.com/blog/onboarding-claude-code-like-a-new-developer-lessons-from-17-years-of-development</div>
+      </div>
+      <div class="item">
+        <div class="item-head">Zero Trust for AI agents</div>
+        <div class="item-meta"><span class="date">May 27, 2026</span></div>
+        
+        <div class="item-url">https://claude.com/blog/zero-trust-for-ai-agents</div>
+      </div>
+  </section>
+
+  <section class="card">
+    <h2>Gemini API changelog <span class="mech">page-diff</span></h2>
+    <div class="target">https://ai.google.dev/gemini-api/docs/changelog?hl=en</div>
+    <p>The scraper splits the page into sections at each date heading. A section id that was not in the last run is a new item. A changed content hash marks an edited section. The license is CC-BY 4.0, so the item carries the full text with attribution.</p>
+    <table class="runs">
+      <tr><th>Run 1, cold</th><td>106 dated sections. The run seeds the baseline and emits no items. 489 ms.</td></tr>
+      <tr><th>Run 2, steady</th><td>0 new, 0 changed. The live page did not change. 953 ms.</td></tr>
+      <tr><th>Run 3, detection</th><td>The test dropped <code>08-13-2026</code> from the stored state. The run found it on the live page and emitted 1 new item. 457 ms.</td></tr>
+    </table>
+    <h3>The item from run 3</h3>
+      <div class="item">
+        <div class="item-head">Gemini API changelog: August 13, 2026</div>
+        <div class="item-meta"><span class="date">2026-08-13</span> <span class="tag">section heading</span></div>
+        <div class="item-text">Gemini 3.7 Flash generally available (GA) : Released our most intelligent workhorse model yet for coding and agents: Gemini 3.7 Flash ( gemini-3.7-flash ): Substantial improvements across software engineering, web development, and agentic workflows, available at an introductory price through December 31, 2026. To get started, see the Gemini 3.7 Flash model page and the Latest model guide .</div>
+        <div class="item-url">https://ai.google.dev/gemini-api/docs/changelog?hl=en#08-13-2026</div>
+      </div>
+    <h3>Sample items, extracted live</h3>
+      <div class="item">
+        <div class="item-head">Gemini API changelog: August 13, 2026</div>
+        <div class="item-meta"><span class="date">2026-08-13</span></div>
+        <div class="item-text">Gemini 3.7 Flash generally available (GA) : Released our most intelligent workhorse model yet for coding and agents: Gemini 3.7 Flash ( gemini-3.7-flash ): Substantial improvements across software engineering, web development, and agentic workflows, available at an introductory price through December 31, 2026. To get started, see the Gemini 3.7 Flash model page and the Latest model guide .</div>
+        <div class="item-url">https://ai.google.dev/gemini-api/docs/changelog?hl=en#08-13-2026</div>
+      </div>
+      <div class="item">
+        <div class="item-head">Gemini API changelog: July 30, 2026</div>
+        <div class="item-meta"><span class="date">2026-07-30</span></div>
+        <div class="item-text">Gemini Robotics ER 2 in public preview : Released two new embodied reasoning model endpoints for robotics: gemini-robotics-er-2-preview : Advanced spatial reasoning, agentic code execution, multi-step tool orchestration, video moment finding, progress classification, and multi-robot coordination. gemini-robotics-er-2-streaming-preview : Optimized for real-time text streaming using the Live API, enabling low-latency robot agents with bidirectional audio and video input. Both model endpoints accept text, image, video, and audio inputs and support function calling with blocking behavior for physical robot actions. To get started, see the Gemini Robotics ER overview . For real-time streaming use cases, see Robotics with streaming . Deprecation announcement : The gemini-robotics-er-1.6-preview model will be shut down on August 31, 2026.</div>
+        <div class="item-url">https://ai.google.dev/gemini-api/docs/changelog?hl=en#07-30-2026</div>
+      </div>
+      <div class="item">
+        <div class="item-head">Gemini API changelog: July 21, 2026</div>
+        <div class="item-meta"><span class="date">2026-07-21</span></div>
+        <div class="item-text">Gemini 3.6 Flash and Gemini 3.5 Flash-Lite generally available (GA) : Released stable, production-ready versions of our latest 3.x Flash models: Gemini 3.6 Flash ( gemini-3.6-flash ): Features improved token efficiency and code/agentic planning capabilities at a lower price point than 3.5 Flash, resolving developer feedback around output verbosity. Gemini 3.5 Flash-Lite ( gemini-3.5-flash-lite ): Offers a low-latency, highly cost-effective subagent option designed for high-volume automation. To learn more, see the Latest Gemini model guide. Deprecated parameters : The sampling parameters temperature , top_p and top_k are now deprecated. See the Latest Gemini Model for details.</div>
+        <div class="item-url">https://ai.google.dev/gemini-api/docs/changelog?hl=en#07-21-2026</div>
+      </div>
+  </section>
+
+  <section class="card">
+    <h2>Findings for the spec</h2>
+    <ul class="findings">
+      <li><strong>Language pinning is required for the Gemini changelog.</strong> Without <code>?hl=en</code> and an <code>Accept-Language: en</code> header, Google serves a random language. One probe fetch came back machine-translated in Russian, which broke every content hash.</li>
+      <li><strong>Script and style bodies must be stripped before hashing.</strong> The changelog page embeds a per-request analytics blob inside a script tag. Hashing the raw text marked all 106 sections as changed on every run.</li>
+      <li><strong>The claude.com sitemap has no lastmod on blog URLs.</strong> Order and recency are unknown from the sitemap alone. The diff is the only newness signal, and the item date must come from the JSON-LD datePublished on the article page.</li>
+      <li><strong>The claude.com sitemap lists five localized copies of each post.</strong> The filter must keep only <code>claude.com/blog/&lt;slug&gt;</code> URLs, or every post arrives six times.</li>
+      <li><strong>The anthropic.com lastmod is an update time, not a publish time.</strong> Old posts carry fresh lastmod values after site-wide updates. The diff on URL presence is the newness signal. The lastmod only labels the item date, and a page-level datePublished is absent.</li>
+      <li><strong>A cold run must not emit items.</strong> The anthropic sitemap holds 255 news URLs and the changelog holds 106 sections. The first run seeds the baseline silently, or the inbox floods with history.</li>
+      <li><strong>The whole cycle is cheap.</strong> A steady run across all three sources takes under 3 seconds and 3 requests. Extraction adds one request per new item.</li>
+    </ul>
+  </section>
+
+  <footer>
+    prototypes/news-scrapers &middot; node scrape.mjs run | simulate | reset &middot; throwaway code, kept as the record of this ticket
+  </footer>
+</div>
+</body>
+</html>

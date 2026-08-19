@@ -1,0 +1,39 @@
+{
+  "command": "run",
+  "dropped": null,
+  "results": [
+    {
+      "source": "anthropic-news",
+      "mechanism": "sitemap-diff",
+      "url": "https://www.anthropic.com/sitemap.xml",
+      "fetchedAt": "2026-08-19T13:48:23.352Z",
+      "sitemapUrls": 514,
+      "matchedUrls": 255,
+      "coldRun": true,
+      "newItems": [],
+      "ms": 328
+    },
+    {
+      "source": "claude-blog",
+      "mechanism": "sitemap-diff",
+      "url": "https://claude.com/sitemap.xml",
+      "fetchedAt": "2026-08-19T13:48:24.023Z",
+      "sitemapUrls": 3415,
+      "matchedUrls": 217,
+      "coldRun": true,
+      "newItems": [],
+      "ms": 671
+    },
+    {
+      "source": "gemini-changelog",
+      "mechanism": "page-diff",
+      "url": "https://ai.google.dev/gemini-api/docs/changelog?hl=en",
+      "fetchedAt": "2026-08-19T13:48:24.512Z",
+      "sections": 106,
+      "coldRun": true,
+      "newItems": [],
+      "changedItems": [],
+      "ms": 489
+    }
+  ]
+}

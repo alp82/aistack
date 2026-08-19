@@ -1,0 +1,65 @@
+{
+  "command": "simulate",
+  "dropped": {
+    "anthropic-news": "https://www.anthropic.com/news/donation-public-first-action",
+    "claude-blog": "https://claude.com/blog/how-a-non-technical-project-manager-built-and-shipped-a-stress-management-app-with-claude-code-in-six-weeks",
+    "gemini-changelog": "08-13-2026"
+  },
+  "results": [
+    {
+      "source": "anthropic-news",
+      "mechanism": "sitemap-diff",
+      "url": "https://www.anthropic.com/sitemap.xml",
+      "fetchedAt": "2026-08-19T13:48:36.637Z",
+      "sitemapUrls": 514,
+      "matchedUrls": 255,
+      "coldRun": false,
+      "newItems": [
+        {
+          "url": "https://www.anthropic.com/news/donation-public-first-action",
+          "headline": "Donating another $20 million to Public First Action",
+          "date": "2026-07-22T10:14:58.000Z",
+          "dateSource": "sitemap lastmod"
+        }
+      ],
+      "ms": 521
+    },
+    {
+      "source": "claude-blog",
+      "mechanism": "sitemap-diff",
+      "url": "https://claude.com/sitemap.xml",
+      "fetchedAt": "2026-08-19T13:48:37.882Z",
+      "sitemapUrls": 3415,
+      "matchedUrls": 217,
+      "coldRun": false,
+      "newItems": [
+        {
+          "url": "https://claude.com/blog/how-a-non-technical-project-manager-built-and-shipped-a-stress-management-app-with-claude-code-in-six-weeks",
+          "headline": "How a non-technical project manager built and shipped a stress management app with Claude Code in six weeks",
+          "date": "May 01, 2026",
+          "dateSource": "datePublished"
+        }
+      ],
+      "ms": 1128
+    },
+    {
+      "source": "gemini-changelog",
+      "mechanism": "page-diff",
+      "url": "https://ai.google.dev/gemini-api/docs/changelog?hl=en",
+      "fetchedAt": "2026-08-19T13:48:38.420Z",
+      "sections": 106,
+      "coldRun": false,
+      "newItems": [
+        {
+          "url": "https://ai.google.dev/gemini-api/docs/changelog?hl=en#08-13-2026",
+          "headline": "Gemini API changelog: August 13, 2026",
+          "date": "2026-08-13",
+          "dateSource": "section heading",
+          "fullText": "Gemini 3.7 Flash generally available (GA) : Released our most intelligent workhorse model yet for coding and agents: Gemini 3.7 Flash ( gemini-3.7-flash ): Substantial improvements across software engineering, web development, and agentic workflows, available at an introductory price through December 31, 2026. To get started, see the Gemini 3.7 Flash model page and the Latest model guide ."
+        }
+      ],
+      "changedItems": [],
+      "ms": 457
+    }
+  ]
+}
