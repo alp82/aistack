@@ -6,53 +6,75 @@ import { readFileSync, writeFileSync } from 'node:fs';
 const J = (f) => JSON.parse(readFileSync(new URL(`./${f}`, import.meta.url), 'utf8'));
 const run1 = J('run1.json'), run2 = J('run2.json'), run3 = J('run3.json'), showcase = J('showcase.json');
 
-const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\u2014/g, '-');
 
 const SOURCES = [
   {
-    name: 'anthropic-news',
-    title: 'anthropic.com/news',
-    mech: 'sitemap-diff',
+    name: 'anthropic-news', title: 'anthropic.com/news', mech: 'sitemap-diff',
     target: 'https://www.anthropic.com/sitemap.xml',
-    how: 'The scraper reads the sitemap and keeps the /news/ URLs. A URL that was not in the last run is a new item. The scraper then fetches that page and extracts the headline from og:title. The date comes from the sitemap lastmod.',
+    how: 'The scraper reads the sitemap and keeps the /news/ URLs. A URL that was not in the last run is a new item. The scraper fetches that page and takes the headline from og:title. The date comes from the sitemap lastmod.',
   },
   {
-    name: 'claude-blog',
-    title: 'claude.com/blog',
-    mech: 'sitemap-diff',
+    name: 'claude-blog', title: 'claude.com/blog', mech: 'sitemap-diff',
     target: 'https://claude.com/sitemap.xml',
     how: 'Same mechanism. The filter keeps only default-locale /blog/ URLs, because the sitemap lists five localized copies of each post. The date comes from the JSON-LD datePublished on the article page, because this sitemap has no lastmod.',
   },
   {
-    name: 'gemini-changelog',
-    title: 'Gemini API changelog',
-    mech: 'page-diff',
+    name: 'openai-news', title: 'openai.com/news', mech: 'sitemap-diff',
+    target: 'https://openai.com/sitemap.xml (index, 35 children)',
+    how: 'The sitemap is an index. The scraper walks all 35 category children and keeps the /index/ article URLs. Cloudflare refuses every article-page fetch with a 403, on any user agent. The RSS feed passes and holds the full archive, so a new item takes its headline and date from the feed.',
+  },
+  {
+    name: 'nous-hermes', title: 'nousresearch.com (Hermes)', mech: 'sitemap-diff',
+    target: 'https://nousresearch.com/sitemap.xml',
+    how: 'Posts are top-level slugs, and the sitemap does not separate posts from site pages. Every new URL lands in the inbox, and the curation gate absorbs the page noise. The article pages carry og:title and a JSON-LD datePublished.',
+  },
+  {
+    name: 'deepseek-news', title: 'DeepSeek news', mech: 'sitemap-diff',
+    target: 'https://api-docs.deepseek.com/sitemap.xml',
+    how: 'The docs sitemap lists /news/ pages. Article pages carry og:title but no machine-readable date, so a new item is dated first-seen. The slug (newsYYMMDD) confirms the order.',
+  },
+  {
+    name: 'kimi-blog', title: 'Kimi blog (Moonshot AI)', mech: 'link-diff',
+    target: 'https://www.kimi.com/blog',
+    how: 'No Kimi sitemap lists blog URLs, but the blog index is server-rendered. The scraper diffs the set of /blog/ hrefs on the index page. Article pages carry og:title but no date, so a new item is dated first-seen.',
+  },
+  {
+    name: 'gemini-changelog', title: 'Gemini API changelog', mech: 'page-diff',
     target: 'https://ai.google.dev/gemini-api/docs/changelog?hl=en',
-    how: 'The scraper splits the page into sections at each date heading. A section id that was not in the last run is a new item. A changed content hash marks an edited section. The license is CC-BY 4.0, so the item carries the full text with attribution.',
+    how: 'The scraper splits the page into sections at each date heading. A section id that was not in the last run is a new item, and a changed content hash marks an edited section. The license is CC-BY 4.0, so the item carries the full text with attribution.',
+  },
+  {
+    name: 'xai-release-notes', title: 'xAI API release notes (Grok)', mech: 'page-diff',
+    target: 'https://docs.x.ai/developers/release-notes',
+    how: 'x.ai itself refuses every non-browser request with a 403, but the docs site serves plain HTML. Sections are months, not days, so one item stands for a month of API changes. The consumer Grok news on x.ai/news stays out of reach without a browser.',
+  },
+  {
+    name: 'pi-releases', title: 'pi releases (GitHub)', mech: 'feed-diff',
+    target: 'https://github.com/earendil-works/pi/releases.atom',
+    how: 'pi has no blog. Its news surface is GitHub releases, which spec phase 1 already covers with the generic feed poller. It rides here to show the diff mechanism on a feed: a new entry id is a new item. The feed holds only the last 10 entries, so the state keeps every id it has ever seen.',
   },
 ];
 
 const findResult = (run, name) => run.results.find((r) => r.source === name);
 
-const statsRow = (src) => {
-  const r1 = findResult(run1, src.name), r2 = findResult(run2, src.name), r3 = findResult(run3, src.name);
-  const scope = r1.mechanism === 'sitemap-diff'
-    ? `${r1.sitemapUrls} sitemap URLs, ${r1.matchedUrls} matched`
-    : `${r1.sections} dated sections`;
-  return { r1, r2, r3, scope };
+const scopeOf = (r) => {
+  if (r.mechanism === 'page-diff') return `${r.sections} dated sections`;
+  if (r.mechanism === 'feed-diff') return `${r.feedEntries} feed entries`;
+  const child = r.childSitemaps ? ` across ${r.childSitemaps} child sitemaps` : '';
+  return `${r.rawUrls} URLs${child}, ${r.matchedUrls} matched`;
 };
 
 const itemCard = (it) => `
       <div class="item">
         <div class="item-head">${esc(it.headline)}</div>
-        <div class="item-meta"><span class="date">${esc(it.published ?? it.lastmod ?? it.date ?? '')}</span>${it.dateSource ? ` <span class="tag">${esc(it.dateSource)}</span>` : ''}</div>
-        ${it.fullText ? `<div class="item-text">${esc(it.fullText)}${it.fullText.length > 380 ? '' : ''}</div>` : ''}
+        <div class="item-meta"><span class="date">${esc(String(it.published ?? it.lastmod ?? it.date ?? '').slice(0, 10))}</span>${it.dateSource ? ` <span class="tag">${esc(it.dateSource)}</span>` : ''}</div>
+        ${it.fullText ? `<div class="item-text">${esc(it.fullText)}</div>` : ''}
         <div class="item-url">${esc(it.url)}</div>
       </div>`;
 
 const sourceSection = (src) => {
-  const { r1, r2, r3, scope } = statsRow(src);
-  const droppedLabel = run3.dropped[src.name];
+  const r1 = findResult(run1, src.name), r2 = findResult(run2, src.name), r3 = findResult(run3, src.name);
   const detected = r3.newItems.map(itemCard).join('');
   const sample = (showcase[src.name] ?? []).map(itemCard).join('');
   return `
@@ -61,9 +83,9 @@ const sourceSection = (src) => {
     <div class="target">${esc(src.target)}</div>
     <p>${esc(src.how)}</p>
     <table class="runs">
-      <tr><th>Run 1, cold</th><td>${esc(scope)}. The run seeds the baseline and emits no items. ${r1.ms} ms.</td></tr>
+      <tr><th>Run 1, cold</th><td>${esc(scopeOf(r1))}. The run seeds the baseline and emits no items. ${r1.ms} ms.</td></tr>
       <tr><th>Run 2, steady</th><td>0 new${'changedItems' in r2 ? ', 0 changed' : ''}. The live page did not change. ${r2.ms} ms.</td></tr>
-      <tr><th>Run 3, detection</th><td>The test dropped <code>${esc(droppedLabel)}</code> from the stored state. The run found it on the live page and emitted ${r3.newItems.length} new item. ${r3.ms} ms.</td></tr>
+      <tr><th>Run 3, detection</th><td>The test dropped <code>${esc(run3.dropped[src.name])}</code> from the stored state. The run found it on the live page and emitted ${r3.newItems.length} new item. ${r3.ms} ms.</td></tr>
     </table>
     <h3>The item from run 3</h3>${detected}
     <h3>Sample items, extracted live</h3>${sample}
@@ -90,7 +112,7 @@ const html = `<!doctype html>
   .card { background: var(--card); border: 1px solid var(--line); padding: 16px; margin-bottom: 20px; }
   h2 { font-size: 18px; margin: 0 0 2px; }
   h3 { font-size: 13px; font-family: ui-monospace, monospace; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; margin: 18px 0 8px; }
-  .mech { font-family: ui-monospace, monospace; font-size: 12px; color: var(--bg); background: var(--lime); padding: 2px 6px; vertical-align: middle; margin-left: 6px; }
+  .mech { font-family: ui-monospace, monospace; font-size: 12px; color: var(--bg); background: var(--lime); padding: 2px 6px; vertical-align: middle; margin-left: 6px; white-space: nowrap; }
   .target { font-family: ui-monospace, monospace; font-size: 12px; color: var(--dim); word-break: break-all; margin-bottom: 8px; }
   p { margin: 8px 0; font-size: 14.5px; }
   table.runs { width: 100%; border-collapse: collapse; font-size: 14px; margin: 10px 0; }
@@ -112,14 +134,14 @@ const html = `<!doctype html>
 <body>
 <div class="wrap">
   <header>
-    <div class="kicker">PROTOTYPE &middot; alp82/aistack#180 &middot; news pipeline, phase 3</div>
-    <h1>Working scrapers: Anthropic news, Claude blog, Gemini changelog</h1>
-    <div class="sub">All data on this page came from the live sites on ${esc(run1.results[0].fetchedAt.slice(0, 10))}. Nothing is mocked.</div>
+    <div class="kicker">PROTOTYPE &middot; alp82/aistack#180 &middot; news pipeline scrapers</div>
+    <h1>Working scrapers for nine vendor news sources</h1>
+    <div class="sub">All data on this page came from the live sites on ${esc(run1.results[0].fetchedAt.slice(0, 10))}. Nothing is mocked. The first review round covered Anthropic, Claude and Gemini. This round adds OpenAI, Grok/xAI, pi, Hermes, DeepSeek and Kimi per operator request.</div>
   </header>
 
   <div class="verdict">
-    <strong>VERDICT: all three scrapers work.</strong>
-    <p>Each scraper ran three times against the live pages. The cold run seeds the baseline. The steady run reports zero new items. The detection run finds an entry that the test removed from the stored state, and extracts the real item from the live page.</p>
+    <strong>VERDICT: all nine scrapers work.</strong>
+    <p>Each scraper ran three times against the live pages. The cold run seeds the baseline. The steady run reports zero new items. The detection run finds an entry that the test removed from the stored state, and extracts the real item from the live page. Two sources needed a workaround: OpenAI article pages are bot-blocked (the RSS archive fills the gap), and x.ai is fully bot-blocked (the docs site serves the API release notes).</p>
   </div>
 
   ${SOURCES.map(sourceSection).join('\n')}
@@ -127,13 +149,18 @@ const html = `<!doctype html>
   <section class="card">
     <h2>Findings for the spec</h2>
     <ul class="findings">
+      <li><strong>The honest bot user agent beats a faked browser.</strong> Every source accepts <code>aistack-news-collector-prototype</code>. A faked full Chrome user agent breaks ai.google.dev with an endless redirect loop.</li>
+      <li><strong>OpenAI needs no scraper.</strong> Cloudflare refuses every article-page fetch (403 on any user agent), but the RSS feed passes and holds the full archive of 1139 items with titles and dates. The phase-1 feed poller covers OpenAI completely. The sitemap-diff still works as a detector and enriches from the feed.</li>
+      <li><strong>x.ai blocks all non-browser clients.</strong> Every path on x.ai answers 403. The docs site (docs.x.ai) serves plain HTML, so the API release notes are the scrapeable xAI surface. Consumer Grok news needs a browser or stays manual.</li>
       <li><strong>Language pinning is required for the Gemini changelog.</strong> Without <code>?hl=en</code> and an <code>Accept-Language: en</code> header, Google serves a random language. One probe fetch came back machine-translated in Russian, which broke every content hash.</li>
       <li><strong>Script and style bodies must be stripped before hashing.</strong> The changelog page embeds a per-request analytics blob inside a script tag. Hashing the raw text marked all 106 sections as changed on every run.</li>
-      <li><strong>The claude.com sitemap has no lastmod on blog URLs.</strong> Order and recency are unknown from the sitemap alone. The diff is the only newness signal, and the item date must come from the JSON-LD datePublished on the article page.</li>
-      <li><strong>The claude.com sitemap lists five localized copies of each post.</strong> The filter must keep only <code>claude.com/blog/&lt;slug&gt;</code> URLs, or every post arrives six times.</li>
-      <li><strong>The anthropic.com lastmod is an update time, not a publish time.</strong> Old posts carry fresh lastmod values after site-wide updates. The diff on URL presence is the newness signal. The lastmod only labels the item date, and a page-level datePublished is absent.</li>
-      <li><strong>A cold run must not emit items.</strong> The anthropic sitemap holds 255 news URLs and the changelog holds 106 sections. The first run seeds the baseline silently, or the inbox floods with history.</li>
-      <li><strong>The whole cycle is cheap.</strong> A steady run across all three sources takes under 3 seconds and 3 requests. Extraction adds one request per new item.</li>
+      <li><strong>The claude.com sitemap has no lastmod and lists five localized copies of each post.</strong> The filter keeps only default-locale URLs, and the item date must come from the JSON-LD datePublished on the article page.</li>
+      <li><strong>The anthropic.com lastmod is an update time, not a publish time.</strong> The diff on URL presence is the newness signal, and the lastmod only labels the item date.</li>
+      <li><strong>DeepSeek and Kimi article pages carry no machine-readable date.</strong> Their items are dated first-seen, which is accurate from the second collector run on.</li>
+      <li><strong>The Nous sitemap does not separate posts from site pages.</strong> A new site page lands in the inbox as noise, and the curation gate (owner approves or discards) absorbs it.</li>
+      <li><strong>pi belongs to the phase-1 feed poller.</strong> It has no blog. GitHub releases.atom is its news surface, shown here as a feed-diff. The feed holds only 10 entries, so the state must keep every id it has ever seen.</li>
+      <li><strong>A cold run must not emit items.</strong> The nine baselines hold about 1500 historical entries (1085 OpenAI articles alone). The first run seeds the baseline silently, or the inbox floods.</li>
+      <li><strong>The whole cycle is cheap.</strong> A steady run across all nine sources is 43 requests and about 17 seconds, dominated by the 35-child OpenAI sitemap walk. Every other source is one request.</li>
     </ul>
   </section>
 

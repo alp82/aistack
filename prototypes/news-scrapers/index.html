@@ -18,7 +18,7 @@
   .card { background: var(--card); border: 1px solid var(--line); padding: 16px; margin-bottom: 20px; }
   h2 { font-size: 18px; margin: 0 0 2px; }
   h3 { font-size: 13px; font-family: ui-monospace, monospace; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; margin: 18px 0 8px; }
-  .mech { font-family: ui-monospace, monospace; font-size: 12px; color: var(--bg); background: var(--lime); padding: 2px 6px; vertical-align: middle; margin-left: 6px; }
+  .mech { font-family: ui-monospace, monospace; font-size: 12px; color: var(--bg); background: var(--lime); padding: 2px 6px; vertical-align: middle; margin-left: 6px; white-space: nowrap; }
   .target { font-family: ui-monospace, monospace; font-size: 12px; color: var(--dim); word-break: break-all; margin-bottom: 8px; }
   p { margin: 8px 0; font-size: 14.5px; }
   table.runs { width: 100%; border-collapse: collapse; font-size: 14px; margin: 10px 0; }
@@ -40,63 +40,51 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="kicker">PROTOTYPE &middot; alp82/aistack#180 &middot; news pipeline, phase 3</div>
-    <h1>Working scrapers: Anthropic news, Claude blog, Gemini changelog</h1>
-    <div class="sub">All data on this page came from the live sites on 2026-08-19. Nothing is mocked.</div>
+    <div class="kicker">PROTOTYPE &middot; alp82/aistack#180 &middot; news pipeline scrapers</div>
+    <h1>Working scrapers for nine vendor news sources</h1>
+    <div class="sub">All data on this page came from the live sites on 2026-08-19. Nothing is mocked. The first review round covered Anthropic, Claude and Gemini. This round adds OpenAI, Grok/xAI, pi, Hermes, DeepSeek and Kimi per operator request.</div>
   </header>
 
   <div class="verdict">
-    <strong>VERDICT: all three scrapers work.</strong>
-    <p>Each scraper ran three times against the live pages. The cold run seeds the baseline. The steady run reports zero new items. The detection run finds an entry that the test removed from the stored state, and extracts the real item from the live page.</p>
+    <strong>VERDICT: all nine scrapers work.</strong>
+    <p>Each scraper ran three times against the live pages. The cold run seeds the baseline. The steady run reports zero new items. The detection run finds an entry that the test removed from the stored state, and extracts the real item from the live page. Two sources needed a workaround: OpenAI article pages are bot-blocked (the RSS archive fills the gap), and x.ai is fully bot-blocked (the docs site serves the API release notes).</p>
   </div>
 
   
   <section class="card">
     <h2>anthropic.com/news <span class="mech">sitemap-diff</span></h2>
     <div class="target">https://www.anthropic.com/sitemap.xml</div>
-    <p>The scraper reads the sitemap and keeps the /news/ URLs. A URL that was not in the last run is a new item. The scraper then fetches that page and extracts the headline from og:title. The date comes from the sitemap lastmod.</p>
+    <p>The scraper reads the sitemap and keeps the /news/ URLs. A URL that was not in the last run is a new item. The scraper fetches that page and takes the headline from og:title. The date comes from the sitemap lastmod.</p>
     <table class="runs">
-      <tr><th>Run 1, cold</th><td>514 sitemap URLs, 255 matched. The run seeds the baseline and emits no items. 328 ms.</td></tr>
-      <tr><th>Run 2, steady</th><td>0 new. The live page did not change. 326 ms.</td></tr>
-      <tr><th>Run 3, detection</th><td>The test dropped <code>https://www.anthropic.com/news/donation-public-first-action</code> from the stored state. The run found it on the live page and emitted 1 new item. 521 ms.</td></tr>
+      <tr><th>Run 1, cold</th><td>514 URLs, 255 matched. The run seeds the baseline and emits no items. 314 ms.</td></tr>
+      <tr><th>Run 2, steady</th><td>0 new. The live page did not change. 310 ms.</td></tr>
+      <tr><th>Run 3, detection</th><td>The test dropped <code>https://www.anthropic.com/news/donation-public-first-action</code> from the stored state. The run found it on the live page and emitted 1 new item. 550 ms.</td></tr>
     </table>
     <h3>The item from run 3</h3>
       <div class="item">
         <div class="item-head">Donating another $20 million to Public First Action</div>
-        <div class="item-meta"><span class="date">2026-07-22T10:14:58.000Z</span> <span class="tag">sitemap lastmod</span></div>
+        <div class="item-meta"><span class="date">2026-07-22</span> <span class="tag">sitemap lastmod</span></div>
         
         <div class="item-url">https://www.anthropic.com/news/donation-public-first-action</div>
       </div>
     <h3>Sample items, extracted live</h3>
       <div class="item">
         <div class="item-head">How Claude's text watermarking works</div>
-        <div class="item-meta"><span class="date">2026-08-15T05:53:01.000Z</span></div>
+        <div class="item-meta"><span class="date">2026-08-15</span></div>
         
         <div class="item-url">https://www.anthropic.com/news/claude-text-watermark</div>
       </div>
       <div class="item">
         <div class="item-head">Introducing Claude Sonnet 5</div>
-        <div class="item-meta"><span class="date">2026-08-10T19:00:15.000Z</span></div>
+        <div class="item-meta"><span class="date">2026-08-10</span></div>
         
         <div class="item-url">https://www.anthropic.com/news/claude-sonnet-5</div>
       </div>
       <div class="item">
         <div class="item-head">Improving Fable 5 Safeguards</div>
-        <div class="item-meta"><span class="date">2026-08-07T03:05:42.000Z</span></div>
+        <div class="item-meta"><span class="date">2026-08-07</span></div>
         
         <div class="item-url">https://www.anthropic.com/news/improving-fable-5-s-biology-safeguards</div>
-      </div>
-      <div class="item">
-        <div class="item-head">Tino Cuellar joins Anthropic as Chief Global Affairs Officer</div>
-        <div class="item-meta"><span class="date">2026-08-04T17:40:15.000Z</span></div>
-        
-        <div class="item-url">https://www.anthropic.com/news/tino-cuellar</div>
-      </div>
-      <div class="item">
-        <div class="item-head">Introducing Claude for Nonprofits</div>
-        <div class="item-meta"><span class="date">2026-08-03T16:00:43.000Z</span></div>
-        
-        <div class="item-url">https://www.anthropic.com/news/claude-for-nonprofits</div>
       </div>
   </section>
 
@@ -105,58 +93,194 @@
     <div class="target">https://claude.com/sitemap.xml</div>
     <p>Same mechanism. The filter keeps only default-locale /blog/ URLs, because the sitemap lists five localized copies of each post. The date comes from the JSON-LD datePublished on the article page, because this sitemap has no lastmod.</p>
     <table class="runs">
-      <tr><th>Run 1, cold</th><td>3415 sitemap URLs, 217 matched. The run seeds the baseline and emits no items. 671 ms.</td></tr>
-      <tr><th>Run 2, steady</th><td>0 new. The live page did not change. 1329 ms.</td></tr>
-      <tr><th>Run 3, detection</th><td>The test dropped <code>https://claude.com/blog/how-a-non-technical-project-manager-built-and-shipped-a-stress-management-app-with-claude-code-in-six-weeks</code> from the stored state. The run found it on the live page and emitted 1 new item. 1128 ms.</td></tr>
+      <tr><th>Run 1, cold</th><td>3415 URLs, 217 matched. The run seeds the baseline and emits no items. 649 ms.</td></tr>
+      <tr><th>Run 2, steady</th><td>0 new. The live page did not change. 747 ms.</td></tr>
+      <tr><th>Run 3, detection</th><td>The test dropped <code>https://claude.com/blog/how-a-non-technical-project-manager-built-and-shipped-a-stress-management-app-with-claude-code-in-six-weeks</code> from the stored state. The run found it on the live page and emitted 1 new item. 750 ms.</td></tr>
     </table>
     <h3>The item from run 3</h3>
       <div class="item">
         <div class="item-head">How a non-technical project manager built and shipped a stress management app with Claude Code in six weeks</div>
-        <div class="item-meta"><span class="date">May 01, 2026</span> <span class="tag">datePublished</span></div>
+        <div class="item-meta"><span class="date">May 01, 20</span> <span class="tag">datePublished</span></div>
         
         <div class="item-url">https://claude.com/blog/how-a-non-technical-project-manager-built-and-shipped-a-stress-management-app-with-claude-code-in-six-weeks</div>
       </div>
     <h3>Sample items, extracted live</h3>
       <div class="item">
         <div class="item-head">Claude Sonnet 4 now supports 1M tokens of context</div>
-        <div class="item-meta"><span class="date">Aug 12, 2025</span></div>
+        <div class="item-meta"><span class="date">Aug 12, 20</span></div>
         
         <div class="item-url">https://claude.com/blog/1m-context</div>
       </div>
       <div class="item">
-        <div class="item-head">Inference hooks: inline data loss prevention for Claude Enterprise</div>
-        <div class="item-meta"><span class="date">Aug 05, 2026</span></div>
-        
-        <div class="item-url">https://claude.com/blog/claude-enterprise-inference-hooks</div>
-      </div>
-      <div class="item">
         <div class="item-head">How a non-technical project manager built and shipped a stress management app with Claude Code in six weeks</div>
-        <div class="item-meta"><span class="date">May 01, 2026</span></div>
+        <div class="item-meta"><span class="date">May 01, 20</span></div>
         
         <div class="item-url">https://claude.com/blog/how-a-non-technical-project-manager-built-and-shipped-a-stress-management-app-with-claude-code-in-six-weeks</div>
       </div>
       <div class="item">
-        <div class="item-head">Onboarding Claude Code like a new developer: Lessons from 17 years of development</div>
-        <div class="item-meta"><span class="date">Apr 28, 2026</span></div>
-        
-        <div class="item-url">https://claude.com/blog/onboarding-claude-code-like-a-new-developer-lessons-from-17-years-of-development</div>
-      </div>
-      <div class="item">
         <div class="item-head">Zero Trust for AI agents</div>
-        <div class="item-meta"><span class="date">May 27, 2026</span></div>
+        <div class="item-meta"><span class="date">May 27, 20</span></div>
         
         <div class="item-url">https://claude.com/blog/zero-trust-for-ai-agents</div>
       </div>
   </section>
 
   <section class="card">
+    <h2>openai.com/news <span class="mech">sitemap-diff</span></h2>
+    <div class="target">https://openai.com/sitemap.xml (index, 35 children)</div>
+    <p>The sitemap is an index. The scraper walks all 35 category children and keeps the /index/ article URLs. Cloudflare refuses every article-page fetch with a 403, on any user agent. The RSS feed passes and holds the full archive, so a new item takes its headline and date from the feed.</p>
+    <table class="runs">
+      <tr><th>Run 1, cold</th><td>1852 URLs across 35 child sitemaps, 1085 matched. The run seeds the baseline and emits no items. 12456 ms.</td></tr>
+      <tr><th>Run 2, steady</th><td>0 new. The live page did not change. 11876 ms.</td></tr>
+      <tr><th>Run 3, detection</th><td>The test dropped <code>https://openai.com/index/introducing-openai-partner-network/</code> from the stored state. The run found it on the live page and emitted 1 new item. 12912 ms.</td></tr>
+    </table>
+    <h3>The item from run 3</h3>
+      <div class="item">
+        <div class="item-head">Introducing the OpenAI Partner Network</div>
+        <div class="item-meta"><span class="date">2026-06-14</span> <span class="tag">news/rss.xml</span></div>
+        
+        <div class="item-url">https://openai.com/index/introducing-openai-partner-network/</div>
+      </div>
+    <h3>Sample items, extracted live</h3>
+      <div class="item">
+        <div class="item-head">ChatGPT Ads expands across Europe</div>
+        <div class="item-meta"><span class="date">2026-08-18</span></div>
+        
+        <div class="item-url">https://openai.com/index/chatgpt-ads-expands-across-europe</div>
+      </div>
+      <div class="item">
+        <div class="item-head">Strengthening democratic oversight in national security</div>
+        <div class="item-meta"><span class="date">2026-08-18</span></div>
+        
+        <div class="item-url">https://openai.com/index/strengthening-democratic-oversight-in-national-security</div>
+      </div>
+      <div class="item">
+        <div class="item-head">Partnering with CodeAI to prepare the first AI generation</div>
+        <div class="item-meta"><span class="date">2026-08-18</span></div>
+        
+        <div class="item-url">https://openai.com/index/partnering-with-codeai</div>
+      </div>
+  </section>
+
+  <section class="card">
+    <h2>nousresearch.com (Hermes) <span class="mech">sitemap-diff</span></h2>
+    <div class="target">https://nousresearch.com/sitemap.xml</div>
+    <p>Posts are top-level slugs, and the sitemap does not separate posts from site pages. Every new URL lands in the inbox, and the curation gate absorbs the page noise. The article pages carry og:title and a JSON-LD datePublished.</p>
+    <table class="runs">
+      <tr><th>Run 1, cold</th><td>37 URLs, 36 matched. The run seeds the baseline and emits no items. 43 ms.</td></tr>
+      <tr><th>Run 2, steady</th><td>0 new. The live page did not change. 63 ms.</td></tr>
+      <tr><th>Run 3, detection</th><td>The test dropped <code>https://nousresearch.com/measuring-thinking-efficiency-in-reasoning-models-the-missing-benchmark/</code> from the stored state. The run found it on the live page and emitted 1 new item. 119 ms.</td></tr>
+    </table>
+    <h3>The item from run 3</h3>
+      <div class="item">
+        <div class="item-head">Measuring Thinking Efficiency in Reasoning Models: The Missing Benchmark</div>
+        <div class="item-meta"><span class="date">2025-08-14</span> <span class="tag">datePublished</span></div>
+        
+        <div class="item-url">https://nousresearch.com/measuring-thinking-efficiency-in-reasoning-models-the-missing-benchmark/</div>
+      </div>
+    <h3>Sample items, extracted live</h3>
+      <div class="item">
+        <div class="item-head">Hermes Agent - The Agent That Grows With You</div>
+        <div class="item-meta"><span class="date"></span></div>
+        
+        <div class="item-url">https://nousresearch.com/hermes-agent/</div>
+      </div>
+      <div class="item">
+        <div class="item-head">Hermes 3</div>
+        <div class="item-meta"><span class="date">2024-08-14</span></div>
+        
+        <div class="item-url">https://nousresearch.com/hermes3/</div>
+      </div>
+      <div class="item">
+        <div class="item-head">Introducing Atropos</div>
+        <div class="item-meta"><span class="date">2025-04-29</span></div>
+        
+        <div class="item-url">https://nousresearch.com/introducing-atropos/</div>
+      </div>
+  </section>
+
+  <section class="card">
+    <h2>DeepSeek news <span class="mech">sitemap-diff</span></h2>
+    <div class="target">https://api-docs.deepseek.com/sitemap.xml</div>
+    <p>The docs sitemap lists /news/ pages. Article pages carry og:title but no machine-readable date, so a new item is dated first-seen. The slug (newsYYMMDD) confirms the order.</p>
+    <table class="runs">
+      <tr><th>Run 1, cold</th><td>64 URLs, 16 matched. The run seeds the baseline and emits no items. 255 ms.</td></tr>
+      <tr><th>Run 2, steady</th><td>0 new. The live page did not change. 463 ms.</td></tr>
+      <tr><th>Run 3, detection</th><td>The test dropped <code>https://api-docs.deepseek.com/news/news250325</code> from the stored state. The run found it on the live page and emitted 1 new item. 873 ms.</td></tr>
+    </table>
+    <h3>The item from run 3</h3>
+      <div class="item">
+        <div class="item-head">DeepSeek-V3-0324 Release</div>
+        <div class="item-meta"><span class="date">2026-08-19</span> <span class="tag">first seen</span></div>
+        
+        <div class="item-url">https://api-docs.deepseek.com/news/news250325</div>
+      </div>
+    <h3>Sample items, extracted live</h3>
+      <div class="item">
+        <div class="item-head">DeepSeek-V4-Pro GA Release</div>
+        <div class="item-meta"><span class="date"></span></div>
+        
+        <div class="item-url">https://api-docs.deepseek.com/news/news260813</div>
+      </div>
+      <div class="item">
+        <div class="item-head">DeepSeek V4 Preview Release</div>
+        <div class="item-meta"><span class="date"></span></div>
+        
+        <div class="item-url">https://api-docs.deepseek.com/news/news260424</div>
+      </div>
+      <div class="item">
+        <div class="item-head">DeepSeek-V3.2 Release</div>
+        <div class="item-meta"><span class="date"></span></div>
+        
+        <div class="item-url">https://api-docs.deepseek.com/news/news251201</div>
+      </div>
+  </section>
+
+  <section class="card">
+    <h2>Kimi blog (Moonshot AI) <span class="mech">link-diff</span></h2>
+    <div class="target">https://www.kimi.com/blog</div>
+    <p>No Kimi sitemap lists blog URLs, but the blog index is server-rendered. The scraper diffs the set of /blog/ hrefs on the index page. Article pages carry og:title but no date, so a new item is dated first-seen.</p>
+    <table class="runs">
+      <tr><th>Run 1, cold</th><td>19 URLs, 9 matched. The run seeds the baseline and emits no items. 984 ms.</td></tr>
+      <tr><th>Run 2, steady</th><td>0 new. The live page did not change. 912 ms.</td></tr>
+      <tr><th>Run 3, detection</th><td>The test dropped <code>https://www.kimi.com/blog/kimi-k2-thinking</code> from the stored state. The run found it on the live page and emitted 1 new item. 1835 ms.</td></tr>
+    </table>
+    <h3>The item from run 3</h3>
+      <div class="item">
+        <div class="item-head">Kimi K2 Thinking</div>
+        <div class="item-meta"><span class="date">2026-08-19</span> <span class="tag">first seen</span></div>
+        
+        <div class="item-url">https://www.kimi.com/blog/kimi-k2-thinking</div>
+      </div>
+    <h3>Sample items, extracted live</h3>
+      <div class="item">
+        <div class="item-head">Kimi K3 Tech Blog: Open Frontier Intelligence</div>
+        <div class="item-meta"><span class="date"></span></div>
+        
+        <div class="item-url">https://www.kimi.com/blog/kimi-k3</div>
+      </div>
+      <div class="item">
+        <div class="item-head">PerceptionBench: Evaluating Atomic Visual Perception in MLLMs</div>
+        <div class="item-meta"><span class="date"></span></div>
+        
+        <div class="item-url">https://www.kimi.com/blog/perception-bench</div>
+      </div>
+      <div class="item">
+        <div class="item-head">Kimi K2.6 Tech Blog: Advancing Open-Source Coding</div>
+        <div class="item-meta"><span class="date"></span></div>
+        
+        <div class="item-url">https://www.kimi.com/blog/kimi-k2-6</div>
+      </div>
+  </section>
+
+  <section class="card">
     <h2>Gemini API changelog <span class="mech">page-diff</span></h2>
     <div class="target">https://ai.google.dev/gemini-api/docs/changelog?hl=en</div>
-    <p>The scraper splits the page into sections at each date heading. A section id that was not in the last run is a new item. A changed content hash marks an edited section. The license is CC-BY 4.0, so the item carries the full text with attribution.</p>
+    <p>The scraper splits the page into sections at each date heading. A section id that was not in the last run is a new item, and a changed content hash marks an edited section. The license is CC-BY 4.0, so the item carries the full text with attribution.</p>
     <table class="runs">
-      <tr><th>Run 1, cold</th><td>106 dated sections. The run seeds the baseline and emits no items. 489 ms.</td></tr>
-      <tr><th>Run 2, steady</th><td>0 new, 0 changed. The live page did not change. 953 ms.</td></tr>
-      <tr><th>Run 3, detection</th><td>The test dropped <code>08-13-2026</code> from the stored state. The run found it on the live page and emitted 1 new item. 457 ms.</td></tr>
+      <tr><th>Run 1, cold</th><td>106 dated sections. The run seeds the baseline and emits no items. 337 ms.</td></tr>
+      <tr><th>Run 2, steady</th><td>0 new, 0 changed. The live page did not change. 392 ms.</td></tr>
+      <tr><th>Run 3, detection</th><td>The test dropped <code>08-13-2026</code> from the stored state. The run found it on the live page and emitted 1 new item. 373 ms.</td></tr>
     </table>
     <h3>The item from run 3</h3>
       <div class="item">
@@ -169,33 +293,106 @@
       <div class="item">
         <div class="item-head">Gemini API changelog: August 13, 2026</div>
         <div class="item-meta"><span class="date">2026-08-13</span></div>
-        <div class="item-text">Gemini 3.7 Flash generally available (GA) : Released our most intelligent workhorse model yet for coding and agents: Gemini 3.7 Flash ( gemini-3.7-flash ): Substantial improvements across software engineering, web development, and agentic workflows, available at an introductory price through December 31, 2026. To get started, see the Gemini 3.7 Flash model page and the Latest model guide .</div>
+        <div class="item-text">Gemini 3.7 Flash generally available (GA) : Released our most intelligent workhorse model yet for coding and agents: Gemini 3.7 Flash ( gemini-3.7-flash ): Substantial improvements across software engineering, web development, and agentic workflows, available at an introductory price through December 31, 2026. To get s …</div>
         <div class="item-url">https://ai.google.dev/gemini-api/docs/changelog?hl=en#08-13-2026</div>
       </div>
       <div class="item">
         <div class="item-head">Gemini API changelog: July 30, 2026</div>
         <div class="item-meta"><span class="date">2026-07-30</span></div>
-        <div class="item-text">Gemini Robotics ER 2 in public preview : Released two new embodied reasoning model endpoints for robotics: gemini-robotics-er-2-preview : Advanced spatial reasoning, agentic code execution, multi-step tool orchestration, video moment finding, progress classification, and multi-robot coordination. gemini-robotics-er-2-streaming-preview : Optimized for real-time text streaming using the Live API, enabling low-latency robot agents with bidirectional audio and video input. Both model endpoints accept text, image, video, and audio inputs and support function calling with blocking behavior for physical robot actions. To get started, see the Gemini Robotics ER overview . For real-time streaming use cases, see Robotics with streaming . Deprecation announcement : The gemini-robotics-er-1.6-preview model will be shut down on August 31, 2026.</div>
+        <div class="item-text">Gemini Robotics ER 2 in public preview : Released two new embodied reasoning model endpoints for robotics: gemini-robotics-er-2-preview : Advanced spatial reasoning, agentic code execution, multi-step tool orchestration, video moment finding, progress classification, and multi-robot coordination. gemini-robotics-er-2-s …</div>
         <div class="item-url">https://ai.google.dev/gemini-api/docs/changelog?hl=en#07-30-2026</div>
       </div>
       <div class="item">
         <div class="item-head">Gemini API changelog: July 21, 2026</div>
         <div class="item-meta"><span class="date">2026-07-21</span></div>
-        <div class="item-text">Gemini 3.6 Flash and Gemini 3.5 Flash-Lite generally available (GA) : Released stable, production-ready versions of our latest 3.x Flash models: Gemini 3.6 Flash ( gemini-3.6-flash ): Features improved token efficiency and code/agentic planning capabilities at a lower price point than 3.5 Flash, resolving developer feedback around output verbosity. Gemini 3.5 Flash-Lite ( gemini-3.5-flash-lite ): Offers a low-latency, highly cost-effective subagent option designed for high-volume automation. To learn more, see the Latest Gemini model guide. Deprecated parameters : The sampling parameters temperature , top_p and top_k are now deprecated. See the Latest Gemini Model for details.</div>
+        <div class="item-text">Gemini 3.6 Flash and Gemini 3.5 Flash-Lite generally available (GA) : Released stable, production-ready versions of our latest 3.x Flash models: Gemini 3.6 Flash ( gemini-3.6-flash ): Features improved token efficiency and code/agentic planning capabilities at a lower price point than 3.5 Flash, resolving developer fee …</div>
         <div class="item-url">https://ai.google.dev/gemini-api/docs/changelog?hl=en#07-21-2026</div>
+      </div>
+  </section>
+
+  <section class="card">
+    <h2>xAI API release notes (Grok) <span class="mech">page-diff</span></h2>
+    <div class="target">https://docs.x.ai/developers/release-notes</div>
+    <p>x.ai itself refuses every non-browser request with a 403, but the docs site serves plain HTML. Sections are months, not days, so one item stands for a month of API changes. The consumer Grok news on x.ai/news stays out of reach without a browser.</p>
+    <table class="runs">
+      <tr><th>Run 1, cold</th><td>21 dated sections. The run seeds the baseline and emits no items. 349 ms.</td></tr>
+      <tr><th>Run 2, steady</th><td>0 new, 0 changed. The live page did not change. 212 ms.</td></tr>
+      <tr><th>Run 3, detection</th><td>The test dropped <code>august</code> from the stored state. The run found it on the live page and emitted 1 new item. 349 ms.</td></tr>
+    </table>
+    <h3>The item from run 3</h3>
+      <div class="item">
+        <div class="item-head">xAI API release notes: August</div>
+        <div class="item-meta"><span class="date">2026-08-19</span> <span class="tag">first seen</span></div>
+        <div class="item-text">August 12 Grok 4.6 Grok 4.6, SpaceXAI's frontier model for coding, agentic tasks, and knowledge work, is now available on the xAI API. It has a 500k context window, text and image inputs with text-only output, and no text output limit. Pricing is $2 / $0.50 / $6 per 1M tokens (input / cached input / output) below 200k prompt tokens, and $4 / $1 / $12 above. Reasoning effort supports low, medium, h …</div>
+        <div class="item-url">https://docs.x.ai/developers/release-notes#august</div>
+      </div>
+    <h3>Sample items, extracted live</h3>
+      <div class="item">
+        <div class="item-head">xAI API release notes: August</div>
+        <div class="item-meta"><span class="date"></span></div>
+        <div class="item-text">August 12 Grok 4.6 Grok 4.6, SpaceXAI's frontier model for coding, agentic tasks, and knowledge work, is now available on the xAI API. It has a 500k context window, text and image inputs with text-only output, and no text output limit. Pricing is $2 / $0.50 / $6 per 1M tokens (input / cached input / output) below 200k  …</div>
+        <div class="item-url">https://docs.x.ai/developers/release-notes#august</div>
+      </div>
+      <div class="item">
+        <div class="item-head">xAI API release notes: July</div>
+        <div class="item-meta"><span class="date"></span></div>
+        <div class="item-text">July 31 grok-imagine-video-1.5 modalities grok-imagine-video-1.5 now supports text-to-video, image-to-video, and reference-to-video (including optional preset voices), with native 1080p for T2V and I2V. Text-to-video on this model runs as text-to-image then image-to-video under the hood. See Video Generation , Image-to …</div>
+        <div class="item-url">https://docs.x.ai/developers/release-notes#july</div>
+      </div>
+  </section>
+
+  <section class="card">
+    <h2>pi releases (GitHub) <span class="mech">feed-diff</span></h2>
+    <div class="target">https://github.com/earendil-works/pi/releases.atom</div>
+    <p>pi has no blog. Its news surface is GitHub releases, which spec phase 1 already covers with the generic feed poller. It rides here to show the diff mechanism on a feed: a new entry id is a new item. The feed holds only the last 10 entries, so the state keeps every id it has ever seen.</p>
+    <table class="runs">
+      <tr><th>Run 1, cold</th><td>10 feed entries. The run seeds the baseline and emits no items. 654 ms.</td></tr>
+      <tr><th>Run 2, steady</th><td>0 new. The live page did not change. 61 ms.</td></tr>
+      <tr><th>Run 3, detection</th><td>The test dropped <code>tag:github.com,2008:Repository/1035029907/v0.84.2</code> from the stored state. The run found it on the live page and emitted 1 new item. 54 ms.</td></tr>
+    </table>
+    <h3>The item from run 3</h3>
+      <div class="item">
+        <div class="item-head">pi release: v0.84.2</div>
+        <div class="item-meta"><span class="date">2026-08-14</span> <span class="tag">feed updated</span></div>
+        
+        <div class="item-url">https://github.com/earendil-works/pi/releases/tag/v0.84.2</div>
+      </div>
+    <h3>Sample items, extracted live</h3>
+      <div class="item">
+        <div class="item-head">pi release: v0.84.2</div>
+        <div class="item-meta"><span class="date">2026-08-14</span></div>
+        
+        <div class="item-url">https://github.com/earendil-works/pi/releases/tag/v0.84.2</div>
+      </div>
+      <div class="item">
+        <div class="item-head">pi release: v0.84.1</div>
+        <div class="item-meta"><span class="date">2026-08-07</span></div>
+        
+        <div class="item-url">https://github.com/earendil-works/pi/releases/tag/v0.84.1</div>
+      </div>
+      <div class="item">
+        <div class="item-head">pi release: v0.84.0</div>
+        <div class="item-meta"><span class="date">2026-08-06</span></div>
+        
+        <div class="item-url">https://github.com/earendil-works/pi/releases/tag/v0.84.0</div>
       </div>
   </section>
 
   <section class="card">
     <h2>Findings for the spec</h2>
     <ul class="findings">
+      <li><strong>The honest bot user agent beats a faked browser.</strong> Every source accepts <code>aistack-news-collector-prototype</code>. A faked full Chrome user agent breaks ai.google.dev with an endless redirect loop.</li>
+      <li><strong>OpenAI needs no scraper.</strong> Cloudflare refuses every article-page fetch (403 on any user agent), but the RSS feed passes and holds the full archive of 1139 items with titles and dates. The phase-1 feed poller covers OpenAI completely. The sitemap-diff still works as a detector and enriches from the feed.</li>
+      <li><strong>x.ai blocks all non-browser clients.</strong> Every path on x.ai answers 403. The docs site (docs.x.ai) serves plain HTML, so the API release notes are the scrapeable xAI surface. Consumer Grok news needs a browser or stays manual.</li>
       <li><strong>Language pinning is required for the Gemini changelog.</strong> Without <code>?hl=en</code> and an <code>Accept-Language: en</code> header, Google serves a random language. One probe fetch came back machine-translated in Russian, which broke every content hash.</li>
       <li><strong>Script and style bodies must be stripped before hashing.</strong> The changelog page embeds a per-request analytics blob inside a script tag. Hashing the raw text marked all 106 sections as changed on every run.</li>
-      <li><strong>The claude.com sitemap has no lastmod on blog URLs.</strong> Order and recency are unknown from the sitemap alone. The diff is the only newness signal, and the item date must come from the JSON-LD datePublished on the article page.</li>
-      <li><strong>The claude.com sitemap lists five localized copies of each post.</strong> The filter must keep only <code>claude.com/blog/&lt;slug&gt;</code> URLs, or every post arrives six times.</li>
-      <li><strong>The anthropic.com lastmod is an update time, not a publish time.</strong> Old posts carry fresh lastmod values after site-wide updates. The diff on URL presence is the newness signal. The lastmod only labels the item date, and a page-level datePublished is absent.</li>
-      <li><strong>A cold run must not emit items.</strong> The anthropic sitemap holds 255 news URLs and the changelog holds 106 sections. The first run seeds the baseline silently, or the inbox floods with history.</li>
-      <li><strong>The whole cycle is cheap.</strong> A steady run across all three sources takes under 3 seconds and 3 requests. Extraction adds one request per new item.</li>
+      <li><strong>The claude.com sitemap has no lastmod and lists five localized copies of each post.</strong> The filter keeps only default-locale URLs, and the item date must come from the JSON-LD datePublished on the article page.</li>
+      <li><strong>The anthropic.com lastmod is an update time, not a publish time.</strong> The diff on URL presence is the newness signal, and the lastmod only labels the item date.</li>
+      <li><strong>DeepSeek and Kimi article pages carry no machine-readable date.</strong> Their items are dated first-seen, which is accurate from the second collector run on.</li>
+      <li><strong>The Nous sitemap does not separate posts from site pages.</strong> A new site page lands in the inbox as noise, and the curation gate (owner approves or discards) absorbs it.</li>
+      <li><strong>pi belongs to the phase-1 feed poller.</strong> It has no blog. GitHub releases.atom is its news surface, shown here as a feed-diff. The feed holds only 10 entries, so the state must keep every id it has ever seen.</li>
+      <li><strong>A cold run must not emit items.</strong> The nine baselines hold about 1500 historical entries (1085 OpenAI articles alone). The first run seeds the baseline silently, or the inbox floods.</li>
+      <li><strong>The whole cycle is cheap.</strong> A steady run across all nine sources is 43 requests and about 17 seconds, dominated by the 35-child OpenAI sitemap walk. Every other source is one request.</li>
     </ul>
   </section>
 
