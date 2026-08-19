@@ -1,0 +1,180 @@
+{
+  "command": "simulate",
+  "dropped": {
+    "anthropic-news": "https://www.anthropic.com/news/donation-public-first-action",
+    "claude-blog": "https://claude.com/blog/how-a-non-technical-project-manager-built-and-shipped-a-stress-management-app-with-claude-code-in-six-weeks",
+    "openai-news": "https://openai.com/index/introducing-openai-partner-network/",
+    "nous-hermes": "https://nousresearch.com/measuring-thinking-efficiency-in-reasoning-models-the-missing-benchmark/",
+    "deepseek-news": "https://api-docs.deepseek.com/news/news250325",
+    "kimi-blog": "https://www.kimi.com/blog/kimi-k2-thinking",
+    "gemini-changelog": "08-13-2026",
+    "xai-release-notes": "august",
+    "pi-releases": "tag:github.com,2008:Repository/1035029907/v0.84.2"
+  },
+  "results": [
+    {
+      "source": "anthropic-news",
+      "mechanism": "sitemap-diff",
+      "url": "https://www.anthropic.com/sitemap.xml",
+      "fetchedAt": "2026-08-19T14:07:11.211Z",
+      "rawUrls": 514,
+      "matchedUrls": 255,
+      "coldRun": false,
+      "newItems": [
+        {
+          "url": "https://www.anthropic.com/news/donation-public-first-action",
+          "headline": "Donating another $20 million to Public First Action",
+          "date": "2026-07-22T10:14:58.000Z",
+          "dateSource": "sitemap lastmod"
+        }
+      ],
+      "ms": 550
+    },
+    {
+      "source": "claude-blog",
+      "mechanism": "sitemap-diff",
+      "url": "https://claude.com/sitemap.xml",
+      "fetchedAt": "2026-08-19T14:07:12.108Z",
+      "rawUrls": 3415,
+      "matchedUrls": 217,
+      "coldRun": false,
+      "newItems": [
+        {
+          "url": "https://claude.com/blog/how-a-non-technical-project-manager-built-and-shipped-a-stress-management-app-with-claude-code-in-six-weeks",
+          "headline": "How a non-technical project manager built and shipped a stress management app with Claude Code in six weeks",
+          "date": "May 01, 2026",
+          "dateSource": "datePublished"
+        }
+      ],
+      "ms": 750
+    },
+    {
+      "source": "openai-news",
+      "mechanism": "sitemap-diff",
+      "url": "https://openai.com/sitemap.xml",
+      "fetchedAt": "2026-08-19T14:07:25.021Z",
+      "rawUrls": 1852,
+      "matchedUrls": 1085,
+      "childSitemaps": 35,
+      "coldRun": false,
+      "newItems": [
+        {
+          "url": "https://openai.com/index/introducing-openai-partner-network/",
+          "headline": "Introducing the OpenAI Partner Network",
+          "date": "2026-06-14",
+          "dateSource": "news/rss.xml"
+        }
+      ],
+      "ms": 12912
+    },
+    {
+      "source": "nous-hermes",
+      "mechanism": "sitemap-diff",
+      "url": "https://nousresearch.com/sitemap.xml",
+      "fetchedAt": "2026-08-19T14:07:25.146Z",
+      "rawUrls": 37,
+      "matchedUrls": 36,
+      "coldRun": false,
+      "newItems": [
+        {
+          "url": "https://nousresearch.com/measuring-thinking-efficiency-in-reasoning-models-the-missing-benchmark/",
+          "headline": "Measuring Thinking Efficiency in Reasoning Models: The Missing Benchmark",
+          "date": "2025-08-14T18:07:45+00:00",
+          "dateSource": "datePublished"
+        }
+      ],
+      "ms": 119
+    },
+    {
+      "source": "deepseek-news",
+      "mechanism": "sitemap-diff",
+      "url": "https://api-docs.deepseek.com/sitemap.xml",
+      "fetchedAt": "2026-08-19T14:07:25.254Z",
+      "rawUrls": 64,
+      "matchedUrls": 16,
+      "coldRun": false,
+      "newItems": [
+        {
+          "url": "https://api-docs.deepseek.com/news/news250325",
+          "headline": "DeepSeek-V3-0324 Release",
+          "date": "2026-08-19T14:07:25.254Z",
+          "dateSource": "first seen"
+        }
+      ],
+      "ms": 873
+    },
+    {
+      "source": "kimi-blog",
+      "mechanism": "link-diff",
+      "url": "https://www.kimi.com/blog",
+      "fetchedAt": "2026-08-19T14:07:26.976Z",
+      "rawUrls": 19,
+      "matchedUrls": 9,
+      "coldRun": false,
+      "newItems": [
+        {
+          "url": "https://www.kimi.com/blog/kimi-k2-thinking",
+          "headline": "Kimi K2 Thinking",
+          "date": "2026-08-19T14:07:26.976Z",
+          "dateSource": "first seen"
+        }
+      ],
+      "ms": 1835
+    },
+    {
+      "source": "gemini-changelog",
+      "mechanism": "page-diff",
+      "url": "https://ai.google.dev/gemini-api/docs/changelog?hl=en",
+      "fetchedAt": "2026-08-19T14:07:28.297Z",
+      "sections": 106,
+      "coldRun": false,
+      "newItems": [
+        {
+          "url": "https://ai.google.dev/gemini-api/docs/changelog?hl=en#08-13-2026",
+          "headline": "Gemini API changelog: August 13, 2026",
+          "date": "2026-08-13",
+          "dateSource": "section heading",
+          "fullText": "Gemini 3.7 Flash generally available (GA) : Released our most intelligent workhorse model yet for coding and agents: Gemini 3.7 Flash ( gemini-3.7-flash ): Substantial improvements across software engineering, web development, and agentic workflows, available at an introductory price through December 31, 2026. To get started, see the Gemini 3.7 Flash model page and the Latest model guide ."
+        }
+      ],
+      "changedItems": [],
+      "ms": 373
+    },
+    {
+      "source": "xai-release-notes",
+      "mechanism": "page-diff",
+      "url": "https://docs.x.ai/developers/release-notes",
+      "fetchedAt": "2026-08-19T14:07:28.647Z",
+      "sections": 21,
+      "coldRun": false,
+      "newItems": [
+        {
+          "url": "https://docs.x.ai/developers/release-notes#august",
+          "headline": "xAI API release notes: August",
+          "date": "2026-08-19",
+          "dateSource": "first seen",
+          "fullText": "August 12 Grok 4.6 Grok 4.6, SpaceXAI's frontier model for coding, agentic tasks, and knowledge work, is now available on the xAI API. It has a 500k context window, text and image inputs with text-only output, and no text output limit. Pricing is $2 / $0.50 / $6 per 1M tokens (input / cached input / output) below 200k prompt tokens, and $4 / $1 / $12 above. Reasoning effort supports low, medium, h …"
+        }
+      ],
+      "changedItems": [],
+      "ms": 349
+    },
+    {
+      "source": "pi-releases",
+      "mechanism": "feed-diff",
+      "url": "https://github.com/earendil-works/pi/releases.atom",
+      "fetchedAt": "2026-08-19T14:07:28.701Z",
+      "feedEntries": 10,
+      "coldRun": false,
+      "newItems": [
+        {
+          "url": "https://github.com/earendil-works/pi/releases/tag/v0.84.2",
+          "headline": "pi release: v0.84.2",
+          "date": "2026-08-14T10:14:32Z",
+          "dateSource": "feed updated"
+        }
+      ],
+      "ms": 54
+    }
+  ]
+}

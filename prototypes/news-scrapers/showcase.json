@@ -1,0 +1,156 @@
+{
+  "anthropic-news": [
+    {
+      "url": "https://www.anthropic.com/news/claude-text-watermark",
+      "headline": "How Claude's text watermarking works",
+      "published": null,
+      "lastmod": "2026-08-15T05:53:01.000Z"
+    },
+    {
+      "url": "https://www.anthropic.com/news/claude-sonnet-5",
+      "headline": "Introducing Claude Sonnet 5",
+      "published": null,
+      "lastmod": "2026-08-10T19:00:15.000Z"
+    },
+    {
+      "url": "https://www.anthropic.com/news/improving-fable-5-s-biology-safeguards",
+      "headline": "Improving Fable 5 Safeguards",
+      "published": null,
+      "lastmod": "2026-08-07T03:05:42.000Z"
+    }
+  ],
+  "claude-blog": [
+    {
+      "url": "https://claude.com/blog/1m-context",
+      "headline": "Claude Sonnet 4 now supports 1M tokens of context",
+      "published": "Aug 12, 2025"
+    },
+    {
+      "url": "https://claude.com/blog/how-a-non-technical-project-manager-built-and-shipped-a-stress-management-app-with-claude-code-in-six-weeks",
+      "headline": "How a non-technical project manager built and shipped a stress management app with Claude Code in six weeks",
+      "published": "May 01, 2026"
+    },
+    {
+      "url": "https://claude.com/blog/zero-trust-for-ai-agents",
+      "headline": "Zero Trust for AI agents",
+      "published": "May 27, 2026"
+    }
+  ],
+  "openai-news": [
+    {
+      "url": "https://openai.com/index/chatgpt-ads-expands-across-europe",
+      "headline": "ChatGPT Ads expands across Europe",
+      "published": "2026-08-18"
+    },
+    {
+      "url": "https://openai.com/index/strengthening-democratic-oversight-in-national-security",
+      "headline": "Strengthening democratic oversight in national security",
+      "published": "2026-08-18"
+    },
+    {
+      "url": "https://openai.com/index/partnering-with-codeai",
+      "headline": "Partnering with CodeAI to prepare the first AI generation",
+      "published": "2026-08-18"
+    }
+  ],
+  "nous-hermes": [
+    {
+      "url": "https://nousresearch.com/hermes-agent/",
+      "headline": "Hermes Agent - The Agent That Grows With You",
+      "published": null
+    },
+    {
+      "url": "https://nousresearch.com/hermes3/",
+      "headline": "Hermes 3",
+      "published": "2024-08-14T22:33:29+00:00"
+    },
+    {
+      "url": "https://nousresearch.com/introducing-atropos/",
+      "headline": "Introducing Atropos",
+      "published": "2025-04-29T02:39:51+00:00"
+    }
+  ],
+  "deepseek-news": [
+    {
+      "url": "https://api-docs.deepseek.com/news/news260813",
+      "headline": "DeepSeek-V4-Pro GA Release",
+      "published": null
+    },
+    {
+      "url": "https://api-docs.deepseek.com/news/news260424",
+      "headline": "DeepSeek V4 Preview Release",
+      "published": null
+    },
+    {
+      "url": "https://api-docs.deepseek.com/news/news251201",
+      "headline": "DeepSeek-V3.2 Release",
+      "published": null
+    }
+  ],
+  "kimi-blog": [
+    {
+      "url": "https://www.kimi.com/blog/kimi-k3",
+      "headline": "Kimi K3 Tech Blog: Open Frontier Intelligence",
+      "published": null
+    },
+    {
+      "url": "https://www.kimi.com/blog/perception-bench",
+      "headline": "PerceptionBench: Evaluating Atomic Visual Perception in MLLMs",
+      "published": null
+    },
+    {
+      "url": "https://www.kimi.com/blog/kimi-k2-6",
+      "headline": "Kimi K2.6 Tech Blog: Advancing Open-Source Coding",
+      "published": null
+    }
+  ],
+  "gemini-changelog": [
+    {
+      "url": "https://ai.google.dev/gemini-api/docs/changelog?hl=en#08-13-2026",
+      "headline": "Gemini API changelog: August 13, 2026",
+      "date": "2026-08-13",
+      "fullText": "Gemini 3.7 Flash generally available (GA) : Released our most intelligent workhorse model yet for coding and agents: Gemini 3.7 Flash ( gemini-3.7-flash ): Substantial improvements across software engineering, web development, and agentic workflows, available at an introductory price through December 31, 2026. To get s …"
+    },
+    {
+      "url": "https://ai.google.dev/gemini-api/docs/changelog?hl=en#07-30-2026",
+      "headline": "Gemini API changelog: July 30, 2026",
+      "date": "2026-07-30",
+      "fullText": "Gemini Robotics ER 2 in public preview : Released two new embodied reasoning model endpoints for robotics: gemini-robotics-er-2-preview : Advanced spatial reasoning, agentic code execution, multi-step tool orchestration, video moment finding, progress classification, and multi-robot coordination. gemini-robotics-er-2-s …"
+    },
+    {
+      "url": "https://ai.google.dev/gemini-api/docs/changelog?hl=en#07-21-2026",
+      "headline": "Gemini API changelog: July 21, 2026",
+      "date": "2026-07-21",
+      "fullText": "Gemini 3.6 Flash and Gemini 3.5 Flash-Lite generally available (GA) : Released stable, production-ready versions of our latest 3.x Flash models: Gemini 3.6 Flash ( gemini-3.6-flash ): Features improved token efficiency and code/agentic planning capabilities at a lower price point than 3.5 Flash, resolving developer fee …"
+    }
+  ],
+  "xai-release-notes": [
+    {
+      "url": "https://docs.x.ai/developers/release-notes#august",
+      "headline": "xAI API release notes: August",
+      "fullText": "August 12 Grok 4.6 Grok 4.6, SpaceXAI's frontier model for coding, agentic tasks, and knowledge work, is now available on the xAI API. It has a 500k context window, text and image inputs with text-only output, and no text output limit. Pricing is $2 / $0.50 / $6 per 1M tokens (input / cached input / output) below 200k  …"
+    },
+    {
+      "url": "https://docs.x.ai/developers/release-notes#july",
+      "headline": "xAI API release notes: July",
+      "fullText": "July 31 grok-imagine-video-1.5 modalities grok-imagine-video-1.5 now supports text-to-video, image-to-video, and reference-to-video (including optional preset voices), with native 1080p for T2V and I2V. Text-to-video on this model runs as text-to-image then image-to-video under the hood. See Video Generation , Image-to …"
+    }
+  ],
+  "pi-releases": [
+    {
+      "url": "https://github.com/earendil-works/pi/releases/tag/v0.84.2",
+      "headline": "pi release: v0.84.2",
+      "published": "2026-08-14"
+    },
+    {
+      "url": "https://github.com/earendil-works/pi/releases/tag/v0.84.1",
+      "headline": "pi release: v0.84.1",
+      "published": "2026-08-07"
+    },
+    {
+      "url": "https://github.com/earendil-works/pi/releases/tag/v0.84.0",
+      "headline": "pi release: v0.84.0",
+      "published": "2026-08-06"
+    }
+  ]
+}
