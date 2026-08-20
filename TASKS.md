@@ -1,3 +1,6 @@
+* value proposition should be shown before/with CTA
+    profile for sharing
+    ai stats
 * pi
     https://www.youtube.com/watch?v=5Qu2SkSQeBU
     https://x.com/kunchenguid/status/2083611681868107857

@@ -133,7 +133,6 @@ https://nono.sh
 
 cli vs mcp:
 https://axi.md
-https://github.com/oraios/serena
 https://x.com/i/status/2031813357423247458
 https://x.com/yenkel/status/2032098351567487037
 https://nx.dev/blog/why-we-deleted-most-of-our-mcp-tools
@@ -164,12 +163,16 @@ AI usage best practices:
 https://susam.net/inverse-laws-of-robotics.html
 
 memory & knowledge base:
+https://remnic.ai
 https://github.com/affaan-m/ECC
+https://github.com/oraios/serena
 https://github.com/garrytan/gbrain
 https://github.com/cytostack/openwolf
 https://github.com/moorcheh-ai/memanto
 https://github.com/thedotmack/claude-mem
+https://github.com/Graphify-Labs/graphify
 https://github.com/milla-jovovich/mempalace
+https://github.com/DeusData/codebase-memory-mcp
 https://x.com/shannholmberg/status/2045086577987334609
 https://x.com/eng_khairallah1/status/2061012675824644161
 
