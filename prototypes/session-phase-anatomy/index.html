@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Prototype · alp82/aistack#186 · the session phase anatomy · round 3</title>
+<!--
+  PROTOTYPE. Throwaway. alp82/aistack#186: the session phase anatomy.
+  ROUND 3. Operator verdict on round 2: none of the five takes landed as
+  useful insights with good UX and immediate value. This round changes what
+  the surface SAYS, not only how it looks. The taste reference is the
+  owner's curated 04 Workflow section: named pipelines, routing by size.
+
+  Three views now:
+  1. the playbook: how work ships here, as two measured tracks, plus
+     practice receipts that pair a habit with its measured payoff.
+  2. the mirror: the owner's local view. The biggest time sink, the lever
+     on it, the trend.
+  3. the derivation: the versioned rules, the unknown bucket, the controls.
+  Rounds 1 and 2 live in git history, not on this page.
+
+  Data provenance: hand-extracted plus generated, not a live sync.
+  - one real agent session: the session that built this prototype
+    (2026-08-19, 40+ events, two real human waits with question counts).
+    Tool names, sanitized command heads, timestamps. No prompt text.
+  - three hand-made specimens, labeled.
+  - a generated corpus (seeded PRNG, labeled) that plants two correlations
+    to show the form: merges without a verify step need more review rounds,
+    and batched question rounds amortize the human wait.
+
+  Every number still comes from one pure pipeline: versioned rules classify
+  events, attribution caps each event at 5 minutes (settled round 1), the
+  unknown bucket stays visible. Insight prose is deterministic templates.
+  No LLM (ADR-0001). Correlation cards say "measured together, not proved".
+
+  Palette: the validated chart slots, verify on purple (see round 1).
+-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    color-scheme: dark;
+    --bg-canvas: oklch(0.16 0.008 256);
+    --bg-shell: oklch(0.12 0.01 256);
+    --bg-panel: oklch(0.2 0.009 256);
+    --bg-panel-muted: oklch(0.24 0.009 256);
+    --bg-panel-elevated: oklch(0.28 0.01 256);
+    --fg-primary: oklch(0.96 0.004 256);
+    --fg-secondary: oklch(0.82 0.004 256);
+    --fg-muted: oklch(0.68 0.005 256);
+    --accent-lime: oklch(0.78 0.17 132);
+    --stroke-subtle: oklch(0.55 0.01 256 / 0.45);
+    --stroke-strong: oklch(0.5 0.015 256 / 0.9);
+    --ph-orient:  #4278d2;
+    --ph-build:   #69a621;
+    --ph-verify:  #9e71fd;
+    --ph-gate:    #c21977;
+    --ph-unknown: #8a919e;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg-canvas);
+    color: var(--fg-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .ticket-strip {
+    background: var(--bg-shell);
+    border-bottom: 1px solid var(--stroke-subtle);
+    padding: 10px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.08em;
+    color: var(--fg-muted); text-transform: uppercase;
+  }
+  .ticket-strip b { color: var(--accent-lime); font-weight: 700; }
+
+  .shell { max-width: 64rem; margin: 0 auto; padding: 0 20px; }
+  section.journey { padding: 40px 0 48px; }
+  section.alt { background: color-mix(in oklab, var(--bg-panel) 30%, var(--bg-canvas)); }
+
+  .mono-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted); }
+  .kicker-line { color: var(--accent-lime); margin: 0 0 12px; }
+  .lead { margin: 0 0 20px; font-size: 14.5px; line-height: 1.6; color: var(--fg-secondary); max-width: 44rem; }
+  .lead b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+  .block-gap { margin-top: 26px; }
+  .box { border: 1px solid var(--stroke-subtle); padding: 20px; }
+
+  /* ---------- playbook tracks ---------- */
+  .track { border: 1px solid var(--stroke-subtle); padding: 20px; margin-top: 16px; }
+  .track:first-of-type { margin-top: 0; }
+  .track-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .track-name { font-size: 18px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.01em; margin: 0; }
+  .track-meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); }
+  .jline { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
+  .jstep { border: 1px solid var(--stroke-subtle); border-left: 4px solid var(--c, var(--stroke-strong)); padding: 8px 12px; min-width: 7.2rem; background: var(--bg-canvas); }
+  .jstep .ph { display: block; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-secondary); }
+  .jstep .min { display: block; font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 800; margin-top: 3px; }
+  .jstep .sub { display: block; font-size: 11px; color: var(--fg-muted); margin-top: 2px; }
+  .jarrow { align-self: center; color: var(--fg-muted); font-family: 'JetBrains Mono', monospace; font-size: 14px; }
+  .track-note { margin: 12px 0 0; font-size: 13px; line-height: 1.6; color: var(--fg-secondary); }
+  .track-note b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+
+  /* ---------- receipts ---------- */
+  .receipts { display: grid; gap: 16px; margin-top: 16px; }
+  @media (min-width: 760px) { .receipts { grid-template-columns: 1fr 1fr; } }
+  .receipt { border: 1px solid var(--stroke-subtle); padding: 18px 20px; background: var(--bg-canvas); display: flex; flex-direction: column; }
+  .receipt .head { font-size: 16px; font-weight: 700; line-height: 1.45; margin: 0; }
+  .receipt .cmp { margin-top: 14px; }
+  .cmp-row { display: grid; grid-template-columns: 11rem 1fr 4.4rem; gap: 10px; align-items: center; margin-top: 8px; }
+  .cmp-row .lbl { font-size: 12px; color: var(--fg-secondary); line-height: 1.35; }
+  .cmp-row .track2 { height: 12px; background: var(--bg-panel); }
+  .cmp-row .fill { height: 100%; }
+  .cmp-row .val { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 700; text-align: right; white-space: nowrap; }
+  .receipt .big { font-family: 'JetBrains Mono', monospace; font-size: 30px; font-weight: 800; margin: 12px 0 0; }
+  .receipt .big small { font-size: 13px; color: var(--fg-muted); font-weight: 600; }
+  .receipt .foot { margin-top: auto; padding-top: 12px; }
+
+  /* ---------- anatomy strip (demoted) ---------- */
+  .agg-strip { display: flex; height: 22px; gap: 2px; margin-top: 12px; }
+  .agg-seg { height: 100%; min-width: 2px; }
+  .agg-legend { display: flex; flex-wrap: wrap; gap: 12px 14px; margin-top: 10px; }
+  .agg-legend span { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-secondary); }
+  .agg-legend i { width: 10px; height: 10px; display: inline-block; flex-shrink: 0; }
+
+  /* ---------- mirror ---------- */
+  .sink { border: 1px solid var(--stroke-subtle); padding: 20px; }
+  .sink .n { font-family: 'JetBrains Mono', monospace; font-size: 40px; font-weight: 800; margin: 0; line-height: 1; }
+  .sink .what { font-size: 15px; color: var(--fg-secondary); margin: 8px 0 0; line-height: 1.5; }
+  .sink .lever { font-size: 14px; color: var(--fg-primary); margin: 14px 0 0; line-height: 1.55; border-top: 1px solid var(--stroke-subtle); padding-top: 12px; }
+  .sink .lever b { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+  .mini-weeks { margin-top: 12px; }
+  .week-strip-row { display: grid; grid-template-columns: 3.6rem 1fr 3.2rem; gap: 10px; align-items: center; margin-top: 8px; }
+  .week-strip { display: flex; height: 14px; gap: 2px; }
+  .week-strip div { min-width: 2px; }
+  .week-delta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-secondary); text-align: right; }
+
+  /* ---------- derivation ---------- */
+  .controls { border: 1px solid var(--stroke-strong); background: var(--bg-panel); padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 14px 28px; margin-bottom: 20px; }
+  .ctl .k { display: block; margin-bottom: 6px; }
+  .seg-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg-btns button {
+    appearance: none; cursor: pointer;
+    background: var(--bg-canvas); color: var(--fg-secondary);
+    border: 1px solid var(--stroke-subtle);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 7px 10px; min-height: 34px;
+  }
+  .seg-btns button.on { background: var(--accent-lime); color: oklch(0.22 0.02 132); border-color: var(--accent-lime); }
+  .rule-line { display: grid; grid-template-columns: 9.5rem 5.2rem 1fr; gap: 10px; padding: 6px 0; border-top: 1px solid color-mix(in oklab, var(--stroke-subtle) 40%, transparent); font-family: 'JetBrains Mono', monospace; font-size: 11.5px; align-items: baseline; }
+  .rule-line:first-of-type { border-top: 0; }
+  .rule-line .rid { color: var(--fg-muted); overflow-wrap: anywhere; }
+  .rule-line .when { color: var(--fg-secondary); font-family: 'Inter', sans-serif; font-size: 12.5px; }
+  .phase-chip { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-primary); }
+  .phase-chip i { width: 9px; height: 9px; display: inline-block; }
+  .unk-line { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+  .unk-line .name { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--fg-primary); width: 13rem; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .unk-line .track { flex: 1; height: 8px; background: var(--bg-panel); }
+  .unk-line .fill { height: 100%; background: var(--ph-unknown); }
+  .unk-line .cnt { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); width: 2.4rem; text-align: right; }
+  .agg-note { margin: 14px 0 0; font-size: 13px; line-height: 1.6; color: var(--fg-secondary); }
+  .agg-note b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+
+  .consent { margin-top: 32px; border-top: 1px solid var(--stroke-subtle); padding-top: 14px; font-size: 12px; line-height: 1.6; color: var(--fg-muted); max-width: 44rem; }
+
+  /* ---------- variant switcher (prototype chrome) ---------- */
+  .variant { display: none; }
+  .variant.active { display: block; }
+  .switcher {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+    display: flex; align-items: stretch;
+    background: var(--bg-panel-elevated);
+    border: 2px solid var(--stroke-strong);
+    box-shadow: 4px 4px 0 var(--accent-lime);
+    z-index: 50;
+  }
+  .switcher button { appearance: none; border: 0; background: transparent; color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; width: 46px; height: 46px; cursor: pointer; }
+  .switcher button:active { background: var(--bg-panel-muted); }
+  .switcher .label { display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 11rem; padding: 0 10px; border-left: 2px solid var(--stroke-strong); border-right: 2px solid var(--stroke-strong); }
+  .switcher .label .k { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.18em; color: var(--fg-muted); text-transform: uppercase; }
+  .switcher .label .n { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; color: var(--accent-lime); text-transform: uppercase; }
+  .page-end-pad { height: 90px; }
+</style>
+</head>
+<body>
+
+<div class="ticket-strip">
+  PROTOTYPE · <b>alp82/aistack#186</b> · the session phase anatomy · round 3 · the playbook
+</div>
+
+<!-- ················· VIEW 1: the playbook (public section candidate) ················· -->
+<section class="journey alt variant" id="v-playbook">
+  <div class="shell">
+    <p class="mono-label kicker-line">// MEASURED WORKFLOW</p>
+    <h2 style="font-size:30px; font-weight:900; text-transform:uppercase; margin:0 0 24px; letter-spacing:-0.01em">How Work Ships Here</h2>
+
+    <div id="tracks"></div>
+
+    <div class="receipts" id="receipts"></div>
+
+    <div class="box block-gap">
+      <p class="mono-label kicker-line">// WHERE THE MINUTES GO</p>
+      <div class="agg-strip" id="agg-strip"></div>
+      <div class="agg-legend" id="agg-legend"></div>
+      <p class="agg-note mono-label" id="agg-coverage" style="margin-top:10px"></p>
+    </div>
+
+    <div class="consent">
+      <span class="mono-label">// HOW TO READ THIS</span><br>
+      Every number is measured on the machine by versioned rules, and each card prints its receipt.
+      A card that compares two groups says measured together, and it claims no cause.
+      Only owner-approved aggregates leave the machine.
+    </div>
+  </div>
+</section>
+
+<!-- ················· VIEW 2: the mirror (owner-only, local) ················· -->
+<section class="journey variant" id="v-mirror">
+  <div class="shell">
+    <p class="mono-label kicker-line">// THE MIRROR · OWNER ONLY · NEVER SYNCS</p>
+    <h2 style="font-size:24px; font-weight:900; text-transform:uppercase; margin:0 0 8px">This Window, For You</h2>
+    <p class="lead">The same records, read for one purpose: where your time went, and the one lever with the receipt behind it.</p>
+
+    <div id="mirror-sink"></div>
+    <div class="receipts block-gap" id="mirror-cards"></div>
+
+    <div class="consent">
+      <span class="mono-label">// HOW TO READ THIS</span><br>
+      This view is computed and shown locally. Nothing here is part of the public page or the sync payload.
+    </div>
+  </div>
+</section>
+
+<!-- ················· VIEW 3: the small print ················· -->
+<section class="journey variant" id="v-derive">
+  <div class="shell" style="max-width:44rem">
+    <p class="mono-label kicker-line">// THE SMALL PRINT</p>
+    <p class="lead">
+      Fixed rules read the recorded tool events and sort each one into a phase.
+      An event owns at most five minutes. Time no rule can name stays visible as unknown.
+      When the rules improve, the machine reclassifies old sessions from their local records.
+    </p>
+    <div class="agg-legend" id="phase-defs" style="margin:0 0 20px"></div>
+    <p class="lead" id="smallprint-line" style="margin-bottom:20px"></p>
+    <div class="controls">
+      <div class="ctl">
+        <span class="k mono-label">rule set</span>
+        <div class="seg-btns" id="ctl-version"></div>
+      </div>
+      <div class="ctl">
+        <span class="k mono-label">waiting slice</span>
+        <div class="seg-btns" id="ctl-wait"></div>
+      </div>
+    </div>
+    <div class="consent">
+      <span class="mono-label">// DATA IN THIS PROTOTYPE</span><br>
+      One real session (the session that built this page), three hand-made specimens, and a
+      generated labeled corpus. Raw records never leave the machine. Only owner-approved
+      aggregates sync.
+    </div>
+  </div>
+</section>
+
+<div class="page-end-pad"></div>
+
+<div class="switcher" role="navigation" aria-label="variant switcher">
+  <button type="button" id="prev" aria-label="previous view">←</button>
+  <div class="label">
+    <span class="k" id="sw-k"></span>
+    <span class="n" id="sw-n"></span>
+  </div>
+  <button type="button" id="next" aria-label="next view">→</button>
+</div>
+
+<script>
+/* =====================================================================
+   PURE MODULE. The liftable part. No DOM in this block.
+===================================================================== */
+
+var PHASE_COLOR = {
+  orient:  'var(--ph-orient)',
+  build:   'var(--ph-build)',
+  verify:  'var(--ph-verify)',
+  gate:    'var(--ph-gate)',
+  waiting: 'repeating-linear-gradient(135deg, rgba(194,25,119,0.5) 0 4px, rgba(194,25,119,0.12) 4px 8px)',
+  unknown: 'var(--ph-unknown)'
+};
+var PHASE_ORDER = ['orient', 'build', 'verify', 'gate', 'waiting', 'unknown'];
+
+function cmdIs(arg, heads) {
+  for (var i = 0; i < heads.length; i++) {
+    if (arg === heads[i] || arg.indexOf(heads[i] + ' ') === 0) return true;
+  }
+  return false;
+}
+
+var GATE_TOOLS = ['mcp__curia__ask_human', 'mcp__curia__request_review', 'AskUserQuestion', 'ExitPlanMode'];
+var GATE_SURFACE_TOOLS = ['mcp__curia__open_pull_request', 'mcp__curia__publish_preview', 'mcp__curia__report_result'];
+var ORIENT_TOOLS = ['Read', 'Grep', 'Glob', 'WebFetch', 'WebSearch', 'ToolSearch'];
+var EDIT_TOOLS = ['Edit', 'Write', 'NotebookEdit'];
+var REVIEW_SKILLS = ['code-review', 'security-review', 'review'];
+var ORIENT_AGENTS = ['Explore', 'Plan', 'research'];
+
+var MARKER_RULES = [
+  { id: 'gate.blocking-call',  phase: 'gate',    when: 'a tool that blocks on a human: ask_human, request_review, AskUserQuestion, ExitPlanMode',
+    test: function (tool, arg) { return GATE_TOOLS.indexOf(tool) >= 0; } },
+  { id: 'gate.surface',        phase: 'gate',    when: 'a tool that builds the gate surface: open_pull_request, publish_preview, report_result',
+    test: function (tool, arg) { return GATE_SURFACE_TOOLS.indexOf(tool) >= 0; } },
+  { id: 'verify.review-skill', phase: 'verify',  when: 'a review skill loads: code-review, security-review, review',
+    test: function (tool, arg) { return tool === 'Skill' && REVIEW_SKILLS.indexOf(arg) >= 0; } },
+  { id: 'build.edit-tool',     phase: 'build',   when: 'a file changes: Edit, Write, NotebookEdit',
+    test: function (tool, arg) { return EDIT_TOOLS.indexOf(tool) >= 0; } },
+  { id: 'orient.read-tool',    phase: 'orient',  when: 'a read or search tool: Read, Grep, Glob, WebFetch, WebSearch, ToolSearch',
+    test: function (tool, arg) { return ORIENT_TOOLS.indexOf(tool) >= 0; } },
+  { id: 'orient.skill-load',   phase: 'orient',  when: 'any other skill loads: the agent reads instructions',
+    test: function (tool, arg) { return tool === 'Skill'; } },
+  { id: 'orient.scout-agent',  phase: 'orient',  when: 'a scout subagent starts: Explore, Plan, research',
+    test: function (tool, arg) { return tool === 'Agent' && ORIENT_AGENTS.indexOf(arg) >= 0; } }
+];
+
+var V2_COMMAND_RULES = [
+  { id: 'verify.test-cmd',     phase: 'verify',  when: 'a shell command matches the test list: pnpm test, vitest, tsc, biome, pnpm build, pnpm lint',
+    test: function (tool, arg) { return tool === 'Bash' && cmdIs(arg, ['pnpm test', 'vitest', 'tsc', 'biome', 'pnpm build', 'pnpm lint', 'pnpm typecheck']); } },
+  { id: 'gate.publish-cmd',    phase: 'gate',    when: 'a shell command publishes to the human: git push, gh pr create, gh pr merge',
+    test: function (tool, arg) { return tool === 'Bash' && cmdIs(arg, ['git push', 'gh pr create', 'gh pr merge']); } },
+  { id: 'build.change-cmd',    phase: 'build',   when: 'a shell command changes files or the index: git add, git commit, mkdir, cp, mv, rm, touch, sed, pnpm add',
+    test: function (tool, arg) { return tool === 'Bash' && cmdIs(arg, ['git add', 'git commit', 'mkdir', 'cp', 'mv', 'rm', 'touch', 'sed', 'pnpm add', 'npm install']); } },
+  { id: 'orient.read-cmd',     phase: 'orient',  when: 'a shell command reads: ls, cat, head, tail, wc, grep, rg, find, git log, git show, git diff, git status, gh issue view, gh issue list, gh pr view, gh pr list, curl',
+    test: function (tool, arg) { return tool === 'Bash' && cmdIs(arg, ['ls', 'cat', 'head', 'tail', 'wc', 'grep', 'rg', 'find', 'git log', 'git show', 'git diff', 'git status', 'gh issue view', 'gh issue list', 'gh pr view', 'gh pr list', 'curl']); } },
+  { id: 'gate.notify',         phase: 'gate',    when: 'a status line goes to the human: notify',
+    test: function (tool, arg) { return tool === 'mcp__curia__notify'; } }
+];
+
+var UNKNOWN_RULES = [
+  { id: 'unknown.shell',       phase: 'unknown', when: 'a shell command no rule matches',
+    test: function (tool, arg) { return tool === 'Bash'; } },
+  { id: 'unknown.agent',       phase: 'unknown', when: 'a non-scout subagent: its work classifies from its own records in the real build',
+    test: function (tool, arg) { return tool === 'Agent'; } },
+  { id: 'unknown.tool',        phase: 'unknown', when: 'any other tool',
+    test: function (tool, arg) { return true; } }
+];
+
+var TAXONOMIES = {
+  'phase-rules/v1': {
+    note: 'Tool identity markers only. Command text is not consulted, so every shell call is unknown.',
+    rules: MARKER_RULES.concat(UNKNOWN_RULES)
+  },
+  'phase-rules/v2': {
+    note: 'The v1 markers, plus fixed command-head rules. The heads are matched on the machine.',
+    rules: MARKER_RULES.concat(V2_COMMAND_RULES, UNKNOWN_RULES)
+  }
+};
+
+function classify(events, versionKey) {
+  var rules = TAXONOMIES[versionKey].rules;
+  return events.map(function (e) {
+    for (var i = 0; i < rules.length; i++) {
+      if (rules[i].test(e[1], e[2] || '')) {
+        return { t: e[0], tool: e[1], arg: e[2] || '', rule: rules[i].id, phase: rules[i].phase };
+      }
+    }
+  });
+}
+
+var TAIL_SEC = 60;
+var CAP_SEC = 300; /* settled in round 1 */
+
+function attribute(classified, capSec, waitPolicy) {
+  return classified.map(function (ev, i) {
+    var gap = i + 1 < classified.length ? classified[i + 1].t - ev.t : TAIL_SEC;
+    var cap = capSec === 0 ? gap : Math.min(gap, capSec);
+    var own = cap, waiting = 0;
+    var blocking = GATE_TOOLS.indexOf(ev.tool) >= 0;
+    if (blocking && waitPolicy === 'counted') own = gap;
+    if (blocking && waitPolicy === 'slice') { own = cap; waiting = gap - cap; }
+    return { ev: ev, gapSec: gap, ownSec: own, waitingSec: waiting, idleSec: gap - own - waiting };
+  });
+}
+
+function deriveSession(session, versionKey, capSec, waitPolicy) {
+  var usedVersion = session.rawGone ? 'phase-rules/v1' : versionKey;
+  var rows = attribute(classify(session.events, usedVersion), capSec, waitPolicy);
+  var by = { orient: 0, build: 0, verify: 0, gate: 0, waiting: 0, unknown: 0 };
+  var idle = 0;
+  rows.forEach(function (r) { by[r.ev.phase] += r.ownSec; by.waiting += r.waitingSec; idle += r.idleSec; });
+  var wall = session.events[session.events.length - 1][0] + TAIL_SEC;
+  return { session: session, usedVersion: usedVersion, rows: rows, by: by, idleSec: idle, wallSec: wall,
+           coveredSec: wall - idle };
+}
+
+function deriveAll(sessions, versionKey, capSec, waitPolicy) {
+  var per = sessions.map(function (s) { return deriveSession(s, versionKey, capSec, waitPolicy); });
+  var by = { orient: 0, build: 0, verify: 0, gate: 0, waiting: 0, unknown: 0 };
+  var wall = 0, covered = 0;
+  per.forEach(function (d) {
+    PHASE_ORDER.forEach(function (p) { by[p] += d.by[p]; });
+    wall += d.wallSec; covered += d.coveredSec;
+  });
+  return { per: per, by: by, wallSec: wall, coveredSec: covered };
+}
+
+/* ---------- insight derivations (all pure) ---------- */
+
+function sessionHasMerge(session) {
+  return session.events.some(function (e) { return e[1] === 'Bash' && cmdIs(e[2] || '', ['gh pr merge']); });
+}
+
+function verifyRuns(d) {
+  var runs = 0, inRun = false;
+  d.rows.forEach(function (r) {
+    if (r.ev.phase === 'verify') { if (!inRun) runs++; inRun = true; }
+    else inRun = false;
+  });
+  return runs;
+}
+
+function reviewRounds(d) {
+  return d.rows.filter(function (r) { return r.ev.tool === 'mcp__curia__request_review'; }).length;
+}
+
+/* the wait spent at review gates only, beyond the grace */
+function reviewWaitSec(d) {
+  var w = 0;
+  d.rows.forEach(function (r) {
+    if (r.ev.tool === 'mcp__curia__request_review') w += Math.max(0, r.gapSec - 60);
+  });
+  return w;
+}
+
+/* waits at blocking calls, beyond a one-minute grace */
+var WAIT_GRACE_SEC = 60;
+function sessionWaitSec(d) {
+  var w = 0;
+  d.rows.forEach(function (r) {
+    if (GATE_TOOLS.indexOf(r.ev.tool) >= 0) w += Math.max(0, r.gapSec - WAIT_GRACE_SEC);
+  });
+  return w;
+}
+
+/* ask_human rounds: [questionCount, waitSec] */
+function askRounds(per) {
+  var out = [];
+  per.forEach(function (d) {
+    d.rows.forEach(function (r) {
+      if (r.ev.tool !== 'mcp__curia__ask_human') return;
+      var q = 1;
+      var m = /^q(\d+)$/.exec(r.ev.arg);
+      if (m) q = parseInt(m[1], 10) || 1;
+      out.push({ q: q, waitSec: Math.max(0, r.gapSec - WAIT_GRACE_SEC) });
+    });
+  });
+  return out;
+}
+
+function median(list) {
+  var s = list.slice().sort(function (a, b) { return a - b; });
+  if (!s.length) return 0;
+  var m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+function avg(list) {
+  if (!list.length) return 0;
+  return list.reduce(function (a, b) { return a + b; }, 0) / list.length;
+}
+
+/* the two shipping tracks, split by a fixed rule */
+function trackSplit(per) {
+  var merged = per.filter(function (d) { return sessionHasMerge(d.session); });
+  var quick = merged.filter(function (d) { return d.session.events.length <= 20; });
+  var feature = merged.filter(function (d) { return d.session.events.length > 20; });
+  var noShip = per.filter(function (d) { return !sessionHasMerge(d.session); });
+  return { quick: quick, feature: feature, noShip: noShip, merged: merged };
+}
+
+function trackStats(list) {
+  function med(f) { return median(list.map(f)); }
+  return {
+    n: list.length,
+    orientMin: med(function (d) { return d.by.orient / 60; }),
+    buildMin: med(function (d) { return d.by.build / 60; }),
+    verifyMin: med(function (d) { return d.by.verify / 60; }),
+    verifyRuns: med(function (d) { return verifyRuns(d); }),
+    rounds: med(function (d) { return reviewRounds(d); }),
+    waitMin: med(function (d) { return sessionWaitSec(d) / 60; }),
+    wallMin: med(function (d) { return d.wallSec / 60; })
+  };
+}
+
+/* =====================================================================
+   DATA. One real session, three hand-made specimens, a generated corpus.
+===================================================================== */
+
+var SESSIONS = [
+  {
+    id: 'real-186',
+    name: 'this very session: the ticket 186 build',
+    source: 'real · extracted from this session’s transcript · 2026-08-19',
+    rawGone: false, day: 20,
+    events: [] /* REAL_EVENTS is injected below, extracted before commit */
+  },
+  {
+    id: 'hitl-grilling',
+    name: 'a wayfinder grilling, three rounds',
+    source: 'hand-made · shaped after real curia HITL sessions',
+    rawGone: false, day: 8,
+    events: [
+      [0, 'Bash', 'gh issue view'], [15, 'Bash', 'gh issue view'], [40, 'Read', ''], [70, 'Read', ''],
+      [120, 'Skill', 'grilling'], [150, 'Skill', 'domain-modeling'],
+      [200, 'mcp__curia__ask_human', 'q4'],
+      [1100, 'Read', ''], [1160, 'Bash', 'gh issue view'],
+      [1250, 'mcp__curia__ask_human', 'q1'],
+      [2450, 'Bash', 'git log'], [2500, 'Read', ''],
+      [2560, 'mcp__curia__ask_human', 'q2'],
+      [3400, 'Write', ''], [3700, 'Edit', ''],
+      [3900, 'Bash', 'git add'], [3910, 'Bash', 'git commit'],
+      [3940, 'mcp__curia__open_pull_request', ''],
+      [3980, 'mcp__curia__request_review', ''],
+      [5300, 'Bash', 'gh pr merge'],
+      [5330, 'Bash', 'gh issue comment'], [5360, 'Bash', 'gh issue close'],
+      [5390, 'mcp__curia__report_result', '']
+    ]
+  },
+  {
+    id: 'tight-fix',
+    name: 'a small fix, tight loop',
+    source: 'hand-made · shaped after real curia fix sessions',
+    rawGone: false, day: 12,
+    events: [
+      [0, 'Bash', 'gh issue view'], [25, 'Read', ''], [60, 'Read', ''], [90, 'Grep', ''],
+      [130, 'Edit', ''], [340, 'Bash', 'pnpm test'],
+      [420, 'Edit', ''], [560, 'Bash', 'pnpm test'],
+      [640, 'Edit', ''], [700, 'Bash', 'pnpm test'],
+      [780, 'Bash', 'git add'], [790, 'Bash', 'git commit'],
+      [820, 'mcp__curia__open_pull_request', ''],
+      [870, 'mcp__curia__request_review', ''],
+      [1310, 'Bash', 'gh pr merge'], [1350, 'mcp__curia__report_result', '']
+    ]
+  },
+  {
+    id: 'afk-research',
+    name: 'an AFK research sweep',
+    source: 'hand-made · raw records gone · aggregate kept at phase-rules/v1',
+    rawGone: true, day: 5,
+    events: [
+      [0, 'Bash', 'gh issue view'], [30, 'Skill', 'research'],
+      [90, 'WebSearch', ''], [180, 'WebFetch', ''], [360, 'WebFetch', ''], [600, 'Read', ''],
+      [660, 'Agent', 'research'],
+      [1500, 'WebFetch', ''], [1700, 'WebSearch', ''],
+      [1900, 'Write', ''], [2300, 'Edit', ''],
+      [2500, 'Bash', 'git add'], [2510, 'Bash', 'git commit'],
+      [2560, 'mcp__curia__report_result', '']
+    ]
+  }
+];
+
+var REAL_EVENTS = [[0,"Bash","gh issue view"],[1,"Bash","gh issue view"],[1,"Bash","ls"],[10,"Bash","gh issue view"],[10,"Bash","wc -l"],[20,"Skill","prototype"],[42,"Read",""],[43,"Read",""],[49,"Bash","wc -l"],[53,"Read",""],[53,"Read",""],[105,"Bash","ls"],[121,"Bash","cd"],[128,"Bash","jq -r"],[136,"Bash","wc -l"],[143,"Bash","node -e"],[202,"Skill","dataviz"],[218,"Bash","cd"],[237,"Bash","cd"],[295,"Write",""],[306,"Bash","node"],[317,"Edit",""],[572,"Write",""],[595,"Bash","cd"],[613,"Bash","node"],[614,"ToolSearch",""],[625,"Edit",""],[632,"Bash","grep -P"],[641,"mcp__curia__open_pull_request",""],[653,"Bash","-m"],[658,"mcp__curia__publish_preview",""],[697,"mcp__curia__ask_human","q6"],[1906,"Bash","cd"],[2196,"Write",""],[2214,"Bash","node -e"],[2235,"Bash","grep -P"],[2242,"mcp__curia__open_pull_request",""],[2275,"mcp__curia__ask_human","q3"],[2864,"Edit",""],[2869,"Bash","node"],[3106,"Write",""],[3122,"Bash","node -e"],[3153,"Edit",""],[3155,"Edit",""],[3157,"Edit",""],[3166,"Edit",""],[3170,"Edit",""],[3181,"Bash","node -e"],[3192,"Bash","grep -P"],[3200,"mcp__curia__open_pull_request",""],[3220,"mcp__curia__ask_human","q3"],[3521,"Bash","grep -n"],[3526,"Read",""],[3541,"Edit",""],[3557,"Edit",""],[3567,"Edit",""],[3569,"Bash","node"],[3579,"Bash","cd"]];
+SESSIONS[0].events = REAL_EVENTS;
+
+/* ---------- generated corpus: seeded PRNG, labeled generated ---------- */
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    var t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function makeCorpus() {
+  var rng = mulberry32(186);
+  function between(lo, hi) { return lo + Math.floor(rng() * (hi - lo + 1)); }
+
+  /* one review pass; unverified work usually earns a second round */
+  function gateAndMerge(ev, t, verified) {
+    ev.push([t += between(30, 60), 'mcp__curia__open_pull_request', '']);
+    ev.push([t += between(30, 60), 'mcp__curia__request_review', '']);
+    var rework = verified ? rng() < 0.1 : rng() < 0.9;
+    if (rework) {
+      t += between(400, 1000);
+      ev.push([t, 'Edit', '']);
+      ev.push([t += between(60, 180), 'Bash', 'git add']);
+      ev.push([t += 10, 'Bash', 'git commit']);
+      ev.push([t += between(20, 50), 'mcp__curia__open_pull_request', '']);
+      ev.push([t += between(30, 60), 'mcp__curia__request_review', '']);
+    }
+    t += between(300, 900);
+    ev.push([t, 'Bash', 'gh pr merge']);
+    ev.push([t += between(20, 60), 'mcp__curia__report_result', '']);
+    return t;
+  }
+
+  function tightFix(verified) {
+    var ev = [], t = 0;
+    ev.push([t, 'Bash', 'gh issue view']);
+    ev.push([t += between(20, 50), 'Read', '']);
+    ev.push([t += between(20, 60), 'Read', '']);
+    var loops = verified ? between(1, 2) : 0;
+    ev.push([t += between(90, 260), 'Edit', '']);
+    for (var i = 0; i < loops; i++) {
+      ev.push([t += between(60, 140), 'Bash', 'pnpm test']);
+      if (i + 1 < loops) ev.push([t += between(90, 200), 'Edit', '']);
+    }
+    ev.push([t += between(30, 60), 'Bash', 'git add']);
+    ev.push([t += 10, 'Bash', 'git commit']);
+    gateAndMerge(ev, t, verified);
+    return ev;
+  }
+
+  function deepBuild(verified) {
+    var ev = [], t = 0;
+    ev.push([t, 'Bash', 'gh issue view']);
+    ev.push([t += between(30, 80), 'Read', '']);
+    ev.push([t += between(30, 90), 'Read', '']);
+    var edits = between(8, 14);
+    for (var i = 0; i < edits; i++) {
+      ev.push([t += between(60, 240), 'Edit', '']);
+      if (verified && i > 0 && i % 4 === 0) ev.push([t += between(60, 120), 'Bash', 'pnpm test']);
+    }
+    if (verified) ev.push([t += between(60, 120), 'Bash', 'pnpm test']);
+    ev.push([t += between(30, 60), 'Bash', 'git add']);
+    ev.push([t += 10, 'Bash', 'git commit']);
+    gateAndMerge(ev, t, verified);
+    return ev;
+  }
+
+  function grilling() {
+    var ev = [], t = 0;
+    ev.push([t, 'Bash', 'gh issue view']);
+    ev.push([t += between(20, 60), 'Read', '']);
+    ev.push([t += between(30, 90), 'Skill', 'grilling']);
+    var rounds = between(2, 4);
+    for (var i = 0; i < rounds; i++) {
+      var q = rng() < 0.45 ? 1 : between(2, 6);
+      ev.push([t += between(60, 180), 'mcp__curia__ask_human', 'q' + q]);
+      /* the human latency is per round, not per question */
+      t += between(500, 1400);
+      ev.push([t, 'Read', '']);
+    }
+    ev.push([t += between(120, 300), 'Write', '']);
+    ev.push([t += between(120, 300), 'Edit', '']);
+    ev.push([t += between(30, 60), 'Bash', 'git add']);
+    ev.push([t += 10, 'Bash', 'git commit']);
+    gateAndMerge(ev, t, true);
+    return ev;
+  }
+
+  function research() {
+    var ev = [], t = 0;
+    ev.push([t, 'Bash', 'gh issue view']);
+    ev.push([t += between(20, 60), 'Skill', 'research']);
+    var n = between(4, 7);
+    for (var i = 0; i < n; i++) {
+      ev.push([t += between(90, 260), rng() < 0.5 ? 'WebFetch' : 'WebSearch', '']);
+    }
+    ev.push([t += between(60, 120), 'Agent', 'research']);
+    t += between(600, 1200);
+    ev.push([t, 'Write', '']);
+    ev.push([t += between(120, 300), 'Edit', '']);
+    ev.push([t += between(30, 60), 'Bash', 'git add']);
+    ev.push([t += 10, 'Bash', 'git commit']);
+    ev.push([t += between(20, 60), 'mcp__curia__report_result', '']);
+    return ev;
+  }
+
+  function scout() {
+    var ev = [], t = 0;
+    var n = between(6, 10);
+    ev.push([t, 'Bash', 'gh issue view']);
+    for (var i = 0; i < n; i++) {
+      var pick = rng();
+      ev.push([t += between(40, 160), pick < 0.5 ? 'Read' : pick < 0.75 ? 'Grep' : 'WebFetch', '']);
+    }
+    return ev;
+  }
+
+  var corpus = [];
+  var counter = 0;
+  for (var day = 0; day < 21; day++) {
+    var n = rng() < 0.2 ? 0 : between(1, 2);
+    for (var s = 0; s < n; s++) {
+      var pick = rng(), name, ev;
+      var verified = rng() < 0.65;
+      if (pick < 0.4)       { name = 'a tight fix loop';  ev = tightFix(verified); }
+      else if (pick < 0.6)  { name = 'a deep build';      ev = deepBuild(verified); }
+      else if (pick < 0.75) { name = 'a grilling';        ev = grilling(); }
+      else if (pick < 0.9)  { name = 'a research sweep';  ev = research(); }
+      else                  { name = 'a scout pass';      ev = scout(); }
+      corpus.push({
+        id: 'gen-' + (counter++),
+        name: name + ' · day ' + (day + 1),
+        source: 'generated · seeded PRNG · labeled, not real',
+        rawGone: false, day: day, events: ev
+      });
+    }
+  }
+  return corpus;
+}
+
+var CORPUS = makeCorpus();
+var ALL_SESSIONS = SESSIONS.concat(CORPUS);
+
+/* =====================================================================
+   PAGE. Controls and rendering. Throwaway.
+===================================================================== */
+
+var state = { version: 'phase-rules/v2', wait: 'slice' };
+
+var CTL_DEFS = {
+  version: { el: 'ctl-version', options: [
+    { v: 'phase-rules/v1', label: 'v1 · markers only' },
+    { v: 'phase-rules/v2', label: 'v2 · + command rules' }
+  ]},
+  wait: { el: 'ctl-wait', options: [
+    { v: 'slice', label: 'shown' },
+    { v: 'capped', label: 'hidden' }
+  ]}
+};
+
+function fmtMin(sec) { return Math.round(sec / 60) + ' min'; }
+function fmtMinV(min) {
+  if (min >= 90) return (min / 60).toFixed(1) + ' h';
+  return Math.round(min) + ' min';
+}
+function pct(part, whole) { return whole === 0 ? 0 : Math.round(100 * part / whole); }
+
+function renderControls() {
+  Object.keys(CTL_DEFS).forEach(function (key) {
+    var def = CTL_DEFS[key];
+    var host = document.getElementById(def.el);
+    host.innerHTML = '';
+    def.options.forEach(function (o) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = o.label;
+      b.className = state[key] === o.v ? 'on' : '';
+      b.addEventListener('click', function () { state[key] = o.v; render(); });
+      host.appendChild(b);
+    });
+  });
+}
+
+/* ---------- view 1: the playbook ---------- */
+
+function jstep(color, ph, big, sub) {
+  return '<div class="jstep" style="--c:' + color + '"><span class="ph">' + ph + '</span>' +
+    '<span class="min">' + big + '</span>' + (sub ? '<span class="sub">' + sub + '</span>' : '') + '</div>';
+}
+
+function trackHtml(title, st, note) {
+  var steps = [
+    jstep('var(--ph-orient)', 'orient', fmtMinV(st.orientMin), 'read first'),
+    jstep('var(--ph-build)', 'build', fmtMinV(st.buildMin), ''),
+    jstep('var(--ph-verify)', 'verify', '×' + Math.round(st.verifyRuns), fmtMinV(st.verifyMin)),
+    jstep('var(--ph-gate)', 'review gate', Math.round(st.rounds) + (Math.round(st.rounds) === 1 ? ' round' : ' rounds'), fmtMinV(st.waitMin) + ' wait'),
+    jstep('var(--accent-lime)', 'merged', fmtMinV(st.wallMin), 'door to door')
+  ];
+  return '<div class="track"><div class="track-head"><h3 class="track-name">' + title + '</h3>' +
+    '<span class="track-meta">' + st.n + ' runs this window · median figures</span></div>' +
+    '<div class="jline">' + steps.join('<span class="jarrow">→</span>') + '</div>' +
+    (note ? '<p class="track-note">' + note + '</p>' : '') + '</div>';
+}
+
+function cmpRow(label, value, max, unit, best) {
+  var color = best ? 'var(--accent-lime)' : 'var(--ph-unknown)';
+  return '<div class="cmp-row"><span class="lbl">' + label + '</span>' +
+    '<div class="track2"><div class="fill" style="width:' + Math.max(3, 100 * value / max) + '%; background:' + color + '"></div></div>' +
+    '<span class="val">' + value.toFixed(1) + ' ' + unit + '</span></div>';
+}
+
+function renderPlaybook(all) {
+  var split = trackSplit(all.per);
+  var quick = trackStats(split.quick);
+  var feature = trackStats(split.feature);
+
+  var noShipNote = split.noShip.length
+    ? '<p class="track-note" style="margin-top:16px">Plus <b>' + split.noShip.length +
+      '</b> sessions that shipped nothing on purpose: research sweeps and scout passes. They feed the next build.</p>'
+    : '';
+
+  document.getElementById('tracks').innerHTML =
+    trackHtml('The quick fix', quick, 'Small change, same discipline: it still ends at the human gate.') +
+    trackHtml('The feature', feature, 'The long track earns its review wait. Tests run before the gate, so one round usually settles it.') +
+    noShipNote;
+
+  /* receipts */
+  var merged = split.merged;
+  var withV = merged.filter(function (d) { return verifyRuns(d) > 0; });
+  var withoutV = merged.filter(function (d) { return verifyRuns(d) === 0; });
+  var roundsWith = avg(withV.map(reviewRounds));
+  var roundsWithout = avg(withoutV.map(reviewRounds));
+  var maxRounds = Math.max(roundsWith, roundsWithout, 1);
+
+  var rounds = askRounds(all.per);
+  var batched = rounds.filter(function (r) { return r.q >= 2; });
+  var single = rounds.filter(function (r) { return r.q === 1; });
+  var perQBatched = batched.length ? avg(batched.map(function (r) { return r.waitSec / r.q / 60; })) : 0;
+  var perQSingle = single.length ? avg(single.map(function (r) { return r.waitSec / 60; })) : 0;
+  var maxPerQ = Math.max(perQBatched, perQSingle, 1);
+
+  var openers = all.per.filter(function (d) { return d.rows.length && d.rows[0].ev.phase === 'orient'; });
+
+  var cards = [];
+  if (withV.length && withoutV.length) {
+    cards.push('<div class="receipt"><p class="head">Tests before the gate save review rounds.</p><div class="cmp">' +
+      cmpRow('merges with a verify step', roundsWith, maxRounds, 'rounds', true) +
+      cmpRow('merges without one', roundsWithout, maxRounds, 'rounds', false) +
+      '</div><p class="foot mono-label">n = ' + withV.length + ' vs ' + withoutV.length +
+      ' · measured together, not proved cause · verify = matched test command or review skill</p></div>');
+  }
+  if (batched.length && single.length) {
+    cards.push('<div class="receipt"><p class="head">Batched questions amortize the human wait.</p><div class="cmp">' +
+      cmpRow('asked in rounds of 2 or more', perQBatched, maxPerQ, 'min / answer', true) +
+      cmpRow('asked one at a time', perQSingle, maxPerQ, 'min / answer', false) +
+      '</div><p class="foot mono-label">n = ' + batched.length + ' vs ' + single.length +
+      ' rounds · wait = gap after ask_human, one minute grace · includes 2 real rounds from this session</p></div>');
+  }
+  cards.push('<div class="receipt"><p class="head">Nothing lands unreviewed.</p>' +
+    '<p class="big">' + merged.length + ' of ' + merged.length + ' <small>merges passed the human gate first</small></p>' +
+    '<p class="foot mono-label">rule: a request_review call precedes every matched merge command</p></div>');
+  cards.push('<div class="receipt"><p class="head">Read first, then touch the code.</p>' +
+    '<p class="big">' + pct(openers.length, all.per.length) + '% <small>of sessions open in orient</small></p>' +
+    '<p class="foot mono-label">rule: the first classified event of the session is an orient event</p></div>');
+
+  document.getElementById('receipts').innerHTML = cards.join('');
+
+  /* demoted anatomy strip */
+  var total = 0;
+  PHASE_ORDER.forEach(function (p) { total += all.by[p]; });
+  document.getElementById('agg-strip').innerHTML = PHASE_ORDER.filter(function (p) { return all.by[p] > 0; })
+    .map(function (p) {
+      return '<div class="agg-seg" style="flex:' + all.by[p] + '; background:' + PHASE_COLOR[p] + '" title="' +
+        p + ' · ' + pct(all.by[p], total) + '% · ' + fmtMin(all.by[p]) + '"></div>';
+    }).join('');
+  document.getElementById('agg-legend').innerHTML = PHASE_ORDER.filter(function (p) { return all.by[p] > 0; })
+    .map(function (p) {
+      return '<span><i style="background:' + PHASE_COLOR[p] + '"></i>' + p + ' · ' + pct(all.by[p], total) + '%</span>';
+    }).join('');
+
+  var versions = {};
+  all.per.forEach(function (d) { versions[d.usedVersion] = (versions[d.usedVersion] || 0) + 1; });
+  var vkeys = Object.keys(versions).sort();
+  var tag = vkeys.length === 1
+    ? vkeys[0]
+    : vkeys.map(function (v) { return versions[v] + ' of ' + all.per.length + ' under ' + v; }).join(' · ');
+  document.getElementById('agg-coverage').textContent =
+    tag + ' · covers ' + fmtMin(all.coveredSec) + ' of ' + fmtMin(all.wallSec) + ' wall clock';
+}
+
+/* ---------- view 2: the mirror ---------- */
+function renderMirror(all) {
+  var waitTotal = 0;
+  all.per.forEach(function (d) { waitTotal += sessionWaitSec(d); });
+  var rounds = askRounds(all.per);
+  var single = rounds.filter(function (r) { return r.q === 1; });
+  var singleWait = single.reduce(function (a, r) { return a + r.waitSec; }, 0);
+
+  document.getElementById('mirror-sink').innerHTML =
+    '<div class="sink"><p class="mono-label kicker-line">// THE BIGGEST SINK THIS WINDOW</p>' +
+    '<p class="n">' + (waitTotal / 3600).toFixed(1) + ' h</p>' +
+    '<p class="what">parked at blocking calls, waiting for a human answer. That is <b>' +
+    pct(waitTotal, all.wallSec) + '%</b> of all recorded wall clock.</p>' +
+    '<p class="lever">The lever: <b>' + single.length + ' of ' + rounds.length +
+    '</b> question rounds carried a single question, and those rounds alone held <b>' +
+    (singleWait / 3600).toFixed(1) + ' h</b> of the wait. Batching them into their next round is free.</p>' +
+    '<p class="foot mono-label" style="margin-top:12px">rule: wait = gap after a blocking gate call, one minute grace · ask_human rounds carry their question count</p></div>';
+
+  /* weekly verify trend + rework cost */
+  var days = [];
+  for (var i = 0; i < 21; i++) days.push({ orient: 0, build: 0, verify: 0, gate: 0, waiting: 0, unknown: 0 });
+  all.per.forEach(function (d) {
+    if (d.session.day === undefined) return;
+    PHASE_ORDER.forEach(function (p) { days[d.session.day][p] += d.by[p]; });
+  });
+  var weeks = [0, 1, 2].map(function (w) {
+    var c = { orient: 0, build: 0, verify: 0, gate: 0, waiting: 0, unknown: 0 };
+    for (var j = 0; j < 7; j++) PHASE_ORDER.forEach(function (p) { c[p] += days[w * 7 + j][p]; });
+    var sum = 0; PHASE_ORDER.forEach(function (p) { sum += c[p]; });
+    return { c: c, sum: sum };
+  });
+  var weekHtml = weeks.map(function (wk, i) {
+    return '<div class="week-strip-row"><span class="mono-label">week ' + (i + 1) + '</span>' +
+      '<div class="week-strip">' + PHASE_ORDER.filter(function (p) { return wk.c[p] > 0; }).map(function (p) {
+        return '<div style="flex:' + wk.c[p] + '; background:' + PHASE_COLOR[p] + '"></div>';
+      }).join('') + '</div>' +
+      '<span class="week-delta">' + pct(wk.c.verify, wk.sum) + '%</span></div>';
+  }).join('');
+
+  var merged = all.per.filter(function (d) { return sessionHasMerge(d.session); });
+  var twoRound = merged.filter(function (d) { return reviewRounds(d) >= 2; });
+  var oneRound = merged.filter(function (d) { return reviewRounds(d) === 1; });
+  var extra = median(twoRound.map(function (d) { return reviewWaitSec(d) / 60; })) -
+              median(oneRound.map(function (d) { return reviewWaitSec(d) / 60; }));
+
+  document.getElementById('mirror-cards').innerHTML =
+    '<div class="receipt"><p class="head">The verify habit is growing.</p><div class="mini-weeks">' + weekHtml +
+    '</div><p class="foot mono-label">verify share of attributed minutes per week · the generated corpus plants this trend to show the form</p></div>' +
+    '<div class="receipt"><p class="head">A second review round is expensive.</p>' +
+    '<p class="big">+' + fmtMinV(Math.max(0, extra)) + ' <small>median wait at review gates, two rounds vs one</small></p>' +
+    '<p class="foot mono-label">n = ' + twoRound.length + ' two-round merges of ' + merged.length +
+    ' · most of them skipped the verify step first</p></div>';
+}
+
+/* ---------- view 3: the derivation ---------- */
+function renderDerive(all) {
+  var defs = {
+    orient: 'reading and searching',
+    build: 'changing files',
+    verify: 'tests and review',
+    gate: 'the human loop',
+    waiting: 'parked on an answer',
+    unknown: 'no rule matched'
+  };
+  document.getElementById('phase-defs').innerHTML = PHASE_ORDER.map(function (p) {
+    return '<span><i style="background:' + PHASE_COLOR[p] + '"></i>' + p + ' = ' + defs[p] + '</span>';
+  }).join('');
+
+  var covered = 0;
+  PHASE_ORDER.forEach(function (p) { covered += all.by[p]; });
+  var unk = {};
+  all.per.forEach(function (d) {
+    d.rows.forEach(function (r) {
+      if (r.ev.phase !== 'unknown') return;
+      var sig = r.ev.tool === 'Bash' ? 'shell: ' + (r.ev.arg || '(empty)') : r.ev.tool;
+      unk[sig] = (unk[sig] || 0) + 1;
+    });
+  });
+  var top = Object.keys(unk).map(function (k) { return { k: k, n: unk[k] }; })
+    .sort(function (a, b) { return b.n - a.n; }).slice(0, 3).map(function (o) { return o.k; });
+  document.getElementById('smallprint-line').innerHTML =
+    'Right now: <b>' + state.version + '</b> leaves <b>' + pct(all.by.unknown, covered) +
+    '%</b> of the minutes unknown' +
+    (top.length ? ', mostly <b>' + top.join('</b>, <b>') + '</b>.' : '.') +
+    ' That list is the work order for the next rule-set version.';
+}
+
+function render() {
+  renderControls();
+  var all = deriveAll(ALL_SESSIONS, state.version, CAP_SEC, state.wait);
+  renderPlaybook(all);
+  renderMirror(all);
+  renderDerive(all);
+}
+
+/* variant switcher */
+var VARIANTS = [
+  { key: 'playbook', id: 'v-playbook', name: 'the playbook' },
+  { key: 'mirror',   id: 'v-mirror',   name: 'the mirror' },
+  { key: 'derive',   id: 'v-derive',   name: 'the small print' }
+];
+var current = 0;
+function show(i) {
+  current = (i + VARIANTS.length) % VARIANTS.length;
+  VARIANTS.forEach(function (v, j) {
+    document.getElementById(v.id).classList.toggle('active', j === current);
+  });
+  document.getElementById('sw-k').textContent = 'view ' + (current + 1) + ' / ' + VARIANTS.length;
+  document.getElementById('sw-n').textContent = VARIANTS[current].name;
+  var url = new URL(window.location.href);
+  url.searchParams.set('variant', VARIANTS[current].key);
+  history.replaceState(null, '', url.toString());
+}
+document.getElementById('prev').addEventListener('click', function () { show(current - 1); });
+document.getElementById('next').addEventListener('click', function () { show(current + 1); });
+document.addEventListener('keydown', function (e) {
+  if (e.target && /^(input|textarea)$/i.test(e.target.tagName)) return;
+  if (e.key === 'ArrowLeft') show(current - 1);
+  if (e.key === 'ArrowRight') show(current + 1);
+});
+
+(function () {
+  var q = new URL(window.location.href).searchParams.get('variant');
+  var idx = VARIANTS.findIndex(function (v) { return v.key === q; });
+  show(idx >= 0 ? idx : 0);
+  render();
+})();
+</script>
+
+</body>
+</html>

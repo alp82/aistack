@@ -1,0 +1,105 @@
+{
+  "command": "run",
+  "dropped": null,
+  "results": [
+    {
+      "source": "anthropic-news",
+      "mechanism": "sitemap-diff",
+      "url": "https://www.anthropic.com/sitemap.xml",
+      "fetchedAt": "2026-08-19T14:06:39.703Z",
+      "rawUrls": 514,
+      "matchedUrls": 255,
+      "coldRun": true,
+      "newItems": [],
+      "ms": 314
+    },
+    {
+      "source": "claude-blog",
+      "mechanism": "sitemap-diff",
+      "url": "https://claude.com/sitemap.xml",
+      "fetchedAt": "2026-08-19T14:06:40.353Z",
+      "rawUrls": 3415,
+      "matchedUrls": 217,
+      "coldRun": true,
+      "newItems": [],
+      "ms": 649
+    },
+    {
+      "source": "openai-news",
+      "mechanism": "sitemap-diff",
+      "url": "https://openai.com/sitemap.xml",
+      "fetchedAt": "2026-08-19T14:06:52.802Z",
+      "rawUrls": 1852,
+      "matchedUrls": 1085,
+      "childSitemaps": 35,
+      "coldRun": true,
+      "newItems": [],
+      "ms": 12456
+    },
+    {
+      "source": "nous-hermes",
+      "mechanism": "sitemap-diff",
+      "url": "https://nousresearch.com/sitemap.xml",
+      "fetchedAt": "2026-08-19T14:06:52.852Z",
+      "rawUrls": 37,
+      "matchedUrls": 36,
+      "coldRun": true,
+      "newItems": [],
+      "ms": 43
+    },
+    {
+      "source": "deepseek-news",
+      "mechanism": "sitemap-diff",
+      "url": "https://api-docs.deepseek.com/sitemap.xml",
+      "fetchedAt": "2026-08-19T14:06:53.107Z",
+      "rawUrls": 64,
+      "matchedUrls": 16,
+      "coldRun": true,
+      "newItems": [],
+      "ms": 255
+    },
+    {
+      "source": "kimi-blog",
+      "mechanism": "link-diff",
+      "url": "https://www.kimi.com/blog",
+      "fetchedAt": "2026-08-19T14:06:54.091Z",
+      "rawUrls": 19,
+      "matchedUrls": 9,
+      "coldRun": true,
+      "newItems": [],
+      "ms": 984
+    },
+    {
+      "source": "gemini-changelog",
+      "mechanism": "page-diff",
+      "url": "https://ai.google.dev/gemini-api/docs/changelog?hl=en",
+      "fetchedAt": "2026-08-19T14:06:54.428Z",
+      "sections": 106,
+      "coldRun": true,
+      "newItems": [],
+      "changedItems": [],
+      "ms": 337
+    },
+    {
+      "source": "xai-release-notes",
+      "mechanism": "page-diff",
+      "url": "https://docs.x.ai/developers/release-notes",
+      "fetchedAt": "2026-08-19T14:06:54.777Z",
+      "sections": 21,
+      "coldRun": true,
+      "newItems": [],
+      "changedItems": [],
+      "ms": 349
+    },
+    {
+      "source": "pi-releases",
+      "mechanism": "feed-diff",
+      "url": "https://github.com/earendil-works/pi/releases.atom",
+      "fetchedAt": "2026-08-19T14:06:55.431Z",
+      "feedEntries": 10,
+      "coldRun": true,
+      "newItems": [],
+      "ms": 654
+    }
+  ]
+}
