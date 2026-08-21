@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Prototype · alp82/aistack#193 · the stack page section order · round 6</title>
+<title>Prototype · alp82/aistack#193 · the stack page section order · round 7</title>
 <!--
   PROTOTYPE. Throwaway. alp82/aistack#193: the stack page section order with
   the workflow section. Baseline: #191 round 4 (PR #192), the podium.
@@ -25,12 +25,21 @@
   ROUND 5 verdict (2026-08-21): none of the hybrids. The round-4 original
   micro peek (F) was better.
 
-  ROUND 6. The winner stands alone: full-size numbered headers, a thin
-  micro peek of every section, one section open at a time. The order is
-  fixed: usage, projects, tools, workflow, guide. The measured section
-  takes the name "Workflow" under the kicker "// measured", and the old
-  guide becomes "Guide" under "// writeup". The titles are this round's
-  open question.
+  ROUND 6 verdict (2026-08-21): make variations of the winner where the
+  slivers show different kinds of info. The title round waits.
+
+  ROUND 7. The structure stands (full headers, one open at a time). What
+  varies is what a shut section shows under its bar:
+  - A "the crop":            the reference. The micro peek crops the top
+        of the real section body.
+  - B "the headline facts":  three numbers with labels per section.
+  - C "the teaser line":     one written sentence per section.
+  - D "the signature visual": one graphic per section. The token bar,
+        the project chips, the tool chips, the phase strip, the topics.
+  - E "the mix":             each section picks its best kind. Numbers
+        for the measured, chips for the told, a sentence for the guide.
+  Switch with the bar at the bottom or ?variant=<key>, keys:
+  crop|facts|line|visual|mix.
 
   Data provenance: the workflow rows, fit scores and stats come unchanged
   from the #191 prototype (real Git anchors, hand-made shares). The guide
@@ -148,6 +157,21 @@
   @media (min-width: 480px) { .bar-strip { display: inline-flex; } }
   .bar-strip i { height: 100%; display: inline-block; }
   .acc section.open .bar-strip { display: none; }
+
+  /* teaser slivers (round 7): designed content instead of a crop */
+  .peekwrap.teaser { max-height: none; opacity: 1; padding-bottom: 26px; }
+  .peekwrap.teaser::after { display: none; }
+  .fact-row { display: flex; gap: 1px; border: 1px solid var(--stroke-subtle); background: var(--stroke-subtle); max-width: 40rem; }
+  .fact-row .fact { flex: 1; background: var(--bg-canvas); padding: 10px 12px; }
+  .fact-row .v { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 800; color: var(--accent-lime); margin: 0; }
+  .fact-row .l { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted); margin: 3px 0 0; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { border: 1px solid var(--stroke-subtle); padding: 4px 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-secondary); }
+  .chip.more { color: var(--fg-muted); border-style: dashed; }
+  .tease-line { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--fg-secondary); max-width: 46rem; }
+  .tease-bar { display: flex; height: 14px; gap: 2px; max-width: 40rem; }
+  .tease-bar i { height: 100%; display: inline-block; }
+  .tease-label { margin: 8px 0 0; }
 
   /* the peek (round 3, D; round 4 styles) */
   .peekwrap { position: relative; max-height: 170px; overflow: hidden; opacity: 0.55; cursor: pointer; padding-bottom: 24px; }
@@ -270,7 +294,7 @@
 <body>
 
 <div class="ticket-strip">
-  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 6 · the winner: the micro peek, one at a time
+  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 7 · what the slivers show
 </div>
 
 <!-- ==================== section content templates ==================== -->
@@ -312,15 +336,54 @@
 
 <!-- ==================== the five treatments ==================== -->
 
-<div class="variant" id="v-final">
+<div class="variant" id="v-crop">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">the winner · rounds 1 to 5 · prototype chrome</span>
-      <b>The micro peek, one section at a time.</b> Full-size numbered headers, a thin sliver of every section, and opening one closes the rest. Order: usage, projects, tools, workflow, guide.
-      <span class="journey">01 usage → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide · all peeking thin</span>
+      <span class="tag">proposal A · the crop · prototype chrome</span>
+      <b>The reference.</b> The micro peek crops the top of the real section body, faded at the cut. What shows is whatever the section starts with.
     </div>
   </div>
-  <div data-page="final"></div>
+  <div data-page="crop"></div>
+</div>
+
+<div class="variant" id="v-facts">
+  <div class="proposal">
+    <div class="proposal-box">
+      <span class="tag">proposal B · the headline facts · prototype chrome</span>
+      <b>Three numbers with labels per section.</b> No cropping, every sliver is a designed row of the section's strongest figures.
+    </div>
+  </div>
+  <div data-page="facts"></div>
+</div>
+
+<div class="variant" id="v-line">
+  <div class="proposal">
+    <div class="proposal-box">
+      <span class="tag">proposal C · the teaser line · prototype chrome</span>
+      <b>One written sentence per section.</b> The quietest page. The words carry the pitch, and no numbers show until a tap.
+    </div>
+  </div>
+  <div data-page="line"></div>
+</div>
+
+<div class="variant" id="v-visual">
+  <div class="proposal">
+    <div class="proposal-box">
+      <span class="tag">proposal D · the signature visual · prototype chrome</span>
+      <b>One graphic per section.</b> The token bar, the project chips, the tool chips, the phase strip, the guide topics. Texture over figures.
+    </div>
+  </div>
+  <div data-page="visual"></div>
+</div>
+
+<div class="variant" id="v-mix">
+  <div class="proposal">
+    <div class="proposal-box">
+      <span class="tag">proposal E · the mix · prototype chrome</span>
+      <b>Each section picks its best kind.</b> Numbers for the measured sections, chips for projects and tools, one sentence for the guide.
+    </div>
+  </div>
+  <div data-page="mix"></div>
 </div>
 
 <div class="page-end-pad"></div>
@@ -606,6 +669,69 @@
     }).join('') + '</span>';
   }
 
+  /* teaser slivers (round 7) */
+  var TEASE_FACTS = {
+    usage:    [['148M', 'tokens · 30d'], ['$96+', 'lower bound'], ['214', 'sessions']],
+    projects: [['5', 'projects'], ['2', 'live sites'], ['3', 'prototypes']],
+    tools:    [['11', 'tools'], ['$220', 'per month'], ['2', 'harnesses']],
+    workflow: [['42%', 'late night'], ['2.8', 'parallel projects'], ['18 min', 'quick fix ships']],
+    guide:    [['3', 'topics'], ['3 min', 'read'], ['1', 'owner voice']]
+  };
+  var TEASE_LINE = {
+    usage:    'What ran on this machine in the last 30 days, priced as a lower bound.',
+    projects: 'Five things built with this stack, two of them live.',
+    tools:    'Eleven tools around two harnesses, 220 dollars a month.',
+    workflow: 'A gate-first night flow. Nothing merges before a review round.',
+    guide:    'The owner explains why this setup, and what broke on the way.'
+  };
+  var TEASE_CHIPS = {
+    projects: ['aistack.sh', 'curia', '+ 3 more'],
+    tools:    ['Claude Code', 'opencode', 'Convex', 'Codex', '+ 7 more']
+  };
+  function teaseBar(k, label) {
+    var wrap = document.createElement('div');
+    wrap.innerHTML = '<div class="tease-bar">' + STRIPS[k].map(function (s) {
+      return '<i style="flex:' + s[0] + '; background:' + s[1] + '"></i>';
+    }).join('') + '</div>' + (label ? '<p class="mono-label tease-label">' + label + '</p>' : '');
+    return wrap;
+  }
+  function teaseFacts(k) {
+    var row = el('fact-row');
+    TEASE_FACTS[k].forEach(function (f) {
+      row.appendChild(el('fact', '<p class="v">' + f[0] + '</p><p class="l">' + f[1] + '</p>'));
+    });
+    return row;
+  }
+  function teaseChips(k) {
+    var row = el('chip-row');
+    TEASE_CHIPS[k].forEach(function (c, i) {
+      var chip = el('chip' + (c.indexOf('+ ') === 0 ? ' more' : ''));
+      chip.textContent = c;
+      row.appendChild(chip);
+    });
+    return row;
+  }
+  function teaseLine(k) {
+    var p = document.createElement('p');
+    p.className = 'tease-line';
+    p.textContent = TEASE_LINE[k];
+    return p;
+  }
+  function teaseVisual(k) {
+    if (k === 'usage') return teaseBar('usage', 'where the tokens went');
+    if (k === 'projects') return teaseChips('projects');
+    if (k === 'tools') return teaseChips('tools');
+    if (k === 'workflow') return teaseBar('workflow', '42% of commits land late at night');
+    return teaseBar('guide', 'why this setup · the daily loop · what broke');
+  }
+  var TEASE_MIX = { usage: teaseFacts, projects: teaseChips, tools: teaseChips, workflow: teaseFacts, guide: teaseLine };
+  function buildTease(kind, k) {
+    if (kind === 'facts') return teaseFacts(k);
+    if (kind === 'line') return teaseLine(k);
+    if (kind === 'visual') return teaseVisual(k);
+    return TEASE_MIX[k](k);
+  }
+
   function sectionEl(idx, def, bodyEl, extraHead) {
     var sec = document.createElement('section');
     sec.className = 'journey';
@@ -658,9 +784,14 @@
       }
       head.insertAdjacentHTML('beforeend', '<span class="acc-chev"></span>');
       sec.querySelector('.acc-body').appendChild(def.body(cfg.digestOpen === true));
-      if (peeks(k)) {
+      if (peeks(k) || cfg.tease) {
         var peek = el('peekwrap' + (cfg.peekClass ? ' ' + cfg.peekClass : ''));
-        peek.appendChild(def.body(true));
+        if (cfg.tease) {
+          peek.classList.add('teaser');
+          peek.appendChild(buildTease(cfg.tease, k));
+        } else {
+          peek.appendChild(def.body(true));
+        }
         if (cfg.hint) peek.insertAdjacentHTML('beforeend', '<span class="peek-hint">+ tap to open</span>');
         sec.querySelector('.shell').appendChild(peek);
         peek.addEventListener('click', function () { toggle(sec, true); });
@@ -687,7 +818,11 @@
   }
 
   var PAGES = {
-    final: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', peek: 'all', peekClass: 'micro', exclusive: true }); }
+    crop:   function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', peek: 'all', peekClass: 'micro', exclusive: true }); },
+    facts:  function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'facts' }); },
+    line:   function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'line' }); },
+    visual: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'visual' }); },
+    mix:    function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'mix' }); }
   };
 
   document.querySelectorAll('[data-page]').forEach(function (host) {
@@ -696,7 +831,11 @@
 
   /* ---------- variant switcher ---------- */
   var VARIANTS = [
-    { key: 'final', id: 'v-final', name: 'the winner · micro peek' }
+    { key: 'crop',   id: 'v-crop',   name: 'A · the crop' },
+    { key: 'facts',  id: 'v-facts',  name: 'B · the headline facts' },
+    { key: 'line',   id: 'v-line',   name: 'C · the teaser line' },
+    { key: 'visual', id: 'v-visual', name: 'D · the signature visual' },
+    { key: 'mix',    id: 'v-mix',    name: 'E · the mix' }
   ];
   var current = 0;
 
@@ -722,7 +861,7 @@
   });
 
   (function () {
-    var q = new URL(window.location.href).searchParams.get('variant') || 'final';
+    var q = new URL(window.location.href).searchParams.get('variant') || 'crop';
     var idx = VARIANTS.findIndex(function (v) { return v.key === q; });
     show(idx >= 0 ? idx : 0);
   })();
