@@ -4,41 +4,44 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Prototype · alp82/aistack#191 · compose the workflow section · round 2</title>
+<title>Prototype · alp82/aistack#191 · compose the workflow section · round 3</title>
 <!--
   PROTOTYPE. Throwaway. alp82/aistack#191: compose the workflow section from
-  the judged components. Baseline: ticket #175 round 6 (PR #190) settled the
-  components. The playbook arrives from ticket #186.
+  the judged components. Baseline: #175 round 6 (PR #190), playbook from #186.
 
-  ROUND 2. Operator feedback on round 1: all three compositions are still too
-  busy, too much scroll. Think in nuggets of previews that extend, or
-  something else. Five vastly distinct variations.
+  ROUND 3. Operator feedback on round 2: the rows are nice. Merge the three
+  slot boxes into the rows, so the pool feeds ONE full row set, with logic
+  for what to highlight, what to show normally, and what to hide. Five
+  distinct variations.
 
-  FIVE COMPOSITIONS. Same components, five ways to collapse the scroll:
-  - A "the nuggets":   a grid of small stat tiles. A tap extends a tile in
-                       place into the full component. One open at a time.
-  - B "the rows":      every component is one collapsed row with its headline
-                       figure. A tap unfolds it, accordion style.
-  - C "the rail":      four themed tabs. One pane visible, no vertical cost
-                       beyond the tallest pane.
-  - D "the deck":      a horizontal card deck. Swipe or arrow through the
-                       components, one card of vertical space.
-  - E "the spotlight": only the lead, the slots, and one featured component
-                       ship visible. The featured block rotates like the
-                       slots. The rest waits behind one tap.
-  Switch with the bar at the bottom or ?variant=nuggets|rows|rail|deck|spotlight.
+  THE MERGED ROW SET. Sixteen rows: nine pool metrics and seven components,
+  every one with a fit score. Fit decides three states:
+  - highlight: the top three by fit (the former slot boxes)
+  - normal:    fit 0.40 and up
+  - hidden:    below 0.40
+  A component row extends into its full block. A metric row extends into its
+  derivation: source, coverage, the typical band, and the fit.
 
-  Every variant keeps the lead draft and the three fit slots visible: they
-  are the hook. Everything else collapses per the variant's mechanism. Each
-  sits between dimmed stubs of the real page neighbors (Tools 03 above, the
-  CTA below).
+  FIVE TREATMENTS of highlight / normal / hide:
+  - A "the amplified list": fit order. Highlighted rows are tall with the big
+        figure and an inline strip. Normal rows are thin. Hidden rows wait
+        behind one expander row.
+  - B "the tiers": the same rows in three labeled bands: surfaced, measured,
+        below the line. The third band is collapsed.
+  - C "open by default": all rows the same size, but the top three come
+        pre-extended. Hidden rows behind the expander.
+  - D "the themes": curated theme groups instead of fit order. Highlights
+        keep their accent wherever they sit. Hidden rows are dimmed in
+        place, never removed.
+  - E "the board": no extension at all. Every row carries its strip inline.
+        Hidden rows are absent, one footer line counts them.
+  Switch with the bar at the bottom or
+  ?variant=amplified|tiers|open|themes|board.
 
-  Data provenance: identical to round 1 and to round 6 of #175. Hand-made
-  around real anchors: the repo's real Git history (119 commits, +94,754 /
-  -19,330 lines, median 425 changed lines, real per-commit sizes, real hour
-  and weekday commit profiles, TypeScript 73.0% of changed lines, 47% of
-  commits touch a test file), the owner's real skill roster and MCP config.
-  Playbook figures follow the #186 forms. No live sync feeds this.
+  Data provenance: identical to rounds 1 and 2 (real Git anchors, real
+  roster, hand-made shares and fit scores, playbook forms from #186). The
+  typical bands in the metric derivations are hand-made to show the form.
+  No live sync feeds this.
 -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
@@ -141,20 +144,6 @@
   .draft p { margin: 10px 0 0; font-size: 14.5px; line-height: 1.6; color: var(--fg-secondary); }
   .draft.inline { border: 0; padding: 0; margin: 14px 0 0; max-width: none; }
   .draft.inline p { font-size: 13px; line-height: 1.6; }
-
-  /* ---------- slot boxes ------------------------------------------------------ */
-  .sub-facts { display: grid; gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); }
-  @media (min-width: 640px) { .sub-facts { grid-template-columns: repeat(3, 1fr); } }
-  .sub-fact { background: var(--bg-canvas); padding: 16px; display: flex; flex-direction: column; gap: 4px; }
-  .sub-fact .n { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 800; margin: 0; color: var(--accent-lime); }
-  .sub-fact p { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--fg-secondary); }
-  .sub-fact .src { margin-top: auto; padding-top: 8px; }
-  .valbar { height: 8px; background: var(--bg-panel); margin-top: 8px; }
-  .valbar .fill { height: 100%; background: var(--accent-lime); }
-  .dotrow { display: flex; gap: 5px; margin-top: 10px; }
-  .dotrow i { width: 10px; height: 10px; background: var(--bg-panel-elevated); }
-  .dotrow i.on { background: var(--accent-lime); }
-  .pool-note { margin: 8px 0 0; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); }
 
   /* ---------- playbook -------------------------------------------- */
   .track { border: 1px solid var(--stroke-subtle); padding: 18px; }
@@ -260,64 +249,62 @@
   }
   .heat-tip .k { color: var(--fg-muted); }
 
-  /* ---------- A: nuggets ---------------------------------------------- */
-  .nug-grid { display: grid; gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); grid-template-columns: repeat(2, 1fr); }
-  @media (min-width: 900px) { .nug-grid { grid-template-columns: repeat(4, 1fr); } }
-  .nug { background: var(--bg-canvas); display: flex; flex-direction: column; }
-  .nug .teaser { appearance: none; border: 0; background: transparent; color: inherit; text-align: left; padding: 14px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; font-family: inherit; }
-  .nug .teaser .lbl { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted); }
-  .nug .teaser .n { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 800; color: var(--accent-lime); }
-  .nug .teaser .cap { font-size: 11.5px; line-height: 1.45; color: var(--fg-secondary); }
-  .nug .teaser .hint { margin-top: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--fg-muted); }
-  .nug.open { grid-column: 1 / -1; background: var(--bg-shell); }
-  .nug.open .teaser .hint::before { content: "– "; }
-  .nug:not(.open) .teaser .hint::before { content: "+ "; }
-  .nug .body { display: none; padding: 0 14px 16px; }
-  .nug.open .body { display: block; }
-
-  /* ---------- B: rows -------------------------------------------------- */
+  /* ---------- the unified rows ----------------------------------------- */
   .rowlist { border: 1px solid var(--stroke-subtle); }
-  .rrow { border-top: 1px solid var(--stroke-subtle); }
-  .rrow:first-child { border-top: 0; }
-  .rrow .rhead { appearance: none; border: 0; width: 100%; background: transparent; color: inherit; display: flex; align-items: baseline; gap: 12px; padding: 13px 14px; cursor: pointer; font-family: 'JetBrains Mono', monospace; }
-  .rrow .rhead .nm { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-primary); text-align: left; flex: 1; }
-  .rrow .rhead .st { font-size: 13px; font-weight: 800; color: var(--accent-lime); white-space: nowrap; }
-  .rrow .rhead .cap { display: none; font-size: 11px; color: var(--fg-muted); }
-  @media (min-width: 768px) { .rrow .rhead .cap { display: block; } }
-  .rrow .rhead .chev { font-size: 13px; color: var(--fg-muted); width: 1rem; text-align: right; }
-  .rrow.open .rhead .chev::before { content: "–"; }
-  .rrow:not(.open) .rhead .chev::before { content: "+"; }
-  .rrow .body { display: none; padding: 2px 14px 16px; }
-  .rrow.open .body { display: block; }
+  .mrow { border-top: 1px solid var(--stroke-subtle); }
+  .mrow:first-child { border-top: 0; }
+  .mrow .mhead { appearance: none; border: 0; width: 100%; background: transparent; color: inherit; display: flex; align-items: baseline; gap: 12px; padding: 12px 14px; cursor: pointer; font-family: 'JetBrains Mono', monospace; text-align: left; }
+  .mrow .mhead:disabled { cursor: default; }
+  .mrow .nm { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-primary); flex-shrink: 0; }
+  .mrow .cap { display: none; font-size: 11px; color: var(--fg-muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (min-width: 768px) { .mrow .cap { display: block; } }
+  .mrow .spacer { flex: 1; }
+  @media (min-width: 768px) { .mrow .spacer { display: none; } }
+  .mrow .viz { align-self: center; flex-shrink: 0; }
+  .mrow .st { font-size: 13px; font-weight: 800; color: var(--accent-lime); white-space: nowrap; }
+  .mrow .chev { font-size: 13px; color: var(--fg-muted); width: 1rem; text-align: right; flex-shrink: 0; }
+  .mrow.open .chev::before { content: "–"; }
+  .mrow:not(.open) .chev::before { content: "+"; }
+  .mrow .chev.none::before { content: "" !important; }
+  .mrow .body { display: none; padding: 2px 14px 16px; }
+  .mrow.open .body { display: block; }
+  .mrow.dim { opacity: 0.45; }
 
-  /* ---------- C: rail -------------------------------------------------- */
-  .tabbar { display: flex; flex-wrap: wrap; gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); }
-  .tabbar button { appearance: none; border: 0; flex: 1 1 auto; background: var(--bg-canvas); color: var(--fg-muted); font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; padding: 11px 8px; cursor: pointer; }
-  .tabbar button.on { background: var(--accent-lime); color: var(--accent-lime-contrast); font-weight: 700; }
-  .tabpane { display: none; margin-top: 16px; }
-  .tabpane.on { display: block; }
-  .tabpane .stackgap > * + * { margin-top: 16px; }
+  /* tall highlight rows (variant A) */
+  .mrow.hl .mhead { flex-wrap: wrap; row-gap: 2px; padding: 16px 14px; }
+  .mrow.hl .nm { width: 100%; color: var(--fg-muted); font-size: 10px; }
+  .mrow.hl .st { font-size: 26px; }
+  .mrow.hl .cap { display: block; white-space: normal; font-size: 12.5px; color: var(--fg-secondary); flex-basis: 100%; }
+  @media (min-width: 768px) { .mrow.hl .cap { flex-basis: auto; align-self: center; } }
+  .mrow.hl { background: var(--bg-shell); }
 
-  /* ---------- D: deck -------------------------------------------------- */
-  .deck { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; }
-  .deck .card { flex: 0 0 min(86vw, 36rem); scroll-snap-align: start; }
-  .deck .card .cardhead { margin-bottom: 8px; }
-  .deck-nav { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
-  .deck-nav button { appearance: none; border: 1px solid var(--stroke-strong); background: var(--bg-panel-elevated); color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; width: 38px; height: 38px; cursor: pointer; }
-  .deck-nav .pos { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); }
+  /* accent edge highlight (variants B and D) */
+  .mrow.edge { box-shadow: inset 3px 0 0 var(--accent-lime); }
 
-  /* ---------- E: spotlight --------------------------------------------- */
-  .spot { border: 1px solid var(--accent-lime); padding: 18px; position: relative; }
-  .spot .spot-chip { position: absolute; top: -1px; right: -1px; background: var(--accent-lime); color: var(--accent-lime-contrast); font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; padding: 3px 8px; }
-  .more { margin-top: 16px; border: 1px solid var(--stroke-subtle); }
-  .more .mhead { appearance: none; border: 0; width: 100%; background: transparent; color: var(--fg-secondary); display: flex; align-items: center; gap: 12px; padding: 13px 14px; cursor: pointer; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
-  .more .mhead .cnt { color: var(--accent-lime); font-weight: 800; }
-  .more .mhead .chev { margin-left: auto; color: var(--fg-muted); }
-  .more.open .mhead .chev::before { content: "–"; }
-  .more:not(.open) .mhead .chev::before { content: "+"; }
-  .more .mbody { display: none; padding: 0 14px 16px; }
-  .more.open .mbody { display: block; }
-  .more .mbody > * + * { margin-top: 16px; }
+  /* micro strips */
+  .strip { display: inline-flex; gap: 1px; height: 12px; width: 76px; vertical-align: middle; }
+  .strip i { height: 100%; display: inline-block; }
+  .strip.cellsy i { width: 2px; }
+
+  /* band headers (variant B) and theme headers (variant D) */
+  .band-head { display: flex; align-items: baseline; gap: 10px; padding: 10px 14px; background: var(--bg-shell); border-top: 1px solid var(--stroke-subtle); }
+  .band-head:first-child { border-top: 0; }
+  .band-head .t { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent-lime); }
+  .band-head .r { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--fg-muted); margin-left: auto; }
+  .band-head.quiet .t { color: var(--fg-muted); }
+
+  /* expander row */
+  .mrow.more-row .mhead { color: var(--fg-muted); }
+  .mrow.more-row .nm { color: var(--fg-muted); }
+  .hidden-pack { display: none; }
+  .hidden-pack.open { display: block; }
+
+  .row-footnote { margin: 10px 0 0; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); }
+
+  /* metric derivation body */
+  .deriv { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 1.9; color: var(--fg-secondary); border: 1px solid var(--stroke-subtle); padding: 12px 14px; }
+  .deriv b { color: var(--fg-primary); }
+  .deriv .k { color: var(--fg-muted); }
 
   /* ---------- consent footnote ---------------------------------------------- */
   .consent { margin-top: 30px; border-top: 1px solid var(--stroke-subtle); padding-top: 14px; font-size: 12px; line-height: 1.6; color: var(--fg-muted); max-width: 46rem; }
@@ -344,37 +331,15 @@
 <body>
 
 <div class="ticket-strip">
-  PROTOTYPE · <b>alp82/aistack#191</b> · compose the workflow section · round 2 · five ways to kill the scroll
+  PROTOTYPE · <b>alp82/aistack#191</b> · compose the workflow section · round 3 · one row set, five treatments
 </div>
 
-<!-- ==================== component templates (cloned per variant) ==================== -->
+<!-- ==================== component body templates ==================== -->
 
 <template data-tpl="lead">
   <div class="draft">
     <span class="draft-chip">workflow draft · llm over approved aggregates · owner-edited</span>
     <p>A gate-first flow. Nothing merges before a human review round, and the heaviest work lands deep in the night. The big model holds the main loop, small models take the routine reads, and the flow prefers many short sessions over one long one.</p>
-  </div>
-</template>
-
-<template data-tpl="slots">
-  <div>
-    <div class="sub-facts">
-      <div class="sub-fact">
-        <p class="n">42%</p><p>of commits land between 23:00 and 03:00</p>
-        <div class="valbar"><div class="fill" style="width:42%"></div></div>
-        <span class="src mono-label">from: local git history · exact</span>
-      </div>
-      <div class="sub-fact">
-        <p class="n">2.8</p><p>projects run in parallel on a median active day</p>
-        <span class="src mono-label">from: overlapping project session spans</span>
-      </div>
-      <div class="sub-fact">
-        <p class="n">1 in 6</p><p>sessions switch model mid-run</p>
-        <div class="dotrow"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
-        <span class="src mono-label">from: response model changes · exact</span>
-      </div>
-    </div>
-    <p class="pool-note">three slots · ranked by fit · at most one swap per sync day</p>
   </div>
 </template>
 
@@ -557,14 +522,13 @@
   </div>
 </template>
 
-<!-- ==================== A: THE NUGGETS ==================== -->
-<div class="variant" id="v-nuggets">
+<!-- ==================== the five treatments ==================== -->
+
+<div class="variant" id="v-amplified">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal A · the nuggets · prototype chrome</span>
-      <b>Mechanism:</b> every component is a small stat tile. A tap extends it in place to the full block. One open at a time.<br>
-      <b>Visible cost:</b> the lead, the slots, and two tile rows. About two phone screens.<br>
-      <b>Cut:</b> everything ships, collapsed.
+      <span class="tag">proposal A · the amplified list · prototype chrome</span>
+      <b>One list in fit order.</b> The top three render tall with the big figure, the former slot boxes as rows. Normal rows are thin. The six low-fit rows wait behind one expander row. Every row extends on tap.
     </div>
   </div>
   <div class="stub" style="margin-top:20px"><div class="shell"><span class="idx">03</span><span class="name">Your Tools</span><span class="note">context only</span></div></div>
@@ -575,21 +539,18 @@
       <span class="sec-meta">measured on the machine · owner-approved</span>
     </div>
     <div data-slot="lead"></div>
-    <div class="block-gap" data-slot="slots"></div>
-    <div class="block-gap nug-grid" data-nuggets></div>
+    <div class="block-gap rowlist" data-build="amplified"></div>
+    <p class="row-footnote">one row set · ranked by fit · at most one highlight swap per sync day</p>
     <div data-slot="consent"></div>
   </div></section>
   <div class="stub cta"><div class="shell"><span class="name">Build your own stack</span><span class="note">context only</span></div></div>
 </div>
 
-<!-- ==================== B: THE ROWS ==================== -->
-<div class="variant" id="v-rows">
+<div class="variant" id="v-tiers">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal B · the rows · prototype chrome</span>
-      <b>Mechanism:</b> every component is one collapsed row with its headline figure. A tap unfolds it, accordion style.<br>
-      <b>Visible cost:</b> the lead, the slots, and seven thin rows. Under two phone screens.<br>
-      <b>Cut:</b> everything ships, collapsed.
+      <span class="tag">proposal B · the tiers · prototype chrome</span>
+      <b>The same rows in three labeled bands:</b> surfaced (top fit, accent edge), measured (normal), below the line (collapsed, tap to reveal, dimmed). All rows the same size, so the bands carry the hierarchy.
     </div>
   </div>
   <div class="stub" style="margin-top:20px"><div class="shell"><span class="idx">03</span><span class="name">Your Tools</span><span class="note">context only</span></div></div>
@@ -600,21 +561,18 @@
       <span class="sec-meta">measured on the machine · owner-approved</span>
     </div>
     <div data-slot="lead"></div>
-    <div class="block-gap" data-slot="slots"></div>
-    <div class="block-gap rowlist" data-rows></div>
+    <div class="block-gap rowlist" data-build="tiers"></div>
+    <p class="row-footnote">fit decides the band · the owner can pin or hide any row</p>
     <div data-slot="consent"></div>
   </div></section>
   <div class="stub cta"><div class="shell"><span class="name">Build your own stack</span><span class="note">context only</span></div></div>
 </div>
 
-<!-- ==================== C: THE RAIL ==================== -->
-<div class="variant" id="v-rail">
+<div class="variant" id="v-open">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal C · the rail · prototype chrome</span>
-      <b>Mechanism:</b> four themed tabs. One pane visible at a time, so the section never grows past its tallest pane.<br>
-      <b>Visible cost:</b> the lead, the slots, the tab bar, and one pane. About two phone screens.<br>
-      <b>Cut:</b> everything ships, one pane at a time.
+      <span class="tag">proposal C · open by default · prototype chrome</span>
+      <b>All rows the same size, but the state controls extension.</b> The top three come pre-extended, so the section leads with three full blocks. Normal rows are closed. Hidden rows wait behind the expander.
     </div>
   </div>
   <div class="stub" style="margin-top:20px"><div class="shell"><span class="idx">03</span><span class="name">Your Tools</span><span class="note">context only</span></div></div>
@@ -625,30 +583,18 @@
       <span class="sec-meta">measured on the machine · owner-approved</span>
     </div>
     <div data-slot="lead"></div>
-    <div class="block-gap" data-slot="slots"></div>
-    <div class="block-gap tabbar" data-tabbar>
-      <button type="button" data-tab="t-ships" class="on">how work ships</button>
-      <button type="button" data-tab="t-machine">models &amp; agents</button>
-      <button type="button" data-tab="t-git">the git ledger</button>
-      <button type="button" data-tab="t-rhythm">the rhythm</button>
-    </div>
-    <div class="tabpane on" id="t-ships"><div class="stackgap"><div data-slot="playbook"></div></div></div>
-    <div class="tabpane" id="t-machine"><div class="stackgap"><div data-slot="routing"></div><div data-slot="dele"></div><div data-slot="kit"></div></div></div>
-    <div class="tabpane" id="t-git"><div class="stackgap"><div data-slot="ledger"></div><div data-slot="langs"></div></div></div>
-    <div class="tabpane" id="t-rhythm"><div class="stackgap"><div data-slot="heat"></div></div></div>
+    <div class="block-gap rowlist" data-build="open"></div>
+    <p class="row-footnote">the top three open by fit · the rest close by default</p>
     <div data-slot="consent"></div>
   </div></section>
   <div class="stub cta"><div class="shell"><span class="name">Build your own stack</span><span class="note">context only</span></div></div>
 </div>
 
-<!-- ==================== D: THE DECK ==================== -->
-<div class="variant" id="v-deck">
+<div class="variant" id="v-themes">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal D · the deck · prototype chrome</span>
-      <b>Mechanism:</b> a horizontal card deck. Swipe on a phone, arrows on desktop. The section spends one card of vertical space.<br>
-      <b>Visible cost:</b> the lead, the slots, and one card. Under two phone screens.<br>
-      <b>Cut:</b> everything ships, one card each.
+      <span class="tag">proposal D · the themes · prototype chrome</span>
+      <b>Curated theme order instead of fit order.</b> Four groups: the rhythm, the machine, the ground truth, how work ships. Highlights keep their accent wherever they sit. Low-fit rows stay in place, dimmed, never removed.
     </div>
   </div>
   <div class="stub" style="margin-top:20px"><div class="shell"><span class="idx">03</span><span class="name">Your Tools</span><span class="note">context only</span></div></div>
@@ -659,26 +605,18 @@
       <span class="sec-meta">measured on the machine · owner-approved</span>
     </div>
     <div data-slot="lead"></div>
-    <div class="block-gap" data-slot="slots"></div>
-    <div class="block-gap deck" data-deck></div>
-    <div class="deck-nav">
-      <button type="button" data-deckprev aria-label="previous card">←</button>
-      <button type="button" data-decknext aria-label="next card">→</button>
-      <span class="pos" data-deckpos></span>
-    </div>
+    <div class="block-gap rowlist" data-build="themes"></div>
+    <p class="row-footnote">theme order · the accent edge marks the top fit rows</p>
     <div data-slot="consent"></div>
   </div></section>
   <div class="stub cta"><div class="shell"><span class="name">Build your own stack</span><span class="note">context only</span></div></div>
 </div>
 
-<!-- ==================== E: THE SPOTLIGHT ==================== -->
-<div class="variant" id="v-spotlight">
+<div class="variant" id="v-board">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal E · the spotlight · prototype chrome</span>
-      <b>Mechanism:</b> only the lead, the slots, and one featured component are visible. The featured block rotates like the slots, under the same fit rule. The other six wait behind one tap.<br>
-      <b>Visible cost:</b> about one and a half phone screens.<br>
-      <b>Cut:</b> the smallest. The fold is the section.
+      <span class="tag">proposal E · the board · prototype chrome</span>
+      <b>No extension at all.</b> Every row carries its strip inline, so the whole section is one readable board. Highlights are tall. The six low-fit rows are absent, and one footer line counts them.
     </div>
   </div>
   <div class="stub" style="margin-top:20px"><div class="shell"><span class="idx">03</span><span class="name">Your Tools</span><span class="note">context only</span></div></div>
@@ -689,22 +627,8 @@
       <span class="sec-meta">measured on the machine · owner-approved</span>
     </div>
     <div data-slot="lead"></div>
-    <div class="block-gap" data-slot="slots"></div>
-    <div class="block-gap spot">
-      <span class="spot-chip">featured this sync · rotates by fit</span>
-      <div data-slot="playbook"></div>
-    </div>
-    <div class="more" data-more>
-      <button type="button" class="mhead"><span>all measurements</span><span class="cnt">6 more</span><span class="chev"></span></button>
-      <div class="mbody">
-        <div data-slot="routing"></div>
-        <div data-slot="dele"></div>
-        <div data-slot="kit"></div>
-        <div data-slot="ledger"></div>
-        <div data-slot="langs"></div>
-        <div data-slot="heat"></div>
-      </div>
-    </div>
+    <div class="block-gap rowlist" data-build="board"></div>
+    <p class="row-footnote">6 measurements sit below the fit line this sync · not shown</p>
     <div data-slot="consent"></div>
   </div></section>
   <div class="stub cta"><div class="shell"><span class="name">Build your own stack</span><span class="note">context only</span></div></div>
@@ -716,127 +640,222 @@
 
 <!-- floating variant switcher (prototype chrome, not part of the design) -->
 <div class="switcher" role="navigation" aria-label="variant switcher">
-  <button type="button" id="prev" aria-label="previous composition">←</button>
+  <button type="button" id="prev" aria-label="previous treatment">←</button>
   <div class="label">
-    <span class="k" id="sw-k">composition 1 / 5</span>
-    <span class="n" id="sw-n">A · the nuggets</span>
+    <span class="k" id="sw-k">treatment 1 / 5</span>
+    <span class="n" id="sw-n">A · the amplified list</span>
   </div>
-  <button type="button" id="next" aria-label="next composition">→</button>
+  <button type="button" id="next" aria-label="next treatment">→</button>
 </div>
 
 <script>
-  /* ---------- component registry: teaser stat + template key ---------- */
-  var COMPONENTS = [
-    { key: 'playbook', name: 'how work ships',  stat: '18 min',  cap: 'a quick fix ships, median wall time' },
-    { key: 'routing',  name: 'model routing',   stat: '89%',     cap: 'of the main loop runs on fable-5' },
-    { key: 'dele',     name: 'delegation',      stat: '2 : 1',   cap: 'main-loop to subagent tool work' },
-    { key: 'kit',      name: 'the kit',         stat: '24%',     cap: 'of skill runs are grilling' },
-    { key: 'ledger',   name: 'the git ledger',  stat: '+94.8k',  cap: 'lines added in 30 days, 19.3k removed' },
-    { key: 'langs',    name: 'coding languages',stat: '73%',     cap: 'of changed lines are TypeScript' },
-    { key: 'heat',     name: 'when the work happens', stat: '23:00', cap: 'the busiest commit hour, on a Sunday' }
+  /* ============ the merged row set: 9 pool metrics + 7 components ============ */
+  var ROWS = [
+    { key: 'night',    kind: 'metric', theme: 'rhythm',  fit: 0.86, name: 'late-night commits', stat: '42%',    cap: 'of commits land between 23:00 and 03:00',
+      src: 'local git history · exact', band: 'typical band 8% to 24% · this window 42%', viz: { fill: 42 } },
+    { key: 'parallel', kind: 'metric', theme: 'rhythm',  fit: 0.81, name: 'parallel projects',  stat: '2.8',    cap: 'projects run in parallel on a median active day',
+      src: 'overlapping project session spans', band: 'typical band 1.0 to 1.8 · this window 2.8', viz: { fill: 70 } },
+    { key: 'playbook', kind: 'comp',   theme: 'ships',   fit: 0.78, name: 'how work ships',     stat: '18 min', cap: 'a quick fix ships, median wall time',
+      viz: { segs: [[14, 'var(--ph-orient)'], [52, 'var(--ph-build)'], [22, 'var(--ph-verify)'], [12, 'var(--ph-gate)']] } },
+    { key: 'ledger',   kind: 'comp',   theme: 'truth',   fit: 0.74, name: 'the git ledger',     stat: '+94.8k', cap: 'lines added in 30 days, 19.3k removed',
+      viz: { segs: [[83, 'var(--accent-lime)'], [17, 'var(--neg)']] } },
+    { key: 'routing',  kind: 'comp',   theme: 'machine', fit: 0.62, name: 'model routing',      stat: '89%',    cap: 'of the main loop runs on fable-5',
+      viz: { segs: [[89, 'var(--m-fable)'], [11, 'var(--m-opus)']] } },
+    { key: 'dele',     kind: 'comp',   theme: 'machine', fit: 0.58, name: 'delegation',         stat: '2 : 1',  cap: 'main-loop to subagent tool work',
+      viz: { segs: [[67, 'var(--accent-lime)'], [33, 'var(--m-haiku)']] } },
+    { key: 'heat',     kind: 'comp',   theme: 'rhythm',  fit: 0.55, name: 'when the work happens', stat: '23:00', cap: 'the busiest commit hour, on a Sunday',
+      viz: { hours: true } },
+    { key: 'switch',   kind: 'metric', theme: 'machine', fit: 0.52, name: 'model switches',     stat: '1 in 6', cap: 'sessions switch model mid-run',
+      src: 'response model changes · exact', band: 'typical band 1 in 20 to 1 in 12 · this window 1 in 6', viz: { fill: 17 } },
+    { key: 'kit',      kind: 'comp',   theme: 'machine', fit: 0.49, name: 'the kit',            stat: '24%',    cap: 'of skill runs are grilling',
+      viz: { segs: [[24, 'var(--accent-lime)'], [17, 'oklch(0.78 0.17 132 / 0.7)'], [13, 'oklch(0.78 0.17 132 / 0.5)'], [11, 'oklch(0.78 0.17 132 / 0.35)'], [35, 'var(--bg-panel-elevated)']] } },
+    { key: 'langs',    kind: 'comp',   theme: 'truth',   fit: 0.41, name: 'coding languages',   stat: '73%',    cap: 'of changed lines are TypeScript',
+      viz: { segs: [[73, 'var(--accent-lime)'], [15, 'oklch(0.78 0.17 132 / 0.55)'], [7, 'oklch(0.78 0.17 132 / 0.35)'], [5, 'var(--bg-panel-elevated)']] } },
+    { key: 'think',    kind: 'metric', theme: 'machine', fit: 0.36, name: 'thinking share',     stat: '38%',    cap: 'of response tokens are thinking',
+      src: 'token records · one definition per harness', band: 'typical band 25% to 45% · this window 38%', viz: { fill: 38 } },
+    { key: 'effort',   kind: 'metric', theme: 'machine', fit: 0.34, name: 'high effort',        stat: '61%',    cap: 'of turns run at high effort',
+      src: 'effort field · exact where recorded', cov: 'counts: claude code · codex', band: 'typical band 40% to 70% · this window 61%', viz: { fill: 61 } },
+    { key: 'eswitch',  kind: 'metric', theme: 'machine', fit: 0.33, name: 'effort switches',    stat: '1 in 5', cap: 'sessions change effort mid-run',
+      src: 'effort field changes · exact where recorded', cov: 'counts: claude code · codex', band: 'typical band 1 in 12 to 1 in 7 · this window 1 in 5', viz: { fill: 20 } },
+    { key: 'turn',     kind: 'metric', theme: 'rhythm',  fit: 0.29, name: 'longest turn',       stat: '47 min', cap: 'longest recorded turn duration',
+      src: 'turn duration records', cov: 'counts: claude code · opencode', band: 'typical band 12 to 35 min · this window 47 min', viz: { fill: 78 } },
+    { key: 'quest',    kind: 'metric', theme: 'ships',   fit: 0.27, name: 'questions back',     stat: '1 in 9', cap: 'turns end with a question back to the human',
+      src: 'question tool calls', band: 'typical band 1 in 14 to 1 in 8 · this window 1 in 9', viz: { fill: 11 } },
+    { key: 'web',      kind: 'metric', theme: 'machine', fit: 0.24, name: 'web searches',       stat: '6',      cap: 'web searches per active day, inside the harness',
+      src: 'recorded web-search calls', band: 'typical band 3 to 9 per day · this window 6', viz: { fill: 40 } }
   ];
+  var HL_COUNT = 3;
+  var HIDE_BELOW = 0.40;
+  var THEMES = [
+    { key: 'rhythm',  label: 'the rhythm' },
+    { key: 'machine', label: 'the machine' },
+    { key: 'truth',   label: 'the ground truth' },
+    { key: 'ships',   label: 'how work ships' }
+  ];
+  var HOURS = [21,16,3,0,1,0,0,1,2,1,1,8,3,6,5,1,6,6,1,1,5,7,9,6]; /* real: git log by hour */
 
   function tpl(key) {
-    var t = document.querySelector('template[data-tpl="' + key + '"]');
-    return t.content.cloneNode(true);
+    return document.querySelector('template[data-tpl="' + key + '"]').content.cloneNode(true);
   }
-
-  /* fill every [data-slot] placeholder from its template */
   document.querySelectorAll('[data-slot]').forEach(function (el) {
     el.appendChild(tpl(el.getAttribute('data-slot')));
   });
 
-  /* ---------- A: nuggets ---------- */
-  document.querySelectorAll('[data-nuggets]').forEach(function (grid) {
-    COMPONENTS.forEach(function (c) {
-      var nug = document.createElement('div');
-      nug.className = 'nug';
-      nug.innerHTML =
-        '<button type="button" class="teaser"><span class="lbl">' + c.name + '</span>' +
-        '<span class="n">' + c.stat + '</span><span class="cap">' + c.cap + '</span>' +
-        '<span class="hint">open</span></button><div class="body"></div>';
-      nug.querySelector('.body').appendChild(tpl(c.key));
-      nug.querySelector('.teaser').addEventListener('click', function () {
-        var was = nug.classList.contains('open');
-        grid.querySelectorAll('.nug.open').forEach(function (o) { o.classList.remove('open'); });
-        if (!was) nug.classList.add('open');
-      });
-      grid.appendChild(nug);
-    });
-  });
+  function fitSorted() { return ROWS.slice().sort(function (a, b) { return b.fit - a.fit; }); }
+  function stateOf(r) {
+    var rank = fitSorted().indexOf(r);
+    if (rank < HL_COUNT) return 'hl';
+    return r.fit >= HIDE_BELOW ? 'norm' : 'low';
+  }
 
-  /* ---------- B: rows ---------- */
-  document.querySelectorAll('[data-rows]').forEach(function (list) {
-    COMPONENTS.forEach(function (c) {
-      var row = document.createElement('div');
-      row.className = 'rrow';
-      row.innerHTML =
-        '<button type="button" class="rhead"><span class="nm">' + c.name + '</span>' +
-        '<span class="cap">' + c.cap + '</span><span class="st">' + c.stat + '</span>' +
-        '<span class="chev"></span></button><div class="body"></div>';
-      row.querySelector('.body').appendChild(tpl(c.key));
-      row.querySelector('.rhead').addEventListener('click', function () {
+  function stripHtml(r) {
+    if (!r.viz) return '';
+    var inner = '';
+    if (r.viz.hours) {
+      var mx = Math.max.apply(null, HOURS);
+      inner = HOURS.map(function (h) {
+        var v = h / mx;
+        var mix = v === 0 ? 0 : v < 0.12 ? 18 : v < 0.3 ? 38 : v < 0.6 ? 62 : 90;
+        var bg = mix === 0 ? 'var(--bg-panel)' : 'color-mix(in oklab, var(--accent-lime) ' + mix + '%, var(--bg-panel))';
+        return '<i style="flex:1; background:' + bg + '"></i>';
+      }).join('');
+      return '<span class="strip cellsy" style="width:76px">' + inner + '</span>';
+    }
+    if (r.viz.segs) {
+      inner = r.viz.segs.map(function (s) {
+        return '<i style="flex:' + s[0] + '; background:' + s[1] + '"></i>';
+      }).join('');
+      return '<span class="strip">' + inner + '</span>';
+    }
+    inner = '<i style="flex:' + r.viz.fill + '; background:var(--accent-lime)"></i>' +
+            '<i style="flex:' + (100 - r.viz.fill) + '; background:var(--bg-panel)"></i>';
+    return '<span class="strip">' + inner + '</span>';
+  }
+
+  function derivHtml(r) {
+    return '<div class="deriv">' +
+      '<span class="k">from:</span> ' + r.src +
+      (r.cov ? '<br><span class="k">coverage:</span> ' + r.cov : '') +
+      '<br><span class="k">rule:</span> ' + r.band +
+      '<br><span class="k">fit:</span> <b>' + r.fit.toFixed(2) + '</b> · coverage times surprise, versioned metric rule</div>';
+  }
+
+  /* opts: tall (hl rows tall), edge (hl rows accent edge), preopen (hl rows
+     open), viz ('all' | 'hl' | 'none'), expandable (bool) */
+  function makeRow(r, opts) {
+    var st = stateOf(r);
+    var row = document.createElement('div');
+    row.className = 'mrow';
+    if (st === 'hl' && opts.tall) row.classList.add('hl');
+    if (st === 'hl' && opts.edge) row.classList.add('edge');
+    if (st === 'low' && opts.dimLow) row.classList.add('dim');
+    var showViz = opts.viz === 'all' || (opts.viz === 'hl' && st === 'hl');
+    var expandable = opts.expandable !== false;
+    row.innerHTML =
+      '<button type="button" class="mhead"' + (expandable ? '' : ' disabled') + '>' +
+      '<span class="nm">' + r.name + '</span>' +
+      '<span class="cap">' + r.cap + '</span>' +
+      '<span class="spacer"></span>' +
+      (showViz ? '<span class="viz">' + stripHtml(r) + '</span>' : '') +
+      '<span class="st">' + r.stat + '</span>' +
+      '<span class="chev' + (expandable ? '' : ' none') + '"></span>' +
+      '</button><div class="body"></div>';
+    var body = row.querySelector('.body');
+    if (expandable) {
+      if (r.kind === 'comp') body.appendChild(tpl(r.key));
+      else body.innerHTML = derivHtml(r);
+      row.querySelector('.mhead').addEventListener('click', function () {
         row.classList.toggle('open');
       });
-      list.appendChild(row);
-    });
-  });
-
-  /* ---------- C: rail ---------- */
-  document.querySelectorAll('[data-tabbar]').forEach(function (bar) {
-    var section = bar.closest('.shell');
-    bar.querySelectorAll('button[data-tab]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        bar.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b === btn); });
-        section.querySelectorAll('.tabpane').forEach(function (p) {
-          p.classList.toggle('on', p.id === btn.getAttribute('data-tab'));
-        });
-      });
-    });
-  });
-
-  /* ---------- D: deck ---------- */
-  document.querySelectorAll('[data-deck]').forEach(function (deck) {
-    COMPONENTS.forEach(function (c, i) {
-      var card = document.createElement('div');
-      card.className = 'card';
-      card.innerHTML = '<p class="mono-label cardhead">' + String(i + 1).padStart(2, '0') + ' / ' +
-        String(COMPONENTS.length).padStart(2, '0') + ' · ' + c.name + '</p>';
-      card.appendChild(tpl(c.key));
-      deck.appendChild(card);
-    });
-    var nav = deck.parentElement.querySelector('.deck-nav');
-    var pos = nav.querySelector('[data-deckpos]');
-    function step() { return deck.querySelector('.card').getBoundingClientRect().width + 16; }
-    function update() {
-      var i = Math.round(deck.scrollLeft / step()) + 1;
-      pos.textContent = 'card ' + Math.min(i, COMPONENTS.length) + ' of ' + COMPONENTS.length + ' · swipe or use the arrows';
     }
-    nav.querySelector('[data-deckprev]').addEventListener('click', function () { deck.scrollBy({ left: -step(), behavior: 'smooth' }); });
-    nav.querySelector('[data-decknext]').addEventListener('click', function () { deck.scrollBy({ left: step(), behavior: 'smooth' }); });
-    deck.addEventListener('scroll', update);
-    update();
-  });
+    if (st === 'hl' && opts.preopen && expandable) row.classList.add('open');
+    return row;
+  }
 
-  /* ---------- E: spotlight ---------- */
-  document.querySelectorAll('[data-more]').forEach(function (more) {
-    more.querySelector('.mhead').addEventListener('click', function () {
-      more.classList.toggle('open');
+  function makeExpander(list, hiddenRows, opts) {
+    var pack = document.createElement('div');
+    pack.className = 'hidden-pack';
+    hiddenRows.forEach(function (r) {
+      var row = makeRow(r, opts);
+      row.classList.add('dim');
+      pack.appendChild(row);
     });
+    var more = document.createElement('div');
+    more.className = 'mrow more-row';
+    more.innerHTML = '<button type="button" class="mhead"><span class="nm">below the fit line</span>' +
+      '<span class="spacer"></span><span class="st" style="color:var(--fg-muted)">' + hiddenRows.length + ' more</span>' +
+      '<span class="chev"></span></button>';
+    more.querySelector('.mhead').addEventListener('click', function () {
+      var open = pack.classList.toggle('open');
+      more.classList.toggle('open', open);
+    });
+    list.appendChild(more);
+    list.appendChild(pack);
+  }
+
+  /* ---------- the five builders ---------- */
+  document.querySelectorAll('[data-build]').forEach(function (list) {
+    var mode = list.getAttribute('data-build');
+    var sorted = fitSorted();
+    var visible = sorted.filter(function (r) { return stateOf(r) !== 'low'; });
+    var hidden = sorted.filter(function (r) { return stateOf(r) === 'low'; });
+
+    if (mode === 'amplified') {
+      visible.forEach(function (r) { list.appendChild(makeRow(r, { tall: true, viz: 'hl' })); });
+      makeExpander(list, hidden, { viz: 'none' });
+    }
+
+    if (mode === 'tiers') {
+      var b1 = document.createElement('div');
+      b1.className = 'band-head';
+      b1.innerHTML = '<span class="t">surfaced</span><span class="r">top fit · the former slots</span>';
+      list.appendChild(b1);
+      visible.slice(0, HL_COUNT).forEach(function (r) { list.appendChild(makeRow(r, { edge: true, viz: 'none' })); });
+      var b2 = document.createElement('div');
+      b2.className = 'band-head quiet';
+      b2.innerHTML = '<span class="t">measured</span><span class="r">fit 0.40 and up</span>';
+      list.appendChild(b2);
+      visible.slice(HL_COUNT).forEach(function (r) { list.appendChild(makeRow(r, { viz: 'none' })); });
+      var b3 = document.createElement('div');
+      b3.className = 'band-head quiet';
+      b3.innerHTML = '<span class="t">below the line</span><span class="r">low fit this window</span>';
+      list.appendChild(b3);
+      makeExpander(list, hidden, { viz: 'none' });
+    }
+
+    if (mode === 'open') {
+      visible.forEach(function (r) { list.appendChild(makeRow(r, { preopen: true, edge: true, viz: 'none' })); });
+      makeExpander(list, hidden, { viz: 'none' });
+    }
+
+    if (mode === 'themes') {
+      THEMES.forEach(function (t) {
+        var rows = ROWS.filter(function (r) { return r.theme === t.key; })
+          .sort(function (a, b) { return b.fit - a.fit; });
+        var h = document.createElement('div');
+        h.className = 'band-head quiet';
+        h.innerHTML = '<span class="t">' + t.label + '</span><span class="r">' + rows.length + ' rows</span>';
+        list.appendChild(h);
+        rows.forEach(function (r) { list.appendChild(makeRow(r, { edge: true, dimLow: true, viz: 'none' })); });
+      });
+    }
+
+    if (mode === 'board') {
+      visible.forEach(function (r) { list.appendChild(makeRow(r, { tall: true, viz: 'all', expandable: false })); });
+    }
   });
 
-  /* ---------- renderers (run after all injection) ---------- */
+  /* ---------- renderers (run after building) ---------- */
 
   /* Heatmap: real hour and weekday commit profiles. */
   (function () {
-    var hours = [21,16,3,0,1,0,0,1,2,1,1,8,3,6,5,1,6,6,1,1,5,7,9,6]; /* real: git log by hour */
     var dayW = { Mon: 19, Tue: 4, Wed: 12, Thu: 12, Fri: 15, Sat: 17, Sun: 31 }; /* real: git log by weekday */
     var days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
     var total = 110;
     var tip = document.getElementById('heat-tip');
     var maxV = 0, cells = [];
     days.forEach(function (d) {
-      hours.forEach(function (h) {
+      HOURS.forEach(function (h) {
         var v = h * dayW[d];
         maxV = Math.max(maxV, v);
         cells.push(v);
@@ -877,6 +896,7 @@
       grid.addEventListener('mousemove', function (e) { showTip(e.target, e.clientX, e.clientY); });
       grid.addEventListener('mouseleave', function () { tip.style.display = 'none'; });
       grid.addEventListener('click', function (e) {
+        e.stopPropagation();
         if (e.target.classList.contains('heat-cell')) showTip(e.target, e.clientX, e.clientY);
         else tip.style.display = 'none';
       });
@@ -946,11 +966,11 @@
 
   /* ---------- variant switcher ---------- */
   var VARIANTS = [
-    { key: 'nuggets',   id: 'v-nuggets',   name: 'A · the nuggets' },
-    { key: 'rows',      id: 'v-rows',      name: 'B · the rows' },
-    { key: 'rail',      id: 'v-rail',      name: 'C · the rail' },
-    { key: 'deck',      id: 'v-deck',      name: 'D · the deck' },
-    { key: 'spotlight', id: 'v-spotlight', name: 'E · the spotlight' }
+    { key: 'amplified', id: 'v-amplified', name: 'A · the amplified list' },
+    { key: 'tiers',     id: 'v-tiers',     name: 'B · the tiers' },
+    { key: 'open',      id: 'v-open',      name: 'C · open by default' },
+    { key: 'themes',    id: 'v-themes',    name: 'D · the themes' },
+    { key: 'board',     id: 'v-board',     name: 'E · the board' }
   ];
   var current = 0;
 
@@ -959,7 +979,7 @@
     VARIANTS.forEach(function (v, j) {
       document.getElementById(v.id).classList.toggle('active', j === current);
     });
-    document.getElementById('sw-k').textContent = 'composition ' + (current + 1) + ' / ' + VARIANTS.length;
+    document.getElementById('sw-k').textContent = 'treatment ' + (current + 1) + ' / ' + VARIANTS.length;
     document.getElementById('sw-n').textContent = VARIANTS[current].name;
     var url = new URL(window.location.href);
     url.searchParams.set('variant', VARIANTS[current].key);
