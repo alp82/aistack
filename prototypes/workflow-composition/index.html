@@ -4,38 +4,41 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Prototype · alp82/aistack#191 · compose the workflow section · round 1</title>
+<title>Prototype · alp82/aistack#191 · compose the workflow section · round 2</title>
 <!--
   PROTOTYPE. Throwaway. alp82/aistack#191: compose the workflow section from
   the judged components. Baseline: ticket #175 round 6 (PR #190) settled the
-  components, the fit rule, the rotation rule, and the draft slots. The
-  anatomy arrives from ticket #186 as the playbook: two measured shipping
-  tracks plus receipt cards.
+  components. The playbook arrives from ticket #186.
 
-  THE QUESTION. Three parts: the order of the components, the density of the
-  section, and what stays out of the first shipped version.
+  ROUND 2. Operator feedback on round 1: all three compositions are still too
+  busy, too much scroll. Think in nuggets of previews that extend, or
+  something else. Five vastly distinct variations.
 
-  THREE COMPOSITIONS, same components, structurally different:
-  - A "the story":    one column, full set, narrative order, every block full size.
-  - B "the first cut": the proposed ship-one section. Six blocks, airy, and a
-                       deferred strip that names what waits and why.
-  - C "the chapters":  full set, grouped into four themed chapters, dense
-                       two-column grid, compact block forms.
-  Switch with the bar at the bottom or ?variant=story|cut|chapters.
+  FIVE COMPOSITIONS. Same components, five ways to collapse the scroll:
+  - A "the nuggets":   a grid of small stat tiles. A tap extends a tile in
+                       place into the full component. One open at a time.
+  - B "the rows":      every component is one collapsed row with its headline
+                       figure. A tap unfolds it, accordion style.
+  - C "the rail":      four themed tabs. One pane visible, no vertical cost
+                       beyond the tallest pane.
+  - D "the deck":      a horizontal card deck. Swipe or arrow through the
+                       components, one card of vertical space.
+  - E "the spotlight": only the lead, the slots, and one featured component
+                       ship visible. The featured block rotates like the
+                       slots. The rest waits behind one tap.
+  Switch with the bar at the bottom or ?variant=nuggets|rows|rail|deck|spotlight.
 
-  CONTEXT. The stack page journey is Actual Usage 01, Projects 02, Tools 03,
-  Workflow 04 (src/routes/stacks.$slug.tsx). Each composition sits between a
-  dimmed Tools stub above and a dimmed CTA stub below, so density is judged
-  in place, not in a vacuum.
+  Every variant keeps the lead draft and the three fit slots visible: they
+  are the hook. Everything else collapses per the variant's mechanism. Each
+  sits between dimmed stubs of the real page neighbors (Tools 03 above, the
+  CTA below).
 
-  Data provenance: identical to round 6 of #175. Hand-extracted around real
-  anchors: the repo's real Git history (119 commits, +94,754 / -19,330 lines,
-  median 425 changed lines, TypeScript 73.0% of changed lines, 47% of commits
-  touch a test file, real per-commit sizes in the dot strip, real hour and
-  weekday commit profiles), the owner's real skill roster and MCP config.
-  The playbook figures follow the #186 forms: two merge tracks split at 20
-  events, receipts 1.2 against 1.7 review rounds and 3.6 against 12.2 minutes
-  per answer. Shares, records, and fit scores are hand-made. No live sync.
+  Data provenance: identical to round 1 and to round 6 of #175. Hand-made
+  around real anchors: the repo's real Git history (119 commits, +94,754 /
+  -19,330 lines, median 425 changed lines, real per-commit sizes, real hour
+  and weekday commit profiles, TypeScript 73.0% of changed lines, 47% of
+  commits touch a test file), the owner's real skill roster and MCP config.
+  Playbook figures follow the #186 forms. No live sync feeds this.
 -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
@@ -56,7 +59,6 @@
     --stroke-subtle: oklch(0.55 0.01 256 / 0.45);
     --stroke-strong: oklch(0.5 0.015 256 / 0.9);
     --neg: oklch(0.64 0.19 25);
-    /* fixed categorical assignment from the validated chart palette */
     --ph-orient: #4278d2;
     --ph-build:  #69a621;
     --ph-verify: #00a99b;
@@ -74,7 +76,6 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
   }
-  .mono { font-family: 'JetBrains Mono', Menlo, Consolas, monospace; }
 
   /* ---------- prototype chrome ------------------------------------------- */
   .ticket-strip {
@@ -87,9 +88,7 @@
   }
   .ticket-strip b { color: var(--accent-lime); font-weight: 700; }
 
-  .proposal {
-    margin: 20px auto 0; max-width: 80rem; padding: 0 24px;
-  }
+  .proposal { margin: 20px auto 0; max-width: 80rem; padding: 0 24px; }
   .proposal-box {
     border: 2px dashed oklch(0.75 0.09 85 / 0.7);
     padding: 14px 16px;
@@ -103,25 +102,25 @@
   .stub {
     border-top: 1px solid var(--stroke-subtle);
     border-bottom: 1px solid var(--stroke-subtle);
-    padding: 26px 24px;
+    padding: 22px 24px;
     opacity: 0.4;
   }
   .stub .shell { display: flex; align-items: baseline; gap: 16px; }
-  .stub .idx { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 800; color: var(--stroke-strong); }
-  .stub .name { font-size: 18px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.01em; }
+  .stub .idx { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 800; color: var(--stroke-strong); }
+  .stub .name { font-size: 16px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.01em; }
   .stub .note { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); margin-left: auto; }
   .stub.cta { background: var(--accent-lime); border: 0; }
-  .stub.cta .name, .stub.cta .idx { color: var(--accent-lime-contrast); }
+  .stub.cta .name { color: var(--accent-lime-contrast); }
   .stub.cta .note { color: var(--accent-lime-contrast); }
 
   /* ---------- shared section shell ---------------------------------------- */
-  section.journey { padding: 56px 24px; }
-  @media (min-width: 768px) { section.journey { padding: 88px 24px; } }
+  section.journey { padding: 48px 24px; }
+  @media (min-width: 768px) { section.journey { padding: 72px 24px; } }
   .shell { max-width: 80rem; margin: 0 auto; }
   .sec-head {
     display: flex; align-items: flex-end; gap: 20px;
     border-bottom: 1px solid var(--stroke-subtle);
-    padding-bottom: 20px; margin-bottom: 40px;
+    padding-bottom: 20px; margin-bottom: 32px;
   }
   .sec-index { font-family: 'JetBrains Mono', monospace; font-size: 48px; font-weight: 800; line-height: 1; color: var(--stroke-strong); }
   @media (min-width: 768px) { .sec-index { font-size: 72px; } }
@@ -134,11 +133,7 @@
 
   .mono-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted); }
   .kicker-line { color: var(--accent-lime); margin-bottom: 12px; }
-  .block-gap { margin-top: 34px; }
-  .block-gap-air { margin-top: 52px; }
-  .lead { margin: 0 0 26px; font-size: 14.5px; line-height: 1.6; color: var(--fg-secondary); max-width: 46rem; }
-  .lead b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
-  .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--stroke-subtle); padding: 3px 8px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); }
+  .block-gap { margin-top: 28px; }
 
   /* ---------- workflow draft slots ------------------------------------------ */
   .draft { border: 1px dashed var(--stroke-strong); padding: 14px 16px; max-width: 46rem; }
@@ -161,7 +156,7 @@
   .dotrow i.on { background: var(--accent-lime); }
   .pool-note { margin: 8px 0 0; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); }
 
-  /* ---------- playbook (from #186) -------------------------------------------- */
+  /* ---------- playbook -------------------------------------------- */
   .track { border: 1px solid var(--stroke-subtle); padding: 18px; }
   .track-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
   .track-name { font-size: 16px; font-weight: 900; text-transform: uppercase; margin: 0; }
@@ -200,12 +195,12 @@
 
   /* ---------- the kit ---------------------------------- */
   .inv { border: 1px solid var(--stroke-subtle); padding: 18px; }
-  .inv h3, .boxtitle { margin: 0 0 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent-lime); }
-  .inv .sub, .boxsub { margin: 0 0 14px; font-size: 12px; color: var(--fg-muted); }
+  .inv h3 { margin: 0 0 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent-lime); }
+  .inv .sub { margin: 0 0 14px; font-size: 12px; color: var(--fg-muted); }
   .lrow { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
   .lrow .rank { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--fg-muted); width: 1.4rem; flex-shrink: 0; }
   .lrow .name { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--fg-primary); width: 10rem; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .lrow .track { flex: 1; height: 8px; background: var(--bg-panel); min-width: 40px; border: 0; padding: 0; }
+  .lrow .track { flex: 1; height: 8px; background: var(--bg-panel); min-width: 40px; }
   .lrow .fill { height: 100%; background: var(--accent-lime); }
   .lrow .pct { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); width: 2.6rem; text-align: right; flex-shrink: 0; }
   .lrow .spark { width: 64px; height: 18px; flex-shrink: 0; }
@@ -216,14 +211,11 @@
   .inv-line .k { align-self: center; }
   .inv-line .v { margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; color: var(--fg-secondary); }
   .inv-line .v b { color: var(--fg-primary); }
-  .compact .lrow .name { width: 8rem; }
-  .compact .lrow .spark { display: none; }
 
   /* ---------- delegation ---------------------------------------------- */
   .dele { border: 1px solid var(--stroke-subtle); padding: 18px; }
   .dele .cols { display: grid; gap: 24px; margin-top: 14px; }
   @media (min-width: 768px) { .dele .cols { grid-template-columns: minmax(0, 16rem) 1fr; } }
-  .dele.compact .cols { grid-template-columns: 1fr; gap: 16px; }
   .ratio { font-family: 'JetBrains Mono', monospace; font-size: 40px; font-weight: 800; line-height: 1; margin: 0; color: var(--accent-lime); }
   .records { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); margin-top: 16px; }
   .records .rec { background: var(--bg-canvas); padding: 12px; }
@@ -234,7 +226,6 @@
   .gitled { border: 1px solid var(--stroke-subtle); padding: 18px; }
   .gitled .cols { display: grid; gap: 24px; margin-top: 14px; }
   @media (min-width: 768px) { .gitled .cols { grid-template-columns: minmax(0, 18rem) 1fr; } }
-  .gitled.compact .cols { grid-template-columns: 1fr; gap: 16px; }
   .delta { font-family: 'JetBrains Mono', monospace; font-size: 30px; font-weight: 800; line-height: 1.1; margin: 0; }
   .delta .plus { color: var(--accent-lime); }
   .delta .minus { color: var(--neg); }
@@ -269,29 +260,67 @@
   }
   .heat-tip .k { color: var(--fg-muted); }
 
-  /* ---------- chapters (variant C) ------------------------------------ */
-  .chapter { margin-top: 44px; }
-  .chapter:first-of-type { margin-top: 0; }
-  .chapter-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; border-bottom: 1px solid var(--stroke-subtle); padding-bottom: 8px; }
-  .chapter-head .num { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--stroke-strong); }
-  .chapter-head h3 { margin: 0; font-size: 17px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.01em; }
-  .chapter-head .note { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); display: none; }
-  @media (min-width: 768px) { .chapter-head .note { display: block; } }
-  .duo { display: grid; gap: 16px; }
-  @media (min-width: 900px) { .duo { grid-template-columns: 1fr 1fr; align-items: start; } }
-  .trio { display: grid; gap: 16px; }
-  @media (min-width: 900px) { .trio { grid-template-columns: 1fr 1fr 1fr; align-items: start; } }
+  /* ---------- A: nuggets ---------------------------------------------- */
+  .nug-grid { display: grid; gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); grid-template-columns: repeat(2, 1fr); }
+  @media (min-width: 900px) { .nug-grid { grid-template-columns: repeat(4, 1fr); } }
+  .nug { background: var(--bg-canvas); display: flex; flex-direction: column; }
+  .nug .teaser { appearance: none; border: 0; background: transparent; color: inherit; text-align: left; padding: 14px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; font-family: inherit; }
+  .nug .teaser .lbl { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted); }
+  .nug .teaser .n { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 800; color: var(--accent-lime); }
+  .nug .teaser .cap { font-size: 11.5px; line-height: 1.45; color: var(--fg-secondary); }
+  .nug .teaser .hint { margin-top: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--fg-muted); }
+  .nug.open { grid-column: 1 / -1; background: var(--bg-shell); }
+  .nug.open .teaser .hint::before { content: "– "; }
+  .nug:not(.open) .teaser .hint::before { content: "+ "; }
+  .nug .body { display: none; padding: 0 14px 16px; }
+  .nug.open .body { display: block; }
 
-  /* ---------- deferred strip (variant B) -------------------------------- */
-  .defer { border: 1px solid var(--stroke-subtle); background: var(--bg-shell); padding: 18px; }
-  .defer h3 { margin: 0 0 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--fg-muted); }
-  .defer .sub { margin: 0 0 12px; font-size: 12px; color: var(--fg-muted); }
-  .defer-row { display: grid; grid-template-columns: 10rem 1fr; gap: 12px; padding: 8px 0; border-top: 1px solid var(--stroke-subtle); }
-  .defer-row .k { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--fg-secondary); font-weight: 600; }
-  .defer-row .why { margin: 0; font-size: 12px; line-height: 1.5; color: var(--fg-muted); }
+  /* ---------- B: rows -------------------------------------------------- */
+  .rowlist { border: 1px solid var(--stroke-subtle); }
+  .rrow { border-top: 1px solid var(--stroke-subtle); }
+  .rrow:first-child { border-top: 0; }
+  .rrow .rhead { appearance: none; border: 0; width: 100%; background: transparent; color: inherit; display: flex; align-items: baseline; gap: 12px; padding: 13px 14px; cursor: pointer; font-family: 'JetBrains Mono', monospace; }
+  .rrow .rhead .nm { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-primary); text-align: left; flex: 1; }
+  .rrow .rhead .st { font-size: 13px; font-weight: 800; color: var(--accent-lime); white-space: nowrap; }
+  .rrow .rhead .cap { display: none; font-size: 11px; color: var(--fg-muted); }
+  @media (min-width: 768px) { .rrow .rhead .cap { display: block; } }
+  .rrow .rhead .chev { font-size: 13px; color: var(--fg-muted); width: 1rem; text-align: right; }
+  .rrow.open .rhead .chev::before { content: "–"; }
+  .rrow:not(.open) .rhead .chev::before { content: "+"; }
+  .rrow .body { display: none; padding: 2px 14px 16px; }
+  .rrow.open .body { display: block; }
+
+  /* ---------- C: rail -------------------------------------------------- */
+  .tabbar { display: flex; flex-wrap: wrap; gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); }
+  .tabbar button { appearance: none; border: 0; flex: 1 1 auto; background: var(--bg-canvas); color: var(--fg-muted); font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; padding: 11px 8px; cursor: pointer; }
+  .tabbar button.on { background: var(--accent-lime); color: var(--accent-lime-contrast); font-weight: 700; }
+  .tabpane { display: none; margin-top: 16px; }
+  .tabpane.on { display: block; }
+  .tabpane .stackgap > * + * { margin-top: 16px; }
+
+  /* ---------- D: deck -------------------------------------------------- */
+  .deck { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; }
+  .deck .card { flex: 0 0 min(86vw, 36rem); scroll-snap-align: start; }
+  .deck .card .cardhead { margin-bottom: 8px; }
+  .deck-nav { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+  .deck-nav button { appearance: none; border: 1px solid var(--stroke-strong); background: var(--bg-panel-elevated); color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; width: 38px; height: 38px; cursor: pointer; }
+  .deck-nav .pos { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); }
+
+  /* ---------- E: spotlight --------------------------------------------- */
+  .spot { border: 1px solid var(--accent-lime); padding: 18px; position: relative; }
+  .spot .spot-chip { position: absolute; top: -1px; right: -1px; background: var(--accent-lime); color: var(--accent-lime-contrast); font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; padding: 3px 8px; }
+  .more { margin-top: 16px; border: 1px solid var(--stroke-subtle); }
+  .more .mhead { appearance: none; border: 0; width: 100%; background: transparent; color: var(--fg-secondary); display: flex; align-items: center; gap: 12px; padding: 13px 14px; cursor: pointer; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+  .more .mhead .cnt { color: var(--accent-lime); font-weight: 800; }
+  .more .mhead .chev { margin-left: auto; color: var(--fg-muted); }
+  .more.open .mhead .chev::before { content: "–"; }
+  .more:not(.open) .mhead .chev::before { content: "+"; }
+  .more .mbody { display: none; padding: 0 14px 16px; }
+  .more.open .mbody { display: block; }
+  .more .mbody > * + * { margin-top: 16px; }
 
   /* ---------- consent footnote ---------------------------------------------- */
-  .consent { margin-top: 36px; border-top: 1px solid var(--stroke-subtle); padding-top: 14px; font-size: 12px; line-height: 1.6; color: var(--fg-muted); max-width: 46rem; }
+  .consent { margin-top: 30px; border-top: 1px solid var(--stroke-subtle); padding-top: 14px; font-size: 12px; line-height: 1.6; color: var(--fg-muted); max-width: 46rem; }
 
   /* ---------- variant framework / switcher ----------------------------------- */
   .variant { display: none; }
@@ -315,641 +344,370 @@
 <body>
 
 <div class="ticket-strip">
-  PROTOTYPE · <b>alp82/aistack#191</b> · compose the workflow section · round 1 · order, density, first-ship cut
+  PROTOTYPE · <b>alp82/aistack#191</b> · compose the workflow section · round 2 · five ways to kill the scroll
 </div>
 
-<!-- ················· COMPOSITION A: THE STORY ················· -->
-<div class="variant" id="v-story">
+<!-- ==================== component templates (cloned per variant) ==================== -->
 
+<template data-tpl="lead">
+  <div class="draft">
+    <span class="draft-chip">workflow draft · llm over approved aggregates · owner-edited</span>
+    <p>A gate-first flow. Nothing merges before a human review round, and the heaviest work lands deep in the night. The big model holds the main loop, small models take the routine reads, and the flow prefers many short sessions over one long one.</p>
+  </div>
+</template>
+
+<template data-tpl="slots">
+  <div>
+    <div class="sub-facts">
+      <div class="sub-fact">
+        <p class="n">42%</p><p>of commits land between 23:00 and 03:00</p>
+        <div class="valbar"><div class="fill" style="width:42%"></div></div>
+        <span class="src mono-label">from: local git history · exact</span>
+      </div>
+      <div class="sub-fact">
+        <p class="n">2.8</p><p>projects run in parallel on a median active day</p>
+        <span class="src mono-label">from: overlapping project session spans</span>
+      </div>
+      <div class="sub-fact">
+        <p class="n">1 in 6</p><p>sessions switch model mid-run</p>
+        <div class="dotrow"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
+        <span class="src mono-label">from: response model changes · exact</span>
+      </div>
+    </div>
+    <p class="pool-note">three slots · ranked by fit · at most one swap per sync day</p>
+  </div>
+</template>
+
+<template data-tpl="playbook">
+  <div>
+    <div class="tracks-2col">
+      <div class="track">
+        <div class="track-head"><h3 class="track-name">Quick fixes</h3><span class="track-meta">61 runs · median figures</span></div>
+        <div class="track-strip">
+          <div class="seg" style="flex:2; background:var(--ph-orient)"></div>
+          <div class="seg" style="flex:8; background:var(--ph-build)"></div>
+          <div class="seg" style="flex:4; background:var(--ph-verify)"></div>
+          <div class="seg" style="flex:2; background:var(--ph-gate)"></div>
+        </div>
+        <p class="track-figs">wall <b>18 min</b> · build <b>8 min</b> · verify <b>4 min</b> · review rounds <b>1.0</b></p>
+      </div>
+      <div class="track">
+        <div class="track-head"><h3 class="track-name">Feature work</h3><span class="track-meta">48 runs · median figures</span></div>
+        <div class="track-strip">
+          <div class="seg" style="flex:6; background:var(--ph-orient)"></div>
+          <div class="seg" style="flex:24; background:var(--ph-build)"></div>
+          <div class="seg" style="flex:11; background:var(--ph-verify)"></div>
+          <div class="seg" style="flex:4; background:var(--ph-gate)"></div>
+        </div>
+        <p class="track-figs">wall <b>55 min</b> · build <b>24 min</b> · verify <b>11 min</b> · review rounds <b>1.4</b></p>
+      </div>
+    </div>
+    <div class="phase-legend">
+      <span><i style="background:var(--ph-orient)"></i>orient</span>
+      <span><i style="background:var(--ph-build)"></i>build</span>
+      <span><i style="background:var(--ph-verify)"></i>verify</span>
+      <span><i style="background:var(--ph-gate)"></i>gate</span>
+    </div>
+    <div class="receipts">
+      <div class="receipt">
+        <p class="head">Tests before the gate save review rounds.</p>
+        <div class="cmp">
+          <div class="cmp-row"><span>with a verify step</span><div class="track2"><div class="fill" style="width:70%; background:var(--ph-verify)"></div></div><span class="v">1.2</span></div>
+          <div class="cmp-row"><span>without</span><div class="track2"><div class="fill" style="width:100%; background:var(--bg-panel-elevated)"></div></div><span class="v">1.7</span></div>
+        </div>
+        <span class="foot mono-label">review rounds per merge · measured together, no cause claimed</span>
+      </div>
+      <div class="receipt">
+        <p class="head">Batched questions amortize the human wait.</p>
+        <div class="cmp">
+          <div class="cmp-row"><span>batched rounds</span><div class="track2"><div class="fill" style="width:30%; background:var(--ph-verify)"></div></div><span class="v">3.6</span></div>
+          <div class="cmp-row"><span>asked alone</span><div class="track2"><div class="fill" style="width:100%; background:var(--bg-panel-elevated)"></div></div><span class="v">12.2</span></div>
+        </div>
+        <span class="foot mono-label">minutes of wait per answered question</span>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template data-tpl="routing">
+  <div class="routing">
+    <p class="mono-label kicker-line">// MODEL ROUTING · WHO RUNS ON WHAT</p>
+    <div class="route-row">
+      <p class="who"><span>main loop</span><span class="share">66% of tool work</span></p>
+      <div class="route-strip">
+        <div class="seg" style="flex:89; background:var(--m-fable)"></div>
+        <div class="seg" style="flex:11; background:var(--m-opus)"></div>
+      </div>
+    </div>
+    <div class="route-row">
+      <p class="who"><span>subagents</span><span class="share">34% of tool work</span></p>
+      <div class="route-strip">
+        <div class="seg" style="flex:21; background:var(--m-fable)"></div>
+        <div class="seg" style="flex:31; background:var(--m-sonnet)"></div>
+        <div class="seg" style="flex:48; background:var(--m-haiku)"></div>
+      </div>
+    </div>
+    <div class="route-legend">
+      <span><i style="background:var(--m-fable)"></i>fable-5</span>
+      <span><i style="background:var(--m-opus)"></i>opus-5</span>
+      <span><i style="background:var(--m-sonnet)"></i>sonnet-5</span>
+      <span><i style="background:var(--m-haiku)"></i>haiku-4-5</span>
+    </div>
+    <div class="draft inline">
+      <span class="draft-chip">workflow draft</span>
+      <p>The orchestrator stays on the big model. Subagents drop to the small tier for the bulk of their runs. The routing policy is visible in the data, not told.</p>
+    </div>
+  </div>
+</template>
+
+<template data-tpl="dele">
+  <div class="dele">
+    <p class="mono-label kicker-line">// DELEGATION · MAIN LOOP TO SUBAGENTS</p>
+    <div class="cols">
+      <div>
+        <p class="ratio">2 : 1</p>
+        <p class="mono-label" style="margin-top:8px">main-loop to subagent tool work</p>
+        <div class="records">
+          <div class="rec"><p class="v">11</p><p>widest parallel subagent fan-out in one session</p></div>
+          <div class="rec"><p class="v">43</p><p>most subagents in one session</p></div>
+        </div>
+      </div>
+      <div>
+        <p class="mono-label" style="margin-bottom:4px">subagent runs by type</p>
+        <div class="lrow"><span class="rank">01</span><span class="name">Explore</span><div class="track"><div class="fill" style="width:96%"></div></div><span class="pct">41%</span></div>
+        <div class="lrow"><span class="rank">02</span><span class="name">research</span><div class="track"><div class="fill" style="width:56%"></div></div><span class="pct">24%</span></div>
+        <div class="lrow"><span class="rank">03</span><span class="name">Plan</span><div class="track"><div class="fill" style="width:35%"></div></div><span class="pct">15%</span></div>
+        <div class="lrow"><span class="rank">04</span><span class="name">general-purpose</span><div class="track"><div class="fill" style="width:28%"></div></div><span class="pct">12%</span></div>
+        <p class="inv-rest">1 withheld 8%</p>
+        <p class="mono-label" style="margin-top:10px">counts: claude code · opencode</p>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template data-tpl="kit">
+  <div class="inv">
+    <h3>The Kit</h3>
+    <p class="sub">Skills and commands merged · share of 412 runs · 30-day trail</p>
+    <div class="lrow"><span class="rank">01</span><span class="name">grilling</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="3,4,2,5,6,4,7,5,8,6,9,7,8,9,10"></svg><div class="track"><div class="fill" style="width:96%"></div></div><span class="pct">24%</span></div>
+    <div class="lrow"><span class="rank">02</span><span class="name">tdd</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="6,5,7,4,6,3,5,4,6,5,4,6,5,7,6"></svg><div class="track"><div class="fill" style="width:68%"></div></div><span class="pct">17%</span></div>
+    <div class="lrow"><span class="rank">03</span><span class="name">wayfinder</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="2,3,2,4,3,5,4,4,5,6,5,6,7,6,8"></svg><div class="track"><div class="fill" style="width:52%"></div></div><span class="pct">13%</span></div>
+    <div class="lrow"><span class="rank">04</span><span class="name">prototype</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="1,2,1,3,2,4,3,5,4,6,5,7,6,8,9"></svg><div class="track"><div class="fill" style="width:44%"></div></div><span class="pct">11%</span></div>
+    <div class="lrow"><span class="rank">05</span><span class="name">research</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="5,6,4,5,3,4,3,4,2,3,3,2,3,2,2"></svg><div class="track"><div class="fill" style="width:36%"></div></div><span class="pct">9%</span></div>
+    <div class="lrow"><span class="rank">06</span><span class="name">domain-modeling</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="2,3,3,4,3,4,5,4,5,4,5,6,5,6,6"></svg><div class="track"><div class="fill" style="width:32%"></div></div><span class="pct">8%</span></div>
+    <p class="inv-rest">also: <b>code-review</b> 7% · <b>writing-for-agents</b> 4% · <b>diagnosing-bugs</b> 3% · <b>simplify</b> 2% · 2 withheld 2%</p>
+    <div class="inv-line">
+      <span class="k mono-label">mcp servers</span>
+      <p class="v"><b>curia</b> 78% · <b>convex</b> 19% · 1 withheld 3%</p>
+    </div>
+  </div>
+</template>
+
+<template data-tpl="ledger">
+  <div class="gitled">
+    <p class="mono-label kicker-line">// THE GIT LEDGER · EXACT FROM LOCAL HISTORY</p>
+    <div class="cols">
+      <div>
+        <p class="delta"><span class="plus">+94,754</span><br><span class="minus">-19,330</span></p>
+        <p class="mono-label" style="margin-top:8px">lines added and removed · 30 days</p>
+        <p class="git-facts"><b>119</b> commits · median <b>425</b> changed lines<br><b>47%</b> of commits touch a test file</p>
+      </div>
+      <div>
+        <p class="mono-label" style="margin-bottom:6px">changed lines per commit · one dot per commit · log scale</p>
+        <div class="dotstrip-wrap"><svg class="dotstrip" viewBox="0 0 600 84" preserveAspectRatio="none"></svg></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template data-tpl="langs">
+  <div class="langs">
+    <p class="mono-label kicker-line">// CODING LANGUAGES · SHARE OF CHANGED LINES</p>
+    <div class="lang-row"><span class="name">TypeScript</span><div class="track"><div class="fill" style="width:73%"></div></div><span class="pct">73.0%</span></div>
+    <div class="lang-row"><span class="name">JSON</span><div class="track"><div class="fill" style="width:15%"></div></div><span class="pct">15.0%</span></div>
+    <div class="lang-row"><span class="name">Markdown</span><div class="track"><div class="fill" style="width:7%"></div></div><span class="pct">7.0%</span></div>
+    <div class="lang-row"><span class="name">HTML</span><div class="track"><div class="fill" style="width:2.5%"></div></div><span class="pct">2.5%</span></div>
+    <div class="lang-row"><span class="name">JavaScript</span><div class="track"><div class="fill" style="width:1.9%"></div></div><span class="pct">1.9%</span></div>
+    <div class="lang-row"><span class="name">other</span><div class="track"><div class="fill" style="width:0.6%"></div></div><span class="pct">0.6%</span></div>
+  </div>
+</template>
+
+<template data-tpl="heat">
+  <div class="heat-wrap">
+    <div class="heat">
+      <p class="mono-label kicker-line">// WHEN THE WORK HAPPENS · TAP A CELL</p>
+      <div class="heat-grid" data-heatmap></div>
+      <div class="heat-legend">
+        <span class="mono-label">quiet</span>
+        <div class="cellbox" style="background:var(--bg-panel)"></div>
+        <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 18%, var(--bg-panel))"></div>
+        <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 38%, var(--bg-panel))"></div>
+        <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 62%, var(--bg-panel))"></div>
+        <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 90%, var(--bg-panel))"></div>
+        <span class="mono-label">heavy</span>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template data-tpl="consent">
+  <div class="consent">
+    <span class="mono-label">// HOW TO READ THIS</span><br>
+    Shares, never raw counts. A name appears here only after the owner approves it at the sync gate. An exact metric comes from harness records or local Git history, and a proxy metric names its matching rule. The dashed blocks are workflow drafts: LLM prose over approved aggregates, labeled, owner-edited, never a number (ADR-0001). This prototype runs on hand-extracted data around real anchors. No live sync feeds it yet.
+  </div>
+</template>
+
+<!-- ==================== A: THE NUGGETS ==================== -->
+<div class="variant" id="v-nuggets">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal A · prototype chrome, not part of the design</span>
-      <b>Order:</b> hook first, then the story, then the machine, then the ground truth.
-      Lead · slots · playbook · routing · delegation · kit · ledger · languages · heatmap.<br>
-      <b>Density:</b> one column, every component at full size, long scroll.<br>
-      <b>First-ship cut:</b> none. All nine components ship together.
+      <span class="tag">proposal A · the nuggets · prototype chrome</span>
+      <b>Mechanism:</b> every component is a small stat tile. A tap extends it in place to the full block. One open at a time.<br>
+      <b>Visible cost:</b> the lead, the slots, and two tile rows. About two phone screens.<br>
+      <b>Cut:</b> everything ships, collapsed.
     </div>
   </div>
-
-  <div class="stub" style="margin-top:20px">
-    <div class="shell"><span class="idx">03</span><span class="name">Your Tools</span><span class="note">the section above · context only</span></div>
-  </div>
-
-  <section class="journey">
-    <div class="shell">
-      <div class="sec-head">
-        <span class="sec-index">04</span>
-        <div class="head-copy">
-          <p class="sec-kicker">// MEASURED WORKFLOW</p>
-          <h2 class="sec-title">The Workflow</h2>
-        </div>
-        <span class="sec-meta">measured on the machine · owner-approved</span>
-      </div>
-
-      <div class="draft">
-        <span class="draft-chip">workflow draft · llm over approved aggregates · owner-edited</span>
-        <p>A gate-first flow. Nothing merges before a human review round, and the heaviest work lands deep in the night. The big model holds the main loop, small models take the routine reads, and the flow prefers many short sessions over one long one.</p>
-      </div>
-
-      <div class="block-gap">
-        <div class="sub-facts">
-          <div class="sub-fact">
-            <p class="n">42%</p><p>of commits land between 23:00 and 03:00</p>
-            <div class="valbar"><div class="fill" style="width:42%"></div></div>
-            <span class="src mono-label">from: local git history · exact</span>
-          </div>
-          <div class="sub-fact">
-            <p class="n">2.8</p><p>projects run in parallel on a median active day</p>
-            <span class="src mono-label">from: overlapping project session spans</span>
-          </div>
-          <div class="sub-fact">
-            <p class="n">1 in 6</p><p>sessions switch model mid-run</p>
-            <div class="dotrow"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
-            <span class="src mono-label">from: response model changes · exact</span>
-          </div>
-        </div>
-        <p class="pool-note">three slots · ranked by fit · at most one swap per sync day</p>
-      </div>
-
-      <div class="block-gap">
-        <p class="mono-label kicker-line">// HOW WORK SHIPS HERE</p>
-        <div class="tracks-2col">
-          <div class="track">
-            <div class="track-head"><h3 class="track-name">Quick fixes</h3><span class="track-meta">61 runs · median figures</span></div>
-            <div class="track-strip">
-              <div class="seg" style="flex:2; background:var(--ph-orient)"></div>
-              <div class="seg" style="flex:8; background:var(--ph-build)"></div>
-              <div class="seg" style="flex:4; background:var(--ph-verify)"></div>
-              <div class="seg" style="flex:2; background:var(--ph-gate)"></div>
-            </div>
-            <p class="track-figs">wall <b>18 min</b> · build <b>8 min</b> · verify <b>4 min</b><br>review rounds <b>1.0</b></p>
-          </div>
-          <div class="track">
-            <div class="track-head"><h3 class="track-name">Feature work</h3><span class="track-meta">48 runs · median figures</span></div>
-            <div class="track-strip">
-              <div class="seg" style="flex:6; background:var(--ph-orient)"></div>
-              <div class="seg" style="flex:24; background:var(--ph-build)"></div>
-              <div class="seg" style="flex:11; background:var(--ph-verify)"></div>
-              <div class="seg" style="flex:4; background:var(--ph-gate)"></div>
-            </div>
-            <p class="track-figs">wall <b>55 min</b> · build <b>24 min</b> · verify <b>11 min</b><br>review rounds <b>1.4</b></p>
-          </div>
-        </div>
-        <div class="phase-legend">
-          <span><i style="background:var(--ph-orient)"></i>orient</span>
-          <span><i style="background:var(--ph-build)"></i>build</span>
-          <span><i style="background:var(--ph-verify)"></i>verify</span>
-          <span><i style="background:var(--ph-gate)"></i>gate</span>
-        </div>
-        <div class="receipts">
-          <div class="receipt">
-            <p class="head">Tests before the gate save review rounds.</p>
-            <div class="cmp">
-              <div class="cmp-row"><span>with a verify step</span><div class="track2"><div class="fill" style="width:70%; background:var(--ph-verify)"></div></div><span class="v">1.2</span></div>
-              <div class="cmp-row"><span>without</span><div class="track2"><div class="fill" style="width:100%; background:var(--bg-panel-elevated)"></div></div><span class="v">1.7</span></div>
-            </div>
-            <span class="foot mono-label">review rounds per merge · measured together, no cause claimed</span>
-          </div>
-          <div class="receipt">
-            <p class="head">Batched questions amortize the human wait.</p>
-            <div class="cmp">
-              <div class="cmp-row"><span>batched rounds</span><div class="track2"><div class="fill" style="width:30%; background:var(--ph-verify)"></div></div><span class="v">3.6</span></div>
-              <div class="cmp-row"><span>asked alone</span><div class="track2"><div class="fill" style="width:100%; background:var(--bg-panel-elevated)"></div></div><span class="v">12.2</span></div>
-            </div>
-            <span class="foot mono-label">minutes of wait per answered question</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="block-gap">
-        <div class="routing">
-          <p class="mono-label kicker-line">// MODEL ROUTING · WHO RUNS ON WHAT</p>
-          <div class="route-row">
-            <p class="who"><span>main loop</span><span class="share">66% of tool work</span></p>
-            <div class="route-strip">
-              <div class="seg" style="flex:89; background:var(--m-fable)"></div>
-              <div class="seg" style="flex:11; background:var(--m-opus)"></div>
-            </div>
-          </div>
-          <div class="route-row">
-            <p class="who"><span>subagents</span><span class="share">34% of tool work</span></p>
-            <div class="route-strip">
-              <div class="seg" style="flex:21; background:var(--m-fable)"></div>
-              <div class="seg" style="flex:31; background:var(--m-sonnet)"></div>
-              <div class="seg" style="flex:48; background:var(--m-haiku)"></div>
-            </div>
-          </div>
-          <div class="route-legend">
-            <span><i style="background:var(--m-fable)"></i>fable-5</span>
-            <span><i style="background:var(--m-opus)"></i>opus-5</span>
-            <span><i style="background:var(--m-sonnet)"></i>sonnet-5</span>
-            <span><i style="background:var(--m-haiku)"></i>haiku-4-5</span>
-          </div>
-          <div class="draft inline">
-            <span class="draft-chip">workflow draft</span>
-            <p>The orchestrator stays on the big model. Subagents drop to the small tier for the bulk of their runs. The routing policy is visible in the data, not told.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="block-gap">
-        <div class="dele">
-          <p class="mono-label kicker-line">// DELEGATION · MAIN LOOP TO SUBAGENTS</p>
-          <div class="cols">
-            <div>
-              <p class="ratio">2 : 1</p>
-              <p class="mono-label" style="margin-top:8px">main-loop to subagent tool work</p>
-              <div class="records">
-                <div class="rec"><p class="v">11</p><p>widest parallel subagent fan-out in one session</p></div>
-                <div class="rec"><p class="v">43</p><p>most subagents in one session</p></div>
-              </div>
-            </div>
-            <div>
-              <p class="mono-label" style="margin-bottom:4px">subagent runs by type</p>
-              <div class="lrow"><span class="rank">01</span><span class="name">Explore</span><div class="track"><div class="fill" style="width:96%"></div></div><span class="pct">41%</span></div>
-              <div class="lrow"><span class="rank">02</span><span class="name">research</span><div class="track"><div class="fill" style="width:56%"></div></div><span class="pct">24%</span></div>
-              <div class="lrow"><span class="rank">03</span><span class="name">Plan</span><div class="track"><div class="fill" style="width:35%"></div></div><span class="pct">15%</span></div>
-              <div class="lrow"><span class="rank">04</span><span class="name">general-purpose</span><div class="track"><div class="fill" style="width:28%"></div></div><span class="pct">12%</span></div>
-              <p class="inv-rest">1 withheld 8%</p>
-              <p class="mono-label" style="margin-top:10px">counts: claude code · opencode</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="block-gap">
-        <div class="inv">
-          <h3>The Kit</h3>
-          <p class="sub">Skills and commands merged · share of 412 runs · 30-day trail</p>
-          <div class="lrow"><span class="rank">01</span><span class="name">grilling</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="3,4,2,5,6,4,7,5,8,6,9,7,8,9,10"></svg><div class="track"><div class="fill" style="width:96%"></div></div><span class="pct">24%</span></div>
-          <div class="lrow"><span class="rank">02</span><span class="name">tdd</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="6,5,7,4,6,3,5,4,6,5,4,6,5,7,6"></svg><div class="track"><div class="fill" style="width:68%"></div></div><span class="pct">17%</span></div>
-          <div class="lrow"><span class="rank">03</span><span class="name">wayfinder</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="2,3,2,4,3,5,4,4,5,6,5,6,7,6,8"></svg><div class="track"><div class="fill" style="width:52%"></div></div><span class="pct">13%</span></div>
-          <div class="lrow"><span class="rank">04</span><span class="name">prototype</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="1,2,1,3,2,4,3,5,4,6,5,7,6,8,9"></svg><div class="track"><div class="fill" style="width:44%"></div></div><span class="pct">11%</span></div>
-          <div class="lrow"><span class="rank">05</span><span class="name">research</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="5,6,4,5,3,4,3,4,2,3,3,2,3,2,2"></svg><div class="track"><div class="fill" style="width:36%"></div></div><span class="pct">9%</span></div>
-          <div class="lrow"><span class="rank">06</span><span class="name">domain-modeling</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="2,3,3,4,3,4,5,4,5,4,5,6,5,6,6"></svg><div class="track"><div class="fill" style="width:32%"></div></div><span class="pct">8%</span></div>
-          <p class="inv-rest">also: <b>code-review</b> 7% · <b>writing-for-agents</b> 4% · <b>diagnosing-bugs</b> 3% · <b>simplify</b> 2% · 2 withheld 2%</p>
-          <div class="inv-line">
-            <span class="k mono-label">mcp servers</span>
-            <p class="v"><b>curia</b> 78% · <b>convex</b> 19% · 1 withheld 3%</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="block-gap">
-        <div class="gitled">
-          <p class="mono-label kicker-line">// THE GIT LEDGER · EXACT FROM LOCAL HISTORY</p>
-          <div class="cols">
-            <div>
-              <p class="delta"><span class="plus">+94,754</span><br><span class="minus">-19,330</span></p>
-              <p class="mono-label" style="margin-top:8px">lines added and removed · 30 days</p>
-              <p class="git-facts"><b>119</b> commits · median <b>425</b> changed lines<br><b>47%</b> of commits touch a test file</p>
-            </div>
-            <div>
-              <p class="mono-label" style="margin-bottom:6px">changed lines per commit · one dot per commit · log scale</p>
-              <div class="dotstrip-wrap"><svg class="dotstrip" viewBox="0 0 600 84" preserveAspectRatio="none"></svg></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="block-gap">
-        <div class="langs">
-          <p class="mono-label kicker-line">// CODING LANGUAGES · SHARE OF CHANGED LINES</p>
-          <div class="lang-row"><span class="name">TypeScript</span><div class="track"><div class="fill" style="width:73%"></div></div><span class="pct">73.0%</span></div>
-          <div class="lang-row"><span class="name">JSON</span><div class="track"><div class="fill" style="width:15%"></div></div><span class="pct">15.0%</span></div>
-          <div class="lang-row"><span class="name">Markdown</span><div class="track"><div class="fill" style="width:7%"></div></div><span class="pct">7.0%</span></div>
-          <div class="lang-row"><span class="name">HTML</span><div class="track"><div class="fill" style="width:2.5%"></div></div><span class="pct">2.5%</span></div>
-          <div class="lang-row"><span class="name">JavaScript</span><div class="track"><div class="fill" style="width:1.9%"></div></div><span class="pct">1.9%</span></div>
-          <div class="lang-row"><span class="name">other</span><div class="track"><div class="fill" style="width:0.6%"></div></div><span class="pct">0.6%</span></div>
-        </div>
-      </div>
-
-      <div class="block-gap">
-        <div class="heat-wrap">
-          <div class="heat">
-            <p class="mono-label kicker-line">// WHEN THE WORK HAPPENS · TAP A CELL</p>
-            <div class="heat-grid" data-heatmap></div>
-            <div class="heat-legend">
-              <span class="mono-label">quiet</span>
-              <div class="cellbox" style="background:var(--bg-panel)"></div>
-              <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 18%, var(--bg-panel))"></div>
-              <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 38%, var(--bg-panel))"></div>
-              <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 62%, var(--bg-panel))"></div>
-              <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 90%, var(--bg-panel))"></div>
-              <span class="mono-label">heavy</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="consent">
-        <span class="mono-label">// HOW TO READ THIS</span><br>
-        Shares, never raw counts. A name appears here only after the owner approves it at the sync gate. An exact metric comes from harness records or local Git history, and a proxy metric names its matching rule. The dashed blocks are workflow drafts: LLM prose over approved aggregates, labeled, owner-edited, never a number (ADR-0001). This prototype runs on hand-extracted data around real anchors. No live sync feeds it yet.
-      </div>
+  <div class="stub" style="margin-top:20px"><div class="shell"><span class="idx">03</span><span class="name">Your Tools</span><span class="note">context only</span></div></div>
+  <section class="journey"><div class="shell">
+    <div class="sec-head">
+      <span class="sec-index">04</span>
+      <div class="head-copy"><p class="sec-kicker">// MEASURED WORKFLOW</p><h2 class="sec-title">The Workflow</h2></div>
+      <span class="sec-meta">measured on the machine · owner-approved</span>
     </div>
-  </section>
-
-  <div class="stub cta">
-    <div class="shell"><span class="name">Build your own stack</span><span class="note">the page below · context only</span></div>
-  </div>
+    <div data-slot="lead"></div>
+    <div class="block-gap" data-slot="slots"></div>
+    <div class="block-gap nug-grid" data-nuggets></div>
+    <div data-slot="consent"></div>
+  </div></section>
+  <div class="stub cta"><div class="shell"><span class="name">Build your own stack</span><span class="note">context only</span></div></div>
 </div>
 
-<!-- ················· COMPOSITION B: THE FIRST CUT ················· -->
-<div class="variant" id="v-cut">
-
+<!-- ==================== B: THE ROWS ==================== -->
+<div class="variant" id="v-rows">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal B · prototype chrome, not part of the design</span>
-      <b>Order:</b> lead · slots · routing · kit · ledger · heatmap. Hook first, ground truth last.<br>
-      <b>Density:</b> airy. Six blocks, wide gaps, one screen per block on a phone.<br>
-      <b>First-ship cut:</b> ship what the sync already records plus plain Git.
-      Defer the playbook, delegation, and languages. The strip at the end names each with its reason.
+      <span class="tag">proposal B · the rows · prototype chrome</span>
+      <b>Mechanism:</b> every component is one collapsed row with its headline figure. A tap unfolds it, accordion style.<br>
+      <b>Visible cost:</b> the lead, the slots, and seven thin rows. Under two phone screens.<br>
+      <b>Cut:</b> everything ships, collapsed.
     </div>
   </div>
-
-  <div class="stub" style="margin-top:20px">
-    <div class="shell"><span class="idx">03</span><span class="name">Your Tools</span><span class="note">the section above · context only</span></div>
-  </div>
-
-  <section class="journey">
-    <div class="shell">
-      <div class="sec-head">
-        <span class="sec-index">04</span>
-        <div class="head-copy">
-          <p class="sec-kicker">// MEASURED WORKFLOW</p>
-          <h2 class="sec-title">The Workflow</h2>
-        </div>
-        <span class="sec-meta">measured on the machine · owner-approved</span>
-      </div>
-
-      <div class="draft">
-        <span class="draft-chip">workflow draft · llm over approved aggregates · owner-edited</span>
-        <p>A gate-first flow. Nothing merges before a human review round, and the heaviest work lands deep in the night. The big model holds the main loop, small models take the routine reads, and the flow prefers many short sessions over one long one.</p>
-      </div>
-
-      <div class="block-gap-air">
-        <div class="sub-facts">
-          <div class="sub-fact">
-            <p class="n">42%</p><p>of commits land between 23:00 and 03:00</p>
-            <div class="valbar"><div class="fill" style="width:42%"></div></div>
-            <span class="src mono-label">from: local git history · exact</span>
-          </div>
-          <div class="sub-fact">
-            <p class="n">2.8</p><p>projects run in parallel on a median active day</p>
-            <span class="src mono-label">from: overlapping project session spans</span>
-          </div>
-          <div class="sub-fact">
-            <p class="n">1 in 6</p><p>sessions switch model mid-run</p>
-            <div class="dotrow"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
-            <span class="src mono-label">from: response model changes · exact</span>
-          </div>
-        </div>
-        <p class="pool-note">three slots · ranked by fit · at most one swap per sync day</p>
-      </div>
-
-      <div class="block-gap-air">
-        <div class="routing">
-          <p class="mono-label kicker-line">// MODEL ROUTING · WHO RUNS ON WHAT</p>
-          <div class="route-row">
-            <p class="who"><span>main loop</span><span class="share">66% of tool work</span></p>
-            <div class="route-strip">
-              <div class="seg" style="flex:89; background:var(--m-fable)"></div>
-              <div class="seg" style="flex:11; background:var(--m-opus)"></div>
-            </div>
-          </div>
-          <div class="route-row">
-            <p class="who"><span>subagents</span><span class="share">34% of tool work</span></p>
-            <div class="route-strip">
-              <div class="seg" style="flex:21; background:var(--m-fable)"></div>
-              <div class="seg" style="flex:31; background:var(--m-sonnet)"></div>
-              <div class="seg" style="flex:48; background:var(--m-haiku)"></div>
-            </div>
-          </div>
-          <div class="route-legend">
-            <span><i style="background:var(--m-fable)"></i>fable-5</span>
-            <span><i style="background:var(--m-opus)"></i>opus-5</span>
-            <span><i style="background:var(--m-sonnet)"></i>sonnet-5</span>
-            <span><i style="background:var(--m-haiku)"></i>haiku-4-5</span>
-          </div>
-          <div class="draft inline">
-            <span class="draft-chip">workflow draft</span>
-            <p>The orchestrator stays on the big model. Subagents drop to the small tier for the bulk of their runs. The routing policy is visible in the data, not told.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="block-gap-air">
-        <div class="inv">
-          <h3>The Kit</h3>
-          <p class="sub">Skills and commands merged · share of 412 runs · 30-day trail</p>
-          <div class="lrow"><span class="rank">01</span><span class="name">grilling</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="3,4,2,5,6,4,7,5,8,6,9,7,8,9,10"></svg><div class="track"><div class="fill" style="width:96%"></div></div><span class="pct">24%</span></div>
-          <div class="lrow"><span class="rank">02</span><span class="name">tdd</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="6,5,7,4,6,3,5,4,6,5,4,6,5,7,6"></svg><div class="track"><div class="fill" style="width:68%"></div></div><span class="pct">17%</span></div>
-          <div class="lrow"><span class="rank">03</span><span class="name">wayfinder</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="2,3,2,4,3,5,4,4,5,6,5,6,7,6,8"></svg><div class="track"><div class="fill" style="width:52%"></div></div><span class="pct">13%</span></div>
-          <div class="lrow"><span class="rank">04</span><span class="name">prototype</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="1,2,1,3,2,4,3,5,4,6,5,7,6,8,9"></svg><div class="track"><div class="fill" style="width:44%"></div></div><span class="pct">11%</span></div>
-          <div class="lrow"><span class="rank">05</span><span class="name">research</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="5,6,4,5,3,4,3,4,2,3,3,2,3,2,2"></svg><div class="track"><div class="fill" style="width:36%"></div></div><span class="pct">9%</span></div>
-          <div class="lrow"><span class="rank">06</span><span class="name">domain-modeling</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="2,3,3,4,3,4,5,4,5,4,5,6,5,6,6"></svg><div class="track"><div class="fill" style="width:32%"></div></div><span class="pct">8%</span></div>
-          <p class="inv-rest">also: <b>code-review</b> 7% · <b>writing-for-agents</b> 4% · <b>diagnosing-bugs</b> 3% · <b>simplify</b> 2% · 2 withheld 2%</p>
-          <div class="inv-line">
-            <span class="k mono-label">mcp servers</span>
-            <p class="v"><b>curia</b> 78% · <b>convex</b> 19% · 1 withheld 3%</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="block-gap-air">
-        <div class="gitled">
-          <p class="mono-label kicker-line">// THE GIT LEDGER · EXACT FROM LOCAL HISTORY</p>
-          <div class="cols">
-            <div>
-              <p class="delta"><span class="plus">+94,754</span><br><span class="minus">-19,330</span></p>
-              <p class="mono-label" style="margin-top:8px">lines added and removed · 30 days</p>
-              <p class="git-facts"><b>119</b> commits · median <b>425</b> changed lines<br><b>47%</b> of commits touch a test file</p>
-            </div>
-            <div>
-              <p class="mono-label" style="margin-bottom:6px">changed lines per commit · one dot per commit · log scale</p>
-              <div class="dotstrip-wrap"><svg class="dotstrip" viewBox="0 0 600 84" preserveAspectRatio="none"></svg></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="block-gap-air">
-        <div class="heat-wrap">
-          <div class="heat">
-            <p class="mono-label kicker-line">// WHEN THE WORK HAPPENS · TAP A CELL</p>
-            <div class="heat-grid" data-heatmap></div>
-            <div class="heat-legend">
-              <span class="mono-label">quiet</span>
-              <div class="cellbox" style="background:var(--bg-panel)"></div>
-              <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 18%, var(--bg-panel))"></div>
-              <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 38%, var(--bg-panel))"></div>
-              <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 62%, var(--bg-panel))"></div>
-              <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 90%, var(--bg-panel))"></div>
-              <span class="mono-label">heavy</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="block-gap-air">
-        <div class="defer">
-          <h3>Measured next · not in ship one</h3>
-          <p class="sub">These components are decided and wait for their machinery. The section grows block by block.</p>
-          <div class="defer-row">
-            <span class="k">the playbook</span>
-            <p class="why">The two shipping tracks and the receipts need the phase rules from the anatomy prototype. That derivation is its own build.</p>
-          </div>
-          <div class="defer-row">
-            <span class="k">delegation</span>
-            <p class="why">The fan-out records need child-session spans, a signal the sync does not carry yet.</p>
-          </div>
-          <div class="defer-row">
-            <span class="k">coding languages</span>
-            <p class="why">Rides the Git collector once the ledger is live. Ships with the next window.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="consent">
-        <span class="mono-label">// HOW TO READ THIS</span><br>
-        Shares, never raw counts. A name appears here only after the owner approves it at the sync gate. An exact metric comes from harness records or local Git history, and a proxy metric names its matching rule. The dashed blocks are workflow drafts: LLM prose over approved aggregates, labeled, owner-edited, never a number (ADR-0001). This prototype runs on hand-extracted data around real anchors. No live sync feeds it yet.
-      </div>
+  <div class="stub" style="margin-top:20px"><div class="shell"><span class="idx">03</span><span class="name">Your Tools</span><span class="note">context only</span></div></div>
+  <section class="journey"><div class="shell">
+    <div class="sec-head">
+      <span class="sec-index">04</span>
+      <div class="head-copy"><p class="sec-kicker">// MEASURED WORKFLOW</p><h2 class="sec-title">The Workflow</h2></div>
+      <span class="sec-meta">measured on the machine · owner-approved</span>
     </div>
-  </section>
-
-  <div class="stub cta">
-    <div class="shell"><span class="name">Build your own stack</span><span class="note">the page below · context only</span></div>
-  </div>
+    <div data-slot="lead"></div>
+    <div class="block-gap" data-slot="slots"></div>
+    <div class="block-gap rowlist" data-rows></div>
+    <div data-slot="consent"></div>
+  </div></section>
+  <div class="stub cta"><div class="shell"><span class="name">Build your own stack</span><span class="note">context only</span></div></div>
 </div>
 
-<!-- ················· COMPOSITION C: THE CHAPTERS ················· -->
-<div class="variant" id="v-chapters">
-
+<!-- ==================== C: THE RAIL ==================== -->
+<div class="variant" id="v-rail">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal C · prototype chrome, not part of the design</span>
-      <b>Order:</b> grouped by theme. The rhythm (slots, heatmap) · the machine (routing, delegation, kit) · the ground truth (ledger, languages) · how work ships (playbook closes).<br>
-      <b>Density:</b> dense. Two-column grid inside each chapter, compact block forms, short scroll.<br>
-      <b>First-ship cut:</b> none, the grid absorbs the full set.
+      <span class="tag">proposal C · the rail · prototype chrome</span>
+      <b>Mechanism:</b> four themed tabs. One pane visible at a time, so the section never grows past its tallest pane.<br>
+      <b>Visible cost:</b> the lead, the slots, the tab bar, and one pane. About two phone screens.<br>
+      <b>Cut:</b> everything ships, one pane at a time.
     </div>
   </div>
+  <div class="stub" style="margin-top:20px"><div class="shell"><span class="idx">03</span><span class="name">Your Tools</span><span class="note">context only</span></div></div>
+  <section class="journey"><div class="shell">
+    <div class="sec-head">
+      <span class="sec-index">04</span>
+      <div class="head-copy"><p class="sec-kicker">// MEASURED WORKFLOW</p><h2 class="sec-title">The Workflow</h2></div>
+      <span class="sec-meta">measured on the machine · owner-approved</span>
+    </div>
+    <div data-slot="lead"></div>
+    <div class="block-gap" data-slot="slots"></div>
+    <div class="block-gap tabbar" data-tabbar>
+      <button type="button" data-tab="t-ships" class="on">how work ships</button>
+      <button type="button" data-tab="t-machine">models &amp; agents</button>
+      <button type="button" data-tab="t-git">the git ledger</button>
+      <button type="button" data-tab="t-rhythm">the rhythm</button>
+    </div>
+    <div class="tabpane on" id="t-ships"><div class="stackgap"><div data-slot="playbook"></div></div></div>
+    <div class="tabpane" id="t-machine"><div class="stackgap"><div data-slot="routing"></div><div data-slot="dele"></div><div data-slot="kit"></div></div></div>
+    <div class="tabpane" id="t-git"><div class="stackgap"><div data-slot="ledger"></div><div data-slot="langs"></div></div></div>
+    <div class="tabpane" id="t-rhythm"><div class="stackgap"><div data-slot="heat"></div></div></div>
+    <div data-slot="consent"></div>
+  </div></section>
+  <div class="stub cta"><div class="shell"><span class="name">Build your own stack</span><span class="note">context only</span></div></div>
+</div>
 
-  <div class="stub" style="margin-top:20px">
-    <div class="shell"><span class="idx">03</span><span class="name">Your Tools</span><span class="note">the section above · context only</span></div>
+<!-- ==================== D: THE DECK ==================== -->
+<div class="variant" id="v-deck">
+  <div class="proposal">
+    <div class="proposal-box">
+      <span class="tag">proposal D · the deck · prototype chrome</span>
+      <b>Mechanism:</b> a horizontal card deck. Swipe on a phone, arrows on desktop. The section spends one card of vertical space.<br>
+      <b>Visible cost:</b> the lead, the slots, and one card. Under two phone screens.<br>
+      <b>Cut:</b> everything ships, one card each.
+    </div>
   </div>
+  <div class="stub" style="margin-top:20px"><div class="shell"><span class="idx">03</span><span class="name">Your Tools</span><span class="note">context only</span></div></div>
+  <section class="journey"><div class="shell">
+    <div class="sec-head">
+      <span class="sec-index">04</span>
+      <div class="head-copy"><p class="sec-kicker">// MEASURED WORKFLOW</p><h2 class="sec-title">The Workflow</h2></div>
+      <span class="sec-meta">measured on the machine · owner-approved</span>
+    </div>
+    <div data-slot="lead"></div>
+    <div class="block-gap" data-slot="slots"></div>
+    <div class="block-gap deck" data-deck></div>
+    <div class="deck-nav">
+      <button type="button" data-deckprev aria-label="previous card">←</button>
+      <button type="button" data-decknext aria-label="next card">→</button>
+      <span class="pos" data-deckpos></span>
+    </div>
+    <div data-slot="consent"></div>
+  </div></section>
+  <div class="stub cta"><div class="shell"><span class="name">Build your own stack</span><span class="note">context only</span></div></div>
+</div>
 
-  <section class="journey">
-    <div class="shell">
-      <div class="sec-head">
-        <span class="sec-index">04</span>
-        <div class="head-copy">
-          <p class="sec-kicker">// MEASURED WORKFLOW</p>
-          <h2 class="sec-title">The Workflow</h2>
-        </div>
-        <span class="sec-meta">measured on the machine · owner-approved</span>
-      </div>
-
-      <div class="draft" style="margin-bottom:44px">
-        <span class="draft-chip">workflow draft · llm over approved aggregates · owner-edited</span>
-        <p>A gate-first flow. Nothing merges before a human review round, and the heaviest work lands deep in the night. The big model holds the main loop, small models take the routine reads, and the flow prefers many short sessions over one long one.</p>
-      </div>
-
-      <div class="chapter">
-        <div class="chapter-head"><span class="num">04.1</span><h3>The Rhythm</h3><span class="note">when and how wide</span></div>
-        <div class="sub-facts">
-          <div class="sub-fact">
-            <p class="n">42%</p><p>of commits land between 23:00 and 03:00</p>
-            <div class="valbar"><div class="fill" style="width:42%"></div></div>
-            <span class="src mono-label">from: local git history · exact</span>
-          </div>
-          <div class="sub-fact">
-            <p class="n">2.8</p><p>projects run in parallel on a median active day</p>
-            <span class="src mono-label">from: overlapping project session spans</span>
-          </div>
-          <div class="sub-fact">
-            <p class="n">1 in 6</p><p>sessions switch model mid-run</p>
-            <div class="dotrow"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
-            <span class="src mono-label">from: response model changes · exact</span>
-          </div>
-        </div>
-        <div class="heat-wrap" style="margin-top:16px">
-          <div class="heat">
-            <p class="mono-label kicker-line">// WHEN THE WORK HAPPENS · TAP A CELL</p>
-            <div class="heat-grid" data-heatmap></div>
-            <div class="heat-legend">
-              <span class="mono-label">quiet</span>
-              <div class="cellbox" style="background:var(--bg-panel)"></div>
-              <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 18%, var(--bg-panel))"></div>
-              <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 38%, var(--bg-panel))"></div>
-              <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 62%, var(--bg-panel))"></div>
-              <div class="cellbox" style="background:color-mix(in oklab, var(--accent-lime) 90%, var(--bg-panel))"></div>
-              <span class="mono-label">heavy</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="chapter">
-        <div class="chapter-head"><span class="num">04.2</span><h3>The Machine</h3><span class="note">models, agents, and the kit</span></div>
-        <div class="duo">
-          <div class="routing">
-            <p class="mono-label kicker-line">// MODEL ROUTING</p>
-            <div class="route-row">
-              <p class="who"><span>main loop</span><span class="share">66% of tool work</span></p>
-              <div class="route-strip">
-                <div class="seg" style="flex:89; background:var(--m-fable)"></div>
-                <div class="seg" style="flex:11; background:var(--m-opus)"></div>
-              </div>
-            </div>
-            <div class="route-row">
-              <p class="who"><span>subagents</span><span class="share">34% of tool work</span></p>
-              <div class="route-strip">
-                <div class="seg" style="flex:21; background:var(--m-fable)"></div>
-                <div class="seg" style="flex:31; background:var(--m-sonnet)"></div>
-                <div class="seg" style="flex:48; background:var(--m-haiku)"></div>
-              </div>
-            </div>
-            <div class="route-legend">
-              <span><i style="background:var(--m-fable)"></i>fable-5</span>
-              <span><i style="background:var(--m-opus)"></i>opus-5</span>
-              <span><i style="background:var(--m-sonnet)"></i>sonnet-5</span>
-              <span><i style="background:var(--m-haiku)"></i>haiku-4-5</span>
-            </div>
-            <div class="draft inline">
-              <span class="draft-chip">workflow draft</span>
-              <p>The orchestrator stays on the big model. Subagents drop to the small tier for the bulk of their runs.</p>
-            </div>
-          </div>
-          <div class="dele compact">
-            <p class="mono-label kicker-line">// DELEGATION</p>
-            <div class="cols">
-              <div>
-                <p class="ratio">2 : 1</p>
-                <p class="mono-label" style="margin-top:8px">main-loop to subagent tool work</p>
-                <div class="records">
-                  <div class="rec"><p class="v">11</p><p>widest parallel fan-out</p></div>
-                  <div class="rec"><p class="v">43</p><p>most subagents, one session</p></div>
-                </div>
-              </div>
-              <div class="compact">
-                <div class="lrow"><span class="rank">01</span><span class="name">Explore</span><div class="track"><div class="fill" style="width:96%"></div></div><span class="pct">41%</span></div>
-                <div class="lrow"><span class="rank">02</span><span class="name">research</span><div class="track"><div class="fill" style="width:56%"></div></div><span class="pct">24%</span></div>
-                <div class="lrow"><span class="rank">03</span><span class="name">Plan</span><div class="track"><div class="fill" style="width:35%"></div></div><span class="pct">15%</span></div>
-                <div class="lrow"><span class="rank">04</span><span class="name">general-purpose</span><div class="track"><div class="fill" style="width:28%"></div></div><span class="pct">12%</span></div>
-                <p class="inv-rest">1 withheld 8% · counts: claude code · opencode</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="inv compact" style="margin-top:16px">
-          <h3>The Kit</h3>
-          <p class="sub">Skills and commands merged · share of 412 runs</p>
-          <div class="duo" style="gap:0 32px">
-            <div>
-              <div class="lrow"><span class="rank">01</span><span class="name">grilling</span><div class="track"><div class="fill" style="width:96%"></div></div><span class="pct">24%</span></div>
-              <div class="lrow"><span class="rank">02</span><span class="name">tdd</span><div class="track"><div class="fill" style="width:68%"></div></div><span class="pct">17%</span></div>
-              <div class="lrow"><span class="rank">03</span><span class="name">wayfinder</span><div class="track"><div class="fill" style="width:52%"></div></div><span class="pct">13%</span></div>
-            </div>
-            <div>
-              <div class="lrow"><span class="rank">04</span><span class="name">prototype</span><div class="track"><div class="fill" style="width:44%"></div></div><span class="pct">11%</span></div>
-              <div class="lrow"><span class="rank">05</span><span class="name">research</span><div class="track"><div class="fill" style="width:36%"></div></div><span class="pct">9%</span></div>
-              <div class="lrow"><span class="rank">06</span><span class="name">domain-modeling</span><div class="track"><div class="fill" style="width:32%"></div></div><span class="pct">8%</span></div>
-            </div>
-          </div>
-          <p class="inv-rest">also: <b>code-review</b> 7% · <b>writing-for-agents</b> 4% · <b>diagnosing-bugs</b> 3% · <b>simplify</b> 2% · 2 withheld 2%</p>
-          <div class="inv-line">
-            <span class="k mono-label">mcp servers</span>
-            <p class="v"><b>curia</b> 78% · <b>convex</b> 19% · 1 withheld 3%</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="chapter">
-        <div class="chapter-head"><span class="num">04.3</span><h3>The Ground Truth</h3><span class="note">exact from local git history</span></div>
-        <div class="duo">
-          <div class="gitled compact">
-            <p class="mono-label kicker-line">// THE GIT LEDGER</p>
-            <div class="cols">
-              <div>
-                <p class="delta"><span class="plus">+94,754</span> <span class="minus">-19,330</span></p>
-                <p class="git-facts"><b>119</b> commits · median <b>425</b> changed lines · <b>47%</b> touch a test file</p>
-              </div>
-              <div>
-                <p class="mono-label" style="margin-bottom:6px">changed lines per commit · log scale</p>
-                <div class="dotstrip-wrap"><svg class="dotstrip" viewBox="0 0 600 84" preserveAspectRatio="none"></svg></div>
-              </div>
-            </div>
-          </div>
-          <div class="langs">
-            <p class="mono-label kicker-line">// CODING LANGUAGES · CHANGED LINES</p>
-            <div class="lang-row"><span class="name">TypeScript</span><div class="track"><div class="fill" style="width:73%"></div></div><span class="pct">73.0%</span></div>
-            <div class="lang-row"><span class="name">JSON</span><div class="track"><div class="fill" style="width:15%"></div></div><span class="pct">15.0%</span></div>
-            <div class="lang-row"><span class="name">Markdown</span><div class="track"><div class="fill" style="width:7%"></div></div><span class="pct">7.0%</span></div>
-            <div class="lang-row"><span class="name">other</span><div class="track"><div class="fill" style="width:5%"></div></div><span class="pct">5.0%</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="chapter">
-        <div class="chapter-head"><span class="num">04.4</span><h3>How Work Ships</h3><span class="note">the playbook closes the section</span></div>
-        <div class="tracks-2col">
-          <div class="track">
-            <div class="track-head"><h3 class="track-name">Quick fixes</h3><span class="track-meta">61 runs · median figures</span></div>
-            <div class="track-strip">
-              <div class="seg" style="flex:2; background:var(--ph-orient)"></div>
-              <div class="seg" style="flex:8; background:var(--ph-build)"></div>
-              <div class="seg" style="flex:4; background:var(--ph-verify)"></div>
-              <div class="seg" style="flex:2; background:var(--ph-gate)"></div>
-            </div>
-            <p class="track-figs">wall <b>18 min</b> · build <b>8 min</b> · verify <b>4 min</b> · review rounds <b>1.0</b></p>
-          </div>
-          <div class="track">
-            <div class="track-head"><h3 class="track-name">Feature work</h3><span class="track-meta">48 runs · median figures</span></div>
-            <div class="track-strip">
-              <div class="seg" style="flex:6; background:var(--ph-orient)"></div>
-              <div class="seg" style="flex:24; background:var(--ph-build)"></div>
-              <div class="seg" style="flex:11; background:var(--ph-verify)"></div>
-              <div class="seg" style="flex:4; background:var(--ph-gate)"></div>
-            </div>
-            <p class="track-figs">wall <b>55 min</b> · build <b>24 min</b> · verify <b>11 min</b> · review rounds <b>1.4</b></p>
-          </div>
-        </div>
-        <div class="phase-legend">
-          <span><i style="background:var(--ph-orient)"></i>orient</span>
-          <span><i style="background:var(--ph-build)"></i>build</span>
-          <span><i style="background:var(--ph-verify)"></i>verify</span>
-          <span><i style="background:var(--ph-gate)"></i>gate</span>
-        </div>
-        <div class="receipts">
-          <div class="receipt">
-            <p class="head">Tests before the gate save review rounds.</p>
-            <div class="cmp">
-              <div class="cmp-row"><span>with a verify step</span><div class="track2"><div class="fill" style="width:70%; background:var(--ph-verify)"></div></div><span class="v">1.2</span></div>
-              <div class="cmp-row"><span>without</span><div class="track2"><div class="fill" style="width:100%; background:var(--bg-panel-elevated)"></div></div><span class="v">1.7</span></div>
-            </div>
-            <span class="foot mono-label">review rounds per merge · measured together, no cause claimed</span>
-          </div>
-          <div class="receipt">
-            <p class="head">Batched questions amortize the human wait.</p>
-            <div class="cmp">
-              <div class="cmp-row"><span>batched rounds</span><div class="track2"><div class="fill" style="width:30%; background:var(--ph-verify)"></div></div><span class="v">3.6</span></div>
-              <div class="cmp-row"><span>asked alone</span><div class="track2"><div class="fill" style="width:100%; background:var(--bg-panel-elevated)"></div></div><span class="v">12.2</span></div>
-            </div>
-            <span class="foot mono-label">minutes of wait per answered question</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="consent">
-        <span class="mono-label">// HOW TO READ THIS</span><br>
-        Shares, never raw counts. A name appears here only after the owner approves it at the sync gate. An exact metric comes from harness records or local Git history, and a proxy metric names its matching rule. The dashed blocks are workflow drafts: LLM prose over approved aggregates, labeled, owner-edited, never a number (ADR-0001). This prototype runs on hand-extracted data around real anchors. No live sync feeds it yet.
+<!-- ==================== E: THE SPOTLIGHT ==================== -->
+<div class="variant" id="v-spotlight">
+  <div class="proposal">
+    <div class="proposal-box">
+      <span class="tag">proposal E · the spotlight · prototype chrome</span>
+      <b>Mechanism:</b> only the lead, the slots, and one featured component are visible. The featured block rotates like the slots, under the same fit rule. The other six wait behind one tap.<br>
+      <b>Visible cost:</b> about one and a half phone screens.<br>
+      <b>Cut:</b> the smallest. The fold is the section.
+    </div>
+  </div>
+  <div class="stub" style="margin-top:20px"><div class="shell"><span class="idx">03</span><span class="name">Your Tools</span><span class="note">context only</span></div></div>
+  <section class="journey"><div class="shell">
+    <div class="sec-head">
+      <span class="sec-index">04</span>
+      <div class="head-copy"><p class="sec-kicker">// MEASURED WORKFLOW</p><h2 class="sec-title">The Workflow</h2></div>
+      <span class="sec-meta">measured on the machine · owner-approved</span>
+    </div>
+    <div data-slot="lead"></div>
+    <div class="block-gap" data-slot="slots"></div>
+    <div class="block-gap spot">
+      <span class="spot-chip">featured this sync · rotates by fit</span>
+      <div data-slot="playbook"></div>
+    </div>
+    <div class="more" data-more>
+      <button type="button" class="mhead"><span>all measurements</span><span class="cnt">6 more</span><span class="chev"></span></button>
+      <div class="mbody">
+        <div data-slot="routing"></div>
+        <div data-slot="dele"></div>
+        <div data-slot="kit"></div>
+        <div data-slot="ledger"></div>
+        <div data-slot="langs"></div>
+        <div data-slot="heat"></div>
       </div>
     </div>
-  </section>
-
-  <div class="stub cta">
-    <div class="shell"><span class="name">Build your own stack</span><span class="note">the page below · context only</span></div>
-  </div>
+    <div data-slot="consent"></div>
+  </div></section>
+  <div class="stub cta"><div class="shell"><span class="name">Build your own stack</span><span class="note">context only</span></div></div>
 </div>
 
 <div class="page-end-pad"></div>
@@ -960,44 +718,116 @@
 <div class="switcher" role="navigation" aria-label="variant switcher">
   <button type="button" id="prev" aria-label="previous composition">←</button>
   <div class="label">
-    <span class="k" id="sw-k">composition 1 / 3</span>
-    <span class="n" id="sw-n">A · the story</span>
+    <span class="k" id="sw-k">composition 1 / 5</span>
+    <span class="n" id="sw-n">A · the nuggets</span>
   </div>
   <button type="button" id="next" aria-label="next composition">→</button>
 </div>
 
 <script>
-  var VARIANTS = [
-    { key: 'story',    id: 'v-story',    name: 'A · the story' },
-    { key: 'cut',      id: 'v-cut',      name: 'B · the first cut' },
-    { key: 'chapters', id: 'v-chapters', name: 'C · the chapters' }
+  /* ---------- component registry: teaser stat + template key ---------- */
+  var COMPONENTS = [
+    { key: 'playbook', name: 'how work ships',  stat: '18 min',  cap: 'a quick fix ships, median wall time' },
+    { key: 'routing',  name: 'model routing',   stat: '89%',     cap: 'of the main loop runs on fable-5' },
+    { key: 'dele',     name: 'delegation',      stat: '2 : 1',   cap: 'main-loop to subagent tool work' },
+    { key: 'kit',      name: 'the kit',         stat: '24%',     cap: 'of skill runs are grilling' },
+    { key: 'ledger',   name: 'the git ledger',  stat: '+94.8k',  cap: 'lines added in 30 days, 19.3k removed' },
+    { key: 'langs',    name: 'coding languages',stat: '73%',     cap: 'of changed lines are TypeScript' },
+    { key: 'heat',     name: 'when the work happens', stat: '23:00', cap: 'the busiest commit hour, on a Sunday' }
   ];
-  var current = 0;
 
-  function show(i) {
-    current = (i + VARIANTS.length) % VARIANTS.length;
-    VARIANTS.forEach(function (v, j) {
-      document.getElementById(v.id).classList.toggle('active', j === current);
-    });
-    document.getElementById('sw-k').textContent = 'composition ' + (current + 1) + ' / ' + VARIANTS.length;
-    document.getElementById('sw-n').textContent = VARIANTS[current].name;
-    var url = new URL(window.location.href);
-    url.searchParams.set('variant', VARIANTS[current].key);
-    history.replaceState(null, '', url.toString());
-    window.scrollTo(0, 0);
+  function tpl(key) {
+    var t = document.querySelector('template[data-tpl="' + key + '"]');
+    return t.content.cloneNode(true);
   }
 
-  document.getElementById('prev').addEventListener('click', function () { show(current - 1); });
-  document.getElementById('next').addEventListener('click', function () { show(current + 1); });
-  document.addEventListener('keydown', function (e) {
-    if (e.target && /^(input|textarea)$/i.test(e.target.tagName)) return;
-    if (e.key === 'ArrowLeft') show(current - 1);
-    if (e.key === 'ArrowRight') show(current + 1);
+  /* fill every [data-slot] placeholder from its template */
+  document.querySelectorAll('[data-slot]').forEach(function (el) {
+    el.appendChild(tpl(el.getAttribute('data-slot')));
   });
 
-  /* Heatmap: hour-of-day profile from the repo's real commit history,
-     spread across weekdays with the real weekday weights. Rendered into
-     every [data-heatmap] grid. Tap or hover a cell for its stats. */
+  /* ---------- A: nuggets ---------- */
+  document.querySelectorAll('[data-nuggets]').forEach(function (grid) {
+    COMPONENTS.forEach(function (c) {
+      var nug = document.createElement('div');
+      nug.className = 'nug';
+      nug.innerHTML =
+        '<button type="button" class="teaser"><span class="lbl">' + c.name + '</span>' +
+        '<span class="n">' + c.stat + '</span><span class="cap">' + c.cap + '</span>' +
+        '<span class="hint">open</span></button><div class="body"></div>';
+      nug.querySelector('.body').appendChild(tpl(c.key));
+      nug.querySelector('.teaser').addEventListener('click', function () {
+        var was = nug.classList.contains('open');
+        grid.querySelectorAll('.nug.open').forEach(function (o) { o.classList.remove('open'); });
+        if (!was) nug.classList.add('open');
+      });
+      grid.appendChild(nug);
+    });
+  });
+
+  /* ---------- B: rows ---------- */
+  document.querySelectorAll('[data-rows]').forEach(function (list) {
+    COMPONENTS.forEach(function (c) {
+      var row = document.createElement('div');
+      row.className = 'rrow';
+      row.innerHTML =
+        '<button type="button" class="rhead"><span class="nm">' + c.name + '</span>' +
+        '<span class="cap">' + c.cap + '</span><span class="st">' + c.stat + '</span>' +
+        '<span class="chev"></span></button><div class="body"></div>';
+      row.querySelector('.body').appendChild(tpl(c.key));
+      row.querySelector('.rhead').addEventListener('click', function () {
+        row.classList.toggle('open');
+      });
+      list.appendChild(row);
+    });
+  });
+
+  /* ---------- C: rail ---------- */
+  document.querySelectorAll('[data-tabbar]').forEach(function (bar) {
+    var section = bar.closest('.shell');
+    bar.querySelectorAll('button[data-tab]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        bar.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b === btn); });
+        section.querySelectorAll('.tabpane').forEach(function (p) {
+          p.classList.toggle('on', p.id === btn.getAttribute('data-tab'));
+        });
+      });
+    });
+  });
+
+  /* ---------- D: deck ---------- */
+  document.querySelectorAll('[data-deck]').forEach(function (deck) {
+    COMPONENTS.forEach(function (c, i) {
+      var card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = '<p class="mono-label cardhead">' + String(i + 1).padStart(2, '0') + ' / ' +
+        String(COMPONENTS.length).padStart(2, '0') + ' · ' + c.name + '</p>';
+      card.appendChild(tpl(c.key));
+      deck.appendChild(card);
+    });
+    var nav = deck.parentElement.querySelector('.deck-nav');
+    var pos = nav.querySelector('[data-deckpos]');
+    function step() { return deck.querySelector('.card').getBoundingClientRect().width + 16; }
+    function update() {
+      var i = Math.round(deck.scrollLeft / step()) + 1;
+      pos.textContent = 'card ' + Math.min(i, COMPONENTS.length) + ' of ' + COMPONENTS.length + ' · swipe or use the arrows';
+    }
+    nav.querySelector('[data-deckprev]').addEventListener('click', function () { deck.scrollBy({ left: -step(), behavior: 'smooth' }); });
+    nav.querySelector('[data-decknext]').addEventListener('click', function () { deck.scrollBy({ left: step(), behavior: 'smooth' }); });
+    deck.addEventListener('scroll', update);
+    update();
+  });
+
+  /* ---------- E: spotlight ---------- */
+  document.querySelectorAll('[data-more]').forEach(function (more) {
+    more.querySelector('.mhead').addEventListener('click', function () {
+      more.classList.toggle('open');
+    });
+  });
+
+  /* ---------- renderers (run after all injection) ---------- */
+
+  /* Heatmap: real hour and weekday commit profiles. */
   (function () {
     var hours = [21,16,3,0,1,0,0,1,2,1,1,8,3,6,5,1,6,6,1,1,5,7,9,6]; /* real: git log by hour */
     var dayW = { Mon: 19, Tue: 4, Wed: 12, Thu: 12, Fri: 15, Sat: 17, Sun: 31 }; /* real: git log by weekday */
@@ -1025,7 +855,6 @@
         html += '<div class="heat-cell" data-d="' + di + '" data-h="' + h2 + '" style="background:' + bg + '"></div>';
       }
     });
-
     function cellStats(di, h) {
       var est = Math.round(cells[di * 24 + h] / total);
       var share = (100 * cells[di * 24 + h] / (total * total)).toFixed(1);
@@ -1054,8 +883,7 @@
     });
   })();
 
-  /* Dot strip: the real changed-line counts of the window's commits, log
-     scale. Rendered into every svg.dotstrip. */
+  /* Dot strip: real per-commit changed-line counts, log scale. */
   (function () {
     var sizes = [0,0,2,2,2,3,4,7,10,12,13,17,20,21,24,25,28,31,32,33,34,36,37,42,53,66,70,99,111,117,126,130,135,169,170,172,173,190,211,227,231,234,249,271,287,288,296,305,321,345,359,384,425,428,444,470,470,480,490,490,490,493,547,695,762,820,849,967,971,1003,1060,1112,1113,1114,1160,1164,1174,1279,1330,1338,1341,1464,1548,1695,1701,1750,1813,2216,2314,2340,3019,3083,3226,3410,3461,3506,3639,3729,4397,4493,4647,4815,8042,14331]; /* real: git log shortstat */
     var median = 425;
@@ -1099,7 +927,7 @@
     });
   })();
 
-  /* Sparkline trails: polyline from each svg's data-trail. */
+  /* Sparkline trails. */
   (function () {
     document.querySelectorAll('svg.spark').forEach(function (svg) {
       var vals = (svg.getAttribute('data-trail') || '').split(',').map(Number);
@@ -1115,6 +943,37 @@
       svg.appendChild(pl);
     });
   })();
+
+  /* ---------- variant switcher ---------- */
+  var VARIANTS = [
+    { key: 'nuggets',   id: 'v-nuggets',   name: 'A · the nuggets' },
+    { key: 'rows',      id: 'v-rows',      name: 'B · the rows' },
+    { key: 'rail',      id: 'v-rail',      name: 'C · the rail' },
+    { key: 'deck',      id: 'v-deck',      name: 'D · the deck' },
+    { key: 'spotlight', id: 'v-spotlight', name: 'E · the spotlight' }
+  ];
+  var current = 0;
+
+  function show(i) {
+    current = (i + VARIANTS.length) % VARIANTS.length;
+    VARIANTS.forEach(function (v, j) {
+      document.getElementById(v.id).classList.toggle('active', j === current);
+    });
+    document.getElementById('sw-k').textContent = 'composition ' + (current + 1) + ' / ' + VARIANTS.length;
+    document.getElementById('sw-n').textContent = VARIANTS[current].name;
+    var url = new URL(window.location.href);
+    url.searchParams.set('variant', VARIANTS[current].key);
+    history.replaceState(null, '', url.toString());
+    window.scrollTo(0, 0);
+  }
+
+  document.getElementById('prev').addEventListener('click', function () { show(current - 1); });
+  document.getElementById('next').addEventListener('click', function () { show(current + 1); });
+  document.addEventListener('keydown', function (e) {
+    if (e.target && /^(input|textarea)$/i.test(e.target.tagName)) return;
+    if (e.key === 'ArrowLeft') show(current - 1);
+    if (e.key === 'ArrowRight') show(current + 1);
+  });
 
   (function () {
     var q = new URL(window.location.href).searchParams.get('variant');
