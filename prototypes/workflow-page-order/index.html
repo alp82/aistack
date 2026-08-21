@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Prototype · alp82/aistack#193 · the stack page section order · round 3</title>
+<title>Prototype · alp82/aistack#193 · the stack page section order · round 4</title>
 <!--
   PROTOTYPE. Throwaway. alp82/aistack#193: the stack page section order with
   the workflow section. Baseline: #191 round 4 (PR #192), the podium.
@@ -16,23 +16,32 @@
   ROUND 2 verdict (2026-08-21): the accordion. Five header bars, tap to
   open. Five more variations based on it.
 
-  ROUND 3. Five accordion treatments. The order is fixed: usage, projects,
-  tools, workflow, guide. The title treatment rides along: the measured
-  section takes the name "Workflow", the old guide becomes "Guide".
-  Titles get their own round after the structure is picked.
+  ROUND 3 verdict (2026-08-21): one at a time. Play with compact combined
+  with it, and show more variations of the peek. Ten combinations.
 
-  - A "the reference":   the round-2 accordion unchanged. First section
-        open, gist lines on the shut bars, any number open at once.
-  - B "the compact bars": small headers with the headline stat on the
-        right. Everything shut on arrival, five bars in half a screen.
-  - C "one at a time":   exclusive. Opening a section closes the rest and
-        the page scrolls to the opened header.
-  - D "the peek":        a shut section shows its first block, dimmed and
-        cropped. The whole journey stays visible, a tap opens the rest.
-  - E "the measured open": Actual Usage and Workflow open on arrival. The
-        told sections (projects, tools, guide) start shut.
-  Switch with the bar at the bottom or
-  ?variant=ref|compact|exclusive|peek|measured.
+  ROUND 4. Ten treatments. The order is fixed: usage, projects, tools,
+  workflow, guide. Every variation here is one-at-a-time unless said
+  otherwise. The title treatment rides along: the measured section takes
+  the name "Workflow", the old guide becomes "Guide". Titles get their
+  own round after the structure is picked.
+
+  - A "compact, one at a time":  compact stat bars, all shut.
+  - B "compact, usage open":     same, Actual Usage open on arrival.
+  - C "compact, workflow open":  same, Workflow open on arrival.
+  - D "the peek, one at a time": every section peeks. Opening one closes
+        any other open section, whose peek returns.
+  - E "the bright peek":         taller, full-brightness peeks with a
+        tap-to-open tag. Multi-open, the round-3 peek fixed.
+  - F "the micro peek":          a thin crisp strip of each section.
+  - G "the measured peek":       compact bars, only usage and workflow
+        peek. The proof shows, the told sections stay lines.
+  - H "the first peek":          compact bars, only usage peeks.
+  - I "the workflow peek":       compact bars, only the workflow peeks.
+  - J "the focus":               bright peeks everywhere. While one
+        section is open the others drop their peek to a bare bar, and
+        closing it brings the peeks back.
+  Switch with the bar at the bottom or ?variant=<key>, keys:
+  cmpx|cmpx1|cmpxw|peekx|bright|micro|gmeas|hfirst|iwf|focus.
 
   Data provenance: the workflow rows, fit scores and stats come unchanged
   from the #191 prototype (real Git anchors, hand-made shares). The guide
@@ -145,11 +154,16 @@
   .stat-chip { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 800; color: var(--accent-lime); align-self: center; white-space: nowrap; }
   .acc section.open .stat-chip { display: none; }
 
-  /* the peek (round 3, D) */
+  /* the peek (round 3, D; round 4 styles) */
   .peekwrap { position: relative; max-height: 170px; overflow: hidden; opacity: 0.55; cursor: pointer; padding-bottom: 24px; }
   .peekwrap::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 90px; background: linear-gradient(transparent, var(--bg-canvas)); }
   .peekwrap > * { pointer-events: none; }
   .acc section.open .peekwrap { display: none; }
+  .peekwrap.bright { opacity: 1; max-height: 300px; }
+  .peekwrap.micro { opacity: 0.8; max-height: 76px; padding-bottom: 10px; }
+  .peekwrap.micro::after { height: 44px; }
+  .peek-hint { position: absolute; right: 0; bottom: 10px; z-index: 1; font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-lime); background: var(--bg-canvas); border: 1px solid var(--stroke-subtle); padding: 3px 8px; }
+  .acc.focused section:not(.open) .peekwrap { display: none; }
 
   /* ---------- show-all row (digest mode) ---------- */
   .showall {
@@ -261,7 +275,7 @@
 <body>
 
 <div class="ticket-strip">
-  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 3 · five accordion treatments
+  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 4 · ten combinations of one-at-a-time, compact and the peek
 </div>
 
 <!-- ==================== section content templates ==================== -->
@@ -303,59 +317,104 @@
 
 <!-- ==================== the five treatments ==================== -->
 
-<div class="variant" id="v-ref">
+<div class="variant" id="v-cmpx">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal A · the reference · prototype chrome</span>
-      <b>The round-2 accordion unchanged.</b> Actual Usage opens by default, the shut bars show a gist line, and any number of sections can stand open at once.
-      <span class="journey">01 usage open → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide · shut with gists</span>
+      <span class="tag">proposal A · compact, one at a time · prototype chrome</span>
+      <b>Compact stat bars, all shut, exclusive.</b> The page arrives as a table of contents in half a screen, and it never holds more than one open section.
     </div>
   </div>
-  <div data-page="ref"></div>
+  <div data-page="cmpx"></div>
 </div>
 
-<div class="variant" id="v-compact">
+<div class="variant" id="v-cmpx1">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal B · the compact bars · prototype chrome</span>
-      <b>Small headers with the headline stat on the right.</b> Everything starts shut, so the five bars fit half a screen and the page reads like a table of contents.
-      <span class="journey">01 usage 148M → 02 projects 5 → 03 tools 11 → <b>04 workflow 42%</b> → 05 guide · all shut</span>
+      <span class="tag">proposal B · compact, usage open · prototype chrome</span>
+      <b>The same compact exclusive bars, but Actual Usage stands open on arrival.</b> The first screen carries proof instead of only lines.
     </div>
   </div>
-  <div data-page="compact"></div>
+  <div data-page="cmpx1"></div>
 </div>
 
-<div class="variant" id="v-exclusive">
+<div class="variant" id="v-cmpxw">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal C · one at a time · prototype chrome</span>
-      <b>Exclusive.</b> Opening a section closes the rest, and the page scrolls to the opened header. The page never grows past one open section.
-      <span class="journey">01 usage open → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide · one open, ever</span>
+      <span class="tag">proposal C · compact, workflow open · prototype chrome</span>
+      <b>The same compact exclusive bars, but the Workflow stands open on arrival.</b> The flagship section greets first, the usage band waits one tap up.
     </div>
   </div>
-  <div data-page="exclusive"></div>
+  <div data-page="cmpxw"></div>
 </div>
 
-<div class="variant" id="v-peek">
+<div class="variant" id="v-peekx">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal D · the peek · prototype chrome</span>
-      <b>A shut section shows its first block, dimmed and cropped.</b> The whole journey stays visible on one medium scroll, and a tap opens the full section in place.
-      <span class="journey">01 usage → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide · all peeking</span>
+      <span class="tag">proposal D · the peek, one at a time · prototype chrome</span>
+      <b>Every section peeks, and opening one closes any other open section.</b> The round-3 peek plus the exclusive rule.
     </div>
   </div>
-  <div data-page="peek"></div>
+  <div data-page="peekx"></div>
 </div>
 
-<div class="variant" id="v-measured">
+<div class="variant" id="v-bright">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal E · the measured open · prototype chrome</span>
-      <b>The measured sections open on arrival, the told ones start shut.</b> Actual Usage and Workflow stand open with gist bars between them. The proof is visible, the rest is one tap away.
-      <span class="journey">01 usage open → 02 projects → 03 tools → <b>04 workflow open</b> → 05 guide</span>
+      <span class="tag">proposal E · the bright peek · prototype chrome</span>
+      <b>Taller peeks at full brightness with a tap-to-open tag.</b> No dimming, so nothing reads as broken. Several sections can stand open.
     </div>
   </div>
-  <div data-page="measured"></div>
+  <div data-page="bright"></div>
+</div>
+
+<div class="variant" id="v-micro">
+  <div class="proposal">
+    <div class="proposal-box">
+      <span class="tag">proposal F · the micro peek · prototype chrome</span>
+      <b>A thin crisp strip of every section, exclusive.</b> The journey compresses to about one screen and still shows a sliver of everything.
+    </div>
+  </div>
+  <div data-page="micro"></div>
+</div>
+
+<div class="variant" id="v-gmeas">
+  <div class="proposal">
+    <div class="proposal-box">
+      <span class="tag">proposal G · the measured peek · prototype chrome</span>
+      <b>Compact bars, and only the measured sections peek.</b> Usage and Workflow show their first block bright, the told sections stay one line each.
+    </div>
+  </div>
+  <div data-page="gmeas"></div>
+</div>
+
+<div class="variant" id="v-hfirst">
+  <div class="proposal">
+    <div class="proposal-box">
+      <span class="tag">proposal H · the first peek · prototype chrome</span>
+      <b>Compact bars, and only Actual Usage peeks.</b> One bright block of proof on arrival, four quiet lines under it.
+    </div>
+  </div>
+  <div data-page="hfirst"></div>
+</div>
+
+<div class="variant" id="v-iwf">
+  <div class="proposal">
+    <div class="proposal-box">
+      <span class="tag">proposal I · the workflow peek · prototype chrome</span>
+      <b>Compact bars, and only the Workflow peeks.</b> The podium shows through the fold while the rest of the page stays a table of contents.
+    </div>
+  </div>
+  <div data-page="iwf"></div>
+</div>
+
+<div class="variant" id="v-focus">
+  <div class="proposal">
+    <div class="proposal-box">
+      <span class="tag">proposal J · the focus · prototype chrome</span>
+      <b>Bright peeks everywhere, exclusive.</b> While one section is open the others drop their peek to a bare bar. Closing it brings all the peeks back.
+    </div>
+  </div>
+  <div data-page="focus"></div>
 </div>
 
 <div class="page-end-pad"></div>
@@ -651,13 +710,21 @@
 
   /* ---------- the accordion builder ----------
      cfg.open:      indexes open on arrival
-     cfg.mode:      'gist' | 'stat' | 'peek'  (what a shut bar shows)
+     cfg.mode:      'gist' | 'stat' | ''  (what a shut bar shows beside the title)
      cfg.compact:   small header bars
-     cfg.exclusive: opening one closes the rest and scrolls to it */
+     cfg.exclusive: opening one closes the rest and scrolls to it
+     cfg.peek:      'all' or an array of section keys that peek when shut
+     cfg.peekClass: '' | 'bright' | 'micro'
+     cfg.hint:      show a tap-to-open tag on peeks
+     cfg.focus:     while any section is open, shut sections hide their peek */
   function buildAccordionPage(host, order, cfg) {
     host.appendChild(stub('Stack hero · title, price, upvotes', false));
     var acc = el('acc' + (cfg.compact ? ' compact' : ''));
     var secs = [];
+    function peeks(k) {
+      if (!cfg.peek) return false;
+      return cfg.peek === 'all' || cfg.peek.indexOf(k) !== -1;
+    }
     order.forEach(function (k, i) {
       var def = SECTIONS[k];
       var extra = cfg.mode === 'gist' ? '<p class="gist">' + def.gist + '</p>' : '';
@@ -668,9 +735,10 @@
       }
       head.insertAdjacentHTML('beforeend', '<span class="acc-chev"></span>');
       sec.querySelector('.acc-body').appendChild(def.body(false));
-      if (cfg.mode === 'peek') {
-        var peek = el('peekwrap');
+      if (peeks(k)) {
+        var peek = el('peekwrap' + (cfg.peekClass ? ' ' + cfg.peekClass : ''));
         peek.appendChild(def.body(true));
+        if (cfg.hint) peek.insertAdjacentHTML('beforeend', '<span class="peek-hint">+ tap to open</span>');
         sec.querySelector('.shell').appendChild(peek);
         peek.addEventListener('click', function () { toggle(sec, true); });
       }
@@ -685,6 +753,10 @@
         secs.forEach(function (s) { s.classList.remove('open'); });
       }
       sec.classList.toggle('open', willOpen);
+      if (cfg.focus) {
+        var anyOpen = secs.some(function (s) { return s.classList.contains('open'); });
+        acc.classList.toggle('focused', anyOpen);
+      }
       if (cfg.exclusive && willOpen) sec.scrollIntoView({ block: 'start' });
     }
     host.appendChild(acc);
@@ -692,11 +764,16 @@
   }
 
   var PAGES = {
-    ref:       function (host) { buildAccordionPage(host, ORDER_A, { open: [0], mode: 'gist' }); },
-    compact:   function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'stat', compact: true }); },
-    exclusive: function (host) { buildAccordionPage(host, ORDER_A, { open: [0], mode: 'gist', exclusive: true }); },
-    peek:      function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'peek' }); },
-    measured:  function (host) { buildAccordionPage(host, ORDER_A, { open: [0, 3], mode: 'gist' }); }
+    cmpx:   function (host) { buildAccordionPage(host, ORDER_A, { open: [],  mode: 'stat', compact: true, exclusive: true }); },
+    cmpx1:  function (host) { buildAccordionPage(host, ORDER_A, { open: [0], mode: 'stat', compact: true, exclusive: true }); },
+    cmpxw:  function (host) { buildAccordionPage(host, ORDER_A, { open: [3], mode: 'stat', compact: true, exclusive: true }); },
+    peekx:  function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', peek: 'all', peekClass: '', exclusive: true }); },
+    bright: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', peek: 'all', peekClass: 'bright', hint: true }); },
+    micro:  function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', peek: 'all', peekClass: 'micro', exclusive: true }); },
+    gmeas:  function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'stat', compact: true, exclusive: true, peek: ['usage', 'workflow'], peekClass: 'bright', hint: true }); },
+    hfirst: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'stat', compact: true, exclusive: true, peek: ['usage'], peekClass: 'bright', hint: true }); },
+    iwf:    function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'stat', compact: true, exclusive: true, peek: ['workflow'], peekClass: 'bright', hint: true }); },
+    focus:  function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', peek: 'all', peekClass: 'bright', hint: true, exclusive: true, focus: true }); }
   };
 
   document.querySelectorAll('[data-page]').forEach(function (host) {
@@ -705,11 +782,16 @@
 
   /* ---------- variant switcher ---------- */
   var VARIANTS = [
-    { key: 'ref',       id: 'v-ref',       name: 'A · the reference' },
-    { key: 'compact',   id: 'v-compact',   name: 'B · the compact bars' },
-    { key: 'exclusive', id: 'v-exclusive', name: 'C · one at a time' },
-    { key: 'peek',      id: 'v-peek',      name: 'D · the peek' },
-    { key: 'measured',  id: 'v-measured',  name: 'E · the measured open' }
+    { key: 'cmpx',   id: 'v-cmpx',   name: 'A · compact, one at a time' },
+    { key: 'cmpx1',  id: 'v-cmpx1',  name: 'B · compact, usage open' },
+    { key: 'cmpxw',  id: 'v-cmpxw',  name: 'C · compact, workflow open' },
+    { key: 'peekx',  id: 'v-peekx',  name: 'D · the peek, one at a time' },
+    { key: 'bright', id: 'v-bright', name: 'E · the bright peek' },
+    { key: 'micro',  id: 'v-micro',  name: 'F · the micro peek' },
+    { key: 'gmeas',  id: 'v-gmeas',  name: 'G · the measured peek' },
+    { key: 'hfirst', id: 'v-hfirst', name: 'H · the first peek' },
+    { key: 'iwf',    id: 'v-iwf',    name: 'I · the workflow peek' },
+    { key: 'focus',  id: 'v-focus',  name: 'J · the focus' }
   ];
   var current = 0;
 
@@ -735,7 +817,7 @@
   });
 
   (function () {
-    var q = new URL(window.location.href).searchParams.get('variant') || 'ref';
+    var q = new URL(window.location.href).searchParams.get('variant') || 'cmpx';
     var idx = VARIANTS.findIndex(function (v) { return v.key === q; });
     show(idx >= 0 ? idx : 0);
   })();
