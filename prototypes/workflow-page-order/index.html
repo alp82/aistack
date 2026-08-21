@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Prototype · alp82/aistack#193 · the stack page section order · round 9</title>
+<title>Prototype · alp82/aistack#193 · the stack page section order · round 10</title>
 <!--
   PROTOTYPE. Throwaway. alp82/aistack#193: the stack page section order with
   the workflow section. Baseline: #191 round 4 (PR #192), the podium.
@@ -35,16 +35,18 @@
   more, the visual is cleaner but hides that. The want: clean AND
   clearly tappable.
 
-  ROUND 9. The signature visual, wearing five different tap signals:
-  - A "the tag":        a lime "+ tap to open" tag on the sliver.
-  - B "the more line":  a thin open-section row under the graphic.
-  - C "the boxed sliver": the graphic inside a bordered panel with a
-        big plus, so the whole sliver reads as a button.
-  - D "the undercrop":  the graphic bright, and a faint cropped inch of
-        the real body fading out beneath it.
-  - E "the tagged crop": the reference crop, wearing the same lime tag.
-  Switch with the bar at the bottom or ?variant=<key>, keys:
-  tag|moreline|boxed|undercrop|tagcrop.
+  ROUND 9 verdict (2026-08-21): the undercrop looks nice, but its faint
+  strip repeated what the sliver already showed. Fix the repetition.
+
+  ROUND 10. The undercrop, deduplicated. The bright graphic represents
+  the section, and the faint strip beneath always shows the NEXT
+  content, never the same thing twice:
+  - usage:    token bar bright, the stat band numbers fading below.
+  - projects: two name chips bright, the three other projects below.
+  - tools:    four name chips bright, the seven other tools below.
+  - workflow: phase strip bright (no figure), the podium fading below.
+  - guide:    the topics bright, the first prose paragraph below.
+  One variation. This round also asks the two open title questions.
 
   Data provenance: the workflow rows, fit scores and stats come unchanged
   from the #191 prototype (real Git anchors, hand-made shares). The guide
@@ -185,7 +187,7 @@
   .peekwrap:hover .sliver-box { border-color: var(--accent-lime); }
   .sliver-box > :first-child { flex: 1; min-width: 0; }
   .box-plus { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--accent-lime); flex-shrink: 0; }
-  .mini-crop { position: relative; max-height: 56px; overflow: hidden; opacity: 0.35; margin-top: 14px; max-width: 46rem; }
+  .mini-crop { position: relative; max-height: 72px; overflow: hidden; opacity: 0.35; margin-top: 14px; max-width: 46rem; }
   .mini-crop::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(transparent, var(--bg-canvas)); }
 
   /* the peek (round 3, D; round 4 styles) */
@@ -309,7 +311,7 @@
 <body>
 
 <div class="ticket-strip">
-  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 9 · the clean sliver with a clear tap signal
+  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 10 · the undercrop, deduplicated
 </div>
 
 <!-- ==================== section content templates ==================== -->
@@ -351,54 +353,15 @@
 
 <!-- ==================== the five treatments ==================== -->
 
-<div class="variant" id="v-tag">
+<div class="variant" id="v-final">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal A · the tag · prototype chrome</span>
-      <b>The clean graphic plus a lime "+ tap to open" tag.</b> The smallest possible signal, sitting on the sliver's corner.
+      <span class="tag">round 10 · the undercrop, deduplicated · prototype chrome</span>
+      <b>The bright sliver represents, the faint strip continues.</b> Under each graphic fades the NEXT content: the stat band, the other projects, the other tools, the podium, the first prose paragraph. Nothing shows twice.
+      <span class="journey">01 usage → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide · one open at a time</span>
     </div>
   </div>
-  <div data-page="tag"></div>
-</div>
-
-<div class="variant" id="v-moreline">
-  <div class="proposal">
-    <div class="proposal-box">
-      <span class="tag">proposal B · the more line · prototype chrome</span>
-      <b>A thin open-section row under each graphic.</b> The signal is its own element, so the graphic stays untouched.
-    </div>
-  </div>
-  <div data-page="moreline"></div>
-</div>
-
-<div class="variant" id="v-boxed">
-  <div class="proposal">
-    <div class="proposal-box">
-      <span class="tag">proposal C · the boxed sliver · prototype chrome</span>
-      <b>The graphic inside a bordered panel with a big plus.</b> The whole sliver reads as one button.
-    </div>
-  </div>
-  <div data-page="boxed"></div>
-</div>
-
-<div class="variant" id="v-undercrop">
-  <div class="proposal">
-    <div class="proposal-box">
-      <span class="tag">proposal D · the undercrop · prototype chrome</span>
-      <b>The graphic bright, and a faint inch of the real body fading out beneath it.</b> The crop comes back, but only as a whisper under the clean sliver.
-    </div>
-  </div>
-  <div data-page="undercrop"></div>
-</div>
-
-<div class="variant" id="v-tagcrop">
-  <div class="proposal">
-    <div class="proposal-box">
-      <span class="tag">proposal E · the tagged crop · prototype chrome</span>
-      <b>The reference crop, wearing the lime tag.</b> The round-4 winner made more legible instead of replaced.
-    </div>
-  </div>
-  <div data-page="tagcrop"></div>
+  <div data-page="final"></div>
 </div>
 
 <div class="page-end-pad"></div>
@@ -736,8 +699,27 @@
     if (k === 'usage') return teaseBar('usage', 'where the tokens went');
     if (k === 'projects') return teaseChips('projects');
     if (k === 'tools') return teaseChips('tools');
-    if (k === 'workflow') return teaseBar('workflow', '42% of commits land late at night');
+    if (k === 'workflow') return teaseBar('workflow', 'the measured flow · orient, build, verify, gate');
     return teaseBar('guide', 'why this setup · the daily loop · what broke');
+  }
+
+  /* round 10: what fades below the sliver is the NEXT content, never a repeat */
+  function restOf(k) {
+    if (k === 'usage') return keepFirst('usage', '.stat-band');
+    if (k === 'projects') {
+      var g = el('proj-grid');
+      PROJECTS.slice(2).forEach(function (pr) { g.appendChild(el('proj', '<h3>' + pr.name + '</h3><p>' + pr.desc + '</p>')); });
+      return g;
+    }
+    if (k === 'tools') {
+      var t = el('tool-grid');
+      TOOLS.slice(4).forEach(function (x) { t.appendChild(el('tool', '<p class="nm">' + x.nm + '</p><p>' + x.sub + '</p>')); });
+      return t;
+    }
+    if (k === 'workflow') return podiumStatic();
+    var p = el('prose');
+    p.innerHTML = '<h3>Why this setup</h3><p>One big-model harness holds the main loop, and everything else orbits it.</p>';
+    return p;
   }
   var TEASE_MIX = { usage: teaseFacts, projects: teaseChips, tools: teaseChips, workflow: teaseFacts, guide: teaseLine };
 
@@ -851,7 +833,7 @@
           if (cfg.moreline) peek.appendChild(el('more-line', '<span>open section</span><span class="pl">+</span>'));
           if (cfg.undercrop) {
             var mc = el('mini-crop');
-            mc.appendChild(def.body(true));
+            mc.appendChild(restOf(k));
             peek.appendChild(mc);
           }
         } else {
@@ -883,11 +865,7 @@
   }
 
   var PAGES = {
-    tag:       function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'visual', hint: true }); },
-    moreline:  function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'visual', moreline: true }); },
-    boxed:     function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'visual', boxed: true }); },
-    undercrop: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'visual', undercrop: true }); },
-    tagcrop:   function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, peek: 'all', peekClass: 'micro', hint: true }); }
+    final: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'visual', undercrop: true }); }
   };
 
   document.querySelectorAll('[data-page]').forEach(function (host) {
@@ -896,11 +874,7 @@
 
   /* ---------- variant switcher ---------- */
   var VARIANTS = [
-    { key: 'tag',       id: 'v-tag',       name: 'A · the tag' },
-    { key: 'moreline',  id: 'v-moreline',  name: 'B · the more line' },
-    { key: 'boxed',     id: 'v-boxed',     name: 'C · the boxed sliver' },
-    { key: 'undercrop', id: 'v-undercrop', name: 'D · the undercrop' },
-    { key: 'tagcrop',   id: 'v-tagcrop',   name: 'E · the tagged crop' }
+    { key: 'final', id: 'v-final', name: 'the undercrop, deduplicated' }
   ];
   var current = 0;
 
@@ -926,7 +900,7 @@
   });
 
   (function () {
-    var q = new URL(window.location.href).searchParams.get('variant') || 'tag';
+    var q = new URL(window.location.href).searchParams.get('variant') || 'final';
     var idx = VARIANTS.findIndex(function (v) { return v.key === q; });
     show(idx >= 0 ? idx : 0);
   })();
