@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Prototype · alp82/aistack#193 · the stack page section order · round 7</title>
+<title>Prototype · alp82/aistack#193 · the stack page section order · round 8</title>
 <!--
   PROTOTYPE. Throwaway. alp82/aistack#193: the stack page section order with
   the workflow section. Baseline: #191 round 4 (PR #192), the podium.
@@ -28,18 +28,20 @@
   ROUND 6 verdict (2026-08-21): make variations of the winner where the
   slivers show different kinds of info. The title round waits.
 
-  ROUND 7. The structure stands (full headers, one open at a time). What
-  varies is what a shut section shows under its bar:
-  - A "the crop":            the reference. The micro peek crops the top
-        of the real section body.
-  - B "the headline facts":  three numbers with labels per section.
-  - C "the teaser line":     one written sentence per section.
-  - D "the signature visual": one graphic per section. The token bar,
-        the project chips, the tool chips, the phase strip, the topics.
-  - E "the mix":             each section picks its best kind. Numbers
-        for the measured, chips for the told, a sentence for the guide.
+  ROUND 7 verdict (2026-08-21): torn between the crop and the signature
+  visual.
+
+  ROUND 8. The tiebreak. The two contenders stay as references, and two
+  hybrids stand between them:
+  - A "the crop":             reference. The faded cut of the real body.
+  - B "the first block":      the section's leading real element, whole
+        and bright. The stat band, the cards, the tiles, the podium,
+        the topics box. Real like A, intentional like D.
+  - C "the signature visual": reference. One designed graphic each.
+  - D "the split":            the measured sections show their real
+        block, the told sections show their graphic, the guide a line.
   Switch with the bar at the bottom or ?variant=<key>, keys:
-  crop|facts|line|visual|mix.
+  crop|first|visual|split.
 
   Data provenance: the workflow rows, fit scores and stats come unchanged
   from the #191 prototype (real Git anchors, hand-made shares). The guide
@@ -294,7 +296,7 @@
 <body>
 
 <div class="ticket-strip">
-  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 7 · what the slivers show
+  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 8 · the tiebreak: crop against visual
 </div>
 
 <!-- ==================== section content templates ==================== -->
@@ -346,44 +348,34 @@
   <div data-page="crop"></div>
 </div>
 
-<div class="variant" id="v-facts">
+<div class="variant" id="v-first">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal B · the headline facts · prototype chrome</span>
-      <b>Three numbers with labels per section.</b> No cropping, every sliver is a designed row of the section's strongest figures.
+      <span class="tag">proposal B · the first block · prototype chrome</span>
+      <b>The section's leading real element, whole and bright.</b> The stat band, two cards, four tiles, the podium, the topics box. Real like the crop, intentional like the visual.
     </div>
   </div>
-  <div data-page="facts"></div>
-</div>
-
-<div class="variant" id="v-line">
-  <div class="proposal">
-    <div class="proposal-box">
-      <span class="tag">proposal C · the teaser line · prototype chrome</span>
-      <b>One written sentence per section.</b> The quietest page. The words carry the pitch, and no numbers show until a tap.
-    </div>
-  </div>
-  <div data-page="line"></div>
+  <div data-page="first"></div>
 </div>
 
 <div class="variant" id="v-visual">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal D · the signature visual · prototype chrome</span>
+      <span class="tag">proposal C · the signature visual · prototype chrome</span>
       <b>One graphic per section.</b> The token bar, the project chips, the tool chips, the phase strip, the guide topics. Texture over figures.
     </div>
   </div>
   <div data-page="visual"></div>
 </div>
 
-<div class="variant" id="v-mix">
+<div class="variant" id="v-split">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal E · the mix · prototype chrome</span>
-      <b>Each section picks its best kind.</b> Numbers for the measured sections, chips for projects and tools, one sentence for the guide.
+      <span class="tag">proposal D · the split · prototype chrome</span>
+      <b>Each side gets its language.</b> The measured sections show their real block, the stat band and the podium. The told sections show their chips, the guide one sentence.
     </div>
   </div>
-  <div data-page="mix"></div>
+  <div data-page="split"></div>
 </div>
 
 <div class="page-end-pad"></div>
@@ -725,10 +717,46 @@
     return teaseBar('guide', 'why this setup · the daily loop · what broke');
   }
   var TEASE_MIX = { usage: teaseFacts, projects: teaseChips, tools: teaseChips, workflow: teaseFacts, guide: teaseLine };
+
+  /* round 8: the first real element of each section, whole and bright */
+  function podiumStatic() {
+    var band = el('sub-facts');
+    ROWS.slice().sort(function (a, b) { return b.fit - a.fit; }).slice(0, HL_COUNT).forEach(function (r) {
+      band.appendChild(el('sub-fact', '<span class="mono-label">' + r.name + '</span><p class="n">' + r.stat + '</p><p>' + r.cap + '</p>'));
+    });
+    return band;
+  }
+  function keepFirst(fragKey, selector) {
+    var wrap = document.createElement('div');
+    wrap.appendChild(tpl(fragKey));
+    var keep = wrap.querySelector(selector);
+    wrap.innerHTML = '';
+    wrap.appendChild(keep);
+    return wrap;
+  }
+  function firstBlock(k) {
+    if (k === 'usage') return keepFirst('usage', '.stat-band');
+    if (k === 'projects') {
+      var g = el('proj-grid');
+      PROJECTS.slice(0, 2).forEach(function (pr) { g.appendChild(el('proj', '<h3>' + pr.name + '</h3><p>' + pr.desc + '</p>')); });
+      return g;
+    }
+    if (k === 'tools') {
+      var t = el('tool-grid');
+      TOOLS.slice(0, 4).forEach(function (x) { t.appendChild(el('tool', '<p class="nm">' + x.nm + '</p><p>' + x.sub + '</p>')); });
+      return t;
+    }
+    if (k === 'workflow') return podiumStatic();
+    return keepFirst('guide-lead', '.toc');
+  }
+  var TEASE_SPLIT = { usage: firstBlock, projects: teaseChips, tools: teaseChips, workflow: firstBlock, guide: teaseLine };
+
   function buildTease(kind, k) {
     if (kind === 'facts') return teaseFacts(k);
     if (kind === 'line') return teaseLine(k);
     if (kind === 'visual') return teaseVisual(k);
+    if (kind === 'first') return firstBlock(k);
+    if (kind === 'split') return TEASE_SPLIT[k](k);
     return TEASE_MIX[k](k);
   }
 
@@ -819,10 +847,9 @@
 
   var PAGES = {
     crop:   function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', peek: 'all', peekClass: 'micro', exclusive: true }); },
-    facts:  function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'facts' }); },
-    line:   function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'line' }); },
+    first:  function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'first' }); },
     visual: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'visual' }); },
-    mix:    function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'mix' }); }
+    split:  function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'split' }); }
   };
 
   document.querySelectorAll('[data-page]').forEach(function (host) {
@@ -832,10 +859,9 @@
   /* ---------- variant switcher ---------- */
   var VARIANTS = [
     { key: 'crop',   id: 'v-crop',   name: 'A · the crop' },
-    { key: 'facts',  id: 'v-facts',  name: 'B · the headline facts' },
-    { key: 'line',   id: 'v-line',   name: 'C · the teaser line' },
-    { key: 'visual', id: 'v-visual', name: 'D · the signature visual' },
-    { key: 'mix',    id: 'v-mix',    name: 'E · the mix' }
+    { key: 'first',  id: 'v-first',  name: 'B · the first block' },
+    { key: 'visual', id: 'v-visual', name: 'C · the signature visual' },
+    { key: 'split',  id: 'v-split',  name: 'D · the split' }
   ];
   var current = 0;
 
