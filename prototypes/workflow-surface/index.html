@@ -4,30 +4,32 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Prototype · alp82/aistack#175 · the workflow surface · round 5 · the final section</title>
+<title>Prototype · alp82/aistack#175 · the workflow surface · round 6 · the components</title>
 <!--
   PROTOTYPE. Throwaway. alp82/aistack#175: evolve the foundation blocks to the
   final workflow section. Baseline: round 4 (ticket #164, PR #171).
-  ROUND 5. This round proposes the three decisions #174 delegated here:
-  1. FIT: fit = coverage x surprise, deterministic, no LLM in the ranking.
-  2. ROTATION: fit recomputes at every sync; a slot swaps only on a clear win
-     (+25% margin), on coverage loss, or on a stale signal; one swap per day.
-  3. DRAFT SLOTS: the LLM fills three prose slots (section lead, anatomy note,
-     routing note) per ADR-0001. It never produces a number.
-  The pool grows to 22 metric boxes per the #174 resolution. Local Git history
-  is now a source: transcript-derived commit boxes are replaced by exact ones.
-  Three views: the composed final section, the pool ranked by fit, and the
-  mechanics (fit formula, rotation ledger, draft slots).
-  Switch with the bar at the bottom or ?variant=composed|pool|mechanics.
+  ROUND 6. Operator feedback on round 5: judge components alone, composition is
+  a separate prototyping session. Slot boxes styled like the pool examples.
+  Kit keeps skills and mcp, the agents earn their own delegation component.
+  Git ledger: removals in red, commit sizes as a dot strip. Heatmap gets a
+  tap/hover popup. New component: coding language distribution. The pool is
+  trimmed to the liked metrics plus four new ideas. The anatomy block is held:
+  its feedback carries to the phase-anatomy prototype (ticket #186).
+  Open decisions that return this round: the fit rule, the rotation rule, the
+  draft slots.
+  Three views: the components, the pool by fit, the mechanics.
+  Switch with the bar at the bottom or ?variant=components|pool|mechanics.
 
   Data provenance: hand-extracted, not a live sync. Sources:
   - one real agent session in this repo (2026-08-04, 51 min, 158 tool calls)
-  - this repo's real Git history, 2026-07-19 to 2026-08-19, recomputed for
-    this round: 119 commits, +94,754 / -19,330 lines, 73% of changed lines
-    TypeScript, 47% of commits touch a test file, median 425 changed lines
+  - this repo's real Git history, 2026-07-19 to 2026-08-19: 119 commits,
+    +94,754 / -19,330 lines, median 425 changed lines, 47% of commits touch a
+    test file. Language shares of changed lines: TypeScript 73.0%, JSON 15.0%,
+    Markdown 7.0%, HTML 2.5%, JavaScript 1.9%. The dot strip carries the real
+    per-commit sizes.
   - the owner's real skill roster, real MCP config, real curated stack page
   - coverage tags follow docs/research/deterministic-workflow-extractability-2026-08.md
-  - remaining shares, trails, fit scores and the ledger are hand-made
+  - remaining shares, records, fit scores and the ledger are hand-made
 -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
@@ -47,6 +49,7 @@
     --accent-lime-contrast: oklch(0.22 0.02 132);
     --stroke-subtle: oklch(0.55 0.01 256 / 0.45);
     --stroke-strong: oklch(0.5 0.015 256 / 0.9);
+    --neg: oklch(0.64 0.19 25);
     /* fixed categorical assignment from the validated chart palette */
     --ph-orient: #4278d2;
     --ph-build:  #69a621;
@@ -77,17 +80,10 @@
     color: var(--fg-muted); text-transform: uppercase;
   }
   .ticket-strip b { color: var(--accent-lime); font-weight: 700; }
-  .context-note {
-    margin: 0 auto; max-width: 80rem; padding: 10px 24px 0;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
-    color: var(--fg-muted); opacity: 0.7;
-  }
 
   /* ---------- shared section shell ---------------------------------------- */
   section.journey { padding: 56px 24px; }
   @media (min-width: 768px) { section.journey { padding: 88px 24px; } }
-  section.alt { background: color-mix(in oklab, var(--bg-panel) 30%, var(--bg-canvas)); }
   .shell { max-width: 80rem; margin: 0 auto; }
   .sec-head {
     display: flex; align-items: flex-end; gap: 20px;
@@ -106,51 +102,35 @@
   .mono-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted); }
   .kicker-line { color: var(--accent-lime); margin-bottom: 12px; }
   .dimmed { opacity: 0.45; pointer-events: none; }
-  .block-gap { margin-top: 26px; }
+  .block-gap { margin-top: 34px; }
   .lead { margin: 0 0 26px; font-size: 14.5px; line-height: 1.6; color: var(--fg-secondary); max-width: 46rem; }
   .lead b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
-
-  /* ---------- compressed existing page bits ------------------------------ */
-  .hero-mini { padding: 40px 24px 32px; border-bottom: 1px solid var(--stroke-subtle); }
-  .hero-mini h1 { font-size: 34px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; margin: 0; line-height: 0.95; }
-  .hero-mini p { color: var(--fg-muted); margin: 8px 0 0; font-size: 14px; max-width: 34rem; }
-  .hero-chips { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .comp-tag { display: block; margin-bottom: 10px; color: var(--fg-muted); }
+  .comp-tag b { color: var(--accent-lime); font-weight: 700; }
   .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--stroke-subtle); padding: 3px 8px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); }
-  .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; border: 1px solid var(--stroke-subtle); background: var(--stroke-subtle); }
-  @media (min-width: 640px) { .stat-grid { grid-template-columns: repeat(4, 1fr); } }
-  .stat { background: var(--bg-canvas); padding: 16px; }
-  .stat .v { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 800; margin: 0; }
-  .stat .l { margin: 4px 0 0; }
-  .model-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
-  .model-row .name { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--fg-secondary); width: 10.5rem; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .model-row .track { flex: 1; height: 10px; background: var(--bg-panel); }
-  .model-row .fill { height: 100%; background: var(--accent-lime); }
-  .model-row .pct { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); width: 2.6rem; text-align: right; }
-  .big-number { font-family: 'JetBrains Mono', monospace; font-size: 44px; font-weight: 800; line-height: 1; }
-  .grid-2 { display: grid; gap: 40px; }
-  @media (min-width: 768px) { .grid-2 { grid-template-columns: minmax(0, 22rem) 1fr; } }
-
-  /* ---------- variant framework ------------------------------------------ */
-  .variant { display: none; }
-  .variant.active { display: block; }
 
   /* ---------- workflow draft slots ------------------------------------------ */
-  .draft { border: 1px dashed var(--stroke-strong); padding: 14px 16px; margin: 0 0 26px; max-width: 46rem; }
+  .draft { border: 1px dashed var(--stroke-strong); padding: 14px 16px; max-width: 46rem; }
   .draft-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--accent-lime-contrast); color: var(--accent-lime); border: 1px solid var(--accent-lime); padding: 2px 7px; font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
   .draft p { margin: 10px 0 0; font-size: 14.5px; line-height: 1.6; color: var(--fg-secondary); }
   .draft.inline { border: 0; padding: 0; margin: 14px 0 0; max-width: none; }
   .draft.inline p { font-size: 13px; line-height: 1.6; }
 
-  /* ---------- block: three boxes (rotating pool picks) --------------------- */
+  /* ---------- slot boxes, styled like the pool ------------------------------- */
   .sub-facts { display: grid; gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); }
   @media (min-width: 640px) { .sub-facts { grid-template-columns: repeat(3, 1fr); } }
-  .sub-fact { background: var(--bg-canvas); padding: 16px; position: relative; display: flex; flex-direction: column; gap: 4px; }
-  .sub-fact .n { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 800; margin: 0; }
-  .sub-fact p { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--fg-muted); }
+  .sub-fact { background: var(--bg-canvas); padding: 16px; display: flex; flex-direction: column; gap: 4px; }
+  .sub-fact .n { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 800; margin: 0; color: var(--accent-lime); }
+  .sub-fact p { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--fg-secondary); }
   .sub-fact .src { margin-top: auto; padding-top: 8px; }
+  .valbar { height: 8px; background: var(--bg-panel); margin-top: 8px; }
+  .valbar .fill { height: 100%; background: var(--accent-lime); }
+  .dotrow { display: flex; gap: 5px; margin-top: 10px; }
+  .dotrow i { width: 10px; height: 10px; background: var(--bg-panel-elevated); }
+  .dotrow i.on { background: var(--accent-lime); }
   .pool-note { margin: 8px 0 0; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); }
 
-  /* ---------- block: aggregate anatomy -------------------------------------- */
+  /* ---------- block: aggregate anatomy (held for #186) ----------------------- */
   .agg { border: 1px solid var(--stroke-subtle); padding: 18px; }
   .agg-strip { display: flex; height: 34px; gap: 2px; margin-top: 14px; }
   .agg-seg { height: 100%; }
@@ -158,7 +138,8 @@
   .agg-legend span { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-secondary); }
   .agg-legend i { width: 10px; height: 10px; display: inline-block; }
   .sizes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-  .rule-tag { margin-top: 12px; }
+  .hold-note { margin: 12px 0 0; font-size: 12.5px; line-height: 1.6; color: var(--fg-muted); max-width: 44rem; }
+  .hold-note b { color: var(--fg-secondary); }
 
   /* ---------- block: model routing ------------------------------------------ */
   .routing { border: 1px solid var(--stroke-subtle); padding: 18px; }
@@ -172,7 +153,7 @@
   .route-legend span { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-secondary); }
   .route-legend i { width: 10px; height: 10px; display: inline-block; }
 
-  /* ---------- block: merged inventory with trails --------------------------- */
+  /* ---------- block: the kit (skills + mcp) ---------------------------------- */
   .inv { border: 1px solid var(--stroke-subtle); padding: 18px; }
   .inv h3 { margin: 0 0 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent-lime); }
   .inv .sub { margin: 0 0 14px; font-size: 12px; color: var(--fg-muted); }
@@ -191,31 +172,53 @@
   .inv-line .v { margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; color: var(--fg-secondary); }
   .inv-line .v b { color: var(--fg-primary); }
 
+  /* ---------- block: delegation ---------------------------------------------- */
+  .dele { border: 1px solid var(--stroke-subtle); padding: 18px; }
+  .dele .cols { display: grid; gap: 24px; margin-top: 14px; }
+  @media (min-width: 768px) { .dele .cols { grid-template-columns: minmax(0, 16rem) 1fr; } }
+  .ratio { font-family: 'JetBrains Mono', monospace; font-size: 40px; font-weight: 800; line-height: 1; margin: 0; color: var(--accent-lime); }
+  .records { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); margin-top: 16px; }
+  .records .rec { background: var(--bg-canvas); padding: 12px; }
+  .records .rec .v { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 800; margin: 0; }
+  .records .rec p { margin: 4px 0 0; font-size: 11.5px; line-height: 1.4; color: var(--fg-muted); }
+
   /* ---------- block: the git ledger ------------------------------------------ */
   .gitled { border: 1px solid var(--stroke-subtle); padding: 18px; }
   .gitled .cols { display: grid; gap: 24px; margin-top: 14px; }
-  @media (min-width: 768px) { .gitled .cols { grid-template-columns: minmax(0, 20rem) 1fr; } }
+  @media (min-width: 768px) { .gitled .cols { grid-template-columns: minmax(0, 18rem) 1fr; } }
   .delta { font-family: 'JetBrains Mono', monospace; font-size: 30px; font-weight: 800; line-height: 1.1; margin: 0; }
   .delta .plus { color: var(--accent-lime); }
-  .delta .minus { color: var(--fg-muted); }
+  .delta .minus { color: var(--neg); }
   .git-facts { margin: 12px 0 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.9; color: var(--fg-secondary); }
   .git-facts b { color: var(--fg-primary); }
-  .bucket { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
-  .bucket:first-of-type { margin-top: 2px; }
-  .bucket .k { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-secondary); width: 7.5rem; flex-shrink: 0; }
-  .bucket .track { flex: 1; height: 12px; background: var(--bg-panel); }
-  .bucket .fill { height: 100%; background: var(--accent-lime); }
-  .bucket .pct { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); width: 2.6rem; text-align: right; }
+  .dotstrip-wrap { overflow-x: auto; }
+  .dotstrip { width: 100%; min-width: 420px; height: 84px; display: block; }
+
+  /* ---------- block: coding languages ---------------------------------------- */
+  .langs { border: 1px solid var(--stroke-subtle); padding: 18px; }
+  .lang-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .lang-row .name { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--fg-secondary); width: 7.5rem; flex-shrink: 0; }
+  .lang-row .track { flex: 1; height: 10px; background: var(--bg-panel); }
+  .lang-row .fill { height: 100%; background: var(--accent-lime); }
+  .lang-row .pct { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); width: 3.2rem; text-align: right; }
 
   /* ---------- block: heatmap ------------------------------------------------ */
   .heat-wrap { overflow-x: auto; border: 1px solid var(--stroke-subtle); padding: 16px; }
   .heat { min-width: 580px; }
   .heat-grid { display: grid; grid-template-columns: 2.4rem repeat(24, 1fr); gap: 2px; }
-  .heat-cell { aspect-ratio: 1 / 1; background: var(--bg-panel); min-width: 14px; }
+  .heat-cell { aspect-ratio: 1 / 1; background: var(--bg-panel); min-width: 14px; cursor: pointer; }
   .heat-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--fg-muted); display: flex; align-items: center; }
   .heat-x { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--fg-muted); display: flex; align-items: flex-start; padding-top: 4px; }
   .heat-legend { display: flex; align-items: center; gap: 6px; margin-top: 12px; }
   .heat-legend .cellbox { width: 12px; height: 12px; }
+  .heat-tip {
+    position: fixed; z-index: 60; pointer-events: none; display: none;
+    background: var(--bg-panel-elevated); border: 1px solid var(--stroke-strong);
+    box-shadow: 3px 3px 0 var(--accent-lime);
+    padding: 8px 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--fg-primary); line-height: 1.6; max-width: 15rem;
+  }
+  .heat-tip .k { color: var(--fg-muted); }
 
   /* ---------- pool view ----------------------------------------------------- */
   .pool-grid { display: grid; gap: 1px; border: 1px solid var(--stroke-subtle); background: var(--stroke-subtle); }
@@ -257,7 +260,9 @@
   /* ---------- consent footnote ---------------------------------------------- */
   .consent { margin-top: 36px; border-top: 1px solid var(--stroke-subtle); padding-top: 14px; font-size: 12px; line-height: 1.6; color: var(--fg-muted); max-width: 46rem; }
 
-  /* ---------- switcher bar --------------------------------------------------- */
+  /* ---------- variant framework / switcher ----------------------------------- */
+  .variant { display: none; }
+  .variant.active { display: block; }
   .switcher {
     position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
     display: flex; align-items: stretch;
@@ -277,186 +282,192 @@
 <body>
 
 <div class="ticket-strip">
-  PROTOTYPE · <b>alp82/aistack#175</b> · the workflow surface · round 5 · the final section
+  PROTOTYPE · <b>alp82/aistack#175</b> · the workflow surface · round 6 · the components, judged one by one
 </div>
 
-<!-- ======================================================================
-     Compressed context: the stack page as it exists today, dimmed.
-====================================================================== -->
-<p class="context-note">existing page, compressed and dimmed for context</p>
-
-<div class="dimmed">
-  <div class="hero-mini shell">
-    <h1>Fable-First Solo Stack</h1>
-    <p>One founder, one agent harness, everything measured. Claude Code drives the work. The tracker and the review gate hold the reins.</p>
-    <div class="hero-chips">
-      <span class="chip">Claude Code</span><span class="chip">Convex</span><span class="chip">TanStack</span><span class="chip">Resend</span><span class="chip">+9 tools</span>
-    </div>
-  </div>
-
-  <section class="journey alt">
-    <div class="shell">
-      <div class="sec-head">
-        <span class="sec-index">01</span>
-        <div class="head-copy">
-          <p class="sec-kicker">// MEASURED</p>
-          <h2 class="sec-title">Actual Usage</h2>
-        </div>
-        <span class="sec-meta">checked 2 hours ago</span>
-      </div>
-      <div class="grid-2">
-        <div>
-          <p class="mono-label">tokens · 30 days</p>
-          <p class="big-number" style="margin:6px 0 0">1.9B</p>
-          <p class="mono-label" style="margin-top:8px">$182 api-equivalent · anthropic-2026-08</p>
-        </div>
-        <div>
-          <p class="mono-label" style="color:var(--accent-lime)">// MODEL MIX</p>
-          <div class="model-row"><span class="name">claude-fable-5</span><div class="track"><div class="fill" style="width:62%"></div></div><span class="pct">62%</span></div>
-          <div class="model-row"><span class="name">claude-opus-5</span><div class="track"><div class="fill" style="width:21%"></div></div><span class="pct">21%</span></div>
-          <div class="model-row"><span class="name">claude-sonnet-5</span><div class="track"><div class="fill" style="width:12%"></div></div><span class="pct">12%</span></div>
-          <div class="model-row"><span class="name">claude-haiku-4-5</span><div class="track"><div class="fill" style="width:5%"></div></div><span class="pct">5%</span></div>
-          <div class="stat-grid" style="margin-top:26px">
-            <div class="stat"><p class="v">142</p><p class="l mono-label">sessions</p></div>
-            <div class="stat"><p class="v">27 of 30</p><p class="l mono-label">active days</p></div>
-            <div class="stat"><p class="v">87%</p><p class="l mono-label">cache hits</p></div>
-            <div class="stat"><p class="v">34%</p><p class="l mono-label">run by subagents</p></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-</div>
-
-<!-- ======================================================================
-     ROUND 5. View 1: the final composed section. View 2: the pool by fit.
-     View 3: the mechanics (fit, rotation, draft slots).
-====================================================================== -->
-
-<!-- ················· VIEW: COMPOSED (FINAL) ················· -->
-<section class="journey variant" id="v-composed">
+<!-- ················· VIEW: COMPONENTS ················· -->
+<section class="journey variant" id="v-components">
   <div class="shell">
     <div class="sec-head">
       <span class="sec-index">02</span>
       <div class="head-copy">
         <p class="sec-kicker">// MEASURED WORKFLOW</p>
-        <h2 class="sec-title">How This Person Works</h2>
+        <h2 class="sec-title">The Components</h2>
       </div>
-      <span class="sec-meta">window · 30 days</span>
+      <span class="sec-meta">judged one by one · composition comes later</span>
     </div>
 
-    <!-- draft slot 1: the section lead -->
-    <div class="draft">
-      <span class="draft-chip">workflow draft · llm over approved aggregates · owner-edited</span>
-      <p>A gate-first flow. Nothing merges before a human review round, and the heaviest work lands deep in the night. The big model holds the main loop, small models take the routine reads, and the flow prefers many short sessions over one long one.</p>
-    </div>
+    <p class="lead">Per your round-5 reply, this view shows each component alone. The composition of the section is a separate prototyping session.</p>
 
-    <div class="sub-facts">
-      <div class="sub-fact"><p class="n">15 of 15</p><p>merges passed a human review gate first</p><span class="src mono-label">from: matched gate call preceded matched merge command</span></div>
-      <div class="sub-fact"><p class="n">42%</p><p>of commits land between 23:00 and 03:00</p><span class="src mono-label">from: local git history · exact</span></div>
-      <div class="sub-fact"><p class="n">2.8</p><p>projects run in parallel on a median active day</p><span class="src mono-label">from: overlapping project session spans</span></div>
-    </div>
-    <p class="pool-note">three slots fed from a pool of 22 · fit re-ranks at every sync · a slot swaps only on a clear win · full pool in view 2, mechanics in view 3</p>
-
-    <div class="agg block-gap">
-      <p class="mono-label kicker-line">// ALL 142 SESSIONS, ANATOMIZED</p>
-      <div class="agg-strip">
-        <div class="agg-seg" style="flex:14; background:var(--ph-orient)"></div>
-        <div class="agg-seg" style="flex:52; background:var(--ph-build)"></div>
-        <div class="agg-seg" style="flex:22; background:var(--ph-verify)"></div>
-        <div class="agg-seg" style="flex:12; background:var(--ph-gate)"></div>
-      </div>
-      <div class="agg-legend">
-        <span><i style="background:var(--ph-orient)"></i>orient · 14%</span>
-        <span><i style="background:var(--ph-build)"></i>build · 52%</span>
-        <span><i style="background:var(--ph-verify)"></i>verify · 22%</span>
-        <span><i style="background:var(--ph-gate)"></i>gate · 12%</span>
-      </div>
-      <!-- draft slot 2: the anatomy note -->
-      <div class="draft inline">
-        <span class="draft-chip">workflow draft</span>
-        <p>Build carries most of the minutes, and verify holds a steady share, because tests run before every gate. Long sessions are rare here: the flow leans on many short runs.</p>
-      </div>
-      <div class="sizes">
-        <span class="chip" style="color:var(--fg-secondary)">S &lt;15 min · 38%</span>
-        <span class="chip" style="color:var(--fg-secondary)">M 15-45 · 34%</span>
-        <span class="chip" style="color:var(--fg-secondary)">L 45-90 · 21%</span>
-        <span class="chip" style="color:var(--fg-secondary)">XL &gt;90 · 7%</span>
-      </div>
-      <p class="mono-label rule-tag">from: phase rules v1 · versioned classification · unknown bucket counted</p>
-    </div>
-
-    <div class="routing block-gap">
-      <p class="mono-label kicker-line">// MODEL ROUTING · WHO RUNS ON WHAT</p>
-      <div class="route-row">
-        <p class="who"><span>main loop</span><span class="share">66% of tool work</span></p>
-        <div class="route-strip">
-          <div class="seg" style="flex:89; background:var(--m-fable)"></div>
-          <div class="seg" style="flex:11; background:var(--m-opus)"></div>
+    <div>
+      <span class="mono-label comp-tag"><b>component</b> · slot boxes · styled like the pool examples</span>
+      <div class="sub-facts">
+        <div class="sub-fact">
+          <p class="n">42%</p><p>of commits land between 23:00 and 03:00</p>
+          <div class="valbar"><div class="fill" style="width:42%"></div></div>
+          <span class="src mono-label">from: local git history · exact</span>
+        </div>
+        <div class="sub-fact">
+          <p class="n">2.8</p><p>projects run in parallel on a median active day</p>
+          <span class="src mono-label">from: overlapping project session spans</span>
+        </div>
+        <div class="sub-fact">
+          <p class="n">1 in 6</p><p>sessions switch model mid-run</p>
+          <div class="dotrow"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
+          <span class="src mono-label">from: response model changes · exact</span>
         </div>
       </div>
-      <div class="route-row">
-        <p class="who"><span>subagents</span><span class="share">34% of tool work</span></p>
-        <div class="route-strip">
-          <div class="seg" style="flex:21; background:var(--m-fable)"></div>
-          <div class="seg" style="flex:31; background:var(--m-sonnet)"></div>
-          <div class="seg" style="flex:48; background:var(--m-haiku)"></div>
-        </div>
-      </div>
-      <div class="route-legend">
-        <span><i style="background:var(--m-fable)"></i>fable-5</span>
-        <span><i style="background:var(--m-opus)"></i>opus-5</span>
-        <span><i style="background:var(--m-sonnet)"></i>sonnet-5</span>
-        <span><i style="background:var(--m-haiku)"></i>haiku-4-5</span>
-      </div>
-      <!-- draft slot 3: the routing note -->
-      <div class="draft inline">
-        <span class="draft-chip">workflow draft</span>
-        <p>The orchestrator stays on the big model. Subagents drop to the small tier for the bulk of their runs. The routing policy is visible in the data, not told.</p>
+      <p class="pool-note">three slots fed from the pool · value in the accent, optional bar or dots per metric</p>
+    </div>
+
+    <div class="block-gap">
+      <span class="mono-label comp-tag"><b>component</b> · workflow draft · the section lead</span>
+      <div class="draft">
+        <span class="draft-chip">workflow draft · llm over approved aggregates · owner-edited</span>
+        <p>A gate-first flow. Nothing merges before a human review round, and the heaviest work lands deep in the night. The big model holds the main loop, small models take the routine reads, and the flow prefers many short sessions over one long one.</p>
       </div>
     </div>
 
-    <div class="inv block-gap">
-      <h3>The Kit</h3>
-      <p class="sub">Skills and commands merged · share of 412 runs · 30-day trail</p>
-      <div class="lrow"><span class="rank">01</span><span class="name">grilling</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="3,4,2,5,6,4,7,5,8,6,9,7,8,9,10"></svg><div class="track"><div class="fill" style="width:96%"></div></div><span class="pct">24%</span></div>
-      <div class="lrow"><span class="rank">02</span><span class="name">tdd</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="6,5,7,4,6,3,5,4,6,5,4,6,5,7,6"></svg><div class="track"><div class="fill" style="width:68%"></div></div><span class="pct">17%</span></div>
-      <div class="lrow"><span class="rank">03</span><span class="name">wayfinder</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="2,3,2,4,3,5,4,4,5,6,5,6,7,6,8"></svg><div class="track"><div class="fill" style="width:52%"></div></div><span class="pct">13%</span></div>
-      <div class="lrow"><span class="rank">04</span><span class="name">prototype</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="1,2,1,3,2,4,3,5,4,6,5,7,6,8,9"></svg><div class="track"><div class="fill" style="width:44%"></div></div><span class="pct">11%</span></div>
-      <div class="lrow"><span class="rank">05</span><span class="name">research</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="5,6,4,5,3,4,3,4,2,3,3,2,3,2,2"></svg><div class="track"><div class="fill" style="width:36%"></div></div><span class="pct">9%</span></div>
-      <div class="lrow"><span class="rank">06</span><span class="name">domain-modeling</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="2,3,3,4,3,4,5,4,5,4,5,6,5,6,6"></svg><div class="track"><div class="fill" style="width:32%"></div></div><span class="pct">8%</span></div>
-      <p class="inv-rest">also: <b>code-review</b> 7% · <b>writing-for-agents</b> 4% · <b>diagnosing-bugs</b> 3% · <b>simplify</b> 2% · 2 withheld 2%</p>
-      <div class="inv-line">
-        <span class="k mono-label">agents</span>
-        <p class="v"><b>Explore</b> 41% · <b>research</b> 24% · <b>Plan</b> 15% · <b>general-purpose</b> 12% · 1 withheld 8%</p>
-      </div>
-      <div class="inv-line">
-        <span class="k mono-label">mcp servers</span>
-        <p class="v"><b>curia</b> 78% · <b>convex</b> 19% · 1 withheld 3%</p>
+    <div class="block-gap">
+      <span class="mono-label comp-tag"><b>component</b> · session anatomy · held for the phase-anatomy prototype</span>
+      <div class="agg">
+        <p class="mono-label kicker-line">// ALL 142 SESSIONS, ANATOMIZED</p>
+        <div class="dimmed">
+          <div class="agg-strip">
+            <div class="agg-seg" style="flex:14; background:var(--ph-orient)"></div>
+            <div class="agg-seg" style="flex:52; background:var(--ph-build)"></div>
+            <div class="agg-seg" style="flex:22; background:var(--ph-verify)"></div>
+            <div class="agg-seg" style="flex:12; background:var(--ph-gate)"></div>
+          </div>
+          <div class="agg-legend">
+            <span><i style="background:var(--ph-orient)"></i>orient · 14%</span>
+            <span><i style="background:var(--ph-build)"></i>build · 52%</span>
+            <span><i style="background:var(--ph-verify)"></i>verify · 22%</span>
+            <span><i style="background:var(--ph-gate)"></i>gate · 12%</span>
+          </div>
+          <div class="sizes">
+            <span class="chip" style="color:var(--fg-secondary)">S &lt;15 min · 38%</span>
+            <span class="chip" style="color:var(--fg-secondary)">M 15-45 · 34%</span>
+            <span class="chip" style="color:var(--fg-secondary)">L 45-90 · 21%</span>
+            <span class="chip" style="color:var(--fg-secondary)">XL &gt;90 · 7%</span>
+          </div>
+        </div>
+        <p class="hold-note">Held, shown dimmed. The phase anatomy has its own prototype: <b>Prototype: the session phase anatomy</b> (ticket 186). Your notes fit there: the missing element, the weak minutes visualization, and whether phases and sizes should merge into one correlated view.</p>
       </div>
     </div>
 
-    <div class="gitled block-gap">
-      <p class="mono-label kicker-line">// THE GIT LEDGER · EXACT FROM LOCAL HISTORY</p>
-      <div class="cols">
-        <div>
-          <p class="delta"><span class="plus">+94,754</span><br><span class="minus">-19,330</span></p>
-          <p class="mono-label" style="margin-top:8px">lines added and removed · 30 days</p>
-          <p class="git-facts"><b>119</b> commits · median <b>425</b> changed lines<br><b>47%</b> of commits touch a test file<br><b>73%</b> of changed lines are TypeScript</p>
+    <div class="block-gap">
+      <span class="mono-label comp-tag"><b>component</b> · model routing · unchanged, you liked the split</span>
+      <div class="routing">
+        <p class="mono-label kicker-line">// MODEL ROUTING · WHO RUNS ON WHAT</p>
+        <div class="route-row">
+          <p class="who"><span>main loop</span><span class="share">66% of tool work</span></p>
+          <div class="route-strip">
+            <div class="seg" style="flex:89; background:var(--m-fable)"></div>
+            <div class="seg" style="flex:11; background:var(--m-opus)"></div>
+          </div>
         </div>
-        <div>
-          <p class="mono-label" style="margin-bottom:8px">commit size · changed lines per commit</p>
-          <div class="bucket"><span class="k">&lt;50</span><div class="track"><div class="fill" style="width:23%"></div></div><span class="pct">23%</span></div>
-          <div class="bucket"><span class="k">50-250</span><div class="track"><div class="fill" style="width:18%"></div></div><span class="pct">18%</span></div>
-          <div class="bucket"><span class="k">250-1,000</span><div class="track"><div class="fill" style="width:24%"></div></div><span class="pct">24%</span></div>
-          <div class="bucket"><span class="k">&gt;1,000</span><div class="track"><div class="fill" style="width:34%"></div></div><span class="pct">34%</span></div>
-          <p class="mono-label" style="margin-top:12px">from: local git history · exact · replaces the transcript commit proxies</p>
+        <div class="route-row">
+          <p class="who"><span>subagents</span><span class="share">34% of tool work</span></p>
+          <div class="route-strip">
+            <div class="seg" style="flex:21; background:var(--m-fable)"></div>
+            <div class="seg" style="flex:31; background:var(--m-sonnet)"></div>
+            <div class="seg" style="flex:48; background:var(--m-haiku)"></div>
+          </div>
+        </div>
+        <div class="route-legend">
+          <span><i style="background:var(--m-fable)"></i>fable-5</span>
+          <span><i style="background:var(--m-opus)"></i>opus-5</span>
+          <span><i style="background:var(--m-sonnet)"></i>sonnet-5</span>
+          <span><i style="background:var(--m-haiku)"></i>haiku-4-5</span>
+        </div>
+        <div class="draft inline">
+          <span class="draft-chip">workflow draft</span>
+          <p>The orchestrator stays on the big model. Subagents drop to the small tier for the bulk of their runs. The routing policy is visible in the data, not told.</p>
         </div>
       </div>
     </div>
 
     <div class="block-gap">
-      <p class="mono-label kicker-line">// WHEN THE WORK HAPPENS</p>
+      <span class="mono-label comp-tag"><b>component</b> · the kit · skills and commands, mcp stays, agents moved out</span>
+      <div class="inv">
+        <h3>The Kit</h3>
+        <p class="sub">Skills and commands merged · share of 412 runs · 30-day trail</p>
+        <div class="lrow"><span class="rank">01</span><span class="name">grilling</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="3,4,2,5,6,4,7,5,8,6,9,7,8,9,10"></svg><div class="track"><div class="fill" style="width:96%"></div></div><span class="pct">24%</span></div>
+        <div class="lrow"><span class="rank">02</span><span class="name">tdd</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="6,5,7,4,6,3,5,4,6,5,4,6,5,7,6"></svg><div class="track"><div class="fill" style="width:68%"></div></div><span class="pct">17%</span></div>
+        <div class="lrow"><span class="rank">03</span><span class="name">wayfinder</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="2,3,2,4,3,5,4,4,5,6,5,6,7,6,8"></svg><div class="track"><div class="fill" style="width:52%"></div></div><span class="pct">13%</span></div>
+        <div class="lrow"><span class="rank">04</span><span class="name">prototype</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="1,2,1,3,2,4,3,5,4,6,5,7,6,8,9"></svg><div class="track"><div class="fill" style="width:44%"></div></div><span class="pct">11%</span></div>
+        <div class="lrow"><span class="rank">05</span><span class="name">research</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="5,6,4,5,3,4,3,4,2,3,3,2,3,2,2"></svg><div class="track"><div class="fill" style="width:36%"></div></div><span class="pct">9%</span></div>
+        <div class="lrow"><span class="rank">06</span><span class="name">domain-modeling</span><svg class="spark" viewBox="0 0 64 18" preserveAspectRatio="none" data-trail="2,3,3,4,3,4,5,4,5,4,5,6,5,6,6"></svg><div class="track"><div class="fill" style="width:32%"></div></div><span class="pct">8%</span></div>
+        <p class="inv-rest">also: <b>code-review</b> 7% · <b>writing-for-agents</b> 4% · <b>diagnosing-bugs</b> 3% · <b>simplify</b> 2% · 2 withheld 2%</p>
+        <div class="inv-line">
+          <span class="k mono-label">mcp servers</span>
+          <p class="v"><b>curia</b> 78% · <b>convex</b> 19% · 1 withheld 3%</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="block-gap">
+      <span class="mono-label comp-tag"><b>component</b> · delegation · new, the agents earn their own block</span>
+      <div class="dele">
+        <p class="mono-label kicker-line">// DELEGATION · MAIN LOOP TO SUBAGENTS</p>
+        <div class="cols">
+          <div>
+            <p class="ratio">2 : 1</p>
+            <p class="mono-label" style="margin-top:8px">main-loop to subagent tool work</p>
+            <div class="records">
+              <div class="rec"><p class="v">11</p><p>widest parallel subagent fan-out in one session</p></div>
+              <div class="rec"><p class="v">43</p><p>most subagents in one session</p></div>
+            </div>
+          </div>
+          <div>
+            <p class="mono-label" style="margin-bottom:4px">subagent runs by type</p>
+            <div class="lrow"><span class="rank">01</span><span class="name">Explore</span><div class="track"><div class="fill" style="width:96%"></div></div><span class="pct">41%</span></div>
+            <div class="lrow"><span class="rank">02</span><span class="name">research</span><div class="track"><div class="fill" style="width:56%"></div></div><span class="pct">24%</span></div>
+            <div class="lrow"><span class="rank">03</span><span class="name">Plan</span><div class="track"><div class="fill" style="width:35%"></div></div><span class="pct">15%</span></div>
+            <div class="lrow"><span class="rank">04</span><span class="name">general-purpose</span><div class="track"><div class="fill" style="width:28%"></div></div><span class="pct">12%</span></div>
+            <p class="inv-rest">1 withheld 8%</p>
+            <p class="mono-label" style="margin-top:10px">counts: claude code · opencode</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="block-gap">
+      <span class="mono-label comp-tag"><b>component</b> · the git ledger · removals in red, sizes as a dot strip</span>
+      <div class="gitled">
+        <p class="mono-label kicker-line">// THE GIT LEDGER · EXACT FROM LOCAL HISTORY</p>
+        <div class="cols">
+          <div>
+            <p class="delta"><span class="plus">+94,754</span><br><span class="minus">-19,330</span></p>
+            <p class="mono-label" style="margin-top:8px">lines added and removed · 30 days</p>
+            <p class="git-facts"><b>119</b> commits · median <b>425</b> changed lines<br><b>47%</b> of commits touch a test file</p>
+          </div>
+          <div>
+            <p class="mono-label" style="margin-bottom:6px">changed lines per commit · one dot per commit · log scale</p>
+            <div class="dotstrip-wrap"><svg class="dotstrip" id="dotstrip" viewBox="0 0 600 84" preserveAspectRatio="none"></svg></div>
+            <p class="mono-label" style="margin-top:8px">from: local git history · exact · replaces the transcript commit proxies</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="block-gap">
+      <span class="mono-label comp-tag"><b>component</b> · coding languages · new, exact from local history</span>
+      <div class="langs">
+        <p class="mono-label kicker-line">// CODING LANGUAGES · SHARE OF CHANGED LINES</p>
+        <div class="lang-row"><span class="name">TypeScript</span><div class="track"><div class="fill" style="width:73%"></div></div><span class="pct">73.0%</span></div>
+        <div class="lang-row"><span class="name">JSON</span><div class="track"><div class="fill" style="width:15%"></div></div><span class="pct">15.0%</span></div>
+        <div class="lang-row"><span class="name">Markdown</span><div class="track"><div class="fill" style="width:7%"></div></div><span class="pct">7.0%</span></div>
+        <div class="lang-row"><span class="name">HTML</span><div class="track"><div class="fill" style="width:2.5%"></div></div><span class="pct">2.5%</span></div>
+        <div class="lang-row"><span class="name">JavaScript</span><div class="track"><div class="fill" style="width:1.9%"></div></div><span class="pct">1.9%</span></div>
+        <div class="lang-row"><span class="name">other</span><div class="track"><div class="fill" style="width:0.6%"></div></div><span class="pct">0.6%</span></div>
+        <p class="mono-label" style="margin-top:12px">from: local git history · changed lines by file type · exact</p>
+      </div>
+    </div>
+
+    <div class="block-gap">
+      <span class="mono-label comp-tag"><b>component</b> · when the work happens · tap or hover a cell for its stats</span>
       <div class="heat-wrap">
         <div class="heat">
           <div class="heat-grid" id="heatmap"></div>
@@ -476,12 +487,12 @@
 
     <div class="consent">
       <span class="mono-label">// HOW TO READ THIS</span><br>
-      Shares, never raw counts. A skill, agent or server name appears here only after the owner approves it at the sync gate. 4 names are withheld and stay counted in the shares. Every number is measured: an exact metric comes from harness records or local Git history, and a proxy metric names its matching rule. The dashed blocks are workflow drafts: LLM prose over approved aggregates, labeled, owner-edited, never a number (ADR-0001). This prototype runs on hand-extracted data around real anchors. No live sync feeds it yet.
+      Shares, never raw counts. A skill, agent or server name appears here only after the owner approves it at the sync gate. An exact metric comes from harness records or local Git history, and a proxy metric names its matching rule. The dashed blocks are workflow drafts: LLM prose over approved aggregates, labeled, owner-edited, never a number (ADR-0001). This prototype runs on hand-extracted data around real anchors. No live sync feeds it yet.
     </div>
   </div>
 </section>
 
-<!-- ················· VIEW: POOL (22, RANKED BY FIT) ················· -->
+<!-- ················· VIEW: POOL (TRIMMED, RANKED BY FIT) ················· -->
 <section class="journey variant" id="v-pool">
   <div class="shell">
     <div class="sec-head">
@@ -490,41 +501,30 @@
         <p class="sec-kicker">// MEASURED WORKFLOW</p>
         <h2 class="sec-title">The Pool</h2>
       </div>
-      <span class="sec-meta">22 metrics · ranked by fit</span>
+      <span class="sec-meta">trimmed per round 5 · ranked by fit</span>
     </div>
 
-    <p class="lead">Every metric below is computable offline, with no LLM in the loop. The <b>from:</b> tag names the source or the matching rule. A <b>counts:</b> tag appears when not every synced harness records the signal. The bar is <b>fit</b>: the deterministic score that picks the three surfaced slots. The formula lives in view 3.</p>
+    <p class="lead">The pool keeps the nine metrics you liked and adds <b>sessions with effort switches</b> from your ideas. Your three subagent ideas live in the new delegation component, and the line counts live in the Git Ledger, so they show here as excluded. Dropped per your reply: the review gate box, the streaks, the skill pairs, error recovery, review rounds, the session opener, the tool pairs, test commands, and the harness count.</p>
 
     <div class="pool-grid">
-      <div class="pool-box live"><p class="n">15 of 15</p><p>merges passed a human review gate first</p><span class="src mono-label">from: matched gate call preceded matched merge command</span><div class="fitline"><div class="track"><div class="fill" style="width:92%"></div></div><span class="v">fit 0.92 ·&nbsp;live</span></div></div>
       <div class="pool-box live"><p class="n">42%</p><p>of commits land between 23:00 and 03:00</p><span class="src mono-label">from: local git history · exact</span><div class="fitline"><div class="track"><div class="fill" style="width:86%"></div></div><span class="v">fit 0.86 ·&nbsp;live</span></div></div>
       <div class="pool-box live"><p class="n">2.8</p><p>projects run in parallel on a median active day</p><span class="src mono-label">from: overlapping project session spans</span><div class="fitline"><div class="track"><div class="fill" style="width:81%"></div></div><span class="v">fit 0.81 ·&nbsp;live</span></div></div>
-      <div class="pool-box"><p class="n">+94.8k / -19.3k</p><p>lines added and removed this window</p><span class="src mono-label">from: local git history · exact</span><div class="fitline"><div class="track"><div class="fill" style="width:74%"></div></div><span class="v">fit 0.74</span></div></div>
-      <div class="pool-box"><p class="n">11</p><p>subagents fanned out at the widest moment</p><span class="src mono-label">from: overlapping child-session spans</span><span class="cov mono-label">counts: claude code · opencode</span><div class="fitline"><div class="track"><div class="fill" style="width:58%"></div></div><span class="v">fit 0.58</span></div></div>
-      <div class="pool-box"><p class="n">8 of 10</p><p>build streaks start from a wayfinder map</p><span class="src mono-label">from: rule streak-v1 · skill call before a build sequence</span><span class="cov mono-label">counts: claude code · opencode</span><div class="fitline"><div class="track"><div class="fill" style="width:55%"></div></div><span class="v">fit 0.55</span></div></div>
-      <div class="pool-box"><p class="n">1 in 6</p><p>sessions switch model mid-run</p><span class="src mono-label">from: response model changes · exact</span><div class="fitline"><div class="track"><div class="fill" style="width:52%"></div></div><span class="v">fit 0.52</span></div></div>
-      <div class="pool-box"><p class="n">74%</p><p>of grillings pull domain-modeling into the same session</p><span class="src mono-label">from: same-session skill pairs · exact co-use</span><span class="cov mono-label">counts: claude code · opencode</span><div class="fitline"><div class="track"><div class="fill" style="width:49%"></div></div><span class="v">fit 0.49</span></div></div>
-      <div class="pool-box"><p class="n">83%</p><p>of tool errors are fixed within the next two turns</p><span class="src mono-label">from: rule recover-v1 · matched error then matched success</span><div class="fitline"><div class="track"><div class="fill" style="width:47%"></div></div><span class="v">fit 0.47</span></div></div>
-      <div class="pool-box"><p class="n">1.4</p><p>review rounds before a merge lands</p><span class="src mono-label">from: matched gate calls per matched merge</span><div class="fitline"><div class="track"><div class="fill" style="width:45%"></div></div><span class="v">fit 0.45</span></div></div>
-      <div class="pool-box"><p class="n">41%</p><p>of sessions start with a skill call</p><span class="src mono-label">from: first tool call per session</span><span class="cov mono-label">counts: claude code · opencode</span><div class="fitline"><div class="track"><div class="fill" style="width:41%"></div></div><span class="v">fit 0.41</span></div></div>
-      <div class="pool-box"><p class="n">31%</p><p>of tool transitions are read then edit, the commonest pair</p><span class="src mono-label">from: ordered tool transitions</span><div class="fitline"><div class="track"><div class="fill" style="width:38%"></div></div><span class="v">fit 0.38</span></div></div>
+      <div class="pool-box live"><p class="n">1 in 6</p><p>sessions switch model mid-run</p><span class="src mono-label">from: response model changes · exact</span><div class="fitline"><div class="track"><div class="fill" style="width:52%"></div></div><span class="v">fit 0.52 ·&nbsp;live</span></div></div>
       <div class="pool-box"><p class="n">38%</p><p>of response tokens are thinking</p><span class="src mono-label">from: token records · one definition per harness</span><div class="fitline"><div class="track"><div class="fill" style="width:36%"></div></div><span class="v">fit 0.36</span></div></div>
       <div class="pool-box"><p class="n">61%</p><p>of turns run at high effort</p><span class="src mono-label">from: effort field · exact where recorded</span><span class="cov mono-label">counts: claude code · codex</span><div class="fitline"><div class="track"><div class="fill" style="width:34%"></div></div><span class="v">fit 0.34</span></div></div>
-      <div class="pool-box"><p class="n">220</p><p>test commands run this window</p><span class="src mono-label">from: rule test-cmd-v2 · matched test commands</span><div class="fitline"><div class="track"><div class="fill" style="width:31%"></div></div><span class="v">fit 0.31</span></div></div>
+      <div class="pool-box"><p class="n">1 in 5</p><p>sessions change effort mid-run</p><span class="src mono-label">from: effort field changes · exact where recorded</span><span class="cov mono-label">counts: claude code · codex</span><div class="fitline"><div class="track"><div class="fill" style="width:33%"></div></div><span class="v">fit 0.33</span></div></div>
       <div class="pool-box"><p class="n">47 min</p><p>longest recorded turn duration</p><span class="src mono-label">from: turn duration records</span><span class="cov mono-label">counts: claude code · opencode</span><div class="fitline"><div class="track"><div class="fill" style="width:29%"></div></div><span class="v">fit 0.29</span></div></div>
       <div class="pool-box"><p class="n">1 in 9</p><p>turns ends with a question back to the human</p><span class="src mono-label">from: question tool calls</span><div class="fitline"><div class="track"><div class="fill" style="width:27%"></div></div><span class="v">fit 0.27</span></div></div>
       <div class="pool-box"><p class="n">6</p><p>web searches per active day, inside the harness</p><span class="src mono-label">from: recorded web-search calls</span><div class="fitline"><div class="track"><div class="fill" style="width:24%"></div></div><span class="v">fit 0.24</span></div></div>
-      <div class="pool-box"><p class="n">73%</p><p>of changed lines are TypeScript</p><span class="src mono-label">from: local git history · exact</span><div class="fitline"><div class="track"><div class="fill" style="width:22%"></div></div><span class="v">fit 0.22</span></div></div>
-      <div class="pool-box"><p class="n">3</p><p>harnesses syncing: claude code, codex, opencode</p><span class="src mono-label">from: sync payloads per harness · exact</span><div class="fitline"><div class="track"><div class="fill" style="width:18%"></div></div><span class="v">fit 0.18</span></div></div>
-      <div class="pool-box excluded"><p class="n">34%</p><p>of tool work runs on subagents</p><span class="src mono-label">from: agent-scoped tool calls · exact</span><span class="excl mono-label">excluded: the Actual Usage section shows it</span></div>
-      <div class="pool-box excluded"><p class="n">425</p><p>median changed lines per commit, 47% touch a test</p><span class="src mono-label">from: local git history · exact</span><span class="excl mono-label">excluded: the Git Ledger block shows it</span></div>
+      <div class="pool-box excluded"><p class="n">+94.8k / -19.3k</p><p>lines added and removed this window</p><span class="src mono-label">from: local git history · exact</span><span class="excl mono-label">excluded: the git ledger shows it</span></div>
+      <div class="pool-box excluded"><p class="n">11</p><p>widest parallel subagent fan-out in one session</p><span class="src mono-label">from: overlapping child-session spans</span><span class="excl mono-label">excluded: the delegation component shows it</span></div>
+      <div class="pool-box excluded"><p class="n">43</p><p>most subagents in one session</p><span class="src mono-label">from: child-session counts</span><span class="excl mono-label">excluded: the delegation component shows it</span></div>
+      <div class="pool-box excluded"><p class="n">2 : 1</p><p>main-loop to subagent tool work</p><span class="src mono-label">from: agent-scoped tool calls · exact</span><span class="excl mono-label">excluded: the delegation component shows it</span></div>
     </div>
-
-    <p class="lead block-gap" style="margin-bottom:0">Changes against round 4: the pool grows from 12 to 22 per the transcript-knowledge grilling. The two commit metrics moved to local Git history and turned exact. Test runs became <b>test commands run</b>, and the TypeScript share now counts real changed lines. Ruled out and absent: plan-mode share, permission changes, context resets.</p>
 
     <div class="consent">
       <span class="mono-label">// HOW TO READ THIS</span><br>
-      Shares, never raw counts. A skill, agent or server name appears here only after the owner approves it at the sync gate. Coverage tags follow the extractability research: the stack syncs claude code, codex and opencode, and a tag names the harnesses counted when one of them lacks the signal. Fit scores here are hand-made to show the ranking. No live sync feeds this yet.
+      Shares, never raw counts. Coverage tags follow the extractability research: the stack syncs claude code, codex and opencode, and a tag names the harnesses counted when one of them lacks the signal. Fit scores here are hand-made to show the ranking. No live sync feeds this yet.
     </div>
   </div>
 </section>
@@ -541,7 +541,7 @@
       <span class="sec-meta">fit · rotation · draft slots</span>
     </div>
 
-    <p class="lead">This view is not part of the page. It shows the three rules this round proposes, so each one can be judged on its own. Everything here runs on the machine at sync time, deterministically.</p>
+    <p class="lead">This view is not part of the page. It shows the three proposed rules, updated for the trimmed pool. Everything here runs on the machine at sync time, deterministically. These rules are still open: the questions return in this round.</p>
 
     <div class="mech">
       <h3>1 · What fit means</h3>
@@ -551,28 +551,27 @@
         <li><b>coverage</b>: the share of synced harnesses the metric counts. A metric from local Git history counts them all.</li>
         <li><b>surprise</b>: how far the value sits from the typical band its metric rule declares, normalized 0 to 1. The band is part of the versioned rule, like a proxy match.</li>
         <li>Ties break on <b>movement</b>: the change against the prior window.</li>
-        <li>A fact another block or section already shows is <b>excluded</b> from the slots. Today that excludes the subagent share (Actual Usage) and the git shape (the Git Ledger).</li>
+        <li>A fact another block or section already shows is <b>excluded</b> from the slots. Today: the line counts (Git Ledger) and the three subagent facts (delegation).</li>
         <li>No LLM ranks anything. Fit is computed, logged, and reproducible (ADR-0001).</li>
       </ul>
     </div>
 
     <div class="mech block-gap">
       <h3>2 · The worked ranking</h3>
-      <p class="sub">The top of the pool at the 2026-08-19 sync, scored</p>
+      <p class="sub">The trimmed pool at the 2026-08-21 sync, scored</p>
       <div class="tbl-wrap">
         <table class="mtbl">
           <tr><th>metric</th><th class="num">coverage</th><th class="num">surprise</th><th class="num">fit</th><th>state</th></tr>
-          <tr><td>merges passed a human review gate first</td><td class="num">1.00</td><td class="num">0.92</td><td class="num">0.92</td><td class="state-surfaced">surfaced</td></tr>
           <tr><td>commits between 23:00 and 03:00</td><td class="num">1.00</td><td class="num">0.86</td><td class="num">0.86</td><td class="state-surfaced">surfaced</td></tr>
           <tr><td>projects run in parallel</td><td class="num">1.00</td><td class="num">0.81</td><td class="num">0.81</td><td class="state-surfaced">surfaced</td></tr>
-          <tr><td>lines added and removed</td><td class="num">1.00</td><td class="num">0.74</td><td class="num">0.74</td><td>waiting</td></tr>
-          <tr><td>widest subagent fan-out</td><td class="num">0.67</td><td class="num">0.87</td><td class="num">0.58</td><td>waiting</td></tr>
-          <tr><td>build streaks start from a wayfinder map</td><td class="num">0.67</td><td class="num">0.82</td><td class="num">0.55</td><td>waiting</td></tr>
-          <tr><td>share of tool work on subagents</td><td class="num">1.00</td><td class="num">0.78</td><td class="num">·</td><td class="state-excluded">excluded · shown in Actual Usage</td></tr>
-          <tr><td>git shape (commit size, tests per commit)</td><td class="num">1.00</td><td class="num">0.63</td><td class="num">·</td><td class="state-excluded">excluded · shown in the Git Ledger</td></tr>
+          <tr><td>sessions switch model mid-run</td><td class="num">1.00</td><td class="num">0.52</td><td class="num">0.52</td><td class="state-surfaced">surfaced</td></tr>
+          <tr><td>thinking share of response tokens</td><td class="num">1.00</td><td class="num">0.36</td><td class="num">0.36</td><td>waiting</td></tr>
+          <tr><td>turns at high effort</td><td class="num">0.67</td><td class="num">0.51</td><td class="num">0.34</td><td>waiting</td></tr>
+          <tr><td>sessions change effort mid-run</td><td class="num">0.67</td><td class="num">0.49</td><td class="num">0.33</td><td>waiting</td></tr>
+          <tr><td>lines added and removed</td><td class="num">1.00</td><td class="num">0.74</td><td class="num">·</td><td class="state-excluded">excluded · shown in the git ledger</td></tr>
+          <tr><td>subagent records and ratio</td><td class="num">0.67</td><td class="num">0.87</td><td class="num">·</td><td class="state-excluded">excluded · shown in delegation</td></tr>
         </table>
       </div>
-      <p class="sub" style="margin:12px 0 0">The fan-out beats the late-night commits on surprise, and loses the slot on coverage: codex records no subagents.</p>
     </div>
 
     <div class="mech block-gap">
@@ -582,16 +581,16 @@
         <li>Fit recomputes at <b>every sync</b>.</li>
         <li>A challenger takes a slot only when its fit beats the incumbent by <b>25% or more</b>.</li>
         <li>An incumbent leaves at once when its <b>coverage drops</b> (a harness stopped syncing) or its signal had <b>no events</b> in the window.</li>
-        <li>At most <b>one slot swaps per sync day</b>, so the section never turns over wholesale.</li>
+        <li>The owner can <b>remove a metric from the pool</b>. Its slot refills with the next fit at the next sync.</li>
+        <li>At most <b>one slot swaps per sync day</b>, so the section never turns over wholesale. An owner removal is the one exception.</li>
       </ul>
       <div class="tbl-wrap" style="margin-top:16px">
         <table class="mtbl">
           <tr><th>sync</th><th>slot 1</th><th>slot 2</th><th>slot 3</th><th>event</th></tr>
-          <tr><td>08-15</td><td>review gate</td><td>parallel projects</td><td>test commands</td><td class="ledger-note">·</td></tr>
-          <tr><td>08-16</td><td>review gate</td><td>parallel projects</td><td>test commands</td><td class="ledger-note">late-night commits challenged at +9% · under the margin</td></tr>
-          <tr><td>08-17</td><td>review gate</td><td>parallel projects</td><td class="swap">late-night commits</td><td class="ledger-note"><span class="swap">swap</span> · challenger won by +31%</td></tr>
-          <tr><td>08-18</td><td>review gate</td><td>parallel projects</td><td>late-night commits</td><td class="ledger-note">no challenger over the margin</td></tr>
+          <tr><td>08-17</td><td>review gate</td><td>parallel projects</td><td>late-night commits</td><td class="ledger-note">·</td></tr>
           <tr><td>08-19</td><td>review gate</td><td>parallel projects</td><td>late-night commits</td><td class="ledger-note">no challenger over the margin</td></tr>
+          <tr><td>08-20</td><td class="swap">late-night commits</td><td>parallel projects</td><td class="swap">model switches</td><td class="ledger-note"><span class="swap">refill</span> · the owner removed the review gate metric</td></tr>
+          <tr><td>08-21</td><td>late-night commits</td><td>parallel projects</td><td>model switches</td><td class="ledger-note">no challenger over the margin</td></tr>
         </table>
       </div>
     </div>
@@ -601,11 +600,11 @@
       <p class="sub">Where the LLM writes, per ADR-0001</p>
       <ul class="rulelist">
         <li><b>Slot 1 · the section lead</b>: how this person works, in a few sentences over the whole aggregate set.</li>
-        <li><b>Slot 2 · the anatomy note</b>: what the phase split says about the flow.</li>
-        <li><b>Slot 3 · the routing note</b>: what the model split says about the policy.</li>
+        <li><b>Slot 2 · the routing note</b>: what the model split says about the policy.</li>
+        <li>The anatomy note waits: it follows the phase-anatomy prototype (ticket 186).</li>
         <li>Input: approved aggregates only. The draft never states a number, a label, or a legend. The measured figures stand beside it.</li>
         <li>Each draft is labeled, the owner edits it, and an unapproved draft renders nothing. A missing measurement stays absent.</li>
-        <li>Everything else on the section is measured text: box captions and tags belong to the metric rules, not to the LLM.</li>
+        <li>Everything else is measured text: box captions and tags belong to the metric rules, not to the LLM.</li>
       </ul>
     </div>
 
@@ -616,43 +615,25 @@
   </div>
 </section>
 
-<!-- Downstream journey, dimmed -->
-<div class="dimmed">
-  <section class="journey alt">
-    <div class="shell">
-      <div class="sec-head" style="margin-bottom:0">
-        <span class="sec-index">03</span>
-        <div class="head-copy">
-          <p class="sec-kicker">// BUILT</p>
-          <h2 class="sec-title">Projects</h2>
-        </div>
-      </div>
-    </div>
-  </section>
-  <section class="journey" style="padding-top:40px; padding-bottom:40px">
-    <div class="shell">
-      <p class="mono-label">the journey continues · 04 tools · 05 workflow guide</p>
-    </div>
-  </section>
-</div>
-
 <div class="page-end-pad"></div>
+
+<div class="heat-tip" id="heat-tip"></div>
 
 <!-- floating variant switcher (prototype chrome, not part of the design) -->
 <div class="switcher" role="navigation" aria-label="variant switcher">
   <button type="button" id="prev" aria-label="previous view">←</button>
   <div class="label">
     <span class="k" id="sw-k">view 1 / 3</span>
-    <span class="n" id="sw-n">the final section</span>
+    <span class="n" id="sw-n">the components</span>
   </div>
   <button type="button" id="next" aria-label="next view">→</button>
 </div>
 
 <script>
   var VARIANTS = [
-    { key: 'composed',  id: 'v-composed',  name: 'the final section' },
-    { key: 'pool',      id: 'v-pool',      name: 'the pool, by fit' },
-    { key: 'mechanics', id: 'v-mechanics', name: 'the mechanics' }
+    { key: 'components', id: 'v-components', name: 'the components' },
+    { key: 'pool',       id: 'v-pool',       name: 'the pool, by fit' },
+    { key: 'mechanics',  id: 'v-mechanics',  name: 'the mechanics' }
   ];
   var current = 0;
 
@@ -677,12 +658,15 @@
   });
 
   /* Heatmap: hour-of-day profile from the repo's real commit history,
-     spread across weekdays with the real weekday weights. */
+     spread across weekdays with the real weekday weights. Tap or hover a
+     cell for its estimated stats. */
   (function () {
     var hours = [21,16,3,0,1,0,0,1,2,1,1,8,3,6,5,1,6,6,1,1,5,7,9,6]; /* real: git log by hour */
     var dayW = { Mon: 19, Tue: 4, Wed: 12, Thu: 12, Fri: 15, Sat: 17, Sun: 31 }; /* real: git log by weekday */
     var days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    var total = 110;
     var grid = document.getElementById('heatmap');
+    var tip = document.getElementById('heat-tip');
     var maxV = 0, cells = [];
     days.forEach(function (d) {
       hours.forEach(function (h) {
@@ -701,10 +685,77 @@
         var v = cells[di * 24 + h2] / maxV;
         var mix = v === 0 ? 0 : v < 0.12 ? 18 : v < 0.3 ? 38 : v < 0.6 ? 62 : 90;
         var bg = mix === 0 ? 'var(--bg-panel)' : 'color-mix(in oklab, var(--accent-lime) ' + mix + '%, var(--bg-panel))';
-        html += '<div class="heat-cell" style="background:' + bg + '"></div>';
+        html += '<div class="heat-cell" data-d="' + di + '" data-h="' + h2 + '" style="background:' + bg + '"></div>';
       }
     });
     grid.innerHTML = html;
+
+    function cellStats(di, h) {
+      var est = Math.round(cells[di * 24 + h] / total);
+      var share = (100 * cells[di * 24 + h] / (total * total)).toFixed(1);
+      var hh = String(h).padStart(2, '0');
+      return '<b>' + days[di] + ' · ' + hh + ':00</b><br>' +
+        '<span class="k">commits (est)</span> ' + est + '<br>' +
+        '<span class="k">share of window</span> ' + share + '%';
+    }
+    function showTip(target, x, y) {
+      if (!target.classList || !target.classList.contains('heat-cell')) { tip.style.display = 'none'; return; }
+      tip.innerHTML = cellStats(+target.dataset.d, +target.dataset.h);
+      tip.style.display = 'block';
+      var w = tip.offsetWidth, hgt = tip.offsetHeight;
+      var left = Math.min(Math.max(6, x - w / 2), window.innerWidth - w - 6);
+      var top = y - hgt - 14; if (top < 6) top = y + 18;
+      tip.style.left = left + 'px'; tip.style.top = top + 'px';
+    }
+    grid.addEventListener('mousemove', function (e) { showTip(e.target, e.clientX, e.clientY); });
+    grid.addEventListener('mouseleave', function () { tip.style.display = 'none'; });
+    grid.addEventListener('click', function (e) {
+      if (e.target.classList.contains('heat-cell')) showTip(e.target, e.clientX, e.clientY);
+      else tip.style.display = 'none';
+    });
+  })();
+
+  /* Dot strip: the real changed-line counts of the window's commits, log scale. */
+  (function () {
+    var sizes = [0,0,2,2,2,3,4,7,10,12,13,17,20,21,24,25,28,31,32,33,34,36,37,42,53,66,70,99,111,117,126,130,135,169,170,172,173,190,211,227,231,234,249,271,287,288,296,305,321,345,359,384,425,428,444,470,470,480,490,490,490,493,547,695,762,820,849,967,971,1003,1060,1112,1113,1114,1160,1164,1174,1279,1330,1338,1341,1464,1548,1695,1701,1750,1813,2216,2314,2340,3019,3083,3226,3410,3461,3506,3639,3729,4397,4493,4647,4815,8042,14331]; /* real: git log shortstat */
+    var median = 425;
+    var svg = document.getElementById('dotstrip');
+    var NS = 'http://www.w3.org/2000/svg';
+    var lgMax = Math.log10(15000);
+    function x(v) { return 12 + (Math.log10(Math.max(v, 1)) / lgMax) * 576; }
+    [10, 100, 1000, 10000].forEach(function (t) {
+      var l = document.createElementNS(NS, 'line');
+      l.setAttribute('x1', x(t)); l.setAttribute('x2', x(t));
+      l.setAttribute('y1', 8); l.setAttribute('y2', 60);
+      l.setAttribute('stroke', 'oklch(0.55 0.01 256 / 0.35)'); l.setAttribute('stroke-width', '1');
+      svg.appendChild(l);
+      var tx = document.createElementNS(NS, 'text');
+      tx.setAttribute('x', x(t)); tx.setAttribute('y', 76);
+      tx.setAttribute('fill', 'oklch(0.68 0.005 256)');
+      tx.setAttribute('font-size', '9'); tx.setAttribute('text-anchor', 'middle');
+      tx.setAttribute('font-family', 'JetBrains Mono, monospace');
+      tx.textContent = t >= 1000 ? (t / 1000) + 'k' : t;
+      svg.appendChild(tx);
+    });
+    sizes.forEach(function (s, i) {
+      var c = document.createElementNS(NS, 'rect');
+      c.setAttribute('x', x(s) - 2); c.setAttribute('width', 4);
+      c.setAttribute('y', 14 + (i % 7) * 6); c.setAttribute('height', 4);
+      c.setAttribute('fill', 'oklch(0.78 0.17 132 / 0.65)');
+      svg.appendChild(c);
+    });
+    var m = document.createElementNS(NS, 'line');
+    m.setAttribute('x1', x(median)); m.setAttribute('x2', x(median));
+    m.setAttribute('y1', 4); m.setAttribute('y2', 64);
+    m.setAttribute('stroke', 'oklch(0.96 0.004 256)'); m.setAttribute('stroke-width', '1.5');
+    svg.appendChild(m);
+    var ml = document.createElementNS(NS, 'text');
+    ml.setAttribute('x', x(median) + 5); ml.setAttribute('y', 12);
+    ml.setAttribute('fill', 'oklch(0.96 0.004 256)');
+    ml.setAttribute('font-size', '9');
+    ml.setAttribute('font-family', 'JetBrains Mono, monospace');
+    ml.textContent = 'median 425';
+    svg.appendChild(ml);
   })();
 
   /* Sparkline trails: polyline from each svg's data-trail. */
