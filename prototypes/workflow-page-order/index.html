@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Prototype · alp82/aistack#193 · the stack page section order · round 4</title>
+<title>Prototype · alp82/aistack#193 · the stack page section order · round 5</title>
 <!--
   PROTOTYPE. Throwaway. alp82/aistack#193: the stack page section order with
   the workflow section. Baseline: #191 round 4 (PR #192), the podium.
@@ -19,29 +19,27 @@
   ROUND 3 verdict (2026-08-21): one at a time. Play with compact combined
   with it, and show more variations of the peek. Ten combinations.
 
-  ROUND 4. Ten treatments. The order is fixed: usage, projects, tools,
-  workflow, guide. Every variation here is one-at-a-time unless said
-  otherwise. The title treatment rides along: the measured section takes
-  the name "Workflow", the old guide becomes "Guide". Titles get their
-  own round after the structure is picked.
+  ROUND 4 verdict (2026-08-21): A (compact, one at a time) and F (the
+  micro peek) are the favorites. Five more with those as the baseline.
 
-  - A "compact, one at a time":  compact stat bars, all shut.
-  - B "compact, usage open":     same, Actual Usage open on arrival.
-  - C "compact, workflow open":  same, Workflow open on arrival.
-  - D "the peek, one at a time": every section peeks. Opening one closes
-        any other open section, whose peek returns.
-  - E "the bright peek":         taller, full-brightness peeks with a
-        tap-to-open tag. Multi-open, the round-3 peek fixed.
-  - F "the micro peek":          a thin crisp strip of each section.
-  - G "the measured peek":       compact bars, only usage and workflow
-        peek. The proof shows, the told sections stay lines.
-  - H "the first peek":          compact bars, only usage peeks.
-  - I "the workflow peek":       compact bars, only the workflow peeks.
-  - J "the focus":               bright peeks everywhere. While one
-        section is open the others drop their peek to a bare bar, and
-        closing it brings the peeks back.
+  ROUND 5. Five hybrids of the compact bars and the micro peek. The order
+  is fixed: usage, projects, tools, workflow, guide. Everything is
+  one-at-a-time. The title treatment rides along: the measured section
+  takes the name "Workflow", the old guide becomes "Guide". Titles get
+  their own round after the structure is picked.
+
+  - A "the compact micro": compact stat bars with a micro peek under
+        every bar. A and F merged straight.
+  - B "the inline strip":  compact bars that carry a thin data strip
+        inside the bar itself. No peek blocks, the thinnest page.
+  - C "micro with stats":  F unchanged, plus the headline stat on the
+        right of each full-size header.
+  - D "the single micro":  A everywhere, and only the workflow bar gets
+        a micro peek. One whisper of the flagship.
+  - E "the digest open":   A bars, and an opened section shows its digest
+        body with show-all rows, so even open stays short.
   Switch with the bar at the bottom or ?variant=<key>, keys:
-  cmpx|cmpx1|cmpxw|peekx|bright|micro|gmeas|hfirst|iwf|focus.
+  am|strip|fstat|wfm|dopen.
 
   Data provenance: the workflow rows, fit scores and stats come unchanged
   from the #191 prototype (real Git anchors, hand-made shares). The guide
@@ -153,6 +151,12 @@
   .acc.compact section.open .sec-kicker { display: block; }
   .stat-chip { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 800; color: var(--accent-lime); align-self: center; white-space: nowrap; }
   .acc section.open .stat-chip { display: none; }
+
+  /* the inline strip (round 5, B) */
+  .bar-strip { display: none; gap: 1px; height: 10px; width: 110px; align-self: center; flex-shrink: 0; }
+  @media (min-width: 480px) { .bar-strip { display: inline-flex; } }
+  .bar-strip i { height: 100%; display: inline-block; }
+  .acc section.open .bar-strip { display: none; }
 
   /* the peek (round 3, D; round 4 styles) */
   .peekwrap { position: relative; max-height: 170px; overflow: hidden; opacity: 0.55; cursor: pointer; padding-bottom: 24px; }
@@ -275,7 +279,7 @@
 <body>
 
 <div class="ticket-strip">
-  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 4 · ten combinations of one-at-a-time, compact and the peek
+  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 5 · five hybrids of the compact bars and the micro peek
 </div>
 
 <!-- ==================== section content templates ==================== -->
@@ -317,104 +321,54 @@
 
 <!-- ==================== the five treatments ==================== -->
 
-<div class="variant" id="v-cmpx">
+<div class="variant" id="v-am">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal A · compact, one at a time · prototype chrome</span>
-      <b>Compact stat bars, all shut, exclusive.</b> The page arrives as a table of contents in half a screen, and it never holds more than one open section.
+      <span class="tag">proposal A · the compact micro · prototype chrome</span>
+      <b>A and F merged straight.</b> Compact stat bars, and a micro peek strip under every bar. The journey fits about one screen and every section shows a sliver.
     </div>
   </div>
-  <div data-page="cmpx"></div>
+  <div data-page="am"></div>
 </div>
 
-<div class="variant" id="v-cmpx1">
+<div class="variant" id="v-strip">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal B · compact, usage open · prototype chrome</span>
-      <b>The same compact exclusive bars, but Actual Usage stands open on arrival.</b> The first screen carries proof instead of only lines.
+      <span class="tag">proposal B · the inline strip · prototype chrome</span>
+      <b>The peek moves into the bar itself.</b> Each compact bar carries a thin data strip beside the stat. No peek blocks below, the thinnest page of the five.
     </div>
   </div>
-  <div data-page="cmpx1"></div>
+  <div data-page="strip"></div>
 </div>
 
-<div class="variant" id="v-cmpxw">
+<div class="variant" id="v-fstat">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal C · compact, workflow open · prototype chrome</span>
-      <b>The same compact exclusive bars, but the Workflow stands open on arrival.</b> The flagship section greets first, the usage band waits one tap up.
+      <span class="tag">proposal C · micro with stats · prototype chrome</span>
+      <b>F unchanged, plus the headline stat.</b> Full-size headers, a micro peek of every section, and the number on the right of each bar.
     </div>
   </div>
-  <div data-page="cmpxw"></div>
+  <div data-page="fstat"></div>
 </div>
 
-<div class="variant" id="v-peekx">
+<div class="variant" id="v-wfm">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal D · the peek, one at a time · prototype chrome</span>
-      <b>Every section peeks, and opening one closes any other open section.</b> The round-3 peek plus the exclusive rule.
+      <span class="tag">proposal D · the single micro · prototype chrome</span>
+      <b>A everywhere, one exception.</b> Only the workflow bar gets a micro peek, so the flagship whispers through the fold while the rest stays lines.
     </div>
   </div>
-  <div data-page="peekx"></div>
+  <div data-page="wfm"></div>
 </div>
 
-<div class="variant" id="v-bright">
+<div class="variant" id="v-dopen">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal E · the bright peek · prototype chrome</span>
-      <b>Taller peeks at full brightness with a tap-to-open tag.</b> No dimming, so nothing reads as broken. Several sections can stand open.
+      <span class="tag">proposal E · the digest open · prototype chrome</span>
+      <b>A bars, capped bodies.</b> An opened section shows its digest with show-all rows, so even the open state stays near one screen.
     </div>
   </div>
-  <div data-page="bright"></div>
-</div>
-
-<div class="variant" id="v-micro">
-  <div class="proposal">
-    <div class="proposal-box">
-      <span class="tag">proposal F · the micro peek · prototype chrome</span>
-      <b>A thin crisp strip of every section, exclusive.</b> The journey compresses to about one screen and still shows a sliver of everything.
-    </div>
-  </div>
-  <div data-page="micro"></div>
-</div>
-
-<div class="variant" id="v-gmeas">
-  <div class="proposal">
-    <div class="proposal-box">
-      <span class="tag">proposal G · the measured peek · prototype chrome</span>
-      <b>Compact bars, and only the measured sections peek.</b> Usage and Workflow show their first block bright, the told sections stay one line each.
-    </div>
-  </div>
-  <div data-page="gmeas"></div>
-</div>
-
-<div class="variant" id="v-hfirst">
-  <div class="proposal">
-    <div class="proposal-box">
-      <span class="tag">proposal H · the first peek · prototype chrome</span>
-      <b>Compact bars, and only Actual Usage peeks.</b> One bright block of proof on arrival, four quiet lines under it.
-    </div>
-  </div>
-  <div data-page="hfirst"></div>
-</div>
-
-<div class="variant" id="v-iwf">
-  <div class="proposal">
-    <div class="proposal-box">
-      <span class="tag">proposal I · the workflow peek · prototype chrome</span>
-      <b>Compact bars, and only the Workflow peeks.</b> The podium shows through the fold while the rest of the page stays a table of contents.
-    </div>
-  </div>
-  <div data-page="iwf"></div>
-</div>
-
-<div class="variant" id="v-focus">
-  <div class="proposal">
-    <div class="proposal-box">
-      <span class="tag">proposal J · the focus · prototype chrome</span>
-      <b>Bright peeks everywhere, exclusive.</b> While one section is open the others drop their peek to a bare bar. Closing it brings all the peeks back.
-    </div>
-  </div>
-  <div data-page="focus"></div>
+  <div data-page="dopen"></div>
 </div>
 
 <div class="page-end-pad"></div>
@@ -686,6 +640,20 @@
 
   var ORDER_A = ['usage', 'projects', 'tools', 'workflow', 'guide'];
 
+  /* inline bar strips (round 5, B): a thin data texture per section */
+  var STRIPS = {
+    usage:    [[58, 'var(--accent-lime)'], [22, 'oklch(0.78 0.17 132 / 0.55)'], [12, 'oklch(0.78 0.17 132 / 0.3)'], [8, 'var(--bg-panel-elevated)']],
+    projects: [[20, 'var(--accent-lime)'], [1, 'var(--bg-canvas)'], [20, 'oklch(0.78 0.17 132 / 0.6)'], [1, 'var(--bg-canvas)'], [20, 'oklch(0.78 0.17 132 / 0.45)'], [1, 'var(--bg-canvas)'], [20, 'oklch(0.78 0.17 132 / 0.3)'], [1, 'var(--bg-canvas)'], [20, 'oklch(0.78 0.17 132 / 0.2)']],
+    tools:    [[30, 'var(--accent-lime)'], [1, 'var(--bg-canvas)'], [22, 'oklch(0.78 0.17 132 / 0.55)'], [1, 'var(--bg-canvas)'], [16, 'oklch(0.78 0.17 132 / 0.4)'], [1, 'var(--bg-canvas)'], [12, 'oklch(0.78 0.17 132 / 0.3)'], [1, 'var(--bg-canvas)'], [16, 'var(--bg-panel-elevated)']],
+    workflow: [[42, 'var(--accent-lime)'], [28, 'oklch(0.78 0.17 132 / 0.5)'], [18, 'oklch(0.78 0.17 132 / 0.3)'], [12, 'var(--bg-panel-elevated)']],
+    guide:    [[34, 'var(--bg-panel-elevated)'], [2, 'var(--bg-canvas)'], [26, 'var(--bg-panel-elevated)'], [2, 'var(--bg-canvas)'], [36, 'var(--bg-panel-elevated)']]
+  };
+  function stripHtml(k) {
+    return '<span class="bar-strip">' + STRIPS[k].map(function (s) {
+      return '<i style="flex:' + s[0] + '; background:' + s[1] + '"></i>';
+    }).join('') + '</span>';
+  }
+
   function sectionEl(idx, def, bodyEl, extraHead) {
     var sec = document.createElement('section');
     sec.className = 'journey';
@@ -730,11 +698,14 @@
       var extra = cfg.mode === 'gist' ? '<p class="gist">' + def.gist + '</p>' : '';
       var sec = sectionEl(i + 1, def, el('acc-body'), extra);
       var head = sec.querySelector('.sec-head');
-      if (cfg.mode === 'stat') {
+      if (cfg.mode === 'strip') {
+        head.insertAdjacentHTML('beforeend', stripHtml(k));
+      }
+      if (cfg.mode === 'stat' || cfg.mode === 'strip') {
         head.insertAdjacentHTML('beforeend', '<span class="stat-chip">' + def.stat + '</span>');
       }
       head.insertAdjacentHTML('beforeend', '<span class="acc-chev"></span>');
-      sec.querySelector('.acc-body').appendChild(def.body(false));
+      sec.querySelector('.acc-body').appendChild(def.body(cfg.digestOpen === true));
       if (peeks(k)) {
         var peek = el('peekwrap' + (cfg.peekClass ? ' ' + cfg.peekClass : ''));
         peek.appendChild(def.body(true));
@@ -764,16 +735,11 @@
   }
 
   var PAGES = {
-    cmpx:   function (host) { buildAccordionPage(host, ORDER_A, { open: [],  mode: 'stat', compact: true, exclusive: true }); },
-    cmpx1:  function (host) { buildAccordionPage(host, ORDER_A, { open: [0], mode: 'stat', compact: true, exclusive: true }); },
-    cmpxw:  function (host) { buildAccordionPage(host, ORDER_A, { open: [3], mode: 'stat', compact: true, exclusive: true }); },
-    peekx:  function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', peek: 'all', peekClass: '', exclusive: true }); },
-    bright: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', peek: 'all', peekClass: 'bright', hint: true }); },
-    micro:  function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', peek: 'all', peekClass: 'micro', exclusive: true }); },
-    gmeas:  function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'stat', compact: true, exclusive: true, peek: ['usage', 'workflow'], peekClass: 'bright', hint: true }); },
-    hfirst: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'stat', compact: true, exclusive: true, peek: ['usage'], peekClass: 'bright', hint: true }); },
-    iwf:    function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'stat', compact: true, exclusive: true, peek: ['workflow'], peekClass: 'bright', hint: true }); },
-    focus:  function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', peek: 'all', peekClass: 'bright', hint: true, exclusive: true, focus: true }); }
+    am:    function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'stat', compact: true, exclusive: true, peek: 'all', peekClass: 'micro' }); },
+    strip: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'strip', compact: true, exclusive: true }); },
+    fstat: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'stat', exclusive: true, peek: 'all', peekClass: 'micro' }); },
+    wfm:   function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'stat', compact: true, exclusive: true, peek: ['workflow'], peekClass: 'micro' }); },
+    dopen: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'stat', compact: true, exclusive: true, digestOpen: true }); }
   };
 
   document.querySelectorAll('[data-page]').forEach(function (host) {
@@ -782,16 +748,11 @@
 
   /* ---------- variant switcher ---------- */
   var VARIANTS = [
-    { key: 'cmpx',   id: 'v-cmpx',   name: 'A · compact, one at a time' },
-    { key: 'cmpx1',  id: 'v-cmpx1',  name: 'B · compact, usage open' },
-    { key: 'cmpxw',  id: 'v-cmpxw',  name: 'C · compact, workflow open' },
-    { key: 'peekx',  id: 'v-peekx',  name: 'D · the peek, one at a time' },
-    { key: 'bright', id: 'v-bright', name: 'E · the bright peek' },
-    { key: 'micro',  id: 'v-micro',  name: 'F · the micro peek' },
-    { key: 'gmeas',  id: 'v-gmeas',  name: 'G · the measured peek' },
-    { key: 'hfirst', id: 'v-hfirst', name: 'H · the first peek' },
-    { key: 'iwf',    id: 'v-iwf',    name: 'I · the workflow peek' },
-    { key: 'focus',  id: 'v-focus',  name: 'J · the focus' }
+    { key: 'am',    id: 'v-am',    name: 'A · the compact micro' },
+    { key: 'strip', id: 'v-strip', name: 'B · the inline strip' },
+    { key: 'fstat', id: 'v-fstat', name: 'C · micro with stats' },
+    { key: 'wfm',   id: 'v-wfm',   name: 'D · the single micro' },
+    { key: 'dopen', id: 'v-dopen', name: 'E · the digest open' }
   ];
   var current = 0;
 
@@ -817,7 +778,7 @@
   });
 
   (function () {
-    var q = new URL(window.location.href).searchParams.get('variant') || 'cmpx';
+    var q = new URL(window.location.href).searchParams.get('variant') || 'am';
     var idx = VARIANTS.findIndex(function (v) { return v.key === q; });
     show(idx >= 0 ? idx : 0);
   })();
