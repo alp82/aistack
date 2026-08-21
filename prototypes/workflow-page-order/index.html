@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Prototype · alp82/aistack#193 · the stack page section order · round 8</title>
+<title>Prototype · alp82/aistack#193 · the stack page section order · round 9</title>
 <!--
   PROTOTYPE. Throwaway. alp82/aistack#193: the stack page section order with
   the workflow section. Baseline: #191 round 4 (PR #192), the podium.
@@ -31,17 +31,20 @@
   ROUND 7 verdict (2026-08-21): torn between the crop and the signature
   visual.
 
-  ROUND 8. The tiebreak. The two contenders stay as references, and two
-  hybrids stand between them:
-  - A "the crop":             reference. The faded cut of the real body.
-  - B "the first block":      the section's leading real element, whole
-        and bright. The stat band, the cards, the tiles, the podium,
-        the topics box. Real like A, intentional like D.
-  - C "the signature visual": reference. One designed graphic each.
-  - D "the split":            the measured sections show their real
-        block, the told sections show their graphic, the guide a line.
+  ROUND 8 verdict (2026-08-21): the crop signals that a tap reveals
+  more, the visual is cleaner but hides that. The want: clean AND
+  clearly tappable.
+
+  ROUND 9. The signature visual, wearing five different tap signals:
+  - A "the tag":        a lime "+ tap to open" tag on the sliver.
+  - B "the more line":  a thin open-section row under the graphic.
+  - C "the boxed sliver": the graphic inside a bordered panel with a
+        big plus, so the whole sliver reads as a button.
+  - D "the undercrop":  the graphic bright, and a faint cropped inch of
+        the real body fading out beneath it.
+  - E "the tagged crop": the reference crop, wearing the same lime tag.
   Switch with the bar at the bottom or ?variant=<key>, keys:
-  crop|first|visual|split.
+  tag|moreline|boxed|undercrop|tagcrop.
 
   Data provenance: the workflow rows, fit scores and stats come unchanged
   from the #191 prototype (real Git anchors, hand-made shares). The guide
@@ -175,6 +178,16 @@
   .tease-bar i { height: 100%; display: inline-block; }
   .tease-label { margin: 8px 0 0; }
 
+  /* tap signals (round 9) */
+  .more-line { margin-top: 12px; border: 1px solid var(--stroke-subtle); padding: 8px 12px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted); display: flex; justify-content: space-between; max-width: 40rem; }
+  .more-line .pl { color: var(--accent-lime); font-weight: 700; }
+  .sliver-box { border: 1px solid var(--stroke-strong); padding: 14px; display: flex; align-items: center; gap: 14px; max-width: 44rem; transition: border-color 0.15s; }
+  .peekwrap:hover .sliver-box { border-color: var(--accent-lime); }
+  .sliver-box > :first-child { flex: 1; min-width: 0; }
+  .box-plus { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--accent-lime); flex-shrink: 0; }
+  .mini-crop { position: relative; max-height: 56px; overflow: hidden; opacity: 0.35; margin-top: 14px; max-width: 46rem; }
+  .mini-crop::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(transparent, var(--bg-canvas)); }
+
   /* the peek (round 3, D; round 4 styles) */
   .peekwrap { position: relative; max-height: 170px; overflow: hidden; opacity: 0.55; cursor: pointer; padding-bottom: 24px; }
   .peekwrap::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 90px; background: linear-gradient(transparent, var(--bg-canvas)); }
@@ -296,7 +309,7 @@
 <body>
 
 <div class="ticket-strip">
-  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 8 · the tiebreak: crop against visual
+  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 9 · the clean sliver with a clear tap signal
 </div>
 
 <!-- ==================== section content templates ==================== -->
@@ -338,44 +351,54 @@
 
 <!-- ==================== the five treatments ==================== -->
 
-<div class="variant" id="v-crop">
+<div class="variant" id="v-tag">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal A · the crop · prototype chrome</span>
-      <b>The reference.</b> The micro peek crops the top of the real section body, faded at the cut. What shows is whatever the section starts with.
+      <span class="tag">proposal A · the tag · prototype chrome</span>
+      <b>The clean graphic plus a lime "+ tap to open" tag.</b> The smallest possible signal, sitting on the sliver's corner.
     </div>
   </div>
-  <div data-page="crop"></div>
+  <div data-page="tag"></div>
 </div>
 
-<div class="variant" id="v-first">
+<div class="variant" id="v-moreline">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal B · the first block · prototype chrome</span>
-      <b>The section's leading real element, whole and bright.</b> The stat band, two cards, four tiles, the podium, the topics box. Real like the crop, intentional like the visual.
+      <span class="tag">proposal B · the more line · prototype chrome</span>
+      <b>A thin open-section row under each graphic.</b> The signal is its own element, so the graphic stays untouched.
     </div>
   </div>
-  <div data-page="first"></div>
+  <div data-page="moreline"></div>
 </div>
 
-<div class="variant" id="v-visual">
+<div class="variant" id="v-boxed">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal C · the signature visual · prototype chrome</span>
-      <b>One graphic per section.</b> The token bar, the project chips, the tool chips, the phase strip, the guide topics. Texture over figures.
+      <span class="tag">proposal C · the boxed sliver · prototype chrome</span>
+      <b>The graphic inside a bordered panel with a big plus.</b> The whole sliver reads as one button.
     </div>
   </div>
-  <div data-page="visual"></div>
+  <div data-page="boxed"></div>
 </div>
 
-<div class="variant" id="v-split">
+<div class="variant" id="v-undercrop">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal D · the split · prototype chrome</span>
-      <b>Each side gets its language.</b> The measured sections show their real block, the stat band and the podium. The told sections show their chips, the guide one sentence.
+      <span class="tag">proposal D · the undercrop · prototype chrome</span>
+      <b>The graphic bright, and a faint inch of the real body fading out beneath it.</b> The crop comes back, but only as a whisper under the clean sliver.
     </div>
   </div>
-  <div data-page="split"></div>
+  <div data-page="undercrop"></div>
+</div>
+
+<div class="variant" id="v-tagcrop">
+  <div class="proposal">
+    <div class="proposal-box">
+      <span class="tag">proposal E · the tagged crop · prototype chrome</span>
+      <b>The reference crop, wearing the lime tag.</b> The round-4 winner made more legible instead of replaced.
+    </div>
+  </div>
+  <div data-page="tagcrop"></div>
 </div>
 
 <div class="page-end-pad"></div>
@@ -816,7 +839,21 @@
         var peek = el('peekwrap' + (cfg.peekClass ? ' ' + cfg.peekClass : ''));
         if (cfg.tease) {
           peek.classList.add('teaser');
-          peek.appendChild(buildTease(cfg.tease, k));
+          var tease = buildTease(cfg.tease, k);
+          if (cfg.boxed) {
+            var box = el('sliver-box');
+            box.appendChild(tease);
+            box.insertAdjacentHTML('beforeend', '<span class="box-plus">+</span>');
+            peek.appendChild(box);
+          } else {
+            peek.appendChild(tease);
+          }
+          if (cfg.moreline) peek.appendChild(el('more-line', '<span>open section</span><span class="pl">+</span>'));
+          if (cfg.undercrop) {
+            var mc = el('mini-crop');
+            mc.appendChild(def.body(true));
+            peek.appendChild(mc);
+          }
         } else {
           peek.appendChild(def.body(true));
         }
@@ -846,10 +883,11 @@
   }
 
   var PAGES = {
-    crop:   function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', peek: 'all', peekClass: 'micro', exclusive: true }); },
-    first:  function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'first' }); },
-    visual: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'visual' }); },
-    split:  function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'split' }); }
+    tag:       function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'visual', hint: true }); },
+    moreline:  function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'visual', moreline: true }); },
+    boxed:     function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'visual', boxed: true }); },
+    undercrop: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'visual', undercrop: true }); },
+    tagcrop:   function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, peek: 'all', peekClass: 'micro', hint: true }); }
   };
 
   document.querySelectorAll('[data-page]').forEach(function (host) {
@@ -858,10 +896,11 @@
 
   /* ---------- variant switcher ---------- */
   var VARIANTS = [
-    { key: 'crop',   id: 'v-crop',   name: 'A · the crop' },
-    { key: 'first',  id: 'v-first',  name: 'B · the first block' },
-    { key: 'visual', id: 'v-visual', name: 'C · the signature visual' },
-    { key: 'split',  id: 'v-split',  name: 'D · the split' }
+    { key: 'tag',       id: 'v-tag',       name: 'A · the tag' },
+    { key: 'moreline',  id: 'v-moreline',  name: 'B · the more line' },
+    { key: 'boxed',     id: 'v-boxed',     name: 'C · the boxed sliver' },
+    { key: 'undercrop', id: 'v-undercrop', name: 'D · the undercrop' },
+    { key: 'tagcrop',   id: 'v-tagcrop',   name: 'E · the tagged crop' }
   ];
   var current = 0;
 
@@ -887,7 +926,7 @@
   });
 
   (function () {
-    var q = new URL(window.location.href).searchParams.get('variant') || 'crop';
+    var q = new URL(window.location.href).searchParams.get('variant') || 'tag';
     var idx = VARIANTS.findIndex(function (v) { return v.key === q; });
     show(idx >= 0 ? idx : 0);
   })();
