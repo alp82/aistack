@@ -32,6 +32,11 @@
   Switch with the bar at the bottom or
   ?variant=baseline|podium|scoreboard|shortlist|trails.
 
+  VERDICT (round 4, 2026-08-21). The operator picked B, the podium. The
+  state rules stand: highlight the top three by fit, hide below fit 0.40,
+  and the owner can pin or hide any row. The stack page section order goes
+  to a follow-up prototype. The page defaults to the winner.
+
   Data provenance: identical to rounds 1 to 3 (real Git anchors, real
   roster, hand-made shares and fit scores, playbook forms from #186). The
   typical bands and the 30-day trails are hand-made to show the form.
@@ -347,7 +352,7 @@
 <body>
 
 <div class="ticket-strip">
-  PROTOTYPE · <b>alp82/aistack#191</b> · compose the workflow section · round 4 · five variations of the amplified list
+  PROTOTYPE · <b>alp82/aistack#191</b> · compose the workflow section · round 4 · verdict: B, the podium
 </div>
 
 <!-- ==================== component body templates ==================== -->
@@ -1038,9 +1043,9 @@
   });
 
   (function () {
-    var q = new URL(window.location.href).searchParams.get('variant');
+    var q = new URL(window.location.href).searchParams.get('variant') || 'podium';
     var idx = VARIANTS.findIndex(function (v) { return v.key === q; });
-    show(idx >= 0 ? idx : 0);
+    show(idx >= 0 ? idx : 1);
   })();
 </script>
 
