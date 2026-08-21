@@ -4,40 +4,41 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Prototype · alp82/aistack#193 · the stack page section order · round 2</title>
+<title>Prototype · alp82/aistack#193 · the stack page section order · round 3</title>
 <!--
   PROTOTYPE. Throwaway. alp82/aistack#193: the stack page section order with
   the workflow section. Baseline: #191 round 4 (PR #192), the podium.
 
   ROUND 1 verdict (2026-08-21): the owner leans A (workflow at 04) or a
   projects-and-tools-first order. The fear: the page scrolls endlessly and
-  most people never reach the bottom. Round 2 explores five ways to tame
-  the scroll.
+  most people never reach the bottom.
 
-  ROUND 2. Five page structures. The order is A (usage, projects, tools,
-  workflow, guide) everywhere except E, which starts with projects and
-  tools. The title treatment rides along: the measured section takes the
-  name "Workflow", the old guide becomes "Guide". Titles get their own
-  round after the structure is picked.
+  ROUND 2 verdict (2026-08-21): the accordion. Five header bars, tap to
+  open. Five more variations based on it.
 
-  - A "the digest":    every section caps at about one screen and carries
-        its own "show all" row. The full journey stays one scroll, short.
-  - B "the accordion": the page is five header bars. Only the first opens
-        by default. A tap opens a section, the rest stay shut.
-  - C "the tabs":      a sticky tab bar, one section on screen at a time.
-        No long scroll exists at all.
-  - D "the jump rail": the full page stays, and a sticky mini-map shows
-        where you are. A tap jumps to any section.
-  - E "showcase first": the digest caps, but projects and tools open the
-        page. The measured sections follow, the guide closes.
+  ROUND 3. Five accordion treatments. The order is fixed: usage, projects,
+  tools, workflow, guide. The title treatment rides along: the measured
+  section takes the name "Workflow", the old guide becomes "Guide".
+  Titles get their own round after the structure is picked.
+
+  - A "the reference":   the round-2 accordion unchanged. First section
+        open, gist lines on the shut bars, any number open at once.
+  - B "the compact bars": small headers with the headline stat on the
+        right. Everything shut on arrival, five bars in half a screen.
+  - C "one at a time":   exclusive. Opening a section closes the rest and
+        the page scrolls to the opened header.
+  - D "the peek":        a shut section shows its first block, dimmed and
+        cropped. The whole journey stays visible, a tap opens the rest.
+  - E "the measured open": Actual Usage and Workflow open on arrival. The
+        told sections (projects, tools, guide) start shut.
   Switch with the bar at the bottom or
-  ?variant=digest|accordion|tabs|rail|showcase.
+  ?variant=ref|compact|exclusive|peek|measured.
 
   Data provenance: the workflow rows, fit scores and stats come unchanged
   from the #191 prototype (real Git anchors, hand-made shares). The guide
   prose, projects and tools are compressed fakes shaped like the live page.
-  The live sections are taller than these fakes, so the scroll devices
-  matter more on the real page, not less. No live sync feeds this.
+  The live sections are taller than these fakes, so the accordion matters
+  more on the real page, not less. No live sync feeds this.
 -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
@@ -133,40 +134,22 @@
   .acc section.open .acc-chev::before { content: "–"; }
   .acc section:not(.open) .acc-chev::before { content: "+"; }
 
-  /* ---------- tabs mode ---------- */
-  .tabbar {
-    position: sticky; top: 0; z-index: 40;
-    display: flex; overflow-x: auto;
-    background: var(--bg-shell);
-    border-bottom: 2px solid var(--stroke-strong);
-  }
-  .tabbar button {
-    appearance: none; border: 0; background: transparent; color: var(--fg-muted);
-    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
-    letter-spacing: 0.1em; text-transform: uppercase;
-    padding: 14px 16px; cursor: pointer; white-space: nowrap;
-    border-right: 1px solid var(--stroke-subtle);
-  }
-  .tabbar button .no { color: var(--stroke-strong); margin-right: 6px; }
-  .tabbar button.on { background: var(--bg-canvas); color: var(--accent-lime); box-shadow: inset 0 -3px 0 var(--accent-lime); }
-  .tabbar button.on .no { color: var(--accent-lime); }
+  /* compact bars (round 3, B) */
+  .acc.compact .sec-head { padding: 14px 0; gap: 12px; align-items: center; }
+  .acc.compact .sec-index { font-size: 18px; }
+  @media (min-width: 768px) { .acc.compact .sec-index { font-size: 22px; } }
+  .acc.compact .sec-title { font-size: 17px; margin: 0; }
+  @media (min-width: 768px) { .acc.compact .sec-title { font-size: 20px; } }
+  .acc.compact .sec-kicker { display: none; }
+  .acc.compact section.open .sec-kicker { display: block; }
+  .stat-chip { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 800; color: var(--accent-lime); align-self: center; white-space: nowrap; }
+  .acc section.open .stat-chip { display: none; }
 
-  /* ---------- jump rail mode ---------- */
-  .rail {
-    position: sticky; top: 0; z-index: 40;
-    display: flex; overflow-x: auto; gap: 0;
-    background: var(--bg-shell);
-    border-bottom: 1px solid var(--stroke-subtle);
-  }
-  .rail a {
-    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
-    letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none;
-    color: var(--fg-muted); padding: 11px 14px; white-space: nowrap;
-    border-right: 1px solid var(--stroke-subtle);
-  }
-  .rail a .no { color: var(--stroke-strong); margin-right: 5px; }
-  .rail a.on { color: var(--accent-lime); box-shadow: inset 0 -3px 0 var(--accent-lime); }
-  .rail a.on .no { color: var(--accent-lime); }
+  /* the peek (round 3, D) */
+  .peekwrap { position: relative; max-height: 170px; overflow: hidden; opacity: 0.55; cursor: pointer; padding-bottom: 24px; }
+  .peekwrap::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 90px; background: linear-gradient(transparent, var(--bg-canvas)); }
+  .peekwrap > * { pointer-events: none; }
+  .acc section.open .peekwrap { display: none; }
 
   /* ---------- show-all row (digest mode) ---------- */
   .showall {
@@ -278,7 +261,7 @@
 <body>
 
 <div class="ticket-strip">
-  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 2 · five ways against the endless scroll
+  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 3 · five accordion treatments
 </div>
 
 <!-- ==================== section content templates ==================== -->
@@ -320,59 +303,59 @@
 
 <!-- ==================== the five treatments ==================== -->
 
-<div class="variant" id="v-digest">
+<div class="variant" id="v-ref">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal A · the digest · prototype chrome</span>
-      <b>Every section caps at about one screen and carries its own "show all" row.</b> The journey stays one scroll, but a short one. The fold moves into each section, not the page.
-      <span class="journey">01 usage → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide · all capped</span>
+      <span class="tag">proposal A · the reference · prototype chrome</span>
+      <b>The round-2 accordion unchanged.</b> Actual Usage opens by default, the shut bars show a gist line, and any number of sections can stand open at once.
+      <span class="journey">01 usage open → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide · shut with gists</span>
     </div>
   </div>
-  <div data-page="digest"></div>
+  <div data-page="ref"></div>
 </div>
 
-<div class="variant" id="v-accordion">
+<div class="variant" id="v-compact">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal B · the accordion · prototype chrome</span>
-      <b>The page is five header bars, and only Actual Usage opens by default.</b> The whole journey fits one screen shut. A closed section shows its gist line.
-      <span class="journey">01 usage → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide · tap to open</span>
+      <span class="tag">proposal B · the compact bars · prototype chrome</span>
+      <b>Small headers with the headline stat on the right.</b> Everything starts shut, so the five bars fit half a screen and the page reads like a table of contents.
+      <span class="journey">01 usage 148M → 02 projects 5 → 03 tools 11 → <b>04 workflow 42%</b> → 05 guide · all shut</span>
     </div>
   </div>
-  <div data-page="accordion"></div>
+  <div data-page="compact"></div>
 </div>
 
-<div class="variant" id="v-tabs">
+<div class="variant" id="v-exclusive">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal C · the tabs · prototype chrome</span>
-      <b>A sticky tab bar, one section on screen at a time.</b> No long scroll exists. The cost: no section is visible on the way to another, so nothing is stumbled upon.
-      <span class="journey">01 usage | 02 projects | 03 tools | <b>04 workflow</b> | 05 guide · tabs</span>
+      <span class="tag">proposal C · one at a time · prototype chrome</span>
+      <b>Exclusive.</b> Opening a section closes the rest, and the page scrolls to the opened header. The page never grows past one open section.
+      <span class="journey">01 usage open → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide · one open, ever</span>
     </div>
   </div>
-  <div data-page="tabs"></div>
+  <div data-page="exclusive"></div>
 </div>
 
-<div class="variant" id="v-rail">
+<div class="variant" id="v-peek">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal D · the jump rail · prototype chrome</span>
-      <b>The full page stays, and a sticky mini-map rides the top.</b> The rail shows where you are and a tap jumps anywhere. The scroll stays long, but it stops being blind.
-      <span class="journey">01 usage → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide · full, with a map</span>
+      <span class="tag">proposal D · the peek · prototype chrome</span>
+      <b>A shut section shows its first block, dimmed and cropped.</b> The whole journey stays visible on one medium scroll, and a tap opens the full section in place.
+      <span class="journey">01 usage → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide · all peeking</span>
     </div>
   </div>
-  <div data-page="rail"></div>
+  <div data-page="peek"></div>
 </div>
 
-<div class="variant" id="v-showcase">
+<div class="variant" id="v-measured">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal E · showcase first · prototype chrome</span>
-      <b>Projects and tools open the page, the measured sections follow.</b> The digest caps from A apply, so the workflow at 04 sits one short scroll away, and the guide closes.
-      <span class="journey">01 projects → 02 tools → 03 usage → <b>04 workflow</b> → 05 guide · all capped</span>
+      <span class="tag">proposal E · the measured open · prototype chrome</span>
+      <b>The measured sections open on arrival, the told ones start shut.</b> Actual Usage and Workflow stand open with gist bars between them. The proof is visible, the rest is one tap away.
+      <span class="journey">01 usage open → 02 projects → 03 tools → <b>04 workflow open</b> → 05 guide</span>
     </div>
   </div>
-  <div data-page="showcase"></div>
+  <div data-page="measured"></div>
 </div>
 
 <div class="page-end-pad"></div>
@@ -625,25 +608,24 @@
 
   /* ---------- section defs ---------- */
   var SECTIONS = {
-    usage:    { kicker: '// sync',          title: 'Actual Usage', meta: 'last 30 days',
+    usage:    { kicker: '// sync',          title: 'Actual Usage', meta: 'last 30 days', stat: '148M',
                 gist: '148M tokens · $96+ lower bound · 214 sessions',
                 body: function () { return buildUsage(); } },
-    projects: { kicker: '// Showcase',      title: 'Projects',     meta: '5 items',
+    projects: { kicker: '// Showcase',      title: 'Projects',     meta: '5 items', stat: '5',
                 gist: 'aistack.sh · curia · 3 more',
                 body: function (digest) { return buildProjects(digest); } },
-    tools:    { kicker: '// AI Components', title: 'Tools',        meta: '11 items · $220/mo',
+    tools:    { kicker: '// AI Components', title: 'Tools',        meta: '11 items · $220/mo', stat: '11 · $220/mo',
                 gist: 'Claude Code · opencode · Convex · 8 more',
                 body: function (digest) { return buildTools(digest); } },
-    workflow: { kicker: '// measured',      title: 'Workflow',     meta: 'measured on the machine · owner-approved',
+    workflow: { kicker: '// measured',      title: 'Workflow',     meta: 'measured on the machine · owner-approved', stat: '42% at night',
                 gist: 'late-night 42% · 2.8 parallel projects · quick fix in 18 min',
                 body: function (digest) { return buildWorkflowBody(digest); } },
-    guide:    { kicker: '// writeup',       title: 'Guide',        meta: '',
+    guide:    { kicker: '// writeup',       title: 'Guide',        meta: '', stat: '3 min read',
                 gist: 'why this setup · the daily loop · what broke',
                 body: function (digest) { return buildGuide(digest); } }
   };
 
   var ORDER_A = ['usage', 'projects', 'tools', 'workflow', 'guide'];
-  var ORDER_E = ['projects', 'tools', 'usage', 'workflow', 'guide'];
 
   function sectionEl(idx, def, bodyEl, extraHead) {
     var sec = document.createElement('section');
@@ -667,97 +649,54 @@
     return d;
   }
 
-  /* ---------- the five page builders ---------- */
-  function buildDigestPage(host, order) {
+  /* ---------- the accordion builder ----------
+     cfg.open:      indexes open on arrival
+     cfg.mode:      'gist' | 'stat' | 'peek'  (what a shut bar shows)
+     cfg.compact:   small header bars
+     cfg.exclusive: opening one closes the rest and scrolls to it */
+  function buildAccordionPage(host, order, cfg) {
     host.appendChild(stub('Stack hero · title, price, upvotes', false));
+    var acc = el('acc' + (cfg.compact ? ' compact' : ''));
+    var secs = [];
     order.forEach(function (k, i) {
       var def = SECTIONS[k];
-      host.appendChild(sectionEl(i + 1, def, def.body(true)));
-    });
-    host.appendChild(stub('Build your own stack', true));
-  }
-
-  function buildAccordionPage(host, order) {
-    host.appendChild(stub('Stack hero · title, price, upvotes', false));
-    var acc = el('acc');
-    order.forEach(function (k, i) {
-      var def = SECTIONS[k];
-      var sec = sectionEl(i + 1, def, el('acc-body'), '<p class="gist">' + def.gist + '</p>');
+      var extra = cfg.mode === 'gist' ? '<p class="gist">' + def.gist + '</p>' : '';
+      var sec = sectionEl(i + 1, def, el('acc-body'), extra);
       var head = sec.querySelector('.sec-head');
+      if (cfg.mode === 'stat') {
+        head.insertAdjacentHTML('beforeend', '<span class="stat-chip">' + def.stat + '</span>');
+      }
       head.insertAdjacentHTML('beforeend', '<span class="acc-chev"></span>');
-      var body = sec.querySelector('.acc-body');
-      body.appendChild(def.body(false));
-      if (i === 0) sec.classList.add('open');
-      head.addEventListener('click', function () { sec.classList.toggle('open'); });
+      sec.querySelector('.acc-body').appendChild(def.body(false));
+      if (cfg.mode === 'peek') {
+        var peek = el('peekwrap');
+        peek.appendChild(def.body(true));
+        sec.querySelector('.shell').appendChild(peek);
+        peek.addEventListener('click', function () { toggle(sec, true); });
+      }
+      if (cfg.open.indexOf(i) !== -1) sec.classList.add('open');
+      head.addEventListener('click', function () { toggle(sec); });
       acc.appendChild(sec);
+      secs.push(sec);
     });
+    function toggle(sec, forceOpen) {
+      var willOpen = forceOpen || !sec.classList.contains('open');
+      if (cfg.exclusive && willOpen) {
+        secs.forEach(function (s) { s.classList.remove('open'); });
+      }
+      sec.classList.toggle('open', willOpen);
+      if (cfg.exclusive && willOpen) sec.scrollIntoView({ block: 'start' });
+    }
     host.appendChild(acc);
     host.appendChild(stub('Build your own stack', true));
   }
 
-  function buildTabsPage(host, order) {
-    host.appendChild(stub('Stack hero · title, price, upvotes', false));
-    var bar = el('tabbar');
-    var pane = document.createElement('div');
-    var btns = [];
-    function activate(i) {
-      btns.forEach(function (b, j) { b.classList.toggle('on', j === i); });
-      pane.innerHTML = '';
-      var def = SECTIONS[order[i]];
-      pane.appendChild(sectionEl(i + 1, def, def.body(false)));
-    }
-    order.forEach(function (k, i) {
-      var def = SECTIONS[k];
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.innerHTML = '<span class="no">' + String(i + 1).padStart(2, '0') + '</span>' + def.title;
-      b.addEventListener('click', function () { activate(i); });
-      bar.appendChild(b);
-      btns.push(b);
-    });
-    host.appendChild(bar);
-    host.appendChild(pane);
-    activate(0);
-    host.appendChild(stub('Build your own stack', true));
-  }
-
-  function buildRailPage(host, order, railId) {
-    host.appendChild(stub('Stack hero · title, price, upvotes', false));
-    var rail = el('rail');
-    var links = [];
-    var secs = [];
-    order.forEach(function (k, i) {
-      var def = SECTIONS[k];
-      var a = document.createElement('a');
-      var id = railId + '-s' + (i + 1);
-      a.href = '#' + id;
-      a.innerHTML = '<span class="no">' + String(i + 1).padStart(2, '0') + '</span>' + def.title;
-      rail.appendChild(a);
-      links.push(a);
-      var sec = sectionEl(i + 1, def, def.body(false));
-      sec.id = id;
-      secs.push(sec);
-    });
-    host.appendChild(rail);
-    secs.forEach(function (s) { host.appendChild(s); });
-    host.appendChild(stub('Build your own stack', true));
-    var obs = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (en.isIntersecting) {
-          var i = secs.indexOf(en.target);
-          links.forEach(function (l, j) { l.classList.toggle('on', j === i); });
-        }
-      });
-    }, { rootMargin: '-40% 0px -55% 0px' });
-    secs.forEach(function (s) { obs.observe(s); });
-  }
-
   var PAGES = {
-    digest:    function (host) { buildDigestPage(host, ORDER_A); },
-    accordion: function (host) { buildAccordionPage(host, ORDER_A); },
-    tabs:      function (host) { buildTabsPage(host, ORDER_A); },
-    rail:      function (host) { buildRailPage(host, ORDER_A, 'rail'); },
-    showcase:  function (host) { buildDigestPage(host, ORDER_E); }
+    ref:       function (host) { buildAccordionPage(host, ORDER_A, { open: [0], mode: 'gist' }); },
+    compact:   function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'stat', compact: true }); },
+    exclusive: function (host) { buildAccordionPage(host, ORDER_A, { open: [0], mode: 'gist', exclusive: true }); },
+    peek:      function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'peek' }); },
+    measured:  function (host) { buildAccordionPage(host, ORDER_A, { open: [0, 3], mode: 'gist' }); }
   };
 
   document.querySelectorAll('[data-page]').forEach(function (host) {
@@ -766,11 +705,11 @@
 
   /* ---------- variant switcher ---------- */
   var VARIANTS = [
-    { key: 'digest',    id: 'v-digest',    name: 'A · the digest' },
-    { key: 'accordion', id: 'v-accordion', name: 'B · the accordion' },
-    { key: 'tabs',      id: 'v-tabs',      name: 'C · the tabs' },
-    { key: 'rail',      id: 'v-rail',      name: 'D · the jump rail' },
-    { key: 'showcase',  id: 'v-showcase',  name: 'E · showcase first' }
+    { key: 'ref',       id: 'v-ref',       name: 'A · the reference' },
+    { key: 'compact',   id: 'v-compact',   name: 'B · the compact bars' },
+    { key: 'exclusive', id: 'v-exclusive', name: 'C · one at a time' },
+    { key: 'peek',      id: 'v-peek',      name: 'D · the peek' },
+    { key: 'measured',  id: 'v-measured',  name: 'E · the measured open' }
   ];
   var current = 0;
 
@@ -796,7 +735,7 @@
   });
 
   (function () {
-    var q = new URL(window.location.href).searchParams.get('variant') || 'digest';
+    var q = new URL(window.location.href).searchParams.get('variant') || 'ref';
     var idx = VARIANTS.findIndex(function (v) { return v.key === q; });
     show(idx >= 0 ? idx : 0);
   })();
