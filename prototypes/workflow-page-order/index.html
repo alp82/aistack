@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Prototype · alp82/aistack#193 · the stack page section order · round 5</title>
+<title>Prototype · alp82/aistack#193 · the stack page section order · round 6</title>
 <!--
   PROTOTYPE. Throwaway. alp82/aistack#193: the stack page section order with
   the workflow section. Baseline: #191 round 4 (PR #192), the podium.
@@ -22,24 +22,15 @@
   ROUND 4 verdict (2026-08-21): A (compact, one at a time) and F (the
   micro peek) are the favorites. Five more with those as the baseline.
 
-  ROUND 5. Five hybrids of the compact bars and the micro peek. The order
-  is fixed: usage, projects, tools, workflow, guide. Everything is
-  one-at-a-time. The title treatment rides along: the measured section
-  takes the name "Workflow", the old guide becomes "Guide". Titles get
-  their own round after the structure is picked.
+  ROUND 5 verdict (2026-08-21): none of the hybrids. The round-4 original
+  micro peek (F) was better.
 
-  - A "the compact micro": compact stat bars with a micro peek under
-        every bar. A and F merged straight.
-  - B "the inline strip":  compact bars that carry a thin data strip
-        inside the bar itself. No peek blocks, the thinnest page.
-  - C "micro with stats":  F unchanged, plus the headline stat on the
-        right of each full-size header.
-  - D "the single micro":  A everywhere, and only the workflow bar gets
-        a micro peek. One whisper of the flagship.
-  - E "the digest open":   A bars, and an opened section shows its digest
-        body with show-all rows, so even open stays short.
-  Switch with the bar at the bottom or ?variant=<key>, keys:
-  am|strip|fstat|wfm|dopen.
+  ROUND 6. The winner stands alone: full-size numbered headers, a thin
+  micro peek of every section, one section open at a time. The order is
+  fixed: usage, projects, tools, workflow, guide. The measured section
+  takes the name "Workflow" under the kicker "// measured", and the old
+  guide becomes "Guide" under "// writeup". The titles are this round's
+  open question.
 
   Data provenance: the workflow rows, fit scores and stats come unchanged
   from the #191 prototype (real Git anchors, hand-made shares). The guide
@@ -279,7 +270,7 @@
 <body>
 
 <div class="ticket-strip">
-  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 5 · five hybrids of the compact bars and the micro peek
+  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 6 · the winner: the micro peek, one at a time
 </div>
 
 <!-- ==================== section content templates ==================== -->
@@ -321,54 +312,15 @@
 
 <!-- ==================== the five treatments ==================== -->
 
-<div class="variant" id="v-am">
+<div class="variant" id="v-final">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal A · the compact micro · prototype chrome</span>
-      <b>A and F merged straight.</b> Compact stat bars, and a micro peek strip under every bar. The journey fits about one screen and every section shows a sliver.
+      <span class="tag">the winner · rounds 1 to 5 · prototype chrome</span>
+      <b>The micro peek, one section at a time.</b> Full-size numbered headers, a thin sliver of every section, and opening one closes the rest. Order: usage, projects, tools, workflow, guide.
+      <span class="journey">01 usage → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide · all peeking thin</span>
     </div>
   </div>
-  <div data-page="am"></div>
-</div>
-
-<div class="variant" id="v-strip">
-  <div class="proposal">
-    <div class="proposal-box">
-      <span class="tag">proposal B · the inline strip · prototype chrome</span>
-      <b>The peek moves into the bar itself.</b> Each compact bar carries a thin data strip beside the stat. No peek blocks below, the thinnest page of the five.
-    </div>
-  </div>
-  <div data-page="strip"></div>
-</div>
-
-<div class="variant" id="v-fstat">
-  <div class="proposal">
-    <div class="proposal-box">
-      <span class="tag">proposal C · micro with stats · prototype chrome</span>
-      <b>F unchanged, plus the headline stat.</b> Full-size headers, a micro peek of every section, and the number on the right of each bar.
-    </div>
-  </div>
-  <div data-page="fstat"></div>
-</div>
-
-<div class="variant" id="v-wfm">
-  <div class="proposal">
-    <div class="proposal-box">
-      <span class="tag">proposal D · the single micro · prototype chrome</span>
-      <b>A everywhere, one exception.</b> Only the workflow bar gets a micro peek, so the flagship whispers through the fold while the rest stays lines.
-    </div>
-  </div>
-  <div data-page="wfm"></div>
-</div>
-
-<div class="variant" id="v-dopen">
-  <div class="proposal">
-    <div class="proposal-box">
-      <span class="tag">proposal E · the digest open · prototype chrome</span>
-      <b>A bars, capped bodies.</b> An opened section shows its digest with show-all rows, so even the open state stays near one screen.
-    </div>
-  </div>
-  <div data-page="dopen"></div>
+  <div data-page="final"></div>
 </div>
 
 <div class="page-end-pad"></div>
@@ -735,11 +687,7 @@
   }
 
   var PAGES = {
-    am:    function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'stat', compact: true, exclusive: true, peek: 'all', peekClass: 'micro' }); },
-    strip: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'strip', compact: true, exclusive: true }); },
-    fstat: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'stat', exclusive: true, peek: 'all', peekClass: 'micro' }); },
-    wfm:   function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'stat', compact: true, exclusive: true, peek: ['workflow'], peekClass: 'micro' }); },
-    dopen: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'stat', compact: true, exclusive: true, digestOpen: true }); }
+    final: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', peek: 'all', peekClass: 'micro', exclusive: true }); }
   };
 
   document.querySelectorAll('[data-page]').forEach(function (host) {
@@ -748,11 +696,7 @@
 
   /* ---------- variant switcher ---------- */
   var VARIANTS = [
-    { key: 'am',    id: 'v-am',    name: 'A · the compact micro' },
-    { key: 'strip', id: 'v-strip', name: 'B · the inline strip' },
-    { key: 'fstat', id: 'v-fstat', name: 'C · micro with stats' },
-    { key: 'wfm',   id: 'v-wfm',   name: 'D · the single micro' },
-    { key: 'dopen', id: 'v-dopen', name: 'E · the digest open' }
+    { key: 'final', id: 'v-final', name: 'the winner · micro peek' }
   ];
   var current = 0;
 
@@ -778,7 +722,7 @@
   });
 
   (function () {
-    var q = new URL(window.location.href).searchParams.get('variant') || 'am';
+    var q = new URL(window.location.href).searchParams.get('variant') || 'final';
     var idx = VARIANTS.findIndex(function (v) { return v.key === q; });
     show(idx >= 0 ? idx : 0);
   })();
