@@ -4,36 +4,40 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Prototype · alp82/aistack#193 · the stack page section order · round 1</title>
+<title>Prototype · alp82/aistack#193 · the stack page section order · round 2</title>
 <!--
   PROTOTYPE. Throwaway. alp82/aistack#193: the stack page section order with
   the workflow section. Baseline: #191 round 4 (PR #192), the podium.
 
-  ROUND 1. The question: where does the workflow section sit, what is its
-  title, and what happens to the current guide section? The guide section
-  today carries the title "Workflow" under the kicker "// GUIDE", so the
-  new measured section collides with that name.
+  ROUND 1 verdict (2026-08-21): the owner leans A (workflow at 04) or a
+  projects-and-tools-first order. The fear: the page scrolls endlessly and
+  most people never reach the bottom. Round 2 explores five ways to tame
+  the scroll.
 
-  The journey today: Actual Usage 01, Projects 02, Tools 03, Guide 04.
-  Every other section renders compressed. The workflow section renders the
-  settled podium at near-real height. Component row bodies are stubs: the
-  blocks themselves are settled in #191.
+  ROUND 2. Five page structures. The order is A (usage, projects, tools,
+  workflow, guide) everywhere except E, which starts with projects and
+  tools. The title treatment rides along: the measured section takes the
+  name "Workflow", the old guide becomes "Guide". Titles get their own
+  round after the structure is picked.
 
-  FOUR VARIATIONS of the page order:
-  - A "the slot swap":      Workflow lands at 04, measured before told. The
-        guide slides to 05 and takes the name "Guide".
-  - B "the measured pair":  Workflow at 02, right under Actual Usage. The
-        two measured sections read as one block. Guide becomes 05 "Guide".
-  - C "one measured block": the workflow rows live INSIDE Actual Usage 01.
-        Four sections stay. The guide keeps its name "Workflow".
-  - D "the absorbed guide": Workflow at 04 swallows the writeup as its
-        closing block "the owner's notes". Four sections. No guide section.
-  Switch with the bar at the bottom or ?variant=swap|pair|merged|absorbed.
+  - A "the digest":    every section caps at about one screen and carries
+        its own "show all" row. The full journey stays one scroll, short.
+  - B "the accordion": the page is five header bars. Only the first opens
+        by default. A tap opens a section, the rest stay shut.
+  - C "the tabs":      a sticky tab bar, one section on screen at a time.
+        No long scroll exists at all.
+  - D "the jump rail": the full page stays, and a sticky mini-map shows
+        where you are. A tap jumps to any section.
+  - E "showcase first": the digest caps, but projects and tools open the
+        page. The measured sections follow, the guide closes.
+  Switch with the bar at the bottom or
+  ?variant=digest|accordion|tabs|rail|showcase.
 
   Data provenance: the workflow rows, fit scores and stats come unchanged
   from the #191 prototype (real Git anchors, hand-made shares). The guide
   prose, projects and tools are compressed fakes shaped like the live page.
-  No live sync feeds this.
+  The live sections are taller than these fakes, so the scroll devices
+  matter more on the real page, not less. No live sync feeds this.
 -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
@@ -53,13 +57,10 @@
     --stroke-subtle: oklch(0.55 0.01 256 / 0.45);
     --stroke-strong: oklch(0.5 0.015 256 / 0.9);
     --neg: oklch(0.64 0.19 25);
-    --ph-orient: #4278d2;
-    --ph-build:  #69a621;
-    --ph-verify: #00a99b;
-    --ph-gate:   #c21977;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
   body {
     background: var(--bg-canvas);
     color: var(--fg-primary);
@@ -100,7 +101,7 @@
 
   /* ---------- section shell (mirrors the live page) ---------- */
   section.journey { padding: 44px 24px; border-top: 1px solid var(--stroke-subtle); }
-  @media (min-width: 768px) { section.journey { padding: 64px 24px; } }
+  @media (min-width: 768px) { section.journey { padding: 60px 24px; } }
   .shell { max-width: 80rem; margin: 0 auto; }
   .sec-head {
     display: flex; align-items: flex-end; gap: 20px;
@@ -119,6 +120,67 @@
   .mono-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted); }
   .kicker-line { color: var(--accent-lime); margin-bottom: 12px; }
   .compress-note { margin: 18px 0 0; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); opacity: 0.7; }
+
+  /* ---------- accordion mode ---------- */
+  .acc section.journey { padding: 0 24px; }
+  .acc .sec-head { margin-bottom: 0; padding: 20px 0 18px; border-bottom: 0; cursor: pointer; }
+  .acc .acc-body { display: none; padding-bottom: 40px; }
+  .acc section.open .acc-body { display: block; }
+  .acc section.open .sec-head { border-bottom: 1px solid var(--stroke-subtle); margin-bottom: 28px; }
+  .acc .gist { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); margin: 6px 0 0; letter-spacing: 0.04em; }
+  .acc section.open .gist { display: none; }
+  .acc-chev { font-family: 'JetBrains Mono', monospace; font-size: 20px; color: var(--fg-muted); align-self: center; }
+  .acc section.open .acc-chev::before { content: "–"; }
+  .acc section:not(.open) .acc-chev::before { content: "+"; }
+
+  /* ---------- tabs mode ---------- */
+  .tabbar {
+    position: sticky; top: 0; z-index: 40;
+    display: flex; overflow-x: auto;
+    background: var(--bg-shell);
+    border-bottom: 2px solid var(--stroke-strong);
+  }
+  .tabbar button {
+    appearance: none; border: 0; background: transparent; color: var(--fg-muted);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 14px 16px; cursor: pointer; white-space: nowrap;
+    border-right: 1px solid var(--stroke-subtle);
+  }
+  .tabbar button .no { color: var(--stroke-strong); margin-right: 6px; }
+  .tabbar button.on { background: var(--bg-canvas); color: var(--accent-lime); box-shadow: inset 0 -3px 0 var(--accent-lime); }
+  .tabbar button.on .no { color: var(--accent-lime); }
+
+  /* ---------- jump rail mode ---------- */
+  .rail {
+    position: sticky; top: 0; z-index: 40;
+    display: flex; overflow-x: auto; gap: 0;
+    background: var(--bg-shell);
+    border-bottom: 1px solid var(--stroke-subtle);
+  }
+  .rail a {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none;
+    color: var(--fg-muted); padding: 11px 14px; white-space: nowrap;
+    border-right: 1px solid var(--stroke-subtle);
+  }
+  .rail a .no { color: var(--stroke-strong); margin-right: 5px; }
+  .rail a.on { color: var(--accent-lime); box-shadow: inset 0 -3px 0 var(--accent-lime); }
+  .rail a.on .no { color: var(--accent-lime); }
+
+  /* ---------- show-all row (digest mode) ---------- */
+  .showall {
+    appearance: none; width: 100%; margin-top: 16px;
+    border: 1px solid var(--stroke-subtle); background: transparent; color: var(--fg-muted);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase; text-align: left;
+    padding: 12px 14px; cursor: pointer; display: flex; gap: 12px; align-items: baseline;
+  }
+  .showall .spacer { flex: 1; }
+  .showall .chev::before { content: "+"; }
+  .showall.open .chev::before { content: "–"; }
+  .showall-pack { display: none; }
+  .showall-pack.open { display: block; }
 
   /* ---------- actual usage (compressed) ---------- */
   .stat-band { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); }
@@ -150,7 +212,6 @@
   .prose h3 { font-size: 17px; font-weight: 800; margin: 22px 0 8px; text-transform: uppercase; }
   .prose h3:first-of-type { margin-top: 0; }
   .prose p { margin: 8px 0 0; font-size: 14px; line-height: 1.65; color: var(--fg-secondary); }
-  .notes-block { border: 1px solid var(--stroke-subtle); padding: 18px; margin-top: 28px; }
 
   /* ---------- workflow: lead draft ---------- */
   .draft { border: 1px dashed var(--stroke-strong); padding: 14px 16px; max-width: 46rem; }
@@ -195,11 +256,6 @@
   .deriv .k { color: var(--fg-muted); }
   .consent { margin-top: 26px; border-top: 1px solid var(--stroke-subtle); padding-top: 12px; font-size: 12px; line-height: 1.6; color: var(--fg-muted); max-width: 46rem; }
 
-  /* merged sub-head inside Actual Usage (variant C) */
-  .merge-head { display: flex; align-items: baseline; gap: 12px; margin: 36px 0 16px; border-top: 1px solid var(--stroke-subtle); padding-top: 20px; }
-  .merge-head .t { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent-lime); }
-  .merge-head .r { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--fg-muted); margin-left: auto; text-transform: uppercase; letter-spacing: 0.08em; }
-
   /* ---------- variant framework / switcher ---------- */
   .variant { display: none; }
   .variant.active { display: block; }
@@ -222,7 +278,7 @@
 <body>
 
 <div class="ticket-strip">
-  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 1
+  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 2 · five ways against the endless scroll
 </div>
 
 <!-- ==================== section content templates ==================== -->
@@ -241,32 +297,19 @@
     <i style="flex:12; background:oklch(0.78 0.17 132 / 0.3)"></i>
     <i style="flex:8; background:var(--bg-panel-elevated)"></i>
   </div>
-  <p class="compress-note">compressed to its band · the live section is richer</p>
+  <p class="compress-note">compressed to its band · the live section is taller</p>
 </template>
 
-<template data-tpl="projects">
-  <div class="proj-grid">
-    <div class="proj"><h3>aistack.sh</h3><p>The site this page lives on. Convex, TanStack, the measured pipeline.</p></div>
-    <div class="proj"><h3>curia</h3><p>The dispatch daemon that runs agents against the tracker.</p></div>
-  </div>
-  <p class="compress-note">compressed · two of five project cards</p>
-</template>
-
-<template data-tpl="tools">
-  <div class="tool-grid">
-    <div class="tool"><p class="nm">Claude Code</p><p>main harness · $200/mo</p></div>
-    <div class="tool"><p class="nm">opencode</p><p>second harness</p></div>
-    <div class="tool"><p class="nm">Convex</p><p>backend</p></div>
-    <div class="tool"><p class="nm">Codex</p><p>reviewer</p></div>
-  </div>
-  <p class="compress-note">compressed · four of eleven tool cards</p>
-</template>
-
-<template data-tpl="guide-prose">
+<template data-tpl="guide-lead">
   <div class="prose">
     <div class="toc"><b>// ON THIS PAGE</b>Why this setup · The daily loop · What broke and stayed broken</div>
     <h3>Why this setup</h3>
     <p>One big-model harness holds the main loop, and everything else orbits it. The daemon dispatches tickets, and the review gate keeps a human between the branch and main.</p>
+  </div>
+</template>
+
+<template data-tpl="guide-more">
+  <div class="prose">
     <h3>The daily loop</h3>
     <p>Mornings clear the review queue. The heavy build work runs at night, batched behind one question round, so the wait for answers amortizes.</p>
     <h3>What broke and stayed broken</h3>
@@ -275,50 +318,61 @@
   </div>
 </template>
 
-<!-- ==================== the four treatments ==================== -->
+<!-- ==================== the five treatments ==================== -->
 
-<div class="variant" id="v-swap">
+<div class="variant" id="v-digest">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal A · the slot swap · prototype chrome</span>
-      <b>The workflow lands at 04, and the guide slides to 05 as "Guide".</b> The journey stays measured-first and ends on the owner's own words. One rename, no merge.
-      <span class="journey">01 actual usage → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide</span>
+      <span class="tag">proposal A · the digest · prototype chrome</span>
+      <b>Every section caps at about one screen and carries its own "show all" row.</b> The journey stays one scroll, but a short one. The fold moves into each section, not the page.
+      <span class="journey">01 usage → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide · all capped</span>
     </div>
   </div>
-  <div data-page="swap"></div>
+  <div data-page="digest"></div>
 </div>
 
-<div class="variant" id="v-pair">
+<div class="variant" id="v-accordion">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal B · the measured pair · prototype chrome</span>
-      <b>The workflow sits at 02, right under Actual Usage.</b> Everything measured reads as one block before the told sections start. The guide slides to 05 as "Guide".
-      <span class="journey">01 actual usage → <b>02 workflow</b> → 03 projects → 04 tools → 05 guide</span>
+      <span class="tag">proposal B · the accordion · prototype chrome</span>
+      <b>The page is five header bars, and only Actual Usage opens by default.</b> The whole journey fits one screen shut. A closed section shows its gist line.
+      <span class="journey">01 usage → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide · tap to open</span>
     </div>
   </div>
-  <div data-page="pair"></div>
+  <div data-page="accordion"></div>
 </div>
 
-<div class="variant" id="v-merged">
+<div class="variant" id="v-tabs">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal C · one measured block · prototype chrome</span>
-      <b>The workflow rows live inside Actual Usage 01.</b> Four sections stay four, nothing renames, and the guide keeps its title "Workflow". One section carries all the measurement.
-      <span class="journey"><b>01 actual usage + workflow</b> → 02 projects → 03 tools → 04 workflow (the guide, unchanged)</span>
+      <span class="tag">proposal C · the tabs · prototype chrome</span>
+      <b>A sticky tab bar, one section on screen at a time.</b> No long scroll exists. The cost: no section is visible on the way to another, so nothing is stumbled upon.
+      <span class="journey">01 usage | 02 projects | 03 tools | <b>04 workflow</b> | 05 guide · tabs</span>
     </div>
   </div>
-  <div data-page="merged"></div>
+  <div data-page="tabs"></div>
 </div>
 
-<div class="variant" id="v-absorbed">
+<div class="variant" id="v-rail">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal D · the absorbed guide · prototype chrome</span>
-      <b>The workflow at 04 swallows the writeup.</b> The measured rows open the section, and the owner's prose closes it as "the owner's notes". Four sections, no separate guide.
-      <span class="journey">01 actual usage → 02 projects → 03 tools → <b>04 workflow + notes</b></span>
+      <span class="tag">proposal D · the jump rail · prototype chrome</span>
+      <b>The full page stays, and a sticky mini-map rides the top.</b> The rail shows where you are and a tap jumps anywhere. The scroll stays long, but it stops being blind.
+      <span class="journey">01 usage → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide · full, with a map</span>
     </div>
   </div>
-  <div data-page="absorbed"></div>
+  <div data-page="rail"></div>
+</div>
+
+<div class="variant" id="v-showcase">
+  <div class="proposal">
+    <div class="proposal-box">
+      <span class="tag">proposal E · showcase first · prototype chrome</span>
+      <b>Projects and tools open the page, the measured sections follow.</b> The digest caps from A apply, so the workflow at 04 sits one short scroll away, and the guide closes.
+      <span class="journey">01 projects → 02 tools → 03 usage → <b>04 workflow</b> → 05 guide · all capped</span>
+    </div>
+  </div>
+  <div data-page="showcase"></div>
 </div>
 
 <div class="page-end-pad"></div>
@@ -327,8 +381,8 @@
 <div class="switcher" role="navigation" aria-label="variant switcher">
   <button type="button" id="prev" aria-label="previous treatment">←</button>
   <div class="label">
-    <span class="k" id="sw-k">variation 1 / 4</span>
-    <span class="n" id="sw-n">A · the slot swap</span>
+    <span class="k" id="sw-k">variation 1 / 5</span>
+    <span class="n" id="sw-n">A · the digest</span>
   </div>
   <button type="button" id="next" aria-label="next treatment">→</button>
 </div>
@@ -365,8 +419,53 @@
   var HL_COUNT = 3;
   var HIDE_BELOW = 0.40;
 
+  var PROJECTS = [
+    { name: 'aistack.sh', desc: 'The site this page lives on. Convex, TanStack, the measured pipeline.' },
+    { name: 'curia', desc: 'The dispatch daemon that runs agents against the tracker.' },
+    { name: 'feed poller', desc: 'The newsletter source machinery, prototyped this month.' },
+    { name: 'hn collector', desc: 'One week of Hacker News in nine requests.' },
+    { name: 'news scrapers', desc: 'Nine scrapers for the vendor blogs without a feed.' }
+  ];
+  var TOOLS = [
+    { nm: 'Claude Code', sub: 'main harness · $200/mo' },
+    { nm: 'opencode', sub: 'second harness' },
+    { nm: 'Convex', sub: 'backend' },
+    { nm: 'Codex', sub: 'reviewer' },
+    { nm: 'Biome', sub: 'lint and format' },
+    { nm: 'Vite', sub: 'build' },
+    { nm: 'Resend', sub: 'email' },
+    { nm: 'PostHog', sub: 'analytics' },
+    { nm: 'Tailwind', sub: 'styling' },
+    { nm: 'Playwright', sub: 'browser runs' },
+    { nm: 'pnpm', sub: 'packages' }
+  ];
+
   function tpl(key) {
     return document.querySelector('template[data-tpl="' + key + '"]').content.cloneNode(true);
+  }
+
+  function el(cls, html) {
+    var d = document.createElement('div');
+    d.className = cls;
+    if (html) d.innerHTML = html;
+    return d;
+  }
+
+  /* A "show all" row: hides `packEl` until tapped. */
+  function showAllRow(label, count, packEl) {
+    var frag = document.createDocumentFragment();
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'showall';
+    btn.innerHTML = '<span>' + label + '</span><span class="spacer"></span><span>' + count + ' more</span><span class="chev"></span>';
+    packEl.classList.add('showall-pack');
+    btn.addEventListener('click', function () {
+      var open = packEl.classList.toggle('open');
+      btn.classList.toggle('open', open);
+    });
+    frag.appendChild(btn);
+    frag.appendChild(packEl);
+    return frag;
   }
 
   function bodyHtml(r) {
@@ -381,8 +480,7 @@
   }
 
   function makeRow(r) {
-    var row = document.createElement('div');
-    row.className = 'mrow';
+    var row = el('mrow');
     row.innerHTML =
       '<button type="button" class="mhead">' +
       '<span class="nm">' + r.name + '</span>' +
@@ -397,27 +495,50 @@
     return row;
   }
 
-  /* The settled podium: band of three, thin rows, one expander. */
-  function buildWorkflowBody(withNotes) {
+  function buildRowlist() {
+    var sorted = ROWS.slice().sort(function (a, b) { return b.fit - a.fit; });
+    var rl = el('rowlist');
+    rl.style.marginTop = '16px';
+    var visible = sorted.slice(HL_COUNT).filter(function (r) { return r.fit >= HIDE_BELOW; });
+    var hidden = sorted.filter(function (r) { return r.fit < HIDE_BELOW; });
+    visible.forEach(function (r) { rl.appendChild(makeRow(r)); });
+    var pack = el('hidden-pack');
+    hidden.forEach(function (r) {
+      var row = makeRow(r);
+      row.classList.add('dim');
+      pack.appendChild(row);
+    });
+    var more = el('mrow more-row');
+    more.innerHTML = '<button type="button" class="mhead"><span class="nm">below the fit line</span>' +
+      '<span class="spacer"></span><span class="st" style="color:var(--fg-muted)">' + hidden.length + ' more</span>' +
+      '<span class="chev"></span></button>';
+    more.querySelector('.mhead').addEventListener('click', function () {
+      var open = pack.classList.toggle('open');
+      more.classList.toggle('open', open);
+    });
+    rl.appendChild(more);
+    rl.appendChild(pack);
+    return rl;
+  }
+
+  /* The settled podium. digest: the thin rows hide behind one "show all" row. */
+  function buildWorkflowBody(digest) {
     var wrap = document.createElement('div');
 
-    var lead = document.createElement('div');
-    lead.className = 'draft';
+    var lead = el('draft');
     lead.innerHTML = '<span class="draft-chip">workflow draft · llm over approved aggregates · owner-edited</span>' +
       '<p>A gate-first flow. Nothing merges before a human review round, and the heaviest work lands deep in the night. The big model holds the main loop, small models take the routine reads, and the flow prefers many short sessions over one long one.</p>';
     wrap.appendChild(lead);
 
     var sorted = ROWS.slice().sort(function (a, b) { return b.fit - a.fit; });
-    var band = document.createElement('div');
-    band.className = 'sub-facts block-gap';
+    var band = el('sub-facts block-gap');
     var bodies = document.createElement('div');
     sorted.slice(0, HL_COUNT).forEach(function (r) {
       var box = document.createElement('button');
       box.type = 'button';
       box.className = 'sub-fact';
       box.innerHTML = '<span class="mono-label">' + r.name + '</span><p class="n">' + r.stat + '</p><p>' + r.cap + '</p><span class="src mono-label">+ tap to extend</span>';
-      var body = document.createElement('div');
-      body.className = 'podium-body';
+      var body = el('podium-body');
       body.innerHTML = bodyHtml(r);
       box.addEventListener('click', function () {
         var was = box.classList.contains('on');
@@ -431,48 +552,20 @@
     wrap.appendChild(band);
     wrap.appendChild(bodies);
 
-    var rl = document.createElement('div');
-    rl.className = 'rowlist';
-    rl.style.marginTop = '16px';
-    var visible = sorted.slice(HL_COUNT).filter(function (r) { return r.fit >= HIDE_BELOW; });
-    var hidden = sorted.filter(function (r) { return r.fit < HIDE_BELOW; });
-    visible.forEach(function (r) { rl.appendChild(makeRow(r)); });
-
-    var pack = document.createElement('div');
-    pack.className = 'hidden-pack';
-    hidden.forEach(function (r) {
-      var row = makeRow(r);
-      row.classList.add('dim');
-      pack.appendChild(row);
-    });
-    var more = document.createElement('div');
-    more.className = 'mrow more-row';
-    more.innerHTML = '<button type="button" class="mhead"><span class="nm">below the fit line</span>' +
-      '<span class="spacer"></span><span class="st" style="color:var(--fg-muted)">' + hidden.length + ' more</span>' +
-      '<span class="chev"></span></button>';
-    more.querySelector('.mhead').addEventListener('click', function () {
-      var open = pack.classList.toggle('open');
-      more.classList.toggle('open', open);
-    });
-    rl.appendChild(more);
-    rl.appendChild(pack);
-    wrap.appendChild(rl);
+    var rl = buildRowlist();
+    if (digest) {
+      var count = ROWS.length - HL_COUNT;
+      wrap.appendChild(showAllRow('the full row set', count, rl));
+    } else {
+      wrap.appendChild(rl);
+    }
 
     var fn = document.createElement('p');
     fn.className = 'row-footnote';
     fn.textContent = 'one row set · ranked by fit · at most one highlight swap per sync day';
     wrap.appendChild(fn);
 
-    if (withNotes) {
-      var notes = document.createElement('div');
-      notes.className = 'notes-block';
-      notes.innerHTML = '<p class="mono-label kicker-line">// THE OWNER’S NOTES · WRITTEN, NOT MEASURED</p>';
-      notes.appendChild(tpl('guide-prose'));
-      wrap.appendChild(notes);
-    }
-
-    var consent = document.createElement('div');
-    consent.className = 'consent';
+    var consent = el('consent');
     consent.innerHTML = '<span class="mono-label">// HOW TO READ THIS</span><br>' +
       'Shares, never raw counts. A name appears only after the owner approves it at the sync gate. The dashed block is a workflow draft: LLM prose over approved aggregates, owner-edited, never a number (ADR-0001).';
     wrap.appendChild(consent);
@@ -480,36 +573,88 @@
     return wrap;
   }
 
-  function buildUsageBody(withWorkflow) {
+  function buildProjects(digest) {
+    var wrap = document.createElement('div');
+    var grid = el('proj-grid');
+    PROJECTS.slice(0, 2).forEach(function (pr) {
+      grid.appendChild(el('proj', '<h3>' + pr.name + '</h3><p>' + pr.desc + '</p>'));
+    });
+    wrap.appendChild(grid);
+    var rest = el('proj-grid');
+    rest.style.marginTop = '14px';
+    PROJECTS.slice(2).forEach(function (pr) {
+      rest.appendChild(el('proj', '<h3>' + pr.name + '</h3><p>' + pr.desc + '</p>'));
+    });
+    if (digest) wrap.appendChild(showAllRow('all projects', PROJECTS.length - 2, rest));
+    else { rest.classList.add('showall-pack', 'open'); wrap.appendChild(rest); }
+    return wrap;
+  }
+
+  function buildTools(digest) {
+    var wrap = document.createElement('div');
+    var grid = el('tool-grid');
+    TOOLS.slice(0, 4).forEach(function (t) {
+      grid.appendChild(el('tool', '<p class="nm">' + t.nm + '</p><p>' + t.sub + '</p>'));
+    });
+    wrap.appendChild(grid);
+    var rest = el('tool-grid');
+    rest.style.marginTop = '14px';
+    TOOLS.slice(4).forEach(function (t) {
+      rest.appendChild(el('tool', '<p class="nm">' + t.nm + '</p><p>' + t.sub + '</p>'));
+    });
+    if (digest) wrap.appendChild(showAllRow('all tools', TOOLS.length - 4, rest));
+    else { rest.classList.add('showall-pack', 'open'); wrap.appendChild(rest); }
+    return wrap;
+  }
+
+  function buildGuide(digest) {
+    var wrap = document.createElement('div');
+    wrap.appendChild(tpl('guide-lead'));
+    var rest = document.createElement('div');
+    rest.appendChild(tpl('guide-more'));
+    if (digest) wrap.appendChild(showAllRow('read the full guide', 2, rest));
+    else { rest.classList.add('showall-pack', 'open'); wrap.appendChild(rest); }
+    return wrap;
+  }
+
+  function buildUsage() {
     var wrap = document.createElement('div');
     wrap.appendChild(tpl('usage'));
-    if (withWorkflow) {
-      var mh = document.createElement('div');
-      mh.className = 'merge-head';
-      mh.innerHTML = '<span class="t">// THE WORKFLOW</span><span class="r">measured on the machine · owner-approved</span>';
-      wrap.appendChild(mh);
-      wrap.appendChild(buildWorkflowBody(false));
-    }
     return wrap;
   }
 
-  function simpleBody(key) {
-    var wrap = document.createElement('div');
-    wrap.appendChild(tpl(key));
-    return wrap;
-  }
+  /* ---------- section defs ---------- */
+  var SECTIONS = {
+    usage:    { kicker: '// sync',          title: 'Actual Usage', meta: 'last 30 days',
+                gist: '148M tokens · $96+ lower bound · 214 sessions',
+                body: function () { return buildUsage(); } },
+    projects: { kicker: '// Showcase',      title: 'Projects',     meta: '5 items',
+                gist: 'aistack.sh · curia · 3 more',
+                body: function (digest) { return buildProjects(digest); } },
+    tools:    { kicker: '// AI Components', title: 'Tools',        meta: '11 items · $220/mo',
+                gist: 'Claude Code · opencode · Convex · 8 more',
+                body: function (digest) { return buildTools(digest); } },
+    workflow: { kicker: '// measured',      title: 'Workflow',     meta: 'measured on the machine · owner-approved',
+                gist: 'late-night 42% · 2.8 parallel projects · quick fix in 18 min',
+                body: function (digest) { return buildWorkflowBody(digest); } },
+    guide:    { kicker: '// writeup',       title: 'Guide',        meta: '',
+                gist: 'why this setup · the daily loop · what broke',
+                body: function (digest) { return buildGuide(digest); } }
+  };
 
-  /* ---------- page assembly ---------- */
-  function section(idx, kicker, title, meta, bodyEl) {
+  var ORDER_A = ['usage', 'projects', 'tools', 'workflow', 'guide'];
+  var ORDER_E = ['projects', 'tools', 'usage', 'workflow', 'guide'];
+
+  function sectionEl(idx, def, bodyEl, extraHead) {
     var sec = document.createElement('section');
     sec.className = 'journey';
-    var shell = document.createElement('div');
-    shell.className = 'shell';
+    var shell = el('shell');
     shell.innerHTML =
       '<div class="sec-head">' +
       '<span class="sec-index">' + String(idx).padStart(2, '0') + '</span>' +
-      '<div class="head-copy"><p class="sec-kicker">' + kicker + '</p><h2 class="sec-title">' + title + '</h2></div>' +
-      (meta ? '<span class="sec-meta">' + meta + '</span>' : '') +
+      '<div class="head-copy"><p class="sec-kicker">' + def.kicker + '</p><h2 class="sec-title">' + def.title + '</h2>' +
+      (extraHead || '') + '</div>' +
+      (def.meta ? '<span class="sec-meta">' + def.meta + '</span>' : '') +
       '</div>';
     shell.appendChild(bodyEl);
     sec.appendChild(shell);
@@ -517,46 +662,115 @@
   }
 
   function stub(name, cta) {
-    var d = document.createElement('div');
-    d.className = 'stub' + (cta ? ' cta' : '');
+    var d = el('stub' + (cta ? ' cta' : ''));
     d.innerHTML = '<div class="shell"><span class="name">' + name + '</span><span class="note">context only</span></div>';
     return d;
   }
 
-  var SECTIONS = {
-    usage:    function () { return { kicker: '// sync',      title: 'Actual Usage', meta: 'last 30 days',        body: buildUsageBody(false) }; },
-    usagewf:  function () { return { kicker: '// sync',      title: 'Actual Usage', meta: 'last 30 days',        body: buildUsageBody(true) }; },
-    projects: function () { return { kicker: '// Showcase',  title: 'Projects',     meta: '5 items',             body: simpleBody('projects') }; },
-    tools:    function () { return { kicker: '// AI Components', title: 'Tools',    meta: '11 items · $220/mo',  body: simpleBody('tools') }; },
-    workflow: function () { return { kicker: '// measured',  title: 'Workflow',     meta: 'measured on the machine · owner-approved', body: buildWorkflowBody(false) }; },
-    wfnotes:  function () { return { kicker: '// measured',  title: 'Workflow',     meta: 'measured on the machine · owner-approved', body: buildWorkflowBody(true) }; },
-    guide:    function () { return { kicker: '// writeup',   title: 'Guide',        meta: '',                    body: simpleBody('guide-prose') }; },
-    guideold: function () { return { kicker: '// GUIDE',     title: 'Workflow',     meta: '',                    body: simpleBody('guide-prose') }; }
-  };
+  /* ---------- the five page builders ---------- */
+  function buildDigestPage(host, order) {
+    host.appendChild(stub('Stack hero · title, price, upvotes', false));
+    order.forEach(function (k, i) {
+      var def = SECTIONS[k];
+      host.appendChild(sectionEl(i + 1, def, def.body(true)));
+    });
+    host.appendChild(stub('Build your own stack', true));
+  }
+
+  function buildAccordionPage(host, order) {
+    host.appendChild(stub('Stack hero · title, price, upvotes', false));
+    var acc = el('acc');
+    order.forEach(function (k, i) {
+      var def = SECTIONS[k];
+      var sec = sectionEl(i + 1, def, el('acc-body'), '<p class="gist">' + def.gist + '</p>');
+      var head = sec.querySelector('.sec-head');
+      head.insertAdjacentHTML('beforeend', '<span class="acc-chev"></span>');
+      var body = sec.querySelector('.acc-body');
+      body.appendChild(def.body(false));
+      if (i === 0) sec.classList.add('open');
+      head.addEventListener('click', function () { sec.classList.toggle('open'); });
+      acc.appendChild(sec);
+    });
+    host.appendChild(acc);
+    host.appendChild(stub('Build your own stack', true));
+  }
+
+  function buildTabsPage(host, order) {
+    host.appendChild(stub('Stack hero · title, price, upvotes', false));
+    var bar = el('tabbar');
+    var pane = document.createElement('div');
+    var btns = [];
+    function activate(i) {
+      btns.forEach(function (b, j) { b.classList.toggle('on', j === i); });
+      pane.innerHTML = '';
+      var def = SECTIONS[order[i]];
+      pane.appendChild(sectionEl(i + 1, def, def.body(false)));
+    }
+    order.forEach(function (k, i) {
+      var def = SECTIONS[k];
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.innerHTML = '<span class="no">' + String(i + 1).padStart(2, '0') + '</span>' + def.title;
+      b.addEventListener('click', function () { activate(i); });
+      bar.appendChild(b);
+      btns.push(b);
+    });
+    host.appendChild(bar);
+    host.appendChild(pane);
+    activate(0);
+    host.appendChild(stub('Build your own stack', true));
+  }
+
+  function buildRailPage(host, order, railId) {
+    host.appendChild(stub('Stack hero · title, price, upvotes', false));
+    var rail = el('rail');
+    var links = [];
+    var secs = [];
+    order.forEach(function (k, i) {
+      var def = SECTIONS[k];
+      var a = document.createElement('a');
+      var id = railId + '-s' + (i + 1);
+      a.href = '#' + id;
+      a.innerHTML = '<span class="no">' + String(i + 1).padStart(2, '0') + '</span>' + def.title;
+      rail.appendChild(a);
+      links.push(a);
+      var sec = sectionEl(i + 1, def, def.body(false));
+      sec.id = id;
+      secs.push(sec);
+    });
+    host.appendChild(rail);
+    secs.forEach(function (s) { host.appendChild(s); });
+    host.appendChild(stub('Build your own stack', true));
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) {
+          var i = secs.indexOf(en.target);
+          links.forEach(function (l, j) { l.classList.toggle('on', j === i); });
+        }
+      });
+    }, { rootMargin: '-40% 0px -55% 0px' });
+    secs.forEach(function (s) { obs.observe(s); });
+  }
 
   var PAGES = {
-    swap:     ['usage', 'projects', 'tools', 'workflow', 'guide'],
-    pair:     ['usage', 'workflow', 'projects', 'tools', 'guide'],
-    merged:   ['usagewf', 'projects', 'tools', 'guideold'],
-    absorbed: ['usage', 'projects', 'tools', 'wfnotes']
+    digest:    function (host) { buildDigestPage(host, ORDER_A); },
+    accordion: function (host) { buildAccordionPage(host, ORDER_A); },
+    tabs:      function (host) { buildTabsPage(host, ORDER_A); },
+    rail:      function (host) { buildRailPage(host, ORDER_A, 'rail'); },
+    showcase:  function (host) { buildDigestPage(host, ORDER_E); }
   };
 
   document.querySelectorAll('[data-page]').forEach(function (host) {
-    var keys = PAGES[host.getAttribute('data-page')];
-    host.appendChild(stub('Stack hero · title, price, upvotes', false));
-    keys.forEach(function (k, i) {
-      var s = SECTIONS[k]();
-      host.appendChild(section(i + 1, s.kicker, s.title, s.meta, s.body));
-    });
-    host.appendChild(stub('Build your own stack', true));
+    PAGES[host.getAttribute('data-page')](host);
   });
 
   /* ---------- variant switcher ---------- */
   var VARIANTS = [
-    { key: 'swap',     id: 'v-swap',     name: 'A · the slot swap' },
-    { key: 'pair',     id: 'v-pair',     name: 'B · the measured pair' },
-    { key: 'merged',   id: 'v-merged',   name: 'C · one measured block' },
-    { key: 'absorbed', id: 'v-absorbed', name: 'D · the absorbed guide' }
+    { key: 'digest',    id: 'v-digest',    name: 'A · the digest' },
+    { key: 'accordion', id: 'v-accordion', name: 'B · the accordion' },
+    { key: 'tabs',      id: 'v-tabs',      name: 'C · the tabs' },
+    { key: 'rail',      id: 'v-rail',      name: 'D · the jump rail' },
+    { key: 'showcase',  id: 'v-showcase',  name: 'E · showcase first' }
   ];
   var current = 0;
 
@@ -582,7 +796,7 @@
   });
 
   (function () {
-    var q = new URL(window.location.href).searchParams.get('variant') || 'swap';
+    var q = new URL(window.location.href).searchParams.get('variant') || 'digest';
     var idx = VARIANTS.findIndex(function (v) { return v.key === q; });
     show(idx >= 0 ? idx : 0);
   })();
