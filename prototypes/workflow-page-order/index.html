@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Prototype · alp82/aistack#193 · the stack page section order · round 13</title>
+<!--
+  PROTOTYPE. Throwaway. alp82/aistack#193: the stack page section order with
+  the workflow section. Baseline: #191 round 4 (PR #192), the podium.
+
+  ROUND 1 verdict (2026-08-21): the owner leans A (workflow at 04) or a
+  projects-and-tools-first order. The fear: the page scrolls endlessly and
+  most people never reach the bottom.
+
+  ROUND 2 verdict (2026-08-21): the accordion. Five header bars, tap to
+  open. Five more variations based on it.
+
+  ROUND 3 verdict (2026-08-21): one at a time. Play with compact combined
+  with it, and show more variations of the peek. Ten combinations.
+
+  ROUND 4 verdict (2026-08-21): A (compact, one at a time) and F (the
+  micro peek) are the favorites. Five more with those as the baseline.
+
+  ROUND 5 verdict (2026-08-21): none of the hybrids. The round-4 original
+  micro peek (F) was better.
+
+  ROUND 6 verdict (2026-08-21): make variations of the winner where the
+  slivers show different kinds of info. The title round waits.
+
+  ROUND 7 verdict (2026-08-21): torn between the crop and the signature
+  visual.
+
+  ROUND 8 verdict (2026-08-21): the crop signals that a tap reveals
+  more, the visual is cleaner but hides that. The want: clean AND
+  clearly tappable.
+
+  ROUND 9 verdict (2026-08-21): the undercrop looks nice, but its faint
+  strip repeated what the sliver already showed. Fix the repetition.
+
+  ROUND 10 verdict (2026-08-22): keep the faded preview whole. Make the
+  extra bit under the title a UNIQUE part instead: descriptive text, a
+  stat, or a mini chart that the body never repeats.
+
+  ROUND 11 verdict (2026-08-22): saved as an alternative. New direction:
+  the compact rows stop expanding and become NAVIGATION. A click scrolls
+  to the real section, all sections sit on one continuous page, and on
+  scroll the rows become a fixed top nav.
+
+  ROUND 12 verdict (2026-08-22): the stat rows are great. Mock the main
+  layout and the stack header too, put the main stack info into the nav,
+  and make it work with the existing shell.
+
+  VERDICT (round 13, 2026-08-22, all as recommended). The shell fit is
+  the final structure. The order: Actual Usage 01, Projects 02, Tools 03,
+  Workflow 04, Guide 05, all on one continuous page behind the stat-row
+  nav block. The measured section takes the title "Workflow" under the
+  kicker "// measured". The old guide section renames to "Guide" under
+  "// writeup". The round-11 accordion stays on record as the saved
+  alternative (?variant=alt).
+
+  ROUND 13. The shell fit. The page now mocks the real surroundings:
+  - the sticky site header (logo, nav links, actions), 64px, always on
+    top like on the live site.
+  - the stack hero: avatar, upvotes, the big title, the byline, the
+    lime price tile and the top tool tiles.
+  - the stat-row nav block under the hero. A tap scrolls to the section.
+  - the fixed rail that appears when the nav block scrolls away now
+    docks UNDER the site header and carries the stack identity on its
+    left: name, price, upvotes. The section links follow it.
+  - B "the saved accordion" stays for comparison.
+  Switch with the bar at the bottom or ?variant=shell|alt.
+
+  Data provenance: the workflow rows, fit scores and stats come unchanged
+  from the #191 prototype (real Git anchors, hand-made shares). The guide
+  prose, projects and tools are compressed fakes shaped like the live page.
+  The live sections are taller than these fakes, so the accordion matters
+  more on the real page, not less. No live sync feeds this.
+-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    color-scheme: dark;
+    --bg-canvas: oklch(0.16 0.008 256);
+    --bg-shell: oklch(0.12 0.01 256);
+    --bg-panel: oklch(0.2 0.009 256);
+    --bg-panel-muted: oklch(0.24 0.009 256);
+    --bg-panel-elevated: oklch(0.28 0.01 256);
+    --fg-primary: oklch(0.96 0.004 256);
+    --fg-secondary: oklch(0.82 0.004 256);
+    --fg-muted: oklch(0.68 0.005 256);
+    --accent-lime: oklch(0.78 0.17 132);
+    --accent-lime-contrast: oklch(0.22 0.02 132);
+    --stroke-subtle: oklch(0.55 0.01 256 / 0.45);
+    --stroke-strong: oklch(0.5 0.015 256 / 0.9);
+    --neg: oklch(0.64 0.19 25);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg-canvas);
+    color: var(--fg-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- prototype chrome ---------- */
+  .ticket-strip {
+    background: var(--bg-shell);
+    border-bottom: 1px solid var(--stroke-subtle);
+    padding: 10px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.08em;
+    color: var(--fg-muted); text-transform: uppercase;
+  }
+  .ticket-strip b { color: var(--accent-lime); font-weight: 700; }
+
+  .proposal { margin: 20px auto 0; max-width: 80rem; padding: 0 24px; }
+  .proposal-box {
+    border: 2px dashed oklch(0.75 0.09 85 / 0.7);
+    padding: 14px 16px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 1.8;
+    color: var(--fg-secondary);
+  }
+  .proposal-box .tag { color: oklch(0.75 0.09 85); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-size: 10px; display: block; margin-bottom: 6px; }
+  .proposal-box b { color: var(--fg-primary); }
+  .proposal-box .journey { display: block; margin-top: 6px; color: var(--fg-muted); }
+  .proposal-box .journey b { color: var(--accent-lime); }
+
+  /* ---------- stubs (context, not judged) ---------- */
+  .stub { border-top: 1px solid var(--stroke-subtle); border-bottom: 1px solid var(--stroke-subtle); padding: 22px 24px; opacity: 0.4; }
+  .stub .shell { display: flex; align-items: baseline; gap: 16px; }
+  .stub .name { font-size: 16px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.01em; }
+  .stub .note { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); margin-left: auto; }
+  .stub.cta { background: var(--accent-lime); border: 0; }
+  .stub.cta .name, .stub.cta .note { color: var(--accent-lime-contrast); }
+
+  /* ---------- section shell (mirrors the live page) ---------- */
+  section.journey { padding: 44px 24px; border-top: 1px solid var(--stroke-subtle); }
+  @media (min-width: 768px) { section.journey { padding: 60px 24px; } }
+  .shell { max-width: 80rem; margin: 0 auto; }
+  .sec-head {
+    display: flex; align-items: flex-end; gap: 20px;
+    border-bottom: 1px solid var(--stroke-subtle);
+    padding-bottom: 18px; margin-bottom: 28px;
+  }
+  .sec-index { font-family: 'JetBrains Mono', monospace; font-size: 44px; font-weight: 800; line-height: 1; color: var(--stroke-strong); }
+  @media (min-width: 768px) { .sec-index { font-size: 64px; } }
+  .sec-kicker { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: 0.25em; text-transform: uppercase; color: var(--accent-lime); margin: 0; }
+  .sec-title { font-size: 28px; font-weight: 900; letter-spacing: -0.02em; text-transform: uppercase; margin: 4px 0 0; line-height: 1; }
+  @media (min-width: 768px) { .sec-title { font-size: 36px; } }
+  .sec-meta { display: none; font-family: 'JetBrains Mono', monospace; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--fg-muted); }
+  @media (min-width: 768px) { .sec-meta { display: block; } }
+  .head-copy { flex: 1; }
+
+  .mono-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted); }
+  .kicker-line { color: var(--accent-lime); margin-bottom: 12px; }
+  .compress-note { margin: 18px 0 0; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); opacity: 0.7; }
+
+  /* ---------- accordion mode ---------- */
+  .acc section.journey { padding: 0 24px; }
+  .acc .sec-head { margin-bottom: 0; padding: 20px 0 18px; border-bottom: 0; cursor: pointer; }
+  .acc .acc-body { display: none; padding-bottom: 40px; }
+  .acc section.open .acc-body { display: block; }
+  .acc section.open .sec-head { border-bottom: 1px solid var(--stroke-subtle); margin-bottom: 28px; }
+  .acc .gist { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); margin: 6px 0 0; letter-spacing: 0.04em; }
+  .acc section.open .gist { display: none; }
+  .acc-chev { font-family: 'JetBrains Mono', monospace; font-size: 20px; color: var(--fg-muted); align-self: center; }
+  .acc section.open .acc-chev::before { content: "–"; }
+  .acc section:not(.open) .acc-chev::before { content: "+"; }
+
+  /* compact bars (round 3, B) */
+  .acc.compact .sec-head { padding: 14px 0; gap: 12px; align-items: center; }
+  .acc.compact .sec-index { font-size: 18px; }
+  @media (min-width: 768px) { .acc.compact .sec-index { font-size: 22px; } }
+  .acc.compact .sec-title { font-size: 17px; margin: 0; }
+  @media (min-width: 768px) { .acc.compact .sec-title { font-size: 20px; } }
+  .acc.compact .sec-kicker { display: none; }
+  .acc.compact section.open .sec-kicker { display: block; }
+  .stat-chip { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 800; color: var(--accent-lime); align-self: center; white-space: nowrap; }
+  .acc section.open .stat-chip { display: none; }
+
+  /* the inline strip (round 5, B) */
+  .bar-strip { display: none; gap: 1px; height: 10px; width: 110px; align-self: center; flex-shrink: 0; }
+  @media (min-width: 480px) { .bar-strip { display: inline-flex; } }
+  .bar-strip i { height: 100%; display: inline-block; }
+  .acc section.open .bar-strip { display: none; }
+
+  /* teaser slivers (round 7): designed content instead of a crop */
+  .peekwrap.teaser { max-height: none; opacity: 1; padding-bottom: 26px; }
+  .peekwrap.teaser::after { display: none; }
+  .fact-row { display: flex; gap: 1px; border: 1px solid var(--stroke-subtle); background: var(--stroke-subtle); max-width: 40rem; }
+  .fact-row .fact { flex: 1; background: var(--bg-canvas); padding: 10px 12px; }
+  .fact-row .v { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 800; color: var(--accent-lime); margin: 0; }
+  .fact-row .l { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted); margin: 3px 0 0; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { border: 1px solid var(--stroke-subtle); padding: 4px 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-secondary); }
+  .chip.more { color: var(--fg-muted); border-style: dashed; }
+  .tease-line { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--fg-secondary); max-width: 46rem; }
+  .tease-bar { display: flex; height: 14px; gap: 2px; max-width: 40rem; }
+  .tease-bar i { height: 100%; display: inline-block; }
+  .tease-label { margin: 8px 0 0; }
+
+  /* tap signals (round 9) */
+  .more-line { margin-top: 12px; border: 1px solid var(--stroke-subtle); padding: 8px 12px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted); display: flex; justify-content: space-between; max-width: 40rem; }
+  .more-line .pl { color: var(--accent-lime); font-weight: 700; }
+  .sliver-box { border: 1px solid var(--stroke-strong); padding: 14px; display: flex; align-items: center; gap: 14px; max-width: 44rem; transition: border-color 0.15s; }
+  .peekwrap:hover .sliver-box { border-color: var(--accent-lime); }
+  .sliver-box > :first-child { flex: 1; min-width: 0; }
+  .box-plus { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--accent-lime); flex-shrink: 0; }
+  .mini-crop { position: relative; max-height: 72px; overflow: hidden; opacity: 0.35; margin-top: 14px; max-width: 46rem; }
+  .mini-crop::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(transparent, var(--bg-canvas)); }
+
+  /* the unique subtitle bit (round 11) */
+  .sub-bit { display: flex; align-items: center; gap: 12px; margin: 8px 0 0; }
+  .sub-bit .txt { margin: 0; font-size: 13px; line-height: 1.5; color: var(--fg-secondary); }
+  .sub-bit svg { width: 130px; height: 24px; flex-shrink: 0; }
+  .sub-bit svg polyline { fill: none; stroke: var(--accent-lime); stroke-width: 1.5; }
+  .sub-bit .lbl { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted); }
+  .acc section.open .sub-bit { display: none; }
+
+  /* nav rows over one continuous page (round 12) */
+  .navblock { max-width: 80rem; margin: 0 auto; padding: 28px 24px 40px; }
+  .navlist { border: 1px solid var(--stroke-subtle); }
+  .navrow { display: flex; align-items: center; gap: 14px; padding: 15px 16px; border-top: 1px solid var(--stroke-subtle); cursor: pointer; transition: background 0.12s; }
+  .navrow:first-child { border-top: 0; }
+  .navrow:hover { background: var(--bg-shell); }
+  .navrow .no { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 800; color: var(--stroke-strong); flex-shrink: 0; }
+  .navrow .ti { font-size: 15px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.01em; flex-shrink: 0; }
+  .navrow .right { margin-left: auto; display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .navrow .arrow { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: var(--accent-lime); flex-shrink: 0; }
+  .navrow .sub-bit { margin: 0; }
+  .navrow .sub-bit .txt { font-size: 12px; color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (max-width: 640px) { .navrow .sub-bit .txt, .navrow .sub-bit .lbl { display: none; } }
+  .navrow .bar-strip { display: inline-flex; }
+  @media (max-width: 480px) { .navrow .bar-strip { display: none; } }
+  .toprail { position: fixed; top: 0; left: 0; right: 0; z-index: 45; display: flex; overflow-x: auto; background: var(--bg-shell); border-bottom: 2px solid var(--stroke-strong); transform: translateY(-100%); transition: transform 0.18s; }
+  .toprail.show { transform: translateY(0); }
+  .toprail a { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none; color: var(--fg-muted); padding: 12px 14px; white-space: nowrap; border-right: 1px solid var(--stroke-subtle); }
+  .toprail a .no { color: var(--stroke-strong); margin-right: 5px; }
+  .toprail a.on { color: var(--accent-lime); box-shadow: inset 0 -3px 0 var(--accent-lime); }
+  .toprail a.on .no { color: var(--accent-lime); }
+  .navpage section.journey { scroll-margin-top: 46px; }
+
+  /* the shell fit (round 13) */
+  .siteheader { position: sticky; top: 0; z-index: 46; height: 64px; background: var(--bg-canvas); border-bottom: 2px solid var(--stroke-strong); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
+  .siteheader .left { display: flex; align-items: center; gap: 32px; }
+  .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 20px; letter-spacing: -0.04em; }
+  .logo i { width: 12px; height: 12px; background: var(--accent-lime); display: inline-block; animation: pulse 2s infinite; }
+  @keyframes pulse { 50% { opacity: 0.4; } }
+  .sitenav { display: none; gap: 28px; }
+  @media (min-width: 768px) { .sitenav { display: flex; } }
+  .sitenav span { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-muted); }
+  .sitenav span.on { color: var(--fg-primary); }
+  .sitebtns { display: flex; gap: 10px; }
+  .sitebtn { border: 2px solid var(--stroke-strong); background: var(--bg-panel); padding: 6px 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-primary); }
+  .sitebtn.lime { border-color: var(--accent-lime); background: var(--accent-lime); color: var(--accent-lime-contrast); }
+
+  .hero { border-bottom: 1px solid var(--stroke-strong); padding: 40px 24px 48px; }
+  .hero .shell { max-width: 80rem; margin: 0 auto; }
+  .hero-id { display: flex; align-items: center; gap: 14px; }
+  .avatar { width: 48px; height: 48px; background: var(--bg-panel-elevated); border: 1px solid var(--stroke-strong); display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 16px; color: var(--fg-secondary); flex-shrink: 0; }
+  .upchip { border: 1px solid var(--stroke-strong); padding: 6px 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--fg-primary); }
+  .upchip b { color: var(--accent-lime); }
+  .hero h1 { margin: 18px 0 0; font-size: 44px; font-weight: 900; letter-spacing: -0.04em; text-transform: uppercase; line-height: 0.9; }
+  @media (min-width: 768px) { .hero h1 { font-size: 72px; } }
+  .byline { margin: 12px 0 0; font-size: 14px; color: var(--fg-secondary); }
+  .byline .handle { color: var(--fg-muted); font-family: 'JetBrains Mono', monospace; font-size: 12.5px; }
+  .byline .ver { color: var(--accent-lime); }
+  .hero-meta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; align-items: stretch; }
+  .price-tile { background: var(--accent-lime); padding: 12px 16px; display: flex; flex-direction: column; justify-content: center; }
+  .price-tile .amt { font-family: 'JetBrains Mono', monospace; font-weight: 900; font-size: 26px; line-height: 1; color: var(--accent-lime-contrast); }
+  .price-tile .per { margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-lime-contrast); }
+  .herotool { border: 1px solid var(--stroke-strong); padding: 10px 14px; display: flex; align-items: center; gap: 10px; min-width: 9rem; }
+  .herotool .ic { width: 26px; height: 26px; background: var(--bg-panel-elevated); border: 1px solid var(--stroke-subtle); flex-shrink: 0; }
+  .herotool .kk { display: block; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); }
+  .herotool .nn { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 700; }
+  .herotool.more { border-style: dashed; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-muted); justify-content: center; }
+
+  .shellpage .toprail { top: 64px; }
+  .railbrand { display: flex; align-items: center; gap: 12px; padding: 9px 14px; border-right: 2px solid var(--stroke-strong); flex-shrink: 0; }
+  .railbrand .nm { font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.01em; white-space: nowrap; }
+  .railbrand .pr { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: var(--accent-lime); white-space: nowrap; }
+  .railbrand .uv { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--fg-muted); white-space: nowrap; }
+  .shellpage section.journey { scroll-margin-top: 112px; }
+
+  /* the peek (round 3, D; round 4 styles) */
+  .peekwrap { position: relative; max-height: 170px; overflow: hidden; opacity: 0.55; cursor: pointer; padding-bottom: 24px; }
+  .peekwrap::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 90px; background: linear-gradient(transparent, var(--bg-canvas)); }
+  .peekwrap > * { pointer-events: none; }
+  .acc section.open .peekwrap { display: none; }
+  .peekwrap.bright { opacity: 1; max-height: 300px; }
+  .peekwrap.micro { opacity: 0.8; max-height: 76px; padding-bottom: 10px; }
+  .peekwrap.micro::after { height: 44px; }
+  .peek-hint { position: absolute; right: 0; bottom: 10px; z-index: 1; font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-lime); background: var(--bg-canvas); border: 1px solid var(--stroke-subtle); padding: 3px 8px; }
+  .acc.focused section:not(.open) .peekwrap { display: none; }
+
+  /* ---------- show-all row (digest mode) ---------- */
+  .showall {
+    appearance: none; width: 100%; margin-top: 16px;
+    border: 1px solid var(--stroke-subtle); background: transparent; color: var(--fg-muted);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase; text-align: left;
+    padding: 12px 14px; cursor: pointer; display: flex; gap: 12px; align-items: baseline;
+  }
+  .showall .spacer { flex: 1; }
+  .showall .chev::before { content: "+"; }
+  .showall.open .chev::before { content: "–"; }
+  .showall-pack { display: none; }
+  .showall-pack.open { display: block; }
+
+  /* ---------- actual usage (compressed) ---------- */
+  .stat-band { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); }
+  @media (min-width: 640px) { .stat-band { grid-template-columns: repeat(4, 1fr); } }
+  .stat { background: var(--bg-canvas); padding: 14px 16px; }
+  .stat .v { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 800; margin: 0; color: var(--fg-primary); }
+  .stat p { margin: 4px 0 0; font-size: 11.5px; color: var(--fg-muted); }
+  .mixbar { display: flex; height: 16px; gap: 2px; margin-top: 16px; }
+  .mixbar i { height: 100%; display: inline-block; }
+
+  /* ---------- projects (compressed) ---------- */
+  .proj-grid { display: grid; gap: 14px; }
+  @media (min-width: 640px) { .proj-grid { grid-template-columns: 1fr 1fr; } }
+  .proj { border: 1px solid var(--stroke-subtle); padding: 16px; }
+  .proj h3 { margin: 0; font-size: 15px; font-weight: 800; text-transform: uppercase; }
+  .proj p { margin: 6px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--fg-secondary); }
+
+  /* ---------- tools (compressed) ---------- */
+  .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (min-width: 768px) { .tool-grid { grid-template-columns: repeat(4, 1fr); } }
+  .tool { border: 1px solid var(--stroke-subtle); padding: 14px; }
+  .tool .nm { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 700; margin: 0; }
+  .tool p { margin: 4px 0 0; font-size: 11px; color: var(--fg-muted); }
+
+  /* ---------- guide / writeup (compressed) ---------- */
+  .prose { max-width: 46rem; }
+  .prose .toc { border: 1px solid var(--stroke-subtle); padding: 12px 14px; margin-bottom: 18px; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.9; color: var(--fg-muted); }
+  .prose .toc b { color: var(--accent-lime); display: block; font-size: 10px; letter-spacing: 0.14em; margin-bottom: 4px; }
+  .prose h3 { font-size: 17px; font-weight: 800; margin: 22px 0 8px; text-transform: uppercase; }
+  .prose h3:first-of-type { margin-top: 0; }
+  .prose p { margin: 8px 0 0; font-size: 14px; line-height: 1.65; color: var(--fg-secondary); }
+
+  /* ---------- workflow: lead draft ---------- */
+  .draft { border: 1px dashed var(--stroke-strong); padding: 14px 16px; max-width: 46rem; }
+  .draft-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--accent-lime-contrast); color: var(--accent-lime); border: 1px solid var(--accent-lime); padding: 2px 7px; font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .draft p { margin: 10px 0 0; font-size: 14.5px; line-height: 1.6; color: var(--fg-secondary); }
+  .block-gap { margin-top: 24px; }
+
+  /* ---------- workflow: podium band ---------- */
+  .sub-facts { display: grid; gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); }
+  @media (min-width: 640px) { .sub-facts { grid-template-columns: repeat(3, 1fr); } }
+  .sub-fact { appearance: none; border: 0; font-family: inherit; text-align: left; background: var(--bg-canvas); padding: 16px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; color: inherit; }
+  .sub-fact.on { background: var(--bg-shell); box-shadow: inset 0 -3px 0 var(--accent-lime); }
+  .sub-fact .n { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 800; margin: 0; color: var(--accent-lime); }
+  .sub-fact p { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--fg-secondary); }
+  .sub-fact .src { margin-top: 8px; }
+  .podium-body { display: none; border: 1px solid var(--stroke-subtle); border-top: 0; padding: 14px; }
+  .podium-body.on { display: block; }
+
+  /* ---------- workflow: thin rows ---------- */
+  .rowlist { border: 1px solid var(--stroke-subtle); }
+  .mrow { border-top: 1px solid var(--stroke-subtle); }
+  .mrow:first-child { border-top: 0; }
+  .mrow .mhead { appearance: none; border: 0; width: 100%; background: transparent; color: inherit; display: flex; align-items: baseline; gap: 12px; padding: 12px 14px; cursor: pointer; font-family: 'JetBrains Mono', monospace; text-align: left; }
+  .mrow .nm { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-primary); flex-shrink: 0; }
+  .mrow .cap { display: none; font-size: 11px; color: var(--fg-muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (min-width: 768px) { .mrow .cap { display: block; } }
+  .mrow .spacer { flex: 1; }
+  @media (min-width: 768px) { .mrow .spacer { display: none; } }
+  .mrow .st { font-size: 13px; font-weight: 800; color: var(--accent-lime); white-space: nowrap; }
+  .mrow .chev { font-size: 13px; color: var(--fg-muted); width: 1rem; text-align: right; flex-shrink: 0; }
+  .mrow.open .chev::before { content: "–"; }
+  .mrow:not(.open) .chev::before { content: "+"; }
+  .mrow .body { display: none; padding: 2px 14px 16px; }
+  .mrow.open .body { display: block; }
+  .mrow.dim { opacity: 0.45; }
+  .mrow.more-row .mhead, .mrow.more-row .nm { color: var(--fg-muted); }
+  .hidden-pack { display: none; }
+  .hidden-pack.open { display: block; }
+  .row-footnote { margin: 10px 0 0; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); }
+  .deriv { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 1.9; color: var(--fg-secondary); border: 1px solid var(--stroke-subtle); padding: 12px 14px; }
+  .deriv b { color: var(--fg-primary); }
+  .deriv .k { color: var(--fg-muted); }
+  .consent { margin-top: 26px; border-top: 1px solid var(--stroke-subtle); padding-top: 12px; font-size: 12px; line-height: 1.6; color: var(--fg-muted); max-width: 46rem; }
+
+  /* ---------- variant framework / switcher ---------- */
+  .variant { display: none; }
+  .variant.active { display: block; }
+  .switcher {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+    display: flex; align-items: stretch;
+    background: var(--bg-panel-elevated);
+    border: 2px solid var(--stroke-strong);
+    box-shadow: 4px 4px 0 var(--accent-lime);
+    z-index: 50;
+  }
+  .switcher button { appearance: none; border: 0; background: transparent; color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; width: 46px; height: 46px; cursor: pointer; }
+  .switcher button:active { background: var(--bg-panel-muted); }
+  .switcher .label { display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 11rem; padding: 0 10px; border-left: 2px solid var(--stroke-strong); border-right: 2px solid var(--stroke-strong); }
+  .switcher .label .k { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.18em; color: var(--fg-muted); text-transform: uppercase; }
+  .switcher .label .n { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; color: var(--accent-lime); text-transform: uppercase; }
+  .page-end-pad { height: 90px; }
+</style>
+</head>
+<body>
+
+<div class="ticket-strip">
+  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 13 · the shell fit: real header, hero and rail
+</div>
+
+<!-- ==================== section content templates ==================== -->
+
+<template data-tpl="usage">
+  <div class="stat-band">
+    <div class="stat"><p class="v">148M</p><p>tokens in 30 days</p></div>
+    <div class="stat"><p class="v">$96+</p><p>lower bound · 92% priced</p></div>
+    <div class="stat"><p class="v">214</p><p>sessions</p></div>
+    <div class="stat"><p class="v">4</p><p>models ran</p></div>
+  </div>
+  <p class="mono-label kicker-line" style="margin-top:16px">where the tokens went</p>
+  <div class="mixbar">
+    <i style="flex:58; background:var(--accent-lime)"></i>
+    <i style="flex:22; background:oklch(0.78 0.17 132 / 0.55)"></i>
+    <i style="flex:12; background:oklch(0.78 0.17 132 / 0.3)"></i>
+    <i style="flex:8; background:var(--bg-panel-elevated)"></i>
+  </div>
+  <p class="compress-note">compressed to its band · the live section is taller</p>
+</template>
+
+<template data-tpl="shell">
+  <div class="siteheader">
+    <div class="left">
+      <span class="logo"><i></i>aistack</span>
+      <span class="sitenav"><span class="on">Stacks</span><span>Tools</span><span>Models</span><span>Compare</span></span>
+    </div>
+    <div class="sitebtns"><span class="sitebtn">Sign in</span><span class="sitebtn lime">+ New Stack</span></div>
+  </div>
+  <div class="hero">
+    <div class="shell">
+      <div class="hero-id">
+        <span class="avatar">AO</span>
+        <span class="upchip">▲ <b>12</b></span>
+      </div>
+      <h1>Night Shift</h1>
+      <p class="byline">Alper Ortac <span class="handle">@alp82</span> <span class="ver">✓</span></p>
+      <div class="hero-meta">
+        <div class="price-tile"><span class="amt">$220</span><span class="per">/month · fixed</span></div>
+        <div class="herotool"><span class="ic"></span><span><span class="kk">harness</span><span class="nn">Claude Code</span></span></div>
+        <div class="herotool"><span class="ic"></span><span><span class="kk">harness</span><span class="nn">opencode</span></span></div>
+        <div class="herotool"><span class="ic"></span><span><span class="kk">backend</span><span class="nn">Convex</span></span></div>
+        <div class="herotool more">+ 8 more</div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template data-tpl="guide-lead">
+  <div class="prose">
+    <div class="toc"><b>// ON THIS PAGE</b>Why this setup · The daily loop · What broke and stayed broken</div>
+    <h3>Why this setup</h3>
+    <p>One big-model harness holds the main loop, and everything else orbits it. The daemon dispatches tickets, and the review gate keeps a human between the branch and main.</p>
+  </div>
+</template>
+
+<template data-tpl="guide-more">
+  <div class="prose">
+    <h3>The daily loop</h3>
+    <p>Mornings clear the review queue. The heavy build work runs at night, batched behind one question round, so the wait for answers amortizes.</p>
+    <h3>What broke and stayed broken</h3>
+    <p>Pointing the local CLI at prod broke the setup twice. All prod operations now run on the server over ssh, and the local database syncs from an export.</p>
+    <p class="compress-note">compressed · the owner's writeup, edited in place</p>
+  </div>
+</template>
+
+<!-- ==================== the five treatments ==================== -->
+
+<div class="variant" id="v-shell">
+  <div class="proposal">
+    <div class="proposal-box">
+      <span class="tag">round 13 · the shell fit · prototype chrome</span>
+      <b>The stat-row nav inside the real surroundings.</b> Sticky site header, the stack hero, the nav block, five full sections. Scroll past the block and the rail docks under the site header, carrying the stack name, the price and the upvotes.
+      <span class="journey">hero → nav block → 01 usage → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide</span>
+    </div>
+  </div>
+  <div data-page="shell"></div>
+</div>
+
+<div class="variant" id="v-alt">
+  <div class="proposal">
+    <div class="proposal-box">
+      <span class="tag">proposal D · the saved accordion · prototype chrome</span>
+      <b>Round 11 unchanged, as the reference alternative.</b> The unique subtitle bit over the whole faded crop, one section open at a time.
+    </div>
+  </div>
+  <div data-page="alt"></div>
+</div>
+
+<div class="page-end-pad"></div>
+
+<!-- floating variant switcher (prototype chrome, not part of the design) -->
+<div class="switcher" role="navigation" aria-label="variant switcher">
+  <button type="button" id="prev" aria-label="previous treatment">←</button>
+  <div class="label">
+    <span class="k" id="sw-k">variation 1 / 5</span>
+    <span class="n" id="sw-n">A · the digest</span>
+  </div>
+  <button type="button" id="next" aria-label="next treatment">→</button>
+</div>
+
+<script>
+  /* ============ the settled row set from #191 (podium variation) ============ */
+  var ROWS = [
+    { key: 'night',    kind: 'metric', fit: 0.86, name: 'late-night commits', stat: '42%',    cap: 'of commits land between 23:00 and 03:00',
+      src: 'local git history · exact', band: 'typical band 8% to 24% · this window 42%' },
+    { key: 'parallel', kind: 'metric', fit: 0.81, name: 'parallel projects',  stat: '2.8',    cap: 'projects run in parallel on a median active day',
+      src: 'overlapping project session spans', band: 'typical band 1.0 to 1.8 · this window 2.8' },
+    { key: 'playbook', kind: 'comp',   fit: 0.78, name: 'how work ships',     stat: '18 min', cap: 'a quick fix ships, median wall time' },
+    { key: 'ledger',   kind: 'comp',   fit: 0.74, name: 'the git ledger',     stat: '+94.8k', cap: 'lines added in 30 days, 19.3k removed' },
+    { key: 'routing',  kind: 'comp',   fit: 0.62, name: 'model routing',      stat: '89%',    cap: 'of the main loop runs on fable-5' },
+    { key: 'dele',     kind: 'comp',   fit: 0.58, name: 'delegation',         stat: '2 : 1',  cap: 'main-loop to subagent tool work' },
+    { key: 'heat',     kind: 'comp',   fit: 0.55, name: 'when the work happens', stat: '23:00', cap: 'the busiest commit hour, on a Sunday' },
+    { key: 'switch',   kind: 'metric', fit: 0.52, name: 'model switches',     stat: '1 in 6', cap: 'sessions switch model mid-run',
+      src: 'response model changes · exact', band: 'typical band 1 in 20 to 1 in 12 · this window 1 in 6' },
+    { key: 'kit',      kind: 'comp',   fit: 0.49, name: 'the kit',            stat: '24%',    cap: 'of skill runs are grilling' },
+    { key: 'langs',    kind: 'comp',   fit: 0.41, name: 'coding languages',   stat: '73%',    cap: 'of changed lines are TypeScript' },
+    { key: 'think',    kind: 'metric', fit: 0.36, name: 'thinking share',     stat: '38%',    cap: 'of response tokens are thinking',
+      src: 'token records · one definition per harness', band: 'typical band 25% to 45% · this window 38%' },
+    { key: 'effort',   kind: 'metric', fit: 0.34, name: 'high effort',        stat: '61%',    cap: 'of turns run at high effort',
+      src: 'effort field · exact where recorded', band: 'typical band 40% to 70% · this window 61%' },
+    { key: 'eswitch',  kind: 'metric', fit: 0.33, name: 'effort switches',    stat: '1 in 5', cap: 'sessions change effort mid-run',
+      src: 'effort field changes · exact where recorded', band: 'typical band 1 in 12 to 1 in 7 · this window 1 in 5' },
+    { key: 'turn',     kind: 'metric', fit: 0.29, name: 'longest turn',       stat: '47 min', cap: 'longest recorded turn duration',
+      src: 'turn duration records', band: 'typical band 12 to 35 min · this window 47 min' },
+    { key: 'quest',    kind: 'metric', fit: 0.27, name: 'questions back',     stat: '1 in 9', cap: 'turns end with a question back to the human',
+      src: 'question tool calls', band: 'typical band 1 in 14 to 1 in 8 · this window 1 in 9' },
+    { key: 'web',      kind: 'metric', fit: 0.24, name: 'web searches',       stat: '6',      cap: 'web searches per active day, inside the harness',
+      src: 'recorded web-search calls', band: 'typical band 3 to 9 per day · this window 6' }
+  ];
+  var HL_COUNT = 3;
+  var HIDE_BELOW = 0.40;
+
+  var PROJECTS = [
+    { name: 'aistack.sh', desc: 'The site this page lives on. Convex, TanStack, the measured pipeline.' },
+    { name: 'curia', desc: 'The dispatch daemon that runs agents against the tracker.' },
+    { name: 'feed poller', desc: 'The newsletter source machinery, prototyped this month.' },
+    { name: 'hn collector', desc: 'One week of Hacker News in nine requests.' },
+    { name: 'news scrapers', desc: 'Nine scrapers for the vendor blogs without a feed.' }
+  ];
+  var TOOLS = [
+    { nm: 'Claude Code', sub: 'main harness · $200/mo' },
+    { nm: 'opencode', sub: 'second harness' },
+    { nm: 'Convex', sub: 'backend' },
+    { nm: 'Codex', sub: 'reviewer' },
+    { nm: 'Biome', sub: 'lint and format' },
+    { nm: 'Vite', sub: 'build' },
+    { nm: 'Resend', sub: 'email' },
+    { nm: 'PostHog', sub: 'analytics' },
+    { nm: 'Tailwind', sub: 'styling' },
+    { nm: 'Playwright', sub: 'browser runs' },
+    { nm: 'pnpm', sub: 'packages' }
+  ];
+
+  function tpl(key) {
+    return document.querySelector('template[data-tpl="' + key + '"]').content.cloneNode(true);
+  }
+
+  function el(cls, html) {
+    var d = document.createElement('div');
+    d.className = cls;
+    if (html) d.innerHTML = html;
+    return d;
+  }
+
+  /* A "show all" row: hides `packEl` until tapped. */
+  function showAllRow(label, count, packEl) {
+    var frag = document.createDocumentFragment();
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'showall';
+    btn.innerHTML = '<span>' + label + '</span><span class="spacer"></span><span>' + count + ' more</span><span class="chev"></span>';
+    packEl.classList.add('showall-pack');
+    btn.addEventListener('click', function () {
+      var open = packEl.classList.toggle('open');
+      btn.classList.toggle('open', open);
+    });
+    frag.appendChild(btn);
+    frag.appendChild(packEl);
+    return frag;
+  }
+
+  function bodyHtml(r) {
+    if (r.kind === 'comp') {
+      return '<div class="deriv"><span class="k">component:</span> the <b>' + r.name +
+        '</b> block, settled in #191, renders here. Stubbed in this order prototype.</div>';
+    }
+    return '<div class="deriv">' +
+      '<span class="k">from:</span> ' + r.src +
+      '<br><span class="k">rule:</span> ' + r.band +
+      '<br><span class="k">fit:</span> <b>' + r.fit.toFixed(2) + '</b> · coverage times surprise, versioned metric rule</div>';
+  }
+
+  function makeRow(r) {
+    var row = el('mrow');
+    row.innerHTML =
+      '<button type="button" class="mhead">' +
+      '<span class="nm">' + r.name + '</span>' +
+      '<span class="cap">' + r.cap + '</span>' +
+      '<span class="spacer"></span>' +
+      '<span class="st">' + r.stat + '</span>' +
+      '<span class="chev"></span>' +
+      '</button><div class="body">' + bodyHtml(r) + '</div>';
+    row.querySelector('.mhead').addEventListener('click', function () {
+      row.classList.toggle('open');
+    });
+    return row;
+  }
+
+  function buildRowlist() {
+    var sorted = ROWS.slice().sort(function (a, b) { return b.fit - a.fit; });
+    var rl = el('rowlist');
+    rl.style.marginTop = '16px';
+    var visible = sorted.slice(HL_COUNT).filter(function (r) { return r.fit >= HIDE_BELOW; });
+    var hidden = sorted.filter(function (r) { return r.fit < HIDE_BELOW; });
+    visible.forEach(function (r) { rl.appendChild(makeRow(r)); });
+    var pack = el('hidden-pack');
+    hidden.forEach(function (r) {
+      var row = makeRow(r);
+      row.classList.add('dim');
+      pack.appendChild(row);
+    });
+    var more = el('mrow more-row');
+    more.innerHTML = '<button type="button" class="mhead"><span class="nm">below the fit line</span>' +
+      '<span class="spacer"></span><span class="st" style="color:var(--fg-muted)">' + hidden.length + ' more</span>' +
+      '<span class="chev"></span></button>';
+    more.querySelector('.mhead').addEventListener('click', function () {
+      var open = pack.classList.toggle('open');
+      more.classList.toggle('open', open);
+    });
+    rl.appendChild(more);
+    rl.appendChild(pack);
+    return rl;
+  }
+
+  /* The settled podium. digest: the thin rows hide behind one "show all" row. */
+  function buildWorkflowBody(digest) {
+    var wrap = document.createElement('div');
+
+    var lead = el('draft');
+    lead.innerHTML = '<span class="draft-chip">workflow draft · llm over approved aggregates · owner-edited</span>' +
+      '<p>A gate-first flow. Nothing merges before a human review round, and the heaviest work lands deep in the night. The big model holds the main loop, small models take the routine reads, and the flow prefers many short sessions over one long one.</p>';
+    wrap.appendChild(lead);
+
+    var sorted = ROWS.slice().sort(function (a, b) { return b.fit - a.fit; });
+    var band = el('sub-facts block-gap');
+    var bodies = document.createElement('div');
+    sorted.slice(0, HL_COUNT).forEach(function (r) {
+      var box = document.createElement('button');
+      box.type = 'button';
+      box.className = 'sub-fact';
+      box.innerHTML = '<span class="mono-label">' + r.name + '</span><p class="n">' + r.stat + '</p><p>' + r.cap + '</p><span class="src mono-label">+ tap to extend</span>';
+      var body = el('podium-body');
+      body.innerHTML = bodyHtml(r);
+      box.addEventListener('click', function () {
+        var was = box.classList.contains('on');
+        band.querySelectorAll('.sub-fact').forEach(function (b) { b.classList.remove('on'); });
+        bodies.querySelectorAll('.podium-body').forEach(function (b) { b.classList.remove('on'); });
+        if (!was) { box.classList.add('on'); body.classList.add('on'); }
+      });
+      band.appendChild(box);
+      bodies.appendChild(body);
+    });
+    wrap.appendChild(band);
+    wrap.appendChild(bodies);
+
+    var rl = buildRowlist();
+    if (digest) {
+      var count = ROWS.length - HL_COUNT;
+      wrap.appendChild(showAllRow('the full row set', count, rl));
+    } else {
+      wrap.appendChild(rl);
+    }
+
+    var fn = document.createElement('p');
+    fn.className = 'row-footnote';
+    fn.textContent = 'one row set · ranked by fit · at most one highlight swap per sync day';
+    wrap.appendChild(fn);
+
+    var consent = el('consent');
+    consent.innerHTML = '<span class="mono-label">// HOW TO READ THIS</span><br>' +
+      'Shares, never raw counts. A name appears only after the owner approves it at the sync gate. The dashed block is a workflow draft: LLM prose over approved aggregates, owner-edited, never a number (ADR-0001).';
+    wrap.appendChild(consent);
+
+    return wrap;
+  }
+
+  function buildProjects(digest) {
+    var wrap = document.createElement('div');
+    var grid = el('proj-grid');
+    PROJECTS.slice(0, 2).forEach(function (pr) {
+      grid.appendChild(el('proj', '<h3>' + pr.name + '</h3><p>' + pr.desc + '</p>'));
+    });
+    wrap.appendChild(grid);
+    var rest = el('proj-grid');
+    rest.style.marginTop = '14px';
+    PROJECTS.slice(2).forEach(function (pr) {
+      rest.appendChild(el('proj', '<h3>' + pr.name + '</h3><p>' + pr.desc + '</p>'));
+    });
+    if (digest) wrap.appendChild(showAllRow('all projects', PROJECTS.length - 2, rest));
+    else { rest.classList.add('showall-pack', 'open'); wrap.appendChild(rest); }
+    return wrap;
+  }
+
+  function buildTools(digest) {
+    var wrap = document.createElement('div');
+    var grid = el('tool-grid');
+    TOOLS.slice(0, 4).forEach(function (t) {
+      grid.appendChild(el('tool', '<p class="nm">' + t.nm + '</p><p>' + t.sub + '</p>'));
+    });
+    wrap.appendChild(grid);
+    var rest = el('tool-grid');
+    rest.style.marginTop = '14px';
+    TOOLS.slice(4).forEach(function (t) {
+      rest.appendChild(el('tool', '<p class="nm">' + t.nm + '</p><p>' + t.sub + '</p>'));
+    });
+    if (digest) wrap.appendChild(showAllRow('all tools', TOOLS.length - 4, rest));
+    else { rest.classList.add('showall-pack', 'open'); wrap.appendChild(rest); }
+    return wrap;
+  }
+
+  function buildGuide(digest) {
+    var wrap = document.createElement('div');
+    wrap.appendChild(tpl('guide-lead'));
+    var rest = document.createElement('div');
+    rest.appendChild(tpl('guide-more'));
+    if (digest) wrap.appendChild(showAllRow('read the full guide', 2, rest));
+    else { rest.classList.add('showall-pack', 'open'); wrap.appendChild(rest); }
+    return wrap;
+  }
+
+  function buildUsage() {
+    var wrap = document.createElement('div');
+    wrap.appendChild(tpl('usage'));
+    return wrap;
+  }
+
+  /* ---------- section defs ---------- */
+  var SECTIONS = {
+    usage:    { kicker: '// sync',          title: 'Actual Usage', meta: 'last 30 days', stat: '148M',
+                gist: '148M tokens · $96+ lower bound · 214 sessions',
+                body: function () { return buildUsage(); } },
+    projects: { kicker: '// Showcase',      title: 'Projects',     meta: '5 items', stat: '5',
+                gist: 'aistack.sh · curia · 3 more',
+                body: function (digest) { return buildProjects(digest); } },
+    tools:    { kicker: '// AI Components', title: 'Tools',        meta: '11 items · $220/mo', stat: '11 · $220/mo',
+                gist: 'Claude Code · opencode · Convex · 8 more',
+                body: function (digest) { return buildTools(digest); } },
+    workflow: { kicker: '// measured',      title: 'Workflow',     meta: 'measured on the machine · owner-approved', stat: '42% at night',
+                gist: 'late-night 42% · 2.8 parallel projects · quick fix in 18 min',
+                body: function (digest) { return buildWorkflowBody(digest); } },
+    guide:    { kicker: '// writeup',       title: 'Guide',        meta: '', stat: '3 min read',
+                gist: 'why this setup · the daily loop · what broke',
+                body: function (digest) { return buildGuide(digest); } }
+  };
+
+  var ORDER_A = ['usage', 'projects', 'tools', 'workflow', 'guide'];
+
+  /* inline bar strips (round 5, B): a thin data texture per section */
+  var STRIPS = {
+    usage:    [[58, 'var(--accent-lime)'], [22, 'oklch(0.78 0.17 132 / 0.55)'], [12, 'oklch(0.78 0.17 132 / 0.3)'], [8, 'var(--bg-panel-elevated)']],
+    projects: [[20, 'var(--accent-lime)'], [1, 'var(--bg-canvas)'], [20, 'oklch(0.78 0.17 132 / 0.6)'], [1, 'var(--bg-canvas)'], [20, 'oklch(0.78 0.17 132 / 0.45)'], [1, 'var(--bg-canvas)'], [20, 'oklch(0.78 0.17 132 / 0.3)'], [1, 'var(--bg-canvas)'], [20, 'oklch(0.78 0.17 132 / 0.2)']],
+    tools:    [[30, 'var(--accent-lime)'], [1, 'var(--bg-canvas)'], [22, 'oklch(0.78 0.17 132 / 0.55)'], [1, 'var(--bg-canvas)'], [16, 'oklch(0.78 0.17 132 / 0.4)'], [1, 'var(--bg-canvas)'], [12, 'oklch(0.78 0.17 132 / 0.3)'], [1, 'var(--bg-canvas)'], [16, 'var(--bg-panel-elevated)']],
+    workflow: [[42, 'var(--accent-lime)'], [28, 'oklch(0.78 0.17 132 / 0.5)'], [18, 'oklch(0.78 0.17 132 / 0.3)'], [12, 'var(--bg-panel-elevated)']],
+    guide:    [[34, 'var(--bg-panel-elevated)'], [2, 'var(--bg-canvas)'], [26, 'var(--bg-panel-elevated)'], [2, 'var(--bg-canvas)'], [36, 'var(--bg-panel-elevated)']]
+  };
+  function stripHtml(k) {
+    return '<span class="bar-strip">' + STRIPS[k].map(function (s) {
+      return '<i style="flex:' + s[0] + '; background:' + s[1] + '"></i>';
+    }).join('') + '</span>';
+  }
+
+  /* the unique subtitle bit (round 11): content the section body never shows */
+  function sparkPoints(vals, w, h) {
+    var mx = Math.max.apply(null, vals);
+    return vals.map(function (v, i) {
+      var x = (i / (vals.length - 1)) * w;
+      var y = (h - 2) - (v / mx) * (h - 4);
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    }).join(' ');
+  }
+  function sparkHtml(vals) {
+    return '<svg viewBox="0 0 130 24" preserveAspectRatio="none"><polyline points="' + sparkPoints(vals, 130, 24) + '"></polyline></svg>';
+  }
+  var SUBBIT = {
+    usage:    '<div class="sub-bit">' + sparkHtml([3.2, 4.1, 3.8, 5, 4.6, 5.2, 6, 5.5, 6.4, 7, 6.6, 7.2, 8, 7.4, 8.2]) + '<span class="lbl">daily tokens · 30 days</span></div>',
+    projects: '<div class="sub-bit"><p class="txt">Five things built with this stack, two of them live.</p></div>',
+    tools:    '<div class="sub-bit"><p class="txt">Two harnesses at the core, nine tools around them.</p></div>',
+    workflow: '<div class="sub-bit">' + sparkHtml([20, 24, 22, 28, 30, 27, 33, 35, 32, 38, 40, 37, 41, 43, 42]) + '<span class="lbl">late-night trail · 30 days</span></div>',
+    guide:    '<div class="sub-bit"><p class="txt">A three minute read in the owner’s own words.</p></div>'
+  };
+
+  /* teaser slivers (round 7) */
+  var TEASE_FACTS = {
+    usage:    [['148M', 'tokens · 30d'], ['$96+', 'lower bound'], ['214', 'sessions']],
+    projects: [['5', 'projects'], ['2', 'live sites'], ['3', 'prototypes']],
+    tools:    [['11', 'tools'], ['$220', 'per month'], ['2', 'harnesses']],
+    workflow: [['42%', 'late night'], ['2.8', 'parallel projects'], ['18 min', 'quick fix ships']],
+    guide:    [['3', 'topics'], ['3 min', 'read'], ['1', 'owner voice']]
+  };
+  var TEASE_LINE = {
+    usage:    'What ran on this machine in the last 30 days, priced as a lower bound.',
+    projects: 'Five things built with this stack, two of them live.',
+    tools:    'Eleven tools around two harnesses, 220 dollars a month.',
+    workflow: 'A gate-first night flow. Nothing merges before a review round.',
+    guide:    'The owner explains why this setup, and what broke on the way.'
+  };
+  var TEASE_CHIPS = {
+    projects: ['aistack.sh', 'curia', '+ 3 more'],
+    tools:    ['Claude Code', 'opencode', 'Convex', 'Codex', '+ 7 more']
+  };
+  function teaseBar(k, label) {
+    var wrap = document.createElement('div');
+    wrap.innerHTML = '<div class="tease-bar">' + STRIPS[k].map(function (s) {
+      return '<i style="flex:' + s[0] + '; background:' + s[1] + '"></i>';
+    }).join('') + '</div>' + (label ? '<p class="mono-label tease-label">' + label + '</p>' : '');
+    return wrap;
+  }
+  function teaseFacts(k) {
+    var row = el('fact-row');
+    TEASE_FACTS[k].forEach(function (f) {
+      row.appendChild(el('fact', '<p class="v">' + f[0] + '</p><p class="l">' + f[1] + '</p>'));
+    });
+    return row;
+  }
+  function teaseChips(k) {
+    var row = el('chip-row');
+    TEASE_CHIPS[k].forEach(function (c, i) {
+      var chip = el('chip' + (c.indexOf('+ ') === 0 ? ' more' : ''));
+      chip.textContent = c;
+      row.appendChild(chip);
+    });
+    return row;
+  }
+  function teaseLine(k) {
+    var p = document.createElement('p');
+    p.className = 'tease-line';
+    p.textContent = TEASE_LINE[k];
+    return p;
+  }
+  function teaseVisual(k) {
+    if (k === 'usage') return teaseBar('usage', 'where the tokens went');
+    if (k === 'projects') return teaseChips('projects');
+    if (k === 'tools') return teaseChips('tools');
+    if (k === 'workflow') return teaseBar('workflow', 'the measured flow · orient, build, verify, gate');
+    return teaseBar('guide', 'why this setup · the daily loop · what broke');
+  }
+
+  /* round 10: what fades below the sliver is the NEXT content, never a repeat */
+  function restOf(k) {
+    if (k === 'usage') return keepFirst('usage', '.stat-band');
+    if (k === 'projects') {
+      var g = el('proj-grid');
+      PROJECTS.slice(2).forEach(function (pr) { g.appendChild(el('proj', '<h3>' + pr.name + '</h3><p>' + pr.desc + '</p>')); });
+      return g;
+    }
+    if (k === 'tools') {
+      var t = el('tool-grid');
+      TOOLS.slice(4).forEach(function (x) { t.appendChild(el('tool', '<p class="nm">' + x.nm + '</p><p>' + x.sub + '</p>')); });
+      return t;
+    }
+    if (k === 'workflow') return podiumStatic();
+    var p = el('prose');
+    p.innerHTML = '<h3>Why this setup</h3><p>One big-model harness holds the main loop, and everything else orbits it.</p>';
+    return p;
+  }
+  var TEASE_MIX = { usage: teaseFacts, projects: teaseChips, tools: teaseChips, workflow: teaseFacts, guide: teaseLine };
+
+  /* round 8: the first real element of each section, whole and bright */
+  function podiumStatic() {
+    var band = el('sub-facts');
+    ROWS.slice().sort(function (a, b) { return b.fit - a.fit; }).slice(0, HL_COUNT).forEach(function (r) {
+      band.appendChild(el('sub-fact', '<span class="mono-label">' + r.name + '</span><p class="n">' + r.stat + '</p><p>' + r.cap + '</p>'));
+    });
+    return band;
+  }
+  function keepFirst(fragKey, selector) {
+    var wrap = document.createElement('div');
+    wrap.appendChild(tpl(fragKey));
+    var keep = wrap.querySelector(selector);
+    wrap.innerHTML = '';
+    wrap.appendChild(keep);
+    return wrap;
+  }
+  function firstBlock(k) {
+    if (k === 'usage') return keepFirst('usage', '.stat-band');
+    if (k === 'projects') {
+      var g = el('proj-grid');
+      PROJECTS.slice(0, 2).forEach(function (pr) { g.appendChild(el('proj', '<h3>' + pr.name + '</h3><p>' + pr.desc + '</p>')); });
+      return g;
+    }
+    if (k === 'tools') {
+      var t = el('tool-grid');
+      TOOLS.slice(0, 4).forEach(function (x) { t.appendChild(el('tool', '<p class="nm">' + x.nm + '</p><p>' + x.sub + '</p>')); });
+      return t;
+    }
+    if (k === 'workflow') return podiumStatic();
+    return keepFirst('guide-lead', '.toc');
+  }
+  var TEASE_SPLIT = { usage: firstBlock, projects: teaseChips, tools: teaseChips, workflow: firstBlock, guide: teaseLine };
+
+  function buildTease(kind, k) {
+    if (kind === 'facts') return teaseFacts(k);
+    if (kind === 'line') return teaseLine(k);
+    if (kind === 'visual') return teaseVisual(k);
+    if (kind === 'first') return firstBlock(k);
+    if (kind === 'split') return TEASE_SPLIT[k](k);
+    return TEASE_MIX[k](k);
+  }
+
+  function sectionEl(idx, def, bodyEl, extraHead) {
+    var sec = document.createElement('section');
+    sec.className = 'journey';
+    var shell = el('shell');
+    shell.innerHTML =
+      '<div class="sec-head">' +
+      '<span class="sec-index">' + String(idx).padStart(2, '0') + '</span>' +
+      '<div class="head-copy"><p class="sec-kicker">' + def.kicker + '</p><h2 class="sec-title">' + def.title + '</h2>' +
+      (extraHead || '') + '</div>' +
+      (def.meta ? '<span class="sec-meta">' + def.meta + '</span>' : '') +
+      '</div>';
+    shell.appendChild(bodyEl);
+    sec.appendChild(shell);
+    return sec;
+  }
+
+  function stub(name, cta) {
+    var d = el('stub' + (cta ? ' cta' : ''));
+    d.innerHTML = '<div class="shell"><span class="name">' + name + '</span><span class="note">context only</span></div>';
+    return d;
+  }
+
+  /* ---------- the accordion builder ----------
+     cfg.open:      indexes open on arrival
+     cfg.mode:      'gist' | 'stat' | ''  (what a shut bar shows beside the title)
+     cfg.compact:   small header bars
+     cfg.exclusive: opening one closes the rest and scrolls to it
+     cfg.peek:      'all' or an array of section keys that peek when shut
+     cfg.peekClass: '' | 'bright' | 'micro'
+     cfg.hint:      show a tap-to-open tag on peeks
+     cfg.focus:     while any section is open, shut sections hide their peek */
+  function buildAccordionPage(host, order, cfg) {
+    host.appendChild(stub('Stack hero · title, price, upvotes', false));
+    var acc = el('acc' + (cfg.compact ? ' compact' : ''));
+    var secs = [];
+    function peeks(k) {
+      if (!cfg.peek) return false;
+      return cfg.peek === 'all' || cfg.peek.indexOf(k) !== -1;
+    }
+    order.forEach(function (k, i) {
+      var def = SECTIONS[k];
+      var extra = cfg.mode === 'gist' ? '<p class="gist">' + def.gist + '</p>'
+        : cfg.mode === 'subbit' ? SUBBIT[k]
+        : '';
+      var sec = sectionEl(i + 1, def, el('acc-body'), extra);
+      var head = sec.querySelector('.sec-head');
+      if (cfg.mode === 'strip') {
+        head.insertAdjacentHTML('beforeend', stripHtml(k));
+      }
+      if (cfg.mode === 'stat' || cfg.mode === 'strip') {
+        head.insertAdjacentHTML('beforeend', '<span class="stat-chip">' + def.stat + '</span>');
+      }
+      head.insertAdjacentHTML('beforeend', '<span class="acc-chev"></span>');
+      sec.querySelector('.acc-body').appendChild(def.body(cfg.digestOpen === true));
+      if (peeks(k) || cfg.tease) {
+        var peek = el('peekwrap' + (cfg.peekClass ? ' ' + cfg.peekClass : ''));
+        if (cfg.tease) {
+          peek.classList.add('teaser');
+          var tease = buildTease(cfg.tease, k);
+          if (cfg.boxed) {
+            var box = el('sliver-box');
+            box.appendChild(tease);
+            box.insertAdjacentHTML('beforeend', '<span class="box-plus">+</span>');
+            peek.appendChild(box);
+          } else {
+            peek.appendChild(tease);
+          }
+          if (cfg.moreline) peek.appendChild(el('more-line', '<span>open section</span><span class="pl">+</span>'));
+          if (cfg.undercrop) {
+            var mc = el('mini-crop');
+            mc.appendChild(restOf(k));
+            peek.appendChild(mc);
+          }
+        } else {
+          peek.appendChild(def.body(true));
+        }
+        if (cfg.hint) peek.insertAdjacentHTML('beforeend', '<span class="peek-hint">+ tap to open</span>');
+        sec.querySelector('.shell').appendChild(peek);
+        peek.addEventListener('click', function () { toggle(sec, true); });
+      }
+      if (cfg.open.indexOf(i) !== -1) sec.classList.add('open');
+      head.addEventListener('click', function () { toggle(sec); });
+      acc.appendChild(sec);
+      secs.push(sec);
+    });
+    function toggle(sec, forceOpen) {
+      var willOpen = forceOpen || !sec.classList.contains('open');
+      if (cfg.exclusive && willOpen) {
+        secs.forEach(function (s) { s.classList.remove('open'); });
+      }
+      sec.classList.toggle('open', willOpen);
+      if (cfg.focus) {
+        var anyOpen = secs.some(function (s) { return s.classList.contains('open'); });
+        acc.classList.toggle('focused', anyOpen);
+      }
+      if (cfg.exclusive && willOpen) sec.scrollIntoView({ block: 'start' });
+    }
+    host.appendChild(acc);
+    host.appendChild(stub('Build your own stack', true));
+  }
+
+  /* round 12: the nav block over one continuous page */
+  function navRowHtml(style, def, k, i) {
+    var right = '';
+    if (style === 'stat') right = '<span class="stat-chip">' + def.stat + '</span>';
+    if (style === 'bit') right = SUBBIT[k];
+    if (style === 'strip') right = stripHtml(k) + '<span class="stat-chip">' + def.stat + '</span>';
+    return '<span class="no">' + String(i + 1).padStart(2, '0') + '</span>' +
+      '<span class="ti">' + def.title + '</span>' +
+      '<span class="right">' + right + '<span class="arrow">↓</span></span>';
+  }
+
+  function buildNavPage(host, style, shell) {
+    host.classList.add('navpage');
+    if (shell) {
+      host.classList.add('shellpage');
+      host.appendChild(tpl('shell'));
+    } else {
+      host.appendChild(stub('Stack hero · title, price, upvotes', false));
+    }
+
+    var block = el('navblock');
+    var list = el('navlist');
+    block.appendChild(list);
+    host.appendChild(block);
+
+    var rail = el('toprail');
+    if (shell) {
+      rail.appendChild(el('railbrand', '<span class="nm">Night Shift</span><span class="pr">$220/mo</span><span class="uv">▲ 12</span>'));
+    }
+    host.appendChild(rail);
+
+    var secs = [];
+    var links = [];
+    ORDER_A.forEach(function (k, i) {
+      var def = SECTIONS[k];
+      var id = 'nav-' + style + '-s' + (i + 1);
+
+      var row = el('navrow');
+      row.innerHTML = navRowHtml(style, def, k, i);
+      row.addEventListener('click', function () {
+        document.getElementById(id).scrollIntoView({ block: 'start' });
+      });
+      list.appendChild(row);
+
+      var a = document.createElement('a');
+      a.href = '#' + id;
+      a.innerHTML = '<span class="no">' + String(i + 1).padStart(2, '0') + '</span>' + def.title;
+      rail.appendChild(a);
+      links.push(a);
+
+      var sec = sectionEl(i + 1, def, def.body(false));
+      sec.id = id;
+      secs.push(sec);
+    });
+    secs.forEach(function (s) { host.appendChild(s); });
+    host.appendChild(stub('Build your own stack', true));
+
+    /* the nav block leaves the screen, the fixed rail arrives */
+    new IntersectionObserver(function (entries) {
+      var en = entries[0];
+      rail.classList.toggle('show', !en.isIntersecting && en.boundingClientRect.bottom < 0);
+    }, { threshold: 0 }).observe(block);
+
+    /* scroll spy */
+    var spy = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) {
+          var i = secs.indexOf(en.target);
+          links.forEach(function (l, j) { l.classList.toggle('on', j === i); });
+        }
+      });
+    }, { rootMargin: '-30% 0px -60% 0px' });
+    secs.forEach(function (s) { spy.observe(s); });
+  }
+
+  var PAGES = {
+    shell: function (host) { buildNavPage(host, 'stat', true); },
+    alt:   function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'subbit', exclusive: true, peek: 'all', peekClass: 'micro' }); }
+  };
+
+  document.querySelectorAll('[data-page]').forEach(function (host) {
+    PAGES[host.getAttribute('data-page')](host);
+  });
+
+  /* ---------- variant switcher ---------- */
+  var VARIANTS = [
+    { key: 'shell', id: 'v-shell', name: 'A · the shell fit' },
+    { key: 'alt',   id: 'v-alt',   name: 'B · the saved accordion' }
+  ];
+  var current = 0;
+
+  function show(i) {
+    current = (i + VARIANTS.length) % VARIANTS.length;
+    VARIANTS.forEach(function (v, j) {
+      document.getElementById(v.id).classList.toggle('active', j === current);
+    });
+    document.getElementById('sw-k').textContent = 'variation ' + (current + 1) + ' / ' + VARIANTS.length;
+    document.getElementById('sw-n').textContent = VARIANTS[current].name;
+    var url = new URL(window.location.href);
+    url.searchParams.set('variant', VARIANTS[current].key);
+    history.replaceState(null, '', url.toString());
+    window.scrollTo(0, 0);
+  }
+
+  document.getElementById('prev').addEventListener('click', function () { show(current - 1); });
+  document.getElementById('next').addEventListener('click', function () { show(current + 1); });
+  document.addEventListener('keydown', function (e) {
+    if (e.target && /^(input|textarea)$/i.test(e.target.tagName)) return;
+    if (e.key === 'ArrowLeft') show(current - 1);
+    if (e.key === 'ArrowRight') show(current + 1);
+  });
+
+  (function () {
+    var q = new URL(window.location.href).searchParams.get('variant') || 'shell';
+    var idx = VARIANTS.findIndex(function (v) { return v.key === q; });
+    show(idx >= 0 ? idx : 0);
+  })();
+</script>
+
+</body>
+</html>
