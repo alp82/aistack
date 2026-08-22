@@ -67,7 +67,9 @@ function connect() {
 				);
 				return;
 			}
-			respond(interaction, { type: 4, data: reply(interaction) });
+			reply(interaction)
+				.then((data) => respond(interaction, { type: 4, data }))
+				.catch((e) => console.log(`reply failed: ${e}`));
 		}
 	});
 

@@ -1,20 +1,31 @@
 // PROTOTYPE (alp82/aistack#181). Throwaway.
 // The command routing, shared by both transports (endpoint and gateway).
 
-import { payloads } from "./payloads.mjs";
+import { errorUnknownStack, payloads, stackCard } from "./payloads.mjs";
 
 const optionValue = (interaction, name) =>
 	interaction.data?.options?.find((o) => o.name === name)?.value;
 
 // The routing a real handler would do, reduced to the showcase cases.
-export function reply(interaction) {
+// /stack builds its card from the slug, so any real stack works. /tokens
+// carries hardcoded numbers for one stack, because the figures have no
+// public per-stack API to read here.
+export async function reply(interaction) {
 	const command = interaction.data?.name;
 	if (command === "stack" || command === "tokens") {
 		const slug = optionValue(interaction, "stack");
 		if (!slug) return payloads.unlinked;
-		if (slug === "my-cool-stack") return payloads.errorUnknownStack;
 		if (slug === "empty-stack") return payloads.errorNoData;
-		return command === "stack" ? payloads.stack : payloads.tokens;
+		if (command === "stack") return stackCard(slug);
+		if (slug === "my-cool-stack") return errorUnknownStack(slug);
+		if (slug !== "alpers-agent-stack-unw0sl") {
+			return {
+				flags: 64,
+				content:
+					"The prototype carries measured numbers for `alpers-agent-stack-unw0sl` only. The real bot reads any stack.",
+			};
+		}
+		return payloads.tokens;
 	}
 	if (command === "model") {
 		const name = optionValue(interaction, "model");

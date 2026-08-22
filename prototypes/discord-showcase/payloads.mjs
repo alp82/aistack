@@ -8,12 +8,41 @@ export const LIME = 0xa3e635;
 const STACK_SLUG = "alpers-agent-stack-unw0sl";
 const STACK_URL = `${SITE}/stacks/${STACK_SLUG}`;
 
-const linkButton = (label, url) => ({
+export const linkButton = (label, url) => ({
 	type: 1,
 	components: [{ type: 2, style: 5, label, url }],
 });
 
 const EPHEMERAL = 64;
+
+export const errorUnknownStack = (slug) => ({
+	flags: EPHEMERAL,
+	content: `No stack matches "${slug}". Use the slug from the stack page URL, like \`alpers-agent-stack-unw0sl\`.`,
+});
+
+// The card for any real stack, built from the slug: the OG endpoint answers
+// 404 for a slug that is not a stack, and the page title names the stack.
+export async function stackCard(slug) {
+	const timeout = { signal: AbortSignal.timeout(2500) };
+	const [og, page] = await Promise.all([
+		fetch(`${SITE}/api/og/stack/${slug}`, timeout),
+		fetch(`${SITE}/stacks/${slug}`, timeout),
+	]);
+	if (og.status === 404) return errorUnknownStack(slug);
+	const match = (await page.text()).match(/<title>(.*?) - AI Stack<\/title>/);
+	const url = `${SITE}/stacks/${slug}`;
+	return {
+		embeds: [
+			{
+				title: match ? match[1] : slug,
+				url,
+				color: LIME,
+				image: { url: `${SITE}/api/og/stack/${slug}` },
+			},
+		],
+		components: [linkButton("View stack", url)],
+	};
+}
 
 export const payloads = {
 	// /stack <slug> - the stack card: OG image plus one link button.
@@ -133,11 +162,7 @@ export const payloads = {
 	},
 
 	// Error states. Plain ephemeral text, no embed.
-	errorUnknownStack: {
-		flags: EPHEMERAL,
-		content:
-			'No stack matches "my-cool-stack". Use the slug from the stack page URL, like `alpers-agent-stack-unw0sl`.',
-	},
+	errorUnknownStack: errorUnknownStack("my-cool-stack"),
 	errorUnknownModel: {
 		flags: EPHEMERAL,
 		content:

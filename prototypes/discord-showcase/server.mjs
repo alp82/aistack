@@ -89,7 +89,12 @@ createServer((req, res) => {
 				patchLeaderboard(interaction).catch((e) => console.log(`patch failed: ${e}`));
 				return;
 			}
-			json(res, 200, { type: 4, data: reply(interaction) });
+			reply(interaction)
+				.then((data) => json(res, 200, { type: 4, data }))
+				.catch((e) => {
+					console.log(`reply failed: ${e}`);
+					json(res, 200, { type: 4, data: { flags: 64, content: "The site did not answer." } });
+				});
 			return;
 		}
 		json(res, 200, { type: 4, data: { flags: 64, content: "Unhandled interaction type." } });

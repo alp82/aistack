@@ -19,7 +19,8 @@ const sections = [
 		invoke: "/stack stack:alpers-agent-stack-unw0sl",
 		check:
 			"The OG card image renders full width. The title links to the stack page. One button below the embed: View stack. The lime bar sits on the left edge.",
-		notes: "All figures live in the OG image, served by the site.",
+		notes:
+			"All figures live in the OG image, served by the site. Any real slug works: the card is built from the OG endpoint, and an unknown slug gets the unknown-stack error.",
 	},
 	{
 		key: "tokens",
