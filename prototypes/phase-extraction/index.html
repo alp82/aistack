@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Prototype · alp82/aistack#196 · phase extraction from real chat histories · no LLM</title>
+<!--
+  PROTOTYPE. Throwaway. alp82/aistack#196: phase extraction from real chat
+  histories without an LLM.
+
+  The question: can the versioned phase rules alone classify real chat
+  histories into scout, build, verify, and handoff, with a small unknown
+  share and no LLM? And do the fixed template-lead sentence forms hold on
+  the same measured numbers?
+
+  The pipeline: prototypes/phase-extraction/extract.mjs runs on the machine
+  that holds the transcripts. It emits aggregates only. This page renders
+  those aggregates. The page classifies nothing and calls no model.
+
+  Rule sets under test:
+    phase-rules/v1        tool identity markers only
+    phase-rules/v2        v1 + fixed command-head rules + forge stage markers
+    phase-rules/v3-draft  v2 + chain-segment matching + extended heads.
+                          NOT decided. It shows what a revision would reclaim.
+
+  Phase palette: carried from prototypes/session-phase-anatomy (validated,
+  verify on purple per the spec). The unknown slot is a deliberate low-chroma
+  gray: it marks absence, not identity. Square ends everywhere, no radius.
+-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    color-scheme: dark;
+    --bg-canvas: oklch(0.16 0.008 256);
+    --bg-shell: oklch(0.12 0.01 256);
+    --bg-panel: oklch(0.2 0.009 256);
+    --bg-panel-muted: oklch(0.24 0.009 256);
+    --fg-primary: oklch(0.96 0.004 256);
+    --fg-secondary: oklch(0.82 0.004 256);
+    --fg-muted: oklch(0.68 0.005 256);
+    --accent-lime: oklch(0.78 0.17 132);
+    --stroke-subtle: oklch(0.55 0.01 256 / 0.45);
+    --stroke-strong: oklch(0.5 0.015 256 / 0.9);
+    --ph-scout:   #4278d2;
+    --ph-build:   #69a621;
+    --ph-verify:  #9e71fd;
+    --ph-handoff: #c21977;
+    --ph-unknown: #8a919e;
+    --ok:  #69a621;
+    --bad: #d24242;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg-canvas); color: var(--fg-primary);
+    font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; }
+  .ticket-strip { background: var(--bg-shell); border-bottom: 1px solid var(--stroke-subtle);
+    padding: 10px 16px; font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    letter-spacing: 0.08em; color: var(--fg-muted); text-transform: uppercase; }
+  .ticket-strip b { color: var(--accent-lime); font-weight: 700; }
+  .shell { max-width: 64rem; margin: 0 auto; padding: 0 16px; }
+  section { padding: 32px 0 36px; }
+  section.alt { background: color-mix(in oklab, var(--bg-panel) 30%, var(--bg-canvas)); }
+  .mono-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted); }
+  .kicker-line { color: var(--accent-lime); margin: 0 0 12px; }
+  .lead { margin: 0 0 18px; font-size: 14.5px; line-height: 1.6; color: var(--fg-secondary); max-width: 44rem; }
+  .lead b { color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+  .box { border: 1px solid var(--stroke-subtle); padding: 16px; margin-top: 14px; }
+
+  /* stat tiles */
+  .tiles { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); margin-top: 14px; }
+  .tile { border: 1px solid var(--stroke-subtle); background: var(--bg-panel); padding: 14px 14px 12px; }
+  .tile .t-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--fg-muted); }
+  .tile .t-value { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 800; margin-top: 6px; }
+  .tile .t-sub { font-size: 11px; color: var(--fg-muted); margin-top: 4px; line-height: 1.4; }
+  .tile.pass .t-value { color: var(--ok); }
+  .tile.fail .t-value { color: var(--bad); }
+
+  /* version toggle */
+  .vtoggle { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+  .vtoggle button { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.04em; padding: 8px 12px; background: var(--bg-panel); color: var(--fg-secondary);
+    border: 1px solid var(--stroke-subtle); cursor: pointer; }
+  .vtoggle button.on { background: var(--accent-lime); color: #101208; border-color: var(--accent-lime); }
+
+  /* legend */
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+  .legend .li { display: flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--fg-secondary); }
+  .legend .sw { width: 10px; height: 10px; display: inline-block; }
+
+  /* session bars */
+  .sess { margin-top: 10px; }
+  .sess .s-head { display: flex; justify-content: space-between; gap: 8px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--fg-muted); margin-bottom: 3px; }
+  .sbar { display: flex; height: 18px; gap: 2px; cursor: pointer; }
+  .sbar .seg { height: 100%; min-width: 1px; }
+  .s-detail { display: none; border: 1px solid var(--stroke-subtle); border-top: 0; padding: 8px 10px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--fg-secondary); line-height: 1.7; }
+  .sess.open .s-detail { display: block; }
+
+  /* tables */
+  table { border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 12px; }
+  th, td { border: 1px solid var(--stroke-subtle); padding: 6px 8px; text-align: left; }
+  th { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--fg-muted); }
+  td.num, th.num { text-align: right; font-family: 'JetBrains Mono', monospace; }
+  .dead { color: var(--fg-muted); }
+  .scroll-x { overflow-x: auto; }
+
+  /* template lead */
+  .tpl { border: 1px solid var(--stroke-subtle); padding: 14px 16px; margin-top: 10px; background: var(--bg-panel); }
+  .tpl .form { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); line-height: 1.6; }
+  .tpl .out { font-size: 15px; line-height: 1.6; margin-top: 8px; }
+  .tpl .out b { font-family: 'JetBrains Mono', monospace; }
+  .tpl.dropped .out { color: var(--fg-muted); text-decoration: line-through; }
+  .tpl .why { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--bad); margin-top: 6px; }
+  .tpl.dropped .why { color: var(--fg-muted); }
+
+  details { margin-top: 12px; }
+  summary { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-secondary); cursor: pointer; }
+  textarea { width: 100%; min-height: 7rem; background: var(--bg-shell); color: var(--fg-secondary);
+    border: 1px solid var(--stroke-subtle); font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 8px; }
+  .btn { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; padding: 8px 14px;
+    background: var(--accent-lime); color: #101208; border: 0; cursor: pointer; margin-top: 8px; }
+  .note { font-size: 11.5px; color: var(--fg-muted); line-height: 1.55; margin-top: 10px; max-width: 44rem; }
+  .small-print { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--fg-muted);
+    line-height: 1.7; margin-top: 14px; border-top: 1px solid var(--stroke-subtle); padding-top: 10px; }
+</style>
+</head>
+<body>
+
+<div class="ticket-strip">PROTOTYPE · <b>alp82/aistack#196</b> · phase extraction from real chat histories · no LLM</div>
+
+<section>
+  <div class="shell">
+    <p class="mono-label kicker-line">// the question</p>
+    <p class="lead">Can the versioned phase rules alone classify real chat histories into
+      <b>scout</b>, <b>build</b>, <b>verify</b>, and <b>handoff</b>, with a small unknown share
+      and no LLM? The extractor ran on real transcripts and shipped aggregates only.
+      This page renders those aggregates. It classifies nothing and calls no model.</p>
+    <div class="tiles" id="verdict-tiles"></div>
+    <p class="note" id="threshold-note"></p>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="shell">
+    <p class="mono-label kicker-line">// the data</p>
+    <p class="lead" id="provenance"></p>
+    <div class="scroll-x"><table id="harness-table"></table></div>
+    <details>
+      <summary>load another extractor output</summary>
+      <p class="note">Run <b style="font-family:'JetBrains Mono',monospace">node prototypes/phase-extraction/extract.mjs --json</b>
+        on the machine that holds the transcripts. Paste the output here. The JSON holds aggregates only:
+        no prompts, no full commands, no paths, no session ids.</p>
+      <textarea id="paste" spellcheck="false" placeholder='{"meta": ...}'></textarea>
+      <button class="btn" id="load">render pasted aggregates</button>
+      <p class="note" id="load-err"></p>
+    </details>
+  </div>
+</section>
+
+<section>
+  <div class="shell">
+    <p class="mono-label kicker-line">// sessions under each rule set</p>
+    <p class="lead">Each bar is one session. Each slice is the measured time one phase owns.
+      Tap a bar for its numbers. The unknown gray never hides.</p>
+    <div class="vtoggle" id="vtoggle"></div>
+    <div class="legend" id="legend"></div>
+    <div id="bars"></div>
+    <details><summary>the same sessions as a table</summary><div class="scroll-x"><table id="sess-table"></table></div></details>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="shell">
+    <p class="mono-label kicker-line">// the rules, and what they caught</p>
+    <p class="lead">First match wins. A rule that never fires stays visible.
+      The unknown command heads are the work order for the next rule-set version.</p>
+    <div class="scroll-x"><table id="rules-table"></table></div>
+    <div class="box">
+      <p class="mono-label">unknown command heads under phase-rules/v2 (top of the work order)</p>
+      <div class="scroll-x"><table id="heads-table"></table></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shell">
+    <p class="mono-label kicker-line">// the template lead · lead-templates/v1</p>
+    <p class="lead">The workflow section opens with fixed sentence forms over measured numbers.
+      No model writes here. A sentence whose measurement is absent drops. The forms below
+      render live from the loaded aggregates.</p>
+    <div id="lead-forms"></div>
+    <p class="small-print" id="derivation"></p>
+  </div>
+</section>
+
+<script>
+// ============================================================================
+// DATA: real extractor output, embedded. Provenance is in meta and below.
+// Replaced by pasted aggregates at runtime.
+// ============================================================================
+var EMBEDDED_PROVENANCE = 'Embedded sample: the curia session that built this prototype (one Claude Code session, extracted 2026-08-22). The owner data replaces it through the paste box, and ships embedded after review.';
+var DATA = {"meta":{"prototype":"alp82/aistack#196","extractor":"phase-extraction/0.1","generated":"2026-08-22T09:33:01.582Z","windowDays":90,"node":"v24.19.0","ruleVersions":["phase-rules/v1","phase-rules/v2","phase-rules/v3-draft"],"capSec":300,"tailSec":60,"notes":[]},"harnesses":{"claude-code":{"sessions":[{"id":"c59adce0","day":"2026-08-22","startHour":9,"events":36,"wallMin":12,"phase-rules/v1":{"phaseSec":{"scout":123,"build":26,"verify":0,"handoff":0,"unknown":597},"phaseEvents":{"scout":6,"build":3,"verify":0,"handoff":0,"unknown":27},"waitingSec":0,"idleSec":0,"ruleTally":{"unknown.shell":27,"scout.read-tool":4,"scout.skill-load":2,"build.edit-tool":3}},"phase-rules/v2":{"phaseSec":{"scout":384,"build":96,"verify":0,"handoff":0,"unknown":266},"phaseEvents":{"scout":24,"build":7,"verify":0,"handoff":0,"unknown":5},"waitingSec":0,"idleSec":0,"ruleTally":{"scout.read-cmd":18,"scout.read-tool":4,"unknown.shell":5,"scout.skill-load":2,"build.change-cmd":4,"build.edit-tool":3}},"phase-rules/v3-draft":{"phaseSec":{"scout":509,"build":177,"verify":0,"handoff":0,"unknown":60},"phaseEvents":{"scout":26,"build":9,"verify":0,"handoff":0,"unknown":1},"waitingSec":0,"idleSec":0,"ruleTally":{"scout.read-cmd":18,"scout.read-tool":4,"v3.chain-cmd.build":2,"scout.skill-load":2,"build.change-cmd":4,"build.edit-tool":3,"v3.chain-cmd.scout":2,"unknown.shell":1}}}],"unknownHeads":{"node":4,"echo":1},"skillCalls":{"prototype":1,"dataviz":1},"droppedSessions":0}},"totals":{"phase-rules/v1":{"sessions":1,"phaseSec":{"scout":123,"build":26,"verify":0,"handoff":0,"unknown":597},"waitingSec":0,"attributedSec":746,"unknownShare":0.8003},"phase-rules/v2":{"sessions":1,"phaseSec":{"scout":384,"build":96,"verify":0,"handoff":0,"unknown":266},"waitingSec":0,"attributedSec":746,"unknownShare":0.3566},"phase-rules/v3-draft":{"sessions":1,"phaseSec":{"scout":509,"build":177,"verify":0,"handoff":0,"unknown":60},"waitingSec":0,"attributedSec":746,"unknownShare":0.0804}}};
+
+var PHASES = ['scout', 'build', 'verify', 'handoff', 'unknown'];
+var COLORS = { scout: 'var(--ph-scout)', build: 'var(--ph-build)', verify: 'var(--ph-verify)',
+  handoff: 'var(--ph-handoff)', unknown: 'var(--ph-unknown)' };
+var VERSIONS = ['phase-rules/v1', 'phase-rules/v2', 'phase-rules/v3-draft'];
+var DECIDED = { 'phase-rules/v1': true, 'phase-rules/v2': true, 'phase-rules/v3-draft': false };
+// Recommended verdict threshold (round 1 question): v2 unknown share of
+// attributed time at most 10% overall and at most 20% per synced harness.
+var THRESH_OVERALL = 0.10, THRESH_HARNESS = 0.20;
+
+var state = { version: 'phase-rules/v2' };
+
+function fmtPct(x) { return (100 * x).toFixed(x < 0.095 ? 1 : 0) + '%'; }
+function fmtMin(sec) { return Math.round(sec / 60) + ' min'; }
+function el(id) { return document.getElementById(id); }
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+
+function allSessions() {
+  var out = [];
+  Object.keys(DATA.harnesses).forEach(function (h) {
+    DATA.harnesses[h].sessions.forEach(function (s) { out.push({ h: h, s: s }); });
+  });
+  out.sort(function (a, b) { return a.s.day < b.s.day ? -1 : a.s.day > b.s.day ? 1 : 0; });
+  return out;
+}
+
+function unknownShare(rows, version, harness) {
+  var u = 0, att = 0;
+  rows.forEach(function (r) {
+    if (harness && r.h !== harness) return;
+    var ps = r.s[version].phaseSec;
+    PHASES.forEach(function (p) { att += ps[p]; });
+    u += ps.unknown;
+  });
+  return att ? u / att : null;
+}
+
+function renderVerdict() {
+  var rows = allSessions();
+  var html = '';
+  VERSIONS.forEach(function (v) {
+    var share = unknownShare(rows, v);
+    if (share === null) return;
+    var overallPass = share <= THRESH_OVERALL;
+    var perHarnessPass = Object.keys(DATA.harnesses).every(function (h) {
+      var s = unknownShare(rows, v, h);
+      return s === null || s <= THRESH_HARNESS;
+    });
+    var judged = v === 'phase-rules/v2';
+    var cls = judged ? (overallPass && perHarnessPass ? 'pass' : 'fail') : '';
+    var sub = judged
+      ? (overallPass && perHarnessPass ? 'inside the recommended threshold' : 'outside the recommended threshold')
+      : (DECIDED[v] ? 'baseline, not judged' : 'revision draft, not decided');
+    html += '<div class="tile ' + cls + '"><div class="t-label">' + esc(v) + ' · unknown</div>'
+      + '<div class="t-value">' + fmtPct(share) + '</div><div class="t-sub">' + sub + '</div></div>';
+  });
+  el('verdict-tiles').innerHTML = html;
+  el('threshold-note').textContent = 'Recommended verdict threshold, pending the round 1 answer: '
+    + 'phase-rules/v2 leaves at most 10% of attributed time unknown overall, and at most 20% on each synced harness. '
+    + 'The judgment applies to v2 alone. v1 is the baseline, and v3-draft is revision material.';
+}
+
+function renderProvenance() {
+  el('provenance').innerHTML = esc(DATA.meta.provenance || EMBEDDED_PROVENANCE)
+    + ' <b>' + esc(DATA.meta.extractor) + '</b> · window ' + esc(DATA.meta.windowDays) + 'd'
+    + ' · cap ' + esc(DATA.meta.capSec) + 's · generated ' + esc(String(DATA.meta.generated).slice(0, 10));
+  var t = '<tr><th>harness</th><th class="num">sessions</th><th class="num">events</th><th class="num">dropped</th><th class="num">v2 unknown</th></tr>';
+  var rows = allSessions();
+  Object.keys(DATA.harnesses).forEach(function (h) {
+    var hd = DATA.harnesses[h];
+    var ev = hd.sessions.reduce(function (a, s) { return a + s.events; }, 0);
+    var s2 = unknownShare(rows, 'phase-rules/v2', h);
+    t += '<tr><td>' + esc(h) + '</td><td class="num">' + hd.sessions.length + '</td><td class="num">' + ev
+      + '</td><td class="num">' + hd.droppedSessions + '</td><td class="num">' + (s2 === null ? 'n/a' : fmtPct(s2)) + '</td></tr>';
+  });
+  (DATA.meta.notes || []).forEach(function (n) { t += '<tr><td colspan="5" class="dead">' + esc(n) + '</td></tr>'; });
+  el('harness-table').innerHTML = t;
+}
+
+function renderToggle() {
+  el('vtoggle').innerHTML = VERSIONS.map(function (v) {
+    return '<button data-v="' + v + '" class="' + (state.version === v ? 'on' : '') + '">' + esc(v) + '</button>';
+  }).join('');
+  Array.prototype.forEach.call(el('vtoggle').children, function (b) {
+    b.onclick = function () { state.version = b.getAttribute('data-v'); renderAll(); };
+  });
+  el('legend').innerHTML = PHASES.map(function (p) {
+    return '<span class="li"><span class="sw" style="background:' + COLORS[p] + '"></span>' + p + '</span>';
+  }).join('') + '<span class="li"><span class="sw" style="background:repeating-linear-gradient(45deg,#555 0 3px,transparent 3px 6px)"></span>waiting at a handoff</span>';
+}
+
+function renderBars() {
+  var rows = allSessions();
+  var html = '';
+  var shown = rows.slice(-40);
+  shown.forEach(function (r, i) {
+    var d = r.s[state.version];
+    var att = PHASES.reduce(function (a, p) { return a + d.phaseSec[p]; }, 0) || 1;
+    var segs = PHASES.map(function (p) {
+      var w = 100 * d.phaseSec[p] / att;
+      return w > 0 ? '<span class="seg" style="flex:' + w.toFixed(2) + ';background:' + COLORS[p] + '"></span>' : '';
+    }).join('');
+    var wait = d.waitingSec > 0 ? ' · waiting ' + fmtMin(d.waitingSec) : '';
+    var detail = PHASES.map(function (p) {
+      return p + ' ' + fmtMin(d.phaseSec[p]) + ' (' + fmtPct(d.phaseSec[p] / att) + ')';
+    }).join(' · ') + wait;
+    html += '<div class="sess" id="sess-' + i + '">'
+      + '<div class="s-head"><span>' + esc(r.h) + ' · ' + esc(r.s.day) + ' · ' + esc(r.s.id) + '</span>'
+      + '<span>' + r.s.events + ' ev · ' + r.s.wallMin + ' min</span></div>'
+      + '<div class="sbar" onclick="document.getElementById(\'sess-' + i + '\').classList.toggle(\'open\')">' + segs + '</div>'
+      + '<div class="s-detail">' + detail + '</div></div>';
+  });
+  if (rows.length > shown.length) {
+    html += '<p class="note">' + (rows.length - shown.length) + ' older sessions counted in every total, hidden from the bar list.</p>';
+  }
+  el('bars').innerHTML = html;
+
+  var t = '<tr><th>harness</th><th>day</th><th class="num">min</th>' + PHASES.map(function (p) { return '<th class="num">' + p + '</th>'; }).join('') + '</tr>';
+  shown.forEach(function (r) {
+    var d = r.s[state.version];
+    t += '<tr><td>' + esc(r.h) + '</td><td>' + esc(r.s.day) + '</td><td class="num">' + r.s.wallMin + '</td>'
+      + PHASES.map(function (p) { return '<td class="num">' + fmtMin(d.phaseSec[p]) + '</td>'; }).join('') + '</tr>';
+  });
+  el('sess-table').innerHTML = t;
+}
+
+function renderRules() {
+  var rows = allSessions();
+  var tally = {};
+  rows.forEach(function (r) {
+    var rt = r.s[state.version].ruleTally;
+    Object.keys(rt).forEach(function (id) { tally[id] = (tally[id] || 0) + rt[id]; });
+  });
+  var known = ['handoff.blocking-call', 'handoff.surface', 'verify.review-skill', 'verify.crossfire-skill',
+    'build.forge-skill', 'build.edit-tool', 'scout.read-tool', 'scout.skill-load', 'scout.scout-agent',
+    'verify.test-cmd', 'handoff.publish-cmd', 'build.change-cmd', 'scout.read-cmd', 'handoff.notify',
+    'v3.chain-cmd.verify', 'v3.chain-cmd.handoff', 'v3.chain-cmd.build', 'v3.chain-cmd.scout',
+    'unknown.shell', 'unknown.agent', 'unknown.tool'];
+  var ids = known.filter(function (id) {
+    if (state.version === 'phase-rules/v1') return id.indexOf('cmd') < 0 && id.indexOf('forge') < 0 && id.indexOf('crossfire') < 0 && id.indexOf('notify') < 0;
+    if (state.version === 'phase-rules/v2') return id.indexOf('v3.') < 0;
+    return true;
+  });
+  Object.keys(tally).forEach(function (id) { if (ids.indexOf(id) < 0) ids.push(id); });
+  var t = '<tr><th>rule · ' + esc(state.version) + '</th><th>phase</th><th class="num">events caught</th></tr>';
+  ids.forEach(function (id) {
+    var n = tally[id] || 0;
+    var phase = id.split('.')[0] === 'v3' ? id.split('.')[2] : id.split('.')[0];
+    t += '<tr class="' + (n ? '' : 'dead') + '"><td>' + esc(id) + (n ? '' : ' · never fired') + '</td>'
+      + '<td><span class="sw" style="display:inline-block;width:9px;height:9px;background:' + (COLORS[phase] || 'var(--ph-unknown)') + '"></span> '
+      + esc(phase) + '</td><td class="num">' + n + '</td></tr>';
+  });
+  el('rules-table').innerHTML = t;
+
+  var heads = {};
+  Object.keys(DATA.harnesses).forEach(function (h) {
+    var hh = DATA.harnesses[h].unknownHeads || {};
+    Object.keys(hh).forEach(function (k) { heads[k] = (heads[k] || 0) + hh[k]; });
+  });
+  var hk = Object.keys(heads).sort(function (a, b) { return heads[b] - heads[a]; }).slice(0, 20);
+  el('heads-table').innerHTML = '<tr><th>command head</th><th class="num">unmatched calls</th></tr>'
+    + (hk.length ? hk.map(function (k) {
+        return '<tr><td>' + esc(k) + '</td><td class="num">' + heads[k] + '</td></tr>';
+      }).join('') : '<tr><td colspan="2" class="dead">none. every shell call matched a rule.</td></tr>');
+}
+
+// ============================================================================
+// lead-templates/v1: fixed sentence forms over measured numbers.
+// Every form names its drop condition. No model writes here.
+// ============================================================================
+function leadForms() {
+  var rows = allSessions();
+  var v = 'phase-rules/v2';
+  var n = rows.length;
+  var harnesses = Object.keys(DATA.harnesses).filter(function (h) { return DATA.harnesses[h].sessions.length > 0; });
+  var ps = { scout: 0, build: 0, verify: 0, handoff: 0, unknown: 0 };
+  var waits = [], handoffEvents = 0, verifySessions = 0, hourTally = {};
+  rows.forEach(function (r) {
+    var d = r.s[v];
+    PHASES.forEach(function (p) { ps[p] += d.phaseSec[p]; });
+    if (d.waitingSec > 0) waits.push(d.waitingSec);
+    handoffEvents += d.phaseEvents.handoff;
+    if (d.phaseSec.verify > 0) verifySessions++;
+    hourTally[r.s.startHour] = (hourTally[r.s.startHour] || 0) + 1;
+  });
+  var att = PHASES.reduce(function (a, p) { return a + ps[p]; }, 0) || 1;
+  var named = PHASES.filter(function (p) { return p !== 'unknown'; })
+    .sort(function (a, b) { return ps[b] - ps[a]; });
+  var topHour = Object.keys(hourTally).sort(function (a, b) { return hourTally[b] - hourTally[a]; })[0];
+  var medianWait = waits.length ? waits.sort(function (a, b) { return a - b; })[Math.floor(waits.length / 2)] : 0;
+
+  return [
+    { id: 'lead.mix', form: 'Across {n} sessions on {k} harness(es), {p1} takes the largest share of measured time ({s1}), then {p2} ({s2}).',
+      drop: 'drops under 3 sessions or under 30 measured minutes',
+      ok: n >= 3 && att >= 1800,
+      out: 'Across <b>' + n + '</b> sessions on <b>' + harnesses.length + '</b> ' + (harnesses.length === 1 ? 'harness' : 'harnesses')
+        + ', <b>' + named[0] + '</b> takes the largest share of measured time (<b>' + fmtPct(ps[named[0]] / att) + '</b>), then <b>'
+        + named[1] + '</b> (<b>' + fmtPct(ps[named[1]] / att) + '</b>).' },
+    { id: 'lead.verify', form: 'A verify step shows up in {v} of sessions.',
+      drop: 'drops under 3 sessions',
+      ok: n >= 3,
+      out: 'A verify step shows up in <b>' + fmtPct(n ? verifySessions / n : 0) + '</b> of sessions.' },
+    { id: 'lead.handoff', form: 'Work stops at a human gate {g} times, with a median wait of {w} min.',
+      drop: 'drops when no handoff event exists',
+      ok: handoffEvents > 0,
+      out: 'Work stops at a human gate <b>' + handoffEvents + '</b> times, with a median wait of <b>'
+        + Math.round(medianWait / 60) + ' min</b>.' },
+    { id: 'lead.rhythm', form: 'Most sessions start around {h}:00 UTC.',
+      drop: 'drops under 5 sessions',
+      ok: n >= 5,
+      out: 'Most sessions start around <b>' + topHour + ':00 UTC</b>.' },
+    { id: 'lead.unknown', form: 'The rules leave {u} of measured time unclassified ({version}).',
+      drop: 'never drops. the unknown share never hides',
+      ok: true,
+      out: 'The rules leave <b>' + fmtPct(ps.unknown / att) + '</b> of measured time unclassified (<b>' + v + '</b>).' },
+  ];
+}
+
+function renderLead() {
+  var forms = leadForms();
+  el('lead-forms').innerHTML = forms.map(function (f) {
+    return '<div class="tpl' + (f.ok ? '' : ' dropped') + '">'
+      + '<div class="form">' + esc(f.id) + ' · ' + esc(f.form) + '</div>'
+      + '<div class="out">' + (f.ok ? f.out : f.out) + '</div>'
+      + '<div class="why">' + (f.ok ? 'renders · ' + esc(f.drop) : 'DROPPED · ' + esc(f.drop)) + '</div></div>';
+  }).join('');
+  el('derivation').textContent = 'Derivation: lead-templates/v1 over phase-rules/v2 aggregates. '
+    + 'Each event owns the gap to the next event, capped at ' + DATA.meta.capSec + 's, tail ' + DATA.meta.tailSec + 's. '
+    + 'The wait at a blocking handoff call sits outside the cap as a waiting slice. '
+    + 'First match wins. A rule-set bump reclassifies old sessions from local raw records at the next sync.';
+}
+
+function renderAll() {
+  renderVerdict(); renderProvenance(); renderToggle(); renderBars(); renderRules(); renderLead();
+}
+
+el('load') && (el('load').onclick = function () {
+  try {
+    var parsed = JSON.parse(el('paste').value);
+    if (!parsed.harnesses || !parsed.totals) throw new Error('not an extractor output');
+    parsed.meta = parsed.meta || {};
+    parsed.meta.provenance = 'Pasted aggregates, generated ' + (parsed.meta.generated || 'unknown') + '.';
+    DATA = parsed;
+    el('load-err').textContent = '';
+    renderAll();
+  } catch (e) {
+    el('load-err').textContent = 'Could not read that JSON: ' + e.message;
+  }
+});
+
+renderAll();
+</script>
+</body>
+</html>
