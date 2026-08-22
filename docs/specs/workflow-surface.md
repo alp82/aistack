@@ -30,8 +30,12 @@ The composition is the podium ([#191](https://github.com/alp82/aistack/issues/19
 `prototypes/workflow-composition/index.html`):
 
 - The section opens with a deterministic template lead: fixed sentence forms over
-  measured numbers, versioned with the rules. An absent measurement drops its
-  sentence. The phase-extraction prototype proves the form on real data.
+  measured numbers, versioned as `lead-templates/v1`. An absent measurement drops its
+  sentence. The forms hold on real data
+  ([#196](https://github.com/alp82/aistack/issues/196)): the same five sentences read
+  correctly over 464 sessions with no model involved. Start hours are stored in UTC
+  and rendered in the reader's own time, so a public page never shows a stranger a
+  UTC clock.
 - One fit-ranked row set: nine pool metrics and seven components, sixteen rows.
 - The top three rows by fit render as one horizontal band. A tap extends a box below
   the band.
@@ -75,14 +79,54 @@ and this spec renames them. Scout is reading and searching before the change. Ha
 is the exchange at a blocking human gate.
 
 Versioned rule sets classify recorded tool events, first match wins
-([#186](https://github.com/alp82/aistack/issues/186)). `phase-rules/v1` reads tool
-identity markers. `phase-rules/v2` adds fixed command-head rules, and it adds the
-forge stage markers as named rules where the harness records them, for example a
-`forge` or `crossfire` skill call (round 3). Each event owns the gap to the next
-event, capped at 5 minutes. The wait at a blocking handoff call renders as a striped
-waiting slice behind a toggle. A rule-set bump reclassifies old sessions from local
-raw records at the next sync. A session whose raw records are gone keeps its old
+([#186](https://github.com/alp82/aistack/issues/186)). Each event owns the gap to the
+next event, capped at 5 minutes. The wait at a blocking handoff call renders as a
+striped waiting slice behind a toggle. A rule-set bump reclassifies old sessions from
+local raw records at the next sync. A session whose raw records are gone keeps its old
 aggregate, and the page shows a mixed-version tag.
+
+**The shipping rule set is `phase-rules/v1`**, and it is the set the extraction proof
+arrived at, not the one this spec first described
+([#196](https://github.com/alp82/aistack/issues/196)). The two earlier drafts, marker
+rules alone and marker rules plus guessed command heads, both failed on real history:
+72% and 49% of measured time unknown, and verify at 0% across 464 sessions. The
+version counter starts at v1 with the corrected rules, because no stored aggregate
+carries a rule tag yet and a bump should mean a real change. `phase-rules/v1` holds
+five rule families:
+
+1. **Tool identity markers.** Read and search tools are scout, edit tools are build,
+   review skills are verify, and a blocking ask is handoff. The forge stage markers
+   ride here as named rules where the harness records the skill call, matched on the
+   last segment so the plugin-namespaced spelling `forge:crossfire` counts too. Forge
+   is build and crossfire is verify.
+2. **Chain-segment command rules.** 85% of recorded shell commands hold a chain or a
+   pipe, so a whole-string prefix match reads only the first command and misses the
+   rest. A command splits on `&&`, `||`, `;`, and `|`; each segment classifies on its
+   own; the strongest phase in the chain wins, ordered verify, handoff, build, scout.
+   Leading environment assignments, a bare `cd`, and a `git -C <path>` prefix
+   normalize away before matching.
+3. **Measured head lists.** Every head comes from real history rather than from a
+   guess. The first draft listed `pnpm test` and `vitest`, which appear 12 times in
+   the owner's history, and missed `npx vitest`, `node --test`, `npx tsc`, `npx biome`
+   and `npm test`, which appear over 700 times between them. That single mistake is
+   what put verify at zero.
+4. **Flag-aware rules for dual-use commands.** A head alone files these wrong.
+   2,374 of 2,733 `sed` calls are `sed -n`, a read, and only 199 of 7,758 `echo` calls
+   redirect to a file. `sed`, `echo`, `printf`, and `cat` classify on the flag: in
+   place or redirected is build, everything else is scout.
+5. **Plan bookkeeping inherits.** A todo or task tool carries no information about the
+   work, so it takes the phase of the event before it rather than a fixed phase of its
+   own.
+
+**A harness ships the playbook only when the rules leave 20% or less of its measured
+time unknown.** The gate is per harness, so one unreadable harness holds back its own
+playbook and not the rest of the section. On the owner's history Claude Code sits at
+6% and Codex at 11%, and opencode at 28% is held back, because most of its recorded
+events are calls into an MCP browser server that no fixed head list can enumerate.
+
+**Handoff markers are per adapter, not one global list.** Claude Code records
+`AskUserQuestion` and `ExitPlanMode`, Codex records `request_user_input`, and opencode
+records `question`. Each adapter names its own.
 
 Verify keeps the purple chart slot from the anatomy prototype. It is a validated
 palette slot, and a green verify would read as a pass mark the data does not claim.
@@ -92,9 +136,16 @@ figures, plus receipt cards that pair a habit with its measured payoff. The unkn
 bucket never hides. The derivation prints as small print: phase definitions, the
 unknown share, the two toggles.
 
-**Proof on real data rides a new prototype.** Before the build starts, a prototype
-extracts the phases from real chat histories with the versioned rules alone, no LLM.
-A failed proof revises this section, per the map's prototype rule.
+**The proof ran** ([#196](https://github.com/alp82/aistack/issues/196),
+`prototypes/phase-extraction/`). Across 464 real sessions on three harnesses,
+`phase-rules/v1` leaves **7% of measured time unknown** with no LLM anywhere. The
+residual is a long tail and not one missing rule: no single family passes 2% of
+measured time, and the largest are interpreter runs, MCP server calls, and subagent
+dispatch. Those stay unknown on purpose, because a `python3 -c` can as easily inspect
+data as rewrite a file, and guessing would cost more truth than it buys.
+
+The unknown bucket therefore ships as a real number on the page, not as an
+embarrassment to hide.
 
 ## Extraction and sources
 

@@ -12,11 +12,14 @@
 // no session identifiers leave this process. Shell commands reduce to a first-word
 // head; session ids reduce to an 8-char hash.
 //
-// Rule sets:
-//   phase-rules/v1  tool identity markers only (anatomy prototype, phases renamed)
-//   phase-rules/v2  v1 + fixed command-head rules + forge stage markers (#166 round 3)
-//   phase-rules/v3-draft  v2 + chain-segment matching + extended heads (revision draft,
-//                         NOT decided - it exists to show what a revision would reclaim)
+// Rule sets. The first two are the sets the spec described before this proof ran.
+// They are kept so the failure stays visible and reproducible.
+//   as-specced/v1   tool identity markers only (anatomy prototype #186, phases renamed)
+//   as-specced/v2   v1 + fixed command-head rules + forge stage markers (#166 round 3)
+//   phase-rules/v1  THE PROPOSED SHIPPING SET. Adds the three corrections this proof
+//                   forced: chain-segment matching, head lists measured off real
+//                   history instead of guessed, and flag-aware rules for dual-use
+//                   commands. Plan bookkeeping inherits the previous phase.
 
 import { createHash } from "node:crypto";
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
@@ -33,6 +36,9 @@ const HANDOFF_TOOLS = [
   "mcp__curia__request_review",
   "AskUserQuestion",
   "ExitPlanMode",
+  // per-harness spellings of the same blocking ask
+  "request_user_input",
+  "question",
 ];
 const HANDOFF_SURFACE_TOOLS = [
   "mcp__curia__open_pull_request",
@@ -95,21 +101,50 @@ const V2_READ_HEADS = ["ls", "cat", "head", "tail", "wc", "grep", "rg", "find", 
 const V3_TEST_HEADS = V2_TEST_HEADS.concat(["npm test", "npm run test", "pnpm vitest", "npx vitest", "npx tsc", "pnpm exec", "pytest", "cargo test", "go test", "node --test", "make test", "pnpm check", "npm run build", "npm run lint"]);
 const V3_PUBLISH_HEADS = V2_PUBLISH_HEADS.concat(["npm publish", "pnpm publish", "gh release"]);
 const V3_CHANGE_HEADS = V2_CHANGE_HEADS.concat(["git checkout", "git restore", "git stash", "git mv", "git rm", "git rebase", "git merge", "git cherry-pick", "git init", "git branch", "git worktree", "pnpm install", "pnpm remove", "npm i", "npm ci", "yarn add", "chmod", "ln", "tee", "echo", "printf", "npx convex", "pnpm convex", "pnpm dlx", "npx create"]);
-const V3_READ_HEADS = V2_READ_HEADS.concat(["pwd", "which", "whoami", "echo $", "env", "printenv", "node --version", "node -v", "pnpm --version", "df", "du", "ps", "top", "file", "stat", "tree", "jq", "sort", "uniq", "cut", "awk", "diff", "gh api", "gh run", "gh workflow", "gh search", "gh issue", "gh pr", "git remote", "git fetch", "git ls-files", "git blame", "git describe", "git rev-parse", "sqlite3", "date", "uname", "man", "history", "type"]);
+const V3_READ_HEADS = V2_READ_HEADS.concat(["pwd", "which", "whoami", "echo $", "env", "printenv", "node --version", "node -v", "pnpm --version", "df", "du", "ps", "top", "file", "stat", "tree", "jq", "sort", "uniq", "cut", "awk", "diff", "gh api", "gh run", "gh workflow", "gh search", "gh issue", "gh pr", "git remote", "git fetch", "git ls-files", "git blame", "git describe", "git rev-parse", "sqlite3", "date", "uname", "man", "history", "type", "nl", "strings", "pgrep", "basename", "dirname", "realpath"]);
+
+// v4-draft: a handful of commands are dual use. The head alone files them wrong,
+// so these rules read the flag first and run BEFORE the head lists.
+// Measured on real history: 87% of sed calls are `sed -n` (a read, filed as a
+// change by the head list), and only 199 of 7,758 echo calls redirect to a file.
+const DUAL_USE_RULES = [
+  { id: "sed", match: /^sed\b/, build: /^sed\s+(-[a-zA-Z]*i|--in-place)\b/ },
+  { id: "echo", match: /^(echo|printf)\b/, build: />>?\s*\S/ },
+  { id: "cat", match: /^cat\b/, build: /^cat\s*(>>?\s*\S|<<)/ },
+];
+function dualUse(seg) {
+  for (const r of DUAL_USE_RULES) {
+    if (!r.match.test(seg)) continue;
+    return r.build.test(seg) ? "build" : "scout";
+  }
+  return null;
+}
 
 // v3-draft: split a chain into segments, classify each, highest precedence wins.
 function chainSegments(arg) {
   return arg
     .split(/(?:&&|\|\||;|\|)/)
-    .map((s) => s.trim().replace(/^(?:\w+=\S*\s+)+/, "").replace(/^(?:cd\s+\S+\s*)$/, ""))
+    .map((s) =>
+      s
+        .trim()
+        .replace(/^(?:\w+=\S*\s+)+/, "")
+        .replace(/^(?:cd\s+\S+\s*)$/, "")
+        // `git -C <path> log` is the same rule as `git log`. Real history uses the
+        // -C form 650 times, and a head list that does not strip it sees none of them.
+        .replace(/^git\s+-C\s+\S+\s+/, "git "),
+    )
     .filter(Boolean);
 }
-function v3Shell(arg) {
+function v3Shell(arg, dual) {
   const segs = chainSegments(arg);
   let best = null;
   const rank = { verify: 4, handoff: 3, build: 2, scout: 1 };
   for (const seg of segs) {
-    let p = null;
+    let p = dual ? dualUse(seg) : null;
+    if (p) {
+      if (!best || rank[p] > rank[best]) best = p;
+      continue;
+    }
     if (cmdIs(seg, V3_TEST_HEADS)) p = "verify";
     else if (cmdIs(seg, V3_PUBLISH_HEADS)) p = "handoff";
     else if (cmdIs(seg, V3_CHANGE_HEADS)) p = "build";
@@ -133,9 +168,12 @@ const MARKER_RULES = [
 // Forge stage markers, #166 round 3: named v2 rules where the harness records
 // the skill call. Default mapping (round 1 question): forge -> build,
 // crossfire -> verify. They sit BEFORE the generic skill-load rule.
+// Real history spells these both bare and plugin-namespaced (forge:crossfire), so
+// the rule matches the last path segment.
+const skillLeaf = (a) => String(a).split(":").pop();
 const FORGE_RULES = [
-  { id: "verify.crossfire-skill", phase: "verify", test: (t, a) => SKILL_TOOLS.includes(t) && a === "crossfire" },
-  { id: "build.forge-skill", phase: "build", test: (t, a) => SKILL_TOOLS.includes(t) && a === "forge" },
+  { id: "verify.crossfire-skill", phase: "verify", test: (t, a) => SKILL_TOOLS.includes(t) && skillLeaf(a) === "crossfire" },
+  { id: "build.forge-skill", phase: "build", test: (t, a) => SKILL_TOOLS.includes(t) && skillLeaf(a) === "forge" },
 ];
 
 const V2_COMMAND_RULES = [
@@ -150,8 +188,26 @@ const V3_COMMAND_RULES = [
   {
     id: "v3.chain-cmd",
     phase: null, // phase comes from the winning segment
-    test: (t, a) => (isShell(t) ? v3Shell(a) : null),
+    test: (t, a) => (isShell(t) ? v3Shell(a, false) : null),
   },
+];
+
+const V4_COMMAND_RULES = [
+  {
+    id: "v4.chain-cmd",
+    phase: null,
+    test: (t, a) => (isShell(t) ? v3Shell(a, true) : null),
+  },
+];
+
+// Plan bookkeeping carries no information about the work itself. Two candidate
+// treatments, measured side by side: file it as build, or let it inherit the
+// phase of the event before it.
+const BOOKKEEPING_RULES_BUILD = [
+  { id: "build.bookkeeping", phase: "build", test: (t) => BOOKKEEPING_TOOLS.includes(t) },
+];
+const BOOKKEEPING_RULES_INHERIT = [
+  { id: "inherit.bookkeeping", phase: "@prev", test: (t) => BOOKKEEPING_TOOLS.includes(t) },
 ];
 
 const UNKNOWN_RULES = [
@@ -167,15 +223,22 @@ function spliceForge(rules) {
 }
 
 const RULESETS = {
-  "phase-rules/v1": MARKER_RULES.concat(UNKNOWN_RULES),
-  "phase-rules/v2": spliceForge(MARKER_RULES).concat(V2_COMMAND_RULES, UNKNOWN_RULES),
-  "phase-rules/v3-draft": spliceForge(MARKER_RULES).concat(
-    V2_COMMAND_RULES.slice(0, 4),
-    V3_COMMAND_RULES,
+  // As specced, kept as the proof of failure.
+  "as-specced/v1": MARKER_RULES.concat(UNKNOWN_RULES),
+  "as-specced/v2": spliceForge(MARKER_RULES).concat(V2_COMMAND_RULES, UNKNOWN_RULES),
+  // The proposed shipping set.
+  "phase-rules/v1": spliceForge(MARKER_RULES).concat(
+    BOOKKEEPING_RULES_INHERIT,
+    V4_COMMAND_RULES,
     [V2_COMMAND_RULES[4]],
     UNKNOWN_RULES,
   ),
 };
+
+// The gate this proof set: the phase playbook ships for a harness only when the
+// rules leave 20% or less of its measured time unclassified (owner, 2026-08-22).
+const UNKNOWN_GATE = 0.20;
+const SHIPPING_SET = "phase-rules/v1";
 
 function classify(tool, arg, version) {
   for (const r of RULESETS[version]) {
@@ -195,6 +258,26 @@ function classify(tool, arg, version) {
 // Tail 60s. A blocking handoff call splits its overflow into a waiting slice.
 // ---------------------------------------------------------------------------
 
+// Residual families. A head list can enumerate shell commands. It cannot
+// enumerate MCP servers or a harness's own bookkeeping tools, so the leftover is
+// grouped by family and weighed by time before any rule is proposed for it.
+const BOOKKEEPING_TOOLS = ["TaskCreate", "TaskUpdate", "TaskStop", "TaskOutput", "todowrite", "TodoWrite", "Monitor", "SendUserFile", "SendMessage", "ListAgents"];
+const INTERPRETER_HEADS = ["python3", "python", "node", "bun", "deno", "ruby", "perl", "php", "tsx"];
+const REMOTE_HEADS = ["ssh", "tmux", "docker", "scp", "rsync", "kubectl"];
+
+function residualFamily(tool, arg) {
+  if (tool.startsWith("mcp__") || /chrome-devtools/.test(tool)) return "mcp server";
+  if (BOOKKEEPING_TOOLS.includes(tool)) return "harness bookkeeping";
+  if (AGENT_TOOLS.includes(tool)) return "delegation";
+  if (!isShell(tool)) return "other harness tool";
+  const seg = chainSegments(arg)[0] || arg;
+  const head = (seg.trim().split(/\s+/)[0] || "").split("/").pop() || "";
+  if (INTERPRETER_HEADS.includes(head)) return "interpreter run";
+  if (REMOTE_HEADS.includes(head)) return "remote or container";
+  if (/^(for|while|until|if|timeout|sleep|true|bash|sh|zsh)$/.test(head)) return "shell construct";
+  return "other shell command";
+}
+
 const CAP_SEC = 300;
 const TAIL_SEC = 60;
 const PHASES = ["scout", "build", "verify", "handoff", "unknown"];
@@ -203,20 +286,28 @@ function deriveSession(events, version) {
   const by = { scout: 0, build: 0, verify: 0, handoff: 0, unknown: 0 };
   const evBy = { scout: 0, build: 0, verify: 0, handoff: 0, unknown: 0 };
   const ruleTally = {};
+  const residualSec = {};
   let waiting = 0;
   let idle = 0;
+  let prevPhase = null;
   for (let i = 0; i < events.length; i++) {
     const [ts, tool, arg] = events[i];
     const gap = i + 1 < events.length ? (events[i + 1][0] - ts) / 1000 : TAIL_SEC;
     const own = Math.min(gap, CAP_SEC);
-    const { rule, phase } = classify(tool, arg, version);
+    let { rule, phase } = classify(tool, arg, version);
+    if (phase === "@prev") phase = prevPhase || "unknown";
+    else if (phase !== "unknown") prevPhase = phase;
     ruleTally[rule] = (ruleTally[rule] || 0) + 1;
     by[phase] += own;
     evBy[phase] += 1;
+    if (phase === "unknown") {
+      const fam = residualFamily(tool, arg || "");
+      residualSec[fam] = (residualSec[fam] || 0) + own;
+    }
     if (HANDOFF_TOOLS.includes(tool)) waiting += gap - own;
     else idle += gap - own;
   }
-  return { phaseSec: by, phaseEvents: evBy, waitingSec: waiting, idleSec: idle, ruleTally };
+  return { phaseSec: by, phaseEvents: evBy, waitingSec: waiting, idleSec: idle, ruleTally, residualSec };
 }
 
 // ---------------------------------------------------------------------------
@@ -330,9 +421,12 @@ function readCodex() {
       if (t === "function_call" || t === "custom_tool_call") {
         let name = String(payload.name || "");
         let arg = "";
-        if (name === "shell" || name === "container.exec" || name === "local_shell") {
+        // Current Codex spells the shell call exec_command and carries the command
+        // in `cmd`. The older shell/container.exec/local_shell names still appear
+        // in archived sessions, so all of them fold into one shell event.
+        if (["shell", "container.exec", "local_shell", "exec_command", "exec", "write_stdin"].includes(name)) {
           name = "shell";
-          arg = codexCommand(payload.arguments);
+          arg = codexCommand(payload.arguments ?? payload.input);
         }
         events.push([ts, name, arg]);
       } else if (t === "local_shell_call") {
@@ -353,10 +447,13 @@ function readCodex() {
 }
 
 function codexCommand(argsRaw) {
+  if (typeof argsRaw === "string" && !argsRaw.trim().startsWith("{")) return argsRaw;
   try {
     const a = JSON.parse(String(argsRaw || "{}"));
-    if (Array.isArray(a.command)) return codexJoin(a.command);
-    if (typeof a.command === "string") return a.command;
+    for (const k of ["command", "cmd"]) {
+      if (Array.isArray(a[k])) return codexJoin(a[k]);
+      if (typeof a[k] === "string") return a[k];
+    }
   } catch {
     /* fall through */
   }
@@ -500,23 +597,28 @@ function aggregate(harness, sessions, windowMs, nowMs) {
         waitingSec: Math.round(d.waitingSec),
         idleSec: Math.round(d.idleSec),
         ruleTally: d.ruleTally,
+        residualSec: Object.fromEntries(Object.entries(d.residualSec).map(([k, v]) => [k, Math.round(v)])),
       };
     }
     out.sessions.push(row);
-    // work-order tallies from the strongest DECIDED version (v2)
+    // what escapes each rule set, so a residual can be read per version
     for (const [, tool, arg] of s.events) {
-      const { phase } = classify(tool, arg, "phase-rules/v2");
-      if (phase === "unknown" && isShell(tool) && arg) {
-        const h = cmdHead(arg);
-        out.unknownHeads[h] = (out.unknownHeads[h] || 0) + 1;
+      for (const v of VERSIONS) {
+        const { phase } = classify(tool, arg, v);
+        if (phase !== "unknown") continue;
+        const h = isShell(tool) ? "$ " + cmdHead(arg) : tool;
+        out.unknownHeads[v] = out.unknownHeads[v] || {};
+        out.unknownHeads[v][h] = (out.unknownHeads[v][h] || 0) + 1;
       }
       if (SKILL_TOOLS.includes(tool) && arg) out.skillCalls[arg] = (out.skillCalls[arg] || 0) + 1;
     }
   }
-  // keep top 25 heads only
-  out.unknownHeads = Object.fromEntries(
-    Object.entries(out.unknownHeads).sort((a, b) => b[1] - a[1]).slice(0, 25),
-  );
+  // keep top 25 heads per version only
+  for (const v of Object.keys(out.unknownHeads)) {
+    out.unknownHeads[v] = Object.fromEntries(
+      Object.entries(out.unknownHeads[v]).sort((a, b) => b[1] - a[1]).slice(0, 25),
+    );
+  }
   return out;
 }
 
@@ -586,6 +688,30 @@ const result = {
   totals: totals(harnesses),
 };
 
+// --slim: the shape the prototype page embeds. Per-session phase numbers stay,
+// the per-session rule tallies roll up to the harness, which is the only level
+// the page reads them at. It cuts the embed by about four fifths.
+if (argv.includes("--slim")) {
+  for (const h of Object.values(result.harnesses)) {
+    h.ruleTally = {};
+    h.residualSec = {};
+    for (const s of h.sessions) {
+      for (const v of VERSIONS) {
+        h.ruleTally[v] = h.ruleTally[v] || {};
+        for (const [k, n] of Object.entries(s[v].ruleTally)) h.ruleTally[v][k] = (h.ruleTally[v][k] || 0) + n;
+        h.residualSec[v] = h.residualSec[v] || {};
+        for (const [k, n] of Object.entries(s[v].residualSec)) h.residualSec[v][k] = (h.residualSec[v][k] || 0) + n;
+        delete s[v].ruleTally;
+        delete s[v].residualSec;
+        // the page reads only the handoff event count and never idle time
+        s[v].handoffEvents = s[v].phaseEvents.handoff;
+        delete s[v].phaseEvents;
+        delete s[v].idleSec;
+      }
+    }
+  }
+}
+
 if (asJson) {
   console.log(JSON.stringify(result));
 } else {
@@ -593,6 +719,12 @@ if (asJson) {
   console.log(`phase extraction - ${days}d window - ${Object.keys(harnesses).join(", ") || "no harness data found"}`);
   for (const [name, h] of Object.entries(harnesses)) {
     console.log(`\n${name}: ${h.sessions.length} sessions (${h.droppedSessions} outside window or under 3 events)`);
+    for (const v of VERSIONS) {
+      const ps = Object.fromEntries(PHASES.map((p) => [p, 0]));
+      for (const s of h.sessions) for (const p of PHASES) ps[p] += s[v].phaseSec[p];
+      const att = PHASES.reduce((a, p) => a + ps[p], 0) || 1;
+      console.log(`  ${v.padEnd(21)} ` + PHASES.map((p) => `${p} ${Math.round((100 * ps[p]) / att)}%`).join("  "));
+    }
   }
   for (const v of VERSIONS) {
     if (!t[v] || t[v].sessions === 0) continue;
@@ -600,6 +732,28 @@ if (asJson) {
     const att = t[v].attributedSec || 1;
     const line = PHASES.map((p) => `${p} ${Math.round((100 * ps[p]) / att)}%`).join("  ");
     console.log(`\n${v}: ${line}`);
+  }
+  console.log(`\nthe gate: the phase playbook ships for a harness at ${Math.round(UNKNOWN_GATE * 100)}% unknown or less (${SHIPPING_SET}).`);
+  for (const [name, h] of Object.entries(harnesses)) {
+    const ps = Object.fromEntries(PHASES.map((p) => [p, 0]));
+    for (const s of h.sessions) for (const p of PHASES) ps[p] += s[SHIPPING_SET].phaseSec[p];
+    const att = PHASES.reduce((a, p) => a + ps[p], 0) || 1;
+    const share = ps.unknown / att;
+    console.log(`  ${name.padEnd(14)} ${(100 * share).toFixed(0).padStart(3)}% unknown  ${share <= UNKNOWN_GATE ? "SHIPS" : "HELD BACK"}`);
+  }
+
+  const strongest = SHIPPING_SET;
+  const fam = {};
+  let attTot = 0;
+  for (const h of Object.values(harnesses)) {
+    for (const s of h.sessions) {
+      for (const p of PHASES) attTot += s[strongest].phaseSec[p];
+      for (const [k, v] of Object.entries(s[strongest].residualSec)) fam[k] = (fam[k] || 0) + v;
+    }
+  }
+  console.log(`\nwhat is still unknown under ${strongest}, by share of all measured time:`);
+  for (const [k, v] of Object.entries(fam).sort((a, b) => b[1] - a[1])) {
+    console.log(`  ${k.padEnd(22)} ${((100 * v) / (attTot || 1)).toFixed(1)}%`);
   }
   console.log("\nRun with --json and paste the output back into the ticket thread.");
   console.log("The JSON holds aggregates only: no prompts, no full commands, no paths, no session ids.");
