@@ -1,5 +1,8 @@
 # The LLM drafts prose from approved aggregates only
 
+**Superseded by [ADR-0002](0002-no-llm-in-the-workflow-surface.md)**: the workflow
+surface ships without an LLM.
+
 The measured workflow surface computes every fact deterministically from local
 transcripts, harness files, and local Git history. An LLM may draft prose about
 those facts. It receives only aggregates the owner approved at the sync gate.
