@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Prototype · alp82/aistack#193 · the stack page section order · round 10</title>
+<title>Prototype · alp82/aistack#193 · the stack page section order · round 11</title>
 <!--
   PROTOTYPE. Throwaway. alp82/aistack#193: the stack page section order with
   the workflow section. Baseline: #191 round 4 (PR #192), the podium.
@@ -38,14 +38,19 @@
   ROUND 9 verdict (2026-08-21): the undercrop looks nice, but its faint
   strip repeated what the sliver already showed. Fix the repetition.
 
-  ROUND 10. The undercrop, deduplicated. The bright graphic represents
-  the section, and the faint strip beneath always shows the NEXT
-  content, never the same thing twice:
-  - usage:    token bar bright, the stat band numbers fading below.
-  - projects: two name chips bright, the three other projects below.
-  - tools:    four name chips bright, the seven other tools below.
-  - workflow: phase strip bright (no figure), the podium fading below.
-  - guide:    the topics bright, the first prose paragraph below.
+  ROUND 10 verdict (2026-08-22): keep the faded preview whole. Make the
+  extra bit under the title a UNIQUE part instead: descriptive text, a
+  stat, or a mini chart that the body never repeats.
+
+  ROUND 11. The subtitle bit. Each section header carries one unique
+  element under its title, and the round-4 faded crop of the real body
+  returns beneath it, untouched:
+  - usage:    mini chart. Daily tokens, 30 days, a sparkline.
+  - projects: text. Five things built with this stack, two live.
+  - tools:    text. Two harnesses at the core, nine tools around them.
+  - workflow: mini chart. The late-night trail over 30 days, the
+        movement the podium number cannot show.
+  - guide:    text. A three minute read in the owner's own words.
   One variation. This round also asks the two open title questions.
 
   Data provenance: the workflow rows, fit scores and stats come unchanged
@@ -190,6 +195,14 @@
   .mini-crop { position: relative; max-height: 72px; overflow: hidden; opacity: 0.35; margin-top: 14px; max-width: 46rem; }
   .mini-crop::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(transparent, var(--bg-canvas)); }
 
+  /* the unique subtitle bit (round 11) */
+  .sub-bit { display: flex; align-items: center; gap: 12px; margin: 8px 0 0; }
+  .sub-bit .txt { margin: 0; font-size: 13px; line-height: 1.5; color: var(--fg-secondary); }
+  .sub-bit svg { width: 130px; height: 24px; flex-shrink: 0; }
+  .sub-bit svg polyline { fill: none; stroke: var(--accent-lime); stroke-width: 1.5; }
+  .sub-bit .lbl { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted); }
+  .acc section.open .sub-bit { display: none; }
+
   /* the peek (round 3, D; round 4 styles) */
   .peekwrap { position: relative; max-height: 170px; overflow: hidden; opacity: 0.55; cursor: pointer; padding-bottom: 24px; }
   .peekwrap::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 90px; background: linear-gradient(transparent, var(--bg-canvas)); }
@@ -311,7 +324,7 @@
 <body>
 
 <div class="ticket-strip">
-  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 10 · the undercrop, deduplicated
+  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 11 · the unique subtitle bit over the whole faded crop
 </div>
 
 <!-- ==================== section content templates ==================== -->
@@ -356,8 +369,8 @@
 <div class="variant" id="v-final">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">round 10 · the undercrop, deduplicated · prototype chrome</span>
-      <b>The bright sliver represents, the faint strip continues.</b> Under each graphic fades the NEXT content: the stat band, the other projects, the other tools, the podium, the first prose paragraph. Nothing shows twice.
+      <span class="tag">round 11 · the unique subtitle bit · prototype chrome</span>
+      <b>One unique element under each title, the whole faded crop beneath.</b> A sparkline for usage, a sentence for projects and tools, the late-night trail for the workflow, a sentence for the guide. The body never repeats the bit.
       <span class="journey">01 usage → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide · one open at a time</span>
     </div>
   </div>
@@ -647,6 +660,26 @@
     }).join('') + '</span>';
   }
 
+  /* the unique subtitle bit (round 11): content the section body never shows */
+  function sparkPoints(vals, w, h) {
+    var mx = Math.max.apply(null, vals);
+    return vals.map(function (v, i) {
+      var x = (i / (vals.length - 1)) * w;
+      var y = (h - 2) - (v / mx) * (h - 4);
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    }).join(' ');
+  }
+  function sparkHtml(vals) {
+    return '<svg viewBox="0 0 130 24" preserveAspectRatio="none"><polyline points="' + sparkPoints(vals, 130, 24) + '"></polyline></svg>';
+  }
+  var SUBBIT = {
+    usage:    '<div class="sub-bit">' + sparkHtml([3.2, 4.1, 3.8, 5, 4.6, 5.2, 6, 5.5, 6.4, 7, 6.6, 7.2, 8, 7.4, 8.2]) + '<span class="lbl">daily tokens · 30 days</span></div>',
+    projects: '<div class="sub-bit"><p class="txt">Five things built with this stack, two of them live.</p></div>',
+    tools:    '<div class="sub-bit"><p class="txt">Two harnesses at the core, nine tools around them.</p></div>',
+    workflow: '<div class="sub-bit">' + sparkHtml([20, 24, 22, 28, 30, 27, 33, 35, 32, 38, 40, 37, 41, 43, 42]) + '<span class="lbl">late-night trail · 30 days</span></div>',
+    guide:    '<div class="sub-bit"><p class="txt">A three minute read in the owner’s own words.</p></div>'
+  };
+
   /* teaser slivers (round 7) */
   var TEASE_FACTS = {
     usage:    [['148M', 'tokens · 30d'], ['$96+', 'lower bound'], ['214', 'sessions']],
@@ -806,7 +839,9 @@
     }
     order.forEach(function (k, i) {
       var def = SECTIONS[k];
-      var extra = cfg.mode === 'gist' ? '<p class="gist">' + def.gist + '</p>' : '';
+      var extra = cfg.mode === 'gist' ? '<p class="gist">' + def.gist + '</p>'
+        : cfg.mode === 'subbit' ? SUBBIT[k]
+        : '';
       var sec = sectionEl(i + 1, def, el('acc-body'), extra);
       var head = sec.querySelector('.sec-head');
       if (cfg.mode === 'strip') {
@@ -865,7 +900,7 @@
   }
 
   var PAGES = {
-    final: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: '', exclusive: true, tease: 'visual', undercrop: true }); }
+    final: function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'subbit', exclusive: true, peek: 'all', peekClass: 'micro' }); }
   };
 
   document.querySelectorAll('[data-page]').forEach(function (host) {
@@ -874,7 +909,7 @@
 
   /* ---------- variant switcher ---------- */
   var VARIANTS = [
-    { key: 'final', id: 'v-final', name: 'the undercrop, deduplicated' }
+    { key: 'final', id: 'v-final', name: 'the unique subtitle bit' }
   ];
   var current = 0;
 
