@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Prototype · alp82/aistack#193 · the stack page section order · round 12</title>
+<title>Prototype · alp82/aistack#193 · the stack page section order · round 13</title>
 <!--
   PROTOTYPE. Throwaway. alp82/aistack#193: the stack page section order with
   the workflow section. Baseline: #191 round 4 (PR #192), the podium.
@@ -47,17 +47,21 @@
   to the real section, all sections sit on one continuous page, and on
   scroll the rows become a fixed top nav.
 
-  ROUND 12. The nav pattern, with three row styles, plus the saved
-  round-11 accordion as the reference alternative:
-  - A "the stat rows":   number, title, headline stat. The plainest.
-  - B "the sub-bit rows": each row carries its unique bit, a sparkline
-        or a sentence.
-  - C "the strip rows":  each row carries its thin data strip.
-  - D "the saved accordion": round 11 unchanged, for comparison.
-  In A to C the five full sections follow the nav block on one page,
-  and a fixed top rail appears once the nav block scrolls away.
-  Switch with the bar at the bottom or ?variant=<key>, keys:
-  navstat|navbit|navstrip|alt.
+  ROUND 12 verdict (2026-08-22): the stat rows are great. Mock the main
+  layout and the stack header too, put the main stack info into the nav,
+  and make it work with the existing shell.
+
+  ROUND 13. The shell fit. The page now mocks the real surroundings:
+  - the sticky site header (logo, nav links, actions), 64px, always on
+    top like on the live site.
+  - the stack hero: avatar, upvotes, the big title, the byline, the
+    lime price tile and the top tool tiles.
+  - the stat-row nav block under the hero. A tap scrolls to the section.
+  - the fixed rail that appears when the nav block scrolls away now
+    docks UNDER the site header and carries the stack identity on its
+    left: name, price, upvotes. The section links follow it.
+  - B "the saved accordion" stays for comparison.
+  Switch with the bar at the bottom or ?variant=shell|alt.
 
   Data provenance: the workflow rows, fit scores and stats come unchanged
   from the #191 prototype (real Git anchors, hand-made shares). The guide
@@ -232,6 +236,48 @@
   .toprail a.on .no { color: var(--accent-lime); }
   .navpage section.journey { scroll-margin-top: 46px; }
 
+  /* the shell fit (round 13) */
+  .siteheader { position: sticky; top: 0; z-index: 46; height: 64px; background: var(--bg-canvas); border-bottom: 2px solid var(--stroke-strong); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
+  .siteheader .left { display: flex; align-items: center; gap: 32px; }
+  .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 20px; letter-spacing: -0.04em; }
+  .logo i { width: 12px; height: 12px; background: var(--accent-lime); display: inline-block; animation: pulse 2s infinite; }
+  @keyframes pulse { 50% { opacity: 0.4; } }
+  .sitenav { display: none; gap: 28px; }
+  @media (min-width: 768px) { .sitenav { display: flex; } }
+  .sitenav span { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-muted); }
+  .sitenav span.on { color: var(--fg-primary); }
+  .sitebtns { display: flex; gap: 10px; }
+  .sitebtn { border: 2px solid var(--stroke-strong); background: var(--bg-panel); padding: 6px 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-primary); }
+  .sitebtn.lime { border-color: var(--accent-lime); background: var(--accent-lime); color: var(--accent-lime-contrast); }
+
+  .hero { border-bottom: 1px solid var(--stroke-strong); padding: 40px 24px 48px; }
+  .hero .shell { max-width: 80rem; margin: 0 auto; }
+  .hero-id { display: flex; align-items: center; gap: 14px; }
+  .avatar { width: 48px; height: 48px; background: var(--bg-panel-elevated); border: 1px solid var(--stroke-strong); display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 16px; color: var(--fg-secondary); flex-shrink: 0; }
+  .upchip { border: 1px solid var(--stroke-strong); padding: 6px 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--fg-primary); }
+  .upchip b { color: var(--accent-lime); }
+  .hero h1 { margin: 18px 0 0; font-size: 44px; font-weight: 900; letter-spacing: -0.04em; text-transform: uppercase; line-height: 0.9; }
+  @media (min-width: 768px) { .hero h1 { font-size: 72px; } }
+  .byline { margin: 12px 0 0; font-size: 14px; color: var(--fg-secondary); }
+  .byline .handle { color: var(--fg-muted); font-family: 'JetBrains Mono', monospace; font-size: 12.5px; }
+  .byline .ver { color: var(--accent-lime); }
+  .hero-meta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; align-items: stretch; }
+  .price-tile { background: var(--accent-lime); padding: 12px 16px; display: flex; flex-direction: column; justify-content: center; }
+  .price-tile .amt { font-family: 'JetBrains Mono', monospace; font-weight: 900; font-size: 26px; line-height: 1; color: var(--accent-lime-contrast); }
+  .price-tile .per { margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-lime-contrast); }
+  .herotool { border: 1px solid var(--stroke-strong); padding: 10px 14px; display: flex; align-items: center; gap: 10px; min-width: 9rem; }
+  .herotool .ic { width: 26px; height: 26px; background: var(--bg-panel-elevated); border: 1px solid var(--stroke-subtle); flex-shrink: 0; }
+  .herotool .kk { display: block; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); }
+  .herotool .nn { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 700; }
+  .herotool.more { border-style: dashed; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-muted); justify-content: center; }
+
+  .shellpage .toprail { top: 64px; }
+  .railbrand { display: flex; align-items: center; gap: 12px; padding: 9px 14px; border-right: 2px solid var(--stroke-strong); flex-shrink: 0; }
+  .railbrand .nm { font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.01em; white-space: nowrap; }
+  .railbrand .pr { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: var(--accent-lime); white-space: nowrap; }
+  .railbrand .uv { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--fg-muted); white-space: nowrap; }
+  .shellpage section.journey { scroll-margin-top: 112px; }
+
   /* the peek (round 3, D; round 4 styles) */
   .peekwrap { position: relative; max-height: 170px; overflow: hidden; opacity: 0.55; cursor: pointer; padding-bottom: 24px; }
   .peekwrap::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 90px; background: linear-gradient(transparent, var(--bg-canvas)); }
@@ -353,7 +399,7 @@
 <body>
 
 <div class="ticket-strip">
-  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 12 · nav rows over one continuous page
+  PROTOTYPE · <b>alp82/aistack#193</b> · the stack page section order · round 13 · the shell fit: real header, hero and rail
 </div>
 
 <!-- ==================== section content templates ==================== -->
@@ -373,6 +419,33 @@
     <i style="flex:8; background:var(--bg-panel-elevated)"></i>
   </div>
   <p class="compress-note">compressed to its band · the live section is taller</p>
+</template>
+
+<template data-tpl="shell">
+  <div class="siteheader">
+    <div class="left">
+      <span class="logo"><i></i>aistack</span>
+      <span class="sitenav"><span class="on">Stacks</span><span>Tools</span><span>Models</span><span>Compare</span></span>
+    </div>
+    <div class="sitebtns"><span class="sitebtn">Sign in</span><span class="sitebtn lime">+ New Stack</span></div>
+  </div>
+  <div class="hero">
+    <div class="shell">
+      <div class="hero-id">
+        <span class="avatar">AO</span>
+        <span class="upchip">▲ <b>12</b></span>
+      </div>
+      <h1>Night Shift</h1>
+      <p class="byline">Alper Ortac <span class="handle">@alp82</span> <span class="ver">✓</span></p>
+      <div class="hero-meta">
+        <div class="price-tile"><span class="amt">$220</span><span class="per">/month · fixed</span></div>
+        <div class="herotool"><span class="ic"></span><span><span class="kk">harness</span><span class="nn">Claude Code</span></span></div>
+        <div class="herotool"><span class="ic"></span><span><span class="kk">harness</span><span class="nn">opencode</span></span></div>
+        <div class="herotool"><span class="ic"></span><span><span class="kk">backend</span><span class="nn">Convex</span></span></div>
+        <div class="herotool more">+ 8 more</div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <template data-tpl="guide-lead">
@@ -395,37 +468,15 @@
 
 <!-- ==================== the five treatments ==================== -->
 
-<div class="variant" id="v-navstat">
+<div class="variant" id="v-shell">
   <div class="proposal">
     <div class="proposal-box">
-      <span class="tag">proposal A · the stat rows · prototype chrome</span>
-      <b>The nav block: number, title, headline stat.</b> A tap scrolls to the section below. Scroll past the block and it becomes a fixed top rail.
-      <span class="journey">nav block → 01 usage → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide · one page</span>
+      <span class="tag">round 13 · the shell fit · prototype chrome</span>
+      <b>The stat-row nav inside the real surroundings.</b> Sticky site header, the stack hero, the nav block, five full sections. Scroll past the block and the rail docks under the site header, carrying the stack name, the price and the upvotes.
+      <span class="journey">hero → nav block → 01 usage → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide</span>
     </div>
   </div>
-  <div data-page="navstat"></div>
-</div>
-
-<div class="variant" id="v-navbit">
-  <div class="proposal">
-    <div class="proposal-box">
-      <span class="tag">proposal B · the sub-bit rows · prototype chrome</span>
-      <b>Each nav row carries its unique bit.</b> The token sparkline, a sentence, the late-night trail. The rows tease, the page below delivers.
-      <span class="journey">nav block → 01 usage → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide · one page</span>
-    </div>
-  </div>
-  <div data-page="navbit"></div>
-</div>
-
-<div class="variant" id="v-navstrip">
-  <div class="proposal">
-    <div class="proposal-box">
-      <span class="tag">proposal C · the strip rows · prototype chrome</span>
-      <b>Each nav row carries its thin data strip.</b> Texture instead of words, the most compact nav block of the three.
-      <span class="journey">nav block → 01 usage → 02 projects → 03 tools → <b>04 workflow</b> → 05 guide · one page</span>
-    </div>
-  </div>
-  <div data-page="navstrip"></div>
+  <div data-page="shell"></div>
 </div>
 
 <div class="variant" id="v-alt">
@@ -971,9 +1022,14 @@
       '<span class="right">' + right + '<span class="arrow">↓</span></span>';
   }
 
-  function buildNavPage(host, style) {
+  function buildNavPage(host, style, shell) {
     host.classList.add('navpage');
-    host.appendChild(stub('Stack hero · title, price, upvotes', false));
+    if (shell) {
+      host.classList.add('shellpage');
+      host.appendChild(tpl('shell'));
+    } else {
+      host.appendChild(stub('Stack hero · title, price, upvotes', false));
+    }
 
     var block = el('navblock');
     var list = el('navlist');
@@ -981,6 +1037,9 @@
     host.appendChild(block);
 
     var rail = el('toprail');
+    if (shell) {
+      rail.appendChild(el('railbrand', '<span class="nm">Night Shift</span><span class="pr">$220/mo</span><span class="uv">▲ 12</span>'));
+    }
     host.appendChild(rail);
 
     var secs = [];
@@ -1028,10 +1087,8 @@
   }
 
   var PAGES = {
-    navstat:  function (host) { buildNavPage(host, 'stat'); },
-    navbit:   function (host) { buildNavPage(host, 'bit'); },
-    navstrip: function (host) { buildNavPage(host, 'strip'); },
-    alt:      function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'subbit', exclusive: true, peek: 'all', peekClass: 'micro' }); }
+    shell: function (host) { buildNavPage(host, 'stat', true); },
+    alt:   function (host) { buildAccordionPage(host, ORDER_A, { open: [], mode: 'subbit', exclusive: true, peek: 'all', peekClass: 'micro' }); }
   };
 
   document.querySelectorAll('[data-page]').forEach(function (host) {
@@ -1040,10 +1097,8 @@
 
   /* ---------- variant switcher ---------- */
   var VARIANTS = [
-    { key: 'navstat',  id: 'v-navstat',  name: 'A · the stat rows' },
-    { key: 'navbit',   id: 'v-navbit',   name: 'B · the sub-bit rows' },
-    { key: 'navstrip', id: 'v-navstrip', name: 'C · the strip rows' },
-    { key: 'alt',      id: 'v-alt',      name: 'D · the saved accordion' }
+    { key: 'shell', id: 'v-shell', name: 'A · the shell fit' },
+    { key: 'alt',   id: 'v-alt',   name: 'B · the saved accordion' }
   ];
   var current = 0;
 
@@ -1069,7 +1124,7 @@
   });
 
   (function () {
-    var q = new URL(window.location.href).searchParams.get('variant') || 'navstat';
+    var q = new URL(window.location.href).searchParams.get('variant') || 'shell';
     var idx = VARIANTS.findIndex(function (v) { return v.key === q; });
     show(idx >= 0 ? idx : 0);
   })();
