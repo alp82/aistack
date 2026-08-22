@@ -89,6 +89,32 @@ A metric a versioned matching rule derives from transcript events. Its label nam
 The label on a metric that names the harnesses it counts, when not all synced harnesses
 record it.
 
-**Workflow draft**:
-LLM prose over approved aggregates. It is labeled as a draft, the owner edits it, and the
-measured facts stay beside it.
+**Template lead**:
+The opening prose of the workflow section. Fixed sentence forms over measured numbers,
+versioned with the metric rules. No LLM writes it.
+_Avoid_: workflow draft (the LLM draft was ruled out, see ADR-0002)
+
+**Fit**:
+The rank of a workflow row: coverage times surprise. Coverage is the share of synced
+harnesses the metric counts. Surprise is the distance from the typical band its rule
+declares.
+
+**Podium**:
+The workflow section layout. The top three rows by fit render as one horizontal band,
+thin rows follow in fit order, and low-fit rows wait behind one expander.
+
+**Phase**:
+One class of session time: scout, build, verify, or handoff, plus a visible unknown.
+Versioned rules assign every recorded event to one phase.
+_Avoid_: orient (now scout), gate as a phase name (now handoff)
+
+**Playbook**:
+The public phase surface: two measured shipping tracks with median figures, plus
+receipt cards.
+
+**Receipt card**:
+One card that pairs a habit with its measured payoff.
+
+**Owner mirror**:
+A private local view that names the owner's biggest measured time sink and its lever.
+It never publishes.
