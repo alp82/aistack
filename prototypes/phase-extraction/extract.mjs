@@ -438,8 +438,12 @@ function readPi() {
   const sessions = new Map();
   const seen = new Set();
   for (const f of files) {
-    const sid = path.basename(f, ".jsonl");
+    let sid = path.basename(f, ".jsonl");
     readJsonl(f, (rec) => {
+      if (rec.type === "session" && rec.id) {
+        sid = String(rec.id);
+        return;
+      }
       const msg = rec.message || {};
       const ts = Date.parse(rec.timestamp || "") || Number(msg.timestamp) || NaN;
       if (!Number.isFinite(ts)) return;
