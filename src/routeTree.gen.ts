@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ToolsRouteImport } from './routes/tools'
 import { Route as TestRouteImport } from './routes/test'
 import { Route as SyncRouteImport } from './routes/sync'
+import { Route as SubscribeRouteImport } from './routes/subscribe'
 import { Route as SigninPublishRouteImport } from './routes/signin-publish'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -24,12 +25,15 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as CreatorRouteImport } from './routes/$creator'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StacksIndexRouteImport } from './routes/stacks.index'
+import { Route as NewsIndexRouteImport } from './routes/news.index'
 import { Route as WaitlistLookupIdRouteImport } from './routes/waitlist.$lookupId'
 import { Route as ToolsNewRouteImport } from './routes/tools_.new'
 import { Route as StacksNewRouteImport } from './routes/stacks.new'
 import { Route as StacksSlugRouteImport } from './routes/stacks.$slug'
 import { Route as SettingsMachinesRouteImport } from './routes/settings.machines'
 import { Route as SettingsAnalyticsRouteImport } from './routes/settings.analytics'
+import { Route as NewsSlugRouteImport } from './routes/news.$slug'
+import { Route as EmailPreferencesRouteImport } from './routes/email.preferences'
 import { Route as CliAuthRouteImport } from './routes/cli.auth'
 import { Route as ApiSyncConfigRouteImport } from './routes/api.sync-config'
 import { Route as AdminIconsRouteImport } from './routes/admin_.icons'
@@ -59,6 +63,11 @@ const TestRoute = TestRouteImport.update({
 const SyncRoute = SyncRouteImport.update({
   id: '/sync',
   path: '/sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SubscribeRoute = SubscribeRouteImport.update({
+  id: '/subscribe',
+  path: '/subscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SigninPublishRoute = SigninPublishRouteImport.update({
@@ -121,6 +130,11 @@ const StacksIndexRoute = StacksIndexRouteImport.update({
   path: '/stacks/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NewsIndexRoute = NewsIndexRouteImport.update({
+  id: '/news/',
+  path: '/news/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WaitlistLookupIdRoute = WaitlistLookupIdRouteImport.update({
   id: '/waitlist/$lookupId',
   path: '/waitlist/$lookupId',
@@ -149,6 +163,16 @@ const SettingsMachinesRoute = SettingsMachinesRouteImport.update({
 const SettingsAnalyticsRoute = SettingsAnalyticsRouteImport.update({
   id: '/settings/analytics',
   path: '/settings/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewsSlugRoute = NewsSlugRouteImport.update({
+  id: '/news/$slug',
+  path: '/news/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmailPreferencesRoute = EmailPreferencesRouteImport.update({
+  id: '/email/preferences',
+  path: '/email/preferences',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CliAuthRoute = CliAuthRouteImport.update({
@@ -239,18 +263,22 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signin': typeof SigninRoute
   '/signin-publish': typeof SigninPublishRoute
+  '/subscribe': typeof SubscribeRoute
   '/sync': typeof SyncRoute
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
   '/admin/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
+  '/email/preferences': typeof EmailPreferencesRoute
+  '/news/$slug': typeof NewsSlugRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
   '/tools/new': typeof ToolsNewRoute
   '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
+  '/news': typeof NewsIndexRoute
   '/stacks': typeof StacksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/auto-sync': typeof ApiCliAutoSyncRoute
@@ -277,18 +305,22 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signin': typeof SigninRoute
   '/signin-publish': typeof SigninPublishRoute
+  '/subscribe': typeof SubscribeRoute
   '/sync': typeof SyncRoute
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
   '/admin/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
+  '/email/preferences': typeof EmailPreferencesRoute
+  '/news/$slug': typeof NewsSlugRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
   '/tools/new': typeof ToolsNewRoute
   '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
+  '/news': typeof NewsIndexRoute
   '/stacks': typeof StacksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/auto-sync': typeof ApiCliAutoSyncRoute
@@ -316,18 +348,22 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signin': typeof SigninRoute
   '/signin-publish': typeof SigninPublishRoute
+  '/subscribe': typeof SubscribeRoute
   '/sync': typeof SyncRoute
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
   '/admin_/icons': typeof AdminIconsRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
+  '/email/preferences': typeof EmailPreferencesRoute
+  '/news/$slug': typeof NewsSlugRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
   '/stacks/$slug': typeof StacksSlugRoute
   '/stacks/new': typeof StacksNewRoute
   '/tools_/new': typeof ToolsNewRoute
   '/waitlist/$lookupId': typeof WaitlistLookupIdRoute
+  '/news/': typeof NewsIndexRoute
   '/stacks/': typeof StacksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/auto-sync': typeof ApiCliAutoSyncRoute
@@ -356,18 +392,22 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signin'
     | '/signin-publish'
+    | '/subscribe'
     | '/sync'
     | '/test'
     | '/tools'
     | '/admin/icons'
     | '/api/sync-config'
     | '/cli/auth'
+    | '/email/preferences'
+    | '/news/$slug'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
     | '/stacks/new'
     | '/tools/new'
     | '/waitlist/$lookupId'
+    | '/news'
     | '/stacks'
     | '/api/auth/$'
     | '/api/cli/auto-sync'
@@ -394,18 +434,22 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signin'
     | '/signin-publish'
+    | '/subscribe'
     | '/sync'
     | '/test'
     | '/tools'
     | '/admin/icons'
     | '/api/sync-config'
     | '/cli/auth'
+    | '/email/preferences'
+    | '/news/$slug'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
     | '/stacks/new'
     | '/tools/new'
     | '/waitlist/$lookupId'
+    | '/news'
     | '/stacks'
     | '/api/auth/$'
     | '/api/cli/auto-sync'
@@ -432,18 +476,22 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signin'
     | '/signin-publish'
+    | '/subscribe'
     | '/sync'
     | '/test'
     | '/tools'
     | '/admin_/icons'
     | '/api/sync-config'
     | '/cli/auth'
+    | '/email/preferences'
+    | '/news/$slug'
     | '/settings/analytics'
     | '/settings/machines'
     | '/stacks/$slug'
     | '/stacks/new'
     | '/tools_/new'
     | '/waitlist/$lookupId'
+    | '/news/'
     | '/stacks/'
     | '/api/auth/$'
     | '/api/cli/auto-sync'
@@ -471,18 +519,22 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SigninRoute: typeof SigninRoute
   SigninPublishRoute: typeof SigninPublishRoute
+  SubscribeRoute: typeof SubscribeRoute
   SyncRoute: typeof SyncRoute
   TestRoute: typeof TestRoute
   ToolsRoute: typeof ToolsRoute
   AdminIconsRoute: typeof AdminIconsRoute
   ApiSyncConfigRoute: typeof ApiSyncConfigRoute
   CliAuthRoute: typeof CliAuthRoute
+  EmailPreferencesRoute: typeof EmailPreferencesRoute
+  NewsSlugRoute: typeof NewsSlugRoute
   SettingsAnalyticsRoute: typeof SettingsAnalyticsRoute
   SettingsMachinesRoute: typeof SettingsMachinesRoute
   StacksSlugRoute: typeof StacksSlugRoute
   StacksNewRoute: typeof StacksNewRoute
   ToolsNewRoute: typeof ToolsNewRoute
   WaitlistLookupIdRoute: typeof WaitlistLookupIdRoute
+  NewsIndexRoute: typeof NewsIndexRoute
   StacksIndexRoute: typeof StacksIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiCliAutoSyncRoute: typeof ApiCliAutoSyncRoute
@@ -518,6 +570,13 @@ declare module '@tanstack/react-router' {
       path: '/sync'
       fullPath: '/sync'
       preLoaderRoute: typeof SyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/subscribe': {
+      id: '/subscribe'
+      path: '/subscribe'
+      fullPath: '/subscribe'
+      preLoaderRoute: typeof SubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signin-publish': {
@@ -604,6 +663,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StacksIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/news/': {
+      id: '/news/'
+      path: '/news'
+      fullPath: '/news'
+      preLoaderRoute: typeof NewsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/waitlist/$lookupId': {
       id: '/waitlist/$lookupId'
       path: '/waitlist/$lookupId'
@@ -644,6 +710,20 @@ declare module '@tanstack/react-router' {
       path: '/settings/analytics'
       fullPath: '/settings/analytics'
       preLoaderRoute: typeof SettingsAnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/news/$slug': {
+      id: '/news/$slug'
+      path: '/news/$slug'
+      fullPath: '/news/$slug'
+      preLoaderRoute: typeof NewsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/email/preferences': {
+      id: '/email/preferences'
+      path: '/email/preferences'
+      fullPath: '/email/preferences'
+      preLoaderRoute: typeof EmailPreferencesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cli/auth': {
@@ -778,18 +858,22 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SigninRoute: SigninRoute,
   SigninPublishRoute: SigninPublishRoute,
+  SubscribeRoute: SubscribeRoute,
   SyncRoute: SyncRoute,
   TestRoute: TestRoute,
   ToolsRoute: ToolsRoute,
   AdminIconsRoute: AdminIconsRoute,
   ApiSyncConfigRoute: ApiSyncConfigRoute,
   CliAuthRoute: CliAuthRoute,
+  EmailPreferencesRoute: EmailPreferencesRoute,
+  NewsSlugRoute: NewsSlugRoute,
   SettingsAnalyticsRoute: SettingsAnalyticsRoute,
   SettingsMachinesRoute: SettingsMachinesRoute,
   StacksSlugRoute: StacksSlugRoute,
   StacksNewRoute: StacksNewRoute,
   ToolsNewRoute: ToolsNewRoute,
   WaitlistLookupIdRoute: WaitlistLookupIdRoute,
+  NewsIndexRoute: NewsIndexRoute,
   StacksIndexRoute: StacksIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiCliAutoSyncRoute: ApiCliAutoSyncRoute,

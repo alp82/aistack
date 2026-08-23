@@ -114,6 +114,14 @@ the internal Convex functions in `convex/newsDrafting.ts`.
 - **Send**: the existing Resend machinery in `convex/email.ts`, extended from one-off
   broadcasts to composed issues.
 
+Built in [#201](https://github.com/alp82/aistack/issues/201). The compose prototype ruled
+the compose UI out, so an issue is authored in `src/newsletter/issues.ts` and driven by
+`convex/newsletter.ts`, `scripts/newsletter.ts`, and the admin Newsletter view. The shared
+send loop moved to `convex/lib/mailer.ts`, which the broadcasts and the issues both use.
+The public surfaces are `/news`, `/news/<slug>`, `/subscribe`, and `/email/preferences`.
+The audience gained a third list, `newsletterSubscribers`, for the newcomer who is neither
+a member nor on the waitlist.
+
 ## The knowledge base
 
 A public pull view under `/news`, grouped by topic. It reads the same stream. Its

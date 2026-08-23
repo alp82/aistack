@@ -98,6 +98,12 @@ function Footer() {
 						>
 							Tools
 						</Link>
+						<Link
+							to="/news"
+							className="font-mono text-sm font-semibold uppercase tracking-[0.1em] text-fg-muted hover:text-accent-lime transition-colors"
+						>
+							News
+						</Link>
 					</nav>
 
 					{/* Credit */}

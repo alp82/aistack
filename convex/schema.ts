@@ -1211,4 +1211,19 @@ export default defineSchema({
     importantUpdates: v.boolean(),
     updatedAt: v.number(),
   }).index('by_email', ['email']),
+
+  // A newcomer who asked for the newsletter on the public subscribe page
+  // (#201). The audience is members and waitlist, subscribed by default, and a
+  // visitor who is neither still has to be able to ask. This table is that ask.
+  //
+  // It ADDS to the audience and never overrides `emailPreferences`: a row here
+  // says "mail me", and a preferences row with `newsletter: false` still wins.
+  // So a subscriber unsubscribes through the same link a member does.
+  newsletterSubscribers: defineTable({
+    /** Trimmed and lowercased on every write. The address is the identity. */
+    email: v.string(),
+    /** Where the address came from: `subscribe-page`, or an issue's slug. */
+    source: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index('by_email', ['email']),
 })

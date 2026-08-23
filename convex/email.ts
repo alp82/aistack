@@ -6,49 +6,26 @@ import { WaitlistLaunchEmail } from "../src/emails/WaitlistLaunchEmail";
 import { FeatureUpdateEmail } from "../src/emails/FeatureUpdateEmail";
 import { SyncBroadcastEmail } from "../src/emails/SyncBroadcastEmail";
 import { UNSUBSCRIBE_PLACEHOLDER } from "../src/emails/styles";
-import { signUnsubscribeToken } from "./emailToken";
 import { getAppUrl } from "./httpCli";
+import {
+  CATEGORY_FIELD,
+  buildUnsubscribeUrls,
+  mergeAudience,
+  sendBulkEmails,
+  subtractSuppressed,
+} from "./lib/mailer";
 import { isAdmin } from "./lib/admin";
 import { EmailCategory } from "./schema";
 import type { Infer } from "convex/values";
 // @ts-ignore - components will be generated after convex dev restarts
 import { internal, components } from "./_generated/api";
 
-// Lowercase + dedupe email lists into their order-stable union (first lowercased occurrence wins; empty/blank dropped).
-export function mergeAudience(...lists: string[][]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const list of lists) {
-    for (const raw of list) {
-      const email = raw?.trim().toLowerCase();
-      if (!email) continue;
-      if (seen.has(email)) continue;
-      seen.add(email);
-      out.push(email);
-    }
-  }
-  return out;
-}
-
-// Remove suppressed (unsubscribed) addresses from an email list, case-insensitively.
-// Order-stable, non-mutating, sync.
-export function subtractSuppressed(
-  emails: string[],
-  suppressed: Set<string> | string[],
-): string[] {
-  const set = new Set<string>();
-  for (const s of suppressed) set.add(s.trim().toLowerCase());
-  return emails.filter((e) => !set.has(e.trim().toLowerCase()));
-}
+// The audience helpers live in convex/lib/mailer.ts, which the newsletter send
+// shares. Re-exported here because email.test.ts and older callers import them
+// from this module.
+export { mergeAudience, subtractSuppressed };
 
 type Category = Infer<typeof EmailCategory>;
-
-// The preferences column each category toggles. One name for one thing: the
-// wire and the URL use "important-updates", the row uses `importantUpdates`.
-const CATEGORY_FIELD = {
-  newsletter: "newsletter",
-  "important-updates": "importantUpdates",
-} as const;
 
 // Turn ONE category off for one address (#204). Every other category keeps
 // whatever it had, which is the whole point of replacing the global list.
@@ -363,120 +340,8 @@ type BroadcastSendResult = {
   suppressed?: number;
 };
 
-// Internal result type for the low-level sender (always has total/sentEmails/errors).
-interface BroadcastResult {
-  success: boolean;
-  sent: number;
-  failed: number;
-  total: number;
-  sentEmails: string[];
-  errors: { email: string; error: string }[];
-}
-
-// Build a signed unsubscribe URL for each recipient concurrently.
-// NOTE: rotating BETTER_AUTH_SECRET invalidates all outstanding unsubscribe
-// links (tokens never expire); only rotate with a dual-verify grace window.
-//
-// The token still signs the ADDRESS only, and the category rides beside it as a
-// plain parameter. Two reasons. Every unsubscribe link already in a sent inbox
-// keeps working, and those cannot be migrated. And the category is not a
-// secret: the token proves the holder owns the address, and the only
-// preferences they can reach are their own.
-async function buildUnsubscribeUrls(
-  recipients: string[],
-  secret: string,
-  appUrl: string,
-  category: Category,
-): Promise<Map<string, string>> {
-  const entries = await Promise.all(
-    recipients.map(async (email) => {
-      const token = await signUnsubscribeToken(email, secret);
-      return [
-        email,
-        `${appUrl}/api/email/unsubscribe?token=${token}&category=${category}`,
-      ] as const;
-    }),
-  );
-  return new Map(entries);
-}
-
-async function sendBroadcastEmails(
-  resend: Resend,
-  emails: string[],
-  subject: string,
-  html: string,
-  unsubUrlFor: (email: string) => string
-): Promise<BroadcastResult> {
-  let sent = 0;
-  let failed = 0;
-  const errors: { email: string; error: string }[] = [];
-  const sentEmails: string[] = [];
-
-  console.log(`Starting broadcast to ${emails.length} recipients (1 email per second)...`);
-
-  for (let i = 0; i < emails.length; i++) {
-    const email = emails[i];
-    console.log(`Sending ${i + 1}/${emails.length}: ${email}`);
-
-    const url = unsubUrlFor(email);
-    const personalizedHtml = html.replaceAll(UNSUBSCRIBE_PLACEHOLDER, url);
-
-    try {
-      const { error } = await resend.emails.send({
-        from: process.env.EMAIL_FROM || "onboarding@resend.dev",
-        to: email,
-        subject,
-        html: personalizedHtml,
-        headers: {
-          "List-Unsubscribe": `<${url}>`,
-          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-        },
-      });
-      
-      if (error) {
-        failed++;
-        const errorMsg = JSON.stringify(error);
-        errors.push({ email, error: errorMsg });
-        console.error(`✗ Failed: ${email} - ${errorMsg}`);
-      } else {
-        sent++;
-        sentEmails.push(email);
-        console.log(`✓ Sent: ${email}`);
-      }
-    } catch (err) {
-      failed++;
-      const errorMsg = err instanceof Error ? err.message : "Unknown error";
-      errors.push({ email, error: errorMsg });
-      console.error(`✗ Failed: ${email} - ${errorMsg}`);
-    }
-
-    // Wait 1 second before next email (except for the last one)
-    if (i < emails.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-  }
-
-  console.log(`\n=== Broadcast Summary ===`);
-  console.log(`Total: ${emails.length}, Sent: ${sent}, Failed: ${failed}`);
-  if (sentEmails.length > 0) {
-    console.log(`Sent to: ${sentEmails.join(", ")}`);
-  }
-  if (errors.length > 0) {
-    console.log(`Failed emails:`);
-    for (const err of errors) {
-      console.log(`  - ${err.email}: ${err.error}`);
-    }
-  }
-
-  return {
-    success: failed === 0,
-    sent,
-    failed,
-    total: emails.length,
-    sentEmails,
-    errors,
-  };
-}
+// The broadcast sender is the shared bulk loop in convex/lib/mailer.ts.
+const sendBroadcastEmails = sendBulkEmails;
 
 // Send a registered broadcast to all waitlist subscribers.
 // Refuses broadcasts flagged alreadySent as a safety check.

@@ -124,6 +124,34 @@ carries no user identity and the public news functions check `isAdmin`. Deploy
 first, the same way a migration does: the functions must exist on prod before
 either command runs.
 
+## Newsletter
+
+Issues are code (#202): there is no compose page. One issue is one entry in
+`src/newsletter/issues.ts` (number, slug, subject, preview, intro, and the
+items in send order, named by URL). The summaries are NOT there: they live on
+the item rows, written by the drafting skill and edited in the inbox, and both
+projections read them from there.
+
+```sh
+node scripts/newsletter.ts list             # authored issues, and their state on prod
+node scripts/newsletter.ts prepare issue-1  # resolve the URLs into the draft row
+node scripts/newsletter.ts preview issue-1  # write the exact send HTML to a file
+node scripts/newsletter.ts test issue-1 --to you@example.com
+node scripts/newsletter.ts send issue-1 --yes
+```
+
+The same four acts sit in the admin News tab, under Newsletter. Both reach prod
+through `scripts/convex-prod.sh`, like migrations, so deploy first.
+
+The order is: author the issue, collect and draft its items, approve them,
+prepare, preview, test-send, send. `prepare` is idempotent and names every URL
+that is missing, still in the inbox, or still undrafted, so run it, work the
+inbox, and run it again. A sent issue is never edited, and a second send is
+refused.
+
+Public surfaces: `/news` (the archive), `/news/<slug>` (one issue), `/subscribe`,
+and `/email/preferences?token=...` (both email categories, no login).
+
 ## Icon Migration
 
 After seeding (or any time `iconUrl` rows on tools/models/bundles need to be

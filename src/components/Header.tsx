@@ -206,6 +206,17 @@ export default function Header() {
 							>
 								Activity
 							</Link>
+							<Link
+								to="/news"
+								className={cn(
+									"font-mono text-xs font-semibold uppercase tracking-[0.15em] transition-colors",
+									isActive("/news")
+										? "text-accent-lime"
+										: "text-fg-muted hover:text-fg-primary",
+								)}
+							>
+								News
+							</Link>
 							{/* <Link
 							to="/about"
 							className={cn(
@@ -449,6 +460,18 @@ export default function Header() {
 								)}
 							>
 								Activity
+							</Link>
+							<Link
+								to="/news"
+								onClick={() => setMobileMenuOpen(false)}
+								className={cn(
+									"font-mono text-sm font-semibold uppercase tracking-[0.15em] transition-colors",
+									isActive("/news")
+										? "text-accent-lime"
+										: "text-fg-muted hover:text-fg-primary",
+								)}
+							>
+								News
 							</Link>
 							{isAdmin && (
 								<Link

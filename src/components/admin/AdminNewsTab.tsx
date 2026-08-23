@@ -1,14 +1,16 @@
-import { Inbox, Rss, Tags } from "lucide-react";
+import { Inbox, Mail, Rss, Tags } from "lucide-react";
 import { NewsInboxSection } from "./NewsInboxSection";
+import { NewsletterSection } from "./NewsletterSection";
 import { NewsSourcesSection } from "./NewsSourcesSection";
 import { NewsTopicsSection } from "./NewsTopicsSection";
 
-export type NewsSubTab = "inbox" | "sources" | "topics";
+export type NewsSubTab = "inbox" | "sources" | "topics" | "newsletter";
 
 const SUB_TABS = [
 	{ id: "inbox" as const, label: "Inbox", Icon: Inbox },
 	{ id: "sources" as const, label: "Sources", Icon: Rss },
 	{ id: "topics" as const, label: "Topics", Icon: Tags },
+	{ id: "newsletter" as const, label: "Newsletter", Icon: Mail },
 ];
 
 interface AdminNewsTabProps {
@@ -41,6 +43,7 @@ export function AdminNewsTab({ view, onViewChange }: AdminNewsTabProps) {
 				{view === "inbox" && <NewsInboxSection />}
 				{view === "sources" && <NewsSourcesSection />}
 				{view === "topics" && <NewsTopicsSection />}
+				{view === "newsletter" && <NewsletterSection />}
 			</div>
 		</div>
 	);
