@@ -109,6 +109,44 @@
   .where b { color: var(--accent-lime); font-weight: 600; }
   .where .mono { font-size: 11.5px; color: var(--fg-secondary); }
 
+  .step { display: flex; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--stroke-subtle); }
+  .step-n {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent-lime-contrast);
+    background: var(--accent-lime);
+    width: 26px;
+    height: 26px;
+    flex: 0 0 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .step-t {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 3px;
+  }
+  .step-x { font-size: 13.5px; color: var(--fg-secondary); }
+
+  table.who { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 6px; }
+  table.who th {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-muted);
+    text-align: left;
+    border-bottom: 1px solid var(--stroke-strong);
+    padding: 5px 8px 5px 0;
+  }
+  table.who td { padding: 6px 8px 6px 0; border-bottom: 1px solid var(--stroke-subtle); vertical-align: top; }
+  table.who td:first-child { color: var(--accent-lime); font-family: var(--mono); font-size: 11.5px; }
+
   .counts {
     display: flex;
     gap: 14px;
@@ -371,9 +409,10 @@
 
 <div class="shell">
   <div class="intro">
-    <p><b>Two decisions.</b> The bottom bar switches surface. <b>ADMIN</b> holds three
-    publish acts. <b>PUBLIC</b> holds three page shapes. They share one state, so what
-    you publish in ADMIN is what PUBLIC shows.</p>
+    <p><b>Start on MODEL.</b> It says what approve and publish each mean, to whom, and
+    where. Then <b>ADMIN</b> holds three publish acts, and <b>PUBLIC</b> holds three page
+    shapes. Admin and public share one state, so what you publish in ADMIN is what
+    PUBLIC shows.</p>
     <p><b>Nothing here reopens a settled decision.</b> Composing an issue stays in code
     (#202). Drafting stays a skill in your Claude session (#205). The inbox keeps the
     per-row verdict it was rebuilt to (#238). Each act below is a change to a surface
@@ -1234,7 +1273,7 @@ const CLASS_LABEL = {
 const RELEASE_CLASSES = new Set(['permissive-release-notes', 'unlicensed-release-notes']);
 
 const state = {
-  surface: 'admin',
+  surface: 'model',
   act: 'A',
   page: 'A',
   published: new Set(DATA.items.filter((i) => !i.pending).map((i) => i.id)),
@@ -1258,6 +1297,58 @@ function publish(ids, tick) {
   for (const id of ids) state.published.add(id);
   state.ticks = [tick];
   render();
+}
+
+// ---------------------------------------------------------------- MODEL
+
+function model() {
+  const named = DATA.items.filter((i) => i.inIssue).length;
+  const unnamed = DATA.items.length - named;
+  const step = (n, title, who, text) => `
+    <div class="step">
+      <div class="step-n">${n}</div>
+      <div>
+        <div class="step-t">${title} <span class="chip">${who}</span></div>
+        <div class="step-x">${text}</div>
+      </div>
+    </div>`;
+  return `
+    <div class="surface-title">What we are choosing</div>
+    <p class="surface-sub">One item, four moments. The first three exist today. The
+    fourth is what this ticket picks.</p>
+
+    ${step(1, 'Collected', 'private', 'The collector writes a link into the inbox: headline, link, date, source, license class. Nobody has looked at it.')}
+    ${step(2, 'Drafted', 'private', 'Your Claude session writes a summary in our own words and picks one topic. The apply script fills the row. Still nobody has looked at it.')}
+    ${step(3, 'Approved', 'private', 'You tap Approve in Admin, News, Inbox. The row moves from inbox to the stream. This is a verdict about the item, and it shows the item to nobody. The glossary says it plainly: approval alone publishes nothing.')}
+    ${step(4, 'Published', 'public', 'A projection makes the item public. There are two projections and each has its own act. One act exists. The other is the choice on this page.')}
+
+    <div class="surface-title" style="margin-top:24px">The two projections</div>
+    <p class="cost"><b>Newsletter, the push.</b> An issue names about a dozen items, in
+    code, in <span class="mono">src/newsletter/issues.ts</span>. The send mails them to
+    subscribers and opens <span class="mono">/news/&lt;slug&gt;</span>, which renders
+    those items' summaries to anyone. That act already exists.</p>
+    <p class="cost"><b>Knowledge base, the pull.</b> The same summaries, grouped by
+    topic, on a public page under <span class="mono">/news</span>. Anyone, no login, no
+    subscription. It has no act yet.</p>
+
+    <div class="surface-title" style="margin-top:24px">Who sees what</div>
+    <table class="who">
+      <tr><th>Surface</th><th>Who</th><th>Where</th></tr>
+      <tr><td>Inbox</td><td>you</td><td>Admin, News, Inbox</td></tr>
+      <tr><td>Stream</td><td>you</td><td>Admin, News, Inbox, Stream view</td></tr>
+      <tr><td>The email</td><td>subscribers</td><td>their mailbox</td></tr>
+      <tr><td>Issue archive</td><td>anyone</td><td><span class="mono">/news/&lt;slug&gt;</span></td></tr>
+      <tr><td>Knowledge base</td><td>anyone</td><td><span class="mono">/news</span>, by topic</td></tr>
+    </table>
+
+    <div class="surface-title" style="margin-top:24px">What is at stake</div>
+    <p class="surface-sub">In this real week: <b>${DATA.items.length}</b> approved items.
+    Issue #2 names <b>${named}</b> of them. The other <b>${unnamed}</b> are worth keeping,
+    carry a summary we wrote, and are seen by nobody, forever, unless the knowledge base
+    publishes them.</p>
+    <p class="cost">The choice on the ADMIN tab is which act moves an approved item into
+    that public, topic-grouped view. The choice on the PUBLIC tab is what that view
+    looks like.</p>`;
 }
 
 // ---------------------------------------------------------------- ADMIN
@@ -1545,6 +1636,7 @@ const ADMIN = { A: actA, B: actB, C: actC };
 const PUBLIC = { A: pageA, B: pageB, C: pageC };
 
 const VARIANTS = {
+  model: [],
   admin: [
     ['A', 'Approve<br>is publish'],
     ['B', 'The send<br>publishes'],
@@ -1560,9 +1652,10 @@ const VARIANTS = {
 function render() {
   const which = state.surface === 'admin' ? state.act : state.page;
   document.getElementById('surface').innerHTML =
-    state.surface === 'admin' ? ADMIN[which]() : PUBLIC[which]();
+    state.surface === 'model' ? model() : state.surface === 'admin' ? ADMIN[which]() : PUBLIC[which]();
 
   document.getElementById('surfaceRow').innerHTML = [
+    ['model', 'Model', 'what we choose'],
     ['admin', 'Admin', 'publish act'],
     ['public', 'Public', 'page shape'],
   ]

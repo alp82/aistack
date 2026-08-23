@@ -38,6 +38,12 @@ const check = (ok, what) => {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`)
 }
 
+// The model surface, which is what the page opens on.
+state.surface = 'model'
+render()
+check(/approval alone publishes nothing/i.test(nodes.surface.innerHTML), 'the model surface states what approve does')
+check(/Knowledge base/.test(nodes.surface.innerHTML), 'the model surface names both projections')
+
 // Every surface and variant renders something.
 for (const surface of ['admin', 'public']) {
   for (const variant of ['A', 'B', 'C']) {

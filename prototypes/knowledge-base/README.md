@@ -18,14 +18,38 @@ The spec deferred both here: see the Knowledge base section of
 python3 -m http.server 9003 --bind 0.0.0.0 --directory prototypes/knowledge-base
 ```
 
-The bottom bar switches surface. **ADMIN** holds the three publish acts.
-**PUBLIC** holds the three page shapes. Both read one state, so publishing in
-ADMIN changes what PUBLIC shows.
+The bottom bar switches surface. The page opens on **MODEL**, which says what
+approve and publish each mean, to whom, and where. **ADMIN** holds the three
+publish acts. **PUBLIC** holds the three page shapes. Admin and public read one
+state, so publishing in ADMIN changes what PUBLIC shows.
 
 | Surface | A | B | C |
 |---|---|---|---|
 | ADMIN | approve is publish | the Sunday send publishes | a publish queue |
 | PUBLIC | topic index | one stream with chips | topic sections on one page |
+
+## Approve is not publish
+
+The two words name different acts, and the prototype was read once as if they
+were the same one.
+
+**Approve** is the verdict already on every inbox row. It moves an item from
+`inbox` to `approved`, which `CONTEXT.md` calls the item stream. The stream is
+private. Approval alone publishes nothing.
+
+**Publish** is per projection, and each projection has its own act:
+
+- The **newsletter** already has one. `sendIssue` mails the issue and opens
+  `/news/<slug>`, whose public query joins the item rows, so those items'
+  summaries go public with the send.
+- The **knowledge base** has none. Picking it is this ticket.
+
+The audience is different too. The email reaches subscribers. The archive page
+and the knowledge base reach anyone, with no login and no subscription.
+
+What that leaves on the table: in the real week the prototype carries, 37 items
+are approved and issue #2 names 6 of them. The other 31 carry a summary we
+wrote and are seen by nobody until the knowledge base publishes them.
 
 The public surface also carries one toggle: release rows as full entries, or
 collapsed into a single strip per topic.
