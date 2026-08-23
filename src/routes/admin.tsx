@@ -6,12 +6,19 @@ import {
 	useSearch,
 } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { ChartNoAxesColumn, ClipboardCheck, Flag, Mail } from "lucide-react";
+import {
+	ChartNoAxesColumn,
+	ClipboardCheck,
+	Flag,
+	Mail,
+	Newspaper,
+} from "lucide-react";
 import { useMemo } from "react";
 import {
 	AdminEmailTab,
 	type EmailSubTab,
 } from "@/components/admin/AdminEmailTab";
+import { AdminNewsTab, type NewsSubTab } from "@/components/admin/AdminNewsTab";
 import { AdminQualityTab } from "@/components/admin/AdminQualityTab";
 import { AdminReviewTab } from "@/components/admin/AdminReviewTab";
 import { AdminViewsTab } from "@/components/admin/AdminViewsTab";
@@ -19,11 +26,12 @@ import { coerceEnum } from "@/lib/searchParams";
 import { seoMeta } from "@/lib/seo";
 import { api } from "../../convex/_generated/api";
 
-type AdminTab = "review" | "quality" | "email" | "views";
+type AdminTab = "review" | "quality" | "email" | "views" | "news";
 
 export const ADMIN_SEARCH_DEFAULTS = {
 	tab: "review" as AdminTab,
 	view: "templates" as EmailSubTab,
+	news: "inbox" as NewsSubTab,
 };
 
 export const Route = createFileRoute("/admin")({
@@ -31,16 +39,21 @@ export const Route = createFileRoute("/admin")({
 	component: AdminPage,
 	validateSearch: (
 		search: Record<string, unknown>,
-	): { tab?: AdminTab; view?: EmailSubTab } => ({
+	): { tab?: AdminTab; view?: EmailSubTab; news?: NewsSubTab } => ({
 		tab: coerceEnum(
 			search.tab,
-			["review", "quality", "email", "views"] as const,
+			["review", "quality", "email", "views", "news"] as const,
 			"review",
 		),
 		view: coerceEnum(
 			search.view,
 			["templates", "broadcasts"] as const,
 			"templates",
+		),
+		news: coerceEnum(
+			search.news,
+			["inbox", "sources", "topics"] as const,
+			"inbox",
 		),
 	}),
 	search: { middlewares: [stripSearchParams(ADMIN_SEARCH_DEFAULTS)] },
@@ -74,10 +87,17 @@ function AdminPage() {
 	const isAdmin = useQuery(api.admin.checkIsAdmin);
 	const reviewCount = useQuery(api.admin.getReviewTabCount);
 	const qualityCount = useQuery(api.admin.getQualityTabCount);
+	const newsCounts = useQuery(api.news.countItems);
+	const newsCount = newsCounts?.inbox ?? 0;
 	const navigate = useNavigate({ from: "/admin" });
-	const { tab: rawTab, view: rawView } = useSearch({ from: "/admin" });
+	const {
+		tab: rawTab,
+		view: rawView,
+		news: rawNews,
+	} = useSearch({ from: "/admin" });
 	const tab = rawTab ?? ADMIN_SEARCH_DEFAULTS.tab;
 	const view = rawView ?? ADMIN_SEARCH_DEFAULTS.view;
+	const news = rawNews ?? ADMIN_SEARCH_DEFAULTS.news;
 	const setSearch = useMemo(
 		() => (patch: Partial<typeof ADMIN_SEARCH_DEFAULTS>) =>
 			navigate({
@@ -167,6 +187,23 @@ function AdminPage() {
 							<ChartNoAxesColumn className="size-4" />
 							Views
 						</button>
+						<button
+							type="button"
+							onClick={() => setSearch({ tab: "news" })}
+							className={`inline-flex items-center gap-2 border-b-2 px-6 py-4 font-mono text-sm font-semibold uppercase tracking-wide transition-colors -mb-[2px] ${
+								tab === "news"
+									? "border-accent-lime text-accent-lime"
+									: "border-transparent text-fg-muted hover:text-fg-primary"
+							}`}
+						>
+							<Newspaper className="size-4" />
+							News
+							{newsCount ? (
+								<span className="inline-flex h-5 min-w-5 items-center justify-center bg-accent-lime px-1 font-mono text-xs font-bold text-bg-canvas">
+									{newsCount}
+								</span>
+							) : null}
+						</button>
 						<LivingStacks />
 					</div>
 				</div>
@@ -182,6 +219,12 @@ function AdminPage() {
 				/>
 			)}
 			{tab === "views" && <AdminViewsTab />}
+			{tab === "news" && (
+				<AdminNewsTab
+					view={news}
+					onViewChange={(v) => setSearch({ news: v })}
+				/>
+			)}
 		</div>
 	);
 }

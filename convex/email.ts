@@ -9,6 +9,8 @@ import { UNSUBSCRIBE_PLACEHOLDER } from "../src/emails/styles";
 import { signUnsubscribeToken } from "./emailToken";
 import { getAppUrl } from "./httpCli";
 import { isAdmin } from "./lib/admin";
+import { EmailCategory } from "./schema";
+import type { Infer } from "convex/values";
 // @ts-ignore - components will be generated after convex dev restarts
 import { internal, components } from "./_generated/api";
 
@@ -39,29 +41,48 @@ export function subtractSuppressed(
   return emails.filter((e) => !set.has(e.trim().toLowerCase()));
 }
 
-// Record an unsubscribe. Read-side deduped via getUnsubscribedEmails/subtractSuppressed
-// (Set lookup). Duplicate rows are possible under concurrent inserts but are benign -
-// do NOT attempt a transaction here to prevent them.
+type Category = Infer<typeof EmailCategory>;
+
+// The preferences column each category toggles. One name for one thing: the
+// wire and the URL use "important-updates", the row uses `importantUpdates`.
+const CATEGORY_FIELD = {
+  newsletter: "newsletter",
+  "important-updates": "importantUpdates",
+} as const;
+
+// Turn ONE category off for one address (#204). Every other category keeps
+// whatever it had, which is the whole point of replacing the global list.
+//
+// Absent reads as subscribed to both, so the first refusal creates the row.
 export const recordUnsubscribe = internalMutation({
-  args: { email: v.string() },
+  args: { email: v.string(), category: EmailCategory },
   handler: async (ctx, args) => {
-    const e = args.email.trim().toLowerCase();
+    const email = args.email.trim().toLowerCase();
+    const field = CATEGORY_FIELD[args.category];
     const existing = await ctx.db
-      .query("emailUnsubscribes")
-      .withIndex("by_email", (q) => q.eq("email", e))
+      .query("emailPreferences")
+      .withIndex("by_email", (q) => q.eq("email", email))
       .first();
-    if (!existing) {
-      await ctx.db.insert("emailUnsubscribes", { email: e, unsubscribedAt: Date.now() });
+    if (existing) {
+      await ctx.db.patch(existing._id, { [field]: false, updatedAt: Date.now() });
+      return;
     }
+    await ctx.db.insert("emailPreferences", {
+      email,
+      newsletter: args.category !== "newsletter",
+      importantUpdates: args.category !== "important-updates",
+      updatedAt: Date.now(),
+    });
   },
 });
 
-// All unsubscribed email addresses (already stored lowercased).
-export const getUnsubscribedEmails = internalQuery({
-  args: {},
-  handler: async (ctx) => {
-    const rows = await ctx.db.query("emailUnsubscribes").collect();
-    return rows.map((r) => r.email);
+// Every address that has turned THIS category off. Stored lowercased.
+export const getSuppressedEmails = internalQuery({
+  args: { category: EmailCategory },
+  handler: async (ctx, args) => {
+    const field = CATEGORY_FIELD[args.category];
+    const rows = await ctx.db.query("emailPreferences").collect();
+    return rows.filter((r) => r[field] === false).map((r) => r.email);
   },
 });
 
@@ -71,6 +92,9 @@ const BROADCASTS: Record<
     subject: string;
     render: () => Promise<string>;
     audience: "waitlist" | "waitlist+members";
+    // Which toggle silences this send. A broadcast is a one-off announcement,
+    // so every one of them is an important update, never the newsletter.
+    category: Category;
     alreadySent?: boolean;
   }
 > = {
@@ -78,6 +102,7 @@ const BROADCASTS: Record<
     subject: "AI Stack is Live! 🚀",
     render: () => render(WaitlistLaunchEmail({})),
     audience: "waitlist",
+    category: "important-updates",
     // When marking a broadcast sent, also add its id to SENT_BROADCASTS in EmailBroadcastsSection.tsx (UI gate).
     alreadySent: true,
   },
@@ -87,11 +112,13 @@ const BROADCASTS: Record<
     subject: "New on AI Stack: Promote, Share & Customize Your Stack",
     render: () => render(FeatureUpdateEmail({})),
     audience: "waitlist+members",
+    category: "important-updates",
   },
   "sync-broadcast": {
     subject: "Show your real usage on your stack",
     render: () => render(SyncBroadcastEmail({})),
     audience: "waitlist+members",
+    category: "important-updates",
     // Sent 2026-08-17 to the deduped waitlist+members audience (177 addresses).
     alreadySent: true,
   },
@@ -223,11 +250,14 @@ export const getBroadcastRecipientCount = query({
     );
     const memberEmails =
       entry.audience === "waitlist+members" ? await collectMemberEmails(ctx) : [];
-    const unsub = (await ctx.db.query("emailUnsubscribes").collect()).map(
-      (r) => r.email,
-    );
-    return subtractSuppressed(mergeAudience(waitlistEmails, memberEmails), unsub)
-      .length;
+    const field = CATEGORY_FIELD[entry.category];
+    const suppressed = (await ctx.db.query("emailPreferences").collect())
+      .filter((r) => r[field] === false)
+      .map((r) => r.email);
+    return subtractSuppressed(
+      mergeAudience(waitlistEmails, memberEmails),
+      suppressed,
+    ).length;
   },
 });
 
@@ -276,7 +306,15 @@ export const sendTestEmail = action({
       return { success: false, message: "Unsubscribe link missing from template" };
     }
 
-    const url = (await buildUnsubscribeUrls([identity.email], secret, appUrl)).get(identity.email) ?? "";
+    const url =
+      (
+        await buildUnsubscribeUrls(
+          [identity.email],
+          secret,
+          appUrl,
+          entry.category,
+        )
+      ).get(identity.email) ?? "";
     const personalizedHtml = html.replaceAll(UNSUBSCRIBE_PLACEHOLDER, url);
 
     try {
@@ -338,15 +376,25 @@ interface BroadcastResult {
 // Build a signed unsubscribe URL for each recipient concurrently.
 // NOTE: rotating BETTER_AUTH_SECRET invalidates all outstanding unsubscribe
 // links (tokens never expire); only rotate with a dual-verify grace window.
+//
+// The token still signs the ADDRESS only, and the category rides beside it as a
+// plain parameter. Two reasons. Every unsubscribe link already in a sent inbox
+// keeps working, and those cannot be migrated. And the category is not a
+// secret: the token proves the holder owns the address, and the only
+// preferences they can reach are their own.
 async function buildUnsubscribeUrls(
   recipients: string[],
   secret: string,
   appUrl: string,
+  category: Category,
 ): Promise<Map<string, string>> {
   const entries = await Promise.all(
     recipients.map(async (email) => {
       const token = await signUnsubscribeToken(email, secret);
-      return [email, `${appUrl}/api/email/unsubscribe?token=${token}`] as const;
+      return [
+        email,
+        `${appUrl}/api/email/unsubscribe?token=${token}&category=${category}`,
+      ] as const;
     }),
   );
   return new Map(entries);
@@ -491,8 +539,10 @@ export const sendBroadcast = action({
         : [];
     const emails = mergeAudience(waitlistEmails, memberEmails);
 
-    const unsub = await ctx.runQuery(internal.email.getUnsubscribedEmails, {});
-    const recipients = subtractSuppressed(emails, unsub);
+    const optedOut = await ctx.runQuery(internal.email.getSuppressedEmails, {
+      category: entry.category,
+    });
+    const recipients = subtractSuppressed(emails, optedOut);
     const suppressed = emails.length - recipients.length;
 
     const html = await entry.render();
@@ -504,7 +554,12 @@ export const sendBroadcast = action({
     }
 
     // Build signed unsubscribe URLs concurrently (signing is async per recipient).
-    const urlByEmail = await buildUnsubscribeUrls(recipients, secret, appUrl);
+    const urlByEmail = await buildUnsubscribeUrls(
+      recipients,
+      secret,
+      appUrl,
+      entry.category,
+    );
     const unsubUrlFor = (e: string) => urlByEmail.get(e) ?? "";
 
     const resend = new Resend(process.env.RESEND_API_KEY);

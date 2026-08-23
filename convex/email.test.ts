@@ -435,17 +435,22 @@ describe('GROUP T - subtractSuppressed', () => {
 })
 
 // ---------------------------------------------------------------------------
-// GROUP U - recordUnsubscribe / getUnsubscribedEmails (convexTest)
+// GROUP U - recordUnsubscribe / getSuppressedEmails (convexTest)
 // ---------------------------------------------------------------------------
 
-describe('GROUP U - recordUnsubscribe / getUnsubscribedEmails', () => {
+describe('GROUP U - recordUnsubscribe / getSuppressedEmails', () => {
   // TC-U-01: inserted email is stored lowercase.
   test('TC-U-01: insert lowercases the email address', async () => {
     const t = convexTest(schema, modules)
 
-    await t.mutation(internal.email.recordUnsubscribe, { email: 'Ada@Example.COM' })
+    await t.mutation(internal.email.recordUnsubscribe, {
+      email: 'Ada@Example.COM',
+      category: 'important-updates',
+    })
 
-    const list = await t.query(internal.email.getUnsubscribedEmails, {})
+    const list = await t.query(internal.email.getSuppressedEmails, {
+      category: 'important-updates',
+    })
 
     expect(list).toContain('ada@example.com')
   })
@@ -454,10 +459,18 @@ describe('GROUP U - recordUnsubscribe / getUnsubscribedEmails', () => {
   test('TC-U-02: inserting same email twice → only one row / one entry returned', async () => {
     const t = convexTest(schema, modules)
 
-    await t.mutation(internal.email.recordUnsubscribe, { email: 'dup@x.com' })
-    await t.mutation(internal.email.recordUnsubscribe, { email: 'dup@x.com' })
+    await t.mutation(internal.email.recordUnsubscribe, {
+      email: 'dup@x.com',
+      category: 'important-updates',
+    })
+    await t.mutation(internal.email.recordUnsubscribe, {
+      email: 'dup@x.com',
+      category: 'important-updates',
+    })
 
-    const list = await t.query(internal.email.getUnsubscribedEmails, {})
+    const list = await t.query(internal.email.getSuppressedEmails, {
+      category: 'important-updates',
+    })
     const matches = list.filter((e: string) => e === 'dup@x.com')
 
     expect(matches).toHaveLength(1)
@@ -467,22 +480,35 @@ describe('GROUP U - recordUnsubscribe / getUnsubscribedEmails', () => {
   test('TC-U-03: inserting same email with different case twice → one entry', async () => {
     const t = convexTest(schema, modules)
 
-    await t.mutation(internal.email.recordUnsubscribe, { email: 'User@X.COM' })
-    await t.mutation(internal.email.recordUnsubscribe, { email: 'user@x.com' })
+    await t.mutation(internal.email.recordUnsubscribe, {
+      email: 'User@X.COM',
+      category: 'important-updates',
+    })
+    await t.mutation(internal.email.recordUnsubscribe, {
+      email: 'user@x.com',
+      category: 'important-updates',
+    })
 
-    const list = await t.query(internal.email.getUnsubscribedEmails, {})
+    const list = await t.query(internal.email.getSuppressedEmails, {
+      category: 'important-updates',
+    })
     const matches = list.filter((e: string) => e === 'user@x.com')
 
     expect(matches).toHaveLength(1)
   })
 
-  // TC-U-04: getUnsubscribedEmails returns lowercased strings.
-  test('TC-U-04: getUnsubscribedEmails returns lowercased list', async () => {
+  // TC-U-04: getSuppressedEmails returns lowercased strings.
+  test('TC-U-04: getSuppressedEmails returns lowercased list', async () => {
     const t = convexTest(schema, modules)
 
-    await t.mutation(internal.email.recordUnsubscribe, { email: 'UPPER@EXAMPLE.COM' })
+    await t.mutation(internal.email.recordUnsubscribe, {
+      email: 'UPPER@EXAMPLE.COM',
+      category: 'important-updates',
+    })
 
-    const list = await t.query(internal.email.getUnsubscribedEmails, {})
+    const list = await t.query(internal.email.getSuppressedEmails, {
+      category: 'important-updates',
+    })
 
     expect(list).toContain('upper@example.com')
     // must not contain the un-lowercased original
@@ -490,12 +516,144 @@ describe('GROUP U - recordUnsubscribe / getUnsubscribedEmails', () => {
   })
 
   // TC-U-05: empty table → [].
-  test('TC-U-05: empty table → getUnsubscribedEmails returns []', async () => {
+  test('TC-U-05: empty table → getSuppressedEmails returns []', async () => {
     const t = convexTest(schema, modules)
 
-    const list = await t.query(internal.email.getUnsubscribedEmails, {})
+    const list = await t.query(internal.email.getSuppressedEmails, {
+      category: 'important-updates',
+    })
 
     expect(list).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// GROUP W - per-category preferences (#204). The whole point of replacing the
+// global list is that one refusal must not silence the other category.
+// ---------------------------------------------------------------------------
+
+describe('GROUP W - per-category preferences', () => {
+  test('a newsletter refusal leaves important updates on', async () => {
+    const t = convexTest(schema, modules)
+
+    await t.mutation(internal.email.recordUnsubscribe, {
+      email: 'ada@x.com',
+      category: 'newsletter',
+    })
+
+    const newsletterOff = await t.query(internal.email.getSuppressedEmails, {
+      category: 'newsletter',
+    })
+    const updatesOff = await t.query(internal.email.getSuppressedEmails, {
+      category: 'important-updates',
+    })
+
+    expect(newsletterOff).toContain('ada@x.com')
+    expect(updatesOff).not.toContain('ada@x.com')
+  })
+
+  test('refusing both categories turns both off on one row', async () => {
+    const t = convexTest(schema, modules)
+
+    await t.mutation(internal.email.recordUnsubscribe, {
+      email: 'ada@x.com',
+      category: 'newsletter',
+    })
+    await t.mutation(internal.email.recordUnsubscribe, {
+      email: 'ada@x.com',
+      category: 'important-updates',
+    })
+
+    const rows = await t.run(async (ctx: any) =>
+      ctx.db.query('emailPreferences').collect(),
+    )
+
+    expect(rows).toHaveLength(1)
+    expect(rows[0].newsletter).toBe(false)
+    expect(rows[0].importantUpdates).toBe(false)
+  })
+
+  test('an address with no row is suppressed by nothing', async () => {
+    const t = convexTest(schema, modules)
+
+    const suppressed = await t.query(internal.email.getSuppressedEmails, {
+      category: 'newsletter',
+    })
+
+    expect(suppressed).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// GROUP X - the migration off the global unsubscribe list (#204).
+// ---------------------------------------------------------------------------
+
+describe('GROUP X - emailUnsubscribes migration', () => {
+  test('a global unsubscribe becomes both categories off', async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx: any) => {
+      await ctx.db.insert('emailUnsubscribes', {
+        email: 'Gone@X.COM',
+        unsubscribedAt: Date.now(),
+      })
+    })
+
+    const result = await t.mutation(
+      internal.migrations['20260823_email_preferences'].run,
+      {},
+    )
+
+    expect(result.migrated).toBe(1)
+    const rows = await t.run(async (ctx: any) =>
+      ctx.db.query('emailPreferences').collect(),
+    )
+    expect(rows).toHaveLength(1)
+    expect(rows[0].email).toBe('gone@x.com')
+    expect(rows[0].newsletter).toBe(false)
+    expect(rows[0].importantUpdates).toBe(false)
+  })
+
+  test('a second run changes nothing', async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx: any) => {
+      await ctx.db.insert('emailUnsubscribes', {
+        email: 'gone@x.com',
+        unsubscribedAt: Date.now(),
+      })
+    })
+
+    await t.mutation(internal.migrations['20260823_email_preferences'].run, {})
+    const second = await t.mutation(
+      internal.migrations['20260823_email_preferences'].run,
+      {},
+    )
+
+    expect(second.migrated).toBe(0)
+    expect(second.alreadyHadPreferences).toBe(1)
+  })
+
+  test('a preferences row that already exists is never overwritten', async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx: any) => {
+      await ctx.db.insert('emailUnsubscribes', {
+        email: 'back@x.com',
+        unsubscribedAt: Date.now(),
+      })
+      await ctx.db.insert('emailPreferences', {
+        email: 'back@x.com',
+        newsletter: true,
+        importantUpdates: false,
+        updatedAt: Date.now(),
+      })
+    })
+
+    await t.mutation(internal.migrations['20260823_email_preferences'].run, {})
+
+    const rows = await t.run(async (ctx: any) =>
+      ctx.db.query('emailPreferences').collect(),
+    )
+    expect(rows).toHaveLength(1)
+    expect(rows[0].newsletter).toBe(true)
   })
 })
 
@@ -510,26 +668,36 @@ describe('GROUP V - suppression integration', () => {
     const t = convexTest(schema, modules)
 
     // Seed one unsubscribe record
-    await t.mutation(internal.email.recordUnsubscribe, { email: 'suppressed@x.com' })
+    await t.mutation(internal.email.recordUnsubscribe, {
+      email: 'suppressed@x.com',
+      category: 'important-updates',
+    })
 
     // Build a small merged audience that includes the suppressed address
     const audience = mergeAudience(['suppressed@x.com', 'ok@x.com'])
-    const suppressed = await t.query(internal.email.getUnsubscribedEmails, {})
+    const suppressed = await t.query(internal.email.getSuppressedEmails, {
+      category: 'important-updates',
+    })
     const filtered = subtractSuppressed(audience, suppressed)
 
     expect(filtered).not.toContain('suppressed@x.com')
     expect(filtered).toContain('ok@x.com')
   })
 
-  // TC-V-02: recordUnsubscribe then getUnsubscribedEmails feeds subtractSuppressed correctly.
-  test('TC-V-02: recordUnsubscribe → getUnsubscribedEmails → subtractSuppressed pipeline works end-to-end', async () => {
+  // TC-V-02: recordUnsubscribe then getSuppressedEmails feeds subtractSuppressed correctly.
+  test('TC-V-02: recordUnsubscribe → getSuppressedEmails → subtractSuppressed pipeline works end-to-end', async () => {
     const t = convexTest(schema, modules)
 
     const emails = ['alice@x.com', 'bob@x.com', 'carol@x.com']
     // Unsub alice (mixed case)
-    await t.mutation(internal.email.recordUnsubscribe, { email: 'Alice@X.COM' })
+    await t.mutation(internal.email.recordUnsubscribe, {
+      email: 'Alice@X.COM',
+      category: 'important-updates',
+    })
 
-    const suppressed = await t.query(internal.email.getUnsubscribedEmails, {})
+    const suppressed = await t.query(internal.email.getSuppressedEmails, {
+      category: 'important-updates',
+    })
     const result = subtractSuppressed(emails, suppressed)
 
     expect(result).not.toContain('alice@x.com')
@@ -716,7 +884,10 @@ describe('GROUP X - getBroadcastRecipientCount', () => {
   test('TC-X-02: counts waitlist audience minus unsubscribed', async () => {
     const t = convexTest(schema, modules)
     await seedWaitlist(t, ['a@example.com', 'b@example.com', 'c@example.com'])
-    await t.mutation(internal.email.recordUnsubscribe, { email: 'b@example.com' })
+    await t.mutation(internal.email.recordUnsubscribe, {
+      email: 'b@example.com',
+      category: 'important-updates',
+    })
 
     const count = await t.query(api.email.getBroadcastRecipientCount, {
       broadcastId: 'waitlist-launch',

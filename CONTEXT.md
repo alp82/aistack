@@ -14,6 +14,11 @@ _Avoid_: bit, post, entry
 **Source**:
 A place the collector reads, such as a feed, a release page, or a search API.
 
+**License class**:
+What we may store and show for one piece of collected content. It sits on the source, and it
+is frozen onto the item at collection time.
+_Avoid_: license, rights
+
 **Collector**:
 The scheduled job that reads sources and writes new items to the inbox.
 
