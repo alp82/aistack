@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Newsletter compose prototype (#202)</title>
+<style>
+  * { box-sizing: border-box; border-radius: 0; }
+  body { margin: 0; background: #0c0e0c; color: #d8ddd8; font: 15px/1.5 system-ui, sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 1rem 1rem 4rem; }
+  header.page { border-bottom: 2px solid #a3e635; padding: 1rem 0; margin-bottom: 1rem; }
+  h1, h2, h3, .mono, .tag, .date, button, .chip { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  h1 { font-size: 1.15rem; margin: 0; color: #fafafa; }
+  h2 { font-size: .95rem; margin: 1.6rem 0 .6rem; color: #a3e635; text-transform: uppercase; letter-spacing: .06em; }
+  h3 { font-size: .85rem; margin: 1rem 0 .4rem; color: #fafafa; }
+  header.page p { margin: .4rem 0 0; color: #9aa39a; font-size: .85rem; }
+  a { color: #a3e635; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .muted { color: #9aa39a; }
+  .warn { color: #eab308; }
+  .err { color: #f87171; }
+  .ok { color: #a3e635; }
+
+  /* buttons: big tap targets, phone first */
+  button { background: #1a1f1a; color: #d8ddd8; border: 1px solid #3a413a; padding: .55rem .8rem; font-size: .8rem; cursor: pointer; min-height: 40px; }
+  button:active { background: #2a2f2a; }
+  button.primary { background: #a3e635; color: #0a1f02; border-color: #a3e635; font-weight: 700; }
+  button.small { padding: .3rem .55rem; min-height: 34px; font-size: .75rem; }
+  button:disabled { opacity: .4; cursor: default; }
+
+  /* state panel */
+  .state { border: 1px solid #2a2f2a; background: #11140f; padding: .7rem .9rem; font-size: .8rem; }
+  .state dl { display: grid; grid-template-columns: auto 1fr; gap: .15rem .8rem; margin: 0; }
+  .state dt { color: #9aa39a; font-family: ui-monospace, monospace; }
+  .state dd { margin: 0; font-family: ui-monospace, monospace; color: #fafafa; }
+  .note { border-left: 4px solid #a3e635; background: #141a10; padding: .5rem .8rem; margin: .6rem 0; font-size: .82rem; }
+  .note.refused { border-left-color: #f87171; }
+  .note.warned { border-left-color: #eab308; }
+
+  /* tabs */
+  .tabs { display: flex; flex-wrap: wrap; gap: .4rem; margin: 1.2rem 0 .8rem; }
+  .tabs button { flex: 1 1 auto; }
+  .tabs button.active { background: #a3e635; color: #0a1f02; border-color: #a3e635; font-weight: 700; }
+
+  /* flow chips */
+  .flow { display: flex; flex-wrap: wrap; gap: .3rem; margin: .6rem 0 1rem; }
+  .chip { font-size: .68rem; padding: .2rem .5rem; border: 1px solid #3a413a; color: #9aa39a; }
+  .chip.done { border-color: #a3e635; color: #a3e635; }
+
+  /* item cards */
+  .card { border: 1px solid #2a2f2a; padding: .6rem .8rem; margin: .5rem 0; }
+  .card .head { display: flex; justify-content: space-between; gap: .6rem; align-items: flex-start; }
+  .card .title { font-weight: 600; color: #fafafa; font-size: .88rem; }
+  .card .meta { font-size: .7rem; color: #9aa39a; font-family: ui-monospace, monospace; margin-top: .15rem; }
+  .tag { font-size: .65rem; background: #2a2f2a; color: #a3e635; padding: .05rem .4rem; margin-right: .3rem; }
+  .tag.lic { color: #9aa39a; }
+  .card .sum { font-size: .82rem; color: #b8bfb8; margin: .4rem 0 0; }
+  .card .sum.editing textarea { width: 100%; min-height: 70px; background: #0c0e0c; color: #d8ddd8; border: 1px solid #a3e635; font: inherit; padding: .4rem; }
+  .card .btns { display: flex; gap: .3rem; margin-top: .5rem; flex-wrap: wrap; }
+  .picked-badge { font-size: .65rem; color: #0a1f02; background: #a3e635; padding: .1rem .4rem; }
+
+  input[type=text], textarea.wide { width: 100%; background: #11140f; color: #fafafa; border: 1px solid #3a413a; padding: .55rem .7rem; font: inherit; font-size: .9rem; }
+  textarea.wide { min-height: 70px; }
+  label.fld { display: block; font-family: ui-monospace, monospace; font-size: .7rem; color: #9aa39a; text-transform: uppercase; letter-spacing: .08em; margin: .9rem 0 .3rem; }
+
+  /* email preview */
+  .emailwrap { background: #f5f5f5; padding: 24px 8px; margin-top: .6rem; }
+  .email { background: #fff; max-width: 560px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0a0a0a; }
+  .email .ehead { background: #111; padding: 22px 28px; display: flex; align-items: center; gap: 12px; }
+  .email .esq { width: 16px; height: 16px; background: #a3e635; }
+  .email .elogo { color: #fafafa; font-weight: 800; font-size: 18px; letter-spacing: -0.02em; text-transform: uppercase; }
+  .email .ebody { padding: 36px 28px 44px; }
+  .email .elabel { font-family: ui-monospace, monospace; font-size: 10px; font-weight: 600; letter-spacing: .15em; color: #737373; text-transform: uppercase; margin: 0 0 12px; }
+  .email h1.eh1 { font-size: 26px; font-weight: 800; color: #0a0a0a; margin: 0 0 20px; line-height: 1.1; letter-spacing: -0.02em; text-transform: uppercase; font-family: inherit; }
+  .email .eintro { font-size: 15px; line-height: 26px; color: #3d3d3d; margin: 0 0 28px; }
+  .email .etopic { font-family: ui-monospace, monospace; font-size: 10px; font-weight: 600; letter-spacing: .15em; color: #737373; text-transform: uppercase; border-top: 2px solid #e5e5e5; padding-top: 18px; margin: 26px 0 10px; }
+  .email .eitem { margin: 0 0 18px; }
+  .email .eitem .et { font-size: 16px; font-weight: 700; margin: 0 0 2px; }
+  .email .eitem .et a { color: #0a0a0a; text-decoration: underline; }
+  .email .eitem .em { font-family: ui-monospace, monospace; font-size: 11px; color: #737373; margin: 0 0 6px; }
+  .email .eitem .es { font-size: 14px; line-height: 23px; color: #3d3d3d; margin: 0; }
+  .email .efoot { background: #111; padding: 20px 28px; font-family: ui-monospace, monospace; font-size: 12px; color: #737373; line-height: 20px; }
+  .email .efoot a { color: #a3e635; }
+
+  /* walkthroughs */
+  .wt-tabs { display: flex; flex-wrap: wrap; gap: .3rem; margin: .6rem 0; }
+  .wt-tabs button { font-size: .72rem; }
+  .wt-blurb { font-size: .84rem; color: #b8bfb8; border: 1px solid #2a2f2a; padding: .6rem .8rem; }
+  .wt-steps { margin: .6rem 0; padding: 0; list-style: none; }
+  .wt-steps li { margin: .35rem 0; display: flex; gap: .5rem; align-items: center; }
+  .wt-steps .idx { font-family: ui-monospace, monospace; font-size: .7rem; color: #9aa39a; width: 1.2rem; }
+  .wt-steps li.donestep .idx { color: #a3e635; }
+  .wt-steps button { flex: 1; text-align: left; }
+  .wt-steps li.current button { border-color: #a3e635; }
+  .wt-watch { font-size: .75rem; color: #eab308; margin-left: 1.7rem; }
+
+  table.cmp { border-collapse: collapse; width: 100%; font-size: .78rem; }
+  table.cmp th, table.cmp td { border: 1px solid #2a2f2a; padding: .4rem .5rem; text-align: left; vertical-align: top; }
+  table.cmp th { color: #a3e635; font-family: ui-monospace, monospace; font-weight: 600; }
+  pre.code { background: #11140f; border: 1px solid #2a2f2a; padding: .7rem; font-size: .7rem; overflow-x: auto; color: #b8bfb8; }
+  .wrap { overflow-x: auto; }
+  ol.plain { padding-left: 1.2rem; font-size: .84rem; }
+  ol.plain li { margin: .3rem 0; }
+  footer { margin-top: 3rem; border-top: 1px solid #2a2f2a; padding-top: .8rem; font-size: .72rem; color: #9aa39a; font-family: ui-monospace, monospace; }
+</style>
+</head>
+<body>
+<main>
+
+<header class="page">
+  <h1>Newsletter compose prototype · alp82/aistack#202</h1>
+  <p>The locked compose flow, driven with 18 real items collected from the phase-1 sources on 2026-08-23.
+     The flow is: pick approved items, order them, edit summaries, write an intro, preview the render, test-send, send.
+     The question: does this earn a compose page in the product, or do issues stay code-based like the sync broadcast?</p>
+</header>
+
+<div class="state">
+  <dl id="statePanel"></dl>
+</div>
+<div id="lastNote"></div>
+
+<div class="tabs">
+  <button id="tab-compose" class="active" onclick="showTab('compose')">Compose</button>
+  <button id="tab-walk" onclick="showTab('walk')">Walkthroughs</button>
+  <button id="tab-code" onclick="showTab('code')">Code-based alternative</button>
+</div>
+
+<!-- ============================ COMPOSE ============================ -->
+<section id="pane-compose">
+  <div class="flow" id="flowChips"></div>
+
+  <h2>Issue</h2>
+  <div id="issuePanel"></div>
+
+  <label class="fld" for="subj">Subject</label>
+  <input type="text" id="subj" placeholder="AI Stack News #1" oninput="dispatch({type:'SET_SUBJECT', subject:this.value})">
+  <label class="fld" for="intro">Intro</label>
+  <textarea class="wide" id="intro" placeholder="One short paragraph at the top of the issue." oninput="dispatch({type:'SET_INTRO', intro:this.value})"></textarea>
+
+  <div class="card" style="margin-top:1rem">
+    <div class="btns">
+      <button onclick="dispatch({type:'TEST_SEND'})">Test-send to owner</button>
+      <button class="primary" onclick="dispatch({type:'SEND'})">Send issue</button>
+      <button onclick="dispatch({type:'LATE_ITEM'})">A late item arrives</button>
+      <button onclick="resetAll()">Reset demo</button>
+    </div>
+  </div>
+
+  <h2>Approved stream (<span id="streamCount"></span> items)</h2>
+  <p class="muted" style="font-size:.8rem">These are the real items of the week, already approved out of the inbox. Tap Add to put one into the issue.</p>
+  <div id="streamList"></div>
+
+  <h2>Preview of the render</h2>
+  <p class="muted" style="font-size:.8rem">This is the email as the recipient gets it, in the house template. The archive page under /news uses the same items.</p>
+  <div class="emailwrap"><div class="email" id="emailPreview"></div></div>
+</section>
+
+<!-- ============================ WALKTHROUGHS ============================ -->
+<section id="pane-walk" style="display:none">
+  <p class="wt-blurb">Each walkthrough resets the demo to a clean start, then runs one scenario step by step.
+     Press the highlighted button to perform that step. Watch the state panel and the note after each press.</p>
+  <div class="wt-tabs" id="wtTabs"></div>
+  <div class="wt-blurb" id="wtBlurb"></div>
+  <ol class="wt-steps" id="wtSteps"></ol>
+  <p class="muted" style="font-size:.78rem">The compose surface and the preview stay live on the Compose tab while you step through.</p>
+</section>
+
+<!-- ============================ CODE-BASED ============================ -->
+<section id="pane-code" style="display:none">
+  <h2>The same issue, code-based</h2>
+  <p style="font-size:.86rem">The sync broadcast shipped this way. One issue costs these steps, every week:</p>
+  <ol class="plain">
+    <li>Open the repo and create <span class="mono">src/emails/NewsIssue1Email.tsx</span> with the week's items pasted in by hand.</li>
+    <li>Copy each headline, link, date, and summary from the admin inbox into JSX.</li>
+    <li>Register the issue in the <span class="mono">BROADCASTS</span> record in <span class="mono">convex/email.ts</span>.</li>
+    <li>Open a pull request, review it, merge it, and wait for the deploy workflow.</li>
+    <li>Trigger the send from the admin Broadcasts button, or over ssh.</li>
+    <li>Mark <span class="mono">alreadySent</span> in code and merge again, so the button locks.</li>
+    <li>Write the archive page under /news as a second manual artifact, or skip it.</li>
+  </ol>
+  <pre class="code">"news-issue-1": {
+  subject: "AI Stack News #1",
+  render: () =&gt; render(NewsIssue1Email({})),
+  audience: "waitlist+members",
+  category: "newsletter",
+},</pre>
+  <h2>What each flow gives</h2>
+  <div class="wrap">
+  <table class="cmp">
+    <tr><th></th><th>Compose page</th><th>Code-based</th></tr>
+    <tr><td>Pick and order</td><td>Tap and move, from the live stream</td><td>Copy items into JSX by hand</td></tr>
+    <tr><td>Edit a summary</td><td>Inline, writes the item row</td><td>Edit JSX, item row drifts from the email</td></tr>
+    <tr><td>Issue record</td><td>A newsIssues row, archive page for free</td><td>No row. Archive is a second manual page</td></tr>
+    <tr><td>Weekly cost</td><td>Minutes, no deploy</td><td>A PR, a review, a deploy, every week</td></tr>
+    <tr><td>Send safety</td><td>Test-send gate in the flow</td><td>alreadySent flag, edited by hand</td></tr>
+    <tr><td>Build cost now</td><td>One admin page plus send action</td><td>Near zero, machinery exists</td></tr>
+  </table>
+  </div>
+  <p style="font-size:.84rem" class="muted">The broadcast registry stays for one-off announcements either way. The question is only about the weekly issue.</p>
+</section>
+
+<footer>
+  <p>PROTOTYPE, throwaway (alp82/aistack#202). Items are real, collected by collect.mjs on 2026-08-23.
+     Summaries are draft copy written in the drafting session, not published text.
+     State lives in memory. Nothing sends.</p>
+</footer>
+
+</main>
+
+<script>
+/* ============================================================
+ * The pure compose module. No DOM below this comment block's
+ * scope: composeReducer and its helpers never touch the page.
+ * This is the liftable part: the state shape mirrors the
+ * newsIssues and newsItems tables in convex/schema.ts.
+ * ============================================================ */
+
+const TOPICS = ["Models", "Agents", "Tools", "Releases", "Industry"];
+
+// Real items, collected 2026-08-23 from the phase-1 sources (collect.mjs).
+// Summaries are draft copy in our own words, as the drafting skill would
+// leave them on the item rows. licenseClass is frozen per the spec table.
+const STREAM_ITEMS = [
+  { id: "i1", headline: "Claude Fable 5 pushes long-horizon coding", url: "https://aicrier.com/post/d05m7v7vjz04z5cscavi", date: "2026-08-23", source: "AI Crier", licenseClass: "article", topic: "Models",
+    summary: "Anthropic ships Claude Fable 5, the first model of the Claude 5 family. Early reports point at long-horizon coding as the headline gain." },
+  { id: "i2", headline: "The Evolution of the Agent Harness", url: "https://www.latent.space/p/attention-interface", date: "2026-08-22", source: "Latent Space", licenseClass: "article", topic: "Agents",
+    summary: "A survey of how agent harnesses grew from chat loops into orchestration layers. It argues the harness now moves capability more than the model under it." },
+  { id: "i3", headline: "More than just code review", url: "https://simonwillison.net/2026/Aug/22/more-than-just-code-review/", date: "2026-08-22", source: "Simon Willison", licenseClass: "article", topic: "Agents",
+    summary: "Simon Willison on what review means when agents write most of the code. The post widens review from diffs to specs, tests, and traces." },
+  { id: "i4", headline: "llm 0.33", url: "https://simonwillison.net/2026/Aug/22/llm/", date: "2026-08-22", source: "Simon Willison", licenseClass: "article", topic: "Tools",
+    summary: "A new release of the llm CLI with fresh model support and plugin fixes." },
+  { id: "i5", headline: "Stop Making TUIs", url: "https://simonwillison.net/2026/Aug/21/stop-making-tuis/", date: "2026-08-21", source: "Simon Willison", licenseClass: "article", topic: "Tools",
+    summary: "An argument that terminal UIs make agent tooling harder to drive by machine. Plain commands with plain output win." },
+  { id: "i6", headline: "Stripe buys OpenRouter for $7B", url: "https://www.latent.space/p/ainews-stripe-buys-openrouter-for", date: "2026-08-17", source: "Latent Space", licenseClass: "article", topic: "Industry",
+    summary: "Stripe buys OpenRouter for 7 billion dollars. The model routing layer moves into payments infrastructure." },
+  { id: "i7", headline: "Poolside gets $12B reverse-execuhire to NVIDIA", url: "https://www.latent.space/p/ainews-poolside-gets-12b-reverse", date: "2026-08-21", source: "Latent Space", licenseClass: "article", topic: "Industry",
+    summary: "NVIDIA takes Poolside in a 12 billion dollar reverse execuhire. Infraco scales toward a 7 GW neocloud." },
+  { id: "i8", headline: "Offering Zero Data Retention for frontier models", url: "https://openai.com/index/offering-zero-data-retention-for-frontier-models", date: "2026-08-19", source: "OpenAI News", licenseClass: "article", topic: "Industry",
+    summary: "OpenAI offers zero data retention for frontier model API traffic. Enterprise compliance is the target." },
+  { id: "i9", headline: "Introducing AI Futures", url: "https://openai.com/index/introducing-ai-futures", date: "2026-08-20", source: "OpenAI News", licenseClass: "article", topic: "Industry",
+    summary: "OpenAI announces AI Futures, a program on long-term planning for AI in society." },
+  { id: "i10", headline: "claude-code v2.1.241", url: "https://github.com/anthropics/claude-code/releases/tag/v2.1.241", date: "2026-08-23", source: "claude-code releases", licenseClass: "unlicensed-release-notes", topic: "Releases",
+    summary: "Seven claude-code releases this week end at v2.1.241." },
+  { id: "i11", headline: "codex 0.150.0-alpha.7", url: "https://github.com/openai/codex/releases/tag/rust-v0.150.0-alpha.7", date: "2026-08-22", source: "codex releases", licenseClass: "permissive-release-notes", topic: "Releases",
+    summary: "The codex CLI moves through the 0.150 alpha line." },
+  { id: "i12", headline: "gemini-cli v0.56.0", url: "https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0", date: "2026-08-19", source: "gemini-cli releases", licenseClass: "permissive-release-notes", topic: "Releases",
+    summary: "gemini-cli promotes v0.56.0 to stable and opens the v0.57 preview line." },
+  { id: "i13", headline: "opencode v1.18.21", url: "https://github.com/anomalyco/opencode/releases/tag/v1.18.21", date: "2026-08-21", source: "opencode releases", licenseClass: "permissive-release-notes", topic: "Releases",
+    summary: "Three opencode patch releases this week end at v1.18.21." },
+  { id: "i14", headline: "pi v0.84.2", url: "https://github.com/earendil-works/pi/releases/tag/v0.84.2", date: "2026-08-14", source: "pi releases", licenseClass: "permissive-release-notes", topic: "Releases",
+    summary: "One pi patch release, v0.84.2." },
+  { id: "i15", headline: "smolmachines / smolvm as a sandbox for untrusted code", url: "https://simonwillison.net/2026/Aug/19/smolmachines-untrusted-sandbox/", date: "2026-08-19", source: "Simon Willison", licenseClass: "article", topic: "Tools",
+    summary: "smolmachines runs untrusted Python and JavaScript in a small sandboxed VM. A candidate for agent code execution." },
+  { id: "i16", headline: "Gemini 3.7 Flash brings GDM back to the forefront", url: "https://www.latent.space/p/ainews-gemini-37-flash-brings-gdm", date: "2026-08-14", source: "Latent Space", licenseClass: "article", topic: "Models",
+    summary: "Gemini 3.7 Flash lands with strong scores for its size. The recap reads it as Google DeepMind back at the front." },
+  { id: "i17", headline: "The /wayfinder Skill: Navigating the Fog of War of Planning", url: "https://www.latent.space/p/wayfinder-skill", date: "2026-08-20", source: "Latent Space", licenseClass: "article", topic: "Agents",
+    summary: "A planning pattern that charts unknown work as a shared map of decision tickets." },
+  { id: "i18", headline: "Memory prices up 500% in 12 months", url: "https://www.latent.space/p/ainews-memory-prices-up-500-in-12", date: "2026-08-19", source: "Latent Space", licenseClass: "article", topic: "Industry",
+    summary: "Memory prices rose about 500 percent in twelve months. The recap tracks what that does to GPU build-outs." },
+];
+
+// Held back for the LATE_ITEM action: approved after the send.
+const LATE = { id: "i19", headline: "Ox Alpha lands with 1M-token context", url: "https://aicrier.com/post/late-ox-alpha", date: "2026-08-23", source: "AI Crier", licenseClass: "article", topic: "Models",
+  summary: "Ox Alpha arrives with a one million token context window." };
+
+const AUDIENCE = 177; // deduped members+waitlist at the 2026-08-17 send
+const THIN_WEEK = 4;  // fewer picked items than this shows the skip warning
+
+function initialState() {
+  return {
+    stream: STREAM_ITEMS.map((i) => ({ ...i })),
+    issue: {
+      number: 1, slug: "issue-1", subject: "", intro: "",
+      itemIds: [], status: "draft",
+      testSends: 0, lastTestAt: null, lastEditAt: null,
+      sentAt: null, sentCount: null,
+    },
+  };
+}
+
+function findItem(state, id) {
+  return state.stream.find((i) => i.id === id) ?? null;
+}
+
+// (state, action) -> { state, note: {kind: 'did'|'refused'|'warned', text} }
+function composeReducer(state, action) {
+  const s = structuredClone(state);
+  const iss = s.issue;
+  const sent = iss.status === "sent";
+  const did = (text) => ({ state: s, note: { kind: "did", text } });
+  const refused = (text) => ({ state, note: { kind: "refused", text } });
+  const warned = (text) => ({ state: s, note: { kind: "warned", text } });
+
+  switch (action.type) {
+    case "PICK": {
+      if (sent) return refused("The issue is sent. Its composition is locked. A new pick belongs to issue #2.");
+      if (iss.itemIds.includes(action.id)) return refused("This item is already in the issue.");
+      const it = findItem(s, action.id);
+      if (!it) return refused("No such item in the stream.");
+      iss.itemIds.push(action.id);
+      iss.lastEditAt = "now";
+      return did(`Picked "${it.headline}". It goes to the end of the send order.`);
+    }
+    case "UNPICK": {
+      if (sent) return refused("The issue is sent. Its composition is locked.");
+      iss.itemIds = iss.itemIds.filter((x) => x !== action.id);
+      iss.lastEditAt = "now";
+      return did("Removed the item from the issue. It stays in the approved stream.");
+    }
+    case "MOVE": {
+      if (sent) return refused("The issue is sent. The order is locked.");
+      const idx = iss.itemIds.indexOf(action.id);
+      const to = idx + (action.dir === "up" ? -1 : 1);
+      if (idx < 0 || to < 0 || to >= iss.itemIds.length) return refused("The item cannot move further.");
+      [iss.itemIds[idx], iss.itemIds[to]] = [iss.itemIds[to], iss.itemIds[idx]];
+      iss.lastEditAt = "now";
+      return did("Moved the item. The order is the composition: the email renders in this order.");
+    }
+    case "EDIT_SUMMARY": {
+      const it = findItem(s, action.id);
+      if (!it) return refused("No such item.");
+      it.summary = action.summary;
+      iss.lastEditAt = sent ? iss.lastEditAt : "now";
+      if (sent && iss.itemIds.includes(action.id)) {
+        return warned("The summary changed on the ITEM row. The sent email is frozen, but the archive page re-reads the item, so the archive now drifts from what recipients got. The schema keeps no frozen copy on the issue.");
+      }
+      return did("Summary saved on the item row. Both projections read it: this issue and the knowledge base.");
+    }
+    case "SET_SUBJECT": {
+      if (sent) return refused("The issue is sent. The subject is locked.");
+      iss.subject = action.subject;
+      iss.lastEditAt = "now";
+      return did("Subject set.");
+    }
+    case "SET_INTRO": {
+      if (sent) return refused("The issue is sent. The intro is locked.");
+      iss.intro = action.intro;
+      iss.lastEditAt = "now";
+      return did("Intro set.");
+    }
+    case "TEST_SEND": {
+      if (sent) return refused("The issue is sent. There is nothing left to test.");
+      if (iss.itemIds.length === 0) return refused("Test-send needs at least one item in the issue.");
+      iss.testSends += 1;
+      iss.lastTestAt = "now";
+      iss.lastEditAt = null; // edits before this test are now covered
+      return did(`Test email sent to the owner address only. Test-send #${iss.testSends}. Real recipients get nothing.`);
+    }
+    case "SEND": {
+      if (sent) return refused("The issue is already sent. Sending twice is not possible.");
+      if (iss.itemIds.length === 0) return refused("An empty issue cannot send.");
+      if (!iss.subject.trim()) return refused("The issue needs a subject before it sends.");
+      if (iss.testSends === 0) return refused("No test-send yet. The flow requires one test-send before the real send.");
+      const dirty = iss.lastEditAt !== null;
+      iss.status = "sent";
+      iss.sentAt = "2026-08-23 18:00";
+      iss.sentCount = AUDIENCE;
+      const base = `Sent to ${AUDIENCE} recipients (members and waitlist, minus newsletter unsubscribes). The issue is now locked, and the archive page /news/${iss.slug} is public.`;
+      if (dirty) return warned(base + " Note: the composition changed after the last test-send, so the tested email is not the sent email.");
+      return did(base);
+    }
+    case "LATE_ITEM": {
+      if (s.stream.some((i) => i.id === LATE.id)) return refused("The late item already arrived.");
+      s.stream.unshift({ ...LATE });
+      return did(sent
+        ? "A new item was approved after the send. The sent issue does not change. The item waits in the stream for issue #2."
+        : "A new item was approved into the stream. It is pickable like any other.");
+    }
+    default:
+      return refused("Unknown action.");
+  }
+}
+
+/* ============================================================
+ * Page shell. Everything below is throwaway wiring.
+ * ============================================================ */
+
+let state = initialState();
+let lastNote = { kind: "did", text: "Fresh start. Issue #1 is an empty draft. Pick items from the approved stream below." };
+let editingId = null;
+
+function dispatch(action) {
+  const r = composeReducer(state, action);
+  state = r.state;
+  lastNote = r.note;
+  if (action.type !== "SET_SUBJECT" && action.type !== "SET_INTRO") {
+    render();
+  } else {
+    // A full render would rebuild the input and drop the caret.
+    renderState();
+    renderPreview();
+    if (r.note.kind === "refused") {
+      // The field is locked: snap the input back to the stored value.
+      document.getElementById("subj").value = state.issue.subject;
+      document.getElementById("intro").value = state.issue.intro;
+    }
+  }
+  return r.note.kind !== "refused";
+}
+
+function resetAll() {
+  state = initialState();
+  lastNote = { kind: "did", text: "Reset. Issue #1 is an empty draft again." };
+  editingId = null;
+  document.getElementById("subj").value = "";
+  document.getElementById("intro").value = "";
+  render();
+}
+
+const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+function renderState() {
+  const iss = state.issue;
+  const dirty = iss.lastEditAt !== null && iss.testSends > 0;
+  const rows = [
+    ["issue", `#${iss.number} (${iss.slug})`],
+    ["status", iss.status === "sent" ? `SENT ${iss.sentAt} to ${iss.sentCount}` : "draft"],
+    ["items", `${iss.itemIds.length} picked, ${state.stream.length} in stream`],
+    ["subject", iss.subject.trim() ? `"${iss.subject}"` : "(empty)"],
+    ["intro", iss.intro.trim() ? `${iss.intro.trim().split(/\s+/).length} words` : "(empty)"],
+    ["test-sends", String(iss.testSends) + (dirty ? " (edited since last test)" : "")],
+  ];
+  document.getElementById("statePanel").innerHTML = rows
+    .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
+  const cls = lastNote.kind === "refused" ? "note refused" : lastNote.kind === "warned" ? "note warned" : "note";
+  const label = lastNote.kind === "refused" ? "REFUSED: " : lastNote.kind === "warned" ? "NOTE: " : "";
+  document.getElementById("lastNote").innerHTML = `<div class="${cls}">${label}${esc(lastNote.text)}</div>`;
+  renderChips();
+}
+
+function renderChips() {
+  const iss = state.issue;
+  const steps = [
+    ["pick", iss.itemIds.length > 0],
+    ["order", iss.itemIds.length > 1],
+    ["edit summaries", true],
+    ["intro", iss.intro.trim().length > 0],
+    ["preview", true],
+    ["test-send", iss.testSends > 0],
+    ["send", iss.status === "sent"],
+  ];
+  document.getElementById("flowChips").innerHTML = steps
+    .map(([n, done]) => `<span class="chip ${done ? "done" : ""}">${esc(n)}</span>`).join("");
+}
+
+function itemCard(it, inIssue, idx, total) {
+  const iss = state.issue;
+  const sent = iss.status === "sent";
+  const picked = iss.itemIds.includes(it.id);
+  const editing = editingId === it.id;
+  const sumHtml = editing
+    ? `<div class="sum editing"><textarea id="ta-${it.id}">${esc(it.summary)}</textarea>
+       <div class="btns"><button class="small primary" onclick="saveSummary('${it.id}')">Save summary</button>
+       <button class="small" onclick="editingId=null;render()">Cancel</button></div></div>`
+    : `<p class="sum">${esc(it.summary)}</p>`;
+  let btns = "";
+  if (inIssue) {
+    btns = `<button class="small" onclick="dispatch({type:'MOVE', id:'${it.id}', dir:'up'})" ${idx === 0 || sent ? "disabled" : ""}>&#8593; up</button>
+      <button class="small" onclick="dispatch({type:'MOVE', id:'${it.id}', dir:'down'})" ${idx === total - 1 || sent ? "disabled" : ""}>&#8595; down</button>
+      <button class="small" onclick="editingId='${it.id}';render()">Edit summary</button>
+      <button class="small" onclick="dispatch({type:'UNPICK', id:'${it.id}'})" ${sent ? "disabled" : ""}>&#10005; remove</button>`;
+  } else {
+    btns = `<button class="small ${picked ? "" : "primary"}" onclick="dispatch({type:'PICK', id:'${it.id}'})" ${picked || sent ? "disabled" : ""}>${picked ? "In the issue" : "Add to issue"}</button>
+      <button class="small" onclick="editingId='${it.id}';render()">Edit summary</button>`;
+  }
+  return `<div class="card">
+    <div class="head"><div>
+      <div class="title">${inIssue ? `<span class="mono muted">${idx + 1}.</span> ` : ""}${esc(it.headline)}</div>
+      <div class="meta"><span class="tag">${esc(it.topic)}</span><span class="tag lic">${esc(it.licenseClass)}</span>${esc(it.source)} · ${esc(it.date)}</div>
+    </div>${picked && !inIssue ? '<span class="picked-badge">PICKED</span>' : ""}</div>
+    ${sumHtml}
+    <div class="btns">${btns}</div>
+  </div>`;
+}
+
+function saveSummary(id) {
+  const ta = document.getElementById("ta-" + id);
+  editingId = null;
+  dispatch({ type: "EDIT_SUMMARY", id, summary: ta.value });
+}
+
+function renderIssue() {
+  const iss = state.issue;
+  const items = iss.itemIds.map((id) => findItem(state, id));
+  let html = "";
+  if (iss.status === "sent") {
+    html += `<div class="note">This issue is SENT and locked. Archive: <span class="mono">/news/${esc(iss.slug)}</span>. The next compose starts issue #2.</div>`;
+  }
+  if (items.length === 0) {
+    html += `<p class="muted" style="font-size:.85rem">No items picked yet. The issue is empty.</p>`;
+  } else {
+    if (items.length < THIN_WEEK && iss.status !== "sent") {
+      html += `<div class="note warned">Thin week: only ${items.length} item${items.length === 1 ? "" : "s"}. The cadence rule says a thin week skips. Skip beats bad content. Skipping is simply not sending: no row changes state.</div>`;
+    }
+    html += items.map((it, i) => itemCard(it, true, i, items.length)).join("");
+  }
+  document.getElementById("issuePanel").innerHTML = html;
+}
+
+function renderStream() {
+  const inIssue = new Set(state.issue.itemIds);
+  const rest = state.stream.filter((i) => !inIssue.has(i.id));
+  document.getElementById("streamCount").textContent = String(state.stream.length);
+  document.getElementById("streamList").innerHTML = rest.map((it) => itemCard(it, false, 0, 0)).join("");
+}
+
+function renderPreview() {
+  const iss = state.issue;
+  const items = iss.itemIds.map((id) => findItem(state, id));
+  let body = "";
+  let lastTopic = null;
+  for (const it of items) {
+    if (it.topic !== lastTopic) {
+      body += `<div class="etopic">${esc(it.topic)}</div>`;
+      lastTopic = it.topic;
+    }
+    body += `<div class="eitem">
+      <p class="et"><a href="${esc(it.url)}">${esc(it.headline)}</a></p>
+      <p class="em">${esc(it.source)} · ${esc(it.date)}</p>
+      <p class="es">${esc(it.summary)}</p>
+    </div>`;
+  }
+  if (items.length === 0) body = `<p class="eintro" style="color:#737373">(no items picked yet)</p>`;
+  document.getElementById("emailPreview").innerHTML = `
+    <div class="ehead"><div class="esq"></div><div class="elogo">AI Stack</div></div>
+    <div class="ebody">
+      <p class="elabel">Newsletter · Issue ${iss.number} · Week of 2026-08-23</p>
+      <h1 class="eh1">${esc(iss.subject.trim() || "(no subject yet)")}</h1>
+      ${iss.intro.trim() ? `<p class="eintro">${esc(iss.intro)}</p>` : ""}
+      ${body}
+    </div>
+    <div class="efoot">AI STACK · <a href="https://aistack.to">aistack.to</a><br>
+      You get this email because you are on the newsletter list.<br>
+      <a href="#">Unsubscribe from the newsletter</a> (important updates stay on)</div>`;
+}
+
+/* ---------------- walkthroughs ---------------- */
+
+const WALKTHROUGHS = [
+  {
+    id: "happy", title: "1 · Happy path",
+    blurb: "One full weekly compose, start to send. Watch the flow chips fill and the preview grow with every press.",
+    steps: [
+      { label: "Pick eight items across the topics", watch: "The picked items keep pick order. Topics interleave.", run: () => ["i1", "i16", "i2", "i17", "i5", "i10", "i12", "i6"].forEach((id) => dispatch({ type: "PICK", id })) },
+      { label: "Move the Stripe story up, under the models", watch: "The preview re-renders in the new order at once.", run: () => { dispatch({ type: "MOVE", id: "i6", dir: "up" }); dispatch({ type: "MOVE", id: "i6", dir: "up" }); dispatch({ type: "MOVE", id: "i6", dir: "up" }); } },
+      { label: "Tighten the Fable 5 summary", watch: "The edit lands on the item row, and the preview shows it.", run: () => dispatch({ type: "EDIT_SUMMARY", id: "i1", summary: "Claude Fable 5 is out, first of the Claude 5 family. The headline gain is long-horizon coding." }) },
+      { label: "Set the subject and the intro", watch: "The empty-subject send guard goes away.", run: () => { document.getElementById("subj").value = "AI Stack News #1: Fable 5, Gemini 3.7 Flash, and a $7B router"; dispatch({ type: "SET_SUBJECT", subject: "AI Stack News #1: Fable 5, Gemini 3.7 Flash, and a $7B router" }); document.getElementById("intro").value = "The first issue. Two frontier releases in one week, and the routing layer got a price tag."; dispatch({ type: "SET_INTRO", intro: "The first issue. Two frontier releases in one week, and the routing layer got a price tag." }); } },
+      { label: "Test-send to the owner", watch: "Only the owner address gets mail. The counter goes to 1.", run: () => dispatch({ type: "TEST_SEND" }) },
+      { label: "Send the issue", watch: "177 recipients, the issue locks, the archive page goes public.", run: () => dispatch({ type: "SEND" }) },
+    ],
+  },
+  {
+    id: "guards", title: "2 · Send guards",
+    blurb: "Try to send too early, three times. Every refusal names its reason in the note. Then satisfy each guard and watch the send pass.",
+    steps: [
+      { label: "Send with an empty issue", watch: "Refused: an empty issue cannot send.", run: () => dispatch({ type: "SEND" }) },
+      { label: "Pick two items, send without a subject", watch: "Refused: the issue needs a subject.", run: () => { dispatch({ type: "PICK", id: "i1" }); dispatch({ type: "PICK", id: "i2" }); dispatch({ type: "SEND" }); } },
+      { label: "Set a subject, send without a test-send", watch: "Refused: one test-send is required before the real send.", run: () => { document.getElementById("subj").value = "AI Stack News #1"; dispatch({ type: "SET_SUBJECT", subject: "AI Stack News #1" }); dispatch({ type: "SEND" }); } },
+      { label: "Test-send, then send", watch: "The thin-week warning stands, but the send passes.", run: () => { dispatch({ type: "TEST_SEND" }); dispatch({ type: "SEND" }); } },
+    ],
+  },
+  {
+    id: "thin", title: "3 · Thin week",
+    blurb: "The cadence rule: weekly, and a thin week skips. Skip beats bad content. This scenario shows what the surface says at two items, and that skipping costs nothing.",
+    steps: [
+      { label: "Pick only two items", watch: "The thin-week warning appears on the issue panel.", run: () => { dispatch({ type: "PICK", id: "i4" }); dispatch({ type: "PICK", id: "i14" }); } },
+      { label: "Read the warning, then reset instead of sending", watch: "Skipping is not an action. The draft simply waits, or resets.", run: () => resetAll() },
+    ],
+  },
+  {
+    id: "shared", title: "4 · One summary, two projections",
+    blurb: "A summary lives on the ITEM row. The issue and the knowledge base both read it. Before the send that is a feature. After the send it makes the archive drift from the sent email, because the schema keeps no frozen copy on the issue. This is the data-model question this prototype surfaces.",
+    steps: [
+      { label: "Pick three items, subject, test-send, send", watch: "A small issue goes out and locks.", run: () => { ["i1", "i2", "i6"].forEach((id) => dispatch({ type: "PICK", id })); document.getElementById("subj").value = "AI Stack News #1"; dispatch({ type: "SET_SUBJECT", subject: "AI Stack News #1" }); dispatch({ type: "TEST_SEND" }); dispatch({ type: "SEND" }); } },
+      { label: "Edit the Fable 5 summary AFTER the send", watch: "The note flags it: the archive page now differs from the email in 177 inboxes.", run: () => dispatch({ type: "EDIT_SUMMARY", id: "i1", summary: "EDITED AFTER SEND: this text is now on the archive page, but not in any inbox." }) },
+      { label: "Read the preview", watch: "The render shows the edited text. This render is what the archive serves.", run: () => document.getElementById("emailPreview").scrollIntoView({ behavior: "smooth" }) },
+    ],
+  },
+  {
+    id: "late", title: "5 · After the send",
+    blurb: "The issue is sent and locked. A late item arrives, and every mutation on the sent issue refuses. The late item waits for issue #2.",
+    steps: [
+      { label: "Compose and send a quick issue", watch: "Sent and locked.", run: () => { ["i1", "i2", "i3", "i6"].forEach((id) => dispatch({ type: "PICK", id })); document.getElementById("subj").value = "AI Stack News #1"; dispatch({ type: "SET_SUBJECT", subject: "AI Stack News #1" }); dispatch({ type: "TEST_SEND" }); dispatch({ type: "SEND" }); } },
+      { label: "A late item arrives", watch: "It joins the stream, not the sent issue.", run: () => dispatch({ type: "LATE_ITEM" }) },
+      { label: "Try to pick it into the sent issue", watch: "Refused: the composition is locked. It belongs to issue #2.", run: () => dispatch({ type: "PICK", id: "i19" }) },
+      { label: "Try to reorder the sent issue", watch: "Refused: the order is locked.", run: () => dispatch({ type: "MOVE", id: "i2", dir: "up" }) },
+      { label: "Try a second send", watch: "Refused: sending twice is not possible.", run: () => dispatch({ type: "SEND" }) },
+    ],
+  },
+];
+
+let activeWt = null;
+let wtStep = 0;
+
+function startWt(id) {
+  activeWt = WALKTHROUGHS.find((w) => w.id === id);
+  wtStep = 0;
+  resetAll();
+  lastNote = { kind: "did", text: `Walkthrough "${activeWt.title}" started from a clean state. Press step 1.` };
+  render();
+}
+
+function runWtStep(i) {
+  if (!activeWt || i !== wtStep) return;
+  activeWt.steps[i].run();
+  wtStep = i + 1;
+  render();
+}
+
+function renderWt() {
+  document.getElementById("wtTabs").innerHTML = WALKTHROUGHS
+    .map((w) => `<button class="${activeWt?.id === w.id ? "active" : ""}" onclick="startWt('${w.id}')">${esc(w.title)}</button>`).join("");
+  if (!activeWt) {
+    document.getElementById("wtBlurb").textContent = "Pick a scenario above. Starting one resets the demo to a clean state.";
+    document.getElementById("wtSteps").innerHTML = "";
+    return;
+  }
+  document.getElementById("wtBlurb").textContent = activeWt.blurb;
+  document.getElementById("wtSteps").innerHTML = activeWt.steps
+    .map((st, i) => `<li class="${i < wtStep ? "donestep" : ""} ${i === wtStep ? "current" : ""}">
+      <span class="idx">${i < wtStep ? "&#10003;" : i + 1}</span>
+      <div style="flex:1">
+        <button style="width:100%;text-align:left" onclick="runWtStep(${i})" ${i !== wtStep ? "disabled" : ""}>${esc(st.label)}</button>
+        ${i === wtStep || i === wtStep - 1 ? `<div class="wt-watch" style="margin-left:0">watch: ${esc(st.watch)}</div>` : ""}
+      </div>
+    </li>`).join("");
+}
+
+/* ---------------- tabs + boot ---------------- */
+
+function showTab(name) {
+  for (const t of ["compose", "walk", "code"]) {
+    document.getElementById("pane-" + t).style.display = t === name ? "" : "none";
+    document.getElementById("tab-" + t).classList.toggle("active", t === name);
+  }
+  // The walkthrough drives the compose surface, so keep it visible below.
+  if (name === "walk") document.getElementById("pane-compose").style.display = "";
+}
+
+function render() {
+  renderState();
+  renderIssue();
+  renderStream();
+  renderPreview();
+  renderWt();
+}
+
+render();
+</script>
+</body>
+</html>
