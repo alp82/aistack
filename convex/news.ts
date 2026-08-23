@@ -626,18 +626,30 @@ export const insertItem = internalMutation({
       const carriesHn =
         args.hnItemId !== undefined &&
         (existing.hnItemId === undefined || existing.hnItemId === args.hnItemId)
-      if (carriesHn) {
+      const carriesX = args.licenseClass === 'x' && args.xEmbed !== undefined
+      if (carriesHn || carriesX) {
         await ctx.db.patch(existing._id, {
-          hnItemId: args.hnItemId,
-          hnPoints: args.hnPoints,
-          hnComments: args.hnComments,
+          ...(carriesHn
+            ? {
+                hnItemId: args.hnItemId,
+                hnPoints: args.hnPoints,
+                hnComments: args.hnComments,
+              }
+            : {}),
+          ...(carriesX
+            ? {
+                licenseClass: 'x' as const,
+                sourceText: undefined,
+                xEmbed: args.xEmbed,
+              }
+            : {}),
           updatedAt: now,
         })
       }
       return {
         added: false,
         duplicate: true,
-        patched: carriesHn,
+        patched: carriesHn || carriesX,
         itemId: existing._id,
         headline: existing.headline,
       }

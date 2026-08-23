@@ -319,7 +319,7 @@ test('a slug with no catalog row keeps the slug as its name rather than vanishin
 
 function payload(harness: string, tokens: number) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 1 as const,
     capturedAt: Date.now(),
     window: { days: 30, from: '2026-07-01', to: '2026-07-31' },
     harness: { name: harness, version: '1.0.0' },

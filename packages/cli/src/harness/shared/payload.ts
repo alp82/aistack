@@ -31,7 +31,7 @@ import {
 } from "./allowlist.js";
 import { type ScanStats, windowStartMs } from "./window.js";
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export type PayloadModel = {
 	/** Vendor-assigned id, sanitized. `catalogSlug` is resolved SERVER-side at read time. */
@@ -72,7 +72,7 @@ export type PayloadInventory = {
 };
 
 export type MeasuredPayload = {
-	schemaVersion: number;
+	schemaVersion: 2;
 	/** Client clock. The server stamps its own `receivedAt` (#33 decision 6). */
 	capturedAt: number;
 	window: { days: number; from: string; to: string };
@@ -86,9 +86,10 @@ export type MeasuredPayload = {
 	pricingTable: string | null;
 	activity: {
 		sessions: number;
-		activeDays: number;
-		/** COUNT only. Project directory names are munged absolute paths and never travel. */
-		projects: number;
+		/** Sorted UTC dates inside the declared window. */
+		activeDayDates: string[];
+		/** Sorted project workspace identifiers. Project paths never travel. */
+		projectKeys: string[];
 		totalTokens: number;
 		cacheHitShare: number;
 		subagentShare: number;
@@ -295,6 +296,8 @@ export type BuildPayloadInput = {
 	harnessName: string;
 	/** The adapter's fail-closed vendor tool set (#66 decision 3). */
 	builtinTools: ReadonlySet<string>;
+	/** Resolve one local project directory to its persistent opaque id. */
+	projectWorkspaceId: (directory: string) => string;
 };
 
 export type BuiltPayload = {
@@ -321,6 +324,7 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 		windowDays,
 		harnessName,
 		builtinTools,
+		projectWorkspaceId,
 	} = input;
 	const finalized = finalize(agg);
 	const { publishCost, allowlist, optIns } = syncConfig;
@@ -329,12 +333,25 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 	const from = utcDate(fromMs);
 	const to = utcDate(now);
 
-	// Counted against the reported window rather than taken from the aggregate's
-	// size: a clock-skewed, imported, or restored transcript dated in the future
-	// would otherwise push activeDays past `windowDays`, printing an impossible
-	// value under a payload that claims to be deterministic.
-	let activeDays = 0;
-	for (const d of agg.activeDays) if (d >= from && d <= to) activeDays++;
+	// Limited to the reported window rather than copied from the aggregate: a
+	// clock-skewed, imported, or restored transcript dated in the future would
+	// otherwise put an impossible date in a deterministic payload.
+	const activeDayDates = [...agg.activeDays]
+		.filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= from && d <= to)
+		.sort();
+	const projectKeys = [
+		...new Set(
+			[...agg.projectDirs].map((directory) => projectWorkspaceId(directory)),
+		),
+	].sort();
+	if (
+		projectKeys.length > 1_000 ||
+		projectKeys.some((key) => !/^[A-Za-z0-9_-]{22}$/.test(key))
+	) {
+		throw new Error(
+			"Project workspace identifiers must be 22-character base64url strings",
+		);
+	}
 
 	const totalToolCalls = finalized.totalToolCalls;
 	const builtins = buildCategory(
@@ -394,8 +411,8 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 		pricingTable: citedTables.length === 1 ? citedTables[0] : null,
 		activity: {
 			sessions: finalized.sessions,
-			activeDays,
-			projects: finalized.projects,
+			activeDayDates,
+			projectKeys,
 			totalTokens: finalized.totalTokens,
 			cacheHitShare: round4(finalized.cacheHitShare),
 			subagentShare: round4(finalized.sidechainShare),

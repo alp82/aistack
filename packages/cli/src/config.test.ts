@@ -2,7 +2,13 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { clearToken, getToken, saveToken } from "./config.js";
+import {
+	clearToken,
+	getProjectWorkspaceId,
+	getToken,
+	saveExcludedPaths,
+	saveToken,
+} from "./config.js";
 
 /**
  * Credentials keyed by server URL - wayfinder #61 (map #60).
@@ -102,5 +108,69 @@ describe("clearToken", () => {
 
 	test("is a no-op when the file does not exist", () => {
 		expect(() => clearToken(PROD, file)).not.toThrow();
+	});
+});
+
+describe("getProjectWorkspaceId", () => {
+	test("keeps one opaque id for a local project workspace", () => {
+		const projectsFile = join(dir, "projects.json");
+		writeFileSync(
+			projectsFile,
+			JSON.stringify({ "/work/acme": { excluded: [".env"] } }),
+		);
+		let calls = 0;
+		const createId = () => {
+			calls++;
+			return "AAAAAAAAAAAAAAAAAAAAAA";
+		};
+
+		expect(
+			getProjectWorkspaceId("/work/acme", { file: projectsFile, createId }),
+		).toBe("AAAAAAAAAAAAAAAAAAAAAA");
+		expect(
+			getProjectWorkspaceId("/work/acme", { file: projectsFile, createId }),
+		).toBe("AAAAAAAAAAAAAAAAAAAAAA");
+		expect(calls).toBe(1);
+		expect(JSON.parse(readFileSync(projectsFile, "utf-8"))).toEqual({
+			"/work/acme": {
+				excluded: [".env"],
+				workspaceId: "AAAAAAAAAAAAAAAAAAAAAA",
+			},
+		});
+	});
+
+	test("replaces an invalid persisted id", () => {
+		const projectsFile = join(dir, "projects.json");
+		writeFileSync(
+			projectsFile,
+			JSON.stringify({ "/work/acme": { workspaceId: "broken" } }),
+		);
+
+		expect(
+			getProjectWorkspaceId("/work/acme", {
+				file: projectsFile,
+				createId: () => "BBBBBBBBBBBBBBBBBBBBBB",
+			}),
+		).toBe("BBBBBBBBBBBBBBBBBBBBBB");
+		expect(JSON.parse(readFileSync(projectsFile, "utf-8"))).toEqual({
+			"/work/acme": { workspaceId: "BBBBBBBBBBBBBBBBBBBBBB" },
+		});
+	});
+
+	test("keeps the identifier when exclusions change", () => {
+		const projectsFile = join(dir, "projects.json");
+		getProjectWorkspaceId("/work/acme", {
+			file: projectsFile,
+			createId: () => "AAAAAAAAAAAAAAAAAAAAAA",
+		});
+
+		saveExcludedPaths("/work/acme", [".env"], projectsFile);
+
+		expect(JSON.parse(readFileSync(projectsFile, "utf-8"))).toEqual({
+			"/work/acme": {
+				excluded: [".env"],
+				workspaceId: "AAAAAAAAAAAAAAAAAAAAAA",
+			},
+		});
 	});
 });

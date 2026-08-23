@@ -16,8 +16,8 @@ is that push. A follow-up build map owns the execution.
 
 One item stream, two projections. The newsletter pushes a weekly email. The knowledge
 base lets visitors pull items by topic. The pipeline that fills the stream is the real
-product. The newsletter ships first. The knowledge base starts as the archive of the
-same items and gets its own surface after a prototype settles its publish flow.
+product. The newsletter ships first. The knowledge base is the topic index over
+the same items.
 
 ## Sourcing
 
@@ -70,8 +70,8 @@ digest. The machine collects and drafts. The owner decides.
 3. The owner works the inbox: edit the summary, confirm or change the topic, then
    approve or discard.
 4. Approve moves the item to the stream. The stream is still private.
-5. Each projection has its own publish act. The newsletter publishes per issue send.
-   The knowledge base publish flow is decided in its prototype.
+5. Each projection has its own publish act. One real issue send publishes the
+   newsletter and every ready approved item in the knowledge base.
 
 The topic list is flat and owner-managed, and it will evolve. One topic per item.
 
@@ -124,9 +124,22 @@ a member nor on the waitlist.
 
 ## The knowledge base
 
-A public pull view under `/news`, grouped by topic. It reads the same stream. Its
-publish flow (per item, per batch, or something else) and its page shape are decided in
-a prototype ticket on the build map, not here.
+The public pull view starts at `/news`. It shows the five newest published items,
+then one card per owner-managed topic. Each topic has a page under
+`/news/topics/<slug>`.
+
+A real newsletter send publishes every approved item that has a summary and a
+topic, including items outside that issue. A test send changes nothing. A skipped
+week publishes nothing. An incomplete approved item stays private and returns to
+the next drafting run.
+
+The single item publication field stores the send time and exact attribution
+notice. The public page never depends on a source row that can later be deleted.
+
+The page applies the re-serving policy before data leaves Convex. Thin release
+notes under 120 characters, or notes that contain only a compare link, share one
+release strip per topic. An X item returns only our summary and an allow-listed
+static embed. The page never loads the X widget script.
 
 ## Machinery
 
@@ -164,4 +177,3 @@ build map.
 - Automatic X discovery through the paid API. Deferred until a budget decision.
 - Reddit ingestion. Deferred, needs a written agreement plus deletion sync.
 - Automated import of `KNOWLEDGE-BASE.md`. Ruled out, manual paste only.
-- The knowledge base publish flow and page shape. Deferred to its prototype.

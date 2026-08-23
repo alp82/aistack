@@ -29,6 +29,11 @@ import { extractShortId } from './lib/ids'
 import { firstSeenMachines } from './lib/machineOrdinals'
 import { type RepricedModel, repriceSnapshot, round2 } from './lib/reprice'
 import {
+  measureOne,
+  mergeSetEvidence,
+  setEvidence,
+} from './lib/measuredSets'
+import {
   MODEL_ID_MAX,
   NAME_MAX,
   isDisplaySafeName,
@@ -59,7 +64,7 @@ import {
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
 /** Payload schema versions this deployment accepts. */
-const SUPPORTED_SCHEMA_VERSIONS = [1]
+const SUPPORTED_SCHEMA_VERSIONS = [1, 2]
 
 // ---------------------------------------------------------------------------
 // Publish
@@ -67,6 +72,31 @@ const SUPPORTED_SCHEMA_VERSIONS = [1]
 
 /** The client emits date-only UTC (`toISOString().slice(0, 10)`). */
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const PROJECT_KEY_RE = /^[A-Za-z0-9_-]{22}$/
+const PROJECT_KEYS_MAX = 1_000
+const DAY_MS = 24 * 60 * 60 * 1_000
+
+function isCanonicalIsoDate(value: string): boolean {
+  if (!ISO_DATE_RE.test(value)) return false
+  const parsed = Date.parse(`${value}T00:00:00.000Z`)
+  return (
+    Number.isFinite(parsed) &&
+    new Date(parsed).toISOString().slice(0, 10) === value
+  )
+}
+
+function checkSortedUnique(
+  values: readonly string[],
+  where: string,
+  check: (value: string, index: number) => void
+): void {
+  values.forEach((value, index) => {
+    check(value, index)
+    if (index > 0 && values[index - 1] >= value) {
+      throw new Error(`${where} must be sorted with no duplicates`)
+    }
+  })
+}
 
 /**
  * Say what a string in the payload may be (#45).
@@ -124,6 +154,57 @@ function checkPayloadStrings(
     if (!ISO_DATE_RE.test(payload.window[key])) {
       throw new Error(`window.${key} must be an ISO date (YYYY-MM-DD)`)
     }
+  }
+
+  if (payload.schemaVersion === 2) {
+    for (const key of ['from', 'to'] as const) {
+      if (!isCanonicalIsoDate(payload.window[key])) {
+        throw new Error(`window.${key} must be a real UTC date`)
+      }
+    }
+    const fromMs = Date.parse(`${payload.window.from}T00:00:00.000Z`)
+    const toMs = Date.parse(`${payload.window.to}T00:00:00.000Z`)
+    const windowSpan = Math.floor((toMs - fromMs) / DAY_MS) + 1
+    if (windowSpan < 1 || payload.window.days !== windowSpan) {
+      throw new Error(
+        'window.days must equal the inclusive span from window.from through window.to'
+      )
+    }
+    checkSortedUnique(
+      payload.activity.activeDayDates,
+      'activity.activeDayDates',
+      (date, index) => {
+        if (!isCanonicalIsoDate(date)) {
+          throw new Error(
+            `activity.activeDayDates[${index}] must be an ISO date (YYYY-MM-DD)`
+          )
+        }
+        if (date < payload.window.from || date > payload.window.to) {
+          throw new Error(
+            `activity.activeDayDates[${index}] must be inside the payload window`
+          )
+        }
+      }
+    )
+    if (payload.activity.activeDayDates.length > payload.window.days) {
+      throw new Error('activity.activeDayDates cannot exceed window.days')
+    }
+    if (payload.activity.projectKeys.length > PROJECT_KEYS_MAX) {
+      throw new Error(
+        `activity.projectKeys must contain at most ${PROJECT_KEYS_MAX} entries`
+      )
+    }
+    checkSortedUnique(
+      payload.activity.projectKeys,
+      'activity.projectKeys',
+      (key, index) => {
+        if (!PROJECT_KEY_RE.test(key)) {
+          throw new Error(
+            `activity.projectKeys[${index}] must be 22 base64url characters`
+          )
+        }
+      }
+    )
   }
 
   payload.models.forEach((model, i) => {
@@ -266,6 +347,11 @@ const Cost = v.object({
   pricingTables: v.array(v.string()),
 })
 
+const MeasuredSetResult = v.object({
+  value: v.number(),
+  precision: v.union(v.literal('exact'), v.literal('lower-bound')),
+})
+
 /**
  * The models catalog, read once and indexed in memory.
  *
@@ -380,8 +466,8 @@ const HarnessSnapshot = v.object({
   cost: v.union(Cost, v.null()),
   activity: v.object({
     sessions: v.number(),
-    activeDays: v.number(),
-    projects: v.number(),
+    activeDays: MeasuredSetResult,
+    projects: MeasuredSetResult,
     totalTokens: v.number(),
     cacheHitShare: v.number(),
     subagentShare: v.number(),
@@ -417,19 +503,12 @@ const HarnessSnapshot = v.object({
  *
  * The headline SUMS what sums honestly - a session belongs to exactly one
  * harness on exactly one machine, so tokens, sessions and dollars cannot
- * double-count even when the windows overlap. What cannot merge stays
- * per-source: inventory atoms carry normalized `callShare` only (no weights, so
- * a cross-source number would be fabricated), and day-sets/project-sets can
- * overlap, so the headline shows `max` for those, labeled as such by the
- * display.
+ * double-count even when the windows overlap. Inventory atoms stay per-source:
+ * they carry normalized `callShare` only, with no weights for an honest merge.
  *
- * `max` is a LOWER BOUND once machines are in play, and knowingly so. Two
- * harnesses on one machine usually run on the same days; two machines often do
- * not, so a laptop active Mon-Wed and a server active Thu-Fri reads as 3 active
- * days rather than 5. A sum would be an upper bound and wrong the other way -
- * neither is recoverable, because the payload carries counts and not the day
- * set itself. Understating is the safer error for a number the page prints as
- * "N of 30", and widening the payload to carry day sets is the only real fix.
+ * V2 day and project sets union across sources. Immutable v1 rows carry counts,
+ * so a mixed reading returns the tight lower bound and names its precision.
+ * This distinction is evaluated again at each point on the trail.
  */
 const CurrentMeasured = v.object({
   /** Newest across sources; the freshness the page leads with. */
@@ -437,7 +516,7 @@ const CurrentMeasured = v.object({
   capturedAt: v.number(),
   /** True when ANY source synced inside the 7-day window. */
   isFresh: v.boolean(),
-  /** Envelope: max days, earliest from, latest to. */
+  /** Envelope: inclusive span from the earliest `from` through the latest `to`. */
   window: v.object({ days: v.number(), from: v.string(), to: v.string() }),
   /** Every cited price table, joined for display; null when none published cost. */
   pricingTable: v.union(v.string(), v.null()),
@@ -445,10 +524,8 @@ const CurrentMeasured = v.object({
   cost: v.union(Cost, v.null()),
   activity: v.object({
     sessions: v.number(),
-    /** MAX across sources, not a sum - the same day can appear in several. */
-    activeDays: v.number(),
-    /** MAX across sources - the same project can appear in several. */
-    projects: v.number(),
+    activeDays: MeasuredSetResult,
+    projects: MeasuredSetResult,
     totalTokens: v.number(),
     cacheHitShare: v.number(),
     subagentShare: v.number(),
@@ -471,6 +548,8 @@ function toHarnessSnapshot(
     publishedTable: p.pricingTable,
     publishCost,
   })
+  const activeDayEvidence = setEvidence(p, 'activeDays')
+  const projectEvidence = setEvidence(p, 'projects')
   return {
     machine: snapshot.machine ?? null,
     capturedAt: snapshot.capturedAt,
@@ -484,7 +563,18 @@ function toHarnessSnapshot(
     // not named at all.
     pricingTable: cost ? cost.pricingTables.join(' + ') : null,
     cost,
-    activity: p.activity,
+    activity: {
+      sessions: p.activity.sessions,
+      activeDays: measureOne(activeDayEvidence),
+      projects: measureOne(projectEvidence),
+      totalTokens: p.activity.totalTokens,
+      cacheHitShare: p.activity.cacheHitShare,
+      subagentShare: p.activity.subagentShare,
+    },
+    setEvidence: {
+      activeDays: activeDayEvidence,
+      projects: projectEvidence,
+    },
     models,
     inventory: p.inventory,
     coverage: p.coverage,
@@ -548,6 +638,13 @@ function mergeModels(lists: Priced[][]): Priced[] {
 
 type HarnessReading = ReturnType<typeof toHarnessSnapshot>
 
+function inclusiveDateSpan(from: string, to: string, fallback: number): number {
+  const fromMs = Date.parse(`${from}T00:00:00.000Z`)
+  const toMs = Date.parse(`${to}T00:00:00.000Z`)
+  const span = Math.floor((toMs - fromMs) / DAY_MS) + 1
+  return Number.isFinite(span) && span > 0 ? span : fallback
+}
+
 /**
  * Merge a set of per-source readings into the one figure the page states.
  *
@@ -596,21 +693,26 @@ function mergeHarnesses(harnesses: HarnessReading[]) {
           pricingTables,
         }
 
+  const from = harnesses.map((h) => h.window.from).sort()[0]
+  const to = harnesses.map((h) => h.window.to).sort()[harnesses.length - 1]
+  const fallbackDays = Math.max(...harnesses.map((h) => h.window.days))
   return {
     receivedAt: Math.max(...harnesses.map((h) => h.receivedAt)),
     capturedAt: Math.max(...harnesses.map((h) => h.capturedAt)),
     isFresh: harnesses.some((h) => h.isFresh),
     window: {
-      days: Math.max(...harnesses.map((h) => h.window.days)),
-      from: harnesses.map((h) => h.window.from).sort()[0],
-      to: harnesses.map((h) => h.window.to).sort()[harnesses.length - 1],
+      days: inclusiveDateSpan(from, to, fallbackDays),
+      from,
+      to,
     },
     pricingTable: pricingTables.length > 0 ? pricingTables.join(' + ') : null,
     cost,
     activity: {
       sessions: harnesses.reduce((a, h) => a + h.activity.sessions, 0),
-      activeDays: Math.max(...harnesses.map((h) => h.activity.activeDays)),
-      projects: Math.max(...harnesses.map((h) => h.activity.projects)),
+      activeDays: mergeSetEvidence(
+        harnesses.map((h) => h.setEvidence.activeDays)
+      ),
+      projects: mergeSetEvidence(harnesses.map((h) => h.setEvidence.projects)),
       totalTokens,
       cacheHitShare: inputClass ? cacheRead / inputClass : 0,
       subagentShare: totalTokens
@@ -621,7 +723,7 @@ function mergeHarnesses(harnesses: HarnessReading[]) {
         : 0,
     },
     models,
-    harnesses,
+    harnesses: harnesses.map(({ setEvidence: _setEvidence, ...harness }) => harness),
   }
 }
 
@@ -834,8 +936,8 @@ const HistoryPoint = v.object({
   tokens: v.number(),
   usd: v.union(v.number(), v.null()),
   sessions: v.number(),
-  activeDays: v.number(),
-  projects: v.number(),
+  activeDays: MeasuredSetResult,
+  projects: MeasuredSetResult,
   windowDays: v.number(),
   from: v.string(),
   to: v.string(),
@@ -2353,8 +2455,14 @@ export const publishForToken = internalMutation({
             harness: p.harness.name,
             windowDays: p.window.days,
             sessions: p.activity.sessions,
-            activeDays: p.activity.activeDays,
-            projects: p.activity.projects,
+            activeDays:
+              p.schemaVersion === 2
+                ? p.activity.activeDayDates.length
+                : p.activity.activeDays,
+            projects:
+              p.schemaVersion === 2
+                ? p.activity.projectKeys.length
+                : p.activity.projects,
             totalTokens: p.activity.totalTokens,
           })),
         },

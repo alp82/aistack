@@ -129,10 +129,9 @@ function Reading({
 }) {
 	// The COMBINED headline (#66 decision 2, #243): tokens, sessions and dollars
 	// sum honestly across every source, a source being one harness on one
-	// machine. Day-sets and project-sets can overlap between sources, so those
-	// two are a max and the label has to say so.
+	// machine. The server merges day and project sets, and carries precision for
+	// readings that still include count-only legacy rows (#252).
 	const cost = totalUSD(snapshot);
-	const multiSource = snapshot.harnesses.length > 1;
 	const trails = modelTrails(snapshot.models, points);
 	const firstAt = points.length > 0 ? points[0].at : null;
 	const sinceLast = lastCheckLine(tokenDelta(points), fmtTokens);
@@ -175,14 +174,26 @@ function Reading({
 
 				<ModelShareRows trails={trails} firstAt={firstAt} />
 
-				<div className="mt-8 grid grid-cols-2 gap-px border border-stroke-subtle bg-stroke-subtle sm:grid-cols-4">
+				<div className="mt-8 grid grid-cols-2 gap-px border border-stroke-subtle bg-stroke-subtle sm:grid-cols-5">
 					<Stat
 						label="sessions"
 						value={snapshot.activity.sessions.toLocaleString("en-US")}
 					/>
 					<Stat
-						label={multiSource ? "active days (max)" : "active days"}
-						value={`${snapshot.activity.activeDays} of ${snapshot.window.days}`}
+						label={
+							snapshot.activity.activeDays.precision === "lower-bound"
+								? "active days (at least)"
+								: "active days"
+						}
+						value={`${snapshot.activity.activeDays.value} of ${snapshot.window.days}`}
+					/>
+					<Stat
+						label={
+							snapshot.activity.projects.precision === "lower-bound"
+								? "project workspaces (at least)"
+								: "project workspaces"
+						}
+						value={snapshot.activity.projects.value.toLocaleString("en-US")}
 					/>
 					<Stat
 						label="cache hits"

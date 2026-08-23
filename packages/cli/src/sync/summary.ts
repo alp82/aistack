@@ -217,7 +217,7 @@ function payloadBlock(payload: MeasuredPayload, stats?: ScanStats): string[] {
 		`window    ${payload.window.days} days · ${payload.window.from} → ${payload.window.to}`,
 	);
 	out.push(
-		`activity  ${payload.activity.sessions} sessions · ${payload.activity.activeDays} active days · ${fmtTokens(payload.activity.totalTokens)} tokens`,
+		`activity  ${payload.activity.sessions} sessions · ${payload.activity.activeDayDates.length} active days · ${fmtTokens(payload.activity.totalTokens)} tokens`,
 	);
 	const usd = totalUSD(payload);
 	out.push(

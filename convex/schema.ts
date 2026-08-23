@@ -96,8 +96,14 @@ const MeasuredModel = v.object({
   pricingTable: v.optional(v.string()),
 })
 
-export const MeasuredPayload = v.object({
-  schemaVersion: v.number(),
+const MeasuredActivityFields = {
+  sessions: v.number(),
+  totalTokens: v.number(),
+  cacheHitShare: v.number(),
+  subagentShare: v.number(),
+}
+
+const MeasuredPayloadFields = {
   capturedAt: v.number(),
   window: v.object({
     days: v.number(),
@@ -109,16 +115,6 @@ export const MeasuredPayload = v.object({
     version: v.union(v.string(), v.null()),
   }),
   pricingTable: v.union(v.string(), v.null()),
-  activity: v.object({
-    sessions: v.number(),
-    activeDays: v.number(),
-    // COUNT only. Project directory names are munged absolute paths and are a
-    // standing non-goal (#13) - they never travel.
-    projects: v.number(),
-    totalTokens: v.number(),
-    cacheHitShare: v.number(),
-    subagentShare: v.number(),
-  }),
   models: v.array(MeasuredModel),
   inventory: v.object({
     builtinTools: v.array(MeasuredAtom),
@@ -148,7 +144,34 @@ export const MeasuredPayload = v.object({
     unpriced: v.number(),
     synthetic: v.number(),
   }),
+}
+
+const MeasuredPayloadV1 = v.object({
+  schemaVersion: v.literal(1),
+  ...MeasuredPayloadFields,
+  activity: v.object({
+    ...MeasuredActivityFields,
+    activeDays: v.number(),
+    // COUNT only. Project directory names are munged absolute paths and are a
+    // standing non-goal (#13) - they never travel.
+    projects: v.number(),
+  }),
 })
+
+const MeasuredPayloadV2 = v.object({
+  schemaVersion: v.literal(2),
+  ...MeasuredPayloadFields,
+  activity: v.object({
+    ...MeasuredActivityFields,
+    /** Sorted, unique UTC dates inside this payload's declared window. */
+    activeDayDates: v.array(v.string()),
+    /** Sorted, unique project workspace identifiers. Raw paths never travel. */
+    projectKeys: v.array(v.string()),
+  }),
+})
+
+/** Immutable v1 counts and mergeable v2 sets, discriminated by version. */
+export const MeasuredPayload = v.union(MeasuredPayloadV1, MeasuredPayloadV2)
 
 // The authored<->measured overlap is catalog slugs only (#33 decision 2), but
 // the dismissal key is kept wider than `tool` so a later surface can dismiss a
@@ -1168,6 +1191,13 @@ export default defineSchema({
     draftedAt: v.optional(v.number()),
     /** When the owner last moved this item out of the inbox. */
     decidedAt: v.optional(v.number()),
+    /** The send that published this item and its durable license notice. */
+    knowledgeBasePublication: v.optional(
+      v.object({
+        publishedAt: v.number(),
+        attribution: v.optional(v.string()),
+      })
+    ),
     updatedAt: v.number(),
   })
     // Dedupe. Every write path asks this one question first.

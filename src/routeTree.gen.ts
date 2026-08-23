@@ -39,6 +39,7 @@ import { Route as ApiSyncConfigRouteImport } from './routes/api.sync-config'
 import { Route as AdminIconsRouteImport } from './routes/admin_.icons'
 import { Route as StacksSlugEditRouteImport } from './routes/stacks.$slug_.edit'
 import { Route as StacksSlugChangesRouteImport } from './routes/stacks.$slug_.changes'
+import { Route as NewsTopicsSlugRouteImport } from './routes/news.topics.$slug'
 import { Route as ApiStacksSlugRouteImport } from './routes/api.stacks.$slug'
 import { Route as ApiIconsFromUrlRouteImport } from './routes/api.icons.from-url'
 import { Route as ApiCliSyncRouteImport } from './routes/api.cli.sync'
@@ -200,6 +201,11 @@ const StacksSlugChangesRoute = StacksSlugChangesRouteImport.update({
   path: '/stacks/$slug/changes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NewsTopicsSlugRoute = NewsTopicsSlugRouteImport.update({
+  id: '/news/topics/$slug',
+  path: '/news/topics/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiStacksSlugRoute = ApiStacksSlugRouteImport.update({
   id: '/api/stacks/$slug',
   path: '/api/stacks/$slug',
@@ -286,6 +292,7 @@ export interface FileRoutesByFullPath {
   '/api/cli/sync': typeof ApiCliSyncRoute
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/api/stacks/$slug': typeof ApiStacksSlugRoute
+  '/news/topics/$slug': typeof NewsTopicsSlugRoute
   '/stacks/$slug/changes': typeof StacksSlugChangesRoute
   '/stacks/$slug/edit': typeof StacksSlugEditRoute
   '/api/cli/auth/poll': typeof ApiCliAuthPollRoute
@@ -328,6 +335,7 @@ export interface FileRoutesByTo {
   '/api/cli/sync': typeof ApiCliSyncRoute
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/api/stacks/$slug': typeof ApiStacksSlugRoute
+  '/news/topics/$slug': typeof NewsTopicsSlugRoute
   '/stacks/$slug/changes': typeof StacksSlugChangesRoute
   '/stacks/$slug/edit': typeof StacksSlugEditRoute
   '/api/cli/auth/poll': typeof ApiCliAuthPollRoute
@@ -371,6 +379,7 @@ export interface FileRoutesById {
   '/api/cli/sync': typeof ApiCliSyncRoute
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/api/stacks/$slug': typeof ApiStacksSlugRoute
+  '/news/topics/$slug': typeof NewsTopicsSlugRoute
   '/stacks/$slug_/changes': typeof StacksSlugChangesRoute
   '/stacks/$slug_/edit': typeof StacksSlugEditRoute
   '/api/cli/auth/poll': typeof ApiCliAuthPollRoute
@@ -415,6 +424,7 @@ export interface FileRouteTypes {
     | '/api/cli/sync'
     | '/api/icons/from-url'
     | '/api/stacks/$slug'
+    | '/news/topics/$slug'
     | '/stacks/$slug/changes'
     | '/stacks/$slug/edit'
     | '/api/cli/auth/poll'
@@ -457,6 +467,7 @@ export interface FileRouteTypes {
     | '/api/cli/sync'
     | '/api/icons/from-url'
     | '/api/stacks/$slug'
+    | '/news/topics/$slug'
     | '/stacks/$slug/changes'
     | '/stacks/$slug/edit'
     | '/api/cli/auth/poll'
@@ -499,6 +510,7 @@ export interface FileRouteTypes {
     | '/api/cli/sync'
     | '/api/icons/from-url'
     | '/api/stacks/$slug'
+    | '/news/topics/$slug'
     | '/stacks/$slug_/changes'
     | '/stacks/$slug_/edit'
     | '/api/cli/auth/poll'
@@ -542,6 +554,7 @@ export interface RootRouteChildren {
   ApiCliSyncRoute: typeof ApiCliSyncRoute
   ApiIconsFromUrlRoute: typeof ApiIconsFromUrlRoute
   ApiStacksSlugRoute: typeof ApiStacksSlugRoute
+  NewsTopicsSlugRoute: typeof NewsTopicsSlugRoute
   StacksSlugChangesRoute: typeof StacksSlugChangesRoute
   StacksSlugEditRoute: typeof StacksSlugEditRoute
   ApiCliAuthPollRoute: typeof ApiCliAuthPollRoute
@@ -761,6 +774,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StacksSlugChangesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/news/topics/$slug': {
+      id: '/news/topics/$slug'
+      path: '/news/topics/$slug'
+      fullPath: '/news/topics/$slug'
+      preLoaderRoute: typeof NewsTopicsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/stacks/$slug': {
       id: '/api/stacks/$slug'
       path: '/api/stacks/$slug'
@@ -881,6 +901,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCliSyncRoute: ApiCliSyncRoute,
   ApiIconsFromUrlRoute: ApiIconsFromUrlRoute,
   ApiStacksSlugRoute: ApiStacksSlugRoute,
+  NewsTopicsSlugRoute: NewsTopicsSlugRoute,
   StacksSlugChangesRoute: StacksSlugChangesRoute,
   StacksSlugEditRoute: StacksSlugEditRoute,
   ApiCliAuthPollRoute: ApiCliAuthPollRoute,

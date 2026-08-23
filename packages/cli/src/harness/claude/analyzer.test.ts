@@ -515,6 +515,14 @@ describe("newestVersion", () => {
 });
 
 describe("privacy invariants of the aggregate", () => {
+	it("uses the raw cwd as the local project workspace when available", () => {
+		const agg = createAggregate();
+		ingestRecord(agg, assistant({ cwd: "/work/acme" }), {
+			projectDir: "-work-acme",
+		});
+		expect([...agg.projectDirs]).toEqual(["/work/acme"]);
+	});
+
 	it("counts project directories without exposing their names in finalize output", () => {
 		const agg = createAggregate();
 		ingestRecord(agg, assistant({}), {

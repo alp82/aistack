@@ -28,6 +28,7 @@ export type AssistantOptions = {
 	timestamp?: string;
 	sessionId?: string;
 	version?: string;
+	cwd?: string;
 	isSidechain?: boolean;
 	usage?: UsageFixture;
 	content?: unknown[];
@@ -52,6 +53,7 @@ export function assistant(
 	};
 	if (opts.requestId !== null) rec.requestId = opts.requestId ?? `req_${seq}`;
 	if (opts.version !== undefined) rec.version = opts.version;
+	if (opts.cwd !== undefined) rec.cwd = opts.cwd;
 	if (opts.isSidechain) rec.isSidechain = true;
 	return rec;
 }

@@ -34,12 +34,13 @@ the public headline flipped between 4B tokens and 8M day to day.
 
 ## Consequences
 
-`activeDays` and `projects` stay a `max` across sources and are therefore lower bounds: a
+Version 1 `activeDays` and `projects` counts remain lower bounds across multiple sources. A
 laptop active Monday to Wednesday and a server active Thursday and Friday reads as 3
 active days, not 5. A sum would be an upper bound and wrong in the other direction.
-Neither is recoverable, because the payload carries counts and not the day set. The
-display labels the number as a max whenever a stack has more than one source. Carrying day
-sets in the payload is the only real fix.
+
+Version 2 carries sets and unions them. Mixed version 1 and version 2 readings keep the
+tightest supported lower bound at each point on the trail. ADR-0007 records the set shape,
+project workspace identifiers, precision labels, and the merged window.
 
 Retention thins per source. Grouping on `(stack, day)` alone kept one row for the whole
 day, which subtracted a source from every later point once that day aged past the

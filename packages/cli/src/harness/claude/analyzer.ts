@@ -102,6 +102,12 @@ export function createAggregate(): Aggregate {
 
 export type IngestContext = { projectDir: string };
 
+/** Read the local project workspace directory from one untrusted record. */
+export function projectWorkspaceDirectory(raw: unknown): string | null {
+	const rec = asObj(raw);
+	return rec ? asStr(rec.cwd) : null;
+}
+
 /** Fold one parsed JSONL record into the aggregate. */
 export function ingestRecord(
 	agg: Aggregate,
@@ -112,7 +118,7 @@ export function ingestRecord(
 	if (!rec) return;
 
 	agg.records++;
-	agg.projectDirs.add(ctx.projectDir);
+	agg.projectDirs.add(projectWorkspaceDirectory(rec) ?? ctx.projectDir);
 
 	const version = asStr(rec.version);
 	if (version) agg.ccVersions.add(cleanName(version));

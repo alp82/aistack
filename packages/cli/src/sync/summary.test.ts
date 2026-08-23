@@ -35,15 +35,15 @@ const NO_KEPT_PRIVATE: Record<NameCategory, KeptPrivateAtom[]> = {
 
 function payload(over: Partial<MeasuredPayload> = {}): MeasuredPayload {
 	return {
-		schemaVersion: 1,
+		schemaVersion: 2,
 		capturedAt: 1_753_800_000_000,
 		window: { days: 30, from: "2026-06-30", to: "2026-07-30" },
 		harness: { name: "claude-code", version: "2.1.220" },
 		pricingTable: "2026-07",
 		activity: {
 			sessions: 382,
-			activeDays: 28,
-			projects: 12,
+			activeDayDates: ["2026-07-01", "2026-07-02", "2026-07-30"],
+			projectKeys: ["AAAAAAAAAAAAAAAAAAAAAA"],
 			totalTokens: 4_270_000_000,
 			cacheHitShare: 0.945,
 			subagentShare: 0.344,
@@ -214,13 +214,17 @@ describe("beat two - the dialog (binding copy, #48)", () => {
 });
 
 describe("beat one - the summary", () => {
+	test("counts active days from the dates in the payload", () => {
+		expect(buildGateSummary(ctx({}))).toContain(
+			"activity  382 sessions · 3 active days · 4.27B tokens",
+		);
+	});
+
 	test("the searched line names every harness this build looks for (#130)", () => {
 		const summary = buildGateSummary(ctx({}));
 		const lines = summary.split("\n");
 		const toIdx = lines.findIndex((l) => l.startsWith("to        "));
-		expect(lines[toIdx + 1]).toBe(
-			"searched  claude code, codex, opencode, pi",
-		);
+		expect(lines[toIdx + 1]).toBe("searched  claude code, codex, opencode, pi");
 	});
 
 	test("the harness header prints even for a single harness (#130)", () => {
