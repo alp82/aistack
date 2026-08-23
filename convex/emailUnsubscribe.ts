@@ -74,9 +74,31 @@ function ipFromForwardedFor(request: Request): string {
   return 'unknown'
 }
 
+/**
+ * Which category this link turns off (#204).
+ *
+ * Absent reads as `important-updates`, and that is not a fallback: every link
+ * already sitting in a sent inbox carries no category, and every one of those
+ * links was shipped with a broadcast, which is an important update. The
+ * newsletter did not exist when they were sent.
+ */
+function categoryFrom(url: URL): 'newsletter' | 'important-updates' {
+  return url.searchParams.get('category') === 'newsletter'
+    ? 'newsletter'
+    : 'important-updates'
+}
+
+const CATEGORY_LABEL = {
+  newsletter: 'the AI Stack newsletter',
+  'important-updates': 'important updates from AI Stack',
+} as const
+
 export const unsubscribe = httpAction(async (ctx, request) => {
   const isPost = request.method === 'POST'
-  const token = new URL(request.url).searchParams.get('token')
+  const url = new URL(request.url)
+  const token = url.searchParams.get('token')
+  const category = categoryFrom(url)
+  const label = CATEGORY_LABEL[category]
   const secret = process.env.BETTER_AUTH_SECRET
 
   // Secret guard - never 500. Without the signing secret we cannot verify any
@@ -138,12 +160,12 @@ export const unsubscribe = httpAction(async (ctx, request) => {
     // Mail-client one-click POSTs here directly with body
     // 'List-Unsubscribe=One-Click' - we ignore the body; the token in the URL
     // is the auth.
-    await ctx.runMutation(internal.email.recordUnsubscribe, { email })
+    await ctx.runMutation(internal.email.recordUnsubscribe, { email, category })
     return htmlResponse(
       brandedPage({
         label: '// Unsubscribe',
         heading: "You've Been Unsubscribed",
-        body: `<p style="font-size:16px;line-height:28px;color:#3d3d3d;margin:0">${escapeHtml(email)} will no longer receive broadcast emails from AI Stack.</p>`,
+        body: `<p style="font-size:16px;line-height:28px;color:#3d3d3d;margin:0">${escapeHtml(email)} will no longer receive ${label}. Your other email preferences are unchanged.</p>`,
       }),
       200,
     )
@@ -154,8 +176,8 @@ export const unsubscribe = httpAction(async (ctx, request) => {
     brandedPage({
       label: '// Unsubscribe',
       heading: 'Unsubscribe?',
-      body: `<p style="font-size:16px;line-height:28px;color:#3d3d3d;margin:0 0 32px">Stop receiving broadcast emails from AI Stack at <strong>${escapeHtml(email)}</strong>?</p>
-      <form method="POST" action="/api/email/unsubscribe?token=${token}">
+      body: `<p style="font-size:16px;line-height:28px;color:#3d3d3d;margin:0 0 32px">Stop receiving ${label} at <strong>${escapeHtml(email)}</strong>? Your other email preferences stay as they are.</p>
+      <form method="POST" action="/api/email/unsubscribe?token=${token}&amp;category=${category}">
         <button type="submit" style="display:inline-block;padding:16px 32px;background-color:#a3e635;color:#0a1f02;border:none;text-decoration:none;font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;font-size:15px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer">Unsubscribe</button>
       </form>`,
     }),

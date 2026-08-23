@@ -73,15 +73,25 @@ describe("admin validateSearch", () => {
 		expect(validateAdmin({ tab: "email", view: "broadcasts" })).toEqual({
 			tab: "email",
 			view: "broadcasts",
+			news: "inbox",
 		});
 	});
-	it("falls back on invalid tab / view", () => {
+	it("keeps a valid news sub-view", () => {
+		expect(validateAdmin({ tab: "news", news: "sources" })).toEqual({
+			tab: "news",
+			view: "templates",
+			news: "sources",
+		});
+	});
+	it("falls back on invalid tab / view / news", () => {
 		expect(validateAdmin({ tab: "bogus" }).tab).toBe("review");
 		expect(validateAdmin({ view: "nope" }).view).toBe("templates");
+		expect(validateAdmin({ news: "nope" }).news).toBe("inbox");
 	});
-	it("defaults are review / templates", () => {
+	it("defaults are review / templates / inbox", () => {
 		expect(validateAdmin({}).tab).toBe("review");
 		expect(validateAdmin({}).view).toBe("templates");
+		expect(validateAdmin({}).news).toBe("inbox");
 	});
 });
 

@@ -45,4 +45,10 @@ crons.daily(
 // midnight cannot double-count. `viewCounters` is permanent and is NOT touched.
 crons.interval('view-dedupe-cleanup', { hours: 1 }, internal.views.gcDedupe)
 
+// The news collector, tier 1: the generic feed and GitHub releases lane (#204,
+// map #198). Six-hourly, because the newsletter is weekly and a source that
+// posts twice a day is still caught four times before anyone reads the inbox.
+// The Hacker News lane (#208) and the scrapers (#210) get their own crons.
+crons.interval('news-collect', { hours: 6 }, internal.news.collect)
+
 export default crons

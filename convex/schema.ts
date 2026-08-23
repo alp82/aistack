@@ -265,6 +265,74 @@ export const AutoSyncState = v.object({
  */
 export const SyncTrigger = v.union(v.literal('manual'), v.literal('auto'))
 
+// ---------------------------------------------------------------------------
+// The news pipeline (#204, map #198). Spec: docs/specs/news-pipeline.md.
+// Terms are defined in CONTEXT.md and are used here exactly as written there.
+// ---------------------------------------------------------------------------
+
+/**
+ * What the collector reads. ONE literal today, because the collector core has
+ * one lane: a generic RSS/Atom reader that covers vendor blogs, newsletters,
+ * personal blogs, YouTube channels, the aggregator, and GitHub `releases.atom`.
+ *
+ * The Hacker News lane (#208) and the scrapers (#210) add their own literals
+ * when they land. A speculative literal now would be a kind no collector reads.
+ */
+export const NewsSourceKind = v.union(v.literal('feed'))
+
+/**
+ * What we may store and show for one piece of collected content. Straight from
+ * the re-serving table in docs/specs/news-pipeline.md.
+ *
+ * It rides on the ITEM as well as the source, frozen at collection time: the
+ * owner may relicense a source, and that must not retroactively change what we
+ * were allowed to keep from a post collected last month.
+ *
+ *   cc-by                     full text with attribution
+ *   permissive-release-notes  full text with attribution and license notice
+ *   unlicensed-release-notes  summary in our own words plus link
+ *   article                   headline, date, link, own summary, short quotes
+ *   hn                        titles and links, excerpts with a link back
+ *   x                         IDs and official oEmbed embeds only
+ */
+export const NewsLicenseClass = v.union(
+  v.literal('cc-by'),
+  v.literal('permissive-release-notes'),
+  v.literal('unlicensed-release-notes'),
+  v.literal('article'),
+  v.literal('hn'),
+  v.literal('x')
+)
+
+/**
+ * Where a news item is on its way to the stream (#204).
+ *
+ * `approved` means the item joined the item stream. The stream is still
+ * PRIVATE: each projection has its own publish act, so approval alone shows
+ * nothing to anyone.
+ */
+export const NewsItemState = v.union(
+  v.literal('inbox'),
+  v.literal('approved'),
+  v.literal('discarded')
+)
+
+/** How an item reached the inbox: the scheduled collector, or the owner. */
+export const NewsItemIntake = v.union(
+  v.literal('collector'),
+  v.literal('quick-add')
+)
+
+/**
+ * A preference toggle a recipient can turn off (#204). Every non-transactional
+ * send belongs to exactly ONE of these, and transactional mail belongs to
+ * neither: it always sends and has no toggle.
+ */
+export const EmailCategory = v.union(
+  v.literal('newsletter'),
+  v.literal('important-updates')
+)
+
 const ResourceOwner = v.union(
   v.object({ kind: v.literal('creator'), id: v.id('creators') }),
   v.object({ kind: v.literal('github'), handle: v.string() }),
@@ -529,6 +597,11 @@ export default defineSchema({
     .index('by_status', ['status'])
     .index('by_lookupId', ['lookupId']),
 
+  // DEPRECATED by `emailPreferences` (#204). Nothing reads or writes it any
+  // more. It stays one deploy longer because the migration that copies its
+  // rows reads FROM it: a column already dropped cannot be migrated from.
+  // Drop the table once `migrations/20260823_email_preferences:run` has run on
+  // prod.
   emailUnsubscribes: defineTable({
     email: v.string(),
     unsubscribedAt: v.number(),
@@ -904,4 +977,138 @@ export default defineSchema({
     // The feed's only query. `by_stack_createdAt` is deliberately NOT built -
     // nothing on this map reads per-stack activity. Add it when something does.
     .index('by_createdAt', ['createdAt']),
+
+  // -------------------------------------------------------------------------
+  // The news pipeline (#204, map #198). One item stream, two projections.
+  // -------------------------------------------------------------------------
+
+  // A place the collector reads. Owner-managed from the admin News tab.
+  newsSources: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    kind: NewsSourceKind,
+    url: v.string(),
+    licenseClass: NewsLicenseClass,
+    /** The license notice a permissive release-notes source must carry. */
+    attribution: v.optional(v.string()),
+    enabled: v.boolean(),
+    /**
+     * The collector ignores every item published before this moment.
+     *
+     * A feed serves its archive, not its news: the OpenAI feed returned 1139
+     * items to the prototype (#177). Without a floor, adding one source floods
+     * the inbox with years of posts nobody will ever work through. Set to the
+     * moment the source was added, so a source starts empty and collects
+     * forward. The owner can move it back to backfill on purpose.
+     */
+    collectFrom: v.number(),
+    /** Health, written by every poll. The Sources view reads these four. */
+    lastPolledAt: v.optional(v.number()),
+    lastOkAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    consecutiveFailures: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_slug', ['slug'])
+    .index('by_enabled', ['enabled']),
+
+  // An owner-managed label. Flat, and it evolves. One topic per item.
+  newsTopics: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    /** The owner's order, which is the order both projections group by. */
+    order: v.number(),
+    createdAt: v.number(),
+  })
+    .index('by_slug', ['slug'])
+    .index('by_order', ['order']),
+
+  // One collected link. The inbox is the rows in state `inbox`, and the item
+  // stream is the rows in state `approved`.
+  newsItems: defineTable({
+    /** The link as it arrived. This is the one shown and followed. */
+    url: v.string(),
+    /**
+     * The dedupe key, from `newsUrlKey` in convex/lib/feed.ts. Lossy and never
+     * displayed: one post reaches the collector through a vendor feed and
+     * through the aggregator that reposted it, and those are one item.
+     */
+    urlKey: v.string(),
+    headline: v.string(),
+    /** The source's own date. Absent when the feed carried none. */
+    publishedAt: v.optional(v.number()),
+    collectedAt: v.number(),
+    /** Absent on a quick-add item, which has no source row behind it. */
+    sourceId: v.optional(v.id('newsSources')),
+    intake: NewsItemIntake,
+    /** FROZEN from the source at collection time. See NewsLicenseClass. */
+    licenseClass: NewsLicenseClass,
+    /**
+     * The body as plain text, kept ONLY when the license class allows full-text
+     * re-serving. Absent is the normal state. Written at collection because a
+     * feed drops old entries and a dormant source cannot be read again.
+     */
+    sourceText: v.optional(v.string()),
+    state: NewsItemState,
+    /**
+     * The summary in our own words. The drafting skill writes it (#233, ADR
+     * 0003) and the owner edits it. Absent means undrafted, which is the state
+     * the next drafting run looks for. An item can sit in the inbox forever
+     * without one, because drafting never blocks collection.
+     */
+    summary: v.optional(v.string()),
+    topicId: v.optional(v.id('newsTopics')),
+    /** When a drafting run last wrote this item. Absent means undrafted. */
+    draftedAt: v.optional(v.number()),
+    /** When the owner last moved this item out of the inbox. */
+    decidedAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  })
+    // Dedupe. Every write path asks this one question first.
+    .index('by_urlKey', ['urlKey'])
+    // The inbox list and the stream list, newest first.
+    .index('by_state_collectedAt', ['state', 'collectedAt'])
+    // Per-source health and the cascade when a source is deleted.
+    .index('by_source', ['sourceId'])
+    // What a topic holds. The Topics view refuses to delete a topic in use.
+    .index('by_topic', ['topicId']),
+
+  // One week's composed newsletter. The compose flow itself is settled in the
+  // prototype (#202) and built in #201, which is why nothing here describes it.
+  newsIssues: defineTable({
+    /** 1, 2, 3. The public archive page is addressed by `slug`, not by this. */
+    number: v.number(),
+    slug: v.string(),
+    subject: v.string(),
+    intro: v.optional(v.string()),
+    /** The items, IN SEND ORDER. The order is the composition. */
+    itemIds: v.array(v.id('newsItems')),
+    status: v.union(v.literal('draft'), v.literal('sent')),
+    sentAt: v.optional(v.number()),
+    sentCount: v.optional(v.number()),
+    failedCount: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_slug', ['slug'])
+    .index('by_number', ['number'])
+    .index('by_status', ['status']),
+
+  // Per-category mail preferences (#204). Replaces the global
+  // `emailUnsubscribes` list, which could only say "never mail me again".
+  //
+  // ABSENT READS AS SUBSCRIBED TO BOTH. The audience is members and waitlist,
+  // subscribed by default, so a row records a REFUSAL and nothing else. That
+  // also makes the migration from the old table a straight copy: every global
+  // unsubscribe becomes one row with both categories off.
+  //
+  // Transactional mail never consults this table. It has no toggle.
+  emailPreferences: defineTable({
+    /** Trimmed and lowercased on every write. The address is the identity. */
+    email: v.string(),
+    newsletter: v.boolean(),
+    importantUpdates: v.boolean(),
+    updatedAt: v.number(),
+  }).index('by_email', ['email']),
 })

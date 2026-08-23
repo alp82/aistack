@@ -34,6 +34,7 @@ import type * as lib_autoSync from "../lib/autoSync.js";
 import type * as lib_avatar from "../lib/avatar.js";
 import type * as lib_cliScopes from "../lib/cliScopes.js";
 import type * as lib_iconUrl from "../lib/iconUrl.js";
+import type * as lib_feed from "../lib/feed.js";
 import type * as lib_ids from "../lib/ids.js";
 import type * as lib_names from "../lib/names.js";
 import type * as lib_reprice from "../lib/reprice.js";
@@ -46,6 +47,8 @@ import type * as migrations_20260729_cli_token_scopes from "../migrations/202607
 import type * as migrations_20260801_measured_model_catalog from "../migrations/20260801_measured_model_catalog.js";
 import type * as migrations_20260801_openai_models from "../migrations/20260801_openai_models.js";
 import type * as migrations_20260802_gpt56_models from "../migrations/20260802_gpt56_models.js";
+import type * as migrations_20260823_email_preferences from "../migrations/20260823_email_preferences.js";
+import type * as migrations_20260823_news_phase1_sources from "../migrations/20260823_news_phase1_sources.js";
 import type * as migrations__archived_migrateBlockToReference from "../migrations/_archived/migrateBlockToReference.js";
 import type * as migrations__archived_migrateNotesToDescription from "../migrations/_archived/migrateNotesToDescription.js";
 import type * as migrations__archived_migrateStackDescriptions from "../migrations/_archived/migrateStackDescriptions.js";
@@ -53,6 +56,7 @@ import type * as migrations__archived_populateShortIds from "../migrations/_arch
 import type * as migrations_backup from "../migrations/backup.js";
 import type * as migrations_icons from "../migrations/icons.js";
 import type * as models from "../models.js";
+import type * as news from "../news.js";
 import type * as projects from "../projects.js";
 import type * as rateLimit from "../rateLimit.js";
 import type * as resources from "../resources.js";
@@ -101,6 +105,7 @@ declare const fullApi: ApiFromModules<{
   "lib/avatar": typeof lib_avatar;
   "lib/cliScopes": typeof lib_cliScopes;
   "lib/iconUrl": typeof lib_iconUrl;
+  "lib/feed": typeof lib_feed;
   "lib/ids": typeof lib_ids;
   "lib/names": typeof lib_names;
   "lib/reprice": typeof lib_reprice;
@@ -113,6 +118,8 @@ declare const fullApi: ApiFromModules<{
   "migrations/20260801_measured_model_catalog": typeof migrations_20260801_measured_model_catalog;
   "migrations/20260801_openai_models": typeof migrations_20260801_openai_models;
   "migrations/20260802_gpt56_models": typeof migrations_20260802_gpt56_models;
+  "migrations/20260823_email_preferences": typeof migrations_20260823_email_preferences;
+  "migrations/20260823_news_phase1_sources": typeof migrations_20260823_news_phase1_sources;
   "migrations/_archived/migrateBlockToReference": typeof migrations__archived_migrateBlockToReference;
   "migrations/_archived/migrateNotesToDescription": typeof migrations__archived_migrateNotesToDescription;
   "migrations/_archived/migrateStackDescriptions": typeof migrations__archived_migrateStackDescriptions;
@@ -120,6 +127,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/backup": typeof migrations_backup;
   "migrations/icons": typeof migrations_icons;
   models: typeof models;
+  news: typeof news;
   projects: typeof projects;
   rateLimit: typeof rateLimit;
   resources: typeof resources;
