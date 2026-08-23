@@ -1,0 +1,1742 @@
+{
+  "collectedAt": "2026-08-23T11:45:38.234Z",
+  "windowDays": 14,
+  "items": [
+    {
+      "headline": "Ox Alpha lands with 1M-token context",
+      "url": "https://aicrier.com/post/sfqf9eazof31s8pt16x5",
+      "publishedAt": "2026-08-23T11:14:45.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Claude Fable 5 pushes long-horizon coding",
+      "url": "https://aicrier.com/post/d05m7v7vjz04z5cscavi",
+      "publishedAt": "2026-08-23T10:49:53.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Fable 5’s Harness Gap Beats Model Gap",
+      "url": "https://aicrier.com/post/pfg6wy7lmi3s3cayrhqm",
+      "publishedAt": "2026-08-23T09:36:37.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "fx, open-slide make one-off decks cheap",
+      "url": "https://aicrier.com/post/ogzhasfibq3h7m9x9279",
+      "publishedAt": "2026-08-23T09:32:40.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "ASC CLI 4.8.0 Expands Release Automation",
+      "url": "https://aicrier.com/post/u247bc0bq12hho3dnnyq",
+      "publishedAt": "2026-08-23T08:34:28.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "AI Engineering from Scratch Maps AI’s Full Stack",
+      "url": "https://aicrier.com/post/5pawqcwhlug0yjf0sev7",
+      "publishedAt": "2026-08-23T07:55:41.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Mu turns email into agent control",
+      "url": "https://aicrier.com/post/gjrstggp2xbi3k50x7yi",
+      "publishedAt": "2026-08-23T07:23:49.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Traycer Orchestrates Claude Code, Codex Side By Side",
+      "url": "https://aicrier.com/post/l474wnf2fxno3n7g22vw",
+      "publishedAt": "2026-08-23T07:14:30.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "ENOVA Tames Self-Hosted LLM Serving",
+      "url": "https://aicrier.com/post/wnced6u0e1ffh0oy6s5d",
+      "publishedAt": "2026-08-23T06:30:03.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Codex Addresses Rate-Limit Usage Drain",
+      "url": "https://aicrier.com/post/wjemi8zut918o3p3k9fz",
+      "publishedAt": "2026-08-23T06:11:36.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "4DAnyone turns casual video into 4D",
+      "url": "https://aicrier.com/post/nmkll8cxo6b7fyyiuyhk",
+      "publishedAt": "2026-08-23T04:15:35.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "SenseNova U1.5 brings native 4K",
+      "url": "https://aicrier.com/post/lkehf8pfavvy4a19mxc7",
+      "publishedAt": "2026-08-23T04:15:35.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Evoke brings persistent memory to world models",
+      "url": "https://aicrier.com/post/1ytjtj6l1llal55odqro",
+      "publishedAt": "2026-08-23T04:15:35.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Nvidia Eyes $6B Poolside Model Factory",
+      "url": "https://aicrier.com/post/z2h414w43545a2v8tq6p",
+      "publishedAt": "2026-08-23T02:00:02.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Release v0.56.0-nightly.20260823.g5411f113c",
+      "url": "https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0-nightly.20260823.g5411f113c",
+      "publishedAt": "2026-08-23T01:15:05.000Z",
+      "source": "gemini-cli releases",
+      "sourceId": "gemini-cli",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "v2.1.241",
+      "url": "https://github.com/anthropics/claude-code/releases/tag/v2.1.241",
+      "publishedAt": "2026-08-23T00:52:16.000Z",
+      "source": "claude-code releases",
+      "sourceId": "claude-code",
+      "licenseClass": "unlicensed-release-notes"
+    },
+    {
+      "headline": "Orca makes agent work shareable",
+      "url": "https://aicrier.com/post/7hddtoszlq7bpg2nk1yo",
+      "publishedAt": "2026-08-23T00:09:09.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Tesla Wins Vegas Robotaxi Approval",
+      "url": "https://aicrier.com/post/xkc5eczi63pr9shkbwsi",
+      "publishedAt": "2026-08-23T00:04:02.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "AgentMail wins after Gmail agent bans",
+      "url": "https://aicrier.com/post/t93u2ar9xn92e4swr5q4",
+      "publishedAt": "2026-08-22T22:48:44.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "OCI GoldenGate brings embeddings into replication",
+      "url": "https://aicrier.com/post/t3wq0ubzdmfe7940ooua",
+      "publishedAt": "2026-08-22T22:00:01.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Sub2API expands multi-model gateway",
+      "url": "https://aicrier.com/post/7abhk8i1hvs738jvn3sc",
+      "publishedAt": "2026-08-22T21:56:05.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "PromptOT Treats Prompts Like Production Code",
+      "url": "https://aicrier.com/post/qedtsmp916b9yt1lor1t",
+      "publishedAt": "2026-08-22T21:33:51.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "0.150.0-alpha.7",
+      "url": "https://github.com/openai/codex/releases/tag/rust-v0.150.0-alpha.7",
+      "publishedAt": "2026-08-22T21:29:43.000Z",
+      "source": "codex releases",
+      "sourceId": "codex",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "Quoting Linus Torvalds",
+      "url": "https://simonwillison.net/2026/Aug/22/linus-torvalds/",
+      "publishedAt": "2026-08-22T21:04:26.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Notion Agents Make Databases Self-Maintaining",
+      "url": "https://aicrier.com/post/bar8dc6krwy49fe9p0jm",
+      "publishedAt": "2026-08-22T20:44:46.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Linear report maps AI’s output shift",
+      "url": "https://aicrier.com/post/cohvd7agti5qc4pvkzlo",
+      "publishedAt": "2026-08-22T20:14:37.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "0.149.0-alpha.7.2",
+      "url": "https://github.com/openai/codex/releases/tag/rust-v0.149.0-alpha.7.2",
+      "publishedAt": "2026-08-22T19:52:02.000Z",
+      "source": "codex releases",
+      "sourceId": "codex",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "Google Antigravity Remote Control Reaches Every Screen",
+      "url": "https://aicrier.com/post/c11e5xhnrvioom3hhelv",
+      "publishedAt": "2026-08-22T19:46:13.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Iterator.zip Brings Native Data Alignment",
+      "url": "https://aicrier.com/post/75g6m45whxqh4y06bnpf",
+      "publishedAt": "2026-08-22T18:14:48.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Explicit Resource Management brings scoped cleanup",
+      "url": "https://aicrier.com/post/6247dnux5em6i9pdky4g",
+      "publishedAt": "2026-08-22T18:14:48.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Atomics.pause Brings Smarter JavaScript Spin-Waits",
+      "url": "https://aicrier.com/post/qudpv9so58xqgq6wasmv",
+      "publishedAt": "2026-08-22T18:14:48.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "OpenAI Tests Two Next-Gen Image Models",
+      "url": "https://aicrier.com/post/4blgxeitqc3nkjae2ezm",
+      "publishedAt": "2026-08-22T17:13:35.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "llm 0.33",
+      "url": "https://simonwillison.net/2026/Aug/22/llm/",
+      "publishedAt": "2026-08-22T17:01:16.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Claude Code Users Flag Hidden Effort Cuts",
+      "url": "https://aicrier.com/post/sdxp2a9gapj80q9gdund",
+      "publishedAt": "2026-08-22T16:58:49.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "plan-and-execute orchestrates fresh subagents",
+      "url": "https://aicrier.com/post/b5ru5k8hq6mdqhp6ces9",
+      "publishedAt": "2026-08-22T16:34:26.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "FreeToken Makes Frontier MoE More Local",
+      "url": "https://aicrier.com/post/thwsj418wpvbgu8xa5nv",
+      "publishedAt": "2026-08-22T16:33:57.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Active Inference Reframes AI Agent Context",
+      "url": "https://aicrier.com/post/0897vs4rekcg1olk69xf",
+      "publishedAt": "2026-08-22T16:25:02.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "MCP Roadmap Puts Agents On HTTP",
+      "url": "https://aicrier.com/post/670i6640c8ivkl77f1qt",
+      "publishedAt": "2026-08-22T16:06:39.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "More than just code review",
+      "url": "https://simonwillison.net/2026/Aug/22/more-than-just-code-review/",
+      "publishedAt": "2026-08-22T15:56:54.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Google DeepMind Team Uses Claude Code",
+      "url": "https://aicrier.com/post/x5a8tjkpnhcp01x5qvwn",
+      "publishedAt": "2026-08-22T15:32:19.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Letta brings persistent memory to agent harnesses",
+      "url": "https://aicrier.com/post/ts8t0uckim9b79lb363o",
+      "publishedAt": "2026-08-22T15:30:03.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "DeAR Reimagines Multi-Agent Reasoning Peer-to-Peer",
+      "url": "https://aicrier.com/post/zaxed603ai26uwim9q6g",
+      "publishedAt": "2026-08-22T15:29:31.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Anti-Slop Makes TypeScript Slop Fail Lint",
+      "url": "https://aicrier.com/post/dpu2x6e9eadzral1ok8h",
+      "publishedAt": "2026-08-22T15:14:28.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Pi, Hermes Make Harnesses Ownable",
+      "url": "https://aicrier.com/post/bx3gnzgicqzju2s4jbwl",
+      "publishedAt": "2026-08-22T15:06:07.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Claude Code Workflow Scales Past Four Agents",
+      "url": "https://aicrier.com/post/f5ik50xt4d6hnuzxyxwk",
+      "publishedAt": "2026-08-22T14:49:55.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "v2.1.240",
+      "url": "https://github.com/anthropics/claude-code/releases/tag/v2.1.240",
+      "publishedAt": "2026-08-22T14:45:30.000Z",
+      "source": "claude-code releases",
+      "sourceId": "claude-code",
+      "licenseClass": "unlicensed-release-notes"
+    },
+    {
+      "headline": "Grok Bot Courts Rival AI Switchers",
+      "url": "https://aicrier.com/post/aks29pnle1mvpakv4s3g",
+      "publishedAt": "2026-08-22T14:37:06.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "GeoLibre 2.7.0 expands cloud-native GIS",
+      "url": "https://aicrier.com/post/cmuxjrhhwz4shb02dpn8",
+      "publishedAt": "2026-08-22T14:25:01.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Meshing Gets Fable 5-Powered Iteration",
+      "url": "https://aicrier.com/post/ti4yx5pjiqy061engiku",
+      "publishedAt": "2026-08-22T14:18:09.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "LEGO-RL lifts coding agents across harnesses",
+      "url": "https://aicrier.com/post/p0edae81b2phqhvzm6ls",
+      "publishedAt": "2026-08-22T14:14:34.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Co-RL unlocks reasoning through diverse peers",
+      "url": "https://aicrier.com/post/0r2avnovti726x2hvl5n",
+      "publishedAt": "2026-08-22T14:14:34.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "ASC CLI Makes App Store Releases Scriptable",
+      "url": "https://aicrier.com/post/cubff2zczk0dukkdq8l0",
+      "publishedAt": "2026-08-22T14:05:45.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Whop CLI Turns Business Data Into Hermes Tasks",
+      "url": "https://aicrier.com/post/0b6lx0x9ug8xvm4q0fag",
+      "publishedAt": "2026-08-22T14:02:02.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "RedC2 4.0 Hidden in 14 npm Packages",
+      "url": "https://aicrier.com/post/uxinipfs3zjpdbtn5v1p",
+      "publishedAt": "2026-08-22T13:26:57.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "NEXUS AI Targets Governed Enterprise Vibe Coding",
+      "url": "https://aicrier.com/post/ghq6lfianxpo8eruhi85",
+      "publishedAt": "2026-08-22T13:26:30.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Anthropic Reconsiders Frontier-Model Data Retention",
+      "url": "https://aicrier.com/post/hd8fza19qc9zglwkj95o",
+      "publishedAt": "2026-08-22T13:25:29.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "SGLang Makes Model Restarts Nearly Instant",
+      "url": "https://aicrier.com/post/7rclljvf76hnd8gnfey0",
+      "publishedAt": "2026-08-22T13:12:00.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "TanStack AI Enters Release Candidate Phase",
+      "url": "https://aicrier.com/post/10sq3nrijjua55xyq346",
+      "publishedAt": "2026-08-22T12:30:58.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Benchy Tests LLMs Where Benchmarks Break",
+      "url": "https://aicrier.com/post/jjn1k87y3lywdlkewsrd",
+      "publishedAt": "2026-08-22T12:14:31.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Qwen3.8-27B Tops Hugging Face Trending",
+      "url": "https://aicrier.com/post/0rytqz52bn1cbtfzs360",
+      "publishedAt": "2026-08-22T12:00:01.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Ox Alpha Stuns With One-Shot Game Build",
+      "url": "https://aicrier.com/post/96nn9f6wqaefdr27ecn6",
+      "publishedAt": "2026-08-22T11:44:38.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Claude Fable 5 stays frontier favorite",
+      "url": "https://aicrier.com/post/3s8hs24839wxo576ai52",
+      "publishedAt": "2026-08-22T11:30:31.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "ZCode’s 100M-Token Weekend Gets Tested",
+      "url": "https://aicrier.com/post/3lmk5mg1ghw0bzj2vbx8",
+      "publishedAt": "2026-08-22T11:14:33.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Qwen2.5-32B Brings Uncensored AI to Macs",
+      "url": "https://aicrier.com/post/rv1t5gas4lvdzg9jjfiy",
+      "publishedAt": "2026-08-22T10:58:11.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Qwen3.8-2.4T Raises Open-Weight Bar",
+      "url": "https://aicrier.com/post/jnc3b4d9fho9mkunutlm",
+      "publishedAt": "2026-08-22T10:57:16.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Playwriter Gives Agents Real Chrome",
+      "url": "https://aicrier.com/post/1vh4rj5ma3x6je3q5ncs",
+      "publishedAt": "2026-08-22T10:30:04.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Lightpanda adds Exa search for agents",
+      "url": "https://aicrier.com/post/wbdxsesrlc8s3oq7cugk",
+      "publishedAt": "2026-08-22T10:10:54.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Vercel launches Is Agentic for agent-ready websites",
+      "url": "https://aicrier.com/post/9cgyh7r6d0x3vhocqt6k",
+      "publishedAt": "2026-08-22T09:31:38.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Agent Sandboxes Expose AI’s Compute Ceiling",
+      "url": "https://aicrier.com/post/b9489idkzhz6vf07ntt3",
+      "publishedAt": "2026-08-22T08:32:20.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Mercury Cloud Refreshes Free Model Limits",
+      "url": "https://aicrier.com/post/ql4kfyauqg3xhgabh35v",
+      "publishedAt": "2026-08-22T08:30:19.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "[AINews] 10% worse, 100x cheaper, 10000x faster: Why Simulation is taking over",
+      "url": "https://www.latent.space/p/ainews-10-worse-100x-cheaper-10000x",
+      "publishedAt": "2026-08-22T07:36:00.000Z",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "The Evolution of the Agent Harness",
+      "url": "https://www.latent.space/p/attention-interface",
+      "publishedAt": "2026-08-22T07:30:52.000Z",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "DeepSeek Grayscale Tests Hint At Stronger Checkpoint",
+      "url": "https://aicrier.com/post/yz9zq2ubnf1f9q756ir9",
+      "publishedAt": "2026-08-22T07:17:47.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Ox Alpha scores 80% on DeepSWE",
+      "url": "https://aicrier.com/post/h6j1hut0pmc5pabqboxi",
+      "publishedAt": "2026-08-22T07:17:47.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Anthropic Makes Claude Agent Tools GA",
+      "url": "https://aicrier.com/post/6x4vhoqukvqkxy5nbfc4",
+      "publishedAt": "2026-08-22T07:17:47.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "KerasFormers Unifies 118 Models Across Keras 3",
+      "url": "https://aicrier.com/post/kiv4vhnu59vqr1oeid5m",
+      "publishedAt": "2026-08-22T07:01:00.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Quick RSS Brings Private Feeds to MCP",
+      "url": "https://aicrier.com/post/avz1u6f655dswngu6dq2",
+      "publishedAt": "2026-08-22T07:01:00.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Agents Never Sleep Keeps Mac Agents Running",
+      "url": "https://aicrier.com/post/605hehuvfrn0wm8jxzsx",
+      "publishedAt": "2026-08-22T07:01:00.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "SubtitleGenerator puts caption QA in browser",
+      "url": "https://aicrier.com/post/vu2p7sw0ecem58man8z4",
+      "publishedAt": "2026-08-22T07:01:00.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "PawVis Turns Webcam Into Gesture Mouse",
+      "url": "https://aicrier.com/post/k4xviv8f3qpoq2s2flqa",
+      "publishedAt": "2026-08-22T07:01:00.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Meta Pocket expands vibe-coded gizmos to US users",
+      "url": "https://aicrier.com/post/bq9yvdprjlrz076orm6i",
+      "publishedAt": "2026-08-22T07:01:00.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Toplify launches global App Store rank tracking",
+      "url": "https://aicrier.com/post/li9vegqb7a5i4hl0ku6f",
+      "publishedAt": "2026-08-22T07:01:00.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "VeloFiler Rebuilds Mac File Management",
+      "url": "https://aicrier.com/post/q26ugzyhry1tsmgl4ouf",
+      "publishedAt": "2026-08-22T07:01:00.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Maccess Brings Agentic Mac Control To iPhone",
+      "url": "https://aicrier.com/post/vxdcu7ag9w22rghz46t6",
+      "publishedAt": "2026-08-22T07:01:00.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Port Radar launches AI port manager",
+      "url": "https://aicrier.com/post/tu7p63uyj3zonesof68b",
+      "publishedAt": "2026-08-22T07:01:00.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Kuaishou Profit Slide Overshadows Kling AI Growth",
+      "url": "https://aicrier.com/post/ai161jy5j5uak0d6n6uk",
+      "publishedAt": "2026-08-22T06:51:21.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Now That’s What I Call Slop! Ships App",
+      "url": "https://aicrier.com/post/6bcp2cj2sedmtbddn8u6",
+      "publishedAt": "2026-08-22T04:06:48.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Kairic Edge targets Strix Halo inference",
+      "url": "https://aicrier.com/post/92jjdpzjx622ysanj2fd",
+      "publishedAt": "2026-08-22T03:29:38.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Binance Agent OS Opens Finance to Agents",
+      "url": "https://aicrier.com/post/edv4t63kprp2kwhg6cnt",
+      "publishedAt": "2026-08-22T03:06:04.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "tsx Simplifies TypeScript Execution in Node.js",
+      "url": "https://aicrier.com/post/kfa2uyjm8cvrvh5zmnkb",
+      "publishedAt": "2026-08-22T02:10:01.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Browser Use Refreshes Proxy Country Picker",
+      "url": "https://aicrier.com/post/2c25t3jmk8qgoytwm033",
+      "publishedAt": "2026-08-22T02:09:00.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "OpenAI cuts GPT-5.6 Sol API prices",
+      "url": "https://aicrier.com/post/i3dyga30gjjljuml5j1x",
+      "publishedAt": "2026-08-22T02:01:11.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "TabSurfer brings Raycast-style tab control",
+      "url": "https://aicrier.com/post/gvz6pxtgzumjhd4ip3p7",
+      "publishedAt": "2026-08-22T01:10:51.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Release v0.56.0-nightly.20260822.g5411f113c",
+      "url": "https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0-nightly.20260822.g5411f113c",
+      "publishedAt": "2026-08-22T01:10:05.000Z",
+      "source": "gemini-cli releases",
+      "sourceId": "gemini-cli",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "Codex makes software optimization cheap",
+      "url": "https://aicrier.com/post/zepgyx80nnvrtjog4ph9",
+      "publishedAt": "2026-08-22T01:06:17.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Apache Maka Brings Logs to Agent Workspaces",
+      "url": "https://aicrier.com/post/dn6rhw6al4hwre6e36lu",
+      "publishedAt": "2026-08-22T00:15:01.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Simulation: the new Scaling Law — Joon Sung Park, Simile AI",
+      "url": "https://www.latent.space/p/simile",
+      "publishedAt": "2026-08-21T23:37:38.000Z",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Peter Steinberger Drops New OpenClaw Skill",
+      "url": "https://aicrier.com/post/585rxvwj55to6vrlgqxi",
+      "publishedAt": "2026-08-21T23:36:32.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Browser Use Hits Human-Speed Browsing",
+      "url": "https://aicrier.com/post/bf4dom4g5xq2migj5eif",
+      "publishedAt": "2026-08-21T23:03:57.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "0.150.0-alpha.6",
+      "url": "https://github.com/openai/codex/releases/tag/rust-v0.150.0-alpha.6",
+      "publishedAt": "2026-08-21T22:45:27.000Z",
+      "source": "codex releases",
+      "sourceId": "codex",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "OpenAI’s Efficiency Flywheel Keeps Widening",
+      "url": "https://aicrier.com/post/m5ylay1uziw83xxzzov0",
+      "publishedAt": "2026-08-21T22:25:12.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Xcode Cloud Turns App Delivery Into CI/CD",
+      "url": "https://aicrier.com/post/xkfrhjwrqq1ubyo0oxsy",
+      "publishedAt": "2026-08-21T21:58:56.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Grok Bot, Cursor Turn Coding Into Delegation",
+      "url": "https://aicrier.com/post/ns7pol4yhf8v750hoo0a",
+      "publishedAt": "2026-08-21T21:38:30.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Devin Makes GPT-5.6 Sol Cheapest Frontier Model",
+      "url": "https://aicrier.com/post/yitm7gczlam5y7xdcxfi",
+      "publishedAt": "2026-08-21T21:09:14.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Hono Brings Web Standards Across Runtimes",
+      "url": "https://aicrier.com/post/djsk3q9h4fa10b0wjqd9",
+      "publishedAt": "2026-08-21T21:00:13.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Grok Bot Turns Bug Queues Into Workflows",
+      "url": "https://aicrier.com/post/cbgy0w03k1gq7ikh9bv7",
+      "publishedAt": "2026-08-21T20:57:49.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Box Takes Aim at AI Sandbox Margins",
+      "url": "https://aicrier.com/post/rpg24okf3qtift1sc10v",
+      "publishedAt": "2026-08-21T20:56:22.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Open Agent Connect puts Cursor bots online",
+      "url": "https://aicrier.com/post/9n6xo86vaerrttyk65bq",
+      "publishedAt": "2026-08-21T20:33:55.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Grok Bot Makes Chief of Staff Manager",
+      "url": "https://aicrier.com/post/8fl3zhh0grtde0h3u955",
+      "publishedAt": "2026-08-21T20:31:25.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Cursor Kenya Sets August 28 Build Night",
+      "url": "https://aicrier.com/post/veq20b2bt5vtw2xyb915",
+      "publishedAt": "2026-08-21T20:23:28.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Cursor Frankfurt Build Day Set for Aug. 28",
+      "url": "https://aicrier.com/post/j1jtct4m2t5lvj17bupr",
+      "publishedAt": "2026-08-21T20:20:44.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Claude Connectors Start Sending Gmail Replies",
+      "url": "https://aicrier.com/post/a8qn9ykf7zju0bbvsx3z",
+      "publishedAt": "2026-08-21T20:20:24.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Viktor's API Makes Agent Work Portable",
+      "url": "https://aicrier.com/post/r0kha965u2w2nu7jerz8",
+      "publishedAt": "2026-08-21T20:10:41.000Z",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "v2.1.239",
+      "url": "https://github.com/anthropics/claude-code/releases/tag/v2.1.239",
+      "publishedAt": "2026-08-21T19:54:23.000Z",
+      "source": "claude-code releases",
+      "sourceId": "claude-code",
+      "licenseClass": "unlicensed-release-notes"
+    },
+    {
+      "headline": "0.150.0-alpha.5",
+      "url": "https://github.com/openai/codex/releases/tag/rust-v0.150.0-alpha.5",
+      "publishedAt": "2026-08-21T18:15:02.000Z",
+      "source": "codex releases",
+      "sourceId": "codex",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "rust-v0.150.0-alpha.4",
+      "url": "https://github.com/openai/codex/releases/tag/rust-v0.150.0-alpha.4",
+      "publishedAt": "2026-08-21T17:25:02.000Z",
+      "source": "codex releases",
+      "sourceId": "codex",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "llm 0.32.1",
+      "url": "https://simonwillison.net/2026/Aug/21/llm/",
+      "publishedAt": "2026-08-21T17:16:13.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "llm-openrouter 0.7",
+      "url": "https://simonwillison.net/2026/Aug/21/llm-openrouter/",
+      "publishedAt": "2026-08-21T16:58:19.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "0.150.0-alpha.3",
+      "url": "https://github.com/openai/codex/releases/tag/rust-v0.150.0-alpha.3",
+      "publishedAt": "2026-08-21T16:46:55.000Z",
+      "source": "codex releases",
+      "sourceId": "codex",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "Stop Making TUIs",
+      "url": "https://simonwillison.net/2026/Aug/21/stop-making-tuis/",
+      "publishedAt": "2026-08-21T16:07:32.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Quoting Matt Webb",
+      "url": "https://simonwillison.net/2026/Aug/21/matt-webb/",
+      "publishedAt": "2026-08-21T15:06:26.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "v1.18.21",
+      "url": "https://github.com/anomalyco/opencode/releases/tag/v1.18.21",
+      "publishedAt": "2026-08-21T14:51:11.000Z",
+      "source": "opencode releases",
+      "sourceId": "opencode",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "v1.18.20",
+      "url": "https://github.com/anomalyco/opencode/releases/tag/v1.18.20",
+      "publishedAt": "2026-08-21T08:09:31.000Z",
+      "source": "opencode releases",
+      "sourceId": "opencode",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "[AINews] Poolside gets $12B reverse-execuhire to NVIDIA; founders stay for $1B, employees go for $6B, Infraco scaling to 7GW neocloud",
+      "url": "https://www.latent.space/p/ainews-poolside-gets-12b-reverse",
+      "publishedAt": "2026-08-21T05:45:21.000Z",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "0.149.0-alpha.7.1",
+      "url": "https://github.com/openai/codex/releases/tag/rust-v0.149.0-alpha.7.1",
+      "publishedAt": "2026-08-21T05:25:00.000Z",
+      "source": "codex releases",
+      "sourceId": "codex",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "0.150.0-alpha.2",
+      "url": "https://github.com/openai/codex/releases/tag/rust-v0.150.0-alpha.2",
+      "publishedAt": "2026-08-21T04:26:31.000Z",
+      "source": "codex releases",
+      "sourceId": "codex",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "0.149.0-alpha.4.1",
+      "url": "https://github.com/openai/codex/releases/tag/rust-v0.149.0-alpha.4.1",
+      "publishedAt": "2026-08-21T02:31:36.000Z",
+      "source": "codex releases",
+      "sourceId": "codex",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "Release v0.56.0-nightly.20260821.g30573d2e4",
+      "url": "https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0-nightly.20260821.g30573d2e4",
+      "publishedAt": "2026-08-21T01:08:09.000Z",
+      "source": "gemini-cli releases",
+      "sourceId": "gemini-cli",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "ChatGPT search now uses the site:operator at scale",
+      "url": "https://simonwillison.net/2026/Aug/20/chatgpt-search-now-uses-the-siteoperator-at-scale/",
+      "publishedAt": "2026-08-20T23:57:32.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "0.150.0-alpha.1",
+      "url": "https://github.com/openai/codex/releases/tag/rust-v0.150.0-alpha.1",
+      "publishedAt": "2026-08-20T22:09:25.000Z",
+      "source": "codex releases",
+      "sourceId": "codex",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "The /wayfinder Skill: Navigating the “Fog of War” of Planning",
+      "url": "https://www.latent.space/p/wayfinder-skill",
+      "publishedAt": "2026-08-20T20:59:09.000Z",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "v2.1.238",
+      "url": "https://github.com/anthropics/claude-code/releases/tag/v2.1.238",
+      "publishedAt": "2026-08-20T20:33:51.000Z",
+      "source": "claude-code releases",
+      "sourceId": "claude-code",
+      "licenseClass": "unlicensed-release-notes"
+    },
+    {
+      "headline": "A shot-scraper-style JSON API on Bun 1.4's new Bun.WebView",
+      "url": "https://simonwillison.net/2026/Aug/20/bun-webview-json-api/",
+      "publishedAt": "2026-08-20T15:37:00.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Introducing AI Futures",
+      "url": "https://openai.com/index/introducing-ai-futures",
+      "publishedAt": "2026-08-20T07:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "v1.18.19",
+      "url": "https://github.com/anomalyco/opencode/releases/tag/v1.18.19",
+      "publishedAt": "2026-08-20T06:22:06.000Z",
+      "source": "opencode releases",
+      "sourceId": "opencode",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "[AINews] Death of Params: Z.ai CEO Jie Tang on GLM 5.3 and the new Post-training Scaling Law",
+      "url": "https://www.latent.space/p/ainews-death-of-params-zai-ceo-jie",
+      "publishedAt": "2026-08-20T05:17:12.000Z",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Release v0.56.0-nightly.20260820.ge90c63fa1",
+      "url": "https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0-nightly.20260820.ge90c63fa1",
+      "publishedAt": "2026-08-20T01:27:23.000Z",
+      "source": "gemini-cli releases",
+      "sourceId": "gemini-cli",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "v2.1.237",
+      "url": "https://github.com/anthropics/claude-code/releases/tag/v2.1.237",
+      "publishedAt": "2026-08-20T00:54:41.000Z",
+      "source": "claude-code releases",
+      "sourceId": "claude-code",
+      "licenseClass": "unlicensed-release-notes"
+    },
+    {
+      "headline": "Stampli cuts launch hours by 68% using ChatGPT Work",
+      "url": "https://openai.com/index/stampli",
+      "publishedAt": "2026-08-20T00:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "smolmachines / smolvm as a sandbox for untrusted Python & JavaScript",
+      "url": "https://simonwillison.net/2026/Aug/19/smolmachines-untrusted-sandbox/",
+      "publishedAt": "2026-08-19T23:16:00.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Quoting Jeremy Morrell",
+      "url": "https://simonwillison.net/2026/Aug/19/jeremy-morrell/",
+      "publishedAt": "2026-08-19T22:56:31.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Conceptual integrity and counting lines of code",
+      "url": "https://simonwillison.net/2026/Aug/19/conceptual-integrity-and-counting-lines-of-code/",
+      "publishedAt": "2026-08-19T22:46:07.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "v2.1.236",
+      "url": "https://github.com/anthropics/claude-code/releases/tag/v2.1.236",
+      "publishedAt": "2026-08-19T20:02:05.000Z",
+      "source": "claude-code releases",
+      "sourceId": "claude-code",
+      "licenseClass": "unlicensed-release-notes"
+    },
+    {
+      "headline": "Release v0.56.0",
+      "url": "https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0",
+      "publishedAt": "2026-08-19T19:29:38.000Z",
+      "source": "gemini-cli releases",
+      "sourceId": "gemini-cli",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "Release v0.57.0-preview.0",
+      "url": "https://github.com/google-gemini/gemini-cli/releases/tag/v0.57.0-preview.0",
+      "publishedAt": "2026-08-19T19:18:35.000Z",
+      "source": "gemini-cli releases",
+      "sourceId": "gemini-cli",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "Offering Zero Data Retention for frontier models",
+      "url": "https://openai.com/index/offering-zero-data-retention-for-frontier-models",
+      "publishedAt": "2026-08-19T19:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "5 new ways to level up your learning with Search",
+      "url": "https://blog.google/products-and-platforms/products/search/back-to-school-study-tools/",
+      "publishedAt": "2026-08-19T19:00:00.000Z",
+      "source": "Google AI Blog",
+      "sourceId": "google-ai-blog",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "[AINews] Memory prices up 500% in 12 months",
+      "url": "https://www.latent.space/p/ainews-memory-prices-up-500-in-12",
+      "publishedAt": "2026-08-19T08:44:52.000Z",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Replit expands access to software creation with GPT-5.6 Luna",
+      "url": "https://openai.com/index/replit",
+      "publishedAt": "2026-08-19T07:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Release v0.56.0-nightly.20260819.g571851b10",
+      "url": "https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0-nightly.20260819.g571851b10",
+      "publishedAt": "2026-08-19T01:07:23.000Z",
+      "source": "gemini-cli releases",
+      "sourceId": "gemini-cli",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "ChatGPT Ads expands across Europe",
+      "url": "https://openai.com/index/chatgpt-ads-expands-across-europe",
+      "publishedAt": "2026-08-18T22:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Frontier Model Cost and Open-Weights Popularity is Driving Demand for Model Routing",
+      "url": "https://www.latent.space/p/glean-model-routing",
+      "publishedAt": "2026-08-18T21:41:10.000Z",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Mojo🔥 is now open source",
+      "url": "https://simonwillison.net/2026/Aug/18/mojo-is-now-open-source/",
+      "publishedAt": "2026-08-18T21:39:20.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "v2.1.235",
+      "url": "https://github.com/anthropics/claude-code/releases/tag/v2.1.235",
+      "publishedAt": "2026-08-18T20:38:54.000Z",
+      "source": "claude-code releases",
+      "sourceId": "claude-code",
+      "licenseClass": "unlicensed-release-notes"
+    },
+    {
+      "headline": "Strengthening democratic oversight in national security",
+      "url": "https://openai.com/index/strengthening-democratic-oversight-in-national-security",
+      "publishedAt": "2026-08-18T19:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Partnering with CodeAI to prepare the first AI generation",
+      "url": "https://openai.com/index/partnering-with-codeai",
+      "publishedAt": "2026-08-18T11:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Pacing model development in an era of cyber-critical capabilities",
+      "url": "https://openai.com/index/pacing-model-development-cyber-capabilities",
+      "publishedAt": "2026-08-18T11:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Introducing ChatGPT for Teens: Built for learning, backed by protections",
+      "url": "https://openai.com/index/chatgpt-for-teens",
+      "publishedAt": "2026-08-18T11:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Asana cleared 5 years of engineering work in 2 weeks with Codex",
+      "url": "https://openai.com/index/asana",
+      "publishedAt": "2026-08-18T07:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Release v0.56.0-nightly.20260818.g194edea47",
+      "url": "https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0-nightly.20260818.g194edea47",
+      "publishedAt": "2026-08-18T01:00:05.000Z",
+      "source": "gemini-cli releases",
+      "sourceId": "gemini-cli",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "How NVIDIA scales expertise with ChatGPT Work",
+      "url": "https://openai.com/index/nvidia/chatgpt-work",
+      "publishedAt": "2026-08-18T00:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Qwen 3.8 27B scores 52 on the Artificial Analysis Intelligence Index",
+      "url": "https://simonwillison.net/2026/Aug/17/qwen-38-27b-scores-52/",
+      "publishedAt": "2026-08-17T23:58:14.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "[AINews] Stripe buys OpenRouter for $7B",
+      "url": "https://www.latent.space/p/ainews-stripe-buys-openrouter-for",
+      "publishedAt": "2026-08-17T23:13:41.000Z",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "v2.1.234",
+      "url": "https://github.com/anthropics/claude-code/releases/tag/v2.1.234",
+      "publishedAt": "2026-08-17T20:20:58.000Z",
+      "source": "claude-code releases",
+      "sourceId": "claude-code",
+      "licenseClass": "unlicensed-release-notes"
+    },
+    {
+      "headline": "We Tracked a Shipment of Rare Books. It Ended at an Amazon AI Training Facility",
+      "url": "https://simonwillison.net/2026/Aug/17/we-tracked-a-shipment-of-rare-books-it-ended-at-an-amazon-ai-tra/",
+      "publishedAt": "2026-08-17T15:21:29.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Get closer to the game with Gemini and Pixel",
+      "url": "https://blog.google/products-and-platforms/products/gemini/google-gemini-pixel-football-club-partnerships/",
+      "publishedAt": "2026-08-17T08:00:00.000Z",
+      "source": "Google AI Blog",
+      "sourceId": "google-ai-blog",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "The Defender’s Window",
+      "url": "https://openai.com/index/the-defenders-window",
+      "publishedAt": "2026-08-17T05:30:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "OpenAI joins PORTS-Pike project",
+      "url": "https://openai.com/index/openai-joins-ports-pike-project",
+      "publishedAt": "2026-08-17T05:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "New policy ideas for the Intelligence Age",
+      "url": "https://openai.com/index/new-policy-ideas-for-the-intelligence-age",
+      "publishedAt": "2026-08-17T03:15:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Release v0.56.0-nightly.20260817.g9a15c45fb",
+      "url": "https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0-nightly.20260817.g9a15c45fb",
+      "publishedAt": "2026-08-17T01:08:01.000Z",
+      "source": "gemini-cli releases",
+      "sourceId": "gemini-cli",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "Markdown SVG upgrades",
+      "url": "https://simonwillison.net/2026/Aug/16/markdown-svg-upgrades/",
+      "publishedAt": "2026-08-16T23:59:37.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Qwen 3.8 27B is excellent, but it defaults to wildly overthinking things",
+      "url": "https://simonwillison.net/2026/Aug/16/qwen-38-27b/",
+      "publishedAt": "2026-08-16T22:00:39.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Quoting Dario Amodei",
+      "url": "https://simonwillison.net/2026/Aug/16/dario-amodei/",
+      "publishedAt": "2026-08-16T15:05:36.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Release v0.56.0-nightly.20260816.g2a87e7be1",
+      "url": "https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0-nightly.20260816.g2a87e7be1",
+      "publishedAt": "2026-08-16T01:09:18.000Z",
+      "source": "gemini-cli releases",
+      "sourceId": "gemini-cli",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "React for Agents: Astro Creator Brings Hooks to his Meta-Harness, Flue",
+      "url": "https://www.latent.space/p/flue-2",
+      "publishedAt": "2026-08-15T15:46:22.000Z",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "CORS Chat",
+      "url": "https://simonwillison.net/2026/Aug/15/cors-chat/",
+      "publishedAt": "2026-08-15T14:49:54.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Northern Gannet",
+      "url": "https://simonwillison.net/2026/Aug/15/sighting-391300422/",
+      "publishedAt": "2026-08-15T03:22:00.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "v2.1.233",
+      "url": "https://github.com/anthropics/claude-code/releases/tag/v2.1.233",
+      "publishedAt": "2026-08-14T22:20:57.000Z",
+      "source": "claude-code releases",
+      "sourceId": "claude-code",
+      "licenseClass": "unlicensed-release-notes"
+    },
+    {
+      "headline": "Don't classify. Hallucinate!",
+      "url": "https://simonwillison.net/2026/Aug/14/dont-classify-hallucinate/",
+      "publishedAt": "2026-08-14T21:54:35.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "v0.84.2",
+      "url": "https://github.com/earendil-works/pi/releases/tag/v0.84.2",
+      "publishedAt": "2026-08-14T10:14:32.000Z",
+      "source": "pi releases",
+      "sourceId": "pi",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "[AINews] Cursor's $60B acquisition by SpaceXai closes",
+      "url": "https://www.latent.space/p/ainews-cursors-60b-acquisition-by",
+      "publishedAt": "2026-08-14T06:16:00.000Z",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "[AINews] Gemini 3.7 Flash brings GDM back to the forefront",
+      "url": "https://www.latent.space/p/ainews-gemini-37-flash-brings-gdm",
+      "publishedAt": "2026-08-14T05:30:39.000Z",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "sqlite-utils 4.2.1",
+      "url": "https://simonwillison.net/2026/Aug/13/sqlite-utils-2/",
+      "publishedAt": "2026-08-13T23:53:47.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "v2.1.232",
+      "url": "https://github.com/anthropics/claude-code/releases/tag/v2.1.232",
+      "publishedAt": "2026-08-13T23:29:59.000Z",
+      "source": "claude-code releases",
+      "sourceId": "claude-code",
+      "licenseClass": "unlicensed-release-notes"
+    },
+    {
+      "headline": "sqlite-utils 4.2",
+      "url": "https://simonwillison.net/2026/Aug/13/sqlite-utils/",
+      "publishedAt": "2026-08-13T20:11:29.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "llm-gemini 0.33",
+      "url": "https://simonwillison.net/2026/Aug/13/llm-gemini/",
+      "publishedAt": "2026-08-13T19:37:34.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Bring your spreadsheet data to life with Sheets canvas",
+      "url": "https://blog.google/products-and-platforms/products/workspace/sheets-canvas-for-google-sheets-spreadsheets/",
+      "publishedAt": "2026-08-13T16:45:00.000Z",
+      "source": "Google AI Blog",
+      "sourceId": "google-ai-blog",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "The builder’s guide to GPT‑5.6",
+      "url": "https://openai.com/index/builders-guide-to-gpt-5-6",
+      "publishedAt": "2026-08-13T11:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Previewing Ultrafast mode: GPT-5.6 Sol at up to 14X the speed",
+      "url": "https://openai.com/index/previewing-ultrafast",
+      "publishedAt": "2026-08-13T10:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "OpenAI appoints Dali Rajic as Chief Revenue Officer",
+      "url": "https://openai.com/index/dali-rajic-chief-revenue-officer",
+      "publishedAt": "2026-08-13T09:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "alchemy-utils 0.1a1",
+      "url": "https://simonwillison.net/2026/Aug/13/alchemy-utils/",
+      "publishedAt": "2026-08-13T03:03:17.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "[AINews] SpaceXAI Grok 4.6 and Grok @Bot",
+      "url": "https://www.latent.space/p/ainews-spacexai-grok-46-and-grok",
+      "publishedAt": "2026-08-13T01:53:47.000Z",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "v1.18.18",
+      "url": "https://github.com/anomalyco/opencode/releases/tag/v1.18.18",
+      "publishedAt": "2026-08-13T01:39:55.000Z",
+      "source": "opencode releases",
+      "sourceId": "opencode",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "DeepSeek V4 Pro 0813 (on OpenRouter)",
+      "url": "https://simonwillison.net/2026/Aug/12/deepseek-v4-pro-0813/",
+      "publishedAt": "2026-08-12T23:59:23.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "v1.18.17",
+      "url": "https://github.com/anomalyco/opencode/releases/tag/v1.18.17",
+      "publishedAt": "2026-08-12T20:25:07.000Z",
+      "source": "opencode releases",
+      "sourceId": "opencode",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "alchemy-utils 0.1a0",
+      "url": "https://simonwillison.net/2026/Aug/12/alchemy-utils/",
+      "publishedAt": "2026-08-12T19:51:30.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Quoting Florian Herrengt",
+      "url": "https://simonwillison.net/2026/Aug/12/florian-herrengt/",
+      "publishedAt": "2026-08-12T15:08:47.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "[AINews] How to steal a Reasoning Trace",
+      "url": "https://www.latent.space/p/ainews-how-to-steal-a-reasoning-trace",
+      "publishedAt": "2026-08-12T07:11:08.000Z",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "From assistance to execution: How enterprises put AI to work",
+      "url": "https://openai.com/index/how-enterprises-put-ai-to-work",
+      "publishedAt": "2026-08-12T06:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "How RingCentral builds AI-native work from engineering to ops",
+      "url": "https://openai.com/index/ringcentral",
+      "publishedAt": "2026-08-12T00:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "There are no lossless transformations of natural-language text",
+      "url": "https://simonwillison.net/2026/Aug/11/there-are-no-lossless-transformations-of-natural-language-text/",
+      "publishedAt": "2026-08-11T23:48:35.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Stealing Reasoning Traces from Proprietary LLM APIs",
+      "url": "https://simonwillison.net/2026/Aug/11/stealing-reasoning-traces/",
+      "publishedAt": "2026-08-11T22:40:45.000Z",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "🔬The BioAI Phase Shift - Matthew McPartlon & Neil Patil, Chai Discovery",
+      "url": "https://www.latent.space/p/chai-discovery",
+      "publishedAt": "2026-08-11T21:03:50.000Z",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "AMIE, our research medical AI system, demonstrates real-time clinical video consultation capabilities in a first-of-its-kind study.",
+      "url": "https://blog.google/innovation-and-ai/models-and-research/google-research/amie-video-consultations/",
+      "publishedAt": "2026-08-11T17:00:00.000Z",
+      "source": "Google AI Blog",
+      "sourceId": "google-ai-blog",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Testing ads in ChatGPT",
+      "url": "https://openai.com/index/testing-ads-in-chatgpt",
+      "publishedAt": "2026-08-11T10:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Daybreak models are now available on AWS",
+      "url": "https://openai.com/index/daybreak-models-are-now-available-on-aws",
+      "publishedAt": "2026-08-11T10:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "[AINews] Muse Glimmer and Spark: Open Weights return Personal Superintelligence promise",
+      "url": "https://www.latent.space/p/ainews-muse-glimmer-and-spark-open",
+      "publishedAt": "2026-08-11T05:16:41.000Z",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "What building an AI-native finance function taught me",
+      "url": "https://openai.com/index/building-an-ai-native-finance-function",
+      "publishedAt": "2026-08-10T17:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Evolve your marketing with new AI tools",
+      "url": "https://blog.google/products/ads-commerce/google-ads-analytics-ai-updates/",
+      "publishedAt": "2026-08-10T14:30:00.000Z",
+      "source": "Google AI Blog",
+      "sourceId": "google-ai-blog",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "OpenAI’s letter to Governor Abbott on responsible AI infrastructure in Texas",
+      "url": "https://openai.com/index/responsible-ai-infrastructure-texas",
+      "publishedAt": "2026-08-10T14:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Model ML completes finance work more efficiently with GPT-5.6 Sol",
+      "url": "https://openai.com/index/model-ml",
+      "publishedAt": "2026-08-10T12:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Putting frontier cyber models in more trusted hands",
+      "url": "https://openai.com/index/putting-frontier-cyber-models-in-more-trusted-hands",
+      "publishedAt": "2026-08-10T10:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Expanding Daybreak as the Cyber Defense Window Narrows",
+      "url": "https://openai.com/index/expanding-daybreak-as-the-cyber-defense-window-narrows",
+      "publishedAt": "2026-08-10T10:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "v1.18.16",
+      "url": "https://github.com/anomalyco/opencode/releases/tag/v1.18.16",
+      "publishedAt": "2026-08-10T06:07:08.000Z",
+      "source": "opencode releases",
+      "sourceId": "opencode",
+      "licenseClass": "permissive-release-notes"
+    },
+    {
+      "headline": "Premium seats are coming to ChatGPT Business",
+      "url": "https://openai.com/index/premium-seats-chatgpt-business",
+      "publishedAt": "2026-08-10T00:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "Virgin Atlantic sharpens customer journeys with ChatGPT Work",
+      "url": "https://openai.com/index/virgin-atlantic/chatgpt-work",
+      "publishedAt": "2026-08-10T00:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    },
+    {
+      "headline": "How Zapier transformed core marketing processes with ChatGPT Work",
+      "url": "https://openai.com/index/zapier",
+      "publishedAt": "2026-08-10T00:00:00.000Z",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article"
+    }
+  ]
+}
