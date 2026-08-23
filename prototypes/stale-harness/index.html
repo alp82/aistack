@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Prototype · alp82/aistack#253 · a stale harness hiding inside a fresh machine · settled</title>
+<!--
+  PROTOTYPE. Throwaway. alp82/aistack#253: does the page say that one harness
+  inside a machine was read long before the machine's headline reading, and if
+  so, where.
+
+  ================================ THE VERDICT ================================
+
+  NOTHING SHIPS. One round, 2026-08-23. The section stays exactly as #244
+  settled it, which is variant 0 on the bar and the one this file opens on.
+
+  A machine still reads as fresh as its newest harness. The reader still gets
+  one merged number, and the 48-hour auto-sync box (#107) stays the only
+  staleness remedy the page carries. Nothing on the stack page names a source's
+  own age.
+
+  #244 met this twice and moved it out both times: round 3 kept it out of the
+  machine dropdown, round 4 kept it out of the harness list. This ticket asked
+  the question a third time, with the two rejected placements plus a third that
+  neither round had been offered, and the answer was the same.
+
+  The other four variants stay in this file. They are what was on the table, and
+  a later effort that reopens this question should start from them rather than
+  redraw them.
+
+  ============================== WHAT WAS ON THE TABLE ==========================
+
+  Flip them on the bar. Every one renders the settled #244 section, and they
+  differ only in where the older reading shows.
+
+  0. NOTHING. Chosen. The settled section, untouched.
+
+  1. THE FRESHNESS LINE. "checked 1 hour ago" gains one clause naming the oldest
+     source: "checked 1 hour ago · Codex read 3 days ago". No new element, and
+     it rides wherever that line already sits. It was the recommendation, on the
+     ground that it reaches every stack shape and that #244 had never been
+     offered it. Rejected.
+
+  2. THE HARNESS ROWS. Every row in the by-harness list carries its own reading
+     age, so no row is singled out. Rejected here, and already rejected as a
+     stale marker in #244 round 4.
+
+  3. THE DROPDOWN ROWS. Each machine option's "read 1 hour ago" gains "· oldest
+     3 days ago". Rejected here, and already rejected in #244 round 3.
+
+  4. EVERYWHERE. All three at once. Rejected.
+
+  ============================ THE COPY RULE THIS OBEYS ========================
+
+  `src/features/measured/freshness.ts` states it: what the page says is an AGE,
+  never a judgement, and the word "stale" reaches no surface (#40). So no mocked
+  surface below carries the word, and every variant states when a reading landed.
+  The ticket's own title uses it. The page may not.
+
+  ================================= THE TRIGGER ================================
+
+  A second control, because where and when were two questions.
+
+    ALWAYS    the section speaks whenever the sources in the current selection
+              carry different readings.
+    OVER 48H  it speaks only when the oldest source in the selection is past the
+              48-hour line the page already uses (`STALE_AFTER_HOURS`, #107).
+
+  It was never put to a vote, because the placement question closed first. Set
+  STACK to `all fresh` to see what the two triggers cost. Every source there was
+  read today, and `always` still prints a clause on a stack that is working as
+  intended.
+
+  =============================== HOW A SOURCE IS NAMED =======================
+
+  Inside one machine, the harness alone: "Codex read 3 days ago". Under `all
+  machines`, the harness plus the machine: "Codex on workstation read 3 days
+  ago", because two machines can run the same harness and the harness alone
+  would not say which one lagged. The machine part obeys the #42/#48 gate the
+  same way the dropdown does, so an unticked machine reads "machine 2".
+
+  THE CONTROLS.
+
+    STACK    balanced · lopsided (real) · one machine, two harnesses · all fresh · single
+    TRIGGER  always · over 48h
+    GATE     all ticked · partial · none ticked
+    VIEW     reader · owner
+
+  WHAT IS REAL AND WHAT IS INVENTED. The `alppc` figures are the shipped
+  analyzer's own output on the owner's Claude Code history, taken unchanged from
+  `src/features/measured/__tests__/snapshot.fixture.json`. Every other machine,
+  every reading time and every trail is invented. No live sync feeds this page.
+
+  FINDINGS, FOR WHOEVER REOPENS THIS.
+
+  1. Neither rejected placement could have carried every stack anyway. The
+     harness rows miss the lopsided stack, which runs one harness on two
+     machines and so has no by-harness list. The dropdown misses a one-machine
+     stack, which has no dropdown. Only the freshness line reaches all three
+     shapes, and it was rejected too.
+  2. On a stack with no dropdown the freshness line rides in the section header,
+     and that slot is `display: none` below 768px on the live page (#244 finding
+     2). Any future signal placed there has to deal with that.
+  3. A clause reading the oldest source in the CURRENT selection goes quiet when
+     the reader narrows to a machine holding one source. Narrow the balanced
+     stack to the laptop and variant 1 says nothing.
+  4. Every age here comes from `receivedAt`, the server clock, never `capturedAt`
+     (#38).
+  5. The builder of #251 ships no per-source freshness signal. The dropdown row
+     states when its machine was read, and that reading is the machine's newest.
+-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    color-scheme: dark;
+    --bg-canvas: oklch(0.16 0.008 256);
+    --bg-shell: oklch(0.12 0.01 256);
+    --bg-panel: oklch(0.2 0.009 256);
+    --bg-panel-muted: oklch(0.24 0.009 256);
+    --bg-panel-elevated: oklch(0.28 0.01 256);
+    --fg-primary: oklch(0.96 0.004 256);
+    --fg-secondary: oklch(0.82 0.004 256);
+    --fg-muted: oklch(0.68 0.005 256);
+    --accent-lime: oklch(0.78 0.17 132);
+    --accent-lime-contrast: oklch(0.22 0.02 132);
+    --stroke-subtle: oklch(0.55 0.01 256 / 0.45);
+    --stroke-strong: oklch(0.5 0.015 256 / 0.9);
+    --chart-1: #69a621;
+    --chart-2: #9e71fd;
+    --chart-3: #c21977;
+    --chart-4: #4278d2;
+    --chart-5: #00a99b;
+    --chart-6: #e66700;
+    /* Machines and harnesses: a neutral lightness ramp, never the model palette. */
+    --src-1: oklch(0.92 0.004 256);
+    --src-2: oklch(0.72 0.006 256);
+    --src-3: oklch(0.54 0.008 256);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg-canvas);
+    color: var(--fg-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 200px;
+  }
+  .mono { font-family: 'JetBrains Mono', 'Fira Code', Menlo, monospace; }
+
+  /* ---------- prototype chrome (never part of the design) ---------- */
+  .ticket-strip {
+    background: var(--bg-shell);
+    border-bottom: 1px solid var(--stroke-subtle);
+    padding: 10px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.08em;
+    color: var(--fg-muted); text-transform: uppercase;
+  }
+  .ticket-strip b { color: var(--accent-lime); font-weight: 700; }
+
+  .proposal { margin: 20px auto 0; max-width: 80rem; padding: 0 16px; }
+  .proposal-box {
+    border: 2px dashed oklch(0.75 0.09 85 / 0.7);
+    padding: 14px 16px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 1.75;
+    color: var(--fg-secondary);
+  }
+  .proposal-box .tag { color: oklch(0.75 0.09 85); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-size: 10px; display: block; margin-bottom: 8px; }
+  .proposal-box b { color: var(--fg-primary); }
+  .proposal-box .q { display: block; margin-top: 8px; }
+  .proposal-box .q b { color: var(--accent-lime); }
+  .note-box {
+    border: 1px dashed var(--stroke-strong); padding: 9px 12px; margin-top: 12px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em;
+    color: var(--fg-muted); line-height: 1.65;
+  }
+
+  /* ---------- section shell (mirrors the live page) ---------- */
+  section.journey { padding: 40px 16px; border-top: 1px solid var(--stroke-subtle); }
+  @media (min-width: 768px) { section.journey { padding: 60px 24px; } }
+  .shell { max-width: 80rem; margin: 0 auto; }
+  .sec-head {
+    display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--stroke-subtle);
+    padding-bottom: 18px; margin-bottom: 28px;
+  }
+  .sec-index { font-family: 'JetBrains Mono', monospace; font-size: 40px; font-weight: 800; line-height: 1; color: var(--stroke-strong); }
+  @media (min-width: 768px) { .sec-index { font-size: 64px; } }
+  .sec-kicker { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.25em; text-transform: uppercase; color: var(--accent-lime); margin: 0; }
+  .sec-title { font-size: 26px; font-weight: 900; letter-spacing: -0.02em; text-transform: uppercase; margin: 4px 0 0; line-height: 1; }
+  @media (min-width: 768px) { .sec-title { font-size: 36px; } }
+  .head-copy { flex: 1 1 auto; min-width: 0; }
+  /* The live page hides this slot below 768px. Finding 2. */
+  .sec-meta { display: none; font-family: 'JetBrains Mono', monospace; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--fg-muted); }
+  @media (min-width: 768px) { .sec-meta { display: block; } }
+  /* The dropdown lives here, so it has to be visible at every width. */
+  .sec-meta.always { display: block; flex: 0 0 auto; }
+
+  .mono-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.25em; text-transform: uppercase; color: var(--fg-muted); }
+
+  .body-grid { display: grid; gap: 32px; }
+  @media (min-width: 768px) { .body-grid { grid-template-columns: minmax(0, 22rem) 1fr; gap: 40px; } }
+
+  /* ---------- the headline block ---------- */
+  .metric { position: relative; width: 100%; padding: 4px 0; }
+  .metric .water { position: absolute; inset: 0; overflow: hidden; opacity: 0.16; pointer-events: none; }
+  .metric .water svg { width: 100%; height: 100%; display: block; }
+  .metric .inner { position: relative; padding: 8px 12px 12px; }
+  .big { font-family: 'JetBrains Mono', monospace; font-size: 56px; font-weight: 800; line-height: 0.95; letter-spacing: -0.03em; }
+  @media (min-width: 768px) { .big { font-size: 72px; } }
+  .cap { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--fg-muted); margin-top: 6px; }
+  .usd { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700; margin-top: 20px; letter-spacing: -0.02em; }
+  @media (min-width: 768px) { .usd { font-size: 34px; } }
+  .chip {
+    display: inline-flex; align-items: center; border: 1px solid var(--stroke-subtle);
+    padding: 3px 7px; font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    letter-spacing: 0.12em; color: var(--fg-muted);
+  }
+  .chip-row { margin: 12px 0 0 12px; }
+
+  /* ---------- model rows ---------- */
+  .mix-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; margin-bottom: 16px; min-height: 26px; }
+  .mix-head .kick { color: var(--accent-lime); }
+  .mix-note { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); margin: 0; }
+  .rows { border-top: 1px solid var(--stroke-subtle); border-bottom: 1px solid var(--stroke-subtle); }
+  .row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--stroke-subtle); }
+  .row:first-child { border-top: 0; }
+  .row .swatch { width: 12px; height: 12px; flex: 0 0 12px; }
+  .row .name { width: 116px; flex: 0 0 116px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (min-width: 768px) { .row .name { width: 160px; flex-basis: 160px; font-size: 14px; } }
+  .row .bar { position: relative; flex: 1; height: 26px; background: var(--bg-panel); }
+  .row .bar > i { position: absolute; top: 0; bottom: 0; left: 0; display: block; }
+  .row .notch { position: absolute; top: -4px; bottom: -4px; width: 6px; transform: translateX(-50%);
+    background-image: repeating-linear-gradient(135deg, var(--fg-primary) 0 2px, var(--bg-canvas) 2px 4px); }
+  .row .pct { width: 50px; flex: 0 0 50px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; }
+  @media (min-width: 768px) { .row .pct { width: 56px; flex-basis: 56px; font-size: 14px; } }
+  .row .drift { width: 38px; flex: 0 0 38px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); }
+
+  /* ---------- the harness list, below the model mix ---------- */
+  .harn { margin-top: 16px; }
+  .harn-kick { margin: 0 0 8px; }
+  .harn-rows { border-bottom: 1px solid var(--stroke-subtle); }
+  .harn-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--stroke-subtle); }
+  .harn-row .name { width: 116px; flex: 0 0 116px; font-size: 12px; color: var(--fg-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (min-width: 768px) { .harn-row .name { width: 160px; flex-basis: 160px; } }
+  .harn-row .bar { position: relative; flex: 1; height: 12px; background: var(--bg-panel); }
+  .harn-row .bar > i { position: absolute; inset: 0 auto 0 0; display: block; }
+  .harn-row .pct { width: 50px; flex: 0 0 50px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--fg-secondary); }
+  @media (min-width: 768px) { .harn-row .pct { width: 56px; flex-basis: 56px; } }
+  .harn-row .tok { width: 54px; flex: 0 0 54px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); }
+  /* #253: the per-row reading age. A fact about the row, never a mark on it. */
+  .harn-row .age { width: 84px; flex: 0 0 84px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.04em; color: var(--fg-muted); }
+  @media (min-width: 768px) { .harn-row .age { width: 104px; flex-basis: 104px; font-size: 11px; } }
+
+  /* #253: the clause the freshness line gains. Same weight as the line it joins. */
+  .mix-note .lag { color: var(--fg-secondary); }
+  .sec-meta .lag { color: var(--fg-secondary); text-transform: none; }
+  .drop-opt .o-sub .lag { color: var(--fg-secondary); }
+
+  /* ---------- stats ---------- */
+  .stats { margin-top: 24px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); }
+  @media (min-width: 640px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+  .stat { background: var(--bg-canvas); padding: 14px; }
+  .stat .v { font-family: 'JetBrains Mono', monospace; font-size: 19px; font-weight: 800; }
+  .stat .l { margin-top: 5px; }
+
+  /* =====================================================================
+     THE DROPDOWN. A real component: a trigger, a floating panel, a listbox.
+     It never occupies flow space, so nothing below it moves when it opens.
+     ===================================================================== */
+  .drop { position: relative; display: inline-block; text-align: left; }
+  .drop-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: transparent; border: 1px solid var(--stroke-subtle); border-radius: 0;
+    color: var(--fg-primary); cursor: pointer; padding: 7px 10px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.06em;
+    max-width: min(18rem, calc(100vw - 40px));
+  }
+  .drop-trigger:hover { border-color: var(--stroke-strong); }
+  .drop-trigger:focus-visible { outline: 2px solid var(--accent-lime); outline-offset: 1px; }
+  .drop-trigger .lead {
+    font-size: 9.5px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--fg-muted); flex: 0 0 auto;
+  }
+  .drop-trigger .val { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; }
+  .drop-trigger .caret { flex: 0 0 auto; color: var(--fg-muted); font-size: 9px; }
+  .drop.on .drop-trigger { border-color: var(--accent-lime); color: var(--accent-lime); }
+  .drop.on .drop-trigger .caret { color: var(--accent-lime); }
+
+  .drop-panel {
+    position: absolute; z-index: 30; top: calc(100% + 6px); right: 0;
+    min-width: 17rem; max-width: min(24rem, calc(100vw - 32px));
+    background: var(--bg-panel); border: 2px solid var(--stroke-strong);
+    box-shadow: 6px 6px 0 var(--stroke-strong);
+  }
+  .drop-opt {
+    display: block; width: 100%; text-align: left; background: none; cursor: pointer;
+    border: 0; border-top: 1px solid var(--stroke-subtle); padding: 10px 12px;
+    color: var(--fg-secondary); font-family: inherit;
+  }
+  .drop-opt:first-child { border-top: 0; }
+  .drop-opt:hover { background: var(--bg-panel-muted); }
+  .drop-opt:focus-visible { outline: 2px solid var(--accent-lime); outline-offset: -2px; }
+  .drop-opt[aria-selected="true"] { background: var(--bg-panel-elevated); }
+  .drop-opt[aria-selected="true"] .o-name { color: var(--accent-lime); font-weight: 700; }
+  .drop-opt .o-line { display: flex; align-items: center; gap: 8px; }
+  .drop-opt .o-name { flex: 1 1 auto; min-width: 0; font-size: 13px; color: var(--fg-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .drop-opt .o-tok { flex: 0 0 auto; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--fg-primary); }
+  .drop-opt .o-sub { margin-top: 3px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.05em; color: var(--fg-muted); }
+  .src-dot { width: 9px; height: 9px; flex: 0 0 9px; display: inline-block; }
+
+  /* ---------- the carried-forward bench ---------- */
+  .bench { max-width: 80rem; margin: 0 auto; padding: 0 16px 40px; }
+  .bench-box { border: 2px dashed oklch(0.75 0.09 85 / 0.55); padding: 16px; }
+  .bench h3 { margin: 0 0 6px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+  .bench p { margin: 0 0 8px; font-size: 12.5px; color: var(--fg-muted); max-width: 52rem; line-height: 1.6; }
+  .bench p:last-child { margin-bottom: 0; }
+  .src-table { width: 100%; border-collapse: collapse; margin: 10px 0 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .src-table th { text-align: left; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; font-size: 9.5px; color: var(--fg-muted); padding: 4px 10px 4px 0; border-bottom: 1px solid var(--stroke-subtle); }
+  .src-table td { padding: 5px 10px 5px 0; border-bottom: 1px solid var(--stroke-subtle); color: var(--fg-secondary); }
+  .src-table td.num { text-align: right; padding-right: 18px; }
+  .src-table tr.out td { color: var(--stroke-strong); text-decoration: line-through; }
+  .bench .verdict { color: var(--fg-secondary); }
+
+  /* ---------- switcher ---------- */
+  .switcher {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+    background: var(--bg-shell); border-top: 2px solid var(--accent-lime);
+    box-shadow: 0 -10px 30px -18px black;
+  }
+  .sw-main { display: flex; align-items: stretch; }
+  .sw-main button.arrow {
+    background: none; border: 0; color: var(--accent-lime); font-size: 20px; cursor: pointer;
+    padding: 0 16px; font-family: 'JetBrains Mono', monospace;
+  }
+  .sw-name { flex: 1; text-align: center; padding: 11px 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; }
+  .sw-name small { display: block; font-weight: 400; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted); margin-top: 3px; }
+  .sw-toggle { background: none; border: 0; border-left: 1px solid var(--stroke-subtle); color: var(--fg-muted); cursor: pointer; padding: 0 14px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; }
+  .sw-opts { display: none; border-top: 1px solid var(--stroke-subtle); padding: 10px 12px 14px; }
+  .switcher.open .sw-opts { display: block; }
+  .opt-row { display: flex; align-items: center; gap: 8px; margin-top: 9px; overflow-x: auto; }
+  .opt-row:first-child { margin-top: 0; }
+  .opt-row > b { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg-muted); width: 52px; flex: 0 0 52px; }
+  .opt-row button {
+    background: none; border: 1px solid var(--stroke-subtle); color: var(--fg-secondary);
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em;
+    padding: 6px 9px; cursor: pointer; white-space: nowrap; text-transform: uppercase;
+  }
+  .opt-row button[aria-pressed="true"] { background: var(--accent-lime); color: var(--accent-lime-contrast); border-color: var(--accent-lime); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="ticket-strip">
+  Prototype · <b>alp82/aistack#253</b> · a stale harness hiding inside a fresh machine · settled: nothing ships · throwaway
+</div>
+
+<div class="proposal">
+  <div class="proposal-box">
+    <span class="tag">settled · nothing ships · arrows or ← → to flip</span>
+    <b>Variant 0 won, and it is the section #244 already settled.</b> The workstation was read an hour ago and its Codex three days ago, and the page says nothing about that. The four rejected variants stay here as the record of what was on the table.
+    <span class="q"><b>Start on the balanced stack.</b> Narrow the dropdown to the workstation: one hour on the trigger, three days inside it, and no variant 0 surface says so.</span>
+    <span class="q"><b>The harness rows could not carry every stack.</b> Set STACK to lopsided: one harness on two machines, so there is no harness list and the 19 hour laggard has nowhere to sit.</span>
+    <span class="q"><b>The dropdown could not carry every stack either.</b> Set STACK to one machine, two harnesses and variant 3 goes silent.</span>
+    <span class="q"><b>Set TRIGGER to always and STACK to all fresh.</b> Every source was read today and the page still speaks. That is the scolding risk, in one screen.</span>
+    <span class="q"><b>The word stale reaches no surface.</b> Every variant states an age, which is what `freshness.ts` requires.</span>
+  </div>
+  <div id="note"></div>
+</div>
+
+<main id="app"></main>
+<div class="bench" id="bench"></div>
+
+<div class="switcher" id="switcher">
+  <div class="sw-main">
+    <button class="arrow" id="prev" aria-label="previous variant">&#9664;</button>
+    <div class="sw-name" id="swname"></div>
+    <button class="arrow" id="next" aria-label="next variant">&#9654;</button>
+    <button class="sw-toggle" id="swtoggle">options</button>
+  </div>
+  <div class="sw-opts" id="swopts"></div>
+</div>
+
+<script>
+/* =====================================================================
+   DATA. See the file header for what is real and what is invented.
+
+   A ROW HERE IS A SOURCE: one harness on one machine, the storage key
+   ADR-0006 settled. The DISPLAY groups them by machine.
+   ===================================================================== */
+
+const NOW = Date.UTC(2026, 7, 23, 9, 0, 0);
+const HOUR = 3600e3, DAY = 24 * HOUR;
+
+const CATALOG = {
+  'claude-fable-5': null,            // absent from the catalog on purpose (#33 decision 3)
+  'claude-opus-4-8': 'Claude Opus 4.8',
+  'claude-opus-5': 'Claude Opus 5',
+  'claude-sonnet-5': 'Claude Sonnet 5',
+  'claude-sonnet-4-6': 'Claude Sonnet 4.6',
+  'claude-haiku-4-5': 'Claude Haiku 4.5',
+  'gpt-5-2-codex': 'GPT-5.2 Codex',
+  'gpt-5-2-codex-mini': 'GPT-5.2 Codex mini',
+};
+
+const HARNESS_NAME = { 'claude-code': 'Claude Code', 'codex': 'Codex' };
+
+/** Eight reading times, oldest first. Irregular, the way retention leaves them. */
+const READ_AT = [26, 21, 17, 13, 9, 6, 3, 0].map((d) => NOW - d * DAY - 5 * HOUR);
+
+const ALPPC_CC = {
+  harness: 'claude-code', machine: 'alppc', version: '2.1.220',
+  tokens: 4270365919, sessions: 382, activeDays: 22, projects: 22,
+  usd: 5840.02, pricingTable: 'anthropic-list-2026-07-25',
+  cacheHitShare: 0.9505, subagentShare: 0.3251,
+  receivedAt: NOW - 2 * HOUR,
+  trail: [3.71e9, 3.88e9, 4.02e9, 3.96e9, 4.11e9, 4.19e9, 4.24e9, 4270365919],
+  models: [
+    { id: 'claude-fable-5', share: 0.351, first: 0.262 },
+    { id: 'claude-opus-4-8', share: 0.3023, first: 0.381 },
+    { id: 'claude-opus-5', share: 0.195, first: 0.166 },
+    { id: 'claude-sonnet-5', share: 0.1202, first: 0.131 },
+    { id: 'claude-haiku-4-5', share: 0.0168, first: 0.034 },
+    { id: 'claude-sonnet-4-6', share: 0.0147, first: 0.026 },
+  ],
+};
+
+const CODEX_READING = {
+  harness: 'codex', version: '1.4.0',
+  tokens: 310000000, sessions: 41, activeDays: 11, projects: 3,
+  usd: 402.75, pricingTable: 'openai-list-2026-08-01',
+  cacheHitShare: 0.884, subagentShare: 0.096,
+  receivedAt: NOW - 3 * DAY,
+  trail: [0.09e9, 0.14e9, 0.19e9, 0.22e9, 0.26e9, 0.29e9, 0.31e9, 0.31e9],
+  models: [
+    { id: 'gpt-5-2-codex', share: 0.81, first: 0.74 },
+    { id: 'gpt-5-2-codex-mini', share: 0.19, first: 0.26 },
+  ],
+};
+
+const clone = (o) => JSON.parse(JSON.stringify(o));
+
+const STACKS = {
+  lopsided: {
+    key: 'lopsided',
+    label: 'lopsided (real)',
+    note: 'Two machines, both Claude Code, read 2 hours and 19 hours ago. There is no harness list here, so variant 2 has no row for the 19 hour reading. Only the freshness line and the dropdown reach it.',
+    sources: [
+      clone(ALPPC_CC),
+      {
+        harness: 'claude-code', machine: 'curia.sh', version: '2.1.198',
+        tokens: 8142663, sessions: 46, activeDays: 9, projects: 3,
+        usd: 74.30, pricingTable: 'anthropic-list-2026-07-25',
+        cacheHitShare: 0.912, subagentShare: 0.12,
+        receivedAt: NOW - 19 * HOUR,
+        // Linked partway through: no reading at all for the first four points.
+        trail: [null, null, null, null, 3.1e6, 5.4e6, 7.2e6, 8142663],
+        models: [
+          { id: 'claude-opus-5', share: 0.715, first: 0.802 },
+          { id: 'claude-sonnet-5', share: 0.212, first: 0.142 },
+          { id: 'claude-haiku-4-5', share: 0.073, first: 0.056 },
+        ],
+      },
+    ],
+  },
+
+  balanced: {
+    key: 'balanced',
+    label: 'balanced (2 machines)',
+    note: 'The ticket’s case. The workstation was read an hour ago and its Codex three days ago, so the machine reads as one hour old. Narrow to the laptop and every variant goes quiet, because that machine holds one source.',
+    sources: [
+      {
+        harness: 'claude-code', machine: 'laptop', version: '2.1.220',
+        tokens: 1420000000, sessions: 118, activeDays: 18, projects: 7,
+        usd: 2110.40, pricingTable: 'anthropic-list-2026-07-25',
+        cacheHitShare: 0.941, subagentShare: 0.285,
+        receivedAt: NOW - 4 * HOUR,
+        trail: [1.02e9, 1.15e9, 1.21e9, 1.19e9, 1.30e9, 1.36e9, 1.40e9, 1.42e9],
+        models: [
+          { id: 'claude-fable-5', share: 0.44, first: 0.36 },
+          { id: 'claude-opus-5', share: 0.31, first: 0.33 },
+          { id: 'claude-sonnet-5', share: 0.18, first: 0.22 },
+          { id: 'claude-haiku-4-5', share: 0.07, first: 0.09 },
+        ],
+      },
+      {
+        // A DIFFERENT CLAUDE CODE VERSION from the laptop's. Finding 3.
+        harness: 'claude-code', machine: 'workstation', version: '2.1.211',
+        tokens: 980000000, sessions: 74, activeDays: 14, projects: 4,
+        usd: 1455.10, pricingTable: 'anthropic-list-2026-07-25',
+        cacheHitShare: 0.958, subagentShare: 0.412,
+        receivedAt: NOW - 1 * HOUR,
+        trail: [0.61e9, 0.68e9, 0.74e9, 0.79e9, 0.85e9, 0.91e9, 0.95e9, 0.98e9],
+        models: [
+          { id: 'claude-opus-5', share: 0.52, first: 0.47 },
+          { id: 'claude-fable-5', share: 0.26, first: 0.21 },
+          { id: 'claude-sonnet-5', share: 0.15, first: 0.21 },
+          { id: 'claude-haiku-4-5', share: 0.07, first: 0.11 },
+        ],
+      },
+      Object.assign(clone(CODEX_READING), { machine: 'workstation' }),
+    ],
+  },
+
+  onemachine: {
+    key: 'onemachine',
+    label: 'one machine, 2 harnesses',
+    note: 'One machine running Claude Code and Codex, read 2 hours and 3 days ago. There is no dropdown, so variant 3 is silent and the freshness line rides in the section header.',
+    sources: [clone(ALPPC_CC), Object.assign(clone(CODEX_READING), { machine: 'alppc' })],
+  },
+
+  allfresh: {
+    key: 'allfresh',
+    label: 'all fresh',
+    note: 'Three sources, every one of them read today. Nothing is hiding. Set TRIGGER to always and the page still names a gap, which is the stack that gets scolded for working.',
+    sources: [
+      {
+        harness: 'claude-code', machine: 'laptop', version: '2.1.220',
+        tokens: 1420000000, sessions: 118, activeDays: 18, projects: 7,
+        usd: 2110.40, pricingTable: 'anthropic-list-2026-07-25',
+        cacheHitShare: 0.941, subagentShare: 0.285,
+        receivedAt: NOW - 2 * HOUR,
+        trail: [1.02e9, 1.15e9, 1.21e9, 1.19e9, 1.30e9, 1.36e9, 1.40e9, 1.42e9],
+        models: [
+          { id: 'claude-fable-5', share: 0.44, first: 0.36 },
+          { id: 'claude-opus-5', share: 0.31, first: 0.33 },
+          { id: 'claude-sonnet-5', share: 0.18, first: 0.22 },
+          { id: 'claude-haiku-4-5', share: 0.07, first: 0.09 },
+        ],
+      },
+      {
+        harness: 'claude-code', machine: 'workstation', version: '2.1.220',
+        tokens: 980000000, sessions: 74, activeDays: 14, projects: 4,
+        usd: 1455.10, pricingTable: 'anthropic-list-2026-07-25',
+        cacheHitShare: 0.958, subagentShare: 0.412,
+        receivedAt: NOW - 1 * HOUR,
+        trail: [0.61e9, 0.68e9, 0.74e9, 0.79e9, 0.85e9, 0.91e9, 0.95e9, 0.98e9],
+        models: [
+          { id: 'claude-opus-5', share: 0.52, first: 0.47 },
+          { id: 'claude-fable-5', share: 0.26, first: 0.21 },
+          { id: 'claude-sonnet-5', share: 0.15, first: 0.21 },
+          { id: 'claude-haiku-4-5', share: 0.07, first: 0.11 },
+        ],
+      },
+      Object.assign(clone(CODEX_READING), { machine: 'workstation', receivedAt: NOW - 6 * HOUR }),
+    ],
+  },
+
+  single: {
+    key: 'single',
+    label: 'single machine',
+    note: 'One laptop, one harness. There is no second reading, so every variant is silent and the section reads exactly as it does today.',
+    sources: [clone(ALPPC_CC)],
+  },
+};
+
+/* ---------------------------------------------------------------------
+   Derivations: the same arithmetic the server does (convex/measured.ts).
+   --------------------------------------------------------------------- */
+
+/** Claude Code first, then alphabetical; then by machine name. */
+function sourceOrder(a, b) {
+  if (a.harness !== b.harness) {
+    if (a.harness === 'claude-code') return -1;
+    if (b.harness === 'claude-code') return 1;
+    return a.harness.localeCompare(b.harness);
+  }
+  return (a.machine || '').localeCompare(b.machine || '');
+}
+
+function sortedSources(stack) { return [...stack.sources].sort(sourceOrder); }
+
+/** The machine names of a stack, in a stable order. The display's unit. */
+function machineNames(stack) {
+  const seen = [];
+  for (const s of sortedSources(stack)) if (!seen.includes(s.machine)) seen.push(s.machine);
+  return seen;
+}
+
+/** Decision 2: a dropdown only when a stack has more than one machine. */
+function hasFilter(stack) { return machineNames(stack).length > 1; }
+
+/** Whether the arithmetic merges anything, which is not the same question. */
+function isMultiSource(stack) { return stack.sources.length > 1; }
+
+function merge(sources) {
+  const tokens = sources.reduce((a, s) => a + s.tokens, 0);
+  const models = new Map();
+  for (const s of sources) {
+    for (const m of s.models) {
+      const cur = models.get(m.id) || { id: m.id, tok: 0, firstTok: 0 };
+      cur.tok += m.share * s.tokens;
+      cur.firstTok += m.first * s.tokens;
+      models.set(m.id, cur);
+    }
+  }
+  const merged = [...models.values()]
+    .map((m) => ({ id: m.id, share: m.tok / tokens, first: m.firstTok / tokens }))
+    .sort((a, b) => b.share - a.share);
+  return {
+    tokens,
+    usd: sources.reduce((a, s) => a + s.usd, 0),
+    sessions: sources.reduce((a, s) => a + s.sessions, 0),
+    activeDays: Math.max(...sources.map((s) => s.activeDays)),
+    projects: Math.max(...sources.map((s) => s.projects)),
+    cacheHitShare: sources.reduce((a, s) => a + s.cacheHitShare * s.tokens, 0) / tokens,
+    subagentShare: sources.reduce((a, s) => a + s.subagentShare * s.tokens, 0) / tokens,
+    // The freshness the page leads with is the NEWEST source. This whole ticket
+    // is about what the page does with the other end of that range.
+    receivedAt: Math.max(...sources.map((s) => s.receivedAt)),
+    oldestAt: Math.min(...sources.map((s) => s.receivedAt)),
+    sources,
+    models: merged,
+    trail: READ_AT.map((at, i) => ({
+      at, value: sources.reduce((a, s) => a + (s.trail[i] ?? 0), 0),
+    })).filter((p) => p.value > 0),
+  };
+}
+
+/**
+ * The harnesses inside a selection, merged across whatever machines it holds.
+ *
+ * THE VERSION IS CARRIED ONLY WHEN THE SELECTION AGREES ON ONE (finding 3). Two
+ * machines can run different builds of one harness, and "all machines" then has
+ * no single version to state. The settled rows do not print a version, so this
+ * only matters to whoever adds one later.
+ */
+function harnessesOf(sources) {
+  const by = new Map();
+  const total = sources.reduce((a, s) => a + s.tokens, 0);
+  for (const s of sources) {
+    const cur = by.get(s.harness)
+      || { harness: s.harness, tokens: 0, count: 0, versions: new Set(), oldestAt: Infinity };
+    cur.tokens += s.tokens;
+    cur.count++;
+    cur.versions.add(s.version);
+    cur.oldestAt = Math.min(cur.oldestAt, s.receivedAt);
+    by.set(s.harness, cur);
+  }
+  return [...by.values()]
+    .sort((a, b) => sourceOrder({ harness: a.harness }, { harness: b.harness }))
+    .map((h) => ({
+      harness: h.harness,
+      label: HARNESS_NAME[h.harness] || h.harness,
+      tokens: h.tokens,
+      share: total > 0 ? h.tokens / total : 0,
+      version: h.versions.size === 1 ? [...h.versions][0] : null,
+      // The OLDEST reading, not the newest: a harness spread over two machines
+      // is only as current as its laggard (finding 4).
+      oldestAt: h.oldestAt,
+      spread: h.count > 1,
+    }));
+}
+
+/* =====================================================================
+   THE #253 ARITHMETIC. What the page would have to know to speak.
+   ===================================================================== */
+
+/** The 48-hour line the page already uses (`STALE_AFTER_HOURS`, #107). */
+const STALE_AFTER_MS = 48 * HOUR;
+
+const TRIGGERS = {
+  always: {
+    label: 'always',
+    note: 'The section speaks whenever the sources in this selection carry different readings.',
+    fires: (sources) => Math.min(...sources.map((s) => s.receivedAt)) < Math.max(...sources.map((s) => s.receivedAt)),
+  },
+  over48: {
+    label: 'over 48h',
+    note: 'The section speaks only when the oldest source in this selection is past the 48-hour line the page already uses.',
+    fires: (sources) => NOW - Math.min(...sources.map((s) => s.receivedAt)) > STALE_AFTER_MS,
+  },
+};
+
+/**
+ * The oldest source in a selection, and the name to call it by.
+ *
+ * INSIDE ONE MACHINE THE HARNESS IS ENOUGH. Across machines it is not: two
+ * machines can run the same harness, and "Claude Code read 19 hours ago" would
+ * not say which one lagged. So the machine joins the name there, and it obeys
+ * the #42/#48 gate exactly as the dropdown does.
+ */
+function laggard(sources, stack, gate, view) {
+  if (sources.length < 2) return null;
+  const oldest = [...sources].sort((a, b) => a.receivedAt - b.receivedAt)[0];
+  const harness = HARNESS_NAME[oldest.harness] || oldest.harness;
+  const spansMachines = new Set(sources.map((s) => s.machine)).size > 1;
+  const name = spansMachines
+    ? harness + ' on ' + machineLabel(oldest.machine, stack, gate, view)
+    : harness;
+  return { source: oldest, name, at: oldest.receivedAt };
+}
+
+/** Whether this selection speaks at all, under the chosen trigger. */
+function speaks(sources, trigger) {
+  return sources.length > 1 && TRIGGERS[trigger].fires(sources);
+}
+
+/* ---------------------------------------------------------------------
+   Formatting - lifted from src/features/measured/copy.ts.
+   --------------------------------------------------------------------- */
+
+function fmtTokens(n) {
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
+  return String(n);
+}
+function fmtUSD(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+function fmtShare(s) { return (s * 100).toFixed(1) + '%'; }
+function fmtDay(at) { return new Date(at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }); }
+function timeAgo(at) {
+  const d = NOW - at;
+  if (d < HOUR) return Math.max(1, Math.round(d / 60e3)) + ' minutes ago';
+  if (d < DAY) { const h = Math.round(d / HOUR); return h + (h === 1 ? ' hour ago' : ' hours ago'); }
+  const days = Math.round(d / DAY);
+  return days + (days === 1 ? ' day ago' : ' days ago');
+}
+function modelLabel(id) { return CATALOG[id] || id; }
+const PAINTS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)'];
+const SRC_PAINTS = ['var(--src-1)', 'var(--src-2)', 'var(--src-3)'];
+
+/* ---------------------------------------------------------------------
+   THE GATE (decision 6). Real machine labels publish, through the same
+   #42/#48 gate as every other user-chosen name.
+
+   A machine the owner has not ticked has no publishable name, so the page falls
+   back to an ordinal. The ordinal is POSITIONAL and never derived from the name,
+   so an unticked machine leaks nothing at all - not through the label, and not
+   through the dropdown key.
+   --------------------------------------------------------------------- */
+
+const GATES = {
+  all: {
+    label: 'all ticked',
+    ticked: () => true,
+    note: 'Every machine is ticked, so every label is the name you typed at login.',
+  },
+  partial: {
+    label: 'partial',
+    ticked: (machine, stack) => machineNames(stack).indexOf(machine) === 0,
+    note: 'One machine is ticked and one is not. The unticked one falls back to an ordinal, so the dropdown mixes a real name with a number.',
+  },
+  none: {
+    label: 'none ticked',
+    ticked: () => false,
+    note: 'Nothing is ticked, which is the default for every stack. The dropdown still works, on ordinals alone.',
+  },
+};
+
+/**
+ * The machines the display shows.
+ *
+ * THE KEY IS AN INDEX, NEVER THE MACHINE NAME (finding 1). The dropdown puts
+ * this key in the DOM and in the URL, so a key built from the name would publish
+ * it even for a machine the owner never ticked.
+ */
+/** One machine's public label, by the same rule the dropdown uses. */
+function machineLabel(machine, stack, gate, view) {
+  const i = machineNames(stack).indexOf(machine);
+  if (view === 'owner' || GATES[gate].ticked(machine, stack)) return machine;
+  return 'machine ' + (i + 1);
+}
+
+function machines(stack, gate, view) {
+  return machineNames(stack).map((m, i) => ({
+    key: 'm' + i,
+    // The owner always sees their own names. The gate governs the public page.
+    label: (view === 'owner' || GATES[gate].ticked(m, stack)) ? m : 'machine ' + (i + 1),
+    sources: sortedSources(stack).filter((s) => s.machine === m),
+    paint: SRC_PAINTS[i % SRC_PAINTS.length],
+  }));
+}
+
+/* ---------------------------------------------------------------------
+   Charts. Plain SVG, square ends, no library.
+   --------------------------------------------------------------------- */
+
+function sparkline(points, paint) {
+  if (points.length < 2) return '';
+  const w = 420, h = 120;
+  const maxV = Math.max(...points.map((p) => p.value));
+  const minAt = points[0].at, spanAt = points[points.length - 1].at - points[0].at;
+  const d = points.map((p, i) => {
+    const x = spanAt === 0 ? 0 : ((p.at - minAt) / spanAt) * w;
+    const y = h - (maxV === 0 ? 0 : (p.value / maxV) * h);
+    return (i === 0 ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1);
+  }).join(' ');
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden="true">'
+    + '<path d="' + d + ' L ' + w + ' ' + h + ' L 0 ' + h + ' Z" fill="' + paint + '" opacity="0.5"/>'
+    + '<path d="' + d + '" fill="none" stroke="' + paint + '" stroke-width="2"/></svg>';
+}
+
+/* =====================================================================
+   RENDERING
+   ===================================================================== */
+
+const VARIANTS = [
+  { key: 'nothing', name: '0 · nothing', blurb: 'the design #244 settled' },
+  { key: 'line', name: '1 · the freshness line', blurb: 'one clause on checked n ago' },
+  { key: 'rows', name: '2 · the harness rows', blurb: 'every row carries its own age' },
+  { key: 'drop', name: '3 · the dropdown rows', blurb: 'the machine option names its oldest' },
+  { key: 'all', name: '4 · everywhere', blurb: 'all three at once' },
+];
+
+const STACK_ORDER = ['balanced', 'lopsided', 'onemachine', 'allfresh', 'single'];
+
+const state = {
+  variant: 'nothing', stack: 'balanced', trigger: 'always',
+  gate: 'all', view: 'reader', machine: 'all', menu: false,
+};
+
+/** Which of the three places the current variant lights up. */
+const showLine = () => state.variant === 'line' || state.variant === 'all';
+const showRows = () => state.variant === 'rows' || state.variant === 'all';
+const showDrop = () => state.variant === 'drop' || state.variant === 'all';
+
+function readURL() {
+  const p = new URLSearchParams(location.search);
+  for (const k of ['variant', 'stack', 'trigger', 'gate', 'view', 'machine']) {
+    const v = p.get(k);
+    if (v) state[k] = v;
+  }
+}
+function writeURL() {
+  const p = new URLSearchParams();
+  for (const k of ['variant', 'stack', 'trigger', 'gate', 'view', 'machine']) p.set(k, state[k]);
+  history.replaceState(null, '', location.pathname + '?' + p.toString());
+}
+
+/**
+ * The clause every variant shares: the oldest source in this selection, named.
+ *
+ * EMPTY WHENEVER THE SELECTION HOLDS ONE READING, whatever the trigger says.
+ * There is no gap to state, so a stack that syncs from one place never grows a
+ * line about it.
+ */
+function lagClause(sources, stack) {
+  if (!speaks(sources, state.trigger)) return '';
+  const l = laggard(sources, stack, state.gate, state.view);
+  if (!l) return '';
+  return ' · <span class="lag">' + esc(l.name) + ' read ' + esc(timeAgo(l.at)) + '</span>';
+}
+
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function dot(paint) { return '<span class="src-dot" style="background:' + paint + '"></span>'; }
+
+/* ---------- the dropdown (decisions 2, 3 and 5) ---------- */
+
+function dropOption(o, selected, stack) {
+  const r = merge(o.sources);
+  // Variant 3: the option says how far back its own oldest source reaches.
+  const oldest = showDrop() && speaks(o.sources, state.trigger)
+    ? ' · <span class="lag">oldest ' + esc(timeAgo(r.oldestAt)) + '</span>'
+    : '';
+  return '<button class="drop-opt" role="option" data-act="machine" data-key="' + esc(o.key) + '"'
+    + ' aria-selected="' + (selected ? 'true' : 'false') + '">'
+    + '<span class="o-line">' + (o.paint ? dot(o.paint) : '')
+    + '<span class="o-name">' + esc(o.label) + '</span>'
+    + '<span class="o-tok">' + fmtTokens(r.tokens) + '</span></span>'
+    + '<div class="o-sub">read ' + esc(timeAgo(r.receivedAt)) + oldest + '</div></button>';
+}
+
+function dropdown(ms, allSources, stack) {
+  const all = { key: 'all', label: 'all machines', sources: allSources, paint: null };
+  const opts = [all].concat(ms);
+  const chosen = opts.find((o) => o.key === state.machine) || all;
+  const panel = state.menu
+    ? '<div class="drop-panel" role="listbox" aria-label="Machine">'
+      + opts.map((o) => dropOption(o, o.key === chosen.key, stack)).join('') + '</div>'
+    : '';
+  return '<div class="drop' + (state.machine === 'all' ? '' : ' on') + '">'
+    + '<button class="drop-trigger" data-act="menu" aria-haspopup="listbox" aria-expanded="'
+    + (state.menu ? 'true' : 'false') + '">'
+    + '<span class="lead">from</span>'
+    + '<span class="val">' + esc(chosen.label) + '</span>'
+    + '<span class="caret">' + (state.menu ? '&#9650;' : '&#9660;') + '</span>'
+    + '</button>' + panel + '</div>';
+}
+
+/* ---------- the harness list (decision 7) ---------- */
+
+/**
+ * One row per harness, under the model mix.
+ *
+ * NOTHING AT ALL WHEN THE SELECTION HOLDS ONE HARNESS. A single row at 100
+ * percent says what the section already implies, and hiding it keeps every
+ * single-harness stack reading exactly as it does today.
+ */
+function harnessList(sources) {
+  const hs = harnessesOf(sources);
+  if (hs.length < 2) return '';
+  // Variant 2: EVERY row states its own reading age, or none of them does. A
+  // column that appeared on one row alone would be a mark on that harness, and
+  // the page states ages rather than judgements.
+  const ages = showRows() && speaks(sources, state.trigger);
+  return '<div class="harn"><p class="mono-label harn-kick">by harness</p><div class="harn-rows">'
+    + hs.map((h, i) => '<div class="harn-row">'
+      + '<span class="name">' + esc(h.label) + '</span>'
+      + '<span class="bar"><i style="width:' + Math.max(1, h.share * 100).toFixed(1) + '%;background:'
+      + SRC_PAINTS[i % SRC_PAINTS.length] + '"></i></span>'
+      + '<span class="pct">' + fmtShare(h.share) + '</span>'
+      + '<span class="tok">' + fmtTokens(h.tokens) + '</span>'
+      // The OLDEST reading of the harness, never the newest (#244 finding 4).
+      + (ages ? '<span class="age">' + esc(timeAgo(h.oldestAt)) + '</span>' : '')
+      + '</div>').join('') + '</div></div>';
+}
+
+/* ---------- shared blocks ---------- */
+
+function sectionHead(metaHTML, always) {
+  return '<div class="sec-head">'
+    + '<div class="sec-index">01</div>'
+    + '<div class="head-copy"><p class="sec-kicker">// sync</p><h2 class="sec-title">Actual Usage</h2></div>'
+    + '<div class="sec-meta' + (always ? ' always' : '') + '">' + (metaHTML || '') + '</div>'
+    + '</div>';
+}
+
+function metricBlock(reading) {
+  const cost = reading.usd > 0
+    ? '<div class="usd">' + fmtUSD(reading.usd) + '</div><div class="cap">at least, at api list prices</div>'
+    : '';
+  return '<div class="metric">'
+    + '<div class="water">' + sparkline(reading.trail, 'var(--fg-primary)') + '</div>'
+    + '<div class="inner">'
+    + '<div class="big">' + fmtTokens(reading.tokens) + '</div>'
+    + '<div class="cap">tokens · last 30 days</div>'
+    + cost
+    + '</div></div>';
+}
+
+function deltaChip(reading) {
+  const t = reading.trail;
+  if (t.length < 2) return '';
+  const d = t[t.length - 1].value - t[t.length - 2].value;
+  const sign = d > 0 ? '+' : d < 0 ? '−' : '±';
+  return '<div class="chip-row"><span class="chip">' + sign + fmtTokens(Math.abs(d)) + ' since the last check</span></div>';
+}
+
+function modelRows(reading) {
+  return '<div class="rows">' + reading.models.slice(0, 6).map((m, i) => {
+    const drift = (m.share - m.first) * 100;
+    const moved = Math.abs(m.share - m.first) >= 0.005;
+    return '<div class="row">'
+      + '<span class="swatch" style="background:' + PAINTS[i % PAINTS.length] + '"></span>'
+      + '<span class="name">' + esc(modelLabel(m.id)) + '</span>'
+      + '<span class="bar"><i style="width:' + Math.max(1, m.share * 100).toFixed(1) + '%;background:' + PAINTS[i % PAINTS.length] + '"></i>'
+      + (moved ? '<span class="notch" style="left:' + Math.min(100, Math.max(0, m.first * 100)).toFixed(1) + '%"></span>' : '')
+      + '</span>'
+      + '<span class="pct">' + fmtShare(m.share) + '</span>'
+      + '<span class="drift">' + (moved && Math.abs(drift) >= 0.5 ? (drift > 0 ? '↑' : '↓') + Math.abs(Math.round(drift)) : '-') + '</span>'
+      + '</div>';
+  }).join('') + '</div>';
+}
+
+function mixHead(rightHTML) {
+  return '<div class="mix-head"><p class="mono-label kick">where the tokens went</p>'
+    + (rightHTML || '') + '</div>';
+}
+
+const NOTCH_NOTE = () => '<p class="mix-note">the notch marks where each share stood on ' + fmtDay(READ_AT[0]) + '</p>';
+
+/**
+ * Variant 1: the freshness line gains one clause.
+ *
+ * IT RIDES WHEREVER THAT LINE ALREADY SITS. On a stack with a dropdown the line
+ * is the mix note. On a stack without one it is the section header's meta slot,
+ * which the live page hides below 768px (finding 3).
+ */
+const CHECKED = (reading, stack) => '<p class="mix-note">checked ' + esc(timeAgo(reading.receivedAt))
+  + (showLine() ? lagClause(reading.sources, stack) : '') + '</p>';
+
+const HEAD_CHECKED = (reading, stack) => 'checked ' + esc(timeAgo(reading.receivedAt))
+  + (showLine() ? lagClause(reading.sources, stack) : '');
+
+/** Decision 8: active days keeps today's shape and today's small print. */
+function statsGrid(reading, multi) {
+  const cells = [
+    { v: reading.sessions.toLocaleString('en-US'), l: 'sessions' },
+    { v: reading.activeDays + ' of 30', l: multi ? 'active days (max)' : 'active days' },
+    { v: Math.round(reading.cacheHitShare * 100) + '%', l: 'cache hits' },
+    { v: Math.round(reading.subagentShare * 100) + '%', l: 'run by subagents' },
+  ];
+  return '<div class="stats">' + cells.map((c) => '<div class="stat">'
+    + '<div class="v">' + esc(c.v) + '</div>'
+    + '<div class="l mono-label">' + esc(c.l) + '</div></div>').join('') + '</div>';
+}
+
+function body(reading, multi, mixRight, withHarnesses) {
+  return '<div class="body-grid">'
+    + '<div>' + metricBlock(reading) + deltaChip(reading) + '</div>'
+    + '<div>' + mixHead(mixRight) + modelRows(reading)
+    + (withHarnesses ? harnessList(reading.sources) : '')
+    + statsGrid(reading, multi) + '</div>'
+    + '</div>';
+}
+
+/**
+ * The section. #244's settled design, with whichever of the three places the
+ * current variant lights up.
+ *
+ * A STACK WITH ONE MACHINE KEEPS ITS SHAPE. It has no dropdown, so its
+ * freshness line stays in the section header and its notch note stays where it
+ * is. Variant 1 adds the clause to that header line, and variant 3 has nothing
+ * to write on.
+ */
+function section(stack) {
+  const all = merge(sortedSources(stack));
+  if (!hasFilter(stack)) {
+    return sectionHead(HEAD_CHECKED(all, stack))
+      + body(all, isMultiSource(stack), NOTCH_NOTE(), true);
+  }
+  const ms = machines(stack, state.gate, state.view);
+  const chosen = ms.find((m) => m.key === state.machine) || null;
+  const reading = chosen ? merge(chosen.sources) : all;
+  // The stats stop saying "(max)" the moment the reading stops merging anything.
+  const multi = chosen ? chosen.sources.length > 1 : isMultiSource(stack);
+  return sectionHead(dropdown(ms, sortedSources(stack), stack), true)
+    + body(reading, multi, CHECKED(reading, stack), true);
+}
+
+/* ---------- what this ticket did not settle ---------- */
+
+/**
+ * The truth the section is standing on, printed in full.
+ *
+ * This is prototype chrome and ships with nothing. It is here so the section
+ * above can be checked against the readings rather than trusted.
+ */
+function bench(stack) {
+  const ms = machines(stack, state.gate, state.view);
+  const chosen = ms.find((m) => m.key === state.machine) || null;
+  const shown = chosen ? chosen.sources : sortedSources(stack);
+  const rows = sortedSources(stack).map((s) => {
+    const inSel = shown.includes(s);
+    return '<tr class="' + (inSel ? 'in' : 'out') + '">'
+      + '<td>' + esc(HARNESS_NAME[s.harness] || s.harness) + '</td>'
+      + '<td>' + esc(machineLabel(s.machine, stack, state.gate, state.view)) + '</td>'
+      + '<td class="num">' + fmtTokens(s.tokens) + '</td>'
+      + '<td>' + esc(timeAgo(s.receivedAt)) + '</td>'
+      + '<td>' + (inSel ? 'in this reading' : 'filtered out') + '</td></tr>';
+  }).join('');
+  const r = merge(shown);
+  const l = laggard(shown, stack, state.gate, state.view);
+  const verdict = shown.length < 2
+    ? 'One source in this reading, so there is no gap to state and every variant is silent.'
+    : 'This reading leads with ' + timeAgo(r.receivedAt) + ' and its oldest source is '
+      + (l ? l.name + ', ' + timeAgo(l.at) : timeAgo(r.oldestAt)) + '. '
+      + (TRIGGERS[state.trigger].fires(shown)
+        ? 'The ' + TRIGGERS[state.trigger].label + ' trigger fires here.'
+        : 'The ' + TRIGGERS[state.trigger].label + ' trigger stays quiet here.');
+  return '<div class="bench-box"><h3>The readings under this section</h3>'
+    + '<table class="src-table"><thead><tr><th>harness</th><th>machine</th><th>tokens</th><th>read</th><th></th></tr></thead>'
+    + '<tbody>' + rows + '</tbody></table>'
+    + '<p class="verdict">' + esc(verdict) + '</p>'
+    + '<p><b>Carried forward, not settled here.</b> Active days still understates and is labelled a max. '
+    + 'Both public queries still return the raw machine name, so a gated name and a stable ordinal have to land '
+    + 'before any surface renders a machine.</p></div>';
+}
+
+/* ---------- the page ---------- */
+
+function render() {
+  const stack = STACKS[state.stack];
+  if (!machines(stack, state.gate, state.view).some((m) => m.key === state.machine)) {
+    state.machine = 'all';
+  }
+
+  // The prototype's own explainers sit OUTSIDE the section, so the mocked
+  // section carries nothing that would not ship.
+  const lines = [];
+  if (state.variant === 'nothing') {
+    lines.push('Variant 0, chosen. The section #244 settled, untouched. The reader gets one merged number, and the 48-hour auto-sync box stays the only remedy.');
+  } else {
+    lines.push('Rejected. ' + TRIGGERS[state.trigger].note);
+  }
+  if (state.variant === 'rows' && !harnessSplit(stack)) {
+    lines.push('This stack runs one harness, so there is no by-harness list and variant 2 has nowhere to write.');
+  }
+  if (state.variant === 'drop' && !hasFilter(stack)) {
+    lines.push('This stack has one machine, so there is no dropdown and variant 3 has nowhere to write.');
+  }
+  if (state.variant === 'line' && !hasFilter(stack)) {
+    lines.push('With no dropdown the freshness line sits in the section header, and the live page hides that slot below 768px.');
+  }
+  if (state.view === 'owner') {
+    lines.push('Owner view. Your own machine names always show, ticked or not. The gate governs the public page only.');
+  } else if (hasFilter(stack)) {
+    lines.push(GATES[state.gate].note);
+  }
+  document.getElementById('note').innerHTML = lines.length
+    ? '<div class="note-box">' + lines.map(esc).join(' ') + '</div>' : '';
+
+  document.getElementById('app').innerHTML =
+    '<section class="journey"><div class="shell">' + section(stack) + '</div></section>';
+  document.getElementById('bench').innerHTML = bench(stack);
+
+  const v = VARIANTS.find((x) => x.key === state.variant);
+  document.getElementById('swname').innerHTML =
+    esc(v.name) + '<small>' + esc(v.blurb) + '</small>';
+  document.getElementById('swopts').innerHTML = optionRows(stack);
+  writeURL();
+}
+
+/** Whether any selection of this stack could show a by-harness list at all. */
+function harnessSplit(stack) {
+  return new Set(stack.sources.map((s) => s.harness)).size > 1;
+}
+
+function optionRows(stack) {
+  const row = (key, label, opts) => '<div class="opt-row"><b>' + label + '</b>'
+    + opts.map((o) => '<button data-act="set" data-key="' + key + '" data-val="' + esc(o.v) + '" aria-pressed="'
+      + (state[key] === o.v) + '">' + esc(o.l) + '</button>').join('') + '</div>';
+  return row('stack', 'stack', STACK_ORDER.map((k) => ({ v: k, l: STACKS[k].label })))
+    + row('trigger', 'trigger', Object.entries(TRIGGERS).map(([k, t]) => ({ v: k, l: t.label })))
+    + row('gate', 'gate', Object.entries(GATES).map(([k, g]) => ({ v: k, l: g.label })))
+    + row('view', 'view', [{ v: 'reader', l: 'reader' }, { v: 'owner', l: 'owner' }])
+    + '<div class="opt-row"><b></b><span class="mono" style="font-size:10px;color:var(--fg-muted);line-height:1.5">'
+    + esc(stack.note) + '</span></div>';
+}
+
+/* ---------- events ---------- */
+
+function cycle(step) {
+  const i = VARIANTS.findIndex((v) => v.key === state.variant);
+  state.variant = VARIANTS[(i + step + VARIANTS.length) % VARIANTS.length].key;
+  state.menu = false;
+  render();
+}
+
+document.getElementById('prev').addEventListener('click', () => cycle(-1));
+document.getElementById('next').addEventListener('click', () => cycle(1));
+document.getElementById('swtoggle').addEventListener('click', () => {
+  document.getElementById('switcher').classList.toggle('open');
+});
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-act]');
+  if (!b) { if (state.menu) { state.menu = false; render(); } return; }
+  const act = b.dataset.act;
+  if (act === 'set') { state[b.dataset.key] = b.dataset.val; state.machine = 'all'; state.menu = false; render(); }
+  if (act === 'menu') { state.menu = !state.menu; render(); }
+  if (act === 'machine') { state.machine = b.dataset.key; state.menu = false; render(); }
+});
+
+document.addEventListener('keydown', (e) => {
+  const t = e.target;
+  if (e.key === 'Escape' && state.menu) { state.menu = false; render(); return; }
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+  if (state.menu) return;
+  if (e.key === 'ArrowLeft') cycle(-1);
+  if (e.key === 'ArrowRight') cycle(1);
+});
+
+readURL();
+render();
+</script>
+</body>
+</html>
