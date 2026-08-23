@@ -1925,6 +1925,99 @@ describe('gcSnapshots', () => {
     expect(kept).toHaveLength(3)
   })
 
+
+  test('thins per SOURCE, so an old day keeps one row for each of them', async () => {
+    // Grouping on (stack, day) alone kept ONE row for the whole day, so a stack
+    // syncing two sources lost one of them the moment that day aged past 90.
+    // The fold carries the newest reading of each source forward, so a deleted
+    // seed does not leave a gap - it subtracts a source from every later point.
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const oldDay = Date.UTC(2026, 0, 15)
+
+    for (const at of [oldDay + 1 * 3_600_000, oldDay + 20 * 3_600_000]) {
+      await t.mutation(internal.measured.publishSnapshot, {
+        stackId,
+        payload: payload({ capturedAt: at }),
+        machine: 'laptop',
+      })
+      await t.mutation(internal.measured.publishSnapshot, {
+        stackId,
+        payload: payload({ capturedAt: at }),
+        machine: 'vps',
+      })
+    }
+    // Recent rows for both, so the newest-row guard is not what saves the old.
+    for (const machine of ['laptop', 'vps']) {
+      await t.mutation(internal.measured.publishSnapshot, {
+        stackId,
+        payload: payload({ capturedAt: Date.now() }),
+        machine,
+      })
+    }
+
+    await t.mutation(internal.measured.gcSnapshots, {})
+
+    const kept = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    const onOldDay = kept.filter(
+      (r) => r.capturedAt >= oldDay && r.capturedAt < oldDay + DAY,
+    )
+    expect(onOldDay.map((r) => r.machine).sort()).toEqual(['laptop', 'vps'])
+    expect(onOldDay.every((r) => r.capturedAt === oldDay + 20 * 3_600_000)).toBe(
+      true,
+    )
+  })
+
+  test('never deletes the newest row of a machine that stopped syncing', async () => {
+    // Per stack, the guard protected only the last machine to sync. A server
+    // that went quiet would lose its last row and vanish from the trail.
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const oldDay = Date.UTC(2026, 0, 15)
+
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({ capturedAt: oldDay }),
+      machine: 'vps',
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({ capturedAt: oldDay + 3_600_000 }),
+      machine: 'laptop',
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({ capturedAt: Date.now() }),
+      machine: 'laptop',
+    })
+
+    await t.mutation(internal.measured.gcSnapshots, {})
+
+    const kept = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    expect(kept.some((r) => r.machine === 'vps')).toBe(true)
+  })
+
+  test('keeps a superseded untagged row - it still seeds the older points', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const oldDay = Date.UTC(2026, 0, 15)
+
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({ capturedAt: oldDay }),
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({ capturedAt: Date.now() }),
+      machine: 'laptop',
+    })
+
+    await t.mutation(internal.measured.gcSnapshots, {})
+
+    const kept = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    expect(kept.some((r) => r.machine === undefined)).toBe(true)
+  })
+
   test('never deletes a stack’s newest row, however old it is', async () => {
     // "Current" is a query for this row - GC must not be able to empty the
     // measured layer of a stack that simply stopped syncing.
@@ -2593,6 +2686,259 @@ describe('batch publish + per-harness aggregation (#67)', () => {
 // ---------------------------------------------------------------------------
 // Read-time repricing (#72)
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Two machines, one harness (#243)
+// ---------------------------------------------------------------------------
+
+describe('two machines publishing the same harness (#243)', () => {
+  async function seedToken(
+    t: Ctx,
+    opts: { stackId?: Id<'stacks'>; userId?: string; name?: string } = {},
+  ) {
+    return await t.run(async (ctx) =>
+      ctx.db.insert('cliTokens', {
+        tokenHash: await sha256Hex(`tok_${Math.random().toString(36).slice(2)}`),
+        scopes: ['collect', 'sync'],
+        userId: opts.userId ?? USER,
+        stackId: opts.stackId,
+        ...(opts.name === undefined ? {} : { name: opts.name }),
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 90 * DAY,
+        lastUsedAt: Date.now(),
+      }),
+    )
+  }
+
+  const withTokens = (totalTokens: number, sessions: number) => ({
+    activity: { ...payload().activity, totalTokens, sessions },
+  })
+
+  test('stamps the machine from the TOKEN, never from the payload', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const tokenId = await seedToken(t, { stackId, name: 'laptop' })
+
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId,
+      payload: payload(),
+    })
+
+    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    expect(rows[0].machine).toBe('laptop')
+  })
+
+  test('a token with no name publishes untagged, like a pre-tagging row', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const tokenId = await seedToken(t, { stackId })
+
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId,
+      payload: payload(),
+    })
+
+    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    expect(rows[0].machine).toBeUndefined()
+  })
+
+  test('the second machine ADDS to the reading instead of replacing it', async () => {
+    // The bug this ticket exists for: a VPS syncing its own small window used to
+    // knock the laptop's whole reading off the page, because "current" keyed on
+    // the harness name alone.
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const laptop = await seedToken(t, { stackId, name: 'laptop' })
+    const vps = await seedToken(t, { stackId, name: 'vps' })
+
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId: laptop,
+      payload: payload({ capturedAt: 1000, ...withTokens(4_000_000, 500) }),
+    })
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId: vps,
+      payload: payload({ capturedAt: 2000, ...withTokens(4_000, 19) }),
+    })
+
+    const current = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(current!.activity.totalTokens).toBe(4_004_000)
+    expect(current!.activity.sessions).toBe(519)
+    expect(current!.harnesses).toHaveLength(2)
+    expect(current!.harnesses.map((h) => h.machine)).toEqual(['laptop', 'vps'])
+  })
+
+  test('one machine syncing twice still holds only its newest reading', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const laptop = await seedToken(t, { stackId, name: 'laptop' })
+
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId: laptop,
+      payload: payload({ capturedAt: 1000, ...withTokens(1_000_000, 10) }),
+    })
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId: laptop,
+      payload: payload({ capturedAt: 2000, ...withTokens(1_200_000, 12) }),
+    })
+
+    const current = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(current!.activity.totalTokens).toBe(1_200_000)
+    expect(current!.harnesses).toHaveLength(1)
+  })
+
+  test('relinking a machine keeps one bucket, because the key is the NAME', async () => {
+    // Two tokens, one machine - which is what `aistack login` a second time
+    // leaves behind. Keyed by token id the dead one would carry a stale reading
+    // forward beside the live one, forever.
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const oldToken = await seedToken(t, { stackId, name: 'laptop' })
+    const newToken = await seedToken(t, { stackId, name: 'laptop' })
+
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId: oldToken,
+      payload: payload({ capturedAt: 1000, ...withTokens(9_000_000, 900) }),
+    })
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId: newToken,
+      payload: payload({ capturedAt: 2000, ...withTokens(1_000_000, 10) }),
+    })
+
+    const current = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(current!.harnesses).toHaveLength(1)
+    expect(current!.activity.totalTokens).toBe(1_000_000)
+  })
+
+  test('a tagged reading supersedes the untagged history of its harness', async () => {
+    // No backfill can say which machine wrote a pre-tagging row, so an untagged
+    // row counts as the whole harness. Summing it with a tagged one would count
+    // the same sessions twice, and carry-forward never expires.
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const laptop = await seedToken(t, { stackId, name: 'laptop' })
+
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({ capturedAt: 1000, ...withTokens(4_000_000, 500) }),
+    })
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId: laptop,
+      payload: payload({ capturedAt: 2000, ...withTokens(4_100_000, 510) }),
+    })
+
+    const current = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(current!.harnesses).toHaveLength(1)
+    expect(current!.activity.totalTokens).toBe(4_100_000)
+  })
+
+  test('an untagged reading of ANOTHER harness survives beside a tagged one', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const laptop = await seedToken(t, { stackId, name: 'laptop' })
+
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({
+        capturedAt: 1000,
+        harness: { name: 'codex', version: '0.146.0' },
+        ...withTokens(500_000, 5),
+      }),
+    })
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId: laptop,
+      payload: payload({ capturedAt: 2000, ...withTokens(1_000_000, 10) }),
+    })
+
+    const current = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(current!.activity.totalTokens).toBe(1_500_000)
+    expect(current!.harnesses.map((h) => h.harness.name)).toEqual([
+      'claude-code',
+      'codex',
+    ])
+  })
+
+  test('the trail states what was true then: untagged points keep their reading', async () => {
+    // The eviction moves through time. A point taken before any machine
+    // reported must still show the untagged reading, or the chart would rewrite
+    // history every time a machine is named for the first time.
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const laptop = await seedToken(t, { stackId, name: 'laptop' })
+    const now = Date.now()
+
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({ capturedAt: now - 3 * DAY, ...withTokens(4_000_000, 500) }),
+    })
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId: laptop,
+      payload: payload({ capturedAt: now - DAY, ...withTokens(4_100_000, 510) }),
+    })
+
+    const history = await t.query(api.measured.getHistoryByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(history!.points.map((p) => p.tokens)).toEqual([4_000_000, 4_100_000])
+    expect(history!.points[0].harnesses[0].machine).toBeNull()
+    expect(history!.points[1].harnesses[0].machine).toBe('laptop')
+  })
+
+  test('the trail sums two machines from the point the second one lands', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const laptop = await seedToken(t, { stackId, name: 'laptop' })
+    const vps = await seedToken(t, { stackId, name: 'vps' })
+    const now = Date.now()
+
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId: laptop,
+      payload: payload({ capturedAt: now - 2 * DAY, ...withTokens(1_000_000, 10) }),
+    })
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId: vps,
+      payload: payload({ capturedAt: now - DAY, ...withTokens(4_000, 2) }),
+    })
+
+    const history = await t.query(api.measured.getHistoryByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(history!.points.map((p) => p.tokens)).toEqual([1_000_000, 1_004_000])
+  })
+
+  test('the trail narrows to one machine when asked', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const laptop = await seedToken(t, { stackId, name: 'laptop' })
+    const vps = await seedToken(t, { stackId, name: 'vps' })
+    const now = Date.now()
+
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId: laptop,
+      payload: payload({ capturedAt: now - 2 * DAY, ...withTokens(1_000_000, 10) }),
+    })
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId: vps,
+      payload: payload({ capturedAt: now - DAY, ...withTokens(4_000, 2) }),
+    })
+
+    const history = await t.query(api.measured.getHistoryByStackSlug, {
+      slug: `my-stack-${shortId}`,
+      machine: 'vps',
+    })
+    expect(history!.machine).toBe('vps')
+    expect(history!.points.map((p) => p.tokens)).toEqual([4_000])
+  })
+})
 
 describe('read-time repricing of unpriced OpenAI rows (#72)', () => {
   const codexPayload = (over: Record<string, unknown> = {}) =>

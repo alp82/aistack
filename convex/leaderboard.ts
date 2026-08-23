@@ -3,6 +3,7 @@ import type { Doc } from './_generated/dataModel'
 import type { QueryCtx } from './_generated/server'
 import { query } from './_generated/server'
 import { repriceSnapshot, round2 } from './lib/reprice'
+import { newestPerSource, sourceKey, visibleSources } from './lib/sources'
 import { loadModelCatalog } from './measured'
 
 /**
@@ -115,33 +116,20 @@ const tokensOf = (t: {
   cacheRead: number
 }) => t.input + t.output + t.cacheWrite + t.cacheRead
 
-/** Claude Code first (the documented default), then alphabetical. */
-function harnessOrder(a: string, b: string): number {
-  if (a === b) return 0
-  if (a === 'claude-code') return -1
-  if (b === 'claude-code') return 1
-  return a.localeCompare(b)
-}
-
-/** The newest snapshot of each harness, the same rule the stack page reads. */
-function newestPerHarness(rows: Snapshot[]): Snapshot[] {
-  const byHarness = new Map<string, Snapshot>()
-  for (const row of rows) {
-    const held = byHarness.get(row.harness)
-    if (!held || row.capturedAt > held.capturedAt) byHarness.set(row.harness, row)
-  }
-  return [...byHarness.values()].sort((a, b) =>
-    harnessOrder(a.harness, b.harness)
-  )
-}
-
 /**
  * The rolling total as it stood at each sync: fold the rows forward holding
- * the newest reading per harness, one point per sync minute.
+ * the newest reading per SOURCE (#243), one point per sync minute.
+ *
+ * Held by source and evicted at each flush, exactly as the stack page's own
+ * series does - the board's numbers and a stack's own page must not disagree
+ * about what a stack measured.
  */
 function seriesOf(rows: Snapshot[]): { at: number; tokens: number }[] {
   const ordered = [...rows].sort((a, b) => a.capturedAt - b.capturedAt)
-  const held = new Map<string, number>()
+  const held = new Map<
+    string,
+    { harness: string; machine?: string; tokens: number }
+  >()
   const points: { at: number; tokens: number }[] = []
   let bucket: number | null = null
   let bucketAt = 0
@@ -149,7 +137,9 @@ function seriesOf(rows: Snapshot[]): { at: number; tokens: number }[] {
   const flush = () => {
     if (bucket === null) return
     let total = 0
-    for (const tokens of held.values()) total += tokens
+    for (const source of visibleSources(held.values(), (h) => h)) {
+      total += source.tokens
+    }
     points.push({ at: bucketAt, tokens: total })
     bucket = null
   }
@@ -161,7 +151,11 @@ function seriesOf(rows: Snapshot[]): { at: number; tokens: number }[] {
       bucket = key
       bucketAt = row.capturedAt
     }
-    held.set(row.harness, row.payload.activity.totalTokens)
+    held.set(sourceKey(row), {
+      harness: row.harness,
+      machine: row.machine,
+      tokens: row.payload.activity.totalTokens,
+    })
   }
   flush()
   return points
@@ -192,13 +186,17 @@ async function readStack(
     .collect()
   if (rows.length === 0) return null
 
-  const newest = newestPerHarness(rows)
+  const newest = newestPerSource(rows)
   const lastSyncMs = Math.max(...rows.map((r) => r.receivedAt))
 
   let tokens = 0
   let sessions = 0
   const modelTokens = new Map<string, number>()
-  const activeHarnesses: { name: string; tokens: number }[] = []
+  // BY HARNESS NAME, not by source (#243). The board ranks harnesses and prints
+  // "Claude Code + Codex" under a row; a stack running one harness on two
+  // machines is one harness there, and keying this per source would both print
+  // the name twice and count the stack twice in that harness's `stacks` tally.
+  const harnessTokens = new Map<string, number>()
   const publishCost = stack.publishCost !== false
   const costs = []
 
@@ -207,10 +205,10 @@ async function readStack(
     tokens += p.activity.totalTokens
     sessions += p.activity.sessions
     if (p.activity.totalTokens > 0) {
-      activeHarnesses.push({
-        name: p.harness.name,
-        tokens: p.activity.totalTokens,
-      })
+      harnessTokens.set(
+        p.harness.name,
+        (harnessTokens.get(p.harness.name) ?? 0) + p.activity.totalTokens
+      )
     }
     for (const m of p.models) {
       modelTokens.set(m.id, (modelTokens.get(m.id) ?? 0) + tokensOf(m.tokens))
@@ -246,7 +244,12 @@ async function readStack(
     tokens,
     sessions,
     points: seriesOf(rows),
-    activeHarnesses,
+    // `newestPerSource` already ordered the sources, so first sighting of each
+    // name preserves Claude-Code-first.
+    activeHarnesses: [...harnessTokens].map(([name, tokens]) => ({
+      name,
+      tokens,
+    })),
     modelTokens,
     spend,
   }

@@ -868,6 +868,18 @@ export default defineSchema({
     // per harness" is one indexed read. A plain string, not a union literal -
     // a third harness must not need a schema migration.
     harness: v.string(),
+    // Which machine published this (#243). The other half of the discriminator:
+    // "current" is the newest row per (harness, machine), because two machines
+    // running the same harness measure disjoint sessions and their readings sum.
+    // Keyed on the token's NAME rather than its id, deliberately - relinking a
+    // machine mints a second token, and by id that one machine would hold two
+    // buckets, the dead one carrying a stale reading forward forever.
+    //
+    // OPTIONAL FOREVER, not a migration phase. Rows written before tagging carry
+    // no machine and no backfill can invent one: unlike `harness` this is not in
+    // the payload, so it is not derivable after the fact. `convex/lib/sources.ts`
+    // states what an untagged row means instead.
+    machine: v.optional(v.string()),
     payload: MeasuredPayload,
   })
     .index('by_stack_capturedAt', ['stackId', 'capturedAt'])

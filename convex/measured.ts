@@ -18,6 +18,13 @@ import {
 import { captureServerEvent } from './analytics'
 import { emitActivityEvent } from './activity'
 import { normalizeFrequencyHours } from './lib/autoSync'
+import {
+  newestBySource,
+  newestPerSource,
+  sourceKey,
+  sourceOrder,
+  visibleSources,
+} from './lib/sources'
 import { extractShortId } from './lib/ids'
 import { type RepricedModel, repriceSnapshot, round2 } from './lib/reprice'
 import {
@@ -151,7 +158,8 @@ function checkPayloadStrings(
 async function insertSnapshot(
   ctx: MutationCtx,
   stackId: Id<'stacks'>,
-  payload: Doc<'measuredSnapshots'>['payload']
+  payload: Doc<'measuredSnapshots'>['payload'],
+  machine?: string
 ): Promise<{ snapshotId: Id<'measuredSnapshots'>; receivedAt: number }> {
   if (!SUPPORTED_SCHEMA_VERSIONS.includes(payload.schemaVersion)) {
     throw new Error(`Unsupported payload schemaVersion ${payload.schemaVersion}`)
@@ -172,6 +180,10 @@ async function insertSnapshot(
     // Denormalized discriminator (#66 decision 1) - "current per harness" is
     // one indexed read. Old rows get theirs from the 20260801 backfill.
     harness: payload.harness.name,
+    // The other half of the discriminator (#243). Absent when the caller has no
+    // token to name a machine from, which is the pre-tagging state exactly, so
+    // `visibleSources` treats both the same way.
+    machine,
     payload,
   })
   return { snapshotId, receivedAt }
@@ -189,6 +201,8 @@ export const publishSnapshot = internalMutation({
   args: {
     stackId: v.id('stacks'),
     payload: MeasuredPayload,
+    /** Optional here and required nowhere: see `machine` in the schema. */
+    machine: v.optional(v.string()),
   },
   returns: v.object({
     snapshotId: v.id('measuredSnapshots'),
@@ -197,7 +211,7 @@ export const publishSnapshot = internalMutation({
   handler: async (ctx, args) => {
     const stack = await ctx.db.get(args.stackId)
     if (!stack) throw new Error('Stack not found')
-    return await insertSnapshot(ctx, args.stackId, args.payload)
+    return await insertSnapshot(ctx, args.stackId, args.payload, args.machine)
   },
 })
 
@@ -311,20 +325,18 @@ function resolveModels(
   })
 }
 
-const harnessOf = (row: Doc<'measuredSnapshots'>): string => row.harness
-
 /**
- * The newest snapshot of EACH harness (#66 decisions 1-2). "Current" became
- * per-harness the day snapshots did: each harness syncs independently, so its
- * freshness and failures stay attributable.
+ * The newest snapshot of EACH SOURCE (#66 decisions 1-2, widened by #243).
+ * "Current" became per-harness the day snapshots did, and per-machine the day a
+ * stack had two: each source syncs independently, so its freshness and failures
+ * stay attributable. The rule itself is in `convex/lib/sources.ts`.
  *
- * One collect over the stack's rows rather than one indexed read per harness,
- * because the harness set is open (a plain string, deliberately) and the
- * retention policy bounds a stack to roughly one row per day - the collect is
- * small by construction. Claude Code sorts first (the documented default),
- * then alphabetical, so the display order is stable.
+ * One collect over the stack's rows rather than one indexed read per source,
+ * because both halves of the key are open strings (deliberately) and the
+ * retention policy bounds a stack to roughly one row per source per day - the
+ * collect is small by construction.
  */
-async function newestSnapshotsPerHarness(
+async function newestSnapshotsPerSource(
   ctx: QueryCtx,
   stackId: Id<'stacks'>
 ): Promise<Doc<'measuredSnapshots'>[]> {
@@ -332,25 +344,17 @@ async function newestSnapshotsPerHarness(
     .query('measuredSnapshots')
     .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', stackId))
     .collect()
-  const byHarness = new Map<string, Doc<'measuredSnapshots'>>()
-  for (const row of rows) {
-    const held = byHarness.get(harnessOf(row))
-    if (!held || row.capturedAt > held.capturedAt) {
-      byHarness.set(harnessOf(row), row)
-    }
-  }
-  return [...byHarness.values()].sort((a, b) => {
-    const ha = harnessOf(a)
-    const hb = harnessOf(b)
-    if (ha === hb) return 0
-    if (ha === 'claude-code') return -1
-    if (hb === 'claude-code') return 1
-    return ha.localeCompare(hb)
-  })
+  return newestPerSource(rows)
 }
 
-/** One harness's current snapshot - the old CurrentSnapshot, one per harness. */
+/** One SOURCE's current snapshot: a harness on a machine (#66, #243). */
 const HarnessSnapshot = v.object({
+  /**
+   * The machine that published it, or null for a row written before tagging.
+   * Named so the display can tell two readings of the same harness apart -
+   * without it "claude-code" would appear twice with nothing to distinguish it.
+   */
+  machine: v.union(v.string(), v.null()),
   capturedAt: v.number(),
   receivedAt: v.number(),
   schemaVersion: v.number(),
@@ -398,20 +402,29 @@ const HarnessSnapshot = v.object({
 })
 
 /**
- * The combined headline plus the per-harness sections (#66 decision 2).
+ * The combined headline plus the per-source sections (#66 decision 2, #243).
  *
  * The headline SUMS what sums honestly - a session belongs to exactly one
- * harness, so tokens, sessions and dollars cannot double-count even when the
- * windows overlap. What cannot merge stays per-harness: inventory atoms carry
- * normalized `callShare` only (no weights, so a cross-harness number would be
- * fabricated), and day-sets/project-sets can overlap, so the headline shows
- * `max` for those, labeled as such by the display.
+ * harness on exactly one machine, so tokens, sessions and dollars cannot
+ * double-count even when the windows overlap. What cannot merge stays
+ * per-source: inventory atoms carry normalized `callShare` only (no weights, so
+ * a cross-source number would be fabricated), and day-sets/project-sets can
+ * overlap, so the headline shows `max` for those, labeled as such by the
+ * display.
+ *
+ * `max` is a LOWER BOUND once machines are in play, and knowingly so. Two
+ * harnesses on one machine usually run on the same days; two machines often do
+ * not, so a laptop active Mon-Wed and a server active Thu-Fri reads as 3 active
+ * days rather than 5. A sum would be an upper bound and wrong the other way -
+ * neither is recoverable, because the payload carries counts and not the day
+ * set itself. Understating is the safer error for a number the page prints as
+ * "N of 30", and widening the payload to carry day sets is the only real fix.
  */
 const CurrentMeasured = v.object({
-  /** Newest across harnesses; the freshness the page leads with. */
+  /** Newest across sources; the freshness the page leads with. */
   receivedAt: v.number(),
   capturedAt: v.number(),
-  /** True when ANY harness synced inside the 7-day window. */
+  /** True when ANY source synced inside the 7-day window. */
   isFresh: v.boolean(),
   /** Envelope: max days, earliest from, latest to. */
   window: v.object({ days: v.number(), from: v.string(), to: v.string() }),
@@ -421,9 +434,9 @@ const CurrentMeasured = v.object({
   cost: v.union(Cost, v.null()),
   activity: v.object({
     sessions: v.number(),
-    /** MAX across harnesses, not a sum - the same day can appear in both. */
+    /** MAX across sources, not a sum - the same day can appear in several. */
     activeDays: v.number(),
-    /** MAX across harnesses - the same project can appear in both. */
+    /** MAX across sources - the same project can appear in several. */
     projects: v.number(),
     totalTokens: v.number(),
     cacheHitShare: v.number(),
@@ -448,6 +461,7 @@ function toHarnessSnapshot(
     publishCost,
   })
   return {
+    machine: snapshot.machine ?? null,
     capturedAt: snapshot.capturedAt,
     receivedAt: snapshot.receivedAt,
     schemaVersion: snapshot.schemaVersion,
@@ -524,11 +538,16 @@ function mergeModels(lists: Priced[][]): Priced[] {
 type HarnessReading = ReturnType<typeof toHarnessSnapshot>
 
 /**
- * Merge a set of per-harness readings into the one figure the page states.
+ * Merge a set of per-source readings into the one figure the page states.
  *
  * Split out of `getCurrentByStackSlug` for #81: the series is this same merge
  * evaluated at every sync, so the headline is the last point of its own trail by
  * construction rather than by agreement between two pieces of arithmetic.
+ *
+ * Takes readings, not rows, and does no eviction of its own - callers hand it
+ * an already-visible set (`newestPerSource`, or `visibleSources` inside a fold).
+ * Handing it an untagged reading beside a tagged one of the same harness would
+ * double-count, which is the whole reason that rule exists.
  */
 function mergeHarnesses(harnesses: HarnessReading[]) {
   const totalTokens = harnesses.reduce((a, h) => a + h.activity.totalTokens, 0)
@@ -541,10 +560,10 @@ function mergeHarnesses(harnesses: HarnessReading[]) {
     cacheRead += m.tokens.cacheRead
     inputClass += m.tokens.input + m.tokens.cacheRead + m.tokens.cacheWrite
   }
-  // Money sums across harnesses without double-counting: a session belongs to
-  // exactly one harness. Coverage re-divides over the combined token mass
-  // rather than averaging the per-harness shares, which would weight a tiny
-  // harness the same as a huge one.
+  // Money sums across sources without double-counting: a session belongs to
+  // exactly one harness on exactly one machine. Coverage re-divides over the
+  // combined token mass rather than averaging the per-source shares, which
+  // would weight a tiny source the same as a huge one.
   const costs = harnesses
     .map((h) => h.cost)
     .filter((c): c is NonNullable<typeof c> => c !== null)
@@ -633,7 +652,7 @@ export const getCurrentByStackSlug = query({
     const stack = await publishedStackBySlug(ctx, args.slug)
     if (!stack) return null
 
-    const snapshots = await newestSnapshotsPerHarness(ctx, stack._id)
+    const snapshots = await newestSnapshotsPerSource(ctx, stack._id)
     if (snapshots.length === 0) return null
 
     // The flag is the gate, not the presence of dollars (#93): an owner who
@@ -697,6 +716,8 @@ const HistoryPoint = v.object({
   harnesses: v.array(
     v.object({
       name: v.string(),
+      /** Null on a reading published before machine tagging (#243). */
+      machine: v.union(v.string(), v.null()),
       version: v.union(v.string(), v.null()),
       capturedAt: v.number(),
       tokens: v.number(),
@@ -713,6 +734,8 @@ const MeasuredHistory = v.object({
   truncated: v.boolean(),
   /** Only this harness, when the caller asked for one. */
   harness: v.union(v.string(), v.null()),
+  /** Only this machine, when the caller asked for one. */
+  machine: v.union(v.string(), v.null()),
   points: v.array(HistoryPoint),
 })
 
@@ -734,6 +757,7 @@ function toHistoryPoint(
     pricingTable: merged.pricingTable,
     harnesses: merged.harnesses.map((h) => ({
       name: h.harness.name,
+      machine: h.machine,
       version: h.harness.version,
       capturedAt: h.capturedAt,
       tokens: h.activity.totalTokens,
@@ -764,9 +788,15 @@ function toHistoryPoint(
  * series does not open by silently dropping a harness the headline includes.
  *
  * `harness` narrows the series to one harness through
- * `by_stack_harness_capturedAt`, with no carry-forward and no merge - that is
- * one machine's own trail, which is the only honest way to read a per-harness
- * number (call shares and freshness never merge, #66).
+ * `by_stack_harness_capturedAt`; `machine` narrows it further, to one source's
+ * own trail. Together they are the only honest way to read a per-source number
+ * (call shares and freshness never merge, #66). Narrowing to a harness ALONE
+ * still merges, because a harness on two machines is two readings - the comment
+ * here used to call a per-harness series "one machine's own trail", which was
+ * true only while a stack had one machine (#243).
+ *
+ * `machine` is filtered after the read rather than indexed: it only ever
+ * narrows a set the harness index has already bounded to one stack.
  *
  * Rows inside 90 days are one per sync and rows beyond it are one per UTC day
  * (`gcSnapshots`), so the spacing is irregular by construction. The series
@@ -778,6 +808,7 @@ export const getHistoryByStackSlug = query({
     slug: v.string(),
     days: v.optional(v.number()),
     harness: v.optional(v.string()),
+    machine: v.optional(v.string()),
   },
   returns: v.union(MeasuredHistory, v.null()),
   handler: async (ctx, args) => {
@@ -794,7 +825,7 @@ export const getHistoryByStackSlug = query({
     const publishCost = stack.publishCost !== false
 
     const only = args.harness
-    const rows = only
+    const collected = only
       ? await ctx.db
           .query('measuredSnapshots')
           .withIndex('by_stack_harness_capturedAt', (q) =>
@@ -805,15 +836,27 @@ export const getHistoryByStackSlug = query({
           .query('measuredSnapshots')
           .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', stack._id))
           .collect()
+    const rows =
+      args.machine === undefined
+        ? collected
+        : collected.filter((row) => row.machine === args.machine)
     if (rows.length === 0) return null
 
     const catalog = await loadModelCatalog(ctx)
     const ordered = [...rows].sort((a, b) => a.capturedAt - b.capturedAt)
 
-    // Fold the rows forward, holding the newest reading of each harness. Rows
+    // Fold the rows forward, holding the newest reading of each SOURCE. Rows
     // older than the window are folded in but emit no point: they are the seed
     // the first point inside the window carries.
-    const held = new Map<string, HarnessReading>()
+    //
+    // The row is held beside its reading because the eviction rule reads the
+    // row's columns while the merge reads the priced reading, and pricing every
+    // held source again at every flush would multiply the work by the number of
+    // points for numbers that have not changed.
+    const held = new Map<
+      string,
+      { row: Doc<'measuredSnapshots'>; reading: HarnessReading }
+    >()
     const points: ReturnType<typeof toHistoryPoint>[] = []
     let bucket: number | null = null
     let bucketAt = 0
@@ -821,7 +864,19 @@ export const getHistoryByStackSlug = query({
     const flush = () => {
       if (bucket === null) return
       if (bucketAt >= cutoff) {
-        points.push(toHistoryPoint(bucketAt, mergeHarnesses([...held.values()])))
+        // Evicted per point, not once at the end: a harness whose only reading
+        // here is untagged is the whole truth about it until the day a machine
+        // of that harness first reports, and every earlier point must still say
+        // so (#243).
+        const visible = visibleSources([...held.values()], (e) => e.row).sort(
+          (a, b) => sourceOrder(a.row, b.row)
+        )
+        points.push(
+          toHistoryPoint(
+            bucketAt,
+            mergeHarnesses(visible.map((e) => e.reading))
+          )
+        )
       }
       bucket = null
     }
@@ -833,7 +888,10 @@ export const getHistoryByStackSlug = query({
         bucket = key
         bucketAt = row.capturedAt
       }
-      held.set(harnessOf(row), toHarnessSnapshot(catalog, row, publishCost))
+      held.set(sourceKey(row), {
+        row,
+        reading: toHarnessSnapshot(catalog, row, publishCost),
+      })
     }
     flush()
 
@@ -843,6 +901,7 @@ export const getHistoryByStackSlug = query({
       windowDays,
       truncated,
       harness: args.harness ?? null,
+      machine: args.machine ?? null,
       points: truncated ? points.slice(-HISTORY_MAX_POINTS) : points,
     }
   },
@@ -953,9 +1012,10 @@ export const getReconcileSuggestions = query({
   }),
   handler: async (ctx, args) => {
     const stack = await requireStackOwner(ctx, args.stackId)
-    // One snapshot per harness (#66): a model measured by ANY harness is a
-    // reconcile candidate, and the surface's freshness reads the newest sync.
-    const snapshots = await newestSnapshotsPerHarness(ctx, args.stackId)
+    // One snapshot per source (#66, #243): a model measured by ANY harness on
+    // ANY machine is a reconcile candidate, and the surface's freshness reads
+    // the newest sync.
+    const snapshots = await newestSnapshotsPerSource(ctx, args.stackId)
 
     const dismissals = await ctx.db
       .query('reconcileDismissals')
@@ -1854,18 +1914,28 @@ const utcDay = (ms: number): string => new Date(ms).toISOString().slice(0, 10)
  * Retention for the append-only snapshot table (#33 carried this forward).
  *
  * Policy: keep EVERY snapshot from the last 90 days, and beyond that keep only
- * the last snapshot of each UTC day. The newest row for a stack is never
- * deleted at any age.
+ * the last snapshot of each UTC day PER SOURCE. Each source's newest row is
+ * never deleted at any age.
+ *
+ * PER SOURCE, not per stack (#243, and a bug before it). Grouping on
+ * (stack, day) alone kept one row for the whole day, so a stack that synced two
+ * harnesses on the same day lost one of them the moment that day aged past 90 -
+ * and the fold in `getHistoryByStackSlug` carries the newest reading of each
+ * source forward, so a deleted seed does not leave a gap, it silently subtracts
+ * a source from every later point. Machines make that failure ordinary rather
+ * than occasional: two machines syncing daily would have lost one of the two
+ * every day. The guard on the newest row moves for the same reason - per stack
+ * it protected only the last machine to sync.
  *
  * Why downsample rather than expire: the P1 live-stats map inherits this table
  * as a time series, and a hard cutoff would put a cliff in it. A day is the
  * finest grain any chart of a rolling-30-day metric can use meaningfully, so
  * beyond the fine-grain window the extra rows carry no signal - while inside it
  * they are what makes a bad sync debuggable. There is no absolute age cap: one
- * row per stack per day is ~365 rows a year, which never needs one.
+ * row per source per day is ~365 rows a year each, which never needs one.
  *
- * Deleting the newest row is guarded separately because "current" is a query
- * for it - GC must never be able to empty the measured layer of a live stack.
+ * Deleting a newest row is guarded separately because "current" is a query for
+ * it - GC must never be able to empty the measured layer of a live stack.
  */
 export const gcSnapshots = internalMutation({
   args: {},
@@ -1882,33 +1952,38 @@ export const gcSnapshots = internalMutation({
       .withIndex('by_stack_capturedAt')
       .take(GC_BATCH)
 
-    // Group by (stack, UTC day) and keep the newest of each group.
+    // Group by (stack, UTC day, source) and keep the newest of each group.
+    const dayKey = (row: Doc<'measuredSnapshots'>) =>
+      `${row.stackId}:${utcDay(row.capturedAt)}:${sourceKey(row)}`
     const keepers = new Map<string, Doc<'measuredSnapshots'>>()
     const candidates: Doc<'measuredSnapshots'>[] = []
     for (const row of old) {
       if (row.capturedAt >= cutoff) continue
       candidates.push(row)
-      const key = `${row.stackId}:${utcDay(row.capturedAt)}`
+      const key = dayKey(row)
       const held = keepers.get(key)
       if (!held || row.capturedAt > held.capturedAt) keepers.set(key, row)
     }
 
-    // Never delete a stack's newest row, whatever its age.
-    const newestPerStack = new Map<string, number>()
+    // Never delete the newest row of any source, whatever its age. One collect
+    // per stack rather than one `.first()`, because `machine` is not indexed
+    // and the retention policy this same function enforces is what bounds the
+    // read. Held by `_id`: two sources publishing in one atomic batch share a
+    // `capturedAt`, so comparing timestamps would guard whichever the map
+    // happened to hold.
+    const protectedIds = new Set<string>()
     for (const stackId of new Set(candidates.map((r) => r.stackId))) {
-      const newest = await ctx.db
+      const rows = await ctx.db
         .query('measuredSnapshots')
         .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', stackId))
-        .order('desc')
-        .first()
-      if (newest) newestPerStack.set(stackId, newest.capturedAt)
+        .collect()
+      for (const newest of newestBySource(rows)) protectedIds.add(newest._id)
     }
 
     let deleted = 0
     for (const row of candidates) {
-      const key = `${row.stackId}:${utcDay(row.capturedAt)}`
-      if (keepers.get(key)?._id === row._id) continue
-      if (newestPerStack.get(row.stackId) === row.capturedAt) continue
+      if (keepers.get(dayKey(row))?._id === row._id) continue
+      if (protectedIds.has(row._id)) continue
       await ctx.db.delete(row._id)
       deleted++
     }
@@ -2053,7 +2128,17 @@ export const publishForToken = internalMutation({
     const snapshotIds: Id<'measuredSnapshots'>[] = []
     let receivedAt = 0
     for (const payload of payloads) {
-      const inserted = await insertSnapshot(ctx, stack._id, payload)
+      // The machine is the TOKEN'S name, never the payload's (#243). A client
+      // that could name its own bucket could split one machine's history in
+      // two, or merge itself into another machine's, and the token already
+      // carries the name the owner typed at link time. An older token with no
+      // name publishes untagged, which reads exactly like a pre-tagging row.
+      const inserted = await insertSnapshot(
+        ctx,
+        stack._id,
+        payload,
+        token.name
+      )
       snapshotIds.push(inserted.snapshotId)
       receivedAt = inserted.receivedAt
     }

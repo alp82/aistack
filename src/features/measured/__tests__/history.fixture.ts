@@ -205,6 +205,7 @@ function mergePoint(sync: { at: number; rows: Row[] }): MeasuredHistoryPoint {
 			.join(" + "),
 		harnesses: sync.rows.map((r) => ({
 			name: r.harness,
+			machine: null,
 			version: r.version,
 			capturedAt: sync.at,
 			tokens: r.tokens,
@@ -246,7 +247,13 @@ export function buildHistory({
 				}
 			: p,
 	);
-	return { windowDays: 90, truncated: false, harness: null, points };
+	return {
+		windowDays: 90,
+		truncated: false,
+		harness: null,
+		machine: null,
+		points,
+	};
 }
 
 export const NEWEST_AT = SYNCS[SYNCS.length - 1].at;

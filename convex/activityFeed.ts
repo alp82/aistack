@@ -1,8 +1,9 @@
 import { v } from 'convex/values'
-import type { Doc, Id } from './_generated/dataModel'
+import type { Id } from './_generated/dataModel'
 import type { QueryCtx } from './_generated/server'
 import { query } from './_generated/server'
 import type { ActivityEventValue } from './activity'
+import { newestPerSource } from './lib/sources'
 import { ActivityEvent } from './schema'
 
 /**
@@ -285,7 +286,7 @@ async function priorTotal(
     .collect()
   const earlier = snapshots.filter((row) => row.receivedAt < before)
   if (earlier.length === 0) return null
-  return newestPerHarness(earlier).reduce(
+  return newestPerSource(earlier).reduce(
     (sum, row) => sum + row.payload.activity.totalTokens,
     0
   )
@@ -347,18 +348,6 @@ function pointsFor(
     .map(([at, value]) => ({ at, value }))
 }
 
-/** The newest snapshot of each harness - the same rule every other surface reads. */
-function newestPerHarness(
-  rows: Doc<'measuredSnapshots'>[]
-): Doc<'measuredSnapshots'>[] {
-  const byHarness = new Map<string, Doc<'measuredSnapshots'>>()
-  for (const row of rows) {
-    const held = byHarness.get(row.harness)
-    if (!held || row.capturedAt > held.capturedAt) byHarness.set(row.harness, row)
-  }
-  return [...byHarness.values()]
-}
-
 /**
  * The five measured numbers. Four are joined from `measuredSnapshots`; the
  * token level comes off the sync events, which already carry it.
@@ -404,7 +393,7 @@ async function usageFor(
       .query('measuredSnapshots')
       .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', row.stackId))
       .collect()
-    for (const snapshot of newestPerHarness(snapshots)) {
+    for (const snapshot of newestPerSource(snapshots)) {
       for (const model of snapshot.payload.models) {
         // `unknown` is the CLI's spelling for tokens it could not attribute. It
         // is not a model, so it never swells the count of them.

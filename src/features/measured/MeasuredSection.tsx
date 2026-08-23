@@ -127,10 +127,12 @@ function Reading({
 	snapshot: MeasuredSnapshot;
 	points: readonly MeasuredHistoryPoint[];
 }) {
-	// The COMBINED headline (#66 decision 2): tokens, sessions and dollars sum
-	// honestly across harnesses; each harness keeps its own section below.
+	// The COMBINED headline (#66 decision 2, #243): tokens, sessions and dollars
+	// sum honestly across every source, a source being one harness on one
+	// machine. Day-sets and project-sets can overlap between sources, so those
+	// two are a max and the label has to say so.
 	const cost = totalUSD(snapshot);
-	const multiHarness = snapshot.harnesses.length > 1;
+	const multiSource = snapshot.harnesses.length > 1;
 	const trails = modelTrails(snapshot.models, points);
 	const firstAt = points.length > 0 ? points[0].at : null;
 	const sinceLast = lastCheckLine(tokenDelta(points), fmtTokens);
@@ -179,7 +181,7 @@ function Reading({
 						value={snapshot.activity.sessions.toLocaleString("en-US")}
 					/>
 					<Stat
-						label={multiHarness ? "active days (max)" : "active days"}
+						label={multiSource ? "active days (max)" : "active days"}
 						value={`${snapshot.activity.activeDays} of ${snapshot.window.days}`}
 					/>
 					<Stat

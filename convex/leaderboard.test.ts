@@ -131,11 +131,13 @@ async function seedStack(
 async function sync(
   t: Ctx,
   stackId: Id<'stacks'>,
-  over: Parameters<typeof payload>[0] = {}
+  over: Parameters<typeof payload>[0] & { machine?: string } = {}
 ) {
+  const { machine, ...rest } = over
   await t.mutation(internal.measured.publishSnapshot, {
     stackId,
-    payload: payload(over),
+    payload: payload(rest),
+    ...(machine === undefined ? {} : { machine }),
   })
 }
 
@@ -181,6 +183,40 @@ describe('leaderboard.get', () => {
     ])
     expect(board.stackCount).toBe(2)
     expect(board.totalTokens).toBe(1000)
+  })
+
+
+  test('sums two machines of one harness rather than replacing (#243)', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t, { name: 'Two Machines' })
+    await sync(t, stackId, {
+      capturedAt: Date.now() - HOUR,
+      totalTokens: 900,
+      machine: 'laptop',
+    })
+    await sync(t, stackId, { totalTokens: 100, machine: 'vps' })
+
+    const board = await t.query(api.leaderboard.get, {})
+    expect(board.rows[0].tokens).toBe(1000)
+  })
+
+  test('names a harness once however many machines run it', async () => {
+    // The row prints "Claude Code + Codex" under a stack, and the harness
+    // ranking counts stacks - both would double a stack keyed per source.
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t, { name: 'Two Machines' })
+    await sync(t, stackId, {
+      capturedAt: Date.now() - HOUR,
+      totalTokens: 900,
+      machine: 'laptop',
+    })
+    await sync(t, stackId, { totalTokens: 100, machine: 'vps' })
+
+    const board = await t.query(api.leaderboard.get, {})
+    expect(board.rows[0].harnesses).toEqual(['claude-code'])
+    const claudeCode = board.harnesses.find((h) => h.key === 'claude-code')
+    expect(claudeCode?.stackCount).toBe(1)
+    expect(claudeCode?.leadsCount).toBe(1)
   })
 
   test('lists the quiet group as a count and a token mass, not rows', async () => {
