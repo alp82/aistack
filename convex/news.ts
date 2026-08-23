@@ -16,7 +16,7 @@
 
 import { type Infer, v } from 'convex/values'
 import { internal } from './_generated/api'
-import type { Doc } from './_generated/dataModel'
+import type { Doc, Id } from './_generated/dataModel'
 import {
   action,
   internalAction,
@@ -205,11 +205,19 @@ export const setSourceMinPoints = mutation({
  * Deleting the rows would rewrite history: an item the owner already approved
  * is in the item stream, and a source list edit must not silently unpublish it
  * from the next issue.
+ *
+ * A scraper row (#210) is refused. Its identity is a registry entry in the
+ * code, so the next run would create the row again, cold. Pause is the act
+ * that means "stop reading this", and it is the one that lasts.
  */
 export const deleteSource = mutation({
   args: { sourceId: v.id('newsSources') },
   handler: async (ctx, args) => {
     await assertAdmin(ctx)
+    const source = await ctx.db.get(args.sourceId)
+    if (source?.scraperSlug) {
+      throw new Error('A scraper cannot be deleted. Pause it instead.')
+    }
     const items = await ctx.db
       .query('newsItems')
       .withIndex('by_source', (q) => q.eq('sourceId', args.sourceId))
@@ -443,6 +451,105 @@ export const setItemState = mutation({
 })
 
 // ---------------------------------------------------------------------------
+// The source digest (#238)
+// ---------------------------------------------------------------------------
+
+/**
+ * Which digest group an item sits in.
+ *
+ * The inbox is grouped by SOURCE, because volume arrives per source: one week
+ * of the 14 proved feeds held 194 items, and one aggregator served 100 of them
+ * (#235). Two groups have no source row behind them. What the owner pasted has
+ * none by design, and what a deleted source left behind lost its link (see
+ * `deleteSource`). Keep those two apart, because only the first is quick-add.
+ */
+function groupKeyOf(item: Doc<'newsItems'>): string {
+  if (item.sourceId) return `source:${item.sourceId}`
+  return item.intake === 'quick-add' ? 'quick-add' : 'unsourced'
+}
+
+const GROUP_LABEL: Record<string, string> = {
+  'quick-add': 'Pasted by you',
+  unsourced: 'Source removed',
+}
+
+/** How many rows one open group serves at most, however often the owner asks. */
+const GROUP_MAX = 500
+
+const itemDate = (item: Doc<'newsItems'>): number =>
+  item.publishedAt ?? item.collectedAt
+
+/**
+ * Every inbox row, for the grouping passes.
+ *
+ * The digest counts must be TRUE, so this reads the whole inbox rather than the
+ * first page of it. A count that stops at 100 would tell the owner a group is
+ * empty when it is not, and the one-tap discard would then leave rows behind.
+ */
+async function inboxItems(ctx: { db: any }): Promise<Doc<'newsItems'>[]> {
+  return await ctx.db
+    .query('newsItems')
+    .withIndex('by_state_collectedAt', (q: any) => q.eq('state', 'inbox'))
+    .collect()
+}
+
+/** The digest: one closed box per source, biggest group first. */
+export const inboxGroups = query({
+  args: {},
+  handler: async (ctx) => {
+    if (!(await isAdmin(ctx))) return null
+    interface Group {
+      key: string
+      sourceId: Id<'newsSources'> | null
+      name: string
+      licenseClass: string
+      count: number
+      newestAt: number
+    }
+    const groups = new Map<string, Group>()
+    for (const item of await inboxItems(ctx)) {
+      const key = groupKeyOf(item)
+      const seen = groups.get(key)
+      if (seen) {
+        seen.count++
+        seen.newestAt = Math.max(seen.newestAt, itemDate(item))
+        continue
+      }
+      groups.set(key, {
+        key,
+        sourceId: item.sourceId ?? null,
+        name: GROUP_LABEL[key] ?? '',
+        licenseClass: item.licenseClass,
+        count: 1,
+        newestAt: itemDate(item),
+      })
+    }
+    for (const group of groups.values()) {
+      if (!group.sourceId) continue
+      const source = await ctx.db.get(group.sourceId)
+      group.name = source?.name ?? GROUP_LABEL.unsourced
+    }
+    return [...groups.values()].sort(
+      (a, b) => b.count - a.count || b.newestAt - a.newestAt,
+    )
+  },
+})
+
+/** The rows inside one open group, newest first. */
+export const listGroupItems = query({
+  args: { key: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    if (!(await isAdmin(ctx))) return null
+    const items = (await inboxItems(ctx)).filter(
+      (item) => groupKeyOf(item) === args.key,
+    )
+    items.sort((a, b) => itemDate(b) - itemDate(a))
+    const limit = Math.min(args.limit ?? INBOX_PAGE, GROUP_MAX)
+    return await withContext(ctx, items.slice(0, limit))
+  },
+})
+
+// ---------------------------------------------------------------------------
 // Quick-add
 // ---------------------------------------------------------------------------
 
@@ -488,10 +595,21 @@ export const insertItem = internalMutation({
     hnPoints: v.optional(v.number()),
     hnComments: v.optional(v.number()),
     xEmbed: v.optional(XEmbedValue),
+    /**
+     * What separates two items that share one page (#210).
+     *
+     * `newsUrlKey` drops the fragment, which is right for a feed: one post
+     * reposted with an anchor is one item. A page-diff scraper is the opposite
+     * case, because a changelog holds one item per dated section and they all
+     * share a URL. The scraper lane passes the section key here, and every
+     * other caller leaves it absent.
+     */
+    fragmentKey: v.optional(v.string()),
   },
   returns: IntakeResult,
   handler: async (ctx, args) => {
-    const urlKey = newsUrlKey(args.url)
+    const base = newsUrlKey(args.url)
+    const urlKey = args.fragmentKey ? `${base}#${args.fragmentKey}` : base
     const existing = await ctx.db
       .query('newsItems')
       .withIndex('by_urlKey', (q) => q.eq('urlKey', urlKey))
@@ -785,13 +903,23 @@ async function fetchProfilePosts(
 // The collector
 // ---------------------------------------------------------------------------
 
+/**
+ * The enabled sources of ONE lane.
+ *
+ * Every kind sits in the same table, and each lane reads only its own rows.
+ * Handing a sitemap to the feed parser would fail every source on every run,
+ * and the error would land on a row that is perfectly healthy. The Hacker News
+ * lane (#208) is the same case in reverse: its row is a search endpoint, and
+ * no feed parser is going to make sense of it.
+ */
 export const enabledSources = internalQuery({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db
+  args: { kind: NewsSourceKind },
+  handler: async (ctx, args) => {
+    const sources = await ctx.db
       .query('newsSources')
       .withIndex('by_enabled', (q) => q.eq('enabled', true))
       .collect()
+    return sources.filter((source) => source.kind === args.kind)
   },
 })
 
@@ -999,8 +1127,9 @@ async function pollHackerNews(
 export const collect = internalAction({
   args: {},
   handler: async (ctx): Promise<PollReport[]> => {
-    const sources = await ctx.runQuery(internal.news.enabledSources, {})
-    const feeds = sources.filter((s) => s.kind === 'feed')
+    const feeds = await ctx.runQuery(internal.news.enabledSources, {
+      kind: 'feed',
+    })
     const reports: PollReport[] = []
     for (const source of feeds) {
       reports.push(await pollOne(ctx, source))
@@ -1021,8 +1150,9 @@ export const collect = internalAction({
 export const collectHackerNews = internalAction({
   args: {},
   handler: async (ctx): Promise<PollReport[]> => {
-    const sources = await ctx.runQuery(internal.news.enabledSources, {})
-    const lanes = sources.filter((s) => s.kind === 'hn')
+    const lanes = await ctx.runQuery(internal.news.enabledSources, {
+      kind: 'hn',
+    })
     const reports: PollReport[] = []
     for (const source of lanes) {
       reports.push(await pollHackerNews(ctx, source))
@@ -1047,5 +1177,35 @@ export const collectNow = action({
     const feeds = await ctx.runAction(internal.news.collect, {})
     const hn = await ctx.runAction(internal.news.collectHackerNews, {})
     return [...feeds, ...hn]
+  },
+})
+
+export const sourceById = internalQuery({
+  args: { sourceId: v.id('newsSources') },
+  handler: async (ctx, args) => await ctx.db.get(args.sourceId),
+})
+
+/**
+ * Read ONE source now. This is the retry button on the inbox failure banner.
+ *
+ * Same code path as the cron, so a retry that works clears the failure count
+ * and the banner with it. The other sources are not read, because the owner
+ * asked about one.
+ *
+ * The retry follows the row's own LANE. A row is retried by the collector that
+ * reads it, and a scraper row is refused here rather than handed to the feed
+ * parser: that would write a failure onto a source that is perfectly healthy.
+ */
+export const pollSourceNow = action({
+  args: { sourceId: v.id('newsSources') },
+  handler: async (ctx, args): Promise<PollReport> => {
+    if (!(await isAdmin(ctx))) throw new Error('Unauthorized')
+    const source = await ctx.runQuery(internal.news.sourceById, {
+      sourceId: args.sourceId,
+    })
+    if (!source) throw new Error('That source is gone')
+    if (source.kind === 'feed') return await pollOne(ctx, source)
+    if (source.kind === 'hn') return await pollHackerNews(ctx, source)
+    throw new Error('A scraper is retried with Run scrapers on the Sources view')
   },
 })

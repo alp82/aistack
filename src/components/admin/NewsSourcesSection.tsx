@@ -1,5 +1,5 @@
 import { useAction, useMutation, useQuery } from "convex/react";
-import { Pause, Play, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Pause, Play, Plus, RefreshCw, Trash2, Undo2 } from "lucide-react";
 import { useId, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -159,29 +159,62 @@ export function NewsSourcesSection() {
 	const setSourceEnabled = useMutation(api.news.setSourceEnabled);
 	const deleteSource = useMutation(api.news.deleteSource);
 	const collectNow = useAction(api.news.collectNow);
-	const [running, setRunning] = useState(false);
+	const scrapeNow = useAction(api.newsScrapers.scrapeNow);
+	const resetBaseline = useAction(api.newsScrapers.resetBaseline);
+	const [running, setRunning] = useState<"feeds" | "scrapers" | null>(null);
 	const [report, setReport] = useState<string | null>(null);
 
 	async function runCollector() {
-		setRunning(true);
+		setRunning("feeds");
 		setReport(null);
 		try {
 			const reports = await collectNow({});
 			const added = reports.reduce((sum, r) => sum + r.added, 0);
 			const failed = reports.filter((r) => r.error !== null).length;
 			setReport(
-				`${reports.length} sources read, ${added} new items, ${failed} failed`,
+				`${reports.length} feeds read, ${added} new items, ${failed} failed`,
 			);
 		} catch (error) {
 			setReport(error instanceof Error ? error.message : "The run failed");
 		} finally {
-			setRunning(false);
+			setRunning(null);
+		}
+	}
+
+	async function runScrapers() {
+		setRunning("scrapers");
+		setReport(null);
+		try {
+			const reports = await scrapeNow({});
+			const added = reports.reduce((sum, r) => sum + r.added, 0);
+			const failed = reports.filter((r) => r.error !== null).length;
+			const seeded = reports.filter((r) => r.seeded).length;
+			setReport(
+				`${reports.length} scrapers read, ${added} new items, ${seeded} seeded, ${failed} failed`,
+			);
+		} catch (error) {
+			setReport(error instanceof Error ? error.message : "The run failed");
+		} finally {
+			setRunning(null);
 		}
 	}
 
 	async function remove(sourceId: Id<"newsSources">, name: string) {
 		if (!window.confirm(`Delete ${name}? Its collected items stay.`)) return;
 		await deleteSource({ sourceId });
+	}
+
+	async function forgetBaseline(
+		sourceId: Id<"newsSources">,
+		name: string,
+	): Promise<void> {
+		if (
+			!window.confirm(
+				`Forget what ${name} has shown before? The next run reads it cold and adds nothing.`,
+			)
+		)
+			return;
+		await resetBaseline({ sourceId });
 	}
 
 	return (
@@ -192,17 +225,31 @@ export function NewsSourcesSection() {
 				<button
 					type="button"
 					onClick={runCollector}
-					disabled={running}
+					disabled={running !== null}
 					className="inline-flex cursor-pointer items-center gap-2 border-2 border-stroke-strong px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-accent-lime hover:text-accent-lime disabled:cursor-not-allowed disabled:opacity-40"
 				>
-					<RefreshCw className={`size-3.5 ${running ? "animate-spin" : ""}`} />
-					{running ? "Reading" : "Collect now"}
+					<RefreshCw
+						className={`size-3.5 ${running === "feeds" ? "animate-spin" : ""}`}
+					/>
+					{running === "feeds" ? "Reading" : "Collect feeds"}
+				</button>
+				<button
+					type="button"
+					onClick={runScrapers}
+					disabled={running !== null}
+					className="inline-flex cursor-pointer items-center gap-2 border-2 border-stroke-strong px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-fg-secondary transition-colors hover:border-accent-lime hover:text-accent-lime disabled:cursor-not-allowed disabled:opacity-40"
+				>
+					<RefreshCw
+						className={`size-3.5 ${running === "scrapers" ? "animate-spin" : ""}`}
+					/>
+					{running === "scrapers" ? "Reading" : "Run scrapers"}
 				</button>
 				{report ? (
 					<span className="font-mono text-xs text-fg-muted">{report}</span>
 				) : null}
 				<span className="ml-auto font-mono text-xs text-fg-muted">
-					Feeds run every 6 hours. Hacker News runs daily at 06:00 UTC.
+					Feeds and scrapers run every 6 hours. Hacker News runs daily at 06:00
+					UTC.
 				</span>
 			</div>
 
@@ -228,6 +275,9 @@ export function NewsSourcesSection() {
 									}`}
 								>
 									{source.name}
+								</span>
+								<span className="border border-stroke-subtle px-2 py-0.5 font-mono text-xs text-fg-muted">
+									{source.kind}
 								</span>
 								<span className="border border-stroke-subtle px-2 py-0.5 font-mono text-xs text-fg-muted">
 									{source.licenseClass}
@@ -256,14 +306,25 @@ export function NewsSourcesSection() {
 										)}
 										{source.enabled ? "Pause" : "Resume"}
 									</button>
-									<button
-										type="button"
-										onClick={() => remove(source._id, source.name)}
-										className="inline-flex cursor-pointer items-center gap-2 border border-stroke-subtle px-3 py-1.5 font-mono text-xs text-fg-muted transition-colors hover:border-red-400 hover:text-red-400"
-									>
-										<Trash2 className="size-3.5" />
-										Delete
-									</button>
+									{source.scraperSlug ? (
+										<button
+											type="button"
+											onClick={() => forgetBaseline(source._id, source.name)}
+											className="inline-flex cursor-pointer items-center gap-2 border border-stroke-subtle px-3 py-1.5 font-mono text-xs text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime"
+										>
+											<Undo2 className="size-3.5" />
+											Reset baseline
+										</button>
+									) : (
+										<button
+											type="button"
+											onClick={() => remove(source._id, source.name)}
+											className="inline-flex cursor-pointer items-center gap-2 border border-stroke-subtle px-3 py-1.5 font-mono text-xs text-fg-muted transition-colors hover:border-red-400 hover:text-red-400"
+										>
+											<Trash2 className="size-3.5" />
+											Delete
+										</button>
+									)}
 								</div>
 							</div>
 							<p className="mt-2 break-all font-mono text-xs text-fg-muted">

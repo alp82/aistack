@@ -68,4 +68,10 @@ crons.daily(
   internal.news.collectHackerNews,
 )
 
+// The news collector, tier 3: the vendor scrapers (#210, map #198). Same six
+// hours as the feed lane, offset by 30 minutes so the two runs do not open
+// their connections together. A cycle is about eight requests. The first run
+// after a deploy seeds the baselines and adds nothing, which is the point.
+crons.cron('news-scrape', '30 */6 * * *', internal.newsScrapers.scrape)
+
 export default crons

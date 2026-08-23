@@ -1,5 +1,5 @@
 import { defineSchema, defineTable } from 'convex/server'
-import { v } from 'convex/values'
+import { type Infer, v } from 'convex/values'
 import { CliTokenScope } from './lib/cliScopes'
 
 const PageLink = v.object({
@@ -271,17 +271,28 @@ export const SyncTrigger = v.union(v.literal('manual'), v.literal('auto'))
 // ---------------------------------------------------------------------------
 
 /**
- * What the collector reads. One literal per lane, and a lane exists only once
- * a collector reads it.
+ * What the collector reads, and therefore which lane reads it.
  *
- *   feed  a generic RSS/Atom reader that covers vendor blogs, newsletters,
- *         personal blogs, YouTube channels, the aggregator, and GitHub
- *         `releases.atom`
- *   hn    the Hacker News lane (#208), through the Algolia search API
+ *   feed     a generic RSS/Atom reader: vendor blogs, newsletters, personal
+ *            blogs, YouTube channels, the aggregator, GitHub `releases.atom`
+ *   hn       the Hacker News lane (#208), through the Algolia search API
+ *   sitemap  a new <loc> in the site's sitemap is a new article (#210)
+ *   links    a new article href on a server-rendered index page (#210)
+ *   page     a new or edited dated section on one long page (#210)
  *
- * The scrapers (#210) add their own literal when they land.
+ * The three scraper kinds are bound to a code registry in
+ * `convex/newsScrapers.ts`, because each one needs its own filter or heading
+ * rule. A speculative literal would be a kind no collector reads.
  */
-export const NewsSourceKind = v.union(v.literal('feed'), v.literal('hn'))
+export const NewsSourceKind = v.union(
+  v.literal('feed'),
+  v.literal('hn'),
+  v.literal('sitemap'),
+  v.literal('links'),
+  v.literal('page')
+)
+
+export type NewsSourceKindType = Infer<typeof NewsSourceKind>
 
 /**
  * What we may store and show for one piece of collected content. Straight from
@@ -306,6 +317,8 @@ export const NewsLicenseClass = v.union(
   v.literal('hn'),
   v.literal('x')
 )
+
+export type NewsLicenseClassType = Infer<typeof NewsLicenseClass>
 
 /**
  * Where a news item is on its way to the stream (#204).
@@ -989,6 +1002,16 @@ export default defineSchema({
   newsSources: defineTable({
     name: v.string(),
     slug: v.string(),
+    /**
+     * The registry entry in `convex/newsScrapers.ts` this row stands for (#210).
+     *
+     * Absent on a feed row, which the owner types in whole. Present on a
+     * scraper row, whose URL and parsing rule are code: the row exists so that
+     * enable, health and the last error sit in the same Sources view as the
+     * feeds. It is a separate field from `slug` on purpose, because a feed the
+     * owner names "Anthropic news" would otherwise claim a scraper's identity.
+     */
+    scraperSlug: v.optional(v.string()),
     kind: NewsSourceKind,
     url: v.string(),
     licenseClass: NewsLicenseClass,
@@ -1024,7 +1047,30 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index('by_slug', ['slug'])
-    .index('by_enabled', ['enabled']),
+    .index('by_enabled', ['enabled'])
+    .index('by_scraperSlug', ['scraperSlug']),
+
+  // What the last scraper run saw (#210). One row per scraped source.
+  newsScraperState: defineTable({
+    sourceId: v.id('newsSources'),
+    /**
+     * Every entry this source has ever shown us. A URL for the sitemap and
+     * link lanes, and `<sectionId>@<contentHash>` for the page lane.
+     *
+     * This is the whole newness test: an entry in here is old, and an entry
+     * that is not is news. It also answers the flood question, because the
+     * first read of a page seeds this list and emits nothing. Keys are never
+     * dropped, so a post pulled and restored does not arrive twice.
+     *
+     * A Convex array holds 8192 elements. The busiest source listed 255 entries
+     * in 2026, so the ceiling is decades away, and the run logs a warning long
+     * before it.
+     */
+    keys: v.array(v.string()),
+    /** When the baseline was first written. The source collects from here. */
+    seededAt: v.number(),
+    updatedAt: v.number(),
+  }).index('by_source', ['sourceId']),
 
   // An owner-managed label. Flat, and it evolves. One topic per item.
   newsTopics: defineTable({
