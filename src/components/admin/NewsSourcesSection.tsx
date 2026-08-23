@@ -1,6 +1,6 @@
 import { useAction, useMutation, useQuery } from "convex/react";
 import { Pause, Play, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 
@@ -108,6 +108,52 @@ function AddSource() {
 	);
 }
 
+/**
+ * The points gate of the Hacker News lane (#208).
+ *
+ * The one dial that changes inbox volume. The prototype (#178) measured a real
+ * week: 97 items at a gate of 20, and 649 with no keyword net at all. The
+ * keyword tiers themselves are code, because they are regular expressions a
+ * test proves.
+ */
+function PointsGate({
+	source,
+}: {
+	source: { _id: Id<"newsSources">; minPoints?: number };
+}) {
+	const setSourceMinPoints = useMutation(api.news.setSourceMinPoints);
+	const inputId = useId();
+	const [value, setValue] = useState(String(source.minPoints ?? 20));
+	const [error, setError] = useState<string | null>(null);
+
+	async function save(next: string) {
+		setValue(next);
+		const points = Number(next);
+		if (!Number.isInteger(points) || points < 0) return;
+		setError(null);
+		try {
+			await setSourceMinPoints({ sourceId: source._id, minPoints: points });
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Could not save that");
+		}
+	}
+
+	return (
+		<span className="inline-flex items-center gap-2 border border-stroke-subtle px-2 py-0.5 font-mono text-xs text-fg-muted">
+			<label htmlFor={inputId}>min points</label>
+			<input
+				id={inputId}
+				type="number"
+				min={0}
+				value={value}
+				onChange={(e) => save(e.target.value)}
+				className="w-14 border border-stroke-subtle bg-bg-canvas px-1 py-0.5 font-mono text-xs text-fg-primary focus:border-accent-lime focus:outline-none"
+			/>
+			{error ? <span className="text-red-400">{error}</span> : null}
+		</span>
+	);
+}
+
 export function NewsSourcesSection() {
 	const sources = useQuery(api.news.listSources);
 	const setSourceEnabled = useMutation(api.news.setSourceEnabled);
@@ -156,7 +202,7 @@ export function NewsSourcesSection() {
 					<span className="font-mono text-xs text-fg-muted">{report}</span>
 				) : null}
 				<span className="ml-auto font-mono text-xs text-fg-muted">
-					The cron runs every 6 hours.
+					Feeds run every 6 hours. Hacker News runs daily at 06:00 UTC.
 				</span>
 			</div>
 
@@ -186,6 +232,7 @@ export function NewsSourcesSection() {
 								<span className="border border-stroke-subtle px-2 py-0.5 font-mono text-xs text-fg-muted">
 									{source.licenseClass}
 								</span>
+								{source.kind === "hn" ? <PointsGate source={source} /> : null}
 								{!source.enabled ? (
 									<span className="border border-stroke-subtle px-2 py-0.5 font-mono text-xs text-fg-muted">
 										paused

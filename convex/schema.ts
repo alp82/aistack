@@ -271,14 +271,17 @@ export const SyncTrigger = v.union(v.literal('manual'), v.literal('auto'))
 // ---------------------------------------------------------------------------
 
 /**
- * What the collector reads. ONE literal today, because the collector core has
- * one lane: a generic RSS/Atom reader that covers vendor blogs, newsletters,
- * personal blogs, YouTube channels, the aggregator, and GitHub `releases.atom`.
+ * What the collector reads. One literal per lane, and a lane exists only once
+ * a collector reads it.
  *
- * The Hacker News lane (#208) and the scrapers (#210) add their own literals
- * when they land. A speculative literal now would be a kind no collector reads.
+ *   feed  a generic RSS/Atom reader that covers vendor blogs, newsletters,
+ *         personal blogs, YouTube channels, the aggregator, and GitHub
+ *         `releases.atom`
+ *   hn    the Hacker News lane (#208), through the Algolia search API
+ *
+ * The scrapers (#210) add their own literal when they land.
  */
-export const NewsSourceKind = v.union(v.literal('feed'))
+export const NewsSourceKind = v.union(v.literal('feed'), v.literal('hn'))
 
 /**
  * What we may store and show for one piece of collected content. Straight from
@@ -1002,6 +1005,16 @@ export default defineSchema({
      * forward. The owner can move it back to backfill on purpose.
      */
     collectFrom: v.number(),
+    /**
+     * The points a Hacker News story needs before the lane collects it (#208).
+     * Only a `hn` source reads it. Absent means the proved default of 20, which
+     * left 97 items a week in the prototype (#178).
+     *
+     * It sits on the row, not in the code, because it is the one dial that
+     * moves inbox VOLUME. The keyword tiers beside it are regular expressions a
+     * test proves, so those stay in convex/lib/hackerNews.ts.
+     */
+    minPoints: v.optional(v.number()),
     /** Health, written by every poll. The Sources view reads these four. */
     lastPolledAt: v.optional(v.number()),
     lastOkAt: v.optional(v.number()),
@@ -1050,6 +1063,35 @@ export default defineSchema({
      * feed drops old entries and a dormant source cannot be read again.
      */
     sourceText: v.optional(v.string()),
+    /**
+     * The Hacker News story id, when the lane found this link on Hacker News
+     * (#208). The discussion page is `hnDiscussionUrl(hnItemId)`, derived and
+     * never stored twice.
+     *
+     * It rides on ITEMS FROM ANY LANE. A story usually points at an article a
+     * feed already collected, and that is one item with two links, not a twin.
+     * The first discussion to carry the item keeps the row.
+     */
+    hnItemId: v.optional(v.string()),
+    /**
+     * The points and the comment count at the last read. Points SETTLE over
+     * about two days, so every run of the trailing window refreshes them.
+     */
+    hnPoints: v.optional(v.number()),
+    hnComments: v.optional(v.number()),
+    /**
+     * The official oEmbed embed of one X post (#208), stored at paste time.
+     * License class `x` allows the ID and this embed, and nothing else, so this
+     * is the whole of what a projection may re-serve. See convex/lib/xPaste.ts.
+     */
+    xEmbed: v.optional(
+      v.object({
+        statusId: v.string(),
+        html: v.string(),
+        authorName: v.optional(v.string()),
+        authorUrl: v.optional(v.string()),
+      })
+    ),
     state: NewsItemState,
     /**
      * The summary in our own words. The drafting skill writes it (#233, ADR

@@ -60,6 +60,23 @@ The per-projection act that makes stream content public. Approval alone publishe
 The site page an issue's own links open. The default is the main page. Each issue also
 carries one quieter read-in-browser link to its own archive page.
 
+**Lane**:
+One collector and the kind of source it reads. The feed lane reads RSS and Atom. The
+Hacker News lane reads the search API. Each lane has its own schedule.
+
+**Points gate**:
+The points a Hacker News story needs before the lane collects it. It sits on the source
+row, and the owner moves it to change how much reaches the inbox.
+_Avoid_: threshold, score
+
+**Owner paste**:
+The supported way an X post becomes an item. The owner pastes the post link, and the lane
+stores the post ID with the official embed.
+
+**Pick list**:
+The recent posts of an X profile, offered after the owner pastes a profile link. Nothing
+is stored until the owner picks a post.
+
 ### Discord bot
 
 **Stack card**:

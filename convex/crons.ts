@@ -48,7 +48,24 @@ crons.interval('view-dedupe-cleanup', { hours: 1 }, internal.views.gcDedupe)
 // The news collector, tier 1: the generic feed and GitHub releases lane (#204,
 // map #198). Six-hourly, because the newsletter is weekly and a source that
 // posts twice a day is still caught four times before anyone reads the inbox.
-// The Hacker News lane (#208) and the scrapers (#210) get their own crons.
+// The scrapers (#210) get their own cron.
 crons.interval('news-collect', { hours: 6 }, internal.news.collect)
+
+// The news collector, tier 2: the Hacker News lane (#208). DAILY, not
+// six-hourly, and every run re-reads the last 48 hours.
+//
+// Points settle over about two days: only 6% of stories under six hours old
+// sit at 20 points, against 10% of settled ones (#178). A faster cron would
+// not find more stories, it would only ask the same question before Hacker
+// News has answered it. The re-read is what catches the overnight climber.
+//
+// 06:00 UTC, so the night's stories are settled and in the inbox before the
+// owner opens it. One run costs 2 or 3 of the 10,000 requests an hour Algolia
+// allows.
+crons.daily(
+  'news-collect-hn',
+  { hourUTC: 6, minuteUTC: 0 },
+  internal.news.collectHackerNews,
+)
 
 export default crons

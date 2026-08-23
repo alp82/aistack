@@ -3,6 +3,7 @@ import { Check, Inbox, Plus, RotateCcw, Save, X } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import { NewsXProfilePicks, type XProfilePost } from "./NewsXProfilePicks";
 
 type ItemState = "inbox" | "approved" | "discarded";
 
@@ -30,22 +31,35 @@ function QuickAdd() {
 	const [headline, setHeadline] = useState("");
 	const [busy, setBusy] = useState(false);
 	const [message, setMessage] = useState<string | null>(null);
+	const [profile, setProfile] = useState<{
+		screenName: string;
+		posts: XProfilePost[];
+	} | null>(null);
 
 	async function submit(e: React.FormEvent) {
 		e.preventDefault();
 		if (!url.trim() || busy) return;
 		setBusy(true);
 		setMessage(null);
+		setProfile(null);
 		try {
 			const result = await quickAdd({
 				url: url.trim(),
 				headline: headline.trim() || undefined,
 			});
-			setMessage(
-				result.duplicate
-					? `Already collected: ${result.headline}`
-					: `Added: ${result.headline}`,
-			);
+			// An X profile link opens a pick list. Nothing is stored yet.
+			if (result.kind === "profile" && result.profile) {
+				setProfile(result.profile);
+				setMessage(
+					`@${result.profile.screenName}: ${result.profile.posts.length} recent posts. Pick the ones worth keeping.`,
+				);
+			} else {
+				setMessage(
+					result.item?.duplicate
+						? `Already collected: ${result.item.headline}`
+						: `Added: ${result.item?.headline}`,
+				);
+			}
 			setUrl("");
 			setHeadline("");
 		} catch (error) {
@@ -90,6 +104,13 @@ function QuickAdd() {
 			{message ? (
 				<p className="mt-3 font-mono text-xs text-fg-muted">{message}</p>
 			) : null}
+			{profile ? (
+				<NewsXProfilePicks
+					screenName={profile.screenName}
+					posts={profile.posts}
+					onClose={() => setProfile(null)}
+				/>
+			) : null}
 		</form>
 	);
 }
@@ -107,6 +128,10 @@ interface ItemCardProps {
 		topicId?: Id<"newsTopics">;
 		sourceName: string | null;
 		state: ItemState;
+		hnItemId?: string;
+		hnPoints?: number;
+		hnComments?: number;
+		xEmbed?: { statusId: string };
 	};
 	topics: Array<{ _id: Id<"newsTopics">; name: string }>;
 }
@@ -150,6 +175,36 @@ function ItemCard({ item, topics }: ItemCardProps) {
 				<span>{day(item.publishedAt ?? item.collectedAt)}</span>
 				<span>·</span>
 				<span>{item.licenseClass}</span>
+				{/*
+				  A Hacker News story usually points at an article, and that
+				  article is the link above. The discussion is the second link,
+				  so one post is one item with both (#208).
+				*/}
+				{item.hnItemId ? (
+					<>
+						<span>·</span>
+						<span>{item.hnPoints ?? 0} points</span>
+						<a
+							href={`https://news.ycombinator.com/item?id=${item.hnItemId}`}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="border border-stroke-subtle px-2 py-1 text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime"
+						>
+							{item.hnComments ?? 0} comments
+						</a>
+					</>
+				) : null}
+				{/*
+				  The stored oEmbed markup is NOT rendered here. It is X-authored
+				  HTML, and the inbox has no reason to run it: the post text is
+				  the headline. A projection renders the official embed (#201).
+				*/}
+				{item.xEmbed ? (
+					<>
+						<span>·</span>
+						<span>X post {item.xEmbed.statusId}</span>
+					</>
+				) : null}
 				<a
 					href={item.url}
 					target="_blank"

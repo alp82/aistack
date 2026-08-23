@@ -291,8 +291,9 @@ describe('quickAdd', () => {
       url: 'https://vendor.test/blog/thing',
     })
 
-    expect(result.added).toBe(true)
-    expect(result.headline).toBe('A real headline')
+    expect(result.kind).toBe('item')
+    expect(result.item?.added).toBe(true)
+    expect(result.item?.headline).toBe('A real headline')
   })
 
   test('a typed headline wins over the page', async () => {
@@ -304,7 +305,7 @@ describe('quickAdd', () => {
       headline: 'Owner says this',
     })
 
-    expect(result.headline).toBe('Owner says this')
+    expect(result.item?.headline).toBe('Owner says this')
   })
 
   test('a page that refuses us still yields an item', async () => {
@@ -315,8 +316,8 @@ describe('quickAdd', () => {
       url: 'https://vendor.test/blog/thing',
     })
 
-    expect(result.added).toBe(true)
-    expect(result.headline).toBe('vendor.test')
+    expect(result.item?.added).toBe(true)
+    expect(result.item?.headline).toBe('vendor.test')
   })
 
   test('a pasted link defaults to the class that permits the least', async () => {
@@ -345,7 +346,7 @@ describe('quickAdd', () => {
       url: 'https://vendor.test/blog/thing',
     })
 
-    expect(again.duplicate).toBe(true)
+    expect(again.item?.duplicate).toBe(true)
   })
 
   test('a non-http link is refused', async () => {
@@ -690,5 +691,485 @@ describe('the phase-1 source seed', () => {
       s.url.includes('anthropics/claude-code'),
     )
     expect(claudeCode.licenseClass).toBe('unlicensed-release-notes')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The Hacker News lane (#208)
+// ---------------------------------------------------------------------------
+
+/**
+ * Answer each request by the URL it asks for. The two lanes call three
+ * different hosts, and a test that stubs one body for all of them cannot tell
+ * an Algolia answer from an oEmbed answer.
+ */
+function stubRoutes(routes: Array<[RegExp, () => Response]>) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: string | URL) => {
+      const url = String(input)
+      for (const [pattern, answer] of routes) {
+        if (pattern.test(url)) return answer()
+      }
+      return new Response('no route', { status: 404 })
+    }),
+  )
+}
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'content-type': 'application/json' },
+  })
+
+/** One Algolia hit. `points` and `title` are what the net judges. */
+function hit(over: Record<string, unknown> = {}) {
+  return {
+    objectID: '100',
+    title: 'Claude Code ships agent mode',
+    url: 'https://anthropic.com/news/agent-mode',
+    points: 40,
+    num_comments: 12,
+    created_at_i: Math.floor(Date.now() / 1000) - 3600,
+    ...over,
+  }
+}
+
+async function seedHnLane(
+  t: ReturnType<typeof convexTest>,
+  overrides: Record<string, unknown> = {},
+): Promise<Id<'newsSources'>> {
+  return await seedSource(t, {
+    name: 'Hacker News',
+    slug: 'hacker-news',
+    kind: 'hn',
+    url: 'https://hn.algolia.com/api/v1/search_by_date',
+    licenseClass: 'hn',
+    ...overrides,
+  })
+}
+
+/** Answer one Algolia page, then an empty one, which ends the cursor walk. */
+function stubAlgolia(pages: Array<{ hits: unknown[] }>) {
+  let call = 0
+  stubRoutes([
+    [
+      /hn\.algolia\.com/,
+      () => json(pages[call++] ?? { hits: [] }),
+    ],
+  ])
+}
+
+describe('the Hacker News lane', () => {
+  test('a story over the gate becomes an item, with the article as the link', async () => {
+    const t = convexTest(schema, modules)
+    await seedHnLane(t)
+    stubAlgolia([{ hits: [hit()] }])
+
+    const [report] = await t.action(internal.news.collectHackerNews, {})
+
+    expect(report.added).toBe(1)
+    const [item] = await t.run(async (ctx: any) =>
+      ctx.db.query('newsItems').collect(),
+    )
+    expect(item.url).toBe('https://anthropic.com/news/agent-mode')
+    expect(item.hnItemId).toBe('100')
+    expect(item.hnPoints).toBe(40)
+    expect(item.hnComments).toBe(12)
+    expect(item.licenseClass).toBe('hn')
+    expect(item.state).toBe('inbox')
+  })
+
+  test('a story under the points gate is left alone', async () => {
+    const t = convexTest(schema, modules)
+    await seedHnLane(t)
+    stubAlgolia([{ hits: [hit({ points: 19 })] }])
+
+    const [report] = await t.action(internal.news.collectHackerNews, {})
+
+    expect(report.added).toBe(0)
+    expect(report.filtered).toBe(1)
+  })
+
+  test('a story no keyword matched is left alone, whatever its points', async () => {
+    const t = convexTest(schema, modules)
+    await seedHnLane(t)
+    stubAlgolia([
+      { hits: [hit({ title: 'Show HN: a sourdough timer', url: null, points: 900 })] },
+    ])
+
+    const [report] = await t.action(internal.news.collectHackerNews, {})
+
+    expect(report.added).toBe(0)
+    expect(report.filtered).toBe(1)
+  })
+
+  test('the points gate on the row wins over the default', async () => {
+    const t = convexTest(schema, modules)
+    await seedHnLane(t, { minPoints: 100 })
+    stubAlgolia([{ hits: [hit({ points: 40 })] }])
+
+    const [report] = await t.action(internal.news.collectHackerNews, {})
+
+    expect(report.added).toBe(0)
+  })
+
+  test('a text post has no article, so its discussion is the link', async () => {
+    const t = convexTest(schema, modules)
+    await seedHnLane(t)
+    stubAlgolia([
+      { hits: [hit({ objectID: '777', title: 'Ask HN: which coding agent', url: null })] },
+    ])
+
+    await t.action(internal.news.collectHackerNews, {})
+
+    const [item] = await t.run(async (ctx: any) =>
+      ctx.db.query('newsItems').collect(),
+    )
+    expect(item.url).toBe('https://news.ycombinator.com/item?id=777')
+    expect(item.hnItemId).toBe('777')
+  })
+
+  test('a story the feed lane already collected gains its discussion, not a twin row', async () => {
+    const t = convexTest(schema, modules)
+    await seedHnLane(t)
+    await t.mutation(internal.news.insertItem, {
+      url: 'https://anthropic.com/news/agent-mode',
+      headline: 'Agent mode',
+      intake: 'collector',
+      licenseClass: 'article',
+    })
+    stubAlgolia([{ hits: [hit()] }])
+
+    const [report] = await t.action(internal.news.collectHackerNews, {})
+
+    expect(report.added).toBe(0)
+    expect(report.duplicates).toBe(1)
+    const rows = await t.run(async (ctx: any) =>
+      ctx.db.query('newsItems').collect(),
+    )
+    expect(rows).toHaveLength(1)
+    expect(rows[0].hnItemId).toBe('100')
+    expect(rows[0].hnPoints).toBe(40)
+    // The feed collected it, so the feed's class and headline stand.
+    expect(rows[0].licenseClass).toBe('article')
+    expect(rows[0].headline).toBe('Agent mode')
+  })
+
+  test('points settle, so a later run refreshes them on the same item', async () => {
+    const t = convexTest(schema, modules)
+    await seedHnLane(t)
+    stubAlgolia([{ hits: [hit({ points: 40 })] }])
+    await t.action(internal.news.collectHackerNews, {})
+
+    stubAlgolia([{ hits: [hit({ points: 210, num_comments: 88 })] }])
+    await t.action(internal.news.collectHackerNews, {})
+
+    const rows = await t.run(async (ctx: any) =>
+      ctx.db.query('newsItems').collect(),
+    )
+    expect(rows).toHaveLength(1)
+    expect(rows[0].hnPoints).toBe(210)
+    expect(rows[0].hnComments).toBe(88)
+  })
+
+  test('a second discussion of one article does not take the row', async () => {
+    const t = convexTest(schema, modules)
+    await seedHnLane(t)
+    stubAlgolia([{ hits: [hit({ objectID: '100', points: 200 })] }])
+    await t.action(internal.news.collectHackerNews, {})
+
+    stubAlgolia([{ hits: [hit({ objectID: '999', points: 25 })] }])
+    await t.action(internal.news.collectHackerNews, {})
+
+    const rows = await t.run(async (ctx: any) =>
+      ctx.db.query('newsItems').collect(),
+    )
+    expect(rows).toHaveLength(1)
+    expect(rows[0].hnItemId).toBe('100')
+    expect(rows[0].hnPoints).toBe(200)
+  })
+
+  test('the cursor walks back through pages until the window is read', async () => {
+    const t = convexTest(schema, modules)
+    await seedHnLane(t)
+    const nowSec = Math.floor(Date.now() / 1000)
+    stubAlgolia([
+      { hits: [hit({ objectID: '1', created_at_i: nowSec - 3600 })] },
+      {
+        hits: [
+          hit({
+            objectID: '2',
+            title: 'Codex gets a new mode',
+            url: 'https://openai.com/codex-mode',
+            created_at_i: nowSec - 7200,
+          }),
+        ],
+      },
+    ])
+
+    const [report] = await t.action(internal.news.collectHackerNews, {})
+
+    expect(report.scanned).toBe(2)
+    expect(report.added).toBe(2)
+  })
+
+  test('a refused API lands on the source row and adds nothing', async () => {
+    const t = convexTest(schema, modules)
+    const sourceId = await seedHnLane(t)
+    stubRoutes([[/hn\.algolia\.com/, () => json({ message: 'nope' }, 429)]])
+
+    const [report] = await t.action(internal.news.collectHackerNews, {})
+
+    expect(report.error).toContain('429')
+    expect(report.added).toBe(0)
+    const source = await t.run(async (ctx: any) => ctx.db.get(sourceId))
+    expect(source.consecutiveFailures).toBe(1)
+    expect(source.lastError).toContain('429')
+  })
+
+  test('an answer that is not an Algolia answer is a source failure', async () => {
+    const t = convexTest(schema, modules)
+    await seedHnLane(t)
+    stubRoutes([[/hn\.algolia\.com/, () => json({ message: 'nope' })]])
+
+    const [report] = await t.action(internal.news.collectHackerNews, {})
+
+    expect(report.error).toContain('hits')
+  })
+
+  test('each collector reads its own lane and leaves the other alone', async () => {
+    const t = convexTest(schema, modules)
+    await seedSource(t)
+    await seedHnLane(t)
+    stubRoutes([
+      [/feed\.test/, () => new Response(feedXml([
+        { title: 'A feed post', link: 'https://vendor.test/post' },
+      ]))],
+      [/hn\.algolia\.com/, () => json({ hits: [hit()] })],
+    ])
+
+    const feedReports = await t.action(internal.news.collect, {})
+    const hnReports = await t.action(internal.news.collectHackerNews, {})
+
+    expect(feedReports).toHaveLength(1)
+    expect(feedReports[0].source).toBe('Test feed')
+    expect(hnReports).toHaveLength(1)
+    expect(hnReports[0].source).toBe('Hacker News')
+  })
+
+  test('a disabled lane is not read', async () => {
+    const t = convexTest(schema, modules)
+    await seedHnLane(t, { enabled: false })
+    stubAlgolia([{ hits: [hit()] }])
+
+    expect(await t.action(internal.news.collectHackerNews, {})).toEqual([])
+  })
+})
+
+describe('setSourceMinPoints', () => {
+  test('the owner moves the gate', async () => {
+    const t = convexTest(schema, modules)
+    const sourceId = await seedHnLane(t)
+
+    await asAdmin(t).mutation(api.news.setSourceMinPoints, {
+      sourceId,
+      minPoints: 50,
+    })
+
+    const source = await t.run(async (ctx: any) => ctx.db.get(sourceId))
+    expect(source.minPoints).toBe(50)
+  })
+
+  test('a feed source has no points gate', async () => {
+    const t = convexTest(schema, modules)
+    const sourceId = await seedSource(t)
+
+    await expect(
+      asAdmin(t).mutation(api.news.setSourceMinPoints, { sourceId, minPoints: 50 }),
+    ).rejects.toThrow('Hacker News')
+  })
+
+  test('a negative gate is refused', async () => {
+    const t = convexTest(schema, modules)
+    const sourceId = await seedHnLane(t)
+
+    await expect(
+      asAdmin(t).mutation(api.news.setSourceMinPoints, { sourceId, minPoints: -1 }),
+    ).rejects.toThrow()
+  })
+
+  test('a stranger cannot move the gate', async () => {
+    const t = convexTest(schema, modules)
+    const sourceId = await seedHnLane(t)
+
+    await expect(
+      t.mutation(api.news.setSourceMinPoints, { sourceId, minPoints: 50 }),
+    ).rejects.toThrow('Unauthorized')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The X owner-paste lane (#208)
+// ---------------------------------------------------------------------------
+
+const EMBED_HTML =
+  '<blockquote class="twitter-tweet" data-dnt="true"><p lang="en" dir="ltr">Opus 5 is out today</p>&mdash; Anthropic (@AnthropicAI) <a href="https://x.com/AnthropicAI/status/20">August 18, 2026</a></blockquote>'
+
+const OEMBED = {
+  url: 'https://x.com/AnthropicAI/status/20',
+  author_name: 'Anthropic',
+  author_url: 'https://x.com/AnthropicAI',
+  html: EMBED_HTML,
+}
+
+describe('the X owner-paste lane', () => {
+  test('a pasted post stores the ID, the official embed and the post text', async () => {
+    const t = convexTest(schema, modules)
+    stubRoutes([[/publish\.x\.com/, () => json(OEMBED)]])
+
+    const result = await asAdmin(t).action(api.news.quickAdd, {
+      url: 'https://x.com/AnthropicAI/status/20',
+    })
+
+    expect(result.kind).toBe('item')
+    expect(result.item?.added).toBe(true)
+    const [item] = await t.run(async (ctx: any) =>
+      ctx.db.query('newsItems').collect(),
+    )
+    expect(item.licenseClass).toBe('x')
+    expect(item.intake).toBe('quick-add')
+    expect(item.headline).toBe('Opus 5 is out today')
+    expect(item.xEmbed.statusId).toBe('20')
+    expect(item.xEmbed.html).toBe(EMBED_HTML)
+    expect(item.xEmbed.authorName).toBe('Anthropic')
+  })
+
+  test('a messy link and a clean one are one post', async () => {
+    const t = convexTest(schema, modules)
+    stubRoutes([[/publish\.x\.com/, () => json(OEMBED)]])
+
+    await asAdmin(t).action(api.news.quickAdd, {
+      url: 'https://twitter.com/AnthropicAI/status/20?s=46&t=abc',
+    })
+    const again = await asAdmin(t).action(api.news.quickAdd, {
+      url: 'https://x.com/AnthropicAI/status/20',
+    })
+
+    expect(again.item?.duplicate).toBe(true)
+    const rows = await t.run(async (ctx: any) =>
+      ctx.db.query('newsItems').collect(),
+    )
+    expect(rows).toHaveLength(1)
+    expect(rows[0].url).toBe('https://x.com/AnthropicAI/status/20')
+  })
+
+  test('a dead post says so and stores nothing', async () => {
+    const t = convexTest(schema, modules)
+    // The real endpoint answers 404 with an HTML page, not with JSON.
+    stubRoutes([
+      [/publish\.x\.com/, () => new Response('<!DOCTYPE html>', { status: 404 })],
+    ])
+
+    await expect(
+      asAdmin(t).action(api.news.quickAdd, {
+        url: 'https://x.com/jack/status/99999999999999999999',
+      }),
+    ).rejects.toThrow('gone')
+    expect(
+      await t.run(async (ctx: any) => ctx.db.query('newsItems').collect()),
+    ).toEqual([])
+  })
+
+  test('a timeline widget is not a post, so nothing is stored', async () => {
+    const t = convexTest(schema, modules)
+    stubRoutes([
+      [
+        /publish\.x\.com/,
+        () =>
+          json({
+            url: 'https://x.com/AnthropicAI',
+            html: '<a class="twitter-timeline" href="https://x.com/AnthropicAI">Posts</a>',
+          }),
+      ],
+    ])
+
+    await expect(
+      asAdmin(t).action(api.news.quickAdd, {
+        url: 'https://x.com/AnthropicAI/status/20',
+      }),
+    ).rejects.toThrow('post embed')
+  })
+
+  test('the pick list carries the date onto the item', async () => {
+    const t = convexTest(schema, modules)
+    stubRoutes([[/publish\.x\.com/, () => json(OEMBED)]])
+
+    await asAdmin(t).action(api.news.quickAdd, {
+      url: 'https://x.com/AnthropicAI/status/20',
+      publishedAt: 1_760_000_000_000,
+    })
+
+    const [item] = await t.run(async (ctx: any) =>
+      ctx.db.query('newsItems').collect(),
+    )
+    expect(item.publishedAt).toBe(1_760_000_000_000)
+  })
+})
+
+describe('the X profile paste', () => {
+  const PROFILE = {
+    results: [
+      {
+        id: '2089842395722678689',
+        created_at: 'Tue Aug 18 2026 10:00:00 +0000',
+        text: 'Opus 5 is out today',
+        author: { screen_name: 'AnthropicAI' },
+      },
+    ],
+  }
+
+  test('a profile paste offers its posts and stores nothing', async () => {
+    const t = convexTest(schema, modules)
+    stubRoutes([[/api\.fxtwitter\.com/, () => json(PROFILE)]])
+
+    const result = await asAdmin(t).action(api.news.quickAdd, {
+      url: 'https://x.com/AnthropicAI',
+    })
+
+    expect(result.kind).toBe('profile')
+    expect(result.profile?.screenName).toBe('AnthropicAI')
+    expect(result.profile?.posts[0].url).toBe(
+      'https://x.com/AnthropicAI/status/2089842395722678689',
+    )
+    expect(
+      await t.run(async (ctx: any) => ctx.db.query('newsItems').collect()),
+    ).toEqual([])
+  })
+
+  test('a profile lane that is down says so and blocks nothing else', async () => {
+    const t = convexTest(schema, modules)
+    stubRoutes([[/api\.fxtwitter\.com/, () => json({ code: 500 }, 500)]])
+
+    await expect(
+      asAdmin(t).action(api.news.quickAdd, { url: 'https://x.com/AnthropicAI' }),
+    ).rejects.toThrow('500')
+  })
+
+  test('an unknown profile says so', async () => {
+    const t = convexTest(schema, modules)
+    stubRoutes([[/api\.fxtwitter\.com/, () => json({ code: 404 }, 404)]])
+
+    await expect(
+      asAdmin(t).action(api.news.quickAdd, { url: 'https://x.com/nobody' }),
+    ).rejects.toThrow('No posts found')
+  })
+
+  test('a stranger cannot list a profile', async () => {
+    const t = convexTest(schema, modules)
+
+    await expect(
+      t.action(api.news.quickAdd, { url: 'https://x.com/AnthropicAI' }),
+    ).rejects.toThrow('Unauthorized')
   })
 })
