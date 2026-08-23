@@ -26,7 +26,25 @@ import {
   query,
 } from './_generated/server'
 import { newsUrlKey, parseFeed } from './lib/feed'
+import {
+  DEFAULT_MIN_POINTS,
+  HN_WINDOW_HOURS,
+  type HnStory,
+  hnDiscussionUrl,
+  parseHits,
+  searchRequestUrl,
+  selectStories,
+} from './lib/hackerNews'
 import { isAdmin } from './lib/admin'
+import {
+  type XEmbed,
+  embedText,
+  oembedRequestUrl,
+  parseProfilePosts,
+  parseXPaste,
+  pickEmbed,
+  profilePostsRequestUrl,
+} from './lib/xPaste'
 import { NewsLicenseClass, NewsSourceKind } from './schema'
 
 // ---------------------------------------------------------------------------
@@ -41,6 +59,19 @@ const USER_AGENT =
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
 
 const FETCH_TIMEOUT_MS = 25_000
+
+/** The X calls answer in under a second or they are having a bad day. */
+const X_TIMEOUT_MS = 10_000
+
+/** How many recent posts one profile paste offers. A week of posts, at most. */
+const X_PROFILE_POSTS = 25
+
+/**
+ * The most requests one Hacker News run may make. The prototype (#178) needed
+ * 9 for a whole week, so a 48-hour window costs 2 or 3. This is the guard that
+ * stops a cursor that stopped advancing, not a budget.
+ */
+const HN_MAX_REQUESTS = 20
 
 /** How many inbox rows one list call returns. The inbox is worked, not read. */
 const INBOX_PAGE = 100
@@ -139,6 +170,30 @@ export const setSourceEnabled = mutation({
     await assertAdmin(ctx)
     await ctx.db.patch(args.sourceId, {
       enabled: args.enabled,
+      updatedAt: Date.now(),
+    })
+  },
+})
+
+/**
+ * Move the points gate of the Hacker News lane (#208).
+ *
+ * The one dial that changes inbox VOLUME. The prototype measured the week at
+ * each step: 22 items at tool keywords only, 97 at every tier with a gate of
+ * 20, and 649 with no keywords at all.
+ */
+export const setSourceMinPoints = mutation({
+  args: { sourceId: v.id('newsSources'), minPoints: v.number() },
+  handler: async (ctx, args) => {
+    await assertAdmin(ctx)
+    const source = await ctx.db.get(args.sourceId)
+    if (!source) throw new Error('No such source')
+    if (source.kind !== 'hn') throw new Error('Only the Hacker News lane has a points gate')
+    if (!Number.isInteger(args.minPoints) || args.minPoints < 0) {
+      throw new Error('The points gate is a whole number, zero or more')
+    }
+    await ctx.db.patch(args.sourceId, {
+      minPoints: args.minPoints,
       updatedAt: Date.now(),
     })
   },
@@ -502,8 +557,22 @@ export const listGroupItems = query({
 const IntakeResult = v.object({
   added: v.boolean(),
   duplicate: v.boolean(),
+  /**
+   * The link was already an item, and this arrival added something to it. The
+   * Hacker News lane sets it: a story pointing at an article a feed already
+   * collected gains the discussion and its points, instead of a twin row.
+   */
+  patched: v.boolean(),
   itemId: v.union(v.id('newsItems'), v.null()),
   headline: v.string(),
+})
+
+/** The official oEmbed embed of one X post. See convex/lib/xPaste.ts. */
+const XEmbedValue = v.object({
+  statusId: v.string(),
+  html: v.string(),
+  authorName: v.optional(v.string()),
+  authorUrl: v.optional(v.string()),
 })
 
 /**
@@ -522,6 +591,10 @@ export const insertItem = internalMutation({
     intake: v.union(v.literal('collector'), v.literal('quick-add')),
     licenseClass: NewsLicenseClass,
     sourceText: v.optional(v.string()),
+    hnItemId: v.optional(v.string()),
+    hnPoints: v.optional(v.number()),
+    hnComments: v.optional(v.number()),
+    xEmbed: v.optional(XEmbedValue),
     /**
      * What separates two items that share one page (#210).
      *
@@ -541,15 +614,34 @@ export const insertItem = internalMutation({
       .query('newsItems')
       .withIndex('by_urlKey', (q) => q.eq('urlKey', urlKey))
       .first()
+    const now = Date.now()
     if (existing) {
+      // A link the feed lane already collected, arriving from Hacker News. It
+      // gains the discussion and the points. Points settle over about two days,
+      // so a later run of the same window refreshes them.
+      //
+      // The FIRST discussion keeps the row. A second submission of one article
+      // is a second discussion, and the one that gathered the points is the one
+      // worth linking.
+      const carriesHn =
+        args.hnItemId !== undefined &&
+        (existing.hnItemId === undefined || existing.hnItemId === args.hnItemId)
+      if (carriesHn) {
+        await ctx.db.patch(existing._id, {
+          hnItemId: args.hnItemId,
+          hnPoints: args.hnPoints,
+          hnComments: args.hnComments,
+          updatedAt: now,
+        })
+      }
       return {
         added: false,
         duplicate: true,
+        patched: carriesHn,
         itemId: existing._id,
         headline: existing.headline,
       }
     }
-    const now = Date.now()
     const itemId = await ctx.db.insert('newsItems', {
       url: args.url,
       urlKey,
@@ -562,33 +654,115 @@ export const insertItem = internalMutation({
       sourceText: FULL_TEXT_CLASSES.has(args.licenseClass)
         ? args.sourceText
         : undefined,
+      hnItemId: args.hnItemId,
+      hnPoints: args.hnPoints,
+      hnComments: args.hnComments,
+      xEmbed: args.xEmbed,
       state: 'inbox',
       updatedAt: now,
     })
-    return { added: true, duplicate: false, itemId, headline: args.headline }
+    return {
+      added: true,
+      duplicate: false,
+      patched: false,
+      itemId,
+      headline: args.headline,
+    }
   },
 })
 
+/** One post of a pasted profile, offered for picking. See the X lane below. */
+const XProfilePostValue = v.object({
+  statusId: v.string(),
+  screenName: v.string(),
+  url: v.string(),
+  text: v.string(),
+  publishedAt: v.union(v.number(), v.null()),
+  isReply: v.boolean(),
+})
+
 /**
- * The owner pastes a URL and the item lands in the inbox.
+ * What one paste came to. A paste is either an ITEM or a PROFILE LISTING, and
+ * the caller reads `kind` to know which.
  *
- * An ACTION, because it reads the page for its title. Typing every headline by
+ * Two outcomes under one call, because the owner has ONE bar to paste into
+ * (#235) and only the backend can tell an X profile link from an article link.
+ */
+const QuickAddResult = v.object({
+  kind: v.union(v.literal('item'), v.literal('profile')),
+  item: v.union(IntakeResult, v.null()),
+  profile: v.union(
+    v.object({
+      screenName: v.string(),
+      posts: v.array(XProfilePostValue),
+    }),
+    v.null(),
+  ),
+})
+
+/**
+ * The owner pastes a URL. Three lanes leave from here.
+ *
+ *   an X post link      fetch the official oEmbed embed, store the ID and the
+ *                       embed, and put the post text in the inbox as the
+ *                       headline (#208)
+ *   an X profile link   list the recent posts and offer them for picking.
+ *                       NOTHING is stored: a pick runs the post lane above
+ *   anything else       read the page for its title and store the link
+ *
+ * An ACTION, because every lane reads the network. Typing each headline by
  * hand is the friction that stops a capture surface from being used, and the
  * owner can overwrite whatever the page claimed.
- *
- * The fetch is best-effort. A page that refuses us still yields an item: the
- * host stands in as the headline until the owner edits it.
  */
 export const quickAdd = action({
   args: {
     url: v.string(),
     headline: v.optional(v.string()),
     licenseClass: v.optional(NewsLicenseClass),
+    /** The date of a picked profile post, which the pick list already knows. */
+    publishedAt: v.optional(v.number()),
   },
-  returns: IntakeResult,
-  handler: async (ctx, args): Promise<Infer<typeof IntakeResult>> => {
+  returns: QuickAddResult,
+  handler: async (ctx, args): Promise<Infer<typeof QuickAddResult>> => {
     if (!(await isAdmin(ctx))) throw new Error('Unauthorized')
     const url = args.url.trim()
+
+    const x = parseXPaste(url)
+    if (x?.kind === 'profile') {
+      return {
+        kind: 'profile' as const,
+        item: null,
+        profile: {
+          screenName: x.screenName,
+          posts: await fetchProfilePosts(x.screenName),
+        },
+      }
+    }
+    if (x?.kind === 'post') {
+      const embed = await fetchPostEmbed(x.canonicalUrl)
+      const typed = args.headline?.trim()
+      const item = await ctx.runMutation(internal.news.insertItem, {
+        url: x.canonicalUrl,
+        headline:
+          typed ||
+          embedText(embed.html)?.slice(0, 300) ||
+          `Post by ${embed.authorName ?? x.screenName}`,
+        publishedAt: args.publishedAt,
+        sourceId: undefined,
+        intake: 'quick-add' as const,
+        // Frozen, and not the caller's to choose. Class `x` allows the ID and
+        // the official embed, which is the whole of what we may re-serve.
+        licenseClass: 'x' as const,
+        xEmbed: {
+          statusId: x.statusId,
+          html: embed.html,
+          authorName: embed.authorName ?? undefined,
+          authorUrl: embed.authorUrl ?? undefined,
+        },
+      })
+      return { kind: 'item' as const, item, profile: null }
+    }
+
     let parsed: URL
     try {
       parsed = new URL(url)
@@ -599,18 +773,22 @@ export const quickAdd = action({
       throw new Error('Only http and https links can be added')
     }
 
+    // The fetch is best-effort. A page that refuses us still yields an item:
+    // the host stands in as the headline until the owner edits it.
     const typed = args.headline?.trim()
     const headline = typed || (await fetchPageTitle(url)) || parsed.hostname
 
-    return await ctx.runMutation(internal.news.insertItem, {
+    const item = await ctx.runMutation(internal.news.insertItem, {
       url,
       headline,
+      publishedAt: args.publishedAt,
       sourceId: undefined,
-      intake: 'quick-add',
+      intake: 'quick-add' as const,
       // A pasted link is an article until the owner says otherwise. It is the
       // class that permits the least, so a wrong guess never over-serves.
       licenseClass: args.licenseClass ?? 'article',
     })
+    return { kind: 'item' as const, item, profile: null }
   },
 })
 
@@ -641,24 +819,107 @@ async function fetchPageTitle(url: string): Promise<string | null> {
 }
 
 // ---------------------------------------------------------------------------
+// The X lane (#208). Owner paste is the supported lane, per #209.
+// ---------------------------------------------------------------------------
+
+/**
+ * The official oEmbed embed of one post.
+ *
+ * Throws with a sentence the owner can act on. The prototype (#179) captured
+ * every branch: a dead post answers 404 with an HTML BODY, so the status code
+ * is checked before anything is parsed, and a broken link answers 400 JSON.
+ */
+async function fetchPostEmbed(canonicalUrl: string): Promise<XEmbed> {
+  let res: Response
+  try {
+    res = await fetch(oembedRequestUrl(canonicalUrl), {
+      redirect: 'follow',
+      signal: AbortSignal.timeout(X_TIMEOUT_MS),
+      headers: { 'user-agent': USER_AGENT, accept: 'application/json' },
+    })
+  } catch {
+    throw new Error('X did not answer. Try that post again')
+  }
+  if (res.status === 404) {
+    throw new Error('That post is gone, or the account is private')
+  }
+  if (!res.ok) throw new Error(`X refused that link (HTTP ${res.status})`)
+
+  let payload: Record<string, unknown>
+  try {
+    payload = (await res.json()) as Record<string, unknown>
+  } catch {
+    throw new Error('X answered something this lane cannot read')
+  }
+  const embed = pickEmbed(payload)
+  if (!embed) throw new Error('That link did not return a post embed')
+  return embed
+}
+
+/**
+ * The recent posts of one profile, for picking.
+ *
+ * #209 ruled this path OPTIONAL: FxTwitter has no service agreement and rests
+ * on private X calls. So nothing automatic calls it, and it retries nothing. A
+ * failure costs the owner one paste and never a collection run, which is what
+ * "it can disappear without blocking the product" has to mean in code.
+ */
+async function fetchProfilePosts(
+  screenName: string,
+): Promise<Infer<typeof XProfilePostValue>[]> {
+  let res: Response
+  try {
+    res = await fetch(profilePostsRequestUrl(screenName), {
+      redirect: 'follow',
+      signal: AbortSignal.timeout(X_TIMEOUT_MS),
+      headers: { 'user-agent': USER_AGENT, accept: 'application/json' },
+    })
+  } catch {
+    throw new Error(
+      'The profile lane did not answer. Paste the post links instead',
+    )
+  }
+  if (res.status === 404) {
+    throw new Error(`No posts found for @${screenName}`)
+  }
+  if (!res.ok) {
+    throw new Error(
+      `The profile lane answered ${res.status}. Paste the post links instead`,
+    )
+  }
+  try {
+    return parseProfilePosts(await res.json(), screenName).slice(
+      0,
+      X_PROFILE_POSTS,
+    )
+  } catch {
+    throw new Error(
+      'The profile lane answered something this lane cannot read',
+    )
+  }
+}
+
+// ---------------------------------------------------------------------------
 // The collector
 // ---------------------------------------------------------------------------
 
 /**
- * The enabled FEED sources, which is what this collector can read.
+ * The enabled sources of ONE lane.
  *
- * The scraper rows (#210) sit in the same table and are read by their own
- * action. Handing a sitemap to the feed parser would fail every source on
- * every run, and the error would land on a row that is perfectly healthy.
+ * Every kind sits in the same table, and each lane reads only its own rows.
+ * Handing a sitemap to the feed parser would fail every source on every run,
+ * and the error would land on a row that is perfectly healthy. The Hacker News
+ * lane (#208) is the same case in reverse: its row is a search endpoint, and
+ * no feed parser is going to make sense of it.
  */
 export const enabledSources = internalQuery({
-  args: {},
-  handler: async (ctx) => {
+  args: { kind: NewsSourceKind },
+  handler: async (ctx, args) => {
     const sources = await ctx.db
       .query('newsSources')
       .withIndex('by_enabled', (q) => q.eq('enabled', true))
       .collect()
-    return sources.filter((source) => source.kind === 'feed')
+    return sources.filter((source) => source.kind === args.kind)
   },
 })
 
@@ -684,10 +945,30 @@ export const recordPoll = internalMutation({
 
 interface PollReport {
   source: string
+  /** Entries or stories READ. What the two lanes then keep differs. */
+  scanned: number
   added: number
   duplicates: number
+  /** A feed entry older than `collectFrom`. The Hacker News lane has none. */
   skippedOld: number
+  /**
+   * A Hacker News story the net rejected: no keyword, or under the points
+   * gate. The feed lane keeps every entry it reads, so this stays zero there.
+   */
+  filtered: number
   error: string | null
+}
+
+function emptyReport(name: string): PollReport {
+  return {
+    source: name,
+    scanned: 0,
+    added: 0,
+    duplicates: 0,
+    skippedOld: 0,
+    filtered: 0,
+    error: null,
+  }
 }
 
 /**
@@ -702,13 +983,7 @@ async function pollOne(
   ctx: { runMutation: any },
   source: Doc<'newsSources'>,
 ): Promise<PollReport> {
-  const report: PollReport = {
-    source: source.name,
-    added: 0,
-    duplicates: 0,
-    skippedOld: 0,
-    error: null,
-  }
+  const report = emptyReport(source.name)
   try {
     const res = await fetch(source.url, {
       redirect: 'follow',
@@ -722,6 +997,7 @@ async function pollOne(
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const feed = parseFeed(await res.text())
     if (feed.items.length === 0) throw new Error('feed parsed but zero items')
+    report.scanned = feed.items.length
 
     for (const entry of feed.items) {
       if (entry.publishedAt !== null && entry.publishedAt < source.collectFrom) {
@@ -751,7 +1027,95 @@ async function pollOne(
 }
 
 /**
- * The collector. One run reads every enabled source.
+ * Read one window of Hacker News stories, newest first.
+ *
+ * The cursor is `created_at_i`, and each request starts at the oldest story
+ * the last one returned. The prototype (#178) read a whole week in 9 requests,
+ * so a 48-hour window costs 2 or 3.
+ */
+async function pullHnWindow(
+  startSec: number,
+  endSec: number,
+): Promise<HnStory[]> {
+  const seen = new Map<string, HnStory>()
+  let cursor = endSec
+  for (let request = 0; request < HN_MAX_REQUESTS; request++) {
+    const res = await fetch(searchRequestUrl(startSec, cursor), {
+      redirect: 'follow',
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      headers: { 'user-agent': USER_AGENT, accept: 'application/json' },
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const stories = parseHits(await res.json())
+    if (stories.length === 0) break
+    for (const story of stories) seen.set(story.id, story)
+    const oldest = Math.min(...stories.map((s) => s.createdAtSec))
+    // The window is read, or the cursor stopped moving. Either way, stop.
+    if (oldest <= startSec || oldest >= cursor) break
+    cursor = oldest
+  }
+  return [...seen.values()]
+}
+
+/**
+ * Read Hacker News and write what the net keeps to the inbox.
+ *
+ * The window is the LAST 48 HOURS, re-read on every run, because points settle
+ * over about two days (#178). A story that appears at 4 points and climbs to 40
+ * overnight is collected by the next run. A story already collected has its
+ * points refreshed instead of being collected twice.
+ *
+ * A story usually points at an article, and that article is the item link. So
+ * a post a feed already collected gains its discussion and its points, and the
+ * inbox holds one item with two links rather than two rows.
+ */
+async function pollHackerNews(
+  ctx: { runMutation: any },
+  source: Doc<'newsSources'>,
+): Promise<PollReport> {
+  const report = emptyReport(source.name)
+  try {
+    const now = Date.now()
+    const windowStart = Math.max(
+      source.collectFrom,
+      now - HN_WINDOW_HOURS * 60 * 60 * 1000,
+    )
+    const stories = await pullHnWindow(
+      Math.floor(windowStart / 1000),
+      Math.ceil(now / 1000),
+    )
+    report.scanned = stories.length
+
+    const picks = selectStories(stories, source.minPoints ?? DEFAULT_MIN_POINTS)
+    report.filtered = stories.length - picks.length
+    for (const pick of picks) {
+      const result = await ctx.runMutation(internal.news.insertItem, {
+        // A text post lives on Hacker News, so its discussion IS the link.
+        url: pick.url ?? hnDiscussionUrl(pick.id),
+        headline: pick.title,
+        publishedAt: pick.createdAtSec * 1000,
+        sourceId: source._id,
+        intake: 'collector' as const,
+        licenseClass: source.licenseClass,
+        hnItemId: pick.id,
+        hnPoints: pick.points,
+        hnComments: pick.comments,
+      })
+      if (result.added) report.added++
+      else report.duplicates++
+    }
+  } catch (e) {
+    report.error = e instanceof Error ? e.message : String(e)
+  }
+  await ctx.runMutation(internal.news.recordPoll, {
+    sourceId: source._id,
+    error: report.error,
+  })
+  return report
+}
+
+/**
+ * The feed collector. One run reads every enabled `feed` source.
  *
  * Sources are polled ONE AT A TIME, not concurrently. The run has no deadline
  * worth racing, and serial polling keeps one slow host from being the reason
@@ -763,26 +1127,56 @@ async function pollOne(
 export const collect = internalAction({
   args: {},
   handler: async (ctx): Promise<PollReport[]> => {
-    const sources = await ctx.runQuery(internal.news.enabledSources, {})
+    const feeds = await ctx.runQuery(internal.news.enabledSources, {
+      kind: 'feed',
+    })
     const reports: PollReport[] = []
-    for (const source of sources) {
+    for (const source of feeds) {
       reports.push(await pollOne(ctx, source))
     }
     const added = reports.reduce((sum, r) => sum + r.added, 0)
     const failed = reports.filter((r) => r.error !== null).length
     console.log(
-      `news collect: ${sources.length} sources, ${added} new items, ${failed} failed`,
+      `news collect: ${feeds.length} sources, ${added} new items, ${failed} failed`,
     )
     return reports
   },
 })
 
-/** Run the collector now, from the Sources view. Same code path as the cron. */
+/**
+ * The Hacker News collector. Its own cron, because its cadence is its own: a
+ * DAILY run over a trailing 48-hour window, against the feeds' six hours.
+ */
+export const collectHackerNews = internalAction({
+  args: {},
+  handler: async (ctx): Promise<PollReport[]> => {
+    const lanes = await ctx.runQuery(internal.news.enabledSources, {
+      kind: 'hn',
+    })
+    const reports: PollReport[] = []
+    for (const source of lanes) {
+      reports.push(await pollHackerNews(ctx, source))
+    }
+    const added = reports.reduce((sum, r) => sum + r.added, 0)
+    const failed = reports.filter((r) => r.error !== null).length
+    console.log(
+      `news collect hn: ${lanes.length} lanes, ${added} new items, ${failed} failed`,
+    )
+    return reports
+  },
+})
+
+/**
+ * Run every lane now, from the Sources view. Same code paths as the two crons,
+ * so the button proves what the schedule will do.
+ */
 export const collectNow = action({
   args: {},
   handler: async (ctx): Promise<PollReport[]> => {
     if (!(await isAdmin(ctx))) throw new Error('Unauthorized')
-    return await ctx.runAction(internal.news.collect, {})
+    const feeds = await ctx.runAction(internal.news.collect, {})
+    const hn = await ctx.runAction(internal.news.collectHackerNews, {})
+    return [...feeds, ...hn]
   },
 })
 
@@ -795,8 +1189,12 @@ export const sourceById = internalQuery({
  * Read ONE source now. This is the retry button on the inbox failure banner.
  *
  * Same code path as the cron, so a retry that works clears the failure count
- * and the banner with it. The other thirteen sources are not read, because the
- * owner asked about one.
+ * and the banner with it. The other sources are not read, because the owner
+ * asked about one.
+ *
+ * The retry follows the row's own LANE. A row is retried by the collector that
+ * reads it, and a scraper row is refused here rather than handed to the feed
+ * parser: that would write a failure onto a source that is perfectly healthy.
  */
 export const pollSourceNow = action({
   args: { sourceId: v.id('newsSources') },
@@ -806,6 +1204,8 @@ export const pollSourceNow = action({
       sourceId: args.sourceId,
     })
     if (!source) throw new Error('That source is gone')
-    return await pollOne(ctx, source)
+    if (source.kind === 'feed') return await pollOne(ctx, source)
+    if (source.kind === 'hn') return await pollHackerNews(ctx, source)
+    throw new Error('A scraper is retried with Run scrapers on the Sources view')
   },
 })

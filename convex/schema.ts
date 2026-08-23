@@ -275,17 +275,18 @@ export const SyncTrigger = v.union(v.literal('manual'), v.literal('auto'))
  *
  *   feed     a generic RSS/Atom reader: vendor blogs, newsletters, personal
  *            blogs, YouTube channels, the aggregator, GitHub `releases.atom`
+ *   hn       the Hacker News lane (#208), through the Algolia search API
  *   sitemap  a new <loc> in the site's sitemap is a new article (#210)
  *   links    a new article href on a server-rendered index page (#210)
  *   page     a new or edited dated section on one long page (#210)
  *
  * The three scraper kinds are bound to a code registry in
  * `convex/newsScrapers.ts`, because each one needs its own filter or heading
- * rule. The Hacker News lane (#208) adds its own literal when it lands. A
- * speculative literal would be a kind no collector reads.
+ * rule. A speculative literal would be a kind no collector reads.
  */
 export const NewsSourceKind = v.union(
   v.literal('feed'),
+  v.literal('hn'),
   v.literal('sitemap'),
   v.literal('links'),
   v.literal('page')
@@ -1027,6 +1028,16 @@ export default defineSchema({
      * forward. The owner can move it back to backfill on purpose.
      */
     collectFrom: v.number(),
+    /**
+     * The points a Hacker News story needs before the lane collects it (#208).
+     * Only a `hn` source reads it. Absent means the proved default of 20, which
+     * left 97 items a week in the prototype (#178).
+     *
+     * It sits on the row, not in the code, because it is the one dial that
+     * moves inbox VOLUME. The keyword tiers beside it are regular expressions a
+     * test proves, so those stay in convex/lib/hackerNews.ts.
+     */
+    minPoints: v.optional(v.number()),
     /** Health, written by every poll. The Sources view reads these four. */
     lastPolledAt: v.optional(v.number()),
     lastOkAt: v.optional(v.number()),
@@ -1098,6 +1109,35 @@ export default defineSchema({
      * feed drops old entries and a dormant source cannot be read again.
      */
     sourceText: v.optional(v.string()),
+    /**
+     * The Hacker News story id, when the lane found this link on Hacker News
+     * (#208). The discussion page is `hnDiscussionUrl(hnItemId)`, derived and
+     * never stored twice.
+     *
+     * It rides on ITEMS FROM ANY LANE. A story usually points at an article a
+     * feed already collected, and that is one item with two links, not a twin.
+     * The first discussion to carry the item keeps the row.
+     */
+    hnItemId: v.optional(v.string()),
+    /**
+     * The points and the comment count at the last read. Points SETTLE over
+     * about two days, so every run of the trailing window refreshes them.
+     */
+    hnPoints: v.optional(v.number()),
+    hnComments: v.optional(v.number()),
+    /**
+     * The official oEmbed embed of one X post (#208), stored at paste time.
+     * License class `x` allows the ID and this embed, and nothing else, so this
+     * is the whole of what a projection may re-serve. See convex/lib/xPaste.ts.
+     */
+    xEmbed: v.optional(
+      v.object({
+        statusId: v.string(),
+        html: v.string(),
+        authorName: v.optional(v.string()),
+        authorUrl: v.optional(v.string()),
+      })
+    ),
     state: NewsItemState,
     /**
      * The summary in our own words. The drafting skill writes it (#233, ADR
