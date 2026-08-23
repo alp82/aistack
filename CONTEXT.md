@@ -48,6 +48,10 @@ _Avoid_: tag, category
 **Publish**:
 The per-projection act that makes stream content public. Approval alone publishes nothing.
 
+**Newsletter link target**:
+The site page an issue's own links open. The default is the main page. Each issue also
+carries one quieter read-in-browser link to its own archive page.
+
 ### Discord bot
 
 **Stack card**:
