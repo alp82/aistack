@@ -23,6 +23,9 @@ The manual intake form. The owner pastes a URL, and the item lands in the inbox.
 **Inbox**:
 The private list of collected items that wait for the owner to approve or discard them.
 
+**Draft**:
+The machine-written summary and topic on an inbox item, before the owner edits them.
+
 **Item stream**:
 All approved items. The stream itself is private. Only a projection makes items public.
 _Avoid_: feed (the activity feed is a different thing)
