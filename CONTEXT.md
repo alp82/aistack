@@ -22,6 +22,15 @@ _Avoid_: license, rights
 **Collector**:
 The scheduled job that reads sources and writes new items to the inbox.
 
+**Scraper**:
+The lane of the collector that reads a vendor which publishes no feed. It finds news by
+comparing the page against the baseline.
+_Avoid_: crawler, spider
+
+**Baseline**:
+Everything one scraper has already seen on its page. An entry outside the baseline is news,
+and the first read of a page seeds the baseline without collecting anything.
+
 **Quick-add**:
 The manual intake bar. The owner pastes a URL and nothing else, and the item lands in the
 inbox.

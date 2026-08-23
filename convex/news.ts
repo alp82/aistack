@@ -150,11 +150,19 @@ export const setSourceEnabled = mutation({
  * Deleting the rows would rewrite history: an item the owner already approved
  * is in the item stream, and a source list edit must not silently unpublish it
  * from the next issue.
+ *
+ * A scraper row (#210) is refused. Its identity is a registry entry in the
+ * code, so the next run would create the row again, cold. Pause is the act
+ * that means "stop reading this", and it is the one that lasts.
  */
 export const deleteSource = mutation({
   args: { sourceId: v.id('newsSources') },
   handler: async (ctx, args) => {
     await assertAdmin(ctx)
+    const source = await ctx.db.get(args.sourceId)
+    if (source?.scraperSlug) {
+      throw new Error('A scraper cannot be deleted. Pause it instead.')
+    }
     const items = await ctx.db
       .query('newsItems')
       .withIndex('by_source', (q) => q.eq('sourceId', args.sourceId))
@@ -514,10 +522,21 @@ export const insertItem = internalMutation({
     intake: v.union(v.literal('collector'), v.literal('quick-add')),
     licenseClass: NewsLicenseClass,
     sourceText: v.optional(v.string()),
+    /**
+     * What separates two items that share one page (#210).
+     *
+     * `newsUrlKey` drops the fragment, which is right for a feed: one post
+     * reposted with an anchor is one item. A page-diff scraper is the opposite
+     * case, because a changelog holds one item per dated section and they all
+     * share a URL. The scraper lane passes the section key here, and every
+     * other caller leaves it absent.
+     */
+    fragmentKey: v.optional(v.string()),
   },
   returns: IntakeResult,
   handler: async (ctx, args) => {
-    const urlKey = newsUrlKey(args.url)
+    const base = newsUrlKey(args.url)
+    const urlKey = args.fragmentKey ? `${base}#${args.fragmentKey}` : base
     const existing = await ctx.db
       .query('newsItems')
       .withIndex('by_urlKey', (q) => q.eq('urlKey', urlKey))
@@ -625,13 +644,21 @@ async function fetchPageTitle(url: string): Promise<string | null> {
 // The collector
 // ---------------------------------------------------------------------------
 
+/**
+ * The enabled FEED sources, which is what this collector can read.
+ *
+ * The scraper rows (#210) sit in the same table and are read by their own
+ * action. Handing a sitemap to the feed parser would fail every source on
+ * every run, and the error would land on a row that is perfectly healthy.
+ */
 export const enabledSources = internalQuery({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db
+    const sources = await ctx.db
       .query('newsSources')
       .withIndex('by_enabled', (q) => q.eq('enabled', true))
       .collect()
+    return sources.filter((source) => source.kind === 'feed')
   },
 })
 
