@@ -99,6 +99,15 @@
     margin: 0 0 14px;
   }
   .cost b { color: var(--fg-secondary); font-weight: 600; }
+  .where {
+    font-size: 12.5px;
+    color: var(--fg-muted);
+    border-left: 2px solid var(--accent-lime);
+    padding: 2px 0 2px 10px;
+    margin: 0 0 10px;
+  }
+  .where b { color: var(--accent-lime); font-weight: 600; }
+  .where .mono { font-size: 11.5px; color: var(--fg-secondary); }
 
   .counts {
     display: flex;
@@ -365,6 +374,10 @@
     <p><b>Two decisions.</b> The bottom bar switches surface. <b>ADMIN</b> holds three
     publish acts. <b>PUBLIC</b> holds three page shapes. They share one state, so what
     you publish in ADMIN is what PUBLIC shows.</p>
+    <p><b>Nothing here reopens a settled decision.</b> Composing an issue stays in code
+    (#202). Drafting stays a skill in your Claude session (#205). The inbox keeps the
+    per-row verdict it was rebuilt to (#238). Each act below is a change to a surface
+    that already exists, and every act names which one.</p>
     <p class="mono" style="font-size:11.5px;color:var(--fg-muted)">
     Real content: 37 items curated from 259 collected on 2026-08-23 across the feed
     lane, Hacker News, the cc-by Gemini changelog and one X post. Summaries drafted
@@ -1270,10 +1283,14 @@ function actA() {
   const live = publicItems().slice(0, 1);
   return `
     <div class="surface-title">Act A &middot; approve is publish</div>
-    <p class="surface-sub">One gate. The inbox verdict is the publish act, and the item
-    is on the public page the moment you tap it.</p>
+    <p class="surface-sub">One gate. The Approve button the inbox already has is the
+    publish act, and the item is on the public page the moment you tap it.</p>
+    <p class="where"><b>Where it lives:</b> Admin &rsaquo; News &rsaquo; Inbox, unchanged.
+    The public page queries the items in state <span class="mono">approved</span>. No new
+    field, no new mutation, no new view.</p>
     <p class="cost"><b>Cost:</b> nothing sits between a mis-tap and the public page, and
-    the knowledge base carries the week before subscribers get the email.</p>
+    the knowledge base carries the week before subscribers get the email. It also
+    overrides the spec line that keeps the stream private after approve.</p>
     ${counts()}
     ${state.ticks.map((t) => `<div class="tick">${esc(t)}</div>`).join('')}
     ${waiting.length === 0 ? '<div class="tick">Everything approved is public.</div>' : ''}
@@ -1302,9 +1319,15 @@ function actB() {
   const skippable = waiting.filter((i) => i.summary);
   return `
     <div class="surface-title">Act B &middot; the Sunday send publishes</div>
-    <p class="surface-sub">Approve fills the stream and nothing more. Sending issue #2
-    puts the whole week on the public page, both the items the email carries and the
-    rest of the week.</p>
+    <p class="surface-sub">Approve fills the stream and nothing more. The send you
+    already run puts the whole week on the public page, both the items the email
+    carries and the rest of the week.</p>
+    <p class="where"><b>Where it lives:</b> the send, which is
+    <span class="mono">scripts/newsletter.ts send</span> on prod and the Send button in
+    Admin &rsaquo; News &rsaquo; Newsletter. The issue's own items come from
+    <span class="mono">src/newsletter/issues.ts</span>, authored in code as #202 ruled.
+    Below, that split is shown, not chosen. Costs one new field on the item row and one
+    write inside <span class="mono">sendIssue</span>.</p>
     <p class="cost"><b>Cost:</b> subscribers read it first, and the knowledge base moves
     once a week. A skipped week publishes nothing, so the page can go dark for a
     fortnight while the stream fills up.</p>
@@ -1317,9 +1340,9 @@ function actB() {
            <button class="ghost big" data-skip="1">Skip this week</button>`
     }
     ${state.skipped ? '<div class="tick" style="color:var(--amber);border-color:var(--amber)">Week skipped. Nothing published. The items hold for issue #2.</div>' : ''}
-    <div class="topic-head"><span>In issue #2</span><span>${inIssue.length}</span></div>
+    <div class="topic-head"><span>Named by issue #2, in code</span><span>${inIssue.length}</span></div>
     ${inIssue.map((i) => adminRow(i)).join('')}
-    <div class="topic-head"><span>Rest of the week</span><span>${rest.length}</span></div>
+    <div class="topic-head"><span>Rest of the week, published by the same send</span><span>${rest.length}</span></div>
     ${rest.map((i) => adminRow(i)).join('')}
   `;
 }
@@ -1331,6 +1354,9 @@ function actC() {
     <div class="surface-title">Act C &middot; a publish queue</div>
     <p class="surface-sub">Approve fills a ready list. A second act, on your own timing
     and independent of the send, puts the ones you tick on the public page.</p>
+    <p class="where"><b>Where it lives:</b> a fifth view in Admin &rsaquo; News that does
+    not exist yet, plus one new field on the item row. It is the only act of the three
+    that adds a surface.</p>
     <p class="cost"><b>Cost:</b> every item costs two decisions, and the queue is a
     second inbox to work. Forget it for a month and the page is a month stale.</p>
     ${counts()}

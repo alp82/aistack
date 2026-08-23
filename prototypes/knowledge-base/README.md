@@ -30,6 +30,26 @@ ADMIN changes what PUBLIC shows.
 The public surface also carries one toggle: release rows as full entries, or
 collapsed into a single strip per topic.
 
+## Nothing here reopens a settled decision
+
+The prototype was read once as a contradiction of the compose ruling, so every
+act now names the surface it changes. None of them composes an issue, and none
+of them drafts.
+
+| Settled | Where | Untouched by this prototype |
+|---|---|---|
+| Issues are code-based, no compose page ([#202](https://github.com/alp82/aistack/issues/202)) | `src/newsletter/issues.ts` | Act B shows that split, it never picks it |
+| Drafting is a skill in the owner's session ([#205](https://github.com/alp82/aistack/issues/205)) | `.claude/skills/news-draft` | Summaries arrive already written |
+| The inbox has a per-row verdict ([#238](https://github.com/alp82/aistack/issues/238)) | `NewsInboxSection.tsx` | Approve and discard stay as they are |
+
+What each act would actually cost:
+
+| Act | Surface | New code |
+|---|---|---|
+| A, approve is publish | Admin, News, Inbox, unchanged | none: the page queries state `approved` |
+| B, the send publishes | the existing send, in `scripts/newsletter.ts` and the Newsletter view | one field on the item row, one write in `sendIssue` |
+| C, publish queue | a fifth Admin, News view that does not exist | one field, one mutation, one view |
+
 ## The content is real
 
 `collect.mjs` read the live sources on 2026-08-23 and wrote `collected.json`:
