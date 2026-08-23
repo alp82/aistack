@@ -613,16 +613,6 @@ export default defineSchema({
     .index('by_status', ['status'])
     .index('by_lookupId', ['lookupId']),
 
-  // DEPRECATED by `emailPreferences` (#204). Nothing reads or writes it any
-  // more. It stays one deploy longer because the migration that copies its
-  // rows reads FROM it: a column already dropped cannot be migrated from.
-  // Drop the table once `migrations/20260823_email_preferences:run` has run on
-  // prod.
-  emailUnsubscribes: defineTable({
-    email: v.string(),
-    unsubscribedAt: v.number(),
-  }).index('by_email', ['email']),
-
   stackUpvotes: defineTable({
     stackId: v.id('stacks'),
     userId: v.string(),
@@ -1195,13 +1185,12 @@ export default defineSchema({
     .index('by_number', ['number'])
     .index('by_status', ['status']),
 
-  // Per-category mail preferences (#204). Replaces the global
-  // `emailUnsubscribes` list, which could only say "never mail me again".
+  // Per-category mail preferences (#204). It replaced a global unsubscribe list
+  // that could only say "never mail me again"; that table was migrated and
+  // dropped on 2026-08-23, and it carried no rows.
   //
   // ABSENT READS AS SUBSCRIBED TO BOTH. The audience is members and waitlist,
-  // subscribed by default, so a row records a REFUSAL and nothing else. That
-  // also makes the migration from the old table a straight copy: every global
-  // unsubscribe becomes one row with both categories off.
+  // subscribed by default, so a row records a REFUSAL and nothing else.
   //
   // Transactional mail never consults this table. It has no toggle.
   emailPreferences: defineTable({
