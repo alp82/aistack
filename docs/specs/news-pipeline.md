@@ -90,6 +90,10 @@ session, on the owner's subscription. The owner picks the model per session.
   failed item stays in the inbox without a draft, and the next run re-attempts it.
   Drafting never blocks collection.
 
+Built in [#233](https://github.com/alp82/aistack/issues/233) as
+`.claude/skills/news-draft`, `scripts/news-drafts.ts` (`list` and `apply`), and
+the internal Convex functions in `convex/newsDrafting.ts`.
+
 ## The newsletter
 
 - **Cadence**: weekly, sent Sunday. A thin week skips. Skip beats bad content.

@@ -57,6 +57,7 @@ import type * as migrations_backup from "../migrations/backup.js";
 import type * as migrations_icons from "../migrations/icons.js";
 import type * as models from "../models.js";
 import type * as news from "../news.js";
+import type * as newsDrafting from "../newsDrafting.js";
 import type * as projects from "../projects.js";
 import type * as rateLimit from "../rateLimit.js";
 import type * as resources from "../resources.js";
@@ -128,6 +129,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/icons": typeof migrations_icons;
   models: typeof models;
   news: typeof news;
+  newsDrafting: typeof newsDrafting;
   projects: typeof projects;
   rateLimit: typeof rateLimit;
   resources: typeof resources;
