@@ -4,35 +4,41 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Prototype · alp82/aistack#244 · the sources behind one stack's measured layer · round 2</title>
+<title>Prototype · alp82/aistack#244 · the sources behind one stack's measured layer · round 3</title>
 <!--
   PROTOTYPE. Throwaway. alp82/aistack#244: what a reader sees when a stack
   measures from more than one place. Baseline: section 01 Actual Usage on main.
 
-  ROUND 1 verdict (2026-08-23). The filter wins. Three instructions came with it:
-  replace "the notch marks where each share stood on ..." with "checked 2 hours
-  ago", put the filter in a lightweight component where that label was, and show
-  it only when more than one machine is registered. Round 1's footnote, source
-  strip, trail-led and owner-only variants are dropped.
+  ROUND 1 verdict (2026-08-23). The filter wins. Replace "the notch marks where
+  each share stood on ..." with "checked 2 hours ago", put the filter in a
+  lightweight component where that label was, and show it only when more than one
+  machine is registered. The footnote, source strip, trail-led and owner-only
+  variants are dropped.
 
-  ROUND 1 follow-up, from the thread: THE UNIT IS THE MACHINE. Every harness on
+  ROUND 1 follow-up, from the thread. THE UNIT IS THE MACHINE. Every harness on
   one machine folds into one filter option. ADR-0006's "source" stays the storage
   key, per harness and machine, and the merge is unchanged. Only the display unit
-  moved. Two words now sit close together, so this file says MACHINE for what the
-  reader picks and SOURCE for what the database holds.
+  moved, so this file says MACHINE for what the reader picks and SOURCE for what
+  the database holds.
 
-  ROUND 2. Four positions on the variant bar:
+  ROUND 2 verdict (2026-08-23). Variant 1: the filter takes the section header's
+  slot, and "checked 2 hours ago" moves down to the model-mix row. Two
+  instructions came with it. It needs a PROPER DROPDOWN COMPONENT, not a styled
+  native menu. And it must NOT add a layout-shifting extra row.
 
-    0  today          the live section, unchanged. The thing to beat.
-    1  header select  the filter takes the section header's slot. Freshness
-                      moves down to the model-mix row.
-    2  mix-row select the filter takes the model-mix row's slot. Freshness stays
-                      in the section header.
-    3  header links   the header slot again, as inline links rather than a menu.
+  ROUND 3. The placement is settled, so this round is about the dropdown itself.
+  Round 2's narrowed row is gone, and with it the only home the harness list and
+  the stale-harness warning had. So the question is how much the dropdown can
+  carry instead of that row:
 
-  Both readings of the instruction are on the bar, because it can be read two
-  ways. Variant 1 puts the filter where "checked 2 hours ago" was. Variant 2 puts
-  it where the notch note was. Pick the one you meant.
+    0  today       the live section, unchanged. The thing to beat.
+    A  label only  the minimum that counts as a proper dropdown.
+    B  with facts  each row adds its tokens and when it was read.
+    C  with warning  B plus the harnesses each machine runs, and a stale marker.
+
+  NOTHING SHIFTS THE LAYOUT IN ANY OF THEM. The trigger sits in the header slot
+  and the panel floats over the page. The prototype's own explainers sit ABOVE
+  the section, in dashed boxes, so the mocked section stays honest.
 
   TWO CONTROLS SIT BESIDE THE VARIANT.
 
@@ -40,12 +46,12 @@
     NAMES   neutral label · behind the consent gate · publication alias
     VIEW    reader · owner
 
-  NAMES IS THE TICKET'S OWN CONSTRAINT, unanswered so far. `measuredSnapshots.
+  NAMES IS THE TICKET'S OWN CONSTRAINT, still unanswered. `measuredSnapshots.
   machine` holds the name typed at `aistack login`, and #243 put it in the public
   `getCurrentByStackSlug` payload, outside the #42/#48 consent architecture. The
   three positions are the ticket's three outcomes: never public, through the same
-  gate as every other user-chosen name, or a publication name the owner types
-  separately from the local one.
+  gate as every other user-chosen name, or a publication name typed separately
+  from the local one.
 
   WHAT IS REAL AND WHAT IS INVENTED. The `alppc` figures are the shipped
   analyzer's own output on the owner's Claude Code history, taken unchanged from
@@ -55,17 +61,18 @@
   are invented. The balanced stack is invented end to end, and so is every trail.
   No live sync feeds this page.
 
-  THREE FINDINGS ARE ALREADY IN THE CODE.
+  FINDINGS CARRIED IN THE CODE.
 
   1. The filter key is an INDEX, never the machine name. A key built from the
      name would put it in the DOM and in the URL under every naming policy,
      including the one that forbids it.
   2. The section header's meta slot is `display: none` below 768px on the live
-     page. A filter that lives there has to un-hide it, or it is invisible on the
-     phone this gets read on. Variant 2's slot is visible at every width.
+     page. Variant 1 lives there, so shipping it means un-hiding that slot.
   3. Merging harnesses into one machine can hide a stale harness. On the balanced
      stack the workstation's Claude Code was read an hour ago and its Codex three
-     days ago, and the machine reads as one hour old. The narrowed line says so.
+     days ago, and the machine reads as one hour old. Only variant C says so.
+  4. The trigger is the ONLY signal that the section is narrowed, now that the
+     row is gone. It carries the chosen machine and turns lime.
 
   THE PALETTE COLLISION IS DELIBERATE. The model rows wear the six validated
   chart slots. A machine set painted from the same six would make `--chart-1`
@@ -81,6 +88,7 @@
     --bg-shell: oklch(0.12 0.01 256);
     --bg-panel: oklch(0.2 0.009 256);
     --bg-panel-muted: oklch(0.24 0.009 256);
+    --bg-panel-elevated: oklch(0.28 0.01 256);
     --fg-primary: oklch(0.96 0.004 256);
     --fg-secondary: oklch(0.82 0.004 256);
     --fg-muted: oklch(0.68 0.005 256);
@@ -88,7 +96,7 @@
     --accent-lime-contrast: oklch(0.22 0.02 132);
     --stroke-subtle: oklch(0.55 0.01 256 / 0.45);
     --stroke-strong: oklch(0.5 0.015 256 / 0.9);
-    --warn: oklch(0.75 0.09 85);
+    --warn: oklch(0.75 0.13 75);
     --chart-1: #69a621;
     --chart-2: #9e71fd;
     --chart-3: #c21977;
@@ -111,7 +119,7 @@
   }
   .mono { font-family: 'JetBrains Mono', 'Fira Code', Menlo, monospace; }
 
-  /* ---------- prototype chrome ---------- */
+  /* ---------- prototype chrome (never part of the design) ---------- */
   .ticket-strip {
     background: var(--bg-shell);
     border-bottom: 1px solid var(--stroke-subtle);
@@ -129,10 +137,15 @@
     font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 1.75;
     color: var(--fg-secondary);
   }
-  .proposal-box .tag { color: var(--warn); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-size: 10px; display: block; margin-bottom: 8px; }
+  .proposal-box .tag { color: oklch(0.75 0.09 85); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-size: 10px; display: block; margin-bottom: 8px; }
   .proposal-box b { color: var(--fg-primary); }
   .proposal-box .q { display: block; margin-top: 8px; }
   .proposal-box .q b { color: var(--accent-lime); }
+  .note-box {
+    border: 1px dashed var(--stroke-strong); padding: 9px 12px; margin-top: 12px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em;
+    color: var(--fg-muted); line-height: 1.65;
+  }
 
   /* ---------- section shell (mirrors the live page) ---------- */
   section.journey { padding: 40px 16px; border-top: 1px solid var(--stroke-subtle); }
@@ -152,7 +165,7 @@
   /* The live page hides this slot below 768px. Finding 2. */
   .sec-meta { display: none; font-family: 'JetBrains Mono', monospace; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--fg-muted); }
   @media (min-width: 768px) { .sec-meta { display: block; } }
-  /* A filter living in that slot has to be visible at every width. */
+  /* The filter lives here, so it has to be visible at every width. */
   .sec-meta.always { display: block; flex: 0 0 auto; }
 
   .mono-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.25em; text-transform: uppercase; color: var(--fg-muted); }
@@ -178,9 +191,9 @@
   .chip-row { margin: 12px 0 0 12px; }
 
   /* ---------- model rows ---------- */
-  .mix-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; margin-bottom: 16px; min-height: 30px; }
+  .mix-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; margin-bottom: 16px; min-height: 26px; }
   .mix-head .kick { color: var(--accent-lime); }
-  .mix-note { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); }
+  .mix-note { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); margin: 0; }
   .rows { border-top: 1px solid var(--stroke-subtle); border-bottom: 1px solid var(--stroke-subtle); }
   .row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--stroke-subtle); }
   .row:first-child { border-top: 0; }
@@ -202,48 +215,52 @@
   .stat .v { font-family: 'JetBrains Mono', monospace; font-size: 19px; font-weight: 800; }
   .stat .l { margin-top: 5px; }
 
-  /* ---------- the filter ---------- */
-  .filter { display: inline-flex; align-items: center; gap: 8px; }
-  .filter > b {
-    font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600;
-    letter-spacing: 0.2em; text-transform: uppercase; color: var(--fg-muted);
-  }
-  select.filter-select {
-    appearance: none; background: transparent; border: 1px solid var(--stroke-subtle);
-    color: var(--fg-primary); font-family: 'JetBrains Mono', monospace; font-size: 11px;
-    letter-spacing: 0.06em; padding: 6px 26px 6px 9px; cursor: pointer; border-radius: 0;
-    background-image: linear-gradient(45deg, transparent 50%, var(--fg-muted) 50%), linear-gradient(135deg, var(--fg-muted) 50%, transparent 50%);
-    background-position: calc(100% - 14px) calc(50% + 1px), calc(100% - 9px) calc(50% + 1px);
-    background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
-    max-width: 15rem; text-overflow: ellipsis;
-  }
-  select.filter-select:focus-visible { outline: 2px solid var(--accent-lime); outline-offset: 1px; }
-  select.filter-select.on { border-color: var(--accent-lime); color: var(--accent-lime); }
-
-  .filter-links { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; }
-  .filter-links button {
-    background: none; border: 0; cursor: pointer; padding: 3px 2px;
+  /* =====================================================================
+     THE DROPDOWN. A real component: a trigger, a floating panel, a listbox.
+     It never occupies flow space, so nothing below it moves when it opens.
+     ===================================================================== */
+  .drop { position: relative; display: inline-block; text-align: left; }
+  .drop-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: transparent; border: 1px solid var(--stroke-subtle); border-radius: 0;
+    color: var(--fg-primary); cursor: pointer; padding: 7px 10px;
     font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.06em;
-    color: var(--fg-muted); border-bottom: 1px solid transparent;
+    max-width: min(18rem, calc(100vw - 40px));
   }
-  .filter-links button:hover { color: var(--fg-primary); }
-  .filter-links button[aria-pressed="true"] { color: var(--accent-lime); border-bottom-color: var(--accent-lime); font-weight: 700; }
-  .filter-links span { color: var(--stroke-strong); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
-
-  .narrowed {
-    border-left: 2px solid var(--accent-lime); padding-left: 12px; margin-bottom: 22px;
-    font-size: 12.5px; line-height: 1.6; color: var(--fg-secondary); max-width: 52rem;
+  .drop-trigger:hover { border-color: var(--stroke-strong); }
+  .drop-trigger:focus-visible { outline: 2px solid var(--accent-lime); outline-offset: 1px; }
+  .drop-trigger .lead {
+    font-size: 9.5px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--fg-muted); flex: 0 0 auto;
   }
-  .narrowed b { color: var(--fg-primary); }
-  .narrowed .warn { color: var(--warn); }
+  .drop-trigger .val { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; }
+  .drop-trigger .caret { flex: 0 0 auto; color: var(--fg-muted); font-size: 9px; }
+  .drop.on .drop-trigger { border-color: var(--accent-lime); color: var(--accent-lime); }
+  .drop.on .drop-trigger .caret { color: var(--accent-lime); }
 
+  .drop-panel {
+    position: absolute; z-index: 30; top: calc(100% + 6px); right: 0;
+    min-width: 17rem; max-width: min(24rem, calc(100vw - 32px));
+    background: var(--bg-panel); border: 2px solid var(--stroke-strong);
+    box-shadow: 6px 6px 0 var(--stroke-strong);
+  }
+  .drop-opt {
+    display: block; width: 100%; text-align: left; background: none; cursor: pointer;
+    border: 0; border-top: 1px solid var(--stroke-subtle); padding: 10px 12px;
+    color: var(--fg-secondary); font-family: inherit;
+  }
+  .drop-opt:first-child { border-top: 0; }
+  .drop-opt:hover { background: var(--bg-panel-muted); }
+  .drop-opt:focus-visible { outline: 2px solid var(--accent-lime); outline-offset: -2px; }
+  .drop-opt[aria-selected="true"] { background: var(--bg-panel-elevated); }
+  .drop-opt[aria-selected="true"] .o-name { color: var(--accent-lime); font-weight: 700; }
+  .drop-opt .o-line { display: flex; align-items: center; gap: 8px; }
+  .drop-opt .o-name { flex: 1 1 auto; min-width: 0; font-size: 13px; color: var(--fg-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .drop-opt .o-tok { flex: 0 0 auto; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--fg-primary); }
+  .drop-opt .o-sub { margin-top: 3px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.05em; color: var(--fg-muted); }
+  .drop-opt .o-warn { margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.05em; color: var(--warn); }
   .src-dot { width: 9px; height: 9px; flex: 0 0 9px; display: inline-block; }
-
-  .view-banner {
-    border: 1px dashed var(--stroke-strong); padding: 8px 10px; margin-bottom: 20px;
-    font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.08em;
-    color: var(--fg-muted); line-height: 1.6;
-  }
+  .warn-dot { width: 6px; height: 6px; flex: 0 0 6px; display: inline-block; background: var(--warn); }
 
   /* ---------- the active-days bench ---------- */
   .bench { max-width: 80rem; margin: 0 auto; padding: 0 16px 40px; }
@@ -253,7 +270,7 @@
   .bench-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); }
   @media (min-width: 800px) { .bench-grid { grid-template-columns: repeat(4, 1fr); } }
   .bench-cell { background: var(--bg-canvas); padding: 14px; }
-  .bench-cell .k { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--warn); letter-spacing: 0.14em; text-transform: uppercase; }
+  .bench-cell .k { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: oklch(0.75 0.09 85); letter-spacing: 0.14em; text-transform: uppercase; }
   .bench-cell .why { margin-top: 10px; font-size: 11.5px; color: var(--fg-muted); line-height: 1.5; }
 
   /* ---------- switcher ---------- */
@@ -286,20 +303,21 @@
 <body>
 
 <div class="ticket-strip">
-  Prototype · <b>alp82/aistack#244</b> · display the sources behind one stack's measured layer · round 2 · throwaway
+  Prototype · <b>alp82/aistack#244</b> · display the sources behind one stack's measured layer · round 3 · throwaway
 </div>
 
 <div class="proposal">
   <div class="proposal-box">
-    <span class="tag">round 2 · the filter won, the unit is the machine</span>
-    The notch note is gone in 1, 2 and 3. <b>The filter appears only when a stack has more than one machine.</b>
-    Every harness on a machine folds into that machine's one option.
-    <span class="q"><b>1 vs 2</b> Your instruction reads two ways. <b>1</b> puts the filter where "checked 2 hours ago" was, in the section header. <b>2</b> puts it where the notch note was, in the model-mix row. Pick the one you meant.</span>
-    <span class="q"><b>3</b> The same header slot, as inline links rather than a menu. Cheaper to reach, wider on a long name.</span>
-    <span class="q"><b>Watch on the phone.</b> The live page hides the section header's slot below 768px. Variants 1 and 3 need it un-hidden. Variant 2's slot is visible at every width.</span>
+    <span class="tag">round 3 · the dropdown itself</span>
+    Placement is settled: the filter takes the section header's slot, and "checked 2 hours ago" moved down to the model-mix row.
+    <b>Round 2's narrowed row is gone</b>, so the dropdown is the only place left for the harness list and the stale warning.
+    <span class="q"><b>A</b> label only. <b>B</b> adds tokens and when each machine was read. <b>C</b> adds the harnesses and marks a stale one.</span>
+    <span class="q"><b>Nothing shifts.</b> The panel floats. Open and close it and watch the page under it hold still.</span>
+    <span class="q"><b>Set STACK to balanced</b> and open C. The workstation reads as one hour old and its Codex is three days old.</span>
     <span class="q"><b>NAMES</b> is still open, and it is the ticket's consent constraint. Switch it and read what the page calls your machines.</span>
     <span class="q"><b>The bench</b> under the section holds four shapes for active days, which is a max and understates.</span>
   </div>
+  <div id="note"></div>
 </div>
 
 <main id="app"></main>
@@ -325,6 +343,8 @@
 
 const NOW = Date.UTC(2026, 7, 23, 9, 0, 0);
 const HOUR = 3600e3, DAY = 24 * HOUR;
+/** Past this a source reads as stale, matching the page's own 48-hour rule. */
+const STALE_MS = 2 * DAY;
 
 const CATALOG = {
   'claude-fable-5': null,            // absent from the catalog on purpose (#33 decision 3)
@@ -509,7 +529,6 @@ function merge(sources) {
     subagentShare: sources.reduce((a, s) => a + s.subagentShare * s.tokens, 0) / tokens,
     // The freshness the page leads with is the NEWEST source. Finding 3 lives here.
     receivedAt: Math.max(...sources.map((s) => s.receivedAt)),
-    oldestAt: Math.min(...sources.map((s) => s.receivedAt)),
     sources,
     models: merged,
     trail: READ_AT.map((at, i) => ({
@@ -554,26 +573,26 @@ const NAMING = {
   neutral: {
     label: 'neutral label',
     name: (machine, stack) => 'machine ' + (machineNames(stack).indexOf(machine) + 1),
-    banner: 'Neutral label. The machine name never leaves the database, so nothing new passes a consent gate. The reader learns that two machines exist and nothing about them.',
+    note: 'NAMES is neutral. The machine name never leaves the database, so nothing new passes a consent gate. The reader learns that two machines exist and nothing about them.',
   },
   gate: {
     label: 'behind the gate',
     name: (machine) => machine,
-    banner: 'Behind the consent gate. The local name publishes only after you tick it, exactly like a skill or an MCP server name. Untick it and the next sync drops it back to neutral.',
+    note: 'NAMES is behind the gate. The local name publishes only after you tick it, exactly like a skill or an MCP server name. Untick it and the next sync drops it back to neutral.',
   },
   alias: {
     label: 'publication alias',
     name: (machine, stack) => stack.aliases[machine] || machine,
-    banner: 'Publication alias. You type a second name for publishing, separate from the one you typed at login. The local name never leaves the database, so a machine named after a private project can still carry a public label.',
+    note: 'NAMES is a publication alias. You type a second name for publishing, separate from the one you typed at login. The local name never leaves the database.',
   },
 };
 
 /**
  * The machines the display shows.
  *
- * THE KEY IS AN INDEX, NEVER THE MACHINE NAME. Variant 1, 2 and 3 put this key
- * in the DOM and in the URL, so a key built from the name would publish it under
- * every naming policy, including the one that forbids it.
+ * THE KEY IS AN INDEX, NEVER THE MACHINE NAME. The dropdown puts this key in the
+ * DOM and in the URL, so a key built from the name would publish it under every
+ * naming policy, including the one that forbids it.
  */
 function machines(stack, naming, view) {
   const policy = view === 'owner' ? NAMING.gate : NAMING[naming];
@@ -610,12 +629,12 @@ function sparkline(points, paint) {
 
 const VARIANTS = [
   { key: '0', name: 'today', blurb: 'the live section, unchanged' },
-  { key: '1', name: 'header select', blurb: 'filter in the section header · freshness moves down' },
-  { key: '2', name: 'mix-row select', blurb: 'filter where the notch note was' },
-  { key: '3', name: 'header links', blurb: 'the header slot, as inline links' },
+  { key: 'A', name: 'label only', blurb: 'the minimum proper dropdown' },
+  { key: 'B', name: 'with facts', blurb: 'each row adds tokens and freshness' },
+  { key: 'C', name: 'with warning', blurb: 'plus harnesses and a stale marker' },
 ];
 
-const state = { variant: '1', stack: 'lopsided', naming: 'neutral', view: 'reader', machine: 'all' };
+const state = { variant: 'C', stack: 'lopsided', naming: 'neutral', view: 'reader', machine: 'all', menu: false };
 
 function readURL() {
   const p = new URLSearchParams(location.search);
@@ -637,24 +656,63 @@ function writeURL() {
 function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function dot(paint) { return '<span class="src-dot" style="background:' + paint + '"></span>'; }
 
-/* ---------- the filter, in its two shapes ---------- */
+/* ---------- the dropdown ---------- */
 
-function filterSelect(ms) {
-  const opts = [{ key: 'all', label: 'all machines' }].concat(ms)
-    .map((o) => '<option value="' + esc(o.key) + '"' + (state.machine === o.key ? ' selected' : '') + '>'
-      + esc(o.label) + '</option>').join('');
-  return '<span class="filter"><b>from</b>'
-    + '<select class="filter-select' + (state.machine === 'all' ? '' : ' on') + '"'
-    + ' data-act="machine" aria-label="Show one machine">' + opts + '</select></span>';
+/** One option's facts, whether it is a machine or the all-machines row. */
+function optionFacts(sources) {
+  const r = merge(sources);
+  const harnesses = [...new Set(sources.map((s) => HARNESS_NAME[s.harness] || s.harness))];
+  const stale = sources.filter((s) => NOW - s.receivedAt > STALE_MS);
+  return { reading: r, harnesses, stale };
 }
 
-function filterLinks(ms) {
-  const all = [{ key: 'all', label: 'all' }].concat(ms);
-  return '<span class="filter"><b>from</b><span class="filter-links">'
-    + all.map((o, i) => (i ? '<span>·</span>' : '')
-      + '<button data-act="machine" data-key="' + esc(o.key) + '" aria-pressed="'
-      + (state.machine === o.key) + '">' + esc(o.label) + '</button>').join('')
-    + '</span></span>';
+/**
+ * The panel's rows. `depth` is the variant: 'label', 'facts' or 'warn'.
+ *
+ * A ROW CARRIES WHAT THE REMOVED NARROWED LINE USED TO. The harness list is the
+ * fact the machine unit gave up, and the stale marker is finding 3. Neither has
+ * anywhere else to live now that no row sits under the header.
+ */
+function dropOption(o, selected, depth) {
+  const f = optionFacts(o.sources);
+  let sub = '', warn = '';
+  if (depth !== 'label') {
+    const parts = depth === 'warn' ? [f.harnesses.join(', '), 'read ' + timeAgo(f.reading.receivedAt)]
+      : ['read ' + timeAgo(f.reading.receivedAt)];
+    sub = '<div class="o-sub">' + esc(parts.join(' · ')) + '</div>';
+  }
+  if (depth === 'warn' && f.stale.length) {
+    warn = '<div class="o-warn">' + f.stale.map((s) => esc((HARNESS_NAME[s.harness] || s.harness)
+      + ' last read ' + timeAgo(s.receivedAt))).join('. ') + '</div>';
+  }
+  return '<button class="drop-opt" role="option" data-act="machine" data-key="' + esc(o.key) + '"'
+    + ' aria-selected="' + (selected ? 'true' : 'false') + '">'
+    + '<span class="o-line">' + (o.paint ? dot(o.paint) : '')
+    + '<span class="o-name">' + esc(o.label) + '</span>'
+    + (depth === 'label' ? '' : '<span class="o-tok">' + fmtTokens(f.reading.tokens) + '</span>')
+    + (depth === 'warn' && f.stale.length ? '<span class="warn-dot"></span>' : '')
+    + '</span>' + sub + warn + '</button>';
+}
+
+function dropdown(ms, allSources, depth) {
+  const all = { key: 'all', label: 'all machines', sources: allSources, paint: null };
+  const opts = [all].concat(ms);
+  const chosen = opts.find((o) => o.key === state.machine) || all;
+  const chosenStale = depth === 'warn' && optionFacts(chosen.sources).stale.length > 0;
+
+  const panel = state.menu
+    ? '<div class="drop-panel" role="listbox" aria-label="Machine">'
+      + opts.map((o) => dropOption(o, o.key === chosen.key, depth)).join('') + '</div>'
+    : '';
+
+  return '<div class="drop' + (state.machine === 'all' ? '' : ' on') + '">'
+    + '<button class="drop-trigger" data-act="menu" aria-haspopup="listbox" aria-expanded="'
+    + (state.menu ? 'true' : 'false') + '">'
+    + '<span class="lead">from</span>'
+    + '<span class="val">' + esc(chosen.label) + '</span>'
+    + (chosenStale ? '<span class="warn-dot"></span>' : '')
+    + '<span class="caret">' + (state.menu ? '&#9650;' : '&#9660;') + '</span>'
+    + '</button>' + panel + '</div>';
 }
 
 /* ---------- shared blocks ---------- */
@@ -724,29 +782,7 @@ function statsGrid(reading, multi) {
     + '<div class="l mono-label">' + esc(c.l) + '</div></div>').join('') + '</div>';
 }
 
-/**
- * The line under the filter when the reader has narrowed to one machine.
- *
- * It carries the harness fact the unit gave up: the machine is the option, so
- * "which harnesses ran here" has nowhere else to live. It also carries FINDING 3
- * - a machine reads as fresh as its newest harness, and a stale one hides inside.
- */
-function narrowedLine(chosen, all) {
-  const r = merge(chosen.sources);
-  const harnesses = [...new Set(chosen.sources.map((s) => HARNESS_NAME[s.harness] || s.harness))];
-  const stale = chosen.sources.filter((s) => NOW - s.receivedAt > 2 * DAY);
-  const warn = stale.length
-    ? ' <span class="warn">' + stale.map((s) => (HARNESS_NAME[s.harness] || s.harness)
-      + ' here was last read ' + timeAgo(s.receivedAt)).join('. ') + '.</span>'
-    : '';
-  return '<div class="narrowed">Showing <b>' + esc(chosen.label) + '</b> alone: '
-    + esc(harnesses.join(' and ')) + '. ' + fmtTokens(r.tokens) + ' of this stack’s '
-    + fmtTokens(all.tokens) + ', read ' + esc(timeAgo(r.receivedAt)) + '.' + warn + '</div>';
-}
-
-/* ---------- the four variants ---------- */
-
-function body(stack, reading, multi, mixRight) {
+function body(reading, multi, mixRight) {
   return '<div class="body-grid">'
     + '<div>' + metricBlock(reading) + deltaChip(reading) + '</div>'
     + '<div>' + mixHead(mixRight) + modelRows(reading) + statsGrid(reading, multi) + '</div>'
@@ -754,44 +790,36 @@ function body(stack, reading, multi, mixRight) {
 }
 
 /**
- * One frame for all four variants. The variant decides only two things: which
- * slot the filter takes, and which slot the freshness line takes.
+ * One frame for all four variants. The variant decides only how much each
+ * dropdown row carries.
  *
- * WITHOUT A FILTER EVERY VARIANT IS TODAY, byte for byte. A stack with one
- * machine has nothing to narrow, so it keeps the header's freshness meta and the
- * notch note, and grows no label it never asked for.
+ * WITHOUT A FILTER EVERY VARIANT IS TODAY. A stack with one machine has nothing
+ * to narrow, so it keeps the header's freshness meta and the notch note, and
+ * grows no label it never asked for.
+ *
+ * NOTHING IS ADDED TO THE FLOW. The trigger replaces the meta slot's text and
+ * the panel is absolutely positioned, so opening it moves nothing.
  */
-function frame(stack, opts) {
-  const ms = machines(stack, state.naming, state.view);
+function frame(stack, depth) {
   const all = merge(sortedSources(stack));
-  const filtered = hasFilter(stack) && state.variant !== '0';
-
-  if (!filtered) {
+  if (!depth || !hasFilter(stack)) {
     return sectionHead('checked ' + esc(timeAgo(all.receivedAt)))
-      + body(stack, all, isMultiSource(stack), NOTCH_NOTE());
+      + body(all, isMultiSource(stack), NOTCH_NOTE());
   }
-
+  const ms = machines(stack, state.naming, state.view);
   const chosen = ms.find((m) => m.key === state.machine) || null;
   const reading = chosen ? merge(chosen.sources) : all;
-  const control = opts.shape === 'links' ? filterLinks(ms) : filterSelect(ms);
   // The stats stop saying "(max)" the moment the reading stops merging anything.
   const multi = chosen ? chosen.sources.length > 1 : isMultiSource(stack);
-
-  const head = opts.slot === 'header'
-    ? sectionHead(control, true)
-    : sectionHead('checked ' + esc(timeAgo(reading.receivedAt)));
-  const mixRight = opts.slot === 'header' ? CHECKED(reading) : control;
-
-  return head
-    + (chosen ? narrowedLine(chosen, all) : '')
-    + body(stack, reading, multi, mixRight);
+  return sectionHead(dropdown(ms, sortedSources(stack), depth), true)
+    + body(reading, multi, CHECKED(reading));
 }
 
 const BODIES = {
-  '0': (s) => frame(s, {}),
-  '1': (s) => frame(s, { slot: 'header', shape: 'select' }),
-  '2': (s) => frame(s, { slot: 'mix', shape: 'select' }),
-  '3': (s) => frame(s, { slot: 'header', shape: 'links' }),
+  '0': (s) => frame(s, null),
+  A: (s) => frame(s, 'label'),
+  B: (s) => frame(s, 'facts'),
+  C: (s) => frame(s, 'warn'),
 };
 
 /* ---------- the active-days bench ---------- */
@@ -818,7 +846,7 @@ function bench(stack) {
     + ' days on the ' + per.length + ' sources reads as ' + all.activeDays + ', not '
     + per.reduce((a, b) => a + b, 0) + '. The real fix is day sets in the payload, and that is a later ticket. '
     + 'Pick the shape to ship until then. Projects has the same fault and no cell on the page today. '
-    + 'Cell 4 counts sources, not machines, so it can list more entries than the filter offers.</p>'
+    + 'Cell 4 counts sources, not machines, so it can list more entries than the dropdown offers.</p>'
     + '<div class="bench-grid">' + cells.map((c) => '<div class="bench-cell">'
       + '<div class="k">' + esc(c.k) + '</div>'
       + '<div class="stat" style="padding:10px 0 0"><div class="v">' + esc(c.v) + '</div>'
@@ -834,18 +862,20 @@ function render() {
     state.machine = 'all';
   }
 
-  let banner = '';
+  // The prototype's own explainers sit OUTSIDE the section, so the mocked
+  // section carries nothing that would not ship.
+  let note = '';
   if (state.view === 'owner') {
-    banner = '<div class="view-banner">Owner view. Your own machine names always show here. The naming policy governs the public page only.</div>';
+    note = 'Owner view. Your own machine names always show here. The naming policy governs the public page only.';
   } else if (hasFilter(stack) && state.variant !== '0') {
-    banner = '<div class="view-banner">' + esc(NAMING[state.naming].banner) + '</div>';
+    note = NAMING[state.naming].note;
   } else if (!hasFilter(stack) && isMultiSource(stack)) {
-    banner = '<div class="view-banner">Two sources on one machine, so the rule gives this stack no filter. '
-      + 'The headline still sums Claude Code and Codex, and active days is still a max.</div>';
+    note = 'Two sources on one machine, so the rule gives this stack no filter. The headline still sums Claude Code and Codex, and active days is still a max.';
   }
+  document.getElementById('note').innerHTML = note ? '<div class="note-box">' + esc(note) + '</div>' : '';
 
   document.getElementById('app').innerHTML =
-    '<section class="journey"><div class="shell">' + banner + BODIES[state.variant](stack) + '</div></section>';
+    '<section class="journey"><div class="shell">' + BODIES[state.variant](stack) + '</div></section>';
   document.getElementById('bench').innerHTML = bench(stack);
 
   const v = VARIANTS.find((x) => x.key === state.variant);
@@ -871,6 +901,7 @@ function optionRows(stack) {
 function cycle(step) {
   const i = VARIANTS.findIndex((v) => v.key === state.variant);
   state.variant = VARIANTS[(i + step + VARIANTS.length) % VARIANTS.length].key;
+  state.menu = false;
   render();
 }
 
@@ -879,21 +910,21 @@ document.getElementById('next').addEventListener('click', () => cycle(1));
 document.getElementById('swtoggle').addEventListener('click', () => {
   document.getElementById('switcher').classList.toggle('open');
 });
+
 document.addEventListener('click', (e) => {
   const b = e.target.closest('button[data-act]');
-  if (!b) return;
-  if (b.dataset.act === 'set') { state[b.dataset.key] = b.dataset.val; state.machine = 'all'; render(); }
-  if (b.dataset.act === 'machine') { state.machine = b.dataset.key; render(); }
+  if (!b) { if (state.menu) { state.menu = false; render(); } return; }
+  const act = b.dataset.act;
+  if (act === 'set') { state[b.dataset.key] = b.dataset.val; state.machine = 'all'; state.menu = false; render(); }
+  if (act === 'menu') { state.menu = !state.menu; render(); }
+  if (act === 'machine') { state.machine = b.dataset.key; state.menu = false; render(); }
 });
-document.addEventListener('change', (e) => {
-  const s = e.target.closest('select[data-act="machine"]');
-  if (!s) return;
-  state.machine = s.value;
-  render();
-});
+
 document.addEventListener('keydown', (e) => {
   const t = e.target;
-  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+  if (e.key === 'Escape' && state.menu) { state.menu = false; render(); return; }
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+  if (state.menu) return;
   if (e.key === 'ArrowLeft') cycle(-1);
   if (e.key === 'ArrowRight') cycle(1);
 });
