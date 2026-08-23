@@ -163,6 +163,9 @@ The publication includes every approved, summarized, grouped item that has not
 appeared there before. Issue membership does not limit the publication. A test
 send changes nothing, and a skipped week publishes nothing.
 
+The item publication record stores the send time and exact attribution notice.
+Deleting a source later can't remove a notice from published licensed text.
+
 An approved item without a summary or topic stays private. The next drafting
 run includes that item again. A later real send publishes the item after the
 draft is ready.

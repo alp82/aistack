@@ -1153,8 +1153,13 @@ export default defineSchema({
     draftedAt: v.optional(v.number()),
     /** When the owner last moved this item out of the inbox. */
     decidedAt: v.optional(v.number()),
-    /** When a newsletter send published this item to the knowledge base. */
-    knowledgeBasePublishedAt: v.optional(v.number()),
+    /** The send that published this item and its durable license notice. */
+    knowledgeBasePublication: v.optional(
+      v.object({
+        publishedAt: v.number(),
+        attribution: v.optional(v.string()),
+      })
+    ),
     updatedAt: v.number(),
   })
     // Dedupe. Every write path asks this one question first.
@@ -1164,14 +1169,7 @@ export default defineSchema({
     // Per-source health and the cascade when a source is deleted.
     .index('by_source', ['sourceId'])
     // What a topic holds. The Topics view refuses to delete a topic in use.
-    .index('by_topic', ['topicId'])
-    // The public knowledge projection, newest publication first.
-    .index('by_knowledgeBasePublishedAt', ['knowledgeBasePublishedAt'])
-    // The ready queue a completed newsletter send publishes in one transaction.
-    .index('by_state_knowledgeBasePublishedAt', [
-      'state',
-      'knowledgeBasePublishedAt',
-    ]),
+    .index('by_topic', ['topicId']),
 
   // One week's composed newsletter. The compose flow itself is settled in the
   // prototype (#202) and built in #201, which is why nothing here describes it.

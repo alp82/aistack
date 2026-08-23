@@ -4,12 +4,11 @@ import { v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import { query, type QueryCtx } from './_generated/server'
 import { hnDiscussionUrl } from './lib/hackerNews'
+import { isThinRelease } from './lib/knowledgeBasePublication'
 import { sanitizeXEmbed } from './lib/xEmbedSanitizer'
 
 const LATEST_COUNT = 5
 const CARD_HEADLINE_COUNT = 3
-const FULL_ENTRY_LENGTH = 120
-
 type PublicRow = Doc<'newsItems'> & {
   sourceName: string
   attribution?: string
@@ -26,7 +25,7 @@ function displaySource(item: Doc<'newsItems'>, source?: Doc<'newsSources'>): str
 
 function isVisible(item: Doc<'newsItems'>): boolean {
   return (
-    item.knowledgeBasePublishedAt !== undefined &&
+    item.knowledgeBasePublication !== undefined &&
     item.state === 'approved' &&
     Boolean(item.summary?.trim()) &&
     item.topicId !== undefined &&
@@ -38,43 +37,11 @@ function itemDate(item: Doc<'newsItems'>): number {
   return item.publishedAt ?? item.collectedAt
 }
 
-function isThinRelease(item: Doc<'newsItems'>): boolean {
-  if (
-    item.licenseClass !== 'permissive-release-notes' &&
-    item.licenseClass !== 'unlicensed-release-notes'
-  ) {
-    return false
-  }
-  const body = item.sourceText?.trim() ?? ''
-  let compareOnly = /^full changelog\b/i.test(body)
-  try {
-    compareOnly =
-      compareOnly || new URL(body).pathname.toLowerCase().includes('/compare/')
-  } catch {
-    // A sentence that mentions a comparison still carries content to read.
-  }
-  return body.length < FULL_ENTRY_LENGTH || compareOnly
-}
-
-function attributionNotice(
-  item: Doc<'newsItems'>,
-  sourceName: string,
-  source?: Doc<'newsSources'>,
-): string | undefined {
-  if (source?.attribution?.trim()) return source.attribution.trim()
-  if (item.licenseClass === 'cc-by') return `${sourceName}, CC BY 4.0`
-  if (item.licenseClass === 'permissive-release-notes') {
-    return `${sourceName}. Source text is reproduced under a permissive license. Follow the source link for license terms.`
-  }
-}
-
 async function publicRows(ctx: QueryCtx): Promise<PublicRow[]> {
   const items = (
     await ctx.db
       .query('newsItems')
-      .withIndex('by_knowledgeBasePublishedAt', (q) =>
-        q.gt('knowledgeBasePublishedAt', 0)
-      )
+      .withIndex('by_state_collectedAt', (q) => q.eq('state', 'approved'))
       .collect()
   )
     .filter(isVisible)
@@ -93,7 +60,7 @@ async function publicRows(ctx: QueryCtx): Promise<PublicRow[]> {
     rows.push({
       ...item,
       sourceName,
-      attribution: attributionNotice(item, sourceName, source),
+      attribution: item.knowledgeBasePublication?.attribution,
     })
   }
   return rows

@@ -1,4 +1,5 @@
 import { internalMutation } from '../_generated/server'
+import { publicationRecord } from '../lib/knowledgeBasePublication'
 
 /**
  * Reconstruct the knowledge base publication time for ready historical items.
@@ -25,16 +26,13 @@ export const run = internalMutation({
       .sort((a, b) => a - b)
     const items = await ctx.db
       .query('newsItems')
-      .withIndex('by_state_knowledgeBasePublishedAt', (q) =>
-        q
-          .eq('state', 'approved')
-          .eq('knowledgeBasePublishedAt', undefined)
-      )
+      .withIndex('by_state_collectedAt', (q) => q.eq('state', 'approved'))
       .collect()
 
     let published = 0
     let waiting = 0
     for (const item of items) {
+      if (item.knowledgeBasePublication) continue
       if (!item.summary?.trim() || !item.topicId) {
         waiting++
         continue
@@ -46,7 +44,12 @@ export const run = internalMutation({
         waiting++
         continue
       }
-      await ctx.db.patch(item._id, { knowledgeBasePublishedAt: publication })
+      const record = await publicationRecord(ctx, item, publication)
+      if (!record) {
+        waiting++
+        continue
+      }
+      await ctx.db.patch(item._id, { knowledgeBasePublication: record })
       published++
     }
     return { published, waiting }

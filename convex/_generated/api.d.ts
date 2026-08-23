@@ -38,6 +38,7 @@ import type * as lib_feed from "../lib/feed.js";
 import type * as lib_hackerNews from "../lib/hackerNews.js";
 import type * as lib_iconUrl from "../lib/iconUrl.js";
 import type * as lib_ids from "../lib/ids.js";
+import type * as lib_knowledgeBasePublication from "../lib/knowledgeBasePublication.js";
 import type * as lib_mailer from "../lib/mailer.js";
 import type * as lib_names from "../lib/names.js";
 import type * as lib_reprice from "../lib/reprice.js";
@@ -120,6 +121,7 @@ declare const fullApi: ApiFromModules<{
   "lib/hackerNews": typeof lib_hackerNews;
   "lib/iconUrl": typeof lib_iconUrl;
   "lib/ids": typeof lib_ids;
+  "lib/knowledgeBasePublication": typeof lib_knowledgeBasePublication;
   "lib/mailer": typeof lib_mailer;
   "lib/names": typeof lib_names;
   "lib/reprice": typeof lib_reprice;

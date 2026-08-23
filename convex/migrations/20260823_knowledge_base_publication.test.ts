@@ -66,7 +66,9 @@ describe('20260823_knowledge_base_publication', () => {
         waiting: await insert('waiting', { decidedAt: 250, updatedAt: 250 }),
         undrafted: await insert('undrafted', { summary: undefined }),
         ungrouped: await insert('ungrouped', { topicId: undefined }),
-        existing: await insert('existing', { knowledgeBasePublishedAt: 75 }),
+        existing: await insert('existing', {
+          knowledgeBasePublication: { publishedAt: 75 },
+        }),
       }
     })
 
@@ -82,12 +84,14 @@ describe('20260823_knowledge_base_publication', () => {
 
     expect(firstRun.published).toBe(3)
     expect(secondRun.published).toBe(0)
-    expect(rows.first.knowledgeBasePublishedAt).toBe(100)
-    expect(rows.second.knowledgeBasePublishedAt).toBe(200)
-    expect(rows.manualSecond.knowledgeBasePublishedAt).toBe(200)
-    expect(rows.waiting.knowledgeBasePublishedAt).toBeUndefined()
-    expect(rows.undrafted.knowledgeBasePublishedAt).toBeUndefined()
-    expect(rows.ungrouped.knowledgeBasePublishedAt).toBeUndefined()
-    expect(rows.existing.knowledgeBasePublishedAt).toBe(75)
+    expect(rows.first.knowledgeBasePublication).toEqual({ publishedAt: 100 })
+    expect(rows.second.knowledgeBasePublication).toEqual({ publishedAt: 200 })
+    expect(rows.manualSecond.knowledgeBasePublication).toEqual({
+      publishedAt: 200,
+    })
+    expect(rows.waiting.knowledgeBasePublication).toBeUndefined()
+    expect(rows.undrafted.knowledgeBasePublication).toBeUndefined()
+    expect(rows.ungrouped.knowledgeBasePublication).toBeUndefined()
+    expect(rows.existing.knowledgeBasePublication).toEqual({ publishedAt: 75 })
   })
 })

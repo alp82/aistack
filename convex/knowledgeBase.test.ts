@@ -29,15 +29,15 @@ describe('the public knowledge base', () => {
           state: 'approved',
           summary: `Summary ${n}`,
           topicId,
-          knowledgeBasePublishedAt: 100,
+          knowledgeBasePublication: { publishedAt: 100 },
           updatedAt: n,
         })
       }
 
       const hidden = [
-        { headline: 'Approved only', knowledgeBasePublishedAt: undefined, summary: 'Drafted' },
-        { headline: 'Undrafted', knowledgeBasePublishedAt: 100, summary: undefined },
-        { headline: 'Discarded', knowledgeBasePublishedAt: 100, summary: 'Drafted', state: 'discarded' },
+        { headline: 'Approved only', knowledgeBasePublication: undefined, summary: 'Drafted' },
+        { headline: 'Undrafted', knowledgeBasePublication: { publishedAt: 100 }, summary: undefined },
+        { headline: 'Discarded', knowledgeBasePublication: { publishedAt: 100 }, summary: 'Drafted', state: 'discarded' },
       ]
       for (const [n, item] of hidden.entries()) {
         await ctx.db.insert('newsItems', {
@@ -51,7 +51,7 @@ describe('the public knowledge base', () => {
           state: item.state ?? 'approved',
           summary: item.summary,
           topicId,
-          knowledgeBasePublishedAt: item.knowledgeBasePublishedAt,
+          knowledgeBasePublication: item.knowledgeBasePublication,
           updatedAt: 20 + n,
         })
       }
@@ -118,7 +118,7 @@ describe('the public knowledge base', () => {
         state: 'approved',
         summary: 'Our summary.',
         topicId,
-        knowledgeBasePublishedAt: 100,
+        knowledgeBasePublication: { publishedAt: 100 },
         updatedAt: 1,
       }
       const rows = [
@@ -129,6 +129,10 @@ describe('the public knowledge base', () => {
           licenseClass: 'cc-by',
           sourceId: attributedSourceId,
           sourceText: 'The source text.',
+          knowledgeBasePublication: {
+            publishedAt: 100,
+            attribution: 'Google, CC BY 4.0',
+          },
         },
         {
           url: 'https://example.com/permissive',
@@ -137,6 +141,10 @@ describe('the public knowledge base', () => {
           licenseClass: 'permissive-release-notes',
           sourceId: releaseSourceId,
           sourceText: 'Substantive release notes '.repeat(8),
+          knowledgeBasePublication: {
+            publishedAt: 100,
+            attribution: 'opencode contributors, MIT',
+          },
         },
         {
           url: 'https://example.com/unlicensed',
@@ -264,7 +272,7 @@ describe('the public knowledge base', () => {
           state: 'approved',
           summary: 'Our summary.',
           topicId,
-          knowledgeBasePublishedAt: 100,
+          knowledgeBasePublication: { publishedAt: 100 },
           updatedAt: index,
         })
       }
@@ -282,7 +290,7 @@ describe('the public knowledge base', () => {
     ])
   })
 
-  test('keeps full text and a notice when the source row is gone', async () => {
+  test('keeps exact attribution when the source row is gone', async () => {
     const t = convexTest(schema, modules)
     await t.run(async (ctx: any) => {
       const topicId = await ctx.db.insert('newsTopics', {
@@ -291,9 +299,9 @@ describe('the public knowledge base', () => {
         order: 0,
         createdAt: 1,
       })
-      for (const [index, licenseClass] of [
-        'cc-by',
-        'permissive-release-notes',
+      for (const [index, [licenseClass, attribution]] of [
+        ['cc-by', 'Google, CC BY 4.0'],
+        ['permissive-release-notes', 'opencode contributors, MIT'],
       ].entries()) {
         await ctx.db.insert('newsItems', {
           url: `https://vendor.test/${index}`,
@@ -306,7 +314,7 @@ describe('the public knowledge base', () => {
           state: 'approved',
           summary: 'Our summary.',
           topicId,
-          knowledgeBasePublishedAt: 100,
+          knowledgeBasePublication: { publishedAt: 100, attribution },
           updatedAt: index,
         })
       }
@@ -320,11 +328,11 @@ describe('the public knowledge base', () => {
     )
     expect(byClass.get('cc-by')).toMatchObject({
       sourceText: expect.any(String),
-      attribution: expect.stringMatching(/CC BY 4\.0/),
+      attribution: 'Google, CC BY 4.0',
     })
     expect(byClass.get('permissive-release-notes')).toMatchObject({
       sourceText: expect.any(String),
-      attribution: expect.stringMatching(/license terms/i),
+      attribution: 'opencode contributors, MIT',
     })
   })
 })

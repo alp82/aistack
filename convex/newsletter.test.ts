@@ -178,9 +178,27 @@ describe('knowledge base publication', () => {
         createdAt: 1,
       }),
     )
+    const sourceId = await t.run(async (ctx: any) =>
+      ctx.db.insert('newsSources', {
+        name: 'opencode releases',
+        slug: 'opencode-releases',
+        kind: 'feed',
+        url: 'https://example.com/releases',
+        licenseClass: 'permissive-release-notes',
+        attribution: 'opencode contributors, MIT',
+        enabled: true,
+        collectFrom: 0,
+        consecutiveFailures: 0,
+        createdAt: 1,
+        updatedAt: 1,
+      }),
+    )
     const inIssue = await seedItem(t, ISSUE.itemUrls[0], { topicId })
     const outsideIssue = await seedItem(t, 'https://example.com/outside', {
       topicId,
+      sourceId,
+      licenseClass: 'permissive-release-notes',
+      sourceText: 'Substantive release notes. '.repeat(8),
     })
     const undrafted = await seedItem(t, 'https://example.com/undrafted', {
       topicId,
@@ -196,7 +214,7 @@ describe('knowledge base publication', () => {
     const alreadyPublished = await seedItem(
       t,
       'https://example.com/already-published',
-      { topicId, knowledgeBasePublishedAt: 50 },
+      { topicId, knowledgeBasePublication: { publishedAt: 50 } },
     )
     await t.run(async (ctx: any) =>
       ctx.db.insert('newsIssues', {
@@ -228,12 +246,15 @@ describe('knowledge base publication', () => {
       return await Promise.all(ids.map((id) => ctx.db.get(id)))
     })
     const issue = await readIssueRow(t, ISSUE.slug)
-    expect(rows[0].knowledgeBasePublishedAt).toBe(issue.sentAt)
-    expect(rows[1].knowledgeBasePublishedAt).toBe(issue.sentAt)
-    expect(rows[2].knowledgeBasePublishedAt).toBeUndefined()
-    expect(rows[3].knowledgeBasePublishedAt).toBeUndefined()
-    expect(rows[4].knowledgeBasePublishedAt).toBeUndefined()
-    expect(rows[5].knowledgeBasePublishedAt).toBe(50)
+    expect(rows[0].knowledgeBasePublication).toEqual({ publishedAt: issue.sentAt })
+    expect(rows[1].knowledgeBasePublication).toEqual({
+      publishedAt: issue.sentAt,
+      attribution: 'opencode contributors, MIT',
+    })
+    expect(rows[2].knowledgeBasePublication).toBeUndefined()
+    expect(rows[3].knowledgeBasePublication).toBeUndefined()
+    expect(rows[4].knowledgeBasePublication).toBeUndefined()
+    expect(rows[5].knowledgeBasePublication).toEqual({ publishedAt: 50 })
   })
 })
 

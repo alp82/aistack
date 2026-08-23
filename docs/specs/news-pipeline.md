@@ -133,6 +133,9 @@ topic, including items outside that issue. A test send changes nothing. A skippe
 week publishes nothing. An incomplete approved item stays private and returns to
 the next drafting run.
 
+The single item publication field stores the send time and exact attribution
+notice. The public page never depends on a source row that can later be deleted.
+
 The page applies the re-serving policy before data leaves Convex. Thin release
 notes under 120 characters, or notes that contain only a compare link, share one
 release strip per topic. An X item returns only our summary and an allow-listed
