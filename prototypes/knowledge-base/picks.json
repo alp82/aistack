@@ -1,0 +1,187 @@
+[
+  {
+    "id": "cc-ab-effort",
+    "sourceId": "hn",
+    "headlineStartsWith": "Anthropic appears to be A/B testing"
+  },
+  {
+    "id": "week-of-codex",
+    "sourceId": "hn",
+    "headlineStartsWith": "A week of using Codex"
+  },
+  {
+    "id": "harness-evolution",
+    "sourceId": "latent-space",
+    "headlineStartsWith": "The Evolution of the Agent Harness"
+  },
+  {
+    "id": "traycer",
+    "sourceId": "aicrier",
+    "headlineStartsWith": "Traycer Orchestrates"
+  },
+  {
+    "id": "claude-code-release",
+    "sourceId": "claude-code",
+    "headlineStartsWith": "v2.1.241"
+  },
+  {
+    "id": "codex-release",
+    "sourceId": "codex",
+    "headlineStartsWith": "0.150.0-alpha.7"
+  },
+  {
+    "id": "opencode-release",
+    "sourceId": "opencode",
+    "headlineStartsWith": "v1.18.21"
+  },
+  {
+    "id": "gemini-cli-release",
+    "sourceId": "gemini-cli",
+    "headline": "Release v0.56.0"
+  },
+  {
+    "id": "onecli",
+    "sourceId": "hn",
+    "headlineStartsWith": "Launch HN: OneCLI"
+  },
+  {
+    "id": "autolith",
+    "sourceId": "hn",
+    "headlineStartsWith": "Autolith"
+  },
+  {
+    "id": "deepseek-v4-flash",
+    "sourceId": "hn",
+    "headlineStartsWith": "DeepSeek-v4-flash-vision-exp"
+  },
+  {
+    "id": "qwen-reverse-eng",
+    "sourceId": "hn",
+    "headlineStartsWith": "I gave Qwen 3.8 27B"
+  },
+  {
+    "id": "qwen-overthinks",
+    "sourceId": "simonwillison",
+    "headlineStartsWith": "Qwen 3.8 27B is excellent"
+  },
+  {
+    "id": "qwen-index",
+    "sourceId": "simonwillison",
+    "headlineStartsWith": "Qwen 3.8 27B scores 52"
+  },
+  {
+    "id": "sol-price-cut",
+    "sourceId": "hn",
+    "headlineStartsWith": "GPT 5.6 Sol 20% price reduction"
+  },
+  {
+    "id": "sol-ultrafast",
+    "sourceId": "openai-news",
+    "headlineStartsWith": "Previewing Ultrafast mode"
+  },
+  {
+    "id": "gpt56-guide",
+    "sourceId": "openai-news",
+    "headlineStartsWith": "The builder"
+  },
+  {
+    "id": "opus5-incoherence",
+    "sourceId": "hn",
+    "headlineStartsWith": "Opus 5.0 drives incoherence"
+  },
+  {
+    "id": "fable5-longhorizon",
+    "sourceId": "aicrier",
+    "headlineStartsWith": "Claude Fable 5 pushes"
+  },
+  {
+    "id": "gemini-changelog",
+    "sourceId": "gemini-changelog",
+    "headlineStartsWith": "Gemini API changelog"
+  },
+  {
+    "id": "agents-md",
+    "sourceId": "hn",
+    "headlineStartsWith": "Feature Request: Support AGENTS.md"
+  },
+  {
+    "id": "mcp-roadmap",
+    "sourceId": "hn",
+    "headlineStartsWith": "New MCP Roadmap"
+  },
+  {
+    "id": "wayfinder-skill",
+    "sourceId": "latent-space",
+    "headlineStartsWith": "The /wayfinder Skill"
+  },
+  {
+    "id": "promptot",
+    "sourceId": "aicrier",
+    "headlineStartsWith": "PromptOT"
+  },
+  {
+    "id": "local-llm-dumber",
+    "sourceId": "hn",
+    "headlineStartsWith": "Why your local LLM feels dumber"
+  },
+  {
+    "id": "self-hosted-factory",
+    "sourceId": "hn",
+    "headlineStartsWith": "Building an (almost) fully self-hosted"
+  },
+  {
+    "id": "smolvm",
+    "sourceId": "simonwillison",
+    "headlineStartsWith": "smolmachines"
+  },
+  {
+    "id": "watch-claude",
+    "sourceId": "hn",
+    "headlineStartsWith": "Hacking with Claude on a $27"
+  },
+  {
+    "id": "bedrock-10x",
+    "sourceId": "hn",
+    "headlineStartsWith": "Codex on AWS bedrock bug"
+  },
+  {
+    "id": "codex-rate-limit",
+    "sourceId": "aicrier",
+    "headlineStartsWith": "Codex Addresses Rate-Limit"
+  },
+  {
+    "id": "memory-prices",
+    "sourceId": "latent-space",
+    "headlineStartsWith": "[AINews] Memory prices up 500%"
+  },
+  {
+    "id": "model-routing",
+    "sourceId": "latent-space",
+    "headlineStartsWith": "Frontier Model Cost"
+  },
+  {
+    "id": "more-than-review",
+    "sourceId": "simonwillison",
+    "headlineStartsWith": "More than just code review"
+  },
+  {
+    "id": "claudette",
+    "sourceId": "hn",
+    "headlineStartsWith": "Claudette"
+  },
+  {
+    "id": "vomit",
+    "sourceId": "hn",
+    "headlineStartsWith": "Vomit"
+  },
+  {
+    "id": "stop-making-tuis",
+    "sourceId": "simonwillison",
+    "headlineStartsWith": "Stop Making TUIs"
+  },
+  {
+    "id": "harness-gap",
+    "sourceId": "aicrier",
+    "headlineStartsWith": "Fable 5"
+  }
+]
