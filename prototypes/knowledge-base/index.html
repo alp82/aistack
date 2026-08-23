@@ -337,16 +337,24 @@
   .chips button.on { background: var(--accent-lime); border-color: var(--accent-lime); color: var(--accent-lime-contrast); font-weight: 700; }
   .sticky { position: sticky; top: 0; background: var(--bg-canvas); z-index: 5; border-bottom: 1px solid var(--stroke-subtle); }
 
-  .toggle-line {
+  .latest-row {
     display: flex;
-    gap: 8px;
-    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: baseline;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--stroke-subtle);
+    text-decoration: none;
+    font-size: 14px;
+  }
+  .latest-row:hover { color: var(--accent-lime); }
+  .latest-meta {
     font-family: var(--mono);
-    font-size: 10.5px;
+    font-size: 10px;
     color: var(--fg-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    margin: 0 0 6px;
+    white-space: nowrap;
   }
 
   .back {
@@ -401,11 +409,15 @@
 
 <div class="shell">
   <div class="intro">
+    <p><b>Settled on 2026-08-23.</b> The send is the publish act, and it publishes every
+    item approved that week (ADMIN B). The page is the topic index with a latest strip
+    (PUBLIC A). A release with nothing to read joins one strip. The stored X embed
+    renders as static markup with the script stripped. An item with no summary is held
+    back.</p>
     <p><b>Start on MODEL.</b> It says what approve and publish each mean, to whom, and
-    where, and it names the one question left. Then <b>ADMIN</b> holds the two readings
-    of the send, plus the per-item act for contrast. <b>PUBLIC</b> holds three page
-    shapes. Admin and public share one state, so what you publish in ADMIN is what
-    PUBLIC shows.</p>
+    where. Then <b>ADMIN</b> holds the two readings of the send, plus the per-item act
+    that was ruled out. <b>PUBLIC</b> holds the three page shapes. Admin and public share
+    one state, so what you publish in ADMIN is what PUBLIC shows.</p>
     <p><b>Nothing here reopens a settled decision.</b> Composing an issue stays in code
     (#202). Drafting stays a skill in your Claude session (#205). The inbox keeps the
     per-row verdict it was rebuilt to (#238). Each act below is a change to a surface
@@ -476,6 +488,7 @@ const DATA = {
       "attribution": null,
       "hn": null,
       "xEmbed": null,
+      "thin": false,
       "pending": true,
       "inIssue": false
     },
@@ -498,6 +511,7 @@ const DATA = {
         "url": "https://news.ycombinator.com/item?id=49407507"
       },
       "xEmbed": null,
+      "thin": false,
       "pending": true,
       "inIssue": true
     },
@@ -516,6 +530,7 @@ const DATA = {
       "attribution": null,
       "hn": null,
       "xEmbed": null,
+      "thin": false,
       "pending": true,
       "inIssue": false
     },
@@ -534,6 +549,7 @@ const DATA = {
       "attribution": null,
       "hn": null,
       "xEmbed": null,
+      "thin": false,
       "pending": true,
       "inIssue": false
     },
@@ -552,6 +568,7 @@ const DATA = {
       "attribution": null,
       "hn": null,
       "xEmbed": null,
+      "thin": false,
       "pending": true,
       "inIssue": false
     },
@@ -570,6 +587,7 @@ const DATA = {
       "attribution": null,
       "hn": null,
       "xEmbed": null,
+      "thin": true,
       "pending": true,
       "inIssue": false
     },
@@ -588,6 +606,7 @@ const DATA = {
       "attribution": null,
       "hn": null,
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -611,6 +630,7 @@ const DATA = {
       "attribution": "OpenAI, Apache 2.0",
       "hn": null,
       "xEmbed": null,
+      "thin": true,
       "pending": true,
       "inIssue": false
     },
@@ -633,6 +653,7 @@ const DATA = {
         "url": "https://news.ycombinator.com/item?id=49402232"
       },
       "xEmbed": null,
+      "thin": false,
       "pending": true,
       "inIssue": true
     },
@@ -658,6 +679,7 @@ const DATA = {
         "html": "<blockquote class=\"twitter-tweet\" data-dnt=\"true\"><p lang=\"en\" dir=\"ltr\">update: it&#39;s server-side, not the app<br><br>anthropic enrols fable 5 sessions on claude code 2.1.236+ into an experiment that shrinks the effort scale, older versions and opus 5 are left alone<br><br>probably an a/b test, so not everyone will see it<br><br>if &quot;high&quot; feels like &quot;low&quot; for you,… <a href=\"https://t.co/7bzE7kwekI\">https://t.co/7bzE7kwekI</a></p>&mdash; 🥔🥔🥔 (@argofowl) <a href=\"https://x.com/argofowl/status/2091150597374537729?ref_src=twsrc%5Etfw\">August 22, 2026</a></blockquote>\n\n",
         "authorName": "🥔🥔🥔"
       },
+      "thin": false,
       "pending": true,
       "inIssue": true
     },
@@ -676,6 +698,7 @@ const DATA = {
       "attribution": null,
       "hn": null,
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -698,6 +721,7 @@ const DATA = {
         "url": "https://news.ycombinator.com/item?id=49399591"
       },
       "xEmbed": null,
+      "thin": false,
       "pending": true,
       "inIssue": true
     },
@@ -716,6 +740,7 @@ const DATA = {
       "attribution": null,
       "hn": null,
       "xEmbed": null,
+      "thin": false,
       "pending": true,
       "inIssue": true
     },
@@ -738,6 +763,7 @@ const DATA = {
         "url": "https://news.ycombinator.com/item?id=49396590"
       },
       "xEmbed": null,
+      "thin": false,
       "pending": true,
       "inIssue": true
     },
@@ -760,6 +786,7 @@ const DATA = {
         "url": "https://news.ycombinator.com/item?id=49393051"
       },
       "xEmbed": null,
+      "thin": false,
       "pending": true,
       "inIssue": false
     },
@@ -782,6 +809,7 @@ const DATA = {
         "url": "https://news.ycombinator.com/item?id=49390463"
       },
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -800,6 +828,7 @@ const DATA = {
       "attribution": null,
       "hn": null,
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -859,6 +888,7 @@ const DATA = {
       "attribution": "opencode contributors, MIT",
       "hn": null,
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -881,6 +911,7 @@ const DATA = {
         "url": "https://news.ycombinator.com/item?id=49388752"
       },
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -903,6 +934,7 @@ const DATA = {
         "url": "https://news.ycombinator.com/item?id=49386163"
       },
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -925,6 +957,7 @@ const DATA = {
         "url": "https://news.ycombinator.com/item?id=49383326"
       },
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -943,6 +976,7 @@ const DATA = {
       "attribution": null,
       "hn": null,
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -965,6 +999,7 @@ const DATA = {
         "url": "https://news.ycombinator.com/item?id=49376197"
       },
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -987,6 +1022,7 @@ const DATA = {
         "url": "https://news.ycombinator.com/item?id=49375996"
       },
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -1009,6 +1045,7 @@ const DATA = {
         "url": "https://news.ycombinator.com/item?id=49374772"
       },
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -1027,6 +1064,7 @@ const DATA = {
       "attribution": null,
       "hn": null,
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -1049,6 +1087,7 @@ const DATA = {
         "url": "https://news.ycombinator.com/item?id=49367350"
       },
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -1072,6 +1111,7 @@ const DATA = {
       "attribution": "Google, Apache 2.0",
       "hn": null,
       "xEmbed": null,
+      "thin": true,
       "pending": false,
       "inIssue": false
     },
@@ -1094,6 +1134,7 @@ const DATA = {
         "url": "https://news.ycombinator.com/item?id=49364658"
       },
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -1116,6 +1157,7 @@ const DATA = {
         "url": "https://news.ycombinator.com/item?id=49363710"
       },
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -1134,6 +1176,7 @@ const DATA = {
       "attribution": null,
       "hn": null,
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -1152,6 +1195,7 @@ const DATA = {
       "attribution": null,
       "hn": null,
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -1170,6 +1214,7 @@ const DATA = {
       "attribution": null,
       "hn": null,
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -1188,6 +1233,7 @@ const DATA = {
       "attribution": null,
       "hn": null,
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -1211,6 +1257,7 @@ const DATA = {
       "attribution": "Google, CC BY 4.0",
       "hn": null,
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -1229,6 +1276,7 @@ const DATA = {
       "attribution": null,
       "hn": null,
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     },
@@ -1247,6 +1295,7 @@ const DATA = {
       "attribution": null,
       "hn": null,
       "xEmbed": null,
+      "thin": false,
       "pending": false,
       "inIssue": false
     }
@@ -1263,8 +1312,6 @@ const CLASS_LABEL = {
   x: 'x post',
 };
 
-const RELEASE_CLASSES = new Set(['permissive-release-notes', 'unlicensed-release-notes']);
-
 const state = {
   surface: 'model',
   act: 'A',
@@ -1275,7 +1322,6 @@ const state = {
   skipped: false,
   openTopic: null,
   filter: 'all',
-  compactReleases: false,
   ticks: [],
 };
 
@@ -1333,17 +1379,16 @@ function model() {
       <tr><td>Knowledge base</td><td>anyone</td><td><span class="mono">/news</span>, by topic</td></tr>
     </table>
 
-    <div class="surface-title" style="margin-top:24px">The one question left</div>
-    <p class="surface-sub">You said the act is the send: preselect with Approve, compose
-    the issue in code, send it, and that makes it public. Taking that as given, one thing
-    is still open. <b>Does the send publish only the items the issue names, or every item
-    approved that week?</b></p>
+    <div class="surface-title" style="margin-top:24px">The answer</div>
+    <p class="surface-sub">The act is the send: preselect with Approve, compose the issue
+    in code, send it, and that makes it public. <b>The send publishes every item approved
+    that week</b>, not only the ones the issue names.</p>
     <p class="cost">In this real week: <b>${DATA.items.length}</b> approved items, and
-    issue #2 names <b>${named}</b> of them. Under the narrow reading the other
-    <b>${unnamed}</b> carry a summary we wrote and are seen by nobody, forever. Under the
-    wide reading they all reach the page, and the email stays the same size.</p>
-    <p class="cost">ADMIN shows both readings, plus the per-item act your description
-    rules out. PUBLIC shows what the resulting page looks like.</p>`;
+    issue #2 names <b>${named}</b> of them. The other <b>${unnamed}</b> reach the page
+    too, and the email stays the same size. Approve already means worth keeping, and
+    discard is what removes an item.</p>
+    <p class="cost">The remaining cost is honest: a skipped week publishes nothing, so
+    the page can go a fortnight without moving while the stream fills up.</p>`;
 }
 
 // ---------------------------------------------------------------- ADMIN
@@ -1373,7 +1418,7 @@ function sendAct(scope) {
   const narrow = scope === 'issue';
 
   return `
-    <div class="surface-title">Act ${narrow ? 'A' : 'B'} &middot; the send publishes ${narrow ? 'the issue' : 'the week'}</div>
+    <div class="surface-title">Act ${narrow ? 'A' : 'B'} &middot; the send publishes ${narrow ? 'the issue' : 'the week'} ${narrow ? '<span class="chip">considered</span>' : '<span class="chip lime">settled</span>'}</div>
     <p class="surface-sub">You preselect with Approve, compose issue #2 in code, and send
     it. The send is the publish act. ${
       narrow
@@ -1415,7 +1460,7 @@ function actC() {
   const waiting = pending();
   const live = publicItems().slice(0, 1);
   return `
-    <div class="surface-title">Act C &middot; approve is publish</div>
+    <div class="surface-title">Act C &middot; approve is publish <span class="chip">ruled out</span></div>
     <p class="surface-sub">The per-item alternative. The Approve button the inbox already
     has is the publish act, and the item is on the public page the moment you tap it. It
     is here because it is the only act that keeps the page current in a skipped week.</p>
@@ -1509,20 +1554,28 @@ function releaseStrip(items) {
   return `<div class="releases-strip"><span class="lbl">Releases</span>${links}</div>`;
 }
 
+// The settled release rule: a release with nothing to read joins one strip, and
+// a release whose notes carry real content keeps its entry. `thin` is decided
+// at build time, from the body the license lets us re-serve.
 function listFor(items) {
   if (!items.length) return '<p class="surface-sub">Nothing public in this topic yet.</p>';
-  if (!state.compactReleases) return items.map(entry).join('');
-  const releases = items.filter((i) => RELEASE_CLASSES.has(i.licenseClass));
-  const rest = items.filter((i) => !RELEASE_CLASSES.has(i.licenseClass));
-  return (releases.length ? releaseStrip(releases) : '') + rest.map(entry).join('');
+  const thin = items.filter((i) => i.thin);
+  const rest = items.filter((i) => !i.thin);
+  return (thin.length ? releaseStrip(thin) : '') + rest.map(entry).join('');
 }
 
-function releaseToggle() {
-  return `<div class="toggle-line">
-    <span>Release rows</span>
-    <button class="ghost" data-compact="0" style="${state.compactReleases ? '' : 'border-color:var(--accent-lime);color:var(--accent-lime)'}">Full</button>
-    <button class="ghost" data-compact="1" style="${state.compactReleases ? 'border-color:var(--accent-lime);color:var(--accent-lime)' : ''}">One strip</button>
-  </div>`;
+/** The five newest public items, above the topic cards. */
+function latestStrip(live) {
+  const rows = live
+    .slice(0, 5)
+    .map(
+      (i) => `<a class="latest-row" href="${esc(i.url)}" target="_blank" rel="noopener">
+        <span>${esc(i.headline)}</span>
+        <span class="latest-meta">${esc(topicName(i.topic))} &middot; ${day(i.publishedAt)}</span>
+      </a>`
+    )
+    .join('');
+  return `<div class="topic-head"><span>Latest</span><span>5</span></div>${rows}`;
 }
 
 function pageA() {
@@ -1532,15 +1585,17 @@ function pageA() {
     return `
       <button class="back" data-close="1">&larr; All topics</button>
       <div class="topic-head"><span>${esc(topicName(state.openTopic))}</span><span>${items.length}</span></div>
-      ${releaseToggle()}
       ${listFor(items)}`;
   }
   return `
-    <div class="surface-title">Page A &middot; topic index</div>
-    <p class="surface-sub">Six topic cards. Tap one for its entries. The front page is
-    a map of what the archive holds, not a feed.</p>
-    <p class="cost"><b>Cost:</b> the newest item is two taps away, and a visitor who
-    wants this week has to know which topic it landed in.</p>
+    <div class="surface-title">Page A &middot; topic index <span class="chip lime">settled</span></div>
+    <p class="surface-sub">Six topic cards. Tap one for its entries. The front page is a
+    map of what the archive holds, not a feed. The latest strip sits above the cards, so
+    the newest item is one tap and not two.</p>
+    <p class="cost"><b>Why:</b> a topic page is the only shape still readable at 500
+    items. The strip pays back the tap that the two-level shape costs.</p>
+    ${latestStrip(live)}
+    <div class="topic-head"><span>Topics</span><span>${DATA.topics.length}</span></div>
     ${DATA.topics
       .map((t) => {
         const items = live.filter((i) => i.topic === t.slug);
@@ -1556,7 +1611,7 @@ function pageB() {
   const live = publicItems();
   const shown = state.filter === 'all' ? live : live.filter((i) => i.topic === state.filter);
   return `
-    <div class="surface-title">Page B &middot; one stream, topic chips</div>
+    <div class="surface-title">Page B &middot; one stream, topic chips <span class="chip">considered</span></div>
     <p class="surface-sub">Everything newest first. The chips filter in place, and the
     scroll position is the whole navigation.</p>
     <p class="cost"><b>Cost:</b> the archive reads as a feed, so an old entry is only
@@ -1572,14 +1627,13 @@ function pageB() {
           .join('')}
       </div>
     </div>
-    ${releaseToggle()}
     ${listFor(shown)}`;
 }
 
 function pageC() {
   const live = publicItems();
   return `
-    <div class="surface-title">Page C &middot; topic sections, one page</div>
+    <div class="surface-title">Page C &middot; topic sections, one page <span class="chip">considered</span></div>
     <p class="surface-sub">Every topic on one page, in the owner's order. The chips jump
     to a section instead of filtering.</p>
     <p class="cost"><b>Cost:</b> one page carries the whole archive, so it grows without
@@ -1589,7 +1643,6 @@ function pageC() {
         ${DATA.topics.map((t) => `<button data-jump="${t.slug}">${esc(t.name)}</button>`).join('')}
       </div>
     </div>
-    ${releaseToggle()}
     ${DATA.topics
       .map((t) => {
         const items = live.filter((i) => i.topic === t.slug);
@@ -1645,7 +1698,7 @@ function render() {
 }
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-surface],[data-variant],[data-publish],[data-unpublish],[data-send],[data-skip],[data-topic],[data-close],[data-filter],[data-jump],[data-compact]');
+  const t = e.target.closest('[data-surface],[data-variant],[data-publish],[data-unpublish],[data-send],[data-skip],[data-topic],[data-close],[data-filter],[data-jump]');
   if (!t) return;
   const d = t.dataset;
 
@@ -1678,7 +1731,7 @@ document.addEventListener('click', (e) => {
   else if (d.jump) {
     document.getElementById(`sec-${d.jump}`)?.scrollIntoView({ behavior: 'smooth' });
     return;
-  } else if (d.compact !== undefined) { state.compactReleases = d.compact === '1'; }
+  }
 
   render();
 });

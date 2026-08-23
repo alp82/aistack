@@ -10,6 +10,30 @@ Throwaway. It exists to settle two questions on
 The spec deferred both here: see the Knowledge base section of
 [`docs/specs/news-pipeline.md`](../../docs/specs/news-pipeline.md).
 
+## The verdict, settled 2026-08-23
+
+1. **The send is the publish act, and it publishes the whole approved week.**
+   Not only the items the issue names. Approve already means worth keeping, and
+   discard is what removes an item. The email stays a dozen picks, and the page
+   carries the week. Cost: a skipped week publishes nothing.
+2. **The page is the topic index, with a latest strip above the cards.** A
+   topic page is the only shape still readable at 500 items, and the strip pays
+   back the tap the two-level shape costs.
+3. **A release with nothing to read joins one strip per topic.** A release
+   whose notes carry real content keeps its entry. The rule is content, not
+   class: `build.mjs` marks an item `thin` when the re-servable body is under
+   120 characters or is only a compare link.
+4. **The stored X embed renders as static markup**, with the script stripped
+   and the tags allow-listed. X's widget script is a third-party tracker, and
+   the embed is the only thing the X license lets us re-serve. This settles the
+   fog line the map carried and [#201](https://github.com/alp82/aistack/issues/201)
+   left open.
+5. **An approved item with no summary is held back.** Our own words are what
+   the knowledge base is for, and the next drafting run re-attempts the page
+   that refused.
+
+The build is [#211](https://github.com/alp82/aistack/issues/211).
+
 ## What to open
 
 `index.html` is one self-contained file. Serve the directory and open it:

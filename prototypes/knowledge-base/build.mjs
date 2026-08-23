@@ -59,6 +59,9 @@ const ATTRIBUTION = {
 /** Only these two classes may carry the source's own words as a body. */
 const FULL_TEXT = new Set(['cc-by', 'permissive-release-notes'])
 
+/** Both release classes, whatever they may re-serve. */
+const RELEASE_CLASSES = new Set(['permissive-release-notes', 'unlicensed-release-notes'])
+
 const decode = (s) =>
   s
     .replace(/&amp;/g, '&')
@@ -104,6 +107,15 @@ for (const p of picks) {
     ? toBlocks(raw.sourceText ? `<p>${raw.sourceText}</p>` : raw.feedText)
     : []
 
+  // A release with nothing to read collapses into the strip, and one with real
+  // notes keeps its entry. The rule is content, not class: claude-code says
+  // only "bug fixes" and gemini-cli says only "full changelog", but opencode
+  // names two fixes that would stop a session.
+  const bodyText = body.map((b) => b.text).join(' ')
+  const thin =
+    RELEASE_CLASSES.has(raw.licenseClass) &&
+    (bodyText.length < 120 || /^full changelog/i.test(bodyText.trim()))
+
   items.push({
     id: p.id,
     headline: raw.headline,
@@ -125,6 +137,7 @@ for (const p of picks) {
         }
       : null,
     xEmbed: raw.xEmbed ? { html: raw.xEmbed.html, authorName: raw.xEmbed.authorName } : null,
+    thin,
     pending: PENDING.has(p.id),
     inIssue: IN_ISSUE.has(p.id),
   })

@@ -65,19 +65,35 @@ render()
 check(/All topics/.test(nodes.surface.innerHTML), 'page A drills into a topic')
 state.openTopic = null
 
-// Every published item shows up on page B unfiltered.
+// The latest strip sits above the topic cards.
+render()
+check(/class="latest-row"/.test(nodes.surface.innerHTML), 'page A carries the latest strip')
+check((nodes.surface.innerHTML.match(/class="latest-row"/g) ?? []).length === 5, 'the latest strip holds five rows')
+
+// Every published item shows up on page B unfiltered, as an entry or, when the
+// release rule collapses it, as a name in the strip.
 state.page = 'B'
 render()
 const shown = (nodes.surface.innerHTML.match(/<article class="entry">/g) ?? []).length
-check(shown === state.published.size, `page B shows all ${state.published.size} public items (saw ${shown})`)
+const thinPublic = DATA.items.filter((i) => i.thin && state.published.has(i.id))
+const fatPublic = DATA.items.filter((i) => !i.thin && state.published.has(i.id))
+check(
+  shown + thinPublic.length === state.published.size,
+  `page B accounts for all ${state.published.size} public items (${shown} entries plus ${thinPublic.length} in the strip)`
+)
 
-// The compact release strip removes the release entries and adds one strip.
-state.compactReleases = true
-render()
-const compacted = (nodes.surface.innerHTML.match(/<article class="entry">/g) ?? []).length
-check(compacted < shown, `compact releases collapses rows (${shown} -> ${compacted})`)
-check(/releases-strip/.test(nodes.surface.innerHTML), 'compact releases renders the strip')
-state.compactReleases = false
+// The release rule: a thin release joins the strip, and a release with real
+// notes keeps its entry.
+check(/releases-strip/.test(nodes.surface.innerHTML), 'the release strip renders')
+check(thinPublic.length > 0 && shown === fatPublic.length, `thin releases leave the entry list (${thinPublic.length} collapsed)`)
+check(
+  DATA.items.some((i) => i.sourceId === 'opencode' && !i.thin),
+  'the opencode release keeps its entry, because its notes carry content'
+)
+check(
+  DATA.items.filter((i) => ['claude-code', 'codex', 'gemini-cli'].includes(i.sourceId)).every((i) => i.thin),
+  'the three empty releases are thin'
+)
 
 // The cc-by body and its attribution are on the page.
 state.page = 'C'
