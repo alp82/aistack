@@ -4,50 +4,76 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Prototype · alp82/aistack#244 · the sources behind one stack's measured layer · round 4</title>
+<title>Prototype · alp82/aistack#244 · the sources behind one stack's measured layer · settled</title>
 <!--
   PROTOTYPE. Throwaway. alp82/aistack#244: what a reader sees when a stack
   measures from more than one place. Baseline: section 01 Actual Usage on main.
 
-  ROUND 1 verdict (2026-08-23). The filter wins. Replace "the notch marks where
-  each share stood on ..." with "checked 2 hours ago", put the filter in a
-  lightweight component where that label was, and show it only when more than one
-  machine is registered. The footnote, source strip, trail-led and owner-only
-  variants are dropped.
+  ================================ THE VERDICT ================================
 
-  ROUND 1 follow-up, from the thread. THE UNIT IS THE MACHINE. Every harness on
-  one machine folds into one filter option. ADR-0006's "source" stays the storage
-  key, per harness and machine, and the merge is unchanged. Only the display unit
-  moved, so this file says MACHINE for what the reader picks and SOURCE for what
-  the database holds.
+  Four rounds, 2026-08-23. The design below is settled. Flip to `today` on the
+  bar to compare it against the live section.
 
-  ROUND 2 verdict (2026-08-23). Variant 1: the filter takes the section header's
-  slot, and "checked 2 hours ago" moves down to the model-mix row. It needs a
-  proper dropdown component, and it must not add a layout-shifting extra row.
+  1. THE UNIT IS THE MACHINE. Every harness on one machine folds into one
+     option. ADR-0006's "source" stays the storage key, per harness and machine,
+     and the merge is unchanged. Only the display unit moved.
 
-  ROUND 3 verdict (2026-08-23), all five answered.
-    1. Dropdown depth B: each row carries its machine label, its tokens and when
-       it was read. No harness list and no stale marker inside the dropdown.
-    2. REAL MACHINE LABELS. The local name publishes, through the same #42/#48
-       gate as every other user-chosen name.
-    3. Active days keeps today's shape: "22 of 30" under "active days (max)".
-    4. The trail stays one merged line.
-    5. The no-dropdown rule holds for one machine running two harnesses. The
-       harnesses are listed BELOW "where the tokens went" instead.
+  2. A DROPDOWN IN THE SECTION HEADER, in the slot "checked 2 hours ago" used to
+     hold. It narrows the WHOLE section: headline, cost, model mix, harness list,
+     stats and trail. It appears only when a stack has more than one machine, and
+     it appears whatever the gate says, falling back to ordinals.
 
-  ROUND 4. Four of those five are applied and are no longer in question. What is
-  open is the harness list decision 5 just called for, and what the gate does to
-  a label nobody ticked.
+  3. EACH ROW CARRIES the machine label, its tokens and when it was read.
 
-    0  today     the live section, unchanged. The thing to beat.
-    A  one line  "measured from Claude Code and Codex", in small print.
-    B  rows      one row per harness with its share of the tokens.
-    C  tiles     name, version, tokens and last read, with a stale marker.
+  4. "CHECKED N AGO" MOVES DOWN to the model-mix row, replacing the notch note.
+     It follows the dropdown, so it states the narrowed reading's own freshness.
 
-  THE GATE CONTROL replaces round 3's naming control, because the policy is
-  settled and only its states are left. A machine the owner has not ticked has no
-  publishable name, so it falls back to an ordinal. Watch `partial`: one machine
-  reads "alppc" and the other reads "machine 2", in the same dropdown.
+  5. NOTHING SHIFTS THE LAYOUT. The trigger replaces the meta slot's text and the
+     panel floats over the page. The trigger is the only signal that the section
+     is narrowed, so it carries the chosen machine and turns lime.
+
+  6. REAL MACHINE LABELS PUBLISH, through the same #42/#48 gate as every other
+     user-chosen name. A machine nobody ticked has no publishable name, so the
+     page falls back to a positional ordinal. Nothing about an unticked machine
+     reaches the page, not the label and not the dropdown key.
+
+  7. THE HARNESSES ARE LISTED BELOW the model mix, one row each with its share,
+     between the model rows and the four stat cells. The list appears only when
+     the selection holds more than one harness, so a single-harness stack reads
+     exactly as it does today.
+
+  8. ACTIVE DAYS KEEPS TODAY'S SHAPE: the number over "active days (max)". It
+     understates and says so. Day sets in the payload are the real fix, and they
+     belong to a later ticket.
+
+  9. THE TRAIL STAYS ONE MERGED LINE. Narrowing to a machine narrows it with
+     everything else.
+
+  10. A STACK WITH ONE MACHINE IS UNCHANGED. No dropdown, no harness list, the
+      notch note kept, and no "(max)" when nothing merges. No stack grows a
+      machine label it never asked for.
+
+  ONE THING THE PAGE NO LONGER SAYS. A machine reads as fresh as its newest
+  harness, so a stale harness can hide inside a fresh machine: on the balanced
+  stack the workstation's Claude Code was read an hour ago and its Codex three
+  days ago. Round 3 kept that out of the dropdown and round 4 kept it out of the
+  harness list. It has no home on the page, knowingly, and that is a follow-up.
+
+  ============================== WHAT IS BEHIND IT ==============================
+
+  ROUND 1. Six ways to place the breakdown: today, footnote, source strip,
+  filter, trail-led, owner only. The filter won, with three instructions.
+  ROUND 1 follow-up, from the thread: the unit is the machine.
+  ROUND 2. Four placements. The header slot won, with two instructions: a proper
+  dropdown component, and no layout-shifting extra row.
+  ROUND 3. How much the dropdown carries, plus four questions carried forward.
+  All five answered: label plus tokens plus freshness, real machine labels,
+  today's active days, one merged trail, and harnesses listed below the mix.
+  ROUND 4. The harness list's shape and three edges. All four taken as
+  recommended: rows, hidden at one harness, ordinals before anything is ticked,
+  and the list sits above the stat cells.
+
+  THE CONTROLS.
 
     STACK   lopsided (real) · balanced · one machine, two harnesses · single
     GATE    all ticked · partial · none ticked
@@ -61,22 +87,22 @@
   are invented. The balanced stack is invented end to end, and so is every trail.
   No live sync feeds this page.
 
-  FINDINGS CARRIED IN THE CODE.
+  FINDINGS FOR WHOEVER BUILDS THIS.
 
   1. The dropdown key is an INDEX, never the machine name. A key built from the
      name would put it in the DOM and in the URL even for a machine the owner
      never ticked.
   2. The section header's meta slot is `display: none` below 768px on the live
      page. The dropdown lives there, so shipping it means un-hiding that slot.
-  3. Merging harnesses into one machine can hide a stale harness. On the balanced
-     stack the workstation's Claude Code was read an hour ago and its Codex three
-     days ago, and the machine reads as one hour old. Decision 1 kept that out of
-     the dropdown, so only variant C says it, in the harness list.
-  4. The dropdown trigger is the ONLY signal that the section is narrowed. It
-     carries the chosen machine and turns lime.
-  5. Two machines can run different versions of one harness. Under "all machines"
-     there is no single version to print, so the version is shown only when the
+  3. Two machines can run different builds of one harness. Under "all machines"
+     there is no single version to print, so a version prints only when the
      selection agrees on one.
+  4. A harness spread over two machines is only as current as its laggard, so the
+     harness data carries the oldest reading, not the newest.
+  5. `getCurrentByStackSlug` and `getHistoryByStackSlug` both return the raw
+     machine name today (`convex/measured.ts`, the `HarnessSnapshot` and
+     `HistoryPoint` validators). Both have to carry a gated name plus a stable
+     ordinal before any surface renders a machine.
 
   THE PALETTE COLLISION IS DELIBERATE. The model rows wear the six validated
   chart slots. A machine or harness set painted from the same six would make
@@ -100,7 +126,6 @@
     --accent-lime-contrast: oklch(0.22 0.02 132);
     --stroke-subtle: oklch(0.55 0.01 256 / 0.45);
     --stroke-strong: oklch(0.5 0.015 256 / 0.9);
-    --warn: oklch(0.75 0.13 75);
     --chart-1: #69a621;
     --chart-2: #9e71fd;
     --chart-3: #c21977;
@@ -212,13 +237,9 @@
   @media (min-width: 768px) { .row .pct { width: 56px; flex-basis: 56px; font-size: 14px; } }
   .row .drift { width: 38px; flex: 0 0 38px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); }
 
-  /* =====================================================================
-     THE HARNESS LIST, below "where the tokens went" (round 3 decision 5).
-     ===================================================================== */
-  .harn { margin-top: 14px; }
-  /* A - one line */
-  .harn-line { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); margin: 0; letter-spacing: 0.04em; }
-  /* B - rows, sharing the model rows' shape but never their palette */
+  /* ---------- the harness list, below the model mix ---------- */
+  .harn { margin-top: 16px; }
+  .harn-kick { margin: 0 0 8px; }
   .harn-rows { border-bottom: 1px solid var(--stroke-subtle); }
   .harn-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--stroke-subtle); }
   .harn-row .name { width: 116px; flex: 0 0 116px; font-size: 12px; color: var(--fg-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -228,16 +249,6 @@
   .harn-row .pct { width: 50px; flex: 0 0 50px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--fg-secondary); }
   @media (min-width: 768px) { .harn-row .pct { width: 56px; flex-basis: 56px; } }
   .harn-row .tok { width: 54px; flex: 0 0 54px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); }
-  /* C - tiles */
-  .harn-tiles { display: grid; gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); }
-  @media (min-width: 640px) { .harn-tiles { grid-auto-flow: column; grid-auto-columns: 1fr; } }
-  .harn-tile { background: var(--bg-canvas); padding: 11px 12px; }
-  .harn-tile .t { display: flex; align-items: center; gap: 7px; }
-  .harn-tile .n { font-size: 13px; font-weight: 700; }
-  .harn-tile .v { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--fg-muted); }
-  .harn-tile .f { margin-top: 5px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.05em; color: var(--fg-muted); }
-  .harn-tile .f.stale { color: var(--warn); }
-  .harn-kick { margin: 0 0 8px; }
 
   /* ---------- stats ---------- */
   .stats { margin-top: 24px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); }
@@ -291,11 +302,12 @@
   .drop-opt .o-sub { margin-top: 3px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.05em; color: var(--fg-muted); }
   .src-dot { width: 9px; height: 9px; flex: 0 0 9px; display: inline-block; }
 
-  /* ---------- the active-days bench ---------- */
+  /* ---------- the carried-forward bench ---------- */
   .bench { max-width: 80rem; margin: 0 auto; padding: 0 16px 40px; }
   .bench-box { border: 2px dashed oklch(0.75 0.09 85 / 0.55); padding: 16px; }
-  .bench h3 { margin: 0 0 4px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
-  .bench p { margin: 0; font-size: 12.5px; color: var(--fg-muted); max-width: 52rem; line-height: 1.6; }
+  .bench h3 { margin: 0 0 6px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+  .bench p { margin: 0 0 8px; font-size: 12.5px; color: var(--fg-muted); max-width: 52rem; line-height: 1.6; }
+  .bench p:last-child { margin-bottom: 0; }
 
   /* ---------- switcher ---------- */
   .switcher {
@@ -327,18 +339,18 @@
 <body>
 
 <div class="ticket-strip">
-  Prototype · <b>alp82/aistack#244</b> · display the sources behind one stack's measured layer · round 4 · throwaway
+  Prototype · <b>alp82/aistack#244</b> · display the sources behind one stack's measured layer · settled after 4 rounds · throwaway
 </div>
 
 <div class="proposal">
   <div class="proposal-box">
-    <span class="tag">round 4 · the harness list, and what the gate does to a label</span>
-    Four of round 3's five answers are applied and are not in question: the dropdown carries label, tokens and freshness. Real machine labels publish. Active days keeps "22 of 30" under "active days (max)". The trail stays one line.
-    <span class="q"><b>The open one</b> is your fifth answer: the harnesses are listed below "where the tokens went". <b>A</b> is one line, <b>B</b> is a row each with its share, <b>C</b> is a tile each with version and last read.</span>
-    <span class="q"><b>The list follows the dropdown.</b> Narrow to one machine and it lists only that machine's harnesses.</span>
-    <span class="q"><b>Set GATE to partial.</b> One machine reads "alppc" and the other reads "machine 2", because an unticked machine has no publishable name.</span>
-    <span class="q"><b>Set STACK to balanced and pick C.</b> The workstation reads one hour old and its Codex is three days old. Only C says so.</span>
-    <span class="q"><b>Single machine, single harness</b> still shows a harness list in A, B and C. Say if that is one line too many.</span>
+    <span class="tag">settled · flip to today to compare</span>
+    A machine dropdown in the section header narrows the whole section. "Checked n ago" moved down to the model-mix row. The harnesses are listed under the model rows.
+    <span class="q"><b>The dropdown appears only above one machine</b>, and it narrows headline, cost, model mix, harness list, stats and trail together.</span>
+    <span class="q"><b>The harness list appears only above one harness.</b> Set STACK to one machine, two harnesses to see it without a dropdown.</span>
+    <span class="q"><b>Real machine labels publish through the #42/#48 gate.</b> Set GATE to partial: an unticked machine falls back to an ordinal, so a real name and a number share one list.</span>
+    <span class="q"><b>Nothing shifts.</b> Open and close the panel and watch the page under it hold still.</span>
+    <span class="q"><b>Single machine, single harness reads exactly as today.</b> Set STACK to single and flip the bar.</span>
   </div>
   <div id="note"></div>
 </div>
@@ -366,8 +378,6 @@
 
 const NOW = Date.UTC(2026, 7, 23, 9, 0, 0);
 const HOUR = 3600e3, DAY = 24 * HOUR;
-/** Past this a source reads as stale, matching the page's own 48-hour rule. */
-const STALE_MS = 2 * DAY;
 
 const CATALOG = {
   'claude-fable-5': null,            // absent from the catalog on purpose (#33 decision 3)
@@ -421,7 +431,7 @@ const STACKS = {
   lopsided: {
     key: 'lopsided',
     label: 'lopsided (real)',
-    note: 'Your own stack: a workstation and a small server, both Claude Code. Two machines. One carries 99.8 percent of the tokens.',
+    note: 'Your own stack: a workstation and a small server, both Claude Code. Two machines, one harness. The dropdown shows and the harness list does not.',
     sources: [
       clone(ALPPC_CC),
       {
@@ -444,7 +454,7 @@ const STACKS = {
   balanced: {
     key: 'balanced',
     label: 'balanced (2 machines)',
-    note: 'Invented. Two machines and three sources: the workstation runs Claude Code and Codex, and its Codex reading is three days old.',
+    note: 'Invented. Two machines and three sources. Both show. Narrow to the laptop and the harness list disappears, because that machine runs one harness.',
     sources: [
       {
         harness: 'claude-code', machine: 'laptop', version: '2.1.220',
@@ -461,7 +471,7 @@ const STACKS = {
         ],
       },
       {
-        // A DIFFERENT CLAUDE CODE VERSION from the laptop's. Finding 5.
+        // A DIFFERENT CLAUDE CODE VERSION from the laptop's. Finding 3.
         harness: 'claude-code', machine: 'workstation', version: '2.1.211',
         tokens: 980000000, sessions: 74, activeDays: 14, projects: 4,
         usd: 1455.10, pricingTable: 'anthropic-list-2026-07-25',
@@ -482,14 +492,14 @@ const STACKS = {
   onemachine: {
     key: 'onemachine',
     label: 'one machine, 2 harnesses',
-    note: 'Invented. One machine running Claude Code and Codex. Two sources, one machine, so the rule gives it no dropdown. The harness list is the only place the split shows.',
+    note: 'Invented. One machine running Claude Code and Codex. No dropdown, because there is one machine. The harness list is the only place the split shows.',
     sources: [clone(ALPPC_CC), Object.assign(clone(CODEX_READING), { machine: 'alppc' })],
   },
 
   single: {
     key: 'single',
     label: 'single machine',
-    note: 'One laptop, one harness. Nothing here may grow a machine label it never asked for.',
+    note: 'One laptop, one harness. No dropdown, no harness list, no max. Flip the bar and nothing moves.',
     sources: [clone(ALPPC_CC)],
   },
 };
@@ -517,7 +527,7 @@ function machineNames(stack) {
   return seen;
 }
 
-/** The rule the operator set: a dropdown only when a stack has two machines. */
+/** Decision 2: a dropdown only when a stack has more than one machine. */
 function hasFilter(stack) { return machineNames(stack).length > 1; }
 
 /** Whether the arithmetic merges anything, which is not the same question. */
@@ -545,7 +555,8 @@ function merge(sources) {
     projects: Math.max(...sources.map((s) => s.projects)),
     cacheHitShare: sources.reduce((a, s) => a + s.cacheHitShare * s.tokens, 0) / tokens,
     subagentShare: sources.reduce((a, s) => a + s.subagentShare * s.tokens, 0) / tokens,
-    // The freshness the page leads with is the NEWEST source. Finding 3 lives here.
+    // The freshness the page leads with is the NEWEST source. A stale harness
+    // hides behind this, knowingly: see the verdict's last paragraph.
     receivedAt: Math.max(...sources.map((s) => s.receivedAt)),
     sources,
     models: merged,
@@ -558,20 +569,20 @@ function merge(sources) {
 /**
  * The harnesses inside a selection, merged across whatever machines it holds.
  *
- * THE VERSION IS PRINTED ONLY WHEN THE SELECTION AGREES ON ONE (finding 5). Two
+ * THE VERSION IS CARRIED ONLY WHEN THE SELECTION AGREES ON ONE (finding 3). Two
  * machines can run different builds of one harness, and "all machines" then has
- * no single version to state. Printing either one would be a claim about the
- * other machine that nothing checked.
+ * no single version to state. The settled rows do not print a version, so this
+ * only matters to whoever adds one later.
  */
 function harnessesOf(sources) {
   const by = new Map();
   const total = sources.reduce((a, s) => a + s.tokens, 0);
   for (const s of sources) {
-    const cur = by.get(s.harness) || { harness: s.harness, tokens: 0, count: 0, versions: new Set(), receivedAt: 0, oldestAt: Infinity };
+    const cur = by.get(s.harness)
+      || { harness: s.harness, tokens: 0, count: 0, versions: new Set(), oldestAt: Infinity };
     cur.tokens += s.tokens;
     cur.count++;
     cur.versions.add(s.version);
-    cur.receivedAt = Math.max(cur.receivedAt, s.receivedAt);
     cur.oldestAt = Math.min(cur.oldestAt, s.receivedAt);
     by.set(s.harness, cur);
   }
@@ -583,11 +594,10 @@ function harnessesOf(sources) {
       tokens: h.tokens,
       share: total > 0 ? h.tokens / total : 0,
       version: h.versions.size === 1 ? [...h.versions][0] : null,
-      receivedAt: h.receivedAt,
+      // The OLDEST reading, not the newest: a harness spread over two machines
+      // is only as current as its laggard (finding 4).
       oldestAt: h.oldestAt,
-      /** True when this harness ran on more than one machine in the selection. */
       spread: h.count > 1,
-      stale: NOW - h.oldestAt > STALE_MS,
     }));
 }
 
@@ -611,23 +621,18 @@ function timeAgo(at) {
   const days = Math.round(d / DAY);
   return days + (days === 1 ? ' day ago' : ' days ago');
 }
-/** "a and b", "a, b and c" - a list a sentence can hold. */
-function andList(xs) {
-  if (xs.length <= 1) return xs.join('');
-  return xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];
-}
 function modelLabel(id) { return CATALOG[id] || id; }
 const PAINTS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)'];
 const SRC_PAINTS = ['var(--src-1)', 'var(--src-2)', 'var(--src-3)'];
 
 /* ---------------------------------------------------------------------
-   THE GATE. Round 3 settled the policy: real machine labels publish,
-   through the same #42/#48 gate as every other user-chosen name.
+   THE GATE (decision 6). Real machine labels publish, through the same
+   #42/#48 gate as every other user-chosen name.
 
-   What is left is what the gate DOES. A machine the owner has not ticked has
-   no publishable name, so the page falls back to an ordinal. The ordinal is
-   positional and never derived from the name, so an unticked machine leaks
-   nothing at all - not through the label, not through the dropdown key.
+   A machine the owner has not ticked has no publishable name, so the page falls
+   back to an ordinal. The ordinal is POSITIONAL and never derived from the name,
+   so an unticked machine leaks nothing at all - not through the label, and not
+   through the dropdown key.
    --------------------------------------------------------------------- */
 
 const GATES = {
@@ -644,16 +649,16 @@ const GATES = {
   none: {
     label: 'none ticked',
     ticked: () => false,
-    note: 'Nothing is ticked, which is the default for every stack. The page reads exactly as it would if machine names never published at all.',
+    note: 'Nothing is ticked, which is the default for every stack. The dropdown still works, on ordinals alone.',
   },
 };
 
 /**
  * The machines the display shows.
  *
- * THE KEY IS AN INDEX, NEVER THE MACHINE NAME. The dropdown puts this key in the
- * DOM and in the URL, so a key built from the name would publish it even for a
- * machine the owner never ticked.
+ * THE KEY IS AN INDEX, NEVER THE MACHINE NAME (finding 1). The dropdown puts
+ * this key in the DOM and in the URL, so a key built from the name would publish
+ * it even for a machine the owner never ticked.
  */
 function machines(stack, gate, view) {
   return machineNames(stack).map((m, i) => ({
@@ -689,13 +694,11 @@ function sparkline(points, paint) {
    ===================================================================== */
 
 const VARIANTS = [
-  { key: '0', name: 'today', blurb: 'the live section, unchanged' },
-  { key: 'A', name: 'one line', blurb: 'measured from Claude Code and Codex' },
-  { key: 'B', name: 'rows', blurb: 'one row per harness, with its share' },
-  { key: 'C', name: 'tiles', blurb: 'version, tokens and last read, with a stale marker' },
+  { key: 'settled', name: 'settled', blurb: 'the design four rounds arrived at' },
+  { key: 'today', name: 'today', blurb: 'the live section, unchanged' },
 ];
 
-const state = { variant: 'B', stack: 'balanced', gate: 'all', view: 'reader', machine: 'all', menu: false };
+const state = { variant: 'settled', stack: 'lopsided', gate: 'all', view: 'reader', machine: 'all', menu: false };
 
 function readURL() {
   const p = new URLSearchParams(location.search);
@@ -710,14 +713,14 @@ function writeURL() {
   p.set('stack', state.stack);
   p.set('gate', state.gate);
   p.set('view', state.view);
-  if (state.variant !== '0') p.set('machine', state.machine);
+  if (state.variant === 'settled') p.set('machine', state.machine);
   history.replaceState(null, '', location.pathname + '?' + p.toString());
 }
 
 function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function dot(paint) { return '<span class="src-dot" style="background:' + paint + '"></span>'; }
 
-/* ---------- the dropdown (round 3 decision 1: depth B) ---------- */
+/* ---------- the dropdown (decisions 2, 3 and 5) ---------- */
 
 function dropOption(o, selected) {
   const r = merge(o.sources);
@@ -746,41 +749,25 @@ function dropdown(ms, allSources) {
     + '</button>' + panel + '</div>';
 }
 
-/* ---------- the harness list (round 3 decision 5) ---------- */
+/* ---------- the harness list (decision 7) ---------- */
 
-function harnessList(sources, shape) {
-  if (!shape) return '';
+/**
+ * One row per harness, under the model mix.
+ *
+ * NOTHING AT ALL WHEN THE SELECTION HOLDS ONE HARNESS. A single row at 100
+ * percent says what the section already implies, and hiding it keeps every
+ * single-harness stack reading exactly as it does today.
+ */
+function harnessList(sources) {
   const hs = harnessesOf(sources);
-
-  if (shape === 'line') {
-    return '<div class="harn"><p class="harn-line">measured from '
-      + esc(andList(hs.map((h) => h.label))) + '</p></div>';
-  }
-
-  if (shape === 'rows') {
-    return '<div class="harn"><p class="mono-label harn-kick">by harness</p><div class="harn-rows">'
-      + hs.map((h, i) => '<div class="harn-row">'
-        + '<span class="name">' + esc(h.label) + '</span>'
-        + '<span class="bar"><i style="width:' + Math.max(1, h.share * 100).toFixed(1) + '%;background:'
-        + SRC_PAINTS[i % SRC_PAINTS.length] + '"></i></span>'
-        + '<span class="pct">' + fmtShare(h.share) + '</span>'
-        + '<span class="tok">' + fmtTokens(h.tokens) + '</span>'
-        + '</div>').join('') + '</div></div>';
-  }
-
-  return '<div class="harn"><p class="mono-label harn-kick">by harness</p><div class="harn-tiles">'
-    + hs.map((h, i) => '<div class="harn-tile">'
-      + '<div class="t">' + dot(SRC_PAINTS[i % SRC_PAINTS.length])
-      + '<span class="n">' + esc(h.label) + '</span>'
-      + (h.version ? '<span class="v">' + esc(h.version) + '</span>' : '')
-      + '</div>'
-      + '<div class="f">' + fmtTokens(h.tokens) + ' · ' + fmtShare(h.share) + '</div>'
-      // THE OLDEST READING, NOT THE NEWEST. The header already leads with the
-      // newest, and a harness spread over two machines is only as current as its
-      // laggard. Saying "read 4 hours ago" when one machine answered an hour ago
-      // would be a different claim, so the word `oldest` earns its place.
-      + '<div class="f' + (h.stale ? ' stale' : '') + '">'
-      + (h.spread ? 'oldest read ' : 'read ') + esc(timeAgo(h.oldestAt)) + '</div>'
+  if (hs.length < 2) return '';
+  return '<div class="harn"><p class="mono-label harn-kick">by harness</p><div class="harn-rows">'
+    + hs.map((h, i) => '<div class="harn-row">'
+      + '<span class="name">' + esc(h.label) + '</span>'
+      + '<span class="bar"><i style="width:' + Math.max(1, h.share * 100).toFixed(1) + '%;background:'
+      + SRC_PAINTS[i % SRC_PAINTS.length] + '"></i></span>'
+      + '<span class="pct">' + fmtShare(h.share) + '</span>'
+      + '<span class="tok">' + fmtTokens(h.tokens) + '</span>'
       + '</div>').join('') + '</div></div>';
 }
 
@@ -839,7 +826,7 @@ function mixHead(rightHTML) {
 const NOTCH_NOTE = () => '<p class="mix-note">the notch marks where each share stood on ' + fmtDay(READ_AT[0]) + '</p>';
 const CHECKED = (reading) => '<p class="mix-note">checked ' + esc(timeAgo(reading.receivedAt)) + '</p>';
 
-/** Round 3 decision 3: active days keeps today's shape and today's small print. */
+/** Decision 8: active days keeps today's shape and today's small print. */
 function statsGrid(reading, multi) {
   const cells = [
     { v: reading.sessions.toLocaleString('en-US'), l: 'sessions' },
@@ -852,29 +839,34 @@ function statsGrid(reading, multi) {
     + '<div class="l mono-label">' + esc(c.l) + '</div></div>').join('') + '</div>';
 }
 
-function body(reading, multi, mixRight, harnessShape) {
+function body(reading, multi, mixRight, withHarnesses) {
   return '<div class="body-grid">'
     + '<div>' + metricBlock(reading) + deltaChip(reading) + '</div>'
     + '<div>' + mixHead(mixRight) + modelRows(reading)
-    + harnessList(reading.sources, harnessShape)
+    + (withHarnesses ? harnessList(reading.sources) : '')
     + statsGrid(reading, multi) + '</div>'
     + '</div>';
 }
 
+/** The live section as it stands on main, for comparison. */
+function today(stack) {
+  const all = merge(sortedSources(stack));
+  return sectionHead('checked ' + esc(timeAgo(all.receivedAt)))
+    + body(all, isMultiSource(stack), NOTCH_NOTE(), false);
+}
+
 /**
- * One frame for all four variants. The variant decides only the harness list's
- * shape, because everything else is settled.
+ * The settled design.
  *
- * THE DROPDOWN IS NOT A VARIANT ANY MORE. It appears whenever a stack has more
- * than one machine, in all four positions including today's baseline, because
- * rounds 1 to 3 settled it. A stack with one machine still has nothing to
- * narrow, so it keeps the header's freshness meta and the notch note.
+ * A STACK WITH ONE MACHINE IS UNTOUCHED apart from the harness list, which only
+ * appears above one harness anyway. So a single-machine single-harness stack is
+ * today's section exactly, and it grows no label it never asked for.
  */
-function frame(stack, harnessShape) {
+function settled(stack) {
   const all = merge(sortedSources(stack));
   if (!hasFilter(stack)) {
     return sectionHead('checked ' + esc(timeAgo(all.receivedAt)))
-      + body(all, isMultiSource(stack), NOTCH_NOTE(), harnessShape);
+      + body(all, isMultiSource(stack), NOTCH_NOTE(), true);
   }
   const ms = machines(stack, state.gate, state.view);
   const chosen = ms.find((m) => m.key === state.machine) || null;
@@ -882,17 +874,12 @@ function frame(stack, harnessShape) {
   // The stats stop saying "(max)" the moment the reading stops merging anything.
   const multi = chosen ? chosen.sources.length > 1 : isMultiSource(stack);
   return sectionHead(dropdown(ms, sortedSources(stack)), true)
-    + body(reading, multi, CHECKED(reading), harnessShape);
+    + body(reading, multi, CHECKED(reading), true);
 }
 
-const BODIES = {
-  '0': (s) => frame(s, null),
-  A: (s) => frame(s, 'line'),
-  B: (s) => frame(s, 'rows'),
-  C: (s) => frame(s, 'tiles'),
-};
+const BODIES = { settled, today };
 
-/* ---------- the settled-decisions bench ---------- */
+/* ---------- what this ticket did not settle ---------- */
 
 function bench(stack) {
   const all = merge(sortedSources(stack));
@@ -901,12 +888,14 @@ function bench(stack) {
     ? per.join(' and ') + ' days on the ' + per.length + ' sources reads as ' + all.activeDays
       + ', not ' + per.reduce((a, b) => a + b, 0) + '.'
     : 'One source, so there is no max on this stack.';
-  return '<div class="bench-box"><h3>Settled in round 3, not in question here</h3>'
-    + '<p>Active days keeps today’s shape: the number over "active days (max)". ' + line
-    + ' It understates, and it is labelled as a max whenever a stack has more than one source. '
-    + 'Widening the payload to carry day sets is the real fix and belongs to a later ticket. '
-    + 'Projects has the same fault and has no cell on the page today. '
-    + 'The trail stays one merged line, and narrowing to a machine narrows it with everything else.</p></div>';
+  return '<div class="bench-box"><h3>Carried forward, not settled here</h3>'
+    + '<p><b>Active days keeps today’s shape.</b> ' + line
+    + ' It understates and is labelled a max whenever a stack has more than one source. '
+    + 'Widening the payload to carry day sets is the real fix. Projects has the same fault and no cell on the page today.</p>'
+    + '<p><b>A stale harness can hide inside a fresh machine.</b> A machine reads as fresh as its newest harness. '
+    + 'The dropdown kept that out in round 3 and the harness list kept it out in round 4, so nothing on the page says it.</p>'
+    + '<p><b>The public payload does not match this yet.</b> Both public queries return the raw machine name today. '
+    + 'They have to carry a gated name and a stable ordinal before any surface renders a machine.</p></div>';
 }
 
 /* ---------- the page ---------- */
@@ -920,12 +909,14 @@ function render() {
   // The prototype's own explainers sit OUTSIDE the section, so the mocked
   // section carries nothing that would not ship.
   let note = '';
-  if (state.view === 'owner') {
+  if (state.variant === 'today') {
+    note = 'The live section, for comparison. No dropdown, no harness list, and the notch note in place of the freshness line.';
+  } else if (state.view === 'owner') {
     note = 'Owner view. Your own machine names always show here, ticked or not. The gate governs the public page only.';
   } else if (hasFilter(stack)) {
     note = GATES[state.gate].note;
   } else if (isMultiSource(stack)) {
-    note = 'Two sources on one machine, so the rule gives this stack no dropdown. The harness list below the model mix is the only place the split shows.';
+    note = 'One machine, so there is no dropdown. The harness list below the model mix is the only place the split shows.';
   }
   document.getElementById('note').innerHTML = note ? '<div class="note-box">' + esc(note) + '</div>' : '';
 
@@ -935,7 +926,7 @@ function render() {
 
   const v = VARIANTS.find((x) => x.key === state.variant);
   document.getElementById('swname').innerHTML =
-    esc(v.key + ' — ' + v.name) + '<small>' + esc(v.blurb) + '</small>';
+    esc(v.name) + '<small>' + esc(v.blurb) + '</small>';
   document.getElementById('swopts').innerHTML = optionRows(stack);
   writeURL();
 }
