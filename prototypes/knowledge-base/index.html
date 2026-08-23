@@ -4,9 +4,12 @@
 
   Two decisions, one page:
 
-    ADMIN  - the publish act. Three variants of how an approved item becomes
-             public: A approve is publish, B the Sunday send publishes,
-             C a publish queue the owner fires on their own timing.
+    MODEL  - what approve and publish each mean, to whom, and where, and the
+             one question the owner's own description leaves open.
+    ADMIN  - the publish act. The owner said the act is the send, so A and B
+             are its two readings: A publishes only the items the issue names,
+             B publishes every item approved that week. C is the per-item act
+             that description rules out, kept so the option stays visible.
     PUBLIC - the page shape. Three variants over the same published set:
              A topic index, B one stream with filter chips, C topic sections.
 
@@ -231,17 +234,6 @@
     padding: 8px 10px;
     margin: 10px 0;
   }
-  .pickbox {
-    appearance: none;
-    width: 20px;
-    height: 20px;
-    border: 1px solid var(--stroke-strong);
-    background: var(--bg-panel-elevated);
-    flex: 0 0 auto;
-    cursor: pointer;
-  }
-  .pickbox:checked { background: var(--accent-lime); border-color: var(--accent-lime); }
-  .picker { display: flex; gap: 10px; align-items: flex-start; }
 
   /* ---- public entries ---- */
   .topic-head {
@@ -410,7 +402,8 @@
 <div class="shell">
   <div class="intro">
     <p><b>Start on MODEL.</b> It says what approve and publish each mean, to whom, and
-    where. Then <b>ADMIN</b> holds three publish acts, and <b>PUBLIC</b> holds three page
+    where, and it names the one question left. Then <b>ADMIN</b> holds the two readings
+    of the send, plus the per-item act for contrast. <b>PUBLIC</b> holds three page
     shapes. Admin and public share one state, so what you publish in ADMIN is what
     PUBLIC shows.</p>
     <p><b>Nothing here reopens a settled decision.</b> Composing an issue stays in code
@@ -1280,7 +1273,6 @@ const state = {
   held: new Set(),
   sent: false,
   skipped: false,
-  queue: new Set(DATA.items.filter((i) => i.pending && i.summary).map((i) => i.id)),
   openTopic: null,
   filter: 'all',
   compactReleases: false,
@@ -1341,14 +1333,17 @@ function model() {
       <tr><td>Knowledge base</td><td>anyone</td><td><span class="mono">/news</span>, by topic</td></tr>
     </table>
 
-    <div class="surface-title" style="margin-top:24px">What is at stake</div>
-    <p class="surface-sub">In this real week: <b>${DATA.items.length}</b> approved items.
-    Issue #2 names <b>${named}</b> of them. The other <b>${unnamed}</b> are worth keeping,
-    carry a summary we wrote, and are seen by nobody, forever, unless the knowledge base
-    publishes them.</p>
-    <p class="cost">The choice on the ADMIN tab is which act moves an approved item into
-    that public, topic-grouped view. The choice on the PUBLIC tab is what that view
-    looks like.</p>`;
+    <div class="surface-title" style="margin-top:24px">The one question left</div>
+    <p class="surface-sub">You said the act is the send: preselect with Approve, compose
+    the issue in code, send it, and that makes it public. Taking that as given, one thing
+    is still open. <b>Does the send publish only the items the issue names, or every item
+    approved that week?</b></p>
+    <p class="cost">In this real week: <b>${DATA.items.length}</b> approved items, and
+    issue #2 names <b>${named}</b> of them. Under the narrow reading the other
+    <b>${unnamed}</b> carry a summary we wrote and are seen by nobody, forever. Under the
+    wide reading they all reach the page, and the email stays the same size.</p>
+    <p class="cost">ADMIN shows both readings, plus the per-item act your description
+    rules out. PUBLIC shows what the resulting page looks like.</p>`;
 }
 
 // ---------------------------------------------------------------- ADMIN
@@ -1369,19 +1364,67 @@ function adminRow(item, trailing) {
     </div>`;
 }
 
-function actA() {
+/** The send, in both readings of its scope. */
+function sendAct(scope) {
+  const waiting = pending();
+  const inIssue = waiting.filter((i) => i.inIssue);
+  const rest = waiting.filter((i) => !i.inIssue);
+  const goes = (scope === 'issue' ? inIssue : waiting).filter((i) => i.summary);
+  const narrow = scope === 'issue';
+
+  return `
+    <div class="surface-title">Act ${narrow ? 'A' : 'B'} &middot; the send publishes ${narrow ? 'the issue' : 'the week'}</div>
+    <p class="surface-sub">You preselect with Approve, compose issue #2 in code, and send
+    it. The send is the publish act. ${
+      narrow
+        ? 'It makes public exactly the items the issue names, so the knowledge base holds what the email held, grouped by topic.'
+        : 'It makes public every item approved that week, both the ones the issue names and the ones it does not.'
+    }</p>
+    <p class="where"><b>Where it lives:</b> the send you already run,
+    <span class="mono">scripts/newsletter.ts send</span> and the Send button in Admin
+    &rsaquo; News &rsaquo; Newsletter. The issue's items come from
+    <span class="mono">src/newsletter/issues.ts</span>, authored in code as #202 ruled.
+    The split below is shown, not chosen. Costs one field on the item row and one write
+    inside <span class="mono">sendIssue</span>.</p>
+    <p class="cost"><b>Cost:</b> ${
+      narrow
+        ? 'an approved item no issue ever names stays private forever. About a dozen items a week reach the page, and the other two thirds of the stream are work nobody sees.'
+        : 'an item can be public without you having written it into an issue, so the knowledge base is wider than anything you composed. The email stays the same size.'
+    } Either way a skipped week publishes nothing, and the page can go dark for a
+    fortnight.</p>
+    ${counts()}
+    ${state.ticks.map((t) => `<div class="tick">${esc(t)}</div>`).join('')}
+    ${
+      state.sent
+        ? '<div class="tick">Issue #2 sent.</div>'
+        : `<button class="act big" data-send="${scope}">Send issue #2 and publish ${goes.length} items</button>
+           <button class="ghost big" data-skip="1">Skip this week</button>`
+    }
+    ${state.skipped ? '<div class="tick" style="color:var(--amber);border-color:var(--amber)">Week skipped. Nothing published. The items hold for issue #2.</div>' : ''}
+    <div class="topic-head"><span>Named by issue #2, in code</span><span>${inIssue.length}</span></div>
+    ${inIssue.map((i) => adminRow(i)).join('')}
+    <div class="topic-head"><span>Approved, not named${narrow ? ': stays private' : ': the send publishes these too'}</span><span>${rest.length}</span></div>
+    ${rest.map((i) => adminRow(i)).join('')}
+  `;
+}
+
+const actA = () => sendAct('issue');
+const actB = () => sendAct('week');
+
+function actC() {
   const waiting = pending();
   const live = publicItems().slice(0, 1);
   return `
-    <div class="surface-title">Act A &middot; approve is publish</div>
-    <p class="surface-sub">One gate. The Approve button the inbox already has is the
-    publish act, and the item is on the public page the moment you tap it.</p>
+    <div class="surface-title">Act C &middot; approve is publish</div>
+    <p class="surface-sub">The per-item alternative. The Approve button the inbox already
+    has is the publish act, and the item is on the public page the moment you tap it. It
+    is here because it is the only act that keeps the page current in a skipped week.</p>
     <p class="where"><b>Where it lives:</b> Admin &rsaquo; News &rsaquo; Inbox, unchanged.
-    The public page queries the items in state <span class="mono">approved</span>. No new
+    The page queries the items already in state <span class="mono">approved</span>. No new
     field, no new mutation, no new view.</p>
-    <p class="cost"><b>Cost:</b> nothing sits between a mis-tap and the public page, and
-    the knowledge base carries the week before subscribers get the email. It also
-    overrides the spec line that keeps the stream private after approve.</p>
+    <p class="cost"><b>Cost:</b> it publishes single items, which is not how you described
+    your act. Nothing sits between a mis-tap and the public page, and the knowledge base
+    carries the week before subscribers get the email.</p>
     ${counts()}
     ${state.ticks.map((t) => `<div class="tick">${esc(t)}</div>`).join('')}
     ${waiting.length === 0 ? '<div class="tick">Everything approved is public.</div>' : ''}
@@ -1400,78 +1443,6 @@ function actA() {
     <p class="surface-sub">The same act in reverse. A published item can go back to
     private, and the page loses it.</p>
     ${live.map((i) => adminRow(i, `<div class="row-act"><button class="ghost" data-unpublish="${i.id}">Unpublish</button></div>`)).join('')}
-  `;
-}
-
-function actB() {
-  const waiting = pending();
-  const inIssue = waiting.filter((i) => i.inIssue);
-  const rest = waiting.filter((i) => !i.inIssue);
-  const skippable = waiting.filter((i) => i.summary);
-  return `
-    <div class="surface-title">Act B &middot; the Sunday send publishes</div>
-    <p class="surface-sub">Approve fills the stream and nothing more. The send you
-    already run puts the whole week on the public page, both the items the email
-    carries and the rest of the week.</p>
-    <p class="where"><b>Where it lives:</b> the send, which is
-    <span class="mono">scripts/newsletter.ts send</span> on prod and the Send button in
-    Admin &rsaquo; News &rsaquo; Newsletter. The issue's own items come from
-    <span class="mono">src/newsletter/issues.ts</span>, authored in code as #202 ruled.
-    Below, that split is shown, not chosen. Costs one new field on the item row and one
-    write inside <span class="mono">sendIssue</span>.</p>
-    <p class="cost"><b>Cost:</b> subscribers read it first, and the knowledge base moves
-    once a week. A skipped week publishes nothing, so the page can go dark for a
-    fortnight while the stream fills up.</p>
-    ${counts()}
-    ${state.ticks.map((t) => `<div class="tick">${esc(t)}</div>`).join('')}
-    ${
-      state.sent
-        ? '<div class="tick">Issue #2 sent. The week is public.</div>'
-        : `<button class="act big" data-send="1">Send issue #2 and publish ${skippable.length} items</button>
-           <button class="ghost big" data-skip="1">Skip this week</button>`
-    }
-    ${state.skipped ? '<div class="tick" style="color:var(--amber);border-color:var(--amber)">Week skipped. Nothing published. The items hold for issue #2.</div>' : ''}
-    <div class="topic-head"><span>Named by issue #2, in code</span><span>${inIssue.length}</span></div>
-    ${inIssue.map((i) => adminRow(i)).join('')}
-    <div class="topic-head"><span>Rest of the week, published by the same send</span><span>${rest.length}</span></div>
-    ${rest.map((i) => adminRow(i)).join('')}
-  `;
-}
-
-function actC() {
-  const waiting = pending();
-  const picked = waiting.filter((i) => state.queue.has(i.id));
-  return `
-    <div class="surface-title">Act C &middot; a publish queue</div>
-    <p class="surface-sub">Approve fills a ready list. A second act, on your own timing
-    and independent of the send, puts the ones you tick on the public page.</p>
-    <p class="where"><b>Where it lives:</b> a fifth view in Admin &rsaquo; News that does
-    not exist yet, plus one new field on the item row. It is the only act of the three
-    that adds a surface.</p>
-    <p class="cost"><b>Cost:</b> every item costs two decisions, and the queue is a
-    second inbox to work. Forget it for a month and the page is a month stale.</p>
-    ${counts()}
-    ${state.ticks.map((t) => `<div class="tick">${esc(t)}</div>`).join('')}
-    <button class="act big" data-flush="1" ${picked.length ? '' : 'disabled'}>Publish ${picked.length} items</button>
-    ${waiting
-      .map(
-        (i) => `<div class="row${i.summary ? '' : ' held'}">
-          <div class="picker">
-            <input class="pickbox" type="checkbox" data-queue="${i.id}" ${state.queue.has(i.id) ? 'checked' : ''} ${i.summary ? '' : 'disabled'}>
-            <div style="flex:1">
-              <div class="row-meta">
-                <span class="chip">${esc(i.source)}</span>
-                <span class="chip lime">${esc(topicName(i.topic))}</span>
-                ${i.summary ? '' : '<span class="chip amber">no summary</span>'}
-                <span>${day(i.publishedAt)}</span>
-              </div>
-              <div class="row-head">${esc(i.headline)}</div>
-              <div class="${i.summary ? 'row-sum' : 'undrafted'}">${esc(i.summary ?? 'Undrafted. It cannot be ticked until a drafting run writes a summary.')}</div>
-            </div>
-          </div>
-        </div>`
-      )
-      .join('')}
   `;
 }
 
@@ -1638,9 +1609,9 @@ const PUBLIC = { A: pageA, B: pageB, C: pageC };
 const VARIANTS = {
   model: [],
   admin: [
-    ['A', 'Approve<br>is publish'],
-    ['B', 'The send<br>publishes'],
-    ['C', 'Publish<br>queue'],
+    ['A', 'Send<br>the issue'],
+    ['B', 'Send<br>the week'],
+    ['C', 'Approve<br>is publish'],
   ],
   public: [
     ['A', 'Topic<br>index'],
@@ -1674,7 +1645,7 @@ function render() {
 }
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-surface],[data-variant],[data-publish],[data-unpublish],[data-send],[data-skip],[data-flush],[data-topic],[data-close],[data-filter],[data-jump],[data-compact]');
+  const t = e.target.closest('[data-surface],[data-variant],[data-publish],[data-unpublish],[data-send],[data-skip],[data-topic],[data-close],[data-filter],[data-jump],[data-compact]');
   if (!t) return;
   const d = t.dataset;
 
@@ -1693,17 +1664,14 @@ document.addEventListener('click', (e) => {
     state.published.delete(d.unpublish);
     state.ticks = [`Pulled from the page: ${item.headline}`];
   } else if (d.send) {
-    const ids = pending().filter((i) => i.summary).map((i) => i.id);
+    const scoped = d.send === 'issue' ? pending().filter((i) => i.inIssue) : pending();
+    const ids = scoped.filter((i) => i.summary).map((i) => i.id);
     state.sent = true;
     state.skipped = false;
-    publish(ids, `Issue #2 sent. ${ids.length} items public.`);
+    publish(ids, `Issue #2 sent. ${ids.length} items public. ${pending().length - ids.length} approved items still private.`);
     return;
   } else if (d.skip) {
     state.skipped = true;
-  } else if (d.flush) {
-    const ids = pending().filter((i) => state.queue.has(i.id)).map((i) => i.id);
-    publish(ids, `${ids.length} items published.`);
-    return;
   } else if (d.topic) { state.openTopic = d.topic; window.scrollTo(0, 0); }
   else if (d.close) { state.openTopic = null; window.scrollTo(0, 0); }
   else if (d.filter) { state.filter = d.filter; }
@@ -1712,14 +1680,6 @@ document.addEventListener('click', (e) => {
     return;
   } else if (d.compact !== undefined) { state.compactReleases = d.compact === '1'; }
 
-  render();
-});
-
-document.addEventListener('change', (e) => {
-  const id = e.target.dataset?.queue;
-  if (!id) return;
-  if (e.target.checked) state.queue.add(id);
-  else state.queue.delete(id);
   render();
 });
 

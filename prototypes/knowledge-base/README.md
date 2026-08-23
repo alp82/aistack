@@ -25,8 +25,14 @@ state, so publishing in ADMIN changes what PUBLIC shows.
 
 | Surface | A | B | C |
 |---|---|---|---|
-| ADMIN | approve is publish | the Sunday send publishes | a publish queue |
+| ADMIN | the send publishes the issue | the send publishes the week | approve is publish |
 | PUBLIC | topic index | one stream with chips | topic sections on one page |
+
+The admin variants changed once the owner described their own act: "I don't
+publish single items. I preselect them, then compose a unique email like the
+broadcast ones and send that, which makes it public." That is the send, so A
+and B became its two readings, and the publish queue was dropped. C stays as
+the per-item act, because dropping every alternative would hide the choice.
 
 ## Approve is not publish
 
@@ -70,9 +76,9 @@ What each act would actually cost:
 
 | Act | Surface | New code |
 |---|---|---|
-| A, approve is publish | Admin, News, Inbox, unchanged | none: the page queries state `approved` |
-| B, the send publishes | the existing send, in `scripts/newsletter.ts` and the Newsletter view | one field on the item row, one write in `sendIssue` |
-| C, publish queue | a fifth Admin, News view that does not exist | one field, one mutation, one view |
+| A, the send publishes the issue | the existing send, in `scripts/newsletter.ts` and the Newsletter view | one field on the item row, one write in `sendIssue` |
+| B, the send publishes the week | the same send | the same field and write, over a wider set |
+| C, approve is publish | Admin, News, Inbox, unchanged | none: the page queries state `approved` |
 
 ## The content is real
 
