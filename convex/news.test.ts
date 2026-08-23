@@ -1230,6 +1230,33 @@ describe('the X owner-paste lane', () => {
     expect(rows[0].url).toBe('https://x.com/AnthropicAI/status/20')
   })
 
+  test('an X embed joins an existing Hacker News item and its stricter class wins', async () => {
+    const t = convexTest(schema, modules)
+    await t.mutation(internal.news.insertItem, {
+      url: 'https://x.com/AnthropicAI/status/20',
+      headline: 'Hacker News headline',
+      intake: 'collector',
+      licenseClass: 'hn',
+      hnItemId: '900',
+      hnPoints: 80,
+      hnComments: 20,
+    })
+    stubRoutes([[/publish\.x\.com/, () => json(OEMBED)]])
+
+    const result = await asAdmin(t).action(api.news.quickAdd, {
+      url: 'https://x.com/AnthropicAI/status/20',
+    })
+
+    expect(result.item?.patched).toBe(true)
+    const rows = await t.run(async (ctx: any) =>
+      ctx.db.query('newsItems').collect(),
+    )
+    expect(rows).toHaveLength(1)
+    expect(rows[0].licenseClass).toBe('x')
+    expect(rows[0].xEmbed.html).toBe(EMBED_HTML)
+    expect(rows[0].hnItemId).toBe('900')
+  })
+
   test('a dead post says so and stores nothing', async () => {
     const t = convexTest(schema, modules)
     // The real endpoint answers 404 with an HTML page, not with JSON.

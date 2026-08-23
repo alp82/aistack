@@ -352,12 +352,25 @@ export const markSent = internalMutation({
       .withIndex('by_slug', (q) => q.eq('slug', args.slug))
       .first()
     if (!issue) return null
+    const now = Date.now()
+    const readyItems = await ctx.db
+      .query('newsItems')
+      .withIndex('by_state_knowledgeBasePublishedAt', (q) =>
+        q
+          .eq('state', 'approved')
+          .eq('knowledgeBasePublishedAt', undefined)
+      )
+      .collect()
+    for (const item of readyItems) {
+      if (!item.summary?.trim() || !item.topicId) continue
+      await ctx.db.patch(item._id, { knowledgeBasePublishedAt: now })
+    }
     await ctx.db.patch(issue._id, {
       status: 'sent',
-      sentAt: Date.now(),
+      sentAt: now,
       sentCount: args.sentCount,
       failedCount: args.failedCount,
-      updatedAt: Date.now(),
+      updatedAt: now,
     })
     return issue._id
   },

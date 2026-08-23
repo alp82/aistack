@@ -8,8 +8,8 @@
  * in the owner's Claude session (.claude/skills/news-draft). This file is the
  * two ends of that run:
  *
- *   1. `undrafted` hands the run its work: the inbox items with no summary,
- *      plus the topic list the run picks from.
+ *   1. `undrafted` hands the run its work: unpublished stream and inbox items
+ *      with no summary, plus the topic list the run picks from.
  *   2. `applyDrafts` writes the reviewed drafts back onto those rows.
  *
  * Both are INTERNAL. `scripts/news-drafts.ts` reaches them over
@@ -79,17 +79,23 @@ export const undrafted = internalQuery({
   returns: v.object({
     items: v.array(DraftingItem),
     topics: v.array(DraftingTopic),
-    /** How many undrafted items the inbox holds, past the limit. */
+    /** How many undrafted items remain past the limit. */
     remaining: v.number(),
   }),
   handler: async (ctx, args) => {
     const limit = Math.max(1, args.limit ?? DEFAULT_BATCH)
-    const inbox = await ctx.db
-      .query('newsItems')
-      .withIndex('by_state_collectedAt', (q) => q.eq('state', 'inbox'))
-      .order('asc')
-      .collect()
-    const undraftedRows = inbox.filter((item) => item.summary === undefined)
+    const [inbox, approved] = await Promise.all(
+      (['inbox', 'approved'] as const).map((state) =>
+        ctx.db
+          .query('newsItems')
+          .withIndex('by_state_collectedAt', (q) => q.eq('state', state))
+          .order('asc')
+          .collect()
+      )
+    )
+    const undraftedRows = [...inbox, ...approved]
+      .filter((item) => item.summary === undefined)
+      .sort((a, b) => a.collectedAt - b.collectedAt)
 
     const sources = new Map<string, Doc<'newsSources'> | null>()
     const items = []
@@ -140,7 +146,7 @@ export const undrafted = internalQuery({
  *
  *   applied           the summary and the topic are on the row
  *   unknown-item      the id names no row, so the file is stale
- *   not-in-inbox      the owner already approved or discarded the item
+ *   not-in-inbox      the owner discarded the item
  *   already-drafted   the row carries a summary the draft must not erase
  */
 const ApplyOutcome = v.union(
@@ -151,7 +157,7 @@ const ApplyOutcome = v.union(
 )
 
 /**
- * Write the reviewed drafts onto their inbox rows.
+ * Write the reviewed drafts onto inbox rows or unpublished approved rows.
  *
  * ONE mutation for the whole batch, because every convex-prod call is an ssh
  * hop. It is also all-or-nothing per run, which is the right unit: a batch that
@@ -207,7 +213,7 @@ export const applyDrafts = internalMutation({
         })
         continue
       }
-      if (item.state !== 'inbox') {
+      if (item.state !== 'inbox' && item.state !== 'approved') {
         results.push({
           itemId: draft.itemId,
           outcome: 'not-in-inbox' as const,

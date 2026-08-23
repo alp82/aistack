@@ -69,13 +69,13 @@ describe('undrafted', () => {
     expect(batch.items).toHaveLength(0)
   })
 
-  test('an approved item is out of the inbox and out of the run', async () => {
+  test('an approved item with no summary returns to the next drafting run', async () => {
     const t = convexTest(schema, modules)
     await seedItem(t, { state: 'approved' })
 
     const batch = await t.query(internal.newsDrafting.undrafted, {})
 
-    expect(batch.items).toHaveLength(0)
+    expect(batch.items).toHaveLength(1)
   })
 
   test('the batch carries the topic list the skill picks from', async () => {
@@ -221,7 +221,7 @@ describe('applyDrafts', () => {
     expect(item.summary).toBe('The words I wrote myself.')
   })
 
-  test('an item the owner already approved is skipped', async () => {
+  test('a draft can complete an approved item that the public page held back', async () => {
     const t = convexTest(schema, modules)
     const itemId = await seedItem(t, { state: 'approved' })
 
@@ -229,9 +229,9 @@ describe('applyDrafts', () => {
       drafts: [{ itemId, summary: 'The machine draft.', topic: 'Agents' }],
     })
 
-    expect(report.results[0].outcome).toBe('not-in-inbox')
+    expect(report.results[0].outcome).toBe('applied')
     const item = await t.run(async (ctx: any) => ctx.db.get(itemId))
-    expect(item.summary).toBeUndefined()
+    expect(item.summary).toBe('The machine draft.')
   })
 
   test('a stale file naming a dead row reports itself, and the batch goes on', async () => {

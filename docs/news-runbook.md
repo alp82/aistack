@@ -158,18 +158,34 @@ inbox read the same summary off the same item row.
 The audience is the waitlist, the registered members, and the public
 subscribers, minus every address that turned the newsletter category off.
 
+**A real send also publishes the ready item stream to the knowledge base.**
+The publication includes every approved, summarized, grouped item that has not
+appeared there before. Issue membership does not limit the publication. A test
+send changes nothing, and a skipped week publishes nothing.
+
+An approved item without a summary or topic stays private. The next drafting
+run includes that item again. A later real send publishes the item after the
+draft is ready.
+
 ## 6. After the send
 
-The issue appears at `/news/<slug>` and in the archive at `/news`. Issue links
+The issue appears at `/news/<slug>` and in the archive at `/news`. The same send
+adds the ready item stream to the topic index at `/news`. Issue links
 point at the main page by default, with one quieter read-in-browser link to the
 issue's own archive page, which is why that page carries the neighbours and the
 full issue list ([#203](https://github.com/alp82/aistack/issues/203)).
+
+The five newest published items sit above the topic cards. Each topic page lives
+at `/news/topics/<slug>`. Thin releases share one release strip on their topic
+page. The page shows X embeds as static allow-listed markup and never loads the
+X widget script.
 
 ## Public surfaces
 
 | Path | What |
 |---|---|
-| `/news` | The archive of sent issues, and the subscribe form |
+| `/news` | The knowledge topic index, the archive of sent issues, and the subscribe form |
+| `/news/topics/<slug>` | One knowledge topic with its published items |
 | `/news/<slug>` | One sent issue. A draft issue 404s |
 | `/subscribe` | The public subscribe page, for the newcomer who is neither a member nor on the waitlist |
 | `/email/preferences?token=...` | Both email categories for one address. No login: the token is the one every send already carries |

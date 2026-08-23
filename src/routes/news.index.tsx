@@ -3,6 +3,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { ArrowRight, Mail } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import {
+	KnowledgeBaseIndex,
+	type KnowledgeBaseIndexData,
+} from "@/features/news/KnowledgeBase";
 import { SubscribeForm } from "@/features/news/SubscribeForm";
 import { seoMeta } from "@/lib/seo";
 import { api } from "../../convex/_generated/api";
@@ -13,8 +17,8 @@ import { api } from "../../convex/_generated/api";
  * Every sent issue gets a public page, and this is the index of them. It is
  * also where a visitor who has never had an issue can subscribe.
  *
- * The knowledge base, the pull view over the same item stream, lands here later
- * under its own prototype (#212). This page owns /news until then.
+ * The knowledge base is the pull view over the same item stream. Its topic
+ * index leads this page, while newsletter issues remain available here.
  */
 
 export const Route = createFileRoute("/news/")({
@@ -22,10 +26,15 @@ export const Route = createFileRoute("/news/")({
 	// The archive is meant to be linked and cited, so the first HTML carries the
 	// issues rather than waiting for a hydrated client.
 	loader: async ({ context }) => {
-		const issues = await context.queryClient.ensureQueryData(
-			convexQuery(api.newsletter.listSentIssues, {}),
-		);
-		return { issues };
+		const [issues, knowledgeBase] = await Promise.all([
+			context.queryClient.ensureQueryData(
+				convexQuery(api.newsletter.listSentIssues, {}),
+			),
+			context.queryClient.ensureQueryData(
+				convexQuery(api.knowledgeBase.getIndex, {}),
+			),
+		]);
+		return { issues, knowledgeBase };
 	},
 	head: () => ({
 		meta: seoMeta({
@@ -49,23 +58,28 @@ function formatDate(ms?: number): string {
 }
 
 function NewsIndex() {
-	const { issues: loaded } = Route.useLoaderData();
+	const { issues: loaded, knowledgeBase: loadedKnowledgeBase } =
+		Route.useLoaderData();
 	const issues = useQuery(api.newsletter.listSentIssues, {}) ?? loaded;
+	const knowledgeBase =
+		useQuery(api.knowledgeBase.getIndex, {}) ?? loadedKnowledgeBase;
 
 	return (
 		<div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-24">
 			<PageHeader
 				label="AI_STACK_NEWS"
-				labelSuffix="WEEKLY"
+				labelSuffix="KNOWLEDGE_BASE"
 				title={
 					<>
-						The
+						News by
 						<br />
-						newsletter
+						topic
 					</>
 				}
-				description="One email a week about what actually moved: model releases, agent harness changes, and the tooling people run. Thin weeks skip."
+				description="Approved AI tooling news, grouped by topic. The newest five stay close, and each topic keeps its own archive."
 			/>
+
+			<KnowledgeBaseIndex data={knowledgeBase as KnowledgeBaseIndexData} />
 
 			<section className="mb-20 border-2 border-stroke-strong bg-bg-panel p-6 sm:p-8">
 				<div className="mb-4 flex items-center gap-3 font-mono text-sm text-accent-lime">
@@ -77,7 +91,7 @@ function NewsIndex() {
 
 			<section>
 				<h2 className="mb-8 font-mono text-sm uppercase tracking-widest text-fg-muted">
-					Issues
+					Newsletter issues
 				</h2>
 
 				{issues.length === 0 ? (
