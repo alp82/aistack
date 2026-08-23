@@ -100,6 +100,8 @@ async function snapshot(
     models?: string[]
     tools?: string[]
     totalTokens?: number
+    projects?: number
+    projectKeys?: string[]
   }
 ) {
   await t.run(async (ctx) => {
@@ -108,22 +110,37 @@ async function snapshot(
       stackId,
       capturedAt: over.capturedAt ?? Date.now(),
       receivedAt: over.capturedAt ?? Date.now(),
-      schemaVersion: 1,
+      schemaVersion: over.projectKeys ? 2 : 1,
       harness,
       payload: {
-        schemaVersion: 1,
+        schemaVersion: over.projectKeys ? 2 : 1,
         capturedAt: over.capturedAt ?? Date.now(),
         window: { days: 30, from: '2026-07-05', to: '2026-08-03' },
         harness: { name: harness, version: '1.0.0' },
         pricingTable: null,
-        activity: {
-          sessions: 10,
-          activeDays: 5,
-          projects: 2,
-          totalTokens: over.totalTokens ?? 1000,
-          cacheHitShare: 0.9,
-          subagentShare: 0.1,
-        },
+        activity: over.projectKeys
+          ? {
+              sessions: 10,
+              activeDayDates: [
+                '2026-07-20',
+                '2026-07-21',
+                '2026-07-22',
+                '2026-07-23',
+                '2026-07-24',
+              ],
+              projectKeys: over.projectKeys,
+              totalTokens: over.totalTokens ?? 1000,
+              cacheHitShare: 0.9,
+              subagentShare: 0.1,
+            }
+          : {
+              sessions: 10,
+              activeDays: 5,
+              projects: over.projects ?? 2,
+              totalTokens: over.totalTokens ?? 1000,
+              cacheHitShare: 0.9,
+              subagentShare: 0.1,
+            },
         models: (over.models ?? ['opus']).map((id) => ({
           id,
           tokenShare: 1,
@@ -479,8 +496,12 @@ describe('the band', () => {
     const a = await seedStack(t, { name: 'A' })
     const b = await seedStack(t, { name: 'B' })
     const now = Date.now()
-    await snapshot(t, a, { models: ['opus', 'sonnet'], tools: ['Bash', 'Read'] })
-    await snapshot(t, b, { models: ['opus'], tools: ['Bash', 'Edit'] })
+    await snapshot(t, a, {
+      models: ['opus', 'sonnet'],
+      tools: ['Bash', 'Read'],
+      projects: 5,
+    })
+    await snapshot(t, b, { models: ['opus'], tools: ['Bash', 'Edit'], projects: 3 })
     await emit(t, a, now - 2 * HOUR, syncEvent({ sessions: 100, projects: 5 }))
     await emit(t, b, now - HOUR, syncEvent({ sessions: 60, projects: 3 }))
 
@@ -493,11 +514,29 @@ describe('the band', () => {
     expect(band.usage.stacks).toBe(2)
   })
 
+  test('projects union across the current sources of each stack', async () => {
+    const t = convexTest(schema, modules)
+    const stackId = await seedStack(t)
+    const now = Date.now()
+    await snapshot(t, stackId, {
+      harness: 'claude-code',
+      projectKeys: ['AAAAAAAAAAAAAAAAAAAAAA', 'BBBBBBBBBBBBBBBBBBBBBB'],
+    })
+    await snapshot(t, stackId, {
+      harness: 'codex',
+      projectKeys: ['BBBBBBBBBBBBBBBBBBBBBB', 'CCCCCCCCCCCCCCCCCCCCCC'],
+    })
+    await emit(t, stackId, now - HOUR, syncEvent({ projects: 99 }))
+
+    const band = await t.query(api.activityFeed.band, {})
+    expect(band.usage.projects).toBe(3)
+  })
+
   test('each stack contributes only its latest sync in the window', async () => {
     const t = convexTest(schema, modules)
     const stackId = await seedStack(t)
     const now = Date.now()
-    await snapshot(t, stackId, {})
+    await snapshot(t, stackId, { projects: 41 })
     await emit(t, stackId, now - 20 * HOUR, syncEvent({ sessions: 596, projects: 41 }))
     await emit(t, stackId, now - HOUR, syncEvent({ sessions: 596, projects: 41 }))
 

@@ -52,6 +52,7 @@ function deps(
 		baseUrl: "https://aistack.to",
 		now: () => NOW,
 		getTokenImpl: () => "tok_1",
+		getProjectWorkspaceIdImpl: () => "AAAAAAAAAAAAAAAAAAAAAA",
 		loadConfigImpl: async () =>
 			over.config ?? { config: FETCHED, source: "fetched" },
 		adaptersImpl: async () => [FAKE_CLAUDE_ADAPTER],
@@ -76,6 +77,23 @@ const FAKE_CLAUDE_ADAPTER: HarnessAdapter = {
 };
 
 describe("stageSync", () => {
+	test("resolves local project directories to persistent opaque ids", async () => {
+		const seen: string[] = [];
+		const staged = await stageSync(
+			deps({
+				getProjectWorkspaceIdImpl: (directory) => {
+					seen.push(directory);
+					return "BBBBBBBBBBBBBBBBBBBBBB";
+				},
+			}),
+		);
+		expect(seen).toEqual(["-home-u-p"]);
+		expect(staged.body.payloads[0].activity.projectKeys).toEqual([
+			"BBBBBBBBBBBBBBBBBBBBBB",
+		]);
+		expect(staged.bodyJson).not.toContain("-home-u-p");
+	});
+
 	test("bodyJson is the exact serialization and the id derives from it", async () => {
 		const staged = await stageSync(deps({}));
 		expect(staged.bodyJson).toBe(JSON.stringify(staged.body));

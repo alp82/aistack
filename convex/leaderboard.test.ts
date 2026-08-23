@@ -41,7 +41,7 @@ function payload(over: {
     ...(m.usd === undefined ? {} : { apiEquivalentUSD: m.usd }),
   }))
   return {
-    schemaVersion: 1,
+    schemaVersion: 1 as const,
     capturedAt: over.capturedAt ?? Date.now(),
     window: { days: 30, from: '2026-07-05', to: '2026-08-03' },
     harness: { name: over.harness ?? 'claude-code', version: '2.1.220' },

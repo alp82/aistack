@@ -195,8 +195,14 @@ function mergePoint(sync: { at: number; rows: Row[] }): MeasuredHistoryPoint {
 		tokens,
 		usd,
 		sessions: sync.rows.reduce((a, r) => a + r.sessions, 0),
-		activeDays: Math.max(...sync.rows.map((r) => r.activeDays)),
-		projects: 12,
+		activeDays: {
+			value: Math.max(...sync.rows.map((r) => r.activeDays)),
+			precision: sync.rows.length === 1 ? "exact" : "lower-bound",
+		},
+		projects: {
+			value: 12,
+			precision: sync.rows.length === 1 ? "exact" : "lower-bound",
+		},
 		windowDays: 30,
 		from: "2026-07-05",
 		to: "2026-08-03",

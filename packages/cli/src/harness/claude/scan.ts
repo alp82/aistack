@@ -20,7 +20,11 @@ import {
 	type ScanStats,
 	windowStartMs,
 } from "../shared/window.js";
-import { type Aggregate, ingestRecord } from "./analyzer.js";
+import {
+	type Aggregate,
+	ingestRecord,
+	projectWorkspaceDirectory,
+} from "./analyzer.js";
 
 export { type ScanStats, windowStartMs };
 
@@ -98,6 +102,7 @@ export async function scan(
 	// ~/.config/claude may be symlinked together). Without this guard the same
 	// file is ingested twice and the record/line/block counters silently double.
 	const visited = new Set<string>();
+	const projectWorkspaces = new Map<string, string>();
 
 	for (const root of opts.roots ?? transcriptRoots()) {
 		if (!(await exists(root))) continue;
@@ -139,7 +144,13 @@ export async function scan(
 			stats.filesRead++;
 			if (opts.onProgress && agg.files % 200 === 0) opts.onProgress(agg.files);
 			try {
-				await ingestFile(agg, file, projectDir, opts.sinceMs);
+				await ingestFile(
+					agg,
+					file,
+					projectDir,
+					projectWorkspaces,
+					opts.sinceMs,
+				);
 			} catch {
 				// Swallow deliberately: the error object carries the absolute path.
 				stats.filesUnreadable++;
@@ -163,8 +174,10 @@ async function ingestFile(
 	agg: Aggregate,
 	file: string,
 	projectDir: string,
+	projectWorkspaces: Map<string, string>,
 	sinceMs?: number,
 ): Promise<void> {
+	let projectWorkspace = projectWorkspaces.get(projectDir) ?? projectDir;
 	const rl = readline.createInterface({
 		input: createReadStream(file, { encoding: "utf8" }),
 		crlfDelay: Number.POSITIVE_INFINITY,
@@ -179,6 +192,12 @@ async function ingestFile(
 			agg.parseErrors++;
 			continue;
 		}
+		const cwd = projectWorkspaceDirectory(rec);
+		if (cwd) {
+			agg.projectDirs.delete(projectDir);
+			projectWorkspace = cwd;
+			projectWorkspaces.set(projectDir, cwd);
+		}
 		if (sinceMs !== undefined) {
 			const ts =
 				rec &&
@@ -189,6 +208,6 @@ async function ingestFile(
 					: Number.NaN;
 			if (Number.isNaN(ts) || ts < sinceMs) continue;
 		}
-		ingestRecord(agg, rec, { projectDir });
+		ingestRecord(agg, rec, { projectDir: projectWorkspace });
 	}
 }

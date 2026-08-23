@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -161,28 +162,34 @@ export function saveSettings(
 }
 
 const PROJECTS_FILE = join(CONFIG_DIR, "projects.json");
+const PROJECT_WORKSPACE_ID_RE = /^[A-Za-z0-9_-]{22}$/;
 
 interface ProjectEntry {
 	excluded?: string[];
+	workspaceId?: string;
 }
 
 interface ProjectsData {
 	[directory: string]: ProjectEntry;
 }
 
-function readProjects(): ProjectsData {
-	if (!existsSync(PROJECTS_FILE)) return {};
+function readProjects(file: string = PROJECTS_FILE): ProjectsData {
+	if (!existsSync(file)) return {};
 	try {
-		const raw = JSON.parse(readFileSync(PROJECTS_FILE, "utf-8"));
+		const raw = JSON.parse(readFileSync(file, "utf-8"));
 		// Tolerate legacy entries: string values (oldest) and objects that still
-		// carry a `name` field. Only `excluded` is read going forward.
+		// carry a `name` field. Only exclusions and project workspace identifiers survive.
 		const data: ProjectsData = {};
 		for (const [key, value] of Object.entries(raw)) {
 			if (typeof value === "string") {
 				data[key] = {};
 			} else if (value && typeof value === "object") {
 				const excluded = (value as { excluded?: string[] }).excluded;
-				data[key] = Array.isArray(excluded) ? { excluded } : {};
+				const workspaceId = (value as { workspaceId?: unknown }).workspaceId;
+				data[key] = {
+					...(Array.isArray(excluded) ? { excluded } : {}),
+					...(typeof workspaceId === "string" ? { workspaceId } : {}),
+				};
 			}
 		}
 		return data;
@@ -191,19 +198,43 @@ function readProjects(): ProjectsData {
 	}
 }
 
-function writeProjects(data: ProjectsData): void {
-	mkdirSync(CONFIG_DIR, { recursive: true });
-	writeFileSync(PROJECTS_FILE, JSON.stringify(data, null, 2));
+function writeProjects(data: ProjectsData, file: string = PROJECTS_FILE): void {
+	mkdirSync(dirname(file), { recursive: true });
+	writeFileSync(file, JSON.stringify(data, null, 2));
 }
 
-export function getExcludedPaths(directory: string): string[] {
-	return readProjects()[directory]?.excluded ?? [];
+export function getProjectWorkspaceId(
+	directory: string,
+	deps: { file?: string; createId?: () => string } = {},
+): string {
+	const file = deps.file ?? PROJECTS_FILE;
+	const data = readProjects(file);
+	const held = data[directory]?.workspaceId;
+	if (held && PROJECT_WORKSPACE_ID_RE.test(held)) return held;
+	const workspaceId = (
+		deps.createId ?? (() => randomBytes(16).toString("base64url"))
+	)();
+	data[directory] = { ...data[directory], workspaceId };
+	writeProjects(data, file);
+	return workspaceId;
 }
 
-export function saveExcludedPaths(directory: string, excluded: string[]): void {
-	const data = readProjects();
+export function getExcludedPaths(
+	directory: string,
+	file: string = PROJECTS_FILE,
+): string[] {
+	return readProjects(file)[directory]?.excluded ?? [];
+}
+
+export function saveExcludedPaths(
+	directory: string,
+	excluded: string[],
+	file: string = PROJECTS_FILE,
+): void {
+	const data = readProjects(file);
 	data[directory] = {
+		...data[directory],
 		excluded: excluded.length > 0 ? excluded : undefined,
 	};
-	writeProjects(data);
+	writeProjects(data, file);
 }

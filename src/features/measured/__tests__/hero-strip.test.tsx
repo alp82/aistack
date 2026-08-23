@@ -45,6 +45,24 @@ describe("with a snapshot", () => {
 		);
 	});
 
+	it("qualifies active days when legacy rows make them a lower bound", () => {
+		const snapshot = buildSnapshot();
+		setup(
+			buildSnapshot({
+				activity: {
+					...snapshot.activity,
+					activeDays: {
+						...snapshot.activity.activeDays,
+						precision: "lower-bound",
+					},
+				},
+			}),
+		);
+		expect(
+			screen.getByText("at least 22 of the last 30 days"),
+		).toBeInTheDocument();
+	});
+
 	it("carries no money", () => {
 		setup(buildSnapshot());
 		const text = document.body.textContent ?? "";

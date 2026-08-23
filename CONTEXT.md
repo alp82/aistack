@@ -129,6 +129,21 @@ signed token every send already carries, and it needs no login.
 
 ### Workflow surface
 
+**Project workspace**:
+One local directory where a harness recorded activity. Clones in different directories or on
+different machines are different project workspaces.
+_Avoid_: project (the Projects section shows authored portfolio projects)
+
+**Project workspace identifier**:
+A persistent random value that represents one project workspace in measured payloads. The
+identifier reveals neither the directory path nor the repository name.
+_Avoid_: project key, workspace ID
+
+**Lower-bound reading**:
+A merged measurement whose stored evidence proves at least the displayed value but cannot
+recover the exact union. A lower-bound reading becomes exact when every visible source carries a set.
+_Avoid_: max (that names the old calculation, not what the value means)
+
 **Pool**:
 The full set of workflow metrics a stack can show. The composed section surfaces a few of
 them and the pool view lists all of them.

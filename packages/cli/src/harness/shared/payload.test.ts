@@ -50,6 +50,10 @@ const CLEAN_STATS: ScanStats = {
 const HARNESS_PARAMS = {
 	harnessName: "claude-code",
 	builtinTools: BUILTIN_TOOLS,
+	projectWorkspaceId: (directory: string) =>
+		directory.includes("other")
+			? "AAAAAAAAAAAAAAAAAAAAAA"
+			: "BBBBBBBBBBBBBBBBBBBBBB",
 } as const;
 
 const config = (over: Partial<SyncConfig> = {}): SyncConfig => ({
@@ -739,7 +743,7 @@ describe("window and activity", () => {
 		expect(payload.capturedAt).toBe(NOW);
 	});
 
-	it("counts active days only inside the reported window", () => {
+	it("publishes sorted active day dates only inside the reported window", () => {
 		// A clock-skewed, imported, or restored transcript dated in the future
 		// would otherwise push activeDays past `days`.
 		const payload = build(
@@ -751,10 +755,15 @@ describe("window and activity", () => {
 			],
 			{ windowDays: 30 },
 		);
-		expect(payload.activity.activeDays).toBe(2);
+		expect(payload.schemaVersion).toBe(2);
+		expect(payload.activity.activeDayDates).toEqual([
+			"2026-07-24",
+			"2026-07-25",
+		]);
+		expect(payload.activity).not.toHaveProperty("activeDays");
 	});
 
-	it("publishes project COUNT only, never a directory name", () => {
+	it("publishes sorted project workspace identifiers, never a directory name", () => {
 		const agg = createAggregate();
 		ingestRecord(agg, assistant({}), { projectDir: "-home-u-acme-secret" });
 		ingestRecord(agg, assistant({}), { projectDir: "-home-u-other" });
@@ -766,8 +775,13 @@ describe("window and activity", () => {
 			windowDays: 30,
 			...HARNESS_PARAMS,
 		});
-		expect(payload.activity.projects).toBe(2);
+		expect(payload.activity.projectKeys).toEqual([
+			"AAAAAAAAAAAAAAAAAAAAAA",
+			"BBBBBBBBBBBBBBBBBBBBBB",
+		]);
+		expect(payload.activity).not.toHaveProperty("projects");
 		expect(JSON.stringify(payload)).not.toContain("acme-secret");
+		expect(JSON.stringify(payload)).not.toContain("-home-u-other");
 	});
 
 	it("reports the newest observed harness version", () => {
