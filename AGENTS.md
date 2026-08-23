@@ -102,55 +102,53 @@ components, never the library.
 * Every chart server-renders complete SVG. `ssr.test.tsx` asserts real marks, so
   a library regression fails the build instead of shipping blank charts.
 
-## News drafting
+## News
 
-The news inbox is drafted by hand, in a Claude session, on the owner's
-subscription. The backend holds no LLM call and no API key (ADR-0003).
+Everything about the news pipeline starts here.
 
-```sh
-/news-draft                              # the skill: reads the inbox, writes drafts/news/*.md
-node scripts/news-drafts.ts list         # the same read, on its own
-node scripts/news-drafts.ts apply        # write the merged drafts into prod
-node scripts/news-drafts.ts apply --dry-run
-```
+* **[docs/news-runbook.md](docs/news-runbook.md)** is the operating procedure:
+  the collection crons, the inbox, drafting, authoring an issue, and the send.
+  Read this one first.
+* **[docs/specs/news-pipeline.md](docs/specs/news-pipeline.md)** is the design:
+  the sourcing phases, the re-serving policy table, and the two projections.
+* **[ADR-0003](docs/adr/0003-news-drafting-in-the-owner-session.md)**: drafting
+  runs in the owner's Claude session. The backend holds no LLM call and no API
+  key.
+* **[ADR-0004](docs/adr/0004-a-hacker-news-story-joins-the-item-a-feed-collected.md)**:
+  a Hacker News story joins the item a feed already collected.
+* **[ADR-0005](docs/adr/0005-the-x-profile-lane-is-owner-triggered-only.md)**: the
+  X profile lane is owner-triggered only. No cron calls it.
+* **[CONTEXT.md](CONTEXT.md)** defines the vocabulary: collector, lane, item
+  stream, issue, prepare, publish, subscriber.
 
-The order is: run the skill, review and merge `drafts/news/*.md`, then apply.
-Apply deletes each file it wrote, and leaves every file it skipped. A row whose
-summary the owner already typed is skipped, never overwritten.
-
-Both commands reach prod through `scripts/convex-prod.sh`, like migrations. The
-Convex functions are internal (`convex/newsDrafting.ts`), because an admin key
-carries no user identity and the public news functions check `isAdmin`. Deploy
-first, the same way a migration does: the functions must exist on prod before
-either command runs.
-
-## Newsletter
-
-Issues are code (#202): there is no compose page. One issue is one entry in
-`src/newsletter/issues.ts` (number, slug, subject, preview, intro, and the
-items in send order, named by URL). The summaries are NOT there: they live on
-the item rows, written by the drafting skill and edited in the inbox, and both
-projections read them from there.
+The two command sets, in the order they are used:
 
 ```sh
-node scripts/newsletter.ts list             # authored issues, and their state on prod
-node scripts/newsletter.ts prepare issue-1  # resolve the URLs into the draft row
-node scripts/newsletter.ts preview issue-1  # write the exact send HTML to a file
+# Drafting. Run the skill, review and merge drafts/news/*.md, then apply.
+/news-draft
+node scripts/news-drafts.ts list
+node scripts/news-drafts.ts apply [--dry-run]
+
+# The newsletter. An issue is authored in src/newsletter/issues.ts.
+node scripts/newsletter.ts list
+node scripts/newsletter.ts prepare issue-1
+node scripts/newsletter.ts preview issue-1
 node scripts/newsletter.ts test issue-1 --to you@example.com
 node scripts/newsletter.ts send issue-1 --yes
 ```
 
-The same four acts sit in the admin News tab, under Newsletter. Both reach prod
-through `scripts/convex-prod.sh`, like migrations, so deploy first.
+Both reach prod through `scripts/convex-prod.sh`, like migrations, and both call
+INTERNAL Convex functions: an admin key carries no user identity, and the public
+news functions check `isAdmin`. **Deploy first**, the same way a migration does.
 
-The order is: author the issue, collect and draft its items, approve them,
-prepare, preview, test-send, send. `prepare` is idempotent and names every URL
-that is missing, still in the inbox, or still undrafted, so run it, work the
-inbox, and run it again. A sent issue is never edited, and a second send is
-refused.
+Three rules that bite if forgotten:
 
-Public surfaces: `/news` (the archive), `/news/<slug>` (one issue), `/subscribe`,
-and `/email/preferences?token=...` (both email categories, no login).
+* A source collects **forward only**. `collectFrom` is the moment the row is
+  created, so a new source never backfills unless you move it.
+* A **sent issue is never edited**. `prepare` refuses one, and a second send is
+  refused.
+* Item **summaries live on the item rows**, not in the issue definition. Both
+  projections read them from there.
 
 ## Icon Migration
 
