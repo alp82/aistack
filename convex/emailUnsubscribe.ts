@@ -1,6 +1,19 @@
 import { httpAction } from './_generated/server'
 import { api, internal } from './_generated/api'
 import { verifyUnsubscribeToken } from './emailToken'
+import { getAppUrl } from './httpCli'
+
+/**
+ * The link to the per-category preferences page (#201).
+ *
+ * One category off is rarely the whole answer: someone who stops the newsletter
+ * may still want an account announcement, and the only place both toggles are
+ * visible at once is that page. It carries the SAME token, because the token
+ * proves the address and nothing else.
+ */
+function preferencesLink(token: string): string {
+  return `<p style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;font-size:13px;color:#737373;line-height:20px;margin:28px 0 0"><a href="${getAppUrl()}/email/preferences?token=${token}" style="color:#0a0a0a">Choose which emails you get</a></p>`
+}
 
 // Branded HTML shell mirroring the inline-HTML brand idiom from
 // sendWaitlistConfirmEmail (dark #111 chrome, lime #a3e635 accent, sharp
@@ -165,7 +178,7 @@ export const unsubscribe = httpAction(async (ctx, request) => {
       brandedPage({
         label: '// Unsubscribe',
         heading: "You've Been Unsubscribed",
-        body: `<p style="font-size:16px;line-height:28px;color:#3d3d3d;margin:0">${escapeHtml(email)} will no longer receive ${label}. Your other email preferences are unchanged.</p>`,
+        body: `<p style="font-size:16px;line-height:28px;color:#3d3d3d;margin:0">${escapeHtml(email)} will no longer receive ${label}. Your other email preferences are unchanged.</p>${preferencesLink(token ?? '')}`,
       }),
       200,
     )
@@ -179,7 +192,7 @@ export const unsubscribe = httpAction(async (ctx, request) => {
       body: `<p style="font-size:16px;line-height:28px;color:#3d3d3d;margin:0 0 32px">Stop receiving ${label} at <strong>${escapeHtml(email)}</strong>? Your other email preferences stay as they are.</p>
       <form method="POST" action="/api/email/unsubscribe?token=${token}&amp;category=${category}">
         <button type="submit" style="display:inline-block;padding:16px 32px;background-color:#a3e635;color:#0a1f02;border:none;text-decoration:none;font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;font-size:15px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer">Unsubscribe</button>
-      </form>`,
+      </form>${preferencesLink(token ?? '')}`,
     }),
     200,
   )

@@ -19,3 +19,6 @@ todos.json
 .alp-river/
 
 .forge/
+
+# Rendered newsletter previews (scripts/newsletter.ts preview). Generated, never reviewed.
+drafts/newsletter/

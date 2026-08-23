@@ -52,7 +52,7 @@ export const Route = createFileRoute("/admin")({
 		),
 		news: coerceEnum(
 			search.news,
-			["inbox", "sources", "topics"] as const,
+			["inbox", "sources", "topics", "newsletter"] as const,
 			"inbox",
 		),
 	}),

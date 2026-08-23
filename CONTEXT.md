@@ -58,7 +58,13 @@ The push projection. A weekly email composed from stream items.
 _Avoid_: digest, broadcast (a broadcast is a one-off announcement email)
 
 **Issue**:
-One week's composed newsletter, with its own public archive page.
+One week's composed newsletter, with its own public archive page. It is authored in code,
+in `src/newsletter/issues.ts`, and a sent issue is never edited.
+
+**Prepare**:
+Resolving an authored issue's URLs against the item stream into its draft row. It reports
+every URL that is missing, unapproved, or undrafted, and it refuses a sent issue.
+_Avoid_: compose (there is no compose page)
 
 **Knowledge base**:
 The pull projection. Stream items grouped by topic on a public page.
@@ -112,6 +118,14 @@ important updates. Every non-transactional send belongs to exactly one category.
 
 **Important updates**:
 The email category for product announcements outside the newsletter.
+
+**Subscriber**:
+An address that asked for the newsletter on the public subscribe page. Members and the
+waitlist are already in the audience, so this is the newcomer who is neither.
+
+**Preferences page**:
+The page that shows both email categories for one address at once. It is reached by the
+signed token every send already carries, and it needs no login.
 
 ### Workflow surface
 
