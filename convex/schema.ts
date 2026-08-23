@@ -1176,6 +1176,13 @@ export default defineSchema({
     draftedAt: v.optional(v.number()),
     /** When the owner last moved this item out of the inbox. */
     decidedAt: v.optional(v.number()),
+    /** The send that published this item and its durable license notice. */
+    knowledgeBasePublication: v.optional(
+      v.object({
+        publishedAt: v.number(),
+        attribution: v.optional(v.string()),
+      })
+    ),
     updatedAt: v.number(),
   })
     // Dedupe. Every write path asks this one question first.

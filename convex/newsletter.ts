@@ -45,6 +45,7 @@ import {
 import { getAppUrl } from './httpCli'
 import { isAdmin } from './lib/admin'
 import { newsUrlKey } from './lib/feed'
+import { publicationRecord } from './lib/knowledgeBasePublication'
 import {
   buildUnsubscribeUrls,
   mergeAudience,
@@ -352,12 +353,23 @@ export const markSent = internalMutation({
       .withIndex('by_slug', (q) => q.eq('slug', args.slug))
       .first()
     if (!issue) return null
+    const now = Date.now()
+    const readyItems = await ctx.db
+      .query('newsItems')
+      .withIndex('by_state_collectedAt', (q) => q.eq('state', 'approved'))
+      .collect()
+    for (const item of readyItems) {
+      if (item.knowledgeBasePublication) continue
+      const publication = await publicationRecord(ctx, item, now)
+      if (!publication) continue
+      await ctx.db.patch(item._id, { knowledgeBasePublication: publication })
+    }
     await ctx.db.patch(issue._id, {
       status: 'sent',
-      sentAt: Date.now(),
+      sentAt: now,
       sentCount: args.sentCount,
       failedCount: args.failedCount,
-      updatedAt: Date.now(),
+      updatedAt: now,
     })
     return issue._id
   },
