@@ -403,6 +403,7 @@ export const stackCollect = httpAction(async (ctx, request) => {
 /** The shape a client with no resolvable stack gets: every category, no names. */
 const EMPTY_OPT_INS = {
   builtinTools: [],
+  machines: [],
   mcpServers: [],
   skills: [],
   subagents: [],

@@ -183,11 +183,12 @@ export const ReconcileAtomKind = v.union(
   v.literal('skill')
 )
 
-// The five inventory classes a published name can belong to - the same five the
-// payload's `inventory` block carries (#33), so an opt-in is addressed exactly
-// the way the client filters.
+// Every class a published name can belong to. Inventory names are filtered on
+// the publishing machine. Machine names are gated when the server builds a
+// public measured response (#250).
 export const PublishedNameCategory = v.union(
   v.literal('builtinTools'),
+  v.literal('machines'),
   v.literal('mcpServers'),
   v.literal('skills'),
   v.literal('subagents'),
@@ -897,6 +898,20 @@ export default defineSchema({
   })
     .index('by_stack_capturedAt', ['stackId', 'capturedAt'])
     .index('by_stack_harness_capturedAt', ['stackId', 'harness', 'capturedAt']),
+
+  // Private registry for the public machine position (#250). The machine name
+  // remains the source key on snapshots. This table only preserves the first
+  // position assigned to that name when retention removes its earliest row.
+  measuredMachineOrdinals: defineTable({
+    stackId: v.id('stacks'),
+    machine: v.string(),
+    /** Stable, one-based position. Removed machines leave gaps. */
+    ordinal: v.number(),
+    /** Server time when this position was first assigned. */
+    assignedAt: v.number(),
+  })
+    .index('by_stack', ['stackId'])
+    .index('by_stack_machine', ['stackId', 'machine']),
 
   // The ONLY durable reconcile state (#33 decision 12). Suggestions themselves
   // are derived on read from (latest snapshot x authored toolSubscriptions), so

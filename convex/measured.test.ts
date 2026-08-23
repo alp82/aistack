@@ -20,6 +20,7 @@ const DAY = 24 * 60 * 60 * 1000
 
 const EMPTY_OPT_INS = {
   builtinTools: [],
+  machines: [],
   mcpServers: [],
   skills: [],
   subagents: [],
@@ -643,6 +644,149 @@ describe('publishForToken - the destination comes from the token', () => {
 // ---------------------------------------------------------------------------
 
 describe('getCurrentByStackSlug', () => {
+  test('assigns ordinals by first sight, not by the private machine name', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+
+    for (const [capturedAt, machine] of [
+      [1000, 'z-machine'],
+      [2000, 'a-machine'],
+    ] as const) {
+      await t.mutation(internal.measured.publishSnapshot, {
+        stackId,
+        machine,
+        payload: payload({ capturedAt }),
+      })
+    }
+
+    const current = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(current?.harnesses.map((h) => h.machineOrdinal)).toEqual([2, 1])
+  })
+
+  test('keeps first-sight ordinals after retention deletes the first row', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const oldDay = Date.UTC(2026, 0, 15)
+
+    for (const [offset, machine] of [
+      [1, 'a-machine'],
+      [2, 'b-machine'],
+      [3, 'a-machine'],
+    ] as const) {
+      await t.mutation(internal.measured.publishSnapshot, {
+        stackId,
+        machine,
+        payload: payload({ capturedAt: oldDay + offset * 3_600_000 }),
+      })
+    }
+
+    const before = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(before?.harnesses.map((h) => h.machineOrdinal)).toEqual([1, 2])
+
+    await t.mutation(internal.measured.gcSnapshots, {})
+
+    const after = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(after?.harnesses.map((h) => h.machineOrdinal)).toEqual([1, 2])
+  })
+
+  test('backfills legacy machines before a sync assigns a position', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    await t.run(async (ctx) => {
+      for (const [receivedAt, machine] of [
+        [100, 'z-machine'],
+        [200, 'a-machine'],
+      ] as const) {
+        await ctx.db.insert('measuredSnapshots', {
+          stackId,
+          capturedAt: receivedAt,
+          receivedAt,
+          schemaVersion: 1,
+          harness: 'claude-code',
+          machine,
+          payload: payload({ capturedAt: receivedAt }),
+        })
+      }
+    })
+
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      machine: 'a-machine',
+      payload: payload({ capturedAt: 300 }),
+    })
+
+    const current = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(current?.harnesses.map((h) => h.machineOrdinal)).toEqual([2, 1])
+  })
+
+  test('withholds unticked machine names, keeps stable ordinals, and names them for the owner', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const slug = `my-stack-${shortId}`
+
+    for (const [harness, machine] of [
+      ['claude-code', 'workstation'],
+      ['codex', 'vps'],
+      ['codex', 'workstation'],
+    ] as const) {
+      await t.mutation(internal.measured.publishSnapshot, {
+        stackId,
+        machine,
+        payload: payload({ harness: { name: harness, version: '1.0.0' } }),
+      })
+    }
+
+    const publicView = await t.query(api.measured.getCurrentByStackSlug, { slug })
+    expect(
+      publicView?.harnesses.map((h) => [h.harness.name, h.machine, h.machineOrdinal]),
+    ).toEqual([
+      ['claude-code', null, 1],
+      ['codex', null, 2],
+      ['codex', null, 1],
+    ])
+
+    await t.withIdentity(IDENTITY).mutation(api.measured.addPublishedNameOptIns, {
+      stackId,
+      names: [{ category: 'machines', name: 'vps' }],
+    })
+    const readerView = await t
+      .withIdentity(OTHER_IDENTITY)
+      .query(api.measured.getCurrentByStackSlug, { slug })
+    expect(readerView?.harnesses.map((h) => h.machine)).toEqual([
+      null,
+      'vps',
+      null,
+    ])
+
+    await t.withIdentity(IDENTITY).mutation(api.measured.removePublishedNameOptIns, {
+      stackId,
+      names: [{ category: 'machines', name: 'vps' }],
+    })
+    const revokedView = await t.query(api.measured.getCurrentByStackSlug, { slug })
+    expect(revokedView?.harnesses.map((h) => h.machine)).toEqual([
+      null,
+      null,
+      null,
+    ])
+
+    const ownerView = await t
+      .withIdentity(IDENTITY)
+      .query(api.measured.getCurrentByStackSlug, { slug })
+    expect(ownerView?.harnesses.map((h) => h.machine)).toEqual([
+      'workstation',
+      'vps',
+      'workstation',
+    ])
+  })
+
   test('returns the newest snapshot by capturedAt, not by insertion order', async () => {
     const t = convexTest(schema, modules)
     const { stackId, shortId } = await seedStack(t)
@@ -840,6 +984,68 @@ describe('getHistoryByStackSlug', () => {
       ...(m.usd === undefined ? {} : { apiEquivalentUSD: m.usd }),
     }))
   }
+
+  test('uses the current machine ordinals in every point and gates each name', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const slug = `my-stack-${shortId}`
+    const now = Date.now()
+
+    for (const [ago, harness, machine] of [
+      [3 * HOUR, 'claude-code', 'workstation'],
+      [2 * HOUR, 'codex', 'vps'],
+      [HOUR, 'codex', 'workstation'],
+    ] as const) {
+      await t.mutation(internal.measured.publishSnapshot, {
+        stackId,
+        machine,
+        payload: payload({
+          capturedAt: now - ago,
+          harness: { name: harness, version: '1.0.0' },
+        }),
+      })
+    }
+
+    const publicView = await t.query(api.measured.getHistoryByStackSlug, { slug })
+    expect(
+      publicView?.points.map((point) =>
+        point.harnesses.map((h) => [h.name, h.machine, h.machineOrdinal]),
+      ),
+    ).toEqual([
+      [['claude-code', null, 1]],
+      [
+        ['claude-code', null, 1],
+        ['codex', null, 2],
+      ],
+      [
+        ['claude-code', null, 1],
+        ['codex', null, 2],
+        ['codex', null, 1],
+      ],
+    ])
+
+    await t.withIdentity(IDENTITY).mutation(api.measured.addPublishedNameOptIns, {
+      stackId,
+      names: [{ category: 'machines', name: 'vps' }],
+    })
+    const readerView = await t
+      .withIdentity(OTHER_IDENTITY)
+      .query(api.measured.getHistoryByStackSlug, { slug })
+    expect(readerView?.points.at(-1)?.harnesses.map((h) => h.machine)).toEqual([
+      null,
+      'vps',
+      null,
+    ])
+
+    const ownerView = await t
+      .withIdentity(IDENTITY)
+      .query(api.measured.getHistoryByStackSlug, { slug })
+    expect(ownerView?.points.at(-1)?.harnesses.map((h) => h.machine)).toEqual([
+      'workstation',
+      'vps',
+      'workstation',
+    ])
+  })
 
   test('returns one point per sync, oldest first', async () => {
     const t = convexTest(schema, modules)
@@ -1664,6 +1870,31 @@ describe('sync config', () => {
 
 describe('published-name opt-ins', () => {
   const skill = (name: string) => ({ category: 'skills' as const, name })
+  const machine = (name: string) => ({ category: 'machines' as const, name })
+
+  test('ticks and revokes a machine name through the published-name gate', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const as = t.withIdentity(IDENTITY)
+
+    await as.mutation(api.measured.addPublishedNameOptIns, {
+      stackId,
+      names: [machine('workstation')],
+    })
+
+    let config = await t.query(internal.measured.getSyncConfigForStack, {
+      stackId,
+    })
+    expect(config.optIns.machines).toEqual(['workstation'])
+
+    await as.mutation(api.measured.removePublishedNameOptIns, {
+      stackId,
+      names: [machine('workstation')],
+    })
+
+    config = await t.query(internal.measured.getSyncConfigForStack, { stackId })
+    expect(config.optIns.machines).toEqual([])
+  })
 
   test('ticked names ride down with the stack half of the sync config', async () => {
     const t = convexTest(schema, modules)
@@ -2236,7 +2467,11 @@ const atom = (name: string, count = 1, group: string | null = null) => ({
   group,
 })
 
-async function seedTokenFor(t: Ctx, stackId?: Id<'stacks'>) {
+async function seedTokenFor(
+  t: Ctx,
+  stackId?: Id<'stacks'>,
+  name?: string,
+) {
   const token = `tok_${Math.random().toString(36).slice(2)}`
   await t.run(async (ctx) =>
     ctx.db.insert('cliTokens', {
@@ -2244,6 +2479,7 @@ async function seedTokenFor(t: Ctx, stackId?: Id<'stacks'>) {
       scopes: ['collect', 'sync'],
       userId: USER,
       stackId,
+      name,
       createdAt: Date.now(),
       expiresAt: Date.now() + 90 * DAY,
       lastUsedAt: Date.now(),
@@ -2517,6 +2753,41 @@ describe('the review switch', () => {
 })
 
 describe('listKeptPrivate', () => {
+  test('stages the token machine name for the same review and revoke flow', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const workstation = await seedTokenFor(t, stackId, 'workstation')
+    const vps = await seedTokenFor(t, stackId, 'vps')
+
+    await postSync(t, { payload: payload() }, workstation)
+    await postSync(
+      t,
+      {
+        payload: payload(),
+        keptPrivate: keptPrivate({ skills: [atom('private-skill')] }),
+      },
+      vps,
+    )
+
+    const listed = await t
+      .withIdentity(IDENTITY)
+      .query(api.measured.listKeptPrivate, { stackId })
+    expect(listed.names.filter((name) => name.category === 'machines')).toEqual([
+      {
+        category: 'machines',
+        name: 'vps',
+        group: null,
+        published: false,
+      },
+      {
+        category: 'machines',
+        name: 'workstation',
+        group: null,
+        published: false,
+      },
+    ])
+  })
+
   test('returns the staged names with their counts and groups', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
@@ -3066,9 +3337,11 @@ describe('two machines publishing the same harness (#243)', () => {
       payload: payload({ capturedAt: 2000, ...withTokens(4_000, 19) }),
     })
 
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
+    const current = await t
+      .withIdentity(IDENTITY)
+      .query(api.measured.getCurrentByStackSlug, {
+        slug: `my-stack-${shortId}`,
+      })
     expect(current!.activity.totalTokens).toBe(4_004_000)
     expect(current!.activity.sessions).toBe(519)
     expect(current!.harnesses).toHaveLength(2)
@@ -3191,9 +3464,11 @@ describe('two machines publishing the same harness (#243)', () => {
       payload: payload({ capturedAt: now - DAY, ...withTokens(4_100_000, 510) }),
     })
 
-    const history = await t.query(api.measured.getHistoryByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
+    const history = await t
+      .withIdentity(IDENTITY)
+      .query(api.measured.getHistoryByStackSlug, {
+        slug: `my-stack-${shortId}`,
+      })
     expect(history!.points.map((p) => p.tokens)).toEqual([4_000_000, 4_100_000])
     expect(history!.points[0].harnesses[0].machine).toBeNull()
     expect(history!.points[1].harnesses[0].machine).toBe('laptop')
@@ -3221,7 +3496,7 @@ describe('two machines publishing the same harness (#243)', () => {
     expect(history!.points.map((p) => p.tokens)).toEqual([1_000_000, 1_004_000])
   })
 
-  test('the trail narrows to one machine when asked', async () => {
+  test('the trail narrows by ordinal without returning a machine name', async () => {
     const t = convexTest(schema, modules)
     const { stackId, shortId } = await seedStack(t)
     const laptop = await seedToken(t, { stackId, name: 'laptop' })
@@ -3239,10 +3514,29 @@ describe('two machines publishing the same harness (#243)', () => {
 
     const history = await t.query(api.measured.getHistoryByStackSlug, {
       slug: `my-stack-${shortId}`,
-      machine: 'vps',
+      machineOrdinal: 2,
     })
-    expect(history!.machine).toBe('vps')
+    expect(history!.machineOrdinal).toBe(2)
     expect(history!.points.map((p) => p.tokens)).toEqual([4_000])
+    expect(history!.points[0].harnesses[0].machine).toBeNull()
+  })
+
+  test('the trail rejects nonpositive and fractional ordinals', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      machine: 'laptop',
+      payload: payload(),
+    })
+
+    for (const machineOrdinal of [0, -1, 1.5]) {
+      const history = await t.query(api.measured.getHistoryByStackSlug, {
+        slug: `my-stack-${shortId}`,
+        machineOrdinal,
+      })
+      expect(history).toBeNull()
+    }
   })
 })
 

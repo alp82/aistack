@@ -5,6 +5,7 @@ import type { Id } from "../../../convex/_generated/dataModel";
 
 export type NameCategory =
 	| "builtinTools"
+	| "machines"
 	| "mcpServers"
 	| "skills"
 	| "subagents"
