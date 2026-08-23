@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Prototype · alp82/aistack#244 · the sources behind one stack's measured layer · settled</title>
+<!--
+  PROTOTYPE. Throwaway. alp82/aistack#244: what a reader sees when a stack
+  measures from more than one place. Baseline: section 01 Actual Usage on main.
+
+  ================================ THE VERDICT ================================
+
+  Four rounds, 2026-08-23. The design below is settled. Flip to `today` on the
+  bar to compare it against the live section.
+
+  1. THE UNIT IS THE MACHINE. Every harness on one machine folds into one
+     option. ADR-0006's "source" stays the storage key, per harness and machine,
+     and the merge is unchanged. Only the display unit moved.
+
+  2. A DROPDOWN IN THE SECTION HEADER, in the slot "checked 2 hours ago" used to
+     hold. It narrows the WHOLE section: headline, cost, model mix, harness list,
+     stats and trail. It appears only when a stack has more than one machine, and
+     it appears whatever the gate says, falling back to ordinals.
+
+  3. EACH ROW CARRIES the machine label, its tokens and when it was read.
+
+  4. "CHECKED N AGO" MOVES DOWN to the model-mix row, replacing the notch note.
+     It follows the dropdown, so it states the narrowed reading's own freshness.
+
+  5. NOTHING SHIFTS THE LAYOUT. The trigger replaces the meta slot's text and the
+     panel floats over the page. The trigger is the only signal that the section
+     is narrowed, so it carries the chosen machine and turns lime.
+
+  6. REAL MACHINE LABELS PUBLISH, through the same #42/#48 gate as every other
+     user-chosen name. A machine nobody ticked has no publishable name, so the
+     page falls back to a positional ordinal. Nothing about an unticked machine
+     reaches the page, not the label and not the dropdown key.
+
+  7. THE HARNESSES ARE LISTED BELOW the model mix, one row each with its share,
+     between the model rows and the four stat cells. The list appears only when
+     the selection holds more than one harness, so a single-harness stack reads
+     exactly as it does today.
+
+  8. ACTIVE DAYS KEEPS TODAY'S SHAPE: the number over "active days (max)". It
+     understates and says so. Day sets in the payload are the real fix, and they
+     belong to a later ticket.
+
+  9. THE TRAIL STAYS ONE MERGED LINE. Narrowing to a machine narrows it with
+     everything else.
+
+  10. A STACK WITH ONE MACHINE IS UNCHANGED. No dropdown, no harness list, the
+      notch note kept, and no "(max)" when nothing merges. No stack grows a
+      machine label it never asked for.
+
+  ONE THING THE PAGE NO LONGER SAYS. A machine reads as fresh as its newest
+  harness, so a stale harness can hide inside a fresh machine: on the balanced
+  stack the workstation's Claude Code was read an hour ago and its Codex three
+  days ago. Round 3 kept that out of the dropdown and round 4 kept it out of the
+  harness list. It has no home on the page, knowingly, and that is a follow-up.
+
+  ============================== WHAT IS BEHIND IT ==============================
+
+  ROUND 1. Six ways to place the breakdown: today, footnote, source strip,
+  filter, trail-led, owner only. The filter won, with three instructions.
+  ROUND 1 follow-up, from the thread: the unit is the machine.
+  ROUND 2. Four placements. The header slot won, with two instructions: a proper
+  dropdown component, and no layout-shifting extra row.
+  ROUND 3. How much the dropdown carries, plus four questions carried forward.
+  All five answered: label plus tokens plus freshness, real machine labels,
+  today's active days, one merged trail, and harnesses listed below the mix.
+  ROUND 4. The harness list's shape and three edges. All four taken as
+  recommended: rows, hidden at one harness, ordinals before anything is ticked,
+  and the list sits above the stat cells.
+
+  THE CONTROLS.
+
+    STACK   lopsided (real) · balanced · one machine, two harnesses · single
+    GATE    all ticked · partial · none ticked
+    VIEW    reader · owner
+
+  WHAT IS REAL AND WHAT IS INVENTED. The `alppc` figures are the shipped
+  analyzer's own output on the owner's Claude Code history, taken unchanged from
+  `src/features/measured/__tests__/snapshot.fixture.json`: 382 sessions,
+  4,270,365,919 tokens, 6 models, $5,840.02 at API list prices, 22 active days of
+  30. The `curia.sh` machine is shaped to the ticket's description but its figures
+  are invented. The balanced stack is invented end to end, and so is every trail.
+  No live sync feeds this page.
+
+  FINDINGS FOR WHOEVER BUILDS THIS.
+
+  1. The dropdown key is an INDEX, never the machine name. A key built from the
+     name would put it in the DOM and in the URL even for a machine the owner
+     never ticked.
+  2. The section header's meta slot is `display: none` below 768px on the live
+     page. The dropdown lives there, so shipping it means un-hiding that slot.
+  3. Two machines can run different builds of one harness. Under "all machines"
+     there is no single version to print, so a version prints only when the
+     selection agrees on one.
+  4. A harness spread over two machines is only as current as its laggard, so the
+     harness data carries the oldest reading, not the newest.
+  5. `getCurrentByStackSlug` and `getHistoryByStackSlug` both return the raw
+     machine name today (`convex/measured.ts`, the `HarnessSnapshot` and
+     `HistoryPoint` validators). Both have to carry a gated name plus a stable
+     ordinal before any surface renders a machine.
+
+  THE PALETTE COLLISION IS DELIBERATE. The model rows wear the six validated
+  chart slots. A machine or harness set painted from the same six would make
+  `--chart-1` mean both "Claude Fable 5" and "alppc" on one screen. So both wear
+  a neutral lightness ramp here, never the palette and never the accent.
+-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    color-scheme: dark;
+    --bg-canvas: oklch(0.16 0.008 256);
+    --bg-shell: oklch(0.12 0.01 256);
+    --bg-panel: oklch(0.2 0.009 256);
+    --bg-panel-muted: oklch(0.24 0.009 256);
+    --bg-panel-elevated: oklch(0.28 0.01 256);
+    --fg-primary: oklch(0.96 0.004 256);
+    --fg-secondary: oklch(0.82 0.004 256);
+    --fg-muted: oklch(0.68 0.005 256);
+    --accent-lime: oklch(0.78 0.17 132);
+    --accent-lime-contrast: oklch(0.22 0.02 132);
+    --stroke-subtle: oklch(0.55 0.01 256 / 0.45);
+    --stroke-strong: oklch(0.5 0.015 256 / 0.9);
+    --chart-1: #69a621;
+    --chart-2: #9e71fd;
+    --chart-3: #c21977;
+    --chart-4: #4278d2;
+    --chart-5: #00a99b;
+    --chart-6: #e66700;
+    /* Machines and harnesses: a neutral lightness ramp, never the model palette. */
+    --src-1: oklch(0.92 0.004 256);
+    --src-2: oklch(0.72 0.006 256);
+    --src-3: oklch(0.54 0.008 256);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg-canvas);
+    color: var(--fg-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 200px;
+  }
+  .mono { font-family: 'JetBrains Mono', 'Fira Code', Menlo, monospace; }
+
+  /* ---------- prototype chrome (never part of the design) ---------- */
+  .ticket-strip {
+    background: var(--bg-shell);
+    border-bottom: 1px solid var(--stroke-subtle);
+    padding: 10px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.08em;
+    color: var(--fg-muted); text-transform: uppercase;
+  }
+  .ticket-strip b { color: var(--accent-lime); font-weight: 700; }
+
+  .proposal { margin: 20px auto 0; max-width: 80rem; padding: 0 16px; }
+  .proposal-box {
+    border: 2px dashed oklch(0.75 0.09 85 / 0.7);
+    padding: 14px 16px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 1.75;
+    color: var(--fg-secondary);
+  }
+  .proposal-box .tag { color: oklch(0.75 0.09 85); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-size: 10px; display: block; margin-bottom: 8px; }
+  .proposal-box b { color: var(--fg-primary); }
+  .proposal-box .q { display: block; margin-top: 8px; }
+  .proposal-box .q b { color: var(--accent-lime); }
+  .note-box {
+    border: 1px dashed var(--stroke-strong); padding: 9px 12px; margin-top: 12px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em;
+    color: var(--fg-muted); line-height: 1.65;
+  }
+
+  /* ---------- section shell (mirrors the live page) ---------- */
+  section.journey { padding: 40px 16px; border-top: 1px solid var(--stroke-subtle); }
+  @media (min-width: 768px) { section.journey { padding: 60px 24px; } }
+  .shell { max-width: 80rem; margin: 0 auto; }
+  .sec-head {
+    display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--stroke-subtle);
+    padding-bottom: 18px; margin-bottom: 28px;
+  }
+  .sec-index { font-family: 'JetBrains Mono', monospace; font-size: 40px; font-weight: 800; line-height: 1; color: var(--stroke-strong); }
+  @media (min-width: 768px) { .sec-index { font-size: 64px; } }
+  .sec-kicker { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.25em; text-transform: uppercase; color: var(--accent-lime); margin: 0; }
+  .sec-title { font-size: 26px; font-weight: 900; letter-spacing: -0.02em; text-transform: uppercase; margin: 4px 0 0; line-height: 1; }
+  @media (min-width: 768px) { .sec-title { font-size: 36px; } }
+  .head-copy { flex: 1 1 auto; min-width: 0; }
+  /* The live page hides this slot below 768px. Finding 2. */
+  .sec-meta { display: none; font-family: 'JetBrains Mono', monospace; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--fg-muted); }
+  @media (min-width: 768px) { .sec-meta { display: block; } }
+  /* The dropdown lives here, so it has to be visible at every width. */
+  .sec-meta.always { display: block; flex: 0 0 auto; }
+
+  .mono-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.25em; text-transform: uppercase; color: var(--fg-muted); }
+
+  .body-grid { display: grid; gap: 32px; }
+  @media (min-width: 768px) { .body-grid { grid-template-columns: minmax(0, 22rem) 1fr; gap: 40px; } }
+
+  /* ---------- the headline block ---------- */
+  .metric { position: relative; width: 100%; padding: 4px 0; }
+  .metric .water { position: absolute; inset: 0; overflow: hidden; opacity: 0.16; pointer-events: none; }
+  .metric .water svg { width: 100%; height: 100%; display: block; }
+  .metric .inner { position: relative; padding: 8px 12px 12px; }
+  .big { font-family: 'JetBrains Mono', monospace; font-size: 56px; font-weight: 800; line-height: 0.95; letter-spacing: -0.03em; }
+  @media (min-width: 768px) { .big { font-size: 72px; } }
+  .cap { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--fg-muted); margin-top: 6px; }
+  .usd { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700; margin-top: 20px; letter-spacing: -0.02em; }
+  @media (min-width: 768px) { .usd { font-size: 34px; } }
+  .chip {
+    display: inline-flex; align-items: center; border: 1px solid var(--stroke-subtle);
+    padding: 3px 7px; font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    letter-spacing: 0.12em; color: var(--fg-muted);
+  }
+  .chip-row { margin: 12px 0 0 12px; }
+
+  /* ---------- model rows ---------- */
+  .mix-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; margin-bottom: 16px; min-height: 26px; }
+  .mix-head .kick { color: var(--accent-lime); }
+  .mix-note { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); margin: 0; }
+  .rows { border-top: 1px solid var(--stroke-subtle); border-bottom: 1px solid var(--stroke-subtle); }
+  .row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--stroke-subtle); }
+  .row:first-child { border-top: 0; }
+  .row .swatch { width: 12px; height: 12px; flex: 0 0 12px; }
+  .row .name { width: 116px; flex: 0 0 116px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (min-width: 768px) { .row .name { width: 160px; flex-basis: 160px; font-size: 14px; } }
+  .row .bar { position: relative; flex: 1; height: 26px; background: var(--bg-panel); }
+  .row .bar > i { position: absolute; top: 0; bottom: 0; left: 0; display: block; }
+  .row .notch { position: absolute; top: -4px; bottom: -4px; width: 6px; transform: translateX(-50%);
+    background-image: repeating-linear-gradient(135deg, var(--fg-primary) 0 2px, var(--bg-canvas) 2px 4px); }
+  .row .pct { width: 50px; flex: 0 0 50px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; }
+  @media (min-width: 768px) { .row .pct { width: 56px; flex-basis: 56px; font-size: 14px; } }
+  .row .drift { width: 38px; flex: 0 0 38px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); }
+
+  /* ---------- the harness list, below the model mix ---------- */
+  .harn { margin-top: 16px; }
+  .harn-kick { margin: 0 0 8px; }
+  .harn-rows { border-bottom: 1px solid var(--stroke-subtle); }
+  .harn-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--stroke-subtle); }
+  .harn-row .name { width: 116px; flex: 0 0 116px; font-size: 12px; color: var(--fg-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (min-width: 768px) { .harn-row .name { width: 160px; flex-basis: 160px; } }
+  .harn-row .bar { position: relative; flex: 1; height: 12px; background: var(--bg-panel); }
+  .harn-row .bar > i { position: absolute; inset: 0 auto 0 0; display: block; }
+  .harn-row .pct { width: 50px; flex: 0 0 50px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--fg-secondary); }
+  @media (min-width: 768px) { .harn-row .pct { width: 56px; flex-basis: 56px; } }
+  .harn-row .tok { width: 54px; flex: 0 0 54px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); }
+
+  /* ---------- stats ---------- */
+  .stats { margin-top: 24px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); }
+  @media (min-width: 640px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+  .stat { background: var(--bg-canvas); padding: 14px; }
+  .stat .v { font-family: 'JetBrains Mono', monospace; font-size: 19px; font-weight: 800; }
+  .stat .l { margin-top: 5px; }
+
+  /* =====================================================================
+     THE DROPDOWN. A real component: a trigger, a floating panel, a listbox.
+     It never occupies flow space, so nothing below it moves when it opens.
+     ===================================================================== */
+  .drop { position: relative; display: inline-block; text-align: left; }
+  .drop-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: transparent; border: 1px solid var(--stroke-subtle); border-radius: 0;
+    color: var(--fg-primary); cursor: pointer; padding: 7px 10px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.06em;
+    max-width: min(18rem, calc(100vw - 40px));
+  }
+  .drop-trigger:hover { border-color: var(--stroke-strong); }
+  .drop-trigger:focus-visible { outline: 2px solid var(--accent-lime); outline-offset: 1px; }
+  .drop-trigger .lead {
+    font-size: 9.5px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--fg-muted); flex: 0 0 auto;
+  }
+  .drop-trigger .val { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; }
+  .drop-trigger .caret { flex: 0 0 auto; color: var(--fg-muted); font-size: 9px; }
+  .drop.on .drop-trigger { border-color: var(--accent-lime); color: var(--accent-lime); }
+  .drop.on .drop-trigger .caret { color: var(--accent-lime); }
+
+  .drop-panel {
+    position: absolute; z-index: 30; top: calc(100% + 6px); right: 0;
+    min-width: 17rem; max-width: min(24rem, calc(100vw - 32px));
+    background: var(--bg-panel); border: 2px solid var(--stroke-strong);
+    box-shadow: 6px 6px 0 var(--stroke-strong);
+  }
+  .drop-opt {
+    display: block; width: 100%; text-align: left; background: none; cursor: pointer;
+    border: 0; border-top: 1px solid var(--stroke-subtle); padding: 10px 12px;
+    color: var(--fg-secondary); font-family: inherit;
+  }
+  .drop-opt:first-child { border-top: 0; }
+  .drop-opt:hover { background: var(--bg-panel-muted); }
+  .drop-opt:focus-visible { outline: 2px solid var(--accent-lime); outline-offset: -2px; }
+  .drop-opt[aria-selected="true"] { background: var(--bg-panel-elevated); }
+  .drop-opt[aria-selected="true"] .o-name { color: var(--accent-lime); font-weight: 700; }
+  .drop-opt .o-line { display: flex; align-items: center; gap: 8px; }
+  .drop-opt .o-name { flex: 1 1 auto; min-width: 0; font-size: 13px; color: var(--fg-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .drop-opt .o-tok { flex: 0 0 auto; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--fg-primary); }
+  .drop-opt .o-sub { margin-top: 3px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.05em; color: var(--fg-muted); }
+  .src-dot { width: 9px; height: 9px; flex: 0 0 9px; display: inline-block; }
+
+  /* ---------- the carried-forward bench ---------- */
+  .bench { max-width: 80rem; margin: 0 auto; padding: 0 16px 40px; }
+  .bench-box { border: 2px dashed oklch(0.75 0.09 85 / 0.55); padding: 16px; }
+  .bench h3 { margin: 0 0 6px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+  .bench p { margin: 0 0 8px; font-size: 12.5px; color: var(--fg-muted); max-width: 52rem; line-height: 1.6; }
+  .bench p:last-child { margin-bottom: 0; }
+
+  /* ---------- switcher ---------- */
+  .switcher {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+    background: var(--bg-shell); border-top: 2px solid var(--accent-lime);
+    box-shadow: 0 -10px 30px -18px black;
+  }
+  .sw-main { display: flex; align-items: stretch; }
+  .sw-main button.arrow {
+    background: none; border: 0; color: var(--accent-lime); font-size: 20px; cursor: pointer;
+    padding: 0 16px; font-family: 'JetBrains Mono', monospace;
+  }
+  .sw-name { flex: 1; text-align: center; padding: 11px 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; }
+  .sw-name small { display: block; font-weight: 400; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted); margin-top: 3px; }
+  .sw-toggle { background: none; border: 0; border-left: 1px solid var(--stroke-subtle); color: var(--fg-muted); cursor: pointer; padding: 0 14px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; }
+  .sw-opts { display: none; border-top: 1px solid var(--stroke-subtle); padding: 10px 12px 14px; }
+  .switcher.open .sw-opts { display: block; }
+  .opt-row { display: flex; align-items: center; gap: 8px; margin-top: 9px; overflow-x: auto; }
+  .opt-row:first-child { margin-top: 0; }
+  .opt-row > b { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg-muted); width: 52px; flex: 0 0 52px; }
+  .opt-row button {
+    background: none; border: 1px solid var(--stroke-subtle); color: var(--fg-secondary);
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em;
+    padding: 6px 9px; cursor: pointer; white-space: nowrap; text-transform: uppercase;
+  }
+  .opt-row button[aria-pressed="true"] { background: var(--accent-lime); color: var(--accent-lime-contrast); border-color: var(--accent-lime); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="ticket-strip">
+  Prototype · <b>alp82/aistack#244</b> · display the sources behind one stack's measured layer · settled after 4 rounds · throwaway
+</div>
+
+<div class="proposal">
+  <div class="proposal-box">
+    <span class="tag">settled · flip to today to compare</span>
+    A machine dropdown in the section header narrows the whole section. "Checked n ago" moved down to the model-mix row. The harnesses are listed under the model rows.
+    <span class="q"><b>The dropdown appears only above one machine</b>, and it narrows headline, cost, model mix, harness list, stats and trail together.</span>
+    <span class="q"><b>The harness list appears only above one harness.</b> Set STACK to one machine, two harnesses to see it without a dropdown.</span>
+    <span class="q"><b>Real machine labels publish through the #42/#48 gate.</b> Set GATE to partial: an unticked machine falls back to an ordinal, so a real name and a number share one list.</span>
+    <span class="q"><b>Nothing shifts.</b> Open and close the panel and watch the page under it hold still.</span>
+    <span class="q"><b>Single machine, single harness reads exactly as today.</b> Set STACK to single and flip the bar.</span>
+  </div>
+  <div id="note"></div>
+</div>
+
+<main id="app"></main>
+<div class="bench" id="bench"></div>
+
+<div class="switcher" id="switcher">
+  <div class="sw-main">
+    <button class="arrow" id="prev" aria-label="previous variant">&#9664;</button>
+    <div class="sw-name" id="swname"></div>
+    <button class="arrow" id="next" aria-label="next variant">&#9654;</button>
+    <button class="sw-toggle" id="swtoggle">options</button>
+  </div>
+  <div class="sw-opts" id="swopts"></div>
+</div>
+
+<script>
+/* =====================================================================
+   DATA. See the file header for what is real and what is invented.
+
+   A ROW HERE IS A SOURCE: one harness on one machine, the storage key
+   ADR-0006 settled. The DISPLAY groups them by machine.
+   ===================================================================== */
+
+const NOW = Date.UTC(2026, 7, 23, 9, 0, 0);
+const HOUR = 3600e3, DAY = 24 * HOUR;
+
+const CATALOG = {
+  'claude-fable-5': null,            // absent from the catalog on purpose (#33 decision 3)
+  'claude-opus-4-8': 'Claude Opus 4.8',
+  'claude-opus-5': 'Claude Opus 5',
+  'claude-sonnet-5': 'Claude Sonnet 5',
+  'claude-sonnet-4-6': 'Claude Sonnet 4.6',
+  'claude-haiku-4-5': 'Claude Haiku 4.5',
+  'gpt-5-2-codex': 'GPT-5.2 Codex',
+  'gpt-5-2-codex-mini': 'GPT-5.2 Codex mini',
+};
+
+const HARNESS_NAME = { 'claude-code': 'Claude Code', 'codex': 'Codex' };
+
+/** Eight reading times, oldest first. Irregular, the way retention leaves them. */
+const READ_AT = [26, 21, 17, 13, 9, 6, 3, 0].map((d) => NOW - d * DAY - 5 * HOUR);
+
+const ALPPC_CC = {
+  harness: 'claude-code', machine: 'alppc', version: '2.1.220',
+  tokens: 4270365919, sessions: 382, activeDays: 22, projects: 22,
+  usd: 5840.02, pricingTable: 'anthropic-list-2026-07-25',
+  cacheHitShare: 0.9505, subagentShare: 0.3251,
+  receivedAt: NOW - 2 * HOUR,
+  trail: [3.71e9, 3.88e9, 4.02e9, 3.96e9, 4.11e9, 4.19e9, 4.24e9, 4270365919],
+  models: [
+    { id: 'claude-fable-5', share: 0.351, first: 0.262 },
+    { id: 'claude-opus-4-8', share: 0.3023, first: 0.381 },
+    { id: 'claude-opus-5', share: 0.195, first: 0.166 },
+    { id: 'claude-sonnet-5', share: 0.1202, first: 0.131 },
+    { id: 'claude-haiku-4-5', share: 0.0168, first: 0.034 },
+    { id: 'claude-sonnet-4-6', share: 0.0147, first: 0.026 },
+  ],
+};
+
+const CODEX_READING = {
+  harness: 'codex', version: '1.4.0',
+  tokens: 310000000, sessions: 41, activeDays: 11, projects: 3,
+  usd: 402.75, pricingTable: 'openai-list-2026-08-01',
+  cacheHitShare: 0.884, subagentShare: 0.096,
+  receivedAt: NOW - 3 * DAY,
+  trail: [0.09e9, 0.14e9, 0.19e9, 0.22e9, 0.26e9, 0.29e9, 0.31e9, 0.31e9],
+  models: [
+    { id: 'gpt-5-2-codex', share: 0.81, first: 0.74 },
+    { id: 'gpt-5-2-codex-mini', share: 0.19, first: 0.26 },
+  ],
+};
+
+const clone = (o) => JSON.parse(JSON.stringify(o));
+
+const STACKS = {
+  lopsided: {
+    key: 'lopsided',
+    label: 'lopsided (real)',
+    note: 'Your own stack: a workstation and a small server, both Claude Code. Two machines, one harness. The dropdown shows and the harness list does not.',
+    sources: [
+      clone(ALPPC_CC),
+      {
+        harness: 'claude-code', machine: 'curia.sh', version: '2.1.198',
+        tokens: 8142663, sessions: 46, activeDays: 9, projects: 3,
+        usd: 74.30, pricingTable: 'anthropic-list-2026-07-25',
+        cacheHitShare: 0.912, subagentShare: 0.12,
+        receivedAt: NOW - 19 * HOUR,
+        // Linked partway through: no reading at all for the first four points.
+        trail: [null, null, null, null, 3.1e6, 5.4e6, 7.2e6, 8142663],
+        models: [
+          { id: 'claude-opus-5', share: 0.715, first: 0.802 },
+          { id: 'claude-sonnet-5', share: 0.212, first: 0.142 },
+          { id: 'claude-haiku-4-5', share: 0.073, first: 0.056 },
+        ],
+      },
+    ],
+  },
+
+  balanced: {
+    key: 'balanced',
+    label: 'balanced (2 machines)',
+    note: 'Invented. Two machines and three sources. Both show. Narrow to the laptop and the harness list disappears, because that machine runs one harness.',
+    sources: [
+      {
+        harness: 'claude-code', machine: 'laptop', version: '2.1.220',
+        tokens: 1420000000, sessions: 118, activeDays: 18, projects: 7,
+        usd: 2110.40, pricingTable: 'anthropic-list-2026-07-25',
+        cacheHitShare: 0.941, subagentShare: 0.285,
+        receivedAt: NOW - 4 * HOUR,
+        trail: [1.02e9, 1.15e9, 1.21e9, 1.19e9, 1.30e9, 1.36e9, 1.40e9, 1.42e9],
+        models: [
+          { id: 'claude-fable-5', share: 0.44, first: 0.36 },
+          { id: 'claude-opus-5', share: 0.31, first: 0.33 },
+          { id: 'claude-sonnet-5', share: 0.18, first: 0.22 },
+          { id: 'claude-haiku-4-5', share: 0.07, first: 0.09 },
+        ],
+      },
+      {
+        // A DIFFERENT CLAUDE CODE VERSION from the laptop's. Finding 3.
+        harness: 'claude-code', machine: 'workstation', version: '2.1.211',
+        tokens: 980000000, sessions: 74, activeDays: 14, projects: 4,
+        usd: 1455.10, pricingTable: 'anthropic-list-2026-07-25',
+        cacheHitShare: 0.958, subagentShare: 0.412,
+        receivedAt: NOW - 1 * HOUR,
+        trail: [0.61e9, 0.68e9, 0.74e9, 0.79e9, 0.85e9, 0.91e9, 0.95e9, 0.98e9],
+        models: [
+          { id: 'claude-opus-5', share: 0.52, first: 0.47 },
+          { id: 'claude-fable-5', share: 0.26, first: 0.21 },
+          { id: 'claude-sonnet-5', share: 0.15, first: 0.21 },
+          { id: 'claude-haiku-4-5', share: 0.07, first: 0.11 },
+        ],
+      },
+      Object.assign(clone(CODEX_READING), { machine: 'workstation' }),
+    ],
+  },
+
+  onemachine: {
+    key: 'onemachine',
+    label: 'one machine, 2 harnesses',
+    note: 'Invented. One machine running Claude Code and Codex. No dropdown, because there is one machine. The harness list is the only place the split shows.',
+    sources: [clone(ALPPC_CC), Object.assign(clone(CODEX_READING), { machine: 'alppc' })],
+  },
+
+  single: {
+    key: 'single',
+    label: 'single machine',
+    note: 'One laptop, one harness. No dropdown, no harness list, no max. Flip the bar and nothing moves.',
+    sources: [clone(ALPPC_CC)],
+  },
+};
+
+/* ---------------------------------------------------------------------
+   Derivations: the same arithmetic the server does (convex/measured.ts).
+   --------------------------------------------------------------------- */
+
+/** Claude Code first, then alphabetical; then by machine name. */
+function sourceOrder(a, b) {
+  if (a.harness !== b.harness) {
+    if (a.harness === 'claude-code') return -1;
+    if (b.harness === 'claude-code') return 1;
+    return a.harness.localeCompare(b.harness);
+  }
+  return (a.machine || '').localeCompare(b.machine || '');
+}
+
+function sortedSources(stack) { return [...stack.sources].sort(sourceOrder); }
+
+/** The machine names of a stack, in a stable order. The display's unit. */
+function machineNames(stack) {
+  const seen = [];
+  for (const s of sortedSources(stack)) if (!seen.includes(s.machine)) seen.push(s.machine);
+  return seen;
+}
+
+/** Decision 2: a dropdown only when a stack has more than one machine. */
+function hasFilter(stack) { return machineNames(stack).length > 1; }
+
+/** Whether the arithmetic merges anything, which is not the same question. */
+function isMultiSource(stack) { return stack.sources.length > 1; }
+
+function merge(sources) {
+  const tokens = sources.reduce((a, s) => a + s.tokens, 0);
+  const models = new Map();
+  for (const s of sources) {
+    for (const m of s.models) {
+      const cur = models.get(m.id) || { id: m.id, tok: 0, firstTok: 0 };
+      cur.tok += m.share * s.tokens;
+      cur.firstTok += m.first * s.tokens;
+      models.set(m.id, cur);
+    }
+  }
+  const merged = [...models.values()]
+    .map((m) => ({ id: m.id, share: m.tok / tokens, first: m.firstTok / tokens }))
+    .sort((a, b) => b.share - a.share);
+  return {
+    tokens,
+    usd: sources.reduce((a, s) => a + s.usd, 0),
+    sessions: sources.reduce((a, s) => a + s.sessions, 0),
+    activeDays: Math.max(...sources.map((s) => s.activeDays)),
+    projects: Math.max(...sources.map((s) => s.projects)),
+    cacheHitShare: sources.reduce((a, s) => a + s.cacheHitShare * s.tokens, 0) / tokens,
+    subagentShare: sources.reduce((a, s) => a + s.subagentShare * s.tokens, 0) / tokens,
+    // The freshness the page leads with is the NEWEST source. A stale harness
+    // hides behind this, knowingly: see the verdict's last paragraph.
+    receivedAt: Math.max(...sources.map((s) => s.receivedAt)),
+    sources,
+    models: merged,
+    trail: READ_AT.map((at, i) => ({
+      at, value: sources.reduce((a, s) => a + (s.trail[i] ?? 0), 0),
+    })).filter((p) => p.value > 0),
+  };
+}
+
+/**
+ * The harnesses inside a selection, merged across whatever machines it holds.
+ *
+ * THE VERSION IS CARRIED ONLY WHEN THE SELECTION AGREES ON ONE (finding 3). Two
+ * machines can run different builds of one harness, and "all machines" then has
+ * no single version to state. The settled rows do not print a version, so this
+ * only matters to whoever adds one later.
+ */
+function harnessesOf(sources) {
+  const by = new Map();
+  const total = sources.reduce((a, s) => a + s.tokens, 0);
+  for (const s of sources) {
+    const cur = by.get(s.harness)
+      || { harness: s.harness, tokens: 0, count: 0, versions: new Set(), oldestAt: Infinity };
+    cur.tokens += s.tokens;
+    cur.count++;
+    cur.versions.add(s.version);
+    cur.oldestAt = Math.min(cur.oldestAt, s.receivedAt);
+    by.set(s.harness, cur);
+  }
+  return [...by.values()]
+    .sort((a, b) => sourceOrder({ harness: a.harness }, { harness: b.harness }))
+    .map((h) => ({
+      harness: h.harness,
+      label: HARNESS_NAME[h.harness] || h.harness,
+      tokens: h.tokens,
+      share: total > 0 ? h.tokens / total : 0,
+      version: h.versions.size === 1 ? [...h.versions][0] : null,
+      // The OLDEST reading, not the newest: a harness spread over two machines
+      // is only as current as its laggard (finding 4).
+      oldestAt: h.oldestAt,
+      spread: h.count > 1,
+    }));
+}
+
+/* ---------------------------------------------------------------------
+   Formatting - lifted from src/features/measured/copy.ts.
+   --------------------------------------------------------------------- */
+
+function fmtTokens(n) {
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
+  return String(n);
+}
+function fmtUSD(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+function fmtShare(s) { return (s * 100).toFixed(1) + '%'; }
+function fmtDay(at) { return new Date(at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }); }
+function timeAgo(at) {
+  const d = NOW - at;
+  if (d < HOUR) return Math.max(1, Math.round(d / 60e3)) + ' minutes ago';
+  if (d < DAY) { const h = Math.round(d / HOUR); return h + (h === 1 ? ' hour ago' : ' hours ago'); }
+  const days = Math.round(d / DAY);
+  return days + (days === 1 ? ' day ago' : ' days ago');
+}
+function modelLabel(id) { return CATALOG[id] || id; }
+const PAINTS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)'];
+const SRC_PAINTS = ['var(--src-1)', 'var(--src-2)', 'var(--src-3)'];
+
+/* ---------------------------------------------------------------------
+   THE GATE (decision 6). Real machine labels publish, through the same
+   #42/#48 gate as every other user-chosen name.
+
+   A machine the owner has not ticked has no publishable name, so the page falls
+   back to an ordinal. The ordinal is POSITIONAL and never derived from the name,
+   so an unticked machine leaks nothing at all - not through the label, and not
+   through the dropdown key.
+   --------------------------------------------------------------------- */
+
+const GATES = {
+  all: {
+    label: 'all ticked',
+    ticked: () => true,
+    note: 'Every machine is ticked, so every label is the name you typed at login.',
+  },
+  partial: {
+    label: 'partial',
+    ticked: (machine, stack) => machineNames(stack).indexOf(machine) === 0,
+    note: 'One machine is ticked and one is not. The unticked one falls back to an ordinal, so the dropdown mixes a real name with a number.',
+  },
+  none: {
+    label: 'none ticked',
+    ticked: () => false,
+    note: 'Nothing is ticked, which is the default for every stack. The dropdown still works, on ordinals alone.',
+  },
+};
+
+/**
+ * The machines the display shows.
+ *
+ * THE KEY IS AN INDEX, NEVER THE MACHINE NAME (finding 1). The dropdown puts
+ * this key in the DOM and in the URL, so a key built from the name would publish
+ * it even for a machine the owner never ticked.
+ */
+function machines(stack, gate, view) {
+  return machineNames(stack).map((m, i) => ({
+    key: 'm' + i,
+    // The owner always sees their own names. The gate governs the public page.
+    label: (view === 'owner' || GATES[gate].ticked(m, stack)) ? m : 'machine ' + (i + 1),
+    sources: sortedSources(stack).filter((s) => s.machine === m),
+    paint: SRC_PAINTS[i % SRC_PAINTS.length],
+  }));
+}
+
+/* ---------------------------------------------------------------------
+   Charts. Plain SVG, square ends, no library.
+   --------------------------------------------------------------------- */
+
+function sparkline(points, paint) {
+  if (points.length < 2) return '';
+  const w = 420, h = 120;
+  const maxV = Math.max(...points.map((p) => p.value));
+  const minAt = points[0].at, spanAt = points[points.length - 1].at - points[0].at;
+  const d = points.map((p, i) => {
+    const x = spanAt === 0 ? 0 : ((p.at - minAt) / spanAt) * w;
+    const y = h - (maxV === 0 ? 0 : (p.value / maxV) * h);
+    return (i === 0 ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1);
+  }).join(' ');
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden="true">'
+    + '<path d="' + d + ' L ' + w + ' ' + h + ' L 0 ' + h + ' Z" fill="' + paint + '" opacity="0.5"/>'
+    + '<path d="' + d + '" fill="none" stroke="' + paint + '" stroke-width="2"/></svg>';
+}
+
+/* =====================================================================
+   RENDERING
+   ===================================================================== */
+
+const VARIANTS = [
+  { key: 'settled', name: 'settled', blurb: 'the design four rounds arrived at' },
+  { key: 'today', name: 'today', blurb: 'the live section, unchanged' },
+];
+
+const state = { variant: 'settled', stack: 'lopsided', gate: 'all', view: 'reader', machine: 'all', menu: false };
+
+function readURL() {
+  const p = new URLSearchParams(location.search);
+  for (const k of ['variant', 'stack', 'gate', 'view', 'machine']) {
+    const v = p.get(k);
+    if (v) state[k] = v;
+  }
+}
+function writeURL() {
+  const p = new URLSearchParams();
+  p.set('variant', state.variant);
+  p.set('stack', state.stack);
+  p.set('gate', state.gate);
+  p.set('view', state.view);
+  if (state.variant === 'settled') p.set('machine', state.machine);
+  history.replaceState(null, '', location.pathname + '?' + p.toString());
+}
+
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function dot(paint) { return '<span class="src-dot" style="background:' + paint + '"></span>'; }
+
+/* ---------- the dropdown (decisions 2, 3 and 5) ---------- */
+
+function dropOption(o, selected) {
+  const r = merge(o.sources);
+  return '<button class="drop-opt" role="option" data-act="machine" data-key="' + esc(o.key) + '"'
+    + ' aria-selected="' + (selected ? 'true' : 'false') + '">'
+    + '<span class="o-line">' + (o.paint ? dot(o.paint) : '')
+    + '<span class="o-name">' + esc(o.label) + '</span>'
+    + '<span class="o-tok">' + fmtTokens(r.tokens) + '</span></span>'
+    + '<div class="o-sub">read ' + esc(timeAgo(r.receivedAt)) + '</div></button>';
+}
+
+function dropdown(ms, allSources) {
+  const all = { key: 'all', label: 'all machines', sources: allSources, paint: null };
+  const opts = [all].concat(ms);
+  const chosen = opts.find((o) => o.key === state.machine) || all;
+  const panel = state.menu
+    ? '<div class="drop-panel" role="listbox" aria-label="Machine">'
+      + opts.map((o) => dropOption(o, o.key === chosen.key)).join('') + '</div>'
+    : '';
+  return '<div class="drop' + (state.machine === 'all' ? '' : ' on') + '">'
+    + '<button class="drop-trigger" data-act="menu" aria-haspopup="listbox" aria-expanded="'
+    + (state.menu ? 'true' : 'false') + '">'
+    + '<span class="lead">from</span>'
+    + '<span class="val">' + esc(chosen.label) + '</span>'
+    + '<span class="caret">' + (state.menu ? '&#9650;' : '&#9660;') + '</span>'
+    + '</button>' + panel + '</div>';
+}
+
+/* ---------- the harness list (decision 7) ---------- */
+
+/**
+ * One row per harness, under the model mix.
+ *
+ * NOTHING AT ALL WHEN THE SELECTION HOLDS ONE HARNESS. A single row at 100
+ * percent says what the section already implies, and hiding it keeps every
+ * single-harness stack reading exactly as it does today.
+ */
+function harnessList(sources) {
+  const hs = harnessesOf(sources);
+  if (hs.length < 2) return '';
+  return '<div class="harn"><p class="mono-label harn-kick">by harness</p><div class="harn-rows">'
+    + hs.map((h, i) => '<div class="harn-row">'
+      + '<span class="name">' + esc(h.label) + '</span>'
+      + '<span class="bar"><i style="width:' + Math.max(1, h.share * 100).toFixed(1) + '%;background:'
+      + SRC_PAINTS[i % SRC_PAINTS.length] + '"></i></span>'
+      + '<span class="pct">' + fmtShare(h.share) + '</span>'
+      + '<span class="tok">' + fmtTokens(h.tokens) + '</span>'
+      + '</div>').join('') + '</div></div>';
+}
+
+/* ---------- shared blocks ---------- */
+
+function sectionHead(metaHTML, always) {
+  return '<div class="sec-head">'
+    + '<div class="sec-index">01</div>'
+    + '<div class="head-copy"><p class="sec-kicker">// sync</p><h2 class="sec-title">Actual Usage</h2></div>'
+    + '<div class="sec-meta' + (always ? ' always' : '') + '">' + (metaHTML || '') + '</div>'
+    + '</div>';
+}
+
+function metricBlock(reading) {
+  const cost = reading.usd > 0
+    ? '<div class="usd">' + fmtUSD(reading.usd) + '</div><div class="cap">at least, at api list prices</div>'
+    : '';
+  return '<div class="metric">'
+    + '<div class="water">' + sparkline(reading.trail, 'var(--fg-primary)') + '</div>'
+    + '<div class="inner">'
+    + '<div class="big">' + fmtTokens(reading.tokens) + '</div>'
+    + '<div class="cap">tokens · last 30 days</div>'
+    + cost
+    + '</div></div>';
+}
+
+function deltaChip(reading) {
+  const t = reading.trail;
+  if (t.length < 2) return '';
+  const d = t[t.length - 1].value - t[t.length - 2].value;
+  const sign = d > 0 ? '+' : d < 0 ? '−' : '±';
+  return '<div class="chip-row"><span class="chip">' + sign + fmtTokens(Math.abs(d)) + ' since the last check</span></div>';
+}
+
+function modelRows(reading) {
+  return '<div class="rows">' + reading.models.slice(0, 6).map((m, i) => {
+    const drift = (m.share - m.first) * 100;
+    const moved = Math.abs(m.share - m.first) >= 0.005;
+    return '<div class="row">'
+      + '<span class="swatch" style="background:' + PAINTS[i % PAINTS.length] + '"></span>'
+      + '<span class="name">' + esc(modelLabel(m.id)) + '</span>'
+      + '<span class="bar"><i style="width:' + Math.max(1, m.share * 100).toFixed(1) + '%;background:' + PAINTS[i % PAINTS.length] + '"></i>'
+      + (moved ? '<span class="notch" style="left:' + Math.min(100, Math.max(0, m.first * 100)).toFixed(1) + '%"></span>' : '')
+      + '</span>'
+      + '<span class="pct">' + fmtShare(m.share) + '</span>'
+      + '<span class="drift">' + (moved && Math.abs(drift) >= 0.5 ? (drift > 0 ? '↑' : '↓') + Math.abs(Math.round(drift)) : '-') + '</span>'
+      + '</div>';
+  }).join('') + '</div>';
+}
+
+function mixHead(rightHTML) {
+  return '<div class="mix-head"><p class="mono-label kick">where the tokens went</p>'
+    + (rightHTML || '') + '</div>';
+}
+
+const NOTCH_NOTE = () => '<p class="mix-note">the notch marks where each share stood on ' + fmtDay(READ_AT[0]) + '</p>';
+const CHECKED = (reading) => '<p class="mix-note">checked ' + esc(timeAgo(reading.receivedAt)) + '</p>';
+
+/** Decision 8: active days keeps today's shape and today's small print. */
+function statsGrid(reading, multi) {
+  const cells = [
+    { v: reading.sessions.toLocaleString('en-US'), l: 'sessions' },
+    { v: reading.activeDays + ' of 30', l: multi ? 'active days (max)' : 'active days' },
+    { v: Math.round(reading.cacheHitShare * 100) + '%', l: 'cache hits' },
+    { v: Math.round(reading.subagentShare * 100) + '%', l: 'run by subagents' },
+  ];
+  return '<div class="stats">' + cells.map((c) => '<div class="stat">'
+    + '<div class="v">' + esc(c.v) + '</div>'
+    + '<div class="l mono-label">' + esc(c.l) + '</div></div>').join('') + '</div>';
+}
+
+function body(reading, multi, mixRight, withHarnesses) {
+  return '<div class="body-grid">'
+    + '<div>' + metricBlock(reading) + deltaChip(reading) + '</div>'
+    + '<div>' + mixHead(mixRight) + modelRows(reading)
+    + (withHarnesses ? harnessList(reading.sources) : '')
+    + statsGrid(reading, multi) + '</div>'
+    + '</div>';
+}
+
+/** The live section as it stands on main, for comparison. */
+function today(stack) {
+  const all = merge(sortedSources(stack));
+  return sectionHead('checked ' + esc(timeAgo(all.receivedAt)))
+    + body(all, isMultiSource(stack), NOTCH_NOTE(), false);
+}
+
+/**
+ * The settled design.
+ *
+ * A STACK WITH ONE MACHINE IS UNTOUCHED apart from the harness list, which only
+ * appears above one harness anyway. So a single-machine single-harness stack is
+ * today's section exactly, and it grows no label it never asked for.
+ */
+function settled(stack) {
+  const all = merge(sortedSources(stack));
+  if (!hasFilter(stack)) {
+    return sectionHead('checked ' + esc(timeAgo(all.receivedAt)))
+      + body(all, isMultiSource(stack), NOTCH_NOTE(), true);
+  }
+  const ms = machines(stack, state.gate, state.view);
+  const chosen = ms.find((m) => m.key === state.machine) || null;
+  const reading = chosen ? merge(chosen.sources) : all;
+  // The stats stop saying "(max)" the moment the reading stops merging anything.
+  const multi = chosen ? chosen.sources.length > 1 : isMultiSource(stack);
+  return sectionHead(dropdown(ms, sortedSources(stack)), true)
+    + body(reading, multi, CHECKED(reading), true);
+}
+
+const BODIES = { settled, today };
+
+/* ---------- what this ticket did not settle ---------- */
+
+function bench(stack) {
+  const all = merge(sortedSources(stack));
+  const per = sortedSources(stack).map((s) => s.activeDays);
+  const line = isMultiSource(stack)
+    ? per.join(' and ') + ' days on the ' + per.length + ' sources reads as ' + all.activeDays
+      + ', not ' + per.reduce((a, b) => a + b, 0) + '.'
+    : 'One source, so there is no max on this stack.';
+  return '<div class="bench-box"><h3>Carried forward, not settled here</h3>'
+    + '<p><b>Active days keeps today’s shape.</b> ' + line
+    + ' It understates and is labelled a max whenever a stack has more than one source. '
+    + 'Widening the payload to carry day sets is the real fix. Projects has the same fault and no cell on the page today.</p>'
+    + '<p><b>A stale harness can hide inside a fresh machine.</b> A machine reads as fresh as its newest harness. '
+    + 'The dropdown kept that out in round 3 and the harness list kept it out in round 4, so nothing on the page says it.</p>'
+    + '<p><b>The public payload does not match this yet.</b> Both public queries return the raw machine name today. '
+    + 'They have to carry a gated name and a stable ordinal before any surface renders a machine.</p></div>';
+}
+
+/* ---------- the page ---------- */
+
+function render() {
+  const stack = STACKS[state.stack];
+  if (!machines(stack, state.gate, state.view).some((m) => m.key === state.machine)) {
+    state.machine = 'all';
+  }
+
+  // The prototype's own explainers sit OUTSIDE the section, so the mocked
+  // section carries nothing that would not ship.
+  let note = '';
+  if (state.variant === 'today') {
+    note = 'The live section, for comparison. No dropdown, no harness list, and the notch note in place of the freshness line.';
+  } else if (state.view === 'owner') {
+    note = 'Owner view. Your own machine names always show here, ticked or not. The gate governs the public page only.';
+  } else if (hasFilter(stack)) {
+    note = GATES[state.gate].note;
+  } else if (isMultiSource(stack)) {
+    note = 'One machine, so there is no dropdown. The harness list below the model mix is the only place the split shows.';
+  }
+  document.getElementById('note').innerHTML = note ? '<div class="note-box">' + esc(note) + '</div>' : '';
+
+  document.getElementById('app').innerHTML =
+    '<section class="journey"><div class="shell">' + BODIES[state.variant](stack) + '</div></section>';
+  document.getElementById('bench').innerHTML = bench(stack);
+
+  const v = VARIANTS.find((x) => x.key === state.variant);
+  document.getElementById('swname').innerHTML =
+    esc(v.name) + '<small>' + esc(v.blurb) + '</small>';
+  document.getElementById('swopts').innerHTML = optionRows(stack);
+  writeURL();
+}
+
+function optionRows(stack) {
+  const row = (key, label, opts) => '<div class="opt-row"><b>' + label + '</b>'
+    + opts.map((o) => '<button data-act="set" data-key="' + key + '" data-val="' + esc(o.v) + '" aria-pressed="'
+      + (state[key] === o.v) + '">' + esc(o.l) + '</button>').join('') + '</div>';
+  return row('stack', 'stack', Object.values(STACKS).map((s) => ({ v: s.key, l: s.label })))
+    + row('gate', 'gate', Object.entries(GATES).map(([k, g]) => ({ v: k, l: g.label })))
+    + row('view', 'view', [{ v: 'reader', l: 'reader' }, { v: 'owner', l: 'owner' }])
+    + '<div class="opt-row"><b></b><span class="mono" style="font-size:10px;color:var(--fg-muted);line-height:1.5">'
+    + esc(stack.note) + '</span></div>';
+}
+
+/* ---------- events ---------- */
+
+function cycle(step) {
+  const i = VARIANTS.findIndex((v) => v.key === state.variant);
+  state.variant = VARIANTS[(i + step + VARIANTS.length) % VARIANTS.length].key;
+  state.menu = false;
+  render();
+}
+
+document.getElementById('prev').addEventListener('click', () => cycle(-1));
+document.getElementById('next').addEventListener('click', () => cycle(1));
+document.getElementById('swtoggle').addEventListener('click', () => {
+  document.getElementById('switcher').classList.toggle('open');
+});
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-act]');
+  if (!b) { if (state.menu) { state.menu = false; render(); } return; }
+  const act = b.dataset.act;
+  if (act === 'set') { state[b.dataset.key] = b.dataset.val; state.machine = 'all'; state.menu = false; render(); }
+  if (act === 'menu') { state.menu = !state.menu; render(); }
+  if (act === 'machine') { state.machine = b.dataset.key; state.menu = false; render(); }
+});
+
+document.addEventListener('keydown', (e) => {
+  const t = e.target;
+  if (e.key === 'Escape' && state.menu) { state.menu = false; render(); return; }
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+  if (state.menu) return;
+  if (e.key === 'ArrowLeft') cycle(-1);
+  if (e.key === 'ArrowRight') cycle(1);
+});
+
+readURL();
+render();
+</script>
+</body>
+</html>
