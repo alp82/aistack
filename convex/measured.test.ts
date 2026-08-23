@@ -1031,7 +1031,8 @@ describe('getHistoryByStackSlug', () => {
     const readerView = await t
       .withIdentity(OTHER_IDENTITY)
       .query(api.measured.getHistoryByStackSlug, { slug })
-    expect(readerView?.points.at(-1)?.harnesses.map((h) => h.machine)).toEqual([
+    const readerPoint = readerView?.points[readerView.points.length - 1]
+    expect(readerPoint?.harnesses.map((h) => h.machine)).toEqual([
       null,
       'vps',
       null,
@@ -1040,7 +1041,8 @@ describe('getHistoryByStackSlug', () => {
     const ownerView = await t
       .withIdentity(IDENTITY)
       .query(api.measured.getHistoryByStackSlug, { slug })
-    expect(ownerView?.points.at(-1)?.harnesses.map((h) => h.machine)).toEqual([
+    const ownerPoint = ownerView?.points[ownerView.points.length - 1]
+    expect(ownerPoint?.harnesses.map((h) => h.machine)).toEqual([
       'workstation',
       'vps',
       'workstation',
