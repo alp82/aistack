@@ -2,7 +2,7 @@
 
 import { v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
-import { query } from './_generated/server'
+import { query, type QueryCtx } from './_generated/server'
 import { hnDiscussionUrl } from './lib/hackerNews'
 import { sanitizeXEmbed } from './lib/xEmbedSanitizer'
 
@@ -46,22 +46,33 @@ function isThinRelease(item: Doc<'newsItems'>): boolean {
     return false
   }
   const body = item.sourceText?.trim() ?? ''
-  const compareTarget = body.replace(/^full changelog\s*:?\s*/i, '').trim()
-  let compareOnly = /^full changelog\b/i.test(body) && compareTarget.length === 0
+  let compareOnly = /^full changelog\b/i.test(body)
   try {
     compareOnly =
-      compareOnly || new URL(compareTarget).pathname.toLowerCase().includes('/compare/')
+      compareOnly || new URL(body).pathname.toLowerCase().includes('/compare/')
   } catch {
     // A sentence that mentions a comparison still carries content to read.
   }
   return body.length < FULL_ENTRY_LENGTH || compareOnly
 }
 
-async function publicRows(ctx: { db: any }): Promise<PublicRow[]> {
+function attributionNotice(
+  item: Doc<'newsItems'>,
+  sourceName: string,
+  source?: Doc<'newsSources'>,
+): string | undefined {
+  if (source?.attribution?.trim()) return source.attribution.trim()
+  if (item.licenseClass === 'cc-by') return `${sourceName}, CC BY 4.0`
+  if (item.licenseClass === 'permissive-release-notes') {
+    return `${sourceName}. Source text is reproduced under a permissive license. Follow the source link for license terms.`
+  }
+}
+
+async function publicRows(ctx: QueryCtx): Promise<PublicRow[]> {
   const items = (
     await ctx.db
       .query('newsItems')
-      .withIndex('by_knowledgeBasePublishedAt', (q: any) =>
+      .withIndex('by_knowledgeBasePublishedAt', (q) =>
         q.gt('knowledgeBasePublishedAt', 0)
       )
       .collect()
@@ -78,10 +89,11 @@ async function publicRows(ctx: { db: any }): Promise<PublicRow[]> {
       }
       source = sources.get(item.sourceId) ?? undefined
     }
+    const sourceName = displaySource(item, source)
     rows.push({
       ...item,
-      sourceName: displaySource(item, source),
-      attribution: source?.attribution,
+      sourceName,
+      attribution: attributionNotice(item, sourceName, source),
     })
   }
   return rows
@@ -116,8 +128,7 @@ function projectEntry(item: PublicRow) {
   }
   if (
     (item.licenseClass === 'cc-by' ||
-      item.licenseClass === 'permissive-release-notes') &&
-    item.attribution
+      item.licenseClass === 'permissive-release-notes')
   ) {
     return {
       ...common,

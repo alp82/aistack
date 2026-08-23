@@ -244,10 +244,12 @@ describe('the public knowledge base', () => {
         updatedAt: 1,
       })
       const compare = `https://github.com/${'long-name/'.repeat(10)}compare/v1.0.0...v1.1.0`
+      const changelog = `Full Changelog : ${'v1.0.0...v1.1.0 '.repeat(10)}`
       for (const [index, [headline, sourceText]] of [
         ['119 characters', 'a'.repeat(119)],
         ['120 characters', 'b'.repeat(120)],
         ['Compare only', compare],
+        ['Full changelog only', changelog],
       ].entries()) {
         await ctx.db.insert('newsItems', {
           url: `https://example.com/${index}`,
@@ -273,9 +275,56 @@ describe('the public knowledge base', () => {
     expect(page!.thinReleases.map((item: any) => item.headline).sort()).toEqual([
       '119 characters',
       'Compare only',
+      'Full changelog only',
     ])
     expect(page!.entries.map((item: any) => item.headline)).toEqual([
       '120 characters',
     ])
+  })
+
+  test('keeps full text and a notice when the source row is gone', async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx: any) => {
+      const topicId = await ctx.db.insert('newsTopics', {
+        name: 'APIs',
+        slug: 'apis',
+        order: 0,
+        createdAt: 1,
+      })
+      for (const [index, licenseClass] of [
+        'cc-by',
+        'permissive-release-notes',
+      ].entries()) {
+        await ctx.db.insert('newsItems', {
+          url: `https://vendor.test/${index}`,
+          urlKey: `orphan-${index}`,
+          headline: `Orphan ${index}`,
+          collectedAt: index,
+          intake: 'collector',
+          licenseClass,
+          sourceText: 'Substantive licensed source text. '.repeat(8),
+          state: 'approved',
+          summary: 'Our summary.',
+          topicId,
+          knowledgeBasePublishedAt: 100,
+          updatedAt: index,
+        })
+      }
+    })
+
+    const page = await t.query(api.knowledgeBase.getTopic, { slug: 'apis' })
+
+    expect(page!.entries).toHaveLength(2)
+    const byClass = new Map(
+      page!.entries.map((item: any) => [item.licenseClass, item]),
+    )
+    expect(byClass.get('cc-by')).toMatchObject({
+      sourceText: expect.any(String),
+      attribution: expect.stringMatching(/CC BY 4\.0/),
+    })
+    expect(byClass.get('permissive-release-notes')).toMatchObject({
+      sourceText: expect.any(String),
+      attribution: expect.stringMatching(/license terms/i),
+    })
   })
 })

@@ -94,7 +94,7 @@ export const undrafted = internalQuery({
       )
     )
     const undraftedRows = [...inbox, ...approved]
-      .filter((item) => item.summary === undefined)
+      .filter((item) => !item.summary?.trim())
       .sort((a, b) => a.collectedAt - b.collectedAt)
 
     const sources = new Map<string, Doc<'newsSources'> | null>()
@@ -222,7 +222,7 @@ export const applyDrafts = internalMutation({
         })
         continue
       }
-      if (item.summary !== undefined) {
+      if (item.summary?.trim()) {
         results.push({
           itemId: draft.itemId,
           outcome: 'already-drafted' as const,

@@ -69,9 +69,9 @@ describe('undrafted', () => {
     expect(batch.items).toHaveLength(0)
   })
 
-  test('an approved item with no summary returns to the next drafting run', async () => {
+  test('an approved item with a blank summary returns to the next drafting run', async () => {
     const t = convexTest(schema, modules)
-    await seedItem(t, { state: 'approved' })
+    await seedItem(t, { state: 'approved', summary: '   ' })
 
     const batch = await t.query(internal.newsDrafting.undrafted, {})
 
@@ -221,9 +221,9 @@ describe('applyDrafts', () => {
     expect(item.summary).toBe('The words I wrote myself.')
   })
 
-  test('a draft can complete an approved item that the public page held back', async () => {
+  test('a draft can replace a blank summary on an approved item', async () => {
     const t = convexTest(schema, modules)
-    const itemId = await seedItem(t, { state: 'approved' })
+    const itemId = await seedItem(t, { state: 'approved', summary: '   ' })
 
     const report = await t.mutation(internal.newsDrafting.applyDrafts, {
       drafts: [{ itemId, summary: 'The machine draft.', topic: 'Agents' }],
