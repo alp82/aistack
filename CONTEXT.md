@@ -22,11 +22,25 @@ _Avoid_: license, rights
 **Collector**:
 The scheduled job that reads sources and writes new items to the inbox.
 
+**Scraper**:
+The lane of the collector that reads a vendor which publishes no feed. It finds news by
+comparing the page against the baseline.
+_Avoid_: crawler, spider
+
+**Baseline**:
+Everything one scraper has already seen on its page. An entry outside the baseline is news,
+and the first read of a page seeds the baseline without collecting anything.
+
 **Quick-add**:
-The manual intake form. The owner pastes a URL, and the item lands in the inbox.
+The manual intake bar. The owner pastes a URL and nothing else, and the item lands in the
+inbox.
 
 **Inbox**:
 The private list of collected items that wait for the owner to approve or discard them.
+
+**Source group**:
+One source's share of the inbox, shown as one closed box with a count. A group is a way to
+browse related items. Every verdict is per item, never per group.
 
 **Draft**:
 The machine-written summary and topic on an inbox item, before the owner edits them.

@@ -35,10 +35,14 @@ Collection phases:
    rendered with the free oEmbed endpoint. Automatic X discovery stays out until a
    non-paid path is found or a budget is set. A research lane explores non-paid
    programmatic X fetching.
-3. **Scrapers and Reddit.** Sitemap-diff scrapers for anthropic.com/news and
-   claude.com/blog. A page-diff scraper for the Gemini API changelog (CC-BY 4.0,
-   re-servable with attribution). Reddit only after a written commercial agreement,
-   and with the required deletion sync.
+3. **Scrapers and Reddit.** Seven vendors that publish no feed, built in
+   [#210](https://github.com/alp82/aistack/issues/210) from the nine the prototype
+   proved. Sitemap scrapers for anthropic.com/news, claude.com/blog,
+   nousresearch.com and the DeepSeek news docs. A link scraper for the Kimi blog.
+   Page scrapers for the Gemini API changelog (CC-BY 4.0, re-servable with
+   attribution) and the xAI API release notes. OpenAI and pi need no scraper,
+   because the feed lane already reads their RSS and their releases feed. Reddit
+   only after a written commercial agreement, and with the required deletion sync.
 
 Manual intake: the owner pastes URLs into the quick-add form. `KNOWLEDGE-BASE.md` stays
 a private capture file with no automated connection to the pipeline. Its section
@@ -119,9 +123,11 @@ a prototype ticket on the build map, not here.
 ## Machinery
 
 - **Tables**: sources, news items (inbox state, stream state, topic, summary,
-  license class), issues, email preferences.
+  license class), issues, email preferences, scraper baselines.
 - **Collector**: a Convex cron per collection tier, writing to the inbox. Feed polling
-  uses a normal browser user agent and follows redirects.
+  uses a normal browser user agent and follows redirects. The scraper cron runs on the
+  same six hours, offset by 30 minutes, and sends an honest bot user agent instead: a
+  faked browser breaks the Gemini changelog with a redirect loop.
 - **Drafting**: the repo skill in the owner's Claude session, plus the apply script
   (see Drafting). The backend holds no LLM code.
 - **Admin surfaces**: inbox page, quick-add form, compose UI.

@@ -497,6 +497,143 @@ describe('the inbox', () => {
 })
 
 // ---------------------------------------------------------------------------
+// The source digest (#238): the inbox grouped by source, and bulk discard
+// ---------------------------------------------------------------------------
+
+describe('the source digest', () => {
+  async function seedItems(
+    t: ReturnType<typeof convexTest>,
+    count: number,
+    lane: string,
+    fields: Record<string, unknown> = {},
+  ): Promise<Id<'newsItems'>[]> {
+    const ids: Id<'newsItems'>[] = []
+    for (let n = 0; n < count; n++) {
+      const url = `https://vendor.test/${lane}/${n}`
+      ids.push(
+        await t.run(async (ctx: any) =>
+          ctx.db.insert('newsItems', {
+            url,
+            urlKey: url,
+            headline: `Item ${n}`,
+            collectedAt: 1_000 + n,
+            publishedAt: 1_000 + n,
+            intake: 'collector',
+            licenseClass: 'article',
+            state: 'inbox',
+            updatedAt: 1_000 + n,
+            ...fields,
+          }),
+        ),
+      )
+    }
+    return ids
+  }
+
+  test('the groups come back biggest first', async () => {
+    const t = convexTest(schema, modules)
+    const loud = await seedSource(t, { name: 'Loud feed', slug: 'loud' })
+    const quiet = await seedSource(t, {
+      name: 'Quiet feed',
+      slug: 'quiet',
+      url: 'https://quiet.test/rss',
+    })
+    await seedItems(t, 5, 'loud', { sourceId: loud })
+    await seedItems(t, 2, 'quiet', { sourceId: quiet })
+
+    const groups = await asAdmin(t).query(api.news.inboxGroups, {})
+
+    expect(groups?.map((g) => [g.name, g.count])).toEqual([
+      ['Loud feed', 5],
+      ['Quiet feed', 2],
+    ])
+  })
+
+  test('a pasted item is its own group, not a source group', async () => {
+    const t = convexTest(schema, modules)
+    const sourceId = await seedSource(t)
+    await seedItems(t, 1, 'feed', { sourceId })
+    await seedItems(t, 3, 'paste', { intake: 'quick-add' })
+
+    const groups = await asAdmin(t).query(api.news.inboxGroups, {})
+
+    expect(groups?.[0].key).toBe('quick-add')
+    expect(groups?.[0].count).toBe(3)
+    expect(groups?.[0].sourceId).toBeNull()
+  })
+
+  test('a decided item leaves the digest', async () => {
+    const t = convexTest(schema, modules)
+    const sourceId = await seedSource(t)
+    const ids = await seedItems(t, 3, 'feed', { sourceId })
+    await asAdmin(t).mutation(api.news.setItemState, {
+      itemId: ids[0],
+      state: 'approved',
+    })
+
+    const groups = await asAdmin(t).query(api.news.inboxGroups, {})
+
+    expect(groups?.[0].count).toBe(2)
+  })
+
+  test('one group serves its own rows, newest first', async () => {
+    const t = convexTest(schema, modules)
+    const sourceId = await seedSource(t)
+    const other = await seedSource(t, {
+      name: 'Other',
+      slug: 'other',
+      url: 'https://other.test/rss',
+    })
+    await seedItems(t, 4, 'feed', { sourceId })
+    await seedItems(t, 1, 'other', { sourceId: other })
+
+    const rows = await asAdmin(t).query(api.news.listGroupItems, {
+      key: `source:${sourceId}`,
+      limit: 2,
+    })
+
+    expect(rows?.map((r) => r.headline)).toEqual(['Item 3', 'Item 2'])
+    expect(rows?.[0].sourceName).toBe('Test feed')
+  })
+
+  test('a retry reads one source and leaves the others alone', async () => {
+    const t = convexTest(schema, modules)
+    const sourceId = await seedSource(t, { lastError: 'HTTP 503' })
+    const other = await seedSource(t, {
+      name: 'Other',
+      slug: 'other',
+      url: 'https://other.test/rss',
+    })
+    stubFetch(feedXml([{ title: 'One', link: 'https://feed.test/one' }]))
+
+    const report = await asAdmin(t).action(api.news.pollSourceNow, { sourceId })
+
+    expect(report.added).toBe(1)
+    expect(report.error).toBeNull()
+    const rows = await t.run(async (ctx: any) => ({
+      retried: await ctx.db.get(sourceId),
+      untouched: await ctx.db.get(other),
+    }))
+    expect(rows.retried.lastError).toBeUndefined()
+    expect(rows.untouched.lastPolledAt).toBeUndefined()
+  })
+
+  test('a stranger reads no digest and retries nothing', async () => {
+    const t = convexTest(schema, modules)
+    const sourceId = await seedSource(t)
+    await seedItems(t, 1, 'feed', { sourceId })
+
+    expect(await t.query(api.news.inboxGroups, {})).toBeNull()
+    expect(
+      await t.query(api.news.listGroupItems, { key: `source:${sourceId}` }),
+    ).toBeNull()
+    await expect(t.action(api.news.pollSourceNow, { sourceId })).rejects.toThrow(
+      'Unauthorized',
+    )
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Topics and sources
 // ---------------------------------------------------------------------------
 
