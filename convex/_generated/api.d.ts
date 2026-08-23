@@ -37,6 +37,7 @@ import type * as lib_feed from "../lib/feed.js";
 import type * as lib_hackerNews from "../lib/hackerNews.js";
 import type * as lib_iconUrl from "../lib/iconUrl.js";
 import type * as lib_ids from "../lib/ids.js";
+import type * as lib_machineOrdinals from "../lib/machineOrdinals.js";
 import type * as lib_mailer from "../lib/mailer.js";
 import type * as lib_names from "../lib/names.js";
 import type * as lib_reprice from "../lib/reprice.js";
@@ -52,6 +53,7 @@ import type * as migrations_20260729_cli_token_scopes from "../migrations/202607
 import type * as migrations_20260801_measured_model_catalog from "../migrations/20260801_measured_model_catalog.js";
 import type * as migrations_20260801_openai_models from "../migrations/20260801_openai_models.js";
 import type * as migrations_20260802_gpt56_models from "../migrations/20260802_gpt56_models.js";
+import type * as migrations_20260823_measured_machine_ordinals from "../migrations/20260823_measured_machine_ordinals.js";
 import type * as migrations_20260823_news_hn_lane from "../migrations/20260823_news_hn_lane.js";
 import type * as migrations_20260823_news_phase1_sources from "../migrations/20260823_news_phase1_sources.js";
 import type * as migrations__archived_migrateBlockToReference from "../migrations/_archived/migrateBlockToReference.js";
@@ -116,6 +118,7 @@ declare const fullApi: ApiFromModules<{
   "lib/hackerNews": typeof lib_hackerNews;
   "lib/iconUrl": typeof lib_iconUrl;
   "lib/ids": typeof lib_ids;
+  "lib/machineOrdinals": typeof lib_machineOrdinals;
   "lib/mailer": typeof lib_mailer;
   "lib/names": typeof lib_names;
   "lib/reprice": typeof lib_reprice;
@@ -131,6 +134,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/20260801_measured_model_catalog": typeof migrations_20260801_measured_model_catalog;
   "migrations/20260801_openai_models": typeof migrations_20260801_openai_models;
   "migrations/20260802_gpt56_models": typeof migrations_20260802_gpt56_models;
+  "migrations/20260823_measured_machine_ordinals": typeof migrations_20260823_measured_machine_ordinals;
   "migrations/20260823_news_hn_lane": typeof migrations_20260823_news_hn_lane;
   "migrations/20260823_news_phase1_sources": typeof migrations_20260823_news_phase1_sources;
   "migrations/_archived/migrateBlockToReference": typeof migrations__archived_migrateBlockToReference;

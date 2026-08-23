@@ -78,6 +78,8 @@ export function buildHarness(
 
 	return {
 		...payload,
+		machine: null,
+		machineOrdinal: null,
 		receivedAt,
 		isFresh: true,
 		models,

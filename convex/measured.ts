@@ -26,6 +26,7 @@ import {
   visibleSources,
 } from './lib/sources'
 import { extractShortId } from './lib/ids'
+import { firstSeenMachines } from './lib/machineOrdinals'
 import { type RepricedModel, repriceSnapshot, round2 } from './lib/reprice'
 import {
   MODEL_ID_MAX,
@@ -138,7 +139,7 @@ function checkPayloadStrings(
     }
   })
 
-  for (const category of NAME_CATEGORIES) {
+  for (const category of INVENTORY_NAME_CATEGORIES) {
     payload.inventory[category].forEach((atom, i) => {
       requireName(atom.name, `inventory.${category}[${i}].name`)
     })
@@ -169,6 +170,9 @@ async function insertSnapshot(
   checkPayloadStrings(payload)
 
   const receivedAt = Date.now()
+  if (machine !== undefined) {
+    await ensureMachineOrdinal(ctx, stackId, machine, receivedAt)
+  }
   const snapshotId = await ctx.db.insert('measuredSnapshots', {
     stackId,
     // Ordering key. Deliberately NOT clamped to the server clock: a skewed
@@ -336,25 +340,32 @@ function resolveModels(
  * retention policy bounds a stack to roughly one row per source per day - the
  * collect is small by construction.
  */
+async function snapshotsForStack(
+  ctx: QueryCtx | MutationCtx,
+  stackId: Id<'stacks'>
+): Promise<Doc<'measuredSnapshots'>[]> {
+  return await ctx.db
+    .query('measuredSnapshots')
+    .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', stackId))
+    .collect()
+}
+
 async function newestSnapshotsPerSource(
   ctx: QueryCtx,
   stackId: Id<'stacks'>
 ): Promise<Doc<'measuredSnapshots'>[]> {
-  const rows = await ctx.db
-    .query('measuredSnapshots')
-    .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', stackId))
-    .collect()
-  return newestPerSource(rows)
+  return newestPerSource(await snapshotsForStack(ctx, stackId))
 }
 
 /** One SOURCE's current snapshot: a harness on a machine (#66, #243). */
 const HarnessSnapshot = v.object({
   /**
-   * The machine that published it, or null for a row written before tagging.
-   * Named so the display can tell two readings of the same harness apart -
-   * without it "claude-code" would appear twice with nothing to distinguish it.
+   * The published machine name. Null means the name is withheld or the row
+   * predates machine tagging.
    */
   machine: v.union(v.string(), v.null()),
+  /** Stable one-based position. Null only when the row predates tagging. */
+  machineOrdinal: v.union(v.number(), v.null()),
   capturedAt: v.number(),
   receivedAt: v.number(),
   schemaVersion: v.number(),
@@ -637,6 +648,118 @@ async function publishedStackBySlug(ctx: QueryCtx, slug: string) {
   return stack
 }
 
+async function machineOrdinalRows(
+  ctx: QueryCtx | MutationCtx,
+  stackId: Id<'stacks'>
+): Promise<Doc<'measuredMachineOrdinals'>[]> {
+  return await ctx.db
+    .query('measuredMachineOrdinals')
+    .withIndex('by_stack', (q) => q.eq('stackId', stackId))
+    .collect()
+}
+
+function machineOrdinals(
+  rows: readonly Doc<'measuredMachineOrdinals'>[]
+): Map<string, number> {
+  return new Map(rows.map((row) => [row.machine, row.ordinal]))
+}
+
+async function ensureMachineOrdinal(
+  ctx: MutationCtx,
+  stackId: Id<'stacks'>,
+  machine: string,
+  assignedAt: number
+): Promise<number> {
+  const existing = await ctx.db
+    .query('measuredMachineOrdinals')
+    .withIndex('by_stack_machine', (q) =>
+      q.eq('stackId', stackId).eq('machine', machine)
+    )
+    .first()
+  if (existing) return existing.ordinal
+
+  const rows = await machineOrdinalRows(ctx, stackId)
+  const registered = new Set(rows.map((row) => row.machine))
+  let nextOrdinal =
+    rows.reduce((max, row) => Math.max(max, row.ordinal), 0) + 1
+  let ordinal: number | undefined
+  for (const [legacyMachine, firstSeen] of firstSeenMachines(
+    await snapshotsForStack(ctx, stackId)
+  )) {
+    if (registered.has(legacyMachine)) continue
+    await ctx.db.insert('measuredMachineOrdinals', {
+      stackId,
+      machine: legacyMachine,
+      ordinal: nextOrdinal,
+      assignedAt: firstSeen.assignedAt,
+    })
+    if (legacyMachine === machine) ordinal = nextOrdinal
+    nextOrdinal++
+  }
+  if (ordinal !== undefined) return ordinal
+
+  ordinal = nextOrdinal
+  await ctx.db.insert('measuredMachineOrdinals', {
+    stackId,
+    machine,
+    ordinal,
+    assignedAt,
+  })
+  return ordinal
+}
+
+async function isStackOwner(
+  ctx: QueryCtx,
+  stack: Doc<'stacks'>
+): Promise<boolean> {
+  const user = await ctx.auth.getUserIdentity()
+  if (!user) return false
+  const creator = await ctx.db.get(stack.creatorId)
+  return creator?.userId === user.tokenIdentifier.split('|')[1]
+}
+
+type MachinePublication = {
+  owner: boolean
+  published: Set<string>
+  ordinals: Map<string, number>
+}
+
+async function machinePublication(
+  ctx: QueryCtx,
+  stack: Doc<'stacks'>
+): Promise<MachinePublication> {
+  return {
+    owner: await isStackOwner(ctx, stack),
+    published: new Set((await optInsForStack(ctx, stack._id)).machines),
+    ordinals: machineOrdinals(await machineOrdinalRows(ctx, stack._id)),
+  }
+}
+
+function publicMachine(
+  machine: string | null,
+  publication: MachinePublication
+): { machine: string | null; machineOrdinal: number | null } {
+  if (machine === null) return { machine: null, machineOrdinal: null }
+  return {
+    machine:
+      publication.owner || publication.published.has(machine) ? machine : null,
+    machineOrdinal: publication.ordinals.get(machine) ?? null,
+  }
+}
+
+function publishHarnessMachines(
+  merged: ReturnType<typeof mergeHarnesses>,
+  publication: MachinePublication
+) {
+  return {
+    ...merged,
+    harnesses: merged.harnesses.map((harness) => ({
+      ...harness,
+      ...publicMachine(harness.machine, publication),
+    })),
+  }
+}
+
 /**
  * The current measured layer for a published stack, by public slug.
  *
@@ -659,8 +782,12 @@ export const getCurrentByStackSlug = query({
     // turned cost off after a sync has turned it off for the rows already sent.
     const publishCost = stack.publishCost !== false
     const catalog = await loadModelCatalog(ctx)
-    return mergeHarnesses(
+    const merged = mergeHarnesses(
       snapshots.map((s) => toHarnessSnapshot(catalog, s, publishCost))
+    )
+    return publishHarnessMachines(
+      merged,
+      await machinePublication(ctx, stack)
     )
   },
 })
@@ -716,8 +843,10 @@ const HistoryPoint = v.object({
   harnesses: v.array(
     v.object({
       name: v.string(),
-      /** Null on a reading published before machine tagging (#243). */
+      /** Published machine name, or null when withheld or untagged. */
       machine: v.union(v.string(), v.null()),
+      /** Stable one-based position. Null only when the row predates tagging. */
+      machineOrdinal: v.union(v.number(), v.null()),
       version: v.union(v.string(), v.null()),
       capturedAt: v.number(),
       tokens: v.number(),
@@ -734,15 +863,16 @@ const MeasuredHistory = v.object({
   truncated: v.boolean(),
   /** Only this harness, when the caller asked for one. */
   harness: v.union(v.string(), v.null()),
-  /** Only this machine, when the caller asked for one. */
-  machine: v.union(v.string(), v.null()),
+  /** Only this machine position, when the caller asked for one. */
+  machineOrdinal: v.union(v.number(), v.null()),
   points: v.array(HistoryPoint),
 })
 
 /** Strip a merged reading down to what a point on the trail needs. */
 function toHistoryPoint(
   at: number,
-  merged: ReturnType<typeof mergeHarnesses>
+  merged: ReturnType<typeof mergeHarnesses>,
+  publication: MachinePublication
 ) {
   return {
     at,
@@ -757,7 +887,7 @@ function toHistoryPoint(
     pricingTable: merged.pricingTable,
     harnesses: merged.harnesses.map((h) => ({
       name: h.harness.name,
-      machine: h.machine,
+      ...publicMachine(h.machine, publication),
       version: h.harness.version,
       capturedAt: h.capturedAt,
       tokens: h.activity.totalTokens,
@@ -788,15 +918,15 @@ function toHistoryPoint(
  * series does not open by silently dropping a harness the headline includes.
  *
  * `harness` narrows the series to one harness through
- * `by_stack_harness_capturedAt`; `machine` narrows it further, to one source's
- * own trail. Together they are the only honest way to read a per-source number
+ * `by_stack_harness_capturedAt`; `machineOrdinal` narrows it further, to one
+ * machine's trail. Together they are the only honest way to read a source number
  * (call shares and freshness never merge, #66). Narrowing to a harness ALONE
  * still merges, because a harness on two machines is two readings - the comment
  * here used to call a per-harness series "one machine's own trail", which was
  * true only while a stack had one machine (#243).
  *
- * `machine` is filtered after the read rather than indexed: it only ever
- * narrows a set the harness index has already bounded to one stack.
+ * `machineOrdinal` resolves through the same private-name map used to gate the
+ * response. The public request and response never carry the machine name.
  *
  * Rows inside 90 days are one per sync and rows beyond it are one per UTC day
  * (`gcSnapshots`), so the spacing is irregular by construction. The series
@@ -808,7 +938,7 @@ export const getHistoryByStackSlug = query({
     slug: v.string(),
     days: v.optional(v.number()),
     harness: v.optional(v.string()),
-    machine: v.optional(v.string()),
+    machineOrdinal: v.optional(v.number()),
   },
   returns: v.union(MeasuredHistory, v.null()),
   handler: async (ctx, args) => {
@@ -823,6 +953,8 @@ export const getHistoryByStackSlug = query({
     // The same gate the headline reads (#93): dollars on the trail obey the
     // owner's flag, including for rows synced while it was on.
     const publishCost = stack.publishCost !== false
+    const allRows = await snapshotsForStack(ctx, stack._id)
+    const publication = await machinePublication(ctx, stack)
 
     const only = args.harness
     const collected = only
@@ -832,14 +964,26 @@ export const getHistoryByStackSlug = query({
             q.eq('stackId', stack._id).eq('harness', only)
           )
           .collect()
-      : await ctx.db
-          .query('measuredSnapshots')
-          .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', stack._id))
-          .collect()
+      : allRows
+    if (
+      args.machineOrdinal !== undefined &&
+      (!Number.isInteger(args.machineOrdinal) || args.machineOrdinal <= 0)
+    ) {
+      return null
+    }
+    const selectedMachine =
+      args.machineOrdinal === undefined
+        ? undefined
+        : [...publication.ordinals.entries()].find(
+            ([, ordinal]) => ordinal === args.machineOrdinal
+          )?.[0]
+    if (args.machineOrdinal !== undefined && selectedMachine === undefined) {
+      return null
+    }
     const rows =
-      args.machine === undefined
+      selectedMachine === undefined
         ? collected
-        : collected.filter((row) => row.machine === args.machine)
+        : collected.filter((row) => row.machine === selectedMachine)
     if (rows.length === 0) return null
 
     const catalog = await loadModelCatalog(ctx)
@@ -874,7 +1018,8 @@ export const getHistoryByStackSlug = query({
         points.push(
           toHistoryPoint(
             bucketAt,
-            mergeHarnesses(visible.map((e) => e.reading))
+            mergeHarnesses(visible.map((e) => e.reading)),
+            publication
           )
         )
       }
@@ -901,7 +1046,7 @@ export const getHistoryByStackSlug = query({
       windowDays,
       truncated,
       harness: args.harness ?? null,
-      machine: args.machine ?? null,
+      machineOrdinal: args.machineOrdinal ?? null,
       points: truncated ? points.slice(-HISTORY_MAX_POINTS) : points,
     }
   },
@@ -1462,12 +1607,11 @@ export const getPublicSyncConfigInternal = internalQuery({
 // ---------------------------------------------------------------------------
 
 /**
- * The names the owner ticked at the approve gate, by inventory class.
+ * The names the owner ticked at the approve gate, by publication class.
  *
- * These ride down with the rest of the sync config and the client unions them
- * into the curated list before its fail-closed filter (#44). Nothing here
- * changes WHERE filtering happens - it still runs on the machine, before the
- * send - only what the allowed set contains.
+ * Inventory opt-ins ride down with the sync config. The client unions them into
+ * its curated list before the fail-closed filter (#44). Machine opt-ins use the
+ * same store, but the server applies them when it builds a public response.
  *
  * Three properties this placement buys, all from #42 decision 2: the set
  * survives a reinstall and a second machine, a failed config fetch reverts every
@@ -1475,6 +1619,16 @@ export const getPublicSyncConfigInternal = internalQuery({
  * reconcile page has somewhere to revoke a name the owner regrets.
  */
 const NAME_CATEGORIES = [
+  'builtinTools',
+  'machines',
+  'mcpServers',
+  'skills',
+  'subagents',
+  'slashCommands',
+] as const
+
+/** The five inventory name classes carried in measured payloads. */
+const INVENTORY_NAME_CATEGORIES = [
   'builtinTools',
   'mcpServers',
   'skills',
@@ -1486,6 +1640,7 @@ type NameCategory = (typeof NAME_CATEGORIES)[number]
 
 const OptInNames = v.object({
   builtinTools: v.array(v.string()),
+  machines: v.array(v.string()),
   mcpServers: v.array(v.string()),
   skills: v.array(v.string()),
   subagents: v.array(v.string()),
@@ -1494,6 +1649,7 @@ const OptInNames = v.object({
 
 const emptyOptIns = (): Record<NameCategory, string[]> => ({
   builtinTools: [],
+  machines: [],
   mcpServers: [],
   skills: [],
   subagents: [],
@@ -1624,7 +1780,7 @@ export const listPublishedNameOptIns = query({
 })
 
 async function optInsForStack(
-  ctx: QueryCtx,
+  ctx: QueryCtx | MutationCtx,
   stackId: Id<'stacks'>
 ): Promise<Record<NameCategory, string[]>> {
   const out = emptyOptIns()
@@ -1705,16 +1861,18 @@ const KeptPrivateNames = v.object({
   slashCommands: v.array(KeptPrivateAtom),
 })
 
+/** The name classes supplied by the CLI's unsealed inventory half. */
 type StagedAtom = { name: string; count: number; group: string | null }
+type KeptPrivateInsert = StagedAtom & { category: NameCategory }
 
 /** A staged list is thrown away this long after the sync that wrote it. */
 const KEPT_PRIVATE_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
 function flattenStaged(
-  names: Record<NameCategory, StagedAtom[]>
-): Array<StagedAtom & { category: NameCategory }> {
-  const out: Array<StagedAtom & { category: NameCategory }> = []
-  for (const category of NAME_CATEGORIES) {
+  names: Record<(typeof INVENTORY_NAME_CATEGORIES)[number], StagedAtom[]>
+): KeptPrivateInsert[] {
+  const out: KeptPrivateInsert[] = []
+  for (const category of INVENTORY_NAME_CATEGORIES) {
     for (const atom of names[category]) out.push({ ...atom, category })
   }
   return out
@@ -1730,7 +1888,7 @@ function flattenStaged(
  * is that EVERY client-supplied field gets a bound, not only the interesting one.
  */
 function checkStagedNames(
-  entries: ReadonlyArray<StagedAtom & { category: NameCategory }>
+  entries: readonly KeptPrivateInsert[]
 ): void {
   checkNames(entries)
   for (const entry of entries) {
@@ -1755,13 +1913,22 @@ function checkStagedNames(
 async function replaceKeptPrivate(
   ctx: MutationCtx,
   stackId: Id<'stacks'>,
-  names: Record<NameCategory, StagedAtom[]>,
+  names: Record<(typeof INVENTORY_NAME_CATEGORIES)[number], StagedAtom[]>,
   stagedAt: number
 ): Promise<number> {
-  await deleteKeptPrivate(ctx, stackId)
+  await deleteKeptPrivate(ctx, stackId, INVENTORY_NAME_CATEGORIES)
   const flat = flattenStaged(names)
   checkStagedNames(flat)
-  for (const entry of flat) {
+  return await insertKeptPrivate(ctx, stackId, flat, stagedAt)
+}
+
+async function insertKeptPrivate(
+  ctx: MutationCtx,
+  stackId: Id<'stacks'>,
+  entries: readonly KeptPrivateInsert[],
+  stagedAt: number
+): Promise<number> {
+  for (const entry of entries) {
     await ctx.db.insert('keptPrivateNames', {
       stackId,
       category: entry.category,
@@ -1771,19 +1938,44 @@ async function replaceKeptPrivate(
       stagedAt,
     })
   }
-  return flat.length
+  return entries.length
 }
 
 async function deleteKeptPrivate(
   ctx: MutationCtx,
-  stackId: Id<'stacks'>
+  stackId: Id<'stacks'>,
+  categories: readonly NameCategory[] = NAME_CATEGORIES
 ): Promise<number> {
+  const selected = new Set<NameCategory>(categories)
   const rows = await ctx.db
     .query('keptPrivateNames')
     .withIndex('by_stack', (q) => q.eq('stackId', stackId))
     .collect()
-  for (const row of rows) await ctx.db.delete(row._id)
-  return rows.length
+  const matching = rows.filter((row) => selected.has(row.category))
+  for (const row of matching) await ctx.db.delete(row._id)
+  return matching.length
+}
+
+/** Replace only the server-known machine half of the review list. */
+async function replaceKeptPrivateMachines(
+  ctx: MutationCtx,
+  stackId: Id<'stacks'>,
+  stagedAt: number
+): Promise<number> {
+  await deleteKeptPrivate(ctx, stackId, ['machines'])
+  const rows = await machineOrdinalRows(ctx, stackId)
+  const published = new Set((await optInsForStack(ctx, stackId)).machines)
+  const entries: KeptPrivateInsert[] = []
+  for (const name of machineOrdinals(rows).keys()) {
+    if (published.has(name)) continue
+    entries.push({
+      category: 'machines',
+      name,
+      count: 0,
+      group: null,
+    })
+  }
+  return await insertKeptPrivate(ctx, stackId, entries, stagedAt)
 }
 
 /**
@@ -1871,7 +2063,7 @@ export const listKeptPrivate = query({
       rows.set(`${row.category}:${row.name}`, {
         category: row.category,
         name: row.name,
-        count: row.count,
+        count: row.category === 'machines' ? undefined : row.count,
         group: row.group,
         published: false,
       })
@@ -2224,16 +2416,20 @@ export const publishForToken = internalMutation({
     // HALF refused, not the sync: losing the measurement over a race would cost
     // the owner the one thing they approved.
     const refused = args.keptPrivate !== undefined && stack.reviewKeptPrivate === false
-    const stored =
+    const inventoryStored =
       args.keptPrivate && !refused
         ? await replaceKeptPrivate(ctx, stack._id, args.keptPrivate, receivedAt)
         : 0
+    const machineStored =
+      stack.reviewKeptPrivate === false
+        ? 0
+        : await replaceKeptPrivateMachines(ctx, stack._id, receivedAt)
 
     return {
       snapshotIds,
       receivedAt,
       stackSlug: `${stack.slug}-${stack.shortId}`,
-      keptPrivate: { stored, refused },
+      keptPrivate: { stored: inventoryStored + machineStored, refused },
     }
   },
 })
