@@ -1,0 +1,1742 @@
+<!doctype html>
+<!--
+  PROTOTYPE - alp82/aistack#212 - throwaway, never production code.
+
+  Two decisions, one page:
+
+    MODEL  - what approve and publish each mean, to whom, and where, and the
+             one question the owner's own description leaves open.
+    ADMIN  - the publish act. The owner said the act is the send, so A and B
+             are its two readings: A publishes only the items the issue names,
+             B publishes every item approved that week. C is the per-item act
+             that description rules out, kept so the option stays visible.
+    PUBLIC - the page shape. Three variants over the same published set:
+             A topic index, B one stream with filter chips, C topic sections.
+
+  The two surfaces share one state. Publishing in ADMIN changes what PUBLIC
+  shows, so the acts can be judged by what they leave on the page.
+
+  The content is real. 37 items were curated out of 259 collected on
+  2026-08-23 from the live phase-1 feeds, the Hacker News lane, the cc-by
+  Gemini changelog and one X post through the official oEmbed endpoint
+  (collect.mjs). The summaries and topics were drafted by hand in the same
+  session, the way the news-draft skill drafts them (stream.json).
+
+  State is in memory only. Reload resets everything.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE #212 - knowledge base</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg-canvas: oklch(0.16 0.008 256);
+    --bg-shell: oklch(0.12 0.01 256);
+    --bg-panel: oklch(0.2 0.009 256);
+    --bg-panel-muted: oklch(0.24 0.009 256);
+    --bg-panel-elevated: oklch(0.28 0.01 256);
+    --fg-primary: oklch(0.96 0.004 256);
+    --fg-secondary: oklch(0.82 0.004 256);
+    --fg-muted: oklch(0.68 0.005 256);
+    --accent-lime: oklch(0.78 0.17 132);
+    --accent-lime-contrast: oklch(0.22 0.02 132);
+    --stroke-subtle: oklch(0.55 0.01 256 / 0.75);
+    --stroke-strong: oklch(0.5 0.015 256 / 0.9);
+    --red: oklch(0.68 0.19 25);
+    --amber: oklch(0.8 0.14 80);
+    --mono: 'JetBrains Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; border-radius: 0 !important; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg-canvas);
+    color: var(--fg-primary);
+    font-family: system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    padding-bottom: 132px;
+  }
+  a { color: inherit; }
+  button { font-family: var(--mono); cursor: pointer; }
+  .mono { font-family: var(--mono); }
+
+  header.proto {
+    background: var(--bg-shell);
+    border-bottom: 2px solid var(--stroke-strong);
+    padding: 10px 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  header.proto b { color: var(--accent-lime); }
+  .shell { max-width: 840px; margin: 0 auto; padding: 0 12px; }
+
+  .intro {
+    border-bottom: 1px solid var(--stroke-subtle);
+    padding: 12px 0 14px;
+    color: var(--fg-secondary);
+    font-size: 13.5px;
+  }
+  .intro p { margin: 0 0 8px; }
+  .intro p:last-child { margin: 0; }
+
+  .surface-title {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent-lime);
+    margin: 16px 0 2px;
+  }
+  .surface-sub { font-size: 13px; color: var(--fg-muted); margin: 0 0 12px; }
+  .cost {
+    font-size: 12.5px;
+    color: var(--fg-muted);
+    border-left: 2px solid var(--stroke-strong);
+    padding: 2px 0 2px 10px;
+    margin: 0 0 14px;
+  }
+  .cost b { color: var(--fg-secondary); font-weight: 600; }
+  .where {
+    font-size: 12.5px;
+    color: var(--fg-muted);
+    border-left: 2px solid var(--accent-lime);
+    padding: 2px 0 2px 10px;
+    margin: 0 0 10px;
+  }
+  .where b { color: var(--accent-lime); font-weight: 600; }
+  .where .mono { font-size: 11.5px; color: var(--fg-secondary); }
+
+  .step { display: flex; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--stroke-subtle); }
+  .step-n {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent-lime-contrast);
+    background: var(--accent-lime);
+    width: 26px;
+    height: 26px;
+    flex: 0 0 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .step-t {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 3px;
+  }
+  .step-x { font-size: 13.5px; color: var(--fg-secondary); }
+
+  table.who { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 6px; }
+  table.who th {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-muted);
+    text-align: left;
+    border-bottom: 1px solid var(--stroke-strong);
+    padding: 5px 8px 5px 0;
+  }
+  table.who td { padding: 6px 8px 6px 0; border-bottom: 1px solid var(--stroke-subtle); vertical-align: top; }
+  table.who td:first-child { color: var(--accent-lime); font-family: var(--mono); font-size: 11.5px; }
+
+  .counts {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-top: 1px solid var(--stroke-subtle);
+    border-bottom: 1px solid var(--stroke-subtle);
+    padding: 8px 0;
+    margin-bottom: 14px;
+  }
+  .counts b { color: var(--accent-lime); font-weight: 700; }
+
+  .chip {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 1px 6px;
+    border: 1px solid var(--stroke-subtle);
+    color: var(--fg-muted);
+    white-space: nowrap;
+  }
+  .chip.lime { border-color: var(--accent-lime); color: var(--accent-lime); }
+  .chip.amber { border-color: var(--amber); color: var(--amber); }
+  .chip.red { border-color: var(--red); color: var(--red); }
+
+  /* ---- admin rows ---- */
+  .row {
+    border: 1px solid var(--stroke-subtle);
+    border-bottom: none;
+    background: var(--bg-panel);
+    padding: 10px 12px;
+  }
+  .row:last-of-type { border-bottom: 1px solid var(--stroke-subtle); }
+  .row.held { background: var(--bg-panel-muted); }
+  .row-meta {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .row-head { font-weight: 600; font-size: 14.5px; margin-bottom: 4px; }
+  .row-sum { font-size: 13px; color: var(--fg-secondary); }
+  .row-act { display: flex; gap: 8px; margin-top: 9px; align-items: center; flex-wrap: wrap; }
+
+  button.act {
+    background: var(--accent-lime);
+    color: var(--accent-lime-contrast);
+    border: none;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 7px 12px;
+  }
+  button.ghost {
+    background: transparent;
+    color: var(--fg-secondary);
+    border: 1px solid var(--stroke-strong);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 7px 12px;
+  }
+  button.act[disabled], button.ghost[disabled] { opacity: 0.4; cursor: not-allowed; }
+  button.big { width: 100%; padding: 13px; font-size: 12.5px; margin: 12px 0 6px; }
+
+  .tick {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent-lime);
+    border: 1px solid var(--accent-lime);
+    padding: 8px 10px;
+    margin: 10px 0;
+  }
+
+  /* ---- public entries ---- */
+  .topic-head {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent-lime);
+    border-bottom: 2px solid var(--stroke-strong);
+    padding-bottom: 5px;
+    margin: 22px 0 0;
+    display: flex;
+    justify-content: space-between;
+  }
+  .entry { border-bottom: 1px solid var(--stroke-subtle); padding: 13px 0; }
+  .entry-head { font-size: 16px; font-weight: 650; line-height: 1.3; margin-bottom: 5px; }
+  .entry-head a { text-decoration: none; }
+  .entry-head a:hover { color: var(--accent-lime); }
+  .entry-meta {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 7px;
+  }
+  .entry-sum { font-size: 14px; color: var(--fg-secondary); }
+  .entry-body {
+    border-left: 2px solid var(--stroke-strong);
+    padding: 2px 0 2px 11px;
+    margin: 9px 0 0;
+    font-size: 13.5px;
+    color: var(--fg-secondary);
+  }
+  .entry-body .h { font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--fg-muted); margin-top: 6px; }
+  .entry-body ul { margin: 3px 0; padding-left: 18px; }
+  .attrib { font-family: var(--mono); font-size: 10px; color: var(--fg-muted); margin-top: 6px; }
+  .undrafted { font-size: 13px; color: var(--amber); font-style: italic; }
+
+  .embed {
+    border: 1px solid var(--stroke-strong);
+    background: var(--bg-panel);
+    padding: 11px 12px;
+    margin-top: 9px;
+    font-size: 14px;
+  }
+  .embed blockquote { margin: 0; }
+  .embed p { margin: 0 0 6px; }
+  .embed a { color: var(--accent-lime); }
+
+  .releases-strip {
+    border: 1px solid var(--stroke-subtle);
+    background: var(--bg-panel);
+    padding: 9px 11px;
+    margin: 12px 0 2px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--fg-secondary);
+  }
+  .releases-strip .lbl { color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; display: block; margin-bottom: 5px; }
+  .releases-strip a { color: var(--accent-lime); text-decoration: none; }
+
+  .card {
+    border: 1px solid var(--stroke-subtle);
+    background: var(--bg-panel);
+    padding: 12px;
+    margin-bottom: -1px;
+    display: block;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .card:hover { background: var(--bg-panel-muted); }
+  .card-name {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent-lime);
+    display: flex;
+    justify-content: space-between;
+  }
+  .card-lines { font-size: 13px; color: var(--fg-muted); margin-top: 7px; }
+  .card-lines div { padding: 1px 0; }
+
+  .chips { display: flex; gap: 7px; overflow-x: auto; padding: 10px 0; margin: 0 0 4px; }
+  .chips button {
+    background: transparent;
+    border: 1px solid var(--stroke-strong);
+    color: var(--fg-secondary);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 6px 10px;
+    white-space: nowrap;
+  }
+  .chips button.on { background: var(--accent-lime); border-color: var(--accent-lime); color: var(--accent-lime-contrast); font-weight: 700; }
+  .sticky { position: sticky; top: 0; background: var(--bg-canvas); z-index: 5; border-bottom: 1px solid var(--stroke-subtle); }
+
+  .latest-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: baseline;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--stroke-subtle);
+    text-decoration: none;
+    font-size: 14px;
+  }
+  .latest-row:hover { color: var(--accent-lime); }
+  .latest-meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  .back {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent-lime);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: none;
+    border: none;
+    padding: 10px 0;
+  }
+
+  /* ---- bottom bar ---- */
+  nav.bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-shell);
+    border-top: 2px solid var(--stroke-strong);
+    padding: 8px 10px 10px;
+    z-index: 20;
+  }
+  nav.bar .grp { display: flex; gap: 6px; }
+  nav.bar .grp + .grp { margin-top: 6px; }
+  nav.bar button {
+    flex: 1;
+    background: var(--bg-panel);
+    border: 1px solid var(--stroke-strong);
+    color: var(--fg-secondary);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 9px 4px;
+    line-height: 1.25;
+  }
+  nav.bar button.on {
+    background: var(--accent-lime);
+    border-color: var(--accent-lime);
+    color: var(--accent-lime-contrast);
+    font-weight: 700;
+  }
+  nav.bar button b { display: block; font-size: 11.5px; }
+</style>
+</head>
+<body>
+
+<header class="proto">
+  PROTOTYPE <b>alp82/aistack#212</b> &middot; knowledge base: publish act and page shape
+</header>
+
+<div class="shell">
+  <div class="intro">
+    <p><b>Settled on 2026-08-23.</b> The send is the publish act, and it publishes every
+    item approved that week (ADMIN B). The page is the topic index with a latest strip
+    (PUBLIC A). A release with nothing to read joins one strip. The stored X embed
+    renders as static markup with the script stripped. An item with no summary is held
+    back.</p>
+    <p><b>Start on MODEL.</b> It says what approve and publish each mean, to whom, and
+    where. Then <b>ADMIN</b> holds the two readings of the send, plus the per-item act
+    that was ruled out. <b>PUBLIC</b> holds the three page shapes. Admin and public share
+    one state, so what you publish in ADMIN is what PUBLIC shows.</p>
+    <p><b>Nothing here reopens a settled decision.</b> Composing an issue stays in code
+    (#202). Drafting stays a skill in your Claude session (#205). The inbox keeps the
+    per-row verdict it was rebuilt to (#238). Each act below is a change to a surface
+    that already exists, and every act names which one.</p>
+    <p class="mono" style="font-size:11.5px;color:var(--fg-muted)">
+    Real content: 37 items curated from 259 collected on 2026-08-23 across the feed
+    lane, Hacker News, the cc-by Gemini changelog and one X post. Summaries drafted
+    by hand, the way the news-draft skill drafts them.</p>
+  </div>
+  <div id="surface"></div>
+</div>
+
+<nav class="bar">
+  <div class="grp" id="surfaceRow"></div>
+  <div class="grp" id="variantRow"></div>
+</nav>
+
+<script>
+// ---- DATA START (written by build.mjs) ----
+const DATA = {
+  "collectedAt": "2026-08-23T15:56:00.544Z",
+  "windowDays": 21,
+  "topics": [
+    {
+      "slug": "coding-agents",
+      "name": "Coding agents",
+      "order": 1
+    },
+    {
+      "slug": "models",
+      "name": "Models",
+      "order": 2
+    },
+    {
+      "slug": "context-and-protocols",
+      "name": "Context and protocols",
+      "order": 3
+    },
+    {
+      "slug": "working-with-agents",
+      "name": "Working with agents",
+      "order": 4
+    },
+    {
+      "slug": "cost-and-limits",
+      "name": "Cost and limits",
+      "order": 5
+    },
+    {
+      "slug": "local-and-sandboxed",
+      "name": "Local and sandboxed",
+      "order": 6
+    }
+  ],
+  "items": [
+    {
+      "id": "fable5-longhorizon",
+      "headline": "Claude Fable 5 pushes long-horizon coding",
+      "url": "https://aicrier.com/post/d05m7v7vjz04z5cscavi",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article",
+      "publishedAt": "2026-08-23T10:49:53.000Z",
+      "topic": "models",
+      "summary": "Claude Fable 5 is Anthropic's frontier model for reasoning, coding, vision, and multi-day agentic work. It is served through Claude, the API, Amazon Bedrock, Google Cloud, and Microsoft Foundry. Multi-day is the claim worth watching, because it is the one a stack can actually measure.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": null,
+      "xEmbed": null,
+      "thin": false,
+      "pending": true,
+      "inIssue": false
+    },
+    {
+      "id": "qwen-reverse-eng",
+      "headline": "I gave Qwen 3.8 27B a reverse-engineering job and it finished in 30 minutes",
+      "url": "https://www.xda-developers.com/qwen-3-8-27b-reverse-engineering-job-frontier-model/",
+      "source": "Hacker News",
+      "sourceId": "hn",
+      "licenseClass": "hn",
+      "publishedAt": "2026-08-23T10:02:51.000Z",
+      "topic": "models",
+      "summary": "XDA gave Qwen 3.8 27B a reverse-engineering job the author assumed needed a frontier model, and it finished in thirty minutes. The point of the piece is the size: 27B runs on a well-specced laptop. It is the strongest single anecdote yet for putting a local model in a real stack.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": {
+        "points": 159,
+        "comments": 80,
+        "url": "https://news.ycombinator.com/item?id=49407507"
+      },
+      "xEmbed": null,
+      "thin": false,
+      "pending": true,
+      "inIssue": true
+    },
+    {
+      "id": "harness-gap",
+      "headline": "Fable 5’s Harness Gap Beats Model Gap",
+      "url": "https://aicrier.com/post/pfg6wy7lmi3s3cayrhqm",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article",
+      "publishedAt": "2026-08-23T09:36:37.000Z",
+      "topic": "working-with-agents",
+      "summary": "AniC_dev argues a competent human on a basic harness with almost any capable model beats Fable 5 running autonomously. The post puts human steering and workflow design above the gap between frontier models. It is the counter-argument to picking a stack by benchmark.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": null,
+      "xEmbed": null,
+      "thin": false,
+      "pending": true,
+      "inIssue": false
+    },
+    {
+      "id": "traycer",
+      "headline": "Traycer Orchestrates Claude Code, Codex Side By Side",
+      "url": "https://aicrier.com/post/l474wnf2fxno3n7g22vw",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article",
+      "publishedAt": "2026-08-23T07:14:30.000Z",
+      "topic": "coding-agents",
+      "summary": "Traycer is an open-source workspace that runs Claude Code, Codex, and Cursor side by side over shared context, plans, and reviews. It brings your own agent, so it adds an orchestration layer without a second model subscription. It is the same bet as running two harnesses on one machine, made into a product.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": null,
+      "xEmbed": null,
+      "thin": false,
+      "pending": true,
+      "inIssue": false
+    },
+    {
+      "id": "codex-rate-limit",
+      "headline": "Codex Addresses Rate-Limit Usage Drain",
+      "url": "https://aicrier.com/post/wjemi8zut918o3p3k9fz",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article",
+      "publishedAt": "2026-08-23T06:11:36.000Z",
+      "topic": "cost-and-limits",
+      "summary": "OpenAI traced unexpected Codex rate-limit drain to image-heavy long sessions, Computer History, and automatic conversation-title generation. Limits were reset the following afternoon. Two of those three are features the user never asked to spend on.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": null,
+      "xEmbed": null,
+      "thin": false,
+      "pending": true,
+      "inIssue": false
+    },
+    {
+      "id": "claude-code-release",
+      "headline": "v2.1.241",
+      "url": "https://github.com/anthropics/claude-code/releases/tag/v2.1.241",
+      "source": "claude-code releases",
+      "sourceId": "claude-code",
+      "licenseClass": "unlicensed-release-notes",
+      "publishedAt": "2026-08-23T00:52:16.000Z",
+      "topic": "coding-agents",
+      "summary": "Claude Code shipped v2.1.241 on August 23. The published notes say bug fixes and reliability improvements, and nothing more.",
+      "note": "Unlicensed release notes: our summary and the link, never the vendor's text.",
+      "body": [],
+      "attribution": null,
+      "hn": null,
+      "xEmbed": null,
+      "thin": true,
+      "pending": true,
+      "inIssue": false
+    },
+    {
+      "id": "promptot",
+      "headline": "PromptOT Treats Prompts Like Production Code",
+      "url": "https://aicrier.com/post/qedtsmp916b9yt1lor1t",
+      "source": "AI Crier",
+      "sourceId": "aicrier",
+      "licenseClass": "article",
+      "publishedAt": "2026-08-22T21:33:51.000Z",
+      "topic": "context-and-protocols",
+      "summary": "PromptOT gives teams typed prompt blocks, version history, evaluations, per-environment deployment, and one-click rollback through an API. The argument is that a prompt change alters production behavior as much as a code change, so it deserves the same machinery.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": null,
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "codex-release",
+      "headline": "0.150.0-alpha.7",
+      "url": "https://github.com/openai/codex/releases/tag/rust-v0.150.0-alpha.7",
+      "source": "codex releases",
+      "sourceId": "codex",
+      "licenseClass": "permissive-release-notes",
+      "publishedAt": "2026-08-22T21:29:43.000Z",
+      "topic": "coding-agents",
+      "summary": "Codex tagged 0.150.0-alpha.7, one of nine alpha builds in three days. The alpha train moves faster than the stable one, so a pinned Codex version can be a week behind the branch it was cut from.",
+      "note": null,
+      "body": [
+        {
+          "kind": "p",
+          "text": "Release 0.150.0-alpha.7"
+        }
+      ],
+      "attribution": "OpenAI, Apache 2.0",
+      "hn": null,
+      "xEmbed": null,
+      "thin": true,
+      "pending": true,
+      "inIssue": false
+    },
+    {
+      "id": "local-llm-dumber",
+      "headline": "Why your local LLM feels dumber than it is",
+      "url": "https://forum.level1techs.com/t/why-your-local-llm-feels-dumber-than-it-is/253917",
+      "source": "Hacker News",
+      "sourceId": "hn",
+      "licenseClass": "hn",
+      "publishedAt": "2026-08-22T18:14:16.000Z",
+      "topic": "local-and-sandboxed",
+      "summary": "A Level1Techs post runs experiments on why a model you host feels worse than the one the lab hosts: quantization, sampler defaults, and the gap between your inference stack and the reference implementation. It reached 417 points on Hacker News. The measured answer is that the weights are rarely the problem.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": {
+        "points": 417,
+        "comments": 171,
+        "url": "https://news.ycombinator.com/item?id=49402232"
+      },
+      "xEmbed": null,
+      "thin": false,
+      "pending": true,
+      "inIssue": true
+    },
+    {
+      "id": "cc-ab-effort",
+      "headline": "Anthropic appears to be A/B testing reduced effort levels in Claude Code",
+      "url": "https://twitter.com/argofowl/status/2091150597374537729",
+      "source": "Hacker News",
+      "sourceId": "hn",
+      "licenseClass": "x",
+      "publishedAt": "2026-08-22T16:58:49.000Z",
+      "topic": "coding-agents",
+      "summary": "A user reported that Anthropic enrolled Fable 5 sessions on Claude Code 2.1.236 and later into a server-side experiment that shrank the effort scale, so high behaved like low. The post says older versions and Opus 5 were left alone, and that the changelog did not mention it. Hacker News ran it to 196 points and 175 comments. Nobody in the thread had a way to check their own session.",
+      "note": "License class x: the official embed is the only thing we may re-serve.",
+      "body": [],
+      "attribution": null,
+      "hn": {
+        "points": 196,
+        "comments": 175,
+        "url": "https://news.ycombinator.com/item?id=49401549"
+      },
+      "xEmbed": {
+        "html": "<blockquote class=\"twitter-tweet\" data-dnt=\"true\"><p lang=\"en\" dir=\"ltr\">update: it&#39;s server-side, not the app<br><br>anthropic enrols fable 5 sessions on claude code 2.1.236+ into an experiment that shrinks the effort scale, older versions and opus 5 are left alone<br><br>probably an a/b test, so not everyone will see it<br><br>if &quot;high&quot; feels like &quot;low&quot; for you,… <a href=\"https://t.co/7bzE7kwekI\">https://t.co/7bzE7kwekI</a></p>&mdash; 🥔🥔🥔 (@argofowl) <a href=\"https://x.com/argofowl/status/2091150597374537729?ref_src=twsrc%5Etfw\">August 22, 2026</a></blockquote>\n\n",
+        "authorName": "🥔🥔🥔"
+      },
+      "thin": false,
+      "pending": true,
+      "inIssue": true
+    },
+    {
+      "id": "more-than-review",
+      "headline": "More than just code review",
+      "url": "https://simonwillison.net/2026/Aug/22/more-than-just-code-review/",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article",
+      "publishedAt": "2026-08-22T15:56:54.000Z",
+      "topic": "working-with-agents",
+      "summary": "Simon Willison names the skill that makes coding agents pay: instruct confidently, then verify confidently. Reading every line is one way to verify and not the best one. It is the shortest statement of why the review step, not the generate step, is where a stack differs.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": null,
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "mcp-roadmap",
+      "headline": "New MCP Roadmap",
+      "url": "https://blog.modelcontextprotocol.io/posts/mcp-roadmap/",
+      "source": "Hacker News",
+      "sourceId": "hn",
+      "licenseClass": "hn",
+      "publishedAt": "2026-08-22T13:31:34.000Z",
+      "topic": "context-and-protocols",
+      "summary": "The Model Context Protocol maintainers published a roadmap for the next specification releases. The priorities are agentic messaging primitives, one hardened HTTP-native transport, agent identity with enterprise security, and better SDK ergonomics. Transport unification is the one that will move real servers.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": {
+        "points": 241,
+        "comments": 142,
+        "url": "https://news.ycombinator.com/item?id=49399591"
+      },
+      "xEmbed": null,
+      "thin": false,
+      "pending": true,
+      "inIssue": true
+    },
+    {
+      "id": "harness-evolution",
+      "headline": "The Evolution of the Agent Harness",
+      "url": "https://www.latent.space/p/attention-interface",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article",
+      "publishedAt": "2026-08-22T07:30:52.000Z",
+      "topic": "coding-agents",
+      "summary": "Dan McAteer argues that agents started working in late 2025 because the models and the harnesses around them improved at the same time, and their curves crossed. His forecast is that models keep absorbing harness features into their weights, engineers keep deleting what got absorbed, and what is left steers human attention instead of the model. It is the clearest statement so far of why a stack is worth measuring: the harness is the part that keeps changing.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": null,
+      "xEmbed": null,
+      "thin": false,
+      "pending": true,
+      "inIssue": true
+    },
+    {
+      "id": "sol-price-cut",
+      "headline": "GPT 5.6 Sol 20% price reduction",
+      "url": "https://developers.openai.com/api/docs/models/gpt-5.6-sol",
+      "source": "Hacker News",
+      "sourceId": "hn",
+      "licenseClass": "hn",
+      "publishedAt": "2026-08-22T04:33:06.000Z",
+      "topic": "cost-and-limits",
+      "summary": "GPT-5.6 Sol dropped to $4 per million input tokens and $20 per million output, a twenty percent cut, with cached input at $0.40. The context window is 1,050,000 tokens and the effort scale runs from none to max. A price move on the default frontier tier resets every cost estimate built on it.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": {
+        "points": 90,
+        "comments": 77,
+        "url": "https://news.ycombinator.com/item?id=49396590"
+      },
+      "xEmbed": null,
+      "thin": false,
+      "pending": true,
+      "inIssue": true
+    },
+    {
+      "id": "week-of-codex",
+      "headline": "A week of using Codex more than Claude",
+      "url": "https://allaboutcoding.ghinda.com/a-week-of-using-codex-more-than-claude/",
+      "source": "Hacker News",
+      "sourceId": "hn",
+      "licenseClass": "hn",
+      "publishedAt": "2026-08-21T19:51:48.000Z",
+      "topic": "working-with-agents",
+      "summary": null,
+      "note": "Undrafted. The page refused the fetch, so the drafting run left it and the next run re-attempts it.",
+      "body": [],
+      "attribution": null,
+      "hn": {
+        "points": 230,
+        "comments": 244,
+        "url": "https://news.ycombinator.com/item?id=49393051"
+      },
+      "xEmbed": null,
+      "thin": false,
+      "pending": true,
+      "inIssue": false
+    },
+    {
+      "id": "self-hosted-factory",
+      "headline": "Building an (almost) fully self-hosted, sandboxed, agentic software factory",
+      "url": "https://blog.jakesaunders.dev/building-an-almost-fully-self-hosted-sandboxed-agentic-software-factory/",
+      "source": "Hacker News",
+      "sourceId": "hn",
+      "licenseClass": "hn",
+      "publishedAt": "2026-08-21T16:27:52.000Z",
+      "topic": "local-and-sandboxed",
+      "summary": "Jake Saunders built a self-hosted sandboxed agent pipeline that took one prompt to a repository, a written app with tests, green CI, a provisioned Postgres, and an HTTPS deploy without a second message. The write-up is honest about the almost in the title. It is the clearest end-to-end picture of what a sandboxed agent stack costs to run.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": {
+        "points": 116,
+        "comments": 65,
+        "url": "https://news.ycombinator.com/item?id=49390463"
+      },
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "stop-making-tuis",
+      "headline": "Stop Making TUIs",
+      "url": "https://simonwillison.net/2026/Aug/21/stop-making-tuis/",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article",
+      "publishedAt": "2026-08-21T16:07:32.000Z",
+      "topic": "working-with-agents",
+      "summary": "Thomas Ptacek argues that coding agents made a usable GUI so cheap that a terminal UI is no longer the sensible default for a personal tool. Simon Willison agrees and points at two vibe-coded macOS task bar apps he uses daily. The claim is about cost, not taste.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": null,
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "opencode-release",
+      "headline": "v1.18.21",
+      "url": "https://github.com/anomalyco/opencode/releases/tag/v1.18.21",
+      "source": "opencode releases",
+      "sourceId": "opencode",
+      "licenseClass": "permissive-release-notes",
+      "publishedAt": "2026-08-21T14:51:11.000Z",
+      "topic": "coding-agents",
+      "summary": "opencode v1.18.21 fixes two things that stop a session dead: a response that gives up when the model reports an unknown finish reason, and Vertex AI multi-region Gemini requests taking the wrong endpoints. The desktop build keeps file search results on screen while the next search loads.",
+      "note": null,
+      "body": [
+        {
+          "kind": "h",
+          "text": "Core"
+        },
+        {
+          "kind": "h",
+          "text": "Bugfixes"
+        },
+        {
+          "kind": "li",
+          "text": "Continue responses when a model reports an unknown finish reason instead of stopping early"
+        },
+        {
+          "kind": "li",
+          "text": "Route Vertex AI eu and us multi-region Gemini requests through REP endpoints"
+        },
+        {
+          "kind": "h",
+          "text": "Desktop"
+        },
+        {
+          "kind": "h",
+          "text": "Bugfixes"
+        },
+        {
+          "kind": "li",
+          "text": "Keep file search results visible while the next search is loading"
+        },
+        {
+          "kind": "li",
+          "text": "Register the archive session command in both desktop layouts ( @NathanTCode )"
+        },
+        {
+          "kind": "p",
+          "text": "Thank you to 1 community contributor:"
+        },
+        {
+          "kind": "li",
+          "text": "@NathanTCode : fix(app): register archive session command in both layouts ( #41741 )"
+        }
+      ],
+      "attribution": "opencode contributors, MIT",
+      "hn": null,
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "claudette",
+      "headline": "Claudette: Make Claude stop talking like a BuzzFeed article",
+      "url": "https://github.com/adnanakil/nobuzz/blob/main/README.md",
+      "source": "Hacker News",
+      "sourceId": "hn",
+      "licenseClass": "hn",
+      "publishedAt": "2026-08-21T14:31:52.000Z",
+      "topic": "working-with-agents",
+      "summary": "NoBuzz is a Claude Code skill that rewrites Claude's last response to strip the listicle voice. It hit 352 points and 235 comments on Hacker News, which is a lot of feeling about prose style. Skills as post-processors on your own agent's output are a pattern worth noting.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": {
+        "points": 352,
+        "comments": 235,
+        "url": "https://news.ycombinator.com/item?id=49388752"
+      },
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "deepseek-v4-flash",
+      "headline": "DeepSeek-v4-flash-vision-exp",
+      "url": "https://api-docs.deepseek.com/guides/vision/",
+      "source": "Hacker News",
+      "sourceId": "hn",
+      "licenseClass": "hn",
+      "publishedAt": "2026-08-21T10:33:56.000Z",
+      "topic": "models",
+      "summary": "DeepSeek shipped deepseek-v4-flash-vision-exp, which takes images alongside text through the same OpenAI-compatible chat completions shape. Images arrive as base64, as a URL, or through the files API, and the format is detected from the file content rather than the name. It topped Hacker News at 496 points.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": {
+        "points": 496,
+        "comments": 153,
+        "url": "https://news.ycombinator.com/item?id=49386163"
+      },
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "bedrock-10x",
+      "headline": "Codex on AWS bedrock bug causing 10x charges",
+      "url": "https://github.com/openai/codex/issues/37674",
+      "source": "Hacker News",
+      "sourceId": "hn",
+      "licenseClass": "hn",
+      "publishedAt": "2026-08-21T03:17:43.000Z",
+      "topic": "cost-and-limits",
+      "summary": "Codex running natively on AWS Bedrock has no explicit cache controls, so sessions rewrite the cache and the bill lands around ten times higher than expected. The issue is closed, and it reached 148 points on Hacker News. The same session on the same model costs a different amount depending on the route.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": {
+        "points": 148,
+        "comments": 64,
+        "url": "https://news.ycombinator.com/item?id=49383326"
+      },
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "wayfinder-skill",
+      "headline": "The /wayfinder Skill: Navigating the “Fog of War” of Planning",
+      "url": "https://www.latent.space/p/wayfinder-skill",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article",
+      "publishedAt": "2026-08-20T20:59:09.000Z",
+      "topic": "context-and-protocols",
+      "summary": "Latent Space interviewed Matt Pocock about /wayfinder, a skill for projects whose end state is not clear yet. It charts the fog of war as a map of decisions instead of a plan. His AI Skills for Real Engineers project is the distribution behind it.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": null,
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "autolith",
+      "headline": "Autolith: A programming agent with a live runtime",
+      "url": "https://www.lambda-symbolics.com/autolith",
+      "source": "Hacker News",
+      "sourceId": "hn",
+      "licenseClass": "hn",
+      "publishedAt": "2026-08-20T15:40:57.000Z",
+      "topic": "coding-agents",
+      "summary": "Autolith is a terminal agent with a live Common Lisp runtime it can inspect, test, and extend while the conversation runs. It also claims recursive inference over corpora larger than the model window, plus portable conversations, memories, and checkpoints. It is a bet that an agent you can open up beats an agent that is faster.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": {
+        "points": 124,
+        "comments": 48,
+        "url": "https://news.ycombinator.com/item?id=49376197"
+      },
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "vomit",
+      "headline": "Vomit: Clean up Claude 5's token output with a separate LLM",
+      "url": "https://github.com/zachahn/vomit",
+      "source": "Hacker News",
+      "sourceId": "hn",
+      "licenseClass": "hn",
+      "publishedAt": "2026-08-20T15:26:02.000Z",
+      "topic": "working-with-agents",
+      "summary": "Vomit runs a second, smaller model over Claude 5's output to clean it up, including stripping generated comments. It reached 303 points and 297 comments. Two models in one pipeline, one to produce and one to trim, is the same shape as a router.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": {
+        "points": 303,
+        "comments": 297,
+        "url": "https://news.ycombinator.com/item?id=49375996"
+      },
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "watch-claude",
+      "headline": "Hacking with Claude on a $27 smart watch",
+      "url": "https://www.mikekasberg.com/blog/2026/08/19/hacking-with-claude-on-a-27-smart-watch.html",
+      "source": "Hacker News",
+      "sourceId": "hn",
+      "licenseClass": "hn",
+      "publishedAt": "2026-08-20T14:08:09.000Z",
+      "topic": "local-and-sandboxed",
+      "summary": "Mike Kasberg used Claude to write a watch face for a $27 PineTime running open-source firmware. The interesting part is not the watch, it is that embedded work with unfamiliar firmware is now a weekend that starts from a drawer.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": {
+        "points": 106,
+        "comments": 57,
+        "url": "https://news.ycombinator.com/item?id=49374772"
+      },
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "smolvm",
+      "headline": "smolmachines / smolvm as a sandbox for untrusted Python & JavaScript",
+      "url": "https://simonwillison.net/2026/Aug/19/smolmachines-untrusted-sandbox/",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article",
+      "publishedAt": "2026-08-19T23:16:00.000Z",
+      "topic": "local-and-sandboxed",
+      "summary": "Simon Willison tested smolvm 1.8.3 as a sandbox for untrusted Python and JavaScript and found it holds: hardware-isolated VMs rather than shared-kernel containers, offline images, no-network execution, CPU and memory limits, and storage quotas. Cold starts land around 0.6 to 1.5 seconds and warm runs around 50 milliseconds. He ran the testing itself with Claude Fable 5 in Claude Code.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": null,
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "agents-md",
+      "headline": "Feature Request: Support AGENTS.md",
+      "url": "https://github.com/anthropics/claude-code/issues/6235",
+      "source": "Hacker News",
+      "sourceId": "hn",
+      "licenseClass": "hn",
+      "publishedAt": "2026-08-19T21:19:50.000Z",
+      "topic": "context-and-protocols",
+      "summary": "The request for Claude Code to read AGENTS.md is the loudest open issue in the repository, at 375 points on Hacker News. Codex, Amp, and Cursor already standardize on the file. Every stack that runs two harnesses keeps two instruction files today, and that is the cost the thread is arguing about.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": {
+        "points": 375,
+        "comments": 219,
+        "url": "https://news.ycombinator.com/item?id=49367350"
+      },
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "gemini-cli-release",
+      "headline": "Release v0.56.0",
+      "url": "https://github.com/google-gemini/gemini-cli/releases/tag/v0.56.0",
+      "source": "gemini-cli releases",
+      "sourceId": "gemini-cli",
+      "licenseClass": "permissive-release-notes",
+      "publishedAt": "2026-08-19T19:29:38.000Z",
+      "topic": "coding-agents",
+      "summary": "gemini-cli cut v0.56.0 on August 19, then went straight back to nightlies. The release carries no notes of its own, only the compare link against v0.55.1.",
+      "note": null,
+      "body": [
+        {
+          "kind": "p",
+          "text": "Full Changelog : v0.55.1...v0.56.0"
+        }
+      ],
+      "attribution": "Google, Apache 2.0",
+      "hn": null,
+      "xEmbed": null,
+      "thin": true,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "opus5-incoherence",
+      "headline": "Opus 5.0 drives incoherence into the stratosphere",
+      "url": "https://github.com/anthropics/claude-code/issues/77136",
+      "source": "Hacker News",
+      "sourceId": "hn",
+      "licenseClass": "hn",
+      "publishedAt": "2026-08-19T17:40:06.000Z",
+      "topic": "models",
+      "summary": "A long-running claude-code issue collects reports that Claude 4.7, 4.8, 5.0, and Fable increasingly fall into repetitive rhetorical tics and ignore explicit style instructions. It reached 189 points on Hacker News. The bug is open, and the thread is the closest thing to a public record of the drift.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": {
+        "points": 189,
+        "comments": 170,
+        "url": "https://news.ycombinator.com/item?id=49364658"
+      },
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "onecli",
+      "headline": "Launch HN: OneCLI (YC S26) – OSS sandboxed agent harness for teams",
+      "url": "https://github.com/onecli/onecli",
+      "source": "Hacker News",
+      "sourceId": "hn",
+      "licenseClass": "hn",
+      "publishedAt": "2026-08-19T16:29:02.000Z",
+      "topic": "coding-agents",
+      "summary": "OneCLI launched on Hacker News as an open-source sandboxed agent harness aimed at teams rather than one developer. It reached 87 points and 31 comments. Team-shaped harnesses are now their own category, next to the single-user CLIs.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": {
+        "points": 87,
+        "comments": 31,
+        "url": "https://news.ycombinator.com/item?id=49363710"
+      },
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "memory-prices",
+      "headline": "[AINews] Memory prices up 500% in 12 months",
+      "url": "https://www.latent.space/p/ainews-memory-prices-up-500-in-12",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article",
+      "publishedAt": "2026-08-19T08:44:52.000Z",
+      "topic": "cost-and-limits",
+      "summary": "Memory prices are up 500% in twelve months, with 128GB DDR5 kits at ten times their lowest recorded price. The shortage has run unabated since February. Every local-model plan that starts with buy more RAM now has a different budget.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": null,
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "model-routing",
+      "headline": "Frontier Model Cost and Open-Weights Popularity is Driving Demand for Model Routing",
+      "url": "https://www.latent.space/p/glean-model-routing",
+      "source": "Latent Space",
+      "sourceId": "latent-space",
+      "licenseClass": "article",
+      "publishedAt": "2026-08-18T21:41:10.000Z",
+      "topic": "cost-and-limits",
+      "summary": "Glean's chief executive explains why model routing became a core part of enterprise deployment: frontier prices are high, open-weight models are close enough, and human feedback at scale improves the routing. Stripe bought OpenRouter for over $7B in the same month. A stack with a router in it now has to say which model actually served the work.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": null,
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "qwen-index",
+      "headline": "Qwen 3.8 27B scores 52 on the Artificial Analysis Intelligence Index",
+      "url": "https://simonwillison.net/2026/Aug/17/qwen-38-27b-scores-52/",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article",
+      "publishedAt": "2026-08-17T23:58:14.000Z",
+      "topic": "models",
+      "summary": "Qwen 3.8 27B scored 52 on the Artificial Analysis Intelligence Index, matching GPT-5.6 Luna and landing one point behind GLM-5.2 and DeepSeek V4 Pro. Those two are 753B and 1.7T parameters. A 27B model at that score changes what a local tier is worth.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": null,
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "qwen-overthinks",
+      "headline": "Qwen 3.8 27B is excellent, but it defaults to wildly overthinking things",
+      "url": "https://simonwillison.net/2026/Aug/16/qwen-38-27b/",
+      "source": "Simon Willison",
+      "sourceId": "simonwillison",
+      "licenseClass": "article",
+      "publishedAt": "2026-08-16T22:00:39.000Z",
+      "topic": "models",
+      "summary": "Simon Willison rates Qwen 3.8 27B excellent and says it defaults to wildly overthinking. The model is Apache 2, vision-capable, and 27B, which is the size that fits a laptop. Qwen's own benchmarks put it above the closed-weight Qwen 3.7-Plus.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": null,
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "gemini-changelog",
+      "headline": "Gemini API changelog: 2026-08-13",
+      "url": "https://ai.google.dev/gemini-api/docs/changelog#08-13-2026",
+      "source": "Gemini API changelog",
+      "sourceId": "gemini-changelog",
+      "licenseClass": "cc-by",
+      "publishedAt": "2026-08-13T12:00:00.000Z",
+      "topic": "models",
+      "summary": "Gemini 3.7 Flash reached general availability as Google's workhorse model for coding and agents. Google reports substantial gains in software engineering, web development, and agentic workflows, at an introductory price through December 31, 2026.",
+      "note": "CC BY 4.0: the changelog text itself is re-servable with attribution.",
+      "body": [
+        {
+          "kind": "p",
+          "text": "Gemini 3.7 Flash generally available (GA) : Released our most intelligent workhorse model yet for coding and agents: Gemini 3.7 Flash ( gemini-3.7-flash ): Substantial improvements across software engineering, web development, and agentic workflows, available at an introductory price through December 31, 2026. To get started, see the Gemini 3.7 Flash model page and the Latest model guide ."
+        }
+      ],
+      "attribution": "Google, CC BY 4.0",
+      "hn": null,
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "gpt56-guide",
+      "headline": "The builder’s guide to GPT‑5.6",
+      "url": "https://openai.com/index/builders-guide-to-gpt-5-6",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article",
+      "publishedAt": "2026-08-13T11:00:00.000Z",
+      "topic": "models",
+      "summary": "OpenAI published a builder's guide to GPT-5.6, covering model selection across the family and the new Responses API capabilities. The framing is cost per task rather than capability, which matches what the price cut on Sol suggests.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": null,
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    },
+    {
+      "id": "sol-ultrafast",
+      "headline": "Previewing Ultrafast mode: GPT-5.6 Sol at up to 14X the speed",
+      "url": "https://openai.com/index/previewing-ultrafast",
+      "source": "OpenAI News",
+      "sourceId": "openai-news",
+      "licenseClass": "article",
+      "publishedAt": "2026-08-13T10:00:00.000Z",
+      "topic": "models",
+      "summary": "OpenAI previewed Ultrafast, an API service tier that runs GPT-5.6 Sol up to fourteen times faster on Cerebras hardware, at up to 750 output tokens per second. Speed is now a purchased tier rather than a property of the model.",
+      "note": null,
+      "body": [],
+      "attribution": null,
+      "hn": null,
+      "xEmbed": null,
+      "thin": false,
+      "pending": false,
+      "inIssue": false
+    }
+  ]
+};
+// ---- DATA END ----
+
+const CLASS_LABEL = {
+  'cc-by': 'cc-by 4.0',
+  'permissive-release-notes': 'release notes',
+  'unlicensed-release-notes': 'release notes',
+  article: 'article',
+  hn: 'hacker news',
+  x: 'x post',
+};
+
+const state = {
+  surface: 'model',
+  act: 'A',
+  page: 'A',
+  published: new Set(DATA.items.filter((i) => !i.pending).map((i) => i.id)),
+  held: new Set(),
+  sent: false,
+  skipped: false,
+  openTopic: null,
+  filter: 'all',
+  ticks: [],
+};
+
+const topicName = (slug) => DATA.topics.find((t) => t.slug === slug)?.name ?? slug;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const day = (iso) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+const pending = () => DATA.items.filter((i) => i.pending && !state.published.has(i.id));
+const publicItems = () => DATA.items.filter((i) => state.published.has(i.id));
+
+function publish(ids, tick) {
+  for (const id of ids) state.published.add(id);
+  state.ticks = [tick];
+  render();
+}
+
+// ---------------------------------------------------------------- MODEL
+
+function model() {
+  const named = DATA.items.filter((i) => i.inIssue).length;
+  const unnamed = DATA.items.length - named;
+  const step = (n, title, who, text) => `
+    <div class="step">
+      <div class="step-n">${n}</div>
+      <div>
+        <div class="step-t">${title} <span class="chip">${who}</span></div>
+        <div class="step-x">${text}</div>
+      </div>
+    </div>`;
+  return `
+    <div class="surface-title">What we are choosing</div>
+    <p class="surface-sub">One item, four moments. The first three exist today. The
+    fourth is what this ticket picks.</p>
+
+    ${step(1, 'Collected', 'private', 'The collector writes a link into the inbox: headline, link, date, source, license class. Nobody has looked at it.')}
+    ${step(2, 'Drafted', 'private', 'Your Claude session writes a summary in our own words and picks one topic. The apply script fills the row. Still nobody has looked at it.')}
+    ${step(3, 'Approved', 'private', 'You tap Approve in Admin, News, Inbox. The row moves from inbox to the stream. This is a verdict about the item, and it shows the item to nobody. The glossary says it plainly: approval alone publishes nothing.')}
+    ${step(4, 'Published', 'public', 'A projection makes the item public. There are two projections and each has its own act. One act exists. The other is the choice on this page.')}
+
+    <div class="surface-title" style="margin-top:24px">The two projections</div>
+    <p class="cost"><b>Newsletter, the push.</b> An issue names about a dozen items, in
+    code, in <span class="mono">src/newsletter/issues.ts</span>. The send mails them to
+    subscribers and opens <span class="mono">/news/&lt;slug&gt;</span>, which renders
+    those items' summaries to anyone. That act already exists.</p>
+    <p class="cost"><b>Knowledge base, the pull.</b> The same summaries, grouped by
+    topic, on a public page under <span class="mono">/news</span>. Anyone, no login, no
+    subscription. It has no act yet.</p>
+
+    <div class="surface-title" style="margin-top:24px">Who sees what</div>
+    <table class="who">
+      <tr><th>Surface</th><th>Who</th><th>Where</th></tr>
+      <tr><td>Inbox</td><td>you</td><td>Admin, News, Inbox</td></tr>
+      <tr><td>Stream</td><td>you</td><td>Admin, News, Inbox, Stream view</td></tr>
+      <tr><td>The email</td><td>subscribers</td><td>their mailbox</td></tr>
+      <tr><td>Issue archive</td><td>anyone</td><td><span class="mono">/news/&lt;slug&gt;</span></td></tr>
+      <tr><td>Knowledge base</td><td>anyone</td><td><span class="mono">/news</span>, by topic</td></tr>
+    </table>
+
+    <div class="surface-title" style="margin-top:24px">The answer</div>
+    <p class="surface-sub">The act is the send: preselect with Approve, compose the issue
+    in code, send it, and that makes it public. <b>The send publishes every item approved
+    that week</b>, not only the ones the issue names.</p>
+    <p class="cost">In this real week: <b>${DATA.items.length}</b> approved items, and
+    issue #2 names <b>${named}</b> of them. The other <b>${unnamed}</b> reach the page
+    too, and the email stays the same size. Approve already means worth keeping, and
+    discard is what removes an item.</p>
+    <p class="cost">The remaining cost is honest: a skipped week publishes nothing, so
+    the page can go a fortnight without moving while the stream fills up.</p>`;
+}
+
+// ---------------------------------------------------------------- ADMIN
+
+function adminRow(item, trailing) {
+  const chips = [
+    `<span class="chip">${esc(item.source)}</span>`,
+    `<span class="chip lime">${esc(topicName(item.topic))}</span>`,
+    `<span class="chip">${CLASS_LABEL[item.licenseClass]}</span>`,
+  ];
+  if (!item.summary) chips.push('<span class="chip amber">no summary</span>');
+  return `
+    <div class="row${item.summary ? '' : ' held'}">
+      <div class="row-meta">${chips.join('')}<span>${day(item.publishedAt)}</span></div>
+      <div class="row-head">${esc(item.headline)}</div>
+      <div class="${item.summary ? 'row-sum' : 'undrafted'}">${esc(item.summary ?? 'Undrafted. The page refused the fetch, so the next drafting run re-attempts it.')}</div>
+      ${trailing ?? ''}
+    </div>`;
+}
+
+/** The send, in both readings of its scope. */
+function sendAct(scope) {
+  const waiting = pending();
+  const inIssue = waiting.filter((i) => i.inIssue);
+  const rest = waiting.filter((i) => !i.inIssue);
+  const goes = (scope === 'issue' ? inIssue : waiting).filter((i) => i.summary);
+  const narrow = scope === 'issue';
+
+  return `
+    <div class="surface-title">Act ${narrow ? 'A' : 'B'} &middot; the send publishes ${narrow ? 'the issue' : 'the week'} ${narrow ? '<span class="chip">considered</span>' : '<span class="chip lime">settled</span>'}</div>
+    <p class="surface-sub">You preselect with Approve, compose issue #2 in code, and send
+    it. The send is the publish act. ${
+      narrow
+        ? 'It makes public exactly the items the issue names, so the knowledge base holds what the email held, grouped by topic.'
+        : 'It makes public every item approved that week, both the ones the issue names and the ones it does not.'
+    }</p>
+    <p class="where"><b>Where it lives:</b> the send you already run,
+    <span class="mono">scripts/newsletter.ts send</span> and the Send button in Admin
+    &rsaquo; News &rsaquo; Newsletter. The issue's items come from
+    <span class="mono">src/newsletter/issues.ts</span>, authored in code as #202 ruled.
+    The split below is shown, not chosen. Costs one field on the item row and one write
+    inside <span class="mono">sendIssue</span>.</p>
+    <p class="cost"><b>Cost:</b> ${
+      narrow
+        ? 'an approved item no issue ever names stays private forever. About a dozen items a week reach the page, and the other two thirds of the stream are work nobody sees.'
+        : 'an item can be public without you having written it into an issue, so the knowledge base is wider than anything you composed. The email stays the same size.'
+    } Either way a skipped week publishes nothing, and the page can go dark for a
+    fortnight.</p>
+    ${counts()}
+    ${state.ticks.map((t) => `<div class="tick">${esc(t)}</div>`).join('')}
+    ${
+      state.sent
+        ? '<div class="tick">Issue #2 sent.</div>'
+        : `<button class="act big" data-send="${scope}">Send issue #2 and publish ${goes.length} items</button>
+           <button class="ghost big" data-skip="1">Skip this week</button>`
+    }
+    ${state.skipped ? '<div class="tick" style="color:var(--amber);border-color:var(--amber)">Week skipped. Nothing published. The items hold for issue #2.</div>' : ''}
+    <div class="topic-head"><span>Named by issue #2, in code</span><span>${inIssue.length}</span></div>
+    ${inIssue.map((i) => adminRow(i)).join('')}
+    <div class="topic-head"><span>Approved, not named${narrow ? ': stays private' : ': the send publishes these too'}</span><span>${rest.length}</span></div>
+    ${rest.map((i) => adminRow(i)).join('')}
+  `;
+}
+
+const actA = () => sendAct('issue');
+const actB = () => sendAct('week');
+
+function actC() {
+  const waiting = pending();
+  const live = publicItems().slice(0, 1);
+  return `
+    <div class="surface-title">Act C &middot; approve is publish <span class="chip">ruled out</span></div>
+    <p class="surface-sub">The per-item alternative. The Approve button the inbox already
+    has is the publish act, and the item is on the public page the moment you tap it. It
+    is here because it is the only act that keeps the page current in a skipped week.</p>
+    <p class="where"><b>Where it lives:</b> Admin &rsaquo; News &rsaquo; Inbox, unchanged.
+    The page queries the items already in state <span class="mono">approved</span>. No new
+    field, no new mutation, no new view.</p>
+    <p class="cost"><b>Cost:</b> it publishes single items, which is not how you described
+    your act. Nothing sits between a mis-tap and the public page, and the knowledge base
+    carries the week before subscribers get the email.</p>
+    ${counts()}
+    ${state.ticks.map((t) => `<div class="tick">${esc(t)}</div>`).join('')}
+    ${waiting.length === 0 ? '<div class="tick">Everything approved is public.</div>' : ''}
+    ${waiting
+      .map((i) =>
+        adminRow(
+          i,
+          `<div class="row-act">
+             <button class="act" data-publish="${i.id}" ${i.summary ? '' : 'disabled'}>Approve and publish</button>
+             ${i.summary ? '' : '<span class="chip amber">held: draft it first</span>'}
+           </div>`
+        )
+      )
+      .join('')}
+    <div class="surface-title" style="margin-top:22px">Correcting a live item</div>
+    <p class="surface-sub">The same act in reverse. A published item can go back to
+    private, and the page loses it.</p>
+    ${live.map((i) => adminRow(i, `<div class="row-act"><button class="ghost" data-unpublish="${i.id}">Unpublish</button></div>`)).join('')}
+  `;
+}
+
+function counts() {
+  const waiting = pending().length;
+  return `<div class="counts">
+    <span>stream <b>${DATA.items.length}</b></span>
+    <span>public <b>${state.published.size}</b></span>
+    <span>waiting <b>${waiting}</b></span>
+    <span>topics <b>${DATA.topics.length}</b></span>
+  </div>`;
+}
+
+// --------------------------------------------------------------- PUBLIC
+
+function entry(item) {
+  const meta = [
+    `<span>${esc(item.source)}</span>`,
+    `<span>${day(item.publishedAt)}</span>`,
+    `<span class="chip">${CLASS_LABEL[item.licenseClass]}</span>`,
+  ];
+  if (item.hn) meta.push(`<span>${item.hn.points} points</span>`);
+
+  let body = '';
+  if (item.body.length) {
+    const parts = [];
+    let openList = false;
+    for (const b of item.body) {
+      if (b.kind === 'li') {
+        if (!openList) { parts.push('<ul>'); openList = true; }
+        parts.push(`<li>${esc(b.text)}</li>`);
+        continue;
+      }
+      if (openList) { parts.push('</ul>'); openList = false; }
+      parts.push(b.kind === 'h' ? `<div class="h">${esc(b.text)}</div>` : `<p>${esc(b.text)}</p>`);
+    }
+    if (openList) parts.push('</ul>');
+    body = `<div class="entry-body">${parts.join('')}${item.attribution ? `<div class="attrib">${esc(item.attribution)}</div>` : ''}</div>`;
+  }
+
+  const embed = item.xEmbed
+    ? `<div class="embed">${item.xEmbed.html.replace(/<script[\s\S]*?<\/script>/gi, '')}
+         <div class="attrib">Official X embed, stored at paste time. Rendered as X wrote it.</div>
+       </div>`
+    : '';
+
+  const links = [`<a href="${esc(item.url)}" target="_blank" rel="noopener">Read it</a>`];
+  if (item.hn) links.push(`<a href="${esc(item.hn.url)}" target="_blank" rel="noopener">${item.hn.comments} comments</a>`);
+
+  return `<article class="entry">
+    <div class="entry-head"><a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.headline)}</a></div>
+    <div class="entry-meta">${meta.join('')}</div>
+    ${item.summary ? `<div class="entry-sum">${esc(item.summary)}</div>` : '<div class="undrafted">No summary yet.</div>'}
+    ${body}
+    ${embed}
+    <div class="entry-meta" style="margin:9px 0 0">${links.join('<span>&middot;</span>')}</div>
+  </article>`;
+}
+
+function releaseStrip(items) {
+  const links = items
+    .map((i) => `<a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.source.replace(/ releases$/, ''))} ${esc(i.headline)}</a>`)
+    .join(' &middot; ');
+  return `<div class="releases-strip"><span class="lbl">Releases</span>${links}</div>`;
+}
+
+// The settled release rule: a release with nothing to read joins one strip, and
+// a release whose notes carry real content keeps its entry. `thin` is decided
+// at build time, from the body the license lets us re-serve.
+function listFor(items) {
+  if (!items.length) return '<p class="surface-sub">Nothing public in this topic yet.</p>';
+  const thin = items.filter((i) => i.thin);
+  const rest = items.filter((i) => !i.thin);
+  return (thin.length ? releaseStrip(thin) : '') + rest.map(entry).join('');
+}
+
+/** The five newest public items, above the topic cards. */
+function latestStrip(live) {
+  const rows = live
+    .slice(0, 5)
+    .map(
+      (i) => `<a class="latest-row" href="${esc(i.url)}" target="_blank" rel="noopener">
+        <span>${esc(i.headline)}</span>
+        <span class="latest-meta">${esc(topicName(i.topic))} &middot; ${day(i.publishedAt)}</span>
+      </a>`
+    )
+    .join('');
+  return `<div class="topic-head"><span>Latest</span><span>5</span></div>${rows}`;
+}
+
+function pageA() {
+  const live = publicItems();
+  if (state.openTopic) {
+    const items = live.filter((i) => i.topic === state.openTopic);
+    return `
+      <button class="back" data-close="1">&larr; All topics</button>
+      <div class="topic-head"><span>${esc(topicName(state.openTopic))}</span><span>${items.length}</span></div>
+      ${listFor(items)}`;
+  }
+  return `
+    <div class="surface-title">Page A &middot; topic index <span class="chip lime">settled</span></div>
+    <p class="surface-sub">Six topic cards. Tap one for its entries. The front page is a
+    map of what the archive holds, not a feed. The latest strip sits above the cards, so
+    the newest item is one tap and not two.</p>
+    <p class="cost"><b>Why:</b> a topic page is the only shape still readable at 500
+    items. The strip pays back the tap that the two-level shape costs.</p>
+    ${latestStrip(live)}
+    <div class="topic-head"><span>Topics</span><span>${DATA.topics.length}</span></div>
+    ${DATA.topics
+      .map((t) => {
+        const items = live.filter((i) => i.topic === t.slug);
+        return `<div class="card" data-topic="${t.slug}">
+          <div class="card-name"><span>${esc(t.name)}</span><span>${items.length}</span></div>
+          <div class="card-lines">${items.slice(0, 3).map((i) => `<div>${esc(i.headline)}</div>`).join('') || '<div>Nothing public yet.</div>'}</div>
+        </div>`;
+      })
+      .join('')}`;
+}
+
+function pageB() {
+  const live = publicItems();
+  const shown = state.filter === 'all' ? live : live.filter((i) => i.topic === state.filter);
+  return `
+    <div class="surface-title">Page B &middot; one stream, topic chips <span class="chip">considered</span></div>
+    <p class="surface-sub">Everything newest first. The chips filter in place, and the
+    scroll position is the whole navigation.</p>
+    <p class="cost"><b>Cost:</b> the archive reads as a feed, so an old entry is only
+    reachable by scrolling, and the topics are a filter rather than a structure.</p>
+    <div class="sticky">
+      <div class="chips">
+        <button data-filter="all" class="${state.filter === 'all' ? 'on' : ''}">All ${live.length}</button>
+        ${DATA.topics
+          .map((t) => {
+            const n = live.filter((i) => i.topic === t.slug).length;
+            return `<button data-filter="${t.slug}" class="${state.filter === t.slug ? 'on' : ''}">${esc(t.name)} ${n}</button>`;
+          })
+          .join('')}
+      </div>
+    </div>
+    ${listFor(shown)}`;
+}
+
+function pageC() {
+  const live = publicItems();
+  return `
+    <div class="surface-title">Page C &middot; topic sections, one page <span class="chip">considered</span></div>
+    <p class="surface-sub">Every topic on one page, in the owner's order. The chips jump
+    to a section instead of filtering.</p>
+    <p class="cost"><b>Cost:</b> one page carries the whole archive, so it grows without
+    a ceiling and a phone scrolls a long way to reach the last topic.</p>
+    <div class="sticky">
+      <div class="chips">
+        ${DATA.topics.map((t) => `<button data-jump="${t.slug}">${esc(t.name)}</button>`).join('')}
+      </div>
+    </div>
+    ${DATA.topics
+      .map((t) => {
+        const items = live.filter((i) => i.topic === t.slug);
+        return `<div id="sec-${t.slug}">
+          <div class="topic-head"><span>${esc(t.name)}</span><span>${items.length}</span></div>
+          ${listFor(items)}
+        </div>`;
+      })
+      .join('')}`;
+}
+
+// ---------------------------------------------------------------- shell
+
+const ADMIN = { A: actA, B: actB, C: actC };
+const PUBLIC = { A: pageA, B: pageB, C: pageC };
+
+const VARIANTS = {
+  model: [],
+  admin: [
+    ['A', 'Send<br>the issue'],
+    ['B', 'Send<br>the week'],
+    ['C', 'Approve<br>is publish'],
+  ],
+  public: [
+    ['A', 'Topic<br>index'],
+    ['B', 'One stream<br>+ chips'],
+    ['C', 'Topic<br>sections'],
+  ],
+};
+
+function render() {
+  const which = state.surface === 'admin' ? state.act : state.page;
+  document.getElementById('surface').innerHTML =
+    state.surface === 'model' ? model() : state.surface === 'admin' ? ADMIN[which]() : PUBLIC[which]();
+
+  document.getElementById('surfaceRow').innerHTML = [
+    ['model', 'Model', 'what we choose'],
+    ['admin', 'Admin', 'publish act'],
+    ['public', 'Public', 'page shape'],
+  ]
+    .map(
+      ([k, a, b]) =>
+        `<button data-surface="${k}" class="${state.surface === k ? 'on' : ''}"><b>${a}</b>${b}</button>`
+    )
+    .join('');
+
+  document.getElementById('variantRow').innerHTML = VARIANTS[state.surface]
+    .map(
+      ([k, label]) =>
+        `<button data-variant="${k}" class="${which === k ? 'on' : ''}"><b>${k}</b>${label}</button>`
+    )
+    .join('');
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-surface],[data-variant],[data-publish],[data-unpublish],[data-send],[data-skip],[data-topic],[data-close],[data-filter],[data-jump]');
+  if (!t) return;
+  const d = t.dataset;
+
+  if (d.surface) { state.surface = d.surface; state.ticks = []; window.scrollTo(0, 0); }
+  else if (d.variant) {
+    if (state.surface === 'admin') state.act = d.variant;
+    else { state.page = d.variant; state.openTopic = null; state.filter = 'all'; }
+    state.ticks = [];
+    window.scrollTo(0, 0);
+  } else if (d.publish) {
+    const item = DATA.items.find((i) => i.id === d.publish);
+    publish([d.publish], `Public now: ${item.headline}`);
+    return;
+  } else if (d.unpublish) {
+    const item = DATA.items.find((i) => i.id === d.unpublish);
+    state.published.delete(d.unpublish);
+    state.ticks = [`Pulled from the page: ${item.headline}`];
+  } else if (d.send) {
+    const scoped = d.send === 'issue' ? pending().filter((i) => i.inIssue) : pending();
+    const ids = scoped.filter((i) => i.summary).map((i) => i.id);
+    state.sent = true;
+    state.skipped = false;
+    publish(ids, `Issue #2 sent. ${ids.length} items public. ${pending().length - ids.length} approved items still private.`);
+    return;
+  } else if (d.skip) {
+    state.skipped = true;
+  } else if (d.topic) { state.openTopic = d.topic; window.scrollTo(0, 0); }
+  else if (d.close) { state.openTopic = null; window.scrollTo(0, 0); }
+  else if (d.filter) { state.filter = d.filter; }
+  else if (d.jump) {
+    document.getElementById(`sec-${d.jump}`)?.scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
