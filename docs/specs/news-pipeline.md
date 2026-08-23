@@ -61,7 +61,8 @@ Semi-automatic, as [#17](https://github.com/alp82/aistack/issues/17) locked for 
 digest. The machine collects and drafts. The owner decides.
 
 1. The collector stores each new item with its headline, link, date, and source.
-2. An LLM drafts a summary in our own words and suggests one topic.
+2. A drafting run writes a summary in our own words and one topic per item (see
+   Drafting). An item can sit in the inbox without a draft.
 3. The owner works the inbox: edit the summary, confirm or change the topic, then
    approve or discard.
 4. Approve moves the item to the stream. The stream is still private.
@@ -69,6 +70,25 @@ digest. The machine collects and drafts. The owner decides.
    The knowledge base publish flow is decided in its prototype.
 
 The topic list is flat and owner-managed, and it will evolve. One topic per item.
+
+## Drafting
+
+Decided on [#205](https://github.com/alp82/aistack/issues/205). The backend holds no
+LLM call and no API key. A drafting skill in this repo runs in the owner's Claude
+session, on the owner's subscription. The owner picks the model per session.
+
+- **Input**: the full linked page, fetched by a less expensive explorer subagent.
+- **Topic**: the skill picks from the owner-managed list. It may propose a new topic,
+  and it can ask the owner in the session when it has a good candidate.
+- **Output**: one draft file per item in the repo. The owner reviews and merges them.
+  An apply script on the server writes merged drafts into the inbox rows and clears
+  the applied files. It runs through `scripts/convex-prod.sh`, like migrations.
+- **Trigger**: the owner runs the skill by hand. A local Claude schedule can run it
+  weekly before compose. A cloud schedule cannot reach prod over ssh, so it is out.
+- **Retries**: the skill handles retries inside the run.
+- **Failure**: the run ends with a per-item report, like the broadcast sender. A
+  failed item stays in the inbox without a draft, and the next run re-attempts it.
+  Drafting never blocks collection.
 
 ## The newsletter
 
@@ -98,8 +118,8 @@ a prototype ticket on the build map, not here.
   license class), issues, email preferences.
 - **Collector**: a Convex cron per collection tier, writing to the inbox. Feed polling
   uses a normal browser user agent and follows redirects.
-- **LLM drafting**: a Convex action drafts summary and topic at collect time. Model
-  choice is a build decision.
+- **Drafting**: the repo skill in the owner's Claude session, plus the apply script
+  (see Drafting). The backend holds no LLM code.
 - **Admin surfaces**: inbox page, quick-add form, compose UI.
 - **Public surfaces**: `/news` with the issue archive and the knowledge base view, plus
   the subscribe page and the preferences page.
@@ -109,7 +129,8 @@ a prototype ticket on the build map, not here.
 ## Build order
 
 1. Tables, feed poller, GitHub releases collector, inbox, quick-add.
-2. LLM drafting, topic list, compose prototype and its ship-or-not verdict, archive
+2. Drafting skill and apply script, topic list, compose prototype and its
+   ship-or-not verdict, archive
    pages, subscribe and preference pages, first Sunday send.
 3. HN Algolia collector, X paste-and-embed lane.
 4. Knowledge base prototype, then its build. Anthropic scrapers. The X research
