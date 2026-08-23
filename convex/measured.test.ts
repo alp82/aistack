@@ -2,7 +2,7 @@
 import { convexTest } from 'convex-test'
 import { describe, expect, test } from 'vitest'
 import { api, internal } from './_generated/api'
-import type { Id } from './_generated/dataModel'
+import type { Doc, Id } from './_generated/dataModel'
 import schema from './schema'
 import { sha256Hex } from './httpCli'
 
@@ -27,7 +27,11 @@ const EMPTY_OPT_INS = {
 }
 
 /** A minimal but complete #33 payload. Overrides merge at the top level. */
-function payload(over: Record<string, unknown> = {}) {
+type StoredPayload = Doc<'measuredSnapshots'>['payload']
+type PayloadV1 = Extract<StoredPayload, { schemaVersion: 1 }>
+type PayloadV2 = Extract<StoredPayload, { schemaVersion: 2 }>
+
+function payload(over: Record<string, unknown> = {}): PayloadV1 {
   return {
     schemaVersion: 1,
     capturedAt: Date.now(),
@@ -72,7 +76,30 @@ function payload(over: Record<string, unknown> = {}) {
     },
     excludedTokens: { unpriced: 0, synthetic: 5 },
     ...over,
-  }
+  } as PayloadV1
+}
+
+/** A minimal v2 payload whose mergeable activity metrics carry sets. */
+function payloadV2(over: Record<string, unknown> = {}): PayloadV2 {
+  return payload({
+    schemaVersion: 2,
+    activity: {
+      sessions: 12,
+      activeDayDates: [
+        '2026-07-20',
+        '2026-07-21',
+        '2026-07-22',
+      ],
+      projectKeys: [
+        'AAAAAAAAAAAAAAAAAAAAAA',
+        'BBBBBBBBBBBBBBBBBBBBBB',
+      ],
+      totalTokens: 1_000_000,
+      cacheHitShare: 0.9,
+      subagentShare: 0.3,
+    },
+    ...over,
+  }) as PayloadV2
 }
 
 type Ctx = Awaited<ReturnType<typeof convexTest>>
@@ -121,6 +148,132 @@ async function seedStack(
 // ---------------------------------------------------------------------------
 
 describe('publishSnapshot', () => {
+  test('accepts a v2 payload with sorted activity sets', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+
+    await expect(
+      t.mutation(internal.measured.publishSnapshot, {
+        stackId,
+        payload: payloadV2(),
+      }),
+    ).resolves.toMatchObject({ receivedAt: expect.any(Number) })
+  })
+
+  test.each([
+    {
+      name: 'an active day outside the payload window',
+      activity: {
+        ...payloadV2().activity,
+        activeDayDates: ['2026-06-25'],
+      },
+    },
+    {
+      name: 'duplicate active days',
+      activity: {
+        ...payloadV2().activity,
+        activeDayDates: ['2026-07-20', '2026-07-20'],
+      },
+    },
+    {
+      name: 'unsorted active days',
+      activity: {
+        ...payloadV2().activity,
+        activeDayDates: ['2026-07-21', '2026-07-20'],
+      },
+    },
+    {
+      name: 'an invalid calendar date',
+      activity: {
+        ...payloadV2().activity,
+        activeDayDates: ['2026-06-31'],
+      },
+    },
+    {
+      name: 'unsorted project workspace identifiers',
+      activity: {
+        ...payloadV2().activity,
+        projectKeys: ['BBBBBBBBBBBBBBBBBBBBBB', 'AAAAAAAAAAAAAAAAAAAAAA'],
+      },
+    },
+    {
+      name: 'a malformed project workspace identifier',
+      activity: {
+        ...payloadV2().activity,
+        projectKeys: ['short'],
+      },
+    },
+    {
+      name: 'duplicate project workspace identifiers',
+      activity: {
+        ...payloadV2().activity,
+        projectKeys: ['AAAAAAAAAAAAAAAAAAAAAA', 'AAAAAAAAAAAAAAAAAAAAAA'],
+      },
+    },
+    {
+      name: 'more than 1,000 project workspace identifiers',
+      activity: {
+        ...payloadV2().activity,
+        projectKeys: Array.from(
+          { length: 1_001 },
+          (_, index) => `AAAAAAAAAAAAAAAAAA${index.toString().padStart(4, '0')}`,
+        ),
+      },
+    },
+  ])('rejects $name in a v2 set', async ({ activity }) => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+
+    await expect(
+      t.mutation(internal.measured.publishSnapshot, {
+        stackId,
+        payload: payloadV2({ activity }),
+      }),
+    ).rejects.toThrow()
+  })
+
+  test('rejects a v2 shape under schema version 1', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+
+    await expect(
+      t.mutation(internal.measured.publishSnapshot, {
+        stackId,
+        payload: payloadV2({ schemaVersion: 1 }),
+      }),
+    ).rejects.toThrow()
+  })
+
+  test.each([
+    { days: 30, from: '2026-06-31', to: '2026-07-30' },
+    { days: 30, from: '2026-06-26', to: '2026-07-32' },
+  ])('rejects a noncanonical v2 window endpoint: $from to $to', async (window) => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+
+    await expect(
+      t.mutation(internal.measured.publishSnapshot, {
+        stackId,
+        payload: payloadV2({ window }),
+      }),
+    ).rejects.toThrow(/window/)
+  })
+
+  test.each([
+    { days: 31, from: '2026-06-26', to: '2026-07-25' },
+    { days: 30, from: '2026-07-25', to: '2026-06-26' },
+  ])('rejects inconsistent v2 window bounds: $from to $to over $days days', async (window) => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+
+    await expect(
+      t.mutation(internal.measured.publishSnapshot, {
+        stackId,
+        payload: payloadV2({ window }),
+      }),
+    ).rejects.toThrow(/window/)
+  })
+
   test('inserts an immutable row and stamps a server receivedAt', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
@@ -164,7 +317,7 @@ describe('publishSnapshot', () => {
         stackId,
         payload: payload({ schemaVersion: 99 }),
       }),
-    ).rejects.toThrow(/schemaVersion 99/)
+    ).rejects.toThrow(/Expected one of/)
   })
 
   test('rejects a payload carrying a field the closed validator does not name', async () => {
@@ -2536,6 +2689,26 @@ describe('batch publish + per-harness aggregation (#67)', () => {
     expect(rows.map((r) => r.harness).sort()).toEqual(['claude-code', 'codex'])
   })
 
+  test('a v2 sync event carries set cardinalities, not the private members', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const tokenId = await seedToken(t, { stackId })
+
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId,
+      payloads: [payloadV2()],
+    })
+
+    const stream = await t.query(api.activityFeed.stream, {})
+    const event = stream.rows.find((row) => row.stack.slug.endsWith(shortId))?.event
+    expect(event).toMatchObject({
+      type: 'sync.landed',
+      harnesses: [{ activeDays: 3, projects: 2 }],
+    })
+    expect(JSON.stringify(event)).not.toContain('2026-07-20')
+    expect(JSON.stringify(event)).not.toContain('AAAAAAAAAAAAAAAAAAAAAA')
+  })
+
   test('two payloads naming the same harness are refused', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
@@ -2590,8 +2763,12 @@ describe('batch publish + per-harness aggregation (#67)', () => {
     expect(current?.activity.totalTokens).toBe(1_500_000)
     expect(current?.activity.sessions).toBe(15)
     // Day and project sets can overlap across harnesses: max, never a sum.
-    expect(current?.activity.activeDays).toBe(9)
-    expect(current?.activity.projects).toBe(3)
+    expect(current?.activity.activeDays).toEqual({ value: 9, precision: 'lower-bound' })
+    expect(current?.activity.projects).toEqual({ value: 3, precision: 'lower-bound' })
+    expect(current?.harnesses[0].activity.activeDays).toEqual({
+      value: 9,
+      precision: 'exact',
+    })
     // Both price tables cited.
     expect(current?.pricingTable).toContain('anthropic-list')
     expect(current?.pricingTable).toContain('openai-list')
@@ -2608,6 +2785,135 @@ describe('batch publish + per-harness aggregation (#67)', () => {
       'codex',
     ])
     expect(current?.harnesses[0].inventory.builtinTools[0].name).toBe('Bash')
+  })
+
+  test('unions v2 sets and reports the inclusive merged window span', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payloadV2({
+        capturedAt: 1_000,
+        window: { days: 30, from: '2026-06-20', to: '2026-07-19' },
+        activity: {
+          ...payloadV2().activity,
+          activeDayDates: ['2026-07-17', '2026-07-18', '2026-07-19'],
+        },
+      }),
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payloadV2({
+        capturedAt: 2_000,
+        window: { days: 30, from: '2026-06-26', to: '2026-07-25' },
+        harness: { name: 'codex', version: '0.146.0' },
+        activity: {
+          ...payloadV2().activity,
+          activeDayDates: ['2026-07-18', '2026-07-19', '2026-07-20'],
+          projectKeys: [
+            'BBBBBBBBBBBBBBBBBBBBBB',
+            'CCCCCCCCCCCCCCCCCCCCCC',
+          ],
+        },
+      }),
+    })
+
+    const current = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(current?.activity.activeDays).toEqual({ value: 4, precision: 'exact' })
+    expect(current?.activity.projects).toEqual({ value: 3, precision: 'exact' })
+    expect(current?.harnesses.map((h) => h.activity.activeDays.precision)).toEqual([
+      'exact',
+      'exact',
+    ])
+    expect(current?.window).toEqual({
+      days: 36,
+      from: '2026-06-20',
+      to: '2026-07-25',
+    })
+  })
+
+  test('keeps every known member when it exceeds a legacy count', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload({
+        capturedAt: 1_000,
+        activity: { ...payload().activity, activeDays: 2, projects: 1 },
+      }),
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payloadV2({
+        capturedAt: 2_000,
+        harness: { name: 'codex', version: '0.146.0' },
+      }),
+    })
+
+    const current = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(current?.activity.activeDays).toEqual({
+      value: 3,
+      precision: 'lower-bound',
+    })
+    expect(current?.activity.projects).toEqual({
+      value: 2,
+      precision: 'lower-bound',
+    })
+  })
+
+  test('marks each trail point from the evidence visible at that point', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+    const now = Date.now()
+
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      machine: 'laptop',
+      payload: payload({ capturedAt: now - 3 * DAY }),
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      machine: 'vps',
+      payload: payloadV2({
+        capturedAt: now - 2 * DAY,
+        harness: { name: 'codex', version: '0.146.0' },
+      }),
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      machine: 'laptop',
+      payload: payloadV2({
+        capturedAt: now - DAY,
+        activity: {
+          ...payloadV2().activity,
+          activeDayDates: ['2026-07-22', '2026-07-23'],
+          projectKeys: [
+            'BBBBBBBBBBBBBBBBBBBBBB',
+            'CCCCCCCCCCCCCCCCCCCCCC',
+          ],
+        },
+      }),
+    })
+
+    const history = await t.query(api.measured.getHistoryByStackSlug, {
+      slug: `my-stack-${shortId}`,
+    })
+    expect(history?.points.map((point) => point.activeDays)).toEqual([
+      { value: 9, precision: 'exact' },
+      { value: 9, precision: 'lower-bound' },
+      { value: 4, precision: 'exact' },
+    ])
+    expect(history?.points.map((point) => point.projects)).toEqual([
+      { value: 3, precision: 'exact' },
+      { value: 3, precision: 'lower-bound' },
+      { value: 3, precision: 'exact' },
+    ])
   })
 
   test('the newest snapshot of EACH harness wins, independently', async () => {

@@ -65,8 +65,11 @@ export function buildHarness(
 ): HarnessSnapshot {
 	const payload = raw as unknown as Omit<
 		HarnessSnapshot,
-		"receivedAt" | "isFresh" | "models" | "cost"
-	> & { models: Array<Omit<HarnessSnapshot["models"][number], never>> };
+		"receivedAt" | "isFresh" | "models" | "cost" | "activity"
+	> & {
+		activity: typeof raw.activity;
+		models: Array<Omit<HarnessSnapshot["models"][number], never>>;
+	};
 	const receivedAt = Date.now() - 2 * HOUR;
 
 	const models = payload.models.map((m) => ({
@@ -80,6 +83,11 @@ export function buildHarness(
 		...payload,
 		receivedAt,
 		isFresh: true,
+		activity: {
+			...payload.activity,
+			activeDays: { value: payload.activity.activeDays, precision: "exact" },
+			projects: { value: payload.activity.projects, precision: "exact" },
+		},
 		models,
 		cost: costOf(models, payload.pricingTable),
 		...overrides,

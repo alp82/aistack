@@ -73,6 +73,29 @@ describe("scan", () => {
 		expect(finalize(agg).projects).toBe(2);
 	});
 
+	it("replaces the munged fallback when a transcript provides raw cwd", async () => {
+		writeTranscript("-work-acme/s.jsonl", [
+			assistant({}),
+			assistant({ cwd: "/work/acme" }),
+		]);
+		const agg = createAggregate();
+		await scan(agg, { roots: [root] });
+		expect([...agg.projectDirs]).toEqual(["/work/acme"]);
+	});
+
+	it("keeps each raw project workspace when cwd changes", async () => {
+		writeTranscript("-work-acme/s.jsonl", [
+			assistant({ cwd: "/work/acme-one" }),
+			assistant({ cwd: "/work/acme-two" }),
+		]);
+		const agg = createAggregate();
+		await scan(agg, { roots: [root] });
+		expect([...agg.projectDirs].sort()).toEqual([
+			"/work/acme-one",
+			"/work/acme-two",
+		]);
+	});
+
 	it("skips a file whose mtime predates the window, without reading it", async () => {
 		// This is what makes a narrow window cheaper rather than merely narrower.
 		writeTranscript(

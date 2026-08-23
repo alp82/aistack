@@ -129,6 +129,34 @@ describe("the reading", () => {
 		expect(screen.getByText("23 of 30")).toBeInTheDocument();
 	});
 
+	it("shows exact activity without qualification", () => {
+		const { current, history } = live();
+		setup(
+			{
+				...current,
+				activity: {
+					...current.activity,
+					activeDays: { ...current.activity.activeDays, precision: "exact" },
+					projects: { ...current.activity.projects, precision: "exact" },
+				},
+			},
+			history,
+		);
+		expect(screen.getByText("active days")).toBeInTheDocument();
+		expect(screen.getByText("12")).toBeInTheDocument();
+		expect(screen.getByText("project workspaces")).toBeInTheDocument();
+		expect(document.body.textContent).not.toContain("(at least)");
+	});
+
+	it("qualifies activity when legacy rows make it a lower bound", () => {
+		const { current, history } = live();
+		setup(current, history);
+		expect(screen.getByText("active days (at least)")).toBeInTheDocument();
+		expect(
+			screen.getByText("project workspaces (at least)"),
+		).toBeInTheDocument();
+	});
+
 	it("says how long ago the machine was read, from the server clock", () => {
 		const { current, history } = live();
 		setup(current, history);

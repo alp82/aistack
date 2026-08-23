@@ -4,6 +4,7 @@ import type { QueryCtx } from './_generated/server'
 import { query } from './_generated/server'
 import type { ActivityEventValue } from './activity'
 import { newestPerSource } from './lib/sources'
+import { mergePayloadSets } from './lib/measuredSets'
 import { ActivityEvent } from './schema'
 
 /**
@@ -27,10 +28,11 @@ import { ActivityEvent } from './schema'
  * previous visible sync - computed across the rows the scan already walks, so
  * the table needs no delta column and no second index.
  *
- * THE BAND'S FOUR NUMBERS COME FROM `measuredSnapshots`, not from the events
- * (#84 build rule 1): `tools` and `models` are not on `sync.landed` at all.
- * Sessions and projects SUM across stacks; models and tools UNION, because two
- * people running Opus is one model and two people running Bash is one tool.
+ * Models, tools, and mergeable project sets come from `measuredSnapshots`.
+ * Sessions and tokens come from each stack's newest event in the band window.
+ * Sessions and projects sum across stacks. Models and tools union, because two
+ * people running Opus count as one model, and two people running Bash count as
+ * one tool.
  * Each stack contributes only its LATEST sync in the window, or a stack that
  * synced twice would report its sessions twice.
  *
@@ -387,13 +389,17 @@ async function usageFor(
     tokens += syncTokens(row.event) ?? 0
     for (const harness of row.event.harnesses) {
       sessions += harness.sessions
-      projects += harness.projects
     }
     const snapshots = await ctx.db
       .query('measuredSnapshots')
       .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', row.stackId))
       .collect()
-    for (const snapshot of newestPerSource(snapshots)) {
+    const current = newestPerSource(snapshots)
+    projects += mergePayloadSets(
+      current.map((snapshot) => snapshot.payload),
+      'projects'
+    ).value
+    for (const snapshot of current) {
       for (const model of snapshot.payload.models) {
         // `unknown` is the CLI's spelling for tokens it could not attribute. It
         // is not a model, so it never swells the count of them.

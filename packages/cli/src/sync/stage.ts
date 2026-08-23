@@ -15,7 +15,12 @@
 // union is one list because consent is per name, not per harness.
 
 import { createHash } from "node:crypto";
-import { getSettings, getToken, type Settings } from "../config.js";
+import {
+	getProjectWorkspaceId,
+	getSettings,
+	getToken,
+	type Settings,
+} from "../config.js";
 import { detectedAdapters } from "../harness/index.js";
 import {
 	type KeptPrivateAtom,
@@ -64,6 +69,7 @@ export type StageDeps = {
 	baseUrl: string;
 	now?: () => number;
 	getTokenImpl?: () => string | null;
+	getProjectWorkspaceIdImpl?: (directory: string) => string;
 	loadConfigImpl?: (opts: {
 		baseUrl: string;
 		token?: string;
@@ -89,6 +95,8 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	const loadConfig = deps.loadConfigImpl ?? loadSyncConfig;
 	const adapters = deps.adaptersImpl ?? detectedAdapters;
 	const windowDays = deps.windowDays ?? DEFAULT_WINDOW_DAYS;
+	const projectWorkspaceId =
+		deps.getProjectWorkspaceIdImpl ?? getProjectWorkspaceId;
 
 	const { config, source } = await loadConfig({
 		baseUrl: deps.baseUrl,
@@ -112,6 +120,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 				windowDays,
 				harnessName: adapter.name,
 				builtinTools: adapter.builtinTools,
+				projectWorkspaceId,
 			}),
 		);
 	}

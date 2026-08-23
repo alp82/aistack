@@ -152,7 +152,9 @@ export function sessionsLine(s: MeasuredSnapshot): string {
 }
 
 export function activeDaysLine(s: MeasuredSnapshot): string {
-	return `${s.activity.activeDays} of the last ${s.window.days} days`;
+	const qualifier =
+		s.activity.activeDays.precision === "lower-bound" ? "at least " : "";
+	return `${qualifier}${s.activity.activeDays.value} of the last ${s.window.days} days`;
 }
 
 export const NEVER_SYNCED_TITLE = "This stack has not been measured yet.";
