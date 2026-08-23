@@ -102,6 +102,28 @@ components, never the library.
 * Every chart server-renders complete SVG. `ssr.test.tsx` asserts real marks, so
   a library regression fails the build instead of shipping blank charts.
 
+## News drafting
+
+The news inbox is drafted by hand, in a Claude session, on the owner's
+subscription. The backend holds no LLM call and no API key (ADR-0003).
+
+```sh
+/news-draft                              # the skill: reads the inbox, writes drafts/news/*.md
+node scripts/news-drafts.ts list         # the same read, on its own
+node scripts/news-drafts.ts apply        # write the merged drafts into prod
+node scripts/news-drafts.ts apply --dry-run
+```
+
+The order is: run the skill, review and merge `drafts/news/*.md`, then apply.
+Apply deletes each file it wrote, and leaves every file it skipped. A row whose
+summary the owner already typed is skipped, never overwritten.
+
+Both commands reach prod through `scripts/convex-prod.sh`, like migrations. The
+Convex functions are internal (`convex/newsDrafting.ts`), because an admin key
+carries no user identity and the public news functions check `isAdmin`. Deploy
+first, the same way a migration does: the functions must exist on prod before
+either command runs.
+
 ## Icon Migration
 
 After seeding (or any time `iconUrl` rows on tools/models/bundles need to be
