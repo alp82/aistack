@@ -99,7 +99,7 @@ function payloadV2(over: Record<string, unknown> = {}): PayloadV2 {
       subagentShare: 0.3,
     },
     ...over,
-  }) as PayloadV2
+  }) as unknown as PayloadV2
 }
 
 type Ctx = Awaited<ReturnType<typeof convexTest>>
