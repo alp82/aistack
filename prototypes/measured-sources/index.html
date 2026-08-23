@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Prototype · alp82/aistack#244 · the sources behind one stack's measured layer · round 1</title>
+<!--
+  PROTOTYPE. Throwaway. alp82/aistack#244: what a reader sees when a stack
+  measures from more than one source. A source is one harness on one machine
+  (#243, ADR-0006). Baseline: section 01 Actual Usage as it stands on main.
+
+  ROUND 1. Six positions on the variant bar:
+
+    0  today          the live section, unchanged. The thing to beat.
+    A  footnote       one mono line under the headline, tap to open the rows.
+    B  source strip   a full-width row of source tiles under the header.
+    C  filter         a segmented control that narrows the WHOLE section.
+    D  trail-led      merged headline, stacked-by-source trail, split stats.
+    E  owner only     the public page never mentions sources; the owner box does.
+
+  THREE ORTHOGONAL CONTROLS sit beside the variant, because the ticket asks
+  three questions that do not depend on each other:
+
+    STACK   lopsided (the owner's real one) · balanced · single source
+    NAMES   harness only · neutral label · real machine name
+    VIEW    reader · owner
+
+  WHAT IS REAL AND WHAT IS INVENTED. The `alppc` numbers are the shipped
+  analyzer's own output on the owner's Claude Code history, taken unchanged from
+  `src/features/measured/__tests__/snapshot.fixture.json`: 382 sessions,
+  4,270,365,919 tokens, 6 models, $5,840.02 at API list prices, 22 active days
+  of 30. The `curia.sh` source is shaped to the ticket's own description (the
+  headline flipped between 4B and 8M) but its figures are invented. The balanced
+  stack is invented end to end. Every trail here is invented: no live sync feeds
+  this page.
+
+  ONE FINDING IS ALREADY IN THE CODE. Variant C's filter key is an index, not
+  `harness/machine`. A key built from the machine name would put that name in the
+  DOM and in the URL under every naming policy, including the two that forbid it.
+  Whatever wins, the filter has to address a source by an opaque id.
+
+  THE PALETTE COLLISION IS DELIBERATE. The model rows wear the six validated
+  chart slots. A source set painted from the same six would make `--chart-1`
+  mean both "Claude Fable 5" and "alppc" on one screen. So sources wear a
+  neutral lightness ramp everywhere here, never the palette and never the accent.
+  That is a proposal, not a settled rule.
+-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    color-scheme: dark;
+    --bg-canvas: oklch(0.16 0.008 256);
+    --bg-shell: oklch(0.12 0.01 256);
+    --bg-panel: oklch(0.2 0.009 256);
+    --bg-panel-muted: oklch(0.24 0.009 256);
+    --bg-panel-elevated: oklch(0.28 0.01 256);
+    --fg-primary: oklch(0.96 0.004 256);
+    --fg-secondary: oklch(0.82 0.004 256);
+    --fg-muted: oklch(0.68 0.005 256);
+    --accent-lime: oklch(0.78 0.17 132);
+    --accent-lime-contrast: oklch(0.22 0.02 132);
+    --stroke-subtle: oklch(0.55 0.01 256 / 0.45);
+    --stroke-strong: oklch(0.5 0.015 256 / 0.9);
+    --neg: oklch(0.64 0.19 25);
+    --warn: oklch(0.75 0.09 85);
+    --chart-1: #69a621;
+    --chart-2: #9e71fd;
+    --chart-3: #c21977;
+    --chart-4: #4278d2;
+    --chart-5: #00a99b;
+    --chart-6: #e66700;
+    /* Sources: a neutral lightness ramp, never the model palette. */
+    --src-1: oklch(0.92 0.004 256);
+    --src-2: oklch(0.72 0.006 256);
+    --src-3: oklch(0.54 0.008 256);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg-canvas);
+    color: var(--fg-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 190px;
+  }
+  .mono { font-family: 'JetBrains Mono', 'Fira Code', Menlo, monospace; }
+
+  /* ---------- prototype chrome ---------- */
+  .ticket-strip {
+    background: var(--bg-shell);
+    border-bottom: 1px solid var(--stroke-subtle);
+    padding: 10px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.08em;
+    color: var(--fg-muted); text-transform: uppercase;
+  }
+  .ticket-strip b { color: var(--accent-lime); font-weight: 700; }
+
+  .proposal { margin: 20px auto 0; max-width: 80rem; padding: 0 16px; }
+  .proposal-box {
+    border: 2px dashed oklch(0.75 0.09 85 / 0.7);
+    padding: 14px 16px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 1.75;
+    color: var(--fg-secondary);
+  }
+  .proposal-box .tag { color: var(--warn); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; font-size: 10px; display: block; margin-bottom: 8px; }
+  .proposal-box b { color: var(--fg-primary); }
+  .proposal-box .q { display: block; margin-top: 8px; }
+  .proposal-box .q b { color: var(--accent-lime); }
+
+  /* ---------- section shell (mirrors the live page) ---------- */
+  section.journey { padding: 40px 16px; border-top: 1px solid var(--stroke-subtle); }
+  @media (min-width: 768px) { section.journey { padding: 60px 24px; } }
+  .shell { max-width: 80rem; margin: 0 auto; }
+  .sec-head {
+    display: flex; align-items: flex-end; gap: 16px;
+    border-bottom: 1px solid var(--stroke-subtle);
+    padding-bottom: 18px; margin-bottom: 28px;
+  }
+  .sec-index { font-family: 'JetBrains Mono', monospace; font-size: 40px; font-weight: 800; line-height: 1; color: var(--stroke-strong); }
+  @media (min-width: 768px) { .sec-index { font-size: 64px; } }
+  .sec-kicker { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.25em; text-transform: uppercase; color: var(--accent-lime); margin: 0; }
+  .sec-title { font-size: 26px; font-weight: 900; letter-spacing: -0.02em; text-transform: uppercase; margin: 4px 0 0; line-height: 1; }
+  @media (min-width: 768px) { .sec-title { font-size: 36px; } }
+  .sec-meta { display: none; font-family: 'JetBrains Mono', monospace; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--fg-muted); }
+  @media (min-width: 768px) { .sec-meta { display: block; } }
+  .head-copy { flex: 1; }
+
+  .mono-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.25em; text-transform: uppercase; color: var(--fg-muted); }
+
+  .body-grid { display: grid; gap: 32px; }
+  @media (min-width: 768px) { .body-grid { grid-template-columns: minmax(0, 22rem) 1fr; gap: 40px; } }
+
+  /* ---------- the headline block ---------- */
+  .metric { position: relative; width: 100%; padding: 4px 0; }
+  .metric .water { position: absolute; inset: 0; overflow: hidden; opacity: 0.16; pointer-events: none; }
+  .metric .water svg { width: 100%; height: 100%; display: block; }
+  .metric .inner { position: relative; padding: 8px 12px 12px; }
+  .big { font-family: 'JetBrains Mono', monospace; font-size: 56px; font-weight: 800; line-height: 0.95; letter-spacing: -0.03em; }
+  @media (min-width: 768px) { .big { font-size: 72px; } }
+  .cap { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--fg-muted); margin-top: 6px; }
+  .usd { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700; margin-top: 20px; letter-spacing: -0.02em; }
+  @media (min-width: 768px) { .usd { font-size: 34px; } }
+  .chip {
+    display: inline-flex; align-items: center; border: 1px solid var(--stroke-subtle);
+    padding: 3px 7px; font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    letter-spacing: 0.12em; color: var(--fg-muted); text-transform: lowercase;
+  }
+  .chip-row { margin: 12px 0 0 12px; }
+
+  /* ---------- model rows ---------- */
+  .mix-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 24px; margin-bottom: 16px; }
+  .mix-head .kick { color: var(--accent-lime); }
+  .mix-note { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); }
+  .rows { border-top: 1px solid var(--stroke-subtle); border-bottom: 1px solid var(--stroke-subtle); }
+  .row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--stroke-subtle); }
+  .row:first-child { border-top: 0; }
+  .row .swatch { width: 12px; height: 12px; flex: 0 0 12px; }
+  .row .name { width: 116px; flex: 0 0 116px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (min-width: 768px) { .row .name { width: 160px; flex-basis: 160px; font-size: 14px; } }
+  .row .bar { position: relative; flex: 1; height: 26px; background: var(--bg-panel); }
+  .row .bar > i { position: absolute; top: 0; bottom: 0; left: 0; display: block; }
+  .row .notch { position: absolute; top: -4px; bottom: -4px; width: 6px; transform: translateX(-50%);
+    background-image: repeating-linear-gradient(135deg, var(--fg-primary) 0 2px, var(--bg-canvas) 2px 4px); }
+  .row .pct { width: 50px; flex: 0 0 50px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; }
+  @media (min-width: 768px) { .row .pct { width: 56px; flex-basis: 56px; font-size: 14px; } }
+  .row .drift { width: 38px; flex: 0 0 38px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-muted); }
+
+  /* ---------- stats ---------- */
+  .stats { margin-top: 28px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); }
+  @media (min-width: 640px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+  .stat { background: var(--bg-canvas); padding: 14px 14px; }
+  .stat .v { font-family: 'JetBrains Mono', monospace; font-size: 19px; font-weight: 800; }
+  .stat .l { margin-top: 5px; }
+  .stat .split { display: flex; height: 4px; margin-top: 8px; gap: 1px; }
+  .stat .split i { display: block; height: 100%; }
+
+  /* ---------- source primitives ---------- */
+  .src-dot { width: 10px; height: 10px; flex: 0 0 10px; display: inline-block; }
+  .stale { color: var(--warn); }
+
+  /* A - footnote */
+  .foot { margin: 14px 0 0 12px; }
+  .foot button {
+    background: none; border: 1px solid var(--stroke-subtle); color: var(--fg-muted);
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; padding: 5px 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  }
+  .foot button:hover { color: var(--fg-primary); border-color: var(--stroke-strong); }
+  .foot-body { margin-top: 12px; border: 1px solid var(--stroke-subtle); }
+  .foot-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-top: 1px solid var(--stroke-subtle); font-size: 12px; }
+  .foot-row:first-child { border-top: 0; }
+  .foot-row .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .foot-row .t { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+  .foot-row .a { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--fg-muted); width: 74px; text-align: right; }
+
+  /* B - source strip */
+  .strip { display: grid; gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); margin-bottom: 28px; }
+  @media (min-width: 700px) { .strip { grid-auto-flow: column; grid-auto-columns: 1fr; } }
+  .tile { background: var(--bg-canvas); padding: 14px; }
+  .tile .head { display: flex; align-items: center; gap: 8px; }
+  .tile .unit { font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tile .tok { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 800; margin-top: 10px; letter-spacing: -0.02em; }
+  .tile .sub { margin-top: 4px; }
+  .tile .track { height: 5px; background: var(--bg-panel); margin-top: 10px; }
+  .tile .track i { display: block; height: 100%; }
+
+  /* C - filter */
+  .seg { display: flex; flex-wrap: wrap; gap: 0; border: 1px solid var(--stroke-subtle); margin-bottom: 24px; }
+  .seg button {
+    flex: 1 1 auto; min-width: 44%; background: none; border: 0; border-left: 1px solid var(--stroke-subtle);
+    color: var(--fg-muted); font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
+    letter-spacing: 0.12em; text-transform: uppercase; padding: 10px 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  @media (min-width: 700px) { .seg button { min-width: 0; } }
+  .seg button:first-child { border-left: 0; }
+  .seg button[aria-pressed="true"] { background: var(--accent-lime); color: var(--accent-lime-contrast); font-weight: 700; }
+  .seg button[aria-pressed="true"] .src-dot { outline: 1px solid var(--accent-lime-contrast); }
+  .narrowed { border-left: 2px solid var(--accent-lime); padding-left: 12px; margin-bottom: 20px; font-size: 12.5px; color: var(--fg-secondary); }
+
+  /* D - stacked trail legend */
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 16px; margin: 12px 0 0 12px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-muted); }
+
+  /* E - owner box */
+  .owner-box { border: 1px solid var(--stroke-strong); padding: 18px; margin-top: 32px; }
+  .owner-box h4 { margin: 0; font-size: 15px; font-weight: 700; }
+  .owner-box p { margin: 6px 0 0; font-size: 13px; color: var(--fg-muted); max-width: 46rem; }
+  .owner-list { margin-top: 14px; border: 1px solid var(--stroke-subtle); }
+
+  .view-banner {
+    border: 1px dashed var(--stroke-strong); padding: 8px 10px; margin-bottom: 20px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--fg-muted);
+  }
+
+  /* ---------- the active-days bench ---------- */
+  .bench { max-width: 80rem; margin: 0 auto; padding: 0 16px 40px; }
+  .bench-box { border: 2px dashed oklch(0.75 0.09 85 / 0.55); padding: 16px; }
+  .bench h3 { margin: 0 0 4px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+  .bench p { margin: 0 0 16px; font-size: 12.5px; color: var(--fg-muted); max-width: 52rem; line-height: 1.6; }
+  .bench-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); }
+  @media (min-width: 800px) { .bench-grid { grid-template-columns: repeat(4, 1fr); } }
+  .bench-cell { background: var(--bg-canvas); padding: 14px; }
+  .bench-cell .k { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--warn); letter-spacing: 0.14em; text-transform: uppercase; }
+  .bench-cell .why { margin-top: 10px; font-size: 11.5px; color: var(--fg-muted); line-height: 1.5; }
+
+  /* ---------- switcher ---------- */
+  .switcher {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+    background: var(--bg-shell); border-top: 2px solid var(--accent-lime);
+    box-shadow: 0 -10px 30px -18px black;
+  }
+  .sw-main { display: flex; align-items: stretch; }
+  .sw-main button.arrow {
+    background: none; border: 0; color: var(--accent-lime); font-size: 20px; cursor: pointer;
+    padding: 0 16px; font-family: 'JetBrains Mono', monospace;
+  }
+  .sw-name { flex: 1; text-align: center; padding: 11px 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; }
+  .sw-name small { display: block; font-weight: 400; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted); margin-top: 3px; }
+  .sw-toggle { background: none; border: 0; border-left: 1px solid var(--stroke-subtle); color: var(--fg-muted); cursor: pointer; padding: 0 14px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; }
+  .sw-opts { display: none; border-top: 1px solid var(--stroke-subtle); padding: 10px 12px 14px; }
+  .switcher.open .sw-opts { display: block; }
+  .opt-row { display: flex; align-items: center; gap: 8px; margin-top: 9px; overflow-x: auto; }
+  .opt-row:first-child { margin-top: 0; }
+  .opt-row > b { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg-muted); width: 52px; flex: 0 0 52px; }
+  .opt-row button {
+    background: none; border: 1px solid var(--stroke-subtle); color: var(--fg-secondary);
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em;
+    padding: 6px 9px; cursor: pointer; white-space: nowrap; text-transform: uppercase;
+  }
+  .opt-row button[aria-pressed="true"] { background: var(--accent-lime); color: var(--accent-lime-contrast); border-color: var(--accent-lime); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="ticket-strip">
+  Prototype · <b>alp82/aistack#244</b> · display the sources behind one stack's measured layer · round 1 · throwaway
+</div>
+
+<div class="proposal">
+  <div class="proposal-box">
+    <span class="tag">what to judge</span>
+    Section 01 <b>Actual Usage</b>, on a stack that measures from more than one source. A source is one harness on one machine.
+    Start at <b>0 today</b>, then walk A to E with the arrows. Open <b>options</b> to change the stack, the naming policy and the viewer.
+    <span class="q"><b>Q1</b> Does a source appear at all when there is only one? Set STACK to <b>single</b> and check every variant stays silent.</span>
+    <span class="q"><b>Q2</b> What is the unit: a harness, a machine, or the pair? Switch NAMES and watch the labels.</span>
+    <span class="q"><b>Q3</b> Where does the breakdown live? That is the A to E choice.</span>
+    <span class="q"><b>Q4</b> What happens to the trail? Only D changes it.</span>
+    <span class="q"><b>Q5</b> Active days is a max and understates. Four shapes sit on the bench under the section.</span>
+  </div>
+</div>
+
+<main id="app"></main>
+<div class="bench" id="bench"></div>
+
+<div class="switcher" id="switcher">
+  <div class="sw-main">
+    <button class="arrow" id="prev" aria-label="previous variant">&#9664;</button>
+    <div class="sw-name" id="swname"></div>
+    <button class="arrow" id="next" aria-label="next variant">&#9654;</button>
+    <button class="sw-toggle" id="swtoggle">options</button>
+  </div>
+  <div class="sw-opts" id="swopts"></div>
+</div>
+
+<script>
+/* =====================================================================
+   DATA. See the file header for what is real and what is invented.
+   ===================================================================== */
+
+const NOW = Date.UTC(2026, 7, 23, 9, 0, 0);
+const HOUR = 3600e3, DAY = 24 * HOUR;
+
+const CATALOG = {
+  'claude-fable-5': null,            // absent from the catalog on purpose (#33 decision 3)
+  'claude-opus-4-8': 'Claude Opus 4.8',
+  'claude-opus-5': 'Claude Opus 5',
+  'claude-sonnet-5': 'Claude Sonnet 5',
+  'claude-sonnet-4-6': 'Claude Sonnet 4.6',
+  'claude-haiku-4-5': 'Claude Haiku 4.5',
+  'gpt-5-2-codex': 'GPT-5.2 Codex',
+  'gpt-5-2-codex-mini': 'GPT-5.2 Codex mini',
+};
+
+const HARNESS_NAME = { 'claude-code': 'Claude Code', 'codex': 'Codex' };
+
+/** Eight reading times, oldest first. Irregular, the way retention leaves them. */
+const READ_AT = [26, 21, 17, 13, 9, 6, 3, 0].map((d) => NOW - d * DAY - 5 * HOUR);
+
+function src(o) { return o; }
+
+const STACKS = {
+  lopsided: {
+    key: 'lopsided',
+    label: 'lopsided (real)',
+    note: 'The owner’s own stack: a workstation and a small server, both Claude Code. One source carries 99.8% of the tokens.',
+    windowDays: 30,
+    sources: [
+      src({
+        harness: 'claude-code', machine: 'alppc',
+        tokens: 4270365919, sessions: 382, activeDays: 22, projects: 22,
+        usd: 5840.02, pricingTable: 'anthropic-list-2026-07-25',
+        cacheHitShare: 0.9505, subagentShare: 0.3251,
+        receivedAt: NOW - 2 * HOUR,
+        trail: [3.71e9, 3.88e9, 4.02e9, 3.96e9, 4.11e9, 4.19e9, 4.24e9, 4270365919],
+        models: [
+          { id: 'claude-fable-5', share: 0.351, first: 0.262 },
+          { id: 'claude-opus-4-8', share: 0.3023, first: 0.381 },
+          { id: 'claude-opus-5', share: 0.195, first: 0.166 },
+          { id: 'claude-sonnet-5', share: 0.1202, first: 0.131 },
+          { id: 'claude-haiku-4-5', share: 0.0168, first: 0.034 },
+          { id: 'claude-sonnet-4-6', share: 0.0147, first: 0.026 },
+        ],
+      }),
+      src({
+        harness: 'claude-code', machine: 'curia.sh',
+        tokens: 8142663, sessions: 46, activeDays: 9, projects: 3,
+        usd: 74.30, pricingTable: 'anthropic-list-2026-07-25',
+        cacheHitShare: 0.912, subagentShare: 0.12,
+        receivedAt: NOW - 19 * HOUR,
+        // Linked partway through: no reading at all for the first four points.
+        trail: [null, null, null, null, 3.1e6, 5.4e6, 7.2e6, 8142663],
+        models: [
+          { id: 'claude-opus-5', share: 0.715, first: 0.802 },
+          { id: 'claude-sonnet-5', share: 0.212, first: 0.142 },
+          { id: 'claude-haiku-4-5', share: 0.073, first: 0.056 },
+        ],
+      }),
+    ],
+  },
+
+  balanced: {
+    key: 'balanced',
+    label: 'balanced (3 sources)',
+    note: 'Invented. Two machines, three sources: one machine runs both Claude Code and Codex, and the Codex reading is three days old.',
+    windowDays: 30,
+    sources: [
+      src({
+        harness: 'claude-code', machine: 'laptop',
+        tokens: 1420000000, sessions: 118, activeDays: 18, projects: 7,
+        usd: 2110.40, pricingTable: 'anthropic-list-2026-07-25',
+        cacheHitShare: 0.941, subagentShare: 0.285,
+        receivedAt: NOW - 4 * HOUR,
+        trail: [1.02e9, 1.15e9, 1.21e9, 1.19e9, 1.30e9, 1.36e9, 1.40e9, 1.42e9],
+        models: [
+          { id: 'claude-fable-5', share: 0.44, first: 0.36 },
+          { id: 'claude-opus-5', share: 0.31, first: 0.33 },
+          { id: 'claude-sonnet-5', share: 0.18, first: 0.22 },
+          { id: 'claude-haiku-4-5', share: 0.07, first: 0.09 },
+        ],
+      }),
+      src({
+        harness: 'claude-code', machine: 'workstation',
+        tokens: 980000000, sessions: 74, activeDays: 14, projects: 4,
+        usd: 1455.10, pricingTable: 'anthropic-list-2026-07-25',
+        cacheHitShare: 0.958, subagentShare: 0.412,
+        receivedAt: NOW - 1 * HOUR,
+        trail: [0.61e9, 0.68e9, 0.74e9, 0.79e9, 0.85e9, 0.91e9, 0.95e9, 0.98e9],
+        models: [
+          { id: 'claude-opus-5', share: 0.52, first: 0.47 },
+          { id: 'claude-fable-5', share: 0.26, first: 0.21 },
+          { id: 'claude-sonnet-5', share: 0.15, first: 0.21 },
+          { id: 'claude-haiku-4-5', share: 0.07, first: 0.11 },
+        ],
+      }),
+      src({
+        harness: 'codex', machine: 'workstation',
+        tokens: 310000000, sessions: 41, activeDays: 11, projects: 3,
+        usd: 402.75, pricingTable: 'openai-list-2026-08-01',
+        cacheHitShare: 0.884, subagentShare: 0.096,
+        receivedAt: NOW - 3 * DAY,
+        trail: [0.09e9, 0.14e9, 0.19e9, 0.22e9, 0.26e9, 0.29e9, 0.31e9, 0.31e9],
+        models: [
+          { id: 'gpt-5-2-codex', share: 0.81, first: 0.74 },
+          { id: 'gpt-5-2-codex-mini', share: 0.19, first: 0.26 },
+        ],
+      }),
+    ],
+  },
+
+  single: {
+    key: 'single',
+    label: 'single source',
+    note: 'One laptop, one harness. Nothing here may grow a machine label it never asked for.',
+    windowDays: 30,
+    sources: [],   // filled below from the lopsided stack's first source
+  },
+};
+STACKS.single.sources = [JSON.parse(JSON.stringify(STACKS.lopsided.sources[0]))];
+
+/* ---------------------------------------------------------------------
+   Derivations: the same arithmetic the server does (convex/measured.ts).
+   --------------------------------------------------------------------- */
+
+/** Claude Code first, then alphabetical; then by machine name. */
+function sourceOrder(a, b) {
+  if (a.harness !== b.harness) {
+    if (a.harness === 'claude-code') return -1;
+    if (b.harness === 'claude-code') return 1;
+    return a.harness.localeCompare(b.harness);
+  }
+  return (a.machine || '').localeCompare(b.machine || '');
+}
+
+function sortedSources(stack) { return [...stack.sources].sort(sourceOrder); }
+
+/** Stable machine numbering per stack, so one machine keeps one number. */
+function machineIndex(stack) {
+  const seen = [];
+  for (const s of sortedSources(stack)) if (!seen.includes(s.machine)) seen.push(s.machine);
+  return seen;
+}
+
+function merge(stack, sources) {
+  const list = sources ?? sortedSources(stack);
+  const tokens = list.reduce((a, s) => a + s.tokens, 0);
+  const usd = list.reduce((a, s) => a + s.usd, 0);
+  const models = new Map();
+  for (const s of list) {
+    for (const m of s.models) {
+      const cur = models.get(m.id) || { id: m.id, tok: 0, firstTok: 0 };
+      cur.tok += m.share * s.tokens;
+      cur.firstTok += m.first * s.tokens;
+      models.set(m.id, cur);
+    }
+  }
+  const merged = [...models.values()]
+    .map((m) => ({ id: m.id, share: m.tok / tokens, first: m.firstTok / tokens }))
+    .sort((a, b) => b.share - a.share);
+  return {
+    tokens, usd,
+    sessions: list.reduce((a, s) => a + s.sessions, 0),
+    activeDays: Math.max(...list.map((s) => s.activeDays)),
+    activeDaysBySource: list.map((s) => s.activeDays),
+    projects: Math.max(...list.map((s) => s.projects)),
+    cacheHitShare: list.reduce((a, s) => a + s.cacheHitShare * s.tokens, 0) / tokens,
+    subagentShare: list.reduce((a, s) => a + s.subagentShare * s.tokens, 0) / tokens,
+    receivedAt: Math.max(...list.map((s) => s.receivedAt)),
+    pricingTable: [...new Set(list.map((s) => s.pricingTable))].join(' + '),
+    models: merged,
+    trail: READ_AT.map((at, i) => ({
+      at,
+      value: list.reduce((a, s) => a + (s.trail[i] ?? 0), 0),
+    })).filter((p) => p.value > 0),
+  };
+}
+
+/* ---------------------------------------------------------------------
+   Formatting - lifted from src/features/measured/copy.ts.
+   --------------------------------------------------------------------- */
+
+function fmtTokens(n) {
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
+  return String(n);
+}
+function fmtUSD(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+function fmtShare(s) { return (s * 100).toFixed(1) + '%'; }
+function fmtDay(at) { return new Date(at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }); }
+function timeAgo(at) {
+  const d = NOW - at;
+  if (d < HOUR) return Math.max(1, Math.round(d / 60e3)) + ' minutes ago';
+  if (d < DAY) { const h = Math.round(d / HOUR); return h + (h === 1 ? ' hour ago' : ' hours ago'); }
+  const days = Math.round(d / DAY);
+  return days + (days === 1 ? ' day ago' : ' days ago');
+}
+function modelLabel(id) { return CATALOG[id] || id; }
+const PAINTS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)'];
+const SRC_PAINTS = ['var(--src-1)', 'var(--src-2)', 'var(--src-3)'];
+
+/* ---------------------------------------------------------------------
+   The naming policy - the ticket's own constraint, made switchable.
+   --------------------------------------------------------------------- */
+
+const NAMING = {
+  harness: {
+    label: 'harness only',
+    /** Machines never reach the page. Two machines of one harness fold back into one row. */
+    unit: (s, stack) => HARNESS_NAME[s.harness] || s.harness,
+    groupsByHarness: true,
+  },
+  neutral: {
+    label: 'neutral label',
+    unit: (s, stack) => {
+      const n = machineIndex(stack).indexOf(s.machine) + 1;
+      return (HARNESS_NAME[s.harness] || s.harness) + ' · machine ' + n;
+    },
+    groupsByHarness: false,
+  },
+  real: {
+    label: 'real machine name',
+    unit: (s) => (HARNESS_NAME[s.harness] || s.harness) + ' · ' + s.machine,
+    groupsByHarness: false,
+  },
+};
+
+/**
+ * The units the display shows, after the naming policy has had its say.
+ *
+ * Under `harness only` two machines of one harness are indistinguishable, so
+ * they are merged back into one unit rather than printed twice with the same
+ * name. That is not a rendering shortcut: it is what the policy costs.
+ */
+function units(stack, naming, view) {
+  const policy = view === 'owner' ? NAMING.real : NAMING[naming];
+  const list = sortedSources(stack);
+  // THE KEY IS AN INDEX, NEVER THE MACHINE NAME. Variant C puts this key in the
+  // DOM and in the URL, so a key built from `harness/machine` would publish the
+  // machine name under every naming policy, including the ones that forbid it.
+  if (!policy.groupsByHarness) {
+    return list.map((s, i) => ({
+      key: 's' + i,
+      label: policy.unit(s, stack),
+      sources: [s],
+      paint: SRC_PAINTS[i % SRC_PAINTS.length],
+    }));
+  }
+  const byHarness = new Map();
+  for (const s of list) {
+    const k = s.harness;
+    if (!byHarness.has(k)) byHarness.set(k, []);
+    byHarness.get(k).push(s);
+  }
+  return [...byHarness.entries()].map(([h, ss], i) => ({
+    key: 'h' + i,
+    label: HARNESS_NAME[h] || h,
+    machineCount: new Set(ss.map((s) => s.machine)).size,
+    sources: ss,
+    paint: SRC_PAINTS[i % SRC_PAINTS.length],
+  }));
+}
+
+/** A unit's own merged reading. */
+function unitReading(stack, u) { return merge(stack, u.sources); }
+
+/* ---------------------------------------------------------------------
+   Charts. Plain SVG, square ends, no library.
+   --------------------------------------------------------------------- */
+
+function pathFor(points, w, h, maxV, minAt, spanAt) {
+  return points.map((p, i) => {
+    const x = spanAt === 0 ? 0 : ((p.at - minAt) / spanAt) * w;
+    const y = h - (maxV === 0 ? 0 : (p.value / maxV) * h);
+    return (i === 0 ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1);
+  }).join(' ');
+}
+
+function sparkline(points, opts) {
+  const o = Object.assign({ w: 420, h: 120, paint: 'var(--fg-primary)', area: true }, opts || {});
+  if (points.length < 2) return '';
+  const maxV = Math.max(...points.map((p) => p.value));
+  const minAt = points[0].at, spanAt = points[points.length - 1].at - points[0].at;
+  const d = pathFor(points, o.w, o.h, maxV, minAt, spanAt);
+  const areaD = d + ' L ' + o.w + ' ' + o.h + ' L 0 ' + o.h + ' Z';
+  return '<svg viewBox="0 0 ' + o.w + ' ' + o.h + '" preserveAspectRatio="none" aria-hidden="true">'
+    + (o.area ? '<path d="' + areaD + '" fill="' + o.paint + '" opacity="0.5"/>' : '')
+    + '<path d="' + d + '" fill="none" stroke="' + o.paint + '" stroke-width="2"/></svg>';
+}
+
+/** Variant D: one band per source, stacked, oldest to newest. */
+function stackedTrail(stack, us, w, h) {
+  const series = us.map((u) => ({
+    paint: u.paint,
+    values: READ_AT.map((_, i) => u.sources.reduce((a, s) => a + (s.trail[i] ?? 0), 0)),
+  }));
+  const totals = READ_AT.map((_, i) => series.reduce((a, s) => a + s.values[i], 0));
+  const maxV = Math.max(...totals);
+  const minAt = READ_AT[0], spanAt = READ_AT[READ_AT.length - 1] - READ_AT[0];
+  const x = (i) => (spanAt === 0 ? 0 : ((READ_AT[i] - minAt) / spanAt) * w);
+  const y = (v) => h - (maxV === 0 ? 0 : (v / maxV) * h);
+  let below = READ_AT.map(() => 0);
+  const bands = [];
+  for (const s of series) {
+    const top = below.map((b, i) => b + s.values[i]);
+    let d = 'M' + x(0).toFixed(1) + ' ' + y(top[0]).toFixed(1);
+    for (let i = 1; i < top.length; i++) d += ' L' + x(i).toFixed(1) + ' ' + y(top[i]).toFixed(1);
+    for (let i = below.length - 1; i >= 0; i--) d += ' L' + x(i).toFixed(1) + ' ' + y(below[i]).toFixed(1);
+    d += ' Z';
+    bands.push('<path d="' + d + '" fill="' + s.paint + '"/>');
+    below = top;
+  }
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden="true">' + bands.join('') + '</svg>';
+}
+
+/* =====================================================================
+   RENDERING
+   ===================================================================== */
+
+const VARIANTS = [
+  { key: '0', name: 'today', blurb: 'the live section, unchanged' },
+  { key: 'A', name: 'footnote', blurb: 'one line under the headline, tap to open' },
+  { key: 'B', name: 'source strip', blurb: 'tiles under the section header' },
+  { key: 'C', name: 'filter', blurb: 'narrow the whole section to one source' },
+  { key: 'D', name: 'trail-led', blurb: 'stacked trail and split stats, no list' },
+  { key: 'E', name: 'owner only', blurb: 'the public page says nothing' },
+];
+
+const state = {
+  variant: '0', stack: 'lopsided', naming: 'neutral', view: 'reader',
+  source: 'all',      // variant C
+  open: false,        // variant A
+};
+
+function readURL() {
+  const p = new URLSearchParams(location.search);
+  for (const k of ['variant', 'stack', 'naming', 'view', 'source']) {
+    const v = p.get(k);
+    if (v) state[k] = v;
+  }
+  if (p.get('open') === '1') state.open = true;
+}
+function writeURL() {
+  const p = new URLSearchParams();
+  p.set('variant', state.variant);
+  p.set('stack', state.stack);
+  p.set('naming', state.naming);
+  p.set('view', state.view);
+  if (state.variant === 'C') p.set('source', state.source);
+  if (state.variant === 'A' && state.open) p.set('open', '1');
+  history.replaceState(null, '', location.pathname + '?' + p.toString());
+}
+
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+function dot(paint) { return '<span class="src-dot" style="background:' + paint + '"></span>'; }
+
+function unitLabelHTML(u) {
+  let s = esc(u.label);
+  if (u.machineCount && u.machineCount > 1) {
+    s += ' <span class="mono" style="color:var(--fg-muted);font-size:0.85em">· ' + u.machineCount + ' machines</span>';
+  }
+  return s;
+}
+
+function freshnessHTML(receivedAt) {
+  const stale = NOW - receivedAt > 2 * DAY;
+  return '<span class="mono-label' + (stale ? ' stale' : '') + '" style="letter-spacing:0.1em">' + esc(timeAgo(receivedAt)) + '</span>';
+}
+
+/* ---------- shared blocks ---------- */
+
+function sectionHead(reading) {
+  return '<div class="sec-head">'
+    + '<div class="sec-index">01</div>'
+    + '<div class="head-copy"><p class="sec-kicker">// sync</p><h2 class="sec-title">Actual Usage</h2></div>'
+    + '<div class="sec-meta">checked ' + esc(timeAgo(reading.receivedAt)) + '</div>'
+    + '</div>';
+}
+
+function metricBlock(reading, watermarkSVG) {
+  const cost = reading.usd > 0
+    ? '<div class="usd">' + fmtUSD(reading.usd) + '</div><div class="cap">at least, at api list prices</div>'
+    : '';
+  return '<div class="metric">'
+    + '<div class="water">' + (watermarkSVG || sparkline(reading.trail, { paint: 'var(--fg-primary)' })) + '</div>'
+    + '<div class="inner">'
+    + '<div class="big">' + fmtTokens(reading.tokens) + '</div>'
+    + '<div class="cap">tokens · last 30 days</div>'
+    + cost
+    + '</div></div>';
+}
+
+function deltaChip(reading) {
+  const t = reading.trail;
+  if (t.length < 2) return '';
+  const d = t[t.length - 1].value - t[t.length - 2].value;
+  const sign = d > 0 ? '+' : d < 0 ? '−' : '±';
+  return '<div class="chip-row"><span class="chip">' + sign + fmtTokens(Math.abs(d)) + ' since the last check</span></div>';
+}
+
+function modelRows(reading) {
+  const rows = reading.models.slice(0, 6);
+  return '<div class="rows">' + rows.map((m, i) => {
+    const drift = (m.share - m.first) * 100;
+    const moved = Math.abs(m.share - m.first) >= 0.005;
+    return '<div class="row">'
+      + '<span class="swatch" style="background:' + PAINTS[i % PAINTS.length] + '"></span>'
+      + '<span class="name">' + esc(modelLabel(m.id)) + '</span>'
+      + '<span class="bar"><i style="width:' + Math.max(1, m.share * 100).toFixed(1) + '%;background:' + PAINTS[i % PAINTS.length] + '"></i>'
+      + (moved ? '<span class="notch" style="left:' + Math.min(100, Math.max(0, m.first * 100)).toFixed(1) + '%"></span>' : '')
+      + '</span>'
+      + '<span class="pct">' + fmtShare(m.share) + '</span>'
+      + '<span class="drift">' + (moved && Math.abs(drift) >= 0.5 ? (drift > 0 ? '↑' : '↓') + Math.abs(Math.round(drift)) : '-') + '</span>'
+      + '</div>';
+  }).join('') + '</div>';
+}
+
+function mixHead() {
+  return '<div class="mix-head"><p class="mono-label kick">where the tokens went</p>'
+    + '<p class="mix-note">the notch marks where each share stood on ' + fmtDay(READ_AT[0]) + '</p></div>';
+}
+
+/**
+ * The four stat cells. `activeDays` shape is the bench question; here it always
+ * renders the shape the live page uses today, so the bench compares against it.
+ */
+function statsGrid(reading, multi, opts) {
+  const o = opts || {};
+  const cells = [
+    { v: reading.sessions.toLocaleString('en-US'), l: 'sessions' },
+    {
+      v: reading.activeDays + ' of 30',
+      l: multi ? 'active days (max)' : 'active days',
+      split: o.splitDays,
+    },
+    { v: Math.round(reading.cacheHitShare * 100) + '%', l: 'cache hits' },
+    { v: Math.round(reading.subagentShare * 100) + '%', l: 'run by subagents' },
+  ];
+  return '<div class="stats">' + cells.map((c) => '<div class="stat">'
+    + '<div class="v">' + esc(c.v) + '</div>'
+    + '<div class="l mono-label">' + esc(c.l) + '</div>'
+    + (c.split || '') + '</div>').join('') + '</div>';
+}
+
+/** Variant D: every stat cell carries its own by-source split bar. */
+function splitBar(stack, us, pick) {
+  const vals = us.map((u) => ({ paint: u.paint, v: pick(unitReading(stack, u)) }));
+  const total = vals.reduce((a, x) => a + x.v, 0) || 1;
+  return '<div class="split">' + vals.map((x) =>
+    '<i style="width:' + ((x.v / total) * 100).toFixed(1) + '%;background:' + x.paint + '"></i>').join('') + '</div>';
+}
+
+/* ---------- variant bodies ---------- */
+
+function bodyToday(stack, reading, multi) {
+  return '<div class="body-grid">'
+    + '<div>' + metricBlock(reading) + deltaChip(reading) + '</div>'
+    + '<div>' + mixHead() + modelRows(reading) + statsGrid(reading, multi) + '</div>'
+    + '</div>';
+}
+
+/**
+ * How many SOURCES the stack has, which is not how many UNITS the page shows.
+ *
+ * Under `harness only` the owner's two machines fold into one unit, and the page
+ * would then drop the "(max)" small print - while `activeDays` is still a max
+ * over two sources and still understates. The warning belongs to the arithmetic,
+ * never to the label the naming policy happened to allow.
+ */
+function isMultiSource(stack) { return stack.sources.length > 1; }
+
+function variant0(stack) {
+  return sectionHead(merge(stack)) + bodyToday(stack, merge(stack), isMultiSource(stack));
+}
+
+/** A - the footnote. Nothing moves; one line appears, and it opens. */
+function variantA(stack, us, multi) {
+  const reading = merge(stack);
+  let foot = '';
+  if (multi) {
+    const rows = us.map((u) => {
+      const r = unitReading(stack, u);
+      return '<div class="foot-row">' + dot(u.paint)
+        + '<span class="n">' + unitLabelHTML(u) + '</span>'
+        + '<span class="t">' + fmtTokens(r.tokens) + '</span>'
+        + '<span class="a">' + esc(timeAgo(r.receivedAt)) + '</span></div>';
+    }).join('');
+    foot = '<div class="foot">'
+      + '<button data-act="toggle-open">' + (state.open ? '▾' : '▸') + ' measured from ' + us.length + ' sources</button>'
+      + (state.open ? '<div class="foot-body">' + rows + '</div>' : '')
+      + '</div>';
+  }
+  return sectionHead(reading)
+    + '<div class="body-grid">'
+    + '<div>' + metricBlock(reading) + deltaChip(reading) + foot + '</div>'
+    + '<div>' + mixHead() + modelRows(reading) + statsGrid(reading, isMultiSource(stack)) + '</div>'
+    + '</div>';
+}
+
+/** B - the source strip. A standing row of tiles above the body. */
+function variantB(stack, us, multi) {
+  const reading = merge(stack);
+  let strip = '';
+  if (multi) {
+    strip = '<div class="strip">' + us.map((u) => {
+      const r = unitReading(stack, u);
+      const share = r.tokens / reading.tokens;
+      return '<div class="tile">'
+        + '<div class="head">' + dot(u.paint) + '<span class="unit">' + unitLabelHTML(u) + '</span></div>'
+        + '<div class="tok">' + fmtTokens(r.tokens) + '</div>'
+        + '<div class="sub mono-label" style="letter-spacing:0.1em">' + fmtShare(share) + ' of tokens · ' + r.sessions + ' sessions</div>'
+        + '<div class="track"><i style="width:' + Math.max(0.6, share * 100).toFixed(1) + '%;background:' + u.paint + '"></i></div>'
+        + '<div class="sub">' + freshnessHTML(r.receivedAt) + '</div>'
+        + '</div>';
+    }).join('') + '</div>';
+  }
+  return sectionHead(reading) + strip + bodyToday(stack, reading, isMultiSource(stack));
+}
+
+/** C - the filter. The control narrows headline, mix, stats and trail together. */
+function variantC(stack, us, multi) {
+  const all = merge(stack);
+  let seg = '', reading = all, narrowed = '';
+  if (multi) {
+    const buttons = [{ key: 'all', label: 'all sources', paint: null }]
+      .concat(us.map((u) => ({ key: u.key, label: u.label, paint: u.paint, machineCount: u.machineCount })));
+    seg = '<div class="seg">' + buttons.map((b) =>
+      '<button data-act="source" data-key="' + esc(b.key) + '" aria-pressed="' + (state.source === b.key) + '">'
+      + (b.paint ? dot(b.paint) : '') + esc(b.label) + '</button>').join('') + '</div>';
+    const chosen = us.find((u) => u.key === state.source);
+    if (chosen) {
+      reading = unitReading(stack, chosen);
+      narrowed = '<div class="narrowed">Showing <b>' + unitLabelHTML(chosen) + '</b> alone. '
+        + 'The whole section is this source: ' + fmtTokens(reading.tokens) + ' of the stack’s '
+        + fmtTokens(all.tokens) + ', last read ' + esc(timeAgo(reading.receivedAt)) + '.</div>';
+    }
+  }
+  const narrowedMulti = isMultiSource(stack) && state.source === 'all';
+  return sectionHead(all) + seg + narrowed + bodyToday(stack, reading, narrowedMulti);
+}
+
+/** D - trail-led. The breakdown is shape, never a list. */
+function variantD(stack, us, multi) {
+  const reading = merge(stack);
+  const water = multi ? stackedTrail(stack, us, 420, 120) : null;
+  const legend = multi
+    ? '<div class="legend">' + us.map((u) => '<span>' + dot(u.paint) + unitLabelHTML(u) + '</span>').join('') + '</div>'
+    : '';
+  const stats = multi
+    ? statsGrid(reading, isMultiSource(stack), { splitDays: splitBar(stack, us, (r) => r.activeDays) })
+    : statsGrid(reading, isMultiSource(stack));
+  return sectionHead(reading)
+    + '<div class="body-grid">'
+    + '<div>' + metricBlock(reading, water) + deltaChip(reading) + legend + '</div>'
+    + '<div>' + mixHead() + modelRows(reading) + stats + '</div>'
+    + '</div>';
+}
+
+/** E - owner only. The public page is untouched; the owner box carries it. */
+function variantE(stack, us, multi) {
+  const reading = merge(stack);
+  const page = sectionHead(reading) + bodyToday(stack, reading, isMultiSource(stack));
+  if (state.view !== 'owner' || !isMultiSource(stack)) return page;
+  const rows = us.map((u) => {
+    const r = unitReading(stack, u);
+    return '<div class="foot-row">' + dot(u.paint)
+      + '<span class="n">' + unitLabelHTML(u) + '</span>'
+      + '<span class="t">' + fmtTokens(r.tokens) + '</span>'
+      + '<span class="a">' + esc(timeAgo(r.receivedAt)) + '</span></div>';
+  }).join('');
+  return page
+    + '<div class="owner-box">'
+    + '<h4>Your machines</h4>'
+    + '<p>Only you see this. The public page shows one number and never names where it came from.</p>'
+    + '<div class="owner-list">' + rows + '</div>'
+    + '</div>';
+}
+
+const BODIES = { '0': variant0, A: variantA, B: variantB, C: variantC, D: variantD, E: variantE };
+
+/* ---------- the active-days bench ---------- */
+
+function bench(stack) {
+  const reading = merge(stack);
+  if (!isMultiSource(stack)) {
+    return '<div class="bench-box"><h3>Active days · the bench</h3>'
+      + '<p>One source, so there is no max and nothing to decide. Switch STACK to see the four shapes.</p></div>';
+  }
+  const per = sortedSources(stack).map((s) => s.activeDays);
+  const cells = [
+    {
+      k: '1 · today',
+      v: reading.activeDays + ' of 30', l: 'active days (max)',
+      why: 'Small print carries the whole warning. It reads as a fact, not as a floor.',
+    },
+    {
+      k: '2 · at-least sign',
+      v: reading.activeDays + '+ of 30', l: 'active days',
+      why: 'The number says it is a lower bound. No extra label, and it survives a narrow column.',
+    },
+    {
+      k: '3 · words',
+      v: 'at least ' + reading.activeDays, l: 'of 30 active days',
+      why: 'Plainest. It loses the fraction shape the other three cells keep.',
+    },
+    {
+      k: '4 · by source',
+      v: per.join(' · '), l: 'active days by source',
+      why: 'No max at all: every source states its own. Honest, and it grows with the source count.',
+    },
+  ];
+  return '<div class="bench-box"><h3>Active days · the bench</h3>'
+    + '<p>Active days is a max across sources, so it understates. ' + per.join(' and ') + ' days on the '
+    + per.length + ' sources reads as ' + reading.activeDays + ', not ' + per.reduce((a, b) => a + b, 0)
+    + '. The real fix is day sets in the payload, and that is a later ticket. Pick the shape to ship until then. Projects has the same fault and no cell on the page today. Cell 4 lists every source, whatever the naming policy allows the page to call them.</p>'
+    + '<div class="bench-grid">' + cells.map((c) => '<div class="bench-cell">'
+      + '<div class="k">' + esc(c.k) + '</div>'
+      + '<div class="stat" style="padding:10px 0 0"><div class="v">' + esc(c.v) + '</div>'
+      + '<div class="l mono-label">' + esc(c.l) + '</div></div>'
+      + '<div class="why">' + esc(c.why) + '</div></div>').join('') + '</div></div>';
+}
+
+/* ---------- the page ---------- */
+
+function render() {
+  const stack = STACKS[state.stack];
+  const us = units(stack, state.naming, state.view);
+  const multi = us.length > 1;
+
+  let banner = '';
+  if (state.view === 'owner') {
+    banner = '<div class="view-banner">Owner view. Your own machine names always show here. The naming policy governs the public page only.</div>';
+  } else if (state.naming === 'harness' && sortedSources(stack).length > us.length) {
+    banner = '<div class="view-banner">Harness only: ' + sortedSources(stack).length + ' sources fold into '
+      + us.length + ' unit' + (us.length === 1 ? '' : 's') + ', because two machines of one harness carry the same name.</div>';
+  }
+
+  document.getElementById('app').innerHTML =
+    '<section class="journey"><div class="shell">' + banner + BODIES[state.variant](stack, us, multi) + '</div></section>';
+  document.getElementById('bench').innerHTML = bench(stack);
+
+  const v = VARIANTS.find((x) => x.key === state.variant);
+  document.getElementById('swname').innerHTML =
+    esc(v.key + ' — ' + v.name) + '<small>' + esc(v.blurb) + '</small>';
+  document.getElementById('swopts').innerHTML = optionRows(stack);
+  writeURL();
+}
+
+function optionRows(stack) {
+  const row = (key, label, opts) => '<div class="opt-row"><b>' + label + '</b>'
+    + opts.map((o) => '<button data-act="set" data-key="' + key + '" data-val="' + esc(o.v) + '" aria-pressed="'
+      + (state[key] === o.v) + '">' + esc(o.l) + '</button>').join('') + '</div>';
+  return row('stack', 'stack', Object.values(STACKS).map((s) => ({ v: s.key, l: s.label })))
+    + row('naming', 'names', Object.entries(NAMING).map(([k, n]) => ({ v: k, l: n.label })))
+    + row('view', 'view', [{ v: 'reader', l: 'reader' }, { v: 'owner', l: 'owner' }])
+    + '<div class="opt-row"><b></b><span class="mono" style="font-size:10px;color:var(--fg-muted);line-height:1.5">'
+    + esc(stack.note) + '</span></div>';
+}
+
+/* ---------- events ---------- */
+
+function cycle(step) {
+  const i = VARIANTS.findIndex((v) => v.key === state.variant);
+  state.variant = VARIANTS[(i + step + VARIANTS.length) % VARIANTS.length].key;
+  render();
+}
+
+document.getElementById('prev').addEventListener('click', () => cycle(-1));
+document.getElementById('next').addEventListener('click', () => cycle(1));
+document.getElementById('swtoggle').addEventListener('click', () => {
+  document.getElementById('switcher').classList.toggle('open');
+});
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  const act = b.dataset.act;
+  if (act === 'set') { state[b.dataset.key] = b.dataset.val; state.source = 'all'; render(); }
+  if (act === 'source') { state.source = b.dataset.key; render(); }
+  if (act === 'toggle-open') { state.open = !state.open; render(); }
+});
+document.addEventListener('keydown', (e) => {
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+  if (e.key === 'ArrowLeft') cycle(-1);
+  if (e.key === 'ArrowRight') cycle(1);
+});
+
+readURL();
+render();
+</script>
+</body>
+</html>
