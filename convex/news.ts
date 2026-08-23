@@ -16,7 +16,7 @@
 
 import { type Infer, v } from 'convex/values'
 import { internal } from './_generated/api'
-import type { Doc } from './_generated/dataModel'
+import type { Doc, Id } from './_generated/dataModel'
 import {
   action,
   internalAction,
@@ -388,6 +388,105 @@ export const setItemState = mutation({
 })
 
 // ---------------------------------------------------------------------------
+// The source digest (#238)
+// ---------------------------------------------------------------------------
+
+/**
+ * Which digest group an item sits in.
+ *
+ * The inbox is grouped by SOURCE, because volume arrives per source: one week
+ * of the 14 proved feeds held 194 items, and one aggregator served 100 of them
+ * (#235). Two groups have no source row behind them. What the owner pasted has
+ * none by design, and what a deleted source left behind lost its link (see
+ * `deleteSource`). Keep those two apart, because only the first is quick-add.
+ */
+function groupKeyOf(item: Doc<'newsItems'>): string {
+  if (item.sourceId) return `source:${item.sourceId}`
+  return item.intake === 'quick-add' ? 'quick-add' : 'unsourced'
+}
+
+const GROUP_LABEL: Record<string, string> = {
+  'quick-add': 'Pasted by you',
+  unsourced: 'Source removed',
+}
+
+/** How many rows one open group serves at most, however often the owner asks. */
+const GROUP_MAX = 500
+
+const itemDate = (item: Doc<'newsItems'>): number =>
+  item.publishedAt ?? item.collectedAt
+
+/**
+ * Every inbox row, for the grouping passes.
+ *
+ * The digest counts must be TRUE, so this reads the whole inbox rather than the
+ * first page of it. A count that stops at 100 would tell the owner a group is
+ * empty when it is not, and the one-tap discard would then leave rows behind.
+ */
+async function inboxItems(ctx: { db: any }): Promise<Doc<'newsItems'>[]> {
+  return await ctx.db
+    .query('newsItems')
+    .withIndex('by_state_collectedAt', (q: any) => q.eq('state', 'inbox'))
+    .collect()
+}
+
+/** The digest: one closed box per source, biggest group first. */
+export const inboxGroups = query({
+  args: {},
+  handler: async (ctx) => {
+    if (!(await isAdmin(ctx))) return null
+    interface Group {
+      key: string
+      sourceId: Id<'newsSources'> | null
+      name: string
+      licenseClass: string
+      count: number
+      newestAt: number
+    }
+    const groups = new Map<string, Group>()
+    for (const item of await inboxItems(ctx)) {
+      const key = groupKeyOf(item)
+      const seen = groups.get(key)
+      if (seen) {
+        seen.count++
+        seen.newestAt = Math.max(seen.newestAt, itemDate(item))
+        continue
+      }
+      groups.set(key, {
+        key,
+        sourceId: item.sourceId ?? null,
+        name: GROUP_LABEL[key] ?? '',
+        licenseClass: item.licenseClass,
+        count: 1,
+        newestAt: itemDate(item),
+      })
+    }
+    for (const group of groups.values()) {
+      if (!group.sourceId) continue
+      const source = await ctx.db.get(group.sourceId)
+      group.name = source?.name ?? GROUP_LABEL.unsourced
+    }
+    return [...groups.values()].sort(
+      (a, b) => b.count - a.count || b.newestAt - a.newestAt,
+    )
+  },
+})
+
+/** The rows inside one open group, newest first. */
+export const listGroupItems = query({
+  args: { key: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    if (!(await isAdmin(ctx))) return null
+    const items = (await inboxItems(ctx)).filter(
+      (item) => groupKeyOf(item) === args.key,
+    )
+    items.sort((a, b) => itemDate(b) - itemDate(a))
+    const limit = Math.min(args.limit ?? INBOX_PAGE, GROUP_MAX)
+    return await withContext(ctx, items.slice(0, limit))
+  },
+})
+
+// ---------------------------------------------------------------------------
 // Quick-add
 // ---------------------------------------------------------------------------
 
@@ -657,5 +756,29 @@ export const collectNow = action({
   handler: async (ctx): Promise<PollReport[]> => {
     if (!(await isAdmin(ctx))) throw new Error('Unauthorized')
     return await ctx.runAction(internal.news.collect, {})
+  },
+})
+
+export const sourceById = internalQuery({
+  args: { sourceId: v.id('newsSources') },
+  handler: async (ctx, args) => await ctx.db.get(args.sourceId),
+})
+
+/**
+ * Read ONE source now. This is the retry button on the inbox failure banner.
+ *
+ * Same code path as the cron, so a retry that works clears the failure count
+ * and the banner with it. The other thirteen sources are not read, because the
+ * owner asked about one.
+ */
+export const pollSourceNow = action({
+  args: { sourceId: v.id('newsSources') },
+  handler: async (ctx, args): Promise<PollReport> => {
+    if (!(await isAdmin(ctx))) throw new Error('Unauthorized')
+    const source = await ctx.runQuery(internal.news.sourceById, {
+      sourceId: args.sourceId,
+    })
+    if (!source) throw new Error('That source is gone')
+    return await pollOne(ctx, source)
   },
 })
