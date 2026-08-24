@@ -20,6 +20,7 @@ import {
 	windowStartMs,
 } from "../harness/shared/window.js";
 import type { HarnessAdapter } from "../harness/types.js";
+import { CLI_VERSION } from "../version.js";
 import { type StageDeps, stageId, stageSync } from "./stage.js";
 
 const NOW = Date.parse("2026-07-30T12:00:00.000Z");
@@ -27,6 +28,7 @@ const NOW = Date.parse("2026-07-30T12:00:00.000Z");
 const FETCHED: SyncConfig = {
 	allowlist: { mcpServers: [], skills: [], subagents: [], slashCommands: [] },
 	publishCost: true,
+	publishWorkflow: true,
 	optIns: EMPTY_OPT_INS,
 	reviewKeptPrivate: true,
 	stack: { name: "Alp's Daily Driver", slug: "alps-daily-driver" },
@@ -219,5 +221,44 @@ describe("stageSync", () => {
 		const staged = await stageSync(deps({ adaptersImpl: async () => [] }));
 		expect(staged.blockedReason).toContain("No active harness");
 		expect(staged.blockedReason).toContain("last 30 days");
+	});
+
+	test("stages the workflow section in the bytes the gate describes (#213)", async () => {
+		const staged = await stageSync(deps({ gitRunnerImpl: () => null }));
+		expect(staged.body.workflow?.aggregateVersion).toBe(
+			"workflow-aggregates/v1",
+		);
+		// One section per sync, not one per harness: the Git half is a property
+		// of the machine and the metric rows span every synced harness.
+		expect(staged.bodyJson).toContain('"workflow"');
+		expect(staged.summary).toContain("workflow  ");
+	});
+
+	test("skips the extraction entirely when the switch is off (#213)", async () => {
+		// The extraction shells out to `git` per touched repository. Doing that
+		// work and discarding it would be the one visible cost of a preference
+		// that is supposed to be free.
+		let gitCalls = 0;
+		const staged = await stageSync(
+			deps({
+				config: {
+					config: { ...FETCHED, publishWorkflow: false },
+					source: "fetched",
+				},
+				gitRunnerImpl: () => {
+					gitCalls++;
+					return null;
+				},
+			}),
+		);
+		expect(gitCalls).toBe(0);
+		expect(staged.body.workflow).toBeUndefined();
+		expect(staged.summary).toContain("workflow  not published");
+	});
+
+	test("stamps the publishing CLI's version on the body (#213)", async () => {
+		const staged = await stageSync(deps({ gitRunnerImpl: () => null }));
+		expect(staged.body.cliVersion).toBe(CLI_VERSION);
+		expect(staged.summary).toContain(`client    aistack ${CLI_VERSION}`);
 	});
 });

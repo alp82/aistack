@@ -68,9 +68,17 @@ const ResourcePackage = v.object({
 // send (#33 decisions 2-4); this shape is the second line, not the first.
 const MeasuredAtom = v.object({
   name: v.string(),
-  // Share, never a raw invocation count - counts are the map's designated
-  // post-P0 headroom metric and are deliberately left unspent.
   callShare: v.number(),
+  // The absolute invocation count behind the share (#213, map #121's pending
+  // wire item). Optional because a pre-#213 CLI publishes the share alone, and
+  // a share without its count is still a complete reading.
+  //
+  // The count needs its denominator to be interpretable, and the denominator is
+  // NOT the sum of the published atoms - shares are computed over every
+  // observed call, withheld ones included. `inventory.calls` carries the
+  // per-category total, so withheld calls are that total minus the published
+  // counts.
+  calls: v.optional(v.number()),
 })
 
 const MeasuredModel = v.object({
@@ -85,6 +93,23 @@ const MeasuredModel = v.object({
     output: v.number(),
     cacheWrite: v.number(),
     cacheRead: v.number(),
+    // The cache-write TTL breakdown (#213, map #121's pending wire item). The
+    // three sum to `cacheWrite`, which stays the total and stays required.
+    //
+    // Without it `convex/lib/reprice.ts` has to charge every cache write at the
+    // cheap 5-minute rate, which under-reports Claude Code by roughly 8%. The
+    // CLI has held the split since #126; only the wire merged it.
+    //
+    // ALL THREE OR NONE: an object, not three optional siblings, so a payload
+    // cannot carry half a breakdown. `unsplit` is the write total a harness
+    // reported without a TTL, and it prices at the 5-minute rate.
+    cacheWriteTtl: v.optional(
+      v.object({
+        fiveMinute: v.number(),
+        oneHour: v.number(),
+        unsplit: v.number(),
+      })
+    ),
   }),
   // Absent when publishCost is off, or when the model was not fully priced -
   // never zeroed (#33 decision 11).
@@ -131,6 +156,18 @@ const MeasuredPayloadFields = {
       subagents: v.number(),
       slashCommands: v.number(),
     }),
+    // Every observed call per category, withheld names included (#213). This is
+    // the denominator the shares were computed over, and the one the per-atom
+    // `calls` need. Optional for the same reason `calls` is.
+    calls: v.optional(
+      v.object({
+        builtinTools: v.number(),
+        mcpServers: v.number(),
+        skills: v.number(),
+        subagents: v.number(),
+        slashCommands: v.number(),
+      })
+    ),
   }),
   // Scan health (#33 decision 10). Cheap now, impossible later: snapshots are
   // immutable, so omitting this would leave a permanent hole in the history.
@@ -172,6 +209,162 @@ const MeasuredPayloadV2 = v.object({
 
 /** Immutable v1 counts and mergeable v2 sets, discriminated by version. */
 export const MeasuredPayload = v.union(MeasuredPayloadV1, MeasuredPayloadV2)
+
+// ---------------------------------------------------------------------------
+// The measured WORKFLOW section - wire format fixed by
+// docs/specs/workflow-surface.md ("The wire"), produced by
+// packages/cli/src/workflow (#219) and put on the wire by #213.
+//
+// It rides BESIDE the payloads, never inside one. Two reasons, and both are
+// structural rather than stylistic:
+//
+//   1. A payload is per harness. The Git half is per MACHINE (one repository is
+//      touched by whichever harness happened to open it), and the metric rows
+//      are computed across every synced harness at once. Neither has a harness
+//      to sit under.
+//   2. The payload validator is closed, and that closedness IS the privacy
+//      claim (#33). Widening it to hold a section with a different owner would
+//      spend the claim to save a nesting level.
+//
+// Closed the same way, for the same reason. Every field is additive and
+// optional at the body level, so a pre-#213 CLI keeps publishing and simply
+// ships no workflow section.
+// ---------------------------------------------------------------------------
+
+/** The five phase buckets, as seconds or as event counts. `unknown` is visible, never hidden. */
+const PhaseTotals = v.object({
+  scout: v.number(),
+  build: v.number(),
+  verify: v.number(),
+  handoff: v.number(),
+  unknown: v.number(),
+})
+
+/**
+ * One session's phase reading. No names, no timestamps, no session id: the
+ * start HOUR is the finest time this carries, and the rest are counts.
+ *
+ * The rows are load-bearing rather than detail. The template lead's session
+ * shares ("verify in 40% of sessions") and the playbook's medians are per
+ * session, and neither can be recovered from a harness-level total.
+ */
+const WorkflowSessionRow = v.object({
+  startHourUtc: v.number(),
+  eventCount: v.number(),
+  phaseSec: PhaseTotals,
+  phaseEvents: PhaseTotals,
+  waitingSec: v.number(),
+  idleSec: v.number(),
+  merged: v.boolean(),
+  verifyRuns: v.number(),
+  reviewRounds: v.number(),
+  openedWithScout: v.boolean(),
+})
+
+/** One harness's workflow reading, already reduced on the machine. */
+const HarnessWorkflow = v.object({
+  // A plain string, not a union of the four adapter names - the same rule
+  // `measuredSnapshots.harness` follows, so a fifth harness needs no migration.
+  harness: v.string(),
+  /**
+   * The phase playbook, ABSENT when this harness failed its own gate: the rules
+   * left more than 20% of its measured time unclassified (spec, "Phases"). The
+   * gate is per harness, so an unreadable harness holds back its own playbook
+   * and not the section.
+   */
+  phase: v.optional(
+    v.object({
+      /** The rule set that produced these numbers, e.g. `phase-rules/v1`. */
+      ruleVersion: v.string(),
+      publishable: v.boolean(),
+      sessions: v.number(),
+      phaseSec: PhaseTotals,
+      phaseEvents: PhaseTotals,
+      waitingSec: v.number(),
+      idleSec: v.number(),
+      unknownShare: v.number(),
+      sessionRows: v.array(WorkflowSessionRow),
+    })
+  ),
+  /** Main loop against subagents, by model. Absent on a harness that records no model per response. */
+  routing: v.optional(
+    v.object({
+      main: v.array(v.object({ model: v.string(), tokens: v.number() })),
+      subagents: v.array(v.object({ model: v.string(), tokens: v.number() })),
+    })
+  ),
+  /** Absent on a harness with no subagents at all, which is not the same as zero fan-out. */
+  delegation: v.optional(
+    v.object({
+      mainToolCalls: v.number(),
+      subagentToolCalls: v.number(),
+      widestFanOut: v.number(),
+      mostSubagents: v.number(),
+    })
+  ),
+  /** The week/time heatmap: one cell per weekday and UTC hour that saw an event. */
+  activity: v.array(
+    v.object({
+      weekdayUtc: v.number(),
+      hourUtc: v.number(),
+      events: v.number(),
+    })
+  ),
+})
+
+/**
+ * Local Git history, aggregated. The CLI reads only repositories that windowed
+ * sessions touched, and only counts leave the machine: no repository name, no
+ * path, no commit message, no sha.
+ */
+const GitWorkflow = v.object({
+  testFileRuleVersion: v.string(),
+  fileTypeRuleVersion: v.string(),
+  totalCommits: v.number(),
+  lateNightCommits: v.number(),
+  additions: v.number(),
+  removals: v.number(),
+  /** One entry per commit, for the log-scale dot strip. Order carries no meaning. */
+  changedLinesPerCommit: v.array(v.number()),
+  testFileCommits: v.number(),
+  /** Approved extensions only; everything else sums into `withheldExtensionLines`. */
+  changedLinesByExtension: v.array(
+    v.object({ extension: v.string(), changedLines: v.number() })
+  ),
+  withheldExtensionLines: v.number(),
+  weekdayHourCells: v.array(
+    v.object({ weekday: v.number(), hour: v.number(), commits: v.number() })
+  ),
+})
+
+/**
+ * One pool metric, as the machine measured it.
+ *
+ * FIT SPLITS BETWEEN THE MACHINE AND THE SERVER (spec, "Fit and rotation"). The
+ * CLI ships value, coverage, band and rule id and stays the only source of
+ * measured values; the server multiplies coverage by surprise, applies the
+ * rotation limit, and applies the owner's pins and hides, because the swap
+ * history and the overrides are server state. Neither half can compute the
+ * other's, so neither is duplicated here.
+ */
+const WorkflowMetric = v.object({
+  metricId: v.string(),
+  ruleVersion: v.string(),
+  value: v.number(),
+  band: v.object({ low: v.number(), high: v.number() }),
+  /** Share of synced harnesses this metric counts, 0..1. A Git metric reads 1. */
+  coverage: v.number(),
+  /** Names the harnesses counted, when not all of them record this metric. */
+  coverageTag: v.optional(v.string()),
+})
+
+export const WorkflowSection = v.object({
+  /** The aggregate shape these numbers were reduced to, e.g. `workflow-aggregates/v1`. */
+  aggregateVersion: v.string(),
+  harnesses: v.array(HarnessWorkflow),
+  git: GitWorkflow,
+  metrics: v.array(WorkflowMetric),
+})
 
 // The authored<->measured overlap is catalog slugs only (#33 decision 2), but
 // the dismissal key is kept wider than `tool` so a later surface can dismiss a
@@ -414,9 +607,11 @@ export const ResourceInput = v.object({
   group: v.string(),
   stableKey: v.string(),
   files: v.optional(v.array(ResourceFile)),
-  // Deprecated and ignored: tolerated so old published CLIs that still send
-  // scope keep working. The server discards it; nothing reads this field.
-  scope: v.optional(v.union(v.literal('global'), v.literal('project'))),
+  // `scope` is GONE (#213). It was tolerated here for old published CLIs, but a
+  // validator is the wrong place to hold wire tolerance: it made the field read
+  // as part of the contract. The HTTP edge in `httpCli.stackCollect` strips it
+  // now, next to `parseAutoSync` and `parseTrigger`, so an old CLI still
+  // publishes and the contract no longer names the field.
   upstream: v.optional(ResourceUpstream),
   pkg: v.optional(ResourcePackage),
 })
@@ -554,6 +749,13 @@ export default defineSchema({
     // survives ONLY because the approve gate names the switch before the first
     // upload, so the two hold each other up.
     reviewKeptPrivate: v.optional(v.boolean()),
+    // Whether the measured WORKFLOW section publishes (#213, spec "The wire").
+    // The third bit in the same family, and it mirrors `publishCost` field for
+    // field: absent reads as ON, and the refusal is applied CLIENT-side, so off
+    // means the section never enters the body and there is nothing to reveal
+    // server-side. The approve gate names this switch too, before the first
+    // upload, which is what a default-on opt-out has to earn.
+    publishWorkflow: v.optional(v.boolean()),
     published: v.boolean(),
     // WHO MAY AUTO-SYNC INTO THIS STACK, and how often (#100 decision 2, built
     // in #102). The permission used to live only in the machine's settings file
@@ -894,6 +1096,16 @@ export default defineSchema({
     // the payload, so it is not derivable after the fact. `convex/lib/sources.ts`
     // states what an untagged row means instead.
     machine: v.optional(v.string()),
+    // Which CLI wrote this row (#213, map #121's pending wire item). Before it,
+    // `cliVersion` reached PostHog and nothing else, so no query could answer
+    // "how many machines are still on an old wire" - the exact question every
+    // wire bump asks.
+    //
+    // Beside the payload rather than inside it, like `machine`: it describes the
+    // publisher, not the measurement, and the payload validator stays closed.
+    // Optional forever - rows written before #213 carry no version, and no
+    // backfill can invent one.
+    cliVersion: v.optional(v.string()),
     payload: MeasuredPayload,
   })
     .index('by_stack_capturedAt', ['stackId', 'capturedAt'])

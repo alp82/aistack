@@ -18,7 +18,11 @@ import type {
 	SyncConfigSource,
 } from "../harness/shared/allowlist.js";
 import { NAME_CATEGORIES } from "../harness/shared/allowlist.js";
-import type { MeasuredPayload, SyncBody } from "../harness/shared/payload.js";
+import type {
+	MeasuredPayload,
+	PayloadWorkflow,
+	SyncBody,
+} from "../harness/shared/payload.js";
 import type { ScanStats } from "../harness/shared/window.js";
 
 export type GateContext = {
@@ -260,6 +264,62 @@ function payloadBlock(payload: MeasuredPayload, stats?: ScanStats): string[] {
 	return out;
 }
 
+const PHASE_ORDER = ["scout", "build", "verify", "handoff", "unknown"] as const;
+
+/**
+ * The workflow section, as the gate describes it (#213).
+ *
+ * Everything here is read out of `body.workflow` - the exact bytes a publish
+ * sends - for the reason the whole file exists: the person approves a sentence
+ * about the bytes, not a sentence about what the code meant to send.
+ *
+ * The last line names the switch, the way the kept-private block does. A
+ * default-on opt-out has to be visible before the first upload, or it is not an
+ * opt-out.
+ */
+function workflowBlock(workflow: PayloadWorkflow, host: string): string[] {
+	const out: string[] = [];
+	const withPlaybook = workflow.harnesses.filter((h) => h.phase);
+	const sessions = withPlaybook.reduce(
+		(a, h) => a + (h.phase?.sessions ?? 0),
+		0,
+	);
+	const ruleVersions = [
+		...new Set(withPlaybook.map((h) => h.phase?.ruleVersion ?? "")),
+	].filter(Boolean);
+
+	out.push(
+		`workflow  ${workflow.harnesses.length} harness${workflow.harnesses.length === 1 ? "" : "es"} · ${sessions} sessions · ${workflow.aggregateVersion}`,
+	);
+
+	const seconds = PHASE_ORDER.map((phase) =>
+		withPlaybook.reduce((a, h) => a + (h.phase?.phaseSec[phase] ?? 0), 0),
+	);
+	const total = seconds.reduce((a, b) => a + b, 0);
+	if (total > 0) {
+		const mix = PHASE_ORDER.map(
+			(phase, i) => `${phase} ${fmtPct((seconds[i] ?? 0) / total)}`,
+		).join(" · ");
+		out.push(`          ${mix}`);
+		out.push(`          ${ruleVersions.join(", ")}`);
+	}
+
+	const git = workflow.git;
+	out.push(
+		`git       ${git.totalCommits} commits · ${fmtTokens(git.additions + git.removals)} lines changed`,
+	);
+	out.push(
+		`metrics   ${workflow.metrics.length} measured · ${[...new Set(workflow.metrics.map((m) => m.ruleVersion))].join(", ")}`,
+	);
+	// The kept-private block points at a control the owner can click, because
+	// #48 shipped one. This line NAMES the switch and stops there: the owner
+	// control is #215's, and directions to a control that does not exist yet
+	// would be the one false sentence in a preview built to be exact. Extend
+	// this line with the location when #215 lands it.
+	out.push(`          (Publish workflow is on for ${host})`);
+	return out;
+}
+
 export function buildGateSummary(ctx: GateContext): string {
 	const { body, keptPrivate, config, source, baseUrl } = ctx;
 	const { payloads } = body;
@@ -284,6 +344,10 @@ export function buildGateSummary(ctx: GateContext): string {
 		`searched  ${HARNESS_ADAPTERS.map((a) => harnessLabel(a.name).toLowerCase()).join(", ")}`,
 	);
 
+	// Named because it travels (#213). It is one more field in the bytes, and
+	// the rule this file follows is that the preview describes what goes.
+	if (body.cliVersion) out.push(`client    aistack ${body.cliVersion}`);
+
 	// One block per detected harness, each under its own header.
 	for (const payload of payloads) {
 		const stats = ctx.scanStats?.[payload.harness.name];
@@ -291,6 +355,16 @@ export function buildGateSummary(ctx: GateContext): string {
 		out.push(...payloadBlock(payload, stats));
 	}
 	if (out[out.length - 1] === "") out.pop();
+
+	// In the bytes, so it is in the preview (#78's rule, applied to #213). Off
+	// prints as plainly as `cost not published` does, and for the same reason: a
+	// section the owner declined is a fact about this send, not an absence.
+	out.push("");
+	out.push(
+		body.workflow
+			? workflowBlock(body.workflow, host).join("\n")
+			: "workflow  not published",
+	);
 
 	const n = payloads.reduce((a, p) => a + withheldCount(p), 0);
 	if (n > 0) {

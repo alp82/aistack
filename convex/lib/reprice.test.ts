@@ -162,9 +162,9 @@ describe('repriceSnapshot - the gap filler (#93)', () => {
   })
 
   it('charges a merged cache write at the CHEAP tier', () => {
-    // The wire carries one `cacheWrite`, so the 5m/1h split the CLI priced from
-    // is gone. Assuming the 1.25x tier under-reports Claude Code by ~8%, which
-    // is what keeps every server-side figure a lower bound.
+    // A pre-#213 payload carries one `cacheWrite`, so the 5m/1h split the CLI
+    // priced from is gone. Assuming the 1.25x tier under-reports Claude Code by
+    // ~8%, which is what keeps every server-side figure a lower bound.
     const out = repriceSnapshot({
       models: [{ id: 'claude-opus-5', tokens: tokens({ cacheWrite: MTOK }) }],
       window: JULY,
@@ -172,6 +172,81 @@ describe('repriceSnapshot - the gap filler (#93)', () => {
       publishCost: true,
     })
     expect(out.models[0].apiEquivalentUSD).toBeCloseTo(6.25, 9) // $5 x 1.25
+  })
+
+  it('charges each TTL tier its own rate when the split is on the wire (#213)', () => {
+    // The whole point of the split. Half the writes are 1-hour, and the 1h tier
+    // costs 2.0x input against the 5m tier's 1.25x - so this reads $8.125 where
+    // the merged form reads $6.25, and the 30% gap is the bias #213 removes.
+    const out = repriceSnapshot({
+      models: [
+        {
+          id: 'claude-opus-5',
+          tokens: tokens({
+            cacheWrite: MTOK,
+            cacheWriteTtl: {
+              fiveMinute: MTOK / 2,
+              oneHour: MTOK / 2,
+              unsplit: 0,
+            },
+          }),
+        },
+      ],
+      window: JULY,
+      publishedTable: 'anthropic-list-2026-01-01',
+      publishCost: true,
+    })
+    // $5 x (0.5 x 1.25 + 0.5 x 2.0), rounded to cents like every figure here.
+    expect(out.models[0].apiEquivalentUSD).toBe(8.13)
+  })
+
+  it('prices an unsplit remainder at the cheap tier (#213)', () => {
+    // `unsplit` is what the harness reported with no TTL attached. Charging it
+    // at 2.0x would let an estimate overstate, and this module has exactly one
+    // direction it may resolve an unknown in.
+    const out = repriceSnapshot({
+      models: [
+        {
+          id: 'claude-opus-5',
+          tokens: tokens({
+            cacheWrite: MTOK,
+            cacheWriteTtl: { fiveMinute: 0, oneHour: 0, unsplit: MTOK },
+          }),
+        },
+      ],
+      window: JULY,
+      publishedTable: 'anthropic-list-2026-01-01',
+      publishCost: true,
+    })
+    expect(out.models[0].apiEquivalentUSD).toBeCloseTo(6.25, 9)
+  })
+
+  it('reads a Google cache write as plain input, split or not (#123, #213)', () => {
+    // The TTL tiers are Anthropic's. A vendor whose cache multipliers are 1.0
+    // must not acquire a 2.0x tier by carrying a breakdown.
+    const split = repriceSnapshot({
+      models: [
+        {
+          id: 'gemini-3-pro',
+          tokens: tokens({
+            cacheWrite: MTOK,
+            cacheWriteTtl: { fiveMinute: 0, oneHour: MTOK, unsplit: 0 },
+          }),
+        },
+      ],
+      window: JULY,
+      publishedTable: null,
+      publishCost: true,
+    })
+    const merged = repriceSnapshot({
+      models: [{ id: 'gemini-3-pro', tokens: tokens({ cacheWrite: MTOK }) }],
+      window: JULY,
+      publishedTable: null,
+      publishCost: true,
+    })
+    expect(split.models[0].apiEquivalentUSD).toBe(
+      merged.models[0].apiEquivalentUSD
+    )
   })
 
   it('charges a cache read at a tenth of the input rate', () => {

@@ -14,6 +14,10 @@
 //      "reveal" server-side, because nothing was transmitted.
 
 import { baseModelId, pricingTableFor } from "@aistack/pricing";
+import type {
+	PublishableHarnessWorkflow,
+	WorkflowExtraction,
+} from "../../workflow/index.js";
 import {
 	type Aggregate,
 	cleanName,
@@ -42,6 +46,21 @@ export type PayloadModel = {
 		output: number;
 		cacheWrite: number;
 		cacheRead: number;
+		/**
+		 * The cache-write TTL breakdown (#213). The three sum to `cacheWrite`,
+		 * which stays the total.
+		 *
+		 * The analyzer has held this split since #126 and the wire merged it, so
+		 * the backend's read-time repricer had to charge every write at the cheap
+		 * 5-minute rate - about 8% low for Claude Code. Absent only when this
+		 * harness reports no cache writes at all.
+		 */
+		cacheWriteTtl?: {
+			fiveMinute: number;
+			oneHour: number;
+			/** Writes the harness reported with no TTL. Priced at the 5-minute rate. */
+			unsplit: number;
+		};
 	};
 	apiEquivalentUSD?: number;
 	/**
@@ -53,7 +72,17 @@ export type PayloadModel = {
 	pricingTable?: string;
 };
 
-export type PayloadAtom = { name: string; callShare: number };
+export type PayloadAtom = {
+	name: string;
+	callShare: number;
+	/**
+	 * The absolute invocation count behind the share (#213). Its denominator is
+	 * `inventory.calls` for the same category, NOT the sum of the published
+	 * atoms: shares are computed over every observed call, withheld ones
+	 * included, and the count keeps that property.
+	 */
+	calls: number;
+};
 
 export type PayloadInventory = {
 	builtinTools: PayloadAtom[];
@@ -63,6 +92,19 @@ export type PayloadInventory = {
 	slashCommands: PayloadAtom[];
 	/** DISTINCT names withheld per category, so the gap in the shares is explained. */
 	withheld: {
+		builtinTools: number;
+		mcpServers: number;
+		skills: number;
+		subagents: number;
+		slashCommands: number;
+	};
+	/**
+	 * Every observed call per category, withheld names included (#213) - the
+	 * denominator the shares were computed over. Withheld calls are this total
+	 * minus the published counts, so the absolute figures explain their own gap
+	 * the way `withheld` explains the shares'.
+	 */
+	calls: {
 		builtinTools: number;
 		mcpServers: number;
 		skills: number;
@@ -168,6 +210,7 @@ function buildCategory(
 		atoms: kept.map((a) => ({
 			name: a.name,
 			callShare: denominator ? round4(a.count / denominator) : 0,
+			calls: a.count,
 		})),
 		withheld,
 		keptPrivate,
@@ -190,6 +233,9 @@ type ModelGroup = {
 	input: number;
 	output: number;
 	cacheWrite: number;
+	cacheWrite5m: number;
+	cacheWrite1h: number;
+	cacheWriteUnsplit: number;
 	cacheRead: number;
 	costUSD: number;
 	unpricedTokens: number;
@@ -222,6 +268,9 @@ function groupModels(rows: readonly ModelRow[]): ModelGroup[] {
 				input: 0,
 				output: 0,
 				cacheWrite: 0,
+				cacheWrite5m: 0,
+				cacheWrite1h: 0,
+				cacheWriteUnsplit: 0,
 				cacheRead: 0,
 				costUSD: 0,
 				unpricedTokens: 0,
@@ -234,6 +283,9 @@ function groupModels(rows: readonly ModelRow[]): ModelGroup[] {
 		g.totalTokens += r.totalTokens;
 		g.input += r.tokens.input;
 		g.output += r.tokens.output;
+		g.cacheWrite5m += r.tokens.cacheWrite5m;
+		g.cacheWrite1h += r.tokens.cacheWrite1h;
+		g.cacheWriteUnsplit += r.tokens.cacheWriteUnsplit;
 		g.cacheWrite +=
 			r.tokens.cacheWrite5m +
 			r.tokens.cacheWrite1h +
@@ -262,6 +314,18 @@ function buildModels(
 				output: g.output,
 				cacheWrite: g.cacheWrite,
 				cacheRead: g.cacheRead,
+				// All three or none (#213), so a reader never sees half a
+				// breakdown. Omitted when there were no cache writes at all -
+				// three zeros state nothing the total does not already state.
+				...(g.cacheWrite > 0
+					? {
+							cacheWriteTtl: {
+								fiveMinute: g.cacheWrite5m,
+								oneHour: g.cacheWrite1h,
+								unsplit: g.cacheWriteUnsplit,
+							},
+						}
+					: {}),
 			},
 		};
 		// Absent, not zero: a partially-priced model reporting a dollar figure
@@ -353,36 +417,45 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 		);
 	}
 
-	const totalToolCalls = finalized.totalToolCalls;
+	// One denominator per category, held rather than inlined: each is both the
+	// divisor for its shares and the total the payload publishes (#213), and the
+	// two must be the same number or the absolute counts would not add up.
+	const observedCalls = {
+		builtinTools: finalized.totalToolCalls,
+		mcpServers: sumCounts(finalized.mcpServers),
+		skills: sumCounts(finalized.skills),
+		subagents: sumCounts(finalized.subagents),
+		slashCommands: sumCounts(finalized.slashCommands),
+	};
 	const builtins = buildCategory(
 		finalized.tools,
 		builtinTools,
 		optIns.builtinTools,
-		totalToolCalls,
+		observedCalls.builtinTools,
 	);
 	const mcp = buildCategory(
 		finalized.mcpServers,
 		new Set(allowlist.mcpServers),
 		optIns.mcpServers,
-		sumCounts(finalized.mcpServers),
+		observedCalls.mcpServers,
 	);
 	const skills = buildCategory(
 		finalized.skills,
 		new Set(allowlist.skills),
 		optIns.skills,
-		sumCounts(finalized.skills),
+		observedCalls.skills,
 	);
 	const subagents = buildCategory(
 		finalized.subagents,
 		new Set(allowlist.subagents),
 		optIns.subagents,
-		sumCounts(finalized.subagents),
+		observedCalls.subagents,
 	);
 	const slash = buildCategory(
 		finalized.slashCommands,
 		new Set(allowlist.slashCommands),
 		optIns.slashCommands,
-		sumCounts(finalized.slashCommands),
+		observedCalls.slashCommands,
 	);
 
 	const models = buildModels(
@@ -431,6 +504,7 @@ export function buildPayload(input: BuildPayloadInput): BuiltPayload {
 				subagents: subagents.withheld,
 				slashCommands: slash.withheld,
 			},
+			calls: observedCalls,
 		},
 		coverage: {
 			filesScanned: stats.filesRead,
@@ -485,7 +559,91 @@ export type SyncBody = {
 	 * the same reason `autoSync` does: the payload validator is closed.
 	 */
 	trigger?: SyncTrigger;
+	/**
+	 * The measured workflow section (#213, spec "The wire"), one per sync.
+	 *
+	 * It rides BESIDE the payloads for two reasons a payload cannot answer: the
+	 * Git half is per machine, not per harness, and the metric rows are computed
+	 * across every synced harness at once. The closed payload validator is the
+	 * privacy claim (#33), and widening it to hold a section with a different
+	 * owner would spend that claim to save a nesting level.
+	 *
+	 * ABSENT WHEN `publishWorkflow` IS OFF. The switch is applied here, on the
+	 * machine, so refusing means the section never exists in the bytes and there
+	 * is nothing for a server to reveal.
+	 */
+	workflow?: PayloadWorkflow;
+	/**
+	 * The version of this CLI (#213).
+	 *
+	 * It answers one operational question that had no answer: how many machines
+	 * are still on an old wire. `cliVersion` reached PostHog and nothing else,
+	 * so no query over published rows could count them - which is the exact
+	 * question a wire bump asks.
+	 */
+	cliVersion?: string;
 };
+
+/**
+ * The workflow section as it goes on the wire.
+ *
+ * `WorkflowExtraction` minus its `facts`. The facts are the per-session inputs
+ * the metric rules read - effort per turn, thinking tokens, turn durations -
+ * and the CLI has already reduced them into `metrics`. Shipping them too would
+ * put finer-grained records on the wire than any surface reads, which is the
+ * opposite of what a closed section is for.
+ */
+export type PayloadWorkflow = {
+	aggregateVersion: string;
+	harnesses: Array<Omit<PublishableHarnessWorkflow, "facts">>;
+	git: WorkflowExtraction["git"];
+	metrics: PayloadWorkflowMetric[];
+};
+
+/**
+ * One pool metric on the wire.
+ *
+ * `FitInputRow` declares `coverageTag` as present-but-possibly-undefined, which
+ * is right in memory and wrong on a wire: the server's validator takes an
+ * OPTIONAL string, so "no tag" is an absent key, not a key holding undefined.
+ * `JSON.stringify` drops it either way; stating it here keeps the two ends
+ * describing the same bytes.
+ */
+export type PayloadWorkflowMetric = {
+	metricId: string;
+	ruleVersion: string;
+	value: number;
+	band: { low: number; high: number };
+	coverage: number;
+	coverageTag?: string;
+};
+
+/**
+ * Strip the local-only half and put the rest on the wire (#213).
+ *
+ * `coverageTag` is dropped when it is `undefined` rather than sent as null: the
+ * closed server validator takes an optional string, and "no tag" is an absent
+ * field there.
+ */
+export function toPayloadWorkflow(
+	extraction: WorkflowExtraction,
+): PayloadWorkflow {
+	return {
+		aggregateVersion: extraction.aggregateVersion,
+		harnesses: extraction.harnesses.map(({ facts: _local, ...rest }) => rest),
+		git: extraction.git,
+		metrics: extraction.metricInputs.map((row) => ({
+			metricId: row.metricId,
+			ruleVersion: row.ruleVersion,
+			value: row.value,
+			band: row.band,
+			coverage: row.coverage,
+			...(row.coverageTag === undefined
+				? {}
+				: { coverageTag: row.coverageTag }),
+		})),
+	};
+}
 
 /** The two ways a sync can fire. Absent on an old CLI, and that reads as manual. */
 export type SyncTrigger = "manual" | "auto";
@@ -534,14 +692,27 @@ export function buildSyncBody(
 	syncConfig: SyncConfig,
 	autoSync?: { enabled: boolean; frequencyHours: number },
 	trigger: SyncTrigger = "manual",
+	workflow?: WorkflowExtraction,
+	cliVersion?: string,
 ): SyncBody {
 	const payloads = built.map((b) => b.payload);
 	const base: SyncBody = autoSync
 		? { payloads, autoSync, trigger }
 		: { payloads, trigger };
-	if (!syncConfig.reviewKeptPrivate) return base;
+	// THE CONSENT GATE, APPLIED HERE (#213). Off means the section is not in the
+	// bytes, so it is not in the preview either and there is nothing server-side
+	// to withhold. Same shape as `reviewKeptPrivate` directly above, and same
+	// fail-closed default: a config the machine could not fetch reads as off.
+	const withWorkflow: SyncBody =
+		workflow && syncConfig.publishWorkflow
+			? { ...base, workflow: toPayloadWorkflow(workflow) }
+			: base;
+	const withVersion: SyncBody = cliVersion
+		? { ...withWorkflow, cliVersion }
+		: withWorkflow;
+	if (!syncConfig.reviewKeptPrivate) return withVersion;
 	return {
-		...base,
+		...withVersion,
 		keptPrivate: mergeKeptPrivate(built.map((b) => b.keptPrivate)),
 	};
 }

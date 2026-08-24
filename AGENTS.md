@@ -73,10 +73,12 @@ never published - `tsup` bundles it into the CLI's `dist`.
 * The CLI prices each response at its own timestamp, at ingest. That figure is
   exact and always wins.
 * The backend re-prices at READ time in `convex/lib/reprice.ts`, filling gaps
-  only. Its figures are LOWER BOUNDS: the wire carries one merged `cacheWrite`
-  (so it charges the cheap 5-minute tier, about 8% low for Claude Code), and it
-  has no per-response timestamps (so a window straddling a repricing pays the
-  cheaper rate).
+  only. Its figures are LOWER BOUNDS, for one remaining reason: it has no
+  per-response timestamps, so a window straddling a repricing pays the cheaper
+  rate. The cache-write bias is gone from new payloads. The wire carries the
+  5-minute/1-hour split as `tokens.cacheWriteTtl`, and the repricer charges each
+  tier its own rate; a payload from before that field still merges into one
+  `cacheWrite` and charges the cheap tier, about 8% low for Claude Code.
 * Every surface that prints dollars prints the price-table id and the share of
   tokens the figure covers. `publishCost` on the stack is the consent gate:
   check the flag. The presence of dollars in the data is not consent.
