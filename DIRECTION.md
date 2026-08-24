@@ -14,7 +14,7 @@ Decided in [#11](https://github.com/alp82/aistack/issues/11).
 
 ## What users said
 
-Sources: nine interviews in July 2026 ([#4](https://github.com/alp82/aistack/issues/4), [transcripts](docs/research/user-interviews-2026-07/findings.md)), two live sync tests ([#68](https://github.com/alp82/aistack/issues/68), [#69](https://github.com/alp82/aistack/issues/69)), two direct reports ([#1](https://github.com/alp82/aistack/issues/1), [#50](https://github.com/alp82/aistack/issues/50)), and prod behavior. The 2026-08-17 broadcast to 177 addresses stays unread until [#161](https://github.com/alp82/aistack/issues/161).
+Sources: nine interviews in July 2026 ([#4](https://github.com/alp82/aistack/issues/4), [transcripts](docs/research/user-interviews-2026-07/findings.md)), two live sync tests ([#68](https://github.com/alp82/aistack/issues/68), [#69](https://github.com/alp82/aistack/issues/69)), two direct reports ([#1](https://github.com/alp82/aistack/issues/1), [#50](https://github.com/alp82/aistack/issues/50)), and prod behavior. The 2026-08-17 broadcast to 177 addresses was read in [#161](https://github.com/alp82/aistack/issues/161): it drove one day of traffic, it moved no signup baseline, and it cost no unsubscribes.
 
 1. **Manual curation dies on the staleness treadmill.** Tools change weekly and stacks go stale in days. Maintenance costs more than it returns. Users asked for auto-sync unprompted. It shipped and it is the product spine.
 2. **A bare tool list is a commodity.** Most builders run the same few models and harnesses. Users named the real differentiators: usage ratios, real cost, and the things people build.
@@ -49,11 +49,11 @@ Live tests and reports:
 
 Headlines only. Detail lives on [map #159](https://github.com/alp82/aistack/issues/159) and its successors.
 
-1. **The news pipeline.** One item stream with two views: the newsletter pushes by week, the knowledge base pulls by topic. Spec in progress on map #159.
-2. **The measured workflow surface.** Show how a builder works, from measured data, behind the approve gate. Spec in progress on map #159.
-3. **The Discord bot.** Spec in progress on map #159.
-4. **The sync funnel.** 96 stacks, 5 ever synced. The loudest unexplained number the product has. No map has looked at it.
-5. **Announce projects and accent colors.** Both shipped and stay unannounced. This line replaces the retired feature-update email.
+1. **The news pipeline.** Built and live, and not launched. One item stream with two views: the newsletter pushes by week, the knowledge base pulls by topic. All 22 sources collect, both projections render, and issue 1 is authored. The public surfaces stay closed behind `NEWS_IS_PUBLIC` until the owner sends. Shipped on [map #198](https://github.com/alp82/aistack/issues/198).
+2. **The measured workflow surface.** Show how a builder works, from measured data, behind the approve gate. Spec locked in [`docs/specs/workflow-surface.md`](docs/specs/workflow-surface.md). Building on [map #200](https://github.com/alp82/aistack/issues/200).
+3. **The Discord bot.** Spec locked in [`docs/specs/discord-bot.md`](docs/specs/discord-bot.md). [Map #199](https://github.com/alp82/aistack/issues/199) waits on the workflow build.
+4. **The sync funnel.** 101 stacks, 6 ever synced, 4 living on 2026-08-22. The loudest unexplained number the product has. No map has looked at it.
+5. **Announce projects and accent colors.** Both shipped and stay unannounced. The pipeline build shipped the important-updates category, so the channel exists now. The send is still owed.
 6. **Auto-sync triggers for opencode and Pi.** A machine with only these harnesses gets no background sync.
 7. **The chat-app blind spot.** Claude and ChatGPT are the two most-listed tools, and no adapter can measure a chat app.
 8. **More harnesses.** github-copilot is the largest unmeasured harness. Cursor needs a hook route. Both need a flat-fee cost model.
