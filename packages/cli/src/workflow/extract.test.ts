@@ -109,7 +109,7 @@ describe("buildWorkflowExtraction", () => {
 		const run: GitWorkflowRunner = (cwd, args) => {
 			calls.push(`${cwd}:${args[0]}`);
 			if (args[0] === "rev-parse") return "/work/repo\n";
-			return "\u001eaaaa\u00002026-08-24T12:00:00+00:00\u0000\u0000\n1\t0\tsrc/a.ts\u0000";
+			return "\u0000aistack-commit\u0000aaaa\u00002026-08-24T12:00:00+00:00\u0000\u0000\n1\t0\tsrc/a.ts\u0000";
 		};
 
 		const extraction = extractLocalWorkflow({

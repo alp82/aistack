@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { extractGitWorkflow, type GitWorkflowRunner } from "./git.js";
 
 const record = (hash: string, authoredAt: string, numstat: string): string =>
-	`\u001e${hash}\u0000${authoredAt}\u0000\u0000\n${numstat
+	`\u0000aistack-commit\u0000${hash}\u0000${authoredAt}\u0000\u0000\n${numstat
 		.trimEnd()
 		.split("\n")
 		.join("\u0000")}\u0000`;
@@ -74,8 +74,9 @@ describe("extractGitWorkflow", () => {
 
 	it("reads Unicode and renamed paths without Git quote transformations", () => {
 		const history =
-			"\u001eaaaa\u00002026-08-03T12:00:00+00:00\u0000\u0000\n" +
-			"2\t1\tsrc/é.ts\u0000" +
+			"\u0000aistack-commit\u0000aaaa\u00002026-08-03T12:00:00+00:00\u0000\u0000\n" +
+			"2\t1\tsrc/é\nfile.ts\u0000" +
+			"1\t0\tsrc/control\u001e.ts\u0000" +
 			"3\t2\t\u0000src/old.ts\u0000src/new.ts\u0000";
 		const run: GitWorkflowRunner = (_cwd, args) =>
 			args[0] === "rev-parse" ? "/work/repo\n" : history;
@@ -88,7 +89,7 @@ describe("extractGitWorkflow", () => {
 		});
 
 		expect(result.changedLinesByExtension).toEqual([
-			{ extension: ".ts", changedLines: 8 },
+			{ extension: ".ts", changedLines: 9 },
 		]);
 		expect(result.withheldExtensionLines).toBe(0);
 	});

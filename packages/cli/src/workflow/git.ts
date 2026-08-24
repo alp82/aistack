@@ -66,7 +66,6 @@ const emptyResult = (): GitWorkflowResult => ({
 	weekdayHourCells: [],
 });
 
-const NUMSTAT_RE = /^(\d+|-)\t(\d+|-)\t(.*)$/;
 const AUTHOR_LOCAL_RE =
 	/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 
@@ -112,6 +111,26 @@ const APPROVED_EXTENSIONS: ReadonlySet<string> = new Set([
 	".yml",
 	".zig",
 ]);
+
+const COMMIT_MARKER = "aistack-commit";
+
+function parseNumstat(
+	field: string,
+): { additions: number; removals: number; file: string } | null {
+	const normalized = field.replace(/^\n+(?=(?:\d+|-)\t)/, "");
+	const firstTab = normalized.indexOf("\t");
+	const secondTab = normalized.indexOf("\t", firstTab + 1);
+	if (firstTab <= 0 || secondTab <= firstTab) return null;
+	const additionsRaw = normalized.slice(0, firstTab);
+	const removalsRaw = normalized.slice(firstTab + 1, secondTab);
+	if (!/^(?:\d+|-)$/.test(additionsRaw)) return null;
+	if (!/^(?:\d+|-)$/.test(removalsRaw)) return null;
+	return {
+		additions: additionsRaw === "-" ? 0 : Number(additionsRaw),
+		removals: removalsRaw === "-" ? 0 : Number(removalsRaw),
+		file: normalized.slice(secondTab + 1),
+	};
+}
 
 function isTestFile(file: string): boolean {
 	const normalized = file.replaceAll("\\", "/").toLowerCase();
@@ -160,68 +179,71 @@ export function extractGitWorkflow(
 		const history = run(root, [
 			"log",
 			"--all",
-			"--format=%x1e%H%x00%aI%x00",
+			`--format=%x00${COMMIT_MARKER}%x00%H%x00%aI%x00`,
 			"--numstat",
 			"-z",
 		]);
 		if (!history) continue;
 
-		for (const rawCommit of history.split("\u001e")) {
-			const hashEnd = rawCommit.indexOf("\u0000");
-			const authoredEnd = rawCommit.indexOf("\u0000", hashEnd + 1);
-			if (hashEnd <= 0 || authoredEnd <= hashEnd) continue;
-			const hash = rawCommit.slice(0, hashEnd);
-			const authoredAt = rawCommit.slice(hashEnd + 1, authoredEnd);
-			const authoredMs = Date.parse(authoredAt);
-			const cell = localCell(authoredAt);
-			if (
-				!cell ||
-				!Number.isFinite(authoredMs) ||
-				authoredMs < options.fromMs ||
-				authoredMs > options.toMs
-			) {
+		type CurrentCommit = {
+			included: boolean;
+			changedLines: number;
+			touchesTest: boolean;
+		};
+		let current: CurrentCommit | undefined;
+		const finishCommit = (): void => {
+			if (!current?.included) return;
+			result.changedLinesPerCommit.push(current.changedLines);
+			if (current.touchesTest) result.testFileCommits++;
+		};
+		const fields = history.split("\u0000");
+		for (let fieldIndex = 0; fieldIndex < fields.length; fieldIndex++) {
+			const field = fields[fieldIndex] ?? "";
+			if (field.replace(/^\n+/, "") === COMMIT_MARKER) {
+				finishCommit();
+				const hash = fields[++fieldIndex] ?? "";
+				const authoredAt = fields[++fieldIndex] ?? "";
+				const authoredMs = Date.parse(authoredAt);
+				const cell = localCell(authoredAt);
+				const included =
+					cell !== null &&
+					Number.isFinite(authoredMs) &&
+					authoredMs >= options.fromMs &&
+					authoredMs <= options.toMs &&
+					!seenCommits.has(hash);
+				current = { included, changedLines: 0, touchesTest: false };
+				if (!included || !cell) continue;
+				seenCommits.add(hash);
+				result.totalCommits++;
+				if (cell.hour >= 23 || cell.hour < 3) result.lateNightCommits++;
+				const cellKey = `${cell.weekday}:${cell.hour}`;
+				cells.set(cellKey, (cells.get(cellKey) ?? 0) + 1);
 				continue;
 			}
-			if (seenCommits.has(hash)) continue;
-			seenCommits.add(hash);
 
-			result.totalCommits++;
-			if (cell.hour >= 23 || cell.hour < 3) result.lateNightCommits++;
-			const cellKey = `${cell.weekday}:${cell.hour}`;
-			cells.set(cellKey, (cells.get(cellKey) ?? 0) + 1);
-
-			let changedLines = 0;
-			let touchesTest = false;
-			const fields = rawCommit.slice(authoredEnd + 1).split("\u0000");
-			for (let fieldIndex = 0; fieldIndex < fields.length; fieldIndex++) {
-				const field = fields[fieldIndex]?.replace(/^\n+/, "") ?? "";
-				const match = NUMSTAT_RE.exec(field);
-				if (!match) continue;
-				const additions = match[1] === "-" ? 0 : Number(match[1]);
-				const removals = match[2] === "-" ? 0 : Number(match[2]);
-				let file = match[3] ?? "";
-				if (file.length === 0) {
-					fieldIndex += 2;
-					file = fields[fieldIndex] ?? fields[fieldIndex - 1] ?? "";
-				}
-				const fileChangedLines = additions + removals;
-				result.additions += additions;
-				result.removals += removals;
-				changedLines += fileChangedLines;
-				if (isTestFile(file)) touchesTest = true;
-				if (fileChangedLines > 0) {
-					const extension = path.extname(file).toLowerCase() || "(none)";
-					if (APPROVED_EXTENSIONS.has(extension)) {
-						extensionLines.set(
-							extension,
-							(extensionLines.get(extension) ?? 0) + fileChangedLines,
-						);
-					} else result.withheldExtensionLines += fileChangedLines;
-				}
+			const stat = parseNumstat(field);
+			if (!stat) continue;
+			let file = stat.file;
+			if (file.length === 0) {
+				fieldIndex += 2;
+				file = fields[fieldIndex] ?? fields[fieldIndex - 1] ?? "";
 			}
-			result.changedLinesPerCommit.push(changedLines);
-			if (touchesTest) result.testFileCommits++;
+			if (!current?.included) continue;
+			const fileChangedLines = stat.additions + stat.removals;
+			result.additions += stat.additions;
+			result.removals += stat.removals;
+			current.changedLines += fileChangedLines;
+			if (isTestFile(file)) current.touchesTest = true;
+			if (fileChangedLines <= 0) continue;
+			const extension = path.extname(file).toLowerCase() || "(none)";
+			if (APPROVED_EXTENSIONS.has(extension)) {
+				extensionLines.set(
+					extension,
+					(extensionLines.get(extension) ?? 0) + fileChangedLines,
+				);
+			} else result.withheldExtensionLines += fileChangedLines;
 		}
+		finishCommit();
 	}
 
 	result.changedLinesByExtension = [...extensionLines]
