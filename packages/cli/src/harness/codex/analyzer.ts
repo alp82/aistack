@@ -28,6 +28,10 @@ import {
 	type TokenCounts,
 } from "@aistack/pricing";
 import {
+	createHarnessWorkflowReducer,
+	type HarnessWorkflowReducer,
+} from "../../workflow/reducer.js";
+import {
 	addModelUsage,
 	asName,
 	asNum,
@@ -42,10 +46,16 @@ import {
 } from "../shared/aggregate.js";
 
 /** Codex needs no response dedup bookkeeping - deltas count once by construction. */
-export type Aggregate = SharedAggregate<never>;
+export type Aggregate = SharedAggregate<never> & {
+	workflow: HarnessWorkflowReducer;
+	workflowSeenCalls: Set<string>;
+};
 
 export function createAggregate(): Aggregate {
-	return createSharedAggregate<never>();
+	return Object.assign(createSharedAggregate<never>(), {
+		workflow: createHarnessWorkflowReducer("codex"),
+		workflowSeenCalls: new Set<string>(),
+	});
 }
 
 /**
@@ -60,6 +70,9 @@ export type FileState = {
 	cwd: string | null;
 	/** Pricing key of the nearest preceding `turn_context`. */
 	modelKey: string | null;
+	effort: string | null;
+	responseIndex: number;
+	currentQuestionBack: boolean;
 	/** True once any in-window line was counted for this file. */
 	counted: boolean;
 };
@@ -70,6 +83,9 @@ export function createFileState(): FileState {
 		cliVersion: null,
 		cwd: null,
 		modelKey: null,
+		effort: null,
+		responseIndex: 0,
+		currentQuestionBack: false,
 		counted: false,
 	};
 }
@@ -111,6 +127,7 @@ export function ingestLine(
 	} else if (type === "turn_context" && payload) {
 		const model = asName(payload.model);
 		if (model) state.modelKey = normalizeModel(model);
+		state.effort = asStr(payload.effort) ?? state.effort;
 	}
 
 	if (!inWindow) return;
@@ -123,7 +140,8 @@ export function ingestLine(
 	noteActivity(agg, state);
 
 	if (type === "event_msg" && payload) ingestEvent(agg, payload, state, tsMs);
-	else if (type === "response_item" && payload) ingestItem(agg, payload);
+	else if (type === "response_item" && payload)
+		ingestItem(agg, payload, state, tsMs);
 }
 
 /** Count the file's session/version/cwd once, on its first in-window line. */
@@ -178,6 +196,31 @@ function ingestEvent(
 	// Codex rollouts carry no sidechain flag; everything is the main thread,
 	// which keeps `subagentShare` an honest 0 rather than a guess.
 	agg.mainTokens += total;
+	if (tsMs !== null && state.sessionId) {
+		const details = asObj(last.output_tokens_details);
+		const responseId = `${state.sessionId}:response:${state.responseIndex++}`;
+		agg.workflow.ingest({
+			type: "response",
+			session: state.sessionId,
+			responseId,
+			projectWorkspace: state.cwd ?? undefined,
+			tsMs,
+			model: modelKey,
+			responseTokens: counts.output,
+			routingTokens: total,
+			thinkingTokens: details ? asNum(details.reasoning_tokens) : 0,
+			...(state.effort ? { effort: state.effort } : {}),
+		});
+		agg.workflow.ingest({
+			type: "turn",
+			session: state.sessionId,
+			turnId: responseId,
+			projectWorkspace: state.cwd ?? undefined,
+			tsMs,
+			questionBack: state.currentQuestionBack,
+		});
+		state.currentQuestionBack = false;
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -203,24 +246,111 @@ function ingestCall(agg: Aggregate, name: string, callId: string | null): void {
 	bump(agg.toolCalls, cleanName(name));
 }
 
-function ingestItem(agg: Aggregate, payload: Obj): void {
+function ingestItem(
+	agg: Aggregate,
+	payload: Obj,
+	state: FileState,
+	tsMs: number | null,
+): void {
 	const type = asStr(payload.type);
 	if (type === "function_call" || type === "custom_tool_call") {
 		const name = asName(payload.name);
 		if (!name) return;
-		ingestCall(agg, name, asStr(payload.call_id) ?? asStr(payload.id));
+		const callId = asStr(payload.call_id) ?? asStr(payload.id);
+		ingestCall(agg, name, callId);
+		ingestWorkflowCall(agg, payload, name, callId, state, tsMs);
 		return;
 	}
 	// Non-function tool items publish under stable synthetic names that live in
 	// CODEX_BUILTIN_TOOLS, so they survive the fail-closed filter.
 	if (type === "local_shell_call") {
-		ingestCall(agg, "local_shell", asStr(payload.call_id) ?? asStr(payload.id));
+		const callId = asStr(payload.call_id) ?? asStr(payload.id);
+		ingestCall(agg, "local_shell", callId);
+		ingestWorkflowCall(agg, payload, "local_shell", callId, state, tsMs);
 	} else if (type === "web_search_call") {
 		agg.webSearchRequests++;
 		ingestCall(agg, "web_search", asStr(payload.id));
+		ingestWorkflowCall(
+			agg,
+			payload,
+			"web_search",
+			asStr(payload.id),
+			state,
+			tsMs,
+		);
 	} else if (type === "tool_search_call") {
 		ingestCall(agg, "tool_search", asStr(payload.id));
+		ingestWorkflowCall(
+			agg,
+			payload,
+			"tool_search",
+			asStr(payload.id),
+			state,
+			tsMs,
+		);
 	}
+}
+
+function ingestWorkflowCall(
+	agg: Aggregate,
+	payload: Obj,
+	name: string,
+	callId: string | null,
+	state: FileState,
+	tsMs: number | null,
+): void {
+	if (tsMs === null || !state.sessionId) return;
+	if (callId) {
+		if (agg.workflowSeenCalls.has(callId)) return;
+		agg.workflowSeenCalls.add(callId);
+	}
+	if (name === "request_user_input") state.currentQuestionBack = true;
+	let arg = "";
+	if (
+		["exec_command", "shell", "container.exec", "local_shell"].includes(name)
+	) {
+		const raw =
+			name === "local_shell"
+				? asObj(payload.action)?.command
+				: (payload.arguments ?? payload.input);
+		if (Array.isArray(raw)) arg = unwrapShellCommand(raw.map(String));
+		else if (typeof raw === "string" && !raw.trim().startsWith("{")) arg = raw;
+		else {
+			try {
+				const parsed = JSON.parse(String(raw ?? "{}")) as Record<
+					string,
+					unknown
+				>;
+				const command = parsed.cmd ?? parsed.command;
+				arg = Array.isArray(command)
+					? unwrapShellCommand(command.map(String))
+					: typeof command === "string"
+						? command
+						: "";
+			} catch {
+				arg = "";
+			}
+		}
+	}
+	agg.workflow.ingest({
+		type: "event",
+		session: state.sessionId,
+		projectWorkspace: state.cwd ?? undefined,
+		tsMs,
+		tool: name,
+		arg,
+		batchId: `${state.sessionId}:response:${state.responseIndex}`,
+	});
+}
+
+function unwrapShellCommand(command: string[]): string {
+	if (
+		command.length >= 3 &&
+		/^(bash|sh|zsh)$/.test(command[0] ?? "") &&
+		/^-l?c$/.test(command[1] ?? "")
+	)
+		return command.slice(2).join(" ");
+	return command.join(" ");
 }
 
 /**

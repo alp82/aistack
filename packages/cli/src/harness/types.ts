@@ -6,6 +6,7 @@
 // building, pricing lookups, the approve gate, the batch publish - is shared
 // and takes the adapter's output plus its declared constants.
 
+import type { HarnessWorkflowAggregate } from "../workflow/reducer.js";
 import type { Aggregate } from "./shared/aggregate.js";
 import type { ScanStats } from "./shared/window.js";
 
@@ -13,6 +14,8 @@ export type HarnessScan = {
 	/** The filled fold target; `buildPayload` finalizes and filters it. */
 	aggregate: Aggregate;
 	stats: ScanStats;
+	/** Privacy-safe workflow aggregates. Raw event graphs stay inside the reducer. */
+	workflow: HarnessWorkflowAggregate;
 };
 
 export type HarnessScanOptions = {

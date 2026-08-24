@@ -50,6 +50,6 @@ export const piAdapter: HarnessAdapter = {
 			sinceMs: opts.sinceMs,
 			...(opts.onProgress ? { onProgress: opts.onProgress } : {}),
 		});
-		return { aggregate, stats };
+		return { aggregate, stats, workflow: aggregate.workflow.finish() };
 	},
 };

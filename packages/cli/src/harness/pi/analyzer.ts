@@ -33,6 +33,10 @@ import {
 	type TokenCounts,
 } from "@aistack/pricing";
 import {
+	createHarnessWorkflowReducer,
+	type HarnessWorkflowReducer,
+} from "../../workflow/reducer.js";
+import {
 	addModelUsage,
 	asArr,
 	asName,
@@ -46,10 +50,14 @@ import {
 } from "../shared/aggregate.js";
 
 /** Cross-file dedup lives in FoldState, not the aggregate's `seen`. */
-export type Aggregate = SharedAggregate<never>;
+export type Aggregate = SharedAggregate<never> & {
+	workflow: HarnessWorkflowReducer;
+};
 
 export function createAggregate(): Aggregate {
-	return createSharedAggregate<never>();
+	return Object.assign(createSharedAggregate<never>(), {
+		workflow: createHarnessWorkflowReducer("pi-mono"),
+	});
 }
 
 /**
@@ -76,7 +84,12 @@ export type FileState = {
 };
 
 export function createFileState(): FileState {
-	return { sessionId: null, cwd: null, modelKey: null, counted: false };
+	return {
+		sessionId: null,
+		cwd: null,
+		modelKey: null,
+		counted: false,
+	};
 }
 
 /**
@@ -154,7 +167,39 @@ export function ingestEntry(
 		);
 		// A /fork duplicate repeats the content blocks too; the call-id dedup
 		// already covers tool calls, but the thinking/text tallies have no ids.
-		if (outcome !== "duplicate") ingestContent(agg, message.content);
+		if (outcome !== "duplicate") {
+			if (state.sessionId && tsMs !== null) {
+				const usage = asObj(message.usage);
+				const counts = readCounts(message.usage);
+				agg.workflow.ingest({
+					type: "response",
+					session: state.sessionId,
+					...(asStr(rec.id) ? { responseId: asStr(rec.id) as string } : {}),
+					projectWorkspace: state.cwd ?? undefined,
+					tsMs,
+					...(state.modelKey ? { model: state.modelKey } : {}),
+					thinkingTokens: usage ? asNum(usage.reasoning) : 0,
+					responseTokens: counts?.output ?? 0,
+					routingTokens: counts ? countsTotal(counts) : 0,
+				});
+				ingestContent(
+					agg,
+					message.content,
+					state.sessionId,
+					asStr(rec.id),
+					state.cwd,
+					tsMs,
+				);
+				agg.workflow.ingest({
+					type: "turn",
+					session: state.sessionId,
+					...(asStr(rec.id) ? { turnId: asStr(rec.id) as string } : {}),
+					projectWorkspace: state.cwd ?? undefined,
+					tsMs,
+					questionBack: false,
+				});
+			} else ingestContent(agg, message.content);
+		}
 	} else if (role === "toolResult" && message) {
 		// "Nested LLM work performed by the tool" - real spend, counted by
 		// pi's own footer. No model of its own, so it bills to the model in
@@ -248,7 +293,14 @@ function toPricingKey(provider: string, model: string): string {
  * subagents and no skill tool by vendor design, so those maps stay EMPTY -
  * absent from the payload, never zero (#40).
  */
-function ingestContent(agg: Aggregate, contentRaw: unknown): void {
+function ingestContent(
+	agg: Aggregate,
+	contentRaw: unknown,
+	session?: string,
+	batchId?: string | null,
+	projectWorkspace?: string | null,
+	tsMs?: number,
+): void {
 	for (const blockRaw of asArr(contentRaw)) {
 		const block = asObj(blockRaw);
 		if (!block) continue;
@@ -270,6 +322,18 @@ function ingestContent(agg: Aggregate, contentRaw: unknown): void {
 				agg.toolBlocksWithoutId++;
 			}
 			bump(agg.toolCalls, name);
+			if (session && tsMs !== undefined) {
+				const args = asObj(block.arguments) ?? asObj(block.args) ?? {};
+				agg.workflow.ingest({
+					type: "event",
+					session,
+					projectWorkspace: projectWorkspace ?? undefined,
+					tsMs,
+					tool: name,
+					arg: asStr(args.command) ?? "",
+					...(batchId ? { batchId } : {}),
+				});
+			}
 		}
 	}
 }

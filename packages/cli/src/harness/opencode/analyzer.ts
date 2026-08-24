@@ -24,6 +24,10 @@ import {
 	type TokenCounts,
 } from "@aistack/pricing";
 import {
+	createHarnessWorkflowReducer,
+	type HarnessWorkflowReducer,
+} from "../../workflow/reducer.js";
+import {
 	addModelUsage,
 	asNum,
 	asStr,
@@ -61,10 +65,14 @@ export const OPENCODE_BUILTIN_TOOLS: ReadonlySet<string> = new Set([
 ]);
 
 /** Message-id dedup lives in DbFoldState, not the aggregate's `seen`. */
-export type Aggregate = SharedAggregate<never>;
+export type Aggregate = SharedAggregate<never> & {
+	workflow: HarnessWorkflowReducer;
+};
 
 export function createAggregate(): Aggregate {
-	return createSharedAggregate<never>();
+	return Object.assign(createSharedAggregate<never>(), {
+		workflow: createHarnessWorkflowReducer("opencode"),
+	});
 }
 
 /** What the scanner knows about one session row, named columns only. */
@@ -122,6 +130,8 @@ export type MessageRow = {
 	cacheRead: unknown;
 	cacheWrite: unknown;
 	cwd: unknown;
+	reasoning?: unknown;
+	completedTsMs?: unknown;
 };
 
 export function ingestMessageRow(
@@ -188,6 +198,31 @@ export function ingestMessageRow(
 		counts,
 		apiEquivalentCost(modelKey, counts, tsMs),
 	);
+	if (sessionId && tsMs !== null) {
+		const completed = asNum(row.completedTsMs);
+		agg.workflow.ingest({
+			type: "response",
+			session: sessionId,
+			...(id ? { responseId: id } : {}),
+			projectWorkspace: cwd ?? undefined,
+			parentSession: session?.parentId ?? undefined,
+			tsMs,
+			...(provider && model ? { model: `${provider}:${model}` } : {}),
+			thinkingTokens: asNum(row.reasoning),
+			responseTokens: counts.output,
+			routingTokens: total,
+			...(completed > tsMs ? { durationSec: (completed - tsMs) / 1000 } : {}),
+		});
+		agg.workflow.ingest({
+			type: "turn",
+			session: sessionId,
+			...(id ? { turnId: id } : {}),
+			projectWorkspace: cwd ?? undefined,
+			parentSession: session?.parentId ?? undefined,
+			tsMs,
+			questionBack: false,
+		});
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -216,6 +251,10 @@ export type ToolPartRow = {
 	inputName: unknown;
 	/** `$.state.input.subagent_type` - the task tool's agent. */
 	subagentType: unknown;
+	sessionId?: unknown;
+	tsMs?: unknown;
+	command?: unknown;
+	messageId?: unknown;
 };
 
 export function ingestToolPart(
@@ -234,6 +273,33 @@ export function ingestToolPart(
 	if (dedupKey) {
 		if (agg.toolCallDedup.has(dedupKey)) return;
 		agg.toolCallDedup.add(dedupKey);
+	}
+	const sessionId = asStr(row.sessionId);
+	const tsMs = asNum(row.tsMs);
+	const session = sessionId ? state.sessions.get(sessionId) : undefined;
+	if (sessionId && tsMs > 0) {
+		const messageId = asStr(row.messageId);
+		let arg = "";
+		if (name === "skill") arg = asStr(row.inputName) ?? "";
+		else if (name === "task") arg = asStr(row.subagentType) ?? "";
+		else if (name === "bash") arg = asStr(row.command) ?? "";
+		agg.workflow.ingest({
+			type: "event",
+			session: sessionId,
+			parentSession: session?.parentId ?? undefined,
+			tsMs,
+			tool: name,
+			arg,
+			...(messageId ? { batchId: messageId } : {}),
+		});
+		agg.workflow.ingest({
+			type: "turn",
+			session: sessionId,
+			...(messageId ? { turnId: messageId } : {}),
+			parentSession: session?.parentId ?? undefined,
+			tsMs,
+			questionBack: name === "question",
+		});
 	}
 
 	// Fail-closed order (research §inventory): the literal built-in set first,

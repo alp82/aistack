@@ -72,7 +72,11 @@ const FAKE_CLAUDE_ADAPTER: HarnessAdapter = {
 			assistant({ timestamp: "2026-07-20T12:00:00.000Z" }),
 			{ projectDir: "-home-u-p" },
 		);
-		return { aggregate, stats: STATS };
+		return {
+			aggregate,
+			stats: STATS,
+			workflow: aggregate.workflow.finish(),
+		};
 	},
 };
 
