@@ -32,7 +32,7 @@ import {
 } from './_generated/server'
 import { isAdmin } from './lib/admin'
 import {
-  SCRAPER_USER_AGENT,
+  SCRAPER_HEADERS,
   type SectionRule,
   extractLinks,
   headlineFromUrl,
@@ -54,6 +54,16 @@ interface ScraperBase {
   licenseClass: NewsLicenseClassType
   /** The notice a full-text source must carry wherever we re-serve it. */
   attribution?: string
+  /**
+   * Read this source on Node instead of the default runtime (#262).
+   *
+   * The default runtime's fetch cannot reach every host. `claude.com` answers
+   * it `HTTP 502` and answers Node 200. See `convex/newsFetch.ts` for why.
+   *
+   * Absent is the default, and it should stay the default. A Node action costs
+   * a process hop per read, so a source earns this flag by failing without it.
+   */
+  runtime?: 'node'
 }
 
 interface UrlSetScraper extends ScraperBase {
@@ -115,6 +125,11 @@ export const SCRAPERS: ScraperDef[] = [
     url: 'https://claude.com/sitemap.xml',
     match: (u) => /^https:\/\/claude\.com\/blog\/[^/]+$/.test(u),
     licenseClass: 'article',
+    // The default runtime gets HTTP 502 from claude.com, on the sitemap and on
+    // every article page. Node gets 200 on both. This is the only source that
+    // needs the hop, and claude.com/robots.txt allows every crawler on every
+    // path, so the lane is reading what the site offers.
+    runtime: 'node',
   },
   {
     slug: 'nous-hermes',
@@ -350,19 +365,36 @@ export const resetState = internalMutation({
 // Fetching
 // ---------------------------------------------------------------------------
 
+/**
+ * Read one URL. The choke point of the whole lane.
+ *
+ * Every read goes through a `TextFetcher`: the sitemap, the index page, the
+ * long page, and every article page. One seam is what let the Claude blog move
+ * runtime without touching a parser (#262).
+ */
+type TextFetcher = (url: string) => Promise<string>
+
+/** The default runtime's read. Every source but one uses this. */
 async function fetchText(url: string): Promise<string> {
   const res = await fetch(url, {
     redirect: 'follow',
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    headers: {
-      'user-agent': SCRAPER_USER_AGENT,
-      // Google serves a random language without this, which rewrites the page.
-      'accept-language': 'en',
-      accept: 'text/html,application/xhtml+xml,application/xml,*/*',
-    },
+    headers: SCRAPER_HEADERS,
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return await res.text()
+}
+
+/**
+ * The read this source gets.
+ *
+ * A `node` source hops to `internal.newsFetch.fetchText`, which runs the same
+ * request on undici. Everything else reads in place, because the hop costs a
+ * process and buys nothing for a host that already answers.
+ */
+export function fetcherFor(ctx: ActionCtx, def: ScraperDef): TextFetcher {
+  if (def.runtime !== 'node') return fetchText
+  return (url) => ctx.runAction(internal.newsFetch.fetchText, { url })
 }
 
 /** Epoch ms from a date a page wrote, or null when it is not a date. */
@@ -392,21 +424,23 @@ export interface ScrapeReport {
 type ActionCtx = {
   runQuery: any
   runMutation: any
+  runAction: any
 }
 
 /** List the article URLs of a sitemap, a sitemap index, or an index page. */
 async function listUrls(
   def: UrlSetScraper,
+  read: TextFetcher,
 ): Promise<Array<{ url: string; dateHint: string | null }>> {
   if (def.kind === 'links') {
     if (!def.linkPattern) throw new Error('a links scraper needs a linkPattern')
-    const html = await fetchText(def.url)
+    const html = await read(def.url)
     return extractLinks(html, def.url, def.linkPattern)
       .filter(def.match)
       .map((url) => ({ url, dateHint: null }))
   }
   const out: Array<{ url: string; dateHint: string | null }> = []
-  for (const entry of parseSitemap(await fetchText(def.url))) {
+  for (const entry of parseSitemap(await read(def.url))) {
     if (def.match(entry.loc)) {
       out.push({ url: entry.loc, dateHint: entry.lastmod })
     }
@@ -426,8 +460,9 @@ async function runUrlSet(
   source: Doc<'newsSources'>,
   def: UrlSetScraper,
   report: ScrapeReport,
+  read: TextFetcher,
 ): Promise<void> {
-  const listed = await listUrls(def)
+  const listed = await listUrls(def, read)
   report.candidates = listed.length
   if (listed.length === 0) throw new Error('the page listed no articles')
 
@@ -451,7 +486,7 @@ async function runUrlSet(
     let headline: string | null = null
     let published: number | null = null
     try {
-      const meta = parseArticle(await fetchText(entry.url))
+      const meta = parseArticle(await read(entry.url))
       headline = meta.headline
       published = toEpoch(meta.published)
     } catch {
@@ -491,8 +526,9 @@ async function runPage(
   source: Doc<'newsSources'>,
   def: PageScraper,
   report: ScrapeReport,
+  read: TextFetcher,
 ): Promise<void> {
-  const sections = parseSections(await fetchText(def.url), def.rule)
+  const sections = parseSections(await read(def.url), def.rule)
   report.candidates = sections.length
   if (sections.length === 0) throw new Error('the page held no dated sections')
 
@@ -565,9 +601,10 @@ async function scrapeOne(
     report.error = 'no scraper of that name'
     return report
   }
+  const read = fetcherFor(ctx, def)
   try {
-    if (def.kind === 'page') await runPage(ctx, source, def, report)
-    else await runUrlSet(ctx, source, def, report)
+    if (def.kind === 'page') await runPage(ctx, source, def, report, read)
+    else await runUrlSet(ctx, source, def, report, read)
   } catch (e) {
     report.error = e instanceof Error ? e.message : String(e)
   }

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { api, internal } from './_generated/api'
 import type { Id } from './_generated/dataModel'
 import { ADMIN_EMAILS } from './lib/admin'
+import { SCRAPERS, fetcherFor } from './newsScrapers'
 import schema from './schema'
 
 const modules = import.meta.glob('./**/*.{js,ts}')
@@ -604,5 +605,101 @@ describe('the feed collector and the scrapers', () => {
     expect(rows[0].headline).toBe('From the feed')
     expect(rows[0].sourceId).toBeUndefined()
     expect(sourceId).toBeDefined()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The Node runtime route (#262)
+// ---------------------------------------------------------------------------
+
+/**
+ * The Claude blog reads on Node, and nothing else does.
+ *
+ * `claude.com` answers the default Convex runtime `HTTP 502` and answers Node
+ * 200, on the sitemap and on every article page. `convex/newsFetch.ts` records
+ * why. These tests pin the ROUTING DECISION rather than the fetch, because a
+ * stubbed global fetch answers both runtimes and so cannot tell them apart.
+ *
+ * The last test is the one that matters most. A second source picking up the
+ * flag by accident buys a process hop per read for a host that already answers.
+ */
+describe('the node runtime route', () => {
+  /** A ctx whose runAction records the hop instead of taking it. */
+  function spyCtx() {
+    const hops: Array<{ fn: unknown; url: string }> = []
+    return {
+      hops,
+      ctx: {
+        runQuery: vi.fn(),
+        runMutation: vi.fn(),
+        runAction: vi.fn(async (fn: unknown, args: { url: string }) => {
+          hops.push({ fn, url: args.url })
+          return 'from node'
+        }),
+      },
+    }
+  }
+
+  test('a node source hops to the Node action instead of fetching in place', async () => {
+    const def = SCRAPERS.find((d) => d.slug === 'claude-blog')
+    if (!def) throw new Error('the claude-blog entry is gone')
+    const calls = stubFetch({})
+    const { ctx, hops } = spyCtx()
+
+    const body = await fetcherFor(ctx, def)('https://claude.com/sitemap.xml')
+
+    expect(body).toBe('from node')
+    expect(hops).toEqual([
+      {
+        fn: internal.newsFetch.fetchText,
+        url: 'https://claude.com/sitemap.xml',
+      },
+    ])
+    // The default runtime never touched the host.
+    expect(calls).toEqual([])
+  })
+
+  test('every other source still reads in place', async () => {
+    const def = SCRAPERS.find((d) => d.slug === 'anthropic-news')
+    if (!def) throw new Error('the anthropic-news entry is gone')
+    const calls = stubFetch({ [ANTHROPIC]: '<urlset></urlset>' })
+    const { ctx, hops } = spyCtx()
+
+    const body = await fetcherFor(ctx, def)(ANTHROPIC)
+
+    expect(body).toBe('<urlset></urlset>')
+    expect(calls).toEqual([ANTHROPIC])
+    expect(hops).toEqual([])
+  })
+
+  test('the routed lane collects end to end, sitemap and article both', async () => {
+    const t = convexTest(schema, modules)
+    await onlyScraper(t, 'claude-blog')
+    const claudeSitemap = (slugs: string[]) =>
+      `<urlset>${slugs
+        .map((s) => `<url><loc>https://claude.com/blog/${s}</loc></url>`)
+        .join('')}</urlset>`
+
+    stubFetch({ 'https://claude.com/sitemap.xml': claudeSitemap(['seed']) })
+    await t.action(internal.newsScrapers.scrape, {})
+
+    stubFetch({
+      'https://claude.com/sitemap.xml': claudeSitemap(['seed', 'agent-view']),
+      'https://claude.com/blog/agent-view': article('Agent view in Claude Code'),
+    })
+    const [report] = await t.action(internal.newsScrapers.scrape, {})
+
+    expect(report.error).toBeNull()
+    expect(report.added).toBe(1)
+    // The article read is routed too, so the item carries its real headline
+    // rather than one derived from the slug.
+    expect((await items(t))[0].headline).toBe('Agent view in Claude Code')
+  })
+
+  test('exactly one source carries the flag', () => {
+    const routed = SCRAPERS.filter((d) => d.runtime === 'node').map(
+      (d) => d.slug,
+    )
+    expect(routed).toEqual(['claude-blog'])
   })
 })
