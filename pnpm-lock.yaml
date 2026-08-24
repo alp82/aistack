@@ -355,6 +355,9 @@ importers:
       '@aistack/pricing':
         specifier: workspace:*
         version: link:../pricing
+      '@aistack/workflow-rules':
+        specifier: workspace:*
+        version: link:../workflow-rules
       '@types/node':
         specifier: ^24
         version: 24.13.0

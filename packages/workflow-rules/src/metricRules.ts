@@ -49,23 +49,26 @@ export type WorkflowFacts = {
 	sessions?: ReadonlyArray<{
 		harness: HarnessName;
 		/** True when the session's responses named more than one model. */
-		modelSwitched: boolean;
-		thinkingTokens: number;
-		responseTokens: number;
+		/** Present only when at least one response names a model. */
+		modelSwitched?: boolean;
+		thinkingTokens?: number;
+		responseTokens?: number;
 		/** Present only for harnesses that record an effort field (Claude Code, Codex). */
 		effortTurns?: { high: number; total: number };
 		effortChangedMidRun?: boolean;
 		/** Present only for harnesses that record per-turn duration (Claude Code, opencode). */
 		longestTurnDurationSec?: number;
-		questionBackTurns: number;
-		totalTurns: number;
+		/** Present only for harnesses with a stable question-tool marker. */
+		questionBackTurns?: number;
+		totalTurns?: number;
 	}>;
 	/** One entry per active day inside the sync window. */
 	activeDays?: ReadonlyArray<{
 		date: string;
 		/** Distinct project workspaces with an overlapping session span that day. */
 		parallelProjectCount: number;
-		webSearches: number;
+		/** Present only for harnesses with a built-in web-search tool. */
+		webSearches?: number;
 	}>;
 };
 
@@ -141,7 +144,13 @@ export const METRIC_RULES: readonly MetricRule[] = [
 		unit: "share",
 		harnessSupport: "all",
 		band: { low: 0, high: 0.1 },
-		evaluate: (facts) => shareOf(facts.sessions, (s) => s.modelSwitched),
+		evaluate: (facts) =>
+			shareOf(
+				facts.sessions?.filter(
+					(session) => session.modelSwitched !== undefined,
+				),
+				(session) => session.modelSwitched === true,
+			),
 	},
 	{
 		id: "thinking-share",
@@ -149,16 +158,21 @@ export const METRIC_RULES: readonly MetricRule[] = [
 		label: "of response tokens are thinking",
 		kind: "proxy",
 		unit: "share",
-		harnessSupport: "all",
+		harnessSupport: ["codex", "opencode", "pi-mono"],
 		band: { low: 0.1, high: 0.3 },
 		evaluate: (facts) => {
-			const sessions = facts.sessions;
+			const sessions = facts.sessions?.filter(
+				(session) =>
+					session.harness !== "claude-code" &&
+					session.thinkingTokens !== undefined &&
+					session.responseTokens !== undefined,
+			);
 			if (!sessions || sessions.length === 0) return undefined;
 			let thinking = 0;
 			let response = 0;
 			for (const s of sessions) {
-				thinking += s.thinkingTokens;
-				response += s.responseTokens;
+				thinking += s.thinkingTokens ?? 0;
+				response += s.responseTokens ?? 0;
 			}
 			return response > 0 ? thinking / response : undefined;
 		},
@@ -221,16 +235,20 @@ export const METRIC_RULES: readonly MetricRule[] = [
 		label: "of turns end with a question back to the human",
 		kind: "proxy",
 		unit: "share",
-		harnessSupport: "all",
+		harnessSupport: ["claude-code", "codex", "opencode"],
 		band: { low: 0, high: 0.15 },
 		evaluate: (facts) => {
-			const sessions = facts.sessions;
+			const sessions = facts.sessions?.filter(
+				(session) =>
+					session.questionBackTurns !== undefined &&
+					session.totalTurns !== undefined,
+			);
 			if (!sessions || sessions.length === 0) return undefined;
 			let asked = 0;
 			let turns = 0;
 			for (const s of sessions) {
-				asked += s.questionBackTurns;
-				turns += s.totalTurns;
+				asked += s.questionBackTurns ?? 0;
+				turns += s.totalTurns ?? 0;
 			}
 			return turns > 0 ? asked / turns : undefined;
 		},
@@ -241,12 +259,14 @@ export const METRIC_RULES: readonly MetricRule[] = [
 		label: "web searches per active day, inside the harness",
 		kind: "proxy",
 		unit: "count",
-		harnessSupport: "all",
+		harnessSupport: ["claude-code", "codex", "opencode"],
 		band: { low: 0, high: 4 },
 		evaluate: (facts) => {
-			const days = facts.activeDays;
+			const days = facts.activeDays?.filter(
+				(day) => day.webSearches !== undefined,
+			);
 			if (!days || days.length === 0) return undefined;
-			const total = days.reduce((sum, d) => sum + d.webSearches, 0);
+			const total = days.reduce((sum, d) => sum + (d.webSearches ?? 0), 0);
 			return total / days.length;
 		},
 	},

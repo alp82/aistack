@@ -36,6 +36,12 @@ import {
 	type TokenCounts,
 } from "@aistack/pricing";
 import {
+	createHarnessWorkflowReducer,
+	createWorkflowLocalSources,
+	type HarnessWorkflowReducer,
+	type WorkflowLocalSources,
+} from "../../workflow/reducer.js";
+import {
 	asArr,
 	asName,
 	asNum,
@@ -90,10 +96,21 @@ type SeenEntry = { requestId: string | null; contribution: Contribution };
  * The Claude adapter's aggregate: the shared fold target, with `seen` keyed
  * by `message.id` holding this adapter's replay/continuation bookkeeping.
  */
-export type Aggregate = SharedAggregate<SeenEntry>;
+export type Aggregate = SharedAggregate<SeenEntry> & {
+	workflow: HarnessWorkflowReducer;
+	workflowLocal: WorkflowLocalSources;
+	workflowSeenCalls: Set<string>;
+	workflowSeenTurns: Set<string>;
+};
 
 export function createAggregate(): Aggregate {
-	return createSharedAggregate<SeenEntry>();
+	const workflowLocal = createWorkflowLocalSources();
+	return Object.assign(createSharedAggregate<SeenEntry>(), {
+		workflow: createHarnessWorkflowReducer("claude-code", workflowLocal),
+		workflowLocal,
+		workflowSeenCalls: new Set<string>(),
+		workflowSeenTurns: new Set<string>(),
+	});
 }
 
 // ---------------------------------------------------------------------------
@@ -138,8 +155,122 @@ export function ingestRecord(
 	}
 
 	const type = asStr(rec.type);
-	if (type === "assistant") ingestAssistant(agg, rec, tsMs);
-	else if (type === "user") ingestUser(agg, rec);
+	if (type === "assistant") {
+		ingestClaudeWorkflow(agg, rec, ctx, tsMs);
+		ingestAssistant(agg, rec, tsMs);
+	} else if (type === "user") ingestUser(agg, rec);
+	else if (type === "system") ingestClaudeTurnDuration(agg, rec, ctx, tsMs);
+}
+
+function ingestClaudeTurnDuration(
+	agg: Aggregate,
+	rec: Obj,
+	ctx: IngestContext,
+	tsMs: number | null,
+): void {
+	if (
+		tsMs === null ||
+		asStr(rec.subtype) !== "turn_duration" ||
+		asNum(rec.durationMs) <= 0
+	) {
+		return;
+	}
+	const session = asStr(rec.sessionId);
+	if (!session) return;
+	agg.workflow.ingest({
+		type: "response",
+		session,
+		projectWorkspace: projectWorkspaceDirectory(rec) ?? ctx.projectDir,
+		tsMs,
+		...(asStr(rec.uuid) ? { responseId: `duration:${asStr(rec.uuid)}` } : {}),
+		durationSec: asNum(rec.durationMs) / 1000,
+	});
+}
+
+function ingestClaudeWorkflow(
+	agg: Aggregate,
+	rec: Obj,
+	ctx: IngestContext,
+	tsMs: number | null,
+): void {
+	if (tsMs === null) return;
+	const baseSession = asStr(rec.sessionId);
+	const msg = asObj(rec.message);
+	if (!baseSession || !msg) return;
+	const projectWorkspace = projectWorkspaceDirectory(rec) ?? ctx.projectDir;
+	const sidechain = rec.isSidechain === true;
+	const agentId = asStr(rec.agentId);
+	const session = sidechain
+		? `${baseSession}:agent:${agentId ?? "unknown"}`
+		: baseSession;
+	const parentSession = sidechain ? baseSession : undefined;
+	const usage = asObj(msg.usage);
+	const counts = usage ? readCounts(usage) : null;
+	const messageId = asStr(msg.id);
+	const newTurn = messageId ? !agg.workflowSeenTurns.has(messageId) : true;
+	if (messageId) agg.workflowSeenTurns.add(messageId);
+	agg.workflow.ingest({
+		type: "response",
+		session,
+		projectWorkspace,
+		tsMs,
+		sidechain,
+		...(parentSession ? { parentSession } : {}),
+		...(messageId ? { responseId: messageId } : {}),
+		...(asName(msg.model) ? { model: asName(msg.model) as string } : {}),
+		...(counts ? { responseTokens: counts.output } : {}),
+		...(counts ? { routingTokens: countsTotal(counts) } : {}),
+		...((asStr(rec.effort) ?? asStr(msg.effort))
+			? { effort: (asStr(rec.effort) ?? asStr(msg.effort)) as string }
+			: {}),
+	});
+
+	const tools: Obj[] = [];
+	for (const rawBlock of asArr(msg.content)) {
+		const block = asObj(rawBlock);
+		if (block && asStr(block.type) === "tool_use") tools.push(block);
+	}
+	for (const block of tools) {
+		const id = asStr(block.id);
+		if (id) {
+			if (agg.workflowSeenCalls.has(id)) continue;
+			agg.workflowSeenCalls.add(id);
+		}
+		const name = asName(block.name);
+		if (!name) continue;
+		const input = asObj(block.input) ?? {};
+		let arg = "";
+		if (name === "Skill") arg = asStr(input.skill) ?? "";
+		else if (name === "Agent" || name === "Task")
+			arg = asStr(input.subagent_type) ?? "";
+		else if (name === "Bash") arg = asStr(input.command) ?? "";
+		agg.workflow.ingest({
+			type: "event",
+			session,
+			projectWorkspace,
+			tsMs,
+			sidechain,
+			...(parentSession ? { parentSession } : {}),
+			tool: name === "Task" ? "Agent" : name,
+			arg,
+			...(messageId ? { batchId: messageId } : {}),
+		});
+	}
+	if (tools.length > 0 || newTurn) {
+		const lastTool = tools.at(-1);
+		agg.workflow.ingest({
+			type: "turn",
+			session,
+			projectWorkspace,
+			tsMs,
+			sidechain,
+			...(parentSession ? { parentSession } : {}),
+			...(messageId ? { turnId: messageId } : {}),
+			questionBack: ["AskUserQuestion", "ExitPlanMode"].includes(
+				asName(lastTool?.name) ?? "",
+			),
+		});
+	}
 }
 
 function ingestAssistant(agg: Aggregate, rec: Obj, tsMs: number | null): void {

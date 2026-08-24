@@ -6,11 +6,9 @@ export default defineConfig({
   format: ['esm'],
   target: 'node18',
   clean: true,
-  // The price table is a workspace package that is never published (#93), so it
-  // has to be bundled INTO dist. It is a devDependency, which tsup already
-  // bundles - this is the belt to that braces, because externalizing it would
-  // ship a package.json pointing at a package npm does not have.
-  noExternal: ['@aistack/pricing'],
+  // These private workspace packages are never published, so the CLI bundles
+  // them into dist. Externalizing either package would break the npm release.
+  noExternal: ['@aistack/pricing', '@aistack/workflow-rules'],
   banner: { js: '#!/usr/bin/env node' },
   splitting: false,
   sourcemap: true,

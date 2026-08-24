@@ -83,6 +83,46 @@ function foldFile(
 }
 
 describe("usage - sum last_token_usage deltas, never the cumulative total", () => {
+	it("records reasoning_output_tokens as thinking tokens", () => {
+		const agg = createAggregate();
+		const state = createFileState();
+		for (const line of [
+			sessionMeta(),
+			turnContext("gpt-5.5"),
+			{
+				timestamp: TS,
+				type: "event_msg",
+				payload: {
+					type: "token_count",
+					info: {
+						last_token_usage: {
+							input_tokens: 10,
+							output_tokens: 20,
+							reasoning_output_tokens: 7,
+						},
+					},
+				},
+			},
+		]) {
+			ingestLine(agg, line, state);
+		}
+
+		expect(agg.workflow.finish().facts.sessions[0]?.thinkingTokens).toBe(7);
+	});
+
+	it("marks a question only when request_user_input is the last tool", () => {
+		const agg = createAggregate();
+		foldFile(agg, [
+			sessionMeta(),
+			turnContext("gpt-5.5"),
+			functionCall("request_user_input", "ask"),
+			functionCall("exec_command", "later"),
+			tokenCount({ output: 1 }),
+		]);
+
+		expect(agg.workflow.finish().facts.sessions[0]?.questionBackTurns).toBe(0);
+	});
+
 	it("sums deltas and ignores total_token_usage entirely", () => {
 		const agg = createAggregate();
 		foldFile(agg, [

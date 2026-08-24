@@ -200,8 +200,10 @@ function readDb(
 				json_extract(data, '$.time.created') as ts_ms,
 				json_extract(data, '$.tokens.input') as tok_input,
 				json_extract(data, '$.tokens.output') as tok_output,
+				json_extract(data, '$.tokens.reasoning') as tok_reasoning,
 				json_extract(data, '$.tokens.cache.read') as tok_cache_read,
 				json_extract(data, '$.tokens.cache.write') as tok_cache_write,
+				json_extract(data, '$.time.completed') as completed_ts_ms,
 				json_extract(data, '$.path.cwd') as cwd
 			from message where time_created >= ?`,
 		);
@@ -219,6 +221,8 @@ function readDb(
 				cacheRead: r.tok_cache_read,
 				cacheWrite: r.tok_cache_write,
 				cwd: r.cwd,
+				reasoning: r.tok_reasoning,
+				completedTsMs: r.completed_ts_ms,
 			});
 		}
 
@@ -233,8 +237,10 @@ function readDb(
 				json_extract(data, '$.time.created') as ts_ms,
 				json_extract(data, '$.tokens.input') as tok_input,
 				json_extract(data, '$.tokens.output') as tok_output,
+				json_extract(data, '$.tokens.reasoning') as tok_reasoning,
 				json_extract(data, '$.tokens.cache.read') as tok_cache_read,
 				json_extract(data, '$.tokens.cache.write') as tok_cache_write,
+				json_extract(data, '$.time.completed') as completed_ts_ms,
 				json_extract(data, '$.path.cwd') as cwd
 			from session_message where time_created >= ?`,
 		);
@@ -252,20 +258,24 @@ function readDb(
 				cacheRead: r.tok_cache_read,
 				cacheWrite: r.tok_cache_write,
 				cwd: r.cwd,
+				reasoning: r.tok_reasoning,
+				completedTsMs: r.completed_ts_ms,
 			});
 		}
 
-		// v1 tool parts. Only these four scalar paths of `part.data` ever reach
-		// JS - `$.state.output` holds full command output and stays in SQLite.
+		// v1 tool parts. Only named scalar paths reach JavaScript.
+		// `$.state.output` holds full command output and stays in SQLite.
 		const parts = db.prepare(
-			`select id,
+			`select id, message_id, session_id, time_created,
 				json_extract(data, '$.type') as part_type,
 				json_extract(data, '$.tool') as tool,
 				json_extract(data, '$.callID') as call_id,
 				json_extract(data, '$.state.input.name') as input_name,
-				json_extract(data, '$.state.input.subagent_type') as subagent_type
+				json_extract(data, '$.state.input.subagent_type') as subagent_type,
+				json_extract(data, '$.state.input.command') as command
 			from part
-			where time_created >= ? and json_extract(data, '$.type') = 'tool'`,
+			where time_created >= ? and json_extract(data, '$.type') = 'tool'
+			order by time_created, message_id, id`,
 		);
 		for (const r of parts.all(sinceMs)) {
 			agg.lines++;
@@ -276,6 +286,10 @@ function readDb(
 				callId: r.call_id,
 				inputName: r.input_name,
 				subagentType: r.subagent_type,
+				sessionId: r.session_id,
+				tsMs: pickTs(null, r.time_created),
+				command: r.command,
+				messageId: r.message_id,
 			});
 		}
 
@@ -284,14 +298,17 @@ function readDb(
 		// is tolerated - the tokens above are the load-bearing read.
 		try {
 			const v2parts = db.prepare(
-				`select sm.id || ':' || je.key as id,
+				`select sm.id || ':' || je.key as id, sm.id as message_id,
+					sm.session_id, sm.time_created,
 					json_extract(je.value, '$.type') as part_type,
 					json_extract(je.value, '$.tool') as tool,
 					json_extract(je.value, '$.callID') as call_id,
 					json_extract(je.value, '$.state.input.name') as input_name,
-					json_extract(je.value, '$.state.input.subagent_type') as subagent_type
+					json_extract(je.value, '$.state.input.subagent_type') as subagent_type,
+					json_extract(je.value, '$.state.input.command') as command
 				from session_message sm, json_each(sm.data, '$.content') je
-				where sm.time_created >= ? and sm.type = 'assistant'`,
+				where sm.time_created >= ? and sm.type = 'assistant'
+				order by sm.time_created, sm.seq, sm.id, cast(je.key as integer)`,
 			);
 			for (const r of v2parts.all(sinceMs)) {
 				ingestToolPart(agg, state, {
@@ -301,6 +318,10 @@ function readDb(
 					callId: r.call_id,
 					inputName: r.input_name,
 					subagentType: r.subagent_type,
+					sessionId: r.session_id,
+					tsMs: pickTs(null, r.time_created),
+					command: r.command,
+					messageId: r.message_id,
 				});
 			}
 		} catch {

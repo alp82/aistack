@@ -356,11 +356,6 @@ type Rule = {
 
 const RULES_V1: readonly Rule[] = [
 	{
-		id: "handoff.blocking-call",
-		phase: "handoff",
-		test: (t) => ALL_HANDOFF_MARKERS.has(t),
-	},
-	{
 		id: "handoff.surface",
 		phase: "handoff",
 		test: (t) => HANDOFF_SURFACE_TOOLS.includes(t),
@@ -439,7 +434,14 @@ export function classifyEvent(
 	arg: string,
 	prevPhase: PhaseId | null,
 	ruleSet: string = PHASE_RULES_V1,
+	harness?: HarnessName,
 ): PhaseClassification {
+	const handoffMarkers = harness
+		? new Set(HANDOFF_MARKERS[harness])
+		: ALL_HANDOFF_MARKERS;
+	if (handoffMarkers.has(tool)) {
+		return { ruleId: "handoff.blocking-call", phase: "handoff" };
+	}
 	const rules = RULE_SETS[ruleSet];
 	if (!rules) throw new Error(`unknown phase rule set: ${ruleSet}`);
 	for (const rule of rules) {
@@ -534,6 +536,7 @@ function emptyPhaseRecord(): Record<PhaseId, number> {
 export function deriveSessionPhases(
 	events: readonly HarnessEvent[],
 	ruleSet: string = PHASE_RULES_V1,
+	harness?: HarnessName,
 ): SessionPhaseDerivation {
 	const phaseSec = emptyPhaseRecord();
 	const phaseEvents = emptyPhaseRecord();
@@ -551,7 +554,13 @@ export function deriveSessionPhases(
 		const gapSec = next ? (next[0] - ts) / 1000 : TAIL_SEC;
 		const ownSec = Math.min(gapSec, CAP_SEC);
 
-		const { ruleId, phase } = classifyEvent(tool, arg, prevPhase, ruleSet);
+		const { ruleId, phase } = classifyEvent(
+			tool,
+			arg,
+			prevPhase,
+			ruleSet,
+			harness,
+		);
 		if (phase !== "unknown") prevPhase = phase;
 		ruleTally[ruleId] = (ruleTally[ruleId] ?? 0) + 1;
 		phaseSec[phase] += ownSec;
@@ -564,7 +573,10 @@ export function deriveSessionPhases(
 
 		const overflow = gapSec - ownSec;
 		if (overflow > 0) {
-			if (ALL_HANDOFF_MARKERS.has(tool)) waitingSec += overflow;
+			const handoffMarkers = harness
+				? new Set(HANDOFF_MARKERS[harness])
+				: ALL_HANDOFF_MARKERS;
+			if (handoffMarkers.has(tool)) waitingSec += overflow;
 			else idleSec += overflow;
 		}
 	}

@@ -87,14 +87,44 @@ describe("model-switches-mid-run", () => {
 			10,
 		);
 	});
+
+	it("ignores sessions without model evidence", () => {
+		expect(
+			metricRule("model-switches-mid-run")?.evaluate({
+				sessions: [
+					{
+						harness: "pi-mono",
+						thinkingTokens: 1,
+						responseTokens: 2,
+					},
+				],
+			}),
+		).toBeUndefined();
+	});
 });
 
 describe("thinking-share", () => {
 	it("computes thinking tokens over total response tokens", () => {
 		expect(metricRule("thinking-share")?.evaluate(facts)).toBeCloseTo(
-			400 / 2500,
+			100 / 1500,
 			10,
 		);
+	});
+
+	it("ignores sessions without token-level thinking data", () => {
+		expect(
+			metricRule("thinking-share")?.evaluate({
+				sessions: [
+					{
+						harness: "claude-code",
+						modelSwitched: false,
+						responseTokens: 100,
+						questionBackTurns: 0,
+						totalTurns: 1,
+					},
+				],
+			}),
+		).toBeUndefined();
 	});
 });
 
@@ -158,6 +188,29 @@ describe("question-back-share", () => {
 			10,
 		);
 	});
+
+	it("ignores sessions from harnesses without a question marker", () => {
+		expect(
+			metricRule("question-back-share")?.evaluate({
+				sessions: [
+					{
+						harness: "claude-code",
+						modelSwitched: false,
+						thinkingTokens: 0,
+						responseTokens: 1,
+						questionBackTurns: 1,
+						totalTurns: 2,
+					},
+					{
+						harness: "pi-mono",
+						modelSwitched: false,
+						thinkingTokens: 0,
+						responseTokens: 1,
+					},
+				],
+			}),
+		).toBe(0.5);
+	});
 });
 
 describe("web-searches-per-active-day", () => {
@@ -165,5 +218,16 @@ describe("web-searches-per-active-day", () => {
 		expect(
 			metricRule("web-searches-per-active-day")?.evaluate(facts),
 		).toBeCloseTo(4, 10);
+	});
+
+	it("ignores active days without web-search support", () => {
+		expect(
+			metricRule("web-searches-per-active-day")?.evaluate({
+				activeDays: [
+					{ date: "2026-08-01", parallelProjectCount: 1, webSearches: 4 },
+					{ date: "2026-08-02", parallelProjectCount: 1 },
+				],
+			}),
+		).toBe(4);
 	});
 });

@@ -38,6 +38,7 @@
   },
   "devDependencies": {
     "@aistack/pricing": "workspace:*",
+    "@aistack/workflow-rules": "workspace:*",
     "@types/node": "^24",
     "tsup": "^8.4.0",
     "typescript": "^5.7.2"
