@@ -128,7 +128,9 @@ describe("harness workflow reducer", () => {
 			tool: "Read",
 		});
 
-		expect(reducer.finish().phase.sessionRows[0]?.startHourUtc).toBe(9);
+		const result = reducer.finish();
+		expect(result.phase.sessionRows[0]?.startHourUtc).toBe(9);
+		expect(result.facts.sessions[0]?.modelSwitched).toBeUndefined();
 	});
 
 	it("keeps routing absent when the harness has no agent boundary", () => {

@@ -87,6 +87,20 @@ describe("model-switches-mid-run", () => {
 			10,
 		);
 	});
+
+	it("ignores sessions without model evidence", () => {
+		expect(
+			metricRule("model-switches-mid-run")?.evaluate({
+				sessions: [
+					{
+						harness: "pi-mono",
+						thinkingTokens: 1,
+						responseTokens: 2,
+					},
+				],
+			}),
+		).toBeUndefined();
+	});
 });
 
 describe("thinking-share", () => {

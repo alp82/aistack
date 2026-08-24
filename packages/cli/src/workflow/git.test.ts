@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import { extractGitWorkflow, type GitWorkflowRunner } from "./git.js";
 
 const record = (hash: string, authoredAt: string, numstat: string): string =>
-	`\u001e${hash}\u0000${authoredAt}\n${numstat}`;
+	`\u001e${hash}\u0000${authoredAt}\u0000\u0000\n${numstat
+		.trimEnd()
+		.split("\n")
+		.join("\u0000")}\u0000`;
 
 describe("extractGitWorkflow", () => {
 	it("reduces each touched repository once without returning local names", () => {
@@ -27,6 +30,7 @@ describe("extractGitWorkflow", () => {
 				return null;
 			}
 			expect(args).not.toContain("--no-renames");
+			expect(args).toContain("-z");
 			expect(args.some((arg) => arg.startsWith("--since="))).toBe(false);
 			expect(args.some((arg) => arg.startsWith("--until="))).toBe(false);
 			return cwd === "/work/repo" || cwd === "/copy/repo" ? history : null;
@@ -68,6 +72,27 @@ describe("extractGitWorkflow", () => {
 		expect(JSON.stringify(result)).not.toContain("widget");
 	});
 
+	it("reads Unicode and renamed paths without Git quote transformations", () => {
+		const history =
+			"\u001eaaaa\u00002026-08-03T12:00:00+00:00\u0000\u0000\n" +
+			"2\t1\tsrc/é.ts\u0000" +
+			"3\t2\t\u0000src/old.ts\u0000src/new.ts\u0000";
+		const run: GitWorkflowRunner = (_cwd, args) =>
+			args[0] === "rev-parse" ? "/work/repo\n" : history;
+
+		const result = extractGitWorkflow({
+			workingDirectories: ["/work/repo"],
+			fromMs: Date.parse("2026-08-01T00:00:00Z"),
+			toMs: Date.parse("2026-08-31T23:59:59Z"),
+			run,
+		});
+
+		expect(result.changedLinesByExtension).toEqual([
+			{ extension: ".ts", changedLines: 8 },
+		]);
+		expect(result.withheldExtensionLines).toBe(0);
+	});
+
 	it("withholds unapproved extension names while keeping their line total", () => {
 		const run: GitWorkflowRunner = (_cwd, args) =>
 			args[0] === "rev-parse"
@@ -75,7 +100,7 @@ describe("extractGitWorkflow", () => {
 				: record(
 						"aaaa",
 						"2026-08-03T12:00:00+00:00",
-						"4\t1\tsrc/private.customer-name\n2\t0\tsrc/public.ts\n3\t2\tsrc/{old.ts => new.ts}\n",
+						"4\t1\tsrc/private.customer-name\n2\t0\tsrc/public.ts\n3\t2\tsrc/new.ts\n",
 					);
 
 		const result = extractGitWorkflow({

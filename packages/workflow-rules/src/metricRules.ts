@@ -49,7 +49,8 @@ export type WorkflowFacts = {
 	sessions?: ReadonlyArray<{
 		harness: HarnessName;
 		/** True when the session's responses named more than one model. */
-		modelSwitched: boolean;
+		/** Present only when at least one response names a model. */
+		modelSwitched?: boolean;
 		thinkingTokens?: number;
 		responseTokens?: number;
 		/** Present only for harnesses that record an effort field (Claude Code, Codex). */
@@ -143,7 +144,13 @@ export const METRIC_RULES: readonly MetricRule[] = [
 		unit: "share",
 		harnessSupport: "all",
 		band: { low: 0, high: 0.1 },
-		evaluate: (facts) => shareOf(facts.sessions, (s) => s.modelSwitched),
+		evaluate: (facts) =>
+			shareOf(
+				facts.sessions?.filter(
+					(session) => session.modelSwitched !== undefined,
+				),
+				(session) => session.modelSwitched === true,
+			),
 	},
 	{
 		id: "thinking-share",

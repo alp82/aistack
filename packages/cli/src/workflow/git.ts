@@ -123,13 +123,6 @@ function isTestFile(file: string): boolean {
 	return /(?:^|[._-])(test|spec)(?:[._-]|$)/.test(basename);
 }
 
-function renameDestination(file: string): string {
-	const braced = /^(.*)\{.* => (.*)\}(.*)$/.exec(file);
-	if (braced) return `${braced[1] ?? ""}${braced[2] ?? ""}${braced[3] ?? ""}`;
-	const arrow = file.lastIndexOf(" => ");
-	return arrow < 0 ? file : file.slice(arrow + " => ".length);
-}
-
 function localCell(
 	authoredAt: string,
 ): { weekday: number; hour: number } | null {
@@ -167,18 +160,18 @@ export function extractGitWorkflow(
 		const history = run(root, [
 			"log",
 			"--all",
-			"--format=%x1e%H%x00%aI",
+			"--format=%x1e%H%x00%aI%x00",
 			"--numstat",
+			"-z",
 		]);
 		if (!history) continue;
 
 		for (const rawCommit of history.split("\u001e")) {
-			const lines = rawCommit.split("\n");
-			const header = lines.shift()?.trim() ?? "";
-			const separator = header.indexOf("\u0000");
-			if (separator <= 0) continue;
-			const hash = header.slice(0, separator);
-			const authoredAt = header.slice(separator + 1);
+			const hashEnd = rawCommit.indexOf("\u0000");
+			const authoredEnd = rawCommit.indexOf("\u0000", hashEnd + 1);
+			if (hashEnd <= 0 || authoredEnd <= hashEnd) continue;
+			const hash = rawCommit.slice(0, hashEnd);
+			const authoredAt = rawCommit.slice(hashEnd + 1, authoredEnd);
 			const authoredMs = Date.parse(authoredAt);
 			const cell = localCell(authoredAt);
 			if (
@@ -199,12 +192,18 @@ export function extractGitWorkflow(
 
 			let changedLines = 0;
 			let touchesTest = false;
-			for (const line of lines) {
-				const match = NUMSTAT_RE.exec(line);
+			const fields = rawCommit.slice(authoredEnd + 1).split("\u0000");
+			for (let fieldIndex = 0; fieldIndex < fields.length; fieldIndex++) {
+				const field = fields[fieldIndex]?.replace(/^\n+/, "") ?? "";
+				const match = NUMSTAT_RE.exec(field);
 				if (!match) continue;
 				const additions = match[1] === "-" ? 0 : Number(match[1]);
 				const removals = match[2] === "-" ? 0 : Number(match[2]);
-				const file = renameDestination(match[3] ?? "");
+				let file = match[3] ?? "";
+				if (file.length === 0) {
+					fieldIndex += 2;
+					file = fields[fieldIndex] ?? fields[fieldIndex - 1] ?? "";
+				}
 				const fileChangedLines = additions + removals;
 				result.additions += additions;
 				result.removals += removals;

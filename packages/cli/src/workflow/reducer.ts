@@ -345,7 +345,7 @@ export function createHarnessWorkflowReducer(
 				);
 				const sessionFact: SessionFact = {
 					harness,
-					modelSwitched: models.size > 1,
+					...(models.size > 0 ? { modelSwitched: models.size > 1 } : {}),
 					...(thinkingResponses.length > 0
 						? {
 								thinkingTokens: thinkingResponses.reduce(
