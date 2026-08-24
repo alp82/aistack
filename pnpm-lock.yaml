@@ -367,6 +367,8 @@ importers:
 
   packages/pricing: {}
 
+  packages/workflow-rules: {}
+
 packages:
 
   '@acemir/cssom@0.9.30':
