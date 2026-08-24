@@ -1,0 +1,13 @@
+{
+	"name": "@aistack/workflow-rules",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Versioned metric and phase rules for the measured workflow surface, shared by the CLI and the web app",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"files": [
+		"src"
+	]
+}
