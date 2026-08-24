@@ -12,4 +12,14 @@ Disallow: /stacks/new
 Disallow: /tools/new
 Disallow: /api/
 
+# One address's mail preferences, reached by the token every send carries.
+# It stays reachable and stays out of the index. This line is permanent.
+Disallow: /email/preferences
+
+# The news surfaces are closed until the first send (`src/lib/newsVisibility.ts`).
+# They answer 404 today. Drop these three lines when the flag opens.
+Disallow: /news
+Disallow: /news/
+Disallow: /subscribe
+
 Sitemap: https://aistack.to/sitemap.xml

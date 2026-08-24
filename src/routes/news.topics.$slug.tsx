@@ -5,12 +5,14 @@ import {
 	KnowledgeTopicPage,
 	type KnowledgeTopicPageData,
 } from "@/features/news/KnowledgeBase";
+import { NEWS_IS_PUBLIC } from "@/lib/newsVisibility";
 import { seoMeta } from "@/lib/seo";
 import { api } from "../../convex/_generated/api";
 
 export const Route = createFileRoute("/news/topics/$slug")({
 	component: TopicRoute,
 	loader: async ({ context, params }) => {
+		if (!NEWS_IS_PUBLIC) throw notFound();
 		const topic = await context.queryClient.ensureQueryData(
 			convexQuery(api.knowledgeBase.getTopic, { slug: params.slug }),
 		);
