@@ -68,6 +68,16 @@ describe("classifyEvent: handoff", () => {
 		expect(HANDOFF_MARKERS.opencode).toEqual(["question"]);
 		expect(HANDOFF_MARKERS["pi-mono"]).toEqual([]);
 	});
+
+	it("does not apply another adapter's handoff marker", () => {
+		const result = deriveSessionPhases(
+			[[0, "AskUserQuestion", ""]],
+			PHASE_RULES_V1,
+			"codex",
+		);
+		expect(result.phaseEvents.handoff).toBe(0);
+		expect(result.phaseEvents.unknown).toBe(1);
+	});
 });
 
 describe("classifyEvent: chain-segment shell commands", () => {

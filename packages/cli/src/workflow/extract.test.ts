@@ -16,7 +16,6 @@ describe("buildWorkflowExtraction", () => {
 			projectWorkspace: "/secret/repository",
 			tsMs: Date.UTC(2026, 7, 24, 23),
 			model: "claude-opus-5",
-			thinkingTokens: 25,
 			responseTokens: 75,
 		});
 		reducer.ingest({
@@ -28,6 +27,8 @@ describe("buildWorkflowExtraction", () => {
 		});
 
 		const git: GitWorkflowResult = {
+			testFileRuleVersion: "test-files/v1",
+			fileTypeRuleVersion: "file-types/v1",
 			totalCommits: 4,
 			lateNightCommits: 2,
 			additions: 30,
@@ -49,10 +50,6 @@ describe("buildWorkflowExtraction", () => {
 					metricId: "late-night-commits",
 					value: 0.5,
 					coverage: 1,
-				}),
-				expect.objectContaining({
-					metricId: "thinking-share",
-					value: 0.25 / 0.75,
 				}),
 			]),
 		);
@@ -76,6 +73,8 @@ describe("buildWorkflowExtraction", () => {
 		const extraction = buildWorkflowExtraction(
 			[{ aggregate: reducer.finish(), local }],
 			{
+				testFileRuleVersion: "test-files/v1",
+				fileTypeRuleVersion: "file-types/v1",
 				totalCommits: 0,
 				lateNightCommits: 0,
 				additions: 0,
@@ -137,6 +136,8 @@ describe("buildWorkflowExtraction", () => {
 		const extraction = buildWorkflowExtraction(
 			[{ aggregate: reducer.finish(), local }],
 			{
+				testFileRuleVersion: "test-files/v1",
+				fileTypeRuleVersion: "file-types/v1",
 				totalCommits: 0,
 				lateNightCommits: 0,
 				additions: 0,

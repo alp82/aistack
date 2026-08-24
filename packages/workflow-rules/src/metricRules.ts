@@ -50,8 +50,8 @@ export type WorkflowFacts = {
 		harness: HarnessName;
 		/** True when the session's responses named more than one model. */
 		modelSwitched: boolean;
-		thinkingTokens: number;
-		responseTokens: number;
+		thinkingTokens?: number;
+		responseTokens?: number;
 		/** Present only for harnesses that record an effort field (Claude Code, Codex). */
 		effortTurns?: { high: number; total: number };
 		effortChangedMidRun?: boolean;
@@ -151,16 +151,21 @@ export const METRIC_RULES: readonly MetricRule[] = [
 		label: "of response tokens are thinking",
 		kind: "proxy",
 		unit: "share",
-		harnessSupport: "all",
+		harnessSupport: ["codex", "opencode", "pi-mono"],
 		band: { low: 0.1, high: 0.3 },
 		evaluate: (facts) => {
-			const sessions = facts.sessions;
+			const sessions = facts.sessions?.filter(
+				(session) =>
+					session.harness !== "claude-code" &&
+					session.thinkingTokens !== undefined &&
+					session.responseTokens !== undefined,
+			);
 			if (!sessions || sessions.length === 0) return undefined;
 			let thinking = 0;
 			let response = 0;
 			for (const s of sessions) {
-				thinking += s.thinkingTokens;
-				response += s.responseTokens;
+				thinking += s.thinkingTokens ?? 0;
+				response += s.responseTokens ?? 0;
 			}
 			return response > 0 ? thinking / response : undefined;
 		},

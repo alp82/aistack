@@ -330,9 +330,6 @@ importers:
 
   packages/cli:
     dependencies:
-      '@aistack/workflow-rules':
-        specifier: workspace:*
-        version: link:../workflow-rules
       '@clack/prompts':
         specifier: ^0.10.0
         version: 0.10.1
@@ -358,6 +355,9 @@ importers:
       '@aistack/pricing':
         specifier: workspace:*
         version: link:../pricing
+      '@aistack/workflow-rules':
+        specifier: workspace:*
+        version: link:../workflow-rules
       '@types/node':
         specifier: ^24
         version: 24.13.0

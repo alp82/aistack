@@ -1,12 +1,17 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 
+export const TEST_FILE_RULE_VERSION = "test-files/v1";
+export const FILE_TYPE_RULE_VERSION = "file-types/v1";
+
 export type GitWorkflowRunner = (
 	cwd: string,
 	args: readonly string[],
 ) => string | null;
 
 export type GitWorkflowResult = {
+	testFileRuleVersion: typeof TEST_FILE_RULE_VERSION;
+	fileTypeRuleVersion: typeof FILE_TYPE_RULE_VERSION;
 	totalCommits: number;
 	lateNightCommits: number;
 	additions: number;
@@ -48,6 +53,8 @@ const defaultRunner: GitWorkflowRunner = (cwd, args) => {
 };
 
 const emptyResult = (): GitWorkflowResult => ({
+	testFileRuleVersion: TEST_FILE_RULE_VERSION,
+	fileTypeRuleVersion: FILE_TYPE_RULE_VERSION,
 	totalCommits: 0,
 	lateNightCommits: 0,
 	additions: 0,
@@ -156,14 +163,10 @@ export function extractGitWorkflow(
 	const extensionLines = new Map<string, number>();
 	const cells = new Map<string, number>();
 	const seenCommits = new Set<string>();
-	const from = new Date(options.fromMs).toISOString();
-	const to = new Date(options.toMs).toISOString();
-
 	for (const root of roots) {
 		const history = run(root, [
 			"log",
-			`--since=${from}`,
-			`--until=${to}`,
+			"--all",
 			"--format=%x1e%H%x00%aI",
 			"--numstat",
 		]);

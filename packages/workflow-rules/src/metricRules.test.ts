@@ -92,9 +92,25 @@ describe("model-switches-mid-run", () => {
 describe("thinking-share", () => {
 	it("computes thinking tokens over total response tokens", () => {
 		expect(metricRule("thinking-share")?.evaluate(facts)).toBeCloseTo(
-			400 / 2500,
+			100 / 1500,
 			10,
 		);
+	});
+
+	it("ignores sessions without token-level thinking data", () => {
+		expect(
+			metricRule("thinking-share")?.evaluate({
+				sessions: [
+					{
+						harness: "claude-code",
+						modelSwitched: false,
+						responseTokens: 100,
+						questionBackTurns: 0,
+						totalTurns: 1,
+					},
+				],
+			}),
+		).toBeUndefined();
 	});
 });
 

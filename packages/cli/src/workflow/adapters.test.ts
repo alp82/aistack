@@ -69,7 +69,33 @@ describe("native harness workflow projection", () => {
 		expect(workflow.phase.phaseEvents.verify).toBe(1);
 		expect(workflow.facts.sessions[0]?.modelSwitched).toBe(false);
 		expect(workflow.facts.sessions[0]?.longestTurnDurationSec).toBe(420);
+		expect(workflow.facts.sessions[0]?.thinkingTokens).toBeUndefined();
 		expect(JSON.stringify(workflow.phase)).not.toContain("pnpm test");
+	});
+
+	it("keeps the largest Claude cumulative workflow snapshot", () => {
+		const aggregate = createClaudeAggregate();
+		for (const outputTokens of [100, 10]) {
+			ingestClaudeRecord(
+				aggregate,
+				{
+					type: "assistant",
+					timestamp: TS,
+					sessionId: "session",
+					message: {
+						id: "message",
+						model: "claude-opus-5",
+						usage: { output_tokens: outputTokens },
+						content: [],
+					},
+				},
+				{ projectDir: "project" },
+			);
+		}
+
+		expect(aggregate.workflow.finish().facts.sessions[0]?.responseTokens).toBe(
+			100,
+		);
 	});
 
 	it("reduces Codex rollout calls with turn model and effort", () => {

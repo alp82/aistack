@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	createHarnessWorkflowReducer,
+	createWorkflowLocalSources,
 	WORKFLOW_AGGREGATE_VERSION,
 } from "./reducer.js";
 
@@ -144,6 +145,29 @@ describe("harness workflow reducer", () => {
 		}
 	});
 
+	it("marks every UTC day overlapped by a session workspace", () => {
+		const local = createWorkflowLocalSources();
+		const reducer = createHarnessWorkflowReducer("claude-code", local);
+		reducer.ingest({
+			type: "response",
+			session: "session",
+			projectWorkspace: "/private/project",
+			tsMs: Date.UTC(2026, 7, 1, 23),
+		});
+		reducer.ingest({
+			type: "response",
+			session: "session",
+			tsMs: Date.UTC(2026, 7, 3, 1),
+		});
+
+		reducer.finish();
+		expect([...local.activeProjectDays]).toEqual([
+			["2026-08-01", new Set(["/private/project"])],
+			["2026-08-02", new Set(["/private/project"])],
+			["2026-08-03", new Set(["/private/project"])],
+		]);
+	});
+
 	it("keeps every ordered tool event", () => {
 		const reducer = createHarnessWorkflowReducer("claude-code");
 		reducer.ingest({
@@ -169,5 +193,27 @@ describe("harness workflow reducer", () => {
 		expect(result.phase.phaseEvents.build).toBe(1);
 		expect(result.phase.phaseEvents.scout).toBe(2);
 		expect(result.phase.sessionRows[0]?.eventCount).toBe(3);
+	});
+
+	it("reduces an unordered response batch without inventing an order", () => {
+		const reducer = createHarnessWorkflowReducer("claude-code");
+		reducer.ingest({
+			type: "event",
+			session: "session",
+			tsMs: 0,
+			tool: "Read",
+			batchId: "response-a",
+		});
+		reducer.ingest({
+			type: "event",
+			session: "session",
+			tsMs: 0,
+			tool: "Edit",
+			batchId: "response-a",
+		});
+
+		const result = reducer.finish();
+		expect(result.phase.sessionRows[0]?.eventCount).toBe(1);
+		expect(result.phase.phaseEvents.build).toBe(1);
 	});
 });

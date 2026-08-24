@@ -28,7 +28,6 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-	"@aistack/workflow-rules": "workspace:*",
     "@clack/prompts": "^0.10.0",
     "commander": "^13.1.0",
     "ignore": "^7.0.0",
@@ -39,6 +38,7 @@
   },
   "devDependencies": {
     "@aistack/pricing": "workspace:*",
+    "@aistack/workflow-rules": "workspace:*",
     "@types/node": "^24",
     "tsup": "^8.4.0",
     "typescript": "^5.7.2"

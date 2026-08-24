@@ -220,13 +220,6 @@ function ingestClaudeWorkflow(
 		...(asName(msg.model) ? { model: asName(msg.model) as string } : {}),
 		...(counts ? { responseTokens: counts.output } : {}),
 		...(counts ? { routingTokens: countsTotal(counts) } : {}),
-		...(usage
-			? {
-					thinkingTokens:
-						asNum(usage.thinking_tokens) ||
-						asNum(asObj(usage.output_tokens_details)?.reasoning_tokens),
-				}
-			: {}),
 		...((asStr(rec.effort) ?? asStr(msg.effort))
 			? { effort: (asStr(rec.effort) ?? asStr(msg.effort)) as string }
 			: {}),
@@ -260,6 +253,7 @@ function ingestClaudeWorkflow(
 			...(parentSession ? { parentSession } : {}),
 			tool: name === "Task" ? "Agent" : name,
 			arg,
+			...(messageId ? { batchId: messageId } : {}),
 		});
 	}
 	if (tools.length > 0 || newTurn) {

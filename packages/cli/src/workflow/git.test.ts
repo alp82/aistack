@@ -27,6 +27,8 @@ describe("extractGitWorkflow", () => {
 				return null;
 			}
 			expect(args).not.toContain("--no-renames");
+			expect(args.some((arg) => arg.startsWith("--since="))).toBe(false);
+			expect(args.some((arg) => arg.startsWith("--until="))).toBe(false);
 			return cwd === "/work/repo" || cwd === "/copy/repo" ? history : null;
 		};
 
@@ -43,6 +45,8 @@ describe("extractGitWorkflow", () => {
 		});
 
 		expect(result).toEqual({
+			testFileRuleVersion: "test-files/v1",
+			fileTypeRuleVersion: "file-types/v1",
 			totalCommits: 2,
 			lateNightCommits: 2,
 			additions: 20,

@@ -1,4 +1,5 @@
 import {
+	classifyEvent,
 	deriveSessionPhases,
 	type HarnessEvent,
 	type HarnessName,
@@ -22,7 +23,7 @@ export type WorkflowObservation = {
 	parentSession?: string;
 	sidechain?: boolean;
 } & (
-	| { type: "event"; tool: string; arg?: string }
+	| { type: "event"; tool: string; arg?: string; batchId?: string }
 	| {
 			type: "response";
 			responseId?: string;
@@ -91,14 +92,14 @@ export function createWorkflowLocalSources(): WorkflowLocalSources {
 }
 
 type SessionState = {
-	events: HarnessEvent[];
+	events: Array<{ event: HarnessEvent; batchId?: string }>;
 	responses: Map<
 		string,
 		{
 			model?: string;
-			thinkingTokens: number;
-			responseTokens: number;
-			routingTokens: number;
+			thinkingTokens?: number;
+			responseTokens?: number;
+			routingTokens?: number;
 			effort?: string;
 			durationSec?: number;
 		}
@@ -106,6 +107,7 @@ type SessionState = {
 	nextAnonymousResponse: number;
 	turns: Map<string, boolean>;
 	nextAnonymousTurn: number;
+	projectWorkspaces: Set<string>;
 	parentSession: string | undefined;
 	sidechain: boolean;
 	firstTs: number | undefined;
@@ -130,9 +132,63 @@ const bump = (map: Map<string, number>, key: string, amount = 1): void => {
 	map.set(key, (map.get(key) ?? 0) + amount);
 };
 
-const verifyRuns = (events: readonly HarnessEvent[]): number => {
+const PHASE_RANK: Record<PhaseId, number> = {
+	verify: 4,
+	handoff: 3,
+	build: 2,
+	scout: 1,
+	unknown: 0,
+};
+
+function reduceEventBatches(
+	recorded: SessionState["events"],
+	harness: HarnessName,
+): HarnessEvent[] {
+	const sorted = [...recorded].sort((a, b) => a.event[0] - b.event[0]);
+	const output: HarnessEvent[] = [];
+	const batchIndexes = new Map<string, number>();
+	for (const row of sorted) {
+		if (!row.batchId) {
+			output.push(row.event);
+			continue;
+		}
+		const existingIndex = batchIndexes.get(row.batchId);
+		if (existingIndex === undefined) {
+			batchIndexes.set(row.batchId, output.length);
+			output.push(row.event);
+			continue;
+		}
+		const existing = output[existingIndex];
+		if (!existing) continue;
+		const existingPhase = classifyEvent(
+			existing[1],
+			existing[2],
+			null,
+			PHASE_RULES_V1,
+			harness,
+		).phase;
+		const candidatePhase = classifyEvent(
+			row.event[1],
+			row.event[2],
+			null,
+			PHASE_RULES_V1,
+			harness,
+		).phase;
+		if (PHASE_RANK[candidatePhase] > PHASE_RANK[existingPhase]) {
+			output[existingIndex] = [existing[0], row.event[1], row.event[2]];
+		}
+	}
+	return output;
+}
+
+const verifyRuns = (
+	events: readonly HarnessEvent[],
+	harness: HarnessName,
+): number => {
 	const phases = events.map((event) =>
-		deriveSessionPhases([event]).phaseEvents.verify > 0 ? "verify" : "other",
+		deriveSessionPhases([event], PHASE_RULES_V1, harness).phaseEvents.verify > 0
+			? "verify"
+			: "other",
 	);
 	let runs = 0;
 	let inside = false;
@@ -156,6 +212,7 @@ function sessionState(): SessionState {
 		nextAnonymousResponse: 0,
 		turns: new Map(),
 		nextAnonymousTurn: 0,
+		projectWorkspaces: new Set(),
 		parentSession: undefined,
 		sidechain: false,
 		firstTs: undefined,
@@ -204,15 +261,16 @@ export function createHarnessWorkflowReducer(
 			const at = new Date(observation.tsMs);
 			const date = at.toISOString().slice(0, 10);
 			if (observation.projectWorkspace) {
+				state.projectWorkspaces.add(observation.projectWorkspace);
 				localSources.projectWorkspaces.add(observation.projectWorkspace);
-				const projects = localSources.activeProjectDays.get(date) ?? new Set();
-				projects.add(observation.projectWorkspace);
-				localSources.activeProjectDays.set(date, projects);
 			}
 
 			if (observation.type === "event") {
 				const arg = observation.arg ?? "";
-				state.events.push([observation.tsMs, observation.tool, arg]);
+				state.events.push({
+					event: [observation.tsMs, observation.tool, arg],
+					...(observation.batchId ? { batchId: observation.batchId } : {}),
+				});
 				bump(activity, `${at.getUTCDay()}:${at.getUTCHours()}`);
 				if (["WebSearch", "web_search", "websearch"].includes(observation.tool))
 					bump(webSearchesByDate, date);
@@ -221,14 +279,27 @@ export function createHarnessWorkflowReducer(
 					observation.responseId ??
 					`anonymous:${state.nextAnonymousResponse++}`;
 				const duration = finiteNonnegative(observation.durationSec);
-				state.responses.set(responseId, {
+				const response = {
 					...(observation.model ? { model: observation.model } : {}),
-					thinkingTokens: finiteNonnegative(observation.thinkingTokens),
-					responseTokens: finiteNonnegative(observation.responseTokens),
-					routingTokens: finiteNonnegative(observation.routingTokens),
+					...(observation.thinkingTokens !== undefined
+						? { thinkingTokens: finiteNonnegative(observation.thinkingTokens) }
+						: {}),
+					...(observation.responseTokens !== undefined
+						? { responseTokens: finiteNonnegative(observation.responseTokens) }
+						: {}),
+					...(observation.routingTokens !== undefined
+						? { routingTokens: finiteNonnegative(observation.routingTokens) }
+						: {}),
 					...(observation.effort ? { effort: observation.effort } : {}),
 					...(duration > 0 ? { durationSec: duration } : {}),
-				});
+				};
+				const existing = state.responses.get(responseId);
+				const magnitude = (value: typeof response): number =>
+					value.routingTokens ??
+					(value.thinkingTokens ?? 0) + (value.responseTokens ?? 0);
+				if (!existing || magnitude(response) > magnitude(existing)) {
+					state.responses.set(responseId, response);
+				}
 			} else {
 				const turnId =
 					observation.turnId ?? `anonymous:${state.nextAnonymousTurn++}`;
@@ -253,7 +324,7 @@ export function createHarnessWorkflowReducer(
 			let phaseSessionCount = 0;
 
 			for (const state of sessions.values()) {
-				const events = [...state.events].sort((a, b) => a[0] - b[0]);
+				const events = reduceEventBatches(state.events, harness);
 				const responses = [...state.responses.values()];
 				const efforts = responses.flatMap((response) =>
 					response.effort ? [response.effort] : [],
@@ -263,13 +334,11 @@ export function createHarnessWorkflowReducer(
 						response.model ? [response.model] : [],
 					),
 				);
-				const thinkingTokens = responses.reduce(
-					(sum, response) => sum + response.thinkingTokens,
-					0,
+				const thinkingResponses = responses.filter(
+					(response) => response.thinkingTokens !== undefined,
 				);
-				const responseTokens = responses.reduce(
-					(sum, response) => sum + response.responseTokens,
-					0,
+				const outputResponses = responses.filter(
+					(response) => response.responseTokens !== undefined,
 				);
 				const durations = responses.flatMap((response) =>
 					response.durationSec === undefined ? [] : [response.durationSec],
@@ -277,8 +346,22 @@ export function createHarnessWorkflowReducer(
 				const sessionFact: SessionFact = {
 					harness,
 					modelSwitched: models.size > 1,
-					thinkingTokens,
-					responseTokens,
+					...(thinkingResponses.length > 0
+						? {
+								thinkingTokens: thinkingResponses.reduce(
+									(sum, response) => sum + (response.thinkingTokens ?? 0),
+									0,
+								),
+							}
+						: {}),
+					...(outputResponses.length > 0
+						? {
+								responseTokens: outputResponses.reduce(
+									(sum, response) => sum + (response.responseTokens ?? 0),
+									0,
+								),
+							}
+						: {}),
 					...(harness === "pi-mono"
 						? {}
 						: {
@@ -305,14 +388,14 @@ export function createHarnessWorkflowReducer(
 					bump(
 						modelTokens[routing],
 						response.model,
-						response.routingTokens || response.responseTokens,
+						response.routingTokens ?? response.responseTokens ?? 0,
 					);
 				}
 				if (routing === "subagents") subagentToolCalls += state.events.length;
 				else mainToolCalls += state.events.length;
 
 				if (state.events.length > 0) phaseSessionCount++;
-				const phases = deriveSessionPhases(events);
+				const phases = deriveSessionPhases(events, PHASE_RULES_V1, harness);
 				for (const phase of PHASES) {
 					phaseSec[phase] += phases.phaseSec[phase];
 					phaseEvents[phase] += phases.phaseEvents[phase];
@@ -321,11 +404,11 @@ export function createHarnessWorkflowReducer(
 				idleSec += phases.idleSec;
 				const first = state.firstTs;
 				const classifications = events.map((event) =>
-					deriveSessionPhases([event]),
+					deriveSessionPhases([event], PHASE_RULES_V1, harness),
 				);
 				sessionRows.push({
 					startHourUtc: first === undefined ? 0 : new Date(first).getUTCHours(),
-					eventCount: state.events.length,
+					eventCount: events.length,
 					phaseSec: phases.phaseSec,
 					phaseEvents: phases.phaseEvents,
 					waitingSec: phases.waitingSec,
@@ -336,7 +419,7 @@ export function createHarnessWorkflowReducer(
 								tool,
 							) && shellIncludes(arg, "gh pr merge"),
 					),
-					verifyRuns: verifyRuns(events),
+					verifyRuns: verifyRuns(events, harness),
 					reviewRounds: events.filter(([, tool]) =>
 						["mcp__curia__request_review", "request_review"].includes(tool),
 					).length,
@@ -349,6 +432,25 @@ export function createHarnessWorkflowReducer(
 				0,
 			);
 			const unknown = attributed === 0 ? 0 : phaseSec.unknown / attributed;
+			localSources.activeProjectDays.clear();
+			for (const state of sessions.values()) {
+				if (state.firstTs === undefined || state.lastTs === undefined) continue;
+				let day = Date.parse(
+					`${new Date(state.firstTs).toISOString().slice(0, 10)}T00:00:00Z`,
+				);
+				const lastDay = Date.parse(
+					`${new Date(state.lastTs).toISOString().slice(0, 10)}T00:00:00Z`,
+				);
+				while (day <= lastDay) {
+					const date = new Date(day).toISOString().slice(0, 10);
+					const projects =
+						localSources.activeProjectDays.get(date) ?? new Set();
+					for (const project of state.projectWorkspaces) projects.add(project);
+					if (projects.size > 0)
+						localSources.activeProjectDays.set(date, projects);
+					day += 86_400_000;
+				}
+			}
 			const projectsByDate = localSources.activeProjectDays;
 
 			const childrenByParent = new Map<string, SessionState[]>();
