@@ -213,6 +213,7 @@ user identity and the public news functions check `isAdmin`.
 | A newly added source collects nothing | `collectFrom` is the moment it was added. It collects forward only |
 | A new scraper adds nothing on its first run | It seeded its baseline. Items arrive on the second run |
 | One source shows a red banner | Read the error in the banner and press retry. Days of failures means the URL moved |
+| Claude blog shows `HTTP 502` and never collects | Known, and not the URL. `claude.com` answers curl from the server with 200 and answers the Convex runtime's own fetch with 502, while `www.anthropic.com` answers both. Tracked separately |
 | `prepare` reports items as `inbox` | They are collected but not approved. Draft them, then approve them |
 | `prepare` reports items as not collected | Quick-add the URL, or wait for the lane that covers it |
 | `send` refuses | The issue is already sent, has no items, or has no subject |
