@@ -265,7 +265,16 @@ export function NewsSourcesSection() {
 						<div
 							key={source._id}
 							className={`border-2 bg-bg-panel p-4 ${
-								source.lastError ? "border-red-400/40" : "border-stroke-strong"
+								// A PAUSED SOURCE IS NOT A FAILING SOURCE (#262).
+								//
+								// `lastError` is what the last poll of an ACTIVE source said.
+								// Pausing retires the poll, so the red goes with it. The text
+								// stays, muted, because the reason you paused it is the record
+								// you want when you come back to the row. The inbox already
+								// reads it this way and gates its own banner on `enabled`.
+								source.lastError && source.enabled
+									? "border-red-400/40"
+									: "border-stroke-strong"
 							}`}
 						>
 							<div className="flex flex-wrap items-center gap-3">
@@ -338,7 +347,11 @@ export function NewsSourcesSection() {
 									: ""}
 							</p>
 							{source.lastError ? (
-								<p className="mt-1 font-mono text-xs text-red-400">
+								<p
+									className={`mt-1 font-mono text-xs ${
+										source.enabled ? "text-red-400" : "text-fg-muted"
+									}`}
+								>
 									{source.lastError}
 								</p>
 							) : null}
