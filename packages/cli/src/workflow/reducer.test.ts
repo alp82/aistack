@@ -62,7 +62,7 @@ describe("harness workflow reducer", () => {
 				totalTurns: 1,
 			},
 		]);
-		expect(result.localProjectWorkspaces).toEqual(["/secret/repo"]);
+		expect(JSON.stringify(result)).not.toContain("/secret/repo");
 
 		const publishable = JSON.stringify({
 			phase: result.phase,
@@ -106,27 +106,57 @@ describe("harness workflow reducer", () => {
 		expect(result.facts.sessions[0]).toEqual(
 			expect.objectContaining({ questionBackTurns: 1, totalTurns: 1 }),
 		);
-		expect(result.routing.main).toEqual([
+		expect(result.routing?.main).toEqual([
 			{ model: "large", tokens: 90 },
 			{ model: "small", tokens: 10 },
 		]);
 	});
 
-	it("attributes a parallel tool batch without inventing an order", () => {
+	it("records a session start before its first tool event", () => {
+		const reducer = createHarnessWorkflowReducer("claude-code");
+		reducer.ingest({
+			type: "response",
+			session: "session",
+			tsMs: Date.UTC(2026, 7, 24, 9),
+			responseTokens: 10,
+		});
+		reducer.ingest({
+			type: "event",
+			session: "session",
+			tsMs: Date.UTC(2026, 7, 24, 11),
+			tool: "Read",
+		});
+
+		expect(reducer.finish().phase.sessionRows[0]?.startHourUtc).toBe(9);
+	});
+
+	it("keeps routing absent when the harness has no agent boundary", () => {
+		for (const harness of ["codex", "pi-mono"] as const) {
+			const reducer = createHarnessWorkflowReducer(harness);
+			reducer.ingest({
+				type: "response",
+				session: "session",
+				tsMs: 1,
+				model: "model",
+				responseTokens: 10,
+			});
+			expect(reducer.finish().routing).toBeUndefined();
+		}
+	});
+
+	it("keeps every ordered tool event", () => {
 		const reducer = createHarnessWorkflowReducer("claude-code");
 		reducer.ingest({
 			type: "event",
 			session: "session",
 			tsMs: 0,
 			tool: "Edit",
-			batchId: "response-a",
 		});
 		reducer.ingest({
 			type: "event",
 			session: "session",
 			tsMs: 0,
 			tool: "Read",
-			batchId: "response-a",
 		});
 		reducer.ingest({
 			type: "event",
@@ -136,7 +166,8 @@ describe("harness workflow reducer", () => {
 		});
 
 		const result = reducer.finish();
-		expect(result.phase.phaseSec.build).toBe(10);
-		expect(result.phase.phaseSec.scout).toBe(60);
+		expect(result.phase.phaseEvents.build).toBe(1);
+		expect(result.phase.phaseEvents.scout).toBe(2);
+		expect(result.phase.sessionRows[0]?.eventCount).toBe(3);
 	});
 });

@@ -25,7 +25,9 @@ import {
 } from "@aistack/pricing";
 import {
 	createHarnessWorkflowReducer,
+	createWorkflowLocalSources,
 	type HarnessWorkflowReducer,
+	type WorkflowLocalSources,
 } from "../../workflow/reducer.js";
 import {
 	addModelUsage,
@@ -67,11 +69,14 @@ export const OPENCODE_BUILTIN_TOOLS: ReadonlySet<string> = new Set([
 /** Message-id dedup lives in DbFoldState, not the aggregate's `seen`. */
 export type Aggregate = SharedAggregate<never> & {
 	workflow: HarnessWorkflowReducer;
+	workflowLocal: WorkflowLocalSources;
 };
 
 export function createAggregate(): Aggregate {
+	const workflowLocal = createWorkflowLocalSources();
 	return Object.assign(createSharedAggregate<never>(), {
-		workflow: createHarnessWorkflowReducer("opencode"),
+		workflow: createHarnessWorkflowReducer("opencode", workflowLocal),
+		workflowLocal,
 	});
 }
 
@@ -290,7 +295,6 @@ export function ingestToolPart(
 			tsMs,
 			tool: name,
 			arg,
-			...(messageId ? { batchId: messageId } : {}),
 		});
 		agg.workflow.ingest({
 			type: "turn",

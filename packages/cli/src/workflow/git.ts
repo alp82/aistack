@@ -17,6 +17,7 @@ export type GitWorkflowResult = {
 		extension: string;
 		changedLines: number;
 	}>;
+	withheldExtensionLines: number;
 	weekdayHourCells: Array<{
 		/** Sunday is 0 and Saturday is 6, in the commit author's local date. */
 		weekday: number;
@@ -54,12 +55,56 @@ const emptyResult = (): GitWorkflowResult => ({
 	changedLinesPerCommit: [],
 	testFileCommits: 0,
 	changedLinesByExtension: [],
+	withheldExtensionLines: 0,
 	weekdayHourCells: [],
 });
 
 const NUMSTAT_RE = /^(\d+|-)\t(\d+|-)\t(.*)$/;
 const AUTHOR_LOCAL_RE =
 	/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+const APPROVED_EXTENSIONS: ReadonlySet<string> = new Set([
+	"(none)",
+	".c",
+	".cc",
+	".cpp",
+	".cs",
+	".css",
+	".dart",
+	".ex",
+	".exs",
+	".go",
+	".h",
+	".hpp",
+	".html",
+	".java",
+	".js",
+	".jsx",
+	".json",
+	".kt",
+	".kts",
+	".lua",
+	".md",
+	".php",
+	".py",
+	".r",
+	".rb",
+	".rs",
+	".scala",
+	".scss",
+	".sh",
+	".sql",
+	".svelte",
+	".swift",
+	".toml",
+	".ts",
+	".tsx",
+	".vue",
+	".xml",
+	".yaml",
+	".yml",
+	".zig",
+]);
 
 function isTestFile(file: string): boolean {
 	const normalized = file.replaceAll("\\", "/").toLowerCase();
@@ -69,6 +114,13 @@ function isTestFile(file: string): boolean {
 	}
 	const basename = parts.at(-1) ?? "";
 	return /(?:^|[._-])(test|spec)(?:[._-]|$)/.test(basename);
+}
+
+function renameDestination(file: string): string {
+	const braced = /^(.*)\{.* => (.*)\}(.*)$/.exec(file);
+	if (braced) return `${braced[1] ?? ""}${braced[2] ?? ""}${braced[3] ?? ""}`;
+	const arrow = file.lastIndexOf(" => ");
+	return arrow < 0 ? file : file.slice(arrow + " => ".length);
 }
 
 function localCell(
@@ -114,7 +166,6 @@ export function extractGitWorkflow(
 			`--until=${to}`,
 			"--format=%x1e%H%x00%aI",
 			"--numstat",
-			"--no-renames",
 		]);
 		if (!history) continue;
 
@@ -150,7 +201,7 @@ export function extractGitWorkflow(
 				if (!match) continue;
 				const additions = match[1] === "-" ? 0 : Number(match[1]);
 				const removals = match[2] === "-" ? 0 : Number(match[2]);
-				const file = match[3] ?? "";
+				const file = renameDestination(match[3] ?? "");
 				const fileChangedLines = additions + removals;
 				result.additions += additions;
 				result.removals += removals;
@@ -158,10 +209,12 @@ export function extractGitWorkflow(
 				if (isTestFile(file)) touchesTest = true;
 				if (fileChangedLines > 0) {
 					const extension = path.extname(file).toLowerCase() || "(none)";
-					extensionLines.set(
-						extension,
-						(extensionLines.get(extension) ?? 0) + fileChangedLines,
-					);
+					if (APPROVED_EXTENSIONS.has(extension)) {
+						extensionLines.set(
+							extension,
+							(extensionLines.get(extension) ?? 0) + fileChangedLines,
+						);
+					} else result.withheldExtensionLines += fileChangedLines;
 				}
 			}
 			result.changedLinesPerCommit.push(changedLines);

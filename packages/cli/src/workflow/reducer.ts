@@ -1,5 +1,4 @@
 import {
-	classifyEvent,
 	deriveSessionPhases,
 	type HarnessEvent,
 	type HarnessName,
@@ -9,6 +8,7 @@ import {
 	UNKNOWN_GATE,
 	type WorkflowFacts,
 } from "@aistack/workflow-rules";
+import { sanitizeModelId } from "../harness/shared/payload.js";
 
 export const WORKFLOW_AGGREGATE_VERSION = "workflow-aggregates/v1";
 
@@ -22,7 +22,7 @@ export type WorkflowObservation = {
 	parentSession?: string;
 	sidechain?: boolean;
 } & (
-	| { type: "event"; tool: string; arg?: string; batchId?: string }
+	| { type: "event"; tool: string; arg?: string }
 	| {
 			type: "response";
 			responseId?: string;
@@ -67,7 +67,7 @@ export type HarnessWorkflowAggregate = {
 		sessions: SessionFact[];
 		activeDays: ActiveDayFact[];
 	};
-	routing: {
+	routing?: {
 		main: Array<{ model: string; tokens: number }>;
 		subagents: Array<{ model: string; tokens: number }>;
 	};
@@ -78,17 +78,20 @@ export type HarnessWorkflowAggregate = {
 		mostSubagents: number;
 	};
 	activity: Array<{ weekdayUtc: number; hourUtc: number; events: number }>;
-	/** Local-only input for Git extraction. Payload builders must not serialize it. */
-	localProjectWorkspaces: string[];
-	/** Local-only project sets for exact cross-harness active-day unions. */
-	localActiveProjectDays: Array<{
-		date: string;
-		projectWorkspaces: string[];
-	}>;
 };
 
+/** Raw local keys used to join harness activity to Git. Never serialize this value. */
+export type WorkflowLocalSources = {
+	projectWorkspaces: Set<string>;
+	activeProjectDays: Map<string, Set<string>>;
+};
+
+export function createWorkflowLocalSources(): WorkflowLocalSources {
+	return { projectWorkspaces: new Set(), activeProjectDays: new Map() };
+}
+
 type SessionState = {
-	events: Array<{ event: HarnessEvent; batchId?: string }>;
+	events: HarnessEvent[];
 	responses: Map<
 		string,
 		{
@@ -103,8 +106,6 @@ type SessionState = {
 	nextAnonymousResponse: number;
 	turns: Map<string, boolean>;
 	nextAnonymousTurn: number;
-	projectWorkspaces: Set<string>;
-	activeDates: Set<string>;
 	parentSession: string | undefined;
 	sidechain: boolean;
 	firstTs: number | undefined;
@@ -142,44 +143,6 @@ const verifyRuns = (events: readonly HarnessEvent[]): number => {
 	return runs;
 };
 
-const PHASE_RANK: Record<PhaseId, number> = {
-	verify: 4,
-	handoff: 3,
-	build: 2,
-	scout: 1,
-	unknown: 0,
-};
-
-function reduceEventBatches(recorded: SessionState["events"]): HarnessEvent[] {
-	const sorted = [...recorded].sort((a, b) => a.event[0] - b.event[0]);
-	const output: HarnessEvent[] = [];
-	const batchIndexes = new Map<string, number>();
-	for (const row of sorted) {
-		if (!row.batchId) {
-			output.push(row.event);
-			continue;
-		}
-		const existingIndex = batchIndexes.get(row.batchId);
-		if (existingIndex === undefined) {
-			batchIndexes.set(row.batchId, output.length);
-			output.push(row.event);
-			continue;
-		}
-		const existing = output[existingIndex];
-		if (!existing) continue;
-		const existingPhase = classifyEvent(existing[1], existing[2], null).phase;
-		const candidatePhase = classifyEvent(
-			row.event[1],
-			row.event[2],
-			null,
-		).phase;
-		if (PHASE_RANK[candidatePhase] > PHASE_RANK[existingPhase]) {
-			output[existingIndex] = [existing[0], row.event[1], row.event[2]];
-		}
-	}
-	return output;
-}
-
 function shellIncludes(arg: string, head: string): boolean {
 	return arg
 		.split(/(?:&&|\|\||;|\|)/)
@@ -193,8 +156,6 @@ function sessionState(): SessionState {
 		nextAnonymousResponse: 0,
 		turns: new Map(),
 		nextAnonymousTurn: 0,
-		projectWorkspaces: new Set(),
-		activeDates: new Set(),
 		parentSession: undefined,
 		sidechain: false,
 		firstTs: undefined,
@@ -209,6 +170,7 @@ export type HarnessWorkflowReducer = {
 
 export function createHarnessWorkflowReducer(
 	harness: HarnessName,
+	localSources: WorkflowLocalSources = createWorkflowLocalSources(),
 ): HarnessWorkflowReducer {
 	const sessions = new Map<string, SessionState>();
 	const activity = new Map<string, number>();
@@ -239,18 +201,18 @@ export function createHarnessWorkflowReducer(
 					: Math.max(state.lastTs, observation.tsMs);
 			state.parentSession ??= observation.parentSession;
 			state.sidechain ||= observation.sidechain === true;
-			if (observation.projectWorkspace)
-				state.projectWorkspaces.add(observation.projectWorkspace);
 			const at = new Date(observation.tsMs);
 			const date = at.toISOString().slice(0, 10);
-			state.activeDates.add(date);
+			if (observation.projectWorkspace) {
+				localSources.projectWorkspaces.add(observation.projectWorkspace);
+				const projects = localSources.activeProjectDays.get(date) ?? new Set();
+				projects.add(observation.projectWorkspace);
+				localSources.activeProjectDays.set(date, projects);
+			}
 
 			if (observation.type === "event") {
 				const arg = observation.arg ?? "";
-				state.events.push({
-					event: [observation.tsMs, observation.tool, arg],
-					...(observation.batchId ? { batchId: observation.batchId } : {}),
-				});
+				state.events.push([observation.tsMs, observation.tool, arg]);
 				bump(activity, `${at.getUTCDay()}:${at.getUTCHours()}`);
 				if (["WebSearch", "web_search", "websearch"].includes(observation.tool))
 					bump(webSearchesByDate, date);
@@ -291,7 +253,7 @@ export function createHarnessWorkflowReducer(
 			let phaseSessionCount = 0;
 
 			for (const state of sessions.values()) {
-				const events = reduceEventBatches(state.events);
+				const events = [...state.events].sort((a, b) => a[0] - b[0]);
 				const responses = [...state.responses.values()];
 				const efforts = responses.flatMap((response) =>
 					response.effort ? [response.effort] : [],
@@ -317,8 +279,13 @@ export function createHarnessWorkflowReducer(
 					modelSwitched: models.size > 1,
 					thinkingTokens,
 					responseTokens,
-					questionBackTurns: [...state.turns.values()].filter(Boolean).length,
-					totalTurns: state.turns.size,
+					...(harness === "pi-mono"
+						? {}
+						: {
+								questionBackTurns: [...state.turns.values()].filter(Boolean)
+									.length,
+								totalTurns: state.turns.size,
+							}),
 				};
 				if (efforts.length > 0) {
 					sessionFact.effortTurns = {
@@ -344,8 +311,7 @@ export function createHarnessWorkflowReducer(
 				if (routing === "subagents") subagentToolCalls += state.events.length;
 				else mainToolCalls += state.events.length;
 
-				if (state.events.length === 0) continue;
-				phaseSessionCount++;
+				if (state.events.length > 0) phaseSessionCount++;
 				const phases = deriveSessionPhases(events);
 				for (const phase of PHASES) {
 					phaseSec[phase] += phases.phaseSec[phase];
@@ -353,12 +319,12 @@ export function createHarnessWorkflowReducer(
 				}
 				waitingSec += phases.waitingSec;
 				idleSec += phases.idleSec;
-				const first = events[0];
+				const first = state.firstTs;
 				const classifications = events.map((event) =>
 					deriveSessionPhases([event]),
 				);
 				sessionRows.push({
-					startHourUtc: first ? new Date(first[0]).getUTCHours() : 0,
+					startHourUtc: first === undefined ? 0 : new Date(first).getUTCHours(),
 					eventCount: state.events.length,
 					phaseSec: phases.phaseSec,
 					phaseEvents: phases.phaseEvents,
@@ -383,30 +349,7 @@ export function createHarnessWorkflowReducer(
 				0,
 			);
 			const unknown = attributed === 0 ? 0 : phaseSec.unknown / attributed;
-			const projectsByDate = new Map<string, Set<string>>();
-			for (const state of sessions.values()) {
-				const dates = new Set(state.activeDates);
-				if (state.firstTs !== undefined && state.lastTs !== undefined) {
-					let day = Date.parse(
-						`${new Date(state.firstTs).toISOString().slice(0, 10)}T00:00:00Z`,
-					);
-					const lastDay = Date.parse(
-						`${new Date(state.lastTs).toISOString().slice(0, 10)}T00:00:00Z`,
-					);
-					while (day <= lastDay) {
-						dates.add(new Date(day).toISOString().slice(0, 10));
-						day += 86_400_000;
-					}
-				}
-				for (const date of dates) {
-					let projects = projectsByDate.get(date);
-					if (!projects) {
-						projects = new Set();
-						projectsByDate.set(date, projects);
-					}
-					for (const project of state.projectWorkspaces) projects.add(project);
-				}
-			}
+			const projectsByDate = localSources.activeProjectDays;
 
 			const childrenByParent = new Map<string, SessionState[]>();
 			for (const state of sessions.values()) {
@@ -431,15 +374,13 @@ export function createHarnessWorkflowReducer(
 				}
 			}
 
-			const asRows = (map: Map<string, number>) =>
-				[...map].map(([model, tokens]) => ({ model, tokens }));
-			const localProjectWorkspaces = [
-				...new Set(
-					[...sessions.values()].flatMap((state) => [
-						...state.projectWorkspaces,
-					]),
-				),
-			];
+			const asRows = (map: Map<string, number>) => {
+				const safe = new Map<string, number>();
+				for (const [model, tokens] of map) {
+					bump(safe, sanitizeModelId(model), tokens);
+				}
+				return [...safe].map(([model, tokens]) => ({ model, tokens }));
+			};
 			const hasDelegation =
 				subagentToolCalls > 0 || mostSubagents > 0 || widestFanOut > 0;
 
@@ -464,13 +405,19 @@ export function createHarnessWorkflowReducer(
 						.map(([date, projects]) => ({
 							date,
 							parallelProjectCount: projects.size,
-							webSearches: webSearchesByDate.get(date) ?? 0,
+							...(harness === "pi-mono"
+								? {}
+								: { webSearches: webSearchesByDate.get(date) ?? 0 }),
 						})),
 				},
-				routing: {
-					main: asRows(modelTokens.main),
-					subagents: asRows(modelTokens.subagents),
-				},
+				...(harness === "claude-code" || harness === "opencode"
+					? {
+							routing: {
+								main: asRows(modelTokens.main),
+								subagents: asRows(modelTokens.subagents),
+							},
+						}
+					: {}),
 				...(hasDelegation
 					? {
 							delegation: {
@@ -487,13 +434,6 @@ export function createHarnessWorkflowReducer(
 						return { weekdayUtc, hourUtc, events };
 					})
 					.sort((a, b) => a.weekdayUtc - b.weekdayUtc || a.hourUtc - b.hourUtc),
-				localProjectWorkspaces,
-				localActiveProjectDays: [...projectsByDate]
-					.sort(([a], [b]) => a.localeCompare(b))
-					.map(([date, projects]) => ({
-						date,
-						projectWorkspaces: [...projects],
-					})),
 			};
 			sessions.clear();
 			activity.clear();

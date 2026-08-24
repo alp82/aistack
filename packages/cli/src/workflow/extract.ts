@@ -12,12 +12,20 @@ import {
 import {
 	type HarnessWorkflowAggregate,
 	WORKFLOW_AGGREGATE_VERSION,
+	type WorkflowLocalSources,
 } from "./reducer.js";
 
 export type PublishableHarnessWorkflow = Omit<
 	HarnessWorkflowAggregate,
-	"localProjectWorkspaces" | "localActiveProjectDays"
->;
+	"phase"
+> & {
+	phase?: HarnessWorkflowAggregate["phase"];
+};
+
+export type LocalHarnessWorkflow = {
+	aggregate: HarnessWorkflowAggregate;
+	local: WorkflowLocalSources;
+};
 
 export type WorkflowExtraction = {
 	aggregateVersion: typeof WORKFLOW_AGGREGATE_VERSION;
@@ -27,7 +35,7 @@ export type WorkflowExtraction = {
 };
 
 export type ExtractLocalWorkflowOptions = {
-	harnesses: readonly HarnessWorkflowAggregate[];
+	harnesses: readonly LocalHarnessWorkflow[];
 	fromMs: number;
 	toMs: number;
 	run?: GitWorkflowRunner;
@@ -38,9 +46,9 @@ export function extractLocalWorkflow(
 	options: ExtractLocalWorkflowOptions,
 ): WorkflowExtraction {
 	const git = extractGitWorkflow({
-		workingDirectories: options.harnesses.flatMap(
-			(workflow) => workflow.localProjectWorkspaces,
-		),
+		workingDirectories: options.harnesses.flatMap(({ local }) => [
+			...local.projectWorkspaces,
+		]),
 		fromMs: options.fromMs,
 		toMs: options.toMs,
 		...(options.run ? { run: options.run } : {}),
@@ -54,21 +62,24 @@ export function extractLocalWorkflow(
  * not enter the returned value.
  */
 export function buildWorkflowExtraction(
-	harnessWorkflows: readonly HarnessWorkflowAggregate[],
+	harnessWorkflows: readonly LocalHarnessWorkflow[],
 	git: GitWorkflowResult,
 ): WorkflowExtraction {
 	const projectDays = new Map<string, Set<string>>();
 	const webSearches = new Map<string, number>();
+	const webSearchDays = new Set<string>();
 	const sessions: Array<NonNullable<WorkflowFacts["sessions"]>[number]> = [];
 
-	for (const workflow of harnessWorkflows) {
+	for (const { aggregate: workflow, local } of harnessWorkflows) {
 		sessions.push(...workflow.facts.sessions);
-		for (const day of workflow.localActiveProjectDays) {
-			const projects = projectDays.get(day.date) ?? new Set<string>();
-			for (const project of day.projectWorkspaces) projects.add(project);
-			projectDays.set(day.date, projects);
+		for (const [date, workspaces] of local.activeProjectDays) {
+			const projects = projectDays.get(date) ?? new Set<string>();
+			for (const project of workspaces) projects.add(project);
+			projectDays.set(date, projects);
 		}
 		for (const day of workflow.facts.activeDays) {
+			if (day.webSearches === undefined) continue;
+			webSearchDays.add(day.date);
 			webSearches.set(
 				day.date,
 				(webSearches.get(day.date) ?? 0) + day.webSearches,
@@ -87,22 +98,21 @@ export function buildWorkflowExtraction(
 			.map(([date, projects]) => ({
 				date,
 				parallelProjectCount: projects.size,
-				webSearches: webSearches.get(date) ?? 0,
+				...(webSearchDays.has(date)
+					? { webSearches: webSearches.get(date) ?? 0 }
+					: {}),
 			})),
 	};
 	const syncedHarnesses = [
-		...new Set(harnessWorkflows.map((workflow) => workflow.harness)),
+		...new Set(harnessWorkflows.map(({ aggregate }) => aggregate.harness)),
 	] as HarnessName[];
 
 	return {
 		aggregateVersion: WORKFLOW_AGGREGATE_VERSION,
-		harnesses: harnessWorkflows.map(
-			({
-				localProjectWorkspaces: _paths,
-				localActiveProjectDays: _days,
-				...safe
-			}) => safe,
-		),
+		harnesses: harnessWorkflows.map(({ aggregate }) => {
+			const { phase, ...safe } = aggregate;
+			return phase.publishable ? { ...safe, phase } : safe;
+		}),
 		git,
 		metricInputs: buildFitInputs(facts, syncedHarnesses),
 	};

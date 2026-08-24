@@ -51,10 +51,24 @@ describe("native harness workflow projection", () => {
 			},
 			{ projectDir: "fallback" },
 		);
+		ingestClaudeRecord(
+			aggregate,
+			{
+				type: "system",
+				subtype: "turn_duration",
+				uuid: "duration_1",
+				timestamp: TS,
+				sessionId: "claude-secret-session",
+				cwd: "/secret/claude-project",
+				durationMs: 420_000,
+			},
+			{ projectDir: "fallback" },
+		);
 
 		const workflow = aggregate.workflow.finish();
 		expect(workflow.phase.phaseEvents.verify).toBe(1);
 		expect(workflow.facts.sessions[0]?.modelSwitched).toBe(false);
+		expect(workflow.facts.sessions[0]?.longestTurnDurationSec).toBe(420);
 		expect(JSON.stringify(workflow.phase)).not.toContain("pnpm test");
 	});
 
@@ -104,6 +118,7 @@ describe("native harness workflow projection", () => {
 						last_token_usage: {
 							input_tokens: 10,
 							output_tokens: 20,
+							reasoning_output_tokens: 7,
 							cached_input_tokens: 0,
 						},
 					},
@@ -118,6 +133,8 @@ describe("native harness workflow projection", () => {
 			high: 1,
 			total: 1,
 		});
+		expect(workflow.facts.sessions[0]?.thinkingTokens).toBe(7);
+		expect(workflow.routing).toBeUndefined();
 	});
 
 	it("reduces ordered opencode tool rows with parent sessions", () => {
@@ -200,5 +217,7 @@ describe("native harness workflow projection", () => {
 		const workflow = aggregate.workflow.finish();
 		expect(workflow.phase.phaseEvents.verify).toBe(1);
 		expect(workflow.facts.sessions[0]?.responseTokens).toBe(20);
+		expect(workflow.facts.sessions[0]?.questionBackTurns).toBeUndefined();
+		expect(workflow.routing).toBeUndefined();
 	});
 });

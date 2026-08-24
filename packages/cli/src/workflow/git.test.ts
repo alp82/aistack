@@ -26,6 +26,7 @@ describe("extractGitWorkflow", () => {
 				if (cwd.startsWith("/copy/repo")) return "/copy/repo\n";
 				return null;
 			}
+			expect(args).not.toContain("--no-renames");
 			return cwd === "/work/repo" || cwd === "/copy/repo" ? history : null;
 		};
 
@@ -53,6 +54,7 @@ describe("extractGitWorkflow", () => {
 				{ extension: ".ts", changedLines: 16 },
 				{ extension: "(none)", changedLines: 2 },
 			],
+			withheldExtensionLines: 0,
 			weekdayHourCells: [
 				{ weekday: 1, hour: 23, commits: 1 },
 				{ weekday: 2, hour: 2, commits: 1 },
@@ -60,5 +62,29 @@ describe("extractGitWorkflow", () => {
 		});
 		expect(JSON.stringify(result)).not.toContain("/work/");
 		expect(JSON.stringify(result)).not.toContain("widget");
+	});
+
+	it("withholds unapproved extension names while keeping their line total", () => {
+		const run: GitWorkflowRunner = (_cwd, args) =>
+			args[0] === "rev-parse"
+				? "/work/repo\n"
+				: record(
+						"aaaa",
+						"2026-08-03T12:00:00+00:00",
+						"4\t1\tsrc/private.customer-name\n2\t0\tsrc/public.ts\n3\t2\tsrc/{old.ts => new.ts}\n",
+					);
+
+		const result = extractGitWorkflow({
+			workingDirectories: ["/work/repo"],
+			fromMs: Date.parse("2026-08-01T00:00:00Z"),
+			toMs: Date.parse("2026-08-31T23:59:59Z"),
+			run,
+		});
+
+		expect(result.changedLinesByExtension).toEqual([
+			{ extension: ".ts", changedLines: 7 },
+		]);
+		expect(result.withheldExtensionLines).toBe(5);
+		expect(JSON.stringify(result)).not.toContain("customer-name");
 	});
 });

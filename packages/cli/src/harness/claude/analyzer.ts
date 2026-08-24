@@ -37,7 +37,9 @@ import {
 } from "@aistack/pricing";
 import {
 	createHarnessWorkflowReducer,
+	createWorkflowLocalSources,
 	type HarnessWorkflowReducer,
+	type WorkflowLocalSources,
 } from "../../workflow/reducer.js";
 import {
 	asArr,
@@ -96,13 +98,16 @@ type SeenEntry = { requestId: string | null; contribution: Contribution };
  */
 export type Aggregate = SharedAggregate<SeenEntry> & {
 	workflow: HarnessWorkflowReducer;
+	workflowLocal: WorkflowLocalSources;
 	workflowSeenCalls: Set<string>;
 	workflowSeenTurns: Set<string>;
 };
 
 export function createAggregate(): Aggregate {
+	const workflowLocal = createWorkflowLocalSources();
 	return Object.assign(createSharedAggregate<SeenEntry>(), {
-		workflow: createHarnessWorkflowReducer("claude-code"),
+		workflow: createHarnessWorkflowReducer("claude-code", workflowLocal),
+		workflowLocal,
 		workflowSeenCalls: new Set<string>(),
 		workflowSeenTurns: new Set<string>(),
 	});
@@ -154,6 +159,32 @@ export function ingestRecord(
 		ingestClaudeWorkflow(agg, rec, ctx, tsMs);
 		ingestAssistant(agg, rec, tsMs);
 	} else if (type === "user") ingestUser(agg, rec);
+	else if (type === "system") ingestClaudeTurnDuration(agg, rec, ctx, tsMs);
+}
+
+function ingestClaudeTurnDuration(
+	agg: Aggregate,
+	rec: Obj,
+	ctx: IngestContext,
+	tsMs: number | null,
+): void {
+	if (
+		tsMs === null ||
+		asStr(rec.subtype) !== "turn_duration" ||
+		asNum(rec.durationMs) <= 0
+	) {
+		return;
+	}
+	const session = asStr(rec.sessionId);
+	if (!session) return;
+	agg.workflow.ingest({
+		type: "response",
+		session,
+		projectWorkspace: projectWorkspaceDirectory(rec) ?? ctx.projectDir,
+		tsMs,
+		...(asStr(rec.uuid) ? { responseId: `duration:${asStr(rec.uuid)}` } : {}),
+		durationSec: asNum(rec.durationMs) / 1000,
+	});
 }
 
 function ingestClaudeWorkflow(
@@ -229,7 +260,6 @@ function ingestClaudeWorkflow(
 			...(parentSession ? { parentSession } : {}),
 			tool: name === "Task" ? "Agent" : name,
 			arg,
-			...(messageId ? { batchId: messageId } : {}),
 		});
 	}
 	if (tools.length > 0 || newTurn) {

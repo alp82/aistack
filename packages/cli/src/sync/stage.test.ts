@@ -76,6 +76,7 @@ const FAKE_CLAUDE_ADAPTER: HarnessAdapter = {
 			aggregate,
 			stats: STATS,
 			workflow: aggregate.workflow.finish(),
+			workflowLocal: aggregate.workflowLocal,
 		};
 	},
 };

@@ -29,7 +29,9 @@ import {
 } from "@aistack/pricing";
 import {
 	createHarnessWorkflowReducer,
+	createWorkflowLocalSources,
 	type HarnessWorkflowReducer,
+	type WorkflowLocalSources,
 } from "../../workflow/reducer.js";
 import {
 	addModelUsage,
@@ -48,12 +50,15 @@ import {
 /** Codex needs no response dedup bookkeeping - deltas count once by construction. */
 export type Aggregate = SharedAggregate<never> & {
 	workflow: HarnessWorkflowReducer;
+	workflowLocal: WorkflowLocalSources;
 	workflowSeenCalls: Set<string>;
 };
 
 export function createAggregate(): Aggregate {
+	const workflowLocal = createWorkflowLocalSources();
 	return Object.assign(createSharedAggregate<never>(), {
-		workflow: createHarnessWorkflowReducer("codex"),
+		workflow: createHarnessWorkflowReducer("codex", workflowLocal),
+		workflowLocal,
 		workflowSeenCalls: new Set<string>(),
 	});
 }
@@ -197,7 +202,6 @@ function ingestEvent(
 	// which keeps `subagentShare` an honest 0 rather than a guess.
 	agg.mainTokens += total;
 	if (tsMs !== null && state.sessionId) {
-		const details = asObj(last.output_tokens_details);
 		const responseId = `${state.sessionId}:response:${state.responseIndex++}`;
 		agg.workflow.ingest({
 			type: "response",
@@ -208,7 +212,7 @@ function ingestEvent(
 			model: modelKey,
 			responseTokens: counts.output,
 			routingTokens: total,
-			thinkingTokens: details ? asNum(details.reasoning_tokens) : 0,
+			thinkingTokens: asNum(last.reasoning_output_tokens),
 			...(state.effort ? { effort: state.effort } : {}),
 		});
 		agg.workflow.ingest({
@@ -304,7 +308,7 @@ function ingestWorkflowCall(
 		if (agg.workflowSeenCalls.has(callId)) return;
 		agg.workflowSeenCalls.add(callId);
 	}
-	if (name === "request_user_input") state.currentQuestionBack = true;
+	state.currentQuestionBack = name === "request_user_input";
 	let arg = "";
 	if (
 		["exec_command", "shell", "container.exec", "local_shell"].includes(name)
@@ -339,7 +343,6 @@ function ingestWorkflowCall(
 		tsMs,
 		tool: name,
 		arg,
-		batchId: `${state.sessionId}:response:${state.responseIndex}`,
 	});
 }
 

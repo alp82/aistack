@@ -34,7 +34,9 @@ import {
 } from "@aistack/pricing";
 import {
 	createHarnessWorkflowReducer,
+	createWorkflowLocalSources,
 	type HarnessWorkflowReducer,
+	type WorkflowLocalSources,
 } from "../../workflow/reducer.js";
 import {
 	addModelUsage,
@@ -52,11 +54,14 @@ import {
 /** Cross-file dedup lives in FoldState, not the aggregate's `seen`. */
 export type Aggregate = SharedAggregate<never> & {
 	workflow: HarnessWorkflowReducer;
+	workflowLocal: WorkflowLocalSources;
 };
 
 export function createAggregate(): Aggregate {
+	const workflowLocal = createWorkflowLocalSources();
 	return Object.assign(createSharedAggregate<never>(), {
-		workflow: createHarnessWorkflowReducer("pi-mono"),
+		workflow: createHarnessWorkflowReducer("pi-mono", workflowLocal),
+		workflowLocal,
 	});
 }
 
@@ -182,14 +187,7 @@ export function ingestEntry(
 					responseTokens: counts?.output ?? 0,
 					routingTokens: counts ? countsTotal(counts) : 0,
 				});
-				ingestContent(
-					agg,
-					message.content,
-					state.sessionId,
-					asStr(rec.id),
-					state.cwd,
-					tsMs,
-				);
+				ingestContent(agg, message.content, state.sessionId, state.cwd, tsMs);
 				agg.workflow.ingest({
 					type: "turn",
 					session: state.sessionId,
@@ -297,7 +295,6 @@ function ingestContent(
 	agg: Aggregate,
 	contentRaw: unknown,
 	session?: string,
-	batchId?: string | null,
 	projectWorkspace?: string | null,
 	tsMs?: number,
 ): void {
@@ -331,7 +328,6 @@ function ingestContent(
 					tsMs,
 					tool: name,
 					arg: asStr(args.command) ?? "",
-					...(batchId ? { batchId } : {}),
 				});
 			}
 		}

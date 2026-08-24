@@ -103,4 +103,16 @@ describe("buildFitInputs", () => {
 		expect(gitRow?.coverage).toBe(1);
 		expect(gitRow?.coverageTag).toBeUndefined();
 	});
+
+	it("excludes Pi from question and web-search coverage", () => {
+		const rows = buildFitInputs(facts, ["claude-code", "pi-mono"]);
+		for (const metricId of [
+			"question-back-share",
+			"web-searches-per-active-day",
+		]) {
+			const row = rows.find((candidate) => candidate.metricId === metricId);
+			expect(row?.coverage).toBe(0.5);
+			expect(row?.coverageTag).toBe("counts: Claude Code");
+		}
+	});
 });
