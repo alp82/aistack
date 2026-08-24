@@ -869,15 +869,40 @@ function publishHarnessMachines(
  * pulls forward (#34). Returns null for an unpublished stack or one that has
  * never synced - the display decides how to render the silence. No merged row
  * is ever stored: this aggregation exists only at read time (#66 decision 2).
+ * `machineOrdinal` narrows the same aggregation without exposing its name.
  */
 export const getCurrentByStackSlug = query({
-  args: { slug: v.string() },
+  args: {
+    slug: v.string(),
+    machineOrdinal: v.optional(v.number()),
+  },
   returns: v.union(CurrentMeasured, v.null()),
   handler: async (ctx, args) => {
     const stack = await publishedStackBySlug(ctx, args.slug)
     if (!stack) return null
 
-    const snapshots = await newestSnapshotsPerSource(ctx, stack._id)
+    const publication = await machinePublication(ctx, stack)
+    if (
+      args.machineOrdinal !== undefined &&
+      (!Number.isInteger(args.machineOrdinal) || args.machineOrdinal <= 0)
+    ) {
+      return null
+    }
+    const selectedMachine =
+      args.machineOrdinal === undefined
+        ? undefined
+        : [...publication.ordinals.entries()].find(
+            ([, ordinal]) => ordinal === args.machineOrdinal
+          )?.[0]
+    if (args.machineOrdinal !== undefined && selectedMachine === undefined) {
+      return null
+    }
+
+    const allSnapshots = await newestSnapshotsPerSource(ctx, stack._id)
+    const snapshots =
+      selectedMachine === undefined
+        ? allSnapshots
+        : allSnapshots.filter((snapshot) => snapshot.machine === selectedMachine)
     if (snapshots.length === 0) return null
 
     // The flag is the gate, not the presence of dollars (#93): an owner who
@@ -887,10 +912,7 @@ export const getCurrentByStackSlug = query({
     const merged = mergeHarnesses(
       snapshots.map((s) => toHarnessSnapshot(catalog, s, publishCost))
     )
-    return publishHarnessMachines(
-      merged,
-      await machinePublication(ctx, stack)
-    )
+    return publishHarnessMachines(merged, publication)
   },
 })
 

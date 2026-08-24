@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
+import { type KeyboardEvent, useRef, useState } from "react";
 import { Section, SectionHeader } from "@/features/stack-view/ui";
 import { cn, timeAgo } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
@@ -8,6 +9,7 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { AutoSyncBox } from "./AutoSyncBox";
 import { CommandBlock } from "./CommandLine";
 import {
+	fmtShare,
 	fmtTokens,
 	KICKER,
 	lastCheckLine,
@@ -67,8 +69,27 @@ export function MeasuredSection({
 	stackId: Id<"stacks">;
 	isOwner: boolean;
 }) {
-	const snapshot = useQuery(api.measured.getCurrentByStackSlug, { slug });
-	const history = useQuery(api.measured.getHistoryByStackSlug, { slug });
+	const [machineSelection, setMachineSelection] = useState<{
+		slug: string;
+		ordinal: number;
+	} | null>(null);
+	const allSnapshot = useQuery(api.measured.getCurrentByStackSlug, { slug });
+	const machines = machineOptions(allSnapshot);
+	const machineOrdinal =
+		machineSelection?.slug === slug &&
+		machines.some((machine) => machine.ordinal === machineSelection.ordinal)
+			? machineSelection.ordinal
+			: null;
+	const selectedSnapshot = useQuery(
+		api.measured.getCurrentByStackSlug,
+		machineOrdinal === null ? "skip" : { slug, machineOrdinal },
+	);
+	const snapshot = machineOrdinal === null ? allSnapshot : selectedSnapshot;
+	const history = useQuery(api.measured.getHistoryByStackSlug, {
+		slug,
+		...(machineOrdinal === null ? {} : { machineOrdinal }),
+	});
+	const hasMachineDropdown = machines.length > 1;
 
 	// Past 48 hours the switch is the page's remedy, so it stands BEFORE the
 	// reading it keeps arriving. A stack that never synced is not late - it may
@@ -89,7 +110,22 @@ export function MeasuredSection({
 				index={String(index).padStart(2, "0")}
 				kicker={KICKER}
 				title={TITLE}
-				meta={snapshot ? `checked ${timeAgo(snapshot.receivedAt)}` : undefined}
+				meta={
+					hasMachineDropdown ? (
+						<MachineDropdown
+							machines={machines}
+							allTokens={allSnapshot?.activity.totalTokens ?? 0}
+							allReceivedAt={allSnapshot?.receivedAt ?? 0}
+							value={machineOrdinal}
+							onChange={(ordinal) =>
+								setMachineSelection(ordinal === null ? null : { slug, ordinal })
+							}
+						/>
+					) : snapshot ? (
+						`checked ${timeAgo(snapshot.receivedAt)}`
+					) : undefined
+				}
+				metaAlwaysVisible={hasMachineDropdown}
 			/>
 			{/* The owner box (#104). It sits inside the section it governs -
 			    automation is what keeps this reading arriving - and it does NOT
@@ -111,7 +147,11 @@ export function MeasuredSection({
 					<NeverMeasured />
 				)
 			) : (
-				<Reading snapshot={snapshot} points={history?.points ?? []} />
+				<Reading
+					snapshot={snapshot}
+					points={history?.points ?? []}
+					showFreshness={hasMachineDropdown}
+				/>
 			)}
 			{placed && staleSince === null && (
 				<AutoSyncBox stackId={stackId} isOwner={isOwner} />
@@ -120,12 +160,184 @@ export function MeasuredSection({
 	);
 }
 
+type MachineOption = {
+	ordinal: number;
+	label: string;
+	tokens: number;
+	receivedAt: number;
+	paint: string;
+};
+
+const SOURCE_PAINTS = [
+	"var(--source-1)",
+	"var(--source-2)",
+	"var(--source-3)",
+] as const;
+
+function machineOptions(
+	snapshot: MeasuredSnapshot | null | undefined,
+): MachineOption[] {
+	if (!snapshot) return [];
+	const machines = new Map<number, MachineOption>();
+	for (const harness of snapshot.harnesses) {
+		if (harness.machineOrdinal === null) continue;
+		const ordinal = harness.machineOrdinal;
+		const held = machines.get(ordinal);
+		machines.set(ordinal, {
+			ordinal,
+			label: harness.machine ?? held?.label ?? `machine ${ordinal}`,
+			tokens: (held?.tokens ?? 0) + harness.activity.totalTokens,
+			receivedAt: Math.max(held?.receivedAt ?? 0, harness.receivedAt),
+			paint: held?.paint ?? "",
+		});
+	}
+	return [...machines.values()]
+		.sort((a, b) => a.ordinal - b.ordinal)
+		.map((machine, index) => ({
+			...machine,
+			paint: SOURCE_PAINTS[index % SOURCE_PAINTS.length],
+		}));
+}
+
+function MachineDropdown({
+	machines,
+	allTokens,
+	allReceivedAt,
+	value,
+	onChange,
+}: {
+	machines: readonly MachineOption[];
+	allTokens: number;
+	allReceivedAt: number;
+	value: number | null;
+	onChange: (ordinal: number | null) => void;
+}) {
+	const [open, setOpen] = useState(false);
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const selected = machines.find((machine) => machine.ordinal === value);
+	const choose = (ordinal: number | null) => {
+		onChange(ordinal);
+		setOpen(false);
+	};
+	const closeOnEscape = (event: KeyboardEvent) => {
+		if (event.key !== "Escape" || !open) return;
+		event.preventDefault();
+		setOpen(false);
+		triggerRef.current?.focus();
+	};
+
+	return (
+		<div className="relative text-left">
+			<button
+				ref={triggerRef}
+				type="button"
+				aria-label="Machine"
+				aria-haspopup="listbox"
+				aria-expanded={open}
+				onClick={() => setOpen((held) => !held)}
+				onKeyDown={closeOnEscape}
+				className={cn(
+					"flex max-w-[min(18rem,calc(100vw-2.5rem))] items-center gap-2 border border-stroke-subtle px-2.5 py-2 text-left font-mono text-[11px] normal-case tracking-normal text-fg-primary",
+					value !== null && "border-accent-lime text-accent-lime",
+				)}
+			>
+				<span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-fg-muted">
+					from
+				</span>
+				<span className="min-w-0 flex-1 truncate">
+					{selected?.label ?? "all machines"}
+				</span>
+				{open ? (
+					<ChevronUp aria-hidden="true" className="size-3 shrink-0" />
+				) : (
+					<ChevronDown aria-hidden="true" className="size-3 shrink-0" />
+				)}
+			</button>
+
+			{open && (
+				<div
+					role="listbox"
+					aria-label="Machine"
+					onKeyDown={closeOnEscape}
+					className="absolute top-full right-0 z-50 mt-1 min-w-full border border-stroke-strong bg-bg-panel-elevated shadow-[4px_4px_0_var(--stroke-strong)]"
+				>
+					<MachineOptionRow
+						label="all machines"
+						tokens={allTokens}
+						receivedAt={allReceivedAt}
+						paint={null}
+						selected={value === null}
+						onSelect={() => choose(null)}
+					/>
+					{machines.map((machine) => (
+						<MachineOptionRow
+							key={machine.ordinal}
+							label={machine.label}
+							tokens={machine.tokens}
+							receivedAt={machine.receivedAt}
+							paint={machine.paint}
+							selected={value === machine.ordinal}
+							onSelect={() => choose(machine.ordinal)}
+						/>
+					))}
+				</div>
+			)}
+		</div>
+	);
+}
+
+function MachineOptionRow({
+	label,
+	tokens,
+	receivedAt,
+	paint,
+	selected,
+	onSelect,
+}: {
+	label: string;
+	tokens: number;
+	receivedAt: number;
+	paint: string | null;
+	selected: boolean;
+	onSelect: () => void;
+}) {
+	return (
+		<button
+			type="button"
+			role="option"
+			aria-selected={selected}
+			onClick={onSelect}
+			className="block w-full border-t border-stroke-subtle px-3 py-2 text-left first:border-t-0 hover:bg-bg-panel-muted"
+		>
+			<span className="flex min-w-48 items-center justify-between gap-4">
+				<span className="flex min-w-0 items-center gap-2">
+					{paint && (
+						<span
+							aria-hidden="true"
+							data-testid="source-paint"
+							className="size-2 shrink-0"
+							style={{ background: paint }}
+						/>
+					)}
+					<span className="truncate">{label}</span>
+				</span>
+				<span className="shrink-0 text-fg-muted">{fmtTokens(tokens)}</span>
+			</span>
+			<span className="mt-0.5 block text-[10px] text-fg-muted">
+				read {timeAgo(receivedAt)}
+			</span>
+		</button>
+	);
+}
+
 function Reading({
 	snapshot,
 	points,
+	showFreshness,
 }: {
 	snapshot: MeasuredSnapshot;
 	points: readonly MeasuredHistoryPoint[];
+	showFreshness: boolean;
 }) {
 	// The COMBINED headline (#66 decision 2, #243): tokens, sessions and dollars
 	// sum honestly across every source, a source being one harness on one
@@ -165,14 +377,19 @@ function Reading({
 			<div>
 				<div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
 					<p className={cn(MONO_LABEL, "text-accent-lime")}>{MIX_KICKER}</p>
-					{firstAt !== null && points.length > 1 && (
+					{showFreshness ? (
+						<p className="font-mono text-[11px] text-fg-muted">
+							checked {timeAgo(snapshot.receivedAt)}
+						</p>
+					) : firstAt !== null && points.length > 1 ? (
 						<p className="font-mono text-[11px] text-fg-muted">
 							{notchNote(firstAt)}
 						</p>
-					)}
+					) : null}
 				</div>
 
 				<ModelShareRows trails={trails} firstAt={firstAt} />
+				<HarnessShareRows snapshot={snapshot} />
 
 				<div className="mt-8 grid grid-cols-2 gap-px border border-stroke-subtle bg-stroke-subtle sm:grid-cols-5">
 					<Stat
@@ -205,6 +422,73 @@ function Reading({
 					/>
 				</div>
 			</div>
+		</div>
+	);
+}
+
+const HARNESS_LABELS: Record<string, string> = {
+	"claude-code": "Claude Code",
+	codex: "Codex",
+	opencode: "opencode",
+	"pi-mono": "Pi",
+};
+
+function HarnessShareRows({ snapshot }: { snapshot: MeasuredSnapshot }) {
+	const byHarness = new Map<string, number>();
+	for (const harness of snapshot.harnesses) {
+		byHarness.set(
+			harness.harness.name,
+			(byHarness.get(harness.harness.name) ?? 0) + harness.activity.totalTokens,
+		);
+	}
+	const rows = [...byHarness.entries()]
+		.map(([name, tokens]) => ({
+			name,
+			label: HARNESS_LABELS[name] ?? name,
+			tokens,
+			share:
+				snapshot.activity.totalTokens > 0
+					? tokens / snapshot.activity.totalTokens
+					: 0,
+		}))
+		.sort((a, b) => {
+			if (a.name === "claude-code") return -1;
+			if (b.name === "claude-code") return 1;
+			return a.name.localeCompare(b.name);
+		});
+	if (rows.length < 2) return null;
+
+	return (
+		<div className="mt-4">
+			<p className={cn(MONO_LABEL, "mb-2 text-fg-muted")}>by harness</p>
+			<ul
+				aria-label="Harness token shares"
+				className="divide-y divide-stroke-subtle border-y border-stroke-subtle"
+			>
+				{rows.map((row, index) => (
+					<li key={row.name} className="flex items-center gap-3 py-2">
+						<span className="w-40 shrink-0 truncate text-sm text-fg-secondary">
+							{row.label}
+						</span>
+						<span className="h-3 flex-1 bg-bg-panel">
+							<span
+								data-testid="source-paint"
+								className="block h-full"
+								style={{
+									width: `${Math.max(1, row.share * 100)}%`,
+									background: SOURCE_PAINTS[index % SOURCE_PAINTS.length],
+								}}
+							/>
+						</span>
+						<span className="w-14 shrink-0 text-right font-mono text-xs font-bold text-fg-secondary">
+							{fmtShare(row.share)}
+						</span>
+						<span className="w-14 shrink-0 text-right font-mono text-[11px] text-fg-muted">
+							{fmtTokens(row.tokens)}
+						</span>
+					</li>
+				))}
+			</ul>
 		</div>
 	);
 }

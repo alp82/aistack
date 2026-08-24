@@ -250,27 +250,34 @@ export function SectionHeader({
 	kicker,
 	title,
 	meta,
+	metaAlwaysVisible = false,
 }: {
 	index: string;
 	kicker: string;
 	title: string;
-	meta?: string;
+	meta?: ReactNode;
+	metaAlwaysVisible?: boolean;
 }) {
 	return (
-		<div className="mb-10 flex items-end gap-5 border-b border-stroke-subtle pb-5">
+		<div className="mb-10 flex flex-wrap items-end gap-5 border-b border-stroke-subtle pb-5">
 			<span className="font-mono text-5xl font-black leading-none text-stroke-strong md:text-7xl">
 				{index}
 			</span>
-			<div className="flex-1">
+			<div className="min-w-0 flex-1">
 				<p className="font-mono text-xs font-semibold uppercase tracking-[0.25em] text-accent-lime">
 					{kicker}
 				</p>
 				<h2 className={cn("mt-1", HEADING)}>{title}</h2>
 			</div>
 			{meta && (
-				<span className="hidden font-mono text-xs uppercase tracking-wider text-fg-muted md:block">
+				<div
+					className={cn(
+						"font-mono text-xs uppercase tracking-wider text-fg-muted",
+						metaAlwaysVisible ? "block" : "hidden md:block",
+					)}
+				>
 					{meta}
-				</span>
+				</div>
 			)}
 		</div>
 	);

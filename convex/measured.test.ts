@@ -787,6 +787,45 @@ describe('getCurrentByStackSlug', () => {
     ])
   })
 
+  test('narrows the current reading to one machine ordinal', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t)
+
+    for (const [machine, harness, tokens, sessions] of [
+      ['workstation', 'claude-code', 1_000, 10],
+      ['vps', 'claude-code', 2_000, 20],
+      ['workstation', 'codex', 3_000, 30],
+    ] as const) {
+      await t.mutation(internal.measured.publishSnapshot, {
+        stackId,
+        machine,
+        payload: payload({
+          harness: { name: harness, version: '1.0.0' },
+          activity: {
+            ...payload().activity,
+            totalTokens: tokens,
+            sessions,
+          },
+        }),
+      })
+    }
+
+    const current = await t.query(api.measured.getCurrentByStackSlug, {
+      slug: `my-stack-${shortId}`,
+      machineOrdinal: 1,
+    })
+
+    expect(current?.activity).toMatchObject({
+      totalTokens: 4_000,
+      sessions: 40,
+    })
+    expect(current?.harnesses.map((h) => h.harness.name)).toEqual([
+      'claude-code',
+      'codex',
+    ])
+    expect(current?.harnesses.map((h) => h.machineOrdinal)).toEqual([1, 1])
+  })
+
   test('returns the newest snapshot by capturedAt, not by insertion order', async () => {
     const t = convexTest(schema, modules)
     const { stackId, shortId } = await seedStack(t)
