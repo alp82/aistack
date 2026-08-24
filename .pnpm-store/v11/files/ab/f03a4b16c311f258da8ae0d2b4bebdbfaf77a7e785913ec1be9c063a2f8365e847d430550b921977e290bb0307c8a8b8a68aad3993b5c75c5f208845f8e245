@@ -1,0 +1,1 @@
+"use strict";const outside=require(`./outside`),ltr=(e,t,n)=>outside(e,t,`<`,n);module.exports=ltr;

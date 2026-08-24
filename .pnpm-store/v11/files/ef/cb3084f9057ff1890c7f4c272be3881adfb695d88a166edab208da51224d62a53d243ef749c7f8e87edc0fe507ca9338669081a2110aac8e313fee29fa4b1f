@@ -1,0 +1,5 @@
+{
+  "name": "@mapbox/node-pre-gyp",
+  "version": "2.0.3",
+  "main": "./lib/node-pre-gyp.js"
+}

@@ -1,0 +1,41 @@
+import { resolveScaleInput } from "./scale-input.js";
+function resolveConfiguredScale(source, context) {
+  const scale = resolveScaleInput(source, {
+    values: context.values,
+    includeZero: context.includeZero,
+    nice: context.options?.nice,
+    niceCount: context.tickCount
+  });
+  const categorical = scale.bandwidth !== void 0;
+  const naturalRange = categorical && context.id === "y" ? [Math.min(...context.range), Math.max(...context.range)] : context.range;
+  const range = context.options?.reverse ? [naturalRange[1], naturalRange[0]] : naturalRange;
+  scale.range(range);
+  const domain = scale.domain();
+  const tickOptions = context.options?.axis === false ? void 0 : context.options?.axis?.ticks;
+  const configuredTicks = tickOptions === false ? void 0 : tickOptions;
+  const tickValues = configuredTicks?.values ?? scale.ticks?.(context.tickCount) ?? domain;
+  const tickFormat = scale.tickFormat?.(context.tickCount);
+  const bandwidth = scale.bandwidth?.() ?? 0;
+  const map = (value) => {
+    const result = scale(value);
+    return result === void 0 ? Number.NaN : result + bandwidth / 2;
+  };
+  return {
+    id: context.id,
+    type: categorical ? "band" : "configured",
+    domain,
+    map,
+    ticks: tickValues.map((value) => ({
+      value,
+      position: map(value),
+      label: configuredTicks?.format?.(value) ?? tickFormat?.(value) ?? formatValue(value)
+    })),
+    bandwidth
+  };
+}
+function formatValue(value) {
+  return value instanceof Date ? value.toLocaleDateString() : String(value);
+}
+export {
+  resolveConfiguredScale
+};

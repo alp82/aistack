@@ -1,0 +1,1 @@
+"use strict";Object.defineProperty(exports,`__esModule`,{value:!0}),exports.getNodeMajorVersion=getNodeMajorVersion;function getNodeMajorVersion(){return parseInt(process.versions.node.split(`.`)[0],10)}

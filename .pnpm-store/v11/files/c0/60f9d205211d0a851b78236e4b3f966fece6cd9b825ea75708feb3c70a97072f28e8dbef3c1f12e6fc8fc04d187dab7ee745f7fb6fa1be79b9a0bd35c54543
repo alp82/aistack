@@ -1,0 +1,20 @@
+import type { TransformGroupSpec, TransformLineage, TransformOrderOptions } from './transform.js';
+import type { TransformOutputRow, TransformOutputs } from './transform-reduce.js';
+export type WindowAnchor = 'start' | 'middle' | 'end';
+export interface WindowOptions<TDatum> extends TransformOrderOptions<TDatum> {
+    by?: TransformGroupSpec<TDatum>;
+    size: number;
+    anchor?: WindowAnchor;
+    partial?: boolean;
+    outputs: TransformOutputs<TDatum>;
+}
+interface InferredWindowOptions<TDatum, TBy extends TransformGroupSpec<TDatum> | undefined, TOutputs extends TransformOutputs<TDatum>> extends TransformOrderOptions<TDatum> {
+    by?: TBy;
+    size: number;
+    anchor?: WindowAnchor;
+    partial?: boolean;
+    outputs: TOutputs;
+}
+export type WindowDatum<TDatum, TOutputs> = Omit<TDatum, keyof TOutputs | keyof TransformLineage<TDatum>> & TransformLineage<TDatum> & TransformOutputRow<TOutputs>;
+export declare function window<TDatum extends object, const TBy extends TransformGroupSpec<TDatum> | undefined = undefined, const TOutputs extends TransformOutputs<TDatum> = TransformOutputs<TDatum>>(source: Iterable<TDatum>, options: InferredWindowOptions<TDatum, TBy, TOutputs>): WindowDatum<TDatum, TOutputs>[];
+export {};

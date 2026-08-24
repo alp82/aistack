@@ -1,0 +1,523 @@
+import { createChartRuntime } from "./runtime.js";
+import { createDomTextMeasurer } from "./dom-text.js";
+import { findNearestPoint } from "./scene.js";
+import { focusNearestX, focusNearestY, focusX, focusY } from "./focus.js";
+import { nearestPoint } from "./nearest.js";
+function mountChartRenderer(container, initialOptions, runtime = createChartRuntime()) {
+  let options = initialOptions;
+  let scene;
+  let interactionScene;
+  let focusedPoint = null;
+  let focusSource = "pointer";
+  let pointerPosition = null;
+  let pinnedKey = null;
+  let observer;
+  let renderFrame;
+  let forceScheduledRender = false;
+  let scheduledRenderReason;
+  let destroyed = false;
+  let hasRendered = false;
+  let surface;
+  let tooltipExtension;
+  let tooltipInstance;
+  let suppressNextSurfaceFocus = false;
+  let spatialIndex;
+  const previousPosition = container.style.position;
+  const view = container.ownerDocument.defaultView;
+  const computedPosition = view?.getComputedStyle(container).position;
+  const ownsPosition = !computedPosition || computedPosition === "static";
+  const domText = createDomTextMeasurer(container);
+  const fontSet = container.ownerDocument.fonts;
+  if (ownsPosition) container.style.position = "relative";
+  const render = (refreshText = false, reason = "update") => {
+    if (destroyed) return;
+    if (refreshText && !options.measureText) domText.refresh();
+    const previousFocusedPoint = focusedPoint;
+    scene = createScene();
+    interactionScene = scene;
+    if (!surface) {
+      surface = options.renderer.mount(container, scheduleRender);
+    } else if (surface.renderer !== options.renderer) {
+      surface?.destroy();
+      destroyTooltip();
+      container.replaceChildren();
+      surface = options.renderer.mount(container, scheduleRender);
+      hasRendered = false;
+    }
+    surface.render(scene, {
+      ariaLabel: options.ariaLabel,
+      ariaDescription: options.ariaDescription,
+      className: options.className,
+      tabIndex: options.definition.keyboard === false ? -1 : options.tabIndex ?? 0,
+      idPrefix: options.idPrefix,
+      animation: hasRendered ? resolveAnimation(options.definition.animate, container, reason) : void 0
+    });
+    hasRendered = true;
+    spatialIndex = options.definition.spatialIndex?.(scene.points, scene);
+    const nextFocusedPoint = previousFocusedPoint ? restoreFocusedPoint(scene.points, previousFocusedPoint) : null;
+    focusedPoint = nextFocusedPoint;
+    if (!nextFocusedPoint) pinnedKey = null;
+    if (previousFocusedPoint) {
+      focusSource = "restored";
+      const nextFocusedPoints = nextFocusedPoint ? focusPointsForPoint(nextFocusedPoint) : [];
+      paintFocus(nextFocusedPoint, nextFocusedPoints);
+      options.onFocusChange?.(nextFocusedPoint);
+      options.onFocusGroupChange?.(nextFocusedPoints);
+    }
+    const onRender = options.onRender;
+    if (onRender) {
+      onRender({ container, scene, surface });
+    }
+  };
+  const currentWidth = () => {
+    const width = options.width ?? container.getBoundingClientRect().width;
+    return options.width !== void 0 || width > 0 ? width : void 0;
+  };
+  const configureObserver = () => {
+    observer?.disconnect();
+    observer = void 0;
+    if (options.width !== void 0) return;
+    const ResizeObserverConstructor = view?.ResizeObserver;
+    if (!ResizeObserverConstructor) return;
+    observer = new ResizeObserverConstructor(() => {
+      const width = currentWidth();
+      if (width === void 0 || width === scene.width) return;
+      scheduleRender(false, "resize");
+    });
+    observer.observe(container);
+  };
+  const scheduleRender = (force = false, reason = "layout") => {
+    forceScheduledRender ||= force;
+    scheduledRenderReason = scheduledRenderReason === "layout" || reason === "layout" ? "layout" : "resize";
+    if (renderFrame !== void 0) return;
+    if (!view?.requestAnimationFrame) {
+      const nextWidth = currentWidth();
+      const shouldRender = forceScheduledRender || nextWidth !== void 0 && nextWidth !== scene.width;
+      forceScheduledRender = false;
+      const nextReason = scheduledRenderReason ?? "layout";
+      scheduledRenderReason = void 0;
+      if (shouldRender) render(true, nextReason);
+      return;
+    }
+    renderFrame = view.requestAnimationFrame(() => {
+      renderFrame = void 0;
+      const nextWidth = currentWidth();
+      const shouldRender = forceScheduledRender || nextWidth !== void 0 && nextWidth !== scene.width;
+      forceScheduledRender = false;
+      const nextReason = scheduledRenderReason ?? "layout";
+      scheduledRenderReason = void 0;
+      if (shouldRender) render(true, nextReason);
+    });
+  };
+  const handleFontLoad = () => {
+    if (destroyed || options.measureText) return;
+    domText.invalidate();
+    scheduleRender(true);
+  };
+  const updateFocus = (points, forcePaint = false) => {
+    const point = points[0] ?? null;
+    if (samePointIdentity(point, focusedPoint)) {
+      if (forcePaint) paintTooltip(point, points);
+      return;
+    }
+    focusedPoint = point;
+    paintFocus(point, points);
+    options.onFocusChange?.(point);
+    options.onFocusGroupChange?.(points);
+  };
+  const dismissTooltip = () => {
+    if (!focusedPoint && !pinnedKey) return;
+    const restoreFocus = Boolean(
+      tooltipInstance?.contains(container.ownerDocument.activeElement)
+    );
+    pinnedKey = null;
+    pointerPosition = null;
+    updateFocus([]);
+    const element = surface?.element;
+    if (restoreFocus && element && "focus" in element && typeof element.focus === "function") {
+      suppressNextSurfaceFocus = true;
+      element.focus();
+    }
+  };
+  const paintFocus = (point, points) => {
+    const paintedScene = surface?.paintFocus(
+      point ? {
+        primary: point,
+        group: points,
+        source: focusSource,
+        pinned: pinnedKey !== null
+      } : null,
+      pointerPosition
+    );
+    interactionScene = paintedScene ?? scene;
+    paintTooltip(point, points);
+  };
+  const pointsAtPointer = (clientX, clientY) => {
+    const position = surface?.clientToScene(scene, clientX, clientY);
+    pointerPosition = position ?? null;
+    if (!position) return [];
+    const maxDistance = options.definition.maxFocusDistance ?? 48;
+    return resolvePointerFocus(position.x, position.y, maxDistance);
+  };
+  const handlePointerMove = (event) => {
+    if (pinnedKey) return;
+    focusSource = "pointer";
+    updateFocus(
+      pointsAtPointer(event.clientX, event.clientY),
+      tooltipTracksPointer()
+    );
+  };
+  const clearTransientFocus = ({ relatedTarget }) => {
+    if (!pinnedKey && !(view && relatedTarget instanceof view.Node && container.contains(relatedTarget))) {
+      pointerPosition = null;
+      updateFocus([]);
+    }
+  };
+  const handleClick = (event) => {
+    if (tooltipInstance?.contains(event.target)) {
+      return;
+    }
+    const points = pointsAtPointer(event.clientX, event.clientY);
+    focusSource = "pointer";
+    const point = points[0] ?? null;
+    let pinChanged = false;
+    if (tooltipIsSticky()) {
+      if (pinnedKey) {
+        pinnedKey = null;
+        pinChanged = true;
+      } else if (point) {
+        pinnedKey = point.key;
+        pinChanged = true;
+      }
+    }
+    updateFocus(points, pinChanged);
+    options.onSelect?.(point);
+  };
+  const handleKeyDown = (event) => {
+    if (options.definition.keyboard === false || !scene.points.length) return;
+    if (event.key === "Escape" && pinnedKey) {
+      event.preventDefault();
+      dismissTooltip();
+      return;
+    }
+    if (event.key === "Enter" || event.key === " ") {
+      if (!focusedPoint) return;
+      event.preventDefault();
+      if (tooltipIsSticky()) {
+        pinnedKey = pinnedKey ? null : focusedPoint.key;
+        paintFocus(focusedPoint, focusPointsForPoint(focusedPoint));
+      }
+      options.onSelect?.(focusedPoint);
+      return;
+    }
+    const focus = resolveFocusStrategy(options.definition.focus);
+    const point = focus ? pointFromNavigationOrder(
+      focus.navigation(scene.points),
+      focusedPoint,
+      event.key
+    ) : pointFromSceneOrder(scene.points, focusedPoint, event.key);
+    if (point === void 0) return;
+    event.preventDefault();
+    pointerPosition = null;
+    focusSource = "keyboard";
+    updateFocus(point ? focusPointsForPoint(point) : []);
+  };
+  const handleFocus = (event) => {
+    if (event.target === surface?.element && suppressNextSurfaceFocus) {
+      suppressNextSurfaceFocus = false;
+      return;
+    }
+    if (options.definition.keyboard !== false && event.target === surface?.element && !focusedPoint) {
+      const focus = resolveFocusStrategy(options.definition.focus);
+      const point = focus ? focus.navigation(scene.points)[0] : pointFromSceneOrder(scene.points, null, "Home");
+      pointerPosition = null;
+      focusSource = "keyboard";
+      updateFocus(point ? focusPointsForPoint(point) : []);
+    }
+  };
+  container.addEventListener("pointermove", handlePointerMove);
+  container.addEventListener("pointercancel", clearTransientFocus);
+  container.addEventListener("mouseleave", clearTransientFocus);
+  container.addEventListener("click", handleClick);
+  container.addEventListener("keydown", handleKeyDown);
+  container.addEventListener("focusin", handleFocus);
+  container.addEventListener("focusout", clearTransientFocus);
+  fontSet?.addEventListener?.("loadingdone", handleFontLoad);
+  render();
+  configureObserver();
+  return {
+    update(nextOptions) {
+      if (destroyed) return;
+      const fontChanged = nextOptions.measureText === void 0 && domText.refresh();
+      const definitionChanged = options.definition !== nextOptions.definition;
+      const sizeChanged = options.height !== nextOptions.height || options.aspectRatio !== nextOptions.aspectRatio || options.width !== nextOptions.width || options.initialWidth !== nextOptions.initialWidth;
+      const layoutChanged = options.idPrefix !== nextOptions.idPrefix || options.renderer !== nextOptions.renderer || options.measureText !== nextOptions.measureText || fontChanged;
+      const needsRender = definitionChanged || sizeChanged || options.ariaLabel !== nextOptions.ariaLabel || options.ariaDescription !== nextOptions.ariaDescription || options.className !== nextOptions.className || options.tabIndex !== nextOptions.tabIndex || options.idPrefix !== nextOptions.idPrefix || options.renderer !== nextOptions.renderer || options.measureText !== nextOptions.measureText || fontChanged;
+      const observerChanged = options.width !== nextOptions.width;
+      options = nextOptions;
+      syncTooltip();
+      if (!tooltipIsSticky()) pinnedKey = null;
+      if (needsRender) {
+        render(
+          false,
+          layoutChanged ? "layout" : sizeChanged ? "resize" : "update"
+        );
+      } else {
+        if (focusedPoint) {
+          paintFocus(focusedPoint, focusPointsForPoint(focusedPoint));
+        }
+      }
+      if (observerChanged) configureObserver();
+    },
+    getScene: () => scene,
+    destroy() {
+      if (destroyed) return;
+      destroyed = true;
+      observer?.disconnect();
+      fontSet?.removeEventListener?.("loadingdone", handleFontLoad);
+      if (renderFrame !== void 0) {
+        view?.cancelAnimationFrame?.(renderFrame);
+      }
+      destroyTooltip();
+      surface?.destroy();
+      runtime.destroy();
+      container.removeEventListener("pointermove", handlePointerMove);
+      container.removeEventListener("pointercancel", clearTransientFocus);
+      container.removeEventListener("mouseleave", clearTransientFocus);
+      container.removeEventListener("click", handleClick);
+      container.removeEventListener("keydown", handleKeyDown);
+      container.removeEventListener("focusin", handleFocus);
+      container.removeEventListener("focusout", clearTransientFocus);
+      container.replaceChildren();
+      if (ownsPosition && container.style.position === "relative") {
+        container.style.position = previousPosition;
+      }
+    }
+  };
+  function createScene() {
+    const width = currentWidth() ?? options.initialWidth ?? 640;
+    return runtime.render(
+      options.definition,
+      {
+        width,
+        height: options.height ?? (isPositiveFiniteNumber(options.aspectRatio) ? width / options.aspectRatio : 320)
+      },
+      { measureText: options.measureText ?? domText.measureText }
+    );
+  }
+  function resolvePointerFocus(x, y, maxDistance) {
+    const points = interactionPoints();
+    const focus = resolveFocusStrategy(options.definition.focus);
+    if (focus) {
+      return focus.resolve(points, x, y, maxDistance);
+    }
+    const point = points !== interactionScene.points ? nearestPoint(points, x, y, maxDistance) : spatialIndex && interactionScene === scene ? spatialIndex.findNearest(x, y, maxDistance) : findNearestPoint(interactionScene, x, y, maxDistance);
+    return point ? [point] : [];
+  }
+  function interactionPoints() {
+    return surface?.getPresentationPoints?.() ?? interactionScene.points;
+  }
+  function focusPointsForPoint(point) {
+    return resolveFocusStrategy(options.definition.focus)?.group(
+      interactionPoints(),
+      point
+    ) ?? [point];
+  }
+  function paintTooltip(point, points) {
+    const input = resolveTooltipInput(options.definition.tooltip);
+    if (!input || !point || !surface) {
+      tooltipInstance?.hide();
+      return;
+    }
+    if (tooltipExtension !== input.extension || !tooltipInstance) {
+      destroyTooltip();
+      tooltipExtension = input.extension;
+      tooltipInstance = input.extension.create({
+        container,
+        dismiss: dismissTooltip,
+        bodyChange: () => options.onTooltipBodyChange
+      });
+    }
+    const instance = tooltipInstance;
+    instance.update(input.options);
+    instance.paint({
+      point,
+      points,
+      scene,
+      surface,
+      pointer: pointerPosition,
+      focus: {
+        primary: point,
+        group: points,
+        source: focusSource,
+        pinned: pinnedKey !== null
+      },
+      pinned: pinnedKey !== null
+    });
+  }
+  function syncTooltip() {
+    const input = resolveTooltipInput(options.definition.tooltip);
+    if (!input) {
+      tooltipInstance?.update(emptyTooltipOptions);
+      tooltipInstance?.hide();
+    } else if (input.extension !== tooltipExtension) {
+      destroyTooltip();
+    } else {
+      tooltipInstance?.update(input.options);
+    }
+  }
+  function destroyTooltip() {
+    tooltipInstance?.destroy();
+    tooltipInstance = void 0;
+    tooltipExtension = void 0;
+  }
+  function tooltipIsSticky() {
+    const input = resolveTooltipInput(options.definition.tooltip);
+    return Boolean(input && input.options.sticky !== false);
+  }
+  function tooltipTracksPointer() {
+    const input = resolveTooltipInput(options.definition.tooltip);
+    const anchor = input?.options.anchor;
+    return anchor === "pointer" || typeof anchor === "function" || typeof anchor === "object" && (anchor.x === "pointer" || anchor.y === "pointer");
+  }
+}
+const emptyTooltipOptions = {};
+function resolveTooltipInput(input) {
+  if (!input) return null;
+  return "create" in input ? {
+    extension: input,
+    options: emptyTooltipOptions
+  } : {
+    extension: input.use,
+    options: input
+  };
+}
+function samePointIdentity(left, right) {
+  return left === right || left !== null && right !== null && left.key === right.key && left.markId === right.markId && left.datumIndex === right.datumIndex;
+}
+function restoreFocusedPoint(points, previous) {
+  const matches = points.filter((point) => point.key === previous.key);
+  if (matches.length < 2) return matches[0] ?? null;
+  const datumType = typeof previous.datum;
+  const hasReferenceIdentity = previous.datum !== null && (datumType === "object" || datumType === "function");
+  if (hasReferenceIdentity) {
+    const sameDatum = matches.find((point) => point.datum === previous.datum);
+    if (sameDatum) return sameDatum;
+  }
+  return matches.find(
+    (point) => point.markId === previous.markId && Object.is(point.group, previous.group) && chartValueEqual(point.xValue, previous.xValue) && chartValueEqual(point.yValue, previous.yValue)
+  ) ?? matches.find(
+    (point) => point.markId === previous.markId && point.datumIndex === previous.datumIndex
+  ) ?? matches[0] ?? null;
+}
+function chartValueEqual(left, right) {
+  return left instanceof Date && right instanceof Date ? left.getTime() === right.getTime() : Object.is(left, right);
+}
+function isPositiveFiniteNumber(value) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+function resolveFocusStrategy(focus) {
+  if (typeof focus !== "string") return focus;
+  switch (focus) {
+    case "nearest-x":
+      return focusNearestX;
+    case "nearest-y":
+      return focusNearestY;
+    case "group-x":
+      return focusX;
+    case "group-y":
+      return focusY;
+    case "nearest":
+      return void 0;
+  }
+}
+function resolveAnimation(animation, container, reason) {
+  const configured = animation === true ? {} : animation || void 0;
+  if (!configured) return void 0;
+  if (reason === "layout") return void 0;
+  if (reason === "resize" && configured.resize !== true) return void 0;
+  if ((configured.respectReducedMotion ?? true) && container.ownerDocument.defaultView?.matchMedia?.(
+    "(prefers-reduced-motion: reduce)"
+  ).matches) {
+    return void 0;
+  }
+  const { resize: _resize, ...resolved } = configured;
+  return resolved;
+}
+function pointFromNavigationOrder(points, current, key) {
+  const currentIndex = current ? points.findIndex((point) => samePointIdentity(point, current)) : -1;
+  let nextIndex;
+  switch (key) {
+    case "ArrowRight":
+    case "ArrowDown":
+      nextIndex = Math.min(points.length - 1, currentIndex + 1);
+      break;
+    case "ArrowLeft":
+    case "ArrowUp":
+      nextIndex = Math.max(0, currentIndex < 0 ? 0 : currentIndex - 1);
+      break;
+    case "Home":
+      nextIndex = 0;
+      break;
+    case "End":
+      nextIndex = points.length - 1;
+      break;
+    default:
+      return void 0;
+  }
+  return points[nextIndex] ?? null;
+}
+function pointFromSceneOrder(points, current, key) {
+  const direction = key === "ArrowRight" || key === "ArrowDown" ? 1 : key === "ArrowLeft" || key === "ArrowUp" ? -1 : key === "Home" ? 0 : key === "End" ? 2 : void 0;
+  if (direction === void 0) return void 0;
+  if (!points.length) return null;
+  const currentIndex = current ? points.findIndex((point) => samePointIdentity(point, current)) : -1;
+  if (!current || currentIndex < 0 || direction === 0 || direction === 2) {
+    return navigationExtreme(points, direction === 2);
+  }
+  let candidate = null;
+  let candidateIndex = -1;
+  for (let index = 0; index < points.length; index += 1) {
+    const point = points[index];
+    if (!point) continue;
+    const relative = compareNavigationPoints(
+      point,
+      index,
+      current,
+      currentIndex
+    );
+    if (direction > 0 && relative <= 0 || direction < 0 && relative >= 0) {
+      continue;
+    }
+    if (!candidate || direction * compareNavigationPoints(point, index, candidate, candidateIndex) < 0) {
+      candidate = point;
+      candidateIndex = index;
+    }
+  }
+  return candidate ?? current;
+}
+function navigationExtreme(points, maximum) {
+  let candidate = points[0] ?? null;
+  let candidateIndex = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    const point = points[index];
+    if (!point || !candidate) continue;
+    const comparison = compareNavigationPoints(
+      point,
+      index,
+      candidate,
+      candidateIndex
+    );
+    if (maximum && comparison > 0 || !maximum && comparison < 0) {
+      candidate = point;
+      candidateIndex = index;
+    }
+  }
+  return candidate;
+}
+function compareNavigationPoints(left, leftIndex, right, rightIndex) {
+  return left.x - right.x || left.y - right.y || leftIndex - rightIndex;
+}
+export {
+  mountChartRenderer
+};

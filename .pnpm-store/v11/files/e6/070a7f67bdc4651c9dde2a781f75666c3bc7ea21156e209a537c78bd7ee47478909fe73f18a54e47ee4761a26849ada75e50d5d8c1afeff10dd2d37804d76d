@@ -1,0 +1,19 @@
+import type { Channel, ChartKey, ChartMark, ChartMarkMotionOptions, ChartMarkState, ChartDotStateStyle, ChartNumericScale, ChartValue, OptionChannelOutput } from './types.js';
+export interface DotOptions<TDatum> extends ChartMarkMotionOptions<TDatum> {
+    id?: string;
+    x?: Channel<TDatum, ChartValue | null | undefined>;
+    y?: Channel<TDatum, ChartValue | null | undefined>;
+    z?: Channel<TDatum, ChartKey | null | undefined>;
+    color?: Channel<TDatum, ChartKey | null | undefined>;
+    key?: Channel<TDatum, ChartKey>;
+    r?: number | Channel<TDatum, number | null | undefined>;
+    rScale?: ChartNumericScale;
+    fill?: string;
+    fillOpacity?: number;
+    stroke?: string;
+    strokeOpacity?: number;
+    strokeWidth?: number;
+    states?: readonly ChartMarkState<TDatum, ChartDotStateStyle<TDatum>>[];
+}
+export declare function dot<TDatum>(source: Iterable<TDatum>): ChartMark<TDatum, number, number>;
+export declare function dot<TDatum, const TOptions extends DotOptions<NoInfer<TDatum>> | undefined>(source: Iterable<TDatum>, options: TOptions): ChartMark<TDatum, OptionChannelOutput<TDatum, TOptions, 'x', number>, OptionChannelOutput<TDatum, TOptions, 'y', number>>;

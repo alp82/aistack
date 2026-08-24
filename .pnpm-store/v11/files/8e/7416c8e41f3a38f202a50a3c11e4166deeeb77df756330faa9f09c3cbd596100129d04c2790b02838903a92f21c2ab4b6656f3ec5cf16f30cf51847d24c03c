@@ -1,0 +1,23 @@
+import { inferAdditionalFields } from "../../plugins/additional-fields/client.mjs";
+import { adminClient } from "../../plugins/admin/client.mjs";
+import { anonymousClient } from "../../plugins/anonymous/client.mjs";
+import { apiKeyClient } from "../../plugins/api-key/client.mjs";
+import { customSessionClient } from "../../plugins/custom-session/client.mjs";
+import { deviceAuthorizationClient } from "../../plugins/device-authorization/client.mjs";
+import { emailOTPClient } from "../../plugins/email-otp/client.mjs";
+import { genericOAuthClient } from "../../plugins/generic-oauth/client.mjs";
+import { jwtClient } from "../../plugins/jwt/client.mjs";
+import { lastLoginMethodClient } from "../../plugins/last-login-method/client.mjs";
+import { magicLinkClient } from "../../plugins/magic-link/client.mjs";
+import { multiSessionClient } from "../../plugins/multi-session/client.mjs";
+import { oidcClient } from "../../plugins/oidc-provider/client.mjs";
+import { oneTapClient } from "../../plugins/one-tap/client.mjs";
+import { oneTimeTokenClient } from "../../plugins/one-time-token/client.mjs";
+import { clientSideHasPermission, inferOrgAdditionalFields, organizationClient } from "../../plugins/organization/client.mjs";
+import { phoneNumberClient } from "../../plugins/phone-number/client.mjs";
+import { siweClient } from "../../plugins/siwe/client.mjs";
+import { twoFactorClient } from "../../plugins/two-factor/client.mjs";
+import { usernameClient } from "../../plugins/username/client.mjs";
+import { InferServerPlugin } from "./infer-plugin.mjs";
+
+export { InferServerPlugin, adminClient, anonymousClient, apiKeyClient, clientSideHasPermission, customSessionClient, deviceAuthorizationClient, emailOTPClient, genericOAuthClient, inferAdditionalFields, inferOrgAdditionalFields, jwtClient, lastLoginMethodClient, magicLinkClient, multiSessionClient, oidcClient, oneTapClient, oneTimeTokenClient, organizationClient, phoneNumberClient, siweClient, twoFactorClient, usernameClient };

@@ -1,0 +1,26 @@
+import { H3 } from "h3";
+import { runTask } from "../task.mjs";
+import { scheduledTasks, tasks } from "#nitro/virtual/tasks";
+const taskHandler = async (event) => {
+	const name = event.context.params?.name;
+	const body = await event.req.json().catch(() => ({}));
+	const payload = {
+		...Object.fromEntries(event.url.searchParams.entries()),
+		...body.payload ?? body
+	};
+	return await runTask(name, {
+		context: { waitUntil: event.req.waitUntil },
+		payload
+	});
+};
+const app = new H3().get("/_nitro/tasks", async () => {
+	const _tasks = await Promise.all(Object.entries(tasks).map(async ([name, task]) => {
+		const _task = await task.resolve?.();
+		return [name, { description: _task?.meta?.description }];
+	}));
+	return {
+		tasks: Object.fromEntries(_tasks),
+		scheduledTasks
+	};
+}).get("/_nitro/tasks/:name", taskHandler).post("/_nitro/tasks/:name", taskHandler);
+export default app;

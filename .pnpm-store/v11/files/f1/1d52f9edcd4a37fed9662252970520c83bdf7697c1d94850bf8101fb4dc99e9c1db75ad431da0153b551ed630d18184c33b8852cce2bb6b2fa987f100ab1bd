@@ -1,0 +1,155 @@
+import {
+  channelValues,
+  compositeKeyValues,
+  createMark,
+  inferredKeyValues,
+  isChartKey,
+  isChartValue,
+  markStates
+} from "./mark.js";
+import { valueKey } from "./scales.js";
+function rect(source, options) {
+  const data = Array.isArray(source) ? source : Array.from(source);
+  return createMark(({ markIndex }) => {
+    const id = options.id ?? `rect-${markIndex}`;
+    const xValues = channelValues(data, options.x, (_datum, index) => index);
+    const x1Values = channelValues(
+      data,
+      options.x1,
+      (_datum, index) => options.x === void 0 ? index : xValues[index]
+    );
+    const x2Values = channelValues(
+      data,
+      options.x2,
+      (_datum, index) => xValues[index]
+    );
+    const yValues = channelValues(
+      data,
+      options.y,
+      (datum) => typeof datum === "number" ? datum : void 0
+    );
+    const y1Values = channelValues(
+      data,
+      options.y1,
+      (_datum, index) => yValues[index]
+    );
+    const y2Values = channelValues(
+      data,
+      options.y2,
+      (_datum, index) => yValues[index]
+    );
+    const zValues = channelValues(data, options.z, () => null);
+    const colorValues = options.color === void 0 ? zValues : channelValues(data, options.color, () => null);
+    const keys = inferredKeyValues(data, options.key, {
+      groups: zValues,
+      candidates: [compositeKeyValues(x1Values, x2Values, y1Values, y2Values)],
+      markId: id,
+      warningIdentity: options
+    });
+    return {
+      id,
+      states: markStates(data, options.states),
+      channels: {
+        x: {
+          scale: "x",
+          values: [...x1Values, ...x2Values].filter(isChartValue)
+        },
+        y: {
+          scale: "y",
+          values: [...y1Values, ...y2Values].filter(isChartValue)
+        },
+        color: {
+          scale: "color",
+          values: colorValues.filter(isChartKey)
+        }
+      },
+      render: ({ scales, color: resolveColor }) => {
+        const nodes = [];
+        const inset = Math.max(0, options.inset ?? 0.75);
+        data.forEach((datum, datumIndex) => {
+          const xValue = xValues[datumIndex];
+          const x1Value = x1Values[datumIndex];
+          const x2Value = x2Values[datumIndex];
+          const yValue = yValues[datumIndex];
+          const y1Value = y1Values[datumIndex];
+          const y2Value = y2Values[datumIndex];
+          if (!isChartValue(x1Value) || !isChartValue(x2Value) || !isChartValue(y1Value) || !isChartValue(y2Value))
+            return;
+          const x1 = scales.x.map(x1Value);
+          const x2 = scales.x.map(x2Value);
+          const y1 = scales.y.map(y1Value);
+          const y2 = scales.y.map(y2Value);
+          const categoricalWidth = valueKey(x1Value) === valueKey(x2Value) ? scales.x.bandwidth : 0;
+          const categoricalHeight = valueKey(y1Value) === valueKey(y2Value) ? scales.y.bandwidth : 0;
+          const left = categoricalWidth > 0 ? x1 - categoricalWidth / 2 : Math.min(x1, x2);
+          const top = categoricalHeight > 0 ? y1 - categoricalHeight / 2 : Math.min(y1, y2);
+          const width = categoricalWidth || Math.max(0, Math.abs(x2 - x1));
+          const height = categoricalHeight || Math.max(0, Math.abs(y2 - y1));
+          const group = zValues[datumIndex] ?? null;
+          const color = options.fill ?? resolveColor(colorValues[datumIndex] ?? null);
+          const key = `${id}:${valueKey(group)}:${valueKey(keys[datumIndex])}`;
+          const paintedX = left + inset;
+          const paintedY = top + inset;
+          const paintedWidth = Math.max(0, width - inset * 2);
+          const paintedHeight = Math.max(0, height - inset * 2);
+          const pointXValue = isChartValue(xValue) ? xValue : x2Value;
+          const pointYValue = isChartValue(yValue) ? yValue : y2Value;
+          const point = {
+            key,
+            markId: id,
+            group,
+            groupLabel: group == null ? id : String(group),
+            datum,
+            datumIndex,
+            xValue: pointXValue,
+            yValue: pointYValue,
+            x1Value,
+            x2Value,
+            y1Value,
+            y2Value,
+            xInterval: "range",
+            yInterval: "range",
+            x: left + width / 2,
+            y: top + height / 2,
+            color
+          };
+          nodes.push({
+            kind: "rect",
+            key,
+            x: paintedX,
+            y: paintedY,
+            width: paintedWidth,
+            height: paintedHeight,
+            radius: options.radius,
+            inset,
+            interaction: { point },
+            style: {
+              fill: color,
+              fillOpacity: options.fillOpacity,
+              stroke: options.stroke,
+              strokeWidth: options.strokeWidth
+            }
+          });
+        });
+        return {
+          nodes: [
+            {
+              kind: "group",
+              key: id,
+              className: "ts-chart__rect",
+              ariaHidden: true,
+              children: nodes
+            }
+          ]
+        };
+      }
+    };
+  }, options.motion);
+}
+function cell(source, options) {
+  return rect(source, options);
+}
+export {
+  cell,
+  rect
+};

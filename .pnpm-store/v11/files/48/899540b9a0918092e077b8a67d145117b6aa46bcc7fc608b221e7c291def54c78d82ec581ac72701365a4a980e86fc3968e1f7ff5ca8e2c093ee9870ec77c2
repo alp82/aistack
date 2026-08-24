@@ -1,0 +1,1 @@
+{"version":3,"file":"constants.mjs","names":[],"sources":["../../src/utils/constants.ts"],"sourcesContent":["export const DEFAULT_SECRET = \"better-auth-secret-12345678901234567890\";\n"],"mappings":";AAAA,MAAa,iBAAiB"}

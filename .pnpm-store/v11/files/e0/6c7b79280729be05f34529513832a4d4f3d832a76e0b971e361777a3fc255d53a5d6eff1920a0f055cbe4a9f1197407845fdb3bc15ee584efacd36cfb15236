@@ -1,0 +1,23 @@
+export declare function Copier(): import("solid-js").JSX.Element;
+export declare function List(): import("solid-js").JSX.Element;
+export declare function PageSearch(): import("solid-js").JSX.Element;
+export declare function Cogs(): import("solid-js").JSX.Element;
+export declare function SettingsCog(): import("solid-js").JSX.Element;
+export declare function Keyboard(): import("solid-js").JSX.Element;
+export declare function GeoTag(): import("solid-js").JSX.Element;
+export declare function SocialBubble(): import("solid-js").JSX.Element;
+export declare function Link(): import("solid-js").JSX.Element;
+export declare function X(): import("solid-js").JSX.Element;
+export declare function PackageIcon(): import("solid-js").JSX.Element;
+export declare function CheckCircleIcon(): import("solid-js").JSX.Element;
+export declare function XCircleIcon(): import("solid-js").JSX.Element;
+export declare function ChevronDownIcon(): import("solid-js").JSX.Element;
+export declare function SearchIcon(): import("solid-js").JSX.Element;
+export declare function ExternalLinkIcon(): import("solid-js").JSX.Element;
+export declare function SettingsIcon(): import("solid-js").JSX.Element;
+export declare function CloseIcon(): import("solid-js").JSX.Element;
+export declare function PiP(): import("solid-js").JSX.Element;
+export declare function CopiedCopier(props: {
+    theme: 'light' | 'dark';
+}): import("solid-js").JSX.Element;
+export declare function ErrorCopier(): import("solid-js").JSX.Element;

@@ -1,0 +1,2 @@
+import type { ChartScene, RenderChartSvgOptions } from './types.js';
+export declare function renderChartSvgWithResources(scene: ChartScene, options: RenderChartSvgOptions): string;

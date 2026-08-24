@@ -1,0 +1,72 @@
+{
+  "name": "@tanstack/devtools-vite",
+  "version": "0.3.12",
+  "description": "TanStack Vite plugin used to enhance the core devtools with additional functionalities",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TanStack/devtools.git",
+    "directory": "packages/devtools"
+  },
+  "homepage": "https://tanstack.com/devtools",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "devtools"
+  ],
+  "type": "module",
+  "types": "dist/esm//index.d.ts",
+  "module": "dist/esm/index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist/",
+    "src"
+  ],
+  "peerDependencies": {
+    "vite": "^6.0.0 || ^7.0.0"
+  },
+  "dependencies": {
+    "@babel/core": "^7.28.4",
+    "@babel/generator": "^7.28.3",
+    "@babel/parser": "^7.28.4",
+    "@babel/traverse": "^7.28.4",
+    "@babel/types": "^7.28.4",
+    "chalk": "^5.6.2",
+    "launch-editor": "^2.11.1",
+    "picomatch": "^4.0.3",
+    "@tanstack/devtools-client": "0.0.5",
+    "@tanstack/devtools-event-bus": "0.3.3"
+  },
+  "devDependencies": {
+    "@types/babel__core": "^7.20.5",
+    "@types/babel__generator": "^7.27.0",
+    "@types/babel__traverse": "^7.28.0",
+    "@types/picomatch": "^4.0.2",
+    "happy-dom": "^18.0.1"
+  },
+  "scripts": {
+    "clean": "premove ./build ./dist",
+    "lint:fix": "eslint ./src --fix",
+    "test:eslint": "eslint ./src",
+    "test:lib": "vitest",
+    "test:lib:dev": "pnpm test:lib --watch",
+    "test:types": "tsc",
+    "test:build": "publint --strict",
+    "build": "vite build"
+  }
+}

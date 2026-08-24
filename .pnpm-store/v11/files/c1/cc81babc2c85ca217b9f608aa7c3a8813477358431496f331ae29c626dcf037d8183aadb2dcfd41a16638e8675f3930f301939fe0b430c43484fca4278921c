@@ -1,0 +1,270 @@
+{
+  "name": "@tanstack/charts",
+  "version": "0.6.4",
+  "private": false,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TanStack/charts.git",
+    "directory": "packages/charts-core"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "docs",
+    "LICENSE",
+    "README.md",
+    "llms.txt"
+  ],
+  "dependencies": {
+    "@types/d3-geo": "^3.1.0",
+    "@types/d3-shape": "^3.1.8",
+    "d3-array": "3.2.4",
+    "d3-geo": "3.1.1",
+    "d3-shape": "3.2.0"
+  },
+  "devDependencies": {
+    "@types/d3-array": "^3.2.2",
+    "@types/d3-scale": "^4.0.9",
+    "d3-scale": "4.0.2"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./adapter": {
+      "types": "./dist/adapter.d.ts",
+      "import": "./dist/adapter.js"
+    },
+    "./adapter/renderer": {
+      "types": "./dist/adapter-renderer.d.ts",
+      "import": "./dist/adapter-renderer.js"
+    },
+    "./area": {
+      "types": "./dist/area.d.ts",
+      "import": "./dist/area.js"
+    },
+    "./area-x": {
+      "types": "./dist/area-x.d.ts",
+      "import": "./dist/area-x.js"
+    },
+    "./arrow": {
+      "types": "./dist/arrow.d.ts",
+      "import": "./dist/arrow.js"
+    },
+    "./bar": {
+      "types": "./dist/bar.d.ts",
+      "import": "./dist/bar.js"
+    },
+    "./band": {
+      "types": "./dist/band.d.ts",
+      "import": "./dist/band.js"
+    },
+    "./canvas": {
+      "types": "./dist/canvas.d.ts",
+      "import": "./dist/canvas.js"
+    },
+    "./d3/area-x": {
+      "types": "./dist/d3-area-x.d.ts",
+      "import": "./dist/d3-area-x.js"
+    },
+    "./d3/shape": {
+      "types": "./dist/d3-shape.d.ts",
+      "import": "./dist/d3-shape.js"
+    },
+    "./dom": {
+      "types": "./dist/dom.d.ts",
+      "import": "./dist/dom.js"
+    },
+    "./dot": {
+      "types": "./dist/dot.d.ts",
+      "import": "./dist/dot.js"
+    },
+    "./export": {
+      "types": "./dist/export.d.ts",
+      "import": "./dist/export.js"
+    },
+    "./facet": {
+      "types": "./dist/facet.d.ts",
+      "import": "./dist/facet.js"
+    },
+    "./focus": {
+      "types": "./dist/focus.d.ts",
+      "import": "./dist/focus.js"
+    },
+    "./focus/mark": {
+      "types": "./dist/focus-mark.d.ts",
+      "import": "./dist/focus-mark.js"
+    },
+    "./focus/disabled": {
+      "types": "./dist/focus-disabled.d.ts",
+      "import": "./dist/focus-disabled.js"
+    },
+    "./frame": {
+      "types": "./dist/frame.d.ts",
+      "import": "./dist/frame.js"
+    },
+    "./group": {
+      "types": "./dist/group.d.ts",
+      "import": "./dist/group.js"
+    },
+    "./geo": {
+      "types": "./dist/geo.d.ts",
+      "import": "./dist/geo.js"
+    },
+    "./hexagon": {
+      "types": "./dist/hexagon.d.ts",
+      "import": "./dist/hexagon.js"
+    },
+    "./legend": {
+      "types": "./dist/legend.d.ts",
+      "import": "./dist/legend.js"
+    },
+    "./line": {
+      "types": "./dist/line.d.ts",
+      "import": "./dist/line.js"
+    },
+    "./link": {
+      "types": "./dist/link.d.ts",
+      "import": "./dist/link.js"
+    },
+    "./motion": {
+      "types": "./dist/motion.d.ts",
+      "import": "./dist/motion.js"
+    },
+    "./spring": {
+      "types": "./dist/spring.d.ts",
+      "import": "./dist/spring.js"
+    },
+    "./mark/scale-values": {
+      "types": "./dist/mark-with-scale-values.d.ts",
+      "import": "./dist/mark-with-scale-values.js"
+    },
+    "./polar": {
+      "types": "./dist/polar.d.ts",
+      "import": "./dist/polar.js"
+    },
+    "./universal": {
+      "types": "./dist/universal.d.ts",
+      "import": "./dist/universal.js"
+    },
+    "./reconcile": {
+      "types": "./dist/reconcile.d.ts",
+      "import": "./dist/reconcile.js"
+    },
+    "./rect": {
+      "types": "./dist/rect.d.ts",
+      "import": "./dist/rect.js"
+    },
+    "./renderer": {
+      "types": "./dist/renderer.d.ts",
+      "import": "./dist/renderer.js"
+    },
+    "./rule": {
+      "types": "./dist/rule.d.ts",
+      "import": "./dist/rule.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "import": "./dist/runtime.js"
+    },
+    "./scene": {
+      "types": "./dist/scene.d.ts",
+      "import": "./dist/scene.js"
+    },
+    "./svg": {
+      "types": "./dist/svg.d.ts",
+      "import": "./dist/svg.js"
+    },
+    "./svg/renderer": {
+      "types": "./dist/svg-surface.d.ts",
+      "import": "./dist/svg-surface.js"
+    },
+    "./svg/resources": {
+      "types": "./dist/svg-resources.d.ts",
+      "import": "./dist/svg-resources.js"
+    },
+    "./stack": {
+      "types": "./dist/stack.d.ts",
+      "import": "./dist/stack.js"
+    },
+    "./transform": {
+      "types": "./dist/transform.d.ts",
+      "import": "./dist/transform.js"
+    },
+    "./transform/bin": {
+      "types": "./dist/transform-bin.d.ts",
+      "import": "./dist/transform-bin.js"
+    },
+    "./transform/bin-time": {
+      "types": "./dist/transform-bin-time.d.ts",
+      "import": "./dist/transform-bin-time.js"
+    },
+    "./transform/bin-xy": {
+      "types": "./dist/transform-bin-xy.d.ts",
+      "import": "./dist/transform-bin-xy.js"
+    },
+    "./transform/cumulative": {
+      "types": "./dist/transform-cumulative.d.ts",
+      "import": "./dist/transform-cumulative.js"
+    },
+    "./transform/group": {
+      "types": "./dist/transform-group.d.ts",
+      "import": "./dist/transform-group.js"
+    },
+    "./transform/normalize": {
+      "types": "./dist/transform-normalize.d.ts",
+      "import": "./dist/transform-normalize.js"
+    },
+    "./transform/rank": {
+      "types": "./dist/transform-rank.d.ts",
+      "import": "./dist/transform-rank.js"
+    },
+    "./transform/reduce": {
+      "types": "./dist/transform-reduce.d.ts",
+      "import": "./dist/transform-reduce.js"
+    },
+    "./transform/select": {
+      "types": "./dist/transform-select.d.ts",
+      "import": "./dist/transform-select.js"
+    },
+    "./transform/stack": {
+      "types": "./dist/transform-stack.d.ts",
+      "import": "./dist/transform-stack.js"
+    },
+    "./transform/window": {
+      "types": "./dist/transform-window.d.ts",
+      "import": "./dist/transform-window.js"
+    },
+    "./text": {
+      "types": "./dist/text.d.ts",
+      "import": "./dist/text.js"
+    },
+    "./tick": {
+      "types": "./dist/tick.d.ts",
+      "import": "./dist/tick.js"
+    },
+    "./tooltip": {
+      "types": "./dist/tooltip.d.ts",
+      "import": "./dist/tooltip.js"
+    },
+    "./tooltip/portal": {
+      "types": "./dist/tooltip-portal.d.ts",
+      "import": "./dist/tooltip-portal.js"
+    },
+    "./types": {
+      "types": "./dist/universal-types.d.ts",
+      "import": "./dist/universal-types.js"
+    },
+    "./vector": {
+      "types": "./dist/vector.d.ts",
+      "import": "./dist/vector.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

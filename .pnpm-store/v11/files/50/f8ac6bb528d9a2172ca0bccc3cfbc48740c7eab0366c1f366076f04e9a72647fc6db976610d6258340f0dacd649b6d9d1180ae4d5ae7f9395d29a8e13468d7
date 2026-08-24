@@ -1,0 +1,13 @@
+# Nightly Builds
+
+You can opt-in to early test latest H3 changes using automated nightly release channel.
+
+If you are directly using `h3` as a dependency in your project:
+
+```json
+{
+  "dependencies": {
+    "h3": "npm:h3-nightly@latest"
+  }
+}
+```

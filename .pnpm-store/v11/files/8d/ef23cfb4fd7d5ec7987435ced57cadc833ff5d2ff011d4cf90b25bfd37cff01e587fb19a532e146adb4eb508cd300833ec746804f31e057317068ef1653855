@@ -1,0 +1,44 @@
+{
+  "name": "@react-email/code-inline",
+  "version": "0.0.6",
+  "description": "Display a predictable inline code HTML element that works on all email clients",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/**"
+  ],
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "react": "^18.0 || ^19.0 || ^19.0.0-rc"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3",
+    "@react-email/render": "2.0.1",
+    "tsconfig": "0.0.0"
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts --format esm,cjs --dts --external react",
+    "build:watch": "tsdown src/index.ts --format esm,cjs --dts --external react --watch",
+    "clean": "rm -rf dist"
+  }
+}

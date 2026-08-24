@@ -1,0 +1,1 @@
+{"version":3,"file":"client.d.ts","sourceRoot":"","sources":["../../src/nextjs/client.tsx"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAE,SAAS,EAAE,MAAM,cAAc,CAAC;AAE9C,OAAO,KAAK,EAAE,iBAAiB,EAAE,MAAM,eAAe,CAAC;AAsCvD,eAAO,MAAM,qBAAqB,GAAI,KAAK,SAAS,iBAAiB,CAAC,OAAO,CAAC,EAC5E,gBAAgB,SAAS,CAAC,KAAK,CAAC,KAC/B,KAAK,CAAC,aAAa,CAAC,GAAG,IAUzB,CAAC"}

@@ -1,0 +1,50 @@
+function quantile(probability) {
+  if (!Number.isFinite(probability) || probability < 0 || probability > 1) {
+    throw new TypeError("quantile: probability must be between zero and one");
+  }
+  return ({ values }) => {
+    if (!values.length) return Number.NaN;
+    const sorted = [...values].sort((left, right) => left - right);
+    const position = (sorted.length - 1) * probability;
+    const lower = Math.floor(position);
+    const upper = Math.ceil(position);
+    const start = sorted[lower];
+    const end = sorted[upper];
+    return start + (end - start) * (position - lower);
+  };
+}
+function median(context) {
+  return quantile(0.5)(context);
+}
+function variance({ values }) {
+  if (values.length < 2) return Number.NaN;
+  const mean = values.reduce((total, value) => total + value, 0) / values.length;
+  return values.reduce((total, value) => total + (value - mean) ** 2, 0) / (values.length - 1);
+}
+function deviation(context) {
+  return Math.sqrt(variance(context));
+}
+function first({ values }) {
+  return values[0] ?? Number.NaN;
+}
+function last({ values }) {
+  return values.at(-1) ?? Number.NaN;
+}
+function difference({
+  values
+}) {
+  return (values.at(-1) ?? Number.NaN) - (values[0] ?? Number.NaN);
+}
+function ratio({ values }) {
+  return (values.at(-1) ?? Number.NaN) / (values[0] ?? Number.NaN);
+}
+export {
+  deviation,
+  difference,
+  first,
+  last,
+  median,
+  quantile,
+  ratio,
+  variance
+};

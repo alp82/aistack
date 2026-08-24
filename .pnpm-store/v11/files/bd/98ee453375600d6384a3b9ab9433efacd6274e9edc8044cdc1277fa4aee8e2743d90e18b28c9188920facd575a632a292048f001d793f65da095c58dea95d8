@@ -1,0 +1,64 @@
+import { mountChart } from "./dom.js";
+import { createChartRuntime } from "./runtime.js";
+import { renderChartSvg } from "./svg.js";
+import { createSvgChartRenderer } from "./svg-surface.js";
+import { resolveChartAdapterLayout } from "./adapter-shared.js";
+import {
+  resolveChartAdapterLayout as resolveChartAdapterLayout2
+} from "./adapter-shared.js";
+function createChartAdapter(initialOptions) {
+  let runtime = createChartRuntime();
+  let options = initialOptions;
+  let host;
+  const getRuntime = () => runtime ??= createChartRuntime();
+  return {
+    prerender() {
+      const layout = resolveChartAdapterLayout(options);
+      const scene = getRuntime().render(
+        options.definition,
+        {
+          width: layout.initialWidth,
+          height: layout.initialHeight
+        },
+        { measureText: options.measureText }
+      );
+      const renderer = createSvgChartRenderer(
+        options.renderSvg ?? renderChartSvg
+      );
+      return renderer.prerender(scene, {
+        ariaLabel: options.ariaLabel,
+        ariaDescription: options.ariaDescription,
+        className: options.className,
+        tabIndex: options.definition.keyboard === false ? -1 : options.tabIndex ?? 0,
+        idPrefix: options.idPrefix
+      });
+    },
+    mount(container) {
+      if (host) {
+        throw new Error("This chart adapter is already mounted.");
+      }
+      host = mountChart(container, options, getRuntime());
+    },
+    update(nextOptions) {
+      options = nextOptions;
+      host?.update(nextOptions);
+    },
+    getScene() {
+      return host?.getScene();
+    },
+    destroy() {
+      if (host) {
+        host.destroy();
+        host = void 0;
+        runtime = void 0;
+      } else if (runtime) {
+        runtime.destroy();
+        runtime = void 0;
+      }
+    }
+  };
+}
+export {
+  createChartAdapter,
+  resolveChartAdapterLayout2 as resolveChartAdapterLayout
+};

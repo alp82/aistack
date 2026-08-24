@@ -1,0 +1,204 @@
+/* tslint:disable */
+/* eslint-disable */
+
+export type AnyNode = { type: string; [key: string]: any };
+
+export type ByteBuf = Uint8Array | ArrayBuffer | Buffer;
+
+export type RenderOptions = {
+    /**
+     * The width of the image. If not provided, the width will be automatically calculated based on the content.
+     */
+    width?: number,
+    /**
+     * The height of the image. If not provided, the height will be automatically calculated based on the content.
+     */
+    height?: number,
+    /**
+     * The format of the image.
+     * @default "png"
+     */
+    format?: "png" | "jpeg" | "webp" | "raw",
+    /**
+     * The quality of JPEG format (0-100).
+     */
+    quality?: number,
+    /**
+     * The resources fetched externally. You should collect the fetch tasks first using `extractResourceUrls` and then pass the resources here.
+     */
+    fetchedResources?: ImageSource[],
+    /**
+     * CSS stylesheets to apply before rendering.
+     */
+    stylesheets?: string[],
+    /**
+     * Whether to draw debug borders.
+     */
+    drawDebugBorder?: boolean,
+    /**
+     * Defines the ratio resolution of the image to the physical pixels.
+     * @default 1.0
+     */
+    devicePixelRatio?: number,
+};
+
+export type RenderAnimationOptions = {
+    width: number,
+    height: number,
+    format?: "webp" | "apng",
+    drawDebugBorder?: boolean,
+};
+
+export type FontDetails = {
+    name?: string,
+    data: ByteBuf,
+    weight?: number,
+    style?: "normal" | "italic" | "oblique",
+};
+
+export type ImageSource = {
+    src: string,
+    data: ByteBuf,
+};
+
+export type Font = FontDetails | ByteBuf;
+
+export type ConstructRendererOptions = {
+    /**
+     * The images that needs to be preloaded into the renderer.
+     */
+    persistentImages?: ImageSource[],
+    /**
+     * The fonts being used.
+     */
+    fonts?: Font[],
+};
+
+export type MeasuredTextRun = {
+    text: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+};
+
+export type MeasuredNode = {
+    width: number,
+    height: number,
+    transform: [number, number, number, number, number, number],
+    children: MeasuredNode[],
+    runs: MeasuredTextRun[],
+};
+
+export type AnimationFrameSource = {
+    node: AnyNode,
+    durationMs: number,
+};
+
+
+
+/**
+ * The main renderer for Takumi image rendering engine.
+ */
+export class Renderer {
+    free(): void;
+    [Symbol.dispose](): void;
+    /**
+     * Clears the renderer's internal image store.
+     */
+    clearImageStore(): void;
+    /**
+     * Loads a font into the renderer.
+     */
+    loadFont(font: Font): void;
+    /**
+     * @deprecated use `loadFont` instead.
+     */
+    loadFontWithInfo(font: Font): void;
+    /**
+     * Measures a node tree and returns layout information.
+     */
+    measure(node: AnyNode, options?: RenderOptions | null): MeasuredNode;
+    /**
+     * Creates a new Renderer instance.
+     */
+    constructor(options?: ConstructRendererOptions | null);
+    /**
+     * Puts a persistent image into the renderer's internal store.
+     */
+    putPersistentImage(data: ImageSource): void;
+    /**
+     * Renders a node tree into an image buffer.
+     */
+    render(node: AnyNode, options?: RenderOptions | null): Uint8Array;
+    /**
+     * Renders an animation sequence into a buffer.
+     */
+    renderAnimation(frames: AnimationFrameSource[], options: RenderAnimationOptions): Uint8Array;
+    /**
+     * Renders a node tree into a data URL.
+     *
+     * `raw` format is not supported for data URL.
+     */
+    renderAsDataUrl(node: AnyNode, options: RenderOptions): string;
+}
+
+/**
+ * Collects the fetch task urls from the node.
+ * @deprecated Use `extractResourceUrls` instead.
+ */
+export function collectNodeFetchTasks(node: AnyNode): string[];
+
+/**
+ * Collects the fetch task urls from the node.
+ */
+export function extractResourceUrls(node: AnyNode): string[];
+
+export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
+
+export interface InitOutput {
+    readonly memory: WebAssembly.Memory;
+    readonly __wbg_renderer_free: (a: number, b: number) => void;
+    readonly collectNodeFetchTasks: (a: any) => [number, number, number, number];
+    readonly renderer_clearImageStore: (a: number) => void;
+    readonly renderer_loadFont: (a: number, b: any) => [number, number];
+    readonly renderer_loadFontWithInfo: (a: number, b: any) => [number, number];
+    readonly renderer_measure: (a: number, b: any, c: number) => [number, number, number];
+    readonly renderer_new: (a: number) => [number, number, number];
+    readonly renderer_putPersistentImage: (a: number, b: any) => [number, number];
+    readonly renderer_render: (a: number, b: any, c: number) => [number, number, number, number];
+    readonly renderer_renderAnimation: (a: number, b: number, c: number, d: any) => [number, number, number, number];
+    readonly renderer_renderAsDataUrl: (a: number, b: any, c: any) => [number, number, number, number];
+    readonly extractResourceUrls: (a: any) => [number, number, number, number];
+    readonly __wbindgen_malloc: (a: number, b: number) => number;
+    readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
+    readonly __wbindgen_exn_store: (a: number) => void;
+    readonly __externref_table_alloc: () => number;
+    readonly __wbindgen_externrefs: WebAssembly.Table;
+    readonly __externref_drop_slice: (a: number, b: number) => void;
+    readonly __wbindgen_free: (a: number, b: number, c: number) => void;
+    readonly __externref_table_dealloc: (a: number) => void;
+    readonly __wbindgen_start: () => void;
+}
+
+export type SyncInitInput = BufferSource | WebAssembly.Module;
+
+/**
+ * Instantiates the given `module`, which can either be bytes or
+ * a precompiled `WebAssembly.Module`.
+ *
+ * @param {{ module: SyncInitInput }} module - Passing `SyncInitInput` directly is deprecated.
+ *
+ * @returns {InitOutput}
+ */
+export function initSync(module: { module: SyncInitInput } | SyncInitInput): InitOutput;
+
+/**
+ * If `module_or_path` is {RequestInfo} or {URL}, makes a request and
+ * for everything else, calls `WebAssembly.instantiate` directly.
+ *
+ * @param {{ module_or_path: InitInput | Promise<InitInput> }} module_or_path - Passing `InitInput` directly is deprecated.
+ *
+ * @returns {Promise<InitOutput>}
+ */
+export default function __wbg_init (module_or_path?: { module_or_path: InitInput | Promise<InitInput> } | InitInput | Promise<InitInput>): Promise<InitOutput>;

@@ -1,0 +1,144 @@
+# Response
+
+> H3 response utilities.
+
+## Event Stream
+
+### `createEventStream(event, opts?)`
+
+Initialize an EventStream instance for creating [server sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
+
+**Example:**
+
+```ts
+import { createEventStream, sendEventStream } from "h3";
+
+app.get("/sse", (event) => {
+  const eventStream = createEventStream(event);
+
+  // Send a message every second
+  const interval = setInterval(async () => {
+    await eventStream.push("Hello world");
+  }, 1000);
+
+  // cleanup the interval and close the stream when the connection is terminated
+  eventStream.onClosed(async () => {
+    console.log("closing SSE...");
+    clearInterval(interval);
+    await eventStream.close();
+  });
+
+  return eventStream.send();
+});
+```
+
+## Sanitize
+
+### `sanitizeStatusCode(statusCode?, defaultStatusCode)`
+
+Make sure the status code is a valid HTTP status code.
+
+### `sanitizeStatusMessage(statusMessage)`
+
+Make sure the status message is safe to use in a response.
+
+Allowed characters: horizontal tabs, spaces or visible ascii characters: [https://www.rfc-editor.org/rfc/rfc7230#section-3.1.2](https://www.rfc-editor.org/rfc/rfc7230#section-3.1.2)
+
+## Serve Static
+
+### `serveStatic(event, options)`
+
+Dynamically serve static assets based on the request path.
+
+## More Response Utils
+
+### `html(first)`
+
+### `iterable(iterable)`
+
+Iterate a source of chunks and send back each chunk in order. Supports mixing async work together with emitting chunks.
+
+Each chunk must be a string or a buffer.
+
+For generator (yielding) functions, the returned value is treated the same as yielded values.
+
+**Example:**
+
+```ts
+return iterable(async function* work() {
+  // Open document body
+  yield "<!DOCTYPE html>\n<html><body><h1>Executing...</h1><ol>\n";
+  // Do work ...
+  for (let i = 0; i < 1000; i++) {
+    await delay(1000);
+    // Report progress
+    yield `<li>Completed job #`;
+    yield i;
+    yield `</li>\n`;
+  }
+  // Close out the report
+  return `</ol></body></html>`;
+});
+async function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+```
+
+### `noContent(status)`
+
+Respond with an empty payload.
+
+**Example:**
+
+```ts
+app.get("/", () => noContent());
+```
+
+### `redirect(location, status, statusText?)`
+
+Send a redirect response to the client.
+
+It adds the `location` header to the response and sets the status code to 302 by default.
+
+In the body, it sends a simple HTML page with a meta refresh tag to redirect the client in case the headers are ignored.
+
+**Example:**
+
+```ts
+app.get("/", () => {
+  return redirect("https://example.com");
+});
+```
+
+**Example:**
+
+```ts
+app.get("/", () => {
+  return redirect("https://example.com", 301); // Permanent redirect
+});
+```
+
+### `redirectBack(event)`
+
+Redirect the client back to the previous page using the `referer` header.
+
+If the `referer` header is missing or is a different origin, it falls back to the provided URL (default `"/"`).
+
+By default, only the **pathname** of the referer is used (query string and hash are stripped) to prevent spoofed referers from carrying unintended parameters. Set `allowQuery: true` to preserve the query string.
+
+**Security:** The `fallback` value MUST be a trusted, hardcoded path — never use user input. Passing user-controlled values (e.g., query params) as `fallback` creates an open redirect vulnerability.
+
+**Example:**
+
+```ts
+app.post("/submit", (event) => {
+  // process form...
+  return redirectBack(event, { fallback: "/form" });
+});
+```
+
+### `writeEarlyHints(event, hints)`
+
+Write `HTTP/1.1 103 Early Hints` to the client.
+
+In runtimes that don't support early hints natively, this function falls back to setting response headers which can be used by CDN.

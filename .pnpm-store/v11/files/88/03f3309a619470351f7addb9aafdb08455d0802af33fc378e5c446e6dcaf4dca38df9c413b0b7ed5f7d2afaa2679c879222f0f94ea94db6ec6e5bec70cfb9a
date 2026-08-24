@@ -1,0 +1,1 @@
+"use strict";const debug=typeof process==`object`&&process.env&&process.env.NODE_DEBUG&&/\bsemver\b/i.test(process.env.NODE_DEBUG)?(...e)=>console.error(`SEMVER`,...e):()=>{};module.exports=debug;

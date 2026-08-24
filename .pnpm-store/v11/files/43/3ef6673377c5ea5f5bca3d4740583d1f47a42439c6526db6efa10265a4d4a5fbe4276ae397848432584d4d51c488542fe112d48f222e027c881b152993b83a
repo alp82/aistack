@@ -1,0 +1,180 @@
+import { geoCentroid, geoPath } from "d3-geo";
+import {
+  channelValues,
+  inferredKeyValues,
+  isChartKey,
+  isNonnegativeFiniteNumber,
+  visualValue
+} from "./mark.js";
+import { createMarkWithScaleValues } from "./mark-with-scale-values.js";
+import { resolveNumericScale } from "./scale-input.js";
+import { valueKey } from "./scales.js";
+function geoShape(source, options) {
+  const data = Array.isArray(source) ? source : Array.from(source);
+  return createMarkWithScaleValues(
+    ({ markIndex }) => {
+      const id = options.id ?? `geo-shape-${markIndex}`;
+      const colorValues = channelValues(data, options.color, () => null);
+      const keys = inferredKeyValues(data, options.key);
+      const rawRadii = typeof options.r === "number" ? data.map(() => options.r) : channelValues(data, options.r, () => 4.5);
+      const radiusMapper = resolveNumericScale(options.rScale, rawRadii);
+      const radii = radiusMapper ? rawRadii.map(
+        (value) => isNonnegativeFiniteNumber(value) ? radiusMapper(value) : Number.NaN
+      ) : rawRadii;
+      return {
+        id,
+        channels: {
+          color: {
+            scale: "color",
+            values: colorValues.filter(isChartKey)
+          }
+        },
+        render: ({ chart, color: resolveColor }) => {
+          const projection = resolveGeoProjection(
+            options.projection,
+            chart,
+            data
+          );
+          const path = geoPath(projection);
+          const nodes = [];
+          const points = [];
+          data.forEach((datum, datumIndex) => {
+            const radius = radii[datumIndex];
+            if (!isNonnegativeFiniteNumber(radius)) return;
+            path.pointRadius(radius);
+            const pathData = path(datum);
+            if (typeof pathData !== "string" || pathData.length === 0) return;
+            const group = colorValues[datumIndex] ?? null;
+            const color = resolveColor(group);
+            const paint = geoPaint(datum);
+            const fill = visualValue(
+              options.fill,
+              datum,
+              datumIndex,
+              data,
+              paint & 2 ? color : "none"
+            );
+            const stroke = visualValue(
+              options.stroke,
+              datum,
+              datumIndex,
+              data,
+              paint & 1 ? color : "none"
+            );
+            const key = `${id}:${valueKey(keys[datumIndex])}`;
+            nodes.push({
+              kind: "area",
+              key,
+              points: [],
+              path: pathData,
+              style: {
+                fill,
+                fillOpacity: options.fillOpacity,
+                stroke,
+                strokeOpacity: options.strokeOpacity,
+                strokeWidth: options.strokeWidth,
+                strokeDasharray: options.strokeDasharray,
+                opacity: options.opacity,
+                lineJoin: "round"
+              }
+            });
+            const [x, y] = path.centroid(datum);
+            const [longitude, latitude] = options.anchor?.(datum, datumIndex, data) ?? geoCentroid(datum);
+            if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(longitude) || !Number.isFinite(latitude)) {
+              return;
+            }
+            points.push({
+              key,
+              markId: id,
+              group: null,
+              groupLabel: id,
+              datum,
+              datumIndex,
+              xValue: longitude,
+              yValue: latitude,
+              x,
+              y,
+              color: paint === 1 ? stroke : fill
+            });
+          });
+          return {
+            nodes: [
+              {
+                kind: "group",
+                key: id,
+                className: options.className ? `ts-chart__geo ${options.className}` : "ts-chart__geo",
+                ariaHidden: true,
+                children: nodes
+              }
+            ],
+            points
+          };
+        }
+      };
+    },
+    options.motion
+  );
+}
+const sphere = { type: "Sphere" };
+function resolveGeoProjection(input, chart, data) {
+  if (typeof input === "function") return input({ chart, data });
+  const projection = input.type();
+  const fit = input.fit === "sphere" ? sphere : input.fit === "data" ? geoDataGeometry(data) : input.fit;
+  if (!fit) return projection;
+  const inset = input.inset !== void 0 && Number.isFinite(input.inset) ? Math.min(
+    Math.max(0, input.inset),
+    Math.max(0, (Math.min(chart.width, chart.height) - 1) / 2)
+  ) : 0;
+  return projection.fitExtent(
+    [
+      [chart.x + inset, chart.y + inset],
+      [chart.x + chart.width - inset, chart.y + chart.height - inset]
+    ],
+    fit
+  );
+}
+function geoDataGeometry(data) {
+  const geometries = [];
+  for (const datum of data) collectGeometries(datum, geometries);
+  if (geometries.length === 0) return null;
+  if (geometries.length === 1) return geometries[0] ?? null;
+  return { type: "GeometryCollection", geometries };
+}
+function collectGeometries(object, output) {
+  if ("geometry" in object) {
+    if (object.geometry) collectGeometries(object.geometry, output);
+    return;
+  }
+  if ("features" in object) {
+    for (const feature of object.features) collectGeometries(feature, output);
+    return;
+  }
+  if ("geometries" in object) {
+    for (const geometry of object.geometries) {
+      collectGeometries(geometry, output);
+    }
+    return;
+  }
+  output.push(object);
+}
+function geoPaint(object) {
+  if ("geometry" in object) {
+    return object.geometry ? geoPaint(object.geometry) : 0;
+  }
+  if ("features" in object) {
+    return object.features.reduce(
+      (paint, feature) => paint | geoPaint(feature),
+      0
+    );
+  }
+  if ("geometries" in object) {
+    return object.geometries.reduce(
+      (paint, geometry) => paint | geoPaint(geometry),
+      0
+    );
+  }
+  return object.type === "LineString" || object.type === "MultiLineString" ? 1 : 2;
+}
+export {
+  geoShape
+};

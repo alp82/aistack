@@ -1,0 +1,85 @@
+import { EventEmitter } from "node:events";
+import * as stream from "node:stream";
+import { Duplex } from "node:stream";
+import http, { IncomingMessage } from "node:http";
+import http2 from "node:http2";
+import { Socket } from "node:net";
+interface ProxyTargetDetailed {
+  host?: string;
+  port?: number | string;
+  protocol?: string;
+  hostname?: string;
+  socketPath?: string;
+  key?: string;
+  passphrase?: string;
+  pfx?: Buffer | string;
+  cert?: string;
+  ca?: string;
+  ciphers?: string;
+  secureProtocol?: string;
+}
+type ProxyTarget = string | URL | ProxyTargetDetailed;
+/** Resolved proxy address — either TCP (host + port) or Unix socket. */
+interface ProxyServerOptions {
+  /** URL string to be parsed. */
+  target?: ProxyTarget;
+  /** URL string to be parsed. */
+  forward?: ProxyTarget;
+  /** Object to be passed to http(s).request. */
+  agent?: any;
+  /** Enable HTTP/2 listener, default is `false` */
+  http2?: boolean;
+  /** Object to be passed to https.createServer()
+   * or http2.createSecureServer() if the `http2` option is enabled
+   */
+  ssl?: any;
+  /** If you want to proxy websockets. */
+  ws?: boolean;
+  /** Adds x- forward headers. */
+  xfwd?: boolean;
+  /** Verify SSL certificate. */
+  secure?: boolean;
+  /** Explicitly specify if we are proxying to another proxy. */
+  toProxy?: boolean;
+  /** Specify whether you want to prepend the target's path to the proxy path. */
+  prependPath?: boolean;
+  /** Specify whether you want to ignore the proxy path of the incoming request. */
+  ignorePath?: boolean;
+  /** Local interface string to bind for outgoing connections. */
+  localAddress?: string;
+  /** Changes the origin of the host header to the target URL. */
+  changeOrigin?: boolean;
+  /** specify whether you want to keep letter case of response header key */
+  preserveHeaderKeyCase?: boolean;
+  /** Basic authentication i.e. 'user:password' to compute an Authorization header. */
+  auth?: string;
+  /** Rewrites the location hostname on (301 / 302 / 307 / 308) redirects, Default: null. */
+  hostRewrite?: string;
+  /** Rewrites the location host/ port on (301 / 302 / 307 / 308) redirects based on requested host/ port.Default: false. */
+  autoRewrite?: boolean;
+  /** Rewrites the location protocol on (301 / 302 / 307 / 308) redirects to 'http' or 'https'.Default: null. */
+  protocolRewrite?: string;
+  /** Rewrites domain of set-cookie headers. */
+  cookieDomainRewrite?: false | string | {
+    [oldDomain: string]: string;
+  };
+  /** Rewrites path of set-cookie headers. Default: false */
+  cookiePathRewrite?: false | string | {
+    [oldPath: string]: string;
+  };
+  /** Object with extra headers to be added to target requests. */
+  headers?: {
+    [header: string]: string;
+  };
+  /** Timeout (in milliseconds) when proxy receives no response from target. Default: 120000 (2 minutes) */
+  proxyTimeout?: number;
+  /** Timeout (in milliseconds) for incoming requests */
+  timeout?: number;
+  /** If set to true, none of the webOutgoing passes are called and it's your responsibility to appropriately return the response by listening and acting on the proxyRes event */
+  selfHandleResponse?: boolean;
+  /** Follow HTTP redirects from target. `true` = max 5 hops; number = custom max. */
+  followRedirects?: boolean | number;
+  /** Buffer */
+  buffer?: stream.Stream;
+}
+export type { ProxyServerOptions };

@@ -1,0 +1,129 @@
+import { DataModelFromSchemaDefinition, FunctionReference, FunctionReturnType, GenericActionCtx, GenericDataModel, GenericMutationCtx, GenericQueryCtx, GenericSchema, OptionalRestArgs, SchemaDefinition, UserIdentity } from "convex/server";
+import { TransactionMetrics } from "./transactionMetrics.js";
+export type TestConvex<SchemaDef extends SchemaDefinition<any, boolean>> = TestConvexForDataModelAndIdentity<DataModelFromSchemaDefinition<SchemaDef>>;
+export type TestConvexForDataModel<DataModel extends GenericDataModel> = {
+    /**
+     * Call a public or internal query, or run an inline query function.
+     *
+     * @param query A {@link FunctionReference} for the query, or an inline
+     *   async function that receives a query context.
+     * @param args  An arguments object for the query. If this is omitted,
+     *   the arguments will be `{}`. Not used for inline functions.
+     * @returns A `Promise` of the query's result.
+     */
+    query: <QueryOrFunc extends FunctionReference<"query", any> | ((ctx: GenericQueryCtx<DataModel>) => Promise<any>)>(queryOrFunc: QueryOrFunc, ...args: QueryOrFunc extends FunctionReference<"query", any> ? OptionalRestArgs<QueryOrFunc> : []) => Promise<QueryOrFunc extends FunctionReference<"query", any> ? FunctionReturnType<QueryOrFunc> : QueryOrFunc extends (ctx: any) => Promise<infer Output> ? Output : never>;
+    /**
+     * Call a public or internal mutation, or run an inline mutation function.
+     *
+     * @param mutation A {@link FunctionReference} for the mutation, or an inline
+     *   async function that receives a mutation context.
+     * @param args  An arguments object for the mutation. If this is omitted,
+     *   the arguments will be `{}`. Not used for inline functions.
+     * @returns A `Promise` of the mutation's result.
+     */
+    mutation: <MutationOrFunc extends FunctionReference<"mutation", any> | ((ctx: GenericMutationCtx<DataModel>) => Promise<any>)>(mutationOrFunc: MutationOrFunc, ...args: MutationOrFunc extends FunctionReference<"mutation", any> ? OptionalRestArgs<MutationOrFunc> : []) => Promise<MutationOrFunc extends FunctionReference<"mutation", any> ? FunctionReturnType<MutationOrFunc> : MutationOrFunc extends (ctx: any) => Promise<infer Output> ? Output : never>;
+    /**
+     * Call a public or internal action, or run an inline action function.
+     *
+     * @param action A {@link FunctionReference} for the action, or an inline
+     *   async function that receives an action context.
+     * @param args  An arguments object for the action. If this is omitted,
+     *   the arguments will be `{}`. Not used for inline functions.
+     * @returns A `Promise` of the action's result.
+     */
+    action: <ActionOrFunc extends FunctionReference<"action", any> | ((ctx: GenericActionCtx<DataModel>) => Promise<any>)>(actionOrFunc: ActionOrFunc, ...args: ActionOrFunc extends FunctionReference<"action", any> ? OptionalRestArgs<ActionOrFunc> : []) => Promise<ActionOrFunc extends FunctionReference<"action", any> ? FunctionReturnType<ActionOrFunc> : ActionOrFunc extends (ctx: any) => Promise<infer Output> ? Output : never>;
+    /**
+     * Read from and write to the mock backend.
+     *
+     * @param func The async function that reads or writes to the mock backend.
+     *   It receives a ctx as its first argument that conforms to
+     *   {@link GenericMutationCtx},
+     *   so it can be passed to functions that expect either context, use file
+     *   storage, etc.
+     * @returns A `Promise` of the function's result.
+     */
+    run: <Output>(func: (ctx: GenericMutationCtx<DataModel> & Pick<GenericActionCtx<DataModel>, "storage">) => Promise<Output>) => Promise<Output>;
+    /**
+     * Call an HTTP action.
+     *
+     * @param path The request URL's path and optional query and fragment.
+     * @param init Standard `fetch` options.
+     */
+    fetch(pathQueryFragment: string, init?: RequestInit): Promise<Response>;
+    /**
+     * Wait for all scheduled functions currently in the "inProgress" state
+     * to either finish successfully or fail.
+     *
+     * Use in combination with `vi.useFakeTimers()` and `vi.runAllTimers()`
+     * to control precisely the execution of scheduled functions.
+     *
+     * Typically:
+     * 1. Use `vi.runAllTimers()` or similar to advance
+     *   time such that a function is scheduled.
+     * 2. Use `finishInProgressScheduledFunctions()` to wait for the function
+     */
+    finishInProgressScheduledFunctions: () => Promise<void>;
+    /**
+     * Wait for all currently scheduled functions and any functions they
+     * schedule to either finish successfully or fail.
+     *
+     * Use in combination with `vi.useFakeTimers()` to test scheduled functions.
+     *
+     * @param advanceTimers Function that advances timers,
+     *   usually `vi.runAllTimers`. This function will be called in a loop
+     *   with `finishInProgressScheduledFunctions()`.
+     */
+    finishAllScheduledFunctions: (advanceTimers: () => void) => Promise<void>;
+};
+export type TestConvexForDataModelAndIdentity<DataModel extends GenericDataModel> = {
+    /**
+     * To test functions which depend on the current authenticated user identity
+     * you can create a version of the `t` accessor with given user identity
+     * attributes.
+     * @param identity A subset of {@link UserIdentity} attributes. If you
+     *   don't provide `issuer`, `subject` or `tokenIdentifier` they are
+     *   generated automatically.
+     */
+    withIdentity(identity: Partial<UserIdentity>): TestConvexForDataModel<DataModel>;
+    registerComponent: (componentPath: string, schema: SchemaDefinition<GenericSchema, boolean>, glob: Record<string, () => Promise<any>>) => void;
+} & TestConvexForDataModel<DataModel>;
+/**
+ * Call this function at the start of each of your tests.
+ *
+ * @param schema The default export from your "schema.ts" file.
+ * @param modules If you have a custom `functions` path
+ *     in convex.json, provide the function modules map by calling
+ *     `import.meta.glob("./**\/*.*s")` from a file at the root of
+ *     your Convex functions directory.
+ * @returns an object which is by convention stored in the `t` variable
+ *   and which provides methods for exercising your Convex functions.
+ */
+export declare function convexTest<Schema extends GenericSchema>(schema?: SchemaDefinition<Schema, boolean>, modules?: Record<string, () => Promise<any>>): TestConvex<SchemaDefinition<Schema, boolean>>;
+/**
+ * Call this function at the start of each of your tests.
+ *
+ * @param options An optional configuration object with:
+ *   - `schema`: The default export from your "schema.ts" file.
+ *   - `modules`: If you have a custom `functions` path
+ *     in convex.json, provide the function modules map by calling
+ *     `import.meta.glob("./**\/*.*s")` from a file at the root of
+ *     your Convex functions directory.
+ *   - `transactionLimits`: Configure per-transaction bandwidth limits.
+ *     - `false` (default): limits are not enforced
+ *     - `true` or `{}`: enforce default Convex limits
+ *     - `{ bytesRead: 1024 }`: override specific limits
+ *
+ * @returns an object which is by convention stored in the `t` variable
+ *   and which provides methods for exercising your Convex functions.
+ *
+ * @example
+ * const t = convexTest({ schema });
+ * const t = convexTest({ schema, modules });
+ */
+export declare function convexTest<Schema extends GenericSchema>(options: {
+    schema?: SchemaDefinition<Schema, boolean>;
+    /** For example `import.meta.glob("./**\/*.*s")` */
+    modules?: Record<string, () => Promise<any>>;
+    transactionLimits?: Partial<TransactionMetrics> | boolean;
+}): TestConvex<SchemaDefinition<Schema, boolean>>;
+//# sourceMappingURL=index.d.ts.map

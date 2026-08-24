@@ -1,0 +1,104 @@
+{
+  "name": "h3",
+  "version": "2.0.1-rc.7",
+  "description": "Minimal H(TTP) framework built for high performance and portability.",
+  "homepage": "https://h3.dev",
+  "repository": "h3js/h3",
+  "license": "MIT",
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "deno": "./dist/_entries/deno.mjs",
+      "bun": "./dist/_entries/bun.mjs",
+      "workerd": "./dist/_entries/cloudflare.mjs",
+      "browser": "./dist/_entries/service-worker.mjs",
+      "node": "./dist/_entries/node.mjs",
+      "default": "./dist/_entries/generic.mjs"
+    },
+    "./deno": "./dist/_entries/deno.mjs",
+    "./bun": "./dist/_entries/bun.mjs",
+    "./cloudflare": "./dist/_entries/cloudflare.mjs",
+    "./service-worker": "./dist/_entries/service-worker.mjs",
+    "./node": "./dist/_entries/node.mjs",
+    "./generic": "./dist/_entries/generic.mjs",
+    "./tracing": "./dist/tracing.mjs"
+  },
+  "types": "./dist/_entries/generic.d.mts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "bench:bun": "bun run ./test/bench/bench.ts",
+    "bench:node": "node --expose-gc --allow-natives-syntax ./test/bench/bench.ts",
+    "build": "obuild",
+    "dev": "vitest",
+    "lint": "eslint --cache . && prettier -c src test examples docs",
+    "lint:fix": "automd && eslint --cache . --fix && prettier -c src test examples docs -w",
+    "prepack": "pnpm build",
+    "play:bun": "bun ./test/fixture/bun.ts",
+    "play:node": "pnpm test/fixture/node.ts",
+    "play:plain": "pnpm test/fixture/plain.ts",
+    "play:web": "pnpm test/fixture/web.ts",
+    "release": "pnpm test && pnpm build && changelogen --release --prerelease --publish && git push --follow-tags",
+    "test": "pnpm lint && pnpm test:types && vitest --run --coverage",
+    "test:types": "tsc --noEmit --skipLibCheck"
+  },
+  "resolutions": {
+    "h3": "link:."
+  },
+  "dependencies": {
+    "rou3": "^0.7.12",
+    "srvx": "^0.10.0"
+  },
+  "devDependencies": {
+    "@happy-dom/global-registrator": "^20.0.11",
+    "@mitata/counters": "^0.0.8",
+    "@types/connect": "^3.4.38",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.0.3",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitest/coverage-v8": "^4.0.16",
+    "automd": "^0.4.2",
+    "changelogen": "^0.6.2",
+    "connect": "^3.7.0",
+    "cookie-es": "^2.0.0",
+    "crossws": "^0.4.1",
+    "elysia": "^1.4.19",
+    "esbuild": "^0.27.2",
+    "eslint": "^9.39.2",
+    "eslint-config-unjs": "^0.5.0",
+    "express": "^5.2.1",
+    "fetchdts": "^0.1.7",
+    "get-port-please": "^3.2.0",
+    "h3-nightly": "^2.0.0-20251212-101841-5405a1b",
+    "happy-dom": "^20.0.11",
+    "hono": "^4.11.3",
+    "magic-string": "^0.30.21",
+    "memoirist": "^0.4.0",
+    "mitata": "^1.0.34",
+    "obuild": "^0.4.9",
+    "oxc-parser": "^0.106.0",
+    "prettier": "^3.7.4",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.0",
+    "vitest": "^4.0.16",
+    "zod": "^4.2.1"
+  },
+  "peerDependencies": {
+    "crossws": "^0.4.1"
+  },
+  "peerDependenciesMeta": {
+    "crossws": {
+      "optional": true
+    }
+  },
+  "packageManager": "pnpm@10.26.2",
+  "engines": {
+    "node": ">=20.11.1"
+  }
+}

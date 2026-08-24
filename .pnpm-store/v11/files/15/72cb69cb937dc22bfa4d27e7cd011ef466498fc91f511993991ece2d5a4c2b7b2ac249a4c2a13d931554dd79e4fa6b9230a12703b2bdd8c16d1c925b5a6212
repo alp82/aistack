@@ -1,0 +1,33 @@
+# Cookie
+
+> H3 cookie utilities.
+
+### `deleteChunkedCookie(event, name, serializeOptions?)`
+
+Remove a set of chunked cookies by name.
+
+### `deleteCookie(event, name, serializeOptions?)`
+
+Remove a cookie by name.
+
+### `getChunkedCookie(event, name)`
+
+Get a chunked cookie value by name. Will join chunks together.
+
+### `getCookie(event, name)`
+
+Get a cookie value by name.
+
+### `getValidatedCookies(event, validate, options?: { onError?: OnValidateError })`
+
+### `parseCookies(event)`
+
+Parse the request to get HTTP Cookie header string and returning an object of all cookie name-value pairs.
+
+### `setChunkedCookie(event, name, value, options?)`
+
+Set a cookie value by name. Chunked cookies will be created as needed.
+
+### `setCookie(event, name, value, options?)`
+
+Set a cookie value by name.

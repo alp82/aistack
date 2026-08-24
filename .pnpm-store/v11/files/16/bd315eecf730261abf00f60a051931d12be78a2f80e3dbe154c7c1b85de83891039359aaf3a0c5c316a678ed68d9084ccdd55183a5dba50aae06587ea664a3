@@ -1,0 +1,124 @@
+{
+  "name": "@react-email/tailwind",
+  "version": "2.0.5",
+  "description": "A React component to wrap emails with Tailwind CSS",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/**"
+  ],
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/resend/react-email.git",
+    "directory": "packages/tailwind"
+  },
+  "keywords": [
+    "react",
+    "email",
+    "tailwind"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0 || ^19.0 || ^19.0.0-rc",
+    "@react-email/body": "0.2.1",
+    "@react-email/button": "0.2.1",
+    "@react-email/code-inline": "0.0.6",
+    "@react-email/code-block": "0.2.1",
+    "@react-email/container": "0.0.16",
+    "@react-email/hr": "0.0.12",
+    "@react-email/img": "0.0.12",
+    "@react-email/preview": "0.0.14",
+    "@react-email/text": "0.1.6",
+    "@react-email/link": "0.0.13",
+    "@react-email/heading": "0.0.16"
+  },
+  "peerDependenciesMeta": {
+    "@react-email/button": {
+      "optional": true
+    },
+    "@react-email/body": {
+      "optional": true
+    },
+    "@react-email/code-block": {
+      "optional": true
+    },
+    "@react-email/code-inline": {
+      "optional": true
+    },
+    "@react-email/container": {
+      "optional": true
+    },
+    "@react-email/heading": {
+      "optional": true
+    },
+    "@react-email/hr": {
+      "optional": true
+    },
+    "@react-email/img": {
+      "optional": true
+    },
+    "@react-email/link": {
+      "optional": true
+    },
+    "@react-email/preview": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@responsive-email/react-email": "0.0.4",
+    "@types/css-tree": "2.3.11",
+    "@types/shelljs": "0.10.0",
+    "@vitejs/plugin-react": "4.4.1",
+    "css-tree": "3.1.0",
+    "react-dom": "^19",
+    "shelljs": "0.10.0",
+    "typescript": "5.8.3",
+    "vite": "6.4.1",
+    "yalc": "1.0.0-pre.53",
+    "@react-email/body": "0.2.1",
+    "@react-email/button": "^0.2.1",
+    "@react-email/code-inline": "0.0.6",
+    "@react-email/code-block": "0.2.1",
+    "@react-email/container": "0.0.16",
+    "@react-email/head": "0.0.13",
+    "@react-email/heading": "0.0.16",
+    "@react-email/hr": "0.0.12",
+    "@react-email/img": "0.0.12",
+    "@react-email/link": "0.0.13",
+    "@react-email/preview": "0.0.14",
+    "@react-email/html": "0.0.12",
+    "@react-email/render": "2.0.4",
+    "@react-email/text": "0.1.6",
+    "tsconfig": "0.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "tailwindcss": "^4.1.18"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "build:watch": "tsdown --watch",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  }
+}

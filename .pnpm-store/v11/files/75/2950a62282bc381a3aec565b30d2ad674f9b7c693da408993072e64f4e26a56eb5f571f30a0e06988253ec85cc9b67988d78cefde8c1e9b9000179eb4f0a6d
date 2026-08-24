@@ -1,0 +1,14 @@
+import type { Channel, ChartKey, ChartMark, ChartMarkMotionOptions, ChartSpec, ChartValue, StaticChartDefinition } from './types.js';
+export type FacetAxes = 'outer' | 'cell';
+export interface FacetOptions<TDatum> extends ChartMarkMotionOptions<TDatum> {
+    id?: string;
+    by: Channel<TDatum, ChartKey>;
+    chart: (data: readonly TDatum[], key: ChartKey) => ChartSpec;
+    columns?: number;
+    minWidth?: number;
+    gap?: number;
+    label?: boolean | ((key: ChartKey) => string);
+    axes?: FacetAxes;
+}
+export declare function facet<TDatum>(source: Iterable<TDatum>, options: FacetOptions<NoInfer<TDatum>>): ChartMark<TDatum, ChartValue, ChartValue, never, never>;
+export declare function facetChart<TDatum>(source: Iterable<TDatum>, options: FacetOptions<NoInfer<TDatum>>): StaticChartDefinition<TDatum>;

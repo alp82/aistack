@@ -1,0 +1,42 @@
+import { jsx } from "react/jsx-runtime";
+import * as React from "react";
+import { renderChartSvg } from "@tanstack/charts/svg";
+import { createSvgChartRenderer } from "@tanstack/charts/svg/renderer";
+import {
+  RendererChartImplementation
+} from "./RendererChart.js";
+function Chart(props) {
+  return /* @__PURE__ */ jsx(ChartImplementation, { ...props });
+}
+function ChartImplementation(props) {
+  const renderSvg = props.renderSvg ?? renderChartSvg;
+  const renderer = React.useMemo(
+    () => createSvgChartRenderer(renderSvg),
+    [renderSvg]
+  );
+  const onRender = React.useMemo(() => {
+    if (!props.onRender) return void 0;
+    return (context) => {
+      const svg = context.surface.element;
+      const SvgElement = context.container.ownerDocument.defaultView?.SVGSVGElement;
+      if (!SvgElement || !(svg instanceof SvgElement)) {
+        throw new TypeError("Expected the SVG chart surface.");
+      }
+      props.onRender?.({
+        container: context.container,
+        scene: context.scene,
+        svg
+      });
+    };
+  }, [props.onRender]);
+  const rendererProps = {
+    ...props,
+    renderer,
+    onRender
+  };
+  return /* @__PURE__ */ jsx(RendererChartImplementation, { ...rendererProps });
+}
+export {
+  Chart,
+  ChartImplementation
+};

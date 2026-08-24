@@ -1,0 +1,64 @@
+{
+  "name": "@solid-primitives/rootless",
+  "version": "1.5.2",
+  "description": "A collection of helpers that aim to simplify using reactive primitives outside of reactive roots, and managing disposal of reactive roots.",
+  "author": "Damian Tarnawski @thetarnav <gthetarnav@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://primitives.solidjs.community/package/rootless",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/solidjs-community/solid-primitives.git"
+  },
+  "primitive": {
+    "name": "rootless",
+    "stage": 2,
+    "list": [
+      "createSubRoot",
+      "createCallback",
+      "createDisposable",
+      "createSharedRoot",
+      "createRootPool"
+    ],
+    "category": "Reactivity"
+  },
+  "private": false,
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "browser": {},
+  "exports": {
+    "import": {
+      "@solid-primitives/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "typesVersions": {},
+  "keywords": [
+    "solid",
+    "primitives",
+    "reactivity",
+    "root",
+    "ownership"
+  ],
+  "dependencies": {
+    "@solid-primitives/utils": "^6.3.2"
+  },
+  "peerDependencies": {
+    "solid-js": "^1.6.12"
+  },
+  "devDependencies": {
+    "solid-js": "^1.9.7"
+  },
+  "scripts": {
+    "dev": "node --import=@nothing-but/node-resolve-ts --experimental-transform-types ../../scripts/dev.ts",
+    "build": "node --import=@nothing-but/node-resolve-ts --experimental-transform-types ../../scripts/build.ts",
+    "vitest": "vitest -c ../../configs/vitest.config.ts",
+    "test": "pnpm run vitest",
+    "test:ssr": "pnpm run vitest --mode ssr"
+  }
+}

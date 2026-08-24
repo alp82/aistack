@@ -1,0 +1,31 @@
+# Nightly Channel
+
+> Nitro has a nightly release channel that automatically releases for every commit to `main` branch to try latest changes.
+
+You can opt-in to the nightly release channel by updating your `package.json`:
+
+```json
+{
+  "devDependencies": {
+    "nitro": "npm:nitro-nightly@latest"
+  }
+}
+```
+
+Remove the lockfile (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `bun.lock`, or `bun.lockb`) and reinstall the dependencies.
+
+<important>
+
+When using **Bun as package manager** in a mono-repo, you need to make sure nitro package is properly hoisted.
+
+```toml [bunfig.toml]
+[install]
+publicHoistPattern = ["nitro*"]
+```
+</important>
+
+<important>
+
+Avoid using `<npm|pnpm|yarn|bun|deno> install nitro-nightly`; it does not install correctly.
+If you encounter issues, delete your `node_modules` and lock files, then follow the steps above.
+</important>

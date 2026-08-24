@@ -1,0 +1,1 @@
+"use strict";const SemVer=require(`../classes/semver`),compareBuild=(e,t,n)=>{let r=new SemVer(e,n),i=new SemVer(t,n);return r.compare(i)||r.compareBuild(i)};module.exports=compareBuild;

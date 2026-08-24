@@ -1,0 +1,1 @@
+{"version":3,"sources":["../src/index.ts"],"sourcesContent":["import { TaskList } from '@tiptap/extension-list'\n\nexport type { TaskListOptions } from '@tiptap/extension-list'\nexport { TaskList } from '@tiptap/extension-list'\n\nexport default TaskList\n"],"mappings":";AAAA,SAAS,gBAAgB;AAGzB,SAAS,YAAAA,iBAAgB;AAEzB,IAAO,gBAAQ;","names":["TaskList"]}

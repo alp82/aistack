@@ -1,0 +1,14 @@
+import type { ChartRenderer } from './dom-types.js';
+import type { ChartMotionTransition, ChartValue } from './types.js';
+export type { ChartMotionContext, ChartMotionDefinition, ChartMotionPhase, ChartMotionRole, ChartMotionSpringTransition, ChartMotionTiming, ChartMotionTransition, ChartMotionTweenTransition, } from './types.js';
+export interface ChartMotionOptions {
+    /** Animate the first client render. Server-rendered SVG is always adopted. */
+    initial?: boolean;
+    /** Default transition. Definition-local motion can refine or replace it. */
+    transition?: ChartMotionTransition;
+    /** Snap when the user requests reduced motion. Defaults to true. */
+    respectReducedMotion?: boolean;
+    /** Animate updates caused only by a chart resize. Defaults to false. */
+    resize?: boolean;
+}
+export declare function motion<TDatum = unknown, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue>(options?: ChartMotionOptions): ChartRenderer<TDatum, TXValue, TYValue>;

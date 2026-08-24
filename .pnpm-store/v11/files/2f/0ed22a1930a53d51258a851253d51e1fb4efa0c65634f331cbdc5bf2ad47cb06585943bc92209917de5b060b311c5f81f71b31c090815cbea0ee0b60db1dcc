@@ -1,0 +1,51 @@
+process.env.VERCEL = process.env.VERCEL || "1";
+process.env.VERCEL_ENV = process.env.VERCEL_ENV || "development";
+process.env.NODE_ENV = process.env.NODE_ENV || "development";
+const SYMBOL_FOR_REQ_CONTEXT = Symbol.for("@vercel/request-context");
+const waitUntilPromises = /* @__PURE__ */ new Set();
+const cacheStore = /* @__PURE__ */ new Map();
+const cacheTags = /* @__PURE__ */ new Set();
+globalThis[SYMBOL_FOR_REQ_CONTEXT] = { get: () => ({
+	waitUntil(promise) {
+		waitUntilPromises.add(promise);
+		promise.finally(() => waitUntilPromises.delete(promise));
+	},
+	cache: {
+		async get(key) {
+			const entry = cacheStore.get(key);
+			if (!entry) return null;
+			if (entry.ttl && entry.lastModified + entry.ttl * 1e3 < Date.now()) {
+				cacheStore.delete(key);
+				return null;
+			}
+			return JSON.parse(entry.value);
+		},
+		async set(key, value, options) {
+			cacheStore.set(key, {
+				value: JSON.stringify(value ?? null),
+				lastModified: Date.now(),
+				ttl: options?.ttl,
+				tags: new Set(options?.tags || [])
+			});
+		},
+		async delete(key) {
+			cacheStore.delete(key);
+		},
+		async expireTag(tag) {
+			const tags = Array.isArray(tag) ? tag : [tag];
+			for (const [key, entry] of cacheStore) if (tags.some((t) => entry.tags.has(t))) cacheStore.delete(key);
+		}
+	},
+	purge: {
+		invalidateByTag: (_tag) => Promise.resolve(),
+		dangerouslyDeleteByTag: (_tag) => Promise.resolve(),
+		invalidateBySrcImage: (_src) => Promise.resolve(),
+		dangerouslyDeleteBySrcImage: (_src) => Promise.resolve()
+	},
+	addCacheTag(tag) {
+		for (const t of Array.isArray(tag) ? tag : [tag]) cacheTags.add(t);
+		return Promise.resolve();
+	}
+}) };
+await import("../node-worker/worker.mjs");
+export {};

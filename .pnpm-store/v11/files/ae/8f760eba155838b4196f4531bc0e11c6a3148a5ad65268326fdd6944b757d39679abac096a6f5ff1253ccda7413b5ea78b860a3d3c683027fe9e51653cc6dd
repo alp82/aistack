@@ -1,0 +1,99 @@
+import { jsx } from "react/jsx-runtime";
+import * as React from "react";
+import { createChartRendererAdapter } from "@tanstack/charts/adapter/renderer";
+const ChartSurface = React.memo(
+  React.forwardRef(function ChartSurface2({ markup }, ref) {
+    return /* @__PURE__ */ jsx(
+      "div",
+      {
+        ref,
+        className: "ts-chart-surface",
+        style: { width: "100%", height: "100%" },
+        dangerouslySetInnerHTML: { __html: markup }
+      }
+    );
+  }),
+  () => true
+);
+function RendererChart(props) {
+  return /* @__PURE__ */ jsx(RendererChartImplementation, { ...props });
+}
+function RendererChartImplementation(props) {
+  const {
+    ariaLabel,
+    ariaDescription,
+    height,
+    aspectRatio,
+    width,
+    initialWidth = 640,
+    className,
+    style,
+    tabIndex,
+    idPrefix: idPrefixOption,
+    renderer,
+    measureText,
+    onFocusChange,
+    onFocusGroupChange,
+    onSelect,
+    onRender,
+    onTooltipBodyChange
+  } = props;
+  const generatedId = React.useId();
+  const idPrefix = idPrefixOption ?? `ts-chart-${generatedId.replaceAll(/[^a-zA-Z0-9_-]/g, "")}`;
+  const resolvedAspectRatio = typeof aspectRatio === "number" && Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : void 0;
+  const containerRef = React.useRef(null);
+  const adapterRef = React.useRef(null);
+  const commonHostOptions = {
+    renderer,
+    ariaLabel,
+    ariaDescription,
+    height,
+    aspectRatio: resolvedAspectRatio,
+    width,
+    initialWidth,
+    tabIndex,
+    idPrefix,
+    measureText,
+    onFocusChange,
+    onFocusGroupChange,
+    onSelect,
+    onRender,
+    onTooltipBodyChange
+  };
+  const hostOptions = {
+    ...commonHostOptions,
+    definition: props.definition
+  };
+  adapterRef.current ??= createChartRendererAdapter(hostOptions);
+  const adapter = adapterRef.current;
+  const initialMarkupRef = React.useRef(null);
+  initialMarkupRef.current ??= adapter.prerender();
+  React.useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    adapter.update(hostOptions);
+    adapter.mount(container);
+    return () => adapter.destroy();
+  }, []);
+  React.useLayoutEffect(() => {
+    adapter.update(hostOptions);
+  }, [adapter, hostOptions]);
+  return /* @__PURE__ */ jsx(
+    "div",
+    {
+      className: className ? `ts-chart-host ${className}` : "ts-chart-host",
+      style: {
+        position: "relative",
+        width: width === void 0 ? "100%" : width,
+        height: height ?? (resolvedAspectRatio ? void 0 : 320),
+        aspectRatio: height === void 0 ? resolvedAspectRatio : void 0,
+        ...style
+      },
+      children: /* @__PURE__ */ jsx(ChartSurface, { ref: containerRef, markup: initialMarkupRef.current })
+    }
+  );
+}
+export {
+  RendererChart,
+  RendererChartImplementation
+};

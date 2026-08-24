@@ -1,0 +1,1 @@
+{"version":3,"file":"date.mjs","names":[],"sources":["../../src/utils/date.ts"],"sourcesContent":["export const getDate = (span: number, unit: \"sec\" | \"ms\" = \"ms\") => {\n\treturn new Date(Date.now() + (unit === \"sec\" ? span * 1000 : span));\n};\n"],"mappings":";AAAA,MAAa,WAAW,MAAc,OAAqB,SAAS;AACnE,QAAO,IAAI,KAAK,KAAK,KAAK,IAAI,SAAS,QAAQ,OAAO,MAAO,MAAM"}

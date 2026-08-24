@@ -1,0 +1,43 @@
+
+> @better-auth/core@1.4.9 build /home/runner/work/better-auth/better-auth/packages/core
+> tsdown
+
+[34mℹ[39m tsdown [2mv0.17.2[22m powered by rolldown [2mv1.0.0-beta.53[22m
+[34mℹ[39m config file: [4m/home/runner/work/better-auth/better-auth/packages/core/tsdown.config.ts[24m 
+[34mℹ[39m entry: [34msrc/index.ts, src/db/index.ts, src/db/adapter/index.ts, src/async_hooks/index.ts, src/async_hooks/pure.index.ts, src/context/index.ts, src/env/index.ts, src/oauth2/index.ts, src/api/index.ts, src/social-providers/index.ts, src/utils/index.ts, src/error/index.ts[39m
+[34mℹ[39m tsconfig: [34mtsconfig.json[39m
+[34mℹ[39m Build start
+[34mℹ[39m [2mdist/[22m[1msocial-providers/index.mjs[22m    [2m 80.96 kB[22m [2m│ gzip: 10.43 kB[22m
+[34mℹ[39m [2mdist/[22m[1mdb/adapter/index.mjs[22m          [2m 38.55 kB[22m [2m│ gzip:  7.86 kB[22m
+[34mℹ[39m [2mdist/[22m[1mdb/index.mjs[22m                  [2m  1.66 kB[22m [2m│ gzip:  0.54 kB[22m
+[34mℹ[39m [2mdist/[22m[1mapi/index.mjs[22m                 [2m  1.23 kB[22m [2m│ gzip:  0.48 kB[22m
+[34mℹ[39m [2mdist/[22m[1masync_hooks/index.mjs[22m         [2m  1.03 kB[22m [2m│ gzip:  0.54 kB[22m
+[34mℹ[39m [2mdist/[22m[1masync_hooks/pure.index.mjs[22m    [2m  0.99 kB[22m [2m│ gzip:  0.49 kB[22m
+[34mℹ[39m [2mdist/[22m[1moauth2/index.mjs[22m              [2m  0.75 kB[22m [2m│ gzip:  0.28 kB[22m
+[34mℹ[39m [2mdist/[22m[1mcontext/index.mjs[22m             [2m  0.70 kB[22m [2m│ gzip:  0.24 kB[22m
+[34mℹ[39m [2mdist/[22m[1menv/index.mjs[22m                 [2m  0.44 kB[22m [2m│ gzip:  0.25 kB[22m
+[34mℹ[39m [2mdist/[22m[1mutils/index.mjs[22m               [2m  0.24 kB[22m [2m│ gzip:  0.17 kB[22m
+[34mℹ[39m [2mdist/[22m[1merror/index.mjs[22m               [2m  0.19 kB[22m [2m│ gzip:  0.14 kB[22m
+[34mℹ[39m [2mdist/[22m[1mindex.mjs[22m                     [2m  0.01 kB[22m [2m│ gzip:  0.03 kB[22m
+[34mℹ[39m [2mdist/[22moauth2-BjWM15hm.mjs           [2m 12.82 kB[22m [2m│ gzip:  3.16 kB[22m
+[34mℹ[39m [2mdist/[22menv-DbssmzoK.mjs              [2m  7.67 kB[22m [2m│ gzip:  2.54 kB[22m
+[34mℹ[39m [2mdist/[22mget-tables-CMc_Emww.mjs       [2m  6.76 kB[22m [2m│ gzip:  1.30 kB[22m
+[34mℹ[39m [2mdist/[22mcontext-DblZrIwO.mjs          [2m  3.89 kB[22m [2m│ gzip:  1.00 kB[22m
+[34mℹ[39m [2mdist/[22merror-CzMAIrPb.mjs            [2m  1.77 kB[22m [2m│ gzip:  0.79 kB[22m
+[34mℹ[39m [2mdist/[22mutils-NloIXYE0.mjs            [2m  1.10 kB[22m [2m│ gzip:  0.55 kB[22m
+[34mℹ[39m [2mdist/[22m[32m[1msocial-providers/index.d.mts[22m[39m  [2m  3.88 kB[22m [2m│ gzip:  1.19 kB[22m
+[34mℹ[39m [2mdist/[22m[32m[1mcontext/index.d.mts[22m[39m           [2m  3.02 kB[22m [2m│ gzip:  0.96 kB[22m
+[34mℹ[39m [2mdist/[22m[32m[1merror/index.d.mts[22m[39m             [2m  1.84 kB[22m [2m│ gzip:  0.72 kB[22m
+[34mℹ[39m [2mdist/[22m[32m[1mdb/adapter/index.d.mts[22m[39m        [2m  1.34 kB[22m [2m│ gzip:  0.43 kB[22m
+[34mℹ[39m [2mdist/[22m[32m[1mutils/index.d.mts[22m[39m             [2m  1.19 kB[22m [2m│ gzip:  0.55 kB[22m
+[34mℹ[39m [2mdist/[22m[32m[1mindex.d.mts[22m[39m                   [2m  0.92 kB[22m [2m│ gzip:  0.36 kB[22m
+[34mℹ[39m [2mdist/[22m[32m[1moauth2/index.d.mts[22m[39m            [2m  0.88 kB[22m [2m│ gzip:  0.32 kB[22m
+[34mℹ[39m [2mdist/[22m[32m[1mdb/index.d.mts[22m[39m                [2m  0.81 kB[22m [2m│ gzip:  0.34 kB[22m
+[34mℹ[39m [2mdist/[22m[32m[1menv/index.d.mts[22m[39m               [2m  0.59 kB[22m [2m│ gzip:  0.30 kB[22m
+[34mℹ[39m [2mdist/[22m[32m[1mapi/index.d.mts[22m[39m               [2m  0.26 kB[22m [2m│ gzip:  0.14 kB[22m
+[34mℹ[39m [2mdist/[22m[32m[1masync_hooks/index.d.mts[22m[39m       [2m  0.24 kB[22m [2m│ gzip:  0.16 kB[22m
+[34mℹ[39m [2mdist/[22m[32m[1masync_hooks/pure.index.d.mts[22m[39m  [2m  0.22 kB[22m [2m│ gzip:  0.16 kB[22m
+[34mℹ[39m [2mdist/[22m[32mindex-Zbo6xPkd.d.mts[39m          [2m221.47 kB[22m [2m│ gzip: 35.34 kB[22m
+[34mℹ[39m [2mdist/[22m[32mindex-BRBu0-5h.d.mts[39m          [2m  3.31 kB[22m [2m│ gzip:  1.11 kB[22m
+[34mℹ[39m 32 files, total: 400.76 kB
+[32m✔[39m Build complete in [32m4832ms[39m

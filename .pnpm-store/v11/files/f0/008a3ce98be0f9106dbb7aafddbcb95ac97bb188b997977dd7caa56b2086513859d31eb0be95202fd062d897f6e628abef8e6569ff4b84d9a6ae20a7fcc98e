@@ -1,0 +1,1 @@
+"use strict";const pico=require(`./lib/picomatch`),utils=require(`./lib/utils`);function picomatch(e,t,n=!1){return t&&(t.windows===null||t.windows===void 0)&&(t={...t,windows:utils.isWindows()}),pico(e,t,n)}Object.assign(picomatch,pico),module.exports=picomatch;

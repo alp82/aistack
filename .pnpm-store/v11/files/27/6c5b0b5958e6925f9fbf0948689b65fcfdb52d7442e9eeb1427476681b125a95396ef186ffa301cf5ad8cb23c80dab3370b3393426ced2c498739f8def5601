@@ -1,0 +1,39 @@
+import { JSX, CSSProperties, ReactNode } from 'react';
+import { N as Node } from '../types-DVfDlIZ1.js';
+
+declare const defaultStylePresets: Partial<Record<keyof JSX.IntrinsicElements, CSSProperties>>;
+
+type ReactElementLike = {
+    type: string | symbol | ((props: unknown) => ReactElementLike) | ReactElementLike;
+    props: unknown;
+    $$typeof?: symbol;
+};
+
+declare module "react" {
+    interface DOMAttributes<T> {
+        tw?: string;
+    }
+}
+interface FromJsxOptions {
+    /**
+     * Override or disable the default Chromium style presets.
+     *
+     * If an object is provided, all the default style presets will be overridden.
+     *
+     * If `false` is provided explicitly, no default style presets will be used.
+     */
+    defaultStyles?: typeof defaultStylePresets | false;
+    /**
+     * The JSX prop name used to pass Tailwind classes.
+     *
+     * @default "tw"
+     */
+    tailwindClassesProperty?: string;
+}
+interface FromJsxResult {
+    node: Node;
+    stylesheets: string[];
+}
+declare function fromJsx(element: ReactNode | ReactElementLike, options?: FromJsxOptions): Promise<FromJsxResult>;
+
+export { type FromJsxOptions, type FromJsxResult, defaultStylePresets, fromJsx };

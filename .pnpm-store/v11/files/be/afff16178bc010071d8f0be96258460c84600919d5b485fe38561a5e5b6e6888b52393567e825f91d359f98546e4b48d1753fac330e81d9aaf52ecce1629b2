@@ -1,0 +1,184 @@
+import {
+  channelValues,
+  createMark,
+  inferredKeyValues,
+  isChartKey,
+  isChartValue,
+  visualValue
+} from "./mark.js";
+import { createMarkWithScaleValues } from "./mark-with-scale-values.js";
+import { valueKey } from "./scales.js";
+function bandX(source, options) {
+  const data = Array.isArray(source) ? source : Array.from(source);
+  const resolved = options ?? {};
+  return createMarkWithScaleValues(({ markIndex }) => {
+    const id = resolved.id ?? `band-x-${markIndex}`;
+    const values = channelValues(data, resolved.x, (_datum, index) => index);
+    const zValues = channelValues(data, resolved.z, () => null);
+    const colorValues = resolved.color === void 0 ? zValues : channelValues(data, resolved.color, () => null);
+    const keys = inferredKeyValues(data, resolved.key, {
+      groups: zValues,
+      candidates: [values],
+      markId: id,
+      warningIdentity: resolved
+    });
+    return {
+      id,
+      channels: {
+        x: { scale: "x", values: values.filter(isChartValue) },
+        color: { scale: "color", values: colorValues.filter(isChartKey) }
+      },
+      render: ({ chart, scales, color }) => {
+        const width = scales.x.bandwidth || inferBandwidth(scales.x, values, chart.width, data.length);
+        const inset = Number.isFinite(resolved.inset) ? resolved.inset : 0;
+        const nodes = [];
+        data.forEach((datum, index) => {
+          const xValue = values[index];
+          if (!isChartValue(xValue)) return;
+          const x = scales.x.map(xValue);
+          const fill = visualValue(
+            resolved.fill,
+            datum,
+            index,
+            data,
+            color(colorValues[index])
+          );
+          const group = zValues[index] ?? null;
+          const key = `${id}:${valueKey(group)}:${valueKey(keys[index])}`;
+          const left = x - width / 2 + inset;
+          const paintedWidth = Math.max(0, width - inset * 2);
+          const point = {
+            key,
+            markId: id,
+            group,
+            groupLabel: group == null ? id : String(group),
+            datum,
+            datumIndex: index,
+            xValue,
+            yValue: 0,
+            x,
+            y: chart.y + chart.height / 2,
+            color: fill
+          };
+          nodes.push({
+            kind: "rect",
+            key,
+            x: left,
+            y: chart.y,
+            width: paintedWidth,
+            height: chart.height,
+            radius: resolved.radius,
+            interaction: { point, affinity: "x" },
+            style: { fill, fillOpacity: resolved.fillOpacity }
+          });
+        });
+        return {
+          nodes: [
+            {
+              kind: "group",
+              key: id,
+              className: "ts-chart__band ts-chart__band-x",
+              ariaHidden: true,
+              children: nodes
+            }
+          ]
+        };
+      }
+    };
+  }, resolved.motion);
+}
+function bandY(source, options) {
+  const data = Array.isArray(source) ? source : Array.from(source);
+  const resolved = options ?? {};
+  return createMark(({ markIndex }) => {
+    const id = resolved.id ?? `band-y-${markIndex}`;
+    const values = channelValues(data, resolved.y, (_datum, index) => index);
+    const zValues = channelValues(data, resolved.z, () => null);
+    const colorValues = resolved.color === void 0 ? zValues : channelValues(data, resolved.color, () => null);
+    const keys = inferredKeyValues(data, resolved.key, {
+      groups: zValues,
+      candidates: [values],
+      markId: id,
+      warningIdentity: resolved
+    });
+    return {
+      id,
+      channels: {
+        y: { scale: "y", values: values.filter(isChartValue) },
+        color: { scale: "color", values: colorValues.filter(isChartKey) }
+      },
+      render: ({ chart, scales, color }) => {
+        const height = scales.y.bandwidth || inferBandwidth(scales.y, values, chart.height, data.length);
+        const inset = Number.isFinite(resolved.inset) ? resolved.inset : 0;
+        const nodes = [];
+        data.forEach((datum, index) => {
+          const yValue = values[index];
+          if (!isChartValue(yValue)) return;
+          const y = scales.y.map(yValue);
+          const fill = visualValue(
+            resolved.fill,
+            datum,
+            index,
+            data,
+            color(colorValues[index])
+          );
+          const group = zValues[index] ?? null;
+          const key = `${id}:${valueKey(group)}:${valueKey(keys[index])}`;
+          const top = y - height / 2 + inset;
+          const paintedHeight = Math.max(0, height - inset * 2);
+          const point = {
+            key,
+            markId: id,
+            group,
+            groupLabel: group == null ? id : String(group),
+            datum,
+            datumIndex: index,
+            xValue: 0,
+            yValue,
+            x: chart.x + chart.width / 2,
+            y,
+            color: fill
+          };
+          nodes.push({
+            kind: "rect",
+            key,
+            x: chart.x,
+            y: top,
+            width: chart.width,
+            height: paintedHeight,
+            radius: resolved.radius,
+            interaction: { point, affinity: "y" },
+            style: { fill, fillOpacity: resolved.fillOpacity }
+          });
+        });
+        return {
+          nodes: [
+            {
+              kind: "group",
+              key: id,
+              className: "ts-chart__band ts-chart__band-y",
+              ariaHidden: true,
+              children: nodes
+            }
+          ]
+        };
+      }
+    };
+  }, resolved.motion);
+}
+function inferBandwidth(scale, values, span, count) {
+  const positions = [
+    ...new Set(
+      values.filter(isChartValue).map(scale.map).filter((value) => Number.isFinite(value))
+    )
+  ].sort((left, right) => left - right);
+  let minimum = Infinity;
+  for (let index = 1; index < positions.length; index += 1) {
+    minimum = Math.min(minimum, positions[index] - positions[index - 1]);
+  }
+  return Number.isFinite(minimum) ? minimum * 0.8 : Math.min(48, span / Math.max(2, count + 1) * 0.8);
+}
+export {
+  bandX,
+  bandY
+};

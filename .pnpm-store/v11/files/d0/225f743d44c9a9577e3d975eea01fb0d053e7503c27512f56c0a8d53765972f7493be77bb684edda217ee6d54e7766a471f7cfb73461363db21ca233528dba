@@ -1,0 +1,12 @@
+function resolveChartAdapterLayout(options) {
+  const initialWidth = options.width ?? options.initialWidth ?? 640;
+  const aspectRatio = typeof options.aspectRatio === "number" && Number.isFinite(options.aspectRatio) && options.aspectRatio > 0 ? options.aspectRatio : void 0;
+  return {
+    aspectRatio,
+    initialWidth,
+    initialHeight: options.height ?? (aspectRatio === void 0 ? 320 : initialWidth / aspectRatio)
+  };
+}
+export {
+  resolveChartAdapterLayout
+};

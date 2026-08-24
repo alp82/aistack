@@ -1,0 +1,355 @@
+# Request
+
+> H3 request utilities.
+
+## Body
+
+### `assertBodySize(event, limit)`
+
+Asserts that request body size is within the specified limit.
+
+If body size exceeds the limit, throws a `413` Request Entity Too Large response error.
+
+**Example:**
+
+```ts
+app.get("/", async (event) => {
+  await assertBodySize(event, 10 * 1024 * 1024); // 10MB
+  const data = await event.req.formData();
+});
+```
+
+### `readBody(event)`
+
+Reads request body and tries to parse using JSON.parse or URLSearchParams.
+
+**Example:**
+
+```ts
+app.get("/", async (event) => {
+  const body = await readBody(event);
+});
+```
+
+### `readValidatedBody(event, validate)`
+
+Tries to read the request body via `readBody`, then uses the provided validation schema or function and either throws a validation error or returns the result.
+
+You can use a simple function to validate the body or use a Standard-Schema compatible library like `zod` to define a schema.
+
+**Example:**
+
+```ts
+function validateBody(body: any) {
+  return typeof body === "object" && body !== null;
+}
+app.post("/", async (event) => {
+  const body = await readValidatedBody(event, validateBody);
+});
+```
+
+**Example:**
+
+```ts
+import { z } from "zod";
+const objectSchema = z.object({
+  name: z.string().min(3).max(20),
+  age: z.number({ coerce: true }).positive().int(),
+});
+app.post("/", async (event) => {
+  const body = await readValidatedBody(event, objectSchema);
+});
+```
+
+**Example:**
+
+```ts
+import * as v from "valibot";
+app.post("/", async (event) => {
+  const body = await readValidatedBody(
+    event,
+    v.object({
+      name: v.pipe(v.string(), v.minLength(3), v.maxLength(20)),
+      age: v.pipe(v.number(), v.integer(), v.minValue(1)),
+    }),
+    {
+      onError: ({ issues }) => ({
+        statusText: "Custom validation error",
+        message: v.summarize(issues),
+      }),
+    },
+  );
+});
+```
+
+## Cache
+
+### `handleCacheHeaders(event, opts)`
+
+Check request caching headers (`If-Modified-Since`) and add caching headers (Last-Modified, Cache-Control) Note: `public` cache control will be added by default
+
+## More Request Utils
+
+### `assertMethod(event, expected, allowHead?)`
+
+Asserts that the incoming request method is of the expected type using `isMethod`.
+
+If the method is not allowed, it will throw a 405 error and include an `Allow` response header listing the permitted methods, as required by RFC 9110.
+
+If `allowHead` is `true`, it will allow `HEAD` requests to pass if the expected method is `GET`.
+
+**Example:**
+
+```ts
+app.get("/", (event) => {
+  assertMethod(event, "GET");
+  // Handle GET request, otherwise throw 405 error
+});
+```
+
+### `getQuery(event)`
+
+Get parsed query string object from the request URL.
+
+**Example:**
+
+```ts
+app.get("/", (event) => {
+  const query = getQuery(event); // { key: "value", key2: ["value1", "value2"] }
+});
+```
+
+### `getRequestHost(event, opts: { xForwardedHost? })`
+
+Get the request hostname.
+
+If `xForwardedHost` is `true`, it will use the `x-forwarded-host` header if it exists.
+
+If no host header is found, it will return an empty string.
+
+**Example:**
+
+```ts
+app.get("/", (event) => {
+  const host = getRequestHost(event); // "example.com"
+});
+```
+
+### `getRequestIP(event)`
+
+Try to get the client IP address from the incoming request.
+
+If `xForwardedFor` is `true`, it will use the `x-forwarded-for` header if it exists.
+
+If IP cannot be determined, it will default to `undefined`.
+
+**Example:**
+
+```ts
+app.get("/", (event) => {
+  const ip = getRequestIP(event); // "192.0.2.0"
+});
+```
+
+### `getRequestProtocol(event, opts: { xForwardedProto? })`
+
+Get the request protocol.
+
+If `x-forwarded-proto` header is set to "https", it will return "https". You can disable this behavior by setting `xForwardedProto` to `false`.
+
+If protocol cannot be determined, it will default to "http".
+
+**Example:**
+
+```ts
+app.get("/", (event) => {
+  const protocol = getRequestProtocol(event); // "https"
+});
+```
+
+### `getRequestURL(event, opts: { xForwardedHost?, xForwardedProto? })`
+
+Generated the full incoming request URL.
+
+If `xForwardedHost` is `true`, it will use the `x-forwarded-host` header if it exists.
+
+If `xForwardedProto` is `false`, it will not use the `x-forwarded-proto` header.
+
+**Example:**
+
+```ts
+app.get("/", (event) => {
+  const url = getRequestURL(event); // "https://example.com/path"
+});
+```
+
+### `getRouterParam(event, name, opts: { decode? })`
+
+Get a matched route param by name.
+
+If `decode` option is `true`, it will decode the matched route param using `decodeURI`.
+
+**Example:**
+
+```ts
+app.get("/", (event) => {
+  const param = getRouterParam(event, "key");
+});
+```
+
+### `getRouterParams(event, opts: { decode? })`
+
+Get matched route params.
+
+If `decode` option is `true`, it will decode the matched route params using `decodeURIComponent`.
+
+**Example:**
+
+```ts
+app.get("/", (event) => {
+  const params = getRouterParams(event); // { key: "value" }
+});
+```
+
+### `getValidatedQuery(event, validate)`
+
+Get the query param from the request URL validated with validate function.
+
+You can use a simple function to validate the query object or use a Standard-Schema compatible library like `zod` to define a schema.
+
+**Example:**
+
+```ts
+app.get("/", async (event) => {
+  const query = await getValidatedQuery(event, (data) => {
+    return "key" in data && typeof data.key === "string";
+  });
+});
+```
+
+**Example:**
+
+```ts
+import { z } from "zod";
+app.get("/", async (event) => {
+  const query = await getValidatedQuery(
+    event,
+    z.object({
+      key: z.string(),
+    }),
+  );
+});
+```
+
+**Example:**
+
+```ts
+import * as v from "valibot";
+app.get("/", async (event) => {
+  const params = await getValidatedQuery(
+    event,
+    v.object({
+      key: v.string(),
+    }),
+    {
+      onError: ({ issues }) => ({
+        statusText: "Custom validation error",
+        message: v.summarize(issues),
+      }),
+    },
+  );
+});
+```
+
+### `getValidatedRouterParams(event, validate)`
+
+Get matched route params and validate with validate function.
+
+If `decode` option is `true`, it will decode the matched route params using `decodeURI`.
+
+You can use a simple function to validate the params object or use a Standard-Schema compatible library like `zod` to define a schema.
+
+**Example:**
+
+```ts
+app.get("/:key", async (event) => {
+  const params = await getValidatedRouterParams(event, (data) => {
+    return "key" in data && typeof data.key === "string";
+  });
+});
+```
+
+**Example:**
+
+```ts
+import { z } from "zod";
+app.get("/:key", async (event) => {
+  const params = await getValidatedRouterParams(
+    event,
+    z.object({
+      key: z.string(),
+    }),
+  );
+});
+```
+
+**Example:**
+
+```ts
+import * as v from "valibot";
+app.get("/:key", async (event) => {
+  const params = await getValidatedRouterParams(
+    event,
+    v.object({
+      key: v.pipe(v.string(), v.picklist(["route-1", "route-2", "route-3"])),
+    }),
+    {
+      decode: true,
+      onError: ({ issues }) => ({
+        statusText: "Custom validation error",
+        message: v.summarize(issues),
+      }),
+    },
+  );
+});
+```
+
+### `isMethod(event, expected, allowHead?)`
+
+Checks if the incoming request method is of the expected type.
+
+If `allowHead` is `true`, it will allow `HEAD` requests to pass if the expected method is `GET`.
+
+**Example:**
+
+```ts
+app.get("/", (event) => {
+  if (isMethod(event, "GET")) {
+    // Handle GET request
+  } else if (isMethod(event, ["POST", "PUT"])) {
+    // Handle POST or PUT request
+  }
+});
+```
+
+### `requestWithBaseURL(req, base)`
+
+Create a lightweight request proxy with the base path stripped from the URL pathname.
+
+### `requestWithURL(req, url)`
+
+Create a lightweight request proxy that overrides only the URL.
+
+Avoids cloning the original request (no `new Request()` allocation).
+
+### `toRequest(input, options?)`
+
+Convert input into a web [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request).
+
+If input is a relative URL, it will be normalized into a full path based on headers.
+
+If input is already a Request and no options are provided, it will be returned as-is.
+
+### `getRequestFingerprint(event, opts)`
+
+Get a unique fingerprint for the incoming request.

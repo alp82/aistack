@@ -1,0 +1,15 @@
+import type { ChartColorLegend } from './types.js';
+export interface ColorLegendOptions {
+    label?: string;
+    itemWidth?: number;
+    width?: number;
+    format?: (value: number) => string;
+}
+export interface ColorGradientLegendOptions {
+    label?: string;
+    steps?: number;
+    width?: number;
+    format?: (value: number) => string;
+}
+export declare function colorLegend(options?: ColorLegendOptions): ChartColorLegend;
+export declare function colorGradientLegend(options?: ColorGradientLegendOptions): ChartColorLegend;

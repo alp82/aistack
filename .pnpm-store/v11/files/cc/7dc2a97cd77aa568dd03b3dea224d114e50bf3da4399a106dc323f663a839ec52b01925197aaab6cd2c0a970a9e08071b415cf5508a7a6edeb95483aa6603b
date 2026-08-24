@@ -1,0 +1,13 @@
+{
+  "name": "acorn-import-attributes",
+  "version": "1.9.5",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "import": "./lib/index.mjs",
+      "require": "./lib/index.js"
+    },
+    "./package.json": "./package.json",
+    "./": "./"
+  }
+}

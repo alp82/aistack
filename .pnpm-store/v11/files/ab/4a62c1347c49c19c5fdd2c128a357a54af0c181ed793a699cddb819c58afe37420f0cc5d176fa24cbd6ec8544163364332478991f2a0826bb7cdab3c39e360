@@ -1,0 +1,127 @@
+import { reconcileChartSvg } from "./reconcile.js";
+import { renderChartSvg } from "./svg.js";
+import { focusedNodeKeys } from "./focus-layer.js";
+import { resolveMarkStateScene, resolveMarkStateTransition } from "./mark-state.js";
+function createSvgChartRenderer(renderSvg = renderChartSvg) {
+  const renderer = {
+    id: "svg",
+    prerender: renderSvg,
+    mount(container) {
+      let cancelAnimation = () => {
+      };
+      let scene;
+      let renderOptions;
+      let stateTransition;
+      const svgElement = () => {
+        const svg = container.querySelector("svg.ts-chart");
+        if (!svg) {
+          throw new Error(
+            "The SVG renderer must produce an svg.ts-chart root element."
+          );
+        }
+        return svg;
+      };
+      const surface = {
+        renderer,
+        get element() {
+          return svgElement();
+        },
+        render(nextScene, options) {
+          cancelAnimation();
+          cancelAnimation = reconcileChartSvg(
+            container,
+            renderSvg(nextScene, options),
+            options.animation
+          );
+          scene = nextScene;
+          renderOptions = options;
+          stateTransition = void 0;
+        },
+        clientToScene(scene2, clientX, clientY) {
+          return clientToScene(svgElement(), scene2, clientX, clientY);
+        },
+        paintFocus(focus, pointer) {
+          if (!scene || !renderOptions) return;
+          const resolved = resolveMarkStateScene(scene, focus, pointer);
+          const previousTransition = stateTransition;
+          if (resolved.scene !== scene || previousTransition) {
+            cancelAnimation();
+            cancelAnimation = reconcileChartSvg(
+              container,
+              renderSvg(resolved.scene, renderOptions),
+              resolveMarkStateTransition(
+                resolved.transition ?? previousTransition,
+                container
+              )
+            );
+          }
+          stateTransition = focus ? resolved.transition ?? previousTransition : void 0;
+          paintSvgFocus(svgElement(), resolved.scene, focus);
+          return resolved.scene;
+        },
+        destroy() {
+          cancelAnimation();
+        }
+      };
+      return surface;
+    }
+  };
+  return renderer;
+}
+const svgChartRenderer = createSvgChartRenderer();
+function clientToScene(element, scene, clientX, clientY) {
+  const matrix = element.getScreenCTM?.();
+  if (!matrix) {
+    const bounds = element.getBoundingClientRect();
+    if (!bounds.width || !bounds.height) return null;
+    return {
+      x: (clientX - bounds.left) / bounds.width * scene.width,
+      y: (clientY - bounds.top) / bounds.height * scene.height
+    };
+  }
+  let inverse;
+  try {
+    inverse = matrix.inverse();
+  } catch {
+    return null;
+  }
+  const x = inverse.a * clientX + inverse.c * clientY + inverse.e;
+  const y = inverse.b * clientX + inverse.d * clientY + inverse.f;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  return { x, y };
+}
+function paintSvgFocus(svg, scene, focus) {
+  const sceneLayers = collectFocusLayers(scene.nodes);
+  const elements = svg.querySelectorAll("[data-ts-focus-layer]");
+  elements.forEach((element, index) => {
+    const layer = sceneLayers[index];
+    const visible = layer ? focusedNodeKeys(layer, focus) : /* @__PURE__ */ new Set();
+    element.setAttribute(
+      "visibility",
+      focus && visible.size ? "visible" : "hidden"
+    );
+    element.querySelectorAll("[data-ts-key]").forEach((child) => {
+      const key = child.dataset.tsKey;
+      child.setAttribute(
+        "visibility",
+        key && visible.has(key) ? "visible" : "hidden"
+      );
+    });
+  });
+}
+function collectFocusLayers(nodes) {
+  const layers = [];
+  for (const node of nodes) {
+    if (node.kind !== "group") continue;
+    if (node.focus) {
+      layers.push(node);
+    } else {
+      layers.push(...collectFocusLayers(node.children));
+    }
+  }
+  return layers;
+}
+export {
+  createSvgChartRenderer,
+  svgChartRenderer
+};

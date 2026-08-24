@@ -1,0 +1,25 @@
+import { createChartScene, defaultChartTheme } from "./scene.js";
+function createChartRuntime() {
+  return {
+    render(definition, size, layout) {
+      if (!isDynamicChartDefinition(definition)) {
+        return createChartScene(definition, size, layout);
+      }
+      const spec = definition.chart({
+        width: size.width,
+        height: size.height,
+        theme: defaultChartTheme
+      });
+      return createChartScene(spec, size, layout);
+    },
+    destroy() {
+    }
+  };
+}
+function isDynamicChartDefinition(definition) {
+  return "chart" in definition && typeof definition.chart === "function";
+}
+export {
+  createChartRuntime,
+  isDynamicChartDefinition
+};

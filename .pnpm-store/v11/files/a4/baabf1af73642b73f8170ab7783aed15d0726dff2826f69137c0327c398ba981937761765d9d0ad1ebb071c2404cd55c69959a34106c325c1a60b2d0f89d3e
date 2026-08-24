@@ -1,0 +1,1 @@
+"use strict";module.exports=clone;var getPrototypeOf=Object.getPrototypeOf||function(e){return e.__proto__};function clone(t){if(typeof t!=`object`||!t)return t;if(t instanceof Object)var n={__proto__:getPrototypeOf(t)};else var n=Object.create(null);return Object.getOwnPropertyNames(t).forEach(function(e){Object.defineProperty(n,e,Object.getOwnPropertyDescriptor(t,e))}),n}

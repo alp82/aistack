@@ -1,0 +1,1 @@
+{"version":3,"file":"createStreamEventsOut.js","sourceRoot":"","sources":["../../src/models/createStreamEventsOut.ts"],"names":[],"mappings":";;;AAMa,QAAA,+BAA+B,GAAG;IAC7C,eAAe,CAAC,OAAY;QAC1B,OAAO,EAAE,CAAC;IACZ,CAAC;IAED,aAAa,CAAC,KAA4B;QACxC,OAAO,EAAE,CAAC;IACZ,CAAC;CACF,CAAC"}

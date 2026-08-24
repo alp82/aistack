@@ -1,0 +1,342 @@
+import { scaleBand } from "d3-scale";
+import {
+  channelValues,
+  createMark,
+  inferredKeyValues,
+  isChartKey,
+  isChartValue,
+  isFiniteNumber,
+  markStates,
+  visualValue
+} from "./mark.js";
+import { resolveScaleInput } from "./scale-input.js";
+import { valueKey } from "./scales.js";
+import { stackValues } from "./stack-internal.js";
+function barY(source, options = {}) {
+  const data = Array.isArray(source) ? source : Array.from(source);
+  return createMark(({ markIndex }) => {
+    const id = options.id ?? `bar-y-${markIndex}`;
+    const xValues = channelValues(data, options.x, (_datum, index) => index);
+    const rawYValues = numericChannelValues(
+      data,
+      options.y ?? options.y2,
+      (datum) => typeof datum === "number" ? datum : void 0
+    );
+    const zValues = channelValues(data, options.z, () => null);
+    const colorValues = options.color === void 0 ? zValues : channelValues(data, options.color, () => null);
+    const seriesValues = options.z === void 0 && options.color !== void 0 ? colorValues : zValues;
+    const explicitExtent = options.y1 !== void 0 || options.y2 !== void 0;
+    if (explicitExtent && options.layout?.type === "stack") {
+      throw new TypeError(
+        "A bar with explicit y1 or y2 endpoints cannot also configure a stack layout"
+      );
+    }
+    const grouped = options.layout?.type === "group";
+    const stackLayout = options.layout?.type === "stack" ? options.layout : {};
+    const stacked = !explicitExtent && !grouped ? stackValues(xValues, rawYValues, seriesValues, stackLayout, "index") : void 0;
+    const y1Values = explicitExtent ? numericChannelValues(data, options.y1, () => 0) : stacked?.starts ?? data.map(() => 0);
+    const y2Values = explicitExtent ? numericChannelValues(data, options.y2 ?? options.y, () => void 0) : grouped ? rawYValues : stacked.ends;
+    const duplicatePositions = hasDuplicateValues(xValues);
+    const groupValues = grouped || !explicitExtent && duplicatePositions ? seriesValues : zValues;
+    const keys = inferredKeyValues(data, options.key, {
+      groups: groupValues,
+      candidates: [xValues],
+      markId: id,
+      warningIdentity: options
+    });
+    return {
+      id,
+      states: markStates(data, options.states),
+      seriesFromColor: options.z === void 0 && options.color !== void 0 && (grouped || duplicatePositions),
+      channels: {
+        x: { scale: "x", values: xValues.filter(isChartValue) },
+        y: {
+          scale: "y",
+          values: [
+            ...y2Values.filter(isFiniteNumber),
+            ...y1Values.filter(isFiniteNumber)
+          ],
+          includeZero: options.y1 === void 0
+        },
+        color: {
+          scale: "color",
+          values: colorValues.filter(isChartKey)
+        }
+      },
+      render: ({ scales, chart, color: resolveColor }) => {
+        const totalBandwidth = scales.x.bandwidth || inferBandwidth(scales.x, xValues, chart.width, data.length);
+        const groupScale = resolveGroupScale(
+          options.layout?.type === "group" ? options.layout : void 0,
+          groupValues,
+          totalBandwidth
+        );
+        const groupBandwidth = groupScale?.bandwidth ?? totalBandwidth;
+        const inset = Math.max(0, options.inset ?? 0);
+        const nodes = [];
+        data.forEach((datum, datumIndex) => {
+          const xValue = xValues[datumIndex];
+          const yValue = rawYValues[datumIndex];
+          const y1Value = y1Values[datumIndex];
+          const y2Value = y2Values[datumIndex];
+          if (!isChartValue(xValue) || !isFiniteNumber(yValue) || !isFiniteNumber(y1Value) || !isFiniteNumber(y2Value))
+            return;
+          const group = groupValues[datumIndex] ?? null;
+          const groupOffset = groupScale?.map(group) ?? 0;
+          const resolvedColor = resolveColor(colorValues[datumIndex]);
+          const fill = visualValue(
+            options.fill,
+            datum,
+            datumIndex,
+            data,
+            resolvedColor
+          );
+          const center = scales.x.map(xValue);
+          const baselinePosition = scales.y.map(y1Value);
+          const valuePosition = scales.y.map(y2Value);
+          const x = center - totalBandwidth / 2 + groupOffset + inset;
+          const y = Math.min(baselinePosition, valuePosition);
+          const width = Math.max(0, groupBandwidth - inset * 2);
+          const height = Math.abs(baselinePosition - valuePosition);
+          const key = `${id}:${valueKey(group)}:${valueKey(keys[datumIndex])}`;
+          const point = {
+            key,
+            markId: id,
+            group,
+            groupLabel: group == null ? id : String(group),
+            datum,
+            datumIndex,
+            xValue,
+            yValue,
+            y1Value,
+            y2Value,
+            yInterval: "difference",
+            x: center - totalBandwidth / 2 + groupOffset + groupBandwidth / 2,
+            y: valuePosition,
+            color: fill
+          };
+          nodes.push({
+            kind: "rect",
+            key,
+            x,
+            y,
+            width,
+            height,
+            radius: options.radius,
+            inset,
+            insetAxis: "x",
+            interaction: { point, affinity: "x" },
+            style: {
+              fill,
+              fillOpacity: options.fillOpacity
+            }
+          });
+        });
+        return {
+          nodes: [
+            {
+              kind: "group",
+              key: id,
+              className: "ts-chart__bar ts-chart__bar-y",
+              ariaHidden: true,
+              children: nodes
+            }
+          ]
+        };
+      }
+    };
+  }, options.motion);
+}
+function barX(source, options = {}) {
+  const data = Array.isArray(source) ? source : Array.from(source);
+  return createMark(({ markIndex }) => {
+    const id = options.id ?? `bar-x-${markIndex}`;
+    const rawXValues = numericChannelValues(
+      data,
+      options.x ?? options.x2,
+      (datum) => typeof datum === "number" ? datum : void 0
+    );
+    const yValues = channelValues(data, options.y, (_datum, index) => index);
+    const zValues = channelValues(data, options.z, () => null);
+    const colorValues = options.color === void 0 ? zValues : channelValues(data, options.color, () => null);
+    const seriesValues = options.z === void 0 && options.color !== void 0 ? colorValues : zValues;
+    const explicitExtent = options.x1 !== void 0 || options.x2 !== void 0;
+    if (explicitExtent && options.layout?.type === "stack") {
+      throw new TypeError(
+        "A bar with explicit x1 or x2 endpoints cannot also configure a stack layout"
+      );
+    }
+    const grouped = options.layout?.type === "group";
+    const stackLayout = options.layout?.type === "stack" ? options.layout : {};
+    const stacked = !explicitExtent && !grouped ? stackValues(yValues, rawXValues, seriesValues, stackLayout, "index") : void 0;
+    const x1Values = explicitExtent ? numericChannelValues(data, options.x1, () => 0) : stacked?.starts ?? data.map(() => 0);
+    const x2Values = explicitExtent ? numericChannelValues(data, options.x2 ?? options.x, () => void 0) : grouped ? rawXValues : stacked.ends;
+    const duplicatePositions = hasDuplicateValues(yValues);
+    const groupValues = grouped || !explicitExtent && duplicatePositions ? seriesValues : zValues;
+    const keys = inferredKeyValues(data, options.key, {
+      groups: groupValues,
+      candidates: [yValues],
+      markId: id,
+      warningIdentity: options
+    });
+    return {
+      id,
+      states: markStates(data, options.states),
+      seriesFromColor: options.z === void 0 && options.color !== void 0 && (grouped || duplicatePositions),
+      channels: {
+        x: {
+          scale: "x",
+          values: [
+            ...x2Values.filter(isFiniteNumber),
+            ...x1Values.filter(isFiniteNumber)
+          ],
+          includeZero: options.x1 === void 0
+        },
+        y: { scale: "y", values: yValues.filter(isChartValue) },
+        color: {
+          scale: "color",
+          values: colorValues.filter(isChartKey)
+        }
+      },
+      render: ({ scales, chart, color: resolveColor }) => {
+        const totalBandwidth = scales.y.bandwidth || inferBandwidth(scales.y, yValues, chart.height, data.length);
+        const groupScale = resolveGroupScale(
+          options.layout?.type === "group" ? options.layout : void 0,
+          groupValues,
+          totalBandwidth
+        );
+        const groupBandwidth = groupScale?.bandwidth ?? totalBandwidth;
+        const inset = Math.max(0, options.inset ?? 0);
+        const nodes = [];
+        data.forEach((datum, datumIndex) => {
+          const xValue = rawXValues[datumIndex];
+          const x1Value = x1Values[datumIndex];
+          const x2Value = x2Values[datumIndex];
+          const yValue = yValues[datumIndex];
+          if (!isFiniteNumber(xValue) || !isFiniteNumber(x1Value) || !isFiniteNumber(x2Value) || !isChartValue(yValue))
+            return;
+          const group = groupValues[datumIndex] ?? null;
+          const groupOffset = groupScale?.map(group) ?? 0;
+          const resolvedColor = resolveColor(colorValues[datumIndex]);
+          const fill = visualValue(
+            options.fill,
+            datum,
+            datumIndex,
+            data,
+            resolvedColor
+          );
+          const baselinePosition = scales.x.map(x1Value);
+          const valuePosition = scales.x.map(x2Value);
+          const center = scales.y.map(yValue);
+          const y = center - totalBandwidth / 2 + groupOffset + inset;
+          const x = Math.min(baselinePosition, valuePosition);
+          const width = Math.abs(baselinePosition - valuePosition);
+          const height = Math.max(0, groupBandwidth - inset * 2);
+          const key = `${id}:${valueKey(group)}:${valueKey(keys[datumIndex])}`;
+          const point = {
+            key,
+            markId: id,
+            group,
+            groupLabel: group == null ? id : String(group),
+            datum,
+            datumIndex,
+            xValue,
+            yValue,
+            x1Value,
+            x2Value,
+            xInterval: "difference",
+            x: valuePosition,
+            y: center - totalBandwidth / 2 + groupOffset + groupBandwidth / 2,
+            color: fill
+          };
+          nodes.push({
+            kind: "rect",
+            key,
+            x,
+            y,
+            width,
+            height,
+            radius: options.radius,
+            inset,
+            insetAxis: "y",
+            interaction: { point, affinity: "y" },
+            style: {
+              fill,
+              fillOpacity: options.fillOpacity
+            }
+          });
+        });
+        return {
+          nodes: [
+            {
+              kind: "group",
+              key: id,
+              className: "ts-chart__bar ts-chart__bar-x",
+              ariaHidden: true,
+              children: nodes
+            }
+          ]
+        };
+      }
+    };
+  }, options.motion);
+}
+function resolveGroupScale(source, values, bandwidth) {
+  if (!source) return void 0;
+  const scale = resolveScaleInput(
+    source.scale ?? (() => scaleBand().padding(
+      Number.isFinite(source.padding) ? Math.max(0, source.padding) : 0.1
+    )),
+    { values }
+  );
+  scale.range([0, bandwidth]);
+  const groupBandwidth = scale.bandwidth?.();
+  if (groupBandwidth === void 0) {
+    throw new TypeError("A grouped bar layout requires a D3 band scale");
+  }
+  return {
+    bandwidth: groupBandwidth,
+    map(value) {
+      if (value === null) {
+        throw new TypeError(
+          "A grouped bar requires an explicit z channel or a discrete color channel"
+        );
+      }
+      const position = scale(value);
+      if (position === void 0 || !Number.isFinite(position)) {
+        throw new TypeError(
+          `Bar group value "${String(value)}" is outside the group layout scale domain`
+        );
+      }
+      return position;
+    }
+  };
+}
+function hasDuplicateValues(values) {
+  const seen = /* @__PURE__ */ new Set();
+  for (const value of values) {
+    if (!isChartValue(value)) continue;
+    const identity = valueKey(value);
+    if (seen.has(identity)) return true;
+    seen.add(identity);
+  }
+  return false;
+}
+function inferBandwidth(scale, values, span, count) {
+  const positions = [
+    ...new Set(
+      values.filter(isChartValue).map(scale.map).filter((value) => Number.isFinite(value))
+    )
+  ].sort((a, b) => a - b);
+  let minimum = Infinity;
+  for (let index = 1; index < positions.length; index += 1) {
+    minimum = Math.min(minimum, positions[index] - positions[index - 1]);
+  }
+  return Number.isFinite(minimum) ? minimum * 0.8 : Math.min(48, span / Math.max(2, count + 1) * 0.8);
+}
+function numericChannelValues(data, channel, fallback) {
+  return typeof channel === "number" ? data.map(() => channel) : channelValues(data, channel, fallback);
+}
+export {
+  barX,
+  barY
+};

@@ -1,0 +1,8 @@
+import type { ChartAnimationOptions, ChartFocusState, ChartMarkStateTransition, ChartScene, ChartTooltipPosition, SceneNode } from './types.js';
+export interface ResolvedMarkState<TScene extends ChartScene = ChartScene> {
+    scene: TScene;
+    transition?: ChartMarkStateTransition;
+}
+export declare function resolveMarkStateScene<TScene extends ChartScene>(scene: TScene, focus: ChartFocusState | null, pointer?: ChartTooltipPosition | null): ResolvedMarkState<TScene>;
+export declare function resolveMarkStateTransition(transition: ChartMarkStateTransition | undefined, element: Element): ChartAnimationOptions | undefined;
+export declare function sceneHasMarkStates(nodes: readonly SceneNode[]): boolean;

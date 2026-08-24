@@ -1,0 +1,1 @@
+"use strict";const SemVer=require(`../classes/semver`),parse=(t,n,r=!1)=>{if(t instanceof SemVer)return t;try{return new SemVer(t,n)}catch(e){if(!r)return null;throw e}};module.exports=parse;

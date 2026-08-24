@@ -1,0 +1,17 @@
+import { isChartKey } from './scales.js';
+import type { Channel, ChartKey, ChartValue, InitializedMark, MarkInitializeContext, ChartMark, ChartMotionDefinition, ChartMarkState, ChartMarkStateStyle, VisualChannel } from './types.js';
+export { isChartKey };
+export declare function isChartValue(value: unknown): value is ChartValue;
+export declare function isFiniteNumber(value: unknown): value is number;
+export declare function isNonnegativeFiniteNumber(value: unknown): value is number;
+export declare function createMark<TDatum, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue>(initialize: (context: MarkInitializeContext) => InitializedMark<TDatum, TXValue, TYValue>, motion?: ChartMotionDefinition<TDatum>): ChartMark<TDatum, TXValue, TYValue>;
+export declare function markStates<TDatum, TStyle extends ChartMarkStateStyle<TDatum>>(data: readonly TDatum[], definitions: readonly ChartMarkState<TDatum, TStyle>[] | undefined): InitializedMark['states'];
+export declare function visualValue<TDatum, TValue>(channel: VisualChannel<TDatum, TValue> | undefined, datum: TDatum, index: number, data: readonly TDatum[], fallback: TValue): TValue;
+export declare function channelValues<TDatum, TValue>(data: readonly TDatum[], channel: Channel<TDatum, TValue> | undefined, fallback: (datum: TDatum, index: number, data: readonly TDatum[]) => TValue): TValue[];
+export declare function inferredKeyValues<TDatum>(data: readonly TDatum[], key: Channel<TDatum, ChartKey> | undefined, options?: {
+    groups?: readonly unknown[];
+    candidates?: readonly (readonly unknown[])[];
+    markId?: string;
+    warningIdentity?: object;
+}): ChartKey[];
+export declare function compositeKeyValues(...channels: readonly (readonly unknown[])[]): (ChartKey | undefined)[];

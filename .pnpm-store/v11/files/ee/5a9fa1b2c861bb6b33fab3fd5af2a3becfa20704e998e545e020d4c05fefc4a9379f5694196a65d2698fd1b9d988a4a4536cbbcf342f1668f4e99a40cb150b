@@ -1,0 +1,70 @@
+{
+  "name": "@tiptap/core",
+  "description": "headless rich text editor",
+  "version": "3.20.0",
+  "homepage": "https://tiptap.dev",
+  "keywords": [
+    "tiptap",
+    "headless",
+    "wysiwyg",
+    "text editor",
+    "prosemirror"
+  ],
+  "license": "MIT",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/ueberdosis"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.ts",
+        "require": "./dist/index.d.cts"
+      },
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./jsx-runtime": {
+      "types": {
+        "import": "./jsx-runtime/index.d.ts",
+        "require": "./jsx-runtime/index.d.cts"
+      },
+      "import": "./jsx-runtime/index.js",
+      "require": "./jsx-runtime/index.cjs"
+    },
+    "./jsx-dev-runtime": {
+      "types": {
+        "import": "./jsx-dev-runtime/index.d.ts",
+        "require": "./jsx-dev-runtime/index.d.cts"
+      },
+      "import": "./jsx-dev-runtime/index.js",
+      "require": "./jsx-dev-runtime/index.cjs"
+    }
+  },
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "src",
+    "dist",
+    "jsx-runtime",
+    "jsx-dev-runtime"
+  ],
+  "devDependencies": {
+    "@tiptap/pm": "^3.20.0"
+  },
+  "peerDependencies": {
+    "@tiptap/pm": "^3.20.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ueberdosis/tiptap",
+    "directory": "packages/core"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "lint": "prettier ./src/ --check && eslint --cache --quiet --no-error-on-unmatched-pattern ./src/"
+  }
+}

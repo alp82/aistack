@@ -1,0 +1,47 @@
+{
+  "name": "@takumi-rs/helpers",
+  "version": "0.70.4",
+  "author": {
+    "email": "me@kane.tw",
+    "name": "Kane Wang",
+    "url": "https://kane.tw"
+  },
+  "repository": {
+    "url": "git+https://github.com/kane50613/takumi.git"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "lucide-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tsup": "^8.5.1",
+    "typescript": "catalog:"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
+    },
+    "./jsx": {
+      "types": "./dist/jsx/jsx.d.ts",
+      "import": "./dist/jsx/jsx.js",
+      "require": "./dist/jsx/jsx.cjs",
+      "default": "./dist/jsx/jsx.js"
+    }
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "README.md",
+    "tsconfig.json"
+  ],
+  "license": "(MIT OR Apache-2.0)",
+  "scripts": {
+    "build": "tsup-node src/index.ts src/jsx/jsx.ts src/jsx/create-tailwind-fn.ts --clean --minify --dts --format esm,cjs --no-splitting"
+  },
+  "type": "module"
+}

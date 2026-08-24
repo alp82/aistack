@@ -1,0 +1,52 @@
+{
+  "name": "@edge-runtime/primitives",
+  "description": "A set of primitives to build Vercel Edge Runtime.",
+  "homepage": "https://edge-runtime.vercel.app/packages/primitives",
+  "version": "6.0.0",
+  "main": "dist/index.js",
+  "repository": {
+    "directory": "packages/primitives",
+    "type": "git",
+    "url": "git+https://github.com/vercel/edge-runtime.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vercel/edge-runtime/issues"
+  },
+  "keywords": [
+    "apis",
+    "edge",
+    "edge-runtime",
+    "functions",
+    "primites",
+    "runtime",
+    "standard",
+    "web"
+  ],
+  "devDependencies": {
+    "esbuild": "0.24.0",
+    "event-target-shim": "6.0.2",
+    "tsup": "8",
+    "undici": "6.21.0",
+    "urlpattern-polyfill": "10.0.0",
+    "@edge-runtime/format": "4.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist",
+    "load",
+    "types"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "types": "types/index.d.ts",
+  "scripts": {
+    "build": "ts-node scripts/build.ts",
+    "clean:build": "rm -rf dist",
+    "clean:node": "rm -rf node_modules",
+    "prebuild": "pnpm run clean:build"
+  }
+}

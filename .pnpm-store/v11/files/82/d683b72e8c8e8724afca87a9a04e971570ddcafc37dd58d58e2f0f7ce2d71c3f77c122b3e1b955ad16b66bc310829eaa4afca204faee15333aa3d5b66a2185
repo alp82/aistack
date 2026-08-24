@@ -1,0 +1,109 @@
+import { isChartKey, valueKey } from "./scales.js";
+const warnedKeyFallbacks = /* @__PURE__ */ new WeakSet();
+function isChartValue(value) {
+  return typeof value === "string" || value instanceof Date && Number.isFinite(value.getTime()) || isFiniteNumber(value);
+}
+function isFiniteNumber(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+function isNonnegativeFiniteNumber(value) {
+  return isFiniteNumber(value) && value >= 0;
+}
+function createMark(initialize, motion) {
+  return motion === void 0 ? { initialize } : { initialize, motion };
+}
+function markStates(data, definitions) {
+  return definitions?.length ? {
+    data,
+    definitions
+  } : void 0;
+}
+function visualValue(channel, datum, index, data, fallback) {
+  return typeof channel === "function" ? channel(datum, index, data) : channel ?? fallback;
+}
+function channelValues(data, channel, fallback) {
+  if (typeof channel === "function") {
+    return data.map((datum, index) => channel(datum, index, data));
+  }
+  if (channel !== void 0) {
+    return data.map(
+      (datum) => datum != null && typeof datum === "object" ? datum[channel] : void 0
+    );
+  }
+  return data.map(fallback);
+}
+function inferredKeyValues(data, key, options = {}) {
+  if (key !== void 0) {
+    return channelValues(data, key, (_datum, index) => index);
+  }
+  const candidates = [
+    data.map(
+      (datum) => datum != null && typeof datum === "object" ? datum.id : void 0
+    ),
+    data.map((datum) => {
+      if (datum == null || typeof datum !== "object") return void 0;
+      const nested = datum.data;
+      return nested != null && typeof nested === "object" ? nested.id : void 0;
+    }),
+    ...options.candidates ?? []
+  ];
+  for (const candidate of candidates) {
+    if (candidate.length !== data.length) continue;
+    const normalized = candidate.map(normalizeInferredKey);
+    if (normalized.every((value) => value !== void 0) && keysAreUniqueWithinGroups(normalized, options.groups)) {
+      return normalized;
+    }
+  }
+  warnAboutKeyFallback(
+    options.markId,
+    options.candidates,
+    options.warningIdentity
+  );
+  return data.map((_datum, index) => index);
+}
+function compositeKeyValues(...channels) {
+  const length = channels[0]?.length ?? 0;
+  return Array.from({ length }, (_value, index) => {
+    const parts = channels.map(
+      (channel) => normalizeInferredKey(channel[index])
+    );
+    return parts.every((part) => part !== void 0) ? JSON.stringify(parts.map(valueKey)) : void 0;
+  });
+}
+function normalizeInferredKey(value) {
+  if (isChartKey(value)) return value;
+  if (value instanceof Date && Number.isFinite(value.getTime())) {
+    return `date:${value.getTime()}`;
+  }
+  return void 0;
+}
+function keysAreUniqueWithinGroups(keys, groups) {
+  const seen = /* @__PURE__ */ new Set();
+  for (let index = 0; index < keys.length; index += 1) {
+    const identity = `${valueKey(groups?.[index] ?? null)}:${valueKey(keys[index])}`;
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+  }
+  return true;
+}
+function warnAboutKeyFallback(markId, candidates, warningIdentity) {
+  if (!markId || !candidates?.length || !warningIdentity || warnedKeyFallbacks.has(warningIdentity) || typeof process === "undefined" || process.env.NODE_ENV === "production") {
+    return;
+  }
+  warnedKeyFallbacks.add(warningIdentity);
+  console.warn(
+    `TanStack Charts could not infer a unique key for mark "${markId}". Using row position; supply key for stable identity across updates.`
+  );
+}
+export {
+  channelValues,
+  compositeKeyValues,
+  createMark,
+  inferredKeyValues,
+  isChartKey,
+  isChartValue,
+  isFiniteNumber,
+  isNonnegativeFiniteNumber,
+  markStates,
+  visualValue
+};

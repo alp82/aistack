@@ -1,0 +1,1 @@
+{"version":3,"file":"hide-metadata.mjs","names":[],"sources":["../../src/utils/hide-metadata.ts"],"sourcesContent":["export const HIDE_METADATA = {\n\tscope: \"server\",\n} as const;\n"],"mappings":";AAAA,MAAa,gBAAgB,EAC5B,OAAO,UACP"}

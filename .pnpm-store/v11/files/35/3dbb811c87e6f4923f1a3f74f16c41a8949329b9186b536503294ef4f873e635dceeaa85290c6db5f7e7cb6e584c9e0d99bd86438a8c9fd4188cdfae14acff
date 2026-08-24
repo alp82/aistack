@@ -1,0 +1,38 @@
+{
+  "name": "@takumi-rs/core-linux-x64-gnu",
+  "version": "0.70.4",
+  "cpu": [
+    "x64"
+  ],
+  "main": "core.linux-x64-gnu.node",
+  "files": [
+    "core.linux-x64-gnu.node"
+  ],
+  "keywords": [
+    "image",
+    "rendering",
+    "css",
+    "react",
+    "jsx",
+    "nodejs",
+    "napi"
+  ],
+  "author": {
+    "email": "me@kane.tw",
+    "name": "Kane Wang",
+    "url": "https://kane.tw"
+  },
+  "license": "(MIT OR Apache-2.0)",
+  "engines": {
+    "node": ">= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0"
+  },
+  "repository": {
+    "url": "git+https://github.com/kane50613/takumi.git"
+  },
+  "os": [
+    "linux"
+  ],
+  "libc": [
+    "glibc"
+  ]
+}

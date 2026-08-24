@@ -1,0 +1,19 @@
+{
+  "name": "node-gyp-build",
+  "version": "4.8.4",
+  "main": "index.js",
+  "imports": {
+    "fs": {
+      "bare": "builtin:fs",
+      "default": "fs"
+    },
+    "path": {
+      "bare": "builtin:path",
+      "default": "path"
+    },
+    "os": {
+      "bare": "builtin:os",
+      "default": "os"
+    }
+  }
+}

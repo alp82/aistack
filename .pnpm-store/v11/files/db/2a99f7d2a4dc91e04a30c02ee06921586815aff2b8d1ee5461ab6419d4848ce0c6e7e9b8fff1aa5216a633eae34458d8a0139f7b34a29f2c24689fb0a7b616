@@ -1,0 +1,110 @@
+import { estimateSceneText } from "./guide-layout.js";
+function createDomTextMeasurer(container) {
+  const view = container.ownerDocument.defaultView;
+  const CanvasContext = view?.CanvasRenderingContext2D;
+  const context = CanvasContext ? container.ownerDocument.createElement("canvas").getContext("2d") : null;
+  let style = readFontStyle();
+  let signature = fontSignature(style);
+  const cache = /* @__PURE__ */ new Map();
+  return {
+    measureText(text, options) {
+      if (!context) return estimateSceneText(text, options);
+      const key = `${signature}\0${options.fontSize}\0${options.fontWeight ?? ""}\0${options.anchor}\0${options.baseline}\0${text}`;
+      const cached = cache.get(key);
+      if (cached) return cached;
+      configureContext(context, style, options);
+      const measured = context.measureText(text);
+      const metrics = paintedBounds(measured, options);
+      cache.set(key, metrics);
+      return metrics;
+    },
+    refresh() {
+      const nextStyle = readFontStyle();
+      const nextSignature = fontSignature(nextStyle);
+      if (nextSignature === signature) return false;
+      style = nextStyle;
+      signature = nextSignature;
+      cache.clear();
+      return true;
+    },
+    invalidate() {
+      cache.clear();
+    }
+  };
+  function readFontStyle() {
+    const computed = view?.getComputedStyle(container);
+    return {
+      family: computed?.fontFamily || "sans-serif",
+      style: computed?.fontStyle || "normal",
+      stretch: normalizeFontStretch(computed?.fontStretch),
+      weight: computed?.fontWeight || "400",
+      direction: computed?.direction === "rtl" ? "rtl" : computed?.direction === "ltr" ? "ltr" : "inherit",
+      letterSpacing: computed?.letterSpacing || "0px"
+    };
+  }
+}
+function configureContext(context, style, options) {
+  const weight = options.fontWeight ?? style.weight;
+  context.font = [
+    style.style,
+    weight,
+    `${options.fontSize}px`,
+    style.family
+  ].join(" ");
+  if ("fontStretch" in context) {
+    context.fontStretch = style.stretch;
+  }
+  context.textAlign = options.anchor === "middle" ? "center" : options.anchor;
+  context.textBaseline = options.baseline === "auto" ? "alphabetic" : options.baseline;
+  context.direction = style.direction;
+  if ("letterSpacing" in context) {
+    context.letterSpacing = style.letterSpacing;
+  }
+}
+function paintedBounds(measured, options) {
+  const left = measured.actualBoundingBoxLeft;
+  const right = measured.actualBoundingBoxRight;
+  const ascent = measured.actualBoundingBoxAscent;
+  const descent = measured.actualBoundingBoxDescent;
+  if ([left, right, ascent, descent].every((value) => Number.isFinite(value)) && (left + right > 0 || measured.width === 0) && (ascent + descent > 0 || measured.width === 0)) {
+    return {
+      x: -left,
+      y: -ascent,
+      width: left + right,
+      height: ascent + descent
+    };
+  }
+  const width = Number.isFinite(measured.width) ? Math.max(0, measured.width) : 0;
+  const x = options.anchor === "middle" ? -width / 2 : options.anchor === "end" ? -width : 0;
+  const y = options.baseline === "middle" ? -options.fontSize / 2 : options.baseline === "hanging" ? 0 : -options.fontSize * 0.8;
+  return { x, y, width, height: options.fontSize };
+}
+function fontSignature(style) {
+  return [
+    style.family,
+    style.style,
+    style.stretch,
+    style.weight,
+    style.direction,
+    style.letterSpacing
+  ].join("\0");
+}
+function normalizeFontStretch(value) {
+  if (value === "ultra-condensed" || value === "extra-condensed" || value === "condensed" || value === "semi-condensed" || value === "normal" || value === "semi-expanded" || value === "expanded" || value === "extra-expanded" || value === "ultra-expanded") {
+    return value;
+  }
+  const percentage = Number.parseFloat(value ?? "");
+  if (!Number.isFinite(percentage)) return "normal";
+  if (percentage <= 50) return "ultra-condensed";
+  if (percentage <= 62.5) return "extra-condensed";
+  if (percentage <= 75) return "condensed";
+  if (percentage <= 87.5) return "semi-condensed";
+  if (percentage < 112.5) return "normal";
+  if (percentage < 125) return "semi-expanded";
+  if (percentage < 150) return "expanded";
+  if (percentage < 200) return "extra-expanded";
+  return "ultra-expanded";
+}
+export {
+  createDomTextMeasurer
+};

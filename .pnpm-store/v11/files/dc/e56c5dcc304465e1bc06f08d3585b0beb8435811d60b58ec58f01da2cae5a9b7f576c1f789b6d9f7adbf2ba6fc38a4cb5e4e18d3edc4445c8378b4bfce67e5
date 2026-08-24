@@ -1,0 +1,43 @@
+import type { GeoPermissibleObjects, GeoIdentityTransform, GeoProjection, GeoStreamWrapper } from 'd3-geo';
+import type { Channel, ChartBounds, ChartKey, ChartMark, ChartMarkMotionOptions, ChartNumericScale, VisualChannel } from './types.js';
+export interface GeoProjectionContext<TDatum> {
+    chart: ChartBounds;
+    data: readonly TDatum[];
+}
+export interface GeoProjectionDescriptor {
+    type: () => GeoProjection | GeoIdentityTransform;
+    /**
+     * Geometry fitted into the final plot bounds.
+     * Use "sphere" to retain a complete world frame.
+     */
+    fit: 'data' | 'sphere' | GeoPermissibleObjects;
+    inset?: number;
+}
+export type GeoProjectionInput<TDatum> = ((context: GeoProjectionContext<TDatum>) => GeoProjection | GeoStreamWrapper | null) | GeoProjectionDescriptor;
+export interface GeoShapeOptions<TDatum extends GeoPermissibleObjects> extends ChartMarkMotionOptions<TDatum> {
+    id?: string;
+    className?: string;
+    projection: GeoProjectionInput<TDatum>;
+    key?: Channel<TDatum, ChartKey>;
+    color?: Channel<TDatum, ChartKey | null | undefined>;
+    /** Pixel radius for Point and MultiPoint geometry. Defaults to 4.5. */
+    r?: number | Channel<TDatum, number | null | undefined>;
+    /** Maps a quantitative radius value to a nonnegative pixel radius. */
+    rScale?: ChartNumericScale;
+    fill?: VisualChannel<TDatum, string>;
+    fillOpacity?: number;
+    stroke?: VisualChannel<TDatum, string>;
+    strokeOpacity?: number;
+    strokeWidth?: number;
+    strokeDasharray?: string;
+    opacity?: number;
+    anchor?: (datum: TDatum, index: number, data: readonly TDatum[]) => readonly [longitude: number, latitude: number];
+}
+/**
+ * Projects GeoJSON through a caller-supplied D3 projection factory.
+ *
+ * The projection factory receives the final responsive plot bounds. Each
+ * datum is rendered with `d3-geo`'s path generator and contributes an
+ * interaction point at its projected centroid when both centroids are finite.
+ */
+export declare function geoShape<TDatum extends GeoPermissibleObjects>(source: Iterable<TDatum>, options: GeoShapeOptions<NoInfer<TDatum>>): ChartMark<TDatum, number, number, never, never>;

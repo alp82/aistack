@@ -1,0 +1,7 @@
+import { renderChartSvgWithHooks } from "./svg-renderer.js";
+function renderChartSvg(scene, options) {
+  return renderChartSvgWithHooks(scene, options);
+}
+export {
+  renderChartSvg
+};

@@ -1,0 +1,30 @@
+import type { ChartRenderer, ChartRendererHostOptions, ChartSurface } from './dom-types.js';
+import type { ChartRuntime, ChartScene, ChartValue, RenderChartOptions } from './types.js';
+export interface CanvasChartRendererOptions {
+    pixelRatio?: number;
+}
+export interface CanvasChartSurface<TDatum = unknown, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue> extends ChartSurface<TDatum, TXValue, TYValue> {
+    readonly element: HTMLDivElement;
+    readonly canvas: HTMLCanvasElement;
+    readonly focusUnderCanvas: HTMLCanvasElement;
+    readonly focusCanvas: HTMLCanvasElement;
+}
+export interface CanvasChartRenderer<TDatum = unknown, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue> extends ChartRenderer<TDatum, TXValue, TYValue> {
+    mount: (container: HTMLElement, requestRender: (force?: boolean) => void) => CanvasChartSurface<TDatum, TXValue, TYValue>;
+}
+interface UniversalCanvasChartRenderer {
+    readonly id: string;
+    prerender: <TDatum = unknown, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue>(scene: ChartScene<TDatum, TXValue, TYValue>, options: RenderChartOptions) => string;
+    mount: <TDatum = unknown, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue>(container: HTMLElement, requestRender: (force?: boolean) => void) => CanvasChartSurface<TDatum, TXValue, TYValue>;
+}
+type DistributiveOmit<TValue, TKey extends PropertyKey> = TValue extends unknown ? Omit<TValue, TKey> : never;
+export type CanvasChartHostOptions<TDatum = unknown, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue> = DistributiveOmit<ChartRendererHostOptions<TDatum, TXValue, TYValue>, 'renderer'>;
+export interface CanvasChartHost<TDatum = unknown, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue> {
+    update: (options: CanvasChartHostOptions<TDatum, TXValue, TYValue>) => void;
+    getScene: () => ChartScene<TDatum, TXValue, TYValue>;
+    destroy: () => void;
+}
+export declare function createCanvasChartRenderer<TDatum = unknown, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue>(rendererOptions?: CanvasChartRendererOptions): CanvasChartRenderer<TDatum, TXValue, TYValue>;
+export declare const canvasChartRenderer: UniversalCanvasChartRenderer;
+export declare function mountCanvasChart<TDatum, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue>(container: HTMLElement, initialOptions: CanvasChartHostOptions<TDatum, TXValue, TYValue>, runtime?: ChartRuntime<TDatum, TXValue, TYValue>): CanvasChartHost<TDatum, TXValue, TYValue>;
+export {};

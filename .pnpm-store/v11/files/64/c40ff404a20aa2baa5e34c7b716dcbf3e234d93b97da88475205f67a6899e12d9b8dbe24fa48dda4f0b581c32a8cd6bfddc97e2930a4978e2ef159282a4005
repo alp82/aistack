@@ -1,0 +1,6 @@
+function createMarkWithScaleValues(initialize, motion) {
+  return motion === void 0 ? { initialize } : { initialize, motion };
+}
+export {
+  createMarkWithScaleValues
+};

@@ -1,0 +1,1 @@
+{"version":3,"file":"shopifyConfigOut.js","sourceRoot":"","sources":["../../src/models/shopifyConfigOut.ts"],"names":[],"mappings":";;;AAMa,QAAA,0BAA0B,GAAG;IACxC,eAAe,CAAC,OAAY;QAC1B,OAAO,EAAE,CAAC;IACZ,CAAC;IAED,aAAa,CAAC,KAAuB;QACnC,OAAO,EAAE,CAAC;IACZ,CAAC;CACF,CAAC"}

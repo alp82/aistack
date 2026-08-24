@@ -1,0 +1,47 @@
+# AWS Lambda
+
+> Deploy Nitro apps to AWS Lambda.
+
+**Preset:** `aws_lambda`
+
+<read-more></read-more>
+
+Nitro provides a built-in preset to generate output format compatible with [AWS Lambda](https://aws.amazon.com/lambda/).
+The output entrypoint in `.output/server/index.mjs` is compatible with [AWS Lambda format](https://docs.aws.amazon.com/lex/latest/dg/lambda-input-response-format.html).
+
+It can be used programmatically or as part of a deployment.
+
+```ts
+import { handler } from './.output/server'
+
+// Use programmatically
+const { statusCode, headers, body } = handler({ rawPath: '/' })
+```
+
+## Inlining chunks
+
+Nitro output, by default uses dynamic chunks for lazy loading code only when needed. However this sometimes can not be ideal for performance. (See discussions in [nitrojs/nitro#650](https://github.com/nitrojs/nitro/pull/650)). You can enabling chunk inlining behavior using [`inlineDynamicImports`](/config#inlinedynamicimports) config.
+
+```ts [nitro.config.ts]
+import { defineConfig } from "nitro";
+
+export default defineConfig({
+  inlineDynamicImports: true
+});
+```
+
+## Response streaming
+
+<read-more></read-more>
+
+In order to enable response streaming, enable `awsLambda.streaming` flag:
+
+```ts [nitro.config.ts]
+import { defineConfig } from "nitro";
+
+export default defineConfig({
+  awsLambda: {
+    streaming: true
+  }
+});
+```

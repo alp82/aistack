@@ -1,0 +1,186 @@
+export interface FontDetails {
+  /**
+   * The name of the font. If not provided, the name in the font file will be used.
+   */
+  name?: string;
+  /**
+   * The font data.
+   */
+  data: Uint8Array | ArrayBuffer;
+  /**
+   * The weight of the font. If not provided, the weight in the font file will be used.
+   */
+  weight?: number;
+  /**
+   * The style of the font. If not provided, the style in the font file will be used.
+   */
+  style?:
+    | "normal"
+    | "italic"
+    | "oblique"
+    | `oblique ${number}deg`
+    | (string & {});
+}
+
+export type Font = FontDetails | Uint8Array | ArrayBuffer;
+
+export interface AnyNode {
+  type: string;
+  // biome-ignore lint/suspicious/noExplicitAny: for extensibility
+  [key: string]: any;
+}
+
+/**
+ * @deprecated use `ImageSource` instead.
+ */
+export type PersistentImage = ImageSource;
+/** The main renderer for Takumi image rendering engine (Node.js version). */
+export declare class Renderer {
+  /** Creates a new Renderer instance. */
+  constructor(options?: ConstructRendererOptions | undefined | null)
+  /** @deprecated This function does nothing. */
+  purgeResourcesCache(): void
+  /** @deprecated This function does nothing. */
+  purgeFontCache(): void
+  /** @deprecated Use `putPersistentImage` instead (to align with the naming convention for sync/async functions). */
+  putPersistentImageAsync(src: string, data: Uint8Array | ArrayBuffer, signal?: AbortSignal): Promise<void>
+  /** Puts a persistent image into the renderer's internal store asynchronously. */
+  putPersistentImage(src: string, data: Uint8Array | ArrayBuffer, signal?: AbortSignal): Promise<void>
+  /** Loads a font synchronously. */
+  loadFontSync(font: Font): void
+  /** @deprecated Use `loadFont` instead (to align with the naming convention for sync/async functions). */
+  loadFontAsync(data: Font, signal?: AbortSignal): Promise<number>
+  /** Loads a font into the renderer asynchronously. */
+  loadFont(data: Font, signal?: AbortSignal): Promise<number>
+  /** @deprecated Use `loadFonts` instead (to align with the naming convention for sync/async functions). */
+  loadFontsAsync(fonts: Font[], signal?: AbortSignal): Promise<number>
+  /** Loads multiple fonts into the renderer asynchronously. */
+  loadFonts(fonts: Font[], signal?: AbortSignal): Promise<number>
+  /** Clears the renderer's internal image store. */
+  clearImageStore(): void
+  /** Renders a node tree into an image buffer asynchronously. */
+  render(source: AnyNode, options?: RenderOptions, signal?: AbortSignal): Promise<Buffer>
+  /** @deprecated Use `render` instead (to align with the naming convention for sync/async functions). */
+  renderAsync(source: AnyNode, options?: RenderOptions, signal?: AbortSignal): Promise<Buffer>
+  /** Measures a node tree and returns layout information asynchronously. */
+  measure(source: AnyNode, options?: RenderOptions, signal?: AbortSignal): Promise<MeasuredNode>
+  /** Renders an animation sequence into a buffer asynchronously. */
+  renderAnimation(source: AnimationFrameSource[], options: RenderAnimationOptions, signal?: AbortSignal): Promise<Buffer>
+}
+
+/** Represents a single frame in an animation sequence. */
+export interface AnimationFrameSource {
+  /** The node tree to render for this frame. */
+  node: AnyNode
+  /** The duration of this frame in milliseconds. */
+  durationMs: number
+}
+
+/** Output format for animated images. */
+export type AnimationOutputFormat = /** Animated WebP format. */
+'webp'|
+/** Animated PNG format. */
+'apng';
+
+/** Options for constructing a Renderer instance. */
+export interface ConstructRendererOptions {
+  /** The images that needs to be preloaded into the renderer. */
+  persistentImages?: Array<ImageSource>
+  /** The fonts being used. */
+  fonts?: Font[] | undefined
+  /**
+   * Whether to load the default fonts.
+   * If `fonts` are provided, this will be `false` by default.
+   */
+  loadDefaultFonts?: boolean
+}
+
+/** Collects the fetch task urls from the node. */
+export declare function extractResourceUrls(node: AnyNode): Array<string>
+
+/** An image source with its URL and raw data. */
+export interface ImageSource {
+  /** The source URL of the image. */
+  src: string
+  /** The raw image data (Uint8Array or ArrayBuffer). */
+  data: Uint8Array | ArrayBuffer
+}
+
+/** Represents a node that has been measured, including its layout information. */
+export interface MeasuredNode {
+  /** The measured width of the node. */
+  width: number
+  /** The measured height of the node. */
+  height: number
+  /** The transformation matrix of the node. */
+  transform: [number, number, number, number, number, number]
+  /** The children of the node. */
+  children: Array<MeasuredNode>
+  /** The text runs within the node. */
+  runs: Array<MeasuredTextRun>
+}
+
+/** Represents a single run of text in a measured node. */
+export interface MeasuredTextRun {
+  /** The text content of the run. */
+  text: string
+  /** The inline x-coordinate of the run. */
+  x: number
+  /** The inline y-coordinate of the run. */
+  y: number
+  /** The width of the run. */
+  width: number
+  /** The height of the run. */
+  height: number
+}
+
+/** Output format for static images. */
+export type OutputFormat = /** WebP format. */
+'webp'|
+/** PNG format. */
+'png'|
+/** JPEG format. */
+'jpeg'|
+/** @deprecated Use lowercase `webp` instead| may be removed in the future */
+'WebP'|
+/** @deprecated Use lowercase `jpeg` instead| may be removed in the future */
+'Jpeg'|
+/** @deprecated Use lowercase `png` instead| may be removed in the future */
+'Png'|
+/** Raw pixels format. */
+'raw';
+
+/** Options for rendering an animated image. */
+export interface RenderAnimationOptions {
+  /** Whether to draw debug borders around layout elements. */
+  drawDebugBorder?: boolean
+  /** The width of each frame in pixels. */
+  width: number
+  /** The height of each frame in pixels. */
+  height: number
+  /** The output animation format (WebP or APNG). */
+  format?: AnimationOutputFormat
+}
+
+/** Options for rendering an image. */
+export interface RenderOptions {
+  /** The width of the image. If not provided, the width will be automatically calculated based on the content. */
+  width?: number
+  /** The height of the image. If not provided, the height will be automatically calculated based on the content. */
+  height?: number
+  /** The format of the image. */
+  format?: OutputFormat
+  /** The quality of JPEG format (0-100). */
+  quality?: number
+  /** Whether to draw debug borders. */
+  drawDebugBorder?: boolean
+  /** The fetched resources to use. */
+  fetchedResources?: Array<ImageSource>
+  /** CSS stylesheets to apply before rendering. */
+  stylesheets?: Array<string>
+  /**
+   * The device pixel ratio.
+   * @default 1.0
+   */
+  devicePixelRatio?: number
+}

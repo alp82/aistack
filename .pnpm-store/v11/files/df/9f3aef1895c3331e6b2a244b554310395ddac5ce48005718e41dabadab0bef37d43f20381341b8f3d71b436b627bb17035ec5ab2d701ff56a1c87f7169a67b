@@ -1,0 +1,53 @@
+import { CSSProperties } from 'react';
+import { C as ContainerNode, T as TextNode, I as ImageNode } from './types-DVfDlIZ1.cjs';
+export { A as AnyNode, B as BaseNode, N as Node, P as PartialStyle } from './types-DVfDlIZ1.cjs';
+
+declare function container(props: Omit<ContainerNode, "type">): ContainerNode;
+declare function text(text: string, style?: CSSProperties): TextNode;
+declare function text(props: Omit<TextNode, "type">): TextNode;
+declare function image(props: Omit<ImageNode, "type">): ImageNode;
+declare function style(style: CSSProperties): CSSProperties;
+declare function percentage(percentage: number): `${number}%`;
+declare function vw(vw: number): `${number}vw`;
+declare function vh(vh: number): `${number}vh`;
+declare function em(em: number): `${number}em`;
+declare function rem(rem: number): `${number}rem`;
+declare function fr(fr: number): `${number}fr`;
+declare function rgba(r: number, g: number, b: number, a?: number): `rgb(${number} ${number} ${number} / ${number})`;
+
+type FetchResourcesOptions = {
+    /**
+     * Timeout in milliseconds.
+     * @default 5000
+     */
+    timeout?: number;
+    /**
+     * Custom fetch function.
+     * @default {globalThis.fetch}
+     */
+    fetch?: (input: string, init?: RequestInit) => Promise<Response>;
+    /**
+     * Whether to throw on any fetch failure. If false, returns only successful fetches.
+     * @default true
+     */
+    throwOnError?: boolean;
+    /**
+     * Cache for fetched resources.
+     * Custom features (like LRU, TTL, etc.) can be implemented by providing an extended `Map<string, ArrayBuffer>`.
+     */
+    cache?: Map<string, ArrayBuffer>;
+};
+/**
+ * Fetches multiple resources concurrently.
+ * Validates HTTP status codes and automatically deduplicates URLs.
+ *
+ * @param urls - URLs to fetch
+ * @param options - Fetch options
+ * @returns Array of { src: string, data: ArrayBuffer }
+ */
+declare function fetchResources(urls: string[], options?: FetchResourcesOptions): Promise<{
+    src: string;
+    data: ArrayBuffer;
+}[]>;
+
+export { ContainerNode, type FetchResourcesOptions, ImageNode, TextNode, container, em, fetchResources, fr, image, percentage, rem, rgba, style, text, vh, vw };

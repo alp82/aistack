@@ -1,0 +1,3 @@
+import type { DynamicChartDefinition, ChartDefinition, ChartRuntime, ChartValue } from './types.js';
+export declare function createChartRuntime<TDatum = unknown, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue>(): ChartRuntime<TDatum, TXValue, TYValue>;
+export declare function isDynamicChartDefinition<TDatum, TXValue extends ChartValue, TYValue extends ChartValue>(definition: ChartDefinition<TDatum, TXValue, TYValue>): definition is DynamicChartDefinition<TDatum, TXValue, TYValue>;

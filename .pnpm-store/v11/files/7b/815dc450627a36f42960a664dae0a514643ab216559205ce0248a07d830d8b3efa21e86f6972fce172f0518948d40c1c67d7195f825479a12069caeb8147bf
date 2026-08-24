@@ -1,0 +1,12 @@
+import * as React from 'react';
+import type { ChartDefinition, ChartTooltipBodyTarget, ChartValue } from '@tanstack/charts';
+import { type RendererChartCommonProps } from './RendererChart.js';
+export type CanvasChartCommonProps<TDatum = unknown, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue> = Omit<RendererChartCommonProps<TDatum, TXValue, TYValue>, 'renderer'>;
+export type CanvasChartProps<TDatum = unknown, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue> = CanvasChartCommonProps<TDatum, TXValue, TYValue> & {
+    definition: ChartDefinition<TDatum, TXValue, TYValue>;
+};
+export type CanvasChartImplementationProps<TDatum = unknown, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue> = CanvasChartProps<TDatum, TXValue, TYValue> & {
+    onTooltipBodyChange?: (target: ChartTooltipBodyTarget<TDatum, TXValue, TYValue> | null) => void;
+};
+export declare function CanvasChart<TDatum, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue>(props: CanvasChartProps<TDatum, TXValue, TYValue>): React.JSX.Element;
+export declare function CanvasChartImplementation<TDatum, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue>(props: CanvasChartImplementationProps<TDatum, TXValue, TYValue>): React.JSX.Element;

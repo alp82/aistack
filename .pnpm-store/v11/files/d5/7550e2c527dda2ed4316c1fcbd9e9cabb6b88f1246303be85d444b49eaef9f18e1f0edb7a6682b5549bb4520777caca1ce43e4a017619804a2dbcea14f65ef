@@ -1,0 +1,28 @@
+import * as React from 'react';
+import type { ChartRenderer, ChartRendererRenderContext, ChartPoint, ChartTextMeasurer, ChartTooltipBodyTarget, ChartValue, ChartDefinition } from '@tanstack/charts';
+export interface RendererChartCommonProps<TDatum = unknown, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue> {
+    renderer: ChartRenderer<NoInfer<TDatum>, NoInfer<TXValue>, NoInfer<TYValue>>;
+    ariaLabel: string;
+    ariaDescription?: string;
+    height?: number;
+    aspectRatio?: number;
+    width?: number;
+    initialWidth?: number;
+    className?: string;
+    style?: React.CSSProperties;
+    tabIndex?: number;
+    idPrefix?: string;
+    measureText?: ChartTextMeasurer;
+    onFocusChange?: (point: ChartPoint<TDatum, TXValue, TYValue> | null) => void;
+    onFocusGroupChange?: (points: readonly ChartPoint<TDatum, TXValue, TYValue>[]) => void;
+    onSelect?: (point: ChartPoint<TDatum, TXValue, TYValue> | null) => void;
+    onRender?: (context: ChartRendererRenderContext<TDatum, TXValue, TYValue>) => void;
+}
+export type RendererChartProps<TDatum = unknown, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue> = RendererChartCommonProps<TDatum, TXValue, TYValue> & {
+    definition: ChartDefinition<TDatum, TXValue, TYValue>;
+};
+export type RendererChartImplementationProps<TDatum = unknown, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue> = RendererChartProps<TDatum, TXValue, TYValue> & {
+    onTooltipBodyChange?: (target: ChartTooltipBodyTarget<TDatum, TXValue, TYValue> | null) => void;
+};
+export declare function RendererChart<TDatum, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue>(props: RendererChartProps<TDatum, TXValue, TYValue>): React.JSX.Element;
+export declare function RendererChartImplementation<TDatum, TXValue extends ChartValue = ChartValue, TYValue extends ChartValue = ChartValue>(props: RendererChartImplementationProps<TDatum, TXValue, TYValue>): React.JSX.Element;

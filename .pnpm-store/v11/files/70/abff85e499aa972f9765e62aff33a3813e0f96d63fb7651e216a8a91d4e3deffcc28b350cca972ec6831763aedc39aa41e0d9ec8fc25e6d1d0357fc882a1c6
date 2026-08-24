@@ -1,0 +1,48 @@
+{
+    "name": "@types/d3-geo",
+    "version": "3.1.1",
+    "description": "TypeScript definitions for d3-geo",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/d3-geo",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Hugues Stefanski",
+            "githubUsername": "ledragon",
+            "url": "https://github.com/ledragon"
+        },
+        {
+            "name": "Tom Wanzek",
+            "githubUsername": "tomwanzek",
+            "url": "https://github.com/tomwanzek"
+        },
+        {
+            "name": "Alex Ford",
+            "githubUsername": "gustavderdrache",
+            "url": "https://github.com/gustavderdrache"
+        },
+        {
+            "name": "Boris Yankov",
+            "githubUsername": "borisyankov",
+            "url": "https://github.com/borisyankov"
+        },
+        {
+            "name": "Nathan Bierema",
+            "githubUsername": "Methuselah96",
+            "url": "https://github.com/Methuselah96"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/d3-geo"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/geojson": "*"
+    },
+    "peerDependencies": {},
+    "typesPublisherContentHash": "68100f6aeba8c03276da32dc6b90990502187f8999bede66b325cd758aef7589",
+    "typeScriptVersion": "5.6"
+}

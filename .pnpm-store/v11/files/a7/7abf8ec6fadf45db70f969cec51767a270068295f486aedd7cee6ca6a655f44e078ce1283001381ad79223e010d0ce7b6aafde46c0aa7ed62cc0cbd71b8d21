@@ -1,0 +1,29 @@
+import type { Channel, ChartKey, ChartMark, ChartMarkMotionOptions, ChartValue, OptionChannelOutput, VisualChannel } from './types.js';
+export interface TickXOptions<TDatum> extends ChartMarkMotionOptions<TDatum> {
+    id?: string;
+    x: Channel<TDatum, ChartValue | null | undefined>;
+    y: Channel<TDatum, ChartValue | null | undefined>;
+    z?: Channel<TDatum, ChartKey | null | undefined>;
+    color?: Channel<TDatum, ChartKey | null | undefined>;
+    key?: Channel<TDatum, ChartKey>;
+    stroke?: VisualChannel<TDatum, string>;
+    strokeOpacity?: number;
+    strokeWidth?: number;
+    length?: number;
+    inset?: number;
+}
+export interface TickYOptions<TDatum> extends ChartMarkMotionOptions<TDatum> {
+    id?: string;
+    x: Channel<TDatum, ChartValue | null | undefined>;
+    y: Channel<TDatum, ChartValue | null | undefined>;
+    z?: Channel<TDatum, ChartKey | null | undefined>;
+    color?: Channel<TDatum, ChartKey | null | undefined>;
+    key?: Channel<TDatum, ChartKey>;
+    stroke?: VisualChannel<TDatum, string>;
+    strokeOpacity?: number;
+    strokeWidth?: number;
+    length?: number;
+    inset?: number;
+}
+export declare function tickX<TDatum, const TOptions extends TickXOptions<NoInfer<TDatum>>>(source: Iterable<TDatum>, options: TOptions): ChartMark<TDatum, OptionChannelOutput<TDatum, TOptions, 'x', number>, OptionChannelOutput<TDatum, TOptions, 'y', number>>;
+export declare function tickY<TDatum, const TOptions extends TickYOptions<NoInfer<TDatum>>>(source: Iterable<TDatum>, options: TOptions): ChartMark<TDatum, OptionChannelOutput<TDatum, TOptions, 'x', number>, OptionChannelOutput<TDatum, TOptions, 'y', number>>;

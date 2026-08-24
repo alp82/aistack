@@ -1,0 +1,16 @@
+import { FsRouteType, GetRouteNodesResult } from '../../types.cjs';
+import { Config } from '../../config.cjs';
+export declare function isVirtualConfigFile(fileName: string): boolean;
+export declare function getRouteNodes(config: Pick<Config, 'routesDirectory' | 'routeFilePrefix' | 'routeFileIgnorePrefix' | 'routeFileIgnorePattern' | 'disableLogging' | 'routeToken' | 'indexToken'>, root: string): Promise<GetRouteNodesResult>;
+/**
+ * Determines the metadata for a given route path based on the provided configuration.
+ *
+ * @param routePath - The determined initial routePath (with brackets removed).
+ * @param originalRoutePath - The original route path (may contain brackets for escaped content).
+ * @param config - The user configuration object.
+ * @returns An object containing the type of the route and the variable name derived from the route path.
+ */
+export declare function getRouteMeta(routePath: string, originalRoutePath: string, config: Pick<Config, 'routeToken' | 'indexToken'>): {
+    fsRouteType: Extract<FsRouteType, 'static' | 'layout' | 'api' | 'lazy' | 'loader' | 'component' | 'pendingComponent' | 'errorComponent' | 'notFoundComponent'>;
+    variableName: string;
+};

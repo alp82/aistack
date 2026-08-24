@@ -1,0 +1,42 @@
+{
+  "name": "exsolve",
+  "version": "1.1.1",
+  "description": "Module resolution utilities based on Node.js upstream implementation.",
+  "license": "MIT",
+  "repository": "unjs/exsolve",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": "./dist/index.mjs"
+  },
+  "scripts": {
+    "build": "obuild",
+    "dev": "vitest dev",
+    "lint": "oxlint . && oxfmt --check .",
+    "fmt": "automd && oxlint && oxfmt .",
+    "node-ts": "node --disable-warning=ExperimentalWarning --experimental-strip-types",
+    "prepack": "pnpm build",
+    "release": "pnpm test && changelogen --release && npm publish && git push --follow-tags",
+    "test": "pnpm lint && pnpm test:types && vitest run --coverage",
+    "test:types": "tsc --noEmit --skipLibCheck"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "@vitest/coverage-v8": "^4.1.10",
+    "automd": "^0.4.3",
+    "changelogen": "^0.6.2",
+    "eslint-config-unjs": "^0.6.2",
+    "happy-dom": "^20.11.1",
+    "jiti": "^2.7.0",
+    "obuild": "^0.4.38",
+    "oxfmt": "^0.60.0",
+    "oxlint": "^1.75.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  },
+  "packageManager": "pnpm@11.17.0"
+}

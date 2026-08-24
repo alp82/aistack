@@ -1,0 +1,68 @@
+{
+  "name": "@takumi-rs/wasm",
+  "version": "0.70.4",
+  "keywords": [
+    "image",
+    "rendering",
+    "css",
+    "react",
+    "jsx",
+    "webassembly"
+  ],
+  "scripts": {
+    "build": "wasm-pack build --no-pack --release --out-dir pkg --target web && bun build pkg/takumi_wasm.js --define import.meta.url=undefined --format cjs --outfile pkg/takumi_wasm.cjs",
+    "build:debug": "wasm-pack build --no-pack --dev --out-dir pkg --target web && bun build pkg/takumi_wasm.js --define import.meta.url=undefined --format cjs --outfile pkg/takumi_wasm.cjs"
+  },
+  "author": {
+    "email": "me@kane.tw",
+    "name": "Kane Wang",
+    "url": "https://kane.tw"
+  },
+  "repository": {
+    "url": "git+https://github.com/kane50613/takumi.git"
+  },
+  "readme": "README.md",
+  "license": "(MIT OR Apache-2.0)",
+  "devDependencies": {
+    "@takumi-rs/helpers": "workspace:*",
+    "@types/bun": "catalog:",
+    "typescript": "catalog:"
+  },
+  "exports": {
+    ".": {
+      "node": {
+        "types": "./bundlers/node.d.ts",
+        "import": "./bundlers/node.mjs",
+        "require": "./bundlers/node.cjs"
+      },
+      "types": "./pkg/takumi_wasm.d.ts",
+      "import": "./pkg/takumi_wasm.js",
+      "require": "./pkg/takumi_wasm.cjs",
+      "default": "./pkg/takumi_wasm.js"
+    },
+    "./no-bundler": {
+      "types": "./pkg/takumi_wasm.d.ts",
+      "import": "./pkg/takumi_wasm.js",
+      "require": "./pkg/takumi_wasm.cjs",
+      "default": "./pkg/takumi_wasm.cjs"
+    },
+    "./node": {
+      "types": "./bundlers/node.d.ts",
+      "import": "./bundlers/node.mjs",
+      "require": "./bundlers/node.cjs"
+    },
+    "./takumi_wasm_bg.wasm": {
+      "types": "./pkg/takumi_wasm_bg.wasm.d.ts",
+      "default": "./pkg/takumi_wasm_bg.wasm"
+    },
+    "./next": {
+      "types": "./bundlers/next.d.ts",
+      "default": "./bundlers/next.js"
+    }
+  },
+  "files": [
+    "README.md",
+    "pkg/takumi*",
+    "bundlers/*"
+  ]
+}

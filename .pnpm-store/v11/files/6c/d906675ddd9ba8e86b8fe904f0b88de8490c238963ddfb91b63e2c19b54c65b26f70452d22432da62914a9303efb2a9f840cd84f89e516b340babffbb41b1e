@@ -1,0 +1,35 @@
+import { CSSProperties } from 'react';
+
+type BaseNode = {
+    tagName?: string;
+    className?: string;
+    id?: string;
+    tw?: string;
+    style?: CSSProperties;
+    preset?: CSSProperties;
+};
+type AnyNode = BaseNode & {
+    type: string;
+    [key: string]: unknown;
+};
+/**
+ * @deprecated Use {import("csstype").Properties} or {import("react").CSSProperties} instead
+ */
+type PartialStyle = CSSProperties;
+type Node = ContainerNode | TextNode | ImageNode | AnyNode;
+type ContainerNode = BaseNode & {
+    type: "container";
+    children?: Node[];
+};
+type TextNode = BaseNode & {
+    type: "text";
+    text: string;
+};
+type ImageNode = BaseNode & {
+    type: "image";
+    src: string;
+    width?: number;
+    height?: number;
+};
+
+export type { AnyNode as A, BaseNode as B, ContainerNode as C, ImageNode as I, Node as N, PartialStyle as P, TextNode as T };

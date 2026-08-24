@@ -1,0 +1,43 @@
+import { mountChartRenderer } from "./renderer.js";
+import { createChartRuntime } from "./runtime.js";
+import { createSvgChartRenderer } from "./svg-surface.js";
+import { renderChartSvg } from "./svg.js";
+function mountChart(container, initialOptions, runtime = createChartRuntime()) {
+  let renderSvg = initialOptions.renderSvg ?? renderChartSvg;
+  let renderer = createSvgChartRenderer(renderSvg);
+  const rendererOptions = (options) => {
+    const nextRenderSvg = options.renderSvg ?? renderChartSvg;
+    if (nextRenderSvg !== renderSvg) {
+      renderSvg = nextRenderSvg;
+      renderer = createSvgChartRenderer(renderSvg);
+    }
+    const { renderSvg: _renderSvg, onRender, ...common } = options;
+    return {
+      ...common,
+      renderer,
+      onRender: onRender ? ({ container: hostContainer, scene, surface }) => {
+        const svg = surface.element;
+        const SvgElement = container.ownerDocument.defaultView?.SVGSVGElement;
+        if (!SvgElement || !(svg instanceof SvgElement)) {
+          throw new TypeError("Expected the SVG chart surface.");
+        }
+        onRender({ container: hostContainer, scene, svg });
+      } : void 0
+    };
+  };
+  const host = mountChartRenderer(
+    container,
+    rendererOptions(initialOptions),
+    runtime
+  );
+  return {
+    update(options) {
+      host.update(rendererOptions(options));
+    },
+    getScene: host.getScene,
+    destroy: host.destroy
+  };
+}
+export {
+  mountChart
+};

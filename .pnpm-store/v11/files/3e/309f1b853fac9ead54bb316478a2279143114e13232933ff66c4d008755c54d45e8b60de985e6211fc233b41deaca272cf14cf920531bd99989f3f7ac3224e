@@ -1,0 +1,10 @@
+import type { ChartScene, RenderChartSvgOptions, SceneGroup } from './types.js';
+export interface ChartSvgRenderHooks {
+    renderDefinitions?: (scene: ChartScene, idPrefix: string) => string;
+    renderGroup?: (node: SceneGroup, idPrefix: string) => {
+        attributes: string;
+        content: string;
+    } | undefined;
+    resolvePaint?: (value: string, idPrefix: string) => string;
+}
+export declare function renderChartSvgWithHooks(scene: ChartScene, options: RenderChartSvgOptions, hooks?: ChartSvgRenderHooks): string;

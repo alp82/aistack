@@ -1,0 +1,4 @@
+import type { ChartFocusState, ChartPoint, ChartScene, SceneGroup, SceneNode } from './types.js';
+export declare function focusedSceneNodes(scene: ChartScene, focus: ChartFocusState | null, placement: 'under' | 'over'): SceneNode[];
+export declare function focusedNodeKeys(layer: SceneGroup, focus: ChartFocusState | null): Set<string>;
+export declare function matchesFocusPoint(candidate: ChartPoint, focus: ChartFocusState, match: NonNullable<SceneGroup['focus']>['match']): boolean;

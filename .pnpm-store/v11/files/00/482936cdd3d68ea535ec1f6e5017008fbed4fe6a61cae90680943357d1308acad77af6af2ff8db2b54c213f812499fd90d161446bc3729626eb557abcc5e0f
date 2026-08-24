@@ -1,0 +1,2 @@
+import type { ChartAnimationOptions } from './types.js';
+export declare function reconcileChartSvg(container: HTMLElement, markup: string, animation?: ChartAnimationOptions): () => void;

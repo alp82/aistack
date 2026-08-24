@@ -1,0 +1,136 @@
+{
+  "name": "@react-email/render",
+  "version": "2.0.4",
+  "description": "Transform React components into HTML email templates",
+  "sideEffects": false,
+  "main": "./dist/browser/index.js",
+  "module": "./dist/browser/index.mjs",
+  "types": "./dist/browser/index.d.ts",
+  "files": [
+    "dist/**"
+  ],
+  "exports": {
+    ".": {
+      "workerd": {
+        "import": {
+          "types": "./dist/edge/index.d.mts",
+          "default": "./dist/edge/index.mjs"
+        },
+        "require": {
+          "types": "./dist/edge/index.d.ts",
+          "default": "./dist/edge/index.js"
+        }
+      },
+      "deno": {
+        "import": {
+          "types": "./dist/browser/index.d.mts",
+          "default": "./dist/browser/index.mjs"
+        },
+        "require": {
+          "types": "./dist/browser/index.d.ts",
+          "default": "./dist/browser/index.js"
+        }
+      },
+      "worker": {
+        "import": {
+          "types": "./dist/browser/index.d.mts",
+          "default": "./dist/browser/index.mjs"
+        },
+        "require": {
+          "types": "./dist/browser/index.d.ts",
+          "default": "./dist/browser/index.js"
+        }
+      },
+      "edge-light": {
+        "import": {
+          "types": "./dist/edge/index.d.mts",
+          "default": "./dist/edge/index.mjs"
+        },
+        "require": {
+          "types": "./dist/edge/index.d.ts",
+          "default": "./dist/edge/index.js"
+        }
+      },
+      "convex": {
+        "import": {
+          "types": "./dist/edge/index.d.mts",
+          "default": "./dist/edge/index.mjs"
+        },
+        "require": {
+          "types": "./dist/edge/index.d.ts",
+          "default": "./dist/edge/index.js"
+        }
+      },
+      "node": {
+        "import": {
+          "types": "./dist/node/index.d.mts",
+          "default": "./dist/node/index.mjs"
+        },
+        "require": {
+          "types": "./dist/node/index.d.ts",
+          "default": "./dist/node/index.js"
+        }
+      },
+      "browser": {
+        "import": {
+          "types": "./dist/browser/index.d.mts",
+          "default": "./dist/browser/index.mjs"
+        },
+        "require": {
+          "types": "./dist/browser/index.d.ts",
+          "default": "./dist/browser/index.js"
+        }
+      },
+      "default": {
+        "import": {
+          "types": "./dist/node/index.d.mts",
+          "default": "./dist/node/index.mjs"
+        },
+        "require": {
+          "types": "./dist/node/index.d.ts",
+          "default": "./dist/node/index.js"
+        }
+      }
+    }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/resend/react-email.git",
+    "directory": "packages/render"
+  },
+  "keywords": [
+    "react",
+    "email"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "html-to-text": "^9.0.5",
+    "prettier": "^3.5.3"
+  },
+  "peerDependencies": {
+    "react": "^18.0 || ^19.0 || ^19.0.0-rc",
+    "react-dom": "^18.0 || ^19.0 || ^19.0.0-rc"
+  },
+  "devDependencies": {
+    "@edge-runtime/vm": "5.0.0",
+    "@types/html-to-text": "9.0.4",
+    "@types/react": "npm:types-react@19.0.0-rc.1",
+    "@types/react-dom": "npm:types-react-dom@19.0.0",
+    "jsdom": "26.1.0",
+    "typescript": "5.8.3",
+    "tsconfig": "0.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "build:watch": "tsdown --watch",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  }
+}

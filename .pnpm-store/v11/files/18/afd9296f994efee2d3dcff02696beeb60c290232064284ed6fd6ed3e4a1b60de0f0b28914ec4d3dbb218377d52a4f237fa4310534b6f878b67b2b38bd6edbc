@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sources":["../../src/index.ts"],"sourcesContent":["'use client'\n\nimport * as Devtools from './devtools'\n\nexport const TanStackDevtools = Devtools.TanStackDevtools\n\nexport type {\n  TanStackDevtoolsReactPlugin,\n  TanStackDevtoolsReactInit,\n} from './devtools'\n"],"names":[],"mappings":";;AAIO;;;;"}

@@ -1,0 +1,108 @@
+{
+  "name": "@tanstack/react-start",
+  "version": "1.145.3",
+  "description": "Modern and scalable routing for React applications",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TanStack/router.git",
+    "directory": "packages/react-start"
+  },
+  "homepage": "https://tanstack.com/start",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "react",
+    "location",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "type": "module",
+  "types": "dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      }
+    },
+    "./client": {
+      "import": {
+        "types": "./dist/esm/client.d.ts",
+        "default": "./dist/esm/client.js"
+      }
+    },
+    "./client-rpc": {
+      "import": {
+        "types": "./dist/esm/client-rpc.d.ts",
+        "default": "./dist/esm/client-rpc.js"
+      }
+    },
+    "./server": {
+      "import": {
+        "types": "./dist/esm/server.d.ts",
+        "default": "./dist/esm/server.js"
+      }
+    },
+    "./server-rpc": {
+      "import": {
+        "types": "./dist/esm/server-rpc.d.ts",
+        "default": "./dist/esm/server-rpc.js"
+      }
+    },
+    "./ssr-rpc": {
+      "import": {
+        "types": "./dist/esm/ssr-rpc.d.ts",
+        "default": "./dist/esm/ssr-rpc.js"
+      }
+    },
+    "./plugin/vite": {
+      "import": {
+        "types": "./dist/esm/plugin/vite.d.ts",
+        "default": "./dist/esm/plugin/vite.js"
+      }
+    },
+    "./server-entry": {
+      "import": {
+        "types": "./dist/default-entry/esm/server.d.ts",
+        "default": "./dist/default-entry/esm/server.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "pathe": "^2.0.3",
+    "@tanstack/react-start-client": "1.145.0",
+    "@tanstack/router-utils": "^1.143.11",
+    "@tanstack/react-start-server": "1.145.3",
+    "@tanstack/start-plugin-core": "1.145.3",
+    "@tanstack/react-router": "1.144.0",
+    "@tanstack/start-server-core": "1.145.3",
+    "@tanstack/start-client-core": "1.145.0"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0 || >=19.0.0",
+    "react-dom": ">=18.0.0 || >=19.0.0",
+    "vite": ">=7.0.0"
+  },
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test": "pnpm test:build",
+    "test:build": "exit 0; vitest",
+    "build": "vite build && vite build -c vite.config.server-entry.ts"
+  }
+}

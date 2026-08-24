@@ -1,0 +1,1 @@
+{"version":3,"file":"sinkStatusIn.js","sourceRoot":"","sources":["../../src/models/sinkStatusIn.ts"],"names":[],"mappings":";;;AAEA,IAAY,YAGX;AAHD,WAAY,YAAY;IACtB,mCAAmB,CAAA;IACnB,qCAAqB,CAAA;AACvB,CAAC,EAHW,YAAY,GAAZ,oBAAY,KAAZ,oBAAY,QAGvB;AAEY,QAAA,sBAAsB,GAAG;IACpC,eAAe,CAAC,MAAW;QACzB,OAAO,MAAM,CAAC;IAChB,CAAC;IAED,aAAa,CAAC,IAAkB;QAC9B,OAAO,IAAI,CAAC;IACd,CAAC;CACF,CAAC"}

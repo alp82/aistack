@@ -1,0 +1,7 @@
+import type { ChartTextMeasurer } from './types.js';
+export interface DomTextMeasurer {
+    measureText: ChartTextMeasurer;
+    refresh: () => boolean;
+    invalidate: () => void;
+}
+export declare function createDomTextMeasurer(container: HTMLElement): DomTextMeasurer;

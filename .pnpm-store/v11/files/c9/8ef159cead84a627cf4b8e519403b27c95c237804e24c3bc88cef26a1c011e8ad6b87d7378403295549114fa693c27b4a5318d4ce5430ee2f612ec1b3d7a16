@@ -1,0 +1,18 @@
+import type { Channel, ChartKey, ChartMark, ChartMarkMotionOptions, ChartMarkState, ChartLineStateStyle, ChartValue, ChartCurve, VisualChannel, OptionChannelOutput } from './types.js';
+export interface LineYOptions<TDatum> extends ChartMarkMotionOptions<TDatum> {
+    id?: string;
+    x?: Channel<TDatum, ChartValue | null | undefined>;
+    y?: Channel<TDatum, number | null | undefined>;
+    z?: Channel<TDatum, ChartKey | null | undefined>;
+    color?: Channel<TDatum, ChartKey | null | undefined>;
+    key?: Channel<TDatum, ChartKey>;
+    stroke?: VisualChannel<TDatum, string>;
+    strokeOpacity?: number;
+    strokeWidth?: number;
+    strokeDasharray?: string;
+    points?: boolean;
+    curve?: ChartCurve;
+    states?: readonly ChartMarkState<TDatum, ChartLineStateStyle<TDatum>>[];
+}
+export declare function lineY<TDatum>(source: Iterable<TDatum>): ChartMark<TDatum, number, number>;
+export declare function lineY<TDatum, const TOptions extends LineYOptions<NoInfer<TDatum>> | undefined>(source: Iterable<TDatum>, options: TOptions): ChartMark<TDatum, OptionChannelOutput<TDatum, TOptions, 'x', number>, number>;

@@ -1,0 +1,19 @@
+import type { Channel, ChartKey, ChartMark, ChartMarkMotionOptions, ChartNumericScale, ChartValue, OptionChannelOutput, VisualChannel } from './types.js';
+export interface HexagonOptions<TDatum> extends ChartMarkMotionOptions<TDatum> {
+    id?: string;
+    x?: Channel<TDatum, ChartValue | null | undefined>;
+    y?: Channel<TDatum, ChartValue | null | undefined>;
+    z?: Channel<TDatum, ChartKey | null | undefined>;
+    color?: Channel<TDatum, ChartKey | null | undefined>;
+    key?: Channel<TDatum, ChartKey>;
+    r?: number | Channel<TDatum, number | null | undefined>;
+    rScale?: ChartNumericScale;
+    fill?: VisualChannel<TDatum, string>;
+    fillOpacity?: number;
+    stroke?: VisualChannel<TDatum, string>;
+    strokeOpacity?: number;
+    strokeWidth?: number;
+}
+/** Draws pointy-topped, fixed-pixel hexagons at scaled x/y positions. */
+export declare function hexagon<TDatum>(source: Iterable<TDatum>): ChartMark<TDatum, number, number>;
+export declare function hexagon<TDatum, const TOptions extends HexagonOptions<NoInfer<TDatum>> | undefined>(source: Iterable<TDatum>, options: TOptions): ChartMark<TDatum, OptionChannelOutput<TDatum, TOptions, 'x', number>, OptionChannelOutput<TDatum, TOptions, 'y', number>>;

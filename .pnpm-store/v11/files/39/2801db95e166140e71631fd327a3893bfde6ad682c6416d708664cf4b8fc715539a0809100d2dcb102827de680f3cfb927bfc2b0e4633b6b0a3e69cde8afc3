@@ -1,0 +1,1 @@
+"use strict";const SemVer=require(`../classes/semver`),patch=(e,t)=>new SemVer(e,t).patch;module.exports=patch;

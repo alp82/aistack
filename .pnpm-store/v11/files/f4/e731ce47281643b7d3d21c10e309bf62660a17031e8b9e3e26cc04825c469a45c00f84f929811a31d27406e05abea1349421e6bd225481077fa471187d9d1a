@@ -1,0 +1,16 @@
+{
+  "name": "acorn",
+  "main": "dist/acorn.js",
+  "exports": {
+    ".": [
+      {
+        "import": "./dist/acorn.mjs",
+        "require": "./dist/acorn.js",
+        "default": "./dist/acorn.js"
+      },
+      "./dist/acorn.js"
+    ],
+    "./package.json": "./package.json"
+  },
+  "version": "8.16.0"
+}

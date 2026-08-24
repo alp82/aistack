@@ -1,0 +1,81 @@
+{
+  "name": "@takumi-rs/core",
+  "version": "0.70.4",
+  "author": {
+    "email": "me@kane.tw",
+    "name": "Kane Wang",
+    "url": "https://kane.tw"
+  },
+  "keywords": [
+    "image",
+    "rendering",
+    "css",
+    "react",
+    "jsx",
+    "nodejs",
+    "napi"
+  ],
+  "repository": {
+    "url": "git+https://github.com/kane50613/takumi.git"
+  },
+  "main": "index.js",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "require": "./index.js",
+      "types": "./index.d.ts"
+    }
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "3.5.1",
+    "@takumi-rs/helpers": "workspace:*",
+    "@types/bun": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "lucide-react": "catalog:",
+    "mitata": "^1.0.34",
+    "react": "catalog:",
+    "typescript": "catalog:"
+  },
+  "engines": {
+    "node": ">= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0"
+  },
+  "license": "(MIT OR Apache-2.0)",
+  "napi": {
+    "binaryName": "core",
+    "targets": [
+      "x86_64-apple-darwin",
+      "aarch64-apple-darwin",
+      "aarch64-unknown-linux-gnu",
+      "aarch64-unknown-linux-musl",
+      "aarch64-pc-windows-msvc",
+      "x86_64-unknown-linux-gnu",
+      "x86_64-unknown-linux-musl",
+      "x86_64-pc-windows-msvc"
+    ],
+    "dtsHeaderFile": "./src/dts-header.d.ts"
+  },
+  "scripts": {
+    "build": "napi build --release --no-const-enum --platform --esm --strip",
+    "prepublishOnly": "bun artifacts && cp artifacts/bindings-x86_64-unknown-linux-gnu/index.* . && napi prepublish -t npm --no-gh-release",
+    "artifacts": "napi create-npm-dirs && napi artifacts && napi version",
+    "bench": "bun tests/bench/index.tsx"
+  },
+  "type": "module",
+  "types": "index.d.ts",
+  "files": [
+    "index.d.ts",
+    "index.js",
+    "README.md"
+  ],
+  "optionalDependencies": {
+    "@takumi-rs/core-darwin-x64": "0.70.4",
+    "@takumi-rs/core-darwin-arm64": "0.70.4",
+    "@takumi-rs/core-linux-arm64-gnu": "0.70.4",
+    "@takumi-rs/core-linux-arm64-musl": "0.70.4",
+    "@takumi-rs/core-win32-arm64-msvc": "0.70.4",
+    "@takumi-rs/core-linux-x64-gnu": "0.70.4",
+    "@takumi-rs/core-linux-x64-musl": "0.70.4",
+    "@takumi-rs/core-win32-x64-msvc": "0.70.4"
+  }
+}

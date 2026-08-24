@@ -1,0 +1,5 @@
+{
+  "name": "detect-libc",
+  "version": "2.1.2",
+  "main": "lib/detect-libc.js"
+}

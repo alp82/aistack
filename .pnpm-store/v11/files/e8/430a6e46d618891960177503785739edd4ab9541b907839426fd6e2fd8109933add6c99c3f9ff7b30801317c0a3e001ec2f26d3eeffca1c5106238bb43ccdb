@@ -1,0 +1,1 @@
+{"version":3,"file":"fake-start-entry.js","sources":["../../src/fake-start-entry.ts"],"sourcesContent":["export const startInstance = undefined\nexport const getRouter = () => {}\n"],"names":[],"mappings":"AAAO,MAAM,gBAAgB;AACtB,MAAM,YAAY,MAAM;AAAC;"}

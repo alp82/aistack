@@ -1,0 +1,93 @@
+import { valueKey } from "./scales.js";
+function focusedSceneNodes(scene, focus, placement) {
+  if (!focus) return [];
+  return collectFocusedNodes(scene.nodes, focus, placement);
+}
+function focusedNodeKeys(layer, focus) {
+  if (!layer.focus || !focus) return /* @__PURE__ */ new Set();
+  const points = layer.focus.points.filter(
+    (point) => matchesFocusPoint(point, focus, layer.focus.match)
+  );
+  const filtered = filterNodes(layer.children, points);
+  const keys = /* @__PURE__ */ new Set();
+  visitNodes(filtered, (node) => keys.add(node.key));
+  return keys;
+}
+function collectFocusedNodes(nodes, focus, placement) {
+  const output = [];
+  for (const node of nodes) {
+    if (node.kind !== "group") continue;
+    if (node.focus) {
+      if (node.focus.placement !== placement) continue;
+      const points = node.focus.points.filter(
+        (point) => matchesFocusPoint(point, focus, node.focus.match)
+      );
+      const children2 = filterNodes(node.children, points);
+      if (children2.length) output.push({ ...node, focus: void 0, children: children2 });
+      continue;
+    }
+    const children = collectFocusedNodes(node.children, focus, placement);
+    if (children.length) output.push({ ...node, children });
+  }
+  return output;
+}
+function filterNodes(nodes, points) {
+  const output = [];
+  for (const node of nodes) {
+    if (node.kind !== "group") {
+      if (points.some((point) => keysRelate(node.key, point.key))) {
+        output.push(node);
+      }
+      continue;
+    }
+    const children = filterNodes(node.children, points);
+    if (children.length) {
+      output.push({ ...node, children });
+    } else if (points.some((point) => point.key.startsWith(`${node.key}:`))) {
+      output.push(node);
+    }
+  }
+  return output;
+}
+function matchesFocusPoint(candidate, focus, match) {
+  if (match === "x") {
+    return sameValue(candidate.xValue, focus.primary.xValue);
+  }
+  if (match === "y") {
+    return sameValue(candidate.yValue, focus.primary.yValue);
+  }
+  if (match === "series") {
+    return sameValue(candidate.group, focus.primary.group);
+  }
+  if (match === "key") {
+    return candidate.key === focus.primary.key || candidate.datum === focus.primary.datum;
+  }
+  if (match === "group") {
+    return focus.group.some((point) => sameFocusedPoint(candidate, point));
+  }
+  return sameFocusedPoint(candidate, focus.primary);
+}
+function sameFocusedPoint(left, right) {
+  if (left === right || left.key === right.key) return true;
+  return isReference(left.datum) && left.datum === right.datum;
+}
+function sameValue(left, right) {
+  return valueKey(left) === valueKey(right);
+}
+function keysRelate(left, right) {
+  return left === right || left.startsWith(`${right}:`) || right.startsWith(`${left}:`);
+}
+function isReference(value) {
+  return typeof value === "object" && value !== null || typeof value === "function";
+}
+function visitNodes(nodes, visit) {
+  for (const node of nodes) {
+    visit(node);
+    if (node.kind === "group") visitNodes(node.children, visit);
+  }
+}
+export {
+  focusedNodeKeys,
+  focusedSceneNodes,
+  matchesFocusPoint
+};

@@ -1,0 +1,1 @@
+{"version":3,"file":"convertX509PublicKeyToCOSE.d.ts","sourceRoot":"","sources":["../../src/helpers/convertX509PublicKeyToCOSE.ts"],"names":[],"mappings":"AAKA,OAAO,EAIL,aAAa,EAGd,MAAM,WAAW,CAAC;AAEnB,OAAO,KAAK,EAAE,WAAW,EAAE,MAAM,mBAAmB,CAAC;AAErD,wBAAgB,0BAA0B,CACxC,eAAe,EAAE,WAAW,GAC3B,aAAa,CA+Ff"}

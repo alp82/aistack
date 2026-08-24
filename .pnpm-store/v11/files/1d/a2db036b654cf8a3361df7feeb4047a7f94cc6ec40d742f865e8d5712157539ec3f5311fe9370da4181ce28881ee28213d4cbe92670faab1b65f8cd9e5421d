@@ -1,0 +1,1946 @@
+/// <reference types="vite/client" />
+import { AsyncLocalStorage } from "node:async_hooks";
+import { actionGeneric, getFunctionAddress, httpActionGeneric, makeFunctionReference, mutationGeneric, queryGeneric, } from "convex/server";
+import { compareValues, convexToJson, getConvexSize, getDocumentSize, jsonToConvex, } from "convex/values";
+import { TransactionMetricsTracker, } from "./transactionMetrics.js";
+// Real Convex IDs are 32 characters. IDs may exceed this length for very long
+// table names or large numbers of documents, but this is the typical target.
+const TYPICAL_CONVEX_ID_LENGTH = 32;
+const ROOT_COMPONENT_PATH = "";
+class NestedLock {
+    _lock = null;
+    _release = null;
+    async acquire() {
+        while (this._lock !== null) {
+            await this._lock;
+        }
+        this._lock = new Promise((resolve) => {
+            this._release = resolve;
+        });
+    }
+    release() {
+        this._lock = null;
+        this._release();
+        this._release = null;
+    }
+}
+const nestedTxStorage = new AsyncLocalStorage();
+const authStorage = new AsyncLocalStorage();
+const convexGlobalStorage = new AsyncLocalStorage();
+class DatabaseFake {
+    _componentPath;
+    _documents = {};
+    _storage = {};
+    _nextQueryId = 1;
+    _nextDocId = 10000;
+    _lastCreationTime = 0;
+    _queryResults = {};
+    // TODO: Make this more robust and cleaner
+    jobListener = () => { };
+    // Pending writes for each level of transaction nesting.
+    // Whenever a child mutation begins, a new level is created for all
+    // components.
+    // - When a mutation performs updates, they are staged in the last
+    //   level of writes for the mutation's component.
+    // - When a child mutation commits, the writes are merged up one level.
+    // - When the top-level mutation commits, the writes are applied to the
+    //   database.
+    // - When a mutation is rolled back, last level of writes is discarded.
+    _writes = [];
+    _schema;
+    constructor(schema, componentPath) {
+        this._schema =
+            schema === null
+                ? null
+                : {
+                    schemaValidation: schema.schemaValidation,
+                    tables: new Map(Object.entries(schema.tables).map(([name, tableSchema]) => [
+                        name,
+                        tableSchema.export(),
+                    ])),
+                };
+        this._componentPath = componentPath;
+        this.validateSchema();
+    }
+    // Called by TransactionManager.begin.
+    startTransaction() {
+        this._writes.push({});
+    }
+    get(tableName, id) {
+        this._validateId(tableName, id);
+        for (let i = this._writes.length - 1; i >= 0; i--) {
+            const write = this._writes[i][id];
+            if (write !== undefined) {
+                return write;
+            }
+        }
+        return this._documents[id] ?? null;
+    }
+    // Note that this is not the format the real backend
+    // uses for IDs.
+    _generateId(table) {
+        const counterPadLen = TYPICAL_CONVEX_ID_LENGTH - table.length;
+        const counter = this._nextDocId.toString().padStart(counterPadLen, "0");
+        const id = counter + table;
+        this._nextDocId += 1;
+        return id;
+    }
+    storeFile(storageId, blob) {
+        this._storage[storageId] = blob;
+    }
+    getFile(storageId) {
+        if (this.get("_storage", storageId) === null) {
+            return null;
+        }
+        return this._storage[storageId];
+    }
+    _addWrite(id, newValue) {
+        if (this._writes.length === 0) {
+            throw new Error(`Write outside of transaction ${id}`);
+        }
+        this._writes[this._writes.length - 1][id] = newValue;
+    }
+    insert(table, value) {
+        this._validate(table, value);
+        const _id = this._generateId(table);
+        const now = Date.now();
+        const _creationTime = now <= this._lastCreationTime ? this._lastCreationTime + 0.001 : now;
+        this._lastCreationTime = _creationTime;
+        this._addWrite(_id, { ...value, _id, _creationTime });
+        return _id;
+    }
+    patch(tableName, id, value) {
+        this._validateId(tableName, id);
+        if (typeof value !== "object") {
+            throw new Error(`Invalid argument \`value\` in \`db.patch\`, expected object but got '${typeof value}': ${value}`);
+        }
+        const document = this.get(tableName, id);
+        if (document === null) {
+            throw new Error(`Patch on non-existent document with ID "${id}"`);
+        }
+        const { _id, _creationTime, ...fields } = document;
+        if (value._id !== undefined && value._id !== _id) {
+            throw new Error(`Provided \`_id\` field value "${value._id}" ` +
+                `does not match the document ID "${_id}"`);
+        }
+        if (value._creationTime !== undefined &&
+            value._creationTime !== _creationTime) {
+            throw new Error(`Provided \`_creationTime\` field value ${value._creationTime} ` +
+                `does not match the document's creation time ${_creationTime}`);
+        }
+        delete value["_id"];
+        delete value["_creationTime"];
+        const convexValue = {};
+        for (const [key, v] of Object.entries(value)) {
+            convexValue[key] = evaluateValue(v);
+        }
+        const merged = { ...fields, ...convexValue };
+        this._validate(tableNameFromId(_id), merged);
+        this._addWrite(id, { _id, _creationTime, ...merged });
+    }
+    replace(tableName, id, value) {
+        this._validateId(tableName, id);
+        if (typeof value !== "object") {
+            throw new Error(`Invalid argument \`value\` in \`db.replace\`, expected object but got '${typeof value}': ${value}`);
+        }
+        const document = this.get(tableName, id);
+        if (document === null) {
+            throw new Error(`Replace on non-existent document with ID "${id}"`);
+        }
+        if (value._id !== undefined && value._id !== document._id) {
+            throw new Error(`Provided \`_id\` field value "${value._id}" ` +
+                `does not match the document ID "${document._id}"`);
+        }
+        if (value._creationTime !== undefined &&
+            value._creationTime !== document._creationTime) {
+            throw new Error(`Provided \`_creationTime\` field value ${value._creationTime} ` +
+                `does not match the document's creation time ${document._creationTime}`);
+        }
+        delete value["_id"];
+        delete value["_creationTime"];
+        const convexValue = {};
+        for (const [key, v] of Object.entries(value)) {
+            convexValue[key] = evaluateValue(v);
+        }
+        this._validate(tableNameFromId(document._id), convexValue);
+        this._addWrite(id, {
+            ...convexValue,
+            _id: document._id,
+            _creationTime: document._creationTime,
+        });
+    }
+    delete(tableName, id) {
+        this._validateId(tableName, id);
+        const document = this.get(tableName, id);
+        if (document === null) {
+            throw new Error("Delete on non-existent doc");
+        }
+        this._addWrite(id, null);
+    }
+    _validateId(expectedTableName, id) {
+        if (typeof id !== "string") {
+            throw new Error(`Invalid argument \`id\`, expected string but got '${typeof id}': ${id}`);
+        }
+        if (expectedTableName === undefined) {
+            return;
+        }
+        if (typeof expectedTableName !== "string") {
+            throw new Error(`Invalid argument \`tableName\`, expected string but got '${typeof expectedTableName}': ${expectedTableName}`);
+        }
+        const actualTableName = tableNameFromId(id);
+        if (actualTableName === null) {
+            throw new Error(`Invalid argument \`id\`, expected ID value but got '${id}'`);
+        }
+        if (actualTableName !== expectedTableName) {
+            throw new Error(`Invalid argument \`id\`, expected ID in table '${expectedTableName}' but got ID in table '${actualTableName}'`);
+        }
+    }
+    commit() {
+        const lastWrites = this._writes.pop();
+        if (!lastWrites) {
+            throw new Error("Transaction already committed or rolled back");
+        }
+        for (const [id, write] of Object.entries(lastWrites)) {
+            const _id = id;
+            if (this._writes.length === 0) {
+                if (write === null) {
+                    delete this._documents[_id];
+                }
+                else {
+                    this._documents[_id] = write;
+                }
+            }
+            else {
+                this._addWrite(_id, write);
+            }
+        }
+    }
+    rollbackWrites() {
+        if (this._writes.length === 0) {
+            throw new Error("Transaction already committed or rolled back");
+        }
+        this._writes.pop();
+    }
+    // Temporarily hide all pending writes so reads only see committed state.
+    stashWrites() {
+        const stashed = this._writes;
+        this._writes = [];
+        return stashed;
+    }
+    restoreWrites(stashed) {
+        this._writes = stashed;
+    }
+    _validate(tableName, doc) {
+        if (this._schema === null || !this._schema.schemaValidation) {
+            return;
+        }
+        const validator = this._schema.tables.get(tableName)?.documentType;
+        if (validator === undefined) {
+            return;
+        }
+        validateValidator(validator, doc);
+    }
+    startQuery(query) {
+        const id = this._nextQueryId;
+        const results = this._evaluateQuery(query);
+        this._queryResults[id] = results;
+        this._nextQueryId += 1;
+        return id;
+    }
+    queryNext(queryId) {
+        const results = this._queryResults[queryId];
+        if (results === undefined) {
+            throw new Error("Bad queryId");
+        }
+        if (results.length === 0) {
+            return { value: null, done: true };
+        }
+        else {
+            return { value: results.shift(), done: false };
+        }
+    }
+    _encodeCursor(doc, fieldPaths) {
+        const keys = fieldPaths.map((fp) => evaluateFieldPath(fp, doc));
+        // null sentinel in the array = undefined field value.
+        // Everything else is JSON.stringify(convexToJson(k)) producing a string,
+        // so null vs string is unambiguous on decode.
+        return JSON.stringify(keys.map((k) => k === undefined ? null : JSON.stringify(convexToJson(k))));
+    }
+    _docIsAfterCursor(doc, cursorKeys, fieldPaths, order) {
+        const orderMultiplier = order === "asc" ? 1 : -1;
+        for (let i = 0; i < fieldPaths.length; i++) {
+            const docVal = evaluateFieldPath(fieldPaths[i], doc);
+            const cursorVal = cursorKeys[i];
+            const cmp = compareValues(docVal, cursorVal);
+            if (cmp !== 0)
+                return cmp * orderMultiplier;
+        }
+        return 0;
+    }
+    paginate({ query, cursor, endCursor, pageSize, maximumRowsRead, maximumBytesRead, }) {
+        const { sortedDocs, filterFn, fieldPathsToSortBy, order } = this._resolveQuerySource(query);
+        // Always include _id in sort key fields for uniqueness
+        const cursorFields = fieldPathsToSortBy.includes("_id")
+            ? fieldPathsToSortBy
+            : [...fieldPathsToSortBy, "_id"];
+        const parseCursor = (c) => {
+            if (!c)
+                return null;
+            // null = undefined field; strings are JSON.stringify(convexToJson(v))
+            return JSON.parse(c).map((k) => k === null ? undefined : jsonToConvex(JSON.parse(k)));
+        };
+        const cursorKeys = cursor !== "_end_cursor" ? parseCursor(cursor) : null;
+        // _end_cursor as endCursor means "to the end of the range" — no boundary
+        const hasEndBoundary = !!endCursor && endCursor !== "_end_cursor";
+        const endCursorKeys = hasEndBoundary ? parseCursor(endCursor) : null;
+        const page = [];
+        // null cursor = start of range
+        let isInPage = cursor === null;
+        let isDone = false;
+        let continueCursor = "_end_cursor";
+        let splitCursor = null;
+        let pageStatus = null;
+        let rowsRead = 0;
+        let bytesRead = 0;
+        const readDocCursors = [];
+        for (let i = 0; i < sortedDocs.length; i++) {
+            const doc = sortedDocs[i];
+            const isLastDoc = i === sortedDocs.length - 1;
+            if (!isInPage) {
+                if (cursor === "_end_cursor") {
+                    // Past the end — no doc is after the end cursor
+                    continue;
+                }
+                else if (cursorKeys) {
+                    // Sort-key-based cursor: skip docs at or before cursor position
+                    if (this._docIsAfterCursor(doc, cursorKeys, cursorFields, order) > 0) {
+                        isInPage = true;
+                    }
+                    else {
+                        continue;
+                    }
+                }
+            }
+            // endCursor: stop when we reach or pass this position (inclusive boundary)
+            if (hasEndBoundary && endCursorKeys) {
+                const cmp = this._docIsAfterCursor(doc, endCursorKeys, cursorFields, order);
+                if (cmp >= 0) {
+                    // At or past end cursor — include this doc if exactly at cursor, then stop
+                    if (cmp === 0) {
+                        rowsRead += 1;
+                        bytesRead += getDocumentSize(doc);
+                        readDocCursors.push(this._encodeCursor(doc, cursorFields));
+                        if (filterFn(doc)) {
+                            page.push(doc);
+                        }
+                        continueCursor = this._encodeCursor(doc, cursorFields);
+                    }
+                    break;
+                }
+            }
+            rowsRead += 1;
+            bytesRead += getDocumentSize(doc);
+            readDocCursors.push(this._encodeCursor(doc, cursorFields));
+            // Check bandwidth limits
+            let hitLimit = false;
+            if (maximumRowsRead && rowsRead >= maximumRowsRead) {
+                hitLimit = true;
+            }
+            if (maximumBytesRead && bytesRead >= maximumBytesRead) {
+                hitLimit = true;
+            }
+            if (filterFn(doc)) {
+                page.push(doc);
+            }
+            if (hitLimit) {
+                pageStatus = "SplitRequired";
+                continueCursor = this._encodeCursor(doc, cursorFields);
+                break;
+            }
+            if (!endCursor && page.length >= pageSize) {
+                if (isLastDoc) {
+                    // No more docs — don't set continueCursor so isDone becomes true
+                }
+                else {
+                    continueCursor = this._encodeCursor(doc, cursorFields);
+                }
+                break;
+            }
+        }
+        if (continueCursor === "_end_cursor") {
+            isDone = true;
+        }
+        // Compute splitCursor at midpoint when limits are hit
+        if (pageStatus === "SplitRequired" && readDocCursors.length >= 2) {
+            const midIdx = Math.floor((readDocCursors.length - 1) / 2);
+            splitCursor = readDocCursors[midIdx];
+        }
+        else if (pageStatus === null &&
+            rowsRead > pageSize + 1 &&
+            readDocCursors.length >= 2) {
+            // Recommend split when we had to scan significantly more rows than pageSize
+            pageStatus = "SplitRecommended";
+            const midIdx = Math.floor((readDocCursors.length - 1) / 2);
+            splitCursor = readDocCursors[midIdx];
+        }
+        return {
+            page,
+            isDone,
+            continueCursor,
+            splitCursor,
+            pageStatus,
+        };
+    }
+    _iterateDocs(tableName, callback) {
+        const isInTable = (id) => tableNameFromId(id) === tableName;
+        const ids = new Set(Object.keys(this._documents).filter(isInTable));
+        for (let i = 0; i < this._writes.length; i++) {
+            for (const id of Object.keys(this._writes[i]).filter(isInTable)) {
+                ids.add(id);
+            }
+        }
+        for (const id of ids) {
+            const document = this.get(tableName, id);
+            if (document !== null) {
+                callback(document);
+            }
+        }
+    }
+    /**
+     * Resolves the query source: loads documents matching the source (table scan,
+     * index range, or search), sorts them, and returns along with the compiled
+     * operator filter function. This separates "rows entering the pipeline"
+     * (sortedDocs) from "rows exiting" (after filterFn), which is needed for
+     * maximumRowsRead tracking in paginate().
+     */
+    _resolveQuerySource(query) {
+        const source = query.source;
+        const results = [];
+        let fieldPathsToSortBy;
+        let order;
+        switch (source.type) {
+            case "FullTableScan": {
+                const tableName = source.tableName;
+                this._iterateDocs(tableName, (doc) => {
+                    results.push(doc);
+                });
+                order = source.order ?? "asc";
+                fieldPathsToSortBy = ["_creationTime"];
+                break;
+            }
+            case "IndexRange": {
+                const [tableName, indexName] = source.indexName.split(".");
+                order = source.order ?? "asc";
+                let fields;
+                if (indexName === "by_creation_time") {
+                    fields = ["_creationTime", "_id"];
+                }
+                else if (indexName === "by_id") {
+                    fields = ["_id"];
+                }
+                else {
+                    const indexes = this._schema?.tables.get(tableName)?.indexes;
+                    const index = indexes?.find(({ indexDescriptor }) => indexDescriptor === indexName);
+                    if (index === undefined) {
+                        throw new Error(`Cannot use index "${indexName}" for table "${tableName}" because ` +
+                            `it is not declared in the schema.`);
+                    }
+                    fields = index.fields.concat(["_creationTime", "_id"]);
+                }
+                fieldPathsToSortBy = fields;
+                validateIndexRangeExpression(source, fields);
+                this._iterateDocs(tableName, (doc) => {
+                    if (source.range.every((filter) => evaluateRangeFilter(doc, filter))) {
+                        results.push(doc);
+                    }
+                });
+                break;
+            }
+            case "Search": {
+                const [tableName] = source.indexName.split(".");
+                this._iterateDocs(tableName, (doc) => {
+                    if (source.filters.every((filter) => evaluateSearchFilter(doc, filter))) {
+                        results.push(doc);
+                    }
+                });
+                fieldPathsToSortBy = [];
+                order = "asc";
+                break;
+            }
+        }
+        const filters = query.operators
+            .filter((operator) => "filter" in operator)
+            .map((operator) => operator.filter);
+        const limit = query.operators.filter((operator) => "limit" in operator)[0] ?? null;
+        results.sort((a, b) => {
+            const orderMultiplier = order === "asc" ? 1 : -1;
+            let v = 0;
+            for (const fp of fieldPathsToSortBy) {
+                v = compareValues(evaluateFieldPath(fp, a), evaluateFieldPath(fp, b));
+                if (v !== 0) {
+                    return v * orderMultiplier;
+                }
+            }
+            return v * orderMultiplier;
+        });
+        const filterFn = (doc) => filters.every((f) => evaluateFilter(doc, f));
+        return {
+            sortedDocs: results,
+            filterFn,
+            limit: limit?.limit ?? null,
+            fieldPathsToSortBy,
+            order,
+        };
+    }
+    _evaluateQuery(query) {
+        const { sortedDocs, filterFn, limit } = this._resolveQuerySource(query);
+        let results = sortedDocs.filter(filterFn);
+        if (limit !== null) {
+            results = results.slice(0, limit);
+        }
+        return results;
+    }
+    jobFinished(jobId) {
+        this.jobListener(jobId);
+    }
+    vectorSearch(tableAndIndexName, vector, expressions, limit) {
+        const results = [];
+        const [tableName, indexName] = tableAndIndexName.split(".");
+        this._iterateDocs(tableName, (doc) => {
+            if (expressions.every((filter) => evaluateFilter(doc, filter))) {
+                results.push(doc);
+            }
+        });
+        const vectorIndexes = this._schema?.tables.get(tableName)?.vectorIndexes;
+        const vectorIndex = vectorIndexes?.find(({ indexDescriptor }) => indexDescriptor === indexName);
+        if (vectorIndex === undefined) {
+            throw new Error(`Cannot use vector index "${indexName}" for table "${tableName}" because ` +
+                `it is not declared in the schema.`);
+        }
+        const { vectorField } = vectorIndex;
+        const idsAndScores = results.map((doc) => {
+            const score = cosineSimilarity(vector, doc[vectorField]);
+            return { _id: doc._id, _score: score };
+        });
+        idsAndScores.sort((a, b) => b._score - a._score);
+        return idsAndScores.slice(0, limit);
+    }
+    validateSchema() {
+        this._schema?.tables.forEach((table, tableName) => {
+            if (!isValidIdentifier(tableName)) {
+                throw new Error(`Table names must be valid identifiers, got "${tableName}"`);
+            }
+            validateFieldNames(table.documentType);
+            table.indexes.forEach(({ indexDescriptor }) => {
+                if (!isValidIdentifier(indexDescriptor)) {
+                    throw new Error(`Index names must be valid identifiers, got "${indexDescriptor}"`);
+                }
+            });
+        });
+    }
+    get componentPath() {
+        return this._componentPath;
+    }
+}
+function tableNameFromId(id) {
+    const match = id.match(/^[0-9]+/);
+    if (!match || match[0].length === id.length) {
+        return null;
+    }
+    return id.slice(match[0].length);
+}
+// Reverses `serializeConvexErrorData` from `convex/server/impl/registration_impl`,
+// which `invokeFunction` applies to every ConvexError thrown from a Convex
+// function. In production the HTTP client deserializes `.data` via
+// `forwardErrorData` before callers see it, so an action catching a
+// `ConvexError` from `ctx.runMutation` receives the original object, not a
+// JSON string. Apply the same restoration whenever we catch an error from
+// `invokeMutation` / `invokeQuery` / `invokeAction`.
+function deserializeConvexErrorData(thrown) {
+    if (typeof thrown === "object" &&
+        thrown !== null &&
+        Symbol.for("ConvexError") in thrown &&
+        typeof thrown.data === "string") {
+        try {
+            thrown.data = jsonToConvex(JSON.parse(thrown.data));
+        }
+        catch {
+            // Data wasn't a serialized JSON string — leave it untouched.
+        }
+    }
+    return thrown;
+}
+function isSimpleObject(value) {
+    const isObject = typeof value === "object";
+    const prototype = Object.getPrototypeOf(value);
+    const isSimple = prototype === null ||
+        prototype === Object.prototype ||
+        // Objects generated from other contexts (e.g. across Node.js `vm` modules) will not satisfy the previous
+        // conditions but are still simple objects.
+        prototype?.constructor?.name === "Object";
+    return isObject && isSimple;
+}
+function evaluateFieldPath(fieldPath, document) {
+    const pathParts = fieldPath.split(".");
+    let result = document;
+    for (const p of pathParts) {
+        result =
+            result !== undefined && result !== null && isSimpleObject(result)
+                ? result[p]
+                : undefined;
+    }
+    return result;
+}
+function evaluateFilter(document, filter) {
+    if (filter.$eq !== undefined) {
+        return (compareValues(evaluateFilter(document, filter.$eq[0]), evaluateFilter(document, filter.$eq[1])) === 0);
+    }
+    if (filter.$neq !== undefined) {
+        return (compareValues(evaluateFilter(document, filter.$neq[0]), evaluateFilter(document, filter.$neq[1])) !== 0);
+    }
+    if (filter.$and !== undefined) {
+        return filter.$and.every((child) => evaluateFilter(document, child));
+    }
+    if (filter.$or !== undefined) {
+        return filter.$or.some((child) => evaluateFilter(document, child));
+    }
+    if (filter.$not !== undefined) {
+        return !evaluateFilter(document, filter.$not);
+    }
+    if (filter.$gt !== undefined) {
+        return (evaluateFilter(document, filter.$gt[0]) >
+            evaluateFilter(document, filter.$gt[1]));
+    }
+    if (filter.$gte !== undefined) {
+        return (evaluateFilter(document, filter.$gte[0]) >=
+            evaluateFilter(document, filter.$gte[1]));
+    }
+    if (filter.$lt !== undefined) {
+        return (evaluateFilter(document, filter.$lt[0]) <
+            evaluateFilter(document, filter.$lt[1]));
+    }
+    if (filter.$lte !== undefined) {
+        return (evaluateFilter(document, filter.$lte[0]) <=
+            evaluateFilter(document, filter.$lte[1]));
+    }
+    if (filter.$add !== undefined) {
+        return (evaluateFilter(document, filter.$add[0]) +
+            evaluateFilter(document, filter.$add[1]));
+    }
+    if (filter.$sub !== undefined) {
+        return (evaluateFilter(document, filter.$sub[0]) -
+            evaluateFilter(document, filter.$sub[1]));
+    }
+    if (filter.$mul !== undefined) {
+        return (evaluateFilter(document, filter.$mul[0]) *
+            evaluateFilter(document, filter.$mul[1]));
+    }
+    if (filter.$div !== undefined) {
+        return (evaluateFilter(document, filter.$div[0]) /
+            evaluateFilter(document, filter.$div[1]));
+    }
+    if (filter.$mod !== undefined) {
+        return (evaluateFilter(document, filter.$mod[0]) %
+            evaluateFilter(document, filter.$mod[1]));
+    }
+    if (filter.$field !== undefined) {
+        return evaluateFieldPath(filter.$field, document);
+    }
+    if (filter.$literal !== undefined) {
+        return evaluateValue(filter.$literal);
+    }
+    throw new Error(`not implemented: ${JSON.stringify(filter)}`);
+}
+function evaluateRangeFilter(document, expr) {
+    const result = evaluateFieldPath(expr.fieldPath, document);
+    const value = evaluateValue(expr.value);
+    switch (expr.type) {
+        case "Eq":
+            return compareValues(result, value) === 0;
+        case "Gt":
+            return compareValues(result, value) > 0;
+        case "Gte":
+            return compareValues(result, value) >= 0;
+        case "Lt":
+            return compareValues(result, value) < 0;
+        case "Lte":
+            return compareValues(result, value) <= 0;
+    }
+}
+function evaluateValue(value) {
+    if (typeof value === "object" && value !== null && "$undefined" in value) {
+        return undefined;
+    }
+    return jsonToConvex(value);
+}
+function evaluateSearchFilter(document, filter) {
+    const result = evaluateFieldPath(filter.fieldPath, document);
+    switch (filter.type) {
+        case "Eq":
+            return compareValues(result, evaluateValue(filter.value)) === 0;
+        case "Search": {
+            const queryTerms = filter.value
+                .toLowerCase()
+                .split(/\s+/)
+                .filter((term) => term.length > 0);
+            const documentWords = result
+                .split(/\s+/)
+                .map((word) => word.toLowerCase());
+            return queryTerms.some((queryTerm) => documentWords.some((word) => word.startsWith(queryTerm)));
+        }
+    }
+}
+function cosineSimilarity(vecA, vecB) {
+    let dotProduct = 0.0;
+    let normA = 0.0;
+    let normB = 0.0;
+    for (let i = 0; i < vecA.length; i++) {
+        dotProduct += vecA[i] * vecB[i];
+        normA += vecA[i] * vecA[i];
+        normB += vecB[i] * vecB[i];
+    }
+    if (normA === 0 || normB === 0) {
+        return 0;
+    }
+    else {
+        return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+}
+// An index range expression is always a chained list of:
+//
+// 0 or more equality expressions defined with .eq.
+// [Optionally] A lower bound expression defined with .gt or .gte.
+// [Optionally] An upper bound expression defined with .lt or .lte.
+function validateIndexRangeExpression(source, fields) {
+    let fieldIndex = 0;
+    let state = "eq";
+    for (const [filterIndex, filter] of source.range.entries()) {
+        if (state === "done") {
+            throw new Error(`Incorrect operator used in \`withIndex\`, cannot chain ` +
+                `more operators after both \`.gt\` and \`.lt\` were already used, ` +
+                `got \`${printIndexOperator(filter)}\`.`);
+        }
+        const filterType = filter.type == "Gt" || filter.type == "Gte"
+            ? "gt"
+            : filter.type == "Lt" || filter.type == "Lte"
+                ? "lt"
+                : "eq";
+        switch (`${state}|${filterType}`) {
+            // Allow to operate on the current indexed field
+            case "eq|eq":
+            case "eq|gt":
+            case "eq|lt":
+                if (filter.fieldPath === fields[fieldIndex]) {
+                    fieldIndex += 1;
+                    state = filterType;
+                    continue;
+                }
+                throw new Error(`Incorrect field used in \`withIndex\`, ` +
+                    `expected "${fields[fieldIndex]}", got "${filter.fieldPath}"`);
+            // Allow to operate on the previous field (gt and lt must operate on same field)
+            case "lt|gt":
+            case "gt|lt":
+                if (fieldIndex > 0 && filter.fieldPath === fields[fieldIndex - 1]) {
+                    state = "done";
+                    continue;
+                }
+                throw new Error(`Incorrect field used in \`withIndex\`, ` +
+                    `\`.gt\` and \`.lt\` must operate on the same field, ` +
+                    `expected "${fields[fieldIndex - 1]}", got "${filter.fieldPath}"`);
+            default:
+                throw new Error(`Incorrect operator used in \`withIndex\`, ` +
+                    `cannot chain \`.${filter.type.toLowerCase()}()\` ` +
+                    `after \`.${source.range[filterIndex - 1].type.toLowerCase()}()\``);
+        }
+    }
+}
+function printIndexOperator(filter) {
+    return `.${filter.type.toLowerCase()}(${filter.fieldPath}, ${JSON.stringify(filter.value)})`;
+}
+function validateFieldNames(validator) {
+    if (validator.type === "object") {
+        Object.keys(validator.value).forEach((fieldName) => {
+            if (!isValidIdentifier(fieldName)) {
+                throw new Error(`Field names must be valid identifiers, got "${fieldName}"`);
+            }
+        });
+    }
+    if (validator.type === "union") {
+        validator.value.forEach(validateFieldNames);
+    }
+}
+function isValidIdentifier(name) {
+    return /(^_(id|creationTime)$)|^[a-zA-Z][a-zA-Z0-9_]*$/.test(name);
+}
+function validateValidator(validator, value) {
+    switch (validator.type) {
+        case "null": {
+            if (value !== null) {
+                throw new Error(`Validator error: Expected \`null\`, got \`${value}\``);
+            }
+            return;
+        }
+        case "number": {
+            if (typeof value !== "number") {
+                throw new Error(`Validator error: Expected \`number\`, got \`${value}\``);
+            }
+            return;
+        }
+        case "bigint": {
+            if (typeof value !== "bigint") {
+                throw new Error(`Validator error: Expected \`bigint\`, got \`${value}\``);
+            }
+            return;
+        }
+        case "boolean": {
+            if (typeof value !== "boolean") {
+                throw new Error(`Validator error: Expected \`boolean\`, got \`${value}\``);
+            }
+            return;
+        }
+        case "string": {
+            if (typeof value !== "string") {
+                throw new Error(`Validator error: Expected \`string\`, got \`${value}\``);
+            }
+            return;
+        }
+        case "bytes": {
+            if (!(value instanceof ArrayBuffer)) {
+                throw new Error(`Validator error: Expected \`ArrayBuffer\`, got \`${value}\``);
+            }
+            return;
+        }
+        case "any": {
+            return;
+        }
+        case "literal": {
+            if (value !== validator.value) {
+                throw new Error(`Validator error: Expected \`${validator.value}\`, got \`${value}\``);
+            }
+            return;
+        }
+        case "id": {
+            if (typeof value !== "string") {
+                throw new Error(`Validator error: Expected \`string\`, got \`${value}\``);
+            }
+            if (tableNameFromId(value) !== validator.tableName) {
+                throw new Error(`Validator error: Expected ID for table "${validator.tableName}", got \`${value}\``);
+            }
+            return;
+        }
+        case "array": {
+            if (!Array.isArray(value)) {
+                throw new Error(`Validator error: Expected \`Array\`, got \`${value}\``);
+            }
+            for (const v of value) {
+                validateValidator(validator.value, v);
+            }
+            return;
+        }
+        case "union": {
+            let isValid = false;
+            for (const v of validator.value) {
+                try {
+                    validateValidator(v, value);
+                    isValid = true;
+                    break;
+                }
+                catch {
+                    // Ignore
+                }
+            }
+            if (!isValid) {
+                throw new Error(`Validator error: Expected one of ${validator.value.map((v) => v.type).join(", ")}, got \`${JSON.stringify(convexToJson(value))}\``);
+            }
+            return;
+        }
+        case "object": {
+            if (typeof value !== "object") {
+                throw new Error(`Validator error: Expected \`object\`, got \`${value}\``);
+            }
+            if (!isSimpleObject(value)) {
+                throw new Error(`Validator error: Expected a plain old JavaScript \`object\`, got \`${value}\``);
+            }
+            for (const [k, { fieldType, optional }] of Object.entries(validator.value)) {
+                if (value[k] === undefined) {
+                    if (!optional) {
+                        throw new Error(`Validator error: Missing required field \`${k}\` in object`);
+                    }
+                }
+                else {
+                    validateValidator(fieldType, value[k]);
+                }
+            }
+            for (const k of Object.keys(value)) {
+                if (validator.value[k] === undefined) {
+                    throw new Error(`Validator error: Unexpected field \`${k}\` in object`);
+                }
+            }
+            return;
+        }
+    }
+}
+function syscallImpl() {
+    return (op, jsonArgs) => {
+        const args = JSON.parse(jsonArgs);
+        const db = getDb();
+        switch (op) {
+            case "1.0/queryStream": {
+                const { query } = args;
+                const tracker = getTransactionManager().getMetricsTracker();
+                tracker?.trackIndexRange();
+                const queryId = db.startQuery(query);
+                return JSON.stringify({ queryId });
+            }
+            case "1.0/queryCleanup": {
+                return JSON.stringify({});
+            }
+            case "1.0/db/normalizeId": {
+                const idString = args.idString;
+                const tableName = tableNameFromId(idString);
+                return JSON.stringify({
+                    id: tableName === args.table ? idString : null,
+                });
+            }
+            default: {
+                throw new Error(`\`convexTest\` does not support syscall: "${op}"`);
+            }
+        }
+    };
+}
+class AuthFake {
+    _userIdentity;
+    constructor(_userIdentity = null) {
+        this._userIdentity = _userIdentity;
+    }
+    getUserIdentity() {
+        return Promise.resolve(this._userIdentity);
+    }
+}
+function asyncSyscallImpl() {
+    return async (op, jsonArgs) => {
+        const args = JSON.parse(jsonArgs);
+        const db = getDb();
+        const tracker = getTransactionManager().getMetricsTracker();
+        function getAndTrack(table, id) {
+            const doc = db.get(table, id);
+            if (doc !== null) {
+                tracker?.trackRead(getDocumentSize(doc));
+            }
+            return doc;
+        }
+        switch (op) {
+            case "1.0/get": {
+                const { table, id } = args;
+                tracker?.trackIndexRange();
+                const doc = getAndTrack(table, id);
+                return JSON.stringify(convexToJson(doc));
+            }
+            case "1.0/queryStreamNext": {
+                const { value, done } = db.queryNext(args.queryId);
+                if (!done && value !== null) {
+                    tracker?.trackRead(getDocumentSize(value));
+                }
+                return JSON.stringify(convexToJson({ value, done }));
+            }
+            case "1.0/queryPage": {
+                const { query, cursor, endCursor, pageSize, maximumRowsRead, maximumBytesRead, } = args;
+                const { page, isDone, continueCursor, splitCursor, pageStatus } = db.paginate({
+                    query,
+                    cursor,
+                    endCursor,
+                    pageSize,
+                    maximumRowsRead,
+                    maximumBytesRead,
+                });
+                if (tracker) {
+                    tracker.trackIndexRange();
+                    for (const doc of page) {
+                        tracker.trackRead(getDocumentSize(doc));
+                    }
+                }
+                return JSON.stringify(convexToJson({
+                    page,
+                    isDone,
+                    continueCursor,
+                    splitCursor,
+                    pageStatus,
+                }));
+            }
+            case "1.0/insert": {
+                const _id = db.insert(args.table, jsonToConvex(args.value));
+                tracker?.trackWrite(getConvexSize(db.get(args.table, _id)));
+                return JSON.stringify({ _id });
+            }
+            case "1.0/shallowMerge": {
+                const { table, id, value } = args;
+                getAndTrack(table, id);
+                db.patch(table, id, value);
+                tracker?.trackWrite(getConvexSize(db.get(table, id)));
+                return JSON.stringify({});
+            }
+            case "1.0/replace": {
+                const { table, id, value } = args;
+                getAndTrack(table, id);
+                db.replace(table, id, value);
+                tracker?.trackWrite(getConvexSize(db.get(table, id)));
+                return JSON.stringify({});
+            }
+            case "1.0/remove": {
+                const { table, id } = args;
+                getAndTrack(table, id);
+                db.delete(table, id);
+                tracker?.trackWrite(0);
+                return JSON.stringify({});
+            }
+            case "1.0/getTransactionMetrics": {
+                if (tracker) {
+                    return JSON.stringify(convexToJson(tracker.getTransactionMetrics()));
+                }
+                throw new Error("getTransactionMetrics() can only be called from a query or mutation. " +
+                    "It is not available in actions or outside of a Convex function.");
+            }
+            case "1.0/getFunctionMetadata": {
+                const ctx = executionContextStorage.getStore();
+                if (!ctx) {
+                    throw new Error("getFunctionMetadata() can only be called from within a Convex function.");
+                }
+                return JSON.stringify(convexToJson({
+                    name: ctx.udfPath,
+                    componentPath: ctx.componentPath,
+                }));
+            }
+            case "1.0/actions/query": {
+                const { name, args: queryArgs } = args;
+                return JSON.stringify(convexToJson(await withAuth().runQuery(makeFunctionReference(name), queryArgs)));
+            }
+            case "1.0/actions/mutation": {
+                const { name, args: mutationArgs } = args;
+                return JSON.stringify(convexToJson(await withAuth().runMutation(makeFunctionReference(name), mutationArgs)));
+            }
+            case "1.0/actions/action": {
+                const { name, args: actionArgs } = args;
+                return JSON.stringify(convexToJson(await withAuth().runAction(makeFunctionReference(name), actionArgs)));
+            }
+            case "1.0/runUdf": {
+                const { udfType, name, reference, functionHandle, args: udfArgsJson, } = args;
+                const udfArgs = jsonToConvex(udfArgsJson);
+                const functionPath = getFunctionPathFromAddress({
+                    name,
+                    reference,
+                    functionHandle,
+                });
+                if (udfType === "query") {
+                    return JSON.stringify(convexToJson(await withAuth().queryFromPath(functionPath, udfArgs)));
+                }
+                if (udfType === "snapshotQuery") {
+                    return JSON.stringify(convexToJson(await withAuth().snapshotQueryFromPath(functionPath, udfArgs)));
+                }
+                if (udfType === "mutation") {
+                    return JSON.stringify(convexToJson(await withAuth().mutationFromPath(functionPath, udfArgs)));
+                }
+                throw new Error(`\`convexTest\` does not support udf type: "${udfType}"`);
+            }
+            case "1.0/createFunctionHandle": {
+                const { name, reference, functionHandle } = args;
+                const functionPath = getFunctionPathFromAddress({
+                    name,
+                    reference,
+                    functionHandle,
+                });
+                const handle = createFunctionHandle(functionPath);
+                return JSON.stringify(handle);
+            }
+            case "1.0/actions/schedule": {
+                return await withAuth().run(async () => {
+                    return await getSyscalls().asyncSyscall("1.0/schedule", jsonArgs);
+                });
+            }
+            case "1.0/schedule": {
+                const { name, reference, functionHandle, args: fnArgs, ts: tsInSecs, } = args;
+                const functionAddress = { name, reference, functionHandle };
+                const functionPath = getFunctionPathFromAddress(functionAddress);
+                // Convert args to a Convex value before storing them or passing them to the function
+                const parsedArgs = jsonToConvex(fnArgs);
+                tracker?.trackScheduledFunction(getConvexSize(parsedArgs));
+                const jobId = db.insert("_scheduled_functions", {
+                    args: [parsedArgs],
+                    name: functionPath.udfPath,
+                    scheduledTime: tsInSecs * 1000,
+                    state: { kind: "pending" },
+                });
+                const componentPath = getCurrentComponentPath();
+                // Capture the current test's ConvexGlobal so the scheduled
+                // function callback (which runs via setTimeout, outside the
+                // original ALS context) uses the correct test state.
+                const capturedGlobal = getConvexGlobal();
+                setTimeout(
+                // Scheduled functions run without auth context, even if
+                // they were scheduled from an authenticated function.
+                (() => convexGlobalStorage.run(capturedGlobal, () => authStorage.run(new AuthFake(), async () => {
+                    const canceled = await withAuth().runInComponent(componentPath, async () => {
+                        const job = db.get("_scheduled_functions", jobId);
+                        if (!job)
+                            return true;
+                        if (job.state.kind === "canceled") {
+                            return true;
+                        }
+                        if (job.state.kind !== "pending") {
+                            throw new Error(`\`convexTest\` invariant error: Unexpected scheduled function state when starting it: ${job.state.kind}`);
+                        }
+                        db.patch("_scheduled_functions", jobId, {
+                            state: { kind: "inProgress" },
+                        });
+                        return false;
+                    });
+                    if (canceled) {
+                        return;
+                    }
+                    try {
+                        await withAuth().fun(functionPath, parsedArgs);
+                    }
+                    catch (error) {
+                        console.error(`Error when running scheduled function ${name}`, error);
+                        await withAuth().runInComponent(componentPath, async () => {
+                            db.patch("_scheduled_functions", jobId, {
+                                state: { kind: "failed" },
+                                completedTime: Date.now(),
+                            });
+                        });
+                        db.jobFinished(jobId);
+                        return;
+                    }
+                    await withAuth().runInComponent(componentPath, async () => {
+                        const job = db.get("_scheduled_functions", jobId);
+                        if (job.state.kind !== "inProgress") {
+                            throw new Error(`\`convexTest\` invariant error: Unexpected scheduled function state after it finished running: ${job.state.kind}`);
+                        }
+                        db.patch("_scheduled_functions", jobId, {
+                            state: { kind: "success" },
+                        });
+                    });
+                    db.jobFinished(jobId);
+                }))), tsInSecs * 1000 - Date.now());
+                return JSON.stringify(convexToJson(jobId));
+            }
+            case "1.0/actions/cancel_job": {
+                await withAuth().run(async () => {
+                    await getSyscalls().asyncSyscall("1.0/cancel_job", jsonArgs);
+                });
+                return JSON.stringify({});
+            }
+            case "1.0/actions/vectorSearch": {
+                const { query: { indexName, limit, vector, expressions }, } = args;
+                const results = db.vectorSearch(indexName, vector, 
+                // Probably an unintentional implementation in Convex
+                // where expressions is only a single expression
+                expressions === null ? [] : [expressions], limit);
+                return JSON.stringify(convexToJson({ results }));
+            }
+            case "1.0/cancel_job": {
+                const { id } = args;
+                db.patch("_scheduled_functions", id, { state: { kind: "canceled" } });
+                return JSON.stringify({});
+            }
+            case "1.0/storageDelete": {
+                const { storageId } = args;
+                await writeToDatabase(async (db) => {
+                    db.delete("_storage", storageId);
+                });
+                return JSON.stringify({});
+            }
+            case "1.0/storageGetUrl": {
+                const { storageId } = args;
+                const metadata = db.get("_storage", storageId);
+                if (metadata === null) {
+                    return JSON.stringify(null);
+                }
+                const { sha256 } = metadata;
+                // In the real backend the URL ofc isn't the sha
+                const url = "https://some-deployment.convex.cloud/api/storage/" +
+                    sha256;
+                return JSON.stringify(convexToJson(url));
+            }
+            case "1.0/storageGenerateUploadUrl": {
+                // In the real backend the token is cryptographically secure
+                const url = "https://some-deployment.convex.cloud/api/storage/upload?token=" +
+                    Math.random();
+                return JSON.stringify(convexToJson(url));
+            }
+            case "1.0/count": {
+                const { table } = args;
+                const queryId = db.startQuery({
+                    source: { type: "FullTableScan", tableName: table, order: "asc" },
+                    operators: [],
+                });
+                let count = 0;
+                while (true) {
+                    const result = db.queryNext(queryId);
+                    if (result.done) {
+                        break;
+                    }
+                    count += 1;
+                }
+                return JSON.stringify(count);
+            }
+            default: {
+                throw new Error(`\`convexTest\` does not support async syscall: "${op}"`);
+            }
+        }
+    };
+}
+function jsSyscallImpl() {
+    return async (op, args) => {
+        const db = getDb();
+        switch (op) {
+            case "storage/storeBlob": {
+                const { blob } = args;
+                const storageId = await writeToDatabase(async (db) => {
+                    return db.insert("_storage", {
+                        size: blob.size,
+                        sha256: await blobSha(blob),
+                    });
+                });
+                db.storeFile(storageId, blob);
+                return storageId;
+            }
+            case "storage/getBlob": {
+                const { storageId } = args;
+                return db.getFile(storageId);
+            }
+            default: {
+                throw new Error(`\`convexTest\` does not support js syscall: "${op}"`);
+            }
+        }
+    };
+}
+// If we're in action, wrap the write in a transaction.
+async function writeToDatabase(impl) {
+    const db = getDb();
+    if (!getTransactionManager().isInTransaction()) {
+        return await withAuth().run(async () => {
+            return await impl(db);
+        });
+    }
+    else {
+        return await impl(db);
+    }
+}
+async function blobSha(blob) {
+    const arrayBuffer = await blob.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
+    const hashArray = new Uint8Array(hashBuffer);
+    return btoa(String.fromCharCode(...hashArray));
+}
+async function waitForInProgressScheduledFunctions() {
+    let hadScheduledFunctions = false;
+    for (const componentPath of Object.keys(getConvexGlobal().components)) {
+        const inProgressJobs = (await withAuth().runInComponent(componentPath, async (ctx) => {
+            return (await ctx.db.system.query("_scheduled_functions").collect()).filter((job) => job.state.kind === "inProgress");
+        }));
+        let numRemaining = inProgressJobs.length;
+        if (numRemaining === 0) {
+            continue;
+        }
+        hadScheduledFunctions = true;
+        await new Promise((resolve) => {
+            getDbForComponent(componentPath).jobListener = () => {
+                numRemaining -= 1;
+                if (numRemaining === 0) {
+                    resolve();
+                }
+            };
+        });
+    }
+    return hadScheduledFunctions;
+}
+function getComponentInfo(componentPath) {
+    const convex = getConvexGlobal();
+    if (convex.components[componentPath] === undefined) {
+        throw new Error(`Component "${componentPath}" is not registered. Call "t.registerComponent".`);
+    }
+    return convex.components[componentPath];
+}
+function getDbForComponent(componentPath) {
+    return getComponentInfo(componentPath).db;
+}
+function getDb() {
+    return getDbForComponent(getCurrentComponentPath());
+}
+function getTransactionManager() {
+    return getConvexGlobal().transactionManager;
+}
+function getCurrentComponentPath() {
+    return (executionContextStorage.getStore()?.componentPath ?? ROOT_COMPONENT_PATH);
+}
+function getModules() {
+    return getModulesForComponent(getCurrentComponentPath());
+}
+function getModulesForComponent(componentPath) {
+    return getComponentInfo(componentPath).modules;
+}
+function getSyscalls() {
+    return getConvexGlobal();
+}
+function moduleCache(specifiedModules) {
+    const modules = specifiedModules ?? import.meta.glob("../../../convex/**/*.*s");
+    const prefix = findModulesRoot(Object.keys(modules), specifiedModules !== undefined);
+    const modulesWithoutExtension = Object.fromEntries(Object.entries(modules).map(([path, module]) => [
+        path.replace(/\.[^.]+$/, ""),
+        module,
+    ]));
+    return async (path) => {
+        const module = modulesWithoutExtension[prefix + path];
+        if (module === undefined) {
+            throw new Error(`Could not find module for: "${path}"`);
+        }
+        return await module();
+    };
+}
+function findModulesRoot(modulesPaths, userProvidedModules) {
+    const generatedFilePath = modulesPaths.find((path) => path.includes("_generated"));
+    if (generatedFilePath !== undefined) {
+        return generatedFilePath.split("_generated", 2)[0];
+    }
+    throw new Error('Could not find the "_generated" directory, make sure to run ' +
+        "`npx convex dev` or `npx convex codegen`. " +
+        (userProvidedModules
+            ? "Make sure your `import.meta.glob` includes the files in the " +
+                '"_generated" directory'
+            : "If your Convex functions aren't defined in a directory " +
+                'called "convex" sibling to your node_modules, ' +
+                "provide the second argument to `convexTest`"));
+}
+const executionContextStorage = new AsyncLocalStorage();
+function getConvexGlobal() {
+    const store = convexGlobalStorage.getStore();
+    if (!store) {
+        throw new Error("No active convexTest context. " +
+            "Make sure you are calling methods on the object returned by convexTest().");
+    }
+    return store;
+}
+// Install a permanent global proxy so the Convex runtime's
+// `Convex.syscall` / `Convex.asyncSyscall` / `Convex.jsSyscall`
+// always delegate to the current test's ALS context.
+// This avoids writing per-test state to the global.
+let _globalProxyInstalled = false;
+function ensureGlobalProxy() {
+    if (_globalProxyInstalled)
+        return;
+    _globalProxyInstalled = true;
+    global.Convex = {
+        get syscall() {
+            return getConvexGlobal().syscall;
+        },
+        get asyncSyscall() {
+            return getConvexGlobal().asyncSyscall;
+        },
+        get jsSyscall() {
+            return getConvexGlobal().jsSyscall;
+        },
+    };
+}
+class TransactionManager {
+    // The DatabaseFake is used in the Convex global,
+    // and so it restricts `convexTest` to run one function
+    // at a time.
+    // We force sequential execution to make sure actions
+    // can run mutations in parallel.
+    _waitOnCurrentFunction = null;
+    _markTransactionDone = null;
+    _metricsTracker = null;
+    _limitsConfig;
+    constructor(limitsConfig = false) {
+        this._limitsConfig = limitsConfig;
+    }
+    async begin(isNested) {
+        // Take a lock only for the top-level of each transaction.
+        // Nested transactions are not isolated so if you `Promise.all` on multiple
+        // `ctx.runMutation` or `ctx.runQuery` calls, they won't be serialized.
+        if (!isNested) {
+            // Note the loop is important, as the current promise might resolve and a
+            // new transaction could start before we get woken up.
+            // This is the standard pattern for condition variables:
+            // https://en.wikipedia.org/wiki/Monitor_(synchronization)
+            while (this._waitOnCurrentFunction !== null) {
+                await this._waitOnCurrentFunction;
+            }
+            this._waitOnCurrentFunction = new Promise((resolve) => {
+                this._markTransactionDone = resolve;
+            });
+            this._metricsTracker = new TransactionMetricsTracker(this._limitsConfig);
+        }
+        const convex = getConvexGlobal();
+        for (const component of Object.values(convex.components)) {
+            component.db.startTransaction();
+        }
+    }
+    // Used to distinguish between mutation and action execution
+    // environment.
+    isInTransaction() {
+        return this._waitOnCurrentFunction !== null;
+    }
+    getMetricsTracker() {
+        return this._metricsTracker;
+    }
+    commit(isNested) {
+        const convex = getConvexGlobal();
+        for (const component of Object.values(convex.components)) {
+            component.db.commit();
+        }
+        this._endTransaction(isNested);
+    }
+    rollback(isNested) {
+        const convex = getConvexGlobal();
+        for (const component of Object.values(convex.components)) {
+            component.db.rollbackWrites();
+        }
+        this._endTransaction(isNested);
+    }
+    _endTransaction(isNested) {
+        if (this._markTransactionDone === null) {
+            throw new Error("Transaction not started");
+        }
+        if (!isNested) {
+            this._metricsTracker = null;
+            this._waitOnCurrentFunction = null;
+            this._markTransactionDone();
+            this._markTransactionDone = null;
+        }
+    }
+    stashWrites() {
+        const convex = getConvexGlobal();
+        const stashed = new Map();
+        for (const [path, component] of Object.entries(convex.components)) {
+            stashed.set(path, component.db.stashWrites());
+        }
+        return stashed;
+    }
+    restoreWrites(stashed) {
+        const convex = getConvexGlobal();
+        for (const [path, writes] of stashed) {
+            convex.components[path].db.restoreWrites(writes);
+        }
+    }
+}
+export function convexTest(schemaOrOptions, modules) {
+    let schema = undefined;
+    let limitsConfig = false;
+    // Detect legacy API by checking for schema's "tables" property
+    function isSchemaDefinition(schemaOrOptions) {
+        return (schemaOrOptions !== null &&
+            typeof schemaOrOptions === "object" &&
+            "tables" in schemaOrOptions &&
+            typeof schemaOrOptions.tables === "object");
+    }
+    if (schemaOrOptions === undefined) {
+        // convexTest() - no arguments
+    }
+    else if (isSchemaDefinition(schemaOrOptions)) {
+        // convexTest(schema, modules?)
+        schema = schemaOrOptions;
+    }
+    else {
+        // convexTest({ schema?, modules?, transactionLimits? })
+        const opts = schemaOrOptions;
+        schema = opts.schema;
+        modules = opts.modules;
+        limitsConfig = opts.transactionLimits ?? false;
+    }
+    const rootDb = new DatabaseFake(schema ?? null, ROOT_COMPONENT_PATH);
+    const convexGlobal = {
+        components: {
+            [ROOT_COMPONENT_PATH]: {
+                db: rootDb,
+                modules: moduleCache(modules),
+            },
+        },
+        transactionManager: new TransactionManager(limitsConfig),
+        syscall: syscallImpl(),
+        asyncSyscall: asyncSyscallImpl(),
+        jsSyscall: jsSyscallImpl(),
+    };
+    ensureGlobalProxy();
+    // Wrap all function properties to run within this test's ALS context.
+    function wrapInContext(obj) {
+        const result = {};
+        for (const key of Object.keys(obj)) {
+            const val = obj[key];
+            result[key] =
+                typeof val === "function"
+                    ? (...args) => convexGlobalStorage.run(convexGlobal, () => val(...args))
+                    : val;
+        }
+        return result;
+    }
+    return {
+        withIdentity(identity) {
+            const subject = identity.subject ?? "" + simpleHash(JSON.stringify(identity));
+            const issuer = identity.issuer ?? "https://convex.test";
+            const tokenIdentifier = identity.tokenIdentifier ?? `${issuer}|${subject}`;
+            return wrapInContext(withAuth(new AuthFake({ ...identity, subject, issuer, tokenIdentifier })));
+        },
+        ...wrapInContext(withAuth()),
+        registerComponent(componentPath, schema, glob) {
+            const componentInfo = {
+                db: new DatabaseFake(schema, componentPath),
+                modules: moduleCache(glob),
+            };
+            convexGlobal.components[componentPath] = componentInfo;
+        },
+    };
+}
+function withAuth(auth = authStorage.getStore() ?? new AuthFake()) {
+    // Auth doesn't propagate across component boundaries.
+    function authForComponent(componentPath) {
+        const ctx = executionContextStorage.getStore();
+        const isCrossComponent = ctx !== undefined && componentPath !== ctx.componentPath;
+        return isCrossComponent ? new AuthFake() : auth;
+    }
+    const runMutationWithHandler = async (handler, args, extraCtx = {}, functionPath, isNested) => {
+        const m = mutationGeneric({
+            handler: (ctx, a) => {
+                const testCtx = {
+                    ...ctx,
+                    auth: authStorage.getStore() ?? auth,
+                    ...extraCtx,
+                };
+                return handler(testCtx, a);
+            },
+        });
+        const transactionManager = getTransactionManager();
+        const authForChild = authForComponent(functionPath.componentPath);
+        const parentCtx = executionContextStorage.getStore();
+        const childCtx = {
+            componentPath: functionPath.componentPath,
+            udfPath: functionPath.udfPath,
+            depth: (parentCtx?.depth ?? 0) + 1,
+        };
+        await transactionManager.begin(isNested);
+        try {
+            const childLock = new NestedLock();
+            const invokeRaw = () => m.invokeMutation(JSON.stringify(convexToJson([parseArgs(args)])));
+            const invokeInContext = () => executionContextStorage.run(childCtx, () => authStorage.run(authForChild, invokeRaw));
+            const rawResult = await nestedTxStorage.run(childLock, invokeInContext);
+            transactionManager.commit(isNested);
+            return jsonToConvex(JSON.parse(rawResult));
+        }
+        catch (e) {
+            transactionManager.rollback(isNested);
+            throw deserializeConvexErrorData(e);
+        }
+    };
+    // Shared helper to run a query with a given handler and transaction context.
+    // Used by both queryFromPath (for function references) and inline queries.
+    // Callers are responsible for acquiring the nested lock when nested.
+    const runQueryWithHandler = async (handler, args, functionPath, isNested) => {
+        const q = queryGeneric({
+            handler: (ctx, a) => {
+                const testCtx = { ...ctx, auth: authStorage.getStore() ?? auth };
+                return handler(testCtx, a);
+            },
+        });
+        const transactionManager = getTransactionManager();
+        const authForChild = authForComponent(functionPath.componentPath);
+        const parentCtx = executionContextStorage.getStore();
+        const childCtx = {
+            componentPath: functionPath.componentPath,
+            udfPath: functionPath.udfPath,
+            depth: (parentCtx?.depth ?? 0) + 1,
+        };
+        await transactionManager.begin(isNested);
+        try {
+            const childLock = new NestedLock();
+            const invokeRaw = () => q.invokeQuery(JSON.stringify(convexToJson([parseArgs(args)])));
+            const invokeInContext = () => executionContextStorage.run(childCtx, () => authStorage.run(authForChild, invokeRaw));
+            const rawResult = await nestedTxStorage.run(childLock, invokeInContext);
+            return jsonToConvex(JSON.parse(rawResult));
+        }
+        catch (e) {
+            throw deserializeConvexErrorData(e);
+        }
+        finally {
+            transactionManager.rollback(isNested);
+        }
+    };
+    // Shared helper to run an action with a given handler
+    // Used by both actionFromPath (for function references) and inline actions
+    const runActionWithHandler = async (handler, args, functionPath, ctxRunQuery, ctxRunMutation, ctxRunAction) => {
+        const a = actionGeneric({
+            handler: (ctx, innerArgs) => {
+                const testCtx = {
+                    ...ctx,
+                    runQuery: ctxRunQuery,
+                    runMutation: ctxRunMutation,
+                    runAction: ctxRunAction,
+                    auth: authStorage.getStore() ?? auth,
+                };
+                return handler(testCtx, innerArgs);
+            },
+        });
+        const authForChild = authForComponent(functionPath.componentPath);
+        const parentCtx = executionContextStorage.getStore();
+        const childCtx = {
+            componentPath: functionPath.componentPath,
+            udfPath: functionPath.udfPath,
+            depth: (parentCtx?.depth ?? 0) + 1,
+        };
+        return await executionContextStorage.run(childCtx, async () => {
+            const requestId = "" + Math.random();
+            try {
+                const rawResult = await authStorage.run(authForChild, () => a.invokeAction(requestId, JSON.stringify(convexToJson([parseArgs(args)]))));
+                return jsonToConvex(JSON.parse(rawResult));
+            }
+            catch (e) {
+                throw deserializeConvexErrorData(e);
+            }
+        });
+    };
+    const byTypeWithPath = {
+        queryFromPath: async (functionPath, args) => {
+            const parentLock = nestedTxStorage.getStore() ?? null;
+            const isNested = parentLock !== null;
+            if (parentLock) {
+                await parentLock.acquire();
+            }
+            try {
+                const resolved = await resolveFunction(functionPath, "query");
+                validateValidator(resolved.args, args ?? {});
+                const result = await runQueryWithHandler(resolved.handler, args, resolved.functionPath, isNested);
+                validateReturnValue(resolved.returns, result, "query", resolved.functionPath);
+                return result;
+            }
+            finally {
+                if (parentLock) {
+                    parentLock.release();
+                }
+            }
+        },
+        snapshotQueryFromPath: async (functionPath, args) => {
+            const parentLock = nestedTxStorage.getStore() ?? null;
+            if (parentLock) {
+                await parentLock.acquire();
+            }
+            // Stash pending writes so the query only sees committed state.
+            const transactionManager = getTransactionManager();
+            const stashed = transactionManager.stashWrites();
+            try {
+                const resolved = await resolveFunction(functionPath, "query");
+                validateValidator(resolved.args, args ?? {});
+                const result = await runQueryWithHandler(resolved.handler, args, resolved.functionPath, 
+                // isNested=true to avoid re-acquiring the top-level lock
+                // (we're inside a mutation that already holds it).
+                /* isNested */ true);
+                validateReturnValue(resolved.returns, result, "query", resolved.functionPath);
+                return result;
+            }
+            finally {
+                transactionManager.restoreWrites(stashed);
+                if (parentLock) {
+                    parentLock.release();
+                }
+            }
+        },
+        mutationFromPath: async (functionPath, args) => {
+            const parentLock = nestedTxStorage.getStore() ?? null;
+            const isNested = parentLock !== null;
+            if (parentLock) {
+                await parentLock.acquire();
+            }
+            try {
+                const resolved = await resolveFunction(functionPath, "mutation");
+                validateValidator(resolved.args, args ?? {});
+                const result = await runMutationWithHandler(resolved.handler, args, {}, resolved.functionPath, isNested);
+                validateReturnValue(resolved.returns, result, "mutation", resolved.functionPath);
+                return result;
+            }
+            finally {
+                if (parentLock) {
+                    parentLock.release();
+                }
+            }
+        },
+        actionFromPath: async (functionPath, args) => {
+            const resolved = await resolveFunction(functionPath, "action");
+            validateValidator(resolved.args, args ?? {});
+            const result = await runActionWithHandler(resolved.handler, args, resolved.functionPath, byTypeWithPath.runQuery, byTypeWithPath.runMutation, byTypeWithPath.runAction);
+            validateReturnValue(resolved.returns, result, "action", resolved.functionPath);
+            return result;
+        },
+        runQuery: async (functionReference, args) => {
+            const functionPath = getFunctionPathFromReference(functionReference);
+            return await byTypeWithPath.queryFromPath(functionPath, args);
+        },
+        runMutation: async (functionReference, args) => {
+            const functionPath = getFunctionPathFromReference(functionReference);
+            return await byTypeWithPath.mutationFromPath(functionPath, args);
+        },
+        runAction: async (functionReference, args) => {
+            const functionPath = getFunctionPathFromReference(functionReference);
+            return await byTypeWithPath.actionFromPath(functionPath, args);
+        },
+    };
+    const byType = {
+        query: async (functionReferenceOrHandler, args) => {
+            if (typeof functionReferenceOrHandler === "function") {
+                return await runQueryWithHandler(functionReferenceOrHandler, args ?? {}, { componentPath: getCurrentComponentPath(), udfPath: "inline" }, 
+                /* isNested */ false);
+            }
+            const functionPath = getFunctionPathFromReference(functionReferenceOrHandler);
+            return await byTypeWithPath.queryFromPath(functionPath, args);
+        },
+        mutation: async (functionReferenceOrHandler, args) => {
+            if (typeof functionReferenceOrHandler === "function") {
+                return await runMutationWithHandler(functionReferenceOrHandler, args ?? {}, 
+                /* extraCtx */ {}, { componentPath: getCurrentComponentPath(), udfPath: "inline" }, 
+                /* isNested */ false);
+            }
+            const functionPath = getFunctionPathFromReference(functionReferenceOrHandler);
+            return await byTypeWithPath.mutationFromPath(functionPath, args);
+        },
+        action: async (functionReferenceOrHandler, args) => {
+            if (typeof functionReferenceOrHandler === "function") {
+                return await runActionWithHandler(functionReferenceOrHandler, args ?? {}, { componentPath: getCurrentComponentPath(), udfPath: "inline" }, byTypeWithPath.runQuery, byTypeWithPath.runMutation, byTypeWithPath.runAction);
+            }
+            const functionPath = getFunctionPathFromReference(functionReferenceOrHandler);
+            return await byTypeWithPath.actionFromPath(functionPath, args);
+        },
+    };
+    const run = async (componentPath, handler) => {
+        // Grab StorageActionWriter from action ctx
+        const a = actionGeneric({
+            handler: async (ctx) => {
+                return await runMutationWithHandler(handler, {}, {
+                    storage: ctx.storage,
+                    // ActionCtx support was added in 0.0.40, removed in 0.0.41, should be added back in the future.
+                    // runAction: ctx.runAction.bind(ctx),
+                    // vectorSearch: ctx.vectorSearch.bind(ctx),
+                }, 
+                // Fake mutation path.
+                {
+                    componentPath,
+                    udfPath: "custom",
+                }, false);
+            },
+        });
+        // Real backend uses different ID format
+        const requestId = "" + Math.random();
+        try {
+            const rawResult = await a.invokeAction(requestId, JSON.stringify(convexToJson([{}])));
+            return jsonToConvex(JSON.parse(rawResult));
+        }
+        catch (e) {
+            throw deserializeConvexErrorData(e);
+        }
+    };
+    return {
+        ...byType,
+        ...byTypeWithPath,
+        runInComponent: run,
+        run: async (handler) => {
+            return await run(getCurrentComponentPath(), handler);
+        },
+        fun: async (functionPath, args) => {
+            const { func } = await resolveFunction(functionPath, "any");
+            if (func.isQuery) {
+                return await byTypeWithPath.queryFromPath(functionPath, args);
+            }
+            if (func.isMutation) {
+                return await byTypeWithPath.mutationFromPath(functionPath, args);
+            }
+            if (func.isAction) {
+                return await byTypeWithPath.actionFromPath(functionPath, args);
+            }
+        },
+        fetch: async (path, init) => {
+            const router = (await getModules()("http"))["default"];
+            if (!path.startsWith("/")) {
+                throw new Error(`Path given to \`t.fetch\` must start with a \`/\``);
+            }
+            const url = new URL(`https://some.convex.site${path}`);
+            const found = router.lookup(url.pathname, init?.method ?? "GET");
+            if (!found) {
+                return new Response(`No HttpAction routed for ${url.pathname}`, {
+                    status: 404,
+                });
+            }
+            const [func] = found;
+            const a = httpActionGeneric((ctx, a) => {
+                const testCtx = {
+                    ...ctx,
+                    runQuery: byType.query,
+                    runMutation: byType.mutation,
+                    runAction: byType.action,
+                    auth,
+                };
+                return getHandler(func)(testCtx, a);
+            });
+            const httpCtx = {
+                componentPath: getCurrentComponentPath(),
+                udfPath: "http",
+                depth: 0,
+            };
+            const response = await executionContextStorage.run(httpCtx, () => a.invokeHttpAction(new Request(url, init)));
+            return response;
+        },
+        // This is needed because when we execute functions
+        // we are performing dynamic `import`s, and those
+        // are real work that cannot be force-awaited.
+        finishInProgressScheduledFunctions: async () => {
+            await waitForInProgressScheduledFunctions();
+        },
+        finishAllScheduledFunctions: async (advanceTimers, maxIterations = 100) => {
+            // Wait for all scheduled functions to finish, advancing time in between
+            // each function.
+            // Stop after a fixed number of iterations to avoid infinite loops.
+            for (let i = 0; i < maxIterations; i++) {
+                advanceTimers();
+                // Actions may use setTimeout internally (e.g. for delays).
+                // Keep advancing timers while waiting so those can resolve.
+                let done = false;
+                const waitPromise = waitForInProgressScheduledFunctions().then((had) => {
+                    done = true;
+                    return had;
+                });
+                const maxPumps = 10000;
+                for (let pump = 0; pump < maxPumps && !done; pump++) {
+                    advanceTimers();
+                    // Yield through a full event loop iteration so that dynamic
+                    // import() calls (used to load function modules) can resolve.
+                    // Using MessageChannel to post to the macrotask queue —
+                    // it is not faked by vitest and not removed by edge-runtime.
+                    await new Promise((r) => {
+                        const { port1, port2 } = new MessageChannel();
+                        port2.onmessage = () => r();
+                        port1.postMessage(null);
+                    });
+                    if (pump === maxPumps - 1 && !done) {
+                        throw new Error("finishAllScheduledFunctions: scheduled function did not " +
+                            `complete after ${maxPumps} timer pumps. ` +
+                            "Does an action have an unresolvable setTimeout or infinite loop?");
+                    }
+                }
+                const hadScheduledFunctions = await waitPromise;
+                if (!hadScheduledFunctions) {
+                    return;
+                }
+            }
+            throw new Error("finishAllScheduledFunctions: too many iterations. " +
+                "Check for infinitely recursive scheduled functions, " +
+                "or increase maxIterations.");
+        },
+    };
+}
+function parseArgs(args) {
+    if (args === undefined) {
+        return {};
+    }
+    if (!isSimpleObject(args)) {
+        throw new Error(`The arguments to a Convex function must be an object. Received: ${args}`);
+    }
+    return args;
+}
+function validateReturnValue(returnsValidator, result, functionType, functionPath) {
+    if (returnsValidator !== null) {
+        try {
+            validateValidator(returnsValidator, result);
+        }
+        catch (e) {
+            throw new Error(`Return value validation failed for ${functionType} "${functionPath.udfPath}":\n${e.message}`);
+        }
+    }
+}
+function createFunctionHandle(functionPath) {
+    return `function://${functionPath.componentPath};${functionPath.udfPath}`;
+}
+function parseFunctionHandle(handle) {
+    const [componentPath, udfPath] = handle.split("function://")[1].split(";");
+    return { componentPath, udfPath };
+}
+function getFunctionPathFromAddress(functionAddress) {
+    if (functionAddress.functionHandle !== undefined) {
+        return parseFunctionHandle(functionAddress.functionHandle);
+    }
+    if (functionAddress.name !== undefined) {
+        return {
+            udfPath: functionAddress.name,
+            componentPath: getCurrentComponentPath(),
+        };
+    }
+    if (functionAddress.reference !== undefined) {
+        // "_reference/childComponent/aggregate/path/to/file/functionName" -> "aggregate/path/to/file"
+        const childComponentName = functionAddress.reference.split("/")[2];
+        let componentPath = childComponentName;
+        if (getCurrentComponentPath().length > 0) {
+            componentPath = `${getCurrentComponentPath()}/${componentPath}`;
+        }
+        // "_reference/childComponent/aggregate/path/to/file/functionName" -> "path/to/file/functionName"
+        const functionNameWithSlashes = functionAddress.reference
+            .split("/")
+            .slice(3)
+            .join("/");
+        // "path/to/file/functionName" -> "path/to/file:functionName"
+        const filepath = functionNameWithSlashes.split("/").slice(0, -1).join("/");
+        const functionName = functionNameWithSlashes.split("/").pop();
+        return {
+            udfPath: `${filepath}:${functionName}`,
+            componentPath,
+        };
+    }
+    throw new Error("Function address not supported");
+}
+function getFunctionPathFromReference(functionReference) {
+    return getFunctionPathFromAddress(getFunctionAddress(functionReference));
+}
+function getHandler(func) {
+    return "_handler" in func ? func["_handler"] : func;
+}
+async function resolveFunction(functionPath, type) {
+    // "queries/messages:list" -> ["queries/messages", "list"]
+    const [modulePath, maybeExportName] = functionPath.udfPath.split(":");
+    const exportName = maybeExportName === undefined ? "default" : maybeExportName;
+    const module = await getModulesForComponent(functionPath.componentPath)(modulePath);
+    const func = module[exportName];
+    if (func === undefined) {
+        throw new Error(`Expected a Convex function exported from module "${modulePath}" as \`${exportName}\`, but there is no such export.`);
+    }
+    const handler = getHandler(func);
+    if (typeof handler !== "function") {
+        throw new Error(`Expected a Convex function exported from module "${modulePath}" as \`${exportName}\`, but got: ${func}`);
+    }
+    switch (type) {
+        case "query":
+            if (!func.isQuery) {
+                throw new Error(`Expected a query function, but the function exported from module "${modulePath}" as \`${exportName}\` is not a query.`);
+            }
+            break;
+        case "mutation":
+            if (!func.isMutation) {
+                throw new Error(`Expected a mutation function, but the function exported from module "${modulePath}" as \`${exportName}\` is not a mutation.`);
+            }
+            break;
+        case "action":
+            if (!func.isAction) {
+                throw new Error(`Expected an action function, but the function exported from module "${modulePath}" as \`${exportName}\` is not an action.`);
+            }
+            break;
+        case "any":
+            break;
+        default:
+            // eslint-disable-next-line @typescript-eslint/only-throw-error
+            throw type;
+    }
+    const args = JSON.parse(func.exportArgs());
+    const returns = JSON.parse(func.exportReturns());
+    return { func, functionPath, handler, returns, args };
+}
+function simpleHash(string) {
+    let hash = 0;
+    for (let i = 0; i < string.length; i++) {
+        const char = string.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash;
+}

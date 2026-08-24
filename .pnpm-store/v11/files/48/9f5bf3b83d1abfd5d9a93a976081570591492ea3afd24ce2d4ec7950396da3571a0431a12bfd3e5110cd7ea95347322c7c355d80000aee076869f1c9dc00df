@@ -1,0 +1,1 @@
+"use strict";const Range=require(`../classes/range`),validRange=(e,t)=>{try{return new Range(e,t).range||`*`}catch{return null}};module.exports=validRange;

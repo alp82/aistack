@@ -1,0 +1,19 @@
+import type { DynamicChartDefinition, ChartAxisOptions, ChartBuildContext, CheckedChartSpec, ChartDefinitionOptions, DynamicChartConfig, ChartLayoutOptions, ChartMark, ChartMarkDatum, ChartMarkPointX, ChartMarkPointY, ChartPoint, ChartScene, ChartSize, ChartSpec, ChartSpecDatum, ChartSpecXValue, ChartSpecYValue, StaticChartDefinition, ChartTheme, ChartValue } from './types.js';
+export declare const defaultChartTheme: ChartTheme;
+export declare function defineChart<const TMarks extends readonly ChartMark<unknown, any, any>[], const TSpec extends ChartSpec<TMarks>>(spec: TSpec & {
+    marks: TMarks;
+} & ChartDefinitionOptions<ChartMarkDatum<TMarks[number]>, ChartMarkPointX<TMarks[number]>, ChartMarkPointY<TMarks[number]>>): StaticChartDefinition<ChartMarkDatum<TMarks[number]>, ChartMarkPointX<TMarks[number]>, ChartMarkPointY<TMarks[number]>> & Omit<TSpec, keyof ChartDefinitionOptions>;
+export declare function defineChart<const TSpec extends {
+    marks: readonly ChartMark<unknown, any, any>[];
+    x?: ChartAxisOptions<any> | null;
+    y?: ChartAxisOptions<any> | null;
+}>(config: DynamicChartConfig<TSpec>): DynamicChartDefinition<ChartSpecDatum<TSpec>, ChartSpecXValue<TSpec>, ChartSpecYValue<TSpec>>;
+export declare function defineChart<const TSpec extends {
+    marks: readonly ChartMark<unknown, any, any>[];
+    x?: ChartAxisOptions<any> | null;
+    y?: ChartAxisOptions<any> | null;
+}>(chart: (context: ChartBuildContext) => CheckedChartSpec<TSpec>): DynamicChartDefinition<ChartSpecDatum<TSpec>, ChartSpecXValue<TSpec>, ChartSpecYValue<TSpec>>;
+export declare function defineChart<TDatum, TXValue extends ChartValue, TYValue extends ChartValue>(definition: StaticChartDefinition<TDatum, TXValue, TYValue>, options: ChartDefinitionOptions<TDatum, TXValue, TYValue>): StaticChartDefinition<TDatum, TXValue, TYValue>;
+export declare function defineChart<TDatum, TXValue extends ChartValue, TYValue extends ChartValue>(definition: DynamicChartDefinition<TDatum, TXValue, TYValue>, options: ChartDefinitionOptions<TDatum, TXValue, TYValue>): DynamicChartDefinition<TDatum, TXValue, TYValue>;
+export declare function createChartScene<TDatum, TXValue extends ChartValue, TYValue extends ChartValue>(definition: StaticChartDefinition<TDatum, TXValue, TYValue>, size: ChartSize, layout?: ChartLayoutOptions): ChartScene<TDatum, TXValue, TYValue>;
+export declare function findNearestPoint<TDatum, TXValue extends ChartValue, TYValue extends ChartValue>(scene: ChartScene<TDatum, TXValue, TYValue>, x: number, y: number, maxDistance?: number): ChartPoint<TDatum, TXValue, TYValue> | null;

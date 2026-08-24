@@ -1,0 +1,1 @@
+"use strict";module.exports=exports=rebuild,exports.usage=`Runs "clean" and "build" at once`;const napi=require(`./util/napi.js`);function rebuild(t,n,r){let i=t.package_json,a=[{name:`clean`,args:[]},{name:`build`,args:[`rebuild`]}];a=napi.expand_commands(i,t.opts,a);for(let e=a.length;e!==0;e--)t.todo.unshift(a[e-1]);process.nextTick(r)}

@@ -1,0 +1,59 @@
+{
+  "name": "convex-test",
+  "version": "0.0.51",
+  "description": "A JS mock of the Convex backend for testing your Convex functions.",
+  "keywords": [
+    "test",
+    "jest",
+    "vitest",
+    "convex"
+  ],
+  "homepage": "https://docs.convex.dev/functions/testing",
+  "bugs": "https://github.com/get-convex/convex-test/issues",
+  "repository": "https://github.com/get-convex/convex-test",
+  "main": "dist/index.js",
+  "type": "module",
+  "files": [
+    "dist/*.js",
+    "dist/*.ts",
+    "dist/*.map"
+  ],
+  "scripts": {
+    "format": "prettier --write .",
+    "prebuild": "npm run lint && npm run test:once",
+    "build": "tsc && replace-in-file '\"./convex/**/*.*s\"' '\"../../../convex/**/*.*s\"' ./dist/index.js",
+    "lint": "eslint . --report-unused-disable-directives --max-warnings 0 && prettier --check .",
+    "test": "vitest",
+    "test:once": "vitest run",
+    "test:debug": "vitest --inspect-brk --no-file-parallelism",
+    "test:coverage": "vitest run --coverage",
+    "clean": "rm -rf dist",
+    "alpha": "npm version prerelease --preid alpha && npm publish --tag alpha && git push --follow-tags",
+    "release": "npm version patch && npm publish && git push --follow-tags",
+    "preversion": "npm run clean && npm ci && npm run build",
+    "version": "(npm whoami || npm login) && vim -c 'normal o' -c 'normal o## '$npm_package_version CHANGELOG.md && prettier -w CHANGELOG.md && git add CHANGELOG.md",
+    "prepublishOnly": "npm run build"
+  },
+  "author": "Sarah Shader & Michal Srb <srb@convex.dev>",
+  "license": "Apache-2.0",
+  "peerDependencies": {
+    "convex": "^1.32.0"
+  },
+  "devDependencies": {
+    "@edge-runtime/vm": "5.0.0",
+    "@eslint/eslintrc": "3.3.5",
+    "@eslint/js": "9.39.4",
+    "@types/node": "20.19.39",
+    "@typescript-eslint/eslint-plugin": "8.58.2",
+    "@typescript-eslint/parser": "8.58.2",
+    "@vitest/coverage-v8": "1.6.1",
+    "convex": "1.36.0",
+    "eslint": "9.39.4",
+    "globals": "17.5.0",
+    "pkg-pr-new": "0.0.66",
+    "prettier": "3.8.3",
+    "replace-in-file": "8.4.0",
+    "typescript": "5.9.3",
+    "vitest": "1.6.1"
+  }
+}

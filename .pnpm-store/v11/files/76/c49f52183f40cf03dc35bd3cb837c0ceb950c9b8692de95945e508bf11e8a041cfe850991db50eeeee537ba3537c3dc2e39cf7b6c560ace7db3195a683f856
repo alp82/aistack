@@ -1,0 +1,67 @@
+{
+  "name": "@tanstack/devtools-ui",
+  "version": "0.4.4",
+  "description": "TanStack Devtools UI is a set of UI components for building devtool panels for your application.",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TanStack/devtools.git",
+    "directory": "packages/devtools"
+  },
+  "homepage": "https://tanstack.com/devtools",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "devtools"
+  ],
+  "type": "module",
+  "types": "dist/esm/index.d.ts",
+  "module": "dist/esm/index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      }
+    },
+    "./icons": {
+      "import": {
+        "types": "./dist/esm/icons.d.ts",
+        "default": "./dist/esm/icons.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist/",
+    "src"
+  ],
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "goober": "^2.1.16",
+    "solid-js": "^1.9.9"
+  },
+  "peerDependencies": {
+    "solid-js": ">=1.9.7"
+  },
+  "devDependencies": {
+    "vite-plugin-solid": "^2.11.8"
+  },
+  "scripts": {
+    "clean": "premove ./build ./dist",
+    "lint:fix": "eslint ./src --fix",
+    "test:eslint": "eslint ./src",
+    "test:lib": "vitest",
+    "test:lib:dev": "pnpm test:lib --watch",
+    "test:types": "tsc",
+    "test:build": "publint --strict",
+    "build": "vite build"
+  }
+}

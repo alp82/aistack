@@ -1,0 +1,25 @@
+import type { Channel, ChartKey, ChartMark, ChartMarkMotionOptions, ChartValue, OptionChannelOutput, VisualChannel } from './types.js';
+export interface BandXOptions<TDatum> extends ChartMarkMotionOptions<TDatum> {
+    id?: string;
+    x?: Channel<TDatum, ChartValue | null | undefined>;
+    z?: Channel<TDatum, ChartKey | null | undefined>;
+    color?: Channel<TDatum, ChartKey | null | undefined>;
+    key?: Channel<TDatum, ChartKey>;
+    fill?: VisualChannel<TDatum, string>;
+    fillOpacity?: number;
+    inset?: number;
+    radius?: number;
+}
+export interface BandYOptions<TDatum> extends ChartMarkMotionOptions<TDatum> {
+    id?: string;
+    y?: Channel<TDatum, ChartValue | null | undefined>;
+    z?: Channel<TDatum, ChartKey | null | undefined>;
+    color?: Channel<TDatum, ChartKey | null | undefined>;
+    key?: Channel<TDatum, ChartKey>;
+    fill?: VisualChannel<TDatum, string>;
+    fillOpacity?: number;
+    inset?: number;
+    radius?: number;
+}
+export declare function bandX<TDatum, const TOptions extends BandXOptions<NoInfer<TDatum>> | undefined>(source: Iterable<TDatum>, options?: TOptions): ChartMark<TDatum, OptionChannelOutput<TDatum, TOptions, 'x', number>, number, OptionChannelOutput<TDatum, TOptions, 'x', number>, never>;
+export declare function bandY<TDatum, const TOptions extends BandYOptions<NoInfer<TDatum>> | undefined>(source: Iterable<TDatum>, options?: TOptions): ChartMark<TDatum, number, OptionChannelOutput<TDatum, TOptions, 'y', number>, never, OptionChannelOutput<TDatum, TOptions, 'y', number>>;

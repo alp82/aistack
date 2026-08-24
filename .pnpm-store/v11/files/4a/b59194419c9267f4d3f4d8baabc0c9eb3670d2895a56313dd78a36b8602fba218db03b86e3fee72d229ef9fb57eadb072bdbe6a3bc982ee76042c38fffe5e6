@@ -1,0 +1,42 @@
+# Community
+
+> H3 utils from community.
+
+You can use external H3 event utilities made by the community.
+
+This section is placeholder for any new H3 version 2 compatible community library.
+
+
+
+> [!TIP]
+> 💛 PR is more than welcome to list yours.
+
+## `apitally`
+
+[Apitally](https://apitally.io/h3) is a simple API monitoring, analytics, and request logging tool with a plugin for H3. See setup guide [here](https://docs.apitally.io/frameworks/h3).
+
+<read-more></read-more>
+
+## `H3ravel Framework`
+
+[H3ravel Framework](https://h3ravel.toneflix.net) is a modern TypeScript runtime-agnostic web framework built on top of H3, designed to bring the elegance and developer experience of Laravel PHP to the JavaScript ecosystem. See the getting started guide [here](https://h3ravel.toneflix.net/guide/get-started).
+
+<read-more></read-more>
+
+## `Intlify`
+
+[Intlify](https://intlify.dev/) is a project that aims to improve Developer Experience in software internationalization. That project provides server-side frameworks, middleware, and utilities. About those, see the [here](https://github.com/intlify/srvmid)
+
+<read-more></read-more>
+
+## `Clear Router`
+
+Laravel-style routing system for H3 and Express.js. Clean route definitions, middleware support, and controller bindings with full TypeScript support.
+
+<read-more></read-more>
+
+## `unjwt`
+
+`unjwt` is a collection of low-level JWT utilities (JWS, JWE, JWK) built on the Web Crypto API, with zero runtime dependencies. It includes a dedicated H3 v2 adapter for header and cookie-based session management with support for encrypted (JWE) and signed (JWS) tokens.
+
+<read-more></read-more>

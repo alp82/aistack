@@ -1,0 +1,10 @@
+{
+  "name": "estree-walker",
+  "version": "2.0.2",
+  "type": "commonjs",
+  "main": "./dist/umd/estree-walker.js",
+  "exports": {
+    "require": "./dist/umd/estree-walker.js",
+    "import": "./dist/esm/estree-walker.js"
+  }
+}

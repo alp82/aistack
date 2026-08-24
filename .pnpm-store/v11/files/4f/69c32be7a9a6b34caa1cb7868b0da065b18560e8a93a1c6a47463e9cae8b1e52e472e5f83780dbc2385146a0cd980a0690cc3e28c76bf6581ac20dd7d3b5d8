@@ -1,0 +1,55 @@
+import { mountChartRenderer } from "./renderer.js";
+import { createChartRuntime } from "./runtime.js";
+import { resolveChartAdapterLayout } from "./adapter-shared.js";
+function createChartRendererAdapter(initialOptions) {
+  let runtime = createChartRuntime();
+  let options = initialOptions;
+  let host;
+  const getRuntime = () => runtime ??= createChartRuntime();
+  return {
+    prerender() {
+      const layout = resolveChartAdapterLayout(options);
+      const scene = getRuntime().render(
+        options.definition,
+        {
+          width: layout.initialWidth,
+          height: layout.initialHeight
+        },
+        { measureText: options.measureText }
+      );
+      return options.renderer.prerender(scene, {
+        ariaLabel: options.ariaLabel,
+        ariaDescription: options.ariaDescription,
+        className: options.className,
+        tabIndex: options.definition.keyboard === false ? -1 : options.tabIndex ?? 0,
+        idPrefix: options.idPrefix
+      });
+    },
+    mount(container) {
+      if (host) {
+        throw new Error("This chart adapter is already mounted.");
+      }
+      host = mountChartRenderer(container, options, getRuntime());
+    },
+    update(nextOptions) {
+      options = nextOptions;
+      host?.update(nextOptions);
+    },
+    getScene() {
+      return host?.getScene();
+    },
+    destroy() {
+      if (host) {
+        host.destroy();
+        host = void 0;
+        runtime = void 0;
+      } else if (runtime) {
+        runtime.destroy();
+        runtime = void 0;
+      }
+    }
+  };
+}
+export {
+  createChartRendererAdapter
+};

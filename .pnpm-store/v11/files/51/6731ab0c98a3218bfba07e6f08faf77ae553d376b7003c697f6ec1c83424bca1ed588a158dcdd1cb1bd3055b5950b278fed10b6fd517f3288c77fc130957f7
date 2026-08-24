@@ -1,0 +1,1 @@
+"use strict";const isLinux=()=>process.platform===`linux`;let report=null;const getReport=()=>{if(!report)if(isLinux()&&process.report){let e=process.report.excludeNetwork;process.report.excludeNetwork=!0,report=process.report.getReport(),process.report.excludeNetwork=e}else report={};return report};module.exports={isLinux,getReport};

@@ -1,0 +1,167 @@
+import {
+  channelValues,
+  createMark,
+  inferredKeyValues,
+  isChartKey,
+  isChartValue,
+  isFiniteNumber,
+  markStates,
+  visualValue
+} from "./mark.js";
+import { valueKey } from "./scales.js";
+import { stackValues } from "./stack-internal.js";
+function areaY(source, options = {}) {
+  const data = Array.isArray(source) ? source : Array.from(source);
+  return createMark(({ markIndex }) => {
+    const id = options.id ?? `area-y-${markIndex}`;
+    const xValues = channelValues(data, options.x, (_datum, index) => index);
+    const rawY = options.y ?? options.y2;
+    const rawYValues = typeof rawY === "number" ? data.map(() => rawY) : channelValues(
+      data,
+      rawY,
+      (datum) => typeof datum === "number" ? datum : void 0
+    );
+    const zValues = channelValues(data, options.z, () => null);
+    const colorValues = options.color === void 0 ? zValues : channelValues(data, options.color, () => null);
+    const groupValues = options.z === void 0 && options.color !== void 0 ? colorValues : zValues;
+    const explicitExtent = options.y1 !== void 0 || options.y2 !== void 0;
+    if (explicitExtent && options.layout) {
+      throw new TypeError(
+        "An area with explicit y1 or y2 endpoints cannot also configure a stack layout"
+      );
+    }
+    const stacked = explicitExtent ? void 0 : stackValues(xValues, rawYValues, groupValues, options.layout);
+    const y1Values = explicitExtent ? typeof options.y1 === "number" ? data.map(() => options.y1) : channelValues(data, options.y1, () => 0) : stacked.starts;
+    const y2Values = explicitExtent ? typeof options.y2 === "number" ? data.map(() => options.y2) : channelValues(data, options.y2 ?? options.y, () => void 0) : stacked.ends;
+    const keys = inferredKeyValues(data, options.key, {
+      groups: groupValues,
+      candidates: [xValues],
+      markId: id,
+      warningIdentity: options
+    });
+    const groups = /* @__PURE__ */ new Map();
+    groupValues.forEach((value, index) => {
+      const key = valueKey(value ?? null);
+      const group = groups.get(key);
+      if (group) group.push(index);
+      else groups.set(key, [index]);
+    });
+    return {
+      id,
+      states: markStates(data, options.states),
+      seriesFromColor: options.z === void 0 && options.color !== void 0,
+      channels: {
+        x: { scale: "x", values: xValues.filter(isChartValue) },
+        y: {
+          scale: "y",
+          values: [
+            ...y2Values.filter(isFiniteNumber),
+            ...y1Values.filter(isFiniteNumber)
+          ],
+          includeZero: options.y1 === void 0
+        },
+        color: {
+          scale: "color",
+          values: colorValues.filter(isChartKey)
+        }
+      },
+      render: ({ scales, color: resolveColor }) => {
+        const nodes = [];
+        for (const [groupKey, indices] of groups) {
+          const firstIndex = indices[0];
+          if (firstIndex === void 0) continue;
+          const group = groupValues[firstIndex] ?? null;
+          const datum = data[firstIndex];
+          const resolvedColor = resolveColor(colorValues[firstIndex] ?? null);
+          const fill = visualValue(
+            options.fill,
+            datum,
+            firstIndex,
+            data,
+            resolvedColor
+          );
+          const stroke = options.stroke === void 0 ? void 0 : visualValue(
+            options.stroke,
+            datum,
+            firstIndex,
+            data,
+            resolvedColor
+          );
+          let top = [];
+          let bottom = [];
+          let segmentPoints = [];
+          let segmentIndex = 0;
+          const flush = () => {
+            if (!top.length) return;
+            const lower = [...bottom].reverse();
+            const path = options.curve?.area(top, bottom);
+            nodes.push({
+              kind: "area",
+              key: `${id}:${groupKey}:segment:${segmentIndex}`,
+              points: [...top, ...lower],
+              path,
+              interaction: { points: segmentPoints, affinity: "x" },
+              style: {
+                fill,
+                fillOpacity: options.fillOpacity ?? 0.2,
+                stroke,
+                strokeWidth: options.strokeWidth
+              }
+            });
+            top = [];
+            bottom = [];
+            segmentPoints = [];
+            segmentIndex += 1;
+          };
+          for (const datumIndex of indices) {
+            const xValue = xValues[datumIndex];
+            const yValue = rawYValues[datumIndex];
+            const y1Value = y1Values[datumIndex];
+            const y2Value = y2Values[datumIndex];
+            if (!isChartValue(xValue) || !isFiniteNumber(yValue) || !isFiniteNumber(y1Value) || !isFiniteNumber(y2Value)) {
+              flush();
+              continue;
+            }
+            const x = scales.x.map(xValue);
+            const y = scales.y.map(y2Value);
+            top.push([x, y]);
+            bottom.push([x, scales.y.map(y1Value)]);
+            const key = `${id}:${groupKey}:${valueKey(keys[datumIndex])}`;
+            const point = {
+              key,
+              markId: id,
+              group,
+              groupLabel: group == null ? id : String(group),
+              datum: data[datumIndex],
+              datumIndex,
+              xValue,
+              yValue,
+              y1Value,
+              y2Value,
+              yInterval: "difference",
+              x,
+              y,
+              color: fill
+            };
+            segmentPoints.push(point);
+          }
+          flush();
+        }
+        return {
+          nodes: [
+            {
+              kind: "group",
+              key: id,
+              className: "ts-chart__area",
+              ariaHidden: true,
+              children: nodes
+            }
+          ]
+        };
+      }
+    };
+  }, options.motion);
+}
+export {
+  areaY
+};

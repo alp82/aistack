@@ -1,0 +1,1 @@
+const runtimeRequire=typeof __webpack_require__==`function`?__non_webpack_require__:require;typeof runtimeRequire.addon==`function`?module.exports=runtimeRequire.addon.bind(runtimeRequire):module.exports=require(`./node-gyp-build.js`);

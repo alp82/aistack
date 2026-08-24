@@ -1,0 +1,1 @@
+{"version":3,"file":"sinkTransformIn.js","sourceRoot":"","sources":["../../src/models/sinkTransformIn.ts"],"names":[],"mappings":";;;AAMa,QAAA,yBAAyB,GAAG;IACvC,eAAe,CAAC,MAAW;QACzB,OAAO;YACL,IAAI,EAAE,MAAM,CAAC,MAAM,CAAC;SACrB,CAAC;IACJ,CAAC;IAED,aAAa,CAAC,IAAqB;QACjC,OAAO;YACL,IAAI,EAAE,IAAI,CAAC,IAAI;SAChB,CAAC;IACJ,CAAC;CACF,CAAC"}

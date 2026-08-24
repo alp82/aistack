@@ -1,0 +1,68 @@
+# Mono JSX
+
+> Server-side JSX rendering in Nitro with mono-jsx.
+
+<code-tree>
+
+```ts [nitro.config.ts]
+import { defineConfig } from "nitro";
+
+export default defineConfig({});
+```
+
+```json [package.json]
+{
+  "type": "module",
+  "scripts": {
+    "dev": "nitro dev",
+    "build": "nitro build"
+  },
+  "devDependencies": {
+    "mono-jsx": "latest",
+    "nitro": "latest"
+  }
+}
+```
+
+```tsx [server.tsx]
+export default () => (
+  <html>
+    <h1>Nitro + mono-jsx works!</h1>
+  </html>
+);
+```
+
+```json [tsconfig.json]
+{
+  "extends": "nitro/tsconfig",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "mono-jsx"
+  }
+}
+```
+
+```ts [vite.config.ts]
+import { defineConfig } from "vite";
+import { nitro } from "nitro/vite";
+
+export default defineConfig({ plugins: [nitro()] });
+```
+</code-tree>
+
+## Server Entry
+
+```tsx [server.tsx]
+export default () => (
+  <html>
+    <h1>Nitro + mono-jsx works!</h1>
+  </html>
+);
+```
+
+Nitro auto-detects `server.tsx` and uses mono-jsx to transform JSX into HTML. Export a function that returns JSX, and Nitro sends the rendered HTML as the response.
+
+## Learn More
+
+- [Renderer](/docs/renderer)
+- [mono-jsx](https://github.com/aspect-dev/mono-jsx)

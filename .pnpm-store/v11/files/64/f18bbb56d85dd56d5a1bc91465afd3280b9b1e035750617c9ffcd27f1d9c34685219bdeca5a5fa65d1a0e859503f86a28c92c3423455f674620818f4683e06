@@ -1,0 +1,1 @@
+{"version":3,"file":"boolean.mjs","names":[],"sources":["../../src/utils/boolean.ts"],"sourcesContent":["export function toBoolean(value: any): boolean {\n\treturn value === \"true\" || value === true;\n}\n"],"mappings":";AAAA,SAAgB,UAAU,OAAqB;AAC9C,QAAO,UAAU,UAAU,UAAU"}
