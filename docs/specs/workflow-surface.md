@@ -32,10 +32,11 @@ The composition is the podium ([#191](https://github.com/alp82/aistack/issues/19
 - The section opens with a deterministic template lead: fixed sentence forms over
   measured numbers, versioned as `lead-templates/v1`. An absent measurement drops its
   sentence. The forms hold on real data
-  ([#196](https://github.com/alp82/aistack/issues/196)): the same five sentences read
-  correctly over 464 sessions with no model involved. Start hours are stored in UTC
-  and rendered in the reader's own time, so a public page never shows a stranger a
-  UTC clock.
+  ([#196](https://github.com/alp82/aistack/issues/196)), and the wording is locked in
+  [#220](https://github.com/alp82/aistack/issues/220). See "The template lead" for the
+  forms. Start hours are stored in UTC and rendered in the OWNER's local time, labeled
+  as such. The reader's own clock would show a stranger's habit at the wrong hour and
+  describe nobody.
 - One fit-ranked row set: nine pool metrics and seven components, sixteen rows.
 - The top three rows by fit render as one horizontal band. A tap extends a box below
   the band.
@@ -133,8 +134,7 @@ palette slot, and a green verify would read as a pass mark the data does not cla
 
 The public phase surface is the playbook: two measured shipping tracks with median
 figures, plus receipt cards that pair a habit with its measured payoff. The unknown
-bucket never hides. The derivation prints as small print: phase definitions, the
-unknown share, the two toggles.
+bucket never hides: it prints as small print under the lead, with the rule id.
 
 **The proof ran** ([#196](https://github.com/alp82/aistack/issues/196),
 `prototypes/phase-extraction/`). Across 464 real sessions on three harnesses,
@@ -146,6 +146,58 @@ data as rewrite a file, and guessing would cost more truth than it buys.
 
 The unknown bucket therefore ships as a real number on the page, not as an
 embarrassment to hide.
+
+## The template lead
+
+Locked in [#220](https://github.com/alp82/aistack/issues/220). Five figures in four
+lines, versioned as `lead-templates/v1`:
+
+```
+142 sessions · 3 harnesses · last 30 days
+Most measured time in these sessions goes to scout (64%), then build (18%).
+
+verify in 40% of sessions · handoff in 62% of sessions · most start around 23:00 local
+
+7% of measured time unclassified · phase-rules/v1
+```
+
+**The sessions are the subject, never the person.** Every classified event is a tool
+call the harness made, so scout at 64% is mostly the agent reading. A sentence with no
+subject lets a reader supply one, and on a profile page they supply the person. "These
+sessions" is the only subject the data supports.
+
+The rules that produce those four lines:
+
+- **Scope first, then the mix.** The reader learns what they are looking at before the
+  first share. The window is the payload's own rolling 30 days, named in the scope
+  line, and the count covers every synced harness including one held back by the
+  playbook gate.
+- **Numbers only.** No sentence names what the shape means. A takeaway is a claim no
+  rule computed, and drafting one is what [ADR-0002](../adr/0002-no-llm-in-the-workflow-surface.md)
+  rules out.
+- **The mix names the top two phases**, using the phase names from
+  [CONTEXT.md](../../CONTEXT.md) rather than plain-word glosses. Renaming in prose
+  would put a second vocabulary next to a chart that uses the first.
+- **A close top two gets its own form.** Within 10 points, print "Scout (34%) and build
+  (33%) take similar shares of measured time." The threshold is a named constant in
+  `lead-templates/v1`, so a bump can move it. Ranking a one-point gap invents a winner.
+- **No comparison against a typical band.** A comparison implies a population, and prod
+  has four living stacks.
+- **Verify, handoff, and rhythm print as one mono stat line**, not as three more
+  sentences. Three metric cells would give them the weight of the token headline.
+- **The handoff figure is a session share, and the wait is dropped.** A raw event count
+  has no denominator, and the median wait measures how fast the human answered, which
+  is the one figure in the lead that is about the person rather than the work.
+- **Two `?` markers, no more.** One on the first phase name, opening one card that
+  defines all four phases; one on "measured time", which a reader would otherwise take
+  for wall-clock time. Six dashed underlines in a short paragraph read as a minefield.
+- **The small print holds the unknown share and the rule id, and nothing else.**
+
+**The lead does not print below 20 sessions, and it does not print when no harness
+passes the playbook gate.** A four-session stack would say "most measured time goes to
+scout (67%)", which is true and meaningless. The session count in the scope line only
+warns a reader who stops to do the arithmetic. When the lead is withheld, the rest of
+the section still renders.
 
 ## Extraction and sources
 
