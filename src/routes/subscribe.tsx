@@ -1,6 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { PageHeader } from "@/components/PageHeader";
 import { SubscribeForm } from "@/features/news/SubscribeForm";
+import { NEWS_IS_PUBLIC } from "@/lib/newsVisibility";
 import { seoMeta } from "@/lib/seo";
 
 /**
@@ -13,6 +14,11 @@ import { seoMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/subscribe")({
 	component: SubscribePage,
+	// The page holds no data, so this loader exists only to close the surface
+	// until the first send. See `NEWS_IS_PUBLIC`.
+	loader: async () => {
+		if (!NEWS_IS_PUBLIC) throw notFound();
+	},
 	head: () => ({
 		meta: seoMeta({
 			title: "Subscribe to AI Stack News",

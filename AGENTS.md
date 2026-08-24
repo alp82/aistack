@@ -27,6 +27,8 @@ The local database lags behind prod. Before work that depends on real rows (cata
 
 **Prod deploys run through GitHub Actions exclusively.** A push to `main` triggers `.github/workflows/deploy-convex.yml`, which pulls the `~/aistack` checkout on the server and runs `pnpm convex deploy` there. Never run `npx convex deploy` against prod from a local machine. To run a new migration on prod: push to `main`, wait for the workflow, then `scripts/convex-prod.sh run migrations/<name>:run`.
 
+**Never pass `--push` to `scripts/convex-prod.sh`, and never give it `deploy`, `dev`, or `push`.** The CLI runs from a minimal project dir on the server that holds no `convex/` directory, so anything that writes code pushes an EMPTY function set and prod loses every function and every index at once. That is a full outage, and it happened on 2026-08-24. The script now refuses those four forms, and the recovery is the workflow's own command, run on the server: `ssh root@10.0.0.20 "bash -l -c 'cd ~/aistack && git fetch origin main && git reset --hard origin/main && /root/.local/share/pnpm/pnpm i && /root/.local/share/pnpm/pnpm convex deploy'"`. Table rows survive; the indexes come back with the deploy.
+
 ## CLI release
 
 Publish `@use-aistack/cli` to npm after the version bump lands on `main`:

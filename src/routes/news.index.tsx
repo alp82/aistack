@@ -1,5 +1,5 @@
 import { convexQuery } from "@convex-dev/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { ArrowRight, Mail } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -8,6 +8,7 @@ import {
 	type KnowledgeBaseIndexData,
 } from "@/features/news/KnowledgeBase";
 import { SubscribeForm } from "@/features/news/SubscribeForm";
+import { NEWS_IS_PUBLIC } from "@/lib/newsVisibility";
 import { seoMeta } from "@/lib/seo";
 import { api } from "../../convex/_generated/api";
 
@@ -26,6 +27,9 @@ export const Route = createFileRoute("/news/")({
 	// The archive is meant to be linked and cited, so the first HTML carries the
 	// issues rather than waiting for a hydrated client.
 	loader: async ({ context }) => {
+		// Closed until the first send. Server-side, so no content reaches the
+		// client. See `NEWS_IS_PUBLIC`.
+		if (!NEWS_IS_PUBLIC) throw notFound();
 		const [issues, knowledgeBase] = await Promise.all([
 			context.queryClient.ensureQueryData(
 				convexQuery(api.newsletter.listSentIssues, {}),

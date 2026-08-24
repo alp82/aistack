@@ -3,6 +3,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
 import { SubscribeForm } from "@/features/news/SubscribeForm";
+import { NEWS_IS_PUBLIC } from "@/lib/newsVisibility";
 import { seoMeta } from "@/lib/seo";
 import { api } from "../../convex/_generated/api";
 
@@ -21,6 +22,7 @@ import { api } from "../../convex/_generated/api";
 export const Route = createFileRoute("/news/$slug")({
 	component: IssuePage,
 	loader: async ({ context, params }) => {
+		if (!NEWS_IS_PUBLIC) throw notFound();
 		const issue = await context.queryClient.ensureQueryData(
 			convexQuery(api.newsletter.getSentIssue, { slug: params.slug }),
 		);

@@ -1,7 +1,28 @@
 import { type FunctionReference, getFunctionName } from "convex/server";
-import { describe, expect, test, vi } from "vitest";
-import { Route as NewsIndexRoute } from "../news.index";
-import { Route as NewsTopicRoute } from "../news.topics.$slug";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+// The visibility flag is read inside each loader, so a getter here lets one
+// file drive both states. See `src/lib/newsVisibility.ts`.
+const visibility = vi.hoisted(() => ({ isPublic: true }));
+vi.mock("@/lib/newsVisibility", () => ({
+	get NEWS_IS_PUBLIC() {
+		return visibility.isPublic;
+	},
+}));
+
+const { Route: NewsIndexRoute } = await import("../news.index");
+const { Route: NewsTopicRoute } = await import("../news.topics.$slug");
+const { Route: NewsIssueRoute } = await import("../news.$slug");
+const { Route: SubscribeRoute } = await import("../subscribe");
+
+type Loader = (input: unknown) => Promise<unknown>;
+
+const loaderOf = (route: { options: { loader?: unknown } }): Loader =>
+	route.options.loader as unknown as Loader;
+
+beforeEach(() => {
+	visibility.isPublic = true;
+});
 
 describe("the news route loaders", () => {
 	test("the news index server-loads both public projections", async () => {
@@ -15,11 +36,8 @@ describe("the news route loaders", () => {
 				return name.endsWith("getIndex") ? { latest: [], topics: [] } : [];
 			},
 		);
-		const loader = NewsIndexRoute.options.loader as unknown as (
-			input: unknown,
-		) => Promise<unknown>;
 
-		const result = await loader({
+		const result = await loaderOf(NewsIndexRoute)({
 			context: { queryClient: { ensureQueryData } },
 		});
 
@@ -51,11 +69,8 @@ describe("the news route loaders", () => {
 				return topic;
 			},
 		);
-		const loader = NewsTopicRoute.options.loader as unknown as (
-			input: unknown,
-		) => Promise<unknown>;
 
-		const result = await loader({
+		const result = await loaderOf(NewsTopicRoute)({
 			context: { queryClient: { ensureQueryData } },
 			params: { slug: "agents" },
 		});
@@ -64,4 +79,40 @@ describe("the news route loaders", () => {
 		expect(args).toEqual({ slug: "agents" });
 		expect(result).toEqual({ topic });
 	});
+});
+
+/**
+ * The surfaces are closed until the first send (#207, map #198).
+ *
+ * The gate has to sit in the LOADER, not the component: a component-level
+ * redirect still server-renders the page into the first HTML, which anyone can
+ * read. So each test asserts BOTH that the loader 404s and that it never
+ * reached the query client.
+ */
+describe("the news surfaces while NEWS_IS_PUBLIC is false", () => {
+	const closedRoutes: Array<
+		[string, { options: { loader?: unknown } }, unknown]
+	> = [
+		["/news", NewsIndexRoute, {}],
+		["/news/topics/$slug", NewsTopicRoute, { params: { slug: "agents" } }],
+		["/news/$slug", NewsIssueRoute, { params: { slug: "issue-1" } }],
+		["/subscribe", SubscribeRoute, {}],
+	];
+
+	test.each(closedRoutes)(
+		"%s answers 404 and reads nothing",
+		async (_path, route, extra) => {
+			visibility.isPublic = false;
+			const ensureQueryData = vi.fn(async () => ({}));
+
+			await expect(
+				loaderOf(route)({
+					context: { queryClient: { ensureQueryData } },
+					...(extra as object),
+				}),
+			).rejects.toMatchObject({ isNotFound: true });
+
+			expect(ensureQueryData).not.toHaveBeenCalled();
+		},
+	);
 });
