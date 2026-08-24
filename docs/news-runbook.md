@@ -60,6 +60,12 @@ minutes so the two runs do not open their connections together.
   `collectFrom` back on the source row.
 - **A scraper's first run adds nothing.** It seeds its baseline instead, which
   is the whole newness test. Items start arriving on the second run.
+- **The Claude blog reads on the Node runtime.** It is the only source that
+  does. The default Convex runtime gets `HTTP 502` from `claude.com`, so that
+  entry carries `runtime: 'node'` and reads through `internal.newsFetch`. See
+  [ADR-0008](adr/0008-the-claude-blog-lane-reads-on-the-node-runtime.md). If
+  that lane starts failing with an error naming a Node version, the backend
+  container lost its Node install, and no other source is affected.
 
 The seven scraper sources register themselves on the first `news-scrape` run.
 The feed sources and the Hacker News source come from migrations
@@ -213,7 +219,8 @@ user identity and the public news functions check `isAdmin`.
 | A newly added source collects nothing | `collectFrom` is the moment it was added. It collects forward only |
 | A new scraper adds nothing on its first run | It seeded its baseline. Items arrive on the second run |
 | One source shows a red banner | Read the error in the banner and press retry. Days of failures means the URL moved |
-| Claude blog shows `HTTP 502` and never collects | Known, and not the URL. `claude.com` answers curl from the server with 200 and answers the Convex runtime's own fetch with 502, while `www.anthropic.com` answers both. Tracked separately |
+| A paused source still shows its old error | Expected. The text is kept as the record of why you paused it, and it is no longer red. A clean poll clears it |
+| Claude blog shows `HTTP 502` and never collects | The default runtime cannot reach `claude.com`. That lane now reads on Node, so a 502 here means the `runtime: 'node'` flag was dropped from its registry entry. See [ADR-0008](adr/0008-the-claude-blog-lane-reads-on-the-node-runtime.md) |
 | `prepare` reports items as `inbox` | They are collected but not approved. Draft them, then approve them |
 | `prepare` reports items as not collected | Quick-add the URL, or wait for the lane that covers it |
 | `send` refuses | The issue is already sent, has no items, or has no subject |

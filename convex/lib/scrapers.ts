@@ -35,6 +35,24 @@ export const MAX_SECTION_TEXT = 20_000
 export const SCRAPER_USER_AGENT =
   'Mozilla/5.0 (compatible; aistack-news-collector; +https://use-aistack.com)'
 
+/**
+ * The headers every scraper read sends, on either runtime.
+ *
+ * Two runtimes read these now (#262). The default Convex runtime sends them
+ * from `convex/newsScrapers.ts`, and Node sends them from `convex/newsFetch.ts`
+ * for the sources that need undici. One definition keeps the two reads
+ * identical, so a routed source is not quietly a differently shaped request.
+ */
+export const SCRAPER_HEADERS: Record<string, string> = {
+  'user-agent': SCRAPER_USER_AGENT,
+  // Google serves a random language without this, which rewrites the page.
+  'accept-language': 'en',
+  accept: 'text/html,application/xhtml+xml,application/xml,*/*',
+}
+
+/** How long one scraper read may take, on either runtime. */
+export const SCRAPER_FETCH_TIMEOUT_MS = 25_000
+
 // ---------------------------------------------------------------------------
 // Text helpers
 // ---------------------------------------------------------------------------

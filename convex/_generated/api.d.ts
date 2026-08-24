@@ -70,6 +70,7 @@ import type * as migrations_icons from "../migrations/icons.js";
 import type * as models from "../models.js";
 import type * as news from "../news.js";
 import type * as newsDrafting from "../newsDrafting.js";
+import type * as newsFetch from "../newsFetch.js";
 import type * as newsScrapers from "../newsScrapers.js";
 import type * as newsletter from "../newsletter.js";
 import type * as projects from "../projects.js";
@@ -156,6 +157,7 @@ declare const fullApi: ApiFromModules<{
   models: typeof models;
   news: typeof news;
   newsDrafting: typeof newsDrafting;
+  newsFetch: typeof newsFetch;
   newsScrapers: typeof newsScrapers;
   newsletter: typeof newsletter;
   projects: typeof projects;
