@@ -43,6 +43,7 @@ function makeStaged(over: Partial<StagedSend> = {}): StagedSend {
 				slashCommands: [],
 			},
 			publishCost: true,
+			publishWorkflow: false,
 			autoSync: null,
 			optIns: EMPTY_KEPT as never,
 			reviewKeptPrivate: false,

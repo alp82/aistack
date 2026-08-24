@@ -77,8 +77,9 @@ export const upsertStackResources = internalMutation({
     }
 
     // Every resource collected through the CLI is stack-owned. Old published
-    // CLIs may still send a scope field on items; ResourceInput tolerates it and
-    // upsertResourcesForOwner ignores it, so the payload passes through as-is.
+    // CLIs may still send a scope field on items; `stripRetiredResourceFields`
+    // in httpCli drops it at the edge (#213), so what arrives here already
+    // matches `ResourceInput`.
     await upsertResourcesForOwner(ctx, {
       addedBy: args.creatorId,
       ownerKind: 'stack',

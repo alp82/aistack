@@ -20,11 +20,16 @@
  * Two facts are lost by the time a payload lands, and both are resolved
  * downward so the result stays a lower bound:
  *
- *   1. The wire carries ONE merged `cacheWrite`. The 5m tier costs 1.25x input
- *      and the 1h tier 2.0x, and the split is gone - so everything charges the
- *      5m rate. Measured against a stack the CLI priced exactly, this
- *      under-reports Claude Code by roughly 8%. Codex is exact, because every
- *      Codex row carries `cacheWrite: 0`.
+ *   1. A pre-#213 payload carries ONE merged `cacheWrite`. The 5m tier costs
+ *      1.25x input and the 1h tier 2.0x, and the split is gone - so everything
+ *      charges the 5m rate. Measured against a stack the CLI priced exactly,
+ *      this under-reports Claude Code by roughly 8%. Codex is exact, because
+ *      every Codex row carries `cacheWrite: 0`.
+ *
+ *      #213 put the split on the wire, and `estimateModelUSD` uses it when it
+ *      is there. That removes this source of bias for new payloads and leaves
+ *      it for old ones, which is why the "at least" framing stays: a reading
+ *      can now be exact on one row and biased low on the one beside it.
  *   2. There are no per-response timestamps. When the window straddles a
  *      repricing (`claude-sonnet-5` on 2026-09-01), the share of tokens on each
  *      side is unknowable, so the CHEAPER rate prices the whole window.
@@ -44,12 +49,23 @@ import {
   pricingTableFor,
 } from '@aistack/pricing'
 
-/** The token block on the wire - one merged `cacheWrite`, no TTL split. */
+/**
+ * The token block on the wire.
+ *
+ * `cacheWrite` is the total and is always present. `cacheWriteTtl` is the
+ * breakdown a #213 client also sends; the three sum to `cacheWrite`.
+ */
 export type WireTokens = {
   input: number
   output: number
   cacheWrite: number
   cacheRead: number
+  cacheWriteTtl?: {
+    fiveMinute: number
+    oneHour: number
+    /** Writes a harness reported with no TTL. Priced at the 5-minute rate. */
+    unsplit: number
+  }
 }
 
 export type WireModel = {
@@ -139,11 +155,19 @@ export function estimateModelUSD(
   // The multipliers are the model's vendor's, not Anthropic's - a Google cache
   // write is charged as plain input, and 1.25x there would overstate.
   const c = cacheMultipliersFor(id)
+  // With the TTL breakdown (#213) each tier pays its own rate. Without it every
+  // write pays the cheap tier, which keeps the estimate a lower bound. `unsplit`
+  // is on the 5-minute side because that is what the harness left unstated, and
+  // guessing the expensive tier is the one direction this module may not go.
+  const ttl = t.cacheWriteTtl
+  const write = ttl
+    ? (ttl.fiveMinute + ttl.unsplit) * c.write5m + ttl.oneHour * c.write1h
+    : t.cacheWrite * c.write5m
   const costs = periods.map(
     (p) =>
       (t.input * p.input +
         t.output * p.output +
-        t.cacheWrite * p.input * c.write5m +
+        write * p.input +
         t.cacheRead * p.input * c.read) /
       M
   )

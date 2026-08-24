@@ -324,6 +324,27 @@ describe("loadSyncConfig", () => {
 		expect(await read(undefined)).toBe(false);
 	});
 
+	it("requires publishWorkflow to be exactly true, and defaults it off (#213)", async () => {
+		// The third switch, read the same way as the two above. An old server
+		// that has never heard of the field answers without it, and off is the
+		// right reading: it has nowhere to put the section either.
+		expect(BUNDLED_SYNC_CONFIG.publishWorkflow).toBe(false);
+
+		const read = async (value: unknown) => {
+			const loaded = await loadSyncConfig({
+				baseUrl: "https://aistack.to",
+				fetchImpl: (() =>
+					Promise.resolve(
+						jsonResponse({ ...GOOD_BODY, publishWorkflow: value }),
+					)) as unknown as typeof fetch,
+			});
+			return loaded.config.publishWorkflow;
+		};
+		expect(await read(true)).toBe(true);
+		expect(await read("yes")).toBe(false);
+		expect(await read(undefined)).toBe(false);
+	});
+
 	it("reads the server auto-sync permission, and tells absent from off", async () => {
 		// Three states, not two (#103). Absent is the ONE state a local opt-in may
 		// still seed, so it must never be folded into off.

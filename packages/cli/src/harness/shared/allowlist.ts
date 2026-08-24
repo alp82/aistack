@@ -152,6 +152,14 @@ export type SyncConfig = {
 	 */
 	reviewKeptPrivate: boolean;
 	/**
+	 * Whether the measured workflow section publishes (#213).
+	 *
+	 * The third bit in this family and the same shape as the two above: a
+	 * stack-level preference, default on, applied here on the machine. Off means
+	 * `buildSyncBody` leaves the section out of the bytes entirely.
+	 */
+	publishWorkflow: boolean;
+	/**
 	 * The stack the bearer token is bound to - where a publish would land.
 	 *
 	 * The approve gate must name its destination BEFORE the send (#33
@@ -201,6 +209,10 @@ export const BUNDLED_SYNC_CONFIG: SyncConfig = {
 	// upload the names it is holding back. The default is ON server-side, so this
 	// costs the owner one retry and never costs them a name.
 	reviewKeptPrivate: false,
+	// Fail closed a third time (#213). A machine that could not read the switch
+	// publishes measurement and no workflow section, which costs the owner one
+	// retry and can never publish a section they had turned off.
+	publishWorkflow: false,
 	// No fetch, no destination - and the gate refuses to publish without one.
 	stack: null,
 	// No fetch, no permission either. This costs nothing on its own: `stack` is
@@ -333,6 +345,11 @@ function readSyncConfig(raw: unknown): SyncConfig | null {
 		optIns: readOptIns(obj.optIns),
 		// Anything other than an explicit `true` keeps the names on the machine.
 		reviewKeptPrivate: obj.reviewKeptPrivate === true,
+		// And anything other than an explicit `true` keeps the workflow section
+		// off the wire. An old server that has never heard of the field answers
+		// without it, and that reads as off - which is right: it has no place to
+		// put the section either.
+		publishWorkflow: obj.publishWorkflow === true,
 		stack: readStack(obj.stack),
 		autoSync: readAutoSync(obj.autoSync),
 	};
@@ -346,8 +363,8 @@ function readSyncConfig(raw: unknown): SyncConfig | null {
 export async function loadSyncConfig(opts: {
 	baseUrl: string;
 	/**
-	 * Bearer for the authenticated half: `publishCost`, `optIns`,
-	 * `reviewKeptPrivate` and the destination stack. Absent, the server answers
+	 * Bearer for the authenticated half: `publishCost`, `publishWorkflow`,
+	 * `optIns`, `reviewKeptPrivate` and the destination stack. Absent, the server answers
 	 * with the anonymous fail-closed body - same allowlist, everything else off.
 	 */
 	token?: string;

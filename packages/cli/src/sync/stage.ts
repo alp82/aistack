@@ -43,6 +43,13 @@ import {
 	windowStartMs,
 } from "../harness/shared/window.js";
 import type { HarnessAdapter } from "../harness/types.js";
+import { CLI_VERSION } from "../version.js";
+import {
+	extractLocalWorkflow,
+	type GitWorkflowRunner,
+	type LocalHarnessWorkflow,
+	type WorkflowExtraction,
+} from "../workflow/index.js";
 import { buildGateDialog, buildGateSummary } from "./summary.js";
 
 export type StagedSend = {
@@ -76,6 +83,8 @@ export type StageDeps = {
 	}) => Promise<LoadedSyncConfig>;
 	/** Override the adapter set. Tests only. */
 	adaptersImpl?: (sinceMs: number) => Promise<HarnessAdapter[]>;
+	/** Override the Git reader the workflow extraction shells out to. Tests only. */
+	gitRunnerImpl?: GitWorkflowRunner;
 	getSettingsImpl?: () => Settings;
 	windowDays?: number;
 	/**
@@ -105,12 +114,19 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 
 	const built: BuiltPayload[] = [];
 	const scanStats: Record<string, ScanStats> = {};
+	// Collected per harness, extracted ONCE below (#213): local Git history is a
+	// property of the machine, not of whichever harness opened the repository,
+	// and the metric rows are computed across every synced harness at once.
+	const workflowScans: LocalHarnessWorkflow[] = [];
 	// One window start for detection AND for the scan (#101), so a harness that
 	// counts as detected is exactly a harness with something in the window.
 	const sinceMs = windowStartMs(now, windowDays);
 	for (const adapter of await adapters(sinceMs)) {
-		const { aggregate, stats } = await adapter.scan({ sinceMs });
+		const { aggregate, stats, workflow, workflowLocal } = await adapter.scan({
+			sinceMs,
+		});
 		scanStats[adapter.name] = stats;
+		workflowScans.push({ aggregate: workflow, local: workflowLocal });
 		built.push(
 			buildPayload({
 				aggregate,
@@ -129,7 +145,33 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	// bytes are the bytes sent (#78). Absent from the settings file means this
 	// machine has never answered, which the backend reads as "never told us".
 	const settings = (deps.getSettingsImpl ?? getSettings)();
-	const body = buildSyncBody(built, config, settings.autoSync, deps.trigger);
+
+	// Git runs here and not inside an adapter's scan: the reducers hand back the
+	// working directories their sessions touched, and reading one repository once
+	// for all of them is both cheaper and the only way the commit counts stay
+	// right when two harnesses shared a checkout.
+	//
+	// The extraction is skipped entirely when the owner has the switch off. It
+	// shells out to `git` per repository, and running that work to throw it away
+	// would be the one visible cost of a preference that is supposed to be free.
+	const workflow: WorkflowExtraction | undefined =
+		workflowScans.length > 0 && config.publishWorkflow
+			? extractLocalWorkflow({
+					harnesses: workflowScans,
+					fromMs: sinceMs,
+					toMs: now,
+					...(deps.gitRunnerImpl ? { run: deps.gitRunnerImpl } : {}),
+				})
+			: undefined;
+
+	const body = buildSyncBody(
+		built,
+		config,
+		settings.autoSync,
+		deps.trigger,
+		workflow,
+		CLI_VERSION,
+	);
 	const bodyJson = JSON.stringify(body);
 	const keptPrivate = mergeKeptPrivate(built.map((b) => b.keptPrivate));
 

@@ -101,10 +101,16 @@ async function resourcesForOwner(
 }
 
 // ---------------------------------------------------------------------------
-// upsertStackResources - scope coercion
+// upsertStackResources - every item lands on the stack
+//
+// These three cases used to differ by the `scope` each item carried. #213
+// retired the field from `ResourceInput` and moved the tolerance for old CLIs
+// to `stripRetiredResourceFields` at the HTTP edge, so what reaches this
+// mutation never mentions scope. The cases stay because what they assert is
+// still true and still worth asserting: one owner kind, and no project links.
 // ---------------------------------------------------------------------------
 
-test('TC-01: upsertStackResources with scope:project input lands on stack - no project links', async () => {
+test('TC-01: upsertStackResources lands a rule on the stack - no project links', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
 
@@ -118,7 +124,6 @@ test('TC-01: upsertStackResources with scope:project input lands on stack - no p
         type: 'rule',
         name: 'scope-coerce',
         group: 'claude-code',
-        scope: 'project',
         stableKey: 'k:rule:scope-coerce',
         files: [{ name: 'r.md', content: 'v1' }],
       },
@@ -144,7 +149,7 @@ test('TC-01: upsertStackResources with scope:project input lands on stack - no p
   expect(stack!.updatedAt).toBeGreaterThan(preCall)
 })
 
-test('TC-02: upsertStackResources with scope:global lands on stack', async () => {
+test('TC-02: a second rule lands on the stack as well', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
 
@@ -156,7 +161,6 @@ test('TC-02: upsertStackResources with scope:global lands on stack', async () =>
         type: 'rule',
         name: 'already-global',
         group: 'claude-code',
-        scope: 'global',
         stableKey: 'k:rule:already-global',
         files: [{ name: 'g.md', content: 'global' }],
       },
@@ -173,7 +177,7 @@ test('TC-02: upsertStackResources with scope:global lands on stack', async () =>
   expect(allLinks[0].ownerKind).toBe('stack')
 })
 
-test('TC-03: upsertStackResources with scope omitted lands on stack', async () => {
+test('TC-03: an item with no owner hint at all lands on the stack', async () => {
   const t = convexTest(schema, modules)
   const { creatorId, stackId } = await seedCreatorAndStack(t)
 
@@ -207,7 +211,6 @@ test('TC-04: upsertStackResources three scope variants all land on stack', async
         type: 'rule',
         name: 'r-project',
         group: 'claude-code',
-        scope: 'project',
         stableKey: 'k:rule:r-project',
         files: [{ name: 'a.md', content: 'a' }],
       },
@@ -215,7 +218,6 @@ test('TC-04: upsertStackResources three scope variants all land on stack', async
         type: 'rule',
         name: 'r-global',
         group: 'claude-code',
-        scope: 'global',
         stableKey: 'k:rule:r-global',
         files: [{ name: 'b.md', content: 'b' }],
       },
@@ -331,7 +333,6 @@ test('TC-07: upsertStackResources merge - A preserved, B updated, C added', asyn
         type: 'rule',
         name: 'A',
         group: 'claude-code',
-        scope: 'project',
         stableKey: 'k:rule:A',
         files: [{ name: 'A.md', content: 'A v1' }],
       },
@@ -339,7 +340,6 @@ test('TC-07: upsertStackResources merge - A preserved, B updated, C added', asyn
         type: 'rule',
         name: 'B',
         group: 'claude-code',
-        scope: 'project',
         stableKey: 'k:rule:B',
         files: [{ name: 'B.md', content: 'B v1' }],
       },

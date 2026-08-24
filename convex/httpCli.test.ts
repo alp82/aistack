@@ -4,7 +4,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { api, internal } from './_generated/api'
 import type { Id } from './_generated/dataModel'
 import schema from './schema'
-import { sha256Hex } from './httpCli'
+import { sha256Hex, stripRetiredResourceFields } from './httpCli'
 import { FULL_CLI_TOKEN_SCOPES, type CliTokenScope } from './lib/cliScopes'
 import { DEFAULT_MAX_REQUESTS, SHARED_BUCKET_MAX_REQUESTS } from './rateLimit'
 
@@ -613,5 +613,44 @@ describe('authStart budget', () => {
 
   test('the high cap really is higher than the normal one', async () => {
     expect(SHARED_BUCKET_MAX_REQUESTS).toBeGreaterThan(DEFAULT_MAX_REQUESTS)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Retired wire fields (#213)
+// ---------------------------------------------------------------------------
+
+describe('stripRetiredResourceFields', () => {
+  test('drops scope so an installed CLI still publishes', () => {
+    // Resources became stack-only in June 2026 and `scope` has been ignored
+    // since. `ResourceInput` kept tolerating it, which made the field read as
+    // part of the contract; the tolerance lives here now, and the validator
+    // lists only what the wire means.
+    expect(
+      stripRetiredResourceFields({
+        type: 'rule',
+        name: 'r',
+        group: 'claude-code',
+        stableKey: 'k:rule:r',
+        scope: 'project',
+      }),
+    ).toEqual({
+      type: 'rule',
+      name: 'r',
+      group: 'claude-code',
+      stableKey: 'k:rule:r',
+    })
+  })
+
+  test('leaves an item that never carried it untouched', () => {
+    const item = { type: 'rule', name: 'r', group: 'g', stableKey: 'k' }
+    expect(stripRetiredResourceFields(item)).toEqual(item)
+  })
+
+  test('passes a non-object through for the validator to refuse', () => {
+    // Rejecting shape is the validator's job, not this function's. Returning
+    // something object-shaped here would turn a client bug into a stored row.
+    expect(stripRetiredResourceFields(null)).toBeNull()
+    expect(stripRetiredResourceFields('nope')).toBe('nope')
   })
 })

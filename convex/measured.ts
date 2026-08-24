@@ -1,5 +1,5 @@
 import { vendorModelId } from '@aistack/pricing'
-import { v } from 'convex/values'
+import { type Infer, v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 import {
@@ -14,6 +14,7 @@ import {
   PublishedNameCategory,
   ReconcileAtomKind,
   SyncTrigger,
+  WorkflowSection,
 } from './schema'
 import { captureServerEvent } from './analytics'
 import { emitActivityEvent } from './activity'
@@ -228,6 +229,130 @@ function checkPayloadStrings(
 }
 
 /**
+ * The workflow section's counterpart to `checkPayloadStrings` (#213).
+ *
+ * Same two jobs: bound every client-supplied string, and bound every array a
+ * hostile client could grow without limit. The section is closed by its
+ * validator like the payload is, and closedness again says nothing about what
+ * sits inside a `v.string()` or how long an array runs.
+ *
+ * A violation REJECTS the whole publish rather than trimming the section. The
+ * gate showed the owner the exact bytes; landing a shortened version of them
+ * would publish something nobody approved.
+ *
+ * The caps are set well above real readings, not close to them. The proof run
+ * behind `phase-rules/v1` saw 464 sessions across three harnesses in a 30-day
+ * window, so a five-thousand-row cap per harness bounds the transaction without
+ * ever meeting an honest client.
+ */
+const WORKFLOW_LIMITS = {
+  harnesses: 8,
+  sessionRows: 5_000,
+  commits: 20_000,
+  /** A week of hours. Both heatmaps are keyed by (weekday, hour). */
+  cells: 7 * 24,
+  extensions: 128,
+  metrics: 64,
+  routingModels: 64,
+} as const
+
+export function checkWorkflowSection(
+  section: Infer<typeof WorkflowSection>
+): void {
+  const requireName = (value: string, where: string): void => {
+    if (!isDisplaySafeName(value)) {
+      throw new Error(
+        `${where} must be 1-${NAME_MAX} characters and carry no control or bidi characters`
+      )
+    }
+  }
+  const requireSize = (length: number, max: number, where: string): void => {
+    if (length > max) {
+      throw new Error(`${where} must hold at most ${max} entries`)
+    }
+  }
+
+  requireName(section.aggregateVersion, 'workflow.aggregateVersion')
+  requireSize(
+    section.harnesses.length,
+    WORKFLOW_LIMITS.harnesses,
+    'workflow.harnesses'
+  )
+
+  const seen = new Set<string>()
+  section.harnesses.forEach((harness, i) => {
+    const at = `workflow.harnesses[${i}]`
+    requireName(harness.harness, `${at}.harness`)
+    // One reading per harness, for the reason `publishForToken` gives about the
+    // payloads: two entries claiming the same harness make "the reading for this
+    // harness" depend on array order.
+    if (seen.has(harness.harness)) {
+      throw new Error('Each workflow harness entry must name a distinct harness')
+    }
+    seen.add(harness.harness)
+
+    if (harness.phase) {
+      requireName(harness.phase.ruleVersion, `${at}.phase.ruleVersion`)
+      requireSize(
+        harness.phase.sessionRows.length,
+        WORKFLOW_LIMITS.sessionRows,
+        `${at}.phase.sessionRows`
+      )
+    }
+    if (harness.routing) {
+      for (const side of ['main', 'subagents'] as const) {
+        requireSize(
+          harness.routing[side].length,
+          WORKFLOW_LIMITS.routingModels,
+          `${at}.routing.${side}`
+        )
+        harness.routing[side].forEach((row, j) => {
+          if (!isSanitizedModelId(row.model)) {
+            throw new Error(
+              `${at}.routing.${side}[${j}].model must be 1-${MODEL_ID_MAX} characters of A-Z a-z 0-9 . _ : -`
+            )
+          }
+        })
+      }
+    }
+    requireSize(harness.activity.length, WORKFLOW_LIMITS.cells, `${at}.activity`)
+  })
+
+  requireName(section.git.testFileRuleVersion, 'workflow.git.testFileRuleVersion')
+  requireName(section.git.fileTypeRuleVersion, 'workflow.git.fileTypeRuleVersion')
+  requireSize(
+    section.git.changedLinesPerCommit.length,
+    WORKFLOW_LIMITS.commits,
+    'workflow.git.changedLinesPerCommit'
+  )
+  requireSize(
+    section.git.changedLinesByExtension.length,
+    WORKFLOW_LIMITS.extensions,
+    'workflow.git.changedLinesByExtension'
+  )
+  section.git.changedLinesByExtension.forEach((row, i) => {
+    requireName(
+      row.extension,
+      `workflow.git.changedLinesByExtension[${i}].extension`
+    )
+  })
+  requireSize(
+    section.git.weekdayHourCells.length,
+    WORKFLOW_LIMITS.cells,
+    'workflow.git.weekdayHourCells'
+  )
+
+  requireSize(section.metrics.length, WORKFLOW_LIMITS.metrics, 'workflow.metrics')
+  section.metrics.forEach((metric, i) => {
+    requireName(metric.metricId, `workflow.metrics[${i}].metricId`)
+    requireName(metric.ruleVersion, `workflow.metrics[${i}].ruleVersion`)
+    if (metric.coverageTag !== undefined) {
+      requireName(metric.coverageTag, `workflow.metrics[${i}].coverageTag`)
+    }
+  })
+}
+
+/**
  * Shared insert path.
  *
  * A plain function, not a mutation the other mutation calls: routing this
@@ -241,7 +366,8 @@ async function insertSnapshot(
   ctx: MutationCtx,
   stackId: Id<'stacks'>,
   payload: Doc<'measuredSnapshots'>['payload'],
-  machine?: string
+  machine?: string,
+  cliVersion?: string
 ): Promise<{ snapshotId: Id<'measuredSnapshots'>; receivedAt: number }> {
   if (!SUPPORTED_SCHEMA_VERSIONS.includes(payload.schemaVersion)) {
     throw new Error(`Unsupported payload schemaVersion ${payload.schemaVersion}`)
@@ -269,6 +395,10 @@ async function insertSnapshot(
     // token to name a machine from, which is the pre-tagging state exactly, so
     // `visibleSources` treats both the same way.
     machine,
+    // Which CLI published this (#213). Absent from an older client, and that is
+    // the answer the version question wants: a row with no version is a row
+    // from before the field existed.
+    cliVersion,
     payload,
   })
   return { snapshotId, receivedAt }
@@ -1923,6 +2053,7 @@ export const getSyncConfigForStack = internalQuery({
   returns: v.object({
     publishCost: v.boolean(),
     reviewKeptPrivate: v.boolean(),
+    publishWorkflow: v.boolean(),
     stackName: v.string(),
     stackSlug: v.string(),
     optIns: OptInNames,
@@ -1944,6 +2075,9 @@ export const getSyncConfigForStack = internalQuery({
       // Same rule, same shape, deliberately (#48): absent means on, and the
       // approve gate names the switch before the first upload.
       reviewKeptPrivate: stack.reviewKeptPrivate !== false,
+      // The third bit, same rule again (#213): absent means the owner has never
+      // refused, so the workflow section publishes and the gate says so.
+      publishWorkflow: stack.publishWorkflow !== false,
       stackName: stack.name,
       // The approve gate points at `/stacks/{slug}/changes` BEFORE the first
       // send (#48 beat one), so the slug must be readable pre-publish (#41).
@@ -2346,9 +2480,8 @@ export const publishForToken = internalMutation({
   args: {
     tokenId: v.id('cliTokens'),
     /**
-     * Pre-#67 clients send exactly one payload here. Tolerated like
-     * `ResourceInput.scope` - an installed CLI keeps working until a wire
-     * bump retires the field.
+     * Pre-#67 clients send exactly one payload here. An installed CLI keeps
+     * working until a wire bump retires the field.
      */
     payload: v.optional(MeasuredPayload),
     /**
@@ -2377,6 +2510,29 @@ export const publishForToken = internalMutation({
      * nothing, and silence must not be read as a machine publishing on its own.
      */
     trigger: v.optional(SyncTrigger),
+    /**
+     * The measured workflow section (#213, spec "The wire"). ONE section per
+     * publish, beside the payloads: the Git half is per machine and the metric
+     * rows span every synced harness, so neither has a payload to sit in.
+     *
+     * Optional twice over. A pre-#213 CLI sends nothing, and a client whose
+     * owner turned `publishWorkflow` off sends nothing either - the switch is
+     * applied on the machine, so refusal and old-client look identical here, by
+     * design: there is no server-side state saying a section was withheld.
+     *
+     * ACCEPTED AND CHECKED HERE, STORED IN #218. The wire has to take the shape
+     * before anything can persist it, and the ticket that persists it also owns
+     * the fit and rotation state it feeds. Until then a section is validated,
+     * bounded, and dropped - so a CLI publishing one is never refused, and a
+     * malformed one never becomes someone else's problem to discover.
+     */
+    workflow: v.optional(WorkflowSection),
+    /**
+     * Which CLI is publishing (#213). Additive and optional like `trigger`: an
+     * older client sends nothing, and an untagged row is exactly the answer -
+     * that machine is on a wire older than this field.
+     */
+    cliVersion: v.optional(v.string()),
   },
   returns: v.object({
     snapshotIds: v.array(v.id('measuredSnapshots')),
@@ -2441,6 +2597,18 @@ export const publishForToken = internalMutation({
       .first()
     const isFirstSync = priorSnapshot === null
 
+    // Bounded on the way in, the way the payloads are (#213). It is dropped
+    // after this until #218 stores it, and a section that could not have landed
+    // must not read as accepted.
+    if (args.workflow) checkWorkflowSection(args.workflow)
+
+    // Same bar as any other name the wire carries: it is a string a client
+    // chose. An unreadable one is dropped rather than refused - the sync is what
+    // the owner approved, and a garbled version tag is not worth losing it.
+    const cliVersion = isDisplaySafeName(args.cliVersion ?? '')
+      ? args.cliVersion
+      : undefined
+
     const snapshotIds: Id<'measuredSnapshots'>[] = []
     let receivedAt = 0
     for (const payload of payloads) {
@@ -2453,7 +2621,8 @@ export const publishForToken = internalMutation({
         ctx,
         stack._id,
         payload,
-        token.name
+        token.name,
+        cliVersion
       )
       snapshotIds.push(inserted.snapshotId)
       receivedAt = inserted.receivedAt

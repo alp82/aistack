@@ -7,6 +7,7 @@ import {
 	type TokenCounts,
 } from "@aistack/pricing";
 import { describe, expect, it } from "vitest";
+import type { WorkflowExtraction } from "../../workflow/index.js";
 import {
 	cleanName,
 	createAggregate,
@@ -58,6 +59,7 @@ const HARNESS_PARAMS = {
 
 const config = (over: Partial<SyncConfig> = {}): SyncConfig => ({
 	publishCost: true,
+	publishWorkflow: true,
 	autoSync: null,
 	allowlist: {
 		mcpServers: ["github"],
@@ -177,13 +179,40 @@ describe("fail-closed names: an invented name CANNOT reach the payload", () => {
 		);
 	});
 
-	it("never publishes a raw invocation count, only shares", () => {
-		// Counts are the map's designated post-P0 headroom metric (#33).
+	it("publishes the count beside the share, and nothing else (#213)", () => {
+		// Counts were the map's designated headroom metric under #33 and #213
+		// spends it. An atom carries exactly three fields: a share is unusable
+		// for anything absolute, and a count with no fixed shape is a blob.
 		for (const category of Object.values(payload.inventory)) {
 			if (!Array.isArray(category)) continue;
 			for (const atom of category) {
-				expect(Object.keys(atom).sort()).toEqual(["callShare", "name"]);
+				expect(Object.keys(atom).sort()).toEqual([
+					"callShare",
+					"calls",
+					"name",
+				]);
 			}
+		}
+	});
+
+	it("publishes the denominator its shares were computed over (#213)", () => {
+		// The count is only interpretable against the total it came from, and
+		// that total is NOT the sum of the published atoms - it includes every
+		// withheld call. Publishing one without the other would invite a reader
+		// to add the atoms up and call the result a complete inventory.
+		const calls = payload.inventory.calls;
+		for (const category of [
+			"builtinTools",
+			"mcpServers",
+			"skills",
+			"subagents",
+			"slashCommands",
+		] as const) {
+			const published = payload.inventory[category].reduce(
+				(sum, atom) => sum + atom.calls,
+				0,
+			);
+			expect(calls[category]).toBeGreaterThanOrEqual(published);
 		}
 	});
 });
@@ -313,6 +342,228 @@ describe("buildSyncBody - the unsealed half (#48)", () => {
 	});
 });
 
+describe("the cache-write TTL split on the wire (#213)", () => {
+	const withCacheWrites = (counts: Partial<TokenCounts>): MeasuredPayload => {
+		const agg = sharedAggregate();
+		const tokens: TokenCounts = {
+			input: 0,
+			output: 0,
+			cacheWrite5m: 0,
+			cacheWrite1h: 0,
+			cacheWriteUnsplit: 0,
+			cacheRead: 0,
+			...counts,
+		};
+		addModelUsage(agg, "claude-opus-5", tokens, null);
+		return buildPayload({
+			aggregate: agg,
+			stats: CLEAN_STATS,
+			syncConfig: config(),
+			now: NOW,
+			windowDays: 30,
+			...HARNESS_PARAMS,
+		}).payload;
+	};
+
+	it("ships the breakdown, and the three sum to the total", () => {
+		// The analyzer has held the split since #126; only the wire merged it,
+		// which forced the backend's repricer to charge every write at the cheap
+		// tier and under-report Claude Code by roughly 8%.
+		const payload = withCacheWrites({
+			cacheWrite5m: 300,
+			cacheWrite1h: 200,
+			cacheWriteUnsplit: 100,
+		});
+		const tokens = payload.models[0].tokens;
+		expect(tokens.cacheWrite).toBe(600);
+		expect(tokens.cacheWriteTtl).toEqual({
+			fiveMinute: 300,
+			oneHour: 200,
+			unsplit: 100,
+		});
+	});
+
+	it("omits the breakdown when there were no cache writes at all", () => {
+		// Three zeros state nothing the total does not already state, and an
+		// absent object is what tells a reader this harness reports no writes.
+		const payload = withCacheWrites({ input: 10, output: 5 });
+		expect(payload.models[0].tokens.cacheWrite).toBe(0);
+		expect(payload.models[0].tokens.cacheWriteTtl).toBeUndefined();
+	});
+
+	it("keeps a harness that reports no TTL entirely in `unsplit`", () => {
+		// opencode reports one cache-write figure with no tier. Splitting it by
+		// guess would hand the repricer a number nobody measured.
+		const payload = withCacheWrites({ cacheWriteUnsplit: 900 });
+		expect(payload.models[0].tokens.cacheWriteTtl).toEqual({
+			fiveMinute: 0,
+			oneHour: 0,
+			unsplit: 900,
+		});
+	});
+});
+
+describe("the workflow section on the wire (#213)", () => {
+	const built = () =>
+		buildPayload({
+			aggregate: createAggregate(),
+			stats: CLEAN_STATS,
+			syncConfig: config(),
+			now: NOW,
+			windowDays: 30,
+			...HARNESS_PARAMS,
+		});
+
+	const phaseTotals = () => ({
+		scout: 60,
+		build: 30,
+		verify: 5,
+		handoff: 3,
+		unknown: 2,
+	});
+
+	const extraction = (): WorkflowExtraction => ({
+		aggregateVersion: "workflow-aggregates/v1",
+		harnesses: [
+			{
+				aggregateVersion: "workflow-aggregates/v1",
+				harness: "claude-code",
+				phase: {
+					ruleVersion: "phase-rules/v1",
+					publishable: true,
+					sessions: 42,
+					phaseSec: phaseTotals(),
+					phaseEvents: phaseTotals(),
+					waitingSec: 4,
+					idleSec: 9,
+					unknownShare: 0.02,
+					sessionRows: [],
+				},
+				// Local-only: the per-session inputs the metric rules already
+				// reduced into `metricInputs`. The wire must not carry them.
+				facts: {
+					sessions: [{ harness: "claude-code", thinkingTokens: 1234 }],
+					activeDays: [{ date: "2026-07-24", parallelProjectCount: 2 }],
+				},
+				activity: [{ weekdayUtc: 5, hourUtc: 23, events: 17 }],
+			},
+		],
+		git: {
+			testFileRuleVersion: "test-files/v1",
+			fileTypeRuleVersion: "file-types/v1",
+			totalCommits: 12,
+			lateNightCommits: 3,
+			additions: 400,
+			removals: 120,
+			changedLinesPerCommit: [40, 12],
+			testFileCommits: 5,
+			changedLinesByExtension: [{ extension: ".ts", changedLines: 500 }],
+			withheldExtensionLines: 20,
+			weekdayHourCells: [{ weekday: 5, hour: 23, commits: 3 }],
+		},
+		metricInputs: [
+			{
+				metricId: "late-night-commit-share",
+				ruleVersion: "metric-rules/v1",
+				value: 0.25,
+				band: { low: 0.05, high: 0.2 },
+				coverage: 1,
+				coverageTag: undefined,
+			},
+		],
+	});
+
+	it("rides beside the payloads, never inside one", () => {
+		// The Git half is per MACHINE and the metric rows span every synced
+		// harness, so neither has a payload to sit in - and the closed payload
+		// validator is the privacy claim, which widening would spend.
+		const body = buildSyncBody(
+			[built()],
+			config(),
+			undefined,
+			"manual",
+			extraction(),
+		);
+		expect(body.workflow?.aggregateVersion).toBe("workflow-aggregates/v1");
+		expect(JSON.stringify(body.payloads)).not.toContain("phase-rules");
+	});
+
+	it("leaves the section out entirely when publishWorkflow is off", () => {
+		// The switch is applied here, on the machine. Off means the section is
+		// not in the bytes, so there is nothing server-side to reveal.
+		const body = buildSyncBody(
+			[built()],
+			config({ publishWorkflow: false }),
+			undefined,
+			"manual",
+			extraction(),
+		);
+		expect(body.workflow).toBeUndefined();
+		expect(JSON.stringify(body)).not.toContain("phase-rules");
+	});
+
+	it("fails closed when the config could not be fetched", () => {
+		const body = buildSyncBody(
+			[built()],
+			BUNDLED_SYNC_CONFIG,
+			undefined,
+			"manual",
+			extraction(),
+		);
+		expect(body.workflow).toBeUndefined();
+	});
+
+	it("drops the local facts half", () => {
+		// `facts` holds per-session records - thinking tokens, turn durations,
+		// effort per turn - that the CLI has already reduced into `metrics`.
+		// Shipping them too would put finer records on the wire than any surface
+		// reads, which is the opposite of what a closed section is for.
+		const body = buildSyncBody(
+			[built()],
+			config(),
+			undefined,
+			"manual",
+			extraction(),
+		);
+		expect(body.workflow?.harnesses[0]).not.toHaveProperty("facts");
+		expect(JSON.stringify(body)).not.toContain("1234");
+	});
+
+	it("omits an absent coverage tag instead of sending an empty one", () => {
+		// The server's validator takes an OPTIONAL string, so "no tag" is an
+		// absent key there, not a key holding undefined.
+		const body = buildSyncBody(
+			[built()],
+			config(),
+			undefined,
+			"manual",
+			extraction(),
+		);
+		expect(body.workflow?.metrics[0]).toEqual({
+			metricId: "late-night-commit-share",
+			ruleVersion: "metric-rules/v1",
+			value: 0.25,
+			band: { low: 0.05, high: 0.2 },
+			coverage: 1,
+		});
+	});
+
+	it("carries the publishing CLI's version beside the payloads", () => {
+		// The one operational question that had no answer: how many machines are
+		// still on an old wire. It reached PostHog and nothing else.
+		const body = buildSyncBody(
+			[built()],
+			config(),
+			undefined,
+			"manual",
+			undefined,
+			"0.8.0",
+		);
+		expect(body.cliVersion).toBe("0.8.0");
+		expect(JSON.stringify(body.payloads)).not.toContain("0.8.0");
+	});
+});
+
 describe("plugin-wrapper normalization end to end (#42 decision 5)", () => {
 	it("publishes the curated inner segment, never the plugin's name", () => {
 		const payload = build(
@@ -348,9 +599,13 @@ describe("share denominators include withheld atoms", () => {
 			),
 		]);
 		expect(payload.inventory.skills).toEqual([
-			{ name: "grilling", callShare: 0.1 },
+			{ name: "grilling", callShare: 0.1, calls: 1 },
 		]);
 		expect(payload.inventory.withheld.skills).toBe(1);
+		// The absolute figures explain the same gap the shares do (#213): ten
+		// calls were observed, one publishes by name, and nine are the withheld
+		// skill's - recoverable as a total, never as a name.
+		expect(payload.inventory.calls.skills).toBe(10);
 	});
 });
 

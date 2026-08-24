@@ -637,6 +637,165 @@ describe('publishForToken - the destination comes from the token', () => {
       t.mutation(internal.measured.publishForToken, { tokenId, payload: payload() }),
     ).rejects.toThrow(/no longer exists/i)
   })
+
+  // -------------------------------------------------------------------------
+  // The #213 wire: the workflow section and the publishing CLI's version
+  // -------------------------------------------------------------------------
+
+  const phaseTotals = () => ({
+    scout: 640,
+    build: 180,
+    verify: 60,
+    handoff: 50,
+    unknown: 70,
+  })
+
+  const workflow = (over: Record<string, unknown> = {}) => ({
+    aggregateVersion: 'workflow-aggregates/v1',
+    harnesses: [
+      {
+        harness: 'claude-code',
+        phase: {
+          ruleVersion: 'phase-rules/v1',
+          publishable: true,
+          sessions: 142,
+          phaseSec: phaseTotals(),
+          phaseEvents: phaseTotals(),
+          waitingSec: 12,
+          idleSec: 30,
+          unknownShare: 0.07,
+          sessionRows: [],
+        },
+        activity: [{ weekdayUtc: 5, hourUtc: 23, events: 17 }],
+      },
+    ],
+    git: {
+      testFileRuleVersion: 'test-files/v1',
+      fileTypeRuleVersion: 'file-types/v1',
+      totalCommits: 214,
+      lateNightCommits: 30,
+      additions: 9000,
+      removals: 3400,
+      changedLinesPerCommit: [40, 12],
+      testFileCommits: 5,
+      changedLinesByExtension: [{ extension: '.ts', changedLines: 500 }],
+      withheldExtensionLines: 20,
+      weekdayHourCells: [{ weekday: 5, hour: 23, commits: 3 }],
+    },
+    metrics: [
+      {
+        metricId: 'late-night-commit-share',
+        ruleVersion: 'metric-rules/v1',
+        value: 0.14,
+        band: { low: 0.05, high: 0.2 },
+        coverage: 1,
+      },
+    ],
+    ...over,
+  })
+
+  test('accepts a workflow section beside the payloads (#213)', async () => {
+    // The wire has to take the shape before anything can persist it. #218 adds
+    // the storage; until then the section is validated, bounded, and dropped,
+    // so a CLI publishing one is never refused.
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const tokenId = await seedToken(t, { stackId })
+
+    const result = await t.mutation(internal.measured.publishForToken, {
+      tokenId,
+      payloads: [payload()],
+      workflow: workflow(),
+    })
+    expect(result.snapshotIds).toHaveLength(1)
+  })
+
+  test('refuses a workflow section that breaks its bounds (#213)', async () => {
+    // Closedness says which fields may arrive, never how long an array runs.
+    // A publish that trips this is refused whole: the gate showed the owner
+    // these exact bytes, and landing a trimmed version of them would publish
+    // something nobody approved.
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const tokenId = await seedToken(t, { stackId })
+
+    await expect(
+      t.mutation(internal.measured.publishForToken, {
+        tokenId,
+        payloads: [payload()],
+        workflow: workflow({
+          metrics: Array.from({ length: 65 }, (_, i) => ({
+            metricId: `m-${i}`,
+            ruleVersion: 'metric-rules/v1',
+            value: 1,
+            band: { low: 0, high: 2 },
+            coverage: 1,
+          })),
+        }),
+      }),
+    ).rejects.toThrow(/workflow.metrics must hold at most 64/)
+  })
+
+  test('refuses two workflow entries claiming one harness (#213)', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const tokenId = await seedToken(t, { stackId })
+    const one = workflow()
+
+    await expect(
+      t.mutation(internal.measured.publishForToken, {
+        tokenId,
+        payloads: [payload()],
+        workflow: { ...one, harnesses: [one.harnesses[0], one.harnesses[0]] },
+      }),
+    ).rejects.toThrow(/distinct harness/i)
+  })
+
+  test('stamps the publishing CLI version on every row of the batch (#213)', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const tokenId = await seedToken(t, { stackId })
+
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId,
+      payloads: [payload(), payload({ harness: { name: 'codex', version: null } })],
+      cliVersion: '0.8.0',
+    })
+    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    expect(rows.map((r) => r.cliVersion)).toEqual(['0.8.0', '0.8.0'])
+  })
+
+  test('leaves the version absent when an older client sends none (#213)', async () => {
+    // An untagged row IS the answer: that machine is on a wire older than the
+    // field, which is the question a wire bump asks.
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const tokenId = await seedToken(t, { stackId })
+
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId,
+      payload: payload(),
+    })
+    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    expect(rows[0].cliVersion).toBeUndefined()
+  })
+
+  test('drops an unreadable version rather than losing the sync (#213)', async () => {
+    // The sync is what the owner approved. A garbled version tag is not worth
+    // refusing it over - unlike the workflow section, which is measurement.
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const tokenId = await seedToken(t, { stackId })
+
+    await t.mutation(internal.measured.publishForToken, {
+      tokenId,
+      payload: payload(),
+      cliVersion: 'nine\u0000point\u0000one',
+    })
+    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    expect(rows).toHaveLength(1)
+    expect(rows[0].cliVersion).toBeUndefined()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -1886,6 +2045,9 @@ describe('sync config', () => {
       publishCost: true,
       // #48 mirrors the same rule field-for-field: absent is on.
       reviewKeptPrivate: true,
+      // #213 makes it three (spec, "The wire"): the workflow section is a
+      // default-on opt-out too, so a stack that has never refused publishes it.
+      publishWorkflow: true,
       stackName: 'My Stack',
       // Composite, like every public stack URL - the gate prints it (#41).
       stackSlug: `my-stack-${shortId}`,
@@ -1902,6 +2064,17 @@ describe('sync config', () => {
     await t.run((ctx) => ctx.db.patch(stackId, { publishCost: false }))
     const config = await t.query(internal.measured.getSyncConfigForStack, { stackId })
     expect(config.publishCost).toBe(false)
+  })
+
+  test('the workflow switch refuses the same way cost does (#213)', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    await t.run((ctx) => ctx.db.patch(stackId, { publishWorkflow: false }))
+    const config = await t.query(internal.measured.getSyncConfigForStack, { stackId })
+    expect(config.publishWorkflow).toBe(false)
+    // The two switches are independent: refusing the workflow section says
+    // nothing about cost, and a stack that turns one off keeps the other.
+    expect(config.publishCost).toBe(true)
   })
 })
 
@@ -2292,6 +2465,36 @@ describe('GET /api/cli/sync-config', () => {
     const body = (await resp.json()) as { publishCost: boolean; stack: null }
     expect(body.publishCost).toBe(false)
     expect(body.stack).toBeNull()
+  })
+
+  test('carries the workflow switch, and fails it closed without a bearer (#213)', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const token = `tok_${Math.random().toString(36).slice(2)}`
+    await t.run(async (ctx) =>
+      ctx.db.insert('cliTokens', {
+        tokenHash: await sha256Hex(token),
+        scopes: ['collect', 'sync'],
+        userId: USER,
+        stackId,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 90 * DAY,
+        lastUsedAt: Date.now(),
+      }),
+    )
+    const read = async (headers: Record<string, string> = {}) => {
+      const resp = await t.fetch('/api/cli/sync-config', { method: 'GET', headers })
+      return ((await resp.json()) as { publishWorkflow: boolean }).publishWorkflow
+    }
+
+    // Absent on the stack reads as opted IN, like the two switches beside it.
+    expect(await read({ Authorization: `Bearer ${token}` })).toBe(true)
+
+    await t.run((ctx) => ctx.db.patch(stackId, { publishWorkflow: false }))
+    expect(await read({ Authorization: `Bearer ${token}` })).toBe(false)
+
+    // No bearer, no stack to ask - and the direction that transmits less wins.
+    expect(await read()).toBe(false)
   })
 })
 

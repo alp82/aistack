@@ -344,6 +344,24 @@ export const authPoll = httpAction(async (ctx, request) => {
   return jsonResponse({ status: 'expired' })
 })
 
+/**
+ * Drop wire fields the resource contract no longer has (#213).
+ *
+ * `scope` is the one: resources became stack-only in June 2026 and the field
+ * has been ignored ever since, but `ResourceInput` kept tolerating it so that
+ * installed CLIs would still publish. Tolerance belongs here rather than in the
+ * validator - a validator lists the contract, and a field listed there reads as
+ * part of it. Stripping at the edge retires the field from the contract without
+ * breaking a single installed client.
+ */
+export function stripRetiredResourceFields(item: unknown): unknown {
+  if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+    return item
+  }
+  const { scope: _retired, ...rest } = item as Record<string, unknown>
+  return rest
+}
+
 export const stackCollect = httpAction(async (ctx, request) => {
   const authResult = await validateBearerToken(ctx as any, request, 'collect')
   if (authResult instanceof Response) return authResult
@@ -382,7 +400,7 @@ export const stackCollect = httpAction(async (ctx, request) => {
   const result = await ctx.runMutation(internal.httpCliHelpers.upsertStackResources, {
     creatorId: creator._id,
     stackId: tokenStackId,
-    resources: body.resources,
+    resources: body.resources.map(stripRetiredResourceFields) as any,
   })
 
   const now = Date.now()
@@ -442,6 +460,20 @@ function parseTrigger(raw: unknown): 'manual' | 'auto' | undefined {
 }
 
 /**
+ * Read the publishing CLI's own version (#213).
+ *
+ * Dropped rather than rejected, like `parseAutoSync`: it answers an operational
+ * question about the fleet, and refusing an approved sync over a malformed
+ * version string would trade the measurement for the metadata. Bounded to the
+ * same 32 characters the login route uses, so one field has one bound.
+ */
+function parseCliVersion(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined
+  const trimmed = raw.trim()
+  return trimmed.length > 0 && trimmed.length <= 32 ? trimmed : undefined
+}
+
+/**
  * POST /api/cli/sync - publish one approved measured-layer snapshot.
  *
  * Wayfinder ticket #38 (map #29). The destination is the stack bound to the
@@ -464,6 +496,8 @@ export const syncPublish = httpAction(async (ctx, request) => {
     keptPrivate?: unknown
     autoSync?: unknown
     trigger?: unknown
+    workflow?: unknown
+    cliVersion?: unknown
   }
   try {
     body = await request.json()
@@ -471,8 +505,9 @@ export const syncPublish = httpAction(async (ctx, request) => {
     return jsonResponse({ error: 'Invalid JSON body' }, 400)
   }
   // `payloads` is the batch a #67 client sends - one per detected harness.
-  // The old single `payload` stays accepted for installed CLIs (same wire
-  // tolerance as ResourceInput.scope) until a wire bump retires it.
+  // The old single `payload` stays accepted for installed CLIs until a wire
+  // bump retires it, the way `scope` was retired in #213: strip it at this
+  // edge, and leave the contract saying only what it means.
   if (!body.payload && !(Array.isArray(body.payloads) && body.payloads.length > 0)) {
     return jsonResponse({ error: 'Missing required field: payloads' }, 400)
   }
@@ -495,6 +530,16 @@ export const syncPublish = httpAction(async (ctx, request) => {
       // Additive and optional (#102): a 0.6.x CLI sends nothing and its syncs
       // read as manual, which is what keeps the switch honest until #103 ships.
       trigger: parseTrigger(body.trigger),
+      // Additive and optional (#213). Unlike the two fields above this one is
+      // NOT parsed here: it goes to the closed `WorkflowSection` validator in
+      // the mutation, exactly like the payloads, and a malformed section is the
+      // client's fault and surfaces as a 400. The drop-rather-than-reject rule
+      // above is for telemetry nothing user-facing reads; the workflow section
+      // is measurement, and a silently dropped measurement is a wrong page.
+      workflow: body.workflow as any,
+      // Additive and optional (#213), bounded the same way the login route
+      // bounds it.
+      cliVersion: parseCliVersion(body.cliVersion),
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
@@ -550,6 +595,9 @@ export const syncConfig = httpAction(async (ctx, request) => {
     // Fails closed with the rest of the stack-level half (#48): with no bearer
     // there is no stack to ask, and the direction that transmits LESS is off.
     reviewKeptPrivate: false,
+    // And again for the workflow section (#213). The client's bundled default
+    // matches, so an unreachable server publishes measurement and no workflow.
+    publishWorkflow: false,
     optIns: EMPTY_OPT_INS,
     stack: null,
     // Fails closed too (#102): with no stack in hand there is no permission to
@@ -583,6 +631,7 @@ export const syncConfig = httpAction(async (ctx, request) => {
     ...config,
     publishCost: stackConfig.publishCost,
     reviewKeptPrivate: stackConfig.reviewKeptPrivate,
+    publishWorkflow: stackConfig.publishWorkflow,
     optIns: stackConfig.optIns,
     stack: { name: stackConfig.stackName, slug: stackConfig.stackSlug },
     // What gates `sync --auto` (#103). Null means the stack has never had a

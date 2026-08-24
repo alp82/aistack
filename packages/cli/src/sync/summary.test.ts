@@ -10,7 +10,11 @@ import type {
 	SyncConfig,
 } from "../harness/shared/allowlist.js";
 import { EMPTY_OPT_INS } from "../harness/shared/allowlist.js";
-import type { MeasuredPayload, SyncBody } from "../harness/shared/payload.js";
+import type {
+	MeasuredPayload,
+	PayloadWorkflow,
+	SyncBody,
+} from "../harness/shared/payload.js";
 import { emptyScanStats } from "../harness/shared/window.js";
 import {
 	buildGateDialog,
@@ -63,9 +67,9 @@ function payload(over: Partial<MeasuredPayload> = {}): MeasuredPayload {
 			},
 		],
 		inventory: {
-			builtinTools: [{ name: "Bash", callShare: 0.4 }],
+			builtinTools: [{ name: "Bash", callShare: 0.4, calls: 400 }],
 			mcpServers: [],
-			skills: [{ name: "grilling", callShare: 0.1 }],
+			skills: [{ name: "grilling", callShare: 0.1, calls: 12 }],
 			subagents: [],
 			slashCommands: [],
 			withheld: {
@@ -74,6 +78,13 @@ function payload(over: Partial<MeasuredPayload> = {}): MeasuredPayload {
 				skills: 10,
 				subagents: 47,
 				slashCommands: 8,
+			},
+			calls: {
+				builtinTools: 1000,
+				mcpServers: 30,
+				skills: 120,
+				subagents: 90,
+				slashCommands: 20,
 			},
 		},
 		coverage: {
@@ -87,17 +98,84 @@ function payload(over: Partial<MeasuredPayload> = {}): MeasuredPayload {
 	};
 }
 
+/** A workflow section as `buildSyncBody` would have put it in the bytes (#213). */
+function workflow(over: Partial<PayloadWorkflow> = {}): PayloadWorkflow {
+	return {
+		aggregateVersion: "workflow-aggregates/v1",
+		harnesses: [
+			{
+				aggregateVersion: "workflow-aggregates/v1",
+				harness: "claude-code",
+				phase: {
+					ruleVersion: "phase-rules/v1",
+					publishable: true,
+					sessions: 142,
+					phaseSec: {
+						scout: 640,
+						build: 180,
+						verify: 60,
+						handoff: 50,
+						unknown: 70,
+					},
+					phaseEvents: {
+						scout: 64,
+						build: 18,
+						verify: 6,
+						handoff: 5,
+						unknown: 7,
+					},
+					waitingSec: 120,
+					idleSec: 300,
+					unknownShare: 0.07,
+					sessionRows: [],
+				},
+				activity: [{ weekdayUtc: 5, hourUtc: 23, events: 17 }],
+			},
+		],
+		git: {
+			testFileRuleVersion: "test-files/v1",
+			fileTypeRuleVersion: "file-types/v1",
+			totalCommits: 214,
+			lateNightCommits: 30,
+			additions: 9_000,
+			removals: 3_400,
+			changedLinesPerCommit: [40, 12],
+			testFileCommits: 5,
+			changedLinesByExtension: [{ extension: ".ts", changedLines: 500 }],
+			withheldExtensionLines: 20,
+			weekdayHourCells: [{ weekday: 5, hour: 23, commits: 3 }],
+		},
+		metrics: [
+			{
+				metricId: "late-night-commit-share",
+				ruleVersion: "metric-rules/v1",
+				value: 0.14,
+				band: { low: 0.05, high: 0.2 },
+				coverage: 1,
+			},
+		],
+		...over,
+	};
+}
+
 function ctx(over: {
 	payload?: Partial<MeasuredPayload>;
 	withKeptPrivateHalf?: boolean;
 	keptPrivate?: Record<NameCategory, KeptPrivateAtom[]>;
 	config?: Partial<SyncConfig>;
 	source?: "fetched" | "bundled";
+	workflow?: PayloadWorkflow;
+	cliVersion?: string;
 }): GateContext {
 	const p = payload(over.payload);
-	const body: SyncBody = over.withKeptPrivateHalf
+	const base: SyncBody = over.withKeptPrivateHalf
 		? { payloads: [p], keptPrivate: over.keptPrivate ?? NO_KEPT_PRIVATE }
 		: { payloads: [p] };
+	const body: SyncBody = {
+		...base,
+		...(over.workflow ? { workflow: over.workflow } : {}),
+		...(over.cliVersion ? { cliVersion: over.cliVersion } : {}),
+	};
 	return {
 		body,
 		keptPrivate: over.keptPrivate ?? NO_KEPT_PRIVATE,
@@ -109,6 +187,7 @@ function ctx(over: {
 				slashCommands: [],
 			},
 			publishCost: true,
+			publishWorkflow: true,
 			autoSync: null,
 			optIns: EMPTY_OPT_INS,
 			reviewKeptPrivate: false,
@@ -343,6 +422,48 @@ describe("beat one - the summary", () => {
 	test("a dollar figure never renders without its pricing table, per model either", () => {
 		const summary = buildGateSummary(ctx({ payload: { pricingTable: null } }));
 		expect(summary).not.toContain("≈$");
+	});
+});
+
+describe("the workflow section at the gate (#213)", () => {
+	test("names the section, its rule versions, and the switch", () => {
+		// The staged bytes ARE what a publish sends, so every field in them gets
+		// a line here. A default-on opt-out that the preview never mentions is
+		// not an opt-out.
+		const out = buildGateSummary(ctx({ workflow: workflow() }));
+		expect(out).toContain("workflow  1 harness · 142 sessions");
+		expect(out).toContain("workflow-aggregates/v1");
+		expect(out).toContain("phase-rules/v1");
+		expect(out).toContain("git       214 commits · 12.4k lines changed");
+		expect(out).toContain("metrics   1 measured · metric-rules/v1");
+		// It NAMES the switch without directing the owner to a control that does
+		// not exist yet - #215 builds the owner controls.
+		expect(out).toContain("Publish workflow is on for aistack.to");
+	});
+
+	test("prints the phase mix the section would publish", () => {
+		const out = buildGateSummary(ctx({ workflow: workflow() }));
+		expect(out).toContain("scout 64.0%");
+		expect(out).toContain("unknown 7.0%");
+	});
+
+	test("says so plainly when the section is not published", () => {
+		// Mirrors `cost not published`: a section the owner declined is a fact
+		// about this send, not an absence the preview can leave out.
+		const out = buildGateSummary(ctx({}));
+		expect(out).toContain("workflow  not published");
+	});
+
+	test("names the publishing CLI, because it is in the bytes", () => {
+		const out = buildGateSummary(ctx({ cliVersion: "0.8.0" }));
+		expect(out).toContain("client    aistack 0.8.0");
+	});
+
+	test("keeps beat two short - the workflow section adds no line", () => {
+		// `Accept` falls below the fold if the dialog grows (#35, 1H).
+		const dialog = buildGateDialog(ctx({ workflow: workflow() }));
+		expect(dialog.split("\n").length).toBeLessThanOrEqual(2);
+		expect(dialog).not.toContain("workflow");
 	});
 });
 
