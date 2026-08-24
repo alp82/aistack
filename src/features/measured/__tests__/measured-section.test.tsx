@@ -16,7 +16,13 @@
  *   5. THE PAGE RENDERS WHOLE WITHOUT ITS HISTORY. The series adds the trail,
  *      the notch and the delta; it is never what makes the section readable.
  */
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+	cleanup,
+	fireEvent,
+	render,
+	screen,
+	within,
+} from "@testing-library/react";
 import { getFunctionName } from "convex/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MeasuredSection } from "@/features/measured/MeasuredSection";
@@ -51,17 +57,43 @@ function setup(
 	{
 		isOwner = false,
 		autoSync = { autoSync: null, lastAutoSyncAt: null },
-	}: { isOwner?: boolean; autoSync?: AutoSyncFlag } = {},
+		selected,
+	}: {
+		isOwner?: boolean;
+		autoSync?: AutoSyncFlag;
+		selected?: {
+			machineOrdinal: number;
+			snapshot: MeasuredSnapshot;
+			history: MeasuredHistory;
+		};
+	} = {},
 ) {
+	const currentRef = getFunctionName(api.measured.getCurrentByStackSlug);
 	const historyRef = getFunctionName(api.measured.getHistoryByStackSlug);
 	const autoSyncRef = getFunctionName(api.autoSync.get);
-	queryMock.mockImplementation((ref: Parameters<typeof getFunctionName>[0]) => {
-		const name = getFunctionName(ref);
-		if (name === historyRef) return history;
-		if (name === autoSyncRef) return autoSync;
-		return snapshot;
-	});
-	render(
+	queryMock.mockImplementation(
+		(
+			ref: Parameters<typeof getFunctionName>[0],
+			args: { machineOrdinal?: number },
+		) => {
+			const name = getFunctionName(ref);
+			if (name === historyRef) {
+				return selected && args.machineOrdinal === selected.machineOrdinal
+					? selected.history
+					: history;
+			}
+			if (name === autoSyncRef) return autoSync;
+			if (
+				selected &&
+				name === currentRef &&
+				args.machineOrdinal === selected.machineOrdinal
+			) {
+				return selected.snapshot;
+			}
+			return snapshot;
+		},
+	);
+	return render(
 		<MeasuredSection
 			index={1}
 			slug="alps-stack-ab12"
@@ -78,6 +110,295 @@ function live(options: Parameters<typeof buildHistory>[0] = {}) {
 }
 
 describe("the reading", () => {
+	it("narrows the whole reading through the machine dropdown", () => {
+		const all = live();
+		const workstation = live({ claudeCodeOnly: true });
+		const now = Date.now();
+		const allCurrent = {
+			...all.current,
+			harnesses: all.current.harnesses.map((h, index) => ({
+				...h,
+				machine: index === 0 ? "workstation" : null,
+				machineOrdinal: index + 1,
+				receivedAt: now - (index === 0 ? HOUR : 3 * HOUR),
+			})),
+		};
+		const workstationCurrent = {
+			...workstation.current,
+			harnesses: workstation.current.harnesses.map((h) => ({
+				...h,
+				machine: "workstation",
+				machineOrdinal: 1,
+				receivedAt: now - HOUR,
+			})),
+		};
+
+		setup(allCurrent, all.history, {
+			selected: {
+				machineOrdinal: 1,
+				snapshot: workstationCurrent,
+				history: workstation.history,
+			},
+		});
+
+		const trigger = screen.getByRole("button", { name: /machine/i });
+		expect(trigger).toHaveTextContent("all machines");
+		fireEvent.click(trigger);
+		fireEvent.click(screen.getByRole("option", { name: /workstation/i }));
+
+		expect(trigger).toHaveTextContent("workstation");
+		expect(screen.getByText("4.70B")).toBeInTheDocument();
+		expect(screen.getByText("≥$6,014")).toBeInTheDocument();
+		expect(screen.queryByText("GPT-5.5")).not.toBeInTheDocument();
+		expect(screen.getByText("554")).toBeInTheDocument();
+		expect(
+			screen.queryByRole("list", { name: "Harness token shares" }),
+		).not.toBeInTheDocument();
+		expect(queryMock).toHaveBeenCalledWith(api.measured.getCurrentByStackSlug, {
+			slug: "alps-stack-ab12",
+			machineOrdinal: 1,
+		});
+		expect(queryMock).toHaveBeenCalledWith(api.measured.getHistoryByStackSlug, {
+			slug: "alps-stack-ab12",
+			machineOrdinal: 1,
+		});
+	});
+
+	it("clears the narrowed reading when navigation changes the stack", () => {
+		const first = live();
+		const second = live({ claudeCodeOnly: true });
+		const firstCurrent = {
+			...first.current,
+			harnesses: first.current.harnesses.map((h, index) => ({
+				...h,
+				machine: `machine ${index + 1}`,
+				machineOrdinal: index + 1,
+			})),
+		};
+		const secondCurrent = {
+			...second.current,
+			harnesses: first.current.harnesses.map((h, index) => ({
+				...h,
+				machine: null,
+				machineOrdinal: index + 1,
+			})),
+		};
+		const currentRef = getFunctionName(api.measured.getCurrentByStackSlug);
+		const historyRef = getFunctionName(api.measured.getHistoryByStackSlug);
+		queryMock.mockImplementation(
+			(ref: Parameters<typeof getFunctionName>[0], args: { slug?: string }) => {
+				const name = getFunctionName(ref);
+				if (name === currentRef) {
+					return args.slug === "second-stack" ? secondCurrent : firstCurrent;
+				}
+				if (name === historyRef) {
+					return args.slug === "second-stack" ? second.history : first.history;
+				}
+				return { autoSync: null, lastAutoSyncAt: null };
+			},
+		);
+		const view = render(
+			<MeasuredSection
+				index={1}
+				slug="first-stack"
+				stackId={"stack_ab12" as never}
+				isOwner={false}
+			/>,
+		);
+
+		fireEvent.click(screen.getByRole("button", { name: /machine/i }));
+		fireEvent.click(screen.getByRole("option", { name: /machine 1/i }));
+		queryMock.mockClear();
+		view.rerender(
+			<MeasuredSection
+				index={1}
+				slug="second-stack"
+				stackId={"stack_cd34" as never}
+				isOwner={false}
+			/>,
+		);
+
+		expect(screen.getByRole("button", { name: /machine/i })).toHaveTextContent(
+			"all machines",
+		);
+		expect(queryMock).not.toHaveBeenCalledWith(
+			api.measured.getCurrentByStackSlug,
+			{ slug: "second-stack", machineOrdinal: 1 },
+		);
+	});
+
+	it("lists each machine with its gated label, tokens, and reading time", () => {
+		const { current, history } = live();
+		const now = Date.now();
+		setup(
+			{
+				...current,
+				harnesses: current.harnesses.map((h, index) => ({
+					...h,
+					machine: index === 0 ? "workstation" : null,
+					machineOrdinal: index + 1,
+					receivedAt: now - (index === 0 ? HOUR : 3 * HOUR),
+				})),
+			},
+			history,
+		);
+
+		fireEvent.click(screen.getByRole("button", { name: /machine/i }));
+
+		expect(
+			screen.getByRole("option", {
+				name: /workstation.*4\.70B.*read 1h ago/i,
+			}),
+		).toBeInTheDocument();
+		expect(
+			screen.getByRole("option", {
+				name: /machine 2.*8\.4M.*read 3h ago/i,
+			}),
+		).toBeInTheDocument();
+	});
+
+	it("moves checked freshness to the model mix and follows the selected machine", () => {
+		const { current, history } = live();
+		const now = Date.now();
+		const harnesses = current.harnesses.map((h, index) => ({
+			...h,
+			machine: null,
+			machineOrdinal: index + 1,
+			receivedAt: now - (index === 0 ? HOUR : 3 * HOUR),
+		}));
+		setup({ ...current, receivedAt: now - HOUR, harnesses }, history, {
+			selected: {
+				machineOrdinal: 2,
+				snapshot: {
+					...current,
+					receivedAt: now - 3 * HOUR,
+					harnesses: [harnesses[1]],
+				},
+				history,
+			},
+		});
+
+		expect(screen.getByText("checked 1h ago")).toBeInTheDocument();
+		expect(
+			screen.queryByText(/the notch marks where each share stood on/),
+		).not.toBeInTheDocument();
+
+		fireEvent.click(screen.getByRole("button", { name: /machine/i }));
+		fireEvent.click(screen.getByRole("option", { name: /machine 2/i }));
+		expect(screen.getByText("checked 3h ago")).toBeInTheDocument();
+	});
+
+	it("lists each harness share between the models and stats", () => {
+		const { current, history } = live();
+		setup(
+			{
+				...current,
+				harnesses: current.harnesses.map((h) => ({
+					...h,
+					machineOrdinal: 1,
+				})),
+			},
+			history,
+		);
+
+		const list = screen.getByRole("list", { name: "Harness token shares" });
+		expect(
+			screen.queryByRole("button", { name: /machine/i }),
+		).not.toBeInTheDocument();
+		expect(within(list).getByText("Claude Code")).toBeInTheDocument();
+		expect(within(list).getByText("99.8%")).toBeInTheDocument();
+		expect(within(list).getByText("4.70B")).toBeInTheDocument();
+		expect(within(list).getByText("Codex")).toBeInTheDocument();
+		expect(within(list).getByText("0.2%")).toBeInTheDocument();
+		expect(within(list).getByText("8.4M")).toBeInTheDocument();
+		expect(
+			list.compareDocumentPosition(screen.getByText("sessions")) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+	});
+
+	it("uses a neutral source ramp for machines and harnesses", () => {
+		const { current, history } = live();
+		setup(
+			{
+				...current,
+				harnesses: current.harnesses.map((h, index) => ({
+					...h,
+					machine: null,
+					machineOrdinal: index + 1,
+				})),
+			},
+			history,
+		);
+		fireEvent.click(screen.getByRole("button", { name: /machine/i }));
+
+		const paints = screen
+			.getAllByTestId("source-paint")
+			.map((mark) => mark.style.background);
+		expect(paints).toContain("var(--source-1)");
+		expect(paints).toContain("var(--source-2)");
+		expect(paints.every((paint) => !paint.includes("--chart-"))).toBe(true);
+		expect(paints.every((paint) => !paint.includes("--accent-"))).toBe(true);
+	});
+
+	it("keeps a single-machine, single-harness reading unchanged", () => {
+		const { current, history } = live({ claudeCodeOnly: true });
+		setup(current, history);
+
+		expect(
+			screen.queryByRole("button", { name: /machine/i }),
+		).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole("list", { name: "Harness token shares" }),
+		).not.toBeInTheDocument();
+		expect(screen.getByText("checked 2h ago")).toBeInTheDocument();
+		expect(
+			screen.getByText(/the notch marks where each share stood on/),
+		).toBeInTheDocument();
+		expect(document.body.textContent).not.toContain("(max)");
+	});
+
+	it("closes the machine list with Escape and returns focus", () => {
+		const { current, history } = live();
+		setup(
+			{
+				...current,
+				harnesses: current.harnesses.map((h, index) => ({
+					...h,
+					machineOrdinal: index + 1,
+				})),
+			},
+			history,
+		);
+		const trigger = screen.getByRole("button", { name: /machine/i });
+		fireEvent.click(trigger);
+		fireEvent.keyDown(trigger, { key: "Escape" });
+
+		expect(
+			screen.queryByRole("listbox", { name: /machine/i }),
+		).not.toBeInTheDocument();
+		expect(trigger).toHaveFocus();
+	});
+
+	it("keeps the machine control visible in a wrapping mobile header", () => {
+		const { current, history } = live();
+		setup(
+			{
+				...current,
+				harnesses: current.harnesses.map((h, index) => ({
+					...h,
+					machineOrdinal: index + 1,
+				})),
+			},
+			history,
+		);
+		const trigger = screen.getByRole("button", { name: /machine/i });
+		const meta = trigger.parentElement?.parentElement;
+
+		expect(meta).not.toHaveClass("hidden");
+		expect(meta?.parentElement).toHaveClass("flex-wrap");
+	});
+
 	it("leads with tokens and puts a lower-bound spend underneath", () => {
 		const { current, history } = live({ claudeCodeOnly: true });
 		setup(current, history);

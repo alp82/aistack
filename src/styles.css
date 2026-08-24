@@ -32,6 +32,9 @@ code, .font-mono {
   --accent-lime-contrast: oklch(0.22 0.02 132);
   --stroke-subtle: oklch(0.55 0.01 256 / 0.75);
   --stroke-strong: oklch(0.5 0.015 256 / 0.9);
+  --source-1: oklch(0.92 0.004 256);
+  --source-2: oklch(0.72 0.006 256);
+  --source-3: oklch(0.54 0.008 256);
   --shadow-color: oklch(0.02 0 0 / 0.7);
   --shadow-sm: 0 1px 2px 0 var(--shadow-color);
   --shadow-md: 0 10px 30px -14px var(--shadow-color);
@@ -131,6 +134,9 @@ code, .font-mono {
   --accent-lime-contrast: oklch(0.98 0.01 132);
   --stroke-subtle: oklch(0.65 0.008 256 / 0.9);
   --stroke-strong: oklch(0.7 0.01 256 / 0.95);
+  --source-1: oklch(0.22 0.008 256);
+  --source-2: oklch(0.42 0.006 256);
+  --source-3: oklch(0.6 0.004 256);
   --shadow-color: oklch(0.02 0 0 / 0.12);
   --bg-section-dark: oklch(0.94 0.004 256);
   --bg-section-light: oklch(0.99 0.002 256);
