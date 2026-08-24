@@ -10,6 +10,7 @@ import {
 const PROOF_FACTS: PhaseLeadFacts = {
 	sessionCount: 464,
 	harnessCount: 3,
+	playbookHarnessCount: 2,
 	phaseShare: {
 		scout: 0.64,
 		build: 0.18,
@@ -18,62 +19,114 @@ const PROOF_FACTS: PhaseLeadFacts = {
 		unknown: 0.07,
 	},
 	verifySessionShare: 0.4,
-	handoffCount: 437,
-	handoffMedianWaitMinutes: 24,
-	modalStartHourLocal: 23,
+	handoffSessionShare: 0.62,
+	modalStartHourOwnerLocal: 23,
 	ruleVersion: "phase-rules/v1",
 };
 
-describe("renderLeadSentences: the #196 proof reproduces byte for byte", () => {
-	it("renders all five forms in order, matching the proof's markdown exactly", () => {
+describe("renderLeadSentences: the locked lead reproduces byte for byte", () => {
+	it("renders the four lines in their locked order", () => {
 		const sentences = renderLeadSentences(PROOF_FACTS).map(renderLeadMarkdown);
 		expect(sentences).toEqual([
-			"Across **464** sessions on **3** harnesses, **scout** takes the largest share of measured time (**64%**), then **build** (**18%**).",
-			"A verify step shows up in **40%** of sessions.",
-			"Work stops at a human gate **437** times, with a median wait of **24 min**.",
-			"Most sessions start around **23:00**.",
-			"The rules leave **7%** of measured time unclassified (`phase-rules/v1`).",
+			"**464** sessions · **3** harnesses · last 30 days",
+			"Most measured time in these sessions goes to **scout** (**64%**), then **build** (**18%**).",
+			"verify in **40%** of sessions · handoff in **62%** of sessions · most start around **23:00** local",
+			"**7%** of measured time unclassified · `phase-rules/v1`",
 		]);
+	});
+});
+
+describe("renderLeadSentences: eligibility gates", () => {
+	it("withholds the lead below 20 sessions", () => {
+		expect(renderLeadSentences({ ...PROOF_FACTS, sessionCount: 19 })).toEqual(
+			[],
+		);
+	});
+
+	it("withholds the lead when no harness passes the playbook gate", () => {
+		expect(
+			renderLeadSentences({ ...PROOF_FACTS, playbookHarnessCount: 0 }),
+		).toEqual([]);
+	});
+});
+
+describe("renderLeadSentences: phase mix forms", () => {
+	it("uses the similar-share form for a close top two", () => {
+		const facts: PhaseLeadFacts = {
+			...PROOF_FACTS,
+			phaseShare: {
+				scout: 0.34,
+				build: 0.33,
+				verify: 0.18,
+				handoff: 0.08,
+				unknown: 0.07,
+			},
+		};
+		const sentence = renderLeadSentences(facts).find(
+			(line) => line.id === "phase-mix",
+		);
+		expect(sentence && renderLeadMarkdown(sentence)).toBe(
+			"**Scout** (**34%**) and **build** (**33%**) take similar shares of measured time.",
+		);
+	});
+
+	it("includes a top two exactly 10 points apart", () => {
+		const facts: PhaseLeadFacts = {
+			...PROOF_FACTS,
+			phaseShare: {
+				scout: 0.45,
+				build: 0.35,
+				verify: 0.1,
+				handoff: 0.05,
+				unknown: 0.05,
+			},
+		};
+		const sentence = renderLeadSentences(facts).find(
+			(line) => line.id === "phase-mix",
+		);
+		expect(sentence && renderLeadMarkdown(sentence)).toBe(
+			"**Scout** (**45%**) and **build** (**35%**) take similar shares of measured time.",
+		);
 	});
 });
 
 describe("renderLeadSentences: an absent measurement drops its sentence", () => {
 	it("drops the phase-mix sentence with fewer than two named phases", () => {
 		const facts: PhaseLeadFacts = {
-			sessionCount: 10,
+			sessionCount: 20,
 			harnessCount: 1,
+			playbookHarnessCount: 1,
 			phaseShare: { scout: 0.9, unknown: 0.1 },
 		};
 		const ids = renderLeadSentences(facts).map((s) => s.id);
 		expect(ids).not.toContain("phase-mix");
 	});
 
-	it("drops the verify sentence with no verify-presence data", () => {
+	it("drops the stats line with no verify-presence data", () => {
 		const facts: PhaseLeadFacts = {
 			...PROOF_FACTS,
 			verifySessionShare: undefined,
 		};
 		const ids = renderLeadSentences(facts).map((s) => s.id);
-		expect(ids).not.toContain("verify-presence");
+		expect(ids).not.toContain("stats");
 	});
 
-	it("drops the handoff sentence when there were zero handoff events", () => {
+	it("drops the stats line with no handoff-presence data", () => {
 		const facts: PhaseLeadFacts = {
 			...PROOF_FACTS,
-			handoffCount: 0,
-			handoffMedianWaitMinutes: undefined,
+			handoffSessionShare: undefined,
 		};
 		const ids = renderLeadSentences(facts).map((s) => s.id);
-		expect(ids).not.toContain("handoff-wait");
+		expect(ids).not.toContain("stats");
 	});
 
-	it("drops the start-hour sentence with no modal hour", () => {
+	it("drops the stats line with no owner-local modal hour", () => {
 		const facts: PhaseLeadFacts = {
 			...PROOF_FACTS,
-			modalStartHourLocal: undefined,
+			modalStartHourOwnerLocal: undefined,
 		};
 		const ids = renderLeadSentences(facts).map((s) => s.id);
-		expect(ids).not.toContain("start-hour");
+		expect(ids).not.toContain("stats");
 	});
 
 	it("drops the unknown-share sentence with no phase share at all", () => {
