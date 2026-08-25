@@ -53,7 +53,19 @@ Ledger (removals in red, per-commit sizes as a log-scale dot strip), coding lang
 
 On the stack page the section is titled Workflow under `// measured`, position 04 in
 the settled order: Actual Usage 01, Projects 02, Tools 03, Workflow 04, Guide 05
-([#193](https://github.com/alp82/aistack/issues/193)).
+([#193](https://github.com/alp82/aistack/issues/193)). The writeup section that used
+to carry the title Workflow is renamed Guide, under `// writeup`.
+
+The order is locked, the numbers are not. Tools renders only when the stack lists
+tools, and Workflow only when a reading is stored and published, so the number a
+section prints is its position among the sections that render. A stack with no
+reading closes on Guide 04 rather than printing a gap where 04 would have been.
+
+A nav block of stat rows sits under the hero: one row per rendered section, showing
+the number, the title, and a headline figure the section itself already prints. A row
+is a link, and it opens nothing. Past the block, the same links dock as a fixed rail
+under the site header, carrying the stack name, the price, and the upvotes on its
+left, with a scroll spy marking the section in view.
 
 ## Fit and rotation
 

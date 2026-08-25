@@ -234,7 +234,9 @@ export function Section({
 		<section
 			ref={ref}
 			className={cn(
-				"scroll-mt-24 px-6 py-16 md:py-24",
+				// Clears the 64px site header AND the 48px section rail (#217), so a
+				// nav jump never lands the section title behind them.
+				"scroll-mt-28 px-6 py-16 md:py-24",
 				sectionBg(index),
 				highlighted && !reduce && "ring-2 ring-accent-lime/50 ring-inset",
 			)}

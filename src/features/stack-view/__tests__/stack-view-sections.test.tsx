@@ -343,7 +343,7 @@ describe("BundleCard highlight", () => {
 });
 
 // ===========================================================================
-// GROUP A - Titles (ToolsSection → "Tools" / "// AI Components"; GuideSection → "Workflow" / "// GUIDE")
+// GROUP A - Titles (ToolsSection → "Tools" / "// AI Components"; GuideSection → "Guide" / "// writeup")
 // ===========================================================================
 
 describe("GROUP A - Section titles", () => {
@@ -360,32 +360,39 @@ describe("GROUP A - Section titles", () => {
 		expect(screen.getByText(/\/\/ AI Components/i)).toBeInTheDocument();
 	});
 
-	// A-2: GuideSection uses "Workflow" heading and "// GUIDE" kicker
-	it("GuideSection: heading is /^Workflow$/i", () => {
+	// A-2: GuideSection uses "Guide" heading and "// writeup" kicker.
+	//
+	// It was titled Workflow until #217. The measured section now placed at 04
+	// owns that name (#193), and two sections called Workflow would have read as
+	// the same thing twice.
+	it("GuideSection: heading is /^Guide$/i", () => {
 		render(
 			<GuideSection
-				index={3}
+				index={5}
 				description="Some content"
 				isOwner={false}
 				slug="my-stack"
 			/>,
 		);
 		expect(
-			screen.getByRole("heading", { name: /^Workflow$/i }),
+			screen.getByRole("heading", { name: /^Guide$/i }),
 		).toBeInTheDocument();
+		expect(
+			screen.queryByRole("heading", { name: /^Workflow$/i }),
+		).not.toBeInTheDocument();
 	});
 
-	it("GuideSection: kicker contains '// GUIDE' (not '// WRITEUP')", () => {
+	it("GuideSection: kicker contains '// writeup' (not '// GUIDE')", () => {
 		render(
 			<GuideSection
-				index={3}
+				index={5}
 				description="Some content"
 				isOwner={false}
 				slug="my-stack"
 			/>,
 		);
-		expect(screen.getByText(/\/\/ GUIDE/i)).toBeInTheDocument();
-		expect(screen.queryByText(/\/\/ WRITEUP/i)).not.toBeInTheDocument();
+		expect(screen.getByText(/\/\/ writeup/i)).toBeInTheDocument();
+		expect(screen.queryByText(/\/\/ GUIDE/i)).not.toBeInTheDocument();
 	});
 });
 
