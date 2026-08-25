@@ -39,18 +39,25 @@ mirroring makes the Workflow section appear locally: something has to publish on
 Point the CLI at the local app and sync. The whole ingest path runs for real, and
 nothing touches prod.
 
+**The owner runs this, not an agent.** `sync` refuses to run without a TTY
+(`packages/cli/src/commands/sync.ts`, #31: a gate that cannot ask must not
+send), and a model-launched Bash call has no TTY. In a Claude Code session, type
+the sync line with a leading `!` so it runs in the owner's own shell, or run it
+in a terminal. Do not try to route around the gate.
+
 ```sh
 cd packages/cli && pnpm build   # dist/index.js is what you run
 cd ../..
 
 # One login per server. Opens the LOCAL approval page; approve it there.
+# `sync` runs this inline on an unlinked machine, so it is optional.
 AISTACK_URL=http://localhost:3019 node packages/cli/dist/index.js login
 
-# Scan, preview, approve, publish - against the local backend.
+# Scan, preview, approve, publish - against the local backend. Needs a TTY.
 AISTACK_URL=http://localhost:3019 node packages/cli/dist/index.js sync
 ```
 
-Four things that make this safe and make it work:
+Five things that make this safe and make it work:
 
 * **`AISTACK_URL` is the only switch.** `packages/cli/src/api.ts` reads it and
   falls back to `https://aistack.to`. The device-auth URL comes from whichever
@@ -64,6 +71,9 @@ Four things that make this safe and make it work:
 * **The local app and `convex dev` both have to be up**, and your stack has to
   exist in the local database. Run `scripts/sync-prod-db.sh` first if it does
   not, then log in to the local app again - the mirror replaces the auth tables.
+* **Be signed in to the LOCAL app in a browser before you start.** The approval
+  page is served by localhost, and it can only approve a machine for an account
+  it already has a session for.
 
 ## CLI release
 
