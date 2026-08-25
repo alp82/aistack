@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildWorkflowExtraction, extractLocalWorkflow } from "./extract.js";
+import {
+	buildWorkflowExtraction,
+	extractLocalWorkflow,
+	machineUtcOffsetMinutes,
+} from "./extract.js";
 import type { GitWorkflowResult, GitWorkflowRunner } from "./git.js";
 import {
 	createHarnessWorkflowReducer,
@@ -54,6 +58,9 @@ describe("buildWorkflowExtraction", () => {
 			]),
 		);
 		expect(extraction.harnesses[0]?.phase?.ruleVersion).toBe("phase-rules/v1");
+		// The machine clock ships so the page can render start hours in the
+		// owner's local time (#218). Nothing else on the wire carries one.
+		expect(extraction.utcOffsetMinutes).toBe(machineUtcOffsetMinutes());
 		expect(JSON.stringify(extraction)).not.toContain("/secret/repository");
 		expect(JSON.stringify(extraction)).not.toContain("secret-session");
 		expect(JSON.stringify(extraction)).not.toContain("/secret/repository");

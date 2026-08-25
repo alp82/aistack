@@ -32,6 +32,12 @@ export type WorkflowExtraction = {
 	harnesses: PublishableHarnessWorkflow[];
 	git: GitWorkflowResult;
 	metricInputs: FitInputRow[];
+	/**
+	 * This machine's offset from UTC, in minutes east (#218). Session hours ship
+	 * in UTC, and the page renders them in the owner's local time. The machine is
+	 * the only end of the wire that knows which clock the owner reads.
+	 */
+	utcOffsetMinutes: number;
 };
 
 export type ExtractLocalWorkflowOptions = {
@@ -39,6 +45,8 @@ export type ExtractLocalWorkflowOptions = {
 	fromMs: number;
 	toMs: number;
 	run?: GitWorkflowRunner;
+	/** Tests only: pin the machine clock so a fixture does not move with the runner's zone. */
+	utcOffsetMinutes?: number;
 };
 
 /** Read only repositories touched by windowed sessions, then return safe aggregates. */
@@ -53,7 +61,11 @@ export function extractLocalWorkflow(
 		toMs: options.toMs,
 		...(options.run ? { run: options.run } : {}),
 	});
-	return buildWorkflowExtraction(options.harnesses, git);
+	return buildWorkflowExtraction(
+		options.harnesses,
+		git,
+		options.utcOffsetMinutes ?? machineUtcOffsetMinutes(),
+	);
 }
 
 /**
@@ -61,9 +73,15 @@ export function extractLocalWorkflow(
  * rules. Local session keys, project paths, event arguments, and timestamps do
  * not enter the returned value.
  */
+/** Minutes EAST of UTC, the sign convention the wire and the page both read. */
+export function machineUtcOffsetMinutes(now: Date = new Date()): number {
+	return -now.getTimezoneOffset();
+}
+
 export function buildWorkflowExtraction(
 	harnessWorkflows: readonly LocalHarnessWorkflow[],
 	git: GitWorkflowResult,
+	utcOffsetMinutes: number = machineUtcOffsetMinutes(),
 ): WorkflowExtraction {
 	const projectDays = new Map<string, Set<string>>();
 	const webSearches = new Map<string, number>();
@@ -115,5 +133,6 @@ export function buildWorkflowExtraction(
 		}),
 		git,
 		metricInputs: buildFitInputs(facts, syncedHarnesses),
+		utcOffsetMinutes,
 	};
 }

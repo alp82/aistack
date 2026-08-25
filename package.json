@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@aistack/pricing": "workspace:*",
+    "@aistack/workflow-rules": "workspace:*",
     "@convex-dev/better-auth": "^0.10.9",
     "@convex-dev/react-query": "0.1.0",
     "@radix-ui/react-label": "^2.1.8",

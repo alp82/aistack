@@ -48,6 +48,7 @@ import type * as lib_resourceLinks from "../lib/resourceLinks.js";
 import type * as lib_scrapers from "../lib/scrapers.js";
 import type * as lib_sources from "../lib/sources.js";
 import type * as lib_tiers from "../lib/tiers.js";
+import type * as lib_workflow from "../lib/workflow.js";
 import type * as lib_xEmbedSanitizer from "../lib/xEmbedSanitizer.js";
 import type * as lib_xPaste from "../lib/xPaste.js";
 import type * as measured from "../measured.js";
@@ -87,6 +88,7 @@ import type * as tools from "../tools.js";
 import type * as viewAnalytics from "../viewAnalytics.js";
 import type * as views from "../views.js";
 import type * as waitlist from "../waitlist.js";
+import type * as workflow from "../workflow.js";
 
 import type {
   ApiFromModules,
@@ -135,6 +137,7 @@ declare const fullApi: ApiFromModules<{
   "lib/scrapers": typeof lib_scrapers;
   "lib/sources": typeof lib_sources;
   "lib/tiers": typeof lib_tiers;
+  "lib/workflow": typeof lib_workflow;
   "lib/xEmbedSanitizer": typeof lib_xEmbedSanitizer;
   "lib/xPaste": typeof lib_xPaste;
   measured: typeof measured;
@@ -174,6 +177,7 @@ declare const fullApi: ApiFromModules<{
   viewAnalytics: typeof viewAnalytics;
   views: typeof views;
   waitlist: typeof waitlist;
+  workflow: typeof workflow;
 }>;
 
 /**

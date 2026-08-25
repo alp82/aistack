@@ -598,6 +598,7 @@ export type PayloadWorkflow = {
 	harnesses: Array<Omit<PublishableHarnessWorkflow, "facts">>;
 	git: WorkflowExtraction["git"];
 	metrics: PayloadWorkflowMetric[];
+	utcOffsetMinutes: number;
 };
 
 /**
@@ -642,6 +643,7 @@ export function toPayloadWorkflow(
 				? {}
 				: { coverageTag: row.coverageTag }),
 		})),
+		utcOffsetMinutes: extraction.utcOffsetMinutes,
 	};
 }
 

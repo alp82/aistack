@@ -167,10 +167,25 @@ The opening prose of the workflow section. Fixed sentence forms over measured nu
 versioned with the metric rules. No LLM writes it.
 _Avoid_: workflow draft (the LLM draft was ruled out, see ADR-0002)
 
+**Workflow reading**:
+One machine's stored workflow section: its harness aggregates, its Git aggregate, and its
+pool metric rows. A reading is never merged with another machine's (ADR-0009).
+_Avoid_: workflow snapshot (that names the measured payload's table, not this one)
+
 **Fit**:
 The rank of a workflow row: coverage times surprise. Coverage is the share of synced
 harnesses the metric counts. Surprise is the distance from the typical band its rule
-declares.
+declares, as `distance / (distance + band width)`, so a value inside its band scores zero
+and one band width outside scores a half.
+
+**Component rule**:
+The versioned rule that gives one of the seven components a headline value and a typical
+band, so it can compete for a podium slot beside a pool metric. It derives that value from
+aggregates the machine already shipped and measures nothing new.
+
+**Row override**:
+The owner's pin or hide on one workflow row. A pin puts the row on the podium, a hide takes
+it off the public page, and either wins over the fit thresholds.
 
 **Podium**:
 The workflow section layout. The top three rows by fit render as one horizontal band,

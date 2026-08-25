@@ -27,6 +27,7 @@ import {
   visibleSources,
 } from './lib/sources'
 import { extractShortId } from './lib/ids'
+import { kitFromSnapshots, storeWorkflowSection } from './lib/workflow'
 import { firstSeenMachines } from './lib/machineOrdinals'
 import { type RepricedModel, repriceSnapshot, round2 } from './lib/reprice'
 import {
@@ -418,6 +419,8 @@ export const publishSnapshot = internalMutation({
     payload: MeasuredPayload,
     /** Optional here and required nowhere: see `machine` in the schema. */
     machine: v.optional(v.string()),
+    /** The workflow section this publish carries, if any (#218). */
+    workflow: v.optional(WorkflowSection),
   },
   returns: v.object({
     snapshotId: v.id('measuredSnapshots'),
@@ -426,7 +429,28 @@ export const publishSnapshot = internalMutation({
   handler: async (ctx, args) => {
     const stack = await ctx.db.get(args.stackId)
     if (!stack) throw new Error('Stack not found')
-    return await insertSnapshot(ctx, args.stackId, args.payload, args.machine)
+    const inserted = await insertSnapshot(
+      ctx,
+      args.stackId,
+      args.payload,
+      args.machine
+    )
+    if (args.workflow) {
+      checkWorkflowSection(args.workflow)
+      const machineSnapshots = newestBySource(
+        await snapshotsForStack(ctx, args.stackId)
+      ).filter((row) => row.machine === args.machine)
+      await storeWorkflowSection(ctx, {
+        stackId: args.stackId,
+        machine: args.machine,
+        section: args.workflow,
+        capturedAt: args.payload.capturedAt,
+        receivedAt: inserted.receivedAt,
+        cliVersion: undefined,
+        kit: kitFromSnapshots(machineSnapshots),
+      })
+    }
+    return inserted
   },
 })
 
@@ -556,7 +580,7 @@ function resolveModels(
  * retention policy bounds a stack to roughly one row per source per day - the
  * collect is small by construction.
  */
-async function snapshotsForStack(
+export async function snapshotsForStack(
   ctx: QueryCtx | MutationCtx,
   stackId: Id<'stacks'>
 ): Promise<Doc<'measuredSnapshots'>[]> {
@@ -871,7 +895,7 @@ function mergedUSD(merged: {
 }
 
 /** The published stack behind a public slug, or null. */
-async function publishedStackBySlug(ctx: QueryCtx, slug: string) {
+export async function publishedStackBySlug(ctx: QueryCtx, slug: string) {
   const stack = await ctx.db
     .query('stacks')
     .withIndex('by_shortId', (q) => q.eq('shortId', extractShortId(slug)))
@@ -956,7 +980,7 @@ type MachinePublication = {
   ordinals: Map<string, number>
 }
 
-async function machinePublication(
+export async function machinePublication(
   ctx: QueryCtx,
   stack: Doc<'stacks'>
 ): Promise<MachinePublication> {
@@ -967,7 +991,7 @@ async function machinePublication(
   }
 }
 
-function publicMachine(
+export function publicMachine(
   machine: string | null,
   publication: MachinePublication
 ): { machine: string | null; machineOrdinal: number | null } {
@@ -2597,9 +2621,10 @@ export const publishForToken = internalMutation({
       .first()
     const isFirstSync = priorSnapshot === null
 
-    // Bounded on the way in, the way the payloads are (#213). It is dropped
-    // after this until #218 stores it, and a section that could not have landed
-    // must not read as accepted.
+    // Bounded on the way in, the way the payloads are (#213). Checked here
+    // rather than only inside `storeWorkflowSection` so a malformed section
+    // refuses the publish before any row is written - the same fail-fast the
+    // payload bound gets.
     if (args.workflow) checkWorkflowSection(args.workflow)
 
     // Same bar as any other name the wire carries: it is a string a client
@@ -2626,6 +2651,28 @@ export const publishForToken = internalMutation({
       )
       snapshotIds.push(inserted.snapshotId)
       receivedAt = inserted.receivedAt
+    }
+
+    // The workflow section, stored against the MACHINE (#218). One reading per
+    // machine, replaced rather than appended, and its podium recomputed here
+    // because the rotation limit compares against the last sync.
+    //
+    // After the payload inserts, deliberately: the kit component reads skills
+    // and MCP servers out of the inventory, so the reading must be ranked
+    // against the payloads that arrived with it, not the ones they replaced.
+    if (args.workflow) {
+      const machineSnapshots = newestBySource(
+        await snapshotsForStack(ctx, stack._id)
+      ).filter((row) => row.machine === token.name)
+      await storeWorkflowSection(ctx, {
+        stackId: stack._id,
+        machine: token.name,
+        section: args.workflow,
+        capturedAt: Math.max(...payloads.map((p) => p.capturedAt)),
+        receivedAt,
+        cliVersion,
+        kit: kitFromSnapshots(machineSnapshots),
+      })
     }
 
     // ONE event per approved sync, never one per snapshot: this mutation lands
