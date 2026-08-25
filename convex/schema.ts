@@ -364,6 +364,21 @@ export const WorkflowSection = v.object({
   harnesses: v.array(HarnessWorkflow),
   git: GitWorkflow,
   metrics: v.array(WorkflowMetric),
+  /**
+   * The publishing machine's offset from UTC, in minutes east (#218).
+   *
+   * Session hours travel in UTC, and the locked lead renders them in the
+   * OWNER's local time, labeled as such: "most start around 23:00 local"
+   * (spec, "The template lead"). Nothing else on the wire carries a clock, so
+   * without this the rhythm clause has nothing to convert with and drops.
+   *
+   * A single offset, not a zone name. It is what the machine's own clock said
+   * at extraction time, so a window that straddles a daylight-saving change
+   * renders every hour at the current offset. That is one hour of drift on two
+   * days a year against a figure the lead already prints as "around", and a
+   * zone name would be a second identifying string leaving the machine.
+   */
+  utcOffsetMinutes: v.optional(v.number()),
 })
 
 // The authored<->measured overlap is catalog slugs only (#33 decision 2), but
@@ -1110,6 +1125,99 @@ export default defineSchema({
   })
     .index('by_stack_capturedAt', ['stackId', 'capturedAt'])
     .index('by_stack_harness_capturedAt', ['stackId', 'harness', 'capturedAt']),
+
+  // The measured WORKFLOW layer (#218). One row per (stack, machine), REPLACED
+  // on every publish - the one place in the measured layer that is not
+  // append-only, and deliberately so.
+  //
+  // `measuredSnapshots` is append-only because the headline has a trail: a
+  // reading in March must still read the way it read in March. The workflow
+  // section has no trail in version 1 (spec, "The section"), and it carries the
+  // finest records the wire holds - one row per session, one entry per commit.
+  // Keeping every publish would grow the finest data fastest, for a surface
+  // nothing reads backwards. Replacing means a session that left the rolling
+  // window also leaves the database.
+  //
+  // ONE ROW PER MACHINE, and a reading is one machine's (ADR-0009). The Git
+  // half cannot be merged across machines - the wire carries no commit
+  // identity, so two clones of one repository would count their shared commits
+  // twice - and a pool metric's value has no denominator to merge on.
+  measuredWorkflows: defineTable({
+    stackId: v.id('stacks'),
+    // The publishing token's name, exactly like `measuredSnapshots.machine`.
+    // Absent when the token predates naming, which is one bucket of its own.
+    machine: v.optional(v.string()),
+    /** Client clock: the newest `capturedAt` among the payloads of this publish. */
+    capturedAt: v.number(),
+    /** Server clock. Freshness is judged on this one, for the #33 reason. */
+    receivedAt: v.number(),
+    cliVersion: v.optional(v.string()),
+    section: WorkflowSection,
+    /**
+     * Detail dropped to keep the row inside the document limit, and which half
+     * went. A publish must never fail over section size: the owner approved a
+     * measurement, and losing all of it to save the dot strip would be the
+     * wrong trade. Absent on every honest reading.
+     */
+    trimmed: v.optional(
+      v.object({ commitStrip: v.boolean(), sessionRows: v.boolean() })
+    ),
+    /**
+     * This reading's sixteen rows, as values only. Written so the NEXT publish
+     * has a prior window to compare against without re-deriving one from a
+     * section it has already replaced.
+     */
+    rowValues: v.array(
+      v.object({
+        rowId: v.string(),
+        value: v.number(),
+        coverage: v.number(),
+      })
+    ),
+    /**
+     * The same list from the reading before this one. Two rules need it and
+     * neither can recompute it: the fit tie-break is "movement against the
+     * prior window", and an incumbent leaves the podium at once when its
+     * coverage drops.
+     */
+    previousRowValues: v.array(
+      v.object({
+        rowId: v.string(),
+        value: v.number(),
+        coverage: v.number(),
+      })
+    ),
+    /**
+     * The podium, as the rotation limit left it at the last sync. Server state
+     * by definition: "at most one slot swaps per sync day" is a fact about the
+     * swap history, not about this reading (spec, "Fit and rotation").
+     */
+    highlightRowIds: v.array(v.string()),
+    /** UTC day of the last challenger swap. Absent until one happens. */
+    lastSwapDayUtc: v.optional(v.string()),
+  })
+    .index('by_stack', ['stackId'])
+    .index('by_stack_machine', ['stackId', 'machine']),
+
+  // The owner's pins and hides on workflow rows (#218). "The owner can pin or
+  // hide any row, and that override wins over both thresholds" (spec).
+  //
+  // KEYED ON THE STACK, NOT THE MACHINE. The choice is about the row - a number
+  // the owner wants on the podium, or one they would rather not publish - and
+  // that judgment does not change when the machine dropdown does.
+  //
+  // A TABLE AND NOT A FIELD ON `stacks`, for the #42 reason: the set is
+  // unbounded in principle (one row per rule in either pool, and both pools
+  // grow), and a hide must not ride along on every public stack read.
+  workflowRowOverrides: defineTable({
+    stackId: v.id('stacks'),
+    /** `metric:late-night-commits`, `component:git-ledger`. */
+    rowId: v.string(),
+    state: v.union(v.literal('pinned'), v.literal('hidden')),
+    setAt: v.number(),
+  })
+    .index('by_stack', ['stackId'])
+    .index('by_stack_row', ['stackId', 'rowId']),
 
   // Private registry for the public machine position (#250). The machine name
   // remains the source key on snapshots. This table only preserves the first

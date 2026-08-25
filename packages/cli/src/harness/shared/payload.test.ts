@@ -424,6 +424,7 @@ describe("the workflow section on the wire (#213)", () => {
 
 	const extraction = (): WorkflowExtraction => ({
 		aggregateVersion: "workflow-aggregates/v1",
+		utcOffsetMinutes: 120,
 		harnesses: [
 			{
 				aggregateVersion: "workflow-aggregates/v1",

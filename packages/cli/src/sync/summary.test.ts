@@ -102,6 +102,7 @@ function payload(over: Partial<MeasuredPayload> = {}): MeasuredPayload {
 function workflow(over: Partial<PayloadWorkflow> = {}): PayloadWorkflow {
 	return {
 		aggregateVersion: "workflow-aggregates/v1",
+		utcOffsetMinutes: 120,
 		harnesses: [
 			{
 				aggregateVersion: "workflow-aggregates/v1",

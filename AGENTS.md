@@ -106,6 +106,28 @@ components, never the library.
 * Every chart server-renders complete SVG. `ssr.test.tsx` asserts real marks, so
   a library regression fails the build instead of shipping blank charts.
 
+## Measured workflow
+
+The Workflow section on the stack page. Spec:
+[docs/specs/workflow-surface.md](docs/specs/workflow-surface.md).
+
+* **The rules are one package**: `packages/workflow-rules` (`@aistack/workflow-rules`),
+  imported by the CLI, the Convex backend, and the web app. It holds `phase-rules/v1`,
+  `metric-rules/v1`, `component-rules/v1`, `lead-templates/v1`, and the fit and rotation
+  arithmetic. Every function in it is pure, so it is where a rule change gets tested.
+* **Fit splits between the machine and the server.** The CLI measures and ships value,
+  band, coverage and rule id per pool metric. The server computes fit (coverage times
+  surprise), applies the rotation limit, and applies the owner's pins and hides.
+* **A reading is one machine's** (ADR-0009). `measuredWorkflows` holds one row per
+  (stack, machine), REPLACED on every sync rather than appended, and nothing merges two
+  machines. The Git half cannot merge (no commit identity on the wire) and a pool metric
+  has no denominator to merge on.
+* **No LLM anywhere** (ADR-0002). Every sentence the section prints comes from a fixed
+  template over measured numbers.
+* The `publishWorkflow` bit is the consent gate, and it reads at BOTH ends: the CLI skips
+  the extraction when it is off, and `getWorkflowByStackSlug` returns null for a reading
+  already stored. The presence of a stored section is not consent.
+
 ## News
 
 Everything about the news pipeline starts here.
