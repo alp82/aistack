@@ -296,8 +296,9 @@ describe("beat two - the dialog (binding copy, #48)", () => {
 
 describe("beat one - the summary", () => {
 	test("counts active days from the dates in the payload", () => {
+		// The totals ride on the harness header line since #217.
 		expect(buildGateSummary(ctx({}))).toContain(
-			"activity  382 sessions · 3 active days · 4.27B tokens",
+			"382 sessions · 3 active days · 4.27B tokens",
 		);
 	});
 
@@ -458,7 +459,7 @@ describe("the workflow section at the gate (#213)", () => {
 
 	test("names the publishing CLI, because it is in the bytes", () => {
 		const out = buildGateSummary(ctx({ cliVersion: "0.8.0" }));
-		expect(out).toContain("client    aistack 0.8.0");
+		expect(out).toContain("· aistack 0.8.0");
 	});
 
 	test("keeps beat two short - the workflow section adds no line", () => {
@@ -620,6 +621,78 @@ describe("the preview stays readable", () => {
 		const firstName = (lines[head] as string).indexOf("Bash");
 		const continued = lines[head + 1] as string;
 		expect(continued.search(/\S/)).toBe(firstName);
+	});
+
+	test("one harness costs a handful of lines, not a screen", () => {
+		// The first real sync printed ninety. The inventory names are the floor
+		// here, and they stay: everything else is what got cut.
+		const block = buildGateSummary({ ...withTools(), width: 100 })
+			.split("\n\n")
+			.find((b) => b.startsWith("- Claude Code"));
+		expect(block?.split("\n").length).toBeLessThanOrEqual(8);
+	});
+
+	test("a harness that measured nothing is one line", () => {
+		const summary = buildGateSummary(
+			ctx({
+				payload: {
+					activity: {
+						sessions: 1,
+						activeDayDates: ["2026-07-01"],
+						projectKeys: [],
+						totalTokens: 0,
+						cacheHitShare: 0,
+						subagentShare: 0,
+					},
+				},
+			}),
+		);
+		const block = summary
+			.split("\n\n")
+			.find((b) => b.startsWith("- Claude Code"));
+		expect(block?.split("\n")).toHaveLength(1);
+		// Nothing to price, so no cost line either.
+		expect(block).not.toContain("cost");
+	});
+
+	test("rolls up a model under one percent, keeping its dollars", () => {
+		// A four-model table where two carry 99.9% of the tokens hides its own
+		// headline. The rolled row keeps the dollars because every model in it
+		// published one.
+		const summary = buildGateSummary(
+			ctx({
+				payload: {
+					models: [
+						{
+							id: "claude-opus-5",
+							tokenShare: 0.99,
+							tokens: { input: 1, output: 2, cacheWrite: 3, cacheRead: 4 },
+							apiEquivalentUSD: 100,
+						},
+						{
+							id: "claude-haiku-4-5",
+							tokenShare: 0.008,
+							tokens: { input: 1, output: 2, cacheWrite: 3, cacheRead: 4 },
+							apiEquivalentUSD: 1,
+						},
+						{
+							id: "claude-sonnet-5",
+							tokenShare: 0.002,
+							tokens: { input: 1, output: 2, cacheWrite: 3, cacheRead: 4 },
+							apiEquivalentUSD: 1,
+						},
+					],
+				},
+			}),
+		);
+		expect(summary).toContain("+2 more");
+		expect(summary).toContain("claude-opus-5");
+		expect(summary).not.toContain("claude-haiku-4-5");
+	});
+
+	test("the window is the sync's, printed once", () => {
+		const summary = buildGateSummary(ctx({}));
+		expect(summary.split("window").length - 1).toBe(1);
 	});
 
 	test("wraps to a wider terminal when it has one", () => {

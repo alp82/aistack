@@ -259,6 +259,6 @@ describe("stageSync", () => {
 	test("stamps the publishing CLI's version on the body (#213)", async () => {
 		const staged = await stageSync(deps({ gitRunnerImpl: () => null }));
 		expect(staged.body.cliVersion).toBe(CLI_VERSION);
-		expect(staged.summary).toContain(`client    aistack ${CLI_VERSION}`);
+		expect(staged.summary).toContain(`· aistack ${CLI_VERSION}`);
 	});
 });
