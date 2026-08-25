@@ -198,10 +198,18 @@ _Avoid_: orient (now scout), gate as a phase name (now handoff)
 
 **Playbook**:
 The public phase surface: two measured shipping tracks with median figures, plus
-receipt cards.
+receipt cards. `playbook-rules/v1` computes it from one reading's session rows.
+
+**Shipping track**:
+One half of the playbook's session set. The split is the median measured session, so the
+two tracks are the shorter sessions and the longer ones. Nothing recorded what a session
+was for, so a track never names an intent.
+_Avoid_: quick fixes, feature work (both name an intent no rule computed)
 
 **Receipt card**:
-One card that pairs a habit with its measured payoff.
+One card that pairs a habit with its measured payoff. Its head names both sides and claims
+no direction: which side is larger is the reading's answer, and the card says the two were
+measured together with no cause claimed.
 
 **Owner mirror**:
 A private local view that names the owner's biggest measured time sink and its lever.

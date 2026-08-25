@@ -113,8 +113,9 @@ The Workflow section on the stack page. Spec:
 
 * **The rules are one package**: `packages/workflow-rules` (`@aistack/workflow-rules`),
   imported by the CLI, the Convex backend, and the web app. It holds `phase-rules/v1`,
-  `metric-rules/v1`, `component-rules/v1`, `lead-templates/v1`, and the fit and rotation
-  arithmetic. Every function in it is pure, so it is where a rule change gets tested.
+  `metric-rules/v1`, `component-rules/v1`, `lead-templates/v1`, `playbook-rules/v1`, and
+  the fit and rotation arithmetic. Every function in it is pure, so it is where a rule
+  change gets tested.
 * **Fit splits between the machine and the server.** The CLI measures and ships value,
   band, coverage and rule id per pool metric. The server computes fit (coverage times
   surprise), applies the rotation limit, and applies the owner's pins and hides.
@@ -127,6 +128,13 @@ The Workflow section on the stack page. Spec:
 * The `publishWorkflow` bit is the consent gate, and it reads at BOTH ends: the CLI skips
   the extraction when it is off, and `getWorkflowByStackSlug` returns null for a reading
   already stored. The presence of a stored section is not consent.
+* **The section is `src/features/workflow`.** It renders what the server hands it and ranks
+  nothing: `placement`, `pinned` and `hidden` arrive computed, and a second ranking on the
+  page could disagree with the first. The two owner controls are pin and hide per row,
+  through `setWorkflowRowOverride`.
+* **The playbook's tracks split on the median measured session, never on intent.** Nothing
+  records what a session was for, so `playbook-rules/v1` names its two tracks the shorter
+  and the longer sessions. A receipt card's head names both sides and claims no direction.
 
 ## News
 
