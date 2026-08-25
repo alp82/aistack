@@ -11,11 +11,16 @@
  * The walker below is the general form of that bug, not the instance: it fails
  * on any key the CLI sends that the validator does not declare, at any depth,
  * and names the path the way Convex does.
+ *
+ * IT LIVES IN `src`, NOT IN `convex`. A test inside `convex/` pulls whatever it
+ * imports into the Convex tsconfig's program, and the CLI's sources need a
+ * newer lib than that project targets. `convex dev` typechecks before it
+ * pushes, so the misplaced file silently stopped every backend push.
  */
 import { describe, expect, it } from "vitest";
-import { toPayloadWorkflow } from "../packages/cli/src/harness/shared/payload.js";
-import type { WorkflowExtraction } from "../packages/cli/src/workflow/extract.js";
-import { WorkflowSection } from "./schema";
+import { WorkflowSection } from "../../convex/schema";
+import { toPayloadWorkflow } from "../../packages/cli/src/harness/shared/payload.js";
+import type { WorkflowExtraction } from "../../packages/cli/src/workflow/extract.js";
 
 // The runtime shape of a Convex validator, as much of it as the walk needs.
 type Node = {

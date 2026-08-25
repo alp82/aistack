@@ -470,6 +470,23 @@ const ResolvedModel = v.object({
     output: v.number(),
     cacheWrite: v.number(),
     cacheRead: v.number(),
+    /**
+     * The cache-write TTL breakdown (#213). Stored optional, so it is optional
+     * here too: a pre-#213 row carries the merged total alone.
+     *
+     * IT HAS TO BE DECLARED EVEN THOUGH NO SURFACE READS IT YET. The read path
+     * hands the stored token object straight out, and a Convex returns
+     * validator refuses an undeclared field. Leaving it out did not hide the
+     * field - it broke every page for any stack that had synced with a CLI new
+     * enough to send it (#217).
+     */
+    cacheWriteTtl: v.optional(
+      v.object({
+        fiveMinute: v.number(),
+        oneHour: v.number(),
+        unsplit: v.number(),
+      })
+    ),
   }),
   apiEquivalentUSD: v.optional(v.number()),
   /**
@@ -598,6 +615,19 @@ async function newestSnapshotsPerSource(
 }
 
 /** One SOURCE's current snapshot: a harness on a machine (#66, #243). */
+/**
+ * One published inventory name, as a surface reads it.
+ *
+ * `calls` is the absolute count behind the share (#213), optional because a
+ * pre-#213 row carries the share alone. The kit component in the Workflow
+ * section is what reads it.
+ */
+const PublicAtom = v.object({
+  name: v.string(),
+  callShare: v.number(),
+  calls: v.optional(v.number()),
+})
+
 const HarnessSnapshot = v.object({
   /**
    * The published machine name. Null means the name is withheld or the row
@@ -628,13 +658,11 @@ const HarnessSnapshot = v.object({
   }),
   models: v.array(ResolvedModel),
   inventory: v.object({
-    builtinTools: v.array(v.object({ name: v.string(), callShare: v.number() })),
-    mcpServers: v.array(v.object({ name: v.string(), callShare: v.number() })),
-    skills: v.array(v.object({ name: v.string(), callShare: v.number() })),
-    subagents: v.array(v.object({ name: v.string(), callShare: v.number() })),
-    slashCommands: v.array(
-      v.object({ name: v.string(), callShare: v.number() })
-    ),
+    builtinTools: v.array(PublicAtom),
+    mcpServers: v.array(PublicAtom),
+    skills: v.array(PublicAtom),
+    subagents: v.array(PublicAtom),
+    slashCommands: v.array(PublicAtom),
     withheld: v.object({
       builtinTools: v.number(),
       mcpServers: v.number(),
@@ -642,6 +670,21 @@ const HarnessSnapshot = v.object({
       subagents: v.number(),
       slashCommands: v.number(),
     }),
+    /**
+     * Every observed call per category, withheld names included (#213) - the
+     * denominator the per-atom `calls` need. Optional for the same reason they
+     * are, and declared here for the same reason `cacheWriteTtl` is: the read
+     * path passes the stored inventory straight out.
+     */
+    calls: v.optional(
+      v.object({
+        builtinTools: v.number(),
+        mcpServers: v.number(),
+        skills: v.number(),
+        subagents: v.number(),
+        slashCommands: v.number(),
+      })
+    ),
   }),
   coverage: v.object({
     filesScanned: v.number(),
