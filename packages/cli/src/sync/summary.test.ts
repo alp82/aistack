@@ -105,7 +105,8 @@ function workflow(over: Partial<PayloadWorkflow> = {}): PayloadWorkflow {
 		utcOffsetMinutes: 120,
 		harnesses: [
 			{
-				aggregateVersion: "workflow-aggregates/v1",
+				// No `aggregateVersion` here: the section carries it once, and the
+				// server's harness validator has no field for it (#217).
 				harness: "claude-code",
 				phase: {
 					ruleVersion: "phase-rules/v1",
@@ -475,5 +476,155 @@ describe("keptPrivateRows", () => {
 			{ label: "internal-proxy", names: 1 },
 			{ label: "stripe", names: 1 },
 		]);
+	});
+});
+
+/**
+ * The preview a person actually reads (#217).
+ *
+ * The first real end-to-end sync produced ninety lines, with headings over
+ * empty sections and inventory rows several hundred characters wide that the
+ * terminal broke mid-name. These hold the shape that replaced it. The rule the
+ * fix had to keep: EVERY PUBLISHED NAME STAYS ON SCREEN. This is the consent
+ * surface, so nothing that goes up may be summarized away.
+ */
+describe("the preview stays readable", () => {
+	const MANY_TOOLS = [
+		"Bash",
+		"Edit",
+		"Read",
+		"Write",
+		"WebFetch",
+		"TaskUpdate",
+		"Agent",
+		"Skill",
+		"ToolSearch",
+		"TaskCreate",
+		"SendUserFile",
+		"WebSearch",
+		"Monitor",
+		"TaskStop",
+		"Artifact",
+		"TaskOutput",
+		"EnterWorktree",
+	];
+
+	function withTools() {
+		return ctx({
+			payload: {
+				inventory: {
+					builtinTools: MANY_TOOLS.map((name) => ({
+						name,
+						callShare: 0.01,
+						calls: 10,
+					})),
+					mcpServers: [],
+					skills: [{ name: "grilling", callShare: 0.1, calls: 12 }],
+					subagents: [],
+					slashCommands: [],
+					withheld: {
+						builtinTools: 0,
+						mcpServers: 0,
+						skills: 0,
+						subagents: 0,
+						slashCommands: 0,
+					},
+					calls: {
+						builtinTools: 1000,
+						mcpServers: 0,
+						skills: 120,
+						subagents: 0,
+						slashCommands: 0,
+					},
+				},
+			},
+		});
+	}
+
+	test("no line runs past the terminal", () => {
+		const summary = buildGateSummary({ ...withTools(), width: 80 });
+		for (const line of summary.split("\n")) {
+			expect(line.length).toBeLessThanOrEqual(80);
+		}
+	});
+
+	test("every published name is still printed, wrapped not truncated", () => {
+		const summary = buildGateSummary({ ...withTools(), width: 80 });
+		for (const name of MANY_TOOLS) {
+			expect(summary).toContain(name);
+		}
+		expect(summary).not.toMatch(/tools.*more\b/);
+	});
+
+	test("counts the inventory before listing it", () => {
+		const summary = buildGateSummary({ ...withTools(), width: 80 });
+		expect(summary).toContain("publishes 17 tools · 1 skills");
+	});
+
+	test("a harness that publishes no names says so, once", () => {
+		const summary = buildGateSummary(
+			ctx({
+				payload: {
+					inventory: {
+						builtinTools: [],
+						mcpServers: [],
+						skills: [],
+						subagents: [],
+						slashCommands: [],
+						withheld: {
+							builtinTools: 0,
+							mcpServers: 0,
+							skills: 0,
+							subagents: 0,
+							slashCommands: 0,
+						},
+						calls: {
+							builtinTools: 0,
+							mcpServers: 0,
+							skills: 0,
+							subagents: 0,
+							slashCommands: 0,
+						},
+					},
+				},
+			}),
+		);
+		expect(summary).toContain("publishes no names from this harness");
+		// The empty headings that used to stand over nothing.
+		expect(summary).not.toContain("what publishes");
+	});
+
+	test("a harness with no models prints no models rows at all", () => {
+		const summary = buildGateSummary(ctx({ payload: { models: [] } }));
+		expect(summary.split("\n").filter((l) => l.startsWith("models"))).toEqual(
+			[],
+		);
+	});
+
+	test("the model table hangs off the label column", () => {
+		const summary = buildGateSummary(ctx({}));
+		const lines = summary.split("\n");
+		const first = lines.findIndex((l) => l.startsWith("models"));
+		expect(first).toBeGreaterThan(-1);
+		// The second model sits under the first, not under a heading.
+		expect(lines[first + 1]).toMatch(/^ {10}claude-opus-5/);
+	});
+
+	test("a wrapped row lines up under its own first name", () => {
+		// `commands` is the longest label and used to run straight into the first
+		// name, and the continuation sat two columns off from the row above it.
+		const summary = buildGateSummary({ ...withTools(), width: 80 });
+		const lines = summary.split("\n");
+		const head = lines.findIndex((l) => l.startsWith("  tools "));
+		expect(head).toBeGreaterThan(-1);
+		const firstName = (lines[head] as string).indexOf("Bash");
+		const continued = lines[head + 1] as string;
+		expect(continued.search(/\S/)).toBe(firstName);
+	});
+
+	test("wraps to a wider terminal when it has one", () => {
+		const narrow = buildGateSummary({ ...withTools(), width: 60 });
+		const wide = buildGateSummary({ ...withTools(), width: 110 });
+		expect(wide.split("\n").length).toBeLessThan(narrow.split("\n").length);
 	});
 });
