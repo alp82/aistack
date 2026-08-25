@@ -236,6 +236,22 @@ Local Git history is a source and makes commit and line facts exact
 for working directories that windowed sessions touched. Repository names stay local
 under the name filter. Only aggregate counts and line totals ship.
 
+Two fixed rules decide which of those lines count, and both moved to v2 in
+[#278](https://github.com/alp82/aistack/issues/278).
+
+`test-files/v2` and `file-types/v2` first drop every changed line under a path a
+machine owns: a dependency tree, a build output directory, a directory of captured
+tool output, or a dependency lockfile. Those lines leave the reading in both halves,
+because withholding keeps a line in the denominator and a line nobody wrote belongs in
+neither. One accidental commit of a package store is otherwise enough to bury a whole
+month of authored work: on the first real reading it carried 6.85 million of 7.46
+million changed lines.
+
+`file-types/v2` then names only an approved extension. A path with no extension is not
+a coding language, so `Dockerfile`, `LICENSE` and `.gitignore` are withheld by type
+while their lines stay in the denominator. The v1 rule ranked them together as
+`(none)`, which read as the leading language of a TypeScript repository.
+
 ## The wire
 
 One new closed workflow section on the existing sync body. Every field is additive and

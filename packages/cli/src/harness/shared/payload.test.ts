@@ -450,8 +450,8 @@ describe("the workflow section on the wire (#213)", () => {
 			},
 		],
 		git: {
-			testFileRuleVersion: "test-files/v1",
-			fileTypeRuleVersion: "file-types/v1",
+			testFileRuleVersion: "test-files/v2",
+			fileTypeRuleVersion: "file-types/v2",
 			totalCommits: 12,
 			lateNightCommits: 3,
 			additions: 400,

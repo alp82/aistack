@@ -135,8 +135,8 @@ function workflow(over: Partial<PayloadWorkflow> = {}): PayloadWorkflow {
 			},
 		],
 		git: {
-			testFileRuleVersion: "test-files/v1",
-			fileTypeRuleVersion: "file-types/v1",
+			testFileRuleVersion: "test-files/v2",
+			fileTypeRuleVersion: "file-types/v2",
 			totalCommits: 214,
 			lateNightCommits: 30,
 			additions: 9_000,

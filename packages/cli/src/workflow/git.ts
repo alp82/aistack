@@ -1,8 +1,14 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 
-export const TEST_FILE_RULE_VERSION = "test-files/v1";
-export const FILE_TYPE_RULE_VERSION = "file-types/v1";
+/**
+ * Both rules changed together in #278: a path a machine owns (a dependency
+ * tree, build output, a lockfile) no longer reaches either of them, so both the
+ * test-file count and the file-type mix can differ from what v1 published for
+ * the same repository.
+ */
+export const TEST_FILE_RULE_VERSION = "test-files/v2";
+export const FILE_TYPE_RULE_VERSION = "file-types/v2";
 
 export type GitWorkflowRunner = (
 	cwd: string,
@@ -69,13 +75,20 @@ const emptyResult = (): GitWorkflowResult => ({
 const AUTHOR_LOCAL_RE =
 	/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 
+/**
+ * The names this rule is willing to print. A path with no extension is absent
+ * on purpose: `Dockerfile`, `LICENSE` and `.gitignore` are not coding
+ * languages, and ranking them as one made the leading language of a TypeScript
+ * repository read as `(none)`.
+ */
 const APPROVED_EXTENSIONS: ReadonlySet<string> = new Set([
-	"(none)",
 	".c",
 	".cc",
+	".cjs",
 	".cpp",
 	".cs",
 	".css",
+	".cts",
 	".dart",
 	".ex",
 	".exs",
@@ -91,6 +104,8 @@ const APPROVED_EXTENSIONS: ReadonlySet<string> = new Set([
 	".kts",
 	".lua",
 	".md",
+	".mjs",
+	".mts",
 	".php",
 	".py",
 	".r",
@@ -111,6 +126,74 @@ const APPROVED_EXTENSIONS: ReadonlySet<string> = new Set([
 	".yml",
 	".zig",
 ]);
+
+/**
+ * Directory names a machine owns rather than a person. A dependency tree, a
+ * build output directory, or a directory of captured tool output can carry
+ * millions of changed lines that nobody wrote, and one accidental commit of one
+ * of them is enough to bury every authored line in the reading.
+ */
+const UNAUTHORED_SEGMENTS: ReadonlySet<string> = new Set([
+	".bundle",
+	".cache",
+	".cargo",
+	".gradle",
+	".next",
+	".nuxt",
+	".pnpm",
+	".pnpm-store",
+	".svelte-kit",
+	".turbo",
+	".venv",
+	"_generated",
+	"bower_components",
+	"build",
+	"coverage",
+	"dist",
+	"generated",
+	"node_modules",
+	"out",
+	"pods",
+	"site-packages",
+	"target",
+	"third_party",
+	"vendor",
+	"venv",
+	"__pycache__",
+]);
+
+/** Dependency lockfiles. A resolver writes these, and their extension lies. */
+const UNAUTHORED_BASENAMES: ReadonlySet<string> = new Set([
+	"bun.lock",
+	"bun.lockb",
+	"cargo.lock",
+	"composer.lock",
+	"flake.lock",
+	"gemfile.lock",
+	"go.sum",
+	"mix.lock",
+	"npm-shrinkwrap.json",
+	"package-lock.json",
+	"packages.lock.json",
+	"pipfile.lock",
+	"pnpm-lock.yaml",
+	"podfile.lock",
+	"poetry.lock",
+	"pubspec.lock",
+	"uv.lock",
+	"yarn.lock",
+]);
+
+/**
+ * True when the path is machine-written rather than authored. Those lines leave
+ * the reading entirely: they are not withheld, because withholding keeps a line
+ * in the denominator, and a line nobody wrote does not belong in either half.
+ */
+function isUnauthoredPath(file: string): boolean {
+	const parts = file.replaceAll("\\", "/").toLowerCase().split("/");
+	if (parts.some((part) => UNAUTHORED_SEGMENTS.has(part))) return true;
+	return UNAUTHORED_BASENAMES.has(parts.at(-1) ?? "");
+}
 
 const COMMIT_MARKER = "aistack-commit";
 
@@ -229,13 +312,15 @@ export function extractGitWorkflow(
 				file = fields[fieldIndex] ?? fields[fieldIndex - 1] ?? "";
 			}
 			if (!current?.included) continue;
+			if (isUnauthoredPath(file)) continue;
 			const fileChangedLines = stat.additions + stat.removals;
 			result.additions += stat.additions;
 			result.removals += stat.removals;
 			current.changedLines += fileChangedLines;
 			if (isTestFile(file)) current.touchesTest = true;
 			if (fileChangedLines <= 0) continue;
-			const extension = path.extname(file).toLowerCase() || "(none)";
+			// An empty extension is not in the approved set, so it withholds.
+			const extension = path.extname(file).toLowerCase();
 			if (APPROVED_EXTENSIONS.has(extension)) {
 				extensionLines.set(
 					extension,
