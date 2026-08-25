@@ -136,6 +136,15 @@ The public phase surface is the playbook: two measured shipping tracks with medi
 figures, plus receipt cards that pair a habit with its measured payoff. The unknown
 bucket never hides: it prints as small print under the lead, with the rule id.
 
+**The tracks split on the median measured session** (`playbook-rules/v1`, built in
+[#215](https://github.com/alp82/aistack/issues/215)). Nothing on the wire records what a
+session was for, so "quick fix" and "feature work" would be labels no rule computed, and
+the two tracks are named the shorter sessions and the longer ones. The playbook withholds
+itself below 20 sessions, the same floor the lead carries, and when the split leaves one
+track under five sessions. **A receipt card's head names both sides and claims no
+direction**: which side is larger is the reading's answer, and a card ships only when both
+sides clear the same five-session floor.
+
 **The proof ran** ([#196](https://github.com/alp82/aistack/issues/196),
 `prototypes/phase-extraction/`). Across 464 real sessions on three harnesses,
 `phase-rules/v1` leaves **7% of measured time unknown** with no LLM anywhere. The

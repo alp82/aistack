@@ -40,6 +40,17 @@ import { WorkflowSection } from './schema'
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
+/** One inventory atom, with the optional absolute count normalized to null. */
+const publicAtom = (atom: {
+	name: string
+	callShare: number
+	calls?: number
+}) => ({
+	name: atom.name,
+	callShare: atom.callShare,
+	calls: atom.calls ?? null,
+})
+
 /** Every row id either rule pool can produce. A pin or a hide must name one. */
 const KNOWN_ROW_IDS: ReadonlySet<string> = new Set([
 	...METRIC_RULES.map((rule) => metricRowId(rule.id)),
@@ -105,6 +116,43 @@ const WorkflowRow = v.object({
 	hidden: v.boolean(),
 })
 
+/**
+ * One published inventory name and its share of the category's calls.
+ *
+ * The names are filtered on the PUBLISHING machine (#33 decisions 2-4), so
+ * nothing is gated here. `calls` is null on a payload from before #213, which
+ * shipped the share alone.
+ */
+const KitAtom = v.object({
+	name: v.string(),
+	callShare: v.number(),
+	calls: v.union(v.number(), v.null()),
+})
+
+/**
+ * The inventory the kit and delegation components draw, per harness.
+ *
+ * IT IS NOT IN THE WORKFLOW SECTION. Skills, MCP servers and subagents are
+ * inventory, and inventory travels in the measured payload, so the two rows
+ * that render them need the payload beside the reading. `component-rules/v1`
+ * already reads it for the kit row's value; this carries the same rows on to
+ * the page so the row's body shows what the value was computed from.
+ *
+ * `withheld` is the count of distinct names the machine filtered out, so the
+ * gap under the published shares is explained rather than silently absent.
+ */
+const KitHarness = v.object({
+	harness: v.string(),
+	skills: v.array(KitAtom),
+	mcpServers: v.array(KitAtom),
+	subagents: v.array(KitAtom),
+	withheld: v.object({
+		skills: v.number(),
+		mcpServers: v.number(),
+		subagents: v.number(),
+	}),
+})
+
 const WorkflowView = v.object({
 	/** The published machine name, null when withheld or untagged. */
 	machine: v.union(v.string(), v.null()),
@@ -144,6 +192,8 @@ const WorkflowView = v.object({
 	isOwner: v.boolean(),
 	/** The stored aggregates the seven components render. */
 	section: WorkflowSection,
+	/** The inventory two of those seven need, which lives in the payload. */
+	kit: v.array(KitHarness),
 })
 
 /**
@@ -253,6 +303,17 @@ export const getWorkflowByStackSlug = query({
 			lastSwapDayUtc: selected.lastSwapDayUtc ?? null,
 			isOwner,
 			section: selected.section,
+			kit: snapshots.map((snapshot) => ({
+				harness: snapshot.harness,
+				skills: snapshot.payload.inventory.skills.map(publicAtom),
+				mcpServers: snapshot.payload.inventory.mcpServers.map(publicAtom),
+				subagents: snapshot.payload.inventory.subagents.map(publicAtom),
+				withheld: {
+					skills: snapshot.payload.inventory.withheld.skills,
+					mcpServers: snapshot.payload.inventory.withheld.mcpServers,
+					subagents: snapshot.payload.inventory.withheld.subagents,
+				},
+			})),
 		}
 	},
 })

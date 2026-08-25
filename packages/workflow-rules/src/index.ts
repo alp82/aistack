@@ -6,6 +6,7 @@ export * from "./fit.js";
 export * from "./fitRanking.js";
 export * from "./metricRules.js";
 export * from "./phaseRules.js";
+export * from "./playbook.js";
 export * from "./reading.js";
 export * from "./templateLead.js";
 export * from "./types.js";
