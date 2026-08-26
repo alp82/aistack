@@ -467,6 +467,22 @@ function parseTrigger(raw: unknown): 'manual' | 'auto' | undefined {
  * version string would trade the measurement for the metadata. Bounded to the
  * same 32 characters the login route uses, so one field has one bound.
  */
+/**
+ * The workflow section, only when it is the daily wire (#285).
+ *
+ * A CLI from before the daily rows sends one 30-day section under the same
+ * key. The closed validator would refuse it, and with it the whole publish,
+ * payloads included. "Old clients keep working and publish no workflow
+ * section" (spec, "The wire"), so a section without `days` is dropped here
+ * rather than sent on. A daily section still goes to the validator untouched.
+ */
+export function dailyWorkflowOrUndefined(workflow: unknown): unknown {
+  if (typeof workflow !== 'object' || workflow === null) return undefined
+  return Array.isArray((workflow as { days?: unknown }).days)
+    ? workflow
+    : undefined
+}
+
 function parseCliVersion(raw: unknown): string | undefined {
   if (typeof raw !== 'string') return undefined
   const trimmed = raw.trim()
@@ -530,13 +546,13 @@ export const syncPublish = httpAction(async (ctx, request) => {
       // Additive and optional (#102): a 0.6.x CLI sends nothing and its syncs
       // read as manual, which is what keeps the switch honest until #103 ships.
       trigger: parseTrigger(body.trigger),
-      // Additive and optional (#213). Unlike the two fields above this one is
-      // NOT parsed here: it goes to the closed `WorkflowSection` validator in
-      // the mutation, exactly like the payloads, and a malformed section is the
-      // client's fault and surfaces as a 400. The drop-rather-than-reject rule
-      // above is for telemetry nothing user-facing reads; the workflow section
-      // is measurement, and a silently dropped measurement is a wrong page.
-      workflow: body.workflow as any,
+      // Additive and optional (#213). A daily section (#285) is NOT parsed
+      // here: it goes to the closed `WorkflowWire` validator in the mutation,
+      // exactly like the payloads, and a malformed section is the client's
+      // fault and surfaces as a 400. The one thing dropped is a section from
+      // before the daily rows, which an installed CLI still sends and which
+      // must not take the measurement down with it.
+      workflow: dailyWorkflowOrUndefined(body.workflow) as any,
       // Additive and optional (#213), bounded the same way the login route
       // bounds it.
       cliVersion: parseCliVersion(body.cliVersion),
