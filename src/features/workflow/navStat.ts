@@ -2,12 +2,14 @@
  * The Workflow section's one line in the page nav (#217).
  *
  * THE NAV STAT IS THE SECTION'S OWN TOP ROW, never a fact the nav picked. The
- * server ranked the rows and marked the podium (#218), so the stat is the first
- * highlighted row read back in its own unit. A reading whose podium is empty
- * gets no stat rather than a fallback figure the section does not lead with.
+ * server placed the rows and marked the podium, so the stat is the first
+ * podium row's own head: the same figure and the same name the box prints
+ * (#286). A reading whose podium is empty gets no stat rather than a fallback
+ * figure the section does not lead with.
  */
 
-import { fmtRowValue, rowName, type WorkflowView } from "./copy";
+import type { WorkflowView } from "./copy";
+import { rowHead } from "./heads";
 
 export function workflowNavStat(
 	view: WorkflowView | null | undefined,
@@ -17,5 +19,5 @@ export function workflowNavStat(
 		(row) => row.placement === "highlight" && !row.hidden,
 	);
 	if (!top) return null;
-	return `${fmtRowValue(top)} · ${rowName(top.ruleId)}`;
+	return `${rowHead(top, view).figure} · ${top.name}`;
 }

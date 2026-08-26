@@ -12,9 +12,12 @@ import {
 	PHASE_PAINT,
 	type WorkflowView,
 } from "./copy";
+import { namedPhaseMix } from "./derive";
+import { Legend } from "./parts";
 
 /**
- * The deterministic template lead: `lead-templates/v1`, wording locked in #220.
+ * The deterministic template lead: `lead-templates/v1`, wording locked in #220,
+ * with the phase mix under it as a stacked bar (#284).
  *
  * THIS COMPONENT OWNS THE MARKUP AND NOTHING ELSE. The words and the numbers
  * come from `renderLeadSentences`, which returns typed parts precisely so that
@@ -25,19 +28,21 @@ import {
  *
  * TWO `?` MARKERS, NO MORE (#220). One on the first phase name, opening one
  * card that defines all four phases. One on "measured time", which a reader
- * would otherwise take for wall-clock time. Six dashed underlines in a short
- * paragraph read as a minefield.
+ * would otherwise take for wall-clock time.
+ *
+ * NO RULE ID (#277). The unknown share still prints as a number; the code part
+ * that named its rule is dropped here, because nothing about rules prints.
  */
-export function Lead({ lead }: { lead: WorkflowView["lead"] }) {
+export function Lead({ view }: { view: WorkflowView }) {
 	const [open, setOpen] = useState<"phases" | "measured-time" | null>(null);
-	const sentences = renderLeadSentences(lead);
+	const sentences = renderLeadSentences(view.lead);
 	if (sentences.length === 0) return null;
 
 	const toggle = (card: "phases" | "measured-time") =>
 		setOpen((held) => (held === card ? null : card));
 
 	return (
-		<div className="mb-10 max-w-3xl">
+		<div className="mb-7 max-w-3xl">
 			{sentences.map((sentence) => (
 				<LeadLine
 					key={sentence.id}
@@ -50,6 +55,52 @@ export function Lead({ lead }: { lead: WorkflowView["lead"] }) {
 			{open === "measured-time" && (
 				<NoteCard text={MEASURED_TIME_NOTE} onClose={() => setOpen(null)} />
 			)}
+			<PhaseBar view={view} />
+		</div>
+	);
+}
+
+/** The four named phases rescaled to 100, each segment labeled where it has room. */
+function PhaseBar({ view }: { view: WorkflowView }) {
+	const mix = namedPhaseMix(view);
+	if (mix.length === 0) return null;
+	return (
+		<div className="mt-4">
+			<div
+				role="img"
+				aria-label="measured time by phase"
+				className="flex h-7 w-full gap-0.5"
+			>
+				{mix.map((entry) => (
+					<span
+						key={entry.phase}
+						className="relative block"
+						style={{
+							flexGrow: Math.max(entry.share, 0.004),
+							flexBasis: 0,
+							background: PHASE_PAINT[entry.phase],
+						}}
+					>
+						{entry.share > 0.09 && (
+							<span
+								className={cn(
+									"absolute top-1/2 left-2 -translate-y-1/2 whitespace-nowrap font-mono text-[11px] font-bold",
+									entry.phase === "scout" ? "text-fg-primary" : "text-bg-shell",
+								)}
+							>
+								{entry.phase} {Math.round(entry.share * 100)}%
+							</span>
+						)}
+					</span>
+				))}
+			</div>
+			<Legend
+				entries={mix.map((entry) => ({
+					key: entry.phase,
+					paint: PHASE_PAINT[entry.phase],
+					label: `${entry.phase} ${Math.round(entry.share * 100)}%`,
+				}))}
+			/>
 		</div>
 	);
 }
@@ -75,10 +126,11 @@ function LeadLine({
 	// this renderer out of the business of parsing the template's words.
 	let phaseMarkerUsed = sentence.id !== "phase-mix";
 	let timeMarkerUsed = sentence.id !== "phase-mix";
+	const parts = withoutRuleId(sentence.parts);
 
 	return (
 		<p className={LINE_CLASS[sentence.id] ?? "text-fg-primary"}>
-			{sentence.parts.map((part, index) => {
+			{parts.map((part, index) => {
 				const key = `${sentence.id}-${index}`;
 				if (part.kind === "value" && !phaseMarkerUsed) {
 					phaseMarkerUsed = true;
@@ -112,17 +164,26 @@ function LeadLine({
 					}
 				}
 				if (part.kind === "value") return <Value key={key} part={part} />;
-				if (part.kind === "code") {
-					return (
-						<code key={key} className="font-mono text-fg-secondary">
-							{part.text}
-						</code>
-					);
-				}
 				return <span key={key}>{part.text}</span>;
 			})}
 		</p>
 	);
+}
+
+/** The sentence without its code parts, and without the separator that led into one. */
+function withoutRuleId(parts: readonly LeadPart[]): LeadPart[] {
+	const kept: LeadPart[] = [];
+	parts.forEach((part, index) => {
+		if (part.kind === "code") return;
+		const next = parts[index + 1];
+		if (part.kind === "text" && next?.kind === "code") {
+			const trimmed = part.text.replace(/\s*·\s*$/, "");
+			if (trimmed) kept.push({ kind: "text", text: trimmed });
+			return;
+		}
+		kept.push(part);
+	});
+	return kept;
 }
 
 function Value({ part }: { part: LeadPart }) {

@@ -1,21 +1,19 @@
 // @vitest-environment jsdom
 /**
- * Journey section 04 - Workflow (#215, map #200).
+ * Journey section 04 - Workflow (#215, #286, map #200).
  *
  * The decisions these tests guard, rather than layout:
  *
- *   1. THE LEAD IS THE LOCKED WORDING (#220) OR NOTHING. Its two floors live in
- *      the rule, and the section must honor an empty answer rather than
- *      assembling a sentence of its own.
- *   2. TWO `?` MARKERS, NO MORE. Six dashed underlines in a short paragraph
- *      read as a minefield.
- *   3. THE PODIUM IS THE SERVER'S PLACEMENT. The section ranks nothing: a
- *      second ranking here could disagree with the first.
- *   4. A HIDDEN ROW IS OFF THE PUBLIC PAGE. The owner sees it tagged; a visitor
- *      never receives it.
- *   5. EVERY FIGURE NAMES ITS RULE. A number whose band, coverage and rule id
- *      are not shown is a number the reader has to take on trust.
- *   6. NO LLM, AND RAW DATA STAYS LOCAL - the section says both.
+ *   1. THE LEAD IS THE LOCKED WORDING (#220) OR NOTHING, with the phase mix as
+ *      a bar under it and no rule id anywhere (#277).
+ *   2. TWO `?` MARKERS, NO MORE.
+ *   3. THE PODIUM IS THE SERVER'S PLACEMENT, in the fixed order (#284). The
+ *      section ranks nothing and prints no fit, band, coverage or rule.
+ *   4. A ROW HEAD READS AS A SENTENCE: name, accent figure, caption, picture.
+ *      A flat row never opens; one row is open at a time.
+ *   5. A HIDDEN ROW IS OFF THE PUBLIC PAGE. The owner sees it tagged, with the
+ *      pin and hide as an actions column on every head.
+ *   6. A WINDOW WITH NO DAY IS AN EMPTY STATE, never a row of zeroes.
  */
 import {
 	act,
@@ -23,6 +21,7 @@ import {
 	fireEvent,
 	render,
 	screen,
+	within,
 } from "@testing-library/react";
 import { getFunctionName } from "convex/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -47,7 +46,10 @@ afterEach(() => {
 
 const STACK_ID = "stack-1" as Id<"stacks">;
 
-function setup(answer: WorkflowView | null | undefined) {
+function setup(
+	answer: WorkflowView | null | undefined,
+	windowed?: (args: { window?: string }) => WorkflowView | null | undefined,
+) {
 	queryMock.mockImplementation((ref: unknown, args: unknown) => {
 		if (
 			getFunctionName(ref as never) !==
@@ -55,7 +57,10 @@ function setup(answer: WorkflowView | null | undefined) {
 		) {
 			return undefined;
 		}
-		return args === "skip" ? undefined : answer;
+		if (args === "skip") return undefined;
+		const held = args as { window?: string };
+		if (held.window && windowed) return windowed(held);
+		return answer;
 	});
 	return render(<WorkflowSection index={4} slug="alp" stackId={STACK_ID} />);
 }
@@ -67,7 +72,6 @@ describe("the section renders only a real reading", () => {
 	});
 
 	it("renders nothing when the consent gate withholds the reading", () => {
-		// `publishWorkflow` off answers null even for a reading already stored.
 		const { container } = setup(null);
 		expect(container).toBeEmptyDOMElement();
 	});
@@ -80,29 +84,39 @@ describe("the section renders only a real reading", () => {
 });
 
 describe("the template lead", () => {
-	it("prints the four locked lines over the measured numbers", () => {
+	it("prints the locked lines over the measured numbers, with the phase bar", () => {
 		setup(view());
 		expect(screen.getByText(/464/)).toBeTruthy();
 		expect(
 			screen.getByText(/Most measured time in these sessions goes to/),
 		).toBeTruthy();
 		expect(screen.getByText(/of sessions · most start around/)).toBeTruthy();
-		expect(screen.getByText(/of measured time unclassified/)).toBeTruthy();
-		expect(screen.getByText("phase-rules/v1")).toBeTruthy();
+		expect(
+			screen.getByRole("img", { name: "measured time by phase" }),
+		).toBeTruthy();
+	});
+
+	it("prints no rule id anywhere on the page (#277)", () => {
+		const { container } = setup(view());
+		expect(container.textContent).not.toMatch(/phase-rules\/v1/);
+		expect(container.textContent).not.toMatch(/metric-rules/);
+		expect(container.textContent).not.toMatch(/component-rules/);
+		expect(container.textContent).not.toMatch(/coverage/);
+		expect(container.textContent).not.toMatch(/fit/);
+		// The unknown share keeps its number and loses its rule.
+		expect(screen.getByText(/of measured time unclassified$/)).toBeTruthy();
 	});
 
 	it("carries exactly two markers, and each opens its own card", () => {
 		setup(view());
 		const markers = screen.getAllByRole("button", { name: /^What / });
 		expect(markers).toHaveLength(2);
-
 		fireEvent.click(
 			screen.getByRole("button", { name: "What the phases mean" }),
 		);
 		expect(
 			screen.getByText("reading and searching before the change"),
 		).toBeTruthy();
-
 		fireEvent.click(
 			screen.getByRole("button", { name: "What measured time means" }),
 		);
@@ -115,75 +129,120 @@ describe("the template lead", () => {
 		expect(
 			screen.queryByText(/Most measured time in these sessions goes to/),
 		).toBeNull();
-		expect(screen.getByText("late night commits")).toBeTruthy();
-	});
-
-	it("withholds itself when no harness passed the playbook gate", () => {
-		const gated = view();
-		setup({ ...gated, lead: { ...gated.lead, playbookHarnessCount: 0 } });
-		expect(
-			screen.queryByText(/Most measured time in these sessions goes to/),
-		).toBeNull();
+		expect(screen.getByText("Late-night commits")).toBeTruthy();
 	});
 });
 
-describe("the podium, the thin rows and the expander", () => {
-	it("puts the three highlight rows in the band, with their own figures", () => {
+describe("the podium and the thin rows, in the fixed order", () => {
+	it("puts the three highlight rows in the band, each head a sentence", () => {
 		setup(view());
+		const band = screen.getByText("Late-night commits").closest("div");
+		expect(band).toBeTruthy();
 		expect(screen.getByText("42%")).toBeTruthy();
+		expect(screen.getByText("of commits between 23:00 and 03:00")).toBeTruthy();
 		expect(screen.getByText("2.8")).toBeTruthy();
-		expect(screen.getAllByText("+ tap to extend")).toHaveLength(3);
+		expect(screen.getByText("on a typical active day")).toBeTruthy();
+		expect(screen.getByText("45 min")).toBeTruthy();
+		expect(screen.getByText("median session")).toBeTruthy();
 	});
 
-	it("lists every thin row in the fixed order, with no expander (#277)", () => {
+	it("gives every head a picture, podium and list alike", () => {
 		setup(view());
-		expect(screen.getByText("web searches per active day")).toBeTruthy();
+		expect(screen.getByRole("img", { name: "late-night share" })).toBeTruthy();
+		expect(
+			screen.getByRole("img", { name: "projects on a typical day" }),
+		).toBeTruthy();
+		expect(screen.getByRole("img", { name: "time by phase" })).toBeTruthy();
+		expect(
+			screen.getByRole("img", { name: "additions against removals" }),
+		).toBeTruthy();
+		expect(screen.getByRole("img", { name: "thinking share" })).toBeTruthy();
+		expect(
+			screen.getByRole("img", { name: "searches on a typical day" }),
+		).toBeTruthy();
+	});
+
+	it("prints the Lines changed head as additions and removals", () => {
+		setup(view());
+		expect(screen.getByText("+95k")).toBeTruthy();
+		expect(screen.getByText("added, 19k removed")).toBeTruthy();
+	});
+
+	it("keeps the rows in the order they arrived and offers no expander", () => {
+		setup(view());
+		const names = screen
+			.getAllByText(/^(Lines changed|Thinking tokens|Web searches)$/)
+			.map((node) => node.textContent);
+		expect(names).toEqual(["Lines changed", "Thinking tokens", "Web searches"]);
 		expect(
 			screen.queryByRole("button", { name: /below the fit line/ }),
 		).toBeNull();
+		expect(screen.queryByText(/tap to extend/)).toBeNull();
 	});
 
-	it("extends a podium box into its body on a tap", () => {
+	it("opens one row at a time across the podium and the list", () => {
 		setup(view());
-		fireEvent.click(screen.getByText("late night commits"));
+		fireEvent.click(screen.getByRole("button", { name: /Session length/ }));
 		expect(
-			screen.getByText(/typical 0% to 15% · this window 42%/),
+			screen.getByText("Where the time goes, by session length"),
 		).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: /Lines changed/ }));
+		expect(screen.getByText("lines changed per commit")).toBeTruthy();
+		expect(
+			screen.queryByText("Where the time goes, by session length"),
+		).toBeNull();
 	});
 
-	it("renders the component's own display when a component row opens", () => {
+	it("never opens a flat row: the head holds its whole picture", () => {
 		setup(view());
-		fireEvent.click(screen.getByText("phase playbook"));
-		expect(screen.getByText("Shorter sessions")).toBeTruthy();
-		expect(screen.getByText("Longer sessions")).toBeTruthy();
+		expect(screen.queryByRole("button", { name: /Web searches/ })).toBeNull();
+		expect(
+			screen.queryByRole("button", { name: /Late-night commits/ }),
+		).toBeNull();
+	});
+
+	it("prints no kicker, footnote or provenance under a body", () => {
+		const { container } = setup(view());
+		fireEvent.click(screen.getByRole("button", { name: /Lines changed/ }));
+		expect(container.textContent).not.toMatch(/\/\/ the git ledger/);
+		expect(container.textContent).not.toMatch(/test-files\/v2/);
+		expect(container.textContent).not.toMatch(/Raw transcripts/);
+		expect(container.textContent).not.toMatch(/No language model/);
 	});
 });
 
-describe("every figure names its rule", () => {
-	it("shows the band, the coverage, the fit and the rule id", () => {
-		setup(view());
-		fireEvent.click(screen.getByText("thinking share"));
+describe("the window selector", () => {
+	it("offers the three windows and folds the chosen one", () => {
+		setup(view(), ({ window }) =>
+			view({ window: { id: window as "7d", days: 3, from: "x", to: "y" } }),
+		);
+		const group = screen.getByRole("group", { name: "Window" });
 		expect(
-			screen.getByText(/metric:thinking-share · metric-rules\/v2/),
-		).toBeTruthy();
-		expect(
-			screen.getByText(
-				/50% of the machine's synced harnesses · counts: Claude Code/,
-			),
-		).toBeTruthy();
-		expect(screen.getByText(/coverage times surprise/)).toBeTruthy();
+			within(group)
+				.getByRole("button", { name: "30 days" })
+				.getAttribute("aria-pressed"),
+		).toBe("true");
+		fireEvent.click(within(group).getByRole("button", { name: "7 days" }));
+		expect(queryMock).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ slug: "alp", window: "7d" }),
+		);
+		expect(screen.getByText("Late-night commits")).toBeTruthy();
 	});
 
-	it("names the rules, keeps the raw data local, and claims no LLM", () => {
-		setup(view());
+	it("shows the empty state for a window with no stored day", () => {
+		setup(view(), ({ window }) =>
+			view({
+				window: { id: window as "24h", days: 0, from: "x", to: "y" },
+				rows: [],
+			}),
+		);
+		fireEvent.click(screen.getByRole("button", { name: "24 hours" }));
 		expect(
-			screen.getByText(/Raw transcripts and repository names never leave it/),
+			screen.getByText("nothing measured in the last 24 hours"),
 		).toBeTruthy();
-		expect(
-			screen.getByText(
-				/No language model reads this section or writes a word of it/,
-			),
-		).toBeTruthy();
+		expect(screen.queryByText("Late-night commits")).toBeNull();
+		expect(screen.getByRole("heading", { name: "Workflow" })).toBeTruthy();
 	});
 });
 
@@ -197,6 +256,7 @@ describe("the owner's pins and hides", () => {
 					rowId: "metric:parallel-projects",
 					ruleId: "parallel-projects",
 					label: "projects run in parallel on a median active day",
+					name: "Parallel projects",
 					unit: "count",
 					value: 2.8,
 					placement: "normal",
@@ -207,29 +267,17 @@ describe("the owner's pins and hides", () => {
 
 	it("shows a visitor no controls at all", () => {
 		setup(view());
-		fireEvent.click(screen.getByText("late night commits"));
-		expect(screen.queryByText("your controls")).toBeNull();
+		expect(
+			screen.queryByRole("button", { name: /pin to the podium/ }),
+		).toBeNull();
+		expect(
+			screen.queryByRole("button", { name: /hide from the page/ }),
+		).toBeNull();
 	});
 
-	it("pins a row through the server, which owns the override", async () => {
+	it("puts the controls on every head, without opening the row", async () => {
 		setup(owned());
-		fireEvent.click(screen.getByText("late night commits"));
-		await act(async () => {
-			fireEvent.click(
-				screen.getByRole("button", { name: /pin to the podium/ }),
-			);
-		});
-		expect(overrideMock).toHaveBeenCalledWith({
-			stackId: STACK_ID,
-			rowId: "metric:late-night-commits",
-			state: "pinned",
-		});
-	});
-
-	it("tags a hidden row in the owner's own view and offers it back", async () => {
-		setup(owned());
-		expect(screen.getByText("hidden")).toBeTruthy();
-		fireEvent.click(screen.getByText("parallel projects"));
+		// The hidden flat row still carries its actions in the owner's view.
 		await act(async () => {
 			fireEvent.click(screen.getByRole("button", { name: /show again/ }));
 		});
@@ -237,6 +285,23 @@ describe("the owner's pins and hides", () => {
 			stackId: STACK_ID,
 			rowId: "metric:parallel-projects",
 			state: null,
+		});
+		expect(screen.getByText("hidden")).toBeTruthy();
+	});
+
+	it("pins a podium row through the server, without opening it", async () => {
+		setup(owned());
+		await act(async () => {
+			fireEvent.click(
+				screen.getAllByRole("button", {
+					name: /pin to the podium/,
+				})[0] as HTMLElement,
+			);
+		});
+		expect(overrideMock).toHaveBeenCalledWith({
+			stackId: STACK_ID,
+			rowId: "metric:late-night-commits",
+			state: "pinned",
 		});
 	});
 
@@ -247,8 +312,11 @@ describe("the owner's pins and hides", () => {
 			) as never,
 		);
 		setup(owned());
-		fireEvent.click(screen.getByText("late night commits"));
-		fireEvent.click(screen.getByRole("button", { name: /pin to the podium/ }));
+		fireEvent.click(
+			screen.getAllByRole("button", {
+				name: /pin to the podium/,
+			})[0] as HTMLElement,
+		);
 		expect(await screen.findByText(/The podium holds 3 rows/)).toBeTruthy();
 	});
 });

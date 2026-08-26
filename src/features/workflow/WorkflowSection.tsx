@@ -6,9 +6,12 @@ import { cn, timeAgo } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import {
+	EMPTY_WINDOW,
 	KICKER,
 	MONO_LABEL,
 	TITLE,
+	WINDOWS,
+	type WindowId,
 	WORKFLOW_ANCHOR,
 	type WorkflowView,
 } from "./copy";
@@ -19,20 +22,22 @@ import { RowSet } from "./rows";
  * Journey section 04 - Workflow, the measured surface (spec
  * `docs/specs/workflow-surface.md`).
  *
- * Wayfinder ticket #215 (map #200). Ticket #217 places it in the locked page
- * order; this file is the section itself.
+ * Wayfinder tickets #215 and #286 (map #200). Ticket #217 places it in the
+ * locked page order; this file is the section itself.
  *
- * THE SECTION COMPUTES ALMOST NOTHING. The CLI measured the values, the server
- * ranked them and applied the owner's overrides, and `@aistack/workflow-rules`
- * owns every sentence form. What is left here is markup and one machine
- * selector.
+ * THE SECTION COMPUTES ALMOST NOTHING. The CLI measured the days, the server
+ * folded the window and placed the rows, and `@aistack/workflow-rules` owns
+ * every sentence form. What is left here is markup, one machine selector and
+ * one window selector.
  *
  * NOTHING RENDERS WITHOUT A READING. `getWorkflowByStackSlug` answers null when
- * the stack has no stored reading AND when `publishWorkflow` is off, and the
- * flag reads at both ends: an owner who turned the workflow off after a sync
- * has turned it off for the reading already sent. A stack with no reading gets
- * no section rather than an empty one, because section 01 already carries the
- * page's one sync invitation and a second would double it.
+ * the stack has no stored day AND when `publishWorkflow` is off, and the flag
+ * reads at both ends. A stack with no reading gets no section rather than an
+ * empty one, because section 01 already carries the page's one sync invitation.
+ *
+ * A WINDOW WITH NO DAY IS AN EMPTY STATE, NOT A MISSING SECTION (#284). The
+ * 30-day answer decides whether the section exists; a 7-day or 24-hour window
+ * with zero days keeps the header and says what would fill it.
  */
 export function WorkflowSection({
 	index,
@@ -47,6 +52,7 @@ export function WorkflowSection({
 		slug: string;
 		ordinal: number;
 	} | null>(null);
+	const [window, setWindow] = useState<WindowId>("30d");
 	const first = useQuery(api.workflow.getWorkflowByStackSlug, { slug });
 
 	// The selector addresses machines by their durable private ordinal (#250), so
@@ -58,13 +64,21 @@ export function WorkflowSection({
 		)
 			? selection.ordinal
 			: null;
+	const isDefault = ordinal === null && window === "30d";
 	const selected = useQuery(
 		api.workflow.getWorkflowByStackSlug,
-		ordinal === null ? "skip" : { slug, machineOrdinal: ordinal },
+		isDefault
+			? "skip"
+			: {
+					slug,
+					window,
+					...(ordinal === null ? {} : { machineOrdinal: ordinal }),
+				},
 	);
-	const view = ordinal === null ? first : selected;
+	const view = isDefault ? first : selected;
 
-	if (view === undefined || view === null) return null;
+	if (first === undefined || first === null) return null;
+	const shown = view ?? first;
 
 	return (
 		<Section index={index} id={WORKFLOW_ANCHOR}>
@@ -72,25 +86,36 @@ export function WorkflowSection({
 				index={String(index).padStart(2, "0")}
 				kicker={KICKER}
 				title={TITLE}
+				metaAlwaysVisible
 				meta={
-					view.machines.length > 1 ? (
-						<MachineSelect
-							machines={view.machines}
-							value={ordinal ?? currentOrdinal(view)}
-							onChange={(next) =>
-								setSelection(next === null ? null : { slug, ordinal: next })
-							}
-						/>
-					) : (
-						`read ${timeAgo(view.receivedAt)}`
-					)
+					<div className="flex flex-wrap items-center gap-3.5 normal-case tracking-normal">
+						<WindowSelect value={window} onChange={setWindow} />
+						{shown.machines.length > 1 ? (
+							<MachineSelect
+								machines={shown.machines}
+								value={ordinal ?? currentOrdinal(shown)}
+								onChange={(next) =>
+									setSelection(next === null ? null : { slug, ordinal: next })
+								}
+							/>
+						) : (
+							<span className="font-mono text-[11px] text-fg-muted">
+								read {timeAgo(shown.receivedAt)}
+								{shown.machine ? ` · ${shown.machine}` : ""}
+							</span>
+						)}
+					</div>
 				}
-				metaAlwaysVisible={view.machines.length > 1}
 			/>
 
-			<Lead lead={view.lead} />
-			<RowSet view={view} stackId={stackId} />
-			<Provenance view={view} />
+			{view === undefined ? null : view === null || view.window.days === 0 ? (
+				<EmptyWindow window={window} view={shown} />
+			) : (
+				<>
+					<Lead view={view} />
+					<RowSet view={view} stackId={stackId} />
+				</>
+			)}
 		</Section>
 	);
 }
@@ -98,6 +123,59 @@ export function WorkflowSection({
 function currentOrdinal(view: WorkflowView): number | null {
 	return (
 		view.machines.find((machine) => machine.isCurrent)?.machineOrdinal ?? null
+	);
+}
+
+/** 30 days, 7 days, 24 hours: the window the server folds (#285). */
+function WindowSelect({
+	value,
+	onChange,
+}: {
+	value: WindowId;
+	onChange: (next: WindowId) => void;
+}) {
+	return (
+		<fieldset className="inline-flex border border-stroke-subtle">
+			<legend className="sr-only">Window</legend>
+			{WINDOWS.map((option) => (
+				<button
+					key={option.id}
+					type="button"
+					aria-pressed={value === option.id}
+					onClick={() => onChange(option.id)}
+					className={cn(
+						"border-r border-stroke-subtle px-2.5 py-1 font-mono text-[11px] last:border-r-0",
+						value === option.id
+							? "bg-accent-lime font-bold text-accent-lime-contrast"
+							: "text-fg-muted hover:text-fg-primary",
+					)}
+				>
+					{option.label}
+				</button>
+			))}
+		</fieldset>
+	);
+}
+
+/** The empty state per window option (#284). */
+function EmptyWindow({
+	window,
+	view,
+}: {
+	window: WindowId;
+	view: WorkflowView;
+}) {
+	const copy = EMPTY_WINDOW[window];
+	return (
+		<div className="border border-stroke-subtle px-6 py-10">
+			<p className="font-mono text-2xl font-black text-fg-primary md:text-[28px]">
+				{copy.head}
+			</p>
+			<p className="mt-2 max-w-[52ch] text-fg-secondary">
+				The newest sync on this machine was {timeAgo(view.receivedAt)}.{" "}
+				{copy.body}
+			</p>
+		</div>
 	);
 }
 
@@ -141,7 +219,7 @@ function MachineSelect({
 				aria-expanded={open}
 				onClick={() => setOpen((held) => !held)}
 				onKeyDown={closeOnEscape}
-				className="flex max-w-[min(18rem,calc(100vw-2.5rem))] items-center gap-2 border border-stroke-subtle px-2.5 py-2 text-left font-mono text-[11px] normal-case tracking-normal text-fg-primary"
+				className="flex max-w-[min(18rem,calc(100vw-2.5rem))] items-center gap-2 border border-stroke-subtle px-2.5 py-1 text-left font-mono text-[11px] normal-case tracking-normal text-fg-primary"
 			>
 				<span className={cn(MONO_LABEL, "text-[10px] text-fg-muted")}>
 					from
@@ -193,39 +271,4 @@ function MachineSelect({
 function machineLabel(machine: MachineOption | undefined): string {
 	if (!machine) return "this machine";
 	return machine.machine ?? `machine ${machine.machineOrdinal ?? ""}`.trim();
-}
-
-/**
- * What produced this reading, under the rows.
- *
- * RAW DATA NEVER LEAVES THE MACHINE, and the page says so rather than leaving a
- * reader to assume the opposite. The rule ids ride along, because a number
- * whose rule is not named is a number a reader has to take on trust.
- */
-function Provenance({ view }: { view: WorkflowView }) {
-	const rules = [...view.phaseRuleVersions];
-	return (
-		<div className="mt-8 border-t border-stroke-subtle pt-4">
-			{view.mixedRuleVersions && (
-				<p className="mb-2 font-mono text-[11px] text-fg-muted">
-					mixed rule versions: this reading carries aggregates from more than
-					one rule set, because a session whose local records are gone keeps the
-					aggregate it already had.
-				</p>
-			)}
-			<p className="font-mono text-[11px] text-fg-muted">
-				measured on the owner's machine and published with their consent. Raw
-				transcripts and repository names never leave it. No language model reads
-				this section or writes a word of it
-				{rules.length > 0 ? ` · ${rules.join(" · ")}` : ""}
-				{view.cliVersion ? ` · cli ${view.cliVersion}` : ""}
-				{view.aggregateVersion ? ` · ${view.aggregateVersion}` : ""}
-			</p>
-			{!view.isFresh && (
-				<p className="mt-2 font-mono text-[11px] text-fg-muted">
-					last read {timeAgo(view.receivedAt)}
-				</p>
-			)}
-		</div>
-	);
 }

@@ -1,34 +1,28 @@
-import { componentRule, MAX_PINS, metricRule } from "@aistack/workflow-rules";
+import { MAX_PINS } from "@aistack/workflow-rules";
 import { useMutation } from "convex/react";
-import { ChevronDown, ChevronUp, EyeOff, Pin } from "lucide-react";
+import { ChevronDown, EyeOff, Pin } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { ComponentBody } from "./components";
-import {
-	fmtBand,
-	fmtNumber,
-	fmtPercent,
-	fmtRowValue,
-	MONO_LABEL,
-	rowName,
-	type WorkflowRow,
-	type WorkflowView,
-} from "./copy";
+import { RowBody } from "./components";
+import { MONO_LABEL, type WorkflowRow, type WorkflowView } from "./copy";
+import { rowHead } from "./heads";
 
 /**
- * The podium: the top three by fit as one horizontal band, thin rows in fit
- * order below it, and one expander for the rows under fit 0.40.
+ * The podium and the thin rows, in the fixed editorial order (#284, variant A).
  *
- * Wayfinder ticket #215 (map #200). The composition is #191's variant B, and
- * the state rules are the spec's: three highlight slots, the low-fit line at
- * 0.40, and an owner pin or hide that wins over both.
+ * THE SECTION RANKS NOTHING. `placement`, `pinned` and `hidden` arrive
+ * computed (#285), so the first three rows the server marked `highlight` are
+ * the band and the rest are the list, in the order they came. A sort here would
+ * be a second ranking that could disagree with the first.
  *
- * THE SECTION RANKS NOTHING. Fit, the rotation limit and the owner's overrides
- * are all server state (spec, "Fit and rotation"), so every row arrives already
- * placed and this file reads `placement` rather than recomputing it. Sorting
- * here would be a second ranking that could disagree with the first.
+ * ONE OPEN ROW AT A TIME across the podium and the list. A flat row never
+ * opens: its head holds its whole picture (#284, decision 4).
+ *
+ * THE OWNER'S CONTROLS ARE AN ACTIONS COLUMN (#284, decision 3): a pin and a
+ * hide as 24px icon buttons at the end of every head. The server owns the
+ * override and refuses a fourth pin; the refusal prints under the list.
  */
 export function RowSet({
 	view,
@@ -37,149 +31,184 @@ export function RowSet({
 	view: WorkflowView;
 	stackId: Id<"stacks"> | null;
 }) {
-	const highlights = view.rows.filter((row) => row.placement === "highlight");
-	const normal = view.rows.filter((row) => row.placement === "normal");
-
-	const [openHighlight, setOpenHighlight] = useState<string | null>(null);
-	const [openRows, setOpenRows] = useState<readonly string[]>([]);
-	const toggleRow = (rowId: string) =>
-		setOpenRows((held) =>
-			held.includes(rowId)
-				? held.filter((id) => id !== rowId)
-				: [...held, rowId],
-		);
-
-	const open = highlights.find((row) => row.rowId === openHighlight);
+	const podium = view.rows.filter((row) => row.placement === "highlight");
+	const list = view.rows.filter((row) => row.placement === "normal");
+	const [open, setOpen] = useState<string | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const toggle = (row: WorkflowRow) =>
+		setOpen((held) => (held === row.rowId ? null : row.rowId));
+	const openPodium = podium.find((row) => row.rowId === open);
+	const owner = view.isOwner && stackId ? stackId : null;
 
 	return (
 		<div>
-			{highlights.length > 0 && (
+			{podium.length > 0 && (
 				<>
 					<div className="grid gap-px border border-stroke-subtle bg-stroke-subtle md:grid-cols-3">
-						{highlights.map((row) => (
+						{podium.map((row) => (
 							<PodiumBox
 								key={row.rowId}
 								row={row}
-								open={openHighlight === row.rowId}
-								onClick={() =>
-									setOpenHighlight((held) =>
-										held === row.rowId ? null : row.rowId,
-									)
-								}
+								view={view}
+								owner={owner}
+								open={open === row.rowId}
+								onToggle={() => toggle(row)}
+								onError={setError}
 							/>
 						))}
 					</div>
-					{open && (
+					{openPodium && (
 						<div className="border border-t-0 border-stroke-subtle p-5">
-							<RowBody row={open} view={view} stackId={stackId} />
+							<RowBody rowId={openPodium.rowId} view={view} />
 						</div>
 					)}
 				</>
 			)}
 
 			<div className="mt-6 divide-y divide-stroke-subtle border-y border-stroke-subtle">
-				{normal.map((row) => (
+				{list.map((row) => (
 					<ThinRow
 						key={row.rowId}
 						row={row}
 						view={view}
-						stackId={stackId}
-						open={openRows.includes(row.rowId)}
-						onToggle={() => toggleRow(row.rowId)}
+						owner={owner}
+						open={open === row.rowId}
+						onToggle={() => toggle(row)}
+						onError={setError}
 					/>
 				))}
 			</div>
 
-			<p className="mt-4 font-mono text-[11px] text-fg-muted">
-				one row set · fixed order · the first three rows are the podium unless
-				the owner pins others
-			</p>
+			{error && (
+				<p role="alert" className="mt-3 font-mono text-[11px] text-destructive">
+					{error}
+				</p>
+			)}
 		</div>
 	);
 }
 
-function Chevron({ open }: { open: boolean }) {
-	const Icon = open ? ChevronUp : ChevronDown;
-	return <Icon aria-hidden="true" className="size-4 shrink-0 text-fg-muted" />;
-}
-
-/** One of the three band boxes. A tap extends its body below the band. */
+/**
+ * One of the three band boxes. A tap extends its body below the band.
+ *
+ * The owner's actions sit in the box's corner rather than in the extended
+ * body, because a flat podium row never extends and its pin must still be
+ * reachable.
+ */
 function PodiumBox({
 	row,
+	view,
+	owner,
 	open,
-	onClick,
+	onToggle,
+	onError,
 }: {
 	row: WorkflowRow;
+	view: WorkflowView;
+	owner: Id<"stacks"> | null;
 	open: boolean;
-	onClick: () => void;
+	onToggle: () => void;
+	onError: (message: string | null) => void;
 }) {
+	const head = rowHead(row, view);
+	const Tag = row.flat ? "div" : "button";
 	return (
-		<button
-			type="button"
-			onClick={onClick}
-			aria-expanded={open}
-			className={cn(
-				"bg-bg-canvas p-5 text-left hover:bg-bg-panel/50",
-				open && "bg-bg-panel/60",
+		<div className={cn("relative bg-bg-canvas", open && "bg-bg-panel/90")}>
+			<Tag
+				{...(row.flat
+					? {}
+					: { type: "button", onClick: onToggle, "aria-expanded": open })}
+				className={cn(
+					"flex min-h-[172px] w-full flex-col gap-2 p-5 text-left",
+					!row.flat && "hover:bg-bg-panel/60",
+				)}
+			>
+				<span className={cn(MONO_LABEL, "block pr-14 text-fg-muted")}>
+					{row.name}
+					{row.pinned && <PinTag />}
+					{row.hidden && <HiddenTag />}
+				</span>
+				<span className="block font-mono text-[40px] font-black leading-none text-accent-lime">
+					{head.figure}
+				</span>
+				<span className="block text-sm leading-snug text-fg-secondary">
+					{head.caption}
+				</span>
+				<span className="mt-auto block pt-2">{head.picture(true)}</span>
+			</Tag>
+			{owner && (
+				<span className="absolute top-4 right-4">
+					<Actions row={row} stackId={owner} onError={onError} />
+				</span>
 			)}
-		>
-			<span className={cn(MONO_LABEL, "block text-fg-muted")}>
-				{rowName(row.ruleId)}
-				{row.pinned && <PinTag />}
-				{row.hidden && <HiddenTag />}
-			</span>
-			<span className="mt-3 block font-mono text-4xl font-black text-fg-primary">
-				{fmtRowValue(row)}
-			</span>
-			<span className="mt-2 block text-sm leading-snug text-fg-secondary">
-				{row.label}
-			</span>
-			<span className={cn(MONO_LABEL, "mt-4 block text-accent-lime")}>
-				{open ? "close" : "+ tap to extend"}
-			</span>
-		</button>
+		</div>
 	);
 }
+
+/**
+ * The head grid: name, figure, caption, 76x12 picture, chevron, actions
+ * (#284, decision 1). The caption drops off a narrow screen; the picture never does.
+ */
+const HEAD_GRID =
+	"grid grid-cols-[1fr_80px_76px_20px_auto] items-center gap-x-4 md:grid-cols-[200px_96px_1fr_76px_20px_auto] md:gap-x-7";
 
 function ThinRow({
 	row,
 	view,
-	stackId,
+	owner,
 	open,
 	onToggle,
-	dim,
+	onError,
 }: {
 	row: WorkflowRow;
 	view: WorkflowView;
-	stackId: Id<"stacks"> | null;
+	owner: Id<"stacks"> | null;
 	open: boolean;
 	onToggle: () => void;
-	dim?: boolean;
+	onError: (message: string | null) => void;
 }) {
+	const head = rowHead(row, view);
+	const Tag = row.flat ? "div" : "button";
 	return (
-		<div className={cn(dim && "opacity-70")}>
-			<button
-				type="button"
-				onClick={onToggle}
-				aria-expanded={open}
-				className="flex w-full items-center gap-3 py-3 text-left hover:bg-bg-panel/40"
-			>
-				<span className="w-44 shrink-0 truncate text-sm font-bold text-fg-primary">
-					{rowName(row.ruleId)}
-					{row.pinned && <PinTag />}
-					{row.hidden && <HiddenTag />}
+		<div>
+			<div className={cn(HEAD_GRID, "py-2.5")}>
+				<Tag
+					{...(row.flat
+						? {}
+						: { type: "button", onClick: onToggle, "aria-expanded": open })}
+					className={cn("contents text-left", !row.flat && "cursor-pointer")}
+				>
+					<span className="truncate text-sm font-bold text-fg-primary">
+						{row.name}
+						{row.pinned && <PinTag />}
+						{row.hidden && <HiddenTag />}
+					</span>
+					<span className="font-mono text-sm font-extrabold text-accent-lime">
+						{head.figure}
+					</span>
+					<span className="hidden min-w-0 truncate text-sm text-fg-secondary md:block">
+						{head.caption}
+					</span>
+					<span className="flex">{head.picture(false)}</span>
+					<span className="flex justify-end">
+						{!row.flat && (
+							<ChevronDown
+								aria-hidden="true"
+								className={cn(
+									"size-4 text-fg-muted transition-transform",
+									open && "rotate-180",
+								)}
+							/>
+						)}
+					</span>
+				</Tag>
+				<span className="flex justify-end">
+					{owner && <Actions row={row} stackId={owner} onError={onError} />}
 				</span>
-				<span className="hidden flex-1 truncate text-sm text-fg-secondary md:block">
-					{row.label}
-				</span>
-				<span className="ml-auto shrink-0 font-mono text-sm font-bold text-fg-primary">
-					{fmtRowValue(row)}
-				</span>
-				<Chevron open={open} />
-			</button>
-			{open && (
-				<div className="pb-5">
-					<RowBody row={row} view={view} stackId={stackId} />
+			</div>
+			{open && !row.flat && (
+				<div className="pt-1.5 pb-5">
+					<RowBody rowId={row.rowId} view={view} />
 				</div>
 			)}
 		</div>
@@ -204,113 +233,31 @@ function HiddenTag() {
 }
 
 /**
- * What a row shows when it opens: the component's own display for a component
- * row, then the derivation both kinds carry, then the owner's controls.
- *
- * THE DERIVATION IS NOT OPTIONAL. Every figure on this page is a rule's output,
- * and a reader who cannot see the band, the coverage and the rule id has to
- * take the number on trust.
- */
-function RowBody({
-	row,
-	view,
-	stackId,
-}: {
-	row: WorkflowRow;
-	view: WorkflowView;
-	stackId: Id<"stacks"> | null;
-}) {
-	return (
-		<div>
-			{row.kind === "component" && (
-				<div className="mb-5">
-					<ComponentBody componentId={row.ruleId} view={view} />
-				</div>
-			)}
-			<Derivation row={row} />
-			{view.isOwner && stackId && <OwnerControls row={row} stackId={stackId} />}
-		</div>
-	);
-}
-
-/** Source, coverage, band, surprise, fit and movement, for one row. */
-export function Derivation({ row }: { row: WorkflowRow }) {
-	const rule =
-		row.kind === "metric" ? metricRule(row.ruleId) : componentRule(row.ruleId);
-	const kind =
-		row.kind === "component"
-			? "derived from aggregates the machine shipped"
-			: rule && "kind" in rule && rule.kind === "proxy"
-				? "a proxy, named by its rule"
-				: "exact, as the machine measured it";
-
-	return (
-		<dl className="border border-stroke-subtle p-4 font-mono text-[11px] leading-relaxed text-fg-secondary">
-			<Line label="from">{kind}</Line>
-			<Line label="rule">
-				{row.rowId} · {row.ruleVersion}
-			</Line>
-			<Line label="band">
-				typical {fmtBand(row)} · this window {fmtRowValue(row)}
-			</Line>
-			<Line label="coverage">
-				{fmtPercent(row.coverage)} of the machine's synced harnesses
-				{row.coverageTag ? ` · counts: ${row.coverageTag}` : ""}
-			</Line>
-			<Line label="surprise">
-				{fmtNumber(row.surprise)} · distance outside the band
-			</Line>
-			<Line label="fit">
-				<b className="text-fg-primary">{fmtNumber(row.fit)}</b> · coverage times
-				surprise
-			</Line>
-		</dl>
-	);
-}
-
-function Line({
-	label,
-	children,
-}: {
-	label: string;
-	children: React.ReactNode;
-}) {
-	return (
-		<div className="flex gap-2">
-			<dt className="w-20 shrink-0 text-fg-muted">{label}:</dt>
-			<dd className="min-w-0 flex-1">{children}</dd>
-		</div>
-	);
-}
-
-/**
  * Pin and hide, for the stack's owner.
  *
  * A pin puts the row on the podium and a hide takes it off the public page
- * entirely, rather than pushing it behind the expander: an expander is still
- * published. Either wins over the fit thresholds.
- *
- * THE PODIUM HOLDS THREE. A fourth pin has no slot to promise, so the server
- * refuses it and the refusal prints here rather than failing silently.
+ * entirely. THE PODIUM HOLDS THREE: a fourth pin has no slot to promise, so
+ * the server refuses it and the refusal prints rather than failing silently.
  */
-export function OwnerControls({
+export function Actions({
 	row,
 	stackId,
+	onError,
 }: {
 	row: WorkflowRow;
 	stackId: Id<"stacks">;
+	onError: (message: string | null) => void;
 }) {
 	const setOverride = useMutation(api.workflow.setWorkflowRowOverride);
-	const [error, setError] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
 
 	const apply = async (state: "pinned" | "hidden" | null) => {
 		setBusy(true);
-		setError(null);
+		onError(null);
 		try {
 			await setOverride({ stackId, rowId: row.rowId, state });
 		} catch (caught) {
-			setError(
+			onError(
 				caught instanceof Error
 					? caught.message.replace(/^.*Uncaught Error:\s*/, "")
 					: `The podium holds ${MAX_PINS} rows.`,
@@ -321,56 +268,59 @@ export function OwnerControls({
 	};
 
 	return (
-		<div className="mt-4 flex flex-wrap items-center gap-3">
-			<span className={cn(MONO_LABEL, "text-fg-muted")}>your controls</span>
-			<ControlButton
+		<span className="flex gap-1">
+			<IconButton
 				active={row.pinned}
 				busy={busy}
-				icon={<Pin aria-hidden="true" className="size-3" />}
 				label={row.pinned ? "unpin" : "pin to the podium"}
 				onClick={() => apply(row.pinned ? null : "pinned")}
-			/>
-			<ControlButton
+			>
+				<Pin aria-hidden="true" className="size-3" />
+			</IconButton>
+			<IconButton
 				active={row.hidden}
 				busy={busy}
-				icon={<EyeOff aria-hidden="true" className="size-3" />}
 				label={row.hidden ? "show again" : "hide from the page"}
 				onClick={() => apply(row.hidden ? null : "hidden")}
-			/>
-			{error && (
-				<span className="font-mono text-[11px] text-destructive">{error}</span>
-			)}
-		</div>
+			>
+				<EyeOff aria-hidden="true" className="size-3" />
+			</IconButton>
+		</span>
 	);
 }
 
-function ControlButton({
+function IconButton({
 	active,
 	busy,
-	icon,
 	label,
 	onClick,
+	children,
 }: {
 	active: boolean;
 	busy: boolean;
-	icon: React.ReactNode;
 	label: string;
 	onClick: () => void;
+	children: React.ReactNode;
 }) {
 	return (
 		<button
 			type="button"
 			disabled={busy}
-			onClick={onClick}
+			aria-label={label}
+			title={label}
+			aria-pressed={active}
+			onClick={(event) => {
+				event.stopPropagation();
+				onClick();
+			}}
 			className={cn(
-				"inline-flex items-center gap-1.5 border px-2 py-1 font-mono text-[11px] disabled:opacity-50",
+				"inline-flex size-6 items-center justify-center border disabled:opacity-50",
 				active
 					? "border-accent-lime text-accent-lime"
-					: "border-stroke-subtle text-fg-secondary hover:border-stroke-strong",
+					: "border-stroke-subtle text-fg-muted hover:border-stroke-strong hover:text-fg-primary",
 			)}
 		>
-			{icon}
-			{label}
+			{children}
 		</button>
 	);
 }
