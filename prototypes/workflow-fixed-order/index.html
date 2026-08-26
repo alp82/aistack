@@ -126,6 +126,7 @@
   /* ---- A: podium ---- */
   .podium { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); }
   .box { background: var(--bg-canvas); padding: 20px; display: flex; flex-direction: column; gap: 8px; min-height: 172px; }
+  .box[data-open] { cursor: pointer; }
   .box:hover { background: color-mix(in oklab, var(--bg-panel) 60%, var(--bg-canvas)); }
   .box.on { background: color-mix(in oklab, var(--bg-panel) 90%, var(--bg-canvas)); }
   .box .n { font-size: 40px; font-weight: 900; line-height: 1; color: var(--accent-lime); }
@@ -139,13 +140,14 @@
   .rowlist { margin-top: 24px; border-top: 1px solid var(--stroke-subtle); border-bottom: 1px solid var(--stroke-subtle); }
   .mrow { border-top: 1px solid var(--stroke-subtle); }
   .mrow:first-child { border-top: 0; }
-  .mline { display: grid; grid-template-columns: 200px 1fr 76px 96px 20px auto; column-gap: 28px; align-items: center; }
+  .mline { display: grid; grid-template-columns: 200px 96px 1fr 76px 20px auto; column-gap: 28px; align-items: center; }
   .mhead { width: 100%; padding: 11px 0; }
-  .mhead:hover { background: color-mix(in oklab, var(--bg-panel) 40%, var(--bg-canvas)); }
-  .mhead .nm { font-family: var(--font-sans); font-weight: 700; font-size: 14px; }
+  .mhead.x { cursor: pointer; }
+  .mhead.x:hover { background: color-mix(in oklab, var(--bg-panel) 40%, var(--bg-canvas)); }
+  .mhead .nm { cursor: inherit; font-family: var(--font-sans); font-weight: 700; font-size: 14px; }
   .mhead .cap { min-width: 0; color: var(--fg-secondary); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mhead .viz { display: flex; }
-  .mhead .st { font-weight: 800; font-size: 14px; color: var(--accent-lime); text-align: right; }
+  .mhead .st { font-weight: 800; font-size: 14px; color: var(--accent-lime); text-align: left; }
   .acts { display: flex; gap: 4px; width: 56px; justify-content: flex-end; }
   .acts:empty { width: 0; }
   .acts button { width: 24px; height: 24px; border: 1px solid var(--stroke-subtle); display: inline-flex; align-items: center; justify-content: center; color: var(--fg-muted); }
@@ -153,7 +155,7 @@
   .acts button.on { border-color: var(--accent-lime); color: var(--accent-lime); }
   .acts svg { width: 12px; height: 12px; }
   .mline .acts { grid-column: 6; }
-  .noown .mline { grid-template-columns: 200px 1fr 76px 96px 20px; }
+  .noown .mline { grid-template-columns: 200px 96px 1fr 76px 20px; }
   .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
   .pair h4 { margin: 0 0 10px; font-size: 13px; font-weight: 700; }
   .cmp { display: grid; grid-template-columns: 120px 1fr 48px; gap: 10px; align-items: center; margin: 8px 0; font-size: 13px; }
@@ -163,6 +165,7 @@
   .dotrow.big i { width: 18px; height: 18px; }
   .mhead .dotrow { width: 76px; gap: 1px; } .mhead .dotrow i { width: 6.7px; height: 12px; }
   .chev { justify-self: end; width: 8px; height: 8px; border-right: 1.5px solid var(--fg-muted); border-bottom: 1.5px solid var(--fg-muted); transform: rotate(45deg); flex: none; margin: 0 6px 3px 0; transition: transform .15s; }
+  .chev.none { visibility: hidden; }
   .mrow.open .chev { transform: rotate(225deg); margin-bottom: -3px; }
   .mrow .body { display: none; padding: 6px 0 22px; }
   .mrow.open .body { display: block; }
@@ -262,7 +265,7 @@
     .podium, .tiles, .cols, .tracks, .receipts { grid-template-columns: 1fr; }
     .tiles .box, .tiles .box.top { grid-column: span 1; }
     .ledger .lrow, .ledger .lrow.big { grid-template-columns: 1fr; gap: 12px; }
-    .mline, .noown .mline { grid-template-columns: 1fr 76px 80px 20px; }
+    .mline, .noown .mline { grid-template-columns: 1fr 80px 76px 20px; }
     .mhead .cap { display: none; }
   }
 </style>
@@ -448,7 +451,7 @@
     { key: 'start-hours', name: 'Session start times', stat: String(startPeak).padStart(2, '0') + ':00', cap: 'is the most common start hour',
       head: function () { return miniBars(startHist, startPeak); },
       body: function () { return bigBars(startHist, startPeak, HOURL.map(function (h) { return String(h).padStart(2, '0'); })); } },
-    { key: 'late-night-commits', name: 'Late-night commits', stat: pct(lateNight), cap: 'of commits between 23:00 and 03:00',
+    { key: 'late-night-commits', flat: true, name: 'Late-night commits', stat: pct(lateNight), cap: 'of commits between 23:00 and 03:00',
       head: function () { return fillStrip(lateNight); },
       body: function () { return fillStrip(lateNight, 'wide') + '<p class="sub">' + fmt(git.lateNightCommits) + ' of ' + fmt(git.totalCommits) + ' commits</p>'; } },
     { key: 'phase-playbook', name: 'Session length', stat: (splitMin | 0) + ' min', cap: 'median session',
@@ -476,13 +479,13 @@
     { key: 'turn-durations', name: 'Turn length', stat: '~45s', cap: 'median, longest ' + (longestTurn | 0) + ' min',
       head: function () { return miniBars(TURN_BUCKETS.map(function (b) { return b.n; }), TURN_MEDIAN_BUCKET); },
       body: function () { return bigBars(TURN_BUCKETS.map(function (b) { return b.n; }), TURN_MEDIAN_BUCKET, TURN_BUCKETS.map(function (b) { return b.l; }), TURN_MEDIAN_BUCKET); } },
-    { key: 'question-back', name: 'Questions asked', stat: pct(questionBack), cap: 'of turns end with a question',
+    { key: 'question-back', flat: true, name: 'Questions asked', stat: pct(questionBack), cap: 'of turns end with a question',
       head: function () { return fillStrip(questionBack); },
       body: function () { return fillStrip(questionBack, 'wide'); } },
-    { key: 'web-searches', name: 'Web searches', stat: webPerDay.toFixed(1), cap: 'per active day',
+    { key: 'web-searches', flat: true, name: 'Web searches', stat: webPerDay.toFixed(1), cap: 'per active day',
       head: function () { return dots(10, Math.round(webPerDay)); },
       body: function () { return '<div class="dotrow big">' + dotsInner(10, Math.round(webPerDay)) + '</div><p class="sub">one square per search on a typical active day</p>'; } },
-    { key: 'parallel-projects', name: 'Parallel projects', stat: String(parallel), cap: 'on a typical active day',
+    { key: 'parallel-projects', flat: true, name: 'Parallel projects', stat: String(parallel), cap: 'on a typical active day',
       head: function () { return dots(10, parallel); },
       body: function () { return '<div class="dotrow big">' + dotsInner(10, parallel) + '</div><p class="sub">one square per project worked on the same day</p>'; } }
   ];
@@ -592,7 +595,7 @@
     var html = '<div class="podium">' + p.podium.map(function (r) { return boxHtml(r); }).join('') + '</div>';
     html += p.podium.map(function (r) { return '<div class="podium-body" data-body="' + r.key + '">' + podiumBodyHtml(r) + '</div>'; }).join('');
     html += '<div class="rowlist">' + p.below.map(function (r) {
-      return '<div class="mrow" data-row="' + r.key + '"><div class="mhead mline"><button type="button" class="nm">' + r.name + tags(r) + '</button><span class="cap">' + r.cap + '</span><span class="viz">' + r.head() + '</span><span class="st">' + r.stat + '</span><span class="chev"></span>' + actions(r) + '</div><div class="body">' + bodyHtml(r) + '</div></div>';
+      return '<div class="mrow" data-row="' + r.key + '"><div class="mhead mline' + (r.flat ? '' : ' x') + '"><span class="nm">' + r.name + tags(r) + '</span><span class="st">' + r.stat + '</span><span class="cap">' + r.cap + '</span><span class="viz">' + r.head() + '</span><span class="chev' + (r.flat ? ' none' : '') + '"></span>' + actions(r) + '</div>' + (r.flat ? '' : '<div class="body">' + bodyHtml(r) + '</div>') + '</div>';
     }).join('') + '</div>';
     root.innerHTML = html;
     root.querySelectorAll('.box').forEach(function (b) {
@@ -604,7 +607,7 @@
         if (!was) { b.classList.add('on'); root.querySelector('[data-body="' + b.dataset.open + '"]').classList.add('on'); }
       });
     });
-    root.querySelectorAll('.mhead').forEach(function (h) { h.addEventListener('click', function (e) {
+    root.querySelectorAll('.mhead.x').forEach(function (h) { h.addEventListener('click', function (e) {
       if (e.target.closest('.acts')) return;
       var row = h.parentNode, was = row.classList.contains('open');
       root.querySelectorAll('.mrow.open').forEach(function (x) { x.classList.remove('open'); });
