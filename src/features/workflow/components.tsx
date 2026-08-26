@@ -401,31 +401,122 @@ function GitLedger({ view }: { view: WorkflowView }) {
 					touch a test file
 				</span>
 			</div>
-			<Strip
-				className="mt-2.5"
-				wide
-				label="additions against removals"
-				segments={[
-					{
-						key: "additions",
-						value: git.additions,
-						paint: ACCENT,
-						label: "additions",
-					},
-					{
-						key: "removals",
-						value: git.removals,
-						paint: "var(--destructive-fill)",
-						label: "removals",
-					},
-				]}
-			/>
+			<div className="mt-3.5">
+				<ColLabel>additions up, removals down, per day</ColLabel>
+				<DayBars
+					days={view.section.gitDays}
+					from={view.window.from}
+					to={view.window.to}
+				/>
+			</div>
 			{sizes.length > 0 && (
 				<div className="mt-3.5">
 					<ColLabel>lines changed per commit</ColLabel>
 					<CommitAxis sizes={sizes} />
 				</div>
 			)}
+		</div>
+	);
+}
+
+/** The slots the picture draws before it stops. A 30-day window fills 30. */
+const MAX_DAY_SLOTS = 62;
+
+/** The next UTC date after `date`, `YYYY-MM-DD`. */
+function nextDate(date: string): string {
+	const next = new Date(`${date}T00:00:00Z`);
+	next.setUTCDate(next.getUTCDate() + 1);
+	return next.toISOString().slice(0, 10);
+}
+
+/**
+ * Additions up and removals down as mirrored bars, one pair per calendar day
+ * of the window (#288).
+ *
+ * A CALENDAR AXIS, not an active-day axis: the wire ships only the days a
+ * sync stored, and drawing those side by side would collapse a two-week gap
+ * into one pixel. So the picture walks every date from the window's first to
+ * its last, and a day with no stored reading or no commit keeps its slot as a
+ * hairline tick on the baseline. The gap is part of the reading.
+ *
+ * ONE SCALE FOR BOTH HALVES: the tallest single side sets it, so a day that
+ * adds 4,000 and removes 40 reads that way.
+ */
+function DayBars({
+	days,
+	from,
+	to,
+}: {
+	days: readonly {
+		date: string;
+		additions: number;
+		removals: number;
+		commits: number;
+	}[];
+	from: string;
+	to: string;
+}) {
+	const byDate = new Map(days.map((day) => [day.date, day]));
+	const slots: string[] = [];
+	for (
+		let date = from;
+		date <= to && slots.length < MAX_DAY_SLOTS;
+		date = nextDate(date)
+	) {
+		slots.push(date);
+	}
+	const tallest =
+		Math.max(...days.map((day) => Math.max(day.additions, day.removals)), 0) ||
+		1;
+	const height = (value: number) => `${Math.round((value / tallest) * 100)}%`;
+	return (
+		<div
+			role="img"
+			aria-label={`additions and removals per day, ${from} to ${to}`}
+			className="mt-1.5 flex h-16 items-stretch gap-px"
+		>
+			{slots.map((date) => {
+				const day = byDate.get(date);
+				const empty = !day || day.commits === 0;
+				const title = day
+					? `${date}: +${fmtCount(day.additions)} added, -${fmtCount(day.removals)} removed, ${fmtCount(day.commits)} ${day.commits === 1 ? "commit" : "commits"}`
+					: `${date}: no measured day`;
+				return (
+					<span
+						key={date}
+						data-day={date}
+						data-empty={empty ? "true" : undefined}
+						title={title}
+						className="flex min-w-0.5 flex-1 flex-col"
+					>
+						<span className="flex flex-1 items-end">
+							{!empty && (
+								<i
+									className="block w-full min-h-px"
+									style={{ height: height(day.additions), background: ACCENT }}
+								/>
+							)}
+						</span>
+						<i
+							className="block h-px w-full shrink-0"
+							style={{
+								background: empty ? "var(--stroke-strong)" : "var(--fg-muted)",
+							}}
+						/>
+						<span className="flex flex-1 items-start">
+							{!empty && (
+								<i
+									className="block w-full min-h-px"
+									style={{
+										height: height(day.removals),
+										background: "var(--destructive-fill)",
+									}}
+								/>
+							)}
+						</span>
+					</span>
+				);
+			})}
 		</div>
 	);
 }

@@ -55,6 +55,23 @@ describe("lines changed", () => {
 		expect(screen.getByText("+95k")).toBeTruthy();
 	});
 
+	it("draws additions up and removals down, one slot per calendar day of the window (#288)", () => {
+		const { container } = show("component:git-ledger");
+		// The fixture window runs 2026-07-28 to 2026-08-26: 30 slots.
+		const slots = container.querySelectorAll("[data-day]");
+		expect(slots).toHaveLength(30);
+		const active = container.querySelector("[data-day='2026-08-25']");
+		expect(active?.getAttribute("title")).toBe(
+			"2026-08-25: +300 added, -100 removed, 2 commits",
+		);
+		// A day with no stored reading or no commit keeps its slot as a tick.
+		const empty = container.querySelector("[data-day='2026-08-01']");
+		expect(empty?.getAttribute("data-empty")).toBe("true");
+		expect(
+			screen.getByText("additions up, removals down, per day"),
+		).toBeTruthy();
+	});
+
 	it("draws one dot per commit on a log axis with the median labeled", () => {
 		const { container } = show("component:git-ledger");
 		expect(container.querySelectorAll("[title$='changed lines']")).toHaveLength(

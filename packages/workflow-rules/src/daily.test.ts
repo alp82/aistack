@@ -236,6 +236,26 @@ describe("foldWorkflowDays", () => {
 		expect(folded?.git.commits).toBe(15);
 	});
 
+	test("carries one Git entry per stored day, dated and sorted, for the per-day picture (#288)", () => {
+		const folded = foldWorkflowDays(
+			[
+				workflowDay({
+					date: "2026-08-25",
+					git: gitDay({ additions: 50, removals: 5, commits: 1 }),
+				}),
+				workflowDay({
+					date: "2026-08-23",
+					git: gitDay({ additions: 0, removals: 0, commits: 0 }),
+				}),
+			],
+			{ aggregateVersion: WORKFLOW_AGGREGATES_V2 },
+		);
+		expect(folded?.gitDays).toEqual([
+			{ date: "2026-08-23", additions: 0, removals: 0, commits: 0 },
+			{ date: "2026-08-25", additions: 50, removals: 5, commits: 1 },
+		]);
+	});
+
 	test("groups harnesses by name across days", () => {
 		const folded = foldWorkflowDays(
 			[

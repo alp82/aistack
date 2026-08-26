@@ -280,6 +280,15 @@ export function view(over: Partial<WorkflowView> = {}): WorkflowView {
 					{ weekdayUtc: 5, hourUtc: 11, commits: 1 },
 				],
 			},
+			gitDays: [
+				{
+					date: "2026-08-24",
+					additions: 94_500,
+					removals: 19_200,
+					commits: 118,
+				},
+				{ date: "2026-08-25", additions: 300, removals: 100, commits: 2 },
+			],
 			parallelProjects: 3,
 			parallelProjectDays: [2, 3],
 			webSearchDays: 2,
