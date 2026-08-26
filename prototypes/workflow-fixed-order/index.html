@@ -139,13 +139,30 @@
   .rowlist { margin-top: 24px; border-top: 1px solid var(--stroke-subtle); border-bottom: 1px solid var(--stroke-subtle); }
   .mrow { border-top: 1px solid var(--stroke-subtle); }
   .mrow:first-child { border-top: 0; }
-  .mhead { display: flex; align-items: center; gap: 14px; width: 100%; padding: 11px 0; }
+  .mline { display: grid; grid-template-columns: 200px 1fr 76px 96px 20px auto; column-gap: 28px; align-items: center; }
+  .mhead { width: 100%; padding: 11px 0; }
   .mhead:hover { background: color-mix(in oklab, var(--bg-panel) 40%, var(--bg-canvas)); }
-  .mhead .nm { width: 176px; flex: none; font-family: var(--font-sans); font-weight: 700; font-size: 14px; }
-  .mhead .cap { flex: 1; min-width: 0; color: var(--fg-secondary); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .mhead .viz { flex: none; }
-  .mhead .st { flex: none; font-weight: 800; font-size: 14px; color: var(--accent-lime); min-width: 56px; text-align: right; }
-  .chev { width: 8px; height: 8px; border-right: 1.5px solid var(--fg-muted); border-bottom: 1.5px solid var(--fg-muted); transform: rotate(45deg); flex: none; margin: 0 6px 3px 0; transition: transform .15s; }
+  .mhead .nm { font-family: var(--font-sans); font-weight: 700; font-size: 14px; }
+  .mhead .cap { min-width: 0; color: var(--fg-secondary); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mhead .viz { display: flex; }
+  .mhead .st { font-weight: 800; font-size: 14px; color: var(--accent-lime); text-align: right; }
+  .acts { display: flex; gap: 4px; width: 56px; justify-content: flex-end; }
+  .acts:empty { width: 0; }
+  .acts button { width: 24px; height: 24px; border: 1px solid var(--stroke-subtle); display: inline-flex; align-items: center; justify-content: center; color: var(--fg-muted); }
+  .acts button:hover { border-color: var(--stroke-strong); color: var(--fg-primary); }
+  .acts button.on { border-color: var(--accent-lime); color: var(--accent-lime); }
+  .acts svg { width: 12px; height: 12px; }
+  .mline .acts { grid-column: 6; }
+  .noown .mline { grid-template-columns: 200px 1fr 76px 96px 20px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .pair h4 { margin: 0 0 10px; font-size: 13px; font-weight: 700; }
+  .cmp { display: grid; grid-template-columns: 120px 1fr 48px; gap: 10px; align-items: center; margin: 8px 0; font-size: 13px; }
+  .cmp .track { height: 18px; background: var(--bg-panel); display: block; }
+  .cmp .track i { display: block; height: 18px; background: var(--accent-lime); }
+  .cmp .fig { font-family: var(--font-mono); color: var(--accent-lime); font-weight: 800; text-align: right; }
+  .dotrow.big i { width: 18px; height: 18px; }
+  .mhead .dotrow { width: 76px; gap: 1px; } .mhead .dotrow i { width: 6.7px; height: 12px; }
+  .chev { justify-self: end; width: 8px; height: 8px; border-right: 1.5px solid var(--fg-muted); border-bottom: 1.5px solid var(--fg-muted); transform: rotate(45deg); flex: none; margin: 0 6px 3px 0; transition: transform .15s; }
   .mrow.open .chev { transform: rotate(225deg); margin-bottom: -3px; }
   .mrow .body { display: none; padding: 6px 0 22px; }
   .mrow.open .body { display: block; }
@@ -245,8 +262,8 @@
     .podium, .tiles, .cols, .tracks, .receipts { grid-template-columns: 1fr; }
     .tiles .box, .tiles .box.top { grid-column: span 1; }
     .ledger .lrow, .ledger .lrow.big { grid-template-columns: 1fr; gap: 12px; }
+    .mline, .noown .mline { grid-template-columns: 1fr 76px 80px 20px; }
     .mhead .cap { display: none; }
-    .mhead .nm { width: auto; flex: 1; }
   }
 </style>
 </head>
@@ -321,7 +338,10 @@
   var changed = git.additions + git.removals;
   var sizes = git.perCommit.slice().sort(function (a, b) { return a - b; });
   var medCommit = median(sizes);
-  var langs = git.byExt.slice().sort(function (a, b) { return b.changedLines - a.changedLines; });
+  var LANG = { '.js': 'JavaScript', '.mjs': 'JavaScript', '.cjs': 'JavaScript', '.jsx': 'JavaScript', '.ts': 'TypeScript', '.tsx': 'TypeScript', '.html': 'HTML', '.css': 'CSS', '.json': 'JSON', '.md': 'Markdown', '.py': 'Python', '.sh': 'Shell', '.sql': 'SQL', '.yaml': 'YAML', '.yml': 'YAML' };
+  var langMap = {};
+  git.byExt.forEach(function (l) { var n = LANG[l.extension] || l.extension; langMap[n] = (langMap[n] || 0) + l.changedLines; });
+  var langs = Object.keys(langMap).map(function (n) { return { extension: n, changedLines: langMap[n] }; }).sort(function (a, b) { return b.changedLines - a.changedLines; });
   var langTotal = sum(langs, function (l) { return l.changedLines; }) + git.withheld;
 
   var kit = R.kit.find(function (k) { return k.harness === 'claude-code'; }) || { skills: [], mcp: [], sub: [] };
@@ -407,7 +427,8 @@
       return '<i style="background:' + (mixp === 0 ? 'var(--bg-panel)' : 'color-mix(in oklab, var(--accent-lime) ' + mixp + '%, var(--bg-panel))') + '"></i>';
     }).join('') + '</span>';
   }
-  function dots(n, on) { var s = '<span class="dotrow">'; for (var i = 0; i < n; i++) s += '<i class="' + (i < on ? 'on' : '') + '"></i>'; return s + '</span>'; }
+  function dotsInner(n, on) { var s = ''; for (var i = 0; i < n; i++) s += '<i class="' + (i < on ? 'on' : '') + '"></i>'; return s; }
+  function dots(n, on) { return '<span class="dotrow">' + dotsInner(n, on) + '</span>'; }
 
   function heatCells(series) {
     var m = {};
@@ -422,48 +443,48 @@
   var HOURL = []; for (var h = 0; h < 24; h++) HOURL.push(h);
 
   var ROWS = [
-    { key: 'activity-heatmap', name: 'activity heatmap', stat: pct(topThreeShare()), cap: 'of recorded events fall in the three busiest hours',
+    { key: 'activity-heatmap', name: 'When work happens', stat: pct(topThreeShare()), cap: 'of activity in the 3 busiest hours',
       head: function () { return hourCells(hourProfile); }, body: heatmapBody },
-    { key: 'start-hours', name: 'start hours', stat: String(startPeak).padStart(2, '0') + ':00', cap: 'is the hour most sessions start, local time',
+    { key: 'start-hours', name: 'Session start times', stat: String(startPeak).padStart(2, '0') + ':00', cap: 'is the most common start hour',
       head: function () { return miniBars(startHist, startPeak); },
-      body: function () { return '<p class="kick">// start hours · sessions by the local hour they opened</p>' + bigBars(startHist, startPeak, HOURL.map(function (h) { return String(h).padStart(2, '0'); })) + '<p class="sub">' + fmt(R.sessionRows.length) + ' sessions · hours in the owner\'s local time</p>'; } },
-    { key: 'late-night-commits', name: 'late-night commits', stat: pct(lateNight), cap: 'of commits land between 23:00 and 03:00',
+      body: function () { return bigBars(startHist, startPeak, HOURL.map(function (h) { return String(h).padStart(2, '0'); })); } },
+    { key: 'late-night-commits', name: 'Late-night commits', stat: pct(lateNight), cap: 'of commits between 23:00 and 03:00',
       head: function () { return fillStrip(lateNight); },
-      body: function () { return '<p class="kick">// late-night commits</p>' + fillStrip(lateNight, 'wide') + '<p class="sub">' + fmt(git.lateNightCommits) + ' of ' + fmt(git.totalCommits) + ' commits · owner\'s local clock</p>'; } },
-    { key: 'phase-playbook', name: 'phase playbook', stat: (splitMin | 0) + ' min', cap: 'is the median measured session, where the two tracks split',
+      body: function () { return fillStrip(lateNight, 'wide') + '<p class="sub">' + fmt(git.lateNightCommits) + ' of ' + fmt(git.totalCommits) + ' commits</p>'; } },
+    { key: 'phase-playbook', name: 'Session length', stat: (splitMin | 0) + ' min', cap: 'median session',
       head: function () { return segStrip(trackSegs(longer.share)); }, body: playbookBody },
-    { key: 'git-ledger', name: 'git ledger', stat: '+' + lines(git.additions), cap: 'lines added against ' + lines(git.removals) + ' removed, ' + pct(git.removals / changed) + ' removals',
+    { key: 'git-ledger', name: 'Lines changed', stat: '+' + lines(git.additions), cap: 'added, ' + lines(git.removals) + ' removed',
       head: function () { return segStrip([[git.additions / changed, LIME, 'additions'], [git.removals / changed, 'var(--destructive-fill)', 'removals']]); }, body: gitBody },
-    { key: 'coding-languages', name: 'coding languages', stat: pct(langs[0].changedLines / langTotal), cap: 'of changed lines are ' + langs[0].extension + ', then ' + langs[1].extension + ' at ' + pct(langs[1].changedLines / langTotal),
+    { key: 'coding-languages', name: 'Languages', stat: pct(langs[0].changedLines / langTotal), cap: langs[0].extension + ', then ' + langs[1].extension + ' at ' + pct(langs[1].changedLines / langTotal),
       head: function () { return segStrip(limeShades(langs.slice(0, 4).map(function (l) { return l.changedLines / langTotal; }), 1 - sum(langs.slice(0, 4), function (l) { return l.changedLines; }) / langTotal)); },
-      body: function () { return '<p class="kick">// coding languages · changed lines by file type</p>' + langs.slice(0, 8).map(function (l, i) { return barRow(i + 1, l.extension, l.changedLines / langs[0].changedLines, pct(l.changedLines / langTotal)); }).join('') + '<p class="sub">' + lines(langTotal) + ' changed lines' + (git.withheld ? ' · ' + lines(git.withheld) + ' in file types the machine withheld' : '') + '</p>'; } },
-    { key: 'skills-and-mcp', name: 'skills and MCP', stat: skills[0].name, cap: 'leads the skills at ' + pct(skills[0].callShare) + ' of calls · no MCP server published',
+      body: function () { return langs.slice(0, 8).map(function (l, i) { return barRow(i + 1, l.extension, l.changedLines / langs[0].changedLines, pct(l.changedLines / langTotal)); }).join(''); } },
+    { key: 'skills-and-mcp', name: 'Skills and MCP', stat: skills[0].name, cap: 'is the most used skill, ' + pct(skills[0].callShare) + ' of calls',
       head: function () { return segStrip(limeShades(skills.slice(0, 4).map(function (s) { return s.callShare; }), 1 - sum(skills.slice(0, 4), function (s) { return s.callShare; }))); },
-      body: function () { return '<p class="kick">// skills and mcp · share of calls in each category</p><div class="cols"><div><p class="mono-label">skills</p>' + skills.slice(0, 6).map(function (s, i) { return barRow(i + 1, s.name, s.callShare / skills[0].callShare, pct(s.callShare)); }).join('') + '<p class="sub">also: ' + skills.slice(6).map(function (s) { return s.name; }).join(', ') + '</p></div><div><p class="mono-label">mcp servers</p><p class="sub">no MCP call is published for this machine</p></div></div>'; } },
-    { key: 'model-routing', name: 'model routing', stat: pct(rt.main.find(function (m) { return m.model === modelOrder[0]; }).tokens / mainTok), cap: 'of main-loop tokens run on ' + short(modelOrder[0]),
+      body: function () { return '<div class="cols"><div><p class="mono-label">skills</p>' + skills.slice(0, 6).map(function (s, i) { return barRow(i + 1, s.name, s.callShare / skills[0].callShare, pct(s.callShare)); }).join('') + '<p class="sub">also: ' + skills.slice(6).map(function (s) { return s.name; }).join(', ') + '</p></div><div><p class="mono-label">mcp servers</p><p class="sub">none published</p></div></div>'; } },
+    { key: 'model-routing', name: 'Models used', stat: pct(rt.main.find(function (m) { return m.model === modelOrder[0]; }).tokens / mainTok), cap: 'of main-loop tokens on ' + short(modelOrder[0]),
       head: function () { return segStrip(routeSegs(rt.main, mainTok)); },
-      body: function () { return '<p class="kick">// model routing · who runs on what</p>' + routeRow('main loop', mainTok / (mainTok + subTok), routeSegs(rt.main, mainTok)) + routeRow('subagents', subTok / (mainTok + subTok), routeSegs(rt.subagents, subTok)) + '<div class="legend">' + modelOrder.map(function (m) { return '<span><i style="background:' + paintOf(m) + '"></i>' + short(m) + '</span>'; }).join('') + '</div>'; } },
-    { key: 'delegation', name: 'delegation', stat: (dg.mainToolCalls / dg.subagentToolCalls).toFixed(1) + ' : 1', cap: 'main-loop to subagent tool calls · widest fan-out ' + dg.widestFanOut,
+      body: function () { return routeRow('main loop', mainTok / (mainTok + subTok), routeSegs(rt.main, mainTok)) + routeRow('subagents', subTok / (mainTok + subTok), routeSegs(rt.subagents, subTok)) + '<div class="legend">' + modelOrder.map(function (m) { return '<span><i style="background:' + paintOf(m) + '"></i>' + short(m) + '</span>'; }).join('') + '</div>'; } },
+    { key: 'delegation', name: 'Subagents', stat: pct(subShare), cap: 'of tool calls run in subagents',
       head: function () { return segStrip([[1 - subShare, LIME, 'main loop'], [subShare, 'oklch(0.78 0.17 132 / 0.4)', 'subagents']]); },
-      body: function () { return '<p class="kick">// delegation · main loop to subagents</p><div class="cols"><div>' + segStrip([[1 - subShare, LIME], [subShare, 'oklch(0.78 0.17 132 / 0.4)']], 'wide') + '<div class="legend"><span><i style="background:' + LIME + '"></i>main loop ' + pct(1 - subShare) + '</span><span><i style="background:oklch(0.78 0.17 132 / 0.4)"></i>subagents ' + pct(subShare) + '</span></div><div class="records"><div><span class="n">' + dg.widestFanOut + '</span><p>widest parallel fan-out in one session</p></div><div><span class="n">' + dg.mostSubagents + '</span><p>most subagents in one session</p></div></div></div><div><p class="mono-label">subagent runs by type</p>' + kit.sub.map(function (s, i) { return barRow(i + 1, s.name, s.callShare / kit.sub[0].callShare, pct(s.callShare)); }).join('') + '</div></div>'; } },
-    { key: 'effort-breakdown', name: 'effort breakdown', stat: pct(EFFORT.high), cap: 'of turns run at high effort, ' + pct(EFFORT.medium) + ' medium, ' + pct(EFFORT.low) + ' low', handmade: true,
+      body: function () { return '<div class="cols"><div>' + segStrip([[1 - subShare, LIME], [subShare, 'oklch(0.78 0.17 132 / 0.4)']], 'wide') + '<div class="legend"><span><i style="background:' + LIME + '"></i>main loop ' + pct(1 - subShare) + '</span><span><i style="background:oklch(0.78 0.17 132 / 0.4)"></i>subagents ' + pct(subShare) + '</span></div><div class="records"><div><span class="n">' + dg.widestFanOut + '</span><p>widest parallel fan-out in one session</p></div><div><span class="n">' + dg.mostSubagents + '</span><p>most subagents in one session</p></div></div></div><div><p class="mono-label">by type</p>' + kit.sub.map(function (s, i) { return barRow(i + 1, s.name, s.callShare / kit.sub[0].callShare, pct(s.callShare)); }).join('') + '</div></div>'; } },
+    { key: 'effort-breakdown', name: 'Effort levels', stat: pct(EFFORT.high), cap: 'high, ' + pct(EFFORT.medium) + ' medium, ' + pct(EFFORT.low) + ' low',
       head: function () { return effortStrip(); },
-      body: function () { return '<p class="kick">// effort breakdown · turns by effort level</p>' + effortStrip('wide') + '<div class="legend"><span><i style="background:oklch(0.78 0.17 132 / 0.3)"></i>low ' + pct(EFFORT.low) + '</span><span><i style="background:oklch(0.78 0.17 132 / 0.6)"></i>medium ' + pct(EFFORT.medium) + '</span><span><i style="background:' + LIME + '"></i>high ' + pct(EFFORT.high) + '</span></div><p class="sub">counts: Claude Code · Codex</p>' + handmade('the wire carries the high share (' + pct(highEffort) + ', real). The low and medium split is hand-made until #285 ships per-level counts.'); } },
-    { key: 'thinking-share', name: 'thinking share', stat: pct(thinking), cap: 'of response tokens are thinking, across the harnesses that record it', handmade: true,
+      body: function () { return effortStrip('wide') + '<div class="legend"><span><i style="background:oklch(0.78 0.17 132 / 0.3)"></i>low ' + pct(EFFORT.low) + '</span><span><i style="background:oklch(0.78 0.17 132 / 0.6)"></i>medium ' + pct(EFFORT.medium) + '</span><span><i style="background:' + LIME + '"></i>high ' + pct(EFFORT.high) + '</span></div>'; } },
+    { key: 'thinking-share', name: 'Thinking tokens', stat: pct(thinking), cap: 'of response tokens',
       head: function () { return fillStrip(thinking); },
-      body: function () { return '<p class="kick">// thinking share · by harness</p>' + THINK_BY_HARNESS.map(function (t, i) { return t.v === null ? '<div class="barrow"><span class="rk"></span><span>' + t.h + '</span><span class="sub" style="margin:0">no thinking token count in this harness\'s records</span><span></span></div>' : barRow('', t.h, t.v / 0.5, pct(t.v)); }).join('') + handmade('one value on the wire (' + pct(thinking) + ' over Codex and Pi, real). The per-harness figures are hand-made until #285 ships them per harness.'); } },
-    { key: 'turn-durations', name: 'turn durations', stat: '~45s', cap: 'is the median turn · longest ' + (longestTurn | 0) + ' min', handmade: true,
+      body: function () { return THINK_BY_HARNESS.map(function (t) { return t.v === null ? '<div class="barrow"><span class="rk"></span><span>' + t.h + '</span><span class="sub" style="margin:0">not recorded</span><span></span></div>' : barRow('', t.h, t.v / 0.5, pct(t.v)); }).join(''); } },
+    { key: 'turn-durations', name: 'Turn length', stat: '~45s', cap: 'median, longest ' + (longestTurn | 0) + ' min',
       head: function () { return miniBars(TURN_BUCKETS.map(function (b) { return b.n; }), TURN_MEDIAN_BUCKET); },
-      body: function () { return '<p class="kick">// turn durations · log buckets</p>' + bigBars(TURN_BUCKETS.map(function (b) { return b.n; }), TURN_MEDIAN_BUCKET, TURN_BUCKETS.map(function (b) { return b.l; }), TURN_MEDIAN_BUCKET) + handmade('the wire carries the longest turn only (' + longestTurn.toFixed(0) + ' min, real). The buckets are hand-made until #285 ships a duration histogram.'); } },
-    { key: 'question-back', name: 'question-back', stat: pct(questionBack), cap: 'of turns end with a question back to the human',
+      body: function () { return bigBars(TURN_BUCKETS.map(function (b) { return b.n; }), TURN_MEDIAN_BUCKET, TURN_BUCKETS.map(function (b) { return b.l; }), TURN_MEDIAN_BUCKET); } },
+    { key: 'question-back', name: 'Questions asked', stat: pct(questionBack), cap: 'of turns end with a question',
       head: function () { return fillStrip(questionBack); },
-      body: function () { return '<p class="kick">// question-back</p>' + fillStrip(questionBack, 'wide') + '<p class="sub">counts: Claude Code · Codex</p>'; } },
-    { key: 'web-searches', name: 'web searches', stat: webPerDay.toFixed(1), cap: 'web searches per active day, inside the harness', bare: true,
-      head: function () { return '<span class="bare"></span>'; },
-      body: function () { return '<p class="kick">// web searches</p><p class="sub">counts: Claude Code · Codex · a bare box by design: a rate per day has no natural picture at this size</p>'; } },
-    { key: 'parallel-projects', name: 'parallel projects', stat: String(parallel), cap: 'projects run in parallel on a median active day', bare: true,
-      head: function () { return '<span class="bare"></span>'; },
-      body: function () { return '<p class="kick">// parallel projects</p><p class="sub">overlapping project session spans · a bare box by design</p>'; } }
+      body: function () { return fillStrip(questionBack, 'wide'); } },
+    { key: 'web-searches', name: 'Web searches', stat: webPerDay.toFixed(1), cap: 'per active day',
+      head: function () { return dots(10, Math.round(webPerDay)); },
+      body: function () { return '<div class="dotrow big">' + dotsInner(10, Math.round(webPerDay)) + '</div><p class="sub">one square per search on a typical active day</p>'; } },
+    { key: 'parallel-projects', name: 'Parallel projects', stat: String(parallel), cap: 'on a typical active day',
+      head: function () { return dots(10, parallel); },
+      body: function () { return '<div class="dotrow big">' + dotsInner(10, parallel) + '</div><p class="sub">one square per project worked on the same day</p>'; } }
   ];
 
   function topThreeShare() { var s = hourProfile.slice().sort(function (a, b) { return b - a; }); return (s[0] + s[1] + s[2]) / sum(hourProfile); }
@@ -475,7 +496,7 @@
   function handmade(t) { return '<div class="handmade">hand-made: ' + t + '</div>'; }
 
   function heatmapBody(id) {
-    return '<p class="kick">// when the work happens · owner\'s local time</p><div class="heat" id="heat-' + id + '"><div class="toggle"><button type="button" data-s="sessions" aria-pressed="true">sessions</button><button type="button" data-s="commits" aria-pressed="false">commits</button></div><div class="grid"></div><div class="pop"></div></div>';
+    return '<div class="heat" id="heat-' + id + '"><div class="toggle"><button type="button" data-s="sessions" aria-pressed="true">sessions</button><button type="button" data-s="commits" aria-pressed="false">commits</button></div><div class="grid"></div><div class="pop"></div></div>';
   }
   function drawHeat(root, series) {
     var m = heatCells(series);
@@ -513,10 +534,10 @@
 
   function playbookBody() {
     function trackHtml(t) {
-      return '<div class="track"><span class="tl"><b>' + t.label + '</b> · ' + t.scope + ' · ' + t.n + ' sessions</span><div style="margin-top:10px">' + segStrip(trackSegs(t.share), 'wide') + '</div><div class="figs"><span><b>' + (t.med | 0) + ' min</b>median</span><span><b>' + pct(t.merged) + '</b>merged</span><span><b>' + t.rr + '</b>median review rounds</span></div></div>';
+      return '<div style="margin-top:10px"><p style="display:flex;justify-content:space-between;margin:0 0 4px;font-size:13px"><span>' + t.label + ' <span class="sub" style="margin:0">' + t.n + '</span></span><span class="mono" style="font-size:11px;color:var(--accent-lime);font-weight:800">' + (t.med | 0) + ' min</span></p>' + segStrip(trackSegs(t.share), 'wide') + '</div>';
     }
-    function receipt(r) { return '<div class="receipt">' + r.head + '<div class="sides"><span><b>' + r.a[1] + '</b>' + r.a[0] + ' · ' + r.a[2] + '</span><span><b>' + r.b[1] + '</b>' + r.b[0] + ' · ' + r.b[2] + '</span></div><p class="sub" style="margin-top:6px">' + r.unit + '</p></div>'; }
-    return '<p class="kick">// the playbook · how the sessions run · split on the median measured session, ' + (splitMin | 0) + ' min</p><div class="tracks">' + trackHtml(shorter) + trackHtml(longer) + '</div><div class="legend">' + Object.keys(PHASE_PAINT).map(function (p) { return '<span><i style="background:' + PHASE_PAINT[p] + '"></i>' + p + '</span>'; }).join('') + '</div><div class="receipts">' + receipt(receipt1) + receipt(receipt2) + '</div>';
+    return '<div class="pair"><div><h4>Where the time goes, by session length</h4>' + trackHtml(shorter) + trackHtml(longer) + '<div class="legend">' + Object.keys(PHASE_PAINT).map(function (p) { return '<span><i style="background:' + PHASE_PAINT[p] + '"></i>' + p + '</span>'; }).join('') + '</div></div>' +
+      '<div><h4>Merged, with and without a verify step</h4><div class="cmp"><span>with verify</span><span class="track"><i style="width:' + Math.round(receipt1.a[1].replace('%','') ) + '%"></i></span><span class="fig">' + receipt1.a[1] + '</span></div><div class="cmp"><span>without</span><span class="track"><i style="width:' + Math.round(receipt1.b[1].replace('%','')) + '%"></i></span><span class="fig">' + receipt1.b[1] + '</span></div><p class="sub">' + receipt1.a[2] + ' and ' + receipt1.b[2] + ' sessions</p></div></div>';
   }
 
   function gitBody(id) {
@@ -526,7 +547,7 @@
     [1, 10, 100, 1000, 10000].forEach(function (g) { if (g <= Math.max.apply(null, sizes)) svg += '<line x1="' + x(g) + '" x2="' + x(g) + '" y1="8" y2="66" stroke="var(--stroke-subtle)" stroke-width="1"/><text x="' + x(g) + '" y="84" fill="var(--fg-muted)" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">' + fmt(g) + '</text>'; });
     sizes.forEach(function (s, i) { svg += '<rect x="' + (x(s) - 2) + '" y="' + (14 + (i % 7) * 7) + '" width="4" height="4" fill="var(--accent-lime)" fill-opacity="0.65"><title>' + fmt(s) + ' changed lines</title></rect>'; });
     svg += '<line x1="' + x(medCommit) + '" x2="' + x(medCommit) + '" y1="6" y2="68" stroke="var(--fg-primary)" stroke-width="1.5"/><text x="' + (x(medCommit) + 6) + '" y="12" fill="var(--fg-primary)" font-family="JetBrains Mono, monospace" font-size="10" font-weight="700">median ' + fmt(medCommit) + '</text></svg>';
-    return '<p class="kick">// the git ledger · what the commits carried</p><div class="gitfigs"><span class="add">+' + lines(git.additions) + '</span><span class="rem">-' + lines(git.removals) + '</span><span class="sub" style="margin:0">' + fmt(git.totalCommits) + ' commits · ' + fmt(git.testFileCommits) + ' touch a test file</span></div><div style="margin-top:10px">' + segStrip([[git.additions / changed, LIME], [git.removals / changed, 'var(--destructive-fill)']], 'wide') + '</div><p class="mono-label" style="margin-top:14px">one dot per commit · changed lines, log axis</p>' + svg;
+    return '<div class="gitfigs"><span class="add">+' + lines(git.additions) + '</span><span class="rem">-' + lines(git.removals) + '</span><span class="sub" style="margin:0">' + fmt(git.totalCommits) + ' commits · ' + fmt(git.testFileCommits) + ' touch a test file</span></div><div style="margin-top:10px">' + segStrip([[git.additions / changed, LIME], [git.removals / changed, 'var(--destructive-fill)']], 'wide') + '</div><p class="mono-label" style="margin-top:14px">lines changed per commit</p>' + svg;
   }
 
   /* ---------- placement: pins and hides, in the fixed order ---------- */
@@ -539,7 +560,15 @@
     return { podium: podium, below: below, all: pinned.concat(rest) };
   }
   function tags(r) { return (pins.indexOf(r.key) >= 0 ? '<span class="tag">pinned</span>' : '') + (hides.indexOf(r.key) >= 0 ? '<span class="tag" style="border-color:var(--stroke-strong);color:var(--fg-muted)">hidden</span>' : ''); }
+  var PIN_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3z"/></svg>';
+  var EYE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18M10.6 10.6a2 2 0 002.8 2.8M9.9 5.1A10 10 0 0121.8 12a10 10 0 01-2.3 3.3M6.6 6.6A10 10 0 002.2 12a10 10 0 0011 6.8"/></svg>';
+  function actions(r) {
+    if (!OWNER) return '';
+    var p = pins.indexOf(r.key) >= 0, h = hides.indexOf(r.key) >= 0;
+    return '<span class="acts"><button type="button" title="' + (p ? 'unpin' : 'pin to the podium') + '" data-pin="' + r.key + '" class="' + (p ? 'on' : '') + '">' + PIN_ICON + '</button><button type="button" title="' + (h ? 'show again' : 'hide from the page') + '" data-hide="' + r.key + '" class="' + (h ? 'on' : '') + '">' + EYE_ICON + '</button></span>';
+  }
   function controls(r) {
+    return '';
     if (!OWNER) return '';
     return '<div class="ctl"><span class="mono-label">your controls</span><button type="button" data-pin="' + r.key + '" class="' + (pins.indexOf(r.key) >= 0 ? 'on' : '') + '">' + (pins.indexOf(r.key) >= 0 ? 'unpin' : 'pin to the podium') + '</button><button type="button" data-hide="' + r.key + '" class="' + (hides.indexOf(r.key) >= 0 ? 'on' : '') + '">' + (hides.indexOf(r.key) >= 0 ? 'show again' : 'hide from the page') + '</button></div>';
   }
@@ -556,13 +585,14 @@
   function boxHtml(r, extra) {
     return '<button type="button" class="box ' + (extra || '') + '" data-open="' + r.key + '"><span class="mono-label nm">' + r.name + tags(r) + '</span><span class="n">' + r.stat + '</span><span class="cap">' + r.cap + '</span><span class="pic">' + r.head() + '</span></button>';
   }
-  function bodyHtml(r) { return r.body(r.key) + controls(r); }
+  function bodyHtml(r) { return r.body(r.key); }
+  function podiumBodyHtml(r) { return '<div style="display:flex;justify-content:flex-end">' + actions(r) + '</div>' + r.body(r.key); }
 
   function buildPodium(root, p) {
     var html = '<div class="podium">' + p.podium.map(function (r) { return boxHtml(r); }).join('') + '</div>';
-    html += p.podium.map(function (r) { return '<div class="podium-body" data-body="' + r.key + '">' + bodyHtml(r) + '</div>'; }).join('');
+    html += p.podium.map(function (r) { return '<div class="podium-body" data-body="' + r.key + '">' + podiumBodyHtml(r) + '</div>'; }).join('');
     html += '<div class="rowlist">' + p.below.map(function (r) {
-      return '<div class="mrow" data-row="' + r.key + '"><button type="button" class="mhead"><span class="nm">' + r.name + tags(r) + '</span><span class="cap">' + r.cap + '</span><span class="viz">' + r.head() + '</span><span class="st">' + r.stat + '</span><span class="chev"></span></button><div class="body">' + bodyHtml(r) + '</div></div>';
+      return '<div class="mrow" data-row="' + r.key + '"><div class="mhead mline"><button type="button" class="nm">' + r.name + tags(r) + '</button><span class="cap">' + r.cap + '</span><span class="viz">' + r.head() + '</span><span class="st">' + r.stat + '</span><span class="chev"></span>' + actions(r) + '</div><div class="body">' + bodyHtml(r) + '</div></div>';
     }).join('') + '</div>';
     root.innerHTML = html;
     root.querySelectorAll('.box').forEach(function (b) {
@@ -570,10 +600,18 @@
         var was = b.classList.contains('on');
         root.querySelectorAll('.box').forEach(function (x) { x.classList.remove('on'); });
         root.querySelectorAll('.podium-body').forEach(function (x) { x.classList.remove('on'); });
+        root.querySelectorAll('.mrow.open').forEach(function (x) { x.classList.remove('open'); });
         if (!was) { b.classList.add('on'); root.querySelector('[data-body="' + b.dataset.open + '"]').classList.add('on'); }
       });
     });
-    root.querySelectorAll('.mhead').forEach(function (h) { h.addEventListener('click', function () { h.parentNode.classList.toggle('open'); }); });
+    root.querySelectorAll('.mhead').forEach(function (h) { h.addEventListener('click', function (e) {
+      if (e.target.closest('.acts')) return;
+      var row = h.parentNode, was = row.classList.contains('open');
+      root.querySelectorAll('.mrow.open').forEach(function (x) { x.classList.remove('open'); });
+      root.querySelectorAll('.box.on').forEach(function (x) { x.classList.remove('on'); });
+      root.querySelectorAll('.podium-body.on').forEach(function (x) { x.classList.remove('on'); });
+      if (!was) row.classList.add('open');
+    }); });
   }
 
   function buildLedger(root, p) {
@@ -625,6 +663,7 @@
     var p = placed();
     root.innerHTML = leadHtml() + '<div id="rows"></div>';
     var rows = document.getElementById('rows');
+    rows.className = OWNER ? '' : 'noown';
     if (variant === 'podium') buildPodium(rows, p);
     if (variant === 'ledger') buildLedger(rows, p);
     if (variant === 'tiles') buildTiles(rows, p);
