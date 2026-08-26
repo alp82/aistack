@@ -1,11 +1,14 @@
 /**
  * The Workflow section's vocabulary, paints and number formats.
  *
- * Wayfinder ticket #215 (map #200), spec `docs/specs/workflow-surface.md`.
+ * Wayfinder tickets #215 and #286 (map #200), spec `docs/specs/workflow-surface.md`.
  *
  * NO SENTENCE HERE IS DRAFTED (ADR-0002). Every string is fixed, and every
- * number it wraps comes from a versioned rule the CLI or the server ran. The
- * section computes nothing of its own.
+ * number it wraps comes from a versioned rule the CLI or the server ran.
+ *
+ * NOTHING ABOUT RULES OR CONSENT PRINTS (#277). The rule ids, the fit, the
+ * coverage and the provenance footer all left the page with #286. They stay in
+ * the API for a reader who wants them.
  */
 
 import type { PhaseId } from "@aistack/workflow-rules";
@@ -18,6 +21,7 @@ export type WorkflowView = NonNullable<
 export type WorkflowRow = WorkflowView["rows"][number];
 export type WorkflowKit = WorkflowView["kit"][number];
 export type HarnessReading = WorkflowView["section"]["harnesses"][number];
+export type WindowId = WorkflowView["window"]["id"];
 
 export const WORKFLOW_ANCHOR = "section-workflow";
 
@@ -28,12 +32,35 @@ export const TITLE = "Workflow";
 export const MONO_LABEL =
 	"font-mono text-[11px] font-semibold uppercase tracking-[0.25em]";
 
-/** Under every receipt card, and under any pair the page prints side by side. */
-export const NO_CAUSE_CLAIMED = "measured together, no cause claimed";
-
 /** The one sentence that answers "what is measured time?" (#220's second marker). */
 export const MEASURED_TIME_NOTE =
 	"Measured time is the time recorded tool calls account for, each event holding the gap to the next one, capped at 5 minutes. It is not wall-clock time, and it is not billed time.";
+
+/** The three windows the selector offers, in the order it prints them (#277). */
+export const WINDOWS: readonly { id: WindowId; label: string }[] = [
+	{ id: "30d", label: "30 days" },
+	{ id: "7d", label: "7 days" },
+	{ id: "24h", label: "24 hours" },
+];
+
+/**
+ * The empty state per window option (#284). A window with no stored day is a
+ * real answer about the sync, never a row of zeroes.
+ */
+export const EMPTY_WINDOW: Record<WindowId, { head: string; body: string }> = {
+	"30d": {
+		head: "no measured day in the last 30 days",
+		body: "The next sync appends the days since the last one, and this window fills.",
+	},
+	"7d": {
+		head: "no measured day in the last 7 days",
+		body: "The next sync appends the days since the last one, and this window fills.",
+	},
+	"24h": {
+		head: "nothing measured in the last 24 hours",
+		body: "A day arrives with the sync that follows it. Run aistack sync, or wait for the 48-hour auto-sync.",
+	},
+};
 
 // ---------------------------------------------------------------------------
 // Phases.
@@ -51,6 +78,14 @@ export const PHASE_ORDER: readonly PhaseId[] = [
 	"verify",
 	"handoff",
 	"unknown",
+];
+
+/** The four phases the lead's bar rescales to 100 (#284). */
+export const NAMED_PHASES: readonly PhaseId[] = [
+	"scout",
+	"build",
+	"verify",
+	"handoff",
 ];
 
 export const PHASE_PAINT: Record<PhaseId, string> = {
@@ -74,6 +109,20 @@ export const PHASE_GLOSSARY: readonly { phase: PhaseId; text: string }[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Paints the pictures share. The accent carries every single-series picture;
+// a share of the accent is the accent at a lower opacity, so a re-pointed
+// stack accent recolors the whole section at once.
+// ---------------------------------------------------------------------------
+
+export const ACCENT = "var(--accent-lime)";
+export const ACCENT_REST = "var(--bg-panel)";
+export const ACCENT_DIM = "var(--bg-panel-elevated)";
+
+export function accentAt(opacity: number): string {
+	return `color-mix(in oklab, var(--accent-lime) ${Math.round(opacity * 100)}%, transparent)`;
+}
+
+// ---------------------------------------------------------------------------
 // Numbers.
 // ---------------------------------------------------------------------------
 
@@ -88,12 +137,26 @@ export function fmtNumber(value: number): string {
 		.replace(/\.0$/, "");
 }
 
+export function fmtCount(value: number): string {
+	return Math.round(value).toLocaleString("en-US");
+}
+
 export function fmtMinutes(minutes: number): string {
 	return `${fmtNumber(minutes)} min`;
 }
 
+/** Seconds as the reader says them: "45s", "2.5 min", "1.2 h". */
+export function fmtSeconds(seconds: number): string {
+	if (seconds < 60) return `${fmtNumber(seconds)}s`;
+	if (seconds < 3600) return fmtMinutes(seconds / 60);
+	return `${fmtNumber(seconds / 3600)} h`;
+}
+
 export function fmtLines(lines: number): string {
-	if (Math.abs(lines) >= 1000) return `${fmtNumber(lines / 1000)}k`;
+	const abs = Math.abs(lines);
+	if (abs >= 1_000_000) return `${fmtNumber(lines / 1_000_000)}M`;
+	if (abs >= 10_000) return `${Math.round(lines / 1000)}k`;
+	if (abs >= 1000) return `${fmtNumber(lines / 1000)}k`;
 	return lines.toLocaleString("en-US");
 }
 
@@ -111,13 +174,6 @@ export function fmtRowValue(row: Pick<WorkflowRow, "unit" | "value">): string {
 	}
 }
 
-/** The typical band the rule declared, in the row's own unit. */
-export function fmtBand(row: WorkflowRow): string {
-	const low = fmtRowValue({ unit: row.unit, value: row.band.low });
-	const high = fmtRowValue({ unit: row.unit, value: row.band.high });
-	return `${low} to ${high}`;
-}
-
 export const HARNESS_LABELS: Record<string, string> = {
 	"claude-code": "Claude Code",
 	codex: "Codex",
@@ -127,6 +183,11 @@ export const HARNESS_LABELS: Record<string, string> = {
 
 export function harnessLabelOf(name: string): string {
 	return HARNESS_LABELS[name] ?? name;
+}
+
+/** "claude-opus-5" as the row prints it: the vendor prefix and a date suffix dropped. */
+export function shortModel(model: string): string {
+	return model.replace(/^claude-/, "").replace(/-\d{8}$/, "");
 }
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -144,29 +205,78 @@ export function hourLabel(hour: number): string {
 }
 
 /**
- * A row's short display name, from its rule id.
- *
- * The rules give a row one `label`, which is the fragment completing
- * "<value> <label>" - a caption, not a name. The rule id is the only stable
- * short name either pool carries, and it was already chosen to read as one.
+ * A UTC cell shifted into the owner's local time. Without an offset the cell
+ * stays where it is, in UTC.
  */
-export function rowName(ruleId: string): string {
-	return ruleId.replace(/-/g, " ");
+export function shiftCell(
+	weekdayUtc: number,
+	hourUtc: number,
+	offsetMinutes: number | null | undefined,
+): { weekday: number; hour: number } {
+	const minutes = weekdayUtc * 24 * 60 + hourUtc * 60 + (offsetMinutes ?? 0);
+	const week = 7 * 24 * 60;
+	const wrapped = ((minutes % week) + week) % week;
+	return {
+		weekday: Math.floor(wrapped / (24 * 60)),
+		hour: Math.floor((wrapped % (24 * 60)) / 60),
+	};
 }
 
-/**
- * Each component body's own kicker, keyed by its rule id.
- *
- * The strings live here rather than inline in the JSX because a text node
- * opening with `//` reads as a comment to the linter, and the measured section
- * already keeps its kickers in its own `copy.ts`.
- */
-export const BODY_KICKERS: Record<string, string> = {
-	"phase-playbook": "// the playbook · how the sessions run",
-	"model-routing": "// model routing · who runs on what",
-	kit: "// the kit · skills and mcp servers",
-	delegation: "// delegation · main loop to subagents",
-	"git-ledger": "// the git ledger · what the commits carried",
-	"coding-languages": "// coding languages · changed lines by file type",
-	"activity-heatmap": "// when the work happens",
+export function localHour(
+	hourUtc: number,
+	offsetMinutes: number | null | undefined,
+): number {
+	return shiftCell(0, hourUtc, offsetMinutes).hour;
+}
+
+// ---------------------------------------------------------------------------
+// Languages merge by name the way GitHub does (#284, decision 5): `.js` and
+// `.mjs` are JavaScript, `.ts` and `.tsx` are TypeScript. An extension with no
+// name keeps its extension, dot included, so it still reads as a file type.
+// ---------------------------------------------------------------------------
+
+const LANGUAGE_BY_EXTENSION: Record<string, string> = {
+	js: "JavaScript",
+	mjs: "JavaScript",
+	cjs: "JavaScript",
+	jsx: "JavaScript",
+	ts: "TypeScript",
+	mts: "TypeScript",
+	cts: "TypeScript",
+	tsx: "TypeScript",
+	py: "Python",
+	rb: "Ruby",
+	rs: "Rust",
+	go: "Go",
+	java: "Java",
+	kt: "Kotlin",
+	swift: "Swift",
+	c: "C",
+	h: "C",
+	cc: "C++",
+	cpp: "C++",
+	hpp: "C++",
+	cs: "C#",
+	php: "PHP",
+	sh: "Shell",
+	bash: "Shell",
+	zsh: "Shell",
+	fish: "Shell",
+	sql: "SQL",
+	html: "HTML",
+	css: "CSS",
+	scss: "SCSS",
+	json: "JSON",
+	yaml: "YAML",
+	yml: "YAML",
+	toml: "TOML",
+	md: "Markdown",
+	mdx: "Markdown",
+	vue: "Vue",
+	svelte: "Svelte",
 };
+
+export function languageOf(extension: string): string {
+	const bare = extension.replace(/^\./, "").toLowerCase();
+	return LANGUAGE_BY_EXTENSION[bare] ?? `.${bare}`;
+}
