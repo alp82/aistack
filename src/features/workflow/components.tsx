@@ -363,7 +363,7 @@ const MAX_DOTS = 240;
 function GitLedger({ view }: { view: WorkflowView }) {
 	const git = view.section.git;
 	const changed = git.additions + git.removals;
-	if (git.totalCommits === 0) {
+	if (git.commits === 0) {
 		return (
 			<EmptyBody>
 				No commit in this window sits in a repository a session touched.
@@ -387,7 +387,7 @@ function GitLedger({ view }: { view: WorkflowView }) {
 					-{fmtLines(git.removals)}
 				</p>
 				<p className="font-mono text-xs text-fg-muted">
-					{git.totalCommits.toLocaleString("en-US")} commits ·{" "}
+					{git.commits.toLocaleString("en-US")} commits ·{" "}
 					{fmtPercent(changed > 0 ? git.removals / changed : 0)} of changed
 					lines are removals
 				</p>
@@ -430,9 +430,6 @@ function GitLedger({ view }: { view: WorkflowView }) {
 				{git.testFileCommits.toLocaleString("en-US")} commits touch a test file
 				· {git.testFileRuleVersion}
 				{git.commitSetRuleVersion ? ` · ${git.commitSetRuleVersion}` : ""}
-				{view.trimmed?.commitStrip
-					? " · the per-commit strip was dropped to fit the stored reading"
-					: ""}
 			</BodyFootnote>
 		</div>
 	);

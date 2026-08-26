@@ -403,7 +403,7 @@ describe("the cache-write TTL split on the wire (#213)", () => {
 	});
 });
 
-describe("the workflow section on the wire (#213)", () => {
+describe("the workflow section on the wire (#213, #285)", () => {
 	const built = () =>
 		buildPayload({
 			aggregate: createAggregate(),
@@ -414,69 +414,65 @@ describe("the workflow section on the wire (#213)", () => {
 			...HARNESS_PARAMS,
 		});
 
-	const phaseTotals = () => ({
-		scout: 60,
-		build: 30,
-		verify: 5,
-		handoff: 3,
-		unknown: 2,
-	});
-
 	const extraction = (): WorkflowExtraction => ({
-		aggregateVersion: "workflow-aggregates/v1",
+		aggregateVersion: "workflow-aggregates/v2",
 		utcOffsetMinutes: 120,
-		harnesses: [
+		days: [
 			{
-				aggregateVersion: "workflow-aggregates/v1",
-				harness: "claude-code",
-				phase: {
-					ruleVersion: "phase-rules/v1",
-					publishable: true,
-					sessions: 42,
-					phaseSec: phaseTotals(),
-					phaseEvents: phaseTotals(),
-					waitingSec: 4,
-					idleSec: 9,
-					unknownShare: 0.02,
-					sessionRows: [],
+				date: "2026-08-21",
+				harnesses: [
+					{
+						harness: "claude-code",
+						sessions: 142,
+						startHours: [{ hourUtc: 21, sessions: 142 }],
+						phase: {
+							ruleVersion: "phase-rules/v1",
+							sessions: 142,
+							phaseSec: {
+								scout: 640,
+								build: 180,
+								verify: 60,
+								handoff: 50,
+								unknown: 70,
+							},
+							phaseEvents: {
+								scout: 64,
+								build: 18,
+								verify: 6,
+								handoff: 5,
+								unknown: 7,
+							},
+							waitingSec: 120,
+							idleSec: 300,
+							sessionsWithVerify: 40,
+							sessionsWithHandoff: 60,
+							bucketRuleVersion: "log-buckets/v1",
+							lengths: [],
+						},
+						activity: [{ weekdayUtc: 5, hourUtc: 23, events: 17 }],
+					},
+				],
+				git: {
+					testFileRuleVersion: "test-files/v2",
+					commitSetRuleVersion: "commit-set/v1",
+					fileTypeRuleVersion: "file-types/v2",
+					commits: 214,
+					lateNightCommits: 30,
+					additions: 9_000,
+					removals: 3_400,
+					changedLinesPerCommit: [40, 12],
+					testFileCommits: 5,
+					changedLinesByExtension: [{ extension: ".ts", changedLines: 500 }],
+					withheldExtensionLines: 20,
+					weekdayHourCells: [{ weekdayUtc: 5, hourUtc: 23, commits: 3 }],
 				},
-				// Local-only: the per-session inputs the metric rules already
-				// reduced into `metricInputs`. The wire must not carry them.
-				facts: {
-					sessions: [{ harness: "claude-code", thinkingTokens: 1234 }],
-					activeDays: [{ date: "2026-07-24", parallelProjectCount: 2 }],
-				},
-				activity: [{ weekdayUtc: 5, hourUtc: 23, events: 17 }],
-			},
-		],
-		git: {
-			testFileRuleVersion: "test-files/v2",
-			commitSetRuleVersion: "commit-set/v1",
-			fileTypeRuleVersion: "file-types/v2",
-			totalCommits: 12,
-			lateNightCommits: 3,
-			additions: 400,
-			removals: 120,
-			changedLinesPerCommit: [40, 12],
-			testFileCommits: 5,
-			changedLinesByExtension: [{ extension: ".ts", changedLines: 500 }],
-			withheldExtensionLines: 20,
-			weekdayHourCells: [{ weekdayUtc: 5, hourUtc: 23, commits: 3 }],
-		},
-		metricInputs: [
-			{
-				metricId: "late-night-commit-share",
-				ruleVersion: "metric-rules/v1",
-				value: 0.25,
-				band: { low: 0.05, high: 0.2 },
-				coverage: 1,
-				coverageTag: undefined,
+				parallelProjects: 2,
 			},
 		],
 	});
 
 	it("rides beside the payloads, never inside one", () => {
-		// The Git half is per MACHINE and the metric rows span every synced
+		// The Git half is per MACHINE and the daily rows span every synced
 		// harness, so neither has a payload to sit in - and the closed payload
 		// validator is the privacy claim, which widening would spend.
 		const body = buildSyncBody(
@@ -486,16 +482,15 @@ describe("the workflow section on the wire (#213)", () => {
 			"manual",
 			extraction(),
 		);
-		expect(body.workflow?.aggregateVersion).toBe("workflow-aggregates/v1");
+		expect(body.workflow?.aggregateVersion).toBe("workflow-aggregates/v2");
+		expect(body.workflow?.days).toHaveLength(1);
 		expect(JSON.stringify(body.payloads)).not.toContain("phase-rules");
 	});
 
 	it("carries the aggregate version ONCE, on the section", () => {
-		// The server's `HarnessWorkflow` validator is a closed object with no
+		// The server's day validators are closed objects with no
 		// `aggregateVersion` field, and Convex refuses an object with an extra
-		// field. The reducer stamps every harness with the same module constant,
-		// so the per-harness copy is redundant as well as rejected: a real sync
-		// died on `extra field \`aggregateVersion\` ... Path: .workflow.harnesses[0]`.
+		// field.
 		const body = buildSyncBody(
 			[built()],
 			config(),
@@ -503,9 +498,12 @@ describe("the workflow section on the wire (#213)", () => {
 			"manual",
 			extraction(),
 		);
-		expect(body.workflow?.aggregateVersion).toBe("workflow-aggregates/v1");
-		for (const harness of body.workflow?.harnesses ?? []) {
-			expect(harness).not.toHaveProperty("aggregateVersion");
+		expect(body.workflow?.aggregateVersion).toBe("workflow-aggregates/v2");
+		for (const day of body.workflow?.days ?? []) {
+			expect(day).not.toHaveProperty("aggregateVersion");
+			for (const harness of day.harnesses) {
+				expect(harness).not.toHaveProperty("aggregateVersion");
+			}
 		}
 	});
 
@@ -532,41 +530,6 @@ describe("the workflow section on the wire (#213)", () => {
 			extraction(),
 		);
 		expect(body.workflow).toBeUndefined();
-	});
-
-	it("drops the local facts half", () => {
-		// `facts` holds per-session records - thinking tokens, turn durations,
-		// effort per turn - that the CLI has already reduced into `metrics`.
-		// Shipping them too would put finer records on the wire than any surface
-		// reads, which is the opposite of what a closed section is for.
-		const body = buildSyncBody(
-			[built()],
-			config(),
-			undefined,
-			"manual",
-			extraction(),
-		);
-		expect(body.workflow?.harnesses[0]).not.toHaveProperty("facts");
-		expect(JSON.stringify(body)).not.toContain("1234");
-	});
-
-	it("omits an absent coverage tag instead of sending an empty one", () => {
-		// The server's validator takes an OPTIONAL string, so "no tag" is an
-		// absent key there, not a key holding undefined.
-		const body = buildSyncBody(
-			[built()],
-			config(),
-			undefined,
-			"manual",
-			extraction(),
-		);
-		expect(body.workflow?.metrics[0]).toEqual({
-			metricId: "late-night-commit-share",
-			ruleVersion: "metric-rules/v1",
-			value: 0.25,
-			band: { low: 0.05, high: 0.2 },
-			coverage: 1,
-		});
 	});
 
 	it("carries the publishing CLI's version beside the payloads", () => {

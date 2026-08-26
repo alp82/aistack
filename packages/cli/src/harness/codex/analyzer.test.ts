@@ -107,7 +107,7 @@ describe("usage - sum last_token_usage deltas, never the cumulative total", () =
 			ingestLine(agg, line, state);
 		}
 
-		expect(agg.workflow.finish().facts.sessions[0]?.thinkingTokens).toBe(7);
+		expect(agg.workflow.finish().days[0]?.thinking?.thinkingTokens).toBe(7);
 	});
 
 	it("marks a question only when request_user_input is the last tool", () => {
@@ -120,7 +120,10 @@ describe("usage - sum last_token_usage deltas, never the cumulative total", () =
 			tokenCount({ output: 1 }),
 		]);
 
-		expect(agg.workflow.finish().facts.sessions[0]?.questionBackTurns).toBe(0);
+		expect(agg.workflow.finish().days[0]?.questions).toEqual({
+			asked: 0,
+			turns: 1,
+		});
 	});
 
 	it("sums deltas and ignores total_token_usage entirely", () => {

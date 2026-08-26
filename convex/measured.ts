@@ -14,7 +14,7 @@ import {
   PublishedNameCategory,
   ReconcileAtomKind,
   SyncTrigger,
-  WorkflowSection,
+  WorkflowWire,
 } from './schema'
 import { captureServerEvent } from './analytics'
 import { emitActivityEvent } from './activity'
@@ -27,7 +27,7 @@ import {
   visibleSources,
 } from './lib/sources'
 import { extractShortId } from './lib/ids'
-import { kitFromSnapshots, storeWorkflowSection } from './lib/workflow'
+import { storeWorkflowDays } from './lib/workflow'
 import { firstSeenMachines } from './lib/machineOrdinals'
 import { type RepricedModel, repriceSnapshot, round2 } from './lib/reprice'
 import {
@@ -247,19 +247,23 @@ function checkPayloadStrings(
  * ever meeting an honest client.
  */
 const WORKFLOW_LIMITS = {
+  /** More than a year of days. Retention deletes past 400 on store. */
+  days: 400,
   harnesses: 8,
-  sessionRows: 5_000,
-  commits: 20_000,
+  /** Log buckets: 64 covers anything a clock can hold. */
+  buckets: 64,
+  /** Commits on one day, for the per-commit strip. */
+  commitsPerDay: 5_000,
   /** A week of hours. Both heatmaps are keyed by (weekday, hour). */
   cells: 7 * 24,
   extensions: 128,
-  metrics: 64,
   routingModels: 64,
+  effortLevels: 4,
 } as const
 
-export function checkWorkflowSection(
-  section: Infer<typeof WorkflowSection>
-): void {
+const UTC_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+export function checkWorkflowDays(wire: Infer<typeof WorkflowWire>): void {
   const requireName = (value: string, where: string): void => {
     if (!isDisplaySafeName(value)) {
       throw new Error(
@@ -273,86 +277,98 @@ export function checkWorkflowSection(
     }
   }
 
-  requireName(section.aggregateVersion, 'workflow.aggregateVersion')
-  requireSize(
-    section.harnesses.length,
-    WORKFLOW_LIMITS.harnesses,
-    'workflow.harnesses'
-  )
+  requireName(wire.aggregateVersion, 'workflow.aggregateVersion')
+  requireSize(wire.days.length, WORKFLOW_LIMITS.days, 'workflow.days')
 
-  const seen = new Set<string>()
-  section.harnesses.forEach((harness, i) => {
-    const at = `workflow.harnesses[${i}]`
-    requireName(harness.harness, `${at}.harness`)
-    // One reading per harness, for the reason `publishForToken` gives about the
-    // payloads: two entries claiming the same harness make "the reading for this
-    // harness" depend on array order.
-    if (seen.has(harness.harness)) {
-      throw new Error('Each workflow harness entry must name a distinct harness')
+  const seenDates = new Set<string>()
+  wire.days.forEach((day, d) => {
+    const at = `workflow.days[${d}]`
+    if (!UTC_DATE.test(day.date) || Number.isNaN(Date.parse(`${day.date}T00:00:00Z`))) {
+      throw new Error(`${at}.date must be a UTC date as YYYY-MM-DD`)
     }
-    seen.add(harness.harness)
+    // One row per date: two entries claiming the same day would make "the
+    // reading for this day" depend on array order.
+    if (seenDates.has(day.date)) {
+      throw new Error('Each workflow day must carry a distinct date')
+    }
+    seenDates.add(day.date)
 
-    if (harness.phase) {
-      requireName(harness.phase.ruleVersion, `${at}.phase.ruleVersion`)
-      requireSize(
-        harness.phase.sessionRows.length,
-        WORKFLOW_LIMITS.sessionRows,
-        `${at}.phase.sessionRows`
-      )
-    }
-    if (harness.routing) {
-      for (const side of ['main', 'subagents'] as const) {
-        requireSize(
-          harness.routing[side].length,
-          WORKFLOW_LIMITS.routingModels,
-          `${at}.routing.${side}`
-        )
-        harness.routing[side].forEach((row, j) => {
-          if (!isSanitizedModelId(row.model)) {
-            throw new Error(
-              `${at}.routing.${side}[${j}].model must be 1-${MODEL_ID_MAX} characters of A-Z a-z 0-9 . _ : -`
-            )
-          }
-        })
+    requireSize(day.harnesses.length, WORKFLOW_LIMITS.harnesses, `${at}.harnesses`)
+    const seen = new Set<string>()
+    day.harnesses.forEach((harness, i) => {
+      const here = `${at}.harnesses[${i}]`
+      requireName(harness.harness, `${here}.harness`)
+      if (seen.has(harness.harness)) {
+        throw new Error('Each workflow harness entry must name a distinct harness')
       }
-    }
-    requireSize(harness.activity.length, WORKFLOW_LIMITS.cells, `${at}.activity`)
-  })
+      seen.add(harness.harness)
+      requireSize(harness.startHours.length, 24, `${here}.startHours`)
+      if (harness.phase) {
+        requireName(harness.phase.ruleVersion, `${here}.phase.ruleVersion`)
+        requireName(
+          harness.phase.bucketRuleVersion,
+          `${here}.phase.bucketRuleVersion`
+        )
+        requireSize(
+          harness.phase.lengths.length,
+          WORKFLOW_LIMITS.buckets,
+          `${here}.phase.lengths`
+        )
+      }
+      if (harness.routing) {
+        for (const side of ['main', 'subagents'] as const) {
+          requireSize(
+            harness.routing[side].length,
+            WORKFLOW_LIMITS.routingModels,
+            `${here}.routing.${side}`
+          )
+          harness.routing[side].forEach((row, j) => {
+            if (!isSanitizedModelId(row.model)) {
+              throw new Error(
+                `${here}.routing.${side}[${j}].model must be 1-${MODEL_ID_MAX} characters of A-Z a-z 0-9 . _ : -`
+              )
+            }
+          })
+        }
+      }
+      requireSize(harness.activity.length, WORKFLOW_LIMITS.cells, `${here}.activity`)
+      if (harness.effort) {
+        requireSize(harness.effort.length, WORKFLOW_LIMITS.effortLevels, `${here}.effort`)
+      }
+      if (harness.turnDurations) {
+        requireName(
+          harness.turnDurations.bucketRuleVersion,
+          `${here}.turnDurations.bucketRuleVersion`
+        )
+        requireSize(
+          harness.turnDurations.buckets.length,
+          WORKFLOW_LIMITS.buckets,
+          `${here}.turnDurations.buckets`
+        )
+      }
+    })
 
-  requireName(section.git.testFileRuleVersion, 'workflow.git.testFileRuleVersion')
-  requireName(section.git.fileTypeRuleVersion, 'workflow.git.fileTypeRuleVersion')
-  if (section.git.commitSetRuleVersion !== undefined) {
-    requireName(section.git.commitSetRuleVersion, 'workflow.git.commitSetRuleVersion')
-  }
-  requireSize(
-    section.git.changedLinesPerCommit.length,
-    WORKFLOW_LIMITS.commits,
-    'workflow.git.changedLinesPerCommit'
-  )
-  requireSize(
-    section.git.changedLinesByExtension.length,
-    WORKFLOW_LIMITS.extensions,
-    'workflow.git.changedLinesByExtension'
-  )
-  section.git.changedLinesByExtension.forEach((row, i) => {
-    requireName(
-      row.extension,
-      `workflow.git.changedLinesByExtension[${i}].extension`
+    requireName(day.git.testFileRuleVersion, `${at}.git.testFileRuleVersion`)
+    requireName(day.git.fileTypeRuleVersion, `${at}.git.fileTypeRuleVersion`)
+    requireName(day.git.commitSetRuleVersion, `${at}.git.commitSetRuleVersion`)
+    requireSize(
+      day.git.changedLinesPerCommit.length,
+      WORKFLOW_LIMITS.commitsPerDay,
+      `${at}.git.changedLinesPerCommit`
     )
-  })
-  requireSize(
-    section.git.weekdayHourCells.length,
-    WORKFLOW_LIMITS.cells,
-    'workflow.git.weekdayHourCells'
-  )
-
-  requireSize(section.metrics.length, WORKFLOW_LIMITS.metrics, 'workflow.metrics')
-  section.metrics.forEach((metric, i) => {
-    requireName(metric.metricId, `workflow.metrics[${i}].metricId`)
-    requireName(metric.ruleVersion, `workflow.metrics[${i}].ruleVersion`)
-    if (metric.coverageTag !== undefined) {
-      requireName(metric.coverageTag, `workflow.metrics[${i}].coverageTag`)
-    }
+    requireSize(
+      day.git.changedLinesByExtension.length,
+      WORKFLOW_LIMITS.extensions,
+      `${at}.git.changedLinesByExtension`
+    )
+    day.git.changedLinesByExtension.forEach((row, i) => {
+      requireName(row.extension, `${at}.git.changedLinesByExtension[${i}].extension`)
+    })
+    requireSize(
+      day.git.weekdayHourCells.length,
+      WORKFLOW_LIMITS.cells,
+      `${at}.git.weekdayHourCells`
+    )
   })
 }
 
@@ -422,8 +438,8 @@ export const publishSnapshot = internalMutation({
     payload: MeasuredPayload,
     /** Optional here and required nowhere: see `machine` in the schema. */
     machine: v.optional(v.string()),
-    /** The workflow section this publish carries, if any (#218). */
-    workflow: v.optional(WorkflowSection),
+    /** The workflow days this publish carries, if any (#218, #285). */
+    workflow: v.optional(WorkflowWire),
   },
   returns: v.object({
     snapshotId: v.id('measuredSnapshots'),
@@ -439,18 +455,14 @@ export const publishSnapshot = internalMutation({
       args.machine
     )
     if (args.workflow) {
-      checkWorkflowSection(args.workflow)
-      const machineSnapshots = newestBySource(
-        await snapshotsForStack(ctx, args.stackId)
-      ).filter((row) => row.machine === args.machine)
-      await storeWorkflowSection(ctx, {
+      checkWorkflowDays(args.workflow)
+      await storeWorkflowDays(ctx, {
         stackId: args.stackId,
         machine: args.machine,
-        section: args.workflow,
+        wire: args.workflow,
         capturedAt: args.payload.capturedAt,
         receivedAt: inserted.receivedAt,
         cliVersion: undefined,
-        kit: kitFromSnapshots(machineSnapshots),
       })
     }
     return inserted
@@ -2596,7 +2608,7 @@ export const publishForToken = internalMutation({
      * bounded, and dropped - so a CLI publishing one is never refused, and a
      * malformed one never becomes someone else's problem to discover.
      */
-    workflow: v.optional(WorkflowSection),
+    workflow: v.optional(WorkflowWire),
     /**
      * Which CLI is publishing (#213). Additive and optional like `trigger`: an
      * older client sends nothing, and an untagged row is exactly the answer -
@@ -2668,10 +2680,10 @@ export const publishForToken = internalMutation({
     const isFirstSync = priorSnapshot === null
 
     // Bounded on the way in, the way the payloads are (#213). Checked here
-    // rather than only inside `storeWorkflowSection` so a malformed section
+    // rather than only inside `storeWorkflowDays` so a malformed section
     // refuses the publish before any row is written - the same fail-fast the
     // payload bound gets.
-    if (args.workflow) checkWorkflowSection(args.workflow)
+    if (args.workflow) checkWorkflowDays(args.workflow)
 
     // Same bar as any other name the wire carries: it is a string a client
     // chose. An unreadable one is dropped rather than refused - the sync is what
@@ -2699,25 +2711,16 @@ export const publishForToken = internalMutation({
       receivedAt = inserted.receivedAt
     }
 
-    // The workflow section, stored against the MACHINE (#218). One reading per
-    // machine, replaced rather than appended, and its podium recomputed here
-    // because the rotation limit compares against the last sync.
-    //
-    // After the payload inserts, deliberately: the kit component reads skills
-    // and MCP servers out of the inventory, so the reading must be ranked
-    // against the payloads that arrived with it, not the ones they replaced.
+    // The workflow days, stored against the MACHINE (#218, #285). One row per
+    // (machine, date): a re-synced day replaces that day, a new day appends.
     if (args.workflow) {
-      const machineSnapshots = newestBySource(
-        await snapshotsForStack(ctx, stack._id)
-      ).filter((row) => row.machine === token.name)
-      await storeWorkflowSection(ctx, {
+      await storeWorkflowDays(ctx, {
         stackId: stack._id,
         machine: token.name,
-        section: args.workflow,
+        wire: args.workflow,
         capturedAt: Math.max(...payloads.map((p) => p.capturedAt)),
         receivedAt,
         cliVersion,
-        kit: kitFromSnapshots(machineSnapshots),
       })
     }
 

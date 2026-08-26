@@ -10,6 +10,7 @@
 // Nothing in this file is accepted as a caller-supplied argument beside the
 // payload - the spike promoted that from a caution to a demonstrated property.
 
+import { foldWorkflowDays } from "@aistack/workflow-rules";
 import { HARNESS_ADAPTERS, harnessLabel } from "../harness/index.js";
 import type {
 	KeptPrivateAtom,
@@ -429,17 +430,24 @@ const PHASE_ORDER = ["scout", "build", "verify", "handoff", "unknown"] as const;
  */
 function workflowBlock(workflow: PayloadWorkflow, host: string): string[] {
 	const out: string[] = [];
-	const withPlaybook = workflow.harnesses.filter((h) => h.phase);
-	const sessions = withPlaybook.reduce(
-		(a, h) => a + (h.phase?.sessions ?? 0),
-		0,
-	);
+	const folded = foldWorkflowDays(workflow.days, {
+		aggregateVersion: workflow.aggregateVersion,
+		utcOffsetMinutes: workflow.utcOffsetMinutes,
+	});
+	const harnesses = folded?.harnesses ?? [];
+	const withPlaybook = harnesses.filter((h) => h.phase);
+	const sessions = harnesses.reduce((a, h) => a + h.sessions, 0);
 	const ruleVersions = [
 		...new Set(withPlaybook.map((h) => h.phase?.ruleVersion ?? "")),
 	].filter(Boolean);
 
 	out.push(
-		`workflow  ${workflow.harnesses.length} harness${workflow.harnesses.length === 1 ? "" : "es"} · ${sessions} sessions · ${workflow.aggregateVersion}`,
+		`workflow  ${harnesses.length} harness${harnesses.length === 1 ? "" : "es"} · ${sessions} sessions · ${workflow.aggregateVersion}`,
+	);
+	const first = folded?.dates[0];
+	const last = folded?.dates.at(-1);
+	out.push(
+		`days      ${workflow.days.length} day${workflow.days.length === 1 ? "" : "s"}${first && last ? ` · ${first} to ${last}` : ""}`,
 	);
 
 	const seconds = PHASE_ORDER.map((phase) =>
@@ -453,12 +461,9 @@ function workflowBlock(workflow: PayloadWorkflow, host: string): string[] {
 		out.push(`          ${mix} · ${ruleVersions.join(", ")}`);
 	}
 
-	const git = workflow.git;
+	const git = folded?.git;
 	out.push(
-		`git       ${git.totalCommits} commits · ${fmtTokens(git.additions + git.removals)} lines changed`,
-	);
-	out.push(
-		`metrics   ${workflow.metrics.length} measured · ${[...new Set(workflow.metrics.map((m) => m.ruleVersion))].join(", ")}`,
+		`git       ${git?.commits ?? 0} commits · ${fmtTokens((git?.additions ?? 0) + (git?.removals ?? 0))} lines changed`,
 	);
 	// The kept-private block points at a control the owner can click, because
 	// #48 shipped one. This line NAMES the switch and stops there: the owner

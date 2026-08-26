@@ -241,49 +241,63 @@ const PhaseTotals = v.object({
 })
 
 /**
- * One session's phase reading. No names, no timestamps, no session id: the
- * start HOUR is the finest time this carries, and the rest are counts.
- *
- * The rows are load-bearing rather than detail. The template lead's session
- * shares ("verify in 40% of sessions") and the playbook's medians are per
- * session, and neither can be recovered from a harness-level total.
+ * One bucket of measured session length (#285). Counts only, so a share over
+ * any subset of buckets is a ratio of sums, and the playbook's split is a
+ * median over buckets.
  */
-const WorkflowSessionRow = v.object({
-  startHourUtc: v.number(),
-  eventCount: v.number(),
+const SessionLengthBucket = v.object({
+  /** `log-buckets/v1` over measured minutes: bucket k holds [2^(k-1), 2^k). */
+  bucket: v.number(),
+  sessions: v.number(),
   phaseSec: PhaseTotals,
-  phaseEvents: PhaseTotals,
-  waitingSec: v.number(),
-  idleSec: v.number(),
-  merged: v.boolean(),
-  verifyRuns: v.number(),
-  reviewRounds: v.number(),
-  openedWithScout: v.boolean(),
+  merged: v.number(),
+  verified: v.number(),
+  mergedVerified: v.number(),
+  openedWithScout: v.number(),
 })
 
-/** One harness's workflow reading, already reduced on the machine. */
-const HarnessWorkflow = v.object({
+const EffortLevel = v.union(
+  v.literal('low'),
+  v.literal('medium'),
+  v.literal('high'),
+  v.literal('other')
+)
+
+/**
+ * One harness's reading for ONE UTC DAY, already reduced on the machine (#285).
+ *
+ * ONLY COMBINABLE ATOMS: counts, sums, maxes and bucket histograms. No share,
+ * no median, no mean. The server folds days into a window and computes every
+ * figure the page prints over the fold, so a day that carried a share would
+ * be a day the fold could not add.
+ */
+export const HarnessDay = v.object({
   // A plain string, not a union of the four adapter names - the same rule
   // `measuredSnapshots.harness` follows, so a fifth harness needs no migration.
   harness: v.string(),
+  /** Sessions that STARTED on this day. */
+  sessions: v.number(),
+  /** Start-hour histogram, UTC. The page shifts it into the owner's local time. */
+  startHours: v.array(v.object({ hourUtc: v.number(), sessions: v.number() })),
   /**
-   * The phase playbook, ABSENT when this harness failed its own gate: the rules
-   * left more than 20% of its measured time unclassified (spec, "Phases"). The
-   * gate is per harness, so an unreadable harness holds back its own playbook
-   * and not the section.
+   * The phase reading, ABSENT when this harness failed its gate over the sync
+   * window: the rules left more than 20% of its measured time unclassified
+   * (spec, "Phases"). The gate is per harness, so an unreadable harness holds
+   * back its own playbook and not the section.
    */
   phase: v.optional(
     v.object({
       /** The rule set that produced these numbers, e.g. `phase-rules/v1`. */
       ruleVersion: v.string(),
-      publishable: v.boolean(),
       sessions: v.number(),
       phaseSec: PhaseTotals,
       phaseEvents: PhaseTotals,
       waitingSec: v.number(),
       idleSec: v.number(),
-      unknownShare: v.number(),
-      sessionRows: v.array(WorkflowSessionRow),
+      sessionsWithVerify: v.number(),
+      sessionsWithHandoff: v.number(),
+      bucketRuleVersion: v.string(),
+      lengths: v.array(SessionLengthBucket),
     })
   ),
   /** Main loop against subagents, by model. Absent on a harness that records no model per response. */
@@ -298,11 +312,13 @@ const HarnessWorkflow = v.object({
     v.object({
       mainToolCalls: v.number(),
       subagentToolCalls: v.number(),
+      /** A max over the day. */
       widestFanOut: v.number(),
+      /** A max over the day. */
       mostSubagents: v.number(),
     })
   ),
-  /** The week/time heatmap: one cell per weekday and UTC hour that saw an event. */
+  /** Event cells, UTC. The weekday is the day's own and rides along so a fold needs no calendar. */
   activity: v.array(
     v.object({
       weekdayUtc: v.number(),
@@ -310,19 +326,35 @@ const HarnessWorkflow = v.object({
       events: v.number(),
     })
   ),
+  /** Responses per effort level. Absent on a harness that records no effort. */
+  effort: v.optional(v.array(v.object({ level: EffortLevel, turns: v.number() }))),
+  /** Absent on a harness that records no thinking tokens. */
+  thinking: v.optional(
+    v.object({ thinkingTokens: v.number(), responseTokens: v.number() })
+  ),
+  /** Turn duration histogram over `log-buckets/v1` seconds. */
+  turnDurations: v.optional(
+    v.object({
+      bucketRuleVersion: v.string(),
+      buckets: v.array(v.object({ bucket: v.number(), turns: v.number() })),
+    })
+  ),
+  /** Turns that ended with a question back, over all turns. */
+  questions: v.optional(v.object({ asked: v.number(), turns: v.number() })),
+  /** Absent on a harness without a built-in web search tool. */
+  webSearches: v.optional(v.number()),
 })
 
 /**
- * Local Git history, aggregated. The CLI reads only repositories that windowed
- * sessions touched, and only counts leave the machine: no repository name, no
- * path, no commit message, no sha.
+ * Local Git history for ONE UTC DAY, aggregated. The CLI reads only
+ * repositories that windowed sessions touched, and only counts leave the
+ * machine: no repository name, no path, no commit message, no sha.
  */
-const GitWorkflow = v.object({
+export const GitDay = v.object({
   testFileRuleVersion: v.string(),
   fileTypeRuleVersion: v.string(),
-  /** Optional only for a reading a pre-commit-set/v1 CLI publishes. */
-  commitSetRuleVersion: v.optional(v.string()),
-  totalCommits: v.number(),
+  commitSetRuleVersion: v.string(),
+  commits: v.number(),
   lateNightCommits: v.number(),
   additions: v.number(),
   removals: v.number(),
@@ -340,33 +372,24 @@ const GitWorkflow = v.object({
   ),
 })
 
-/**
- * One pool metric, as the machine measured it.
- *
- * FIT SPLITS BETWEEN THE MACHINE AND THE SERVER (spec, "Fit and rotation"). The
- * CLI ships value, coverage, band and rule id and stays the only source of
- * measured values; the server multiplies coverage by surprise, applies the
- * rotation limit, and applies the owner's pins and hides, because the swap
- * history and the overrides are server state. Neither half can compute the
- * other's, so neither is duplicated here.
- */
-const WorkflowMetric = v.object({
-  metricId: v.string(),
-  ruleVersion: v.string(),
-  value: v.number(),
-  band: v.object({ low: v.number(), high: v.number() }),
-  /** Share of synced harnesses this metric counts, 0..1. A Git metric reads 1. */
-  coverage: v.number(),
-  /** Names the harnesses counted, when not all of them record this metric. */
-  coverageTag: v.optional(v.string()),
+/** One UTC day of one machine's workflow reading (#285). */
+export const WorkflowDay = v.object({
+  /** `YYYY-MM-DD`, UTC. A session belongs to the day it started. */
+  date: v.string(),
+  harnesses: v.array(HarnessDay),
+  git: GitDay,
+  /** Distinct project workspaces with a session that overlapped this day. */
+  parallelProjects: v.optional(v.number()),
 })
 
-export const WorkflowSection = v.object({
-  /** The aggregate shape these numbers were reduced to, e.g. `workflow-aggregates/v1`. */
+/**
+ * The workflow section on the sync body: per-day rows plus the machine's
+ * clock (#285). Every row is stored against (stack, machine, date), a
+ * re-synced day replaces that day, and days append across syncs.
+ */
+export const WorkflowWire = v.object({
+  /** The aggregate shape these rows were reduced to, e.g. `workflow-aggregates/v2`. */
   aggregateVersion: v.string(),
-  harnesses: v.array(HarnessWorkflow),
-  git: GitWorkflow,
-  metrics: v.array(WorkflowMetric),
   /**
    * The publishing machine's offset from UTC, in minutes east (#218).
    *
@@ -382,6 +405,7 @@ export const WorkflowSection = v.object({
    * zone name would be a second identifying string leaving the machine.
    */
   utcOffsetMinutes: v.optional(v.number()),
+  days: v.array(WorkflowDay),
 })
 
 // The authored<->measured overlap is catalog slugs only (#33 decision 2), but
@@ -1145,62 +1169,30 @@ export default defineSchema({
   // half cannot be merged across machines - the wire carries no commit
   // identity, so two clones of one repository would count their shared commits
   // twice - and a pool metric's value has no denominator to merge on.
-  measuredWorkflows: defineTable({
+  // One machine's workflow reading for one UTC day (#285, ADR-0009). A
+  // re-synced day REPLACES that day, and days append across syncs, so a manual
+  // sync still builds a continuous series and the page can fold any window.
+  // Nothing merges two machines: the Git day carries no commit identity, so a
+  // shared repository would count its commits twice.
+  measuredWorkflowDays: defineTable({
     stackId: v.id('stacks'),
     // The publishing token's name, exactly like `measuredSnapshots.machine`.
     // Absent when the token predates naming, which is one bucket of its own.
     machine: v.optional(v.string()),
-    /** Client clock: the newest `capturedAt` among the payloads of this publish. */
+    /** `YYYY-MM-DD`, UTC. */
+    date: v.string(),
+    /** Client clock: the newest `capturedAt` among the payloads of the publish that wrote this row. */
     capturedAt: v.number(),
-    /** Server clock. Freshness is judged on this one, for the #33 reason. */
+    /** Server clock of the publish that wrote this row. Freshness is judged on this one, for the #33 reason. */
     receivedAt: v.number(),
     cliVersion: v.optional(v.string()),
-    section: WorkflowSection,
-    /**
-     * Detail dropped to keep the row inside the document limit, and which half
-     * went. A publish must never fail over section size: the owner approved a
-     * measurement, and losing all of it to save the dot strip would be the
-     * wrong trade. Absent on every honest reading.
-     */
-    trimmed: v.optional(
-      v.object({ commitStrip: v.boolean(), sessionRows: v.boolean() })
-    ),
-    /**
-     * This reading's sixteen rows, as values only. Written so the NEXT publish
-     * has a prior window to compare against without re-deriving one from a
-     * section it has already replaced.
-     */
-    rowValues: v.array(
-      v.object({
-        rowId: v.string(),
-        value: v.number(),
-        coverage: v.number(),
-      })
-    ),
-    /**
-     * The same list from the reading before this one. Two rules need it and
-     * neither can recompute it: the fit tie-break is "movement against the
-     * prior window", and an incumbent leaves the podium at once when its
-     * coverage drops.
-     */
-    previousRowValues: v.array(
-      v.object({
-        rowId: v.string(),
-        value: v.number(),
-        coverage: v.number(),
-      })
-    ),
-    /**
-     * The podium, as the rotation limit left it at the last sync. Server state
-     * by definition: "at most one slot swaps per sync day" is a fact about the
-     * swap history, not about this reading (spec, "Fit and rotation").
-     */
-    highlightRowIds: v.array(v.string()),
-    /** UTC day of the last challenger swap. Absent until one happens. */
-    lastSwapDayUtc: v.optional(v.string()),
+    aggregateVersion: v.string(),
+    /** Minutes east of UTC on the publishing machine, as of the publish that wrote this row. */
+    utcOffsetMinutes: v.optional(v.number()),
+    day: WorkflowDay,
   })
     .index('by_stack', ['stackId'])
-    .index('by_stack_machine', ['stackId', 'machine']),
+    .index('by_stack_machine_date', ['stackId', 'machine', 'date']),
 
   // The owner's pins and hides on workflow rows (#218). "The owner can pin or
   // hide any row, and that override wins over both thresholds" (spec).

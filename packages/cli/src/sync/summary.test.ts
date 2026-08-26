@@ -98,63 +98,61 @@ function payload(over: Partial<MeasuredPayload> = {}): MeasuredPayload {
 	};
 }
 
-/** A workflow section as `buildSyncBody` would have put it in the bytes (#213). */
+/** A workflow section as `buildSyncBody` would have put it in the bytes (#213, #285). */
 function workflow(over: Partial<PayloadWorkflow> = {}): PayloadWorkflow {
 	return {
-		aggregateVersion: "workflow-aggregates/v1",
+		aggregateVersion: "workflow-aggregates/v2",
 		utcOffsetMinutes: 120,
-		harnesses: [
+		days: [
 			{
-				// No `aggregateVersion` here: the section carries it once, and the
-				// server's harness validator has no field for it (#217).
-				harness: "claude-code",
-				phase: {
-					ruleVersion: "phase-rules/v1",
-					publishable: true,
-					sessions: 142,
-					phaseSec: {
-						scout: 640,
-						build: 180,
-						verify: 60,
-						handoff: 50,
-						unknown: 70,
+				date: "2026-08-21",
+				harnesses: [
+					{
+						harness: "claude-code",
+						sessions: 142,
+						startHours: [{ hourUtc: 21, sessions: 142 }],
+						phase: {
+							ruleVersion: "phase-rules/v1",
+							sessions: 142,
+							phaseSec: {
+								scout: 640,
+								build: 180,
+								verify: 60,
+								handoff: 50,
+								unknown: 70,
+							},
+							phaseEvents: {
+								scout: 64,
+								build: 18,
+								verify: 6,
+								handoff: 5,
+								unknown: 7,
+							},
+							waitingSec: 120,
+							idleSec: 300,
+							sessionsWithVerify: 40,
+							sessionsWithHandoff: 60,
+							bucketRuleVersion: "log-buckets/v1",
+							lengths: [],
+						},
+						activity: [{ weekdayUtc: 5, hourUtc: 23, events: 17 }],
 					},
-					phaseEvents: {
-						scout: 64,
-						build: 18,
-						verify: 6,
-						handoff: 5,
-						unknown: 7,
-					},
-					waitingSec: 120,
-					idleSec: 300,
-					unknownShare: 0.07,
-					sessionRows: [],
+				],
+				git: {
+					testFileRuleVersion: "test-files/v2",
+					commitSetRuleVersion: "commit-set/v1",
+					fileTypeRuleVersion: "file-types/v2",
+					commits: 214,
+					lateNightCommits: 30,
+					additions: 9_000,
+					removals: 3_400,
+					changedLinesPerCommit: [40, 12],
+					testFileCommits: 5,
+					changedLinesByExtension: [{ extension: ".ts", changedLines: 500 }],
+					withheldExtensionLines: 20,
+					weekdayHourCells: [{ weekdayUtc: 5, hourUtc: 23, commits: 3 }],
 				},
-				activity: [{ weekdayUtc: 5, hourUtc: 23, events: 17 }],
-			},
-		],
-		git: {
-			testFileRuleVersion: "test-files/v2",
-			commitSetRuleVersion: "commit-set/v1",
-			fileTypeRuleVersion: "file-types/v2",
-			totalCommits: 214,
-			lateNightCommits: 30,
-			additions: 9_000,
-			removals: 3_400,
-			changedLinesPerCommit: [40, 12],
-			testFileCommits: 5,
-			changedLinesByExtension: [{ extension: ".ts", changedLines: 500 }],
-			withheldExtensionLines: 20,
-			weekdayHourCells: [{ weekdayUtc: 5, hourUtc: 23, commits: 3 }],
-		},
-		metrics: [
-			{
-				metricId: "late-night-commit-share",
-				ruleVersion: "metric-rules/v1",
-				value: 0.14,
-				band: { low: 0.05, high: 0.2 },
-				coverage: 1,
+				parallelProjects: 2,
 			},
 		],
 		...over,
@@ -436,10 +434,10 @@ describe("the workflow section at the gate (#213)", () => {
 		// not an opt-out.
 		const out = buildGateSummary(ctx({ workflow: workflow() }));
 		expect(out).toContain("workflow  1 harness · 142 sessions");
-		expect(out).toContain("workflow-aggregates/v1");
+		expect(out).toContain("workflow-aggregates/v2");
 		expect(out).toContain("phase-rules/v1");
+		expect(out).toContain("days      1 day · 2026-08-21 to 2026-08-21");
 		expect(out).toContain("git       214 commits · 12.4k lines changed");
-		expect(out).toContain("metrics   1 measured · metric-rules/v1");
 		// It NAMES the switch without directing the owner to a control that does
 		// not exist yet - #215 builds the owner controls.
 		expect(out).toContain("Publish workflow is on for aistack.to");

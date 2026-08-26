@@ -1,14 +1,31 @@
-// The sixteen rows of one reading: nine pool metrics and seven components.
+// The rows of one reading, in the fixed order the page prints them.
 //
-// Wayfinder ticket #218 (map #200). This is the join between the two rule pools
-// and the ranking: `metric-rules/v1` values arrive measured on the wire,
-// `component-rules/v1` values are derived from the same reading here, and both
-// enter `rankWorkflowRows` as the same shape.
+// Wayfinder ticket #218 (map #200) built the rows for a fit ranking. Ticket
+// #277 took fit off the page: on the first prod reading 15 of 16 rows sat under
+// the fit line and every row the owner wanted scored zero, so the section
+// moved to a fixed editorial order with a picture on every row. Ticket #285
+// dropped the ranking state from the server. This file is now the join
+// between the two rule pools and that order, and it is where the CLI, the
+// server and the page agree on which rows exist, what they are called, and
+// which of them are flat.
+//
+// FIT STAYS IN THE API AS A NUMBER NOTHING RANKS BY. `surprise` and `fit` are
+// still computed per row because the band is part of the versioned rule and a
+// reader of the API may want them. No caller sorts by them.
 
 import type { ComponentInput } from "./componentRules.js";
 import { COMPONENT_RULES } from "./componentRules.js";
-import type { WorkflowRowInput } from "./fitRanking.js";
-import { metricRule } from "./metricRules.js";
+import type { Band, MetricUnit } from "./metricRules.js";
+import { METRIC_RULES } from "./metricRules.js";
+import { type HarnessName, harnessLabel } from "./types.js";
+
+/** The podium: the first three rows in the fixed order, or the pinned ones. */
+export const HIGHLIGHT_SLOTS = 3;
+
+/** One pin per podium slot. A fourth pin has no slot to promise. */
+export const MAX_PINS = HIGHLIGHT_SLOTS;
+
+export type RowKind = "metric" | "component";
 
 /** `metric:late-night-commits`, `component:git-ledger`. Stable: a pin is keyed on it. */
 export function metricRowId(metricId: string): string {
@@ -19,70 +36,258 @@ export function componentRowId(componentId: string): string {
 	return `component:${componentId}`;
 }
 
-export type WorkflowRowSet = {
-	rows: WorkflowRowInput[];
+export type WorkflowRowOrder = {
+	rowId: string;
+	/** The plain name the page prints (#284). */
+	name: string;
 	/**
-	 * Metric ids this build has no rule for, so no row could describe them.
-	 *
-	 * A CLI newer than the server can ship one. The value is real, but the label
-	 * and the band that make it a row are the SERVER's half of the rule, so the
-	 * row is dropped rather than printed as a bare number - and counted here, so
-	 * a drop is visible rather than silent.
+	 * True when the row's head holds its whole picture, so the row never
+	 * expands (#284): no chevron, no body.
 	 */
-	unknownMetricIds: string[];
+	flat: boolean;
 };
 
 /**
- * Build the row set for one reading.
+ * The fixed editorial order (#284, decision 2), one entry per row either pool
+ * can produce. A row absent from the reading is skipped, and the order of the
+ * rest does not change.
+ */
+export const WORKFLOW_ROW_ORDER: readonly WorkflowRowOrder[] = [
+	{
+		rowId: "component:activity-heatmap",
+		name: "When work happens",
+		flat: false,
+	},
+	{ rowId: "component:start-hours", name: "Session start times", flat: false },
+	{
+		rowId: "metric:late-night-commits",
+		name: "Late-night commits",
+		flat: true,
+	},
+	{ rowId: "component:phase-playbook", name: "Session length", flat: false },
+	{ rowId: "component:git-ledger", name: "Lines changed", flat: false },
+	{ rowId: "component:coding-languages", name: "Languages", flat: false },
+	{ rowId: "component:kit", name: "Skills and MCP", flat: false },
+	{ rowId: "component:model-routing", name: "Models used", flat: false },
+	{ rowId: "component:delegation", name: "Subagents", flat: false },
+	{ rowId: "metric:effort-levels", name: "Effort levels", flat: false },
+	{ rowId: "metric:thinking-share", name: "Thinking tokens", flat: false },
+	{ rowId: "metric:turn-duration", name: "Turn length", flat: false },
+	{ rowId: "metric:question-back-share", name: "Questions asked", flat: true },
+	{
+		rowId: "metric:web-searches-per-active-day",
+		name: "Web searches",
+		flat: true,
+	},
+	{ rowId: "metric:parallel-projects", name: "Parallel projects", flat: true },
+];
+
+const ORDER_INDEX = new Map(
+	WORKFLOW_ROW_ORDER.map((row, index) => [row.rowId, index]),
+);
+
+export function rowOrder(rowId: string): WorkflowRowOrder | undefined {
+	return WORKFLOW_ROW_ORDER.find((row) => row.rowId === rowId);
+}
+
+/** Every row id either rule pool can produce. A pin or a hide must name one. */
+export const KNOWN_ROW_IDS: ReadonlySet<string> = new Set([
+	...METRIC_RULES.map((rule) => metricRowId(rule.id)),
+	...COMPONENT_RULES.map((rule) => componentRowId(rule.id)),
+]);
+
+/**
+ * One row of the reading.
+ *
+ * Both pools produce the same shape: a metric row's value is the rule's
+ * evaluation over the folded window, and a component row's value is arithmetic
+ * over the same window. Both are computed on the server.
+ */
+export type WorkflowRow = {
+	/** Stable across syncs and rule versions: what a pin or a hide is keyed on. */
+	rowId: string;
+	kind: RowKind;
+	ruleId: string;
+	ruleVersion: string;
+	label: string;
+	name: string;
+	flat: boolean;
+	unit: MetricUnit;
+	value: number;
+	band: Band;
+	/** Share of this reading's synced harnesses the row counts, 0..1. */
+	coverage: number;
+	coverageTag?: string;
+	/** Distance outside the typical band, 0..1. Nothing ranks by it. */
+	surprise: number;
+	/** Coverage times surprise. Nothing ranks by it. */
+	fit: number;
+};
+
+/**
+ * How far outside its typical band a value sits, as 0..1.
+ *
+ * `d / (d + width)`, so one band width outside reads as 0.5 and the scale never
+ * reaches 1. A value inside the band scores 0.
+ */
+export function surpriseOf(value: number, band: Band): number {
+	const width = Math.max(band.high - band.low, Number.EPSILON);
+	const distance =
+		value < band.low
+			? band.low - value
+			: value > band.high
+				? value - band.high
+				: 0;
+	if (distance === 0) return 0;
+	return distance / (distance + width);
+}
+
+/** Fit is coverage times surprise (spec, CONTEXT.md). */
+export function fitOf(coverage: number, surprise: number): number {
+	return coverage * surprise;
+}
+
+/** The coverage tag naming the counted harnesses, or `undefined` when every synced harness counts. */
+export function coverageTag(
+	counted: readonly string[],
+	synced: readonly string[],
+): string | undefined {
+	if (counted.length === 0 || counted.length === synced.length)
+		return undefined;
+	return `counts: ${counted.map((name) => harnessLabel(name as HarnessName)).join(" · ")}`;
+}
+
+/**
+ * Build the row set for one reading, in the fixed order.
  *
  * "A row ships when its measurement exists. A missing measurement stays absent,
- * so no separate first-ship list exists" (spec). Both pools follow it: the CLI
- * omits a metric it could not measure, and a component rule returns undefined
- * for a reading that cannot support it.
+ * so no separate first-ship list exists" (spec). Both pools follow it: a rule
+ * returns undefined for a window that cannot support its row, and the row is
+ * skipped rather than printed as a zero.
  */
-export function buildWorkflowRows(input: ComponentInput): WorkflowRowSet {
-	const rows: WorkflowRowInput[] = [];
-	const unknownMetricIds: string[] = [];
+export function buildWorkflowRows(input: ComponentInput): WorkflowRow[] {
+	const rows: WorkflowRow[] = [];
+	const synced = input.reading.harnesses.map((harness) => harness.harness);
 
-	for (const metric of input.reading.metrics) {
-		const rule = metricRule(metric.metricId);
-		if (!rule) {
-			unknownMetricIds.push(metric.metricId);
-			continue;
-		}
-		rows.push({
-			rowId: metricRowId(metric.metricId),
-			kind: "metric",
-			ruleId: metric.metricId,
-			// The version the MACHINE used, not this build's. A bumped rule that
-			// changed its band is why the band travels with the value.
-			ruleVersion: metric.ruleVersion,
-			label: rule.label,
-			unit: rule.unit,
-			value: metric.value,
-			band: metric.band,
-			coverage: metric.coverage,
-			...(metric.coverageTag === undefined
-				? {}
-				: { coverageTag: metric.coverageTag }),
-		});
+	for (const rule of METRIC_RULES) {
+		const value = rule.evaluate(input.reading);
+		if (value === undefined) continue;
+		const counted =
+			rule.counts === "all"
+				? synced
+				: input.reading.harnesses
+						.filter(rule.counts)
+						.map((harness) => harness.harness);
+		const coverage =
+			rule.counts === "all"
+				? 1
+				: synced.length === 0
+					? 0
+					: counted.length / synced.length;
+		const tag =
+			rule.counts === "all" ? undefined : coverageTag(counted, synced);
+		rows.push(
+			finishRow({
+				rowId: metricRowId(rule.id),
+				kind: "metric",
+				ruleId: rule.id,
+				ruleVersion: rule.version,
+				label: rule.label,
+				unit: rule.unit,
+				value,
+				band: rule.band,
+				coverage,
+				...(tag === undefined ? {} : { coverageTag: tag }),
+			}),
+		);
 	}
 
 	for (const rule of COMPONENT_RULES) {
 		const value = rule.evaluate(input);
 		if (value === undefined) continue;
-		rows.push({
-			rowId: componentRowId(rule.id),
-			kind: "component",
-			ruleId: rule.id,
-			ruleVersion: rule.version,
-			label: rule.label,
-			unit: rule.unit,
-			value,
-			band: rule.band,
-			coverage: rule.coverage(input),
-		});
+		rows.push(
+			finishRow({
+				rowId: componentRowId(rule.id),
+				kind: "component",
+				ruleId: rule.id,
+				ruleVersion: rule.version,
+				label: rule.label,
+				unit: rule.unit,
+				value,
+				band: rule.band,
+				coverage: rule.coverage(input),
+			}),
+		);
 	}
 
-	return { rows, unknownMetricIds };
+	return rows.sort(
+		(a, b) =>
+			(ORDER_INDEX.get(a.rowId) ?? Number.MAX_SAFE_INTEGER) -
+				(ORDER_INDEX.get(b.rowId) ?? Number.MAX_SAFE_INTEGER) ||
+			a.rowId.localeCompare(b.rowId),
+	);
+}
+
+function finishRow(
+	row: Omit<WorkflowRow, "surprise" | "fit" | "name" | "flat">,
+): WorkflowRow {
+	const order = rowOrder(row.rowId);
+	const surprise = surpriseOf(row.value, row.band);
+	return {
+		...row,
+		name: order?.name ?? row.label,
+		flat: order?.flat ?? false,
+		surprise,
+		fit: fitOf(row.coverage, surprise),
+	};
+}
+
+export type RowOverrides = {
+	pinned: readonly string[];
+	hidden: readonly string[];
+};
+
+export type Placement = "highlight" | "normal";
+
+export type PlacedRow = WorkflowRow & {
+	placement: Placement;
+	pinned: boolean;
+	hidden: boolean;
+};
+
+/**
+ * Place one reading's rows: pinned rows first, in the fixed order, then the
+ * rest in the fixed order. The first three rows on the page are the podium.
+ *
+ * Hidden rows are MARKED rather than dropped, because the two callers need
+ * different things from them: a public read drops them, and the owner's own
+ * view lists them so the hide can be undone. A hidden row takes no podium
+ * slot either way.
+ */
+export function placeRows(
+	rows: readonly WorkflowRow[],
+	overrides: RowOverrides,
+): PlacedRow[] {
+	const hidden = new Set(overrides.hidden);
+	const pinned = new Set(overrides.pinned);
+	const ordered = [...rows].sort((a, b) => {
+		const pinDiff = Number(pinned.has(b.rowId)) - Number(pinned.has(a.rowId));
+		if (pinDiff !== 0) return pinDiff;
+		return (
+			(ORDER_INDEX.get(a.rowId) ?? Number.MAX_SAFE_INTEGER) -
+			(ORDER_INDEX.get(b.rowId) ?? Number.MAX_SAFE_INTEGER)
+		);
+	});
+	let slots = 0;
+	return ordered.map((row) => {
+		const isHidden = hidden.has(row.rowId);
+		const onPodium = !isHidden && slots < HIGHLIGHT_SLOTS;
+		if (onPodium) slots++;
+		return {
+			...row,
+			placement: onPodium ? "highlight" : "normal",
+			pinned: pinned.has(row.rowId),
+			hidden: isHidden,
+		};
+	});
 }

@@ -1,5 +1,5 @@
+import { foldGitDays } from "@aistack/workflow-rules";
 import { describe, expect, it } from "vitest";
-
 import { extractGitWorkflow, type GitWorkflowRunner } from "./git.js";
 
 const record = (hash: string, authoredAt: string, numstat: string): string =>
@@ -58,29 +58,36 @@ describe("extractGitWorkflow", () => {
 			run,
 		});
 
+		// Both commits are authored on 2026-08-04 UTC, so the reading is one day
+		// (#285). A commit belongs to the UTC day of its author time.
 		expect(result).toEqual({
-			testFileRuleVersion: "test-files/v2",
-			fileTypeRuleVersion: "file-types/v2",
-			commitSetRuleVersion: "commit-set/v1",
-			totalCommits: 2,
-			lateNightCommits: 2,
-			additions: 20,
-			removals: 10,
-			changedLinesPerCommit: [16, 14],
-			testFileCommits: 2,
-			changedLinesByExtension: [
-				{ extension: ".js", changedLines: 12 },
-				{ extension: ".ts", changedLines: 16 },
-			],
-			// `tests/helper` has no extension, so its 2 lines are withheld rather
-			// than ranked: a file with no extension is not a coding language.
-			withheldExtensionLines: 2,
-			// Cells travel in UTC: 23:30-05:00 is Tuesday 04:30Z, and 02:15-05:00 is
-			// Tuesday 07:15Z. The late-night count reads the same cells through the
-			// machine's own offset, so the grid and the count cannot disagree.
-			weekdayHourCells: [
-				{ weekdayUtc: 2, hourUtc: 4, commits: 1 },
-				{ weekdayUtc: 2, hourUtc: 7, commits: 1 },
+			days: [
+				{
+					date: "2026-08-04",
+					testFileRuleVersion: "test-files/v2",
+					fileTypeRuleVersion: "file-types/v2",
+					commitSetRuleVersion: "commit-set/v1",
+					commits: 2,
+					lateNightCommits: 2,
+					additions: 20,
+					removals: 10,
+					changedLinesPerCommit: [16, 14],
+					testFileCommits: 2,
+					changedLinesByExtension: [
+						{ extension: ".js", changedLines: 12 },
+						{ extension: ".ts", changedLines: 16 },
+					],
+					// `tests/helper` has no extension, so its 2 lines are withheld rather
+					// than ranked: a file with no extension is not a coding language.
+					withheldExtensionLines: 2,
+					// Cells travel in UTC: 23:30-05:00 is Tuesday 04:30Z, and 02:15-05:00 is
+					// Tuesday 07:15Z. The late-night count reads the same cells through the
+					// machine's own offset, so the grid and the count cannot disagree.
+					weekdayHourCells: [
+						{ weekdayUtc: 2, hourUtc: 4, commits: 1 },
+						{ weekdayUtc: 2, hourUtc: 7, commits: 1 },
+					],
+				},
 			],
 		});
 		expect(JSON.stringify(result)).not.toContain("/work/");
@@ -96,13 +103,15 @@ describe("extractGitWorkflow", () => {
 		const run: GitWorkflowRunner = (_cwd, args) =>
 			args[0] === "rev-parse" ? "/work/repo\n" : history;
 
-		const result = extractGitWorkflow({
-			workingDirectories: ["/work/repo"],
-			fromMs: Date.parse("2026-08-01T00:00:00Z"),
-			toMs: Date.parse("2026-08-31T23:59:59Z"),
-			utcOffsetMinutes: 0,
-			run,
-		});
+		const result = foldGitDays(
+			extractGitWorkflow({
+				workingDirectories: ["/work/repo"],
+				fromMs: Date.parse("2026-08-01T00:00:00Z"),
+				toMs: Date.parse("2026-08-31T23:59:59Z"),
+				utcOffsetMinutes: 0,
+				run,
+			}).days,
+		);
 
 		expect(result.changedLinesByExtension).toEqual([
 			{ extension: ".ts", changedLines: 9 },
@@ -120,13 +129,15 @@ describe("extractGitWorkflow", () => {
 						"4\t1\tsrc/private.customer-name\n2\t0\tsrc/public.ts\n3\t2\tsrc/new.ts\n",
 					);
 
-		const result = extractGitWorkflow({
-			workingDirectories: ["/work/repo"],
-			fromMs: Date.parse("2026-08-01T00:00:00Z"),
-			toMs: Date.parse("2026-08-31T23:59:59Z"),
-			utcOffsetMinutes: 0,
-			run,
-		});
+		const result = foldGitDays(
+			extractGitWorkflow({
+				workingDirectories: ["/work/repo"],
+				fromMs: Date.parse("2026-08-01T00:00:00Z"),
+				toMs: Date.parse("2026-08-31T23:59:59Z"),
+				utcOffsetMinutes: 0,
+				run,
+			}).days,
+		);
 
 		expect(result.changedLinesByExtension).toEqual([
 			{ extension: ".ts", changedLines: 7 },
@@ -143,13 +154,15 @@ describe("extractGitWorkflow", () => {
 				? "/work/repo\n"
 				: record("aaaa", "2026-08-03T17:00:00+02:00", "1\t0\tsrc/a.ts\n");
 		const at = (utcOffsetMinutes: number) =>
-			extractGitWorkflow({
-				workingDirectories: ["/work/repo"],
-				fromMs: Date.parse("2026-08-01T00:00:00Z"),
-				toMs: Date.parse("2026-08-31T23:59:59Z"),
-				utcOffsetMinutes,
-				run,
-			});
+			foldGitDays(
+				extractGitWorkflow({
+					workingDirectories: ["/work/repo"],
+					fromMs: Date.parse("2026-08-01T00:00:00Z"),
+					toMs: Date.parse("2026-08-31T23:59:59Z"),
+					utcOffsetMinutes,
+					run,
+				}).days,
+			);
 
 		expect(at(600).lateNightCommits).toBe(1);
 		expect(at(0).lateNightCommits).toBe(0);

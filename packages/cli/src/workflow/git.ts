@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
+import type { GitDay } from "@aistack/workflow-rules";
 
 /**
  * Both rules changed together in #278: a path a machine owns (a dependency
@@ -22,27 +23,15 @@ export type GitWorkflowRunner = (
 	args: readonly string[],
 ) => string | null;
 
+/** One UTC day of Git history, with the day it belongs to. */
+export type GitDayRow = GitDay & { date: string };
+
+/**
+ * Git history for the touched repositories, one row per UTC day that holds a
+ * counted commit (#285). A commit belongs to the day of its author time.
+ */
 export type GitWorkflowResult = {
-	testFileRuleVersion: typeof TEST_FILE_RULE_VERSION;
-	fileTypeRuleVersion: typeof FILE_TYPE_RULE_VERSION;
-	commitSetRuleVersion: typeof COMMIT_SET_RULE_VERSION;
-	totalCommits: number;
-	lateNightCommits: number;
-	additions: number;
-	removals: number;
-	changedLinesPerCommit: number[];
-	testFileCommits: number;
-	changedLinesByExtension: Array<{
-		extension: string;
-		changedLines: number;
-	}>;
-	withheldExtensionLines: number;
-	weekdayHourCells: Array<{
-		/** Sunday is 0 and Saturday is 6, on the UTC clock like the harness cells. */
-		weekdayUtc: number;
-		hourUtc: number;
-		commits: number;
-	}>;
+	days: GitDayRow[];
 };
 
 export type ExtractGitWorkflowOptions = {
@@ -72,11 +61,12 @@ const defaultRunner: GitWorkflowRunner = (cwd, args) => {
 	}
 };
 
-const emptyResult = (): GitWorkflowResult => ({
+/** A day with no counted commit, carrying the rule ids a fold needs. */
+export const emptyGitDay = (): GitDay => ({
 	testFileRuleVersion: TEST_FILE_RULE_VERSION,
 	fileTypeRuleVersion: FILE_TYPE_RULE_VERSION,
 	commitSetRuleVersion: COMMIT_SET_RULE_VERSION,
-	totalCommits: 0,
+	commits: 0,
 	lateNightCommits: 0,
 	additions: 0,
 	removals: 0,
@@ -86,6 +76,15 @@ const emptyResult = (): GitWorkflowResult => ({
 	withheldExtensionLines: 0,
 	weekdayHourCells: [],
 });
+
+type MutableGitDay = Omit<
+	GitDay,
+	"changedLinesPerCommit" | "changedLinesByExtension" | "weekdayHourCells"
+> & {
+	changedLinesPerCommit: number[];
+	extensionLines: Map<string, number>;
+	cells: Map<string, number>;
+};
 
 /**
  * The names this rule is willing to print. A path with no extension is absent
@@ -268,9 +267,25 @@ export function extractGitWorkflow(
 		if (root) roots.add(root);
 	}
 
-	const result = emptyResult();
-	const extensionLines = new Map<string, number>();
-	const cells = new Map<string, number>();
+	const days = new Map<string, MutableGitDay>();
+	const dayOf = (date: string): MutableGitDay => {
+		let day = days.get(date);
+		if (!day) {
+			const {
+				changedLinesByExtension: _extensions,
+				weekdayHourCells: _cells,
+				...rest
+			} = emptyGitDay();
+			day = {
+				...rest,
+				changedLinesPerCommit: [],
+				extensionLines: new Map(),
+				cells: new Map(),
+			};
+			days.set(date, day);
+		}
+		return day;
+	};
 	const seenCommits = new Set<string>();
 	for (const root of roots) {
 		const history = run(root, [
@@ -285,6 +300,7 @@ export function extractGitWorkflow(
 
 		type CurrentCommit = {
 			included: boolean;
+			date: string;
 			cell: { weekdayUtc: number; hourUtc: number };
 			/** True once one path a person could have written appears. */
 			authored: boolean;
@@ -292,6 +308,8 @@ export function extractGitWorkflow(
 			removals: number;
 			changedLines: number;
 			touchesTest: boolean;
+			withheldLines: number;
+			extensionLines: Map<string, number>;
 		};
 		let current: CurrentCommit | undefined;
 		// A commit counts only once its records are read: one with no authored
@@ -299,17 +317,25 @@ export function extractGitWorkflow(
 		// that changed nothing (commit-set/v1).
 		const finishCommit = (): void => {
 			if (!current?.included || !current.authored) return;
-			result.totalCommits++;
-			result.additions += current.additions;
-			result.removals += current.removals;
-			result.changedLinesPerCommit.push(current.changedLines);
-			if (current.touchesTest) result.testFileCommits++;
+			const day = dayOf(current.date);
+			day.commits++;
+			day.additions += current.additions;
+			day.removals += current.removals;
+			day.changedLinesPerCommit.push(current.changedLines);
+			if (current.touchesTest) day.testFileCommits++;
 			const { weekdayUtc, hourUtc } = current.cell;
 			if (isLateNight(localHour(hourUtc, options.utcOffsetMinutes))) {
-				result.lateNightCommits++;
+				day.lateNightCommits++;
 			}
 			const cellKey = `${weekdayUtc}:${hourUtc}`;
-			cells.set(cellKey, (cells.get(cellKey) ?? 0) + 1);
+			day.cells.set(cellKey, (day.cells.get(cellKey) ?? 0) + 1);
+			day.withheldExtensionLines += current.withheldLines;
+			for (const [extension, lines] of current.extensionLines) {
+				day.extensionLines.set(
+					extension,
+					(day.extensionLines.get(extension) ?? 0) + lines,
+				);
+			}
 		};
 		const fields = history.split("\u0000");
 		for (let fieldIndex = 0; fieldIndex < fields.length; fieldIndex++) {
@@ -326,12 +352,15 @@ export function extractGitWorkflow(
 					!seenCommits.has(hash);
 				current = {
 					included,
+					date: included ? new Date(authoredMs).toISOString().slice(0, 10) : "",
 					cell: utcCell(included ? authoredMs : 0),
 					authored: false,
 					additions: 0,
 					removals: 0,
 					changedLines: 0,
 					touchesTest: false,
+					withheldLines: 0,
+					extensionLines: new Map(),
 				};
 				if (included) seenCommits.add(hash);
 				continue;
@@ -356,24 +385,39 @@ export function extractGitWorkflow(
 			// An empty extension is not in the approved set, so it withholds.
 			const extension = path.extname(file).toLowerCase();
 			if (APPROVED_EXTENSIONS.has(extension)) {
-				extensionLines.set(
+				current.extensionLines.set(
 					extension,
-					(extensionLines.get(extension) ?? 0) + fileChangedLines,
+					(current.extensionLines.get(extension) ?? 0) + fileChangedLines,
 				);
-			} else result.withheldExtensionLines += fileChangedLines;
+			} else current.withheldLines += fileChangedLines;
 		}
 		finishCommit();
 	}
 
-	result.changedLinesByExtension = [...extensionLines]
-		.map(([extension, changedLines]) => ({ extension, changedLines }))
-		.sort((a, b) => a.extension.localeCompare(b.extension));
-	result.weekdayHourCells = [...cells]
-		.map(([key, commits]) => {
-			const [weekdayUtc, hourUtc] = key.split(":").map(Number);
-			return { weekdayUtc: weekdayUtc ?? 0, hourUtc: hourUtc ?? 0, commits };
-		})
-		.sort((a, b) => a.weekdayUtc - b.weekdayUtc || a.hourUtc - b.hourUtc);
-
-	return result;
+	return {
+		days: [...days]
+			.sort(([a], [b]) => a.localeCompare(b))
+			.map(([date, day]) => {
+				const { extensionLines, cells, ...rest } = day;
+				return {
+					date,
+					...rest,
+					changedLinesByExtension: [...extensionLines]
+						.map(([extension, changedLines]) => ({ extension, changedLines }))
+						.sort((a, b) => a.extension.localeCompare(b.extension)),
+					weekdayHourCells: [...cells]
+						.map(([key, commits]) => {
+							const [weekdayUtc, hourUtc] = key.split(":").map(Number);
+							return {
+								weekdayUtc: weekdayUtc ?? 0,
+								hourUtc: hourUtc ?? 0,
+								commits,
+							};
+						})
+						.sort(
+							(a, b) => a.weekdayUtc - b.weekdayUtc || a.hourUtc - b.hourUtc,
+						),
+				};
+			}),
+	};
 }

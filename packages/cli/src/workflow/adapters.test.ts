@@ -66,11 +66,12 @@ describe("native harness workflow projection", () => {
 		);
 
 		const workflow = aggregate.workflow.finish();
-		expect(workflow.phase.phaseEvents.verify).toBe(1);
-		expect(workflow.facts.sessions[0]?.modelSwitched).toBe(false);
-		expect(workflow.facts.sessions[0]?.longestTurnDurationSec).toBe(420);
-		expect(workflow.facts.sessions[0]?.thinkingTokens).toBeUndefined();
-		expect(JSON.stringify(workflow.phase)).not.toContain("pnpm test");
+		const day = workflow.days[0];
+		expect(day?.phase?.phaseEvents.verify).toBe(1);
+		// 420 seconds sits in log bucket 9, [256, 512).
+		expect(day?.turnDurations?.buckets).toEqual([{ bucket: 9, turns: 1 }]);
+		expect(day?.thinking).toBeUndefined();
+		expect(JSON.stringify(workflow)).not.toContain("pnpm test");
 	});
 
 	it("keeps the largest Claude cumulative workflow snapshot", () => {
@@ -93,9 +94,9 @@ describe("native harness workflow projection", () => {
 			);
 		}
 
-		expect(aggregate.workflow.finish().facts.sessions[0]?.responseTokens).toBe(
-			100,
-		);
+		expect(aggregate.workflow.finish().days[0]?.routing?.main).toEqual([
+			{ model: "claude-opus-5", tokens: 100 },
+		]);
 	});
 
 	it("reduces Codex rollout calls with turn model and effort", () => {
@@ -154,13 +155,11 @@ describe("native harness workflow projection", () => {
 		);
 
 		const workflow = aggregate.workflow.finish();
-		expect(workflow.phase.phaseEvents.verify).toBe(1);
-		expect(workflow.facts.sessions[0]?.effortTurns).toEqual({
-			high: 1,
-			total: 1,
-		});
-		expect(workflow.facts.sessions[0]?.thinkingTokens).toBe(7);
-		expect(workflow.routing).toBeUndefined();
+		const day = workflow.days[0];
+		expect(day?.phase?.phaseEvents.verify).toBe(1);
+		expect(day?.effort).toEqual([{ level: "high", turns: 1 }]);
+		expect(day?.thinking?.thinkingTokens).toBe(7);
+		expect(day?.routing).toBeUndefined();
 	});
 
 	it("reduces ordered opencode tool rows with parent sessions", () => {
@@ -196,8 +195,8 @@ describe("native harness workflow projection", () => {
 		});
 
 		const workflow = aggregate.workflow.finish();
-		expect(workflow.phase.phaseEvents.verify).toBe(1);
-		expect(workflow.delegation?.subagentToolCalls).toBe(1);
+		expect(workflow.days[0]?.phase?.phaseEvents.verify).toBe(1);
+		expect(workflow.days[0]?.delegation?.subagentToolCalls).toBe(1);
 	});
 
 	it("reduces Pi branch-aware tool calls", () => {
@@ -241,9 +240,11 @@ describe("native harness workflow projection", () => {
 		);
 
 		const workflow = aggregate.workflow.finish();
-		expect(workflow.phase.phaseEvents.verify).toBe(1);
-		expect(workflow.facts.sessions[0]?.responseTokens).toBe(20);
-		expect(workflow.facts.sessions[0]?.questionBackTurns).toBeUndefined();
-		expect(workflow.routing).toBeUndefined();
+		const day = workflow.days[0];
+		expect(day?.phase?.phaseEvents.verify).toBe(1);
+		expect(day?.sessions).toBe(1);
+		// Pi has no question marker and no agent boundary, so neither block ships.
+		expect(day?.questions).toBeUndefined();
+		expect(day?.routing).toBeUndefined();
 	});
 });

@@ -2,8 +2,8 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { foldGitDays } from "@aistack/workflow-rules";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-
 import { extractGitWorkflow } from "./git.js";
 
 /**
@@ -52,13 +52,16 @@ afterAll(() => {
 	fs.rmSync(root, { recursive: true, force: true });
 });
 
+/** Every commit here is authored on one day, so the fold is that day's row. */
 const read = () =>
-	extractGitWorkflow({
-		workingDirectories: [root],
-		fromMs: Date.parse("2026-08-01T00:00:00Z"),
-		toMs: Date.parse("2026-08-31T23:59:59Z"),
-		utcOffsetMinutes: 120,
-	});
+	foldGitDays(
+		extractGitWorkflow({
+			workingDirectories: [root],
+			fromMs: Date.parse("2026-08-01T00:00:00Z"),
+			toMs: Date.parse("2026-08-31T23:59:59Z"),
+			utcOffsetMinutes: 120,
+		}).days,
+	);
 
 describe("extractGitWorkflow over real Git output", () => {
 	it("counts authored lines and leaves a vendored dependency tree out", () => {
@@ -70,7 +73,7 @@ describe("extractGitWorkflow over real Git output", () => {
 
 		const result = read();
 
-		expect(result.totalCommits).toBe(1);
+		expect(result.commits).toBe(1);
 		expect(result.additions).toBe(10);
 		expect(result.changedLinesPerCommit).toEqual([10]);
 		expect(result.changedLinesByExtension).toEqual([
@@ -168,7 +171,7 @@ describe("extractGitWorkflow over real Git output", () => {
 
 		// The feature commit and the rename count. The merge does not: it carries
 		// no authored work, so it is neither a commit nor a zero-line dot.
-		expect(result.totalCommits).toBe(before.totalCommits + 2);
+		expect(result.commits).toBe(before.commits + 2);
 		expect([...result.changedLinesPerCommit].sort()).toEqual(
 			[...before.changedLinesPerCommit, 7, 0].sort(),
 		);

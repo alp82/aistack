@@ -37,11 +37,15 @@ The composition is the podium ([#191](https://github.com/alp82/aistack/issues/19
   forms. Start hours are stored in UTC and rendered in the OWNER's local time, labeled
   as such. The reader's own clock would show a stranger's habit at the wrong hour and
   describe nobody.
-- One fit-ranked row set: nine pool metrics and seven components, sixteen rows.
-- The top three rows by fit render as one horizontal band. A tap extends a box below
-  the band.
-- Thin rows follow in fit order. Rows under fit 0.40 wait behind one expander row.
-- The owner can pin or hide any row, and that override wins over both thresholds.
+- One row set in a fixed editorial order ([#277](https://github.com/alp82/aistack/issues/277)):
+  seven pool metrics and eight components, fifteen rows, with a picture on every row.
+  Fit left the page: on the first prod reading 15 of 16 rows sat under the fit line and
+  every row the owner wanted scored zero.
+- The first three rows render as one horizontal band, the podium. A tap extends a box
+  below the band.
+- Thin rows follow in the fixed order. Nothing waits behind an expander.
+- The owner can pin or hide any row. A pin puts the row ahead of the fixed order and on
+  the podium; a hide takes it off the public page.
 - A row ships when its measurement exists. A missing measurement stays absent, so no
   separate first-ship list exists.
 
@@ -67,22 +71,21 @@ is a link, and it opens nothing. Past the block, the same links dock as a fixed 
 under the site header, carrying the stack name, the price, and the upvotes on its
 left, with a scroll spy marking the section in view.
 
-## Fit and rotation
+## Fit
 
 Fit is coverage times surprise ([#175](https://github.com/alp82/aistack/issues/175)).
 Coverage is the share of synced harnesses the metric counts, and a Git metric counts
-them all. Surprise is the distance from the typical band that the versioned metric rule
-declares. Ties break on movement against the prior window. A fact a fixed block or
-another section shows is excluded from the slots.
+them all. Surprise is the distance from the typical band that the versioned rule
+declares.
 
-Fit recomputes at every sync. A challenger takes a highlight slot only with a fit win
-of 25% or more. At most one slot swaps per sync day. An incumbent leaves at once when
-the owner removes it, when its coverage drops, or when its signal goes stale.
+**Fit stays in the API as a number nothing ranks by**
+([#277](https://github.com/alp82/aistack/issues/277)). The rotation limit, the
+challenger margin, the fit line and the swap-per-day rule are gone
+([#285](https://github.com/alp82/aistack/issues/285)): the order on the page is fixed,
+and the only server state beside the days is the owner's pins and hides.
 
-Fit splits between the machine and the server. The CLI ships value, coverage, band,
-and rule id per row, and stays the only source of measured values. The server computes
-fit, applies the rotation limit, and applies the owner pins and hides, because the
-swap history and the owner overrides are server state.
+Every row is computed on the server, over the folded window. The CLI ships atoms and no
+values (see "The wire"), so a rule change is a server deploy and needs no re-sync.
 
 ## Phases
 
@@ -190,9 +193,9 @@ sessions" is the only subject the data supports.
 The rules that produce those four lines:
 
 - **Scope first, then the mix.** The reader learns what they are looking at before the
-  first share. The window is the payload's own rolling 30 days, named in the scope
-  line, and the count covers every synced harness including one held back by the
-  playbook gate.
+  first share. The window is the one the reader selected, 30 days by default, named
+  in the scope line, and the count covers every synced harness including one held back
+  by the playbook gate.
 - **Numbers only.** No sentence names what the shape means. A takeaway is a claim no
   rule computed, and drafting one is what [ADR-0002](../adr/0002-no-llm-in-the-workflow-surface.md)
   rules out.
@@ -254,10 +257,27 @@ while their lines stay in the denominator. The v1 rule ranked them together as
 
 ## The wire
 
-One new closed workflow section on the existing sync body. Every field is additive and
-optional, so old clients keep working and publish no workflow section. Each metric
-carries its rule id and rule version. The name filter and the staged approval apply to
-every new field.
+One closed workflow section on the existing sync body, `workflow-aggregates/v2`
+([#285](https://github.com/alp82/aistack/issues/285)): per-day rows of combinable atoms,
+plus the machine's UTC offset. Every field is additive and optional at the body level, so
+a client without the section keeps working and publishes no workflow. The name filter and
+the staged approval apply to every field.
+
+- **A day carries counts, sums, maxes, and bucket histograms, and nothing else.** No
+  share, no median, no mean. Session lengths and turn durations travel as
+  `log-buckets/v1` histograms, tokens per model as sums, events per (weekday, hour) cell
+  as counts, fan-out as a max. A session belongs to the UTC day it started; an event
+  cell and a web search belong to the day of the event; a commit belongs to the day of
+  its author time.
+- **The server folds days into a window and computes every row there.** A median is a
+  median over daily values (parallel projects) or over buckets (session length, turn
+  duration). Bands stay in the versioned rules on the server.
+- **A re-synced day replaces that day. Days append across syncs.** One row per
+  (stack, machine, date), 400 days of retention per machine, and a window of 30 days,
+  7 days, or the last 24 hours folded at read time.
+- **The phase gate is a window judgment.** A harness that leaves more than 20% of its
+  measured time unclassified over the sync window ships every day without its phase
+  block, so no window can fold a playbook the gate refused.
 
 Consent is one `publishWorkflow` opt-out bit that mirrors `publishCost` field for
 field: default on, applied client-side. Off means the workflow section is absent from

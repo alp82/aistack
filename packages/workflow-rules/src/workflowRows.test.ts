@@ -1,344 +1,156 @@
 import { describe, expect, test } from "vitest";
-import { COMPONENT_RULES_V1, componentRule } from "./componentRules.js";
+import { COMPONENT_RULES } from "./componentRules.js";
+import { harnessDay, windowOf, workflowDay } from "./fixtures.js";
 import { METRIC_RULES } from "./metricRules.js";
 import {
-	buildLeadFacts,
-	hasMixedRuleVersions,
-	modalStartHour,
-	phaseShare,
-	sessionShareWith,
-	type WorkflowHarnessReading,
-	type WorkflowReading,
-	type WorkflowSessionRow,
-} from "./reading.js";
-import { renderLeadMarkdown, renderLeadSentences } from "./templateLead.js";
-import { buildWorkflowRows } from "./workflowRows.js";
+	buildWorkflowRows,
+	componentRowId,
+	KNOWN_ROW_IDS,
+	metricRowId,
+	placeRows,
+	surpriseOf,
+	WORKFLOW_ROW_ORDER,
+} from "./workflowRows.js";
 
-const NO_TOTALS = {
-	scout: 0,
-	build: 0,
-	verify: 0,
-	handoff: 0,
-	unknown: 0,
-};
-
-function sessionRow(
-	over: Partial<WorkflowSessionRow> = {},
-): WorkflowSessionRow {
-	return {
-		startHourUtc: 21,
-		eventCount: 40,
-		phaseSec: { ...NO_TOTALS, scout: 600, build: 200 },
-		phaseEvents: { ...NO_TOTALS, scout: 30, build: 10 },
-		waitingSec: 0,
-		idleSec: 0,
-		merged: false,
-		verifyRuns: 0,
-		reviewRounds: 0,
-		openedWithScout: true,
-		...over,
-	};
-}
-
-function harness(
-	over: Partial<WorkflowHarnessReading> = {},
-): WorkflowHarnessReading {
-	return {
+const kit = [
+	{
 		harness: "claude-code",
-		phase: {
-			ruleVersion: "phase-rules/v1",
-			publishable: true,
-			sessions: 2,
-			phaseSec: {
-				scout: 640,
-				build: 180,
-				verify: 60,
-				handoff: 50,
-				unknown: 70,
-			},
-			phaseEvents: { scout: 60, build: 20, verify: 6, handoff: 5, unknown: 7 },
-			waitingSec: 30,
-			idleSec: 10,
-			unknownShare: 0.07,
-			sessionRows: [sessionRow(), sessionRow()],
-		},
-		activity: [{ weekdayUtc: 1, hourUtc: 21, events: 40 }],
-		...over,
-	};
-}
-
-function reading(over: Partial<WorkflowReading> = {}): WorkflowReading {
-	return {
-		aggregateVersion: "workflow-aggregates/v1",
-		harnesses: [harness()],
-		git: {
-			testFileRuleVersion: "test-file-rules/v1",
-			fileTypeRuleVersion: "file-type-rules/v1",
-			totalCommits: 20,
-			lateNightCommits: 9,
-			additions: 800,
-			removals: 200,
-			changedLinesPerCommit: [50, 50],
-			testFileCommits: 4,
-			changedLinesByExtension: [
-				{ extension: ".ts", changedLines: 700 },
-				{ extension: ".css", changedLines: 200 },
-			],
-			withheldExtensionLines: 100,
-			weekdayHourCells: [{ weekdayUtc: 1, hourUtc: 23, commits: 9 }],
-		},
-		metrics: [
-			{
-				metricId: "late-night-commits",
-				ruleVersion: "metric-rules/v1",
-				value: 0.45,
-				band: { low: 0, high: 0.15 },
-				coverage: 1,
-			},
+		skills: [
+			{ name: "tdd", callShare: 0.6 },
+			{ name: "grilling", callShare: 0.2 },
 		],
-		...over,
-	};
-}
+		mcpServers: [{ name: "curia", callShare: 0.2 }],
+	},
+];
 
-describe("the row set", () => {
-	test("a measured metric becomes a row with its rule's own words", () => {
-		const { rows } = buildWorkflowRows({ reading: reading() });
-		const row = rows.find((r) => r.rowId === "metric:late-night-commits");
-		expect(row).toMatchObject({
-			kind: "metric",
-			ruleId: "late-night-commits",
-			ruleVersion: "metric-rules/v1",
-			label: "of commits land between 23:00 and 03:00",
-			value: 0.45,
-			coverage: 1,
-		});
+describe("the fixed order", () => {
+	test("names every row either pool can produce, once", () => {
+		const ids = WORKFLOW_ROW_ORDER.map((row) => row.rowId);
+		expect(new Set(ids).size).toBe(ids.length);
+		expect([...KNOWN_ROW_IDS].sort()).toEqual([...ids].sort());
+		expect(ids).toHaveLength(METRIC_RULES.length + COMPONENT_RULES.length);
 	});
 
-	test("a metric id this build has no rule for is dropped and counted, never printed bare", () => {
-		const { rows, unknownMetricIds } = buildWorkflowRows({
-			reading: reading({
-				metrics: [
-					{
-						metricId: "sessions-per-moon-phase",
-						ruleVersion: "metric-rules/v9",
-						value: 3,
-						band: { low: 0, high: 1 },
-						coverage: 1,
-					},
-				],
-			}),
-		});
-		expect(rows.some((r) => r.kind === "metric")).toBe(false);
-		expect(unknownMetricIds).toEqual(["sessions-per-moon-phase"]);
-	});
-
-	test("every pool metric and every component can produce a row", () => {
-		expect(METRIC_RULES).toHaveLength(9);
-		const { rows } = buildWorkflowRows({ reading: reading() });
-		// One metric was measured in this fixture; the components derive from it.
-		expect(rows.filter((r) => r.kind === "component").length).toBeGreaterThan(
-			0,
-		);
-	});
-});
-
-describe("component rules", () => {
-	test("the Git ledger reads the removal share of changed lines", () => {
-		const { rows } = buildWorkflowRows({ reading: reading() });
-		const ledger = rows.find((r) => r.rowId === "component:git-ledger");
-		// 200 removals of 1,000 changed lines.
-		expect(ledger?.value).toBeCloseTo(0.2, 10);
-		expect(ledger?.ruleVersion).toBe(COMPONENT_RULES_V1);
-		// Git history counts every synced harness, whatever the harness records.
-		expect(ledger?.coverage).toBe(1);
-	});
-
-	test("coding languages counts withheld lines in the denominator", () => {
-		const { rows } = buildWorkflowRows({ reading: reading() });
-		// 700 of 700 + 200 + 100 withheld.
+	test("four rows are flat (#284)", () => {
 		expect(
-			rows.find((r) => r.rowId === "component:coding-languages")?.value,
-		).toBeCloseTo(0.7, 10);
-	});
-
-	test("the playbook reads the largest named phase's share of measured time", () => {
-		const { rows } = buildWorkflowRows({ reading: reading() });
-		// scout 640 of 1,000 measured seconds, unknown included.
-		expect(
-			rows.find((r) => r.rowId === "component:phase-playbook")?.value,
-		).toBeCloseTo(0.64, 10);
-	});
-
-	test("a component with no data on this reading ships no row", () => {
-		const { rows } = buildWorkflowRows({ reading: reading() });
-		expect(rows.some((r) => r.rowId === "component:model-routing")).toBe(false);
-		expect(rows.some((r) => r.rowId === "component:kit")).toBe(false);
-	});
-
-	test("delegation counts subagent tool calls against every tool call", () => {
-		const { rows } = buildWorkflowRows({
-			reading: reading({
-				harnesses: [
-					harness({
-						delegation: {
-							mainToolCalls: 300,
-							subagentToolCalls: 100,
-							widestFanOut: 4,
-							mostSubagents: 6,
-						},
-					}),
-				],
-			}),
-		});
-		expect(
-			rows.find((r) => r.rowId === "component:delegation")?.value,
-		).toBeCloseTo(0.25, 10);
-	});
-
-	test("a component measured on one of two harnesses carries half coverage", () => {
-		const { rows } = buildWorkflowRows({
-			reading: reading({
-				harnesses: [
-					harness({
-						routing: {
-							main: [{ model: "claude-opus-5", tokens: 900 }],
-							subagents: [{ model: "claude-haiku-4-5", tokens: 100 }],
-						},
-					}),
-					harness({ harness: "codex" }),
-				],
-			}),
-		});
-		const routing = rows.find((r) => r.rowId === "component:model-routing");
-		expect(routing?.value).toBe(1);
-		expect(routing?.coverage).toBe(0.5);
-	});
-
-	test("the kit reads inventory, which travels in the payload rather than the section", () => {
-		const { rows } = buildWorkflowRows({
-			reading: reading(),
-			kit: [
-				{
-					harness: "claude-code",
-					skills: [
-						{ name: "grilling", callShare: 0.24 },
-						{ name: "tdd", callShare: 0.12 },
-					],
-					mcpServers: [{ name: "aistack", callShare: 0.04 }],
-				},
-			],
-		});
-		const kit = rows.find((r) => r.rowId === "component:kit");
-		expect(kit?.value).toBeCloseTo(0.24 / 0.4, 10);
-		expect(kit?.coverage).toBe(1);
-	});
-
-	test("there are seven components", () => {
-		expect(
-			[
-				"phase-playbook",
-				"model-routing",
-				"delegation",
-				"git-ledger",
-				"coding-languages",
-				"activity-heatmap",
-				"kit",
-			].map((id) => componentRule(id)?.id),
+			WORKFLOW_ROW_ORDER.filter((row) => row.flat).map((row) => row.name),
 		).toEqual([
-			"phase-playbook",
-			"model-routing",
-			"delegation",
-			"git-ledger",
-			"coding-languages",
-			"activity-heatmap",
-			"kit",
+			"Late-night commits",
+			"Questions asked",
+			"Web searches",
+			"Parallel projects",
 		]);
 	});
 });
 
-describe("lead facts", () => {
-	test("phase shares are shares of total measured time, unknown included", () => {
-		const shares = phaseShare(reading());
-		expect(shares?.scout).toBeCloseTo(0.64, 10);
-		expect(shares?.unknown).toBeCloseTo(0.07, 10);
-		expect(
-			Object.values(shares ?? {}).reduce((sum, share) => sum + share, 0),
-		).toBeCloseTo(1, 10);
-	});
-
-	test("a session share counts sessions holding at least one event of the phase", () => {
-		const withVerify = reading({
-			harnesses: [
-				harness({
-					phase: {
-						...(harness().phase as NonNullable<
-							WorkflowHarnessReading["phase"]
-						>),
-						sessionRows: [
-							sessionRow(),
-							sessionRow({
-								phaseEvents: { ...NO_TOTALS, scout: 10, verify: 2 },
-							}),
-						],
-					},
-				}),
-			],
-		});
-		expect(sessionShareWith(withVerify, "verify")).toBe(0.5);
-	});
-
-	test("start hours render in the owner's local time, and stay absent without an offset", () => {
-		expect(modalStartHour(reading())).toBeUndefined();
-		// 21:00 UTC on a machine two hours east is 23:00 for the owner.
-		expect(modalStartHour(reading({ utcOffsetMinutes: 120 }))).toBe(23);
-		// And one hour west of midnight wraps back into the previous day.
-		expect(modalStartHour(reading({ utcOffsetMinutes: -22 * 60 }))).toBe(23);
-	});
-
-	test("a reading classified by two rule sets prints both and tags as mixed", () => {
-		const mixed = reading({
-			harnesses: [
-				harness(),
-				harness({
-					harness: "codex",
-					phase: {
-						...(harness().phase as NonNullable<
-							WorkflowHarnessReading["phase"]
-						>),
-						ruleVersion: "phase-rules/v2",
-					},
-				}),
-			],
-		});
-		expect(hasMixedRuleVersions(mixed)).toBe(true);
-		expect(
-			buildLeadFacts({ reading: mixed, sessionCount: 40, harnessCount: 2 })
-				.ruleVersion,
-		).toBe("phase-rules/v1 · phase-rules/v2");
-	});
-
-	test("the facts fill the locked four-line lead", () => {
-		const facts = buildLeadFacts({
-			reading: reading({ utcOffsetMinutes: 120 }),
-			sessionCount: 142,
-			harnessCount: 3,
-		});
-		const lines = renderLeadSentences(facts).map(renderLeadMarkdown);
-		expect(lines[0]).toBe("**142** sessions · **3** harnesses · last 30 days");
-		expect(lines[1]).toBe(
-			"Most measured time in these sessions goes to **scout** (**64%**), then **build** (**18%**).",
+describe("buildWorkflowRows", () => {
+	test("produces every row in the fixed order for a full reading", () => {
+		const rows = buildWorkflowRows({ reading: windowOf(), kit });
+		expect(rows.map((row) => row.rowId)).toEqual(
+			WORKFLOW_ROW_ORDER.map((row) => row.rowId),
 		);
-		expect(lines[3]).toBe(
-			"**7%** of measured time unclassified · `phase-rules/v1`",
+		expect(rows.map((row) => row.name)).toEqual(
+			WORKFLOW_ROW_ORDER.map((row) => row.name),
 		);
 	});
 
-	test("a stack under twenty sessions gets no lead at all", () => {
-		const facts = buildLeadFacts({
-			reading: reading({ utcOffsetMinutes: 120 }),
-			sessionCount: 4,
-			harnessCount: 1,
+	test("a row whose measurement is missing is skipped, and the rest keep their order", () => {
+		const rows = buildWorkflowRows({
+			reading: windowOf([
+				workflowDay({
+					harnesses: [harnessDay({ effort: undefined, thinking: undefined })],
+				}),
+			]),
 		});
-		expect(renderLeadSentences(facts)).toEqual([]);
+		const ids = rows.map((row) => row.rowId);
+		expect(ids).not.toContain(metricRowId("effort-levels"));
+		expect(ids).not.toContain(metricRowId("thinking-share"));
+		expect(ids).not.toContain(componentRowId("kit"));
+		expect(ids.indexOf(metricRowId("turn-duration"))).toBeGreaterThan(
+			ids.indexOf(componentRowId("delegation")),
+		);
+	});
+
+	test("coverage and the tag name the harnesses that carry the signal", () => {
+		const rows = buildWorkflowRows({
+			reading: windowOf([
+				workflowDay({
+					harnesses: [
+						harnessDay(),
+						harnessDay({ harness: "pi-mono", effort: undefined }),
+					],
+				}),
+			]),
+		});
+		const effort = rows.find(
+			(row) => row.rowId === metricRowId("effort-levels"),
+		);
+		expect(effort?.coverage).toBe(0.5);
+		expect(effort?.coverageTag).toBe("counts: Claude Code");
+		const lateNight = rows.find(
+			(row) => row.rowId === metricRowId("late-night-commits"),
+		);
+		expect(lateNight?.coverage).toBe(1);
+		expect(lateNight?.coverageTag).toBeUndefined();
+	});
+
+	test("surprise and fit ride along as numbers", () => {
+		const rows = buildWorkflowRows({ reading: windowOf() });
+		const lateNight = rows.find(
+			(row) => row.rowId === metricRowId("late-night-commits"),
+		);
+		// 0.4 against [0, 0.15]: distance 0.25 over 0.25 + 0.15.
+		expect(lateNight?.surprise).toBeCloseTo(0.625);
+		expect(lateNight?.fit).toBeCloseTo(0.625);
+		expect(surpriseOf(0.1, { low: 0, high: 0.15 })).toBe(0);
+	});
+});
+
+describe("placeRows", () => {
+	test("the podium is the first three rows in the fixed order", () => {
+		const placed = placeRows(buildWorkflowRows({ reading: windowOf(), kit }), {
+			pinned: [],
+			hidden: [],
+		});
+		expect(
+			placed.filter((row) => row.placement === "highlight").map((r) => r.rowId),
+		).toEqual([
+			componentRowId("activity-heatmap"),
+			componentRowId("start-hours"),
+			metricRowId("late-night-commits"),
+		]);
+	});
+
+	test("pinned rows come first, in the fixed order, and take the podium", () => {
+		const placed = placeRows(buildWorkflowRows({ reading: windowOf(), kit }), {
+			pinned: [metricRowId("parallel-projects"), componentRowId("kit")],
+			hidden: [],
+		});
+		expect(placed.slice(0, 3).map((row) => row.rowId)).toEqual([
+			componentRowId("kit"),
+			metricRowId("parallel-projects"),
+			componentRowId("activity-heatmap"),
+		]);
+		expect(placed[0]?.pinned).toBe(true);
+		expect(placed[2]?.pinned).toBe(false);
+	});
+
+	test("a hidden row is marked, keeps its place, and takes no podium slot", () => {
+		const placed = placeRows(buildWorkflowRows({ reading: windowOf(), kit }), {
+			pinned: [],
+			hidden: [componentRowId("start-hours")],
+		});
+		const hidden = placed.find(
+			(row) => row.rowId === componentRowId("start-hours"),
+		);
+		expect(hidden?.hidden).toBe(true);
+		expect(hidden?.placement).toBe("normal");
+		expect(
+			placed.filter((row) => row.placement === "highlight").map((r) => r.rowId),
+		).toEqual([
+			componentRowId("activity-heatmap"),
+			metricRowId("late-night-commits"),
+			componentRowId("phase-playbook"),
+		]);
 	});
 });
