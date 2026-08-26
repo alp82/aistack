@@ -23,11 +23,57 @@ scripts/convex-prod.sh run migrations/<name>:run
 scripts/sync-prod-db.sh
 ```
 
-The local database lags behind prod. Before work that depends on real rows (catalog data entry, migration dry runs), run `scripts/sync-prod-db.sh` first.
+The local database lags behind prod. Before work that depends on real rows (catalog data entry, migration dry runs), run `scripts/sync-prod-db.sh` first. It copies what prod HAS: for a reading no machine has published yet, see "Publishing a measured reading to the local backend".
 
 **Prod deploys run through GitHub Actions exclusively.** A push to `main` triggers `.github/workflows/deploy-convex.yml`, which pulls the `~/aistack` checkout on the server and runs `pnpm convex deploy` there. Never run `npx convex deploy` against prod from a local machine. To run a new migration on prod: push to `main`, wait for the workflow, then `scripts/convex-prod.sh run migrations/<name>:run`.
 
 **Never pass `--push` to `scripts/convex-prod.sh`, and never give it `deploy`, `dev`, or `push`.** The CLI runs from a minimal project dir on the server that holds no `convex/` directory, so anything that writes code pushes an EMPTY function set and prod loses every function and every index at once. That is a full outage, and it happened on 2026-08-24. The script now refuses those four forms, and the recovery is the workflow's own command, run on the server: `ssh root@10.0.0.20 "bash -l -c 'cd ~/aistack && git fetch origin main && git reset --hard origin/main && /root/.local/share/pnpm/pnpm i && /root/.local/share/pnpm/pnpm convex deploy'"`. Table rows survive; the indexes come back with the deploy.
+
+## Publishing a measured reading to the local backend
+
+`scripts/sync-prod-db.sh` copies prod's rows, so it can only give you data prod
+already has. A measured reading it cannot give you is one no machine has ever
+published. As of 2026-08-25 `measuredWorkflows` is empty on prod, so no amount of
+mirroring makes the Workflow section appear locally: something has to publish one.
+
+Point the CLI at the local app and sync. The whole ingest path runs for real, and
+nothing touches prod.
+
+**The owner runs this, not an agent.** `sync` refuses to run without a TTY
+(`packages/cli/src/commands/sync.ts`, #31: a gate that cannot ask must not
+send), and a model-launched Bash call has no TTY. In a Claude Code session, type
+the sync line with a leading `!` so it runs in the owner's own shell, or run it
+in a terminal. Do not try to route around the gate.
+
+```sh
+cd packages/cli && pnpm build   # dist/index.js is what you run
+cd ../..
+
+# One login per server. Opens the LOCAL approval page; approve it there.
+# `sync` runs this inline on an unlinked machine, so it is optional.
+AISTACK_URL=http://localhost:3019 node packages/cli/dist/index.js login
+
+# Scan, preview, approve, publish - against the local backend. Needs a TTY.
+AISTACK_URL=http://localhost:3019 node packages/cli/dist/index.js sync
+```
+
+Five things that make this safe and make it work:
+
+* **`AISTACK_URL` is the only switch.** `packages/cli/src/api.ts` reads it and
+  falls back to `https://aistack.to`. The device-auth URL comes from whichever
+  server answered, so a localhost run sends you to a localhost approval page.
+* **A localhost login cannot clobber the prod token.** `~/.config/aistack/credentials.json`
+  keys credentials by server URL, which is exactly what that keying is for. You
+  log in once per server and both tokens survive.
+* **`publishWorkflow` defaults ON.** `stack.publishWorkflow !== false` is the
+  gate, so a stack that never set the flag still publishes its workflow section.
+  There is nothing to toggle before the first run.
+* **The local app and `convex dev` both have to be up**, and your stack has to
+  exist in the local database. Run `scripts/sync-prod-db.sh` first if it does
+  not, then log in to the local app again - the mirror replaces the auth tables.
+* **Be signed in to the LOCAL app in a browser before you start.** The approval
+  page is served by localhost, and it can only approve a machine for an account
+  it already has a session for.
 
 ## CLI release
 

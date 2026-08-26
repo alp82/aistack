@@ -31,8 +31,8 @@ describe("buildWorkflowExtraction", () => {
 		});
 
 		const git: GitWorkflowResult = {
-			testFileRuleVersion: "test-files/v1",
-			fileTypeRuleVersion: "file-types/v1",
+			testFileRuleVersion: "test-files/v2",
+			fileTypeRuleVersion: "file-types/v2",
 			totalCommits: 4,
 			lateNightCommits: 2,
 			additions: 30,
@@ -80,8 +80,8 @@ describe("buildWorkflowExtraction", () => {
 		const extraction = buildWorkflowExtraction(
 			[{ aggregate: reducer.finish(), local }],
 			{
-				testFileRuleVersion: "test-files/v1",
-				fileTypeRuleVersion: "file-types/v1",
+				testFileRuleVersion: "test-files/v2",
+				fileTypeRuleVersion: "file-types/v2",
 				totalCommits: 0,
 				lateNightCommits: 0,
 				additions: 0,
@@ -143,8 +143,8 @@ describe("buildWorkflowExtraction", () => {
 		const extraction = buildWorkflowExtraction(
 			[{ aggregate: reducer.finish(), local }],
 			{
-				testFileRuleVersion: "test-files/v1",
-				fileTypeRuleVersion: "file-types/v1",
+				testFileRuleVersion: "test-files/v2",
+				fileTypeRuleVersion: "file-types/v2",
 				totalCommits: 0,
 				lateNightCommits: 0,
 				additions: 0,

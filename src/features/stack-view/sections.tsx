@@ -14,6 +14,7 @@ import {
 	ToolCardBig,
 	ToolCardMini,
 } from "./cards";
+import { SECTION_TITLES } from "./pageOrder";
 import { GAP, Section, SectionHeader } from "./ui";
 
 // ---------------------------------------------------------------------------
@@ -78,7 +79,7 @@ function Disclosure({
 }
 
 // ===========================================================================
-// 02 - TOOLS (hosts Models / Bundles disclosures)
+// 03 - TOOLS (hosts Models / Bundles disclosures)
 // ===========================================================================
 
 export function ToolsSection({
@@ -134,7 +135,7 @@ export function ToolsSection({
 			<SectionHeader
 				index={String(index).padStart(2, "0")}
 				kicker="// AI Components"
-				title="Tools"
+				title={SECTION_TITLES.tools}
 				meta={`${tools.length} ${tools.length === 1 ? "item" : "items"}${
 					(fixedTotal?.amount ?? 0) > 0
 						? ` · $${price.amountText}${price.suffix}`
@@ -211,26 +212,33 @@ export function ToolsSection({
 }
 
 // ===========================================================================
-// 03 - GUIDE (writeup)
+// 05 - GUIDE (writeup)
+//
+// TITLED "GUIDE" UNDER "// writeup" SINCE #217. It used to be titled Workflow,
+// and the measured section that now sits at 04 owns that name (#193). Two
+// sections called Workflow, one written and one measured, would have read as
+// the same thing twice.
 // ===========================================================================
 
 export function GuideSection({
 	index,
+	id,
 	description,
 	isOwner,
 	slug,
 }: {
 	index: number;
+	id?: string;
 	description: string | undefined;
 	isOwner: boolean;
 	slug: string;
 }) {
 	return (
-		<Section index={index}>
+		<Section index={index} id={id}>
 			<SectionHeader
 				index={String(index).padStart(2, "0")}
-				kicker="// GUIDE"
-				title="Workflow"
+				kicker="// writeup"
+				title={SECTION_TITLES.guide}
 			/>
 			{description ? (
 				<>

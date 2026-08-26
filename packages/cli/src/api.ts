@@ -100,6 +100,43 @@ export async function stackCollect(
 	return res.json();
 }
 
+/** A terminal reader's budget for one error, not a log file's. */
+const MAX_DETAIL_LINES = 4;
+const MAX_DETAIL_LINE = 160;
+const MAX_DETAIL = 480;
+
+/**
+ * The readable part of a server error.
+ *
+ * A CONVEX VALIDATION ERROR CARRIES THE WHOLE OBJECT IT REFUSED. The reason and
+ * the path come first and are the entire message a user can act on; after them
+ * come `Object:` and `Validator:`, each holding a full dump. A real failed sync
+ * printed several screens of session rows and buried the one line that said
+ * what to fix. Keep the head, cut the rest, and SAY that it was cut - a message
+ * silently missing its end is worse than a short one.
+ */
+function readableDetail(detail: string): string {
+	const lines = detail.trim().split("\n");
+	const kept: string[] = [];
+	let cut = lines.length > MAX_DETAIL_LINES;
+	for (const line of lines.slice(0, MAX_DETAIL_LINES)) {
+		// A dump line is one enormous line, so the cap lands mid-object. Drop it
+		// entirely rather than print 160 characters of someone's session rows.
+		if (line.length > MAX_DETAIL_LINE) {
+			cut = true;
+			continue;
+		}
+		kept.push(line);
+	}
+	let text = kept.join("\n").trim();
+	if (text.length > MAX_DETAIL) {
+		text = text.slice(0, MAX_DETAIL).trimEnd();
+		cut = true;
+	}
+	if (!text) text = lines[0]?.slice(0, MAX_DETAIL_LINE).trimEnd() ?? "";
+	return cut ? `${text}\n(detail truncated)` : text;
+}
+
 async function formatHttpError(res: Response, label: string): Promise<string> {
 	const prefix = `${label}: ${res.status} ${res.statusText || ""}`.trim();
 	const text = await res.text().catch(() => "");
@@ -107,9 +144,9 @@ async function formatHttpError(res: Response, label: string): Promise<string> {
 	try {
 		const body = JSON.parse(text) as { error?: string; message?: string };
 		const detail = body.error || body.message;
-		if (detail) return `${prefix} - ${detail}`;
+		if (detail) return `${prefix} - ${readableDetail(detail)}`;
 	} catch {}
-	const snippet = text.trim().slice(0, 500);
+	const snippet = readableDetail(text);
 	return snippet ? `${prefix} - ${snippet}` : prefix;
 }
 

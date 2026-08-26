@@ -49,8 +49,8 @@ describe("extractGitWorkflow", () => {
 		});
 
 		expect(result).toEqual({
-			testFileRuleVersion: "test-files/v1",
-			fileTypeRuleVersion: "file-types/v1",
+			testFileRuleVersion: "test-files/v2",
+			fileTypeRuleVersion: "file-types/v2",
 			totalCommits: 2,
 			lateNightCommits: 2,
 			additions: 20,
@@ -60,9 +60,10 @@ describe("extractGitWorkflow", () => {
 			changedLinesByExtension: [
 				{ extension: ".js", changedLines: 12 },
 				{ extension: ".ts", changedLines: 16 },
-				{ extension: "(none)", changedLines: 2 },
 			],
-			withheldExtensionLines: 0,
+			// `tests/helper` has no extension, so its 2 lines are withheld rather
+			// than ranked: a file with no extension is not a coding language.
+			withheldExtensionLines: 2,
 			weekdayHourCells: [
 				{ weekday: 1, hour: 23, commits: 1 },
 				{ weekday: 2, hour: 2, commits: 1 },

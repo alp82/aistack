@@ -592,10 +592,17 @@ export type SyncBody = {
  * and the CLI has already reduced them into `metrics`. Shipping them too would
  * put finer-grained records on the wire than any surface reads, which is the
  * opposite of what a closed section is for.
+ *
+ * THE AGGREGATE VERSION RIDES ON THE SECTION, NOT ON EACH HARNESS. The reducer
+ * stamps every harness with the same module constant, and the server's
+ * `HarnessWorkflow` is a closed validator with no field for it, so the copy is
+ * both redundant and rejected.
  */
 export type PayloadWorkflow = {
 	aggregateVersion: string;
-	harnesses: Array<Omit<PublishableHarnessWorkflow, "facts">>;
+	harnesses: Array<
+		Omit<PublishableHarnessWorkflow, "facts" | "aggregateVersion">
+	>;
 	git: WorkflowExtraction["git"];
 	metrics: PayloadWorkflowMetric[];
 	utcOffsetMinutes: number;
@@ -624,14 +631,18 @@ export type PayloadWorkflowMetric = {
  *
  * `coverageTag` is dropped when it is `undefined` rather than sent as null: the
  * closed server validator takes an optional string, and "no tag" is an absent
- * field there.
+ * field there. Each harness drops `aggregateVersion` for the same reason, in
+ * the other direction: the server has no field for it, so sending it is an
+ * extra key and Convex refuses the whole object.
  */
 export function toPayloadWorkflow(
 	extraction: WorkflowExtraction,
 ): PayloadWorkflow {
 	return {
 		aggregateVersion: extraction.aggregateVersion,
-		harnesses: extraction.harnesses.map(({ facts: _local, ...rest }) => rest),
+		harnesses: extraction.harnesses.map(
+			({ facts: _local, aggregateVersion: _stamped, ...rest }) => rest,
+		),
 		git: extraction.git,
 		metrics: extraction.metricInputs.map((row) => ({
 			metricId: row.metricId,

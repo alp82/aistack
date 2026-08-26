@@ -182,6 +182,9 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		source,
 		baseUrl: deps.baseUrl,
 		scanStats,
+		// The real terminal, so the inventory rows break where this window ends
+		// (#217). A pipe reports nothing and the preview falls back to 80.
+		width: process.stdout.columns,
 	};
 
 	let blockedReason: string | null = null;

@@ -53,7 +53,19 @@ Ledger (removals in red, per-commit sizes as a log-scale dot strip), coding lang
 
 On the stack page the section is titled Workflow under `// measured`, position 04 in
 the settled order: Actual Usage 01, Projects 02, Tools 03, Workflow 04, Guide 05
-([#193](https://github.com/alp82/aistack/issues/193)).
+([#193](https://github.com/alp82/aistack/issues/193)). The writeup section that used
+to carry the title Workflow is renamed Guide, under `// writeup`.
+
+The order is locked, the numbers are not. Tools renders only when the stack lists
+tools, and Workflow only when a reading is stored and published, so the number a
+section prints is its position among the sections that render. A stack with no
+reading closes on Guide 04 rather than printing a gap where 04 would have been.
+
+A nav block of stat rows sits under the hero: one row per rendered section, showing
+the number, the title, and a headline figure the section itself already prints. A row
+is a link, and it opens nothing. Past the block, the same links dock as a fixed rail
+under the site header, carrying the stack name, the price, and the upvotes on its
+left, with a scroll spy marking the section in view.
 
 ## Fit and rotation
 
@@ -223,6 +235,22 @@ Local Git history is a source and makes commit and line facts exact
 ([#174](https://github.com/alp82/aistack/issues/174)). The CLI reads Git history only
 for working directories that windowed sessions touched. Repository names stay local
 under the name filter. Only aggregate counts and line totals ship.
+
+Two fixed rules decide which of those lines count, and both moved to v2 in
+[#278](https://github.com/alp82/aistack/issues/278).
+
+`test-files/v2` and `file-types/v2` first drop every changed line under a path a
+machine owns: a dependency tree, a build output directory, a directory of captured
+tool output, or a dependency lockfile. Those lines leave the reading in both halves,
+because withholding keeps a line in the denominator and a line nobody wrote belongs in
+neither. One accidental commit of a package store is otherwise enough to bury a whole
+month of authored work: on the first real reading it carried 6.85 million of 7.46
+million changed lines.
+
+`file-types/v2` then names only an approved extension. A path with no extension is not
+a coding language, so `Dockerfile`, `LICENSE` and `.gitignore` are withheld by type
+while their lines stay in the denominator. The v1 rule ranked them together as
+`(none)`, which read as the leading language of a TypeScript repository.
 
 ## The wire
 

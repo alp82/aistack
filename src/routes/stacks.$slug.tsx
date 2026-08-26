@@ -15,9 +15,21 @@ import {
 	useEditorContext,
 } from "@/features/stack-editor/context/EditorContext";
 import { accentClassFor } from "@/features/stack-view/accentPresets";
+import { StackPageNav } from "@/features/stack-view/PageNav";
+import {
+	buildPageSections,
+	guideStat,
+	projectsStat,
+	SECTION_ANCHORS,
+	sectionIndex,
+	toolsStat,
+	usageStat,
+} from "@/features/stack-view/pageOrder";
 import { StackHeader } from "@/features/stack-view/StackHeader";
 import { GuideSection, ToolsSection } from "@/features/stack-view/sections";
 import { StackViewsLine } from "@/features/view-analytics/StackViewsLine";
+import { workflowNavStat } from "@/features/workflow/navStat";
+import { WorkflowSection } from "@/features/workflow/WorkflowSection";
 import { formatPricingSummary } from "@/lib/pricing";
 import { SITE_URL, seoMeta } from "@/lib/seo";
 import { useRecordView } from "@/lib/useRecordView";
@@ -114,10 +126,18 @@ function ViewLookupDataSync({
 export const Route = createFileRoute("/stacks/$slug")({
 	component: StackDetailsPage,
 	loader: async ({ context, params }) => {
-		const stack = await context.queryClient.ensureQueryData(
-			convexQuery(api.stacks.getBySlug, { slug: params.slug }),
-		);
-		return { stack };
+		// The workflow reading rides along because it decides the NUMBERING (#217):
+		// section 04 exists only when a reading does, and resolving that after
+		// hydration would renumber Guide from 04 to 05 under the reader.
+		const [stack, workflow] = await Promise.all([
+			context.queryClient.ensureQueryData(
+				convexQuery(api.stacks.getBySlug, { slug: params.slug }),
+			),
+			context.queryClient.ensureQueryData(
+				convexQuery(api.workflow.getWorkflowByStackSlug, { slug: params.slug }),
+			),
+		]);
+		return { stack, workflow };
 	},
 	head: ({ loaderData }) => {
 		if (!loaderData?.stack) {
@@ -160,7 +180,8 @@ function StackDetailsPage() {
 	// Falls back to the loader snapshot (same pattern as the landing page):
 	// the live query returns undefined until the Convex WebSocket delivers,
 	// and a wedged connection must show the SSR'd stack, not a loading state.
-	const { stack: loadedStack } = Route.useLoaderData();
+	const { stack: loadedStack, workflow: loadedWorkflow } =
+		Route.useLoaderData();
 	const stack = useQuery(api.stacks.getBySlug, { slug }) ?? loadedStack;
 	// Deduped daily visitors (#78). Counted on MOUNT and keyed by document id, so
 	// a slug rename keeps the page's history.
@@ -191,6 +212,22 @@ function StackDetailsPage() {
 	const upvotersData = useQuery(
 		api.stacks.getUpvoters,
 		hasHovered && stack ? { stackId: stack._id } : "skip",
+	);
+
+	// THE NAV RESTATES WHAT THE SECTIONS SHOW (#217), so the page reads the same
+	// three queries its sections read, with the same arguments. The Convex client
+	// serves both callers from one subscription, and the shared answer is also
+	// what keeps the nav's numbering and the sections' numbering identical: the
+	// workflow reading decides whether 04 exists at all, and both sides read it
+	// here rather than each deciding for itself.
+	const measuredSnapshot = useQuery(api.measured.getCurrentByStackSlug, {
+		slug,
+	});
+	const workflowReading =
+		useQuery(api.workflow.getWorkflowByStackSlug, { slug }) ?? loadedWorkflow;
+	const projects = useQuery(
+		api.projects.listByStack,
+		stack ? { stackId: stack._id } : "skip",
 	);
 
 	const scrollToBundle = (bundleSlug: string) => {
@@ -288,6 +325,30 @@ function StackDetailsPage() {
 		stack.hasUsageComponent,
 	);
 
+	// The locked order (#193, spec `docs/specs/workflow-surface.md`): Actual
+	// Usage 01, Projects 02, Tools 03, Workflow 04, Guide 05. Two of the five
+	// render only when they have content, so the NUMBER is the position among
+	// the ones that do. `buildPageSections` assigns it once, and both the nav
+	// and the sections take it from there.
+	const sections = buildPageSections({
+		usage: {
+			present: true,
+			stat: usageStat(measuredSnapshot?.activity.totalTokens ?? null),
+		},
+		projects: { present: true, stat: projectsStat(projects?.length ?? 0) },
+		tools: {
+			present: stack.tools.length > 0,
+			stat: toolsStat(stack.tools.length, stack.fixedTotal?.amount ?? 0),
+		},
+		workflow: {
+			present: workflowReading != null,
+			stat: workflowNavStat(workflowReading),
+		},
+		guide: { present: true, stat: guideStat(stack.description) },
+	});
+	const numberOf = (key: Parameters<typeof sectionIndex>[1]) =>
+		sectionIndex(sections, key);
+
 	return (
 		<EditorProvider>
 			<JsonLd
@@ -333,25 +394,37 @@ function StackDetailsPage() {
 						isOwner={upvoteStatus?.isOwner ?? false}
 					/>
 
-					{/* The journey (#40, reordered by #58): Actual Usage 01 → Projects 02
-					    → Tools 03 → Workflow 04. What ran now literally comes first. */}
+					{/* The nav block. It sits under the hero and above 01, and past it
+					    the same links dock as a fixed rail under the site header. */}
+					<StackPageNav
+						sections={sections}
+						identity={{
+							name: stack.name,
+							priceText: costText,
+							upvotes: upvoteStatus?.count ?? 0,
+						}}
+					/>
+
+					{/* The journey (#40, reordered by #58, workflow placed by #217):
+					    Actual Usage 01 → Projects 02 → Tools 03 → Workflow 04 →
+					    Guide 05. What ran now literally comes first. */}
 					<MeasuredSection
-						index={1}
+						index={numberOf("usage") ?? 1}
 						slug={stack.slug}
 						stackId={stack._id}
 						isOwner={upvoteStatus?.isOwner ?? false}
 					/>
 
 					<ProjectsSection
-						index={2}
+						index={numberOf("projects") ?? 2}
+						id={SECTION_ANCHORS.projects}
 						stackId={stack._id}
 						isOwner={upvoteStatus?.isOwner ?? false}
 					/>
 
-					{/* biome-ignore lint/correctness/useUniqueElementIds: stable single-instance scroll anchor for the hero tile jump target */}
 					<ToolsSection
-						index={3}
-						id="section-tools"
+						index={numberOf("tools") ?? 3}
+						id={SECTION_ANCHORS.tools}
 						highlighted={highlightedSection === "tools"}
 						tools={stack.tools}
 						models={stack.models}
@@ -364,8 +437,21 @@ function StackDetailsPage() {
 						fixedTotal={stack.fixedTotal}
 						onBundleClick={scrollToBundle}
 					/>
+
+					{/* Section 04 renders itself away when the stack has no reading, or
+					    when the owner never gave `publishWorkflow`. `numberOf` returns
+					    null in exactly that case, and the page renders no 04 either. */}
+					{numberOf("workflow") !== null && (
+						<WorkflowSection
+							index={numberOf("workflow") ?? 4}
+							slug={stack.slug}
+							stackId={stack._id}
+						/>
+					)}
+
 					<GuideSection
-						index={4}
+						index={numberOf("guide") ?? 4}
+						id={SECTION_ANCHORS.guide}
 						description={stack.description}
 						isOwner={upvoteStatus?.isOwner ?? false}
 						slug={stack.slug}

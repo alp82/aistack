@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { authPoll, authStart, setAutoSync, stackGet } from "./api";
+import { authPoll, authStart, setAutoSync, stackGet, syncPublish } from "./api";
 
 /**
  * The two statuses #52 introduced, as the user reads them.
@@ -146,6 +146,65 @@ describe("setAutoSync", () => {
 		);
 		await expect(setAutoSync("tok", { enabled: true })).rejects.toThrow(
 			/not linked/,
+		);
+	});
+});
+
+/**
+ * A server validation error carries the whole offending object (#217 fallout).
+ *
+ * Convex's `ArgumentValidationError` prints the reason, the path, and then the
+ * ENTIRE object it refused. A real failed sync filled the terminal with several
+ * screens of session rows, burying the one line that says what to fix. The
+ * reason and the path are the message; the dump is not.
+ */
+describe("a server error that carries a payload dump", () => {
+	const CONVEX_ERROR = [
+		"ArgumentValidationError: Object contains extra field `aggregateVersion` that is not in the validator.",
+		"Path: .workflow.harnesses[0]",
+		`Object: {activity: [${"{events: 55.0, hourUtc: 0.0, weekdayUtc: 0.0}, ".repeat(400)}]}`,
+		`Validator: v.object({${"harness: v.string(), ".repeat(200)}})`,
+	].join("\n");
+
+	function failWith(detail: string) {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(() =>
+				Promise.resolve(
+					new Response(JSON.stringify({ error: detail }), { status: 400 }),
+				),
+			),
+		);
+	}
+
+	test("keeps the reason and the path, and drops the dump", async () => {
+		failWith(CONVEX_ERROR);
+		const error = await syncPublish("token", "{}").catch((e: Error) => e);
+		const message = String((error as Error).message);
+		expect(message).toContain("extra field `aggregateVersion`");
+		expect(message).toContain("Path: .workflow.harnesses[0]");
+		expect(message).not.toContain("weekdayUtc");
+	});
+
+	test("stays short enough to read in a terminal", async () => {
+		failWith(CONVEX_ERROR);
+		const error = await syncPublish("token", "{}").catch((e: Error) => e);
+		const message = String((error as Error).message);
+		expect(message.length).toBeLessThan(600);
+		expect(message.split("\n").length).toBeLessThanOrEqual(6);
+	});
+
+	test("says the detail was cut rather than pretending it was all there", async () => {
+		failWith(CONVEX_ERROR);
+		const error = await syncPublish("token", "{}").catch((e: Error) => e);
+		expect(String((error as Error).message)).toMatch(/truncated/i);
+	});
+
+	test("leaves a short error exactly as the server wrote it", async () => {
+		failWith("Stack not found.");
+		const error = await syncPublish("token", "{}").catch((e: Error) => e);
+		expect(String((error as Error).message)).toBe(
+			"Sync failed: 400 - Stack not found.",
 		);
 	});
 });

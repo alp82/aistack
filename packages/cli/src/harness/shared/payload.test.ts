@@ -450,8 +450,8 @@ describe("the workflow section on the wire (#213)", () => {
 			},
 		],
 		git: {
-			testFileRuleVersion: "test-files/v1",
-			fileTypeRuleVersion: "file-types/v1",
+			testFileRuleVersion: "test-files/v2",
+			fileTypeRuleVersion: "file-types/v2",
 			totalCommits: 12,
 			lateNightCommits: 3,
 			additions: 400,
@@ -487,6 +487,25 @@ describe("the workflow section on the wire (#213)", () => {
 		);
 		expect(body.workflow?.aggregateVersion).toBe("workflow-aggregates/v1");
 		expect(JSON.stringify(body.payloads)).not.toContain("phase-rules");
+	});
+
+	it("carries the aggregate version ONCE, on the section", () => {
+		// The server's `HarnessWorkflow` validator is a closed object with no
+		// `aggregateVersion` field, and Convex refuses an object with an extra
+		// field. The reducer stamps every harness with the same module constant,
+		// so the per-harness copy is redundant as well as rejected: a real sync
+		// died on `extra field \`aggregateVersion\` ... Path: .workflow.harnesses[0]`.
+		const body = buildSyncBody(
+			[built()],
+			config(),
+			undefined,
+			"manual",
+			extraction(),
+		);
+		expect(body.workflow?.aggregateVersion).toBe("workflow-aggregates/v1");
+		for (const harness of body.workflow?.harnesses ?? []) {
+			expect(harness).not.toHaveProperty("aggregateVersion");
+		}
 	});
 
 	it("leaves the section out entirely when publishWorkflow is off", () => {

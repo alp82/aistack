@@ -35,6 +35,12 @@ export type GateContext = {
 	/** Web origin for the URLs the gate prints, e.g. https://aistack.to */
 	baseUrl: string;
 	/**
+	 * Terminal width the preview wraps to. Absent means 80, which is what a
+	 * pipe or a test gets: the gate must render the same way everywhere except
+	 * for where the lines break.
+	 */
+	width?: number;
+	/**
 	 * Per-harness scan stats, keyed by harness name - the LOCAL-ONLY detail
 	 * behind the payload's bare coverage counts (#75): unreadable file names,
 	 * error classes, foreign-file originators. Like `keptPrivate`, it rides
@@ -147,6 +153,59 @@ const CATEGORY_LABEL: Record<NameCategory, string> = {
 	slashCommands: "commands",
 };
 
+// ---------------------------------------------------------------------------
+// Wrapping.
+//
+// EVERY PUBLISHED NAME STAYS ON SCREEN. This is the consent surface, so a name
+// that goes up is a name the person reads first - the inventory rows are never
+// truncated to a count the way the kept-private list is, because that list is
+// the opposite case: those names do NOT leave the machine.
+//
+// What changed in #217 is only where the lines break. An unwrapped inventory
+// row ran to several hundred characters and the terminal broke it mid-name,
+// which reads as noise rather than as a list someone can check.
+// ---------------------------------------------------------------------------
+
+/** The label column every harness line shares: `window    30 days · ...`. */
+const LABEL_WIDTH = 10;
+const DEFAULT_WIDTH = 80;
+
+/** Wrap to the caller's terminal, clamped to a width a list stays readable at. */
+export function wrapWidth(width: number | undefined): number {
+	return Math.min(110, Math.max(60, width ?? DEFAULT_WIDTH));
+}
+
+/**
+ * One labelled row, wrapped with a hanging indent under its own label.
+ *
+ * Breaks on spaces only, and the callers join names with ", ", so a name is
+ * never split across two lines.
+ */
+export function wrapRow(
+	head: string,
+	continuation: string,
+	text: string,
+	width: number,
+): string[] {
+	const limit = Math.max(24, width - continuation.length);
+	const lines: string[] = [];
+	let line = "";
+	for (const word of text.split(" ")) {
+		if (line === "") {
+			line = word;
+			continue;
+		}
+		if (`${line} ${word}`.length > limit) {
+			lines.push(line);
+			line = word;
+		} else {
+			line = `${line} ${word}`;
+		}
+	}
+	if (line !== "") lines.push(line);
+	return lines.map((l, i) => (i === 0 ? head : continuation) + l);
+}
+
 /** Kept-private rows for the gate: one row per group, then singles (#48). */
 export function keptPrivateRows(
 	keptPrivate: Record<NameCategory, KeptPrivateAtom[]>,
@@ -165,7 +224,13 @@ export function keptPrivateRows(
 	return rows;
 }
 
-const KEPT_PRIVATE_ROWS_SHOWN = 6;
+/**
+ * How many kept-private rows the gate names before it counts the rest.
+ *
+ * Three, not six (#217). These names do NOT leave the machine, which is what
+ * makes truncating them safe here and unsafe for the published inventory.
+ */
+const KEPT_PRIVATE_ROWS_SHOWN = 3;
 
 // The harness display names live with the harness names themselves (#101), so
 // one harness has one label everywhere. Re-exported: this module is where the
@@ -208,27 +273,59 @@ export function scanNoteLines(stats: ScanStats, label: string): string[] {
 	return out;
 }
 
-/** One harness's payload block: window, activity, cost, models, inventory. */
-function payloadBlock(payload: MeasuredPayload, stats?: ScanStats): string[] {
+/**
+ * One harness's payload block: window, activity, cost, models, inventory.
+ *
+ * ONE ALIGNED BLOCK, NO EMPTY HEADINGS (#217). Every row hangs off the same
+ * label column, and a section with nothing in it is not announced: a bare
+ * `models` heading over nothing said only that the code has a models section.
+ * A harness that publishes no names says THAT, in one line, because silence
+ * there would read as a harness that was never scanned.
+ */
+function payloadBlock(
+	payload: MeasuredPayload,
+	width: number,
+	ownWindow: boolean,
+	stats?: ScanStats,
+): string[] {
 	const out: string[] = [];
 	// The header is unconditional (#130): the `searched` line above names four
 	// harnesses, so an unlabeled block would be unreadable even when only one
-	// harness was found.
-	out.push(
-		`- ${harnessLabel(payload.harness.name)}${payload.harness.version ? ` ${payload.harness.version}` : ""}`,
-	);
-	out.push(
-		`window    ${payload.window.days} days · ${payload.window.from} → ${payload.window.to}`,
-	);
-	out.push(
-		`activity  ${payload.activity.sessions} sessions · ${payload.activity.activeDayDates.length} active days · ${fmtTokens(payload.activity.totalTokens)} tokens`,
-	);
+	// harness was found. It also CARRIES the activity and the cost, which each
+	// held a line of their own until #217 - three lines saying one harness's
+	// totals, repeated per harness, was most of a preview nobody read.
+	const label = `${harnessLabel(payload.harness.name)}${payload.harness.version ? ` ${payload.harness.version}` : ""}`;
+	const days = payload.activity.activeDayDates.length;
 	const usd = totalUSD(payload);
+	const totals = [
+		`${payload.activity.sessions} session${payload.activity.sessions === 1 ? "" : "s"}`,
+		`${days} active day${days === 1 ? "" : "s"}`,
+		`${fmtTokens(payload.activity.totalTokens)} tokens`,
+	];
+	// Wrapped, because the merged header is the longest line in the block and a
+	// narrow terminal would otherwise break it mid-figure.
+	out.push(...wrapRow("", "  ", `- ${label} · ${totals.join(" · ")}`, width));
+
+	// A harness that measured nothing has nothing else to say - not even a cost
+	// line, because there is nothing to price. It still gets its header, because
+	// a scanned harness reading as an absent one is the mistake #130 fixed.
+	if (payload.activity.totalTokens === 0) return out;
+
+	// Cost keeps its own line. `at API prices` is the qualifier that makes the
+	// figure a lower bound rather than a bill (#93), and folding it into the
+	// header above pushed that line past a narrow terminal.
 	out.push(
 		usd === null
 			? "cost      not published"
 			: `cost      ${fmtUSD(usd)} at API prices`,
 	);
+
+	// Only when this harness read a different window from the rest.
+	if (ownWindow) {
+		out.push(
+			`window    ${payload.window.days} days · ${payload.window.from} → ${payload.window.to}`,
+		);
+	}
 
 	// Coverage is silent when clean; a degraded scan is named as a floor (#40).
 	const cov = payload.coverage;
@@ -243,26 +340,79 @@ function payloadBlock(payload: MeasuredPayload, stats?: ScanStats): string[] {
 		out.push(...scanNoteLines(stats, harnessLabel(payload.harness.name)));
 	}
 
-	out.push("");
-	out.push("models");
-	for (const m of payload.models) {
+	// A model table is columns, not prose, so it hangs off the label column
+	// rather than wrapping. A harness that reports no model prints nothing.
+	//
+	// A MODEL UNDER ONE PERCENT ROLLS UP. Four rows where two carry 99.9% of the
+	// tokens is a table that hides its own headline. The rolled figure keeps its
+	// dollars only when every model in it published one, the same rule a single
+	// row follows: a sum missing a term would understate without saying so.
+	const indent = " ".repeat(LABEL_WIDTH);
+	const shown = payload.models.filter((m) => m.tokenShare >= MODEL_ROLLUP);
+	const rolled = payload.models.filter((m) => m.tokenShare < MODEL_ROLLUP);
+	const modelWidth = Math.max(0, ...shown.map((m) => m.id.length), 8);
+	const row = (i: number, name: string, share: number, dollars: string) =>
+		`${i === 0 ? "models".padEnd(LABEL_WIDTH) : indent}${name.padEnd(modelWidth)}  ${fmtPct(share).padStart(5)}${dollars}`;
+	shown.forEach((m, i) => {
 		const dollars =
 			usd !== null && m.apiEquivalentUSD !== undefined
-				? `   ${fmtUSD(m.apiEquivalentUSD)}`
+				? `  ${fmtUSD(m.apiEquivalentUSD)}`
 				: "";
-		out.push(`  ${m.id.padEnd(28)} ${fmtPct(m.tokenShare)}${dollars}`);
+		out.push(row(i, m.id, m.tokenShare, dollars));
+	});
+	if (rolled.length > 0) {
+		const priced = rolled.every((m) => m.apiEquivalentUSD !== undefined);
+		const sum = rolled.reduce((a, m) => a + (m.apiEquivalentUSD ?? 0), 0);
+		out.push(
+			row(
+				shown.length,
+				`+${rolled.length} more`,
+				rolled.reduce((a, m) => a + m.tokenShare, 0),
+				usd !== null && priced ? `  ${fmtUSD(sum)}` : "",
+			),
+		);
 	}
 
-	out.push("");
-	out.push("what publishes");
-	for (const category of NAME_CATEGORIES) {
-		const atoms = payload.inventory[category];
-		if (atoms.length === 0) continue;
-		const names = atoms.map((a) => a.name).join(", ");
-		out.push(`  ${CATEGORY_LABEL[category].padEnd(9)} ${names}`);
+	// The inventory. The counts line is the glance, the rows underneath are the
+	// consent: every name that publishes is printed.
+	const filled = NAME_CATEGORIES.filter(
+		(category) => payload.inventory[category].length > 0,
+	);
+	if (filled.length === 0) {
+		out.push(`${"publishes".padEnd(LABEL_WIDTH)}no names from this harness`);
+		return out;
+	}
+	out.push(
+		`${"publishes".padEnd(LABEL_WIDTH)}${filled
+			.map(
+				(category) =>
+					`${payload.inventory[category].length} ${CATEGORY_LABEL[category]}`,
+			)
+			.join(" · ")}`,
+	);
+	// The names indent under their own category label, so a wrapped row and the
+	// row above it start in the same column. `commands` is the longest label and
+	// still needs a gap after it, which is why the width is its length plus one.
+	const subLabel = Math.max(
+		...filled.map((category) => CATEGORY_LABEL[category].length),
+	);
+	const subIndent = " ".repeat(2 + subLabel + 1);
+	for (const category of filled) {
+		const names = payload.inventory[category].map((a) => a.name).join(", ");
+		out.push(
+			...wrapRow(
+				`  ${CATEGORY_LABEL[category].padEnd(subLabel)} `,
+				subIndent,
+				names,
+				width,
+			),
+		);
 	}
 	return out;
 }
+
+/** Token share below which a model joins the rolled-up row (#217). */
+const MODEL_ROLLUP = 0.01;
 
 const PHASE_ORDER = ["scout", "build", "verify", "handoff", "unknown"] as const;
 
@@ -300,8 +450,7 @@ function workflowBlock(workflow: PayloadWorkflow, host: string): string[] {
 		const mix = PHASE_ORDER.map(
 			(phase, i) => `${phase} ${fmtPct((seconds[i] ?? 0) / total)}`,
 		).join(" · ");
-		out.push(`          ${mix}`);
-		out.push(`          ${ruleVersions.join(", ")}`);
+		out.push(`          ${mix} · ${ruleVersions.join(", ")}`);
 	}
 
 	const git = workflow.git;
@@ -340,19 +489,31 @@ export function buildGateSummary(ctx: GateContext): string {
 	// What the CLI LOOKED FOR, in search order - a claim about the CLI, never
 	// about the person's behavior, so it stays inside #40 (#130). Without it, a
 	// harness the scan misses reads identically to a harness never installed.
+	// The client version rides here because it travels (#213) and because one
+	// fact about the CLI does not earn a line of its own.
 	out.push(
-		`searched  ${HARNESS_ADAPTERS.map((a) => harnessLabel(a.name).toLowerCase()).join(", ")}`,
+		`searched  ${HARNESS_ADAPTERS.map((a) => harnessLabel(a.name).toLowerCase()).join(", ")}${
+			body.cliVersion ? ` · aistack ${body.cliVersion}` : ""
+		}`,
 	);
 
-	// Named because it travels (#213). It is one more field in the bytes, and
-	// the rule this file follows is that the preview describes what goes.
-	if (body.cliVersion) out.push(`client    aistack ${body.cliVersion}`);
+	// THE WINDOW IS THE SYNC'S, NOT EACH HARNESS'S (#217). Every payload carries
+	// the same one, so printing it per harness said the same sentence three
+	// times. A harness that somehow read a different window keeps its own line
+	// inside its block rather than being silently folded into this one.
+	const windows = new Set(
+		payloads.map(
+			(p) => `${p.window.days} days · ${p.window.from} → ${p.window.to}`,
+		),
+	);
+	if (windows.size === 1) out.push(`window    ${[...windows][0]}`);
 
 	// One block per detected harness, each under its own header.
+	const width = wrapWidth(ctx.width);
 	for (const payload of payloads) {
 		const stats = ctx.scanStats?.[payload.harness.name];
 		out.push("");
-		out.push(...payloadBlock(payload, stats));
+		out.push(...payloadBlock(payload, width, windows.size > 1, stats));
 	}
 	if (out[out.length - 1] === "") out.pop();
 
