@@ -50,8 +50,8 @@ Live tests and reports:
 Headlines only. Detail lives on [map #159](https://github.com/alp82/aistack/issues/159) and its successors.
 
 1. **The news pipeline.** Built and live, and not launched. One item stream with two views: the newsletter pushes by week, the knowledge base pulls by topic. All 22 sources collect, both projections render, and issue 1 is authored. The public surfaces stay closed behind `NEWS_IS_PUBLIC` until the owner sends. Shipped on [map #198](https://github.com/alp82/aistack/issues/198).
-2. **The measured workflow surface.** Show how a builder works, from measured data, behind the approve gate. Spec locked in [`docs/specs/workflow-surface.md`](docs/specs/workflow-surface.md). Building on [map #200](https://github.com/alp82/aistack/issues/200).
-3. **The Discord bot.** Spec locked in [`docs/specs/discord-bot.md`](docs/specs/discord-bot.md). [Map #199](https://github.com/alp82/aistack/issues/199) waits on the workflow build.
+2. **The measured workflow surface.** Built and live. The CLI ships one day of combinable atoms per UTC date behind the approve gate, the server folds a 30-day, 7-day, or 24-hour window at read time, and the stack page shows the section at 04 in a fixed editorial order with a picture on every row. No LLM anywhere. Prod holds its first daily reading from CLI 0.9.0. Shipped on [map #200](https://github.com/alp82/aistack/issues/200).
+3. **The Discord bot.** Spec locked in [`docs/specs/discord-bot.md`](docs/specs/discord-bot.md). Building on [map #199](https://github.com/alp82/aistack/issues/199).
 4. **The sync funnel.** 101 stacks, 6 ever synced, 4 living on 2026-08-22. The loudest unexplained number the product has. No map has looked at it.
 5. **Announce projects and accent colors.** Both shipped and stay unannounced. The pipeline build shipped the important-updates category, so the channel exists now. The send is still owed.
 6. **Auto-sync triggers for opencode and Pi.** A machine with only these harnesses gets no background sync.
