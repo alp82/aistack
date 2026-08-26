@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Prototype · alp82/aistack#284 · the Workflow section in fixed order</title>
+<!--
+  PROTOTYPE. Throwaway. alp82/aistack#284 (map #200): the Workflow section in
+  a fixed editorial order, with a picture on every row. Builds on #277's
+  decisions and #276's recovery of the earlier treatments.
+
+  DATA: data.js is the real alppc reading (495 sessions on the card, 676
+  session rows on claude-code) pulled from prod on 2026-08-26. Every figure
+  that the wire carries is computed here from that reading. Three rows the
+  wire does NOT yet carry are drawn from hand-made numbers and say so in a
+  dashed outline: effort breakdown (the wire has the high share only),
+  thinking share by harness (one value, no per-harness split), and turn
+  durations (the wire has the longest turn only). #285 moves the wire to
+  daily rows; the shapes those three need ride with it.
+
+  WHAT IS FIXED BY #277 and identical across the variants:
+  - sixteen rows in this order, no fit on the page, no rule ids, no fine
+    print, no provenance footer, no per-box metadata block
+  - the phase mix leads as a stacked bar (four phases rescaled to 100)
+  - the window selector (30 days / 7 days / 24 hours) in the scope line,
+    with an empty state per option
+  - a native picture in every row head and every podium box; figures in
+    the accent; parallel projects and web searches are deliberate bare boxes
+  - the heatmap has a floating hover popup with the offset shadow
+
+  WHAT THE VARIANTS DISAGREE ON: the structure the sixteen rows sit in.
+  - A "the podium":  the first three rows sit in one band as boxes, the
+        other thirteen are thin rows with the 76x12 strip beside the
+        figure. Tap opens the body. (#191's winner, with the pictures back.)
+  - B "the ledger":  no band. Every row is a tall row with the picture at
+        full row width and the body OPEN, no accordion at all. The first
+        three carry the big figure. One long page, nothing hidden.
+  - C "the tiles":   a two-column grid of boxes. The first three span the
+        top as the podium. Every box carries its picture and figure; a tap
+        opens the body under that grid row.
+  Switch with the bar at the bottom or ?variant=podium|ledger|tiles.
+  ?owner=1 shows the pin and hide controls.
+-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    color-scheme: dark;
+    --bg-canvas: oklch(0.16 0.008 256);
+    --bg-shell: oklch(0.12 0.01 256);
+    --bg-panel: oklch(0.2 0.009 256);
+    --bg-panel-muted: oklch(0.24 0.009 256);
+    --bg-panel-elevated: oklch(0.28 0.01 256);
+    --fg-primary: oklch(0.96 0.004 256);
+    --fg-secondary: oklch(0.82 0.004 256);
+    --fg-muted: oklch(0.68 0.005 256);
+    --accent-lime: oklch(0.78 0.17 132);
+    --accent-lime-strong: oklch(0.84 0.2 134);
+    --accent-lime-contrast: oklch(0.22 0.02 132);
+    --stroke-subtle: oklch(0.55 0.01 256 / 0.75);
+    --stroke-strong: oklch(0.5 0.015 256 / 0.9);
+    --destructive: oklch(0.63 0.2 25);
+    --destructive-fill: oklch(0.50 0.19 25);
+    --chart-1: #69a621; --chart-2: #9e71fd; --chart-3: #c21977;
+    --chart-4: #4278d2; --chart-5: #00a99b; --chart-6: #e66700;
+    --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; border-radius: 0 !important; }
+  html, body { margin: 0; background: var(--bg-canvas); color: var(--fg-primary); font-family: var(--font-sans); font-size: 15px; line-height: 1.5; }
+  a { color: inherit; }
+  .mono, .mono-label, .st, .n, .fig, button { font-family: var(--font-mono); }
+  .mono-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted); }
+  button { background: none; border: 0; color: inherit; cursor: pointer; padding: 0; font-size: inherit; text-align: left; }
+
+  /* ---- page chrome, enough of the stack page to judge density ---- */
+  .page { max-width: 1120px; margin: 0 auto; padding: 24px 20px 160px; }
+  .ghost { border: 1px dashed var(--stroke-subtle); color: var(--fg-muted); padding: 22px; font-family: var(--font-mono); font-size: 11px; margin-bottom: 40px; }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid var(--stroke-subtle); padding-bottom: 12px; margin-bottom: 20px; }
+  .section-head .idx { font-family: var(--font-mono); font-size: 12px; color: var(--accent-lime); margin-right: 12px; }
+  .section-head h2 { display: inline; font-size: 30px; font-weight: 900; letter-spacing: -0.02em; margin: 0; }
+  .section-head .kicker { display: block; }
+
+  /* ---- scope line: window selector ---- */
+  .scope { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+  .seg { display: inline-flex; border: 1px solid var(--stroke-subtle); }
+  .seg button { font-size: 11px; padding: 5px 10px; color: var(--fg-muted); border-right: 1px solid var(--stroke-subtle); }
+  .seg button:last-child { border-right: 0; }
+  .seg button[aria-pressed="true"] { color: var(--accent-lime-contrast); background: var(--accent-lime); font-weight: 700; }
+  .scope .read { font-family: var(--font-mono); font-size: 11px; color: var(--fg-muted); }
+
+  .empty { border: 1px solid var(--stroke-subtle); padding: 40px 24px; }
+  .empty .big { font-family: var(--font-mono); font-size: 28px; font-weight: 900; color: var(--fg-primary); }
+  .empty p { margin: 8px 0 0; color: var(--fg-secondary); max-width: 52ch; }
+  .empty code { font-family: var(--font-mono); font-size: 12px; background: var(--bg-panel); padding: 1px 5px; }
+
+  /* ---- lead ---- */
+  .lead { margin-bottom: 28px; }
+  .lead .bigline { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.25; max-width: 60ch; margin: 0 0 14px; }
+  .lead .bigline b { color: var(--accent-lime); font-family: var(--font-mono); }
+  .phasebar { display: flex; height: 28px; width: 100%; gap: 2px; }
+  .phasebar i { display: block; position: relative; }
+  .phasebar i span { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--bg-shell); white-space: nowrap; }
+  .phasebar i.dim span { color: var(--fg-primary); }
+  .phaselegend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--fg-muted); }
+  .phaselegend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
+  .sub { font-family: var(--font-mono); font-size: 11px; color: var(--fg-muted); margin-top: 10px; }
+
+  /* ---- shared pictures ---- */
+  .strip { display: inline-flex; width: 76px; height: 12px; gap: 1px; vertical-align: middle; }
+  .strip i { display: block; height: 100%; }
+  .strip.cells i { flex: 1; }
+  .strip.wide { width: 100%; height: 14px; }
+  .strip.tall { width: 100%; height: 36px; }
+  .bars { display: flex; align-items: flex-end; gap: 1px; height: 12px; width: 76px; }
+  .bars i { flex: 1; display: block; background: var(--accent-lime); min-height: 1px; }
+  .bars.big { height: 64px; width: 100%; gap: 2px; }
+  .bars.big i { background: color-mix(in oklab, var(--accent-lime) 55%, var(--bg-panel)); }
+  .bars.big i.on { background: var(--accent-lime); }
+  .dotrow { display: inline-flex; gap: 2px; vertical-align: middle; }
+  .dotrow i { width: 10px; height: 10px; background: var(--bg-panel-elevated); display: block; }
+  .dotrow i.on { background: var(--accent-lime); }
+  .bare { display: inline-block; width: 76px; height: 12px; }
+
+  /* ---- A: podium ---- */
+  .podium { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); }
+  .box { background: var(--bg-canvas); padding: 20px; display: flex; flex-direction: column; gap: 8px; min-height: 172px; }
+  .box:hover { background: color-mix(in oklab, var(--bg-panel) 60%, var(--bg-canvas)); }
+  .box.on { background: color-mix(in oklab, var(--bg-panel) 90%, var(--bg-canvas)); }
+  .box .n { font-size: 40px; font-weight: 900; line-height: 1; color: var(--accent-lime); }
+  .box .cap { color: var(--fg-secondary); font-size: 14px; line-height: 1.35; }
+  .box .pic { margin-top: auto; }
+  .box .pic .strip, .box .pic .bars { width: 100%; height: 14px; }
+  .box .pic .bars { height: 40px; }
+  .podium-body { border: 1px solid var(--stroke-subtle); border-top: 0; padding: 20px; display: none; }
+  .podium-body.on { display: block; }
+
+  .rowlist { margin-top: 24px; border-top: 1px solid var(--stroke-subtle); border-bottom: 1px solid var(--stroke-subtle); }
+  .mrow { border-top: 1px solid var(--stroke-subtle); }
+  .mrow:first-child { border-top: 0; }
+  .mhead { display: flex; align-items: center; gap: 14px; width: 100%; padding: 11px 0; }
+  .mhead:hover { background: color-mix(in oklab, var(--bg-panel) 40%, var(--bg-canvas)); }
+  .mhead .nm { width: 176px; flex: none; font-family: var(--font-sans); font-weight: 700; font-size: 14px; }
+  .mhead .cap { flex: 1; min-width: 0; color: var(--fg-secondary); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mhead .viz { flex: none; }
+  .mhead .st { flex: none; font-weight: 800; font-size: 14px; color: var(--accent-lime); min-width: 56px; text-align: right; }
+  .chev { width: 8px; height: 8px; border-right: 1.5px solid var(--fg-muted); border-bottom: 1.5px solid var(--fg-muted); transform: rotate(45deg); flex: none; margin: 0 6px 3px 0; transition: transform .15s; }
+  .mrow.open .chev { transform: rotate(225deg); margin-bottom: -3px; }
+  .mrow .body { display: none; padding: 6px 0 22px; }
+  .mrow.open .body { display: block; }
+
+  /* ---- B: ledger ---- */
+  .ledger .lrow { border-top: 1px solid var(--stroke-subtle); padding: 22px 0; display: grid; grid-template-columns: 220px 1fr; gap: 28px; }
+  .ledger .lrow:first-child { border-top: 0; }
+  .ledger .lrow.big { grid-template-columns: 300px 1fr; }
+  .ledger .lhead .nm { font-weight: 700; font-size: 14px; }
+  .ledger .lhead .st { display: block; font-size: 30px; font-weight: 900; color: var(--accent-lime); line-height: 1.1; margin: 6px 0 4px; }
+  .ledger .lrow.big .lhead .st { font-size: 44px; }
+  .ledger .lhead .cap { color: var(--fg-secondary); font-size: 13px; line-height: 1.35; }
+  .ledger .lhead .pic { margin-top: 12px; }
+  .ledger .lhead .pic .strip, .ledger .lhead .pic .bars { width: 100%; height: 14px; }
+  .ledger .lhead .pic .bars { height: 36px; }
+
+  /* ---- C: tiles ---- */
+  .tiles { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); }
+  .tiles .box { grid-column: span 3; min-height: 150px; }
+  .tiles .box.top { grid-column: span 2; min-height: 172px; }
+  .tiles .box .n { font-size: 30px; }
+  .tiles .box.top .n { font-size: 40px; }
+  .tiles .box .nm { font-family: var(--font-sans); font-weight: 700; font-size: 13px; color: var(--fg-primary); }
+  .tiles .box.top .nm { color: var(--fg-muted); }
+  .tile-body { grid-column: 1 / -1; background: var(--bg-canvas); padding: 20px; display: none; }
+  .tile-body.on { display: block; }
+
+  /* ---- bodies ---- */
+  .kick { font-family: var(--font-mono); font-size: 11px; color: var(--fg-muted); margin: 0 0 12px; }
+  .barrow { display: grid; grid-template-columns: 22px 150px 1fr 56px; align-items: center; gap: 10px; margin: 4px 0; font-size: 13px; }
+  .barrow .rk { font-family: var(--font-mono); font-size: 10px; color: var(--fg-muted); }
+  .barrow .track { height: 10px; background: var(--bg-panel); display: block; }
+  .barrow .track i { display: block; height: 10px; background: var(--accent-lime); min-width: 2px; }
+  .barrow .fig { text-align: right; font-size: 12px; color: var(--fg-secondary); }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .records { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); margin-top: 12px; }
+  .records div { background: var(--bg-canvas); padding: 12px; }
+  .records .n { font-size: 24px; font-weight: 900; }
+  .records p { margin: 4px 0 0; font-size: 11px; color: var(--fg-muted); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 11px; color: var(--fg-muted); margin-top: 8px; }
+  .legend i { display: inline-block; width: 9px; height: 9px; margin-right: 5px; vertical-align: -1px; }
+  .handmade { border: 1px dashed var(--chart-6); padding: 8px 10px; font-family: var(--font-mono); font-size: 10px; color: var(--chart-6); margin-top: 12px; }
+
+  /* heatmap */
+  .heat { position: relative; }
+  .heat .grid { display: grid; grid-template-columns: 36px repeat(24, 1fr); gap: 2px; }
+  .heat .dl { font-family: var(--font-mono); font-size: 10px; color: var(--fg-muted); align-self: center; }
+  .heat .cell { height: 16px; }
+  .heat .cell:hover { outline: 1px solid var(--fg-primary); outline-offset: -1px; }
+  .heat .hl { font-family: var(--font-mono); font-size: 9px; color: var(--fg-muted); text-align: center; }
+  .pop { position: absolute; pointer-events: none; z-index: 20; background: var(--bg-panel-elevated); border: 1px solid var(--stroke-strong); box-shadow: 4px 4px 0 var(--stroke-strong); padding: 6px 10px; font-family: var(--font-mono); font-size: 11px; white-space: nowrap; display: none; }
+  .pop b { color: var(--accent-lime); }
+  .toggle { display: inline-flex; border: 1px solid var(--stroke-subtle); margin-bottom: 10px; }
+  .toggle button { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; padding: 3px 8px; color: var(--fg-muted); }
+  .toggle button[aria-pressed="true"] { color: var(--fg-primary); border-bottom: 2px solid var(--accent-lime); }
+
+  /* git ledger */
+  .gitfigs { display: flex; gap: 24px; align-items: baseline; flex-wrap: wrap; }
+  .gitfigs .add { font-family: var(--font-mono); font-size: 24px; font-weight: 900; color: var(--accent-lime); }
+  .gitfigs .rem { font-family: var(--font-mono); font-size: 24px; font-weight: 900; color: var(--destructive); }
+  .dotaxis { width: 100%; height: 96px; display: block; margin-top: 14px; }
+
+  /* histogram (start hours, turn durations) */
+  .hist { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; align-items: end; height: 90px; }
+  .hist i { display: block; background: color-mix(in oklab, var(--accent-lime) 55%, var(--bg-panel)); }
+  .hist i.on { background: var(--accent-lime); }
+  .hist-x { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; font-family: var(--font-mono); font-size: 9px; color: var(--fg-muted); margin-top: 4px; }
+  .hist-x span { text-align: center; }
+  .hist.buckets, .hist-x.buckets { grid-template-columns: repeat(8, 1fr); }
+  .hist .median { position: relative; }
+  .hist .median::after { content: 'median'; position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font-family: var(--font-mono); font-size: 9px; color: var(--fg-primary); white-space: nowrap; }
+
+  /* playbook */
+  .tracks { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); }
+  .track { background: var(--bg-canvas); padding: 14px; }
+  .track .tl { font-family: var(--font-mono); font-size: 11px; color: var(--fg-muted); }
+  .track .tl b { color: var(--fg-primary); }
+  .track .figs { display: flex; gap: 18px; margin-top: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--fg-muted); }
+  .track .figs b { display: block; color: var(--accent-lime); font-size: 18px; font-weight: 800; }
+  .receipts { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--stroke-subtle); border: 1px solid var(--stroke-subtle); margin-top: 12px; }
+  .receipt { background: var(--bg-canvas); padding: 12px 14px; font-size: 13px; }
+  .receipt .sides { display: flex; gap: 20px; margin-top: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--fg-muted); }
+  .receipt .sides b { display: block; color: var(--accent-lime); font-size: 16px; }
+
+  /* owner controls */
+  .ctl { display: flex; gap: 10px; align-items: center; margin-top: 16px; }
+  .ctl button { font-size: 11px; border: 1px solid var(--stroke-subtle); padding: 4px 8px; color: var(--fg-secondary); }
+  .ctl button.on { border-color: var(--accent-lime); color: var(--accent-lime); }
+  .tag { display: inline-block; margin-left: 8px; border: 1px solid var(--accent-lime); color: var(--accent-lime); font-family: var(--font-mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; padding: 0 4px; vertical-align: 2px; }
+
+  /* switcher */
+  .switch { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; background: #fff; color: #111; padding: 8px 12px; font-family: var(--font-mono); font-size: 12px; box-shadow: 4px 4px 0 var(--accent-lime); z-index: 100; }
+  .switch button { color: #111; font-weight: 800; padding: 0 6px; }
+  .switch .own { border-left: 1px solid #ccc; padding-left: 12px; }
+  .switch .own a { color: #111; }
+  @media (max-width: 760px) {
+    .podium, .tiles, .cols, .tracks, .receipts { grid-template-columns: 1fr; }
+    .tiles .box, .tiles .box.top { grid-column: span 1; }
+    .ledger .lrow, .ledger .lrow.big { grid-template-columns: 1fr; gap: 12px; }
+    .mhead .cap { display: none; }
+    .mhead .nm { width: auto; flex: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="ghost">03 · SETUP (the section before this one, elided)</div>
+
+  <section id="workflow">
+    <div class="section-head">
+      <div><span class="mono-label kicker">// measured · this machine</span><span class="idx">04</span><h2>Workflow</h2></div>
+      <div class="scope">
+        <span class="seg" id="win">
+          <button type="button" data-win="30" aria-pressed="true">30 days</button>
+          <button type="button" data-win="7" aria-pressed="false">7 days</button>
+          <button type="button" data-win="1" aria-pressed="false">24 hours</button>
+        </span>
+        <span class="read" id="read"></span>
+      </div>
+    </div>
+
+    <div id="content"></div>
+  </section>
+
+  <div class="ghost" style="margin-top:40px">05 · MODELS &amp; BUNDLES (elided)</div>
+</div>
+
+<div class="switch">
+  <button type="button" id="prev">&larr;</button>
+  <span id="label"></span>
+  <button type="button" id="next">&rarr;</button>
+  <span class="own"><a id="ownerlink" href="#">owner view</a></span>
+</div>
+
+<script src="./data.js"></script>
+<script>
+(function () {
+  var R = window.READING;
+  var url = new URL(location.href);
+  var VARIANTS = [
+    { key: 'podium', name: 'the podium' },
+    { key: 'ledger', name: 'the ledger' },
+    { key: 'tiles',  name: 'the tiles' }
+  ];
+  var variant = url.searchParams.get('variant') || 'podium';
+  if (!VARIANTS.some(function (v) { return v.key === variant; })) variant = 'podium';
+  var OWNER = url.searchParams.get('owner') === '1';
+  var win = '30';
+  var pins = ['activity-heatmap']; /* one owner pin, to show the podium moving */
+  var hides = [];
+  var LIME = 'var(--accent-lime)';
+  var PHASE_PAINT = { scout: 'var(--chart-4)', build: 'var(--accent-lime)', verify: 'var(--chart-5)', handoff: 'var(--chart-2)' };
+  var OFF = (R.utcOffsetMinutes || 0) / 60;
+
+  /* ---------- arithmetic on the real reading ---------- */
+  function pct(x, d) { return (x * 100).toFixed(d || 0) + '%'; }
+  function fmt(n) { return n.toLocaleString('en-US'); }
+  function lines(n) { return n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + 'k' : String(n); }
+  function sum(a, f) { return a.reduce(function (s, x) { return s + (f ? f(x) : x); }, 0); }
+  function median(a) { var s = a.slice().sort(function (x, y) { return x - y; }); return s.length ? s[Math.floor(s.length / 2)] : 0; }
+  function localHour(h) { return ((h + OFF) % 24 + 24) % 24; }
+  function shiftCell(wd, h) { var lh = h + OFF, d = wd; if (lh >= 24) { lh -= 24; d = (wd + 1) % 7; } if (lh < 0) { lh += 24; d = (wd + 6) % 7; } return [d, lh]; }
+
+  var ps = R.phaseSec;
+  var known = ps.scout + ps.build + ps.verify + ps.handoff;
+  var mix = ['scout', 'build', 'verify', 'handoff'].map(function (p) { return { p: p, share: ps[p] / known }; });
+
+  var startHist = new Array(24).fill(0);
+  R.sessionRows.forEach(function (s) { startHist[localHour(s.h)]++; });
+  var startPeak = startHist.indexOf(Math.max.apply(null, startHist));
+
+  var git = R.git;
+  var changed = git.additions + git.removals;
+  var sizes = git.perCommit.slice().sort(function (a, b) { return a - b; });
+  var medCommit = median(sizes);
+  var langs = git.byExt.slice().sort(function (a, b) { return b.changedLines - a.changedLines; });
+  var langTotal = sum(langs, function (l) { return l.changedLines; }) + git.withheld;
+
+  var kit = R.kit.find(function (k) { return k.harness === 'claude-code'; }) || { skills: [], mcp: [], sub: [] };
+  var skills = kit.skills.slice().sort(function (a, b) { return b.callShare - a.callShare; });
+
+  var rt = R.routing;
+  var modelsAll = {};
+  rt.main.concat(rt.subagents).forEach(function (m) { modelsAll[m.model] = (modelsAll[m.model] || 0) + m.tokens; });
+  var modelOrder = Object.keys(modelsAll).filter(function (m) { return modelsAll[m] > 0; }).sort(function (a, b) { return modelsAll[b] - modelsAll[a]; });
+  var PAINTS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)'];
+  function paintOf(m) { return PAINTS[modelOrder.indexOf(m) % PAINTS.length]; }
+  var mainTok = sum(rt.main, function (m) { return m.tokens; }), subTok = sum(rt.subagents, function (m) { return m.tokens; });
+  var short = function (m) { return m.replace('claude-', '').replace('-20251001', ''); };
+
+  var dg = R.delegation;
+  var subShare = dg.subagentToolCalls / (dg.mainToolCalls + dg.subagentToolCalls);
+
+  function metric(id) { return R.metrics.find(function (m) { return m.metricId === id; }); }
+  var lateNight = git.lateNightCommits / git.totalCommits;
+  var thinking = metric('thinking-share').value;
+  var highEffort = metric('high-effort-turns').value;
+  var questionBack = metric('question-back-share').value;
+  var webPerDay = metric('web-searches-per-active-day').value;
+  var parallel = metric('parallel-projects').value;
+  var longestTurn = metric('longest-turn-duration').value;
+
+  /* playbook: split on the median measured session */
+  var measured = R.sessionRows.filter(function (s) { return s.sec > 0; });
+  var splitMin = median(measured.map(function (s) { return s.sec; })) / 60;
+  function track(rows, label, scope) {
+    var tot = sum(rows, function (s) { return s.sec; });
+    var share = {};
+    ['scoutSec', 'build', 'verify', 'handoff'].forEach(function (k) { share[k] = sum(rows, function (s) { return s[k]; }) / tot; });
+    return { label: label, scope: scope, n: rows.length, share: share,
+      med: median(rows.map(function (s) { return s.sec; })) / 60,
+      merged: sum(rows, function (s) { return s.merged ? 1 : 0; }) / rows.length,
+      rr: median(rows.map(function (s) { return s.rr; })) };
+  }
+  var shorter = track(measured.filter(function (s) { return s.sec / 60 <= splitMin; }), 'the shorter sessions', 'up to the median');
+  var longer = track(measured.filter(function (s) { return s.sec / 60 > splitMin; }), 'the longer sessions', 'over the median');
+  var withVerify = measured.filter(function (s) { return s.vr > 0; }), noVerify = measured.filter(function (s) { return s.vr === 0; });
+  var receipt1 = { head: 'sessions that ran a verify step, against sessions that did not', unit: 'merged share',
+    a: ['with verify', pct(sum(withVerify, function (s) { return s.merged ? 1 : 0; }) / withVerify.length), withVerify.length],
+    b: ['without', pct(sum(noVerify, function (s) { return s.merged ? 1 : 0; }) / noVerify.length), noVerify.length] };
+  var opened = measured.filter(function (s) { return s.scout; }), notOpened = measured.filter(function (s) { return !s.scout; });
+  var receipt2 = { head: 'sessions that opened with scout, against sessions that did not', unit: 'median minutes',
+    a: ['opened with scout', median(opened.map(function (s) { return s.sec; })) / 60 | 0, opened.length],
+    b: ['opened otherwise', median(notOpened.map(function (s) { return s.sec; })) / 60 | 0, notOpened.length] };
+
+  /* HAND-MADE (the wire does not carry these yet, #285) */
+  var EFFORT = { low: 0.12, medium: 1 - 0.12 - highEffort, high: highEffort };
+  var THINK_BY_HARNESS = [{ h: 'claude code', v: null }, { h: 'codex', v: 0.35 }, { h: 'pi', v: 0.24 }];
+  var TURN_BUCKETS = [{ l: '<10s', n: 1410 }, { l: '10s-30s', n: 2660 }, { l: '30s-1m', n: 2120 }, { l: '1-3m', n: 1590 }, { l: '3-10m', n: 640 }, { l: '10-30m', n: 180 }, { l: '30m-1h', n: 41 }, { l: '>1h', n: 9 }];
+  var TURN_MEDIAN_BUCKET = 2;
+
+  /* ---------- pictures ---------- */
+  function fillStrip(share, cls) {
+    return '<span class="strip ' + (cls || '') + '"><i style="flex:' + Math.max(share * 100, 0.5) + ';background:' + LIME + '"></i><i style="flex:' + (100 - share * 100) + ';background:var(--bg-panel)"></i></span>';
+  }
+  function segStrip(segs, cls) {
+    return '<span class="strip ' + (cls || '') + '">' + segs.map(function (s) { return '<i style="flex:' + Math.max(s[0] * 100, 0.4) + ';background:' + s[1] + '" title="' + (s[2] || '') + '"></i>'; }).join('') + '</span>';
+  }
+  function limeShades(shares, rest) {
+    var ops = [1, 0.7, 0.5, 0.35];
+    var segs = shares.slice(0, 4).map(function (s, i) { return [s, 'oklch(0.78 0.17 132 / ' + ops[i] + ')']; });
+    segs.push([rest, 'var(--bg-panel-elevated)']);
+    return segs;
+  }
+  function miniBars(values, hl) {
+    var mx = Math.max.apply(null, values) || 1;
+    return '<span class="bars">' + values.map(function (v, i) { return '<i style="height:' + Math.round(v / mx * 100) + '%;' + (i === hl ? '' : 'opacity:.55') + '"></i>'; }).join('') + '</span>';
+  }
+  function bigBars(values, hl, labels, medianIdx) {
+    var mx = Math.max.apply(null, values) || 1;
+    return '<div class="hist' + (labels.length === 8 ? ' buckets' : '') + '">' + values.map(function (v, i) {
+      return '<i class="' + (i === hl ? 'on' : '') + (i === medianIdx ? ' median' : '') + '" style="height:' + Math.max(Math.round(v / mx * 100), 1) + '%" title="' + labels[i] + ': ' + fmt(v) + '"></i>';
+    }).join('') + '</div><div class="hist-x' + (labels.length === 8 ? ' buckets' : '') + '">' + labels.map(function (l, i) { return '<span>' + (labels.length === 24 ? (i % 6 === 0 ? l : '') : l) + '</span>'; }).join('') + '</div>';
+  }
+  function hourCells(cells) {
+    var mx = Math.max.apply(null, cells) || 1;
+    return '<span class="strip cells">' + cells.map(function (v) {
+      var r = v / mx; var mixp = r === 0 ? 0 : r < 0.12 ? 18 : r < 0.3 ? 38 : r < 0.6 ? 62 : 90;
+      return '<i style="background:' + (mixp === 0 ? 'var(--bg-panel)' : 'color-mix(in oklab, var(--accent-lime) ' + mixp + '%, var(--bg-panel))') + '"></i>';
+    }).join('') + '</span>';
+  }
+  function dots(n, on) { var s = '<span class="dotrow">'; for (var i = 0; i < n; i++) s += '<i class="' + (i < on ? 'on' : '') + '"></i>'; return s + '</span>'; }
+
+  function heatCells(series) {
+    var m = {};
+    (series === 'sessions' ? R.activity : git.cells).forEach(function (c) { var s = shiftCell(c[0], c[1]); var k = s[0] + '-' + s[1]; m[k] = (m[k] || 0) + c[2]; });
+    return m;
+  }
+  var hourProfile = new Array(24).fill(0);
+  R.activity.forEach(function (c) { hourProfile[localHour(c[1])] += c[2]; });
+
+  /* ---------- the sixteen rows, in the fixed order ---------- */
+  var DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var HOURL = []; for (var h = 0; h < 24; h++) HOURL.push(h);
+
+  var ROWS = [
+    { key: 'activity-heatmap', name: 'activity heatmap', stat: pct(topThreeShare()), cap: 'of recorded events fall in the three busiest hours',
+      head: function () { return hourCells(hourProfile); }, body: heatmapBody },
+    { key: 'start-hours', name: 'start hours', stat: String(startPeak).padStart(2, '0') + ':00', cap: 'is the hour most sessions start, local time',
+      head: function () { return miniBars(startHist, startPeak); },
+      body: function () { return '<p class="kick">// start hours · sessions by the local hour they opened</p>' + bigBars(startHist, startPeak, HOURL.map(function (h) { return String(h).padStart(2, '0'); })) + '<p class="sub">' + fmt(R.sessionRows.length) + ' sessions · hours in the owner\'s local time</p>'; } },
+    { key: 'late-night-commits', name: 'late-night commits', stat: pct(lateNight), cap: 'of commits land between 23:00 and 03:00',
+      head: function () { return fillStrip(lateNight); },
+      body: function () { return '<p class="kick">// late-night commits</p>' + fillStrip(lateNight, 'wide') + '<p class="sub">' + fmt(git.lateNightCommits) + ' of ' + fmt(git.totalCommits) + ' commits · owner\'s local clock</p>'; } },
+    { key: 'phase-playbook', name: 'phase playbook', stat: (splitMin | 0) + ' min', cap: 'is the median measured session, where the two tracks split',
+      head: function () { return segStrip(trackSegs(longer.share)); }, body: playbookBody },
+    { key: 'git-ledger', name: 'git ledger', stat: '+' + lines(git.additions), cap: 'lines added against ' + lines(git.removals) + ' removed, ' + pct(git.removals / changed) + ' removals',
+      head: function () { return segStrip([[git.additions / changed, LIME, 'additions'], [git.removals / changed, 'var(--destructive-fill)', 'removals']]); }, body: gitBody },
+    { key: 'coding-languages', name: 'coding languages', stat: pct(langs[0].changedLines / langTotal), cap: 'of changed lines are ' + langs[0].extension + ', then ' + langs[1].extension + ' at ' + pct(langs[1].changedLines / langTotal),
+      head: function () { return segStrip(limeShades(langs.slice(0, 4).map(function (l) { return l.changedLines / langTotal; }), 1 - sum(langs.slice(0, 4), function (l) { return l.changedLines; }) / langTotal)); },
+      body: function () { return '<p class="kick">// coding languages · changed lines by file type</p>' + langs.slice(0, 8).map(function (l, i) { return barRow(i + 1, l.extension, l.changedLines / langs[0].changedLines, pct(l.changedLines / langTotal)); }).join('') + '<p class="sub">' + lines(langTotal) + ' changed lines' + (git.withheld ? ' · ' + lines(git.withheld) + ' in file types the machine withheld' : '') + '</p>'; } },
+    { key: 'skills-and-mcp', name: 'skills and MCP', stat: skills[0].name, cap: 'leads the skills at ' + pct(skills[0].callShare) + ' of calls · no MCP server published',
+      head: function () { return segStrip(limeShades(skills.slice(0, 4).map(function (s) { return s.callShare; }), 1 - sum(skills.slice(0, 4), function (s) { return s.callShare; }))); },
+      body: function () { return '<p class="kick">// skills and mcp · share of calls in each category</p><div class="cols"><div><p class="mono-label">skills</p>' + skills.slice(0, 6).map(function (s, i) { return barRow(i + 1, s.name, s.callShare / skills[0].callShare, pct(s.callShare)); }).join('') + '<p class="sub">also: ' + skills.slice(6).map(function (s) { return s.name; }).join(', ') + '</p></div><div><p class="mono-label">mcp servers</p><p class="sub">no MCP call is published for this machine</p></div></div>'; } },
+    { key: 'model-routing', name: 'model routing', stat: pct(rt.main.find(function (m) { return m.model === modelOrder[0]; }).tokens / mainTok), cap: 'of main-loop tokens run on ' + short(modelOrder[0]),
+      head: function () { return segStrip(routeSegs(rt.main, mainTok)); },
+      body: function () { return '<p class="kick">// model routing · who runs on what</p>' + routeRow('main loop', mainTok / (mainTok + subTok), routeSegs(rt.main, mainTok)) + routeRow('subagents', subTok / (mainTok + subTok), routeSegs(rt.subagents, subTok)) + '<div class="legend">' + modelOrder.map(function (m) { return '<span><i style="background:' + paintOf(m) + '"></i>' + short(m) + '</span>'; }).join('') + '</div>'; } },
+    { key: 'delegation', name: 'delegation', stat: (dg.mainToolCalls / dg.subagentToolCalls).toFixed(1) + ' : 1', cap: 'main-loop to subagent tool calls · widest fan-out ' + dg.widestFanOut,
+      head: function () { return segStrip([[1 - subShare, LIME, 'main loop'], [subShare, 'oklch(0.78 0.17 132 / 0.4)', 'subagents']]); },
+      body: function () { return '<p class="kick">// delegation · main loop to subagents</p><div class="cols"><div>' + segStrip([[1 - subShare, LIME], [subShare, 'oklch(0.78 0.17 132 / 0.4)']], 'wide') + '<div class="legend"><span><i style="background:' + LIME + '"></i>main loop ' + pct(1 - subShare) + '</span><span><i style="background:oklch(0.78 0.17 132 / 0.4)"></i>subagents ' + pct(subShare) + '</span></div><div class="records"><div><span class="n">' + dg.widestFanOut + '</span><p>widest parallel fan-out in one session</p></div><div><span class="n">' + dg.mostSubagents + '</span><p>most subagents in one session</p></div></div></div><div><p class="mono-label">subagent runs by type</p>' + kit.sub.map(function (s, i) { return barRow(i + 1, s.name, s.callShare / kit.sub[0].callShare, pct(s.callShare)); }).join('') + '</div></div>'; } },
+    { key: 'effort-breakdown', name: 'effort breakdown', stat: pct(EFFORT.high), cap: 'of turns run at high effort, ' + pct(EFFORT.medium) + ' medium, ' + pct(EFFORT.low) + ' low', handmade: true,
+      head: function () { return effortStrip(); },
+      body: function () { return '<p class="kick">// effort breakdown · turns by effort level</p>' + effortStrip('wide') + '<div class="legend"><span><i style="background:oklch(0.78 0.17 132 / 0.3)"></i>low ' + pct(EFFORT.low) + '</span><span><i style="background:oklch(0.78 0.17 132 / 0.6)"></i>medium ' + pct(EFFORT.medium) + '</span><span><i style="background:' + LIME + '"></i>high ' + pct(EFFORT.high) + '</span></div><p class="sub">counts: Claude Code · Codex</p>' + handmade('the wire carries the high share (' + pct(highEffort) + ', real). The low and medium split is hand-made until #285 ships per-level counts.'); } },
+    { key: 'thinking-share', name: 'thinking share', stat: pct(thinking), cap: 'of response tokens are thinking, across the harnesses that record it', handmade: true,
+      head: function () { return fillStrip(thinking); },
+      body: function () { return '<p class="kick">// thinking share · by harness</p>' + THINK_BY_HARNESS.map(function (t, i) { return t.v === null ? '<div class="barrow"><span class="rk"></span><span>' + t.h + '</span><span class="sub" style="margin:0">no thinking token count in this harness\'s records</span><span></span></div>' : barRow('', t.h, t.v / 0.5, pct(t.v)); }).join('') + handmade('one value on the wire (' + pct(thinking) + ' over Codex and Pi, real). The per-harness figures are hand-made until #285 ships them per harness.'); } },
+    { key: 'turn-durations', name: 'turn durations', stat: '~45s', cap: 'is the median turn · longest ' + (longestTurn | 0) + ' min', handmade: true,
+      head: function () { return miniBars(TURN_BUCKETS.map(function (b) { return b.n; }), TURN_MEDIAN_BUCKET); },
+      body: function () { return '<p class="kick">// turn durations · log buckets</p>' + bigBars(TURN_BUCKETS.map(function (b) { return b.n; }), TURN_MEDIAN_BUCKET, TURN_BUCKETS.map(function (b) { return b.l; }), TURN_MEDIAN_BUCKET) + handmade('the wire carries the longest turn only (' + longestTurn.toFixed(0) + ' min, real). The buckets are hand-made until #285 ships a duration histogram.'); } },
+    { key: 'question-back', name: 'question-back', stat: pct(questionBack), cap: 'of turns end with a question back to the human',
+      head: function () { return fillStrip(questionBack); },
+      body: function () { return '<p class="kick">// question-back</p>' + fillStrip(questionBack, 'wide') + '<p class="sub">counts: Claude Code · Codex</p>'; } },
+    { key: 'web-searches', name: 'web searches', stat: webPerDay.toFixed(1), cap: 'web searches per active day, inside the harness', bare: true,
+      head: function () { return '<span class="bare"></span>'; },
+      body: function () { return '<p class="kick">// web searches</p><p class="sub">counts: Claude Code · Codex · a bare box by design: a rate per day has no natural picture at this size</p>'; } },
+    { key: 'parallel-projects', name: 'parallel projects', stat: String(parallel), cap: 'projects run in parallel on a median active day', bare: true,
+      head: function () { return '<span class="bare"></span>'; },
+      body: function () { return '<p class="kick">// parallel projects</p><p class="sub">overlapping project session spans · a bare box by design</p>'; } }
+  ];
+
+  function topThreeShare() { var s = hourProfile.slice().sort(function (a, b) { return b - a; }); return (s[0] + s[1] + s[2]) / sum(hourProfile); }
+  function trackSegs(share) { return [[share.scoutSec, PHASE_PAINT.scout, 'scout'], [share.build, PHASE_PAINT.build, 'build'], [share.verify, PHASE_PAINT.verify, 'verify'], [share.handoff, PHASE_PAINT.handoff, 'handoff']]; }
+  function routeSegs(list, tot) { return list.filter(function (m) { return m.tokens > 0; }).sort(function (a, b) { return b.tokens - a.tokens; }).map(function (m) { return [m.tokens / tot, paintOf(m.model), short(m.model)]; }); }
+  function routeRow(who, share, segs) { return '<div style="margin-top:10px"><p style="display:flex;justify-content:space-between;margin:0 0 4px;font-size:13px"><span>' + who + '</span><span class="mono" style="font-size:11px;color:var(--fg-muted)">' + pct(share) + ' of tokens</span></p>' + segStrip(segs, 'wide') + '</div>'; }
+  function effortStrip(cls) { return segStrip([[EFFORT.low, 'oklch(0.78 0.17 132 / 0.3)', 'low'], [EFFORT.medium, 'oklch(0.78 0.17 132 / 0.6)', 'medium'], [EFFORT.high, LIME, 'high']], cls); }
+  function barRow(rk, name, w, fig) { return '<div class="barrow"><span class="rk">' + (rk === '' ? '' : String(rk).padStart(2, '0')) + '</span><span>' + name + '</span><span class="track"><i style="width:' + Math.round(w * 100) + '%"></i></span><span class="fig">' + fig + '</span></div>'; }
+  function handmade(t) { return '<div class="handmade">hand-made: ' + t + '</div>'; }
+
+  function heatmapBody(id) {
+    return '<p class="kick">// when the work happens · owner\'s local time</p><div class="heat" id="heat-' + id + '"><div class="toggle"><button type="button" data-s="sessions" aria-pressed="true">sessions</button><button type="button" data-s="commits" aria-pressed="false">commits</button></div><div class="grid"></div><div class="pop"></div></div>';
+  }
+  function drawHeat(root, series) {
+    var m = heatCells(series);
+    var mx = Math.max.apply(null, Object.keys(m).map(function (k) { return m[k]; })) || 1;
+    var grid = root.querySelector('.grid');
+    var html = '';
+    [1, 2, 3, 4, 5, 6, 0].forEach(function (d) {
+      html += '<span class="dl">' + DAYS[d] + '</span>';
+      for (var h = 0; h < 24; h++) {
+        var v = m[d + '-' + h] || 0, r = v / mx;
+        var mixp = r === 0 ? 0 : r < 0.12 ? 18 : r < 0.3 ? 38 : r < 0.6 ? 62 : 90;
+        html += '<span class="cell" data-d="' + d + '" data-h="' + h + '" data-v="' + v + '" style="background:' + (mixp === 0 ? 'var(--bg-panel)' : 'color-mix(in oklab, var(--accent-lime) ' + mixp + '%, var(--bg-panel))') + '"></span>';
+      }
+    });
+    html += '<span></span>';
+    for (var hh = 0; hh < 24; hh++) html += '<span class="hl">' + (hh % 6 === 0 ? hh : '') + '</span>';
+    grid.innerHTML = html;
+    var pop = root.querySelector('.pop');
+    var unit = series === 'sessions' ? 'recorded events' : 'commits';
+    grid.querySelectorAll('.cell').forEach(function (c) {
+      c.addEventListener('mouseenter', function () {
+        pop.innerHTML = DAYS[+c.dataset.d] + ' ' + String(c.dataset.h).padStart(2, '0') + ':00 · <b>' + fmt(+c.dataset.v) + '</b> ' + unit;
+        pop.style.display = 'block';
+        var rr = root.getBoundingClientRect(), cr = c.getBoundingClientRect();
+        var left = cr.left - rr.left + 10; if (left + 260 > rr.width) left = cr.left - rr.left - 250;
+        pop.style.left = left + 'px'; pop.style.top = (cr.top - rr.top - 34) + 'px';
+      });
+      c.addEventListener('mouseleave', function () { pop.style.display = 'none'; });
+    });
+    root.querySelectorAll('.toggle button').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.dataset.s === series ? 'true' : 'false');
+      b.onclick = function () { drawHeat(root, b.dataset.s); };
+    });
+  }
+
+  function playbookBody() {
+    function trackHtml(t) {
+      return '<div class="track"><span class="tl"><b>' + t.label + '</b> · ' + t.scope + ' · ' + t.n + ' sessions</span><div style="margin-top:10px">' + segStrip(trackSegs(t.share), 'wide') + '</div><div class="figs"><span><b>' + (t.med | 0) + ' min</b>median</span><span><b>' + pct(t.merged) + '</b>merged</span><span><b>' + t.rr + '</b>median review rounds</span></div></div>';
+    }
+    function receipt(r) { return '<div class="receipt">' + r.head + '<div class="sides"><span><b>' + r.a[1] + '</b>' + r.a[0] + ' · ' + r.a[2] + '</span><span><b>' + r.b[1] + '</b>' + r.b[0] + ' · ' + r.b[2] + '</span></div><p class="sub" style="margin-top:6px">' + r.unit + '</p></div>'; }
+    return '<p class="kick">// the playbook · how the sessions run · split on the median measured session, ' + (splitMin | 0) + ' min</p><div class="tracks">' + trackHtml(shorter) + trackHtml(longer) + '</div><div class="legend">' + Object.keys(PHASE_PAINT).map(function (p) { return '<span><i style="background:' + PHASE_PAINT[p] + '"></i>' + p + '</span>'; }).join('') + '</div><div class="receipts">' + receipt(receipt1) + receipt(receipt2) + '</div>';
+  }
+
+  function gitBody(id) {
+    var W = 640, L = 12, span = 600, top = Math.log10(Math.max.apply(null, sizes) + 1);
+    function x(v) { return L + Math.log10(v + 1) / top * span; }
+    var svg = '<svg class="dotaxis" viewBox="0 0 ' + W + ' 96" preserveAspectRatio="none" aria-label="one dot per commit on a log axis">';
+    [1, 10, 100, 1000, 10000].forEach(function (g) { if (g <= Math.max.apply(null, sizes)) svg += '<line x1="' + x(g) + '" x2="' + x(g) + '" y1="8" y2="66" stroke="var(--stroke-subtle)" stroke-width="1"/><text x="' + x(g) + '" y="84" fill="var(--fg-muted)" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">' + fmt(g) + '</text>'; });
+    sizes.forEach(function (s, i) { svg += '<rect x="' + (x(s) - 2) + '" y="' + (14 + (i % 7) * 7) + '" width="4" height="4" fill="var(--accent-lime)" fill-opacity="0.65"><title>' + fmt(s) + ' changed lines</title></rect>'; });
+    svg += '<line x1="' + x(medCommit) + '" x2="' + x(medCommit) + '" y1="6" y2="68" stroke="var(--fg-primary)" stroke-width="1.5"/><text x="' + (x(medCommit) + 6) + '" y="12" fill="var(--fg-primary)" font-family="JetBrains Mono, monospace" font-size="10" font-weight="700">median ' + fmt(medCommit) + '</text></svg>';
+    return '<p class="kick">// the git ledger · what the commits carried</p><div class="gitfigs"><span class="add">+' + lines(git.additions) + '</span><span class="rem">-' + lines(git.removals) + '</span><span class="sub" style="margin:0">' + fmt(git.totalCommits) + ' commits · ' + fmt(git.testFileCommits) + ' touch a test file</span></div><div style="margin-top:10px">' + segStrip([[git.additions / changed, LIME], [git.removals / changed, 'var(--destructive-fill)']], 'wide') + '</div><p class="mono-label" style="margin-top:14px">one dot per commit · changed lines, log axis</p>' + svg;
+  }
+
+  /* ---------- placement: pins and hides, in the fixed order ---------- */
+  function placed() {
+    var rows = ROWS.filter(function (r) { return OWNER || hides.indexOf(r.key) < 0; });
+    var pinned = rows.filter(function (r) { return pins.indexOf(r.key) >= 0; });
+    var rest = rows.filter(function (r) { return pins.indexOf(r.key) < 0; });
+    var podium = pinned.concat(rest).slice(0, 3);
+    var below = pinned.concat(rest).slice(3);
+    return { podium: podium, below: below, all: pinned.concat(rest) };
+  }
+  function tags(r) { return (pins.indexOf(r.key) >= 0 ? '<span class="tag">pinned</span>' : '') + (hides.indexOf(r.key) >= 0 ? '<span class="tag" style="border-color:var(--stroke-strong);color:var(--fg-muted)">hidden</span>' : ''); }
+  function controls(r) {
+    if (!OWNER) return '';
+    return '<div class="ctl"><span class="mono-label">your controls</span><button type="button" data-pin="' + r.key + '" class="' + (pins.indexOf(r.key) >= 0 ? 'on' : '') + '">' + (pins.indexOf(r.key) >= 0 ? 'unpin' : 'pin to the podium') + '</button><button type="button" data-hide="' + r.key + '" class="' + (hides.indexOf(r.key) >= 0 ? 'on' : '') + '">' + (hides.indexOf(r.key) >= 0 ? 'show again' : 'hide from the page') + '</button></div>';
+  }
+
+  /* ---------- lead ---------- */
+  function leadHtml() {
+    var top = mix.slice().sort(function (a, b) { return b.share - a.share; });
+    return '<div class="lead"><p class="bigline"><b>' + fmt(R.sessions) + '</b> sessions this window. Most measured time goes to <b>' + top[0].p + '</b>, then <b>' + top[1].p + '</b>.</p>' +
+      '<div class="phasebar">' + mix.map(function (m) { return '<i class="' + (m.p === 'scout' ? 'dim' : '') + '" style="flex:' + (m.share * 100) + ';background:' + PHASE_PAINT[m.p] + '"><span>' + (m.share > 0.09 ? m.p + ' ' + pct(m.share) : '') + '</span></i>'; }).join('') + '</div>' +
+      '<div class="phaselegend">' + mix.map(function (m) { return '<span><i style="background:' + PHASE_PAINT[m.p] + '"></i>' + m.p + ' ' + pct(m.share) + '</span>'; }).join('') + '</div></div>';
+  }
+
+  /* ---------- the three variants ---------- */
+  function boxHtml(r, extra) {
+    return '<button type="button" class="box ' + (extra || '') + '" data-open="' + r.key + '"><span class="mono-label nm">' + r.name + tags(r) + '</span><span class="n">' + r.stat + '</span><span class="cap">' + r.cap + '</span><span class="pic">' + r.head() + '</span></button>';
+  }
+  function bodyHtml(r) { return r.body(r.key) + controls(r); }
+
+  function buildPodium(root, p) {
+    var html = '<div class="podium">' + p.podium.map(function (r) { return boxHtml(r); }).join('') + '</div>';
+    html += p.podium.map(function (r) { return '<div class="podium-body" data-body="' + r.key + '">' + bodyHtml(r) + '</div>'; }).join('');
+    html += '<div class="rowlist">' + p.below.map(function (r) {
+      return '<div class="mrow" data-row="' + r.key + '"><button type="button" class="mhead"><span class="nm">' + r.name + tags(r) + '</span><span class="cap">' + r.cap + '</span><span class="viz">' + r.head() + '</span><span class="st">' + r.stat + '</span><span class="chev"></span></button><div class="body">' + bodyHtml(r) + '</div></div>';
+    }).join('') + '</div>';
+    root.innerHTML = html;
+    root.querySelectorAll('.box').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var was = b.classList.contains('on');
+        root.querySelectorAll('.box').forEach(function (x) { x.classList.remove('on'); });
+        root.querySelectorAll('.podium-body').forEach(function (x) { x.classList.remove('on'); });
+        if (!was) { b.classList.add('on'); root.querySelector('[data-body="' + b.dataset.open + '"]').classList.add('on'); }
+      });
+    });
+    root.querySelectorAll('.mhead').forEach(function (h) { h.addEventListener('click', function () { h.parentNode.classList.toggle('open'); }); });
+  }
+
+  function buildLedger(root, p) {
+    root.innerHTML = '<div class="ledger">' + p.all.map(function (r, i) {
+      return '<div class="lrow ' + (i < 3 ? 'big' : '') + '"><div class="lhead"><span class="nm">' + r.name + tags(r) + '</span><span class="st">' + r.stat + '</span><span class="cap">' + r.cap + '</span><div class="pic">' + r.head() + '</div></div><div class="lbody">' + bodyHtml(r) + '</div></div>';
+    }).join('') + '</div>';
+  }
+
+  function buildTiles(root, p) {
+    var html = '<div class="tiles">';
+    p.podium.forEach(function (r) { html += boxHtml(r, 'top'); });
+    html += '<div class="tile-body" data-body="top"></div>';
+    for (var i = 0; i < p.below.length; i += 2) {
+      html += boxHtml(p.below[i]) + (p.below[i + 1] ? boxHtml(p.below[i + 1]) : '<div class="box" style="min-height:0"></div>') + '<div class="tile-body" data-body="pair-' + i + '"></div>';
+    }
+    root.innerHTML = html + '</div>';
+    root.querySelectorAll('.box[data-open]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var was = b.classList.contains('on');
+        root.querySelectorAll('.box').forEach(function (x) { x.classList.remove('on'); });
+        root.querySelectorAll('.tile-body').forEach(function (x) { x.classList.remove('on'); x.innerHTML = ''; });
+        if (was) return;
+        b.classList.add('on');
+        var slot = b; while (slot && !slot.classList.contains('tile-body')) slot = slot.nextElementSibling;
+        var r = ROWS.find(function (x) { return x.key === b.dataset.open; });
+        slot.innerHTML = bodyHtml(r); slot.classList.add('on'); wireBodies(slot);
+      });
+    });
+  }
+
+  function wireBodies(root) {
+    root.querySelectorAll('.heat').forEach(function (h) { drawHeat(h, 'sessions'); });
+    root.querySelectorAll('[data-pin]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); var k = b.dataset.pin; var i = pins.indexOf(k); if (i >= 0) pins.splice(i, 1); else if (pins.length < 3) pins.push(k); else return alert('The podium holds 3 rows.'); render(); }); });
+    root.querySelectorAll('[data-hide]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); var k = b.dataset.hide; var i = hides.indexOf(k); if (i >= 0) hides.splice(i, 1); else hides.push(k); render(); }); });
+  }
+
+  var EMPTY = {
+    '7': ['no measured day in the last 7 days', 'The newest synced day on this machine is 2026-08-22. The next sync appends the days since, and this window fills.'],
+    '1': ['nothing measured in the last 24 hours', 'A day arrives with the sync that follows it. Run <code>aistack sync</code>, or wait for the 48-hour auto-sync.']
+  };
+
+  function render() {
+    var root = document.getElementById('content');
+    document.getElementById('read').textContent = 'read 2 days ago · ' + R.machine;
+    if (win !== '30') {
+      root.innerHTML = '<div class="empty"><span class="big">' + EMPTY[win][0] + '</span><p>' + EMPTY[win][1] + '</p></div>';
+      return;
+    }
+    var p = placed();
+    root.innerHTML = leadHtml() + '<div id="rows"></div>';
+    var rows = document.getElementById('rows');
+    if (variant === 'podium') buildPodium(rows, p);
+    if (variant === 'ledger') buildLedger(rows, p);
+    if (variant === 'tiles') buildTiles(rows, p);
+    wireBodies(rows);
+  }
+
+  document.querySelectorAll('#win button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      win = b.dataset.win;
+      document.querySelectorAll('#win button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      render();
+    });
+  });
+
+  /* switcher */
+  function idx() { return VARIANTS.findIndex(function (v) { return v.key === variant; }); }
+  function go(i) { var v = VARIANTS[(i + VARIANTS.length) % VARIANTS.length]; url.searchParams.set('variant', v.key); location.href = url.toString(); }
+  document.getElementById('prev').onclick = function () { go(idx() - 1); };
+  document.getElementById('next').onclick = function () { go(idx() + 1); };
+  document.addEventListener('keydown', function (e) { if (/INPUT|TEXTAREA/.test(document.activeElement.tagName)) return; if (e.key === 'ArrowLeft') go(idx() - 1); if (e.key === 'ArrowRight') go(idx() + 1); });
+  document.getElementById('label').textContent = String.fromCharCode(65 + idx()) + ' · ' + VARIANTS[idx()].name;
+  var ol = new URL(location.href); ol.searchParams.set('owner', OWNER ? '0' : '1');
+  var olink = document.getElementById('ownerlink'); olink.href = ol.toString(); olink.textContent = OWNER ? 'public view' : 'owner view';
+
+  render();
+})();
+</script>
+</body>
+</html>
