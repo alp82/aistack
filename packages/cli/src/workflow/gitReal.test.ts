@@ -57,6 +57,7 @@ const read = () =>
 		workingDirectories: [root],
 		fromMs: Date.parse("2026-08-01T00:00:00Z"),
 		toMs: Date.parse("2026-08-31T23:59:59Z"),
+		utcOffsetMinutes: 120,
 	});
 
 describe("extractGitWorkflow over real Git output", () => {
@@ -149,5 +150,33 @@ describe("extractGitWorkflow over real Git output", () => {
 		expect(byExtension[".mts"]).toBe(4);
 		// Unchanged from the previous commit: none of the three was withheld.
 		expect(result.withheldExtensionLines).toBe(12);
+	});
+
+	it("leaves a merge commit out and keeps a pure rename in", () => {
+		const before = read();
+
+		git(root, ["checkout", "-b", "feature", "--quiet"]);
+		write(root, "src/feature.ts", lines(7));
+		git(root, ["add", "-A"]);
+		git(root, ["commit", "-m", "feature"]);
+		git(root, ["checkout", "main", "--quiet"]);
+		git(root, ["merge", "--no-ff", "--no-edit", "feature"]);
+		git(root, ["mv", "src/app.ts", "src/renamed.ts"]);
+		git(root, ["commit", "-m", "rename only"]);
+
+		const result = read();
+
+		// The feature commit and the rename count. The merge does not: it carries
+		// no authored work, so it is neither a commit nor a zero-line dot.
+		expect(result.totalCommits).toBe(before.totalCommits + 2);
+		expect([...result.changedLinesPerCommit].sort()).toEqual(
+			[...before.changedLinesPerCommit, 7, 0].sort(),
+		);
+		expect(result.additions).toBe(before.additions + 7);
+		expect(result.commitSetRuleVersion).toBe("commit-set/v1");
+		// 14:00+02:00 is 12:00Z. The cell ships in UTC.
+		expect(result.weekdayHourCells.every((cell) => cell.hourUtc === 12)).toBe(
+			true,
+		);
 	});
 });

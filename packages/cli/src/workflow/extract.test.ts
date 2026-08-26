@@ -32,6 +32,7 @@ describe("buildWorkflowExtraction", () => {
 
 		const git: GitWorkflowResult = {
 			testFileRuleVersion: "test-files/v2",
+			commitSetRuleVersion: "commit-set/v1",
 			fileTypeRuleVersion: "file-types/v2",
 			totalCommits: 4,
 			lateNightCommits: 2,
@@ -41,7 +42,7 @@ describe("buildWorkflowExtraction", () => {
 			testFileCommits: 2,
 			changedLinesByExtension: [{ extension: ".ts", changedLines: 40 }],
 			withheldExtensionLines: 0,
-			weekdayHourCells: [{ weekday: 1, hour: 23, commits: 4 }],
+			weekdayHourCells: [{ weekdayUtc: 1, hourUtc: 23, commits: 4 }],
 		};
 
 		const extraction = buildWorkflowExtraction(
@@ -81,6 +82,7 @@ describe("buildWorkflowExtraction", () => {
 			[{ aggregate: reducer.finish(), local }],
 			{
 				testFileRuleVersion: "test-files/v2",
+				commitSetRuleVersion: "commit-set/v1",
 				fileTypeRuleVersion: "file-types/v2",
 				totalCommits: 0,
 				lateNightCommits: 0,
@@ -144,6 +146,7 @@ describe("buildWorkflowExtraction", () => {
 			[{ aggregate: reducer.finish(), local }],
 			{
 				testFileRuleVersion: "test-files/v2",
+				commitSetRuleVersion: "commit-set/v1",
 				fileTypeRuleVersion: "file-types/v2",
 				totalCommits: 0,
 				lateNightCommits: 0,

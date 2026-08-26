@@ -22,6 +22,13 @@ describe("extractGitWorkflow", () => {
 				"5\t7\tsrc/index.js\n2\t0\ttests/helper\n",
 			),
 			record("cccc", "2026-09-01T01:00:00+00:00", "99\t0\toutside.ts\n"),
+			// Every path a machine owns: the commit leaves the reading entirely,
+			// rather than counting as a commit that changed nothing (commit-set/v1).
+			record(
+				"dddd",
+				"2026-08-05T10:00:00+00:00",
+				"800\t0\tnode_modules/left-pad/index.js\n1\t1\tpnpm-lock.yaml\n",
+			),
 		].join("");
 		const run: GitWorkflowRunner = (cwd, args) => {
 			if (args[0] === "rev-parse") {
@@ -31,6 +38,7 @@ describe("extractGitWorkflow", () => {
 			}
 			expect(args).not.toContain("--no-renames");
 			expect(args).toContain("-z");
+			expect(args).toContain("--no-merges");
 			expect(args.some((arg) => arg.startsWith("--since="))).toBe(false);
 			expect(args.some((arg) => arg.startsWith("--until="))).toBe(false);
 			return cwd === "/work/repo" || cwd === "/copy/repo" ? history : null;
@@ -45,12 +53,15 @@ describe("extractGitWorkflow", () => {
 			],
 			fromMs: Date.parse("2026-08-01T00:00:00Z"),
 			toMs: Date.parse("2026-08-31T23:59:59Z"),
+			// The machine sits five hours west of UTC, like both commit stamps.
+			utcOffsetMinutes: -300,
 			run,
 		});
 
 		expect(result).toEqual({
 			testFileRuleVersion: "test-files/v2",
 			fileTypeRuleVersion: "file-types/v2",
+			commitSetRuleVersion: "commit-set/v1",
 			totalCommits: 2,
 			lateNightCommits: 2,
 			additions: 20,
@@ -64,9 +75,12 @@ describe("extractGitWorkflow", () => {
 			// `tests/helper` has no extension, so its 2 lines are withheld rather
 			// than ranked: a file with no extension is not a coding language.
 			withheldExtensionLines: 2,
+			// Cells travel in UTC: 23:30-05:00 is Tuesday 04:30Z, and 02:15-05:00 is
+			// Tuesday 07:15Z. The late-night count reads the same cells through the
+			// machine's own offset, so the grid and the count cannot disagree.
 			weekdayHourCells: [
-				{ weekday: 1, hour: 23, commits: 1 },
-				{ weekday: 2, hour: 2, commits: 1 },
+				{ weekdayUtc: 2, hourUtc: 4, commits: 1 },
+				{ weekdayUtc: 2, hourUtc: 7, commits: 1 },
 			],
 		});
 		expect(JSON.stringify(result)).not.toContain("/work/");
@@ -86,6 +100,7 @@ describe("extractGitWorkflow", () => {
 			workingDirectories: ["/work/repo"],
 			fromMs: Date.parse("2026-08-01T00:00:00Z"),
 			toMs: Date.parse("2026-08-31T23:59:59Z"),
+			utcOffsetMinutes: 0,
 			run,
 		});
 
@@ -109,6 +124,7 @@ describe("extractGitWorkflow", () => {
 			workingDirectories: ["/work/repo"],
 			fromMs: Date.parse("2026-08-01T00:00:00Z"),
 			toMs: Date.parse("2026-08-31T23:59:59Z"),
+			utcOffsetMinutes: 0,
 			run,
 		});
 
@@ -117,5 +133,28 @@ describe("extractGitWorkflow", () => {
 		]);
 		expect(result.withheldExtensionLines).toBe(5);
 		expect(JSON.stringify(result)).not.toContain("customer-name");
+	});
+
+	it("counts late-night commits on the machine's clock, not each author's", () => {
+		// 15:00Z. A machine at +10:00 reads it as 01:00, inside the late-night
+		// window; a machine at +00:00 reads it as 15:00, outside it.
+		const run: GitWorkflowRunner = (_cwd, args) =>
+			args[0] === "rev-parse"
+				? "/work/repo\n"
+				: record("aaaa", "2026-08-03T17:00:00+02:00", "1\t0\tsrc/a.ts\n");
+		const at = (utcOffsetMinutes: number) =>
+			extractGitWorkflow({
+				workingDirectories: ["/work/repo"],
+				fromMs: Date.parse("2026-08-01T00:00:00Z"),
+				toMs: Date.parse("2026-08-31T23:59:59Z"),
+				utcOffsetMinutes,
+				run,
+			});
+
+		expect(at(600).lateNightCommits).toBe(1);
+		expect(at(0).lateNightCommits).toBe(0);
+		expect(at(0).weekdayHourCells).toEqual([
+			{ weekdayUtc: 1, hourUtc: 15, commits: 1 },
+		]);
 	});
 });

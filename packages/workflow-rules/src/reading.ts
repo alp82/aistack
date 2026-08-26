@@ -56,6 +56,8 @@ export type WorkflowHarnessReading = {
 export type WorkflowGitReading = {
 	testFileRuleVersion: string;
 	fileTypeRuleVersion: string;
+	/** Absent on a reading synced before commit-set/v1 shipped. */
+	commitSetRuleVersion?: string;
 	totalCommits: number;
 	lateNightCommits: number;
 	additions: number;
@@ -67,9 +69,10 @@ export type WorkflowGitReading = {
 		changedLines: number;
 	}[];
 	withheldExtensionLines: number;
+	/** UTC, like the harness activity cells beside them. */
 	weekdayHourCells: readonly {
-		weekday: number;
-		hour: number;
+		weekdayUtc: number;
+		hourUtc: number;
 		commits: number;
 	}[];
 };

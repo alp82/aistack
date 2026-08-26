@@ -451,6 +451,7 @@ describe("the workflow section on the wire (#213)", () => {
 		],
 		git: {
 			testFileRuleVersion: "test-files/v2",
+			commitSetRuleVersion: "commit-set/v1",
 			fileTypeRuleVersion: "file-types/v2",
 			totalCommits: 12,
 			lateNightCommits: 3,
@@ -460,7 +461,7 @@ describe("the workflow section on the wire (#213)", () => {
 			testFileCommits: 5,
 			changedLinesByExtension: [{ extension: ".ts", changedLines: 500 }],
 			withheldExtensionLines: 20,
-			weekdayHourCells: [{ weekday: 5, hour: 23, commits: 3 }],
+			weekdayHourCells: [{ weekdayUtc: 5, hourUtc: 23, commits: 3 }],
 		},
 		metricInputs: [
 			{

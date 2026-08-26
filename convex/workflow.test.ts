@@ -128,7 +128,7 @@ function section(over: Partial<Section> = {}): Section {
       testFileCommits: 4,
       changedLinesByExtension: [{ extension: '.ts', changedLines: 900 }],
       withheldExtensionLines: 100,
-      weekdayHourCells: [{ weekday: 1, hour: 23, commits: 9 }],
+      weekdayHourCells: [{ weekdayUtc: 1, hourUtc: 23, commits: 9 }],
     },
     metrics: [
       {

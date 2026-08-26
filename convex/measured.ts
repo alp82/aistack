@@ -321,6 +321,9 @@ export function checkWorkflowSection(
 
   requireName(section.git.testFileRuleVersion, 'workflow.git.testFileRuleVersion')
   requireName(section.git.fileTypeRuleVersion, 'workflow.git.fileTypeRuleVersion')
+  if (section.git.commitSetRuleVersion !== undefined) {
+    requireName(section.git.commitSetRuleVersion, 'workflow.git.commitSetRuleVersion')
+  }
   requireSize(
     section.git.changedLinesPerCommit.length,
     WORKFLOW_LIMITS.commits,

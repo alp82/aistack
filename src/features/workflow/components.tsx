@@ -429,6 +429,7 @@ function GitLedger({ view }: { view: WorkflowView }) {
 			<BodyFootnote>
 				{git.testFileCommits.toLocaleString("en-US")} commits touch a test file
 				· {git.testFileRuleVersion}
+				{git.commitSetRuleVersion ? ` · ${git.commitSetRuleVersion}` : ""}
 				{view.trimmed?.commitStrip
 					? " · the per-commit strip was dropped to fit the stored reading"
 					: ""}
@@ -519,31 +520,91 @@ function CodingLanguages({ view }: { view: WorkflowView }) {
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 const WEEKDAY_ROWS = [1, 2, 3, 4, 5, 6, 0];
 
+type HeatSeries = "sessions" | "commits";
+
+/**
+ * ONE component with ONE band (#279). The commit grid is a second series on
+ * the same heatmap, not a second row: a near-identical row would compete for
+ * placement against this one. The row's RANKED figure is the session share and
+ * never follows the toggle, because the page ranks nothing and a reader's
+ * switch must not move a row. The body figure under the grid recomputes for
+ * whichever series is shown, so the reader always has a number for what they
+ * are looking at.
+ */
 function ActivityHeatmap({ view }: { view: WorkflowView }) {
 	const [selected, setSelected] = useState<string | null>(null);
+	const [series, setSeries] = useState<HeatSeries>("sessions");
 	const offset = view.utcOffsetMinutes;
 	const cells = new Map<string, number>();
-	for (const harness of view.section.harnesses) {
-		for (const cell of harness.activity) {
-			// SHIFTED INTO THE OWNER'S LOCAL TIME, for the reason the lead's rhythm
-			// clause is: the reader's own clock would put a stranger's habit at the
-			// wrong hour. Without an offset the grid stays in UTC and says so.
-			const shifted = shift(cell.weekdayUtc, cell.hourUtc, offset ?? 0);
-			const key = `${shifted.weekday}-${shifted.hour}`;
-			cells.set(key, (cells.get(key) ?? 0) + cell.events);
+	const add = (weekdayUtc: number, hourUtc: number, count: number): void => {
+		// SHIFTED INTO THE OWNER'S LOCAL TIME, for the reason the lead's rhythm
+		// clause is: the reader's own clock would put a stranger's habit at the
+		// wrong hour. Without an offset the grid stays in UTC and says so. Both
+		// series shift by the same offset, so a commit and a session at the same
+		// real moment land in the same cell.
+		const shifted = shift(weekdayUtc, hourUtc, offset ?? 0);
+		const key = `${shifted.weekday}-${shifted.hour}`;
+		cells.set(key, (cells.get(key) ?? 0) + count);
+	};
+	if (series === "sessions") {
+		for (const harness of view.section.harnesses) {
+			for (const cell of harness.activity) {
+				add(cell.weekdayUtc, cell.hourUtc, cell.events);
+			}
+		}
+	} else {
+		for (const cell of view.section.git.weekdayHourCells) {
+			add(cell.weekdayUtc, cell.hourUtc, cell.commits);
 		}
 	}
+	const hasCommits = view.section.git.weekdayHourCells.length > 0;
+	const unit = series === "sessions" ? "events" : "commits";
+	const busiest = cells.size > 0 ? Math.max(...cells.values()) : 0;
+	const chosen = selected === null ? null : (cells.get(selected) ?? 0);
+
+	const toggle = hasCommits ? (
+		<div className="mb-2 flex gap-1">
+			{(["sessions", "commits"] as const).map((option) => (
+				<button
+					key={option}
+					type="button"
+					onClick={() => {
+						setSeries(option);
+						setSelected(null);
+					}}
+					aria-pressed={series === option}
+					className={cn(
+						MONO_LABEL,
+						"border px-2 py-0.5",
+						series === option
+							? "border-accent-lime text-fg-primary"
+							: "border-border text-fg-muted",
+					)}
+				>
+					{option}
+				</button>
+			))}
+		</div>
+	) : null;
+
 	if (cells.size === 0) {
 		return (
-			<EmptyBody>No harness on this machine records an event clock.</EmptyBody>
+			<div>
+				<BodyKicker>{BODY_KICKERS["activity-heatmap"]}</BodyKicker>
+				{toggle}
+				<EmptyBody>
+					{series === "sessions"
+						? "No harness on this machine records an event clock."
+						: "No commit in this window sits in a repository a session touched."}
+				</EmptyBody>
+			</div>
 		);
 	}
-	const busiest = Math.max(...cells.values());
-	const chosen = selected === null ? null : (cells.get(selected) ?? 0);
 
 	return (
 		<div>
 			<BodyKicker>{BODY_KICKERS["activity-heatmap"]}</BodyKicker>
+			{toggle}
 			<div className="overflow-x-auto">
 				<div className="min-w-[34rem]">
 					{WEEKDAY_ROWS.map((weekday) => (
@@ -553,7 +614,7 @@ function ActivityHeatmap({ view }: { view: WorkflowView }) {
 							</span>
 							{HOURS.map((hour) => {
 								const key = `${weekday}-${hour}`;
-								const events = cells.get(key) ?? 0;
+								const count = cells.get(key) ?? 0;
 								return (
 									<button
 										key={key}
@@ -561,14 +622,14 @@ function ActivityHeatmap({ view }: { view: WorkflowView }) {
 										onClick={() =>
 											setSelected((held) => (held === key ? null : key))
 										}
-										aria-label={`${weekdayLabel(weekday)} ${hourLabel(hour)}, ${events} events`}
+										aria-label={`${weekdayLabel(weekday)} ${hourLabel(hour)}, ${count} ${unit}`}
 										aria-pressed={selected === key}
 										className={cn(
 											"h-4 flex-1",
 											selected === key &&
 												"outline outline-1 outline-accent-lime",
 										)}
-										style={{ background: heatPaint(events, busiest) }}
+										style={{ background: heatPaint(count, busiest) }}
 									/>
 								);
 							})}
@@ -589,9 +650,17 @@ function ActivityHeatmap({ view }: { view: WorkflowView }) {
 			</div>
 
 			<p className="mt-3 font-mono text-xs text-fg-secondary">
+				<b className="text-fg-primary">
+					{fmtPercent(busiestHoursShare(cells))}
+				</b>{" "}
+				of {unit} fall in the three busiest hours
+			</p>
+
+			<p className="mt-1 font-mono text-xs text-fg-secondary">
 				{selected === null ? (
 					<span className="text-fg-muted">
-						Select a cell for its recorded events.
+						Select a cell for its{" "}
+						{series === "sessions" ? "recorded events" : "commits"}.
 					</span>
 				) : (
 					<>
@@ -600,7 +669,7 @@ function ActivityHeatmap({ view }: { view: WorkflowView }) {
 						<b className="text-fg-primary">
 							{(chosen ?? 0).toLocaleString("en-US")}
 						</b>{" "}
-						recorded events
+						{series === "sessions" ? "recorded events" : "commits"}
 					</>
 				)}
 			</p>
@@ -612,6 +681,23 @@ function ActivityHeatmap({ view }: { view: WorkflowView }) {
 			</BodyFootnote>
 		</div>
 	);
+}
+
+/**
+ * The same arithmetic as the `activity-heatmap` component rule, over the
+ * series on screen. The shift is a whole number of hours, so summing the
+ * shifted cells by hour gives the rule's figure exactly for the session series.
+ */
+function busiestHoursShare(cells: Map<string, number>): number {
+	const byHour = new Map<number, number>();
+	for (const [key, count] of cells) {
+		const hour = Number(key.split("-")[1]);
+		byHour.set(hour, (byHour.get(hour) ?? 0) + count);
+	}
+	const total = sumBy([...byHour.values()], (n) => n);
+	if (total <= 0) return 0;
+	const top = [...byHour.values()].sort((a, b) => b - a).slice(0, 3);
+	return sumBy(top, (n) => n) / total;
 }
 
 function shift(

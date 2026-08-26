@@ -85,7 +85,7 @@ function reading(over: Partial<WorkflowReading> = {}): WorkflowReading {
 				{ extension: ".css", changedLines: 200 },
 			],
 			withheldExtensionLines: 100,
-			weekdayHourCells: [{ weekday: 1, hour: 23, commits: 9 }],
+			weekdayHourCells: [{ weekdayUtc: 1, hourUtc: 23, commits: 9 }],
 		},
 		metrics: [
 			{

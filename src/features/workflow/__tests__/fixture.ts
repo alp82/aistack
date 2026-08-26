@@ -257,6 +257,7 @@ export function view(over: Partial<WorkflowView> = {}): WorkflowView {
 			git: {
 				testFileRuleVersion: "test-file-rules/v1",
 				fileTypeRuleVersion: "file-type-rules/v1",
+				commitSetRuleVersion: "commit-set/v1",
 				totalCommits: 120,
 				lateNightCommits: 50,
 				additions: 94_800,
@@ -268,7 +269,12 @@ export function view(over: Partial<WorkflowView> = {}): WorkflowView {
 					{ extension: "css", changedLines: 12_000 },
 				],
 				withheldExtensionLines: 2_000,
-				weekdayHourCells: [],
+				weekdayHourCells: [
+					{ weekdayUtc: 0, hourUtc: 21, commits: 9 },
+					{ weekdayUtc: 3, hourUtc: 9, commits: 1 },
+					{ weekdayUtc: 4, hourUtc: 10, commits: 1 },
+					{ weekdayUtc: 5, hourUtc: 11, commits: 1 },
+				],
 			},
 			metrics: [],
 		},
