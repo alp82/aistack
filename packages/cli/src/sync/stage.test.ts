@@ -226,7 +226,7 @@ describe("stageSync", () => {
 	test("stages the workflow section in the bytes the gate describes (#213)", async () => {
 		const staged = await stageSync(deps({ gitRunnerImpl: () => null }));
 		expect(staged.body.workflow?.aggregateVersion).toBe(
-			"workflow-aggregates/v1",
+			"workflow-aggregates/v2",
 		);
 		// One section per sync, not one per harness: the Git half is a property
 		// of the machine and the metric rows span every synced harness.

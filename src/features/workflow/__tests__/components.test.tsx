@@ -35,7 +35,7 @@ describe("the phase playbook", () => {
 	it("keeps unknown in the legend and names both rule sets", () => {
 		show("phase-playbook");
 		expect(screen.getByText("unknown")).toBeTruthy();
-		expect(screen.getByText(/playbook-rules\/v1/)).toBeTruthy();
+		expect(screen.getByText(/playbook-rules\/v2/)).toBeTruthy();
 		expect(screen.getByText(/phase-rules\/v1/)).toBeTruthy();
 	});
 
@@ -50,7 +50,7 @@ describe("the phase playbook", () => {
 	it("pairs a habit with a figure and claims no cause", () => {
 		show("phase-playbook");
 		expect(
-			screen.getByText("Review rounds, with and without a verify step."),
+			screen.getByText("Sessions that merged, with and without a verify step."),
 		).toBeTruthy();
 		expect(
 			screen.getAllByText(/measured together, no cause claimed/).length,
@@ -68,9 +68,7 @@ describe("the git ledger", () => {
 
 	it("names the commit-set rule beside the test-file rule", () => {
 		show("git-ledger");
-		expect(
-			screen.getByText(/test-file-rules\/v1 · commit-set\/v1/),
-		).toBeTruthy();
+		expect(screen.getByText(/test-files\/v2 · commit-set\/v1/)).toBeTruthy();
 	});
 
 	it("draws one dot per commit on a log scale", () => {
@@ -183,6 +181,8 @@ describe("model routing, the kit and delegation", () => {
 						...bare.section,
 						harnesses: bare.section.harnesses.map((harness) => ({
 							harness: harness.harness,
+							sessions: harness.sessions,
+							startHours: harness.startHours,
 							activity: harness.activity,
 						})),
 					},

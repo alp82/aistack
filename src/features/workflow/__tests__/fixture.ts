@@ -1,7 +1,7 @@
 import type { WorkflowRow, WorkflowView } from "../copy";
 
 /**
- * One machine's reading, shaped as `getWorkflowByStackSlug` answers it.
+ * One machine's window, shaped as `getWorkflowByStackSlug` answers it (#285).
  *
  * The numbers are the #196 proof's, so the lead these tests assert against is
  * the same one the locked wording was checked with.
@@ -9,64 +9,45 @@ import type { WorkflowRow, WorkflowView } from "../copy";
 
 const MIN = 60;
 
-export function sessionRow(over: Partial<SessionRow> = {}): SessionRow {
-	return {
-		startHourUtc: 21,
-		eventCount: 40,
-		phaseSec: {
-			scout: 6 * MIN,
-			build: 3 * MIN,
-			verify: 0,
-			handoff: 0,
-			unknown: MIN,
-		},
-		phaseEvents: { scout: 20, build: 10, verify: 0, handoff: 0, unknown: 2 },
-		waitingSec: 0,
-		idleSec: 0,
-		merged: false,
-		verifyRuns: 0,
-		reviewRounds: 0,
-		openedWithScout: true,
-		...over,
-	};
+type LengthBucket = WorkflowView["section"]["harnesses"][number] extends {
+	phase?: { lengths: (infer B)[] };
 }
-
-type SessionRow = WorkflowView["section"]["harnesses"][number] extends {
-	phase?: { sessionRows: (infer R)[] };
-}
-	? R
+	? B
 	: never;
 
-/** Twenty sessions in two sizes, so `playbook-rules/v1` finds two tracks. */
-export function sessionRows(): SessionRow[] {
+/** Twenty sessions in two sizes, so `playbook-rules/v2` finds two tracks. */
+export function lengthBuckets(): LengthBucket[] {
 	return [
-		...Array.from({ length: 5 }, () =>
-			sessionRow({ verifyRuns: 1, reviewRounds: 1 }),
-		),
-		...Array.from({ length: 5 }, () =>
-			sessionRow({ reviewRounds: 3, openedWithScout: false }),
-		),
-		...Array.from({ length: 10 }, () =>
-			sessionRow({
-				phaseSec: {
-					scout: 20 * MIN,
-					build: 20 * MIN,
-					verify: 5 * MIN,
-					handoff: 2 * MIN,
-					unknown: 3 * MIN,
-				},
-				phaseEvents: {
-					scout: 40,
-					build: 40,
-					verify: 8,
-					handoff: 3,
-					unknown: 5,
-				},
-				verifyRuns: 2,
-				reviewRounds: 2,
-				merged: true,
-			}),
-		),
+		{
+			bucket: 4,
+			sessions: 10,
+			phaseSec: {
+				scout: 60 * MIN,
+				build: 30 * MIN,
+				verify: 0,
+				handoff: 0,
+				unknown: 10 * MIN,
+			},
+			merged: 0,
+			verified: 5,
+			mergedVerified: 0,
+			openedWithScout: 5,
+		},
+		{
+			bucket: 6,
+			sessions: 10,
+			phaseSec: {
+				scout: 200 * MIN,
+				build: 200 * MIN,
+				verify: 50 * MIN,
+				handoff: 20 * MIN,
+				unknown: 30 * MIN,
+			},
+			merged: 10,
+			verified: 10,
+			mergedVerified: 10,
+			openedWithScout: 10,
+		},
 	];
 }
 
@@ -75,8 +56,10 @@ export function row(over: Partial<WorkflowRow> = {}): WorkflowRow {
 		rowId: "metric:late-night-commits",
 		kind: "metric",
 		ruleId: "late-night-commits",
-		ruleVersion: "metric-rules/v1",
+		ruleVersion: "metric-rules/v2",
 		label: "of commits land between 23:00 and 03:00",
+		name: "Late-night commits",
+		flat: true,
 		unit: "share",
 		value: 0.42,
 		band: { low: 0, high: 0.15 },
@@ -84,7 +67,6 @@ export function row(over: Partial<WorkflowRow> = {}): WorkflowRow {
 		coverageTag: null,
 		surprise: 0.64,
 		fit: 0.86,
-		movement: null,
 		placement: "highlight",
 		pinned: false,
 		hidden: false,
@@ -92,7 +74,7 @@ export function row(over: Partial<WorkflowRow> = {}): WorkflowRow {
 	};
 }
 
-/** Three highlights, two thin rows, one behind the expander. */
+/** Three highlights and three thin rows, in the fixed order. */
 export function rows(): WorkflowRow[] {
 	return [
 		row(),
@@ -100,6 +82,7 @@ export function rows(): WorkflowRow[] {
 			rowId: "metric:parallel-projects",
 			ruleId: "parallel-projects",
 			label: "projects run in parallel on a median active day",
+			name: "Parallel projects",
 			unit: "count",
 			value: 2.8,
 			band: { low: 1, high: 1.5 },
@@ -109,44 +92,51 @@ export function rows(): WorkflowRow[] {
 			rowId: "component:phase-playbook",
 			kind: "component",
 			ruleId: "phase-playbook",
-			ruleVersion: "component-rules/v1",
-			label: "of measured time goes to a single phase",
-			value: 0.55,
-			band: { low: 0.25, high: 0.45 },
-			fit: 0.78,
+			ruleVersion: "component-rules/v2",
+			label: "median measured session",
+			name: "Session length",
+			flat: false,
+			unit: "minutes",
+			value: 45,
+			band: { low: 10, high: 60 },
+			fit: 0,
 		}),
 		row({
 			rowId: "component:git-ledger",
 			kind: "component",
 			ruleId: "git-ledger",
-			ruleVersion: "component-rules/v1",
+			ruleVersion: "component-rules/v2",
 			label: "of changed lines are removals",
+			name: "Lines changed",
+			flat: false,
 			value: 0.17,
 			band: { low: 0.15, high: 0.35 },
-			fit: 0.62,
+			fit: 0,
 			placement: "normal",
 		}),
 		row({
 			rowId: "metric:thinking-share",
 			ruleId: "thinking-share",
 			label: "of response tokens are thinking",
+			name: "Thinking tokens",
+			flat: false,
 			value: 0.38,
 			band: { low: 0.1, high: 0.3 },
 			coverage: 0.5,
 			coverageTag: "Claude Code",
 			fit: 0.44,
-			movement: 0.03,
 			placement: "normal",
 		}),
 		row({
 			rowId: "metric:web-searches-per-active-day",
 			ruleId: "web-searches-per-active-day",
 			label: "web searches per active day, inside the harness",
+			name: "Web searches",
 			unit: "count",
 			value: 6,
 			band: { low: 0, high: 4 },
 			fit: 0.24,
-			placement: "low",
+			placement: "normal",
 		}),
 	];
 }
@@ -163,15 +153,14 @@ export function view(over: Partial<WorkflowView> = {}): WorkflowView {
 				isCurrent: true,
 			},
 		],
+		window: { id: "30d", days: 22, from: "2026-07-28", to: "2026-08-26" },
 		capturedAt: 1_756_000_000_000,
 		receivedAt: 1_756_000_000_000,
 		isFresh: true,
 		cliVersion: "0.9.0",
-		aggregateVersion: "workflow-aggregates/v1",
+		aggregateVersion: "workflow-aggregates/v2",
 		utcOffsetMinutes: 120,
-		trimmed: null,
 		phaseRuleVersions: ["phase-rules/v1"],
-		metricRuleVersions: ["metric-rules/v1"],
 		mixedRuleVersions: false,
 		lead: {
 			sessionCount: 464,
@@ -190,8 +179,6 @@ export function view(over: Partial<WorkflowView> = {}): WorkflowView {
 			ruleVersion: "phase-rules/v1",
 		},
 		rows: rows(),
-		unknownMetricIds: [],
-		lastSwapDayUtc: null,
 		isOwner: false,
 		kit: [
 			{
@@ -206,33 +193,37 @@ export function view(over: Partial<WorkflowView> = {}): WorkflowView {
 			},
 		],
 		section: {
-			aggregateVersion: "workflow-aggregates/v1",
+			aggregateVersion: "workflow-aggregates/v2",
 			utcOffsetMinutes: 120,
+			dates: ["2026-08-24", "2026-08-25"],
 			harnesses: [
 				{
 					harness: "claude-code",
+					sessions: 20,
+					startHours: [{ hourUtc: 21, sessions: 20 }],
 					phase: {
 						ruleVersion: "phase-rules/v1",
-						publishable: true,
 						sessions: 20,
 						phaseSec: {
-							scout: 0,
-							build: 0,
-							verify: 0,
-							handoff: 0,
-							unknown: 0,
+							scout: 260 * MIN,
+							build: 230 * MIN,
+							verify: 50 * MIN,
+							handoff: 20 * MIN,
+							unknown: 40 * MIN,
 						},
 						phaseEvents: {
-							scout: 0,
-							build: 0,
-							verify: 0,
-							handoff: 0,
-							unknown: 0,
+							scout: 600,
+							build: 500,
+							verify: 80,
+							handoff: 30,
+							unknown: 70,
 						},
 						waitingSec: 0,
 						idleSec: 0,
-						unknownShare: 0.06,
-						sessionRows: sessionRows(),
+						sessionsWithVerify: 15,
+						sessionsWithHandoff: 12,
+						bucketRuleVersion: "log-buckets/v1",
+						lengths: lengthBuckets(),
 					},
 					routing: {
 						main: [{ model: "claude-opus-5", tokens: 890_000 }],
@@ -248,17 +239,30 @@ export function view(over: Partial<WorkflowView> = {}): WorkflowView {
 						{ weekdayUtc: 0, hourUtc: 21, events: 120 },
 						{ weekdayUtc: 3, hourUtc: 9, events: 40 },
 					],
+					effort: [
+						{ level: "medium", turns: 40 },
+						{ level: "high", turns: 60 },
+					],
+					thinking: { thinkingTokens: 38, responseTokens: 100 },
+					turnDurations: {
+						bucketRuleVersion: "log-buckets/v1",
+						buckets: [{ bucket: 6, turns: 100 }],
+					},
+					questions: { asked: 10, turns: 100 },
+					webSearches: 12,
 				},
 				{
 					harness: "opencode",
+					sessions: 0,
+					startHours: [],
 					activity: [],
 				},
 			],
 			git: {
-				testFileRuleVersion: "test-file-rules/v1",
-				fileTypeRuleVersion: "file-type-rules/v1",
+				testFileRuleVersion: "test-files/v2",
+				fileTypeRuleVersion: "file-types/v2",
 				commitSetRuleVersion: "commit-set/v1",
-				totalCommits: 120,
+				commits: 120,
 				lateNightCommits: 50,
 				additions: 94_800,
 				removals: 19_300,
@@ -276,7 +280,9 @@ export function view(over: Partial<WorkflowView> = {}): WorkflowView {
 					{ weekdayUtc: 5, hourUtc: 11, commits: 1 },
 				],
 			},
-			metrics: [],
+			parallelProjects: 3,
+			parallelProjectDays: [2, 3],
+			webSearchDays: 2,
 		},
 		...over,
 	};

@@ -1,20 +1,24 @@
 import {
 	classifyEvent,
 	deriveSessionPhases,
+	EFFORT_LEVELS,
+	type EffortLevel,
+	effortLevelOf,
+	type HarnessDay,
 	type HarnessEvent,
 	type HarnessName,
+	LOG_BUCKETS_V1,
+	logBucket,
 	PHASE_RULES_V1,
 	PHASES,
 	type PhaseId,
+	type SessionLengthBucket,
 	UNKNOWN_GATE,
-	type WorkflowFacts,
+	WORKFLOW_AGGREGATES_V2,
 } from "@aistack/workflow-rules";
 import { sanitizeModelId } from "../harness/shared/payload.js";
 
-export const WORKFLOW_AGGREGATE_VERSION = "workflow-aggregates/v1";
-
-type SessionFact = NonNullable<WorkflowFacts["sessions"]>[number];
-type ActiveDayFact = NonNullable<WorkflowFacts["activeDays"]>[number];
+export const WORKFLOW_AGGREGATE_VERSION = WORKFLOW_AGGREGATES_V2;
 
 export type WorkflowObservation = {
 	session: string;
@@ -37,48 +41,30 @@ export type WorkflowObservation = {
 	| { type: "turn"; turnId?: string; questionBack: boolean }
 );
 
-export type WorkflowPhaseSession = {
-	startHourUtc: number;
-	eventCount: number;
-	phaseSec: Record<PhaseId, number>;
-	phaseEvents: Record<PhaseId, number>;
-	waitingSec: number;
-	idleSec: number;
-	merged: boolean;
-	verifyRuns: number;
-	reviewRounds: number;
-	openedWithScout: boolean;
-};
+/** One harness's reading for one UTC day, with the day it belongs to. */
+export type HarnessDayRow = HarnessDay & { date: string };
 
+/**
+ * One harness's workflow reading over the sync window: one row per UTC day
+ * that saw a session start, an event, or a response (#285).
+ *
+ * THE GATE IS OVER THE WHOLE WINDOW. "`phase-rules/v1` ships only when a
+ * harness has 20 percent unknown time or less" (map notes), and a day is too
+ * small a sample to judge that on: a quiet day with one unclassified command
+ * would fail alone and pass inside its month. The extraction strips `phase`
+ * from every day of a harness that fails, so the wire carries no phase atoms
+ * a window could fold into a playbook the gate refused.
+ */
 export type HarnessWorkflowAggregate = {
 	aggregateVersion: typeof WORKFLOW_AGGREGATE_VERSION;
 	harness: HarnessName;
-	phase: {
+	gate: {
 		ruleVersion: typeof PHASE_RULES_V1;
 		publishable: boolean;
 		sessions: number;
-		phaseSec: Record<PhaseId, number>;
-		phaseEvents: Record<PhaseId, number>;
-		waitingSec: number;
-		idleSec: number;
 		unknownShare: number;
-		sessionRows: WorkflowPhaseSession[];
 	};
-	facts: {
-		sessions: SessionFact[];
-		activeDays: ActiveDayFact[];
-	};
-	routing?: {
-		main: Array<{ model: string; tokens: number }>;
-		subagents: Array<{ model: string; tokens: number }>;
-	};
-	delegation?: {
-		mainToolCalls: number;
-		subagentToolCalls: number;
-		widestFanOut: number;
-		mostSubagents: number;
-	};
-	activity: Array<{ weekdayUtc: number; hourUtc: number; events: number }>;
+	days: HarnessDayRow[];
 };
 
 /** Raw local keys used to join harness activity to Git. Never serialize this value. */
@@ -125,12 +111,12 @@ const emptyPhase = (): Record<PhaseId, number> => ({
 const finiteNonnegative = (value: number | undefined): number =>
 	value !== undefined && Number.isFinite(value) && value > 0 ? value : 0;
 
-const isHighEffort = (effort: string): boolean =>
-	["high", "xhigh", "max", "ultra"].includes(effort.toLowerCase());
-
 const bump = (map: Map<string, number>, key: string, amount = 1): void => {
 	map.set(key, (map.get(key) ?? 0) + amount);
 };
+
+export const utcDateOf = (ms: number): string =>
+	new Date(ms).toISOString().slice(0, 10);
 
 const PHASE_RANK: Record<PhaseId, number> = {
 	verify: 4,
@@ -181,23 +167,15 @@ function reduceEventBatches(
 	return output;
 }
 
-const verifyRuns = (
+const hasVerifyRun = (
 	events: readonly HarnessEvent[],
 	harness: HarnessName,
-): number => {
-	const phases = events.map((event) =>
-		deriveSessionPhases([event], PHASE_RULES_V1, harness).phaseEvents.verify > 0
-			? "verify"
-			: "other",
+): boolean =>
+	events.some(
+		(event) =>
+			deriveSessionPhases([event], PHASE_RULES_V1, harness).phaseEvents.verify >
+			0,
 	);
-	let runs = 0;
-	let inside = false;
-	for (const phase of phases) {
-		if (phase === "verify" && !inside) runs++;
-		inside = phase === "verify";
-	}
-	return runs;
-};
 
 function shellIncludes(arg: string, head: string): boolean {
 	return arg
@@ -220,18 +198,103 @@ function sessionState(): SessionState {
 	};
 }
 
+/** The accumulators behind one day's row, before they become plain arrays. */
+type DayState = {
+	sessions: number;
+	startHours: Map<number, number>;
+	phase: {
+		sessions: number;
+		phaseSec: Record<PhaseId, number>;
+		phaseEvents: Record<PhaseId, number>;
+		waitingSec: number;
+		idleSec: number;
+		sessionsWithVerify: number;
+		sessionsWithHandoff: number;
+		lengths: Map<number, SessionLengthBucket>;
+	};
+	routing: { main: Map<string, number>; subagents: Map<string, number> };
+	hasRouting: boolean;
+	delegation: {
+		mainToolCalls: number;
+		subagentToolCalls: number;
+		widestFanOut: number;
+		mostSubagents: number;
+	};
+	hasDelegation: boolean;
+	activity: Map<string, number>;
+	effort: Map<EffortLevel, number>;
+	hasEffort: boolean;
+	thinking: { thinkingTokens: number; responseTokens: number };
+	hasThinking: boolean;
+	turnDurations: Map<number, number>;
+	hasDurations: boolean;
+	questions: { asked: number; turns: number };
+	hasQuestions: boolean;
+	webSearches: number;
+	hasWebSearches: boolean;
+};
+
+function dayState(): DayState {
+	return {
+		sessions: 0,
+		startHours: new Map(),
+		phase: {
+			sessions: 0,
+			phaseSec: emptyPhase(),
+			phaseEvents: emptyPhase(),
+			waitingSec: 0,
+			idleSec: 0,
+			sessionsWithVerify: 0,
+			sessionsWithHandoff: 0,
+			lengths: new Map(),
+		},
+		routing: { main: new Map(), subagents: new Map() },
+		hasRouting: false,
+		delegation: {
+			mainToolCalls: 0,
+			subagentToolCalls: 0,
+			widestFanOut: 0,
+			mostSubagents: 0,
+		},
+		hasDelegation: false,
+		activity: new Map(),
+		effort: new Map(),
+		hasEffort: false,
+		thinking: { thinkingTokens: 0, responseTokens: 0 },
+		hasThinking: false,
+		turnDurations: new Map(),
+		hasDurations: false,
+		questions: { asked: 0, turns: 0 },
+		hasQuestions: false,
+		webSearches: 0,
+		hasWebSearches: false,
+	};
+}
+
 export type HarnessWorkflowReducer = {
 	ingest(observation: WorkflowObservation): void;
 	finish(): HarnessWorkflowAggregate;
 };
 
+/**
+ * Reduce one harness's observations into per-day rows of combinable atoms.
+ *
+ * A SESSION BELONGS TO THE UTC DAY IT STARTED. Its phase seconds, its length
+ * bucket, its model tokens, its effort and thinking and turn figures all land
+ * on that day, so a session spanning midnight counts once. Event cells and web
+ * searches land on the day of the event, so the heatmap stays exact.
+ *
+ * Nothing that names a path, a session, a command or a timestamp survives
+ * `finish()`: the wire carries counts, sums, maxes and bucket indexes.
+ */
 export function createHarnessWorkflowReducer(
 	harness: HarnessName,
 	localSources: WorkflowLocalSources = createWorkflowLocalSources(),
 ): HarnessWorkflowReducer {
 	const sessions = new Map<string, SessionState>();
-	const activity = new Map<string, number>();
+	const eventCells = new Map<string, Map<string, number>>();
 	const webSearchesByDate = new Map<string, number>();
+	const eventDates = new Set<string>();
 	let finished: HarnessWorkflowAggregate | undefined;
 
 	const getSession = (key: string): SessionState => {
@@ -259,7 +322,7 @@ export function createHarnessWorkflowReducer(
 			state.parentSession ??= observation.parentSession;
 			state.sidechain ||= observation.sidechain === true;
 			const at = new Date(observation.tsMs);
-			const date = at.toISOString().slice(0, 10);
+			const date = utcDateOf(observation.tsMs);
 			if (observation.projectWorkspace) {
 				state.projectWorkspaces.add(observation.projectWorkspace);
 				localSources.projectWorkspaces.add(observation.projectWorkspace);
@@ -271,7 +334,10 @@ export function createHarnessWorkflowReducer(
 					event: [observation.tsMs, observation.tool, arg],
 					...(observation.batchId ? { batchId: observation.batchId } : {}),
 				});
-				bump(activity, `${at.getUTCDay()}:${at.getUTCHours()}`);
+				eventDates.add(date);
+				const cells = eventCells.get(date) ?? new Map<string, number>();
+				bump(cells, `${at.getUTCDay()}:${at.getUTCHours()}`);
+				eventCells.set(date, cells);
 				if (["WebSearch", "web_search", "websearch"].includes(observation.tool))
 					bump(webSearchesByDate, date);
 			} else if (observation.type === "response") {
@@ -309,150 +375,138 @@ export function createHarnessWorkflowReducer(
 
 		finish(): HarnessWorkflowAggregate {
 			if (finished) return finished;
-			const phaseSec = emptyPhase();
-			const phaseEvents = emptyPhase();
-			const sessionRows: WorkflowPhaseSession[] = [];
-			const facts: SessionFact[] = [];
-			const modelTokens = {
-				main: new Map<string, number>(),
-				subagents: new Map<string, number>(),
+			const days = new Map<string, DayState>();
+			const dayOf = (date: string): DayState => {
+				let state = days.get(date);
+				if (!state) {
+					state = dayState();
+					days.set(date, state);
+				}
+				return state;
 			};
-			let waitingSec = 0;
-			let idleSec = 0;
-			let mainToolCalls = 0;
-			let subagentToolCalls = 0;
+
+			const windowPhaseSec = emptyPhase();
 			let phaseSessionCount = 0;
 
 			for (const state of sessions.values()) {
+				if (state.firstTs === undefined) continue;
+				const day = dayOf(utcDateOf(state.firstTs));
 				const events = reduceEventBatches(state.events, harness);
 				const responses = [...state.responses.values()];
-				const efforts = responses.flatMap((response) =>
-					response.effort ? [response.effort] : [],
-				);
-				const models = new Set(
-					responses.flatMap((response) =>
-						response.model ? [response.model] : [],
-					),
-				);
-				const thinkingResponses = responses.filter(
-					(response) => response.thinkingTokens !== undefined,
-				);
-				const outputResponses = responses.filter(
-					(response) => response.responseTokens !== undefined,
-				);
-				const durations = responses.flatMap((response) =>
-					response.durationSec === undefined ? [] : [response.durationSec],
-				);
-				const sessionFact: SessionFact = {
-					harness,
-					...(models.size > 0 ? { modelSwitched: models.size > 1 } : {}),
-					...(thinkingResponses.length > 0
-						? {
-								thinkingTokens: thinkingResponses.reduce(
-									(sum, response) => sum + (response.thinkingTokens ?? 0),
-									0,
-								),
-							}
-						: {}),
-					...(outputResponses.length > 0
-						? {
-								responseTokens: outputResponses.reduce(
-									(sum, response) => sum + (response.responseTokens ?? 0),
-									0,
-								),
-							}
-						: {}),
-					...(harness === "pi-mono"
-						? {}
-						: {
-								questionBackTurns: [...state.turns.values()].filter(Boolean)
-									.length,
-								totalTurns: state.turns.size,
-							}),
-				};
-				if (efforts.length > 0) {
-					sessionFact.effortTurns = {
-						high: efforts.filter(isHighEffort).length,
-						total: efforts.length,
-					};
-					sessionFact.effortChangedMidRun = new Set(efforts).size > 1;
-				}
-				if (durations.length > 0)
-					sessionFact.longestTurnDurationSec = Math.max(...durations);
-				facts.push(sessionFact);
 
+				day.sessions++;
+				const startHour = new Date(state.firstTs).getUTCHours();
+				day.startHours.set(startHour, (day.startHours.get(startHour) ?? 0) + 1);
+
+				// The phase reading of this session.
+				const phases = deriveSessionPhases(events, PHASE_RULES_V1, harness);
+				if (state.events.length > 0) phaseSessionCount++;
+				day.phase.sessions++;
+				for (const phase of PHASES) {
+					day.phase.phaseSec[phase] += phases.phaseSec[phase];
+					day.phase.phaseEvents[phase] += phases.phaseEvents[phase];
+					windowPhaseSec[phase] += phases.phaseSec[phase];
+				}
+				day.phase.waitingSec += phases.waitingSec;
+				day.phase.idleSec += phases.idleSec;
+				if (phases.phaseEvents.verify > 0) day.phase.sessionsWithVerify++;
+				if (phases.phaseEvents.handoff > 0) day.phase.sessionsWithHandoff++;
+
+				const measuredSec = PHASES.reduce(
+					(sum, phase) => sum + phases.phaseSec[phase],
+					0,
+				);
+				const bucket = logBucket(measuredSec / 60);
+				const merged = events.some(
+					([, tool, arg]) =>
+						["Bash", "bash", "shell", "local_shell", "exec_command"].includes(
+							tool,
+						) && shellIncludes(arg, "gh pr merge"),
+				);
+				const verified = hasVerifyRun(events, harness);
+				const openedWithScout =
+					(events[0]
+						? deriveSessionPhases([events[0]], PHASE_RULES_V1, harness)
+								.phaseEvents.scout
+						: 0) > 0;
+				const length = day.phase.lengths.get(bucket) ?? {
+					bucket,
+					sessions: 0,
+					phaseSec: emptyPhase(),
+					merged: 0,
+					verified: 0,
+					mergedVerified: 0,
+					openedWithScout: 0,
+				};
+				length.sessions++;
+				for (const phase of PHASES)
+					length.phaseSec[phase] += phases.phaseSec[phase];
+				if (merged) length.merged++;
+				if (verified) length.verified++;
+				if (merged && verified) length.mergedVerified++;
+				if (openedWithScout) length.openedWithScout++;
+				day.phase.lengths.set(bucket, length);
+
+				// Routing and delegation.
 				const routing =
 					state.sidechain || state.parentSession ? "subagents" : "main";
 				for (const response of responses) {
 					if (!response.model) continue;
+					day.hasRouting = true;
 					bump(
-						modelTokens[routing],
+						day.routing[routing],
 						response.model,
 						response.routingTokens ?? response.responseTokens ?? 0,
 					);
 				}
-				if (routing === "subagents") subagentToolCalls += state.events.length;
-				else mainToolCalls += state.events.length;
+				if (routing === "subagents") {
+					day.delegation.subagentToolCalls += state.events.length;
+					day.hasDelegation ||= state.events.length > 0;
+				} else day.delegation.mainToolCalls += state.events.length;
 
-				if (state.events.length > 0) phaseSessionCount++;
-				const phases = deriveSessionPhases(events, PHASE_RULES_V1, harness);
-				for (const phase of PHASES) {
-					phaseSec[phase] += phases.phaseSec[phase];
-					phaseEvents[phase] += phases.phaseEvents[phase];
+				// Effort, thinking, turn durations and questions.
+				for (const response of responses) {
+					if (response.effort) {
+						day.hasEffort = true;
+						const level = effortLevelOf(response.effort);
+						day.effort.set(level, (day.effort.get(level) ?? 0) + 1);
+					}
+					if (response.thinkingTokens !== undefined) {
+						day.hasThinking = true;
+						day.thinking.thinkingTokens += response.thinkingTokens;
+						day.thinking.responseTokens += response.responseTokens ?? 0;
+					}
+					if (response.durationSec !== undefined) {
+						day.hasDurations = true;
+						const durationBucket = logBucket(response.durationSec);
+						day.turnDurations.set(
+							durationBucket,
+							(day.turnDurations.get(durationBucket) ?? 0) + 1,
+						);
+					}
 				}
-				waitingSec += phases.waitingSec;
-				idleSec += phases.idleSec;
-				const first = state.firstTs;
-				const classifications = events.map((event) =>
-					deriveSessionPhases([event], PHASE_RULES_V1, harness),
-				);
-				sessionRows.push({
-					startHourUtc: first === undefined ? 0 : new Date(first).getUTCHours(),
-					eventCount: events.length,
-					phaseSec: phases.phaseSec,
-					phaseEvents: phases.phaseEvents,
-					waitingSec: phases.waitingSec,
-					idleSec: phases.idleSec,
-					merged: events.some(
-						([, tool, arg]) =>
-							["Bash", "bash", "shell", "local_shell", "exec_command"].includes(
-								tool,
-							) && shellIncludes(arg, "gh pr merge"),
-					),
-					verifyRuns: verifyRuns(events, harness),
-					reviewRounds: events.filter(([, tool]) =>
-						["mcp__curia__request_review", "request_review"].includes(tool),
-					).length,
-					openedWithScout: (classifications[0]?.phaseEvents.scout ?? 0) > 0,
-				});
-			}
-
-			const attributed = PHASES.reduce(
-				(sum, phase) => sum + phaseSec[phase],
-				0,
-			);
-			const unknown = attributed === 0 ? 0 : phaseSec.unknown / attributed;
-			localSources.activeProjectDays.clear();
-			for (const state of sessions.values()) {
-				if (state.firstTs === undefined || state.lastTs === undefined) continue;
-				let day = Date.parse(
-					`${new Date(state.firstTs).toISOString().slice(0, 10)}T00:00:00Z`,
-				);
-				const lastDay = Date.parse(
-					`${new Date(state.lastTs).toISOString().slice(0, 10)}T00:00:00Z`,
-				);
-				while (day <= lastDay) {
-					const date = new Date(day).toISOString().slice(0, 10);
-					const projects =
-						localSources.activeProjectDays.get(date) ?? new Set();
-					for (const project of state.projectWorkspaces) projects.add(project);
-					if (projects.size > 0)
-						localSources.activeProjectDays.set(date, projects);
-					day += 86_400_000;
+				if (harness !== "pi-mono") {
+					day.hasQuestions = true;
+					day.questions.turns += state.turns.size;
+					day.questions.asked += [...state.turns.values()].filter(
+						Boolean,
+					).length;
 				}
 			}
-			const projectsByDate = localSources.activeProjectDays;
 
+			// Event cells and web searches, on the day of the event.
+			for (const date of eventDates) {
+				const day = dayOf(date);
+				for (const [key, events] of eventCells.get(date) ?? []) {
+					bump(day.activity, key, events);
+				}
+				if (harness !== "pi-mono") {
+					day.hasWebSearches = true;
+					day.webSearches = webSearchesByDate.get(date) ?? 0;
+				}
+			}
+
+			// Fan-out, on the parent's start day.
 			const childrenByParent = new Map<string, SessionState[]>();
 			for (const state of sessions.values()) {
 				if (!state.parentSession) continue;
@@ -460,10 +514,18 @@ export function createHarnessWorkflowReducer(
 				children.push(state);
 				childrenByParent.set(state.parentSession, children);
 			}
-			let widestFanOut = 0;
-			let mostSubagents = 0;
-			for (const children of childrenByParent.values()) {
-				mostSubagents = Math.max(mostSubagents, children.length);
+			for (const [parentKey, children] of childrenByParent) {
+				const parent = sessions.get(parentKey);
+				const anchor =
+					parent?.firstTs ??
+					Math.min(...children.map((child) => child.firstTs ?? Infinity));
+				if (!Number.isFinite(anchor)) continue;
+				const day = dayOf(utcDateOf(anchor));
+				day.hasDelegation = true;
+				day.delegation.mostSubagents = Math.max(
+					day.delegation.mostSubagents,
+					children.length,
+				);
 				const boundaries = children.flatMap((child) => [
 					{ ts: child.firstTs ?? 0, delta: 1 },
 					{ ts: child.lastTs ?? child.firstTs ?? 0, delta: -1 },
@@ -472,74 +534,134 @@ export function createHarnessWorkflowReducer(
 				let active = 0;
 				for (const boundary of boundaries) {
 					active += boundary.delta;
-					widestFanOut = Math.max(widestFanOut, active);
+					day.delegation.widestFanOut = Math.max(
+						day.delegation.widestFanOut,
+						active,
+					);
 				}
 			}
+
+			// The workspace-day marks Git and the parallel-project count read.
+			localSources.activeProjectDays.clear();
+			for (const state of sessions.values()) {
+				if (state.firstTs === undefined || state.lastTs === undefined) continue;
+				let day = Date.parse(`${utcDateOf(state.firstTs)}T00:00:00Z`);
+				const lastDay = Date.parse(`${utcDateOf(state.lastTs)}T00:00:00Z`);
+				while (day <= lastDay) {
+					const date = utcDateOf(day);
+					const projects =
+						localSources.activeProjectDays.get(date) ?? new Set();
+					for (const project of state.projectWorkspaces) projects.add(project);
+					if (projects.size > 0)
+						localSources.activeProjectDays.set(date, projects);
+					day += 86_400_000;
+				}
+			}
+
+			const attributed = PHASES.reduce(
+				(sum, phase) => sum + windowPhaseSec[phase],
+				0,
+			);
+			const unknown =
+				attributed === 0 ? 0 : windowPhaseSec.unknown / attributed;
+			const routesModels = harness === "claude-code" || harness === "opencode";
 
 			const asRows = (map: Map<string, number>) => {
 				const safe = new Map<string, number>();
 				for (const [model, tokens] of map) {
 					bump(safe, sanitizeModelId(model), tokens);
 				}
-				return [...safe].map(([model, tokens]) => ({ model, tokens }));
+				return [...safe]
+					.map(([model, tokens]) => ({ model, tokens }))
+					.sort(
+						(a, b) => b.tokens - a.tokens || a.model.localeCompare(b.model),
+					);
 			};
-			const hasDelegation =
-				subagentToolCalls > 0 || mostSubagents > 0 || widestFanOut > 0;
 
 			finished = {
 				aggregateVersion: WORKFLOW_AGGREGATE_VERSION,
 				harness,
-				phase: {
+				gate: {
 					ruleVersion: PHASE_RULES_V1,
 					publishable: phaseSessionCount > 0 && unknown <= UNKNOWN_GATE,
 					sessions: sessions.size,
-					phaseSec,
-					phaseEvents,
-					waitingSec,
-					idleSec,
 					unknownShare: unknown,
-					sessionRows,
 				},
-				facts: {
-					sessions: facts,
-					activeDays: [...projectsByDate]
-						.sort(([a], [b]) => a.localeCompare(b))
-						.map(([date, projects]) => ({
-							date,
-							parallelProjectCount: projects.size,
-							...(harness === "pi-mono"
-								? {}
-								: { webSearches: webSearchesByDate.get(date) ?? 0 }),
-						})),
-				},
-				...(harness === "claude-code" || harness === "opencode"
-					? {
-							routing: {
-								main: asRows(modelTokens.main),
-								subagents: asRows(modelTokens.subagents),
-							},
-						}
-					: {}),
-				...(hasDelegation
-					? {
-							delegation: {
-								mainToolCalls,
-								subagentToolCalls,
-								widestFanOut,
-								mostSubagents,
-							},
-						}
-					: {}),
-				activity: [...activity]
-					.map(([key, events]) => {
-						const [weekdayUtc, hourUtc] = key.split(":").map(Number);
-						return { weekdayUtc, hourUtc, events };
-					})
-					.sort((a, b) => a.weekdayUtc - b.weekdayUtc || a.hourUtc - b.hourUtc),
+				days: [...days]
+					.sort(([a], [b]) => a.localeCompare(b))
+					.map(([date, day]) => ({
+						date,
+						harness,
+						sessions: day.sessions,
+						startHours: [...day.startHours]
+							.map(([hourUtc, count]) => ({ hourUtc, sessions: count }))
+							.sort((a, b) => a.hourUtc - b.hourUtc),
+						...(day.phase.sessions > 0
+							? {
+									phase: {
+										ruleVersion: PHASE_RULES_V1,
+										sessions: day.phase.sessions,
+										phaseSec: day.phase.phaseSec,
+										phaseEvents: day.phase.phaseEvents,
+										waitingSec: day.phase.waitingSec,
+										idleSec: day.phase.idleSec,
+										sessionsWithVerify: day.phase.sessionsWithVerify,
+										sessionsWithHandoff: day.phase.sessionsWithHandoff,
+										bucketRuleVersion: LOG_BUCKETS_V1,
+										lengths: [...day.phase.lengths.values()].sort(
+											(a, b) => a.bucket - b.bucket,
+										),
+									},
+								}
+							: {}),
+						...(routesModels && day.hasRouting
+							? {
+									routing: {
+										main: asRows(day.routing.main),
+										subagents: asRows(day.routing.subagents),
+									},
+								}
+							: {}),
+						...(day.hasDelegation ? { delegation: day.delegation } : {}),
+						activity: [...day.activity]
+							.map(([key, events]) => {
+								const [weekdayUtc, hourUtc] = key.split(":").map(Number);
+								return {
+									weekdayUtc: weekdayUtc ?? 0,
+									hourUtc: hourUtc ?? 0,
+									events,
+								};
+							})
+							.sort(
+								(a, b) => a.weekdayUtc - b.weekdayUtc || a.hourUtc - b.hourUtc,
+							),
+						...(day.hasEffort
+							? {
+									effort: EFFORT_LEVELS.flatMap((level) => {
+										const turns = day.effort.get(level) ?? 0;
+										return turns > 0 ? [{ level, turns }] : [];
+									}),
+								}
+							: {}),
+						...(day.hasThinking ? { thinking: day.thinking } : {}),
+						...(day.hasDurations
+							? {
+									turnDurations: {
+										bucketRuleVersion: LOG_BUCKETS_V1,
+										buckets: [...day.turnDurations]
+											.map(([bucket, turns]) => ({ bucket, turns }))
+											.sort((a, b) => a.bucket - b.bucket),
+									},
+								}
+							: {}),
+						...(day.hasQuestions ? { questions: day.questions } : {}),
+						...(day.hasWebSearches ? { webSearches: day.webSearches } : {}),
+					})),
 			};
 			sessions.clear();
-			activity.clear();
+			eventCells.clear();
 			webSearchesByDate.clear();
+			eventDates.clear();
 			return finished;
 		},
 	};

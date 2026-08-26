@@ -16,7 +16,13 @@ const STRANGER = {
 
 type Ctx = Awaited<ReturnType<typeof convexTest>>
 type StoredPayload = Doc<'measuredSnapshots'>['payload']
-type Section = Doc<'measuredWorkflows'>['section']
+type Day = Doc<'measuredWorkflowDays'>['day']
+type Wire = { aggregateVersion: string; utcOffsetMinutes?: number; days: Day[] }
+
+const DAY_MS = 24 * 60 * 60 * 1000
+const utcDay = (ms: number) => new Date(ms).toISOString().slice(0, 10)
+/** Dates relative to the test's own clock, so the window tests never age out. */
+const daysAgo = (n: number) => utcDay(Date.now() - n * DAY_MS)
 
 function payload(over: Record<string, unknown> = {}): StoredPayload {
   return {
@@ -73,54 +79,66 @@ const PHASE_TOTALS = {
   unknown: 70,
 }
 
-function sessionRow(over: Record<string, unknown> = {}) {
+/** One day shaped exactly like the wire's, with every optional block present. */
+function day(over: Partial<Day> = {}): Day {
   return {
-    startHourUtc: 21,
-    eventCount: 40,
-    phaseSec: { ...PHASE_TOTALS },
-    phaseEvents: { scout: 30, build: 10, verify: 2, handoff: 1, unknown: 1 },
-    waitingSec: 20,
-    idleSec: 5,
-    merged: false,
-    verifyRuns: 1,
-    reviewRounds: 1,
-    openedWithScout: true,
-    ...over,
-  }
-}
-
-/** A section shaped exactly like the wire's, with one measured pool metric. */
-function section(over: Partial<Section> = {}): Section {
-  return {
-    aggregateVersion: 'workflow-aggregates/v1',
-    utcOffsetMinutes: 120,
+    date: daysAgo(1),
     harnesses: [
       {
         harness: 'claude-code',
+        sessions: 10,
+        startHours: [{ hourUtc: 21, sessions: 10 }],
         phase: {
           ruleVersion: 'phase-rules/v1',
-          publishable: true,
-          sessions: 2,
+          sessions: 10,
           phaseSec: { ...PHASE_TOTALS },
-          phaseEvents: {
-            scout: 60,
-            build: 20,
-            verify: 6,
-            handoff: 5,
-            unknown: 7,
-          },
+          phaseEvents: { scout: 60, build: 20, verify: 6, handoff: 5, unknown: 7 },
           waitingSec: 30,
           idleSec: 10,
-          unknownShare: 0.07,
-          sessionRows: [sessionRow(), sessionRow()],
+          sessionsWithVerify: 4,
+          sessionsWithHandoff: 6,
+          bucketRuleVersion: 'log-buckets/v1',
+          lengths: [
+            {
+              bucket: 4,
+              sessions: 10,
+              phaseSec: { ...PHASE_TOTALS },
+              merged: 2,
+              verified: 4,
+              mergedVerified: 2,
+              openedWithScout: 6,
+            },
+          ],
+        },
+        routing: {
+          main: [{ model: 'claude-opus-5', tokens: 800 }],
+          subagents: [{ model: 'claude-sonnet-5', tokens: 200 }],
+        },
+        delegation: {
+          mainToolCalls: 90,
+          subagentToolCalls: 10,
+          widestFanOut: 2,
+          mostSubagents: 3,
         },
         activity: [{ weekdayUtc: 1, hourUtc: 21, events: 40 }],
+        effort: [
+          { level: 'medium', turns: 4 },
+          { level: 'high', turns: 6 },
+        ],
+        thinking: { thinkingTokens: 250, responseTokens: 1000 },
+        turnDurations: {
+          bucketRuleVersion: 'log-buckets/v1',
+          buckets: [{ bucket: 6, turns: 10 }],
+        },
+        questions: { asked: 1, turns: 20 },
+        webSearches: 2,
       },
     ],
     git: {
-      testFileRuleVersion: 'test-file-rules/v1',
-      fileTypeRuleVersion: 'file-type-rules/v1',
-      totalCommits: 20,
+      testFileRuleVersion: 'test-files/v2',
+      fileTypeRuleVersion: 'file-types/v2',
+      commitSetRuleVersion: 'commit-set/v1',
+      commits: 20,
       lateNightCommits: 9,
       additions: 800,
       removals: 200,
@@ -130,17 +148,18 @@ function section(over: Partial<Section> = {}): Section {
       withheldExtensionLines: 100,
       weekdayHourCells: [{ weekdayUtc: 1, hourUtc: 23, commits: 9 }],
     },
-    metrics: [
-      {
-        metricId: 'late-night-commits',
-        ruleVersion: 'metric-rules/v1',
-        value: 0.45,
-        band: { low: 0, high: 0.15 },
-        coverage: 1,
-      },
-    ],
+    parallelProjects: 2,
     ...over,
-  } as Section
+  }
+}
+
+function wire(days: Day[] = [day()], over: Partial<Wire> = {}): Wire {
+  return {
+    aggregateVersion: 'workflow-aggregates/v2',
+    utcOffsetMinutes: 120,
+    days,
+    ...over,
+  }
 }
 
 async function seedStack(
@@ -180,139 +199,118 @@ async function seedStack(
 async function publish(
   t: Ctx,
   stackId: Doc<'stacks'>['_id'],
-  opts: {
-    machine?: string
-    workflow?: Section
-    payload?: StoredPayload
-  } = {},
+  opts: { machine?: string; workflow?: Wire; payload?: StoredPayload } = {},
 ) {
   await t.mutation(internal.measured.publishSnapshot, {
     stackId,
     payload: opts.payload ?? payload(),
     ...(opts.machine === undefined ? {} : { machine: opts.machine }),
-    workflow: opts.workflow ?? section(),
+    workflow: opts.workflow ?? wire(),
   })
 }
 
-describe('storing a workflow section', () => {
-  test('a publish stores one reading against the machine that sent it', async () => {
+const storedDays = (t: Ctx) =>
+  t.run(async (ctx) => ctx.db.query('measuredWorkflowDays').collect())
+
+describe('storing workflow days', () => {
+  test('a publish stores one row per day against the machine that sent it', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
-    await publish(t, stackId, { machine: 'laptop' })
-
-    const rows = await t.run(async (ctx) =>
-      ctx.db.query('measuredWorkflows').collect(),
-    )
-    expect(rows).toHaveLength(1)
-    expect(rows[0]).toMatchObject({
-      machine: 'laptop',
-      section: expect.objectContaining({
-        aggregateVersion: 'workflow-aggregates/v1',
-      }),
-    })
-  })
-
-  test('a second sync replaces the reading rather than appending one', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId } = await seedStack(t)
-    await publish(t, stackId, { machine: 'laptop' })
     await publish(t, stackId, {
       machine: 'laptop',
-      workflow: section({
-        metrics: [
-          {
-            metricId: 'late-night-commits',
-            ruleVersion: 'metric-rules/v1',
-            value: 0.6,
-            band: { low: 0, high: 0.15 },
-            coverage: 1,
-          },
-        ],
-      }),
+      workflow: wire([day({ date: daysAgo(2) }), day({ date: daysAgo(1) })]),
     })
 
-    const rows = await t.run(async (ctx) =>
-      ctx.db.query('measuredWorkflows').collect(),
-    )
-    expect(rows).toHaveLength(1)
-    // The replaced reading survives only as the values the movement tie-break
-    // compares against.
-    expect(rows[0]?.previousRowValues).toContainEqual({
-      rowId: 'metric:late-night-commits',
-      value: 0.45,
-      coverage: 1,
-    })
-    expect(rows[0]?.rowValues).toContainEqual({
-      rowId: 'metric:late-night-commits',
-      value: 0.6,
-      coverage: 1,
+    const rows = await storedDays(t)
+    expect(rows.map((row) => [row.machine, row.date]).sort()).toEqual([
+      ['laptop', daysAgo(2)],
+      ['laptop', daysAgo(1)],
+    ])
+    expect(rows[0]).toMatchObject({
+      aggregateVersion: 'workflow-aggregates/v2',
+      utcOffsetMinutes: 120,
     })
   })
 
-  test('two machines keep two readings, because a reading is one machine’s', async () => {
+  test('a re-synced day replaces that day, and new days append', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    await publish(t, stackId, {
+      machine: 'laptop',
+      workflow: wire([day({ date: daysAgo(3) }), day({ date: daysAgo(2) })]),
+    })
+    await publish(t, stackId, {
+      machine: 'laptop',
+      workflow: wire([
+        day({ date: daysAgo(2), git: { ...day().git, commits: 1 } }),
+        day({ date: daysAgo(1) }),
+      ]),
+    })
+
+    const rows = await storedDays(t)
+    expect(rows.map((row) => row.date).sort()).toEqual([
+      daysAgo(3),
+      daysAgo(2),
+      daysAgo(1),
+    ])
+    // The replaced day holds the second sync's reading, not the sum of both.
+    expect(rows.find((row) => row.date === daysAgo(2))?.day.git.commits).toBe(1)
+  })
+
+  test('two machines keep two series, because a reading is one machine’s', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
     await publish(t, stackId, { machine: 'laptop' })
     await publish(t, stackId, { machine: 'vps' })
 
-    const rows = await t.run(async (ctx) =>
-      ctx.db.query('measuredWorkflows').collect(),
-    )
+    const rows = await storedDays(t)
     expect(rows.map((row) => row.machine).sort()).toEqual(['laptop', 'vps'])
   })
 
-  test('the podium is computed at the sync and stored', async () => {
+  test('a day past retention leaves when the machine syncs', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
-    await publish(t, stackId, { machine: 'laptop' })
-
-    const row = await t.run(async (ctx) =>
-      ctx.db.query('measuredWorkflows').first(),
+    await t.run(async (ctx) =>
+      ctx.db.insert('measuredWorkflowDays', {
+        stackId,
+        machine: 'laptop',
+        date: '2020-01-01',
+        capturedAt: 0,
+        receivedAt: 0,
+        aggregateVersion: 'workflow-aggregates/v2',
+        day: day({ date: '2020-01-01' }),
+      }),
     )
-    expect(row?.highlightRowIds).toHaveLength(3)
-    // Nothing has been displaced yet, so no swap has been spent.
-    expect(row?.lastSwapDayUtc).toBeUndefined()
+    await publish(t, stackId, {
+      machine: 'laptop',
+      workflow: wire([day({ date: daysAgo(1) })]),
+    })
+    expect((await storedDays(t)).map((row) => row.date)).toEqual([daysAgo(1)])
   })
 
-  test('a section too large to store drops its heaviest detail instead of failing the sync', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId } = await seedStack(t)
-    const heavy = section()
-    const harness = heavy.harnesses[0]
-    if (harness?.phase) {
-      harness.phase.sessionRows = Array.from({ length: 4_000 }, () =>
-        sessionRow(),
-      )
-    }
-
-    await publish(t, stackId, { machine: 'laptop', workflow: heavy })
-
-    const row = await t.run(async (ctx) =>
-      ctx.db.query('measuredWorkflows').first(),
-    )
-    expect(row?.trimmed).toEqual({ commitStrip: true, sessionRows: true })
-    expect(row?.section.harnesses[0]?.phase?.sessionRows).toEqual([])
-    // The harness-level totals are what the trim protects.
-    expect(row?.section.harnesses[0]?.phase?.phaseSec.scout).toBe(640)
-  })
-
-  test('a malformed section refuses the publish, and nothing lands', async () => {
+  test('a malformed wire refuses the publish, and nothing lands', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
 
     await expect(
       publish(t, stackId, {
         machine: 'laptop',
-        workflow: section({ aggregateVersion: '' }),
+        workflow: wire([day({ date: 'yesterday' })]),
       }),
-    ).rejects.toThrow(/aggregateVersion/)
+    ).rejects.toThrow(/date must be a UTC date/)
+    await expect(
+      publish(t, stackId, {
+        machine: 'laptop',
+        workflow: wire([day(), day()]),
+      }),
+    ).rejects.toThrow(/distinct date/)
     expect(
       await t.run(async (ctx) => ctx.db.query('measuredSnapshots').collect()),
     ).toHaveLength(0)
   })
 })
 
-describe('reading the section', () => {
+describe('reading a window', () => {
   test('a stack that never synced a workflow has no section', async () => {
     const t = convexTest(schema, modules)
     const { slug, stackId } = await seedStack(t)
@@ -325,24 +323,65 @@ describe('reading the section', () => {
     ).toBeNull()
   })
 
-  test('the reading ranks sixteen rows into the podium, the rest, and the fold', async () => {
+  test('the default window folds the last 30 days into the fixed row order', async () => {
     const t = convexTest(schema, modules)
     const { stackId, slug } = await seedStack(t)
-    await publish(t, stackId, { machine: 'laptop' })
+    await publish(t, stackId, {
+      machine: 'laptop',
+      workflow: wire([
+        day({ date: daysAgo(40) }),
+        day({ date: daysAgo(10) }),
+        day({ date: daysAgo(1) }),
+      ]),
+    })
 
     const view = await t.query(api.workflow.getWorkflowByStackSlug, { slug })
-    expect(view?.rows.filter((r) => r.placement === 'highlight')).toHaveLength(3)
-    // Fit falls monotonically down the row order.
-    const fits = view?.rows.map((r) => r.fit) ?? []
-    expect([...fits].sort((a, b) => b - a)).toEqual(fits)
-    // The one measured pool metric is on the podium: 0.45 against a 0 to 0.15
-    // band is far outside it, at full coverage.
-    const nightly = view?.rows.find(
-      (r) => r.rowId === 'metric:late-night-commits',
-    )
-    expect(nightly?.surprise).toBeCloseTo(0.3 / 0.45, 10)
+    expect(view?.window).toMatchObject({ id: '30d', days: 2 })
+    // Two days folded: 40 commits, 20 sessions.
+    expect(view?.section.git.commits).toBe(40)
+    expect(view?.section.harnesses[0]?.sessions).toBe(20)
+    expect(view?.section.dates).toEqual([daysAgo(10), daysAgo(1)])
+    // The podium is the first three rows in the fixed order.
+    expect(
+      view?.rows.filter((r) => r.placement === 'highlight').map((r) => r.rowId),
+    ).toEqual([
+      'component:activity-heatmap',
+      'component:start-hours',
+      'metric:late-night-commits',
+    ])
+    const nightly = view?.rows.find((r) => r.rowId === 'metric:late-night-commits')
+    expect(nightly?.value).toBeCloseTo(0.45, 10)
+    expect(nightly?.name).toBe('Late-night commits')
+    expect(nightly?.flat).toBe(true)
+    // Fit rides along as a number nothing ranks by.
     expect(nightly?.fit).toBeCloseTo(0.3 / 0.45, 10)
-    expect(nightly?.movement).toBeNull()
+  })
+
+  test('the 7-day and 24-hour windows fold fewer days, and an empty one is the empty state', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    await publish(t, stackId, {
+      machine: 'laptop',
+      workflow: wire([day({ date: daysAgo(10) }), day({ date: daysAgo(3) })]),
+    })
+
+    const week = await t.query(api.workflow.getWorkflowByStackSlug, {
+      slug,
+      window: '7d',
+    })
+    expect(week?.window).toMatchObject({ id: '7d', days: 1 })
+    expect(week?.section.git.commits).toBe(20)
+
+    const today = await t.query(api.workflow.getWorkflowByStackSlug, {
+      slug,
+      window: '24h',
+    })
+    expect(today?.window).toMatchObject({ id: '24h', days: 0 })
+    expect(today?.rows).toEqual([])
+    expect(today?.section.harnesses).toEqual([])
+    // The machine list and the clock still describe the machine.
+    expect(today?.machines).toHaveLength(1)
+    expect(today?.utcOffsetMinutes).toBe(120)
   })
 
   test('the lead facts count every synced session, gate-held harnesses included', async () => {
@@ -355,6 +394,8 @@ describe('reading the section', () => {
       sessionCount: 142,
       harnessCount: 1,
       playbookHarnessCount: 1,
+      verifySessionShare: 0.4,
+      handoffSessionShare: 0.6,
       // 21:00 UTC on a machine two hours east.
       modalStartHourOwnerLocal: 23,
       ruleVersion: 'phase-rules/v1',
@@ -363,27 +404,20 @@ describe('reading the section', () => {
     expect(view?.mixedRuleVersions).toBe(false)
   })
 
-  test('a reading classified by two rule sets is tagged as mixed', async () => {
+  test('a window that straddles a rule bump is tagged as mixed', async () => {
     const t = convexTest(schema, modules)
     const { stackId, slug } = await seedStack(t)
-    const twoVersions = section()
-    const first = twoVersions.harnesses[0]
-    twoVersions.harnesses = [
-      first,
-      {
-        ...first,
-        harness: 'codex',
-        phase: { ...first?.phase, ruleVersion: 'phase-rules/v2' },
-      },
-    ] as Section['harnesses']
+    const older = day({ date: daysAgo(2) })
+    const newer = day({ date: daysAgo(1) })
+    const phase = newer.harnesses[0]?.phase
+    if (newer.harnesses[0] && phase) {
+      newer.harnesses[0].phase = { ...phase, ruleVersion: 'phase-rules/v2' }
+    }
 
-    await publish(t, stackId, { machine: 'laptop', workflow: twoVersions })
+    await publish(t, stackId, { machine: 'laptop', workflow: wire([older, newer]) })
     const view = await t.query(api.workflow.getWorkflowByStackSlug, { slug })
     expect(view?.mixedRuleVersions).toBe(true)
-    expect(view?.phaseRuleVersions).toEqual([
-      'phase-rules/v1',
-      'phase-rules/v2',
-    ])
+    expect(view?.phaseRuleVersions).toEqual(['phase-rules/v1', 'phase-rules/v2'])
     expect(view?.lead.ruleVersion).toBe('phase-rules/v1 · phase-rules/v2')
   })
 
@@ -428,10 +462,10 @@ describe('reading the section', () => {
     await publish(t, stackId, { machine: 'vps' })
     // Both landed inside one millisecond here, which no pair of real syncs does.
     await t.run(async (ctx) => {
-      const vps = (await ctx.db.query('measuredWorkflows').collect()).find(
-        (row) => row.machine === 'vps',
-      )
-      if (vps) await ctx.db.patch(vps._id, { receivedAt: vps.receivedAt + 1_000 })
+      const rows = await ctx.db.query('measuredWorkflowDays').collect()
+      for (const row of rows.filter((r) => r.machine === 'vps')) {
+        await ctx.db.patch(row._id, { receivedAt: row.receivedAt + 1_000 })
+      }
     })
 
     const view = await t
@@ -442,7 +476,7 @@ describe('reading the section', () => {
     expect(view?.machines.filter((m) => m.isCurrent)).toHaveLength(1)
   })
 
-  test('turning the workflow switch off hides the reading already sent', async () => {
+  test('turning the workflow switch off hides the days already sent', async () => {
     const t = convexTest(schema, modules)
     const { stackId, slug } = await seedStack(t)
     await publish(t, stackId, { machine: 'laptop' })
@@ -493,28 +527,24 @@ describe('reading the section', () => {
 })
 
 describe('the owner controls', () => {
-  test('a pin puts a low-fit row on the podium', async () => {
+  test('a pin puts a later row on the podium, ahead of the fixed order', async () => {
     const t = convexTest(schema, modules)
     const { stackId, slug } = await seedStack(t)
     await publish(t, stackId, { machine: 'laptop' })
 
-    const before = await t.query(api.workflow.getWorkflowByStackSlug, { slug })
-    const folded = before?.rows.find((r) => r.placement !== 'highlight')
-    expect(folded).toBeDefined()
-
     await t.withIdentity(IDENTITY).mutation(api.workflow.setWorkflowRowOverride, {
       stackId,
-      rowId: folded?.rowId as string,
+      rowId: 'metric:parallel-projects',
       state: 'pinned',
     })
 
     const after = await t.query(api.workflow.getWorkflowByStackSlug, { slug })
-    const pinned = after?.rows.find((r) => r.rowId === folded?.rowId)
-    expect(pinned?.placement).toBe('highlight')
-    expect(pinned?.pinned).toBe(true)
-    expect(after?.rows.filter((r) => r.placement === 'highlight')).toHaveLength(
-      3,
-    )
+    expect(after?.rows[0]).toMatchObject({
+      rowId: 'metric:parallel-projects',
+      placement: 'highlight',
+      pinned: true,
+    })
+    expect(after?.rows.filter((r) => r.placement === 'highlight')).toHaveLength(3)
   })
 
   test('a hidden row leaves the public page and stays in the owner’s own view', async () => {
@@ -624,28 +654,5 @@ describe('the owner controls', () => {
         state: 'hidden',
       }),
     ).rejects.toThrow(/Not authenticated/)
-  })
-
-  test('a hidden incumbent leaves the podium at the next sync too', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId } = await seedStack(t)
-    await publish(t, stackId, { machine: 'laptop' })
-
-    const before = await t.run(async (ctx) =>
-      ctx.db.query('measuredWorkflows').first(),
-    )
-    const incumbent = before?.highlightRowIds[0] as string
-    await t.withIdentity(IDENTITY).mutation(api.workflow.setWorkflowRowOverride, {
-      stackId,
-      rowId: incumbent,
-      state: 'hidden',
-    })
-    await publish(t, stackId, { machine: 'laptop' })
-
-    const after = await t.run(async (ctx) =>
-      ctx.db.query('measuredWorkflows').first(),
-    )
-    expect(after?.highlightRowIds).not.toContain(incumbent)
-    expect(after?.highlightRowIds).toHaveLength(3)
   })
 })

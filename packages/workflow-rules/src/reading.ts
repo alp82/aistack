@@ -1,108 +1,23 @@
-// One stored workflow reading, and the facts derived from it.
+// One folded workflow window, and the facts derived from it.
 //
-// Wayfinder ticket #218 (map #200). The types here mirror the wire section that
-// ticket #213 put on the sync body and ticket #218 stores, structurally rather
-// than by import: this package must not depend on Convex, and the server passes
-// its `Infer<typeof WorkflowSection>` value straight in.
+// Wayfinder ticket #218 (map #200), reshaped by #285: the wire is per-day rows
+// now (`daily.ts`), and a reading is the FOLD of one machine's days over a
+// window. Everything below reads the fold; nothing reads a day.
 //
-// A READING IS ONE MACHINE'S (ADR-0009). Every derivation below is scoped to a
-// single machine's section, so nothing here has to answer what two machines'
-// medians would mean together.
+// A READING IS ONE MACHINE'S, PER DAY (ADR-0009). Every derivation is scoped to
+// a single machine's window, so nothing here has to answer what two machines'
+// figures would mean together.
 
+import type { HarnessDay, PhaseTotals, WorkflowWindow } from "./daily.js";
 import type { PhaseId } from "./types.js";
 
-export type PhaseTotals = Record<PhaseId, number>;
-
-export type WorkflowSessionRow = {
-	startHourUtc: number;
-	eventCount: number;
-	phaseSec: PhaseTotals;
-	phaseEvents: PhaseTotals;
-	waitingSec: number;
-	idleSec: number;
-	merged: boolean;
-	verifyRuns: number;
-	reviewRounds: number;
-	openedWithScout: boolean;
-};
-
-export type WorkflowHarnessReading = {
-	harness: string;
-	/** Absent when the harness failed its own playbook gate, so the CLI stripped it. */
-	phase?: {
-		ruleVersion: string;
-		publishable: boolean;
-		sessions: number;
-		phaseSec: PhaseTotals;
-		phaseEvents: PhaseTotals;
-		waitingSec: number;
-		idleSec: number;
-		unknownShare: number;
-		sessionRows: readonly WorkflowSessionRow[];
-	};
-	routing?: {
-		main: readonly { model: string; tokens: number }[];
-		subagents: readonly { model: string; tokens: number }[];
-	};
-	delegation?: {
-		mainToolCalls: number;
-		subagentToolCalls: number;
-		widestFanOut: number;
-		mostSubagents: number;
-	};
-	activity: readonly { weekdayUtc: number; hourUtc: number; events: number }[];
-};
-
-export type WorkflowGitReading = {
-	testFileRuleVersion: string;
-	fileTypeRuleVersion: string;
-	/** Absent on a reading synced before commit-set/v1 shipped. */
-	commitSetRuleVersion?: string;
-	totalCommits: number;
-	lateNightCommits: number;
-	additions: number;
-	removals: number;
-	changedLinesPerCommit: readonly number[];
-	testFileCommits: number;
-	changedLinesByExtension: readonly {
-		extension: string;
-		changedLines: number;
-	}[];
-	withheldExtensionLines: number;
-	/** UTC, like the harness activity cells beside them. */
-	weekdayHourCells: readonly {
-		weekdayUtc: number;
-		hourUtc: number;
-		commits: number;
-	}[];
-};
-
-export type WorkflowMetricReading = {
-	metricId: string;
-	ruleVersion: string;
-	value: number;
-	band: { low: number; high: number };
-	coverage: number;
-	coverageTag?: string;
-};
-
-export type WorkflowReading = {
-	aggregateVersion: string;
-	harnesses: readonly WorkflowHarnessReading[];
-	git: WorkflowGitReading;
-	metrics: readonly WorkflowMetricReading[];
-	/**
-	 * The publishing machine's offset from UTC, in minutes east. Session hours
-	 * travel in UTC, and the lead renders them in the OWNER's local time, so
-	 * without this the rhythm clause has nothing to convert with.
-	 */
-	utcOffsetMinutes?: number;
-};
+export type WorkflowReading = WorkflowWindow;
+export type WorkflowHarnessReading = HarnessDay;
 
 /**
  * The kit's inputs, which are the only component fact that does NOT live in the
- * workflow section: skills and MCP servers are inventory, and inventory travels
- * in the measured payload. One entry per harness, already name-filtered on the
+ * workflow wire: skills and MCP servers are inventory, and inventory travels in
+ * the measured payload. One entry per harness, already name-filtered on the
  * machine.
  */
 export type KitReading = readonly {
@@ -119,14 +34,14 @@ const EMPTY_TOTALS: PhaseTotals = {
 	unknown: 0,
 };
 
-/** Every harness reading that shipped a playbook, i.e. passed its own gate. */
+/** Every harness that shipped a phase reading, i.e. passed its own gate. */
 export function playbookHarnesses(
 	reading: WorkflowReading,
 ): WorkflowHarnessReading[] {
 	return reading.harnesses.filter((harness) => harness.phase !== undefined);
 }
 
-/** Measured seconds per phase, summed over the harnesses that shipped a playbook. */
+/** Measured seconds per phase, summed over the harnesses that shipped a phase reading. */
 export function totalPhaseSec(reading: WorkflowReading): PhaseTotals {
 	const totals = { ...EMPTY_TOTALS };
 	for (const harness of playbookHarnesses(reading)) {
@@ -149,29 +64,64 @@ export function phaseShare(reading: WorkflowReading): PhaseTotals | undefined {
 	return shares;
 }
 
-/** Every session row of every harness that shipped a playbook. */
-export function sessionRows(reading: WorkflowReading): WorkflowSessionRow[] {
-	return playbookHarnesses(reading).flatMap((harness) => [
-		...(harness.phase?.sessionRows ?? []),
-	]);
+/**
+ * The unknown share of one harness's measured time over the window.
+ *
+ * Derived here rather than carried: a share cannot fold, so the day ships the
+ * seconds and the window computes the ratio.
+ */
+export function unknownShareOf(harness: WorkflowHarnessReading): number {
+	const phase = harness.phase;
+	if (!phase) return 0;
+	const measured = Object.values(phase.phaseSec).reduce((a, b) => a + b, 0);
+	return measured <= 0 ? 0 : phase.phaseSec.unknown / measured;
+}
+
+/** Sessions across every harness that shipped a phase reading. */
+export function phaseSessionCount(reading: WorkflowReading): number {
+	return playbookHarnesses(reading).reduce(
+		(sum, harness) => sum + (harness.phase?.sessions ?? 0),
+		0,
+	);
 }
 
 /**
  * Share of sessions holding at least one event of `phase`.
  *
  * The denominator is the PLAYBOOK sessions, not every synced session: a harness
- * held back by the gate ships no session rows at all, so it can neither raise
+ * held back by the gate ships no phase reading at all, so it can neither raise
  * nor lower this share. The scope line above it counts every session, which is
  * the number a reader doing arithmetic would use, and the two denominators are
  * why the lead names its scope before it prints a share.
  */
 export function sessionShareWith(
 	reading: WorkflowReading,
-	phase: PhaseId,
+	phase: "verify" | "handoff",
 ): number | undefined {
-	const rows = sessionRows(reading);
-	if (rows.length === 0) return undefined;
-	return rows.filter((row) => row.phaseEvents[phase] > 0).length / rows.length;
+	const sessions = phaseSessionCount(reading);
+	if (sessions === 0) return undefined;
+	const key = phase === "verify" ? "sessionsWithVerify" : "sessionsWithHandoff";
+	const hits = playbookHarnesses(reading).reduce(
+		(sum, harness) => sum + (harness.phase?.[key] ?? 0),
+		0,
+	);
+	return hits / sessions;
+}
+
+/** The start-hour histogram over every harness, in UTC. */
+export function startHoursUtc(reading: WorkflowReading): Map<number, number> {
+	const counts = new Map<number, number>();
+	for (const harness of reading.harnesses) {
+		for (const cell of harness.startHours) {
+			counts.set(cell.hourUtc, (counts.get(cell.hourUtc) ?? 0) + cell.sessions);
+		}
+	}
+	return counts;
+}
+
+/** A UTC hour on the owner's clock. */
+export function ownerLocalHour(hourUtc: number, offsetMinutes: number): number {
+	return Math.floor(((((hourUtc * 60 + offsetMinutes) / 60) % 24) + 24) % 24);
 }
 
 /**
@@ -184,15 +134,12 @@ export function sessionShareWith(
 export function modalStartHour(reading: WorkflowReading): number | undefined {
 	const offsetMinutes = reading.utcOffsetMinutes;
 	if (offsetMinutes === undefined) return undefined;
-	const rows = sessionRows(reading);
-	if (rows.length === 0) return undefined;
 	const counts = new Map<number, number>();
-	for (const row of rows) {
-		const local =
-			((((row.startHourUtc * 60 + offsetMinutes) / 60) % 24) + 24) % 24;
-		const hour = Math.floor(local);
-		counts.set(hour, (counts.get(hour) ?? 0) + 1);
+	for (const [hourUtc, sessions] of startHoursUtc(reading)) {
+		const hour = ownerLocalHour(hourUtc, offsetMinutes);
+		counts.set(hour, (counts.get(hour) ?? 0) + sessions);
 	}
+	if (counts.size === 0) return undefined;
 	// Ties go to the earlier hour, so the same reading always names the same one.
 	return [...counts.entries()].sort(
 		(a, b) => b[1] - a[1] || a[0] - b[0],
@@ -203,34 +150,23 @@ export function modalStartHour(reading: WorkflowReading): number | undefined {
 export function phaseRuleVersions(reading: WorkflowReading): string[] {
 	return [
 		...new Set(
-			playbookHarnesses(reading).map(
-				(harness) => harness.phase?.ruleVersion as string,
+			playbookHarnesses(reading).flatMap((harness) =>
+				(harness.phase?.ruleVersion ?? "").split(" · ").filter(Boolean),
 			),
 		),
 	].sort();
 }
 
-/** Distinct metric rule versions in this reading. */
-export function metricRuleVersions(reading: WorkflowReading): string[] {
-	return [
-		...new Set(reading.metrics.map((metric) => metric.ruleVersion)),
-	].sort();
-}
-
 /**
- * True when one reading carries aggregates from more than one rule set.
+ * True when one reading carries aggregates from more than one phase rule set.
  *
  * "A rule-set bump reclassifies old sessions from local raw records at the next
  * sync. A session whose raw records are gone keeps its old aggregate, and the
- * page shows a mixed-version tag" (spec). The tag is a fact about the reading,
- * so it is computed here rather than stored: a later bump makes it true without
- * a migration.
+ * page shows a mixed-version tag" (spec). With daily rows the same thing happens
+ * to a window that straddles a bump: the older days keep the older rule.
  */
 export function hasMixedRuleVersions(reading: WorkflowReading): boolean {
-	return (
-		phaseRuleVersions(reading).length > 1 ||
-		metricRuleVersions(reading).length > 1
-	);
+	return phaseRuleVersions(reading).length > 1;
 }
 
 export type LeadFactsInput = {
@@ -242,7 +178,7 @@ export type LeadFactsInput = {
 };
 
 /**
- * The five figures `lead-templates/v1` prints, derived from one stored reading.
+ * The five figures `lead-templates/v1` prints, derived from one window.
  *
  * Absent inputs stay absent: the lead drops a sentence it cannot fill, and this
  * function never substitutes a default for a measurement that does not exist.

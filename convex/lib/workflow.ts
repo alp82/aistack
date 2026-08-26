@@ -1,96 +1,77 @@
 /**
- * The measured workflow layer: what gets stored, and what gets ranked.
+ * The measured workflow layer: what gets stored, and how a window is read.
  *
- * Wayfinder ticket #218 (map #200), spec `docs/specs/workflow-surface.md`.
- * Ticket #213 put the section on the wire and dropped it; this is where it
- * lands and where the server's half of fit lives.
+ * Wayfinder ticket #218 (map #200) stored one 30-day section per machine and
+ * ranked it. Ticket #285 replaced that with per-day rows (spec
+ * `docs/specs/workflow-surface.md`, "The wire"): the CLI ships one row of
+ * combinable atoms per UTC day, this module stores each row against
+ * (stack, machine, date), and a read folds the rows inside a window and
+ * computes every figure over the fold. The arithmetic is pure and lives in
+ * `@aistack/workflow-rules`; this module holds only what needs the database.
  *
- * THE SPLIT. "The CLI ships value, coverage, band, and rule id per row, and
- * stays the only source of measured values. The server computes fit, applies
- * the rotation limit, and applies the owner pins and hides, because the swap
- * history and the owner overrides are server state" (spec). The arithmetic of
- * fit is pure, so it lives in `@aistack/workflow-rules` with its own tests; this
- * module holds only what needs the database.
- *
- * A READING IS ONE MACHINE'S (ADR-0009). Nothing here merges two machines.
+ * A READING IS ONE MACHINE'S, PER DAY (ADR-0009). Nothing here merges two
+ * machines.
  */
 
 import {
 	buildLeadFacts,
 	buildWorkflowRows,
+	foldWorkflowDays,
 	type KitReading,
-	metricRuleVersions,
 	phaseRuleVersions,
-	placeRows,
 	type PlacedRow,
-	rankWorkflowRows,
-	rotateHighlights,
-	type RotationState,
+	placeRows,
 	type RowOverrides,
-	type WorkflowReading,
+	type WorkflowDay,
+	type WorkflowWindow,
 } from '@aistack/workflow-rules'
 import type { Infer } from 'convex/values'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
-import type { WorkflowSection } from '../schema'
+import type { WorkflowWire } from '../schema'
 
-export type StoredSection = Infer<typeof WorkflowSection>
-export type RowValue = { rowId: string; value: number; coverage: number }
+export type StoredWire = Infer<typeof WorkflowWire>
 
 /**
- * The size a stored section may reach before detail is dropped.
+ * How many days of one machine's history a stack keeps.
  *
- * Convex documents stop at 1 MiB. `checkWorkflowSection` accepts up to 5,000
- * session rows per harness and 20,000 commits, which is far above any honest
- * reading (the `phase-rules/v1` proof saw 464 sessions in a 30-day window) but
- * not below the document limit. A publish must NEVER fail over section size:
- * the owner approved a measurement, and losing all of it - the payloads
- * included, since one mutation lands them together - to save a dot strip would
- * be the wrong trade in every direction.
+ * Long enough that a 30-day window is never short a day, with a year's slack
+ * for a later, longer window. A day past it is deleted at the next sync of
+ * that machine, so the table cannot grow without bound.
  */
-const MAX_SECTION_BYTES = 700_000
+export const WORKFLOW_RETENTION_DAYS = 400
 
 export const utcDayOf = (ms: number): string =>
 	new Date(ms).toISOString().slice(0, 10)
 
-/**
- * Drop the heaviest detail, heaviest first, until the section fits.
- *
- * The commit strip goes first: it is one number per commit and pure display,
- * and every figure computed from it (`totalCommits`, `additions`, `removals`)
- * is a separate field that survives. Session rows go second, and that one has a
- * cost - the lead's session shares and the playbook's medians are per session -
- * so it drops only when the strip alone was not enough. The harness-level phase
- * totals survive either way, and the lead drops the sentences it can no longer
- * fill rather than printing a share over a thinner denominator.
- */
-export function trimSectionForStorage(section: StoredSection): {
-	section: StoredSection
-	trimmed?: { commitStrip: boolean; sessionRows: boolean }
-} {
-	const size = (value: unknown): number => JSON.stringify(value).length
-	if (size(section) <= MAX_SECTION_BYTES) return { section }
+const DAY_MS = 24 * 60 * 60 * 1000
 
-	const withoutStrip: StoredSection = {
-		...section,
-		git: { ...section.git, changedLinesPerCommit: [] },
-	}
-	if (size(withoutStrip) <= MAX_SECTION_BYTES) {
-		return {
-			section: withoutStrip,
-			trimmed: { commitStrip: true, sessionRows: false },
-		}
-	}
-	return {
-		section: {
-			...withoutStrip,
-			harnesses: withoutStrip.harnesses.map((harness) =>
-				harness.phase
-					? { ...harness, phase: { ...harness.phase, sessionRows: [] } }
-					: harness
-			),
-		},
-		trimmed: { commitStrip: true, sessionRows: true },
+/** The three windows the page offers (#277). */
+export type WorkflowWindowId = '30d' | '7d' | '24h'
+
+export const WORKFLOW_WINDOWS: readonly WorkflowWindowId[] = ['30d', '7d', '24h']
+
+/**
+ * The first UTC date a window holds, given the clock it ends on.
+ *
+ * A window is measured in WHOLE UTC DAYS because the rows are. The 30-day and
+ * 7-day windows end on today and reach back 29 and 6 further days. The 24-hour
+ * window holds the days that touch the last 24 hours: today, and yesterday
+ * whenever the last 24 hours reach into it, which is every hour but the one
+ * after midnight. It can read up to 48 hours of atoms, and the page names it
+ * as the window that covers the last day rather than one that measures it.
+ */
+export function windowStartDate(
+	window: WorkflowWindowId,
+	now: number
+): string {
+	switch (window) {
+		case '30d':
+			return utcDayOf(now - 29 * DAY_MS)
+		case '7d':
+			return utcDayOf(now - 6 * DAY_MS)
+		case '24h':
+			return utcDayOf(now - DAY_MS)
 	}
 }
 
@@ -109,25 +90,13 @@ export async function rowOverridesForStack(
 	}
 }
 
-export async function workflowRowFor(
-	ctx: QueryCtx | MutationCtx,
-	stackId: Id<'stacks'>,
-	machine: string | undefined
-): Promise<Doc<'measuredWorkflows'> | null> {
-	return await ctx.db
-		.query('measuredWorkflows')
-		.withIndex('by_stack_machine', (q) =>
-			q.eq('stackId', stackId).eq('machine', machine)
-		)
-		.first()
-}
-
-export async function workflowRowsForStack(
+/** Every stored day row of one stack, across every machine. */
+export async function workflowDaysForStack(
 	ctx: QueryCtx | MutationCtx,
 	stackId: Id<'stacks'>
-): Promise<Doc<'measuredWorkflows'>[]> {
+): Promise<Doc<'measuredWorkflowDays'>[]> {
 	return await ctx.db
-		.query('measuredWorkflows')
+		.query('measuredWorkflowDays')
 		.withIndex('by_stack', (q) => q.eq('stackId', stackId))
 		.collect()
 }
@@ -135,7 +104,7 @@ export async function workflowRowsForStack(
 /**
  * The kit's inputs for one machine: skills and MCP servers, per harness.
  *
- * The one component fact that does not travel in the workflow section, because
+ * The one component fact that does not travel in the workflow wire, because
  * inventory belongs to the payload. Names here were filtered on the machine
  * before they were sent, so nothing new is exposed by reading them.
  */
@@ -152,86 +121,105 @@ export function kitFromSnapshots(
 export type StoreWorkflowArgs = {
 	stackId: Id<'stacks'>
 	machine: string | undefined
-	section: StoredSection
+	wire: StoredWire
 	capturedAt: number
 	receivedAt: number
 	cliVersion: string | undefined
-	kit: KitReading
 }
 
 /**
- * Store one machine's reading and recompute its podium.
+ * Store one machine's days: a re-synced day replaces that day, a new day is
+ * appended, and days past retention leave.
  *
- * REPLACE, NOT APPEND. One row per (stack, machine), for the reasons the schema
- * gives: the section has no trail in version 1, and it carries the finest
- * records the wire holds.
- *
- * The rotation runs HERE rather than at read time because two of its three
- * rules are about history - "at most one slot swaps per sync day" and the 25%
- * challenger margin both compare against the last sync, not against this
- * reading. Fit itself is recomputed on every read from the stored section, so
- * the two never drift.
+ * REPLACE PER DAY, NEVER MERGE. The CLI re-reads its whole window on every
+ * sync, so the row it sends for a date is the complete reading of that date
+ * as the machine now sees it. Adding it to the stored row would double-count
+ * every session the machine still holds.
  */
-export async function storeWorkflowSection(
+export async function storeWorkflowDays(
 	ctx: MutationCtx,
 	args: StoreWorkflowArgs
-): Promise<Id<'measuredWorkflows'>> {
-	const existing = await workflowRowFor(ctx, args.stackId, args.machine)
-	const { section, trimmed } = trimSectionForStorage(args.section)
-
-	const previousRowValues: RowValue[] = existing?.rowValues ?? []
-	const priorValues = new Map(previousRowValues.map((r) => [r.rowId, r.value]))
-	const priorCoverage = new Map(
-		previousRowValues.map((r) => [r.rowId, r.coverage])
-	)
-
-	const { rows } = buildWorkflowRows({
-		reading: section as WorkflowReading,
-		kit: args.kit,
-	})
-	const ranked = rankWorkflowRows(rows, priorValues)
-	const rotation = rotateHighlights({
-		ranked,
-		previous: {
-			highlightRowIds: existing?.highlightRowIds ?? [],
-			...(existing?.lastSwapDayUtc === undefined
+): Promise<{ replaced: number; inserted: number; expired: number }> {
+	let replaced = 0
+	let inserted = 0
+	for (const day of args.wire.days) {
+		const existing = await ctx.db
+			.query('measuredWorkflowDays')
+			.withIndex('by_stack_machine_date', (q) =>
+				q
+					.eq('stackId', args.stackId)
+					.eq('machine', args.machine)
+					.eq('date', day.date)
+			)
+			.first()
+		const doc = {
+			stackId: args.stackId,
+			...(args.machine === undefined ? {} : { machine: args.machine }),
+			date: day.date,
+			capturedAt: args.capturedAt,
+			receivedAt: args.receivedAt,
+			...(args.cliVersion === undefined ? {} : { cliVersion: args.cliVersion }),
+			aggregateVersion: args.wire.aggregateVersion,
+			...(args.wire.utcOffsetMinutes === undefined
 				? {}
-				: { lastSwapDayUtc: existing.lastSwapDayUtc }),
+				: { utcOffsetMinutes: args.wire.utcOffsetMinutes }),
+			day,
+		}
+		if (existing) {
+			await ctx.db.replace(existing._id, doc)
+			replaced++
+		} else {
+			await ctx.db.insert('measuredWorkflowDays', doc)
+			inserted++
+		}
+	}
+
+	const cutoff = utcDayOf(args.receivedAt - WORKFLOW_RETENTION_DAYS * DAY_MS)
+	const stale = await ctx.db
+		.query('measuredWorkflowDays')
+		.withIndex('by_stack_machine_date', (q) =>
+			q.eq('stackId', args.stackId).eq('machine', args.machine).lt('date', cutoff)
+		)
+		.collect()
+	for (const row of stale) await ctx.db.delete(row._id)
+
+	return { replaced, inserted, expired: stale.length }
+}
+
+/** An empty window in the shape a full one has, for a machine with no day inside it. */
+export function emptyWorkflowWindow(
+	aggregateVersion: string,
+	utcOffsetMinutes: number | undefined
+): WorkflowWindow {
+	return {
+		aggregateVersion,
+		...(utcOffsetMinutes === undefined ? {} : { utcOffsetMinutes }),
+		dates: [],
+		harnesses: [],
+		git: {
+			testFileRuleVersion: '',
+			fileTypeRuleVersion: '',
+			commitSetRuleVersion: '',
+			commits: 0,
+			lateNightCommits: 0,
+			additions: 0,
+			removals: 0,
+			changedLinesPerCommit: [],
+			testFileCommits: 0,
+			changedLinesByExtension: [],
+			withheldExtensionLines: 0,
+			weekdayHourCells: [],
 		},
-		overrides: await rowOverridesForStack(ctx, args.stackId),
-		today: utcDayOf(args.receivedAt),
-		priorCoverage,
-	})
-
-	const doc = {
-		stackId: args.stackId,
-		...(args.machine === undefined ? {} : { machine: args.machine }),
-		capturedAt: args.capturedAt,
-		receivedAt: args.receivedAt,
-		...(args.cliVersion === undefined ? {} : { cliVersion: args.cliVersion }),
-		section,
-		...(trimmed === undefined ? {} : { trimmed }),
-		rowValues: ranked.map((row) => ({
-			rowId: row.rowId,
-			value: row.value,
-			coverage: row.coverage,
-		})),
-		previousRowValues,
-		highlightRowIds: [...rotation.highlightRowIds],
-		...(rotation.lastSwapDayUtc === undefined
-			? {}
-			: { lastSwapDayUtc: rotation.lastSwapDayUtc }),
+		parallelProjectDays: [],
+		webSearchDays: 0,
 	}
-
-	if (existing) {
-		await ctx.db.replace(existing._id, doc)
-		return existing._id
-	}
-	return await ctx.db.insert('measuredWorkflows', doc)
 }
 
 export type ReadWorkflowArgs = {
-	row: Doc<'measuredWorkflows'>
+	/** One machine's day rows inside the window. */
+	rows: readonly Doc<'measuredWorkflowDays'>[]
+	/** The newest row of that machine, for the clock and the aggregate version. */
+	newest: Doc<'measuredWorkflowDays'>
 	kit: KitReading
 	overrides: RowOverrides
 	/** Every synced session on this machine, gate-held harnesses included. */
@@ -240,50 +228,43 @@ export type ReadWorkflowArgs = {
 	harnessCount: number
 }
 
-export type WorkflowReadingView = {
+export type WorkflowWindowView = {
+	section: WorkflowWindow
 	rows: PlacedRow[]
-	unknownMetricIds: string[]
 	lead: ReturnType<typeof buildLeadFacts>
 	phaseRuleVersions: string[]
-	metricRuleVersions: string[]
 	mixedRuleVersions: boolean
 }
 
 /**
- * Everything the page derives from one stored reading.
+ * Everything the page derives from one machine's window.
  *
- * Fit is recomputed on every read rather than stored. It is a pure function of
- * the section and the previous window's values, both of which are on the row, so
- * a stored copy could only ever disagree with the section beside it.
+ * The fold happens here, at read time, so the stored rows are the only state
+ * and a stored copy of a figure can never disagree with the days beside it.
+ * The clock is the NEWEST row's: a window that straddles a machine moving
+ * zones renders every hour at the offset it last published.
  */
-export function readWorkflowReading(args: ReadWorkflowArgs): WorkflowReadingView {
-	const reading = args.row.section as WorkflowReading
-	const { rows, unknownMetricIds } = buildWorkflowRows({
-		reading,
-		kit: args.kit,
-	})
-	const ranked = rankWorkflowRows(
-		rows,
-		new Map(args.row.previousRowValues.map((r) => [r.rowId, r.value]))
-	)
-	const state: RotationState = {
-		highlightRowIds: args.row.highlightRowIds,
-		...(args.row.lastSwapDayUtc === undefined
-			? {}
-			: { lastSwapDayUtc: args.row.lastSwapDayUtc }),
-	}
-	const phase = phaseRuleVersions(reading)
-	const metric = metricRuleVersions(reading)
+export function readWorkflowWindow(args: ReadWorkflowArgs): WorkflowWindowView {
+	const days: WorkflowDay[] = args.rows.map((row) => row.day)
+	const section =
+		foldWorkflowDays(days, {
+			aggregateVersion: args.newest.aggregateVersion,
+			...(args.newest.utcOffsetMinutes === undefined
+				? {}
+				: { utcOffsetMinutes: args.newest.utcOffsetMinutes }),
+		}) ??
+		emptyWorkflowWindow(args.newest.aggregateVersion, args.newest.utcOffsetMinutes)
+	const rows = buildWorkflowRows({ reading: section, kit: args.kit })
+	const versions = phaseRuleVersions(section)
 	return {
-		rows: placeRows(ranked, state, args.overrides),
-		unknownMetricIds,
+		section,
+		rows: placeRows(rows, args.overrides),
 		lead: buildLeadFacts({
-			reading,
+			reading: section,
 			sessionCount: args.sessionCount,
 			harnessCount: args.harnessCount,
 		}),
-		phaseRuleVersions: phase,
-		metricRuleVersions: metric,
-		mixedRuleVersions: phase.length > 1 || metric.length > 1,
+		phaseRuleVersions: versions,
+		mixedRuleVersions: versions.length > 1,
 	}
 }

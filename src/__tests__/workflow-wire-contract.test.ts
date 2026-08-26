@@ -18,7 +18,7 @@
  * pushes, so the misplaced file silently stopped every backend push.
  */
 import { describe, expect, it } from "vitest";
-import { WorkflowSection } from "../../convex/schema";
+import { WorkflowWire } from "../../convex/schema";
 import { toPayloadWorkflow } from "../../packages/cli/src/harness/shared/payload.js";
 import type { WorkflowExtraction } from "../../packages/cli/src/workflow/extract.js";
 
@@ -75,78 +75,77 @@ const phaseTotals = () => ({
 	unknown: 2,
 });
 
-/** One machine's extraction, with every optional half present. */
+/** One machine's extraction, with every optional block present. */
 function extraction(): WorkflowExtraction {
 	return {
-		aggregateVersion: "workflow-aggregates/v1",
+		aggregateVersion: "workflow-aggregates/v2",
 		utcOffsetMinutes: 120,
-		harnesses: [
+		days: [
 			{
-				aggregateVersion: "workflow-aggregates/v1",
-				harness: "claude-code",
-				phase: {
-					ruleVersion: "phase-rules/v1",
-					publishable: true,
-					sessions: 42,
-					phaseSec: phaseTotals(),
-					phaseEvents: phaseTotals(),
-					waitingSec: 4,
-					idleSec: 9,
-					unknownShare: 0.02,
-					sessionRows: [
-						{
-							startHourUtc: 21,
-							eventCount: 40,
+				date: "2026-08-21",
+				harnesses: [
+					{
+						harness: "claude-code",
+						sessions: 42,
+						startHours: [{ hourUtc: 21, sessions: 42 }],
+						phase: {
+							ruleVersion: "phase-rules/v1",
+							sessions: 42,
 							phaseSec: phaseTotals(),
 							phaseEvents: phaseTotals(),
-							waitingSec: 0,
-							idleSec: 0,
-							merged: false,
-							verifyRuns: 1,
-							reviewRounds: 0,
-							openedWithScout: true,
+							waitingSec: 4,
+							idleSec: 9,
+							sessionsWithVerify: 10,
+							sessionsWithHandoff: 20,
+							bucketRuleVersion: "log-buckets/v1",
+							lengths: [
+								{
+									bucket: 4,
+									sessions: 42,
+									phaseSec: phaseTotals(),
+									merged: 2,
+									verified: 10,
+									mergedVerified: 2,
+									openedWithScout: 30,
+								},
+							],
 						},
-					],
+						routing: {
+							main: [{ model: "claude-opus-5", tokens: 100 }],
+							subagents: [{ model: "claude-fable-5", tokens: 20 }],
+						},
+						delegation: {
+							mainToolCalls: 10,
+							subagentToolCalls: 4,
+							widestFanOut: 2,
+							mostSubagents: 3,
+						},
+						activity: [{ weekdayUtc: 5, hourUtc: 23, events: 17 }],
+						effort: [{ level: "high", turns: 3 }],
+						thinking: { thinkingTokens: 1234, responseTokens: 5000 },
+						turnDurations: {
+							bucketRuleVersion: "log-buckets/v1",
+							buckets: [{ bucket: 6, turns: 3 }],
+						},
+						questions: { asked: 1, turns: 9 },
+						webSearches: 2,
+					},
+				],
+				git: {
+					testFileRuleVersion: "test-files/v2",
+					commitSetRuleVersion: "commit-set/v1",
+					fileTypeRuleVersion: "file-types/v2",
+					commits: 12,
+					lateNightCommits: 3,
+					additions: 400,
+					removals: 120,
+					changedLinesPerCommit: [40, 12],
+					testFileCommits: 5,
+					changedLinesByExtension: [{ extension: ".ts", changedLines: 500 }],
+					withheldExtensionLines: 20,
+					weekdayHourCells: [{ weekdayUtc: 5, hourUtc: 23, commits: 3 }],
 				},
-				routing: {
-					main: [{ model: "claude-opus-5", tokens: 100 }],
-					subagents: [{ model: "claude-fable-5", tokens: 20 }],
-				},
-				delegation: {
-					mainToolCalls: 10,
-					subagentToolCalls: 4,
-					widestFanOut: 2,
-					mostSubagents: 3,
-				},
-				facts: {
-					sessions: [{ harness: "claude-code", thinkingTokens: 1234 }],
-					activeDays: [{ date: "2026-07-24", parallelProjectCount: 2 }],
-				},
-				activity: [{ weekdayUtc: 5, hourUtc: 23, events: 17 }],
-			},
-		],
-		git: {
-			testFileRuleVersion: "test-files/v2",
-			commitSetRuleVersion: "commit-set/v1",
-			fileTypeRuleVersion: "file-types/v2",
-			totalCommits: 12,
-			lateNightCommits: 3,
-			additions: 400,
-			removals: 120,
-			changedLinesPerCommit: [40, 12],
-			testFileCommits: 5,
-			changedLinesByExtension: [{ extension: ".ts", changedLines: 500 }],
-			withheldExtensionLines: 20,
-			weekdayHourCells: [{ weekdayUtc: 5, hourUtc: 23, commits: 3 }],
-		},
-		metricInputs: [
-			{
-				metricId: "late-night-commit-share",
-				ruleVersion: "metric-rules/v1",
-				value: 0.25,
-				band: { low: 0.05, high: 0.2 },
-				coverage: 1,
-				coverageTag: undefined,
+				parallelProjects: 2,
 			},
 		],
 	};
@@ -156,7 +155,7 @@ describe("the CLI's workflow section against the server's validator", () => {
 	it("sends no key the validator has no field for", () => {
 		const payload = toPayloadWorkflow(extraction());
 		expect(
-			extraKeys(payload, WorkflowSection as unknown as Node, ".workflow"),
+			extraKeys(payload, WorkflowWire as unknown as Node, ".workflow"),
 		).toEqual([]);
 	});
 
@@ -166,13 +165,16 @@ describe("the CLI's workflow section against the server's validator", () => {
 		const payload = toPayloadWorkflow(extraction());
 		const broken = {
 			...payload,
-			harnesses: payload.harnesses.map((harness) => ({
-				...harness,
-				aggregateVersion: "workflow-aggregates/v1",
+			days: payload.days.map((day) => ({
+				...day,
+				harnesses: day.harnesses.map((harness) => ({
+					...harness,
+					aggregateVersion: "workflow-aggregates/v2",
+				})),
 			})),
 		};
 		expect(
-			extraKeys(broken, WorkflowSection as unknown as Node, ".workflow"),
-		).toEqual([".workflow.harnesses[0].aggregateVersion"]);
+			extraKeys(broken, WorkflowWire as unknown as Node, ".workflow"),
+		).toEqual([".workflow.days[0].harnesses[0].aggregateVersion"]);
 	});
 });

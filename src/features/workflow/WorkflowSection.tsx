@@ -203,7 +203,7 @@ function machineLabel(machine: MachineOption | undefined): string {
  * whose rule is not named is a number a reader has to take on trust.
  */
 function Provenance({ view }: { view: WorkflowView }) {
-	const rules = [...view.phaseRuleVersions, ...view.metricRuleVersions];
+	const rules = [...view.phaseRuleVersions];
 	return (
 		<div className="mt-8 border-t border-stroke-subtle pt-4">
 			{view.mixedRuleVersions && (
@@ -211,14 +211,6 @@ function Provenance({ view }: { view: WorkflowView }) {
 					mixed rule versions: this reading carries aggregates from more than
 					one rule set, because a session whose local records are gone keeps the
 					aggregate it already had.
-				</p>
-			)}
-			{view.unknownMetricIds.length > 0 && (
-				<p className="mb-2 font-mono text-[11px] text-fg-muted">
-					{view.unknownMetricIds.length} measurement
-					{view.unknownMetricIds.length === 1 ? "" : "s"} this site has no rule
-					for yet, dropped rather than printed bare:{" "}
-					{view.unknownMetricIds.join(", ")}
 				</p>
 			)}
 			<p className="font-mono text-[11px] text-fg-muted">

@@ -104,6 +104,8 @@ export function fmtRowValue(row: Pick<WorkflowRow, "unit" | "value">): string {
 			return fmtPercent(row.value);
 		case "minutes":
 			return fmtMinutes(row.value);
+		case "hour":
+			return `${String(Math.round(row.value)).padStart(2, "0")}:00`;
 		default:
 			return fmtNumber(row.value);
 	}

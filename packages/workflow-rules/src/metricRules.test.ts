@@ -1,233 +1,99 @@
-import { describe, expect, it } from "vitest";
-import { METRIC_RULES, metricRule, type WorkflowFacts } from "./metricRules.js";
+import { describe, expect, test } from "vitest";
+import { gitDay, harnessDay, windowOf, workflowDay } from "./fixtures.js";
+import { METRIC_RULES, METRIC_RULES_V2, metricRule } from "./metricRules.js";
 
-const facts: WorkflowFacts = {
-	git: { totalCommits: 100, lateNightCommits: 42 },
-	sessions: [
-		{
-			harness: "claude-code",
-			modelSwitched: true,
-			thinkingTokens: 300,
-			responseTokens: 1000,
-			effortTurns: { high: 6, total: 10 },
-			effortChangedMidRun: true,
-			longestTurnDurationSec: 900,
-			questionBackTurns: 1,
-			totalTurns: 9,
-		},
-		{
-			harness: "codex",
-			modelSwitched: false,
-			thinkingTokens: 100,
-			responseTokens: 1000,
-			effortTurns: { high: 2, total: 10 },
-			effortChangedMidRun: false,
-			questionBackTurns: 0,
-			totalTurns: 11,
-		},
-		{
-			harness: "opencode",
-			modelSwitched: false,
-			thinkingTokens: 0,
-			responseTokens: 500,
-			longestTurnDurationSec: 2820,
-			questionBackTurns: 1,
-			totalTurns: 10,
-		},
-	],
-	activeDays: [
-		{ date: "2026-08-01", parallelProjectCount: 2, webSearches: 4 },
-		{ date: "2026-08-02", parallelProjectCount: 4, webSearches: 8 },
-		{ date: "2026-08-03", parallelProjectCount: 3, webSearches: 0 },
-	],
-};
+const value = (id: string, reading = windowOf()) =>
+	metricRule(id)?.evaluate(reading);
 
-describe("METRIC_RULES", () => {
-	it("holds exactly the nine settled pool metrics, each versioned metric-rules/v1", () => {
-		expect(METRIC_RULES).toHaveLength(9);
-		for (const m of METRIC_RULES) expect(m.version).toBe("metric-rules/v1");
-		const ids = new Set(METRIC_RULES.map((m) => m.id));
-		expect(ids.size).toBe(9);
-	});
-
-	it("looks a rule up by id", () => {
-		expect(metricRule("late-night-commits")?.label).toContain("23:00");
-		expect(metricRule("nonexistent")).toBeUndefined();
-	});
-});
-
-describe("late-night-commits", () => {
-	it("computes the share of commits in the late-night window", () => {
-		expect(metricRule("late-night-commits")?.evaluate(facts)).toBe(0.42);
-	});
-
-	it("is absent with no Git facts, not zero", () => {
-		expect(metricRule("late-night-commits")?.evaluate({})).toBeUndefined();
-	});
-
-	it("counts every synced harness (a Git metric)", () => {
-		expect(metricRule("late-night-commits")?.harnessSupport).toBe("all");
-	});
-});
-
-describe("parallel-projects", () => {
-	it("computes the median across active days", () => {
-		expect(metricRule("parallel-projects")?.evaluate(facts)).toBe(3);
-	});
-
-	it("is absent with no active days", () => {
-		expect(metricRule("parallel-projects")?.evaluate({})).toBeUndefined();
-	});
-});
-
-describe("model-switches-mid-run", () => {
-	it("computes the share of sessions that switched model", () => {
-		expect(metricRule("model-switches-mid-run")?.evaluate(facts)).toBeCloseTo(
-			1 / 3,
-			10,
-		);
-	});
-
-	it("ignores sessions without model evidence", () => {
-		expect(
-			metricRule("model-switches-mid-run")?.evaluate({
-				sessions: [
-					{
-						harness: "pi-mono",
-						thinkingTokens: 1,
-						responseTokens: 2,
-					},
-				],
-			}),
-		).toBeUndefined();
-	});
-});
-
-describe("thinking-share", () => {
-	it("computes thinking tokens over total response tokens", () => {
-		expect(metricRule("thinking-share")?.evaluate(facts)).toBeCloseTo(
-			100 / 1500,
-			10,
-		);
-	});
-
-	it("ignores sessions without token-level thinking data", () => {
-		expect(
-			metricRule("thinking-share")?.evaluate({
-				sessions: [
-					{
-						harness: "claude-code",
-						modelSwitched: false,
-						responseTokens: 100,
-						questionBackTurns: 0,
-						totalTurns: 1,
-					},
-				],
-			}),
-		).toBeUndefined();
-	});
-});
-
-describe("high-effort-turns and effort-changes-mid-run", () => {
-	it("counts only sessions carrying an effort field", () => {
-		expect(metricRule("high-effort-turns")?.evaluate(facts)).toBeCloseTo(
-			8 / 20,
-			10,
-		);
-	});
-
-	it("shares mid-run effort changes over effort-bearing sessions only", () => {
-		expect(metricRule("effort-changes-mid-run")?.evaluate(facts)).toBeCloseTo(
-			0.5,
-			10,
-		);
-	});
-
-	it("declares Claude Code and Codex as the supporting harnesses", () => {
-		expect(metricRule("high-effort-turns")?.harnessSupport).toEqual([
-			"claude-code",
-			"codex",
+describe("metric-rules/v2", () => {
+	test("every rule carries the v2 version and a band", () => {
+		for (const rule of METRIC_RULES) {
+			expect(rule.version).toBe(METRIC_RULES_V2);
+			expect(rule.band.high).toBeGreaterThanOrEqual(rule.band.low);
+		}
+		expect(METRIC_RULES.map((rule) => rule.id)).toEqual([
+			"late-night-commits",
+			"parallel-projects",
+			"thinking-share",
+			"effort-levels",
+			"turn-duration",
+			"question-back-share",
+			"web-searches-per-active-day",
 		]);
 	});
 
-	it("is absent when no session carries an effort field", () => {
+	test("late-night commits is a share of the window's commits", () => {
+		expect(value("late-night-commits")).toBeCloseTo(0.4);
 		expect(
-			metricRule("high-effort-turns")?.evaluate({
-				sessions: [
-					{
-						harness: "opencode",
-						modelSwitched: false,
-						thinkingTokens: 0,
-						responseTokens: 1,
-						questionBackTurns: 0,
-						totalTurns: 1,
-					},
-				],
-			}),
+			value(
+				"late-night-commits",
+				windowOf([
+					workflowDay({ git: gitDay({ commits: 0, lateNightCommits: 0 }) }),
+				]),
+			),
 		).toBeUndefined();
 	});
-});
 
-describe("longest-turn-duration", () => {
-	it("takes the max across sessions that recorded a duration, in minutes", () => {
-		expect(metricRule("longest-turn-duration")?.evaluate(facts)).toBe(47);
-	});
-
-	it("declares Claude Code and opencode as the supporting harnesses", () => {
-		expect(metricRule("longest-turn-duration")?.harnessSupport).toEqual([
-			"claude-code",
-			"opencode",
+	test("parallel projects is the median over days", () => {
+		const reading = windowOf([
+			workflowDay({ date: "2026-08-22", parallelProjects: 1 }),
+			workflowDay({ date: "2026-08-23", parallelProjects: 4 }),
+			workflowDay({ date: "2026-08-24", parallelProjects: 2 }),
 		]);
-	});
-});
-
-describe("question-back-share", () => {
-	it("computes questioning turns over all turns", () => {
-		expect(metricRule("question-back-share")?.evaluate(facts)).toBeCloseTo(
-			2 / 30,
-			10,
-		);
-	});
-
-	it("ignores sessions from harnesses without a question marker", () => {
+		expect(value("parallel-projects", reading)).toBe(2);
 		expect(
-			metricRule("question-back-share")?.evaluate({
-				sessions: [
-					{
-						harness: "claude-code",
-						modelSwitched: false,
-						thinkingTokens: 0,
-						responseTokens: 1,
-						questionBackTurns: 1,
-						totalTurns: 2,
-					},
-					{
-						harness: "pi-mono",
-						modelSwitched: false,
-						thinkingTokens: 0,
-						responseTokens: 1,
-					},
+			value(
+				"parallel-projects",
+				windowOf([workflowDay({ parallelProjects: undefined })]),
+			),
+		).toBeUndefined();
+	});
+
+	test("thinking share, effort levels and questions are ratios of sums", () => {
+		expect(value("thinking-share")).toBeCloseTo(0.25);
+		expect(value("effort-levels")).toBeCloseTo(0.6);
+		expect(value("question-back-share")).toBeCloseTo(0.1);
+	});
+
+	test("turn duration is the median bucket in minutes", () => {
+		// Buckets 5 (4 turns) and 6 (6 turns): the middle turn is in bucket 6,
+		// [32, 64) seconds, quoted at its geometric middle.
+		expect(value("turn-duration")).toBeCloseTo(Math.sqrt(32 * 64) / 60);
+	});
+
+	test("web searches divide by the days that recorded a count", () => {
+		const reading = windowOf([
+			workflowDay({ date: "2026-08-23" }),
+			workflowDay({
+				date: "2026-08-24",
+				harnesses: [harnessDay({ webSearches: undefined })],
+			}),
+			workflowDay({
+				date: "2026-08-25",
+				harnesses: [harnessDay({ webSearches: 1 })],
+			}),
+		]);
+		expect(value("web-searches-per-active-day", reading)).toBe(2);
+	});
+
+	test("a harness without the signal drops the row", () => {
+		const bare = windowOf([
+			workflowDay({
+				harnesses: [
+					harnessDay({
+						effort: undefined,
+						thinking: undefined,
+						turnDurations: undefined,
+						questions: undefined,
+						webSearches: undefined,
+					}),
 				],
 			}),
-		).toBe(0.5);
-	});
-});
-
-describe("web-searches-per-active-day", () => {
-	it("averages searches across active days", () => {
-		expect(
-			metricRule("web-searches-per-active-day")?.evaluate(facts),
-		).toBeCloseTo(4, 10);
-	});
-
-	it("ignores active days without web-search support", () => {
-		expect(
-			metricRule("web-searches-per-active-day")?.evaluate({
-				activeDays: [
-					{ date: "2026-08-01", parallelProjectCount: 1, webSearches: 4 },
-					{ date: "2026-08-02", parallelProjectCount: 1 },
-				],
-			}),
-		).toBe(4);
+		]);
+		expect(value("effort-levels", bare)).toBeUndefined();
+		expect(value("thinking-share", bare)).toBeUndefined();
+		expect(value("turn-duration", bare)).toBeUndefined();
+		expect(value("question-back-share", bare)).toBeUndefined();
+		expect(value("web-searches-per-active-day", bare)).toBeUndefined();
 	});
 });

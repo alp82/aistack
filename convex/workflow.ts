@@ -1,25 +1,20 @@
 /**
  * The measured Workflow section: one read, one owner control.
  *
- * Wayfinder ticket #218 (map #200), spec `docs/specs/workflow-surface.md`. The
- * storage and the ranking live in `convex/lib/workflow.ts`; this file is the
- * public surface over them.
+ * Wayfinder ticket #218 (map #200), reshaped by #285; spec
+ * `docs/specs/workflow-surface.md`. The storage and the fold live in
+ * `convex/lib/workflow.ts`; this file is the public surface over them.
  *
- * WHAT THE PAGE GETS. One machine's reading, ranked into the podium the spec
- * describes, plus the stored aggregates the seven components draw. The section
- * on the page (#215) renders this answer and computes nothing of its own except
- * the template lead's sentences, which it builds from `lead` through
- * `renderLeadSentences` in `@aistack/workflow-rules`.
+ * WHAT THE PAGE GETS. One machine's days, folded over the window the caller
+ * asked for, with every row computed over the fold and placed in the fixed
+ * editorial order (#277: fit left the page). The section on the page renders
+ * this answer and computes nothing of its own except the template lead's
+ * sentences and the playbook, both of which it builds from the fold through
+ * `@aistack/workflow-rules`.
  */
 
-import {
-	COMPONENT_RULES,
-	componentRowId,
-	MAX_PINS,
-	METRIC_RULES,
-	metricRowId,
-} from '@aistack/workflow-rules'
-import { v } from 'convex/values'
+import { KNOWN_ROW_IDS, MAX_PINS } from '@aistack/workflow-rules'
+import { type Infer, v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import { mutation, query } from './_generated/server'
 import {
@@ -32,11 +27,14 @@ import {
 import { newestPerSource } from './lib/sources'
 import {
 	kitFromSnapshots,
-	readWorkflowReading,
+	readWorkflowWindow,
 	rowOverridesForStack,
-	workflowRowsForStack,
+	WORKFLOW_WINDOWS,
+	windowStartDate,
+	type WorkflowWindowId,
+	workflowDaysForStack,
 } from './lib/workflow'
-import { WorkflowSection } from './schema'
+import { GitDay, HarnessDay } from './schema'
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -51,11 +49,7 @@ const publicAtom = (atom: {
 	calls: atom.calls ?? null,
 })
 
-/** Every row id either rule pool can produce. A pin or a hide must name one. */
-const KNOWN_ROW_IDS: ReadonlySet<string> = new Set([
-	...METRIC_RULES.map((rule) => metricRowId(rule.id)),
-	...COMPONENT_RULES.map((rule) => componentRowId(rule.id)),
-])
+const WindowId = v.union(v.literal('30d'), v.literal('7d'), v.literal('24h'))
 
 const PhaseShare = v.object({
 	scout: v.number(),
@@ -91,26 +85,26 @@ const WorkflowRow = v.object({
 	ruleId: v.string(),
 	ruleVersion: v.string(),
 	label: v.string(),
+	/** The plain name the page prints (#284). */
+	name: v.string(),
+	/** True when the head holds the whole picture and the row never expands (#284). */
+	flat: v.boolean(),
 	unit: v.union(
 		v.literal('share'),
 		v.literal('count'),
-		v.literal('minutes')
+		v.literal('minutes'),
+		v.literal('hour')
 	),
 	value: v.number(),
 	band: v.object({ low: v.number(), high: v.number() }),
 	coverage: v.number(),
 	coverageTag: v.union(v.string(), v.null()),
-	/** Distance outside the typical band, 0..1. */
+	/** Distance outside the typical band, 0..1. Nothing ranks by it (#277). */
 	surprise: v.number(),
-	/** Coverage times surprise. */
+	/** Coverage times surprise. Nothing ranks by it (#277). */
 	fit: v.number(),
-	/** Distance travelled since the previous reading. Null on a first sync. */
-	movement: v.union(v.number(), v.null()),
-	placement: v.union(
-		v.literal('highlight'),
-		v.literal('normal'),
-		v.literal('low')
-	),
+	/** The first three rows on the page, in the fixed order or as pinned. */
+	placement: v.union(v.literal('highlight'), v.literal('normal')),
 	pinned: v.boolean(),
 	/** Only ever true in the owner's own view: a public read drops hidden rows. */
 	hidden: v.boolean(),
@@ -132,9 +126,9 @@ const KitAtom = v.object({
 /**
  * The inventory the kit and delegation components draw, per harness.
  *
- * IT IS NOT IN THE WORKFLOW SECTION. Skills, MCP servers and subagents are
+ * IT IS NOT IN THE WORKFLOW WIRE. Skills, MCP servers and subagents are
  * inventory, and inventory travels in the measured payload, so the two rows
- * that render them need the payload beside the reading. `component-rules/v1`
+ * that render them need the payload beside the reading. `component-rules/v2`
  * already reads it for the kit row's value; this carries the same rows on to
  * the page so the row's body shows what the value was computed from.
  *
@@ -153,11 +147,26 @@ const KitHarness = v.object({
 	}),
 })
 
+/**
+ * The folded window: the shape of one day (`WorkflowDay`) minus its date, plus
+ * the dates it holds and the two per-day series a median needs.
+ */
+const WorkflowWindow = v.object({
+	aggregateVersion: v.string(),
+	utcOffsetMinutes: v.optional(v.number()),
+	dates: v.array(v.string()),
+	harnesses: v.array(HarnessDay),
+	git: GitDay,
+	parallelProjects: v.optional(v.number()),
+	parallelProjectDays: v.array(v.number()),
+	webSearchDays: v.number(),
+})
+
 const WorkflowView = v.object({
 	/** The published machine name, null when withheld or untagged. */
 	machine: v.union(v.string(), v.null()),
 	machineOrdinal: v.union(v.number(), v.null()),
-	/** Every machine with a stored reading, for the section's own selector. */
+	/** Every machine with stored days, for the section's own selector. */
 	machines: v.array(
 		v.object({
 			machine: v.union(v.string(), v.null()),
@@ -166,6 +175,16 @@ const WorkflowView = v.object({
 			isCurrent: v.boolean(),
 		})
 	),
+	/** The window this answer folds, and how many stored days fell inside it. */
+	window: v.object({
+		id: WindowId,
+		/** Stored days inside the window. Zero is the empty state. */
+		days: v.number(),
+		/** The first UTC date the window reaches back to. */
+		from: v.string(),
+		/** Today, UTC. */
+		to: v.string(),
+	}),
 	capturedAt: v.number(),
 	receivedAt: v.number(),
 	isFresh: v.boolean(),
@@ -173,52 +192,46 @@ const WorkflowView = v.object({
 	aggregateVersion: v.string(),
 	/** Minutes east of UTC on the publishing machine. Null on a reading without one. */
 	utcOffsetMinutes: v.union(v.number(), v.null()),
-	/** Detail dropped at store time to stay inside the document limit. */
-	trimmed: v.union(
-		v.object({ commitStrip: v.boolean(), sessionRows: v.boolean() }),
-		v.null()
-	),
 	phaseRuleVersions: v.array(v.string()),
-	metricRuleVersions: v.array(v.string()),
-	/** True when this reading carries aggregates from more than one rule set. */
+	/** True when this window carries aggregates from more than one phase rule set. */
 	mixedRuleVersions: v.boolean(),
 	lead: LeadFacts,
 	rows: v.array(WorkflowRow),
-	/** Metric ids this build has no rule for, dropped rather than printed bare. */
-	unknownMetricIds: v.array(v.string()),
-	/** UTC day of the last challenger swap. Null until one happens. */
-	lastSwapDayUtc: v.union(v.string(), v.null()),
 	/** True when the caller owns the stack, so hidden rows are in `rows`. */
 	isOwner: v.boolean(),
-	/** The stored aggregates the seven components render. */
-	section: WorkflowSection,
-	/** The inventory two of those seven need, which lives in the payload. */
+	/** The folded atoms the components render. */
+	section: WorkflowWindow,
+	/** The inventory two of those components need, which lives in the payload. */
 	kit: v.array(KitHarness),
 })
 
 /**
  * One published stack's measured workflow reading, by public slug.
  *
- * A READING IS ONE MACHINE'S (ADR-0009). Without `machineOrdinal` the answer is
- * the machine that synced most recently; with it, that machine's own reading.
- * Nothing merges: the Git half cannot (the wire carries no commit identity, so
- * two clones of one repository would count their shared commits twice) and a
- * pool metric has no denominator to merge on.
+ * A READING IS ONE MACHINE'S, PER DAY (ADR-0009). Without `machineOrdinal` the
+ * answer is the machine that synced most recently; with it, that machine's own
+ * days. Without `window` the answer folds the last 30 days. Nothing merges two
+ * machines: the Git day carries no commit identity, so two clones of one
+ * repository would count their shared commits twice.
  */
 export const getWorkflowByStackSlug = query({
-	args: { slug: v.string(), machineOrdinal: v.optional(v.number()) },
+	args: {
+		slug: v.string(),
+		machineOrdinal: v.optional(v.number()),
+		window: v.optional(WindowId),
+	},
 	returns: v.union(WorkflowView, v.null()),
 	handler: async (ctx, args) => {
 		const stack = await publishedStackBySlug(ctx, args.slug)
 		if (!stack) return null
 
-		// The flag is the gate, not the presence of a stored section (#93's rule,
+		// The flag is the gate, not the presence of stored days (#93's rule,
 		// applied to this switch). An owner who turned the workflow off after a
-		// sync has turned it off for the reading already sent.
+		// sync has turned it off for the days already sent.
 		if (stack.publishWorkflow === false) return null
 
-		const rows = await workflowRowsForStack(ctx, stack._id)
-		if (rows.length === 0) return null
+		const all = await workflowDaysForStack(ctx, stack._id)
+		if (all.length === 0) return null
 
 		const publication = await machinePublication(ctx, stack)
 		if (
@@ -227,27 +240,48 @@ export const getWorkflowByStackSlug = query({
 		) {
 			return null
 		}
-		const ordinalOf = (row: Doc<'measuredWorkflows'>): number | null =>
-			row.machine === undefined
-				? null
-				: (publication.ordinals.get(row.machine) ?? null)
+		const ordinalOf = (machine: string | undefined): number | null =>
+			machine === undefined ? null : (publication.ordinals.get(machine) ?? null)
 
+		// One entry per machine, carrying that machine's newest row.
+		const byMachine = new Map<
+			string | undefined,
+			{ newest: Doc<'measuredWorkflowDays'>; rows: Doc<'measuredWorkflowDays'>[] }
+		>()
+		for (const row of all) {
+			const held = byMachine.get(row.machine)
+			if (!held) byMachine.set(row.machine, { newest: row, rows: [row] })
+			else {
+				held.rows.push(row)
+				if (row.receivedAt > held.newest.receivedAt) held.newest = row
+			}
+		}
 		// Newest first, so the default reading is the machine that spoke last.
-		const ordered = [...rows].sort(
+		const ordered = [...byMachine.values()].sort(
 			(a, b) =>
-				b.receivedAt - a.receivedAt || (ordinalOf(a) ?? 0) - (ordinalOf(b) ?? 0)
+				b.newest.receivedAt - a.newest.receivedAt ||
+				(ordinalOf(a.newest.machine) ?? 0) - (ordinalOf(b.newest.machine) ?? 0)
 		)
 		const selected =
 			args.machineOrdinal === undefined
 				? ordered[0]
-				: ordered.find((row) => ordinalOf(row) === args.machineOrdinal)
+				: ordered.find(
+						(entry) => ordinalOf(entry.newest.machine) === args.machineOrdinal
+					)
 		if (!selected) return null
+
+		const window: WorkflowWindowId = args.window ?? WORKFLOW_WINDOWS[0]
+		const now = Date.now()
+		const from = windowStartDate(window, now)
+		const to = new Date(now).toISOString().slice(0, 10)
+		const inWindow = selected.rows.filter((row) => row.date >= from)
 
 		const snapshots = newestPerSource(
 			await snapshotsForStack(ctx, stack._id)
-		).filter((row) => row.machine === selected.machine)
-		const view = readWorkflowReading({
-			row: selected,
+		).filter((row) => row.machine === selected.newest.machine)
+		const view = readWorkflowWindow({
+			rows: inWindow,
+			newest: selected.newest,
 			kit: kitFromSnapshots(snapshots),
 			overrides: await rowOverridesForStack(ctx, stack._id),
 			// Every synced session and harness on this machine, INCLUDING one the
@@ -261,22 +295,22 @@ export const getWorkflowByStackSlug = query({
 		})
 
 		const isOwner = publication.owner
+		const newest = selected.newest
 		return {
-			...publicMachine(selected.machine ?? null, publication),
-			machines: ordered.map((row) => ({
-				...publicMachine(row.machine ?? null, publication),
-				receivedAt: row.receivedAt,
-				isCurrent: row._id === selected._id,
+			...publicMachine(newest.machine ?? null, publication),
+			machines: ordered.map((entry) => ({
+				...publicMachine(entry.newest.machine ?? null, publication),
+				receivedAt: entry.newest.receivedAt,
+				isCurrent: entry === selected,
 			})),
-			capturedAt: selected.capturedAt,
-			receivedAt: selected.receivedAt,
-			isFresh: Date.now() - selected.receivedAt <= SEVEN_DAYS_MS,
-			cliVersion: selected.cliVersion ?? null,
-			aggregateVersion: selected.section.aggregateVersion,
-			utcOffsetMinutes: selected.section.utcOffsetMinutes ?? null,
-			trimmed: selected.trimmed ?? null,
+			window: { id: window, days: inWindow.length, from, to },
+			capturedAt: newest.capturedAt,
+			receivedAt: newest.receivedAt,
+			isFresh: now - newest.receivedAt <= SEVEN_DAYS_MS,
+			cliVersion: newest.cliVersion ?? null,
+			aggregateVersion: newest.aggregateVersion,
+			utcOffsetMinutes: newest.utcOffsetMinutes ?? null,
 			phaseRuleVersions: view.phaseRuleVersions,
-			metricRuleVersions: view.metricRuleVersions,
 			mixedRuleVersions: view.mixedRuleVersions,
 			lead: view.lead,
 			rows: view.rows
@@ -287,6 +321,8 @@ export const getWorkflowByStackSlug = query({
 					ruleId: row.ruleId,
 					ruleVersion: row.ruleVersion,
 					label: row.label,
+					name: row.name,
+					flat: row.flat,
 					unit: row.unit,
 					value: row.value,
 					band: row.band,
@@ -294,15 +330,14 @@ export const getWorkflowByStackSlug = query({
 					coverageTag: row.coverageTag ?? null,
 					surprise: row.surprise,
 					fit: row.fit,
-					movement: row.movement ?? null,
 					placement: row.placement,
 					pinned: row.pinned,
 					hidden: row.hidden,
 				})),
-			unknownMetricIds: view.unknownMetricIds,
-			lastSwapDayUtc: selected.lastSwapDayUtc ?? null,
 			isOwner,
-			section: selected.section,
+			// The rules package types its arrays readonly; the validator infers them
+			// mutable. Same bytes either way.
+			section: view.section as Infer<typeof WorkflowWindow>,
 			kit: snapshots.map((snapshot) => ({
 				harness: snapshot.harness,
 				skills: snapshot.payload.inventory.skills.map(publicAtom),
@@ -321,14 +356,14 @@ export const getWorkflowByStackSlug = query({
 /**
  * Pin a row to the podium, hide it from the page, or clear either.
  *
- * "The owner can pin or hide any row, and that override wins over both
- * thresholds" (spec). A pin outranks the fit order and the rotation limit; a
- * hide takes the row off the public page entirely rather than pushing it behind
- * the expander, because an expander is still published.
+ * "The owner can pin or hide any row, and that override wins" (spec). A pin
+ * puts the row ahead of the fixed order; a hide takes the row off the public
+ * page entirely.
  *
- * THE OVERRIDE IS PER STACK, not per machine. The judgment is about the row -
- * a number worth the podium, or one the owner would rather not publish - and it
- * does not change when the machine selector does.
+ * THE OVERRIDE IS PER STACK, not per machine and not per window. The judgment
+ * is about the row - a number worth the podium, or one the owner would rather
+ * not publish - and it does not change when the machine selector or the
+ * window does.
  *
  * At most three pins, one per podium slot. A fourth pin would promise a place
  * that does not exist, so it is refused rather than silently ranked.

@@ -114,9 +114,7 @@ function Track({ track }: { track: PlaybookTrack }) {
 			<p className="mt-3 font-mono text-xs text-fg-secondary">
 				median{" "}
 				<b className="text-fg-primary">{fmtMinutes(track.medianMinutes)}</b> ·
-				review rounds{" "}
-				<b className="text-fg-primary">{fmtNumber(track.medianReviewRounds)}</b>{" "}
-				· merged{" "}
+				merged{" "}
 				<b className="text-fg-primary">{fmtPercent(track.mergedShare)}</b>
 			</p>
 		</div>

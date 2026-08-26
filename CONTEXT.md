@@ -167,29 +167,40 @@ The opening prose of the workflow section. Fixed sentence forms over measured nu
 versioned with the metric rules. No LLM writes it.
 _Avoid_: workflow draft (the LLM draft was ruled out, see ADR-0002)
 
+**Workflow day**:
+One machine's workflow atoms for one UTC date: harness counts, sums, maxes and bucket
+histograms, plus the Git counts. Only combinable atoms, never a share or a median. A
+re-synced day replaces that day, and days append across syncs.
+_Avoid_: workflow section (that named the one 30-day section the wire carried before #285)
+
 **Workflow reading**:
-One machine's stored workflow section: its harness aggregates, its Git aggregate, and its
-pool metric rows. A reading is never merged with another machine's (ADR-0009).
+The fold of one machine's workflow days over a window. Every figure the section prints is
+computed over the fold. A reading is never merged with another machine's (ADR-0009).
 _Avoid_: workflow snapshot (that names the measured payload's table, not this one)
 
+**Window**:
+The span of whole UTC days a reading folds: 30 days, 7 days, or the days that touch the
+last 24 hours. The reader selects it on the page.
+
 **Fit**:
-The rank of a workflow row: coverage times surprise. Coverage is the share of synced
-harnesses the metric counts. Surprise is the distance from the typical band its rule
-declares, as `distance / (distance + band width)`, so a value inside its band scores zero
-and one band width outside scores a half.
+Coverage times surprise, carried on every workflow row as a number nothing ranks by.
+Coverage is the share of synced harnesses the metric counts. Surprise is the distance
+from the typical band its rule declares, as `distance / (distance + band width)`, so a
+value inside its band scores zero and one band width outside scores a half. The page
+order is fixed (#277).
 
 **Component rule**:
-The versioned rule that gives one of the seven components a headline value and a typical
-band, so it can compete for a podium slot beside a pool metric. It derives that value from
-aggregates the machine already shipped and measures nothing new.
+The versioned rule that gives one of the eight components a headline value and a typical
+band. It derives that value from atoms the machine already shipped and measures nothing
+new.
 
 **Row override**:
-The owner's pin or hide on one workflow row. A pin puts the row on the podium, a hide takes
-it off the public page, and either wins over the fit thresholds.
+The owner's pin or hide on one workflow row. A pin puts the row ahead of the fixed order
+and on the podium, and a hide takes it off the public page.
 
 **Podium**:
-The workflow section layout. The top three rows by fit render as one horizontal band,
-thin rows follow in fit order, and low-fit rows wait behind one expander.
+The workflow section layout. The first three rows in the fixed order, or the pinned rows,
+render as one horizontal band, and thin rows follow in the fixed order.
 
 **Phase**:
 One class of session time: scout, build, verify, or handoff, plus a visible unknown.
@@ -198,7 +209,7 @@ _Avoid_: orient (now scout), gate as a phase name (now handoff)
 
 **Playbook**:
 The public phase surface: two measured shipping tracks with median figures, plus
-receipt cards. `playbook-rules/v1` computes it from one reading's session rows.
+receipt cards. `playbook-rules/v2` computes it from one reading's session length buckets.
 
 **Shipping track**:
 One half of the playbook's session set. The split is the median measured session, so the

@@ -135,11 +135,12 @@ describe("the podium, the thin rows and the expander", () => {
 		expect(screen.getAllByText("+ tap to extend")).toHaveLength(3);
 	});
 
-	it("holds the low-fit rows behind one expander", () => {
+	it("lists every thin row in the fixed order, with no expander (#277)", () => {
 		setup(view());
-		expect(screen.queryByText("web searches per active day")).toBeNull();
-		fireEvent.click(screen.getByRole("button", { name: /below the fit line/ }));
 		expect(screen.getByText("web searches per active day")).toBeTruthy();
+		expect(
+			screen.queryByRole("button", { name: /below the fit line/ }),
+		).toBeNull();
 	});
 
 	it("extends a podium box into its body on a tap", () => {
@@ -163,7 +164,7 @@ describe("every figure names its rule", () => {
 		setup(view());
 		fireEvent.click(screen.getByText("thinking share"));
 		expect(
-			screen.getByText(/metric:thinking-share · metric-rules\/v1/),
+			screen.getByText(/metric:thinking-share · metric-rules\/v2/),
 		).toBeTruthy();
 		expect(
 			screen.getByText(
@@ -171,14 +172,6 @@ describe("every figure names its rule", () => {
 			),
 		).toBeTruthy();
 		expect(screen.getByText(/coverage times surprise/)).toBeTruthy();
-	});
-
-	it("says a first reading has no earlier window to compare against", () => {
-		setup(view());
-		fireEvent.click(screen.getByText("late night commits"));
-		expect(
-			screen.getByText(/no earlier window to compare against/),
-		).toBeTruthy();
 	});
 
 	it("names the rules, keeps the raw data local, and claims no LLM", () => {
@@ -190,13 +183,6 @@ describe("every figure names its rule", () => {
 			screen.getByText(
 				/No language model reads this section or writes a word of it/,
 			),
-		).toBeTruthy();
-	});
-
-	it("counts the measurements it has no rule for rather than printing them bare", () => {
-		setup({ ...view(), unknownMetricIds: ["future-metric"] });
-		expect(
-			screen.getByText(/1 measurement this site has no rule for yet/),
 		).toBeTruthy();
 	});
 });

@@ -62,6 +62,7 @@ import type * as migrations_20260823_knowledge_base_publication from "../migrati
 import type * as migrations_20260823_measured_machine_ordinals from "../migrations/20260823_measured_machine_ordinals.js";
 import type * as migrations_20260823_news_hn_lane from "../migrations/20260823_news_hn_lane.js";
 import type * as migrations_20260823_news_phase1_sources from "../migrations/20260823_news_phase1_sources.js";
+import type * as migrations_20260826_workflow_daily_rows from "../migrations/20260826_workflow_daily_rows.js";
 import type * as migrations__archived_migrateBlockToReference from "../migrations/_archived/migrateBlockToReference.js";
 import type * as migrations__archived_migrateNotesToDescription from "../migrations/_archived/migrateNotesToDescription.js";
 import type * as migrations__archived_migrateStackDescriptions from "../migrations/_archived/migrateStackDescriptions.js";
@@ -151,6 +152,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/20260823_measured_machine_ordinals": typeof migrations_20260823_measured_machine_ordinals;
   "migrations/20260823_news_hn_lane": typeof migrations_20260823_news_hn_lane;
   "migrations/20260823_news_phase1_sources": typeof migrations_20260823_news_phase1_sources;
+  "migrations/20260826_workflow_daily_rows": typeof migrations_20260826_workflow_daily_rows;
   "migrations/_archived/migrateBlockToReference": typeof migrations__archived_migrateBlockToReference;
   "migrations/_archived/migrateNotesToDescription": typeof migrations__archived_migrateNotesToDescription;
   "migrations/_archived/migrateStackDescriptions": typeof migrations__archived_migrateStackDescriptions;

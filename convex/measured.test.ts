@@ -650,47 +650,49 @@ describe('publishForToken - the destination comes from the token', () => {
     unknown: 70,
   })
 
-  const workflow = (over: Record<string, unknown> = {}) => ({
-    aggregateVersion: 'workflow-aggregates/v1',
-    harnesses: [
-      {
-        harness: 'claude-code',
-        phase: {
-          ruleVersion: 'phase-rules/v1',
-          publishable: true,
+  const workflowDay = () => ({
+      date: '2026-08-21',
+      harnesses: [
+        {
+          harness: 'claude-code',
           sessions: 142,
-          phaseSec: phaseTotals(),
-          phaseEvents: phaseTotals(),
-          waitingSec: 12,
-          idleSec: 30,
-          unknownShare: 0.07,
-          sessionRows: [],
+          startHours: [{ hourUtc: 23, sessions: 142 }],
+          phase: {
+            ruleVersion: 'phase-rules/v1',
+            sessions: 142,
+            phaseSec: phaseTotals(),
+            phaseEvents: phaseTotals(),
+            waitingSec: 12,
+            idleSec: 30,
+            sessionsWithVerify: 40,
+            sessionsWithHandoff: 60,
+            bucketRuleVersion: 'log-buckets/v1',
+            lengths: [],
+          },
+          activity: [{ weekdayUtc: 5, hourUtc: 23, events: 17 }],
         },
-        activity: [{ weekdayUtc: 5, hourUtc: 23, events: 17 }],
+      ],
+      git: {
+        testFileRuleVersion: 'test-files/v2',
+        fileTypeRuleVersion: 'file-types/v2',
+        commitSetRuleVersion: 'commit-set/v1',
+        commits: 214,
+        lateNightCommits: 30,
+        additions: 9000,
+        removals: 3400,
+        changedLinesPerCommit: [40, 12],
+        testFileCommits: 5,
+        changedLinesByExtension: [{ extension: '.ts', changedLines: 500 }],
+        withheldExtensionLines: 20,
+        weekdayHourCells: [{ weekdayUtc: 5, hourUtc: 23, commits: 3 }],
       },
-    ],
-    git: {
-      testFileRuleVersion: 'test-files/v1',
-      fileTypeRuleVersion: 'file-types/v1',
-      totalCommits: 214,
-      lateNightCommits: 30,
-      additions: 9000,
-      removals: 3400,
-      changedLinesPerCommit: [40, 12],
-      testFileCommits: 5,
-      changedLinesByExtension: [{ extension: '.ts', changedLines: 500 }],
-      withheldExtensionLines: 20,
-      weekdayHourCells: [{ weekdayUtc: 5, hourUtc: 23, commits: 3 }],
-    },
-    metrics: [
-      {
-        metricId: 'late-night-commit-share',
-        ruleVersion: 'metric-rules/v1',
-        value: 0.14,
-        band: { low: 0.05, high: 0.2 },
-        coverage: 1,
-      },
-    ],
+      parallelProjects: 2,
+    })
+
+  const workflow = (over: Record<string, unknown> = {}) => ({
+    aggregateVersion: 'workflow-aggregates/v2',
+    utcOffsetMinutes: 120,
+    days: [workflowDay()],
     ...over,
   })
 
@@ -724,29 +726,33 @@ describe('publishForToken - the destination comes from the token', () => {
         tokenId,
         payloads: [payload()],
         workflow: workflow({
-          metrics: Array.from({ length: 65 }, (_, i) => ({
-            metricId: `m-${i}`,
-            ruleVersion: 'metric-rules/v1',
-            value: 1,
-            band: { low: 0, high: 2 },
-            coverage: 1,
-          })),
+          days: [
+            {
+              ...workflowDay(),
+              harnesses: Array.from({ length: 9 }, (_, i) => ({
+                ...workflowDay().harnesses[0],
+                harness: `harness-${i}`,
+              })),
+            },
+          ],
         }),
       }),
-    ).rejects.toThrow(/workflow.metrics must hold at most 64/)
+    ).rejects.toThrow(/workflow.days\[0\].harnesses must hold at most 8/)
   })
 
   test('refuses two workflow entries claiming one harness (#213)', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
     const tokenId = await seedToken(t, { stackId })
-    const one = workflow()
+    const one = workflowDay()
 
     await expect(
       t.mutation(internal.measured.publishForToken, {
         tokenId,
         payloads: [payload()],
-        workflow: { ...one, harnesses: [one.harnesses[0], one.harnesses[0]] },
+        workflow: workflow({
+          days: [{ ...one, harnesses: [one.harnesses[0], one.harnesses[0]] }],
+        }),
       }),
     ).rejects.toThrow(/distinct harness/i)
   })

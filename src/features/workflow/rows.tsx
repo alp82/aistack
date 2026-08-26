@@ -1,9 +1,4 @@
-import {
-	componentRule,
-	LOW_FIT_LINE,
-	MAX_PINS,
-	metricRule,
-} from "@aistack/workflow-rules";
+import { componentRule, MAX_PINS, metricRule } from "@aistack/workflow-rules";
 import { useMutation } from "convex/react";
 import { ChevronDown, ChevronUp, EyeOff, Pin } from "lucide-react";
 import { useState } from "react";
@@ -44,11 +39,9 @@ export function RowSet({
 }) {
 	const highlights = view.rows.filter((row) => row.placement === "highlight");
 	const normal = view.rows.filter((row) => row.placement === "normal");
-	const low = view.rows.filter((row) => row.placement === "low");
 
 	const [openHighlight, setOpenHighlight] = useState<string | null>(null);
 	const [openRows, setOpenRows] = useState<readonly string[]>([]);
-	const [expanded, setExpanded] = useState(false);
 	const toggleRow = (rowId: string) =>
 		setOpenRows((held) =>
 			held.includes(rowId)
@@ -95,42 +88,11 @@ export function RowSet({
 						onToggle={() => toggleRow(row.rowId)}
 					/>
 				))}
-
-				{low.length > 0 && (
-					<>
-						<button
-							type="button"
-							onClick={() => setExpanded((held) => !held)}
-							aria-expanded={expanded}
-							className="flex w-full items-center gap-3 py-3 text-left hover:bg-bg-panel/40"
-						>
-							<span className="flex-1 text-sm text-fg-muted">
-								below the fit line
-							</span>
-							<span className="font-mono text-xs text-fg-muted">
-								{low.length} more
-							</span>
-							<Chevron open={expanded} />
-						</button>
-						{expanded &&
-							low.map((row) => (
-								<ThinRow
-									key={row.rowId}
-									row={row}
-									view={view}
-									stackId={stackId}
-									dim
-									open={openRows.includes(row.rowId)}
-									onToggle={() => toggleRow(row.rowId)}
-								/>
-							))}
-					</>
-				)}
 			</div>
 
 			<p className="mt-4 font-mono text-[11px] text-fg-muted">
-				one row set · ranked by fit · rows under fit {fmtNumber(LOW_FIT_LINE)}{" "}
-				wait behind the expander · at most one highlight swap per sync day
+				one row set · fixed order · the first three rows are the podium unless
+				the owner pins others
 			</p>
 		</div>
 	);
@@ -301,11 +263,6 @@ export function Derivation({ row }: { row: WorkflowRow }) {
 			<Line label="fit">
 				<b className="text-fg-primary">{fmtNumber(row.fit)}</b> · coverage times
 				surprise
-			</Line>
-			<Line label="movement">
-				{row.movement === null
-					? "no earlier window to compare against"
-					: `${fmtNumber(row.movement)} against the previous window`}
 			</Line>
 		</dl>
 	);

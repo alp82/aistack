@@ -4,7 +4,11 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { api, internal } from './_generated/api'
 import type { Id } from './_generated/dataModel'
 import schema from './schema'
-import { sha256Hex, stripRetiredResourceFields } from './httpCli'
+import {
+  dailyWorkflowOrUndefined,
+  sha256Hex,
+  stripRetiredResourceFields,
+} from './httpCli'
 import { FULL_CLI_TOKEN_SCOPES, type CliTokenScope } from './lib/cliScopes'
 import { DEFAULT_MAX_REQUESTS, SHARED_BUCKET_MAX_REQUESTS } from './rateLimit'
 
@@ -619,6 +623,25 @@ describe('authStart budget', () => {
 // ---------------------------------------------------------------------------
 // Retired wire fields (#213)
 // ---------------------------------------------------------------------------
+
+describe('dailyWorkflowOrUndefined (#285)', () => {
+  test('keeps a daily section and drops a pre-daily one', () => {
+    const daily = { aggregateVersion: 'workflow-aggregates/v2', days: [] }
+    expect(dailyWorkflowOrUndefined(daily)).toBe(daily)
+    // The one 30-day section a 0.8.0 CLI sends: no `days`, so it is dropped
+    // rather than refusing the payloads beside it.
+    expect(
+      dailyWorkflowOrUndefined({
+        aggregateVersion: 'workflow-aggregates/v1',
+        harnesses: [],
+        git: {},
+        metrics: [],
+      })
+    ).toBeUndefined()
+    expect(dailyWorkflowOrUndefined(undefined)).toBeUndefined()
+    expect(dailyWorkflowOrUndefined('nope')).toBeUndefined()
+  })
+})
 
 describe('stripRetiredResourceFields', () => {
   test('drops scope so an installed CLI still publishes', () => {

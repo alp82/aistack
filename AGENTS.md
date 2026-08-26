@@ -159,21 +159,27 @@ The Workflow section on the stack page. Spec:
 
 * **The rules are one package**: `packages/workflow-rules` (`@aistack/workflow-rules`),
   imported by the CLI, the Convex backend, and the web app. It holds `phase-rules/v1`,
-  `metric-rules/v1`, `component-rules/v1`, `lead-templates/v1`, `playbook-rules/v1`, and
-  the fit and rotation arithmetic. Every function in it is pure, so it is where a rule
-  change gets tested.
-* **Fit splits between the machine and the server.** The CLI measures and ships value,
-  band, coverage and rule id per pool metric. The server computes fit (coverage times
-  surprise), applies the rotation limit, and applies the owner's pins and hides.
-* **A reading is one machine's** (ADR-0009). `measuredWorkflows` holds one row per
-  (stack, machine), REPLACED on every sync rather than appended, and nothing merges two
-  machines. The Git half cannot merge (no commit identity on the wire) and a pool metric
-  has no denominator to merge on.
+  `metric-rules/v2`, `component-rules/v2`, `lead-templates/v1`, `playbook-rules/v2`, the
+  daily wire shape and its fold (`daily.ts`), and the fixed row order
+  (`workflowRows.ts`). Every function in it is pure, so it is where a rule change gets
+  tested.
+* **The wire is per-day rows of combinable atoms** (`workflow-aggregates/v2`, #285). The
+  CLI ships one `WorkflowDay` per UTC date holding counts, sums, maxes and
+  `log-buckets/v1` histograms, and NO share, median or mean. The server folds a window
+  (30 days, 7 days, or the last 24 hours) at read time and computes every row over the
+  fold. A rule change is a server deploy and needs no re-sync.
+* **A reading is one machine's, per day** (ADR-0009). `measuredWorkflowDays` holds one
+  row per (stack, machine, date); a re-synced day REPLACES that day, days append across
+  syncs, and 400 days are kept per machine. Nothing merges two machines: the Git day
+  carries no commit identity.
+* **Fit is a number nothing ranks by** (#277). Rows come in the fixed order of
+  `WORKFLOW_ROW_ORDER`, pinned rows first, and the first three are the podium. There is
+  no rotation state, fit line or expander.
 * **No LLM anywhere** (ADR-0002). Every sentence the section prints comes from a fixed
   template over measured numbers.
 * The `publishWorkflow` bit is the consent gate, and it reads at BOTH ends: the CLI skips
-  the extraction when it is off, and `getWorkflowByStackSlug` returns null for a reading
-  already stored. The presence of a stored section is not consent.
+  the extraction when it is off, and `getWorkflowByStackSlug` returns null for days
+  already stored. The presence of stored days is not consent.
 * **The section is `src/features/workflow`.** It renders what the server hands it and ranks
   nothing: `placement`, `pinned` and `hidden` arrive computed, and a second ranking on the
   page could disagree with the first. The two owner controls are pin and hide per row,

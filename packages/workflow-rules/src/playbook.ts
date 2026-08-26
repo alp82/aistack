@@ -1,30 +1,36 @@
-// The public phase surface: `playbook-rules/v1`.
+// The public phase surface: `playbook-rules/v2`.
 //
-// Wayfinder ticket #215 (map #200). CONTEXT.md defines the playbook as "two
-// measured shipping tracks with median figures, plus receipt cards", and a
-// receipt card as "one card that pairs a habit with its measured payoff".
-// This module is the rule that produces both, from the session rows one
-// machine's reading already carries.
+// Wayfinder ticket #215 (map #200) built v1 over per-session rows. Ticket
+// #285 took the session rows off the wire: a day carries a HISTOGRAM of
+// measured session length (`SessionLengthBucket`), and the two tracks and the
+// receipt cards are computed over that histogram. That is v2: the same two
+// tracks, split at the median bucket rather than the median session, and two
+// receipt cards whose figures a histogram can carry.
 //
 // NO LLM ANYWHERE (ADR-0002). Every sentence below is a fixed string and every
-// number is a median or a share over measured seconds. The card heads name the
-// two sides and claim no direction between them: which side is larger is the
-// reading's answer, not the template's.
+// number is a ratio of counts or a median over buckets. The card heads name
+// the two sides and claim no direction between them: which side is larger is
+// the reading's answer, not the template's.
 //
 // THE TRACKS SPLIT ON MEASURED TIME, not on intent. A session's purpose is not
 // recorded anywhere, so "quick fix" and "feature work" would be labels no rule
-// computed. The split is the median measured session, and both track names say
-// exactly that.
+// computed. The split is the median measured session, and both track names
+// say exactly that.
 //
-// THRESHOLDS ARE V1 DEFAULTS, the same caveat `metric-rules/v1` and
-// `component-rules/v1` carry: no calibration run has happened, and prod has
-// four living stacks to calibrate against.
+// THRESHOLDS ARE DEFAULTS, the same caveat the metric and component rules
+// carry: no calibration run has happened.
 
-import type { WorkflowSessionRow } from "./reading.js";
-import { sessionRows, type WorkflowReading } from "./reading.js";
+import {
+	bucketMid,
+	bucketRange,
+	EMPTY_PHASE_TOTALS,
+	medianBucket,
+	type SessionLengthBucket,
+} from "./daily.js";
+import { playbookHarnesses, type WorkflowReading } from "./reading.js";
 import { PHASES, type PhaseId } from "./types.js";
 
-export const PLAYBOOK_RULES_V1 = "playbook-rules/v1";
+export const PLAYBOOK_RULES_V2 = "playbook-rules/v2";
 
 /**
  * Sessions a reading needs before the playbook prints at all.
@@ -51,9 +57,11 @@ export type PlaybookTrack = {
 	sessions: number;
 	/** Share of this track's measured time per phase, `unknown` included. */
 	phaseShare: Record<PhaseId, number>;
+	/** The median bucket of the track, quoted at its middle, in minutes. */
 	medianMinutes: number;
-	medianReviewRounds: number;
 	mergedShare: number;
+	/** The buckets this track holds, for a histogram. */
+	buckets: readonly SessionLengthBucket[];
 };
 
 export type PlaybookReceipt = {
@@ -75,34 +83,41 @@ export type PlaybookReceiptSide = {
 export type Playbook = {
 	ruleVersion: string;
 	sessions: number;
-	/** The median measured session, in minutes. It is what split the tracks. */
+	/** The median bucket's lower bound, in minutes. It is what split the tracks. */
 	splitMinutes: number;
 	tracks: readonly [PlaybookTrack, PlaybookTrack];
 	receipts: readonly PlaybookReceipt[];
 };
 
-const MIN_PER_SEC = 1 / 60;
-
-function median(values: readonly number[]): number | undefined {
-	if (values.length === 0) return undefined;
-	const sorted = [...values].sort((a, b) => a - b);
-	const mid = Math.floor(sorted.length / 2);
-	const midValue = sorted[mid];
-	if (midValue === undefined) return undefined;
-	return sorted.length % 2 === 0
-		? ((sorted[mid - 1] as number) + midValue) / 2
-		: midValue;
+/** Every length bucket of every harness that shipped a phase reading, merged by bucket. */
+export function lengthBuckets(reading: WorkflowReading): SessionLengthBucket[] {
+	const merged = new Map<number, SessionLengthBucket>();
+	for (const harness of playbookHarnesses(reading)) {
+		for (const row of harness.phase?.lengths ?? []) {
+			const held = merged.get(row.bucket);
+			if (!held) {
+				merged.set(row.bucket, { ...row, phaseSec: { ...row.phaseSec } });
+				continue;
+			}
+			held.sessions += row.sessions;
+			held.merged += row.merged;
+			held.verified += row.verified;
+			held.mergedVerified += row.mergedVerified;
+			held.openedWithScout += row.openedWithScout;
+			for (const phase of PHASES) held.phaseSec[phase] += row.phaseSec[phase];
+		}
+	}
+	return [...merged.values()].sort((a, b) => a.bucket - b.bucket);
 }
 
-/** Measured seconds in one session: every phase bucket, `unknown` included. */
-export function measuredSec(row: WorkflowSessionRow): number {
-	return PHASES.reduce((sum, phase) => sum + row.phaseSec[phase], 0);
+function sessionsIn(rows: readonly SessionLengthBucket[]): number {
+	return rows.reduce((sum, row) => sum + row.sessions, 0);
 }
 
 function shareOfPhases(
-	rows: readonly WorkflowSessionRow[],
+	rows: readonly SessionLengthBucket[],
 ): Record<PhaseId, number> {
-	const totals = {} as Record<PhaseId, number>;
+	const totals = { ...EMPTY_PHASE_TOTALS };
 	for (const phase of PHASES) {
 		totals[phase] = rows.reduce((sum, row) => sum + row.phaseSec[phase], 0);
 	}
@@ -112,24 +127,35 @@ function shareOfPhases(
 	return totals;
 }
 
+function medianMinutesOf(
+	rows: readonly SessionLengthBucket[],
+	count: (row: SessionLengthBucket) => number,
+): number | undefined {
+	const bucket = medianBucket(
+		rows.map((row) => ({ bucket: row.bucket, count: count(row) })),
+	);
+	return bucket === undefined ? undefined : bucketMid(bucket);
+}
+
 function buildTrack(
 	id: PlaybookTrackId,
 	label: string,
 	scope: string,
-	rows: readonly WorkflowSessionRow[],
+	rows: readonly SessionLengthBucket[],
 ): PlaybookTrack {
+	const sessions = sessionsIn(rows);
 	return {
 		id,
 		label,
 		scope,
-		sessions: rows.length,
+		sessions,
 		phaseShare: shareOfPhases(rows),
-		medianMinutes: (median(rows.map(measuredSec)) ?? 0) * MIN_PER_SEC,
-		medianReviewRounds: median(rows.map((row) => row.reviewRounds)) ?? 0,
+		medianMinutes: medianMinutesOf(rows, (row) => row.sessions) ?? 0,
 		mergedShare:
-			rows.length === 0
+			sessions === 0
 				? 0
-				: rows.filter((row) => row.merged).length / rows.length,
+				: rows.reduce((sum, row) => sum + row.merged, 0) / sessions,
+		buckets: rows,
 	};
 }
 
@@ -142,26 +168,28 @@ function buildTrack(
  * and nothing prints rather than a median over a handful of runs.
  */
 export function buildPlaybook(reading: WorkflowReading): Playbook | undefined {
-	const rows = sessionRows(reading);
-	if (rows.length < MIN_PLAYBOOK_SESSIONS) return undefined;
+	const rows = lengthBuckets(reading);
+	if (sessionsIn(rows) < MIN_PLAYBOOK_SESSIONS) return undefined;
 
-	const splitSec = median(rows.map(measuredSec));
-	if (splitSec === undefined || splitSec <= 0) return undefined;
-	const splitMinutes = splitSec * MIN_PER_SEC;
+	const split = medianBucket(
+		rows.map((row) => ({ bucket: row.bucket, count: row.sessions })),
+	);
+	if (split === undefined) return undefined;
+	const splitMinutes = bucketRange(split).low;
 
-	const shorter = rows.filter((row) => measuredSec(row) < splitSec);
-	const longer = rows.filter((row) => measuredSec(row) >= splitSec);
+	const shorter = rows.filter((row) => row.bucket < split);
+	const longer = rows.filter((row) => row.bucket >= split);
 	if (
-		shorter.length < MIN_TRACK_SESSIONS ||
-		longer.length < MIN_TRACK_SESSIONS
+		sessionsIn(shorter) < MIN_TRACK_SESSIONS ||
+		sessionsIn(longer) < MIN_TRACK_SESSIONS
 	) {
 		return undefined;
 	}
 
 	const bound = `${Math.round(splitMinutes)} min`;
 	return {
-		ruleVersion: PLAYBOOK_RULES_V1,
-		sessions: rows.length,
+		ruleVersion: PLAYBOOK_RULES_V2,
+		sessions: sessionsIn(rows),
 		splitMinutes,
 		tracks: [
 			buildTrack(
@@ -176,85 +204,82 @@ export function buildPlaybook(reading: WorkflowReading): Playbook | undefined {
 	};
 }
 
-type ReceiptRule = {
-	id: string;
-	head: string;
-	unit: string;
-	withLabel: string;
-	withoutLabel: string;
-	/** True for the sessions that hold the habit. */
-	holds: (row: WorkflowSessionRow) => boolean;
-	/** The figure both sides are compared on. */
-	figure: (row: WorkflowSessionRow) => number;
-};
-
 /**
  * The receipt pool.
  *
  * A HEAD NAMES BOTH SIDES AND CLAIMS NO DIRECTION. "Tests before the gate save
  * review rounds" is a claim no rule computed, and on a stack where the numbers
  * run the other way the card would print a sentence its own figures refute.
- * The footnote every card carries says the rest: measured together, no cause
- * claimed.
- */
-const RECEIPT_RULES: readonly ReceiptRule[] = [
-	{
-		id: "verify-review-rounds",
-		head: "Review rounds, with and without a verify step.",
-		unit: "median review rounds per session",
-		withLabel: "with a verify step",
-		withoutLabel: "without",
-		holds: (row) => row.verifyRuns > 0,
-		figure: (row) => row.reviewRounds,
-	},
-	{
-		id: "scout-session-length",
-		head: "Measured session length, opened with scout or not.",
-		unit: "median minutes of measured time",
-		withLabel: "opened with scout",
-		withoutLabel: "opened otherwise",
-		holds: (row) => row.openedWithScout,
-		figure: (row) => measuredSec(row) * MIN_PER_SEC,
-	},
-];
-
-/**
- * Every receipt card the session rows can support.
  *
- * A card ships only when BOTH sides clear the floor. One side of five sessions
- * and one of a hundred is a comparison in shape only, and printing it would
- * give a median over five runs the same weight as a median over a hundred.
+ * Two cards, both of which a histogram can carry: a merge share on each side
+ * of the verify habit, and the median length on each side of the scout habit.
+ * The review-round card v1 printed needed a per-session median the wire no
+ * longer holds.
  */
 export function buildReceipts(
-	rows: readonly WorkflowSessionRow[],
+	rows: readonly SessionLengthBucket[],
 ): PlaybookReceipt[] {
 	const cards: PlaybookReceipt[] = [];
-	for (const rule of RECEIPT_RULES) {
-		const held = rows.filter(rule.holds);
-		const rest = rows.filter((row) => !rule.holds(row));
-		if (
-			held.length < MIN_RECEIPT_SIDE_SESSIONS ||
-			rest.length < MIN_RECEIPT_SIDE_SESSIONS
-		) {
-			continue;
-		}
-		const withValue = median(held.map(rule.figure));
-		const withoutValue = median(rest.map(rule.figure));
-		if (withValue === undefined || withoutValue === undefined) continue;
+
+	const verified = rows.reduce((sum, row) => sum + row.verified, 0);
+	const unverified = sessionsIn(rows) - verified;
+	if (
+		verified >= MIN_RECEIPT_SIDE_SESSIONS &&
+		unverified >= MIN_RECEIPT_SIDE_SESSIONS
+	) {
+		const mergedVerified = rows.reduce(
+			(sum, row) => sum + row.mergedVerified,
+			0,
+		);
+		const merged = rows.reduce((sum, row) => sum + row.merged, 0);
 		cards.push({
-			id: rule.id,
-			ruleVersion: PLAYBOOK_RULES_V1,
-			head: rule.head,
-			unit: rule.unit,
+			id: "verify-merged-share",
+			ruleVersion: PLAYBOOK_RULES_V2,
+			head: "Sessions that merged, with and without a verify step.",
+			unit: "share of sessions that ran gh pr merge",
 			sides: [
-				{ label: rule.withLabel, value: withValue, sessions: held.length },
 				{
-					label: rule.withoutLabel,
-					value: withoutValue,
-					sessions: rest.length,
+					label: "with a verify step",
+					value: mergedVerified / verified,
+					sessions: verified,
+				},
+				{
+					label: "without",
+					value: (merged - mergedVerified) / unverified,
+					sessions: unverified,
 				},
 			],
 		});
 	}
+
+	const scouted = rows.reduce((sum, row) => sum + row.openedWithScout, 0);
+	const unscouted = sessionsIn(rows) - scouted;
+	if (
+		scouted >= MIN_RECEIPT_SIDE_SESSIONS &&
+		unscouted >= MIN_RECEIPT_SIDE_SESSIONS
+	) {
+		const withValue = medianMinutesOf(rows, (row) => row.openedWithScout);
+		const withoutValue = medianMinutesOf(
+			rows,
+			(row) => row.sessions - row.openedWithScout,
+		);
+		if (withValue !== undefined && withoutValue !== undefined) {
+			cards.push({
+				id: "scout-session-length",
+				ruleVersion: PLAYBOOK_RULES_V2,
+				head: "Measured session length, opened with scout or not.",
+				unit: "median minutes of measured time",
+				sides: [
+					{ label: "opened with scout", value: withValue, sessions: scouted },
+					{
+						label: "opened otherwise",
+						value: withoutValue,
+						sessions: unscouted,
+					},
+				],
+			});
+		}
+	}
+
 	return cards;
 }

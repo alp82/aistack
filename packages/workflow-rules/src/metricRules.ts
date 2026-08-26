@@ -1,76 +1,31 @@
-// The versioned metric rule pool: `metric-rules/v1`.
+// The versioned metric rule pool: `metric-rules/v2`.
 //
-// Wayfinder ticket #214 (map #200). The nine metrics are the pool settled in
-// ticket #175 ("the nine metrics you liked", `prototypes/workflow-surface/index.html`,
-// pool view). Four more pool ideas from #175 - line counts, subagent fan-out,
-// subagent count, and the main-loop-to-subagent ratio - are EXCLUDED here on
-// purpose: #175 moved them into the Git Ledger and delegation components, so
-// they render as fixed facts there instead of competing for a fit slot
-// (spec, "Fit"). "Sessions with effort switches" is #175's tenth addition,
-// named `effort-changes-mid-run` below.
+// Wayfinder ticket #214 (map #200) declared v1 over per-session facts the CLI
+// reduced on the machine. Ticket #285 moved the wire to daily rows of
+// combinable atoms and moved EVERY evaluation to the server, over the folded
+// window (`daily.ts`). That is v2: the same pool, minus the two rows #277
+// dropped (model switches, effort switches), with the effort and turn rows
+// reshaped to what a histogram can say.
 //
-// A rule declares four things a metric needs before it can compete for a
-// slot: what it measures (`evaluate`), which harnesses can supply the signal
-// (`harnessSupport`, for the coverage tag), and the typical band surprise is
-// measured against (spec: "the band is part of the versioned rule, like a
-// proxy match"). Coverage and surprise/fit THEMSELVES are computed
-// server-side (ticket #218) - this module ships the inputs, not the ranking.
+// A rule declares what it measures (`evaluate`), which harnesses can supply
+// the signal (`counts`, for coverage and the coverage tag), and the typical
+// band the value sits against. The band is DATA THE PAGE DOES NOT RANK BY
+// (#277): fit stays in the API as a number, and the order on the page is the
+// fixed editorial one in `workflowRows.ts`.
 //
-// BAND VALUES ARE V1 DEFAULTS, NOT PROVEN DATA. Unlike `phase-rules/v1`,
-// whose numbers came out of a 464-session proof (#196), no equivalent
-// calibration run has happened yet for these bands - the #175 prototype's own
-// fit scores are "hand-made to show the ranking. No live sync feeds this
-// yet." These bands are a reasoned starting point; a metric rule version
-// bump corrects one the same way `phase-rules/v1` corrected the guessed
-// command heads of `as-specced/v1` once real sync data is in.
+// BAND VALUES ARE DEFAULTS, NOT PROVEN DATA. No calibration run has happened,
+// and a rule version bump corrects one once real synced readings are in.
 
-import type { HarnessName } from "./types.js";
+import type { HarnessDay } from "./daily.js";
+import { bucketMid, median, medianBucket } from "./daily.js";
+import type { WorkflowReading } from "./reading.js";
 
-export const METRIC_RULES_V1 = "metric-rules/v1";
+export const METRIC_RULES_V2 = "metric-rules/v2";
 
-export type MetricUnit = "share" | "count" | "minutes";
+export type MetricUnit = "share" | "count" | "minutes" | "hour";
 
 /** The typical range surprise is measured against, in the metric's own unit. */
 export type Band = { low: number; high: number };
-
-/**
- * The reduced, harness-agnostic facts a metric rule reads. Producing this
- * shape from a harness's own transcripts and local Git history is the
- * harness/Git reducer's job (ticket #219); this module only consumes it.
- */
-export type WorkflowFacts = {
-	git?: {
-		/** Commits inside the sync window, from local Git history. */
-		totalCommits: number;
-		/** Of those, commits whose author time falls between 23:00 and 03:00 local. */
-		lateNightCommits: number;
-	};
-	/** One entry per session, across every synced harness. */
-	sessions?: ReadonlyArray<{
-		harness: HarnessName;
-		/** True when the session's responses named more than one model. */
-		/** Present only when at least one response names a model. */
-		modelSwitched?: boolean;
-		thinkingTokens?: number;
-		responseTokens?: number;
-		/** Present only for harnesses that record an effort field (Claude Code, Codex). */
-		effortTurns?: { high: number; total: number };
-		effortChangedMidRun?: boolean;
-		/** Present only for harnesses that record per-turn duration (Claude Code, opencode). */
-		longestTurnDurationSec?: number;
-		/** Present only for harnesses with a stable question-tool marker. */
-		questionBackTurns?: number;
-		totalTurns?: number;
-	}>;
-	/** One entry per active day inside the sync window. */
-	activeDays?: ReadonlyArray<{
-		date: string;
-		/** Distinct project workspaces with an overlapping session span that day. */
-		parallelProjectCount: number;
-		/** Present only for harnesses with a built-in web-search tool. */
-		webSearches?: number;
-	}>;
-};
 
 export type MetricRule = {
 	id: string;
@@ -79,195 +34,132 @@ export type MetricRule = {
 	label: string;
 	kind: "exact" | "proxy";
 	unit: MetricUnit;
-	/** `"all"` when the signal comes from local Git history, which counts every synced harness regardless of what the harness itself records (spec, "Fit"). */
-	harnessSupport: readonly HarnessName[] | "all";
 	band: Band;
-	evaluate: (facts: WorkflowFacts) => number | undefined;
+	/**
+	 * True for a harness whose fold carries this metric's signal, or `"all"`
+	 * when the signal comes from Git history, which counts every synced harness
+	 * regardless of what the harness itself records (spec, "Fit").
+	 */
+	counts: ((harness: HarnessDay) => boolean) | "all";
+	evaluate: (reading: WorkflowReading) => number | undefined;
 };
-
-function median(values: readonly number[]): number | undefined {
-	if (values.length === 0) return undefined;
-	const sorted = [...values].sort((a, b) => a - b);
-	const mid = Math.floor(sorted.length / 2);
-	const midValue = sorted[mid];
-	if (midValue === undefined) return undefined;
-	return sorted.length % 2 === 0
-		? ((sorted[mid - 1] as number) + midValue) / 2
-		: midValue;
-}
-
-function shareOf(
-	sessions: WorkflowFacts["sessions"],
-	predicate: (s: NonNullable<WorkflowFacts["sessions"]>[number]) => boolean,
-): number | undefined {
-	if (!sessions || sessions.length === 0) return undefined;
-	const hits = sessions.filter(predicate).length;
-	return hits / sessions.length;
-}
 
 export const METRIC_RULES: readonly MetricRule[] = [
 	{
 		id: "late-night-commits",
-		version: METRIC_RULES_V1,
+		version: METRIC_RULES_V2,
 		label: "of commits land between 23:00 and 03:00",
 		kind: "exact",
 		unit: "share",
-		harnessSupport: "all",
-		// Most commit activity clusters in daytime hours; a wide late-night
-		// share is the surprising case this metric exists to surface.
+		counts: "all",
 		band: { low: 0, high: 0.15 },
-		evaluate: (facts) => {
-			const git = facts.git;
-			if (!git || git.totalCommits === 0) return undefined;
-			return git.lateNightCommits / git.totalCommits;
+		evaluate: (reading) => {
+			const git = reading.git;
+			if (git.commits === 0) return undefined;
+			return git.lateNightCommits / git.commits;
 		},
 	},
 	{
 		id: "parallel-projects",
-		version: METRIC_RULES_V1,
+		version: METRIC_RULES_V2,
 		label: "projects run in parallel on a median active day",
 		kind: "proxy",
 		unit: "count",
-		harnessSupport: "all",
+		counts: "all",
 		band: { low: 1, high: 1.5 },
-		evaluate: (facts) => {
-			const days = facts.activeDays;
-			if (!days || days.length === 0) return undefined;
-			return median(days.map((d) => d.parallelProjectCount));
-		},
-	},
-	{
-		id: "model-switches-mid-run",
-		version: METRIC_RULES_V1,
-		label: "of sessions switch model mid-run",
-		kind: "exact",
-		unit: "share",
-		harnessSupport: "all",
-		band: { low: 0, high: 0.1 },
-		evaluate: (facts) =>
-			shareOf(
-				facts.sessions?.filter(
-					(session) => session.modelSwitched !== undefined,
-				),
-				(session) => session.modelSwitched === true,
-			),
+		evaluate: (reading) => median(reading.parallelProjectDays),
 	},
 	{
 		id: "thinking-share",
-		version: METRIC_RULES_V1,
+		version: METRIC_RULES_V2,
 		label: "of response tokens are thinking",
 		kind: "proxy",
 		unit: "share",
-		harnessSupport: ["codex", "opencode", "pi-mono"],
+		counts: (harness) => harness.thinking !== undefined,
 		band: { low: 0.1, high: 0.3 },
-		evaluate: (facts) => {
-			const sessions = facts.sessions?.filter(
-				(session) =>
-					session.harness !== "claude-code" &&
-					session.thinkingTokens !== undefined &&
-					session.responseTokens !== undefined,
-			);
-			if (!sessions || sessions.length === 0) return undefined;
+		evaluate: (reading) => {
 			let thinking = 0;
 			let response = 0;
-			for (const s of sessions) {
-				thinking += s.thinkingTokens ?? 0;
-				response += s.responseTokens ?? 0;
+			for (const harness of reading.harnesses) {
+				thinking += harness.thinking?.thinkingTokens ?? 0;
+				response += harness.thinking?.responseTokens ?? 0;
 			}
 			return response > 0 ? thinking / response : undefined;
 		},
 	},
 	{
-		id: "high-effort-turns",
-		version: METRIC_RULES_V1,
+		id: "effort-levels",
+		version: METRIC_RULES_V2,
 		label: "of turns run at high effort",
 		kind: "exact",
 		unit: "share",
-		// Only Claude Code and Codex record an effort field (#196 research).
-		harnessSupport: ["claude-code", "codex"],
+		counts: (harness) => harness.effort !== undefined,
 		band: { low: 0.2, high: 0.5 },
-		evaluate: (facts) => {
-			const sessions = facts.sessions?.filter((s) => s.effortTurns);
-			if (!sessions || sessions.length === 0) return undefined;
+		evaluate: (reading) => {
 			let high = 0;
 			let total = 0;
-			for (const s of sessions) {
-				high += s.effortTurns?.high ?? 0;
-				total += s.effortTurns?.total ?? 0;
+			for (const harness of reading.harnesses) {
+				for (const row of harness.effort ?? []) {
+					total += row.turns;
+					if (row.level === "high") high += row.turns;
+				}
 			}
 			return total > 0 ? high / total : undefined;
 		},
 	},
 	{
-		id: "effort-changes-mid-run",
-		version: METRIC_RULES_V1,
-		label: "of sessions change effort mid-run",
-		kind: "exact",
-		unit: "share",
-		harnessSupport: ["claude-code", "codex"],
-		band: { low: 0, high: 0.1 },
-		evaluate: (facts) =>
-			shareOf(
-				facts.sessions?.filter((s) => s.effortTurns),
-				(s) => s.effortChangedMidRun === true,
-			),
-	},
-	{
-		id: "longest-turn-duration",
-		version: METRIC_RULES_V1,
-		label: "longest recorded turn duration",
+		id: "turn-duration",
+		version: METRIC_RULES_V2,
+		label: "median turn duration",
 		kind: "exact",
 		unit: "minutes",
-		// Only Claude Code and opencode record per-turn duration (#196 research).
-		harnessSupport: ["claude-code", "opencode"],
-		band: { low: 5, high: 15 },
-		evaluate: (facts) => {
-			const durations = (facts.sessions ?? [])
-				.map((s) => s.longestTurnDurationSec)
-				.filter((v): v is number => v !== undefined);
-			if (durations.length === 0) return undefined;
-			return Math.max(...durations) / 60;
+		counts: (harness) => harness.turnDurations !== undefined,
+		band: { low: 0.25, high: 2 },
+		evaluate: (reading) => {
+			const bucket = medianBucket(
+				reading.harnesses.flatMap((harness) =>
+					(harness.turnDurations?.buckets ?? []).map((row) => ({
+						bucket: row.bucket,
+						count: row.turns,
+					})),
+				),
+			);
+			return bucket === undefined ? undefined : bucketMid(bucket) / 60;
 		},
 	},
 	{
 		id: "question-back-share",
-		version: METRIC_RULES_V1,
+		version: METRIC_RULES_V2,
 		label: "of turns end with a question back to the human",
 		kind: "proxy",
 		unit: "share",
-		harnessSupport: ["claude-code", "codex", "opencode"],
+		counts: (harness) => harness.questions !== undefined,
 		band: { low: 0, high: 0.15 },
-		evaluate: (facts) => {
-			const sessions = facts.sessions?.filter(
-				(session) =>
-					session.questionBackTurns !== undefined &&
-					session.totalTurns !== undefined,
-			);
-			if (!sessions || sessions.length === 0) return undefined;
+		evaluate: (reading) => {
 			let asked = 0;
 			let turns = 0;
-			for (const s of sessions) {
-				asked += s.questionBackTurns ?? 0;
-				turns += s.totalTurns ?? 0;
+			for (const harness of reading.harnesses) {
+				asked += harness.questions?.asked ?? 0;
+				turns += harness.questions?.turns ?? 0;
 			}
 			return turns > 0 ? asked / turns : undefined;
 		},
 	},
 	{
 		id: "web-searches-per-active-day",
-		version: METRIC_RULES_V1,
+		version: METRIC_RULES_V2,
 		label: "web searches per active day, inside the harness",
 		kind: "proxy",
 		unit: "count",
-		harnessSupport: ["claude-code", "codex", "opencode"],
+		counts: (harness) => harness.webSearches !== undefined,
 		band: { low: 0, high: 4 },
-		evaluate: (facts) => {
-			const days = facts.activeDays?.filter(
-				(day) => day.webSearches !== undefined,
+		evaluate: (reading) => {
+			if (reading.webSearchDays === 0) return undefined;
+			const total = reading.harnesses.reduce(
+				(sum, harness) => sum + (harness.webSearches ?? 0),
+				0,
 			);
-			if (!days || days.length === 0) return undefined;
-			const total = days.reduce((sum, d) => sum + (d.webSearches ?? 0), 0);
-			return total / days.length;
+			return total / reading.webSearchDays;
 		},
 	},
 ];

@@ -14,10 +14,8 @@
 //      "reveal" server-side, because nothing was transmitted.
 
 import { baseModelId, pricingTableFor } from "@aistack/pricing";
-import type {
-	PublishableHarnessWorkflow,
-	WorkflowExtraction,
-} from "../../workflow/index.js";
+import type { WorkflowDay } from "@aistack/workflow-rules";
+import type { WorkflowExtraction } from "../../workflow/index.js";
 import {
 	type Aggregate,
 	cleanName,
@@ -585,76 +583,25 @@ export type SyncBody = {
 };
 
 /**
- * The workflow section as it goes on the wire.
- *
- * `WorkflowExtraction` minus its `facts`. The facts are the per-session inputs
- * the metric rules read - effort per turn, thinking tokens, turn durations -
- * and the CLI has already reduced them into `metrics`. Shipping them too would
- * put finer-grained records on the wire than any surface reads, which is the
- * opposite of what a closed section is for.
- *
- * THE AGGREGATE VERSION RIDES ON THE SECTION, NOT ON EACH HARNESS. The reducer
- * stamps every harness with the same module constant, and the server's
- * `HarnessWorkflow` is a closed validator with no field for it, so the copy is
- * both redundant and rejected.
+ * The workflow section as it goes on the wire (#285): per-day rows of
+ * combinable atoms, plus the machine's clock. `WorkflowExtraction` is already
+ * that shape, and nothing local survives it, so the wire type restates it
+ * rather than deriving it: the two ends must describe the same bytes.
  */
 export type PayloadWorkflow = {
 	aggregateVersion: string;
-	harnesses: Array<
-		Omit<PublishableHarnessWorkflow, "facts" | "aggregateVersion">
-	>;
-	git: WorkflowExtraction["git"];
-	metrics: PayloadWorkflowMetric[];
 	utcOffsetMinutes: number;
+	days: WorkflowDay[];
 };
 
-/**
- * One pool metric on the wire.
- *
- * `FitInputRow` declares `coverageTag` as present-but-possibly-undefined, which
- * is right in memory and wrong on a wire: the server's validator takes an
- * OPTIONAL string, so "no tag" is an absent key, not a key holding undefined.
- * `JSON.stringify` drops it either way; stating it here keeps the two ends
- * describing the same bytes.
- */
-export type PayloadWorkflowMetric = {
-	metricId: string;
-	ruleVersion: string;
-	value: number;
-	band: { low: number; high: number };
-	coverage: number;
-	coverageTag?: string;
-};
-
-/**
- * Strip the local-only half and put the rest on the wire (#213).
- *
- * `coverageTag` is dropped when it is `undefined` rather than sent as null: the
- * closed server validator takes an optional string, and "no tag" is an absent
- * field there. Each harness drops `aggregateVersion` for the same reason, in
- * the other direction: the server has no field for it, so sending it is an
- * extra key and Convex refuses the whole object.
- */
+/** Put the extraction on the wire. */
 export function toPayloadWorkflow(
 	extraction: WorkflowExtraction,
 ): PayloadWorkflow {
 	return {
 		aggregateVersion: extraction.aggregateVersion,
-		harnesses: extraction.harnesses.map(
-			({ facts: _local, aggregateVersion: _stamped, ...rest }) => rest,
-		),
-		git: extraction.git,
-		metrics: extraction.metricInputs.map((row) => ({
-			metricId: row.metricId,
-			ruleVersion: row.ruleVersion,
-			value: row.value,
-			band: row.band,
-			coverage: row.coverage,
-			...(row.coverageTag === undefined
-				? {}
-				: { coverageTag: row.coverageTag }),
-		})),
 		utcOffsetMinutes: extraction.utcOffsetMinutes,
+		days: extraction.days,
 	};
 }
 
