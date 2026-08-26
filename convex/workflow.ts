@@ -159,6 +159,14 @@ const WorkflowWindow = v.object({
 	git: GitDay,
 	parallelProjects: v.optional(v.number()),
 	parallelProjectDays: v.array(v.number()),
+	gitDays: v.array(
+		v.object({
+			date: v.string(),
+			additions: v.number(),
+			removals: v.number(),
+			commits: v.number(),
+		})
+	),
 	webSearchDays: v.number(),
 })
 

@@ -211,6 +211,7 @@ export function emptyWorkflowWindow(
 			weekdayHourCells: [],
 		},
 		parallelProjectDays: [],
+		gitDays: [],
 		webSearchDays: 0,
 	}
 }

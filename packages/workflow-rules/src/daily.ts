@@ -165,6 +165,14 @@ export type GitDay = {
 	}[];
 };
 
+/** The three Git sums of one day, dated. What the mirrored bars draw. */
+export type GitDayTotals = {
+	date: string;
+	additions: number;
+	removals: number;
+	commits: number;
+};
+
 export type WorkflowDay = {
 	/** The UTC date, `YYYY-MM-DD`. Sessions belong to the day they started. */
 	date: string;
@@ -191,6 +199,12 @@ export type WorkflowWindow = Omit<WorkflowDay, "date"> & {
 	utcOffsetMinutes?: number;
 	/** The per-day parallel-project counts, for the median over days. */
 	parallelProjectDays: readonly number[];
+	/**
+	 * One Git entry per stored day, sorted by date, for the per-day picture
+	 * (#288). A derived list rather than the raw days: the page reads nothing
+	 * else per day, and the raw days would carry every harness atom with them.
+	 */
+	gitDays: readonly GitDayTotals[];
 	/** Days on which at least one harness recorded a web search count. */
 	webSearchDays: number;
 };
@@ -546,6 +560,14 @@ export function foldWorkflowDays(
 			? {}
 			: { parallelProjects: Math.max(...parallelProjectDays) }),
 		parallelProjectDays,
+		gitDays: [...days]
+			.sort((a, b) => a.date.localeCompare(b.date))
+			.map((day) => ({
+				date: day.date,
+				additions: day.git.additions,
+				removals: day.git.removals,
+				commits: day.git.commits,
+			})),
 		webSearchDays,
 	};
 }
