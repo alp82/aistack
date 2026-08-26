@@ -680,7 +680,7 @@ describe('publishForToken - the destination comes from the token', () => {
       testFileCommits: 5,
       changedLinesByExtension: [{ extension: '.ts', changedLines: 500 }],
       withheldExtensionLines: 20,
-      weekdayHourCells: [{ weekday: 5, hour: 23, commits: 3 }],
+      weekdayHourCells: [{ weekdayUtc: 5, hourUtc: 23, commits: 3 }],
     },
     metrics: [
       {

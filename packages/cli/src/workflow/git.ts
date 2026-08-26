@@ -9,6 +9,13 @@ import path from "node:path";
  */
 export const TEST_FILE_RULE_VERSION = "test-files/v2";
 export const FILE_TYPE_RULE_VERSION = "file-types/v2";
+/**
+ * Which commits count at all (#279). A merge commit and a commit whose every
+ * path is machine-owned leave the reading. Without this id a reading synced
+ * before the rule and one synced after are indistinguishable on the wire while
+ * disagreeing about which commits exist.
+ */
+export const COMMIT_SET_RULE_VERSION = "commit-set/v1";
 
 export type GitWorkflowRunner = (
 	cwd: string,
@@ -18,6 +25,7 @@ export type GitWorkflowRunner = (
 export type GitWorkflowResult = {
 	testFileRuleVersion: typeof TEST_FILE_RULE_VERSION;
 	fileTypeRuleVersion: typeof FILE_TYPE_RULE_VERSION;
+	commitSetRuleVersion: typeof COMMIT_SET_RULE_VERSION;
 	totalCommits: number;
 	lateNightCommits: number;
 	additions: number;
@@ -30,9 +38,9 @@ export type GitWorkflowResult = {
 	}>;
 	withheldExtensionLines: number;
 	weekdayHourCells: Array<{
-		/** Sunday is 0 and Saturday is 6, in the commit author's local date. */
-		weekday: number;
-		hour: number;
+		/** Sunday is 0 and Saturday is 6, on the UTC clock like the harness cells. */
+		weekdayUtc: number;
+		hourUtc: number;
 		commits: number;
 	}>;
 };
@@ -42,6 +50,12 @@ export type ExtractGitWorkflowOptions = {
 	workingDirectories: Iterable<string>;
 	fromMs: number;
 	toMs: number;
+	/**
+	 * This machine's offset from UTC, in minutes east. Cells ship in UTC, and the
+	 * late-night count reads those same cells through this offset, so the count
+	 * and the grid always agree. Every commit uses the one offset, not its own.
+	 */
+	utcOffsetMinutes: number;
 	run?: GitWorkflowRunner;
 };
 
@@ -61,6 +75,7 @@ const defaultRunner: GitWorkflowRunner = (cwd, args) => {
 const emptyResult = (): GitWorkflowResult => ({
 	testFileRuleVersion: TEST_FILE_RULE_VERSION,
 	fileTypeRuleVersion: FILE_TYPE_RULE_VERSION,
+	commitSetRuleVersion: COMMIT_SET_RULE_VERSION,
 	totalCommits: 0,
 	lateNightCommits: 0,
 	additions: 0,
@@ -71,9 +86,6 @@ const emptyResult = (): GitWorkflowResult => ({
 	withheldExtensionLines: 0,
 	weekdayHourCells: [],
 });
-
-const AUTHOR_LOCAL_RE =
-	/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 
 /**
  * The names this rule is willing to print. A path with no extension is absent
@@ -225,19 +237,21 @@ function isTestFile(file: string): boolean {
 	return /(?:^|[._-])(test|spec)(?:[._-]|$)/.test(basename);
 }
 
-function localCell(
-	authoredAt: string,
-): { weekday: number; hour: number } | null {
-	const match = AUTHOR_LOCAL_RE.exec(authoredAt);
-	if (!match) return null;
-	const year = Number(match[1]);
-	const month = Number(match[2]);
-	const day = Number(match[3]);
-	const hour = Number(match[4]);
-	return {
-		weekday: new Date(Date.UTC(year, month - 1, day)).getUTCDay(),
-		hour,
-	};
+function utcCell(authoredMs: number): { weekdayUtc: number; hourUtc: number } {
+	const at = new Date(authoredMs);
+	return { weekdayUtc: at.getUTCDay(), hourUtc: at.getUTCHours() };
+}
+
+/** The hour on the machine's clock for a UTC cell. */
+function localHour(hourUtc: number, utcOffsetMinutes: number): number {
+	return (
+		((((hourUtc * 60 + utcOffsetMinutes) % (24 * 60)) + 24 * 60) % (24 * 60)) /
+		60
+	);
+}
+
+function isLateNight(hour: number): boolean {
+	return hour >= 23 || hour < 3;
 }
 
 /**
@@ -262,6 +276,7 @@ export function extractGitWorkflow(
 		const history = run(root, [
 			"log",
 			"--all",
+			"--no-merges",
 			`--format=%x00${COMMIT_MARKER}%x00%H%x00%aI%x00`,
 			"--numstat",
 			"-z",
@@ -270,14 +285,31 @@ export function extractGitWorkflow(
 
 		type CurrentCommit = {
 			included: boolean;
+			cell: { weekdayUtc: number; hourUtc: number };
+			/** True once one path a person could have written appears. */
+			authored: boolean;
+			additions: number;
+			removals: number;
 			changedLines: number;
 			touchesTest: boolean;
 		};
 		let current: CurrentCommit | undefined;
+		// A commit counts only once its records are read: one with no authored
+		// path leaves the reading entirely, rather than surviving as a commit
+		// that changed nothing (commit-set/v1).
 		const finishCommit = (): void => {
-			if (!current?.included) return;
+			if (!current?.included || !current.authored) return;
+			result.totalCommits++;
+			result.additions += current.additions;
+			result.removals += current.removals;
 			result.changedLinesPerCommit.push(current.changedLines);
 			if (current.touchesTest) result.testFileCommits++;
+			const { weekdayUtc, hourUtc } = current.cell;
+			if (isLateNight(localHour(hourUtc, options.utcOffsetMinutes))) {
+				result.lateNightCommits++;
+			}
+			const cellKey = `${weekdayUtc}:${hourUtc}`;
+			cells.set(cellKey, (cells.get(cellKey) ?? 0) + 1);
 		};
 		const fields = history.split("\u0000");
 		for (let fieldIndex = 0; fieldIndex < fields.length; fieldIndex++) {
@@ -287,20 +319,21 @@ export function extractGitWorkflow(
 				const hash = fields[++fieldIndex] ?? "";
 				const authoredAt = fields[++fieldIndex] ?? "";
 				const authoredMs = Date.parse(authoredAt);
-				const cell = localCell(authoredAt);
 				const included =
-					cell !== null &&
 					Number.isFinite(authoredMs) &&
 					authoredMs >= options.fromMs &&
 					authoredMs <= options.toMs &&
 					!seenCommits.has(hash);
-				current = { included, changedLines: 0, touchesTest: false };
-				if (!included || !cell) continue;
-				seenCommits.add(hash);
-				result.totalCommits++;
-				if (cell.hour >= 23 || cell.hour < 3) result.lateNightCommits++;
-				const cellKey = `${cell.weekday}:${cell.hour}`;
-				cells.set(cellKey, (cells.get(cellKey) ?? 0) + 1);
+				current = {
+					included,
+					cell: utcCell(included ? authoredMs : 0),
+					authored: false,
+					additions: 0,
+					removals: 0,
+					changedLines: 0,
+					touchesTest: false,
+				};
+				if (included) seenCommits.add(hash);
 				continue;
 			}
 
@@ -313,9 +346,10 @@ export function extractGitWorkflow(
 			}
 			if (!current?.included) continue;
 			if (isUnauthoredPath(file)) continue;
+			current.authored = true;
 			const fileChangedLines = stat.additions + stat.removals;
-			result.additions += stat.additions;
-			result.removals += stat.removals;
+			current.additions += stat.additions;
+			current.removals += stat.removals;
 			current.changedLines += fileChangedLines;
 			if (isTestFile(file)) current.touchesTest = true;
 			if (fileChangedLines <= 0) continue;
@@ -336,10 +370,10 @@ export function extractGitWorkflow(
 		.sort((a, b) => a.extension.localeCompare(b.extension));
 	result.weekdayHourCells = [...cells]
 		.map(([key, commits]) => {
-			const [weekday, hour] = key.split(":").map(Number);
-			return { weekday: weekday ?? 0, hour: hour ?? 0, commits };
+			const [weekdayUtc, hourUtc] = key.split(":").map(Number);
+			return { weekdayUtc: weekdayUtc ?? 0, hourUtc: hourUtc ?? 0, commits };
 		})
-		.sort((a, b) => a.weekday - b.weekday || a.hour - b.hour);
+		.sort((a, b) => a.weekdayUtc - b.weekdayUtc || a.hourUtc - b.hourUtc);
 
 	return result;
 }

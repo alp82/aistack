@@ -320,6 +320,8 @@ const HarnessWorkflow = v.object({
 const GitWorkflow = v.object({
   testFileRuleVersion: v.string(),
   fileTypeRuleVersion: v.string(),
+  /** Optional only for a reading a pre-commit-set/v1 CLI publishes. */
+  commitSetRuleVersion: v.optional(v.string()),
   totalCommits: v.number(),
   lateNightCommits: v.number(),
   additions: v.number(),
@@ -332,8 +334,9 @@ const GitWorkflow = v.object({
     v.object({ extension: v.string(), changedLines: v.number() })
   ),
   withheldExtensionLines: v.number(),
+  /** UTC cells, like the harness activity cells; the page shifts them. */
   weekdayHourCells: v.array(
-    v.object({ weekday: v.number(), hour: v.number(), commits: v.number() })
+    v.object({ weekdayUtc: v.number(), hourUtc: v.number(), commits: v.number() })
   ),
 })
 

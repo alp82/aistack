@@ -53,19 +53,18 @@ export type ExtractLocalWorkflowOptions = {
 export function extractLocalWorkflow(
 	options: ExtractLocalWorkflowOptions,
 ): WorkflowExtraction {
+	const utcOffsetMinutes =
+		options.utcOffsetMinutes ?? machineUtcOffsetMinutes();
 	const git = extractGitWorkflow({
 		workingDirectories: options.harnesses.flatMap(({ local }) => [
 			...local.projectWorkspaces,
 		]),
 		fromMs: options.fromMs,
 		toMs: options.toMs,
+		utcOffsetMinutes,
 		...(options.run ? { run: options.run } : {}),
 	});
-	return buildWorkflowExtraction(
-		options.harnesses,
-		git,
-		options.utcOffsetMinutes ?? machineUtcOffsetMinutes(),
-	);
+	return buildWorkflowExtraction(options.harnesses, git, utcOffsetMinutes);
 }
 
 /**

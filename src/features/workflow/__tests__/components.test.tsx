@@ -66,6 +66,13 @@ describe("the git ledger", () => {
 		expect(screen.getByText("+94.8k")).toBeTruthy();
 	});
 
+	it("names the commit-set rule beside the test-file rule", () => {
+		show("git-ledger");
+		expect(
+			screen.getByText(/test-file-rules\/v1 · commit-set\/v1/),
+		).toBeTruthy();
+	});
+
 	it("draws one dot per commit on a log scale", () => {
 		const { container } = show("git-ledger");
 		const dots = container.querySelectorAll("[title$='changed lines']");
@@ -108,6 +115,30 @@ describe("the week and time heatmap", () => {
 		expect(
 			screen.getByText(/this reading carries no machine offset/),
 		).toBeTruthy();
+	});
+
+	it("switches the grid to commits without moving the row's ranked figure", () => {
+		show("activity-heatmap");
+		// Sessions first: all 160 events sit in two hours, so the body figure reads
+		// 100% in the three busiest hours.
+		const figure = (text: RegExp) =>
+			screen.queryByText(
+				(_content, node) =>
+					node?.tagName === "P" && text.test(node.textContent ?? ""),
+			);
+		expect(
+			figure(/^100% of events fall in the three busiest hours$/),
+		).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "commits" }));
+		// The commit series shifts by the same offset: 21:00 UTC is Sun 23:00.
+		expect(
+			screen.getByRole("button", { name: "Sun 23:00, 9 commits" }),
+		).toBeTruthy();
+		// 9 + 1 + 1 of 12 commits sit in the three busiest hours.
+		expect(
+			figure(/^92% of commits fall in the three busiest hours$/),
+		).toBeTruthy();
+		expect(figure(/of events fall/)).toBeNull();
 	});
 
 	it("opens one cell's recorded events on a tap", () => {
