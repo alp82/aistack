@@ -67,6 +67,7 @@ import {
 	VariantG,
 	VariantH,
 } from "./MoreVariants";
+import { VariantN, VariantP, VariantQ, VariantR, VariantS } from "./RoundFour";
 import { VariantI, VariantJ, VariantK, VariantL, VariantM } from "./RoundThree";
 
 // ---------------------------------------------------------------------------
@@ -928,6 +929,11 @@ const VARIANTS = {
 	K: VariantK,
 	L: VariantL,
 	M: VariantM,
+	N: VariantN,
+	P: VariantP,
+	Q: VariantQ,
+	R: VariantR,
+	S: VariantS,
 	H: VariantH,
 	B: VariantB,
 	C: VariantC,

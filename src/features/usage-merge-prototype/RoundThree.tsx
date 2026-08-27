@@ -121,7 +121,7 @@ function TopReading({ p }: { p: Proto }) {
 // Items: workflow rows, the five stat boxes and the harness rows, one shape.
 // ---------------------------------------------------------------------------
 
-type Item = {
+export type Item = {
 	id: string;
 	name: string;
 	figure: string;
@@ -250,7 +250,7 @@ function buildItems(p: Proto, stackToolSlugs: string[]): Map<string, Item> {
 	return items;
 }
 
-type Group = { id: string; label: string; ids: readonly string[] };
+export type Group = { id: string; label: string; ids: readonly string[] };
 
 function pick(items: Map<string, Item>, ids: readonly string[]): Item[] {
 	return ids.map((id) => items.get(id)).filter((i): i is Item => !!i);
@@ -298,13 +298,13 @@ function Tabs({
 	);
 }
 
-type VariantProps = {
+export type VariantProps = {
 	index: number;
 	p: Proto;
 	stackToolSlugs: string[];
 };
 
-function Shell({
+export function Shell({
 	index,
 	p,
 	stackToolSlugs,
@@ -344,7 +344,7 @@ function Shell({
 // I: by topic, receipt display.
 // ---------------------------------------------------------------------------
 
-const TOPIC: Group[] = [
+export const TOPIC: Group[] = [
 	{
 		id: "time",
 		label: "Time",
