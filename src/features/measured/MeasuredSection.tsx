@@ -63,11 +63,13 @@ export function MeasuredSection({
 	slug,
 	stackId,
 	isOwner,
+	stackToolSlugs,
 }: {
 	index: number;
 	slug: string;
 	stackId: Id<"stacks">;
 	isOwner: boolean;
+	stackToolSlugs: string[];
 }) {
 	const [machineSelection, setMachineSelection] = useState<{
 		slug: string;
@@ -151,6 +153,7 @@ export function MeasuredSection({
 					snapshot={snapshot}
 					points={history?.points ?? []}
 					showFreshness={hasMachineDropdown}
+					stackToolSlugs={stackToolSlugs}
 				/>
 			)}
 			{placed && staleSince === null && (
@@ -334,10 +337,12 @@ function Reading({
 	snapshot,
 	points,
 	showFreshness,
+	stackToolSlugs,
 }: {
 	snapshot: MeasuredSnapshot;
 	points: readonly MeasuredHistoryPoint[];
 	showFreshness: boolean;
+	stackToolSlugs: string[];
 }) {
 	// The COMBINED headline (#66 decision 2, #243): tokens, sessions and dollars
 	// sum honestly across every source, a source being one harness on one
@@ -389,7 +394,7 @@ function Reading({
 				</div>
 
 				<ModelShareRows trails={trails} firstAt={firstAt} />
-				<HarnessShareRows snapshot={snapshot} />
+				<HarnessShareRows snapshot={snapshot} stackToolSlugs={stackToolSlugs} />
 
 				<div className="mt-8 grid grid-cols-2 gap-px border border-stroke-subtle bg-stroke-subtle sm:grid-cols-5">
 					<Stat
@@ -433,7 +438,19 @@ const HARNESS_LABELS: Record<string, string> = {
 	"pi-mono": "Pi",
 };
 
-function HarnessShareRows({ snapshot }: { snapshot: MeasuredSnapshot }) {
+/**
+ * A harness that produced a snapshot but is not a stack tool is EXTRA (#293):
+ * its label and bar fill sit at half opacity, its figures stay at full
+ * contrast, and the only word is for screen readers. The treatment marks
+ * extra, never unused. The catalog's tool slugs are the harness names.
+ */
+function HarnessShareRows({
+	snapshot,
+	stackToolSlugs,
+}: {
+	snapshot: MeasuredSnapshot;
+	stackToolSlugs: string[];
+}) {
 	const byHarness = new Map<string, number>();
 	for (const harness of snapshot.harnesses) {
 		byHarness.set(
@@ -450,6 +467,7 @@ function HarnessShareRows({ snapshot }: { snapshot: MeasuredSnapshot }) {
 				snapshot.activity.totalTokens > 0
 					? tokens / snapshot.activity.totalTokens
 					: 0,
+			extra: !stackToolSlugs.includes(name),
 		}))
 		.sort((a, b) => {
 			if (a.name === "claude-code") return -1;
@@ -466,14 +484,24 @@ function HarnessShareRows({ snapshot }: { snapshot: MeasuredSnapshot }) {
 				className="divide-y divide-stroke-subtle border-y border-stroke-subtle"
 			>
 				{rows.map((row, index) => (
-					<li key={row.name} className="flex items-center gap-3 py-2">
-						<span className="w-40 shrink-0 truncate text-sm text-fg-secondary">
+					<li
+						key={row.name}
+						data-extra={row.extra || undefined}
+						className="flex items-center gap-3 py-2"
+					>
+						<span
+							className={cn(
+								"w-40 shrink-0 truncate text-sm text-fg-secondary",
+								row.extra && "opacity-50",
+							)}
+						>
 							{row.label}
+							{row.extra && <span className="sr-only"> (extra)</span>}
 						</span>
 						<span className="h-3 flex-1 bg-bg-panel">
 							<span
 								data-testid="source-paint"
-								className="block h-full"
+								className={cn("block h-full", row.extra && "opacity-50")}
 								style={{
 									width: `${Math.max(1, row.share * 100)}%`,
 									background: SOURCE_PAINTS[index % SOURCE_PAINTS.length],
