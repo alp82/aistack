@@ -27,6 +27,12 @@ import {
 } from "@/features/stack-view/pageOrder";
 import { StackHeader } from "@/features/stack-view/StackHeader";
 import { GuideSection, ToolsSection } from "@/features/stack-view/sections";
+// PROTOTYPE #303 (throwaway): `?variant=A|B|C` swaps sections 01 and 04.
+import {
+	isVariantKey,
+	UsageMergePrototype,
+	type VariantKey,
+} from "@/features/usage-merge-prototype/UsageMergePrototype";
 import { StackViewsLine } from "@/features/view-analytics/StackViewsLine";
 import { workflowNavStat } from "@/features/workflow/navStat";
 import { WorkflowSection } from "@/features/workflow/WorkflowSection";
@@ -125,6 +131,13 @@ function ViewLookupDataSync({
 }
 
 export const Route = createFileRoute("/stacks/$slug")({
+	// PROTOTYPE #303: all-optional, so no Link is forced to pass `search`.
+	validateSearch: (
+		search: Record<string, unknown>,
+	): { variant?: VariantKey; view?: string } => ({
+		...(isVariantKey(search.variant) ? { variant: search.variant } : {}),
+		...(typeof search.view === "string" ? { view: search.view } : {}),
+	}),
 	component: StackDetailsPage,
 	loader: async ({ context, params }) => {
 		// The workflow reading rides along because it decides the NUMBERING (#217):
@@ -176,6 +189,7 @@ export const Route = createFileRoute("/stacks/$slug")({
 
 function StackDetailsPage() {
 	const { slug } = Route.useParams();
+	const { variant: protoVariant } = Route.useSearch();
 	const navigate = useNavigate();
 	const { isAuthenticated } = useConvexAuth();
 	// Falls back to the loader snapshot (same pattern as the landing page):
@@ -409,13 +423,21 @@ function StackDetailsPage() {
 					{/* The journey (#40, reordered by #58, workflow placed by #217):
 					    Actual Usage 01 → Projects 02 → Tools 03 → Workflow 04 →
 					    Guide 05. What ran now literally comes first. */}
-					<MeasuredSection
-						index={numberOf("usage") ?? 1}
-						slug={stack.slug}
-						stackId={stack._id}
-						isOwner={upvoteStatus?.isOwner ?? false}
-						stackToolSlugs={stack.tools.map((t: ViewTool) => t.slug)}
-					/>
+					{protoVariant ? (
+						<UsageMergePrototype
+							index={1}
+							slug={stack.slug}
+							variant={protoVariant}
+						/>
+					) : (
+						<MeasuredSection
+							index={numberOf("usage") ?? 1}
+							slug={stack.slug}
+							stackId={stack._id}
+							isOwner={upvoteStatus?.isOwner ?? false}
+							stackToolSlugs={stack.tools.map((t: ViewTool) => t.slug)}
+						/>
+					)}
 
 					<ProjectsSection
 						index={numberOf("projects") ?? 2}
@@ -443,7 +465,7 @@ function StackDetailsPage() {
 					{/* Section 04 renders itself away when the stack has no reading, or
 					    when the owner never gave `publishWorkflow`. `numberOf` returns
 					    null in exactly that case, and the page renders no 04 either. */}
-					{numberOf("workflow") !== null && (
+					{!protoVariant && numberOf("workflow") !== null && (
 						<WorkflowSection
 							index={numberOf("workflow") ?? 4}
 							slug={stack.slug}
