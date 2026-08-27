@@ -99,6 +99,7 @@ function setup(
 			slug="alps-stack-ab12"
 			stackId={"stack_ab12" as never}
 			isOwner={isOwner}
+			stackToolSlugs={["claude-code"]}
 		/>,
 	);
 }
@@ -203,6 +204,7 @@ describe("the reading", () => {
 				slug="first-stack"
 				stackId={"stack_ab12" as never}
 				isOwner={false}
+				stackToolSlugs={["claude-code"]}
 			/>,
 		);
 
@@ -215,6 +217,7 @@ describe("the reading", () => {
 				slug="second-stack"
 				stackId={"stack_cd34" as never}
 				isOwner={false}
+				stackToolSlugs={["claude-code"]}
 			/>,
 		);
 

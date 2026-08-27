@@ -38,6 +38,7 @@ import { api } from "../../convex/_generated/api";
 type ViewTool = {
 	_id: string;
 	name: string;
+	slug: string;
 	categories: string[];
 	iconUrl?: string;
 	price: {
@@ -413,6 +414,7 @@ function StackDetailsPage() {
 						slug={stack.slug}
 						stackId={stack._id}
 						isOwner={upvoteStatus?.isOwner ?? false}
+						stackToolSlugs={stack.tools.map((t: ViewTool) => t.slug)}
 					/>
 
 					<ProjectsSection
