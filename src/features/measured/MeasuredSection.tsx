@@ -2,8 +2,9 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import { type KeyboardEvent, useRef, useState } from "react";
+import { RelativeTime } from "@/components/RelativeTime";
 import { Section, SectionHeader } from "@/features/stack-view/ui";
-import { cn, timeAgo } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { AutoSyncBox } from "./AutoSyncBox";
@@ -124,7 +125,9 @@ export function MeasuredSection({
 							}
 						/>
 					) : snapshot ? (
-						`checked ${timeAgo(snapshot.receivedAt)}`
+						<>
+							checked <RelativeTime at={snapshot.receivedAt} />
+						</>
 					) : undefined
 				}
 				metaAlwaysVisible={hasMachineDropdown}
@@ -327,7 +330,7 @@ function MachineOptionRow({
 				<span className="shrink-0 text-fg-muted">{fmtTokens(tokens)}</span>
 			</span>
 			<span className="mt-0.5 block text-[10px] text-fg-muted">
-				read {timeAgo(receivedAt)}
+				read <RelativeTime at={receivedAt} />
 			</span>
 		</button>
 	);
@@ -384,7 +387,7 @@ function Reading({
 					<p className={cn(MONO_LABEL, "text-accent-lime")}>{MIX_KICKER}</p>
 					{showFreshness ? (
 						<p className="font-mono text-[11px] text-fg-muted">
-							checked {timeAgo(snapshot.receivedAt)}
+							checked <RelativeTime at={snapshot.receivedAt} />
 						</p>
 					) : firstAt !== null && points.length > 1 ? (
 						<p className="font-mono text-[11px] text-fg-muted">

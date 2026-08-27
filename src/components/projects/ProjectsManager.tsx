@@ -15,11 +15,12 @@ import {
 } from "@/components/projects/ProjectDialog";
 import { ProjectFavicon } from "@/components/projects/ProjectFavicon";
 import type { ManagerProject } from "@/components/projects/types";
+import { RelativeTime } from "@/components/RelativeTime";
 import { TagBadge } from "@/components/TagBadge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Section, SectionHeader } from "@/features/stack-view/ui";
-import { cn, safeExternalUrl, timeAgo } from "@/lib/utils";
+import { cn, safeExternalUrl } from "@/lib/utils";
 
 export function ProjectsManager({
 	items,
@@ -505,7 +506,7 @@ function ProjectRowPanel({
 				{isOwner && <OwnerActions onEdit={onEdit} onDelete={onDelete} />}
 				{project.updatedAt !== undefined && (
 					<div className="ml-auto font-mono text-[11px] tabular-nums text-fg-muted">
-						Updated {timeAgo(project.updatedAt)}
+						Updated <RelativeTime at={project.updatedAt} />
 					</div>
 				)}
 			</div>

@@ -9,11 +9,11 @@
 
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
+import { RelativeTime } from "@/components/RelativeTime";
 import { Button } from "@/components/ui/button";
 import { Sparkline } from "@/features/charts";
 import type { Band, FeedRow } from "../feed";
 import { fmtCount, fmtTokens, liveDays, MONO_LABEL } from "../feed";
-import { RelativeTime } from "../RelativeTime";
 import { rowHandle, rowSummary } from "./summary";
 
 export const VARIANT_ANNOTATED_NAME = "Annotated - events pinned on the line";

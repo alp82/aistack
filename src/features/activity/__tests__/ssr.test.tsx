@@ -44,6 +44,8 @@ describe("server rendering", () => {
 		);
 		expect(html).toContain("<time");
 		expect(html).toContain("ago");
+		expect(html).toContain('class="md:hidden"');
+		expect(html).toContain('class="hidden md:inline"');
 	});
 
 	test("the /activity band still arrives with numbers and watermark", () => {

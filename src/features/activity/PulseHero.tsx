@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import { RelativeTime } from "@/components/RelativeTime";
 import SpeedingText from "@/components/speeding-text";
 import {
 	BrutalistSelect,
@@ -17,7 +18,6 @@ import {
 	rowHandle,
 	rowSummary,
 } from "./feed";
-import { RelativeTime } from "./RelativeTime";
 
 /**
  * The landing pulse - one bold number (#147, locked from the pulse-band

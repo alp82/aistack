@@ -1,6 +1,7 @@
 import { useAction, useMutation, useQuery } from "convex/react";
 import { Pause, Play, Plus, RefreshCw, Trash2, Undo2 } from "lucide-react";
 import { useId, useState } from "react";
+import { RelativeTime } from "@/components/RelativeTime";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 
@@ -21,15 +22,6 @@ const LICENSE_OPTIONS = [
 ] as const;
 
 type LicenseValue = (typeof LICENSE_OPTIONS)[number]["value"];
-
-function ago(ms: number | undefined): string {
-	if (!ms) return "never";
-	const minutes = Math.round((Date.now() - ms) / 60000);
-	if (minutes < 60) return `${minutes}m ago`;
-	const hours = Math.round(minutes / 60);
-	if (hours < 48) return `${hours}h ago`;
-	return `${Math.round(hours / 24)}d ago`;
-}
 
 function AddSource() {
 	const createSource = useMutation(api.news.createSource);
@@ -340,8 +332,18 @@ export function NewsSourcesSection() {
 								{source.url}
 							</p>
 							<p className="mt-1 font-mono text-xs text-fg-muted">
-								polled {ago(source.lastPolledAt)} · last ok{" "}
-								{ago(source.lastOkAt)}
+								polled{" "}
+								{source.lastPolledAt ? (
+									<RelativeTime at={source.lastPolledAt} />
+								) : (
+									"never"
+								)}{" "}
+								· last ok{" "}
+								{source.lastOkAt ? (
+									<RelativeTime at={source.lastOkAt} />
+								) : (
+									"never"
+								)}
 								{source.consecutiveFailures > 0
 									? ` · ${source.consecutiveFailures} failures in a row`
 									: ""}
