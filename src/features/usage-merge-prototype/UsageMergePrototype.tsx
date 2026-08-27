@@ -67,7 +67,14 @@ import {
 	VariantG,
 	VariantH,
 } from "./MoreVariants";
-import { VariantT, VariantU, VariantV, VariantW, VariantX } from "./RoundFive";
+import {
+	VariantT,
+	VariantU,
+	VariantV,
+	VariantW,
+	VariantX,
+	VariantY,
+} from "./RoundFive";
 import { VariantN, VariantP, VariantQ, VariantR, VariantS } from "./RoundFour";
 import { VariantI, VariantJ, VariantK, VariantL, VariantM } from "./RoundThree";
 
@@ -940,6 +947,7 @@ const VARIANTS = {
 	V: VariantV,
 	W: VariantW,
 	X: VariantX,
+	Y: VariantY,
 	H: VariantH,
 	B: VariantB,
 	C: VariantC,
