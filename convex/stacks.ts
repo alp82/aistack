@@ -1,5 +1,6 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
+import { findModelBySlugOrAlias } from './lib/modelLookup'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 import type { Id } from './_generated/dataModel'
 import { type FixedPrice, orderToolsForDisplay, sumNormalizedMonthlyAmounts } from '../src/lib/pricing'
@@ -698,10 +699,7 @@ export const getForEdit = query({
 
     const modelSubEntries = await Promise.all(
       (stack.modelSubscriptions ?? []).map(async (ms) => {
-        const model = await ctx.db
-          .query('models')
-          .withIndex('by_slug', (q) => q.eq('slug', ms.modelSlug))
-          .first()
+        const model = await findModelBySlugOrAlias(ctx, ms.modelSlug)
         if (!model) return null
         const resolvedModelUrl = model.iconStorageId
           ? await ctx.storage.getUrl(model.iconStorageId)
@@ -1070,10 +1068,7 @@ export const getBySlug = query({
 
     const modelEntries = await Promise.all(
       (stack.modelSubscriptions ?? []).map(async (ms) => {
-        const model = await ctx.db
-          .query('models')
-          .withIndex('by_slug', (q) => q.eq('slug', ms.modelSlug))
-          .first()
+        const model = await findModelBySlugOrAlias(ctx, ms.modelSlug)
         if (!model) return null
         const resolvedModelUrl = model.iconStorageId
           ? await ctx.storage.getUrl(model.iconStorageId)
@@ -1186,10 +1181,7 @@ export const getPublicSummary = query({
     ).map((t) => t.name)
 
     const models = await resolveNames(stack.modelSubscriptions ?? [], async (ms) => {
-      const model = await ctx.db
-        .query('models')
-        .withIndex('by_slug', (q) => q.eq('slug', ms.modelSlug))
-        .first()
+      const model = await findModelBySlugOrAlias(ctx, ms.modelSlug)
       return model?.name ?? null
     })
 
