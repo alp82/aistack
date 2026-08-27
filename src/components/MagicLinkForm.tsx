@@ -1,6 +1,7 @@
 import { Mail } from "lucide-react";
 import { useState } from "react";
 import { authClient } from "../lib/auth-client";
+import { LastUsedLoginMethodTag } from "./LastUsedLoginMethodTag";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 
@@ -102,11 +103,7 @@ export function MagicLinkForm({
 			>
 				<Mail className="size-4" />
 				{loading ? "Sending..." : "Send Magic Link"}
-				{lastUsed && (
-					<span className="border border-current px-1.5 py-0.5 font-mono text-[10px] font-normal lowercase tracking-normal">
-						last used
-					</span>
-				)}
+				{lastUsed && <LastUsedLoginMethodTag />}
 			</button>
 		</form>
 	);

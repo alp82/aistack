@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { authClient } from "../lib/auth-client";
+import { LastUsedLoginMethodTag } from "./LastUsedLoginMethodTag";
 import { MagicLinkForm } from "./MagicLinkForm";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -34,12 +35,6 @@ const GitHubIcon = () => (
 			d="M12 1.5C6.2 1.5 1.5 6.2 1.5 12c0 4.64 3.01 8.58 7.18 9.97.53.1.72-.23.72-.51 0-.25-.01-1.09-.01-1.97-2.92.63-3.54-1.24-3.54-1.24-.48-1.21-1.16-1.53-1.16-1.53-.95-.65.07-.64.07-.64 1.05.07 1.61 1.08 1.61 1.08.94 1.6 2.45 1.14 3.05.87.09-.68.37-1.14.67-1.4-2.33-.27-4.78-1.16-4.78-5.18 0-1.14.41-2.08 1.08-2.82-.11-.27-.47-1.36.1-2.84 0 0 .88-.28 2.89 1.08A9.97 9.97 0 0 1 12 6.34c.88 0 1.77.12 2.6.35 2-1.36 2.88-1.08 2.88-1.08.57 1.48.21 2.57.1 2.84.67.74 1.08 1.68 1.08 2.82 0 4.03-2.45 4.9-4.79 5.17.38.32.71.94.71 1.9 0 1.37-.01 2.47-.01 2.81 0 .28.19.62.73.51A10.5 10.5 0 0 0 22.5 12c0-5.8-4.7-10.5-10.5-10.5Z"
 		/>
 	</svg>
-);
-
-const LastUsedTag = () => (
-	<span className="border border-current px-1.5 py-0.5 font-mono text-[10px] font-normal lowercase tracking-normal">
-		last used
-	</span>
 );
 
 interface AuthFormProps {
@@ -159,7 +154,7 @@ export function AuthForm({
 			>
 				<GoogleIcon />
 				Continue with Google
-				{lastLoginMethod === "google" && <LastUsedTag />}
+				{lastLoginMethod === "google" && <LastUsedLoginMethodTag />}
 			</button>
 
 			<button
@@ -170,7 +165,7 @@ export function AuthForm({
 			>
 				<GitHubIcon />
 				Continue with GitHub
-				{lastLoginMethod === "github" && <LastUsedTag />}
+				{lastLoginMethod === "github" && <LastUsedLoginMethodTag />}
 			</button>
 
 			<div className="relative">
@@ -279,7 +274,7 @@ export function AuthForm({
 						: isSignUp
 							? signUpSubmitLabel
 							: signInSubmitLabel}
-					{lastLoginMethod === "email" && <LastUsedTag />}
+					{lastLoginMethod === "email" && <LastUsedLoginMethodTag />}
 				</button>
 			</form>
 

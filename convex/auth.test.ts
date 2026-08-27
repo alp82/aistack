@@ -34,7 +34,7 @@ test('the Convex auth route forwards the last-used cookie from a magic-link logi
   const t = convexTest(schema, modules)
   betterAuthTest.register(t)
 
-  const request = await t.fetch('/api/auth/sign-in/magic-link', {
+  const signInResponse = await t.fetch('/api/auth/sign-in/magic-link', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -46,7 +46,7 @@ test('the Convex auth route forwards the last-used cookie from a magic-link logi
     }),
   })
 
-  expect(request.status).toBe(200)
+  expect(signInResponse.status).toBe(200)
   const html = mocks.sendEmail.mock.calls[0]?.[0]?.html
   expect(html).toEqual(expect.stringContaining('/api/auth/magic-link/verify'))
 
