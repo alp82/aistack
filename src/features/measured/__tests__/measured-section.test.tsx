@@ -58,8 +58,10 @@ function setup(
 		isOwner = false,
 		autoSync = { autoSync: null, lastAutoSyncAt: null },
 		selected,
+		stackToolSlugs = ["claude-code", "codex"],
 	}: {
 		isOwner?: boolean;
+		stackToolSlugs?: string[];
 		autoSync?: AutoSyncFlag;
 		selected?: {
 			machineOrdinal: number;
@@ -99,6 +101,7 @@ function setup(
 			slug="alps-stack-ab12"
 			stackId={"stack_ab12" as never}
 			isOwner={isOwner}
+			stackToolSlugs={stackToolSlugs}
 		/>,
 	);
 }
@@ -203,6 +206,7 @@ describe("the reading", () => {
 				slug="first-stack"
 				stackId={"stack_ab12" as never}
 				isOwner={false}
+				stackToolSlugs={["claude-code"]}
 			/>,
 		);
 
@@ -215,6 +219,7 @@ describe("the reading", () => {
 				slug="second-stack"
 				stackId={"stack_cd34" as never}
 				isOwner={false}
+				stackToolSlugs={["claude-code"]}
 			/>,
 		);
 
@@ -315,6 +320,35 @@ describe("the reading", () => {
 			list.compareDocumentPosition(screen.getByText("sessions")) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
+	});
+
+	it("dims the label and bar of a harness that is not a stack tool, figures untouched", () => {
+		const { current, history } = live();
+		setup(
+			{
+				...current,
+				harnesses: current.harnesses.map((h) => ({
+					...h,
+					machineOrdinal: 1,
+				})),
+			},
+			history,
+			{ stackToolSlugs: ["codex"] },
+		);
+
+		const list = screen.getByRole("list", { name: "Harness token shares" });
+		const extra = within(list).getByText("Claude Code").closest("li");
+		const kept = within(list).getByText("Codex").closest("li");
+		if (!extra || !kept) throw new Error("rows missing");
+		expect(extra).toHaveAttribute("data-extra", "true");
+		expect(kept).not.toHaveAttribute("data-extra");
+		expect(within(extra).getByText("Claude Code")).toHaveClass("opacity-50");
+		expect(within(extra).getByText("(extra)")).toHaveClass("sr-only");
+		expect(within(extra).getByTestId("source-paint")).toHaveClass("opacity-50");
+		expect(within(extra).getByText("99.8%")).not.toHaveClass("opacity-50");
+		expect(within(kept).getByTestId("source-paint")).not.toHaveClass(
+			"opacity-50",
+		);
 	});
 
 	it("uses a neutral source ramp for machines and harnesses", () => {
