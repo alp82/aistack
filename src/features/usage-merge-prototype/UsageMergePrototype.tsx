@@ -40,7 +40,11 @@ import {
 	TITLE,
 	totalUSD,
 } from "@/features/measured/copy";
-import { tokenTrail } from "@/features/measured/history";
+import {
+	type MeasuredHistoryPoint,
+	tokenTrail,
+} from "@/features/measured/history";
+import { MeasuredSection } from "@/features/measured/MeasuredSection";
 import { MetricBlock } from "@/features/measured/MetricBlock";
 import { Section, SectionHeader } from "@/features/stack-view/ui";
 import { RowBody } from "@/features/workflow/components";
@@ -52,14 +56,23 @@ import {
 } from "@/features/workflow/copy";
 import { rowHead } from "@/features/workflow/heads";
 import { Lead } from "@/features/workflow/Lead";
+import { WorkflowSection } from "@/features/workflow/WorkflowSection";
 import { cn, timeAgo } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+import {
+	VariantD,
+	VariantE,
+	VariantF,
+	VariantG,
+	VariantH,
+} from "./MoreVariants";
 
 // ---------------------------------------------------------------------------
 // Data. One hook, all variants.
 // ---------------------------------------------------------------------------
 
-type Proto = {
+export type Proto = {
 	window: WindowId;
 	setWindow: (w: WindowId) => void;
 	machine: number | null;
@@ -67,6 +80,7 @@ type Proto = {
 	snapshot: MeasuredSnapshot | null | undefined;
 	view: WorkflowView | null | undefined;
 	trail: ReturnType<typeof tokenTrail>;
+	points: MeasuredHistoryPoint[];
 };
 
 function useProtoData(slug: string): Proto {
@@ -93,6 +107,7 @@ function useProtoData(slug: string): Proto {
 		snapshot,
 		view,
 		trail: tokenTrail(history?.points ?? []),
+		points: history?.points ?? [],
 	};
 }
 
@@ -108,7 +123,7 @@ const PREV_LABEL: Record<WindowId, string> = {
 	"24h": "vs yesterday",
 };
 
-function Delta({ value, window }: { value: number; window: WindowId }) {
+export function Delta({ value, window }: { value: number; window: WindowId }) {
 	const d = fakeDelta(value);
 	const up = d >= 0;
 	return (
@@ -129,7 +144,7 @@ function Delta({ value, window }: { value: number; window: WindowId }) {
 // Shared bits: the control bar, the picks, small atoms.
 // ---------------------------------------------------------------------------
 
-function ControlBar({ p, className }: { p: Proto; className?: string }) {
+export function ControlBar({ p, className }: { p: Proto; className?: string }) {
 	const machines = p.view?.machines ?? [];
 	return (
 		<div
@@ -182,18 +197,24 @@ function ControlBar({ p, className }: { p: Proto; className?: string }) {
 }
 
 /** The fixed editorial pick: three workflow rows every variant leads with. */
-const PICKS = [
+export const PICKS = [
 	"component:activity-heatmap",
 	"component:git-ledger",
 	"component:model-routing",
 ] as const;
 
-function pickRows(view: WorkflowView, ids: readonly string[]): WorkflowRow[] {
+export function pickRows(
+	view: WorkflowView,
+	ids: readonly string[],
+): WorkflowRow[] {
 	const byId = new Map(view.rows.map((r) => [r.rowId, r]));
 	return ids.map((id) => byId.get(id)).filter((r): r is WorkflowRow => !!r);
 }
 
-function restRows(view: WorkflowView, ids: readonly string[]): WorkflowRow[] {
+export function restRows(
+	view: WorkflowView,
+	ids: readonly string[],
+): WorkflowRow[] {
 	return view.rows.filter((r) => !ids.includes(r.rowId));
 }
 
@@ -307,7 +328,7 @@ function OwnerTag({ row }: { row: WorkflowRow }) {
 	);
 }
 
-function WorkflowEmpty({ p }: { p: Proto }) {
+export function WorkflowEmpty({ p }: { p: Proto }) {
 	if (p.view === undefined) return null;
 	return (
 		<div className="border border-stroke-subtle px-6 py-8">
@@ -510,7 +531,7 @@ export const VariantA = {
 };
 
 /** A thin row that opens in place. Shared by A's subviews and C's list. */
-function ExpandRow({
+export function ExpandRow({
 	row,
 	view,
 	window,
@@ -863,7 +884,48 @@ export const VariantC = {
 // The switcher and the mount.
 // ---------------------------------------------------------------------------
 
-const VARIANTS = { A: VariantA, B: VariantB, C: VariantC } as const;
+export const VariantO = {
+	name: "Original (01 + 04 stacked)",
+	Component: function VariantOComponent({
+		index,
+		slug,
+		stackId,
+		isOwner,
+		stackToolSlugs,
+	}: {
+		index: number;
+		p: Proto;
+		slug: string;
+		stackId: Id<"stacks">;
+		isOwner: boolean;
+		stackToolSlugs: string[];
+	}) {
+		return (
+			<>
+				<MeasuredSection
+					index={index}
+					slug={slug}
+					stackId={stackId}
+					isOwner={isOwner}
+					stackToolSlugs={stackToolSlugs}
+				/>
+				<WorkflowSection index={index + 1} slug={slug} stackId={stackId} />
+			</>
+		);
+	},
+};
+
+const VARIANTS = {
+	O: VariantO,
+	A: VariantA,
+	D: VariantD,
+	E: VariantE,
+	F: VariantF,
+	G: VariantG,
+	H: VariantH,
+	B: VariantB,
+	C: VariantC,
+} as const;
 export type VariantKey = keyof typeof VARIANTS;
 const KEYS = Object.keys(VARIANTS) as VariantKey[];
 
@@ -871,10 +933,16 @@ export function UsageMergePrototype({
 	index,
 	slug,
 	variant,
+	stackId,
+	isOwner,
+	stackToolSlugs,
 }: {
 	index: number;
 	slug: string;
 	variant: VariantKey;
+	stackId: Id<"stacks">;
+	isOwner: boolean;
+	stackToolSlugs: string[];
 }) {
 	const p = useProtoData(slug);
 	const navigate = useNavigate();
@@ -913,7 +981,14 @@ export function UsageMergePrototype({
 	const V = VARIANTS[variant];
 	return (
 		<>
-			<V.Component index={index} p={p} slug={slug} />
+			<V.Component
+				index={index}
+				p={p}
+				slug={slug}
+				stackId={stackId}
+				isOwner={isOwner}
+				stackToolSlugs={stackToolSlugs}
+			/>
 			{process.env.NODE_ENV !== "production" && (
 				<div className="fixed bottom-4 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-3 border-2 border-fuchsia-500 bg-black px-3 py-2 font-mono text-xs text-white shadow-[4px_4px_0_#d946ef]">
 					<button type="button" onClick={() => step(-1)} aria-label="previous">

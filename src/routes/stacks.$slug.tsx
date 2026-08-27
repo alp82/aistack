@@ -428,6 +428,9 @@ function StackDetailsPage() {
 							index={1}
 							slug={stack.slug}
 							variant={protoVariant}
+							stackId={stack._id}
+							isOwner={upvoteStatus?.isOwner ?? false}
+							stackToolSlugs={stack.tools.map((t: ViewTool) => t.slug)}
 						/>
 					) : (
 						<MeasuredSection
