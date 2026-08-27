@@ -202,7 +202,8 @@ describe("freshness", () => {
 		setup({
 			data: { ...FRESH, receivedAt: Date.now() - 12 * DAY, isFresh: false },
 		});
-		expect(screen.getByText(/Checked 1w ago/)).toBeTruthy();
+		expect(screen.getByText("1w ago")).toHaveClass("md:hidden");
+		expect(screen.getByText("1 week ago")).toHaveClass("md:inline");
 		expect(
 			screen.getByText(/stops counting as up to date after a week/),
 		).toBeTruthy();

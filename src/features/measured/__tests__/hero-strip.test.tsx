@@ -38,7 +38,8 @@ describe("with a snapshot", () => {
 		expect(screen.getByText("382 sessions")).toBeInTheDocument();
 		expect(screen.getByText("22 of the last 30 days")).toBeInTheDocument();
 		expect(screen.getByText("claude-fable-5 leads at 35%")).toBeInTheDocument();
-		expect(screen.getByText("checked 2h ago")).toBeInTheDocument();
+		expect(screen.getByText("2h ago")).toHaveClass("md:hidden");
+		expect(screen.getByText("2 hours ago")).toHaveClass("md:inline");
 		expect(screen.getByRole("link")).toHaveAttribute(
 			"href",
 			"#section-measured",

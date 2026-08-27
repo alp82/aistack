@@ -283,14 +283,16 @@ describe("the reading", () => {
 			},
 		});
 
-		expect(screen.getByText("checked 1h ago")).toBeInTheDocument();
+		expect(screen.getByText("1h ago")).toHaveClass("md:hidden");
+		expect(screen.getByText("1 hour ago")).toHaveClass("md:inline");
 		expect(
 			screen.queryByText(/the notch marks where each share stood on/),
 		).not.toBeInTheDocument();
 
 		fireEvent.click(screen.getByRole("button", { name: /machine/i }));
 		fireEvent.click(screen.getByRole("option", { name: /machine 2/i }));
-		expect(screen.getByText("checked 3h ago")).toBeInTheDocument();
+		expect(screen.getByText("3h ago")).toHaveClass("md:hidden");
+		expect(screen.getByText("3 hours ago")).toHaveClass("md:inline");
 	});
 
 	it("lists each harness share between the models and stats", () => {
@@ -385,7 +387,8 @@ describe("the reading", () => {
 		expect(
 			screen.queryByRole("list", { name: "Harness token shares" }),
 		).not.toBeInTheDocument();
-		expect(screen.getByText("checked 2h ago")).toBeInTheDocument();
+		expect(screen.getByText("2h ago")).toHaveClass("md:hidden");
+		expect(screen.getByText("2 hours ago")).toHaveClass("md:inline");
 		expect(
 			screen.getByText(/the notch marks where each share stood on/),
 		).toBeInTheDocument();
@@ -515,7 +518,8 @@ describe("the reading", () => {
 	it("says how long ago the machine was read, from the server clock", () => {
 		const { current, history } = live();
 		setup(current, history);
-		expect(screen.getByText("checked 2h ago")).toBeInTheDocument();
+		expect(screen.getByText("2h ago")).toHaveClass("md:hidden");
+		expect(screen.getByText("2 hours ago")).toHaveClass("md:inline");
 	});
 });
 

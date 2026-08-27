@@ -1,8 +1,9 @@
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
+import { RelativeTime } from "@/components/RelativeTime";
 import { BrutalistSelect } from "@/components/ui/brutalist-select";
 import { BrutalistToggle } from "@/components/ui/brutalist-toggle";
-import { cn, timeAgo } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import {
@@ -118,7 +119,7 @@ export function AutoSyncBox({
 							<>
 								{runningLine(state.frequencyHours)}{" "}
 								<span className="text-fg-muted">
-									Last automatic sync {timeAgo(state.at)}.
+									Last automatic sync <RelativeTime at={state.at} />.
 								</span>
 							</>
 						) : (

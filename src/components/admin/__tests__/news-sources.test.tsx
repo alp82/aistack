@@ -15,7 +15,7 @@
  */
 import { cleanup, render, screen } from "@testing-library/react";
 import { getFunctionName } from "convex/server";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NewsSourcesSection } from "@/components/admin/NewsSourcesSection";
 
 const queryMock = vi.fn();
@@ -28,9 +28,15 @@ vi.mock("convex/react", () => ({
 	useAction: (ref: unknown) => actionMock(ref),
 }));
 
+beforeEach(() => {
+	vi.useFakeTimers();
+	vi.setSystemTime(new Date("2026-08-27T12:00:00Z"));
+});
+
 afterEach(() => {
 	cleanup();
 	vi.clearAllMocks();
+	vi.useRealTimers();
 });
 
 function source(over: Record<string, unknown> = {}) {
@@ -73,6 +79,20 @@ function rowOf(errorText: string): HTMLElement {
 }
 
 describe("a source row that reports an error", () => {
+	it("uses the shared responsive time labels", () => {
+		setup([
+			source({
+				lastPolledAt: Date.now() - 3 * 60_000,
+				lastOkAt: Date.now() - 2 * 60 * 60_000,
+			}),
+		]);
+
+		expect(screen.getByText("3 min ago")).toHaveClass("md:hidden");
+		expect(screen.getByText("3 minutes ago")).toHaveClass("md:inline");
+		expect(screen.getByText("2h ago")).toHaveClass("md:hidden");
+		expect(screen.getByText("2 hours ago")).toHaveClass("md:inline");
+	});
+
 	it("shows it in red while the source is enabled", () => {
 		setup([source()]);
 

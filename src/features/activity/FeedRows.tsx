@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
+import { RelativeTime } from "@/components/RelativeTime";
 import type { FeedRow } from "./feed";
 import { fmtDelta, fmtTokens, syncFacts, syncTokens } from "./feed";
-import { RelativeTime } from "./RelativeTime";
 
 /**
  * One row of the feed, in the grammar #84 locked:

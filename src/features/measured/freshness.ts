@@ -39,7 +39,7 @@ export function isStale(receivedAt: number, now: number = Date.now()): boolean {
 /**
  * "3 days ago" - the long form the approved strings use.
  *
- * FLOORED, LIKE `timeAgo`. The hero prints "2d ago" from the same instant, and
+ * FLOORED, LIKE `RelativeTime`. The hero prints "2d ago" from the same instant, and
  * a page that rounded here would carry two different ages for one sync.
  */
 export function syncAgo(receivedAt: number, now: number = Date.now()): string {

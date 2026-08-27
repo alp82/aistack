@@ -1,8 +1,9 @@
 import { useQuery } from "convex/react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { type KeyboardEvent, useRef, useState } from "react";
+import { RelativeTime } from "@/components/RelativeTime";
 import { Section, SectionHeader } from "@/features/stack-view/ui";
-import { cn, timeAgo } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import {
@@ -100,7 +101,7 @@ export function WorkflowSection({
 							/>
 						) : (
 							<span className="font-mono text-[11px] text-fg-muted">
-								read {timeAgo(shown.receivedAt)}
+								read <RelativeTime at={shown.receivedAt} />
 								{shown.machine ? ` · ${shown.machine}` : ""}
 							</span>
 						)}
@@ -172,8 +173,8 @@ function EmptyWindow({
 				{copy.head}
 			</p>
 			<p className="mt-2 max-w-[52ch] text-fg-secondary">
-				The newest sync on this machine was {timeAgo(view.receivedAt)}.{" "}
-				{copy.body}
+				The newest sync on this machine was{" "}
+				<RelativeTime at={view.receivedAt} />. {copy.body}
 			</p>
 		</div>
 	);
@@ -257,7 +258,7 @@ function MachineSelect({
 								{machineLabel(machine)}
 							</span>
 							<span className="mt-0.5 block text-[10px] text-fg-muted">
-								read {timeAgo(machine.receivedAt)}
+								read <RelativeTime at={machine.receivedAt} />
 							</span>
 						</button>
 					))}

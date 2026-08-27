@@ -418,7 +418,7 @@ describe("ProjectsSection – Expanded Panel", () => {
 	});
 
 	// TC-EP-02
-	// BASE_PROJECT.updatedAt is 2h ago → timeAgo returns "2h ago"
+	// BASE_PROJECT.updatedAt is two hours ago.
 	it("TC-EP-02: expanded shows 'updated' label and relative time '2h ago'", async () => {
 		await renderAndExpand();
 		expect(screen.getByText(/updated/i)).toBeInTheDocument();

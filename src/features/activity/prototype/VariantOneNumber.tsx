@@ -13,6 +13,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import { RelativeTime } from "@/components/RelativeTime";
 import SpeedingText from "@/components/speeding-text";
 import {
 	BrutalistSelect,
@@ -22,7 +23,6 @@ import { Button } from "@/components/ui/button";
 import { Sparkline } from "@/features/charts";
 import type { Band, DayPoint } from "../feed";
 import { fmtCount, fmtTokens, liveDays, MONO_LABEL } from "../feed";
-import { RelativeTime } from "../RelativeTime";
 import { rowHandle, rowSummary } from "./summary";
 
 export const VARIANT_ONE_NUMBER_NAME = "One Number - count on top, reel below";

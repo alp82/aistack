@@ -1,9 +1,8 @@
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useMemo, useState } from "react";
-import { timeAgo } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { lastCheckedLine, type ReconcileItem } from "./copy";
+import type { ReconcileItem } from "./copy";
 
 export type Answer = "added" | "hidden";
 
@@ -11,7 +10,7 @@ export type HiddenItem = {
 	atomKind: ReconcileItem["atomKind"];
 	atomKey: string;
 	label: string;
-	hiddenAgo: string;
+	hiddenAt: number;
 };
 
 export type AddedItem = {
@@ -73,7 +72,7 @@ export function useReconcileRun(stackId: Id<"stacks"> | undefined) {
 				atomKind: d.atomKind,
 				atomKey: d.atomKey,
 				label: d.label,
-				hiddenAgo: timeAgo(d.dismissedAt),
+				hiddenAt: d.dismissedAt,
 			})),
 		[dismissals],
 	);
@@ -159,10 +158,7 @@ export function useReconcileRun(stackId: Id<"stacks"> | undefined) {
 		loading: data === undefined,
 		hasSnapshot: data?.hasSnapshot ?? false,
 		isFresh: data?.isFresh ?? false,
-		checkedLine: lastCheckedLine(
-			data?.hasSnapshot ?? false,
-			data?.receivedAt ? timeAgo(data.receivedAt) : "never",
-		),
+		checkedAt: data?.receivedAt ?? null,
 		open,
 		hidden,
 		added: answered,

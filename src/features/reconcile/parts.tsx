@@ -9,11 +9,13 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect } from "react";
+import { RelativeTime } from "@/components/RelativeTime";
 import { SYNC_CMD } from "@/features/measured/copy";
 import { cn } from "@/lib/utils";
 import {
 	askLine,
 	KICKER_EMPTY,
+	lastCheckedLine,
 	priceLine,
 	type ReconcileItem,
 	usageLine,
@@ -119,7 +121,7 @@ export function FreshLine({ run }: { run: ReconcileRun }) {
 	if (!run.hasSnapshot) {
 		return (
 			<span className="inline-flex flex-wrap items-center gap-x-2 font-mono text-[11px] uppercase tracking-[0.12em] text-fg-muted">
-				<span>{run.checkedLine}</span>
+				<span>{lastCheckedLine(false, "never")}</span>
 				<span aria-hidden="true">-</span>
 				<code className="normal-case text-fg-secondary">{SYNC_CMD}</code>
 				<Link to="/sync" className="text-accent-lime hover:underline">
@@ -140,7 +142,8 @@ export function FreshLine({ run }: { run: ReconcileRun }) {
 			) : (
 				<ArrowRight className="size-3" />
 			)}
-			{run.checkedLine}
+			Checked{" "}
+			{run.checkedAt === null ? "never" : <RelativeTime at={run.checkedAt} />}
 			{!run.isFresh && (
 				<span className="normal-case tracking-normal text-fg-muted">
 					- your stack stops counting as up to date after a week
@@ -427,7 +430,7 @@ export function HiddenPane({ run }: { run: ReconcileRun }) {
 				<div key={item.atomKey} className="flex items-center gap-3 px-4 py-3">
 					<span className="flex-1 text-sm text-fg-secondary">{item.label}</span>
 					<span className="font-mono text-[11px] text-fg-muted">
-						{item.hiddenAgo}
+						<RelativeTime at={item.hiddenAt} />
 					</span>
 					<PBtn tone="ghost" onClick={() => void run.bringBack(item)}>
 						<RotateCcw className="size-3" /> Bring it back

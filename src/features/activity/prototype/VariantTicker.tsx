@@ -8,11 +8,11 @@
 
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
+import { RelativeTime } from "@/components/RelativeTime";
 import { Button } from "@/components/ui/button";
 import { TimeSeriesChart } from "@/features/charts";
 import type { Band } from "../feed";
 import { fmtCount, fmtTokens, MONO_LABEL } from "../feed";
-import { RelativeTime } from "../RelativeTime";
 import { rowHandle, rowSummary } from "./summary";
 
 export const VARIANT_TICKER_NAME = "Ticker - trading floor";

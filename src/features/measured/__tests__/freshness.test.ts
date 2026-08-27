@@ -50,7 +50,7 @@ describe("the 48-hour line", () => {
 
 describe("the age in words", () => {
 	it("floors, so it cannot disagree with the hero's own stamp", () => {
-		// 2.5 days. `timeAgo` prints "2d ago" beside it, and rounding here would
+		// 2.5 days. `RelativeTime` prints "2d ago" beside it, and rounding here would
 		// print "3 days ago" for the same instant on the same page.
 		expect(syncAgo(NOW - 60 * HOUR, NOW)).toBe("2 days ago");
 	});

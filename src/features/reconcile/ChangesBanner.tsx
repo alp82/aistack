@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { ArrowRight } from "lucide-react";
-import { cn, timeAgo } from "@/lib/utils";
+import { RelativeTime } from "@/components/RelativeTime";
+import { cn } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { headline, KICKER, lastCheckedLine } from "./copy";
@@ -47,9 +48,13 @@ export function ChangesBanner({
 				</p>
 			</div>
 			<span className="font-mono text-[11px] uppercase tracking-[0.12em] text-fg-muted">
-				{lastCheckedLine(
-					data.hasSnapshot,
-					data.receivedAt ? timeAgo(data.receivedAt) : "never",
+				{data.hasSnapshot ? (
+					<>
+						Checked{" "}
+						{data.receivedAt ? <RelativeTime at={data.receivedAt} /> : "never"}
+					</>
+				) : (
+					lastCheckedLine(false, "never")
 				)}
 			</span>
 			<span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-fg-secondary group-hover:text-accent-lime">
