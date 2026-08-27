@@ -1534,11 +1534,17 @@ export const getReconcileSuggestions = query({
     // Measured-side: a model that resolves to the catalog but is absent from
     // the authored model list. Across harnesses the first (freshest-ordered)
     // sighting wins - the suggestion is "you ran this", not a share ranking.
+    // Authored slugs go through the same alias resolution as measured ids, so
+    // a stack that stored an older spelling is not asked to add it again (#294).
+    const catalog = await loadModelCatalog(ctx)
     const authoredModels = new Set(
-      (stack.modelSubscriptions ?? []).map((m) => m.modelSlug)
+      (stack.modelSubscriptions ?? []).map(
+        (m) =>
+          (catalog.bySlug.get(m.modelSlug) ?? catalog.byAlias.get(m.modelSlug))?.slug ??
+          m.modelSlug
+      )
     )
     const suggestedSlugs = new Set<string>()
-    const catalog = await loadModelCatalog(ctx)
     for (const snapshot of snapshots) {
       const resolved = resolveModels(catalog, snapshot.payload.models)
       const { models: repriced } = repriceSnapshot({

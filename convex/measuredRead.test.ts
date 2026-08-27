@@ -182,3 +182,36 @@ describe('getCurrentByStackSlug reads what the CLI publishes', () => {
     })
   })
 })
+
+describe('getReconcileSuggestions resolves authored slugs through aliases (#294)', () => {
+  test('a stack listing an older spelling is not asked to add the model again', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    await t.run(async (ctx) => {
+      await ctx.db.insert('models', {
+        name: 'Claude Opus 5',
+        slug: 'claude-opus-5',
+        shortId: 'sid-opus5',
+        aliases: ['claude-opus-50'],
+        provider: 'Anthropic',
+        category: 'coding',
+        reviewStatus: 'approved',
+        createdAt: 1,
+        updatedAt: 1,
+      })
+      await ctx.db.patch(stackId, {
+        modelSubscriptions: [{ modelSlug: 'claude-opus-50', role: 'primary' }],
+      })
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payloadWithCounts(),
+    })
+
+    const result = await t
+      .withIdentity({ tokenIdentifier: `convex|${USER}`, subject: USER })
+      .query(api.measured.getReconcileSuggestions, { stackId })
+
+    expect(result.suggestions.filter((s) => s.atomKind === 'model')).toEqual([])
+  })
+})
