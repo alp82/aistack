@@ -67,6 +67,7 @@ import {
 	VariantG,
 	VariantH,
 } from "./MoreVariants";
+import { VariantI, VariantJ, VariantK, VariantL, VariantM } from "./RoundThree";
 
 // ---------------------------------------------------------------------------
 // Data. One hook, all variants.
@@ -922,6 +923,11 @@ const VARIANTS = {
 	E: VariantE,
 	F: VariantF,
 	G: VariantG,
+	I: VariantI,
+	J: VariantJ,
+	K: VariantK,
+	L: VariantL,
+	M: VariantM,
 	H: VariantH,
 	B: VariantB,
 	C: VariantC,

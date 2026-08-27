@@ -174,7 +174,7 @@ export function OriginalReading({
 	);
 }
 
-function HarnessShareRows({
+export function HarnessShareRows({
 	snapshot,
 	stackToolSlugs,
 }: {
@@ -243,7 +243,7 @@ function HarnessShareRows({
 	);
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+export function Stat({ label, value }: { label: string; value: string }) {
 	return (
 		<div className="bg-bg-canvas px-4 py-4">
 			<p className="font-mono text-xl font-black text-fg-primary">{value}</p>
@@ -696,7 +696,7 @@ export const VariantH = {
 							<div className="mb-6 flex items-start justify-between gap-4">
 								<div>
 									<p className={cn(MONO_LABEL, "text-accent-lime")}>
-										// actual usage
+										{"// actual usage"}
 									</p>
 									<h3 className="mt-1 font-mono text-3xl font-black text-fg-primary">
 										Workflow
