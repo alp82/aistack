@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useEffect, useId, useState } from "react";
 import { authClient } from "../lib/auth-client";
 import { MagicLinkForm } from "./MagicLinkForm";
 import { Input } from "./ui/input";
@@ -36,6 +36,12 @@ const GitHubIcon = () => (
 	</svg>
 );
 
+const LastUsedTag = () => (
+	<span className="border border-current px-1.5 py-0.5 font-mono text-[10px] font-normal lowercase tracking-normal">
+		last used
+	</span>
+);
+
 interface AuthFormProps {
 	/** Where to redirect after successful auth */
 	callbackURL: string;
@@ -65,9 +71,14 @@ export function AuthForm({
 	const [error, setError] = useState("");
 	const [info, setInfo] = useState("");
 	const [loading, setLoading] = useState(false);
+	const [lastLoginMethod, setLastLoginMethod] = useState<string | null>(null);
 	const nameId = useId();
 	const emailId = useId();
 	const passwordId = useId();
+
+	useEffect(() => {
+		setLastLoginMethod(authClient.getLastUsedLoginMethod());
+	}, []);
 
 	const handleEmailAuth = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -148,6 +159,7 @@ export function AuthForm({
 			>
 				<GoogleIcon />
 				Continue with Google
+				{lastLoginMethod === "google" && <LastUsedTag />}
 			</button>
 
 			<button
@@ -158,6 +170,7 @@ export function AuthForm({
 			>
 				<GitHubIcon />
 				Continue with GitHub
+				{lastLoginMethod === "github" && <LastUsedTag />}
 			</button>
 
 			<div className="relative">
@@ -171,7 +184,11 @@ export function AuthForm({
 				</div>
 			</div>
 
-			<MagicLinkForm callbackURL={callbackURL} disabled={loading} />
+			<MagicLinkForm
+				callbackURL={callbackURL}
+				disabled={loading}
+				lastUsed={lastLoginMethod === "magic-link"}
+			/>
 
 			<div className="relative">
 				<div className="absolute inset-0 flex items-center">
@@ -255,13 +272,14 @@ export function AuthForm({
 				<button
 					type="submit"
 					disabled={loading}
-					className="w-full border-2 border-accent-lime bg-accent-lime px-4 py-4 font-mono text-sm font-bold uppercase tracking-widest text-accent-lime-contrast transition-all hover:bg-accent-lime-strong disabled:opacity-50 cursor-pointer disabled:cursor-default"
+					className="w-full flex items-center justify-center gap-3 border-2 border-accent-lime bg-accent-lime px-4 py-4 font-mono text-sm font-bold uppercase tracking-widest text-accent-lime-contrast transition-all hover:bg-accent-lime-strong disabled:opacity-50 cursor-pointer disabled:cursor-default"
 				>
 					{loading
 						? "Loading..."
 						: isSignUp
 							? signUpSubmitLabel
 							: signInSubmitLabel}
+					{lastLoginMethod === "email" && <LastUsedTag />}
 				</button>
 			</form>
 

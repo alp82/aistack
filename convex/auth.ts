@@ -1,5 +1,5 @@
 import { betterAuth } from 'better-auth'
-import { magicLink } from 'better-auth/plugins'
+import { lastLoginMethod, magicLink } from 'better-auth/plugins'
 import { createClient } from '@convex-dev/better-auth'
 import { convex } from '@convex-dev/better-auth/plugins'
 import { v } from 'convex/values'
@@ -134,6 +134,10 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
             console.error('[auth] Exception sending magic link:', err)
           }
         },
+      }),
+      lastLoginMethod({
+        customResolveMethod: (ctx) =>
+          ctx.path === '/magic-link/verify' ? 'magic-link' : null,
       }),
       convex({ authConfig }),
     ],

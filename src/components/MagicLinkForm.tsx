@@ -7,9 +7,14 @@ import { Label } from "./ui/label";
 type MagicLinkFormProps = {
 	callbackURL: string;
 	disabled?: boolean;
+	lastUsed?: boolean;
 };
 
-export function MagicLinkForm({ callbackURL, disabled }: MagicLinkFormProps) {
+export function MagicLinkForm({
+	callbackURL,
+	disabled,
+	lastUsed,
+}: MagicLinkFormProps) {
 	const [email, setEmail] = useState("");
 	const [loading, setLoading] = useState(false);
 	const [sent, setSent] = useState(false);
@@ -97,6 +102,11 @@ export function MagicLinkForm({ callbackURL, disabled }: MagicLinkFormProps) {
 			>
 				<Mail className="size-4" />
 				{loading ? "Sending..." : "Send Magic Link"}
+				{lastUsed && (
+					<span className="border border-current px-1.5 py-0.5 font-mono text-[10px] font-normal lowercase tracking-normal">
+						last used
+					</span>
+				)}
 			</button>
 		</form>
 	);
