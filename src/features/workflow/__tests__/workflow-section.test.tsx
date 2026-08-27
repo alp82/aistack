@@ -49,6 +49,7 @@ const STACK_ID = "stack-1" as Id<"stacks">;
 function setup(
 	answer: WorkflowView | null | undefined,
 	windowed?: (args: { window?: string }) => WorkflowView | null | undefined,
+	isOwner = false,
 ) {
 	queryMock.mockImplementation((ref: unknown, args: unknown) => {
 		if (
@@ -62,18 +63,67 @@ function setup(
 		if (held.window && windowed) return windowed(held);
 		return answer;
 	});
-	return render(<WorkflowSection index={4} slug="alp" stackId={STACK_ID} />);
+	return render(
+		<WorkflowSection
+			index={4}
+			slug="alp"
+			stackId={STACK_ID}
+			isOwner={isOwner}
+		/>,
+	);
 }
 
-describe("the section renders only a real reading", () => {
+describe("the section loading and empty states", () => {
 	it("renders nothing before the query answers", () => {
 		const { container } = setup(undefined);
 		expect(container).toBeEmptyDOMElement();
 	});
 
-	it("renders nothing when the consent gate withholds the reading", () => {
-		const { container } = setup(null);
-		expect(container).toBeEmptyDOMElement();
+	it("shows visitors the Workflow header when no workflow is published", () => {
+		setup(null);
+		expect(screen.getByRole("heading", { name: "Workflow" })).toBeTruthy();
+		expect(
+			screen.getByText("No workflow has been published for this stack yet"),
+		).toBeTruthy();
+	});
+
+	it("shows owners a sync action when no workflow is published", () => {
+		setup(null, undefined, true);
+		expect(screen.getByRole("heading", { name: "Workflow" })).toBeTruthy();
+		expect(screen.getByText(/No workflow yet/)).toBeTruthy();
+		expect(
+			screen.getByRole("link", { name: "Sync your stack" }),
+		).toHaveAttribute("href", "/sync");
+		expect(
+			screen.queryByText("No workflow has been published for this stack yet"),
+		).toBeNull();
+	});
+
+	it("fills a published day that has no displayable workflow rows", () => {
+		const empty = view({
+			rows: [],
+			lead: {
+				...view().lead,
+				sessionCount: 0,
+				playbookHarnessCount: 0,
+			},
+		});
+		setup(empty);
+		expect(screen.getByRole("heading", { name: "Workflow" })).toBeTruthy();
+		expect(
+			screen.getByText("No workflow has been published for this stack yet"),
+		).toBeTruthy();
+	});
+
+	it("gives the owner a sync action when a published day has no rows", () => {
+		setup(view({ rows: [], isOwner: true }), undefined, true);
+		expect(screen.getByText(/No workflow yet/)).toBeTruthy();
+		expect(
+			screen.getByRole("link", { name: "Sync your stack" }),
+		).toHaveAttribute("href", "/sync");
+		expect(
+			screen.queryByText("No workflow has been published for this stack yet"),
+		).toBeNull();
 	});
 
 	it("titles the section Workflow under the measured kicker", () => {
@@ -230,7 +280,7 @@ describe("the window selector", () => {
 		expect(screen.getByText("Late-night commits")).toBeTruthy();
 	});
 
-	it("shows the empty state for a window with no stored day", () => {
+	it("shows the visitor empty state for a window with no stored day", () => {
 		setup(view(), ({ window }) =>
 			view({
 				window: { id: window as "24h", days: 0, from: "x", to: "y" },
@@ -239,10 +289,32 @@ describe("the window selector", () => {
 		);
 		fireEvent.click(screen.getByRole("button", { name: "24 hours" }));
 		expect(
-			screen.getByText("nothing measured in the last 24 hours"),
+			screen.getByText("No workflow has been published for this stack yet"),
 		).toBeTruthy();
+		expect(
+			screen.queryByText("nothing measured in the last 24 hours"),
+		).toBeNull();
 		expect(screen.queryByText("Late-night commits")).toBeNull();
 		expect(screen.getByRole("heading", { name: "Workflow" })).toBeTruthy();
+	});
+
+	it("shows the owner sync action for a window with no stored day", () => {
+		setup(
+			view({ isOwner: true }),
+			({ window }) =>
+				view({
+					isOwner: true,
+					window: { id: window as "7d", days: 0, from: "x", to: "y" },
+					rows: [],
+				}),
+			true,
+		);
+		fireEvent.click(screen.getByRole("button", { name: "7 days" }));
+		expect(screen.getByText(/No workflow yet/)).toBeTruthy();
+		expect(
+			screen.getByRole("link", { name: "Sync your stack" }),
+		).toHaveAttribute("href", "/sync");
+		expect(screen.queryByText("no measured day in the last 7 days")).toBeNull();
 	});
 });
 

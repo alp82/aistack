@@ -61,9 +61,8 @@ the settled order: Actual Usage 01, Projects 02, Tools 03, Workflow 04, Guide 05
 to carry the title Workflow is renamed Guide, under `// writeup`.
 
 The order is locked, the numbers are not. Tools renders only when the stack lists
-tools, and Workflow only when a reading is stored and published, so the number a
-section prints is its position among the sections that render. A stack with no
-reading closes on Guide 04 rather than printing a gap where 04 would have been.
+tools. Workflow keeps its place and shows an empty state when no reading is
+published. The section number is its position among the sections that render.
 
 A nav block of stat rows sits under the hero: one row per rendered section, showing
 the number, the title, and a headline figure the section itself already prints. A row

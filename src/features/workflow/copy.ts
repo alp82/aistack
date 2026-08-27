@@ -43,25 +43,6 @@ export const WINDOWS: readonly { id: WindowId; label: string }[] = [
 	{ id: "24h", label: "24 hours" },
 ];
 
-/**
- * The empty state per window option (#284). A window with no stored day is a
- * real answer about the sync, never a row of zeroes.
- */
-export const EMPTY_WINDOW: Record<WindowId, { head: string; body: string }> = {
-	"30d": {
-		head: "no measured day in the last 30 days",
-		body: "The next sync appends the days since the last one, and this window fills.",
-	},
-	"7d": {
-		head: "no measured day in the last 7 days",
-		body: "The next sync appends the days since the last one, and this window fills.",
-	},
-	"24h": {
-		head: "nothing measured in the last 24 hours",
-		body: "A day arrives with the sync that follows it. Run aistack sync, or wait for the 48-hour auto-sync.",
-	},
-};
-
 // ---------------------------------------------------------------------------
 // Phases.
 //

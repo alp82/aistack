@@ -5,12 +5,10 @@
  * and written into `docs/specs/workflow-surface.md`: Actual Usage 01,
  * Projects 02, Tools 03, Workflow 04, Guide 05.
  *
- * THE ORDER IS LOCKED, THE NUMBERS ARE NOT. Two sections render only when they
- * have something to show: Tools drops out of a stack with no tools, and
- * Workflow drops out of every stack without a stored reading, which is most of
- * them. The number is the position among the sections that DO render, so a page
- * without a workflow reading closes on Guide 04 and never prints a gap where 04
- * would have been. `SECTION_ORDER` is the part that never moves.
+ * THE ORDER IS LOCKED, THE NUMBERS ARE NOT. Tools drops out of a stack with no
+ * tools. Workflow keeps its place and shows an empty state without a published
+ * reading (#295). The number is the position among the sections that render.
+ * `SECTION_ORDER` is the part that never moves.
  *
  * This module is pure so the order and the numbering are testable without a
  * page: the route hands it presence and figures, and renders what it returns.
