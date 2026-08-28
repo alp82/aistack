@@ -1,5 +1,5 @@
 import type { PlaybookTrack } from "@aistack/workflow-rules";
-import { type FocusEvent, type MouseEvent, useRef, useState } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
 	ACCENT,
@@ -44,6 +44,7 @@ import {
 	type Segment,
 	Strip,
 	Sub,
+	Tip,
 } from "./parts";
 
 /**
@@ -117,37 +118,18 @@ const WEEKDAY_ROWS = [1, 2, 3, 4, 5, 6, 0];
  */
 function ActivityHeatmap({ view }: { view: WorkflowView }) {
 	const [series, setSeries] = useState<HeatSeries>("sessions");
-	const [popup, setPopup] = useState<{
-		key: string;
-		left: number;
-		top: number;
-	} | null>(null);
-	const rootRef = useRef<HTMLDivElement>(null);
 	const cells = heatCells(view, series);
 	const hasCommits = view.section.git.weekdayHourCells.length > 0;
 	const unit = series === "sessions" ? "recorded events" : "commits";
 	const busiest = cells.size > 0 ? Math.max(...cells.values()) : 0;
 
-	const show = (key: string, target: EventTarget & HTMLElement): void => {
-		const root = rootRef.current?.getBoundingClientRect();
-		const cell = target.getBoundingClientRect();
-		if (!root) return;
-		let left = cell.left - root.left + 10;
-		if (left + 260 > root.width)
-			left = Math.max(cell.left - root.left - 250, 0);
-		setPopup({ key, left, top: cell.top - root.top - 34 });
-	};
-
 	const toggle = hasCommits ? (
-		<div className="mb-2.5 inline-flex border border-stroke-subtle">
+		<div className="mb-2.5 inline-flex self-start border border-stroke-subtle">
 			{(["sessions", "commits"] as const).map((option) => (
 				<button
 					key={option}
 					type="button"
-					onClick={() => {
-						setSeries(option);
-						setPopup(null);
-					}}
+					onClick={() => setSeries(option)}
 					aria-pressed={series === option}
 					className={cn(
 						"px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em]",
@@ -175,38 +157,43 @@ function ActivityHeatmap({ view }: { view: WorkflowView }) {
 		);
 	}
 
-	const popupCell = popup ? (cells.get(popup.key) ?? 0) : 0;
-
+	// THE GRID FILLS ITS BOX. Rows share the height the card gives them, so a
+	// tall slot draws tall cells instead of a void under the picture.
 	return (
-		<div ref={rootRef} className="relative">
+		<div className="flex h-full min-h-40 flex-col">
 			{toggle}
-			<div className="overflow-x-auto">
-				<div className="min-w-[34rem]">
+			<div className="flex min-h-0 flex-1 flex-col overflow-x-auto">
+				<div className="flex min-h-0 min-w-[34rem] flex-1 flex-col">
 					{WEEKDAY_ROWS.map((weekday) => (
-						<div key={weekday} className="flex items-center gap-0.5">
-							<span className="w-9 shrink-0 font-mono text-[10px] text-fg-muted">
+						<div
+							key={weekday}
+							className="flex min-h-4 flex-1 items-stretch gap-0.5 pb-0.5"
+						>
+							<span className="flex w-9 shrink-0 items-center font-mono text-[10px] text-fg-muted">
 								{weekdayLabel(weekday)}
 							</span>
 							{HOURS.map((hour) => {
 								const key = `${weekday}-${hour}`;
 								const count = cells.get(key) ?? 0;
 								return (
-									<button
+									<Tip
 										key={key}
-										type="button"
-										tabIndex={-1}
-										aria-label={`${weekdayLabel(weekday)} ${hourLabel(hour)}, ${count} ${unit}`}
-										onMouseEnter={(event: MouseEvent<HTMLButtonElement>) =>
-											show(key, event.currentTarget)
+										className="flex min-w-0 flex-1"
+										label={
+											<>
+												{weekdayLabel(weekday)} {hourLabel(hour)} ·{" "}
+												<b className="text-accent-lime">{fmtCount(count)}</b>{" "}
+												{unit}
+											</>
 										}
-										onFocus={(event: FocusEvent<HTMLButtonElement>) =>
-											show(key, event.currentTarget)
-										}
-										onMouseLeave={() => setPopup(null)}
-										onBlur={() => setPopup(null)}
-										className="mb-0.5 h-4 flex-1 hover:outline hover:outline-1 hover:-outline-offset-1 hover:outline-fg-primary"
-										style={{ background: heatPaint(count, busiest) }}
-									/>
+									>
+										<span
+											role="img"
+											aria-label={`${weekdayLabel(weekday)} ${hourLabel(hour)}, ${count} ${unit}`}
+											className="block h-full w-full cursor-help hover:outline hover:outline-1 hover:-outline-offset-1 hover:outline-fg-primary"
+											style={{ background: heatPaint(count, busiest) }}
+										/>
+									</Tip>
 								);
 							})}
 						</div>
@@ -224,16 +211,6 @@ function ActivityHeatmap({ view }: { view: WorkflowView }) {
 					</div>
 				</div>
 			</div>
-			{popup && (
-				<output
-					className="pointer-events-none absolute z-20 whitespace-nowrap border border-stroke-strong bg-bg-panel-elevated px-2.5 py-1.5 font-mono text-[11px] shadow-[4px_4px_0_var(--stroke-strong)]"
-					style={{ left: popup.left, top: popup.top }}
-				>
-					{weekdayLabel(Number(popup.key.split("-")[0]))}{" "}
-					{hourLabel(Number(popup.key.split("-")[1]))} ·{" "}
-					<b className="text-accent-lime">{fmtCount(popupCell)}</b> {unit}
-				</output>
-			)}
 		</div>
 	);
 }
@@ -482,39 +459,44 @@ function DayBars({
 					? `${date}: +${fmtCount(day.additions)} added, -${fmtCount(day.removals)} removed, ${fmtCount(day.commits)} ${day.commits === 1 ? "commit" : "commits"}`
 					: `${date}: no measured day`;
 				return (
-					<span
-						key={date}
-						data-day={date}
-						data-empty={empty ? "true" : undefined}
-						title={title}
-						className="flex min-w-0.5 flex-1 flex-col"
-					>
-						<span className="flex flex-1 items-end">
-							{!empty && (
-								<i
-									className="block w-full min-h-px"
-									style={{ height: height(day.additions), background: ACCENT }}
-								/>
-							)}
+					<Tip key={date} className="flex min-w-0.5 flex-1" label={title}>
+						<span
+							data-day={date}
+							data-empty={empty ? "true" : undefined}
+							className="flex h-full w-full cursor-help flex-col"
+						>
+							<span className="flex flex-1 items-end">
+								{!empty && (
+									<i
+										className="block w-full min-h-px"
+										style={{
+											height: height(day.additions),
+											background: ACCENT,
+										}}
+									/>
+								)}
+							</span>
+							<i
+								className="block h-px w-full shrink-0"
+								style={{
+									background: empty
+										? "var(--stroke-strong)"
+										: "var(--fg-muted)",
+								}}
+							/>
+							<span className="flex flex-1 items-start">
+								{!empty && (
+									<i
+										className="block w-full min-h-px"
+										style={{
+											height: height(day.removals),
+											background: "var(--destructive-fill)",
+										}}
+									/>
+								)}
+							</span>
 						</span>
-						<i
-							className="block h-px w-full shrink-0"
-							style={{
-								background: empty ? "var(--stroke-strong)" : "var(--fg-muted)",
-							}}
-						/>
-						<span className="flex flex-1 items-start">
-							{!empty && (
-								<i
-									className="block w-full min-h-px"
-									style={{
-										height: height(day.removals),
-										background: "var(--destructive-fill)",
-									}}
-								/>
-							)}
-						</span>
-					</span>
+					</Tip>
 				);
 			})}
 		</div>
@@ -536,9 +518,16 @@ function CommitAxis({ sizes }: { sizes: readonly number[] }) {
 	const x = (value: number): number =>
 		top > 0 ? (Math.log10(value + 1) / top) * 100 : 0;
 	const median = sizes[Math.floor(sizes.length / 2)] ?? 0;
-	const gridlines = [1, 10, 100, 1000, 10000, 100000].filter(
-		(line) => line <= largest,
-	);
+	// A 1-2-5 ladder, so the axis reads 1, 2, 5, 10, 20, 50 and not one label
+	// per decade.
+	const gridlines: number[] = [];
+	for (let decade = 1; decade <= largest; decade *= 10) {
+		for (const step of [1, 2, 5]) {
+			if (decade * step <= largest) gridlines.push(decade * step);
+		}
+	}
+	if (gridlines.length === 0) gridlines.push(1);
+	const major = (line: number) => Math.log10(line) % 1 === 0;
 	return (
 		<div
 			role="img"
@@ -548,10 +537,18 @@ function CommitAxis({ sizes }: { sizes: readonly number[] }) {
 			{gridlines.map((line) => (
 				<span
 					key={line}
-					className="absolute top-2 bottom-7 w-px bg-stroke-subtle"
+					className={cn(
+						"absolute top-2 bottom-7 w-px",
+						major(line) ? "bg-stroke-strong" : "bg-stroke-subtle",
+					)}
 					style={{ left: `${x(line)}%` }}
 				>
-					<span className="absolute top-full left-1/2 mt-1 -translate-x-1/2 font-mono text-[10px] text-fg-muted">
+					<span
+						className={cn(
+							"absolute top-full left-1/2 mt-1 -translate-x-1/2 font-mono text-[10px]",
+							major(line) ? "text-fg-secondary" : "text-fg-muted",
+						)}
+					>
 						{fmtCount(line)}
 					</span>
 				</span>

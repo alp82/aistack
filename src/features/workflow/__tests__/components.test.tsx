@@ -60,10 +60,10 @@ describe("lines changed", () => {
 		// The fixture window runs 2026-07-28 to 2026-08-26: 30 slots.
 		const slots = container.querySelectorAll("[data-day]");
 		expect(slots).toHaveLength(30);
+		// The day's sentence now lives in the shared hover card (#303), not a
+		// title attribute; the slot itself only carries its date and its state.
 		const active = container.querySelector("[data-day='2026-08-25']");
-		expect(active?.getAttribute("title")).toBe(
-			"2026-08-25: +300 added, -100 removed, 2 commits",
-		);
+		expect(active?.getAttribute("data-empty")).toBeNull();
 		// A day with no stored reading or no commit keeps its slot as a tick.
 		const empty = container.querySelector("[data-day='2026-08-01']");
 		expect(empty?.getAttribute("data-empty")).toBe("true");
@@ -115,31 +115,24 @@ describe("when work happens", () => {
 		show("component:activity-heatmap");
 		// 21:00 UTC on Sunday, plus 120 minutes, is 23:00 on Sunday.
 		expect(
-			screen.getByRole("button", { name: "Sun 23:00, 120 recorded events" }),
+			screen.getByRole("img", { name: "Sun 23:00, 120 recorded events" }),
 		).toBeTruthy();
 	});
 
-	it("floats a popup on hover and prints no static sentence", () => {
+	it("prints no static sentence; the cell's reading is its label and its hover card (#303)", () => {
 		const { container } = show("component:activity-heatmap");
 		expect(screen.queryByRole("status")).toBeNull();
 		expect(container.textContent).not.toMatch(/busiest hours/);
-		fireEvent.mouseEnter(
-			screen.getByRole("button", { name: "Sun 23:00, 120 recorded events" }),
-		);
-		expect(screen.getByRole("status").textContent).toBe(
-			"Sun 23:00 · 120 recorded events",
-		);
-		fireEvent.mouseLeave(
-			screen.getByRole("button", { name: "Sun 23:00, 120 recorded events" }),
-		);
-		expect(screen.queryByRole("status")).toBeNull();
+		expect(
+			screen.getByRole("img", { name: "Sun 23:00, 120 recorded events" }),
+		).toBeTruthy();
 	});
 
 	it("switches the grid to commits, shifted by the same offset", () => {
 		show("component:activity-heatmap");
 		fireEvent.click(screen.getByRole("button", { name: "commits" }));
 		expect(
-			screen.getByRole("button", { name: "Sun 23:00, 9 commits" }),
+			screen.getByRole("img", { name: "Sun 23:00, 9 commits" }),
 		).toBeTruthy();
 	});
 });
@@ -213,8 +206,9 @@ describe("the three rows the daily wire unlocked", () => {
 	it("draws turn length as the log-bucket histogram with its median", () => {
 		show("metric:turn-duration");
 		expect(screen.getByText("median")).toBeTruthy();
-		// Bucket 6 is 32 to 64 seconds; its middle quotes as ~45s.
-		expect(screen.getByText("32s-1.1 min")).toBeTruthy();
+		// Bucket 6 is 32 to 64 seconds, labeled by its lower bound (#303); its
+		// middle quotes as ~45s.
+		expect(screen.getByText("32s")).toBeTruthy();
 		const head = rowHead(row({ rowId: "metric:turn-duration" }), view());
 		expect(head.figure).toBe("~45s");
 	});

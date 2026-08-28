@@ -323,10 +323,9 @@ export function turnHistogram(view: WorkflowView): TurnHistogram {
 		buckets.push({
 			bucket,
 			turns: byBucket.get(bucket) ?? 0,
-			label:
-				bucket <= 0
-					? `<${fmtSeconds(1)}`
-					: `${fmtSeconds(range.low)}-${fmtSeconds(range.high)}`,
+			// The label is the bucket's lower bound, so the axis reads as a ladder
+			// of round marks (1s, 2s, 4s, 8s, 16s, 32s, 1 min) instead of ranges.
+			label: bucket <= 0 ? `<${fmtSeconds(1)}` : fmtSeconds(range.low),
 		});
 	}
 	const medianAt = medianBucket(
