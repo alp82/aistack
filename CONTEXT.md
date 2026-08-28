@@ -173,6 +173,23 @@ histograms, plus the Git counts. Only combinable atoms, never a share or a media
 re-synced day replaces that day, and days append across syncs.
 _Avoid_: workflow section (that named the one 30-day section the wire carried before #285)
 
+**Measured day**:
+One machine's combinable atoms for one UTC date, both halves in one row: the workflow
+atoms and the usage atoms (tokens by kind, cost, sessions). One shape, one version. The
+`publishWorkflow` and `publishCost` bits each gate their own half, at both ends.
+_Avoid_: workflow day, usage day (the row holds both halves; a half is a block, not a row)
+
+**Day manifest**:
+The list of dates the server holds for one (stack, machine), each with its day
+fingerprint, plus the retention in days. The CLI reads it before it sends and ships only
+the dates that are missing or whose fingerprint differs. An empty manifest is a fresh
+machine and means send everything inside retention.
+
+**Day fingerprint**:
+A content hash of a measured day's atoms, computed by the CLI and stored on the row.
+Equal fingerprints mean the server already holds that day as the machine sees it. A
+rule change that bumps the aggregate version changes every fingerprint on purpose.
+
 **Workflow reading**:
 The fold of one machine's workflow days over a window. Every figure the section prints is
 computed over the fold. A reading is never merged with another machine's (ADR-0009).
