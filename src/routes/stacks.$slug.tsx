@@ -141,9 +141,7 @@ export const Route = createFileRoute("/stacks/$slug")({
 	}),
 	component: StackDetailsPage,
 	loader: async ({ context, params }) => {
-		// The workflow reading rides along because it decides the NUMBERING (#217):
-		// section 04 exists only when a reading does, and resolving that after
-		// hydration would renumber Guide from 04 to 05 under the reader.
+		// The workflow reading seeds the section and its nav stat for server rendering.
 		const [stack, workflow] = await Promise.all([
 			context.queryClient.ensureQueryData(
 				convexQuery(api.stacks.getBySlug, { slug: params.slug }),
@@ -233,9 +231,7 @@ function StackDetailsPage() {
 	// THE NAV RESTATES WHAT THE SECTIONS SHOW (#217), so the page reads the same
 	// three queries its sections read, with the same arguments. The Convex client
 	// serves both callers from one subscription, and the shared answer is also
-	// what keeps the nav's numbering and the sections' numbering identical: the
-	// workflow reading decides whether 04 exists at all, and both sides read it
-	// here rather than each deciding for itself.
+	// what keeps the nav's figures and the sections' figures identical.
 	const measuredSnapshot = useQuery(api.measured.getCurrentByStackSlug, {
 		slug,
 	});
@@ -343,9 +339,9 @@ function StackDetailsPage() {
 
 	// The locked order (#193, spec `docs/specs/workflow-surface.md`): Actual
 	// Usage 01, Projects 02, Tools 03, Workflow 04, Guide 05. Two of the five
-	// render only when they have content, so the NUMBER is the position among
-	// the ones that do. `buildPageSections` assigns it once, and both the nav
-	// and the sections take it from there.
+	// Tools renders only when it has content, so the NUMBER is the position among
+	// the sections that render. `buildPageSections` assigns it once, and both the
+	// nav and the sections take it from there.
 	const sections = buildPageSections({
 		usage: {
 			present: true,
@@ -357,7 +353,7 @@ function StackDetailsPage() {
 			stat: toolsStat(stack.tools.length, stack.fixedTotal?.amount ?? 0),
 		},
 		workflow: {
-			present: workflowReading != null,
+			present: true,
 			stat: workflowNavStat(workflowReading),
 		},
 		guide: { present: true, stat: guideStat(stack.description) },
@@ -466,14 +462,14 @@ function StackDetailsPage() {
 						onBundleClick={scrollToBundle}
 					/>
 
-					{/* Section 04 renders itself away when the stack has no reading, or
-					    when the owner never gave `publishWorkflow`. `numberOf` returns
-					    null in exactly that case, and the page renders no 04 either. */}
-					{!protoVariant && numberOf("workflow") !== null && (
+					{/* PROTOTYPE #303: the merged section replaces 04 while a variant
+					    is on. Main's WorkflowSection handles its own empty states. */}
+					{!protoVariant && (
 						<WorkflowSection
 							index={numberOf("workflow") ?? 4}
 							slug={stack.slug}
 							stackId={stack._id}
+							isOwner={upvoteStatus?.isOwner ?? false}
 						/>
 					)}
 

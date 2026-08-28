@@ -23,6 +23,7 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ChevronRight, X } from "lucide-react";
 import { useState } from "react";
+import { RelativeTime } from "@/components/RelativeTime";
 import {
 	fmtShare,
 	fmtTokens,
@@ -48,7 +49,7 @@ import { RowBody } from "@/features/workflow/components";
 import type { WorkflowRow, WorkflowView } from "@/features/workflow/copy";
 import { rowHead } from "@/features/workflow/heads";
 import { Lead } from "@/features/workflow/Lead";
-import { cn, timeAgo } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import {
 	ControlBar,
 	Delta,
@@ -562,7 +563,7 @@ export const VariantF = {
 							) : (
 								<div className="border border-dashed border-stroke-subtle px-6 py-10 text-sm text-fg-muted">
 									Pick a group on the left. {view?.rows.length} measures across
-									four groups, read {timeAgo(p.view.receivedAt)}.
+									four groups, read <RelativeTime at={p.view.receivedAt} />.
 								</div>
 							)}
 						</div>

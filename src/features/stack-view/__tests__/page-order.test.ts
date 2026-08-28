@@ -4,9 +4,8 @@
  * What these guard, rather than layout:
  *
  *   1. THE ORDER NEVER MOVES. Actual Usage, Projects, Tools, Workflow, Guide.
- *   2. THE NUMBERS DO. Two sections render only when they have content, and the
- *      number is the position among the ones that do, so a page without a
- *      workflow reading closes on Guide 04 and prints no gap at 04.
+ *   2. THE NUMBERS DO. Tools renders only when it has content. Workflow keeps
+ *      its place and shows an empty state without a published reading (#295).
  *   3. A NAV STAT IS A FIGURE THE SECTION ALREADY SHOWS. A section with no
  *      figure yet shows no stat rather than a zero.
  */
@@ -62,26 +61,17 @@ describe("the locked section order", () => {
 });
 
 describe("a section that does not render", () => {
-	it("takes no number, and Guide closes on 04 without a workflow reading", () => {
-		const sections = buildPageSections({
-			...ALL_PRESENT,
-			workflow: { present: false, stat: null },
-		});
-		expect(sections.map((section) => section.key)).toEqual([
-			"usage",
-			"projects",
-			"tools",
-			"guide",
-		]);
-		expect(sectionIndex(sections, "guide")).toBe(4);
-		expect(sectionIndex(sections, "workflow")).toBeNull();
-	});
-
-	it("moves everything after it up, tools included", () => {
+	it("moves the sections after Tools up when Tools is absent", () => {
 		const sections = buildPageSections({
 			...ALL_PRESENT,
 			tools: { present: false, stat: null },
 		});
+		expect(sections.map((section) => section.key)).toEqual([
+			"usage",
+			"projects",
+			"workflow",
+			"guide",
+		]);
 		expect(sectionIndex(sections, "workflow")).toBe(3);
 		expect(sectionIndex(sections, "guide")).toBe(4);
 	});

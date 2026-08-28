@@ -28,6 +28,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { ChevronDown, ChevronUp, EyeOff, Pin } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
+import { RelativeTime } from "@/components/RelativeTime";
 import {
 	fmtShare,
 	fmtTokens,
@@ -57,7 +58,7 @@ import {
 import { rowHead } from "@/features/workflow/heads";
 import { Lead } from "@/features/workflow/Lead";
 import { WorkflowSection } from "@/features/workflow/WorkflowSection";
-import { cn, timeAgo } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import {
@@ -199,7 +200,7 @@ export function ControlBar({ p, className }: { p: Proto; className?: string }) {
 			</select>
 			{p.snapshot && (
 				<span className="font-mono text-[11px] text-fg-muted">
-					checked {timeAgo(p.snapshot.receivedAt)}
+					checked <RelativeTime at={p.snapshot.receivedAt} />
 				</span>
 			)}
 		</div>
@@ -348,7 +349,7 @@ export function WorkflowEmpty({ p }: { p: Proto }) {
 			<p className="mt-2 text-sm text-fg-secondary">
 				{p.view === null
 					? "This machine has no workflow reading."
-					: `The newest sync was ${timeAgo(p.view.receivedAt)}.`}
+					: `The newest sync was $<RelativeTime at={p.view.receivedAt} />.`}
 			</p>
 		</div>
 	);
@@ -819,7 +820,9 @@ export const VariantC = {
 					title={TITLE}
 					metaAlwaysVisible
 					meta={
-						p.snapshot ? `checked ${timeAgo(p.snapshot.receivedAt)}` : undefined
+						p.snapshot
+							? `checked $<RelativeTime at={p.snapshot.receivedAt} />`
+							: undefined
 					}
 				/>
 				<div className="grid gap-10 md:grid-cols-[minmax(0,22rem)_1fr]">
@@ -919,7 +922,12 @@ export const VariantO = {
 					isOwner={isOwner}
 					stackToolSlugs={stackToolSlugs}
 				/>
-				<WorkflowSection index={index + 1} slug={slug} stackId={stackId} />
+				<WorkflowSection
+					index={index + 1}
+					slug={slug}
+					stackId={stackId}
+					isOwner={isOwner}
+				/>
 			</>
 		);
 	},

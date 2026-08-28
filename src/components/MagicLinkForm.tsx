@@ -1,15 +1,21 @@
 import { Mail } from "lucide-react";
 import { useState } from "react";
 import { authClient } from "../lib/auth-client";
+import { LastUsedLoginMethodTag } from "./LastUsedLoginMethodTag";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 
 type MagicLinkFormProps = {
 	callbackURL: string;
 	disabled?: boolean;
+	lastUsed?: boolean;
 };
 
-export function MagicLinkForm({ callbackURL, disabled }: MagicLinkFormProps) {
+export function MagicLinkForm({
+	callbackURL,
+	disabled,
+	lastUsed,
+}: MagicLinkFormProps) {
 	const [email, setEmail] = useState("");
 	const [loading, setLoading] = useState(false);
 	const [sent, setSent] = useState(false);
@@ -97,6 +103,7 @@ export function MagicLinkForm({ callbackURL, disabled }: MagicLinkFormProps) {
 			>
 				<Mail className="size-4" />
 				{loading ? "Sending..." : "Send Magic Link"}
+				{lastUsed && <LastUsedLoginMethodTag />}
 			</button>
 		</form>
 	);

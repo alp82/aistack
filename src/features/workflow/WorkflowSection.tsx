@@ -1,12 +1,12 @@
 import { useQuery } from "convex/react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { type KeyboardEvent, useRef, useState } from "react";
+import { RelativeTime } from "@/components/RelativeTime";
 import { Section, SectionHeader } from "@/features/stack-view/ui";
-import { cn, timeAgo } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import {
-	EMPTY_WINDOW,
 	KICKER,
 	MONO_LABEL,
 	TITLE,
@@ -30,23 +30,20 @@ import { RowSet } from "./rows";
  * every sentence form. What is left here is markup, one machine selector and
  * one window selector.
  *
- * NOTHING RENDERS WITHOUT A READING. `getWorkflowByStackSlug` answers null when
- * the stack has no stored day AND when `publishWorkflow` is off, and the flag
- * reads at both ends. A stack with no reading gets no section rather than an
- * empty one, because section 01 already carries the page's one sync invitation.
- *
- * A WINDOW WITH NO DAY IS AN EMPTY STATE, NOT A MISSING SECTION (#284). The
- * 30-day answer decides whether the section exists; a 7-day or 24-hour window
- * with zero days keeps the header and says what would fill it.
+ * EVERY EMPTY ANSWER KEEPS THE SECTION (#295). A missing reading, an empty
+ * window, and a stored day with no displayable rows share one empty state.
+ * Visitors get one plain sentence. The owner gets a sync action.
  */
 export function WorkflowSection({
 	index,
 	slug,
 	stackId,
+	isOwner,
 }: {
 	index: number;
 	slug: string;
 	stackId: Id<"stacks"> | null;
+	isOwner: boolean;
 }) {
 	const [selection, setSelection] = useState<{
 		slug: string;
@@ -77,7 +74,20 @@ export function WorkflowSection({
 	);
 	const view = isDefault ? first : selected;
 
-	if (first === undefined || first === null) return null;
+	if (first === undefined) return null;
+	const owner = isOwner || first?.isOwner === true;
+	if (first === null) {
+		return (
+			<Section index={index} id={WORKFLOW_ANCHOR}>
+				<SectionHeader
+					index={String(index).padStart(2, "0")}
+					kicker={KICKER}
+					title={TITLE}
+				/>
+				<EmptyWorkflow isOwner={owner} />
+			</Section>
+		);
+	}
 	const shown = view ?? first;
 
 	return (
@@ -100,7 +110,7 @@ export function WorkflowSection({
 							/>
 						) : (
 							<span className="font-mono text-[11px] text-fg-muted">
-								read {timeAgo(shown.receivedAt)}
+								read <RelativeTime at={shown.receivedAt} />
 								{shown.machine ? ` · ${shown.machine}` : ""}
 							</span>
 						)}
@@ -108,8 +118,8 @@ export function WorkflowSection({
 				}
 			/>
 
-			{view === undefined ? null : view === null || view.window.days === 0 ? (
-				<EmptyWindow window={window} view={shown} />
+			{view === undefined ? null : view === null || view.rows.length === 0 ? (
+				<EmptyWorkflow isOwner={owner} />
 			) : (
 				<>
 					<Lead view={view} />
@@ -157,24 +167,25 @@ function WindowSelect({
 	);
 }
 
-/** The empty state per window option (#284). */
-function EmptyWindow({
-	window,
-	view,
-}: {
-	window: WindowId;
-	view: WorkflowView;
-}) {
-	const copy = EMPTY_WINDOW[window];
+function EmptyWorkflow({ isOwner }: { isOwner: boolean }) {
+	if (!isOwner) {
+		return (
+			<p className="max-w-3xl font-mono text-sm text-fg-muted">
+				No workflow has been published for this stack yet
+			</p>
+		);
+	}
 	return (
-		<div className="border border-stroke-subtle px-6 py-10">
-			<p className="font-mono text-2xl font-black text-fg-primary md:text-[28px]">
-				{copy.head}
+		<div className="mb-8 border border-stroke-subtle bg-bg-canvas p-6">
+			<p className="text-sm leading-relaxed text-fg-secondary">
+				No workflow yet. Sync this stack to publish how you work.
 			</p>
-			<p className="mt-2 max-w-[52ch] text-fg-secondary">
-				The newest sync on this machine was {timeAgo(view.receivedAt)}.{" "}
-				{copy.body}
-			</p>
+			<a
+				href="/sync"
+				className="mt-4 inline-flex border border-stroke-subtle px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-fg-muted transition-colors hover:border-accent-lime hover:text-accent-lime"
+			>
+				Sync your stack
+			</a>
 		</div>
 	);
 }
@@ -257,7 +268,7 @@ function MachineSelect({
 								{machineLabel(machine)}
 							</span>
 							<span className="mt-0.5 block text-[10px] text-fg-muted">
-								read {timeAgo(machine.receivedAt)}
+								read <RelativeTime at={machine.receivedAt} />
 							</span>
 						</button>
 					))}

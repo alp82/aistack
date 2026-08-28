@@ -21,9 +21,7 @@ export type FeedFilter =
 export const MONO_LABEL =
 	"font-mono text-[11px] font-semibold uppercase tracking-[0.25em]";
 
-const MINUTE_MS = 60 * 1000;
-const HOUR_MS = 60 * MINUTE_MS;
-const DAY_MS = 24 * HOUR_MS;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Short scale, two decimals at billions where the difference is money. */
 export function fmtTokens(n: number): string {
@@ -41,23 +39,6 @@ export function fmtDelta(n: number): string {
 
 export function fmtCount(n: number): string {
 	return n.toLocaleString("en-US");
-}
-
-/**
- * Relative time. The feed lives or dies on this feeling true, so it is computed
- * against a clock that ticks - never baked into the HTML and left there.
- */
-export function relativeLabel(at: number, now: number): string {
-	const ms = Math.max(0, now - at);
-	if (ms < MINUTE_MS) return "just now";
-	// FLOOR, never round. Rounding overstates age at every boundary - it prints
-	// "60m ago" instead of "1h ago", and it puts "2d ago" on a row the day
-	// kicker above it calls YESTERDAY.
-	if (ms < HOUR_MS) return `${Math.floor(ms / MINUTE_MS)}m ago`;
-	if (ms < DAY_MS) return `${Math.floor(ms / HOUR_MS)}h ago`;
-	const days = Math.floor(ms / DAY_MS);
-	if (days < 7) return `${days}d ago`;
-	return `${Math.floor(days / 7)}w ago`;
 }
 
 /** The calendar kicker over a group of rows: TODAY, YESTERDAY, WED 05 AUG. */

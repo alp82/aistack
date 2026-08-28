@@ -1,6 +1,7 @@
 import { useQuery } from "convex/react";
 import { ArrowDown } from "lucide-react";
-import { cn, timeAgo } from "@/lib/utils";
+import { RelativeTime } from "@/components/RelativeTime";
+import { cn } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
 import {
 	activeDaysLine,
@@ -73,7 +74,7 @@ export function HeroMeasuredStrip({ slug }: { slug: string }) {
 				</>
 			)}
 			<span className={cn(MONO_LABEL, "ml-auto text-fg-muted")}>
-				checked {timeAgo(snapshot.receivedAt)}
+				checked <RelativeTime at={snapshot.receivedAt} />
 			</span>
 			<span className={cn(MONO_LABEL, "text-accent-lime")}>
 				{TITLE}
