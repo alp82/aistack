@@ -103,7 +103,8 @@ export function notchNote(firstAt: number): string {
 }
 
 /** The captions under the two headline numbers. */
-export const TOKENS_CAPTION = (days: number) => `tokens · last ${days} days`;
+export const TOKENS_CAPTION = (days: number) =>
+	days === 1 ? "tokens · last 24 hours" : `tokens · last ${days} days`;
 export const COST_CAPTION = "at least, at api list prices";
 export const COST_PRIVATE = "kept private";
 export const COST_PRIVATE_CAPTION = "cost not published";
@@ -135,12 +136,21 @@ export function totalUSD(s: {
 }
 
 /** The catalog name, falling back to the raw vendor id the client published. */
-export function modelLabel(m: MeasuredModel): string {
+export function modelLabel(m: {
+	id: string;
+	catalogName: string | null;
+}): string {
 	return m.catalogName ?? m.id;
 }
 
 /** "Claude Fable 5 leads at 35%" - the hero's one model fact. */
-export function leadModelLine(s: MeasuredSnapshot): string | null {
+export function leadModelLine(s: {
+	models: readonly {
+		id: string;
+		catalogName: string | null;
+		tokenShare: number;
+	}[];
+}): string | null {
 	const lead = [...s.models].sort((a, b) => b.tokenShare - a.tokenShare)[0];
 	if (!lead) return null;
 	return `${modelLabel(lead)} leads at ${(lead.tokenShare * 100).toFixed(0)}%`;
