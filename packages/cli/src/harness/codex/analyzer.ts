@@ -43,6 +43,8 @@ import {
 	cleanName,
 	countsTotal,
 	createAggregate as createSharedAggregate,
+	noteProjectDay,
+	noteSessionStart,
 	type Obj,
 	type Aggregate as SharedAggregate,
 } from "../shared/aggregate.js";
@@ -142,7 +144,8 @@ export function ingestLine(
 		agg.firstTs = agg.firstTs === null ? tsMs : Math.min(agg.firstTs, tsMs);
 		agg.lastTs = agg.lastTs === null ? tsMs : Math.max(agg.lastTs, tsMs);
 	}
-	noteActivity(agg, state);
+	noteActivity(agg, state, tsMs);
+	noteProjectDay(agg, state.cwd ?? "(unknown)", tsMs);
 
 	if (type === "event_msg" && payload) ingestEvent(agg, payload, state, tsMs);
 	else if (type === "response_item" && payload)
@@ -150,7 +153,12 @@ export function ingestLine(
 }
 
 /** Count the file's session/version/cwd once, on its first in-window line. */
-function noteActivity(agg: Aggregate, state: FileState): void {
+function noteActivity(
+	agg: Aggregate,
+	state: FileState,
+	tsMs: number | null,
+): void {
+	if (state.sessionId) noteSessionStart(agg, state.sessionId, tsMs);
 	if (state.counted) return;
 	state.counted = true;
 	if (state.sessionId) agg.sessions.add(state.sessionId);
@@ -197,6 +205,8 @@ function ingestEvent(
 		modelKey,
 		counts,
 		apiEquivalentCost(modelKey, counts, tsMs),
+		1,
+		{ tsMs },
 	);
 	// Codex rollouts carry no sidechain flag; everything is the main thread,
 	// which keeps `subagentShare` an honest 0 rather than a guess.

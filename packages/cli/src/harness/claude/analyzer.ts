@@ -52,6 +52,10 @@ import {
 	countsTotal,
 	createAggregate as createSharedAggregate,
 	emptyUsage,
+	noteProjectDay,
+	noteSessionStart,
+	noteSyntheticTokens,
+	noteUsageResponse,
 	type Obj,
 	type Aggregate as SharedAggregate,
 } from "../shared/aggregate.js";
@@ -80,6 +84,8 @@ type Contribution = {
 	entries: Entry[];
 	total: number;
 	sidechain: boolean;
+	/** The response's own timestamp; the day its tokens belong to (#307). */
+	tsMs: number | null;
 	webSearch: number;
 	webFetch: number;
 	/** Iteration types that mirrored top-level usage, for the diagnostics line. */
@@ -135,7 +141,8 @@ export function ingestRecord(
 	if (!rec) return;
 
 	agg.records++;
-	agg.projectDirs.add(projectWorkspaceDirectory(rec) ?? ctx.projectDir);
+	const projectDir = projectWorkspaceDirectory(rec) ?? ctx.projectDir;
+	agg.projectDirs.add(projectDir);
 
 	const version = asStr(rec.version);
 	if (version) agg.ccVersions.add(cleanName(version));
@@ -153,6 +160,8 @@ export function ingestRecord(
 			agg.lastTs = agg.lastTs === null ? ts : Math.max(agg.lastTs, ts);
 		}
 	}
+	if (sessionId) noteSessionStart(agg, sessionId, tsMs);
+	noteProjectDay(agg, projectDir, tsMs);
 
 	const type = asStr(rec.type);
 	if (type === "assistant") {
@@ -301,7 +310,9 @@ function ingestAssistant(agg: Aggregate, rec: Obj, tsMs: number | null): void {
 	// but its tokens are surfaced rather than silently dropped.
 	if (model.startsWith("<")) {
 		agg.syntheticRecords++;
-		agg.syntheticTokens += countsTotal(readCounts(usage));
+		const synthetic = countsTotal(readCounts(usage));
+		agg.syntheticTokens += synthetic;
+		noteSyntheticTokens(agg, tsMs, synthetic);
 		return;
 	}
 
@@ -473,6 +484,7 @@ function buildContribution(
 		entries,
 		total: entries.reduce((a, e) => a + countsTotal(e.counts), 0),
 		sidechain,
+		tsMs,
 		webSearch: serverTools ? asNum(serverTools.web_search_requests) : 0,
 		webFetch: serverTools ? asNum(serverTools.web_fetch_requests) : 0,
 		mirroredIterationTypes: [...mirrored],
@@ -505,6 +517,11 @@ function applyContribution(
 		m.cacheRead += sign * counts.cacheRead;
 		if (costUSD === null) m.unpricedTokens += sign * countsTotal(counts);
 		else m.costUSD += sign * costUSD;
+		noteUsageResponse(
+			agg,
+			{ tsMs: c.tsMs, modelKey, counts, costUSD, sidechain: c.sidechain },
+			sign,
+		);
 	});
 	if (c.sidechain) agg.sidechainTokens += sign * c.total;
 	else agg.mainTokens += sign * c.total;
