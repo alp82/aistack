@@ -60,13 +60,19 @@ test('a signed-in creator consumes a link once', async () => {
   const token = url.searchParams.get('token') ?? ''
 
   await expect(
-    asCreator.mutation(api.discordLink.linkAccount, { token }),
+    asCreator.mutation(api.discordLink.updateMine, {
+      operation: 'link',
+      token,
+    }),
   ).resolves.toEqual({ status: 'linked' })
   expect(
     await t.run(async (ctx: MutationCtx) => (await ctx.db.get(creatorId))?.discordUserId),
   ).toBe('105048063873126400')
   await expect(
-    asCreator.mutation(api.discordLink.linkAccount, { token }),
+    asCreator.mutation(api.discordLink.updateMine, {
+      operation: 'link',
+      token,
+    }),
   ).resolves.toEqual({ status: 'invalid' })
 })
 
@@ -98,7 +104,7 @@ test('a link expires after 10 minutes', async () => {
   await expect(
     t
       .withIdentity({ tokenIdentifier: 'convex|user_ada' })
-      .mutation(api.discordLink.linkAccount, { token }),
+      .mutation(api.discordLink.updateMine, { operation: 'link', token }),
   ).resolves.toEqual({ status: 'expired' })
 })
 
@@ -140,7 +146,9 @@ test('the signed-in creator removes their Discord link', async () => {
   )
   const asCreator = t.withIdentity({ tokenIdentifier: 'convex|user_ada' })
 
-  await asCreator.mutation(api.discordLink.removeMine, {})
+  await expect(
+    asCreator.mutation(api.discordLink.updateMine, { operation: 'remove' }),
+  ).resolves.toEqual({ status: 'removed' })
 
   await expect(asCreator.query(api.discordLink.getMine, {})).resolves.toEqual({
     linked: false,
@@ -205,7 +213,7 @@ test('linking moves a Discord account from its previous creator', async () => {
 
   await t
     .withIdentity({ tokenIdentifier: 'convex|user_current' })
-    .mutation(api.discordLink.linkAccount, { token })
+    .mutation(api.discordLink.updateMine, { operation: 'link', token })
 
   await expect(
     t
@@ -244,9 +252,15 @@ test('a tampered signature cannot consume the one-time link', async () => {
   const asCreator = t.withIdentity({ tokenIdentifier: 'convex|user_ada' })
 
   await expect(
-    asCreator.mutation(api.discordLink.linkAccount, { token: tampered }),
+    asCreator.mutation(api.discordLink.updateMine, {
+      operation: 'link',
+      token: tampered,
+    }),
   ).resolves.toEqual({ status: 'invalid' })
   await expect(
-    asCreator.mutation(api.discordLink.linkAccount, { token }),
+    asCreator.mutation(api.discordLink.updateMine, {
+      operation: 'link',
+      token,
+    }),
   ).resolves.toEqual({ status: 'linked' })
 })

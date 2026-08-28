@@ -10,8 +10,7 @@ interface DiscordLinkPageProps {
 
 export function DiscordLinkPage({ token }: DiscordLinkPageProps) {
 	const account = useQuery(api.discordLink.getMine, {});
-	const linkAccount = useMutation(api.discordLink.linkAccount);
-	const removeAccount = useMutation(api.discordLink.removeMine);
+	const updateAccount = useMutation(api.discordLink.updateMine);
 	const [linkStatus, setLinkStatus] = useState<
 		"idle" | "linking" | "linked" | "invalid" | "expired"
 	>("idle");
@@ -23,24 +22,20 @@ export function DiscordLinkPage({ token }: DiscordLinkPageProps) {
 	const canLink = account !== undefined && account !== null;
 
 	useEffect(() => {
-		let cancelled = false;
 		if (!token || !canLink || attemptedToken.current === token) return;
 		attemptedToken.current = token;
 		setLinkStatus("linking");
-		linkAccount({ token })
+		updateAccount({ operation: "link", token })
 			.then((result) => {
-				if (cancelled) return;
+				if (attemptedToken.current !== token) return;
 				if (result.status === "linked") setLinkStatus("linked");
 				else if (result.status === "expired") setLinkStatus("expired");
 				else setLinkStatus("invalid");
 			})
 			.catch(() => {
-				if (!cancelled) setLinkStatus("invalid");
+				if (attemptedToken.current === token) setLinkStatus("invalid");
 			});
-		return () => {
-			cancelled = true;
-		};
-	}, [canLink, linkAccount, token]);
+	}, [canLink, token, updateAccount]);
 
 	const linked =
 		!removed && (linkStatus === "linked" || account?.linked === true);
@@ -49,7 +44,10 @@ export function DiscordLinkPage({ token }: DiscordLinkPageProps) {
 		setRemoving(true);
 		setRemoveError(null);
 		try {
-			await removeAccount({});
+			const result = await updateAccount({ operation: "remove" });
+			if (result.status !== "removed") {
+				throw new Error("Could not remove the link");
+			}
 			setRemoved(true);
 			setRemoveOpen(false);
 		} catch (error) {

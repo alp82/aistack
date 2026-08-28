@@ -105,23 +105,45 @@ export const storeToken = internalMutation({
 
 const LinkStatus = v.union(
   v.literal('linked'),
+  v.literal('removed'),
   v.literal('invalid'),
   v.literal('expired'),
   v.literal('not_authenticated'),
 )
 
-export const linkAccount = mutation({
-  args: { token: v.string() },
+export const updateMine = mutation({
+  args: v.union(
+    v.object({ operation: v.literal('link'), token: v.string() }),
+    v.object({ operation: v.literal('remove') }),
+  ),
   returns: v.object({ status: LinkStatus }),
-  handler: async (ctx, args): Promise<{ status: 'linked' | 'invalid' | 'expired' | 'not_authenticated' }> => {
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    status: 'linked' | 'removed' | 'invalid' | 'expired' | 'not_authenticated'
+  }> => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) return { status: 'not_authenticated' }
+    const userId = identity.tokenIdentifier.split('|')[1]
+    if (!userId) return { status: 'not_authenticated' }
+    const creator = await ctx.db
+      .query('creators')
+      .withIndex('by_userId', (query) => query.eq('userId', userId))
+      .unique()
+    if (!creator) return { status: 'not_authenticated' as const }
+
+    if (args.operation === 'remove') {
+      if (creator.discordUserId !== undefined) {
+        await ctx.db.patch(creator._id, { discordUserId: undefined })
+      }
+      return { status: 'removed' as const }
+    }
+
     const secret = process.env.BETTER_AUTH_SECRET
     if (!secret) return { status: 'invalid' }
     const payload = await verifyDiscordLinkToken(args.token, secret)
     if (!payload) return { status: 'invalid' }
-    const userId = identity.tokenIdentifier.split('|')[1]
-    if (!userId) return { status: 'not_authenticated' }
     const tokenIdHash = await hashDiscordLinkTokenId(payload.nonce)
     const row = await ctx.db
       .query('discordLinkTokens')
@@ -138,11 +160,6 @@ export const linkAccount = mutation({
       await ctx.db.delete(row._id)
       return { status: 'expired' as const }
     }
-    const creator = await ctx.db
-      .query('creators')
-      .withIndex('by_userId', (query) => query.eq('userId', userId))
-      .unique()
-    if (!creator) return { status: 'not_authenticated' as const }
 
     const previousCreators = await ctx.db
       .query('creators')
@@ -175,25 +192,6 @@ export const getMine = query({
       .unique()
     if (!creator) return null
     return { linked: creator.discordUserId !== undefined }
-  },
-})
-
-export const removeMine = mutation({
-  args: {},
-  returns: v.null(),
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity()
-    const userId = identity?.tokenIdentifier.split('|')[1]
-    if (!userId) throw new Error('Not authenticated')
-    const creator = await ctx.db
-      .query('creators')
-      .withIndex('by_userId', (queryBuilder) => queryBuilder.eq('userId', userId))
-      .unique()
-    if (!creator) throw new Error('Creator not found')
-    if (creator.discordUserId !== undefined) {
-      await ctx.db.patch(creator._id, { discordUserId: undefined })
-    }
-    return null
   },
 })
 

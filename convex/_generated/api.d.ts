@@ -50,6 +50,7 @@ import type * as lib_resourceLinks from "../lib/resourceLinks.js";
 import type * as lib_scrapers from "../lib/scrapers.js";
 import type * as lib_sources from "../lib/sources.js";
 import type * as lib_tiers from "../lib/tiers.js";
+import type * as lib_webCrypto from "../lib/webCrypto.js";
 import type * as lib_workflow from "../lib/workflow.js";
 import type * as lib_xEmbedSanitizer from "../lib/xEmbedSanitizer.js";
 import type * as lib_xPaste from "../lib/xPaste.js";
@@ -143,6 +144,7 @@ declare const fullApi: ApiFromModules<{
   "lib/scrapers": typeof lib_scrapers;
   "lib/sources": typeof lib_sources;
   "lib/tiers": typeof lib_tiers;
+  "lib/webCrypto": typeof lib_webCrypto;
   "lib/workflow": typeof lib_workflow;
   "lib/xEmbedSanitizer": typeof lib_xEmbedSanitizer;
   "lib/xPaste": typeof lib_xPaste;
