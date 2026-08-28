@@ -39,20 +39,31 @@ function ChartCard({
 }) {
 	return (
 		<div className={cn("flex flex-col bg-bg-canvas p-6", className)}>
-			<p className={cn(MONO_LABEL, "text-fg-muted")}>{it.name}</p>
-			<p className="mt-2 flex flex-wrap items-baseline gap-x-3">
-				<span
-					className={cn(
-						"font-mono font-black leading-none text-accent-lime",
-						big ? "text-4xl" : "text-2xl",
-					)}
-				>
-					{it.figure}
-				</span>
-				<span className="text-sm text-fg-secondary">{it.caption}</span>
-				{it.delta !== null && <Delta value={it.delta} window={window} />}
-			</p>
-			<div className="mt-5 flex-1">
+			{/* Lines changed prints its own green/red pair in the body, so the
+			    head figure would be the same number twice. */}
+			{it.id === "component:git-ledger" ? (
+				<p className="flex flex-wrap items-baseline gap-x-3">
+					<span className={cn(MONO_LABEL, "text-fg-muted")}>{it.name}</span>
+					{it.delta !== null && <Delta value={it.delta} window={window} />}
+				</p>
+			) : (
+				<>
+					<p className={cn(MONO_LABEL, "text-fg-muted")}>{it.name}</p>
+					<p className="mt-2 flex flex-wrap items-baseline gap-x-3">
+						<span
+							className={cn(
+								"font-mono font-black leading-none text-accent-lime",
+								big ? "text-4xl" : "text-2xl",
+							)}
+						>
+							{it.figure}
+						</span>
+						<span className="text-sm text-fg-secondary">{it.caption}</span>
+						{it.delta !== null && <Delta value={it.delta} window={window} />}
+					</p>
+				</>
+			)}
+			<div className="mt-5 flex min-h-0 flex-1 flex-col [&>*]:flex-1">
 				{big && it.body ? it.body() : it.picture(true)}
 			</div>
 		</div>
@@ -61,11 +72,16 @@ function ChartCard({
 
 function StatCell({ it, className }: { it: Item; className?: string }) {
 	return (
-		<div className={cn("bg-bg-canvas px-5 py-4", className)}>
-			<p className="font-mono text-2xl font-black text-fg-primary">
+		<div
+			className={cn(
+				"@container flex flex-col items-center justify-center bg-bg-canvas px-5 py-6 text-center",
+				className,
+			)}
+		>
+			<p className="font-mono text-4xl font-black leading-none text-fg-primary @[16rem]:text-5xl @[24rem]:text-6xl">
 				{it.figure}
 			</p>
-			<p className={cn(MONO_LABEL, "mt-1 text-fg-muted")}>{it.name}</p>
+			<p className={cn(MONO_LABEL, "mt-3 text-fg-muted")}>{it.name}</p>
 			<p className="mt-1 text-[12px] text-fg-secondary">{it.caption}</p>
 		</div>
 	);

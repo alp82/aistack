@@ -74,6 +74,11 @@ interface HoverCardWrapperProps extends HoverCardBaseProps {
 	renderContent: () => React.ReactNode;
 	/** Additional CSS classes for the content wrapper */
 	contentClassName?: string;
+	/**
+	 * Classes for the trigger element around `children`. A chart mark that
+	 * sizes itself by percentage needs the trigger to carry the height (#303).
+	 */
+	triggerClassName?: string;
 }
 
 export type HoverCardProps = HoverCardInlineProps | HoverCardWrapperProps;
@@ -469,6 +474,7 @@ const HoverCard = (props: HoverCardProps) => {
 				    so a focusable child inside the trigger counts. */}
 				<div
 					ref={triggerRef}
+					className={props.triggerClassName}
 					onMouseEnter={(e) => handleMouseEnter(e)}
 					onMouseMove={(e) => handleMouseMove(e)}
 					onMouseLeave={handleMouseLeave}

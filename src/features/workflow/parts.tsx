@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import HoverCard from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 import { ACCENT, ACCENT_DIM, ACCENT_REST, fmtCount, fmtPercent } from "./copy";
 
@@ -28,6 +29,41 @@ export type Segment = {
 export const HEAD_SIZE = "h-3 w-[76px]";
 
 /** One horizontal bar split into segments, sized by share of the total. */
+/**
+ * The one tooltip every chart uses: the same card the model rows in section
+ * 01 open, sized for a line or two. `label` is the whole content.
+ */
+export function Tip({
+	label,
+	children,
+	className,
+}: {
+	label: ReactNode;
+	children: ReactNode;
+	className?: string;
+}) {
+	return (
+		<HoverCard
+			mode="wrapper"
+			position="above"
+			width={220}
+			height="auto"
+			maxRotation={3}
+			maxOffset={4}
+			offset={8}
+			className={cn("flex", className)}
+			triggerClassName="flex h-full w-full min-w-0 flex-1 items-end"
+			renderContent={() => (
+				<div className="px-3 py-2 font-mono text-[11px] leading-snug text-fg-primary">
+					{label}
+				</div>
+			)}
+		>
+			{children}
+		</HoverCard>
+	);
+}
+
 export function Strip({
 	segments,
 	wide = false,
@@ -215,8 +251,8 @@ export function Histogram({
 }) {
 	const tallest = Math.max(...values, 0) || 1;
 	return (
-		<div>
-			<div className="flex h-24 items-end gap-0.5 pt-4">
+		<div className="flex h-full flex-col">
+			<div className="flex h-24 min-h-24 flex-1 items-end gap-0.5 pt-4">
 				{values.map((value, index) => (
 					<div
 						// biome-ignore lint/suspicious/noArrayIndexKey: positional, one bar per bucket or hour
@@ -228,17 +264,26 @@ export function Histogram({
 								median
 							</span>
 						)}
-						<i
-							title={`${labels[index] ?? ""}: ${fmtCount(value)} ${unit}`}
-							className="block w-full"
-							style={{
-								height: `${Math.max(Math.round((value / tallest) * 100), 1)}%`,
-								background:
-									lit === undefined || index === lit
-										? ACCENT
-										: "color-mix(in oklab, var(--accent-lime) 55%, var(--bg-panel))",
-							}}
-						/>
+						<Tip
+							className="flex h-full w-full items-end"
+							label={
+								<>
+									{labels[index] ?? ""} ·{" "}
+									<b className="text-accent-lime">{fmtCount(value)}</b> {unit}
+								</>
+							}
+						>
+							<i
+								className="block w-full"
+								style={{
+									height: `${Math.max(Math.round((value / tallest) * 100), 1)}%`,
+									background:
+										lit === undefined || index === lit
+											? ACCENT
+											: "color-mix(in oklab, var(--accent-lime) 55%, var(--bg-panel))",
+								}}
+							/>
+						</Tip>
 					</div>
 				))}
 			</div>
@@ -312,12 +357,21 @@ export function BarRow({
 				{rank === undefined ? "" : String(rank).padStart(2, "0")}
 			</span>
 			<span className="truncate text-fg-primary">{name}</span>
-			<span className="block h-2.5 bg-bg-panel">
-				<span
-					className="block h-full min-w-0.5"
-					style={{ width: `${Math.max(1, share * 100)}%`, background: paint }}
-				/>
-			</span>
+			<Tip
+				className="block"
+				label={
+					<>
+						{name} · <b className="text-accent-lime">{figure}</b>
+					</>
+				}
+			>
+				<span className="block h-2.5 w-full cursor-help bg-bg-panel">
+					<span
+						className="block h-full min-w-0.5"
+						style={{ width: `${Math.max(1, share * 100)}%`, background: paint }}
+					/>
+				</span>
+			</Tip>
 			<span className="text-right font-mono text-xs text-fg-secondary">
 				{figure}
 			</span>
