@@ -6,6 +6,7 @@ import type { Id } from './_generated/dataModel'
 import schema from './schema'
 import {
   dailyWorkflowOrUndefined,
+  parseMeasuredDays,
   sha256Hex,
   stripRetiredResourceFields,
 } from './httpCli'
@@ -675,5 +676,76 @@ describe('stripRetiredResourceFields', () => {
     // something object-shaped here would turn a client bug into a stored row.
     expect(stripRetiredResourceFields(null)).toBeNull()
     expect(stripRetiredResourceFields('nope')).toBe('nope')
+  })
+})
+
+describe('the sync manifest route (#307)', () => {
+  test('answers the dates the bearer’s machine holds, and 409 when unlinked', async () => {
+    const t = convexTest(schema, modules)
+    const creatorId = await seedCreator(t)
+    const stackId = await seedStack(t, creatorId)
+    const tokenId = await seedToken(t, 'tok_manifest', { stackId })
+    await t.run(async (ctx) => ctx.db.patch(tokenId, { name: 'laptop' }))
+
+    const empty = await t.fetch('/api/cli/sync-manifest', {
+      method: 'GET',
+      headers: { Authorization: 'Bearer tok_manifest' },
+    })
+    expect(empty.status).toBe(200)
+    expect(await empty.json()).toEqual({
+      retentionDays: 400,
+      aggregateVersion: 'measured-days/v1',
+      days: [],
+    })
+
+    await t.run(async (ctx) =>
+      ctx.db.insert('measuredDays', {
+        stackId,
+        machine: 'laptop',
+        date: '2026-08-28',
+        capturedAt: 1,
+        receivedAt: 1,
+        aggregateVersion: 'measured-days/v1',
+        fingerprint: 'abc',
+        usage: { harnesses: [] },
+      }),
+    )
+    const held = await t.fetch('/api/cli/sync-manifest', {
+      method: 'GET',
+      headers: { Authorization: 'Bearer tok_manifest' },
+    })
+    expect((await held.json()).days).toEqual([{ date: '2026-08-28', fingerprint: 'abc' }])
+
+    await seedToken(t, 'tok_unlinked')
+    const unlinked = await t.fetch('/api/cli/sync-manifest', {
+      method: 'GET',
+      headers: { Authorization: 'Bearer tok_unlinked' },
+    })
+    expect(unlinked.status).toBe(409)
+
+    const anon = await t.fetch('/api/cli/sync-manifest', { method: 'GET' })
+    expect(anon.status).toBe(401)
+  })
+
+  test('a malformed measuredDays body is refused with 400 before the mutation', async () => {
+    const t = convexTest(schema, modules)
+    const creatorId = await seedCreator(t)
+    const stackId = await seedStack(t, creatorId)
+    await seedToken(t, 'tok_days', { stackId })
+    const resp = await t.fetch('/api/cli/sync', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer tok_days' },
+      body: JSON.stringify({ payloads: [{}], measuredDays: { days: 'nope' } }),
+    })
+    expect(resp.status).toBe(400)
+    expect((await resp.json()).error).toMatch(/measuredDays/)
+  })
+
+  test('parseMeasuredDays accepts absence and the day shape only', () => {
+    expect(parseMeasuredDays(undefined)).toEqual({ ok: true, value: undefined })
+    expect(parseMeasuredDays([])).toMatchObject({ ok: false })
+    expect(parseMeasuredDays({ days: [] })).toMatchObject({ ok: false })
+    const wire = { aggregateVersion: 'measured-days/v1', days: [] }
+    expect(parseMeasuredDays(wire)).toEqual({ ok: true, value: wire })
   })
 })
