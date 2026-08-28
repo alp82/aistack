@@ -214,7 +214,9 @@ function statItems(
 		compare((s) => s.subagentShare),
 	);
 
-	const harnesses =
+	// A harness with no tokens in the range is not measured: it neither counts
+	// nor draws a bar.
+	const harnesses = (
 		source.kind === "days"
 			? source.current.harnesses.map((h) => ({
 					name: h.harness,
@@ -223,7 +225,8 @@ function statItems(
 			: source.snapshot.harnesses.map((h) => ({
 					name: h.harness.name,
 					tokens: h.activity.totalTokens,
-				}));
+				}))
+	).filter((h) => h.tokens > 0);
 	const names = new Set(harnesses.map((h) => h.name));
 	if (names.size === 0) return;
 	items.set("harness", {
