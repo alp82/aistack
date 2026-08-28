@@ -20,7 +20,7 @@ import type { ReactNode } from "react";
 import { MONO_LABEL } from "@/features/measured/copy";
 import { cn } from "@/lib/utils";
 import { type Item, Shell, TOPIC, type VariantProps } from "./RoundThree";
-import { Delta } from "./UsageMergePrototype";
+import { Delta } from "./shared";
 
 // ---------------------------------------------------------------------------
 // Cards, two densities.

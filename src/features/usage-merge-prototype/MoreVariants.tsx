@@ -56,7 +56,7 @@ import {
 	ExpandRow,
 	type Proto,
 	WorkflowEmpty,
-} from "./UsageMergePrototype";
+} from "./shared";
 
 // ---------------------------------------------------------------------------
 // The original reading, untouched in substance. Copied from

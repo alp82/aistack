@@ -42,6 +42,7 @@ import type * as lib_knowledgeBasePublication from "../lib/knowledgeBasePublicat
 import type * as lib_machineOrdinals from "../lib/machineOrdinals.js";
 import type * as lib_mailer from "../lib/mailer.js";
 import type * as lib_measuredSets from "../lib/measuredSets.js";
+import type * as lib_modelLookup from "../lib/modelLookup.js";
 import type * as lib_names from "../lib/names.js";
 import type * as lib_reprice from "../lib/reprice.js";
 import type * as lib_resourceLinks from "../lib/resourceLinks.js";
@@ -133,6 +134,7 @@ declare const fullApi: ApiFromModules<{
   "lib/machineOrdinals": typeof lib_machineOrdinals;
   "lib/mailer": typeof lib_mailer;
   "lib/measuredSets": typeof lib_measuredSets;
+  "lib/modelLookup": typeof lib_modelLookup;
   "lib/names": typeof lib_names;
   "lib/reprice": typeof lib_reprice;
   "lib/resourceLinks": typeof lib_resourceLinks;

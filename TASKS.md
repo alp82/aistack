@@ -1,3 +1,4 @@
+* auto-sync CTA + approval from CLI that it is enabled
 * value proposition should be shown before/with CTA
     profile for sharing
     ai stats

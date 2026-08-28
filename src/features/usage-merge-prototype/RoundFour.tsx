@@ -17,7 +17,7 @@ import { useState } from "react";
 import { MONO_LABEL } from "@/features/measured/copy";
 import { cn } from "@/lib/utils";
 import { Shell, TOPIC, type VariantProps } from "./RoundThree";
-import { Delta } from "./UsageMergePrototype";
+import { Delta } from "./shared";
 
 // N ------------------------------------------------------------------------
 

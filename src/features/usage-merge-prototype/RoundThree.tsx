@@ -46,12 +46,7 @@ import { RowBody } from "@/features/workflow/components";
 import { rowHead } from "@/features/workflow/heads";
 import { cn } from "@/lib/utils";
 import { HarnessShareRows } from "./MoreVariants";
-import {
-	ControlBar,
-	Delta,
-	type Proto,
-	WorkflowEmpty,
-} from "./UsageMergePrototype";
+import { ControlBar, Delta, type Proto, WorkflowEmpty } from "./shared";
 
 // ---------------------------------------------------------------------------
 // The top block: headline and model rows only.
