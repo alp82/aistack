@@ -36,6 +36,8 @@ import {
 	bump,
 	cleanName,
 	createAggregate as createSharedAggregate,
+	noteProjectDay,
+	noteSessionStart,
 	type Aggregate as SharedAggregate,
 } from "../shared/aggregate.js";
 
@@ -164,11 +166,15 @@ export function ingestMessageRow(
 	const session = sessionId ? state.sessions.get(sessionId) : undefined;
 	if (sessionId) {
 		agg.sessions.add(sessionId);
+		noteSessionStart(agg, sessionId, tsMs);
 		if (session?.version) agg.ccVersions.add(cleanName(session.version));
 	}
 	// Counted, never published - same standing non-goal as Claude project dirs.
 	const cwd = asStr(row.cwd);
-	if (cwd) agg.projectDirs.add(cwd);
+	if (cwd) {
+		agg.projectDirs.add(cwd);
+		noteProjectDay(agg, cwd, tsMs);
+	}
 
 	if (asStr(row.role) !== "assistant") return;
 	agg.assistantRecords++;
@@ -202,6 +208,8 @@ export function ingestMessageRow(
 		modelKey,
 		counts,
 		apiEquivalentCost(modelKey, counts, tsMs),
+		1,
+		{ tsMs, sidechain: Boolean(session?.parentId) },
 	);
 	if (sessionId && tsMs !== null) {
 		const completed = asNum(row.completedTsMs);

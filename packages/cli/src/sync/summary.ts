@@ -10,7 +10,11 @@
 // Nothing in this file is accepted as a caller-supplied argument beside the
 // payload - the spike promoted that from a caution to a demonstrated property.
 
-import { foldWorkflowDays } from "@aistack/workflow-rules";
+import {
+	foldWorkflowDays,
+	type MeasuredDay,
+	WORKFLOW_AGGREGATES_V2,
+} from "@aistack/workflow-rules";
 import { HARNESS_ADAPTERS, harnessLabel } from "../harness/index.js";
 import type {
 	KeptPrivateAtom,
@@ -21,10 +25,11 @@ import type {
 import { NAME_CATEGORIES } from "../harness/shared/allowlist.js";
 import type {
 	MeasuredPayload,
-	PayloadWorkflow,
+	PayloadMeasuredDays,
 	SyncBody,
 } from "../harness/shared/payload.js";
 import type { ScanStats } from "../harness/shared/window.js";
+import type { DaySelection } from "../usage/diff.js";
 
 export type GateContext = {
 	/** The exact request body a publish would send. */
@@ -48,6 +53,12 @@ export type GateContext = {
 	 * beside the body and never inside it.
 	 */
 	scanStats?: Record<string, ScanStats>;
+	/**
+	 * How the day rows in `body.measuredDays` were chosen (#307). The rows in
+	 * the bytes are the ones going; this says how many the server already held
+	 * unchanged, which the bytes cannot say.
+	 */
+	days?: DaySelection;
 };
 
 // ---------------------------------------------------------------------------
@@ -428,11 +439,15 @@ const PHASE_ORDER = ["scout", "build", "verify", "handoff", "unknown"] as const;
  * default-on opt-out has to be visible before the first upload, or it is not an
  * opt-out.
  */
-function workflowBlock(workflow: PayloadWorkflow, host: string): string[] {
+function workflowBlock(
+	workflowDays: NonNullable<MeasuredDay["workflow"]>[],
+	utcOffsetMinutes: number,
+	host: string,
+): string[] {
 	const out: string[] = [];
-	const folded = foldWorkflowDays(workflow.days, {
-		aggregateVersion: workflow.aggregateVersion,
-		utcOffsetMinutes: workflow.utcOffsetMinutes,
+	const folded = foldWorkflowDays(workflowDays, {
+		aggregateVersion: WORKFLOW_AGGREGATES_V2,
+		utcOffsetMinutes,
 	});
 	const harnesses = folded?.harnesses ?? [];
 	const withPlaybook = harnesses.filter((h) => h.phase);
@@ -442,12 +457,12 @@ function workflowBlock(workflow: PayloadWorkflow, host: string): string[] {
 	].filter(Boolean);
 
 	out.push(
-		`workflow  ${harnesses.length} harness${harnesses.length === 1 ? "" : "es"} · ${sessions} sessions · ${workflow.aggregateVersion}`,
+		`workflow  ${harnesses.length} harness${harnesses.length === 1 ? "" : "es"} · ${sessions} sessions · ${WORKFLOW_AGGREGATES_V2}`,
 	);
 	const first = folded?.dates[0];
 	const last = folded?.dates.at(-1);
 	out.push(
-		`days      ${workflow.days.length} day${workflow.days.length === 1 ? "" : "s"}${first && last ? ` · ${first} to ${last}` : ""}`,
+		`          ${workflowDays.length} day${workflowDays.length === 1 ? "" : "s"}${first && last ? ` · ${first} to ${last}` : ""}`,
 	);
 
 	const seconds = PHASE_ORDER.map((phase) =>
@@ -471,6 +486,36 @@ function workflowBlock(workflow: PayloadWorkflow, host: string): string[] {
 	// would be the one false sentence in a preview built to be exact. Extend
 	// this line with the location when #215 lands it.
 	out.push(`          (Publish workflow is on for ${host})`);
+	return out;
+}
+
+/**
+ * The day counts (#307): "31 days to publish, 369 unchanged" against a
+ * manifest, "400 days to publish" on a fresh machine or an old server.
+ */
+export function daysLine(
+	measuredDays: PayloadMeasuredDays,
+	selection?: DaySelection,
+): string {
+	const n = measuredDays.days.length;
+	const head = `${n} day${n === 1 ? "" : "s"} to publish`;
+	const unchanged = selection?.unchanged ?? 0;
+	return unchanged > 0 ? `${head}, ${unchanged} unchanged` : head;
+}
+
+function daysBlock(
+	measuredDays: PayloadMeasuredDays,
+	selection?: DaySelection,
+): string[] {
+	const out = [`days      ${daysLine(measuredDays, selection)}`];
+	const first = measuredDays.days[0]?.date;
+	const last = measuredDays.days.at(-1)?.date;
+	const usageDays = measuredDays.days.filter((d) => d.usage).length;
+	if (first && last) {
+		out.push(
+			`          ${first} to ${last} · ${usageDays} with usage · ${measuredDays.aggregateVersion}`,
+		);
+	}
 	return out;
 }
 
@@ -522,15 +567,29 @@ export function buildGateSummary(ctx: GateContext): string {
 	}
 	if (out[out.length - 1] === "") out.pop();
 
+	// The day rows (#307): how many go and how many the server already holds.
+	// The counts are the sync's one plain sentence about diff-only publishing.
+	if (body.measuredDays) {
+		out.push("");
+		out.push(...daysBlock(body.measuredDays, ctx.days));
+	}
+
 	// In the bytes, so it is in the preview (#78's rule, applied to #213). Off
 	// prints as plainly as `cost not published` does, and for the same reason: a
 	// section the owner declined is a fact about this send, not an absence.
 	out.push("");
-	out.push(
-		body.workflow
-			? workflowBlock(body.workflow, host).join("\n")
-			: "workflow  not published",
+	const workflowDays = (body.measuredDays?.days ?? []).flatMap((d) =>
+		d.workflow ? [d.workflow] : [],
 	);
+	if (!config.publishWorkflow || !body.measuredDays) {
+		out.push("workflow  not published");
+	} else if (workflowDays.length === 0) {
+		out.push("workflow  on, no changed day to publish");
+	} else {
+		out.push(
+			...workflowBlock(workflowDays, body.measuredDays.utcOffsetMinutes, host),
+		);
+	}
 
 	const n = payloads.reduce((a, p) => a + withheldCount(p), 0);
 	if (n > 0) {

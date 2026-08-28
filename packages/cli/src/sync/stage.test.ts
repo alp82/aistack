@@ -2,6 +2,7 @@
 // staged bodyJson IS the serialized body, the id is derived from it, and a
 // stage that cannot name its destination is blocked before any gate.
 
+import { dayFingerprint } from "@aistack/workflow-rules";
 import { describe, expect, test } from "vitest";
 import { createAggregate, ingestRecord } from "../harness/claude/analyzer.js";
 import { assistant } from "../harness/claude/fixtures.js";
@@ -58,6 +59,7 @@ function deps(
 		loadConfigImpl: async () =>
 			over.config ?? { config: FETCHED, source: "fetched" },
 		adaptersImpl: async () => [FAKE_CLAUDE_ADAPTER],
+		fetchManifestImpl: async () => null,
 		...over,
 	};
 }
@@ -94,10 +96,14 @@ describe("stageSync", () => {
 				},
 			}),
 		);
-		expect(seen).toEqual(["-home-u-p"]);
+		// Once for the snapshot, once for the day rows (#307); the same id both times.
+		expect(new Set(seen)).toEqual(new Set(["-home-u-p"]));
 		expect(staged.body.payloads[0].activity.projectKeys).toEqual([
 			"BBBBBBBBBBBBBBBBBBBBBB",
 		]);
+		expect(
+			staged.body.measuredDays?.days[0]?.usage?.harnesses[0]?.projectKeys,
+		).toEqual(["BBBBBBBBBBBBBBBBBBBBBB"]);
 		expect(staged.bodyJson).not.toContain("-home-u-p");
 	});
 
@@ -194,9 +200,9 @@ describe("stageSync", () => {
 
 	// #101: detection and the scan read ONE window start, so a harness that
 	// counts as detected is exactly a harness with something in the window.
-	test("detection gets the same window start the scan gets", async () => {
+	test("detection gets the same window start the snapshot scan gets", async () => {
 		let detectSince: number | null = null;
-		let scanSince: number | null = null;
+		const scanSince: number[] = [];
 		await stageSync(
 			deps({
 				adaptersImpl: async (sinceMs) => {
@@ -205,7 +211,7 @@ describe("stageSync", () => {
 						{
 							...FAKE_CLAUDE_ADAPTER,
 							scan: async (opts) => {
-								scanSince = opts.sinceMs;
+								scanSince.push(opts.sinceMs);
 								return FAKE_CLAUDE_ADAPTER.scan(opts);
 							},
 						},
@@ -214,7 +220,32 @@ describe("stageSync", () => {
 			}),
 		);
 		expect(detectSince).toBe(windowStartMs(NOW, DEFAULT_WINDOW_DAYS));
-		expect(scanSince).toBe(detectSince);
+		// The snapshot scan reads the 30-day window; the day scan (#307) reads
+		// the whole retention, 400 days when no manifest names one.
+		expect(scanSince).toEqual([detectSince, windowStartMs(NOW, 400)]);
+	});
+
+	test("the day scan reaches as far as the manifest's retention (#307)", async () => {
+		const scanSince: number[] = [];
+		await stageSync(
+			deps({
+				fetchManifestImpl: async () => ({
+					retentionDays: 90,
+					aggregateVersion: "measured-days/v1",
+					days: [],
+				}),
+				adaptersImpl: async () => [
+					{
+						...FAKE_CLAUDE_ADAPTER,
+						scan: async (opts) => {
+							scanSince.push(opts.sinceMs);
+							return FAKE_CLAUDE_ADAPTER.scan(opts);
+						},
+					},
+				],
+			}),
+		);
+		expect(scanSince[1]).toBe(windowStartMs(NOW, 90));
 	});
 
 	test("no active harness blocks, and the reason names the window", async () => {
@@ -223,15 +254,72 @@ describe("stageSync", () => {
 		expect(staged.blockedReason).toContain("last 30 days");
 	});
 
-	test("stages the workflow section in the bytes the gate describes (#213)", async () => {
+	test("stages the measured days in the bytes the gate describes (#213, #307)", async () => {
 		const staged = await stageSync(deps({ gitRunnerImpl: () => null }));
-		expect(staged.body.workflow?.aggregateVersion).toBe(
-			"workflow-aggregates/v2",
+		expect(staged.body.measuredDays?.aggregateVersion).toBe("measured-days/v1");
+		// The legacy body field is gone: the workflow blocks ride inside the days.
+		expect(staged.body.workflow).toBeUndefined();
+		const day = staged.body.measuredDays?.days.find(
+			(d) => d.date === "2026-07-20",
 		);
-		// One section per sync, not one per harness: the Git half is a property
-		// of the machine and the metric rows span every synced harness.
-		expect(staged.bodyJson).toContain('"workflow"');
+		expect(day?.usage?.harnesses[0]?.harness).toBe("claude-code");
+		expect(day?.usage?.harnesses[0]?.sessions).toBe(1);
+		expect(day?.workflow?.date).toBe("2026-07-20");
+		expect(staged.bodyJson).toContain('"measuredDays"');
 		expect(staged.summary).toContain("workflow  ");
+		expect(staged.summary).toContain("days      ");
+		expect(staged.days?.mode).toBe("full");
+	});
+
+	test("sends only the days the manifest lacks or holds differently (#307)", async () => {
+		const full = await stageSync(deps({ gitRunnerImpl: () => null }));
+		const held = full.body.measuredDays?.days ?? [];
+		expect(held.length).toBeGreaterThan(0);
+		const staged = await stageSync(
+			deps({
+				gitRunnerImpl: () => null,
+				fetchManifestImpl: async () => ({
+					retentionDays: 400,
+					aggregateVersion: "measured-days/v1",
+					days: held.map((d) => ({
+						date: d.date,
+						fingerprint: dayFingerprint(d),
+					})),
+				}),
+			}),
+		);
+		expect(staged.days?.mode).toBe("diff");
+		expect(staged.days?.unchanged).toBe(held.length);
+		expect(staged.body.measuredDays?.days).toEqual([]);
+		expect(staged.summary).toContain(
+			`0 days to publish, ${held.length} unchanged`,
+		);
+	});
+
+	test("a failing manifest fetch falls back to the whole window (#307)", async () => {
+		const staged = await stageSync(
+			deps({
+				gitRunnerImpl: () => null,
+				fetchManifestImpl: async () => {
+					throw new Error("network");
+				},
+			}),
+		);
+		expect(staged.days?.mode).toBe("full");
+		expect(staged.body.measuredDays?.days.length).toBeGreaterThan(0);
+	});
+
+	test("publishCost off strips dollars from the days before they are hashed (#307)", async () => {
+		const staged = await stageSync(
+			deps({
+				gitRunnerImpl: () => null,
+				config: {
+					config: { ...FETCHED, publishCost: false },
+					source: "fetched",
+				},
+			}),
+		);
+		expect(JSON.stringify(staged.body.measuredDays)).not.toContain('"usd"');
 	});
 
 	test("skips the extraction entirely when the switch is off (#213)", async () => {
@@ -253,6 +341,10 @@ describe("stageSync", () => {
 		);
 		expect(gitCalls).toBe(0);
 		expect(staged.body.workflow).toBeUndefined();
+		for (const day of staged.body.measuredDays?.days ?? []) {
+			expect(day.workflow).toBeUndefined();
+		}
+		expect(staged.body.measuredDays?.days.some((d) => d.usage)).toBe(true);
 		expect(staged.summary).toContain("workflow  not published");
 	});
 
