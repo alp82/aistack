@@ -15,7 +15,6 @@
 
 import { KNOWN_ROW_IDS, MAX_PINS } from '@aistack/workflow-rules'
 import { type Infer, v } from 'convex/values'
-import type { Doc } from './_generated/dataModel'
 import { mutation, query } from './_generated/server'
 import {
 	machinePublication,
@@ -31,6 +30,7 @@ import {
 	rowOverridesForStack,
 	WORKFLOW_WINDOWS,
 	windowStartDate,
+	type WorkflowDayRow,
 	type WorkflowWindowId,
 	workflowDaysForStack,
 } from './lib/workflow'
@@ -254,7 +254,7 @@ export const getWorkflowByStackSlug = query({
 		// One entry per machine, carrying that machine's newest row.
 		const byMachine = new Map<
 			string | undefined,
-			{ newest: Doc<'measuredWorkflowDays'>; rows: Doc<'measuredWorkflowDays'>[] }
+			{ newest: WorkflowDayRow; rows: WorkflowDayRow[] }
 		>()
 		for (const row of all) {
 			const held = byMachine.get(row.machine)

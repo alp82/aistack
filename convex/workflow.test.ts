@@ -16,7 +16,7 @@ const STRANGER = {
 
 type Ctx = Awaited<ReturnType<typeof convexTest>>
 type StoredPayload = Doc<'measuredSnapshots'>['payload']
-type Day = Doc<'measuredWorkflowDays'>['day']
+type Day = NonNullable<Doc<'measuredDays'>['workflow']>
 type Wire = { aggregateVersion: string; utcOffsetMinutes?: number; days: Day[] }
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -210,7 +210,7 @@ async function publish(
 }
 
 const storedDays = (t: Ctx) =>
-  t.run(async (ctx) => ctx.db.query('measuredWorkflowDays').collect())
+  t.run(async (ctx) => ctx.db.query('measuredDays').collect())
 
 describe('storing workflow days', () => {
   test('a publish stores one row per day against the machine that sent it', async () => {
@@ -226,10 +226,13 @@ describe('storing workflow days', () => {
       ['laptop', daysAgo(2)],
       ['laptop', daysAgo(1)],
     ])
+    // A legacy section lands as a day row under the day version (#307).
     expect(rows[0]).toMatchObject({
-      aggregateVersion: 'workflow-aggregates/v2',
+      aggregateVersion: 'measured-days/v1',
       utcOffsetMinutes: 120,
     })
+    expect(rows[0]?.workflow).toBeDefined()
+    expect(rows[0]?.usage).toBeUndefined()
   })
 
   test('a re-synced day replaces that day, and new days append', async () => {
@@ -254,7 +257,7 @@ describe('storing workflow days', () => {
       daysAgo(1),
     ])
     // The replaced day holds the second sync's reading, not the sum of both.
-    expect(rows.find((row) => row.date === daysAgo(2))?.day.git.commits).toBe(1)
+    expect(rows.find((row) => row.date === daysAgo(2))?.workflow?.git.commits).toBe(1)
   })
 
   test('two machines keep two series, because a reading is one machine’s', async () => {
@@ -267,25 +270,29 @@ describe('storing workflow days', () => {
     expect(rows.map((row) => row.machine).sort()).toEqual(['laptop', 'vps'])
   })
 
-  test('a day past retention leaves when the machine syncs', async () => {
+  test('a day past the send window stays: nothing prunes server-side (ADR-0011)', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
     await t.run(async (ctx) =>
-      ctx.db.insert('measuredWorkflowDays', {
+      ctx.db.insert('measuredDays', {
         stackId,
         machine: 'laptop',
         date: '2020-01-01',
         capturedAt: 0,
         receivedAt: 0,
-        aggregateVersion: 'workflow-aggregates/v2',
-        day: day({ date: '2020-01-01' }),
+        aggregateVersion: 'measured-days/v1',
+        fingerprint: 'old',
+        workflow: day({ date: '2020-01-01' }),
       }),
     )
     await publish(t, stackId, {
       machine: 'laptop',
       workflow: wire([day({ date: daysAgo(1) })]),
     })
-    expect((await storedDays(t)).map((row) => row.date)).toEqual([daysAgo(1)])
+    expect((await storedDays(t)).map((row) => row.date).sort()).toEqual([
+      '2020-01-01',
+      daysAgo(1),
+    ])
   })
 
   test('a malformed wire refuses the publish, and nothing lands', async () => {
@@ -462,7 +469,7 @@ describe('reading a window', () => {
     await publish(t, stackId, { machine: 'vps' })
     // Both landed inside one millisecond here, which no pair of real syncs does.
     await t.run(async (ctx) => {
-      const rows = await ctx.db.query('measuredWorkflowDays').collect()
+      const rows = await ctx.db.query('measuredDays').collect()
       for (const row of rows.filter((r) => r.machine === 'vps')) {
         await ctx.db.patch(row._id, { receivedAt: row.receivedAt + 1_000 })
       }

@@ -1,4 +1,16 @@
-import { vendorModelId } from '@aistack/pricing'
+import { pricingTableFor, vendorModelId } from '@aistack/pricing'
+import {
+  foldUsageDays,
+  MEASURED_DAYS_V1,
+  type RangeId,
+  type UsageDay,
+  addUsageTokens,
+  emptyUsageTokens,
+  inDateRange,
+  previousRangeDates,
+  rangeDates,
+  totalOfTokens,
+} from '@aistack/workflow-rules'
 import { type Infer, v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
@@ -10,6 +22,7 @@ import {
 } from './_generated/server'
 import {
   AutoSyncState,
+  MeasuredDayWire,
   MeasuredPayload,
   PublishedNameCategory,
   ReconcileAtomKind,
@@ -27,9 +40,18 @@ import {
   visibleSources,
 } from './lib/sources'
 import { extractShortId } from './lib/ids'
-import { storeWorkflowDays } from './lib/workflow'
+import {
+  dayWireFromWorkflow,
+  MEASURED_DAYS_RETENTION,
+  measuredDaysForMachine,
+  measuredDaysForStack,
+  checkMeasuredDays,
+  storeMeasuredDays,
+  upsertInventory,
+  workflowWireOf,
+} from './lib/measuredDays'
 import { firstSeenMachines } from './lib/machineOrdinals'
-import { type RepricedModel, repriceSnapshot, round2 } from './lib/reprice'
+import { estimateModelUSD, type RepricedModel, repriceSnapshot, round2 } from './lib/reprice'
 import {
   measureOne,
   mergeSetEvidence,
@@ -438,8 +460,10 @@ export const publishSnapshot = internalMutation({
     payload: MeasuredPayload,
     /** Optional here and required nowhere: see `machine` in the schema. */
     machine: v.optional(v.string()),
-    /** The workflow days this publish carries, if any (#218, #285). */
+    /** The legacy workflow section (#218, #285): stored as workflow-only days. */
     workflow: v.optional(WorkflowWire),
+    /** The per-day wire (#307), both halves of each day. */
+    measuredDays: v.optional(MeasuredDayWire),
   },
   returns: v.object({
     snapshotId: v.id('measuredSnapshots'),
@@ -448,26 +472,76 @@ export const publishSnapshot = internalMutation({
   handler: async (ctx, args) => {
     const stack = await ctx.db.get(args.stackId)
     if (!stack) throw new Error('Stack not found')
+    checkDayArgs(args)
     const inserted = await insertSnapshot(
       ctx,
       args.stackId,
       args.payload,
       args.machine
     )
-    if (args.workflow) {
-      checkWorkflowDays(args.workflow)
-      await storeWorkflowDays(ctx, {
-        stackId: args.stackId,
-        machine: args.machine,
-        wire: args.workflow,
-        capturedAt: args.payload.capturedAt,
-        receivedAt: inserted.receivedAt,
-        cliVersion: undefined,
-      })
-    }
+    await upsertInventory(ctx, {
+      stackId: args.stackId,
+      machine: args.machine,
+      payload: args.payload,
+      capturedAt: args.payload.capturedAt,
+      receivedAt: inserted.receivedAt,
+      cliVersion: undefined,
+    })
+    await storeDayArgs(ctx, args, {
+      stackId: args.stackId,
+      machine: args.machine,
+      capturedAt: args.payload.capturedAt,
+      receivedAt: inserted.receivedAt,
+      cliVersion: undefined,
+    })
     return inserted
   },
 })
+
+type DayArgs = {
+  workflow?: Infer<typeof WorkflowWire>
+  measuredDays?: Infer<typeof MeasuredDayWire>
+}
+
+/**
+ * Bound both day-shaped args before any row is written. The workflow blocks
+ * of a day wire pass through `checkWorkflowDays` like a legacy section does,
+ * so the two paths share one set of limits.
+ */
+function checkDayArgs(args: DayArgs): void {
+  if (args.workflow) checkWorkflowDays(args.workflow)
+  if (args.measuredDays) {
+    checkMeasuredDays(args.measuredDays)
+    checkWorkflowDays(workflowWireOf(args.measuredDays))
+  }
+}
+
+/**
+ * Store the day wire, or the legacy workflow section as workflow-only days.
+ * The legacy path keeps a row's usage block: that client never carried usage,
+ * so its silence about usage is not a claim that there was none.
+ */
+async function storeDayArgs(
+  ctx: MutationCtx,
+  args: DayArgs,
+  common: {
+    stackId: Id<'stacks'>
+    machine: string | undefined
+    capturedAt: number
+    receivedAt: number
+    cliVersion: string | undefined
+  }
+): Promise<void> {
+  if (args.measuredDays) {
+    await storeMeasuredDays(ctx, { ...common, wire: args.measuredDays })
+  } else if (args.workflow) {
+    await storeMeasuredDays(ctx, {
+      ...common,
+      wire: dayWireFromWorkflow(args.workflow),
+      keepUsage: true,
+    })
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Read - current snapshot, with catalog resolution
@@ -585,20 +659,25 @@ function resolveModels(
   catalog: ModelCatalog,
   models: Doc<'measuredSnapshots'>['payload']['models']
 ) {
-  return models.map((m) => {
-    const bare = vendorModelId(m.id)
-    const match =
-      catalog.bySlug.get(m.id) ??
-      catalog.byAlias.get(m.id) ??
-      catalog.bySlug.get(bare) ??
-      catalog.byAlias.get(bare) ??
-      null
-    return {
-      ...m,
-      catalogSlug: match?.slug ?? null,
-      catalogName: match?.name ?? null,
-    }
-  })
+  return models.map((m) => ({ ...m, ...resolveModelId(catalog, m.id) }))
+}
+
+/** One id against the catalog: the slug, then the aliases, then the bare vendor id. */
+function resolveModelId(
+  catalog: ModelCatalog,
+  id: string
+): { catalogSlug: string | null; catalogName: string | null } {
+  const bare = vendorModelId(id)
+  const match =
+    catalog.bySlug.get(id) ??
+    catalog.byAlias.get(id) ??
+    catalog.bySlug.get(bare) ??
+    catalog.byAlias.get(bare) ??
+    null
+  return {
+    catalogSlug: match?.slug ?? null,
+    catalogName: match?.name ?? null,
+  }
 }
 
 /**
@@ -2616,6 +2695,12 @@ export const publishForToken = internalMutation({
      */
     workflow: v.optional(WorkflowWire),
     /**
+     * The per-day wire (#307, ADR-0010): both halves of each day the client
+     * found missing or changed against the manifest. When present it wins
+     * over `workflow`, which a client on this wire no longer sends.
+     */
+    measuredDays: v.optional(MeasuredDayWire),
+    /**
      * Which CLI is publishing (#213). Additive and optional like `trigger`: an
      * older client sends nothing, and an untagged row is exactly the answer -
      * that machine is on a wire older than this field.
@@ -2689,7 +2774,7 @@ export const publishForToken = internalMutation({
     // rather than only inside `storeWorkflowDays` so a malformed section
     // refuses the publish before any row is written - the same fail-fast the
     // payload bound gets.
-    if (args.workflow) checkWorkflowDays(args.workflow)
+    checkDayArgs(args)
 
     // Same bar as any other name the wire carries: it is a string a client
     // chose. An unreadable one is dropped rather than refused - the sync is what
@@ -2715,20 +2800,28 @@ export const publishForToken = internalMutation({
       )
       snapshotIds.push(inserted.snapshotId)
       receivedAt = inserted.receivedAt
-    }
-
-    // The workflow days, stored against the MACHINE (#218, #285). One row per
-    // (machine, date): a re-synced day replaces that day, a new day appends.
-    if (args.workflow) {
-      await storeWorkflowDays(ctx, {
+      // The live inventory row for this (machine, harness), replaced on every
+      // sync (ADR-0011).
+      await upsertInventory(ctx, {
         stackId: stack._id,
         machine: token.name,
-        wire: args.workflow,
-        capturedAt: Math.max(...payloads.map((p) => p.capturedAt)),
+        payload,
+        capturedAt: payload.capturedAt,
         receivedAt,
         cliVersion,
       })
     }
+
+    // The days, stored against the MACHINE (#285, #307). One row per
+    // (machine, date): a re-synced day replaces that day, a new day appends,
+    // and no day is pruned.
+    await storeDayArgs(ctx, args, {
+      stackId: stack._id,
+      machine: token.name,
+      capturedAt: Math.max(...payloads.map((p) => p.capturedAt)),
+      receivedAt,
+      cliVersion,
+    })
 
     // ONE event per approved sync, never one per snapshot: this mutation lands
     // up to 8 payloads atomically, so a per-snapshot emit would fire 8 times for
@@ -2831,6 +2924,350 @@ export const publishForToken = internalMutation({
       receivedAt,
       stackSlug: `${stack.slug}-${stack.shortId}`,
       keptPrivate: { stored: inventoryStored + machineStored, refused },
+    }
+  },
+})
+
+// ---------------------------------------------------------------------------
+// The day manifest (#307, ADR-0010) - what the server holds, so the CLI can
+// ship only the days it lacks.
+// ---------------------------------------------------------------------------
+
+/**
+ * The token's stack and machine, resolved the way `publishForToken` resolves
+ * them, with the same not-linked and no-longer-authorized refusals so the
+ * HTTP layer maps both paths to one status.
+ */
+async function stackAndMachineForToken(
+  ctx: QueryCtx,
+  tokenId: Id<'cliTokens'>
+): Promise<{ stack: Doc<'stacks'>; machine: string | undefined }> {
+  const token = await ctx.db.get(tokenId)
+  if (!token) throw new Error('Token not found')
+  if (!token.stackId) {
+    throw new Error(
+      'This machine is not linked to a stack. Run `aistack login` again to pick one.'
+    )
+  }
+  const stack = await ctx.db.get(token.stackId)
+  if (!stack) throw new Error('Linked stack no longer exists')
+  const creator = await ctx.db.get(stack.creatorId)
+  if (!creator || creator.userId !== token.userId) {
+    throw new Error('Token is no longer authorized for its linked stack')
+  }
+  return { stack, machine: token.name }
+}
+
+/**
+ * The dates one (stack, machine) holds, each with its content fingerprint.
+ * The CLI hashes its own days the same way and sends only the dates missing
+ * here or hashing differently. `retentionDays` names the send window.
+ */
+export const getDayManifestForToken = internalQuery({
+  args: { tokenId: v.id('cliTokens') },
+  returns: v.object({
+    retentionDays: v.number(),
+    aggregateVersion: v.string(),
+    days: v.array(v.object({ date: v.string(), fingerprint: v.string() })),
+  }),
+  handler: async (ctx, args) => {
+    const { stack, machine } = await stackAndMachineForToken(ctx, args.tokenId)
+    const rows = await measuredDaysForMachine(ctx, stack._id, machine)
+    return {
+      retentionDays: MEASURED_DAYS_RETENTION,
+      aggregateVersion: MEASURED_DAYS_V1,
+      days: rows
+        .map((row) => ({ date: row.date, fingerprint: row.fingerprint }))
+        .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)),
+    }
+  },
+})
+
+// ---------------------------------------------------------------------------
+// Read - usage over a range, folded from days (#307, ADR-0011)
+// ---------------------------------------------------------------------------
+
+const UsageTokensOut = v.object({
+  input: v.number(),
+  output: v.number(),
+  cacheWrite: v.number(),
+  cacheRead: v.number(),
+  cacheWriteTtl: v.optional(
+    v.object({
+      fiveMinute: v.number(),
+      oneHour: v.number(),
+      unsplit: v.number(),
+    })
+  ),
+})
+
+const UsageReading = v.object({
+  dates: v.array(v.string()),
+  activeDays: v.number(),
+  sessions: v.number(),
+  projects: v.number(),
+  totalTokens: v.number(),
+  cacheHitShare: v.number(),
+  subagentShare: v.number(),
+  models: v.array(
+    v.object({
+      id: v.string(),
+      catalogSlug: v.union(v.string(), v.null()),
+      catalogName: v.union(v.string(), v.null()),
+      tokens: UsageTokensOut,
+      totalTokens: v.number(),
+      tokenShare: v.number(),
+      /** Exact sum plus any per-day fill. Null when publishCost is off or nothing priced it. */
+      usd: v.union(v.number(), v.null()),
+      /** True when any day of this model was priced here instead of by the CLI. */
+      estimated: v.boolean(),
+      pricingTables: v.array(v.string()),
+    })
+  ),
+  harnesses: v.array(
+    v.object({
+      harness: v.string(),
+      sessions: v.number(),
+      totalTokens: v.number(),
+      tokenShare: v.number(),
+    })
+  ),
+  cost: v.union(
+    v.object({
+      usd: v.number(),
+      estimated: v.boolean(),
+      /** Share of tokens the figure covers, 0..1. */
+      pricedShare: v.number(),
+      pricingTables: v.array(v.string()),
+    }),
+    v.null()
+  ),
+  excludedTokens: v.object({ unpriced: v.number(), synthetic: v.number() }),
+})
+
+const UsageRange = v.union(v.literal('30d'), v.literal('7d'), v.literal('24h'))
+
+const MeasuredUsage = v.object({
+  range: UsageRange,
+  from: v.string(),
+  to: v.string(),
+  /** Newest `receivedAt` among the selected rows, or null with no days at all. */
+  receivedAt: v.union(v.number(), v.null()),
+  machines: v.array(
+    v.object({
+      machine: v.union(v.string(), v.null()),
+      machineOrdinal: v.union(v.number(), v.null()),
+    })
+  ),
+  /** False for a stack that has only legacy snapshots. */
+  hasDays: v.boolean(),
+  current: v.union(UsageReading, v.null()),
+  previous: v.union(UsageReading, v.null()),
+  series: v.array(
+    v.object({ date: v.string(), tokens: v.number(), sessions: v.number() })
+  ),
+})
+
+type UsageRow = { date: string; usage: UsageDay }
+
+/**
+ * One window's reading over a set of day rows: the fold, the catalog names,
+ * and the cost. Cost is the exact sum of the priced days plus a per-day fill
+ * of ONLY the unpriced days' tokens at the table rate for that date. A fill
+ * marks the figure estimated; unpriced tokens no table can price stay out of
+ * `pricedShare`.
+ */
+function readUsageWindow(
+  rows: readonly UsageRow[],
+  catalog: ModelCatalog,
+  publishCost: boolean
+): Infer<typeof UsageReading> | null {
+  if (rows.length === 0) return null
+  const fold = foldUsageDays(rows)
+
+  // Per-day per-model tokens, for the fill. The fold knows which dates were
+  // unpriced; the rows know what those dates held.
+  const tokensByModelDate = new Map<string, Map<string, ReturnType<typeof emptyUsageTokens>>>()
+  for (const row of rows) {
+    for (const h of row.usage.harnesses) {
+      for (const m of h.models) {
+        if (m.usd !== undefined) continue
+        const dates = tokensByModelDate.get(m.model) ?? new Map()
+        const acc = dates.get(row.date) ?? emptyUsageTokens()
+        addUsageTokens(acc, m.tokens)
+        dates.set(row.date, acc)
+        tokensByModelDate.set(m.model, dates)
+      }
+    }
+  }
+
+  let totalUSD = 0
+  let anyUSD = false
+  let anyEstimated = false
+  let pricedTokens = 0
+  const tables = new Set<string>()
+  const models = fold.models.map((m) => {
+    const resolved = resolveModelId(catalog, m.model)
+    let usd: number | undefined = m.usd
+    let estimated = false
+    let unpricedRemaining = totalOfTokens(m.unpricedTokens)
+    const modelTables = new Set(m.pricingTables)
+    if (publishCost) {
+      const byDate = tokensByModelDate.get(m.model)
+      for (const date of m.unpricedDates) {
+        const tokens = byDate?.get(date)
+        if (!tokens) continue
+        const fill = estimateModelUSD(m.model, tokens, { from: date, to: date })
+        if (fill === null) continue
+        usd = (usd ?? 0) + fill
+        estimated = true
+        unpricedRemaining -= totalOfTokens(tokens)
+        const table = pricingTableFor(m.model)
+        if (table) modelTables.add(table)
+      }
+    }
+    if (publishCost && usd !== undefined) {
+      totalUSD += usd
+      anyUSD = true
+      anyEstimated ||= estimated
+      pricedTokens += m.totalTokens - Math.max(0, unpricedRemaining)
+      for (const table of modelTables) tables.add(table)
+    }
+    return {
+      id: m.model,
+      catalogSlug: resolved.catalogSlug,
+      catalogName: resolved.catalogName,
+      tokens: m.tokens,
+      totalTokens: m.totalTokens,
+      tokenShare: m.tokenShare,
+      usd: publishCost && usd !== undefined ? round2(usd) : null,
+      estimated: publishCost ? estimated : false,
+      pricingTables: publishCost ? [...modelTables].sort() : [],
+    }
+  })
+
+  return {
+    dates: [...fold.dates],
+    activeDays: fold.activeDays,
+    sessions: fold.sessions,
+    projects: fold.projectKeys.length,
+    totalTokens: fold.totalTokens,
+    cacheHitShare: fold.cacheHitShare,
+    subagentShare: fold.subagentShare,
+    models,
+    harnesses: fold.harnesses.map((h) => ({ ...h })),
+    cost:
+      publishCost && anyUSD
+        ? {
+            usd: round2(totalUSD),
+            estimated: anyEstimated || pricedTokens < fold.totalTokens,
+            pricedShare: fold.totalTokens
+              ? Math.round((pricedTokens / fold.totalTokens) * 10_000) / 10_000
+              : 0,
+            pricingTables: [...tables].sort(),
+          }
+        : null,
+    excludedTokens: fold.excludedTokens,
+  }
+}
+
+/**
+ * The usage of a published stack over a range, folded from its days.
+ *
+ * Without `machineOrdinal` every machine folds together: usage atoms are
+ * disjoint sessions and sum honestly, unlike the workflow half (ADR-0009).
+ * With it, that machine alone. `previous` is the same-length range before
+ * `from`; a side with no rows is null. A stack with no days at all answers
+ * `hasDays: false` and both sides null, so the page keeps its snapshot path.
+ *
+ * The two consent bits read here: `publishCost` off strips every dollar.
+ * The workflow bit does not apply; this read never touches that block.
+ */
+export const getUsageByStackSlug = query({
+  args: {
+    slug: v.string(),
+    range: v.optional(UsageRange),
+    machineOrdinal: v.optional(v.number()),
+  },
+  returns: v.union(MeasuredUsage, v.null()),
+  handler: async (ctx, args) => {
+    const stack = await publishedStackBySlug(ctx, args.slug)
+    if (!stack) return null
+
+    const publication = await machinePublication(ctx, stack)
+    if (
+      args.machineOrdinal !== undefined &&
+      (!Number.isInteger(args.machineOrdinal) || args.machineOrdinal <= 0)
+    ) {
+      return null
+    }
+    const selectedMachine =
+      args.machineOrdinal === undefined
+        ? undefined
+        : [...publication.ordinals.entries()].find(
+            ([, ordinal]) => ordinal === args.machineOrdinal
+          )?.[0]
+    if (args.machineOrdinal !== undefined && selectedMachine === undefined) {
+      return null
+    }
+
+    const range: RangeId = args.range ?? '30d'
+    const now = Date.now()
+    const current = rangeDates(range, now)
+    const previous = previousRangeDates(range, now)
+
+    const allRows = await measuredDaysForStack(ctx, stack._id)
+    const snapshots = await snapshotsForStack(ctx, stack._id)
+    const machineNames = new Map<string | null, string | null>()
+    for (const row of [...allRows, ...snapshots]) {
+      machineNames.set(row.machine ?? null, row.machine ?? null)
+    }
+    const machines = [...machineNames.keys()]
+      .map((machine) => publicMachine(machine, publication))
+      .sort((a, b) => (a.machineOrdinal ?? Infinity) - (b.machineOrdinal ?? Infinity))
+
+    const rows = allRows.filter(
+      (row) =>
+        row.usage !== undefined &&
+        (selectedMachine === undefined || row.machine === selectedMachine)
+    )
+    const usageRows: (UsageRow & { receivedAt: number })[] = rows.map((row) => ({
+      date: row.date,
+      usage: row.usage as UsageDay,
+      receivedAt: row.receivedAt,
+    }))
+    const inCurrent = usageRows.filter((row) => inDateRange(row.date, current))
+    const inPrevious = usageRows.filter((row) => inDateRange(row.date, previous))
+
+    const publishCost = stack.publishCost !== false
+    const catalog = await loadModelCatalog(ctx)
+
+    // One point per date with a row, summed across the selected machines.
+    const byDate = new Map<string, { tokens: number; sessions: number }>()
+    for (const row of inCurrent) {
+      const point = byDate.get(row.date) ?? { tokens: 0, sessions: 0 }
+      for (const h of row.usage.harnesses) {
+        point.sessions += h.sessions
+        for (const m of h.models) point.tokens += totalOfTokens(m.tokens)
+      }
+      byDate.set(row.date, point)
+    }
+
+    return {
+      range,
+      from: current.from,
+      to: current.to,
+      receivedAt: usageRows.reduce<number | null>(
+        (max, row) => (max === null || row.receivedAt > max ? row.receivedAt : max),
+        null
+      ),
+      machines,
+      hasDays: rows.length > 0,
+      current: readUsageWindow(inCurrent, catalog, publishCost),
+      previous: readUsageWindow(inPrevious, catalog, publishCost),
+      series: [...byDate.entries()]
+        .map(([date, point]) => ({ date, ...point }))
+        .sort((a, b) => (a.date < b.date ? -1 : 1)),
     }
   },
 })
