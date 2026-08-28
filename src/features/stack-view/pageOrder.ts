@@ -1,13 +1,13 @@
 /**
  * The locked stack-page section order, and the stats its nav rows carry.
  *
- * Wayfinder ticket #217 (map #200). The order was settled by prototype #193
- * and written into `docs/specs/workflow-surface.md`: Actual Usage 01,
- * Projects 02, Tools 03, Workflow 04, Guide 05.
+ * Wayfinder ticket #217 (map #200) placed five sections; #307 (map #302)
+ * merged the workflow rows into Actual Usage. The settled order in
+ * `docs/specs/workflow-surface.md`: Actual Usage 01, Projects 02, Tools 03,
+ * Guide 04.
  *
  * THE ORDER IS LOCKED, THE NUMBERS ARE NOT. Tools drops out of a stack with no
- * tools. Workflow keeps its place and shows an empty state without a published
- * reading (#295). The number is the position among the sections that render.
+ * tools. The number is the position among the sections that render.
  * `SECTION_ORDER` is the part that never moves.
  *
  * This module is pure so the order and the numbering are testable without a
@@ -15,43 +15,28 @@
  */
 
 import { fmtTokens, MEASURED_ANCHOR } from "@/features/measured/copy";
-import { WORKFLOW_ANCHOR } from "@/features/workflow/copy";
 import { formatPriceDisplay } from "@/lib/pricing";
 
-export const SECTION_ORDER = [
-	"usage",
-	"projects",
-	"tools",
-	"workflow",
-	"guide",
-] as const;
+export const SECTION_ORDER = ["usage", "projects", "tools", "guide"] as const;
 
 export type SectionKey = (typeof SECTION_ORDER)[number];
 
-/**
- * Where each section mounts. Two of the five already owned an anchor, and the
- * nav needs all five to be addressable.
- */
+/** Where each section mounts. The nav needs every section addressable. */
 export const SECTION_ANCHORS: Record<SectionKey, string> = {
 	usage: MEASURED_ANCHOR,
 	projects: "section-projects",
 	tools: "section-tools",
-	workflow: WORKFLOW_ANCHOR,
 	guide: "section-guide",
 };
 
 /**
- * The titles the page prints, and the two #193 renamed.
- *
- * The measured section takes `Workflow`, and the writeup section that used to
- * carry that title becomes `Guide`. The collision is why both names are here
- * rather than inline in each section.
+ * The titles the page prints. The writeup section became `Guide` in #193, and
+ * since #307 the word Workflow appears nowhere on the page.
  */
 export const SECTION_TITLES: Record<SectionKey, string> = {
 	usage: "Actual Usage",
 	projects: "Projects",
 	tools: "Tools",
-	workflow: "Workflow",
 	guide: "Guide",
 };
 
