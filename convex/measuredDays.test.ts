@@ -387,6 +387,23 @@ describe('the legacy figure on the inventory row', () => {
     })
     expect((await inventory())[0]?.legacy).toBeUndefined()
   })
+
+  test('the read sums tokens and sessions across sources and takes the largest active-day count', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    const withDays = (over: Partial<StoredPayload>, activeDays: number): StoredPayload => {
+      const base = payload(over)
+      return { ...base, activity: { ...base.activity, activeDays } } as StoredPayload
+    }
+    await publish(t, stackId, { machine: 'laptop', payload: withDays({}, 2) })
+    await publish(t, stackId, {
+      machine: 'laptop',
+      payload: withDays({ harness: { ...payload().harness, name: 'codex' } }, 3),
+    })
+    const read = await t.query(api.measured.getUsageByStackSlug, { slug })
+    expect(read?.legacy?.activeDays).toBe(3)
+    expect(read?.legacy?.sessions).toBe(payload().activity.sessions * 2)
+  })
 })
 
 describe('the day manifest', () => {

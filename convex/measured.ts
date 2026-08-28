@@ -2467,10 +2467,10 @@ export const getUsageByStackSlug = query({
         : {
             tokens: legacyRows.reduce((a, r) => a + (r.legacy?.tokens ?? 0), 0),
             sessions: legacyRows.reduce((a, r) => a + (r.legacy?.sessions ?? 0), 0),
-            activeDays: legacyRows.reduce(
-              (a, r) => a + (r.legacy?.activeDays ?? 0),
-              0
-            ),
+            // Tokens and sessions are disjoint across sources and sum. Active
+            // days are not: two harnesses on one machine share their days, so
+            // the merge is the largest count, a lower bound.
+            activeDays: Math.max(...legacyRows.map((r) => r.legacy?.activeDays ?? 0)),
             usd:
               publishCost && legacyRows.some((r) => r.legacy?.usd !== undefined)
                 ? round2(legacyRows.reduce((a, r) => a + (r.legacy?.usd ?? 0), 0))
