@@ -185,6 +185,58 @@ export async function syncPublish(
 	return res.json();
 }
 
+/**
+ * The day manifest (#307, ADR-0010): what the server holds for this machine,
+ * date by date, each with its fingerprint, plus the retention in days.
+ *
+ * `null` means the server has no such route (an old backend) and the caller
+ * publishes its whole window. 401 throws the same sentence a publish would,
+ * so the fix is the same command either way.
+ */
+export async function fetchDayManifest(
+	baseUrl: string,
+	token: string,
+): Promise<{
+	retentionDays: number;
+	aggregateVersion: string;
+	days: { date: string; fingerprint: string }[];
+} | null> {
+	const res = await fetch(`${baseUrl}/api/cli/sync-manifest`, {
+		headers: { "Content-Type": "application/json", ...authHeaders(token) },
+	});
+	if (res.status === 404) return null;
+	if (res.status === 401)
+		throw new Error(
+			"Authentication expired. Run `npx @use-aistack/cli login` again.",
+		);
+	if (res.status === 403 || res.status === 429)
+		throw failure("Manifest fetch failed", res);
+	if (!res.ok) {
+		throw new Error(await formatHttpError(res, "Manifest fetch failed"));
+	}
+	const body = (await res.json()) as {
+		retentionDays?: unknown;
+		aggregateVersion?: unknown;
+		days?: unknown;
+	};
+	const retentionDays =
+		typeof body.retentionDays === "number" && body.retentionDays > 0
+			? body.retentionDays
+			: 400;
+	const aggregateVersion =
+		typeof body.aggregateVersion === "string" ? body.aggregateVersion : "";
+	const days = Array.isArray(body.days)
+		? body.days.flatMap((d: unknown) => {
+				const row = d as { date?: unknown; fingerprint?: unknown };
+				return typeof row?.date === "string" &&
+					typeof row?.fingerprint === "string"
+					? [{ date: row.date, fingerprint: row.fingerprint }]
+					: [];
+			})
+		: [];
+	return { retentionDays, aggregateVersion, days };
+}
+
 export type AutoSyncSetResult = {
 	autoSync: { enabled: boolean; frequencyHours: number };
 	lastAutoSyncAt: number | null;

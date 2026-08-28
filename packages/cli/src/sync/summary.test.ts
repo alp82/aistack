@@ -12,10 +12,11 @@ import type {
 import { EMPTY_OPT_INS } from "../harness/shared/allowlist.js";
 import type {
 	MeasuredPayload,
-	PayloadWorkflow,
+	PayloadMeasuredDays,
 	SyncBody,
 } from "../harness/shared/payload.js";
 import { emptyScanStats } from "../harness/shared/window.js";
+import type { DaySelection } from "../usage/diff.js";
 import {
 	buildGateDialog,
 	buildGateSummary,
@@ -98,61 +99,78 @@ function payload(over: Partial<MeasuredPayload> = {}): MeasuredPayload {
 	};
 }
 
-/** A workflow section as `buildSyncBody` would have put it in the bytes (#213, #285). */
-function workflow(over: Partial<PayloadWorkflow> = {}): PayloadWorkflow {
+/** The day rows as `buildSyncBody` would have put them in the bytes (#213, #285, #307). */
+function measuredDays(
+	over: Partial<PayloadMeasuredDays> = {},
+): PayloadMeasuredDays {
 	return {
-		aggregateVersion: "workflow-aggregates/v2",
+		aggregateVersion: "measured-days/v1",
 		utcOffsetMinutes: 120,
 		days: [
 			{
 				date: "2026-08-21",
-				harnesses: [
-					{
-						harness: "claude-code",
-						sessions: 142,
-						startHours: [{ hourUtc: 21, sessions: 142 }],
-						phase: {
-							ruleVersion: "phase-rules/v1",
-							sessions: 142,
-							phaseSec: {
-								scout: 640,
-								build: 180,
-								verify: 60,
-								handoff: 50,
-								unknown: 70,
-							},
-							phaseEvents: {
-								scout: 64,
-								build: 18,
-								verify: 6,
-								handoff: 5,
-								unknown: 7,
-							},
-							waitingSec: 120,
-							idleSec: 300,
-							sessionsWithVerify: 40,
-							sessionsWithHandoff: 60,
-							bucketRuleVersion: "log-buckets/v1",
-							lengths: [],
+				usage: {
+					harnesses: [
+						{
+							harness: "claude-code",
+							sessions: 3,
+							projectKeys: [],
+							models: [],
+							subagentTokens: 0,
+							excludedTokens: { unpriced: 0, synthetic: 0 },
 						},
-						activity: [{ weekdayUtc: 5, hourUtc: 23, events: 17 }],
-					},
-				],
-				git: {
-					testFileRuleVersion: "test-files/v2",
-					commitSetRuleVersion: "commit-set/v1",
-					fileTypeRuleVersion: "file-types/v2",
-					commits: 214,
-					lateNightCommits: 30,
-					additions: 9_000,
-					removals: 3_400,
-					changedLinesPerCommit: [40, 12],
-					testFileCommits: 5,
-					changedLinesByExtension: [{ extension: ".ts", changedLines: 500 }],
-					withheldExtensionLines: 20,
-					weekdayHourCells: [{ weekdayUtc: 5, hourUtc: 23, commits: 3 }],
+					],
 				},
-				parallelProjects: 2,
+				workflow: {
+					date: "2026-08-21",
+					harnesses: [
+						{
+							harness: "claude-code",
+							sessions: 142,
+							startHours: [{ hourUtc: 21, sessions: 142 }],
+							phase: {
+								ruleVersion: "phase-rules/v1",
+								sessions: 142,
+								phaseSec: {
+									scout: 640,
+									build: 180,
+									verify: 60,
+									handoff: 50,
+									unknown: 70,
+								},
+								phaseEvents: {
+									scout: 64,
+									build: 18,
+									verify: 6,
+									handoff: 5,
+									unknown: 7,
+								},
+								waitingSec: 120,
+								idleSec: 300,
+								sessionsWithVerify: 40,
+								sessionsWithHandoff: 60,
+								bucketRuleVersion: "log-buckets/v1",
+								lengths: [],
+							},
+							activity: [{ weekdayUtc: 5, hourUtc: 23, events: 17 }],
+						},
+					],
+					git: {
+						testFileRuleVersion: "test-files/v2",
+						commitSetRuleVersion: "commit-set/v1",
+						fileTypeRuleVersion: "file-types/v2",
+						commits: 214,
+						lateNightCommits: 30,
+						additions: 9_000,
+						removals: 3_400,
+						changedLinesPerCommit: [40, 12],
+						testFileCommits: 5,
+						changedLinesByExtension: [{ extension: ".ts", changedLines: 500 }],
+						withheldExtensionLines: 20,
+						weekdayHourCells: [{ weekdayUtc: 5, hourUtc: 23, commits: 3 }],
+					},
+					parallelProjects: 2,
+				},
 			},
 		],
 		...over,
@@ -165,7 +183,8 @@ function ctx(over: {
 	keptPrivate?: Record<NameCategory, KeptPrivateAtom[]>;
 	config?: Partial<SyncConfig>;
 	source?: "fetched" | "bundled";
-	workflow?: PayloadWorkflow;
+	measuredDays?: PayloadMeasuredDays;
+	days?: DaySelection;
 	cliVersion?: string;
 }): GateContext {
 	const p = payload(over.payload);
@@ -174,11 +193,12 @@ function ctx(over: {
 		: { payloads: [p] };
 	const body: SyncBody = {
 		...base,
-		...(over.workflow ? { workflow: over.workflow } : {}),
+		...(over.measuredDays ? { measuredDays: over.measuredDays } : {}),
 		...(over.cliVersion ? { cliVersion: over.cliVersion } : {}),
 	};
 	return {
 		body,
+		...(over.days ? { days: over.days } : {}),
 		keptPrivate: over.keptPrivate ?? NO_KEPT_PRIVATE,
 		config: {
 			allowlist: {
@@ -427,16 +447,16 @@ describe("beat one - the summary", () => {
 	});
 });
 
-describe("the workflow section at the gate (#213)", () => {
+describe("the workflow section at the gate (#213, #307)", () => {
 	test("names the section, its rule versions, and the switch", () => {
 		// The staged bytes ARE what a publish sends, so every field in them gets
 		// a line here. A default-on opt-out that the preview never mentions is
 		// not an opt-out.
-		const out = buildGateSummary(ctx({ workflow: workflow() }));
+		const out = buildGateSummary(ctx({ measuredDays: measuredDays() }));
 		expect(out).toContain("workflow  1 harness · 142 sessions");
 		expect(out).toContain("workflow-aggregates/v2");
 		expect(out).toContain("phase-rules/v1");
-		expect(out).toContain("days      1 day · 2026-08-21 to 2026-08-21");
+		expect(out).toContain("          1 day · 2026-08-21 to 2026-08-21");
 		expect(out).toContain("git       214 commits · 12.4k lines changed");
 		// It NAMES the switch without directing the owner to a control that does
 		// not exist yet - #215 builds the owner controls.
@@ -444,7 +464,7 @@ describe("the workflow section at the gate (#213)", () => {
 	});
 
 	test("prints the phase mix the section would publish", () => {
-		const out = buildGateSummary(ctx({ workflow: workflow() }));
+		const out = buildGateSummary(ctx({ measuredDays: measuredDays() }));
 		expect(out).toContain("scout 64.0%");
 		expect(out).toContain("unknown 7.0%");
 	});
@@ -452,8 +472,24 @@ describe("the workflow section at the gate (#213)", () => {
 	test("says so plainly when the section is not published", () => {
 		// Mirrors `cost not published`: a section the owner declined is a fact
 		// about this send, not an absence the preview can leave out.
-		const out = buildGateSummary(ctx({}));
+		const out = buildGateSummary(
+			ctx({ measuredDays: measuredDays(), config: { publishWorkflow: false } }),
+		);
 		expect(out).toContain("workflow  not published");
+		expect(buildGateSummary(ctx({}))).toContain("workflow  not published");
+	});
+
+	test("says when the switch is on but no changed day carries a block", () => {
+		const days = measuredDays();
+		const out = buildGateSummary(
+			ctx({
+				measuredDays: {
+					...days,
+					days: days.days.map(({ workflow: _w, ...d }) => d),
+				},
+			}),
+		);
+		expect(out).toContain("workflow  on, no changed day to publish");
 	});
 
 	test("names the publishing CLI, because it is in the bytes", () => {
@@ -463,9 +499,41 @@ describe("the workflow section at the gate (#213)", () => {
 
 	test("keeps beat two short - the workflow section adds no line", () => {
 		// `Accept` falls below the fold if the dialog grows (#35, 1H).
-		const dialog = buildGateDialog(ctx({ workflow: workflow() }));
+		const dialog = buildGateDialog(ctx({ measuredDays: measuredDays() }));
 		expect(dialog.split("\n").length).toBeLessThanOrEqual(2);
 		expect(dialog).not.toContain("workflow");
+	});
+});
+
+describe("the day counts at the gate (#307)", () => {
+	test("states the counts plainly against a manifest", () => {
+		const days = measuredDays();
+		const out = buildGateSummary(
+			ctx({
+				measuredDays: days,
+				days: { send: days.days, unchanged: 369, skipped: [], mode: "diff" },
+			}),
+		);
+		expect(out).toContain("days      1 day to publish, 369 unchanged");
+		expect(out).toContain(
+			"2026-08-21 to 2026-08-21 · 1 with usage · measured-days/v1",
+		);
+	});
+
+	test("a fresh machine or an old server sends the whole window", () => {
+		const days = measuredDays();
+		const out = buildGateSummary(
+			ctx({
+				measuredDays: days,
+				days: { send: days.days, unchanged: 0, skipped: [], mode: "full" },
+			}),
+		);
+		expect(out).toContain("days      1 day to publish\n");
+		expect(out).not.toContain("unchanged");
+	});
+
+	test("prints no day line when the body carries no days", () => {
+		expect(buildGateSummary(ctx({}))).not.toContain("days      ");
 	});
 });
 

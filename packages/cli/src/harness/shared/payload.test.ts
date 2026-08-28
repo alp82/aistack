@@ -6,8 +6,12 @@ import {
 	PRICING_TABLE_VERSION,
 	type TokenCounts,
 } from "@aistack/pricing";
+import {
+	dayFingerprint,
+	type MeasuredDay,
+	type WorkflowDay,
+} from "@aistack/workflow-rules";
 import { describe, expect, it } from "vitest";
-import type { WorkflowExtraction } from "../../workflow/index.js";
 import {
 	cleanName,
 	createAggregate,
@@ -27,9 +31,11 @@ import {
 	type SyncConfig,
 } from "./allowlist.js";
 import {
+	applyDayConsent,
 	buildPayload,
 	buildSyncBody,
 	type MeasuredPayload,
+	type PayloadMeasuredDays,
 	sanitizeModelId,
 } from "./payload.js";
 import type { ScanStats } from "./window.js";
@@ -403,7 +409,7 @@ describe("the cache-write TTL split on the wire (#213)", () => {
 	});
 });
 
-describe("the workflow section on the wire (#213, #285)", () => {
+describe("the measured days on the wire (#213, #285, #307)", () => {
 	const built = () =>
 		buildPayload({
 			aggregate: createAggregate(),
@@ -414,59 +420,88 @@ describe("the workflow section on the wire (#213, #285)", () => {
 			...HARNESS_PARAMS,
 		});
 
-	const extraction = (): WorkflowExtraction => ({
-		aggregateVersion: "workflow-aggregates/v2",
+	const workflowDay = (): WorkflowDay => ({
+		date: "2026-08-21",
+		harnesses: [
+			{
+				harness: "claude-code",
+				sessions: 142,
+				startHours: [{ hourUtc: 21, sessions: 142 }],
+				phase: {
+					ruleVersion: "phase-rules/v1",
+					sessions: 142,
+					phaseSec: {
+						scout: 640,
+						build: 180,
+						verify: 60,
+						handoff: 50,
+						unknown: 70,
+					},
+					phaseEvents: {
+						scout: 64,
+						build: 18,
+						verify: 6,
+						handoff: 5,
+						unknown: 7,
+					},
+					waitingSec: 120,
+					idleSec: 300,
+					sessionsWithVerify: 40,
+					sessionsWithHandoff: 60,
+					bucketRuleVersion: "log-buckets/v1",
+					lengths: [],
+				},
+				activity: [{ weekdayUtc: 5, hourUtc: 23, events: 17 }],
+			},
+		],
+		git: {
+			testFileRuleVersion: "test-files/v2",
+			commitSetRuleVersion: "commit-set/v1",
+			fileTypeRuleVersion: "file-types/v2",
+			commits: 214,
+			lateNightCommits: 30,
+			additions: 9_000,
+			removals: 3_400,
+			changedLinesPerCommit: [40, 12],
+			testFileCommits: 5,
+			changedLinesByExtension: [{ extension: ".ts", changedLines: 500 }],
+			withheldExtensionLines: 20,
+			weekdayHourCells: [{ weekdayUtc: 5, hourUtc: 23, commits: 3 }],
+		},
+		parallelProjects: 2,
+	});
+
+	const days = (): PayloadMeasuredDays => ({
+		aggregateVersion: "measured-days/v1",
 		utcOffsetMinutes: 120,
 		days: [
 			{
 				date: "2026-08-21",
-				harnesses: [
-					{
-						harness: "claude-code",
-						sessions: 142,
-						startHours: [{ hourUtc: 21, sessions: 142 }],
-						phase: {
-							ruleVersion: "phase-rules/v1",
-							sessions: 142,
-							phaseSec: {
-								scout: 640,
-								build: 180,
-								verify: 60,
-								handoff: 50,
-								unknown: 70,
-							},
-							phaseEvents: {
-								scout: 64,
-								build: 18,
-								verify: 6,
-								handoff: 5,
-								unknown: 7,
-							},
-							waitingSec: 120,
-							idleSec: 300,
-							sessionsWithVerify: 40,
-							sessionsWithHandoff: 60,
-							bucketRuleVersion: "log-buckets/v1",
-							lengths: [],
+				usage: {
+					harnesses: [
+						{
+							harness: "claude-code",
+							sessions: 3,
+							projectKeys: ["AAAAAAAAAAAAAAAAAAAAAA"],
+							models: [
+								{
+									model: "claude-opus-5",
+									tokens: {
+										input: 10,
+										output: 20,
+										cacheWrite: 0,
+										cacheRead: 0,
+									},
+									usd: 0.00055,
+									pricingTable: PRICING_TABLE_VERSION,
+								},
+							],
+							subagentTokens: 0,
+							excludedTokens: { unpriced: 0, synthetic: 0 },
 						},
-						activity: [{ weekdayUtc: 5, hourUtc: 23, events: 17 }],
-					},
-				],
-				git: {
-					testFileRuleVersion: "test-files/v2",
-					commitSetRuleVersion: "commit-set/v1",
-					fileTypeRuleVersion: "file-types/v2",
-					commits: 214,
-					lateNightCommits: 30,
-					additions: 9_000,
-					removals: 3_400,
-					changedLinesPerCommit: [40, 12],
-					testFileCommits: 5,
-					changedLinesByExtension: [{ extension: ".ts", changedLines: 500 }],
-					withheldExtensionLines: 20,
-					weekdayHourCells: [{ weekdayUtc: 5, hourUtc: 23, commits: 3 }],
+					],
 				},
-				parallelProjects: 2,
+				workflow: workflowDay(),
 			},
 		],
 	});
@@ -480,10 +515,11 @@ describe("the workflow section on the wire (#213, #285)", () => {
 			config(),
 			undefined,
 			"manual",
-			extraction(),
+			days(),
 		);
-		expect(body.workflow?.aggregateVersion).toBe("workflow-aggregates/v2");
-		expect(body.workflow?.days).toHaveLength(1);
+		expect(body.measuredDays?.aggregateVersion).toBe("measured-days/v1");
+		expect(body.measuredDays?.days).toHaveLength(1);
+		expect(body.workflow).toBeUndefined();
 		expect(JSON.stringify(body.payloads)).not.toContain("phase-rules");
 	});
 
@@ -496,29 +532,43 @@ describe("the workflow section on the wire (#213, #285)", () => {
 			config(),
 			undefined,
 			"manual",
-			extraction(),
+			days(),
 		);
-		expect(body.workflow?.aggregateVersion).toBe("workflow-aggregates/v2");
-		for (const day of body.workflow?.days ?? []) {
+		for (const day of body.measuredDays?.days ?? []) {
 			expect(day).not.toHaveProperty("aggregateVersion");
-			for (const harness of day.harnesses) {
-				expect(harness).not.toHaveProperty("aggregateVersion");
-			}
+			expect(day.workflow).not.toHaveProperty("aggregateVersion");
 		}
 	});
 
-	it("leaves the section out entirely when publishWorkflow is off", () => {
-		// The switch is applied here, on the machine. Off means the section is
-		// not in the bytes, so there is nothing server-side to reveal.
+	it("drops every workflow block when publishWorkflow is off", () => {
+		// The switch is applied here, on the machine. Off means the block is
+		// not in the bytes, so there is nothing server-side to reveal. The usage
+		// half stays: its own bit is `publishCost`.
 		const body = buildSyncBody(
 			[built()],
 			config({ publishWorkflow: false }),
 			undefined,
 			"manual",
-			extraction(),
+			days(),
 		);
-		expect(body.workflow).toBeUndefined();
+		expect(body.measuredDays?.days[0]?.workflow).toBeUndefined();
+		expect(body.measuredDays?.days[0]?.usage).toBeDefined();
 		expect(JSON.stringify(body)).not.toContain("phase-rules");
+	});
+
+	it("drops dollars and their citation from every model when publishCost is off", () => {
+		const body = buildSyncBody(
+			[built()],
+			config({ publishCost: false }),
+			undefined,
+			"manual",
+			days(),
+		);
+		const model = body.measuredDays?.days[0]?.usage?.harnesses[0]?.models[0];
+		expect(model?.tokens.input).toBe(10);
+		expect(model).not.toHaveProperty("usd");
+		expect(model).not.toHaveProperty("pricingTable");
+		expect(JSON.stringify(body.measuredDays)).not.toContain("usd");
 	});
 
 	it("fails closed when the config could not be fetched", () => {
@@ -527,9 +577,19 @@ describe("the workflow section on the wire (#213, #285)", () => {
 			BUNDLED_SYNC_CONFIG,
 			undefined,
 			"manual",
-			extraction(),
+			days(),
 		);
-		expect(body.workflow).toBeUndefined();
+		expect(body.measuredDays?.days[0]?.workflow).toBeUndefined();
+		expect(JSON.stringify(body.measuredDays)).not.toContain("usd");
+	});
+
+	it("applyDayConsent is idempotent, so the fingerprinted bytes are the sent bytes", () => {
+		const once = applyDayConsent(days().days, config({ publishCost: false }));
+		const twice = applyDayConsent(once, config({ publishCost: false }));
+		expect(twice).toEqual(once);
+		expect(dayFingerprint(twice[0] as MeasuredDay)).toBe(
+			dayFingerprint(once[0] as MeasuredDay),
+		);
 	});
 
 	it("carries the publishing CLI's version beside the payloads", () => {
