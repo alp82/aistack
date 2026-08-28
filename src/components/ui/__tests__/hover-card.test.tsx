@@ -322,3 +322,39 @@ describe("TC-HC-08: content shows on focus and hides on blur", () => {
 		expect(screen.queryByTestId("focus-content")).toBeNull();
 	});
 });
+
+// ---------------------------------------------------------------------------
+// TC-HC-07  (wrapper) - the portaled surface carries the stack accent class
+//
+// The surface leaves the `.accent-<key>` wrapper when it portals to body, so
+// `--accent-lime` would fall back to brand lime. The nearest accent class of
+// the trigger travels with the surface (alp82/aistack#298).
+// ---------------------------------------------------------------------------
+describe("TC-HC-07: surface inherits the nearest .accent-<key> class", () => {
+	it("copies accent-cyan from the trigger's ancestor onto the surface", () => {
+		render(
+			<div className="accent-cyan">
+				<HoverCard mode="wrapper" renderContent={() => <div />}>
+					<span data-testid="trigger">T</span>
+				</HoverCard>
+			</div>,
+		);
+		act(() => {
+			fireEvent.mouseEnter(screen.getByTestId("trigger"));
+		});
+		expect(getSurface()?.classList.contains("accent-cyan")).toBe(true);
+	});
+
+	it("adds no accent class when no ancestor sets one", () => {
+		render(
+			<HoverCard mode="wrapper" renderContent={() => <div />}>
+				<span data-testid="trigger">T</span>
+			</HoverCard>,
+		);
+		act(() => {
+			fireEvent.mouseEnter(screen.getByTestId("trigger"));
+		});
+		const cls = Array.from(getSurface()?.classList ?? []);
+		expect(cls.some((c) => c.startsWith("accent-"))).toBe(false);
+	});
+});

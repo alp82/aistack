@@ -9,6 +9,7 @@ import {
 } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { accentClassOf } from "@/lib/accentClassOf";
 import { cn } from "@/lib/utils";
 
 export interface HoverTarget {
@@ -123,6 +124,7 @@ const HoverCard = (props: HoverCardProps) => {
 	const [isVisible, setIsVisible] = useState(false);
 	const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 	const [mounted, setMounted] = useState(false);
+	const rootRef = useRef<HTMLDivElement>(null);
 	const triggerRef = useRef<HTMLDivElement>(null);
 	const targetRefs = useRef<(HTMLSpanElement | null)[]>([]);
 	const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -425,9 +427,15 @@ const HoverCard = (props: HoverCardProps) => {
 
 	const selfTranslate = SELF_TRANSLATE[position];
 
+	// The surface portals to body, outside the stack page's `.accent-<key>`
+	// wrapper. Carry the nearest accent class along so the card wears the stack
+	// accent instead of brand lime (alp82/aistack#298). Read after mount only.
+	const accentClass = mounted ? accentClassOf(rootRef.current) : undefined;
+
 	const previewSurface = (
 		<motion.div
 			data-testid="hover-card-surface"
+			className={accentClass}
 			style={{
 				position: "fixed",
 				left: 0,
@@ -468,7 +476,7 @@ const HoverCard = (props: HoverCardProps) => {
 
 	if (props.mode === "wrapper") {
 		return (
-			<div className={cn("relative inline-block", className)}>
+			<div ref={rootRef} className={cn("relative inline-block", className)}>
 				{/* Focus opens the card as hover does, so a keyboard reader reaches
 				    content a mouse reader gets for free. React's onFocus is focusin,
 				    so a focusable child inside the trigger counts. */}
@@ -489,7 +497,7 @@ const HoverCard = (props: HoverCardProps) => {
 	}
 
 	return (
-		<div className={cn("relative", className)}>
+		<div ref={rootRef} className={cn("relative", className)}>
 			{renderInlineContent()}
 			{mounted ? createPortal(previewSurface, document.body) : null}
 		</div>
