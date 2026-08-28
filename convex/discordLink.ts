@@ -112,10 +112,12 @@ const LinkStatus = v.union(
 )
 
 export const updateMine = mutation({
-  args: v.union(
-    v.object({ operation: v.literal('link'), token: v.string() }),
-    v.object({ operation: v.literal('remove') }),
-  ),
+  // Convex needs an object validator here, so the union lives on `operation`
+  // and `token` is required by the handler for `link`.
+  args: {
+    operation: v.union(v.literal('link'), v.literal('remove')),
+    token: v.optional(v.string()),
+  },
   returns: v.object({ status: LinkStatus }),
   handler: async (
     ctx,
@@ -139,7 +141,7 @@ export const updateMine = mutation({
     }
 
     const secret = process.env.BETTER_AUTH_SECRET
-    if (!secret) return { status: 'invalid' }
+    if (!secret || args.token === undefined) return { status: 'invalid' }
     const payload = await verifyDiscordLinkToken(args.token, secret)
     if (!payload) return { status: 'invalid' }
     const tokenIdHash = await hashDiscordLinkTokenId(payload.nonce)
