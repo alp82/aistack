@@ -391,7 +391,7 @@ function render() {
   document.getElementById("what").innerHTML = `<b>Last change:</b> ${S.lastChange}`;
   document.querySelectorAll("[data-win]").forEach((b) => b.classList.toggle("on", b.dataset.win === S.win));
   const machines = [...new Set(["laptop", ...S.rows.map((r) => r.machine)])];
-  document.getElementById("machines").innerHTML = machines.map((m) => `<button class="${m === S.machine ? "on" : ""}" onclick="runStep('machine ${m}')">${m}</button>`).join(" ");
+  document.getElementById("machines").innerHTML = machines.map((m) => `<button class="${m === S.machine ? "on" : ""}" data-step="machine ${m}">${m}</button>`).join(" ");
   document.getElementById("cost").textContent = `publishCost: ${S.consent.publishCost ? "on" : "off"}`;
   document.getElementById("wf").textContent = `publishWorkflow: ${S.consent.publishWorkflow ? "on" : "off"}`;
   const mf = manifest(rows);
@@ -403,17 +403,25 @@ function render() {
 document.querySelectorAll("[data-win]").forEach((b) => b.onclick = () => runStep(`window ${b.dataset.win}`));
 document.getElementById("cost").onclick = () => runStep("toggle publishCost");
 document.getElementById("wf").onclick = () => runStep("toggle publishWorkflow");
-document.getElementById("free").innerHTML = Object.keys(ACTIONS).map((k) => `<button onclick="runStep(${JSON.stringify(k)})">${k}</button>`).join("");
+document.getElementById("free").innerHTML = Object.keys(ACTIONS).map((k) => `<button data-step="${k}">${k}</button>`).join("");
 let active = 0, stepIdx = 0;
 function showScenario(i) {
   active = i; stepIdx = 0; reset(); S.lastChange = `scenario "${SCENARIOS[i].name}" started from a clean server`; render();
-  document.getElementById("tabs").innerHTML = SCENARIOS.map((s, j) => `<button class="${j === i ? "on" : ""}" onclick="showScenario(${j})">${s.name}</button>`).join("");
+  document.getElementById("tabs").innerHTML = SCENARIOS.map((s, j) => `<button class="${j === i ? "on" : ""}" data-scenario="${j}">${s.name}</button>`).join("");
   drawSteps();
 }
 function drawSteps() {
   const s = SCENARIOS[active];
-  document.getElementById("scenario").innerHTML = `<p>${s.text}</p><div class="steps">${s.steps.map((st, j) => `<button class="${j < stepIdx ? "done" : ""}" onclick="stepIdx=${j + 1};runStep(${JSON.stringify(st)});drawSteps()"><span class="n">${j + 1}</span>${st}</button>`).join("")}</div>`;
+  document.getElementById("scenario").innerHTML = `<p>${s.text}</p><div class="steps">${s.steps.map((st, j) => `<button class="${j < stepIdx ? "done" : ""}" data-step="${st}" data-idx="${j + 1}"><span class="n">${j + 1}</span>${st}</button>`).join("")}</div>`;
 }
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-step],button[data-scenario]");
+  if (!b) return;
+  if (b.dataset.scenario !== undefined) return showScenario(Number(b.dataset.scenario));
+  if (b.dataset.idx) stepIdx = Number(b.dataset.idx);
+  runStep(b.dataset.step);
+  if (b.dataset.idx) drawSteps();
+});
 showScenario(0);
 </script>
 
