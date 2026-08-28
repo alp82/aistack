@@ -36,9 +36,19 @@ import { isStale } from "./freshness";
  */
 export function HeroMeasuredStrip({ slug }: { slug: string }) {
 	const snapshot = useQuery(api.measured.getCurrentByStackSlug, { slug });
+	// With per-day rows (#307) the strip's figures are the 30-day usage fold,
+	// the same numbers section 01 opens with. The snapshot still dates the strip.
+	const usage = useQuery(api.measured.getUsageByStackSlug, { slug });
 	if (!snapshot) return null;
 
-	const lead = leadModelLine(snapshot);
+	const days = usage?.hasDays === true && usage.current ? usage.current : null;
+	const sessions = days
+		? `${days.sessions.toLocaleString("en-US")} ${days.sessions === 1 ? "session" : "sessions"}`
+		: sessionsLine(snapshot);
+	const activeDays = days
+		? `${days.activeDays} of the last 30 days`
+		: activeDaysLine(snapshot);
+	const lead = leadModelLine(days ?? snapshot);
 
 	return (
 		<a
@@ -60,13 +70,9 @@ export function HeroMeasuredStrip({ slug }: { slug: string }) {
 				/>
 				{KICKER}
 			</span>
-			<span className="font-mono text-sm text-fg-primary">
-				{sessionsLine(snapshot)}
-			</span>
+			<span className="font-mono text-sm text-fg-primary">{sessions}</span>
 			<Dot />
-			<span className="font-mono text-sm text-fg-primary">
-				{activeDaysLine(snapshot)}
-			</span>
+			<span className="font-mono text-sm text-fg-primary">{activeDays}</span>
 			{lead && (
 				<>
 					<Dot />

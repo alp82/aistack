@@ -32,15 +32,15 @@ const SECTIONS: PageSection[] = [
 		stat: "148.0M tokens",
 	},
 	{
-		key: "workflow",
-		index: 4,
-		title: "Workflow",
-		anchor: "section-workflow",
-		stat: "42% · late night commits",
+		key: "tools",
+		index: 3,
+		title: "Tools",
+		anchor: "section-tools",
+		stat: "11 tools · $220/mo",
 	},
 	{
 		key: "guide",
-		index: 5,
+		index: 4,
 		title: "Guide",
 		anchor: "section-guide",
 		stat: null,
@@ -89,7 +89,7 @@ describe("the nav block", () => {
 		const links = within(block()).getAllByRole("link");
 		expect(links.map((link) => link.getAttribute("href"))).toEqual([
 			"#section-measured",
-			"#section-workflow",
+			"#section-tools",
 			"#section-guide",
 		]);
 	});
@@ -97,9 +97,9 @@ describe("the nav block", () => {
 	it("prints the number, the title and the stat on a row", () => {
 		render(<StackPageNav sections={SECTIONS} identity={IDENTITY} />);
 		const row = within(block()).getAllByRole("link")[1];
-		expect(row?.textContent).toContain("04");
-		expect(row?.textContent).toContain("Workflow");
-		expect(row?.textContent).toContain("42% · late night commits");
+		expect(row?.textContent).toContain("03");
+		expect(row?.textContent).toContain("Tools");
+		expect(row?.textContent).toContain("11 tools · $220/mo");
 	});
 
 	it("opens nothing: no row is a button or a disclosure", () => {
@@ -111,7 +111,7 @@ describe("the nav block", () => {
 	it("leaves the stat out when a section has none", () => {
 		render(<StackPageNav sections={SECTIONS} identity={IDENTITY} />);
 		const guide = within(block()).getAllByRole("link")[2];
-		expect(guide?.textContent?.replace(/\s/g, "")).toBe("05Guide");
+		expect(guide?.textContent?.replace(/\s/g, "")).toBe("04Guide");
 	});
 
 	it("renders nothing at all when no section renders", () => {
@@ -175,7 +175,7 @@ describe("the fixed rail", () => {
 			.map((link) => link.getAttribute("href"));
 		expect(railHrefs).toEqual([
 			"#section-measured",
-			"#section-workflow",
+			"#section-tools",
 			"#section-guide",
 		]);
 	});

@@ -3,9 +3,9 @@
  *
  * What these guard, rather than layout:
  *
- *   1. THE ORDER NEVER MOVES. Actual Usage, Projects, Tools, Workflow, Guide.
- *   2. THE NUMBERS DO. Tools renders only when it has content. Workflow keeps
- *      its place and shows an empty state without a published reading (#295).
+ *   1. THE ORDER NEVER MOVES. Actual Usage, Projects, Tools, Guide (#307
+ *      merged the workflow rows into Actual Usage).
+ *   2. THE NUMBERS DO. Tools renders only when it has content.
  *   3. A NAV STAT IS A FIGURE THE SECTION ALREADY SHOWS. A section with no
  *      figure yet shows no stat rather than a zero.
  */
@@ -24,30 +24,22 @@ const ALL_PRESENT = {
 	usage: { present: true, stat: null },
 	projects: { present: true, stat: null },
 	tools: { present: true, stat: null },
-	workflow: { present: true, stat: null },
 	guide: { present: true, stat: null },
 };
 
 describe("the locked section order", () => {
-	it("is Actual Usage 01, Projects 02, Tools 03, Workflow 04, Guide 05", () => {
+	it("is Actual Usage 01, Projects 02, Tools 03, Guide 04", () => {
 		const sections = buildPageSections(ALL_PRESENT);
 		expect(sections.map((section) => [section.index, section.title])).toEqual([
 			[1, "Actual Usage"],
 			[2, "Projects"],
 			[3, "Tools"],
-			[4, "Workflow"],
-			[5, "Guide"],
+			[4, "Guide"],
 		]);
 	});
 
 	it("keeps the key order fixed in SECTION_ORDER", () => {
-		expect(SECTION_ORDER).toEqual([
-			"usage",
-			"projects",
-			"tools",
-			"workflow",
-			"guide",
-		]);
+		expect(SECTION_ORDER).toEqual(["usage", "projects", "tools", "guide"]);
 	});
 
 	it("gives every rendered section its own anchor", () => {
@@ -56,7 +48,7 @@ describe("the locked section order", () => {
 		);
 		expect(new Set(anchors).size).toBe(anchors.length);
 		expect(anchors).toContain("section-measured");
-		expect(anchors).toContain("section-workflow");
+		expect(anchors).not.toContain("section-workflow");
 	});
 });
 
@@ -69,11 +61,10 @@ describe("a section that does not render", () => {
 		expect(sections.map((section) => section.key)).toEqual([
 			"usage",
 			"projects",
-			"workflow",
 			"guide",
 		]);
-		expect(sectionIndex(sections, "workflow")).toBe(3);
-		expect(sectionIndex(sections, "guide")).toBe(4);
+		expect(sectionIndex(sections, "guide")).toBe(3);
+		expect(sectionIndex(sections, "tools")).toBeNull();
 	});
 });
 

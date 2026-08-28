@@ -1,5 +1,6 @@
 /**
- * The Workflow section's vocabulary, paints and number formats.
+ * The workflow rows' vocabulary, paints and number formats. Since #307 the
+ * rows render inside the Actual Usage section (`src/features/usage`).
  *
  * Wayfinder tickets #215 and #286 (map #200), spec `docs/specs/workflow-surface.md`.
  *
@@ -22,12 +23,6 @@ export type WorkflowRow = WorkflowView["rows"][number];
 export type WorkflowKit = WorkflowView["kit"][number];
 export type HarnessReading = WorkflowView["section"]["harnesses"][number];
 export type WindowId = WorkflowView["window"]["id"];
-
-export const WORKFLOW_ANCHOR = "section-workflow";
-
-/** Position 04 in the settled page order (#193). Placed by ticket #217. */
-export const KICKER = "// measured";
-export const TITLE = "Workflow";
 
 export const MONO_LABEL =
 	"font-mono text-[11px] font-semibold uppercase tracking-[0.25em]";
