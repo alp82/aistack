@@ -316,20 +316,27 @@ function payloadBlock(
 	];
 	// Wrapped, because the merged header is the longest line in the block and a
 	// narrow terminal would otherwise break it mid-figure.
-	out.push(...wrapRow("", "  ", `- ${label} · ${totals.join(" · ")}`, width));
+	// The header is a SECTION, the way `collect` prints one: the harness name in
+	// caps and its session count. The totals hang under it as the `usage` row,
+	// with the cost at the end of that row. `at API prices` stays: it is the
+	// qualifier that makes the figure a lower bound rather than a bill (#93).
+	out.push(`${label.toUpperCase()} ${payload.activity.sessions}`);
 
-	// A harness that measured nothing has nothing else to say - not even a cost
-	// line, because there is nothing to price. It still gets its header, because
-	// a scanned harness reading as an absent one is the mistake #130 fixed.
-	if (payload.activity.totalTokens === 0) return out;
-
-	// Cost keeps its own line. `at API prices` is the qualifier that makes the
-	// figure a lower bound rather than a bill (#93), and folding it into the
-	// header above pushed that line past a narrow terminal.
+	// A harness that measured nothing says so in its usage row and stops - not
+	// even a cost, because there is nothing to price. It still gets its header,
+	// because a scanned harness reading as an absent one is the mistake #130
+	// fixed.
+	if (payload.activity.totalTokens === 0) {
+		out.push(`usage     ${totals.slice(1).join(" · ")}`);
+		return out;
+	}
 	out.push(
-		usd === null
-			? "cost      not published"
-			: `cost      ${fmtUSD(usd)} at API prices`,
+		...wrapRow(
+			"usage     ",
+			" ".repeat(LABEL_WIDTH),
+			`${totals.slice(1).join(" · ")} · ${usd === null ? "cost not published" : `${fmtUSD(usd)} at API prices`}`,
+			width,
+		),
 	);
 
 	// Only when this harness read a different window from the rest.
@@ -352,35 +359,40 @@ function payloadBlock(
 		out.push(...scanNoteLines(stats, harnessLabel(payload.harness.name)));
 	}
 
-	// A model table is columns, not prose, so it hangs off the label column
-	// rather than wrapping. A harness that reports no model prints nothing.
+	// The models are one row, wrapped: `id share ≈$` per model, joined with
+	// dots. A harness that reports no model prints nothing.
 	//
-	// A MODEL UNDER ONE PERCENT ROLLS UP. Four rows where two carry 99.9% of the
-	// tokens is a table that hides its own headline. The rolled figure keeps its
-	// dollars only when every model in it published one, the same rule a single
-	// row follows: a sum missing a term would understate without saying so.
-	const indent = " ".repeat(LABEL_WIDTH);
+	// A MODEL UNDER ONE PERCENT ROLLS UP. Four entries where two carry 99.9% of
+	// the tokens is a row that hides its own headline. The rolled figure keeps
+	// its dollars only when every model in it published one, the same rule a
+	// single entry follows: a sum missing a term would understate without
+	// saying so.
 	const shown = payload.models.filter((m) => m.tokenShare >= MODEL_ROLLUP);
 	const rolled = payload.models.filter((m) => m.tokenShare < MODEL_ROLLUP);
-	const modelWidth = Math.max(0, ...shown.map((m) => m.id.length), 8);
-	const row = (i: number, name: string, share: number, dollars: string) =>
-		`${i === 0 ? "models".padEnd(LABEL_WIDTH) : indent}${name.padEnd(modelWidth)}  ${fmtPct(share).padStart(5)}${dollars}`;
-	shown.forEach((m, i) => {
-		const dollars =
-			usd !== null && m.apiEquivalentUSD !== undefined
-				? `  ${fmtUSD(m.apiEquivalentUSD)}`
-				: "";
-		out.push(row(i, m.id, m.tokenShare, dollars));
-	});
+	const entry = (name: string, share: number, dollars: number | undefined) =>
+		`${name} ${fmtPct(share)}${usd !== null && dollars !== undefined ? ` ${fmtUSD(dollars)}` : ""}`;
+	const entries = shown.map((m) =>
+		entry(m.id, m.tokenShare, m.apiEquivalentUSD),
+	);
 	if (rolled.length > 0) {
 		const priced = rolled.every((m) => m.apiEquivalentUSD !== undefined);
-		const sum = rolled.reduce((a, m) => a + (m.apiEquivalentUSD ?? 0), 0);
-		out.push(
-			row(
-				shown.length,
+		entries.push(
+			entry(
 				`+${rolled.length} more`,
 				rolled.reduce((a, m) => a + m.tokenShare, 0),
-				usd !== null && priced ? `  ${fmtUSD(sum)}` : "",
+				priced
+					? rolled.reduce((a, m) => a + (m.apiEquivalentUSD ?? 0), 0)
+					: undefined,
+			),
+		);
+	}
+	if (entries.length > 0) {
+		out.push(
+			...wrapRow(
+				"models    ",
+				" ".repeat(LABEL_WIDTH),
+				entries.join(" · "),
+				width,
 			),
 		);
 	}
@@ -422,6 +434,9 @@ function payloadBlock(
 	}
 	return out;
 }
+
+/** The rule between sections, the width `collect` draws it at. */
+const DIVIDER = "─".repeat(40);
 
 /** Token share below which a model joins the rolled-up row (#217). */
 const MODEL_ROLLUP = 0.01;
@@ -525,9 +540,6 @@ export function buildGateSummary(ctx: GateContext): string {
 	const host = baseUrl.replace(/^https?:\/\//, "");
 	const out: string[] = [];
 
-	out.push("from your machine · sync preview");
-	out.push("");
-
 	if (config.stack === null) {
 		out.push("to        (no linked stack; publish is unavailable)");
 	} else {
@@ -542,9 +554,7 @@ export function buildGateSummary(ctx: GateContext): string {
 	// The client version rides here because it travels (#213) and because one
 	// fact about the CLI does not earn a line of its own.
 	out.push(
-		`searched  ${HARNESS_ADAPTERS.map((a) => harnessLabel(a.name).toLowerCase()).join(", ")}${
-			body.cliVersion ? ` · aistack ${body.cliVersion}` : ""
-		}`,
+		`searched  ${HARNESS_ADAPTERS.map((a) => harnessLabel(a.name).toLowerCase()).join(", ")}`,
 	);
 
 	// THE WINDOW IS THE SYNC'S, NOT EACH HARNESS'S (#217). Every payload carries
@@ -556,28 +566,33 @@ export function buildGateSummary(ctx: GateContext): string {
 			(p) => `${p.window.days} days · ${p.window.from} → ${p.window.to}`,
 		),
 	);
-	if (windows.size === 1) out.push(`window    ${[...windows][0]}`);
+	if (windows.size === 1) {
+		out.push(
+			`window    ${[...windows][0]}${body.cliVersion ? ` · aistack ${body.cliVersion}` : ""}`,
+		);
+	}
 
 	// One block per detected harness, each under its own header.
 	const width = wrapWidth(ctx.width);
 	for (const payload of payloads) {
 		const stats = ctx.scanStats?.[payload.harness.name];
-		out.push("");
+		out.push("", DIVIDER, "");
 		out.push(...payloadBlock(payload, width, windows.size > 1, stats));
 	}
-	if (out[out.length - 1] === "") out.pop();
+
+	// Everything that is not a harness: the day rows, the workflow, git, and the
+	// kept-private count, under one section.
+	out.push("", DIVIDER, "", "ALSO PUBLISHING");
 
 	// The day rows (#307): how many go and how many the server already holds.
 	// The counts are the sync's one plain sentence about diff-only publishing.
 	if (body.measuredDays) {
-		out.push("");
 		out.push(...daysBlock(body.measuredDays, ctx.days));
 	}
 
 	// In the bytes, so it is in the preview (#78's rule, applied to #213). Off
 	// prints as plainly as `cost not published` does, and for the same reason: a
 	// section the owner declined is a fact about this send, not an absence.
-	out.push("");
 	const workflowDays = (body.measuredDays?.days ?? []).flatMap((d) =>
 		d.workflow ? [d.workflow] : [],
 	);
@@ -591,28 +606,31 @@ export function buildGateSummary(ctx: GateContext): string {
 		);
 	}
 
+	// Kept private is ONE ROW: the count, the first few names, and the rest as
+	// a count. Truncating is safe here and unsafe for the inventory above: these
+	// names do NOT leave the machine (#217). The switch is still named before
+	// the first upload (#48), on the row under it.
 	const n = payloads.reduce((a, p) => a + withheldCount(p), 0);
 	if (n > 0) {
-		out.push("");
-		out.push(`kept private: ${n} name${n === 1 ? "" : "s"}`);
 		const rows = keptPrivateRows(keptPrivate);
 		const shown = rows.slice(0, KEPT_PRIVATE_ROWS_SHOWN);
-		const width = Math.max(...shown.map((r) => r.label.length));
-		for (const row of shown) {
-			out.push(`  ${row.label.padEnd(width)}  ${row.names}`);
-		}
-		if (rows.length > shown.length) {
-			out.push(`  ...${rows.length - shown.length} more`);
-		}
-		// #48: beat one names the switch before the first upload, and points at
-		// the changes page. Both lines are the locked copy, verbatim or near it.
+		const examples = shown
+			.map((r) => (r.names > 1 ? `${r.label} ×${r.names}` : r.label))
+			.join(", ");
+		const more =
+			rows.length > shown.length
+				? `, ...${rows.length - shown.length} more`
+				: "";
+		out.push(`private   ${n} name${n === 1 ? "" : "s"} · ${examples}${more}`);
 		if (body.keptPrivate !== undefined && config.stack !== null) {
-			out.push(`  publish them at ${host}/stacks/${config.stack.slug}/changes`);
 			out.push(
-				"  (they go up for you to review - turn off: Review kept-private names, on your stack)",
+				`          they go up for you to review at ${host}/stacks/${config.stack.slug}/changes`,
+			);
+			out.push(
+				"          (turn off: Review kept-private names, on your stack)",
 			);
 		} else {
-			out.push("  they stay on this machine");
+			out.push("          they stay on this machine");
 		}
 	}
 
@@ -620,7 +638,6 @@ export function buildGateSummary(ctx: GateContext): string {
 	// and not a name, but the rule is that the preview describes what goes, so a
 	// field nobody can see in the preview does not get to ride along.
 	if (body.autoSync !== undefined) {
-		out.push("");
 		out.push(
 			`auto-sync ${body.autoSync.enabled ? `on, about every ${body.autoSync.frequencyHours}h` : "off"}`,
 		);

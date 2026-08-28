@@ -25,7 +25,16 @@ import { runAutoSync } from "../autosync/run.js";
 import { DEFAULT_FREQUENCY_HOURS, getSettings, getToken } from "../config.js";
 import { stageSync } from "../sync/stage.js";
 import { fmtReceivedAt } from "../sync/summary.js";
-import { dim, intro, lime, outro, outroCancel, outroError } from "../theme.js";
+import {
+	bold,
+	dim,
+	intro,
+	lime,
+	outro,
+	outroCancel,
+	outroError,
+	yellow,
+} from "../theme.js";
 import { offerConnectUpsell } from "./connect.js";
 import { performLogin } from "./login.js";
 
@@ -124,8 +133,10 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 	s.stop("Scan complete");
 
 	// Beat one - the same full summary the MCP preview returns, verbatim,
-	// printed behind the clack bar so it reads as one flow.
-	p.log.message(staged.summary.split("\n").join("\n"));
+	// printed behind the clack bar so it reads as one flow. The text is the
+	// bytes' description and stays plain; the color is added here, by line
+	// shape, so the MCP preview and a pipe get the same characters.
+	p.log.message(staged.summary.split("\n").map(styleSummaryLine).join("\n"));
 
 	if (staged.blockedReason !== null) {
 		outroError(staged.blockedReason);
@@ -189,4 +200,28 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 		outroError(e instanceof Error ? e.message : String(e));
 		process.exitCode = 1;
 	}
+}
+
+/**
+ * Colors one summary line the way `collect` colors its output: a caps section
+ * header in bold with a dim count, the rule dim, the label column dim, dollars
+ * lime, and a skipped-files row yellow. Every other line passes through.
+ */
+export function styleSummaryLine(line: string): string {
+	if (line.startsWith("─")) return dim(line);
+	const section = /^([A-Z][A-Z0-9 .-]+?)( \d+)?$/.exec(line);
+	if (section) return `${bold(section[1] ?? "")}${dim(section[2] ?? "")}`;
+	const labelled = /^([a-z-]+)( +)(.*)$/.exec(line);
+	if (labelled) {
+		const [, label = "", gap = "", rest = ""] = labelled;
+		const body =
+			label === "skipped"
+				? yellow(rest)
+				: rest.replace(/≈\$[\d,]+/g, (m) => lime(m));
+		return `${dim(label)}${gap}${body}`;
+	}
+	const sub = /^( {2}[a-z]+ +)(.*)$/.exec(line);
+	if (sub) return `${lime(sub[1] ?? "")}${dim(sub[2] ?? "")}`;
+	if (/^ {10}\S/.test(line)) return dim(line);
+	return line;
 }

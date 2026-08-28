@@ -315,10 +315,11 @@ describe("beat two - the dialog (binding copy, #48)", () => {
 
 describe("beat one - the summary", () => {
 	test("counts active days from the dates in the payload", () => {
-		// The totals ride on the harness header line since #217.
-		expect(buildGateSummary(ctx({}))).toContain(
-			"382 sessions · 3 active days · 4.27B tokens",
-		);
+		// The session count rides on the section header; the rest is the usage
+		// row under it.
+		const summary = buildGateSummary(ctx({}));
+		expect(summary).toContain("CLAUDE CODE 2.1.220 382");
+		expect(summary).toContain("usage     3 active days · 4.27B tokens");
 	});
 
 	test("the searched line names every harness this build looks for (#130)", () => {
@@ -332,7 +333,7 @@ describe("beat one - the summary", () => {
 		// A `searched` line naming four harnesses followed by one unlabeled block
 		// is unreadable, so the header is unconditional - an intentional output
 		// change for every single-harness user.
-		expect(buildGateSummary(ctx({}))).toContain("- Claude Code 2.1.220");
+		expect(buildGateSummary(ctx({}))).toContain("CLAUDE CODE 2.1.220 382");
 	});
 
 	test("names the destination and the changes URL before any send", () => {
@@ -343,7 +344,7 @@ describe("beat one - the summary", () => {
 			"to        Alp's Daily Driver · aistack.to/stacks/alps-daily-driver",
 		);
 		expect(summary).toContain(
-			"publish them at aistack.to/stacks/alps-daily-driver/changes",
+			"they go up for you to review at aistack.to/stacks/alps-daily-driver/changes",
 		);
 	});
 
@@ -356,9 +357,9 @@ describe("beat one - the summary", () => {
 
 	test("kept private renders grouped rows with name counts, per the locked copy", () => {
 		const summary = buildGateSummary(ctx({ keptPrivate: KEPT }));
-		expect(summary).toContain("kept private: 67 names");
-		expect(summary).toMatch(/alp-river\s+2/);
-		expect(summary).toMatch(/stripe\s+1/);
+		expect(summary).toContain(
+			"private   67 names · alp-river ×2, internal-proxy, stripe",
+		);
 		// The half is NOT in the body, so the names stay local and say so.
 		expect(summary).toContain("they stay on this machine");
 	});
@@ -371,7 +372,7 @@ describe("beat one - the summary", () => {
 
 	test("cost line reads 'not published' when the table is absent", () => {
 		const summary = buildGateSummary(ctx({ payload: { pricingTable: null } }));
-		expect(summary).toContain("cost      not published");
+		expect(summary).toContain("4.27B tokens · cost not published");
 		expect(summary).not.toContain("$");
 	});
 
@@ -669,13 +670,11 @@ describe("the preview stays readable", () => {
 		);
 	});
 
-	test("the model table hangs off the label column", () => {
+	test("the models are one row, share and dollars per model", () => {
 		const summary = buildGateSummary(ctx({}));
-		const lines = summary.split("\n");
-		const first = lines.findIndex((l) => l.startsWith("models"));
-		expect(first).toBeGreaterThan(-1);
-		// The second model sits under the first, not under a heading.
-		expect(lines[first + 1]).toMatch(/^ {10}claude-opus-5/);
+		expect(summary).toContain(
+			"models    claude-fable-5 35.1% ≈$2,051 · claude-opus-5 20.0% ≈$3,789",
+		);
 	});
 
 	test("a wrapped row lines up under its own first name", () => {
@@ -695,11 +694,11 @@ describe("the preview stays readable", () => {
 		// here, and they stay: everything else is what got cut.
 		const block = buildGateSummary({ ...withTools(), width: 100 })
 			.split("\n\n")
-			.find((b) => b.startsWith("- Claude Code"));
-		expect(block?.split("\n").length).toBeLessThanOrEqual(8);
+			.find((b) => b.startsWith("CLAUDE CODE"));
+		expect(block?.split("\n").length).toBeLessThanOrEqual(7);
 	});
 
-	test("a harness that measured nothing is one line", () => {
+	test("a harness that measured nothing is a header and a usage row", () => {
 		const summary = buildGateSummary(
 			ctx({
 				payload: {
@@ -716,8 +715,8 @@ describe("the preview stays readable", () => {
 		);
 		const block = summary
 			.split("\n\n")
-			.find((b) => b.startsWith("- Claude Code"));
-		expect(block?.split("\n")).toHaveLength(1);
+			.find((b) => b.startsWith("CLAUDE CODE"));
+		expect(block?.split("\n")).toHaveLength(2);
 		// Nothing to price, so no cost line either.
 		expect(block).not.toContain("cost");
 	});
