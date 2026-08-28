@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>PROTOTYPE: per-day usage wire and its fold (#306)</title>
+<style>
+  :root { --accent: #b5e300; --ink: #111; --mute: #666; --line: #ddd; --bg: #fff; --panel: #f6f6f4; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, sans-serif; color: var(--ink); background: var(--bg); }
+  main { max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  h2 { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); margin: 32px 0 10px; font-family: ui-monospace, monospace; }
+  p.lead { color: #333; max-width: 80ch; margin: 0 0 8px; }
+  .tag { display: inline-block; background: var(--accent); color: #111; font: 12px ui-monospace, monospace; padding: 2px 8px; }
+  button { font: 13px ui-monospace, monospace; border: 1px solid var(--ink); background: var(--bg); padding: 6px 12px; cursor: pointer; border-radius: 0; }
+  button:hover { background: var(--accent); }
+  button.on { background: var(--ink); color: var(--bg); }
+  button.done { color: var(--mute); border-color: var(--line); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; align-items: center; }
+  .row label { font: 12px ui-monospace, monospace; color: var(--mute); margin-right: 4px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .panel { background: var(--panel); padding: 14px 16px; border-top: 3px solid var(--accent); }
+  .panel h3 { margin: 0 0 8px; font: 12px ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--mute); }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; font-size: 14px; }
+  .kv b { font-weight: 500; color: var(--mute); }
+  .kv .v { font-family: ui-monospace, monospace; }
+  .kv .prev { color: var(--mute); font-size: 12px; }
+  .nm { color: #a33; font-style: italic; }
+  .approx { color: #955; }
+  .changed { background: #fff6b3; }
+  table { border-collapse: collapse; width: 100%; font: 13px ui-monospace, monospace; }
+  td, th { border-bottom: 1px solid var(--line); text-align: left; padding: 4px 8px; vertical-align: top; }
+  th { color: var(--mute); font-weight: 500; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+  .scenario { border: 1px solid var(--line); padding: 14px 16px; }
+  .scenario p { margin: 0 0 10px; }
+  .steps { display: flex; flex-wrap: wrap; gap: 8px; }
+  .steps button { position: relative; }
+  .steps button .n { color: var(--mute); margin-right: 6px; }
+  .note { font-size: 13px; color: var(--mute); }
+  pre { background: var(--panel); padding: 12px; font-size: 12px; overflow: auto; margin: 0; }
+  details summary { cursor: pointer; font: 13px ui-monospace, monospace; color: var(--mute); }
+</style>
+</head>
+<body>
+<main>
+  <span class="tag">PROTOTYPE, THROWAWAY</span>
+  <h1>One measured day: usage atoms beside workflow atoms, and the fold</h1>
+  <p class="lead"><strong>The question.</strong> ADR-0010 puts the Actual Usage figures per UTC day into the same <code>measuredDays</code> row the workflow atoms live in. Does one row with two consent-gated blocks hold up when it is pushed through the cases: folding days into 30d / 7d / 24h, comparing with the previous period, a day where one model went unpriced, a stack that only ever synced an old 30-day snapshot, and an owner flipping consent after the days are stored? Every figure the page prints must come out of the fold, never out of a day.</p>
+  <p class="note">Pure logic lives in the first <code>&lt;script&gt;</code> (liftable). The page is a shell. Storage is in memory: reload to wipe.</p>
+
+  <h2>Current state</h2>
+  <div class="row">
+    <label>window</label>
+    <button data-win="30d">30d</button><button data-win="7d">7d</button><button data-win="24h">24h</button>
+    <label style="margin-left:16px">machine</label>
+    <span id="machines"></span>
+    <label style="margin-left:16px">consent</label>
+    <button id="cost">publishCost: on</button>
+    <button id="wf">publishWorkflow: on</button>
+  </div>
+  <div class="grid" id="state"></div>
+  <div class="row" style="margin-top:12px"><span class="note" id="what"></span></div>
+
+  <h2>Free play</h2>
+  <div class="row" id="free"></div>
+
+  <h2>Guided walkthroughs</h2>
+  <div class="tabs" id="tabs"></div>
+  <div class="scenario" id="scenario"></div>
+
+  <h2>What the server holds</h2>
+  <details open><summary>rows in <code>measuredDays</code> (one per stack, machine, date) and the day manifest</summary><pre id="rows"></pre></details>
+  <details><summary>the legacy <code>measuredSnapshots</code> row, if any</summary><pre id="legacy"></pre></details>
+</main>
+
+<!-- ========================================================================
+     THE PURE MODULE. No DOM. This is the part that could lift into
+     packages/workflow-rules (the day shape + fold) and convex/measured.ts
+     (the window read). Everything below the second script tag is throwaway.
+     ======================================================================== -->
+<script>
+const MEASURED_DAYS_V1 = "measured-days/v1"; // one version covers BOTH blocks
+
+// --- The day shape -------------------------------------------------------
+// A MeasuredDay is one machine's reading for one UTC date. Two optional
+// blocks, each behind its own consent bit. ONLY COMBINABLE ATOMS in both:
+// sums, counts, maxes, and sets small enough to union (project keys).
+//
+//   { date, usage?: UsageDay, workflow?: WorkflowDay }
+//
+// UsageDay = { harnesses: UsageHarnessDay[] }
+// UsageHarnessDay = {
+//   harness,                      // "claude-code"
+//   sessions,                     // sessions that STARTED this day
+//   projectKeys: string[],        // hashed workspace ids touched this day (a set)
+//   models: [{ id, tokens: {input, output, cacheWrite, cacheRead, cacheWriteTtl?},
+//              subagentTokens,    // tokens spent on sidechains, for the share
+//              usd?,              // CLI-priced at each response's own timestamp
+//              pricingTable? }],  // present exactly when usd is
+//   excludedTokens: { unpriced, synthetic },
+// }
+//
+// NOT on the day: cacheHitShare, subagentShare, tokenShare, activeDays. All
+// four are ratios or counts OVER a window and come out of the fold.
+// NOT on the day: inventory (tools, MCP, skills). Inventory is window-free;
+// see the open question at the bottom of the page.
+
+function emptyTokens() { return { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 }; }
+
+function addTokens(into, from) {
+  for (const k of ["input", "output", "cacheWrite", "cacheRead"]) into[k] += from[k];
+  if (from.cacheWriteTtl) {
+    into.cacheWriteTtl ??= { fiveMinute: 0, oneHour: 0, unsplit: 0 };
+    for (const k of ["fiveMinute", "oneHour", "unsplit"]) into.cacheWriteTtl[k] += from.cacheWriteTtl[k];
+  } else if (into.cacheWriteTtl) {
+    // A day without the split turns the fold's split into "unsplit" for that day's share.
+    into.cacheWriteTtl.unsplit += from.cacheWrite;
+  }
+}
+
+function tokenTotal(t) { return t.input + t.output + t.cacheWrite + t.cacheRead; }
+
+// --- The fold ------------------------------------------------------------
+// foldUsageDays(days) -> UsageWindow. Same shape as a day plus `dates`,
+// with the ratios computed at the end. `undefined` on zero days: nothing
+// downstream prints a measurement nobody made.
+function foldUsageDays(days) {
+  if (days.length === 0) return undefined;
+  const byHarness = new Map();
+  for (const day of days) {
+    for (const h of day.usage.harnesses) {
+      let acc = byHarness.get(h.harness);
+      if (!acc) {
+        acc = { harness: h.harness, sessions: 0, projectKeys: new Set(), models: new Map(),
+                excludedTokens: { unpriced: 0, synthetic: 0 }, activeDays: 0 };
+        byHarness.set(h.harness, acc);
+      }
+      acc.sessions += h.sessions;
+      if (h.sessions > 0) acc.activeDays += 1;
+      for (const k of h.projectKeys) acc.projectKeys.add(k);
+      acc.excludedTokens.unpriced += h.excludedTokens.unpriced;
+      acc.excludedTokens.synthetic += h.excludedTokens.synthetic;
+      for (const m of h.models) {
+        let held = acc.models.get(m.id);
+        if (!held) {
+          held = { id: m.id, tokens: emptyTokens(), subagentTokens: 0, usd: 0, usdDays: 0, tables: new Set() };
+          acc.models.set(m.id, held);
+        }
+        addTokens(held.tokens, m.tokens);
+        held.subagentTokens += m.subagentTokens;
+        // Dollars: a sum is only exact when EVERY day priced the model. One
+        // unpriced day and the window figure is a gap, which the read-time
+        // repricer fills as a lower bound (existing rule, reprice.ts).
+        if (held.usd !== undefined) {
+          if (m.usd === undefined) held.usd = undefined;
+          else { held.usd += m.usd; held.usdDays += 1; held.tables.add(m.pricingTable); }
+        }
+      }
+    }
+  }
+  const harnesses = [...byHarness.values()].map((acc) => {
+    const models = [...acc.models.values()].sort((a, b) => tokenTotal(b.tokens) - tokenTotal(a.tokens));
+    const totalTokens = models.reduce((s, m) => s + tokenTotal(m.tokens), 0);
+    const subagentTokens = models.reduce((s, m) => s + m.subagentTokens, 0);
+    let cacheRead = 0, inputClass = 0;
+    for (const m of models) {
+      cacheRead += m.tokens.cacheRead;
+      inputClass += m.tokens.input + m.tokens.cacheRead + m.tokens.cacheWrite;
+    }
+    return {
+      harness: acc.harness,
+      sessions: acc.sessions,
+      activeDays: acc.activeDays,
+      projects: acc.projectKeys.size,
+      totalTokens,
+      cacheHitShare: inputClass ? cacheRead / inputClass : 0,
+      subagentShare: totalTokens ? subagentTokens / totalTokens : 0,
+      models: models.map((m) => ({
+        id: m.id, tokens: m.tokens, subagentTokens: m.subagentTokens,
+        tokenShare: totalTokens ? tokenTotal(m.tokens) / totalTokens : 0,
+        usd: m.usd, pricingTable: m.usd === undefined ? undefined : [...m.tables].sort().join(" · "),
+      })),
+      excludedTokens: acc.excludedTokens,
+    };
+  });
+  // The machine-level figure the page headlines is the sum across harnesses,
+  // exactly as measured.ts merges harnesses today.
+  const totalTokens = harnesses.reduce((s, h) => s + h.totalTokens, 0);
+  const allProjects = new Set(days.flatMap((d) => d.usage.harnesses.flatMap((h) => h.projectKeys)));
+  let usd = 0;
+  for (const h of harnesses) for (const m of h.models) { if (usd === undefined) break; usd = m.usd === undefined ? undefined : usd + m.usd; }
+  return {
+    aggregateVersion: MEASURED_DAYS_V1,
+    dates: days.map((d) => d.date).sort(),
+    sessions: harnesses.reduce((s, h) => s + h.sessions, 0),
+    activeDays: days.filter((d) => d.usage.harnesses.some((h) => h.sessions > 0)).length,
+    projects: allProjects.size,
+    totalTokens,
+    cacheHitShare: (() => { let r = 0, i = 0; for (const h of harnesses) for (const m of h.models) { r += m.tokens.cacheRead; i += m.tokens.input + m.tokens.cacheRead + m.tokens.cacheWrite; } return i ? r / i : 0; })(),
+    subagentShare: totalTokens ? harnesses.reduce((s, h) => s + h.subagentShare * h.totalTokens, 0) / totalTokens : 0,
+    usd,
+    harnesses,
+    approximate: false,
+  };
+}
+
+// --- Windows and the previous period --------------------------------------
+// A day-atom wire cannot do a rolling 24 hours: the finest grain is the UTC
+// date. So "24h" reads as TODAY (UTC) and its previous period is YESTERDAY.
+// 7d is today and the 6 days before; previous is the 7 days before that.
+// 30d is today and the 29 days before; previous is the 30 days before that.
+const WINDOWS = { "24h": 1, "7d": 7, "30d": 30 };
+
+function dateOffset(isoDate, days) {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function datesOf(today, len, back) {
+  const out = [];
+  for (let i = 0; i < len; i++) out.push(dateOffset(today, -(back + i)));
+  return out;
+}
+
+// readUsageWindow: the server read. `rows` are the stored measuredDays for
+// ONE (stack, machine); `legacy` is the newest measuredSnapshots row for the
+// same machine, or null. Returns what the section prints for one window:
+//   { current, previous, source: "days" | "legacy" | "none" }
+// A stack with only an old snapshot: 30d is the snapshot's exact figure
+// marked approximate (its window is the snapshot's, not this one), and 7d /
+// 24h read as not measured. A previous period never comes out of a snapshot.
+function readUsageWindow(rows, legacy, today, win, consent) {
+  const len = WINDOWS[win];
+  const pick = (dates) => rows.filter((r) => dates.includes(r.date) && r.day.usage).map((r) => r.day);
+  const strip = (w) => {
+    if (!w) return w;
+    if (consent.publishCost) return w;
+    // Consent read at the server: dollars vanish even for rows already stored.
+    return { ...w, usd: undefined, harnesses: w.harnesses.map((h) => ({ ...h, models: h.models.map((m) => ({ ...m, usd: undefined, pricingTable: undefined })) })) };
+  };
+  const current = foldUsageDays(pick(datesOf(today, len, 0)));
+  const previous = foldUsageDays(pick(datesOf(today, len, len)));
+  if (current) return { current: strip(current), previous: strip(previous), source: "days" };
+  if (legacy && win === "30d") {
+    return { current: strip({ ...legacy.window, approximate: true, dates: [] }), previous: undefined, source: "legacy" };
+  }
+  return { current: undefined, previous: undefined, source: rows.length || legacy ? "not-measured" : "none" };
+}
+
+function readWorkflowWindow(rows, today, win, consent) {
+  if (!consent.publishWorkflow) return { current: undefined, source: "consent-off" };
+  const dates = datesOf(today, WINDOWS[win], 0);
+  const days = rows.filter((r) => dates.includes(r.date) && r.day.workflow).map((r) => r.day.workflow);
+  if (!days.length) return { current: undefined, source: "not-measured" };
+  return { current: { dates: days.length, commits: days.reduce((s, d) => s + d.commits, 0), sessions: days.reduce((s, d) => s + d.sessions, 0) }, source: "days" };
+}
+
+// --- The day fingerprint and the replace-per-day write ---------------------
+// One hash over the whole day and the version. A change in EITHER block
+// changes it, which is what makes one manifest serve both halves.
+function fingerprint(day) {
+  const s = MEASURED_DAYS_V1 + JSON.stringify(day, Object.keys(flatten(day)).sort());
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return h.toString(16).padStart(8, "0");
+}
+function flatten(o, out = {}) { if (o && typeof o === "object") for (const k in o) { out[k] = 1; flatten(o[k], out); } return out; }
+
+function manifest(rows) { return { retentionDays: 400, days: rows.map((r) => ({ date: r.date, fingerprint: fingerprint(r.day) })) }; }
+
+// publishDays: the server write. Replace per (machine, date). A block whose
+// consent bit is off never arrives (the CLI omits it); the server ALSO does
+// not backfill a missing block from the stored row, because the stored row
+// is being replaced, not merged.
+function publishDays(rows, machine, days) {
+  const out = rows.filter((r) => !(r.machine === machine && days.some((d) => d.date === r.date)));
+  for (const d of days) out.push({ machine, date: d.date, day: d });
+  return out.sort((a, b) => a.machine.localeCompare(b.machine) || a.date.localeCompare(b.date));
+}
+</script>
+
+<!-- ========================================================================
+     THE SHELL. Throwaway. Fixtures, buttons, rendering.
+     ======================================================================== -->
+<script>
+const TODAY = "2026-08-28";
+const K = 1000;
+function model(id, input, output, cw, cr, sub, usd, split = true) {
+  return { id, tokens: { input, output, cacheWrite: cw, cacheRead: cr, ...(split ? { cacheWriteTtl: { fiveMinute: Math.round(cw * .7), oneHour: cw - Math.round(cw * .7), unsplit: 0 } } : {}) }, subagentTokens: sub, ...(usd === undefined ? {} : { usd, pricingTable: "anthropic-list-2026-08-01" }) };
+}
+function claudeDay(date, scale = 1, opts = {}) {
+  const s = scale;
+  return {
+    date,
+    usage: { harnesses: [{
+      harness: "claude-code", sessions: Math.round(4 * s), projectKeys: opts.projects ?? ["p1", "p2"],
+      models: [
+        model("claude-fable-5", 20 * K * s, 6 * K * s, 400 * K * s, 3000 * K * s, 800 * K * s, opts.unpriced ? undefined : 9.5 * s, !opts.unsplit),
+        model("claude-haiku-4-5", 5 * K * s, 2 * K * s, 50 * K * s, 300 * K * s, 300 * K * s, 0.3 * s),
+      ],
+      excludedTokens: { unpriced: 0, synthetic: 1200 },
+    }] },
+    workflow: opts.noWorkflow ? undefined : { commits: Math.round(3 * s), sessions: Math.round(4 * s) },
+  };
+}
+const LEGACY_SNAPSHOT = {
+  capturedAt: "2026-07-30", window: { days: 30, from: "2026-07-01", to: "2026-07-30" },
+  // What today's read of measuredSnapshots yields, precomputed on the machine.
+  windowFigures: { sessions: 110, activeDays: 22, projects: 5, totalTokens: 98_000_000, cacheHitShare: 0.91, subagentShare: 0.23, usd: 265.0, harnesses: [] },
+};
+
+let S;
+function reset() {
+  S = { rows: [], legacy: null, machine: "laptop", win: "30d", consent: { publishCost: true, publishWorkflow: true }, lastChange: "reset", prevRender: null };
+}
+reset();
+
+const ACTIONS = {
+  "sync: last 30 days, laptop": () => { const days = []; for (let i = 0; i < 30; i++) days.push(claudeDay(dateOffset(TODAY, -i), 1 + ((i * 7) % 5) / 10)); S.rows = publishDays(S.rows, "laptop", days); S.lastChange = "30 days published for laptop (replace per day)"; },
+  "sync: 60 days, laptop": () => { const days = []; for (let i = 0; i < 60; i++) days.push(claudeDay(dateOffset(TODAY, -i), i < 30 ? 1 + (i % 3) / 4 : 1.8)); S.rows = publishDays(S.rows, "laptop", days); S.lastChange = "60 days published; the older 30 are the previous period for 30d"; },
+  "sync: only today and yesterday": () => { S.rows = publishDays(S.rows, "laptop", [claudeDay(TODAY, 1), claudeDay(dateOffset(TODAY, -1), 2)]); S.lastChange = "two days published"; },
+  "re-sync today (more work happened)": () => { S.rows = publishDays(S.rows, "laptop", [claudeDay(TODAY, 3)]); S.lastChange = "today's row REPLACED with a bigger reading, fingerprint changed"; },
+  "sync: a day where fable went unpriced": () => { S.rows = publishDays(S.rows, "laptop", [claudeDay(dateOffset(TODAY, -2), 1, { unpriced: true })]); S.lastChange = "2 days ago: claude-fable-5 has no usd on that day"; },
+  "sync: an old-CLI day without the cache-write split": () => { S.rows = publishDays(S.rows, "laptop", [claudeDay(dateOffset(TODAY, -3), 1, { unsplit: true })]); S.lastChange = "3 days ago: cacheWriteTtl absent, folded into unsplit"; },
+  "sync: a day with usage only (publishWorkflow was off on the CLI)": () => { S.rows = publishDays(S.rows, "laptop", [claudeDay(dateOffset(TODAY, -1), 1, { noWorkflow: true })]); S.lastChange = "yesterday: the workflow block was omitted by the CLI, and the replace did not keep the old one"; },
+  "sync: 7 days from a second machine (desktop)": () => { const days = []; for (let i = 0; i < 7; i++) days.push(claudeDay(dateOffset(TODAY, -i), 0.5, { projects: ["p2", "p9"] })); S.rows = publishDays(S.rows, "desktop", days); S.lastChange = "desktop published 7 days. Nothing merges the two machines."; },
+  "legacy: this stack has only an old 30-day snapshot": () => { S.rows = []; S.legacy = LEGACY_SNAPSHOT; S.lastChange = "no measuredDays rows, one measuredSnapshots row from July 30"; },
+  "wipe everything": () => { S.rows = []; S.legacy = null; S.lastChange = "server wiped"; },
+};
+
+const SCENARIOS = [
+  { name: "1. Fold and previous period", text: "Sixty days on one machine, where the older thirty carried nearly twice the work. Watch the 30d figure and its previous-period line, then switch to 7d and 24h: every window reads its own previous period out of the same rows, and the shares are recomputed over each fold rather than averaged.", steps: ["sync: 60 days, laptop", "window 30d", "window 7d", "window 24h"] },
+  { name: "2. Today keeps changing", text: "Only two days are stored. A second sync replaces today's row with a bigger reading. Watch the manifest: today's fingerprint changes, yesterday's does not, so the next diff-only sync resends one day.", steps: ["wipe everything", "sync: only today and yesterday", "window 24h", "re-sync today (more work happened)"] },
+  { name: "3. One unpriced day", text: "Thirty days stored, then one day where the big model carried no dollars (the CLI's table had no rate that day). The window's dollar figure for that model becomes a gap for the repricer to fill as a lower bound, and the other model stays exact. Nothing in the fold invents a rate.", steps: ["sync: last 30 days, laptop", "window 30d", "sync: a day where fable went unpriced", "window 7d"] },
+  { name: "4. Only an old snapshot", text: "A stack that synced once in July with the old CLI and never again. 30d shows the snapshot's own exact figure, marked approximate because its window is July's, not the last 30 days. 7d and 24h read as not measured, and no previous period exists.", steps: ["legacy: this stack has only an old 30-day snapshot", "window 30d", "window 7d", "window 24h"] },
+  { name: "5. Consent read at the server", text: "Days are stored WITH dollars. Turn publishCost off: every dollar disappears from the read, including the stored ones. Turn publishWorkflow off: the workflow half returns nothing while its rows stay put. Turn both back on and the figures return, because consent is a flag and never an absence.", steps: ["sync: last 30 days, laptop", "toggle publishCost", "toggle publishWorkflow", "toggle publishCost", "toggle publishWorkflow"] },
+  { name: "6. Half a day", text: "Yesterday was synced by a CLI whose publishWorkflow was off, so the row carries usage only. Replace is replace: the older row's workflow block does not survive. Then the owner turns the bit on and re-syncs; the next full sync restores it because the fingerprint differs.", steps: ["sync: last 30 days, laptop", "window 7d", "sync: a day with usage only (publishWorkflow was off on the CLI)", "sync: last 30 days, laptop"] },
+  { name: "7. Two machines", text: "A desktop publishes seven days beside the laptop's thirty. Switch the machine selector: each machine reads its own fold, projects are counted per machine, and there is no combined view (ADR-0009).", steps: ["sync: last 30 days, laptop", "sync: 7 days from a second machine (desktop)", "machine desktop", "window 7d", "machine laptop"] },
+];
+
+function runStep(name) {
+  if (name.startsWith("window ")) { S.win = name.slice(7); S.lastChange = `window set to ${S.win}`; }
+  else if (name.startsWith("machine ")) { S.machine = name.slice(8); S.lastChange = `machine set to ${S.machine}`; }
+  else if (name === "toggle publishCost") { S.consent.publishCost = !S.consent.publishCost; S.lastChange = `publishCost now ${S.consent.publishCost ? "on" : "off"}`; }
+  else if (name === "toggle publishWorkflow") { S.consent.publishWorkflow = !S.consent.publishWorkflow; S.lastChange = `publishWorkflow now ${S.consent.publishWorkflow ? "on" : "off"}`; }
+  else ACTIONS[name]();
+  render();
+}
+
+const fmt = (n) => n === undefined ? '<span class="nm">not measured</span>' : n >= 1e9 ? (n / 1e9).toFixed(2) + "B" : n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(0) + "K" : String(n);
+const pct = (x) => x === undefined ? '<span class="nm">not measured</span>' : (x * 100).toFixed(0) + "%";
+const usd = (x) => x === undefined ? '<span class="nm">unpriced</span>' : "$" + x.toFixed(2);
+function delta(cur, prev, f) { if (cur === undefined || prev === undefined) return ""; const d = cur - prev; return `<span class="prev">prev ${f(prev)} (${d >= 0 ? "+" : ""}${f(d)})</span>`; }
+
+function render() {
+  const rows = S.rows.filter((r) => r.machine === S.machine);
+  const u = readUsageWindow(rows, S.legacy ? { window: LEGACY_SNAPSHOT.windowFigures } : null, TODAY, S.win, S.consent);
+  const w = readWorkflowWindow(rows, TODAY, S.win, S.consent);
+  const c = u.current, p = u.previous;
+  const prevLabel = { "24h": "yesterday", "7d": "the 7 days before", "30d": "60 to 30 days ago" }[S.win];
+  const winLabel = { "24h": "today (UTC)", "7d": "last 7 days", "30d": "last 30 days" }[S.win];
+  const head = (k, v, pv, f) => `<b>${k}</b><span class="v">${v} ${delta(c?.[k === "tokens" ? "totalTokens" : k], pv, f)}</span>`;
+  const state = document.getElementById("state");
+  state.innerHTML = `
+    <div class="panel"><h3>Actual Usage, ${winLabel}${c?.approximate ? ' <span class="approx">approximate (a July 30 snapshot, window July 1 to July 30)</span>' : ""}</h3>
+      <div class="kv">
+        ${head("tokens", fmt(c?.totalTokens), p?.totalTokens, fmt)}
+        ${head("sessions", fmt(c?.sessions), p?.sessions, fmt)}
+        ${head("activeDays", fmt(c?.activeDays), p?.activeDays, fmt)}
+        ${head("projects", fmt(c?.projects), p?.projects, fmt)}
+        ${head("cacheHitShare", pct(c?.cacheHitShare), p?.cacheHitShare, pct)}
+        ${head("subagentShare", pct(c?.subagentShare), p?.subagentShare, pct)}
+        <b>cost</b><span class="v">${c ? (S.consent.publishCost ? usd(c.usd) : '<span class="nm">withheld (publishCost off)</span>') : fmt(undefined)} ${S.consent.publishCost ? delta(c?.usd, p?.usd, (x) => "$" + x.toFixed(0)) : ""}</span>
+        <b>previous</b><span class="v">${p ? `${prevLabel}, ${p.dates.length} days stored` : `<span class="nm">${c?.approximate ? "none: a snapshot has no trail" : "not measured"}</span>`}</span>
+        <b>source</b><span class="v">${u.source}${c && !c.approximate ? `, ${c.dates.length} of ${WINDOWS[S.win]} dates stored` : ""}</span>
+      </div></div>
+    <div class="panel"><h3>Models, ${winLabel}</h3>
+      ${c && c.harnesses.length ? `<table><tr><th>model</th><th>tokens</th><th>share</th><th>cache write split</th><th>usd</th></tr>${c.harnesses.flatMap((h) => h.models).map((m) => `<tr><td>${m.id}</td><td>${fmt(tokenTotal(m.tokens))}</td><td>${pct(m.tokenShare)}</td><td>${m.tokens.cacheWriteTtl ? `5m ${fmt(m.tokens.cacheWriteTtl.fiveMinute)} / 1h ${fmt(m.tokens.cacheWriteTtl.oneHour)} / unsplit ${fmt(m.tokens.cacheWriteTtl.unsplit)}` : "merged"}</td><td>${S.consent.publishCost ? usd(m.usd) : '<span class="nm">withheld</span>'}</td></tr>`).join("")}</table>` : `<span class="nm">${c?.approximate ? "the snapshot's rows (not shown here)" : "not measured"}</span>`}
+    </div>
+    <div class="panel"><h3>Workflow, ${winLabel}</h3>
+      <div class="kv">
+        <b>source</b><span class="v">${w.source}</span>
+        <b>days folded</b><span class="v">${fmt(w.current?.dates)}</span>
+        <b>commits</b><span class="v">${fmt(w.current?.commits)}</span>
+        <b>sessions</b><span class="v">${fmt(w.current?.sessions)}</span>
+      </div>
+      <p class="note">Same rows, same window, same machine. Only the consent bit differs.</p>
+    </div>`;
+  document.getElementById("what").innerHTML = `<b>Last change:</b> ${S.lastChange}`;
+  document.querySelectorAll("[data-win]").forEach((b) => b.classList.toggle("on", b.dataset.win === S.win));
+  const machines = [...new Set(["laptop", ...S.rows.map((r) => r.machine)])];
+  document.getElementById("machines").innerHTML = machines.map((m) => `<button class="${m === S.machine ? "on" : ""}" onclick="runStep('machine ${m}')">${m}</button>`).join(" ");
+  document.getElementById("cost").textContent = `publishCost: ${S.consent.publishCost ? "on" : "off"}`;
+  document.getElementById("wf").textContent = `publishWorkflow: ${S.consent.publishWorkflow ? "on" : "off"}`;
+  const mf = manifest(rows);
+  document.getElementById("rows").textContent = rows.length ? rows.map((r) => `${r.machine}  ${r.date}  usage:${r.day.usage ? "yes" : "no "}  workflow:${r.day.workflow ? "yes" : "no "}  fp:${fingerprint(r.day)}  tokens:${fmt(r.day.usage ? r.day.usage.harnesses.reduce((s, h) => s + h.models.reduce((t, m) => t + tokenTotal(m.tokens), 0), 0) : 0).replace(/<[^>]+>/g, "")}`).join("\n") + `\n\nmanifest for (${S.machine}): retention ${mf.retentionDays} days, ${mf.days.length} dates` : "(no rows for this machine)";
+  document.getElementById("legacy").textContent = S.legacy ? JSON.stringify(S.legacy, null, 2) : "(none)";
+}
+
+// Wire the shell.
+document.querySelectorAll("[data-win]").forEach((b) => b.onclick = () => runStep(`window ${b.dataset.win}`));
+document.getElementById("cost").onclick = () => runStep("toggle publishCost");
+document.getElementById("wf").onclick = () => runStep("toggle publishWorkflow");
+document.getElementById("free").innerHTML = Object.keys(ACTIONS).map((k) => `<button onclick="runStep(${JSON.stringify(k)})">${k}</button>`).join("");
+let active = 0, stepIdx = 0;
+function showScenario(i) {
+  active = i; stepIdx = 0; reset(); S.lastChange = `scenario "${SCENARIOS[i].name}" started from a clean server`; render();
+  document.getElementById("tabs").innerHTML = SCENARIOS.map((s, j) => `<button class="${j === i ? "on" : ""}" onclick="showScenario(${j})">${s.name}</button>`).join("");
+  drawSteps();
+}
+function drawSteps() {
+  const s = SCENARIOS[active];
+  document.getElementById("scenario").innerHTML = `<p>${s.text}</p><div class="steps">${s.steps.map((st, j) => `<button class="${j < stepIdx ? "done" : ""}" onclick="stepIdx=${j + 1};runStep(${JSON.stringify(st)});drawSteps()"><span class="n">${j + 1}</span>${st}</button>`).join("")}</div>`;
+}
+showScenario(0);
+</script>
+
+<main style="padding-top:0">
+  <h2>Open questions this prototype leaves for #315</h2>
+  <ul class="note">
+    <li>Inventory (tools, MCP servers, skills, subagents, slash commands) is window-free and is not on the day. Either it stays on the newest <code>measuredSnapshots</code> row, or it gets its own small per-machine "latest inventory" row replaced on every sync.</li>
+    <li>The done-bar and history charts that read snapshot history.</li>
+  </ul>
+</main>
+</body>
+</html>
