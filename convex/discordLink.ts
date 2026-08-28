@@ -1,4 +1,4 @@
-import { v } from 'convex/values'
+import { type Infer, v } from 'convex/values'
 import { internal } from './_generated/api'
 import {
   internalAction,
@@ -120,9 +120,7 @@ export const updateMine = mutation({
   handler: async (
     ctx,
     args,
-  ): Promise<{
-    status: 'linked' | 'removed' | 'invalid' | 'expired' | 'not_authenticated'
-  }> => {
+  ): Promise<{ status: Infer<typeof LinkStatus> }> => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) return { status: 'not_authenticated' }
     const userId = identity.tokenIdentifier.split('|')[1]

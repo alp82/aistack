@@ -4,8 +4,9 @@ export function encodeUtf8(value: string): Uint8Array<ArrayBuffer> {
   return TEXT_ENCODER.encode(value)
 }
 
-export function bytesToHex(buffer: ArrayBuffer): string {
-  return Array.from(new Uint8Array(buffer))
+export function bytesToHex(buffer: ArrayBuffer | Uint8Array<ArrayBuffer>): string {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer)
+  return Array.from(bytes)
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('')
 }
