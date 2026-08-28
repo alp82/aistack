@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { api } from "../../../convex/_generated/api";
@@ -19,10 +19,13 @@ export function DiscordLinkPage({ token }: DiscordLinkPageProps) {
 	const [removing, setRemoving] = useState(false);
 	const [removed, setRemoved] = useState(false);
 	const [removeError, setRemoveError] = useState<string | null>(null);
+	const attemptedToken = useRef<string | null>(null);
+	const canLink = account !== undefined && account !== null;
 
 	useEffect(() => {
 		let cancelled = false;
-		if (!token) return;
+		if (!token || !canLink || attemptedToken.current === token) return;
+		attemptedToken.current = token;
 		setLinkStatus("linking");
 		linkAccount({ token })
 			.then((result) => {
@@ -37,11 +40,10 @@ export function DiscordLinkPage({ token }: DiscordLinkPageProps) {
 		return () => {
 			cancelled = true;
 		};
-	}, [linkAccount, token]);
+	}, [canLink, linkAccount, token]);
 
 	const linked =
-		!removed &&
-		(linkStatus === "linked" || (linkStatus === "idle" && account?.linked));
+		!removed && (linkStatus === "linked" || account?.linked === true);
 
 	const handleRemove = async () => {
 		setRemoving(true);
@@ -71,6 +73,18 @@ export function DiscordLinkPage({ token }: DiscordLinkPageProps) {
 
 			{account === undefined ? (
 				<p className="mt-8 font-mono text-sm text-fg-muted">Loading...</p>
+			) : null}
+
+			{account === null ? (
+				<div className="mt-8 border-2 border-stroke-strong bg-bg-panel p-6">
+					<p className="font-mono text-sm text-fg-primary">
+						Create a stack before linking Discord.
+					</p>
+					<p className="mt-2 text-sm text-fg-secondary">
+						A creator profile gives Discord commands an account and a stack to
+						find.
+					</p>
+				</div>
 			) : null}
 
 			{token && linkStatus === "linking" ? (
