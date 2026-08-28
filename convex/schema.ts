@@ -121,6 +121,40 @@ const MeasuredModel = v.object({
   pricingTable: v.optional(v.string()),
 })
 
+/**
+ * The inventory sets one harness reports: named atoms per category, the
+ * withheld counts, and the call totals. Shared by the snapshot payload and
+ * the `measuredInventory` row (ADR-0011).
+ */
+export const MeasuredInventory = v.object({
+  builtinTools: v.array(MeasuredAtom),
+  mcpServers: v.array(MeasuredAtom),
+  skills: v.array(MeasuredAtom),
+  subagents: v.array(MeasuredAtom),
+  slashCommands: v.array(MeasuredAtom),
+  // Distinct names withheld per category, so the gap in the shares above is
+  // explained rather than silently absent (#33 decision 2).
+  withheld: v.object({
+    builtinTools: v.number(),
+    mcpServers: v.number(),
+    skills: v.number(),
+    subagents: v.number(),
+    slashCommands: v.number(),
+  }),
+  // Every observed call per category, withheld names included (#213). This is
+  // the denominator the shares were computed over, and the one the per-atom
+  // `calls` need. Optional for the same reason `calls` is.
+  calls: v.optional(
+    v.object({
+      builtinTools: v.number(),
+      mcpServers: v.number(),
+      skills: v.number(),
+      subagents: v.number(),
+      slashCommands: v.number(),
+    })
+  ),
+})
+
 const MeasuredActivityFields = {
   sessions: v.number(),
   totalTokens: v.number(),
@@ -141,34 +175,7 @@ const MeasuredPayloadFields = {
   }),
   pricingTable: v.union(v.string(), v.null()),
   models: v.array(MeasuredModel),
-  inventory: v.object({
-    builtinTools: v.array(MeasuredAtom),
-    mcpServers: v.array(MeasuredAtom),
-    skills: v.array(MeasuredAtom),
-    subagents: v.array(MeasuredAtom),
-    slashCommands: v.array(MeasuredAtom),
-    // Distinct names withheld per category, so the gap in the shares above is
-    // explained rather than silently absent (#33 decision 2).
-    withheld: v.object({
-      builtinTools: v.number(),
-      mcpServers: v.number(),
-      skills: v.number(),
-      subagents: v.number(),
-      slashCommands: v.number(),
-    }),
-    // Every observed call per category, withheld names included (#213). This is
-    // the denominator the shares were computed over, and the one the per-atom
-    // `calls` need. Optional for the same reason `calls` is.
-    calls: v.optional(
-      v.object({
-        builtinTools: v.number(),
-        mcpServers: v.number(),
-        skills: v.number(),
-        subagents: v.number(),
-        slashCommands: v.number(),
-      })
-    ),
-  }),
+  inventory: MeasuredInventory,
   // Scan health (#33 decision 10). Cheap now, impossible later: snapshots are
   // immutable, so omitting this would leave a permanent hole in the history.
   coverage: v.object({
@@ -406,6 +413,70 @@ export const WorkflowWire = v.object({
    */
   utcOffsetMinutes: v.optional(v.number()),
   days: v.array(WorkflowDay),
+})
+
+// ---------------------------------------------------------------------------
+// The measured DAY - one row per (stack, machine, UTC date) holding both
+// halves of a day under ONE version, `measured-days/v1` (ADR-0010, #307).
+// Shapes mirror `packages/workflow-rules/src/usage.ts`; the fold lives there.
+// ---------------------------------------------------------------------------
+
+export const UsageTokens = v.object({
+  input: v.number(),
+  output: v.number(),
+  cacheWrite: v.number(),
+  cacheRead: v.number(),
+  /** The cache-write split by TTL. `unsplit` holds writes from before the split. */
+  cacheWriteTtl: v.optional(
+    v.object({
+      fiveMinute: v.number(),
+      oneHour: v.number(),
+      unsplit: v.number(),
+    })
+  ),
+})
+
+export const UsageModelDay = v.object({
+  model: v.string(),
+  tokens: UsageTokens,
+  /** Exact dollars the CLI priced at ingest. Absent when unpriced or publishCost off. */
+  usd: v.optional(v.number()),
+  pricingTable: v.optional(v.string()),
+})
+
+export const UsageHarnessDay = v.object({
+  harness: v.string(),
+  /** Sessions that STARTED this day. */
+  sessions: v.number(),
+  /** Hashed project keys touched this day, sorted unique. */
+  projectKeys: v.array(v.string()),
+  models: v.array(UsageModelDay),
+  /** Tokens spent inside subagent turns, all models. */
+  subagentTokens: v.number(),
+  excludedTokens: v.object({ unpriced: v.number(), synthetic: v.number() }),
+})
+
+/** One UTC day of one machine's usage: combinable atoms only, no share and no mean. */
+export const UsageDay = v.object({ harnesses: v.array(UsageHarnessDay) })
+
+/**
+ * The per-day section on the sync body (#307). One row per date; the CLI
+ * omits the block whose consent bit is off, and the server stores what it
+ * gets against (stack, machine, date), replacing the day.
+ */
+export const MeasuredDayWire = v.object({
+  /** `measured-days/v1`. */
+  aggregateVersion: v.string(),
+  /** Minutes east of UTC on the publishing machine; see `WorkflowWire`. */
+  utcOffsetMinutes: v.optional(v.number()),
+  days: v.array(
+    v.object({
+      /** `YYYY-MM-DD`, UTC. When `workflow` is present, `workflow.date === date`. */
+      date: v.string(),
+      usage: v.optional(UsageDay),
+      workflow: v.optional(WorkflowDay),
+    })
+  ),
 })
 
 // The authored<->measured overlap is catalog slugs only (#33 decision 2), but
@@ -1202,6 +1273,71 @@ export default defineSchema({
   })
     .index('by_stack', ['stackId'])
     .index('by_stack_machine_date', ['stackId', 'machine', 'date']),
+
+  // The measured DAY (ADR-0010, ADR-0011, #307). One row per (stack, machine,
+  // UTC date) holding both halves of the day: the usage atoms and the workflow
+  // atoms, under one version and one content fingerprint. A re-synced day
+  // REPLACES the row. Days are NEVER pruned server-side: the 400-day limit is
+  // the CLI's send window and the page's read cap, and the database keeps
+  // every day a machine ever published.
+  //
+  // `measuredWorkflowDays` above is the table this one absorbs. The
+  // 20260828 migration copies it; a later change drops it.
+  measuredDays: defineTable({
+    stackId: v.id('stacks'),
+    /** The publishing token's name, like `measuredSnapshots.machine`. */
+    machine: v.optional(v.string()),
+    /** `YYYY-MM-DD`, UTC. */
+    date: v.string(),
+    /** Client clock of the publish that wrote this row. */
+    capturedAt: v.number(),
+    /** Server clock of the publish that wrote this row. */
+    receivedAt: v.number(),
+    cliVersion: v.optional(v.string()),
+    /** `measured-days/v1`. */
+    aggregateVersion: v.string(),
+    utcOffsetMinutes: v.optional(v.number()),
+    /** `dayFingerprint` over both blocks: the manifest's identity for a diff-only sync. */
+    fingerprint: v.string(),
+    usage: v.optional(UsageDay),
+    workflow: v.optional(WorkflowDay),
+  })
+    .index('by_stack', ['stackId'])
+    .index('by_stack_machine_date', ['stackId', 'machine', 'date']),
+
+  // The live inventory (ADR-0011): one row per (stack, machine, harness),
+  // REPLACED on every sync. What the day wire does not carry: the installed
+  // tools, MCP servers, skills, the models seen and the harness kit, which are
+  // "latest per source" and not a sum.
+  measuredInventory: defineTable({
+    stackId: v.id('stacks'),
+    machine: v.optional(v.string()),
+    harness: v.string(),
+    harnessVersion: v.union(v.string(), v.null()),
+    capturedAt: v.number(),
+    receivedAt: v.number(),
+    cliVersion: v.optional(v.string()),
+    inventory: MeasuredInventory,
+    /** Model ids the harness reported in its last sync. */
+    modelsSeen: v.array(v.string()),
+    pricingTable: v.union(v.string(), v.null()),
+    /**
+     * The retirement migration's fallback for a stack with no days: the last
+     * snapshot's 30-day totals. Absent on a row written by a sync.
+     */
+    legacy: v.optional(
+      v.object({
+        tokens: v.number(),
+        sessions: v.number(),
+        activeDays: v.number(),
+        usd: v.optional(v.number()),
+        capturedAt: v.number(),
+        windowDays: v.number(),
+      })
+    ),
+  })
+    .index('by_stack', ['stackId'])
+    .index('by_stack_machine_harness', ['stackId', 'machine', 'harness']),
 
   // The owner's pins and hides on workflow rows (#218). "The owner can pin or
   // hide any row, and that override wins over both thresholds" (spec).

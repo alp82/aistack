@@ -51,6 +51,7 @@ import type * as lib_scrapers from "../lib/scrapers.js";
 import type * as lib_sources from "../lib/sources.js";
 import type * as lib_tiers from "../lib/tiers.js";
 import type * as lib_webCrypto from "../lib/webCrypto.js";
+import type * as lib_measuredDays from "../lib/measuredDays.js";
 import type * as lib_workflow from "../lib/workflow.js";
 import type * as lib_xEmbedSanitizer from "../lib/xEmbedSanitizer.js";
 import type * as lib_xPaste from "../lib/xPaste.js";
@@ -67,6 +68,7 @@ import type * as migrations_20260823_news_hn_lane from "../migrations/20260823_n
 import type * as migrations_20260823_news_phase1_sources from "../migrations/20260823_news_phase1_sources.js";
 import type * as migrations_20260826_workflow_daily_rows from "../migrations/20260826_workflow_daily_rows.js";
 import type * as migrations_20260827_merge_duplicate_models from "../migrations/20260827_merge_duplicate_models.js";
+import type * as migrations_20260828_measured_days from "../migrations/20260828_measured_days.js";
 import type * as migrations__archived_migrateBlockToReference from "../migrations/_archived/migrateBlockToReference.js";
 import type * as migrations__archived_migrateNotesToDescription from "../migrations/_archived/migrateNotesToDescription.js";
 import type * as migrations__archived_migrateStackDescriptions from "../migrations/_archived/migrateStackDescriptions.js";
@@ -145,6 +147,7 @@ declare const fullApi: ApiFromModules<{
   "lib/sources": typeof lib_sources;
   "lib/tiers": typeof lib_tiers;
   "lib/webCrypto": typeof lib_webCrypto;
+  "lib/measuredDays": typeof lib_measuredDays;
   "lib/workflow": typeof lib_workflow;
   "lib/xEmbedSanitizer": typeof lib_xEmbedSanitizer;
   "lib/xPaste": typeof lib_xPaste;
@@ -161,6 +164,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/20260823_news_phase1_sources": typeof migrations_20260823_news_phase1_sources;
   "migrations/20260826_workflow_daily_rows": typeof migrations_20260826_workflow_daily_rows;
   "migrations/20260827_merge_duplicate_models": typeof migrations_20260827_merge_duplicate_models;
+  "migrations/20260828_measured_days": typeof migrations_20260828_measured_days;
   "migrations/_archived/migrateBlockToReference": typeof migrations__archived_migrateBlockToReference;
   "migrations/_archived/migrateNotesToDescription": typeof migrations__archived_migrateNotesToDescription;
   "migrations/_archived/migrateStackDescriptions": typeof migrations__archived_migrateStackDescriptions;
