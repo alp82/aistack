@@ -483,6 +483,29 @@ export function dailyWorkflowOrUndefined(workflow: unknown): unknown {
     : undefined
 }
 
+/**
+ * The per-day wire (#307), only when it has the day shape. A body that names
+ * `measuredDays` but not as an object holding a `days` array is the client's
+ * fault, and the publish is refused with 400 before the mutation runs; the
+ * blocks themselves go to the closed `MeasuredDayWire` validator untouched.
+ */
+export function parseMeasuredDays(
+  raw: unknown
+): { ok: true; value: unknown } | { ok: false; error: string } {
+  if (raw === undefined || raw === null) return { ok: true, value: undefined }
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ok: false, error: 'measuredDays must be an object' }
+  }
+  const wire = raw as { aggregateVersion?: unknown; days?: unknown }
+  if (typeof wire.aggregateVersion !== 'string') {
+    return { ok: false, error: 'measuredDays.aggregateVersion must be a string' }
+  }
+  if (!Array.isArray(wire.days)) {
+    return { ok: false, error: 'measuredDays.days must be an array' }
+  }
+  return { ok: true, value: raw }
+}
+
 function parseCliVersion(raw: unknown): string | undefined {
   if (typeof raw !== 'string') return undefined
   const trimmed = raw.trim()
@@ -513,6 +536,7 @@ export const syncPublish = httpAction(async (ctx, request) => {
     autoSync?: unknown
     trigger?: unknown
     workflow?: unknown
+    measuredDays?: unknown
     cliVersion?: unknown
   }
   try {
@@ -520,6 +544,8 @@ export const syncPublish = httpAction(async (ctx, request) => {
   } catch {
     return jsonResponse({ error: 'Invalid JSON body' }, 400)
   }
+  const measuredDays = parseMeasuredDays(body.measuredDays)
+  if (!measuredDays.ok) return jsonResponse({ error: measuredDays.error }, 400)
   // `payloads` is the batch a #67 client sends - one per detected harness.
   // The old single `payload` stays accepted for installed CLIs until a wire
   // bump retires it, the way `scope` was retired in #213: strip it at this
@@ -553,6 +579,8 @@ export const syncPublish = httpAction(async (ctx, request) => {
       // before the daily rows, which an installed CLI still sends and which
       // must not take the measurement down with it.
       workflow: dailyWorkflowOrUndefined(body.workflow) as any,
+      // The per-day wire (#307). Shape-checked above, bounded in the mutation.
+      measuredDays: measuredDays.value as any,
       // Additive and optional (#213), bounded the same way the login route
       // bounds it.
       cliVersion: parseCliVersion(body.cliVersion),
@@ -583,6 +611,28 @@ export const syncPublish = httpAction(async (ctx, request) => {
     // be observably in force.
     keptPrivate: result.keptPrivate,
   })
+})
+
+/**
+ * GET /api/cli/sync-manifest - the days the server holds for this machine
+ * (#307, ADR-0010). The CLI hashes its own days the same way and publishes
+ * only the dates missing here or hashing differently. Needs `sync`, because
+ * the answer names dates a machine published and nothing else may read it.
+ */
+export const syncManifest = httpAction(async (ctx, request) => {
+  const authResult = await validateBearerToken(ctx as any, request, 'sync')
+  if (authResult instanceof Response) return authResult
+  const { tokenId } = authResult
+  try {
+    const manifest = await ctx.runQuery(internal.measured.getDayManifestForToken, {
+      tokenId: tokenId as Id<'cliTokens'>,
+    })
+    return jsonResponse(manifest)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    const status = /not linked|no longer/i.test(message) ? 409 : 400
+    return jsonResponse({ error: message }, status)
+  }
 })
 
 /**
