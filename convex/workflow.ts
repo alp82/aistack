@@ -1,5 +1,5 @@
 /**
- * The measured Workflow section: one read, one owner control.
+ * The measured workflow rows: one read.
  *
  * Wayfinder ticket #218 (map #200), reshaped by #285; spec
  * `docs/specs/workflow-surface.md`. The storage and the fold live in
@@ -13,21 +13,17 @@
  * `@aistack/workflow-rules`.
  */
 
-import { KNOWN_ROW_IDS, MAX_PINS } from '@aistack/workflow-rules'
 import { type Infer, v } from 'convex/values'
-import { mutation, query } from './_generated/server'
+import { query } from './_generated/server'
 import {
 	machinePublication,
 	publicMachine,
 	publishedStackBySlug,
-	requireStackOwner,
-	snapshotsForStack,
 } from './measured'
-import { newestPerSource } from './lib/sources'
+import { inventoryForStack, newestInventoryPerSource } from './lib/measuredDays'
 import {
-	kitFromSnapshots,
+	kitFromInventory,
 	readWorkflowWindow,
-	rowOverridesForStack,
 	WORKFLOW_WINDOWS,
 	windowStartDate,
 	type WorkflowDayRow,
@@ -103,11 +99,8 @@ const WorkflowRow = v.object({
 	surprise: v.number(),
 	/** Coverage times surprise. Nothing ranks by it (#277). */
 	fit: v.number(),
-	/** The first three rows on the page, in the fixed order or as pinned. */
+	/** The first three rows on the page, in the fixed order. */
 	placement: v.union(v.literal('highlight'), v.literal('normal')),
-	pinned: v.boolean(),
-	/** Only ever true in the owner's own view: a public read drops hidden rows. */
-	hidden: v.boolean(),
 })
 
 /**
@@ -127,8 +120,8 @@ const KitAtom = v.object({
  * The inventory the kit and delegation components draw, per harness.
  *
  * IT IS NOT IN THE WORKFLOW WIRE. Skills, MCP servers and subagents are
- * inventory, and inventory travels in the measured payload, so the two rows
- * that render them need the payload beside the reading. `component-rules/v2`
+ * inventory, and inventory lives on `measuredInventory` (ADR-0011), so the two
+ * rows that render them need that row beside the reading. `component-rules/v2`
  * already reads it for the kit row's value; this carries the same rows on to
  * the page so the row's body shows what the value was computed from.
  *
@@ -205,11 +198,11 @@ const WorkflowView = v.object({
 	mixedRuleVersions: v.boolean(),
 	lead: LeadFacts,
 	rows: v.array(WorkflowRow),
-	/** True when the caller owns the stack, so hidden rows are in `rows`. */
+	/** True when the caller owns the stack. */
 	isOwner: v.boolean(),
 	/** The folded atoms the components render. */
 	section: WorkflowWindow,
-	/** The inventory two of those components need, which lives in the payload. */
+	/** The inventory two of those components need. */
 	kit: v.array(KitHarness),
 })
 
@@ -284,22 +277,25 @@ export const getWorkflowByStackSlug = query({
 		const to = new Date(now).toISOString().slice(0, 10)
 		const inWindow = selected.rows.filter((row) => row.date >= from)
 
-		const snapshots = newestPerSource(
-			await snapshotsForStack(ctx, stack._id)
+		const inventory = newestInventoryPerSource(
+			await inventoryForStack(ctx, stack._id)
 		).filter((row) => row.machine === selected.newest.machine)
 		const view = readWorkflowWindow({
 			rows: inWindow,
 			newest: selected.newest,
-			kit: kitFromSnapshots(snapshots),
-			overrides: await rowOverridesForStack(ctx, stack._id),
+			kit: kitFromInventory(inventory),
 			// Every synced session and harness on this machine, INCLUDING one the
 			// playbook gate held back: "the count covers every synced harness
 			// including one held back by the playbook gate" (spec, the lead).
-			sessionCount: snapshots.reduce(
-				(sum, snapshot) => sum + snapshot.payload.activity.sessions,
+			// Sessions come from the usage half of the same day rows this window
+			// folds, so the count and the rows describe one window.
+			sessionCount: inWindow.reduce(
+				(sum, row) =>
+					sum +
+					(row.usage?.harnesses ?? []).reduce((s, h) => s + h.sessions, 0),
 				0
 			),
-			harnessCount: snapshots.length,
+			harnessCount: inventory.length,
 		})
 
 		const isOwner = publication.owner
@@ -321,9 +317,7 @@ export const getWorkflowByStackSlug = query({
 			phaseRuleVersions: view.phaseRuleVersions,
 			mixedRuleVersions: view.mixedRuleVersions,
 			lead: view.lead,
-			rows: view.rows
-				.filter((row) => isOwner || !row.hidden)
-				.map((row) => ({
+			rows: view.rows.map((row) => ({
 					rowId: row.rowId,
 					kind: row.kind,
 					ruleId: row.ruleId,
@@ -339,95 +333,22 @@ export const getWorkflowByStackSlug = query({
 					surprise: row.surprise,
 					fit: row.fit,
 					placement: row.placement,
-					pinned: row.pinned,
-					hidden: row.hidden,
-				})),
+			})),
 			isOwner,
 			// The rules package types its arrays readonly; the validator infers them
 			// mutable. Same bytes either way.
 			section: view.section as Infer<typeof WorkflowWindow>,
-			kit: snapshots.map((snapshot) => ({
-				harness: snapshot.harness,
-				skills: snapshot.payload.inventory.skills.map(publicAtom),
-				mcpServers: snapshot.payload.inventory.mcpServers.map(publicAtom),
-				subagents: snapshot.payload.inventory.subagents.map(publicAtom),
+			kit: inventory.map((row) => ({
+				harness: row.harness,
+				skills: row.inventory.skills.map(publicAtom),
+				mcpServers: row.inventory.mcpServers.map(publicAtom),
+				subagents: row.inventory.subagents.map(publicAtom),
 				withheld: {
-					skills: snapshot.payload.inventory.withheld.skills,
-					mcpServers: snapshot.payload.inventory.withheld.mcpServers,
-					subagents: snapshot.payload.inventory.withheld.subagents,
+					skills: row.inventory.withheld.skills,
+					mcpServers: row.inventory.withheld.mcpServers,
+					subagents: row.inventory.withheld.subagents,
 				},
 			})),
 		}
-	},
-})
-
-/**
- * Pin a row to the podium, hide it from the page, or clear either.
- *
- * "The owner can pin or hide any row, and that override wins" (spec). A pin
- * puts the row ahead of the fixed order; a hide takes the row off the public
- * page entirely.
- *
- * THE OVERRIDE IS PER STACK, not per machine and not per window. The judgment
- * is about the row - a number worth the podium, or one the owner would rather
- * not publish - and it does not change when the machine selector or the
- * window does.
- *
- * At most three pins, one per podium slot. A fourth pin would promise a place
- * that does not exist, so it is refused rather than silently ranked.
- */
-export const setWorkflowRowOverride = mutation({
-	args: {
-		stackId: v.id('stacks'),
-		rowId: v.string(),
-		state: v.union(v.literal('pinned'), v.literal('hidden'), v.null()),
-	},
-	returns: v.object({
-		pinned: v.array(v.string()),
-		hidden: v.array(v.string()),
-	}),
-	handler: async (ctx, args) => {
-		const stack = await requireStackOwner(ctx, args.stackId)
-		if (!KNOWN_ROW_IDS.has(args.rowId)) {
-			throw new Error(`Unknown workflow row ${args.rowId}`)
-		}
-
-		const existing = await ctx.db
-			.query('workflowRowOverrides')
-			.withIndex('by_stack_row', (q) =>
-				q.eq('stackId', stack._id).eq('rowId', args.rowId)
-			)
-			.first()
-
-		if (args.state === null) {
-			if (existing) await ctx.db.delete(existing._id)
-		} else {
-			if (args.state === 'pinned') {
-				const pins = (
-					await ctx.db
-						.query('workflowRowOverrides')
-						.withIndex('by_stack', (q) => q.eq('stackId', stack._id))
-						.collect()
-				).filter(
-					(row) => row.state === 'pinned' && row.rowId !== args.rowId
-				)
-				if (pins.length >= MAX_PINS) {
-					throw new Error(
-						`The podium holds ${MAX_PINS} rows. Unpin one before pinning another.`
-					)
-				}
-			}
-			const doc = {
-				stackId: stack._id,
-				rowId: args.rowId,
-				state: args.state,
-				setAt: Date.now(),
-			}
-			if (existing) await ctx.db.replace(existing._id, doc)
-			else await ctx.db.insert('workflowRowOverrides', doc)
-		}
-
-		const after = await rowOverridesForStack(ctx, stack._id)
-		return { pinned: [...after.pinned], hidden: [...after.hidden] }
 	},
 })

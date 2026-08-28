@@ -21,7 +21,6 @@ import {
 	phaseRuleVersions,
 	type PlacedRow,
 	placeRows,
-	type RowOverrides,
 	type WorkflowDay,
 	type WorkflowWindow,
 } from '@aistack/workflow-rules'
@@ -70,21 +69,6 @@ export function windowStartDate(
 	}
 }
 
-/** The owner's pins and hides for one stack, in the shape the rules read. */
-export async function rowOverridesForStack(
-	ctx: QueryCtx | MutationCtx,
-	stackId: Id<'stacks'>
-): Promise<RowOverrides> {
-	const rows = await ctx.db
-		.query('workflowRowOverrides')
-		.withIndex('by_stack', (q) => q.eq('stackId', stackId))
-		.collect()
-	return {
-		pinned: rows.filter((r) => r.state === 'pinned').map((r) => r.rowId),
-		hidden: rows.filter((r) => r.state === 'hidden').map((r) => r.rowId),
-	}
-}
-
 /** Every stored day row of one stack that carries a workflow block, across every machine. */
 export async function workflowDaysForStack(
 	ctx: QueryCtx | MutationCtx,
@@ -98,16 +82,17 @@ export async function workflowDaysForStack(
  * The kit's inputs for one machine: skills and MCP servers, per harness.
  *
  * The one component fact that does not travel in the workflow wire, because
- * inventory belongs to the payload. Names here were filtered on the machine
- * before they were sent, so nothing new is exposed by reading them.
+ * inventory is "latest per source" and lives on `measuredInventory`
+ * (ADR-0011). Names here were filtered on the machine before they were sent,
+ * so nothing new is exposed by reading them.
  */
-export function kitFromSnapshots(
-	snapshots: readonly Doc<'measuredSnapshots'>[]
+export function kitFromInventory(
+	rows: readonly Doc<'measuredInventory'>[]
 ): KitReading {
-	return snapshots.map((snapshot) => ({
-		harness: snapshot.harness,
-		skills: snapshot.payload.inventory.skills,
-		mcpServers: snapshot.payload.inventory.mcpServers,
+	return rows.map((row) => ({
+		harness: row.harness,
+		skills: row.inventory.skills,
+		mcpServers: row.inventory.mcpServers,
 	}))
 }
 
@@ -147,7 +132,6 @@ export type ReadWorkflowArgs = {
 	/** The newest row of that machine, for the clock and the aggregate version. */
 	newest: WorkflowDayRow
 	kit: KitReading
-	overrides: RowOverrides
 	/** Every synced session on this machine, gate-held harnesses included. */
 	sessionCount: number
 	/** Every synced harness on this machine, for the same reason. */
@@ -184,7 +168,7 @@ export function readWorkflowWindow(args: ReadWorkflowArgs): WorkflowWindowView {
 	const versions = phaseRuleVersions(section)
 	return {
 		section,
-		rows: placeRows(rows, args.overrides),
+		rows: placeRows(rows),
 		lead: buildLeadFacts({
 			reading: section,
 			sessionCount: args.sessionCount,

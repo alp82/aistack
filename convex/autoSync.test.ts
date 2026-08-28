@@ -308,7 +308,7 @@ test('a revoked stack refuses an automatic publish', async () => {
   // "off" is enforced by the server, not merely honored by the machine.
   expect(res.status).toBe(409)
   const snapshots = await t.run((ctx: MutationCtx) =>
-    ctx.db.query('measuredSnapshots').collect(),
+    ctx.db.query('measuredInventory').collect(),
   )
   expect(snapshots).toHaveLength(0)
 })
@@ -582,7 +582,7 @@ test('a revoke from the web stops the next automatic publish', async () => {
   // Nothing new was stored, and the reading from before the revoke is intact:
   // a revoke takes the permission, never the record.
   const snapshots = await t.run((ctx: MutationCtx) =>
-    ctx.db.query('measuredSnapshots').collect(),
+    ctx.db.query('measuredInventory').collect(),
   )
   expect(snapshots).toHaveLength(1)
   expect(await asCreator.query(api.autoSync.get, { stackId })).toEqual({

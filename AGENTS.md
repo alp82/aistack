@@ -168,13 +168,15 @@ The Workflow section on the stack page. Spec:
   `log-buckets/v1` histograms, and NO share, median or mean. The server folds a window
   (30 days, 7 days, or the last 24 hours) at read time and computes every row over the
   fold. A rule change is a server deploy and needs no re-sync.
-* **A reading is one machine's, per day** (ADR-0009). `measuredWorkflowDays` holds one
-  row per (stack, machine, date); a re-synced day REPLACES that day, days append across
-  syncs, and 400 days are kept per machine. Nothing merges two machines: the Git day
-  carries no commit identity.
+* **A reading is one machine's, per day** (ADR-0009). `measuredDays` holds one row per
+  (stack, machine, date) with both the usage and the workflow half (ADR-0010); a
+  re-synced day REPLACES that day, days append across syncs, and nothing prunes them
+  server-side. The window-free sets live on `measuredInventory`, one row per (stack,
+  machine, harness) (ADR-0011). Nothing merges two machines: the Git day carries no
+  commit identity.
 * **Fit is a number nothing ranks by** (#277). Rows come in the fixed order of
-  `WORKFLOW_ROW_ORDER`, pinned rows first, and the first three are the podium. There is
-  no rotation state, fit line or expander.
+  `WORKFLOW_ROW_ORDER`, and the first three are the podium. There is no rotation state,
+  no pins or hides, no fit line and no expander.
 * **No LLM anywhere** (ADR-0002). Every sentence the section prints comes from a fixed
   template over measured numbers.
 * The `publishWorkflow` bit is the consent gate, and it reads at BOTH ends: the CLI skips

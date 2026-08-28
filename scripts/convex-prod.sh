@@ -7,7 +7,7 @@
 #
 # Usage:
 #   scripts/convex-prod.sh data models --limit 20
-#   scripts/convex-prod.sh run measured:getCurrentByStackSlug '{"slug":"x-abc123"}'
+#   scripts/convex-prod.sh run measured:getUsageByStackSlug '{"slug":"x-abc123"}'
 #   scripts/convex-prod.sh env list
 set -euo pipefail
 

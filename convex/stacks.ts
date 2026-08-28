@@ -11,6 +11,7 @@ import { resolveLinkedResources, upsertResourcesForOwner } from './lib/resourceL
 import { normalizeProjectUrl } from './projects'
 import { assertValidAccentPreset } from './lib/iconUrl'
 import { resolveCreatorAvatarUrl } from './lib/avatar'
+import { inventoryForStack } from './lib/measuredDays'
 import { diffComposition, emitActivityEvent } from './activity'
 
 type ToolSubscriptionLike = {
@@ -208,8 +209,8 @@ export const listPublished = query({
       upvoteCount: v.number(),
       isLowQuality: v.optional(v.boolean()),
       // Newest activity of ANY kind: authored edits (stack.updatedAt) or a
-      // measured sync (snapshot receivedAt - server clock, since capturedAt is
-      // client-controlled). Syncs never bump stack.updatedAt, so the merge
+      // measured sync (inventory receivedAt - server clock, since capturedAt
+      // is client-controlled). Syncs never bump stack.updatedAt, so the merge
       // happens here.
       updatedAt: v.number(),
     })
@@ -264,11 +265,10 @@ export const listPublished = query({
 
         const resolvedAvatar = await resolveCreatorAvatarUrl(ctx, creator)
 
-        const latestSnapshot = await ctx.db
-          .query('measuredSnapshots')
-          .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', stack._id))
-          .order('desc')
-          .first()
+        const lastSyncAt = (await inventoryForStack(ctx, stack._id)).reduce(
+          (max, row) => Math.max(max, row.receivedAt),
+          0
+        )
 
         return {
           _id: stack._id,
@@ -294,7 +294,7 @@ export const listPublished = query({
           tools,
           upvoteCount: upvotes.length,
           isLowQuality: stack.isLowQuality,
-          updatedAt: Math.max(stack.updatedAt, latestSnapshot?.receivedAt ?? 0),
+          updatedAt: Math.max(stack.updatedAt, lastSyncAt),
         }
       })
     )

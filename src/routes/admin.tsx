@@ -67,7 +67,7 @@ export const Route = createFileRoute("/admin")({
 });
 
 /**
- * The done-bar of map #29, read straight off `measuredSnapshots`.
+ * The done-bar of map #29, read off `measuredInventory` (ADR-0011).
  *
  * Internal only, and deliberately not an event: with one user, telemetry would
  * say nothing that this query does not say exactly (#33 decision 13).

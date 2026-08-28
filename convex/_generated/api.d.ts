@@ -44,7 +44,6 @@ import type * as lib_knowledgeBasePublication from "../lib/knowledgeBasePublicat
 import type * as lib_machineOrdinals from "../lib/machineOrdinals.js";
 import type * as lib_mailer from "../lib/mailer.js";
 import type * as lib_measuredDays from "../lib/measuredDays.js";
-import type * as lib_measuredSets from "../lib/measuredSets.js";
 import type * as lib_modelLookup from "../lib/modelLookup.js";
 import type * as lib_names from "../lib/names.js";
 import type * as lib_reprice from "../lib/reprice.js";
@@ -70,6 +69,7 @@ import type * as migrations_20260823_news_phase1_sources from "../migrations/202
 import type * as migrations_20260826_workflow_daily_rows from "../migrations/20260826_workflow_daily_rows.js";
 import type * as migrations_20260827_merge_duplicate_models from "../migrations/20260827_merge_duplicate_models.js";
 import type * as migrations_20260828_measured_days from "../migrations/20260828_measured_days.js";
+import type * as migrations_20260829_retire_snapshots from "../migrations/20260829_retire_snapshots.js";
 import type * as migrations__archived_migrateBlockToReference from "../migrations/_archived/migrateBlockToReference.js";
 import type * as migrations__archived_migrateNotesToDescription from "../migrations/_archived/migrateNotesToDescription.js";
 import type * as migrations__archived_migrateStackDescriptions from "../migrations/_archived/migrateStackDescriptions.js";
@@ -141,7 +141,6 @@ declare const fullApi: ApiFromModules<{
   "lib/machineOrdinals": typeof lib_machineOrdinals;
   "lib/mailer": typeof lib_mailer;
   "lib/measuredDays": typeof lib_measuredDays;
-  "lib/measuredSets": typeof lib_measuredSets;
   "lib/modelLookup": typeof lib_modelLookup;
   "lib/names": typeof lib_names;
   "lib/reprice": typeof lib_reprice;
@@ -167,6 +166,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/20260826_workflow_daily_rows": typeof migrations_20260826_workflow_daily_rows;
   "migrations/20260827_merge_duplicate_models": typeof migrations_20260827_merge_duplicate_models;
   "migrations/20260828_measured_days": typeof migrations_20260828_measured_days;
+  "migrations/20260829_retire_snapshots": typeof migrations_20260829_retire_snapshots;
   "migrations/_archived/migrateBlockToReference": typeof migrations__archived_migrateBlockToReference;
   "migrations/_archived/migrateNotesToDescription": typeof migrations__archived_migrateNotesToDescription;
   "migrations/_archived/migrateStackDescriptions": typeof migrations__archived_migrateStackDescriptions;

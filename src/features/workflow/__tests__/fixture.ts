@@ -68,8 +68,6 @@ export function row(over: Partial<WorkflowRow> = {}): WorkflowRow {
 		surprise: 0.64,
 		fit: 0.86,
 		placement: "highlight",
-		pinned: false,
-		hidden: false,
 		...over,
 	};
 }

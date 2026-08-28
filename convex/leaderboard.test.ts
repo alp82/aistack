@@ -128,39 +128,101 @@ async function seedStack(
   })
 }
 
+/** The day wire a payload's models fold to: one UTC day, today unless dated. */
+function dayWireOf(p: ReturnType<typeof payload>, at: number) {
+  return {
+    aggregateVersion: 'measured-days/v1',
+    days: [
+      {
+        date: new Date(at).toISOString().slice(0, 10),
+        usage: {
+          harnesses: [
+            {
+              harness: p.harness.name,
+              sessions: p.activity.sessions,
+              projectKeys: ['AAAAAAAAAAAAAAAAAAAAAA'],
+              models: p.models.map((m) => ({
+                model: m.id,
+                tokens: m.tokens,
+                ...(m.apiEquivalentUSD === undefined
+                  ? {}
+                  : {
+                      usd: m.apiEquivalentUSD,
+                      pricingTable: p.pricingTable ?? 'anthropic-list-2026-07-25',
+                    }),
+              })),
+              subagentTokens: 0,
+              excludedTokens: { unpriced: 0, synthetic: 0 },
+            },
+          ],
+        },
+      },
+    ],
+  }
+}
+
 async function sync(
   t: Ctx,
   stackId: Id<'stacks'>,
   over: Parameters<typeof payload>[0] & { machine?: string } = {}
 ) {
   const { machine, ...rest } = over
+  const p = payload(rest)
+  const wire = dayWireOf(p, p.capturedAt)
+  // A real CLI ships every harness of a day in one publish, and a re-synced
+  // day REPLACES the row. Two `sync` calls on one day therefore merge here,
+  // the way the client's own day would carry both harnesses.
+  const day = wire.days[0]
+  const held = await t.run(async (ctx) =>
+    (await ctx.db.query('measuredDays').collect()).find(
+      (row) => row.stackId === stackId && row.machine === machine && row.date === day.date
+    )
+  )
+  for (const h of held?.usage?.harnesses ?? []) {
+    if (!day.usage.harnesses.some((mine) => mine.harness === h.harness)) {
+      day.usage.harnesses.push(h as (typeof day.usage.harnesses)[number])
+    }
+  }
   await t.mutation(internal.measured.publishSnapshot, {
     stackId,
-    payload: payload(rest),
+    payload: p,
     ...(machine === undefined ? {} : { machine }),
+    measuredDays: wire,
   })
 }
 
-/** A snapshot whose server clock is in the past - only a direct insert can. */
+/** A sync whose server clock is in the past - only a direct insert can. */
 async function staleSync(
   t: Ctx,
   stackId: Id<'stacks'>,
   receivedAgoMs: number,
   over: Parameters<typeof payload>[0] = {}
 ) {
-  const p = payload({
-    capturedAt: Date.now() - receivedAgoMs,
-    ...over,
-  })
+  const at = Date.now() - receivedAgoMs
+  const p = payload({ capturedAt: at, ...over })
+  const wire = dayWireOf(p, at)
   await t.run(async (ctx) => {
-    await ctx.db.insert('measuredSnapshots', {
+    await ctx.db.insert('measuredInventory', {
       stackId,
-      capturedAt: p.capturedAt,
-      receivedAt: Date.now() - receivedAgoMs,
-      schemaVersion: p.schemaVersion,
       harness: p.harness.name,
-      payload: p,
+      harnessVersion: p.harness.version,
+      capturedAt: at,
+      receivedAt: at,
+      inventory: p.inventory,
+      modelsSeen: p.models.map((m) => m.id).sort(),
+      pricingTable: p.pricingTable,
     })
+    for (const day of wire.days) {
+      await ctx.db.insert('measuredDays', {
+        stackId,
+        date: day.date,
+        capturedAt: at,
+        receivedAt: at,
+        aggregateVersion: wire.aggregateVersion,
+        fingerprint: `fp-${at}`,
+        usage: day.usage,
+      })
+    }
   })
 }
 
@@ -246,7 +308,7 @@ describe('leaderboard.get', () => {
     expect(board.quiet).toEqual({ count: 1, tokens: 700 })
   })
 
-  test('draws one point per sync, carrying the other harness forward', async () => {
+  test('draws one point per measured day, oldest first, summing harnesses', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
     const now = Date.now()
@@ -256,7 +318,7 @@ describe('leaderboard.get', () => {
       totalTokens: 100,
     })
     await sync(t, stackId, {
-      capturedAt: now - 1 * DAY,
+      capturedAt: now - 2 * DAY,
       harness: 'codex',
       totalTokens: 50,
     })
@@ -268,9 +330,9 @@ describe('leaderboard.get', () => {
 
     const board = await t.query(api.leaderboard.get, {})
     const row = board.rows[0]
-    expect(row.points.map((p) => p.tokens)).toEqual([100, 150, 170])
-    expect(row.syncCount).toBe(3)
-    expect(row.tokens).toBe(170)
+    expect(row.points.map((p) => p.tokens)).toEqual([150, 120])
+    expect(row.syncCount).toBe(2)
+    expect(row.tokens).toBe(270)
   })
 
   test('prices a row as a lower bound and obeys the publishCost flag', async () => {

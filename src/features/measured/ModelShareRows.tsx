@@ -1,8 +1,8 @@
 import HoverCard from "@/components/ui/hover-card";
 import { Sparkline } from "@/features/charts";
+import type { ModelTrail } from "@/features/usage/trails";
 import { cn } from "@/lib/utils";
 import { fmtDay, fmtShare, MONO_LABEL, readingsLine } from "./copy";
-import type { ModelTrail } from "./history";
 
 /**
  * Where the tokens went - one row per model, locked as variant I by #80.

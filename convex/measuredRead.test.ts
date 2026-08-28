@@ -2,7 +2,7 @@
 /**
  * The stack page's own read query (#217 fallout).
  *
- * WHY THIS FILE EXISTS. `getCurrentByStackSlug` is what section 01 calls on
+ * WHY THIS FILE EXISTS. `getUsageByStackSlug` is what section 01 calls on
  * every stack page, and until this file nothing called it in a test. #213 added
  * three fields to the wire and to storage - per-atom `calls`, the
  * `inventory.calls` denominators, and the `cacheWriteTtl` split - and widened
@@ -18,14 +18,14 @@
 import { convexTest } from 'convex-test'
 import { describe, expect, test } from 'vitest'
 import { api, internal } from './_generated/api'
-import type { Doc } from './_generated/dataModel'
-import schema from './schema'
+import type { Infer } from 'convex/values'
+import schema, { MeasuredPayload } from './schema'
 
 const modules = import.meta.glob('./**/*.{js,ts}')
 
 const USER = 'user_owner'
 
-type StoredPayload = Doc<'measuredSnapshots'>['payload']
+type StoredPayload = Infer<typeof MeasuredPayload>
 type PayloadV2 = Extract<StoredPayload, { schemaVersion: 2 }>
 
 /** A payload from a CLI that ships every #213 field. */
@@ -124,7 +124,7 @@ async function seedStack(t: Ctx) {
   })
 }
 
-describe('getCurrentByStackSlug reads what the CLI publishes', () => {
+describe('getUsageByStackSlug reads the inventory the CLI publishes', () => {
   test('answers a payload carrying every #213 field', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
@@ -133,12 +133,12 @@ describe('getCurrentByStackSlug reads what the CLI publishes', () => {
       payload: payloadWithCounts(),
     })
 
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
+    const current = await t.query(api.measured.getUsageByStackSlug, {
       slug: 'my-stack-sidread',
     })
 
     expect(current).not.toBeNull()
-    expect(current?.harnesses).toHaveLength(1)
+    expect(current?.inventory).toHaveLength(1)
   })
 
   test('carries the per-atom counts and their denominator through to the page', async () => {
@@ -151,10 +151,10 @@ describe('getCurrentByStackSlug reads what the CLI publishes', () => {
       payload: payloadWithCounts(),
     })
 
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
+    const current = await t.query(api.measured.getUsageByStackSlug, {
       slug: 'my-stack-sidread',
     })
-    const inventory = current?.harnesses[0]?.inventory
+    const inventory = current?.inventory[0]
 
     expect(inventory?.builtinTools[0]).toMatchObject({
       name: 'Bash',
@@ -163,24 +163,6 @@ describe('getCurrentByStackSlug reads what the CLI publishes', () => {
     expect(inventory?.calls?.builtinTools).toBe(31_745)
   })
 
-  test('carries the cache-write TTL split through to the page', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId } = await seedStack(t)
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payloadWithCounts(),
-    })
-
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: 'my-stack-sidread',
-    })
-
-    expect(current?.models[0]?.tokens.cacheWriteTtl).toEqual({
-      fiveMinute: 10,
-      oneHour: 20,
-      unsplit: 0,
-    })
-  })
 })
 
 describe('getReconcileSuggestions resolves authored slugs through aliases (#294)', () => {

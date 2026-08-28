@@ -18,6 +18,7 @@ import type { Infer } from 'convex/values'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import type { MeasuredDayWire, MeasuredPayload, WorkflowWire } from '../schema'
+import { sourceOrder, visibleSources } from './sources'
 import {
   MODEL_ID_MAX,
   NAME_MAX,
@@ -343,4 +344,17 @@ export async function inventoryForStack(
     .query('measuredInventory')
     .withIndex('by_stack', (q) => q.eq('stackId', stackId))
     .collect()
+}
+
+/**
+ * The inventory rows a stack currently publishes from, in source order.
+ *
+ * The table already holds one row per source, so the only fold left is the
+ * eviction rule in `convex/lib/sources.ts`: an untagged row of a harness that
+ * also has a tagged one is superseded, not merged.
+ */
+export function newestInventoryPerSource(
+  rows: readonly Doc<'measuredInventory'>[]
+): Doc<'measuredInventory'>[] {
+  return visibleSources(rows, (row) => row).sort(sourceOrder)
 }

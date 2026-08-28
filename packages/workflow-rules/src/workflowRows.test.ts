@@ -107,11 +107,8 @@ describe("buildWorkflowRows", () => {
 });
 
 describe("placeRows", () => {
-	test("the podium is the first three rows in the fixed order", () => {
-		const placed = placeRows(buildWorkflowRows({ reading: windowOf(), kit }), {
-			pinned: [],
-			hidden: [],
-		});
+	test("the podium is the first three rows in the fixed order, and nothing else marks a row", () => {
+		const placed = placeRows(buildWorkflowRows({ reading: windowOf(), kit }));
 		expect(
 			placed.filter((row) => row.placement === "highlight").map((r) => r.rowId),
 		).toEqual([
@@ -119,38 +116,13 @@ describe("placeRows", () => {
 			componentRowId("start-hours"),
 			metricRowId("late-night-commits"),
 		]);
-	});
-
-	test("pinned rows come first, in the fixed order, and take the podium", () => {
-		const placed = placeRows(buildWorkflowRows({ reading: windowOf(), kit }), {
-			pinned: [metricRowId("parallel-projects"), componentRowId("kit")],
-			hidden: [],
-		});
-		expect(placed.slice(0, 3).map((row) => row.rowId)).toEqual([
-			componentRowId("kit"),
-			metricRowId("parallel-projects"),
-			componentRowId("activity-heatmap"),
-		]);
-		expect(placed[0]?.pinned).toBe(true);
-		expect(placed[2]?.pinned).toBe(false);
-	});
-
-	test("a hidden row is marked, keeps its place, and takes no podium slot", () => {
-		const placed = placeRows(buildWorkflowRows({ reading: windowOf(), kit }), {
-			pinned: [],
-			hidden: [componentRowId("start-hours")],
-		});
-		const hidden = placed.find(
-			(row) => row.rowId === componentRowId("start-hours"),
+		expect(placed.map((row) => row.rowId)).toEqual(
+			[...placed]
+				.sort((a, b) => {
+					const order = WORKFLOW_ROW_ORDER.map((row) => row.rowId);
+					return order.indexOf(a.rowId) - order.indexOf(b.rowId);
+				})
+				.map((row) => row.rowId),
 		);
-		expect(hidden?.hidden).toBe(true);
-		expect(hidden?.placement).toBe("normal");
-		expect(
-			placed.filter((row) => row.placement === "highlight").map((r) => r.rowId),
-		).toEqual([
-			componentRowId("activity-heatmap"),
-			metricRowId("late-night-commits"),
-			componentRowId("phase-playbook"),
-		]);
 	});
 });

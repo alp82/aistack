@@ -6,41 +6,20 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+	activeDaysLine,
 	fmtTokens,
 	fmtUSD,
 	leadModelLine,
 	modelLabel,
-	totalUSD,
+	sessionsLine,
 } from "../copy";
-import { buildSnapshot, withoutCost } from "./fixture";
+
+const MODELS = [
+	{ id: "claude-fable-5", catalogName: null, tokenShare: 0.35 },
+	{ id: "claude-opus-5", catalogName: "Claude Opus 5", tokenShare: 0.3 },
+];
 
 describe("the dollar figure", () => {
-	it("adds up every priced model", () => {
-		// The real window: $5,840 at API prices across six models.
-		expect(totalUSD(buildSnapshot())).toBeCloseTo(5840.02, 2);
-	});
-
-	it("is absent when the sync withheld cost", () => {
-		expect(totalUSD(withoutCost())).toBeNull();
-	});
-
-	it("is absent when no table cites the figure", () => {
-		// A price the reader cannot date is a price we do not print. Without this
-		// the display would show dollars with no version beside them.
-		const base = buildSnapshot();
-		const s = buildSnapshot({
-			cost: base.cost && { ...base.cost, pricingTables: [] },
-		});
-		expect(s.models.some((m) => m.apiEquivalentUSD !== undefined)).toBe(true);
-		expect(totalUSD(s)).toBeNull();
-	});
-
-	it("never rounds an unpriceable window to zero", () => {
-		// The server returns no cost block at all when nothing carries a citable
-		// price, so there is no zero for the display to round to.
-		expect(totalUSD(buildSnapshot({ models: [], cost: null }))).toBeNull();
-	});
-
 	it("reads as dollars, not cents", () => {
 		expect(fmtUSD(5840.02)).toBe("$5,840");
 	});
@@ -48,17 +27,30 @@ describe("the dollar figure", () => {
 
 describe("a model the catalog has never heard of", () => {
 	it("renders its raw vendor id, and it is the biggest row", () => {
-		const s = buildSnapshot();
-		const lead = [...s.models].sort((a, b) => b.tokenShare - a.tokenShare)[0];
-		expect(lead.catalogSlug).toBeNull();
+		const lead = [...MODELS].sort((a, b) => b.tokenShare - a.tokenShare)[0];
 		expect(modelLabel(lead)).toBe("claude-fable-5");
-		expect(leadModelLine(s)).toBe("claude-fable-5 leads at 35%");
+		expect(leadModelLine({ models: MODELS })).toBe(
+			"claude-fable-5 leads at 35%",
+		);
 	});
 
 	it("renders the catalog name when there is one", () => {
-		const s = buildSnapshot();
-		const known = s.models.find((m) => m.id === "claude-opus-5");
-		expect(known && modelLabel(known)).toBe("Claude Opus 5");
+		expect(modelLabel(MODELS[1])).toBe("Claude Opus 5");
+	});
+
+	it("has no lead line without a model", () => {
+		expect(leadModelLine({ models: [] })).toBeNull();
+	});
+});
+
+describe("the hero lines", () => {
+	it("count sessions with the right number", () => {
+		expect(sessionsLine(1)).toBe("1 session");
+		expect(sessionsLine(382)).toBe("382 sessions");
+	});
+
+	it("state active days against the window", () => {
+		expect(activeDaysLine(22, 30)).toBe("22 of the last 30 days");
 	});
 });
 
