@@ -237,6 +237,37 @@ describe("the days path", () => {
 		expect(within(list).getByText("Codex")).toBeInTheDocument();
 	});
 
+	it("does not count a harness with no tokens in the range as measured", () => {
+		const current = reading();
+		setup({
+			usage: usage({
+				current: {
+					...current,
+					harnesses: [
+						{
+							harness: "claude-code",
+							sessions: 0,
+							totalTokens: 0,
+							tokenShare: 0,
+						},
+						{
+							harness: "codex",
+							sessions: 20,
+							totalTokens: 100_000_000,
+							tokenShare: 1,
+						},
+					],
+				},
+			}),
+		});
+		fireEvent.click(screen.getByRole("tab", { name: /Harness/ }));
+		expect(screen.getByText("harness measured")).toBeInTheDocument();
+		expect(screen.queryByText("harnesses measured")).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole("list", { name: "Harness token shares" }),
+		).not.toBeInTheDocument();
+	});
+
 	it("says when the range holds no day", () => {
 		setup({ usage: usage({ current: null, previous: null }) });
 		expect(
