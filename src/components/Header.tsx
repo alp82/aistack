@@ -106,6 +106,7 @@ export default function Header() {
 	const avatarUrl = session.data?.user?.image;
 
 	// Reset error state when avatar URL changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the URL change is the reset signal.
 	useEffect(() => {
 		setAvatarError(false);
 	}, [avatarUrl]);
@@ -353,6 +354,14 @@ export default function Header() {
 												<Laptop className="size-3.5" />
 												Machines
 											</Link>
+											<Link
+												to="/link/discord"
+												onClick={() => setMenuOpen(false)}
+												className="flex w-full items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-wide text-fg-secondary transition-colors hover:bg-bg-panel-muted hover:text-fg-primary"
+											>
+												<DiscordIcon />
+												Discord
+											</Link>
 											<button
 												type="button"
 												onClick={handleSignOut}
@@ -524,6 +533,14 @@ export default function Header() {
 											Share Stack
 										</Link>
 									) : null}
+									<Link
+										to="/link/discord"
+										onClick={() => setMobileMenuOpen(false)}
+										className="inline-flex items-center gap-2 border-2 border-stroke-strong bg-bg-panel px-3 py-2 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
+									>
+										<DiscordIcon />
+										Discord
+									</Link>
 									<button
 										type="button"
 										onClick={() => {
