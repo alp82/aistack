@@ -21,6 +21,7 @@
 // The harness rows and the stat boxes travel as ITEMS alongside the workflow
 // rows, so every grouping can place them.
 
+import { useSearch } from "@tanstack/react-router";
 import { type ReactNode, useState } from "react";
 import {
 	fmtTokens,
@@ -314,7 +315,12 @@ export function Shell({
 	groups: Group[];
 	children: (items: Item[], group: Group, all: Map<string, Item>) => ReactNode;
 }) {
-	const [tab, setTab] = useState(groups[0].id);
+	const search = useSearch({ strict: false }) as { tab?: string };
+	const [tab, setTab] = useState(
+		groups.some((g) => g.id === search.tab)
+			? (search.tab as string)
+			: groups[0].id,
+	);
 	const items = buildItems(p, stackToolSlugs);
 	const group = groups.find((g) => g.id === tab) ?? groups[0];
 	const ready = !!p.view && p.view.window.days > 0;
@@ -362,6 +368,7 @@ export const TOPIC: Group[] = [
 		label: "Code",
 		ids: [
 			"stat:projects",
+			"stat:sessions",
 			"component:git-ledger",
 			"component:coding-languages",
 			"metric:parallel-projects",
@@ -371,27 +378,25 @@ export const TOPIC: Group[] = [
 		id: "models",
 		label: "Models",
 		ids: [
-			"harness",
-			"stat:cache-hits",
 			"component:model-routing",
 			"metric:effort-levels",
 			"metric:thinking-share",
 		],
 	},
 	{
-		id: "kit",
-		label: "Kit",
+		id: "harness",
+		label: "Harness",
 		ids: [
-			"stat:subagents",
-			"component:kit",
 			"component:delegation",
-			"metric:web-searches-per-active-day",
+			"harness",
+			"stat:cache-hits",
+			"stat:subagents",
 		],
 	},
 	{
-		id: "sessions",
-		label: "Sessions",
-		ids: ["stat:sessions", "metric:question-back-share"],
+		id: "skills",
+		label: "Skills",
+		ids: ["component:kit", "metric:web-searches-per-active-day"],
 	},
 ];
 

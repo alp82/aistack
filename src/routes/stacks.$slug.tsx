@@ -134,9 +134,10 @@ export const Route = createFileRoute("/stacks/$slug")({
 	// PROTOTYPE #303: all-optional, so no Link is forced to pass `search`.
 	validateSearch: (
 		search: Record<string, unknown>,
-	): { variant?: VariantKey; view?: string } => ({
+	): { variant?: VariantKey; view?: string; tab?: string } => ({
 		...(isVariantKey(search.variant) ? { variant: search.variant } : {}),
 		...(typeof search.view === "string" ? { view: search.view } : {}),
+		...(typeof search.tab === "string" ? { tab: search.tab } : {}),
 	}),
 	component: StackDetailsPage,
 	loader: async ({ context, params }) => {

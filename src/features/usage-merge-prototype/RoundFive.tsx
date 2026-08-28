@@ -192,12 +192,23 @@ function packU(w: VariantProps["p"]["window"]) {
 				<ChartCard
 					it={feature}
 					window={w}
-					className="md:col-span-2 md:row-span-2"
+					className={
+						side.length === 0 ? "md:col-span-3" : "md:col-span-2 md:row-span-2"
+					}
 				/>
-				{side.map((it) => (
-					<Cell key={it.id} it={it} span={1} window={w} />
-				))}
-				{side.length < 2 && <div className="bg-bg-canvas md:row-span-1" />}
+				{side.map((it) =>
+					side.length === 1 ? (
+						<ChartCard
+							key={it.id}
+							it={it}
+							window={w}
+							big={false}
+							className="md:col-span-1 md:row-span-2"
+						/>
+					) : (
+						<Cell key={it.id} it={it} span={1} window={w} />
+					),
+				)}
 				{cells.map(({ it, span }) => (
 					<Cell key={it.id} it={it} span={span} window={w} />
 				))}
@@ -239,11 +250,15 @@ function packV(w: VariantProps["p"]["window"]) {
 						}
 					/>
 					{pair.map((it) => (
-						<StatCell key={it.id} it={it} className="md:col-span-1" />
+						<StatCell
+							key={it.id}
+							it={it}
+							className={cn(
+								"md:col-span-1",
+								pair.length === 1 && "md:row-span-2",
+							)}
+						/>
 					))}
-					{pair.length === 1 && (
-						<StatCell it={pair[0]} className="md:col-span-1 opacity-0" />
-					)}
 				</div>,
 			);
 			if (i < charts.length - 1)
@@ -378,8 +393,8 @@ const PER_TAB: Record<string, "U" | "V" | "X"> = {
 	time: "U",
 	code: "V",
 	models: "U",
-	kit: "X",
-	sessions: "U",
+	harness: "U",
+	skills: "X",
 };
 
 export const VariantY = {

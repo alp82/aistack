@@ -128,9 +128,9 @@ function fakeDelta(value: number): number {
 }
 
 const PREV_LABEL: Record<WindowId, string> = {
-	"30d": "vs 60-30 days ago",
+	"30d": "vs the 30 days before",
 	"7d": "vs the 7 days before",
-	"24h": "vs yesterday",
+	"24h": "vs the day before",
 };
 
 export function Delta({ value, window }: { value: number; window: WindowId }) {
