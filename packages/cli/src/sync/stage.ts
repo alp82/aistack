@@ -16,6 +16,12 @@
 
 import { createHash } from "node:crypto";
 import {
+	MEASURED_DAYS_V1,
+	type MeasuredDay,
+	type UsageHarnessDay,
+} from "@aistack/workflow-rules";
+import { fetchDayManifest } from "../api.js";
+import {
 	getProjectWorkspaceId,
 	getSettings,
 	getToken,
@@ -30,6 +36,7 @@ import {
 	type SyncConfig,
 } from "../harness/shared/allowlist.js";
 import {
+	applyDayConsent,
 	type BuiltPayload,
 	buildPayload,
 	buildSyncBody,
@@ -43,14 +50,28 @@ import {
 	windowStartMs,
 } from "../harness/shared/window.js";
 import type { HarnessAdapter } from "../harness/types.js";
+import {
+	buildMeasuredDays,
+	buildUsageDays,
+	mergeUsageDays,
+} from "../usage/days.js";
+import {
+	type DayManifest,
+	type DaySelection,
+	MAX_DAY_WINDOW,
+	selectDaysToPublish,
+} from "../usage/diff.js";
 import { CLI_VERSION } from "../version.js";
 import {
 	extractLocalWorkflow,
 	type GitWorkflowRunner,
 	type LocalHarnessWorkflow,
+	machineUtcOffsetMinutes,
 	type WorkflowExtraction,
 } from "../workflow/index.js";
 import { buildGateDialog, buildGateSummary } from "./summary.js";
+
+const utcDate = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
 
 export type StagedSend = {
 	/** Content-derived: the sha256 prefix of `bodyJson`. Same bytes, same id. */
@@ -70,6 +91,11 @@ export type StagedSend = {
 	 * so no token and no resolved stack both block here, before any dialog.
 	 */
 	blockedReason: string | null;
+	/**
+	 * How the day rows were chosen (#307): the counts the gate prints and the
+	 * mode, `diff` against a manifest or `full` when there was none.
+	 */
+	days?: DaySelection;
 };
 
 export type StageDeps = {
@@ -85,6 +111,14 @@ export type StageDeps = {
 	adaptersImpl?: (sinceMs: number) => Promise<HarnessAdapter[]>;
 	/** Override the Git reader the workflow extraction shells out to. Tests only. */
 	gitRunnerImpl?: GitWorkflowRunner;
+	/**
+	 * Override the manifest fetch (#307). `null` means the server has none.
+	 * A throw is caught and reads the same: the whole window goes.
+	 */
+	fetchManifestImpl?: (
+		baseUrl: string,
+		token: string,
+	) => Promise<DayManifest | null>;
 	getSettingsImpl?: () => Settings;
 	windowDays?: number;
 	/**
@@ -106,11 +140,30 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	const windowDays = deps.windowDays ?? DEFAULT_WINDOW_DAYS;
 	const projectWorkspaceId =
 		deps.getProjectWorkspaceIdImpl ?? getProjectWorkspaceId;
+	const fetchManifest = deps.fetchManifestImpl ?? fetchDayManifest;
 
 	const { config, source } = await loadConfig({
 		baseUrl: deps.baseUrl,
 		...(token ? { token } : {}),
 	});
+
+	// The server's day manifest (#307, ADR-0010): which dates it holds and with
+	// what fingerprint. Missing (an old server) or failing (network) reads as
+	// "send the whole window"; a publish that repeats a held date is correct,
+	// only wasteful. The manifest also names the retention, which bounds how
+	// far back the day scan reaches.
+	let manifest: DayManifest | null = null;
+	if (token) {
+		try {
+			manifest = await fetchManifest(deps.baseUrl, token);
+		} catch {
+			manifest = null;
+		}
+	}
+	const retentionDays = Math.max(
+		1,
+		Math.min(manifest?.retentionDays ?? MAX_DAY_WINDOW, MAX_DAY_WINDOW),
+	);
 
 	const built: BuiltPayload[] = [];
 	const scanStats: Record<string, ScanStats> = {};
@@ -118,15 +171,20 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	// property of the machine, not of whichever harness opened the repository,
 	// and the metric rows are computed across every synced harness at once.
 	const workflowScans: LocalHarnessWorkflow[] = [];
-	// One window start for detection AND for the scan (#101), so a harness that
-	// counts as detected is exactly a harness with something in the window.
+	const usageScans: Map<string, UsageHarnessDay>[] = [];
+	// One window start for detection AND for the snapshot scan (#101), so a
+	// harness that counts as detected is exactly a harness with something in
+	// the window.
 	const sinceMs = windowStartMs(now, windowDays);
-	for (const adapter of await adapters(sinceMs)) {
-		const { aggregate, stats, workflow, workflowLocal } = await adapter.scan({
-			sinceMs,
-		});
+	// The day scan reaches the whole retention (#307): the snapshot stays a
+	// 30-day block until its readers retire, while the day rows cover every
+	// date the server would keep. Two scans over the same files; the second is
+	// the one the days and the workflow blocks come from.
+	const daysSinceMs = windowStartMs(now, retentionDays);
+	const active = await adapters(sinceMs);
+	for (const adapter of active) {
+		const { aggregate, stats } = await adapter.scan({ sinceMs });
 		scanStats[adapter.name] = stats;
-		workflowScans.push({ aggregate: workflow, local: workflowLocal });
 		built.push(
 			buildPayload({
 				aggregate,
@@ -136,6 +194,20 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 				windowDays,
 				harnessName: adapter.name,
 				builtinTools: adapter.builtinTools,
+				projectWorkspaceId,
+			}),
+		);
+	}
+	for (const adapter of active) {
+		const { aggregate, workflow, workflowLocal } = await adapter.scan({
+			sinceMs: daysSinceMs,
+		});
+		workflowScans.push({ aggregate: workflow, local: workflowLocal });
+		usageScans.push(
+			buildUsageDays({
+				harness: adapter.name,
+				aggregate,
+				publishCost: config.publishCost,
 				projectWorkspaceId,
 			}),
 		);
@@ -158,18 +230,43 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		workflowScans.length > 0 && config.publishWorkflow
 			? extractLocalWorkflow({
 					harnesses: workflowScans,
-					fromMs: sinceMs,
+					fromMs: daysSinceMs,
 					toMs: now,
 					...(deps.gitRunnerImpl ? { run: deps.gitRunnerImpl } : {}),
 				})
 			: undefined;
+
+	// The day rows (#307): usage and workflow joined by date, consent applied
+	// BEFORE the fingerprint so the hash is over the bytes that go, then diffed
+	// against the manifest. Today always resends.
+	const localDays: MeasuredDay[] = applyDayConsent(
+		buildMeasuredDays({
+			usage: mergeUsageDays(usageScans),
+			...(workflow ? { workflow: workflow.days } : {}),
+			from: utcDate(daysSinceMs),
+			to: utcDate(now),
+		}),
+		config,
+	);
+	const days = selectDaysToPublish({
+		local: localDays,
+		manifest,
+		todayUtc: utcDate(now),
+	});
 
 	const body = buildSyncBody(
 		built,
 		config,
 		settings.autoSync,
 		deps.trigger,
-		workflow,
+		active.length > 0
+			? {
+					aggregateVersion: MEASURED_DAYS_V1,
+					utcOffsetMinutes:
+						workflow?.utcOffsetMinutes ?? machineUtcOffsetMinutes(),
+					days: days.send,
+				}
+			: undefined,
 		CLI_VERSION,
 	);
 	const bodyJson = JSON.stringify(body);
@@ -182,6 +279,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		source,
 		baseUrl: deps.baseUrl,
 		scanStats,
+		days,
 		// The real terminal, so the inventory rows break where this window ends
 		// (#217). A pipe reports nothing and the preview falls back to 80.
 		width: process.stdout.columns,
@@ -211,5 +309,6 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		token,
 		stagedAt: now,
 		blockedReason,
+		days,
 	};
 }

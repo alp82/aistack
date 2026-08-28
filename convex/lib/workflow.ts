@@ -5,7 +5,7 @@
  * ranked it. Ticket #285 replaced that with per-day rows (spec
  * `docs/specs/workflow-surface.md`, "The wire"): the CLI ships one row of
  * combinable atoms per UTC day, this module stores each row against
- * (stack, machine, date), and a read folds the rows inside a window and
+ * (stack, machine, date) in `measuredDays` (ADR-0010), and a read folds the rows inside a window and
  * computes every figure over the fold. The arithmetic is pure and lives in
  * `@aistack/workflow-rules`; this module holds only what needs the database.
  *
@@ -29,17 +29,12 @@ import type { Infer } from 'convex/values'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import type { WorkflowWire } from '../schema'
+import { measuredDaysForStack } from './measuredDays'
 
 export type StoredWire = Infer<typeof WorkflowWire>
 
-/**
- * How many days of one machine's history a stack keeps.
- *
- * Long enough that a 30-day window is never short a day, with a year's slack
- * for a later, longer window. A day past it is deleted at the next sync of
- * that machine, so the table cannot grow without bound.
- */
-export const WORKFLOW_RETENTION_DAYS = 400
+/** A `measuredDays` row that carries a workflow block. */
+export type WorkflowDayRow = Doc<'measuredDays'> & { workflow: WorkflowDay }
 
 export const utcDayOf = (ms: number): string =>
 	new Date(ms).toISOString().slice(0, 10)
@@ -90,15 +85,13 @@ export async function rowOverridesForStack(
 	}
 }
 
-/** Every stored day row of one stack, across every machine. */
+/** Every stored day row of one stack that carries a workflow block, across every machine. */
 export async function workflowDaysForStack(
 	ctx: QueryCtx | MutationCtx,
 	stackId: Id<'stacks'>
-): Promise<Doc<'measuredWorkflowDays'>[]> {
-	return await ctx.db
-		.query('measuredWorkflowDays')
-		.withIndex('by_stack', (q) => q.eq('stackId', stackId))
-		.collect()
+): Promise<WorkflowDayRow[]> {
+	const rows = await measuredDaysForStack(ctx, stackId)
+	return rows.filter((row): row is WorkflowDayRow => row.workflow !== undefined)
 }
 
 /**
@@ -116,74 +109,6 @@ export function kitFromSnapshots(
 		skills: snapshot.payload.inventory.skills,
 		mcpServers: snapshot.payload.inventory.mcpServers,
 	}))
-}
-
-export type StoreWorkflowArgs = {
-	stackId: Id<'stacks'>
-	machine: string | undefined
-	wire: StoredWire
-	capturedAt: number
-	receivedAt: number
-	cliVersion: string | undefined
-}
-
-/**
- * Store one machine's days: a re-synced day replaces that day, a new day is
- * appended, and days past retention leave.
- *
- * REPLACE PER DAY, NEVER MERGE. The CLI re-reads its whole window on every
- * sync, so the row it sends for a date is the complete reading of that date
- * as the machine now sees it. Adding it to the stored row would double-count
- * every session the machine still holds.
- */
-export async function storeWorkflowDays(
-	ctx: MutationCtx,
-	args: StoreWorkflowArgs
-): Promise<{ replaced: number; inserted: number; expired: number }> {
-	let replaced = 0
-	let inserted = 0
-	for (const day of args.wire.days) {
-		const existing = await ctx.db
-			.query('measuredWorkflowDays')
-			.withIndex('by_stack_machine_date', (q) =>
-				q
-					.eq('stackId', args.stackId)
-					.eq('machine', args.machine)
-					.eq('date', day.date)
-			)
-			.first()
-		const doc = {
-			stackId: args.stackId,
-			...(args.machine === undefined ? {} : { machine: args.machine }),
-			date: day.date,
-			capturedAt: args.capturedAt,
-			receivedAt: args.receivedAt,
-			...(args.cliVersion === undefined ? {} : { cliVersion: args.cliVersion }),
-			aggregateVersion: args.wire.aggregateVersion,
-			...(args.wire.utcOffsetMinutes === undefined
-				? {}
-				: { utcOffsetMinutes: args.wire.utcOffsetMinutes }),
-			day,
-		}
-		if (existing) {
-			await ctx.db.replace(existing._id, doc)
-			replaced++
-		} else {
-			await ctx.db.insert('measuredWorkflowDays', doc)
-			inserted++
-		}
-	}
-
-	const cutoff = utcDayOf(args.receivedAt - WORKFLOW_RETENTION_DAYS * DAY_MS)
-	const stale = await ctx.db
-		.query('measuredWorkflowDays')
-		.withIndex('by_stack_machine_date', (q) =>
-			q.eq('stackId', args.stackId).eq('machine', args.machine).lt('date', cutoff)
-		)
-		.collect()
-	for (const row of stale) await ctx.db.delete(row._id)
-
-	return { replaced, inserted, expired: stale.length }
 }
 
 /** An empty window in the shape a full one has, for a machine with no day inside it. */
@@ -218,9 +143,9 @@ export function emptyWorkflowWindow(
 
 export type ReadWorkflowArgs = {
 	/** One machine's day rows inside the window. */
-	rows: readonly Doc<'measuredWorkflowDays'>[]
+	rows: readonly WorkflowDayRow[]
 	/** The newest row of that machine, for the clock and the aggregate version. */
-	newest: Doc<'measuredWorkflowDays'>
+	newest: WorkflowDayRow
 	kit: KitReading
 	overrides: RowOverrides
 	/** Every synced session on this machine, gate-held harnesses included. */
@@ -246,7 +171,7 @@ export type WorkflowWindowView = {
  * zones renders every hour at the offset it last published.
  */
 export function readWorkflowWindow(args: ReadWorkflowArgs): WorkflowWindowView {
-	const days: WorkflowDay[] = args.rows.map((row) => row.day)
+	const days: WorkflowDay[] = args.rows.map((row) => row.workflow)
 	const section =
 		foldWorkflowDays(days, {
 			aggregateVersion: args.newest.aggregateVersion,

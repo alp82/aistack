@@ -48,6 +48,8 @@ import {
 	bump,
 	countsTotal,
 	createAggregate as createSharedAggregate,
+	noteProjectDay,
+	noteSessionStart,
 	type Aggregate as SharedAggregate,
 } from "../shared/aggregate.js";
 
@@ -151,7 +153,8 @@ export function ingestEntry(
 		agg.firstTs = agg.firstTs === null ? tsMs : Math.min(agg.firstTs, tsMs);
 		agg.lastTs = agg.lastTs === null ? tsMs : Math.max(agg.lastTs, tsMs);
 	}
-	noteActivity(agg, state);
+	noteActivity(agg, state, tsMs);
+	noteProjectDay(agg, state.cwd ?? "(unknown)", tsMs);
 
 	if (role === "assistant" && message) {
 		agg.assistantRecords++;
@@ -212,7 +215,12 @@ export function ingestEntry(
 }
 
 /** Count the file's session and cwd once, on its first in-window entry. */
-function noteActivity(agg: Aggregate, state: FileState): void {
+function noteActivity(
+	agg: Aggregate,
+	state: FileState,
+	tsMs: number | null,
+): void {
+	if (state.sessionId) noteSessionStart(agg, state.sessionId, tsMs);
 	if (state.counted) return;
 	state.counted = true;
 	if (state.sessionId) agg.sessions.add(state.sessionId);
@@ -260,6 +268,8 @@ function countUsage(
 		key,
 		counts,
 		priceable ? apiEquivalentCost(key, counts, tsMs) : null,
+		1,
+		{ tsMs },
 	);
 	// pi has no subagents by vendor design - everything is the main thread,
 	// which keeps `subagentShare` an honest 0 (same case as Codex).

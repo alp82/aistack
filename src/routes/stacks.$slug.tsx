@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { JsonLd } from "@/components/JsonLd";
 import type { ModelItemData } from "@/components/ModelItem";
 import { ProjectsSection } from "@/components/ProjectsSection";
-import { MeasuredSection } from "@/features/measured/MeasuredSection";
 import {
 	type BundleLookupData,
 	EditorProvider,
@@ -27,15 +26,8 @@ import {
 } from "@/features/stack-view/pageOrder";
 import { StackHeader } from "@/features/stack-view/StackHeader";
 import { GuideSection, ToolsSection } from "@/features/stack-view/sections";
-// PROTOTYPE #303 (throwaway): `?variant=A|B|C` swaps sections 01 and 04.
-import {
-	isVariantKey,
-	UsageMergePrototype,
-	type VariantKey,
-} from "@/features/usage-merge-prototype/UsageMergePrototype";
+import { UsageSection } from "@/features/usage/UsageSection";
 import { StackViewsLine } from "@/features/view-analytics/StackViewsLine";
-import { workflowNavStat } from "@/features/workflow/navStat";
-import { WorkflowSection } from "@/features/workflow/WorkflowSection";
 import { formatPricingSummary } from "@/lib/pricing";
 import { SITE_URL, seoMeta } from "@/lib/seo";
 import { useRecordView } from "@/lib/useRecordView";
@@ -131,26 +123,22 @@ function ViewLookupDataSync({
 }
 
 export const Route = createFileRoute("/stacks/$slug")({
-	// PROTOTYPE #303: all-optional, so no Link is forced to pass `search`.
-	validateSearch: (
-		search: Record<string, unknown>,
-	): { variant?: VariantKey; view?: string; tab?: string } => ({
-		...(isVariantKey(search.variant) ? { variant: search.variant } : {}),
-		...(typeof search.view === "string" ? { view: search.view } : {}),
-		...(typeof search.tab === "string" ? { tab: search.tab } : {}),
-	}),
 	component: StackDetailsPage,
 	loader: async ({ context, params }) => {
-		// The workflow reading seeds the section and its nav stat for server rendering.
-		const [stack, workflow] = await Promise.all([
+		// The two measured reads seed section 01 and its nav stat for server
+		// rendering: the 30-day all-machines usage fold and the workflow rows.
+		const [stack, usage] = await Promise.all([
 			context.queryClient.ensureQueryData(
 				convexQuery(api.stacks.getBySlug, { slug: params.slug }),
+			),
+			context.queryClient.ensureQueryData(
+				convexQuery(api.measured.getUsageByStackSlug, { slug: params.slug }),
 			),
 			context.queryClient.ensureQueryData(
 				convexQuery(api.workflow.getWorkflowByStackSlug, { slug: params.slug }),
 			),
 		]);
-		return { stack, workflow };
+		return { stack, usage };
 	},
 	head: ({ loaderData }) => {
 		if (!loaderData?.stack) {
@@ -188,14 +176,12 @@ export const Route = createFileRoute("/stacks/$slug")({
 
 function StackDetailsPage() {
 	const { slug } = Route.useParams();
-	const { variant: protoVariant } = Route.useSearch();
 	const navigate = useNavigate();
 	const { isAuthenticated } = useConvexAuth();
 	// Falls back to the loader snapshot (same pattern as the landing page):
 	// the live query returns undefined until the Convex WebSocket delivers,
 	// and a wedged connection must show the SSR'd stack, not a loading state.
-	const { stack: loadedStack, workflow: loadedWorkflow } =
-		Route.useLoaderData();
+	const { stack: loadedStack, usage: loadedUsage } = Route.useLoaderData();
 	const stack = useQuery(api.stacks.getBySlug, { slug }) ?? loadedStack;
 	// Deduped daily visitors (#78). Counted on MOUNT and keyed by document id, so
 	// a slug rename keeps the page's history.
@@ -229,14 +215,14 @@ function StackDetailsPage() {
 	);
 
 	// THE NAV RESTATES WHAT THE SECTIONS SHOW (#217), so the page reads the same
-	// three queries its sections read, with the same arguments. The Convex client
-	// serves both callers from one subscription, and the shared answer is also
-	// what keeps the nav's figures and the sections' figures identical.
+	// queries section 01 reads at its default (30d, all machines). The Convex
+	// client serves both callers from one subscription, and the shared answer is
+	// what keeps the nav's figure and the section's figure identical.
 	const measuredSnapshot = useQuery(api.measured.getCurrentByStackSlug, {
 		slug,
 	});
-	const workflowReading =
-		useQuery(api.workflow.getWorkflowByStackSlug, { slug }) ?? loadedWorkflow;
+	const usage =
+		useQuery(api.measured.getUsageByStackSlug, { slug }) ?? loadedUsage;
 	const projects = useQuery(
 		api.projects.listByStack,
 		stack ? { stackId: stack._id } : "skip",
@@ -337,24 +323,24 @@ function StackDetailsPage() {
 		stack.hasUsageComponent,
 	);
 
-	// The locked order (#193, spec `docs/specs/workflow-surface.md`): Actual
-	// Usage 01, Projects 02, Tools 03, Workflow 04, Guide 05. Two of the five
-	// Tools renders only when it has content, so the NUMBER is the position among
-	// the sections that render. `buildPageSections` assigns it once, and both the
-	// nav and the sections take it from there.
+	// The settled order (spec `docs/specs/workflow-surface.md`): Actual Usage
+	// 01, Projects 02, Tools 03, Guide 04. Tools renders only when it has
+	// content, so the NUMBER is the position among the sections that render.
+	// `buildPageSections` assigns it once, and both the nav and the sections
+	// take it from there.
 	const sections = buildPageSections({
 		usage: {
 			present: true,
-			stat: usageStat(measuredSnapshot?.activity.totalTokens ?? null),
+			stat: usageStat(
+				usage?.hasDays && usage.current
+					? usage.current.totalTokens
+					: (measuredSnapshot?.activity.totalTokens ?? null),
+			),
 		},
 		projects: { present: true, stat: projectsStat(projects?.length ?? 0) },
 		tools: {
 			present: stack.tools.length > 0,
 			stat: toolsStat(stack.tools.length, stack.fixedTotal?.amount ?? 0),
-		},
-		workflow: {
-			present: true,
-			stat: workflowNavStat(workflowReading),
 		},
 		guide: { present: true, stat: guideStat(stack.description) },
 	});
@@ -417,27 +403,16 @@ function StackDetailsPage() {
 						}}
 					/>
 
-					{/* The journey (#40, reordered by #58, workflow placed by #217):
-					    Actual Usage 01 → Projects 02 → Tools 03 → Workflow 04 →
-					    Guide 05. What ran now literally comes first. */}
-					{protoVariant ? (
-						<UsageMergePrototype
-							index={1}
-							slug={stack.slug}
-							variant={protoVariant}
-							stackId={stack._id}
-							isOwner={upvoteStatus?.isOwner ?? false}
-							stackToolSlugs={stack.tools.map((t: ViewTool) => t.slug)}
-						/>
-					) : (
-						<MeasuredSection
-							index={numberOf("usage") ?? 1}
-							slug={stack.slug}
-							stackId={stack._id}
-							isOwner={upvoteStatus?.isOwner ?? false}
-							stackToolSlugs={stack.tools.map((t: ViewTool) => t.slug)}
-						/>
-					)}
+					{/* The journey (#40, reordered by #58, merged by #307): Actual
+					    Usage 01 → Projects 02 → Tools 03 → Guide 04. What ran now
+					    literally comes first. */}
+					<UsageSection
+						index={numberOf("usage") ?? 1}
+						slug={stack.slug}
+						stackId={stack._id}
+						isOwner={upvoteStatus?.isOwner ?? false}
+						stackToolSlugs={stack.tools.map((t: ViewTool) => t.slug)}
+					/>
 
 					<ProjectsSection
 						index={numberOf("projects") ?? 2}
@@ -461,17 +436,6 @@ function StackDetailsPage() {
 						fixedTotal={stack.fixedTotal}
 						onBundleClick={scrollToBundle}
 					/>
-
-					{/* PROTOTYPE #303: the merged section replaces 04 while a variant
-					    is on. Main's WorkflowSection handles its own empty states. */}
-					{!protoVariant && (
-						<WorkflowSection
-							index={numberOf("workflow") ?? 4}
-							slug={stack.slug}
-							stackId={stack._id}
-							isOwner={upvoteStatus?.isOwner ?? false}
-						/>
-					)}
 
 					<GuideSection
 						index={numberOf("guide") ?? 4}

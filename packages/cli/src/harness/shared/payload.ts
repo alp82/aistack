@@ -14,7 +14,8 @@
 //      "reveal" server-side, because nothing was transmitted.
 
 import { baseModelId, pricingTableFor } from "@aistack/pricing";
-import type { WorkflowDay } from "@aistack/workflow-rules";
+import type { MeasuredDay, WorkflowDay } from "@aistack/workflow-rules";
+import { MEASURED_DAYS_V1 } from "@aistack/workflow-rules";
 import type { WorkflowExtraction } from "../../workflow/index.js";
 import {
 	type Aggregate,
@@ -558,17 +559,22 @@ export type SyncBody = {
 	 */
 	trigger?: SyncTrigger;
 	/**
-	 * The measured workflow section (#213, spec "The wire"), one per sync.
+	 * The measured days (#307, ADR-0010): one row per UTC date holding the
+	 * usage half and the workflow half under ONE version, `measured-days/v1`.
+	 * Only the dates the server lacks or holds differently ride here, plus
+	 * today; the manifest decides.
 	 *
-	 * It rides BESIDE the payloads for two reasons a payload cannot answer: the
-	 * Git half is per machine, not per harness, and the metric rows are computed
-	 * across every synced harness at once. The closed payload validator is the
-	 * privacy claim (#33), and widening it to hold a section with a different
-	 * owner would spend that claim to save a nesting level.
-	 *
-	 * ABSENT WHEN `publishWorkflow` IS OFF. The switch is applied here, on the
-	 * machine, so refusing means the section never exists in the bytes and there
-	 * is nothing for a server to reveal.
+	 * It rides BESIDE the payloads for the reasons the workflow section did: the
+	 * Git half is per machine, not per harness, and the closed payload
+	 * validator is the privacy claim (#33). Each consent bit strips its own
+	 * half on the machine: `publishWorkflow` off means no day carries a
+	 * `workflow` block, `publishCost` off means no model carries `usd`.
+	 */
+	measuredDays?: PayloadMeasuredDays;
+	/**
+	 * The workflow section of the wire before #307. This CLI no longer sets it;
+	 * the workflow blocks ride inside `measuredDays`. The field stays so an old
+	 * body still type-checks.
 	 */
 	workflow?: PayloadWorkflow;
 	/**
@@ -594,7 +600,11 @@ export type PayloadWorkflow = {
 	days: WorkflowDay[];
 };
 
-/** Put the extraction on the wire. */
+/**
+ * Put an extraction on the legacy `workflow` body field. The CLI no longer
+ * sends that field (#307); this stays for the server-side contract test that
+ * checks the day shape against the validator.
+ */
 export function toPayloadWorkflow(
 	extraction: WorkflowExtraction,
 ): PayloadWorkflow {
@@ -603,6 +613,47 @@ export function toPayloadWorkflow(
 		utcOffsetMinutes: extraction.utcOffsetMinutes,
 		days: extraction.days,
 	};
+}
+
+/** The day rows on the wire (#307), plus the machine's clock. */
+export type PayloadMeasuredDays = {
+	aggregateVersion: typeof MEASURED_DAYS_V1;
+	/** Minutes EAST of UTC, as `PayloadWorkflow` carried it (#218). */
+	utcOffsetMinutes: number;
+	days: MeasuredDay[];
+};
+
+/**
+ * Apply both consent bits to the day rows. Idempotent and pure, so the stage
+ * runs it BEFORE fingerprinting (the fingerprint must hash the bytes that go)
+ * and `buildSyncBody` runs it again as the last line of defense.
+ *
+ * `publishWorkflow` off drops every `workflow` block. `publishCost` off drops
+ * `usd` and `pricingTable` from every model. A config the machine could not
+ * fetch reads as both off.
+ */
+export function applyDayConsent(
+	days: readonly MeasuredDay[],
+	syncConfig: Pick<SyncConfig, "publishCost" | "publishWorkflow">,
+): MeasuredDay[] {
+	return days.map((day) => {
+		const { workflow, usage, ...rest } = day;
+		const out: MeasuredDay = { ...rest };
+		if (usage) {
+			out.usage = syncConfig.publishCost
+				? usage
+				: {
+						harnesses: usage.harnesses.map((h) => ({
+							...h,
+							models: h.models.map(
+								({ usd: _usd, pricingTable: _table, ...model }) => model,
+							),
+						})),
+					};
+		}
+		if (workflow && syncConfig.publishWorkflow) out.workflow = workflow;
+		return out;
+	});
 }
 
 /** The two ways a sync can fire. Absent on an old CLI, and that reads as manual. */
@@ -652,24 +703,29 @@ export function buildSyncBody(
 	syncConfig: SyncConfig,
 	autoSync?: { enabled: boolean; frequencyHours: number },
 	trigger: SyncTrigger = "manual",
-	workflow?: WorkflowExtraction,
+	measuredDays?: PayloadMeasuredDays,
 	cliVersion?: string,
 ): SyncBody {
 	const payloads = built.map((b) => b.payload);
 	const base: SyncBody = autoSync
 		? { payloads, autoSync, trigger }
 		: { payloads, trigger };
-	// THE CONSENT GATE, APPLIED HERE (#213). Off means the section is not in the
-	// bytes, so it is not in the preview either and there is nothing server-side
-	// to withhold. Same shape as `reviewKeptPrivate` directly above, and same
-	// fail-closed default: a config the machine could not fetch reads as off.
-	const withWorkflow: SyncBody =
-		workflow && syncConfig.publishWorkflow
-			? { ...base, workflow: toPayloadWorkflow(workflow) }
-			: base;
+	// THE CONSENT GATES, APPLIED HERE TOO (#213, #307). The stage already
+	// stripped what the owner declined before it fingerprinted the days; this
+	// pass is idempotent and keeps the promise even for a caller that did not.
+	const withDays: SyncBody = measuredDays
+		? {
+				...base,
+				measuredDays: {
+					aggregateVersion: MEASURED_DAYS_V1,
+					utcOffsetMinutes: measuredDays.utcOffsetMinutes,
+					days: applyDayConsent(measuredDays.days, syncConfig),
+				},
+			}
+		: base;
 	const withVersion: SyncBody = cliVersion
-		? { ...withWorkflow, cliVersion }
-		: withWorkflow;
+		? { ...withDays, cliVersion }
+		: withDays;
 	if (!syncConfig.reviewKeptPrivate) return withVersion;
 	return {
 		...withVersion,

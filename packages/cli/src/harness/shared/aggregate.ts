@@ -150,7 +150,127 @@ export type Aggregate<Seen = unknown> = {
 
 	// adapter-owned dedup bookkeeping
 	seen: Map<string, Seen>;
+
+	// THE PER-DAY SEAM (#307, ADR-0010). The same response stream that fills
+	// the window totals above also lands in one bucket per UTC date here, so a
+	// fold over the days equals the window up to rounding. Nothing in these
+	// maps is a share or a mean: `usage/days.ts` turns them into the wire.
+	usageDays: Map<string, UsageDayAcc>;
+	/** Session id -> earliest in-window timestamp. A session belongs to the day it STARTED. */
+	sessionStarts: Map<string, number>;
 };
+
+/** One model's response sums inside one UTC day. */
+export type UsageDayModel = {
+	counts: TokenCounts;
+	/** Sum of the responses that had a citable rate at their own timestamp. */
+	costUSD: number;
+	/** Tokens of the responses that had none. Surfaced, never zeroed. */
+	unpricedTokens: number;
+};
+
+export type UsageDayAcc = {
+	models: Map<string, UsageDayModel>;
+	/** Tokens of sidechain (subagent) responses, all models. */
+	subagentTokens: number;
+	syntheticTokens: number;
+	/** Local project directories touched this day. Hashed before they leave. */
+	projectDirs: Set<string>;
+};
+
+export const utcDateOf = (ms: number): string =>
+	new Date(ms).toISOString().slice(0, 10);
+
+function usageDayAcc(agg: Aggregate<never> | Aggregate<unknown>, tsMs: number) {
+	const date = utcDateOf(tsMs);
+	let day = agg.usageDays.get(date);
+	if (!day) {
+		day = {
+			models: new Map(),
+			subagentTokens: 0,
+			syntheticTokens: 0,
+			projectDirs: new Set(),
+		};
+		agg.usageDays.set(date, day);
+	}
+	return day;
+}
+
+/**
+ * Land one response's tokens on the day of its own timestamp. `sign` is -1
+ * when an adapter retracts a response it counted before (Claude's dedup). An
+ * untimestamped response has no day and stays in the window totals only.
+ */
+export function noteUsageResponse(
+	agg: Aggregate<never> | Aggregate<unknown>,
+	response: {
+		tsMs: number | null;
+		modelKey: string;
+		counts: TokenCounts;
+		costUSD: number | null;
+		sidechain?: boolean;
+	},
+	sign: 1 | -1 = 1,
+): void {
+	if (response.tsMs === null) return;
+	const day = usageDayAcc(agg, response.tsMs);
+	let m = day.models.get(response.modelKey);
+	if (!m) {
+		m = {
+			counts: {
+				input: 0,
+				output: 0,
+				cacheWrite5m: 0,
+				cacheWrite1h: 0,
+				cacheWriteUnsplit: 0,
+				cacheRead: 0,
+			},
+			costUSD: 0,
+			unpricedTokens: 0,
+		};
+		day.models.set(response.modelKey, m);
+	}
+	const c = response.counts;
+	m.counts.input += sign * c.input;
+	m.counts.output += sign * c.output;
+	m.counts.cacheWrite5m += sign * c.cacheWrite5m;
+	m.counts.cacheWrite1h += sign * c.cacheWrite1h;
+	m.counts.cacheWriteUnsplit += sign * c.cacheWriteUnsplit;
+	m.counts.cacheRead += sign * c.cacheRead;
+	if (response.costUSD === null) m.unpricedTokens += sign * countsTotal(c);
+	else m.costUSD += sign * response.costUSD;
+	if (response.sidechain) day.subagentTokens += sign * countsTotal(c);
+}
+
+export function noteSyntheticTokens(
+	agg: Aggregate<never> | Aggregate<unknown>,
+	tsMs: number | null,
+	tokens: number,
+): void {
+	if (tsMs === null) return;
+	usageDayAcc(agg, tsMs).syntheticTokens += tokens;
+}
+
+/** Remember the earliest timestamp seen for a session: that is the day it started. */
+export function noteSessionStart(
+	agg: Aggregate<never> | Aggregate<unknown>,
+	sessionId: string,
+	tsMs: number | null,
+): void {
+	if (tsMs === null) return;
+	const held = agg.sessionStarts.get(sessionId);
+	if (held === undefined || tsMs < held) agg.sessionStarts.set(sessionId, tsMs);
+}
+
+/** A project belongs to every day it was touched. */
+export function noteProjectDay(
+	agg: Aggregate<never> | Aggregate<unknown>,
+	directory: string,
+	tsMs: number | null,
+): void {
+	if (tsMs === null) return;
+	usageDayAcc(agg, tsMs).projectDirs.add(directory);
+}
 
 export function createAggregate<Seen = unknown>(): Aggregate<Seen> {
 	return {
@@ -192,6 +312,8 @@ export function createAggregate<Seen = unknown>(): Aggregate<Seen> {
 		webSearchRequests: 0,
 		webFetchRequests: 0,
 		seen: new Map(),
+		usageDays: new Map(),
+		sessionStarts: new Map(),
 	};
 }
 
@@ -231,7 +353,21 @@ export function addModelUsage(
 	counts: TokenCounts,
 	costUSD: number | null,
 	messages = 1,
+	/**
+	 * Where the response sits in time, for the per-day seam (#307). An adapter
+	 * that passes nothing keeps the window totals right and lands no day.
+	 */
+	at?: { tsMs: number | null; sidechain?: boolean },
 ): void {
+	if (at) {
+		noteUsageResponse(agg, {
+			tsMs: at.tsMs,
+			modelKey,
+			counts,
+			costUSD,
+			...(at.sidechain ? { sidechain: true } : {}),
+		});
+	}
 	let m = agg.byModel.get(modelKey);
 	if (!m) {
 		m = emptyUsage();

@@ -180,10 +180,11 @@ The Workflow section on the stack page. Spec:
 * The `publishWorkflow` bit is the consent gate, and it reads at BOTH ends: the CLI skips
   the extraction when it is off, and `getWorkflowByStackSlug` returns null for days
   already stored. The presence of stored days is not consent.
-* **The section is `src/features/workflow`.** It renders what the server hands it and ranks
-  nothing: `placement`, `pinned` and `hidden` arrive computed, and a second ranking on the
-  page could disagree with the first. The two owner controls are pin and hide per row,
-  through `setWorkflowRowOverride`.
+* **The rows render inside Actual Usage, `src/features/usage` (#307).** There is no
+  Workflow section and the word appears nowhere on the page. The section renders what the
+  server hands it and ranks nothing; the rows sit in five fixed tabs under the token
+  headline. The owner has no per-row control: `setWorkflowRowOverride` has no consumer on
+  the web. `src/features/workflow` keeps the row bodies, heads and derivations.
 * **The playbook's tracks split on the median measured session, never on intent.** Nothing
   records what a session was for, so `playbook-rules/v1` names its two tracks the shorter
   and the longer sessions. A receipt card's head names both sides and claims no direction.
