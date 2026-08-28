@@ -697,7 +697,16 @@ export default defineSchema({
   })
     .index('by_slug', ['slug'])
     .index('by_userId', ['userId'])
+    .index('by_discordUserId', ['discordUserId'])
     .index('by_verified', ['verified']),
+
+  discordLinkTokens: defineTable({
+    tokenIdHash: v.string(),
+    discordUserId: v.string(),
+    expiresAt: v.number(),
+  })
+    .index('by_tokenIdHash', ['tokenIdHash'])
+    .index('by_expiresAt', ['expiresAt']),
 
   tools: defineTable({
     name: v.string(),

@@ -33,6 +33,7 @@ import { Route as StacksSlugRouteImport } from './routes/stacks.$slug'
 import { Route as SettingsMachinesRouteImport } from './routes/settings.machines'
 import { Route as SettingsAnalyticsRouteImport } from './routes/settings.analytics'
 import { Route as NewsSlugRouteImport } from './routes/news.$slug'
+import { Route as LinkDiscordRouteImport } from './routes/link.discord'
 import { Route as EmailPreferencesRouteImport } from './routes/email.preferences'
 import { Route as CliAuthRouteImport } from './routes/cli.auth'
 import { Route as ApiSyncConfigRouteImport } from './routes/api.sync-config'
@@ -171,6 +172,11 @@ const NewsSlugRoute = NewsSlugRouteImport.update({
   path: '/news/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LinkDiscordRoute = LinkDiscordRouteImport.update({
+  id: '/link/discord',
+  path: '/link/discord',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EmailPreferencesRoute = EmailPreferencesRouteImport.update({
   id: '/email/preferences',
   path: '/email/preferences',
@@ -277,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
   '/email/preferences': typeof EmailPreferencesRoute
+  '/link/discord': typeof LinkDiscordRoute
   '/news/$slug': typeof NewsSlugRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
@@ -320,6 +327,7 @@ export interface FileRoutesByTo {
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
   '/email/preferences': typeof EmailPreferencesRoute
+  '/link/discord': typeof LinkDiscordRoute
   '/news/$slug': typeof NewsSlugRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
@@ -364,6 +372,7 @@ export interface FileRoutesById {
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
   '/email/preferences': typeof EmailPreferencesRoute
+  '/link/discord': typeof LinkDiscordRoute
   '/news/$slug': typeof NewsSlugRoute
   '/settings/analytics': typeof SettingsAnalyticsRoute
   '/settings/machines': typeof SettingsMachinesRoute
@@ -409,6 +418,7 @@ export interface FileRouteTypes {
     | '/api/sync-config'
     | '/cli/auth'
     | '/email/preferences'
+    | '/link/discord'
     | '/news/$slug'
     | '/settings/analytics'
     | '/settings/machines'
@@ -452,6 +462,7 @@ export interface FileRouteTypes {
     | '/api/sync-config'
     | '/cli/auth'
     | '/email/preferences'
+    | '/link/discord'
     | '/news/$slug'
     | '/settings/analytics'
     | '/settings/machines'
@@ -495,6 +506,7 @@ export interface FileRouteTypes {
     | '/api/sync-config'
     | '/cli/auth'
     | '/email/preferences'
+    | '/link/discord'
     | '/news/$slug'
     | '/settings/analytics'
     | '/settings/machines'
@@ -539,6 +551,7 @@ export interface RootRouteChildren {
   ApiSyncConfigRoute: typeof ApiSyncConfigRoute
   CliAuthRoute: typeof CliAuthRoute
   EmailPreferencesRoute: typeof EmailPreferencesRoute
+  LinkDiscordRoute: typeof LinkDiscordRoute
   NewsSlugRoute: typeof NewsSlugRoute
   SettingsAnalyticsRoute: typeof SettingsAnalyticsRoute
   SettingsMachinesRoute: typeof SettingsMachinesRoute
@@ -732,6 +745,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NewsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/link/discord': {
+      id: '/link/discord'
+      path: '/link/discord'
+      fullPath: '/link/discord'
+      preLoaderRoute: typeof LinkDiscordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/email/preferences': {
       id: '/email/preferences'
       path: '/email/preferences'
@@ -886,6 +906,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSyncConfigRoute: ApiSyncConfigRoute,
   CliAuthRoute: CliAuthRoute,
   EmailPreferencesRoute: EmailPreferencesRoute,
+  LinkDiscordRoute: LinkDiscordRoute,
   NewsSlugRoute: NewsSlugRoute,
   SettingsAnalyticsRoute: SettingsAnalyticsRoute,
   SettingsMachinesRoute: SettingsMachinesRoute,

@@ -29,6 +29,14 @@ crons.interval(
   internal.cliSessions.cleanupExpiredSessions,
 )
 
+// Hourly Discord link cleanup. A user may request `/link` and never open the
+// 10-minute URL, so expired one-time rows need their own bounded cleanup.
+crons.interval(
+  'discord-link-cleanup',
+  { hours: 1 },
+  internal.discordLink.cleanupExpiredTokens,
+)
+
 // Nightly measured-snapshot downsample. Keeps every snapshot from the last 90
 // days and only the last of each UTC day beyond that, never deleting a stack's
 // newest row. See convex/measured.ts gcSnapshots for why downsampling beats a
