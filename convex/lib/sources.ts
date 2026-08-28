@@ -1,9 +1,10 @@
 /**
  * What counts as one reading of the measured layer.
  *
- * A SOURCE IS (harness, machine), NOT A HARNESS. `measuredSnapshots` is
- * append-only and "current" is a query for the newest row, so every surface has
- * to answer "newest of what?". Until #243 the answer was the harness alone,
+ * A SOURCE IS (harness, machine), NOT A HARNESS. `measuredInventory` holds one
+ * row per source (ADR-0011), and before it `measuredSnapshots` was append-only
+ * with "current" a query for the newest row, so every surface had to answer
+ * "newest of what?". Until #243 the answer was the harness alone,
  * which was right only while a stack had one machine: a second machine running
  * the same harness published a snapshot of its own rolling window and REPLACED
  * the first machine's reading instead of adding to it. Each machine measures a
@@ -24,7 +25,7 @@
  * reports. That resolves a stack on its next sync and needs no backfill.
  */
 
-/** The fields the rule reads. Both real columns on `measuredSnapshots`. */
+/** The fields the rule reads. Both real columns on `measuredInventory` and `measuredDays`. */
 export type SnapshotSource = {
   harness: string
   /** The publishing machine's name, absent on rows written before tagging. */

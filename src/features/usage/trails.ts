@@ -1,16 +1,37 @@
 /**
- * The days path's model rows: the current range's models, each with the share
- * it held in the previous period as its notch.
+ * The model rows: the current range's models, each with the share it held in
+ * the previous period as its notch.
  *
- * `modelTrails` in `src/features/measured/history.ts` draws the notch from the
- * FIRST SNAPSHOT of a series. Per-day rows have no snapshot series; what they
- * have is the fold of the range before this one, so the notch here marks the
- * previous period's share. The trail behind the hover card is those two points
- * and nothing else.
+ * The snapshot trail is gone (ADR-0011): per-day rows have no series of
+ * readings, what they have is the fold of the range before this one, so the
+ * notch marks the previous period's share. The trail behind the hover card is
+ * those two points and nothing else.
+ *
+ * Colors come from the shared chart module (#91): the model rows are a
+ * categorical set, so they wear the validated palette in slot order and never
+ * the page accent.
  */
 import type { ChartPointInput } from "@/features/charts";
 import { CHART_PAINTS, CHART_SLOT_COUNT } from "@/features/charts";
-import type { ModelTrail } from "@/features/measured/history";
+
+export type ModelTrail = {
+	/** The published vendor id, or `__rest` for the folded tail. */
+	readonly id: string;
+	/** The catalog name, falling back to the raw vendor id (#33 decision 3). */
+	readonly label: string;
+	/** The validated palette slot this row wears. */
+	readonly paint: string;
+	/** Share of tokens in the current range. */
+	readonly share: number;
+	/** Share in the previous period, where the notch sits. */
+	readonly first: number;
+	/** Share change across the two periods, in percentage points. */
+	readonly driftPoints: number;
+	/** True when there is a previous period and the share actually moved. */
+	readonly moved: boolean;
+	/** The two points, previous then current. */
+	readonly points: readonly ChartPointInput[];
+};
 
 const REST_ID = "__rest";
 const REST_LABEL = "everything else";

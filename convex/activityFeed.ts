@@ -3,8 +3,18 @@ import type { Id } from './_generated/dataModel'
 import type { QueryCtx } from './_generated/server'
 import { query } from './_generated/server'
 import type { ActivityEventValue } from './activity'
-import { newestPerSource } from './lib/sources'
-import { mergePayloadSets } from './lib/measuredSets'
+import {
+  foldUsageDays,
+  inDateRange,
+  rangeDates,
+  totalOfTokens,
+  type UsageDay,
+} from '@aistack/workflow-rules'
+import {
+  inventoryForStack,
+  measuredDaysForStack,
+  newestInventoryPerSource,
+} from './lib/measuredDays'
 import { ActivityEvent } from './schema'
 
 /**
@@ -23,12 +33,13 @@ import { ActivityEvent } from './schema'
  * filling the table with rows that can never be shown.
  *
  * MOVEMENT IS DERIVED, NOT STORED (#84). `alp synced 4.99B` is the same
- * sentence every day, because a snapshot is a rolling 30-day total. What is
+ * sentence every day, because a sync reports a rolling 30-day total. What is
  * news is the change, so a sync row carries the difference against that stack's
  * previous visible sync - computed across the rows the scan already walks, so
  * the table needs no delta column and no second index.
  *
- * Models, tools, and mergeable project sets come from `measuredSnapshots`.
+ * Projects and models come from the 30-day fold of `measuredDays`; tools come
+ * from `measuredInventory` (ADR-0011).
  * Sessions and tokens come from each stack's newest event in the band window.
  * Sessions and projects sum across stacks. Models and tools union, because two
  * people running Opus count as one model, and two people running Bash count as
@@ -262,17 +273,19 @@ async function scanFeed(
 
 /**
  * The rolling total this stack carried BEFORE the sync stamped `before`, read
- * from `measuredSnapshots` - or null when no earlier reading exists at all.
+ * from `measuredDays` - or null when no earlier reading exists at all.
  *
  * This is what makes "first reading" a fact (#129). `activityEvents` only
- * reaches back to #78, so a stack that synced nine times before that had every
- * one of those readings claimed as its first. The snapshots hold one immutable
- * row per approved sync since the stack began, and nothing prunes them.
+ * reaches back to #78, so a stack that synced before that would otherwise
+ * have that reading claimed as its first. A day row a sync did not touch keeps
+ * the `receivedAt` of the sync that wrote it, so the rows stamped strictly
+ * before this sync are the reading the stack carried into it. Their sum over
+ * the 30 UTC days ending on the sync's own day is the rolling total the
+ * previous sync reported.
  *
- * `receivedAt` is the server clock the event is stamped with, and every
- * snapshot of one batch shares it - so a strict `<` drops this sync's own rows
- * and keeps every earlier one. `capturedAt` is the client clock and cannot be
- * compared to an event timestamp at all.
+ * `receivedAt` is the server clock the event is stamped with, and every row of
+ * one publish shares it - so a strict `<` drops this sync's own rows and keeps
+ * every earlier one.
  *
  * One indexed read per parked row, which is at most one per distinct stack in
  * the walk - the same bound `usageFor` already pays for the band.
@@ -282,16 +295,21 @@ async function priorTotal(
   stackId: Id<'stacks'>,
   before: number
 ): Promise<number | null> {
-  const snapshots = await ctx.db
-    .query('measuredSnapshots')
-    .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', stackId))
-    .collect()
-  const earlier = snapshots.filter((row) => row.receivedAt < before)
-  if (earlier.length === 0) return null
-  return newestPerSource(earlier).reduce(
-    (sum, row) => sum + row.payload.activity.totalTokens,
-    0
+  const window = rangeDates('30d', before)
+  const earlier = (await measuredDaysForStack(ctx, stackId)).filter(
+    (row) =>
+      row.receivedAt < before &&
+      row.usage !== undefined &&
+      inDateRange(row.date, window)
   )
+  if (earlier.length === 0) return null
+  let total = 0
+  for (const row of earlier) {
+    for (const h of row.usage?.harnesses ?? []) {
+      for (const m of h.models) total += totalOfTokens(m.tokens)
+    }
+  }
+  return total
 }
 
 function toPublic(row: ScanRow) {
@@ -351,8 +369,9 @@ function pointsFor(
 }
 
 /**
- * The five measured numbers. Four are joined from `measuredSnapshots`; the
- * token level comes off the sync events, which already carry it.
+ * The five measured numbers. Projects and models are joined from the day fold,
+ * tools from the inventory; the token level comes off the sync events, which
+ * already carry it.
  *
  * The join is paid ONCE, here, for the whole band - which is exactly why the
  * rows below it stay on event-only facts (#84, #96). One indexed read per stack
@@ -390,24 +409,21 @@ async function usageFor(
     for (const harness of row.event.harnesses) {
       sessions += harness.sessions
     }
-    const snapshots = await ctx.db
-      .query('measuredSnapshots')
-      .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', row.stackId))
-      .collect()
-    const current = newestPerSource(snapshots)
-    projects += mergePayloadSets(
-      current.map((snapshot) => snapshot.payload),
-      'projects'
-    ).value
-    for (const snapshot of current) {
-      for (const model of snapshot.payload.models) {
-        // `unknown` is the CLI's spelling for tokens it could not attribute. It
-        // is not a model, so it never swells the count of them.
-        if (model.id !== 'unknown') models.add(model.id)
-      }
-      for (const tool of snapshot.payload.inventory.builtinTools) {
-        tools.add(tool.name)
-      }
+    const window = rangeDates('30d', row.at)
+    const days = (await measuredDaysForStack(ctx, row.stackId))
+      .filter((day) => day.usage !== undefined && inDateRange(day.date, window))
+      .map((day) => ({ date: day.date, usage: day.usage as UsageDay }))
+    const fold = foldUsageDays(days)
+    projects += fold.projectKeys.length
+    for (const model of fold.models) {
+      // `unknown` is the CLI's spelling for tokens it could not attribute. It
+      // is not a model, so it never swells the count of them.
+      if (model.model !== 'unknown') models.add(model.model)
+    }
+    for (const inventory of newestInventoryPerSource(
+      await inventoryForStack(ctx, row.stackId)
+    )) {
+      for (const tool of inventory.inventory.builtinTools) tools.add(tool.name)
     }
   }
 

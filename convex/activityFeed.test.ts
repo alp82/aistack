@@ -90,7 +90,14 @@ async function emit(
   })
 }
 
-/** A snapshot carrying the models and tools the band unions. */
+let projectCounter = 0
+const projectKey = () => `P${String(++projectCounter).padStart(21, '0')}`
+
+/**
+ * One measured day plus the inventory row it rode in with (ADR-0011): the
+ * day carries the tokens, sessions, models and project keys the band folds,
+ * the inventory row carries the tools it unions and the sync's server clock.
+ */
 async function snapshot(
   t: Ctx,
   stackId: Id<'stacks'>,
@@ -106,72 +113,74 @@ async function snapshot(
 ) {
   await t.run(async (ctx) => {
     const harness = over.harness ?? 'claude-code'
-    await ctx.db.insert('measuredSnapshots', {
+    const at = over.capturedAt ?? Date.now()
+    const date = new Date(at).toISOString().slice(0, 10)
+    const models = over.models ?? ['opus']
+    const total = over.totalTokens ?? 1000
+    const each = Math.floor(total / models.length)
+    const projectKeys =
+      over.projectKeys ??
+      Array.from({ length: over.projects ?? 2 }, () => projectKey()).sort()
+    await ctx.db.insert('measuredDays', {
       stackId,
-      capturedAt: over.capturedAt ?? Date.now(),
-      receivedAt: over.capturedAt ?? Date.now(),
-      schemaVersion: over.projectKeys ? 2 : 1,
-      harness,
-      payload: {
-        schemaVersion: over.projectKeys ? 2 : 1,
-        capturedAt: over.capturedAt ?? Date.now(),
-        window: { days: 30, from: '2026-07-05', to: '2026-08-03' },
-        harness: { name: harness, version: '1.0.0' },
-        pricingTable: null,
-        activity: over.projectKeys
-          ? {
-              sessions: 10,
-              activeDayDates: [
-                '2026-07-20',
-                '2026-07-21',
-                '2026-07-22',
-                '2026-07-23',
-                '2026-07-24',
-              ],
-              projectKeys: over.projectKeys,
-              totalTokens: over.totalTokens ?? 1000,
-              cacheHitShare: 0.9,
-              subagentShare: 0.1,
-            }
-          : {
-              sessions: 10,
-              activeDays: 5,
-              projects: over.projects ?? 2,
-              totalTokens: over.totalTokens ?? 1000,
-              cacheHitShare: 0.9,
-              subagentShare: 0.1,
-            },
-        models: (over.models ?? ['opus']).map((id) => ({
-          id,
-          tokenShare: 1,
-          tokens: { input: 1, output: 0, cacheWrite: 0, cacheRead: 0 },
-        })),
-        inventory: {
-          builtinTools: (over.tools ?? ['Bash']).map((name) => ({
-            name,
-            callShare: 1,
-          })),
-          mcpServers: [],
-          skills: [],
-          subagents: [],
-          slashCommands: [],
-          withheld: {
-            builtinTools: 0,
-            mcpServers: 0,
-            skills: 0,
-            subagents: 0,
-            slashCommands: 0,
+      date,
+      capturedAt: at,
+      receivedAt: at,
+      aggregateVersion: 'measured-days/v1',
+      fingerprint: `fp-${at}-${harness}`,
+      usage: {
+        harnesses: [
+          {
+            harness,
+            sessions: 10,
+            projectKeys,
+            models: models.map((id, index) => ({
+              model: id,
+              tokens: {
+                input: index === 0 ? total - each * (models.length - 1) : each,
+                output: 0,
+                cacheWrite: 0,
+                cacheRead: 0,
+              },
+            })),
+            subagentTokens: 0,
+            excludedTokens: { unpriced: 0, synthetic: 0 },
           },
-        },
-        coverage: {
-          filesScanned: 1,
-          filesUnreadable: 0,
-          linesParsed: 1,
-          linesFailed: 0,
-        },
-        excludedTokens: { unpriced: 0, synthetic: 0 },
+        ],
       },
     })
+    const existing = (await ctx.db.query('measuredInventory').collect()).find(
+      (row) =>
+        row.stackId === stackId && row.machine === undefined && row.harness === harness
+    )
+    const inventoryRow = {
+      stackId,
+      harness,
+      harnessVersion: '1.0.0',
+      capturedAt: at,
+      receivedAt: at,
+      inventory: {
+        builtinTools: (over.tools ?? ['Bash']).map((name) => ({
+          name,
+          callShare: 1,
+        })),
+        mcpServers: [],
+        skills: [],
+        subagents: [],
+        slashCommands: [],
+        withheld: {
+          builtinTools: 0,
+          mcpServers: 0,
+          skills: 0,
+          subagents: 0,
+          slashCommands: 0,
+        },
+      },
+      modelsSeen: [...models].sort(),
+      pricingTable: null,
+    }
+    if (existing && existing.receivedAt <= at) await ctx.db.replace(existing._id, inventoryRow)
+    else if (!existing) await ctx.db.insert('measuredInventory', inventoryRow)
   })
 }
 
@@ -335,24 +344,24 @@ describe('movement', () => {
   // showed nine readings over six days.
   // -------------------------------------------------------------------------
 
-  test('a sync with readings older than the events table is not a first reading', async () => {
+  test('a sync with days older than the events table is not a first reading', async () => {
     const t = convexTest(schema, modules)
     const stackId = await seedStack(t)
     const now = Date.now()
-    // Three syncs the events table never saw.
+    // Three days the events table never saw.
     await snapshot(t, stackId, { capturedAt: now - 4 * DAY, totalTokens: 400 })
     await snapshot(t, stackId, { capturedAt: now - 3 * DAY, totalTokens: 700 })
     await snapshot(t, stackId, { capturedAt: now - 2 * DAY, totalTokens: 900 })
     await snapshot(t, stackId, { capturedAt: now - HOUR, totalTokens: 1_000 })
-    await emit(t, stackId, now - HOUR, syncEvent({ totalTokens: 1_000 }))
+    await emit(t, stackId, now - HOUR, syncEvent({ totalTokens: 2_100 }))
 
     const feed = await t.query(api.activityFeed.stream, {})
     expect(feed.rows[0].firstReading).toBe(false)
-    // And it carries the real movement against the newest of those readings.
+    // And it carries the real movement against the days that stood before it.
     expect(feed.rows[0].deltaTokens).toBe(100)
   })
 
-  test('a movement recovered from the snapshots may fall', async () => {
+  test('a movement recovered from the days may fall', async () => {
     const t = convexTest(schema, modules)
     const stackId = await seedStack(t)
     const now = Date.now()
@@ -365,7 +374,7 @@ describe('movement', () => {
     expect(feed.rows[0].firstReading).toBe(false)
   })
 
-  test('the prior reading is the newest per harness, summed', async () => {
+  test('the prior reading sums every earlier day, across harnesses', async () => {
     const t = convexTest(schema, modules)
     const stackId = await seedStack(t)
     const now = Date.now()
@@ -391,7 +400,7 @@ describe('movement', () => {
     expect(feed.rows[0].deltaTokens).toBe(300)
   })
 
-  test('a sync that has an earlier EVENT never reads the snapshots', async () => {
+  test('a sync that has an earlier EVENT never reads the days', async () => {
     const t = convexTest(schema, modules)
     const stackId = await seedStack(t)
     const now = Date.now()

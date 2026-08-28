@@ -7,8 +7,8 @@
  *   1. ONE CONTROL BAR. The range and the machine reach every read.
  *   2. THE CHIP NEEDS BOTH SIDES. No previous period, no chip; the wording
  *      names the range.
- *   3. THE LEGACY PATH (#306 rule 6): a snapshot with no days is approximate at
- *      30d and not measured at 7d and 24h.
+ *   3. THE LEGACY PATH (#306 rule 6, ADR-0011): a legacy figure with no days
+ *      is approximate at 30d and not measured at 7d and 24h.
  *   4. NEVER MEASURED IS AN INVITATION, and the owner gets the command.
  *   5. THE TABS PACK WITH NO EMPTY CELL, and the word Workflow prints nowhere.
  */
@@ -21,16 +21,13 @@ import {
 } from "@testing-library/react";
 import { getFunctionName } from "convex/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { MeasuredSnapshot } from "@/features/measured/copy";
-import type { MeasuredHistory } from "@/features/measured/history";
 import type { WorkflowView } from "@/features/workflow/copy";
 import { api } from "../../../../convex/_generated/api";
-import { buildSnapshot } from "../../measured/__tests__/fixture";
 import { view as workflowView } from "../../workflow/__tests__/fixture";
 import type { UsageRead } from "../copy";
 import { TOPIC } from "../items";
 import { UsageSection } from "../UsageSection";
-import { HOUR, legacyUsage, reading, usage } from "./fixture";
+import { HOUR, legacyUsage, noDaysUsage, reading, usage } from "./fixture";
 
 const queryMock = vi.fn();
 
@@ -54,23 +51,17 @@ type Args = { range?: string; window?: string; machineOrdinal?: number };
 
 function setup({
 	usage: usageAnswer = usage(),
-	snapshot = null,
-	history = null,
 	workflow = workflowView(),
 	isOwner = false,
 	stackToolSlugs = ["claude-code", "codex"],
 }: {
 	usage?: UsageRead | null | undefined | ((args: Args) => UsageRead | null);
-	snapshot?: MeasuredSnapshot | null | undefined;
-	history?: MeasuredHistory | null | undefined;
 	workflow?: WorkflowView | null | undefined | ((args: Args) => WorkflowView);
 	isOwner?: boolean;
 	stackToolSlugs?: string[];
 } = {}) {
 	const names = {
 		usage: getFunctionName(api.measured.getUsageByStackSlug),
-		current: getFunctionName(api.measured.getCurrentByStackSlug),
-		history: getFunctionName(api.measured.getHistoryByStackSlug),
 		workflow: getFunctionName(api.workflow.getWorkflowByStackSlug),
 		autoSync: getFunctionName(api.autoSync.get),
 	};
@@ -82,8 +73,6 @@ function setup({
 				return typeof usageAnswer === "function"
 					? usageAnswer(args)
 					: usageAnswer;
-			if (name === names.current) return snapshot;
-			if (name === names.history) return history;
 			if (name === names.workflow)
 				return typeof workflow === "function" ? workflow(args) : workflow;
 			if (name === names.autoSync)
@@ -144,10 +133,6 @@ describe("the control bar", () => {
 		);
 		expect(queryMock).toHaveBeenCalledWith(
 			api.workflow.getWorkflowByStackSlug,
-			expect.objectContaining({ machineOrdinal: 2 }),
-		);
-		expect(queryMock).toHaveBeenCalledWith(
-			api.measured.getCurrentByStackSlug,
 			expect.objectContaining({ machineOrdinal: 2 }),
 		);
 	});
@@ -276,18 +261,28 @@ describe("the days path", () => {
 	});
 });
 
-describe("the legacy path: one snapshot, no days", () => {
+describe("the legacy path: one legacy figure, no days", () => {
 	it("marks the 30d figure approximate and prints no chip", () => {
-		setup({ usage: legacyUsage(), snapshot: buildSnapshot() });
+		setup({ usage: legacyUsage() });
 		expect(screen.getByText("4.27B")).toBeInTheDocument();
+		expect(screen.getByText("≥$5,840")).toBeInTheDocument();
 		expect(screen.getByText("approximate")).toBeInTheDocument();
 		expect(screen.queryByTestId("delta")).not.toBeInTheDocument();
+		expect(screen.getByText("22 of 30")).toBeInTheDocument();
 		fireEvent.click(screen.getByRole("tab", { name: /Code/ }));
 		expect(screen.getByText("382")).toBeInTheDocument();
+		expect(screen.queryByText("Project workspaces")).not.toBeInTheDocument();
+	});
+
+	it("prints no model rows, because the figure has none", () => {
+		setup({ usage: legacyUsage() });
+		expect(
+			screen.getByText("not measured per model before per-day rows"),
+		).toBeInTheDocument();
 	});
 
 	it("reads not measured at 7d and 24h, with the stats absent", () => {
-		setup({ usage: legacyUsage(), snapshot: buildSnapshot() });
+		setup({ usage: legacyUsage() });
 		fireEvent.click(rangeButton("7 days"));
 		expect(screen.getByText("not measured")).toBeInTheDocument();
 		expect(screen.queryByText("4.27B")).not.toBeInTheDocument();
@@ -297,8 +292,7 @@ describe("the legacy path: one snapshot, no days", () => {
 		expect(screen.getByText("not measured")).toBeInTheDocument();
 	});
 
-	it("narrows the snapshot through the machine selector", () => {
-		const snapshot = buildSnapshot();
+	it("narrows the figure through the machine selector", () => {
 		setup({
 			usage: legacyUsage({
 				machines: [
@@ -306,21 +300,20 @@ describe("the legacy path: one snapshot, no days", () => {
 					{ machine: "laptop", machineOrdinal: 2 },
 				],
 			}),
-			snapshot,
 		});
 		fireEvent.change(screen.getByRole("combobox", { name: "Machine" }), {
 			target: { value: "1" },
 		});
-		expect(queryMock).toHaveBeenCalledWith(api.measured.getCurrentByStackSlug, {
-			slug: "alp",
-			machineOrdinal: 1,
-		});
+		expect(queryMock).toHaveBeenCalledWith(
+			api.measured.getUsageByStackSlug,
+			expect.objectContaining({ slug: "alp", machineOrdinal: 1 }),
+		);
 	});
 });
 
 describe("a stack that has never been measured", () => {
 	it("invites a visitor instead of marking the author down", () => {
-		setup({ usage: legacyUsage(), snapshot: null, workflow: null });
+		setup({ usage: noDaysUsage(), workflow: null });
 		expect(
 			screen.getByText("This stack has not been measured yet."),
 		).toBeInTheDocument();
@@ -332,12 +325,7 @@ describe("a stack that has never been measured", () => {
 	});
 
 	it("teaches the owner the one command", () => {
-		setup({
-			usage: legacyUsage(),
-			snapshot: null,
-			workflow: null,
-			isOwner: true,
-		});
+		setup({ usage: noDaysUsage(), workflow: null, isOwner: true });
 		expect(
 			screen.getByText("Your stack has not been measured yet."),
 		).toBeInTheDocument();
@@ -346,7 +334,7 @@ describe("a stack that has never been measured", () => {
 	});
 
 	it("says nothing while the reads are still out", () => {
-		setup({ usage: undefined, snapshot: undefined, workflow: undefined });
+		setup({ usage: undefined, workflow: undefined });
 		expect(
 			screen.queryByText("This stack has not been measured yet."),
 		).not.toBeInTheDocument();
@@ -416,14 +404,10 @@ describe("the tabs", () => {
 			expect(container.textContent).not.toMatch(/workflow/i);
 		}
 		cleanup();
-		const legacy = setup({ usage: legacyUsage(), snapshot: buildSnapshot() });
+		const legacy = setup({ usage: legacyUsage() });
 		expect(legacy.container.textContent).not.toMatch(/workflow/i);
 		cleanup();
-		const never = setup({
-			usage: legacyUsage(),
-			snapshot: null,
-			workflow: null,
-		});
+		const never = setup({ usage: noDaysUsage(), workflow: null });
 		expect(never.container.textContent).not.toMatch(/workflow/i);
 	});
 });

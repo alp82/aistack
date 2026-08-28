@@ -57,7 +57,7 @@ Settled in [#303](https://github.com/alp82/aistack/issues/303) and
   no chip. 24h is today UTC against yesterday; 7d is against the 7 days before; 30d is
   against 60 to 30 days ago.
 - Pins and hides are gone. The owner has no per-row control; `setWorkflowRowOverride`
-  lost its consumer.
+  and the `workflowRowOverrides` table were dropped in #321.
 - A row ships when its measurement exists. A missing measurement stays absent.
 - Start hours are stored in UTC and rendered in the OWNER's local time, labeled as such.
 

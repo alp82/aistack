@@ -2,8 +2,9 @@
 import { convexTest } from 'convex-test'
 import { describe, expect, test } from 'vitest'
 import { api, internal } from './_generated/api'
-import type { Doc, Id } from './_generated/dataModel'
-import schema from './schema'
+import type { Id } from './_generated/dataModel'
+import type { Infer } from 'convex/values'
+import schema, { MeasuredPayload } from './schema'
 import { sha256Hex } from './httpCli'
 
 const modules = import.meta.glob('./**/*.{js,ts}')
@@ -28,7 +29,7 @@ const EMPTY_OPT_INS = {
 }
 
 /** A minimal but complete #33 payload. Overrides merge at the top level. */
-type StoredPayload = Doc<'measuredSnapshots'>['payload']
+type StoredPayload = Infer<typeof MeasuredPayload>
 type PayloadV1 = Extract<StoredPayload, { schemaVersion: 1 }>
 type PayloadV2 = Extract<StoredPayload, { schemaVersion: 2 }>
 
@@ -275,7 +276,7 @@ describe('publishSnapshot', () => {
     ).rejects.toThrow(/window/)
   })
 
-  test('inserts an immutable row and stamps a server receivedAt', async () => {
+  test('writes the inventory row and stamps a server receivedAt', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
 
@@ -286,14 +287,14 @@ describe('publishSnapshot', () => {
     })
 
     expect(result.receivedAt).toBeGreaterThan(clientClock)
-    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    const rows = await t.run((ctx) => ctx.db.query('measuredInventory').collect())
     expect(rows).toHaveLength(1)
     // capturedAt is NOT clamped to the server clock - the divergence is signal.
     expect(rows[0].capturedAt).toBe(clientClock)
     expect(rows[0].receivedAt).toBe(result.receivedAt)
   })
 
-  test('appends rather than replacing - history is the point', async () => {
+  test('a second sync of the same source REPLACES its inventory row (ADR-0011)', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
 
@@ -306,8 +307,10 @@ describe('publishSnapshot', () => {
       payload: payload({ capturedAt: 2000 }),
     })
 
-    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
-    expect(rows).toHaveLength(2)
+    const rows = await t.run((ctx) => ctx.db.query('measuredInventory').collect())
+    expect(rows).toHaveLength(1)
+    expect(rows[0].capturedAt).toBe(2000)
+    expect(await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())).toHaveLength(0)
   })
 
   test('rejects an unsupported schemaVersion instead of storing it', async () => {
@@ -427,7 +430,7 @@ describe('publishSnapshot - string bounds on the payload', () => {
     await expect(
       publish(t, stackId, { inventory: inventoryWith('skills', 'z'.repeat(400)) }),
     ).rejects.toThrow()
-    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    const rows = await t.run((ctx) => ctx.db.query('measuredInventory').collect())
     expect(rows).toHaveLength(0)
   })
 
@@ -567,7 +570,7 @@ describe('publishSnapshot - string bounds on the payload', () => {
     // A broken client, so 400 with the reason - not an opaque 500.
     expect(resp.status).toBe(400)
     expect(JSON.stringify(await resp.json())).toMatch(/inventory\.mcpServers/)
-    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    const rows = await t.run((ctx) => ctx.db.query('measuredInventory').collect())
     expect(rows).toHaveLength(0)
   })
 })
@@ -601,7 +604,7 @@ describe('publishForToken - the destination comes from the token', () => {
     })
     expect(result.stackSlug).toBe(`my-stack-${shortId}`)
 
-    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    const rows = await t.run((ctx) => ctx.db.query('measuredInventory').collect())
     expect(rows[0].stackId).toBe(stackId)
   })
 
@@ -709,7 +712,7 @@ describe('publishForToken - the destination comes from the token', () => {
       payloads: [payload()],
       workflow: workflow(),
     })
-    expect(result.snapshotIds).toHaveLength(1)
+    expect(result.receivedAt).toBeGreaterThan(0)
   })
 
   test('refuses a workflow section that breaks its bounds (#213)', async () => {
@@ -767,7 +770,7 @@ describe('publishForToken - the destination comes from the token', () => {
       payloads: [payload(), payload({ harness: { name: 'codex', version: null } })],
       cliVersion: '0.8.0',
     })
-    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    const rows = await t.run((ctx) => ctx.db.query('measuredInventory').collect())
     expect(rows.map((r) => r.cliVersion)).toEqual(['0.8.0', '0.8.0'])
   })
 
@@ -782,7 +785,7 @@ describe('publishForToken - the destination comes from the token', () => {
       tokenId,
       payload: payload(),
     })
-    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    const rows = await t.run((ctx) => ctx.db.query('measuredInventory').collect())
     expect(rows[0].cliVersion).toBeUndefined()
   })
 
@@ -798,7 +801,7 @@ describe('publishForToken - the destination comes from the token', () => {
       payload: payload(),
       cliVersion: 'nine\u0000point\u0000one',
     })
-    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    const rows = await t.run((ctx) => ctx.db.query('measuredInventory').collect())
     expect(rows).toHaveLength(1)
     expect(rows[0].cliVersion).toBeUndefined()
   })
@@ -808,799 +811,9 @@ describe('publishForToken - the destination comes from the token', () => {
 // Read
 // ---------------------------------------------------------------------------
 
-describe('getCurrentByStackSlug', () => {
-  test('assigns ordinals by first sight, not by the private machine name', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-
-    for (const [capturedAt, machine] of [
-      [1000, 'z-machine'],
-      [2000, 'a-machine'],
-    ] as const) {
-      await t.mutation(internal.measured.publishSnapshot, {
-        stackId,
-        machine,
-        payload: payload({ capturedAt }),
-      })
-    }
-
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current?.harnesses.map((h) => h.machineOrdinal)).toEqual([2, 1])
-  })
-
-  test('keeps first-sight ordinals after retention deletes the first row', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    const oldDay = Date.UTC(2026, 0, 15)
-
-    for (const [offset, machine] of [
-      [1, 'a-machine'],
-      [2, 'b-machine'],
-      [3, 'a-machine'],
-    ] as const) {
-      await t.mutation(internal.measured.publishSnapshot, {
-        stackId,
-        machine,
-        payload: payload({ capturedAt: oldDay + offset * 3_600_000 }),
-      })
-    }
-
-    const before = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(before?.harnesses.map((h) => h.machineOrdinal)).toEqual([1, 2])
-
-    await t.mutation(internal.measured.gcSnapshots, {})
-
-    const after = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(after?.harnesses.map((h) => h.machineOrdinal)).toEqual([1, 2])
-  })
-
-  test('backfills legacy machines before a sync assigns a position', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    await t.run(async (ctx) => {
-      for (const [receivedAt, machine] of [
-        [100, 'z-machine'],
-        [200, 'a-machine'],
-      ] as const) {
-        await ctx.db.insert('measuredSnapshots', {
-          stackId,
-          capturedAt: receivedAt,
-          receivedAt,
-          schemaVersion: 1,
-          harness: 'claude-code',
-          machine,
-          payload: payload({ capturedAt: receivedAt }),
-        })
-      }
-    })
-
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      machine: 'a-machine',
-      payload: payload({ capturedAt: 300 }),
-    })
-
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current?.harnesses.map((h) => h.machineOrdinal)).toEqual([2, 1])
-  })
-
-  test('withholds unticked machine names, keeps stable ordinals, and names them for the owner', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    const slug = `my-stack-${shortId}`
-
-    for (const [harness, machine] of [
-      ['claude-code', 'workstation'],
-      ['codex', 'vps'],
-      ['codex', 'workstation'],
-    ] as const) {
-      await t.mutation(internal.measured.publishSnapshot, {
-        stackId,
-        machine,
-        payload: payload({ harness: { name: harness, version: '1.0.0' } }),
-      })
-    }
-
-    const publicView = await t.query(api.measured.getCurrentByStackSlug, { slug })
-    expect(
-      publicView?.harnesses.map((h) => [h.harness.name, h.machine, h.machineOrdinal]),
-    ).toEqual([
-      ['claude-code', null, 1],
-      ['codex', null, 2],
-      ['codex', null, 1],
-    ])
-
-    await t.withIdentity(IDENTITY).mutation(api.measured.addPublishedNameOptIns, {
-      stackId,
-      names: [{ category: 'machines', name: 'vps' }],
-    })
-    const readerView = await t
-      .withIdentity(OTHER_IDENTITY)
-      .query(api.measured.getCurrentByStackSlug, { slug })
-    expect(readerView?.harnesses.map((h) => h.machine)).toEqual([
-      null,
-      'vps',
-      null,
-    ])
-
-    await t.withIdentity(IDENTITY).mutation(api.measured.removePublishedNameOptIns, {
-      stackId,
-      names: [{ category: 'machines', name: 'vps' }],
-    })
-    const revokedView = await t.query(api.measured.getCurrentByStackSlug, { slug })
-    expect(revokedView?.harnesses.map((h) => h.machine)).toEqual([
-      null,
-      null,
-      null,
-    ])
-
-    const ownerView = await t
-      .withIdentity(IDENTITY)
-      .query(api.measured.getCurrentByStackSlug, { slug })
-    expect(ownerView?.harnesses.map((h) => h.machine)).toEqual([
-      'workstation',
-      'vps',
-      'workstation',
-    ])
-  })
-
-  test('narrows the current reading to one machine ordinal', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-
-    for (const [machine, harness, tokens, sessions] of [
-      ['workstation', 'claude-code', 1_000, 10],
-      ['vps', 'claude-code', 2_000, 20],
-      ['workstation', 'codex', 3_000, 30],
-    ] as const) {
-      await t.mutation(internal.measured.publishSnapshot, {
-        stackId,
-        machine,
-        payload: payload({
-          harness: { name: harness, version: '1.0.0' },
-          activity: {
-            ...payload().activity,
-            totalTokens: tokens,
-            sessions,
-          },
-        }),
-      })
-    }
-
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-      machineOrdinal: 1,
-    })
-
-    expect(current?.activity).toMatchObject({
-      totalTokens: 4_000,
-      sessions: 40,
-    })
-    expect(current?.harnesses.map((h) => h.harness.name)).toEqual([
-      'claude-code',
-      'codex',
-    ])
-    expect(current?.harnesses.map((h) => h.machineOrdinal)).toEqual([1, 1])
-  })
-
-  test('returns the newest snapshot by capturedAt, not by insertion order', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({ capturedAt: 5000, activity: { ...payload().activity, sessions: 1 } }),
-    })
-    // Inserted second but OLDER - must not win.
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({ capturedAt: 1000, activity: { ...payload().activity, sessions: 99 } }),
-    })
-
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current?.activity.sessions).toBe(1)
-  })
-
-  test('resolves a model id against the catalog at READ time', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload(),
-    })
-
-    // Nothing in the catalog yet: published verbatim, tokens intact, slug null.
-    let current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current?.models[0]).toMatchObject({
-      id: 'claude-opus-5',
-      catalogSlug: null,
-      catalogName: null,
-    })
-    expect(current?.models[0].tokens.output).toBe(20)
-
-    // Add the model to the catalog. The SAME immutable snapshot now resolves -
-    // no republish. This is what let #33 exempt model ids from the allowlist.
-    await t.run(async (ctx) => {
-      await ctx.db.insert('models', {
-        name: 'Claude Opus 5',
-        slug: 'claude-opus-5',
-        shortId: 'mopus5',
-        provider: 'anthropic',
-        category: 'language',
-        reviewStatus: 'approved',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      })
-    })
-
-    current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current?.models[0]).toMatchObject({
-      catalogSlug: 'claude-opus-5',
-      catalogName: 'Claude Opus 5',
-    })
-  })
-
-  test('resolves via the catalog aliases array as well as the slug', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    await t.run(async (ctx) => {
-      await ctx.db.insert('models', {
-        name: 'Claude Haiku 4.5',
-        slug: 'claude-haiku-4-5-20251001',
-        shortId: 'mhaiku',
-        aliases: ['claude-haiku-4-5'],
-        provider: 'anthropic',
-        category: 'language',
-        reviewStatus: 'approved',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      })
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        models: [
-          {
-            id: 'claude-haiku-4-5',
-            tokenShare: 1,
-            tokens: { input: 1, output: 1, cacheWrite: 0, cacheRead: 0 },
-          },
-        ],
-      }),
-    })
-
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current?.models[0].catalogSlug).toBe('claude-haiku-4-5-20251001')
-  })
-
-  test('cites every per-model table in the cost reading (#136)', async () => {
-    // One opencode snapshot prices OpenAI and Google rows from two tables and
-    // its top-level pricingTable is null. Both citations must survive to the
-    // surface - the old shape stamped one string over both.
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        pricingTable: null,
-        models: [
-          {
-            id: 'openai:gpt-5.4',
-            tokenShare: 0.5,
-            tokens: { input: 10, output: 10, cacheWrite: 0, cacheRead: 0 },
-            apiEquivalentUSD: 2.5,
-            pricingTable: 'openai-list-2026-08-02',
-          },
-          {
-            id: 'google:gemini-3.6-flash',
-            tokenShare: 0.5,
-            tokens: { input: 10, output: 10, cacheWrite: 0, cacheRead: 0 },
-            apiEquivalentUSD: 1.5,
-            pricingTable: 'google-list-2026-08-09',
-          },
-        ],
-      }) as never,
-    })
-
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current?.cost?.pricingTables).toEqual([
-      'openai-list-2026-08-02',
-      'google-list-2026-08-09',
-    ])
-    expect(current?.pricingTable).toBe(
-      'openai-list-2026-08-02 + google-list-2026-08-09',
-    )
-    expect(current?.cost?.publishedUSD).toBe(4)
-  })
-
-  test('reports isFresh from the SERVER clock', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      // A client claiming to be from the future must not manufacture freshness…
-      payload: payload({ capturedAt: Date.now() + 90 * DAY }),
-    })
-    let current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current?.isFresh).toBe(true) // receivedAt is now, so genuinely fresh
-
-    // …and a stale receivedAt must not be rescued by a fresh capturedAt.
-    await t.run(async (ctx) => {
-      const row = await ctx.db.query('measuredSnapshots').first()
-      await ctx.db.patch(row!._id, { receivedAt: Date.now() - 8 * DAY })
-    })
-    current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current?.isFresh).toBe(false)
-  })
-
-  test('returns null for an unpublished stack, and for one that never synced', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t, { published: false })
-    await t.mutation(internal.measured.publishSnapshot, { stackId, payload: payload() })
-    expect(
-      await t.query(api.measured.getCurrentByStackSlug, { slug: `my-stack-${shortId}` }),
-    ).toBeNull()
-
-    const other = await seedStack(t, { userId: OTHER_USER })
-    expect(
-      await t.query(api.measured.getCurrentByStackSlug, {
-        slug: `my-stack-${other.shortId}`,
-      }),
-    ).toBeNull()
-  })
-})
-
 // ---------------------------------------------------------------------------
 // Read - the series (#81)
 // ---------------------------------------------------------------------------
-
-describe('getHistoryByStackSlug', () => {
-  const HOUR = 60 * 60 * 1000
-
-  /** Tokens split across the four input classes, so totals stay checkable. */
-  function models(over: Array<{ id: string; share: number; usd?: number }>) {
-    return over.map((m) => ({
-      id: m.id,
-      tokenShare: m.share,
-      tokens: { input: 1, output: 1, cacheWrite: 0, cacheRead: 0 },
-      ...(m.usd === undefined ? {} : { apiEquivalentUSD: m.usd }),
-    }))
-  }
-
-  test('uses the current machine ordinals in every point and gates each name', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    const slug = `my-stack-${shortId}`
-    const now = Date.now()
-
-    for (const [ago, harness, machine] of [
-      [3 * HOUR, 'claude-code', 'workstation'],
-      [2 * HOUR, 'codex', 'vps'],
-      [HOUR, 'codex', 'workstation'],
-    ] as const) {
-      await t.mutation(internal.measured.publishSnapshot, {
-        stackId,
-        machine,
-        payload: payload({
-          capturedAt: now - ago,
-          harness: { name: harness, version: '1.0.0' },
-        }),
-      })
-    }
-
-    const publicView = await t.query(api.measured.getHistoryByStackSlug, { slug })
-    expect(
-      publicView?.points.map((point) =>
-        point.harnesses.map((h) => [h.name, h.machine, h.machineOrdinal]),
-      ),
-    ).toEqual([
-      [['claude-code', null, 1]],
-      [
-        ['claude-code', null, 1],
-        ['codex', null, 2],
-      ],
-      [
-        ['claude-code', null, 1],
-        ['codex', null, 2],
-        ['codex', null, 1],
-      ],
-    ])
-
-    await t.withIdentity(IDENTITY).mutation(api.measured.addPublishedNameOptIns, {
-      stackId,
-      names: [{ category: 'machines', name: 'vps' }],
-    })
-    const readerView = await t
-      .withIdentity(OTHER_IDENTITY)
-      .query(api.measured.getHistoryByStackSlug, { slug })
-    const readerPoint = readerView?.points[readerView.points.length - 1]
-    expect(readerPoint?.harnesses.map((h) => h.machine)).toEqual([
-      null,
-      'vps',
-      null,
-    ])
-
-    const ownerView = await t
-      .withIdentity(IDENTITY)
-      .query(api.measured.getHistoryByStackSlug, { slug })
-    const ownerPoint = ownerView?.points[ownerView.points.length - 1]
-    expect(ownerPoint?.harnesses.map((h) => h.machine)).toEqual([
-      'workstation',
-      'vps',
-      'workstation',
-    ])
-  })
-
-  test('returns one point per sync, oldest first', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    const now = Date.now()
-
-    for (const [ago, tokens] of [
-      [3 * DAY, 100],
-      [2 * DAY, 220],
-      [1 * DAY, 180],
-    ] as const) {
-      await t.mutation(internal.measured.publishSnapshot, {
-        stackId,
-        payload: payload({
-          capturedAt: now - ago,
-          activity: { ...payload().activity, totalTokens: tokens },
-        }),
-      })
-    }
-
-    const history = await t.query(api.measured.getHistoryByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    // A rolling window is a level, so it may fall. The series says so.
-    expect(history?.points.map((p) => p.tokens)).toEqual([100, 220, 180])
-    expect(history?.points.map((p) => p.at)).toEqual([
-      now - 3 * DAY,
-      now - 2 * DAY,
-      now - 1 * DAY,
-    ])
-  })
-
-  test('returns null for an unpublished stack, and for one that never synced', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t, { published: false })
-    await t.mutation(internal.measured.publishSnapshot, { stackId, payload: payload() })
-    expect(
-      await t.query(api.measured.getHistoryByStackSlug, { slug: `my-stack-${shortId}` }),
-    ).toBeNull()
-
-    const other = await seedStack(t)
-    expect(
-      await t.query(api.measured.getHistoryByStackSlug, {
-        slug: `my-stack-${other.shortId}`,
-      }),
-    ).toBeNull()
-  })
-
-  test('two syncs a minute apart are one reading, not two', async () => {
-    // Real, from prod: 15:35 and 15:36 on 2026-08-01.
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    const at = Date.now() - HOUR
-
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({ capturedAt: at }),
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        capturedAt: at + 61_000,
-        activity: { ...payload().activity, totalTokens: 2_000_000 },
-      }),
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      // Same minute as the second: an amended sync, not a new reading.
-      payload: payload({
-        capturedAt: at + 61_500,
-        activity: { ...payload().activity, totalTokens: 3_000_000 },
-      }),
-    })
-
-    const history = await t.query(api.measured.getHistoryByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(history?.points).toHaveLength(2)
-    expect(history?.points[1].tokens).toBe(3_000_000)
-  })
-
-  test('carries a harness that did not sync into the next reading', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    const now = Date.now()
-
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        capturedAt: now - 2 * DAY,
-        activity: { ...payload().activity, totalTokens: 1_000, sessions: 10 },
-      }),
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        capturedAt: now - HOUR,
-        harness: { name: 'codex', version: '0.9' },
-        activity: { ...payload().activity, totalTokens: 40, sessions: 2 },
-      }),
-    })
-
-    const history = await t.query(api.measured.getHistoryByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    const last = history?.points[1]
-    // Claude Code did not sync in this minute, and dropping it would make the
-    // stack look like it shrank by three orders of magnitude.
-    expect(last?.tokens).toBe(1_040)
-    expect(last?.sessions).toBe(12)
-    expect(last?.harnesses.map((h) => h.name).sort()).toEqual([
-      'claude-code',
-      'codex',
-    ])
-    // The carried reading says when it was actually taken.
-    const cc = last?.harnesses.find((h) => h.name === 'claude-code')
-    expect(cc?.capturedAt).toBe(now - 2 * DAY)
-    expect(last?.at).toBe(now - HOUR)
-  })
-
-  test('the newest point states exactly what the headline states', async () => {
-    // The page shows the headline and the trail together. If these two merges
-    // could disagree, the number would restate itself differently every scroll.
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    const now = Date.now()
-
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        capturedAt: now - 3 * DAY,
-        models: models([{ id: 'claude-opus-5', share: 1, usd: 5 }]),
-      }),
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        capturedAt: now - 2 * DAY,
-        harness: { name: 'codex', version: '0.9' },
-        activity: { ...payload().activity, totalTokens: 500_000, sessions: 4 },
-        models: models([{ id: 'gpt-5.5', share: 1, usd: 3 }]),
-      }),
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        capturedAt: now - HOUR,
-        models: models([
-          { id: 'claude-opus-5', share: 0.8, usd: 8 },
-          { id: 'claude-haiku-4-5', share: 0.2, usd: 1 },
-        ]),
-      }),
-    })
-
-    const slug = `my-stack-${shortId}`
-    const current = await t.query(api.measured.getCurrentByStackSlug, { slug })
-    const history = await t.query(api.measured.getHistoryByStackSlug, { slug })
-    const points = history?.points ?? []
-    const last = points[points.length - 1]
-
-    expect(last.tokens).toBe(current?.activity.totalTokens)
-    expect(last.sessions).toBe(current?.activity.sessions)
-    expect(last.usd).toBe(
-      current?.models.reduce((a, m) => a + (m.apiEquivalentUSD ?? 0), 0),
-    )
-    expect(last.models.map((m) => m.id)).toEqual(current?.models.map((m) => m.id))
-    expect(last.models.map((m) => m.tokenShare)).toEqual(
-      current?.models.map((m) => m.tokenShare),
-    )
-  })
-
-  test('seeds the carry-forward from before the window', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    const now = Date.now()
-
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        capturedAt: now - 200 * DAY,
-        activity: { ...payload().activity, totalTokens: 1_000 },
-      }),
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        capturedAt: now - HOUR,
-        harness: { name: 'codex', version: '0.9' },
-        activity: { ...payload().activity, totalTokens: 40 },
-      }),
-    })
-
-    const history = await t.query(api.measured.getHistoryByStackSlug, {
-      slug: `my-stack-${shortId}`,
-      days: 30,
-    })
-    // One point - the old row is out of the window - but it still contributes,
-    // exactly as it does to the headline.
-    expect(history?.points).toHaveLength(1)
-    expect(history?.points[0].tokens).toBe(1_040)
-    expect(history?.windowDays).toBe(30)
-  })
-
-  test('narrows to one harness, unmerged, when asked', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    const now = Date.now()
-
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        capturedAt: now - 2 * DAY,
-        activity: { ...payload().activity, totalTokens: 1_000 },
-      }),
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        capturedAt: now - HOUR,
-        harness: { name: 'codex', version: '0.9' },
-        activity: { ...payload().activity, totalTokens: 40 },
-      }),
-    })
-
-    const history = await t.query(api.measured.getHistoryByStackSlug, {
-      slug: `my-stack-${shortId}`,
-      harness: 'codex',
-    })
-    expect(history?.harness).toBe('codex')
-    expect(history?.points).toHaveLength(1)
-    expect(history?.points[0].tokens).toBe(40)
-    expect(history?.points[0].harnesses.map((h) => h.name)).toEqual(['codex'])
-  })
-
-  test('resolves the catalog at read time and keeps an unknown id as itself', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    await t.run(async (ctx) => {
-      await ctx.db.insert('models', {
-        name: 'Claude Opus 5',
-        slug: 'claude-opus-5',
-        shortId: 'mopus5',
-        provider: 'anthropic',
-        category: 'language',
-        reviewStatus: 'approved',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      })
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        capturedAt: Date.now() - HOUR,
-        models: models([
-          { id: 'claude-opus-5', share: 0.5, usd: 1 },
-          { id: 'some-unlisted-model', share: 0.5, usd: 1 },
-        ]),
-      }),
-    })
-
-    const history = await t.query(api.measured.getHistoryByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(history?.points[0].models).toEqual([
-      {
-        id: 'claude-opus-5',
-        catalogSlug: 'claude-opus-5',
-        catalogName: 'Claude Opus 5',
-        tokenShare: 0.5,
-      },
-      {
-        id: 'some-unlisted-model',
-        catalogSlug: null,
-        catalogName: null,
-        tokenShare: 0.5,
-      },
-    ])
-  })
-
-  test('estimates a reading that published no pricing table, citing our table', async () => {
-    // Before #93 a table-less reading published no cost. The shared table can
-    // now date an estimate itself, so the trail fills the gap instead of
-    // showing dollars today and a hole for the same model yesterday.
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    const now = Date.now()
-
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        capturedAt: now - DAY,
-        pricingTable: null,
-        models: models([{ id: 'claude-opus-5', share: 1 }]),
-      }),
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        capturedAt: now - HOUR,
-        models: models([{ id: 'claude-opus-5', share: 1, usd: 7 }]),
-      }),
-    })
-
-    const history = await t.query(api.measured.getHistoryByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    // Two tokens of claude-opus-5 estimate to fractions of a cent, and the
-    // estimate rounds to cents - so the honest figure here is $0, not null.
-    expect(history?.points[0].usd).toBe(0)
-    expect(history?.points[0].pricingTable).toBe('anthropic-list-2026-07-25')
-    expect(history?.points[1].usd).toBe(7)
-    expect(history?.points[1].pricingTable).toBe('anthropic-list-2026-07-25')
-  })
-
-  test('reprices an old unpriced row at read time, and says which table did it', async () => {
-    // #72: rows landed before the CLI knew the price. Snapshots are immutable,
-    // so the fix is at read time - and the trail must reprice too, or a page
-    // shows dollars today and a gap for the same reading in its own history.
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        capturedAt: Date.now() - HOUR,
-        pricingTable: 'openai-list-2026-07-25',
-        models: [
-          {
-            id: 'gpt-5.6-luna',
-            tokenShare: 1,
-            tokens: {
-              input: 1_000_000,
-              output: 1_000_000,
-              cacheWrite: 0,
-              cacheRead: 0,
-            },
-          },
-        ],
-      }),
-    })
-
-    const history = await t.query(api.measured.getHistoryByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    // 1M input at $0.20 + 1M output at $1.20. The payload's own table priced
-    // nothing here, so it is not cited (#93) - only the estimating table is.
-    expect(history?.points[0].usd).toBeCloseTo(1.4, 6)
-    expect(history?.points[0].pricingTable).toBe('openai-list-2026-08-02')
-  })
-})
 
 describe('countLivingStacks', () => {
   test('counts distinct stacks whose newest sync landed within 7 days', async () => {
@@ -1623,8 +836,8 @@ describe('countLivingStacks', () => {
     })
     await t.run(async (ctx) => {
       const rows = await ctx.db
-        .query('measuredSnapshots')
-        .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', b.stackId))
+        .query('measuredInventory')
+        .withIndex('by_stack', (q) => q.eq('stackId', b.stackId))
         .collect()
       for (const r of rows) {
         await ctx.db.patch(r._id, { receivedAt: Date.now() - 8 * DAY })
@@ -1751,7 +964,11 @@ describe('reconcile', () => {
         updatedAt: Date.now(),
       })
     })
-    await t.mutation(internal.measured.publishSnapshot, { stackId, payload: payload() })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      payload: payload(),
+      measuredDays: usageWire(today(), { model: 'claude-opus-5', usd: 12.34 }),
+    })
 
     const asOwner = t.withIdentity(IDENTITY)
     const result = await asOwner.query(api.measured.getReconcileSuggestions, { stackId })
@@ -1776,7 +993,7 @@ describe('reconcile', () => {
     const { stackId } = await seedStack(t)
     await t.mutation(internal.measured.publishSnapshot, { stackId, payload: payload() })
     await t.run(async (ctx) => {
-      const row = await ctx.db.query('measuredSnapshots').first()
+      const row = await ctx.db.query('measuredInventory').first()
       await ctx.db.patch(row!._id, { receivedAt: Date.now() - 12 * DAY })
     })
 
@@ -2347,7 +1564,7 @@ describe('POST /api/cli/sync', () => {
     const bad = await post(t, { payload: { schemaVersion: 1 } }, token)
     expect(bad.status).toBe(400)
     // A rejected payload must not leave a partial row behind.
-    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    const rows = await t.run((ctx) => ctx.db.query('measuredInventory').collect())
     expect(rows).toHaveLength(0)
   })
 
@@ -2364,7 +1581,7 @@ describe('POST /api/cli/sync', () => {
       token,
     )
     expect(resp.status).toBe(200)
-    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    const rows = await t.run((ctx) => ctx.db.query('measuredInventory').collect())
     expect(rows).toHaveLength(1)
     expect(rows[0].stackId).toBe(mine.stackId)
   })
@@ -2508,193 +1725,6 @@ describe('GET /api/cli/sync-config', () => {
 // Retention
 // ---------------------------------------------------------------------------
 
-describe('gcSnapshots', () => {
-  test('keeps everything inside the 90-day fine-grain window', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId } = await seedStack(t)
-    const now = Date.now()
-    for (const offset of [0, 1 * DAY, 30 * DAY, 89 * DAY]) {
-      await t.mutation(internal.measured.publishSnapshot, {
-        stackId,
-        payload: payload({ capturedAt: now - offset }),
-      })
-    }
-
-    const result = await t.mutation(internal.measured.gcSnapshots, {})
-    expect(result.deleted).toBe(0)
-    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
-    expect(rows).toHaveLength(4)
-  })
-
-  test('beyond 90 days, thins to the last snapshot of each UTC day', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId } = await seedStack(t)
-    const oldDay = Date.UTC(2026, 0, 15)
-    // Three syncs on one old day, plus one on the day after.
-    for (const at of [
-      oldDay + 1 * 3_600_000,
-      oldDay + 5 * 3_600_000,
-      oldDay + 20 * 3_600_000,
-      oldDay + DAY + 2 * 3_600_000,
-    ]) {
-      await t.mutation(internal.measured.publishSnapshot, {
-        stackId,
-        payload: payload({ capturedAt: at }),
-      })
-    }
-    // A recent row, so the newest-row guard is not what saves the old ones.
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({ capturedAt: Date.now() }),
-    })
-
-    const result = await t.mutation(internal.measured.gcSnapshots, {})
-    expect(result.deleted).toBe(2)
-
-    const kept = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
-    const keptOnOldDay = kept
-      .filter((r) => r.capturedAt >= oldDay && r.capturedAt < oldDay + DAY)
-      .map((r) => r.capturedAt)
-    expect(keptOnOldDay).toEqual([oldDay + 20 * 3_600_000])
-    expect(kept).toHaveLength(3)
-  })
-
-
-  test('thins per SOURCE, so an old day keeps one row for each of them', async () => {
-    // Grouping on (stack, day) alone kept ONE row for the whole day, so a stack
-    // syncing two sources lost one of them the moment that day aged past 90.
-    // The fold carries the newest reading of each source forward, so a deleted
-    // seed does not leave a gap - it subtracts a source from every later point.
-    const t = convexTest(schema, modules)
-    const { stackId } = await seedStack(t)
-    const oldDay = Date.UTC(2026, 0, 15)
-
-    for (const at of [oldDay + 1 * 3_600_000, oldDay + 20 * 3_600_000]) {
-      await t.mutation(internal.measured.publishSnapshot, {
-        stackId,
-        payload: payload({ capturedAt: at }),
-        machine: 'laptop',
-      })
-      await t.mutation(internal.measured.publishSnapshot, {
-        stackId,
-        payload: payload({ capturedAt: at }),
-        machine: 'vps',
-      })
-    }
-    // Recent rows for both, so the newest-row guard is not what saves the old.
-    for (const machine of ['laptop', 'vps']) {
-      await t.mutation(internal.measured.publishSnapshot, {
-        stackId,
-        payload: payload({ capturedAt: Date.now() }),
-        machine,
-      })
-    }
-
-    await t.mutation(internal.measured.gcSnapshots, {})
-
-    const kept = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
-    const onOldDay = kept.filter(
-      (r) => r.capturedAt >= oldDay && r.capturedAt < oldDay + DAY,
-    )
-    expect(onOldDay.map((r) => r.machine).sort()).toEqual(['laptop', 'vps'])
-    expect(onOldDay.every((r) => r.capturedAt === oldDay + 20 * 3_600_000)).toBe(
-      true,
-    )
-  })
-
-  test('never deletes the newest row of a machine that stopped syncing', async () => {
-    // Per stack, the guard protected only the last machine to sync. A server
-    // that went quiet would lose its last row and vanish from the trail.
-    const t = convexTest(schema, modules)
-    const { stackId } = await seedStack(t)
-    const oldDay = Date.UTC(2026, 0, 15)
-
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({ capturedAt: oldDay }),
-      machine: 'vps',
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({ capturedAt: oldDay + 3_600_000 }),
-      machine: 'laptop',
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({ capturedAt: Date.now() }),
-      machine: 'laptop',
-    })
-
-    await t.mutation(internal.measured.gcSnapshots, {})
-
-    const kept = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
-    expect(kept.some((r) => r.machine === 'vps')).toBe(true)
-  })
-
-  test('keeps a superseded untagged row - it still seeds the older points', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId } = await seedStack(t)
-    const oldDay = Date.UTC(2026, 0, 15)
-
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({ capturedAt: oldDay }),
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({ capturedAt: Date.now() }),
-      machine: 'laptop',
-    })
-
-    await t.mutation(internal.measured.gcSnapshots, {})
-
-    const kept = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
-    expect(kept.some((r) => r.machine === undefined)).toBe(true)
-  })
-
-  test('never deletes a stack’s newest row, however old it is', async () => {
-    // "Current" is a query for this row - GC must not be able to empty the
-    // measured layer of a stack that simply stopped syncing.
-    const t = convexTest(schema, modules)
-    const { stackId } = await seedStack(t)
-    const ancient = Date.UTC(2025, 0, 1)
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({ capturedAt: ancient }),
-    })
-
-    const result = await t.mutation(internal.measured.gcSnapshots, {})
-    expect(result.deleted).toBe(0)
-    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
-    expect(rows).toHaveLength(1)
-  })
-
-  test('thins per stack, not globally', async () => {
-    const t = convexTest(schema, modules)
-    const a = await seedStack(t)
-    const b = await seedStack(t, { userId: OTHER_USER })
-    const oldDay = Date.UTC(2026, 0, 15)
-    for (const stackId of [a.stackId, b.stackId]) {
-      for (const at of [oldDay + 3_600_000, oldDay + 7_200_000]) {
-        await t.mutation(internal.measured.publishSnapshot, {
-          stackId,
-          payload: payload({ capturedAt: at }),
-        })
-      }
-      await t.mutation(internal.measured.publishSnapshot, {
-        stackId,
-        payload: payload({ capturedAt: Date.now() }),
-      })
-    }
-
-    await t.mutation(internal.measured.gcSnapshots, {})
-    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
-    // Each stack keeps one old-day row + its recent row.
-    expect(rows.filter((r) => r.stackId === a.stackId)).toHaveLength(2)
-    expect(rows.filter((r) => r.stackId === b.stackId)).toHaveLength(2)
-  })
-})
-
 // ---------------------------------------------------------------------------
 // Kept-private staging (#51, building #48)
 // ---------------------------------------------------------------------------
@@ -2778,9 +1808,9 @@ describe('the unsealed kept-private half of a sync', () => {
     // The sealed payload is untouched by any of it - the closed validator is
     // the privacy claim, and a kept-private name never enters it.
     const snapshot = await t.run((ctx) =>
-      ctx.db.query('measuredSnapshots').first(),
+      ctx.db.query('measuredInventory').first(),
     )
-    expect(JSON.stringify(snapshot!.payload)).not.toContain('alp-river')
+    expect(JSON.stringify(snapshot!.inventory)).not.toContain('alp-river')
   })
 
   test('replaces the whole list every sync rather than accumulating', async () => {
@@ -2845,7 +1875,7 @@ describe('the unsealed kept-private half of a sync', () => {
       await t.run((ctx) => ctx.db.query('keptPrivateNames').collect()),
     ).toHaveLength(0)
     expect(
-      await t.run((ctx) => ctx.db.query('measuredSnapshots').collect()),
+      await t.run((ctx) => ctx.db.query('measuredInventory').collect()),
     ).toHaveLength(1)
   })
 
@@ -2899,7 +1929,7 @@ describe('the unsealed kept-private half of a sync', () => {
     // A rejected half must not leave a snapshot behind either: the two travel
     // in one request and one transaction.
     expect(
-      await t.run((ctx) => ctx.db.query('measuredSnapshots').collect()),
+      await t.run((ctx) => ctx.db.query('measuredInventory').collect()),
     ).toHaveLength(0)
     expect(
       await t.run((ctx) => ctx.db.query('keptPrivateNames').collect()),
@@ -2995,9 +2025,10 @@ describe('the review switch', () => {
       token,
     )
 
-    const publicRead = await t.query(api.measured.getCurrentByStackSlug, {
+    const publicRead = await t.query(api.measured.getUsageByStackSlug, {
       slug: `my-stack-${shortId}`,
     })
+    expect(publicRead?.inventory).toHaveLength(1)
     expect(JSON.stringify(publicRead)).not.toContain('acme-internal')
   })
 })
@@ -3125,7 +2156,7 @@ describe('kept-private expiry', () => {
       }
     })
 
-    const result = await t.mutation(internal.measured.gcSnapshots, {})
+    const result = await t.mutation(internal.measured.gcMeasured, {})
     expect(result.keptPrivateDeleted).toBe(1)
     expect(
       await t.run((ctx) => ctx.db.query('keptPrivateNames').collect()),
@@ -3142,7 +2173,7 @@ describe('kept-private expiry', () => {
       token,
     )
 
-    const result = await t.mutation(internal.measured.gcSnapshots, {})
+    const result = await t.mutation(internal.measured.gcMeasured, {})
     expect(result.keptPrivateDeleted).toBe(0)
     expect(
       await t.run((ctx) => ctx.db.query('keptPrivateNames').collect()),
@@ -3195,7 +2226,7 @@ describe('batch publish + per-harness aggregation (#67)', () => {
       ...over,
     })
 
-  test('payloads[] lands one snapshot per harness, atomically, with the harness column', async () => {
+  test('payloads[] lands one inventory row per harness, atomically, with the harness column', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
     const tokenId = await seedToken(t, { stackId })
@@ -3204,9 +2235,9 @@ describe('batch publish + per-harness aggregation (#67)', () => {
       tokenId,
       payloads: [payload(), codexPayload()],
     })
-    expect(result.snapshotIds).toHaveLength(2)
+    expect(result.receivedAt).toBeGreaterThan(0)
 
-    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    const rows = await t.run((ctx) => ctx.db.query('measuredInventory').collect())
     expect(rows.map((r) => r.harness).sort()).toEqual(['claude-code', 'codex'])
   })
 
@@ -3252,7 +2283,7 @@ describe('batch publish + per-harness aggregation (#67)', () => {
       tokenId,
       payload: payload(),
     })
-    expect(result.snapshotIds).toHaveLength(1)
+    expect(result.receivedAt).toBeGreaterThan(0)
   })
 
   test('a batch with no payloads is refused', async () => {
@@ -3263,249 +2294,6 @@ describe('batch publish + per-harness aggregation (#67)', () => {
     await expect(
       t.mutation(internal.measured.publishForToken, { tokenId, payloads: [] }),
     ).rejects.toThrow(/at least one payload/i)
-  })
-
-  test('the combined headline sums tokens/sessions and keeps per-harness sections', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload(), // claude: 1M tokens, 12 sessions, opus @ $12.34
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: codexPayload(), // codex: 500k tokens, 3 sessions, gpt-5.5 @ $2
-    })
-
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current?.activity.totalTokens).toBe(1_500_000)
-    expect(current?.activity.sessions).toBe(15)
-    // Day and project sets can overlap across harnesses: max, never a sum.
-    expect(current?.activity.activeDays).toEqual({ value: 9, precision: 'lower-bound' })
-    expect(current?.activity.projects).toEqual({ value: 3, precision: 'lower-bound' })
-    expect(current?.harnesses[0].activity.activeDays).toEqual({
-      value: 9,
-      precision: 'exact',
-    })
-    // Both price tables cited.
-    expect(current?.pricingTable).toContain('anthropic-list')
-    expect(current?.pricingTable).toContain('openai-list')
-    // Models merged by id with recomputed shares over summed absolute tokens.
-    expect(current?.models.map((m) => m.id).sort()).toEqual([
-      'claude-opus-5',
-      'gpt-5.5',
-    ])
-    const shareSum = current?.models.reduce((a, m) => a + m.tokenShare, 0)
-    expect(shareSum).toBeCloseTo(1, 6)
-    // Per-harness sections keep their own inventory and freshness.
-    expect(current?.harnesses.map((h) => h.harness.name)).toEqual([
-      'claude-code',
-      'codex',
-    ])
-    expect(current?.harnesses[0].inventory.builtinTools[0].name).toBe('Bash')
-  })
-
-  test('unions v2 sets and reports the inclusive merged window span', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payloadV2({
-        capturedAt: 1_000,
-        window: { days: 30, from: '2026-06-20', to: '2026-07-19' },
-        activity: {
-          ...payloadV2().activity,
-          activeDayDates: ['2026-07-17', '2026-07-18', '2026-07-19'],
-        },
-      }),
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payloadV2({
-        capturedAt: 2_000,
-        window: { days: 30, from: '2026-06-26', to: '2026-07-25' },
-        harness: { name: 'codex', version: '0.146.0' },
-        activity: {
-          ...payloadV2().activity,
-          activeDayDates: ['2026-07-18', '2026-07-19', '2026-07-20'],
-          projectKeys: [
-            'BBBBBBBBBBBBBBBBBBBBBB',
-            'CCCCCCCCCCCCCCCCCCCCCC',
-          ],
-        },
-      }),
-    })
-
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current?.activity.activeDays).toEqual({ value: 4, precision: 'exact' })
-    expect(current?.activity.projects).toEqual({ value: 3, precision: 'exact' })
-    expect(current?.harnesses.map((h) => h.activity.activeDays.precision)).toEqual([
-      'exact',
-      'exact',
-    ])
-    expect(current?.window).toEqual({
-      days: 36,
-      from: '2026-06-20',
-      to: '2026-07-25',
-    })
-  })
-
-  test('keeps every known member when it exceeds a legacy count', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        capturedAt: 1_000,
-        activity: { ...payload().activity, activeDays: 2, projects: 1 },
-      }),
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payloadV2({
-        capturedAt: 2_000,
-        harness: { name: 'codex', version: '0.146.0' },
-      }),
-    })
-
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current?.activity.activeDays).toEqual({
-      value: 3,
-      precision: 'lower-bound',
-    })
-    expect(current?.activity.projects).toEqual({
-      value: 2,
-      precision: 'lower-bound',
-    })
-  })
-
-  test('marks each trail point from the evidence visible at that point', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    const now = Date.now()
-
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      machine: 'laptop',
-      payload: payload({ capturedAt: now - 3 * DAY }),
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      machine: 'vps',
-      payload: payloadV2({
-        capturedAt: now - 2 * DAY,
-        harness: { name: 'codex', version: '0.146.0' },
-      }),
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      machine: 'laptop',
-      payload: payloadV2({
-        capturedAt: now - DAY,
-        activity: {
-          ...payloadV2().activity,
-          activeDayDates: ['2026-07-22', '2026-07-23'],
-          projectKeys: [
-            'BBBBBBBBBBBBBBBBBBBBBB',
-            'CCCCCCCCCCCCCCCCCCCCCC',
-          ],
-        },
-      }),
-    })
-
-    const history = await t.query(api.measured.getHistoryByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(history?.points.map((point) => point.activeDays)).toEqual([
-      { value: 9, precision: 'exact' },
-      { value: 9, precision: 'lower-bound' },
-      { value: 4, precision: 'exact' },
-    ])
-    expect(history?.points.map((point) => point.projects)).toEqual([
-      { value: 3, precision: 'exact' },
-      { value: 3, precision: 'lower-bound' },
-      { value: 3, precision: 'exact' },
-    ])
-  })
-
-  test('the newest snapshot of EACH harness wins, independently', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({ capturedAt: 1000 }),
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        capturedAt: 2000,
-        activity: { ...payload().activity, sessions: 42 },
-      }),
-    })
-    // A codex snapshot OLDER than claude's newest must still appear.
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: codexPayload({ capturedAt: 500 }),
-    })
-
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current?.harnesses).toHaveLength(2)
-    const claude = current?.harnesses.find((h) => h.harness.name === 'claude-code')
-    expect(claude?.activity.sessions).toBe(42)
-    expect(current?.activity.sessions).toBe(42 + 3)
-  })
-
-  test('a mixed priced/unpriced merged model drops its dollars rather than understating', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-
-    // A model NO table can price, so the read-time gap filler cannot rescue the
-    // silent half - which is the only way the halves still disagree after #93.
-    // It happens when the syncing CLI ships a newer table than the server holds.
-    const unpriceable = 'gpt-5.7-unreleased'
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        models: [
-          {
-            id: unpriceable,
-            tokenShare: 1,
-            apiEquivalentUSD: 12.34,
-            tokens: { input: 1, output: 1, cacheWrite: 0, cacheRead: 0 },
-          },
-        ],
-      }),
-    })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: codexPayload({
-        models: [
-          {
-            id: unpriceable, // same id, cost withheld on this side
-            tokenShare: 1,
-            tokens: { input: 1, output: 1, cacheWrite: 0, cacheRead: 0 },
-          },
-        ],
-      }),
-    })
-
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current?.models).toHaveLength(1)
-    expect(current?.models[0].apiEquivalentUSD).toBeUndefined()
   })
 
 })
@@ -3537,10 +2325,6 @@ describe('two machines publishing the same harness (#243)', () => {
     )
   }
 
-  const withTokens = (totalTokens: number, sessions: number) => ({
-    activity: { ...payload().activity, totalTokens, sessions },
-  })
-
   test('stamps the machine from the TOKEN, never from the payload', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
@@ -3551,7 +2335,7 @@ describe('two machines publishing the same harness (#243)', () => {
       payload: payload(),
     })
 
-    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    const rows = await t.run((ctx) => ctx.db.query('measuredInventory').collect())
     expect(rows[0].machine).toBe('laptop')
   })
 
@@ -3565,381 +2349,185 @@ describe('two machines publishing the same harness (#243)', () => {
       payload: payload(),
     })
 
-    const rows = await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())
+    const rows = await t.run((ctx) => ctx.db.query('measuredInventory').collect())
     expect(rows[0].machine).toBeUndefined()
   })
 
-  test('the second machine ADDS to the reading instead of replacing it', async () => {
-    // The bug this ticket exists for: a VPS syncing its own small window used to
-    // knock the laptop's whole reading off the page, because "current" keyed on
-    // the harness name alone.
+})
+
+// ---------------------------------------------------------------------------
+// The inventory and the machines, as `getUsageByStackSlug` publishes them
+// (ADR-0011). The sums are covered in measuredDays.test.ts.
+// ---------------------------------------------------------------------------
+
+function usageWire(
+  date: string,
+  over: { harness?: string; input?: number; sessions?: number; model?: string; usd?: number } = {},
+) {
+  return {
+    aggregateVersion: 'measured-days/v1',
+    days: [
+      {
+        date,
+        usage: {
+          harnesses: [
+            {
+              harness: over.harness ?? 'claude-code',
+              sessions: over.sessions ?? 1,
+              projectKeys: ['AAAAAAAAAAAAAAAAAAAAAA'],
+              models: [
+                {
+                  model: over.model ?? 'claude-haiku-4-5',
+                  tokens: { input: over.input ?? 1_000, output: 0, cacheWrite: 0, cacheRead: 0 },
+                  ...(over.usd === undefined
+                    ? {}
+                    : { usd: over.usd, pricingTable: 'anthropic-list-2026-08-25' }),
+                },
+              ],
+              subagentTokens: 0,
+              excludedTokens: { unpriced: 0, synthetic: 0 },
+            },
+          ],
+        },
+      },
+    ],
+  }
+}
+
+const today = () => new Date().toISOString().slice(0, 10)
+
+describe('getUsageByStackSlug publishes the inventory and the machines', () => {
+  test('assigns ordinals by first sight, not by the private machine name', async () => {
     const t = convexTest(schema, modules)
     const { stackId, shortId } = await seedStack(t)
-    const laptop = await seedToken(t, { stackId, name: 'laptop' })
-    const vps = await seedToken(t, { stackId, name: 'vps' })
 
-    await t.mutation(internal.measured.publishForToken, {
-      tokenId: laptop,
-      payload: payload({ capturedAt: 1000, ...withTokens(4_000_000, 500) }),
-    })
-    await t.mutation(internal.measured.publishForToken, {
-      tokenId: vps,
-      payload: payload({ capturedAt: 2000, ...withTokens(4_000, 19) }),
-    })
-
-    const current = await t
-      .withIdentity(IDENTITY)
-      .query(api.measured.getCurrentByStackSlug, {
-        slug: `my-stack-${shortId}`,
+    for (const [capturedAt, machine] of [
+      [1000, 'z-machine'],
+      [2000, 'a-machine'],
+    ] as const) {
+      await t.mutation(internal.measured.publishSnapshot, {
+        stackId,
+        machine,
+        payload: payload({ capturedAt }),
       })
-    expect(current!.activity.totalTokens).toBe(4_004_000)
-    expect(current!.activity.sessions).toBe(519)
-    expect(current!.harnesses).toHaveLength(2)
-    expect(current!.harnesses.map((h) => h.machine)).toEqual(['laptop', 'vps'])
-  })
+    }
 
-  test('one machine syncing twice still holds only its newest reading', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    const laptop = await seedToken(t, { stackId, name: 'laptop' })
-
-    await t.mutation(internal.measured.publishForToken, {
-      tokenId: laptop,
-      payload: payload({ capturedAt: 1000, ...withTokens(1_000_000, 10) }),
-    })
-    await t.mutation(internal.measured.publishForToken, {
-      tokenId: laptop,
-      payload: payload({ capturedAt: 2000, ...withTokens(1_200_000, 12) }),
-    })
-
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
+    const usage = await t.query(api.measured.getUsageByStackSlug, {
       slug: `my-stack-${shortId}`,
     })
-    expect(current!.activity.totalTokens).toBe(1_200_000)
-    expect(current!.harnesses).toHaveLength(1)
+    expect(usage?.inventory.map((h) => h.machineOrdinal)).toEqual([2, 1])
+    expect(usage?.machines.map((m) => m.machineOrdinal)).toEqual([1, 2])
   })
 
-  test('relinking a machine keeps one bucket, because the key is the NAME', async () => {
-    // Two tokens, one machine - which is what `aistack login` a second time
-    // leaves behind. Keyed by token id the dead one would carry a stale reading
-    // forward beside the live one, forever.
+  test('withholds unticked machine names, keeps stable ordinals, and names them for the owner', async () => {
     const t = convexTest(schema, modules)
     const { stackId, shortId } = await seedStack(t)
-    const oldToken = await seedToken(t, { stackId, name: 'laptop' })
-    const newToken = await seedToken(t, { stackId, name: 'laptop' })
+    const slug = `my-stack-${shortId}`
 
-    await t.mutation(internal.measured.publishForToken, {
-      tokenId: oldToken,
-      payload: payload({ capturedAt: 1000, ...withTokens(9_000_000, 900) }),
-    })
-    await t.mutation(internal.measured.publishForToken, {
-      tokenId: newToken,
-      payload: payload({ capturedAt: 2000, ...withTokens(1_000_000, 10) }),
-    })
+    for (const [harness, machine] of [
+      ['claude-code', 'workstation'],
+      ['codex', 'vps'],
+      ['codex', 'workstation'],
+    ] as const) {
+      await t.mutation(internal.measured.publishSnapshot, {
+        stackId,
+        machine,
+        payload: payload({ harness: { name: harness, version: '1.0.0' } }),
+      })
+    }
 
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current!.harnesses).toHaveLength(1)
-    expect(current!.activity.totalTokens).toBe(1_000_000)
-  })
+    const publicView = await t.query(api.measured.getUsageByStackSlug, { slug })
+    expect(
+      publicView?.inventory.map((h) => [h.harness, h.machine, h.machineOrdinal]),
+    ).toEqual([
+      ['claude-code', null, 1],
+      ['codex', null, 2],
+      ['codex', null, 1],
+    ])
 
-  test('a tagged reading supersedes the untagged history of its harness', async () => {
-    // No backfill can say which machine wrote a pre-tagging row, so an untagged
-    // row counts as the whole harness. Summing it with a tagged one would count
-    // the same sessions twice, and carry-forward never expires.
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    const laptop = await seedToken(t, { stackId, name: 'laptop' })
-
-    await t.mutation(internal.measured.publishSnapshot, {
+    await t.withIdentity(IDENTITY).mutation(api.measured.addPublishedNameOptIns, {
       stackId,
-      payload: payload({ capturedAt: 1000, ...withTokens(4_000_000, 500) }),
+      names: [{ category: 'machines', name: 'vps' }],
     })
-    await t.mutation(internal.measured.publishForToken, {
-      tokenId: laptop,
-      payload: payload({ capturedAt: 2000, ...withTokens(4_100_000, 510) }),
-    })
+    const readerView = await t
+      .withIdentity(OTHER_IDENTITY)
+      .query(api.measured.getUsageByStackSlug, { slug })
+    expect(readerView?.inventory.map((h) => h.machine)).toEqual([null, 'vps', null])
 
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current!.harnesses).toHaveLength(1)
-    expect(current!.activity.totalTokens).toBe(4_100_000)
-  })
-
-  test('an untagged reading of ANOTHER harness survives beside a tagged one', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    const laptop = await seedToken(t, { stackId, name: 'laptop' })
-
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({
-        capturedAt: 1000,
-        harness: { name: 'codex', version: '0.146.0' },
-        ...withTokens(500_000, 5),
-      }),
-    })
-    await t.mutation(internal.measured.publishForToken, {
-      tokenId: laptop,
-      payload: payload({ capturedAt: 2000, ...withTokens(1_000_000, 10) }),
-    })
-
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current!.activity.totalTokens).toBe(1_500_000)
-    expect(current!.harnesses.map((h) => h.harness.name)).toEqual([
-      'claude-code',
-      'codex',
+    const ownerView = await t
+      .withIdentity(IDENTITY)
+      .query(api.measured.getUsageByStackSlug, { slug })
+    expect(ownerView?.inventory.map((h) => h.machine)).toEqual([
+      'workstation',
+      'vps',
+      'workstation',
     ])
   })
 
-  test('the trail states what was true then: untagged points keep their reading', async () => {
-    // The eviction moves through time. A point taken before any machine
-    // reported must still show the untagged reading, or the chart would rewrite
-    // history every time a machine is named for the first time.
+  test('narrows the inventory and the days to one machine ordinal', async () => {
     const t = convexTest(schema, modules)
     const { stackId, shortId } = await seedStack(t)
-    const laptop = await seedToken(t, { stackId, name: 'laptop' })
-    const now = Date.now()
 
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: payload({ capturedAt: now - 3 * DAY, ...withTokens(4_000_000, 500) }),
-    })
-    await t.mutation(internal.measured.publishForToken, {
-      tokenId: laptop,
-      payload: payload({ capturedAt: now - DAY, ...withTokens(4_100_000, 510) }),
-    })
-
-    const history = await t
-      .withIdentity(IDENTITY)
-      .query(api.measured.getHistoryByStackSlug, {
-        slug: `my-stack-${shortId}`,
+    for (const [machine, harness, tokens] of [
+      ['workstation', 'claude-code', 1_000],
+      ['vps', 'claude-code', 2_000],
+      ['workstation', 'codex', 3_000],
+    ] as const) {
+      await t.mutation(internal.measured.publishSnapshot, {
+        stackId,
+        machine,
+        payload: payload({ harness: { name: harness, version: '1.0.0' } }),
+        measuredDays: usageWire(today(), { harness, input: tokens }),
       })
-    expect(history!.points.map((p) => p.tokens)).toEqual([4_000_000, 4_100_000])
-    expect(history!.points[0].harnesses[0].machine).toBeNull()
-    expect(history!.points[1].harnesses[0].machine).toBe('laptop')
-  })
-
-  test('the trail sums two machines from the point the second one lands', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    const laptop = await seedToken(t, { stackId, name: 'laptop' })
-    const vps = await seedToken(t, { stackId, name: 'vps' })
-    const now = Date.now()
-
-    await t.mutation(internal.measured.publishForToken, {
-      tokenId: laptop,
-      payload: payload({ capturedAt: now - 2 * DAY, ...withTokens(1_000_000, 10) }),
-    })
-    await t.mutation(internal.measured.publishForToken, {
-      tokenId: vps,
-      payload: payload({ capturedAt: now - DAY, ...withTokens(4_000, 2) }),
-    })
-
-    const history = await t.query(api.measured.getHistoryByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(history!.points.map((p) => p.tokens)).toEqual([1_000_000, 1_004_000])
-  })
-
-  test('the trail narrows by ordinal without returning a machine name', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    const laptop = await seedToken(t, { stackId, name: 'laptop' })
-    const vps = await seedToken(t, { stackId, name: 'vps' })
-    const now = Date.now()
-
-    await t.mutation(internal.measured.publishForToken, {
-      tokenId: laptop,
-      payload: payload({ capturedAt: now - 2 * DAY, ...withTokens(1_000_000, 10) }),
-    })
-    await t.mutation(internal.measured.publishForToken, {
-      tokenId: vps,
-      payload: payload({ capturedAt: now - DAY, ...withTokens(4_000, 2) }),
-    })
-
-    const history = await t.query(api.measured.getHistoryByStackSlug, {
-      slug: `my-stack-${shortId}`,
-      machineOrdinal: 2,
-    })
-    expect(history!.machineOrdinal).toBe(2)
-    expect(history!.points.map((p) => p.tokens)).toEqual([4_000])
-    expect(history!.points[0].harnesses[0].machine).toBeNull()
-  })
-
-  test('the trail rejects nonpositive and fractional ordinals', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      machine: 'laptop',
-      payload: payload(),
-    })
-
-    for (const machineOrdinal of [0, -1, 1.5]) {
-      const history = await t.query(api.measured.getHistoryByStackSlug, {
-        slug: `my-stack-${shortId}`,
-        machineOrdinal,
-      })
-      expect(history).toBeNull()
     }
-  })
-})
 
-describe('read-time repricing of unpriced OpenAI rows (#72)', () => {
-  const codexPayload = (over: Record<string, unknown> = {}) =>
-    payload({
-      harness: { name: 'codex', version: '0.146.0' },
-      pricingTable: 'openai-list-2026-08-01',
-      models: [
-        {
-          id: 'gpt-5.6-sol',
-          tokenShare: 1,
-          // No apiEquivalentUSD: the 0.6.0 CLI had no rate for this id.
-          tokens: {
-            input: 1_000_000,
-            output: 100_000,
-            cacheWrite: 0,
-            cacheRead: 400_000,
-          },
-        },
-      ],
-      excludedTokens: { unpriced: 1_500_000, synthetic: 0 },
-      ...over,
+    const usage = await t.query(api.measured.getUsageByStackSlug, {
+      slug: `my-stack-${shortId}`,
+      machineOrdinal: 1,
     })
+    expect(usage?.inventory.map((h) => [h.harness, h.machineOrdinal])).toEqual([
+      ['claude-code', 1],
+      ['codex', 1],
+    ])
+    expect(usage?.current?.totalTokens).toBe(3_000)
+    expect(usage?.legacy).toBeNull()
+  })
 
-  test('prices a landed gpt-5.6-sol row and shrinks the unpriced counter', async () => {
+  test('a legacy figure stands in for a stack with inventory but no days', async () => {
     const t = convexTest(schema, modules)
     const { stackId, shortId } = await seedStack(t)
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: codexPayload(),
+    await t.mutation(internal.measured.publishSnapshot, { stackId, payload: payload() })
+    await t.run(async (ctx) => {
+      const row = await ctx.db.query('measuredInventory').first()
+      await ctx.db.patch(row!._id, {
+        legacy: { tokens: 5_000, sessions: 7, activeDays: 3, usd: 1.25, capturedAt: 10, windowDays: 30 },
+      })
     })
 
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
+    const usage = await t.query(api.measured.getUsageByStackSlug, {
       slug: `my-stack-${shortId}`,
     })
-    // 1M in × $5 + 100k out × $30 + 400k cached × $0.50, per 1M.
-    expect(current?.models[0].apiEquivalentUSD).toBeCloseTo(5 + 3 + 0.2, 6)
-    expect(current?.models[0].costEstimated).toBe(true)
-    const harness = current?.harnesses[0]
-    expect(harness?.models[0].apiEquivalentUSD).toBeCloseTo(8.2, 6)
-    expect(harness?.excludedTokens.unpriced).toBe(0)
-    // The footer cites the table the dollars came from, and ONLY that one: the
-    // payload's own table priced nothing here, so naming it would date a figure
-    // it did not produce.
-    expect(harness?.pricingTable).toBe('openai-list-2026-08-02')
-    expect(current?.cost).toMatchObject({
-      publishedUSD: 0,
-      estimatedUSD: 8.2,
-      lowerBoundUSD: 8.2,
-      coverage: 1,
+    expect(usage?.hasDays).toBe(false)
+    expect(usage?.current).toBeNull()
+    expect(usage?.legacy).toEqual({
+      tokens: 5_000,
+      sessions: 7,
+      activeDays: 3,
+      usd: 1.25,
+      capturedAt: 10,
+      windowDays: 30,
     })
   })
 
-  test('publishes no cost at all when the owner turned cost off', async () => {
-    const t = convexTest(schema, modules)
-    // The FLAG is the gate, not the payload's silence (#93). This snapshot even
-    // carries dollars, and they must not reach the page.
-    const { stackId, shortId } = await seedStack(t, { publishCost: false })
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: codexPayload({
-        models: [
-          {
-            id: 'gpt-5.6-sol',
-            tokenShare: 1,
-            apiEquivalentUSD: 8.2,
-            tokens: {
-              input: 1_000_000,
-              output: 100_000,
-              cacheWrite: 0,
-              cacheRead: 400_000,
-            },
-          },
-        ],
-      }),
-    })
-
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current?.models[0].apiEquivalentUSD).toBeUndefined()
-    expect(current?.cost).toBeNull()
-    expect(current?.harnesses[0].pricingTable).toBeNull()
-    expect(current?.harnesses[0].excludedTokens.unpriced).toBe(1_500_000)
-  })
-
-  test('leaves an id no table can price unpriced', async () => {
+  test('returns null for an unpublished stack, and answers no days for one that never synced', async () => {
     const t = convexTest(schema, modules)
     const { stackId, shortId } = await seedStack(t)
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: codexPayload({
-        models: [
-          {
-            id: 'gpt-5.7-unreleased',
-            tokenShare: 1,
-            tokens: { input: 100, output: 10, cacheWrite: 0, cacheRead: 0 },
-          },
-        ],
-        excludedTokens: { unpriced: 110, synthetic: 0 },
-      }),
-    })
-
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current?.models[0].apiEquivalentUSD).toBeUndefined()
-    expect(current?.harnesses[0].excludedTokens.unpriced).toBe(110)
-    // Nothing was priced, so no table is cited and no cost block exists.
-    expect(current?.harnesses[0].pricingTable).toBeNull()
-    expect(current?.cost).toBeNull()
-  })
-
-  test('reports the share of tokens it could price', async () => {
-    // The prod shape: a named model our table covers, beside `unknown`, which
-    // no table can ever cover. The figure is a lower bound and says by how much.
-    const t = convexTest(schema, modules)
-    const { stackId, shortId } = await seedStack(t)
-    await t.mutation(internal.measured.publishSnapshot, {
-      stackId,
-      payload: codexPayload({
-        models: [
-          {
-            id: 'gpt-5.6-sol',
-            tokenShare: 0.8,
-            tokens: {
-              input: 8_000_000,
-              output: 0,
-              cacheWrite: 0,
-              cacheRead: 0,
-            },
-          },
-          {
-            id: 'unknown',
-            tokenShare: 0.2,
-            tokens: {
-              input: 2_000_000,
-              output: 0,
-              cacheWrite: 0,
-              cacheRead: 0,
-            },
-          },
-        ],
-      }),
-    })
-
-    const current = await t.query(api.measured.getCurrentByStackSlug, {
-      slug: `my-stack-${shortId}`,
-    })
-    expect(current?.cost?.coverage).toBeCloseTo(0.8, 6)
-    expect(current?.cost?.pricedTokens).toBe(8_000_000)
-    expect(current?.cost?.measuredTokens).toBe(10_000_000)
-    expect(current?.cost?.lowerBoundUSD).toBeCloseTo(40, 6)
+    const idle = await t.query(api.measured.getUsageByStackSlug, { slug: `my-stack-${shortId}` })
+    expect(idle?.hasDays).toBe(false)
+    expect(idle?.inventory).toEqual([])
+    await t.run((ctx) => ctx.db.patch(stackId, { published: false }))
+    expect(
+      await t.query(api.measured.getUsageByStackSlug, { slug: `my-stack-${shortId}` }),
+    ).toBeNull()
   })
 })

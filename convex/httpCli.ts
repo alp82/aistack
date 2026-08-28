@@ -555,7 +555,6 @@ export const syncPublish = httpAction(async (ctx, request) => {
   }
 
   let result: {
-    snapshotIds: string[]
     receivedAt: number
     stackSlug: string
     keptPrivate: { stored: number; refused: boolean }

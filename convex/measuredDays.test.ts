@@ -4,7 +4,8 @@ import { convexTest } from 'convex-test'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { api, internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
-import schema from './schema'
+import type { Infer } from 'convex/values'
+import schema, { MeasuredPayload } from './schema'
 import { sha256Hex } from './httpCli'
 import { FULL_CLI_TOKEN_SCOPES } from './lib/cliScopes'
 
@@ -23,7 +24,7 @@ const IDENTITY = { tokenIdentifier: `convex|${USER}`, subject: USER }
 const NOW = Date.parse('2026-08-28T12:00:00Z')
 
 type Ctx = Awaited<ReturnType<typeof convexTest>>
-type StoredPayload = Doc<'measuredSnapshots'>['payload']
+type StoredPayload = Infer<typeof MeasuredPayload>
 type WorkflowDay = NonNullable<Doc<'measuredDays'>['workflow']>
 type UsageDay = NonNullable<Doc<'measuredDays'>['usage']>
 

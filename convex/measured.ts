@@ -32,13 +32,7 @@ import {
 import { captureServerEvent } from './analytics'
 import { emitActivityEvent } from './activity'
 import { normalizeFrequencyHours } from './lib/autoSync'
-import {
-  newestBySource,
-  newestPerSource,
-  sourceKey,
-  sourceOrder,
-  visibleSources,
-} from './lib/sources'
+
 import { extractShortId } from './lib/ids'
 import {
   dayWireFromWorkflow,
@@ -46,17 +40,13 @@ import {
   measuredDaysForMachine,
   measuredDaysForStack,
   checkMeasuredDays,
+  inventoryForStack,
+  newestInventoryPerSource,
   storeMeasuredDays,
   upsertInventory,
   workflowWireOf,
 } from './lib/measuredDays'
-import { firstSeenMachines } from './lib/machineOrdinals'
-import { estimateModelUSD, type RepricedModel, repriceSnapshot, round2 } from './lib/reprice'
-import {
-  measureOne,
-  mergeSetEvidence,
-  setEvidence,
-} from './lib/measuredSets'
+import { estimateModelUSD, round2 } from './lib/reprice'
 import {
   MODEL_ID_MAX,
   NAME_MAX,
@@ -65,25 +55,32 @@ import {
 } from './lib/names'
 
 /**
- * The measured layer - append-only snapshots published by the sync client, plus
- * the reconcile state that sits over the authored<->measured overlap.
+ * The measured layer: the days and the live inventory the sync client
+ * publishes (ADR-0010, ADR-0011), plus the reconcile state that sits over the
+ * authored<->measured overlap.
  *
- * Wayfinder ticket #38 (map #29). Shape and semantics fixed by the wire-format
- * grilling #33; the payload is produced by packages/cli/src/transcripts (#37).
+ * Wayfinder ticket #38 (map #29) shaped the payload; #307 and #321 (map #302)
+ * moved the store from whole-window snapshots to per-day rows. The payload is
+ * produced by packages/cli/src/transcripts (#37) and still carries the
+ * inventory and the bounds every publish is checked against.
  *
  * Three invariants worth stating up front, because each one is a decision that
  * looks like an omission:
  *
- *   1. NOTHING IS UPDATED. A snapshot is inserted and never touched again. The
- *      "current" measured layer is a query for the newest row, not a column.
+ *   1. TWO SHAPES, TWO TABLES. `measuredDays` holds combinable atoms, one row
+ *      per (stack, machine, date), replaced per date and never pruned.
+ *      `measuredInventory` holds one row per (stack, machine, harness),
+ *      replaced on every sync. Every sum folds days; every "newest per source"
+ *      reads inventory.
  *   2. `catalogSlug` IS RESOLVED AT READ TIME, never stored. A model that isn't
  *      in the catalog today resolves for free the day it is added, with no
  *      republish - which is why decision 3 could exempt model ids from the
  *      allowlist without their tokens silently vanishing.
- *   3. THE SERVER CLOCK DECIDES FRESHNESS. `capturedAt` comes from the client
- *      and orders the series; `receivedAt` is ours and is what the living-stacks
- *      bar trusts.
+ *   3. THE SERVER CLOCK DECIDES FRESHNESS. `capturedAt` comes from the client;
+ *      `receivedAt` is ours and is what the living-stacks bar trusts.
  */
+
+type Payload = Infer<typeof MeasuredPayload>
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -156,7 +153,7 @@ function checkSortedUnique(
  * that throws. Their bound belongs on the catalog write path, if anywhere.
  */
 function checkPayloadStrings(
-  payload: Doc<'measuredSnapshots'>['payload']
+  payload: Payload
 ): void {
   const requireName = (value: string, where: string): void => {
     if (!isDisplaySafeName(value)) {
@@ -395,55 +392,34 @@ export function checkWorkflowDays(wire: Infer<typeof WorkflowWire>): void {
 }
 
 /**
- * Shared insert path.
+ * The one path a payload takes into the measured layer: the version gate, the
+ * string and array bounds, and the machine's stable position. Nothing is
+ * inserted from the payload itself anymore (ADR-0011): the inventory row is
+ * upserted beside it and the days arrive on their own wire.
  *
  * A plain function, not a mutation the other mutation calls: routing this
- * through `ctx.runMutation(internal.measured.publishSnapshot, ...)` makes
- * `measured.ts` reference its own module through the generated API, and TS
- * resolves that circularity by degrading the entire `internal` type to `any` -
- * which silently breaks inference in unrelated files (it took out `ctx.db.get`
- * narrowing across four other test files before this was extracted).
+ * through `ctx.runMutation(internal.measured...)` makes `measured.ts`
+ * reference its own module through the generated API, and TS resolves that
+ * circularity by degrading the entire `internal` type to `any`.
  */
-async function insertSnapshot(
+async function acceptPayload(
   ctx: MutationCtx,
   stackId: Id<'stacks'>,
-  payload: Doc<'measuredSnapshots'>['payload'],
-  machine?: string,
-  cliVersion?: string
-): Promise<{ snapshotId: Id<'measuredSnapshots'>; receivedAt: number }> {
+  payload: Payload,
+  machine?: string
+): Promise<{ receivedAt: number }> {
   if (!SUPPORTED_SCHEMA_VERSIONS.includes(payload.schemaVersion)) {
     throw new Error(`Unsupported payload schemaVersion ${payload.schemaVersion}`)
   }
-  // Here rather than in either mutation: this is the one path into the table, so
-  // a future caller cannot acquire authority over a stack and skip the bound.
+  // Here rather than in either mutation: this is the one path in, so a future
+  // caller cannot acquire authority over a stack and skip the bound.
   checkPayloadStrings(payload)
 
   const receivedAt = Date.now()
   if (machine !== undefined) {
     await ensureMachineOrdinal(ctx, stackId, machine, receivedAt)
   }
-  const snapshotId = await ctx.db.insert('measuredSnapshots', {
-    stackId,
-    // Ordering key. Deliberately NOT clamped to the server clock: a skewed
-    // client would otherwise have its ordering silently rewritten, and the
-    // divergence between the two timestamps is itself a signal worth keeping.
-    capturedAt: payload.capturedAt,
-    receivedAt,
-    schemaVersion: payload.schemaVersion,
-    // Denormalized discriminator (#66 decision 1) - "current per harness" is
-    // one indexed read. Old rows get theirs from the 20260801 backfill.
-    harness: payload.harness.name,
-    // The other half of the discriminator (#243). Absent when the caller has no
-    // token to name a machine from, which is the pre-tagging state exactly, so
-    // `visibleSources` treats both the same way.
-    machine,
-    // Which CLI published this (#213). Absent from an older client, and that is
-    // the answer the version question wants: a row with no version is a row
-    // from before the field existed.
-    cliVersion,
-    payload,
-  })
-  return { snapshotId, receivedAt }
+  return { receivedAt }
 }
 
 /**
@@ -465,15 +441,12 @@ export const publishSnapshot = internalMutation({
     /** The per-day wire (#307), both halves of each day. */
     measuredDays: v.optional(MeasuredDayWire),
   },
-  returns: v.object({
-    snapshotId: v.id('measuredSnapshots'),
-    receivedAt: v.number(),
-  }),
+  returns: v.object({ receivedAt: v.number() }),
   handler: async (ctx, args) => {
     const stack = await ctx.db.get(args.stackId)
     if (!stack) throw new Error('Stack not found')
     checkDayArgs(args)
-    const inserted = await insertSnapshot(
+    const inserted = await acceptPayload(
       ctx,
       args.stackId,
       args.payload,
@@ -544,73 +517,8 @@ async function storeDayArgs(
 }
 
 // ---------------------------------------------------------------------------
-// Read - current snapshot, with catalog resolution
+// Read - the catalog, the machines, the stack behind a slug
 // ---------------------------------------------------------------------------
-
-/** One published model, with the catalog resolved as of NOW. */
-const ResolvedModel = v.object({
-  id: v.string(),
-  /** `null` when the id matches nothing in the models catalog yet. */
-  catalogSlug: v.union(v.string(), v.null()),
-  catalogName: v.union(v.string(), v.null()),
-  tokenShare: v.number(),
-  tokens: v.object({
-    input: v.number(),
-    output: v.number(),
-    cacheWrite: v.number(),
-    cacheRead: v.number(),
-    /**
-     * The cache-write TTL breakdown (#213). Stored optional, so it is optional
-     * here too: a pre-#213 row carries the merged total alone.
-     *
-     * IT HAS TO BE DECLARED EVEN THOUGH NO SURFACE READS IT YET. The read path
-     * hands the stored token object straight out, and a Convex returns
-     * validator refuses an undeclared field. Leaving it out did not hide the
-     * field - it broke every page for any stack that had synced with a CLI new
-     * enough to send it (#217).
-     */
-    cacheWriteTtl: v.optional(
-      v.object({
-        fiveMinute: v.number(),
-        oneHour: v.number(),
-        unsplit: v.number(),
-      })
-    ),
-  }),
-  apiEquivalentUSD: v.optional(v.number()),
-  /**
-   * The table citing the dollars above, per model (#136) - the payload's own
-   * for a published figure, ours for an estimated one. Absent with the dollars.
-   */
-  pricingTable: v.optional(v.string()),
-  /**
-   * True when the dollars above were priced server-side from the shared table
-   * rather than by the syncing CLI (#93). An estimate is a lower bound: the
-   * wire carries one merged `cacheWrite`, so it charges the cheap tier.
-   */
-  costEstimated: v.boolean(),
-})
-
-/**
- * What a surface needs to print money honestly (#93). `null` when the owner
- * has `publishCost` off, and when nothing in the snapshot carries a citable
- * price. Every dollar figure here is a LOWER BOUND - see `convex/lib/reprice.ts`
- * for the two facts the wire loses and why both resolve downward.
- */
-const Cost = v.object({
-  lowerBoundUSD: v.number(),
-  publishedUSD: v.number(),
-  estimatedUSD: v.number(),
-  coverage: v.number(),
-  pricedTokens: v.number(),
-  measuredTokens: v.number(),
-  pricingTables: v.array(v.string()),
-})
-
-const MeasuredSetResult = v.object({
-  value: v.number(),
-  precision: v.union(v.literal('exact'), v.literal('lower-bound')),
-})
 
 /**
  * The models catalog, read once and indexed in memory.
@@ -621,7 +529,7 @@ const MeasuredSetResult = v.object({
  * syncs. One collect answers all of them, and it is what the alias fallback
  * already did on every miss.
  */
-type ModelCatalog = {
+export type ModelCatalog = {
   bySlug: Map<string, Doc<'models'>>
   byAlias: Map<string, Doc<'models'>>
 }
@@ -655,13 +563,6 @@ export async function loadModelCatalog(ctx: QueryCtx): Promise<ModelCatalog> {
  * is the honest failure: the alternative - dropping it - is exactly the silent
  * disappearance #33 decision 3 exempted model ids to prevent.
  */
-function resolveModels(
-  catalog: ModelCatalog,
-  models: Doc<'measuredSnapshots'>['payload']['models']
-) {
-  return models.map((m) => ({ ...m, ...resolveModelId(catalog, m.id) }))
-}
-
 /** One id against the catalog: the slug, then the aliases, then the bare vendor id. */
 function resolveModelId(
   catalog: ModelCatalog,
@@ -681,35 +582,6 @@ function resolveModelId(
 }
 
 /**
- * The newest snapshot of EACH SOURCE (#66 decisions 1-2, widened by #243).
- * "Current" became per-harness the day snapshots did, and per-machine the day a
- * stack had two: each source syncs independently, so its freshness and failures
- * stay attributable. The rule itself is in `convex/lib/sources.ts`.
- *
- * One collect over the stack's rows rather than one indexed read per source,
- * because both halves of the key are open strings (deliberately) and the
- * retention policy bounds a stack to roughly one row per source per day - the
- * collect is small by construction.
- */
-export async function snapshotsForStack(
-  ctx: QueryCtx | MutationCtx,
-  stackId: Id<'stacks'>
-): Promise<Doc<'measuredSnapshots'>[]> {
-  return await ctx.db
-    .query('measuredSnapshots')
-    .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', stackId))
-    .collect()
-}
-
-async function newestSnapshotsPerSource(
-  ctx: QueryCtx,
-  stackId: Id<'stacks'>
-): Promise<Doc<'measuredSnapshots'>[]> {
-  return newestPerSource(await snapshotsForStack(ctx, stackId))
-}
-
-/** One SOURCE's current snapshot: a harness on a machine (#66, #243). */
-/**
  * One published inventory name, as a surface reads it.
  *
  * `calls` is the absolute count behind the share (#213), optional because a
@@ -721,315 +593,6 @@ const PublicAtom = v.object({
   callShare: v.number(),
   calls: v.optional(v.number()),
 })
-
-const HarnessSnapshot = v.object({
-  /**
-   * The published machine name. Null means the name is withheld or the row
-   * predates machine tagging.
-   */
-  machine: v.union(v.string(), v.null()),
-  /** Stable one-based position. Null only when the row predates tagging. */
-  machineOrdinal: v.union(v.number(), v.null()),
-  capturedAt: v.number(),
-  receivedAt: v.number(),
-  schemaVersion: v.number(),
-  /** True when receivedAt is inside the 7-day living-stacks window. */
-  isFresh: v.boolean(),
-  window: v.object({ days: v.number(), from: v.string(), to: v.string() }),
-  harness: v.object({
-    name: v.string(),
-    version: v.union(v.string(), v.null()),
-  }),
-  pricingTable: v.union(v.string(), v.null()),
-  cost: v.union(Cost, v.null()),
-  activity: v.object({
-    sessions: v.number(),
-    activeDays: MeasuredSetResult,
-    projects: MeasuredSetResult,
-    totalTokens: v.number(),
-    cacheHitShare: v.number(),
-    subagentShare: v.number(),
-  }),
-  models: v.array(ResolvedModel),
-  inventory: v.object({
-    builtinTools: v.array(PublicAtom),
-    mcpServers: v.array(PublicAtom),
-    skills: v.array(PublicAtom),
-    subagents: v.array(PublicAtom),
-    slashCommands: v.array(PublicAtom),
-    withheld: v.object({
-      builtinTools: v.number(),
-      mcpServers: v.number(),
-      skills: v.number(),
-      subagents: v.number(),
-      slashCommands: v.number(),
-    }),
-    /**
-     * Every observed call per category, withheld names included (#213) - the
-     * denominator the per-atom `calls` need. Optional for the same reason they
-     * are, and declared here for the same reason `cacheWriteTtl` is: the read
-     * path passes the stored inventory straight out.
-     */
-    calls: v.optional(
-      v.object({
-        builtinTools: v.number(),
-        mcpServers: v.number(),
-        skills: v.number(),
-        subagents: v.number(),
-        slashCommands: v.number(),
-      })
-    ),
-  }),
-  coverage: v.object({
-    filesScanned: v.number(),
-    filesUnreadable: v.number(),
-    linesParsed: v.number(),
-    linesFailed: v.number(),
-  }),
-  excludedTokens: v.object({ unpriced: v.number(), synthetic: v.number() }),
-})
-
-/**
- * The combined headline plus the per-source sections (#66 decision 2, #243).
- *
- * The headline SUMS what sums honestly - a session belongs to exactly one
- * harness on exactly one machine, so tokens, sessions and dollars cannot
- * double-count even when the windows overlap. Inventory atoms stay per-source:
- * they carry normalized `callShare` only, with no weights for an honest merge.
- *
- * V2 day and project sets union across sources. Immutable v1 rows carry counts,
- * so a mixed reading returns the tight lower bound and names its precision.
- * This distinction is evaluated again at each point on the trail.
- */
-const CurrentMeasured = v.object({
-  /** Newest across sources; the freshness the page leads with. */
-  receivedAt: v.number(),
-  capturedAt: v.number(),
-  /** True when ANY source synced inside the 7-day window. */
-  isFresh: v.boolean(),
-  /** Envelope: inclusive span from the earliest `from` through the latest `to`. */
-  window: v.object({ days: v.number(), from: v.string(), to: v.string() }),
-  /** Every cited price table, joined for display; null when none published cost. */
-  pricingTable: v.union(v.string(), v.null()),
-  /** The whole stack's money, summed across harnesses. Null when cost is off. */
-  cost: v.union(Cost, v.null()),
-  activity: v.object({
-    sessions: v.number(),
-    activeDays: MeasuredSetResult,
-    projects: MeasuredSetResult,
-    totalTokens: v.number(),
-    cacheHitShare: v.number(),
-    subagentShare: v.number(),
-  }),
-  /** Merged by id: absolute token objects summed, tokenShare recomputed. */
-  models: v.array(ResolvedModel),
-  harnesses: v.array(HarnessSnapshot),
-})
-
-function toHarnessSnapshot(
-  catalog: ModelCatalog,
-  snapshot: Doc<'measuredSnapshots'>,
-  publishCost: boolean
-) {
-  const p = snapshot.payload
-  const resolved = resolveModels(catalog, p.models)
-  const { models, cost, repricedTokens } = repriceSnapshot({
-    models: resolved,
-    window: p.window,
-    publishedTable: p.pricingTable,
-    publishCost,
-  })
-  const activeDayEvidence = setEvidence(p, 'activeDays')
-  const projectEvidence = setEvidence(p, 'projects')
-  return {
-    machine: snapshot.machine ?? null,
-    capturedAt: snapshot.capturedAt,
-    receivedAt: snapshot.receivedAt,
-    schemaVersion: snapshot.schemaVersion,
-    isFresh: Date.now() - snapshot.receivedAt <= SEVEN_DAYS_MS,
-    window: p.window,
-    harness: p.harness,
-    // The tables that dated the dollars, which is not always the payload's own:
-    // an estimated row is cited by OUR table. A table that priced nothing is
-    // not named at all.
-    pricingTable: cost ? cost.pricingTables.join(' + ') : null,
-    cost,
-    activity: {
-      sessions: p.activity.sessions,
-      activeDays: measureOne(activeDayEvidence),
-      projects: measureOne(projectEvidence),
-      totalTokens: p.activity.totalTokens,
-      cacheHitShare: p.activity.cacheHitShare,
-      subagentShare: p.activity.subagentShare,
-    },
-    setEvidence: {
-      activeDays: activeDayEvidence,
-      projects: projectEvidence,
-    },
-    models,
-    inventory: p.inventory,
-    coverage: p.coverage,
-    excludedTokens: {
-      unpriced: Math.max(0, p.excludedTokens.unpriced - repricedTokens),
-      synthetic: p.excludedTokens.synthetic,
-    },
-  }
-}
-
-type Resolved = Awaited<ReturnType<typeof resolveModels>>[number]
-type Priced = RepricedModel<Resolved>
-
-/**
- * Merge per-harness model lists by id, summing the absolute token objects and
- * recomputing `tokenShare` over the combined total. Dollars sum only while
- * every contributor priced - a merged row that mixed a priced and an unpriced
- * half would understate without saying so, so it drops the field instead.
- *
- * A merged row is "estimated" as soon as ANY half is: the sum is only as exact
- * as its weakest term.
- */
-function mergeModels(lists: Priced[][]): Priced[] {
-  const merged = new Map<string, Priced>()
-  for (const list of lists) {
-    for (const m of list) {
-      const held = merged.get(m.id)
-      if (!held) {
-        merged.set(m.id, { ...m, tokens: { ...m.tokens } })
-        continue
-      }
-      held.tokens.input += m.tokens.input
-      held.tokens.output += m.tokens.output
-      held.tokens.cacheWrite += m.tokens.cacheWrite
-      held.tokens.cacheRead += m.tokens.cacheRead
-      if (held.apiEquivalentUSD !== undefined && m.apiEquivalentUSD !== undefined) {
-        held.apiEquivalentUSD += m.apiEquivalentUSD
-        held.costEstimated = held.costEstimated || m.costEstimated
-        // A merged figure keeps its citation only while every contributor
-        // cites the same table (#136); the headline's `pricingTables` still
-        // names them all either way.
-        if (held.pricingTable !== m.pricingTable) held.pricingTable = undefined
-      } else {
-        held.apiEquivalentUSD = undefined
-        held.costEstimated = false
-        held.pricingTable = undefined
-      }
-      if (held.catalogSlug === null) {
-        held.catalogSlug = m.catalogSlug
-        held.catalogName = m.catalogName
-      }
-    }
-  }
-  const tokensOf = (r: Resolved) =>
-    r.tokens.input + r.tokens.output + r.tokens.cacheWrite + r.tokens.cacheRead
-  const total = [...merged.values()].reduce((a, r) => a + tokensOf(r), 0)
-  return [...merged.values()]
-    .map((r) => ({ ...r, tokenShare: total ? tokensOf(r) / total : 0 }))
-    .sort((a, b) => tokensOf(b) - tokensOf(a) || a.id.localeCompare(b.id))
-}
-
-type HarnessReading = ReturnType<typeof toHarnessSnapshot>
-
-function inclusiveDateSpan(from: string, to: string, fallback: number): number {
-  const fromMs = Date.parse(`${from}T00:00:00.000Z`)
-  const toMs = Date.parse(`${to}T00:00:00.000Z`)
-  const span = Math.floor((toMs - fromMs) / DAY_MS) + 1
-  return Number.isFinite(span) && span > 0 ? span : fallback
-}
-
-/**
- * Merge a set of per-source readings into the one figure the page states.
- *
- * Split out of `getCurrentByStackSlug` for #81: the series is this same merge
- * evaluated at every sync, so the headline is the last point of its own trail by
- * construction rather than by agreement between two pieces of arithmetic.
- *
- * Takes readings, not rows, and does no eviction of its own - callers hand it
- * an already-visible set (`newestPerSource`, or `visibleSources` inside a fold).
- * Handing it an untagged reading beside a tagged one of the same harness would
- * double-count, which is the whole reason that rule exists.
- */
-function mergeHarnesses(harnesses: HarnessReading[]) {
-  const totalTokens = harnesses.reduce((a, h) => a + h.activity.totalTokens, 0)
-  // Cache-hit share recomputes from the summed model tokens - the same
-  // input-class formula each client used, over the merged absolute counts.
-  const models = mergeModels(harnesses.map((h) => h.models))
-  let cacheRead = 0
-  let inputClass = 0
-  for (const m of models) {
-    cacheRead += m.tokens.cacheRead
-    inputClass += m.tokens.input + m.tokens.cacheRead + m.tokens.cacheWrite
-  }
-  // Money sums across sources without double-counting: a session belongs to
-  // exactly one harness on exactly one machine. Coverage re-divides over the
-  // combined token mass rather than averaging the per-source shares, which
-  // would weight a tiny source the same as a huge one.
-  const costs = harnesses
-    .map((h) => h.cost)
-    .filter((c): c is NonNullable<typeof c> => c !== null)
-  const sum = (pick: (c: (typeof costs)[number]) => number) =>
-    costs.reduce((a, c) => a + pick(c), 0)
-  const pricedTokens = sum((c) => c.pricedTokens)
-  const measuredTokens = sum((c) => c.measuredTokens)
-  const pricingTables = [...new Set(costs.flatMap((c) => c.pricingTables))]
-  const cost =
-    costs.length === 0
-      ? null
-      : {
-          lowerBoundUSD: round2(sum((c) => c.lowerBoundUSD)),
-          publishedUSD: round2(sum((c) => c.publishedUSD)),
-          estimatedUSD: round2(sum((c) => c.estimatedUSD)),
-          coverage: measuredTokens > 0 ? pricedTokens / measuredTokens : 0,
-          pricedTokens,
-          measuredTokens,
-          pricingTables,
-        }
-
-  const from = harnesses.map((h) => h.window.from).sort()[0]
-  const to = harnesses.map((h) => h.window.to).sort()[harnesses.length - 1]
-  const fallbackDays = Math.max(...harnesses.map((h) => h.window.days))
-  return {
-    receivedAt: Math.max(...harnesses.map((h) => h.receivedAt)),
-    capturedAt: Math.max(...harnesses.map((h) => h.capturedAt)),
-    isFresh: harnesses.some((h) => h.isFresh),
-    window: {
-      days: inclusiveDateSpan(from, to, fallbackDays),
-      from,
-      to,
-    },
-    pricingTable: pricingTables.length > 0 ? pricingTables.join(' + ') : null,
-    cost,
-    activity: {
-      sessions: harnesses.reduce((a, h) => a + h.activity.sessions, 0),
-      activeDays: mergeSetEvidence(
-        harnesses.map((h) => h.setEvidence.activeDays)
-      ),
-      projects: mergeSetEvidence(harnesses.map((h) => h.setEvidence.projects)),
-      totalTokens,
-      cacheHitShare: inputClass ? cacheRead / inputClass : 0,
-      subagentShare: totalTokens
-        ? harnesses.reduce(
-            (a, h) => a + h.activity.subagentShare * h.activity.totalTokens,
-            0
-          ) / totalTokens
-        : 0,
-    },
-    models,
-    harnesses: harnesses.map(({ setEvidence: _setEvidence, ...harness }) => harness),
-  }
-}
-
-/**
- * The dollars a merged reading cost, or null.
- *
- * The lower bound from the repriced cost reading (#93) - the same figure the
- * headline prints, so a point on the trail never states dollars the page
- * itself refuses to state.
- */
-function mergedUSD(merged: {
-  cost: { lowerBoundUSD: number } | null
-}): number | null {
-  return merged.cost?.lowerBoundUSD ?? null
-}
 
 /** The published stack behind a public slug, or null. */
 export async function publishedStackBySlug(ctx: QueryCtx, slug: string) {
@@ -1072,26 +635,9 @@ async function ensureMachineOrdinal(
   if (existing) return existing.ordinal
 
   const rows = await machineOrdinalRows(ctx, stackId)
-  const registered = new Set(rows.map((row) => row.machine))
-  let nextOrdinal =
+  const nextOrdinal =
     rows.reduce((max, row) => Math.max(max, row.ordinal), 0) + 1
-  let ordinal: number | undefined
-  for (const [legacyMachine, firstSeen] of firstSeenMachines(
-    await snapshotsForStack(ctx, stackId)
-  )) {
-    if (registered.has(legacyMachine)) continue
-    await ctx.db.insert('measuredMachineOrdinals', {
-      stackId,
-      machine: legacyMachine,
-      ordinal: nextOrdinal,
-      assignedAt: firstSeen.assignedAt,
-    })
-    if (legacyMachine === machine) ordinal = nextOrdinal
-    nextOrdinal++
-  }
-  if (ordinal !== undefined) return ordinal
-
-  ordinal = nextOrdinal
+  const ordinal = nextOrdinal
   await ctx.db.insert('measuredMachineOrdinals', {
     stackId,
     machine,
@@ -1140,356 +686,23 @@ export function publicMachine(
   }
 }
 
-function publishHarnessMachines(
-  merged: ReturnType<typeof mergeHarnesses>,
-  publication: MachinePublication
-) {
-  return {
-    ...merged,
-    harnesses: merged.harnesses.map((harness) => ({
-      ...harness,
-      ...publicMachine(harness.machine, publication),
-    })),
-  }
-}
-
 /**
- * The current measured layer for a published stack, by public slug.
+ * The done-bar counter: stacks whose newest sync landed within 7 days.
  *
- * Public and unauthenticated, matching the minimal public display this map
- * pulls forward (#34). Returns null for an unpublished stack or one that has
- * never synced - the display decides how to render the silence. No merged row
- * is ever stored: this aggregation exists only at read time (#66 decision 2).
- * `machineOrdinal` narrows the same aggregation without exposing its name.
- */
-export const getCurrentByStackSlug = query({
-  args: {
-    slug: v.string(),
-    machineOrdinal: v.optional(v.number()),
-  },
-  returns: v.union(CurrentMeasured, v.null()),
-  handler: async (ctx, args) => {
-    const stack = await publishedStackBySlug(ctx, args.slug)
-    if (!stack) return null
-
-    const publication = await machinePublication(ctx, stack)
-    if (
-      args.machineOrdinal !== undefined &&
-      (!Number.isInteger(args.machineOrdinal) || args.machineOrdinal <= 0)
-    ) {
-      return null
-    }
-    const selectedMachine =
-      args.machineOrdinal === undefined
-        ? undefined
-        : [...publication.ordinals.entries()].find(
-            ([, ordinal]) => ordinal === args.machineOrdinal
-          )?.[0]
-    if (args.machineOrdinal !== undefined && selectedMachine === undefined) {
-      return null
-    }
-
-    const allSnapshots = await newestSnapshotsPerSource(ctx, stack._id)
-    const snapshots =
-      selectedMachine === undefined
-        ? allSnapshots
-        : allSnapshots.filter((snapshot) => snapshot.machine === selectedMachine)
-    if (snapshots.length === 0) return null
-
-    // The flag is the gate, not the presence of dollars (#93): an owner who
-    // turned cost off after a sync has turned it off for the rows already sent.
-    const publishCost = stack.publishCost !== false
-    const catalog = await loadModelCatalog(ctx)
-    const merged = mergeHarnesses(
-      snapshots.map((s) => toHarnessSnapshot(catalog, s, publishCost))
-    )
-    return publishHarnessMachines(merged, publication)
-  },
-})
-
-// ---------------------------------------------------------------------------
-// Read - the series (#81, building the #80 design)
-// ---------------------------------------------------------------------------
-
-/** The default lookback: the span the GC keeps at full grain. */
-const HISTORY_DEFAULT_DAYS = 90
-const HISTORY_MAX_DAYS = 365
-/**
- * The most points one answer carries. A stack that syncs on every session can
- * pass this inside a week, and a page cannot draw a thousand readings anyway.
- * The newest are kept and `truncated` says so - a silently cut series would let
- * "N readings since X" name a day the series does not reach back to.
- */
-const HISTORY_MAX_POINTS = 180
-/** Rows captured inside the same minute are one sync, not several readings. */
-const SYNC_BUCKET_MS = 60_000
-
-/**
- * One model at one reading. Deliberately thinner than `ResolvedModel`: the trail
- * behind a model row is a share over time, and shipping every reading's absolute
- * token counts and dollars would multiply the payload for numbers no reading but
- * the newest displays.
- */
-const HistoryModel = v.object({
-  id: v.string(),
-  catalogSlug: v.union(v.string(), v.null()),
-  catalogName: v.union(v.string(), v.null()),
-  tokenShare: v.number(),
-})
-
-/**
- * One reading of the whole stack - the figure the page stated at that moment.
- *
- * `at` is the sync minute, `harnesses[].capturedAt` is when that harness last
- * spoke. The two differ whenever a harness did not sync in this minute, which is
- * how the display can say which reading actually moved.
- */
-const HistoryPoint = v.object({
-  at: v.number(),
-  tokens: v.number(),
-  usd: v.union(v.number(), v.null()),
-  sessions: v.number(),
-  activeDays: MeasuredSetResult,
-  projects: MeasuredSetResult,
-  windowDays: v.number(),
-  from: v.string(),
-  to: v.string(),
-  pricingTable: v.union(v.string(), v.null()),
-  harnesses: v.array(
-    v.object({
-      name: v.string(),
-      /** Published machine name, or null when withheld or untagged. */
-      machine: v.union(v.string(), v.null()),
-      /** Stable one-based position. Null only when the row predates tagging. */
-      machineOrdinal: v.union(v.number(), v.null()),
-      version: v.union(v.string(), v.null()),
-      capturedAt: v.number(),
-      tokens: v.number(),
-      usd: v.union(v.number(), v.null()),
-    })
-  ),
-  models: v.array(HistoryModel),
-})
-
-const MeasuredHistory = v.object({
-  /** The lookback the series covers, in days. */
-  windowDays: v.number(),
-  /** True when older readings exist but were dropped to bound the answer. */
-  truncated: v.boolean(),
-  /** Only this harness, when the caller asked for one. */
-  harness: v.union(v.string(), v.null()),
-  /** Only this machine position, when the caller asked for one. */
-  machineOrdinal: v.union(v.number(), v.null()),
-  points: v.array(HistoryPoint),
-})
-
-/** Strip a merged reading down to what a point on the trail needs. */
-function toHistoryPoint(
-  at: number,
-  merged: ReturnType<typeof mergeHarnesses>,
-  publication: MachinePublication
-) {
-  return {
-    at,
-    tokens: merged.activity.totalTokens,
-    usd: mergedUSD(merged),
-    sessions: merged.activity.sessions,
-    activeDays: merged.activity.activeDays,
-    projects: merged.activity.projects,
-    windowDays: merged.window.days,
-    from: merged.window.from,
-    to: merged.window.to,
-    pricingTable: merged.pricingTable,
-    harnesses: merged.harnesses.map((h) => ({
-      name: h.harness.name,
-      ...publicMachine(h.machine, publication),
-      version: h.harness.version,
-      capturedAt: h.capturedAt,
-      tokens: h.activity.totalTokens,
-      usd: mergedUSD(h),
-    })),
-    models: merged.models.map((m) => ({
-      id: m.id,
-      catalogSlug: m.catalogSlug,
-      catalogName: m.catalogName,
-      tokenShare: m.tokenShare,
-    })),
-  }
-}
-
-/**
- * The measured history of a published stack, by public slug.
- *
- * WHAT A POINT IS. Not one row: one sync, merged exactly the way the headline
- * merges (`mergeHarnesses`), over the newest reading of every harness AS OF that
- * moment. So the last point equals `getCurrentByStackSlug` - the page's big
- * number is the end of its own trail, and no figure on the page restates a
- * different arithmetic. A harness that did not sync in a given minute carries
- * its previous reading forward, which is the same thing the headline does today;
- * `harnesses[].capturedAt` keeps that visible.
- *
- * WHY IT NEEDS A SEED. The carry-forward starts before the window: a stack whose
- * Codex reading is four months old still shows Codex in every point, so the
- * series does not open by silently dropping a harness the headline includes.
- *
- * `harness` narrows the series to one harness through
- * `by_stack_harness_capturedAt`; `machineOrdinal` narrows it further, to one
- * machine's trail. Together they are the only honest way to read a source number
- * (call shares and freshness never merge, #66). Narrowing to a harness ALONE
- * still merges, because a harness on two machines is two readings - the comment
- * here used to call a per-harness series "one machine's own trail", which was
- * true only while a stack had one machine (#243).
- *
- * `machineOrdinal` resolves through the same private-name map used to gate the
- * response. The public request and response never carry the machine name.
- *
- * Rows inside 90 days are one per sync and rows beyond it are one per UTC day
- * (`gcSnapshots`), so the spacing is irregular by construction. The series
- * carries real timestamps and the display scales time, rather than pretending
- * the readings are evenly spaced.
- */
-export const getHistoryByStackSlug = query({
-  args: {
-    slug: v.string(),
-    days: v.optional(v.number()),
-    harness: v.optional(v.string()),
-    machineOrdinal: v.optional(v.number()),
-  },
-  returns: v.union(MeasuredHistory, v.null()),
-  handler: async (ctx, args) => {
-    const stack = await publishedStackBySlug(ctx, args.slug)
-    if (!stack) return null
-
-    const windowDays = Math.min(
-      HISTORY_MAX_DAYS,
-      Math.max(1, Math.round(args.days ?? HISTORY_DEFAULT_DAYS))
-    )
-    const cutoff = Date.now() - windowDays * 24 * 60 * 60 * 1000
-    // The same gate the headline reads (#93): dollars on the trail obey the
-    // owner's flag, including for rows synced while it was on.
-    const publishCost = stack.publishCost !== false
-    const allRows = await snapshotsForStack(ctx, stack._id)
-    const publication = await machinePublication(ctx, stack)
-
-    const only = args.harness
-    const collected = only
-      ? await ctx.db
-          .query('measuredSnapshots')
-          .withIndex('by_stack_harness_capturedAt', (q) =>
-            q.eq('stackId', stack._id).eq('harness', only)
-          )
-          .collect()
-      : allRows
-    if (
-      args.machineOrdinal !== undefined &&
-      (!Number.isInteger(args.machineOrdinal) || args.machineOrdinal <= 0)
-    ) {
-      return null
-    }
-    const selectedMachine =
-      args.machineOrdinal === undefined
-        ? undefined
-        : [...publication.ordinals.entries()].find(
-            ([, ordinal]) => ordinal === args.machineOrdinal
-          )?.[0]
-    if (args.machineOrdinal !== undefined && selectedMachine === undefined) {
-      return null
-    }
-    const rows =
-      selectedMachine === undefined
-        ? collected
-        : collected.filter((row) => row.machine === selectedMachine)
-    if (rows.length === 0) return null
-
-    const catalog = await loadModelCatalog(ctx)
-    const ordered = [...rows].sort((a, b) => a.capturedAt - b.capturedAt)
-
-    // Fold the rows forward, holding the newest reading of each SOURCE. Rows
-    // older than the window are folded in but emit no point: they are the seed
-    // the first point inside the window carries.
-    //
-    // The row is held beside its reading because the eviction rule reads the
-    // row's columns while the merge reads the priced reading, and pricing every
-    // held source again at every flush would multiply the work by the number of
-    // points for numbers that have not changed.
-    const held = new Map<
-      string,
-      { row: Doc<'measuredSnapshots'>; reading: HarnessReading }
-    >()
-    const points: ReturnType<typeof toHistoryPoint>[] = []
-    let bucket: number | null = null
-    let bucketAt = 0
-
-    const flush = () => {
-      if (bucket === null) return
-      if (bucketAt >= cutoff) {
-        // Evicted per point, not once at the end: a harness whose only reading
-        // here is untagged is the whole truth about it until the day a machine
-        // of that harness first reports, and every earlier point must still say
-        // so (#243).
-        const visible = visibleSources([...held.values()], (e) => e.row).sort(
-          (a, b) => sourceOrder(a.row, b.row)
-        )
-        points.push(
-          toHistoryPoint(
-            bucketAt,
-            mergeHarnesses(visible.map((e) => e.reading)),
-            publication
-          )
-        )
-      }
-      bucket = null
-    }
-
-    for (const row of ordered) {
-      const key = Math.floor(row.capturedAt / SYNC_BUCKET_MS)
-      if (key !== bucket) {
-        flush()
-        bucket = key
-        bucketAt = row.capturedAt
-      }
-      held.set(sourceKey(row), {
-        row,
-        reading: toHarnessSnapshot(catalog, row, publishCost),
-      })
-    }
-    flush()
-
-    if (points.length === 0) return null
-    const truncated = points.length > HISTORY_MAX_POINTS
-    return {
-      windowDays,
-      truncated,
-      harness: args.harness ?? null,
-      machineOrdinal: args.machineOrdinal ?? null,
-      points: truncated ? points.slice(-HISTORY_MAX_POINTS) : points,
-    }
-  },
-})
-
-/**
- * The done-bar counter: stacks whose newest snapshot landed within 7 days.
- *
- * A query over `measuredSnapshots`, not a telemetry event - with n=1 user an
+ * A query over the inventory rows, not a telemetry event - with n=1 user an
  * event would say nothing, and this reads the fact directly (#33 decision 13).
+ * One indexed read per stack (#83): the population grows by stacks, and the
+ * inventory table is bounded to one row per source.
  */
 export const countLivingStacks = query({
   args: {},
   returns: v.object({ living: v.number(), everSynced: v.number() }),
   handler: async (ctx) => {
-    // Driven by the stacks table with one indexed read per stack (#83), not a
-    // full `measuredSnapshots` scan: the population grows by stacks, but the
-    // snapshot table grows by stacks x days, and it is the one that was going
-    // to hurt. A snapshot whose stack row is gone no longer counts, which is
-    // the more honest reading anyway.
     const cutoff = Date.now() - SEVEN_DAYS_MS
     let living = 0
     let everSynced = 0
     for (const stack of await ctx.db.query('stacks').collect()) {
-      const rows = await ctx.db
-        .query('measuredSnapshots')
-        .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', stack._id))
-        .collect()
+      const rows = await inventoryForStack(ctx, stack._id)
       if (rows.length === 0) continue
       everSynced += 1
       if (rows.some((r) => r.receivedAt > cutoff)) living += 1
@@ -1530,9 +743,10 @@ const ReconcileSuggestion = v.object({
   ),
   tokenShare: v.optional(v.number()),
   /**
-   * API-equivalent dollars for a measured model, straight from the snapshot.
-   * Absent when the client withheld cost (`publishCost: false`, #33 decision
-   * 11) - the surface renders the price line only when it is present.
+   * API-equivalent dollars for a measured model over the last 30 days, from
+   * the day fold. Absent when the owner withheld cost (`publishCost: false`,
+   * #33 decision 11) or the model was only ever seen by the inventory - the
+   * surface renders the price line only when it is present.
    */
   apiEquivalentUSD: v.optional(v.number()),
 })
@@ -1562,20 +776,23 @@ const ReconcileSuggestion = v.object({
 export const getReconcileSuggestions = query({
   args: { stackId: v.id('stacks') },
   returns: v.object({
+    /** True once any sync has landed. The name predates the day store. */
     hasSnapshot: v.boolean(),
-    /** Server clock of the newest snapshot; `null` when none has ever landed. */
+    /** Server clock of the newest sync; `null` when none has ever landed. */
     receivedAt: v.union(v.number(), v.null()),
-    /** True when that snapshot is inside the 7-day living-stacks window. */
+    /** True when that sync is inside the 7-day living-stacks window. */
     isFresh: v.boolean(),
     suggestions: v.array(ReconcileSuggestion),
     dismissedCount: v.number(),
   }),
   handler: async (ctx, args) => {
     const stack = await requireStackOwner(ctx, args.stackId)
-    // One snapshot per source (#66, #243): a model measured by ANY harness on
-    // ANY machine is a reconcile candidate, and the surface's freshness reads
-    // the newest sync.
-    const snapshots = await newestSnapshotsPerSource(ctx, args.stackId)
+    // One inventory row per source (#66, #243, ADR-0011): a model measured by
+    // ANY harness on ANY machine is a reconcile candidate, and the surface's
+    // freshness reads the newest sync.
+    const inventory = newestInventoryPerSource(
+      await inventoryForStack(ctx, args.stackId)
+    )
 
     const dismissals = await ctx.db
       .query('reconcileDismissals')
@@ -1623,30 +840,49 @@ export const getReconcileSuggestions = query({
           m.modelSlug
       )
     )
+    // The last 30 days of usage carry a share and a price per model. A model
+    // the inventory saw but the fold does not hold (older than the window, or
+    // a stack with a legacy figure only) is still a candidate, with neither.
+    const window = rangeDates('30d', Date.now())
+    const usageRows = (await measuredDaysForStack(ctx, args.stackId))
+      .filter((row) => row.usage !== undefined && inDateRange(row.date, window))
+      .map((row) => ({ date: row.date, usage: row.usage as UsageDay }))
+    const folded = readUsageWindow(usageRows, catalog, stack.publishCost !== false)
+    const candidates: Array<{
+      id: string
+      catalogSlug: string | null
+      catalogName: string | null
+      tokenShare?: number
+      apiEquivalentUSD?: number
+    }> = [
+      ...(folded?.models ?? []).map((m) => ({
+        id: m.id,
+        catalogSlug: m.catalogSlug,
+        catalogName: m.catalogName,
+        tokenShare: m.tokenShare,
+        ...(m.usd === null ? {} : { apiEquivalentUSD: m.usd }),
+      })),
+      ...inventory.flatMap((row) =>
+        row.modelsSeen.map((id) => ({ id, ...resolveModelId(catalog, id) }))
+      ),
+    ]
     const suggestedSlugs = new Set<string>()
-    for (const snapshot of snapshots) {
-      const resolved = resolveModels(catalog, snapshot.payload.models)
-      const { models: repriced } = repriceSnapshot({
-        models: resolved,
-        window: snapshot.payload.window,
-        publishedTable: snapshot.payload.pricingTable,
-        publishCost: stack.publishCost !== false,
+    for (const m of candidates) {
+      if (m.catalogSlug === null) continue
+      if (authoredModels.has(m.catalogSlug)) continue
+      if (dismissed.has(`model:${m.catalogSlug}`)) continue
+      if (suggestedSlugs.has(m.catalogSlug)) continue
+      suggestedSlugs.add(m.catalogSlug)
+      suggestions.push({
+        atomKind: 'model',
+        atomKey: m.catalogSlug,
+        label: m.catalogName ?? m.id,
+        kind: 'missing_from_authored',
+        ...(m.tokenShare === undefined ? {} : { tokenShare: m.tokenShare }),
+        ...(m.apiEquivalentUSD === undefined
+          ? {}
+          : { apiEquivalentUSD: m.apiEquivalentUSD }),
       })
-      for (const m of repriced) {
-        if (m.catalogSlug === null) continue
-        if (authoredModels.has(m.catalogSlug)) continue
-        if (dismissed.has(`model:${m.catalogSlug}`)) continue
-        if (suggestedSlugs.has(m.catalogSlug)) continue
-        suggestedSlugs.add(m.catalogSlug)
-        suggestions.push({
-          atomKind: 'model',
-          atomKey: m.catalogSlug,
-          label: m.catalogName ?? m.id,
-          kind: 'missing_from_authored',
-          tokenShare: m.tokenShare,
-          apiEquivalentUSD: m.apiEquivalentUSD,
-        })
-      }
     }
 
     suggestions.sort(
@@ -1654,11 +890,11 @@ export const getReconcileSuggestions = query({
     )
 
     const newestReceivedAt =
-      snapshots.length > 0
-        ? Math.max(...snapshots.map((s) => s.receivedAt))
+      inventory.length > 0
+        ? Math.max(...inventory.map((s) => s.receivedAt))
         : null
     return {
-      hasSnapshot: snapshots.length > 0,
+      hasSnapshot: inventory.length > 0,
       receivedAt: newestReceivedAt,
       isFresh:
         newestReceivedAt !== null &&
@@ -2522,102 +1758,28 @@ export const listKeptPrivate = query({
 // Retention
 // ---------------------------------------------------------------------------
 
-const FINE_GRAIN_MS = 90 * 24 * 60 * 60 * 1000
 const GC_BATCH = 500
 
-const utcDay = (ms: number): string => new Date(ms).toISOString().slice(0, 10)
-
 /**
- * Retention for the append-only snapshot table (#33 carried this forward).
- *
- * Policy: keep EVERY snapshot from the last 90 days, and beyond that keep only
- * the last snapshot of each UTC day PER SOURCE. Each source's newest row is
- * never deleted at any age.
- *
- * PER SOURCE, not per stack (#243, and a bug before it). Grouping on
- * (stack, day) alone kept one row for the whole day, so a stack that synced two
- * harnesses on the same day lost one of them the moment that day aged past 90 -
- * and the fold in `getHistoryByStackSlug` carries the newest reading of each
- * source forward, so a deleted seed does not leave a gap, it silently subtracts
- * a source from every later point. Machines make that failure ordinary rather
- * than occasional: two machines syncing daily would have lost one of the two
- * every day. The guard on the newest row moves for the same reason - per stack
- * it protected only the last machine to sync.
- *
- * Why downsample rather than expire: the P1 live-stats map inherits this table
- * as a time series, and a hard cutoff would put a cliff in it. A day is the
- * finest grain any chart of a rolling-30-day metric can use meaningfully, so
- * beyond the fine-grain window the extra rows carry no signal - while inside it
- * they are what makes a bad sync debuggable. There is no absolute age cap: one
- * row per source per day is ~365 rows a year each, which never needs one.
- *
- * Deleting a newest row is guarded separately because "current" is a query for
- * it - GC must never be able to empty the measured layer of a live stack.
+ * The nightly measured GC (ADR-0011). Only the kept-private half is left: the
+ * snapshot downsample went with the snapshot table, and days are never pruned
+ * server-side.
  */
-export const gcSnapshots = internalMutation({
+export const gcMeasured = internalMutation({
   args: {},
   returns: v.object({
-    scanned: v.number(),
-    deleted: v.number(),
     /** Staged kept-private names aged out - see the note below. */
     keptPrivateDeleted: v.number(),
   }),
   handler: async (ctx) => {
-    const cutoff = Date.now() - FINE_GRAIN_MS
-    const old = await ctx.db
-      .query('measuredSnapshots')
-      .withIndex('by_stack_capturedAt')
-      .take(GC_BATCH)
-
-    // Group by (stack, UTC day, source) and keep the newest of each group.
-    const dayKey = (row: Doc<'measuredSnapshots'>) =>
-      `${row.stackId}:${utcDay(row.capturedAt)}:${sourceKey(row)}`
-    const keepers = new Map<string, Doc<'measuredSnapshots'>>()
-    const candidates: Doc<'measuredSnapshots'>[] = []
-    for (const row of old) {
-      if (row.capturedAt >= cutoff) continue
-      candidates.push(row)
-      const key = dayKey(row)
-      const held = keepers.get(key)
-      if (!held || row.capturedAt > held.capturedAt) keepers.set(key, row)
-    }
-
-    // Never delete the newest row of any source, whatever its age. One collect
-    // per stack rather than one `.first()`, because `machine` is not indexed
-    // and the retention policy this same function enforces is what bounds the
-    // read. Held by `_id`: two sources publishing in one atomic batch share a
-    // `capturedAt`, so comparing timestamps would guard whichever the map
-    // happened to hold.
-    const protectedIds = new Set<string>()
-    for (const stackId of new Set(candidates.map((r) => r.stackId))) {
-      const rows = await ctx.db
-        .query('measuredSnapshots')
-        .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', stackId))
-        .collect()
-      for (const newest of newestBySource(rows)) protectedIds.add(newest._id)
-    }
-
-    let deleted = 0
-    for (const row of candidates) {
-      if (keepers.get(dayKey(row))?._id === row._id) continue
-      if (protectedIds.has(row._id)) continue
-      await ctx.db.delete(row._id)
-      deleted++
-    }
-
-    return {
-      scanned: old.length,
-      deleted,
-      keptPrivateDeleted: await gcKeptPrivate(ctx),
-    }
+    return { keptPrivateDeleted: await gcKeptPrivate(ctx) }
   },
 })
 
 /**
  * Age out staged kept-private names, in the same cron rather than a second one.
  *
- * The opposite policy to the snapshots above: these are DELETED, not
- * downsampled. They are strings the owner never agreed to publish, and after 30
+ * These are DELETED, not downsampled. They are strings the owner never agreed to publish, and after 30
  * days every one of them is outside any rolling window it could describe - a
  * tick on it would publish nothing, so holding it buys the owner nothing and
  * costs them a name we should not have.
@@ -2708,7 +1870,6 @@ export const publishForToken = internalMutation({
     cliVersion: v.optional(v.string()),
   },
   returns: v.object({
-    snapshotIds: v.array(v.id('measuredSnapshots')),
     receivedAt: v.number(),
     stackSlug: v.string(),
     /** How many staged names landed, and whether the switch refused them. */
@@ -2763,12 +1924,8 @@ export const publishForToken = internalMutation({
       )
     }
 
-    // Asked BEFORE the inserts, or every sync looks like the first one.
-    const priorSnapshot = await ctx.db
-      .query('measuredSnapshots')
-      .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', stack._id))
-      .first()
-    const isFirstSync = priorSnapshot === null
+    // Asked BEFORE the upserts, or every sync looks like the first one.
+    const isFirstSync = (await inventoryForStack(ctx, stack._id)).length === 0
 
     // Bounded on the way in, the way the payloads are (#213). Checked here
     // rather than only inside `storeWorkflowDays` so a malformed section
@@ -2783,7 +1940,6 @@ export const publishForToken = internalMutation({
       ? args.cliVersion
       : undefined
 
-    const snapshotIds: Id<'measuredSnapshots'>[] = []
     let receivedAt = 0
     for (const payload of payloads) {
       // The machine is the TOKEN'S name, never the payload's (#243). A client
@@ -2791,15 +1947,8 @@ export const publishForToken = internalMutation({
       // two, or merge itself into another machine's, and the token already
       // carries the name the owner typed at link time. An older token with no
       // name publishes untagged, which reads exactly like a pre-tagging row.
-      const inserted = await insertSnapshot(
-        ctx,
-        stack._id,
-        payload,
-        token.name,
-        cliVersion
-      )
-      snapshotIds.push(inserted.snapshotId)
-      receivedAt = inserted.receivedAt
+      const accepted = await acceptPayload(ctx, stack._id, payload, token.name)
+      receivedAt = accepted.receivedAt
       // The live inventory row for this (machine, harness), replaced on every
       // sync (ADR-0011).
       await upsertInventory(ctx, {
@@ -2920,7 +2069,6 @@ export const publishForToken = internalMutation({
         : await replaceKeptPrivateMachines(ctx, stack._id, receivedAt)
 
     return {
-      snapshotIds,
       receivedAt,
       stackSlug: `${stack.slug}-${stack.shortId}`,
       keptPrivate: { stored: inventoryStored + machineStored, refused },
@@ -3059,8 +2207,60 @@ const MeasuredUsage = v.object({
       machineOrdinal: v.union(v.number(), v.null()),
     })
   ),
-  /** False for a stack that has only legacy snapshots. */
+  /** False for a stack that has published no days for the selected machines. */
   hasDays: v.boolean(),
+  /**
+   * The retirement migration's fallback (ADR-0011): the last whole-window
+   * snapshot's totals, summed over the selected sources. Non-null only while
+   * `hasDays` is false and some selected inventory row carries one.
+   */
+  legacy: v.union(
+    v.object({
+      tokens: v.number(),
+      sessions: v.number(),
+      activeDays: v.number(),
+      usd: v.union(v.number(), v.null()),
+      capturedAt: v.number(),
+      windowDays: v.number(),
+    }),
+    v.null()
+  ),
+  /** The live inventory, one entry per (machine, harness) among the selected machines. */
+  inventory: v.array(
+    v.object({
+      harness: v.string(),
+      harnessVersion: v.union(v.string(), v.null()),
+      machine: v.union(v.string(), v.null()),
+      machineOrdinal: v.union(v.number(), v.null()),
+      capturedAt: v.number(),
+      receivedAt: v.number(),
+      isFresh: v.boolean(),
+      cliVersion: v.union(v.string(), v.null()),
+      builtinTools: v.array(PublicAtom),
+      mcpServers: v.array(PublicAtom),
+      skills: v.array(PublicAtom),
+      subagents: v.array(PublicAtom),
+      slashCommands: v.array(PublicAtom),
+      withheld: v.object({
+        builtinTools: v.number(),
+        mcpServers: v.number(),
+        skills: v.number(),
+        subagents: v.number(),
+        slashCommands: v.number(),
+      }),
+      /** Every observed call per category, the denominator behind `calls` (#213). */
+      calls: v.optional(
+        v.object({
+          builtinTools: v.number(),
+          mcpServers: v.number(),
+          skills: v.number(),
+          subagents: v.number(),
+          slashCommands: v.number(),
+        })
+      ),
+      modelsSeen: v.array(v.string()),
+    })
+  ),
   current: v.union(UsageReading, v.null()),
   previous: v.union(UsageReading, v.null()),
   series: v.array(
@@ -3068,7 +2268,7 @@ const MeasuredUsage = v.object({
   ),
 })
 
-type UsageRow = { date: string; usage: UsageDay }
+export type UsageRow = { date: string; usage: UsageDay }
 
 /**
  * One window's reading over a set of day rows: the fold, the catalog names,
@@ -3077,7 +2277,7 @@ type UsageRow = { date: string; usage: UsageDay }
  * marks the figure estimated; unpriced tokens no table can price stay out of
  * `pricedShare`.
  */
-function readUsageWindow(
+export function readUsageWindow(
   rows: readonly UsageRow[],
   catalog: ModelCatalog,
   publishCost: boolean
@@ -3217,11 +2417,16 @@ export const getUsageByStackSlug = query({
     const previous = previousRangeDates(range, now)
 
     const allRows = await measuredDaysForStack(ctx, stack._id)
-    const snapshots = await snapshotsForStack(ctx, stack._id)
+    const allInventory = newestInventoryPerSource(
+      await inventoryForStack(ctx, stack._id)
+    )
     const machineNames = new Map<string | null, string | null>()
-    for (const row of [...allRows, ...snapshots]) {
+    for (const row of [...allRows, ...allInventory]) {
       machineNames.set(row.machine ?? null, row.machine ?? null)
     }
+    const inventory = allInventory.filter(
+      (row) => selectedMachine === undefined || row.machine === selectedMachine
+    )
     const machines = [...machineNames.keys()]
       .map((machine) => publicMachine(machine, publication))
       .sort((a, b) => (a.machineOrdinal ?? Infinity) - (b.machineOrdinal ?? Infinity))
@@ -3242,6 +2447,28 @@ export const getUsageByStackSlug = query({
     const publishCost = stack.publishCost !== false
     const catalog = await loadModelCatalog(ctx)
 
+    const hasDays = rows.length > 0
+    const legacyRows = hasDays
+      ? []
+      : inventory.filter((row) => row.legacy !== undefined)
+    const legacy =
+      legacyRows.length === 0
+        ? null
+        : {
+            tokens: legacyRows.reduce((a, r) => a + (r.legacy?.tokens ?? 0), 0),
+            sessions: legacyRows.reduce((a, r) => a + (r.legacy?.sessions ?? 0), 0),
+            activeDays: legacyRows.reduce(
+              (a, r) => a + (r.legacy?.activeDays ?? 0),
+              0
+            ),
+            usd:
+              publishCost && legacyRows.some((r) => r.legacy?.usd !== undefined)
+                ? round2(legacyRows.reduce((a, r) => a + (r.legacy?.usd ?? 0), 0))
+                : null,
+            capturedAt: Math.max(...legacyRows.map((r) => r.legacy?.capturedAt ?? 0)),
+            windowDays: Math.max(...legacyRows.map((r) => r.legacy?.windowDays ?? 0)),
+          }
+
     // One point per date with a row, summed across the selected machines.
     const byDate = new Map<string, { tokens: number; sessions: number }>()
     for (const row of inCurrent) {
@@ -3257,12 +2484,30 @@ export const getUsageByStackSlug = query({
       range,
       from: current.from,
       to: current.to,
-      receivedAt: usageRows.reduce<number | null>(
+      receivedAt: [...usageRows, ...inventory].reduce<number | null>(
         (max, row) => (max === null || row.receivedAt > max ? row.receivedAt : max),
         null
       ),
       machines,
-      hasDays: rows.length > 0,
+      hasDays,
+      legacy,
+      inventory: inventory.map((row) => ({
+        harness: row.harness,
+        harnessVersion: row.harnessVersion,
+        ...publicMachine(row.machine ?? null, publication),
+        capturedAt: row.capturedAt,
+        receivedAt: row.receivedAt,
+        isFresh: now - row.receivedAt <= SEVEN_DAYS_MS,
+        cliVersion: row.cliVersion ?? null,
+        builtinTools: row.inventory.builtinTools,
+        mcpServers: row.inventory.mcpServers,
+        skills: row.inventory.skills,
+        subagents: row.inventory.subagents,
+        slashCommands: row.inventory.slashCommands,
+        withheld: row.inventory.withheld,
+        ...(row.inventory.calls === undefined ? {} : { calls: row.inventory.calls }),
+        modelsSeen: row.modelsSeen,
+      })),
       current: readUsageWindow(inCurrent, catalog, publishCost),
       previous: readUsageWindow(inPrevious, catalog, publishCost),
       series: [...byDate.entries()]

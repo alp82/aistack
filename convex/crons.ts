@@ -37,14 +37,14 @@ crons.interval(
   internal.discordLink.cleanupExpiredTokens,
 )
 
-// Nightly measured-snapshot downsample. Keeps every snapshot from the last 90
-// days and only the last of each UTC day beyond that, never deleting a stack's
-// newest row. See convex/measured.ts gcSnapshots for why downsampling beats a
-// hard expiry: the P1 live-stats map inherits this table as a time series.
+// Nightly kept-private aging. The snapshot half of this cron went with the
+// snapshot table (ADR-0011): days are never pruned server-side, and the
+// inventory is one row per source. What stays is consent hygiene, not data
+// retention: staged names the owner never published age out after 30 days.
 crons.daily(
-  'measured-snapshot-gc',
+  'kept-private-gc',
   { hourUTC: 4, minuteUTC: 30 },
-  internal.measured.gcSnapshots,
+  internal.measured.gcMeasured,
 )
 
 // Hourly view-dedupe cleanup (#77, map #76). The markers exist only to make a

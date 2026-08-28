@@ -5,8 +5,8 @@
  * #40. The rules below are decisions, not preferences - each one was checked
  * against the owner's real payload in #40 and must not be relaxed here:
  *
- *   - A dollar figure NEVER renders without its pricing table version, so
- *     `totalUSD` returns null when no table cites it (#33 decision 11).
+ *   - A dollar figure NEVER renders without its pricing table version (#33
+ *     decision 11).
  *   - A dollar figure is a LOWER BOUND and reads as one, with the share of
  *     tokens it covers beside it (#93).
  *   - `catalogSlug: null` is not an error. The raw vendor id renders, because
@@ -19,15 +19,18 @@
  * `src/features/reconcile/copy.ts`: the reader is a stranger, so it is "from
  * this machine", not "from your machine".
  */
-import type { FunctionReturnType } from "convex/server";
-import type { api } from "../../../convex/_generated/api";
-
-export type MeasuredSnapshot = NonNullable<
-	FunctionReturnType<typeof api.measured.getCurrentByStackSlug>
->;
-export type MeasuredModel = MeasuredSnapshot["models"][number];
-/** One harness's own section (#66 decision 2) - the pre-#67 snapshot shape. */
-export type HarnessSnapshot = MeasuredSnapshot["harnesses"][number];
+/**
+ * The legacy figure (ADR-0011): a stack whose last reading predates per-day
+ * rows keeps its 30-day totals on the inventory row, marked approximate.
+ */
+export type LegacyFigure = {
+	readonly tokens: number;
+	readonly sessions: number;
+	readonly activeDays: number;
+	readonly usd: number | null;
+	readonly capturedAt: number;
+	readonly windowDays: number;
+};
 
 /** The anchor section 02 mounts on, and the hero strip links down to. */
 export const MEASURED_ANCHOR = "section-measured";
@@ -87,17 +90,10 @@ export function readingsLine(count: number, firstAt: number): string {
 	return `${count} ${count === 1 ? "reading" : "readings"} since ${fmtDay(firstAt)}`;
 }
 
-/** The delta chip beside the headline. Null on a first reading. */
-export function lastCheckLine(
-	delta: number | null,
-	fmt: (v: number) => string,
-): string | null {
-	if (delta === null) return null;
-	return `${fmtDelta(delta, fmt)} since the last check`;
-}
-
 /** The kicker over the model rows, and the note that explains the notch. */
 export const MIX_KICKER = "where the tokens went";
+/** The legacy path has totals and no model rows (ADR-0011). */
+export const NOT_MEASURED_MIX = "not measured per model before per-day rows";
 export function notchNote(firstAt: number): string {
 	return `the notch marks where each share stood on ${fmtDay(firstAt)}`;
 }
@@ -111,29 +107,6 @@ export const COST_PRIVATE_CAPTION = "cost not published";
 /** The hover swap under the number, and the accessible name of the control. */
 export const DECK_HINT = "random fun fact";
 export const DECK_LABEL = "Show another way to picture these tokens";
-
-/**
- * The dollars the whole window cost at API prices, or null.
- *
- * A LOWER BOUND, never an equality (#93). The server fills the gaps a stale CLI
- * price table left behind, and both facts the wire loses - the cache-write TTL
- * split and the per-response timestamps - resolve downward. Tokens no table can
- * price are simply missing from it, which is what `coverageLine` reports.
- *
- * Null in two cases, and the display treats both the same way: the owner has
- * cost publishing off, or nothing in the window carries a citable price. The
- * empty-table guard is the stricter rule - a price the reader cannot date is a
- * price we do not print.
- */
-export function totalUSD(s: {
-	cost: {
-		lowerBoundUSD: number;
-		pricingTables: string[];
-	} | null;
-}): number | null {
-	if (!s.cost || s.cost.pricingTables.length === 0) return null;
-	return s.cost.lowerBoundUSD;
-}
 
 /** The catalog name, falling back to the raw vendor id the client published. */
 export function modelLabel(m: {
@@ -156,15 +129,12 @@ export function leadModelLine(s: {
 	return `${modelLabel(lead)} leads at ${(lead.tokenShare * 100).toFixed(0)}%`;
 }
 
-export function sessionsLine(s: MeasuredSnapshot): string {
-	const n = s.activity.sessions;
+export function sessionsLine(n: number): string {
 	return `${n.toLocaleString("en-US")} ${n === 1 ? "session" : "sessions"}`;
 }
 
-export function activeDaysLine(s: MeasuredSnapshot): string {
-	const qualifier =
-		s.activity.activeDays.precision === "lower-bound" ? "at least " : "";
-	return `${qualifier}${s.activity.activeDays.value} of the last ${s.window.days} days`;
+export function activeDaysLine(activeDays: number, windowDays: number): string {
+	return `${activeDays} of the last ${windowDays} days`;
 }
 
 export const NEVER_SYNCED_TITLE = "This stack has not been measured yet.";

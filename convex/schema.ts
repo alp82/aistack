@@ -1190,10 +1190,10 @@ export default defineSchema({
     .index('by_key', ['key'])
     .index('by_windowStart', ['windowStart']),
 
-  // The measured layer (#33 decision 6). Append-only: one immutable row per
-  // approved sync, and the "current" measured layer is the newest row by
-  // capturedAt. There is deliberately NO denormalised current row - that was
-  // rejected in #33 precisely because it drifts from the history it summarises.
+  // RETIRED (ADR-0011, #321). Nothing writes this table and nothing but
+  // `migrations/20260829_retire_snapshots` reads it. It stays declared so the
+  // migration can run against a deployed function set; the narrow deploy that
+  // follows the migration drops it.
   measuredSnapshots: defineTable({
     stackId: v.id('stacks'),
     // Client clock, from the payload. Ordering key for "current".
@@ -1249,11 +1249,9 @@ export default defineSchema({
   // half cannot be merged across machines - the wire carries no commit
   // identity, so two clones of one repository would count their shared commits
   // twice - and a pool metric's value has no denominator to merge on.
-  // One machine's workflow reading for one UTC day (#285, ADR-0009). A
-  // re-synced day REPLACES that day, and days append across syncs, so a manual
-  // sync still builds a continuous series and the page can fold any window.
-  // Nothing merges two machines: the Git day carries no commit identity, so a
-  // shared repository would count its commits twice.
+  // RETIRED (ADR-0010, #321): absorbed into `measuredDays` by the 20260828
+  // migration. Declared only so `migrations/20260829_retire_snapshots:clear`
+  // can empty it; the narrow deploy drops it.
   measuredWorkflowDays: defineTable({
     stackId: v.id('stacks'),
     // The publishing token's name, exactly like `measuredSnapshots.machine`.
@@ -1281,8 +1279,7 @@ export default defineSchema({
   // the CLI's send window and the page's read cap, and the database keeps
   // every day a machine ever published.
   //
-  // `measuredWorkflowDays` above is the table this one absorbs. The
-  // 20260828 migration copies it; a later change drops it.
+  // `measuredWorkflowDays` above is the table this one absorbed (20260828).
   measuredDays: defineTable({
     stackId: v.id('stacks'),
     /** The publishing token's name, like `measuredSnapshots.machine`. */
@@ -1338,26 +1335,6 @@ export default defineSchema({
   })
     .index('by_stack', ['stackId'])
     .index('by_stack_machine_harness', ['stackId', 'machine', 'harness']),
-
-  // The owner's pins and hides on workflow rows (#218). "The owner can pin or
-  // hide any row, and that override wins over both thresholds" (spec).
-  //
-  // KEYED ON THE STACK, NOT THE MACHINE. The choice is about the row - a number
-  // the owner wants on the podium, or one they would rather not publish - and
-  // that judgment does not change when the machine dropdown does.
-  //
-  // A TABLE AND NOT A FIELD ON `stacks`, for the #42 reason: the set is
-  // unbounded in principle (one row per rule in either pool, and both pools
-  // grow), and a hide must not ride along on every public stack read.
-  workflowRowOverrides: defineTable({
-    stackId: v.id('stacks'),
-    /** `metric:late-night-commits`, `component:git-ledger`. */
-    rowId: v.string(),
-    state: v.union(v.literal('pinned'), v.literal('hidden')),
-    setAt: v.number(),
-  })
-    .index('by_stack', ['stackId'])
-    .index('by_stack_row', ['stackId', 'rowId']),
 
   // Private registry for the public machine position (#250). The machine name
   // remains the source key on snapshots. This table only preserves the first

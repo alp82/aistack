@@ -88,6 +88,8 @@ export function usage(
 		receivedAt: Date.now() - 2 * HOUR,
 		machines: [{ machine: "workstation", machineOrdinal: 1 }],
 		hasDays: true,
+		legacy: null,
+		inventory: [],
 		current: reading(),
 		previous: reading({ totalTokens: 1_000_000_000, sessions: 100 }),
 		series: [
@@ -99,14 +101,43 @@ export function usage(
 	};
 }
 
-/** The read a stack with only legacy snapshots gets: no days, both sides null. */
-export function legacyUsage(over: Partial<UsageRead> = {}): UsageRead {
+/** The read a stack that never published days gets: no days, both sides null. */
+export function noDaysUsage(over: Partial<UsageRead> = {}): UsageRead {
 	return usage({
 		receivedAt: null,
 		hasDays: false,
+		legacy: null,
 		current: null,
 		previous: null,
 		series: [],
+		...over,
+	});
+}
+
+/**
+ * The legacy figure (ADR-0011): the last 30-day snapshot's totals, carried on
+ * the inventory row of a stack that never published days. The numbers are the
+ * owner's real 2026-07-26 reading: 382 sessions, 4.27B tokens, $5,840.
+ */
+export function legacyFigure(
+	over: Partial<NonNullable<UsageRead["legacy"]>> = {},
+): NonNullable<UsageRead["legacy"]> {
+	return {
+		tokens: 4_270_365_919,
+		sessions: 382,
+		activeDays: 22,
+		usd: 5840.02,
+		capturedAt: Date.now() - 2 * HOUR,
+		windowDays: 30,
+		...over,
+	};
+}
+
+/** A stack with only the legacy figure: approximate at 30d, not measured otherwise. */
+export function legacyUsage(over: Partial<UsageRead> = {}): UsageRead {
+	return noDaysUsage({
+		receivedAt: Date.now() - 2 * HOUR,
+		legacy: legacyFigure(),
 		...over,
 	});
 }

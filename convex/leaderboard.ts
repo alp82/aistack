@@ -1,25 +1,32 @@
+import {
+  inDateRange,
+  rangeDates,
+  totalOfTokens,
+  type UsageDay,
+} from '@aistack/workflow-rules'
 import { v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import type { QueryCtx } from './_generated/server'
 import { query } from './_generated/server'
-import { repriceSnapshot, round2 } from './lib/reprice'
-import { newestPerSource, sourceKey, visibleSources } from './lib/sources'
-import { loadModelCatalog } from './measured'
+import {
+  inventoryForStack,
+  measuredDaysForStack,
+  newestInventoryPerSource,
+} from './lib/measuredDays'
+import { round2 } from './lib/reprice'
+import { loadModelCatalog, type ModelCatalog, readUsageWindow } from './measured'
 
 /**
  * The read model behind `/leaderboard`. Wayfinder ticket #83 (map #76), spine
  * locked by #92, scope by #82.
  *
  * READS ARE LIVE, NOT PRECOMPUTED (#82, recorded consequence). No rollup table
- * and no cron: every figure is derived from `measuredSnapshots` at read time,
- * so the page can never disagree with the stack pages. The cost of that choice
- * is stated in #82 - one indexed read per measured stack caps this in the low
- * thousands of stacks, and a later rollup must reproduce these numbers exactly.
- * The shape here is the middle option the ticket named: INDEXED per-stack
- * reads over the population, never a full `measuredSnapshots` scan - the
- * population table (`stacks`) is the driver, and each stack's rows come from
- * `by_stack_capturedAt`, bounded by the GC to about one row per harness per
- * day.
+ * and no cron: every figure is derived from `measuredDays` and
+ * `measuredInventory` at read time (ADR-0011), so the page can never disagree
+ * with the stack pages. The cost of that choice is stated in #82 - two indexed
+ * reads per measured stack cap this in the low thousands of stacks, and a
+ * later rollup must reproduce these numbers exactly. The population table
+ * (`stacks`) is the driver, never a full scan of the measured tables.
  *
  * EXCLUSIONS (#82, applied here once so every figure agrees):
  *   - unpublished stacks and `isLowQuality` stacks do not exist here at all -
@@ -30,17 +37,12 @@ import { loadModelCatalog } from './measured'
  *   - a stack with `publishCost` off has no cost, not a cost of zero;
  *   - no sync in 7 days means listed in the quiet line, never ranked.
  *
- * THE SERIES is the same fold `getHistoryByStackSlug` performs, reduced to the
- * one number a sparkline draws: the rolling 30-day total as it stood at each
- * sync, a harness that did not sync carrying its previous reading forward.
- * Tokens only - no catalog resolution and no pricing per point - so ten rows
- * cost ten short folds, not ten stack-page reads.
+ * THE SERIES is the per-day token total over the same 30-day window the row's
+ * number folds, one point per measured UTC date. Tokens only per point.
  */
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 const DAY_MS = 24 * 60 * 60 * 1000
-/** Rows captured inside the same minute are one sync (matches the history). */
-const SYNC_BUCKET_MS = 60_000
 export const PAGE_SIZE = 10
 /** The most points a row's sparkline carries; the newest win. */
 const MAX_POINTS = 60
@@ -66,7 +68,7 @@ const Row = v.object({
   creatorName: v.string(),
   tokens: v.number(),
   lastSyncMs: v.number(),
-  /** Every reading the stack has, even when `points` is capped. */
+  /** Every measured day in the window, even when `points` is capped. */
   syncCount: v.number(),
   points: v.array(v.object({ at: v.number(), tokens: v.number() })),
   topModel: v.union(
@@ -107,60 +109,6 @@ const Board = v.object({
   rows: v.array(Row),
 })
 
-type Snapshot = Doc<'measuredSnapshots'>
-
-const tokensOf = (t: {
-  input: number
-  output: number
-  cacheWrite: number
-  cacheRead: number
-}) => t.input + t.output + t.cacheWrite + t.cacheRead
-
-/**
- * The rolling total as it stood at each sync: fold the rows forward holding
- * the newest reading per SOURCE (#243), one point per sync minute.
- *
- * Held by source and evicted at each flush, exactly as the stack page's own
- * series does - the board's numbers and a stack's own page must not disagree
- * about what a stack measured.
- */
-function seriesOf(rows: Snapshot[]): { at: number; tokens: number }[] {
-  const ordered = [...rows].sort((a, b) => a.capturedAt - b.capturedAt)
-  const held = new Map<
-    string,
-    { harness: string; machine?: string; tokens: number }
-  >()
-  const points: { at: number; tokens: number }[] = []
-  let bucket: number | null = null
-  let bucketAt = 0
-
-  const flush = () => {
-    if (bucket === null) return
-    let total = 0
-    for (const source of visibleSources(held.values(), (h) => h)) {
-      total += source.tokens
-    }
-    points.push({ at: bucketAt, tokens: total })
-    bucket = null
-  }
-
-  for (const row of ordered) {
-    const key = Math.floor(row.capturedAt / SYNC_BUCKET_MS)
-    if (key !== bucket) {
-      flush()
-      bucket = key
-      bucketAt = row.capturedAt
-    }
-    held.set(sourceKey(row), {
-      harness: row.harness,
-      machine: row.machine,
-      tokens: row.payload.activity.totalTokens,
-    })
-  }
-  flush()
-  return points
-}
-
 type StackReading = {
   stack: Doc<'stacks'>
   creator: Doc<'creators'> | null
@@ -168,90 +116,105 @@ type StackReading = {
   lastSyncMs: number
   tokens: number
   sessions: number
+  /** One point per measured UTC date in the window, oldest first. */
   points: { at: number; tokens: number }[]
   activeHarnesses: { name: string; tokens: number }[]
-  /** Merged over the newest reading per harness; `unknown` kept for totals. */
+  /** Over the 30-day fold; `unknown` kept for totals. */
   modelTokens: Map<string, number>
   spend: { lowerBoundUSD: number; coverage: number; exact: boolean } | null
 }
 
+/**
+ * One stack's board reading: freshness off the inventory rows, every sum off
+ * the 30-day fold of its days (ADR-0011). A stack that published no days but
+ * carries a legacy figure from the retirement migration reads that figure:
+ * tokens and sessions only, no series and no price.
+ */
 async function readStack(
   ctx: QueryCtx,
   stack: Doc<'stacks'>,
-  now: number
+  now: number,
+  catalog: ModelCatalog
 ): Promise<StackReading | null> {
-  const rows = await ctx.db
-    .query('measuredSnapshots')
-    .withIndex('by_stack_capturedAt', (q) => q.eq('stackId', stack._id))
-    .collect()
-  if (rows.length === 0) return null
+  const inventory = newestInventoryPerSource(
+    await inventoryForStack(ctx, stack._id)
+  )
+  if (inventory.length === 0) return null
+  const lastSyncMs = Math.max(...inventory.map((r) => r.receivedAt))
 
-  const newest = newestPerSource(rows)
-  const lastSyncMs = Math.max(...rows.map((r) => r.receivedAt))
-
-  let tokens = 0
-  let sessions = 0
-  const modelTokens = new Map<string, number>()
-  // BY HARNESS NAME, not by source (#243). The board ranks harnesses and prints
-  // "Claude Code + Codex" under a row; a stack running one harness on two
-  // machines is one harness there, and keying this per source would both print
-  // the name twice and count the stack twice in that harness's `stacks` tally.
-  const harnessTokens = new Map<string, number>()
+  const window = rangeDates('30d', now)
+  const days = (await measuredDaysForStack(ctx, stack._id))
+    .filter((row) => row.usage !== undefined && inDateRange(row.date, window))
+    .map((row) => ({ date: row.date, usage: row.usage as UsageDay }))
   const publishCost = stack.publishCost !== false
-  const costs = []
+  const reading = readUsageWindow(days, catalog, publishCost)
 
-  for (const snapshot of newest) {
-    const p = snapshot.payload
-    tokens += p.activity.totalTokens
-    sessions += p.activity.sessions
-    if (p.activity.totalTokens > 0) {
-      harnessTokens.set(
-        p.harness.name,
-        (harnessTokens.get(p.harness.name) ?? 0) + p.activity.totalTokens
-      )
-    }
-    for (const m of p.models) {
-      modelTokens.set(m.id, (modelTokens.get(m.id) ?? 0) + tokensOf(m.tokens))
-    }
-    const { cost } = repriceSnapshot({
-      models: p.models,
-      window: p.window,
-      publishedTable: p.pricingTable,
-      publishCost,
-    })
-    if (cost) costs.push(cost)
-  }
-
-  let spend: StackReading['spend'] = null
-  if (costs.length > 0) {
-    const priced = costs.reduce((a, c) => a + c.pricedTokens, 0)
-    const measured = costs.reduce((a, c) => a + c.measuredTokens, 0)
-    spend = {
-      lowerBoundUSD: round2(costs.reduce((a, c) => a + c.lowerBoundUSD, 0)),
-      coverage: measured > 0 ? priced / measured : 0,
-      exact:
-        costs.every((c) => c.estimatedUSD === 0) &&
-        measured > 0 &&
-        priced >= measured,
-    }
-  }
-
-  return {
+  const base = {
     stack,
     creator: await ctx.db.get(stack.creatorId),
     living: now - lastSyncMs <= SEVEN_DAYS_MS,
     lastSyncMs,
-    tokens,
-    sessions,
-    points: seriesOf(rows),
-    // `newestPerSource` already ordered the sources, so first sighting of each
-    // name preserves Claude-Code-first.
-    activeHarnesses: [...harnessTokens].map(([name, tokens]) => ({
-      name,
-      tokens,
-    })),
-    modelTokens,
-    spend,
+  }
+
+  if (reading === null) {
+    const legacy = inventory.filter((r) => r.legacy !== undefined)
+    if (legacy.length === 0) return null
+    return {
+      ...base,
+      tokens: legacy.reduce((a, r) => a + (r.legacy?.tokens ?? 0), 0),
+      sessions: legacy.reduce((a, r) => a + (r.legacy?.sessions ?? 0), 0),
+      points: [],
+      // `newestInventoryPerSource` already ordered the sources, so first
+      // sighting of each name preserves Claude-Code-first.
+      activeHarnesses: [...new Set(legacy.map((r) => r.harness))].map((name) => ({
+        name,
+        tokens: legacy
+          .filter((r) => r.harness === name)
+          .reduce((a, r) => a + (r.legacy?.tokens ?? 0), 0),
+      })).filter((h) => h.tokens > 0),
+      modelTokens: new Map(),
+      spend: null,
+    }
+  }
+
+  // BY HARNESS NAME, not by source (#243). The board ranks harnesses and prints
+  // "Claude Code + Codex" under a row; a stack running one harness on two
+  // machines is one harness there. The fold already sums machines.
+  const harnessOrder = new Map(inventory.map((r, i) => [r.harness, i]))
+  const activeHarnesses = reading.harnesses
+    .filter((h) => h.totalTokens > 0)
+    .map((h) => ({ name: h.harness, tokens: h.totalTokens }))
+    .sort(
+      (a, b) =>
+        (harnessOrder.get(a.name) ?? Infinity) - (harnessOrder.get(b.name) ?? Infinity)
+    )
+
+  const byDate = new Map<string, number>()
+  for (const row of days) {
+    let tokens = 0
+    for (const h of row.usage.harnesses) {
+      for (const m of h.models) tokens += totalOfTokens(m.tokens)
+    }
+    byDate.set(row.date, (byDate.get(row.date) ?? 0) + tokens)
+  }
+  const points = [...byDate.entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([date, tokens]) => ({ at: Date.parse(`${date}T00:00:00.000Z`), tokens }))
+
+  return {
+    ...base,
+    tokens: reading.totalTokens,
+    sessions: reading.sessions,
+    points,
+    activeHarnesses,
+    modelTokens: new Map(reading.models.map((m) => [m.id, m.totalTokens])),
+    spend: reading.cost
+      ? {
+          lowerBoundUSD: reading.cost.usd,
+          coverage: reading.cost.pricedShare,
+          exact: !reading.cost.estimated && reading.cost.pricedShare >= 1,
+        }
+      : null,
   }
 }
 
@@ -285,10 +248,11 @@ export const get = query({
       .withIndex('by_published', (q) => q.eq('published', true))
       .collect()
 
+    const catalog = await loadModelCatalog(ctx)
     const readings: StackReading[] = []
     for (const stack of stacks) {
       if (stack.isLowQuality === true) continue
-      const reading = await readStack(ctx, stack, now)
+      const reading = await readStack(ctx, stack, now, catalog)
       if (reading) readings.push(reading)
     }
 
@@ -334,7 +298,6 @@ export const get = query({
       }
     }
 
-    const catalog = await loadModelCatalog(ctx)
     const modelName = (id: string) =>
       (catalog.bySlug.get(id) ?? catalog.byAlias.get(id))?.name ?? id
 

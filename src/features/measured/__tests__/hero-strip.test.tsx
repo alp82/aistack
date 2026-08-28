@@ -5,17 +5,24 @@
  * Two rules, both decisions:
  *
  *   1. DOLLAR-FREE. The authored price tile stays the hero's only money; the
- *      measured dollar figure appears once, in section 02, beside the sentence
+ *      measured dollar figure appears once, in section 01, beside the sentence
  *      that explains why it moves.
- *   2. NOTHING WITHOUT A SNAPSHOT. A hero stamp reading "not measured" would
+ *   2. NOTHING WITHOUT A READING. A hero stamp reading "not measured" would
  *      turn not installing a CLI into a public demerit on every stack but one.
  */
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HeroMeasuredStrip } from "@/features/measured/HeroMeasuredStrip";
-import type { MeasuredSnapshot } from "../copy";
-import { buildSnapshot, DAY, HOUR } from "./fixture";
+import type { UsageRead } from "@/features/usage/copy";
+import {
+	HOUR,
+	legacyUsage,
+	noDaysUsage,
+	reading,
+	usage,
+} from "../../usage/__tests__/fixture";
 
+const DAY = 24 * HOUR;
 const queryMock = vi.fn();
 
 vi.mock("convex/react", () => ({
@@ -27,17 +34,17 @@ afterEach(() => {
 	vi.clearAllMocks();
 });
 
-function setup(snapshot: MeasuredSnapshot | null | undefined) {
-	queryMock.mockReturnValue(snapshot);
-	render(<HeroMeasuredStrip slug="alps-stack-ab12" />);
+function setup(answer: UsageRead | null | undefined) {
+	queryMock.mockReturnValue(answer);
+	return render(<HeroMeasuredStrip slug="alps-stack-ab12" />);
 }
 
-describe("with a snapshot", () => {
-	it("states the measured facts and links down to section 02", () => {
-		setup(buildSnapshot());
-		expect(screen.getByText("382 sessions")).toBeInTheDocument();
-		expect(screen.getByText("22 of the last 30 days")).toBeInTheDocument();
-		expect(screen.getByText("claude-fable-5 leads at 35%")).toBeInTheDocument();
+describe("with days", () => {
+	it("states the measured facts and links down to section 01", () => {
+		setup(usage());
+		expect(screen.getByText("120 sessions")).toBeInTheDocument();
+		expect(screen.getByText("3 of the last 30 days")).toBeInTheDocument();
+		expect(screen.getByText("Claude Opus 5 leads at 60%")).toBeInTheDocument();
 		expect(screen.getByText("2h ago")).toHaveClass("md:hidden");
 		expect(screen.getByText("2 hours ago")).toHaveClass("md:inline");
 		expect(screen.getByRole("link")).toHaveAttribute(
@@ -46,26 +53,8 @@ describe("with a snapshot", () => {
 		);
 	});
 
-	it("qualifies active days when legacy rows make them a lower bound", () => {
-		const snapshot = buildSnapshot();
-		setup(
-			buildSnapshot({
-				activity: {
-					...snapshot.activity,
-					activeDays: {
-						...snapshot.activity.activeDays,
-						precision: "lower-bound",
-					},
-				},
-			}),
-		);
-		expect(
-			screen.getByText("at least 22 of the last 30 days"),
-		).toBeInTheDocument();
-	});
-
 	it("carries no money", () => {
-		setup(buildSnapshot());
+		setup(usage());
 		const text = document.body.textContent ?? "";
 		expect(text).not.toContain("$");
 		expect(text).not.toContain("API prices");
@@ -74,27 +63,29 @@ describe("with a snapshot", () => {
 	it("claims nothing the machine did not report", () => {
 		// The authored tool and model counts are deliberately absent: inside a
 		// band labelled "from this machine" they would read as measured facts.
-		setup(buildSnapshot());
+		setup(usage());
 		expect(document.body.textContent).not.toMatch(/\d+ tools/);
 	});
 
-	// The dot reads the 48-hour line the stamp in section 02 reads (#107
-	// decision 2). It used to read `isFresh`, the snapshot's own 7-day flag,
-	// which the leaderboard still ranks on - one page, two ages for one sync.
+	it("reads one session in the singular", () => {
+		setup(usage({ current: reading({ sessions: 1 }) }));
+		expect(screen.getByText("1 session")).toBeInTheDocument();
+	});
+
+	// The dot reads the 48-hour line the stamp in section 01 reads (#107
+	// decision 2), never a 7-day flag.
 	it("marks a reading past 48 hours", () => {
-		const { container } = renderWith(
-			buildSnapshot({ receivedAt: Date.now() - 19 * DAY }),
-		);
+		const { container } = setup(usage({ receivedAt: Date.now() - 19 * DAY }));
 		expect(container.querySelector(".bg-orange-400")).not.toBeNull();
 	});
 
 	it("marks a fresh reading in lime", () => {
-		const { container } = renderWith(buildSnapshot());
+		const { container } = setup(usage());
 		expect(container.querySelector(".bg-orange-400")).toBeNull();
 	});
 
 	// The clock is frozen for the boundary itself: the milliseconds between
-	// building the snapshot and rendering it would otherwise decide the case.
+	// building the reading and rendering it would otherwise decide the case.
 	it("holds the lime dot at exactly 48 hours", () => {
 		const container = atExactly(48 * HOUR);
 		expect(container.querySelector(".bg-orange-400")).toBeNull();
@@ -104,20 +95,27 @@ describe("with a snapshot", () => {
 		const container = atExactly(48 * HOUR + 1);
 		expect(container.querySelector(".bg-orange-400")).not.toBeNull();
 	});
+});
 
-	// The snapshot's 7-day flag no longer moves it either way.
-	it("ignores the snapshot's own 7-day flag", () => {
-		const { container } = renderWith(
-			buildSnapshot({ receivedAt: Date.now() - 5 * HOUR, isFresh: false }),
-		);
-		expect(container.querySelector(".bg-orange-400")).toBeNull();
+describe("with only the legacy figure", () => {
+	it("states the legacy totals and no model line", () => {
+		setup(legacyUsage());
+		expect(screen.getByText("382 sessions")).toBeInTheDocument();
+		expect(screen.getByText("22 of the last 30 days")).toBeInTheDocument();
+		expect(screen.queryByText(/leads at/)).not.toBeInTheDocument();
+		expect(document.body.textContent).not.toContain("$");
 	});
 });
 
-describe("without a snapshot", () => {
+describe("without a reading", () => {
 	it("renders nothing at all for a stack that never synced", () => {
-		setup(null);
+		setup(noDaysUsage());
 		expect(screen.queryByRole("link")).not.toBeInTheDocument();
+		expect(document.body.textContent).toBe("");
+	});
+
+	it("renders nothing for an unpublished stack", () => {
+		setup(null);
 		expect(document.body.textContent).toBe("");
 	});
 
@@ -131,16 +129,9 @@ describe("without a snapshot", () => {
 function atExactly(ageMs: number) {
 	vi.useFakeTimers();
 	try {
-		const { container } = renderWith(
-			buildSnapshot({ receivedAt: Date.now() - ageMs }),
-		);
+		const { container } = setup(usage({ receivedAt: Date.now() - ageMs }));
 		return container;
 	} finally {
 		vi.useRealTimers();
 	}
-}
-
-function renderWith(snapshot: MeasuredSnapshot) {
-	queryMock.mockReturnValue(snapshot);
-	return render(<HeroMeasuredStrip slug="alps-stack-ab12" />);
 }

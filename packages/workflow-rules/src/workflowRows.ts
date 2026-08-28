@@ -19,15 +19,12 @@ import type { Band, MetricUnit } from "./metricRules.js";
 import { METRIC_RULES } from "./metricRules.js";
 import { type HarnessName, harnessLabel } from "./types.js";
 
-/** The podium: the first three rows in the fixed order, or the pinned ones. */
+/** The podium: the first three rows in the fixed order. */
 export const HIGHLIGHT_SLOTS = 3;
-
-/** One pin per podium slot. A fourth pin has no slot to promise. */
-export const MAX_PINS = HIGHLIGHT_SLOTS;
 
 export type RowKind = "metric" | "component";
 
-/** `metric:late-night-commits`, `component:git-ledger`. Stable: a pin is keyed on it. */
+/** `metric:late-night-commits`, `component:git-ledger`. Stable across rule versions. */
 export function metricRowId(metricId: string): string {
 	return `metric:${metricId}`;
 }
@@ -90,7 +87,7 @@ export function rowOrder(rowId: string): WorkflowRowOrder | undefined {
 	return WORKFLOW_ROW_ORDER.find((row) => row.rowId === rowId);
 }
 
-/** Every row id either rule pool can produce. A pin or a hide must name one. */
+/** Every row id either rule pool can produce. */
 export const KNOWN_ROW_IDS: ReadonlySet<string> = new Set([
 	...METRIC_RULES.map((rule) => metricRowId(rule.id)),
 	...COMPONENT_RULES.map((rule) => componentRowId(rule.id)),
@@ -242,52 +239,25 @@ function finishRow(
 	};
 }
 
-export type RowOverrides = {
-	pinned: readonly string[];
-	hidden: readonly string[];
-};
-
 export type Placement = "highlight" | "normal";
 
 export type PlacedRow = WorkflowRow & {
 	placement: Placement;
-	pinned: boolean;
-	hidden: boolean;
 };
 
 /**
- * Place one reading's rows: pinned rows first, in the fixed order, then the
- * rest in the fixed order. The first three rows on the page are the podium.
- *
- * Hidden rows are MARKED rather than dropped, because the two callers need
- * different things from them: a public read drops them, and the owner's own
- * view lists them so the hide can be undone. A hidden row takes no podium
- * slot either way.
+ * Place one reading's rows in the fixed order. The first three rows on the
+ * page are the podium. There are no pins and no hides (#303, #321): the owner
+ * has no per-row control, so placement is a function of the order alone.
  */
-export function placeRows(
-	rows: readonly WorkflowRow[],
-	overrides: RowOverrides,
-): PlacedRow[] {
-	const hidden = new Set(overrides.hidden);
-	const pinned = new Set(overrides.pinned);
-	const ordered = [...rows].sort((a, b) => {
-		const pinDiff = Number(pinned.has(b.rowId)) - Number(pinned.has(a.rowId));
-		if (pinDiff !== 0) return pinDiff;
-		return (
+export function placeRows(rows: readonly WorkflowRow[]): PlacedRow[] {
+	const ordered = [...rows].sort(
+		(a, b) =>
 			(ORDER_INDEX.get(a.rowId) ?? Number.MAX_SAFE_INTEGER) -
-			(ORDER_INDEX.get(b.rowId) ?? Number.MAX_SAFE_INTEGER)
-		);
-	});
-	let slots = 0;
-	return ordered.map((row) => {
-		const isHidden = hidden.has(row.rowId);
-		const onPodium = !isHidden && slots < HIGHLIGHT_SLOTS;
-		if (onPodium) slots++;
-		return {
-			...row,
-			placement: onPodium ? "highlight" : "normal",
-			pinned: pinned.has(row.rowId),
-			hidden: isHidden,
-		};
-	});
+			(ORDER_INDEX.get(b.rowId) ?? Number.MAX_SAFE_INTEGER),
+	);
+	return ordered.map((row, index) => ({
+		...row,
+		placement: index < HIGHLIGHT_SLOTS ? "highlight" : "normal",
+	}));
 }

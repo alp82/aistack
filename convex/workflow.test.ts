@@ -3,19 +3,15 @@ import { convexTest } from 'convex-test'
 import { describe, expect, test } from 'vitest'
 import { api, internal } from './_generated/api'
 import type { Doc } from './_generated/dataModel'
-import schema from './schema'
+import type { Infer } from 'convex/values'
+import schema, { MeasuredPayload } from './schema'
 
 const modules = import.meta.glob('./**/*.{js,ts}')
 
 const USER = 'user_owner'
 const IDENTITY = { tokenIdentifier: `convex|${USER}`, subject: USER }
-const STRANGER = {
-  tokenIdentifier: 'convex|user_stranger',
-  subject: 'user_stranger',
-}
-
 type Ctx = Awaited<ReturnType<typeof convexTest>>
-type StoredPayload = Doc<'measuredSnapshots'>['payload']
+type StoredPayload = Infer<typeof MeasuredPayload>
 type Day = NonNullable<Doc<'measuredDays'>['workflow']>
 type Wire = { aggregateVersion: string; utcOffsetMinutes?: number; days: Day[] }
 
@@ -312,7 +308,7 @@ describe('storing workflow days', () => {
       }),
     ).rejects.toThrow(/distinct date/)
     expect(
-      await t.run(async (ctx) => ctx.db.query('measuredSnapshots').collect()),
+      await t.run(async (ctx) => ctx.db.query('measuredInventory').collect()),
     ).toHaveLength(0)
   })
 })
@@ -395,6 +391,43 @@ describe('reading a window', () => {
     const t = convexTest(schema, modules)
     const { stackId, slug } = await seedStack(t)
     await publish(t, stackId, { machine: 'laptop' })
+    // The sessions come from the usage half of the same day (ADR-0010): a
+    // harness the playbook gate holds back still counts here.
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId,
+      machine: 'laptop',
+      payload: payload(),
+      measuredDays: {
+        aggregateVersion: 'measured-days/v1',
+        utcOffsetMinutes: 120,
+        days: [
+          {
+            date: daysAgo(1),
+            usage: {
+              harnesses: [
+                {
+                  harness: 'claude-code',
+                  sessions: 100,
+                  projectKeys: [],
+                  models: [],
+                  subagentTokens: 0,
+                  excludedTokens: { unpriced: 0, synthetic: 0 },
+                },
+                {
+                  harness: 'codex',
+                  sessions: 42,
+                  projectKeys: [],
+                  models: [],
+                  subagentTokens: 0,
+                  excludedTokens: { unpriced: 0, synthetic: 0 },
+                },
+              ],
+            },
+            workflow: day(),
+          },
+        ],
+      },
+    })
 
     const view = await t.query(api.workflow.getWorkflowByStackSlug, { slug })
     expect(view?.lead).toMatchObject({
@@ -510,7 +543,7 @@ describe('reading a window', () => {
     ).toBeNull()
   })
 
-  test('the kit reads skills out of the payload inventory', async () => {
+  test('the kit reads skills out of the inventory row', async () => {
     const t = convexTest(schema, modules)
     const { stackId, slug } = await seedStack(t)
     await publish(t, stackId, {
@@ -530,136 +563,5 @@ describe('reading a window', () => {
     const kit = view?.rows.find((r) => r.rowId === 'component:kit')
     expect(kit?.value).toBeCloseTo(0.6, 10)
     expect(kit?.coverage).toBe(1)
-  })
-})
-
-describe('the owner controls', () => {
-  test('a pin puts a later row on the podium, ahead of the fixed order', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, slug } = await seedStack(t)
-    await publish(t, stackId, { machine: 'laptop' })
-
-    await t.withIdentity(IDENTITY).mutation(api.workflow.setWorkflowRowOverride, {
-      stackId,
-      rowId: 'metric:parallel-projects',
-      state: 'pinned',
-    })
-
-    const after = await t.query(api.workflow.getWorkflowByStackSlug, { slug })
-    expect(after?.rows[0]).toMatchObject({
-      rowId: 'metric:parallel-projects',
-      placement: 'highlight',
-      pinned: true,
-    })
-    expect(after?.rows.filter((r) => r.placement === 'highlight')).toHaveLength(3)
-  })
-
-  test('a hidden row leaves the public page and stays in the owner’s own view', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, slug } = await seedStack(t)
-    await publish(t, stackId, { machine: 'laptop' })
-
-    await t.withIdentity(IDENTITY).mutation(api.workflow.setWorkflowRowOverride, {
-      stackId,
-      rowId: 'component:git-ledger',
-      state: 'hidden',
-    })
-
-    const publicView = await t.query(api.workflow.getWorkflowByStackSlug, {
-      slug,
-    })
-    expect(
-      publicView?.rows.some((r) => r.rowId === 'component:git-ledger'),
-    ).toBe(false)
-
-    const ownerView = await t
-      .withIdentity(IDENTITY)
-      .query(api.workflow.getWorkflowByStackSlug, { slug })
-    expect(
-      ownerView?.rows.find((r) => r.rowId === 'component:git-ledger')?.hidden,
-    ).toBe(true)
-  })
-
-  test('clearing an override puts the row back', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId, slug } = await seedStack(t)
-    await publish(t, stackId, { machine: 'laptop' })
-    const as = t.withIdentity(IDENTITY)
-
-    await as.mutation(api.workflow.setWorkflowRowOverride, {
-      stackId,
-      rowId: 'component:git-ledger',
-      state: 'hidden',
-    })
-    const cleared = await as.mutation(api.workflow.setWorkflowRowOverride, {
-      stackId,
-      rowId: 'component:git-ledger',
-      state: null,
-    })
-    expect(cleared).toEqual({ pinned: [], hidden: [] })
-
-    const view = await t.query(api.workflow.getWorkflowByStackSlug, { slug })
-    expect(view?.rows.some((r) => r.rowId === 'component:git-ledger')).toBe(true)
-  })
-
-  test('a fourth pin is refused, because there is no fourth slot to promise', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId } = await seedStack(t)
-    await publish(t, stackId, { machine: 'laptop' })
-    const as = t.withIdentity(IDENTITY)
-
-    for (const rowId of [
-      'component:git-ledger',
-      'component:delegation',
-      'component:kit',
-    ]) {
-      await as.mutation(api.workflow.setWorkflowRowOverride, {
-        stackId,
-        rowId,
-        state: 'pinned',
-      })
-    }
-    await expect(
-      as.mutation(api.workflow.setWorkflowRowOverride, {
-        stackId,
-        rowId: 'component:phase-playbook',
-        state: 'pinned',
-      }),
-    ).rejects.toThrow(/podium holds 3 rows/)
-  })
-
-  test('a row id no rule pool declares is refused', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId } = await seedStack(t)
-    await publish(t, stackId, { machine: 'laptop' })
-
-    await expect(
-      t.withIdentity(IDENTITY).mutation(api.workflow.setWorkflowRowOverride, {
-        stackId,
-        rowId: 'metric:whatever-i-like',
-        state: 'hidden',
-      }),
-    ).rejects.toThrow(/Unknown workflow row/)
-  })
-
-  test('a stranger cannot pin or hide anything', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId } = await seedStack(t)
-    await publish(t, stackId, { machine: 'laptop' })
-
-    await expect(
-      t.withIdentity(STRANGER).mutation(api.workflow.setWorkflowRowOverride, {
-        stackId,
-        rowId: 'component:git-ledger',
-        state: 'hidden',
-      }),
-    ).rejects.toThrow(/Not authorized/)
-    await expect(
-      t.mutation(api.workflow.setWorkflowRowOverride, {
-        stackId,
-        rowId: 'component:git-ledger',
-        state: 'hidden',
-      }),
-    ).rejects.toThrow(/Not authenticated/)
   })
 })

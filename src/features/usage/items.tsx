@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { MeasuredSnapshot } from "@/features/measured/copy";
+import type { LegacyFigure } from "@/features/measured/copy";
 import { RowBody } from "@/features/workflow/components";
 import type { WorkflowView } from "@/features/workflow/copy";
 import { rowHead } from "@/features/workflow/heads";
@@ -117,22 +117,13 @@ function statsOf(reading: UsageReading): Stats {
 	return reading;
 }
 
-function statsOfSnapshot(snapshot: MeasuredSnapshot): Stats {
-	return {
-		sessions: snapshot.activity.sessions,
-		activeDays: snapshot.activity.activeDays.value,
-		projects: snapshot.activity.projects.value,
-		cacheHitShare: snapshot.activity.cacheHitShare,
-		subagentShare: snapshot.activity.subagentShare,
-	};
-}
-
 /**
  * The usage side of the items: five stats and the harness rows.
  *
  * On the days path both sides come from `getUsageByStackSlug`. On the legacy
- * path only the 30-day snapshot exists, so the stats show at 30d with no chip
- * and are absent at 7d and 24h (#306 rule 6).
+ * path (ADR-0011) only the 30-day figure survives: sessions and active days
+ * show at 30d with no chip, the other stats and the harness rows have no
+ * source, and everything is absent at 7d and 24h (#306 rule 6).
  */
 export type UsageSource =
 	| {
@@ -141,7 +132,7 @@ export type UsageSource =
 			previous: UsageReading | null;
 			days: number;
 	  }
-	| { kind: "snapshot"; snapshot: MeasuredSnapshot }
+	| { kind: "legacy"; legacy: LegacyFigure }
 	| null;
 
 function statItems(
@@ -150,16 +141,6 @@ function statItems(
 	items: Map<string, Item>,
 ) {
 	if (!source) return;
-	const stats =
-		source.kind === "days"
-			? statsOf(source.current)
-			: statsOfSnapshot(source.snapshot);
-	const before =
-		source.kind === "days" && source.previous ? statsOf(source.previous) : null;
-	const days =
-		source.kind === "days" ? source.days : source.snapshot.window.days;
-	const compare = (pick: (s: Stats) => number): Comparison =>
-		before ? { current: pick(stats), previous: pick(before) } : null;
 	const stat = (
 		id: string,
 		name: string,
@@ -177,6 +158,31 @@ function statItems(
 			body: null,
 			shape: "number",
 		});
+
+	if (source.kind === "legacy") {
+		const { legacy } = source;
+		stat(
+			"stat:sessions",
+			"Sessions",
+			legacy.sessions.toLocaleString("en-US"),
+			"sessions in the range",
+			null,
+		);
+		stat(
+			"stat:active-days",
+			"Active days",
+			`${legacy.activeDays} of ${legacy.windowDays}`,
+			"days with at least one session",
+			null,
+		);
+		return;
+	}
+
+	const stats = statsOf(source.current);
+	const before = source.previous ? statsOf(source.previous) : null;
+	const days = source.days;
+	const compare = (pick: (s: Stats) => number): Comparison =>
+		before ? { current: pick(stats), previous: pick(before) } : null;
 
 	stat(
 		"stat:sessions",
@@ -216,17 +222,9 @@ function statItems(
 
 	// A harness with no tokens in the range is not measured: it neither counts
 	// nor draws a bar.
-	const harnesses = (
-		source.kind === "days"
-			? source.current.harnesses.map((h) => ({
-					name: h.harness,
-					tokens: h.totalTokens,
-				}))
-			: source.snapshot.harnesses.map((h) => ({
-					name: h.harness.name,
-					tokens: h.activity.totalTokens,
-				}))
-	).filter((h) => h.tokens > 0);
+	const harnesses = source.current.harnesses
+		.map((h) => ({ name: h.harness, tokens: h.totalTokens }))
+		.filter((h) => h.tokens > 0);
 	const names = new Set(harnesses.map((h) => h.name));
 	if (names.size === 0) return;
 	items.set("harness", {

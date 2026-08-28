@@ -1,18 +1,10 @@
 import {
-	fmtTokens,
-	lastCheckLine,
-	type MeasuredSnapshot,
+	type LegacyFigure,
 	MIX_KICKER,
 	MONO_LABEL,
+	NOT_MEASURED_MIX,
 	notchNote,
-	totalUSD,
 } from "@/features/measured/copy";
-import {
-	type MeasuredHistoryPoint,
-	modelTrails,
-	tokenDelta,
-	tokenTrail,
-} from "@/features/measured/history";
 import { MetricBlock } from "@/features/measured/MetricBlock";
 import { ModelShareRows } from "@/features/measured/ModelShareRows";
 import { cn } from "@/lib/utils";
@@ -36,11 +28,7 @@ const DAY_MS = 86_400_000;
  */
 export type TopSource =
 	| { kind: "days"; usage: UsageRead }
-	| {
-			kind: "snapshot";
-			snapshot: MeasuredSnapshot;
-			points: readonly MeasuredHistoryPoint[];
-	  };
+	| { kind: "legacy"; legacy: LegacyFigure };
 
 export function TopBlock({
 	source,
@@ -52,11 +40,7 @@ export function TopBlock({
 	return source.kind === "days" ? (
 		<DaysTop usage={source.usage} range={range} />
 	) : (
-		<SnapshotTop
-			snapshot={source.snapshot}
-			points={source.points}
-			range={range}
-		/>
+		<LegacyTop legacy={source.legacy} range={range} />
 	);
 }
 
@@ -126,23 +110,19 @@ function DaysTop({ usage, range }: { usage: UsageRead; range: RangeId }) {
 }
 
 /**
- * The legacy path (#306 rule 6): one 30-day snapshot and no per-day rows. 30d
- * prints the snapshot's exact figure marked approximate, with no previous
- * period; 7d and 24h read as not measured.
+ * The legacy path (#306 rule 6, ADR-0011): a stack whose last reading predates
+ * per-day rows keeps only its 30-day totals. 30d prints that exact figure
+ * marked approximate, with no trail, no previous period and no model mix; 7d
+ * and 24h read as not measured.
  */
-function SnapshotTop({
-	snapshot,
-	points,
+function LegacyTop({
+	legacy,
 	range,
 }: {
-	snapshot: MeasuredSnapshot;
-	points: readonly MeasuredHistoryPoint[];
+	legacy: LegacyFigure;
 	range: RangeId;
 }) {
 	const notMeasured = range !== "30d";
-	const trails = modelTrails(snapshot.models, points);
-	const firstAt = points.length > 0 ? points[0].at : null;
-	const sinceLast = lastCheckLine(tokenDelta(points), fmtTokens);
 	return (
 		<div className="grid gap-10 md:grid-cols-[minmax(0,22rem)_1fr]">
 			<div>
@@ -151,10 +131,10 @@ function SnapshotTop({
 				) : (
 					<>
 						<MetricBlock
-							tokens={snapshot.activity.totalTokens}
-							usd={totalUSD(snapshot)}
-							windowDays={snapshot.window.days}
-							trail={tokenTrail(points)}
+							tokens={legacy.tokens}
+							usd={legacy.usd}
+							windowDays={legacy.windowDays}
+							trail={[]}
 						/>
 						<p className="mt-3 flex flex-wrap items-center gap-2 px-3">
 							<span
@@ -165,30 +145,13 @@ function SnapshotTop({
 							>
 								{APPROXIMATE}
 							</span>
-							{sinceLast && (
-								<span
-									className={cn(
-										MONO_LABEL,
-										"inline-flex items-center border border-stroke-subtle px-1.5 py-0.5 text-[10px] tracking-wider text-fg-muted",
-									)}
-								>
-									{sinceLast}
-								</span>
-							)}
 						</p>
 					</>
 				)}
 			</div>
-			<div className={cn(notMeasured && "opacity-40")}>
-				<div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-					<p className={cn(MONO_LABEL, "text-accent-lime")}>{MIX_KICKER}</p>
-					{firstAt !== null && points.length > 1 && (
-						<p className="font-mono text-[11px] text-fg-muted">
-							{notchNote(firstAt)}
-						</p>
-					)}
-				</div>
-				<ModelShareRows trails={trails} firstAt={firstAt} />
+			<div className="opacity-40">
+				<p className={cn(MONO_LABEL, "mb-4 text-accent-lime")}>{MIX_KICKER}</p>
+				<p className="font-mono text-sm text-fg-muted">{NOT_MEASURED_MIX}</p>
 			</div>
 		</div>
 	);

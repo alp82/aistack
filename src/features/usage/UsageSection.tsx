@@ -19,11 +19,11 @@ import { TopBlock, type TopSource } from "./TopBlock";
  * Journey section 01, Actual Usage: the merged measured section (#307, map
  * #302, spec `docs/specs/workflow-surface.md`, "The section").
  *
- * THREE READS, ONE CONTROL BAR. `getUsageByStackSlug` folds the per-day usage
+ * TWO READS, ONE CONTROL BAR. `getUsageByStackSlug` folds the per-day usage
  * rows for the range and the machine and answers both sides of the previous
- * period; `getWorkflowByStackSlug` folds the workflow rows for the same window
- * and machine; `getCurrentByStackSlug` (with its history) is the legacy 30-day
- * snapshot, the only reading a stack has before it publishes days.
+ * period, and carries the legacy 30-day figure for a stack that never
+ * published days (ADR-0011); `getWorkflowByStackSlug` folds the workflow rows
+ * for the same window and machine.
  *
  * THE SECTION RANKS NOTHING. The first screen is a fixed editorial pick, the
  * tabs hold a fixed order, and the owner has no per-row control.
@@ -59,26 +59,17 @@ export function UsageSection({
 		range,
 		...machineArg,
 	});
-	const snapshot = useQuery(api.measured.getCurrentByStackSlug, {
-		slug,
-		...machineArg,
-	});
 	const hasDays = usage?.hasDays === true;
-	// The snapshot series only serves the legacy path: with days the watermark
-	// is the per-day series the usage read already carries.
-	const history = useQuery(
-		api.measured.getHistoryByStackSlug,
-		usage === undefined || hasDays ? "skip" : { slug, ...machineArg },
-	);
+	const legacy = usage?.legacy ?? null;
 	const view = useQuery(api.workflow.getWorkflowByStackSlug, {
 		slug,
 		window: range,
 		...machineArg,
 	});
 
-	const answered = usage !== undefined && snapshot !== undefined;
-	const machines = machineChoices(usage, snapshot);
-	const receivedAt = usage?.receivedAt ?? snapshot?.receivedAt ?? null;
+	const answered = usage !== undefined;
+	const machines = machineChoices(usage);
+	const receivedAt = usage?.receivedAt ?? null;
 	// Past 48 hours the switch is the page's remedy, so it stands BEFORE the
 	// reading it keeps arriving. A stack that never synced is not late (it may
 	// be hand-curated), so it never promotes anything (#107 decisions 1 and 3).
@@ -88,8 +79,8 @@ export function UsageSection({
 	const top: TopSource | null =
 		usage && hasDays
 			? { kind: "days", usage }
-			: snapshot
-				? { kind: "snapshot", snapshot, points: history?.points ?? [] }
+			: legacy
+				? { kind: "legacy", legacy }
 				: null;
 	const source: UsageSource =
 		usage && hasDays
@@ -101,8 +92,8 @@ export function UsageSection({
 						days: rangeDays(range),
 					}
 				: null
-			: snapshot && range === "30d"
-				? { kind: "snapshot", snapshot }
+			: legacy && range === "30d"
+				? { kind: "legacy", legacy }
 				: null;
 	const items = buildItems(view, source, stackToolSlugs);
 	const group = TOPIC.find((g) => g.id === tab) ?? TOPIC[0];
@@ -172,16 +163,11 @@ export function UsageSection({
 
 /**
  * The machines the selector offers, by their durable ordinal (#250). The usage
- * read lists every machine with rows or snapshots; a stack whose usage read is
- * null still gets the snapshot's harness machines.
+ * read lists every machine with a day row or an inventory row.
  */
 function machineChoices(
 	usage:
 		| { machines: { machine: string | null; machineOrdinal: number | null }[] }
-		| null
-		| undefined,
-	snapshot:
-		| { harnesses: { machine: string | null; machineOrdinal: number | null }[] }
 		| null
 		| undefined,
 ): MachineChoice[] {
@@ -195,6 +181,5 @@ function machineChoices(
 		});
 	};
 	for (const m of usage?.machines ?? []) add(m.machine, m.machineOrdinal);
-	for (const h of snapshot?.harnesses ?? []) add(h.machine, h.machineOrdinal);
 	return [...byOrdinal.values()].sort((a, b) => a.ordinal - b.ordinal);
 }

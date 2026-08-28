@@ -218,9 +218,6 @@ function StackDetailsPage() {
 	// queries section 01 reads at its default (30d, all machines). The Convex
 	// client serves both callers from one subscription, and the shared answer is
 	// what keeps the nav's figure and the section's figure identical.
-	const measuredSnapshot = useQuery(api.measured.getCurrentByStackSlug, {
-		slug,
-	});
 	const usage =
 		useQuery(api.measured.getUsageByStackSlug, { slug }) ?? loadedUsage;
 	const projects = useQuery(
@@ -334,7 +331,7 @@ function StackDetailsPage() {
 			stat: usageStat(
 				usage?.hasDays && usage.current
 					? usage.current.totalTokens
-					: (measuredSnapshot?.activity.totalTokens ?? null),
+					: (usage?.legacy?.tokens ?? null),
 			),
 		},
 		projects: { present: true, stat: projectsStat(projects?.length ?? 0) },
