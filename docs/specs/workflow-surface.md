@@ -26,49 +26,54 @@ deterministic. Raw transcripts never leave the machine.
 
 ## The section
 
-The composition is the podium ([#191](https://github.com/alp82/aistack/issues/191),
-`prototypes/workflow-composition/index.html`):
+**Superseded on 2026-08-28 by the merged section**
+([map #302](https://github.com/alp82/aistack/issues/302)). The workflow rows no longer
+have a section of their own. They live inside Actual Usage, section 01, and the word
+Workflow appears nowhere on the page. This chapter records the merged composition; the
+podium composition it replaces was [#191](https://github.com/alp82/aistack/issues/191).
 
-- The section opens with a deterministic template lead: fixed sentence forms over
-  measured numbers, versioned as `lead-templates/v1`. An absent measurement drops its
-  sentence. The forms hold on real data
-  ([#196](https://github.com/alp82/aistack/issues/196)), and the wording is locked in
-  [#220](https://github.com/alp82/aistack/issues/220). See "The template lead" for the
-  forms. Start hours are stored in UTC and rendered in the OWNER's local time, labeled
-  as such. The reader's own clock would show a stranger's habit at the wrong hour and
-  describe nobody.
-- One row set in a fixed editorial order ([#277](https://github.com/alp82/aistack/issues/277)):
-  seven pool metrics and eight components, fifteen rows, with a picture on every row.
-  Fit left the page: on the first prod reading 15 of 16 rows sat under the fit line and
-  every row the owner wanted scored zero.
-- The first three rows render as one horizontal band, the podium. A tap extends a box
-  below the band.
-- Thin rows follow in the fixed order. Nothing waits behind an expander.
-- The owner can pin or hide any row. A pin puts the row ahead of the fixed order and on
-  the podium; a hide takes it off the public page.
-- A row ships when its measurement exists. A missing measurement stays absent, so no
-  separate first-ship list exists.
+Settled in [#303](https://github.com/alp82/aistack/issues/303) and
+[#304](https://github.com/alp82/aistack/issues/304):
 
-The seven components ([#175](https://github.com/alp82/aistack/issues/175)): the phase
-playbook, model routing (main loop against subagents), the kit (skills and MCP
-servers), delegation (fan-out record, session record, main-to-subagent ratio), the Git
-Ledger (removals in red, per-commit sizes as a log-scale dot strip), coding languages
-(changed lines by file type), and the week/time heatmap with per-cell popups.
+- The header meta holds the one control bar: the range (30d, 7d, 24h), the machine
+  selector, and "checked N ago". Every sum and share in the section follows the range
+  and the machine. Inventory (installed skills, MCP servers, tools) stays window-free.
+- The first screen is a fixed editorial pick and fits one viewport: the token headline
+  (history watermark, cost line, previous-period delta) on the left, "where the tokens
+  went" model rows on the right. Nothing data-driven joins the first screen: fit surfaces
+  the same rows every window, so no metric earns a slot by its number.
+- The rest lives in five tabs under the top block, each with its item count: Time (when
+  work happens, session start times, turn length, active days, late-night commits,
+  session length), Code (lines changed, project workspaces, sessions, languages, parallel
+  projects), Models (models used, effort levels, thinking tokens), Harness (subagents, by
+  harness, cache hits, run by subagents), Skills (skills and MCP, web searches). Questions
+  asked was dropped. Each tab packs a grid with no empty cell: Time, Models and Harness use
+  a 2x2 feature with two items beside it and the rest in three columns; Code uses bands;
+  Skills uses charts on the left with a count rail on the right.
+- A card prints name, figure, caption and the previous-period chip on one line, with the
+  body inline. Lines changed prints no head figure; its green and red pair is the figure.
+- The previous-period chip reads "▲ 12% vs the 30 days before" (7d: "vs the 7 days
+  before", 24h: "vs the day before"). A figure with no per-day rows on either side prints
+  no chip. 24h is today UTC against yesterday; 7d is against the 7 days before; 30d is
+  against 60 to 30 days ago.
+- Pins and hides are gone. The owner has no per-row control; `setWorkflowRowOverride`
+  lost its consumer.
+- A row ships when its measurement exists. A missing measurement stays absent.
+- Start hours are stored in UTC and rendered in the OWNER's local time, labeled as such.
 
-On the stack page the section is titled Workflow under `// measured`, position 04 in
-the settled order: Actual Usage 01, Projects 02, Tools 03, Workflow 04, Guide 05
-([#193](https://github.com/alp82/aistack/issues/193)). The writeup section that used
-to carry the title Workflow is renamed Guide, under `// writeup`.
+The seven components ([#175](https://github.com/alp82/aistack/issues/175)) are unchanged:
+the phase playbook, model routing, the kit, delegation, the Git Ledger, coding languages,
+and the week/time heatmap.
 
-The order is locked, the numbers are not. Tools renders only when the stack lists
-tools. Workflow keeps its place and shows an empty state when no reading is
-published. The section number is its position among the sections that render.
+The settled page order is Actual Usage 01, Projects 02, Tools 03, Guide 04
+(`src/features/stack-view/pageOrder.ts`). Tools renders only when the stack lists tools.
+The section number is its position among the sections that render. The nav block under
+the hero shows one row per rendered section with a headline figure the section already
+prints; the usage row keeps "N tokens".
 
-A nav block of stat rows sits under the hero: one row per rendered section, showing
-the number, the title, and a headline figure the section itself already prints. A row
-is a link, and it opens nothing. Past the block, the same links dock as a fixed rail
-under the site header, carrying the stack name, the price, and the upvotes on its
-left, with a scroll spy marking the section in view.
+A stack with no measured days and one old 30-day snapshot prints the snapshot's exact 30d
+figure marked approximate, with no previous period, and 7d and 24h read as not measured
+([#306](https://github.com/alp82/aistack/issues/306) rule 6).
 
 ## Fit
 
@@ -81,7 +86,7 @@ declares.
 ([#277](https://github.com/alp82/aistack/issues/277)). The rotation limit, the
 challenger margin, the fit line and the swap-per-day rule are gone
 ([#285](https://github.com/alp82/aistack/issues/285)): the order on the page is fixed,
-and the only server state beside the days is the owner's pins and hides.
+and there is no server state beside the days (pins and hides were dropped in #303).
 
 Every row is computed on the server, over the folded window. The CLI ships atoms and no
 values (see "The wire"), so a rule change is a server deploy and needs no re-sync.
@@ -256,11 +261,30 @@ while their lines stay in the denominator. The v1 rule ranked them together as
 
 ## The wire
 
-One closed workflow section on the existing sync body, `workflow-aggregates/v2`
-([#285](https://github.com/alp82/aistack/issues/285)): per-day rows of combinable atoms,
-plus the machine's UTC offset. Every field is additive and optional at the body level, so
-a client without the section keeps working and publishes no workflow. The name filter and
-the staged approval apply to every field.
+**Superseded on 2026-08-28** ([ADR-0010](../adr/0010-the-cli-ships-only-the-days-the-server-lacks.md),
+[ADR-0011](../adr/0011-measured-data-is-days-plus-a-live-inventory.md)). The rules of
+`workflow-aggregates/v2` below still describe the workflow block; the row it rides on
+changed.
+
+- **One measured day, two blocks.** The CLI ships `measured-days/v1`: one row per UTC
+  date `{ date, usage?, workflow? }`. `usage` holds per-harness combinable atoms (sessions
+  started, hashed project keys, per-model token sums with exact dollars priced at ingest,
+  subagent tokens, excluded tokens). `workflow` is the `WorkflowDay` of that date. The
+  server folds a range at read time; shares, active days and dollars come out of the fold.
+- **Diff-only sync.** The server answers `GET /api/cli/sync-manifest` with the dates it
+  holds for the machine, each with a content fingerprint, plus the retention (400 days).
+  The CLI publishes only dates that are missing or whose fingerprint differs; today always
+  resends. An old client sends its full window and the server accepts it by replace, so the
+  backend deploys first and the CLI release follows.
+- **One row per (stack, machine, date), replaced per date, never pruned server-side.**
+  The 400-day figure is the CLI send window and the page read cap only.
+- **Inventory is not on the day.** One `measuredInventory` row per (stack, machine,
+  harness), replaced on every sync, carries the window-free sets and the last sync time.
+- **Consent is two bits read at both ends.** `publishWorkflow` off: the CLI omits the
+  workflow block and the server returns null for that half. `publishCost` off: the CLI
+  omits dollars and the server strips them.
+
+The original `workflow-aggregates/v2` rules ([#285](https://github.com/alp82/aistack/issues/285)):
 
 - **A day carries counts, sums, maxes, and bucket histograms, and nothing else.** No
   share, no median, no mean. Session lengths and turn durations travel as
@@ -271,22 +295,9 @@ the staged approval apply to every field.
 - **The server folds days into a window and computes every row there.** A median is a
   median over daily values (parallel projects) or over buckets (session length, turn
   duration). Bands stay in the versioned rules on the server.
-- **A re-synced day replaces that day. Days append across syncs.** One row per
-  (stack, machine, date), 400 days of retention per machine, and a window of 30 days,
-  7 days, or the last 24 hours folded at read time.
 - **The phase gate is a window judgment.** A harness that leaves more than 20% of its
   measured time unclassified over the sync window ships every day without its phase
   block, so no window can fold a playbook the gate refused.
-
-Consent is one `publishWorkflow` opt-out bit that mirrors `publishCost` field for
-field: default on, applied client-side. Off means the workflow section is absent from
-the payload, so nothing exists to reveal server-side. The gate names the switch before
-the first upload.
-
-The four pending wire-bump items from the map #121 fog ride this same wire change:
-`cliVersion`, the cacheWrite split, absolute tool counts, and `ResourceInput.scope`.
-The CLI collects and ships them from the start, and no UI shows them yet. New stat
-components pick them up later (rounds 2 and 3).
 
 ## The gate, and no LLM
 
@@ -297,8 +308,7 @@ of the payload.
 
 **The surface ships without an LLM.** It keeps only data a fixed rule can compute,
 because an AI step at the sync would scare people off the sync (round 2). Nothing to
-draft means nothing to edit: the owner controls on the web are pin and hide per row.
-Owner prose lives in the Guide section.
+draft means nothing to edit. Owner prose lives in the Guide section.
 [ADR-0002](../adr/0002-no-llm-in-the-workflow-surface.md) records the rule and
 supersedes ADR-0001.
 
