@@ -227,6 +227,9 @@ export const getWorkflowByStackSlug = query({
 		slug: v.string(),
 		machineOrdinal: v.optional(v.number()),
 		window: v.optional(WindowId),
+		// PROTOTYPE #304 (throwaway): fold the window BEFORE the current one, so
+		// a variant can rank rows by what moved. Ships nowhere.
+		previous: v.optional(v.boolean()),
 	},
 	returns: v.union(WorkflowView, v.null()),
 	handler: async (ctx, args) => {
@@ -279,10 +282,15 @@ export const getWorkflowByStackSlug = query({
 		if (!selected) return null
 
 		const window: WorkflowWindowId = args.window ?? WORKFLOW_WINDOWS[0]
-		const now = Date.now()
+		const realNow = Date.now()
+		const spanMs =
+			(window === '30d' ? 30 : window === '7d' ? 7 : 1) * 24 * 60 * 60 * 1000
+		const now = args.previous ? realNow - spanMs : realNow
 		const from = windowStartDate(window, now)
 		const to = new Date(now).toISOString().slice(0, 10)
-		const inWindow = selected.rows.filter((row) => row.date >= from)
+		const inWindow = selected.rows.filter(
+			(row) => row.date >= from && row.date <= to
+		)
 
 		const snapshots = newestPerSource(
 			await snapshotsForStack(ctx, stack._id)

@@ -26,7 +26,7 @@ import { Delta } from "./UsageMergePrototype";
 // Cards, two densities.
 // ---------------------------------------------------------------------------
 
-function ChartCard({
+export function ChartCard({
 	it,
 	window,
 	big = true,
@@ -184,7 +184,7 @@ export const VariantT = {
 
 // U ------------------------------------------------------------------------
 
-function packU(w: VariantProps["p"]["window"]) {
+export function packU(w: VariantProps["p"]["window"]) {
 	return (items: Item[]) => {
 		const charts = items.filter((it) => it.body);
 		const rest = items.filter((it) => !it.body);
@@ -246,7 +246,7 @@ export const VariantU = {
 
 // V ------------------------------------------------------------------------
 
-function packV(w: VariantProps["p"]["window"]) {
+export function packV(w: VariantProps["p"]["window"]) {
 	return (items: Item[]) => {
 		const charts = items.filter((it) => it.body);
 		const small = items.filter((it) => !it.body);
@@ -350,7 +350,7 @@ export const VariantW = {
 
 // X ------------------------------------------------------------------------
 
-function packX(w: VariantProps["p"]["window"]) {
+export function packX(w: VariantProps["p"]["window"]) {
 	return (items: Item[]) => {
 		const charts = items.filter((it) => it.body);
 		const stats = items.filter((it) => !it.body);
@@ -405,7 +405,7 @@ export const VariantX = {
 // The owner's pick per tab (round five): Time U, Code V, Models U, Kit X,
 // Sessions U.
 
-const PER_TAB: Record<string, "U" | "V" | "X"> = {
+export const PER_TAB: Record<string, "U" | "V" | "X"> = {
 	time: "U",
 	code: "V",
 	models: "U",

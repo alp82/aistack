@@ -57,7 +57,14 @@ import {
 // The top block: headline and model rows only.
 // ---------------------------------------------------------------------------
 
-function TopReading({ p }: { p: Proto }) {
+export function TopReading({
+	p,
+	right,
+}: {
+	p: Proto;
+	/** PROTOTYPE #304: replaces the model rows on the right. */
+	right?: (notMeasured: boolean) => ReactNode;
+}) {
 	const s = p.snapshot;
 	if (!s) return null;
 	const points = p.points;
@@ -103,17 +110,21 @@ function TopReading({ p }: { p: Proto }) {
 					</>
 				)}
 			</div>
-			<div className={cn(notMeasured && "opacity-40")}>
-				<div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-					<p className={cn(MONO_LABEL, "text-accent-lime")}>{MIX_KICKER}</p>
-					{firstAt !== null && points.length > 1 && (
-						<p className="font-mono text-[11px] text-fg-muted">
-							{notchNote(firstAt)}
-						</p>
-					)}
+			{right ? (
+				right(notMeasured)
+			) : (
+				<div className={cn(notMeasured && "opacity-40")}>
+					<div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+						<p className={cn(MONO_LABEL, "text-accent-lime")}>{MIX_KICKER}</p>
+						{firstAt !== null && points.length > 1 && (
+							<p className="font-mono text-[11px] text-fg-muted">
+								{notchNote(firstAt)}
+							</p>
+						)}
+					</div>
+					<ModelShareRows trails={trails} firstAt={firstAt} />
 				</div>
-				<ModelShareRows trails={trails} firstAt={firstAt} />
-			</div>
+			)}
 		</div>
 	);
 }
@@ -311,9 +322,15 @@ export function Shell({
 	stackToolSlugs,
 	groups,
 	children,
+	beforeTabs,
+	topRight,
 }: VariantProps & {
 	groups: Group[];
 	children: (items: Item[], group: Group, all: Map<string, Item>) => ReactNode;
+	/** PROTOTYPE #304: a block between the reading and the tabs. */
+	beforeTabs?: (all: Map<string, Item>) => ReactNode;
+	/** PROTOTYPE #304: replaces the model rows beside the token headline. */
+	topRight?: (all: Map<string, Item>, notMeasured: boolean) => ReactNode;
 }) {
 	const search = useSearch({ strict: false }) as { tab?: string };
 	const [tab, setTab] = useState(
@@ -333,7 +350,11 @@ export function Shell({
 				metaAlwaysVisible
 				meta={<ControlBar p={p} />}
 			/>
-			<TopReading p={p} />
+			<TopReading
+				p={p}
+				right={topRight ? (nm) => topRight(items, nm) : undefined}
+			/>
+			{beforeTabs?.(items)}
 			<Tabs groups={groups} items={items} value={tab} onChange={setTab} />
 			<div className="mt-8">
 				{ready || items.size > 0 ? (

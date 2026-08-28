@@ -25,7 +25,7 @@
 // read "not measured" (the settled rule for a snapshot-only stack).
 
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useQuery } from "convex/react";
+import { useConvex, useQuery } from "convex/react";
 import { ChevronDown, ChevronUp, EyeOff, Pin } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { RelativeTime } from "@/components/RelativeTime";
@@ -77,6 +77,7 @@ import {
 	VariantY,
 } from "./RoundFive";
 import { VariantN, VariantP, VariantQ, VariantR, VariantS } from "./RoundFour";
+import { VariantZ1, VariantZ2, VariantZ3 } from "./RoundSix";
 import { VariantI, VariantJ, VariantK, VariantL, VariantM } from "./RoundThree";
 
 // ---------------------------------------------------------------------------
@@ -90,6 +91,8 @@ export type Proto = {
 	setMachine: (m: number | null) => void;
 	snapshot: MeasuredSnapshot | null | undefined;
 	view: WorkflowView | null | undefined;
+	/** PROTOTYPE #304: the same fold, one window earlier. */
+	prev: WorkflowView | null | undefined;
 	trail: ReturnType<typeof tokenTrail>;
 	points: MeasuredHistoryPoint[];
 };
@@ -110,6 +113,27 @@ function useProtoData(slug: string): Proto {
 		window,
 		...(machine === null ? {} : { machineOrdinal: machine }),
 	});
+	// PROTOTYPE #304: the previous-period fold. Fetched imperatively so a
+	// backend that has not received the `previous` arg yet degrades to null
+	// instead of throwing through the page.
+	const convex = useConvex();
+	const [prev, setPrev] = useState<WorkflowView | null | undefined>(undefined);
+	useEffect(() => {
+		let live = true;
+		setPrev(undefined);
+		convex
+			.query(api.workflow.getWorkflowByStackSlug, {
+				slug,
+				window,
+				previous: true,
+				...(machine === null ? {} : { machineOrdinal: machine }),
+			})
+			.then((v) => live && setPrev(v))
+			.catch(() => live && setPrev(null));
+		return () => {
+			live = false;
+		};
+	}, [convex, slug, window, machine]);
 	return {
 		window,
 		setWindow,
@@ -117,6 +141,7 @@ function useProtoData(slug: string): Proto {
 		setMachine,
 		snapshot,
 		view,
+		prev,
 		trail: tokenTrail(history?.points ?? []),
 		points: history?.points ?? [],
 	};
@@ -956,6 +981,9 @@ const VARIANTS = {
 	W: VariantW,
 	X: VariantX,
 	Y: VariantY,
+	Z1: VariantZ1,
+	Z2: VariantZ2,
+	Z3: VariantZ3,
 	H: VariantH,
 	B: VariantB,
 	C: VariantC,
