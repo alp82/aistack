@@ -369,6 +369,26 @@ describe('storing measured days', () => {
   })
 })
 
+describe('the legacy figure on the inventory row', () => {
+  test('a publish without a day wire writes it, and a day wire clears it', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seedStack(t)
+    const inventory = () => t.run((ctx) => ctx.db.query('measuredInventory').collect())
+
+    await publish(t, stackId, { machine: 'laptop' })
+    const legacy = (await inventory())[0]?.legacy
+    expect(legacy?.tokens).toBe(payload().activity.totalTokens)
+    expect(legacy?.sessions).toBe(payload().activity.sessions)
+    expect(legacy?.windowDays).toBe(payload().window.days)
+
+    await publish(t, stackId, {
+      machine: 'laptop',
+      measuredDays: dayWire([{ date: '2026-08-28', usage: usageDay() }]),
+    })
+    expect((await inventory())[0]?.legacy).toBeUndefined()
+  })
+})
+
 describe('the day manifest', () => {
   test('lists the machine’s dates with fingerprints, stable across an identical re-publish', async () => {
     const t = convexTest(schema, modules)

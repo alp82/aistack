@@ -126,12 +126,16 @@ async function day(t: Ctx, stackId: Id<'stacks'>, machine?: string) {
 
 const inventory = (t: Ctx) => t.run((ctx) => ctx.db.query('measuredInventory').collect())
 
-test('refuses while a living stack has no days, naming it', async () => {
+test('converts a living stack without days too: its old CLI keeps the figure current', async () => {
   const t = convexTest(schema, modules)
   const living = await seedStack(t)
-  await snapshot(t, living, { receivedAgo: DAY })
-  await expect(t.mutation(MIGRATION.run, {})).rejects.toThrow(/stack-1-sid1/)
-  expect(await inventory(t)).toHaveLength(0)
+  await snapshot(t, living, { receivedAgo: DAY, tokens: 5 })
+  expect(await t.mutation(MIGRATION.run, {})).toEqual({
+    inventoryWritten: 1,
+    legacyWritten: 1,
+    skipped: 0,
+  })
+  expect((await inventory(t))[0]?.legacy?.tokens).toBe(5)
 })
 
 test('copies the newest snapshot per source into a missing inventory row, with the legacy figure for a stack without days', async () => {

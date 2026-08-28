@@ -1,8 +1,7 @@
 import { v } from 'convex/values'
 import type { Doc, Id } from '../_generated/dataModel'
 import { internalMutation, type MutationCtx } from '../_generated/server'
-import { measuredDaysForStack } from '../lib/measuredDays'
-import { repriceSnapshot } from '../lib/reprice'
+import { legacyOf, measuredDaysForStack } from '../lib/measuredDays'
 import { newestBySource } from '../lib/sources'
 
 /**
@@ -21,37 +20,15 @@ import { newestBySource } from '../lib/sources'
  * none exists yet (a source that synced on CLI 0.10 already has one, and that
  * row is never touched). A stack with no measured days gets the snapshot's
  * 30-day totals as a LEGACY figure on each of its inventory rows, so its page
- * still prints an approximate 30d reading. It REFUSES while any living stack
- * (a snapshot received in the last 7 days) has no days: such a machine converts
- * itself on its next session start, and only a stack that never syncs again
- * should fall back to the legacy figure.
+ * still prints an approximate 30d reading. A living stack on an old CLI needs
+ * no gate: every publish without a day wire rewrites the legacy figure from
+ * its own payload (`publishForToken`), and a machine that upgrades clears it
+ * by sending days.
  */
 
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 const CLEAR_BATCH = 500
 
 type Snapshot = Doc<'measuredSnapshots'>
-
-function legacyOf(snapshot: Snapshot, publishCost: boolean) {
-  const p = snapshot.payload
-  const { cost } = repriceSnapshot({
-    models: p.models,
-    window: p.window,
-    publishedTable: p.pricingTable,
-    publishCost,
-  })
-  return {
-    tokens: p.activity.totalTokens,
-    sessions: p.activity.sessions,
-    activeDays:
-      p.schemaVersion === 2
-        ? p.activity.activeDayDates.length
-        : p.activity.activeDays,
-    ...(cost ? { usd: cost.lowerBoundUSD } : {}),
-    capturedAt: p.capturedAt,
-    windowDays: p.window.days,
-  }
-}
 
 async function inventoryRowFor(
   ctx: MutationCtx,
@@ -75,7 +52,6 @@ export const run = internalMutation({
     skipped: v.number(),
   }),
   handler: async (ctx) => {
-    const now = Date.now()
     const snapshots = await ctx.db.query('measuredSnapshots').collect()
     const byStack = new Map<Id<'stacks'>, Snapshot[]>()
     for (const row of snapshots) {
@@ -84,23 +60,10 @@ export const run = internalMutation({
       else byStack.set(row.stackId, [row])
     }
 
-    // The refusal comes first, before any row is written, so a partial run
-    // cannot leave one stack converted and the next one blocked.
-    const blocking: string[] = []
     const hasDays = new Map<Id<'stacks'>, boolean>()
-    for (const [stackId, rows] of byStack) {
+    for (const stackId of byStack.keys()) {
       const days = await measuredDaysForStack(ctx, stackId)
       hasDays.set(stackId, days.length > 0)
-      const newest = Math.max(...rows.map((r) => r.receivedAt))
-      if (now - newest <= SEVEN_DAYS_MS && days.length === 0) {
-        const stack = await ctx.db.get(stackId)
-        blocking.push(stack ? `${stack.slug}-${stack.shortId}` : String(stackId))
-      }
-    }
-    if (blocking.length > 0) {
-      throw new Error(
-        `Refusing to retire snapshots: living stacks without measured days: ${blocking.join(', ')}. Sync them on CLI 0.10 or wait for them to go quiet.`
-      )
     }
 
     let inventoryWritten = 0
@@ -121,7 +84,7 @@ export const run = internalMutation({
           snapshot.machine,
           snapshot.harness
         )
-        const legacy = stackHasDays ? undefined : legacyOf(snapshot, publishCost)
+        const legacy = stackHasDays ? undefined : legacyOf(snapshot.payload, publishCost)
         if (existing) {
           if (legacy !== undefined && existing.legacy === undefined) {
             await ctx.db.patch(existing._id, { legacy })

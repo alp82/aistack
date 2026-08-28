@@ -43,6 +43,7 @@ import {
   inventoryForStack,
   newestInventoryPerSource,
   storeMeasuredDays,
+  legacyOf,
   upsertInventory,
   workflowWireOf,
 } from './lib/measuredDays'
@@ -459,6 +460,9 @@ export const publishSnapshot = internalMutation({
       capturedAt: args.payload.capturedAt,
       receivedAt: inserted.receivedAt,
       cliVersion: undefined,
+      ...(args.measuredDays
+        ? {}
+        : { legacy: legacyOf(args.payload, stack.publishCost !== false) }),
     })
     await storeDayArgs(ctx, args, {
       stackId: args.stackId,
@@ -1951,6 +1955,9 @@ export const publishForToken = internalMutation({
       receivedAt = accepted.receivedAt
       // The live inventory row for this (machine, harness), replaced on every
       // sync (ADR-0011).
+      // A client that sends no day wire is an old CLI: its stack has no days
+      // to fold, so the payload's 30-day totals ride on the row as the legacy
+      // figure (ADR-0011). A client on the day wire clears it.
       await upsertInventory(ctx, {
         stackId: stack._id,
         machine: token.name,
@@ -1958,6 +1965,9 @@ export const publishForToken = internalMutation({
         capturedAt: payload.capturedAt,
         receivedAt,
         cliVersion,
+        ...(args.measuredDays
+          ? {}
+          : { legacy: legacyOf(payload, stack.publishCost !== false) }),
       })
     }
 

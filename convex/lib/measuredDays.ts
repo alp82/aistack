@@ -18,6 +18,7 @@ import type { Infer } from 'convex/values'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import type { MeasuredDayWire, MeasuredPayload, WorkflowWire } from '../schema'
+import { repriceSnapshot } from './reprice'
 import { sourceOrder, visibleSources } from './sources'
 import {
   MODEL_ID_MAX,
@@ -290,6 +291,34 @@ export async function measuredDaysForMachine(
     .collect()
 }
 
+export type LegacyFigure = NonNullable<Doc<'measuredInventory'>['legacy']>
+
+/**
+ * The 30-day totals of one payload as a LEGACY figure (ADR-0011): what a
+ * stack's page prints while it has no measured days. Written by the
+ * retirement migration for the snapshots it copies, and by every publish from
+ * a client that sends no day wire, so an old CLI keeps its stack readable.
+ */
+export function legacyOf(payload: Payload, publishCost: boolean): LegacyFigure {
+  const { cost } = repriceSnapshot({
+    models: payload.models,
+    window: payload.window,
+    publishedTable: payload.pricingTable,
+    publishCost,
+  })
+  return {
+    tokens: payload.activity.totalTokens,
+    sessions: payload.activity.sessions,
+    activeDays:
+      payload.schemaVersion === 2
+        ? payload.activity.activeDayDates.length
+        : payload.activity.activeDays,
+    ...(cost ? { usd: cost.lowerBoundUSD } : {}),
+    capturedAt: payload.capturedAt,
+    windowDays: payload.window.days,
+  }
+}
+
 export type UpsertInventoryArgs = {
   stackId: Id<'stacks'>
   machine: string | undefined
@@ -297,6 +326,8 @@ export type UpsertInventoryArgs = {
   capturedAt: number
   receivedAt: number
   cliVersion: string | undefined
+  /** Present on a publish that carries no day wire. Absent clears the field. */
+  legacy?: LegacyFigure
 }
 
 /**
@@ -327,6 +358,7 @@ export async function upsertInventory(
     inventory: args.payload.inventory,
     modelsSeen: [...new Set(args.payload.models.map((m) => m.id))].sort(),
     pricingTable: args.payload.pricingTable,
+    ...(args.legacy === undefined ? {} : { legacy: args.legacy }),
   }
   if (existing) {
     await ctx.db.replace(existing._id, doc)
