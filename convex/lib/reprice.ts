@@ -9,7 +9,8 @@
  * $167,331, and a second stack published nothing at all - because
  * `openai-list-2026-08-01` has no rate for the gpt-5.6 family. Snapshots are
  * immutable, so the repair happens where catalog resolution already happens: at
- * read time, against the shared table in `@aistack/pricing`.
+ * read time, against the price table behind `convex/lib/modelCatalog.ts`
+ * (the `modelPrices` rows layered over the bundled `@aistack/pricing` table).
  *
  * GAPS ONLY (#82). A model that carries `apiEquivalentUSD` keeps it. The CLI
  * priced each response at its own timestamp and split cache writes into 5-minute
@@ -43,11 +44,7 @@
  * cost off after a sync has turned it off for the rows already sent.
  */
 
-import {
-  cacheMultipliersFor,
-  pricePeriodsInWindow,
-  pricingTableFor,
-} from '@aistack/pricing'
+import { type Pricer, costAtPeriod } from '@aistack/pricing'
 
 /**
  * The token block on the wire.
@@ -117,7 +114,6 @@ export type CostReading = {
   pricingTables: string[]
 }
 
-const M = 1_000_000
 /** Cents. The CLI rounds its published dollars the same way. */
 export const round2 = (n: number) => Math.round(n * 100) / 100
 
@@ -144,37 +140,40 @@ function windowRange(w: SnapshotWindow): { from: number; to: number } | null {
  * costed and the smallest wins.
  */
 export function estimateModelUSD(
+  pricer: Pricer,
   id: string,
   t: WireTokens,
   window: SnapshotWindow
-): number | null {
+): { usd: number; source: string } | null {
   const range = windowRange(window)
   if (!range) return null
-  const periods = pricePeriodsInWindow(id, range.from, range.to)
+  const periods = pricer.periodsInWindow(id, range.from, range.to)
   if (periods.length === 0) return null
-  // The multipliers are the model's vendor's, not Anthropic's - a Google cache
-  // write is charged as plain input, and 1.25x there would overstate.
-  const c = cacheMultipliersFor(id)
   // With the TTL breakdown (#213) each tier pays its own rate. Without it every
   // write pays the cheap tier, which keeps the estimate a lower bound. `unsplit`
   // is on the 5-minute side because that is what the harness left unstated, and
   // guessing the expensive tier is the one direction this module may not go.
+  // The cache rates are the period's own, absolute (ADR-0012 decision 4).
   const ttl = t.cacheWriteTtl
-  const write = ttl
-    ? (ttl.fiveMinute + ttl.unsplit) * c.write5m + ttl.oneHour * c.write1h
-    : t.cacheWrite * c.write5m
-  const costs = periods.map(
-    (p) =>
-      (t.input * p.input +
-        t.output * p.output +
-        write * p.input +
-        t.cacheRead * p.input * c.read) /
-      M
-  )
-  return round2(Math.min(...costs))
+  const counts = {
+    input: t.input,
+    output: t.output,
+    cacheWrite5m: ttl ? ttl.fiveMinute : t.cacheWrite,
+    cacheWriteUnsplit: ttl ? ttl.unsplit : 0,
+    cacheWrite1h: ttl ? ttl.oneHour : 0,
+    cacheRead: t.cacheRead,
+  }
+  let best: { usd: number; source: string } | null = null
+  for (const p of periods) {
+    const usd = costAtPeriod(p, counts)
+    if (best === null || usd < best.usd) best = { usd, source: p.source }
+  }
+  return best === null ? null : { usd: round2(best.usd), source: best.source }
 }
 
 export function repriceSnapshot<T extends WireModel>(input: {
+  /** The seam's pricer (`loadModelCatalog(ctx).pricer`). */
+  pricer: Pricer
   models: readonly T[]
   window: SnapshotWindow
   /** `payload.pricingTable` - the citation for the dollars already on the wire. */
@@ -189,7 +188,7 @@ export function repriceSnapshot<T extends WireModel>(input: {
    *  `excludedTokens.unpriced` by the same amount. */
   repricedTokens: number
 } {
-  const { models, window, publishedTable, publishCost } = input
+  const { pricer, models, window, publishedTable, publishCost } = input
 
   if (!publishCost) {
     return {
@@ -228,20 +227,20 @@ export function repriceSnapshot<T extends WireModel>(input: {
       return { ...m, costEstimated: false }
     }
 
-    const usd = estimateModelUSD(m.id, m.tokens, window)
-    if (usd === null) return { ...m, costEstimated: false }
+    const estimate = estimateModelUSD(pricer, m.id, m.tokens, window)
+    if (estimate === null) return { ...m, costEstimated: false }
 
-    estimatedUSD += usd
+    estimatedUSD += estimate.usd
     pricedTokens += size
     repricedTokens += size
-    const table = pricingTableFor(m.id)
-    if (table) estimateTables.add(table)
+    // The estimate is cited per model exactly the way a published figure is:
+    // by the source of the period that priced it.
+    estimateTables.add(estimate.source)
     return {
       ...m,
-      apiEquivalentUSD: usd,
+      apiEquivalentUSD: estimate.usd,
       costEstimated: true,
-      // The estimate is cited per model exactly the way a published figure is.
-      ...(table ? { pricingTable: table } : {}),
+      pricingTable: estimate.source,
     }
   })
 

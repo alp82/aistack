@@ -54,6 +54,12 @@ export type GateContext = {
 	 */
 	scanStats?: Record<string, ScanStats>;
 	/**
+	 * Which price table priced the dollars in the body (#336). Printed beside
+	 * them, with the sources each figure cites, so a reader can tell a served
+	 * rate from a bundled one.
+	 */
+	prices?: { id: string; origin: "served" | "bundled" };
+	/**
 	 * How the day rows in `body.measuredDays` were chosen (#307). The rows in
 	 * the bytes are the ones going; this says how many the server already held
 	 * unchanged, which the bytes cannot say.
@@ -570,6 +576,25 @@ export function buildGateSummary(ctx: GateContext): string {
 		out.push(
 			`window    ${[...windows][0]}${body.cliVersion ? ` · aistack ${body.cliVersion}` : ""}`,
 		);
+	}
+
+	// THE TABLE BEHIND THE DOLLARS (#336). Printed only when a figure is on its
+	// way up: a cost-off stage has nothing the id would cite. The sources are
+	// the per-model citations the payload carries, so what the reader sees is
+	// what the server will see.
+	const cited = [
+		...new Set(
+			payloads.flatMap((p) =>
+				p.models.flatMap((m) => (m.pricingTable ? [m.pricingTable] : [])),
+			),
+		),
+	];
+	if (ctx.prices && cited.length > 0) {
+		const origin =
+			ctx.prices.origin === "served"
+				? `${ctx.prices.id} from ${host}`
+				: `${ctx.prices.id} (bundled; the server table was unavailable)`;
+		out.push(`prices    ${origin} · cites ${cited.join(", ")}`);
 	}
 
 	// One block per detected harness, each under its own header.

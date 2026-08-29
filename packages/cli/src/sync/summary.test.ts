@@ -186,6 +186,7 @@ function ctx(over: {
 	measuredDays?: PayloadMeasuredDays;
 	days?: DaySelection;
 	cliVersion?: string;
+	prices?: GateContext["prices"];
 }): GateContext {
 	const p = payload(over.payload);
 	const base: SyncBody = over.withKeptPrivateHalf
@@ -199,6 +200,7 @@ function ctx(over: {
 	return {
 		body,
 		...(over.days ? { days: over.days } : {}),
+		...(over.prices ? { prices: over.prices } : {}),
 		keptPrivate: over.keptPrivate ?? NO_KEPT_PRIVATE,
 		config: {
 			allowlist: {
@@ -765,5 +767,41 @@ describe("the preview stays readable", () => {
 		const narrow = buildGateSummary({ ...withTools(), width: 60 });
 		const wide = buildGateSummary({ ...withTools(), width: 110 });
 		expect(wide.split("\n").length).toBeLessThan(narrow.split("\n").length);
+	});
+
+	test("names the price table and the sources the dollars cite (#336)", () => {
+		const summary = buildGateSummary(
+			ctx({
+				prices: { id: "modelPrices/27-0badf00d", origin: "served" },
+				payload: {
+					models: [
+						{
+							id: "claude-fable-5",
+							tokenShare: 0.6,
+							tokens: { input: 1, output: 2, cacheWrite: 3, cacheRead: 4 },
+							apiEquivalentUSD: 2051.25,
+							pricingTable: "anthropic-list-2026-07-25",
+						},
+						{
+							id: "gpt-5.4",
+							tokenShare: 0.4,
+							tokens: { input: 1, output: 2, cacheWrite: 3, cacheRead: 4 },
+							apiEquivalentUSD: 10,
+							pricingTable: "openai-list-2026-08-02",
+						},
+					],
+				},
+			}),
+		);
+		expect(summary).toContain(
+			"prices    modelPrices/27-0badf00d from aistack.to · cites anthropic-list-2026-07-25, openai-list-2026-08-02",
+		);
+	});
+
+	test("prints no price line when no figure cites a table (#336)", () => {
+		const summary = buildGateSummary(
+			ctx({ prices: { id: "modelPrices/27-0badf00d", origin: "served" } }),
+		);
+		expect(summary).not.toContain("prices    ");
 	});
 });

@@ -1,4 +1,3 @@
-import { pricingTableFor, vendorModelId } from '@aistack/pricing'
 import {
   foldUsageDays,
   MEASURED_DAYS_V1,
@@ -48,6 +47,12 @@ import {
   workflowWireOf,
 } from './lib/measuredDays'
 import { estimateModelUSD, round2 } from './lib/reprice'
+import {
+  type ModelCatalog,
+  findInCatalog,
+  loadModelCatalog,
+  resolveModelId,
+} from './lib/modelCatalog'
 import {
   MODEL_ID_MAX,
   NAME_MAX,
@@ -462,7 +467,13 @@ export const publishSnapshot = internalMutation({
       cliVersion: undefined,
       ...(args.measuredDays
         ? {}
-        : { legacy: legacyOf(args.payload, stack.publishCost !== false) }),
+        : {
+            legacy: legacyOf(
+              args.payload,
+              stack.publishCost !== false,
+              (await loadModelCatalog(ctx)).pricer
+            ),
+          }),
     })
     await storeDayArgs(ctx, args, {
       stackId: args.stackId,
@@ -524,66 +535,12 @@ async function storeDayArgs(
 // Read - the catalog, the machines, the stack behind a slug
 // ---------------------------------------------------------------------------
 
-/**
- * The models catalog, read once and indexed in memory.
- *
- * READ ONCE, NOT ONCE PER MODEL. A single reading resolves a handful of ids, so
- * a per-id indexed read was fine; the series (#81) resolves every reading in the
- * window, and a per-id read there would multiply one page view by the number of
- * syncs. One collect answers all of them, and it is what the alias fallback
- * already did on every miss.
- */
-export type ModelCatalog = {
-  bySlug: Map<string, Doc<'models'>>
-  byAlias: Map<string, Doc<'models'>>
-}
-
-export async function loadModelCatalog(ctx: QueryCtx): Promise<ModelCatalog> {
-  const rows = await ctx.db.query('models').collect()
-  const bySlug = new Map<string, Doc<'models'>>()
-  const byAlias = new Map<string, Doc<'models'>>()
-  for (const row of rows) {
-    if (!bySlug.has(row.slug)) bySlug.set(row.slug, row)
-    for (const alias of row.aliases ?? []) {
-      if (!byAlias.has(alias)) byAlias.set(alias, row)
-    }
-  }
-  return { bySlug, byAlias }
-}
-
-/**
- * Resolve published model ids against the catalog at read time.
- *
- * Matches the slug first, then the `aliases` array - the analyzer publishes a
- * normalized vendor id (`claude-haiku-4-5`, dated suffix stripped) and the
- * catalog may carry the dated spelling as an alias, or vice versa.
- *
- * A multi-provider harness publishes `provider:model` (#123), so the plain
- * vendor id is tried second. Identity and price part ways here on purpose: a
- * model re-served by a gateway IS that model in the catalog, and still holds no
- * citable rate.
- *
- * An unresolved id keeps its tokens and its cost and reports a null slug. That
- * is the honest failure: the alternative - dropping it - is exactly the silent
- * disappearance #33 decision 3 exempted model ids to prevent.
- */
-/** One id against the catalog: the slug, then the aliases, then the bare vendor id. */
-function resolveModelId(
-  catalog: ModelCatalog,
-  id: string
-): { catalogSlug: string | null; catalogName: string | null } {
-  const bare = vendorModelId(id)
-  const match =
-    catalog.bySlug.get(id) ??
-    catalog.byAlias.get(id) ??
-    catalog.bySlug.get(bare) ??
-    catalog.byAlias.get(bare) ??
-    null
-  return {
-    catalogSlug: match?.slug ?? null,
-    catalogName: match?.name ?? null,
-  }
-}
+export {
+  type ModelCatalog,
+  catalogFrom,
+  loadModelCatalog,
+  resolveModelId,
+} from './lib/modelCatalog'
 
 /**
  * One published inventory name, as a surface reads it.
@@ -839,9 +796,7 @@ export const getReconcileSuggestions = query({
     const catalog = await loadModelCatalog(ctx)
     const authoredModels = new Set(
       (stack.modelSubscriptions ?? []).map(
-        (m) =>
-          (catalog.bySlug.get(m.modelSlug) ?? catalog.byAlias.get(m.modelSlug))?.slug ??
-          m.modelSlug
+        (m) => findInCatalog(catalog, m.modelSlug)?.slug ?? m.modelSlug
       )
     )
     // The last 30 days of usage carry a share and a price per model. A model
@@ -1967,7 +1922,13 @@ export const publishForToken = internalMutation({
         cliVersion,
         ...(args.measuredDays
           ? {}
-          : { legacy: legacyOf(payload, stack.publishCost !== false) }),
+          : {
+              legacy: legacyOf(
+                payload,
+                stack.publishCost !== false,
+                (await loadModelCatalog(ctx)).pricer
+              ),
+            }),
       })
     }
 
@@ -2327,13 +2288,12 @@ export function readUsageWindow(
       for (const date of m.unpricedDates) {
         const tokens = byDate?.get(date)
         if (!tokens) continue
-        const fill = estimateModelUSD(m.model, tokens, { from: date, to: date })
+        const fill = estimateModelUSD(catalog.pricer, m.model, tokens, { from: date, to: date })
         if (fill === null) continue
-        usd = (usd ?? 0) + fill
+        usd = (usd ?? 0) + fill.usd
         estimated = true
         unpricedRemaining -= totalOfTokens(tokens)
-        const table = pricingTableFor(m.model)
-        if (table) modelTables.add(table)
+        modelTables.add(fill.source)
       }
     }
     if (publishCost && usd !== undefined) {

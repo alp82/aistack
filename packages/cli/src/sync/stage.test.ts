@@ -2,6 +2,11 @@
 // staged bodyJson IS the serialized body, the id is derived from it, and a
 // stage that cannot name its destination is blocked before any gate.
 
+import {
+	activePriceTableIds,
+	BUNDLED_PRICE_TABLE_ID,
+	setActivePricer,
+} from "@aistack/pricing";
 import { dayFingerprint } from "@aistack/workflow-rules";
 import { describe, expect, test } from "vitest";
 import { createAggregate, ingestRecord } from "../harness/claude/analyzer.js";
@@ -60,6 +65,7 @@ function deps(
 			over.config ?? { config: FETCHED, source: "fetched" },
 		adaptersImpl: async () => [FAKE_CLAUDE_ADAPTER],
 		fetchManifestImpl: async () => null,
+		fetchPricesImpl: async () => null,
 		...over,
 	};
 }
@@ -352,5 +358,62 @@ describe("stageSync", () => {
 		const staged = await stageSync(deps({ gitRunnerImpl: () => null }));
 		expect(staged.body.cliVersion).toBe(CLI_VERSION);
 		expect(staged.summary).toContain(`· aistack ${CLI_VERSION}`);
+	});
+
+	test("prices against the served table and names it on the gate (#336)", async () => {
+		try {
+			const staged = await stageSync(
+				deps({
+					gitRunnerImpl: () => null,
+					fetchPricesImpl: async () => ({
+						id: "modelPrices/1-deadbeef",
+						rows: [
+							{
+								modelSlug: "claude-opus-5",
+								from: 0,
+								input: 5,
+								output: 25,
+								source: "served-src",
+							},
+						],
+					}),
+				}),
+			);
+			expect(staged.prices).toEqual({
+				id: "modelPrices/1-deadbeef",
+				origin: "served",
+			});
+			expect(activePriceTableIds()).toEqual([
+				"modelPrices/1-deadbeef",
+				BUNDLED_PRICE_TABLE_ID,
+			]);
+			expect(staged.summary).toContain(
+				"prices    modelPrices/1-deadbeef from aistack.to",
+			);
+		} finally {
+			setActivePricer(null);
+		}
+	});
+
+	test("falls back to the bundled table when the fetch fails or the server has none (#336)", async () => {
+		const failed = await stageSync(
+			deps({
+				gitRunnerImpl: () => null,
+				fetchPricesImpl: async () => {
+					throw new Error("offline");
+				},
+			}),
+		);
+		expect(failed.prices).toEqual({
+			id: BUNDLED_PRICE_TABLE_ID,
+			origin: "bundled",
+		});
+		expect(activePriceTableIds()).toEqual([BUNDLED_PRICE_TABLE_ID]);
+		expect(failed.summary).toContain(
+			`prices    ${BUNDLED_PRICE_TABLE_ID} (bundled; the server table was unavailable)`,
+		);
+
+		const none = await stageSync(deps({ gitRunnerImpl: () => null }));
+		expect(none.prices?.origin).toBe("bundled");
 	});
 });

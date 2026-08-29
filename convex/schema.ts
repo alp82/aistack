@@ -998,6 +998,27 @@ export default defineSchema({
     .index('by_category', ['category'])
     .index('by_reviewStatus', ['reviewStatus']),
 
+  // One dated price period per row (ADR-0012 decision 2, #336). A period runs
+  // from `from` until the next period's `from` for the same (modelSlug,
+  // provider); there is no `to`. `provider` unset is the vendor's own rate; a
+  // gateway that re-serves a model gets its own row or stays unpriced. Cache
+  // tiers are absolute USD per million tokens. `source` is the citation every
+  // dollar figure prints. Read ONLY through `convex/lib/modelCatalog.ts`.
+  modelPrices: defineTable({
+    modelSlug: v.string(),
+    provider: v.optional(v.string()),
+    from: v.number(),
+    input: v.number(),
+    output: v.number(),
+    cacheRead: v.optional(v.number()),
+    cacheWrite5m: v.optional(v.number()),
+    cacheWrite1h: v.optional(v.number()),
+    source: v.string(),
+    createdAt: v.number(),
+  })
+    .index('by_model', ['modelSlug', 'provider', 'from'])
+    .index('by_from', ['from']),
+
   cliSessions: defineTable({
     userCode: v.string(),
     secretId: v.string(),

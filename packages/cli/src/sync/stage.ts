@@ -16,11 +16,17 @@
 
 import { createHash } from "node:crypto";
 import {
+	BUNDLED_PRICE_TABLE_ID,
+	layeredPricer,
+	type PriceTable,
+	setActivePricer,
+} from "@aistack/pricing";
+import {
 	MEASURED_DAYS_V1,
 	type MeasuredDay,
 	type UsageHarnessDay,
 } from "@aistack/workflow-rules";
-import { fetchDayManifest } from "../api.js";
+import { fetchDayManifest, fetchPriceTable } from "../api.js";
 import {
 	getProjectWorkspaceId,
 	getSettings,
@@ -96,6 +102,19 @@ export type StagedSend = {
 	 * mode, `diff` against a manifest or `full` when there was none.
 	 */
 	days?: DaySelection;
+	/** Which price table priced this stage (#336). Absent only in fixtures. */
+	prices?: PriceTableUsed;
+};
+
+/**
+ * The table the adapters priced against. `served` is the server's
+ * `modelPrices` table layered over the bundled one; `bundled` means the fetch
+ * failed or the server has no such route, and every figure came from the
+ * constants shipped with this CLI version.
+ */
+export type PriceTableUsed = {
+	id: string;
+	origin: "served" | "bundled";
 };
 
 export type StageDeps = {
@@ -119,6 +138,11 @@ export type StageDeps = {
 		baseUrl: string,
 		token: string,
 	) => Promise<DayManifest | null>;
+	/**
+	 * Override the price table fetch (#336). `null` means the server has none.
+	 * A throw is caught and reads the same: the bundled table prices the stage.
+	 */
+	fetchPricesImpl?: (baseUrl: string) => Promise<PriceTable | null>;
 	getSettingsImpl?: () => Settings;
 	windowDays?: number;
 	/**
@@ -141,6 +165,28 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	const projectWorkspaceId =
 		deps.getProjectWorkspaceIdImpl ?? getProjectWorkspaceId;
 	const fetchManifest = deps.fetchManifestImpl ?? fetchDayManifest;
+	const fetchPrices = deps.fetchPricesImpl ?? fetchPriceTable;
+
+	// The price table comes from the server BEFORE any adapter prices a
+	// response (#336): the adapters call the module-level pricing functions,
+	// which read whichever pricer is active. Served rows win per key; the
+	// bundled constants fill what the server does not hold. Unreachable reads
+	// as bundled, and the gate says which one it was.
+	let prices: PriceTableUsed = {
+		id: BUNDLED_PRICE_TABLE_ID,
+		origin: "bundled",
+	};
+	try {
+		const table = await fetchPrices(deps.baseUrl);
+		if (table) {
+			setActivePricer(layeredPricer(table));
+			prices = { id: table.id, origin: "served" };
+		} else {
+			setActivePricer(null);
+		}
+	} catch {
+		setActivePricer(null);
+	}
 
 	const { config, source } = await loadConfig({
 		baseUrl: deps.baseUrl,
@@ -280,6 +326,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		baseUrl: deps.baseUrl,
 		scanStats,
 		days,
+		prices,
 		// The real terminal, so the inventory rows break where this window ends
 		// (#217). A pipe reports nothing and the preview falls back to 80.
 		width: process.stdout.columns,
@@ -310,5 +357,6 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		stagedAt: now,
 		blockedReason,
 		days,
+		prices,
 	};
 }

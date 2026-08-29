@@ -12,6 +12,7 @@ import {
 } from './httpCli'
 import { unsubscribe } from './emailUnsubscribe'
 import { INTERACTIONS_PATH, interactions } from './discordInteractions'
+import { PRICES_PATH, pricesGet } from './prices'
 
 const http = httpRouter()
 
@@ -28,5 +29,6 @@ http.route({ path: '/api/cli/auto-sync', method: 'POST', handler: autoSyncSet })
 http.route({ path: '/api/email/unsubscribe', method: 'GET', handler: unsubscribe })
 http.route({ path: '/api/email/unsubscribe', method: 'POST', handler: unsubscribe })
 http.route({ path: INTERACTIONS_PATH, method: 'POST', handler: interactions })
+http.route({ path: PRICES_PATH, method: 'GET', handler: pricesGet })
 
 export default http

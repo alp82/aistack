@@ -1,3 +1,4 @@
+import { type PriceTable, parsePriceTable } from "@aistack/pricing";
 import { CLI_VERSION } from "./version.js";
 
 export const BASE_URL = process.env.AISTACK_URL || "https://aistack.to";
@@ -235,6 +236,25 @@ export async function fetchDayManifest(
 			})
 		: [];
 	return { retentionDays, aggregateVersion, days };
+}
+
+/**
+ * The server's price table (#336): the `modelPrices` rows the CLI layers over
+ * its bundled constants before pricing at ingest. Public, no bearer.
+ *
+ * `null` means the server has no such route (an old backend) or served a table
+ * with no usable rows; the caller prices from the bundled table and says so.
+ * A network failure throws and the caller treats it the same way.
+ */
+export async function fetchPriceTable(
+	baseUrl: string,
+): Promise<PriceTable | null> {
+	const res = await fetch(`${baseUrl}/api/prices`, {
+		headers: { Accept: "application/json" },
+	});
+	if (res.status === 404) return null;
+	if (!res.ok) throw failure("Price table fetch failed", res);
+	return parsePriceTable(await res.json());
 }
 
 export type AutoSyncSetResult = {

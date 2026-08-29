@@ -62,22 +62,52 @@
 // rate, tokens excluded from coverage - so a local run read as a hole in the
 // table. Local providers now hold a real zero rate, cited as
 // `LOCAL_PRICING_TABLE_VERSION`. Their tokens count as covered and add $0.
+//
+// WHERE THE RATES LIVE NOW (#336, ADR-0012)
+// The constants below are the BUNDLED FALLBACK. The live table is the Convex
+// `modelPrices` table, served to the CLI at `/api/prices` and layered over
+// these constants by `layeredPricer`. `table.ts` holds the row shape and the
+// lookup both sides share; this file holds the constants and the module-level
+// functions the adapters call, which read whichever pricer is active.
 
 export const PRICING_TABLE_VERSION = "anthropic-list-2026-07-25";
 export const OPENAI_PRICING_TABLE_VERSION = "openai-list-2026-08-02";
 export const GOOGLE_PRICING_TABLE_VERSION = "google-list-2026-08-09";
 /**
- * The citation for a model that runs on the user's own machine. It is not a
- * vendor list - it is the statement that no per-token charge exists.
+ * The id the CLI prints when it priced against the bundled constants rather
+ * than a table the server served (#336). Bump it when a constant changes.
  */
-export const LOCAL_PRICING_TABLE_VERSION = "local-no-charge";
+export const BUNDLED_PRICE_TABLE_ID = "bundled-2026-08-29";
+
+export {
+	LOCAL_PRICING_TABLE_VERSION,
+	PROVIDER_SEPARATOR,
+	PriceIndex,
+	type PricePeriod,
+	type PriceRow,
+	Pricer,
+	type PriceTable,
+	parseMeasuredId,
+	parsePriceTable,
+	priceTableId,
+	splitModelKey,
+	type Vendor,
+} from "./table.js";
+
+import {
+	PROVIDER_SEPARATOR,
+	PriceIndex,
+	type PricePeriod,
+	type PriceRow,
+	Pricer,
+	type PriceTable,
+	splitModelKey,
+	type Vendor,
+} from "./table.js";
 
 export const CACHE_WRITE_5M_MULTIPLIER = 1.25;
 export const CACHE_WRITE_1H_MULTIPLIER = 2.0;
 export const CACHE_READ_MULTIPLIER = 0.1;
-
-/** The separator between a provider id and a model id in a pricing key. */
-export const PROVIDER_SEPARATOR = ":";
 
 /**
  * End of the `claude-sonnet-5` introductory rate. Anthropic documents it as "in
@@ -91,25 +121,12 @@ export const PROVIDER_SEPARATOR = ":";
  */
 export const SONNET_5_INTRO_ENDS_MS = Date.UTC(2026, 8, 1); // 2026-09-01T00:00:00Z
 
-/** USD per million tokens, valid over `[from, to)`. */
-export type PricePeriod = {
-	/** Inclusive lower bound, epoch ms. `null` = since the model existed. */
-	from: number | null;
-	/** Exclusive upper bound, epoch ms. `null` = still in effect. */
-	to: number | null;
-	input: number;
-	output: number;
-};
-
 /**
  * How a vendor charges for cache traffic, as multipliers on its input rate.
  *
- * Anthropic is the shape the constants above describe. Google charges the
- * standard input rate to write a cache and bills storage by the hour instead,
- * so a Google cache write must NOT carry Anthropic's 1.25x - that would
- * overstate, and every estimate here is a lower bound by construction. The
- * hourly storage fee is real spend this table cannot see, which keeps the
- * Google figure below the true one rather than above it.
+ * Only the bundled constants are written this way. A served period carries
+ * absolute cache rates (ADR-0012 decision 4), and `cacheMultipliersFor` derives
+ * the multipliers back from them for callers that still want the ratio.
  */
 export type CacheMultipliers = {
 	write5m: number;
@@ -123,102 +140,68 @@ const DEFAULT_CACHE_MULTIPLIERS: CacheMultipliers = {
 	read: CACHE_READ_MULTIPLIER,
 };
 
-/** Cached input is 10% of input; a write is charged as plain input. */
+/**
+ * Cached input is 10% of input; a write is charged as plain input. Google
+ * bills cache storage by the hour instead, which this table cannot see, so a
+ * Google figure stays below the true one rather than above it.
+ */
 const GOOGLE_CACHE_MULTIPLIERS: CacheMultipliers = {
 	write5m: 1.0,
 	write1h: 1.0,
 	read: 0.1,
 };
 
-const FREE_CACHE_MULTIPLIERS: CacheMultipliers = {
-	write5m: 0,
-	write1h: 0,
-	read: 0,
+/** A bundled rate, before it is rendered into dated rows. */
+type BundledPeriod = {
+	from: number | null;
+	input: number;
+	output: number;
 };
 
-/**
- * Who sets the rate. A provider only reaches a vendor's rows when it IS that
- * vendor - a gateway re-serving the same model is a different price.
- */
-type Vendor = "anthropic" | "openai" | "google" | "local";
-
-/** One model's rates, plus the table that cites them. */
 type PriceEntry = {
 	vendor: Vendor;
 	/** The citation printed next to any dollar figure these rates produce. */
 	table: string;
-	periods: PricePeriod[];
+	periods: BundledPeriod[];
 	cache: CacheMultipliers;
 };
 
-const anthropic = (periods: PricePeriod[]): PriceEntry => ({
+const anthropic = (periods: BundledPeriod[]): PriceEntry => ({
 	vendor: "anthropic",
 	table: PRICING_TABLE_VERSION,
 	periods,
 	cache: DEFAULT_CACHE_MULTIPLIERS,
 });
-const openai = (periods: PricePeriod[]): PriceEntry => ({
+const openai = (periods: BundledPeriod[]): PriceEntry => ({
 	vendor: "openai",
 	table: OPENAI_PRICING_TABLE_VERSION,
 	periods,
 	cache: DEFAULT_CACHE_MULTIPLIERS,
 });
-const google = (periods: PricePeriod[]): PriceEntry => ({
+const google = (periods: BundledPeriod[]): PriceEntry => ({
 	vendor: "google",
 	table: GOOGLE_PRICING_TABLE_VERSION,
 	periods,
 	cache: GOOGLE_CACHE_MULTIPLIERS,
 });
-const flat = (input: number, output: number): PricePeriod[] => [
-	{ from: null, to: null, input, output },
+const flat = (input: number, output: number): BundledPeriod[] => [
+	{ from: null, input, output },
 ];
 
 /**
- * The rate for anything served off the user's own hardware: zero, and citable.
- * One entry covers every local model id, because the fact does not depend on
- * which weights were loaded.
+ * The priced lanes (ADR-0012 decision 7): measured ids that carry a rate but
+ * name no model a person can choose. They live here and never in the catalog
+ * or in `modelPrices`, so the seed migration and the served table skip them.
  */
-const FREE: PriceEntry = {
-	vendor: "local",
-	table: LOCAL_PRICING_TABLE_VERSION,
-	periods: flat(0, 0),
-	cache: FREE_CACHE_MULTIPLIERS,
-};
-
-/**
- * Providers that ARE the vendor, so their rows price at that vendor's list.
- *
- * Deliberately absent, and each absence is a decision from ticket #122's
- * measurements: `opencode` (the opencode-zen gateway - `glm-4.7-free`,
- * `kimi-k2.5-free` and the unbranded `big-pickle` have no public list price),
- * `github-copilot` (re-serves other vendors' slugs at its own terms),
- * `openrouter`, `azure`, `bedrock` and `vercel-ai-gateway` (resellers).
- * A provider joins this map when a harness is measured emitting it, never
- * speculatively - an unused rate is a maintenance liability on a table that is
- * updated by hand.
- */
-const PROVIDER_VENDOR: Record<string, Vendor> = {
-	anthropic: "anthropic",
-	openai: "openai",
-	google: "google",
-};
-
-/**
- * Providers that run the model on this machine. No API call, no per-token
- * charge. Ids as opencode and pi-mono spell them.
- */
-const LOCAL_PROVIDERS = new Set([
-	"ollama",
-	"lmstudio",
-	"llama.cpp",
-	"llamacpp",
-	"local",
-]);
+export const PRICED_LANES: ReadonlySet<string> = new Set(["codex-auto-review"]);
 
 /**
  * Only rates we can actually cite are encoded. Inventing historical periods to
  * make the table look complete would fabricate cost for old records, so every
  * model with one known rate gets one open-ended period.
+ *
+ * Where models.dev and a list page disagreed on 2026-08-29, models.dev won
+ * (ADR-0012 decision 12): `gpt-5.6-sol` and `gemini-3.6-flash` below.
  */
 const PRICES: Record<string, PriceEntry> = {
 	"claude-fable-5": anthropic(flat(10, 50)),
@@ -228,8 +211,8 @@ const PRICES: Record<string, PriceEntry> = {
 	"claude-opus-4-7": anthropic(flat(5, 25)),
 	"claude-opus-4-6": anthropic(flat(5, 25)),
 	"claude-sonnet-5": anthropic([
-		{ from: null, to: SONNET_5_INTRO_ENDS_MS, input: 2, output: 10 },
-		{ from: SONNET_5_INTRO_ENDS_MS, to: null, input: 3, output: 15 },
+		{ from: null, input: 2, output: 10 },
+		{ from: SONNET_5_INTRO_ENDS_MS, input: 3, output: 15 },
 	]),
 	"claude-sonnet-4-6": anthropic(flat(3, 15)),
 	"claude-haiku-4-5": anthropic(flat(1, 5)),
@@ -247,56 +230,95 @@ const PRICES: Record<string, PriceEntry> = {
 	// 2026-07-30 (-20% / -80%). The one-day launch rates are not on the list
 	// page and are NOT encoded - a July-29 Terra/Luna record underprices for
 	// one day rather than carrying a rate we cannot cite (#72).
-	"gpt-5.6-sol": openai(flat(5, 30)),
+	// Sol: models.dev reports $4 / $20 on 2026-08-29; the earlier $5 / $30 is
+	// not dated, so the lower rate prices the whole period (lower bound).
+	"gpt-5.6-sol": openai(flat(4, 20)),
 	"gpt-5.6-terra": openai(flat(2, 12)),
 	"gpt-5.6-luna": openai(flat(0.2, 1.2)),
 	// NOT on OpenAI's list page - an internal Codex routing label with no
 	// official price (openai/codex#20981). Rate is the aggregator consensus
 	// ($2.50 / $15.00), scoped in explicitly by ticket #72 because it carries
-	// real token volume in Codex rollouts.
+	// real token volume in Codex rollouts. A priced lane, see PRICED_LANES.
 	"codex-auto-review": openai(flat(2.5, 15)),
 	// Google (opencode, pi-mono) - Standard tier. Where a model is
 	// context-tiered, the <=200K rate is encoded, exactly as the OpenAI rows
 	// encode the standard-context tier: the payload carries no per-response
-	// context length, so the cheaper side keeps the figure a lower bound. Only
-	// the Pro and Flash families are here - image, TTS, embedding, Live and
-	// robotics models are not what a coding harness selects.
+	// context length, so the cheaper side keeps the figure a lower bound.
 	"gemini-3.1-pro-preview": google(flat(2, 12)),
-	"gemini-3.6-flash": google(flat(1.5, 7.5)),
+	// models.dev reports $0.75 / $3.75 on 2026-08-29 (was $1.5 / $7.5).
+	"gemini-3.6-flash": google(flat(0.75, 3.75)),
 	"gemini-3.5-flash": google(flat(1.5, 9)),
 	"gemini-3-flash-preview": google(flat(0.5, 3)),
 	"gemini-2.5-pro": google(flat(1.25, 10)),
 	"gemini-2.5-flash": google(flat(0.3, 2.5)),
 	// RETIRED from Google's list page by 2026-08-09, and still the largest
-	// single block of Google tokens measured in #122 (10.9M, 20.5% of that
-	// machine's total). Encoded at its launch rate on the same footing as
-	// `codex-auto-review`: real volume, a rate we can name, and a note saying
-	// where it came from. Announcement rate, <=200K tier: $2.00 / $12.00.
+	// single block of Google tokens measured in #122. Encoded at its launch
+	// rate: real volume, a rate we can name. Announcement rate, <=200K tier.
 	"gemini-3-pro-preview": google(flat(2, 12)),
 	// A real Anthropic model with no row until #123. Measured in #122 as
 	// `claude-opus-4-5-20251101`, which the dated-suffix rule strips to this key.
-	// Same $5/$25 as the rest of the Opus 4 line on the 2026-07-25 list.
 	"claude-opus-4-5": anthropic(flat(5, 25)),
 };
 
 /**
- * Split a pricing key into its provider and its model part.
- *
- * A key with no separator has no provider, which is what the single-vendor
- * adapters produce and how every id published before ticket #123 is shaped.
- * The split is on the FIRST separator only, so an id that carries its own colon
- * (`ollama:llama3.2:3b`) keeps it.
+ * The constants above as dated rows. This is what the seed migration writes
+ * into `modelPrices` and what the CLI prices against when the server's table
+ * is out of reach. Cache tiers are rendered absolute here, once.
  */
-export function splitModelKey(modelKey: string): {
-	provider: string | null;
-	model: string;
-} {
-	const at = modelKey.indexOf(PROVIDER_SEPARATOR);
-	if (at === -1) return { provider: null, model: modelKey };
-	return {
-		provider: modelKey.slice(0, at),
-		model: modelKey.slice(at + PROVIDER_SEPARATOR.length),
-	};
+export function bundledPriceTable(): PriceTable {
+	const rows: PriceRow[] = [];
+	for (const [modelSlug, entry] of Object.entries(PRICES)) {
+		for (const p of entry.periods) {
+			rows.push({
+				modelSlug,
+				from: p.from ?? 0,
+				input: p.input,
+				output: p.output,
+				cacheRead: p.input * entry.cache.read,
+				cacheWrite5m: p.input * entry.cache.write5m,
+				cacheWrite1h: p.input * entry.cache.write1h,
+				source: entry.table,
+				vendor: entry.vendor,
+			});
+		}
+	}
+	return { id: BUNDLED_PRICE_TABLE_ID, rows };
+}
+
+const BUNDLED_INDEX = new PriceIndex(bundledPriceTable());
+const BUNDLED_PRICER = new Pricer([BUNDLED_INDEX]);
+
+/** The pricer over the bundled constants alone. */
+export function bundledPricer(): Pricer {
+	return BUNDLED_PRICER;
+}
+
+/**
+ * A pricer that answers from `table` first and from the bundled constants for
+ * every key the table lacks. The CLI installs the served table this way; the
+ * backend builds the same shape over `modelPrices`.
+ */
+export function layeredPricer(
+	table: PriceTable,
+	vendorHint?: (slug: string) => Vendor | null,
+): Pricer {
+	return new Pricer([new PriceIndex(table), BUNDLED_INDEX], vendorHint);
+}
+
+/**
+ * The pricer the module-level functions below consult. The CLI's sync sets it
+ * to the served table before scanning (#336) and every adapter prices through
+ * it without knowing. Defaults to the bundled constants.
+ */
+let active: Pricer = BUNDLED_PRICER;
+
+export function setActivePricer(pricer: Pricer | null): void {
+	active = pricer ?? BUNDLED_PRICER;
+}
+
+/** The ids of the tables the active pricer consults, served first. */
+export function activePriceTableIds(): string[] {
+	return active.tableIds;
 }
 
 /**
@@ -305,24 +327,6 @@ export function splitModelKey(modelKey: string): {
  */
 export function modelKeyFor(provider: string, model: string): string {
 	return `${provider}${PROVIDER_SEPARATOR}${model}`;
-}
-
-/**
- * The rates that apply to a pricing key, or `null` when none can be cited.
- *
- * This is the single lookup every exported function goes through, so the
- * provider rule is stated once.
- */
-function entryFor(modelKey: string): PriceEntry | null {
-	const { provider, model } = splitModelKey(modelKey);
-	if (provider === null) return PRICES[model] ?? null;
-	if (LOCAL_PROVIDERS.has(provider)) return FREE;
-	const vendor = PROVIDER_VENDOR[provider];
-	if (!vendor) return null;
-	const entry = PRICES[model];
-	// A gateway that names a vendor's model does not get the vendor's rate, and
-	// a vendor that names a model from a table we do not hold gets nothing.
-	return entry && entry.vendor === vendor ? entry : null;
 }
 
 export type TokenCounts = {
@@ -372,12 +376,23 @@ export function vendorModelId(modelKey: string): string {
 }
 
 /**
- * How this model's vendor charges for cache traffic. Falls back to the
- * Anthropic-shaped constants for a model with no rate, so a caller that prices
- * an unknown model still gets a defined shape rather than a crash.
+ * How this model's vendor charges for cache traffic, as ratios of the latest
+ * period's input rate. Falls back to the Anthropic-shaped constants for a
+ * model with no rate, so a caller that prices an unknown model still gets a
+ * defined shape rather than a crash.
  */
 export function cacheMultipliersFor(modelKey: string): CacheMultipliers {
-	return entryFor(modelKey)?.cache ?? DEFAULT_CACHE_MULTIPLIERS;
+	const periods = active.periodsFor(modelKey);
+	const p = periods[periods.length - 1];
+	if (!p) return DEFAULT_CACHE_MULTIPLIERS;
+	if (p.input === 0) return { write5m: 0, write1h: 0, read: 0 };
+	// Absolute rates back to ratios; rounded so 0.075 / 0.75 reads 0.1.
+	const ratio = (rate: number) => Math.round((rate / p.input) * 1e6) / 1e6;
+	return {
+		write5m: ratio(p.cacheWrite5m),
+		write1h: ratio(p.cacheWrite1h),
+		read: ratio(p.cacheRead),
+	};
 }
 
 /**
@@ -386,7 +401,7 @@ export function cacheMultipliersFor(modelKey: string): CacheMultipliers {
  * "unknown".
  */
 export function isLocalModel(modelKey: string): boolean {
-	return entryFor(modelKey)?.vendor === "local";
+	return active.isLocal(modelKey);
 }
 
 /**
@@ -401,20 +416,12 @@ export function priceAt(
 	modelKey: string,
 	atMs: number | null,
 ): PricePeriod | null {
-	if (atMs === null) return null;
-	const entry = entryFor(modelKey);
-	if (!entry) return null;
-	for (const p of entry.periods) {
-		if ((p.from === null || atMs >= p.from) && (p.to === null || atMs < p.to)) {
-			return p;
-		}
-	}
-	return null;
+	return active.priceAt(modelKey, atMs);
 }
 
 /** True when we hold at least one citable rate for this model, at any time. */
 export function isPricedModel(modelKey: string): boolean {
-	return entryFor(modelKey) !== null;
+	return active.isPriced(modelKey);
 }
 
 /**
@@ -424,30 +431,38 @@ export function isPricedModel(modelKey: string): boolean {
  * read-time estimate is cited by the table it was drawn from, and one stack can
  * carry Anthropic and OpenAI rows at once.
  */
-export function pricingTableFor(modelKey: string): string | null {
-	return entryFor(modelKey)?.table ?? null;
+export function pricingTableFor(
+	modelKey: string,
+	atMs?: number,
+): string | null {
+	return active.tableFor(modelKey, atMs);
 }
 
 /**
  * Every rate that applies to `modelKey` anywhere inside `[fromMs, toMs]`.
  *
  * This is the read-time counterpart of `priceAt`. A published snapshot has no
- * per-response timestamps left - it carries one merged token total over a
- * window - so a re-pricer cannot ask "what did this response cost". It can only
- * ask "which rates could this window have paid", and then choose. Returns an
- * empty list for an unknown model and for a window that closes before the
- * model's first citable rate opens.
+ * per-response timestamps left, so a re-pricer can only ask "which rates could
+ * this window have paid", and then choose.
  */
 export function pricePeriodsInWindow(
 	modelKey: string,
 	fromMs: number,
 	toMs: number,
 ): PricePeriod[] {
-	const entry = entryFor(modelKey);
-	if (!entry) return [];
-	return entry.periods.filter(
-		(p) =>
-			(p.from === null || p.from <= toMs) && (p.to === null || p.to > fromMs),
+	return active.periodsInWindow(modelKey, fromMs, toMs);
+}
+
+/** The dollars one period charges for these tokens. */
+export function costAtPeriod(p: PricePeriod, t: TokenCounts): number {
+	const M = 1_000_000;
+	return (
+		(t.input * p.input +
+			t.output * p.output +
+			(t.cacheWrite5m + t.cacheWriteUnsplit) * p.cacheWrite5m +
+			t.cacheWrite1h * p.cacheWrite1h +
+			t.cacheRead * p.cacheRead) /
+		M
 	);
 }
 
@@ -461,16 +476,7 @@ export function apiEquivalentCost(
 	t: TokenCounts,
 	atMs: number | null,
 ): number | null {
-	const p = priceAt(modelKey, atMs);
+	const p = active.priceAt(modelKey, atMs);
 	if (!p) return null;
-	const c = cacheMultipliersFor(modelKey);
-	const M = 1_000_000;
-	return (
-		(t.input * p.input +
-			t.output * p.output +
-			(t.cacheWrite5m + t.cacheWriteUnsplit) * p.input * c.write5m +
-			t.cacheWrite1h * p.input * c.write1h +
-			t.cacheRead * p.input * c.read) /
-		M
-	);
+	return costAtPeriod(p, t);
 }
