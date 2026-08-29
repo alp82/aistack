@@ -63,13 +63,9 @@ import type * as migrations_20260801_measured_model_catalog from "../migrations/
 import type * as migrations_20260801_openai_models from "../migrations/20260801_openai_models.js";
 import type * as migrations_20260802_gpt56_models from "../migrations/20260802_gpt56_models.js";
 import type * as migrations_20260823_knowledge_base_publication from "../migrations/20260823_knowledge_base_publication.js";
-import type * as migrations_20260823_measured_machine_ordinals from "../migrations/20260823_measured_machine_ordinals.js";
 import type * as migrations_20260823_news_hn_lane from "../migrations/20260823_news_hn_lane.js";
 import type * as migrations_20260823_news_phase1_sources from "../migrations/20260823_news_phase1_sources.js";
-import type * as migrations_20260826_workflow_daily_rows from "../migrations/20260826_workflow_daily_rows.js";
 import type * as migrations_20260827_merge_duplicate_models from "../migrations/20260827_merge_duplicate_models.js";
-import type * as migrations_20260828_measured_days from "../migrations/20260828_measured_days.js";
-import type * as migrations_20260829_retire_snapshots from "../migrations/20260829_retire_snapshots.js";
 import type * as migrations__archived_migrateBlockToReference from "../migrations/_archived/migrateBlockToReference.js";
 import type * as migrations__archived_migrateNotesToDescription from "../migrations/_archived/migrateNotesToDescription.js";
 import type * as migrations__archived_migrateStackDescriptions from "../migrations/_archived/migrateStackDescriptions.js";
@@ -160,13 +156,9 @@ declare const fullApi: ApiFromModules<{
   "migrations/20260801_openai_models": typeof migrations_20260801_openai_models;
   "migrations/20260802_gpt56_models": typeof migrations_20260802_gpt56_models;
   "migrations/20260823_knowledge_base_publication": typeof migrations_20260823_knowledge_base_publication;
-  "migrations/20260823_measured_machine_ordinals": typeof migrations_20260823_measured_machine_ordinals;
   "migrations/20260823_news_hn_lane": typeof migrations_20260823_news_hn_lane;
   "migrations/20260823_news_phase1_sources": typeof migrations_20260823_news_phase1_sources;
-  "migrations/20260826_workflow_daily_rows": typeof migrations_20260826_workflow_daily_rows;
   "migrations/20260827_merge_duplicate_models": typeof migrations_20260827_merge_duplicate_models;
-  "migrations/20260828_measured_days": typeof migrations_20260828_measured_days;
-  "migrations/20260829_retire_snapshots": typeof migrations_20260829_retire_snapshots;
   "migrations/_archived/migrateBlockToReference": typeof migrations__archived_migrateBlockToReference;
   "migrations/_archived/migrateNotesToDescription": typeof migrations__archived_migrateNotesToDescription;
   "migrations/_archived/migrateStackDescriptions": typeof migrations__archived_migrateStackDescriptions;
