@@ -74,6 +74,11 @@ export function datasetProviderOf(provider: string | undefined): string | null {
   return null
 }
 
+/** The models.dev logo for a dataset provider id. */
+export function logoUrl(providerId: string): string {
+  return `https://models.dev/logos/${providerId}.svg`
+}
+
 function num(x: unknown): number | undefined {
   return typeof x === 'number' && Number.isFinite(x) ? x : undefined
 }
@@ -104,7 +109,7 @@ export function parseModelsDev(json: unknown): DatasetModel[] {
         ...(num(m?.limit?.context) !== undefined ? { contextWindow: m.limit.context } : {}),
         ...(typeof m?.release_date === 'string' ? { releaseDate: m.release_date } : {}),
         textOnly: inputs.includes('text') && outputs.length === 1 && outputs[0] === 'text',
-        iconUrl: `https://models.dev/logos/${providerId}.svg`,
+        iconUrl: logoUrl(providerId),
       })
     }
   }
@@ -227,9 +232,17 @@ export type ModelInsert = {
   rates: Rates | null
 }
 
+/** An existing row with no icon at all, and the vendor logo it gets. */
+export type IconBackfill = {
+  modelSlug: string
+  iconUrl: string
+}
+
 export type ImportPlan = {
   periods: PeriodInsert[]
   models: ModelInsert[]
+  /** Rows the run gives a logo to. */
+  icons: IconBackfill[]
   /** Dataset models the allowlist and the window kept out, for the run line. */
   skipped: number
 }
@@ -307,6 +320,7 @@ export function planImport(args: {
   const { catalog, models, prices, dataset, measuredIds, source, now } = args
   const periods: PeriodInsert[] = []
   const modelInserts: ModelInsert[] = []
+  const icons: IconBackfill[] = []
   const claimed = new Set<string>()
   let skipped = 0
 
@@ -316,10 +330,19 @@ export function planImport(args: {
     return true
   }
 
-  // 1. Rate changes on rows the catalog holds.
+  // 1. Rate changes on rows the catalog holds, and the vendor logo for a row
+  // that has no icon of any kind. The logo comes from the dataset match when
+  // there is one (already under the row's own vendor, never a gateway) and
+  // otherwise from the row's provider name, so a row the dataset skips still
+  // gets one. A row with any icon is left alone.
   for (const row of models) {
     if (row.reviewStatus === 'rejected') continue
     const m = datasetModelFor(dataset, row)
+    if (!row.iconStorageId && !row.iconUrl) {
+      const providerId = m ? m.providerId : datasetProviderOf(row.provider)
+      const iconUrl = m?.iconUrl ?? (providerId ? logoUrl(providerId) : undefined)
+      if (iconUrl) icons.push({ modelSlug: row.slug, iconUrl })
+    }
     if (!m) continue
     const current = periodInEffect(prices, row.slug, now)
     const rates = ratesOf(m)
@@ -389,7 +412,7 @@ export function planImport(args: {
     })
   }
 
-  return { periods, models: modelInserts, skipped }
+  return { periods, models: modelInserts, icons, skipped }
 }
 
 /** `$5/$25 in/out` style, for the log. */
