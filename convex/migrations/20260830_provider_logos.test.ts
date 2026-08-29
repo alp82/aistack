@@ -26,18 +26,24 @@ describe('20260830_provider_logos', () => {
         reviewStatus: 'pending', iconUrl: 'https://models.dev/logos/openai.svg', createdAt: now, updatedAt: now,
       })
       await ctx.db.insert('models', {
+        name: 'GLM-5.2', slug: 'glm-5.2', shortId: 'glm52', provider: 'Other', category: 'coding',
+        reviewStatus: 'approved', iconUrl: 'https://example.com/glm.png', createdAt: now, updatedAt: now,
+      })
+      await ctx.db.insert('models', {
         name: 'Mystery', slug: 'mystery', shortId: 'myst', provider: 'Nobody', category: 'other',
         reviewStatus: 'approved', iconUrl: 'https://example.com/keep.png', createdAt: now, updatedAt: now,
       })
     })
     const first = await t.mutation(internal.migrations['20260830_provider_logos'].run, {})
-    expect(first).toEqual({ patched: 1, skipped: 1, unknown: ['mystery'] })
+    expect(first).toEqual({ patched: 2, skipped: 1, unknown: ['mystery'] })
     const rows = await t.run(async (ctx) => ctx.db.query('models').collect())
     const bySlug = Object.fromEntries(rows.map((r) => [r.slug, r]))
     expect(bySlug['gpt-5.4'].iconUrl).toBe('https://models.dev/logos/openai.svg')
     expect(bySlug['gpt-5.4'].iconStorageId).toBeUndefined()
+    expect(bySlug['glm-5.2'].provider).toBe('Zhipu AI')
+    expect(bySlug['glm-5.2'].iconUrl).toBe('https://models.dev/logos/zai.svg')
     expect(bySlug.mystery.iconUrl).toBe('https://example.com/keep.png')
     const second = await t.mutation(internal.migrations['20260830_provider_logos'].run, {})
-    expect(second).toEqual({ patched: 0, skipped: 2, unknown: ['mystery'] })
+    expect(second).toEqual({ patched: 0, skipped: 3, unknown: ['mystery'] })
   })
 })

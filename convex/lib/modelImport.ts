@@ -71,6 +71,7 @@ export function datasetProviderOf(provider: string | undefined): string | null {
   if (p === 'google deepmind') return 'google'
   if (p === 'moonshot' || p === 'moonshotai') return 'moonshotai'
   if (p === 'z.ai' || p === 'zhipu') return 'zai'
+  if (p === 'meta') return 'meta'
   return null
 }
 
