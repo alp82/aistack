@@ -4,7 +4,7 @@ import {
   totalOfTokens,
   type UsageDay,
 } from '@aistack/workflow-rules'
-import { v } from 'convex/values'
+import { type Infer, v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import type { QueryCtx } from './_generated/server'
 import { query } from './_generated/server'
@@ -103,11 +103,16 @@ const Board = v.object({
   models: v.array(Ranking),
   harnesses: v.array(Ranking),
   quiet: v.object({ count: v.number(), tokens: v.number() }),
+  /** Every price table behind `spendLowerBoundUSD`, sorted. */
+  pricingTables: v.array(v.string()),
   page: v.number(),
   pageSize: v.number(),
   totalPages: v.number(),
   rows: v.array(Row),
 })
+
+export type BoardReading = Infer<typeof Board>
+export type ModelRanking = Infer<typeof Ranking>
 
 type StackReading = {
   stack: Doc<'stacks'>
@@ -122,6 +127,7 @@ type StackReading = {
   /** Over the 30-day fold; `unknown` kept for totals. */
   modelTokens: Map<string, number>
   spend: { lowerBoundUSD: number; coverage: number; exact: boolean } | null
+  pricingTables: string[]
 }
 
 /**
@@ -174,6 +180,7 @@ async function readStack(
       })).filter((h) => h.tokens > 0),
       modelTokens: new Map(),
       spend: null,
+      pricingTables: [],
     }
   }
 
@@ -215,6 +222,7 @@ async function readStack(
           exact: !reading.cost.estimated && reading.cost.pricedShare >= 1,
         }
       : null,
+    pricingTables: reading.cost?.pricingTables ?? [],
   }
 }
 
@@ -233,28 +241,116 @@ function bump(
   map.set(key, cur)
 }
 
+/**
+ * The measured population: published, not flagged. `by_published` narrows to
+ * the public set; the quality flag is enforced HERE, not left to the client -
+ * the board is discovery (#82), and a filter the frontend applies is a filter
+ * a crawler does not. `/model` (#223) reads the same population, so the two
+ * can never disagree on a share.
+ */
+async function readPopulation(ctx: QueryCtx, now: number) {
+  const stacks = await ctx.db
+    .query('stacks')
+    .withIndex('by_published', (q) => q.eq('published', true))
+    .collect()
+
+  const catalog = await loadModelCatalog(ctx)
+  const readings: StackReading[] = []
+  for (const stack of stacks) {
+    if (stack.isLowQuality === true) continue
+    const reading = await readStack(ctx, stack, now, catalog)
+    if (reading) readings.push(reading)
+  }
+  return { readings, catalog }
+}
+
+function namedModels(r: StackReading): [string, number][] {
+  return [...r.modelTokens.entries()].filter(([id]) => id !== 'unknown')
+}
+
+function leadOf(named: [string, number][]): [string, number] | null {
+  return named.reduce(
+    (a, b) => (a === null || b[1] > a[1] ? b : a),
+    null as [string, number] | null
+  )
+}
+
+/** Every named model over the population, token-weighted over attributed tokens. */
+function rankModels(readings: StackReading[], catalog: ModelCatalog) {
+  let attributed = 0
+  const models = new Map<string, Bucket>()
+  for (const r of readings) {
+    const named = namedModels(r)
+    const lead = leadOf(named)
+    for (const [id, tokens] of named) {
+      attributed += tokens
+      bump(models, id, tokens, lead !== null && lead[0] === id)
+    }
+  }
+  const modelName = (id: string) =>
+    (catalog.bySlug.get(id) ?? catalog.byAlias.get(id))?.name ?? id
+  return {
+    attributed,
+    models: [...models.entries()]
+      .map(([key, b]) => ({
+        key,
+        name: modelName(key),
+        tokenShare: attributed > 0 ? b.tokens / attributed : 0,
+        stackCount: b.stacks,
+        leadsCount: b.leads,
+      }))
+      .sort((a, b) => b.tokenShare - a.tokenShare || b.stackCount - a.stackCount),
+  }
+}
+
+/**
+ * One model's adoption, for `/model` (#223). The name resolves against the
+ * catalog (slug, alias, or display name, case-insensitive) and then against
+ * the raw measured ids, so a model the catalog has not filed still answers.
+ * `null` means no model of that name exists anywhere; a catalog model no
+ * stack ran comes back with a zero `stackCount`.
+ */
+export const model = query({
+  args: { name: v.string() },
+  returns: v.union(Ranking, v.null()),
+  handler: async (ctx, args) => {
+    const wanted = args.name.trim().toLowerCase()
+    if (wanted === '' || wanted === 'unknown') return null
+    const { readings, catalog } = await readPopulation(ctx, Date.now())
+    const ranked = rankModels(readings, catalog)
+
+    const catalogRow =
+      catalog.bySlug.get(wanted) ??
+      catalog.byAlias.get(wanted) ??
+      [...catalog.bySlug.values()].find((m) => m.name.toLowerCase() === wanted)
+    const keys = new Set<string>()
+    if (catalogRow) {
+      keys.add(catalogRow.slug)
+      for (const [alias, row] of catalog.byAlias) {
+        if (row._id === catalogRow._id) keys.add(alias)
+      }
+    }
+    const hit =
+      ranked.models.find((m) => keys.has(m.key)) ??
+      ranked.models.find((m) => m.key.toLowerCase() === wanted)
+    if (hit) return hit
+    if (!catalogRow) return null
+    return {
+      key: catalogRow.slug,
+      name: catalogRow.name,
+      tokenShare: 0,
+      stackCount: 0,
+      leadsCount: 0,
+    }
+  },
+})
+
 export const get = query({
   args: { page: v.optional(v.number()) },
   returns: Board,
   handler: async (ctx, args) => {
     const now = Date.now()
-
-    // The population: published, not flagged. `by_published` narrows to the
-    // public set; the quality flag is enforced HERE, not left to the client -
-    // the board is discovery (#82), and a filter the frontend applies is a
-    // filter a crawler does not.
-    const stacks = await ctx.db
-      .query('stacks')
-      .withIndex('by_published', (q) => q.eq('published', true))
-      .collect()
-
-    const catalog = await loadModelCatalog(ctx)
-    const readings: StackReading[] = []
-    for (const stack of stacks) {
-      if (stack.isLowQuality === true) continue
-      const reading = await readStack(ctx, stack, now, catalog)
-      if (reading) readings.push(reading)
-    }
+    const { readings, catalog } = await readPopulation(ctx, now)
 
     const byTokens = (a: StackReading, b: StackReading) =>
       b.tokens - a.tokens || a.stack.name.localeCompare(b.stack.name)
@@ -265,11 +361,11 @@ export const get = query({
 
     let totalTokens = 0
     let totalSessions = 0
-    let attributed = 0
     let spendLowerBoundUSD = 0
     let costPublishers = 0
-    const models = new Map<string, Bucket>()
+    const pricingTables = new Set<string>()
     const harnesses = new Map<string, Bucket>()
+    const { attributed, models } = rankModels(readings, catalog)
 
     for (const r of readings) {
       totalTokens += r.tokens
@@ -277,17 +373,7 @@ export const get = query({
       if (r.spend) {
         spendLowerBoundUSD += r.spend.lowerBoundUSD
         costPublishers += 1
-      }
-      const named = [...r.modelTokens.entries()].filter(
-        ([id]) => id !== 'unknown'
-      )
-      const lead = named.reduce(
-        (a, b) => (a === null || b[1] > a[1] ? b : a),
-        null as [string, number] | null
-      )
-      for (const [id, tokens] of named) {
-        attributed += tokens
-        bump(models, id, tokens, lead !== null && lead[0] === id)
+        for (const table of r.pricingTables) pricingTables.add(table)
       }
       const leadHarness = r.activeHarnesses.reduce(
         (a, b) => (a === null || b.tokens > a.tokens ? b : a),
@@ -331,13 +417,7 @@ export const get = query({
     const rows = living
       .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
       .map((r, i) => {
-        const named = [...r.modelTokens.entries()].filter(
-          ([id]) => id !== 'unknown'
-        )
-        const top = named.reduce(
-          (a, b) => (a === null || b[1] > a[1] ? b : a),
-          null as [string, number] | null
-        )
+        const top = leadOf(namedModels(r))
         return {
           rank: (page - 1) * PAGE_SIZE + i + 1,
           slug: `${r.stack.slug}-${r.stack.shortId}`,
@@ -366,7 +446,7 @@ export const get = query({
       unattributedShare:
         totalTokens > 0 ? (totalTokens - attributed) / totalTokens : 0,
       windowSpreadDays,
-      models: rankOf(models, attributed, modelName).slice(0, MAX_RAIL_MODELS),
+      models: models.slice(0, MAX_RAIL_MODELS),
       harnesses: rankOf(harnesses, totalTokens, (k) => k).slice(
         0,
         MAX_RAIL_HARNESSES
@@ -375,6 +455,7 @@ export const get = query({
         count: quiet.length,
         tokens: quiet.reduce((a, r) => a + r.tokens, 0),
       },
+      pricingTables: [...pricingTables].sort(),
       page,
       pageSize: PAGE_SIZE,
       totalPages,
