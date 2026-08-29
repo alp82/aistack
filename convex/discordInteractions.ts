@@ -4,6 +4,7 @@ import { httpAction, internalAction } from './_generated/server'
 import type { ActionCtx } from './_generated/server'
 import { SHARED_BUCKET_MAX_REQUESTS } from './rateLimit'
 import { encodeUtf8, hexToBytes } from './lib/webCrypto'
+import { stackCommand, tokensCommand } from './discordCommands'
 
 /**
  * The Discord interactions endpoint (wayfinder #229, map #199).
@@ -20,9 +21,9 @@ import { encodeUtf8, hexToBytes } from './lib/webCrypto'
  * 3. A scheduled action computes the reply and PATCHes `@original` through the
  *    webhook, well inside the 15-minute token life.
  *
- * Commands plug in through `COMMANDS`. The stack, tokens, leaderboard, and
- * model commands land on their own tickets (#226, #223); `/link` is here
- * because its reply already exists.
+ * Commands plug in through `COMMANDS`. `/stack` and `/tokens` live in
+ * `discordCommands.ts` (#226); the leaderboard and model commands land on
+ * #223. `/link` is here because its reply already exists.
  */
 
 export const INTERACTIONS_PATH = '/api/discord/interactions'
@@ -64,6 +65,12 @@ export type ReplyData = Record<string, unknown>
 interface CommandSpec {
   /** Set at deferral time, because a deferral fixes the reply's visibility. */
   ephemeral: boolean
+  /**
+   * Runs before the deferral, inside the 3-second window. A returned string
+   * is answered at once as an ephemeral message and `reply` never runs. This
+   * is how a public command keeps its error states private.
+   */
+  check?: (ctx: ActionCtx, call: CommandCall) => Promise<string | null>
   reply: (ctx: ActionCtx, call: CommandCall) => Promise<ReplyData>
 }
 
@@ -76,6 +83,8 @@ const COMMANDS: Record<string, CommandSpec> = {
         discordUserId: call.discordUserId,
       }),
   },
+  stack: stackCommand,
+  tokens: tokensCommand,
 }
 
 const FALLBACK_REPLY: ReplyData = {
@@ -225,13 +234,26 @@ export const interactions = httpAction(async (ctx, request) => {
     )
   }
 
-  const ephemeral = COMMANDS[command]?.ephemeral ?? true
+  const spec = COMMANDS[command]
+  const options = parseOptions(interaction.data)
+  if (spec?.check) {
+    let error: string | null
+    try {
+      error = await spec.check(ctx, { discordUserId, options })
+    } catch (cause) {
+      console.error(`discord /${command} check failed`, cause)
+      error = FALLBACK_REPLY.content as string
+    }
+    if (error) return message(error)
+  }
+
+  const ephemeral = spec?.ephemeral ?? true
   await ctx.scheduler.runAfter(0, internal.discordInteractions.fulfill, {
     applicationId,
     token,
     command,
     discordUserId,
-    options: parseOptions(interaction.data),
+    options,
   })
 
   return json(200, {
