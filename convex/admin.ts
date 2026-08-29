@@ -765,3 +765,35 @@ export const updateToolEditSuggestion = mutation({
     await ctx.db.patch(args.suggestionId, patch)
   },
 })
+
+export const getImportTabCount = query({
+  args: {},
+  returns: v.union(v.number(), v.null()),
+  handler: async (ctx) => {
+    if (!(await isAdmin(ctx))) return null
+    const models = await ctx.db
+      .query('models')
+      .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'pending'))
+      .collect()
+    return models.length
+  },
+})
+
+export const approveAllPendingModels = mutation({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    if (!(await isAdmin(ctx))) {
+      throw new Error('Unauthorized')
+    }
+    const models = await ctx.db
+      .query('models')
+      .withIndex('by_reviewStatus', (q) => q.eq('reviewStatus', 'pending'))
+      .collect()
+    const now = Date.now()
+    for (const model of models) {
+      await ctx.db.patch(model._id, { reviewStatus: 'approved', updatedAt: now })
+    }
+    return models.length
+  },
+})

@@ -15,6 +15,7 @@ export function AdminImportTab() {
 	const runNow = useAction(api.modelImport.runNow);
 	const approveModel = useMutation(api.admin.approveModel);
 	const rejectModel = useMutation(api.admin.rejectModel);
+	const approveAll = useMutation(api.admin.approveAllPendingModels);
 	const [running, setRunning] = useState(false);
 	const [result, setResult] = useState<string | null>(null);
 
@@ -89,6 +90,16 @@ export function AdminImportTab() {
 							<span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center bg-accent-lime px-1 font-mono text-xs font-bold text-bg-canvas">
 								{pendingModels.length}
 							</span>
+						) : null}
+						{pendingModels && pendingModels.length > 0 ? (
+							<button
+								type="button"
+								onClick={() => approveAll({}).catch(console.error)}
+								className="ml-4 inline-flex items-center gap-1.5 border-2 border-accent-lime px-2 py-0.5 font-mono text-xs font-semibold uppercase tracking-wide text-accent-lime transition-colors hover:bg-accent-lime hover:text-accent-lime-contrast"
+							>
+								<Check className="size-3.5" />
+								Approve all
+							</button>
 						) : null}
 					</h3>
 					{!pendingModels || pendingModels.length === 0 ? (
