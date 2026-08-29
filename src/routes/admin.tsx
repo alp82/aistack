@@ -5,7 +5,8 @@ import {
 	useNavigate,
 	useSearch,
 } from "@tanstack/react-router";
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
+import type { LucideIcon } from "lucide-react";
 import {
 	ChartNoAxesColumn,
 	ClipboardCheck,
@@ -89,6 +90,8 @@ function AdminPage() {
 	const isAdmin = useQuery(api.admin.checkIsAdmin);
 	const reviewCount = useQuery(api.admin.getReviewTabCount);
 	const qualityCount = useQuery(api.admin.getQualityTabCount);
+	const importCount = useQuery(api.admin.getImportTabCount);
+	const { isLoading: authLoading } = useConvexAuth();
 	const newsCounts = useQuery(api.news.countItems);
 	const newsCount = newsCounts?.inbox ?? 0;
 	const navigate = useNavigate({ from: "/admin" });
@@ -109,7 +112,37 @@ function AdminPage() {
 		[navigate],
 	);
 
-	if (isAdmin === undefined) {
+	// Tab order is fixed: review, import, quality, views, email, news.
+	const tabs: Array<{
+		key: AdminTab;
+		label: string;
+		icon: LucideIcon;
+		count?: number | null;
+		patch?: Partial<typeof ADMIN_SEARCH_DEFAULTS>;
+	}> = [
+		{
+			key: "review",
+			label: "Review",
+			icon: ClipboardCheck,
+			count: reviewCount,
+			patch: { view: ADMIN_SEARCH_DEFAULTS.view },
+		},
+		{ key: "import", label: "Import", icon: Download, count: importCount },
+		{
+			key: "quality",
+			label: "Quality",
+			icon: Flag,
+			count: qualityCount,
+			patch: { view: ADMIN_SEARCH_DEFAULTS.view },
+		},
+		{ key: "views", label: "Views", icon: ChartNoAxesColumn },
+		{ key: "email", label: "Email", icon: Mail },
+		{ key: "news", label: "News", icon: Newspaper, count: newsCount },
+	];
+
+	// A refresh must stay on /admin: the admin check answers false while the
+	// auth token is still being fetched, so redirect only once auth has settled.
+	if (isAdmin === undefined || (authLoading && !isAdmin)) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-bg-canvas">
 				<div className="font-mono text-sm text-fg-muted">Loading...</div>
@@ -127,97 +160,26 @@ function AdminPage() {
 			<div className="border-b-2 border-stroke-strong bg-bg-panel">
 				<div className="mx-auto max-w-6xl px-4 sm:px-6">
 					<div className="flex items-center gap-1">
-						<button
-							type="button"
-							onClick={() =>
-								setSearch({ tab: "review", view: ADMIN_SEARCH_DEFAULTS.view })
-							}
-							className={`inline-flex items-center gap-2 border-b-2 px-6 py-4 font-mono text-sm font-semibold uppercase tracking-wide transition-colors -mb-[2px] ${
-								tab === "review"
-									? "border-accent-lime text-accent-lime"
-									: "border-transparent text-fg-muted hover:text-fg-primary"
-							}`}
-						>
-							<ClipboardCheck className="size-4" />
-							Review
-							{reviewCount ? (
-								<span className="inline-flex h-5 min-w-5 items-center justify-center bg-accent-lime px-1 font-mono text-xs font-bold text-bg-canvas">
-									{reviewCount}
-								</span>
-							) : null}
-						</button>
-						<button
-							type="button"
-							onClick={() =>
-								setSearch({ tab: "quality", view: ADMIN_SEARCH_DEFAULTS.view })
-							}
-							className={`inline-flex items-center gap-2 border-b-2 px-6 py-4 font-mono text-sm font-semibold uppercase tracking-wide transition-colors -mb-[2px] ${
-								tab === "quality"
-									? "border-accent-lime text-accent-lime"
-									: "border-transparent text-fg-muted hover:text-fg-primary"
-							}`}
-						>
-							<Flag className="size-4" />
-							Quality
-							{qualityCount ? (
-								<span className="inline-flex h-5 min-w-5 items-center justify-center bg-accent-lime px-1 font-mono text-xs font-bold text-bg-canvas">
-									{qualityCount}
-								</span>
-							) : null}
-						</button>
-						<button
-							type="button"
-							onClick={() => setSearch({ tab: "email" })}
-							className={`inline-flex items-center gap-2 border-b-2 px-6 py-4 font-mono text-sm font-semibold uppercase tracking-wide transition-colors -mb-[2px] ${
-								tab === "email"
-									? "border-accent-lime text-accent-lime"
-									: "border-transparent text-fg-muted hover:text-fg-primary"
-							}`}
-						>
-							<Mail className="size-4" />
-							Email
-						</button>
-						<button
-							type="button"
-							onClick={() => setSearch({ tab: "views" })}
-							className={`inline-flex items-center gap-2 border-b-2 px-6 py-4 font-mono text-sm font-semibold uppercase tracking-wide transition-colors -mb-[2px] ${
-								tab === "views"
-									? "border-accent-lime text-accent-lime"
-									: "border-transparent text-fg-muted hover:text-fg-primary"
-							}`}
-						>
-							<ChartNoAxesColumn className="size-4" />
-							Views
-						</button>
-						<button
-							type="button"
-							onClick={() => setSearch({ tab: "news" })}
-							className={`inline-flex items-center gap-2 border-b-2 px-6 py-4 font-mono text-sm font-semibold uppercase tracking-wide transition-colors -mb-[2px] ${
-								tab === "news"
-									? "border-accent-lime text-accent-lime"
-									: "border-transparent text-fg-muted hover:text-fg-primary"
-							}`}
-						>
-							<Newspaper className="size-4" />
-							News
-							{newsCount ? (
-								<span className="inline-flex h-5 min-w-5 items-center justify-center bg-accent-lime px-1 font-mono text-xs font-bold text-bg-canvas">
-									{newsCount}
-								</span>
-							) : null}
-						</button>
-						<button
-							type="button"
-							onClick={() => setSearch({ tab: "import" })}
-							className={`inline-flex items-center gap-2 border-b-2 px-6 py-4 font-mono text-sm font-semibold uppercase tracking-wide transition-colors -mb-[2px] ${
-								tab === "import"
-									? "border-accent-lime text-accent-lime"
-									: "border-transparent text-fg-muted hover:text-fg-primary"
-							}`}
-						>
-							<Download className="size-4" />
-							Import
-						</button>
+						{tabs.map(({ key, label, icon: Icon, count, patch }) => (
+							<button
+								key={key}
+								type="button"
+								onClick={() => setSearch({ tab: key, ...patch })}
+								className={`inline-flex items-center gap-2 border-b-2 px-6 py-4 font-mono text-sm font-semibold uppercase tracking-wide transition-colors -mb-[2px] ${
+									tab === key
+										? "border-accent-lime text-accent-lime"
+										: "border-transparent text-fg-muted hover:text-fg-primary"
+								}`}
+							>
+								<Icon className="size-4" />
+								{label}
+								{count ? (
+									<span className="inline-flex h-5 min-w-5 items-center justify-center bg-accent-lime px-1 font-mono text-xs font-bold text-bg-canvas">
+										{count}
+									</span>
+								) : null}
+							</button>
+						))}
 						<LivingStacks />
 					</div>
 				</div>
