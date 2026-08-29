@@ -4,7 +4,12 @@ import { httpAction, internalAction } from './_generated/server'
 import type { ActionCtx } from './_generated/server'
 import { SHARED_BUCKET_MAX_REQUESTS } from './rateLimit'
 import { encodeUtf8, hexToBytes } from './lib/webCrypto'
-import { stackCommand, tokensCommand } from './discordCommands'
+import {
+  leaderboardCommand,
+  modelCommand,
+  stackCommand,
+  tokensCommand,
+} from './discordCommands'
 
 /**
  * The Discord interactions endpoint (wayfinder #229, map #199).
@@ -22,8 +27,8 @@ import { stackCommand, tokensCommand } from './discordCommands'
  *    webhook, well inside the 15-minute token life.
  *
  * Commands plug in through `COMMANDS`. `/stack` and `/tokens` live in
- * `discordCommands.ts` (#226); the leaderboard and model commands land on
- * #223. `/link` is here because its reply already exists.
+ * `discordCommands.ts` (#226), and so do `/leaderboard` and `/model` (#223).
+ * `/link` is here because its reply already exists.
  */
 
 export const INTERACTIONS_PATH = '/api/discord/interactions'
@@ -85,6 +90,8 @@ const COMMANDS: Record<string, CommandSpec> = {
   },
   stack: stackCommand,
   tokens: tokensCommand,
+  leaderboard: leaderboardCommand,
+  model: modelCommand,
 }
 
 const FALLBACK_REPLY: ReplyData = {

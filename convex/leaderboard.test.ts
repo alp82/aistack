@@ -509,3 +509,66 @@ describe('leaderboard.get', () => {
     expect(row.creatorName).toMatch(/^Creator /)
   })
 })
+
+describe('leaderboard.model', () => {
+  test('resolves a catalog name case-insensitively and a raw id as itself', async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx) => {
+      await ctx.db.insert('models', {
+        name: 'GPT X',
+        slug: 'gpt-x',
+        shortId: 'gptx1',
+        provider: 'openai',
+        category: 'coding',
+        reviewStatus: 'approved',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    })
+    const one = await seedStack(t)
+    await sync(t, one.stackId, {
+      totalTokens: 300,
+      models: [
+        { id: 'gpt-x', tokens: 100 },
+        { id: 'claude-y', tokens: 200 },
+      ],
+    })
+    expect(await t.query(api.leaderboard.model, { name: 'gpt x' })).toEqual({
+      key: 'gpt-x',
+      name: 'GPT X',
+      tokenShare: 100 / 300,
+      stackCount: 1,
+      leadsCount: 0,
+    })
+    expect(await t.query(api.leaderboard.model, { name: 'Claude-Y' })).toMatchObject({
+      key: 'claude-y',
+      leadsCount: 1,
+    })
+    expect(await t.query(api.leaderboard.model, { name: 'unknown' })).toBeNull()
+    expect(await t.query(api.leaderboard.model, { name: 'gpt-9' })).toBeNull()
+  })
+
+  test('a catalog model no stack ran answers with zero stacks, not null', async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx) => {
+      await ctx.db.insert('models', {
+        name: 'GPT X',
+        slug: 'gpt-x',
+        shortId: 'gptx1',
+        provider: 'openai',
+        category: 'coding',
+        reviewStatus: 'approved',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    })
+    expect(await t.query(api.leaderboard.model, { name: 'GPT X' })).toEqual({
+      key: 'gpt-x',
+      name: 'GPT X',
+      tokenShare: 0,
+      stackCount: 0,
+      leadsCount: 0,
+    })
+  })
+})
+

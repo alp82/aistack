@@ -47,7 +47,7 @@ async function post(t: Ctx, body: string) {
   })
 }
 
-function command(name: string, userId: string, slug?: string) {
+function command(name: string, userId: string, slug?: string, option = 'stack') {
   return JSON.stringify({
     id: '1',
     application_id: '1540381573243736116',
@@ -57,7 +57,7 @@ function command(name: string, userId: string, slug?: string) {
       id: '2',
       name,
       type: 1,
-      options: slug === undefined ? [] : [{ name: 'stack', type: 3, value: slug }],
+      options: slug === undefined ? [] : [{ name: option, type: 3, value: slug }],
     },
     member: { user: { id: userId } },
   })
@@ -143,6 +143,71 @@ async function seedDays(t: Ctx, stackId: Id<'stacks'>) {
       })
     }
   })
+}
+
+/** The board reads freshness off the inventory rows, so a ranked stack needs one. */
+async function seedInventory(t: Ctx, stackId: Id<'stacks'>, harness = 'claude-code') {
+  await t.run(async (ctx) => {
+    await ctx.db.insert('measuredInventory', {
+      stackId,
+      machine: 'laptop',
+      harness,
+      harnessVersion: '2.1.220',
+      capturedAt: NOW,
+      receivedAt: NOW - 24 * 60 * 60 * 1000,
+      inventory: {
+        builtinTools: [],
+        mcpServers: [],
+        skills: [],
+        subagents: [],
+        slashCommands: [],
+        withheld: { builtinTools: 0, mcpServers: 0, skills: 0, subagents: 0, slashCommands: 0 },
+      },
+      modelsSeen: ['claude-opus-5'],
+      pricingTable: 'anthropic-list-2026-07-25',
+    })
+  })
+}
+
+async function seedSecondStack(t: Ctx) {
+  const stackId = await t.run(async (ctx) => {
+    const creatorId = await ctx.db.insert('creators', {
+      name: 'Sol',
+      slug: 'sol',
+      userId: 'user_sol',
+      verified: false,
+      personalPages: [],
+      projectPages: [],
+      createdAt: NOW,
+    })
+    return await ctx.db.insert('stacks', {
+      name: 'Solomon',
+      slug: 'solomon',
+      shortId: 'qmqzh8',
+      creatorId,
+      oneLiner: 'A stack',
+      toolSubscriptions: [],
+      hasUsageComponent: false,
+      published: true,
+      publishCost: false,
+      createdAt: NOW,
+      updatedAt: NOW,
+    })
+  })
+  await t.run(async (ctx) => {
+    await ctx.db.insert('measuredDays', {
+      stackId,
+      machine: 'desk',
+      date: '2026-08-28',
+      capturedAt: NOW,
+      receivedAt: NOW,
+      aggregateVersion: 'measured-days/v1',
+      fingerprint: 'sol-day',
+      usage: usageDay('gpt-5.6-sol', 6_000_000_000, 5_000, 'codex'),
+    })
+  })
+  await seedInventory(t, stackId, 'codex')
+  return stackId
 }
 
 async function patchedReply(t: Ctx, body: string) {
@@ -301,6 +366,126 @@ describe('/tokens', () => {
     const body = await res.json()
     expect(body.data.flags).toBe(64)
     expect(body.data.content).toMatch(/Run `\/link`/)
+  })
+})
+
+describe('/leaderboard', () => {
+  test('posts the ranked rows, the population line, and the price tables', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seed(t)
+    await seedDays(t, stackId)
+    await seedInventory(t, stackId)
+    await seedSecondStack(t)
+    const { deferral, patched } = await patchedReply(t, command('leaderboard', STRANGER))
+    expect(deferral).toEqual({ type: 5, data: {} })
+    const embed = patched.embeds[0]
+    expect(embed.title).toBe('AI coding leaderboard · measured, last 30 days')
+    expect(embed.url).toBe('https://aistack.test/leaderboard')
+    expect(embed.description).toBe(
+      [
+        '**1** [Solomon](https://aistack.test/stacks/solomon-qmqzh8) · `6.00B` · gpt-5.6-sol 100%',
+        "**2** [Alper's Agent Stack](https://aistack.test/stacks/alpers-agent-stack-unw0sl) · `4.50B` · Claude Opus 5 89% · `$4,380`",
+      ].join('\n'),
+    )
+    expect(embed.fields).toEqual([
+      {
+        name: 'All measured stacks',
+        value: '`10.50B` tokens · `2` stacks · `$4,380` at least, 1 of 2 publish cost',
+      },
+    ])
+    expect(embed.footer.text).toBe(
+      'Spend is a lower bound. Prices: anthropic-list-2026-07-25.',
+    )
+    expect(patched.components[0].components[0]).toEqual({
+      type: 2,
+      style: 5,
+      label: 'View leaderboard',
+      url: 'https://aistack.test/leaderboard',
+    })
+  })
+
+  test('prints no dollar figure when no stack publishes cost', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seed(t, { publishCost: false })
+    await seedDays(t, stackId)
+    await seedInventory(t, stackId)
+    const { patched } = await patchedReply(t, command('leaderboard', STRANGER))
+    expect(JSON.stringify(patched)).not.toContain('$')
+    expect(patched.embeds[0].fields[0].value).toBe('`4.50B` tokens · `1` stack')
+    expect(patched.embeds[0].footer.text).toBe(
+      "Counted on the builders' machines, published by them.",
+    )
+  })
+
+  test('with no living stack answers the empty-board error, ephemeral', async () => {
+    const t = convexTest(schema, modules)
+    await seed(t)
+    const res = await post(t, command('leaderboard', STRANGER))
+    const body = await res.json()
+    expect(body.type).toBe(4)
+    expect(body.data.flags).toBe(64)
+    expect(body.data.content).toContain('No stack has synced')
+  })
+})
+
+describe('/model', () => {
+  test('posts the share, adoption, and lead counts for a catalog model', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seed(t)
+    await seedDays(t, stackId)
+    await seedInventory(t, stackId)
+    await seedSecondStack(t)
+    const { patched } = await patchedReply(
+      t,
+      command('model', STRANGER, 'claude opus 5', 'model'),
+    )
+    const embed = patched.embeds[0]
+    expect(embed.title).toBe('Claude Opus 5 · measured, last 30 days')
+    expect(embed.url).toBe('https://aistack.test/leaderboard')
+    expect(embed.fields).toEqual([
+      { name: 'Token share', value: '`38%` of attributed tokens', inline: true },
+      { name: 'Measured on', value: '`1` stack', inline: true },
+      { name: 'Leads', value: '`1` stack', inline: true },
+    ])
+    expect(embed.footer.text).toBe(
+      'Share of tokens that carry a model name, across all measured stacks.',
+    )
+    expect(patched.components[0].components[0].label).toBe('View leaderboard')
+  })
+
+  test('resolves a raw measured id the catalog does not know', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seed(t)
+    await seedDays(t, stackId)
+    await seedInventory(t, stackId)
+    const { patched } = await patchedReply(t, command('model', STRANGER, 'GPT-5.6-SOL', 'model'))
+    expect(patched.embeds[0].title).toBe('gpt-5.6-sol · measured, last 30 days')
+    expect(patched.embeds[0].fields[0].value).toBe('`11%` of attributed tokens')
+  })
+
+  test('an unknown model answers the unknown-model error, ephemeral', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId } = await seed(t)
+    await seedDays(t, stackId)
+    await seedInventory(t, stackId)
+    const res = await post(t, command('model', STRANGER, 'gpt-9', 'model'))
+    const body = await res.json()
+    expect(body.type).toBe(4)
+    expect(body.data.flags).toBe(64)
+    expect(body.data.content).toBe(
+      'No model matches "gpt-9". Use a model name from the leaderboard, like `GPT-5.6 Sol` or `Claude Opus 5`.',
+    )
+  })
+
+  test('a catalog model no stack measured answers the no-measurement error', async () => {
+    const t = convexTest(schema, modules)
+    await seed(t)
+    const res = await post(t, command('model', STRANGER, 'claude-opus-5', 'model'))
+    const body = await res.json()
+    expect(body.data.flags).toBe(64)
+    expect(body.data.content).toBe(
+      'No measured stack ran Claude Opus 5 in the last 30 days.',
+    )
   })
 })
 
