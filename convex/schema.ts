@@ -280,7 +280,7 @@ const EffortLevel = v.union(
  */
 export const HarnessDay = v.object({
   // A plain string, not a union of the four adapter names - the same rule
-  // `measuredSnapshots.harness` follows, so a fifth harness needs no migration.
+  // `measuredInventory.harness` follows, so a fifth harness needs no migration.
   harness: v.string(),
   /** Sessions that STARTED on this day. */
   sessions: v.number(),
@@ -1190,88 +1190,6 @@ export default defineSchema({
     .index('by_key', ['key'])
     .index('by_windowStart', ['windowStart']),
 
-  // RETIRED (ADR-0011, #321). Nothing writes this table and nothing but
-  // `migrations/20260829_retire_snapshots` reads it. It stays declared so the
-  // migration can run against a deployed function set; the narrow deploy that
-  // follows the migration drops it.
-  measuredSnapshots: defineTable({
-    stackId: v.id('stacks'),
-    // Client clock, from the payload. Ordering key for "current".
-    capturedAt: v.number(),
-    // Server clock. The 7-day living-stacks bar trusts this one, because a
-    // client clock is attacker- and skew-controlled.
-    receivedAt: v.number(),
-    schemaVersion: v.number(),
-    // Denormalized copy of payload.harness.name (#66 decision 1), so "current
-    // per harness" is one indexed read. A plain string, not a union literal -
-    // a third harness must not need a schema migration.
-    harness: v.string(),
-    // Which machine published this (#243). The other half of the discriminator:
-    // "current" is the newest row per (harness, machine), because two machines
-    // running the same harness measure disjoint sessions and their readings sum.
-    // Keyed on the token's NAME rather than its id, deliberately - relinking a
-    // machine mints a second token, and by id that one machine would hold two
-    // buckets, the dead one carrying a stale reading forward forever.
-    //
-    // OPTIONAL FOREVER, not a migration phase. Rows written before tagging carry
-    // no machine and no backfill can invent one: unlike `harness` this is not in
-    // the payload, so it is not derivable after the fact. `convex/lib/sources.ts`
-    // states what an untagged row means instead.
-    machine: v.optional(v.string()),
-    // Which CLI wrote this row (#213, map #121's pending wire item). Before it,
-    // `cliVersion` reached PostHog and nothing else, so no query could answer
-    // "how many machines are still on an old wire" - the exact question every
-    // wire bump asks.
-    //
-    // Beside the payload rather than inside it, like `machine`: it describes the
-    // publisher, not the measurement, and the payload validator stays closed.
-    // Optional forever - rows written before #213 carry no version, and no
-    // backfill can invent one.
-    cliVersion: v.optional(v.string()),
-    payload: MeasuredPayload,
-  })
-    .index('by_stack_capturedAt', ['stackId', 'capturedAt'])
-    .index('by_stack_harness_capturedAt', ['stackId', 'harness', 'capturedAt']),
-
-  // The measured WORKFLOW layer (#218). One row per (stack, machine), REPLACED
-  // on every publish - the one place in the measured layer that is not
-  // append-only, and deliberately so.
-  //
-  // `measuredSnapshots` is append-only because the headline has a trail: a
-  // reading in March must still read the way it read in March. The workflow
-  // section has no trail in version 1 (spec, "The section"), and it carries the
-  // finest records the wire holds - one row per session, one entry per commit.
-  // Keeping every publish would grow the finest data fastest, for a surface
-  // nothing reads backwards. Replacing means a session that left the rolling
-  // window also leaves the database.
-  //
-  // ONE ROW PER MACHINE, and a reading is one machine's (ADR-0009). The Git
-  // half cannot be merged across machines - the wire carries no commit
-  // identity, so two clones of one repository would count their shared commits
-  // twice - and a pool metric's value has no denominator to merge on.
-  // RETIRED (ADR-0010, #321): absorbed into `measuredDays` by the 20260828
-  // migration. Declared only so `migrations/20260829_retire_snapshots:clear`
-  // can empty it; the narrow deploy drops it.
-  measuredWorkflowDays: defineTable({
-    stackId: v.id('stacks'),
-    // The publishing token's name, exactly like `measuredSnapshots.machine`.
-    // Absent when the token predates naming, which is one bucket of its own.
-    machine: v.optional(v.string()),
-    /** `YYYY-MM-DD`, UTC. */
-    date: v.string(),
-    /** Client clock: the newest `capturedAt` among the payloads of the publish that wrote this row. */
-    capturedAt: v.number(),
-    /** Server clock of the publish that wrote this row. Freshness is judged on this one, for the #33 reason. */
-    receivedAt: v.number(),
-    cliVersion: v.optional(v.string()),
-    aggregateVersion: v.string(),
-    /** Minutes east of UTC on the publishing machine, as of the publish that wrote this row. */
-    utcOffsetMinutes: v.optional(v.number()),
-    day: WorkflowDay,
-  })
-    .index('by_stack', ['stackId'])
-    .index('by_stack_machine_date', ['stackId', 'machine', 'date']),
-
   // The measured DAY (ADR-0010, ADR-0011, #307). One row per (stack, machine,
   // UTC date) holding both halves of the day: the usage atoms and the workflow
   // atoms, under one version and one content fingerprint. A re-synced day
@@ -1279,10 +1197,10 @@ export default defineSchema({
   // the CLI's send window and the page's read cap, and the database keeps
   // every day a machine ever published.
   //
-  // `measuredWorkflowDays` above is the table this one absorbed (20260828).
+  // It absorbed the retired `measuredWorkflowDays` table (20260828, ADR-0010).
   measuredDays: defineTable({
     stackId: v.id('stacks'),
-    /** The publishing token's name, like `measuredSnapshots.machine`. */
+    /** The publishing token's name (the CLI token's name, see convex/lib/sources.ts). */
     machine: v.optional(v.string()),
     /** `YYYY-MM-DD`, UTC. */
     date: v.string(),
@@ -1451,7 +1369,7 @@ export default defineSchema({
 
   // -------------------------------------------------------------------------
   // The activity feed (#77). Append-only, written at the moment things happen -
-  // NOT derived at read time from `measuredSnapshots`/`stacks`, because
+  // NOT derived at read time from `measuredInventory`/`stacks`, because
   // derivation gets expensive and cannot express "tool X added" at all.
   //
   // Visibility is enforced at READ time, which is the only place it can be

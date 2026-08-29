@@ -310,7 +310,6 @@ describe('publishSnapshot', () => {
     const rows = await t.run((ctx) => ctx.db.query('measuredInventory').collect())
     expect(rows).toHaveLength(1)
     expect(rows[0].capturedAt).toBe(2000)
-    expect(await t.run((ctx) => ctx.db.query('measuredSnapshots').collect())).toHaveLength(0)
   })
 
   test('rejects an unsupported schemaVersion instead of storing it', async () => {
