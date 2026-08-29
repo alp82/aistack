@@ -207,8 +207,8 @@ describe("usage - sum last_token_usage deltas, never the cumulative total", () =
 			tokenCount({ input: 1_000_000, output: 100_000 }),
 		]);
 		const f = finalize(agg);
-		// sol: 1M × $5 + 100k × $30; auto-review: 1M × $2.50 + 100k × $15.
-		expect(f.totalCostUSD).toBeCloseTo(5 + 3 + 2.5 + 1.5, 6);
+		// sol: 1M × $4 + 100k × $20 (models.dev, 2026-08-29); auto-review: 1M × $2.50 + 100k × $15.
+		expect(f.totalCostUSD).toBeCloseTo(4 + 2 + 2.5 + 1.5, 6);
 		expect(f.unpricedTokens).toBe(0);
 	});
 

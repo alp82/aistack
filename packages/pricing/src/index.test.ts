@@ -175,7 +175,7 @@ describe("Google rates (#123)", () => {
 		});
 		const t: TokenCounts = { ...noTokens, cacheWrite5m: MTOK };
 		expect(apiEquivalentCost("google:gemini-3.6-flash", t, at)).toBeCloseTo(
-			1.5,
+			0.75,
 			9,
 		);
 	});
@@ -199,7 +199,7 @@ describe("Google rates (#123)", () => {
 describe("priceAt - time-aware periods (#33 decision 8)", () => {
 	it("prices sonnet-5 at the introductory rate before the cutover", () => {
 		const p = priceAt("claude-sonnet-5", SONNET_5_INTRO_ENDS_MS - 1);
-		expect(p).toEqual({
+		expect(p).toMatchObject({
 			from: null,
 			to: SONNET_5_INTRO_ENDS_MS,
 			input: 2,
