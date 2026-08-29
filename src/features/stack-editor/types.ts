@@ -79,7 +79,6 @@ type ModelSubscriptionEntry = {
 		| "embedding"
 		| "other";
 	modelIconUrl?: string;
-	role: "primary" | "secondary" | "specialized";
 	description?: string;
 };
 

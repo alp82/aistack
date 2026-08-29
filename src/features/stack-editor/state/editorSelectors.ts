@@ -93,7 +93,6 @@ function selectSavePayload(state: EditorState, published: boolean) {
 		})),
 		modelSubscriptions: state.modelSubscriptions.map((model) => ({
 			modelSlug: model.modelSlug,
-			role: model.role,
 			description: model.description,
 		})),
 		accentPreset: state.accentPreset || undefined,

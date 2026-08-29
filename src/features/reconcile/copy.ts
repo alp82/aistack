@@ -9,7 +9,6 @@
  *   the measured layer ....... from your machine
  *   authored ................. what you've listed / your stack
  *   suggestion ............... thing to look at
- *   missing_from_authored .... "You use this, but it's not on your stack"
  *   missing_what_for ......... "You haven't said what you use this for"
  *   what-for note ............ note
  *   dismiss .................. hide
@@ -41,28 +40,16 @@ export type ReconcileItem = {
 	atomKind: "model" | "tool" | "mcpServer" | "skill";
 	atomKey: string;
 	label: string;
-	kind: "missing_from_authored" | "missing_what_for";
-	tokenShare?: number;
-	apiEquivalentUSD?: number;
+	/**
+	 * Only the what-for question is left. Measured models fill the stack's
+	 * model list by themselves (#338), so nothing asks to add one.
+	 */
+	kind: "missing_what_for";
 };
 
 /** What the item is asking the owner. */
-export function askLine(item: ReconcileItem): string {
-	return item.kind === "missing_from_authored"
-		? "You use this, but it's not on your stack"
-		: "You haven't said what you use this for";
-}
-
-/** "62% of everything you ran" - a share, never a raw token count. */
-export function usageLine(item: ReconcileItem): string | null {
-	if (item.tokenShare === undefined) return null;
-	return `${Math.round(item.tokenShare * 100)}% of everything you ran`;
-}
-
-/** "≈$3,402 at API prices" - absent when the sync withheld cost. */
-export function priceLine(item: ReconcileItem): string | null {
-	if (item.apiEquivalentUSD === undefined) return null;
-	return `≈$${Math.round(item.apiEquivalentUSD).toLocaleString("en-US")} at API prices`;
+export function askLine(_item: ReconcileItem): string {
+	return "You haven't said what you use this for";
 }
 
 /** The one line the sticky banner leads with. */

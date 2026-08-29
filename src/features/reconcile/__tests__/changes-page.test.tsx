@@ -47,13 +47,13 @@ const STACK_ID = "stack_1" as never;
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
 
-const MODEL_ITEM = {
-	atomKind: "model" as const,
-	atomKey: "claude-opus-5",
-	label: "Claude Opus 5",
-	kind: "missing_from_authored" as const,
-	tokenShare: 0.62,
-	apiEquivalentUSD: 3402.4,
+// Two what-for items. The measured-model kind is gone (#338): measured
+// models fill the stack's list by themselves, so nothing here asks to add one.
+const LINEAR_ITEM = {
+	atomKind: "tool" as const,
+	atomKey: "linear",
+	label: "Linear",
+	kind: "missing_what_for" as const,
 };
 
 const TOOL_ITEM = {
@@ -67,7 +67,7 @@ type Suggestions = {
 	hasSnapshot: boolean;
 	receivedAt: number | null;
 	isFresh: boolean;
-	suggestions: Array<typeof MODEL_ITEM | typeof TOOL_ITEM>;
+	suggestions: Array<typeof LINEAR_ITEM | typeof TOOL_ITEM>;
 	dismissedCount: number;
 };
 
@@ -104,7 +104,6 @@ function setup(opts: {
 }) {
 	const spies = {
 		applyWhatFor: vi.fn().mockResolvedValue(null),
-		addMeasuredModel: vi.fn().mockResolvedValue(null),
 		dismissSuggestion: vi.fn().mockResolvedValue(null),
 		undismissSuggestion: vi.fn().mockResolvedValue(null),
 		addPublishedNameOptIns: vi.fn().mockResolvedValue({ added: 1 }),
@@ -123,7 +122,6 @@ function setup(opts: {
 	mutationMock.mockImplementation((ref: never) => {
 		const name = getFunctionName(ref);
 		if (name.endsWith("applyWhatFor")) return spies.applyWhatFor;
-		if (name.endsWith("addMeasuredModel")) return spies.addMeasuredModel;
 		if (name.endsWith("addPublishedNameOptIns"))
 			return spies.addPublishedNameOptIns;
 		if (name.endsWith("removePublishedNameOptIns"))
@@ -148,7 +146,7 @@ const FRESH: Suggestions = {
 	hasSnapshot: true,
 	receivedAt: Date.now() - 2 * HOUR,
 	isFresh: true,
-	suggestions: [MODEL_ITEM, TOOL_ITEM],
+	suggestions: [LINEAR_ITEM, TOOL_ITEM],
 	dismissedCount: 0,
 };
 
@@ -211,27 +209,13 @@ describe("freshness", () => {
 });
 
 describe("answering", () => {
-	it("adds a measured model, and shows its share and price", async () => {
+	it("leaves an item blank when the owner says so", () => {
 		const spies = setup({ data: FRESH });
-
-		expect(screen.getByText("62% of everything you ran")).toBeTruthy();
-		// The dollar figure is never a bill.
-		expect(screen.getByText("≈$3,402 at API prices")).toBeTruthy();
-
-		fireEvent.click(screen.getByRole("button", { name: /Add it/ }));
-		expect(spies.addMeasuredModel).toHaveBeenCalledWith({
-			stackId: STACK_ID,
-			modelSlug: "claude-opus-5",
-		});
-	});
-
-	it("hides an item the owner says is not theirs", () => {
-		const spies = setup({ data: FRESH });
-		fireEvent.click(screen.getByRole("button", { name: /Not mine, hide it/ }));
+		fireEvent.click(screen.getByRole("button", { name: /Leave it blank/ }));
 		expect(spies.dismissSuggestion).toHaveBeenCalledWith({
 			stackId: STACK_ID,
-			atomKind: "model",
-			atomKey: "claude-opus-5",
+			atomKind: "tool",
+			atomKey: "linear",
 		});
 	});
 
@@ -262,7 +246,10 @@ describe("one meter across both views", () => {
 		expect(screen.getByText("0 of 2 done")).toBeTruthy();
 
 		// Answer one on the card.
-		fireEvent.click(screen.getByRole("button", { name: /Add it/ }));
+		fireEvent.change(screen.getByLabelText("What you use Linear for"), {
+			target: { value: "tickets" },
+		});
+		fireEvent.click(screen.getByRole("button", { name: /Save it/ }));
 		expect(await screen.findByText("1 of 2 done")).toBeTruthy();
 		expect(screen.getByText("50%")).toBeTruthy();
 
@@ -320,8 +307,8 @@ describe("the vocabulary binds", () => {
 		]) {
 			expect(text.toLowerCase()).not.toContain(banned);
 		}
-		// The two kept on purpose, because replacing them would be a lie.
-		expect(text).toContain("API prices");
+		// "API prices" left with the measured-model card (#338); the page no
+		// longer prints a dollar figure.
 	});
 });
 

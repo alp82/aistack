@@ -249,7 +249,6 @@ export function StackEditor({
 				modelProvider: fullModel.provider,
 				modelCategory: fullModel.category,
 				modelIconUrl: fullModel.iconUrl,
-				role: "primary",
 			};
 
 			setModelSubscriptions([...currentState.modelSubscriptions, entry]);

@@ -1,3 +1,4 @@
+import { useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	Brain,
@@ -25,10 +26,12 @@ import {
 	type ToolSubscriptionEntry,
 } from "@/components/ToolPicker";
 import { UnifiedResourceList } from "@/components/UnifiedResourceList";
+import { MeasuredModels } from "@/features/stack-editor/components/MeasuredModels";
 import { useEditorContext } from "@/features/stack-editor/context/EditorContext";
 import type { Resource } from "@/features/stack-editor/types";
 import { sumNormalizedMonthlyAmounts } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
+import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
 type SidebarSection = "tools" | "bundles" | "models" | "resources" | null;
@@ -65,6 +68,16 @@ function ToolsSidebar({
 	// Accordion state - only one section open at a time
 	// Tools section starts expanded by default (especially important when no tools exist yet)
 	const [activeSection, setActiveSection] = useState<SidebarSection>("tools");
+	// The measured half of the model list (#338): owner-only, none on a draft.
+	const measuredModels =
+		useQuery(
+			api.stacks.listMeasuredModels,
+			stackId && !guestSession ? { stackId } : "skip",
+		) ?? [];
+	const measuredSlugs = useMemo(
+		() => measuredModels.map((m) => m.slug),
+		[measuredModels],
+	);
 	const [editingResource, setEditingResource] = useState<
 		Resource | "new" | null
 	>(null);
@@ -444,7 +457,7 @@ function ToolsSidebar({
 					</div>
 					<div className="flex items-center gap-2">
 						<span className="font-mono text-[10px] text-fg-muted">
-							{models.length}
+							{models.length + measuredModels.length}
 						</span>
 						{activeSection === "models" ? (
 							<ChevronUp className="size-4 text-accent-lime" />
@@ -455,10 +468,14 @@ function ToolsSidebar({
 				</button>
 				{activeSection === "models" && (
 					<div className="mt-3">
+						{stackId && (
+							<MeasuredModels stackId={stackId} models={measuredModels} />
+						)}
 						<ModelPicker
 							value={models}
 							onChange={handleModelsChange}
 							onModelClick={handleModelClick}
+							excludeSlugs={measuredSlugs}
 						/>
 					</div>
 				)}

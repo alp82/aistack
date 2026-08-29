@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, Pencil } from "lucide-react";
-import { type ReactNode, useId, useMemo, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { TableOfContents } from "@/components/TableOfContents";
 import { TiptapEditor } from "@/components/TiptapEditor";
 import { formatPriceDisplay, sortToolsByPrice } from "@/lib/pricing";
@@ -119,15 +119,6 @@ export function ToolsSection({
 
 	const price = formatPriceDisplay(fixedTotal?.amount ?? 0, "month", "floor");
 
-	const sortedModels = useMemo(
-		() =>
-			[...models].sort((a, b) => {
-				const p = a.provider.localeCompare(b.provider);
-				return p !== 0 ? p : b.name.localeCompare(a.name);
-			}),
-		[models],
-	);
-
 	if (tools.length === 0) return null;
 
 	return (
@@ -152,7 +143,8 @@ export function ToolsSection({
 						onOpenChange={onModelsOpenChange}
 					>
 						<div className={cn("grid grid-cols-1 sm:grid-cols-2", GAP)}>
-							{sortedModels.map((m) => (
+							{/* Server order (#338): measured by share, then picks. Nothing ranks here. */}
+							{models.map((m) => (
 								<ModelTile key={m._id} model={m} />
 							))}
 						</div>
