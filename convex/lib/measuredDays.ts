@@ -18,6 +18,7 @@ import type { Infer } from 'convex/values'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import type { MeasuredDayWire, MeasuredPayload, WorkflowWire } from '../schema'
+import type { Pricer } from '@aistack/pricing'
 import { repriceSnapshot } from './reprice'
 import { sourceOrder, visibleSources } from './sources'
 import {
@@ -299,8 +300,13 @@ export type LegacyFigure = NonNullable<Doc<'measuredInventory'>['legacy']>
  * retirement migration for the snapshots it copies, and by every publish from
  * a client that sends no day wire, so an old CLI keeps its stack readable.
  */
-export function legacyOf(payload: Payload, publishCost: boolean): LegacyFigure {
+export function legacyOf(
+  payload: Payload,
+  publishCost: boolean,
+  pricer: Pricer
+): LegacyFigure {
   const { cost } = repriceSnapshot({
+    pricer,
     models: payload.models,
     window: payload.window,
     publishedTable: payload.pricingTable,

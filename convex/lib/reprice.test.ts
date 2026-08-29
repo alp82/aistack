@@ -5,7 +5,10 @@ import {
   PRICING_TABLE_VERSION,
 } from '@aistack/pricing'
 import { describe, expect, it } from 'vitest'
+import { bundledPricer } from '@aistack/pricing'
 import { repriceSnapshot, type WireModel } from './reprice'
+
+const pricer = bundledPricer()
 
 const MTOK = 1_000_000
 
@@ -38,6 +41,7 @@ describe('repriceSnapshot - the gap filler (#93)', () => {
       },
     ]
     const out = repriceSnapshot({
+      pricer,
       models,
       window: JULY,
       publishedTable: PRICING_TABLE_VERSION,
@@ -62,6 +66,7 @@ describe('repriceSnapshot - the gap filler (#93)', () => {
     // The prod defect: `openai-list-2026-08-01` does not price the gpt-5.6
     // family, so three of four stacks published a fraction of their real cost.
     const out = repriceSnapshot({
+      pricer,
       models: [
         { id: 'gpt-5.6-sol', tokens: tokens({ input: MTOK, output: MTOK }) },
       ],
@@ -70,13 +75,13 @@ describe('repriceSnapshot - the gap filler (#93)', () => {
       publishCost: true,
     })
 
-    expect(out.models[0].apiEquivalentUSD).toBeCloseTo(35, 9) // $5 in + $30 out
+    expect(out.models[0].apiEquivalentUSD).toBeCloseTo(24, 9) // $4 in + $20 out (models.dev, 2026-08-29)
     expect(out.models[0].costEstimated).toBe(true)
     expect(out.repricedTokens).toBe(2 * MTOK)
     expect(out.cost).toMatchObject({
-      lowerBoundUSD: 35,
+      lowerBoundUSD: 24,
       publishedUSD: 0,
-      estimatedUSD: 35,
+      estimatedUSD: 24,
       coverage: 1,
     })
     // The estimate is cited by OUR table. The payload's table priced nothing
@@ -86,6 +91,7 @@ describe('repriceSnapshot - the gap filler (#93)', () => {
 
   it('mixes an exact row and an estimated row in one reading', () => {
     const out = repriceSnapshot({
+      pricer,
       models: [
         {
           id: 'claude-opus-5',
@@ -115,6 +121,7 @@ describe('repriceSnapshot - the gap filler (#93)', () => {
     // `unknown` is not a model, so no rate can ever apply. OrcDev's coverage
     // caps at 85.2% for exactly this reason, and the number has to show it.
     const out = repriceSnapshot({
+      pricer,
       models: [
         { id: 'gpt-5.6-sol', tokens: tokens({ input: 8 * MTOK }) },
         { id: 'unknown', tokens: tokens({ input: 2 * MTOK }) },
@@ -133,6 +140,7 @@ describe('repriceSnapshot - the gap filler (#93)', () => {
     // The flag is the gate, not the presence of dollars. A stack that switched
     // `publishCost` off still has dollars in its stored payloads.
     const out = repriceSnapshot({
+      pricer,
       models: [
         {
           id: 'claude-opus-5',
@@ -153,6 +161,7 @@ describe('repriceSnapshot - the gap filler (#93)', () => {
 
   it('reports no cost when nothing in the window can be priced', () => {
     const out = repriceSnapshot({
+      pricer,
       models: [{ id: 'unknown', tokens: tokens({ input: MTOK }) }],
       window: JULY,
       publishedTable: null,
@@ -166,6 +175,7 @@ describe('repriceSnapshot - the gap filler (#93)', () => {
     // priced from is gone. Assuming the 1.25x tier under-reports Claude Code by
     // ~8%, which is what keeps every server-side figure a lower bound.
     const out = repriceSnapshot({
+      pricer,
       models: [{ id: 'claude-opus-5', tokens: tokens({ cacheWrite: MTOK }) }],
       window: JULY,
       publishedTable: 'anthropic-list-2026-01-01',
@@ -179,6 +189,7 @@ describe('repriceSnapshot - the gap filler (#93)', () => {
     // costs 2.0x input against the 5m tier's 1.25x - so this reads $8.125 where
     // the merged form reads $6.25, and the 30% gap is the bias #213 removes.
     const out = repriceSnapshot({
+      pricer,
       models: [
         {
           id: 'claude-opus-5',
@@ -205,6 +216,7 @@ describe('repriceSnapshot - the gap filler (#93)', () => {
     // at 2.0x would let an estimate overstate, and this module has exactly one
     // direction it may resolve an unknown in.
     const out = repriceSnapshot({
+      pricer,
       models: [
         {
           id: 'claude-opus-5',
@@ -225,6 +237,7 @@ describe('repriceSnapshot - the gap filler (#93)', () => {
     // The TTL tiers are Anthropic's. A vendor whose cache multipliers are 1.0
     // must not acquire a 2.0x tier by carrying a breakdown.
     const split = repriceSnapshot({
+      pricer,
       models: [
         {
           id: 'gemini-3-pro',
@@ -239,6 +252,7 @@ describe('repriceSnapshot - the gap filler (#93)', () => {
       publishCost: true,
     })
     const merged = repriceSnapshot({
+      pricer,
       models: [{ id: 'gemini-3-pro', tokens: tokens({ cacheWrite: MTOK }) }],
       window: JULY,
       publishedTable: null,
@@ -251,6 +265,7 @@ describe('repriceSnapshot - the gap filler (#93)', () => {
 
   it('charges a cache read at a tenth of the input rate', () => {
     const out = repriceSnapshot({
+      pricer,
       models: [{ id: 'claude-opus-5', tokens: tokens({ cacheRead: MTOK }) }],
       window: JULY,
       publishedTable: 'anthropic-list-2026-01-01',
@@ -265,6 +280,7 @@ describe('repriceSnapshot - the gap filler (#93)', () => {
     // lower bound instead of a guess that can overstate.
     const straddling = { from: '2026-08-20', to: '2026-09-05' }
     const out = repriceSnapshot({
+      pricer,
       models: [
         { id: 'claude-sonnet-5', tokens: tokens({ input: MTOK, output: MTOK }) },
       ],
@@ -278,6 +294,7 @@ describe('repriceSnapshot - the gap filler (#93)', () => {
   it('uses the only rate the window can pay when it straddles nothing', () => {
     const after = { from: '2026-09-05', to: '2026-10-05' }
     const out = repriceSnapshot({
+      pricer,
       models: [
         { id: 'claude-sonnet-5', tokens: tokens({ input: MTOK, output: MTOK }) },
       ],
@@ -290,6 +307,7 @@ describe('repriceSnapshot - the gap filler (#93)', () => {
 
   it('estimates nothing from a window it cannot read', () => {
     const out = repriceSnapshot({
+      pricer,
       models: [
         { id: 'gpt-5.6-sol', tokens: tokens({ input: MTOK }) },
         {
@@ -309,6 +327,7 @@ describe('repriceSnapshot - the gap filler (#93)', () => {
 
   it('reports full coverage for a snapshot with no tokens at all', () => {
     const out = repriceSnapshot({
+      pricer,
       models: [],
       window: JULY,
       publishedTable: null,
@@ -324,6 +343,7 @@ describe('per-model citations from a mixed-vendor payload (#136)', () => {
     // old shape stamped one id over both - a false citation. The new shape
     // carries the table on the model, and the top-level field is null.
     const out = repriceSnapshot({
+      pricer,
       models: [
         {
           id: 'openai:gpt-5.4',
@@ -352,6 +372,7 @@ describe('per-model citations from a mixed-vendor payload (#136)', () => {
   it('falls back to the payload table for a model with no citation of its own', () => {
     // The old wire shape: dollars on the model, one table on the payload.
     const out = repriceSnapshot({
+      pricer,
       models: [
         {
           id: 'claude-opus-5',
@@ -368,6 +389,7 @@ describe('per-model citations from a mixed-vendor payload (#136)', () => {
 
   it('does not repeat a table cited by both a published and an estimated row', () => {
     const out = repriceSnapshot({
+      pricer,
       models: [
         {
           id: 'openai:gpt-5.4',
@@ -388,6 +410,7 @@ describe('per-model citations from a mixed-vendor payload (#136)', () => {
     // Cost is absent, not zeroed - and a citation with nothing to cite would
     // leak that a figure existed.
     const out = repriceSnapshot({
+      pricer,
       models: [
         {
           id: 'openai:gpt-5.4',
@@ -408,6 +431,7 @@ describe('per-model citations from a mixed-vendor payload (#136)', () => {
     // An estimated figure is cited by OUR table, per model, the same way a
     // published figure is cited by the CLI's.
     const out = repriceSnapshot({
+      pricer,
       models: [{ id: 'gpt-5.6-sol', tokens: tokens({ input: MTOK }) }],
       window: JULY,
       publishedTable: null,
@@ -421,6 +445,7 @@ describe('per-model citations from a mixed-vendor payload (#136)', () => {
 describe('provider-qualified ids from a multi-provider harness (#123)', () => {
   it('estimates a Google row at the Google list rate', () => {
     const out = repriceSnapshot({
+      pricer,
       models: [
         {
           id: 'google:gemini-3-pro-preview',
@@ -441,6 +466,7 @@ describe('provider-qualified ids from a multi-provider harness (#123)', () => {
     // the standard input rate to write. 1.25x would put the estimate ABOVE the
     // real cost.
     const out = repriceSnapshot({
+      pricer,
       models: [
         {
           id: 'google:gemini-3.6-flash',
@@ -451,14 +477,15 @@ describe('provider-qualified ids from a multi-provider harness (#123)', () => {
       publishedTable: null,
       publishCost: true,
     })
-    // $1.50 write + $0.15 read.
-    expect(out.models[0].apiEquivalentUSD).toBe(1.65)
+    // $0.75 write + $0.075 read (models.dev rate, 2026-08-29).
+    expect(out.models[0].apiEquivalentUSD).toBe(0.83)
   })
 
   it('leaves a gateway row unpriced instead of borrowing the vendor rate', () => {
     // github-copilot re-serves `gemini-3-pro-preview` at terms no list page
     // states (#122). An estimate here would be invented, and could overstate.
     const out = repriceSnapshot({
+      pricer,
       models: [
         {
           id: 'github-copilot:gemini-3-pro-preview',
@@ -483,6 +510,7 @@ describe('provider-qualified ids from a multi-provider harness (#123)', () => {
 
   it('counts a local model as covered at zero rather than as a table gap', () => {
     const out = repriceSnapshot({
+      pricer,
       models: [
         { id: 'ollama:qwen3-coder', tokens: tokens({ input: MTOK }) },
         {
