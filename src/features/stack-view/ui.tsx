@@ -1,6 +1,7 @@
 import { ArrowUpRight } from "lucide-react";
 import type { ReactNode } from "react";
 import { categoryConfig } from "@/config/categoryConfig";
+import { monochromeLogoClass } from "@/lib/iconTheme";
 import { formatPriceDisplay } from "@/lib/pricing";
 import { useScrollHighlight } from "@/lib/useScrollHighlight";
 import { cn } from "@/lib/utils";
@@ -100,6 +101,7 @@ export function StackIcon({
 				className={cn(
 					ICON_SIZES[size].split(" ")[0],
 					"shrink-0 border border-stroke-subtle object-contain p-1",
+					monochromeLogoClass(src),
 					className,
 				)}
 			/>
