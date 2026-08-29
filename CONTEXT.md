@@ -255,3 +255,24 @@ measured together with no cause claimed.
 **Owner mirror**:
 A private local view that names the owner's biggest measured time sink and its lever.
 It never publishes.
+
+### Model catalog
+
+**Model id**:
+The vendor's bare API id, such as `claude-sonnet-5` or `gpt-5.4`. It is the catalog slug
+and the only key for a model across the catalog, the price history, stack picks and
+measured ids.
+_Avoid_: slug (when it means a minted spelling), vendorId
+
+**Price period**:
+One dated rate for one model id, in effect from its start until the next period starts.
+Each period names the source that priced it.
+_Avoid_: price table version (that named a whole constant, not one rate)
+
+**Priced lane**:
+A measured id that carries a rate but names no model a person can choose, such as
+`codex-auto-review`. Its spend counts and it never fills a stack.
+
+**Pending model**:
+A catalog row the import or a measured id created that an admin has not approved. It
+prices and fills stacks; pending only means not public.
