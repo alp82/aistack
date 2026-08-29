@@ -191,6 +191,26 @@ The Workflow section on the stack page. Spec:
   records what a session was for, so `playbook-rules/v1` names its two tracks the shorter
   and the longer sessions. A receipt card's head names both sides and claims no direction.
 
+## Discord bot
+
+Spec: [docs/specs/discord-bot.md](docs/specs/discord-bot.md). The interactions endpoint is
+a Convex `httpAction` (`convex/discordInteractions.ts`); there is no gateway process and
+the app needs zero privileged intents.
+
+* **Register the commands** after changing `scripts/lib/discordCommandDefinitions.ts`:
+  `DISCORD_APP_ID=... DISCORD_BOT_TOKEN=... pnpm tsx scripts/discord-register-commands.ts`.
+  It PUTs the global set; `--dry-run` prints the payload, and `DISCORD_GUILD_ID=...`
+  registers on one guild for instant testing (global takes up to an hour). The bot token
+  is used only there and is never a deployment variable.
+* Command names must equal the keys of `COMMANDS` in `convex/discordInteractions.ts`.
+  `convex/discordCommandDefinitions.test.ts` fails when they drift.
+* Every command sets `integration_types: [0, 1]` (guild install, user install) and
+  `contexts: [0, 1, 2]` (guild, bot DM, private channel).
+* The owner sets the Developer Portal by hand: Installation > Install contexts, both
+  User Install and Guild Install enabled; General Information > Interactions Endpoint URL
+  pointing at the Convex site URL plus `/api/discord/interactions`; Bot > Privileged Gateway Intents
+  all off.
+
 ## News
 
 Everything about the news pipeline starts here.
