@@ -9,6 +9,7 @@ import { useQuery } from "convex/react";
 import {
 	ChartNoAxesColumn,
 	ClipboardCheck,
+	Download,
 	Flag,
 	Mail,
 	Newspaper,
@@ -18,6 +19,7 @@ import {
 	AdminEmailTab,
 	type EmailSubTab,
 } from "@/components/admin/AdminEmailTab";
+import { AdminImportTab } from "@/components/admin/AdminImportTab";
 import { AdminNewsTab, type NewsSubTab } from "@/components/admin/AdminNewsTab";
 import { AdminQualityTab } from "@/components/admin/AdminQualityTab";
 import { AdminReviewTab } from "@/components/admin/AdminReviewTab";
@@ -26,7 +28,7 @@ import { coerceEnum } from "@/lib/searchParams";
 import { seoMeta } from "@/lib/seo";
 import { api } from "../../convex/_generated/api";
 
-type AdminTab = "review" | "quality" | "email" | "views" | "news";
+type AdminTab = "review" | "quality" | "email" | "views" | "news" | "import";
 
 export const ADMIN_SEARCH_DEFAULTS = {
 	tab: "review" as AdminTab,
@@ -42,7 +44,7 @@ export const Route = createFileRoute("/admin")({
 	): { tab?: AdminTab; view?: EmailSubTab; news?: NewsSubTab } => ({
 		tab: coerceEnum(
 			search.tab,
-			["review", "quality", "email", "views", "news"] as const,
+			["review", "quality", "email", "views", "news", "import"] as const,
 			"review",
 		),
 		view: coerceEnum(
@@ -204,6 +206,18 @@ function AdminPage() {
 								</span>
 							) : null}
 						</button>
+						<button
+							type="button"
+							onClick={() => setSearch({ tab: "import" })}
+							className={`inline-flex items-center gap-2 border-b-2 px-6 py-4 font-mono text-sm font-semibold uppercase tracking-wide transition-colors -mb-[2px] ${
+								tab === "import"
+									? "border-accent-lime text-accent-lime"
+									: "border-transparent text-fg-muted hover:text-fg-primary"
+							}`}
+						>
+							<Download className="size-4" />
+							Import
+						</button>
 						<LivingStacks />
 					</div>
 				</div>
@@ -219,6 +233,7 @@ function AdminPage() {
 				/>
 			)}
 			{tab === "views" && <AdminViewsTab />}
+			{tab === "import" && <AdminImportTab />}
 			{tab === "news" && (
 				<AdminNewsTab
 					view={news}
