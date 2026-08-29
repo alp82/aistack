@@ -80,7 +80,7 @@ interface CommandSpec {
 }
 
 /** The command registry. Later tickets add their entries here. */
-const COMMANDS: Record<string, CommandSpec> = {
+export const COMMANDS: Record<string, CommandSpec> = {
   link: {
     ephemeral: true,
     reply: async (ctx, call) =>
