@@ -280,7 +280,7 @@ test('a model or bundle change is a composition change too', async () => {
 
   await asCreator.mutation(api.stacks.update, {
     stackId: created._id,
-    modelSubscriptions: [{ modelSlug: 'opus-5', role: 'primary' }],
+    modelSubscriptions: [{ modelSlug: 'opus-5' }],
   })
 
   const rows = await events(t)

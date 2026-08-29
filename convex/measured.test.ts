@@ -948,7 +948,7 @@ describe('reconcile', () => {
     expect(result.suggestions).toEqual([])
   })
 
-  test('suggests a measured model missing from the authored list', async () => {
+  test('never asks to add a measured model: the model list derives it (#338)', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStack(t)
     await t.run(async (ctx) => {
@@ -973,18 +973,7 @@ describe('reconcile', () => {
     const result = await asOwner.query(api.measured.getReconcileSuggestions, { stackId })
     expect(result.hasSnapshot).toBe(true)
     expect(result.isFresh).toBe(true)
-    expect(result.receivedAt).toBeGreaterThan(0)
-    expect(result.suggestions).toEqual([
-      {
-        atomKind: 'model',
-        atomKey: 'claude-opus-5',
-        label: 'Claude Opus 5',
-        kind: 'missing_from_authored',
-        tokenShare: 1,
-        // The price line the card shows; absent when the client withheld cost.
-        apiEquivalentUSD: 12.34,
-      },
-    ])
+    expect(result.suggestions).toEqual([])
   })
 
   test('reports an old snapshot as present but not fresh', async () => {
@@ -1126,70 +1115,7 @@ describe('reconcile', () => {
     ).rejects.toThrow(/not on this stack/i)
   })
 
-  test('addMeasuredModel appends once, primary first, and clears the suggestion', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId } = await seedStack(t)
-    await t.run(async (ctx) => {
-      await ctx.db.insert('models', {
-        name: 'Claude Opus 5',
-        slug: 'claude-opus-5',
-        shortId: 'mopus5',
-        provider: 'anthropic',
-        category: 'language',
-        reviewStatus: 'approved',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      })
-      await ctx.db.insert('models', {
-        name: 'Claude Haiku 4.5',
-        slug: 'claude-haiku-4-5',
-        shortId: 'mhaiku',
-        provider: 'anthropic',
-        category: 'language',
-        reviewStatus: 'approved',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      })
-    })
-    await t.mutation(internal.measured.publishSnapshot, { stackId, payload: payload() })
-    const asOwner = t.withIdentity(IDENTITY)
-
-    await asOwner.mutation(api.measured.addMeasuredModel, {
-      stackId,
-      modelSlug: 'claude-opus-5',
-    })
-    // Idempotent: the same answer twice is one row.
-    await asOwner.mutation(api.measured.addMeasuredModel, {
-      stackId,
-      modelSlug: 'claude-opus-5',
-    })
-    await asOwner.mutation(api.measured.addMeasuredModel, {
-      stackId,
-      modelSlug: 'claude-haiku-4-5',
-    })
-
-    const stack = await t.run((ctx) => ctx.db.get(stackId))
-    expect(stack!.modelSubscriptions).toEqual([
-      { modelSlug: 'claude-opus-5', role: 'primary' },
-      { modelSlug: 'claude-haiku-4-5', role: 'secondary' },
-    ])
-
-    const result = await asOwner.query(api.measured.getReconcileSuggestions, { stackId })
-    expect(result.suggestions).toEqual([])
-  })
-
-  test('addMeasuredModel refuses a model the catalog does not carry', async () => {
-    const t = convexTest(schema, modules)
-    const { stackId } = await seedStack(t)
-    await expect(
-      t.withIdentity(IDENTITY).mutation(api.measured.addMeasuredModel, {
-        stackId,
-        modelSlug: 'gpt-9',
-      }),
-    ).rejects.toThrow(/not in the catalog/i)
-  })
-
-  test('the two writes into the authored layer are owner-only', async () => {
+  test('the what-for write into the authored layer is owner-only', async () => {
     const t = convexTest(schema, modules)
     const { stackId } = await seedStackWithTool(t, '')
     const asStranger = t.withIdentity(OTHER_IDENTITY)
@@ -1199,12 +1125,6 @@ describe('reconcile', () => {
         stackId,
         toolSlug: 'cursor',
         whatFor: 'mine now',
-      }),
-    ).rejects.toThrow(/not authorized/i)
-    await expect(
-      asStranger.mutation(api.measured.addMeasuredModel, {
-        stackId,
-        modelSlug: 'claude-opus-5',
       }),
     ).rejects.toThrow(/not authorized/i)
   })

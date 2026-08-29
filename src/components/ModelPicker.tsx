@@ -1,12 +1,12 @@
 import { useQuery } from "convex/react";
 import { Brain, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
+import type { ModelSubscriptionEntry } from "@/features/stack-editor/types";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import type { ModelSubscriptionEntry } from "@/features/stack-editor/types";
-import { AddMissingItemButton } from "./AddMissingItemButton";
 import { AddItemModal } from "./AddItemModal";
-import { PickerEntryCard, PickerToggleButton, PickerBrowser } from "./picker";
+import { AddMissingItemButton } from "./AddMissingItemButton";
+import { PickerBrowser, PickerEntryCard, PickerToggleButton } from "./picker";
 
 export type ModelCategory =
 	| "language"
@@ -25,6 +25,8 @@ interface ModelPickerProps {
 	value: ModelSubscriptionEntry[];
 	onChange: (models: ModelSubscriptionEntry[]) => void;
 	onModelClick?: (model: ModelSubscriptionEntry) => void;
+	/** Slugs the stack's syncs already cover (#338); the browser leaves them out. */
+	excludeSlugs?: string[];
 }
 
 const categoryLabels: Record<ModelCategory, string> = {
@@ -43,6 +45,7 @@ export function ModelPicker({
 	value,
 	onChange,
 	onModelClick,
+	excludeSlugs = [],
 }: ModelPickerProps) {
 	const allModels = useQuery(api.models.listForEditor) ?? [];
 	const [search, setSearch] = useState("");
@@ -52,7 +55,10 @@ export function ModelPicker({
 	const [showAddModal, setShowAddModal] = useState(false);
 	const [customModelName, setCustomModelName] = useState("");
 
-	const selectedModelSlugs = new Set(value.map((m) => m.modelSlug));
+	const selectedModelSlugs = new Set([
+		...value.map((m) => m.modelSlug),
+		...excludeSlugs,
+	]);
 
 	const availableCategories = useMemo(() => {
 		const categories = new Set<ModelCategory>();
@@ -96,7 +102,6 @@ export function ModelPicker({
 			modelProvider: model.provider,
 			modelCategory: model.category,
 			modelIconUrl: model.iconUrl,
-			role: "primary",
 		};
 		onChange([...value, entry]);
 	};
@@ -112,7 +117,6 @@ export function ModelPicker({
 			modelName: customModelName.trim(),
 			modelProvider: "Custom",
 			modelCategory: "other",
-			role: "primary",
 		};
 		onChange([...value, entry]);
 		setCustomModelName("");

@@ -144,7 +144,6 @@ function EditStackPage() {
 					modelCategory:
 						m.modelCategory as ModelSubscriptionEntry["modelCategory"],
 					modelIconUrl: m.modelIconUrl,
-					role: m.role,
 				})),
 			}}
 		/>

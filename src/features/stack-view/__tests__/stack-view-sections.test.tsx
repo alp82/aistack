@@ -77,7 +77,8 @@ function makeModel(overrides: Partial<StackModel> = {}): StackModel {
 		_id: "model-1",
 		name: "GPT-4o",
 		provider: "OpenAI",
-		role: "primary",
+		tokenShare: null,
+		measured: false,
 		...overrides,
 	};
 }

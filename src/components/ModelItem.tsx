@@ -8,7 +8,6 @@ export interface ModelItemData {
 	provider: string;
 	category: string;
 	iconUrl?: string;
-	role: "primary" | "secondary" | "specialized";
 }
 
 interface ModelItemProps {

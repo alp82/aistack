@@ -49,7 +49,9 @@ export type StackModel = {
 	provider: string;
 	category?: string;
 	iconUrl?: string;
-	role: "primary" | "secondary" | "specialized";
+	/** Share of the stack's 30-day tokens; null for a manual pick (#338). */
+	tokenShare: number | null;
+	measured: boolean;
 	description?: string;
 };
 
@@ -206,11 +208,11 @@ export function ToolCardMini({
 
 // --- Model tile -----------------------------------------------------------
 
-const ROLE_LABEL: Record<StackModel["role"], string> = {
-	primary: "Primary",
-	secondary: "Secondary",
-	specialized: "Specialized",
-};
+/** "62%" from a share; below half a percent prints "<1%". Numbers only. */
+export function formatShare(share: number): string {
+	const pct = Math.round(share * 100);
+	return pct === 0 && share > 0 ? "<1%" : `${pct}%`;
+}
 
 export function ModelTile({ model }: { model: StackModel }) {
 	return (
@@ -236,7 +238,8 @@ export function ModelTile({ model }: { model: StackModel }) {
 					{model.name}
 				</p>
 				<p className="truncate font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-					{model.provider} · {ROLE_LABEL[model.role]}
+					{model.provider}
+					{model.tokenShare !== null && ` · ${formatShare(model.tokenShare)}`}
 				</p>
 			</div>
 		</div>

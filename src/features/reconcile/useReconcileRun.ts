@@ -47,7 +47,6 @@ export function useReconcileRun(stackId: Id<"stacks"> | undefined) {
 	);
 
 	const applyWhatFor = useMutation(api.measured.applyWhatFor);
-	const addMeasuredModel = useMutation(api.measured.addMeasuredModel);
 	const dismiss = useMutation(api.measured.dismissSuggestion);
 	const undismiss = useMutation(api.measured.undismissSuggestion);
 
@@ -106,8 +105,6 @@ export function useReconcileRun(stackId: Id<"stacks"> | undefined) {
 						atomKind: item.atomKind,
 						atomKey: item.atomKey,
 					});
-				} else if (item.kind === "missing_from_authored") {
-					await addMeasuredModel({ stackId, modelSlug: item.atomKey });
 				} else {
 					await applyWhatFor({
 						stackId,
@@ -126,7 +123,7 @@ export function useReconcileRun(stackId: Id<"stacks"> | undefined) {
 				);
 			}
 		},
-		[stackId, notes, dismiss, addMeasuredModel, applyWhatFor],
+		[stackId, notes, dismiss, applyWhatFor],
 	);
 
 	const bringBack = useCallback(
