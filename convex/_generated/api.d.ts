@@ -55,6 +55,7 @@ import type * as lib_reprice from "../lib/reprice.js";
 import type * as lib_resourceLinks from "../lib/resourceLinks.js";
 import type * as lib_scrapers from "../lib/scrapers.js";
 import type * as lib_sources from "../lib/sources.js";
+import type * as lib_stackModels from "../lib/stackModels.js";
 import type * as lib_tiers from "../lib/tiers.js";
 import type * as lib_webCrypto from "../lib/webCrypto.js";
 import type * as lib_workflow from "../lib/workflow.js";
@@ -71,6 +72,7 @@ import type * as migrations_20260823_knowledge_base_publication from "../migrati
 import type * as migrations_20260823_news_hn_lane from "../migrations/20260823_news_hn_lane.js";
 import type * as migrations_20260823_news_phase1_sources from "../migrations/20260823_news_phase1_sources.js";
 import type * as migrations_20260827_merge_duplicate_models from "../migrations/20260827_merge_duplicate_models.js";
+import type * as migrations_20260829_merge_model_picks from "../migrations/20260829_merge_model_picks.js";
 import type * as migrations_20260829_seed_model_prices from "../migrations/20260829_seed_model_prices.js";
 import type * as migrations_20260829_vendor_model_ids from "../migrations/20260829_vendor_model_ids.js";
 import type * as migrations__archived_migrateBlockToReference from "../migrations/_archived/migrateBlockToReference.js";
@@ -157,6 +159,7 @@ declare const fullApi: ApiFromModules<{
   "lib/resourceLinks": typeof lib_resourceLinks;
   "lib/scrapers": typeof lib_scrapers;
   "lib/sources": typeof lib_sources;
+  "lib/stackModels": typeof lib_stackModels;
   "lib/tiers": typeof lib_tiers;
   "lib/webCrypto": typeof lib_webCrypto;
   "lib/workflow": typeof lib_workflow;
@@ -173,6 +176,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/20260823_news_hn_lane": typeof migrations_20260823_news_hn_lane;
   "migrations/20260823_news_phase1_sources": typeof migrations_20260823_news_phase1_sources;
   "migrations/20260827_merge_duplicate_models": typeof migrations_20260827_merge_duplicate_models;
+  "migrations/20260829_merge_model_picks": typeof migrations_20260829_merge_model_picks;
   "migrations/20260829_seed_model_prices": typeof migrations_20260829_seed_model_prices;
   "migrations/20260829_vendor_model_ids": typeof migrations_20260829_vendor_model_ids;
   "migrations/_archived/migrateBlockToReference": typeof migrations__archived_migrateBlockToReference;

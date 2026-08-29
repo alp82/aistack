@@ -847,15 +847,25 @@ export default defineSchema({
         }),
       ),
     ),
+    // Manual picks: the models no adapter sees (#338). The list the page shows
+    // is DERIVED: measured models from the 30-day fold first, sorted by token
+    // share, then these picks in stored order. `role` is retired; it stays
+    // optional here until `migrations/20260829_merge_model_picks` has run on
+    // prod, then a follow-up revision removes it.
     modelSubscriptions: v.optional(
       v.array(
         v.object({
           modelSlug: v.string(),
-          role: v.union(v.literal('primary'), v.literal('secondary'), v.literal('specialized')),
+          role: v.optional(
+            v.union(v.literal('primary'), v.literal('secondary'), v.literal('specialized'))
+          ),
           description: v.optional(v.string()),
         }),
       ),
     ),
+    // Catalog slugs the owner hid from the model list (#338). Display only:
+    // a hidden model still counts in tokens, spend and the leaderboard.
+    hiddenModelSlugs: v.optional(v.array(v.string())),
     fixedTotal: v.optional(Money),
     usageTotalNotes: v.optional(v.string()),
     hasUsageComponent: v.boolean(),

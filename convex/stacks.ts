@@ -12,6 +12,9 @@ import { normalizeProjectUrl } from './projects'
 import { assertValidAccentPreset } from './lib/iconUrl'
 import { resolveCreatorAvatarUrl } from './lib/avatar'
 import { inventoryForStack } from './lib/measuredDays'
+import { stackModelList } from './lib/stackModels'
+import { findInCatalog, loadModelCatalog } from './lib/modelCatalog'
+import { requireStackOwner } from './measured'
 import { diffComposition, emitActivityEvent } from './activity'
 
 type ToolSubscriptionLike = {
@@ -126,7 +129,9 @@ const ModelValidator = v.object({
   provider: v.string(),
   category: v.string(),
   iconUrl: v.optional(v.string()),
-  role: v.union(v.literal('primary'), v.literal('secondary'), v.literal('specialized')),
+  /** Share of the stack's 30-day tokens; null for a manual pick (#338). */
+  tokenShare: v.union(v.number(), v.null()),
+  measured: v.boolean(),
   description: v.optional(v.string()),
 })
 
@@ -331,7 +336,6 @@ const BundleSubscriptionInput = v.object({
 
 const ModelSubscriptionInput = v.object({
   modelSlug: v.string(),
-  role: v.union(v.literal('primary'), v.literal('secondary'), v.literal('specialized')),
   description: v.optional(v.string()),
 })
 
@@ -627,7 +631,6 @@ export const getForEdit = query({
         modelProvider: v.string(),
         modelCategory: v.string(),
         modelIconUrl: v.optional(v.string()),
-        role: v.union(v.literal('primary'), v.literal('secondary'), v.literal('specialized')),
         description: v.optional(v.string()),
       })),
     }),
@@ -710,7 +713,6 @@ export const getForEdit = query({
           modelProvider: model.provider,
           modelCategory: model.category,
           modelIconUrl: resolvedModelUrl ?? model.iconUrl,
-          role: ms.role,
           description: ms.description,
         }
       })
@@ -1066,26 +1068,28 @@ export const getBySlug = query({
     )
     const bundles = bundleEntries.filter((b): b is NonNullable<typeof b> => b !== null)
 
-    const modelEntries = await Promise.all(
-      (stack.modelSubscriptions ?? []).map(async (ms) => {
-        const model = await findModelBySlugOrAlias(ctx, ms.modelSlug)
-        if (!model) return null
-        const resolvedModelUrl = model.iconStorageId
-          ? await ctx.storage.getUrl(model.iconStorageId)
-          : null
-        return {
-          _id: model._id,
-          name: model.name,
-          slug: model.slug,
-          provider: model.provider,
-          category: model.category,
-          iconUrl: resolvedModelUrl ?? model.iconUrl,
-          role: ms.role,
-          description: ms.description,
-        }
-      })
+    // Derived and already ordered (#338): measured by share, then picks. The
+    // page renders it as handed and ranks nothing. Hidden models stay out.
+    const models = await Promise.all(
+      (await stackModelList(ctx, stack))
+        .filter((entry) => !entry.hidden)
+        .map(async ({ model, ...entry }) => {
+          const resolvedModelUrl = model.iconStorageId
+            ? await ctx.storage.getUrl(model.iconStorageId)
+            : null
+          return {
+            _id: model._id,
+            name: model.name,
+            slug: model.slug,
+            provider: model.provider,
+            category: model.category,
+            iconUrl: resolvedModelUrl ?? model.iconUrl,
+            tokenShare: entry.tokenShare,
+            measured: entry.measured,
+            description: entry.description,
+          }
+        })
     )
-    const models = modelEntries.filter((m): m is NonNullable<typeof m> => m !== null)
 
     const pricing = await calculateStackPricing(ctx, stack.toolSubscriptions, stack.bundleSubscriptions ?? [])
     const resources = await resolveLinkedResources(ctx, 'stack', stack._id)
@@ -1180,10 +1184,9 @@ export const getPublicSummary = query({
       toolEntries.filter((t): t is NonNullable<typeof t> => t !== null),
     ).map((t) => t.name)
 
-    const models = await resolveNames(stack.modelSubscriptions ?? [], async (ms) => {
-      const model = await findModelBySlugOrAlias(ctx, ms.modelSlug)
-      return model?.name ?? null
-    })
+    const models = (await stackModelList(ctx, stack))
+      .filter((entry) => !entry.hidden)
+      .map((entry) => entry.model.name)
 
     const bundles = await resolveNames(stack.bundleSubscriptions ?? [], async (bs) => {
       const bundle = await ctx.db
@@ -1210,5 +1213,68 @@ export const getPublicSummary = query({
       models,
       bundles,
     }
+  },
+})
+
+/**
+ * The owner's view of the derived model list (#338): the measured models with
+ * their share and the hidden flag, so the editor can hide and unhide them.
+ * Manual picks are not here; the picker owns those.
+ */
+export const listMeasuredModels = query({
+  args: { stackId: v.id('stacks') },
+  returns: v.array(
+    v.object({
+      slug: v.string(),
+      name: v.string(),
+      provider: v.string(),
+      iconUrl: v.optional(v.string()),
+      tokenShare: v.number(),
+      hidden: v.boolean(),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const stack = await requireStackOwner(ctx, args.stackId)
+    const entries = (await stackModelList(ctx, stack)).filter((e) => e.measured)
+    return await Promise.all(
+      entries.map(async ({ model, ...entry }) => {
+        const resolvedUrl = model.iconStorageId
+          ? await ctx.storage.getUrl(model.iconStorageId)
+          : null
+        return {
+          slug: model.slug,
+          name: model.name,
+          provider: model.provider,
+          iconUrl: resolvedUrl ?? model.iconUrl,
+          tokenShare: entry.tokenShare ?? 0,
+          hidden: entry.hidden,
+        }
+      })
+    )
+  },
+})
+
+/**
+ * Hide or unhide one model on the stack page (#338). Display only: the slug
+ * leaves the public list and nothing else. Tokens, spend and the leaderboard
+ * keep counting it. Idempotent.
+ */
+export const setModelHidden = mutation({
+  args: { stackId: v.id('stacks'), modelSlug: v.string(), hidden: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const stack = await requireStackOwner(ctx, args.stackId)
+    const catalog = await loadModelCatalog(ctx)
+    const slug = findInCatalog(catalog, args.modelSlug)?.slug
+    if (!slug) throw new Error('Model is not in the catalog')
+    const current = stack.hiddenModelSlugs ?? []
+    const next = args.hidden
+      ? current.includes(slug)
+        ? current
+        : [...current, slug]
+      : current.filter((s) => s !== slug)
+    if (next.length === current.length && next.every((s, i) => s === current[i])) return null
+    await ctx.db.patch(args.stackId, { hiddenModelSlugs: next, updatedAt: Date.now() })
+    return null
   },
 })

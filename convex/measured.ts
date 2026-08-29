@@ -49,7 +49,6 @@ import {
 import { estimateModelUSD, round2 } from './lib/reprice'
 import {
   type ModelCatalog,
-  findInCatalog,
   loadModelCatalog,
   resolveModelId,
 } from './lib/modelCatalog'
@@ -696,20 +695,10 @@ const ReconcileSuggestion = v.object({
   atomKey: v.string(),
   /** Display name resolved from the catalog, falling back to the key. */
   label: v.string(),
-  kind: v.union(
-    // Measured shows a catalog tool the authored list doesn't carry.
-    v.literal('missing_from_authored'),
-    // Authored carries the tool but its what-for is still blank.
-    v.literal('missing_what_for')
-  ),
-  tokenShare: v.optional(v.number()),
-  /**
-   * API-equivalent dollars for a measured model over the last 30 days, from
-   * the day fold. Absent when the owner withheld cost (`publishCost: false`,
-   * #33 decision 11) or the model was only ever seen by the inventory - the
-   * surface renders the price line only when it is present.
-   */
-  apiEquivalentUSD: v.optional(v.number()),
+  // Authored carries the tool but its what-for is still blank. The measured
+  // model kind (`missing_from_authored`) is gone: measured models fill the
+  // stack's list by themselves (#338).
+  kind: v.literal('missing_what_for'),
 })
 
 /**
@@ -765,9 +754,7 @@ export const getReconcileSuggestions = query({
       atomKind: 'model' | 'tool' | 'mcpServer' | 'skill'
       atomKey: string
       label: string
-      kind: 'missing_from_authored' | 'missing_what_for'
-      tokenShare?: number
-      apiEquivalentUSD?: number
+      kind: 'missing_what_for'
     }> = []
 
     // Authored-side: a subscribed tool with no what-for. Independent of whether
@@ -788,65 +775,7 @@ export const getReconcileSuggestions = query({
       })
     }
 
-    // Measured-side: a model that resolves to the catalog but is absent from
-    // the authored model list. Across harnesses the first (freshest-ordered)
-    // sighting wins - the suggestion is "you ran this", not a share ranking.
-    // Authored slugs go through the same alias resolution as measured ids, so
-    // a stack that stored an older spelling is not asked to add it again (#294).
-    const catalog = await loadModelCatalog(ctx)
-    const authoredModels = new Set(
-      (stack.modelSubscriptions ?? []).map(
-        (m) => findInCatalog(catalog, m.modelSlug)?.slug ?? m.modelSlug
-      )
-    )
-    // The last 30 days of usage carry a share and a price per model. A model
-    // the inventory saw but the fold does not hold (older than the window, or
-    // a stack with a legacy figure only) is still a candidate, with neither.
-    const window = rangeDates('30d', Date.now())
-    const usageRows = (await measuredDaysForStack(ctx, args.stackId))
-      .filter((row) => row.usage !== undefined && inDateRange(row.date, window))
-      .map((row) => ({ date: row.date, usage: row.usage as UsageDay }))
-    const folded = readUsageWindow(usageRows, catalog, stack.publishCost !== false)
-    const candidates: Array<{
-      id: string
-      catalogSlug: string | null
-      catalogName: string | null
-      tokenShare?: number
-      apiEquivalentUSD?: number
-    }> = [
-      ...(folded?.models ?? []).map((m) => ({
-        id: m.id,
-        catalogSlug: m.catalogSlug,
-        catalogName: m.catalogName,
-        tokenShare: m.tokenShare,
-        ...(m.usd === null ? {} : { apiEquivalentUSD: m.usd }),
-      })),
-      ...inventory.flatMap((row) =>
-        row.modelsSeen.map((id) => ({ id, ...resolveModelId(catalog, id) }))
-      ),
-    ]
-    const suggestedSlugs = new Set<string>()
-    for (const m of candidates) {
-      if (m.catalogSlug === null) continue
-      if (authoredModels.has(m.catalogSlug)) continue
-      if (dismissed.has(`model:${m.catalogSlug}`)) continue
-      if (suggestedSlugs.has(m.catalogSlug)) continue
-      suggestedSlugs.add(m.catalogSlug)
-      suggestions.push({
-        atomKind: 'model',
-        atomKey: m.catalogSlug,
-        label: m.catalogName ?? m.id,
-        kind: 'missing_from_authored',
-        ...(m.tokenShare === undefined ? {} : { tokenShare: m.tokenShare }),
-        ...(m.apiEquivalentUSD === undefined
-          ? {}
-          : { apiEquivalentUSD: m.apiEquivalentUSD }),
-      })
-    }
-
-    suggestions.sort(
-      (a, b) => (b.tokenShare ?? 0) - (a.tokenShare ?? 0) || a.label.localeCompare(b.label)
-    )
+    suggestions.sort((a, b) => a.label.localeCompare(b.label))
 
     const newestReceivedAt =
       inventory.length > 0
@@ -1011,47 +940,6 @@ export const applyWhatFor = mutation({
       toolSubscriptions: subs.map((s) =>
         s.toolSlug === args.toolSlug ? { ...s, description: whatFor } : s
       ),
-      updatedAt: Date.now(),
-    })
-    return null
-  },
-})
-
-/**
- * Add a measured model to the authored model list.
- *
- * Idempotent, so answering the same suggestion twice (two tabs, a double click)
- * adds one row. The role is not asked for at the gate - the surface answers a
- * yes/no question - so the first model added becomes `primary` and every later
- * one `secondary`. The owner can change the role in the editor.
- */
-export const addMeasuredModel = mutation({
-  args: {
-    stackId: v.id('stacks'),
-    modelSlug: v.string(),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const stack = await requireStackOwner(ctx, args.stackId)
-    const model = await ctx.db
-      .query('models')
-      .withIndex('by_slug', (q) => q.eq('slug', args.modelSlug))
-      .first()
-    if (!model) throw new Error('Model is not in the catalog')
-
-    const existing = stack.modelSubscriptions ?? []
-    if (existing.some((m) => m.modelSlug === args.modelSlug)) return null
-
-    await ctx.db.patch(args.stackId, {
-      modelSubscriptions: [
-        ...existing,
-        {
-          modelSlug: args.modelSlug,
-          role: existing.some((m) => m.role === 'primary')
-            ? ('secondary' as const)
-            : ('primary' as const),
-        },
-      ],
       updatedAt: Date.now(),
     })
     return null
