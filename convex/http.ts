@@ -11,6 +11,7 @@ import {
   syncPublish,
 } from './httpCli'
 import { unsubscribe } from './emailUnsubscribe'
+import { INTERACTIONS_PATH, interactions } from './discordInteractions'
 
 const http = httpRouter()
 
@@ -26,5 +27,6 @@ http.route({ path: '/api/cli/sync-manifest', method: 'GET', handler: syncManifes
 http.route({ path: '/api/cli/auto-sync', method: 'POST', handler: autoSyncSet })
 http.route({ path: '/api/email/unsubscribe', method: 'GET', handler: unsubscribe })
 http.route({ path: '/api/email/unsubscribe', method: 'POST', handler: unsubscribe })
+http.route({ path: INTERACTIONS_PATH, method: 'POST', handler: interactions })
 
 export default http

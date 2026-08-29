@@ -19,6 +19,7 @@ import type * as cliSessions from "../cliSessions.js";
 import type * as cliTokens from "../cliTokens.js";
 import type * as creators from "../creators.js";
 import type * as crons from "../crons.js";
+import type * as discordInteractions from "../discordInteractions.js";
 import type * as discordLink from "../discordLink.js";
 import type * as discordLinkToken from "../discordLinkToken.js";
 import type * as email from "../email.js";
@@ -112,6 +113,7 @@ declare const fullApi: ApiFromModules<{
   cliTokens: typeof cliTokens;
   creators: typeof creators;
   crons: typeof crons;
+  discordInteractions: typeof discordInteractions;
   discordLink: typeof discordLink;
   discordLinkToken: typeof discordLinkToken;
   email: typeof email;
