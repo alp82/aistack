@@ -155,6 +155,16 @@ free is a zero-rate period cited `local-no-charge`.
 * **Priced lanes** (`codex-auto-review`) and the `#fast` variants stay in the
   bundled constants only: they are rates without a catalog row, and the seed
   skips them.
+* **The import** (`convex/modelImport.ts`, rules in `convex/lib/modelImport.ts`,
+  #337) runs daily at 05:00 UTC and from the admin Import tab. It reads
+  models.dev (`api.json`), LiteLLM as fallback, and compares each catalog row's
+  rate under its OWN vendor (a gateway listing never prices a vendor row). A
+  changed rate is a new period dated to the run, cited `models.dev@<date>`; an
+  unchanged rate writes nothing. It creates `pending` rows for dataset models
+  of the allowlisted vendors (`VENDOR_ALLOWLIST`) released in the last 180
+  days that read and write text only, and for any measured id with tokens on
+  a day that resolves to no row. Never for a priced lane, a `#fast` or dated
+  variant, or an inventory-only id. Every write is a line in `importLog`.
 
 ## Charts
 

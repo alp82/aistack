@@ -1019,6 +1019,20 @@ export default defineSchema({
     .index('by_model', ['modelSlug', 'provider', 'from'])
     .index('by_from', ['from']),
 
+  // The import's admin log (#337): one line per thing the price and model
+  // import did. A run that changes nothing writes only its `run` line.
+  importLog: defineTable({
+    at: v.number(),
+    kind: v.union(
+      v.literal('run'),
+      v.literal('price'),
+      v.literal('model'),
+      v.literal('error')
+    ),
+    modelSlug: v.optional(v.string()),
+    detail: v.string(),
+  }).index('by_at', ['at']),
+
   cliSessions: defineTable({
     userCode: v.string(),
     secretId: v.string(),
