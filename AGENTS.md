@@ -112,29 +112,49 @@ cd packages/cli && pnpm publish
 
 ## Pricing
 
-There is ONE price table, in `packages/pricing` (`@aistack/pricing`). The CLI
-and the Convex backend both import it. It is a private workspace package and is
-never published - `tsup` bundles it into the CLI's `dist`.
+The price table lives in Convex: `modelPrices`, one row per dated period
+`{modelSlug, provider?, from, input, output, cacheRead?, cacheWrite5m?,
+cacheWrite1h?, source}` (ADR-0012, #336). A period runs until the next period's
+`from`; there is no `to`. Cache tiers are absolute rates per period, never a
+vendor multiplier. `models` carries no price field: unpriced is an empty read,
+free is a zero-rate period cited `local-no-charge`.
 
-* The CLI prices each response at its own timestamp, at ingest. That figure is
-  exact and always wins.
-* The backend re-prices at READ time in `convex/lib/reprice.ts`, filling gaps
-  only. Its figures are LOWER BOUNDS, for one remaining reason: it has no
-  per-response timestamps, so a window straddling a repricing pays the cheaper
-  rate. The cache-write bias is gone from new payloads. The wire carries the
-  5-minute/1-hour split as `tokens.cacheWriteTtl`, and the repricer charges each
-  tier its own rate; a payload from before that field still merges into one
-  `cacheWrite` and charges the cheap tier, about 8% low for Claude Code.
-* Every surface that prints dollars prints the price-table id and the share of
-  tokens the figure covers. `publishCost` on the stack is the consent gate:
-  check the flag. The presence of dollars in the data is not consent.
+* **One read seam.** `convex/lib/modelCatalog.ts` (`loadModelCatalog`) collects
+  `models` and `modelPrices` and exposes `priceAt(slug, provider, timestamp)`
+  and a `pricer`. `convex/lib/reprice.ts` and every other consumer price
+  through it; nothing else reads `modelPrices`.
+* **`GET /api/prices`** (`convex/prices.ts`) serves the rows with a table id
+  (`modelPrices/<rows>-<hash>`). The CLI fetches it at the start of every sync
+  from `AISTACK_URL`, layers it over its bundled table and prices at ingest.
+  When the fetch fails it prices from the bundled table and the gate says so.
+* **`packages/pricing` (`@aistack/pricing`) is the shared lookup and the
+  bundled fallback.** `table.ts` holds the row shape and the `Pricer` both
+  sides use; `index.ts` holds the constants, rendered by `bundledPriceTable()`.
+  The seed migration `20260829_seed_model_prices` wrote them into
+  `modelPrices`; from now on a rate change is a row in the table, and the
+  constants only need touching when the fallback should move with it. It is a
+  private workspace package, never published; `tsup` bundles it into the CLI.
+* **Every dollar figure cites the period's `source`** as its price-table id,
+  and prints the share of tokens the figure covers. `publishCost` on the stack
+  is the consent gate: check the flag. The presence of dollars is not consent.
+* The CLI prices each response at its own timestamp, so its figure is exact.
+  The backend re-prices at READ time, filling gaps only. Its figures are LOWER
+  BOUNDS: it has no per-response timestamps, so a window straddling a repricing
+  pays the cheaper rate, and a payload from before `tokens.cacheWriteTtl`
+  charges every cache write at the 5-minute tier.
+* **Alias rules before lookup** (decision 6): strip the `provider:` prefix, a
+  `#fast` suffix and a trailing `-YYYYMMDD`; then the slug, then the stored
+  `aliases`. The catalog slug IS the vendor's bare API id, dots included
+  (`gpt-5.4`, `kimi-k2.5`).
 * A harness that routes several providers keys its rows `provider:model`
-  (`google:gemini-3.6-flash`). Only a provider the table maps to a vendor gets
-  that vendor's rates, so a gateway re-serving someone else's model stays
-  unpriced. Local providers hold a real zero rate, cited `local-no-charge`:
-  free (the machine charges nothing) and unpriced (the table has no rate) are
-  different states and must render differently. Use `vendorModelId()` for
-  display and catalog lookups.
+  (`google:gemini-3.6-flash`). A provider with rows of its own uses them; a
+  provider that IS the vendor reaches the bare rate; a gateway re-serving
+  someone else's model stays unpriced. Local providers hold a real zero rate:
+  free and unpriced are different states and must render differently. Use
+  `vendorModelId()` for display and catalog lookups.
+* **Priced lanes** (`codex-auto-review`) and the `#fast` variants stay in the
+  bundled constants only: they are rates without a catalog row, and the seed
+  skips them.
 
 ## Charts
 
