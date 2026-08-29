@@ -10,8 +10,18 @@ import { datasetProviderOf, logoUrl } from '../lib/modelImport'
  * a stored icon is detached (the storage file stays). Rows of an unknown
  * provider keep whatever they had.
  *
+ * Three rows were filed under provider "Other" and are corrected first so
+ * they map. Meta has a logo too; the other vendors without one (ElevenLabs,
+ * Kuaishou, ByteDance, Black Forest Labs, Cognition) keep their stored icon.
+ *
  * IDEMPOTENT. A row already on the logo with no storage icon is skipped.
  */
+const PROVIDER_FIXES: Record<string, string> = {
+  'glm-5.2': 'Zhipu AI',
+  'kimi-k3': 'Moonshot AI',
+  'composer-2.5': 'Cursor',
+}
+
 export const run = internalMutation({
   args: {},
   returns: v.object({ patched: v.number(), skipped: v.number(), unknown: v.array(v.string()) }),
@@ -20,6 +30,11 @@ export const run = internalMutation({
     let skipped = 0
     const unknown: string[] = []
     for (const row of await ctx.db.query('models').collect()) {
+      const fixed = PROVIDER_FIXES[row.slug]
+      if (fixed && row.provider !== fixed) {
+        await ctx.db.patch(row._id, { provider: fixed, updatedAt: Date.now() })
+        row.provider = fixed
+      }
       const providerId = datasetProviderOf(row.provider)
       if (!providerId) {
         unknown.push(row.slug)
