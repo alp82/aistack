@@ -194,8 +194,8 @@ rule change that bumps the aggregate version changes every fingerprint on purpos
 **Machine inventory**:
 The window-free sets one machine reports per harness: installed tools, MCP servers,
 skills, models seen, and the harness kit, plus when that machine last synced. One row per
-(stack, machine, harness), replaced on every sync. Freshness, the living count and the
-reconcile suggestions read it; nothing sums it.
+(stack, machine, harness), replaced on every sync. Freshness and the living count read
+it; nothing sums it, and nothing fills a stack from it.
 _Avoid_: snapshot, payload (the old whole-window row this replaces, ADR-0011)
 
 **Legacy figure**:
@@ -276,3 +276,19 @@ A measured id that carries a rate but names no model a person can choose, such a
 **Pending model**:
 A catalog row the import or a measured id created that an admin has not approved. It
 prices and fills stacks; pending only means not public.
+
+**Stack model list**:
+The models a stack page shows, derived at read time: the measured models of the last
+30 days sorted by token share, then the manual picks in stored order. Nothing stores
+the list and nothing ranks a pick against a measured model. There are no roles.
+_Avoid_: model subscriptions (that names only the picks), primary/secondary model
+
+**Manual pick**:
+A model the owner added through the picker because no adapter sees it, such as a chat
+app. It sorts after the measured models and leaves the pick group the moment a sync
+measures it.
+_Avoid_: authored model, suggestion
+
+**Hidden model**:
+A catalog slug the owner hid from the stack model list. Display only: the model still
+counts in tokens, spend and the leaderboard, and the owner can unhide it in the editor.

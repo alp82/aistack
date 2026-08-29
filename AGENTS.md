@@ -166,6 +166,24 @@ free is a zero-rate period cited `local-no-charge`.
   a day that resolves to no row. Never for a priced lane, a `#fast` or dated
   variant, or an inventory-only id. Every write is a line in `importLog`.
 
+## Stack models
+
+The model list on a stack page is DERIVED (#338, map #332), in
+`convex/lib/stackModels.ts`: the measured models of the stack's 30-day fold with
+tokens, sorted by token share, then the manual picks (`stacks.modelSubscriptions`)
+in stored order. `getBySlug` and `getPublicSummary` hand the page that list; the
+page renders it as handed and ranks nothing. There are no roles.
+
+* **The picker adds only what no adapter sees.** A pick a later sync measures sorts
+  into the measured group, once. A pick that names no catalog row is dropped.
+* **Hide is display only.** `stacks.hiddenModelSlugs` drops a model from the public
+  list and from nothing else: tokens, spend and the leaderboard keep counting it.
+  The owner hides and unhides in the editor (`listMeasuredModels`, `setModelHidden`).
+* **Consent is the CLI approve gate plus that hide.** There is no separate flag, and
+  nothing asks to add a measured model: `addMeasuredModel` and the
+  `missing_from_authored` suggestion are gone.
+* On the tile print the share and nothing else ("Anthropic · 62%").
+
 ## Charts
 
 All charts come from `src/features/charts`. It is the only place that imports
