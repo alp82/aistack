@@ -150,6 +150,9 @@ async function processRow(
 ): Promise<'ok' | 'skipped' | 'failed'> {
   if (row.iconStorageId) return 'skipped'
   if (!row.iconUrl) return 'skipped'
+  // models.dev logos are monochrome currentColor SVGs; the web inverts them
+  // per theme by URL, so they stay URLs (see src/lib/iconTheme.ts).
+  if (row.iconUrl.startsWith('https://models.dev/logos/')) return 'skipped'
 
   const isDataURI = row.iconUrl.startsWith('data:')
 

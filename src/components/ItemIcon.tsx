@@ -1,5 +1,6 @@
-import { Box } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { Box } from "lucide-react";
+import { monochromeLogoClass } from "@/lib/iconTheme";
 import { cn } from "@/lib/utils";
 
 type ItemIconSize = "xs" | "sm" | "md" | "lg";
@@ -36,6 +37,7 @@ export function ItemIcon({
 				className={cn(
 					container,
 					"shrink-0 rounded border border-stroke-subtle object-contain p-0.5",
+					monochromeLogoClass(src),
 					className,
 				)}
 			/>
