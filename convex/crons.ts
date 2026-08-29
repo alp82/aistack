@@ -82,4 +82,14 @@ crons.daily(
 // after a deploy seeds the baselines and adds nothing, which is the point.
 crons.cron('news-scrape', '30 */6 * * *', internal.newsScrapers.scrape)
 
+// The price and model import (#337). Daily: models.dev has no dated history,
+// so the run is what dates a rate change, and a day is the grain the catalog
+// cites. 05:00 UTC, after the icon GC and before the owner's morning. A run
+// that finds nothing changed writes one log line and nothing else.
+crons.daily(
+  'model-price-import',
+  { hourUTC: 5, minuteUTC: 0 },
+  internal.modelImport.run,
+)
+
 export default crons

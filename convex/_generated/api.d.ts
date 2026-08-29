@@ -48,6 +48,7 @@ import type * as lib_machineOrdinals from "../lib/machineOrdinals.js";
 import type * as lib_mailer from "../lib/mailer.js";
 import type * as lib_measuredDays from "../lib/measuredDays.js";
 import type * as lib_modelCatalog from "../lib/modelCatalog.js";
+import type * as lib_modelImport from "../lib/modelImport.js";
 import type * as lib_modelLookup from "../lib/modelLookup.js";
 import type * as lib_names from "../lib/names.js";
 import type * as lib_reprice from "../lib/reprice.js";
@@ -78,6 +79,7 @@ import type * as migrations__archived_migrateStackDescriptions from "../migratio
 import type * as migrations__archived_populateShortIds from "../migrations/_archived/populateShortIds.js";
 import type * as migrations_backup from "../migrations/backup.js";
 import type * as migrations_icons from "../migrations/icons.js";
+import type * as modelImport from "../modelImport.js";
 import type * as models from "../models.js";
 import type * as news from "../news.js";
 import type * as newsDrafting from "../newsDrafting.js";
@@ -148,6 +150,7 @@ declare const fullApi: ApiFromModules<{
   "lib/mailer": typeof lib_mailer;
   "lib/measuredDays": typeof lib_measuredDays;
   "lib/modelCatalog": typeof lib_modelCatalog;
+  "lib/modelImport": typeof lib_modelImport;
   "lib/modelLookup": typeof lib_modelLookup;
   "lib/names": typeof lib_names;
   "lib/reprice": typeof lib_reprice;
@@ -178,6 +181,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/_archived/populateShortIds": typeof migrations__archived_populateShortIds;
   "migrations/backup": typeof migrations_backup;
   "migrations/icons": typeof migrations_icons;
+  modelImport: typeof modelImport;
   models: typeof models;
   news: typeof news;
   newsDrafting: typeof newsDrafting;
