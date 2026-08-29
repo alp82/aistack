@@ -328,11 +328,52 @@ describe('planImport', () => {
     expect(p.models.map((m) => m.slug)).toEqual(['deepseek-v4-pro'])
   })
 
+  test('backfills the vendor logo on an existing row that has no icon at all', () => {
+    const p = plan({
+      models: [
+        model({ slug: 'claude-opus-5' }),
+        model({ slug: 'claude-sonnet-5', iconUrl: 'https://example.com/own.svg' }),
+        model({ slug: 'claude-fable-5', iconStorageId: 'st_1' as Id<'_storage'> }),
+        model({ slug: 'gpt-5.6-sol', provider: 'OpenAI' }),
+      ],
+      dataset: [
+        dm({ id: 'claude-opus-5', providerId: 'anthropic' }),
+        dm({ id: 'claude-sonnet-5', providerId: 'anthropic' }),
+        dm({ id: 'claude-fable-5', providerId: 'anthropic' }),
+        // A gateway re-serving Sol must not decide the logo.
+        dm({ id: 'gpt-5.6-sol', providerId: 'openrouter' }),
+        dm({ id: 'gpt-5.6-sol', providerId: 'openai' }),
+      ],
+    })
+    expect(p.icons).toEqual([
+      { modelSlug: 'claude-opus-5', iconUrl: 'https://models.dev/logos/anthropic.svg' },
+      { modelSlug: 'gpt-5.6-sol', iconUrl: 'https://models.dev/logos/openai.svg' },
+    ])
+  })
+
+  test('derives the logo from the provider name when the dataset does not list the row', () => {
+    const p = plan({
+      models: [
+        model({ slug: 'gpt-5.6-luna', provider: 'OpenAI' }),
+        model({ slug: 'gemini-x', provider: 'Google DeepMind' }),
+        model({ slug: 'grok-x', provider: 'xAI' }),
+        model({ slug: 'mystery', provider: 'Acme' }),
+        model({ slug: 'nobody', provider: undefined }),
+      ],
+    })
+    expect(p.icons).toEqual([
+      { modelSlug: 'gpt-5.6-luna', iconUrl: 'https://models.dev/logos/openai.svg' },
+      { modelSlug: 'gemini-x', iconUrl: 'https://models.dev/logos/google.svg' },
+      { modelSlug: 'grok-x', iconUrl: 'https://models.dev/logos/xai.svg' },
+    ])
+  })
+
   test('a rejected row is left alone', () => {
     const p = plan({
       models: [model({ slug: 'claude-opus-4-7', reviewStatus: 'rejected' })],
       dataset: [dm({ id: 'claude-opus-4-7', providerId: 'anthropic', input: 1, output: 1 })],
     })
     expect(p.periods).toEqual([])
+    expect(p.icons).toEqual([])
   })
 })

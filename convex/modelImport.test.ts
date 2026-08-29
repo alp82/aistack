@@ -74,6 +74,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
         provider,
         category: 'coding',
         reviewStatus: 'approved',
+        iconUrl: `https://models.dev/logos/${provider.toLowerCase()}.svg`,
         createdAt: now,
         updatedAt: now,
       })
@@ -274,6 +275,52 @@ describe('modelImport (#337)', () => {
     // A second run creates nothing more.
     const again = await t.action(internal.modelImport.run, {})
     expect(again).toMatchObject({ periods: 0, models: 0 })
+  })
+
+  test('backfills iconUrl on an icon-less row and logs one icon line', async () => {
+    const t = convexTest(schema, modules)
+    await seed(t)
+    await t.run(async (ctx) => {
+      const sol = await ctx.db.query('modelPrices').withIndex('by_model', (q) => q.eq('modelSlug', 'gpt-5.6-sol')).first()
+      await ctx.db.patch(sol!._id, { input: 4, output: 20, cacheRead: 0.4 })
+      const rows = await ctx.db.query('models').collect()
+      for (const r of rows) await ctx.db.patch(r._id, { iconUrl: undefined })
+      await ctx.db.insert('models', {
+        name: 'gpt-5.6-luna',
+        slug: 'gpt-5.6-luna',
+        shortId: 'luna01',
+        provider: 'OpenAI',
+        category: 'coding',
+        reviewStatus: 'approved',
+        createdAt: 1,
+        updatedAt: 1,
+      })
+    })
+    stubFetch({ [MODELS_DEV_URL]: MODELS_DEV })
+
+    const result = await t.action(internal.modelImport.run, {})
+    expect(result).toMatchObject({ periods: 0, models: 0 })
+
+    await t.run(async (ctx) => {
+      const rows = await ctx.db.query('models').collect()
+      expect(Object.fromEntries(rows.map((r) => [r.slug, r.iconUrl]))).toEqual({
+        'claude-opus-4-7': 'https://models.dev/logos/anthropic.svg',
+        'gpt-5.6-sol': 'https://models.dev/logos/openai.svg',
+        'gpt-5.6-luna': 'https://models.dev/logos/openai.svg',
+      })
+      const log = await ctx.db.query('importLog').collect()
+      expect(log.map((l) => l.kind).sort()).toEqual(['icon', 'icon', 'icon', 'run'])
+      expect(log.find((l) => l.modelSlug === 'gpt-5.6-luna')!.detail).toBe(
+        'icon https://models.dev/logos/openai.svg (provider OpenAI)'
+      )
+    })
+
+    const again = await t.action(internal.modelImport.run, {})
+    expect(again).toMatchObject({ periods: 0, models: 0 })
+    await t.run(async (ctx) => {
+      const log = await ctx.db.query('importLog').collect()
+      expect(log.filter((l) => l.kind === 'icon')).toHaveLength(3)
+    })
   })
 
   test('falls back to LiteLLM when models.dev does not answer, and cites it', async () => {

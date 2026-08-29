@@ -1037,6 +1037,7 @@ export default defineSchema({
       v.literal('run'),
       v.literal('price'),
       v.literal('model'),
+      v.literal('icon'),
       v.literal('error')
     ),
     modelSlug: v.optional(v.string()),

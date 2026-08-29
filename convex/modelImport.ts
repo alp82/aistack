@@ -57,6 +57,8 @@ const ModelInsertV = v.object({
   rates: v.union(RatesV, v.null()),
 })
 
+const IconBackfillV = v.object({ modelSlug: v.string(), iconUrl: v.string() })
+
 const LOG_KEEP = 500
 
 type RunResult = { periods: number; models: number; source: string }
@@ -105,6 +107,7 @@ export const apply = internalMutation({
   args: {
     periods: v.array(PeriodInsertV),
     models: v.array(ModelInsertV),
+    icons: v.optional(v.array(IconBackfillV)),
     source: v.string(),
     skipped: v.number(),
     now: v.number(),
@@ -180,6 +183,21 @@ export const apply = internalMutation({
             : `pending row from ${source} (${m.provider}), ${m.rates ? formatRates(m.rates) : 'unpriced'}`,
       })
     }
+    for (const i of args.icons ?? []) {
+      const row = await ctx.db
+        .query('models')
+        .withIndex('by_slug', (q) => q.eq('slug', i.modelSlug))
+        .first()
+      // Re-check against the table: the plan was made from a snapshot.
+      if (!row || row.iconStorageId || row.iconUrl) continue
+      await ctx.db.patch(row._id, { iconUrl: i.iconUrl, updatedAt: now })
+      await ctx.db.insert('importLog', {
+        at: now,
+        kind: 'icon',
+        modelSlug: i.modelSlug,
+        detail: `icon ${i.iconUrl} (provider ${row.provider ?? 'unknown'})`,
+      })
+    }
     await ctx.db.insert('importLog', {
       at: now,
       kind: 'run',
@@ -244,6 +262,7 @@ export const run = internalAction({
       const written: { periods: number; models: number } = await ctx.runMutation(internal.modelImport.apply, {
         periods: plan.periods,
         models: plan.models,
+        icons: plan.icons,
         source,
         skipped: plan.skipped,
         now,
