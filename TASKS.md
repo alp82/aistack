@@ -1,3 +1,5 @@
+* model icons missing for newer models
+* stack page cleaner. more value in less space without sacrificing whitespace
 * value proposition should be shown before/with CTA
     profile for sharing
     ai stats
