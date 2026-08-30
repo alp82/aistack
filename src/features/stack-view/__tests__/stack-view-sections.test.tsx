@@ -630,6 +630,18 @@ describe("GROUP D - GuideSection Guide empty state", () => {
 		).not.toBeInTheDocument();
 	});
 
+	it("treats an empty editor paragraph as an empty guide", () => {
+		render(
+			<GuideSection
+				index={3}
+				description="<p></p>"
+				isOwner={false}
+				slug="my-stack"
+			/>,
+		);
+		expect(screen.getByText(/no guide yet/i)).toBeInTheDocument();
+	});
+
 	// D-3: description present, isOwner=true → neither empty-state element
 	it("isOwner=true, description present: no empty-state elements render", () => {
 		render(

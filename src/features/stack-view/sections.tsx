@@ -14,7 +14,7 @@ import {
 	ToolCardBig,
 	ToolCardMini,
 } from "./cards";
-import { SECTION_TITLES } from "./pageOrder";
+import { hasGuideContent, SECTION_TITLES } from "./pageOrder";
 import { GAP, Section, SectionHeader } from "./ui";
 
 // ---------------------------------------------------------------------------
@@ -225,6 +225,7 @@ export function GuideSection({
 	isOwner: boolean;
 	slug: string;
 }) {
+	const hasDescription = hasGuideContent(description);
 	return (
 		<Section index={index} id={id}>
 			<SectionHeader
@@ -232,7 +233,7 @@ export function GuideSection({
 				kicker="// writeup"
 				title={SECTION_TITLES.guide}
 			/>
-			{description ? (
+			{hasDescription && description ? (
 				<>
 					{/* biome-ignore lint/correctness/useUniqueElementIds: stable anchor for the in-page TOC selector; scopes the heading-scrape to the prose, not the section title */}
 					<div id="stack-description" className="max-w-3xl">

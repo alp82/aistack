@@ -114,6 +114,18 @@ export function toolsStat(count: number, monthlyAmount: number): string | null {
 
 const WORDS_PER_MINUTE = 200;
 
+/** Whether stored Tiptap HTML contains something the read-only guide can show. */
+export function hasGuideContent(description: string | undefined): boolean {
+	if (!description) return false;
+	const text = description
+		.replace(/<!--[\s\S]*?-->/g, " ")
+		.replace(/<[^>]*>/g, " ")
+		.replace(/&nbsp;|&#160;|&#xa0;/gi, " ")
+		.trim();
+	if (text.length > 0) return true;
+	return /<(?:img|video|audio|iframe|hr)\b/i.test(description);
+}
+
 /**
  * The guide's reading time, from the stored rich text.
  *
@@ -121,6 +133,7 @@ const WORDS_PER_MINUTE = 200;
  * counted. A guide too short to round up to a minute still reads as one.
  */
 export function guideStat(description: string | undefined): string | null {
+	if (!hasGuideContent(description)) return null;
 	if (!description) return null;
 	const words = description
 		.replace(/<[^>]*>/g, " ")
