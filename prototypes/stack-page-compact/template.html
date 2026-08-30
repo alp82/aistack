@@ -91,10 +91,11 @@ function phaseStrip(h){
 }
 </script>
 <script src="variants.js"></script>
+<script src="variants2.js"></script>
 <script>
 /* ---------- switcher ---------- */
-const VARIANTS=[["base","Baseline (today)"],["v1","V1 Tight editorial"],["v2","V2 Ledger"],["v3","V3 Mosaic"],["v4","V4 Split rail"],["v5","V5 Digest"]];
-const RENDER={base:renderBaseline,v1:renderV1,v2:renderV2,v3:renderV3,v4:renderV4,v5:renderV5};
+const VARIANTS=[["base","Baseline (today)"],["v1","V1 Tight editorial"],["v2","V2 Ledger"],["v3","V3 Mosaic"],["v4","V4 Split rail"],["v5","V5 Digest"],["v6","V6 Magazine"],["v7","V7 Terminal"],["v8","V8 Bento"],["v9","V9 Billboard"],["v10","V10 Blueprint"],["v11","V11 Receipt"],["v12","V12 Ticker"],["v13","V13 Spine"],["v14","V14 Rails"],["v15","V15 Split hero"]];
+const RENDER={base:renderBaseline,v1:renderV1,v2:renderV2,v3:renderV3,v4:renderV4,v5:renderV5,v6:renderV6,v7:renderV7,v8:renderV8,v9:renderV9,v10:renderV10,v11:renderV11,v12:renderV12,v13:renderV13,v14:renderV14,v15:renderV15};
 const page=document.getElementById("page");
 const heights={};
 function measureAll(){
@@ -104,12 +105,12 @@ function measureAll(){
   for(const [k] of VARIANTS){probe.innerHTML=RENDER[k]();heights[k]=probe.scrollHeight;}
   probe.remove();
 }
-function current(){const v=new URLSearchParams(location.search).get("v");return RENDER[v]?v:"base";}
+function current(){const v=new URLSearchParams(location.search).get("v");return RENDER[v]?v:"v6";}
 function show(k,push){
   page.innerHTML=RENDER[k]();
   if(push){const u=new URL(location);u.searchParams.set("v",k);history.replaceState(null,"",u);}
   const bar=document.getElementById("switcher");
-  bar.innerHTML=VARIANTS.map(([id,label])=>`<button class="${id===k?"on":""}" data-v="${id}">${label.split(" ")[0]}</button>`).join("")+
+  bar.innerHTML=VARIANTS.map(([id,label])=>`<button class="${id===k?"on":""}" data-v="${id}" title="${label}">${label.split(" ")[0].replace("Baseline","Base")}</button>`).join("")+
     `<span class="h" id="hread"></span>`;
   bar.querySelectorAll("button").forEach(b=>b.onclick=()=>show(b.dataset.v,true));
   const hn=document.getElementById("hnote");
