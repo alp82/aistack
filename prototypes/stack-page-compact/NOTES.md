@@ -41,3 +41,23 @@ Ten new renders (v6-v15), all with real tool logos embedded and richer charts
 - v13 Spine - 30-day chart on top, sections alternate along a lime spine.
 - v14 Rails - phone-first horizontal snap rails per section.
 - v15 Split hero - sticky lime diagonal hero half, compact scrolling half.
+
+## Round 3
+
+Operator verdict on round 2: V6 and V9 set the look, V7 and V10 have good
+workflow/tools/projects treatments, V15's right column is nice, the deep info
+is missing everywhere. Wants 10 more distinct variations on those preferences.
+
+New shared depth kit: microViz() gives each of the 15 measurements its own
+inline chart, plus deep model/tool/project tables with logos and dollars.
+
+- v16 Magazine deep - V6 with the real page's numbered headers and full depth.
+- v17 Billboard data - V9 bands, each followed by a deep contrast panel.
+- v18 Windows - editorial hero, sections as terminal-window panels (V7 idea).
+- v19 Blueprint editorial - V10 modules with V16 typography, 15 gauges.
+- v20 Dossier - annual-report paper: chapters, pull-stat sidebars.
+- v21 Chapters - V15 per section: sticky giant title half + deep half.
+- v22 Mural - one continuous infographic story with connector lines.
+- v23 Console pro - matured dashboard, chart column + deep list column.
+- v24 Feature table - every measurement row carries its inline chart.
+- v25 Story scroll - near-fullscreen chapter slides, giant figures.
