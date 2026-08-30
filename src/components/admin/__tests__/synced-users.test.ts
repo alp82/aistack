@@ -15,6 +15,9 @@ function user(
 		living,
 		lastSyncAt,
 		syncedStacks: 1,
+		autoSyncOnStacks: living ? 1 : 0,
+		autoSyncOffStacks: living ? 0 : 1,
+		connectedMachines: living ? 2 : 0,
 	};
 }
 
@@ -40,5 +43,14 @@ describe("sortSyncedUsers", () => {
 			"Beta",
 			"Gamma",
 		]);
+	});
+
+	it("sorts by auto-sync and connected machines", () => {
+		expect(
+			sortSyncedUsers(users, "auto_sync", "desc").map((u) => u.name),
+		).toEqual(["Alpha", "Gamma", "Beta"]);
+		expect(
+			sortSyncedUsers(users, "machines", "asc").map((u) => u.name),
+		).toEqual(["Beta", "Alpha", "Gamma"]);
 	});
 });

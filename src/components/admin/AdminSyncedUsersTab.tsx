@@ -10,7 +10,7 @@ import { api } from "../../../convex/_generated/api";
 type SyncedUser = NonNullable<
 	FunctionReturnType<typeof api.measured.listSyncedUsers>
 >["users"][number];
-type SortKey = "last_sync" | "name" | "living";
+type SortKey = "last_sync" | "name" | "living" | "auto_sync" | "machines";
 type SortDirection = "asc" | "desc";
 
 export function sortSyncedUsers(
@@ -24,6 +24,10 @@ export function sortSyncedUsers(
 		if (sort === "name") compared = a.name.localeCompare(b.name);
 		if (sort === "living") compared = Number(a.living) - Number(b.living);
 		if (sort === "last_sync") compared = a.lastSyncAt - b.lastSyncAt;
+		if (sort === "auto_sync")
+			compared = a.autoSyncOnStacks - b.autoSyncOnStacks;
+		if (sort === "machines")
+			compared = a.connectedMachines - b.connectedMachines;
 		return compared === 0 ? a.name.localeCompare(b.name) : compared * sign;
 	});
 }
@@ -44,6 +48,11 @@ export function AdminSyncedUsersTab() {
 		() => sortSyncedUsers(data?.users ?? [], sort, direction),
 		[data?.users, sort, direction],
 	);
+	const autoSyncLabel = (user: SyncedUser) => {
+		if (user.autoSyncOnStacks === 0) return "Off";
+		if (user.autoSyncOffStacks === 0) return "On";
+		return `${user.autoSyncOnStacks} on · ${user.autoSyncOffStacks} off`;
+	};
 
 	return (
 		<div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -61,6 +70,8 @@ export function AdminSyncedUsersTab() {
 						options={[
 							{ value: "last_sync", label: "Last sync" },
 							{ value: "living", label: "Living" },
+							{ value: "auto_sync", label: "Auto-sync" },
+							{ value: "machines", label: "Machines" },
 							{ value: "name", label: "User" },
 						]}
 						value={sort}
@@ -100,6 +111,8 @@ export function AdminSyncedUsersTab() {
 								<th className="px-3 py-4 font-semibold">User</th>
 								<th className="px-3 py-4 font-semibold">Synced stacks</th>
 								<th className="px-3 py-4 font-semibold">Living</th>
+								<th className="px-3 py-4 font-semibold">Auto-sync</th>
+								<th className="px-3 py-4 font-semibold">Machines</th>
 								<th className="px-3 py-4 font-semibold">Last sync</th>
 							</tr>
 						</thead>
@@ -132,6 +145,20 @@ export function AdminSyncedUsersTab() {
 										>
 											{user.living ? "Yes" : "No"}
 										</span>
+									</td>
+									<td className="px-3 py-4 font-mono text-xs font-bold uppercase">
+										<span
+											className={
+												user.autoSyncOnStacks > 0
+													? "text-accent-lime"
+													: "text-fg-muted"
+											}
+										>
+											{autoSyncLabel(user)}
+										</span>
+									</td>
+									<td className="px-3 py-4 font-mono text-sm text-fg-secondary">
+										{user.connectedMachines}
 									</td>
 									<td className="px-3 py-4 text-sm text-fg-secondary">
 										<RelativeTime at={user.lastSyncAt} />

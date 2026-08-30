@@ -843,6 +843,25 @@ describe('listSyncedUsers', () => {
       payload: payload(),
     })
     await t.run(async (ctx) => {
+      await ctx.db.patch(a.stackId, {
+        autoSync: { enabled: true, frequencyHours: 24 },
+      })
+      for (const [index, token] of [
+        { userId: USER, expiresAt: Date.now() + DAY },
+        { userId: USER, expiresAt: Date.now() + DAY },
+        { userId: USER, expiresAt: Date.now() - DAY },
+        { userId: OTHER_USER, expiresAt: Date.now() + DAY },
+      ].entries()) {
+        await ctx.db.insert('cliTokens', {
+          tokenHash: `synced-user-machine-${index}`,
+          userId: token.userId,
+          stackId: token.userId === USER ? a.stackId : b.stackId,
+          scopes: ['collect', 'sync'],
+          createdAt: Date.now(),
+          lastUsedAt: Date.now(),
+          expiresAt: token.expiresAt,
+        })
+      }
       const rows = await ctx.db
         .query('measuredInventory')
         .withIndex('by_stack', (q) => q.eq('stackId', b.stackId))
@@ -867,8 +886,17 @@ describe('listSyncedUsers', () => {
           creatorId: a.creatorId,
           living: true,
           syncedStacks: 2,
+          autoSyncOnStacks: 1,
+          autoSyncOffStacks: 1,
+          connectedMachines: 2,
         }),
-        expect.objectContaining({ creatorId: b.creatorId, living: false }),
+        expect.objectContaining({
+          creatorId: b.creatorId,
+          living: false,
+          autoSyncOnStacks: 0,
+          autoSyncOffStacks: 1,
+          connectedMachines: 1,
+        }),
       ]),
     )
   })

@@ -654,6 +654,9 @@ const SyncedUser = v.object({
   living: v.boolean(),
   lastSyncAt: v.number(),
   syncedStacks: v.number(),
+  autoSyncOnStacks: v.number(),
+  autoSyncOffStacks: v.number(),
+  connectedMachines: v.number(),
 })
 
 /**
@@ -673,10 +676,16 @@ export const listSyncedUsers = query({
   handler: async (ctx) => {
     if (!(await isAdmin(ctx))) return null
 
-    const cutoff = Date.now() - SEVEN_DAYS_MS
+    const now = Date.now()
+    const cutoff = now - SEVEN_DAYS_MS
     const byCreator = new Map<
       Id<'creators'>,
-      { lastSyncAt: number; syncedStacks: number }
+      {
+        lastSyncAt: number
+        syncedStacks: number
+        autoSyncOnStacks: number
+        autoSyncOffStacks: number
+      }
     >()
 
     for (const stack of await ctx.db.query('stacks').collect()) {
@@ -688,6 +697,12 @@ export const listSyncedUsers = query({
       byCreator.set(stack.creatorId, {
         lastSyncAt: Math.max(current?.lastSyncAt ?? 0, lastSyncAt),
         syncedStacks: (current?.syncedStacks ?? 0) + 1,
+        autoSyncOnStacks:
+          (current?.autoSyncOnStacks ?? 0) +
+          (stack.autoSync?.enabled === true ? 1 : 0),
+        autoSyncOffStacks:
+          (current?.autoSyncOffStacks ?? 0) +
+          (stack.autoSync?.enabled === true ? 0 : 1),
       })
     }
 
@@ -695,6 +710,13 @@ export const listSyncedUsers = query({
     for (const [creatorId, sync] of byCreator) {
       const creator = await ctx.db.get(creatorId)
       if (!creator) continue
+      const userId = creator.userId
+      const machines = userId
+        ? await ctx.db
+            .query('cliTokens')
+            .withIndex('by_userId', (q) => q.eq('userId', userId))
+            .collect()
+        : []
       users.push({
         creatorId,
         name: creator.name,
@@ -702,6 +724,10 @@ export const listSyncedUsers = query({
         living: sync.lastSyncAt > cutoff,
         lastSyncAt: sync.lastSyncAt,
         syncedStacks: sync.syncedStacks,
+        autoSyncOnStacks: sync.autoSyncOnStacks,
+        autoSyncOffStacks: sync.autoSyncOffStacks,
+        connectedMachines: machines.filter((machine) => machine.expiresAt > now)
+          .length,
       })
     }
 
