@@ -1054,11 +1054,15 @@ export default defineSchema({
     // with no stack yet can still authenticate.
     stackId: v.optional(v.id('stacks')),
     // What this machine calls itself, so `/settings/machines` can tell three
-    // rows apart (#49). The CLI proposes `os.hostname()` at authStart and the
-    // approval page shows it in an editable field, so the stored string is
-    // always one the user saw and could overwrite. Optional permanently: an
-    // older CLI sends nothing, and the user may clear the field.
+    // rows apart (#49). The approval page always shows the stored string. An
+    // automatic hostname stays editable, while an explicit `--label` is fixed.
+    // Optional permanently: an older CLI sends nothing, and an editable field
+    // may be cleared.
     machineName: v.optional(v.string()),
+    // True only when the caller supplied `aistack login --label`. Unlike the
+    // automatically proposed hostname, that explicit label is fixed on the
+    // confirmation page and must survive approval unchanged.
+    machineNameReadOnly: v.optional(v.boolean()),
     // What the CLI calls itself, carried from `authStart` to the token exchange
     // so `cli_login_completed` can report it (#77). Optional permanently: an
     // older CLI sends nothing, and the login must still work.

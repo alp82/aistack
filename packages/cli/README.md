@@ -40,6 +40,7 @@ Link this machine to your AI Stack account via browser. Optional - `sync` runs t
 
 ```sh
 npx @use-aistack/cli login
+npx @use-aistack/cli login --label "build server" # preset and lock the label
 ```
 
 ### `npx @use-aistack/cli connect claude`

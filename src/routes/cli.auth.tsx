@@ -57,7 +57,9 @@ function CliAuthPage() {
 	);
 	const [machineName, setMachineName] = useState<string | null>(null);
 	const machineNameId = useId();
+	const syncStackId = useId();
 	const proposedName = pending?.machineName;
+	const machineNameReadOnly = pending?.machineNameReadOnly === true;
 	useEffect(() => {
 		if (proposedName && machineName === null) setMachineName(proposedName);
 	}, [proposedName, machineName]);
@@ -82,7 +84,11 @@ function CliAuthPage() {
 	const hasStacks = stacks.length > 0;
 	// A profile with no stack can still authorize the CLI for its other commands;
 	// the token simply carries no sync target until it is re-linked.
-	const canApprove = !stacksLoading && (!hasStacks || selectedStackId !== null);
+	const pendingLoading = isAuthenticated && code && pending === undefined;
+	const canApprove =
+		!stacksLoading &&
+		!pendingLoading &&
+		(!hasStacks || selectedStackId !== null);
 
 	useEffect(() => {
 		if (!isLoading && !isAuthenticated) {
@@ -175,8 +181,9 @@ function CliAuthPage() {
 							maxLength={64}
 							value={machineName ?? ""}
 							onChange={(e) => setMachineName(e.target.value)}
+							readOnly={machineNameReadOnly}
 							placeholder="work laptop"
-							className="w-full border border-border-subtle bg-bg-subtle p-3 font-mono text-sm text-fg-primary placeholder:text-fg-muted"
+							className="w-full border border-border-subtle bg-bg-subtle p-3 font-mono text-sm text-fg-primary placeholder:text-fg-muted read-only:cursor-default read-only:text-fg-muted"
 						/>
 						<p className="mt-2 font-mono text-[0.7rem] leading-relaxed text-fg-muted">
 							Only you ever see this. It is how you tell your machines apart
@@ -193,7 +200,7 @@ function CliAuthPage() {
 					{!stacksLoading && hasStacks && (
 						<div className="mb-6">
 							<label
-								htmlFor="sync-stack"
+								htmlFor={syncStackId}
 								className="mb-2 block font-mono text-[0.7rem] font-bold uppercase tracking-wider text-fg-muted"
 							>
 								Sync usage data to
@@ -206,7 +213,7 @@ function CliAuthPage() {
 								</div>
 							) : (
 								<select
-									id="sync-stack"
+									id={syncStackId}
 									value={selectedStackId ?? ""}
 									onChange={(e) => setSelectedStackId(e.target.value || null)}
 									className="w-full border border-border-subtle bg-bg-subtle p-3 font-mono text-sm text-fg-primary"
