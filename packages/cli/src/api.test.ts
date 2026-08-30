@@ -61,6 +61,35 @@ describe("HTTP failures the user can act on", () => {
 	});
 });
 
+describe("authStart machine label", () => {
+	test("marks an explicit label as read-only", async () => {
+		const fetchMock = vi.fn(() =>
+			Promise.resolve(
+				new Response(
+					JSON.stringify({
+						secretId: "secret",
+						userCode: "ABC123",
+						authUrl: "/",
+					}),
+					{ status: 200 },
+				),
+			),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+
+		await authStart("build server", true);
+
+		const [, init] = fetchMock.mock.calls[0] as unknown as [
+			string,
+			RequestInit,
+		];
+		expect(JSON.parse(init.body as string)).toMatchObject({
+			machineName: "build server",
+			machineNameReadOnly: true,
+		});
+	});
+});
+
 /**
  * Setting the stack's auto-sync permission (#102's route, called by #103).
  *

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { proposedMachineName } from "./login.js";
+import { proposedMachineName, requestedMachineLabel } from "./login.js";
 
 /**
  * The machine name the CLI proposes at login - wayfinder #49 (map #29).
@@ -33,5 +33,21 @@ describe("proposedMachineName", () => {
 				throw new Error("no hostname");
 			}),
 		).toBeUndefined();
+	});
+});
+
+describe("requestedMachineLabel", () => {
+	test("trims an explicit label", () => {
+		expect(requestedMachineLabel("  build server  ")).toBe("build server");
+	});
+
+	test("refuses a label the confirmation page cannot safely render", () => {
+		expect(() => requestedMachineLabel("   ")).toThrow(/Machine label/);
+		expect(() => requestedMachineLabel("x".repeat(65))).toThrow(
+			/Machine label/,
+		);
+		expect(() => requestedMachineLabel("bad\u202Ename")).toThrow(
+			/Machine label/,
+		);
 	});
 });

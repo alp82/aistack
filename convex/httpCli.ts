@@ -218,10 +218,9 @@ async function authStartBudget(
 /**
  * POST /api/cli/auth/start - open a device-code session.
  *
- * The body is OPTIONAL and carries one field: `machineName`, the CLI's proposal
- * for what to call this machine (#49). It is a proposal, not a fact - the
- * approval page renders it in an editable field, so the string that reaches
- * `cliTokens.name` is always one the user saw and could overwrite.
+ * The body is OPTIONAL and carries `machineName`, the CLI's proposal for what
+ * to call this machine (#49). `machineNameReadOnly` marks an explicit
+ * `aistack login --label` value. Automatic hostname proposals stay editable.
  *
  * A name that fails the display bound is DROPPED, not rejected. Refusing the
  * whole login because a hostname carries a control character would break
@@ -258,15 +257,20 @@ export const authStart = httpAction(async (ctx, request) => {
   const now = Date.now()
 
   let machineName: string | undefined
+  let machineNameReadOnly: boolean | undefined
   let cliVersion: string | undefined
   try {
     const body = (await request.json()) as {
       machineName?: unknown
+      machineNameReadOnly?: unknown
       cliVersion?: unknown
     }
     if (typeof body?.machineName === 'string') {
       const trimmed = body.machineName.trim()
-      if (isDisplaySafeName(trimmed)) machineName = trimmed
+      if (isDisplaySafeName(trimmed)) {
+        machineName = trimmed
+        if (body.machineNameReadOnly === true) machineNameReadOnly = true
+      }
     }
     // Carried to the token exchange, where `cli_login_completed` reports it
     // (#77). Bounded and dropped when malformed, like the name above: a version
@@ -284,6 +288,7 @@ export const authStart = httpAction(async (ctx, request) => {
     secretId,
     status: 'pending',
     machineName,
+    machineNameReadOnly,
     cliVersion,
     createdAt: now,
     expiresAt: now + 15 * 60 * 1000,

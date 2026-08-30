@@ -185,6 +185,23 @@ describe('authStart machine name', () => {
     expect(stored).toBe('work laptop')
   })
 
+  test('stores the read-only marker only with a valid label', async () => {
+    const { t, json } = await start(
+      JSON.stringify({ machineName: 'build server', machineNameReadOnly: true }),
+    )
+    const stored = await t.run(async (ctx) => {
+      const row = await ctx.db
+        .query('cliSessions')
+        .withIndex('by_userCode', (q) => q.eq('userCode', json.userCode))
+        .first()
+      return {
+        name: row?.machineName,
+        readOnly: row?.machineNameReadOnly,
+      }
+    })
+    expect(stored).toEqual({ name: 'build server', readOnly: true })
+  })
+
   test('an older CLI that sends no body still authenticates', async () => {
     const { session } = await start()
     expect(session).not.toBeNull()
@@ -287,6 +304,39 @@ describe('the name reaches the machines list', () => {
 
     const rows = await t.withIdentity(IDENTITY).query(api.cliTokens.listByUser, {})
     expect(rows[0].name).toBeUndefined()
+  })
+
+  test('an explicit label cannot be changed during approval', async () => {
+    const t = convexTest(schema, modules)
+    await seedCreator(t)
+    const startResp = await t.fetch('/api/cli/auth/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        machineName: 'build server',
+        machineNameReadOnly: true,
+      }),
+    })
+    const { userCode, secretId } = await startResp.json()
+
+    const pending = await t
+      .withIdentity(IDENTITY)
+      .query(api.cliSessions.getPendingMachineName, { userCode })
+    expect(pending).toEqual({
+      machineName: 'build server',
+      machineNameReadOnly: true,
+    })
+
+    await t.withIdentity(IDENTITY).mutation(api.cliSessions.approveSession, {
+      userCode,
+      machineName: 'changed in a custom client',
+    })
+    await t.fetch(`/api/cli/auth/poll?secretId=${encodeURIComponent(secretId)}`, {
+      method: 'GET',
+    })
+
+    const rows = await t.withIdentity(IDENTITY).query(api.cliTokens.listByUser, {})
+    expect(rows[0].name).toBe('build server')
   })
 
   test('a name that cannot be rendered is refused at the approval form', async () => {

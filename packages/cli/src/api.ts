@@ -47,12 +47,14 @@ function failure(what: string, res: Response): Error {
 /**
  * Open a device-code session.
  *
- * `machineName` is a PROPOSAL, not a fact: the approval page renders it in an
- * editable field, so the user sees the string before it is stored and can
- * overwrite or clear it. That is why the hostname may be sent automatically -
- * the consent happens in the browser, a moment later, with the string on screen.
+ * An automatic `machineName` is a proposal that stays editable. A label the
+ * user supplied as a command parameter sets `machineNameReadOnly`, so the
+ * confirmation page shows the chosen value without allowing another edit.
  */
-export async function authStart(machineName?: string): Promise<{
+export async function authStart(
+	machineName?: string,
+	machineNameReadOnly = false,
+): Promise<{
 	secretId: string;
 	userCode: string;
 	authUrl: string;
@@ -62,11 +64,11 @@ export async function authStart(machineName?: string): Promise<{
 		// `cliVersion` rides along so `cli_login_completed` can report which
 		// version linked the machine (#78). The server carries it on the pending
 		// session and reads it at the token exchange.
-		body: JSON.stringify(
-			machineName
-				? { machineName, cliVersion: CLI_VERSION }
-				: { cliVersion: CLI_VERSION },
-		),
+		body: JSON.stringify({
+			...(machineName ? { machineName } : {}),
+			...(machineNameReadOnly ? { machineNameReadOnly: true } : {}),
+			cliVersion: CLI_VERSION,
+		}),
 	});
 	if (!res.ok) throw failure("Auth start failed", res);
 	return res.json();

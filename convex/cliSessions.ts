@@ -80,7 +80,13 @@ export const getBySecretId = internalQuery({
  */
 export const getPendingMachineName = query({
   args: { userCode: v.string() },
-  returns: v.union(v.object({ machineName: v.optional(v.string()) }), v.null()),
+  returns: v.union(
+    v.object({
+      machineName: v.optional(v.string()),
+      machineNameReadOnly: v.boolean(),
+    }),
+    v.null(),
+  ),
   handler: async (ctx, args) => {
     const user = await ctx.auth.getUserIdentity()
     if (!user) return null
@@ -92,7 +98,10 @@ export const getPendingMachineName = query({
     if (!session) return null
     if (session.status !== 'pending') return null
     if (session.expiresAt <= Date.now()) return null
-    return { machineName: session.machineName }
+    return {
+      machineName: session.machineName,
+      machineNameReadOnly: session.machineNameReadOnly === true,
+    }
   },
 })
 
@@ -140,10 +149,12 @@ export const approveSession = mutation({
       }
     }
 
-    // The name is the user's own string typed into a form, so it gets the same
-    // bound as every other client-supplied name (#45). A blank field clears the
-    // CLI's proposal rather than keeping it - the user deleted it on purpose.
-    const proposed = args.machineName?.trim() ?? ''
+    // An editable name is the user's own form value. A locked name is the
+    // explicit CLI parameter stored on the session, regardless of what a
+    // custom approval client submits. Both get the same display bound (#45).
+    const proposed = session.machineNameReadOnly
+      ? (session.machineName ?? '')
+      : (args.machineName?.trim() ?? '')
     if (proposed.length > 0 && !isDisplaySafeName(proposed)) {
       throw new Error('Machine name must be 64 characters or fewer and printable')
     }
@@ -164,6 +175,7 @@ export const createSession = internalMutation({
     secretId: v.string(),
     status: v.union(v.literal('pending'), v.literal('approved'), v.literal('expired')),
     machineName: v.optional(v.string()),
+    machineNameReadOnly: v.optional(v.boolean()),
     cliVersion: v.optional(v.string()),
     createdAt: v.number(),
     expiresAt: v.number(),
@@ -175,6 +187,7 @@ export const createSession = internalMutation({
       secretId: args.secretId,
       status: args.status,
       machineName: args.machineName,
+      machineNameReadOnly: args.machineNameReadOnly,
       cliVersion: args.cliVersion,
       createdAt: args.createdAt,
       expiresAt: args.expiresAt,

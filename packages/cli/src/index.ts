@@ -18,7 +18,8 @@ program
 program
 	.command("login")
 	.description("Authenticate with AI Stack")
-	.action(loginCommand);
+	.option("--label <label>", "Set the machine label")
+	.action((options) => loginCommand(options));
 
 program
 	.command("collect")

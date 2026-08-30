@@ -3,6 +3,7 @@ import * as p from "@clack/prompts";
 import open from "open";
 import { authPoll, authStart } from "../api.js";
 import { saveToken } from "../config.js";
+import { isDisplaySafeName } from "../harness/shared/aggregate.js";
 import { dim, intro, lime, limeBold, outro, outroError } from "../theme.js";
 
 /**
@@ -33,13 +34,34 @@ export function proposedMachineName(
  * the standalone command. Logs its own progress and errors; returns whether a
  * token was saved.
  */
-export async function performLogin(): Promise<boolean> {
+type LoginOptions = { label?: string };
+
+export function requestedMachineLabel(label: string): string {
+	const trimmed = label.trim();
+	if (!isDisplaySafeName(trimmed)) {
+		throw new Error(
+			"Machine label must be 64 characters or fewer and contain only printable characters.",
+		);
+	}
+	return trimmed;
+}
+
+export async function performLogin(
+	options: LoginOptions = {},
+): Promise<boolean> {
 	const s = p.spinner();
 	s.start("Starting authentication...");
 
 	let session: Awaited<ReturnType<typeof authStart>>;
 	try {
-		session = await authStart(proposedMachineName());
+		const requestedLabel =
+			options.label === undefined
+				? undefined
+				: requestedMachineLabel(options.label);
+		session = await authStart(
+			requestedLabel ?? proposedMachineName(),
+			requestedLabel !== undefined,
+		);
 		s.stop("Session created");
 	} catch (err) {
 		s.stop("Failed to start authentication");
@@ -90,10 +112,10 @@ export async function performLogin(): Promise<boolean> {
 	return false;
 }
 
-export async function loginCommand() {
+export async function loginCommand(options: LoginOptions = {}) {
 	intro("login");
 
-	if (!(await performLogin())) {
+	if (!(await performLogin(options))) {
 		outroError("error");
 		process.exit(1);
 	}
