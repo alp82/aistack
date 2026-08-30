@@ -49,10 +49,15 @@ const SECTIONS: PageSection[] = [
 
 const IDENTITY = { name: "Night Shift", priceText: "$220/mo", upvotes: 12 };
 
-/** jsdom lays nothing out, so the block's position is the thing under test. */
-function scrolledPast(element: HTMLElement, past: boolean) {
+/** jsdom lays nothing out, so the link rows' position is the thing under test. */
+function positionRows(
+	element: HTMLElement,
+	{ top, height }: { top: number; height: number },
+) {
 	vi.spyOn(element, "getBoundingClientRect").mockReturnValue({
-		bottom: past ? -500 : 400,
+		top,
+		height,
+		bottom: top + height,
 	} as DOMRect);
 }
 
@@ -74,6 +79,12 @@ afterEach(() => {
 
 function block() {
 	return screen.getByRole("navigation", { name: "Stack sections" });
+}
+
+function rows() {
+	const list = block().querySelector("ul");
+	if (!list) throw new Error("Stack section rows are missing");
+	return list;
 }
 
 // The rail is `aria-hidden` until it docks, which is the point: an element the
@@ -142,6 +153,16 @@ describe("the fixed rail", () => {
 		expect(rail().textContent).toContain("12");
 	});
 
+	it("aligns its content to the main header content shell", () => {
+		render(<StackPageNav sections={SECTIONS} identity={IDENTITY} />);
+		expect(rail()).toHaveClass("px-6");
+		expect(screen.getByTestId("section-rail-content")).toHaveClass(
+			"mx-auto",
+			"w-full",
+			"max-w-content",
+		);
+	});
+
 	// The regression this replaced an IntersectionObserver to fix: on a short
 	// screen the block starts BELOW the fold, so a tap on a nav row jumps the
 	// reader past it without the block ever overlapping the viewport. An
@@ -153,19 +174,31 @@ describe("the fixed rail", () => {
 			"false",
 		);
 
-		scrolledPast(block(), true);
+		positionRows(rows(), { top: -500, height: 180 });
 		fireEvent.scroll(window);
 		expect(screen.getByTestId("section-rail")).toHaveAttribute(
 			"data-shown",
 			"true",
 		);
 
-		scrolledPast(block(), false);
+		positionRows(rows(), { top: 400, height: 180 });
 		fireEvent.scroll(window);
 		expect(screen.getByTestId("section-rail")).toHaveAttribute(
 			"data-shown",
 			"false",
 		);
+	});
+
+	it("docks when half of the clickable rows are hidden behind the header", () => {
+		render(<StackPageNav sections={SECTIONS} identity={IDENTITY} />);
+
+		positionRows(rows(), { top: -25, height: 180 });
+		fireEvent.scroll(window);
+		expect(rail()).toHaveAttribute("data-shown", "false");
+
+		positionRows(rows(), { top: -26, height: 180 });
+		fireEvent.scroll(window);
+		expect(rail()).toHaveAttribute("data-shown", "true");
 	});
 
 	it("repeats the same anchors as the block", () => {
