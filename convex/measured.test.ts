@@ -6,6 +6,7 @@ import type { Id } from './_generated/dataModel'
 import type { Infer } from 'convex/values'
 import schema, { MeasuredPayload } from './schema'
 import { sha256Hex } from './httpCli'
+import { ADMIN_EMAILS } from './lib/admin'
 
 const modules = import.meta.glob('./**/*.{js,ts}')
 
@@ -110,21 +111,24 @@ async function seedStack(
   t: Ctx,
   opts: {
     userId?: string
+    creatorId?: Id<'creators'>
     published?: boolean
     name?: string
     publishCost?: boolean
   } = {},
 ) {
   return await t.run(async (ctx) => {
-    const creatorId = await ctx.db.insert('creators', {
-      name: 'Owner',
-      slug: `owner-${opts.userId ?? USER}-${Math.random().toString(36).slice(2, 8)}`,
-      userId: opts.userId ?? USER,
-      verified: false,
-      personalPages: [],
-      projectPages: [],
-      createdAt: Date.now(),
-    })
+    const creatorId =
+      opts.creatorId ??
+      (await ctx.db.insert('creators', {
+        name: 'Owner',
+        slug: `owner-${opts.userId ?? USER}-${Math.random().toString(36).slice(2, 8)}`,
+        userId: opts.userId ?? USER,
+        verified: false,
+        personalPages: [],
+        projectPages: [],
+        createdAt: Date.now(),
+      }))
     const stackId = await ctx.db.insert('stacks', {
       name: opts.name ?? 'My Stack',
       slug: 'my-stack',
@@ -814,20 +818,25 @@ describe('publishForToken - the destination comes from the token', () => {
 // Read - the series (#81)
 // ---------------------------------------------------------------------------
 
-describe('countLivingStacks', () => {
-  test('counts distinct stacks whose newest sync landed within 7 days', async () => {
+describe('listSyncedUsers', () => {
+  test('lists synced users and derives living from their newest sync', async () => {
     const t = convexTest(schema, modules)
     const a = await seedStack(t)
+    const anotherA = await seedStack(t, { creatorId: a.creatorId })
     const b = await seedStack(t, { userId: OTHER_USER })
 
     await t.mutation(internal.measured.publishSnapshot, {
       stackId: a.stackId,
       payload: payload(),
     })
-    // Two syncs from one stack still count once.
+    // Two syncs from one stack still produce one user row.
     await t.mutation(internal.measured.publishSnapshot, {
       stackId: a.stackId,
       payload: payload({ capturedAt: Date.now() + 1 }),
+    })
+    await t.mutation(internal.measured.publishSnapshot, {
+      stackId: anotherA.stackId,
+      payload: payload(),
     })
     await t.mutation(internal.measured.publishSnapshot, {
       stackId: b.stackId,
@@ -843,10 +852,30 @@ describe('countLivingStacks', () => {
       }
     })
 
-    expect(await t.query(api.measured.countLivingStacks, {})).toEqual({
+    const admin = t.withIdentity({
+      tokenIdentifier: 'convex|admin',
+      email: ADMIN_EMAILS[0],
+    })
+    const result = await admin.query(api.measured.listSyncedUsers, {})
+    expect(result).toMatchObject({
       living: 1,
       everSynced: 2,
     })
+    expect(result?.users).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          creatorId: a.creatorId,
+          living: true,
+          syncedStacks: 2,
+        }),
+        expect.objectContaining({ creatorId: b.creatorId, living: false }),
+      ]),
+    )
+  })
+
+  test('returns null to a non-admin', async () => {
+    const t = convexTest(schema, modules)
+    expect(await t.query(api.measured.listSyncedUsers, {})).toBeNull()
   })
 })
 

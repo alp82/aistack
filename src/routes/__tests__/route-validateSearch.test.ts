@@ -76,6 +76,9 @@ describe("admin validateSearch", () => {
 			news: "inbox",
 		});
 	});
+	it("keeps the synced users tab", () => {
+		expect(validateAdmin({ tab: "syncs" }).tab).toBe("syncs");
+	});
 	it("keeps a valid news sub-view", () => {
 		expect(validateAdmin({ tab: "news", news: "sources" })).toEqual({
 			tab: "news",

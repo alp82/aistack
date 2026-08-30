@@ -30,6 +30,7 @@ import {
 } from './schema'
 import { captureServerEvent } from './analytics'
 import { emitActivityEvent } from './activity'
+import { isAdmin } from './lib/admin'
 import { normalizeFrequencyHours } from './lib/autoSync'
 
 import { extractShortId } from './lib/ids'
@@ -646,28 +647,69 @@ export function publicMachine(
   }
 }
 
+const SyncedUser = v.object({
+  creatorId: v.id('creators'),
+  name: v.string(),
+  slug: v.string(),
+  living: v.boolean(),
+  lastSyncAt: v.number(),
+  syncedStacks: v.number(),
+})
+
 /**
- * The done-bar counter: stacks whose newest sync landed within 7 days.
- *
- * A query over the inventory rows, not a telemetry event - with n=1 user an
- * event would say nothing, and this reads the fact directly (#33 decision 13).
- * One indexed read per stack (#83): the population grows by stacks, and the
- * inventory table is bounded to one row per source.
+ * The admin's synced-user read. A user is living when their newest sync landed
+ * within 7 days. Server receipt time is authoritative for both fields.
  */
-export const countLivingStacks = query({
+export const listSyncedUsers = query({
   args: {},
-  returns: v.object({ living: v.number(), everSynced: v.number() }),
+  returns: v.union(
+    v.null(),
+    v.object({
+      living: v.number(),
+      everSynced: v.number(),
+      users: v.array(SyncedUser),
+    })
+  ),
   handler: async (ctx) => {
+    if (!(await isAdmin(ctx))) return null
+
     const cutoff = Date.now() - SEVEN_DAYS_MS
-    let living = 0
-    let everSynced = 0
+    const byCreator = new Map<
+      Id<'creators'>,
+      { lastSyncAt: number; syncedStacks: number }
+    >()
+
     for (const stack of await ctx.db.query('stacks').collect()) {
       const rows = await inventoryForStack(ctx, stack._id)
       if (rows.length === 0) continue
-      everSynced += 1
-      if (rows.some((r) => r.receivedAt > cutoff)) living += 1
+
+      const lastSyncAt = Math.max(...rows.map((row) => row.receivedAt))
+      const current = byCreator.get(stack.creatorId)
+      byCreator.set(stack.creatorId, {
+        lastSyncAt: Math.max(current?.lastSyncAt ?? 0, lastSyncAt),
+        syncedStacks: (current?.syncedStacks ?? 0) + 1,
+      })
     }
-    return { living, everSynced }
+
+    const users = []
+    for (const [creatorId, sync] of byCreator) {
+      const creator = await ctx.db.get(creatorId)
+      if (!creator) continue
+      users.push({
+        creatorId,
+        name: creator.name,
+        slug: creator.slug,
+        living: sync.lastSyncAt > cutoff,
+        lastSyncAt: sync.lastSyncAt,
+        syncedStacks: sync.syncedStacks,
+      })
+    }
+
+    return {
+      living: users.filter((user) => user.living).length,
+      everSynced: users.length,
+      users,
+    }
   },
 })
 

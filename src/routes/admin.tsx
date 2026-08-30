@@ -24,12 +24,20 @@ import { AdminImportTab } from "@/components/admin/AdminImportTab";
 import { AdminNewsTab, type NewsSubTab } from "@/components/admin/AdminNewsTab";
 import { AdminQualityTab } from "@/components/admin/AdminQualityTab";
 import { AdminReviewTab } from "@/components/admin/AdminReviewTab";
+import { AdminSyncedUsersTab } from "@/components/admin/AdminSyncedUsersTab";
 import { AdminViewsTab } from "@/components/admin/AdminViewsTab";
 import { coerceEnum } from "@/lib/searchParams";
 import { seoMeta } from "@/lib/seo";
 import { api } from "../../convex/_generated/api";
 
-type AdminTab = "review" | "quality" | "email" | "views" | "news" | "import";
+type AdminTab =
+	| "review"
+	| "quality"
+	| "email"
+	| "views"
+	| "news"
+	| "import"
+	| "syncs";
 
 export const ADMIN_SEARCH_DEFAULTS = {
 	tab: "review" as AdminTab,
@@ -45,7 +53,15 @@ export const Route = createFileRoute("/admin")({
 	): { tab?: AdminTab; view?: EmailSubTab; news?: NewsSubTab } => ({
 		tab: coerceEnum(
 			search.tab,
-			["review", "quality", "email", "views", "news", "import"] as const,
+			[
+				"review",
+				"quality",
+				"email",
+				"views",
+				"news",
+				"import",
+				"syncs",
+			] as const,
 			"review",
 		),
 		view: coerceEnum(
@@ -75,14 +91,29 @@ export const Route = createFileRoute("/admin")({
  * Internal only, and deliberately not an event: with one user, telemetry would
  * say nothing that this query does not say exactly (#33 decision 13).
  */
-function LivingStacks() {
-	const counts = useQuery(api.measured.countLivingStacks);
-	if (!counts) return null;
+function LivingUsers({
+	active,
+	onClick,
+}: {
+	active: boolean;
+	onClick: () => void;
+}) {
+	const data = useQuery(api.measured.listSyncedUsers);
+	if (!data) return null;
 	return (
-		<span className="ml-auto py-4 font-mono text-xs uppercase tracking-wide text-fg-muted">
-			<span className="font-bold text-accent-lime">{counts.living}</span> living
-			· {counts.everSynced} ever synced
-		</span>
+		<button
+			type="button"
+			onClick={onClick}
+			className={`ml-auto border-b-2 py-4 font-mono text-xs uppercase tracking-wide transition-colors -mb-[2px] ${
+				active
+					? "border-accent-lime text-fg-primary"
+					: "border-transparent text-fg-muted hover:text-fg-primary"
+			}`}
+		>
+			<span className="font-bold text-accent-lime">{data.living}</span> living
+			{" · "}
+			{data.everSynced} ever synced
+		</button>
 	);
 }
 
@@ -180,7 +211,10 @@ function AdminPage() {
 								) : null}
 							</button>
 						))}
-						<LivingStacks />
+						<LivingUsers
+							active={tab === "syncs"}
+							onClick={() => setSearch({ tab: "syncs" })}
+						/>
 					</div>
 				</div>
 			</div>
@@ -202,6 +236,7 @@ function AdminPage() {
 					onViewChange={(v) => setSearch({ news: v })}
 				/>
 			)}
+			{tab === "syncs" && <AdminSyncedUsersTab />}
 		</div>
 	);
 }

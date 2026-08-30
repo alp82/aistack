@@ -1,4 +1,5 @@
 
+* add machine with prefilled name (curia.sh)
 * stack page cleaner. more value in less space without sacrificing whitespace
     subnav max width and centered
 * value proposition should be shown before/with CTA
