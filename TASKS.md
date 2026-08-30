@@ -1,4 +1,6 @@
+
 * stack page cleaner. more value in less space without sacrificing whitespace
+    subnav max width and centered
 * value proposition should be shown before/with CTA
     profile for sharing
     ai stats

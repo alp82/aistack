@@ -245,19 +245,19 @@ export function GuideSection({
 					</div>
 				</>
 			) : (
-				<div className="max-w-3xl border-y border-stroke-subtle py-10">
+				<div className="max-w-3xl py-10">
 					<div className="flex items-start gap-4">
 						<div className="flex size-10 shrink-0 items-center justify-center border border-stroke-subtle bg-bg-panel/40 text-fg-muted">
 							<BookOpenText className="size-4" aria-hidden="true" />
 						</div>
 						<div>
 							<p className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-fg-secondary">
-								No guide yet
+								No guide
 							</p>
 							<p className="mt-2 text-sm leading-relaxed text-fg-muted">
 								{isOwner
 									? "Add setup notes so others can reproduce your stack."
-									: "The author has not added setup notes for this stack."}
+									: "Stacker did not add a guide yet."}
 							</p>
 							{isOwner && (
 								<Link
