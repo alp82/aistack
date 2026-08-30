@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { TooltipFrame } from "@/components/TooltipFrame";
 import HoverCard from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 import { ACCENT, ACCENT_DIM, ACCENT_REST, fmtCount, fmtPercent } from "./copy";
@@ -54,9 +55,9 @@ export function Tip({
 			className={cn("flex", className)}
 			triggerClassName="flex h-full w-full min-w-0 flex-1 items-end"
 			renderContent={() => (
-				<div className="px-3 py-2 font-mono text-[11px] leading-snug text-fg-primary">
+				<TooltipFrame className="px-3 py-2 font-mono text-[11px] leading-snug text-fg-primary">
 					{label}
-				</div>
+				</TooltipFrame>
 			)}
 		>
 			{children}

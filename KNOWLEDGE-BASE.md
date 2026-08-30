@@ -164,6 +164,7 @@ https://susam.net/inverse-laws-of-robotics.html
 
 memory & knowledge base:
 https://remnic.ai
+https://openviking.ai
 https://github.com/affaan-m/ECC
 https://github.com/oraios/serena
 https://github.com/garrytan/gbrain

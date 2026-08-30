@@ -1,5 +1,6 @@
 import { formatPriceDisplay, getNormalizedMonthlyAmount } from "@/lib/pricing";
 import type { Id } from "../../convex/_generated/dataModel";
+import { TooltipFrame } from "./TooltipFrame";
 
 type Tool = {
 	_id: Id<"tools">;
@@ -59,7 +60,7 @@ export function CostBreakdownTooltip({
 		);
 
 	return (
-		<div className="border-[3px] border-stroke-strong bg-bg-panel shadow-[6px_6px_0_var(--stroke-strong)] p-4">
+		<TooltipFrame className="p-4">
 			<div className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-accent-lime mb-3 border-b-2 border-stroke-strong pb-2">
 				Cost Breakdown
 			</div>
@@ -163,6 +164,6 @@ export function CostBreakdownTooltip({
 					</span>
 				</span>
 			</div>
-		</div>
+		</TooltipFrame>
 	);
 }

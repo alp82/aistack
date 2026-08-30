@@ -12,7 +12,13 @@
  *   4. THE WITHHELD LINES STAY IN THE DENOMINATOR, and languages merge by name.
  *   5. THE THREE ROWS #285 UNLOCKED read the daily wire's own shapes.
  */
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+	cleanup,
+	fireEvent,
+	render,
+	screen,
+	waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { RowBody } from "../components";
 import { rowHead } from "../heads";
@@ -126,6 +132,19 @@ describe("when work happens", () => {
 		expect(
 			screen.getByRole("img", { name: "Sun 23:00, 120 recorded events" }),
 		).toBeTruthy();
+	});
+
+	it("frames the hover reading with the shared tooltip card", async () => {
+		show("component:activity-heatmap");
+		fireEvent.mouseEnter(
+			screen.getByRole("img", { name: "Sun 23:00, 120 recorded events" }),
+		);
+
+		await waitFor(() => {
+			expect(
+				document.body.querySelector("[data-tooltip-frame]"),
+			).not.toBeNull();
+		});
 	});
 
 	it("switches the grid to commits, shifted by the same offset", () => {
