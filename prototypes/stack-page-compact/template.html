@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#351 · whole-page compact pass</title>
+<style>
+/* PROTOTYPE - throwaway (ticket alp82/aistack#351). Tokens copied from src/styles.css (dark). */
+:root{
+  --bg-canvas:oklch(0.16 0.008 256);--bg-shell:oklch(0.12 0.01 256);
+  --bg-panel:oklch(0.2 0.009 256);--bg-panel-muted:oklch(0.24 0.009 256);
+  --fg-primary:oklch(0.96 0.004 256);--fg-secondary:oklch(0.82 0.004 256);
+  --fg-muted:oklch(0.68 0.005 256);
+  --lime:oklch(0.78 0.17 132);--lime-strong:oklch(0.84 0.2 134);--lime-contrast:oklch(0.22 0.02 132);
+  --stroke:oklch(0.55 0.01 256 / 0.75);--stroke-strong:oklch(0.5 0.015 256 / 0.9);
+  --panel30:oklch(0.2 0.009 256 / 0.3);
+  --mono:ui-monospace,'JetBrains Mono',Menlo,Consolas,monospace;
+  --sans:Inter,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg-canvas)}
+body{font-family:var(--sans);color:var(--fg-primary);background:var(--bg-canvas);padding-bottom:84px}
+a{color:inherit;text-decoration:none}
+img{max-width:100%}
+.mono{font-family:var(--mono)}
+.muted{color:var(--fg-muted)}
+.sec2{color:var(--fg-secondary)}
+.lime{color:var(--lime)}
+.kick{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.25em;text-transform:uppercase}
+.small{font-family:var(--mono);font-size:11px}
+.chip{display:inline-flex;align-items:center;border:1px solid var(--stroke);padding:2px 8px;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-muted)}
+.bar-track{background:var(--bg-panel-muted);height:8px;position:relative;flex:1;min-width:60px}
+.bar-fill{background:var(--lime);height:100%}
+.bar-fill.dim{background:var(--stroke-strong)}
+hr.rule{border:0;border-top:1px solid var(--stroke)}
+/* proto chrome (not part of the design) */
+#proto-head{position:sticky;top:0;z-index:40;background:var(--bg-shell);border-bottom:1px solid var(--stroke);padding:8px 14px;font-family:var(--mono);font-size:11px;color:var(--fg-muted);display:flex;gap:12px;flex-wrap:wrap;align-items:baseline}
+#proto-head b{color:var(--lime)}
+#switcher{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:50;background:var(--bg-shell);border:1px solid var(--stroke-strong);box-shadow:0 4px 24px rgb(0 0 0/.5);display:flex;align-items:center;gap:2px;padding:4px;font-family:var(--mono);font-size:11px;max-width:calc(100vw - 16px);overflow-x:auto}
+#switcher button{background:none;border:0;color:var(--fg-muted);font:inherit;padding:8px 9px;cursor:pointer;white-space:nowrap}
+#switcher button.on{background:var(--lime);color:var(--lime-contrast);font-weight:700}
+#switcher .h{padding:8px 6px;color:var(--fg-secondary);white-space:nowrap;border-left:1px solid var(--stroke)}
+</style>
+</head>
+<body>
+<div id="proto-head">
+  <span><b>alp82/aistack#351</b> · whole-page compact pass</span>
+  <span>Alper's Coding Stack · real prod data, 2026-08-30</span>
+  <span id="hnote"></span>
+</div>
+<main id="page"></main>
+<nav id="switcher" aria-label="Prototype variants"></nav>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+"use strict";
+const DATA = JSON.parse(document.getElementById("data").textContent);
+const S = DATA.stack, U = DATA.usage, W = DATA.wf, P = DATA.projects;
+
+/* ---------- formatters (mirroring measured/copy.ts) ---------- */
+const fmtT = n => n>=1e9?(n/1e9).toFixed(2)+"B":n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(0)+"K":String(n);
+const fmtUSD = n => "$"+Math.round(n).toLocaleString("en-US");
+const pct = (x,d=0) => (x*100).toFixed(d)+"%";
+const num = n => Math.round(n).toLocaleString("en-US");
+const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const price = a => a>0 ? "$"+(Math.abs(a-Math.round(a))<0.005?Math.round(a):Math.floor(a)) : "$0";
+const priceMo = a => price(a)+"/mo";
+const row = id => W.rows.find(r=>r.id===id);
+const rowVal = r => r.unit==="share"?pct(r.value):r.unit==="hour"?String(Math.round(r.value)).padStart(2,"0")+":00":r.unit==="minutes"?(r.value>=10?Math.round(r.value):r.value.toFixed(1))+" min":String(Math.round(r.value));
+const toolsSorted = [...S.tools].sort((a,b)=>b.amount-a.amount);
+const guideMin = Math.max(1,Math.ceil(S.guide.words/200));
+const deltaTokens = U.totalTokens-U.prevTokens;
+const modelRows = U.models.filter(m=>m.share>=0.0005);
+const readCheckedAgo = "23 min ago"; // receivedAt vs capture date, static in the demo
+
+/* ---------- tiny chart helpers (single series wears the accent) ---------- */
+function spark(series,wpx,hpx,cls){
+  const max = Math.max(...series.map(p=>p.t),1);
+  const pts = series.map((p,i)=>`${(i/(series.length-1))*wpx},${hpx-2-(p.t/max)*(hpx-4)}`).join(" ");
+  return `<svg class="${cls||""}" width="100%" height="${hpx}" viewBox="0 0 ${wpx} ${hpx}" preserveAspectRatio="none" role="img" aria-label="daily tokens"><polyline points="${pts}" fill="none" stroke="var(--lime)" stroke-width="2"/></svg>`;
+}
+function shareBar(share,dim){
+  return `<span class="bar-track"><span class="bar-fill${dim?" dim":""}" style="width:${Math.max(1,share*100)}%"></span></span>`;
+}
+/* phase mix stacked strip: one measure (share of measured time), single-hue steps */
+function phaseStrip(h){
+  const ps = W.lead.phaseShare;
+  const parts=[["scout",ps.scout,"oklch(0.78 0.17 132)"],["build",ps.build,"oklch(0.62 0.13 132)"],["verify",ps.verify,"oklch(0.48 0.1 132)"],["handoff",ps.handoff,"oklch(0.38 0.06 132)"],["unknown",ps.unknown,"oklch(0.32 0.01 256)"]];
+  return `<div style="display:flex;height:${h}px;gap:2px">`+parts.map(([n,v,c])=>`<span title="${n} ${pct(v)}" style="background:${c};width:${v*100}%"></span>`).join("")+`</div>
+  <div class="small muted" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">`+parts.map(([n,v])=>`<span>${n} ${pct(v)}</span>`).join("")+`</div>`;
+}
+</script>
+<script src="variants.js"></script>
+<script>
+/* ---------- switcher ---------- */
+const VARIANTS=[["base","Baseline (today)"],["v1","V1 Tight editorial"],["v2","V2 Ledger"],["v3","V3 Mosaic"],["v4","V4 Split rail"],["v5","V5 Digest"]];
+const RENDER={base:renderBaseline,v1:renderV1,v2:renderV2,v3:renderV3,v4:renderV4,v5:renderV5};
+const page=document.getElementById("page");
+const heights={};
+function measureAll(){
+  const probe=document.createElement("div");
+  probe.style.cssText=`position:absolute;left:-99999px;top:0;width:${page.clientWidth||document.body.clientWidth}px`;
+  document.body.appendChild(probe);
+  for(const [k] of VARIANTS){probe.innerHTML=RENDER[k]();heights[k]=probe.scrollHeight;}
+  probe.remove();
+}
+function current(){const v=new URLSearchParams(location.search).get("v");return RENDER[v]?v:"base";}
+function show(k,push){
+  page.innerHTML=RENDER[k]();
+  if(push){const u=new URL(location);u.searchParams.set("v",k);history.replaceState(null,"",u);}
+  const bar=document.getElementById("switcher");
+  bar.innerHTML=VARIANTS.map(([id,label])=>`<button class="${id===k?"on":""}" data-v="${id}">${label.split(" ")[0]}</button>`).join("")+
+    `<span class="h" id="hread"></span>`;
+  bar.querySelectorAll("button").forEach(b=>b.onclick=()=>show(b.dataset.v,true));
+  const hn=document.getElementById("hnote");
+  const label=VARIANTS.find(v=>v[0]===k)[1];
+  const ratio=heights.base?Math.round(heights[k]/heights.base*100):null;
+  document.getElementById("hread").textContent=ratio?`${label} · ${ratio}% of baseline height`:label;
+  hn.textContent=ratio?`${Math.round(heights[k]/100)/10}k px vs baseline ${Math.round(heights.base/100)/10}k px`:"";
+  window.scrollTo(0,0);
+}
+addEventListener("keydown",e=>{
+  if(/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;
+  const i=VARIANTS.findIndex(v=>v[0]===current());
+  if(e.key==="ArrowRight")show(VARIANTS[(i+1)%VARIANTS.length][0],true);
+  if(e.key==="ArrowLeft")show(VARIANTS[(i+VARIANTS.length-1)%VARIANTS.length][0],true);
+});
+measureAll();
+show(current(),false);
+addEventListener("resize",()=>{measureAll();show(current(),false);});
+</script>
+</body>
+</html>
