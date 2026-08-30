@@ -17,7 +17,7 @@ const HARNESS_LABELS: Record<string, string> = {
 export type HarnessTokens = { readonly name: string; readonly tokens: number };
 
 /**
- * The tokens by harness, one bar per harness, Claude Code first.
+ * The tokens by harness, one bar per harness, highest usage first.
  *
  * A harness that produced tokens but is not a stack tool is EXTRA (#293): its
  * label and bar fill sit at half opacity, its figures stay at full contrast,
@@ -44,11 +44,7 @@ export function HarnessShareRows({
 			share: total > 0 ? tokens / total : 0,
 			extra: !stackToolSlugs.includes(name),
 		}))
-		.sort((a, b) => {
-			if (a.name === "claude-code") return -1;
-			if (b.name === "claude-code") return 1;
-			return a.name.localeCompare(b.name);
-		});
+		.sort((a, b) => b.tokens - a.tokens || a.name.localeCompare(b.name));
 	if (rows.length === 0) return null;
 
 	return (

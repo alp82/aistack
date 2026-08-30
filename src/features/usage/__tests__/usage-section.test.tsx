@@ -253,6 +253,46 @@ describe("the days path", () => {
 		).not.toBeInTheDocument();
 	});
 
+	it("hides harnesses that display as 0.0% and orders the rest by usage", () => {
+		const current = reading();
+		setup({
+			usage: usage({
+				current: {
+					...current,
+					harnesses: [
+						{
+							harness: "claude-code",
+							sessions: 20,
+							totalTokens: 10_000,
+							tokenShare: 0.1,
+						},
+						{
+							harness: "codex",
+							sessions: 80,
+							totalTokens: 89_960,
+							tokenShare: 0.8996,
+						},
+						{
+							harness: "opencode",
+							sessions: 1,
+							totalTokens: 40,
+							tokenShare: 0.0004,
+						},
+					],
+				},
+			}),
+		});
+
+		fireEvent.click(screen.getByRole("tab", { name: /Harness/ }));
+		const list = screen.getByRole("list", { name: "Harness token shares" });
+		const rows = within(list).getAllByRole("listitem");
+		expect(rows).toHaveLength(2);
+		expect(rows[0]).toHaveTextContent("Codex");
+		expect(rows[1]).toHaveTextContent("Claude Code");
+		expect(within(list).queryByText("opencode")).not.toBeInTheDocument();
+		expect(within(list).queryByText("0.0%")).not.toBeInTheDocument();
+	});
+
 	it("says when the range holds no day", () => {
 		setup({ usage: usage({ current: null, previous: null }) });
 		expect(
@@ -276,9 +316,7 @@ describe("the legacy path: one legacy figure, no days", () => {
 
 	it("prints no model rows, because the figure has none", () => {
 		setup({ usage: legacyUsage() });
-		expect(
-			screen.getByText("not measured per model before per-day rows"),
-		).toBeInTheDocument();
+		expect(screen.getByText("waiting for next sync")).toBeInTheDocument();
 	});
 
 	it("reads not measured at 7d and 24h, with the stats absent", () => {

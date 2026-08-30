@@ -611,8 +611,8 @@ describe("GROUP D - GuideSection Guide empty state", () => {
 		expect(screen.queryByText(/no setup notes yet/i)).not.toBeInTheDocument();
 	});
 
-	// D-2: description undefined, isOwner=false → "No setup notes yet."; no link
-	it("isOwner=false, no description: renders 'No setup notes yet.' and no owner link", () => {
+	// D-2: description undefined, isOwner=false → clean public empty state; no link
+	it("isOwner=false, no description: renders the public empty state and no owner link", () => {
 		render(
 			<GuideSection
 				index={3}
@@ -621,7 +621,10 @@ describe("GROUP D - GuideSection Guide empty state", () => {
 				slug="my-stack"
 			/>,
 		);
-		expect(screen.getByText(/no setup notes yet/i)).toBeInTheDocument();
+		expect(screen.getByText(/no guide yet/i)).toBeInTheDocument();
+		expect(
+			screen.getByText(/author has not added setup notes/i),
+		).toBeInTheDocument();
 		expect(
 			screen.queryByRole("link", { name: /add a writeup/i }),
 		).not.toBeInTheDocument();

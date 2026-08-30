@@ -1,16 +1,7 @@
-* model icons missing for newer models
 * stack page cleaner. more value in less space without sacrificing whitespace
 * value proposition should be shown before/with CTA
     profile for sharing
     ai stats
-* pi
-    https://www.youtube.com/watch?v=5Qu2SkSQeBU
-    https://x.com/kunchenguid/status/2083611681868107857
-    https://lazypi.org
-    https://github.com/franky47/dotfiles/tree/main/dot-pi/agent
-    https://github.com/jal-co/jalco-pi-mono
-    https://pi.dev/packages/pi-remote-control
-    https://github.com/davis7dotsh/my-pi-setup
 * aistack claude.md
     https://github.com/woosal1337/blog/blob/main/videos/ep01-the-cure-for-ai-slop/ste-writing-skill.md
 * https://x.com/solomonneas/status/2080454372564070873
@@ -31,6 +22,14 @@
 * github actions security (see below)
 * show real prices without sponsoring/discounts
     * dev.to
+* pi
+    https://www.youtube.com/watch?v=5Qu2SkSQeBU
+    https://x.com/kunchenguid/status/2083611681868107857
+    https://lazypi.org
+    https://github.com/franky47/dotfiles/tree/main/dot-pi/agent
+    https://github.com/jal-co/jalco-pi-mono
+    https://pi.dev/packages/pi-remote-control
+    https://github.com/davis7dotsh/my-pi-setup
 * marketplace
     * sell own services and ai expertise
     * full company profile

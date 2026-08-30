@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { LegacyFigure } from "@/features/measured/copy";
+import { fmtShare, type LegacyFigure } from "@/features/measured/copy";
 import { RowBody } from "@/features/workflow/components";
 import type { WorkflowView } from "@/features/workflow/copy";
 import { rowHead } from "@/features/workflow/heads";
@@ -220,11 +220,19 @@ function statItems(
 		compare((s) => s.subagentShare),
 	);
 
-	// A harness with no tokens in the range is not measured: it neither counts
-	// nor draws a bar.
+	// A harness whose share rounds to 0.0% would add noise without a meaningful
+	// figure. It neither counts nor draws a bar.
+	const harnessTokenTotal = source.current.harnesses.reduce(
+		(total, h) => total + h.totalTokens,
+		0,
+	);
 	const harnesses = source.current.harnesses
-		.map((h) => ({ name: h.harness, tokens: h.totalTokens }))
-		.filter((h) => h.tokens > 0);
+		.filter(
+			(h) =>
+				harnessTokenTotal > 0 &&
+				fmtShare(h.totalTokens / harnessTokenTotal) !== "0.0%",
+		)
+		.map((h) => ({ name: h.harness, tokens: h.totalTokens }));
 	const names = new Set(harnesses.map((h) => h.name));
 	if (names.size === 0) return;
 	items.set("harness", {

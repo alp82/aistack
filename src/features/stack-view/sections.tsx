@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ChevronRight, Pencil } from "lucide-react";
+import { BookOpenText, ChevronRight, Pencil } from "lucide-react";
 import { type ReactNode, useId, useState } from "react";
 import { TableOfContents } from "@/components/TableOfContents";
 import { TiptapEditor } from "@/components/TiptapEditor";
@@ -243,26 +243,34 @@ export function GuideSection({
 						<TiptapEditor content={description} editable={false} />
 					</div>
 				</>
-			) : isOwner ? (
-				<div className="max-w-3xl border border-stroke-subtle bg-bg-canvas p-6">
-					<p className="text-sm text-fg-secondary leading-relaxed">
-						No guide yet. Add setup notes so others can reproduce your stack.
-					</p>
-					<div className="mt-4">
-						<Link
-							to="/stacks/$slug/edit"
-							params={{ slug }}
-							className="inline-flex items-center gap-1.5 border-2 border-stroke-strong px-3 py-1 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
-						>
-							<Pencil className="size-3" />
-							Add a writeup
-						</Link>
+			) : (
+				<div className="max-w-3xl border-y border-stroke-subtle py-10">
+					<div className="flex items-start gap-4">
+						<div className="flex size-10 shrink-0 items-center justify-center border border-stroke-subtle bg-bg-panel/40 text-fg-muted">
+							<BookOpenText className="size-4" aria-hidden="true" />
+						</div>
+						<div>
+							<p className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-fg-secondary">
+								No guide yet
+							</p>
+							<p className="mt-2 text-sm leading-relaxed text-fg-muted">
+								{isOwner
+									? "Add setup notes so others can reproduce your stack."
+									: "The author has not added setup notes for this stack."}
+							</p>
+							{isOwner && (
+								<Link
+									to="/stacks/$slug/edit"
+									params={{ slug }}
+									className="mt-5 inline-flex items-center gap-1.5 border-2 border-stroke-strong px-3 py-1 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
+								>
+									<Pencil className="size-3" />
+									Add a writeup
+								</Link>
+							)}
+						</div>
 					</div>
 				</div>
-			) : (
-				<p className="max-w-3xl font-mono text-sm text-fg-muted">
-					No setup notes yet.
-				</p>
 			)}
 		</Section>
 	);

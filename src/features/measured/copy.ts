@@ -93,7 +93,7 @@ export function readingsLine(count: number, firstAt: number): string {
 /** The kicker over the model rows, and the note that explains the notch. */
 export const MIX_KICKER = "where the tokens went";
 /** The legacy path has totals and no model rows (ADR-0011). */
-export const NOT_MEASURED_MIX = "not measured per model before per-day rows";
+export const NOT_MEASURED_MIX = "waiting for next sync";
 export function notchNote(firstAt: number): string {
 	return `the notch marks where each share stood on ${fmtDay(firstAt)}`;
 }
