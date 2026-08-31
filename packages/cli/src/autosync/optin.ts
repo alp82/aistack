@@ -9,11 +9,10 @@
 // gave somewhere else.
 //
 // This ask is the PRIMARY post-sync ask: it runs first, and the connect-claude
-// upsell yields to a later sync (at most one ask per sync, each asked once,
-// each persisted). Any explicit answer persists to
-// ~/.config/aistack/settings.json; ctrl-C is not an answer and the question
-// returns on the next sync. A stack that has already decided is never asked at
-// all - `settleAutoSync` reconciles it instead.
+// upsell yields to a later sync (at most one ask per sync). "Maybe later" and
+// ctrl-C leave no decision, so the question returns on the next manual sync.
+// Only "Never ask again" persists a local refusal. A stack that has already
+// decided is never asked at all: `settleAutoSync` reconciles it instead.
 
 import * as p from "@clack/prompts";
 import { setAutoSync } from "../api.js";
@@ -319,7 +318,8 @@ export async function settleAutoSync(
 export async function offerAutoSyncOptIn(
 	deps: EnableDeps = {},
 ): Promise<boolean> {
-	if (getSettings(deps.settingsFile).autoSyncAnswered === true) return false;
+	if (getSettings(deps.settingsFile).autoSyncNeverAskAgain === true)
+		return false;
 
 	const detected = await (deps.detectedImpl ?? detectedAdapters)();
 	if (detected.length === 0) return false;
@@ -334,8 +334,13 @@ export async function offerAutoSyncOptIn(
 			},
 			{
 				value: "later",
-				label: "No thanks",
-				hint: "you can enable it later",
+				label: "Maybe later",
+				hint: "ask again after your next manual sync",
+			},
+			{
+				value: "never",
+				label: "Never ask again",
+				hint: "you can still enable it with sync --auto on",
 			},
 		],
 		initialValue: "enable",
@@ -357,7 +362,9 @@ export async function offerAutoSyncOptIn(
 		return true;
 	}
 
-	saveSettings({ autoSyncAnswered: true }, deps.settingsFile);
+	if (answer === "never") {
+		saveSettings({ autoSyncNeverAskAgain: true }, deps.settingsFile);
+	}
 	p.log.message(
 		`If you change your mind: ${limeBold("npx @use-aistack/cli sync --auto on")} ${dim(
 			"(and --auto off to revoke)",

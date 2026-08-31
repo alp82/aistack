@@ -141,8 +141,10 @@ export function normalizeFrequencyHours(value: number | undefined): number {
 export interface Settings {
 	/** The post-sync connect-claude upsell was answered (either way). */
 	connectClaudeAnswered?: boolean;
-	/** The post-sync auto-sync ask was answered (either way). */
+	/** Legacy binary answer. Kept readable so existing settings still parse. */
 	autoSyncAnswered?: boolean;
+	/** The owner explicitly chose not to see the post-sync auto-sync ask again. */
+	autoSyncNeverAskAgain?: boolean;
 	autoSync?: AutoSyncConfig;
 	autoSyncState?: AutoSyncState;
 }

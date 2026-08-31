@@ -143,7 +143,9 @@ describe("the three states", () => {
 			autoSync: { enabled: true, frequencyHours: 24 },
 			lastAutoSyncAt: null,
 		});
-		expect(screen.getByText("npx @use-aistack/cli sync")).toBeTruthy();
+		expect(
+			screen.getByText("npx @use-aistack/cli sync --auto on"),
+		).toBeTruthy();
 	});
 
 	it("does not name that command once automation is working", () => {
@@ -151,7 +153,9 @@ describe("the three states", () => {
 			autoSync: { enabled: true, frequencyHours: 24 },
 			lastAutoSyncAt: Date.now() - 1000,
 		});
-		expect(screen.queryByText("npx @use-aistack/cli sync")).toBeNull();
+		expect(
+			screen.queryByText("npx @use-aistack/cli sync --auto on"),
+		).toBeNull();
 	});
 });
 
@@ -159,7 +163,18 @@ describe("the switch", () => {
 	it("turns automation on", () => {
 		setup({ autoSync: null, lastAutoSyncAt: null });
 		fireEvent.click(screen.getByRole("button", { name: /^on$/i }));
-		expect(lastSet()).toMatchObject({ stackId: STACK_ID, enabled: true });
+		expect(lastSet()).toEqual({
+			stackId: STACK_ID,
+			enabled: true,
+			frequencyHours: 6,
+		});
+	});
+
+	it("shows the CLI enable command while automation is off", () => {
+		setup({ autoSync: null, lastAutoSyncAt: null });
+		expect(
+			screen.getByText("npx @use-aistack/cli sync --auto on"),
+		).toBeTruthy();
 	});
 
 	it("turns automation off", () => {
@@ -259,12 +274,12 @@ describe("leading, past 48 hours", () => {
 		expect(screen.queryByText(/keeps this page current/i)).toBeNull();
 	});
 
-	it("says none of it while the reading is inside 48 hours", () => {
+	it("keeps the stale-reading pitch out while retaining the enable command", () => {
 		setup({ autoSync: null, lastAutoSyncAt: null });
 		expect(screen.queryByText(/keeps this page current/i)).toBeNull();
 		expect(
-			screen.queryByText("npx @use-aistack/cli sync --auto on"),
-		).toBeNull();
+			screen.getByText("npx @use-aistack/cli sync --auto on"),
+		).toBeTruthy();
 		expect(
 			screen.getByText(/only a sync you run yourself publishes/i),
 		).toBeTruthy();

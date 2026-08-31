@@ -35,6 +35,7 @@ AI Stack helps developers and teams **discover, compare, and share AI technology
 - 🚀 **Share** your own AI stacks with the community
 - ➕ **Add missing tools** inline during stack creation or in batch mode
 - 🔄 **Sync configs** between your repo and the web with the CLI
+- ⏱️ **Auto-sync measured usage** every 6 hours from linked AI coding sessions
 - 🔐 **Authentication** via email/password and Google SSO
 
 ## ⚙️ How It Works
@@ -51,11 +52,13 @@ flowchart LR
 
 1. **The web app** ([aistack.to](https://aistack.to)) - where you browse stacks, compare tools, and publish your own setups. Each stack groups multiple **projects**, and each project holds your actual AI config files (prompts, rules, skills, MCP servers).
 
-2. **The CLI** (`@use-aistack/cli`) - a small tool that scans your project for AI config files and uploads them, or clones someone else's configs into your working directory. No manual copy-paste.
+2. **The CLI** (`@use-aistack/cli`) - a small tool that measures local AI coding sessions, syncs project config files, and writes shared configs into a working directory. No manual copy-paste.
 
 **Typical flow:**
 
 - Sign up on the web app and create a stack.
+- Run `npx @use-aistack/cli sync` to review and publish measured usage. Afterward, choose Enable, Maybe later, or Never ask again for auto-sync. Maybe later asks again after your next manual sync.
+- To enable directly, run `npx @use-aistack/cli sync --auto on`. Auto-sync defaults to every 6 hours. The same control appears above the first section on your stack page and includes this command for installing machine triggers.
 - Run `npx @use-aistack/cli collect` inside your repo to upload your `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, skills, and MCP configs to your stack.
 - Share the stack link. On another machine, run `npx @use-aistack/cli create` to write that AI setup into the current directory.
 
@@ -70,6 +73,9 @@ npx @use-aistack/cli <command>
 | Command | What it does |
 |---------|--------------|
 | `login` | Authenticate with your AI Stack account via browser |
+| `sync` | Review and publish measured usage from local AI coding sessions |
+| `sync --auto on` | Enable auto-sync, every 6 hours by default, and install session triggers |
+| `sync --auto off` | Revoke auto-sync for the stack and remove local triggers |
 | `collect` | Scan the current project for AI config files and upload them to your stack |
 | `create` | Write your stack's AI config files into the current directory |
 

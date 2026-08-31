@@ -389,6 +389,16 @@ describe("a stack that has never been measured", () => {
 			screen.getByText(/Auto-sync keeps this page current/),
 		).toBeInTheDocument();
 	});
+
+	it("places the owner switch above section 01", () => {
+		setup({ isOwner: true });
+		const control = screen.getByText("// auto-sync");
+		const heading = screen.getByRole("heading", { name: "Actual Usage" });
+		expect(
+			control.compareDocumentPosition(heading) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+	});
 });
 
 describe("the tabs", () => {

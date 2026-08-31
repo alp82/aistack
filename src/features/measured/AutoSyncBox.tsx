@@ -22,7 +22,7 @@ import {
 	stalePromptLine,
 } from "./autoSync";
 import { CommandBlock } from "./CommandLine";
-import { MONO_LABEL, SYNC_CMD } from "./copy";
+import { MONO_LABEL } from "./copy";
 import { syncAgo } from "./freshness";
 
 /**
@@ -95,7 +95,7 @@ export function AutoSyncBox({
 		<div
 			className={cn(
 				"border bg-bg-panel px-6 py-6 md:px-8",
-				lead ? "mb-10 border-accent-lime" : "mt-10 border-stroke-strong",
+				lead ? "border-accent-lime" : "border-stroke-strong",
 			)}
 		>
 			<div className="flex flex-wrap items-center justify-between gap-4">
@@ -155,23 +155,20 @@ export function AutoSyncBox({
 				</div>
 			</div>
 
-			{/* Off and resting says what a revoke leaves behind. Off and leading
-			    says what turning it on would do, and hands over the command that
-			    writes the same flag as the toggle. */}
+			{/* The browser writes the stack permission. The command also installs
+			    this machine's triggers, so it stays next to every not-running state. */}
 			{state.kind === "off" && (
 				<>
 					<p className="mt-3 max-w-prose text-xs leading-relaxed text-fg-muted">
 						{lead ? autoSyncExplainer(hours) : OFF_REVOKE_NOTE}
 					</p>
-					{lead && (
-						<div className="mt-4 max-w-xl">
-							<CommandBlock
-								commands={[
-									{ cmd: AUTO_ON_CMD, comment: "same switch, from the CLI" },
-								]}
-							/>
-						</div>
-					)}
+					<div className="mt-4 max-w-xl">
+						<CommandBlock
+							commands={[
+								{ cmd: AUTO_ON_CMD, comment: "enable and install triggers" },
+							]}
+						/>
+					</div>
 				</>
 			)}
 
@@ -180,7 +177,11 @@ export function AutoSyncBox({
 					<p className="mb-3 max-w-prose text-xs leading-relaxed text-fg-muted">
 						{NEVER_FIRED_FIX}
 					</p>
-					<CommandBlock commands={[{ cmd: SYNC_CMD, comment: "once" }]} />
+					<CommandBlock
+						commands={[
+							{ cmd: AUTO_ON_CMD, comment: "install triggers on this machine" },
+						]}
+					/>
 				</div>
 			)}
 

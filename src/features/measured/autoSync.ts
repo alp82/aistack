@@ -92,7 +92,7 @@ export function runningLine(frequencyHours: number): string {
 export const NEVER_FIRED_LINE = "No machine has synced automatically yet.";
 
 export const NEVER_FIRED_FIX =
-	"Run this once on the machine you want to publish from. It installs the trigger for every harness you use, and after that the schedule runs on its own.";
+	"Run the enable command once on the machine you want to publish from. It installs the trigger for every harness you use, and after that the schedule runs on its own.";
 
 export const ON_NOTE =
 	"A sync fires when a session starts on a linked machine, and at most once per interval. Turn this off and it stops everywhere.";

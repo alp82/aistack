@@ -102,62 +102,68 @@ export function UsageSection({
 	const hasLead = view !== null && view !== undefined && view.window.days > 0;
 
 	return (
-		<Section index={index} id={MEASURED_ANCHOR}>
-			<SectionHeader
-				index={String(index).padStart(2, "0")}
-				kicker={KICKER}
-				title={TITLE}
-				metaAlwaysVisible
-				meta={
-					<ControlBar
-						range={range}
-						onRange={setRange}
-						machines={machines}
-						machine={ordinal}
-						onMachine={(next) =>
-							setSelection(next === null ? null : { slug, ordinal: next })
-						}
-						receivedAt={receivedAt}
-					/>
-				}
-			/>
-			{/* The owner box (#104) sits inside the section it governs and does
-			    NOT wait for a reading, because it is the fix for a stack that has
-			    none. Which side it sits on is the reading's answer, so it waits for
-			    that. Renders nothing for a visitor, query and all. */}
-			{answered && staleSince !== null && (
-				<AutoSyncBox
-					stackId={stackId}
-					isOwner={isOwner}
-					staleSince={staleSince}
-				/>
-			)}
-			{/* Undefined is "not answered yet", and it must not read as "never
-			    measured": the invitation waits until both reads have spoken. */}
-			{!answered ? null : top === null ? (
-				isOwner ? (
-					<OwnerNotMeasured />
-				) : (
-					<NeverMeasured />
-				)
-			) : (
-				<>
-					<TopBlock source={top} range={range} />
-					<Tabs groups={TOPIC} counts={counts} value={tab} onChange={setTab} />
-					<div className="mt-8" role="tabpanel">
-						{hasLead && group.id === "time" && <Lead view={view} />}
-						{shown.length === 0 ? (
-							<p className="font-mono text-sm text-fg-muted">{EMPTY_TAB}</p>
-						) : (
-							packTab(group.id, shown, range)
-						)}
+		<>
+			{/* The owner control sits above section 01. It still waits for the usage
+			    read so it can name an old reading accurately. */}
+			{answered && isOwner && (
+				<div className="px-6 py-10">
+					<div className="mx-auto max-w-7xl">
+						<AutoSyncBox
+							stackId={stackId}
+							isOwner={isOwner}
+							staleSince={staleSince}
+						/>
 					</div>
-				</>
+				</div>
 			)}
-			{answered && staleSince === null && (
-				<AutoSyncBox stackId={stackId} isOwner={isOwner} />
-			)}
-		</Section>
+			<Section index={index} id={MEASURED_ANCHOR}>
+				<SectionHeader
+					index={String(index).padStart(2, "0")}
+					kicker={KICKER}
+					title={TITLE}
+					metaAlwaysVisible
+					meta={
+						<ControlBar
+							range={range}
+							onRange={setRange}
+							machines={machines}
+							machine={ordinal}
+							onMachine={(next) =>
+								setSelection(next === null ? null : { slug, ordinal: next })
+							}
+							receivedAt={receivedAt}
+						/>
+					}
+				/>
+				{/* Undefined is "not answered yet", and it must not read as "never
+			    measured": the invitation waits until both reads have spoken. */}
+				{!answered ? null : top === null ? (
+					isOwner ? (
+						<OwnerNotMeasured />
+					) : (
+						<NeverMeasured />
+					)
+				) : (
+					<>
+						<TopBlock source={top} range={range} />
+						<Tabs
+							groups={TOPIC}
+							counts={counts}
+							value={tab}
+							onChange={setTab}
+						/>
+						<div className="mt-8" role="tabpanel">
+							{hasLead && group.id === "time" && <Lead view={view} />}
+							{shown.length === 0 ? (
+								<p className="font-mono text-sm text-fg-muted">{EMPTY_TAB}</p>
+							) : (
+								packTab(group.id, shown, range)
+							)}
+						</div>
+					</>
+				)}
+			</Section>
+		</>
 	);
 }
 

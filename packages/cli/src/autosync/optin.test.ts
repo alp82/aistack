@@ -600,12 +600,51 @@ describe("offerAutoSyncOptIn", () => {
 		);
 	});
 
-	test("an answered machine is not asked again", async () => {
-		saveSettings({ autoSyncAnswered: true }, settingsFile);
+	test("never ask again suppresses later prompts", async () => {
+		saveSettings({ autoSyncNeverAskAgain: true }, settingsFile);
 		expect(await offerAutoSyncOptIn({ settingsFile, ...claudeOnly })).toBe(
 			false,
 		);
 		expect(selectMock).not.toHaveBeenCalled();
+	});
+
+	test("maybe later asks again after the next manual sync", async () => {
+		selectMock.mockResolvedValue("later");
+		expect(await offerAutoSyncOptIn({ settingsFile, ...claudeOnly })).toBe(
+			true,
+		);
+		expect(getSettings(settingsFile).autoSyncNeverAskAgain).toBeUndefined();
+
+		selectMock.mockClear();
+		expect(await offerAutoSyncOptIn({ settingsFile, ...claudeOnly })).toBe(
+			true,
+		);
+		expect(selectMock).toHaveBeenCalledOnce();
+	});
+
+	test("legacy binary declines are treated as maybe later", async () => {
+		saveSettings({ autoSyncAnswered: true }, settingsFile);
+		selectMock.mockResolvedValue("later");
+		expect(await offerAutoSyncOptIn({ settingsFile, ...claudeOnly })).toBe(
+			true,
+		);
+		expect(selectMock).toHaveBeenCalledOnce();
+	});
+
+	test("offers maybe later and a permanent refusal separately", async () => {
+		selectMock.mockResolvedValue("never");
+		await offerAutoSyncOptIn({ settingsFile, ...claudeOnly });
+		const prompt = selectMock.mock.calls[0]?.[0] as {
+			options: Array<{ value: string; label: string }>;
+		};
+		expect(
+			prompt.options.map(({ value, label }) => ({ value, label })),
+		).toEqual([
+			{ value: "enable", label: "Enable" },
+			{ value: "later", label: "Maybe later" },
+			{ value: "never", label: "Never ask again" },
+		]);
+		expect(getSettings(settingsFile).autoSyncNeverAskAgain).toBe(true);
 	});
 
 	test("with no active harness there is nothing to ask", async () => {

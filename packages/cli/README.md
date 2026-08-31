@@ -20,17 +20,19 @@ npx @use-aistack/cli sync
 
 On an unlinked machine, `sync` starts the login flow inline - your browser opens to approve the machine, then the sync continues. One command is the whole onboarding.
 
+After a manual sync, the CLI offers auto-sync with three choices: Enable, Maybe later, and Never ask again. Maybe later asks again after your next manual sync. Existing declines from older CLI versions are treated as Maybe later.
+
 ### `npx @use-aistack/cli sync --auto on` / `off`
 
-Optional: keep your stack fresh without manual syncs. `on` asks your stack for the permission, then writes a `SessionStart` hook into the harnesses you actually use - `~/.claude/settings.json` for Claude Code, `~/.codex/hooks.json` for Codex. The hook runs a silent sync at most once per day when a session starts. `off` removes the hooks and takes the permission back.
+Optional: keep your stack fresh without manual syncs. `on` asks your stack for the permission, then writes a `SessionStart` hook into the harnesses you actually use - `~/.claude/settings.json` for Claude Code, `~/.codex/hooks.json` for Codex. The hook runs a silent sync at most once every 6 hours when a session starts. `off` removes the hooks and takes the permission back.
 
 ```sh
-npx @use-aistack/cli sync --auto on            # enable, default every 24h
+npx @use-aistack/cli sync --auto on            # enable, default every 6h
 npx @use-aistack/cli sync --auto on --every 12 # custom frequency in hours
 npx @use-aistack/cli sync --auto off           # revoke
 ```
 
-**Your stack owns the permission, not this machine.** The silent run asks aistack.to before it publishes anything, so the switch on your stack page is a complete revoke: it stops every machine, even one whose hooks are still installed. It works the other way too - turn the switch on, run one `sync`, and that machine installs its own triggers. A harness you adopt months later gets its trigger the same way.
+**Your stack owns the permission, not this machine.** The silent run asks aistack.to before it publishes anything, so the switch above the first section on your stack page is a complete revoke: it stops every machine, even one whose hooks are still installed. The switch defaults to every 6 hours. Run the enable command shown beside it on each machine that should install triggers. A harness you adopt months later gets its trigger the same way.
 
 The silent run (`sync --auto`) never prompts and never installs a hook. Each run appends one line to `~/.config/aistack/sync.log` (capped at 200 lines). The next interactive `sync` reports the last result. After 3 failures in a row, one visible message appears in Claude Code and names the fix. No email, no dialogs.
 
