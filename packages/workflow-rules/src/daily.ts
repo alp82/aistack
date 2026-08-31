@@ -483,6 +483,30 @@ export function foldHarnessDays(days: readonly HarnessDay[]): HarnessDay {
 }
 
 /** Add Git days together. Rule versions join as a set, like the harness fold. */
+/**
+ * The most per-commit entries a fold keeps. One entry per commit adds up: a
+ * 30-day window on a busy machine passed 17k commits, and Convex refuses an
+ * array over 8192 entries. The strip that draws them shows a distribution,
+ * so a quantile sample of the sorted values is the same picture.
+ */
+export const MAX_CHANGED_LINES_PER_COMMIT = 4096;
+
+/**
+ * At most `max` values, evenly spaced through the SORTED input so every
+ * quantile (the median included) survives the cut. Returns the values sorted.
+ */
+function sampleSorted(values: readonly number[], max: number): number[] {
+	const sorted = [...values].sort((a, b) => a - b);
+	if (sorted.length <= max) return sorted;
+	const out: number[] = [];
+	for (let i = 0; i < max; i++) {
+		out.push(
+			sorted[Math.floor((i * (sorted.length - 1)) / (max - 1))] as number,
+		);
+	}
+	return out;
+}
+
 export function foldGitDays(days: readonly GitDay[]): GitDay {
 	const versions = (values: readonly string[]): string =>
 		[...new Set(values)].sort().join(" · ");
@@ -494,7 +518,10 @@ export function foldGitDays(days: readonly GitDay[]): GitDay {
 		lateNightCommits: days.reduce((sum, d) => sum + d.lateNightCommits, 0),
 		additions: days.reduce((sum, d) => sum + d.additions, 0),
 		removals: days.reduce((sum, d) => sum + d.removals, 0),
-		changedLinesPerCommit: days.flatMap((d) => [...d.changedLinesPerCommit]),
+		changedLinesPerCommit: sampleSorted(
+			days.flatMap((d) => [...d.changedLinesPerCommit]),
+			MAX_CHANGED_LINES_PER_COMMIT,
+		),
 		testFileCommits: days.reduce((sum, d) => sum + d.testFileCommits, 0),
 		changedLinesByExtension: sumBy(
 			days.flatMap((d) => d.changedLinesByExtension),

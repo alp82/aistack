@@ -7,6 +7,7 @@ import {
 	foldHarnessDays,
 	foldWorkflowDays,
 	logBucket,
+	MAX_CHANGED_LINES_PER_COMMIT,
 	median,
 	medianBucket,
 	WORKFLOW_AGGREGATES_V2,
@@ -194,7 +195,7 @@ describe("foldGitDays", () => {
 		expect(folded.commits).toBe(6);
 		expect(folded.lateNightCommits).toBe(2);
 		expect(folded.additions).toBe(410);
-		expect(folded.changedLinesPerCommit).toEqual([10, 20, 70, 100, 300, 15]);
+		expect(folded.changedLinesPerCommit).toEqual([10, 15, 20, 70, 100, 300]);
 		expect(folded.changedLinesByExtension).toEqual([
 			{ extension: ".md", changedLines: 100 },
 			{ extension: ".ts", changedLines: 315 },
@@ -203,6 +204,25 @@ describe("foldGitDays", () => {
 			{ weekdayUtc: 1, hourUtc: 22, commits: 6 },
 		]);
 		expect(folded.commitSetRuleVersion).toBe("commit-set/v1");
+	});
+
+	test("caps the strip at the sample limit and keeps the quantiles", () => {
+		// Three days of 5000 commits each, like the window that broke prod:
+		// the fold must stay under Convex's 8192-entry array cap.
+		const day = gitDay({
+			changedLinesPerCommit: Array.from({ length: 5000 }, (_, i) => i + 1),
+		});
+		const folded = foldGitDays([day, day, day]);
+		expect(folded.changedLinesPerCommit.length).toBe(
+			MAX_CHANGED_LINES_PER_COMMIT,
+		);
+		const strip = folded.changedLinesPerCommit;
+		expect(strip[0]).toBe(1);
+		expect(strip[strip.length - 1]).toBe(5000);
+		// The median of the sample sits at the median of the input.
+		expect(strip[Math.floor(strip.length / 2)]).toBeCloseTo(2500, -2);
+		// Sorted ascending.
+		expect([...strip].sort((a, b) => a - b)).toEqual(strip);
 	});
 });
 
