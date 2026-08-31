@@ -9,6 +9,7 @@
  * Interaction uses fireEvent (from @testing-library/react) – same as stack-view-sections.test.tsx.
  */
 import {
+	act,
 	cleanup,
 	fireEvent,
 	render,
@@ -1158,6 +1159,33 @@ describe("ProjectsSection – Edit Submit", () => {
 // ---------------------------------------------------------------------------
 
 describe("ProjectsSection – Dialog mode-switch without leakage", () => {
+	it("TC-DSW-00: submit create, then open create again → fields are empty", async () => {
+		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([]);
+		useMutation.mockReturnValue(vi.fn().mockResolvedValue(null) as never);
+
+		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+
+		fireEvent.click(screen.getByRole("button", { name: /^add a project$/i }));
+		fireEvent.change(screen.getByRole("textbox", { name: /name/i }), {
+			target: { value: "First Project" },
+		});
+		await act(async () => {
+			fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
+		});
+
+		await vi.waitFor(() => {
+			expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+		});
+
+		fireEvent.click(screen.getByRole("button", { name: /^add a project$/i }));
+
+		const dialog = screen.getByRole("dialog");
+		expect(within(dialog).getByRole("textbox", { name: /name/i })).toHaveValue(
+			"",
+		);
+	});
+
 	// TC-DSW-01 (GAP-3): Edit dialog → close → open Create dialog → name field is empty
 	// jsdom's modal blocks interaction with row buttons while a dialog is open,
 	// so we test the close-then-reopen path: edit values must not bleed into the
@@ -1223,6 +1251,39 @@ describe("ProjectsSection – Dialog mode-switch without leakage", () => {
 
 		// Edit dialog must be seeded with the real project values, not "Partial Entry"
 		expect(screen.getByDisplayValue("My Project")).toBeInTheDocument();
+	});
+
+	it("TC-DSW-03: submit edit, then open create → fields are empty", async () => {
+		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([BASE_PROJECT]);
+		useMutation.mockReturnValue(vi.fn().mockResolvedValue(null) as never);
+
+		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+
+		const toggle = findFirstToggle();
+		if (!toggle) throw new Error("Project toggle was not rendered");
+		fireEvent.click(toggle);
+		fireEvent.click(screen.getByRole("button", { name: /^edit$/i }));
+		await act(async () => {
+			fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+		});
+
+		fireEvent.click(screen.getByRole("button", { name: /^new project$/i }));
+
+		const dialog = screen.getByRole("dialog");
+		expect(within(dialog).getByRole("textbox", { name: /name/i })).toHaveValue(
+			"",
+		);
+		expect(
+			within(dialog).getByRole("textbox", { name: /description/i }),
+		).toHaveValue("");
+		expect(within(dialog).getByRole("textbox", { name: /url/i })).toHaveValue(
+			"",
+		);
+		expect(within(dialog).getByRole("textbox", { name: /tags/i })).toHaveValue(
+			"",
+		);
+		expect(within(dialog).queryByText("react")).not.toBeInTheDocument();
 	});
 });
 

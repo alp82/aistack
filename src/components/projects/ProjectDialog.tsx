@@ -71,6 +71,10 @@ export function ProjectDialog({
 	}, [initial, setTags, setTagInput]);
 
 	const handleClose = () => {
+		setName("");
+		setDescription("");
+		setUrl("");
+		setTags([]);
 		setError(null);
 		setTagInput("");
 		onClose();

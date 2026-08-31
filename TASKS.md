@@ -1,5 +1,7 @@
-* opencode not detected
+* auto-sync easy enabling after declingin: maybe later, toggle from ui
+* update aistack readme with CLI commands
 * project dialog not cleared after adding/editing
+* opencode not detected
 * profile
     * @ in url is encoded
     * @alper-ortac below name is not needed
