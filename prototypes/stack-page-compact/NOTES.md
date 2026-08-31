@@ -61,3 +61,21 @@ inline chart, plus deep model/tool/project tables with logos and dollars.
 - v23 Console pro - matured dashboard, chart column + deep list column.
 - v24 Feature table - every measurement row carries its inline chart.
 - v25 Story scroll - near-fullscreen chapter slides, giant figures.
+
+## Round 4
+
+Operator verdict on round 3: v16 very strong. Bands too contrasty, try 2 or 4
+tints. Usage is a wall of widgets: play with hierarchy, value vs nice-to-have,
+visible vs hidden. Liked: v17's lime summary as an accent, v20's title rail,
+v22's timeline for single elements, v25's project-integrated stats. Rejected:
+v18/19/23 (borders, density), v21 alternating sides, v24 scanning.
+
+Six refinements of v16, one per axis:
+
+- v26 Tonal 4 - four dark tints, podium + quick-scan rows, lime summary accent.
+- v27 Rail + drawer - two shades, v20 title rail headers, tail behind a drawer.
+- v28 Distributed - measurements move to their natural sections: git stats to
+  Projects (with v25 stat cards), kit/routing/effort to Tools, time in Usage.
+- v29 Timeline - usage leads with an annotated 30-day timeline (tokens+commits).
+- v30 Quiet drawers - value layer only, every deep layer behind styled drawers.
+- v31 One moment - each section spends its boldness on one giant statement.
