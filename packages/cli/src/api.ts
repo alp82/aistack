@@ -54,6 +54,7 @@ function failure(what: string, res: Response): Error {
 export async function authStart(
 	machineName?: string,
 	machineNameReadOnly = false,
+	options: { replaceToken?: string; destinationRequired?: boolean } = {},
 ): Promise<{
 	secretId: string;
 	userCode: string;
@@ -61,6 +62,9 @@ export async function authStart(
 }> {
 	const res = await request("/api/cli/auth/start", {
 		method: "POST",
+		...(options.replaceToken
+			? { headers: authHeaders(options.replaceToken) }
+			: {}),
 		// `cliVersion` rides along so `cli_login_completed` can report which
 		// version linked the machine (#78). The server carries it on the pending
 		// session and reads it at the token exchange.
@@ -68,6 +72,7 @@ export async function authStart(
 			...(machineName ? { machineName } : {}),
 			...(machineNameReadOnly ? { machineNameReadOnly: true } : {}),
 			cliVersion: CLI_VERSION,
+			...(options.destinationRequired ? { destinationRequired: true } : {}),
 		}),
 	});
 	if (!res.ok) throw failure("Auth start failed", res);

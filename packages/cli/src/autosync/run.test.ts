@@ -172,6 +172,19 @@ describe("the server gate", () => {
 		expect(d.publishImpl).toHaveBeenCalledOnce();
 	});
 
+	test("the stack cadence converges onto the machine after a migration", async () => {
+		const d = deps({
+			loadConfigImpl: vi.fn(async () =>
+				serverConfig({ enabled: true, frequencyHours: 6 }),
+			),
+		});
+		await runAutoSync(d);
+		expect(getSettings(settingsFile).autoSync).toEqual({
+			enabled: true,
+			frequencyHours: 6,
+		});
+	});
+
 	// #102's first fact for this ticket: the seed only lands on a sync that
 	// publishes, so ABSENT must publish. Only an explicit off exits silently.
 	test("no stack has decided: it publishes, because that publish is the seed", async () => {

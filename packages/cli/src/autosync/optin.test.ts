@@ -114,6 +114,20 @@ describe("enableAutoSync", () => {
 		expect(getSettings(settingsFile).autoSync?.frequencyHours).toBe(6);
 	});
 
+	test("a custom frequency is capped at one day", async () => {
+		await enableAutoSync(48, {
+			settingsFile,
+			...linked,
+			installHook: () => ({ ok: true, message: "" }),
+			...claudeOnly,
+		});
+		expect(setAutoSyncMock).toHaveBeenCalledWith("tok", {
+			enabled: true,
+			frequencyHours: 24,
+		});
+		expect(getSettings(settingsFile).autoSync?.frequencyHours).toBe(24);
+	});
+
 	test("with Codex active, the Codex hook is written and the trust step named", async () => {
 		const installCodexHook = vi.fn(() => ({
 			ok: true,
@@ -566,7 +580,7 @@ describe("offerAutoSyncOptIn", () => {
 		const asked = await offerAutoSyncOptIn({ settingsFile, ...codexOnly });
 		expect(asked).toBe(true);
 		expect(hintOfEnableOption()).toBe(
-			"a silent daily sync when a Codex session starts",
+			"a silent sync at most every 6 hours when a Codex session starts",
 		);
 	});
 
@@ -574,7 +588,15 @@ describe("offerAutoSyncOptIn", () => {
 		selectMock.mockResolvedValue("later");
 		await offerAutoSyncOptIn({ settingsFile, ...bothHarnesses });
 		expect(hintOfEnableOption()).toBe(
-			"a silent daily sync when a Claude Code or Codex session starts",
+			"a silent sync at most every 6 hours when a Claude Code or Codex session starts",
+		);
+	});
+
+	test("enable is the opt-out prompt default", async () => {
+		selectMock.mockResolvedValue("later");
+		await offerAutoSyncOptIn({ settingsFile, ...claudeOnly });
+		expect(selectMock).toHaveBeenCalledWith(
+			expect.objectContaining({ initialValue: "enable" }),
 		);
 	});
 

@@ -195,13 +195,15 @@ describe("stageSync", () => {
 		expect(staged.blockedReason).toContain("destination stack is unknown");
 	});
 
-	test("a fetched config without a stack blocks and names the create-stack URL", async () => {
+	test("a fetched config without a stack points to the interactive relink flow", async () => {
 		const staged = await stageSync(
 			deps({
 				config: { config: { ...FETCHED, stack: null }, source: "fetched" },
 			}),
 		);
-		expect(staged.blockedReason).toContain("/stacks/new");
+		expect(staged.blockedReason).toContain(
+			"interactive terminal to choose one",
+		);
 	});
 
 	// #101: detection and the scan read ONE window start, so a harness that

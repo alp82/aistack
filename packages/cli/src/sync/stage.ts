@@ -342,7 +342,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		blockedReason =
 			source === "bundled"
 				? "Could not fetch your settings from aistack, so the destination stack is unknown. Publish needs it. Check the network and preview again."
-				: `The token resolves no destination stack. Create one at ${deps.baseUrl}/stacks/new, then sync again.`;
+				: "This machine has no destination stack. Run `npx @use-aistack/cli sync` in an interactive terminal to choose one.";
 	}
 
 	return {

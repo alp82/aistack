@@ -55,7 +55,7 @@ program
 	)
 	.option(
 		"--every <hours>",
-		"with --auto on: hours between auto-syncs (default 24)",
+		"with --auto on: hours between auto-syncs (default 6)",
 	)
 	.action((options) => syncCommand(options));
 

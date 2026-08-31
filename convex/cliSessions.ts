@@ -84,6 +84,8 @@ export const getPendingMachineName = query({
     v.object({
       machineName: v.optional(v.string()),
       machineNameReadOnly: v.boolean(),
+      destinationRequired: v.boolean(),
+      replacingMachine: v.boolean(),
     }),
     v.null(),
   ),
@@ -101,6 +103,8 @@ export const getPendingMachineName = query({
     return {
       machineName: session.machineName,
       machineNameReadOnly: session.machineNameReadOnly === true,
+      destinationRequired: session.destinationRequired === true,
+      replacingMachine: session.replacesTokenId !== undefined,
     }
   },
 })
@@ -149,6 +153,17 @@ export const approveSession = mutation({
       }
     }
 
+    if (session.destinationRequired === true && !args.stackId) {
+      throw new Error('Choose a destination stack before linking this machine')
+    }
+
+    if (session.replacesTokenId) {
+      const replaced = await ctx.db.get(session.replacesTokenId)
+      if (!replaced || replaced.userId !== userId) {
+        throw new Error('This machine link changed. Restart sync and try again')
+      }
+    }
+
     // An editable name is the user's own form value. A locked name is the
     // explicit CLI parameter stored on the session, regardless of what a
     // custom approval client submits. Both get the same display bound (#45).
@@ -177,6 +192,8 @@ export const createSession = internalMutation({
     machineName: v.optional(v.string()),
     machineNameReadOnly: v.optional(v.boolean()),
     cliVersion: v.optional(v.string()),
+    replacesTokenId: v.optional(v.id('cliTokens')),
+    destinationRequired: v.optional(v.boolean()),
     createdAt: v.number(),
     expiresAt: v.number(),
   },
@@ -189,6 +206,8 @@ export const createSession = internalMutation({
       machineName: args.machineName,
       machineNameReadOnly: args.machineNameReadOnly,
       cliVersion: args.cliVersion,
+      replacesTokenId: args.replacesTokenId,
+      destinationRequired: args.destinationRequired,
       createdAt: args.createdAt,
       expiresAt: args.expiresAt,
     })
@@ -263,6 +282,13 @@ export const issueTokenAndDeleteSession = internalMutation({
     const session = await ctx.db.get(args.sessionId)
     if (!session || session.status !== 'approved') return null
 
+    const replaced = session.replacesTokenId
+      ? await ctx.db.get(session.replacesTokenId)
+      : null
+    if (session.replacesTokenId && (!replaced || replaced.userId !== args.userId)) {
+      return null
+    }
+
     await ctx.db.insert('cliTokens', {
       tokenHash: args.tokenHash,
       // Carried from the approval, which is the one moment the user was asked
@@ -280,6 +306,8 @@ export const issueTokenAndDeleteSession = internalMutation({
       expiresAt: args.expiresAt,
       lastUsedAt: args.lastUsedAt,
     })
+
+    if (replaced) await ctx.db.delete(replaced._id)
 
     await ctx.db.delete(args.sessionId)
 

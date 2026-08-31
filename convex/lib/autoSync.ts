@@ -12,13 +12,13 @@
  */
 
 /** What a machine that never chose gets, mirroring the CLI's own default. */
-export const DEFAULT_FREQUENCY_HOURS = 24
+export const DEFAULT_FREQUENCY_HOURS = 6
 
 /** Once an hour is as often as any trigger is allowed to publish. */
 export const MIN_FREQUENCY_HOURS = 1
 
-/** A week. Beyond this the interval says "off" more honestly than "on". */
-export const MAX_FREQUENCY_HOURS = 168
+/** A day. Longer intervals are removed from the supported schedule. */
+export const MAX_FREQUENCY_HOURS = 24
 
 /**
  * Fold any client-supplied interval into the allowed range.

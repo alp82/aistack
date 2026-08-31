@@ -226,7 +226,7 @@ describe("leading, past 48 hours", () => {
 		);
 		expect(
 			screen.getByText(
-				/publishes when a session starts on a machine you have linked, at most once a day/i,
+				/publishes when a session starts on a machine you have linked, at most every 6 hours/i,
 			),
 		).toBeTruthy();
 		expect(
@@ -241,7 +241,7 @@ describe("leading, past 48 hours", () => {
 			{ autoSync: { enabled: false, frequencyHours: 6 }, lastAutoSyncAt: null },
 			{ staleSince: THREE_DAYS_AGO },
 		);
-		expect(screen.getByText(/at most once every 6 hours/i)).toBeTruthy();
+		expect(screen.getByText(/at most every 6 hours/i)).toBeTruthy();
 	});
 
 	// #107 decision 4: a page cannot know whether a machine stayed off, a hook

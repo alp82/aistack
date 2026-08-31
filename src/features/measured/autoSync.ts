@@ -40,12 +40,12 @@ export function autoSyncState(flag: AutoSyncFlag): AutoSyncState {
 }
 
 /**
- * The intervals the select offers, inside the 1..168 range `#102` clamps to.
+ * The intervals the select offers, inside the 1..24 range the server clamps to.
  *
  * Short enough to feel live, long enough to feel unobtrusive, with the CLI's
- * own default (a day) in the middle.
+ * six-hour default in the list.
  */
-const OFFERED_HOURS = [1, 6, 12, 24, 48, 168] as const;
+const OFFERED_HOURS = [1, 6, 12, 24] as const;
 
 /**
  * The list to draw, with the STORED interval folded in.
@@ -56,15 +56,13 @@ const OFFERED_HOURS = [1, 6, 12, 24, 48, 168] as const;
  */
 export function frequencyChoices(current: number): number[] {
 	const hours = new Set<number>(OFFERED_HOURS);
-	hours.add(current);
+	if (current >= 1 && current <= 24) hours.add(current);
 	return [...hours].sort((a, b) => a - b);
 }
 
 /** How an interval reads in the owner box: a phrase, never a bare number. */
 export function frequencyLabel(hours: number): string {
-	if (hours === 168) return "every week";
 	if (hours === 24) return "every day";
-	if (hours % 24 === 0) return `every ${hours / 24} days`;
 	if (hours === 1) return "every hour";
 	return `every ${hours} hours`;
 }
@@ -127,8 +125,8 @@ export function stalePromptLine(syncedAgo: string): string {
  * WHAT AUTO-SYNC IS, in the CLI's own terms - the trigger, the ceiling and the
  * revoke, in one sentence.
  *
- * The CLI says "a silent daily sync when a Claude Code session starts", and on
- * enable "about every 24h when a Claude Code session starts. Turn it off any
+ * The CLI says "a silent sync at most every 6 hours when a session starts", and on
+ * enable "about every 6h when a session starts. Turn it off any
  * time". The harness name is dropped, because this reader may publish from
  * several and the browser does not know which.
  *
@@ -138,8 +136,6 @@ export function stalePromptLine(syncedAgo: string): string {
  */
 export function autoSyncExplainer(frequencyHours: number): string {
 	const cadence =
-		frequencyHours === 24
-			? "once a day"
-			: `once ${frequencyLabel(frequencyHours)}`;
+		frequencyHours === 24 ? "once a day" : frequencyLabel(frequencyHours);
 	return `It publishes when a session starts on a machine you have linked, at most ${cadence}. Turning it off revokes it everywhere, from this switch or with ${AUTO_OFF_CMD}.`;
 }

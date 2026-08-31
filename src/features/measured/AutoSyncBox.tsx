@@ -72,7 +72,7 @@ export function AutoSyncBox({
 	// An off stack still remembers its interval, and the switch sends what it is
 	// showing - turning automation back on must not move a machine that chose six
 	// hours onto the default.
-	const hours = flag.autoSync?.frequencyHours ?? 24;
+	const hours = Math.min(flag.autoSync?.frequencyHours ?? 6, 24);
 
 	async function write(enabled: boolean, frequencyHours: number) {
 		setSaving(true);

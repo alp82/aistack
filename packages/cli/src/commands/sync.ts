@@ -23,6 +23,7 @@ import {
 } from "../autosync/optin.js";
 import { runAutoSync } from "../autosync/run.js";
 import { DEFAULT_FREQUENCY_HOURS, getSettings, getToken } from "../config.js";
+import { loadSyncConfig } from "../harness/shared/allowlist.js";
 import { stageSync } from "../sync/stage.js";
 import { fmtReceivedAt } from "../sync/summary.js";
 import {
@@ -108,22 +109,78 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 	// An unlinked machine used to hard-block with "run login first" (#74). The
 	// TTY gate above guarantees a human is present, so the device-auth browser
 	// hop fits here - `sync` is the whole onboarding command.
-	if (getToken() === null) {
-		p.log.message(
-			"This machine is not linked to an aistack account yet. Linking it now.",
-		);
-		if (!(await performLogin())) {
+	let token = getToken();
+	if (token === null) {
+		p.log.message("This machine needs a destination stack. Linking it now.");
+		if (!(await performLogin({ destinationRequired: true }))) {
 			outroError("login failed. Nothing was sent.");
 			process.exitCode = 1;
 			return;
 		}
+		token = getToken();
 	}
+	if (token === null) {
+		outroError("login completed without a saved credential. Nothing was sent.");
+		process.exitCode = 1;
+		return;
+	}
+
+	// Resolve the destination before walking local history. A valid credential
+	// can outlive its stack choice, especially when login happened before the
+	// first stack was created. Relinking rotates that credential and returns to
+	// this same sync, so the user never has to discover a second command.
+	let loaded = await loadSyncConfig({ baseUrl: BASE_URL, token });
+	if (loaded.source === "bundled") {
+		outroError(
+			"Could not fetch your settings from aistack, so the destination stack is unknown. Check the network and sync again.",
+		);
+		process.exitCode = 1;
+		return;
+	}
+	if (loaded.config.stack === null) {
+		p.log.message(
+			"This machine is not linked to a destination stack. Opening aistack so you can choose one.",
+		);
+		if (
+			!(await performLogin({
+				destinationRequired: true,
+				replaceToken: token,
+			}))
+		) {
+			outroError("linking failed. Nothing was sent.");
+			process.exitCode = 1;
+			return;
+		}
+		token = getToken();
+		if (token === null) {
+			outroError(
+				"linking completed without a saved credential. Nothing was sent.",
+			);
+			process.exitCode = 1;
+			return;
+		}
+		loaded = await loadSyncConfig({ baseUrl: BASE_URL, token });
+		if (loaded.source === "bundled" || loaded.config.stack === null) {
+			outroError(
+				"The destination stack could not be confirmed. Nothing was sent.",
+			);
+			process.exitCode = 1;
+			return;
+		}
+		p.log.success(`Linked this machine to ${loaded.config.stack.name}`);
+	}
+	const destinationToken = token;
+	const destinationConfig = loaded;
 
 	const s = p.spinner();
 	s.start("Scanning local agent transcripts");
 	let staged: Awaited<ReturnType<typeof stageSync>>;
 	try {
-		staged = await stageSync({ baseUrl: BASE_URL });
+		staged = await stageSync({
+			baseUrl: BASE_URL,
+			getTokenImpl: () => destinationToken,
+			loadConfigImpl: async () => destinationConfig,
+		});
 	} catch (e) {
 		s.stop("Scan failed");
 		outroError(e instanceof Error ? e.message : String(e));

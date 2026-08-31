@@ -113,7 +113,7 @@ const SETTINGS_FILE = join(CONFIG_DIR, "settings.json");
 export interface AutoSyncConfig {
 	/** The standing opt-in. `sync --auto` publishes nothing when false. */
 	enabled: boolean;
-	/** Minimum hours between auto-sync attempts. Default 24. */
+	/** Minimum hours between auto-sync attempts. Default 6. */
 	frequencyHours: number;
 }
 
@@ -129,7 +129,14 @@ export interface AutoSyncState {
 	failureWarned?: boolean;
 }
 
-export const DEFAULT_FREQUENCY_HOURS = 24;
+export const DEFAULT_FREQUENCY_HOURS = 6;
+export const MAX_FREQUENCY_HOURS = 24;
+
+export function normalizeFrequencyHours(value: number | undefined): number {
+	if (value === undefined || !Number.isFinite(value))
+		return DEFAULT_FREQUENCY_HOURS;
+	return Math.min(MAX_FREQUENCY_HOURS, Math.max(1, Math.round(value)));
+}
 
 export interface Settings {
 	/** The post-sync connect-claude upsell was answered (either way). */

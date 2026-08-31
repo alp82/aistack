@@ -34,7 +34,13 @@ export function proposedMachineName(
  * the standalone command. Logs its own progress and errors; returns whether a
  * token was saved.
  */
-type LoginOptions = { label?: string };
+type LoginOptions = {
+	label?: string;
+	/** Existing bearer replaced atomically when this approval completes. */
+	replaceToken?: string;
+	/** A sync cannot finish login until the browser chooses a stack. */
+	destinationRequired?: boolean;
+};
 
 export function requestedMachineLabel(label: string): string {
 	const trimmed = label.trim();
@@ -61,6 +67,10 @@ export async function performLogin(
 		session = await authStart(
 			requestedLabel ?? proposedMachineName(),
 			requestedLabel !== undefined,
+			{
+				...(options.replaceToken ? { replaceToken: options.replaceToken } : {}),
+				...(options.destinationRequired ? { destinationRequired: true } : {}),
+			},
 		);
 		s.stop("Session created");
 	} catch (err) {

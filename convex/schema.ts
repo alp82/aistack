@@ -1053,6 +1053,13 @@ export default defineSchema({
     // permanently: a session is created BEFORE the user picks, and a profile
     // with no stack yet can still authenticate.
     stackId: v.optional(v.id('stacks')),
+    // Present when this device-code session is replacing an existing machine
+    // credential. The old row is deleted in the same mutation that issues the
+    // new token, so relinking never leaves a duplicate machine behind.
+    replacesTokenId: v.optional(v.id('cliTokens')),
+    // `sync` requires a destination before it can continue. Standalone login
+    // may still authorize account-level CLI commands without a stack.
+    destinationRequired: v.optional(v.boolean()),
     // What this machine calls itself, so `/settings/machines` can tell three
     // rows apart (#49). The approval page always shows the stored string. An
     // automatic hostname stays editable, while an explicit `--label` is fixed.

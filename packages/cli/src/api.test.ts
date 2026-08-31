@@ -88,6 +88,36 @@ describe("authStart machine label", () => {
 			machineNameReadOnly: true,
 		});
 	});
+
+	test("a sync relink sends the old credential and requires a destination", async () => {
+		const fetchMock = vi.fn(() =>
+			Promise.resolve(
+				new Response(
+					JSON.stringify({
+						secretId: "secret",
+						userCode: "ABC123",
+						authUrl: "/",
+					}),
+					{ status: 200 },
+				),
+			),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+
+		await authStart(undefined, false, {
+			replaceToken: "old-token",
+			destinationRequired: true,
+		});
+
+		const [, init] = fetchMock.mock.calls[0] as unknown as [
+			string,
+			RequestInit,
+		];
+		expect(init.headers).toMatchObject({ Authorization: "Bearer old-token" });
+		expect(JSON.parse(init.body as string)).toMatchObject({
+			destinationRequired: true,
+		});
+	});
 });
 
 /**

@@ -1,5 +1,6 @@
 import {
 	createFileRoute,
+	Link,
 	useNavigate,
 	useSearch,
 } from "@tanstack/react-router";
@@ -60,6 +61,8 @@ function CliAuthPage() {
 	const syncStackId = useId();
 	const proposedName = pending?.machineName;
 	const machineNameReadOnly = pending?.machineNameReadOnly === true;
+	const destinationRequired = pending?.destinationRequired === true;
+	const replacingMachine = pending?.replacingMachine === true;
 	useEffect(() => {
 		if (proposedName && machineName === null) setMachineName(proposedName);
 	}, [proposedName, machineName]);
@@ -88,6 +91,7 @@ function CliAuthPage() {
 	const canApprove =
 		!stacksLoading &&
 		!pendingLoading &&
+		(!destinationRequired || selectedStackId !== null) &&
 		(!hasStacks || selectedStackId !== null);
 
 	useEffect(() => {
@@ -147,7 +151,7 @@ function CliAuthPage() {
 		<Dialog
 			open
 			onClose={() => navigate({ to: "/" })}
-			title="CLI Authorization"
+			title="Link this machine"
 			titleIcon={
 				<div className="flex size-8 items-center justify-center border border-accent-lime bg-accent-lime/10">
 					<Terminal className="size-4 text-accent-lime" />
@@ -158,8 +162,9 @@ function CliAuthPage() {
 			{status === "idle" && (
 				<>
 					<p className="mb-4 text-sm text-fg-secondary">
-						The AI Stack CLI is requesting access to your account. Verify this
-						code matches what you see in your terminal:
+						{replacingMachine
+							? "Choose where this machine publishes. Its previous machine credential will be replaced."
+							: "Link the AI Stack CLI to your account. Verify this code matches what you see in your terminal:"}
 					</p>
 
 					<div className="mb-6 border-2 border-accent-lime bg-accent-lime/5 p-4 text-center">
@@ -234,13 +239,34 @@ function CliAuthPage() {
 						</div>
 					)}
 
-					{!stacksLoading && !hasStacks && (
-						<p className="mb-6 font-mono text-[0.7rem] leading-relaxed text-fg-muted">
-							You have no stacks yet, so this machine will authorize without a
-							sync target. Create a stack and run login again to enable usage
-							sync.
-						</p>
-					)}
+					{!stacksLoading &&
+						!pendingLoading &&
+						!hasStacks &&
+						destinationRequired && (
+							<div className="mb-6 border border-border-subtle bg-bg-subtle p-3">
+								<p className="font-mono text-xs leading-relaxed text-fg-muted">
+									Create a stack first. Keep this page open, create one in a new
+									tab, then return here to select it.
+								</p>
+								<Link
+									to="/stacks/new"
+									target="_blank"
+									className="mt-3 inline-flex font-mono text-xs font-bold uppercase tracking-wider text-accent-lime"
+								>
+									Create a stack
+								</Link>
+							</div>
+						)}
+
+					{!stacksLoading &&
+						!pendingLoading &&
+						!hasStacks &&
+						!destinationRequired && (
+							<p className="mb-6 font-mono text-[0.7rem] leading-relaxed text-fg-muted">
+								You have no stacks yet. This machine can use account commands,
+								but it cannot publish usage until you link it to a stack.
+							</p>
+						)}
 
 					<div className="flex gap-3">
 						<Button
@@ -249,7 +275,7 @@ function CliAuthPage() {
 							disabled={!canApprove}
 							className="flex-1 bg-accent-lime font-mono text-xs font-bold uppercase tracking-wider text-black hover:bg-accent-lime-strong disabled:opacity-50"
 						>
-							Approve
+							Link machine
 						</Button>
 						<Button
 							type="button"
@@ -257,7 +283,7 @@ function CliAuthPage() {
 							onClick={handleDeny}
 							className="flex-1 font-mono text-xs font-bold uppercase tracking-wider"
 						>
-							Deny
+							Cancel
 						</Button>
 					</div>
 				</>
@@ -273,7 +299,7 @@ function CliAuthPage() {
 				<div className="py-4 text-center">
 					<CheckCircle className="mx-auto mb-3 size-12 text-accent-lime" />
 					<p className="mb-2 font-mono text-lg font-bold text-fg-primary">
-						Authorized
+						Machine linked
 					</p>
 					<p className="text-sm text-fg-secondary">
 						You can close this tab and return to your terminal.

@@ -259,11 +259,13 @@ export const authStart = httpAction(async (ctx, request) => {
   let machineName: string | undefined
   let machineNameReadOnly: boolean | undefined
   let cliVersion: string | undefined
+  let destinationRequired: boolean | undefined
   try {
     const body = (await request.json()) as {
       machineName?: unknown
       machineNameReadOnly?: unknown
       cliVersion?: unknown
+      destinationRequired?: unknown
     }
     if (typeof body?.machineName === 'string') {
       const trimmed = body.machineName.trim()
@@ -279,8 +281,16 @@ export const authStart = httpAction(async (ctx, request) => {
       const trimmed = body.cliVersion.trim()
       if (trimmed.length > 0 && trimmed.length <= 32) cliVersion = trimmed
     }
+    if (body?.destinationRequired === true) destinationRequired = true
   } catch {
     // No body, or not JSON - an older CLI. Proceed nameless.
+  }
+
+  let replacesTokenId: Id<'cliTokens'> | undefined
+  const authHeader = request.headers.get('Authorization')
+  if (authHeader?.startsWith('Bearer ')) {
+    const existing = await resolveToken(ctx as any, authHeader.slice(7))
+    if (existing) replacesTokenId = existing._id as Id<'cliTokens'>
   }
 
   await ctx.runMutation(internal.cliSessions.createSession, {
@@ -290,6 +300,8 @@ export const authStart = httpAction(async (ctx, request) => {
     machineName,
     machineNameReadOnly,
     cliVersion,
+    replacesTokenId,
+    destinationRequired,
     createdAt: now,
     expiresAt: now + 15 * 60 * 1000,
   })

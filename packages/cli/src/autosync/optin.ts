@@ -21,6 +21,7 @@ import {
 	DEFAULT_FREQUENCY_HOURS,
 	getSettings,
 	getToken,
+	normalizeFrequencyHours,
 	saveSettings,
 } from "../config.js";
 import { CLAUDE_HARNESS_NAME } from "../harness/claude/adapter.js";
@@ -88,6 +89,7 @@ export async function enableAutoSync(
 	frequencyHours: number = DEFAULT_FREQUENCY_HOURS,
 	deps: EnableDeps = {},
 ): Promise<HookResult> {
+	frequencyHours = normalizeFrequencyHours(frequencyHours);
 	const detected = await (deps.detectedImpl ?? detectedAdapters)();
 	if (detected.length === 0) {
 		return { ok: false, message: NOTHING_TO_TRIGGER };
@@ -161,8 +163,9 @@ export async function disableAutoSync(
 			autoSyncAnswered: true,
 			autoSync: {
 				enabled: false,
-				frequencyHours:
-					settings.autoSync?.frequencyHours ?? DEFAULT_FREQUENCY_HOURS,
+				frequencyHours: normalizeFrequencyHours(
+					settings.autoSync?.frequencyHours,
+				),
 			},
 		},
 		deps.settingsFile,
@@ -322,20 +325,20 @@ export async function offerAutoSyncOptIn(
 	if (detected.length === 0) return false;
 
 	const answer = await p.select({
-		message: "Keep this stack fresh automatically?",
+		message: "Keep this stack fresh automatically every 6 hours?",
 		options: [
-			{
-				value: "later",
-				label: "Not now",
-				hint: "this question will not come back",
-			},
 			{
 				value: "enable",
 				label: "Enable",
-				hint: `a silent daily sync when a ${harnessListLabel(detected)} session starts`,
+				hint: `a silent sync at most every 6 hours when a ${harnessListLabel(detected)} session starts`,
+			},
+			{
+				value: "later",
+				label: "No thanks",
+				hint: "you can enable it later",
 			},
 		],
-		initialValue: "later",
+		initialValue: "enable",
 	});
 
 	if (p.isCancel(answer)) return true;

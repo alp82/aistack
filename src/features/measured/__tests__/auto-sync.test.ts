@@ -66,20 +66,18 @@ describe("autoSyncState", () => {
 
 /**
  * The interval the owner edits. A machine may already hold an interval this
- * list never offers - the CLI took any number and #102 clamps to 1..168 - so
- * the select has to be able to draw what is stored, or the box would silently
- * misreport the schedule it is showing.
+ * list never offers. Values inside the supported 1..24 range remain drawable.
  */
 describe("frequencyChoices", () => {
 	it("offers a rising list within the range the server allows", () => {
 		const hours = frequencyChoices(24);
 		expect(hours).toEqual([...hours].sort((a, b) => a - b));
 		expect(hours[0]).toBeGreaterThanOrEqual(1);
-		expect(hours[hours.length - 1]).toBeLessThanOrEqual(168);
+		expect(hours[hours.length - 1]).toBeLessThanOrEqual(24);
 	});
 
-	it("offers the daily default", () => {
-		expect(frequencyChoices(24)).toContain(24);
+	it("offers the six-hour default", () => {
+		expect(frequencyChoices(6)).toContain(6);
 	});
 
 	it("keeps a stored interval it does not offer", () => {
@@ -89,6 +87,10 @@ describe("frequencyChoices", () => {
 	it("does not repeat a stored interval it already offers", () => {
 		const hours = frequencyChoices(24);
 		expect(hours.filter((h) => h === 24)).toHaveLength(1);
+	});
+
+	it("does not offer a legacy interval above one day", () => {
+		expect(frequencyChoices(48)).not.toContain(48);
 	});
 });
 
@@ -103,13 +105,5 @@ describe("frequencyLabel", () => {
 
 	it("says a day rather than 24 hours", () => {
 		expect(frequencyLabel(24)).toBe("every day");
-	});
-
-	it("says days at a whole multiple of a day", () => {
-		expect(frequencyLabel(48)).toBe("every 2 days");
-	});
-
-	it("says a week at the top of the range", () => {
-		expect(frequencyLabel(168)).toBe("every week");
 	});
 });

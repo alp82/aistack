@@ -33,6 +33,7 @@ import {
 	DEFAULT_FREQUENCY_HOURS,
 	getSettings,
 	getToken,
+	normalizeFrequencyHours,
 	saveSettings,
 } from "../config.js";
 import { loadSyncConfig } from "../harness/shared/allowlist.js";
@@ -91,7 +92,7 @@ export async function runAutoSync(deps: AutoSyncDeps): Promise<void> {
 	// The freshness gate keys on the last ATTEMPT, not the last success. A
 	// broken setup then retries once per frequency window, not once per
 	// session start, and still reaches the 3-failure escalation.
-	const frequencyHours = config.frequencyHours || DEFAULT_FREQUENCY_HOURS;
+	const frequencyHours = normalizeFrequencyHours(config.frequencyHours);
 	const state: AutoSyncState = settings.autoSyncState ?? {};
 	const lastRunAt = state.lastRunAt ?? 0;
 	if (now - lastRunAt < frequencyHours * 3_600_000) return;
@@ -117,6 +118,22 @@ export async function runAutoSync(deps: AutoSyncDeps): Promise<void> {
 			// publish is what seeds the stack from this machine (#102).
 			revoked = true;
 		} else {
+			const serverFrequency = loaded.config.autoSync?.frequencyHours;
+			if (
+				loaded.config.autoSync?.enabled === true &&
+				serverFrequency !== undefined &&
+				normalizeFrequencyHours(serverFrequency) !== frequencyHours
+			) {
+				saveSettings(
+					{
+						autoSync: {
+							enabled: true,
+							frequencyHours: normalizeFrequencyHours(serverFrequency),
+						},
+					},
+					settingsFile,
+				);
+			}
 			const staged = await stage({
 				baseUrl: deps.baseUrl,
 				now: () => now,

@@ -157,7 +157,7 @@ test('a sync reporting a local opt-OUT seeds nothing', async () => {
   await t.mutation(internal.measured.publishForToken, {
     tokenId,
     payloads: [payload('claude-code', 1)],
-    autoSync: { enabled: false, frequencyHours: 24 },
+    autoSync: { enabled: false, frequencyHours: 6 },
   })
 
   // "Off" and "never chose" look the same on the wire, so the stack keeps the
@@ -528,7 +528,7 @@ test('a revoke keeps the stamp of what already happened', async () => {
   await asCreator.mutation(api.autoSync.set, { stackId, enabled: false })
 
   expect(await asCreator.query(api.autoSync.get, { stackId })).toEqual({
-    autoSync: { enabled: false, frequencyHours: 24 },
+    autoSync: { enabled: false, frequencyHours: 6 },
     lastAutoSyncAt: auto.receivedAt,
   })
 })
@@ -586,7 +586,7 @@ test('a revoke from the web stops the next automatic publish', async () => {
   )
   expect(snapshots).toHaveLength(1)
   expect(await asCreator.query(api.autoSync.get, { stackId })).toEqual({
-    autoSync: { enabled: false, frequencyHours: 24 },
+    autoSync: { enabled: false, frequencyHours: 6 },
     lastAutoSyncAt: landed.receivedAt,
   })
 
@@ -594,6 +594,6 @@ test('a revoke from the web stops the next automatic publish', async () => {
   const config = await asMachine(t, bearer).get('/api/cli/sync-config')
   expect((await config.json()).autoSync).toEqual({
     enabled: false,
-    frequencyHours: 24,
+    frequencyHours: 6,
   })
 })

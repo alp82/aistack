@@ -173,6 +173,64 @@ describe('link-time stack binding (#33 decision 7)', () => {
       t.mutation(api.cliSessions.approveSession, { userCode }),
     ).rejects.toThrow(/not authenticated/i)
   })
+
+  test('a required relink rotates the old credential after a stack is chosen', async () => {
+    const t = convexTest(schema, modules)
+    const { stackIds } = await seedCreatorWithStacks(t, { count: 1 })
+    const oldTokenId = await t.run((ctx) =>
+      ctx.db.insert('cliTokens', {
+        tokenHash: 'hash_old',
+        userId: USER,
+        scopes: ['collect', 'sync'],
+        createdAt: 1,
+        expiresAt: Date.now() + DAY,
+        lastUsedAt: 1,
+      }),
+    )
+    await t.mutation(internal.cliSessions.createSession, {
+      userCode: 'RELINK',
+      secretId: 'secret-relink',
+      status: 'pending',
+      replacesTokenId: oldTokenId,
+      destinationRequired: true,
+      createdAt: Date.now(),
+      expiresAt: Date.now() + DAY,
+    })
+
+    const pending = await t
+      .withIdentity(IDENTITY)
+      .query(api.cliSessions.getPendingMachineName, { userCode: 'RELINK' })
+    expect(pending).toMatchObject({ destinationRequired: true, replacingMachine: true })
+    await expect(
+      t.withIdentity(IDENTITY).mutation(api.cliSessions.approveSession, {
+        userCode: 'RELINK',
+      }),
+    ).rejects.toThrow(/choose a destination stack/i)
+
+    await t.withIdentity(IDENTITY).mutation(api.cliSessions.approveSession, {
+      userCode: 'RELINK',
+      stackId: stackIds[0],
+    })
+    const session = await t.query(internal.cliSessions.getBySecretId, {
+      secretId: 'secret-relink',
+    })
+    expect(
+      await t.mutation(internal.cliSessions.issueTokenAndDeleteSession, {
+        sessionId: session!._id,
+        tokenHash: 'hash_new',
+        userId: USER,
+        createdAt: 2,
+        expiresAt: Date.now() + DAY,
+        lastUsedAt: 2,
+      }),
+    ).toEqual({ issued: true })
+
+    const rows = await t.run((ctx) => ctx.db.query('cliTokens').collect())
+    expect(rows).toHaveLength(1)
+    expect(rows[0].tokenHash).toBe('hash_new')
+    expect(rows[0].stackId).toBe(stackIds[0])
+    expect(await t.run((ctx) => ctx.db.get(oldTokenId))).toBeNull()
+  })
 })
 
 describe('stacks.listMine - the selector source', () => {

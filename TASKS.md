@@ -1,17 +1,33 @@
-* stack page cleaner. more value in less space without sacrificing whitespace
-    subnav max width and centered
-* value proposition should be shown before/with CTA
-    profile for sharing
-    ai stats
-* aistack claude.md
-    https://github.com/woosal1337/blog/blob/main/videos/ep01-the-cure-for-ai-slop/ste-writing-skill.md
-* https://x.com/solomonneas/status/2080454372564070873
 * profile
     * @ in url is encoded
-    * header does not show avatar image
     * @alper-ortac below name is not needed
 * stack
     * image + upload not centered
+* stacks and projects structure
+    * use https://trees.software
+    * nicer description cards - with remove button
+    * model card: replace with other version
+    * reorder tools and models
+    * mermaid diagrams
+* value proposition should be shown before/with CTA
+    profile for sharing
+    ai stats
+* resend -> purelymail
+* CLI to use aistack.to instead of useaistack
+* CLI workflow
+    * uploaded files don't appear in project
+    * custom instructions cards disappear after saving and even destroy next header
+    * hide/ignore env sections in mcp.json
+    * https://www.codacy.com/ai-inventory
+    * https://github.com/dyoshikawa/rulesync
+    * https://github.com/caliber-ai-org/ai-setup
+    * https://github.com/FutureExcited/vibe-rules
+    * npx aistack login
+    * npx aistack collect
+    * npx aistack create
+* aistack claude.md
+    https://github.com/woosal1337/blog/blob/main/videos/ep01-the-cure-for-ai-slop/ste-writing-skill.md
+* https://x.com/solomonneas/status/2080454372564070873
 * ai live stats: https://github.com/RubricLab/tokenmaxx
 * explore aicoolies: https://aicoolies.com/dev/rasitakyol
 * price tiers for sibling products:
@@ -39,28 +55,7 @@
     * how to manage leads / dev / hiring / marketing / sales / ...
 * messaging
 * comments
-* check CLI works
 * TUI for global + all projects
-* resend -> namecheap
-* capture ai usage
-    * stats about token usage, skills
-* CLI workflow
-    * uploaded files don't appear in project
-    * custom instructions cards disappear after saving and even destroy next header
-    * hide/ignore env sections in mcp.json
-    * https://www.codacy.com/ai-inventory
-    * https://github.com/dyoshikawa/rulesync
-    * https://github.com/caliber-ai-org/ai-setup
-    * https://github.com/FutureExcited/vibe-rules
-    * npx aistack login
-    * npx aistack collect
-    * npx aistack create
-* stacks and projects structure
-    * use https://trees.software
-    * nicer description cards - with remove button
-    * model card: replace with other version
-    * reorder tools and models
-    * mermaid diagrams
 * integrate with profiles
     * codex: https://x.com/OpenAIDevs/status/2062674774644687268
     * cursor: https://x.com/ericzakariasson/status/2062584627928388094

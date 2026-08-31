@@ -207,6 +207,29 @@ describe('authStart machine name', () => {
     expect(session).not.toBeNull()
   })
 
+  test('a sync relink binds the pending session to its current credential', async () => {
+    const t = convexTest(schema, modules)
+    await seedCreator(t)
+    const oldTokenId = await seedToken(t, 'tok_old')
+    const resp = await t.fetch('/api/cli/auth/start', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer tok_old',
+      },
+      body: JSON.stringify({ destinationRequired: true }),
+    })
+    const { userCode } = await resp.json()
+    const stored = await t.run((ctx) =>
+      ctx.db
+        .query('cliSessions')
+        .withIndex('by_userCode', (q) => q.eq('userCode', userCode))
+        .first(),
+    )
+    expect(stored?.replacesTokenId).toBe(oldTokenId)
+    expect(stored?.destinationRequired).toBe(true)
+  })
+
   test('a name that cannot be rendered is DROPPED, not rejected', async () => {
     // Refusing the login over a cosmetic field would break authentication for a
     // hostname the user never chose and cannot see yet.
@@ -325,6 +348,8 @@ describe('the name reaches the machines list', () => {
     expect(pending).toEqual({
       machineName: 'build server',
       machineNameReadOnly: true,
+      destinationRequired: false,
+      replacingMachine: false,
     })
 
     await t.withIdentity(IDENTITY).mutation(api.cliSessions.approveSession, {
