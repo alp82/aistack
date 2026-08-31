@@ -64,7 +64,7 @@ async function* walkRollouts(dir: string): AsyncGenerator<string> {
 }
 
 /**
- * zstd support landed in node:zlib after the CLI's floor (`engines: >=18`),
+ * zstd support landed in node:zlib after the CLI's original Node 18 floor,
  * so it is feature-detected. On an old runtime a `.zst` rollout counts as
  * unreadable - a visible coverage figure, never a silent skip.
  */

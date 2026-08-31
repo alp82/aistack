@@ -4,7 +4,7 @@ import pkg from './package.json' with { type: 'json' }
 export default defineConfig({
   entry: ['src/index.ts'],
   format: ['esm'],
-  target: 'node18',
+  target: 'node22',
   clean: true,
   // These private workspace packages are never published, so the CLI bundles
   // them into dist. Externalizing either package would break the npm release.

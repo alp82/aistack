@@ -69,7 +69,7 @@ async function dbFilesIn(root: string): Promise<string[]> {
 }
 
 // ---------------------------------------------------------------------------
-// node:sqlite, feature-detected
+// node:sqlite
 // ---------------------------------------------------------------------------
 
 type SqliteDb = {
@@ -81,10 +81,9 @@ type SqliteDb = {
 };
 
 /**
- * `node:sqlite` landed in Node 22.5 while this CLI's floor is 18, so it is
- * feature-detected in the shape of the codex scanner's zstd check. On a
- * runtime without it, a found DB counts as unreadable - a visible coverage
- * figure, never a silent skip.
+ * `node:sqlite` landed in Node 22.5, which is also this CLI's runtime floor.
+ * Keep the import guarded so a damaged or nonstandard runtime reports the DB
+ * as unreadable instead of crashing sync.
  */
 async function loadSqlite(): Promise<((file: string) => SqliteDb) | null> {
 	try {

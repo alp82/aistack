@@ -5,6 +5,7 @@ import { connectCommand } from "./commands/connect.js";
 import { createCommand } from "./commands/create.js";
 import { loginCommand } from "./commands/login.js";
 import { syncCommand } from "./commands/sync.js";
+import { supportsNodeVersion, unsupportedNodeMessage } from "./node-version.js";
 import { runStdioSyncServer } from "./sync/server.js";
 import { CLI_VERSION } from "./version.js";
 
@@ -65,4 +66,9 @@ program
 	.argument("<harness>", 'the harness to connect ("claude")')
 	.action(connectCommand);
 
-program.parse();
+if (!supportsNodeVersion(process.versions.node)) {
+	process.stderr.write(`${unsupportedNodeMessage(process.versions.node)}\n`);
+	process.exitCode = 1;
+} else {
+	program.parse();
+}
