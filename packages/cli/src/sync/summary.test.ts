@@ -271,21 +271,23 @@ describe("totalUSD - never a dollar without its pricing table (#46)", () => {
 describe("beat two - the dialog (binding copy, #48)", () => {
 	test("the locked shape: facts line, then the review line", () => {
 		expect(buildGateDialog(ctx({ withKeptPrivateHalf: true }))).toBe(
-			"Publish to aistack? 4.27B tokens · 30 days · ≈$5,840\n" +
-				"67 names go up for you to review",
+			"Publish to aistack? 4.27B tokens · 30-day profile · ≈$5,840\n" +
+				"67 private review names will be stored",
 		);
 	});
 
 	test("names staying local say so instead", () => {
 		expect(buildGateDialog(ctx({}))).toBe(
-			"Publish to aistack? 4.27B tokens · 30 days · ≈$5,840\n" +
+			"Publish to aistack? 4.27B tokens · 30-day profile · ≈$5,840\n" +
 				"67 names stay on this machine",
 		);
 	});
 
 	test("cost off drops the dollar, never zeroes it", () => {
 		const dialog = buildGateDialog(ctx({ payload: { pricingTable: null } }));
-		expect(dialog).toContain("Publish to aistack? 4.27B tokens · 30 days\n");
+		expect(dialog).toContain(
+			"Publish to aistack? 4.27B tokens · 30-day profile\n",
+		);
 		expect(dialog).not.toContain("$");
 	});
 
@@ -306,7 +308,9 @@ describe("beat two - the dialog (binding copy, #48)", () => {
 				},
 			}),
 		);
-		expect(dialog).toBe("Publish to aistack? 4.27B tokens · 30 days · ≈$5,840");
+		expect(dialog).toBe(
+			"Publish to aistack? 4.27B tokens · 30-day profile · ≈$5,840",
+		);
 	});
 
 	test("stays two lines - a long dialog is an unanswerable gate (#35 1H)", () => {
@@ -346,7 +350,7 @@ describe("beat one - the summary", () => {
 			"to        Alp's Daily Driver · aistack.to/stacks/alps-daily-driver",
 		);
 		expect(summary).toContain(
-			"they go up for you to review at aistack.to/stacks/alps-daily-driver/changes",
+			"stored privately for your review at aistack.to/stacks/alps-daily-driver/changes",
 		);
 	});
 
@@ -360,7 +364,7 @@ describe("beat one - the summary", () => {
 	test("kept private renders grouped rows with name counts, per the locked copy", () => {
 		const summary = buildGateSummary(ctx({ keptPrivate: KEPT }));
 		expect(summary).toContain(
-			"private   67 names · alp-river ×2, internal-proxy, stripe",
+			"private   67 review names · alp-river ×2, internal-proxy, stripe",
 		);
 		// The half is NOT in the body, so the names stay local and say so.
 		expect(summary).toContain("they stay on this machine");
@@ -629,7 +633,7 @@ describe("the preview stays readable", () => {
 
 	test("counts the inventory before listing it", () => {
 		const summary = buildGateSummary({ ...withTools(), width: 80 });
-		expect(summary).toContain("publishes 17 tools · 1 skills");
+		expect(summary).toContain("sends     17 actions · 1 skills");
 	});
 
 	test("a harness that publishes no names says so, once", () => {
@@ -660,7 +664,7 @@ describe("the preview stays readable", () => {
 				},
 			}),
 		);
-		expect(summary).toContain("publishes no names from this harness");
+		expect(summary).toContain("sends     no inventory names from this harness");
 		// The empty headings that used to stand over nothing.
 		expect(summary).not.toContain("what publishes");
 	});
@@ -684,7 +688,7 @@ describe("the preview stays readable", () => {
 		// name, and the continuation sat two columns off from the row above it.
 		const summary = buildGateSummary({ ...withTools(), width: 80 });
 		const lines = summary.split("\n");
-		const head = lines.findIndex((l) => l.startsWith("  tools "));
+		const head = lines.findIndex((l) => l.startsWith("  actions "));
 		expect(head).toBeGreaterThan(-1);
 		const firstName = (lines[head] as string).indexOf("Bash");
 		const continued = lines[head + 1] as string;

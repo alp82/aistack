@@ -534,13 +534,11 @@ describe('reading a window', () => {
     ).toBeNull()
   })
 
-  test('a draft stack publishes no reading', async () => {
+  test('a legacy false stack still exposes its reading', async () => {
     const t = convexTest(schema, modules)
     const { stackId, slug } = await seedStack(t, { published: false })
     await publish(t, stackId, { machine: 'laptop' })
-    expect(
-      await t.query(api.workflow.getWorkflowByStackSlug, { slug }),
-    ).toBeNull()
+    expect(await t.query(api.workflow.getWorkflowByStackSlug, { slug })).not.toBeNull()
   })
 
   test('the kit reads skills out of the inventory row', async () => {

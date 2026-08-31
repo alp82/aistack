@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import path from "node:path";
 import type { GitDay } from "@aistack/workflow-rules";
 
@@ -22,6 +22,11 @@ export type GitWorkflowRunner = (
 	cwd: string,
 	args: readonly string[],
 ) => string | null;
+
+export type AsyncGitWorkflowRunner = (
+	cwd: string,
+	args: readonly string[],
+) => Promise<string | null>;
 
 /** One UTC day of Git history, with the day it belongs to. */
 export type GitDayRow = GitDay & { date: string };
@@ -60,6 +65,20 @@ const defaultRunner: GitWorkflowRunner = (cwd, args) => {
 		return null;
 	}
 };
+
+const defaultAsyncRunner: AsyncGitWorkflowRunner = (cwd, args) =>
+	new Promise((resolve) => {
+		execFile(
+			"git",
+			[...args],
+			{
+				cwd,
+				encoding: "utf8",
+				maxBuffer: 64 * 1024 * 1024,
+			},
+			(error, stdout) => resolve(error ? null : stdout),
+		);
+	});
 
 /** A day with no counted commit, carrying the rule ids a fold needs. */
 export const emptyGitDay = (): GitDay => ({
@@ -266,7 +285,55 @@ export function extractGitWorkflow(
 		const root = run(directory, ["rev-parse", "--show-toplevel"])?.trim();
 		if (root) roots.add(root);
 	}
+	const histories: string[] = [];
+	for (const root of roots) {
+		const history = run(root, gitLogArgs());
+		if (history) histories.push(history);
+	}
+	return reduceGitHistories(histories, options);
+}
 
+/** The non-blocking production path. Tests can keep using the synchronous seam. */
+export async function extractGitWorkflowAsync(
+	options: Omit<ExtractGitWorkflowOptions, "run"> & {
+		run?: AsyncGitWorkflowRunner;
+	},
+): Promise<GitWorkflowResult> {
+	const run = options.run ?? defaultAsyncRunner;
+	const roots = new Set<string>();
+	for (const directory of options.workingDirectories) {
+		const root = (
+			await run(directory, ["rev-parse", "--show-toplevel"])
+		)?.trim();
+		if (root) roots.add(root);
+	}
+	const histories = await Promise.all(
+		[...roots].map((root) => run(root, gitLogArgs())),
+	);
+	return reduceGitHistories(
+		histories.filter((history): history is string => history !== null),
+		options,
+	);
+}
+
+function gitLogArgs(): readonly string[] {
+	return [
+		"log",
+		"--all",
+		"--no-merges",
+		`--format=%x00${COMMIT_MARKER}%x00%H%x00%aI%x00`,
+		"--numstat",
+		"-z",
+	];
+}
+
+function reduceGitHistories(
+	histories: Iterable<string>,
+	options: Pick<
+		ExtractGitWorkflowOptions,
+		"fromMs" | "toMs" | "utcOffsetMinutes"
+	>,
+): GitWorkflowResult {
 	const days = new Map<string, MutableGitDay>();
 	const dayOf = (date: string): MutableGitDay => {
 		let day = days.get(date);
@@ -287,17 +354,7 @@ export function extractGitWorkflow(
 		return day;
 	};
 	const seenCommits = new Set<string>();
-	for (const root of roots) {
-		const history = run(root, [
-			"log",
-			"--all",
-			"--no-merges",
-			`--format=%x00${COMMIT_MARKER}%x00%H%x00%aI%x00`,
-			"--numstat",
-			"-z",
-		]);
-		if (!history) continue;
-
+	for (const history of histories) {
 		type CurrentCommit = {
 			included: boolean;
 			date: string;

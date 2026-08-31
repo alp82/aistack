@@ -185,12 +185,11 @@ async function snapshot(
 }
 
 // ---------------------------------------------------------------------------
-// Visibility - the sharp edge (#85). An event written while a stack was public
-// must not leak after the stack goes private.
+// Visibility. A stack stays visible until it is removed or quality-filtered.
 // ---------------------------------------------------------------------------
 
 describe('visibility', () => {
-  test('an event stops showing the moment its stack goes private', async () => {
+  test('a legacy false flag does not hide an event', async () => {
     const t = convexTest(schema, modules)
     const stackId = await seedStack(t, { name: 'Goes Private' })
     await emit(t, stackId, Date.now() - HOUR, { type: 'stack.published', toolCount: 3 })
@@ -203,10 +202,10 @@ describe('visibility', () => {
     })
 
     const after = await t.query(api.activityFeed.stream, {})
-    expect(after.rows).toEqual([])
+    expect(after.rows.map((row) => row.stack.name)).toEqual(['Goes Private'])
     const band = await t.query(api.activityFeed.band, {})
-    expect(band.rows).toEqual([])
-    expect(band.totals.updates).toBe(0)
+    expect(band.rows.map((row) => row.stack.name)).toEqual(['Goes Private'])
+    expect(band.totals.updates).toBe(1)
   })
 
   test('a flagged stack is hidden from the feed the same way', async () => {
@@ -235,7 +234,7 @@ describe('visibility', () => {
 
   test('hidden rows do not eat the page - the scan refills it', async () => {
     const t = convexTest(schema, modules)
-    const hidden = await seedStack(t, { name: 'Hidden', published: false })
+    const hidden = await seedStack(t, { name: 'Hidden', isLowQuality: true })
     const shown = await seedStack(t, { name: 'Shown' })
     const now = Date.now()
     // Newest first: three hidden rows sit above the one visible row.

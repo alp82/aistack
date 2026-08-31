@@ -65,10 +65,10 @@ async function events(
 }
 
 // ---------------------------------------------------------------------------
-// stack.published
+// stack.created
 // ---------------------------------------------------------------------------
 
-test('creating a stack already public emits stack.published', async () => {
+test('creating a stack emits stack.created', async () => {
   const t = convexTest(schema, modules)
   const { asCreator } = await seedCreator(t, { userId: 'a1', slug: 'creator-a1' })
   await seedTool(t, 'claude-code', 'Claude Code')
@@ -77,85 +77,24 @@ test('creating a stack already public emits stack.published', async () => {
     name: 'S',
     oneLiner: 'o',
     toolSubscriptions: [toolSub('claude-code')],
-    published: true,
   })
 
   const rows = await events(t)
   expect(rows).toHaveLength(1)
-  expect(rows[0].event).toEqual({ type: 'stack.published', toolCount: 1 })
+  expect(rows[0].event).toEqual({ type: 'stack.created', toolCount: 1 })
 })
 
-test('creating a draft emits nothing', async () => {
-  const t = convexTest(schema, modules)
-  const { asCreator } = await seedCreator(t, { userId: 'a2', slug: 'creator-a2' })
-
-  await asCreator.mutation(api.stacks.create, {
-    name: 'S',
-    oneLiner: 'o',
-    toolSubscriptions: [],
-    published: false,
-  })
-
-  expect(await events(t)).toHaveLength(0)
-})
-
-test('publishing a draft emits stack.published', async () => {
-  const t = convexTest(schema, modules)
-  const { asCreator } = await seedCreator(t, { userId: 'a3', slug: 'creator-a3' })
-  await seedTool(t, 'cursor', 'Cursor')
-  const created = await asCreator.mutation(api.stacks.create, {
-    name: 'S',
-    oneLiner: 'o',
-    toolSubscriptions: [toolSub('cursor')],
-    published: false,
-  })
-
-  await asCreator.mutation(api.stacks.update, {
-    stackId: created._id,
-    published: true,
-  })
-
-  const rows = await events(t)
-  expect(rows).toHaveLength(1)
-  expect(rows[0].event).toEqual({ type: 'stack.published', toolCount: 1 })
-})
-
-test('publishing a draft that also changes composition emits ONLY stack.published', async () => {
-  const t = convexTest(schema, modules)
-  const { asCreator } = await seedCreator(t, { userId: 'a4', slug: 'creator-a4' })
-  await seedTool(t, 'cursor', 'Cursor')
-  await seedTool(t, 'zed', 'Zed')
-  const created = await asCreator.mutation(api.stacks.create, {
-    name: 'S',
-    oneLiner: 'o',
-    toolSubscriptions: [toolSub('cursor')],
-    published: false,
-  })
-
-  await asCreator.mutation(api.stacks.update, {
-    stackId: created._id,
-    published: true,
-    toolSubscriptions: [toolSub('cursor'), toolSub('zed')],
-  })
-
-  const rows = await events(t)
-  expect(rows).toHaveLength(1)
-  expect(rows[0].event.type).toBe('stack.published')
-})
-
-test('re-saving an already public stack does not re-emit stack.published', async () => {
+test('re-saving a stack does not re-emit stack.created', async () => {
   const t = convexTest(schema, modules)
   const { asCreator } = await seedCreator(t, { userId: 'a5', slug: 'creator-a5' })
   const created = await asCreator.mutation(api.stacks.create, {
     name: 'S',
     oneLiner: 'o',
     toolSubscriptions: [],
-    published: true,
   })
 
   await asCreator.mutation(api.stacks.update, {
     stackId: created._id,
-    published: true,
     oneLiner: 'edited',
   })
 
@@ -176,7 +115,6 @@ test('adding and removing tools on a public stack emits the diff with frozen nam
     name: 'S',
     oneLiner: 'o',
     toolSubscriptions: [toolSub('cursor')],
-    published: true,
   })
 
   await asCreator.mutation(api.stacks.update, {
@@ -201,7 +139,6 @@ test('a prose-only edit emits nothing', async () => {
     name: 'S',
     oneLiner: 'o',
     toolSubscriptions: [toolSub('cursor')],
-    published: true,
   })
 
   await asCreator.mutation(api.stacks.update, {
@@ -214,7 +151,7 @@ test('a prose-only edit emits nothing', async () => {
   expect(await events(t)).toHaveLength(1)
 })
 
-test('a composition change on a DRAFT emits nothing', async () => {
+test('a composition change on a stack emits its diff', async () => {
   const t = convexTest(schema, modules)
   const { asCreator } = await seedCreator(t, { userId: 'b3', slug: 'creator-b3' })
   await seedTool(t, 'cursor', 'Cursor')
@@ -222,38 +159,19 @@ test('a composition change on a DRAFT emits nothing', async () => {
     name: 'S',
     oneLiner: 'o',
     toolSubscriptions: [],
-    published: false,
   })
 
   await asCreator.mutation(api.stacks.update, {
     stackId: created._id,
     toolSubscriptions: [toolSub('cursor')],
-  })
-
-  expect(await events(t)).toHaveLength(0)
-})
-
-test('an update that unpublishes while changing composition emits nothing - the gate reads resulting state', async () => {
-  const t = convexTest(schema, modules)
-  const { asCreator } = await seedCreator(t, { userId: 'b4', slug: 'creator-b4' })
-  await seedTool(t, 'cursor', 'Cursor')
-  await seedTool(t, 'zed', 'Zed')
-  const created = await asCreator.mutation(api.stacks.create, {
-    name: 'S',
-    oneLiner: 'o',
-    toolSubscriptions: [toolSub('cursor')],
-    published: true,
-  })
-
-  await asCreator.mutation(api.stacks.update, {
-    stackId: created._id,
-    published: false,
-    toolSubscriptions: [toolSub('zed')],
   })
 
   const rows = await events(t)
-  expect(rows).toHaveLength(1)
-  expect(rows[0].event.type).toBe('stack.published')
+  expect(rows).toHaveLength(2)
+  expect(rows[1].event).toMatchObject({
+    type: 'stack.composition_changed',
+    added: [{ kind: 'tool', slug: 'cursor', name: 'Cursor' }],
+  })
 })
 
 test('a model or bundle change is a composition change too', async () => {
@@ -275,7 +193,6 @@ test('a model or bundle change is a composition change too', async () => {
     name: 'S',
     oneLiner: 'o',
     toolSubscriptions: [],
-    published: true,
   })
 
   await asCreator.mutation(api.stacks.update, {
@@ -299,7 +216,6 @@ test('a slug with no catalog row keeps the slug as its name rather than vanishin
     name: 'S',
     oneLiner: 'o',
     toolSubscriptions: [],
-    published: true,
   })
 
   await asCreator.mutation(api.stacks.update, {
@@ -377,7 +293,6 @@ test('a batch of two harnesses lands ONE sync.landed summarizing both', async ()
     name: 'S',
     oneLiner: 'o',
     toolSubscriptions: [],
-    published: true,
   })
   const tokenId = await seedTokenFor(t, created._id, 'c1')
 
@@ -412,14 +327,13 @@ test('a batch of two harnesses lands ONE sync.landed summarizing both', async ()
   })
 })
 
-test('a sync to a DRAFT stack lands the snapshot but no feed event', async () => {
+test('a sync to a stack lands the snapshot and a feed event', async () => {
   const t = convexTest(schema, modules)
   const { asCreator } = await seedCreator(t, { userId: 'c2', slug: 'creator-c2' })
   const created = await asCreator.mutation(api.stacks.create, {
     name: 'S',
     oneLiner: 'o',
     toolSubscriptions: [],
-    published: false,
   })
   const tokenId = await seedTokenFor(t, created._id, 'c2')
 
@@ -429,7 +343,10 @@ test('a sync to a DRAFT stack lands the snapshot but no feed event', async () =>
   })
 
   expect(result.receivedAt).toBeGreaterThan(0)
-  expect(await events(t)).toHaveLength(0)
+  expect((await events(t)).map((row) => row.event.type)).toEqual([
+    'stack.created',
+    'sync.landed',
+  ])
 })
 
 test('the second sync emits a second event - there is no read-time collapsing to work around', async () => {
@@ -439,7 +356,6 @@ test('the second sync emits a second event - there is no read-time collapsing to
     name: 'S',
     oneLiner: 'o',
     toolSubscriptions: [],
-    published: true,
   })
   const tokenId = await seedTokenFor(t, created._id, 'c3')
 
@@ -467,7 +383,6 @@ test('the reported auto-sync state is stored on the token', async () => {
     name: 'S',
     oneLiner: 'o',
     toolSubscriptions: [],
-    published: true,
   })
   const tokenId = await seedTokenFor(t, created._id, 'd1')
 
@@ -488,7 +403,6 @@ test('a sync that reports nothing leaves the stored state alone', async () => {
     name: 'S',
     oneLiner: 'o',
     toolSubscriptions: [],
-    published: true,
   })
   const tokenId = await seedTokenFor(t, created._id, 'd2')
 

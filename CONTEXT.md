@@ -5,6 +5,16 @@ names for the domain. Definitions say what a term is, not how the code does it.
 
 ## Language
 
+### Stacks
+
+**Stack**:
+A public page describing one creator's AI setup. A stack is public from the moment it is created and has no draft or unpublished state.
+_Avoid_: Draft stack, unpublished stack
+
+**Unsaved stack**:
+Editor state held in the browser before a stack is created on the server.
+_Avoid_: Draft stack
+
 ### News pipeline
 
 **News item**:

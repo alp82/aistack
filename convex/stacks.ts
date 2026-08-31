@@ -147,7 +147,7 @@ const CreatorValidator = v.object({
 })
 
 /**
- * The signed-in creator's own stacks, published or not.
+ * The signed-in creator's stacks.
  *
  * Added for the CLI approval page's stack selector (#38): binding the sync
  * target at link time (#33 decision 7) requires the user to see and pick from
@@ -162,7 +162,6 @@ export const listMine = query({
       name: v.string(),
       slug: v.string(),
       shortId: v.string(),
-      published: v.boolean(),
       updatedAt: v.number(),
     })
   ),
@@ -188,14 +187,13 @@ export const listMine = query({
         name: s.name,
         slug: s.slug,
         shortId: s.shortId,
-        published: s.published,
         updatedAt: s.updatedAt,
       }))
       .sort((a, b) => b.updatedAt - a.updatedAt)
   },
 })
 
-export const listPublished = query({
+export const listPublic = query({
   args: {},
   returns: v.array(
     v.object({
@@ -221,10 +219,7 @@ export const listPublished = query({
     })
   ),
   handler: async (ctx) => {
-    const stacks = await ctx.db
-      .query('stacks')
-      .withIndex('by_published', (q) => q.eq('published', true))
-      .collect()
+    const stacks = await ctx.db.query('stacks').collect()
 
     const maybeResults = await Promise.all(
       stacks.map(async (stack) => {
@@ -398,7 +393,6 @@ export const create = mutation({
     modelSubscriptions: v.optional(v.array(ModelSubscriptionInput)),
     accentPreset: v.optional(v.string()),
     projects: v.optional(v.array(ProjectInput)),
-    published: v.boolean(),
   },
   returns: v.object({ _id: v.id('stacks'), slug: v.string() }),
   handler: async (ctx, args) => {
@@ -433,23 +427,16 @@ export const create = mutation({
       accentPreset: args.accentPreset,
       fixedTotal: pricing.fixedTotal,
       hasUsageComponent: pricing.hasUsageComponent,
-      published: args.published,
       createdAt: now,
       updatedAt: now,
     })
 
-    // `stack.published` fires from create as well as update: this mutation takes
-    // `published` as an argument and writes it directly, so stacks are NOT
-    // always created as drafts and a flip-only fire point would miss every
-    // stack created public (#77).
-    if (args.published) {
-      await emitActivityEvent(
-        ctx,
-        id,
-        { type: 'stack.published', toolCount: args.toolSubscriptions.length },
-        now,
-      )
-    }
+    await emitActivityEvent(
+      ctx,
+      id,
+      { type: 'stack.created', toolCount: args.toolSubscriptions.length },
+      now,
+    )
 
     if (args.resources !== undefined) {
       await upsertResourcesForOwner(ctx, {
@@ -484,7 +471,6 @@ export const update = mutation({
     bundleSubscriptions: v.optional(v.array(BundleSubscriptionInput)),
     modelSubscriptions: v.optional(v.array(ModelSubscriptionInput)),
     accentPreset: v.optional(v.string()),
-    published: v.optional(v.boolean()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -520,7 +506,6 @@ export const update = mutation({
     if (args.bundleSubscriptions !== undefined) patch.bundleSubscriptions = args.bundleSubscriptions
     if (args.modelSubscriptions !== undefined) patch.modelSubscriptions = args.modelSubscriptions
     if (args.accentPreset !== undefined) patch.accentPreset = args.accentPreset || undefined
-    if (args.published !== undefined) patch.published = args.published
 
     const subs = args.toolSubscriptions ?? stack.toolSubscriptions
     const bSubs = args.bundleSubscriptions ?? stack.bundleSubscriptions ?? []
@@ -530,41 +515,23 @@ export const update = mutation({
 
     await ctx.db.patch(args.stackId, patch)
 
-    // THE DRAFT GATE READS RESULTING STATE, not the pre-mutation value (#77).
-    // Reading the old value has a live bug: one update that changes composition
-    // and sets `published: false` would write an event the reader hides, and a
-    // republish months later would surface that stale event as current public
-    // activity.
-    const willBePublished = args.published ?? stack.published
-    if (willBePublished) {
-      if (!stack.published) {
-        // Publishing a draft emits ONLY this, even when the same call also
-        // changed composition. The publish already tells the reader everything.
-        await emitActivityEvent(ctx, args.stackId, {
-          type: 'stack.published',
-          toolCount: subs.length,
-        })
-      } else {
-        // Composition only - a tool, model or bundle added or removed. Prose
-        // edits are excluded, which keeps authoring noise out of a feed that
-        // will be thin at launch.
-        const { added, removed } = await diffComposition(
-          ctx,
-          stack,
-          {
-            toolSubscriptions: subs,
-            modelSubscriptions: args.modelSubscriptions ?? stack.modelSubscriptions,
-            bundleSubscriptions: bSubs,
-          },
-        )
-        if (added.length > 0 || removed.length > 0) {
-          await emitActivityEvent(ctx, args.stackId, {
-            type: 'stack.composition_changed',
-            added,
-            removed,
-          })
-        }
-      }
+    // Composition only. Prose edits are excluded, which keeps authoring noise
+    // out of a feed that will be thin at launch.
+    const { added, removed } = await diffComposition(
+      ctx,
+      stack,
+      {
+        toolSubscriptions: subs,
+        modelSubscriptions: args.modelSubscriptions ?? stack.modelSubscriptions,
+        bundleSubscriptions: bSubs,
+      },
+    )
+    if (added.length > 0 || removed.length > 0) {
+      await emitActivityEvent(ctx, args.stackId, {
+        type: 'stack.composition_changed',
+        added,
+        removed,
+      })
     }
 
     if (args.resources !== undefined) {
@@ -593,7 +560,6 @@ export const getForEdit = query({
       teamSize: v.optional(v.number()),
       fixedTotal: v.optional(MoneyValidator),
       hasUsageComponent: v.boolean(),
-      published: v.boolean(),
       publishCost: v.optional(v.boolean()),
       accentPreset: v.optional(v.string()),
 
@@ -732,9 +698,6 @@ export const getForEdit = query({
       teamSize: stack.teamSize,
       fixedTotal: pricing.fixedTotal,
       hasUsageComponent: pricing.hasUsageComponent,
-      published: stack.published,
-      // Carried so `stack_published` can report it (#77). Absent reads as opted
-      // IN - the field only ever records a refusal.
       publishCost: stack.publishCost,
       accentPreset: stack.accentPreset,
       toolSubscriptions: toolSubs,
@@ -752,10 +715,7 @@ export const getLandingStats = query({
     toolCount: v.number(),
   }),
   handler: async (ctx) => {
-    const stacks = await ctx.db
-      .query('stacks')
-      .withIndex('by_published', (q) => q.eq('published', true))
-      .collect()
+    const stacks = await ctx.db.query('stacks').collect()
 
     const toolIds = new Set<string>()
     let totalCost = 0
@@ -1005,7 +965,7 @@ export const getBySlug = query({
       .withIndex('by_shortId', (q) => q.eq('shortId', shortId))
       .first()
 
-    if (!stack || !stack.published) return null
+    if (!stack) return null
 
     const creator = await ctx.db.get(stack.creatorId)
     if (!creator) return null
@@ -1151,7 +1111,7 @@ export const getPublicSummary = query({
       .withIndex('by_shortId', (q) => q.eq('shortId', shortId))
       .first()
 
-    if (!stack || !stack.published) return null
+    if (!stack) return null
 
     const pricing = await calculateStackPricing(ctx, stack.toolSubscriptions, stack.bundleSubscriptions ?? [])
 

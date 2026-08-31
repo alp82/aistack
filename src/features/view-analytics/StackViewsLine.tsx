@@ -66,7 +66,7 @@ function StackViewsLineView({
 				    started on a day, and this page may not have had one yet. */}
 				{target.total === 0 ? (
 					<span className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-muted">
-						{targetNote(target.openable, target.total)}
+						{targetNote(target.total)}
 					</span>
 				) : (
 					<>

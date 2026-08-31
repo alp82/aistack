@@ -13,7 +13,7 @@ import { Route as ToolsRouteImport } from './routes/tools'
 import { Route as TestRouteImport } from './routes/test'
 import { Route as SyncRouteImport } from './routes/sync'
 import { Route as SubscribeRouteImport } from './routes/subscribe'
-import { Route as SigninPublishRouteImport } from './routes/signin-publish'
+import { Route as SigninCreateRouteImport } from './routes/signin-create'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
@@ -37,12 +37,14 @@ import { Route as LinkDiscordRouteImport } from './routes/link.discord'
 import { Route as EmailPreferencesRouteImport } from './routes/email.preferences'
 import { Route as CliAuthRouteImport } from './routes/cli.auth'
 import { Route as ApiSyncConfigRouteImport } from './routes/api.sync-config'
+import { Route as ApiPricesRouteImport } from './routes/api.prices'
 import { Route as AdminIconsRouteImport } from './routes/admin_.icons'
 import { Route as StacksSlugEditRouteImport } from './routes/stacks.$slug_.edit'
 import { Route as StacksSlugChangesRouteImport } from './routes/stacks.$slug_.changes'
 import { Route as NewsTopicsSlugRouteImport } from './routes/news.topics.$slug'
 import { Route as ApiStacksSlugRouteImport } from './routes/api.stacks.$slug'
 import { Route as ApiIconsFromUrlRouteImport } from './routes/api.icons.from-url'
+import { Route as ApiCliSyncManifestRouteImport } from './routes/api.cli.sync-manifest'
 import { Route as ApiCliSyncRouteImport } from './routes/api.cli.sync'
 import { Route as ApiCliStacksRouteImport } from './routes/api.cli.stacks'
 import { Route as ApiCliAutoSyncRouteImport } from './routes/api.cli.auto-sync'
@@ -72,9 +74,9 @@ const SubscribeRoute = SubscribeRouteImport.update({
   path: '/subscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SigninPublishRoute = SigninPublishRouteImport.update({
-  id: '/signin-publish',
-  path: '/signin-publish',
+const SigninCreateRoute = SigninCreateRouteImport.update({
+  id: '/signin-create',
+  path: '/signin-create',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SigninRoute = SigninRouteImport.update({
@@ -192,6 +194,11 @@ const ApiSyncConfigRoute = ApiSyncConfigRouteImport.update({
   path: '/api/sync-config',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPricesRoute = ApiPricesRouteImport.update({
+  id: '/api/prices',
+  path: '/api/prices',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminIconsRoute = AdminIconsRouteImport.update({
   id: '/admin_/icons',
   path: '/admin/icons',
@@ -220,6 +227,11 @@ const ApiStacksSlugRoute = ApiStacksSlugRouteImport.update({
 const ApiIconsFromUrlRoute = ApiIconsFromUrlRouteImport.update({
   id: '/api/icons/from-url',
   path: '/api/icons/from-url',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCliSyncManifestRoute = ApiCliSyncManifestRouteImport.update({
+  id: '/api/cli/sync-manifest',
+  path: '/api/cli/sync-manifest',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCliSyncRoute = ApiCliSyncRouteImport.update({
@@ -274,12 +286,13 @@ export interface FileRoutesByFullPath {
   '/leaderboard': typeof LeaderboardRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signin': typeof SigninRoute
-  '/signin-publish': typeof SigninPublishRoute
+  '/signin-create': typeof SigninCreateRoute
   '/subscribe': typeof SubscribeRoute
   '/sync': typeof SyncRoute
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
   '/admin/icons': typeof AdminIconsRoute
+  '/api/prices': typeof ApiPricesRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
   '/email/preferences': typeof EmailPreferencesRoute
@@ -297,6 +310,7 @@ export interface FileRoutesByFullPath {
   '/api/cli/auto-sync': typeof ApiCliAutoSyncRoute
   '/api/cli/stacks': typeof ApiCliStacksRouteWithChildren
   '/api/cli/sync': typeof ApiCliSyncRoute
+  '/api/cli/sync-manifest': typeof ApiCliSyncManifestRoute
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/api/stacks/$slug': typeof ApiStacksSlugRoute
   '/news/topics/$slug': typeof NewsTopicsSlugRoute
@@ -318,12 +332,13 @@ export interface FileRoutesByTo {
   '/leaderboard': typeof LeaderboardRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signin': typeof SigninRoute
-  '/signin-publish': typeof SigninPublishRoute
+  '/signin-create': typeof SigninCreateRoute
   '/subscribe': typeof SubscribeRoute
   '/sync': typeof SyncRoute
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
   '/admin/icons': typeof AdminIconsRoute
+  '/api/prices': typeof ApiPricesRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
   '/email/preferences': typeof EmailPreferencesRoute
@@ -341,6 +356,7 @@ export interface FileRoutesByTo {
   '/api/cli/auto-sync': typeof ApiCliAutoSyncRoute
   '/api/cli/stacks': typeof ApiCliStacksRouteWithChildren
   '/api/cli/sync': typeof ApiCliSyncRoute
+  '/api/cli/sync-manifest': typeof ApiCliSyncManifestRoute
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/api/stacks/$slug': typeof ApiStacksSlugRoute
   '/news/topics/$slug': typeof NewsTopicsSlugRoute
@@ -363,12 +379,13 @@ export interface FileRoutesById {
   '/leaderboard': typeof LeaderboardRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signin': typeof SigninRoute
-  '/signin-publish': typeof SigninPublishRoute
+  '/signin-create': typeof SigninCreateRoute
   '/subscribe': typeof SubscribeRoute
   '/sync': typeof SyncRoute
   '/test': typeof TestRoute
   '/tools': typeof ToolsRoute
   '/admin_/icons': typeof AdminIconsRoute
+  '/api/prices': typeof ApiPricesRoute
   '/api/sync-config': typeof ApiSyncConfigRoute
   '/cli/auth': typeof CliAuthRoute
   '/email/preferences': typeof EmailPreferencesRoute
@@ -386,6 +403,7 @@ export interface FileRoutesById {
   '/api/cli/auto-sync': typeof ApiCliAutoSyncRoute
   '/api/cli/stacks': typeof ApiCliStacksRouteWithChildren
   '/api/cli/sync': typeof ApiCliSyncRoute
+  '/api/cli/sync-manifest': typeof ApiCliSyncManifestRoute
   '/api/icons/from-url': typeof ApiIconsFromUrlRoute
   '/api/stacks/$slug': typeof ApiStacksSlugRoute
   '/news/topics/$slug': typeof NewsTopicsSlugRoute
@@ -409,12 +427,13 @@ export interface FileRouteTypes {
     | '/leaderboard'
     | '/reset-password'
     | '/signin'
-    | '/signin-publish'
+    | '/signin-create'
     | '/subscribe'
     | '/sync'
     | '/test'
     | '/tools'
     | '/admin/icons'
+    | '/api/prices'
     | '/api/sync-config'
     | '/cli/auth'
     | '/email/preferences'
@@ -432,6 +451,7 @@ export interface FileRouteTypes {
     | '/api/cli/auto-sync'
     | '/api/cli/stacks'
     | '/api/cli/sync'
+    | '/api/cli/sync-manifest'
     | '/api/icons/from-url'
     | '/api/stacks/$slug'
     | '/news/topics/$slug'
@@ -453,12 +473,13 @@ export interface FileRouteTypes {
     | '/leaderboard'
     | '/reset-password'
     | '/signin'
-    | '/signin-publish'
+    | '/signin-create'
     | '/subscribe'
     | '/sync'
     | '/test'
     | '/tools'
     | '/admin/icons'
+    | '/api/prices'
     | '/api/sync-config'
     | '/cli/auth'
     | '/email/preferences'
@@ -476,6 +497,7 @@ export interface FileRouteTypes {
     | '/api/cli/auto-sync'
     | '/api/cli/stacks'
     | '/api/cli/sync'
+    | '/api/cli/sync-manifest'
     | '/api/icons/from-url'
     | '/api/stacks/$slug'
     | '/news/topics/$slug'
@@ -497,12 +519,13 @@ export interface FileRouteTypes {
     | '/leaderboard'
     | '/reset-password'
     | '/signin'
-    | '/signin-publish'
+    | '/signin-create'
     | '/subscribe'
     | '/sync'
     | '/test'
     | '/tools'
     | '/admin_/icons'
+    | '/api/prices'
     | '/api/sync-config'
     | '/cli/auth'
     | '/email/preferences'
@@ -520,6 +543,7 @@ export interface FileRouteTypes {
     | '/api/cli/auto-sync'
     | '/api/cli/stacks'
     | '/api/cli/sync'
+    | '/api/cli/sync-manifest'
     | '/api/icons/from-url'
     | '/api/stacks/$slug'
     | '/news/topics/$slug'
@@ -542,12 +566,13 @@ export interface RootRouteChildren {
   LeaderboardRoute: typeof LeaderboardRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SigninRoute: typeof SigninRoute
-  SigninPublishRoute: typeof SigninPublishRoute
+  SigninCreateRoute: typeof SigninCreateRoute
   SubscribeRoute: typeof SubscribeRoute
   SyncRoute: typeof SyncRoute
   TestRoute: typeof TestRoute
   ToolsRoute: typeof ToolsRoute
   AdminIconsRoute: typeof AdminIconsRoute
+  ApiPricesRoute: typeof ApiPricesRoute
   ApiSyncConfigRoute: typeof ApiSyncConfigRoute
   CliAuthRoute: typeof CliAuthRoute
   EmailPreferencesRoute: typeof EmailPreferencesRoute
@@ -565,6 +590,7 @@ export interface RootRouteChildren {
   ApiCliAutoSyncRoute: typeof ApiCliAutoSyncRoute
   ApiCliStacksRoute: typeof ApiCliStacksRouteWithChildren
   ApiCliSyncRoute: typeof ApiCliSyncRoute
+  ApiCliSyncManifestRoute: typeof ApiCliSyncManifestRoute
   ApiIconsFromUrlRoute: typeof ApiIconsFromUrlRoute
   ApiStacksSlugRoute: typeof ApiStacksSlugRoute
   NewsTopicsSlugRoute: typeof NewsTopicsSlugRoute
@@ -605,11 +631,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/signin-publish': {
-      id: '/signin-publish'
-      path: '/signin-publish'
-      fullPath: '/signin-publish'
-      preLoaderRoute: typeof SigninPublishRouteImport
+    '/signin-create': {
+      id: '/signin-create'
+      path: '/signin-create'
+      fullPath: '/signin-create'
+      preLoaderRoute: typeof SigninCreateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signin': {
@@ -773,6 +799,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSyncConfigRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/prices': {
+      id: '/api/prices'
+      path: '/api/prices'
+      fullPath: '/api/prices'
+      preLoaderRoute: typeof ApiPricesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin_/icons': {
       id: '/admin_/icons'
       path: '/admin/icons'
@@ -813,6 +846,13 @@ declare module '@tanstack/react-router' {
       path: '/api/icons/from-url'
       fullPath: '/api/icons/from-url'
       preLoaderRoute: typeof ApiIconsFromUrlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cli/sync-manifest': {
+      id: '/api/cli/sync-manifest'
+      path: '/api/cli/sync-manifest'
+      fullPath: '/api/cli/sync-manifest'
+      preLoaderRoute: typeof ApiCliSyncManifestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/cli/sync': {
@@ -897,12 +937,13 @@ const rootRouteChildren: RootRouteChildren = {
   LeaderboardRoute: LeaderboardRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SigninRoute: SigninRoute,
-  SigninPublishRoute: SigninPublishRoute,
+  SigninCreateRoute: SigninCreateRoute,
   SubscribeRoute: SubscribeRoute,
   SyncRoute: SyncRoute,
   TestRoute: TestRoute,
   ToolsRoute: ToolsRoute,
   AdminIconsRoute: AdminIconsRoute,
+  ApiPricesRoute: ApiPricesRoute,
   ApiSyncConfigRoute: ApiSyncConfigRoute,
   CliAuthRoute: CliAuthRoute,
   EmailPreferencesRoute: EmailPreferencesRoute,
@@ -920,6 +961,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCliAutoSyncRoute: ApiCliAutoSyncRoute,
   ApiCliStacksRoute: ApiCliStacksRouteWithChildren,
   ApiCliSyncRoute: ApiCliSyncRoute,
+  ApiCliSyncManifestRoute: ApiCliSyncManifestRoute,
   ApiIconsFromUrlRoute: ApiIconsFromUrlRoute,
   ApiStacksSlugRoute: ApiStacksSlugRoute,
   NewsTopicsSlugRoute: NewsTopicsSlugRoute,

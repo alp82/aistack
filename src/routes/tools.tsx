@@ -63,7 +63,7 @@ export const Route = createFileRoute("/tools")({
 		const [tools, stacks] = await Promise.all([
 			context.queryClient.ensureQueryData(convexQuery(api.tools.listAll, {})),
 			context.queryClient.ensureQueryData(
-				convexQuery(api.stacks.listPublished, {}),
+				convexQuery(api.stacks.listPublic, {}),
 			),
 		]);
 		return { tools, stacks };
@@ -116,7 +116,7 @@ function ToolsPage() {
 	const { tools: loadedTools, stacks: loadedStacks } = Route.useLoaderData();
 	const rawTools = useQuery(api.tools.listAll);
 	const tools = rawTools ?? loadedTools;
-	const stacks = (useQuery(api.stacks.listPublished) ??
+	const stacks = (useQuery(api.stacks.listPublic) ??
 		loadedStacks) as LandingStackPreview[];
 
 	const toolUsageCounts = useMemo(() => {

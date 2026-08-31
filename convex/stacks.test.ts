@@ -53,7 +53,6 @@ const minimalCreateArgs = {
   name: 'My Stack',
   oneLiner: 'A test stack',
   toolSubscriptions: [],
-  published: false,
 }
 
 // ---------------------------------------------------------------------------
@@ -417,7 +416,7 @@ test('TC-M-02: getBySlug WITHOUT avatarStorageId → creator.avatarUrl === creat
 // TC-M-03/TC-M-06 retired with stacks.stackImageUrl (Phase C narrow): the
 // SSRF-prone column no longer exists, so there is nothing to guard against.
 
-test('TC-M-04: listPublished WITH creator avatarStorageId → resolved storage URL', async () => {
+test('TC-M-04: listPublic WITH creator avatarStorageId → resolved storage URL', async () => {
   const t = convexTest(schema, modules)
   const storageId = await seedStorageBlob(t)
   await seedPublishedStack(t, {
@@ -427,14 +426,14 @@ test('TC-M-04: listPublished WITH creator avatarStorageId → resolved storage U
     creatorAvatarStorageId: storageId,
   })
 
-  const results = await t.query(api.stacks.listPublished, {})
+	const results = await t.query(api.stacks.listPublic, {})
   const stack = results.find((s) => s.creator.name === 'Creator user-m04')
   expect(stack).toBeDefined()
   const storageUrl = await t.run(async (ctx: MutationCtx) => ctx.storage.getUrl(storageId))
   expect(stack?.creator.avatarUrl).toBe(storageUrl)
 })
 
-test('TC-M-05: listPublished WITHOUT avatarStorageId → creator row avatarUrl', async () => {
+test('TC-M-05: listPublic WITHOUT avatarStorageId → creator row avatarUrl', async () => {
   const t = convexTest(schema, modules)
   await seedPublishedStack(t, {
     userId: 'user-m05',
@@ -442,7 +441,7 @@ test('TC-M-05: listPublished WITHOUT avatarStorageId → creator row avatarUrl',
     creatorAvatarUrl: 'https://creator-row.example.com/avatar.jpg',
   })
 
-  const results = await t.query(api.stacks.listPublished, {})
+	const results = await t.query(api.stacks.listPublic, {})
   const stack = results.find((s) => s.creator.name === 'Creator user-m05')
   expect(stack?.creator.avatarUrl).toBe('https://creator-row.example.com/avatar.jpg')
 })
@@ -899,7 +898,7 @@ test('TC-P-01: getPublicSummary on published stack returns correct shape - name 
   expect(result!.bundleCount).toBe(result!.bundles.length)
 })
 
-test('TC-P-02: getPublicSummary on unpublished stack returns null', async () => {
+test('TC-P-02: getPublicSummary treats a legacy false flag as public', async () => {
   const t = convexTest(schema, modules)
   const { shortId } = await seedPublishedStackWithSubs(t, {
     userId: 'user-p02',
@@ -911,7 +910,7 @@ test('TC-P-02: getPublicSummary on unpublished stack returns null', async () => 
     slug: `creator-p02-stack-${shortId}`,
   })
 
-  expect(result).toBeNull()
+	expect(result?.name).toBe('Stack user-p02')
 })
 
 test('TC-P-03: getPublicSummary with unknown shortId returns null', async () => {

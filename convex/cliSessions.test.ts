@@ -243,13 +243,13 @@ describe('stacks.listMine - the selector source', () => {
     expect(mine.map((s) => s.name)).toEqual(['Stack 2', 'Stack 1'])
   })
 
-  test('includes drafts, because a draft is a legitimate sync target', async () => {
+  test('includes legacy false rows without exposing the retired flag', async () => {
     const t = convexTest(schema, modules)
     const { stackIds } = await seedCreatorWithStacks(t, { count: 1 })
     await t.run((ctx) => ctx.db.patch(stackIds[0], { published: false }))
     const mine = await t.withIdentity(IDENTITY).query(api.stacks.listMine, {})
     expect(mine).toHaveLength(1)
-    expect(mine[0].published).toBe(false)
+    expect(mine[0]).not.toHaveProperty('published')
   })
 
   test('returns [] when signed out or without a creator profile', async () => {

@@ -70,6 +70,7 @@ import {
 import { CLI_VERSION } from "../version.js";
 import {
 	extractLocalWorkflow,
+	extractLocalWorkflowAsync,
 	type GitWorkflowRunner,
 	type LocalHarnessWorkflow,
 	machineUtcOffsetMinutes,
@@ -150,6 +151,8 @@ export type StageDeps = {
 	 * the background run has a human at the keyboard.
 	 */
 	trigger?: SyncTrigger;
+	/** Human-facing phase updates for the interactive terminal. */
+	onProgress?: (message: string) => void;
 };
 
 export function stageId(bodyJson: string): string {
@@ -166,6 +169,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		deps.getProjectWorkspaceIdImpl ?? getProjectWorkspaceId;
 	const fetchManifest = deps.fetchManifestImpl ?? fetchDayManifest;
 	const fetchPrices = deps.fetchPricesImpl ?? fetchPriceTable;
+	const progress = deps.onProgress ?? (() => {});
 
 	// The price table comes from the server BEFORE any adapter prices a
 	// response (#336): the adapters call the module-level pricing functions,
@@ -176,6 +180,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		id: BUNDLED_PRICE_TABLE_ID,
 		origin: "bundled",
 	};
+	progress("Checking prices and stack settings");
 	try {
 		const table = await fetchPrices(deps.baseUrl);
 		if (table) {
@@ -229,7 +234,12 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	const daysSinceMs = windowStartMs(now, retentionDays);
 	const active = await adapters(sinceMs);
 	for (const adapter of active) {
-		const { aggregate, stats } = await adapter.scan({ sinceMs });
+		progress(`Scanning recent ${adapter.name} usage`);
+		const { aggregate, stats } = await adapter.scan({
+			sinceMs,
+			onProgress: (files) =>
+				progress(`Scanning recent ${adapter.name} usage · ${files} files`),
+		});
 		scanStats[adapter.name] = stats;
 		built.push(
 			buildPayload({
@@ -245,8 +255,11 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		);
 	}
 	for (const adapter of active) {
+		progress(`Reading historical ${adapter.name} days`);
 		const { aggregate, workflow, workflowLocal } = await adapter.scan({
 			sinceMs: daysSinceMs,
+			onProgress: (files) =>
+				progress(`Reading historical ${adapter.name} days · ${files} files`),
 		});
 		workflowScans.push({ aggregate: workflow, local: workflowLocal });
 		usageScans.push(
@@ -272,15 +285,22 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	// The extraction is skipped entirely when the owner has the switch off. It
 	// shells out to `git` per repository, and running that work to throw it away
 	// would be the one visible cost of a preference that is supposed to be free.
-	const workflow: WorkflowExtraction | undefined =
-		workflowScans.length > 0 && config.publishWorkflow
+	let workflow: WorkflowExtraction | undefined;
+	if (workflowScans.length > 0 && config.publishWorkflow) {
+		progress("Reading Git history");
+		workflow = deps.gitRunnerImpl
 			? extractLocalWorkflow({
 					harnesses: workflowScans,
 					fromMs: daysSinceMs,
 					toMs: now,
-					...(deps.gitRunnerImpl ? { run: deps.gitRunnerImpl } : {}),
+					run: deps.gitRunnerImpl,
 				})
-			: undefined;
+			: await extractLocalWorkflowAsync({
+					harnesses: workflowScans,
+					fromMs: daysSinceMs,
+					toMs: now,
+				});
+	}
 
 	// The day rows (#307): usage and workflow joined by date, consent applied
 	// BEFORE the fingerprint so the hash is over the bytes that go, then diffed
@@ -315,6 +335,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 			: undefined,
 		CLI_VERSION,
 	);
+	progress("Preparing review");
 	const bodyJson = JSON.stringify(body);
 	const keptPrivate = mergeKeptPrivate(built.map((b) => b.keptPrivate));
 

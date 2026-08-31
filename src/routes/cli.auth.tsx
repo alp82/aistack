@@ -227,7 +227,6 @@ function CliAuthPage() {
 									{stacks.map((s) => (
 										<option key={s._id} value={s._id}>
 											{s.name}
-											{s.published ? "" : " (draft)"}
 										</option>
 									))}
 								</select>

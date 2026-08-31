@@ -210,16 +210,6 @@ export const getResourceBrowserContext = query({
     const creator = await ctx.db.get(stack.creatorId)
     const isOwner = !!(userId && creator && creator.userId === userId)
 
-    if (!stack.published && !isOwner) {
-      return {
-        stackResources: [],
-        stackName: stack.name,
-        isOwner,
-        isEditable: isOwner,
-        stackId: stack._id,
-      }
-    }
-
     const stackResources = await resolveLinkedResources(ctx, 'stack', stack._id)
     return {
       stackResources,

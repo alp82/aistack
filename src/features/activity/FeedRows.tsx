@@ -45,7 +45,7 @@ function Headline({ row }: { readonly row: FeedRow }) {
 		);
 	}
 
-	if (event.type === "stack.published") {
+	if (event.type === "stack.created" || event.type === "stack.published") {
 		return (
 			<>
 				joined with{" "}

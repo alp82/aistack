@@ -56,7 +56,7 @@ function useEditorState({
 
 	// Save draft to localStorage on every state change (for both guest and authenticated users)
 	// Only save after initial data has been loaded to prevent overwriting
-	// Skip if draft saving was disabled (e.g. after a successful save/publish)
+	// Skip if draft saving was disabled (for example, after a successful create/save)
 	useEffect(() => {
 		if (!hasLoadedInitialData.current || draftSavingDisabled.current) {
 			return;

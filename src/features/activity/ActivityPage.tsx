@@ -20,7 +20,7 @@ import { PulseBand } from "./PulseBand";
 const FILTERS: { key: FeedFilter; label: string }[] = [
 	{ key: "all", label: "all" },
 	{ key: "sync.landed", label: "syncs" },
-	{ key: "stack.published", label: "new stacks" },
+	{ key: "stack.created", label: "new stacks" },
 	{ key: "stack.composition_changed", label: "changes" },
 ];
 

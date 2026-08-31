@@ -227,7 +227,7 @@ async function staleSync(
 }
 
 describe('leaderboard.get', () => {
-  test('ranks living stacks by measured tokens and excludes drafts and low quality', async () => {
+  test('ranks living stacks by measured tokens and excludes low quality', async () => {
     const t = convexTest(schema, modules)
     const small = await seedStack(t, { name: 'Small' })
     const big = await seedStack(t, { name: 'Big' })
@@ -240,11 +240,12 @@ describe('leaderboard.get', () => {
 
     const board = await t.query(api.leaderboard.get, {})
     expect(board.rows.map((r) => [r.rank, r.name, r.tokens])).toEqual([
-      [1, 'Big', 900],
-      [2, 'Small', 100],
+      [1, 'Draft', 5000],
+      [2, 'Big', 900],
+      [3, 'Small', 100],
     ])
-    expect(board.stackCount).toBe(2)
-    expect(board.totalTokens).toBe(1000)
+    expect(board.stackCount).toBe(3)
+    expect(board.totalTokens).toBe(6000)
   })
 
 
@@ -571,4 +572,3 @@ describe('leaderboard.model', () => {
     })
   })
 })
-

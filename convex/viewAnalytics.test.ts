@@ -183,16 +183,14 @@ test('a target nobody visited is still listed, with a zero total', async () => {
   expect(result?.total).toBe(0)
 })
 
-test('a draft stack is marked as not openable, because nobody can reach its page', async () => {
-  // `stacks.getBySlug` returns null for an unpublished stack, so a draft's
-  // counter can only ever be zero. The row says why.
+test('a legacy false stack remains in the public analytics list', async () => {
   const t = convexTest(schema, modules)
   await seedCreator(t, { userId: 'owner-f', slug: 'owner-f', published: false })
   const asF = t.withIdentity({ tokenIdentifier: 'convex|owner-f' })
   const result = await asF.query(api.viewAnalytics.mine, {})
 
   const stack = result?.targets.find((x) => x.kind === 'stack')
-  expect(stack?.openable).toBe(false)
+  expect(stack?.href).toBe('/stacks/owner-f-stack')
 })
 
 test('a day sums every referrer bucket that counted on it', async () => {

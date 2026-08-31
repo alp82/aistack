@@ -1,6 +1,10 @@
 import { foldGitDays } from "@aistack/workflow-rules";
 import { describe, expect, it } from "vitest";
-import { extractGitWorkflow, type GitWorkflowRunner } from "./git.js";
+import {
+	extractGitWorkflow,
+	extractGitWorkflowAsync,
+	type GitWorkflowRunner,
+} from "./git.js";
 
 const record = (hash: string, authoredAt: string, numstat: string): string =>
 	`\u0000aistack-commit\u0000${hash}\u0000${authoredAt}\u0000\u0000\n${numstat
@@ -169,5 +173,30 @@ describe("extractGitWorkflow", () => {
 		expect(at(0).weekdayHourCells).toEqual([
 			{ weekdayUtc: 1, hourUtc: 15, commits: 1 },
 		]);
+	});
+
+	it("the async reader preserves the synchronous result", async () => {
+		const history = record(
+			"aaaa",
+			"2026-08-03T12:00:00+00:00",
+			"4\t1\tsrc/index.ts\n",
+		);
+		const common = {
+			workingDirectories: ["/work/repo"],
+			fromMs: Date.parse("2026-08-01T00:00:00Z"),
+			toMs: Date.parse("2026-08-31T23:59:59Z"),
+			utcOffsetMinutes: 0,
+		};
+		const sync = extractGitWorkflow({
+			...common,
+			run: (_cwd, args) => (args[0] === "rev-parse" ? "/work/repo\n" : history),
+		});
+		const asyncResult = await extractGitWorkflowAsync({
+			...common,
+			run: async (_cwd, args) =>
+				args[0] === "rev-parse" ? "/work/repo\n" : history,
+		});
+
+		expect(asyncResult).toEqual(sync);
 	});
 });

@@ -13,8 +13,8 @@ import { getAppUrl } from './httpCli'
  * Both take an optional `stack` slug. Without one they need a linked account
  * and use the caller's own stack. The embeds are the ones the showcase (#181)
  * proved in Discord. Every figure comes from the same public reads the web
- * uses: `publishedStackBySlug` for the card and `getUsageByStackSlug` for the
- * numbers, so the consent bits (`published`, `publishCost`) apply unchanged.
+ * uses: `publicStackBySlug` for the card and `getUsageByStackSlug` for the
+ * numbers, so the cost consent bit applies unchanged.
  *
  * `resolveStack` lives in `discordStack.ts`: a module that calls its own
  * `internal.*` entry degrades the generated API type to `any`.
@@ -29,9 +29,6 @@ const DAY_MS = 24 * 60 * 60 * 1000
 
 export const UNLINKED_PROMPT =
   'No aistack account is linked to your Discord user. Run `/link`, open the URL, and sign in. After that, this command with no argument shows your own stack.'
-
-export const UNPUBLISHED_PROMPT =
-  'Your stack is not published yet. Publish it on the site, then run this command again.'
 
 export const NO_DATA_ERROR =
   'This stack has no measured history. The owner can publish one with `aistack sync`.'
@@ -215,8 +212,6 @@ function targetError(resolved: Awaited<ReturnType<typeof target>>): string | nul
   switch (resolved.kind) {
     case 'unlinked':
       return UNLINKED_PROMPT
-    case 'unpublished':
-      return UNPUBLISHED_PROMPT
     case 'unknown':
       return unknownStackError(resolved.slug)
     case 'stack':

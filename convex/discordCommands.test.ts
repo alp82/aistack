@@ -294,16 +294,15 @@ describe('/stack', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  test('an unknown or unpublished slug answers the unknown-stack error, ephemeral', async () => {
+  test('an unknown slug answers the unknown-stack error, ephemeral', async () => {
     const t = convexTest(schema, modules)
     await seed(t, { published: false })
-    for (const slug of ['my-cool-stack', 'alpers-agent-stack-unw0sl']) {
-      const res = await post(t, command('stack', STRANGER, slug))
-      const body = await res.json()
-      expect(body.type).toBe(4)
-      expect(body.data.flags).toBe(64)
-      expect(body.data.content).toContain(`No stack matches "${slug}"`)
-    }
+    const slug = 'my-cool-stack'
+    const res = await post(t, command('stack', STRANGER, slug))
+    const body = await res.json()
+    expect(body.type).toBe(4)
+    expect(body.data.flags).toBe(64)
+    expect(body.data.content).toContain(`No stack matches "${slug}"`)
   })
 })
 
@@ -490,12 +489,12 @@ describe('/model', () => {
 })
 
 describe('resolveStack', () => {
-  test('a linked user whose stack is unpublished is told so, not sent to /link', async () => {
+  test('a linked legacy false stack resolves as public', async () => {
     const t = convexTest(schema, modules)
     await seed(t, { published: false })
     const result = await t.query(internal.discordStack.resolveStack, {
       discordUserId: LINKED_USER,
     })
-    expect(result).toEqual({ kind: 'unpublished' })
+    expect(result).toMatchObject({ kind: 'stack', slug: 'alpers-agent-stack-unw0sl' })
   })
 })

@@ -52,7 +52,6 @@ async function seedStack(
     name: 'S',
     oneLiner: 'o',
     toolSubscriptions: [],
-    published: true,
   })
   const bearer = `bearer-${userId}`
   const tokenId = await t.run(async (ctx: MutationCtx) =>

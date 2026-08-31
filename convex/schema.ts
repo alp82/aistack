@@ -555,6 +555,11 @@ export const ActivityAtom = v.object({
  */
 export const ActivityEvent = v.union(
   v.object({
+    type: v.literal('stack.created'),
+    toolCount: v.number(),
+  }),
+  // Legacy until `20260831_stacks_always_public` has run in production.
+  v.object({
     type: v.literal('stack.published'),
     toolCount: v.number(),
   }),
@@ -888,7 +893,9 @@ export default defineSchema({
     // server-side. The approve gate names this switch too, before the first
     // upload, which is what a default-on opt-out has to earn.
     publishWorkflow: v.optional(v.boolean()),
-    published: v.boolean(),
+    // Legacy rollout field for ADR-0013. Visibility no longer reads it.
+    // A migration clears it before this field is removed from the schema.
+    published: v.optional(v.boolean()),
     // WHO MAY AUTO-SYNC INTO THIS STACK, and how often (#100 decision 2, built
     // in #102). The permission used to live only in the machine's settings file
     // and its hook, so the web could not read it and could not revoke it.
@@ -1429,10 +1436,8 @@ export default defineSchema({
   // NOT derived at read time from `measuredInventory`/`stacks`, because
   // derivation gets expensive and cannot express "tool X added" at all.
   //
-  // Visibility is enforced at READ time, which is the only place it can be
-  // correct: a stack can be unpublished after the event is written and this
-  // table never mutates. The write side still gates on drafts, so a week of
-  // drafting cannot fill the table with rows that can never be shown.
+  // Visibility is enforced at read time. Deleting or quality-filtering a stack
+  // after an event is written hides its append-only history.
   // -------------------------------------------------------------------------
   activityEvents: defineTable({
     stackId: v.id('stacks'),

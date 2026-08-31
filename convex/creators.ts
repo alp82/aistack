@@ -22,7 +22,6 @@ const StackCardValidator = v.object({
   name: v.string(),
   slug: v.string(),
   oneLiner: v.string(),
-  published: v.boolean(),
   updatedAt: v.number(),
   fixedTotal: v.object({
     currency: v.string(),
@@ -51,7 +50,6 @@ async function toStackCard(ctx: QueryCtx, stack: Doc<'stacks'>) {
     name: stack.name,
     slug: `${stack.slug}-${stack.shortId}`,
     oneLiner: stack.oneLiner,
-    published: stack.published,
     updatedAt: stack.updatedAt,
     fixedTotal: pricing.fixedTotal,
     hasUsageComponent: pricing.hasUsageComponent,
@@ -211,7 +209,7 @@ export const updateProfile = mutation({
 /**
  * Land a guest-staged avatar on the creator after sign-in. Skip-if-set: a
  * returning user's deliberate profile avatar is never clobbered by an old
- * logged-out draft (mirrors the migration's rule).
+ * logged-out editor state (mirrors the migration's rule).
  */
 export const landStagedAvatar = mutation({
   args: { storageId: v.id('_storage') },
@@ -230,7 +228,7 @@ export const landStagedAvatar = mutation({
  * Public profile payload for `/@handle`. Auth-independent - the SSR prefetch
  * runs unauthenticated, so this never varies by viewer (owner state lives in
  * the client-only `getOwnProfileView`, mirroring the stacks.$slug precedent).
- * Published stacks only, most-recent first.
+ * Public stacks, most-recent first.
  */
 export const getByHandle = query({
   args: { handle: v.string() },
@@ -262,10 +260,8 @@ export const getByHandle = query({
       .query('stacks')
       .withIndex('by_creatorId', (q) => q.eq('creatorId', creator._id))
       .collect()
-    const published = allStacks
-      .filter((s) => s.published)
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-    const stacks = await Promise.all(published.map((s) => toStackCard(ctx, s)))
+    const ordered = allStacks.sort((a, b) => b.updatedAt - a.updatedAt)
+    const stacks = await Promise.all(ordered.map((s) => toStackCard(ctx, s)))
 
     return {
       profile: {
@@ -285,15 +281,13 @@ export const getByHandle = query({
 })
 
 /**
- * Owner-only companion to `getByHandle` (client-only query): returns the
- * caller's draft stacks for their own profile, null for everyone else.
+ * Owner-only companion to `getByHandle` (client-only query).
  */
 export const getOwnProfileView = query({
   args: { handle: v.string() },
   returns: v.union(
     v.object({
       isOwner: v.literal(true),
-      draftStacks: v.array(StackCardValidator),
     }),
     v.null(),
   ),
@@ -301,16 +295,7 @@ export const getOwnProfileView = query({
     const caller = await getCallerCreator(ctx)
     if (!caller || caller.slug !== args.handle) return null
 
-    const allStacks = await ctx.db
-      .query('stacks')
-      .withIndex('by_creatorId', (q) => q.eq('creatorId', caller._id))
-      .collect()
-    const drafts = allStacks
-      .filter((s) => !s.published)
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-    const draftStacks = await Promise.all(drafts.map((s) => toStackCard(ctx, s)))
-
-    return { isOwner: true as const, draftStacks }
+    return { isOwner: true as const }
   },
 })
 

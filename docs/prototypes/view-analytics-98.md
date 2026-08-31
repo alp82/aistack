@@ -30,7 +30,7 @@ The draft box stays in the list. A draft that reads zero is the number an owner 
 needs explained, and dropping it makes the list misleading by omission.
 
 The whole panel sits inside a private fence: a dashed border, a lock icon, and the
-words "only you can see this". That is the same treatment the draft-stack cards
+words "only you can see this". That is the same treatment the private owner cards
 already use, so the owner already recognizes it on this page as meaning private,
 without having to read an explanation.
 

@@ -162,7 +162,7 @@ export type SyncPublishResult = {
 	receivedAt: number;
 	stackSlug: string;
 	url: string;
-	keptPrivate: { stored: number; refused: boolean };
+	keptPrivate: { stored: number; machineStored: number; refused: boolean };
 };
 
 /**

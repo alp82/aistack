@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { ProfileSection } from "@/features/stack-editor/sections/ProfileSection";
 import { getEditorSectionStatuses } from "@/features/stack-editor/editor-status";
+import { ProfileSection } from "@/features/stack-editor/sections/ProfileSection";
 
 describe("editor status ui", () => {
 	it("uses strict validation states for every section", () => {
@@ -22,7 +22,7 @@ describe("editor status ui", () => {
 		});
 
 		expect(statuses.profile.state).toBe("error");
-		expect(statuses.tools.state).toBe("error");
+		expect(statuses.tools.state).toBe("idle");
 		expect(statuses.settings.state).toBe("error");
 		expect(statuses.description.state).toBe("idle");
 	});

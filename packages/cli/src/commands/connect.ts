@@ -144,7 +144,7 @@ export function installClaudeConnect(
 
 	return {
 		ok: true,
-		message: `Installed. Say ${limeBold('"sync my stack"')} in any Claude Code session.`,
+		message: `Installed the user-scoped aistack MCP server and Skill. Say ${limeBold('"sync my stack"')} in any Claude Code session. Every send still requires your confirmation. Remove it with: claude mcp remove --scope user aistack`,
 	};
 }
 
@@ -205,17 +205,18 @@ export async function offerConnectUpsell(deps: UpsellDeps = {}): Promise<void> {
 	if (!(deps.claudeOnPathImpl ?? claudeOnPath)()) return;
 
 	const answer = await p.select({
-		message: "Sync from inside Claude Code too?",
+		message:
+			"Add AI Stack commands to Claude Code? Every send still asks first.",
 		options: [
 			{
 				value: "later",
-				label: "Not now",
-				hint: "this question will not come back",
+				label: "No, don't ask again",
+				hint: "you can install later with aistack connect claude",
 			},
 			{
 				value: "install",
-				label: "Install",
-				hint: "adds the aistack MCP server + Skill to Claude Code",
+				label: "Install MCP + Skill",
+				hint: "user scope; enables preview and confirmed send commands",
 			},
 		],
 		initialValue: "later",

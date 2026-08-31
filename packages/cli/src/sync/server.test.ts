@@ -60,7 +60,7 @@ const PUBLISH_OK: SyncPublishResult = {
 	receivedAt: NOW + 5_000,
 	stackSlug: "s",
 	url: "https://aistack.to/stacks/s",
-	keptPrivate: { stored: 0, refused: false },
+	keptPrivate: { stored: 0, machineStored: 0, refused: false },
 };
 
 function makeServer(opts: {
@@ -215,7 +215,7 @@ describe("the gate - consent path", () => {
 			staged,
 			publishResult: {
 				...PUBLISH_OK,
-				keptPrivate: { stored: 0, refused: true },
+				keptPrivate: { stored: 0, machineStored: 0, refused: true },
 			},
 		});
 		init(s.server);

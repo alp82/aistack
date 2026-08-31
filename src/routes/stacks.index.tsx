@@ -132,7 +132,7 @@ export const Route = createFileRoute("/stacks/")({
 	search: { middlewares: [stripSearchParams(STACKS_SEARCH_DEFAULTS)] },
 	loader: async ({ context }) => {
 		const stacks = await context.queryClient.ensureQueryData(
-			convexQuery(api.stacks.listPublished, {}),
+			convexQuery(api.stacks.listPublic, {}),
 		);
 		return { stacks };
 	},
@@ -155,7 +155,7 @@ function BrowseStacksPage() {
 	// the live query returns undefined until the Convex WebSocket delivers,
 	// and a wedged connection must show the SSR'd list, not an empty page.
 	const { stacks: loadedStacks } = Route.useLoaderData();
-	const rawStacks = useQuery(api.stacks.listPublished);
+	const rawStacks = useQuery(api.stacks.listPublic);
 	const stacks = (rawStacks ?? loadedStacks) as LandingStackPreview[];
 	const me = useQuery(api.creators.getMe);
 	const {

@@ -1,41 +1,20 @@
 import {
-	canPublishStack,
+	canSaveStack,
 	getSaveValidationError,
 } from "@/features/stack-editor/editor-guards";
 import type {
 	EditorState,
 	GuestStackDraft,
 } from "@/features/stack-editor/state/editorReducer";
-import type {
-	StackEditorInitialValue,
-	StackEditorMode,
-} from "@/features/stack-editor/types";
 
-function selectCanPublish(state: EditorState): boolean {
-	return canPublishStack(state.oneLiner, state.toolSubscriptions.length);
+function selectCanSave(state: EditorState): boolean {
+	return canSaveStack(state.oneLiner);
 }
 
-function selectSaveValidationError(
-	state: EditorState,
-	publish: boolean,
-): string | null {
+function selectSaveValidationError(state: EditorState): string | null {
 	return getSaveValidationError({
 		oneLiner: state.oneLiner,
-		publish,
-		toolCount: state.toolSubscriptions.length,
 	});
-}
-
-function selectSaveDraftPublishTarget(
-	state: EditorState,
-	mode: StackEditorMode,
-	initialValue?: StackEditorInitialValue,
-): boolean {
-	void state;
-	if (mode === "edit") {
-		return initialValue?.published ?? false;
-	}
-	return false;
 }
 
 function normalizeResources(
@@ -62,7 +41,7 @@ function normalizeProjects(
 	}));
 }
 
-function selectSavePayload(state: EditorState, published: boolean) {
+function selectSavePayload(state: EditorState) {
 	const resources =
 		state.resources.length > 0
 			? normalizeResources(state.resources)
@@ -96,7 +75,6 @@ function selectSavePayload(state: EditorState, published: boolean) {
 			description: model.description,
 		})),
 		accentPreset: state.accentPreset || undefined,
-		published,
 	};
 }
 
@@ -118,9 +96,8 @@ function selectGuestDraft(state: EditorState): GuestStackDraft {
 }
 
 export {
-	selectCanPublish,
+	selectCanSave,
 	selectGuestDraft,
-	selectSaveDraftPublishTarget,
 	selectSavePayload,
 	selectSaveValidationError,
 };

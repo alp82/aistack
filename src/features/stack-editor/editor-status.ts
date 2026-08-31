@@ -69,11 +69,7 @@ function getEditorSectionStatuses(
 		return {
 			profile: { state: "error", message: "One-liner summary is required" },
 			tools: {
-				state: input.toolSubscriptions.length > 0 ? "complete" : "error",
-				message:
-					input.toolSubscriptions.length > 0
-						? undefined
-						: "Add at least one tool before publishing",
+				state: input.toolSubscriptions.length > 0 ? "complete" : "idle",
 			},
 			bundles: hasInvalidBundle
 				? { state: "error", message: "Select a valid bundle tier" }
@@ -91,11 +87,7 @@ function getEditorSectionStatuses(
 		return {
 			profile: { state: "error", message: "Team size must be at least 2" },
 			tools: {
-				state: input.toolSubscriptions.length > 0 ? "complete" : "error",
-				message:
-					input.toolSubscriptions.length > 0
-						? undefined
-						: "Add at least one tool before publishing",
+				state: input.toolSubscriptions.length > 0 ? "complete" : "idle",
 			},
 			bundles: hasInvalidBundle
 				? { state: "error", message: "Select a valid bundle tier" }
@@ -111,13 +103,7 @@ function getEditorSectionStatuses(
 
 	return {
 		profile: { state: "complete" },
-		tools: {
-			state: input.toolSubscriptions.length > 0 ? "complete" : "error",
-			message:
-				input.toolSubscriptions.length > 0
-					? undefined
-					: "Add at least one tool before publishing",
-		},
+		tools: { state: input.toolSubscriptions.length > 0 ? "complete" : "idle" },
 		bundles: hasInvalidBundle
 			? { state: "error", message: "Select a valid bundle tier" }
 			: input.bundleSubscriptions.length > 0

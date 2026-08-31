@@ -45,7 +45,7 @@ export function publishedRow(over: Partial<FeedRow> = {}): FeedRow {
 		id: `row-${counter}`,
 		at: NOW - 2 * DAY,
 		stack: { name: "Kestrel", slug: "kestrel-cd34", creator: "diego" },
-		event: { type: "stack.published", toolCount: 7 },
+		event: { type: "stack.created", toolCount: 7 },
 		deltaTokens: null,
 		firstReading: false,
 		...over,

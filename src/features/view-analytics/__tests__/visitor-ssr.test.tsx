@@ -60,7 +60,6 @@ const STACKS = [
 		name: "Main Stack",
 		slug: "main-stack",
 		oneLiner: "My everyday coding setup",
-		published: true,
 		updatedAt: 5000,
 		fixedTotal: { currency: "USD", amount: 42, period: "month" },
 		hasUsageComponent: false,
@@ -71,7 +70,7 @@ const STACKS = [
 ];
 
 /** The route always hands the panel over. Ownership decides what is rendered. */
-function profileHtml(ownProfile: { isOwner: true; draftStacks: [] } | null) {
+function profileHtml(ownProfile: { isOwner: true } | null) {
 	return renderToString(
 		<ProfilePage
 			profile={PROFILE}
@@ -92,7 +91,7 @@ describe("the profile panel", () => {
 	});
 
 	test("the owner gets all of it in the first HTML", () => {
-		const html = profileHtml({ isOwner: true, draftStacks: [] });
+		const html = profileHtml({ isOwner: true });
 		expect(html).toMatch(/only you can see this/i);
 		expect(html).toContain("deduped daily visitors");
 		expect(html).toContain(">24<");

@@ -74,7 +74,7 @@ export function AnalyticsPage() {
 						Nothing to count yet.
 					</p>
 					<p className="mt-2 text-sm text-fg-secondary">
-						Publish a stack and these numbers start on the day someone opens it.
+						Create a stack and these numbers start on the day someone opens it.
 					</p>
 				</div>
 			</Shell>
@@ -172,16 +172,12 @@ export function AnalyticsPage() {
 						>
 							<div className="min-w-0">
 								<p className="truncate font-mono text-sm font-bold text-fg-primary">
-									{t.openable ? (
-										<Link to={t.href} className="hover:text-accent">
-											{t.label}
-										</Link>
-									) : (
-										t.label
-									)}
+									<Link to={t.href} className="hover:text-accent">
+										{t.label}
+									</Link>
 								</p>
 								<p className="mt-1 font-mono text-xs text-fg-muted">
-									{targetNote(t.openable, t.total)}
+									{targetNote(t.total)}
 								</p>
 							</div>
 							<p className="shrink-0 font-mono text-lg font-black text-fg-primary">
@@ -198,13 +194,10 @@ export function AnalyticsPage() {
 /**
  * The line under a page's name.
  *
- * A draft says why its number can only be zero. Without that, an owner reads a
- * zero as "nobody is interested" when the truth is that the page cannot be
- * reached at all. Exported because the profile panel and the stack-page line
- * (#112) say the same three things, and one wording is the whole point.
+ * Exported because the profile panel and the stack-page line (#112) use the
+ * same wording.
  */
-export function targetNote(openable: boolean, total: number): string {
-	if (!openable) return "Draft: nobody can open it yet";
+export function targetNote(total: number): string {
 	if (total === 0) return "Nobody has opened it yet";
 	return "deduped daily visitors";
 }

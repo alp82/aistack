@@ -55,7 +55,7 @@ afterEach(() => {
 
 test.each([
 	["/signin", () => import("@/routes/signin")],
-	["/signin-publish", () => import("@/routes/signin-publish")],
+	["/signin-create", () => import("@/routes/signin-create")],
 ] as const)("%s renders the last-used tag", async (_path, loadRoute) => {
 	mocks.getLastUsedLoginMethod.mockReturnValue("github");
 	const routeModule = await loadRoute();

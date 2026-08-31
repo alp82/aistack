@@ -1,24 +1,24 @@
-import { useConvexAuth } from "convex/react";
 import {
 	createFileRoute,
 	Link,
 	useNavigate,
 	useSearch,
 } from "@tanstack/react-router";
+import { useConvexAuth } from "convex/react";
 import { useEffect, useState } from "react";
 import { AuthForm } from "../components/AuthForm";
 import { TiptapEditor } from "../components/TiptapEditor";
 import { EditorProvider } from "../features/stack-editor/context/EditorContext";
-import { seoMeta } from "../lib/seo";
 import { getDraftKey } from "../features/stack-editor/state/editorReducer";
+import { seoMeta } from "../lib/seo";
 
-type SignInPublishSearch = {
+type SignInCreateSearch = {
 	redirect?: string;
 };
 
-export const Route = createFileRoute("/signin-publish")({
-	component: SignInPublishPage,
-	validateSearch: (search: Record<string, unknown>): SignInPublishSearch => {
+export const Route = createFileRoute("/signin-create")({
+	component: SignInCreatePage,
+	validateSearch: (search: Record<string, unknown>): SignInCreateSearch => {
 		return {
 			redirect:
 				typeof search.redirect === "string" ? search.redirect : undefined,
@@ -26,8 +26,8 @@ export const Route = createFileRoute("/signin-publish")({
 	},
 	head: () => ({
 		meta: seoMeta({
-			title: "Sign In to Publish - AI Stack",
-			description: "Sign in to publish your AI stack on AI Stack.",
+			title: "Sign In to Create - AI Stack",
+			description: "Sign in to create your public AI stack.",
 			noindex: true,
 		}),
 	}),
@@ -52,17 +52,17 @@ interface GuestStackDraft {
 	}>;
 }
 
-function SignInPublishPage() {
+function SignInCreatePage() {
 	return (
 		<EditorProvider>
-			<SignInPublishContent />
+			<SignInCreateContent />
 		</EditorProvider>
 	);
 }
 
-function SignInPublishContent() {
+function SignInCreateContent() {
 	const navigate = useNavigate();
-	const { redirect } = useSearch({ from: "/signin-publish" });
+	const { redirect } = useSearch({ from: "/signin-create" });
 	const { isAuthenticated } = useConvexAuth();
 	const [guestDraft, setGuestDraft] = useState<GuestStackDraft | null>(null);
 
@@ -90,13 +90,14 @@ function SignInPublishContent() {
 				<div className="space-y-6">
 					<div>
 						<p className="font-mono text-xs uppercase tracking-widest text-accent-lime mb-2">
-							// Your Stack Preview
+							{"// Your Stack Preview"}
 						</p>
 						<h2 className="text-3xl font-black tracking-tight text-fg-primary uppercase">
 							Almost There!
 						</h2>
 						<p className="mt-2 font-mono text-sm text-fg-muted">
-							Sign up to publish your stack and share it with the community.
+							Sign up to create your public stack and share it with the
+							community.
 						</p>
 					</div>
 
@@ -244,7 +245,7 @@ function SignInPublishContent() {
 						</p>
 						<p className="font-mono text-xs text-fg-muted mt-1">
 							<span className="text-accent-lime font-semibold">✓</span> Only
-							registered users can publish stacks
+							registered users can create stacks
 						</p>
 						<p className="font-mono text-xs text-fg-muted mt-1">
 							<span className="text-accent-lime font-semibold">✓</span> Your
@@ -274,7 +275,7 @@ function SignInPublishContent() {
 						</Link>
 						{guestDraft && (
 							<div className="border border-stroke-subtle bg-bg-panel-muted p-3 mb-4">
-								<p className="font-mono text-xs text-fg-muted">Publishing:</p>
+								<p className="font-mono text-xs text-fg-muted">Creating:</p>
 								<p className="font-semibold text-fg-primary truncate">
 									{guestDraft.oneLiner || "Your AI Stack"}
 								</p>
@@ -287,15 +288,15 @@ function SignInPublishContent() {
 							Create Account
 						</h2>
 						<p className="mt-2 font-mono text-sm text-fg-muted">
-							Join to publish your stack
+							Join to create your public stack
 						</p>
 					</div>
 
 					<AuthForm
 						callbackURL={redirect || "/stacks/new"}
 						defaultIsSignUp
-						signUpSubmitLabel="Create Account & Publish"
-						signInSubmitLabel="Sign In & Publish"
+						signUpSubmitLabel="Create Account & Stack"
+						signInSubmitLabel="Sign In & Create"
 						footer={
 							<div className="text-center">
 								<Link

@@ -1,5 +1,10 @@
 import { convexQuery } from "@convex-dev/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import {
+	createFileRoute,
+	Link,
+	notFound,
+	useNavigate,
+} from "@tanstack/react-router";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -138,6 +143,7 @@ export const Route = createFileRoute("/stacks/$slug")({
 				convexQuery(api.workflow.getWorkflowByStackSlug, { slug: params.slug }),
 			),
 		]);
+		if (!stack) throw notFound();
 		return { stack, usage };
 	},
 	head: ({ loaderData }) => {

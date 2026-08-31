@@ -574,7 +574,7 @@ export const syncPublish = httpAction(async (ctx, request) => {
   let result: {
     receivedAt: number
     stackSlug: string
-    keptPrivate: { stored: number; refused: boolean }
+    keptPrivate: { stored: number; machineStored: number; refused: boolean }
   }
   try {
     result = await ctx.runMutation(internal.measured.publishForToken, {

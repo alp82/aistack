@@ -1,12 +1,11 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { CheckCircle, ExternalLink, Save, Send, Wrench } from "lucide-react";
+import { ExternalLink, Save, Wrench } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { BundleSubscriptionEntry } from "@/components/BundlePicker";
 import { GridBackground } from "@/components/GridBackground";
 import { SignInDialog } from "@/components/SignInDialog";
 import type { ToolSubscriptionEntry } from "@/components/ToolPicker";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DetailsStep } from "@/features/stack-editor/components/DetailsStep";
 import { ProjectsStep } from "@/features/stack-editor/components/ProjectsStep";
 import { ToolsSidebar } from "@/features/stack-editor/components/ToolsSidebar";
@@ -32,7 +31,7 @@ import type {
 	StackEditorMode,
 } from "@/features/stack-editor/types";
 import { accentClassFor } from "@/features/stack-view/accentPresets";
-import { captureStackCreated, captureStackPublished } from "@/lib/analytics";
+import { captureStackCreated } from "@/lib/analytics";
 import { resolveAvatarForSave } from "@/lib/resolveAvatarForSave";
 import {
 	buildManualStableKey,
@@ -256,26 +255,16 @@ export function StackEditor({
 		[setModelSubscriptions],
 	);
 
-	const handleSave = async (publish: boolean) => {
-		const validationError = selectSaveValidationError(state, publish);
+	const handleSave = async () => {
+		const validationError = selectSaveValidationError(state);
 
 		if (validationError) {
 			setError(validationError);
 			return;
 		}
 
-		if (guestSession && publish) {
-			navigate({ to: "/signin-publish", search: { redirect: "/stacks/new" } });
-			return;
-		}
-
 		if (guestSession) {
-			setError("");
-			setSaving(true);
-			setTimeout(() => {
-				setSaving(false);
-				setError("Stack saved locally. Sign in to publish.");
-			}, 500);
+			navigate({ to: "/signin-create", search: { redirect: "/stacks/new" } });
 			return;
 		}
 
@@ -283,7 +272,7 @@ export function StackEditor({
 		setSaving(true);
 
 		try {
-			const payload = selectSavePayload(state, publish);
+			const payload = selectSavePayload(state);
 
 			// A staged guest avatar (adopted from the guest draft after sign-in)
 			// arrives as a data URL - upload it to Convex storage now (so the DB
@@ -314,16 +303,7 @@ export function StackEditor({
 				// counts attempts, not stacks.
 				captureStackCreated({
 					toolCount: payload.toolSubscriptions.length,
-					published: payload.published,
 				});
-				if (payload.published) {
-					// A new stack cannot set the cost toggle, so it is always the
-					// default here: opted in.
-					captureStackPublished({
-						toolCount: payload.toolSubscriptions.length,
-						publishCost: true,
-					});
-				}
 				localStorage.removeItem(getDraftKey(undefined, creatorId));
 				navigate({ to: "/stacks/$slug", params: { slug: result.slug } });
 				return;
@@ -334,21 +314,7 @@ export function StackEditor({
 					stackId: initialValue._id,
 					...payload,
 				});
-				// Only the TRANSITION from draft to published. An edit to a stack that
-				// was already public is not a publish.
-				if (payload.published && !initialValue.published) {
-					captureStackPublished({
-						toolCount: payload.toolSubscriptions.length,
-						publishCost: initialValue.publishCost ?? true,
-					});
-				}
 				localStorage.removeItem(getDraftKey(initialValue.slug));
-				if (publish) {
-					navigate({
-						to: "/stacks/$slug",
-						params: { slug: initialValue.slug },
-					});
-				}
 			}
 		} catch (cause) {
 			setError(cause instanceof Error ? cause.message : "Failed to save stack");
@@ -428,8 +394,6 @@ export function StackEditor({
 	);
 
 	const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-	const [showUnpublishConfirm, setShowUnpublishConfirm] = useState(false);
-
 	// Lock body scroll when mobile sidebar is open
 	useEffect(() => {
 		if (mobileSidebarOpen) {
@@ -465,23 +429,7 @@ export function StackEditor({
 				<SignInDialog
 					isOpen={state.showSignInDialog}
 					onClose={() => setShowSignInDialog(false)}
-					message="Please sign in to publish your stack. Your work is saved locally and will be available when you return."
-				/>
-				<ConfirmDialog
-					open={showUnpublishConfirm}
-					onClose={() => setShowUnpublishConfirm(false)}
-					onConfirm={async () => {
-						try {
-							await handleSave(false);
-						} finally {
-							setShowUnpublishConfirm(false);
-						}
-					}}
-					title="Unpublish stack"
-					description="This will hide the stack from everyone and remove it from public listings. You can republish it anytime."
-					confirmLabel="Unpublish"
-					variant="danger"
-					loading={state.saving}
+					message="Please sign in to create your stack. Your work is saved locally and will be available when you return."
 				/>
 				<div className="relative z-10 mx-auto max-w-content flex flex-col">
 					<div className="flex">
@@ -496,86 +444,34 @@ export function StackEditor({
 									</h1>
 
 									<div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-										{mode === "edit" &&
-											initialValue?.published &&
-											initialValue?.slug && (
-												<Link
-													to="/stacks/$slug"
-													params={{ slug: `${initialValue.slug}` }}
-													target="_blank"
-													className="hidden sm:inline-flex items-center gap-2 px-4 py-2 border-2 border-stroke-subtle font-mono text-xs uppercase tracking-wider text-fg-muted hover:border-fg-muted hover:text-fg-primary transition-colors cursor-pointer"
-												>
-													<ExternalLink className="size-4" />
-													View Stack
-												</Link>
-											)}
-										{initialValue?.published ? (
-											<>
-												{/* Published/Unpublish Button - hidden on mobile */}
-												<button
-													type="button"
-													onClick={() => setShowUnpublishConfirm(true)}
-													disabled={state.saving}
-													className="group hidden sm:inline-flex items-center gap-2 px-4 py-2 border-2 border-accent-lime font-mono text-xs font-bold uppercase tracking-wider text-accent-lime transition-colors hover:border-destructive hover:text-destructive disabled:opacity-50 cursor-pointer"
-												>
-													<CheckCircle className="size-4 group-hover:hidden" />
-													<span className="hidden group-hover:inline">✕</span>
-													<span className="relative">
-														<span className="group-hover:hidden">
-															Published
-														</span>
-														<span className="hidden group-hover:inline">
-															Unpublish
-														</span>
-													</span>
-												</button>
-
-												{/* Save Button - lime filled */}
-												<button
-													type="button"
-													onClick={() => handleSave(true)}
-													disabled={state.saving}
-													className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 border-2 border-accent-lime bg-accent-lime font-mono text-xs font-bold uppercase tracking-wider text-accent-lime-contrast hover:bg-accent-lime-strong transition-colors disabled:opacity-50 cursor-pointer"
-												>
-													<Save className="size-4" />
-													<span className="hidden sm:inline">
-														{state.saving ? "Saving..." : "Save"}
-													</span>
-												</button>
-											</>
-										) : (
-											<>
-												{/* Save Draft Button - outline, icon-only on mobile */}
-												<button
-													type="button"
-													onClick={() => handleSave(false)}
-													disabled={state.saving}
-													className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 border-2 border-stroke-strong font-mono text-xs uppercase tracking-wider text-fg-muted hover:border-accent-lime hover:text-fg-primary transition-colors disabled:opacity-50 cursor-pointer"
-												>
-													<Save className="size-4" />
-													<span className="hidden sm:inline">
-														{state.saving ? "Saving..." : "Save Draft"}
-													</span>
-												</button>
-
-												{/* Publish Button - lime filled */}
-												<button
-													type="button"
-													onClick={() => handleSave(true)}
-													disabled={state.saving}
-													className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 border-2 border-accent-lime bg-accent-lime font-mono text-xs font-bold uppercase tracking-wider text-accent-lime-contrast hover:bg-accent-lime-strong transition-colors disabled:opacity-50 cursor-pointer"
-												>
-													<Send className="size-4" />
-													<span className="hidden sm:inline">
-														{state.saving
-															? "Publishing..."
-															: guestSession
-																? "Signup & Publish"
-																: "Publish"}
-													</span>
-												</button>
-											</>
+										{mode === "edit" && initialValue?.slug && (
+											<Link
+												to="/stacks/$slug"
+												params={{ slug: `${initialValue.slug}` }}
+												target="_blank"
+												className="hidden sm:inline-flex items-center gap-2 px-4 py-2 border-2 border-stroke-subtle font-mono text-xs uppercase tracking-wider text-fg-muted hover:border-fg-muted hover:text-fg-primary transition-colors cursor-pointer"
+											>
+												<ExternalLink className="size-4" />
+												View Stack
+											</Link>
 										)}
+										<button
+											type="button"
+											onClick={handleSave}
+											disabled={state.saving}
+											className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 border-2 border-accent-lime bg-accent-lime font-mono text-xs font-bold uppercase tracking-wider text-accent-lime-contrast hover:bg-accent-lime-strong transition-colors disabled:opacity-50 cursor-pointer"
+										>
+											<Save className="size-4" />
+											<span className="hidden sm:inline">
+												{state.saving
+													? "Saving..."
+													: mode === "create"
+														? guestSession
+															? "Sign up & Create"
+															: "Create Stack"
+														: "Save"}
+											</span>
+										</button>
 									</div>
 								</div>
 

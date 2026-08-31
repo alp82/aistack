@@ -41,11 +41,6 @@ const ViewTarget = v.object({
   label: v.string(),
   /** The path a visitor would open. */
   href: v.string(),
-  /**
-   * Whether anyone but the owner can reach the page. False for a draft stack,
-   * whose counter is therefore always zero.
-   */
-  openable: v.boolean(),
   total: v.number(),
   /** Empty when nothing was ever counted. Otherwise one entry per day. */
   days: v.array(DayPoint),
@@ -120,7 +115,6 @@ export const mine = query({
       targetId: string
       label: string
       href: string
-      openable: boolean
     }[] = [
       {
         kind: 'profile',
@@ -128,7 +122,6 @@ export const mine = query({
         targetId: creator._id,
         label: 'Your profile',
         href: `/${creator.slug}`,
-        openable: true,
       },
       ...stacks.map((s) => ({
         kind: 'stack' as const,
@@ -136,7 +129,6 @@ export const mine = query({
         targetId: s._id as string,
         label: s.name,
         href: `/stacks/${s.slug}`,
-        openable: s.published,
       })),
     ]
 
@@ -176,7 +168,6 @@ export const mine = query({
         targetId: t.targetId,
         label: t.label,
         href: t.href,
-        openable: t.openable,
         total: targetTotal,
         days: fillDays(byDay, endDayMs),
       })

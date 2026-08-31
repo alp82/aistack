@@ -5,9 +5,8 @@ import {
 	getInitialEditorState,
 } from "@/features/stack-editor/state/editorReducer";
 import {
-	selectCanPublish,
+	selectCanSave,
 	selectGuestDraft,
-	selectSaveDraftPublishTarget,
 	selectSavePayload,
 	selectSaveValidationError,
 } from "@/features/stack-editor/state/editorSelectors";
@@ -47,19 +46,14 @@ describe("editor reducer", () => {
 		expect(sectionState.activeSection).toBe("tools");
 	});
 
-	it("computes publish and save selectors from state", () => {
+	it("computes save selectors from state", () => {
 		const createState = editorReducer(getInitialEditorState({ actor: {} }), {
 			type: "profile/updated",
 			updates: { oneLiner: "Builder stack" },
 		});
 
-		expect(selectCanPublish(createState)).toBe(false);
-		expect(selectSaveValidationError(createState, true)).toBe(
-			"Add at least one tool before publishing",
-		);
-		expect(selectSaveDraftPublishTarget(createState, "create", undefined)).toBe(
-			false,
-		);
+		expect(selectCanSave(createState)).toBe(true);
+		expect(selectSaveValidationError(createState)).toBe(null);
 
 		const withTools = editorReducer(createState, {
 			type: "tools/updated",
@@ -82,7 +76,7 @@ describe("editor reducer", () => {
 			],
 		});
 
-		expect(selectCanPublish(withTools)).toBe(true);
+		expect(selectCanSave(withTools)).toBe(true);
 	});
 
 	it("builds guest draft payload with parity keys", () => {
@@ -148,7 +142,7 @@ describe("editor reducer", () => {
 			],
 		});
 
-		const payload = selectSavePayload(withBundles, true);
+		const payload = selectSavePayload(withBundles);
 		expect(payload.oneLiner).toBe("Builder stack");
 		expect(payload.description).toBeUndefined();
 		expect(payload.teamSize).toBeUndefined();
@@ -160,7 +154,7 @@ describe("editor reducer", () => {
 				description: "Optional",
 			},
 		]);
-		expect(payload.published).toBe(true);
+		expect(payload).not.toHaveProperty("published");
 	});
 
 	// -------------------------------------------------------------------------
@@ -224,9 +218,9 @@ describe("editor reducer", () => {
 				} as StagedProject & Record<string, unknown>,
 			],
 		});
-		const payload = selectSavePayload(withProjects, false);
+		const payload = selectSavePayload(withProjects);
 		expect(payload.projects).toHaveLength(1);
-		const p = payload.projects![0] as Record<string, unknown>;
+		const p = payload.projects?.[0] as Record<string, unknown>;
 		expect(p.name).toBe("My App");
 		expect(p.description).toBe("A test app");
 		expect(p.url).toBe("https://example.com");
@@ -239,7 +233,7 @@ describe("editor reducer", () => {
 	// TC-C-02
 	it("selectSavePayload omits projects (undefined) when staged array empty", () => {
 		const base = getInitialEditorState({ actor: {} });
-		const payload = selectSavePayload(base, false);
+		const payload = selectSavePayload(base);
 		expect(payload.projects).toBeUndefined();
 	});
 
@@ -253,8 +247,8 @@ describe("editor reducer", () => {
 					Record<string, unknown>,
 			],
 		});
-		const payload = selectSavePayload(withProjects, false);
-		const p = payload.projects![0] as Record<string, unknown>;
+		const payload = selectSavePayload(withProjects);
+		const p = payload.projects?.[0] as Record<string, unknown>;
 		expect(p._id).toBeUndefined();
 	});
 
@@ -374,7 +368,6 @@ describe("editor reducer", () => {
 				name: "S",
 				slug: "s-SLUG",
 				oneLiner: "o",
-				published: false,
 				toolSubscriptions: [],
 				bundleSubscriptions: [],
 				modelSubscriptions: [],
@@ -409,7 +402,7 @@ describe("editor reducer", () => {
 			pending: { kind: "none" },
 		} as never);
 
-		const payload = selectSavePayload(state, false) as Record<string, unknown>;
+		const payload = selectSavePayload(state) as Record<string, unknown>;
 		expect("avatarStorageId" in payload).toBe(false);
 		expect("stackImageUrl" in payload).toBe(false);
 	});
@@ -422,7 +415,7 @@ describe("editor reducer", () => {
 			pending: { kind: "storageId", id: "sid_x" },
 		} as never);
 
-		const payload = selectSavePayload(state, false) as Record<string, unknown>;
+		const payload = selectSavePayload(state) as Record<string, unknown>;
 		expect("avatarStorageId" in payload).toBe(false);
 	});
 
@@ -434,7 +427,7 @@ describe("editor reducer", () => {
 			pending: { kind: "dataUrl", url: "data:image/jpeg;base64,AAAA" },
 		} as never);
 
-		const payload = selectSavePayload(state, false) as Record<string, unknown>;
+		const payload = selectSavePayload(state) as Record<string, unknown>;
 		expect("avatarStorageId" in payload).toBe(false);
 		expect(JSON.stringify(payload)).not.toContain("base64,AAAA");
 	});
@@ -479,7 +472,6 @@ describe("editor reducer", () => {
 				name: "S",
 				slug: "s-SLUG",
 				oneLiner: "o",
-				published: false,
 				toolSubscriptions: [],
 				bundleSubscriptions: [],
 				modelSubscriptions: [],
@@ -511,7 +503,6 @@ describe("editor reducer", () => {
 				name: "S",
 				slug: "s-SLUG",
 				oneLiner: "o",
-				published: false,
 				toolSubscriptions: [],
 				bundleSubscriptions: [],
 				modelSubscriptions: [],
@@ -547,10 +538,7 @@ describe("editor reducer", () => {
 			type: "profile/updated",
 			updates: { accentPreset: "violet" },
 		});
-		const payload = selectSavePayload(withPreset, false) as Record<
-			string,
-			unknown
-		>;
+		const payload = selectSavePayload(withPreset) as Record<string, unknown>;
 		expect(payload.accentPreset).toBe("violet");
 	});
 
@@ -561,10 +549,7 @@ describe("editor reducer", () => {
 			type: "profile/updated",
 			updates: { accentPreset: "" },
 		});
-		const payload = selectSavePayload(withEmpty, false) as Record<
-			string,
-			unknown
-		>;
+		const payload = selectSavePayload(withEmpty) as Record<string, unknown>;
 		expect(payload.accentPreset).toBeUndefined();
 	});
 
@@ -612,7 +597,6 @@ describe("editor reducer", () => {
 				name: "S",
 				slug: "s-SLUG",
 				oneLiner: "o",
-				published: false,
 				toolSubscriptions: [],
 				bundleSubscriptions: [],
 				modelSubscriptions: [],
@@ -631,7 +615,6 @@ describe("editor reducer", () => {
 				name: "S",
 				slug: "s-SLUG",
 				oneLiner: "o",
-				published: false,
 				toolSubscriptions: [],
 				bundleSubscriptions: [],
 				modelSubscriptions: [],
@@ -655,7 +638,6 @@ describe("editor reducer", () => {
 				name: "S",
 				slug: "s-SLUG",
 				oneLiner: "o",
-				published: false,
 				toolSubscriptions: [],
 				bundleSubscriptions: [],
 				modelSubscriptions: [],
@@ -673,7 +655,6 @@ describe("editor reducer", () => {
 				name: "S",
 				slug: "s-SLUG",
 				oneLiner: "o",
-				published: false,
 				toolSubscriptions: [],
 				bundleSubscriptions: [],
 				modelSubscriptions: [],
@@ -693,7 +674,6 @@ describe("editor reducer", () => {
 				name: "S",
 				slug: "s-SLUG",
 				oneLiner: "o",
-				published: false,
 				toolSubscriptions: [],
 				bundleSubscriptions: [],
 				modelSubscriptions: [],

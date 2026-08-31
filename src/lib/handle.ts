@@ -30,7 +30,7 @@ const RESERVED_HANDLES = [
 	"reset-password",
 	"settings",
 	"signin",
-	"signin-publish",
+	"signin-create",
 	"stacks",
 	"static",
 	"test",

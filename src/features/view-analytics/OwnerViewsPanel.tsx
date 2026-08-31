@@ -10,8 +10,7 @@
  *
  * The panel carries, in this order: the headline total, one box per page, the
  * honest labeling, and the door to `/settings/analytics` for what does not fit
- * here. The whole thing sits in a dashed fence with a lock, the same treatment
- * the draft-stack cards on this page already use.
+ * here. The whole thing sits in a dashed fence with a lock.
  */
 
 import { Link } from "@tanstack/react-router";
@@ -77,8 +76,6 @@ function OwnerViewsPanelView({ data }: { readonly data: ViewAnalytics }) {
 				</>
 			)}
 
-			{/* Drafts stay in this list. A draft that reads zero is the number an
-			    owner most needs explained, and dropping it lies by omission. */}
 			<ul aria-label={PER_PAGE_LIST} className="mt-4 space-y-2">
 				{data.targets.map((target) => (
 					<TargetBox key={target.targetId} target={target} />
@@ -110,7 +107,7 @@ function TargetBox({ target }: { readonly target: ViewTarget }) {
 					{target.label}
 				</span>
 				<span className="mt-0.5 block font-mono text-[10px] text-fg-muted">
-					{targetNote(target.openable, target.total)}
+					{targetNote(target.total)}
 				</span>
 			</span>
 			<span className="flex shrink-0 items-center gap-3">

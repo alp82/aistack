@@ -593,11 +593,13 @@ describe('getUsageByStackSlug', () => {
     expect(read?.machines).toEqual([{ machine: null, machineOrdinal: 1 }])
   })
 
-  test('an unpublished stack answers null', async () => {
+  test('a legacy false stack still has public usage', async () => {
     const t = convexTest(schema, modules)
     const { stackId, slug } = await seedStack(t, { published: false })
     await seedRanges(t, stackId)
-    expect(await t.query(api.measured.getUsageByStackSlug, { slug })).toBeNull()
+    expect(await t.query(api.measured.getUsageByStackSlug, { slug })).toMatchObject({
+      hasDays: true,
+    })
   })
 })
 

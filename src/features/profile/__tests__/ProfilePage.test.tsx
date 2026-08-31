@@ -51,7 +51,6 @@ function stackCard(overrides: Record<string, unknown> = {}) {
 		name: "Daily Driver",
 		slug: "daily-driver-abc123",
 		oneLiner: "My everyday coding setup",
-		published: true,
 		updatedAt: 5000,
 		fixedTotal: { currency: "USD", amount: 42, period: "month" },
 		hasUsageComponent: false,
@@ -192,7 +191,7 @@ describe("ProfilePage - owner view", () => {
 			<ProfilePage
 				profile={FULL_PROFILE}
 				stacks={[stackCard()]}
-				ownProfile={{ isOwner: true, draftStacks: [] }}
+				ownProfile={{ isOwner: true }}
 			/>,
 		);
 
@@ -205,24 +204,24 @@ describe("ProfilePage - owner view", () => {
 		).toBeInTheDocument();
 	});
 
-	it("shows draft stacks with a Draft badge, linking to the stack's edit route", () => {
-		const draft = stackCard({
-			_id: "stack-draft",
-			name: "Unpublished Stack",
-			slug: "unpublished-stack-1",
-			published: false,
+	it("shows every stack on its public route", () => {
+		const legacy = stackCard({
+			_id: "stack-legacy",
+			name: "Legacy Stack",
+			slug: "legacy-stack-1",
 		});
 		render(
 			<ProfilePage
 				profile={FULL_PROFILE}
-				stacks={[stackCard()]}
-				ownProfile={{ isOwner: true, draftStacks: [draft] }}
+				stacks={[legacy]}
+				ownProfile={{ isOwner: true }}
 			/>,
 		);
 
-		expect(screen.getByText(/draft/i)).toBeInTheDocument();
-		expect(
-			screen.getByRole("link", { name: /unpublished stack/i }),
-		).toHaveAttribute("href", "/stacks/unpublished-stack-1/edit");
+		expect(screen.queryByText(/draft/i)).not.toBeInTheDocument();
+		expect(screen.getByRole("link", { name: /legacy stack/i })).toHaveAttribute(
+			"href",
+			"/stacks/legacy-stack-1",
+		);
 	});
 });

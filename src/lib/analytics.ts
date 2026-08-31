@@ -47,22 +47,8 @@ export function identifyUser(userId: string | null | undefined): void {
 	}
 }
 
-export function captureStackCreated(input: {
-	toolCount: number;
-	published: boolean;
-}): void {
+export function captureStackCreated(input: { toolCount: number }): void {
 	capture("stack_created", input);
-}
-
-export function captureStackPublished(input: {
-	toolCount: number;
-	/**
-	 * The stack's cost-publication preference. Absent reads as opted IN - the
-	 * field only ever records a refusal - so the funnel sees `true` by default.
-	 */
-	publishCost: boolean;
-}): void {
-	capture("stack_published", input);
 }
 
 /**

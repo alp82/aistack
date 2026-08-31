@@ -12,6 +12,7 @@ import type { ModelSubscriptionEntry } from "@/features/stack-editor/types";
 import { authClient } from "@/lib/auth-client";
 import { seoMeta } from "@/lib/seo";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 
 export const Route = createFileRoute("/stacks/$slug_/edit")({
 	ssr: false,
@@ -38,7 +39,7 @@ function EditStackPage() {
 	const userImageUrl = session.data?.user?.image ?? undefined;
 
 	const [creator, setCreator] = useState<{
-		_id: any;
+		_id: Id<"creators">;
 		name: string;
 		slug: string;
 		xHandle?: string;
@@ -63,7 +64,14 @@ function EditStackPage() {
 			.catch(() => {
 				setLoadingCreator(false);
 			});
-	}, [isAuthenticated, authLoading, getOrCreateCreator, navigate]);
+	}, [
+		isAuthenticated,
+		authLoading,
+		getOrCreateCreator,
+		navigate,
+		location.pathname,
+		userImageUrl,
+	]);
 
 	// Redirect to canonical slug if URL slug prefix is stale/wrong
 	useEffect(() => {
@@ -114,7 +122,6 @@ function EditStackPage() {
 				description: stackData.description,
 				resources: stackData.resources ?? [],
 				teamSize: stackData.teamSize,
-				published: stackData.published,
 				accentPreset: stackData.accentPreset,
 				toolSubscriptions: stackData.toolSubscriptions.map((t) => ({
 					toolSlug: t.toolSlug,

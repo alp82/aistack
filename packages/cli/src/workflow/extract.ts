@@ -7,6 +7,7 @@ import {
 import {
 	emptyGitDay,
 	extractGitWorkflow,
+	extractGitWorkflowAsync,
 	type GitWorkflowResult,
 	type GitWorkflowRunner,
 } from "./git.js";
@@ -60,6 +61,23 @@ export function extractLocalWorkflow(
 		toMs: options.toMs,
 		utcOffsetMinutes,
 		...(options.run ? { run: options.run } : {}),
+	});
+	return buildWorkflowExtraction(options.harnesses, git, utcOffsetMinutes);
+}
+
+/** Production extraction with Git subprocesses that do not block terminal UI. */
+export async function extractLocalWorkflowAsync(
+	options: Omit<ExtractLocalWorkflowOptions, "run">,
+): Promise<WorkflowExtraction> {
+	const utcOffsetMinutes =
+		options.utcOffsetMinutes ?? machineUtcOffsetMinutes();
+	const git = await extractGitWorkflowAsync({
+		workingDirectories: options.harnesses.flatMap(({ local }) => [
+			...local.projectWorkspaces,
+		]),
+		fromMs: options.fromMs,
+		toMs: options.toMs,
+		utcOffsetMinutes,
 	});
 	return buildWorkflowExtraction(options.harnesses, git, utcOffsetMinutes);
 }

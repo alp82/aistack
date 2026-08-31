@@ -20,7 +20,7 @@ import type { MutationCtx } from './_generated/server'
 
 /**
  * The four events the server owns. Closed on purpose - the three client events
- * (`stack_created`, `stack_published`, `leaderboard_stack_clicked`) go through
+ * (`stack_created`, `leaderboard_stack_clicked`) go through
  * posthog-js in the browser and never reach here.
  */
 export const ServerEvent = v.union(

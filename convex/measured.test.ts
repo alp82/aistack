@@ -2495,7 +2495,7 @@ describe('getUsageByStackSlug publishes the inventory and the machines', () => {
     })
   })
 
-  test('returns null for an unpublished stack, and answers no days for one that never synced', async () => {
+  test('legacy false stacks remain public and an unsynced stack answers no days', async () => {
     const t = convexTest(schema, modules)
     const { stackId, shortId } = await seedStack(t)
     const idle = await t.query(api.measured.getUsageByStackSlug, { slug: `my-stack-${shortId}` })
@@ -2504,6 +2504,6 @@ describe('getUsageByStackSlug publishes the inventory and the machines', () => {
     await t.run((ctx) => ctx.db.patch(stackId, { published: false }))
     expect(
       await t.query(api.measured.getUsageByStackSlug, { slug: `my-stack-${shortId}` }),
-    ).toBeNull()
+    ).toMatchObject({ hasDays: false, inventory: [] })
   })
 })

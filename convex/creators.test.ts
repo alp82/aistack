@@ -9,9 +9,9 @@
  *  - updateProfile: handle uniqueness (excl self) + reserved words only on
  *    change; unchanged-handle bypass for a grandfathered short slug;
  *    personalPages https-only rejection; updates name/bio/links/avatarStorageId
- *  - getByHandle: auth-independent, published-only, most-recent-first,
+ *  - getByHandle: auth-independent, all stacks, most-recent-first,
  *    creator-first avatar resolution, null for unknown handle
- *  - getOwnProfileView: owner sees drafts, non-owner/guest gets null
+ *  - getOwnProfileView: owner gets ownership, non-owner/guest gets null
  *  - landStagedAvatar: skip-if-set
  *  - checkHandle: self-exclusion
  */
@@ -256,7 +256,7 @@ test('TC-GH-01: getByHandle returns null for an unknown handle (no auth required
   expect(result).toBeNull()
 })
 
-test('TC-GH-02: getByHandle returns published stacks only, most-recent first', async () => {
+test('TC-GH-02: getByHandle returns every stack, most-recent first', async () => {
   const t = convexTest(schema, modules)
   const { creatorId } = await seedCreator(t, {
     userId: 'user-gh02',
@@ -276,7 +276,7 @@ test('TC-GH-02: getByHandle returns published stacks only, most-recent first', a
   })
   await seedStack(t, {
     creatorId,
-    slug: 'gh02-draft',
+    slug: 'gh02-legacy-false',
     published: false,
     updatedAt: 9000,
   })
@@ -284,10 +284,12 @@ test('TC-GH-02: getByHandle returns published stacks only, most-recent first', a
   const result = await t.query(api.creators.getByHandle, { handle: 'creator-gh02' })
 
   expect(result).not.toBeNull()
-  expect(result?.stacks).toHaveLength(2)
-  expect(result?.stacks[0].name).toBe('Stack gh02-new')
-  expect(result?.stacks[1].name).toBe('Stack gh02-old')
-  expect(result?.stacks.some((s) => s.name === 'Stack gh02-draft')).toBe(false)
+  expect(result?.stacks).toHaveLength(3)
+  expect(result?.stacks.map((stack) => stack.name)).toEqual([
+    'Stack gh02-legacy-false',
+    'Stack gh02-new',
+    'Stack gh02-old',
+  ])
 })
 
 test('TC-GH-03: getByHandle resolves the creator avatarStorageId to a storage URL', async () => {
@@ -326,13 +328,13 @@ test('TC-GH-04: getByHandle exposes the handle as profile.handle', async () => {
 // getOwnProfileView
 // ---------------------------------------------------------------------------
 
-test('TC-OP-01: getOwnProfileView returns isOwner+drafts for the authenticated owner', async () => {
+test('TC-OP-01: getOwnProfileView returns ownership for the authenticated owner', async () => {
   const t = convexTest(schema, modules)
   const { asCreator, creatorId } = await seedCreator(t, {
     userId: 'user-op01',
     slug: 'creator-op01',
   })
-  await seedStack(t, { creatorId, slug: 'op01-draft', published: false })
+  await seedStack(t, { creatorId, slug: 'op01-legacy-false', published: false })
 
   const result = await asCreator.query(api.creators.getOwnProfileView, {
     handle: 'creator-op01',
@@ -340,7 +342,7 @@ test('TC-OP-01: getOwnProfileView returns isOwner+drafts for the authenticated o
 
   expect(result).not.toBeNull()
   expect(result?.isOwner).toBe(true)
-  expect(result?.draftStacks).toHaveLength(1)
+  expect(result).toEqual({ isOwner: true })
 })
 
 test('TC-OP-02: getOwnProfileView returns null for a different authenticated creator', async () => {

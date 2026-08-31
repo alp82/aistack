@@ -270,7 +270,12 @@ export function createSyncServer(
 							);
 						} else if (res.keptPrivate.stored > 0) {
 							lines.push(
-								`${res.keptPrivate.stored} kept-private names went up for your review at ${res.url}/changes`,
+								`${res.keptPrivate.stored} private review name${res.keptPrivate.stored === 1 ? "" : "s"} stored at ${res.url}/changes`,
+							);
+						}
+						if (res.keptPrivate.machineStored > 0) {
+							lines.push(
+								"This machine's private label was stored for the same review.",
 							);
 						}
 						ok(id, textResult(lines.join("\n")));

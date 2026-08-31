@@ -115,7 +115,7 @@ export function rowSummary(row: FeedRow): string {
 			? `${fmtTokens(syncTokens(row))} measured`
 			: `${fmtDelta(delta)} measured`;
 	}
-	if (event.type === "stack.published") {
+	if (event.type === "stack.created" || event.type === "stack.published") {
 		return `joined with ${event.toolCount} ${
 			event.toolCount === 1 ? "tool" : "tools"
 		}`;

@@ -37,7 +37,7 @@ export const Route = createFileRoute("/")({
 	loader: async ({ context }) => {
 		const [stacks, band] = await Promise.all([
 			context.queryClient.ensureQueryData(
-				convexQuery(api.stacks.listPublished, {}),
+				convexQuery(api.stacks.listPublic, {}),
 			),
 			context.queryClient.ensureQueryData(
 				convexQuery(api.activityFeed.band, {}),
@@ -64,7 +64,7 @@ function IndexRoute() {
 	// React regenerate the tree and remount the route (double-running the
 	// hero's counter).
 	const { stacks: loadedStacks, band: loadedBand } = Route.useLoaderData();
-	const stacks = (useQuery(api.stacks.listPublished) ??
+	const stacks = (useQuery(api.stacks.listPublic) ??
 		loadedStacks) as LandingStackPreview[];
 	const me = useQuery(api.creators.getMe);
 	const band = useQuery(api.activityFeed.band, {}) ?? loadedBand;

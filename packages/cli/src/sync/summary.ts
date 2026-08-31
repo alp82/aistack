@@ -143,7 +143,10 @@ export function buildGateDialog(ctx: GateContext): string {
 	const days = payloads[0]?.window.days ?? 0;
 	const facts = [
 		`${fmtTokens(tokens)} tokens`,
-		`${days} days`,
+		`${days}-day profile`,
+		...(ctx.body.measuredDays && ctx.body.measuredDays.days.length !== days
+			? [`${ctx.body.measuredDays.days.length} historical days`]
+			: []),
 		...(usd === null ? [] : [fmtUSD(usd)]),
 	].join(" · ");
 
@@ -153,7 +156,7 @@ export function buildGateDialog(ctx: GateContext): string {
 		lines.push(
 			keptPrivate === undefined
 				? `${n} name${n === 1 ? "" : "s"} stay${n === 1 ? "s" : ""} on this machine`
-				: `${n} name${n === 1 ? "" : "s"} go${n === 1 ? "es" : ""} up for you to review`,
+				: `${n} private review name${n === 1 ? "" : "s"} will be stored`,
 		);
 	}
 	return lines.join("\n");
@@ -164,7 +167,7 @@ export function buildGateDialog(ctx: GateContext): string {
 // ---------------------------------------------------------------------------
 
 const CATEGORY_LABEL: Record<NameCategory, string> = {
-	builtinTools: "tools",
+	builtinTools: "actions",
 	mcpServers: "mcp",
 	skills: "skills",
 	subagents: "agents",
@@ -222,6 +225,31 @@ export function wrapRow(
 	}
 	if (line !== "") lines.push(line);
 	return lines.map((l, i) => (i === 0 ? head : continuation) + l);
+}
+
+/** Wrap separator-delimited entries without splitting one model from its share. */
+export function wrapEntries(
+	head: string,
+	continuation: string,
+	entries: readonly string[],
+	width: number,
+): string[] {
+	const limit = Math.max(24, width - continuation.length);
+	const lines: string[] = [];
+	let line = "";
+	for (const entry of entries) {
+		const next = line ? `${line} · ${entry}` : entry;
+		if (line && next.length > limit) {
+			lines.push(line);
+			line = entry;
+		} else {
+			line = next;
+		}
+	}
+	if (line) lines.push(line);
+	return lines.map(
+		(line, index) => `${index === 0 ? head : continuation}${line}`,
+	);
 }
 
 /** Kept-private rows for the gate: one row per group, then singles (#48). */
@@ -394,12 +422,7 @@ function payloadBlock(
 	}
 	if (entries.length > 0) {
 		out.push(
-			...wrapRow(
-				"models    ",
-				" ".repeat(LABEL_WIDTH),
-				entries.join(" · "),
-				width,
-			),
+			...wrapEntries("models    ", " ".repeat(LABEL_WIDTH), entries, width),
 		);
 	}
 
@@ -409,11 +432,13 @@ function payloadBlock(
 		(category) => payload.inventory[category].length > 0,
 	);
 	if (filled.length === 0) {
-		out.push(`${"publishes".padEnd(LABEL_WIDTH)}no names from this harness`);
+		out.push(
+			`${"sends".padEnd(LABEL_WIDTH)}no inventory names from this harness`,
+		);
 		return out;
 	}
 	out.push(
-		`${"publishes".padEnd(LABEL_WIDTH)}${filled
+		`${"sends".padEnd(LABEL_WIDTH)}${filled
 			.map(
 				(category) =>
 					`${payload.inventory[category].length} ${CATEGORY_LABEL[category]}`,
@@ -599,6 +624,14 @@ export function buildGateSummary(ctx: GateContext): string {
 
 	// One block per detected harness, each under its own header.
 	const width = wrapWidth(ctx.width);
+	out.push(
+		...wrapRow(
+			"privacy   ",
+			" ".repeat(LABEL_WIDTH),
+			"raw conversation text, paths, repo names, and command arguments stay local",
+			width,
+		),
+	);
 	for (const payload of payloads) {
 		const stats = ctx.scanStats?.[payload.harness.name];
 		out.push("", DIVIDER, "");
@@ -646,10 +679,12 @@ export function buildGateSummary(ctx: GateContext): string {
 			rows.length > shown.length
 				? `, ...${rows.length - shown.length} more`
 				: "";
-		out.push(`private   ${n} name${n === 1 ? "" : "s"} · ${examples}${more}`);
+		out.push(
+			`private   ${n} review name${n === 1 ? "" : "s"} · ${examples}${more}`,
+		);
 		if (body.keptPrivate !== undefined && config.stack !== null) {
 			out.push(
-				`          they go up for you to review at ${host}/stacks/${config.stack.slug}/changes`,
+				`          stored privately for your review at ${host}/stacks/${config.stack.slug}/changes`,
 			);
 			out.push(
 				"          (turn off: Review kept-private names, on your stack)",

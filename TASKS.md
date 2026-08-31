@@ -1,3 +1,5 @@
+* opencode not detected
+* project dialog not cleared after adding/editing
 * profile
     * @ in url is encoded
     * @alper-ortac below name is not needed

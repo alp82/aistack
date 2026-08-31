@@ -18,7 +18,7 @@ import { query } from './_generated/server'
 import {
 	machinePublication,
 	publicMachine,
-	publishedStackBySlug,
+	publicStackBySlug,
 } from './measured'
 import { inventoryForStack, newestInventoryPerSource } from './lib/measuredDays'
 import {
@@ -223,7 +223,7 @@ export const getWorkflowByStackSlug = query({
 	},
 	returns: v.union(WorkflowView, v.null()),
 	handler: async (ctx, args) => {
-		const stack = await publishedStackBySlug(ctx, args.slug)
+		const stack = await publicStackBySlug(ctx, args.slug)
 		if (!stack) return null
 
 		// The flag is the gate, not the presence of stored days (#93's rule,

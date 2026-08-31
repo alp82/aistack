@@ -29,8 +29,8 @@ import { loadModelCatalog, type ModelCatalog, readUsageWindow } from './measured
  * (`stacks`) is the driver, never a full scan of the measured tables.
  *
  * EXCLUSIONS (#82, applied here once so every figure agrees):
- *   - unpublished stacks and `isLowQuality` stacks do not exist here at all -
- *     the board is discovery, and the flag means hidden from discovery;
+ *   - `isLowQuality` stacks do not exist here at all. The board is discovery,
+ *     and the flag means hidden from discovery;
  *   - a harness reporting zero tokens is not a harness;
  *   - `unknown` is not a model name: its tokens count toward totals and the
  *     unattributed share, but it never ranks and never leads a row;
@@ -242,17 +242,13 @@ function bump(
 }
 
 /**
- * The measured population: published, not flagged. `by_published` narrows to
- * the public set; the quality flag is enforced HERE, not left to the client -
+ * The measured population: public and not flagged. The quality flag is enforced HERE, not left to the client -
  * the board is discovery (#82), and a filter the frontend applies is a filter
  * a crawler does not. `/model` (#223) reads the same population, so the two
  * can never disagree on a share.
  */
 async function readPopulation(ctx: QueryCtx, now: number) {
-  const stacks = await ctx.db
-    .query('stacks')
-    .withIndex('by_published', (q) => q.eq('published', true))
-    .collect()
+  const stacks = await ctx.db.query('stacks').collect()
 
   const catalog = await loadModelCatalog(ctx)
   const readings: StackReading[] = []

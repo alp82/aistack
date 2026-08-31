@@ -12,7 +12,6 @@ type ProfileStackCard = {
 	name: string;
 	slug: string;
 	oneLiner: string;
-	published: boolean;
 	updatedAt: number;
 	fixedTotal?: { currency: string; amount: number; period: string };
 	hasUsageComponent: boolean;
@@ -23,7 +22,6 @@ type ProfileStackCard = {
 
 type OwnProfileData = {
 	isOwner: true;
-	draftStacks: ProfileStackCard[];
 };
 
 type ProfilePageProps = {
@@ -92,8 +90,7 @@ function Seam({ label, note }: { label: string; note: string }) {
  * Public profile surface at `/@handle` - "Dossier split" layout: a sticky
  * identity sidebar on the left, the working column (stacks grid + seams for
  * future measured surfaces) on the right. The most-recent stack renders as a
- * full-width callout. Owner affordances (New stack, Edit profile, draft
- * cards) are gated on `ownProfile`.
+ * full-width callout. Owner affordances are gated on `ownProfile`.
  */
 function ProfilePage({
 	profile,
@@ -102,8 +99,7 @@ function ProfilePage({
 	ownerViewsSlot,
 }: ProfilePageProps) {
 	const isOwner = ownProfile?.isOwner === true;
-	const draftStacks = ownProfile?.draftStacks ?? [];
-	const stackCount = stacks.length + draftStacks.length;
+	const stackCount = stacks.length;
 
 	return (
 		<div className="min-h-screen bg-bg-canvas text-fg-primary">
@@ -134,7 +130,7 @@ function ProfilePage({
 
 					{stackCount === 0 ? (
 						<p className="border border-dashed border-stroke-strong px-4 py-6 text-center font-mono text-sm text-fg-muted">
-							No stacks published yet.
+							No stacks yet.
 						</p>
 					) : (
 						<div className="grid gap-4 lg:grid-cols-2">
@@ -153,19 +149,6 @@ function ProfilePage({
 											Most recent
 										</span>
 									)}
-									<StackCardBody stack={stack} />
-								</Link>
-							))}
-							{draftStacks.map((stack) => (
-								<Link
-									key={stack._id}
-									to="/stacks/$slug/edit"
-									params={{ slug: stack.slug }}
-									className="group flex flex-col border border-dashed border-stroke-strong bg-bg-panel p-5 transition-all hover:shadow-[6px_6px_0_var(--stroke-strong)]"
-								>
-									<span className="mb-3 self-start border border-stroke-strong px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-fg-muted">
-										Draft
-									</span>
 									<StackCardBody stack={stack} />
 								</Link>
 							))}

@@ -25,12 +25,8 @@ import { ActivityEvent } from './schema'
  * landing page and `/activity`. `stream` is the day-grouped list under it, 25
  * rows per click of "older".
  *
- * VISIBILITY IS ENFORCED HERE, at read time (#77). That is the only place it
- * can be correct: a stack can be unpublished after its event is written, and
- * this table never mutates. A row shows only while its stack is `published` and
- * not `isLowQuality` - a deleted stack hides its rows the same way. The write
- * side's draft gate is not redundant, it only stops a week of drafting from
- * filling the table with rows that can never be shown.
+ * VISIBILITY IS ENFORCED HERE, at read time (#77). A row shows while its stack
+ * exists and is not low quality. A deleted stack hides its rows.
  *
  * MOVEMENT IS DERIVED, NOT STORED (#84). `alp synced 4.99B` is the same
  * sentence every day, because a sync reports a rolling 30-day total. What is
@@ -78,6 +74,8 @@ export const MAX_ROWS = 500
 const SCAN_CAP = 2000
 
 const EventType = v.union(
+  v.literal('stack.created'),
+  // Legacy until `20260831_stacks_always_public` has run in production.
   v.literal('stack.published'),
   v.literal('stack.composition_changed'),
   v.literal('sync.landed')
@@ -112,7 +110,7 @@ const FeedRow = v.object({
 const Band = v.object({
   totals: v.object({
     syncs: v.number(),
-    /** Stacks published plus compositions changed - one number on the surface. */
+    /** Stacks created plus compositions changed, in one surface number. */
     updates: v.number(),
     /** Distinct stacks with any activity in the watermark window. */
     stacksSeen: v.number(),
@@ -174,7 +172,7 @@ async function visibleStack(
 
   const stack = await ctx.db.get(stackId)
   let visible: VisibleStack | null = null
-  if (stack && stack.published && stack.isLowQuality !== true) {
+  if (stack && stack.isLowQuality !== true) {
     const creator = await ctx.db.get(stack.creatorId)
     visible = {
       name: stack.name,

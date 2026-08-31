@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import {
+	canSaveStack,
+	getSaveValidationError,
+} from "@/features/stack-editor/editor-guards";
+import type { EditorSectionStatus } from "@/features/stack-editor/editor-status";
 import { BundlesSection } from "@/features/stack-editor/sections/BundlesSection";
 import { DescriptionSection } from "@/features/stack-editor/sections/DescriptionSection";
 import { ProfileSection } from "@/features/stack-editor/sections/ProfileSection";
 import { ToolsSection } from "@/features/stack-editor/sections/ToolsSection";
-import {
-	canPublishStack,
-	getSaveValidationError,
-} from "@/features/stack-editor/editor-guards";
-import type { EditorSectionStatus } from "@/features/stack-editor/editor-status";
 
 vi.mock("@/components/ToolPicker", () => ({
 	ToolPicker: () => <h2>Tools Stack</h2>,
@@ -88,33 +88,12 @@ describe("stack editor sections", () => {
 		);
 	});
 
-	it("keeps save and publish guard behavior", () => {
-		// Drafts (publish: false) skip validation entirely.
-		expect(
-			getSaveValidationError({ oneLiner: "", publish: false, toolCount: 0 }),
-		).toBe(null);
-		// Publishing requires a one-liner first...
-		expect(
-			getSaveValidationError({ oneLiner: "", publish: true, toolCount: 0 }),
-		).toBe("One-liner summary is required to publish");
-		// ...then at least one tool.
-		expect(
-			getSaveValidationError({
-				oneLiner: "Valid one liner",
-				publish: true,
-				toolCount: 0,
-			}),
-		).toBe("Add at least one tool before publishing");
-		expect(
-			getSaveValidationError({
-				oneLiner: "Valid one liner",
-				publish: false,
-				toolCount: 0,
-			}),
-		).toBe(null);
-
-		expect(canPublishStack("", 1)).toBe(false);
-		expect(canPublishStack("Valid one liner", 0)).toBe(false);
-		expect(canPublishStack("Valid one liner", 1)).toBe(true);
+	it("requires a one-liner and allows an empty manual tool list", () => {
+		expect(getSaveValidationError({ oneLiner: "" })).toBe(
+			"One-liner summary is required",
+		);
+		expect(getSaveValidationError({ oneLiner: "Valid one liner" })).toBe(null);
+		expect(canSaveStack("")).toBe(false);
+		expect(canSaveStack("Valid one liner")).toBe(true);
 	});
 });

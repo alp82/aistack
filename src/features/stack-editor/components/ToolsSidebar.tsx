@@ -68,7 +68,7 @@ function ToolsSidebar({
 	// Accordion state - only one section open at a time
 	// Tools section starts expanded by default (especially important when no tools exist yet)
 	const [activeSection, setActiveSection] = useState<SidebarSection>("tools");
-	// The measured half of the model list (#338): owner-only, none on a draft.
+	// The measured half of the model list (#338): owner-only, none before creation.
 	const measuredModels =
 		useQuery(
 			api.stacks.listMeasuredModels,

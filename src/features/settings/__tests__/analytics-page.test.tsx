@@ -65,7 +65,6 @@ function payload(over: Record<string, unknown> = {}) {
 				targetId: "creator_1",
 				label: "Your profile",
 				href: "/alp",
-				openable: true,
 				total: 9,
 				days: days(5, [1, 2, 0, 3, 3]),
 			},
@@ -74,7 +73,6 @@ function payload(over: Record<string, unknown> = {}) {
 				targetId: "stack_1",
 				label: "Main Stack",
 				href: "/stacks/main-stack",
-				openable: true,
 				total: 15,
 				days: days(5, [4, 2, 4, 1, 4]),
 			},
@@ -152,7 +150,6 @@ describe("AnalyticsPage", () => {
 						targetId: "creator_1",
 						label: "Your profile",
 						href: "/alp",
-						openable: true,
 						total: 0,
 						days: [],
 					},
@@ -161,7 +158,6 @@ describe("AnalyticsPage", () => {
 						targetId: "stack_1",
 						label: "Fresh Stack",
 						href: "/stacks/fresh",
-						openable: true,
 						total: 0,
 						days: [],
 					},
@@ -175,29 +171,6 @@ describe("AnalyticsPage", () => {
 		expect(document.body.textContent).not.toMatch(/last 30 days/);
 	});
 
-	it("says a draft stack cannot be opened, instead of showing it a zero", () => {
-		setup(
-			payload({
-				targets: [
-					{
-						kind: "stack",
-						targetId: "stack_2",
-						label: "Draft Stack",
-						href: "/stacks/draft",
-						openable: false,
-						total: 0,
-						days: [],
-					},
-				],
-			}),
-		);
-		const rows = within(screen.getByRole("list", { name: PER_PAGE_LIST }));
-		expect(rows.getByText("Draft Stack")).toBeTruthy();
-		expect(rows.getByText(/nobody can open it/i)).toBeTruthy();
-		// A draft's name is not a link: there is no page to send anyone to.
-		expect(rows.queryByRole("link")).toBeNull();
-	});
-
 	it("never renders anything that could identify a visitor", () => {
 		setup(payload());
 		const text = document.body.textContent ?? "";
@@ -207,7 +180,7 @@ describe("AnalyticsPage", () => {
 
 	it("tells a user with no creator profile how to get numbers", () => {
 		setup(null);
-		expect(screen.getByText(/Publish a stack/i)).toBeTruthy();
+		expect(screen.getByText(/Create a stack/i)).toBeTruthy();
 	});
 });
 

@@ -15,5 +15,5 @@ export type ViewAnalytics = NonNullable<
 	FunctionReturnType<typeof api.viewAnalytics.mine>
 >;
 
-/** One page inside that answer: the profile, or one stack, drafts included. */
+/** One page inside that answer: the profile or one stack. */
 export type ViewTarget = ViewAnalytics["targets"][number];

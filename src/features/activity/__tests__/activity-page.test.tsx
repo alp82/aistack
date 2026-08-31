@@ -107,7 +107,7 @@ describe("the page", () => {
 	});
 
 	it("says an emptied stream is empty rather than showing a blank page", () => {
-		setup({ filter: "stack.published", streamOver: { rows: [] } });
+		setup({ filter: "stack.created", streamOver: { rows: [] } });
 		expect(screen.getByText("nothing here yet.")).toBeInTheDocument();
 		expect(
 			screen.queryByText("that is everything since instrumentation went live."),

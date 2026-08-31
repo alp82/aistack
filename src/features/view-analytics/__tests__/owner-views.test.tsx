@@ -97,11 +97,11 @@ describe("OwnerViewsPanel", () => {
 		);
 	});
 
-	it("keeps a draft in the list and says why its number can only be zero", () => {
+	it("keeps every public stack in the list when its number is zero", () => {
 		render(<OwnerViewsPanelView data={emptyAnalytics()} />);
 		const rows = within(screen.getByRole("list", { name: PER_PAGE_LIST }));
-		expect(rows.getByText("Draft Stack")).toBeTruthy();
-		expect(rows.getByText(/nobody can open it/i)).toBeTruthy();
+		expect(rows.getByText("Second Stack")).toBeTruthy();
+		expect(rows.getAllByText(/nobody has opened it yet/i)).toHaveLength(3);
 	});
 
 	it("tells a creator with no views what starts the counting, and prints no total", () => {
@@ -190,16 +190,6 @@ describe("StackViewsLine", () => {
 		);
 		expect(screen.getByText(/Nobody has opened it yet/i)).toBeTruthy();
 		expect(screen.queryByText("0")).toBeNull();
-	});
-
-	it("says a draft cannot be opened at all", () => {
-		render(
-			<StackViewsLineView
-				data={analytics()}
-				target={target({ openable: false, total: 0, days: [] })}
-			/>,
-		);
-		expect(screen.getByText(/nobody can open it/i)).toBeTruthy();
 	});
 
 	it("links to the page that holds every other page", () => {

@@ -555,13 +555,13 @@ const PublicAtom = v.object({
   calls: v.optional(v.number()),
 })
 
-/** The published stack behind a public slug, or null. */
-export async function publishedStackBySlug(ctx: QueryCtx, slug: string) {
+/** The stack behind a public slug, or null. */
+export async function publicStackBySlug(ctx: QueryCtx, slug: string) {
   const stack = await ctx.db
     .query('stacks')
     .withIndex('by_shortId', (q) => q.eq('shortId', extractShortId(slug)))
     .first()
-  if (!stack || !stack.published) return null
+  if (!stack) return null
   return stack
 }
 
@@ -1787,8 +1787,12 @@ export const publishForToken = internalMutation({
   returns: v.object({
     receivedAt: v.number(),
     stackSlug: v.string(),
-    /** How many staged names landed, and whether the switch refused them. */
-    keptPrivate: v.object({ stored: v.number(), refused: v.boolean() }),
+    /** Client-discovered names and the server-derived machine label stay distinct. */
+    keptPrivate: v.object({
+      stored: v.number(),
+      machineStored: v.number(),
+      refused: v.boolean(),
+    }),
   }),
   handler: async (ctx, args) => {
     const payloads = args.payloads ?? (args.payload ? [args.payload] : [])
@@ -1904,33 +1908,28 @@ export const publishForToken = internalMutation({
     // one sync (#77). Summarizing the whole batch is also what lets the read
     // path drop its broken cross-page dedupe.
     //
-    // Skipped for a draft. Visibility is re-checked at read time - this gate
-    // only stops a week of drafting from filling the table with rows that can
-    // never be shown.
-    if (stack.published) {
-      await emitActivityEvent(
-        ctx,
-        stack._id,
-        {
-          type: 'sync.landed',
-          harnesses: payloads.map((p) => ({
-            harness: p.harness.name,
-            windowDays: p.window.days,
-            sessions: p.activity.sessions,
-            activeDays:
-              p.schemaVersion === 2
-                ? p.activity.activeDayDates.length
-                : p.activity.activeDays,
-            projects:
-              p.schemaVersion === 2
-                ? p.activity.projectKeys.length
-                : p.activity.projects,
-            totalTokens: p.activity.totalTokens,
-          })),
-        },
-        receivedAt,
-      )
-    }
+    await emitActivityEvent(
+      ctx,
+      stack._id,
+      {
+        type: 'sync.landed',
+        harnesses: payloads.map((p) => ({
+          harness: p.harness.name,
+          windowDays: p.window.days,
+          sessions: p.activity.sessions,
+          activeDays:
+            p.schemaVersion === 2
+              ? p.activity.activeDayDates.length
+              : p.activity.activeDays,
+          projects:
+            p.schemaVersion === 2
+              ? p.activity.projectKeys.length
+              : p.activity.projects,
+          totalTokens: p.activity.totalTokens,
+        })),
+      },
+      receivedAt,
+    )
 
     if (isFirstSync) {
       await captureServerEvent(ctx, 'first_sync_completed', token.userId, {
@@ -1998,7 +1997,7 @@ export const publishForToken = internalMutation({
     return {
       receivedAt,
       stackSlug: `${stack.slug}-${stack.shortId}`,
-      keptPrivate: { stored: inventoryStored + machineStored, refused },
+      keptPrivate: { stored: inventoryStored, machineStored, refused },
     }
   },
 })
@@ -2317,7 +2316,7 @@ export const getUsageByStackSlug = query({
   },
   returns: v.union(MeasuredUsage, v.null()),
   handler: async (ctx, args) => {
-    const stack = await publishedStackBySlug(ctx, args.slug)
+    const stack = await publicStackBySlug(ctx, args.slug)
     if (!stack) return null
 
     const publication = await machinePublication(ctx, stack)

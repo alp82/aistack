@@ -61,7 +61,7 @@ function publishOk() {
 		receivedAt: NOW,
 		url: "https://aistack.to/s/me",
 		stackSlug: "me",
-		keptPrivate: { stored: 0, refused: false },
+		keptPrivate: { stored: 0, machineStored: 0, refused: false },
 	});
 }
 
