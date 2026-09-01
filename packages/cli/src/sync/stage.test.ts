@@ -180,7 +180,7 @@ describe("stageSync", () => {
 		const staged = await stageSync(deps({}));
 		expect(staged.summary).toContain("Alp's Daily Driver");
 		expect(staged.summary).toContain("aistack.to/stacks/alps-daily-driver");
-		expect(staged.dialog).toMatch(/^Publish to aistack\? /);
+		expect(staged.dialog).toMatch(/^Publish to aistack\?(?:\n|$)/);
 	});
 
 	test("no token blocks with the login instruction", async () => {

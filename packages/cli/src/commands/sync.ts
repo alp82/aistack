@@ -203,15 +203,18 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 	}
 
 	// Beat two - the same short dialog text, as a select. The enum mirrors the
-	// elicitation's {publish, cancel}; cancel is the initial value, so Enter
-	// alone publishes nothing.
+	// elicitation's {publish, cancel}; publish is the initial value.
 	const decision = await p.select({
 		message: staged.dialog.split("\n").join(dim(" · ")),
 		options: [
+			{
+				value: "publish",
+				label: "Publish",
+				hint: "no sensitive data is shared",
+			},
 			{ value: "cancel", label: "Cancel", hint: "nothing leaves this machine" },
-			{ value: "publish", label: "Publish" },
 		],
-		initialValue: "cancel",
+		initialValue: "publish",
 	});
 
 	if (p.isCancel(decision) || decision !== "publish") {

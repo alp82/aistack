@@ -77,6 +77,10 @@ Five things that make this safe and make it work:
 
 ## CLI release
 
+Every release-worthy change under `packages/cli` must bump the version in
+`packages/cli/package.json` in the same change. Use a patch bump unless the
+change requires a minor or major release.
+
 Publish `@use-aistack/cli` to npm after the version bump lands on `main`:
 
 ```sh

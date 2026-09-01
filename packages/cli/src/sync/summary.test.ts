@@ -269,25 +269,24 @@ describe("totalUSD - never a dollar without its pricing table (#46)", () => {
 });
 
 describe("beat two - the dialog (binding copy, #48)", () => {
-	test("the locked shape: facts line, then the review line", () => {
+	test("names the destination, then the review line", () => {
 		expect(buildGateDialog(ctx({ withKeptPrivateHalf: true }))).toBe(
-			"Publish to aistack? 4.27B tokens · 30-day profile · ≈$5,840\n" +
+			"Publish to aistack?\n" +
 				"67 private review names will be stored",
 		);
 	});
 
 	test("names staying local say so instead", () => {
 		expect(buildGateDialog(ctx({}))).toBe(
-			"Publish to aistack? 4.27B tokens · 30-day profile · ≈$5,840\n" +
-				"67 names stay on this machine",
+			"Publish to aistack?\n67 names stay on this machine",
 		);
 	});
 
-	test("cost off drops the dollar, never zeroes it", () => {
+	test("does not repeat summary facts", () => {
 		const dialog = buildGateDialog(ctx({ payload: { pricingTable: null } }));
-		expect(dialog).toContain(
-			"Publish to aistack? 4.27B tokens · 30-day profile\n",
-		);
+		expect(dialog).toContain("Publish to aistack?\n");
+		expect(dialog).not.toContain("tokens");
+		expect(dialog).not.toContain("profile");
 		expect(dialog).not.toContain("$");
 	});
 
@@ -308,9 +307,7 @@ describe("beat two - the dialog (binding copy, #48)", () => {
 				},
 			}),
 		);
-		expect(dialog).toBe(
-			"Publish to aistack? 4.27B tokens · 30-day profile · ≈$5,840",
-		);
+		expect(dialog).toBe("Publish to aistack?");
 	});
 
 	test("stays two lines - a long dialog is an unanswerable gate (#35 1H)", () => {

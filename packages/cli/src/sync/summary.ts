@@ -135,23 +135,8 @@ export function withheldCount(payload: MeasuredPayload): number {
 
 export function buildGateDialog(ctx: GateContext): string {
 	const { payloads, keptPrivate } = ctx.body;
-	const tokens = payloads.reduce((a, p) => a + p.activity.totalTokens, 0);
-	const usds = payloads
-		.map((p) => totalUSD(p))
-		.filter((u): u is number => u !== null);
-	const usd = usds.length > 0 ? usds.reduce((a, b) => a + b, 0) : null;
-	const days = payloads[0]?.window.days ?? 0;
-	const facts = [
-		`${fmtTokens(tokens)} tokens`,
-		`${days}-day profile`,
-		...(ctx.body.measuredDays && ctx.body.measuredDays.days.length !== days
-			? [`${ctx.body.measuredDays.days.length} historical days`]
-			: []),
-		...(usd === null ? [] : [fmtUSD(usd)]),
-	].join(" · ");
-
 	const n = payloads.reduce((a, p) => a + withheldCount(p), 0);
-	const lines = [`Publish to aistack? ${facts}`];
+	const lines = ["Publish to aistack?"];
 	if (n > 0) {
 		lines.push(
 			keptPrivate === undefined
