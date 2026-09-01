@@ -270,17 +270,21 @@ function ingestFile(
 /**
  * The genuine-rollout fingerprint (#73, source-pinned at rust-v0.146.0): the
  * codex-rs recorder always writes `session_meta` first, and every real user
- * turn persists a `turn_context` before any usage lands. A file whose first
- * parsed line is not `session_meta`, or that carries a `token_count` with no
- * preceding `turn_context`, was not written by Codex CLI. Negative by
- * construction - it detects "not genuine", never "written by tool X"; the
- * originator label is diagnostic only.
+ * turn persists a `turn_context` before its usage lands. Newer Codex (observed
+ * in 0.151.0) broke the ORDER half of that invariant: a forked thread replays
+ * the parent's history - `token_count` events included - ahead of its first
+ * new turn, so usage may sit before any `turn_context`. The analyzer skips
+ * that replayed head; here the rule weakens to presence: a file that carries
+ * a `token_count` but no `turn_context` ANYWHERE was not written by Codex
+ * CLI. Negative by construction - it detects "not genuine", never "written by
+ * tool X"; the originator label is diagnostic only.
  */
 function classifyRollout(
 	records: readonly unknown[],
 ): { genuine: true } | { genuine: false; originator: string } {
 	let originator: string | null = null;
 	let sawTurnContext = false;
+	let sawTokenCount = false;
 	let genuine = records.length > 0;
 	for (const [i, raw] of records.entries()) {
 		const rec = asObj(raw);
@@ -294,12 +298,12 @@ function classifyRollout(
 		} else if (
 			type === "event_msg" &&
 			payload &&
-			asStr(payload.type) === "token_count" &&
-			!sawTurnContext
+			asStr(payload.type) === "token_count"
 		) {
-			genuine = false;
+			sawTokenCount = true;
 		}
 	}
+	if (sawTokenCount && !sawTurnContext) genuine = false;
 	if (genuine) return { genuine: true };
 	return { genuine: false, originator: originator ?? "(none)" };
 }

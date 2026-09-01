@@ -13,8 +13,12 @@ import { scan } from "./scan.js";
 
 const TS = "2026-07-20T12:00:00.000Z";
 
+// 10s before TS: usage stamped within FORK_REPLAY_WINDOW_MS of session_meta
+// is replayed parent history and does not count (see the analyzer).
+const META_TS = "2026-07-20T11:59:50.000Z";
+
 const sessionMeta = (originator = "codex-tui") => ({
-	timestamp: TS,
+	timestamp: META_TS,
 	type: "session_meta",
 	payload: {
 		id: "0198c5b0-aaaa-7bbb-8ccc-0123456789ab",
@@ -101,17 +105,32 @@ describe("fingerprint gate (#73)", () => {
 		expect(agg.lines).toBe(0);
 	});
 
-	it("excludes a file where usage precedes any turn_context, and names the originator", async () => {
+	it("excludes a file with usage but no turn_context anywhere, and names the originator", async () => {
 		writeRollout("2026/07/20/rollout-y.jsonl", [
 			sessionMeta("impostor-tool"),
 			tokenCount(999),
-			turnContext(),
 		]);
 		const agg = createAggregate();
 		const stats = await scan(agg, { roots: [root], ...missingConfig });
 		expect(stats.filesForeign).toBe(1);
 		expect(stats.foreignOriginators.get("impostor-tool")).toBe(1);
 		expect(finalize(agg).totalTokens).toBe(0);
+	});
+
+	it("keeps a forked rollout where replayed usage precedes the first turn_context, counting only the fresh turn", async () => {
+		// The replayed head re-stamps the parent's history at fork creation, so
+		// it shares session_meta's timestamp; the fresh turn lands seconds later.
+		writeRollout("2026/07/20/rollout-fork.jsonl", [
+			sessionMeta(),
+			{ ...tokenCount(999), timestamp: META_TS },
+			turnContext(),
+			tokenCount(100),
+		]);
+		const agg = createAggregate();
+		const stats = await scan(agg, { roots: [root], ...missingConfig });
+		expect(stats.filesForeign).toBe(0);
+		expect(stats.filesRead).toBe(1);
+		expect(finalize(agg).models[0].tokens.output).toBe(100);
 	});
 
 	it("keeps a genuine no-usage file (session_meta only)", async () => {

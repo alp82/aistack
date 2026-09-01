@@ -15,9 +15,14 @@ import {
 
 const TS = "2026-07-20T12:00:00.000Z";
 
+// The session opens 10s before the first usage: a `token_count` stamped
+// within FORK_REPLAY_WINDOW_MS of `session_meta` is replayed parent history
+// and does not count, so fixtures keep genuine usage outside that window.
+const META_TS = "2026-07-20T11:59:50.000Z";
+
 function sessionMeta(over: Record<string, unknown> = {}) {
 	return {
-		timestamp: TS,
+		timestamp: META_TS,
 		type: "session_meta",
 		payload: {
 			id: "0198c5b0-aaaa-7bbb-8ccc-0123456789ab",
@@ -217,6 +222,40 @@ describe("usage - sum last_token_usage deltas, never the cumulative total", () =
 		foldFile(agg, [sessionMeta(), turnContext("gpt-5.5"), tokenCount({})]);
 		expect(agg.distinctResponses).toBe(0);
 		expect(finalize(agg).totalTokens).toBe(0);
+	});
+});
+
+describe("fork-replay guard", () => {
+	it("skips token_counts stamped within the fork's write burst, even after a replayed turn_context", () => {
+		const agg = createAggregate();
+		// Replayed history re-stamps at fork creation: turn_context and
+		// token_counts share session_meta's timestamp. The fresh turn follows
+		// seconds later.
+		foldFile(agg, [
+			sessionMeta({ forked_from_id: "0198c5b0-ffff-7bbb-8ccc-0123456789ab" }),
+			turnContext("gpt-5.6-sol", META_TS),
+			tokenCount({ input: 400, output: 40 }, {}, META_TS),
+			tokenCount({ input: 500, output: 50 }, {}, META_TS),
+			turnContext("gpt-5.6-sol"),
+			tokenCount({ input: 10, output: 20 }),
+		]);
+		const models = finalize(agg).models;
+		expect(models).toHaveLength(1);
+		expect(models[0].tokens).toMatchObject({ input: 10, output: 20 });
+		expect(agg.distinctResponses).toBe(1);
+	});
+
+	it("skips a replayed head that carries no turn_context at all", () => {
+		const agg = createAggregate();
+		foldFile(agg, [
+			sessionMeta({ forked_from_id: "0198c5b0-ffff-7bbb-8ccc-0123456789ab" }),
+			tokenCount({ input: 400, output: 40 }, {}, META_TS),
+			turnContext("gpt-5.6-sol"),
+			tokenCount({ input: 10, output: 20 }),
+		]);
+		const models = finalize(agg).models;
+		expect(models).toHaveLength(1);
+		expect(models[0].tokens).toMatchObject({ input: 10, output: 20 });
 	});
 });
 

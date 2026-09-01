@@ -82,6 +82,8 @@ export type FileState = {
 	currentQuestionBack: boolean;
 	/** True once any in-window line was counted for this file. */
 	counted: boolean;
+	/** Timestamp of the file's `session_meta` line, for the replay guard. */
+	metaTsMs: number | null;
 };
 
 export function createFileState(): FileState {
@@ -94,8 +96,24 @@ export function createFileState(): FileState {
 		responseIndex: 0,
 		currentQuestionBack: false,
 		counted: false,
+		metaTsMs: null,
 	};
 }
+
+/**
+ * THE FORK-REPLAY GUARD. Codex forked threads (observed in codex-tui 0.151.0,
+ * `forked_from_id` in `session_meta`) replay the parent's history into the new
+ * rollout - `token_count` events included - re-stamped at fork creation. The
+ * parent rollout already counted those deltas, so counting the replay double
+ * counts them; on one machine the replays held 763M fresh tokens over 30 days.
+ *
+ * The replay is a synchronous write burst: across 166 local files every
+ * replayed `token_count` sat within 144ms of the `session_meta` timestamp
+ * (median 3ms), while the earliest GENUINE response of any session landed
+ * 1,035ms after (5th percentile 5.3s) - a real response needs a network round
+ * trip. 500ms splits the two populations with a wide margin on both sides.
+ */
+const FORK_REPLAY_WINDOW_MS = 500;
 
 /**
  * Fold one parsed rollout line into the aggregate.
@@ -131,6 +149,7 @@ export function ingestLine(
 			asStr(payload.id) ?? asStr(payload.session_id) ?? state.sessionId;
 		state.cliVersion = asStr(payload.cli_version) ?? state.cliVersion;
 		state.cwd = asStr(payload.cwd) ?? state.cwd;
+		state.metaTsMs = tsMs ?? state.metaTsMs;
 	} else if (type === "turn_context" && payload) {
 		const model = asName(payload.model);
 		if (model) state.modelKey = normalizeModel(model);
@@ -195,6 +214,19 @@ function ingestEvent(
 	const total = countsTotal(counts);
 	// A zero delta is a rate-limit-only refresh, not a response.
 	if (total === 0) return;
+
+	// Replayed parent history (see FORK_REPLAY_WINDOW_MS): a `token_count`
+	// stamped within the fork's write burst was counted by the parent rollout.
+	// The replay often carries the parent's `turn_context` lines too, so the
+	// timestamp is the guard; the `modelKey` check below only backstops a
+	// replay whose head carried usage before any `turn_context`.
+	if (
+		tsMs !== null &&
+		state.metaTsMs !== null &&
+		tsMs - state.metaTsMs < FORK_REPLAY_WINDOW_MS
+	)
+		return;
+	if (state.modelKey === null) return;
 
 	if (tsMs === null) agg.untimestampedResponses++;
 	agg.distinctResponses++;

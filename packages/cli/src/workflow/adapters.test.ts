@@ -105,7 +105,9 @@ describe("native harness workflow projection", () => {
 		ingestCodexLine(
 			aggregate,
 			{
-				timestamp: TS,
+				// 10s before the usage: a token_count stamped within the analyzer's
+				// fork-replay window of session_meta is replayed history.
+				timestamp: new Date(Date.parse(TS) - 10_000).toISOString(),
 				type: "session_meta",
 				payload: { id: "codex-secret-session", cwd: "/secret/codex-project" },
 			},
