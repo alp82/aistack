@@ -48,8 +48,8 @@ const usageDay = (over: Partial<UsageHarnessDay> = {}): UsageDay => ({
 });
 
 describe("usage tokens", () => {
-	test("total is the four token classes summed", () => {
-		expect(totalOfTokens(tokensA)).toBe(400);
+	test("total sums input, output and cache writes, never cache reads", () => {
+		expect(totalOfTokens(tokensA)).toBe(180);
 		expect(totalOfTokens(emptyUsageTokens())).toBe(0);
 	});
 
@@ -87,16 +87,17 @@ describe("foldUsageDays", () => {
 		expect(w.sessions).toBe(3);
 		expect(w.projectKeys).toEqual(["p1", "p2"]);
 		expect(w.tokens).toEqual(tokensA);
-		expect(w.totalTokens).toBe(400);
+		expect(w.totalTokens).toBe(180);
 		// cacheRead / (input + cacheRead + cacheWrite) = 220 / 350
 		expect(w.cacheHitShare).toBe(0.6286);
+		// subagentTokens / (totalTokens + cacheRead) = 40 / 400
 		expect(w.subagentShare).toBe(0.1);
 		expect(w.excludedTokens).toEqual({ unpriced: 5, synthetic: 7 });
 		expect(w.models).toEqual([
 			{
 				model: "claude-opus-5",
 				tokens: tokensA,
-				totalTokens: 400,
+				totalTokens: 180,
 				tokenShare: 1,
 				usd: 1.25,
 				unpricedTokens: emptyUsageTokens(),
@@ -105,7 +106,7 @@ describe("foldUsageDays", () => {
 			},
 		]);
 		expect(w.harnesses).toEqual([
-			{ harness: "claude-code", sessions: 3, totalTokens: 400, tokenShare: 1 },
+			{ harness: "claude-code", sessions: 3, totalTokens: 180, tokenShare: 1 },
 		]);
 	});
 
@@ -137,13 +138,13 @@ describe("foldUsageDays", () => {
 		expect(w.activeDays).toBe(1);
 		expect(w.sessions).toBe(3);
 		expect(w.projectKeys).toEqual(["p1", "p2", "p3"]);
-		expect(w.totalTokens).toBe(820);
+		expect(w.totalTokens).toBe(380);
 		expect(w.models.map((m) => m.model)).toEqual([
 			"claude-opus-5",
 			"claude-haiku-5",
 		]);
 		expect(w.models[0]?.usd).toBe(2);
-		expect(w.models[0]?.tokenShare).toBe(round(800 / 820));
+		expect(w.models[0]?.tokenShare).toBe(round(360 / 380));
 		expect(w.models[1]?.pricingTables).toEqual([]);
 		expect(w.harnesses[0]?.sessions).toBe(3);
 	});

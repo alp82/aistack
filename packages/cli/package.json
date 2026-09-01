@@ -1,6 +1,6 @@
 {
   "name": "@use-aistack/cli",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "Measure and share your AI stack from your terminal",
   "type": "module",
   "license": "MIT",
@@ -44,6 +44,6 @@
     "typescript": "^5.7.2"
   },
   "engines": {
-    "node": ">=22.5.0"
+    "node": ">=22.13.0"
   }
 }

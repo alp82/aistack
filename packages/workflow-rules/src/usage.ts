@@ -98,7 +98,10 @@ export type UsageWindow = {
 	 * denominator. Rounded to 4 places.
 	 */
 	cacheHitShare: number;
-	/** `subagentTokens / totalTokens`, as the CLI's `sidechainShare`. Rounded to 4 places. */
+	/**
+	 * `subagentTokens / (totalTokens + cacheRead)`. The numerator atom counts
+	 * cache reads, so the denominator does too. Rounded to 4 places.
+	 */
 	subagentShare: number;
 	models: readonly UsageWindowModel[];
 	harnesses: readonly UsageWindowHarness[];
@@ -141,9 +144,15 @@ export function addUsageTokens(into: UsageTokens, from: UsageTokens): void {
 	into.cacheRead += from.cacheRead;
 }
 
-/** `input + output + cacheWrite + cacheRead`, the CLI's `totalTokens`. */
+/**
+ * `input + output + cacheWrite`: the headline total. Cache reads stay out of
+ * every headline, share and ranking: a cache-heavy harness reports them at
+ * 50x the fresh volume, and every tool that prints one number excludes them
+ * (docs/research/token-headline-conventions-2026-09.md). They remain in the
+ * wire, in `tokens.cacheRead` and in `cacheHitShare`.
+ */
 export function totalOfTokens(t: UsageTokens): number {
-	return t.input + t.output + t.cacheWrite + t.cacheRead;
+	return t.input + t.output + t.cacheWrite;
 }
 
 type ModelAcc = {
@@ -220,6 +229,10 @@ export function foldUsageDays(
 	const share = (n: number): number =>
 		totalTokens ? round4(n / totalTokens) : 0;
 	const inputSide = tokens.input + tokens.cacheRead + tokens.cacheWrite;
+	// The day's `subagentTokens` atom counts cache reads (the CLI sums every
+	// bucket), so its share needs the cache-inclusive denominator to stay a
+	// like-for-like ratio that cannot exceed 1.
+	const allTokens = totalTokens + tokens.cacheRead;
 
 	return {
 		aggregateVersion: MEASURED_DAYS_V1,
@@ -230,7 +243,7 @@ export function foldUsageDays(
 		tokens,
 		totalTokens,
 		cacheHitShare: inputSide ? round4(tokens.cacheRead / inputSide) : 0,
-		subagentShare: share(subagentTokens),
+		subagentShare: allTokens ? round4(subagentTokens / allTokens) : 0,
 		models: [...models.values()]
 			.map((acc) => ({
 				model: acc.model,

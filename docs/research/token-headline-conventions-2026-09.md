@@ -1,0 +1,223 @@
+# Token headline conventions: do usage tools count cache reads?
+
+Research date: 2026-09-01. Question: aistack's 30-day token headline sums fresh
+input + output + cache writes + cache reads (`packages/workflow-rules/src/usage.ts`,
+`totalOfTokens`: "input + output + cacheWrite + cacheRead, the CLI's totalTokens").
+On Codex-heavy machines cache reads are ~98% of that sum, and a user found the
+headline ~3x larger than a "lifetime" figure they had seen elsewhere. Should the
+headline include cache reads, exclude them, or show a split?
+
+Every claim below is against source code or first-party docs. Anything not
+verified against a primary source is marked unverified.
+
+## The two provider accounting models (the root of the split)
+
+**Anthropic: disjoint fields.** The prompt-caching docs
+(https://platform.claude.com/docs/en/build-with-claude/prompt-caching) define
+`input_tokens` as the "number of input tokens which were not read from or used to
+create a cache (that is, tokens after the last cache breakpoint)". Total input
+processed is `cache_read_input_tokens + cache_creation_input_tokens + input_tokens`.
+The Usage Admin API
+(https://platform.claude.com/docs/en/manage-claude/usage-cost-api) tracks the same
+four disjoint measures: "uncached input, cached input, cache creation, and output
+tokens". A tool that wants "everything" has to add all four itself.
+
+**OpenAI: cached is a subset of input.** The Usage API's completions result
+documents `input_tokens` as "the aggregated number of input tokens used, including
+cached and cache-write tokens", with `input_cached_tokens` and
+`input_cache_write_tokens` as breakouts
+(openai/openai-python, `src/openai/types/admin/organization/usage_completions_response.py`,
+`DataResultOrganizationUsageCompletionsResult`). Same for per-request usage:
+`prompt_tokens_details.cached_tokens` / `input_tokens_details.cached_tokens` are
+subsets of the prompt/input count
+(https://developers.openai.com/api/docs/guides/prompt-caching). So an OpenAI-side
+"input + output" total already counts each cached token exactly once, never as an
+extra addend.
+
+## Survey
+
+### 1. ccusage (ryoppippi/ccusage)
+
+Headline: **all-inclusive**. `TokenCounts::total()` returns
+`input + output + cache_creation + cache_read (+ extra_total_tokens)`
+(`rust/crates/ccusage-core/src/types.rs`, lines 89-95 on main as of 2026-09-01).
+The report tables always show the split: columns are Input, Output, Cache Create,
+Cache Read, Total Tokens, Cost
+(`docs/guide/daily-reports.md`: "Cache Create: Tokens used to create cache
+entries", "Cache Read: Tokens read from cache (typically cheaper)").
+
+### 2. Codex CLI (openai/codex, codex-rs)
+
+Headline: **excludes cached input entirely**. `TokenUsage` in
+`codex-rs/protocol/src/protocol.rs` (impl at lines 2384-2404 on main):
+
+```rust
+pub fn non_cached_input(&self) -> i64 {
+    (self.input_tokens - self.cached_input()).max(0)
+}
+/// Primary count for display as a single absolute value: non-cached input + output.
+pub fn blended_total(&self) -> i64 {
+    (self.non_cached_input() + self.output_tokens.max(0)).max(0)
+}
+```
+
+`cached_input_tokens` is a subset of `input_tokens` (OpenAI convention; the
+subtraction above is the definition). The `/status` card builds
+`total: total_usage.blended_total(), input: total_usage.non_cached_input(),
+output: total_usage.output_tokens` (`codex-rs/tui/src/status/card.rs`). The raw
+`total_tokens` (which includes cached) is used only as the context-window
+occupancy via `tokens_in_context_window()`. So every session total Codex prints
+is fresh input + output; cache reads appear in no displayed total.
+
+**The "lifetime" figure exists and is server-computed.** `/usage` in the TUI and
+the ChatGPT Codex analytics page ("Codex and Work Analytics",
+chatgpt.com/codex/settings/usage; help.openai.com article 20001478) show
+"Lifetime", "Peak" and daily buckets from the backend
+(`codex-rs/backend-client/src/types.rs`, `TokenUsageProfileStats.lifetime_tokens`;
+rendered in `codex-rs/tui/src/chatwidget/tokens/chart.rs`, `("Lifetime", ...)`).
+The client only displays the number; what the server sums is not in the repo, so
+its composition is **unverified**. Given that every client-side Codex total is
+blended (cache-excluded), a lifetime figure of ~54B is plausibly blended too,
+which alone explains a large gap against a cache-inclusive 30-day sum.
+
+### 3. OpenAI platform usage dashboard / Usage API
+
+Headline: **cache-inclusive input, but as a subset, never an extra addend**.
+`input_tokens` includes cached and cache-write tokens; `input_cached_tokens` is a
+breakout (citation in the accounting-model section above). The dashboard charts
+built on this API therefore show input and output where cached tokens are inside
+input, counted once. There is no surface that adds cache reads on top of input.
+The exact tiles of the logged-in platform dashboard UI: unverified (behind login),
+but they render this API's fields.
+
+### 4. Anthropic Console / Usage & Cost Admin API
+
+Fields are **disjoint** (citation above). The Usage API returns
+`uncached_input_tokens`, cache creation, `cache_read_input_tokens` and
+`output_tokens` per bucket; consumers choose their own total. The Console usage
+page's exact headline: unverified (behind login). The docs' framing ("Measure
+uncached input, cached input, cache creation, and output tokens") treats them as
+four parallel measures, not one total.
+
+### 5. opencode (sst/opencode)
+
+Stored tokens are normalized to **disjoint** parts: `adjustedInputTokens =
+inputTokens - cacheRead - cacheWrite` with the comment "AI SDK v6 normalized
+inputTokens to include cached tokens across all providers ... Always subtract
+cache tokens to get the non-cached input count"
+(`packages/opencode/src/session/session.ts`, around line 364). Display:
+
+* `opencode stats` totals are **all-inclusive**: `sessionTotalTokens = input +
+  output + reasoning + cache.read + cache.write`
+  (`packages/opencode/src/cli/cmd/stats.ts`, around line 216), and the per-model
+  breakdown prints Input Tokens, Output Tokens, Cache Read, Cache Write as
+  separate rows (same file, around line 343).
+* The TUI sidebar token figure is context occupancy: the LAST message's
+  `input + output + reasoning + cache.read + cache.write` against the context
+  limit (`packages/tui/src/feature-plugins/sidebar/context.tsx`, line 29). That
+  is a context meter, not a usage total.
+
+### 6. Cline and Roo Code
+
+**Cline**: the task header's "Token Usage" accordion total is **all-inclusive**:
+`const totalTokens = (tokensIn || 0) + (tokensOut || 0) + (cacheWrites || 0) +
+(cacheReads || 0)`
+(`apps/vscode/webview-ui/src/components/chat/task-header/ContextWindowSummary.tsx`,
+line 121), with four labeled rows: Prompt Tokens, Completion Tokens, Cache
+Writes, Cache Reads (lines 63-66). `tokensIn` itself excludes cache (disjoint
+fields, summed from per-request metrics in
+`apps/vscode/src/shared/getApiMetrics.ts`; the same file's
+`getLastApiReqTotalTokens` sums all four for context-window purposes).
+
+**Roo Code**: **no combined total at all**. The task header shows "Tokens:
+up-arrow tokensIn, down-arrow tokensOut" and a separate "Cache: writes, reads"
+line (`webview-ui/src/components/chat/TaskHeader.tsx`, lines 328-350).
+`inputTokens` comes straight from Anthropic `input_tokens`, cache reads and
+writes kept as their own fields (`src/api/providers/anthropic.ts`, lines
+183-210). So Roo's visible token figures exclude cache reads; cache is its own
+labeled pair.
+
+### 7. LiteLLM and tokencost
+
+**LiteLLM** normalizes Anthropic to the OpenAI convention: `calculate_usage`
+does `prompt_tokens += cache_creation_input_tokens` and `prompt_tokens +=
+cache_read_input_tokens` (`litellm/llms/anthropic/chat/transformation.py`,
+lines 2296-2301), with the cached share exposed via `prompt_tokens_details`. A
+passthrough handler comment states it outright: "prompt_tokens are
+cache-inclusive" (`litellm/proxy/pass_through_endpoints/llm_provider_handlers/anthropic_passthrough_logging_handler.py`).
+So LiteLLM's `total_tokens` counts cache reads once, inside prompt_tokens. Its
+dashboard shows cache reads as their own metric ("Cache Read: N tokens",
+`ui/litellm-dashboard/src/components/activity_metrics.tsx`).
+
+**tokencost** (AgentOps-AI/tokencost) has no headline total: it prices token
+types independently (`TokenType = Literal["input", "output", "cached"]`,
+`calculate_cost_by_tokens` in `tokencost/costs.py`).
+
+### 8. Other trackers, brief
+
+* **Claude Code Usage Monitor** (Maciek-roboblog/Claude-Code-Usage-Monitor):
+  all-inclusive. `total_tokens` property returns `input + output +
+  cache_creation + cache_read` (`src/claude_monitor/core/models.py`, lines
+  50-57); table views show cache columns separately.
+* **sniffly** (chiphuyen/sniffly): headline **excludes cache**. "Total tokens" =
+  `overview.total_tokens.input + overview.total_tokens.output`
+  (`sniffly/static/js/stats-cards.js`; same sum in `export.js`, which lists
+  Cache Created / Cache Read as separate lines). Cache reads feed only a "cache
+  efficiency" stat and cost.
+* **viberank** (sculptdotfun/viberank): ranks by ccusage's `totalTokens`, so it
+  inherits ccusage's all-inclusive sum (submission flow per its README; not
+  independently re-derived, secondary).
+* **ccflare** (snipeship/ccflare): prices cache reads for cost
+  (`packages/core/src/pricing.ts`); its token display composition: unverified.
+
+## Synthesis
+
+There are exactly two conventions, split by provider accounting:
+
+1. **All-inclusive sum with a visible split.** Claude-ecosystem trackers
+   (ccusage, Claude Code Usage Monitor, Cline's accordion, opencode stats,
+   viberank) add all four disjoint Anthropic fields into "total tokens", and
+   every one of them prints Cache Read as its own column or row right next to
+   that total. The total is a "tokens processed" figure and the split is always
+   there to explain it.
+2. **Cache reads never inflate the headline.** OpenAI-side and vendor-native
+   surfaces either fold cached tokens inside input as a subset counted once
+   (OpenAI Usage API, LiteLLM) or exclude them from the displayed total
+   entirely (Codex CLI's `blended_total`, sniffly; Roo Code shows no total and
+   keeps cache on its own line). Codex is the strongest case: its doc comment
+   calls non-cached input + output the "primary count for display as a single
+   absolute value", and its raw cache-inclusive `total_tokens` is used only as
+   the context-window meter.
+
+No surveyed tool uses a cache-read-dominated number as its lone headline. Tools
+that include cache reads always show the split; tools that show one number
+exclude them.
+
+The user's ~3x discrepancy is the two conventions colliding: aistack's headline
+is convention 1 while every Codex-native figure (the /status total, and almost
+certainly the analytics "lifetime tokens") is convention 2. On a machine where
+cache reads are ~98% of the sum, the same activity produces numbers that differ
+by an order of magnitude depending on convention, and aistack's number is the
+one no other Codex surface will ever corroborate.
+
+## Recommendation for aistack's 30-day headline
+
+Exclude cache reads from the headline figure and show them as a labeled split.
+
+* Headline = fresh input + cache writes + output. Cache writes are genuinely
+  new tokens processed (Anthropic bills them above the base input rate), so
+  they stay. Cache reads are re-served prefix and leave the headline.
+* Directly under or beside the headline, print the cache-read figure once, in
+  the ccusage style ("+ N cache reads" or a two-part split). This keeps the
+  survey's invariant: a single number excludes cache reads, and wherever cache
+  reads appear they are labeled.
+* This makes the headline roughly comparable with what Codex itself shows its
+  users, with sniffly, and with Roo; it stays explainable to ccusage users via
+  the visible split.
+* Cost is unaffected: pricing already rates each category separately, and the
+  wire already ships the four atoms per day, so this is a read-time fold and
+  display change, a server deploy, no re-sync (per the workflow-aggregates
+  design in AGENTS.md).
+
+Source files checked on main branches as of 2026-09-01; line numbers will
+drift, function names are the stable anchors.
