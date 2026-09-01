@@ -18,6 +18,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { parse } from "smol-toml";
 
 import type { HookResult } from "./hook.js";
 
@@ -56,6 +57,9 @@ interface HookEntry {
 	type: string;
 	command?: string;
 	timeout?: number;
+	async?: boolean;
+	statusMessage?: string;
+	additionalContextLimit?: number;
 }
 
 interface HookMatcher {
@@ -186,20 +190,87 @@ export function codexAutoSyncHookInstalled(
 }
 
 /**
- * Best-effort trust check: Codex pins each trusted hook's sha256 under
- * `[hooks.state]` in config.toml, so the command's hash appearing anywhere in
- * that file reads as trusted. `null` when the file cannot be read - unknown,
- * not untrusted, so the caller does not nag on a parse quirk.
+ * Codex hashes the normalized full hook definition, then stores that hash under
+ * the hook's source/index key in `[hooks.state]`. Match both pieces: another
+ * hook's trusted hash says nothing about ours, and a command-only hash does not
+ * match current Codex. `null` means the files could not be read or parsed.
  */
 export function codexHookTrusted(
 	configFile: string = codexConfigFile(),
+	hooksFile: string = codexHooksFile(),
 ): boolean | null {
-	let text: string;
 	try {
-		text = readFileSync(configFile, "utf-8");
+		const config = parse(readFileSync(configFile, "utf-8")) as {
+			hooks?: { state?: Record<string, { trusted_hash?: unknown }> };
+		};
+		const read = readHooksJson(hooksFile);
+		if ("error" in read) return null;
+		const sessionStart = read.settings.hooks?.SessionStart;
+		if (!Array.isArray(sessionStart)) return false;
+
+		const matches: boolean[] = [];
+		for (const [groupIndex, group] of sessionStart.entries()) {
+			for (const [handlerIndex, handler] of (group.hooks ?? []).entries()) {
+				if (!isOurs(handler) || typeof handler.command !== "string") continue;
+				const normalizedHandler: Record<string, unknown> = {
+					type: "command",
+					command: handler.command,
+					timeout:
+						typeof handler.timeout === "number"
+							? Math.max(1, handler.timeout)
+							: 600,
+					async: handler.async === true,
+				};
+				if (typeof handler.statusMessage === "string") {
+					normalizedHandler.statusMessage = handler.statusMessage;
+				}
+				if (
+					typeof handler.additionalContextLimit === "number" &&
+					handler.additionalContextLimit !== 2500
+				) {
+					normalizedHandler.additionalContextLimit =
+						handler.additionalContextLimit;
+				}
+
+				const identity: Record<string, unknown> = {
+					event_name: "session_start",
+					hooks: [normalizedHandler],
+				};
+				if (typeof group.matcher === "string") identity.matcher = group.matcher;
+				const currentHash = `sha256:${createHash("sha256")
+					.update(JSON.stringify(canonicalJson(identity)))
+					.digest("hex")}`;
+				const key = `${hooksFile}:session_start:${groupIndex}:${handlerIndex}`;
+				matches.push(config.hooks?.state?.[key]?.trusted_hash === currentHash);
+			}
+		}
+		return matches.length > 0 && matches.every(Boolean);
 	} catch {
 		return null;
 	}
-	const hash = createHash("sha256").update(CODEX_HOOK_COMMAND).digest("hex");
-	return text.includes(hash);
+}
+
+type JsonValue = null | boolean | number | string | JsonValue[] | JsonObject;
+type JsonObject = { [key: string]: JsonValue };
+
+function canonicalJson(value: unknown): JsonValue {
+	if (Array.isArray(value)) return value.map(canonicalJson);
+	if (value && typeof value === "object") {
+		const sorted: JsonObject = {};
+		for (const [key, child] of Object.entries(value).sort(([a], [b]) =>
+			a.localeCompare(b),
+		)) {
+			sorted[key] = canonicalJson(child);
+		}
+		return sorted;
+	}
+	if (
+		value === null ||
+		typeof value === "boolean" ||
+		typeof value === "number" ||
+		typeof value === "string"
+	) {
+		return value;
+	}
+	throw new TypeError("hook identity is not JSON-serializable");
 }

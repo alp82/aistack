@@ -36,6 +36,7 @@ import type { HarnessAdapter } from "../harness/types.js";
 import { dim, limeBold } from "../theme.js";
 import {
 	codexAutoSyncHookInstalled,
+	codexHookTrusted,
 	installCodexAutoSyncHook,
 	removeCodexAutoSyncHook,
 } from "./codexHook.js";
@@ -56,6 +57,8 @@ export interface EnableDeps {
 	hookInstalledImpl?: () => boolean;
 	/** Is the Codex trigger already on this machine? */
 	codexHookInstalledImpl?: () => boolean;
+	/** Is the installed Codex trigger's exact definition trusted? */
+	codexHookTrustedImpl?: () => boolean | null;
 	/** Override the detected harness set. Tests only. */
 	detectedImpl?: () => Promise<HarnessAdapter[]>;
 	getTokenImpl?: () => string | null;
@@ -120,7 +123,9 @@ export async function enableAutoSync(
 		if (!codexResult.ok) return codexResult;
 		// The one-time /hooks trust step (#65 §6) - repeated by the next
 		// interactive sync while the hook stays untrusted.
-		trustLine = codexResult.message;
+		if ((deps.codexHookTrustedImpl ?? codexHookTrusted)() !== true) {
+			trustLine = codexResult.message;
+		}
 	}
 
 	saveSettings(

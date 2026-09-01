@@ -9,7 +9,6 @@
     * nicer description cards - with remove button
     * model card: replace with other version
     * reorder tools and models
-    * mermaid diagrams
 * value proposition should be shown before/with CTA
     profile for sharing
     ai stats
@@ -37,6 +36,7 @@
 * description/workflow:
     * per project
     * per tool
+    * mermaid diagrams
 * github actions security (see below)
 * show real prices without sponsoring/discounts
     * dev.to

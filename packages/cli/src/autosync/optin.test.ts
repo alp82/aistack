@@ -139,12 +139,29 @@ describe("enableAutoSync", () => {
 			...linked,
 			installHook: () => ({ ok: true, message: "" }),
 			installCodexHook,
+			codexHookTrustedImpl: () => false,
 			...bothHarnesses,
 		});
 		expect(res.ok).toBe(true);
 		expect(installCodexHook).toHaveBeenCalledOnce();
 		expect(res.message).toContain("/hooks");
 		expect(getSettings(settingsFile).autoSync?.enabled).toBe(true);
+	});
+
+	test("does not repeat the Codex trust step when the hook is already trusted", async () => {
+		const res = await enableAutoSync(24, {
+			settingsFile,
+			...linked,
+			installCodexHook: () => ({
+				ok: true,
+				message:
+					"Codex hook written - open Codex and run /hooks once to trust it, or it will not run.",
+			}),
+			codexHookTrustedImpl: () => true,
+			...codexOnly,
+		});
+		expect(res.ok).toBe(true);
+		expect(res.message).not.toContain("/hooks");
 	});
 
 	test("a failed Codex hook write persists nothing", async () => {

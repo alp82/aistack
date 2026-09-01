@@ -118,17 +118,44 @@ describe("removeCodexAutoSyncHook", () => {
 });
 
 describe("codexHookTrusted", () => {
-	test("finds the command hash in config.toml", () => {
+	test("matches Codex's normalized full-definition hash at the hook key", () => {
 		const config = join(dir, "config.toml");
-		const hash = createHash("sha256").update(CODEX_HOOK_COMMAND).digest("hex");
-		writeFileSync(config, `[hooks.state]\ntrusted_hash = "${hash}"\n`);
-		expect(codexHookTrusted(config)).toBe(true);
+		installCodexAutoSyncHook(file);
+		const normalized = JSON.stringify({
+			event_name: "session_start",
+			hooks: [
+				{
+					async: false,
+					command: CODEX_HOOK_COMMAND,
+					timeout: 30,
+					type: "command",
+				},
+			],
+			matcher: "startup",
+		});
+		const hash = `sha256:${createHash("sha256").update(normalized).digest("hex")}`;
+		writeFileSync(
+			config,
+			`[hooks.state."${file}:session_start:0:0"]\ntrusted_hash = "${hash}"\n`,
+		);
+		expect(codexHookTrusted(config, file)).toBe(true);
 	});
 
-	test("reports untrusted when the hash is absent, unknown when unreadable", () => {
+	test("rejects the old command-only hash", () => {
 		const config = join(dir, "config.toml");
-		writeFileSync(config, `[hooks.state]\ntrusted_hash = "deadbeef"\n`);
-		expect(codexHookTrusted(config)).toBe(false);
-		expect(codexHookTrusted(join(dir, "missing.toml"))).toBeNull();
+		installCodexAutoSyncHook(file);
+		const hash = createHash("sha256").update(CODEX_HOOK_COMMAND).digest("hex");
+		writeFileSync(
+			config,
+			`[hooks.state."${file}:session_start:0:0"]\ntrusted_hash = "sha256:${hash}"\n`,
+		);
+		expect(codexHookTrusted(config, file)).toBe(false);
+	});
+
+	test("reports unknown for an unreadable config and false for a missing hook", () => {
+		const config = join(dir, "config.toml");
+		writeFileSync(config, "[hooks.state]\n");
+		expect(codexHookTrusted(join(dir, "missing.toml"), file)).toBeNull();
+		expect(codexHookTrusted(config, join(dir, "missing.json"))).toBe(false);
 	});
 });
