@@ -67,11 +67,18 @@ function DaysTop({ usage, range }: { usage: UsageRead; range: RangeId }) {
 		current.cost && current.cost.pricingTables.length > 0
 			? current.cost.usd
 			: null;
+	const cacheReadTokens = current.models.reduce(
+		(total, model) => total + model.tokens.cacheRead,
+		0,
+	);
+	const freshTokens = current.totalTokens - cacheReadTokens;
 	return (
 		<div className="grid gap-10 md:grid-cols-[minmax(0,22rem)_1fr]">
 			<div>
 				<MetricBlock
 					tokens={current.totalTokens}
+					freshTokens={freshTokens}
+					cacheReadTokens={cacheReadTokens}
 					usd={usd}
 					windowDays={days}
 					trail={usage.series.map((point) => ({

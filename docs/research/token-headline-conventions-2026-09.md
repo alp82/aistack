@@ -75,10 +75,11 @@ chatgpt.com/codex/settings/usage; help.openai.com article 20001478) show
 "Lifetime", "Peak" and daily buckets from the backend
 (`codex-rs/backend-client/src/types.rs`, `TokenUsageProfileStats.lifetime_tokens`;
 rendered in `codex-rs/tui/src/chatwidget/tokens/chart.rs`, `("Lifetime", ...)`).
-The client only displays the number; what the server sums is not in the repo, so
-its composition is **unverified**. Given that every client-side Codex total is
-blended (cache-excluded), a lifetime figure of ~54B is plausibly blended too,
-which alone explains a large gap against a cache-inclusive 30-day sum.
+The client only displays the number; what the server sums is not in the repo.
+A controlled comparison against `/wham/profiles/me` later established the
+current behavior: account daily buckets match guarded local
+`input_tokens + output_tokens`, so they include cached input once. See
+`docs/research/codex-account-token-stats-2026-09.md`.
 
 ### 3. OpenAI platform usage dashboard / Usage API
 
@@ -172,7 +173,7 @@ types independently (`TokenType = Literal["input", "output", "cached"]`,
 
 ## Synthesis
 
-There are exactly two conventions, split by provider accounting:
+There are two useful conventions:
 
 1. **All-inclusive sum with a visible split.** Claude-ecosystem trackers
    (ccusage, Claude Code Usage Monitor, Cline's accordion, opencode stats,
@@ -180,40 +181,24 @@ There are exactly two conventions, split by provider accounting:
    every one of them prints Cache Read as its own column or row right next to
    that total. The total is a "tokens processed" figure and the split is always
    there to explain it.
-2. **Cache reads never inflate the headline.** OpenAI-side and vendor-native
-   surfaces either fold cached tokens inside input as a subset counted once
-   (OpenAI Usage API, LiteLLM) or exclude them from the displayed total
-   entirely (Codex CLI's `blended_total`, sniffly; Roo Code shows no total and
-   keeps cache on its own line). Codex is the strongest case: its doc comment
-   calls non-cached input + output the "primary count for display as a single
-   absolute value", and its raw cache-inclusive `total_tokens` is used only as
-   the context-window meter.
+2. **Fresh work.** Some session-level surfaces exclude cache reads from their
+   single number. Codex CLI's `/status` and human `codex exec` use
+   `blended_total`, while sniffly excludes cache and Roo Code keeps cache on a
+   separate line.
 
-No surveyed tool uses a cache-read-dominated number as its lone headline. Tools
-that include cache reads always show the split; tools that show one number
-exclude them.
-
-The user's ~3x discrepancy is the two conventions colliding: aistack's headline
-is convention 1 while every Codex-native figure (the /status total, and almost
-certainly the analytics "lifetime tokens") is convention 2. On a machine where
-cache reads are ~98% of the sum, the same activity produces numbers that differ
-by an order of magnitude depending on convention, and aistack's number is the
-one no other Codex surface will ever corroborate.
+Codex itself uses both. Its account Lifetime, daily, and weekly activity is
+cache-inclusive, while its local session status is cache-excluded. A product
+must name which one it shows and expose the split when the difference is large.
 
 ## Recommendation for aistack's 30-day headline
 
-Exclude cache reads from the headline figure and show them as a labeled split.
+Use the cache-inclusive processed total as the headline and show its labeled
+split.
 
-* Headline = fresh input + cache writes + output. Cache writes are genuinely
-  new tokens processed (Anthropic bills them above the base input rate), so
-  they stay. Cache reads are re-served prefix and leave the headline.
-* Directly under or beside the headline, print the cache-read figure once, in
-  the ccusage style ("+ N cache reads" or a two-part split). This keeps the
-  survey's invariant: a single number excludes cache reads, and wherever cache
-  reads appear they are labeled.
-* This makes the headline roughly comparable with what Codex itself shows its
-  users, with sniffly, and with Roo; it stays explainable to ccusage users via
-  the visible split.
+* Headline = fresh input + cache writes + cache reads + output. This matches
+  Codex account activity and counts every normalized bucket exactly once.
+* Directly under or beside the headline, print fresh and cached amounts. This
+  reconciles the processed total with Codex's cache-excluded session status.
 * Cost is unaffected: pricing already rates each category separately, and the
   wire already ships the four atoms per day, so this is a read-time fold and
   display change, a server deploy, no re-sync (per the workflow-aggregates

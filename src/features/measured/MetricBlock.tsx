@@ -37,11 +37,15 @@ import { TokenTip, useTipDeck } from "./tokens/TokenTips";
  */
 export function MetricBlock({
 	tokens,
+	freshTokens,
+	cacheReadTokens,
 	usd,
 	windowDays,
 	trail,
 }: {
 	readonly tokens: number;
+	readonly freshTokens?: number;
+	readonly cacheReadTokens?: number;
 	readonly usd: number | null;
 	readonly windowDays: number;
 	/** Every reading so far. Fewer than two draws no watermark. */
@@ -117,6 +121,12 @@ export function MetricBlock({
 							{DECK_HINT}
 						</span>
 					</span>
+					{freshTokens !== undefined && cacheReadTokens !== undefined && (
+						<span className="relative mt-2 block font-mono text-xs text-fg-muted">
+							{fmtTokens(freshTokens)} fresh · {fmtTokens(cacheReadTokens)}{" "}
+							cached
+						</span>
+					)}
 
 					{/* Roomier than the caption gap above, so the swapped row never crowds
 				    the second number. */}

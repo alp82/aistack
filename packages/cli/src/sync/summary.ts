@@ -121,6 +121,21 @@ export function totalUSD(payload: MeasuredPayload): number | null {
 	return any ? sum : null;
 }
 
+/** The normalized processed-token split, when model rows cover the headline. */
+export function tokenBreakdown(
+	payload: MeasuredPayload,
+): { fresh: number; cached: number } | null {
+	let fresh = 0;
+	let cached = 0;
+	for (const model of payload.models) {
+		fresh += model.tokens.input + model.tokens.output + model.tokens.cacheWrite;
+		cached += model.tokens.cacheRead;
+	}
+	return fresh + cached === payload.activity.totalTokens
+		? { fresh, cached }
+		: null;
+}
+
 /** DISTINCT kept-private names, from the send bytes (`inventory.withheld`). */
 export function withheldCount(payload: MeasuredPayload): number {
 	const w = payload.inventory.withheld;
@@ -328,10 +343,17 @@ function payloadBlock(
 	const label = `${harnessLabel(payload.harness.name)}${payload.harness.version ? ` ${payload.harness.version}` : ""}`;
 	const days = payload.activity.activeDayDates.length;
 	const usd = totalUSD(payload);
+	const breakdown = tokenBreakdown(payload);
 	const totals = [
 		`${payload.activity.sessions} session${payload.activity.sessions === 1 ? "" : "s"}`,
 		`${days} active day${days === 1 ? "" : "s"}`,
-		`${fmtTokens(payload.activity.totalTokens)} tokens`,
+		`${fmtTokens(payload.activity.totalTokens)} tokens processed`,
+		...(breakdown
+			? [
+					`${fmtTokens(breakdown.fresh)} fresh`,
+					`${fmtTokens(breakdown.cached)} cached`,
+				]
+			: []),
 	];
 	// Wrapped, because the merged header is the longest line in the block and a
 	// narrow terminal would otherwise break it mid-figure.

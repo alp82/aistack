@@ -26,6 +26,7 @@ import {
 	type GateContext,
 	keptPrivateRows,
 	scanNoteLines,
+	tokenBreakdown,
 	totalUSD,
 	withheldCount,
 } from "./summary.js";
@@ -271,8 +272,7 @@ describe("totalUSD - never a dollar without its pricing table (#46)", () => {
 describe("beat two - the dialog (binding copy, #48)", () => {
 	test("names the destination, then the review line", () => {
 		expect(buildGateDialog(ctx({ withKeptPrivateHalf: true }))).toBe(
-			"Publish to aistack?\n" +
-				"67 private review names will be stored",
+			"Publish to aistack?\n" + "67 private review names will be stored",
 		);
 	});
 
@@ -322,7 +322,29 @@ describe("beat one - the summary", () => {
 		// row under it.
 		const summary = buildGateSummary(ctx({}));
 		expect(summary).toContain("CLAUDE CODE 2.1.220 382");
-		expect(summary).toContain("usage     3 active days · 4.27B tokens");
+		expect(summary).toContain(
+			"usage     3 active days · 4.27B tokens processed",
+		);
+	});
+
+	test("shows the fresh and cached split when model rows cover the total", () => {
+		const measured = payload({
+			activity: {
+				...payload().activity,
+				totalTokens: 10,
+			},
+			models: [
+				{
+					id: "gpt-5.6-sol",
+					tokenShare: 1,
+					tokens: { input: 2, output: 1, cacheWrite: 1, cacheRead: 6 },
+				},
+			],
+		});
+		expect(tokenBreakdown(measured)).toEqual({ fresh: 4, cached: 6 });
+		expect(buildGateSummary(ctx({ payload: measured }))).toContain(
+			"10 tokens processed · 4 fresh · 6 cached",
+		);
 	});
 
 	test("the searched line names every harness this build looks for (#130)", () => {
@@ -375,7 +397,7 @@ describe("beat one - the summary", () => {
 
 	test("cost line reads 'not published' when the table is absent", () => {
 		const summary = buildGateSummary(ctx({ payload: { pricingTable: null } }));
-		expect(summary).toContain("4.27B tokens · cost not published");
+		expect(summary).toContain("4.27B tokens processed · cost not published");
 		expect(summary).not.toContain("$");
 	});
 

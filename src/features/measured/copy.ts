@@ -100,7 +100,9 @@ export function notchNote(firstAt: number): string {
 
 /** The captions under the two headline numbers. */
 export const TOKENS_CAPTION = (days: number) =>
-	days === 1 ? "tokens · last 24 hours" : `tokens · last ${days} days`;
+	days === 1
+		? "tokens processed · last 24 hours"
+		: `tokens processed · last ${days} days`;
 export const COST_CAPTION = "at least, at api list prices";
 export const COST_PRIVATE = "kept private";
 export const COST_PRIVATE_CAPTION = "cost not published";

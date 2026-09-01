@@ -164,7 +164,9 @@ describe("the previous-period chip", () => {
 		expect(screen.getAllByTestId("delta")[0]).toHaveTextContent(
 			"vs the day before",
 		);
-		expect(screen.getByText("tokens · last 24 hours")).toBeInTheDocument();
+		expect(
+			screen.getByText("tokens processed · last 24 hours"),
+		).toBeInTheDocument();
 	});
 
 	it("prints a fall muted and an unchanged figure as ±0%", () => {
@@ -195,7 +197,12 @@ describe("the days path", () => {
 	it("leads with the fold's tokens, cost and model rows", () => {
 		setup();
 		expect(screen.getByText("1.20B")).toBeInTheDocument();
-		expect(screen.getByText("tokens · last 30 days")).toBeInTheDocument();
+		expect(
+			screen.getByText("tokens processed · last 30 days"),
+		).toBeInTheDocument();
+		expect(
+			screen.getByText("300.0M fresh · 900.0M cached"),
+		).toBeInTheDocument();
 		expect(screen.getByText("≥$1,500")).toBeInTheDocument();
 		expect(screen.getByText("Claude Opus 5")).toBeInTheDocument();
 		expect(screen.getByText("claude-fable-5")).toBeInTheDocument();

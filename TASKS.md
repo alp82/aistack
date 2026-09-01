@@ -13,6 +13,7 @@
     profile for sharing
     ai stats
 * resend -> purelymail
+* https://labs.cuvii.dev/volume/motion
 * CLI to use aistack.to instead of useaistack
 * CLI workflow
     * uploaded files don't appear in project

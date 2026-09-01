@@ -191,12 +191,8 @@ describe("a fold over the days equals the snapshot (#307)", () => {
 			[...merged.entries()].map(([date, usage]) => ({ date, usage })),
 		);
 
-		// The snapshot's total counts cache reads; the fold's headline excludes
-		// them (docs/research/token-headline-conventions-2026-09.md). The atoms
-		// still agree: adding cache reads back recovers the snapshot figure.
-		expect(folded.totalTokens + folded.tokens.cacheRead).toBe(
-			payload.activity.totalTokens,
-		);
+		// Both projections count every normalized bucket exactly once.
+		expect(folded.totalTokens).toBe(payload.activity.totalTokens);
 		expect(folded.sessions).toBe(payload.activity.sessions);
 		expect(folded.activeDays).toBe(payload.activity.activeDayDates.length);
 		expect(folded.projectKeys).toEqual(payload.activity.projectKeys);
@@ -209,11 +205,7 @@ describe("a fold over the days equals the snapshot (#307)", () => {
 		for (const m of folded.models) {
 			const snap = payload.models.find((p) => p.id === m.model);
 			expect(m.tokens).toEqual(snap?.tokens);
-			// Shares diverge by design: the snapshot's are cache-inclusive, the
-			// fold's come from the cache-excluded headline total.
-			expect(m.tokenShare).toBe(
-				Math.round((m.totalTokens / folded.totalTokens) * 10_000) / 10_000,
-			);
+			expect(m.tokenShare).toBe(snap?.tokenShare);
 			if (snap?.apiEquivalentUSD === undefined) expect(m.usd).toBeUndefined();
 			else expect(m.usd ?? 0).toBeCloseTo(snap.apiEquivalentUSD, 2);
 		}
