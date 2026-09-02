@@ -273,3 +273,9 @@ title column and the tiles; the one-liner spans the title column.
 Bug: tab clicks could not scroll up. `offsetTop` of the sticky bar reports the
 stuck position while stuck, so the "never above the bar" floor equalled the
 current scroll. The floor now comes from the hero's bottom.
+
+## Round 12 - locked
+
+Operator locked v38 as it stands after round 11: /index.html?v=v38 with the
+default knobs (act tile, rule none, lbl none, nav quiet). Implementation is
+#356.
