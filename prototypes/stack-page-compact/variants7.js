@@ -96,8 +96,9 @@ function heroA(){
   </div></section>
   <nav id="ha-tabs" class="ha-tabs ha-nav-${nav}" aria-label="Sections">
    <div style="max-width:1280px;margin:0 auto;padding:0 24px;display:flex;align-items:stretch;overflow-x:auto">
-    <span class="ha-id"><b>${esc(S.name)}</b><span class="lime mono" style="font-size:11px">${priceMo(S.price)}</span></span>
-    ${sec.map(s=>`<a href="#${s.id}" data-spy="${s.id}" class="ha-tab"><span class="lab"><span class="n">${s.n}</span><span class="t">${s.title}</span></span><span class="s">${s.stat}</span></a>`).join("")}
+    <span class="ha-id"><b>${esc(S.name)}</b></span>
+    ${sec.map(s=>`<a href="#${s.id}" data-spy="${s.id}" class="ha-tab"><span class="lab"><span class="n">${s.n}</span><span class="t">${s.title}</span></span><span class="s">${s.stat}</span><span class="vis"></span></a>`).join("")}
+    <span class="ha-price lime mono" style="font-size:11px;font-weight:700">${priceMo(S.price)}</span>
    </div>
   </nav>
   <style>
@@ -110,10 +111,12 @@ function heroA(){
    .ha-ghost:hover{border-color:var(--fg-secondary)}
    .ha-quiet{font-family:var(--mono);font-size:11px;color:var(--fg-muted);text-decoration:underline dotted;text-underline-offset:3px}.ha-quiet:hover{color:oklch(0.75 0.15 60)}
    .ha-tabs{position:sticky;top:var(--ptop,0px);z-index:30;background:${TINT4[0]}}
-   .ha-tab{display:flex;align-items:baseline;gap:10px;padding:0 18px;white-space:nowrap;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-muted);box-shadow:inset 0 -3px 0 transparent}
+   .ha-tab{position:relative;display:flex;align-items:baseline;gap:10px;padding:0 18px;white-space:nowrap;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-muted);box-shadow:inset 0 -3px 0 transparent}
    .ha-tab .n{color:var(--stroke-strong)}.ha-tab .s{font-weight:400;letter-spacing:.04em;text-transform:none;font-size:11px}
    .ha-tab .lab{display:inline-flex;gap:10px;align-items:baseline;padding:14px 0 12px;box-shadow:inset 0 -3px 0 transparent}
-   .ha-tab.on{color:var(--lime)}.ha-nav-lines .ha-tab.on{box-shadow:inset 0 -3px 0 var(--lime)}.ha-nav-quiet .ha-tab.on,.ha-nav-bare .ha-tab.on{box-shadow:inset 0 -3px 0 var(--lime)}.ha-tab.on .n{color:var(--lime)}
+   .ha-tab.on{color:var(--lime)}.ha-nav-lines .ha-tab.on{box-shadow:inset 0 -3px 0 var(--lime)}
+   .ha-tab .vis{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--lime)}
+   .ha-price{display:none;align-items:center;margin-left:auto;padding-left:18px;white-space:nowrap}.ha-tabs.stuck .ha-price{display:flex}.ha-tab.on .n{color:var(--lime)}
    .ha-tab:hover{color:var(--fg-primary)}
    .ha-id{display:none;align-items:center;gap:10px;padding:0 18px 0 0;margin-right:6px;font-size:12px;font-weight:900;text-transform:uppercase;white-space:nowrap}
    .ha-tabs.stuck .ha-id{display:flex}
@@ -121,10 +124,10 @@ function heroA(){
    .ha-nav-lines{border-top:1px solid var(--stroke);border-bottom:1px solid var(--stroke)}
    .ha-nav-lines .ha-tab{border-right:1px solid var(--stroke)}.ha-nav-lines .ha-tab:first-of-type{border-left:1px solid var(--stroke)}
    .ha-nav-quiet{border-bottom:1px solid oklch(0.55 0.01 256 / 0.25)}
-   .ha-nav-quiet .ha-tab{padding-left:0;padding-right:0;width:150px;margin-right:20px;flex:none;justify-content:flex-start}.ha-nav-quiet .ha-tab .s{display:none}
+   .ha-nav-quiet .ha-tab{padding-left:0;padding-right:0;width:100px;margin-right:14px;flex:none;justify-content:flex-start}.ha-nav-quiet .ha-tab .s{display:none}
    .ha-nav-bare{background:${TINT4[1]}}.ha-nav-bare .ha-tab{padding-left:0;padding-right:0;margin-right:32px}
    .ha-nav-bare.stuck{box-shadow:0 8px 24px oklch(0 0 0 / .35)}
-   @media(max-width:700px){.ha-tab .s{display:none}.ha-tabs .ha-id{display:none!important}.ha-tab{padding:12px 14px}.ha-nav-quiet .ha-tab,.ha-nav-bare .ha-tab{width:auto;margin-right:22px}}
+   @media(max-width:700px){.ha-tab .s{display:none}.ha-tabs .ha-id,.ha-tabs .ha-price{display:none!important}.ha-tab{padding:12px 14px}.ha-nav-quiet .ha-tab,.ha-nav-bare .ha-tab{width:auto;margin-right:22px}}
    @media(max-width:820px){.ha-tiles{grid-template-columns:1fr 1fr;max-width:520px;min-width:0!important}.ha-tiles>div:first-child:not(.ha-tile){grid-column:1/3;justify-content:flex-start}.ha-tiles .ha-up{flex:none!important}.ha-tiles>div:last-child{grid-column:1/3}.ha-left{min-height:0}.ha-tiles .kick{font-size:10px;letter-spacing:.15em}}
   </style>`;
 }
@@ -246,7 +249,11 @@ window.afterRender=function(){
     spyLinks.forEach(a=>a.classList.toggle("on",a.dataset.spy===cur));
     const heroGone=hero.getBoundingClientRect().bottom<ptop;
     const tabs=document.getElementById("ha-tabs");
-    if(tabs)tabs.classList.toggle("stuck",tabs.getBoundingClientRect().top<=ptop+1);
+    if(tabs){tabs.classList.toggle("stuck",tabs.getBoundingClientRect().top<=ptop+1);
+      const vpTop=scrollY+ptop+tabs.offsetHeight,vpBot=scrollY+innerHeight;
+      tabs.querySelectorAll(".ha-tab").forEach(a=>{const s=document.getElementById(a.dataset.spy);if(!s)return;
+        const st=Math.min(1,Math.max(0,(vpTop-s.offsetTop)/s.offsetHeight)),en=Math.min(1,Math.max(0,(vpBot-s.offsetTop)/s.offsetHeight));
+        const vis=a.querySelector(".vis");vis.style.left=(st*100).toFixed(1)+"%";vis.style.width=(Math.max(0,en-st)*100).toFixed(1)+"%";});}
     const rail=document.getElementById("hb-rail");
     if(rail){rail.classList.toggle("shown",heroGone);const p=scrollY/Math.max(1,document.documentElement.scrollHeight-innerHeight);document.getElementById("hb-fill").style.height=(p*100).toFixed(1)+"%";}
     const bar=document.getElementById("hc-bar");

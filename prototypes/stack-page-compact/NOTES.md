@@ -226,3 +226,12 @@ logos, five tools with a +N chip, or all six when there are six. The update
 stamp and Report link sit under the tokens tile as part of the column. Quiet
 subnav tabs are 150px wide with a 20px gap and the underline spans the tab.
 The left column reserves a fixed height so a one-line name gets the space.
+
+## Round 6
+
+Quiet tabs are 100px wide with a 14px gap. The underline is now a visibility
+indicator: each tab's lime segment covers the part of its section that is on
+screen (left edge = share scrolled past the top, right edge = share still
+below the fold), so one continuous line across the tabs shows what is on
+screen. The stuck bar keeps the name on the left and moves the price to the
+far right.
