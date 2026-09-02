@@ -35,7 +35,7 @@ function body352(){
   const rows=OPT("rows")==="tabs"?`<div style="margin-top:36px">${cssTabs("t37")}</div>`:`<div style="margin-top:36px">${statsAccordion()}</div>`;
   const ids=["s-stats","s-projects","s-tools","s-guide"];
   let i=0;
-  const html=sec37(1,"01","// sync",name,`30d · all machines<br>checked ${readCheckedAgo}`,statsTop37()+rows)+
+  const html=sec37(1,"01","// sync",name,`30d · all machines<br>updated ${readCheckedAgo}`,statsTop37()+rows)+
     sec37(2,"02","// showcase","Projects",P.length+" projects",projGridV16())+
     sec37(3,"03","// ai components","Tools",`${S.tools.length} tools · ${priceMo(S.price)}`,toolsBodyV16())+
     sec37(0,"04","// writeup","Guide",guideMin+" min read",guideBodyV16());
@@ -54,15 +54,29 @@ const actions352=()=>`<span class="chip" style="cursor:pointer">▲ ${UPVOTES}</
 function heroA(){
   const sec=sections352();
   const shown=8;
+  const act=OPT("act"), rule=OPT("rule"), lbl=OPT("lbl"), nav=OPT("nav");
+  const ruleCss=rule==="line"?"border-top:1px solid var(--stroke)":rule==="dim"?"border-top:1px solid oklch(0.55 0.01 256 / 0.25)":"";
+  const label=lbl==="runs on"?"runs on":lbl==="tools"?`${S.tools.length} tools`:"";
+  /* the three actions, arranged by importance: upvote > share > report */
+  const btnUp=`<button class="ha-up" type="button"><span class="tri">▲</span> Upvote <b>${UPVOTES}</b></button>`;
+  const btnShare=`<button class="ha-ghost" type="button">Share</button>`;
+  const lnkReport=`<a class="ha-quiet" href="#">Report</a>`;
+  const actionsUnderTitle=act==="stacked"?`<div style="display:flex;gap:10px;margin-top:22px;align-items:center">${btnUp}${btnShare}</div>`:
+    act==="chips"?`<div style="display:flex;gap:6px;margin-top:20px">${actions352()}</div>`:"";
+  const actionsInColumn=act==="tile"?`<div style="display:flex;gap:8px;align-items:stretch">${btnUp.replace('class="ha-up"','class="ha-up" style="flex:1;justify-content:center"')}${btnShare}</div>`:"";
+  const actionsTopRight=act==="corner"?`<div style="display:flex;gap:8px;align-items:center">${btnUp}${btnShare}</div>`:"";
+  const reportSlot=act==="chips"?"":`<span style="margin-left:auto;display:flex;gap:16px;align-items:center" class="mono small muted"><span>updated ${readCheckedAgo}</span>${lnkReport}</span>`;
   return `<section style="background:${TINT4[0]};padding:56px 0 36px"><div style="max-width:1280px;margin:0 auto;padding:0 24px">
+   ${act==="corner"?`<div style="display:flex;justify-content:flex-end;margin:-24px 0 8px">${actionsTopRight}</div>`:""}
    <div style="display:grid;grid-template-columns:1fr auto;gap:40px;align-items:end" class="g2">
     <div style="min-width:0">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">${avatar352(40)}${byline352()}</div>
       <h1 style="font-size:clamp(44px,7vw,88px);font-weight:900;line-height:.88;letter-spacing:-.03em;text-transform:uppercase;margin-top:20px">${esc(S.name)}</h1>
       <p style="margin-top:16px;font-size:18px;color:var(--fg-secondary);max-width:560px">${esc(S.oneLiner)}</p>
-      <div style="display:flex;gap:6px;margin-top:20px">${actions352()}</div>
+      ${actionsUnderTitle}
     </div>
     <div style="display:grid;gap:10px;min-width:260px" class="ha-tiles">
+      ${actionsInColumn}
       <div style="background:var(--lime);color:var(--lime-contrast);padding:18px 20px;box-shadow:4px 4px 0 var(--stroke-strong);cursor:help" title="authored: tools and bundles at list prices">
         <div class="mono" style="font-size:40px;font-weight:900;line-height:1">${price(S.price)}</div>
         <div class="kick" style="margin-top:6px;opacity:.8">per month · solo</div>
@@ -74,26 +88,38 @@ function heroA(){
       </a>
     </div>
    </div>
-   <a href="#s-tools" style="display:flex;align-items:center;gap:8px;margin-top:32px;padding-top:20px;border-top:1px solid var(--stroke);flex-wrap:wrap">
-     <span class="kick muted" style="margin-right:8px">built with</span>${toolsSorted.slice(0,shown).map(t=>toolIcn(t,28)).join("")}<span class="chip">+${S.tools.length-shown}</span>
-     <span class="mono small muted" style="margin-left:auto">checked ${readCheckedAgo}</span>
-   </a>
+   <div style="display:flex;align-items:center;gap:8px;margin-top:${rule==="none"?"36px":"32px"};padding-top:${rule==="none"?"0":"20px"};${ruleCss};flex-wrap:wrap">
+     ${label?`<span class="kick muted" style="margin-right:8px">${label}</span>`:""}<a href="#s-tools" style="display:flex;gap:8px;align-items:center">${toolsSorted.slice(0,shown).map(t=>toolIcn(t,28)).join("")}<span class="chip" style="border-color:oklch(0.55 0.01 256 / 0.35)">+${S.tools.length-shown}</span></a>
+     ${reportSlot||`<span class="mono small muted" style="margin-left:auto">updated ${readCheckedAgo}</span>`}
+   </div>
   </div></section>
-  <nav id="ha-tabs" class="ha-tabs" aria-label="Sections">
+  <nav id="ha-tabs" class="ha-tabs ha-nav-${nav}" aria-label="Sections">
    <div style="max-width:1280px;margin:0 auto;padding:0 24px;display:flex;align-items:stretch;overflow-x:auto">
     <span class="ha-id"><b>${esc(S.name)}</b><span class="lime mono" style="font-size:11px">${priceMo(S.price)}</span></span>
     ${sec.map(s=>`<a href="#${s.id}" data-spy="${s.id}" class="ha-tab"><span class="n">${s.n}</span><span class="t">${s.title}</span><span class="s">${s.stat}</span></a>`).join("")}
    </div>
   </nav>
   <style>
-   .ha-tabs{position:sticky;top:var(--ptop,0px);z-index:30;background:${TINT4[0]};border-bottom:1px solid var(--stroke);border-top:1px solid var(--stroke)}
-   .ha-tab{display:flex;align-items:baseline;gap:10px;padding:14px 18px 12px;border-right:1px solid var(--stroke);white-space:nowrap;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-muted);box-shadow:inset 0 -3px 0 transparent}
-   .ha-tab:first-of-type{border-left:1px solid var(--stroke)}
+   .ha-up{display:inline-flex;align-items:center;gap:8px;background:none;border:1px solid var(--lime);color:var(--lime);font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:10px 16px;cursor:pointer}
+   .ha-up:hover{background:var(--lime);color:var(--lime-contrast)}.ha-up .tri{font-size:10px}.ha-up b{font-weight:900}
+   .ha-ghost{display:inline-flex;align-items:center;background:none;border:1px solid var(--stroke);color:var(--fg-secondary);font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:10px 16px;cursor:pointer}
+   .ha-ghost:hover{border-color:var(--fg-secondary)}
+   .ha-quiet{font-family:var(--mono);font-size:11px;color:var(--fg-muted);text-decoration:underline dotted;text-underline-offset:3px}.ha-quiet:hover{color:oklch(0.75 0.15 60)}
+   .ha-tabs{position:sticky;top:var(--ptop,0px);z-index:30;background:${TINT4[0]}}
+   .ha-tab{display:flex;align-items:baseline;gap:10px;padding:14px 18px 12px;white-space:nowrap;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-muted);box-shadow:inset 0 -3px 0 transparent}
    .ha-tab .n{color:var(--stroke-strong)}.ha-tab .s{font-weight:400;letter-spacing:.04em;text-transform:none;font-size:11px}
    .ha-tab.on{color:var(--lime);box-shadow:inset 0 -3px 0 var(--lime)}.ha-tab.on .n{color:var(--lime)}
+   .ha-tab:hover{color:var(--fg-primary)}
    .ha-id{display:none;align-items:center;gap:10px;padding:0 18px 0 0;margin-right:6px;font-size:12px;font-weight:900;text-transform:uppercase;white-space:nowrap}
    .ha-tabs.stuck .ha-id{display:flex}
-   @media(max-width:700px){.ha-tab .s{display:none}.ha-tabs .ha-id{display:none!important}.ha-tab{padding:12px 14px}.ha-tiles{grid-template-columns:1fr 1fr}}
+   /* nav: lines = round 1, quiet = one dim hairline, bare = tint only */
+   .ha-nav-lines{border-top:1px solid var(--stroke);border-bottom:1px solid var(--stroke)}
+   .ha-nav-lines .ha-tab{border-right:1px solid var(--stroke)}.ha-nav-lines .ha-tab:first-of-type{border-left:1px solid var(--stroke)}
+   .ha-nav-quiet{border-bottom:1px solid oklch(0.55 0.01 256 / 0.25)}
+   .ha-nav-quiet .ha-tab{padding-left:0;padding-right:0;margin-right:32px}
+   .ha-nav-bare{background:${TINT4[1]}}.ha-nav-bare .ha-tab{padding-left:0;padding-right:0;margin-right:32px}
+   .ha-nav-bare.stuck{box-shadow:0 8px 24px oklch(0 0 0 / .35)}
+   @media(max-width:700px){.ha-tab .s{display:none}.ha-tabs .ha-id{display:none!important}.ha-tab{padding:12px 14px}.ha-nav-quiet .ha-tab,.ha-nav-bare .ha-tab{margin-right:20px}.ha-tiles{grid-template-columns:1fr 1fr}.ha-tiles>div:first-child:not(.ha-tile){grid-column:1/3}}
   </style>`;
 }
 
@@ -125,7 +151,7 @@ function heroB(){
     <p style="font-size:clamp(20px,2.4vw,30px);line-height:1.3;max-width:900px;margin:36px 0 0;font-weight:500">${esc(S.oneLiner)}</p>
     <div style="margin-top:32px;border-top:1px solid var(--stroke);display:flex;gap:20px;flex-wrap:wrap;padding:12px 0" class="mono small muted">
       <span><b class="sec2">${num(U.sessions)}</b> sessions</span><span><b class="sec2">${U.activeDays}/30</b> days</span><span><b class="sec2">${W.lead.harnesses}</b> harnesses</span>
-      <span style="margin-left:auto">checked ${readCheckedAgo}</span></div>
+      <span style="margin-left:auto">updated ${readCheckedAgo}</span></div>
   </div></section>
   <nav id="hb-rail" class="hb-rail" aria-label="Sections">
     <div class="hb-line"><span id="hb-fill"></span></div>
@@ -169,7 +195,7 @@ function heroC(){
         <span class="mono" style="font-size:12px;font-weight:900;color:var(--stroke-strong)">${s.n}</span>
         <span><b style="font-size:15px;text-transform:uppercase;letter-spacing:-.01em">${s.title}</b><br><span class="small sec2">${s.line}</span></span>
         <span class="lime">↓</span></a>`).join("")}
-      <p class="mono small muted" style="padding:12px 20px 0">checked ${readCheckedAgo}</p>
+      <p class="mono small muted" style="padding:12px 20px 0">updated ${readCheckedAgo}</p>
     </div>
    </div>
   </div></section>

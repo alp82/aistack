@@ -182,3 +182,22 @@ on mobile.
 Rules carried from the real hero: no measured dollars in the hero (the only
 money is the authored price), nothing without a reading, the spy marks the
 section a third of the way down the viewport.
+
+## Round 2
+
+Operator verdict on round 1: v38 by far. Issues: the upvote, share and report
+chips are ugly, small, and ignore that the three actions differ in importance;
+the rule above the logo strip distracts (same grey as everything else);
+"built with" reads as "this page was built with"; "checked" should be
+"updated"; the subnav has too many lines.
+
+Four knobs on v38, cycling in the bottom bar (defaults first):
+
+- act: stacked (Upvote as a lime outline button and Share as a ghost button
+  under the one-liner, Report a dotted text link by the update stamp) /
+  tile (the two buttons head the tile column) / corner (top right of the hero)
+  / chips (round 1).
+- rule: dim (25% hairline) / none (spacing only) / line (round 1).
+- lbl: "runs on" / "11 tools" / none.
+- nav: quiet (one dim hairline, no tab borders) / bare (tint band, no lines,
+  shadow when stuck) / lines (round 1).

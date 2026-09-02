@@ -111,7 +111,7 @@ function measureAll(){
   for(const [k] of VARIANTS){probe.innerHTML=RENDER[k]();heights[k]=probe.scrollHeight;}
   probe.remove();
 }
-const KNOBS=[["title",["rail","num"]],["bands",["4","2"]],["name",["stats","usage"]],["rows",["acc","tabs"]],["top",["stack","side","merged","hero"]],["exp",["feature","grid","rows"]]];
+const KNOBS=[["title",["rail","num"]],["bands",["4","2"]],["name",["stats","usage"]],["rows",["acc","tabs"]],["top",["stack","side","merged","hero"]],["exp",["feature","grid","rows"]],["act",["stacked","tile","corner","chips"]],["rule",["dim","none","line"]],["lbl",["runs on","tools","none"]],["nav",["quiet","bare","lines"]]];
 function readOpts(){const p=new URLSearchParams(location.search);window.OPTS={};for(const [k,vals]of KNOBS)window.OPTS[k]=vals.includes(p.get(k))?p.get(k):vals[0];}
 function current(){const v=new URLSearchParams(location.search).get("v");return RENDER[v]?v:"v38";}
 function show(k,push){
