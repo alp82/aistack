@@ -259,3 +259,11 @@ Micro animations: the identity row unfolds (grid-rows 0fr to 1fr plus a fade)
 when the bar sticks and folds back on the way up; tab clicks smooth-scroll to
 the section and update the hash; the visibility segments ease between scroll
 frames. A click anywhere on the identity row scrolls smoothly to the top.
+
+## Round 10
+
+Tab clicks scroll so the bar is stuck on landing (never above the bar's own
+natural top), so the Stats tab keeps the identity row and it folds only when
+scrolling further up. The identity row's click-to-top is a real listener.
+Sparkline narrower with more room before the token figure; 64px between the
+title column and the tiles; the one-liner spans the title column.

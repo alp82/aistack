@@ -2306,11 +2306,11 @@ function heroA(){
   const reportSlot=act==="chips"?"":`<span style="margin-left:auto;display:flex;gap:16px;align-items:center" class="mono small muted"><span>updated ${readCheckedAgo}<\/span>${lnkReport}<\/span>`;
   return `<section style="background:${TINT4[0]};padding:56px 0 36px"><div style="max-width:1280px;margin:0 auto;padding:0 24px">
    ${act==="corner"?`<div style="display:flex;justify-content:flex-end;margin:-24px 0 8px">${actionsTopRight}<\/div>`:""}
-   <div style="display:grid;grid-template-columns:1fr auto;gap:40px;align-items:end" class="g2">
+   <div style="display:grid;grid-template-columns:1fr auto;gap:64px;align-items:end" class="g2">
     <div style="min-width:0" class="ha-left">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">${avatar352(40)}${byline352()}<\/div>
       <div class="ha-h1w"><h1 class="ha-h1">${esc(S.name)}<\/h1><\/div>
-      <p style="margin-top:14px;font-size:18px;color:var(--fg-secondary);max-width:560px">${esc(S.oneLiner)}<\/p>
+      <p style="margin-top:14px;font-size:18px;color:var(--fg-secondary)">${esc(S.oneLiner)}<\/p>
       ${actionsUnderTitle}
       <div style="display:flex;align-items:center;gap:10px;margin-top:26px;${ruleCss?ruleCss+";padding-top:16px":""}">
         ${label?`<span class="kick muted" style="margin-right:8px">${label}<\/span>`:""}<a href="#s-tools" style="display:flex;gap:10px;align-items:center">${toolsSorted.slice(0,shown).map(t=>`<span title="${esc(t.name)}${t.amount>0?" · "+priceMo(t.amount):""}" style="display:inline-flex;cursor:help">${toolIcn(t,36)}<\/span>`).join("")}${S.tools.length>shown?`<span class="chip" title="${toolsSorted.slice(shown).map(t=>esc(t.name)).join(", ")}" style="border-color:oklch(0.55 0.01 256 / 0.35);cursor:help;height:36px">+${S.tools.length-shown}<\/span>`:""}<\/a>
@@ -2332,11 +2332,11 @@ function heroA(){
    <\/div>
   <\/div><\/section>
   <nav id="ha-tabs" class="ha-tabs ha-nav-${nav}" aria-label="Sections">
-   <div class="ha-idrow" title="back to top" onclick="scrollTo({top:0,behavior:'smooth'})"><div class="ha-idin"><div style="max-width:1280px;margin:0 auto;padding:8px 24px;display:flex;align-items:center;gap:22px;overflow:hidden">
+   <div class="ha-idrow" title="back to top"><div class="ha-idin"><div style="max-width:1280px;margin:0 auto;padding:8px 24px;display:flex;align-items:center;gap:22px;overflow:hidden">
      ${avatar352(22)}<b style="font-size:12px;font-weight:900;text-transform:uppercase;white-space:nowrap">${esc(S.name)}<\/b>
      <span class="mono small sec2" style="white-space:nowrap">▲ ${UPVOTES}<\/span>
      <span class="mono small lime" style="white-space:nowrap;font-weight:700">${priceMo(S.price)}<\/span>
-     <span class="mono small" style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;white-space:nowrap"><span style="width:90px;display:inline-block">${spark(U.series,400,18)}<\/span><b>${fmtT(U.totalTokens)}<\/b> <span class="muted">tokens<\/span><\/span>
+     <span class="mono small" style="margin-left:auto;display:inline-flex;align-items:center;gap:14px;white-space:nowrap"><span style="width:70px;display:inline-block">${spark(U.series,400,18)}<\/span><b>${fmtT(U.totalTokens)}<\/b> <span class="muted">tokens<\/span><\/span>
    <\/div><\/div><\/div>
    <div style="max-width:1280px;margin:0 auto;padding:0 24px;display:flex;align-items:stretch;overflow-x:auto">
     ${sec.map(s=>`<a href="#${s.id}" data-spy="${s.id}" class="ha-tab"><span class="lab"><span class="n">${s.n}<\/span><span class="t">${s.title}<\/span><\/span><span class="s">${s.stat}<\/span><span class="vis"><\/span><\/a>`).join("")}
@@ -2519,7 +2519,9 @@ window.afterRender=function(){
     let s=MAX;h1.style.fontSize=s+"px";
     while(h1.offsetHeight>2*s*.88*1.05&&s>MIN){s-=2;h1.style.fontSize=s+"px";}
   };
-  document.querySelectorAll("#ha-tabs .ha-tab").forEach(a=>a.addEventListener("click",e=>{const t=document.getElementById(a.dataset.spy);if(!t)return;e.preventDefault();t.scrollIntoView({behavior:"smooth",block:"start"});history.replaceState(null,"","#"+t.id);}));
+  document.querySelectorAll("#ha-tabs .ha-tab").forEach(a=>a.addEventListener("click",e=>{const t=document.getElementById(a.dataset.spy);if(!t)return;e.preventDefault();const nav=document.getElementById("ha-tabs");const ptop=ptopOf();
+    const y=Math.max(nav.offsetTop-ptop,t.offsetTop-ptop-88);scrollTo({top:y,behavior:"smooth"});history.replaceState(null,"","#"+t.id);}));
+  const idrow=document.querySelector("#ha-tabs .ha-idrow");if(idrow)idrow.addEventListener("click",()=>scrollTo({top:0,behavior:"smooth"}));
   fitTitle();onScroll();
   const onResize=()=>{fitTitle();onScroll();};
   addEventListener("scroll",onScroll,{passive:true});addEventListener("resize",onResize);
