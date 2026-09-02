@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>#351 · whole-page compact pass</title>
+<title>#352 · hero and subnav (over the #351 compact page)</title>
 <style>
 /* PROTOTYPE - throwaway (ticket alp82/aistack#351). Tokens copied from src/styles.css (dark). */
 :root{
@@ -44,7 +44,7 @@ hr.rule{border:0;border-top:1px solid var(--stroke)}
 </head>
 <body>
 <div id="proto-head">
-  <span><b>alp82/aistack#351</b> · whole-page compact pass</span>
+  <span><b>alp82/aistack#352</b> · hero and subnav, over the v37 page from #351</span>
   <span>Alper's Coding Stack · real prod data, 2026-08-30</span>
   <span id="hnote"></span>
 </div>
@@ -55,6 +55,7 @@ hr.rule{border:0;border-top:1px solid var(--stroke)}
 <script>
 "use strict";
 const DATA = JSON.parse(document.getElementById("data").textContent);
+const _nm=new URLSearchParams(location.search).get("name");if(_nm)DATA.stack.name=_nm;
 const S = DATA.stack, U = DATA.usage, W = DATA.wf, P = DATA.projects;
 
 /* ---------- formatters (mirroring measured/copy.ts) ---------- */
@@ -96,10 +97,11 @@ function phaseStrip(h){
 <script src="variants4.js"></script>
 <script src="variants5.js"></script>
 <script src="variants6.js"></script>
+<script src="variants7.js"></script>
 <script>
 /* ---------- switcher ---------- */
-const VARIANTS=[["base","Baseline (today)"],["v1","V1 Tight editorial"],["v2","V2 Ledger"],["v3","V3 Mosaic"],["v4","V4 Split rail"],["v5","V5 Digest"],["v6","V6 Magazine"],["v7","V7 Terminal"],["v8","V8 Bento"],["v9","V9 Billboard"],["v10","V10 Blueprint"],["v11","V11 Receipt"],["v12","V12 Ticker"],["v13","V13 Spine"],["v14","V14 Rails"],["v15","V15 Split hero"],["v16","V16 Magazine deep"],["v17","V17 Billboard data"],["v18","V18 Windows"],["v19","V19 Blueprint ed."],["v20","V20 Dossier"],["v21","V21 Chapters"],["v22","V22 Mural"],["v23","V23 Console pro"],["v24","V24 Feature table"],["v25","V25 Story scroll"],["v26","V26 Tonal 4"],["v27","V27 Rail + drawer"],["v28","V28 Distributed"],["v29","V29 Timeline"],["v30","V30 Quiet drawers"],["v31","V31 One moment"],["v32","V32 Simple+details"],["v33","V33 Tabs"],["v34","V34 Distributed"],["v35","V35 Two level"],["v36","V36 Grouped scan"],["v37","V37 Composed"]];
-const RENDER={base:renderBaseline,v1:renderV1,v2:renderV2,v3:renderV3,v4:renderV4,v5:renderV5,v6:renderV6,v7:renderV7,v8:renderV8,v9:renderV9,v10:renderV10,v11:renderV11,v12:renderV12,v13:renderV13,v14:renderV14,v15:renderV15,v16:renderV16,v17:renderV17,v18:renderV18,v19:renderV19,v20:renderV20,v21:renderV21,v22:renderV22,v23:renderV23,v24:renderV24,v25:renderV25,v26:renderV26,v27:renderV27,v28:renderV28,v29:renderV29,v30:renderV30,v31:renderV31,v32:renderV32,v33:renderV33,v34:renderV34,v35:renderV35,v36:renderV36,v37:renderV37};
+const VARIANTS=[["base","Baseline (today)"],["v1","V1 Tight editorial"],["v2","V2 Ledger"],["v3","V3 Mosaic"],["v4","V4 Split rail"],["v5","V5 Digest"],["v6","V6 Magazine"],["v7","V7 Terminal"],["v8","V8 Bento"],["v9","V9 Billboard"],["v10","V10 Blueprint"],["v11","V11 Receipt"],["v12","V12 Ticker"],["v13","V13 Spine"],["v14","V14 Rails"],["v15","V15 Split hero"],["v16","V16 Magazine deep"],["v17","V17 Billboard data"],["v18","V18 Windows"],["v19","V19 Blueprint ed."],["v20","V20 Dossier"],["v21","V21 Chapters"],["v22","V22 Mural"],["v23","V23 Console pro"],["v24","V24 Feature table"],["v25","V25 Story scroll"],["v26","V26 Tonal 4"],["v27","V27 Rail + drawer"],["v28","V28 Distributed"],["v29","V29 Timeline"],["v30","V30 Quiet drawers"],["v31","V31 One moment"],["v32","V32 Simple+details"],["v33","V33 Tabs"],["v34","V34 Distributed"],["v35","V35 Two level"],["v36","V36 Grouped scan"],["v37","V37 Composed"],["v38","V38 Masthead + tabs"],["v39","V39 Figures first"],["v40","V40 Contents + scrubber"]];
+const RENDER={base:renderBaseline,v1:renderV1,v2:renderV2,v3:renderV3,v4:renderV4,v5:renderV5,v6:renderV6,v7:renderV7,v8:renderV8,v9:renderV9,v10:renderV10,v11:renderV11,v12:renderV12,v13:renderV13,v14:renderV14,v15:renderV15,v16:renderV16,v17:renderV17,v18:renderV18,v19:renderV19,v20:renderV20,v21:renderV21,v22:renderV22,v23:renderV23,v24:renderV24,v25:renderV25,v26:renderV26,v27:renderV27,v28:renderV28,v29:renderV29,v30:renderV30,v31:renderV31,v32:renderV32,v33:renderV33,v34:renderV34,v35:renderV35,v36:renderV36,v37:renderV37,v38:renderV38,v39:renderV39,v40:renderV40};
 const page=document.getElementById("page");
 const heights={};
 function measureAll(){
@@ -110,17 +112,25 @@ function measureAll(){
   for(const [k] of VARIANTS){probe.innerHTML=RENDER[k]();heights[k]=probe.scrollHeight;}
   probe.remove();
 }
-const KNOBS=[["title",["rail","num"]],["bands",["4","2"]],["name",["stats","usage"]],["rows",["acc","tabs"]],["top",["stack","side","merged","hero"]],["exp",["feature","grid","rows"]]];
-function readOpts(){const p=new URLSearchParams(location.search);window.OPTS={};for(const [k,vals]of KNOBS)window.OPTS[k]=vals.includes(p.get(k))?p.get(k):vals[0];}
-function current(){const v=new URLSearchParams(location.search).get("v");return RENDER[v]?v:"v37";}
+const KNOBS=[["title",["rail","num"]],["bands",["4","2"]],["name",["stats","usage"]],["rows",["acc","tabs"]],["top",["stack","side","merged","hero"]],["exp",["feature","grid","rows"]],["act",["tile","stacked","corner","chips"]],["rule",["none","dim2","dim","line"]],["lbl",["none","runs on","tools"]],["nav",["quiet","bare","lines"]],["win",["30d","7d","24h"]]];
+const KNOBS_352=["act","rule","lbl","nav"]; // win is set by the page's own dropdown
+function readOpts(){const p=new URLSearchParams(location.search);window.OPTS={};for(const [k,vals]of KNOBS)window.OPTS[k]=vals.includes(p.get(k))?p.get(k):vals[0];window.WIN_TXT={"30d":"last 30 days","7d":"last 7 days","24h":"last 24 hours"}[window.OPTS.win];}
+function current(){const v=new URLSearchParams(location.search).get("v");return RENDER[v]?v:"v38";}
 function show(k,push){
   readOpts();
   page.innerHTML=RENDER[k]();
+  if(window.afterRender)afterRender();
   if(push){const u=new URL(location);u.searchParams.set("v",k);history.replaceState(null,"",u);}
   const bar=document.getElementById("switcher");
-  bar.innerHTML=VARIANTS.map(([id,label])=>`<button class="${id===k?"on":""}" data-v="${id}" title="${label}">${label.split(" ")[0].replace("Baseline","Base")}</button>`).join("")+
-    (k==="v37"?KNOBS.map(([key,vals])=>{const cur=window.OPTS[key];const next=vals[(vals.indexOf(cur)+1)%vals.length];return `<button class="knob" data-k="${key}" data-next="${next}" style="border-left:1px solid var(--stroke);color:var(--lime)">${key}: ${cur}</button>`;}).join(""):"")+
-    `<span class="h" id="hread"></span>`;
+  const more=sessionStorage.getItem("more352")==="1";
+  const vBtns=VARIANTS.map(([id,label])=>`<button class="${id===k?"on":""}" data-v="${id}" title="${label}">${label.split(" ")[0].replace("Baseline","Base")}</button>`).join("");
+  const knobBtn=([key,vals])=>{const cur=window.OPTS[key];const next=vals[(vals.indexOf(cur)+1)%vals.length];return `<button class="knob" data-k="${key}" data-next="${next}" style="border-left:1px solid var(--stroke);color:var(--lime)">${key}: ${cur}</button>`;};
+  const mine=KNOBS.filter(([key])=>KNOBS_352.includes(key)), old=KNOBS.filter(([key])=>!KNOBS_352.includes(key));
+  bar.innerHTML=`<button id="more352" title="show every variant and the v37 toggles">${more?"less":"…"}</button>`+
+    (more?vBtns+old.map(knobBtn).join(""):`<span class="h" style="border:0">${k}</span>`)+
+    (/^v(37|38|39|40)$/.test(k)?mine.map(knobBtn).join(""):"")+
+    `<button class="knob" style="border-left:1px solid var(--stroke)" title="open this variant in a 390px window" onclick="open(location.href,'m352','width=390,height=780')">📱 390</button><span class="h" id="hread"></span>`;
+  document.getElementById("more352").onclick=()=>{sessionStorage.setItem("more352",more?"0":"1");show(k,false);};
   bar.querySelectorAll("button[data-v]").forEach(b=>b.onclick=()=>show(b.dataset.v,true));
   bar.querySelectorAll("button.knob").forEach(b=>b.onclick=()=>{const u=new URL(location);u.searchParams.set(b.dataset.k,b.dataset.next);history.replaceState(null,"",u);show(k,false);});
   const hn=document.getElementById("hnote");
@@ -128,7 +138,8 @@ function show(k,push){
   const ratio=heights.base?Math.round(heights[k]/heights.base*100):null;
   document.getElementById("hread").textContent=ratio?`${label} · ${ratio}% of baseline height`:label;
   hn.textContent=ratio?`${Math.round(heights[k]/100)/10}k px vs baseline ${Math.round(heights.base/100)/10}k px`:"";
-  window.scrollTo(0,0);
+  const y=Number(new URLSearchParams(location.search).get("y")||0);
+  window.scrollTo(0,y);
 }
 addEventListener("keydown",e=>{
   if(/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;

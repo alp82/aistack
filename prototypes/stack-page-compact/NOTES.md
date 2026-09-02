@@ -143,3 +143,139 @@ what to replace, what to combine, like the previous tooltips) and depends on
 the hero prototype (#352). The accepted design is v37 with rail title,
 4 tints, "Stats", exclusive accordion, stack top block, feature expansion:
 /index.html?v=v37
+
+# Hero and subnav (alp82/aistack#352)
+
+Same demo, same data. The accepted v37 body stays untouched under each variant;
+only the top of the page and the section navigation change. Default variant is
+now v38. The bottom bar keeps the v37 knobs on v38-v40 and gains a "390" button
+that opens the current variant in a 390px window for the mobile read.
+
+## Round 1
+
+Three hero and subnav pairs, each answering the same three questions: what the
+hero promises, how the subnav guides and tracks scroll, and how both behave
+on mobile.
+
+- v38 Masthead + tabs. Hero promises identity plus two figures: the authored
+  price (lime tile, hover for the breakdown) and the measured tokens (outlined
+  tile with the 30-day sparkline, links to Stats), then a "built with" logo
+  strip. Subnav is a tab bar under the hero that sticks under the site header;
+  each tab carries the section's stat, the current tab gets a lime underline,
+  and the stack name and price appear in the bar once it is stuck. Mobile: tiles
+  side by side, tabs scroll horizontally with the stats dropped.
+- v39 Figures first. The four section figures are the hero: 6.18B tokens,
+  6 projects, 11 tools at $336/mo, 2 min guide, one tile each with a watermark
+  chart, every tile a link to its section. The name shrinks to a masthead line,
+  the one-liner follows in large type. Subnav is a vertical rail on the left on
+  screens wider than 1560px, with a lime progress line that fills as the page is
+  read; narrower screens get a sticky strip of the same four figures under the
+  header. Mobile: tiles in a 2x2 grid, figure strip stays pinned.
+- v40 Contents + scrubber. Hero is a two-column split: name, one-liner and
+  byline on the left, an "in this stack" ladder on the right with one sentence
+  per section (numbers only, no adjectives), each a link. Subnav is a reading
+  scrubber pinned under the header once the hero leaves: four segments sized by
+  section height, the current one underlined, a lime fill that shows how far
+  through each section the reader is. Mobile: the segments keep only their
+  numbers except the current one.
+
+Rules carried from the real hero: no measured dollars in the hero (the only
+money is the authored price), nothing without a reading, the spy marks the
+section a third of the way down the viewport.
+
+## Round 2
+
+Operator verdict on round 1: v38 by far. Issues: the upvote, share and report
+chips are ugly, small, and ignore that the three actions differ in importance;
+the rule above the logo strip distracts (same grey as everything else);
+"built with" reads as "this page was built with"; "checked" should be
+"updated"; the subnav has too many lines.
+
+Four knobs on v38, cycling in the bottom bar (defaults first):
+
+- act: stacked (Upvote as a lime outline button and Share as a ghost button
+  under the one-liner, Report a dotted text link by the update stamp) /
+  tile (the two buttons head the tile column) / corner (top right of the hero)
+  / chips (round 1).
+- rule: dim (25% hairline) / none (spacing only) / line (round 1).
+- lbl: "runs on" / "11 tools" / none.
+- nav: quiet (one dim hairline, no tab borders) / bare (tint band, no lines,
+  shadow when stuck) / lines (round 1).
+
+## Round 3
+
+Locked: act tile, lbl none (logos carry tooltips with name and price, the +N
+chip lists the rest), nav quiet with no stats and every tab 180px wide. rule
+none gained more room; new rule dim2 draws the hairline above and below the
+logo strip for symmetry. The bottom bar collapses the 40 variants and the v37
+knobs behind a "…" button; only the #352 knobs show by default.
+
+## Round 4
+
+Title fitter: the name shrinks from 88px until it fits one line; below 44px it
+wraps to two lines and shrinks again to fit two. The title block reserves two
+lines of height so every stack's hero is the same height. `?name=...` swaps in
+any name to test it. Mobile keeps the buttons at their natural width and puts
+the two tiles side by side. The quiet subnav underlines only the label, not the
+180px tab. The "// sync" style kickers are gone from the section rails.
+
+## Round 5
+
+Name and one-liner sit right under the byline; the tool row follows at 36px
+logos, five tools with a +N chip, or all six when there are six. The update
+stamp and Report link sit under the tokens tile as part of the column. Quiet
+subnav tabs are 150px wide with a 20px gap and the underline spans the tab.
+The left column reserves a fixed height so a one-line name gets the space.
+
+## Round 6
+
+Quiet tabs are 100px wide with a 14px gap. The underline is now a visibility
+indicator: each tab's lime segment covers the part of its section that is on
+screen (left edge = share scrolled past the top, right edge = share still
+below the fold), so one continuous line across the tabs shows what is on
+screen. The stuck bar keeps the name on the left and moves the price to the
+far right.
+
+## Round 7
+
+The stuck subnav is two lines: an identity row (avatar, name, author, price,
+30-day sparkline with the token total, upvotes) appears above the unchanged
+tab row, so nothing shifts sideways. Tabs are 136px wide with no gap, so the
+visibility segments join into one line. Mobile keeps avatar and name only in
+the identity row.
+
+## Round 8
+
+Identity row: avatar, name, upvotes, price; sparkline and token total on the
+right. A "window" dropdown (30 days, 7 days, 24 hours) ends the tab row and
+sets `?win=`, which relabels the Stats meta and headline (the demo has 30-day
+data only, so the figures do not change). The visibility segments overlap
+their neighbor by 1px to close the seam. A tab is active while at least half
+of its section, or half of the viewport, shows it.
+
+## Round 9
+
+Micro animations: the identity row unfolds (grid-rows 0fr to 1fr plus a fade)
+when the bar sticks and folds back on the way up; tab clicks smooth-scroll to
+the section and update the hash; the visibility segments ease between scroll
+frames. A click anywhere on the identity row scrolls smoothly to the top.
+
+## Round 10
+
+Tab clicks scroll so the bar is stuck on landing (never above the bar's own
+natural top), so the Stats tab keeps the identity row and it folds only when
+scrolling further up. The identity row's click-to-top is a real listener.
+Sparkline narrower with more room before the token figure; 64px between the
+title column and the tiles; the one-liner spans the title column.
+
+## Round 11
+
+Bug: tab clicks could not scroll up. `offsetTop` of the sticky bar reports the
+stuck position while stuck, so the "never above the bar" floor equalled the
+current scroll. The floor now comes from the hero's bottom.
+
+## Round 12 - locked
+
+Operator locked v38 as it stands after round 11: /index.html?v=v38 with the
+default knobs (act tile, rule none, lbl none, nav quiet). Implementation is
+#356.

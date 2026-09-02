@@ -27,7 +27,7 @@ function metricBlock(){
     <div style="position:relative;padding:12px">
       <button type="button" onclick="this.querySelector('i').textContent=FACTS[(++this.dataset.i)%FACTS.length]" data-i="0" style="all:unset;cursor:pointer;display:block">
         <span class="mono" style="font-size:clamp(44px,5.4vw,60px);font-weight:900;line-height:1;display:block">${fmtT(U.totalTokens)}</span>
-        <span class="kick muted" style="display:block;margin-top:8px">tokens · last 30 days</span>
+        <span class="kick muted" style="display:block;margin-top:8px">tokens · ${window.WIN_TXT||"last 30 days"}</span>
         <i class="mono small lime" style="display:block;font-style:normal;margin-top:4px">≈ tap for a fun fact</i>
       </button>
       <p class="mono small muted" style="margin-top:6px">${fmtT(FRESH)} fresh · ${fmtT(CACHED)} cached</p>
