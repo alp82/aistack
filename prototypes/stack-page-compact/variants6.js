@@ -19,8 +19,8 @@ function sec37(i,n,kick,title,meta,body){
   return `<section style="background:${bg};padding:48px 0"><div style="max-width:1280px;margin:0 auto;padding:0 24px">
     <div style="display:grid;grid-template-columns:170px 1fr;gap:40px" class="rl2">
       <div><div class="mono" style="font-size:48px;font-weight:900;color:var(--lime);line-height:1">${n}</div>
-        <p class="kick lime" style="margin-top:8px">${kick}</p>
-        <h2 style="font-size:21px;font-weight:900;text-transform:uppercase;letter-spacing:-.01em;margin-top:2px">${title}</h2>
+        ${kick?`<p class="kick lime" style="margin-top:8px">${kick}</p>`:""}
+        <h2 style="font-size:21px;font-weight:900;text-transform:uppercase;letter-spacing:-.01em;margin-top:${kick?"2px":"10px"}">${title}</h2>
         <p class="mono small muted" style="margin-top:12px;line-height:1.7">${meta||""}</p></div>
       <div style="min-width:0">${body}</div>
     </div></div></section>`;

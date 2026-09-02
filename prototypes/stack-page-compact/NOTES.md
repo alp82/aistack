@@ -209,3 +209,12 @@ chip lists the rest), nav quiet with no stats and every tab 180px wide. rule
 none gained more room; new rule dim2 draws the hairline above and below the
 logo strip for symmetry. The bottom bar collapses the 40 variants and the v37
 knobs behind a "…" button; only the #352 knobs show by default.
+
+## Round 4
+
+Title fitter: the name shrinks from 88px until it fits one line; below 44px it
+wraps to two lines and shrinks again to fit two. The title block reserves two
+lines of height so every stack's hero is the same height. `?name=...` swaps in
+any name to test it. Mobile keeps the buttons at their natural width and puts
+the two tiles side by side. The quiet subnav underlines only the label, not the
+180px tab. The "// sync" style kickers are gone from the section rails.

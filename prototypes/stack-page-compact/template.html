@@ -55,6 +55,7 @@ hr.rule{border:0;border-top:1px solid var(--stroke)}
 <script>
 "use strict";
 const DATA = JSON.parse(document.getElementById("data").textContent);
+const _nm=new URLSearchParams(location.search).get("name");if(_nm)DATA.stack.name=_nm;
 const S = DATA.stack, U = DATA.usage, W = DATA.wf, P = DATA.projects;
 
 /* ---------- formatters (mirroring measured/copy.ts) ---------- */
