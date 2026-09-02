@@ -111,7 +111,8 @@ function measureAll(){
   for(const [k] of VARIANTS){probe.innerHTML=RENDER[k]();heights[k]=probe.scrollHeight;}
   probe.remove();
 }
-const KNOBS=[["title",["rail","num"]],["bands",["4","2"]],["name",["stats","usage"]],["rows",["acc","tabs"]],["top",["stack","side","merged","hero"]],["exp",["feature","grid","rows"]],["act",["stacked","tile","corner","chips"]],["rule",["dim","none","line"]],["lbl",["runs on","tools","none"]],["nav",["quiet","bare","lines"]]];
+const KNOBS=[["title",["rail","num"]],["bands",["4","2"]],["name",["stats","usage"]],["rows",["acc","tabs"]],["top",["stack","side","merged","hero"]],["exp",["feature","grid","rows"]],["act",["tile","stacked","corner","chips"]],["rule",["none","dim2","dim","line"]],["lbl",["none","runs on","tools"]],["nav",["quiet","bare","lines"]]];
+const KNOBS_352=["act","rule","lbl","nav"];
 function readOpts(){const p=new URLSearchParams(location.search);window.OPTS={};for(const [k,vals]of KNOBS)window.OPTS[k]=vals.includes(p.get(k))?p.get(k):vals[0];}
 function current(){const v=new URLSearchParams(location.search).get("v");return RENDER[v]?v:"v38";}
 function show(k,push){
@@ -120,9 +121,15 @@ function show(k,push){
   if(window.afterRender)afterRender();
   if(push){const u=new URL(location);u.searchParams.set("v",k);history.replaceState(null,"",u);}
   const bar=document.getElementById("switcher");
-  bar.innerHTML=VARIANTS.map(([id,label])=>`<button class="${id===k?"on":""}" data-v="${id}" title="${label}">${label.split(" ")[0].replace("Baseline","Base")}</button>`).join("")+
-    (/^v(37|38|39|40)$/.test(k)?KNOBS.map(([key,vals])=>{const cur=window.OPTS[key];const next=vals[(vals.indexOf(cur)+1)%vals.length];return `<button class="knob" data-k="${key}" data-next="${next}" style="border-left:1px solid var(--stroke);color:var(--lime)">${key}: ${cur}</button>`;}).join(""):"")+
+  const more=sessionStorage.getItem("more352")==="1";
+  const vBtns=VARIANTS.map(([id,label])=>`<button class="${id===k?"on":""}" data-v="${id}" title="${label}">${label.split(" ")[0].replace("Baseline","Base")}</button>`).join("");
+  const knobBtn=([key,vals])=>{const cur=window.OPTS[key];const next=vals[(vals.indexOf(cur)+1)%vals.length];return `<button class="knob" data-k="${key}" data-next="${next}" style="border-left:1px solid var(--stroke);color:var(--lime)">${key}: ${cur}</button>`;};
+  const mine=KNOBS.filter(([key])=>KNOBS_352.includes(key)), old=KNOBS.filter(([key])=>!KNOBS_352.includes(key));
+  bar.innerHTML=`<button id="more352" title="show every variant and the v37 toggles">${more?"less":"…"}</button>`+
+    (more?vBtns+old.map(knobBtn).join(""):`<span class="h" style="border:0">${k}</span>`)+
+    (/^v(37|38|39|40)$/.test(k)?mine.map(knobBtn).join(""):"")+
     `<button class="knob" style="border-left:1px solid var(--stroke)" title="open this variant in a 390px window" onclick="open(location.href,'m352','width=390,height=780')">📱 390</button><span class="h" id="hread"></span>`;
+  document.getElementById("more352").onclick=()=>{sessionStorage.setItem("more352",more?"0":"1");show(k,false);};
   bar.querySelectorAll("button[data-v]").forEach(b=>b.onclick=()=>show(b.dataset.v,true));
   bar.querySelectorAll("button.knob").forEach(b=>b.onclick=()=>{const u=new URL(location);u.searchParams.set(b.dataset.k,b.dataset.next);history.replaceState(null,"",u);show(k,false);});
   const hn=document.getElementById("hnote");

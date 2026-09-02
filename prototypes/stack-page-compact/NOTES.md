@@ -201,3 +201,11 @@ Four knobs on v38, cycling in the bottom bar (defaults first):
 - lbl: "runs on" / "11 tools" / none.
 - nav: quiet (one dim hairline, no tab borders) / bare (tint band, no lines,
   shadow when stuck) / lines (round 1).
+
+## Round 3
+
+Locked: act tile, lbl none (logos carry tooltips with name and price, the +N
+chip lists the rest), nav quiet with no stats and every tab 180px wide. rule
+none gained more room; new rule dim2 draws the hairline above and below the
+logo strip for symmetry. The bottom bar collapses the 40 variants and the v37
+knobs behind a "…" button; only the #352 knobs show by default.

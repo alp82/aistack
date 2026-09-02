@@ -55,7 +55,8 @@ function heroA(){
   const sec=sections352();
   const shown=8;
   const act=OPT("act"), rule=OPT("rule"), lbl=OPT("lbl"), nav=OPT("nav");
-  const ruleCss=rule==="line"?"border-top:1px solid var(--stroke)":rule==="dim"?"border-top:1px solid oklch(0.55 0.01 256 / 0.25)":"";
+  const hair="1px solid oklch(0.55 0.01 256 / 0.25)";
+  const ruleCss=rule==="line"?"border-top:1px solid var(--stroke)":rule==="dim"?`border-top:${hair}`:rule==="dim2"?`border-top:${hair};border-bottom:${hair};padding-bottom:20px`:"";
   const label=lbl==="runs on"?"runs on":lbl==="tools"?`${S.tools.length} tools`:"";
   /* the three actions, arranged by importance: upvote > share > report */
   const btnUp=`<button class="ha-up" type="button"><span class="tri">▲</span> Upvote <b>${UPVOTES}</b></button>`;
@@ -88,8 +89,8 @@ function heroA(){
       </a>
     </div>
    </div>
-   <div style="display:flex;align-items:center;gap:8px;margin-top:${rule==="none"?"36px":"32px"};padding-top:${rule==="none"?"0":"20px"};${ruleCss};flex-wrap:wrap">
-     ${label?`<span class="kick muted" style="margin-right:8px">${label}</span>`:""}<a href="#s-tools" style="display:flex;gap:8px;align-items:center">${toolsSorted.slice(0,shown).map(t=>toolIcn(t,28)).join("")}<span class="chip" style="border-color:oklch(0.55 0.01 256 / 0.35)">+${S.tools.length-shown}</span></a>
+   <div style="display:flex;align-items:center;gap:8px;margin-top:${rule==="none"?"44px":"32px"};padding-top:${rule==="none"?"0":"20px"};padding-bottom:${rule==="none"?"8px":"0"};${ruleCss};flex-wrap:wrap">
+     ${label?`<span class="kick muted" style="margin-right:8px">${label}</span>`:""}<a href="#s-tools" style="display:flex;gap:8px;align-items:center">${toolsSorted.slice(0,shown).map(t=>`<span title="${esc(t.name)}${t.amount>0?" · "+priceMo(t.amount):""}" style="display:inline-flex;cursor:help">${toolIcn(t,28)}</span>`).join("")}<span class="chip" title="${toolsSorted.slice(shown).map(t=>esc(t.name)).join(", ")}" style="border-color:oklch(0.55 0.01 256 / 0.35);cursor:help">+${S.tools.length-shown}</span></a>
      ${reportSlot||`<span class="mono small muted" style="margin-left:auto">updated ${readCheckedAgo}</span>`}
    </div>
   </div></section>
@@ -116,7 +117,7 @@ function heroA(){
    .ha-nav-lines{border-top:1px solid var(--stroke);border-bottom:1px solid var(--stroke)}
    .ha-nav-lines .ha-tab{border-right:1px solid var(--stroke)}.ha-nav-lines .ha-tab:first-of-type{border-left:1px solid var(--stroke)}
    .ha-nav-quiet{border-bottom:1px solid oklch(0.55 0.01 256 / 0.25)}
-   .ha-nav-quiet .ha-tab{padding-left:0;padding-right:0;margin-right:32px}
+   .ha-nav-quiet .ha-tab{padding-left:0;padding-right:0;width:180px;flex:none;justify-content:flex-start}.ha-nav-quiet .ha-tab .s{display:none}
    .ha-nav-bare{background:${TINT4[1]}}.ha-nav-bare .ha-tab{padding-left:0;padding-right:0;margin-right:32px}
    .ha-nav-bare.stuck{box-shadow:0 8px 24px oklch(0 0 0 / .35)}
    @media(max-width:700px){.ha-tab .s{display:none}.ha-tabs .ha-id{display:none!important}.ha-tab{padding:12px 14px}.ha-nav-quiet .ha-tab,.ha-nav-bare .ha-tab{margin-right:20px}.ha-tiles{grid-template-columns:1fr 1fr}.ha-tiles>div:first-child:not(.ha-tile){grid-column:1/3}}
