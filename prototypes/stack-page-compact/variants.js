@@ -188,7 +188,7 @@ function renderBaseline(){
    - one cost footnote for the whole page instead of captions per figure
    ========================================================================= */
 const COST_NOTE = `≥ list prices · ${pct(U.pricedShare)} of tokens priced · ${U.tables.join(" · ")}`;
-const wfCells = W.rows.map(r=>({name:r.name,fig:rowVal(r),label:r.label}));
+const wfCells = W.rows.map(r=>({id:r.id,name:r.name,fig:rowVal(r),label:r.label}));
 
 /* =========================================================================
    V1 TIGHT EDITORIAL - today's layout language at half rhythm.

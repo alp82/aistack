@@ -4,7 +4,7 @@ d=open('slim.json').read().replace('</','<\\/')
 h=open('template.html').read()
 assert '__DATA__' in h
 h=h.replace('__DATA__',d)
-for f in ('variants.js','variants2.js','variants3.js','variants4.js'):
+for f in ('variants.js','variants2.js','variants3.js','variants4.js','variants5.js'):
     v=open(f).read().replace('</','<\\/')
     h=h.replace(f'<script src="{f}"></script>','<script>\n'+v+'\n</script>')
 open('index.html','w').write(h)

@@ -79,3 +79,26 @@ Six refinements of v16, one per axis:
 - v29 Timeline - usage leads with an annotated 30-day timeline (tokens+commits).
 - v30 Quiet drawers - value layer only, every deep layer behind styled drawers.
 - v31 One moment - each section spends its boldness on one giant statement.
+
+## Round 5
+
+Operator verdict on round 4: v27 frame is strong (title rail, two shades,
+drawer presentation). The originals must come back: the metric block with the
+fun-fact deck, the cost tooltip, and the colored model breakdown with notches
+(screenshot attached in thread). Usage still the open problem: prefer tabbed
+or simple-to-details. v28's distributed idea approved but its stats never
+rendered. Section rename idea: "Stats". v30 and v31 rejected.
+
+Bug found and fixed: wfCells never carried the row id, so every micro chart in
+rounds 3 and 4 silently rendered empty. That was the "wall of labels".
+
+Five treatments of the Stats interior, all in the locked v27 frame with the
+rebuilt originals up top (watermark metric block, fun facts on tap, cost hover
+card, colored breakdown with hatched notches):
+
+- v32 Simple to details - podium of three, then the drawer with twelve.
+- v33 Tabs - the five familiar tabs, compact, pure CSS.
+- v34 Distributed - time stays in Stats, git stats to Projects, usage stats
+  to Tools, all rendering real figures now.
+- v35 Two level - value layer only, drawer opens the full tabbed set.
+- v36 Grouped scan - every measurement one row with its chart beside it.

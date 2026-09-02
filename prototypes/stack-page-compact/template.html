@@ -94,10 +94,11 @@ function phaseStrip(h){
 <script src="variants2.js"></script>
 <script src="variants3.js"></script>
 <script src="variants4.js"></script>
+<script src="variants5.js"></script>
 <script>
 /* ---------- switcher ---------- */
-const VARIANTS=[["base","Baseline (today)"],["v1","V1 Tight editorial"],["v2","V2 Ledger"],["v3","V3 Mosaic"],["v4","V4 Split rail"],["v5","V5 Digest"],["v6","V6 Magazine"],["v7","V7 Terminal"],["v8","V8 Bento"],["v9","V9 Billboard"],["v10","V10 Blueprint"],["v11","V11 Receipt"],["v12","V12 Ticker"],["v13","V13 Spine"],["v14","V14 Rails"],["v15","V15 Split hero"],["v16","V16 Magazine deep"],["v17","V17 Billboard data"],["v18","V18 Windows"],["v19","V19 Blueprint ed."],["v20","V20 Dossier"],["v21","V21 Chapters"],["v22","V22 Mural"],["v23","V23 Console pro"],["v24","V24 Feature table"],["v25","V25 Story scroll"],["v26","V26 Tonal 4"],["v27","V27 Rail + drawer"],["v28","V28 Distributed"],["v29","V29 Timeline"],["v30","V30 Quiet drawers"],["v31","V31 One moment"]];
-const RENDER={base:renderBaseline,v1:renderV1,v2:renderV2,v3:renderV3,v4:renderV4,v5:renderV5,v6:renderV6,v7:renderV7,v8:renderV8,v9:renderV9,v10:renderV10,v11:renderV11,v12:renderV12,v13:renderV13,v14:renderV14,v15:renderV15,v16:renderV16,v17:renderV17,v18:renderV18,v19:renderV19,v20:renderV20,v21:renderV21,v22:renderV22,v23:renderV23,v24:renderV24,v25:renderV25,v26:renderV26,v27:renderV27,v28:renderV28,v29:renderV29,v30:renderV30,v31:renderV31};
+const VARIANTS=[["base","Baseline (today)"],["v1","V1 Tight editorial"],["v2","V2 Ledger"],["v3","V3 Mosaic"],["v4","V4 Split rail"],["v5","V5 Digest"],["v6","V6 Magazine"],["v7","V7 Terminal"],["v8","V8 Bento"],["v9","V9 Billboard"],["v10","V10 Blueprint"],["v11","V11 Receipt"],["v12","V12 Ticker"],["v13","V13 Spine"],["v14","V14 Rails"],["v15","V15 Split hero"],["v16","V16 Magazine deep"],["v17","V17 Billboard data"],["v18","V18 Windows"],["v19","V19 Blueprint ed."],["v20","V20 Dossier"],["v21","V21 Chapters"],["v22","V22 Mural"],["v23","V23 Console pro"],["v24","V24 Feature table"],["v25","V25 Story scroll"],["v26","V26 Tonal 4"],["v27","V27 Rail + drawer"],["v28","V28 Distributed"],["v29","V29 Timeline"],["v30","V30 Quiet drawers"],["v31","V31 One moment"],["v32","V32 Simple+details"],["v33","V33 Tabs"],["v34","V34 Distributed"],["v35","V35 Two level"],["v36","V36 Grouped scan"]];
+const RENDER={base:renderBaseline,v1:renderV1,v2:renderV2,v3:renderV3,v4:renderV4,v5:renderV5,v6:renderV6,v7:renderV7,v8:renderV8,v9:renderV9,v10:renderV10,v11:renderV11,v12:renderV12,v13:renderV13,v14:renderV14,v15:renderV15,v16:renderV16,v17:renderV17,v18:renderV18,v19:renderV19,v20:renderV20,v21:renderV21,v22:renderV22,v23:renderV23,v24:renderV24,v25:renderV25,v26:renderV26,v27:renderV27,v28:renderV28,v29:renderV29,v30:renderV30,v31:renderV31,v32:renderV32,v33:renderV33,v34:renderV34,v35:renderV35,v36:renderV36};
 const page=document.getElementById("page");
 const heights={};
 function measureAll(){
@@ -107,7 +108,7 @@ function measureAll(){
   for(const [k] of VARIANTS){probe.innerHTML=RENDER[k]();heights[k]=probe.scrollHeight;}
   probe.remove();
 }
-function current(){const v=new URLSearchParams(location.search).get("v");return RENDER[v]?v:"v26";}
+function current(){const v=new URLSearchParams(location.search).get("v");return RENDER[v]?v:"v32";}
 function show(k,push){
   page.innerHTML=RENDER[k]();
   if(push){const u=new URL(location);u.searchParams.set("v",k);history.replaceState(null,"",u);}
