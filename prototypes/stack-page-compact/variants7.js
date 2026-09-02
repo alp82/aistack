@@ -283,7 +283,8 @@ window.afterRender=function(){
     while(h1.offsetHeight>2*s*.88*1.05&&s>MIN){s-=2;h1.style.fontSize=s+"px";}
   };
   document.querySelectorAll("#ha-tabs .ha-tab").forEach(a=>a.addEventListener("click",e=>{const t=document.getElementById(a.dataset.spy);if(!t)return;e.preventDefault();const nav=document.getElementById("ha-tabs");const ptop=ptopOf();
-    const y=Math.max(nav.offsetTop-ptop,t.offsetTop-ptop-88);scrollTo({top:y,behavior:"smooth"});history.replaceState(null,"","#"+t.id);}));
+    const navTop=hero.offsetTop+hero.offsetHeight; /* nav.offsetTop reports the STUCK position while stuck */
+    const y=Math.max(navTop-ptop,t.offsetTop-ptop-88);scrollTo({top:y,behavior:"smooth"});history.replaceState(null,"","#"+t.id);}));
   const idrow=document.querySelector("#ha-tabs .ha-idrow");if(idrow)idrow.addEventListener("click",()=>scrollTo({top:0,behavior:"smooth"}));
   fitTitle();onScroll();
   const onResize=()=>{fitTitle();onScroll();};

@@ -267,3 +267,9 @@ natural top), so the Stats tab keeps the identity row and it folds only when
 scrolling further up. The identity row's click-to-top is a real listener.
 Sparkline narrower with more room before the token figure; 64px between the
 title column and the tiles; the one-liner spans the title column.
+
+## Round 11
+
+Bug: tab clicks could not scroll up. `offsetTop` of the sticky bar reports the
+stuck position while stuck, so the "never above the bar" floor equalled the
+current scroll. The floor now comes from the hero's bottom.
