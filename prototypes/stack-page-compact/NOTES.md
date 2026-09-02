@@ -243,3 +243,12 @@ The stuck subnav is two lines: an identity row (avatar, name, author, price,
 tab row, so nothing shifts sideways. Tabs are 136px wide with no gap, so the
 visibility segments join into one line. Mobile keeps avatar and name only in
 the identity row.
+
+## Round 8
+
+Identity row: avatar, name, upvotes, price; sparkline and token total on the
+right. A "window" dropdown (30 days, 7 days, 24 hours) ends the tab row and
+sets `?win=`, which relabels the Stats meta and headline (the demo has 30-day
+data only, so the figures do not change). The visibility segments overlap
+their neighbor by 1px to close the seam. A tab is active while at least half
+of its section, or half of the viewport, shows it.

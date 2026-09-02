@@ -112,9 +112,9 @@ function measureAll(){
   for(const [k] of VARIANTS){probe.innerHTML=RENDER[k]();heights[k]=probe.scrollHeight;}
   probe.remove();
 }
-const KNOBS=[["title",["rail","num"]],["bands",["4","2"]],["name",["stats","usage"]],["rows",["acc","tabs"]],["top",["stack","side","merged","hero"]],["exp",["feature","grid","rows"]],["act",["tile","stacked","corner","chips"]],["rule",["none","dim2","dim","line"]],["lbl",["none","runs on","tools"]],["nav",["quiet","bare","lines"]]];
-const KNOBS_352=["act","rule","lbl","nav"];
-function readOpts(){const p=new URLSearchParams(location.search);window.OPTS={};for(const [k,vals]of KNOBS)window.OPTS[k]=vals.includes(p.get(k))?p.get(k):vals[0];}
+const KNOBS=[["title",["rail","num"]],["bands",["4","2"]],["name",["stats","usage"]],["rows",["acc","tabs"]],["top",["stack","side","merged","hero"]],["exp",["feature","grid","rows"]],["act",["tile","stacked","corner","chips"]],["rule",["none","dim2","dim","line"]],["lbl",["none","runs on","tools"]],["nav",["quiet","bare","lines"]],["win",["30d","7d","24h"]]];
+const KNOBS_352=["act","rule","lbl","nav"]; // win is set by the page's own dropdown
+function readOpts(){const p=new URLSearchParams(location.search);window.OPTS={};for(const [k,vals]of KNOBS)window.OPTS[k]=vals.includes(p.get(k))?p.get(k):vals[0];window.WIN_TXT={"30d":"last 30 days","7d":"last 7 days","24h":"last 24 hours"}[window.OPTS.win];}
 function current(){const v=new URLSearchParams(location.search).get("v");return RENDER[v]?v:"v38";}
 function show(k,push){
   readOpts();
