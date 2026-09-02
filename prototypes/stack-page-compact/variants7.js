@@ -40,7 +40,7 @@ function body352(){
     sec37(3,"03","","Tools",`${S.tools.length} tools · ${priceMo(S.price)}`,toolsBodyV16())+
     sec37(0,"04","","Guide",guideMin+" min read",guideBodyV16());
   return html.replace(/<section /g,()=>`<section id="${ids[i++]}" `)+ctaStrip()+MEDIA_G2+
-    `<style>[id^="s-"]{scroll-margin-top:calc(var(--ptop,0px) + 48px)}</style>`;
+    `<style>[id^="s-"]{scroll-margin-top:calc(var(--ptop,0px) + 88px)}</style>`;
 }
 
 /* shared identity bits */
@@ -95,10 +95,15 @@ function heroA(){
    </div>
   </div></section>
   <nav id="ha-tabs" class="ha-tabs ha-nav-${nav}" aria-label="Sections">
+   <div class="ha-idrow"><div style="max-width:1280px;margin:0 auto;padding:0 24px;display:flex;align-items:center;gap:22px;overflow:hidden">
+     ${avatar352(22)}<b style="font-size:12px;font-weight:900;text-transform:uppercase;white-space:nowrap">${esc(S.name)}</b>
+     <span class="mono small muted" style="white-space:nowrap">${esc(S.creator.name)}</span>
+     <span class="mono small" style="margin-left:auto;white-space:nowrap"><span class="lime" style="font-weight:700">${priceMo(S.price)}</span></span>
+     <span class="mono small" style="display:inline-flex;align-items:center;gap:8px;white-space:nowrap"><span style="width:90px;display:inline-block">${spark(U.series,400,18)}</span><b>${fmtT(U.totalTokens)}</b> <span class="muted">tokens · 30d</span></span>
+     <span class="mono small muted" style="white-space:nowrap">▲ ${UPVOTES}</span>
+   </div></div>
    <div style="max-width:1280px;margin:0 auto;padding:0 24px;display:flex;align-items:stretch;overflow-x:auto">
-    <span class="ha-id"><b>${esc(S.name)}</b></span>
     ${sec.map(s=>`<a href="#${s.id}" data-spy="${s.id}" class="ha-tab"><span class="lab"><span class="n">${s.n}</span><span class="t">${s.title}</span></span><span class="s">${s.stat}</span><span class="vis"></span></a>`).join("")}
-    <span class="ha-price lime mono" style="font-size:11px;font-weight:700">${priceMo(S.price)}</span>
    </div>
   </nav>
   <style>
@@ -116,18 +121,16 @@ function heroA(){
    .ha-tab .lab{display:inline-flex;gap:10px;align-items:baseline;padding:14px 0 12px;box-shadow:inset 0 -3px 0 transparent}
    .ha-tab.on{color:var(--lime)}.ha-nav-lines .ha-tab.on{box-shadow:inset 0 -3px 0 var(--lime)}
    .ha-tab .vis{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--lime)}
-   .ha-price{display:none;align-items:center;margin-left:auto;padding-left:18px;white-space:nowrap}.ha-tabs.stuck .ha-price{display:flex}.ha-tab.on .n{color:var(--lime)}
+   .ha-idrow{display:none;border-bottom:1px solid oklch(0.55 0.01 256 / 0.18);padding:8px 0}.ha-tabs.stuck .ha-idrow{display:block}.ha-tab.on .n{color:var(--lime)}
    .ha-tab:hover{color:var(--fg-primary)}
-   .ha-id{display:none;align-items:center;gap:10px;padding:0 18px 0 0;margin-right:6px;font-size:12px;font-weight:900;text-transform:uppercase;white-space:nowrap}
-   .ha-tabs.stuck .ha-id{display:flex}
-   /* nav: lines = round 1, quiet = one dim hairline, bare = tint only */
+      /* nav: lines = round 1, quiet = one dim hairline, bare = tint only */
    .ha-nav-lines{border-top:1px solid var(--stroke);border-bottom:1px solid var(--stroke)}
    .ha-nav-lines .ha-tab{border-right:1px solid var(--stroke)}.ha-nav-lines .ha-tab:first-of-type{border-left:1px solid var(--stroke)}
    .ha-nav-quiet{border-bottom:1px solid oklch(0.55 0.01 256 / 0.25)}
-   .ha-nav-quiet .ha-tab{padding-left:0;padding-right:0;width:100px;margin-right:14px;flex:none;justify-content:flex-start}.ha-nav-quiet .ha-tab .s{display:none}
+   .ha-nav-quiet .ha-tab{padding-left:0;padding-right:0;width:136px;margin:0;flex:none;justify-content:flex-start}.ha-nav-quiet .ha-tab .s{display:none}
    .ha-nav-bare{background:${TINT4[1]}}.ha-nav-bare .ha-tab{padding-left:0;padding-right:0;margin-right:32px}
    .ha-nav-bare.stuck{box-shadow:0 8px 24px oklch(0 0 0 / .35)}
-   @media(max-width:700px){.ha-tab .s{display:none}.ha-tabs .ha-id,.ha-tabs .ha-price{display:none!important}.ha-tab{padding:12px 14px}.ha-nav-quiet .ha-tab,.ha-nav-bare .ha-tab{width:auto;margin-right:22px}}
+   @media(max-width:700px){.ha-tab .s{display:none}.ha-idrow>div>*:nth-child(n+3){display:none!important}.ha-tab{padding:12px 14px}.ha-nav-quiet .ha-tab,.ha-nav-bare .ha-tab{width:auto;padding-right:22px}}
    @media(max-width:820px){.ha-tiles{grid-template-columns:1fr 1fr;max-width:520px;min-width:0!important}.ha-tiles>div:first-child:not(.ha-tile){grid-column:1/3;justify-content:flex-start}.ha-tiles .ha-up{flex:none!important}.ha-tiles>div:last-child{grid-column:1/3}.ha-left{min-height:0}.ha-tiles .kick{font-size:10px;letter-spacing:.15em}}
   </style>`;
 }

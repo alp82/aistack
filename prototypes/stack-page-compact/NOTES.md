@@ -235,3 +235,11 @@ screen (left edge = share scrolled past the top, right edge = share still
 below the fold), so one continuous line across the tabs shows what is on
 screen. The stuck bar keeps the name on the left and moves the price to the
 far right.
+
+## Round 7
+
+The stuck subnav is two lines: an identity row (avatar, name, author, price,
+30-day sparkline with the token total, upvotes) appears above the unchanged
+tab row, so nothing shifts sideways. Tabs are 136px wide with no gap, so the
+visibility segments join into one line. Mobile keeps avatar and name only in
+the identity row.
