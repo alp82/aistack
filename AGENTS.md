@@ -77,17 +77,23 @@ Five things that make this safe and make it work:
 
 ## CLI release
 
-Every release-worthy change under `packages/cli` must bump the version in
-`packages/cli/package.json` in the same change. Use a patch bump unless the
-change requires a minor or major release.
+Release Please owns the version in `packages/cli/package.json`. Do not bump it
+in a feature change. Use a Conventional Commit title on a CLI pull request:
+`fix(cli):` selects a patch, `feat(cli):` selects a minor, and a breaking
+change selects a major. After the change lands on `main`, Release Please opens
+or updates the CLI release pull request. Merging that pull request creates the
+`cli-v<version>` GitHub release and `.github/workflows/publish-cli.yml`
+publishes `@use-aistack/cli` to npm.
 
-Publish `@use-aistack/cli` to npm after the version bump lands on `main`:
+npm trusts `publish-cli.yml` directly through OIDC. The publish job needs
+`id-token: write` and must not use an npm write token. The trusted-publisher
+configuration identifies the workflow by its filename, so rename it only after
+updating the package settings on npm.
 
-```sh
-cd packages/cli && pnpm publish
-```
-
-`prepublishOnly` runs the build. npm asks for a one-time password, so the owner must run the command in an interactive terminal. In a Claude Code session, type `! cd packages/cli && pnpm publish` so the OTP prompt reaches the owner. Deploy the backend first when the release changes the wire format - old clients must keep working, new clients need the new endpoint behavior.
+The publish workflow can also be dispatched manually to retry npm publication
+for the version at the selected commit. Deploy the backend first when a release
+changes the wire format. Old clients must keep working before the new client is
+published.
 
 ## Styling Guidelines
 * **No border-radius** - Use sharp corners throughout the design

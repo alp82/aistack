@@ -1,43 +1,108 @@
-name: Publish CLI to npm
+# Release Please owns the CLI version and changelog. On each push to main it
+# opens or updates a release pull request from Conventional Commit messages
+# that touched packages/cli. Merging that pull request creates cli-v<version>
+# and publishes the exact release commit to npm.
+
+name: Release CLI
 
 on:
   push:
-    tags:
-      - 'cli-v*'
+    branches:
+      - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: release-cli
+  cancel-in-progress: false
+
 jobs:
+  release-please:
+    name: Prepare or create the CLI release
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      created: ${{ steps.release-name.outputs.created }}
+      version: ${{ steps.release-name.outputs.version }}
+      sha: ${{ steps.release-name.outputs.sha }}
+    steps:
+      - name: Prepare or create the release
+        id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ github.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - name: Name the release
+        id: release-name
+        env:
+          OUTPUTS: ${{ toJSON(steps.release.outputs) }}
+        run: |
+          node -e '
+            const output = JSON.parse(process.env.OUTPUTS)
+            const prefix = "packages/cli--"
+            const created = String(output[`${prefix}release_created`] ?? output.release_created) === "true"
+            const version = output[`${prefix}version`] ?? output.version ?? ""
+            const sha = output[`${prefix}sha`] ?? output.sha ?? ""
+            require("node:fs").appendFileSync(process.env.GITHUB_OUTPUT, `created=${created}\nversion=${version}\nsha=${sha}\n`)
+            console.log(created ? `created CLI release ${version} at ${sha}` : "no CLI release to publish")
+          '
+
   publish:
+    name: Publish the CLI to npm
+    needs: release-please
+    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.release-please.outputs.created == 'true') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Check out the release commit
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.0.2
+        with:
+          ref: ${{ needs.release-please.outputs.sha || github.sha }}
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           version: 10
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
-          cache: 'pnpm'
-          registry-url: 'https://registry.npmjs.org'
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
-      - name: Build CLI
-        run: pnpm build
-        working-directory: packages/cli
+      - name: Test the CLI
+        run: pnpm exec vitest run packages/cli/src
+
+      - name: Build the CLI
+        run: pnpm --dir packages/cli build
+
+      - name: Check trusted-publishing support
+        run: |
+          node -e '
+            const version = require("node:child_process").execFileSync("npm", ["--version"], { encoding: "utf8" }).trim()
+            const [major, minor, patch] = version.split(".").map(Number)
+            const supported = major > 11 || (major === 11 && (minor > 5 || (minor === 5 && patch >= 1)))
+            if (!supported) {
+              console.error(`npm ${version} does not support trusted publishing; npm 11.5.1 or newer is required`)
+              process.exit(1)
+            }
+            console.log(`npm ${version} supports trusted publishing`)
+          '
 
       - name: Publish to npm
-        run: npm publish --provenance --access public
+        run: npm publish --access public
         working-directory: packages/cli
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
