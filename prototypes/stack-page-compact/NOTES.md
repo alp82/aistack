@@ -252,3 +252,10 @@ sets `?win=`, which relabels the Stats meta and headline (the demo has 30-day
 data only, so the figures do not change). The visibility segments overlap
 their neighbor by 1px to close the seam. A tab is active while at least half
 of its section, or half of the viewport, shows it.
+
+## Round 9
+
+Micro animations: the identity row unfolds (grid-rows 0fr to 1fr plus a fade)
+when the bar sticks and folds back on the way up; tab clicks smooth-scroll to
+the section and update the hash; the visibility segments ease between scroll
+frames. A click anywhere on the identity row scrolls smoothly to the top.
