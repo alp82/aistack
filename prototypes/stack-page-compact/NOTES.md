@@ -102,3 +102,18 @@ card, colored breakdown with hatched notches):
   to Tools, all rendering real figures now.
 - v35 Two level - value layer only, drawer opens the full tabbed set.
 - v36 Grouped scan - every measurement one row with its chart beside it.
+
+## Round 6
+
+Operator verdict on round 5: v33 (tabs) wins, but the layout is unsteady, the
+rhythm and spacing are missing. New idea: the five tabs as accordion rows, one
+meaningful summary row per topic with key metrics and a background history
+chart. Asked for live toggles: v26 vs v27 title style, plus toggles for other
+earlier feedback where applicable.
+
+v37 Composed: one design on a steady 48px rhythm with aligned columns.
+Stats = originals top block, then five accordion topic rows (Time, Code,
+Models, Harness, Skills), each a one-line summary with key figures over a
+watermark history chart, expanding to the full grid. Four live toggles appear
+in the bottom bar on v37: title (rail/01-header), bands (2/4 tints),
+name (Stats/Actual Usage), rows (accordion/tabs).
