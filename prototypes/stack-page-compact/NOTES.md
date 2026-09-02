@@ -117,3 +117,19 @@ Models, Harness, Skills), each a one-line summary with key figures over a
 watermark history chart, expanding to the full grid. Four live toggles appear
 in the bottom bar on v37: title (rail/01-header), bands (2/4 tints),
 name (Stats/Actual Usage), rows (accordion/tabs).
+
+## Round 7
+
+Locked in round 6: rail title, 4 tints, "Stats", accordion. Fixes applied:
+max-width now 1280px to match the site, the accordion is exclusive (0 or 1
+open, native details name= plus a toggle fallback), and boxes, charts, and
+chips carry tooltips like the original.
+
+Two new variation knobs on v37, both cycling in the bottom bar:
+
+- top: side / stack / merged / hero - the relationship of the tokens box and
+  the model breakdown. stack puts one headline strip over a full-width
+  breakdown, merged binds them into one panel, hero leads with the number.
+- exp: grid / feature / rows - the accordion's expanded formatting. feature
+  pairs the topic's lead chart with scan rows, rows gives one aligned row per
+  measurement.

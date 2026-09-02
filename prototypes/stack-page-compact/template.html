@@ -110,8 +110,8 @@ function measureAll(){
   for(const [k] of VARIANTS){probe.innerHTML=RENDER[k]();heights[k]=probe.scrollHeight;}
   probe.remove();
 }
-const KNOBS=[["title","rail","num","title: rail","title: 01-header"],["bands","2","4","bands: 2","bands: 4"],["name","stats","usage","name: Stats","name: Actual Usage"],["rows","acc","tabs","rows: accordion","rows: tabs"]];
-function readOpts(){const p=new URLSearchParams(location.search);window.OPTS={};for(const [k,a]of KNOBS.map(x=>[x[0],x[1]]))window.OPTS[k]=p.get(k)||a;}
+const KNOBS=[["title",["rail","num"]],["bands",["4","2"]],["name",["stats","usage"]],["rows",["acc","tabs"]],["top",["side","stack","merged","hero"]],["exp",["grid","feature","rows"]]];
+function readOpts(){const p=new URLSearchParams(location.search);window.OPTS={};for(const [k,vals]of KNOBS)window.OPTS[k]=vals.includes(p.get(k))?p.get(k):vals[0];}
 function current(){const v=new URLSearchParams(location.search).get("v");return RENDER[v]?v:"v37";}
 function show(k,push){
   readOpts();
@@ -119,7 +119,7 @@ function show(k,push){
   if(push){const u=new URL(location);u.searchParams.set("v",k);history.replaceState(null,"",u);}
   const bar=document.getElementById("switcher");
   bar.innerHTML=VARIANTS.map(([id,label])=>`<button class="${id===k?"on":""}" data-v="${id}" title="${label}">${label.split(" ")[0].replace("Baseline","Base")}</button>`).join("")+
-    (k==="v37"?KNOBS.map(([key,a,b,la,lb])=>{const on=window.OPTS[key]!==a;return `<button class="knob" data-k="${key}" data-next="${on?a:b}" style="border-left:1px solid var(--stroke);color:var(--lime)">${on?lb:la}</button>`;}).join(""):"")+
+    (k==="v37"?KNOBS.map(([key,vals])=>{const cur=window.OPTS[key];const next=vals[(vals.indexOf(cur)+1)%vals.length];return `<button class="knob" data-k="${key}" data-next="${next}" style="border-left:1px solid var(--stroke);color:var(--lime)">${key}: ${cur}</button>`;}).join(""):"")+
     `<span class="h" id="hread"></span>`;
   bar.querySelectorAll("button[data-v]").forEach(b=>b.onclick=()=>show(b.dataset.v,true));
   bar.querySelectorAll("button.knob").forEach(b=>b.onclick=()=>{const u=new URL(location);u.searchParams.set(b.dataset.k,b.dataset.next);history.replaceState(null,"",u);show(k,false);});
@@ -139,6 +139,7 @@ addEventListener("keydown",e=>{
 measureAll();
 show(current(),false);
 addEventListener("resize",()=>{measureAll();show(current(),false);});
+document.addEventListener("toggle",e=>{const d=e.target;if(d.tagName==="DETAILS"&&d.getAttribute("name")&&d.open){document.querySelectorAll(`details[name="${d.getAttribute("name")}"]`).forEach(o=>{if(o!==d)o.open=false;});}},true);
 </script>
 </body>
 </html>

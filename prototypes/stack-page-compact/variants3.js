@@ -6,7 +6,7 @@
 /* ---------- round-3 shared helpers ---------- */
 const EFFORT_TOTAL=Object.values(W.effort).reduce((a,b)=>a+b,0);
 const effortShare=k=>(W.effort[k]||0)/EFFORT_TOTAL;
-const barRow=(label,share,val,dark)=>`<div style="display:flex;gap:8px;align-items:center;padding:2px 0" class="small">
+const barRow=(label,share,val,dark)=>`<div style="display:flex;gap:8px;align-items:center;padding:2px 0;cursor:help" class="small" title="${label}: ${val??pct(share,1)}">
   <span style="width:96px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</span>
   <span class="bar-track" style="height:6px;${dark?"background:oklch(0.9 0.004 256)":""}"><span class="bar-fill" style="width:${Math.max(1,share*100)}%;${dark?"background:oklch(0.55 0.18 132)":""}"></span></span>
   <b class="mono" style="width:40px;text-align:right">${val??pct(share)}</b></div>`;
