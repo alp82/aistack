@@ -218,3 +218,11 @@ lines of height so every stack's hero is the same height. `?name=...` swaps in
 any name to test it. Mobile keeps the buttons at their natural width and puts
 the two tiles side by side. The quiet subnav underlines only the label, not the
 180px tab. The "// sync" style kickers are gone from the section rails.
+
+## Round 5
+
+Name and one-liner sit right under the byline; the tool row follows at 36px
+logos, five tools with a +N chip, or all six when there are six. The update
+stamp and Report link sit under the tokens tile as part of the column. Quiet
+subnav tabs are 150px wide with a 20px gap and the underline spans the tab.
+The left column reserves a fixed height so a one-line name gets the space.

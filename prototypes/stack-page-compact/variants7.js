@@ -53,7 +53,7 @@ const actions352=()=>`<span class="chip" style="cursor:pointer">▲ ${UPVOTES}</
    ========================================================================= */
 function heroA(){
   const sec=sections352();
-  const shown=8;
+  const shown=S.tools.length<=6?S.tools.length:5;
   const act=OPT("act"), rule=OPT("rule"), lbl=OPT("lbl"), nav=OPT("nav");
   const hair="1px solid oklch(0.55 0.01 256 / 0.25)";
   const ruleCss=rule==="line"?"border-top:1px solid var(--stroke)":rule==="dim"?`border-top:${hair}`:rule==="dim2"?`border-top:${hair};border-bottom:${hair};padding-bottom:20px`:"";
@@ -70,11 +70,14 @@ function heroA(){
   return `<section style="background:${TINT4[0]};padding:56px 0 36px"><div style="max-width:1280px;margin:0 auto;padding:0 24px">
    ${act==="corner"?`<div style="display:flex;justify-content:flex-end;margin:-24px 0 8px">${actionsTopRight}</div>`:""}
    <div style="display:grid;grid-template-columns:1fr auto;gap:40px;align-items:end" class="g2">
-    <div style="min-width:0">
+    <div style="min-width:0" class="ha-left">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">${avatar352(40)}${byline352()}</div>
       <div class="ha-h1w"><h1 class="ha-h1">${esc(S.name)}</h1></div>
-      <p style="margin-top:16px;font-size:18px;color:var(--fg-secondary);max-width:560px">${esc(S.oneLiner)}</p>
+      <p style="margin-top:14px;font-size:18px;color:var(--fg-secondary);max-width:560px">${esc(S.oneLiner)}</p>
       ${actionsUnderTitle}
+      <div style="display:flex;align-items:center;gap:10px;margin-top:26px;${ruleCss?ruleCss+";padding-top:16px":""}">
+        ${label?`<span class="kick muted" style="margin-right:8px">${label}</span>`:""}<a href="#s-tools" style="display:flex;gap:10px;align-items:center">${toolsSorted.slice(0,shown).map(t=>`<span title="${esc(t.name)}${t.amount>0?" · "+priceMo(t.amount):""}" style="display:inline-flex;cursor:help">${toolIcn(t,36)}</span>`).join("")}${S.tools.length>shown?`<span class="chip" title="${toolsSorted.slice(shown).map(t=>esc(t.name)).join(", ")}" style="border-color:oklch(0.55 0.01 256 / 0.35);cursor:help;height:36px">+${S.tools.length-shown}</span>`:""}</a>
+      </div>
     </div>
     <div style="display:grid;gap:10px;min-width:260px" class="ha-tiles">
       ${actionsInColumn}
@@ -87,11 +90,8 @@ function heroA(){
         <div class="mono" style="font-size:40px;font-weight:900;line-height:1;position:relative">${fmtT(U.totalTokens)}</div>
         <div class="kick muted" style="margin-top:6px;position:relative">tokens · 30 days · <span class="lime">${UP} ×${(U.totalTokens/U.prevTokens).toFixed(0)}</span></div>
       </a>
+      ${act==="chips"?"":`<div style="display:flex;justify-content:flex-end;gap:14px;margin-top:-2px" class="mono small muted"><span>updated ${readCheckedAgo}</span>${lnkReport}</div>`}
     </div>
-   </div>
-   <div style="display:flex;align-items:center;gap:8px;margin-top:${rule==="none"?"44px":"32px"};padding-top:${rule==="none"?"0":"20px"};padding-bottom:${rule==="none"?"8px":"0"};${ruleCss};flex-wrap:wrap">
-     ${label?`<span class="kick muted" style="margin-right:8px">${label}</span>`:""}<a href="#s-tools" style="display:flex;gap:8px;align-items:center">${toolsSorted.slice(0,shown).map(t=>`<span title="${esc(t.name)}${t.amount>0?" · "+priceMo(t.amount):""}" style="display:inline-flex;cursor:help">${toolIcn(t,28)}</span>`).join("")}<span class="chip" title="${toolsSorted.slice(shown).map(t=>esc(t.name)).join(", ")}" style="border-color:oklch(0.55 0.01 256 / 0.35);cursor:help">+${S.tools.length-shown}</span></a>
-     ${reportSlot||`<span class="mono small muted" style="margin-left:auto">updated ${readCheckedAgo}</span>`}
    </div>
   </div></section>
   <nav id="ha-tabs" class="ha-tabs ha-nav-${nav}" aria-label="Sections">
@@ -101,7 +101,8 @@ function heroA(){
    </div>
   </nav>
   <style>
-   .ha-h1w{min-height:calc(2 * .88 * clamp(44px,7vw,88px));display:flex;align-items:flex-end;margin-top:20px}
+   .ha-h1w{margin-top:18px}
+   .ha-left{min-height:calc(2 * .88 * clamp(44px,7vw,88px) + 150px)}
    .ha-h1{font-size:clamp(44px,7vw,88px);font-weight:900;line-height:.88;letter-spacing:-.03em;text-transform:uppercase;overflow-wrap:anywhere}
    .ha-up{display:inline-flex;align-items:center;gap:8px;background:none;border:1px solid var(--lime);color:var(--lime);font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:10px 16px;cursor:pointer}
    .ha-up:hover{background:var(--lime);color:var(--lime-contrast)}.ha-up .tri{font-size:10px}.ha-up b{font-weight:900}
@@ -112,7 +113,7 @@ function heroA(){
    .ha-tab{display:flex;align-items:baseline;gap:10px;padding:0 18px;white-space:nowrap;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-muted);box-shadow:inset 0 -3px 0 transparent}
    .ha-tab .n{color:var(--stroke-strong)}.ha-tab .s{font-weight:400;letter-spacing:.04em;text-transform:none;font-size:11px}
    .ha-tab .lab{display:inline-flex;gap:10px;align-items:baseline;padding:14px 0 12px;box-shadow:inset 0 -3px 0 transparent}
-   .ha-tab.on{color:var(--lime)}.ha-nav-lines .ha-tab.on{box-shadow:inset 0 -3px 0 var(--lime)}.ha-nav-quiet .ha-tab.on .lab,.ha-nav-bare .ha-tab.on .lab{box-shadow:inset 0 -3px 0 var(--lime)}.ha-tab.on .n{color:var(--lime)}
+   .ha-tab.on{color:var(--lime)}.ha-nav-lines .ha-tab.on{box-shadow:inset 0 -3px 0 var(--lime)}.ha-nav-quiet .ha-tab.on,.ha-nav-bare .ha-tab.on{box-shadow:inset 0 -3px 0 var(--lime)}.ha-tab.on .n{color:var(--lime)}
    .ha-tab:hover{color:var(--fg-primary)}
    .ha-id{display:none;align-items:center;gap:10px;padding:0 18px 0 0;margin-right:6px;font-size:12px;font-weight:900;text-transform:uppercase;white-space:nowrap}
    .ha-tabs.stuck .ha-id{display:flex}
@@ -120,11 +121,11 @@ function heroA(){
    .ha-nav-lines{border-top:1px solid var(--stroke);border-bottom:1px solid var(--stroke)}
    .ha-nav-lines .ha-tab{border-right:1px solid var(--stroke)}.ha-nav-lines .ha-tab:first-of-type{border-left:1px solid var(--stroke)}
    .ha-nav-quiet{border-bottom:1px solid oklch(0.55 0.01 256 / 0.25)}
-   .ha-nav-quiet .ha-tab{padding-left:0;padding-right:0;width:180px;flex:none;justify-content:flex-start}.ha-nav-quiet .ha-tab .s{display:none}
+   .ha-nav-quiet .ha-tab{padding-left:0;padding-right:0;width:150px;margin-right:20px;flex:none;justify-content:flex-start}.ha-nav-quiet .ha-tab .s{display:none}
    .ha-nav-bare{background:${TINT4[1]}}.ha-nav-bare .ha-tab{padding-left:0;padding-right:0;margin-right:32px}
    .ha-nav-bare.stuck{box-shadow:0 8px 24px oklch(0 0 0 / .35)}
-   @media(max-width:700px){.ha-tab .s{display:none}.ha-tabs .ha-id{display:none!important}.ha-tab{padding:12px 14px}.ha-nav-quiet .ha-tab,.ha-nav-bare .ha-tab{margin-right:20px}}
-   @media(max-width:820px){.ha-tiles{grid-template-columns:1fr 1fr;max-width:520px;min-width:0!important}.ha-tiles>div:first-child:not(.ha-tile){grid-column:1/3;justify-content:flex-start}.ha-tiles .ha-up{flex:none!important}.ha-tiles .kick{font-size:10px;letter-spacing:.15em}}
+   @media(max-width:700px){.ha-tab .s{display:none}.ha-tabs .ha-id{display:none!important}.ha-tab{padding:12px 14px}.ha-nav-quiet .ha-tab,.ha-nav-bare .ha-tab{width:auto;margin-right:22px}}
+   @media(max-width:820px){.ha-tiles{grid-template-columns:1fr 1fr;max-width:520px;min-width:0!important}.ha-tiles>div:first-child:not(.ha-tile){grid-column:1/3;justify-content:flex-start}.ha-tiles .ha-up{flex:none!important}.ha-tiles>div:last-child{grid-column:1/3}.ha-left{min-height:0}.ha-tiles .kick{font-size:10px;letter-spacing:.15em}}
   </style>`;
 }
 
