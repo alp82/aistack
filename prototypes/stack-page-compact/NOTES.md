@@ -143,3 +143,42 @@ what to replace, what to combine, like the previous tooltips) and depends on
 the hero prototype (#352). The accepted design is v37 with rail title,
 4 tints, "Stats", exclusive accordion, stack top block, feature expansion:
 /index.html?v=v37
+
+# Hero and subnav (alp82/aistack#352)
+
+Same demo, same data. The accepted v37 body stays untouched under each variant;
+only the top of the page and the section navigation change. Default variant is
+now v38. The bottom bar keeps the v37 knobs on v38-v40 and gains a "390" button
+that opens the current variant in a 390px window for the mobile read.
+
+## Round 1
+
+Three hero and subnav pairs, each answering the same three questions: what the
+hero promises, how the subnav guides and tracks scroll, and how both behave
+on mobile.
+
+- v38 Masthead + tabs. Hero promises identity plus two figures: the authored
+  price (lime tile, hover for the breakdown) and the measured tokens (outlined
+  tile with the 30-day sparkline, links to Stats), then a "built with" logo
+  strip. Subnav is a tab bar under the hero that sticks under the site header;
+  each tab carries the section's stat, the current tab gets a lime underline,
+  and the stack name and price appear in the bar once it is stuck. Mobile: tiles
+  side by side, tabs scroll horizontally with the stats dropped.
+- v39 Figures first. The four section figures are the hero: 6.18B tokens,
+  6 projects, 11 tools at $336/mo, 2 min guide, one tile each with a watermark
+  chart, every tile a link to its section. The name shrinks to a masthead line,
+  the one-liner follows in large type. Subnav is a vertical rail on the left on
+  screens wider than 1560px, with a lime progress line that fills as the page is
+  read; narrower screens get a sticky strip of the same four figures under the
+  header. Mobile: tiles in a 2x2 grid, figure strip stays pinned.
+- v40 Contents + scrubber. Hero is a two-column split: name, one-liner and
+  byline on the left, an "in this stack" ladder on the right with one sentence
+  per section (numbers only, no adjectives), each a link. Subnav is a reading
+  scrubber pinned under the header once the hero leaves: four segments sized by
+  section height, the current one underlined, a lime fill that shows how far
+  through each section the reader is. Mobile: the segments keep only their
+  numbers except the current one.
+
+Rules carried from the real hero: no measured dollars in the hero (the only
+money is the authored price), nothing without a reading, the spy marks the
+section a third of the way down the viewport.
