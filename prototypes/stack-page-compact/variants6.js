@@ -5,7 +5,7 @@
 
 /* OPTS is set by the template from URL params:
    {title:"rail"|"num", bands:"2"|"4", name:"stats"|"usage", rows:"acc"|"tabs"} */
-const optDefaults={title:"rail",bands:"4",name:"stats",rows:"acc",top:"side",exp:"grid"};
+const optDefaults={title:"rail",bands:"4",name:"stats",rows:"acc",top:"stack",exp:"feature"};
 const OPT=k=>(window.OPTS&&window.OPTS[k])||optDefaults[k];
 
 /* ---------- steady-rhythm section shell (both title styles) ---------- */

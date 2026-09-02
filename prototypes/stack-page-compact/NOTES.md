@@ -133,3 +133,13 @@ Two new variation knobs on v37, both cycling in the bottom bar:
 - exp: grid / feature / rows - the accordion's expanded formatting. feature
   pairs the topic's lead chart with scan rows, rows gives one aligned row per
   measurement.
+
+## Round 8 - converged
+
+Operator locked top: stack and exp: feature, both now the demo defaults.
+Verdict: the prototype is good enough. Implementation moves to a follow-up
+ticket that starts with a short grilling (what to keep from the old page,
+what to replace, what to combine, like the previous tooltips) and depends on
+the hero prototype (#352). The accepted design is v37 with rail title,
+4 tints, "Stats", exclusive accordion, stack top block, feature expansion:
+/index.html?v=v37

@@ -2064,7 +2064,7 @@ function renderV36(){
 
 /* OPTS is set by the template from URL params:
    {title:"rail"|"num", bands:"2"|"4", name:"stats"|"usage", rows:"acc"|"tabs"} */
-const optDefaults={title:"rail",bands:"4",name:"stats",rows:"acc",top:"side",exp:"grid"};
+const optDefaults={title:"rail",bands:"4",name:"stats",rows:"acc",top:"stack",exp:"feature"};
 const OPT=k=>(window.OPTS&&window.OPTS[k])||optDefaults[k];
 
 /* ---------- steady-rhythm section shell (both title styles) ---------- */
@@ -2247,7 +2247,7 @@ function measureAll(){
   for(const [k] of VARIANTS){probe.innerHTML=RENDER[k]();heights[k]=probe.scrollHeight;}
   probe.remove();
 }
-const KNOBS=[["title",["rail","num"]],["bands",["4","2"]],["name",["stats","usage"]],["rows",["acc","tabs"]],["top",["side","stack","merged","hero"]],["exp",["grid","feature","rows"]]];
+const KNOBS=[["title",["rail","num"]],["bands",["4","2"]],["name",["stats","usage"]],["rows",["acc","tabs"]],["top",["stack","side","merged","hero"]],["exp",["feature","grid","rows"]]];
 function readOpts(){const p=new URLSearchParams(location.search);window.OPTS={};for(const [k,vals]of KNOBS)window.OPTS[k]=vals.includes(p.get(k))?p.get(k):vals[0];}
 function current(){const v=new URLSearchParams(location.search).get("v");return RENDER[v]?v:"v37";}
 function show(k,push){
