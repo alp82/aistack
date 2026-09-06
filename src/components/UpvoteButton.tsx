@@ -5,6 +5,14 @@ type UpvoteButtonProps = {
 	upvoted?: boolean;
 	disabled?: boolean;
 	size?: "sm" | "md" | "lg";
+	/**
+	 * "stack" (default) is the vertical tile: triangle over the count on a
+	 * panel fill. "outline" is the horizontal action row button: a lime outline
+	 * that fills its row and prints "Upvote" with the count; hover inverts it to
+	 * a lime fill, and an existing vote renders filled.
+	 */
+	variant?: "stack" | "outline";
+	className?: string;
 	onClick?: (e: React.MouseEvent) => void;
 	onMouseEnter?: () => void;
 	title?: string;
@@ -15,10 +23,47 @@ function UpvoteButton({
 	upvoted = false,
 	disabled = false,
 	size = "lg",
+	variant = "stack",
+	className,
 	onClick,
 	onMouseEnter,
 	title,
 }: UpvoteButtonProps) {
+	const ariaLabel = `${upvoted ? "Remove upvote" : "Upvote"}, ${count} ${count === 1 ? "upvote" : "upvotes"}`;
+
+	if (variant === "outline") {
+		return (
+			<button
+				type="button"
+				onClick={onClick}
+				onMouseEnter={onMouseEnter}
+				disabled={disabled}
+				title={title}
+				aria-label={ariaLabel}
+				aria-pressed={upvoted}
+				className={cn(
+					"inline-flex items-center justify-center gap-2 border border-accent-lime px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-[0.1em] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed",
+					upvoted
+						? "bg-accent-lime text-accent-lime-contrast"
+						: "bg-transparent text-accent-lime hover:bg-accent-lime hover:text-accent-lime-contrast",
+					className,
+				)}
+			>
+				<svg
+					viewBox="0 0 24 24"
+					aria-hidden="true"
+					className="size-2.5 fill-current"
+				>
+					<path d="M12 4L3 15h18L12 4z" />
+				</svg>
+				<span aria-hidden="true">Upvote</span>
+				<b aria-hidden="true" className="font-black">
+					{count}
+				</b>
+			</button>
+		);
+	}
+
 	return (
 		<button
 			type="button"
@@ -26,7 +71,7 @@ function UpvoteButton({
 			onMouseEnter={onMouseEnter}
 			disabled={disabled}
 			title={title}
-			aria-label={`${upvoted ? "Remove upvote" : "Upvote"}, ${count} ${count === 1 ? "upvote" : "upvotes"}`}
+			aria-label={ariaLabel}
 			aria-pressed={upvoted}
 			className={cn(
 				"flex flex-col items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
@@ -36,6 +81,7 @@ function UpvoteButton({
 				upvoted
 					? "bg-accent-lime text-accent-lime-contrast"
 					: "bg-bg-panel-muted text-fg-primary hover:bg-accent-lime/20 hover:text-accent-lime",
+				className,
 			)}
 		>
 			<svg

@@ -151,6 +151,7 @@ function ProjectsStepCreate({
 			keyOf={(it) => it.id}
 			isOwner
 			index={2}
+			presentation="rows"
 			loading={false}
 			header={EDITOR_KICKER}
 			id="section-projects"
@@ -165,6 +166,8 @@ function ProjectsStepCreate({
 // ---------------------------------------------------------------------------
 // Edit mode - delegates to the public ProjectsSection (live Convex mutations,
 // Motion reorder, favicon rows, New Project dialog) with the editor kicker.
+// Both editor modes ask for the row presentation: authoring needs the drag and
+// keyboard reordering the card grid cannot carry.
 // ---------------------------------------------------------------------------
 
 function ProjectsStepEdit({
@@ -180,6 +183,7 @@ function ProjectsStepEdit({
 			stackId={stackId}
 			isOwner={isOwner}
 			index={2}
+			presentation="rows"
 			id="section-projects"
 			header={EDITOR_KICKER}
 		/>

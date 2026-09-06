@@ -2,11 +2,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type {
-	StackBundle,
-	StackModel,
-	StackTool,
-} from "@/features/stack-view/cards";
+import type { StackBundle, StackTool } from "@/features/stack-view/cards";
 import { BundleCard } from "@/features/stack-view/cards";
 import { GuideSection, ToolsSection } from "@/features/stack-view/sections";
 
@@ -72,17 +68,6 @@ function makeTool(overrides: Partial<StackTool> = {}): StackTool {
 	};
 }
 
-function makeModel(overrides: Partial<StackModel> = {}): StackModel {
-	return {
-		_id: "model-1",
-		name: "GPT-4o",
-		provider: "OpenAI",
-		tokenShare: null,
-		measured: false,
-		...overrides,
-	};
-}
-
 function makeBundle(overrides: Partial<StackBundle> = {}): StackBundle {
 	return {
 		_id: "bundle-1",
@@ -104,7 +89,6 @@ function makeBundle(overrides: Partial<StackBundle> = {}): StackBundle {
 const defaultProps = {
 	index: 1,
 	tools: [makeTool()],
-	models: [],
 	bundles: [],
 	highlightedBundle: null,
 	bundlesOpen: false,
@@ -126,20 +110,6 @@ describe("ToolsSection", () => {
 
 	// AC 2 - superseded by GROUP A "ToolsSection: heading is /^Tools$/i". The
 	// positive heading assertion now lives there.
-
-	// AC 3
-	it("does not render a Models disclosure button when models=[]", () => {
-		render(<ToolsSection {...defaultProps} models={[]} />);
-		expect(
-			screen.queryByRole("button", { name: /models/i }),
-		).not.toBeInTheDocument();
-	});
-
-	// AC 4
-	it("renders a Models disclosure button when models is non-empty", () => {
-		render(<ToolsSection {...defaultProps} models={[makeModel()]} />);
-		expect(screen.getByRole("button", { name: /models/i })).toBeInTheDocument();
-	});
 
 	// AC 5
 	it("does not render a Bundles disclosure button when bundles=[]", () => {
@@ -164,75 +134,17 @@ describe("ToolsSection", () => {
 	});
 
 	// AC 7
-	it("renders no disclosure buttons when both models and bundles are empty but tools present", () => {
-		render(<ToolsSection {...defaultProps} models={[]} bundles={[]} />);
+	it("renders no disclosure buttons when bundles are empty but tools present", () => {
+		render(<ToolsSection {...defaultProps} bundles={[]} />);
 		expect(screen.queryAllByRole("button")).toHaveLength(0);
 	});
 
-	// AC 8 - REWRITTEN to controlled contract (modelsOpen prop)
-	it("Models toggle has aria-expanded=false when modelsOpen=false (controlled)", () => {
-		const onModelsOpenChange = vi.fn();
-		render(
-			<ToolsSection
-				{...defaultProps}
-				models={[makeModel()]}
-				modelsOpen={false}
-				onModelsOpenChange={onModelsOpenChange}
-			/>,
-		);
-		const toggle = screen.getByRole("button", { name: /models/i });
-		expect(toggle).toHaveAttribute("aria-expanded", "false");
-	});
-
-	// AC 9 - REWRITTEN to controlled contract
-	it("clicking Models toggle calls onModelsOpenChange(true); aria-expanded does NOT self-flip (controlled)", () => {
-		const onModelsOpenChange = vi.fn();
-		render(
-			<ToolsSection
-				{...defaultProps}
-				models={[makeModel()]}
-				modelsOpen={false}
-				onModelsOpenChange={onModelsOpenChange}
-			/>,
-		);
-		const toggle = screen.getByRole("button", { name: /models/i });
-		fireEvent.click(toggle);
-		expect(onModelsOpenChange).toHaveBeenCalledWith(true);
-		// Controlled - does not self-flip
-		expect(toggle).toHaveAttribute("aria-expanded", "false");
-	});
-
-	// AC 10 - REWRITTEN to controlled contract: modelsOpen=true, clicking calls onModelsOpenChange(false)
-	it("Models panel present when modelsOpen=true; clicking calls onModelsOpenChange(false)", () => {
-		const onModelsOpenChange = vi.fn();
-		const model = makeModel();
-		render(
-			<ToolsSection
-				{...defaultProps}
-				models={[model]}
-				modelsOpen={true}
-				onModelsOpenChange={onModelsOpenChange}
-			/>,
-		);
-		const toggle = screen.getByRole("button", { name: /models/i });
-		expect(toggle).toHaveAttribute("aria-expanded", "true");
-		// Panel is in DOM (model name visible)
-		expect(screen.getByText(model.name)).toBeInTheDocument();
-		fireEvent.click(toggle);
-		expect(onModelsOpenChange).toHaveBeenCalledWith(false);
-	});
-
-	// AC 11
-	it("Models toggle label includes the count: 3 models → accessible name matches /MODELS \\(3\\)/i", () => {
-		const models = [
-			makeModel({ _id: "m1", name: "GPT-4o" }),
-			makeModel({ _id: "m2", name: "Claude 3.5" }),
-			makeModel({ _id: "m3", name: "Gemini Pro" }),
-		];
-		render(<ToolsSection {...defaultProps} models={models} />);
+	// The section lists no models (#356): section 01 owns that breakdown.
+	it("never renders a Models disclosure, with or without bundles", () => {
+		render(<ToolsSection {...defaultProps} bundles={[makeBundle()]} />);
 		expect(
-			screen.getByRole("button", { name: /MODELS \(3\)/i }),
-		).toBeInTheDocument();
+			screen.queryByRole("button", { name: /models/i }),
+		).not.toBeInTheDocument();
 	});
 
 	// AC 12
@@ -287,32 +199,6 @@ describe("ToolsSection", () => {
 			/>,
 		);
 		expect(document.getElementById("bundle-cursor-max")).toBeInTheDocument();
-	});
-
-	// AC 15 - REWRITTEN to controlled contract for Models (mirrors GROUP C)
-	it("clicking Models toggle does not call onBundlesOpenChange and does not change Bundles aria-expanded", () => {
-		const bundle = makeBundle({ slug: "cursor-max" });
-		const model = makeModel();
-		const onModelsOpenChange = vi.fn();
-		const onBundlesOpenChange = vi.fn();
-		render(
-			<ToolsSection
-				{...defaultProps}
-				models={[model]}
-				bundles={[bundle]}
-				modelsOpen={false}
-				onModelsOpenChange={onModelsOpenChange}
-				bundlesOpen={false}
-				onBundlesOpenChange={onBundlesOpenChange}
-			/>,
-		);
-		const modelsToggle = screen.getByRole("button", { name: /models/i });
-		const bundlesToggle = screen.getByRole("button", { name: /bundles/i });
-
-		fireEvent.click(modelsToggle);
-		expect(onModelsOpenChange).toHaveBeenCalledWith(true);
-		expect(onBundlesOpenChange).not.toHaveBeenCalled();
-		expect(bundlesToggle).toHaveAttribute("aria-expanded", "false");
 	});
 });
 
@@ -469,123 +355,6 @@ describe("GROUP B - ToolsSection pricing via fixedTotal", () => {
 		);
 		// formatPriceDisplay(40, "month", "floor").amountText = "40"
 		expect(screen.getByText(/40/)).toBeInTheDocument();
-	});
-});
-
-// ===========================================================================
-// GROUP C - Controlled Models disclosure (new tests mirroring Bundles pattern)
-// ===========================================================================
-
-describe("GROUP C - ToolsSection controlled Models disclosure", () => {
-	// C-1: modelsOpen=false → Models toggle aria-expanded "false", model content absent
-	it("modelsOpen=false: toggle aria-expanded false and model content absent", () => {
-		const model = makeModel({ name: "GPT-4o" });
-		render(
-			<ToolsSection
-				{...defaultProps}
-				models={[model]}
-				modelsOpen={false}
-				onModelsOpenChange={vi.fn()}
-			/>,
-		);
-		const toggle = screen.getByRole("button", { name: /models/i });
-		expect(toggle).toHaveAttribute("aria-expanded", "false");
-		expect(screen.queryByText("GPT-4o")).not.toBeInTheDocument();
-	});
-
-	// C-2: click Models toggle → onModelsOpenChange called with true; aria-expanded stays false (controlled)
-	it("clicking Models toggle calls onModelsOpenChange(true); controlled, does not self-flip", () => {
-		const onModelsOpenChange = vi.fn();
-		render(
-			<ToolsSection
-				{...defaultProps}
-				models={[makeModel()]}
-				modelsOpen={false}
-				onModelsOpenChange={onModelsOpenChange}
-			/>,
-		);
-		const toggle = screen.getByRole("button", { name: /models/i });
-		fireEvent.click(toggle);
-		expect(onModelsOpenChange).toHaveBeenCalledWith(true);
-		expect(toggle).toHaveAttribute("aria-expanded", "false");
-	});
-
-	// C-3: modelsOpen=true → panel present, model name visible, aria-expanded "true"; clicking calls onModelsOpenChange(false)
-	it("modelsOpen=true: panel present with model name, aria-expanded true; clicking calls onModelsOpenChange(false)", () => {
-		const onModelsOpenChange = vi.fn();
-		const model = makeModel({ name: "GPT-4o" });
-		render(
-			<ToolsSection
-				{...defaultProps}
-				models={[model]}
-				modelsOpen={true}
-				onModelsOpenChange={onModelsOpenChange}
-			/>,
-		);
-		const toggle = screen.getByRole("button", { name: /models/i });
-		expect(toggle).toHaveAttribute("aria-expanded", "true");
-		expect(screen.getByText("GPT-4o")).toBeInTheDocument();
-		fireEvent.click(toggle);
-		expect(onModelsOpenChange).toHaveBeenCalledWith(false);
-	});
-
-	// C-4: clicking Models does NOT call onBundlesOpenChange and does not change Bundles aria-expanded
-	it("clicking Models toggle does not fire onBundlesOpenChange", () => {
-		const onModelsOpenChange = vi.fn();
-		const onBundlesOpenChange = vi.fn();
-		render(
-			<ToolsSection
-				{...defaultProps}
-				models={[makeModel()]}
-				bundles={[makeBundle()]}
-				modelsOpen={false}
-				onModelsOpenChange={onModelsOpenChange}
-				bundlesOpen={false}
-				onBundlesOpenChange={onBundlesOpenChange}
-			/>,
-		);
-		const modelsToggle = screen.getByRole("button", { name: /models/i });
-		fireEvent.click(modelsToggle);
-		expect(onBundlesOpenChange).not.toHaveBeenCalled();
-		const bundlesToggle = screen.getByRole("button", { name: /bundles/i });
-		expect(bundlesToggle).toHaveAttribute("aria-expanded", "false");
-	});
-});
-
-// ===========================================================================
-// GROUP E - ToolsSection uncontrolled Models disclosure (optional-prop fallback)
-// ===========================================================================
-
-describe("GROUP E - ToolsSection uncontrolled Models disclosure", () => {
-	// E-1: render WITHOUT modelsOpen/onModelsOpenChange → internal state governs;
-	//       clicking the toggle opens the panel (model name becomes visible).
-	it("uncontrolled: clicking Models toggle opens the panel (model content appears)", () => {
-		const model = makeModel({ name: "Claude 3.5" });
-		render(
-			<ToolsSection
-				{...defaultProps}
-				models={[model]}
-				// Deliberately omit modelsOpen and onModelsOpenChange (uncontrolled path)
-			/>,
-		);
-		const toggle = screen.getByRole("button", { name: /models/i });
-		expect(toggle).toHaveAttribute("aria-expanded", "false");
-		expect(screen.queryByText("Claude 3.5")).not.toBeInTheDocument();
-
-		fireEvent.click(toggle);
-		expect(toggle).toHaveAttribute("aria-expanded", "true");
-		expect(screen.getByText("Claude 3.5")).toBeInTheDocument();
-	});
-
-	// E-2: toggle again → panel closes (model name gone)
-	it("uncontrolled: clicking Models toggle a second time closes the panel", () => {
-		const model = makeModel({ name: "Claude 3.5" });
-		render(<ToolsSection {...defaultProps} models={[model]} />);
-		const toggle = screen.getByRole("button", { name: /models/i });
-		fireEvent.click(toggle);
-		expect(screen.getByText("Claude 3.5")).toBeInTheDocument();
-		fireEvent.click(toggle);
-		expect(screen.queryByText("Claude 3.5")).not.toBeInTheDocument();
 	});
 });
 

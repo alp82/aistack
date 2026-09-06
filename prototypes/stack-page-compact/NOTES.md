@@ -279,3 +279,26 @@ current scroll. The floor now comes from the hero's bottom.
 Operator locked v38 as it stands after round 11: /index.html?v=v38 with the
 default knobs (act tile, rule none, lbl none, nav quiet). Implementation is
 #356.
+
+# Production integration (alp82/aistack#356)
+
+The accepted v38 hero and v37 body remain fixed. This round tests the parts the
+static fixture did not cover while preserving production behavior and the full
+production Stats inventory.
+
+- v41 Utility band: owner sync, changes, and private views form a compact band
+  between the hero and sticky navigation.
+- v42 Stats panel: the same owner tools sit inside Stats, immediately before
+  the measured headline.
+- v43 Owner drawer: one quiet summary row between the hero and navigation opens
+  the three owner tools on demand. Round 2 aligns its visible box to the shared
+  content frame and adds 24px below it before navigation.
+
+Use `state=owner`, `reader`, `no-reading`, or `reported` to inspect exceptional
+hero and Stats states. The no-reading state collapses the measured promise and
+keeps authored Projects, Tools, and Guide content. The reported state keeps a
+page-level warning directly below the hero. Open `/index.html?v=v43`.
+
+Operator locked v43 in round 2. The owner drawer and report band align to the
+same 1280px content frame as the page, with 24px below the drawer before the
+navigation. Implementation proceeds in #356.

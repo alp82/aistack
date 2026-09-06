@@ -50,6 +50,35 @@ describe("every framing in the deck", () => {
 		}
 	});
 
+	it("cites the price-table ids and the share of tokens they cover", () => {
+		render(
+			<TokenTip
+				tokens={REAL}
+				usd={6026}
+				pricedShare={0.97}
+				pricingTables={["modelPrices/12-a1b2c3"]}
+				tip="books"
+			/>,
+		);
+		expect(screen.getByTestId("cost-sources")).toHaveTextContent(
+			"97% of tokens priced · modelPrices/12-a1b2c3",
+		);
+		cleanup();
+		render(<TokenTip tokens={REAL} usd={6026} tip="books" />);
+		expect(screen.queryByTestId("cost-sources")).toBeNull();
+		cleanup();
+		render(
+			<TokenTip
+				tokens={REAL}
+				usd={null}
+				pricedShare={1}
+				pricingTables={["modelPrices/12-a1b2c3"]}
+				tip="books"
+			/>,
+		);
+		expect(screen.queryByTestId("cost-sources")).toBeNull();
+	});
+
 	it("reads as complete on a stack that publishes no cost", () => {
 		for (const { key } of TIPS) {
 			cleanup();

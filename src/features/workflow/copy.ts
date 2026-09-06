@@ -1,6 +1,6 @@
 /**
  * The workflow rows' vocabulary, paints and number formats. Since #307 the
- * rows render inside the Actual Usage section (`src/features/usage`).
+ * rows render inside the Stats section (`src/features/usage`).
  *
  * Wayfinder tickets #215 and #286 (map #200), spec `docs/specs/workflow-surface.md`.
  *

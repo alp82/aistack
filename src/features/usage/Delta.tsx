@@ -18,9 +18,12 @@ export type Comparison = {
 export function Delta({
 	comparison,
 	range,
+	short = false,
 }: {
 	comparison: Comparison;
 	range: RangeId;
+	/** Print the figure only and keep the "vs ..." tail as the hover text. */
+	short?: boolean;
 }) {
 	if (!comparison) return null;
 	const ratio = ratioChange(comparison.current, comparison.previous);
@@ -29,13 +32,23 @@ export function Delta({
 	return (
 		<span
 			data-testid="delta"
+			title={
+				short
+					? `${fmtPercentChange(ratio)} ${PREVIOUS_LABEL[range]}`
+					: undefined
+			}
 			className={cn(
 				"font-mono text-[11px]",
 				up ? "text-accent-lime" : "text-fg-muted",
 			)}
 		>
-			{fmtPercentChange(ratio)}{" "}
-			<span className="text-fg-muted">{PREVIOUS_LABEL[range]}</span>
+			{fmtPercentChange(ratio)}
+			{!short && (
+				<>
+					{" "}
+					<span className="text-fg-muted">{PREVIOUS_LABEL[range]}</span>
+				</>
+			)}
 		</span>
 	);
 }

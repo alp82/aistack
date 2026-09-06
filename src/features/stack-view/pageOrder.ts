@@ -2,8 +2,8 @@
  * The locked stack-page section order, and the stats its nav rows carry.
  *
  * Wayfinder ticket #217 (map #200) placed five sections; #307 (map #302)
- * merged the workflow rows into Actual Usage. The settled order in
- * `docs/specs/workflow-surface.md`: Actual Usage 01, Projects 02, Tools 03,
+ * merged the workflow rows into Stats. The settled order in
+ * `docs/specs/workflow-surface.md`: Stats 01, Projects 02, Tools 03,
  * Guide 04.
  *
  * THE ORDER IS LOCKED, THE NUMBERS ARE NOT. Tools drops out of a stack with no
@@ -34,7 +34,7 @@ export const SECTION_ANCHORS: Record<SectionKey, string> = {
  * since #307 the word Workflow appears nowhere on the page.
  */
 export const SECTION_TITLES: Record<SectionKey, string> = {
-	usage: "Actual Usage",
+	usage: "Stats",
 	projects: "Projects",
 	tools: "Tools",
 	guide: "Guide",

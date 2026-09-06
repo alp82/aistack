@@ -1,34 +1,25 @@
 // @vitest-environment jsdom
 /**
- * Regression tests for the upvote-popover bug fix.
- *
- * Bug 1: When hasUpvotes=true, the `absolute left-full -translate-y-1/2` classes
- *        (and the className prop) land on HoverCard's root div rather than an
- *        outer span, which breaks positioning.
- * Bug 2: onUpvoteHover is wired to UpvoteButton's onMouseEnter, so hovering the
- *        outer wrapper span does not fire it (misses the envelope area).
- *
- * TC-SH-01/02/03 are RED against the current buggy code.
- * TC-SH-04/05/06 should be GREEN now and remain GREEN after the fix.
+ * The hero (#356, prototype v43). The header takes the page's one usage read
+ * as `reading` and queries nothing itself. These tests cover the contracts
+ * the page relies on: the upvote hover prefetch, the owner's vote and report
+ * restrictions, the report receipt and its undo, the creator link, the tool
+ * row, the ShareMenu seam, the measured tile and the warning bands.
  */
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import HoverCard from "@/components/ui/hover-card";
+import type { HeroReading } from "@/features/stack-view/heroReading";
 import { StackHeader } from "@/features/stack-view/StackHeader";
+import { titleCeilingPx } from "@/features/stack-view/titleFit";
+import { orderToolsForDisplay } from "@/lib/pricing";
 
-// ---------------------------------------------------------------------------
-// Module mocks
-// ---------------------------------------------------------------------------
-
-// CRITICAL: HoverCard is a default export in StackHeader.tsx (import HoverCard from "@/components/ui/hover-card")
-// We stub it to render children and record all calls so we can inspect className.
+// HoverCard is a default export. The stub renders its children and records
+// every call so the tests can read the props each wrapper receives.
 vi.mock("@/components/ui/hover-card", () => ({
 	default: vi.fn(({ children }: { children?: ReactNode }) => <>{children}</>),
 }));
-
-// Stub router - StackHeader renders a <Link> in the edit slot when isOwner=true.
-// Matches the pattern in stack-editor-unpublish-confirm.test.tsx.
 vi.mock("@tanstack/react-router", () => ({
 	Link: ({
 		children,
@@ -38,49 +29,51 @@ vi.mock("@tanstack/react-router", () => ({
 		children: ReactNode;
 		to: string;
 		params?: Record<string, string>;
-		className?: string;
-	}) => {
-		const href = params
-			? Object.entries(params).reduce(
-					(acc, [key, value]) => acc.replace(`$${key}`, value),
-					to,
-				)
-			: to;
-		return <a href={href}>{children}</a>;
-	},
+	}) => (
+		<a
+			href={
+				params
+					? Object.entries(params).reduce(
+							(path, [key, value]) => path.replace(`$${key}`, value),
+							to,
+						)
+					: to
+			}
+		>
+			{children}
+		</a>
+	),
 	useNavigate: () => vi.fn(),
 }));
-
-// Stub Convex - StackHeader renders ChangesBanner and HeroMeasuredStrip, both
-// of which query. `undefined` is the loading answer, so neither renders and
-// these tests keep judging the header alone.
-vi.mock("convex/react", () => ({
-	useQuery: () => undefined,
-}));
-
-// Stub CostBreakdownTooltip - reached by the price tile HoverCard's renderContent.
 vi.mock("@/components/CostBreakdownTooltip", () => ({
 	CostBreakdownTooltip: () => null,
 }));
-
-// Stub stack-view/ui exports used by StackHeader.
-vi.mock("@/features/stack-view/ui", () => ({
-	StackIcon: () => <div data-testid="stack-icon" />,
-	categoryColor: () => "#000",
-	categoryLabel: (categories: string[] | undefined) =>
-		categories?.[0] ?? "Tool",
-	STACK_WIDTH: "max-w-5xl",
-}));
-
-// Stub UpvotersTooltip - reached by the upvote HoverCard's renderContent.
 vi.mock("@/components/UpvotersTooltip", () => ({
 	UpvotersTooltip: () => null,
 }));
-
-// Stub ShareMenu - tested separately in ShareMenu.test.tsx.
+vi.mock("@/components/RelativeTime", () => ({
+	RelativeTime: ({ at }: { at: number }) => (
+		<time dateTime={String(at)}>ago</time>
+	),
+}));
+vi.mock("@/features/charts", () => ({
+	Sparkline: ({ points }: { points: unknown[] }) => (
+		<svg aria-label="Token history" data-points={points.length} />
+	),
+}));
 vi.mock("@/features/stack-view/ShareMenu", () => ({
-	ShareMenu: ({ slug }: { slug: string }) => (
-		<div data-testid="share-menu" data-slug={slug} />
+	ShareMenu: ({
+		slug,
+		triggerVariant,
+	}: {
+		slug: string;
+		triggerVariant?: string;
+	}) => (
+		<div
+			data-testid="share-menu"
+			data-slug={slug}
+			data-trigger-variant={triggerVariant}
+		/>
 	),
 }));
 
@@ -89,9 +82,38 @@ afterEach(() => {
 	vi.clearAllMocks();
 });
 
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
+type HeroTool = Parameters<typeof orderToolsForDisplay>[0][number];
+
+const tool = (
+	id: string,
+	name: string,
+	kind: "main" | "misc" = "main",
+	amount = 0,
+) =>
+	({
+		_id: id,
+		name,
+		kind,
+		categories: ["ide"],
+		price:
+			amount > 0
+				? {
+						pricingType: "fixed",
+						fixed: { currency: "USD", amount, period: "month" },
+					}
+				: { pricingType: "free" },
+		primaryUsageLabel: amount > 0 ? "Pro" : "Free",
+	}) as unknown as HeroTool & { _id: string; name: string };
+
+const SEVEN_TOOLS = [
+	tool("t1", "Claude Code", "main", 200),
+	tool("t2", "Convex", "main", 25),
+	tool("t3", "Linear"),
+	tool("t4", "Figma", "misc", 15),
+	tool("t5", "Raycast", "misc"),
+	tool("t6", "GitHub"),
+	tool("t7", "Warp", "misc"),
+];
 
 const BASE_STACK = {
 	creator: {
@@ -99,45 +121,54 @@ const BASE_STACK = {
 		handle: "test-user",
 		avatarUrl: undefined,
 		xHandle: undefined,
-		verified: undefined,
+		verified: true,
 	},
 	personalPageUrl: undefined,
 	slug: "test-stack",
 	name: "Test Stack",
-	oneLiner: "A test stack",
-	tools: [],
+	oneLiner: "A compact stack page",
+	tools: SEVEN_TOOLS,
 	models: [],
 	bundles: [],
-	fixedTotal: { amount: 0 },
-	hasUsageComponent: false as const,
+	fixedTotal: { amount: 220 },
+	hasUsageComponent: false,
 	usageTotalNotes: undefined,
-	teamSize: undefined,
-	isLowQuality: false as const,
+	teamSize: 3,
+	isLowQuality: false,
 	updatedAt: undefined,
 	_creationTime: 0,
 };
 
-const UPVOTE_STATUS_WITH_COUNT = {
+const READER = {
 	count: 3,
 	upvoted: false,
 	isOwner: false,
 	currentUserId: null,
 };
-
-const UPVOTE_STATUS_ZERO = {
+const OWNER = { count: 3, upvoted: false, isOwner: true, currentUserId: "u1" };
+const NOBODY_YET = {
 	count: 0,
 	upvoted: false,
 	isOwner: false,
 	currentUserId: null,
 };
 
-function buildProps(
-	upvoteStatus: typeof UPVOTE_STATUS_WITH_COUNT | typeof UPVOTE_STATUS_ZERO,
-	overrides = {},
-) {
+const READING: HeroReading = {
+	tokens: 6_180_000_000,
+	points: [
+		{ at: Date.parse("2026-09-01"), value: 10 },
+		{ at: Date.parse("2026-09-02"), value: 12 },
+	],
+	receivedAt: Date.now() - 3_600_000,
+	days: 7,
+};
+
+function props(overrides: Record<string, unknown> = {}) {
 	return {
 		stack: BASE_STACK as never,
-		upvoteStatus,
+		reading: null,
+		range: "30d" as const,
+		upvoteStatus: READER,
 		reportStatus: undefined,
 		upvotersData: undefined,
 		upvoting: false,
@@ -150,393 +181,372 @@ function buildProps(
 	};
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+function withStack(over: Record<string, unknown>) {
+	return { ...BASE_STACK, ...over } as never;
+}
 
-describe("StackHeader upvote-popover regression", () => {
-	// TC-SH-01 (Bug 1 guard - RED now)
-	// In the buggy code, HoverCard wrapper mode applies className directly on its
-	// root div, so a call to HoverCard will have className matching /absolute|left-full|-translate-y/.
-	// After the fix, absolute/left-full classes move to an outer span and HoverCard
-	// should receive no such className.
-	it("TC-SH-01: no HoverCard call carries absolute/left-full/-translate-y classes (bug 1 guard)", () => {
-		render(<StackHeader {...buildProps(UPVOTE_STATUS_WITH_COUNT)} />);
+const upvoteButton = () => screen.getByRole("button", { name: /upvote/i });
+const toolRow = () =>
+	screen.queryByRole("button", { name: "Jump to Tools section" });
+const shownToolNames = () => {
+	const row = toolRow();
+	if (!row) throw new Error("the tool row did not render");
+	return [...row.querySelectorAll<HTMLElement>(":scope > span")].map(
+		(el) => el.title,
+	);
+};
+const upvoteHoverCall = () =>
+	vi
+		.mocked(HoverCard)
+		.mock.calls.find(([p]) => (p as { width?: number }).width === 280);
 
-		const MockedHoverCard = vi.mocked(HoverCard);
-		const allCalls = MockedHoverCard.mock.calls;
-
-		// There should be at least one call (the upvote one and the price one).
-		expect(allCalls.length).toBeGreaterThan(0);
-
-		for (const [callProps] of allCalls) {
-			const className = (callProps as { className?: string }).className ?? "";
-			expect(className).not.toMatch(/absolute|left-full|-translate-y/);
-		}
+describe("identity", () => {
+	it("prints the whole name, the one-liner and the byline as a profile link", () => {
+		render(<StackHeader {...props()} />);
+		expect(
+			screen.getByRole("heading", { level: 1, name: "Test Stack" }),
+		).toBeInTheDocument();
+		expect(screen.getByText("A compact stack page")).toBeInTheDocument();
+		expect(
+			screen.getByRole("link", { name: /test user\s*@test-user/i }),
+		).toHaveAttribute("href", "/@test-user");
+		expect(screen.getByText("verified")).toBeInTheDocument();
 	});
 
-	// TC-SH-02 (Bug 1 structural guard - RED now)
-	// In the buggy code, the absolute/left-full wrapper is the HoverCard's own root div
-	// (rendered by our stub as a fragment, so no element carries those classes in DOM).
-	// After the fix, there will be an explicit span/div wrapping HoverCard with those classes.
-	//
-	// We locate the upvote button and then check its closest ancestor that carries `absolute`.
-	// The locator is tag-neutral (closest("[class*='absolute']")) to tolerate div vs span.
-	it("TC-SH-02: upvote button's closest absolute-positioned ancestor is a plain span/div (not HoverCard root)", () => {
-		render(<StackHeader {...buildProps(UPVOTE_STATUS_WITH_COUNT)} />);
-
-		// The upvote button aria-label is dynamic: "Upvote, 3 upvotes"
-		const btn = screen.getByRole("button", { name: /upvote/i });
-		expect(btn).toBeInTheDocument();
-
-		// After the fix there must be an ancestor element carrying `absolute` AND `left-full`
-		// that is NOT the HoverCard stub fragment (which renders as <>children</>).
-		// In the buggy code the classes are on HoverCard's className prop which our stub
-		// doesn't mount as a DOM element - so the only element carrying `absolute` is
-		// the header's `relative` container, not a direct upvote-wrapper ancestor.
-		// We assert the button has a direct wrapper with both `absolute` and `left-full`.
-		const absoluteAncestor = btn.closest(
-			"[class*='absolute'][class*='left-full']",
-		);
-		expect(absoluteAncestor).toBeInTheDocument();
-	});
-
-	// TC-SH-03 (Bug 2 guard - RED now)
-	// In the buggy code, onUpvoteHover is only on the UpvoteButton's onMouseEnter.
-	// The outer wrapper (currently HoverCard, which in the fix becomes a span) does NOT
-	// fire onUpvoteHover on mouseEnter. After the fix, the span carries onMouseEnter={onUpvoteHover}.
-	it("TC-SH-03: mouseEnter on the absolute wrapper span fires onUpvoteHover (bug 2 guard)", () => {
-		const onUpvoteHover = vi.fn();
+	it("offers no external identity links in the byline", () => {
 		render(
 			<StackHeader
-				{...buildProps(UPVOTE_STATUS_WITH_COUNT, { onUpvoteHover })}
-			/>,
-		);
-
-		const btn = screen.getByRole("button", { name: /upvote/i });
-		// Tag-neutral: locate the closest ancestor carrying absolute+left-full classes
-		const wrapper = btn.closest("[class*='absolute'][class*='left-full']");
-		expect(wrapper).toBeInTheDocument();
-
-		// biome-ignore lint/style/noNonNullAssertion: asserted in preceding expect
-		fireEvent.mouseEnter(wrapper!);
-		expect(onUpvoteHover).toHaveBeenCalled();
-	});
-
-	// TC-SH-04 (Bug 2 completeness - GREEN now and after fix)
-	// After the fix the handler is on the span and bubbles up, so mouseEnter on the
-	// button itself also triggers it. We use toHaveBeenCalled (not toHaveBeenCalledOnce)
-	// because bubbling may cause multiple invocations.
-	it("TC-SH-04: mouseEnter on the upvote button itself also fires onUpvoteHover", () => {
-		const onUpvoteHover = vi.fn();
-		render(
-			<StackHeader
-				{...buildProps(UPVOTE_STATUS_WITH_COUNT, { onUpvoteHover })}
-			/>,
-		);
-
-		const btn = screen.getByRole("button", { name: /upvote/i });
-		fireEvent.mouseEnter(btn);
-		expect(onUpvoteHover).toHaveBeenCalled();
-	});
-
-	// TC-SH-05 (no-upvotes branch unaffected - GREEN now and after fix)
-	// When count=0, HoverCard is NOT rendered for the upvote button (plain span branch).
-	// The price-tile HoverCard may still be called, but its className must not contain
-	// upvote-positioning classes.
-	it("TC-SH-05: count=0 renders upvote button without HoverCard wrapping it", () => {
-		const onUpvoteHover = vi.fn();
-		render(
-			<StackHeader {...buildProps(UPVOTE_STATUS_ZERO, { onUpvoteHover })} />,
-		);
-
-		// Upvote button still in DOM
-		expect(screen.getByRole("button", { name: /upvote/i })).toBeInTheDocument();
-
-		// onUpvoteHover should not have been called during render
-		expect(onUpvoteHover).not.toHaveBeenCalled();
-
-		// No HoverCard call should have the upvote-positioning classes
-		const MockedHoverCard = vi.mocked(HoverCard);
-		for (const [callProps] of MockedHoverCard.mock.calls) {
-			const className = (callProps as { className?: string }).className ?? "";
-			// The price tile HoverCard should not carry absolute/left-full either
-			expect(className).not.toMatch(/left-full/);
-		}
-	});
-
-	// TC-SH-06 (no hover on render - GREEN now and after fix)
-	// onUpvoteHover must never be called as a side-effect of rendering.
-	it("TC-SH-06: onUpvoteHover is not called during initial render (count=0)", () => {
-		const onUpvoteHover = vi.fn();
-		render(
-			<StackHeader {...buildProps(UPVOTE_STATUS_ZERO, { onUpvoteHover })} />,
-		);
-		expect(onUpvoteHover).not.toHaveBeenCalled();
-	});
-
-	// TC-SH-07 (MATERIAL - upvote HoverCard functional props guard)
-	// After the className was removed from the upvote HoverCard, we must verify its
-	// OTHER functional props are still present. A silently dropped `renderContent`
-	// would make the upvoters tooltip never render (defeats bug-2's fix); a changed
-	// `position` would mis-place it.
-	//
-	// Discriminator: upvote HoverCard has width=280; price tile has width=320.
-	it("TC-SH-07: upvote HoverCard (width=280) receives mode/position/width/height/renderContent and no className", () => {
-		render(<StackHeader {...buildProps(UPVOTE_STATUS_WITH_COUNT)} />);
-
-		const MockedHoverCard = vi.mocked(HoverCard);
-		const allCalls = MockedHoverCard.mock.calls;
-
-		// Find the upvote HoverCard call by its unique width=280
-		const upvoteCall = allCalls.find(
-			([props]) => (props as { width?: number }).width === 280,
-		);
-		expect(upvoteCall).toBeDefined();
-
-		// biome-ignore lint/style/noNonNullAssertion: asserted above
-		const [upvoteProps] = upvoteCall!;
-		const p = upvoteProps as {
-			mode?: string;
-			position?: string;
-			width?: number;
-			height?: string;
-			renderContent?: unknown;
-			className?: string;
-		};
-
-		expect(p.mode).toBe("wrapper");
-		expect(p.position).toBe("below");
-		expect(p.width).toBe(280);
-		expect(p.height).toBe("auto");
-		expect(typeof p.renderContent).toBe("function");
-		// className must be absent (the positioning classes live on the outer span)
-		expect(p.className).toBeUndefined();
-	});
-
-	// TC-SH-08 (nice-to-have - count=0 branch keeps positioning classes)
-	// When count=0, the upvote button is wrapped in a plain span (no HoverCard).
-	// That span must still carry the absolute/left-full positioning classes so the
-	// control doesn't jump position compared with the hasUpvotes branch.
-	it("TC-SH-08: count=0 upvote button's wrapper span still carries absolute/left-full positioning classes", () => {
-		render(<StackHeader {...buildProps(UPVOTE_STATUS_ZERO)} />);
-
-		const btn = screen.getByRole("button", { name: /upvote/i });
-		expect(btn).toBeInTheDocument();
-
-		// The span wrapping the zero-count UpvoteButton has absolute + left-full classes
-		const positionedWrapper = btn.closest(
-			"[class*='absolute'][class*='left-full']",
-		);
-		expect(positionedWrapper).toBeInTheDocument();
-	});
-});
-
-// ===========================================================================
-// GROUP E - Hero tool tiles (#40 replaced the count tiles with named tools)
-//
-// The old "11 tools / 5 models / 1 bundle" row is gone on purpose: three
-// numbers that say nothing, in the space three named tools say something. Tools
-// is now journey section 03, so the tools have to surface in the hero.
-// ===========================================================================
-
-const TOOL = (id: string, name: string, kind: "main" | "misc" = "main") => ({
-	_id: id,
-	name,
-	kind,
-	categories: ["ide"],
-	price: { pricingType: "free" },
-	primaryUsageLabel: "Free",
-});
-
-describe("GROUP E - StackHeader hero tool tiles", () => {
-	it("shows the first three tools as buttons into the Tools section", () => {
-		const stack = {
-			...BASE_STACK,
-			tools: [
-				TOOL("t1", "Claude Code"),
-				TOOL("t2", "Convex"),
-				TOOL("t3", "Linear"),
-			],
-		};
-		render(
-			<StackHeader
-				{...buildProps(UPVOTE_STATUS_ZERO, { stack: stack as never })}
-			/>,
-		);
-		for (const name of ["Claude Code", "Convex", "Linear"]) {
-			expect(
-				screen.getByRole("button", {
-					name: new RegExp(`Jump to Tools section: ${name}`),
-				}),
-			).toBeInTheDocument();
-		}
-	});
-
-	it("folds the rest into a single +N more", () => {
-		const stack = {
-			...BASE_STACK,
-			tools: [
-				TOOL("t1", "Claude Code"),
-				TOOL("t2", "Convex"),
-				TOOL("t3", "Linear"),
-				TOOL("t4", "Figma", "misc"),
-				TOOL("t5", "Raycast", "misc"),
-			],
-		};
-		render(
-			<StackHeader
-				{...buildProps(UPVOTE_STATUS_ZERO, { stack: stack as never })}
-			/>,
-		);
-		expect(screen.getByText("+2 more")).toBeInTheDocument();
-		expect(screen.queryByText("Figma")).not.toBeInTheDocument();
-	});
-
-	it("shows no +N more when three tools are all there is", () => {
-		const stack = {
-			...BASE_STACK,
-			tools: [
-				TOOL("t1", "Claude Code"),
-				TOOL("t2", "Convex"),
-				TOOL("t3", "Linear"),
-			],
-		};
-		render(
-			<StackHeader
-				{...buildProps(UPVOTE_STATUS_ZERO, { stack: stack as never })}
-			/>,
-		);
-		expect(screen.queryByText(/more$/)).not.toBeInTheDocument();
-	});
-
-	it("calls onToolsActivate once per tile click", () => {
-		const onToolsActivate = vi.fn();
-		const stack = { ...BASE_STACK, tools: [TOOL("t1", "Convex")] };
-		render(
-			<StackHeader
-				{...buildProps(UPVOTE_STATUS_ZERO, {
-					stack: stack as never,
-					onToolsActivate,
+				{...props({
+					stack: withStack({
+						creator: { ...BASE_STACK.creator, xHandle: "someone" },
+						personalPageUrl: "https://example.com",
+					}),
 				})}
 			/>,
 		);
-		fireEvent.click(
-			screen.getByRole("button", { name: /Jump to Tools section: Convex/ }),
-		);
-		expect(onToolsActivate).toHaveBeenCalledTimes(1);
-	});
-
-	it("renders the hero without tiles when the stack lists no tools", () => {
-		render(<StackHeader {...buildProps(UPVOTE_STATUS_ZERO)} />);
-		expect(
-			screen.queryByRole("button", { name: /Jump to Tools section/ }),
-		).not.toBeInTheDocument();
-		expect(screen.getByText("Test Stack")).toBeInTheDocument();
-	});
-
-	it("no longer offers the tools, models and bundles counts", () => {
-		const stack = {
-			...BASE_STACK,
-			tools: [TOOL("t1", "Convex")],
-			models: [{ _id: "m1", name: "Claude Opus 5" }],
-			bundles: [{ _id: "b1", name: "Max" }],
-		};
-		render(
-			<StackHeader
-				{...buildProps(UPVOTE_STATUS_ZERO, { stack: stack as never })}
-			/>,
-		);
-		expect(
-			screen.queryByRole("button", { name: /Jump to Models section/ }),
-		).not.toBeInTheDocument();
-		expect(
-			screen.queryByRole("button", { name: /Jump to Bundles section/ }),
-		).not.toBeInTheDocument();
-	});
-});
-
-// ===========================================================================
-// GROUP P - Byline links up to the creator profile (profile-first decoupling)
-// ===========================================================================
-
-describe("GROUP P - StackHeader byline profile link", () => {
-	it("renders the creator byline as a link to /@handle", () => {
-		render(<StackHeader {...buildProps(UPVOTE_STATUS_ZERO)} />);
-
-		const bylineLink = screen.getByRole("link", {
-			name: /test user\s*@test-user/i,
-		});
-		expect(bylineLink).toHaveAttribute("href", "/@test-user");
-	});
-
-	it("does not render external identity links (X / personal page) in the byline", () => {
-		const stack = {
-			...BASE_STACK,
-			creator: {
-				...BASE_STACK.creator,
-				xHandle: "someone",
-			},
-			personalPageUrl: "https://example.com",
-		};
-		render(
-			<StackHeader
-				{...buildProps(UPVOTE_STATUS_ZERO, { stack: stack as never })}
-			/>,
-		);
-
 		expect(
 			screen.queryByRole("link", { name: /x\.com|example\.com/i }),
 		).not.toBeInTheDocument();
 	});
+
+	it("never cuts a long name and sizes it from the viewport ceiling after layout", () => {
+		const name =
+			"An Unreasonably Long Stack Name That Would Never Fit On One Line";
+		render(<StackHeader {...props({ stack: withStack({ name }) })} />);
+		const title = screen.getByRole("heading", { level: 1 });
+		expect(title).toHaveTextContent(name);
+		expect(title.textContent).toBe(name);
+		// jsdom lays nothing out, so the fitter lands on the ceiling for this
+		// viewport width. The point is that the hook ran and wrote a px size.
+		expect(title.style.fontSize).toBe(`${titleCeilingPx(window.innerWidth)}px`);
+	});
 });
 
-// ===========================================================================
-// GROUP F - ShareMenu integration (TC-SH-SHARE-*)
-// ===========================================================================
-
-describe("GROUP F - StackHeader ShareMenu integration", () => {
-	// TC-SH-SHARE-01: owner sees share-menu AND an Edit link.
-	it("TC-SH-SHARE-01: owner → share-menu present and Edit link present", () => {
-		render(
-			<StackHeader
-				{...buildProps(UPVOTE_STATUS_WITH_COUNT, {
-					upvoteStatus: { ...UPVOTE_STATUS_WITH_COUNT, isOwner: true },
-				})}
-			/>,
-		);
-
-		expect(screen.getByTestId("share-menu")).toBeInTheDocument();
-		expect(screen.getByRole("link", { name: /edit/i })).toBeInTheDocument();
+describe("the upvote control", () => {
+	it("starts the upvoters query on hover of the whole control, not on render", () => {
+		const onUpvoteHover = vi.fn();
+		render(<StackHeader {...props({ onUpvoteHover })} />);
+		expect(onUpvoteHover).not.toHaveBeenCalled();
+		const wrapper = upvoteButton().parentElement;
+		expect(wrapper).not.toBeNull();
+		// biome-ignore lint/style/noNonNullAssertion: asserted above
+		fireEvent.mouseEnter(wrapper!);
+		expect(onUpvoteHover).toHaveBeenCalledOnce();
 	});
 
-	// TC-SH-SHARE-02: non-owner sees share-menu AND a Report control, but NO Edit link.
-	it("TC-SH-SHARE-02: non-owner → share-menu present, Report present, no Edit link", () => {
+	it("also fires from the button itself, since the handler sits on the wrapper", () => {
+		const onUpvoteHover = vi.fn();
+		render(<StackHeader {...props({ onUpvoteHover })} />);
+		fireEvent.mouseEnter(upvoteButton());
+		expect(onUpvoteHover).toHaveBeenCalled();
+	});
+
+	it("hands the upvoters card its wrapper contract and a full-width root", () => {
+		render(<StackHeader {...props()} />);
+		const call = upvoteHoverCall();
+		expect(call).toBeDefined();
+		// biome-ignore lint/style/noNonNullAssertion: asserted above
+		const p = call![0] as unknown as Record<string, unknown>;
+		expect(p.mode).toBe("wrapper");
+		expect(p.position).toBe("below");
+		expect(p.height).toBe("auto");
+		expect(typeof p.renderContent).toBe("function");
+		// The card root is inline-block by default, which would shrink-wrap the
+		// button and leave a gap before Share.
+		expect(p.className).toBe("block w-full");
+	});
+
+	it("skips the upvoters card and the hover when nobody has upvoted", () => {
+		const onUpvoteHover = vi.fn();
+		render(
+			<StackHeader {...props({ upvoteStatus: NOBODY_YET, onUpvoteHover })} />,
+		);
+		expect(upvoteButton()).toBeInTheDocument();
+		expect(upvoteHoverCall()).toBeUndefined();
+		fireEvent.mouseEnter(upvoteButton());
+		// biome-ignore lint/style/noNonNullAssertion: the button has a parent
+		fireEvent.mouseEnter(upvoteButton().parentElement!);
+		expect(onUpvoteHover).not.toHaveBeenCalled();
+	});
+
+	it("lets a reader vote and calls onUpvote", () => {
+		const onUpvote = vi.fn();
+		render(<StackHeader {...props({ onUpvote })} />);
+		expect(upvoteButton()).toBeEnabled();
+		fireEvent.click(upvoteButton());
+		expect(onUpvote).toHaveBeenCalledOnce();
+	});
+
+	it("keeps the owner from voting on their own stack and says why", () => {
+		const onUpvote = vi.fn();
+		render(<StackHeader {...props({ upvoteStatus: OWNER, onUpvote })} />);
+		expect(upvoteButton()).toBeDisabled();
+		expect(upvoteButton()).toHaveAttribute(
+			"title",
+			"You can't upvote your own stack",
+		);
+		fireEvent.click(upvoteButton());
+		expect(onUpvote).not.toHaveBeenCalled();
+	});
+
+	it("disables the button while a vote is in flight", () => {
+		render(<StackHeader {...props({ upvoting: true })} />);
+		expect(upvoteButton()).toBeDisabled();
+		expect(upvoteButton()).not.toHaveAttribute("title");
+	});
+});
+
+describe("report and undo", () => {
+	it("offers Report to a reader and calls onReport", () => {
+		const onReport = vi.fn();
+		render(<StackHeader {...props({ onReport })} />);
+		fireEvent.click(screen.getByRole("button", { name: "Report" }));
+		expect(onReport).toHaveBeenCalledOnce();
+		expect(screen.queryByText("Report received")).not.toBeInTheDocument();
+	});
+
+	it("turns the link into an undo and raises the receipt band once reported", () => {
+		const onReport = vi.fn();
 		render(
 			<StackHeader
-				{...buildProps(UPVOTE_STATUS_WITH_COUNT, {
-					upvoteStatus: { ...UPVOTE_STATUS_WITH_COUNT, isOwner: false },
-				})}
+				{...props({ reportStatus: { reported: true }, onReport })}
 			/>,
 		);
-
-		expect(screen.getByTestId("share-menu")).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: /report/i })).toBeInTheDocument();
 		expect(
-			screen.queryByRole("link", { name: /edit/i }),
+			screen.queryByRole("button", { name: "Report" }),
+		).not.toBeInTheDocument();
+		fireEvent.click(screen.getByRole("button", { name: "Reported · undo" }));
+		expect(onReport).toHaveBeenCalledTimes(1);
+		expect(screen.getByText("Report received")).toBeInTheDocument();
+		expect(
+			screen.getByText("You reported this stack. The report remains private."),
+		).toBeInTheDocument();
+		fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+		expect(onReport).toHaveBeenCalledTimes(2);
+	});
+
+	it("disables both the link and the band's undo while a report is in flight", () => {
+		render(
+			<StackHeader
+				{...props({ reportStatus: { reported: true }, reporting: true })}
+			/>,
+		);
+		expect(
+			screen.getByRole("button", { name: "Reported · undo" }),
+		).toBeDisabled();
+		expect(screen.getByRole("button", { name: "Undo" })).toBeDisabled();
+	});
+
+	it("gives the owner Edit stack instead of Report", () => {
+		render(<StackHeader {...props({ upvoteStatus: OWNER })} />);
+		expect(screen.getByRole("link", { name: /edit stack/i })).toHaveAttribute(
+			"href",
+			"/stacks/test-stack/edit",
+		);
+		expect(
+			screen.queryByRole("button", { name: /report/i }),
+		).not.toBeInTheDocument();
+	});
+});
+
+describe("the grid pattern", () => {
+	it("is decorative: hidden from the reader and never clickable", () => {
+		render(<StackHeader {...props()} />);
+		const layer = screen.getByTestId("hero-grid-pattern");
+		expect(layer).toHaveAttribute("aria-hidden", "true");
+		expect(layer.className).toContain("pointer-events-none");
+		expect(layer.className).toContain("absolute");
+		expect(layer.style.backgroundImage).toContain("var(--stroke-subtle)");
+		expect(layer.style.backgroundSize).toBe("4rem 4rem");
+	});
+
+	it("covers the hero only, so a warning band keeps its own ground", () => {
+		render(<StackHeader {...props({ reportStatus: { reported: true } })} />);
+		const layer = screen.getByTestId("hero-grid-pattern");
+		const band = screen
+			.getByText("Report received")
+			.closest("div")?.parentElement;
+		expect(band).not.toBeNull();
+		expect(layer.parentElement).not.toContainElement(band as HTMLElement);
+	});
+});
+
+describe("the warning bands", () => {
+	it("aligns the report receipt to the shared frame and lets it wrap", () => {
+		render(<StackHeader {...props({ reportStatus: { reported: true } })} />);
+		const label = screen.getByText("Report received");
+		const row = label.parentElement;
+		expect(row).toHaveClass("mx-auto", "max-w-7xl", "px-6", "flex-wrap");
+		expect(row).toContainElement(screen.getByRole("button", { name: "Undo" }));
+		expect(row).toContainElement(
+			screen.getByText("You reported this stack. The report remains private."),
+		);
+	});
+
+	it("prints the community warning with the same structure and no undo", () => {
+		render(
+			<StackHeader {...props({ stack: withStack({ isLowQuality: true }) })} />,
+		);
+		const label = screen.getByText("Community warning");
+		expect(label.parentElement).toHaveClass("mx-auto", "max-w-7xl", "px-6");
+		expect(
+			screen.getByText(/flagged as low quality by the community/),
+		).toBeInTheDocument();
+		expect(
+			screen.queryByRole("button", { name: "Undo" }),
 		).not.toBeInTheDocument();
 	});
 
-	// TC-SH-SHARE-03: ShareMenu stub receives the stack slug as its slug prop.
-	it("TC-SH-SHARE-03: ShareMenu receives the correct slug prop from the stack", () => {
-		const stack = { ...BASE_STACK, slug: "my-stack" };
+	it("shows both bands when a reader reports a flagged stack", () => {
 		render(
 			<StackHeader
-				{...buildProps(UPVOTE_STATUS_ZERO, { stack: stack as never })}
+				{...props({
+					stack: withStack({ isLowQuality: true }),
+					reportStatus: { reported: true },
+				})}
 			/>,
 		);
+		expect(screen.getByText("Community warning")).toBeInTheDocument();
+		expect(screen.getByText("Report received")).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
+	});
 
-		const shareMenuEl = screen.getByTestId("share-menu");
-		expect(shareMenuEl).toHaveAttribute("data-slug", "my-stack");
+	it("raises no band on a clean, unreported stack", () => {
+		render(<StackHeader {...props()} />);
+		expect(screen.queryByText("Community warning")).not.toBeInTheDocument();
+		expect(screen.queryByText("Report received")).not.toBeInTheDocument();
+	});
+});
+
+describe("the tool row", () => {
+	it("shows five logos in display order and folds the rest into a chip", () => {
+		render(<StackHeader {...props()} />);
+		const shown = shownToolNames().slice(0, 5);
+		const ordered = orderToolsForDisplay(SEVEN_TOOLS).map((t) => t.name);
+		expect(shown).toEqual(ordered.slice(0, 5));
+		// Main tools lead, priced first, so the stored order is not the shown one.
+		expect(shown.slice(0, 2)).toEqual(["Claude Code", "Convex"]);
+		expect(shown).not.toContain("Raycast");
+		expect(screen.getByText("+2")).toHaveAttribute(
+			"title",
+			ordered.slice(5).join(", "),
+		);
+		expect(screen.getByText("+2")).toHaveAttribute("title", "Raycast, Warp");
+	});
+
+	it("shows all six when six is all there is", () => {
+		render(
+			<StackHeader
+				{...props({ stack: withStack({ tools: SEVEN_TOOLS.slice(0, 6) }) })}
+			/>,
+		);
+		expect(shownToolNames()).toHaveLength(6);
+		expect(screen.queryByText(/^\+\d+$/)).not.toBeInTheDocument();
+	});
+
+	it("renders no row when the stack lists no tools", () => {
+		render(<StackHeader {...props({ stack: withStack({ tools: [] }) })} />);
+		expect(toolRow()).toBeNull();
+		expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
+	});
+
+	it("jumps to Tools on click", () => {
+		const onToolsActivate = vi.fn();
+		render(<StackHeader {...props({ onToolsActivate })} />);
+		const row = toolRow();
+		if (!row) throw new Error("the tool row did not render");
+		fireEvent.click(row);
+		expect(onToolsActivate).toHaveBeenCalledOnce();
+	});
+});
+
+describe("ShareMenu", () => {
+	it("gets the stack slug", () => {
+		render(
+			<StackHeader {...props({ stack: withStack({ slug: "my-stack" }) })} />,
+		);
+		expect(screen.getByTestId("share-menu")).toHaveAttribute(
+			"data-slug",
+			"my-stack",
+		);
+	});
+
+	it("renders the ghost trigger beside the outline upvote button", () => {
+		render(<StackHeader {...props()} />);
+		expect(screen.getByTestId("share-menu")).toHaveAttribute(
+			"data-trigger-variant",
+			"ghost",
+		);
+		expect(upvoteButton()).toHaveTextContent(/^Upvote\s*3$/);
+		expect(upvoteButton().className).toContain("border-accent-lime");
+		expect(upvoteButton().className).toContain("w-full");
+	});
+
+	it("is there for the owner and the reader alike", () => {
+		const { rerender } = render(<StackHeader {...props()} />);
+		expect(screen.getByTestId("share-menu")).toBeInTheDocument();
+		rerender(<StackHeader {...props({ upvoteStatus: OWNER })} />);
+		expect(screen.getByTestId("share-menu")).toBeInTheDocument();
+	});
+});
+
+describe("measured against authored", () => {
+	it("prints the authored price and nothing measured without a reading", () => {
+		render(<StackHeader {...props()} />);
+		expect(screen.getByText("$220")).toBeInTheDocument();
+		expect(screen.getByText(/team 3/)).toBeInTheDocument();
+		expect(screen.queryByText(/tokens ·/)).not.toBeInTheDocument();
+		expect(screen.queryByText(/updated/)).not.toBeInTheDocument();
+		expect(screen.queryByLabelText("Token history")).not.toBeInTheDocument();
+	});
+
+	it("adds the token tile, its series and the updated stamp with a reading", () => {
+		render(<StackHeader {...props({ reading: READING, range: "7d" })} />);
+		const tile = screen.getByText("6.18B").closest("a");
+		expect(tile).toHaveAttribute("href", "#section-measured");
+		expect(tile).toHaveTextContent("tokens · 7 days");
+		expect(screen.getByLabelText("Token history")).toHaveAttribute(
+			"data-points",
+			"2",
+		);
+		expect(screen.getByText(/updated/)).toBeInTheDocument();
+	});
+
+	it("keeps dollars out of the measured tile", () => {
+		render(<StackHeader {...props({ reading: READING })} />);
+		const dollars = screen.getAllByText(/\$/);
+		expect(dollars).toHaveLength(1);
+		expect(dollars[0]).toHaveTextContent("$220");
+	});
+
+	it("prints no updated stamp when the reading carries no sync time", () => {
+		render(
+			<StackHeader
+				{...props({ reading: { ...READING, receivedAt: null, days: 30 } })}
+			/>,
+		);
+		expect(screen.getByText("6.18B")).toBeInTheDocument();
+		expect(screen.getByText(/tokens · 30 days/)).toBeInTheDocument();
+		expect(screen.queryByText(/updated/)).not.toBeInTheDocument();
 	});
 });

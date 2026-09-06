@@ -5,17 +5,9 @@ import { TableOfContents } from "@/components/TableOfContents";
 import { TiptapEditor } from "@/components/TiptapEditor";
 import { formatPriceDisplay, sortToolsByPrice } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
-import {
-	BundleCard,
-	ModelTile,
-	type StackBundle,
-	type StackModel,
-	type StackTool,
-	ToolCardBig,
-	ToolCardMini,
-} from "./cards";
+import { BundleCard, type StackBundle, type StackTool, ToolRow } from "./cards";
 import { hasGuideContent, SECTION_TITLES } from "./pageOrder";
-import { GAP, Section, SectionHeader } from "./ui";
+import { Section, SectionHeader } from "./ui";
 
 // ---------------------------------------------------------------------------
 // Disclosure - file-private collapsible row (aria-expanded + ChevronRight
@@ -79,7 +71,10 @@ function Disclosure({
 }
 
 // ===========================================================================
-// 03 - TOOLS (hosts Models / Bundles disclosures)
+// 03 - TOOLS (hosts the Bundles disclosure)
+//
+// The section lists no models (#356). Section 01 prints the measured model
+// breakdown, and a second list here read as the same thing twice.
 // ===========================================================================
 
 export function ToolsSection({
@@ -87,13 +82,10 @@ export function ToolsSection({
 	id,
 	highlighted,
 	tools,
-	models,
 	bundles,
 	highlightedBundle,
 	bundlesOpen,
 	onBundlesOpenChange,
-	modelsOpen,
-	onModelsOpenChange,
 	onBundleClick,
 	fixedTotal,
 }: {
@@ -101,55 +93,58 @@ export function ToolsSection({
 	id?: string;
 	highlighted?: boolean;
 	tools: StackTool[];
-	models: StackModel[];
 	bundles: StackBundle[];
 	highlightedBundle: string | null;
 	bundlesOpen: boolean;
 	onBundlesOpenChange: (open: boolean) => void;
-	modelsOpen?: boolean;
-	onModelsOpenChange?: (open: boolean) => void;
 	onBundleClick?: (bundleSlug: string) => void;
 	fixedTotal?: { amount: number };
 }) {
-	// [...primary, ...secondary] is exactly orderToolsForDisplay(tools), the
-	// canonical order the OG image (api.og.stack.$slug) shares. Kept split here
-	// because the page renders the two groups in separate blocks.
-	const primary = sortToolsByPrice(tools.filter((t) => t.kind === "main"));
-	const secondary = sortToolsByPrice(tools.filter((t) => t.kind === "misc"));
+	// One list by cost, decreasing (`sortToolsByPrice`: priced first by amount,
+	// then bundle items, then free), split down the middle into two columns that
+	// read top to bottom, left first.
+	const ordered = sortToolsByPrice(tools);
+	const half = Math.ceil(ordered.length / 2);
+	const columns = [ordered.slice(0, half), ordered.slice(half)].filter(
+		(column) => column.length > 0,
+	);
 
 	const price = formatPriceDisplay(fixedTotal?.amount ?? 0, "month", "floor");
 
 	if (tools.length === 0) return null;
 
 	return (
-		<Section index={index} id={id} highlighted={highlighted}>
-			<SectionHeader
-				index={String(index).padStart(2, "0")}
-				kicker="// AI Components"
-				title={SECTION_TITLES.tools}
-				meta={`${tools.length} ${tools.length === 1 ? "item" : "items"}${
-					(fixedTotal?.amount ?? 0) > 0
-						? ` · $${price.amountText}${price.suffix}`
-						: ""
-				}`}
-			/>
-
-			<div className="mb-10 space-y-3">
-				{models.length > 0 && (
-					<Disclosure
-						label="Models"
-						count={models.length}
-						open={modelsOpen}
-						onOpenChange={onModelsOpenChange}
+		<Section
+			index={index}
+			id={id}
+			highlighted={highlighted}
+			header={
+				<SectionHeader
+					index={String(index).padStart(2, "0")}
+					kicker="// AI Components"
+					title={SECTION_TITLES.tools}
+					meta={`${tools.length} ${tools.length === 1 ? "item" : "items"}${
+						(fixedTotal?.amount ?? 0) > 0
+							? ` · $${price.amountText}${price.suffix}`
+							: ""
+					}`}
+				/>
+			}
+		>
+			<div className="grid gap-x-10 md:grid-cols-2">
+				{columns.map((column, index) => (
+					<div
+						// biome-ignore lint/suspicious/noArrayIndexKey: two fixed columns
+						key={index}
+						className="border-t border-stroke-subtle"
 					>
-						<div className={cn("grid grid-cols-1 sm:grid-cols-2", GAP)}>
-							{/* Server order (#338): measured by share, then picks. Nothing ranks here. */}
-							{models.map((m) => (
-								<ModelTile key={m._id} model={m} />
-							))}
-						</div>
-					</Disclosure>
-				)}
+						{column.map((t) => (
+							<ToolRow key={t._id} tool={t} onBundleClick={onBundleClick} />
+						))}
+					</div>
+				))}
+			</div>
+			<div className="mt-8 space-y-3">
 				{bundles.length > 0 && (
 					<Disclosure
 						label="Bundles"
@@ -169,36 +164,6 @@ export function ToolsSection({
 					</Disclosure>
 				)}
 			</div>
-
-			{primary.length > 0 && (
-				<div className={cn("grid grid-cols-1 lg:grid-cols-2", GAP)}>
-					{primary.map((t) => (
-						<ToolCardBig key={t._id} tool={t} onBundleClick={onBundleClick} />
-					))}
-				</div>
-			)}
-
-			{secondary.length > 0 && (
-				<div className={primary.length > 0 ? "mt-12" : ""}>
-					<p className="mb-5 font-mono text-[11px] font-semibold uppercase tracking-[0.25em] text-fg-muted">
-						{"// Also running"}
-					</p>
-					<div
-						className={cn(
-							"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
-							GAP,
-						)}
-					>
-						{secondary.map((t) => (
-							<ToolCardMini
-								key={t._id}
-								tool={t}
-								onBundleClick={onBundleClick}
-							/>
-						))}
-					</div>
-				</div>
-			)}
 		</Section>
 	);
 }
@@ -227,12 +192,17 @@ export function GuideSection({
 }) {
 	const hasDescription = hasGuideContent(description);
 	return (
-		<Section index={index} id={id}>
-			<SectionHeader
-				index={String(index).padStart(2, "0")}
-				kicker="// writeup"
-				title={SECTION_TITLES.guide}
-			/>
+		<Section
+			index={index}
+			id={id}
+			header={
+				<SectionHeader
+					index={String(index).padStart(2, "0")}
+					kicker="// writeup"
+					title={SECTION_TITLES.guide}
+				/>
+			}
+		>
 			{hasDescription && description ? (
 				<>
 					{/* biome-ignore lint/correctness/useUniqueElementIds: stable anchor for the in-page TOC selector; scopes the heading-scrape to the prose, not the section title */}

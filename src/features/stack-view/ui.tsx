@@ -26,10 +26,6 @@ export const PAD_SM = "p-4";
 /** Grid gap between cards. */
 export const GAP = "gap-4 md:gap-5";
 
-/** Section title type. */
-export const HEADING =
-	"text-3xl md:text-4xl font-black tracking-tight uppercase text-fg-primary";
-
 /** Shared card surface - thin rule, transparent, subtle hover lift. */
 export const CARD = {
 	border: "border border-stroke-subtle",
@@ -40,9 +36,21 @@ export const CARD = {
 /** Combined card surface classes for the common case. */
 export const CARD_SURFACE = cn(CARD.border, CARD.bg, CARD.hover);
 
-/** Alternating section background, keyed by the section's position. */
+/**
+ * Section background, keyed by the section's position (#351 v26 tonal ladder,
+ * kept by the accepted v37 body). Four tints of the canvas hue, rising to the
+ * second section and falling back. The hero and the owner drawer sit on the
+ * canvas, so section 01 is the first lifted band, and section 04 returns to
+ * the canvas before the closing strip.
+ */
 export function sectionBg(index: number): string {
-	return index % 2 === 0 ? "bg-bg-canvas" : "bg-bg-panel/30";
+	const bands = [
+		"bg-bg-panel/20",
+		"bg-bg-panel/40",
+		"bg-bg-panel/20",
+		"bg-bg-canvas",
+	];
+	return bands[(Math.max(1, index) - 1) % bands.length];
 }
 
 export type CategoryColor = { text: string; bg: string; border: string };
@@ -217,13 +225,24 @@ export function Chip({
 
 // --- Section shell + numbered header --------------------------------------
 
+/**
+ * The section shell: a band of the page with the rail on the left and the body
+ * on the right. The rail holds the numbered header (#351 v27 title rail), the
+ * body holds whatever the section prints. Both are explicit slots, so no child
+ * depends on its DOM position for its column.
+ *
+ * The frame is the prototype's: a 170px rail, a 40px gap and 48px of vertical
+ * padding on the band. Below `md` the rail stacks above the body.
+ */
 export function Section({
 	index,
+	header,
 	children,
 	id,
 	highlighted,
 }: {
 	index: number;
+	header: ReactNode;
 	children: ReactNode;
 	id?: string;
 	highlighted?: boolean;
@@ -236,15 +255,25 @@ export function Section({
 		<section
 			ref={ref}
 			className={cn(
-				// Clears the 64px site header AND the 48px section rail (#217), so a
-				// nav jump never lands the section title behind them.
-				"scroll-mt-28 px-6 py-16 md:py-24",
+				// Clears the 64px site header AND the sticky section nav, so a nav
+				// jump never lands the section title behind them.
+				"scroll-mt-36 px-6 py-12",
 				sectionBg(index),
 				highlighted && !reduce && "ring-2 ring-accent-lime/50 ring-inset",
 			)}
 			id={id}
 		>
-			<div className={cn("mx-auto", STACK_WIDTH)}>{children}</div>
+			<div
+				className={cn(
+					"mx-auto md:grid md:grid-cols-[170px_minmax(0,1fr)] md:gap-x-10",
+					STACK_WIDTH,
+				)}
+			>
+				<div className="mb-8 md:mb-0" data-testid="section-rail-slot">
+					{header}
+				</div>
+				<div className="min-w-0">{children}</div>
+			</div>
 		</section>
 	);
 }
@@ -263,20 +292,18 @@ export function SectionHeader({
 	metaAlwaysVisible?: boolean;
 }) {
 	return (
-		<div className="mb-10 flex flex-wrap items-end gap-5 border-b border-stroke-subtle pb-5">
-			<span className="font-mono text-5xl font-black leading-none text-stroke-strong md:text-7xl">
+		<div>
+			<span className="block font-mono text-6xl font-black leading-none tracking-tight text-accent-lime">
 				{index}
 			</span>
-			<div className="min-w-0 flex-1">
-				<p className="font-mono text-xs font-semibold uppercase tracking-[0.25em] text-accent-lime">
-					{kicker}
-				</p>
-				<h2 className={cn("mt-1", HEADING)}>{title}</h2>
-			</div>
+			<p className="sr-only">{kicker}</p>
+			<h2 className="mt-3 text-2xl font-black uppercase leading-none tracking-tight text-fg-primary">
+				{title}
+			</h2>
 			{meta && (
 				<div
 					className={cn(
-						"font-mono text-xs uppercase tracking-wider text-fg-muted",
+						"mt-4 font-mono text-xs leading-relaxed text-fg-secondary",
 						metaAlwaysVisible ? "block" : "hidden md:block",
 					)}
 				>

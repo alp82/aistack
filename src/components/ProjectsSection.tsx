@@ -1,5 +1,8 @@
 import { useMutation, useQuery } from "convex/react";
-import { ProjectsManager } from "@/components/projects/ProjectsManager";
+import {
+	ProjectsManager,
+	type ProjectsPresentation,
+} from "@/components/projects/ProjectsManager";
 import type { ManagerProject } from "@/components/projects/types";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -20,12 +23,14 @@ export function ProjectsSection({
 	index,
 	header,
 	id,
+	presentation,
 }: {
 	stackId: Id<"stacks">;
 	isOwner: boolean;
 	index: number;
 	header?: React.ReactNode;
 	id?: string;
+	presentation?: ProjectsPresentation;
 }) {
 	const projects = useQuery(api.projects.listByStack, {
 		stackId,
@@ -56,6 +61,7 @@ export function ProjectsSection({
 			index={index}
 			header={header}
 			id={id}
+			presentation={presentation}
 			loading={projects === undefined}
 			onCreate={(v) => createProject({ ...v, stackId })}
 			onUpdate={(projectId, v) =>

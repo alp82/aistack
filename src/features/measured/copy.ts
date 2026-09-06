@@ -36,7 +36,7 @@ export type LegacyFigure = {
 export const MEASURED_ANCHOR = "section-measured";
 
 export const KICKER = "// sync";
-export const TITLE = "Actual Usage";
+export const TITLE = "Stats";
 export const HARNESS = "Claude Code";
 
 /**
@@ -91,21 +91,35 @@ export function readingsLine(count: number, firstAt: number): string {
 }
 
 /** The kicker over the model rows, and the note that explains the notch. */
-export const MIX_KICKER = "where the tokens went";
+export const MIX_KICKER = "model breakdown";
 /** The legacy path has totals and no model rows (ADR-0011). */
 export const NOT_MEASURED_MIX = "waiting for next sync";
-export function notchNote(firstAt: number): string {
-	return `the notch marks where each share stood on ${fmtDay(firstAt)}`;
-}
 
 /** The captions under the two headline numbers. */
 export const TOKENS_CAPTION = (days: number) =>
 	days === 1
 		? "tokens processed · last 24 hours"
 		: `tokens processed · last ${days} days`;
-export const COST_CAPTION = "at least, at api list prices";
+export const COST_CAPTION = "at api list prices";
 export const COST_PRIVATE = "kept private";
 export const COST_PRIVATE_CAPTION = "cost not published";
+
+/**
+ * "100% of tokens priced · modelPrices/12-a1b2c3": the sources a dollar figure
+ * cites, for the cost hover card (AGENTS.md, "Pricing": every dollar figure
+ * cites its price-table ids and prints the share of tokens it covers). Null
+ * when the read carries no table id, which is the legacy figure's case
+ * (ADR-0011): its snapshot predates the citation.
+ */
+export function costSourcesLine(
+	pricedShare: number | null,
+	pricingTables: readonly string[],
+): string | null {
+	if (pricingTables.length === 0) return null;
+	const ids = pricingTables.join(", ");
+	if (pricedShare === null) return ids;
+	return `${Math.round(pricedShare * 100)}% of tokens priced · ${ids}`;
+}
 /** The hover swap under the number, and the accessible name of the control. */
 export const DECK_HINT = "random fun fact";
 export const DECK_LABEL = "Show another way to picture these tokens";

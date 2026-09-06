@@ -1,4 +1,5 @@
 * stack usage: context breakdown
+* undo report when sync happens
 * profile
     * @ in url is encoded
     * @alper-ortac below name is not needed
@@ -10,6 +11,7 @@
     * nicer description cards - with remove button
     * model card: replace with other version
     * reorder tools and models
+* news last 7 days, last 5 items
 * value proposition should be shown before/with CTA
     profile for sharing
     ai stats

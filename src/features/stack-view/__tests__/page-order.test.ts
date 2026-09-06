@@ -3,8 +3,8 @@
  *
  * What these guard, rather than layout:
  *
- *   1. THE ORDER NEVER MOVES. Actual Usage, Projects, Tools, Guide (#307
- *      merged the workflow rows into Actual Usage).
+ *   1. THE ORDER NEVER MOVES. Stats, Projects, Tools, Guide (#307 merged the
+ *      workflow rows into Stats).
  *   2. THE NUMBERS DO. Tools renders only when it has content.
  *   3. A NAV STAT IS A FIGURE THE SECTION ALREADY SHOWS. A section with no
  *      figure yet shows no stat rather than a zero.
@@ -28,10 +28,10 @@ const ALL_PRESENT = {
 };
 
 describe("the locked section order", () => {
-	it("is Actual Usage 01, Projects 02, Tools 03, Guide 04", () => {
+	it("is Stats 01, Projects 02, Tools 03, Guide 04", () => {
 		const sections = buildPageSections(ALL_PRESENT);
 		expect(sections.map((section) => [section.index, section.title])).toEqual([
-			[1, "Actual Usage"],
+			[1, "Stats"],
 			[2, "Projects"],
 			[3, "Tools"],
 			[4, "Guide"],

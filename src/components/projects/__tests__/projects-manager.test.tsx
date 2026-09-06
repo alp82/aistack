@@ -66,6 +66,9 @@ function defaultProps(
 		keyOf: (item: ManagerProject) => item.id,
 		isOwner: true,
 		index: 1,
+		// The groups below exercise the row presentation (what the stack editor
+		// renders). The card presentation has its own group at the bottom.
+		presentation: "rows" as const,
 		onCreate: vi.fn().mockResolvedValue(undefined),
 		onUpdate: vi.fn().mockResolvedValue(undefined),
 		onDelete: vi.fn().mockResolvedValue(undefined),
@@ -446,5 +449,163 @@ describe("ProjectsManager – dialog state isolation", () => {
 		// Should be seeded with real values
 		await screen.findByDisplayValue("Alpha");
 		expect(screen.queryByDisplayValue("Partial")).not.toBeInTheDocument();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Group CARD: the card presentation, which the stack page asks for
+// ---------------------------------------------------------------------------
+
+const ITEM_LINKED = makeItem({
+	id: "k3",
+	name: "Linked",
+	description: "Linked desc",
+	url: "https://example.com",
+	tags: ["one", "two"],
+});
+
+describe("ProjectsManager – card presentation", () => {
+	// TC-PM-CARD-01
+	it("TC-PM-CARD-01: the caller picks the presentation - rows unless it asks for cards", () => {
+		const { unmount } = render(
+			<ProjectsManager
+				{...defaultProps({ items: [ITEM_LINKED], presentation: undefined })}
+			/>,
+		);
+		const disclosures = () =>
+			screen
+				.getAllByRole("button")
+				.filter((b) => b.getAttribute("aria-expanded") !== null);
+		expect(disclosures().length).toBeGreaterThan(0);
+		unmount();
+
+		render(
+			<ProjectsManager
+				{...defaultProps({ items: [ITEM_LINKED], presentation: "cards" })}
+			/>,
+		);
+		expect(disclosures()).toHaveLength(0);
+		expect(screen.getByText("Linked")).toBeInTheDocument();
+		expect(screen.getByText("Linked desc")).toBeInTheDocument();
+		expect(screen.getByText("one")).toBeInTheDocument();
+		expect(screen.getByText("two")).toBeInTheDocument();
+	});
+
+	// TC-PM-CARD-02
+	it("TC-PM-CARD-02: the name is the external link when the url is safe", () => {
+		render(
+			<ProjectsManager
+				{...defaultProps({ items: [ITEM_LINKED], presentation: "cards" })}
+			/>,
+		);
+		const link = screen.getByRole("link", { name: /linked/i });
+		expect(link).toHaveAttribute("href", "https://example.com/");
+		expect(link).toHaveAttribute("target", "_blank");
+		expect(link.getAttribute("rel")).toContain("noopener");
+		expect(link.getAttribute("rel")).toContain("noreferrer");
+	});
+
+	// TC-PM-CARD-03
+	it("TC-PM-CARD-03: unsafe url → the name renders as plain text, no link", () => {
+		const badItem = makeItem({
+			id: "k-bad",
+			name: "Bad URL",
+			url: "javascript:alert(1)",
+		});
+		render(
+			<ProjectsManager
+				{...defaultProps({ items: [badItem], presentation: "cards" })}
+			/>,
+		);
+		expect(screen.getByText("Bad URL")).toBeInTheDocument();
+		expect(screen.queryByRole("link")).not.toBeInTheDocument();
+	});
+
+	// TC-PM-CARD-04
+	it("TC-PM-CARD-04: owner sees Edit and Delete on the card without expanding", async () => {
+		const onDelete = vi.fn().mockResolvedValue(undefined);
+		render(
+			<ProjectsManager
+				{...defaultProps({
+					items: [ITEM_ALPHA],
+					presentation: "cards",
+					onDelete,
+				})}
+			/>,
+		);
+		fireEvent.click(screen.getByRole("button", { name: /^delete$/i }));
+		const dialog = await screen.findByRole("dialog");
+		fireEvent.click(within(dialog).getByRole("button", { name: /^delete$/i }));
+		await waitFor(() => expect(onDelete).toHaveBeenCalledWith("k1"));
+	});
+
+	// TC-PM-CARD-05
+	it("TC-PM-CARD-05: visitor sees no owner actions and no reorder handle", () => {
+		render(
+			<ProjectsManager
+				{...defaultProps({
+					items: [ITEM_ALPHA, ITEM_BETA],
+					isOwner: false,
+					presentation: "cards",
+				})}
+			/>,
+		);
+		expect(
+			screen.queryByRole("button", { name: /^edit$/i }),
+		).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole("button", { name: /reorder alpha/i }),
+		).not.toBeInTheDocument();
+	});
+
+	// TC-PM-CARD-06
+	it("TC-PM-CARD-06: cards carry no drag handle even for the owner", () => {
+		render(
+			<ProjectsManager
+				{...defaultProps({
+					items: [ITEM_ALPHA, ITEM_BETA],
+					presentation: "cards",
+				})}
+			/>,
+		);
+		expect(
+			screen.queryByRole("button", { name: /reorder alpha/i }),
+		).not.toBeInTheDocument();
+	});
+
+	// TC-PM-CARD-07
+	it("TC-PM-CARD-07: loading → 3 pulses and an aria-busy list, no card content", () => {
+		const { container } = render(
+			<ProjectsManager
+				{...defaultProps({ loading: true, presentation: "cards" })}
+			/>,
+		);
+		expect(container.querySelectorAll(".animate-pulse")).toHaveLength(3);
+		expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument();
+		expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+	});
+
+	// TC-PM-CARD-08
+	it("TC-PM-CARD-08: owner + empty → the 'Add a project' empty state", () => {
+		render(
+			<ProjectsManager
+				{...defaultProps({ items: [], presentation: "cards" })}
+			/>,
+		);
+		expect(
+			screen.getByRole("button", { name: /^add a project$/i }),
+		).toBeInTheDocument();
+	});
+
+	// TC-PM-CARD-09
+	it("TC-PM-CARD-09: visitor + empty → the visitor empty-state copy", () => {
+		render(
+			<ProjectsManager
+				{...defaultProps({ items: [], isOwner: false, presentation: "cards" })}
+			/>,
+		);
+		expect(
+			screen.getByText(/no projects have been added/i),
+		).toBeInTheDocument();
 	});
 });

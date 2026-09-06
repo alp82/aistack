@@ -20,6 +20,7 @@ import { useQuery } from "convex/react";
 import { ArrowRight, Lock } from "lucide-react";
 import { formatExact } from "@/features/charts";
 import { rangeLabel, targetNote } from "@/features/settings/AnalyticsPage";
+import { cn } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
 import type { ViewAnalytics, ViewTarget } from "./data";
 
@@ -39,12 +40,19 @@ function StackViewsLine({
 	return <StackViewsLineView data={data} target={target} />;
 }
 
+/**
+ * The line itself. `band` is the standalone fenced line on the page frame.
+ * `compact` is one row on a surface the caller owns (the owner drawer, #356):
+ * no frame, no fence, row padding only. The lock and the labeling stay in both.
+ */
 function StackViewsLineView({
 	data,
 	target,
+	variant = "band",
 }: {
 	readonly data: ViewAnalytics;
 	readonly target: ViewTarget;
+	readonly variant?: "band" | "compact";
 }) {
 	// This stack's own range, not the site-wide one. `days` is filled from the
 	// first day THIS page was counted, so a stack opened yesterday does not
@@ -56,8 +64,15 @@ function StackViewsLineView({
 	);
 
 	return (
-		<div className="mx-auto max-w-7xl px-6 pt-8">
-			<div className="flex flex-wrap items-center gap-x-3 gap-y-1 border border-dashed border-stroke-strong px-4 py-2">
+		<div className={cn(variant === "band" && "mx-auto max-w-7xl px-6 pt-8")}>
+			<div
+				className={cn(
+					"flex flex-wrap items-center gap-x-3 gap-y-1",
+					variant === "compact"
+						? "py-3"
+						: "border border-dashed border-stroke-strong px-4 py-2",
+				)}
+			>
 				<Lock aria-hidden="true" className="size-3 shrink-0 text-fg-muted" />
 				<span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-fg-muted">
 					Only you can see this

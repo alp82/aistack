@@ -43,20 +43,27 @@ import { syncAgo } from "./freshness";
  * publish nothing" and not "remove them".
  *
  * IT IS ALSO THE PAGE'S ONE REMEDY (#108, from #107 decision 1). Past 48 hours
- * the section promotes this box above the reading and passes `staleSince`, and
- * the box leads with the prompt instead of its resting sentence. Nothing else
- * on the page asks the owner for anything, which is what keeps the switch and a
- * callout from reading as two features.
+ * the owner drawer passes `staleSince`, and the box leads with the prompt
+ * instead of its resting sentence. Nothing else on the page asks the owner for
+ * anything, which is what keeps the switch and a callout from reading as two
+ * features.
+ *
+ * TWO SURFACES, ONE BOX. The `band` variant is the standalone panel with its
+ * own border and padding. The `compact` variant is one row on a surface the
+ * caller owns (the owner drawer, #356): no border, no background, row padding
+ * only. The copy, the switch and the states are the same in both.
  */
 export function AutoSyncBox({
 	stackId,
 	isOwner,
 	staleSince = null,
+	variant = "band",
 }: {
 	stackId: Id<"stacks">;
 	isOwner: boolean;
 	/** The last sync, when it is past 48 hours old. Null is the resting box. */
 	staleSince?: number | null;
+	variant?: "band" | "compact";
 }) {
 	const flag = useQuery(api.autoSync.get, isOwner ? { stackId } : "skip");
 	const set = useMutation(api.autoSync.set);
@@ -94,8 +101,12 @@ export function AutoSyncBox({
 	return (
 		<div
 			className={cn(
-				"border bg-bg-panel px-6 py-6 md:px-8",
-				lead ? "border-accent-lime" : "border-stroke-strong",
+				variant === "compact"
+					? "py-3"
+					: cn(
+							"border bg-bg-panel px-6 py-6 md:px-8",
+							lead ? "border-accent-lime" : "border-stroke-strong",
+						),
 			)}
 		>
 			<div className="flex flex-wrap items-center justify-between gap-4">

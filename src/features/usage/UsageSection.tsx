@@ -1,32 +1,35 @@
 import { useQuery } from "convex/react";
 import { useState } from "react";
-import { AutoSyncBox } from "@/features/measured/AutoSyncBox";
 import { KICKER, MEASURED_ANCHOR, TITLE } from "@/features/measured/copy";
-import { isStale } from "@/features/measured/freshness";
 import { Section, SectionHeader } from "@/features/stack-view/ui";
-import { Lead } from "@/features/workflow/Lead";
 import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
+import { UsageAccordion } from "./Accordion";
 import { ControlBar, type MachineChoice } from "./ControlBar";
-import { EMPTY_TAB, type RangeId, rangeDays } from "./copy";
-import { packTab } from "./grid";
-import { buildItems, type Group, pick, TOPIC, type UsageSource } from "./items";
+import { type RangeId, rangeDays } from "./copy";
+import { buildItems, pick, TOPIC, type UsageSource } from "./items";
 import { NeverMeasured, OwnerNotMeasured } from "./NotMeasured";
-import { Tabs } from "./Tabs";
 import { TopBlock, type TopSource } from "./TopBlock";
+import { topicWatermark } from "./watermarks";
 
 /**
- * Journey section 01, Actual Usage: the merged measured section (#307, map
- * #302, spec `docs/specs/workflow-surface.md`, "The section").
+ * Journey section 01, Stats: the merged measured section (#307, map #302,
+ * spec `docs/specs/workflow-surface.md`, "The section"; compact layout #356).
  *
- * TWO READS, ONE CONTROL BAR. `getUsageByStackSlug` folds the per-day usage
- * rows for the range and the machine and answers both sides of the previous
- * period, and carries the legacy 30-day figure for a stack that never
- * published days (ADR-0011); `getWorkflowByStackSlug` folds the workflow rows
- * for the same window and machine.
+ * TWO READS, ONE RANGE. The range belongs to the page and is fixed at 30 days
+ * (`PAGE_RANGE`): the route hands it down so the hero tile, the nav figure and
+ * this section all name and read the same window. There is no control over it.
+ * The section's meta line carries the machine selector and the checked stamp.
+ * `getUsageByStackSlug` folds the per-day usage rows for the range and the
+ * machine and answers both sides of the previous period, and carries the
+ * legacy 30-day figure for a stack that never published days (ADR-0011);
+ * `getWorkflowByStackSlug` folds the workflow rows for the same window and
+ * machine.
  *
- * THE SECTION RANKS NOTHING. The first screen is a fixed editorial pick, the
- * tabs hold a fixed order, and the owner has no per-row control.
+ * THE SECTION RANKS NOTHING. The top block is a fixed editorial pick, the
+ * accordion holds a fixed order, and the owner has no per-row control.
+ *
+ * EVERY TOPIC STARTS CLOSED. The five summary rows are the section's second
+ * layer; a click opens one, and the depth is one click away on every screen.
  *
  * A null reading renders an INVITATION addressed to the reader, never a
  * demerit on the author. The one exception is the owner looking at their own
@@ -35,22 +38,22 @@ import { TopBlock, type TopSource } from "./TopBlock";
 export function UsageSection({
 	index,
 	slug,
-	stackId,
 	isOwner,
 	stackToolSlugs,
+	range,
 }: {
 	index: number;
 	slug: string;
-	stackId: Id<"stacks">;
 	isOwner: boolean;
 	stackToolSlugs: string[];
+	/** The page's window. Fixed at 30 days; the reader cannot change it. */
+	range: RangeId;
 }) {
-	const [range, setRange] = useState<RangeId>("30d");
 	const [selection, setSelection] = useState<{
 		slug: string;
 		ordinal: number;
 	} | null>(null);
-	const [tab, setTab] = useState<string>(TOPIC[0].id);
+	const [openTopic, setOpenTopic] = useState<string | null>(null);
 	const ordinal = selection?.slug === slug ? selection.ordinal : null;
 	const machineArg = ordinal === null ? {} : { machineOrdinal: ordinal };
 
@@ -70,11 +73,6 @@ export function UsageSection({
 	const answered = usage !== undefined;
 	const machines = machineChoices(usage);
 	const receivedAt = usage?.receivedAt ?? null;
-	// Past 48 hours the switch is the page's remedy, so it stands BEFORE the
-	// reading it keeps arriving. A stack that never synced is not late (it may
-	// be hand-curated), so it never promotes anything (#107 decisions 1 and 3).
-	const staleSince =
-		receivedAt !== null && isStale(receivedAt) ? receivedAt : null;
 
 	const top: TopSource | null =
 		usage && hasDays
@@ -96,27 +94,12 @@ export function UsageSection({
 				? { kind: "legacy", legacy }
 				: null;
 	const items = buildItems(view, source, stackToolSlugs);
-	const group = TOPIC.find((g) => g.id === tab) ?? TOPIC[0];
-	const shown = pick(items, group.ids);
-	const counts = (g: Group) => pick(items, g.ids).length;
-	const hasLead = view !== null && view !== undefined && view.window.days > 0;
 
 	return (
-		<>
-			{/* The owner control sits above section 01. It still waits for the usage
-			    read so it can name an old reading accurately. */}
-			{answered && isOwner && (
-				<div className="px-6 py-10">
-					<div className="mx-auto max-w-7xl">
-						<AutoSyncBox
-							stackId={stackId}
-							isOwner={isOwner}
-							staleSince={staleSince}
-						/>
-					</div>
-				</div>
-			)}
-			<Section index={index} id={MEASURED_ANCHOR}>
+		<Section
+			index={index}
+			id={MEASURED_ANCHOR}
+			header={
 				<SectionHeader
 					index={String(index).padStart(2, "0")}
 					kicker={KICKER}
@@ -124,8 +107,6 @@ export function UsageSection({
 					metaAlwaysVisible
 					meta={
 						<ControlBar
-							range={range}
-							onRange={setRange}
 							machines={machines}
 							machine={ordinal}
 							onMachine={(next) =>
@@ -135,35 +116,37 @@ export function UsageSection({
 						/>
 					}
 				/>
-				{/* Undefined is "not answered yet", and it must not read as "never
+			}
+		>
+			{/* Undefined is "not answered yet", and it must not read as "never
 			    measured": the invitation waits until both reads have spoken. */}
-				{!answered ? null : top === null ? (
-					isOwner ? (
-						<OwnerNotMeasured />
-					) : (
-						<NeverMeasured />
-					)
+			{!answered ? null : top === null ? (
+				isOwner ? (
+					<OwnerNotMeasured />
 				) : (
-					<>
-						<TopBlock source={top} range={range} />
-						<Tabs
-							groups={TOPIC}
-							counts={counts}
-							value={tab}
-							onChange={setTab}
-						/>
-						<div className="mt-8" role="tabpanel">
-							{hasLead && group.id === "time" && <Lead view={view} />}
-							{shown.length === 0 ? (
-								<p className="font-mono text-sm text-fg-muted">{EMPTY_TAB}</p>
-							) : (
-								packTab(group.id, shown, range)
-							)}
-						</div>
-					</>
-				)}
-			</Section>
-		</>
+					<NeverMeasured />
+				)
+			) : (
+				<>
+					<TopBlock source={top} range={range} />
+					<UsageAccordion
+						groups={TOPIC}
+						items={(group) => pick(items, group.ids)}
+						value={openTopic}
+						onChange={setOpenTopic}
+						range={range}
+						watermark={(group) =>
+							topicWatermark(
+								group.id,
+								view,
+								source?.kind === "days" ? source.current : null,
+								usage?.series ?? [],
+							)
+						}
+					/>
+				</>
+			)}
+		</Section>
 	);
 }
 

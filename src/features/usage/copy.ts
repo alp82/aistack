@@ -1,5 +1,5 @@
 /**
- * The merged Actual Usage section's vocabulary (#307, map #302).
+ * The Stats section's vocabulary (#307, map #302; the merged measured section).
  *
  * The section prints figures and fixed strings only. Every sentence here is a
  * template; nothing is drafted (ADR-0002). The measured section's own copy
@@ -19,12 +19,19 @@ export type UsageModel = UsageReading["models"][number];
 
 export type { RangeId };
 
-/** The three ranges the control bar offers, in the order it prints them. */
+/** The three windows the backend folds, with the label each one prints. */
 export const RANGES: readonly { id: RangeId; label: string; days: number }[] = [
 	{ id: "30d", label: "30 days", days: 30 },
 	{ id: "7d", label: "7 days", days: 7 },
 	{ id: "24h", label: "24 hours", days: 1 },
 ];
+
+/**
+ * The window the stack page reads (#356). The page offers no control over it:
+ * every measured surface labels and reads this one value. The backend still
+ * folds all three windows for the CLI and the public API.
+ */
+export const PAGE_RANGE: RangeId = "30d";
 
 export function rangeDays(range: RangeId): number {
 	return RANGES.find((r) => r.id === range)?.days ?? 30;
@@ -51,7 +58,7 @@ export const NO_DAYS_IN_RANGE = (range: RangeId) =>
 /** The mark on a snapshot figure: a 30-day total, not a fold of days. */
 export const APPROXIMATE = "approximate";
 
-export const EMPTY_TAB = "No rows in this range.";
+export const EMPTY_TOPIC = "No rows in this range.";
 export const ALL_MACHINES = "all machines";
 
 export function fmtPercentChange(ratio: number): string {

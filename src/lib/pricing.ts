@@ -126,8 +126,10 @@ export type SortableTool = {
 
 export function sortToolsByPrice<T extends SortableTool>(tools: T[]): T[] {
 	return [...tools].sort((a, b) => {
+		// The price the owner set wins: an overwritten tier price is the real
+		// price. The tier's list price only speaks when no price is set.
 		const sortPrice = (t: SortableTool) =>
-			getNormalizedMonthlyAmount(t.originalTierPrice ?? t.price.fixed);
+			getNormalizedMonthlyAmount(t.price.fixed ?? t.originalTierPrice);
 
 		const groupOrder = (t: SortableTool) => {
 			if (t.priceKind === "bundle") return 1;

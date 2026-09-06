@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { CHART_PAINTS } from "@/features/charts";
 import { cn } from "@/lib/utils";
-import { fmtUSD, MONO_LABEL } from "../copy";
+import { costSourcesLine, fmtUSD, MONO_LABEL } from "../copy";
 import {
 	BoltIcon,
 	BookClockIcon,
@@ -127,13 +127,25 @@ export type TokenTipProps = {
 	readonly tokens: number;
 	/** The API-price equivalent, or null where the stack keeps cost private. */
 	readonly usd: number | null;
+	/** The share of tokens the dollar figure covers, where the read says. */
+	readonly pricedShare?: number | null;
+	/** The price-table ids the dollar figure cites (AGENTS.md, "Pricing"). */
+	readonly pricingTables?: readonly string[];
 	readonly tip: TipKey;
 };
 
-export function TokenTip({ tokens, usd, tip }: TokenTipProps) {
+export function TokenTip({
+	tokens,
+	usd,
+	pricedShare = null,
+	pricingTables = [],
+	tip,
+}: TokenTipProps) {
 	const body = BODIES[tip];
 	const Icon = body.Icon;
 	const exact = tokens.toLocaleString("en-US");
+	const sources =
+		usd !== null ? costSourcesLine(pricedShare, pricingTables) : null;
 
 	return (
 		<div className="relative overflow-hidden border-[3px] border-stroke-strong bg-bg-panel p-4 shadow-[6px_6px_0_var(--stroke-strong)]">
@@ -168,6 +180,14 @@ export function TokenTip({ tokens, usd, tip }: TokenTipProps) {
 					<p className="text-xs leading-relaxed text-fg-secondary">
 						<span className="font-mono font-bold text-fg-primary">{exact}</span>{" "}
 						tokens. This stack does not publish a cost.
+					</p>
+				)}
+				{sources && (
+					<p
+						data-testid="cost-sources"
+						className="font-mono text-[10px] leading-relaxed text-fg-muted"
+					>
+						{sources}
 					</p>
 				)}
 				<p className="font-mono text-[10px] leading-relaxed text-fg-muted">

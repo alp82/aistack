@@ -2,15 +2,11 @@ import { useScrollHighlight } from "@/lib/useScrollHighlight";
 import { cn } from "@/lib/utils";
 import {
 	CARD,
-	CARD_SURFACE,
-	Chip,
 	categoryColor,
 	categoryLabel,
 	PAD,
-	PAD_SM,
 	StackIcon,
 	StackPrice,
-	VisitLink,
 } from "./ui";
 
 // ---------------------------------------------------------------------------
@@ -40,18 +36,6 @@ export type StackTool = {
 	tierName: string;
 	priceKind: "regular" | "discounted" | "bundle" | "usage_based" | "sponsored";
 	bundleSlug?: string;
-	description?: string;
-};
-
-export type StackModel = {
-	_id: string;
-	name: string;
-	provider: string;
-	category?: string;
-	iconUrl?: string;
-	/** Share of the stack's 30-day tokens; null for a manual pick (#338). */
-	tokenShare: number | null;
-	measured: boolean;
 	description?: string;
 };
 
@@ -97,12 +81,13 @@ export function PriceTag({
 		);
 	}
 	if (tool.price.fixed && tool.price.fixed.amount > 0) {
+		// Lime mono, right-aligned: the prototype's price column (#356).
 		return (
 			<StackPrice
 				amount={tool.price.fixed.amount}
 				period={tool.price.fixed.period}
 				size={size}
-				className="text-fg-primary"
+				className="text-accent-lime"
 			/>
 		);
 	}
@@ -116,9 +101,16 @@ export function PriceTag({
 	);
 }
 
-// --- Tool cards -----------------------------------------------------------
+// --- Tool rows -----------------------------------------------------------
 
-export function ToolCardBig({
+/**
+ * One tool per line (#356, prototype v37): the logo, the name (a link to the
+ * site where there is one), the category and tier in mono, the price at the
+ * right edge in the accent. The authored note, where the owner wrote one,
+ * takes a second line under the name: it is the one thing on the row the
+ * catalog did not write.
+ */
+export function ToolRow({
 	tool,
 	onBundleClick,
 }: {
@@ -126,124 +118,62 @@ export function ToolCardBig({
 	onBundleClick?: (bundleSlug: string) => void;
 }) {
 	const color = categoryColor(tool.categories);
+	const facts = [categoryLabel(tool.categories), tool.tierName]
+		.filter((fact) => fact && fact.trim().length > 0)
+		.join(" · ");
 	return (
 		<div
-			className={cn(
-				"group relative flex flex-col transition-all",
-				CARD_SURFACE,
-				PAD,
-			)}
+			data-testid="tool-row"
+			className="flex items-start gap-3 border-b border-stroke-subtle py-2.5"
 		>
-			<div className="flex items-start gap-4">
-				<StackIcon
-					name={tool.name}
-					src={tool.iconUrl}
-					color={color}
-					size="lg"
-				/>
-				<div className="min-w-0 flex-1">
-					<div className="flex items-start justify-between gap-3">
-						<div className="min-w-0">
-							<h3 className="truncate font-mono text-lg font-bold text-fg-primary">
-								{tool.name}
-							</h3>
-							{tool.tierName && (
-								<p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-									{tool.tierName}
-								</p>
-							)}
-						</div>
-						<div className="shrink-0 text-right">
-							<PriceTag tool={tool} size="lg" onBundleClick={onBundleClick} />
-						</div>
-					</div>
-				</div>
-			</div>
-			{tool.description && (
-				<p className="mt-4 text-sm leading-relaxed text-fg-secondary">
-					{tool.description}
-				</p>
-			)}
-			<div className="mt-4 flex items-center justify-between pt-1">
-				<Chip color={color}>{categoryLabel(tool.categories)}</Chip>
-				<VisitLink href={tool.websiteUrl} />
-			</div>
-		</div>
-	);
-}
-
-export function ToolCardMini({
-	tool,
-	onBundleClick,
-}: {
-	tool: StackTool;
-	onBundleClick?: (bundleSlug: string) => void;
-}) {
-	const color = categoryColor(tool.categories);
-	return (
-		<div
-			className={cn(
-				"flex items-center gap-3 transition-all",
-				CARD_SURFACE,
-				PAD_SM,
-			)}
-		>
-			<StackIcon name={tool.name} src={tool.iconUrl} color={color} size="sm" />
+			<StackIcon
+				name={tool.name}
+				src={tool.iconUrl}
+				color={color}
+				size="sm"
+				className="mt-0.5 size-7 p-0.5"
+			/>
 			<div className="min-w-0 flex-1">
-				<p className="truncate font-mono text-sm font-semibold text-fg-primary">
-					{tool.name}
-				</p>
-				{tool.tierName && (
-					<p className="truncate font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-						{tool.tierName}
+				<div className="flex flex-wrap items-baseline gap-x-4 gap-y-0.5">
+					{tool.websiteUrl ? (
+						<a
+							href={tool.websiteUrl}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="truncate text-sm font-semibold text-fg-primary transition-colors hover:text-accent-lime"
+						>
+							{tool.name}
+						</a>
+					) : (
+						<span className="truncate text-sm font-semibold text-fg-primary">
+							{tool.name}
+						</span>
+					)}
+					{facts && (
+						<span className="truncate font-mono text-[11px] text-fg-muted">
+							{facts}
+						</span>
+					)}
+				</div>
+				{tool.description && (
+					<p className="mt-0.5 text-xs leading-snug text-fg-secondary">
+						{tool.description}
 					</p>
 				)}
 			</div>
-			<div className="shrink-0 text-right">
+			<div className="shrink-0 pt-0.5 text-right">
 				<PriceTag tool={tool} size="sm" onBundleClick={onBundleClick} />
 			</div>
 		</div>
 	);
 }
 
-// --- Model tile -----------------------------------------------------------
+// --- Model share formatting ----------------------------------------------
 
 /** "62%" from a share; below half a percent prints "<1%". Numbers only. */
 export function formatShare(share: number): string {
 	const pct = Math.round(share * 100);
 	return pct === 0 && share > 0 ? "<1%" : `${pct}%`;
-}
-
-export function ModelTile({ model }: { model: StackModel }) {
-	return (
-		<div
-			className={cn(
-				"flex items-center gap-3 transition-all",
-				CARD_SURFACE,
-				PAD_SM,
-			)}
-		>
-			<StackIcon
-				name={model.name}
-				src={model.iconUrl}
-				color={{
-					text: "text-accent-lime",
-					bg: "bg-accent-lime/10",
-					border: "border-accent-lime/40",
-				}}
-				size="sm"
-			/>
-			<div className="min-w-0 flex-1">
-				<p className="truncate font-mono text-sm font-semibold text-fg-primary">
-					{model.name}
-				</p>
-				<p className="truncate font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-					{model.provider}
-					{model.tokenShare !== null && ` · ${formatShare(model.tokenShare)}`}
-				</p>
-			</div>
-		</div>
-	);
 }
 
 // --- Bundle card (scroll target for "Bundle ↓" jumps) ---------------------
@@ -291,7 +221,18 @@ export function BundleCard({
 					<div className="flex items-start justify-between gap-3">
 						<div className="min-w-0">
 							<h3 className="font-mono text-base font-bold text-fg-primary">
-								{bundle.name}
+								{bundle.websiteUrl ? (
+									<a
+										href={bundle.websiteUrl}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="transition-colors hover:text-accent-lime"
+									>
+										{bundle.name}
+									</a>
+								) : (
+									bundle.name
+								)}
 							</h3>
 							{bundle.tierName && (
 								<p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-fg-muted">
@@ -319,9 +260,6 @@ export function BundleCard({
 					{bundle.description}
 				</p>
 			)}
-			<div className="mt-4 flex items-center justify-end pt-1">
-				<VisitLink href={bundle.websiteUrl} />
-			</div>
 		</div>
 	);
 }

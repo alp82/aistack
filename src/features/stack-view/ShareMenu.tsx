@@ -7,7 +7,20 @@ import { cn } from "@/lib/utils";
 type ShareMenuProps = {
 	slug: string;
 	className?: string;
+	/**
+	 * "panel" (default) is the small filled trigger. "ghost" is the transparent
+	 * action row button: a subtle stroke, secondary text, the same height as the
+	 * outline upvote button beside it.
+	 */
+	triggerVariant?: "panel" | "ghost";
 };
+
+const TRIGGER_CLASS = {
+	panel:
+		"inline-flex items-center gap-1.5 border border-stroke-strong bg-bg-panel px-3 py-1 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime",
+	ghost:
+		"inline-flex items-center gap-1.5 border border-stroke-subtle bg-transparent px-4 py-2.5 font-mono text-xs font-bold uppercase tracking-[0.1em] text-fg-secondary transition-colors hover:border-fg-secondary",
+} as const;
 
 function ShareMenuItems({ slug }: { slug: string }) {
 	const pageClip = useClipboard();
@@ -84,7 +97,11 @@ function ShareMenuItems({ slug }: { slug: string }) {
 	);
 }
 
-export function ShareMenu({ slug, className }: ShareMenuProps) {
+export function ShareMenu({
+	slug,
+	className,
+	triggerVariant = "panel",
+}: ShareMenuProps) {
 	const [open, setOpen] = useState(false);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const triggerRef = useRef<HTMLButtonElement>(null);
@@ -124,7 +141,7 @@ export function ShareMenu({ slug, className }: ShareMenuProps) {
 				type="button"
 				aria-expanded={open}
 				onClick={() => setOpen((v) => !v)}
-				className="inline-flex items-center gap-1.5 border border-stroke-strong bg-bg-panel px-3 py-1 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-fg-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
+				className={TRIGGER_CLASS[triggerVariant]}
 			>
 				<Share2 aria-hidden="true" className="size-3" />
 				Share

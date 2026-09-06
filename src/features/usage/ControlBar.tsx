@@ -1,6 +1,5 @@
 import { RelativeTime } from "@/components/RelativeTime";
-import { cn } from "@/lib/utils";
-import { ALL_MACHINES, RANGES, type RangeId } from "./copy";
+import { ALL_MACHINES } from "./copy";
 
 export type MachineChoice = {
 	readonly ordinal: number;
@@ -8,20 +7,17 @@ export type MachineChoice = {
 };
 
 /**
- * The one control bar in the header meta (spec, "The section"): the range,
- * the machine selector, and "checked N ago". Every sum and share in the
- * section follows the range and the machine.
+ * The section's meta line (#356): the machine selector when there is more than
+ * one machine, and "checked N ago". The window is fixed at 30 days and the page
+ * offers no control over it, so the only choice here is the machine. Every sum
+ * and share in the section follows that machine.
  */
 export function ControlBar({
-	range,
-	onRange,
 	machines,
 	machine,
 	onMachine,
 	receivedAt,
 }: {
-	range: RangeId;
-	onRange: (next: RangeId) => void;
 	machines: readonly MachineChoice[];
 	machine: number | null;
 	onMachine: (next: number | null) => void;
@@ -29,25 +25,6 @@ export function ControlBar({
 }) {
 	return (
 		<div className="flex flex-wrap items-center gap-3 normal-case tracking-normal">
-			<fieldset className="inline-flex border border-stroke-subtle">
-				<legend className="sr-only">Range</legend>
-				{RANGES.map((option) => (
-					<button
-						key={option.id}
-						type="button"
-						aria-pressed={range === option.id}
-						onClick={() => onRange(option.id)}
-						className={cn(
-							"border-r border-stroke-subtle px-2.5 py-1 font-mono text-[11px] last:border-r-0",
-							range === option.id
-								? "bg-accent-lime font-bold text-accent-lime-contrast"
-								: "text-fg-muted hover:text-fg-primary",
-						)}
-					>
-						{option.label}
-					</button>
-				))}
-			</fieldset>
 			{machines.length > 1 && (
 				<select
 					aria-label="Machine"

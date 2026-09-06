@@ -20,6 +20,11 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProjectsSection } from "@/components/ProjectsSection";
 
+// Every render below pins presentation="rows": this suite covers the expandable
+// row presentation, which is what the stack editor renders. The card grid the
+// public stack page renders by default is covered in the "Card grid" group at
+// the bottom of this file.
+
 // Stub Convex hooks – same mechanism as the CLI test file.
 vi.mock("convex/react", () => ({
 	useQuery: vi.fn(),
@@ -129,7 +134,14 @@ describe("ProjectsSection – Collapsed Row Content", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		expect(screen.getByText("My Project")).toBeInTheDocument();
 	});
@@ -139,7 +151,14 @@ describe("ProjectsSection – Collapsed Row Content", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([MANY_TAGS_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		expect(screen.getByText("a")).toBeInTheDocument();
 		expect(screen.getByText("b")).toBeInTheDocument();
@@ -155,7 +174,14 @@ describe("ProjectsSection – Collapsed Row Content", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([EXACTLY_FOUR_TAGS_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		expect(screen.getByText("a")).toBeInTheDocument();
 		expect(screen.getByText("b")).toBeInTheDocument();
@@ -169,7 +195,14 @@ describe("ProjectsSection – Collapsed Row Content", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([NO_TAGS_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		expect(screen.getByText("My Project")).toBeInTheDocument();
 		expect(screen.queryByText(/^\+\d/)).not.toBeInTheDocument();
@@ -180,7 +213,14 @@ describe("ProjectsSection – Collapsed Row Content", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		expect(
 			screen.queryByText("A description of the project"),
@@ -192,7 +232,14 @@ describe("ProjectsSection – Collapsed Row Content", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		expect(screen.queryByText(/ago/i)).not.toBeInTheDocument();
 	});
@@ -208,7 +255,14 @@ describe("ProjectsSection – Website Link", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		const link = screen.getByRole("link", { name: /website/i });
 		expect(link).toBeInTheDocument();
@@ -226,7 +280,14 @@ describe("ProjectsSection – Website Link", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		const link = screen.getByRole("link", { name: /website/i });
 		// The toggle button is the one with aria-expanded
@@ -242,7 +303,14 @@ describe("ProjectsSection – Website Link", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		const link = screen.getByRole("link", { name: /website/i });
 		fireEvent.click(link);
@@ -257,7 +325,14 @@ describe("ProjectsSection – Website Link", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([{ ...BASE_PROJECT, url: "javascript:alert(1)" }]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		expect(
 			screen.queryByRole("link", { name: /website/i }),
@@ -269,7 +344,14 @@ describe("ProjectsSection – Website Link", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([NO_URL_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		expect(
 			screen.queryByRole("link", { name: /website/i }),
@@ -282,7 +364,14 @@ describe("ProjectsSection – Website Link", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([{ ...BASE_PROJECT, url: "example.com" }]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		const link = screen.getByRole("link", { name: /website/i });
 		expect(link).toBeInTheDocument();
@@ -300,7 +389,14 @@ describe("ProjectsSection – Accordion", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		const toggle = findFirstToggle();
 		expect(toggle).toBeDefined();
@@ -312,7 +408,14 @@ describe("ProjectsSection – Accordion", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		const toggle = findFirstToggle()!;
 		fireEvent.click(toggle);
@@ -328,7 +431,14 @@ describe("ProjectsSection – Accordion", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		const toggle = findFirstToggle()!;
 		fireEvent.click(toggle); // open
@@ -347,7 +457,14 @@ describe("ProjectsSection – Accordion", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([PROJECT_A, PROJECT_B]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		// Open Alpha first
 		const alphaToggle = findToggleForProject("Alpha") ?? findFirstToggle()!;
@@ -379,7 +496,14 @@ describe("ProjectsSection – Accordion", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([PROJECT_A, PROJECT_B]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		const toggle = findToggleForProject("Alpha") ?? findFirstToggle()!;
 		fireEvent.click(toggle); // open
@@ -404,7 +528,14 @@ describe("ProjectsSection – Expanded Panel", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([project]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={isOwner} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={isOwner}
+			/>,
+		);
 
 		const toggle = findFirstToggle();
 		if (toggle) fireEvent.click(toggle);
@@ -450,7 +581,14 @@ describe("ProjectsSection – Mutations", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		// Expand row first
 		const toggle = findFirstToggle()!;
@@ -475,7 +613,14 @@ describe("ProjectsSection – Mutations", () => {
 		// deleteProject is the 3rd useMutation call
 		useMutation.mockImplementation(() => deleteSpy);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		const toggle = findFirstToggle()!;
 		fireEvent.click(toggle);
@@ -501,7 +646,14 @@ describe("ProjectsSection – Mutations", () => {
 		useQuery.mockReturnValue([BASE_PROJECT]);
 		useMutation.mockImplementation(() => deleteSpy);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		const toggle = findFirstToggle()!;
 		fireEvent.click(toggle);
@@ -523,7 +675,14 @@ describe("ProjectsSection – Mutations", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		const newBtn = screen.getByRole("button", { name: /^new project$/i });
 		fireEvent.click(newBtn);
@@ -542,7 +701,14 @@ describe("ProjectsSection – Mutations", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		const addBtn = screen.getByRole("button", { name: /^add a project$/i });
 		fireEvent.click(addBtn);
@@ -566,7 +732,14 @@ describe("ProjectsSection – Mutations", () => {
 		// createProject is the 4th useMutation call
 		useMutation.mockImplementation(() => createSpy);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		const addBtn = screen.getByRole("button", { name: /^add a project$/i });
 		fireEvent.click(addBtn);
@@ -597,7 +770,14 @@ describe("ProjectsSection – Mutations", () => {
 			return vi.fn().mockResolvedValue(null);
 		});
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		// Component must invoke useMutation exactly 4 times (one per mutation).
 		expect(useMutation).toHaveBeenCalledTimes(4);
@@ -621,7 +801,14 @@ describe("ProjectsSection – Drag Handle / Reorder", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([PROJECT_A, PROJECT_B]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		expect(
 			screen.getByRole("button", { name: /reorder alpha/i }),
@@ -636,7 +823,14 @@ describe("ProjectsSection – Drag Handle / Reorder", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([PROJECT_A]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		expect(
 			screen.queryByRole("button", { name: /reorder/i }),
@@ -648,7 +842,14 @@ describe("ProjectsSection – Drag Handle / Reorder", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([PROJECT_A, PROJECT_B]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		expect(
 			screen.queryByRole("button", { name: /reorder/i }),
@@ -662,7 +863,14 @@ describe("ProjectsSection – Drag Handle / Reorder", () => {
 		useQuery.mockReturnValue([PROJECT_A, PROJECT_B]);
 		useMutation.mockImplementation(() => reorderSpy);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		const alphaHandle = screen.getByRole("button", { name: /reorder alpha/i });
 		fireEvent.keyDown(alphaHandle, { key: "ArrowDown", code: "ArrowDown" });
@@ -681,7 +889,14 @@ describe("ProjectsSection – Drag Handle / Reorder", () => {
 		useQuery.mockReturnValue([PROJECT_A, PROJECT_B]);
 		useMutation.mockImplementation(() => reorderSpy);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		const betaHandle = screen.getByRole("button", { name: /reorder beta/i });
 		fireEvent.keyDown(betaHandle, { key: "ArrowUp", code: "ArrowUp" });
@@ -700,7 +915,14 @@ describe("ProjectsSection – Drag Handle / Reorder", () => {
 		useQuery.mockReturnValue([PROJECT_A, PROJECT_B]);
 		useMutation.mockImplementation(() => reorderSpy);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		const alphaHandle = screen.getByRole("button", { name: /reorder alpha/i });
 		fireEvent.keyDown(alphaHandle, { key: "ArrowUp", code: "ArrowUp" });
@@ -715,7 +937,14 @@ describe("ProjectsSection – Drag Handle / Reorder", () => {
 		useQuery.mockReturnValue([PROJECT_A, PROJECT_B]);
 		useMutation.mockImplementation(() => reorderSpy);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		const betaHandle = screen.getByRole("button", { name: /reorder beta/i });
 		fireEvent.keyDown(betaHandle, { key: "ArrowDown", code: "ArrowDown" });
@@ -738,7 +967,14 @@ describe("ProjectsSection – Drag Handle / Reorder", () => {
 		useQuery.mockReturnValue([PROJECT_A, PROJECT_B]);
 		useMutation.mockImplementation(() => reorderSpy);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		const alphaHandle = screen.getByRole("button", { name: /reorder alpha/i });
 		fireEvent.keyDown(alphaHandle, { key: "ArrowDown", code: "ArrowDown" });
@@ -774,7 +1010,14 @@ describe("ProjectsSection – Visitor", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		expect(
 			screen.queryByRole("button", { name: /new project/i }),
@@ -786,7 +1029,14 @@ describe("ProjectsSection – Visitor", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		const toggle = findFirstToggle()!;
 		fireEvent.click(toggle);
@@ -801,7 +1051,14 @@ describe("ProjectsSection – Visitor", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		const toggle = findFirstToggle()!;
 		fireEvent.click(toggle);
@@ -816,7 +1073,14 @@ describe("ProjectsSection – Visitor", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		expect(screen.getByRole("link", { name: /website/i })).toBeInTheDocument();
 	});
@@ -835,7 +1099,12 @@ describe("ProjectsSection – Optimistic Reconciliation", () => {
 		useMutation.mockImplementation(() => reorderSpy);
 
 		const { rerender } = render(
-			<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />,
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
 		);
 
 		// Keyboard move Alpha down
@@ -844,7 +1113,14 @@ describe("ProjectsSection – Optimistic Reconciliation", () => {
 
 		// Server re-emits with Beta first
 		useQuery.mockReturnValue([PROJECT_B, PROJECT_A]);
-		rerender(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		rerender(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		// Beta should appear before Alpha in the DOM
 		const items = screen.getAllByText(/^(Alpha|Beta)$/);
@@ -859,11 +1135,23 @@ describe("ProjectsSection – Optimistic Reconciliation", () => {
 		useQuery.mockReturnValue([PROJECT_A, PROJECT_B]);
 
 		const { rerender } = render(
-			<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />,
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
 		);
 
 		useQuery.mockReturnValue([PROJECT_A, PROJECT_B, PROJECT_C]);
-		rerender(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		rerender(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		expect(screen.getByText("Alpha")).toBeInTheDocument();
 		expect(screen.getByText("Beta")).toBeInTheDocument();
@@ -876,11 +1164,23 @@ describe("ProjectsSection – Optimistic Reconciliation", () => {
 		useQuery.mockReturnValue([PROJECT_A, PROJECT_B]);
 
 		const { rerender } = render(
-			<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />,
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
 		);
 
 		useQuery.mockReturnValue([PROJECT_A]);
-		rerender(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		rerender(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		expect(screen.getByText("Alpha")).toBeInTheDocument();
 		expect(screen.queryByText("Beta")).not.toBeInTheDocument();
@@ -900,7 +1200,14 @@ describe("ProjectsSection – Mutation failure feedback", () => {
 		useQuery.mockReturnValue([PROJECT_A, PROJECT_B]);
 		useMutation.mockImplementation(() => reorderSpy);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		const alphaHandle = screen.getByRole("button", { name: /reorder alpha/i });
 		fireEvent.keyDown(alphaHandle, { key: "ArrowDown", code: "ArrowDown" });
@@ -922,7 +1229,14 @@ describe("ProjectsSection – Mutation failure feedback", () => {
 		useQuery.mockReturnValue([BASE_PROJECT]);
 		useMutation.mockImplementation(() => deleteSpy);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		const toggle = findFirstToggle()!;
 		fireEvent.click(toggle);
@@ -957,7 +1271,14 @@ describe("ProjectsSection – Mutation failure feedback", () => {
 		useQuery.mockReturnValue([PROJECT_A, PROJECT_B]);
 		useMutation.mockImplementation(() => reorderSpy);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		// First reorder rejects → status line appears
 		const alphaHandle = screen.getByRole("button", { name: /reorder alpha/i });
@@ -990,13 +1311,25 @@ describe("ProjectsSection – Loading skeleton", () => {
 		useQuery.mockReturnValue(undefined);
 
 		const { container, rerender } = render(
-			<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />,
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
 		);
 
 		expect(container.querySelectorAll(".animate-pulse").length).toBe(3);
 
 		useQuery.mockReturnValue([BASE_PROJECT]);
-		rerender(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		rerender(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		expect(container.querySelectorAll(".animate-pulse").length).toBe(0);
 		expect(screen.getByText("My Project")).toBeInTheDocument();
@@ -1016,7 +1349,14 @@ describe("ProjectsSection – Edit Submit", () => {
 		// updateProject is the 5th useMutation call
 		useMutation.mockImplementation(() => updateSpy);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		// Expand the row to reveal the Edit button
 		const toggle = findFirstToggle()!;
@@ -1060,7 +1400,14 @@ describe("ProjectsSection – Edit Submit", () => {
 		useQuery.mockReturnValue([noDescNoUrl]);
 		useMutation.mockImplementation(() => updateSpy);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		const toggle = findFirstToggle()!;
 		fireEvent.click(toggle);
@@ -1090,7 +1437,14 @@ describe("ProjectsSection – Edit Submit", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		const toggle = findFirstToggle()!;
 		fireEvent.click(toggle);
@@ -1111,7 +1465,14 @@ describe("ProjectsSection – Edit Submit", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		const toggle = findFirstToggle()!;
 		fireEvent.click(toggle);
@@ -1133,7 +1494,14 @@ describe("ProjectsSection – Edit Submit", () => {
 		useQuery.mockReturnValue([BASE_PROJECT]);
 		useMutation.mockImplementation(() => mutationSpy);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		const toggle = findFirstToggle()!;
 		fireEvent.click(toggle);
@@ -1164,7 +1532,14 @@ describe("ProjectsSection – Dialog mode-switch without leakage", () => {
 		useQuery.mockReturnValue([]);
 		useMutation.mockReturnValue(vi.fn().mockResolvedValue(null) as never);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		fireEvent.click(screen.getByRole("button", { name: /^add a project$/i }));
 		fireEvent.change(screen.getByRole("textbox", { name: /name/i }), {
@@ -1194,7 +1569,14 @@ describe("ProjectsSection – Dialog mode-switch without leakage", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		// Step 1: Expand row and open the Edit dialog
 		const toggle = findFirstToggle()!;
@@ -1225,7 +1607,14 @@ describe("ProjectsSection – Dialog mode-switch without leakage", () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([BASE_PROJECT]);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		// Step 1: Open create dialog
 		const newBtn = screen.getByRole("button", { name: /^new project$/i });
@@ -1258,7 +1647,14 @@ describe("ProjectsSection – Dialog mode-switch without leakage", () => {
 		useQuery.mockReturnValue([BASE_PROJECT]);
 		useMutation.mockReturnValue(vi.fn().mockResolvedValue(null) as never);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		const toggle = findFirstToggle();
 		if (!toggle) throw new Error("Project toggle was not rendered");
@@ -1300,7 +1696,14 @@ describe("ProjectsSection – Non-reorderable keyboard safety", () => {
 		useQuery.mockReturnValue([PROJECT_A, PROJECT_B]);
 		useMutation.mockImplementation(() => reorderSpy);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+			/>,
+		);
 
 		// Visitor has no reorder handles; fire key events on the first accordion toggle
 		const toggle = findFirstToggle()!;
@@ -1318,7 +1721,14 @@ describe("ProjectsSection – Non-reorderable keyboard safety", () => {
 		useQuery.mockReturnValue([PROJECT_A]);
 		useMutation.mockImplementation(() => reorderSpy);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		// Owner with 1 project: canReorder is false, no drag handles
 		const toggle = findFirstToggle()!;
@@ -1355,7 +1765,14 @@ describe("ProjectsSection – Keyboard reorder while delete in flight", () => {
 		useQuery.mockReturnValue([PROJECT_A, PROJECT_B]);
 		useMutation.mockImplementation(() => sharedSpy);
 
-		render(<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />);
+		render(
+			<ProjectsSection
+				presentation="rows"
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+			/>,
+		);
 
 		// Expand row for PROJECT_A and trigger delete (opens confirm dialog)
 		const toggle = findFirstToggle()!;
@@ -1390,6 +1807,298 @@ describe("ProjectsSection – Keyboard reorder while delete in flight", () => {
 		await vi.waitFor(() => {
 			expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Group CD - Card grid (the default presentation, rendered on the stack page)
+// ---------------------------------------------------------------------------
+
+describe("ProjectsSection – Card grid", () => {
+	// TC-CD-01
+	it("TC-CD-01: the card face prints name, description and tags", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([BASE_PROJECT]);
+
+		render(
+			<ProjectsSection
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+				presentation="cards"
+			/>,
+		);
+
+		expect(screen.getByText("My Project")).toBeInTheDocument();
+		expect(
+			screen.getByText("A description of the project"),
+		).toBeInTheDocument();
+		expect(screen.getByText("react")).toBeInTheDocument();
+		expect(screen.getByText("typescript")).toBeInTheDocument();
+	});
+
+	// TC-CD-02
+	it("TC-CD-02: no disclosure toggle on a card", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([BASE_PROJECT]);
+
+		render(
+			<ProjectsSection
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+				presentation="cards"
+			/>,
+		);
+
+		expect(
+			screen
+				.queryAllByRole("button")
+				.filter((b) => b.getAttribute("aria-expanded") !== null),
+		).toHaveLength(0);
+	});
+
+	// TC-CD-03
+	it("TC-CD-03: the project name is the external link, target=_blank and rel noopener+noreferrer", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([BASE_PROJECT]);
+
+		render(
+			<ProjectsSection
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+				presentation="cards"
+			/>,
+		);
+
+		const link = screen.getByRole("link", { name: /my project/i });
+		expect(link).toHaveAttribute("href", "https://example.com/");
+		expect(link).toHaveAttribute("target", "_blank");
+		expect(link.getAttribute("rel")).toContain("noopener");
+		expect(link.getAttribute("rel")).toContain("noreferrer");
+	});
+
+	// TC-CD-04
+	it("TC-CD-04: url 'javascript:alert(1)' → name renders as text, no link", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([{ ...BASE_PROJECT, url: "javascript:alert(1)" }]);
+
+		render(
+			<ProjectsSection
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+				presentation="cards"
+			/>,
+		);
+
+		expect(screen.getByText("My Project")).toBeInTheDocument();
+		expect(screen.queryByRole("link")).not.toBeInTheDocument();
+	});
+
+	// TC-CD-05
+	it("TC-CD-05: url undefined → no link on the card", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([NO_URL_PROJECT]);
+
+		render(
+			<ProjectsSection
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+				presentation="cards"
+			/>,
+		);
+
+		expect(screen.queryByRole("link")).not.toBeInTheDocument();
+	});
+
+	// TC-CD-06
+	it("TC-CD-06: 6 tags → first 4 shown, +2 overflow, e and f absent", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([MANY_TAGS_PROJECT]);
+
+		render(
+			<ProjectsSection
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+				presentation="cards"
+			/>,
+		);
+
+		for (const tag of ["a", "b", "c", "d"]) {
+			expect(screen.getByText(tag)).toBeInTheDocument();
+		}
+		expect(screen.getByText("+2")).toBeInTheDocument();
+		expect(screen.queryByText("e")).not.toBeInTheDocument();
+		expect(screen.queryByText("f")).not.toBeInTheDocument();
+	});
+
+	// TC-CD-07
+	it("TC-CD-07: the card face carries no updated stamp", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([{ ...BASE_PROJECT, updatedAt: Date.now() }]);
+
+		render(
+			<ProjectsSection
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+				presentation="cards"
+			/>,
+		);
+
+		expect(screen.getByText("My Project")).toBeInTheDocument();
+		expect(screen.queryByText(/^Updated/)).not.toBeInTheDocument();
+	});
+
+	// TC-CD-08
+	it("TC-CD-08: visitor sees no owner actions and no reorder handle", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([PROJECT_A, PROJECT_B]);
+
+		render(
+			<ProjectsSection
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+				presentation="cards"
+			/>,
+		);
+
+		expect(
+			screen.queryByRole("button", { name: /^edit$/i }),
+		).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole("button", { name: /^delete$/i }),
+		).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole("button", { name: /reorder/i }),
+		).not.toBeInTheDocument();
+	});
+
+	// TC-CD-09
+	it("TC-CD-09: owner sees Edit and Delete on the card with no expand step", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([BASE_PROJECT]);
+
+		render(
+			<ProjectsSection
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+				presentation="cards"
+			/>,
+		);
+
+		expect(screen.getByRole("button", { name: /^edit$/i })).toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: /^delete$/i }),
+		).toBeInTheDocument();
+	});
+
+	// TC-CD-10
+	it("TC-CD-10: owner Edit on a card opens the seeded edit dialog", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([BASE_PROJECT]);
+
+		render(
+			<ProjectsSection
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+				presentation="cards"
+			/>,
+		);
+
+		fireEvent.click(screen.getByRole("button", { name: /^edit$/i }));
+
+		const dialog = await screen.findByRole("dialog");
+		expect(within(dialog).getByDisplayValue("My Project")).toBeInTheDocument();
+	});
+
+	// TC-CD-11
+	it("TC-CD-11: owner Delete on a card confirms, then calls deleteProject", async () => {
+		const { useQuery, useMutation } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([BASE_PROJECT]);
+		const spy = vi.fn().mockResolvedValue(undefined);
+		useMutation.mockImplementation(() => spy as never);
+
+		render(
+			<ProjectsSection
+				index={1}
+				stackId={STACK_ID}
+				isOwner={true}
+				presentation="cards"
+			/>,
+		);
+
+		fireEvent.click(screen.getByRole("button", { name: /^delete$/i }));
+		const dialog = await screen.findByRole("dialog");
+		await act(async () => {
+			fireEvent.click(
+				within(dialog).getByRole("button", { name: /^delete$/i }),
+			);
+		});
+
+		expect(spy).toHaveBeenCalledWith({ projectId: "project_1" });
+	});
+
+	// TC-CD-12
+	it("TC-CD-12: the cards render in server order", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([PROJECT_B, PROJECT_A]);
+
+		const { container } = render(
+			<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />,
+		);
+
+		const names = Array.from(container.querySelectorAll("h3")).map(
+			(h) => h.textContent,
+		);
+		expect(names).toEqual(["Beta", "Alpha"]);
+	});
+
+	// TC-CD-13
+	it("TC-CD-13: loading → the busy list is present, gone once data arrives", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue(undefined);
+
+		const { rerender, container } = render(
+			<ProjectsSection index={1} stackId={STACK_ID} isOwner={false} />,
+		);
+
+		expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument();
+
+		useQuery.mockReturnValue([BASE_PROJECT]);
+		rerender(
+			<ProjectsSection
+				index={1}
+				stackId={STACK_ID}
+				isOwner={false}
+				presentation="cards"
+			/>,
+		);
+
+		expect(container.querySelector('[aria-busy="true"]')).toBeNull();
+		expect(screen.getByText("My Project")).toBeInTheDocument();
+	});
+
+	// TC-CD-14
+	it("TC-CD-14: owner + empty → the 'Add a project' empty state, no cards", async () => {
+		const { useQuery } = vi.mocked(await import("convex/react"));
+		useQuery.mockReturnValue([]);
+
+		const { container } = render(
+			<ProjectsSection index={1} stackId={STACK_ID} isOwner={true} />,
+		);
+
+		expect(
+			screen.getByRole("button", { name: /^add a project$/i }),
+		).toBeInTheDocument();
+		expect(container.querySelectorAll("h3")).toHaveLength(0);
 	});
 });
 

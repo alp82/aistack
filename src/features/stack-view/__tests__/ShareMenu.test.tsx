@@ -2,13 +2,7 @@
 /**
  * Tests for the ShareMenu component (TC-SM-01..14 + integration).
  */
-import {
-	act,
-	cleanup,
-	fireEvent,
-	render,
-	screen,
-} from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ShareMenu } from "@/features/stack-view/ShareMenu";
 
@@ -324,6 +318,25 @@ describe("ShareMenu", () => {
 
 		const firstBtn = screen.getByRole("button", { name: /copy page link/i });
 		expect(document.activeElement).toBe(firstBtn);
+	});
+});
+
+describe("the trigger variant", () => {
+	it("defaults to the filled panel trigger", () => {
+		render(<ShareMenu slug="my-stack" />);
+		const trigger = screen.getByRole("button", { name: /share/i });
+		expect(trigger.className).toContain("bg-bg-panel");
+		expect(trigger.className).toContain("border-stroke-strong");
+	});
+
+	it("renders the ghost trigger transparent with a subtle stroke", () => {
+		render(<ShareMenu slug="my-stack" triggerVariant="ghost" />);
+		const trigger = screen.getByRole("button", { name: /share/i });
+		expect(trigger.className).toContain("bg-transparent");
+		expect(trigger.className).toContain("border-stroke-subtle");
+		expect(trigger.className).toContain("text-fg-secondary");
+		expect(trigger.className).not.toContain("bg-bg-panel");
+		expect(trigger).toHaveAttribute("aria-expanded", "false");
 	});
 });
 

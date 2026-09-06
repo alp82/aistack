@@ -8,8 +8,8 @@ import type { Comparison } from "./Delta";
 import { HarnessShareRows } from "./HarnessShareRows";
 
 /**
- * One item of the tabbed grid: a workflow row, one of the five usage stats,
- * or the harness rows. One shape, so every tab packs them the same way.
+ * One item of the accordion: a workflow row, one of the five usage stats,
+ * or the harness rows. One shape, so every topic lays them out the same way.
  */
 export type Item = {
 	readonly id: string;
@@ -34,13 +34,21 @@ export type Group = {
 	readonly id: string;
 	readonly label: string;
 	readonly ids: readonly string[];
+	/**
+	 * The item whose body leads the open topic (#356, prototype v37 "feature"):
+	 * its picture is the lead chart on the left, and every other item is a scan
+	 * row on the right. An absent lead item falls back to the first item with a
+	 * body.
+	 */
+	readonly lead: string;
 };
 
-/** The five tabs and the fixed order of their items (spec, "The section"). */
+/** The five topics and the fixed order of their items (spec, "The section"). */
 export const TOPIC: readonly Group[] = [
 	{
 		id: "time",
 		label: "Time",
+		lead: "component:activity-heatmap",
 		ids: [
 			"stat:active-days",
 			"component:activity-heatmap",
@@ -53,6 +61,7 @@ export const TOPIC: readonly Group[] = [
 	{
 		id: "code",
 		label: "Code",
+		lead: "component:git-ledger",
 		ids: [
 			"stat:projects",
 			"stat:sessions",
@@ -64,6 +73,7 @@ export const TOPIC: readonly Group[] = [
 	{
 		id: "models",
 		label: "Models",
+		lead: "component:model-routing",
 		ids: [
 			"component:model-routing",
 			"metric:effort-levels",
@@ -73,6 +83,7 @@ export const TOPIC: readonly Group[] = [
 	{
 		id: "harness",
 		label: "Harness",
+		lead: "component:delegation",
 		ids: [
 			"component:delegation",
 			"harness",
@@ -83,6 +94,7 @@ export const TOPIC: readonly Group[] = [
 	{
 		id: "skills",
 		label: "Skills",
+		lead: "component:kit",
 		ids: ["component:kit", "metric:web-searches-per-active-day"],
 	},
 ];
@@ -256,7 +268,7 @@ function statItems(
 }
 
 /**
- * Every item the tabs can place, keyed by id. The workflow rows come in the
+ * Every item the topics can place, keyed by id. The workflow rows come in the
  * server's order and the section ranks nothing (#277).
  */
 export function buildItems(

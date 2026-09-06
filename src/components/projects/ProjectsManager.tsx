@@ -1,11 +1,17 @@
-import { ChevronDown, Globe, GripVertical, Plus } from "lucide-react";
+import {
+	ArrowUpRight,
+	ChevronDown,
+	Globe,
+	GripVertical,
+	Plus,
+} from "lucide-react";
 import {
 	AnimatePresence,
 	motion,
 	Reorder,
 	useDragControls,
 } from "motion/react";
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import {
 	type DialogState,
 	type ManagerCreateValues,
@@ -22,6 +28,17 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Section, SectionHeader } from "@/features/stack-view/ui";
 import { cn, safeExternalUrl } from "@/lib/utils";
 
+/**
+ * How the project list is laid out.
+ *
+ * "cards" is the read presentation: a grid of bordered cards that print the
+ * whole project (name, link, description, tags) with no disclosure.
+ * "rows" is the authoring presentation: full-width expandable rows with drag
+ * and keyboard reordering. The caller picks; the component never infers the
+ * presentation from `isOwner`.
+ */
+export type ProjectsPresentation = "cards" | "rows";
+
 export function ProjectsManager({
 	items,
 	keyOf,
@@ -30,6 +47,7 @@ export function ProjectsManager({
 	header,
 	id,
 	loading,
+	presentation = "rows",
 	onCreate,
 	onUpdate,
 	onDelete,
@@ -42,6 +60,7 @@ export function ProjectsManager({
 	header?: React.ReactNode;
 	id?: string;
 	loading?: boolean;
+	presentation?: ProjectsPresentation;
 	onCreate: (v: ManagerCreateValues) => Promise<unknown>;
 	onUpdate: (id: string, v: ManagerUpdateValues) => Promise<unknown>;
 	onDelete: (id: string) => Promise<unknown>;
@@ -88,7 +107,10 @@ export function ProjectsManager({
 		.map((id) => byId.get(id))
 		.filter((p): p is ManagerProject => Boolean(p));
 
-	const canReorder = isOwner && ordered.length > 1;
+	// Reordering is a row affordance. Motion's Reorder tracks a single axis, so a
+	// wrapping card grid cannot carry it; the owner reorders in the editor, which
+	// renders the row presentation.
+	const canReorder = presentation === "rows" && isOwner && ordered.length > 1;
 
 	const commitOrder = () => {
 		draggingRef.current = false;
@@ -158,19 +180,24 @@ export function ProjectsManager({
 	);
 
 	return (
-		<Section index={index} id={id}>
-			{header ?? (
-				<SectionHeader
-					index={String(index).padStart(2, "0")}
-					kicker="// Showcase"
-					title="Projects"
-					meta={
-						hasProjects
-							? `${items.length} ${items.length === 1 ? "project" : "projects"}`
-							: undefined
-					}
-				/>
-			)}
+		<Section
+			index={index}
+			id={id}
+			header={
+				header ?? (
+					<SectionHeader
+						index={String(index).padStart(2, "0")}
+						kicker="// Showcase"
+						title="Projects"
+						meta={
+							hasProjects
+								? `${items.length} ${items.length === 1 ? "project" : "projects"}`
+								: undefined
+						}
+					/>
+				)
+			}
+		>
 			<div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2">
 				{isOwner && (
 					<NewProjectButton
@@ -183,13 +210,22 @@ export function ProjectsManager({
 				<ul
 					aria-busy="true"
 					aria-label="Loading projects"
-					className="border-t border-stroke-subtle"
+					className={
+						presentation === "cards"
+							? CARD_GRID
+							: "border-t border-stroke-subtle"
+					}
 				>
 					{[0, 1, 2].map((i) => (
 						<li
 							key={i}
 							aria-hidden="true"
-							className="flex items-center border-b border-stroke-subtle px-3 py-6"
+							className={cn(
+								"flex items-center",
+								presentation === "cards"
+									? "h-32 border border-stroke-subtle p-5"
+									: "border-b border-stroke-subtle px-3 py-6",
+							)}
 						>
 							<div className="h-4 w-full animate-pulse bg-bg-panel/40" />
 						</li>
@@ -215,7 +251,31 @@ export function ProjectsManager({
 					No projects have been added to this stack yet
 				</p>
 			)}
+			{hasProjects && presentation === "cards" && (
+				<ul className={CARD_GRID}>
+					{ordered.map((project) => {
+						const itemKey = keyOf(project);
+						return (
+							<ProjectCard
+								key={itemKey}
+								project={project}
+								isOwner={isOwner}
+								onEdit={() =>
+									setDialog({
+										mode: "edit",
+										initial: { id: itemKey, ...toFormValues(project) },
+									})
+								}
+								onDelete={() =>
+									setDeleteTarget({ id: itemKey, name: project.name })
+								}
+							/>
+						);
+					})}
+				</ul>
+			)}
 			{hasProjects &&
+				presentation === "rows" &&
 				(canReorder ? (
 					<Reorder.Group
 						as="ul"
@@ -299,6 +359,95 @@ export function ProjectsManager({
 				onUpdate={onUpdate}
 			/>
 		</Section>
+	);
+}
+
+/** Card grid: as many 20rem columns as fit, one column on a phone. */
+const CARD_GRID = "grid grid-cols-[repeat(auto-fill,minmax(20rem,1fr))] gap-4";
+
+function ProjectCard({
+	project,
+	isOwner,
+	onEdit,
+	onDelete,
+}: {
+	project: ManagerProject;
+	isOwner: boolean;
+	onEdit: () => void;
+	onDelete: () => void;
+}) {
+	const href = safeExternalUrl(project.url);
+	const shownTags = project.tags?.slice(0, 4) ?? [];
+	const extraTags = (project.tags?.length ?? 0) - shownTags.length;
+	const title = (
+		<h3 className="min-w-0 flex-1 truncate text-lg font-black leading-tight text-fg-primary">
+			{project.name}
+		</h3>
+	);
+
+	return (
+		// biome-ignore lint/a11y/useKeyWithClickEvents: the title link inside is the keyboard path; the card click is a pointer convenience
+		// biome-ignore lint/a11y/noStaticElementInteractions: same
+		<li
+			onClick={(event) => {
+				// The whole card opens the project. A click that already landed on a
+				// link or a button (the title, edit, delete) does its own thing.
+				if (!href) return;
+				if ((event.target as HTMLElement).closest("a, button")) return;
+				window.open(href, "_blank", "noopener,noreferrer");
+			}}
+			className={cn(
+				"group flex flex-col border border-stroke-subtle bg-bg-canvas p-5 transition-colors hover:border-accent-lime/60 hover:bg-bg-panel/40",
+				href && "cursor-pointer",
+			)}
+		>
+			<div className="flex items-center gap-2.5">
+				{href && <ProjectFavicon href={href} />}
+				{href ? (
+					<a
+						href={href}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="flex min-w-0 flex-1 items-center gap-2 text-fg-primary transition-colors hover:text-accent-lime"
+					>
+						{title}
+						<ArrowUpRight
+							aria-hidden="true"
+							className="size-5 shrink-0 text-accent-lime"
+						/>
+						<span className="sr-only">(opens in new tab)</span>
+					</a>
+				) : (
+					title
+				)}
+			</div>
+			{project.description && (
+				<p className="mt-3 text-sm leading-relaxed text-fg-secondary">
+					{project.description}
+				</p>
+			)}
+			{shownTags.length > 0 && (
+				<p className="mt-4 flex flex-wrap items-center gap-x-1.5 font-mono text-[11px] uppercase tracking-wider text-fg-muted">
+					{shownTags.map((tag, i) => (
+						<Fragment key={tag}>
+							{i > 0 && <span aria-hidden="true">·</span>}
+							<span>{tag}</span>
+						</Fragment>
+					))}
+					{extraTags > 0 && (
+						<>
+							<span aria-hidden="true">·</span>
+							<span>+{extraTags}</span>
+						</>
+					)}
+				</p>
+			)}
+			{isOwner && (
+				<div className="mt-auto flex flex-wrap items-center gap-3 pt-5">
+					<OwnerActions onEdit={onEdit} onDelete={onDelete} />
+				</div>
+			)}
+		</li>
 	);
 }
 
