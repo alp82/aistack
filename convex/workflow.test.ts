@@ -670,10 +670,11 @@ describe('the Context reading (#358)', () => {
       longChat: p90Call - 45_000,
       compactions: 0,
     })
-    // Claude Code logs no window and the catalog has no row here: unknown.
+    // Claude Code logs no window and the catalog has no row here: the
+    // smallest tier that holds its largest call stands in.
     expect(
       view?.context?.harnesses.find((h) => h.harness === 'claude-code'),
-    ).toMatchObject({ window: null, compactions: 2 })
+    ).toMatchObject({ window: 200_000, compactions: 2 })
   })
 
   test('Claude Code takes the catalog window of its top model, stepped up when a call outgrows it', async () => {

@@ -26,19 +26,23 @@ export const CONTEXT_WINDOW_TIERS: readonly number[] = [200_000, 1_000_000];
  * The window a harness ran under, from what the catalog says and what the
  * calls prove. `known` is the catalog window or null. A max call inside the
  * known window confirms it; a max call over it steps up to the smallest tier
- * that holds it, and keeps the known window when no tier does. Null when
- * nothing is known: a call size alone names no model.
+ * that holds it, and keeps the known window when no tier does. With nothing
+ * known, the smallest tier that holds the max call stands in: a Claude Code
+ * harness runs under one of the tiers, and a 580K call already rules out the
+ * first. Null only when no tier holds the call either.
  */
 export function inferContextWindow(
 	known: number | null | undefined,
 	maxContext: number,
 ): number | null {
-	if (known === null || known === undefined || !(known > 0)) return null;
-	if (maxContext <= known) return known;
-	const next = [...CONTEXT_WINDOW_TIERS]
-		.filter((tier) => tier >= maxContext)
+	const tier = [...CONTEXT_WINDOW_TIERS]
+		.filter((t) => t >= maxContext)
 		.sort((a, b) => a - b)[0];
-	return next ?? known;
+	if (known === null || known === undefined || !(known > 0)) {
+		return tier ?? null;
+	}
+	if (maxContext <= known) return known;
+	return tier ?? known;
 }
 
 /** One harness's Context reading, as the page receives it. */

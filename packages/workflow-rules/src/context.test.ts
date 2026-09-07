@@ -14,10 +14,11 @@ describe("inferContextWindow", () => {
 		expect(inferContextWindow(200_000, 580_322)).toBe(1_000_000);
 	});
 
-	test("nothing known is null, whatever the calls say", () => {
-		expect(inferContextWindow(null, 40_000)).toBeNull();
-		expect(inferContextWindow(undefined, 580_322)).toBeNull();
-		expect(inferContextWindow(0, 1)).toBeNull();
+	test("nothing known falls back to the smallest tier that holds the max call", () => {
+		expect(inferContextWindow(null, 40_000)).toBe(200_000);
+		expect(inferContextWindow(undefined, 580_322)).toBe(1_000_000);
+		expect(inferContextWindow(0, 1)).toBe(200_000);
+		expect(inferContextWindow(null, 2_000_000)).toBeNull();
 	});
 
 	test("a max call over every tier keeps the catalog window", () => {

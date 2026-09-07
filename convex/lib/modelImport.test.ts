@@ -375,5 +375,23 @@ describe('planImport', () => {
     })
     expect(p.periods).toEqual([])
     expect(p.icons).toEqual([])
+    expect(p.windows).toEqual([])
+  })
+
+  test('a row without a context window takes the one its vendor lists, a row with one keeps it', () => {
+    const p = plan({
+      models: [
+        model({ slug: 'claude-opus-5', provider: 'Anthropic' }),
+        model({ slug: 'claude-fable-5', provider: 'Anthropic', contextWindow: 200_000 }),
+        model({ slug: 'gpt-5.6-sol', provider: 'OpenAI' }),
+      ],
+      dataset: [
+        dm({ id: 'claude-opus-5', providerId: 'anthropic', contextWindow: 1_000_000 }),
+        dm({ id: 'claude-fable-5', providerId: 'anthropic', contextWindow: 1_000_000 }),
+        // A gateway listing never decides a vendor row's window.
+        dm({ id: 'gpt-5.6-sol', providerId: 'openrouter', contextWindow: 400_000 }),
+      ],
+    })
+    expect(p.windows).toEqual([{ modelSlug: 'claude-opus-5', contextWindow: 1_000_000 }])
   })
 })

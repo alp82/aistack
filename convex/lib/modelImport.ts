@@ -239,11 +239,19 @@ export type IconBackfill = {
   iconUrl: string
 }
 
+/** An existing row with no context window, and the one its vendor lists. */
+export type WindowBackfill = {
+  modelSlug: string
+  contextWindow: number
+}
+
 export type ImportPlan = {
   periods: PeriodInsert[]
   models: ModelInsert[]
   /** Rows the run gives a logo to. */
   icons: IconBackfill[]
+  /** Rows the run gives a context window to (#358: the Context reading needs one). */
+  windows: WindowBackfill[]
   /** Dataset models the allowlist and the window kept out, for the run line. */
   skipped: number
 }
@@ -322,6 +330,7 @@ export function planImport(args: {
   const periods: PeriodInsert[] = []
   const modelInserts: ModelInsert[] = []
   const icons: IconBackfill[] = []
+  const windows: WindowBackfill[] = []
   const claimed = new Set<string>()
   let skipped = 0
 
@@ -345,6 +354,11 @@ export function planImport(args: {
       if (iconUrl) icons.push({ modelSlug: row.slug, iconUrl })
     }
     if (!m) continue
+    // A row that never got a window takes its vendor's. A row that has one
+    // keeps it: the owner may have set it by hand.
+    if (row.contextWindow === undefined && m.contextWindow !== undefined && m.contextWindow > 0) {
+      windows.push({ modelSlug: row.slug, contextWindow: m.contextWindow })
+    }
     const current = periodInEffect(prices, row.slug, now)
     const rates = ratesOf(m)
     if (current && !ratesDiffer(current, rates)) continue
@@ -413,7 +427,7 @@ export function planImport(args: {
     })
   }
 
-  return { periods, models: modelInserts, icons, skipped }
+  return { periods, models: modelInserts, icons, windows, skipped }
 }
 
 /** `$5/$25 in/out` style, for the log. */

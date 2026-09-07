@@ -58,6 +58,7 @@ const ModelInsertV = v.object({
 })
 
 const IconBackfillV = v.object({ modelSlug: v.string(), iconUrl: v.string() })
+const WindowBackfillV = v.object({ modelSlug: v.string(), contextWindow: v.number() })
 
 const LOG_KEEP = 500
 
@@ -108,6 +109,7 @@ export const apply = internalMutation({
     periods: v.array(PeriodInsertV),
     models: v.array(ModelInsertV),
     icons: v.optional(v.array(IconBackfillV)),
+    windows: v.optional(v.array(WindowBackfillV)),
     source: v.string(),
     skipped: v.number(),
     now: v.number(),
@@ -198,6 +200,21 @@ export const apply = internalMutation({
         detail: `icon ${i.iconUrl} (provider ${row.provider ?? 'unknown'})`,
       })
     }
+    for (const w of args.windows ?? []) {
+      const row = await ctx.db
+        .query('models')
+        .withIndex('by_slug', (q) => q.eq('slug', w.modelSlug))
+        .first()
+      // Re-check against the table: the plan was made from a snapshot.
+      if (!row || row.contextWindow !== undefined) continue
+      await ctx.db.patch(row._id, { contextWindow: w.contextWindow, updatedAt: now })
+      await ctx.db.insert('importLog', {
+        at: now,
+        kind: 'window',
+        modelSlug: w.modelSlug,
+        detail: `context window ${w.contextWindow} (${source})`,
+      })
+    }
     await ctx.db.insert('importLog', {
       at: now,
       kind: 'run',
@@ -263,6 +280,7 @@ export const run = internalAction({
         periods: plan.periods,
         models: plan.models,
         icons: plan.icons,
+        windows: plan.windows,
         source,
         skipped: plan.skipped,
         now,

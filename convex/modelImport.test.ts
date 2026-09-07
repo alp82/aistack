@@ -75,6 +75,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
         category: 'coding',
         reviewStatus: 'approved',
         iconUrl: `https://models.dev/logos/${provider.toLowerCase()}.svg`,
+        contextWindow: 200000,
         createdAt: now,
         updatedAt: now,
       })
@@ -320,6 +321,32 @@ describe('modelImport (#337)', () => {
     await t.run(async (ctx) => {
       const log = await ctx.db.query('importLog').collect()
       expect(log.filter((l) => l.kind === 'icon')).toHaveLength(3)
+    })
+  })
+
+  test('backfills the context window on a row without one and logs one window line', async () => {
+    const t = convexTest(schema, modules)
+    await seed(t)
+    await t.run(async (ctx) => {
+      const sol = await ctx.db.query('modelPrices').withIndex('by_model', (q) => q.eq('modelSlug', 'gpt-5.6-sol')).first()
+      await ctx.db.patch(sol!._id, { input: 4, output: 20, cacheRead: 0.4 })
+      const opus = await ctx.db.query('models').withIndex('by_slug', (q) => q.eq('slug', 'claude-opus-4-7')).first()
+      await ctx.db.patch(opus!._id, { contextWindow: undefined })
+    })
+    stubFetch({ [MODELS_DEV_URL]: MODELS_DEV })
+
+    const result = await t.action(internal.modelImport.run, {})
+    expect(result).toMatchObject({ periods: 0, models: 0 })
+
+    await t.run(async (ctx) => {
+      const rows = await ctx.db.query('models').collect()
+      expect(Object.fromEntries(rows.map((r) => [r.slug, r.contextWindow]))).toEqual({
+        'claude-opus-4-7': 1000000,
+        'gpt-5.6-sol': 200000,
+      })
+      const log = await ctx.db.query('importLog').collect()
+      expect(log.map((l) => l.kind).sort()).toEqual(['run', 'window'])
+      expect(log.find((l) => l.kind === 'window')!.detail).toMatch(/^context window 1000000 \(models\.dev@/)
     })
   })
 
