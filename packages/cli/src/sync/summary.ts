@@ -13,7 +13,7 @@
 import {
 	foldWorkflowDays,
 	type MeasuredDay,
-	WORKFLOW_AGGREGATES_V2,
+	WORKFLOW_AGGREGATES_V3,
 } from "@aistack/workflow-rules";
 import { HARNESS_ADAPTERS, harnessLabel } from "../harness/index.js";
 import type {
@@ -499,7 +499,7 @@ function workflowBlock(
 ): string[] {
 	const out: string[] = [];
 	const folded = foldWorkflowDays(workflowDays, {
-		aggregateVersion: WORKFLOW_AGGREGATES_V2,
+		aggregateVersion: WORKFLOW_AGGREGATES_V3,
 		utcOffsetMinutes,
 	});
 	const harnesses = folded?.harnesses ?? [];
@@ -510,7 +510,7 @@ function workflowBlock(
 	].filter(Boolean);
 
 	out.push(
-		`workflow  ${harnesses.length} harness${harnesses.length === 1 ? "" : "es"} · ${sessions} sessions · ${WORKFLOW_AGGREGATES_V2}`,
+		`workflow  ${harnesses.length} harness${harnesses.length === 1 ? "" : "es"} · ${sessions} sessions · ${WORKFLOW_AGGREGATES_V3}`,
 	);
 	const first = folded?.dates[0];
 	const last = folded?.dates.at(-1);

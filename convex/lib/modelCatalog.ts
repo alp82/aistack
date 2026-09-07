@@ -132,3 +132,16 @@ export function resolveModelId(
 export function findInCatalog(catalog: ModelCatalog, slug: string): Doc<'models'> | null {
   return catalog.bySlug.get(slug) ?? catalog.byAlias.get(slug) ?? null
 }
+
+/**
+ * The context window the catalog holds for one measured id (#358), resolved
+ * under the same alias rules as `resolveModelId`. Null when the id resolves
+ * to no row or the row carries no `contextWindow` (the import fills it from
+ * models.dev; a hand-entered row may lack it).
+ */
+export function contextWindowOf(catalog: ModelCatalog, id: string): number | null {
+  const { catalogSlug } = resolveModelId(catalog, id)
+  if (catalogSlug === null) return null
+  const window = catalog.bySlug.get(catalogSlug)?.contextWindow
+  return window !== undefined && window > 0 ? window : null
+}

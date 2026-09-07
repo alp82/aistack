@@ -1,18 +1,29 @@
 import { describe, expect, test } from "vitest";
 import {
 	bucketMid,
+	bucketMidV2,
 	bucketRange,
+	bucketRangeV2,
 	effortLevelOf,
+	foldContextDays,
 	foldGitDays,
 	foldHarnessDays,
 	foldWorkflowDays,
 	logBucket,
+	logBucketV2,
 	MAX_CHANGED_LINES_PER_COMMIT,
 	median,
 	medianBucket,
+	quantileBucket,
 	WORKFLOW_AGGREGATES_V2,
 } from "./daily.js";
-import { gitDay, harnessDay, lengthBucket, workflowDay } from "./fixtures.js";
+import {
+	contextDay,
+	gitDay,
+	harnessDay,
+	lengthBucket,
+	workflowDay,
+} from "./fixtures.js";
 
 describe("log-buckets/v1", () => {
 	test("bucket 0 holds everything under 1, bucket k holds [2^(k-1), 2^k)", () => {
@@ -57,6 +68,114 @@ describe("log-buckets/v1", () => {
 		expect(effortLevelOf("Medium")).toBe("medium");
 		expect(effortLevelOf("minimal")).toBe("low");
 		expect(effortLevelOf("turbo")).toBe("other");
+	});
+});
+
+describe("log-buckets/v2", () => {
+	test("bucket 0 holds everything under 1, bucket k holds [2^((k-1)/2), 2^(k/2))", () => {
+		expect(logBucketV2(0)).toBe(0);
+		expect(logBucketV2(0.9)).toBe(0);
+		expect(logBucketV2(1)).toBe(1);
+		expect(logBucketV2(1.41)).toBe(1);
+		expect(logBucketV2(1.42)).toBe(2);
+		expect(logBucketV2(2)).toBe(3);
+		expect(logBucketV2(50_000)).toBe(32);
+		expect(logBucketV2(200_000)).toBe(36);
+		expect(bucketRangeV2(3)).toEqual({ low: 2, high: 2 ** 1.5 });
+		expect(bucketRangeV2(0)).toEqual({ low: 0, high: 1 });
+	});
+
+	test("about twenty buckets separate 1k from 1M, and the middle is within 20% of any value", () => {
+		expect(logBucketV2(1_000_000) - logBucketV2(1_000)).toBe(20);
+		for (const value of [1_000, 37_000, 61_162, 258_400, 999_999]) {
+			const mid = bucketMidV2(logBucketV2(value));
+			expect(Math.abs(mid - value) / value).toBeLessThan(0.2);
+		}
+		expect(bucketMidV2(0)).toBe(0.5);
+	});
+
+	test("the median over half-octave buckets quotes the middle item's bucket", () => {
+		// Eleven calls: the sixth is the median, the tenth is p90.
+		const histogram = [
+			{ bucket: logBucketV2(40_000), count: 6 },
+			{ bucket: logBucketV2(120_000), count: 4 },
+			{ bucket: logBucketV2(300_000), count: 1 },
+		];
+		expect(medianBucket(histogram)).toBe(logBucketV2(40_000));
+		expect(quantileBucket(histogram, 0.9)).toBe(logBucketV2(120_000));
+		expect(quantileBucket(histogram, 1)).toBe(logBucketV2(300_000));
+		expect(quantileBucket(histogram, 0)).toBe(logBucketV2(40_000));
+		expect(quantileBucket([], 0.9)).toBeUndefined();
+	});
+});
+
+describe("foldContextDays", () => {
+	test("merges histograms by bucket, adds the sums, maxes the max, and keeps the last window", () => {
+		const folded = foldContextDays([
+			contextDay({ window: 200_000 }),
+			contextDay({
+				calls: {
+					main: [
+						{ bucket: 34, calls: 1 },
+						{ bucket: 36, calls: 2 },
+					],
+					subagents: [],
+				},
+				firstCalls: { main: [{ bucket: 33, sessions: 2 }] },
+				firstCallHarnessTokens: 50_000,
+				firstCallInstructionsTokens: 40_000,
+				firstCallCount: 2,
+				maxContext: 260_000,
+				compactions: 2,
+				window: 1_000_000,
+			}),
+			contextDay(),
+		]);
+		expect(folded.calls.main).toEqual([
+			{ bucket: 32, calls: 12 },
+			{ bucket: 34, calls: 9 },
+			{ bucket: 36, calls: 2 },
+		]);
+		expect(folded.calls.subagents).toEqual([{ bucket: 30, calls: 10 }]);
+		expect(folded.firstCalls.main).toEqual([
+			{ bucket: 32, sessions: 20 },
+			{ bucket: 33, sessions: 2 },
+		]);
+		expect(folded.firstCallHarnessTokens).toBe(510_000);
+		expect(folded.firstCallInstructionsTokens).toBe(480_000);
+		expect(folded.firstCallCount).toBe(22);
+		expect(folded.maxContext).toBe(260_000);
+		expect(folded.compactions).toBe(4);
+		expect(folded.window).toBe(1_000_000);
+		expect(folded.bucketRuleVersion).toBe("log-buckets/v2");
+	});
+
+	test("no day with a window means no window on the fold", () => {
+		expect(
+			foldContextDays([contextDay(), contextDay()]).window,
+		).toBeUndefined();
+	});
+
+	test("the harness fold carries the block when any day has it, and the window fold takes the latest date's window", () => {
+		const bare = harnessDay({ context: undefined });
+		expect(foldHarnessDays([bare, bare]).context).toBeUndefined();
+		expect(foldHarnessDays([bare, harnessDay()]).context?.firstCallCount).toBe(
+			10,
+		);
+		const folded = foldWorkflowDays(
+			[
+				workflowDay({
+					date: "2026-08-25",
+					harnesses: [harnessDay({ context: contextDay({ window: 2 }) })],
+				}),
+				workflowDay({
+					date: "2026-08-23",
+					harnesses: [harnessDay({ context: contextDay({ window: 1 }) })],
+				}),
+			],
+			{ aggregateVersion: WORKFLOW_AGGREGATES_V2 },
+		);
+		expect(folded?.harnesses[0]?.context?.window).toBe(2);
 	});
 });
 
@@ -141,6 +260,7 @@ describe("foldHarnessDays", () => {
 			turnDurations: undefined,
 			questions: undefined,
 			webSearches: undefined,
+			context: undefined,
 		});
 		const none = foldHarnessDays([bare, bare]);
 		expect(none.phase).toBeUndefined();

@@ -23,6 +23,7 @@ import {
 import {
 	type Aggregate,
 	ingestRecord,
+	noteRecordBeforeWindow,
 	projectWorkspaceDirectory,
 } from "./analyzer.js";
 
@@ -206,7 +207,12 @@ async function ingestFile(
 				typeof (rec as { timestamp?: unknown }).timestamp === "string"
 					? Date.parse((rec as { timestamp: string }).timestamp)
 					: Number.NaN;
-			if (Number.isNaN(ts) || ts < sinceMs) continue;
+			if (Number.isNaN(ts) || ts < sinceMs) {
+				// Skipped, but a call before the window still means the session's
+				// first call is not the one the window will see (#358).
+				noteRecordBeforeWindow(agg, rec);
+				continue;
+			}
 		}
 		ingestRecord(agg, rec, { projectDir: projectWorkspace });
 	}

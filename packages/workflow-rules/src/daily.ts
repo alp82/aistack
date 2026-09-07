@@ -24,8 +24,22 @@ import type { PhaseId } from "./types.js";
 
 export const WORKFLOW_AGGREGATES_V2 = "workflow-aggregates/v2";
 
+/**
+ * `workflow-aggregates/v3` adds the optional `context` block to a harness day
+ * (#358). Every other atom is unchanged, so a v2 day folds beside a v3 day and
+ * an old client keeps publishing v2 days the server stores as they are.
+ */
+export const WORKFLOW_AGGREGATES_V3 = "workflow-aggregates/v3";
+
 /** The bucket rule both histograms cite. A bump changes what a bucket index means. */
 export const LOG_BUCKETS_V1 = "log-buckets/v1";
+
+/**
+ * The half-octave rule the context histograms cite (#358). Token counts span
+ * 1k to 1M, and a whole octave quotes a median up to 41% off; a half octave
+ * keeps the bucket median within 20% of the value.
+ */
+export const LOG_BUCKETS_V2 = "log-buckets/v2";
 
 export type PhaseTotals = Record<PhaseId, number>;
 
@@ -111,6 +125,46 @@ export type HarnessDay = {
 	questions?: { asked: number; turns: number };
 	/** Absent on a harness without a built-in web search tool. */
 	webSearches?: number;
+	/**
+	 * Per-call context (#358): the tokens each API call carried in, bucketed
+	 * under `log-buckets/v2`. Absent on a day from a client that predates the
+	 * block or a harness that logs no per-call usage.
+	 */
+	context?: ContextDay;
+};
+
+/**
+ * One day of per-call context for one harness. Combinable atoms only.
+ *
+ * A CALL is one API response; the context is what the request carried in
+ * (fresh input plus cache reads plus cache writes). Main and subagent calls
+ * are two histograms because a subagent has its own context window and its
+ * own first call. A FIRST CALL is the first call of a main session: its cache
+ * read is the harness part (system prompt and tools, cached across sessions)
+ * and its cache write plus fresh input is the instructions part (project
+ * instructions, memory, skills, agents, the first prompt). The two sums and
+ * the count give the fold a mean over first calls, which is the one figure
+ * the reading needs from them.
+ */
+export type ContextDay = {
+	bucketRuleVersion: string;
+	calls: {
+		main: readonly { bucket: number; calls: number }[];
+		subagents: readonly { bucket: number; calls: number }[];
+	};
+	/** First calls of main sessions that started this day, by context bucket. */
+	firstCalls: { main: readonly { bucket: number; sessions: number }[] };
+	/** Sum over first calls of the cross-session cached prefix. */
+	firstCallHarnessTokens: number;
+	/** Sum over first calls of the per-session part. */
+	firstCallInstructionsTokens: number;
+	firstCallCount: number;
+	/** A max over every call of the day, main and subagent alike. */
+	maxContext: number;
+	/** Compaction boundaries the harness logged on this day. */
+	compactions: number;
+	/** The context window the harness logged (Codex). Absent when it logs none. */
+	window?: number;
 };
 
 export type EffortLevel = "low" | "medium" | "high" | "other";
@@ -259,6 +313,51 @@ export function medianBucket(
 	return sorted[sorted.length - 1]?.bucket;
 }
 
+/**
+ * The bucket index of a positive quantity on a half-octave log scale,
+ * `log-buckets/v2`. Bucket 0 holds everything under 1, bucket k holds
+ * [2^((k-1)/2), 2^(k/2)). A context of 50,000 tokens lands in bucket 32, one
+ * of 200,000 in bucket 36.
+ */
+export function logBucketV2(value: number): number {
+	if (!(value >= 1)) return 0;
+	return Math.floor(2 * Math.log2(value)) + 1;
+}
+
+/** The lower and upper bound of a `log-buckets/v2` bucket. */
+export function bucketRangeV2(bucket: number): { low: number; high: number } {
+	if (bucket <= 0) return { low: 0, high: 1 };
+	return { low: 2 ** ((bucket - 1) / 2), high: 2 ** (bucket / 2) };
+}
+
+/** The geometric middle of a `log-buckets/v2` bucket. Bucket 0 quotes as 0.5. */
+export function bucketMidV2(bucket: number): number {
+	const { low, high } = bucketRangeV2(bucket);
+	return Math.sqrt(Math.max(low, 0.25) * high);
+}
+
+/**
+ * The bucket holding the item at quantile `q` (0..1), counting from the
+ * lowest bucket: the item of rank `ceil(q * total)`, at least 1. `undefined`
+ * on an empty histogram. `medianBucket` keeps its own middle rule; this one
+ * is for the tails (p90).
+ */
+export function quantileBucket(
+	buckets: readonly { bucket: number; count: number }[],
+	q: number,
+): number | undefined {
+	const total = buckets.reduce((sum, row) => sum + row.count, 0);
+	if (total <= 0) return undefined;
+	const sorted = [...buckets].sort((a, b) => a.bucket - b.bucket);
+	const rank = Math.min(total, Math.max(1, Math.ceil(q * total)));
+	let seen = 0;
+	for (const row of sorted) {
+		seen += row.count;
+		if (seen >= rank) return row.bucket;
+	}
+	return sorted[sorted.length - 1]?.bucket;
+}
+
 /** The median of a plain list, or `undefined` on an empty one. */
 export function median(values: readonly number[]): number | undefined {
 	if (values.length === 0) return undefined;
@@ -319,6 +418,66 @@ function foldModels(
 		},
 		(row) => ({ ...row }),
 	).sort((a, b) => b.tokens - a.tokens || a.model.localeCompare(b.model));
+}
+
+function foldCountBuckets<K extends string>(
+	rows: readonly ({ bucket: number } & Record<K, number>)[],
+	field: K,
+): ({ bucket: number } & Record<K, number>)[] {
+	return sumBy(
+		rows,
+		(row) => String(row.bucket),
+		(into, from) => {
+			(into as Record<string, number>)[field] += from[field];
+		},
+		(row) => ({ ...row }),
+	).sort((a, b) => a.bucket - b.bucket);
+}
+
+/**
+ * Add context days together. Histograms merge by bucket, sums and counts add,
+ * the max is a max, and the window is the LAST day's: the caller hands days
+ * in date order, so the last one that logged a window is the latest reading.
+ */
+export function foldContextDays(days: readonly ContextDay[]): ContextDay {
+	const versions = [...new Set(days.map((d) => d.bucketRuleVersion))]
+		.sort()
+		.join(" · ");
+	const windows = days
+		.map((d) => d.window)
+		.filter((w): w is number => w !== undefined);
+	const window = windows[windows.length - 1];
+	return {
+		bucketRuleVersion: versions,
+		calls: {
+			main: foldCountBuckets(
+				days.flatMap((d) => d.calls.main),
+				"calls",
+			),
+			subagents: foldCountBuckets(
+				days.flatMap((d) => d.calls.subagents),
+				"calls",
+			),
+		},
+		firstCalls: {
+			main: foldCountBuckets(
+				days.flatMap((d) => d.firstCalls.main),
+				"sessions",
+			),
+		},
+		firstCallHarnessTokens: days.reduce(
+			(sum, d) => sum + d.firstCallHarnessTokens,
+			0,
+		),
+		firstCallInstructionsTokens: days.reduce(
+			(sum, d) => sum + d.firstCallInstructionsTokens,
+			0,
+		),
+		firstCallCount: days.reduce((sum, d) => sum + d.firstCallCount, 0),
+		maxContext: Math.max(0, ...days.map((d) => d.maxContext)),
+		compactions: days.reduce((sum, d) => sum + d.compactions, 0),
+		...(window === undefined ? {} : { window }),
+	};
 }
 
 function foldLengths(
@@ -479,6 +638,9 @@ export function foldHarnessDays(days: readonly HarnessDay[]): HarnessDay {
 		);
 	}
 
+	const contexts = days.flatMap((day) => (day.context ? [day.context] : []));
+	if (contexts.length > 0) out.context = foldContextDays(contexts);
+
 	return out;
 }
 
@@ -559,8 +721,11 @@ export function foldWorkflowDays(
 	options: FoldOptions,
 ): WorkflowWindow | undefined {
 	if (days.length === 0) return undefined;
+	// Date order, so a "latest" inside the harness fold (the logged context
+	// window) is the latest day's and not the last row's.
+	const dated = [...days].sort((a, b) => a.date.localeCompare(b.date));
 	const byHarness = new Map<string, HarnessDay[]>();
-	for (const day of days) {
+	for (const day of dated) {
 		for (const harness of day.harnesses) {
 			const held = byHarness.get(harness.harness) ?? [];
 			held.push(harness);

@@ -16,11 +16,14 @@
 import {
 	buildLeadFacts,
 	buildWorkflowRows,
+	type ContextReading,
 	foldWorkflowDays,
+	inferContextWindow,
 	type KitReading,
 	phaseRuleVersions,
 	type PlacedRow,
 	placeRows,
+	readContextReading,
 	type WorkflowDay,
 	type WorkflowWindow,
 } from '@aistack/workflow-rules'
@@ -29,6 +32,7 @@ import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import type { WorkflowWire } from '../schema'
 import { measuredDaysForStack } from './measuredDays'
+import { contextWindowOf, type ModelCatalog } from './modelCatalog'
 
 export type StoredWire = Infer<typeof WorkflowWire>
 
@@ -37,6 +41,73 @@ export type WorkflowDayRow = Doc<'measuredDays'> & { workflow: WorkflowDay }
 
 export const utcDayOf = (ms: number): string =>
 	new Date(ms).toISOString().slice(0, 10)
+
+/**
+ * The harness's top model by tokens inside the window, from the usage half
+ * of the same day rows (ADR-0010), falling back to the folded routing rows
+ * for a day that carries no usage half. Null when nothing names a model.
+ */
+export function topModelOf(
+	harness: WorkflowWindow['harnesses'][number],
+	rows: readonly WorkflowDayRow[]
+): string | null {
+	const tokens = new Map<string, number>()
+	for (const row of rows) {
+		for (const h of row.usage?.harnesses ?? []) {
+			if (h.harness !== harness.harness) continue
+			for (const m of h.models) {
+				const t = m.tokens
+				tokens.set(
+					m.model,
+					(tokens.get(m.model) ?? 0) +
+						t.input +
+						t.output +
+						t.cacheWrite +
+						t.cacheRead
+				)
+			}
+		}
+	}
+	if (tokens.size === 0) {
+		for (const m of harness.routing?.main ?? []) tokens.set(m.model, m.tokens)
+	}
+	let top: string | null = null
+	let most = -1
+	for (const [model, sum] of tokens) {
+		if (sum > most || (sum === most && top !== null && model < top)) {
+			top = model
+			most = sum
+		}
+	}
+	return top
+}
+
+/**
+ * The Context reading of every harness whose fold carries the block (#358).
+ * Null when no harness does, so an old reading prints no row. A harness that
+ * logged its window (Codex) keeps it; one that did not (Claude Code) starts
+ * from the catalog window of its top model and steps up a tier when its
+ * largest call proves a larger window was on.
+ */
+export function contextReadingsOf(
+	section: WorkflowWindow,
+	rows: readonly WorkflowDayRow[],
+	catalog: ModelCatalog
+): ContextReading[] | null {
+	const readings: ContextReading[] = []
+	for (const harness of section.harnesses) {
+		const context = harness.context
+		if (!context) continue
+		let window: number | null = context.window ?? null
+		if (window === null) {
+			const model = topModelOf(harness, rows)
+			const known = model === null ? null : contextWindowOf(catalog, model)
+			window = inferContextWindow(known, context.maxContext)
+		}
+		readings.push(readContextReading(harness.harness, context, window))
+	}
+	return readings.length === 0 ? null : readings
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000
 

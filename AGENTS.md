@@ -221,11 +221,14 @@ The Workflow section on the stack page. Spec:
   daily wire shape and its fold (`daily.ts`), and the fixed row order
   (`workflowRows.ts`). Every function in it is pure, so it is where a rule change gets
   tested.
-* **The wire is per-day rows of combinable atoms** (`workflow-aggregates/v2`, #285). The
-  CLI ships one `WorkflowDay` per UTC date holding counts, sums, maxes and
-  `log-buckets/v1` histograms, and NO share, median or mean. The server folds a window
-  (30 days, 7 days, or the last 24 hours) at read time and computes every row over the
-  fold. A rule change is a server deploy and needs no re-sync.
+* **The wire is per-day rows of combinable atoms** (`workflow-aggregates/v3`, #285, #358).
+  The CLI ships one `WorkflowDay` per UTC date holding counts, sums, maxes and
+  `log-buckets/v1` histograms (`log-buckets/v2`, half-octave, for the per-call `context`
+  block), and NO share, median or mean. The server folds a window (30 days, 7 days, or
+  the last 24 hours) at read time and computes every row over the fold. A rule change is
+  a server deploy and needs no re-sync. The `context` block is optional, so v2 days from
+  an old client fold beside v3 days; the Context reading (`context` on
+  `getWorkflowByStackSlug`) is null until a day carries the block.
 * **A reading is one machine's, per day** (ADR-0009). `measuredDays` holds one row per
   (stack, machine, date) with both the usage and the workflow half (ADR-0010); a
   re-synced day REPLACES that day, days append across syncs, and nothing prunes them

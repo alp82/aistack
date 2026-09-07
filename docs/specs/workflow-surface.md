@@ -304,7 +304,10 @@ The original `workflow-aggregates/v2` rules ([#285](https://github.com/alp82/ais
 The existing staged-bytes gate extends to the workflow section: the staged `bodyJson`
 is what a publish transmits, and the gate summary derives from those exact bytes.
 Auto-sync ships the workflow section under the same standing permissions as the rest
-of the payload.
+of the payload. The Context reading ([#358](https://github.com/alp82/aistack/issues/358),
+the `context` block of `workflow-aggregates/v3`) is covered by the same `publishWorkflow`
+gate, since it reveals how full the owner's context runs: the CLI omits it with the rest
+of the workflow block, and the read returns null for days already stored.
 
 **The surface ships without an LLM.** It keeps only data a fixed rule can compute,
 because an AI step at the sync would scare people off the sync (round 2). Nothing to

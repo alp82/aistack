@@ -107,6 +107,13 @@ export type Aggregate = SharedAggregate<SeenEntry> & {
 	workflowLocal: WorkflowLocalSources;
 	workflowSeenCalls: Set<string>;
 	workflowSeenTurns: Set<string>;
+	/**
+	 * The `message.id` of the first API call seen per workflow session key
+	 * (#358), so every record of that response carries the first-call split
+	 * and no later response does. `null` marks a session whose first call was
+	 * seen without an id, or before the window opened (`noteRecordBeforeWindow`).
+	 */
+	contextFirstCall: Map<string, string | null>;
 };
 
 export function createAggregate(): Aggregate {
@@ -116,7 +123,40 @@ export function createAggregate(): Aggregate {
 		workflowLocal,
 		workflowSeenCalls: new Set<string>(),
 		workflowSeenTurns: new Set<string>(),
+		contextFirstCall: new Map<string, string | null>(),
 	});
+}
+
+/** The session key the workflow reducer sees: subagents get their own. */
+function workflowSessionKey(rec: Obj): string | null {
+	const baseSession = asStr(rec.sessionId);
+	if (!baseSession) return null;
+	if (rec.isSidechain !== true) return baseSession;
+	return `${baseSession}:agent:${asStr(rec.agentId) ?? "unknown"}`;
+}
+
+/** True for a record that is one API call: assistant, with usage, not the harness's own pseudo-model. */
+function isApiCall(rec: Obj): boolean {
+	if (asStr(rec.type) !== "assistant") return false;
+	const msg = asObj(rec.message);
+	if (!msg || !asObj(msg.usage)) return false;
+	return !(asName(msg.model) ?? "").startsWith("<");
+}
+
+/**
+ * Note a record the scan skipped because it predates the window. The only
+ * fact that matters here is that the session already made a call, so the
+ * first call the window does see is not the session's first (#358). Without
+ * this a session resumed inside the window would file a mid-conversation
+ * call as its startup overhead.
+ */
+export function noteRecordBeforeWindow(agg: Aggregate, raw: unknown): void {
+	const rec = asObj(raw);
+	if (!rec || !isApiCall(rec)) return;
+	const session = workflowSessionKey(rec);
+	if (session && !agg.contextFirstCall.has(session)) {
+		agg.contextFirstCall.set(session, null);
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -168,7 +208,44 @@ export function ingestRecord(
 		ingestClaudeWorkflow(agg, rec, ctx, tsMs);
 		ingestAssistant(agg, rec, tsMs);
 	} else if (type === "user") ingestUser(agg, rec);
-	else if (type === "system") ingestClaudeTurnDuration(agg, rec, ctx, tsMs);
+	else if (type === "system") {
+		ingestClaudeTurnDuration(agg, rec, ctx, tsMs);
+		ingestClaudeCompaction(agg, rec, ctx, tsMs);
+	}
+}
+
+/**
+ * A compaction boundary: `{type: "system", subtype: "compact_boundary"}`
+ * (#358). Counted on the day of the boundary; the sizes it carries are not
+ * on the wire.
+ */
+function ingestClaudeCompaction(
+	agg: Aggregate,
+	rec: Obj,
+	ctx: IngestContext,
+	tsMs: number | null,
+): void {
+	if (tsMs === null || asStr(rec.subtype) !== "compact_boundary") return;
+	const session = workflowSessionKey(rec);
+	if (!session) return;
+	agg.workflow.ingest({
+		type: "compaction",
+		session,
+		projectWorkspace: projectWorkspaceDirectory(rec) ?? ctx.projectDir,
+		tsMs,
+		...(rec.isSidechain === true ? { sidechain: true } : {}),
+	});
+}
+
+/** What the request carried in: fresh input plus every cache write and read. */
+function contextOf(counts: TokenCounts): number {
+	return (
+		counts.input +
+		counts.cacheWrite5m +
+		counts.cacheWrite1h +
+		counts.cacheWriteUnsplit +
+		counts.cacheRead
+	);
 }
 
 function ingestClaudeTurnDuration(
@@ -218,6 +295,35 @@ function ingestClaudeWorkflow(
 	const messageId = asStr(msg.id);
 	const newTurn = messageId ? !agg.workflowSeenTurns.has(messageId) : true;
 	if (messageId) agg.workflowSeenTurns.add(messageId);
+
+	// Per-call context (#358). The first call of a session is the first API
+	// call seen under its key; every record of that response carries the split
+	// (the records of one response share one context), and a response seen
+	// before the window opened has already claimed the slot with `null`.
+	let context: {
+		contextTokens: number;
+		firstCall?: { harnessTokens: number; instructionsTokens: number };
+	} | null = null;
+	if (counts && isApiCall(rec)) {
+		const held = agg.contextFirstCall.get(session);
+		let first = false;
+		if (held === undefined) {
+			agg.contextFirstCall.set(session, messageId);
+			first = true;
+		} else if (held !== null && held === messageId) first = true;
+		context = {
+			contextTokens: contextOf(counts),
+			...(first
+				? {
+						firstCall: {
+							harnessTokens: counts.cacheRead,
+							instructionsTokens: contextOf(counts) - counts.cacheRead,
+						},
+					}
+				: {}),
+		};
+	}
+
 	agg.workflow.ingest({
 		type: "response",
 		session,
@@ -232,6 +338,7 @@ function ingestClaudeWorkflow(
 		...((asStr(rec.effort) ?? asStr(msg.effort))
 			? { effort: (asStr(rec.effort) ?? asStr(msg.effort)) as string }
 			: {}),
+		...(context ?? {}),
 	});
 
 	const tools: Obj[] = [];
