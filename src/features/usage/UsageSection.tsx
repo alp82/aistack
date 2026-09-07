@@ -97,8 +97,7 @@ export function UsageSection({
 				? { kind: "legacy", legacy }
 				: null;
 	const items = buildItems(view, source, stackToolSlugs);
-	// #358 adds `context` to the workflow answer. Until it merges the field is
-	// absent, and an absent reading prints no row.
+	// An absent reading prints no row.
 	const context = contextOf(view);
 
 	return (

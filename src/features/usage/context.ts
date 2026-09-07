@@ -1,33 +1,19 @@
+import type { ContextReading as HarnessContextReading } from "@aistack/workflow-rules";
+
 /**
  * The Context row's reading (#359): what a typical API call carries against
- * each harness's window, folded by the server (#358).
- *
- * TEMPORARY SHAPE. Until #358 merges, the payload of `getWorkflowByStackSlug`
- * carries no `context` field, so the row types it here and reads it with an
- * optional-chaining fallback. Replace this type with the generated Convex type
- * once that PR lands.
+ * each harness's window, folded by the server (#358). The per-harness shape
+ * is the shared package's, which is what `getWorkflowByStackSlug` returns.
  */
-export type ContextReading = {
-	harnesses: {
-		harness: string; // the harness id used elsewhere in the payload
-		window: number | null; // tokens; null when unknown
-		calls: number;
-		medianCall: number;
-		p90Call: number;
-		harnessTokens: number;
-		instructionsTokens: number;
-		usualChat: number; // medianCall - harnessTokens - instructionsTokens, floored at 0
-		longChat: number; // p90Call - harnessTokens - instructionsTokens, floored at 0
-		compactions: number;
-	}[];
-} | null;
+export type ContextHarness = HarnessContextReading;
 
-export type ContextHarness = NonNullable<ContextReading>["harnesses"][number];
+export type ContextReading = { harnesses: ContextHarness[] } | null;
 
-/** The reading off a workflow answer, absent until #358 ships the field. */
-export function contextOf(view: unknown): ContextReading {
-	const context = (view as { context?: ContextReading } | null | undefined)
-		?.context;
+/** The reading off a workflow answer; null when the fold carried no block. */
+export function contextOf(
+	view: { context?: ContextReading } | null | undefined,
+): ContextReading {
+	const context = view?.context;
 	if (!context || context.harnesses.length === 0) return null;
 	return context;
 }
