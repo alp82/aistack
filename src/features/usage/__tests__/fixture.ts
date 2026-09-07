@@ -1,3 +1,4 @@
+import type { ContextReading } from "../context";
 import type { RangeId, UsageRead, UsageReading } from "../copy";
 
 /**
@@ -140,4 +141,53 @@ export function legacyUsage(over: Partial<UsageRead> = {}): UsageRead {
 		legacy: legacyFigure(),
 		...over,
 	});
+}
+
+/**
+ * The Context row's reading (#359): the owner's real 30 days to 2026-09-07,
+ * two harnesses. Usual chat and long chat derive from the median and p90 after
+ * the harness and instructions tokens.
+ */
+export function contextReading(): NonNullable<ContextReading> {
+	const harness = (h: {
+		harness: string;
+		window: number | null;
+		calls: number;
+		medianCall: number;
+		p90Call: number;
+		harnessTokens: number;
+		instructionsTokens: number;
+		compactions: number;
+	}) => ({
+		...h,
+		usualChat: Math.max(
+			0,
+			h.medianCall - h.harnessTokens - h.instructionsTokens,
+		),
+		longChat: Math.max(0, h.p90Call - h.harnessTokens - h.instructionsTokens),
+	});
+	return {
+		harnesses: [
+			harness({
+				harness: "claude-code",
+				window: 1_000_000,
+				calls: 15_683,
+				medianCall: 118_090,
+				p90Call: 260_921,
+				harnessTokens: 19_066,
+				instructionsTokens: 25_308,
+				compactions: 0,
+			}),
+			harness({
+				harness: "codex",
+				window: 258_400,
+				calls: 150_881,
+				medianCall: 108_967,
+				p90Call: 184_161,
+				harnessTokens: 11_904,
+				instructionsTokens: 6_611,
+				compactions: 526,
+			}),
+		],
+	};
 }
