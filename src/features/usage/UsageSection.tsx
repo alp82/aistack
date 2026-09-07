@@ -3,8 +3,9 @@ import { useState } from "react";
 import { KICKER, MEASURED_ANCHOR, TITLE } from "@/features/measured/copy";
 import { Section, SectionHeader } from "@/features/stack-view/ui";
 import { api } from "../../../convex/_generated/api";
-import { UsageAccordion } from "./Accordion";
+import { CONTEXT_TOPIC, UsageAccordion } from "./Accordion";
 import { ControlBar, type MachineChoice } from "./ControlBar";
+import { contextOf } from "./context";
 import { type RangeId, rangeDays } from "./copy";
 import { buildItems, pick, TOPIC, type UsageSource } from "./items";
 import { NeverMeasured, OwnerNotMeasured } from "./NotMeasured";
@@ -28,7 +29,9 @@ import { topicWatermark } from "./watermarks";
  * THE SECTION RANKS NOTHING. The top block is a fixed editorial pick, the
  * accordion holds a fixed order, and the owner has no per-row control.
  *
- * EVERY TOPIC STARTS CLOSED. The five summary rows are the section's second
+ * THE CONTEXT ROW STARTS OPEN AND EVERY TOPIC STARTS CLOSED (#359). The open
+ * state starts at the Context row; a reading with no context prints no such
+ * row, so nothing is open. The five summary rows are the section's second
  * layer; a click opens one, and the depth is one click away on every screen.
  *
  * A null reading renders an INVITATION addressed to the reader, never a
@@ -53,7 +56,7 @@ export function UsageSection({
 		slug: string;
 		ordinal: number;
 	} | null>(null);
-	const [openTopic, setOpenTopic] = useState<string | null>(null);
+	const [openTopic, setOpenTopic] = useState<string | null>(CONTEXT_TOPIC);
 	const ordinal = selection?.slug === slug ? selection.ordinal : null;
 	const machineArg = ordinal === null ? {} : { machineOrdinal: ordinal };
 
@@ -94,6 +97,9 @@ export function UsageSection({
 				? { kind: "legacy", legacy }
 				: null;
 	const items = buildItems(view, source, stackToolSlugs);
+	// #358 adds `context` to the workflow answer. Until it merges the field is
+	// absent, and an absent reading prints no row.
+	const context = contextOf(view);
 
 	return (
 		<Section
@@ -135,6 +141,7 @@ export function UsageSection({
 						value={openTopic}
 						onChange={setOpenTopic}
 						range={range}
+						context={context}
 						watermark={(group) =>
 							topicWatermark(
 								group.id,

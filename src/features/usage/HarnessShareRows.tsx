@@ -7,12 +7,17 @@ export const SOURCE_PAINTS = [
 	"var(--source-3)",
 ] as const;
 
-const HARNESS_LABELS: Record<string, string> = {
+export const HARNESS_LABELS: Record<string, string> = {
 	"claude-code": "Claude Code",
 	codex: "Codex",
 	opencode: "opencode",
 	"pi-mono": "Pi",
 };
+
+/** The display name of a harness id, the same one every row on the page uses. */
+export function harnessLabel(name: string): string {
+	return HARNESS_LABELS[name] ?? name;
+}
 
 export type HarnessTokens = { readonly name: string; readonly tokens: number };
 
@@ -39,7 +44,7 @@ export function HarnessShareRows({
 	const rows = [...byHarness.entries()]
 		.map(([name, tokens]) => ({
 			name,
-			label: HARNESS_LABELS[name] ?? name,
+			label: harnessLabel(name),
 			tokens,
 			share: total > 0 ? tokens / total : 0,
 			extra: !stackToolSlugs.includes(name),
