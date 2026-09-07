@@ -5,10 +5,12 @@
 // wrong sum reads as a wrong sum.
 
 import {
+	type ContextDay,
 	foldWorkflowDays,
 	type GitDay,
 	type HarnessDay,
 	LOG_BUCKETS_V1,
+	LOG_BUCKETS_V2,
 	type SessionLengthBucket,
 	WORKFLOW_AGGREGATES_V2,
 	type WorkflowDay,
@@ -96,6 +98,28 @@ export function harnessDay(over: Partial<HarnessDay> = {}): HarnessDay {
 		},
 		questions: { asked: 2, turns: 20 },
 		webSearches: 3,
+		context: contextDay(),
+		...over,
+	};
+}
+
+/** One day of per-call context (#358), buckets ascending. */
+export function contextDay(over: Partial<ContextDay> = {}): ContextDay {
+	return {
+		bucketRuleVersion: LOG_BUCKETS_V2,
+		calls: {
+			main: [
+				{ bucket: 32, calls: 6 },
+				{ bucket: 34, calls: 4 },
+			],
+			subagents: [{ bucket: 30, calls: 5 }],
+		},
+		firstCalls: { main: [{ bucket: 32, sessions: 10 }] },
+		firstCallHarnessTokens: 230_000,
+		firstCallInstructionsTokens: 220_000,
+		firstCallCount: 10,
+		maxContext: 180_000,
+		compactions: 1,
 		...over,
 	};
 }

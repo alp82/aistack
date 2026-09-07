@@ -350,6 +350,31 @@ export const HarnessDay = v.object({
   questions: v.optional(v.object({ asked: v.number(), turns: v.number() })),
   /** Absent on a harness without a built-in web search tool. */
   webSearches: v.optional(v.number()),
+  /**
+   * Per-call context over `log-buckets/v2` tokens (#358, `workflow-aggregates/v3`).
+   * Absent on a day from a client that predates the block. Histograms of the
+   * context each API call carried in, main and subagent calls apart; the
+   * first-call split summed over main sessions; a max; a compaction count;
+   * and the window the harness logged, when it logs one (Codex).
+   */
+  context: v.optional(
+    v.object({
+      bucketRuleVersion: v.string(),
+      calls: v.object({
+        main: v.array(v.object({ bucket: v.number(), calls: v.number() })),
+        subagents: v.array(v.object({ bucket: v.number(), calls: v.number() })),
+      }),
+      firstCalls: v.object({
+        main: v.array(v.object({ bucket: v.number(), sessions: v.number() })),
+      }),
+      firstCallHarnessTokens: v.number(),
+      firstCallInstructionsTokens: v.number(),
+      firstCallCount: v.number(),
+      maxContext: v.number(),
+      compactions: v.number(),
+      window: v.optional(v.number()),
+    })
+  ),
 })
 
 /**

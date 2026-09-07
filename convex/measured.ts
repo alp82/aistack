@@ -275,7 +275,7 @@ const WORKFLOW_LIMITS = {
   /** More than a year of days. Retention deletes past 400 on store. */
   days: 400,
   harnesses: 8,
-  /** Log buckets: 64 covers anything a clock can hold. */
+  /** Log buckets: 64 covers anything a clock can hold, and 64 half-octaves reach 2^32 tokens. */
   buckets: 64,
   /** Commits on one day, for the per-commit strip. */
   commitsPerDay: 5_000,
@@ -369,6 +369,27 @@ export function checkWorkflowDays(wire: Infer<typeof WorkflowWire>): void {
           harness.turnDurations.buckets.length,
           WORKFLOW_LIMITS.buckets,
           `${here}.turnDurations.buckets`
+        )
+      }
+      if (harness.context) {
+        requireName(
+          harness.context.bucketRuleVersion,
+          `${here}.context.bucketRuleVersion`
+        )
+        requireSize(
+          harness.context.calls.main.length,
+          WORKFLOW_LIMITS.buckets,
+          `${here}.context.calls.main`
+        )
+        requireSize(
+          harness.context.calls.subagents.length,
+          WORKFLOW_LIMITS.buckets,
+          `${here}.context.calls.subagents`
+        )
+        requireSize(
+          harness.context.firstCalls.main.length,
+          WORKFLOW_LIMITS.buckets,
+          `${here}.context.firstCalls.main`
         )
       }
     })

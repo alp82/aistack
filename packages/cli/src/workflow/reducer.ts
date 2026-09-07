@@ -8,17 +8,30 @@ import {
 	type HarnessEvent,
 	type HarnessName,
 	LOG_BUCKETS_V1,
+	LOG_BUCKETS_V2,
 	logBucket,
+	logBucketV2,
 	PHASE_RULES_V1,
 	PHASES,
 	type PhaseId,
 	type SessionLengthBucket,
 	UNKNOWN_GATE,
-	WORKFLOW_AGGREGATES_V2,
+	WORKFLOW_AGGREGATES_V3,
 } from "@aistack/workflow-rules";
 import { sanitizeModelId } from "../harness/shared/payload.js";
 
-export const WORKFLOW_AGGREGATE_VERSION = WORKFLOW_AGGREGATES_V2;
+export const WORKFLOW_AGGREGATE_VERSION = WORKFLOW_AGGREGATES_V3;
+
+/**
+ * The first call of a session, split (#358). `harnessTokens` is what the
+ * call read from a cache another session had already filled: the system
+ * prompt and the tool definitions. `instructionsTokens` is what it wrote or
+ * sent fresh: project instructions, memory, skills, agents, the first prompt.
+ */
+export type FirstCallSplit = {
+	harnessTokens: number;
+	instructionsTokens: number;
+};
 
 export type WorkflowObservation = {
 	session: string;
@@ -37,8 +50,16 @@ export type WorkflowObservation = {
 			routingTokens?: number;
 			effort?: string;
 			durationSec?: number;
+			/** What the request carried in: fresh input plus cache reads and writes. */
+			contextTokens?: number;
+			/** The window the harness logged for this call, when it logs one. */
+			contextWindow?: number;
+			/** Present on the first call of the session only. */
+			firstCall?: FirstCallSplit;
 	  }
 	| { type: "turn"; turnId?: string; questionBack: boolean }
+	/** A compaction boundary the harness logged. Lands on the day of the event. */
+	| { type: "compaction" }
 );
 
 /** One harness's reading for one UTC day, with the day it belongs to. */
@@ -88,6 +109,10 @@ type SessionState = {
 			routingTokens?: number;
 			effort?: string;
 			durationSec?: number;
+			contextTokens?: number;
+			contextWindow?: number;
+			firstCall?: FirstCallSplit;
+			tsMs: number;
 		}
 	>;
 	nextAnonymousResponse: number;
@@ -111,12 +136,25 @@ const emptyPhase = (): Record<PhaseId, number> => ({
 const finiteNonnegative = (value: number | undefined): number =>
 	value !== undefined && Number.isFinite(value) && value > 0 ? value : 0;
 
-const bump = (map: Map<string, number>, key: string, amount = 1): void => {
+const bump = <K>(map: Map<K, number>, key: K, amount = 1): void => {
 	map.set(key, (map.get(key) ?? 0) + amount);
 };
 
 export const utcDateOf = (ms: number): string =>
 	new Date(ms).toISOString().slice(0, 10);
+
+/** A bucket histogram as sorted rows, the count under the caller's field name. */
+function asBuckets<K extends string>(
+	map: Map<number, number>,
+	field: K,
+): ({ bucket: number } & Record<K, number>)[] {
+	return [...map]
+		.map(
+			([bucket, count]) =>
+				({ bucket, [field]: count }) as { bucket: number } & Record<K, number>,
+		)
+		.sort((a, b) => a.bucket - b.bucket);
+}
 
 const PHASE_RANK: Record<PhaseId, number> = {
 	verify: 4,
@@ -232,6 +270,17 @@ type DayState = {
 	hasQuestions: boolean;
 	webSearches: number;
 	hasWebSearches: boolean;
+	context: {
+		calls: { main: Map<number, number>; subagents: Map<number, number> };
+		firstCalls: Map<number, number>;
+		firstCallHarnessTokens: number;
+		firstCallInstructionsTokens: number;
+		firstCallCount: number;
+		maxContext: number;
+		compactions: number;
+		window: { tsMs: number; window: number } | undefined;
+	};
+	hasContext: boolean;
 };
 
 function dayState(): DayState {
@@ -268,6 +317,17 @@ function dayState(): DayState {
 		hasQuestions: false,
 		webSearches: 0,
 		hasWebSearches: false,
+		context: {
+			calls: { main: new Map(), subagents: new Map() },
+			firstCalls: new Map(),
+			firstCallHarnessTokens: 0,
+			firstCallInstructionsTokens: 0,
+			firstCallCount: 0,
+			maxContext: 0,
+			compactions: 0,
+			window: undefined,
+		},
+		hasContext: false,
 	};
 }
 
@@ -294,6 +354,7 @@ export function createHarnessWorkflowReducer(
 	const sessions = new Map<string, SessionState>();
 	const eventCells = new Map<string, Map<string, number>>();
 	const webSearchesByDate = new Map<string, number>();
+	const compactionsByDate = new Map<string, number>();
 	const eventDates = new Set<string>();
 	let finished: HarnessWorkflowAggregate | undefined;
 
@@ -345,7 +406,10 @@ export function createHarnessWorkflowReducer(
 					observation.responseId ??
 					`anonymous:${state.nextAnonymousResponse++}`;
 				const duration = finiteNonnegative(observation.durationSec);
+				const contextTokens = finiteNonnegative(observation.contextTokens);
+				const contextWindow = finiteNonnegative(observation.contextWindow);
 				const response = {
+					tsMs: observation.tsMs,
 					...(observation.model ? { model: observation.model } : {}),
 					...(observation.thinkingTokens !== undefined
 						? { thinkingTokens: finiteNonnegative(observation.thinkingTokens) }
@@ -358,6 +422,20 @@ export function createHarnessWorkflowReducer(
 						: {}),
 					...(observation.effort ? { effort: observation.effort } : {}),
 					...(duration > 0 ? { durationSec: duration } : {}),
+					...(observation.contextTokens !== undefined ? { contextTokens } : {}),
+					...(contextWindow > 0 ? { contextWindow } : {}),
+					...(observation.firstCall
+						? {
+								firstCall: {
+									harnessTokens: finiteNonnegative(
+										observation.firstCall.harnessTokens,
+									),
+									instructionsTokens: finiteNonnegative(
+										observation.firstCall.instructionsTokens,
+									),
+								},
+							}
+						: {}),
 				};
 				const existing = state.responses.get(responseId);
 				const magnitude = (value: typeof response): number =>
@@ -366,10 +444,12 @@ export function createHarnessWorkflowReducer(
 				if (!existing || magnitude(response) > magnitude(existing)) {
 					state.responses.set(responseId, response);
 				}
-			} else {
+			} else if (observation.type === "turn") {
 				const turnId =
 					observation.turnId ?? `anonymous:${state.nextAnonymousTurn++}`;
 				state.turns.set(turnId, observation.questionBack);
+			} else {
+				bump(compactionsByDate, date);
 			}
 		},
 
@@ -492,6 +572,45 @@ export function createHarnessWorkflowReducer(
 						Boolean,
 					).length;
 				}
+
+				// Per-call context (#358), on the session's start day like every
+				// other response figure. First calls count on main sessions only:
+				// the reading splits the MAIN median call, and a subagent's first
+				// call carries a different fixed part.
+				for (const response of responses) {
+					if (response.contextTokens === undefined) continue;
+					day.hasContext = true;
+					const context = day.context;
+					bump(context.calls[routing], logBucketV2(response.contextTokens));
+					context.maxContext = Math.max(
+						context.maxContext,
+						response.contextTokens,
+					);
+					if (
+						response.contextWindow !== undefined &&
+						(context.window === undefined ||
+							response.tsMs >= context.window.tsMs)
+					) {
+						context.window = {
+							tsMs: response.tsMs,
+							window: response.contextWindow,
+						};
+					}
+					if (response.firstCall && routing === "main") {
+						bump(context.firstCalls, logBucketV2(response.contextTokens));
+						context.firstCallHarnessTokens += response.firstCall.harnessTokens;
+						context.firstCallInstructionsTokens +=
+							response.firstCall.instructionsTokens;
+						context.firstCallCount++;
+					}
+				}
+			}
+
+			// Compactions, on the day of the boundary.
+			for (const [date, compactions] of compactionsByDate) {
+				const day = dayOf(date);
+				day.hasContext = true;
+				day.context.compactions += compactions;
 			}
 
 			// Event cells and web searches, on the day of the event.
@@ -656,11 +775,38 @@ export function createHarnessWorkflowReducer(
 							: {}),
 						...(day.hasQuestions ? { questions: day.questions } : {}),
 						...(day.hasWebSearches ? { webSearches: day.webSearches } : {}),
+						...(day.hasContext
+							? {
+									context: {
+										bucketRuleVersion: LOG_BUCKETS_V2,
+										calls: {
+											main: asBuckets(day.context.calls.main, "calls"),
+											subagents: asBuckets(
+												day.context.calls.subagents,
+												"calls",
+											),
+										},
+										firstCalls: {
+											main: asBuckets(day.context.firstCalls, "sessions"),
+										},
+										firstCallHarnessTokens: day.context.firstCallHarnessTokens,
+										firstCallInstructionsTokens:
+											day.context.firstCallInstructionsTokens,
+										firstCallCount: day.context.firstCallCount,
+										maxContext: day.context.maxContext,
+										compactions: day.context.compactions,
+										...(day.context.window
+											? { window: day.context.window.window }
+											: {}),
+									},
+								}
+							: {}),
 					})),
 			};
 			sessions.clear();
 			eventCells.clear();
 			webSearchesByDate.clear();
+			compactionsByDate.clear();
 			eventDates.clear();
 			return finished;
 		},

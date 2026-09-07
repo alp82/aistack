@@ -7,6 +7,7 @@ import {
 	finalize,
 	ingestRecord,
 	newestVersion,
+	noteRecordBeforeWindow,
 } from "./analyzer.js";
 import { assistant, slashCommand, toolUse } from "./fixtures.js";
 
@@ -532,5 +533,106 @@ describe("privacy invariants of the aggregate", () => {
 		const f = finalize(agg);
 		expect(f.projects).toBe(2);
 		expect(JSON.stringify(f)).not.toContain("secret-client");
+	});
+});
+
+describe("per-call context (#358)", () => {
+	const usage = (input: number, cacheWrite: number, cacheRead: number) => ({
+		input_tokens: input,
+		output_tokens: 10,
+		cache_creation_input_tokens: cacheWrite,
+		cache_read_input_tokens: cacheRead,
+	});
+	const calls = (rows: readonly { calls: number }[] | undefined) =>
+		(rows ?? []).reduce((sum, row) => sum + row.calls, 0);
+
+	it("keeps each call's context and splits the first call of a session, subagents apart", () => {
+		const agg = createAggregate();
+		ingest(
+			agg,
+			// The first call of the main session: a prefix another session had
+			// cached, and the per-session part written fresh.
+			assistant({
+				id: "msg_1",
+				requestId: "req_1",
+				sessionId: "sess-ctx",
+				usage: usage(127, 21_672, 23_216),
+			}),
+			// A continuation record of the same response carries the same context.
+			assistant({
+				id: "msg_1",
+				requestId: "req_1",
+				sessionId: "sess-ctx",
+				usage: usage(127, 21_672, 23_216),
+			}),
+			assistant({
+				id: "msg_2",
+				sessionId: "sess-ctx",
+				usage: usage(127, 8_121, 44_888),
+			}),
+			// A subagent call: its own session and its own first call, which
+			// stays out of the main first-call sums.
+			{
+				...assistant({
+					id: "msg_3",
+					sessionId: "sess-ctx",
+					isSidechain: true,
+					usage: usage(2, 41_185, 0),
+				}),
+				agentId: "agent-1",
+			},
+			// The harness's own pseudo-model is not a call.
+			assistant({
+				id: "msg_4",
+				sessionId: "sess-ctx",
+				model: "<synthetic>",
+				usage: usage(1, 0, 0),
+			}),
+		);
+		const context = agg.workflow.finish().days[0]?.context;
+		expect(context).toBeDefined();
+		expect(calls(context?.calls.main)).toBe(2);
+		expect(calls(context?.calls.subagents)).toBe(1);
+		expect(context?.firstCallCount).toBe(1);
+		expect(context?.firstCallHarnessTokens).toBe(23_216);
+		expect(context?.firstCallInstructionsTokens).toBe(127 + 21_672);
+		expect(context?.maxContext).toBe(127 + 8_121 + 44_888);
+		expect(context?.compactions).toBe(0);
+		expect(context?.window).toBeUndefined();
+	});
+
+	it("does not file a call as first when the session already called before the window", () => {
+		const agg = createAggregate();
+		noteRecordBeforeWindow(
+			agg,
+			assistant({
+				id: "msg_0",
+				sessionId: "sess-old",
+				usage: usage(2, 40_000, 0),
+			}),
+		);
+		ingest(
+			agg,
+			assistant({
+				id: "msg_1",
+				sessionId: "sess-old",
+				usage: usage(100, 500, 90_000),
+			}),
+		);
+		const context = agg.workflow.finish().days[0]?.context;
+		expect(calls(context?.calls.main)).toBe(1);
+		expect(context?.firstCallCount).toBe(0);
+	});
+
+	it("counts a compact_boundary on the day it happened", () => {
+		const agg = createAggregate();
+		ingest(agg, assistant({ id: "msg_1", sessionId: "sess-c" }), {
+			type: "system",
+			subtype: "compact_boundary",
+			timestamp: "2026-07-20T13:00:00.000Z",
+			sessionId: "sess-c",
+			compactMetadata: { trigger: "auto", preTokens: 180_000 },
+		});
+		expect(agg.workflow.finish().days[0]?.context?.compactions).toBe(1);
 	});
 });

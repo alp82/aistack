@@ -78,7 +78,7 @@ const phaseTotals = () => ({
 /** One machine's extraction, with every optional block present. */
 function extraction(): WorkflowExtraction {
 	return {
-		aggregateVersion: "workflow-aggregates/v2",
+		aggregateVersion: "workflow-aggregates/v3",
 		utcOffsetMinutes: 120,
 		days: [
 			{
@@ -129,6 +129,20 @@ function extraction(): WorkflowExtraction {
 						},
 						questions: { asked: 1, turns: 9 },
 						webSearches: 2,
+						context: {
+							bucketRuleVersion: "log-buckets/v2",
+							calls: {
+								main: [{ bucket: 32, calls: 40 }],
+								subagents: [{ bucket: 30, calls: 12 }],
+							},
+							firstCalls: { main: [{ bucket: 32, sessions: 42 }] },
+							firstCallHarnessTokens: 975_000,
+							firstCallInstructionsTokens: 910_000,
+							firstCallCount: 42,
+							maxContext: 261_390,
+							compactions: 3,
+							window: 258_400,
+						},
 					},
 				],
 				git: {

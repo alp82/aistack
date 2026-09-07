@@ -21,7 +21,9 @@ import {
 	publicStackBySlug,
 } from './measured'
 import { inventoryForStack, newestInventoryPerSource } from './lib/measuredDays'
+import { loadModelCatalog } from './lib/modelCatalog'
 import {
+	contextReadingsOf,
 	kitFromInventory,
 	readWorkflowWindow,
 	WORKFLOW_WINDOWS,
@@ -163,6 +165,33 @@ const WorkflowWindow = v.object({
 	webSearchDays: v.number(),
 })
 
+/**
+ * One harness's Context reading (#358): the median API call against the
+ * window, split into the harness part, the instructions part and the chat.
+ * Every figure is over the folded window; the wire carries only the atoms.
+ */
+const ContextHarness = v.object({
+	/** The harness id used elsewhere in the payload. */
+	harness: v.string(),
+	/** Tokens; null when unknown. */
+	window: v.union(v.number(), v.null()),
+	/** Main calls in the window. */
+	calls: v.number(),
+	/** Bucket-median context per main call. */
+	medianCall: v.number(),
+	/** Bucket p90. */
+	p90Call: v.number(),
+	/** `firstCallHarnessTokens / firstCallCount`, rounded. */
+	harnessTokens: v.number(),
+	/** `firstCallInstructionsTokens / firstCallCount`, rounded. */
+	instructionsTokens: v.number(),
+	/** `max(0, medianCall - harnessTokens - instructionsTokens)`. */
+	usualChat: v.number(),
+	/** `max(0, p90Call - harnessTokens - instructionsTokens)`. */
+	longChat: v.number(),
+	compactions: v.number(),
+})
+
 const WorkflowView = v.object({
 	/** The published machine name, null when withheld or untagged. */
 	machine: v.union(v.string(), v.null()),
@@ -204,6 +233,11 @@ const WorkflowView = v.object({
 	section: WorkflowWindow,
 	/** The inventory two of those components need. */
 	kit: v.array(KitHarness),
+	/**
+	 * The Context reading per harness (#358). Null when no day in the fold
+	 * carries the block; a harness without the block is left out of the array.
+	 */
+	context: v.union(v.object({ harnesses: v.array(ContextHarness) }), v.null()),
 })
 
 /**
@@ -298,6 +332,12 @@ export const getWorkflowByStackSlug = query({
 			harnessCount: inventory.length,
 		})
 
+		// The catalog is read only when a folded harness carries the block, so a
+		// reading from before #358 costs no extra collect.
+		const contextReadings = view.section.harnesses.some((h) => h.context)
+			? contextReadingsOf(view.section, inWindow, await loadModelCatalog(ctx))
+			: null
+
 		const isOwner = publication.owner
 		const newest = selected.newest
 		return {
@@ -349,6 +389,8 @@ export const getWorkflowByStackSlug = query({
 					subagents: row.inventory.withheld.subagents,
 				},
 			})),
+			context:
+				contextReadings === null ? null : { harnesses: contextReadings },
 		}
 	},
 })

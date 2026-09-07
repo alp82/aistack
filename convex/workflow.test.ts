@@ -563,3 +563,159 @@ describe('reading a window', () => {
     expect(kit?.coverage).toBe(1)
   })
 })
+
+describe('the Context reading (#358)', () => {
+  type Harness = Day['harnesses'][number]
+  type Context = NonNullable<Harness['context']>
+
+  /** One day of half-octave context atoms, buckets ascending. */
+  function context(over: Partial<Context> = {}): Context {
+    return {
+      bucketRuleVersion: 'log-buckets/v2',
+      calls: {
+        main: [
+          { bucket: 32, calls: 6 },
+          { bucket: 34, calls: 4 },
+        ],
+        subagents: [{ bucket: 30, calls: 5 }],
+      },
+      firstCalls: { main: [{ bucket: 32, sessions: 10 }] },
+      firstCallHarnessTokens: 230_000,
+      firstCallInstructionsTokens: 220_000,
+      firstCallCount: 10,
+      maxContext: 180_000,
+      compactions: 1,
+      ...over,
+    }
+  }
+
+  const seedModel = (t: Ctx, slug: string, contextWindow: number) =>
+    t.run(async (ctx) => {
+      await ctx.db.insert('models', {
+        name: slug,
+        slug,
+        shortId: `m${Math.random().toString(36).slice(2, 8)}`,
+        provider: 'Anthropic',
+        category: 'language',
+        contextWindow,
+        reviewStatus: 'approved',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    })
+
+  test('a day without the block reads null, and a harness without it is left out', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    await publish(t, stackId, { machine: 'laptop' })
+    const before = await t.query(api.workflow.getWorkflowByStackSlug, { slug })
+    expect(before?.context).toBeNull()
+
+    const codex: Harness = {
+      ...(day().harnesses[0] as Harness),
+      harness: 'codex',
+      routing: undefined,
+      context: context({ window: 258_400 }),
+    }
+    await publish(t, stackId, {
+      machine: 'laptop',
+      workflow: wire(
+        [day({ harnesses: [day().harnesses[0] as Harness, codex] })],
+        { aggregateVersion: 'workflow-aggregates/v3' },
+      ),
+    })
+    const after = await t.query(api.workflow.getWorkflowByStackSlug, { slug })
+    expect(after?.context?.harnesses.map((h) => h.harness)).toEqual(['codex'])
+  })
+
+  test('folds the window into medians, the first-call split and the chat remainder, and keeps a logged window', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    const withContext = (date: string): Day => {
+      const base = day({ date })
+      const harness = base.harnesses[0] as Harness
+      return {
+        ...base,
+        harnesses: [
+          { ...harness, context: context() },
+          {
+            ...harness,
+            harness: 'codex',
+            routing: undefined,
+            context: context({ window: 258_400, compactions: 0 }),
+          },
+        ],
+      }
+    }
+    await publish(t, stackId, {
+      machine: 'laptop',
+      workflow: wire([withContext(daysAgo(2)), withContext(daysAgo(1))], {
+        aggregateVersion: 'workflow-aggregates/v3',
+      }),
+    })
+
+    const view = await t.query(api.workflow.getWorkflowByStackSlug, { slug })
+    // Twenty main calls: the median falls in bucket 32, p90 in bucket 34.
+    const medianCall = Math.round(2 ** ((32 - 0.5) / 2))
+    const p90Call = Math.round(2 ** ((34 - 0.5) / 2))
+    expect(view?.context?.harnesses.find((h) => h.harness === 'codex')).toEqual({
+      harness: 'codex',
+      window: 258_400,
+      calls: 20,
+      medianCall,
+      p90Call,
+      harnessTokens: 23_000,
+      instructionsTokens: 22_000,
+      usualChat: medianCall - 45_000,
+      longChat: p90Call - 45_000,
+      compactions: 0,
+    })
+    // Claude Code logs no window and the catalog has no row here: unknown.
+    expect(
+      view?.context?.harnesses.find((h) => h.harness === 'claude-code'),
+    ).toMatchObject({ window: null, compactions: 2 })
+  })
+
+  test('Claude Code takes the catalog window of its top model, stepped up when a call outgrows it', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    await seedModel(t, 'claude-opus-5', 200_000)
+    const withMax = (date: string, maxContext: number): Day => {
+      const base = day({ date })
+      const harness = base.harnesses[0] as Harness
+      return { ...base, harnesses: [{ ...harness, context: context({ maxContext }) }] }
+    }
+    await publish(t, stackId, {
+      machine: 'laptop',
+      workflow: wire([withMax(daysAgo(1), 180_000)], {
+        aggregateVersion: 'workflow-aggregates/v3',
+      }),
+    })
+    const inside = await t.query(api.workflow.getWorkflowByStackSlug, { slug })
+    expect(inside?.context?.harnesses[0]?.window).toBe(200_000)
+
+    await publish(t, stackId, {
+      machine: 'laptop',
+      workflow: wire([withMax(daysAgo(1), 261_390)], {
+        aggregateVersion: 'workflow-aggregates/v3',
+      }),
+    })
+    const over = await t.query(api.workflow.getWorkflowByStackSlug, { slug })
+    expect(over?.context?.harnesses[0]?.window).toBe(1_000_000)
+  })
+
+  test('the workflow switch off hides the reading with the rest', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, slug } = await seedStack(t)
+    const base = day()
+    const harness = base.harnesses[0] as Harness
+    await publish(t, stackId, {
+      machine: 'laptop',
+      workflow: wire([{ ...base, harnesses: [{ ...harness, context: context() }] }], {
+        aggregateVersion: 'workflow-aggregates/v3',
+      }),
+    })
+    await t.run(async (ctx) => ctx.db.patch(stackId, { publishWorkflow: false }))
+    expect(await t.query(api.workflow.getWorkflowByStackSlug, { slug })).toBeNull()
+  })
+})

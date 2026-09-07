@@ -178,6 +178,7 @@ export function view(over: Partial<WorkflowView> = {}): WorkflowView {
 		},
 		rows: rows(),
 		isOwner: false,
+		context: null,
 		kit: [
 			{
 				harness: "claude-code",

@@ -2,6 +2,7 @@
 // wayfinder-ticket provenance; this file just re-exports.
 
 export * from "./componentRules.js";
+export * from "./context.js";
 export * from "./daily.js";
 export * from "./metricRules.js";
 export * from "./phaseRules.js";

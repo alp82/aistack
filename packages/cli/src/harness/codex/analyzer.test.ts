@@ -367,3 +367,82 @@ describe("provenance", () => {
 		expect(finalize(agg).harnessVersion).toBe("0.146.0");
 	});
 });
+
+describe("per-call context (#358)", () => {
+	const calls = (rows: readonly { calls: number }[] | undefined) =>
+		(rows ?? []).reduce((sum, row) => sum + row.calls, 0);
+
+	it("keeps input_tokens as the context, the logged window, and splits the first call", () => {
+		const agg = createAggregate();
+		foldFile(agg, [
+			sessionMeta(),
+			turnContext("gpt-5.5"),
+			tokenCount({ input: 18_515, cached: 11_904, output: 50 }),
+			tokenCount(
+				{ input: 25_000, cached: 18_500, output: 40 },
+				{},
+				"2026-07-20T12:00:30.000Z",
+			),
+			// A zero delta is a refresh, not a call.
+			tokenCount({}, {}, "2026-07-20T12:00:40.000Z"),
+		]);
+		const context = agg.workflow.finish().days[0]?.context;
+		expect(calls(context?.calls.main)).toBe(2);
+		expect(context?.calls.subagents).toEqual([]);
+		expect(context?.window).toBe(258_400);
+		expect(context?.maxContext).toBe(25_000);
+		expect(context?.firstCallCount).toBe(1);
+		expect(context?.firstCallHarnessTokens).toBe(11_904);
+		expect(context?.firstCallInstructionsTokens).toBe(18_515 - 11_904);
+	});
+
+	it("gives a forked rollout no first call, and none to a session that called before the window", () => {
+		const forked = createAggregate();
+		foldFile(forked, [
+			sessionMeta({ forked_from_id: "0198c5b0-0000-7bbb-8ccc-0123456789ab" }),
+			turnContext("gpt-5.5"),
+			tokenCount({ input: 130_480, cached: 11_392, output: 5 }),
+		]);
+		const forkedContext = forked.workflow.finish().days[0]?.context;
+		expect(calls(forkedContext?.calls.main)).toBe(1);
+		expect(forkedContext?.firstCallCount).toBe(0);
+
+		const resumed = createAggregate();
+		foldFile(
+			resumed,
+			[
+				sessionMeta(),
+				turnContext("gpt-5.5"),
+				tokenCount({ input: 18_515, cached: 11_904, output: 50 }),
+				tokenCount(
+					{ input: 90_000, cached: 80_000, output: 40 },
+					{},
+					"2026-07-21T12:00:00.000Z",
+				),
+			],
+			Date.parse("2026-07-21T00:00:00.000Z"),
+		);
+		const resumedContext = resumed.workflow.finish().days[0]?.context;
+		expect(calls(resumedContext?.calls.main)).toBe(1);
+		expect(resumedContext?.firstCallCount).toBe(0);
+	});
+
+	it("counts a compacted line as one compaction", () => {
+		const agg = createAggregate();
+		foldFile(agg, [
+			sessionMeta(),
+			turnContext("gpt-5.5"),
+			tokenCount({ input: 212_564, cached: 200_000, output: 5 }),
+			{
+				timestamp: "2026-07-20T12:01:00.000Z",
+				type: "compacted",
+				payload: { window_number: 2, replacement_history: [] },
+			},
+			// Codex's post-compaction estimate: a zero delta, still not a call.
+			tokenCount({}, {}, "2026-07-20T12:01:01.000Z"),
+		]);
+		const context = agg.workflow.finish().days[0]?.context;
+		expect(context?.compactions).toBe(1);
+		expect(calls(context?.calls.main)).toBe(1);
+	});
+});

@@ -298,3 +298,108 @@ describe("harness workflow reducer", () => {
 		expect(result.days[0]?.phase).toBeDefined();
 	});
 });
+
+describe("per-call context (#358)", () => {
+	it("buckets each call by context, splits the first main call, and counts compactions on their day", () => {
+		const reducer = createHarnessWorkflowReducer("claude-code");
+		const start = Date.UTC(2026, 7, 24, 10, 0);
+		reducer.ingest({
+			type: "response",
+			session: "main",
+			tsMs: start,
+			responseId: "m1",
+			model: "claude-opus-5",
+			contextTokens: 50_686,
+			firstCall: { harnessTokens: 0, instructionsTokens: 50_686 },
+		});
+		reducer.ingest({
+			type: "response",
+			session: "main",
+			tsMs: start + 1000,
+			responseId: "m2",
+			model: "claude-opus-5",
+			contextTokens: 61_162,
+		});
+		reducer.ingest({
+			type: "response",
+			session: "main:agent:a",
+			parentSession: "main",
+			sidechain: true,
+			tsMs: start + 2000,
+			responseId: "s1",
+			model: "claude-sonnet-5",
+			contextTokens: 41_185,
+			firstCall: { harnessTokens: 0, instructionsTokens: 41_185 },
+		});
+		// A compaction the day after the session started lands on ITS day.
+		reducer.ingest({
+			type: "compaction",
+			session: "main",
+			tsMs: start + 24 * 60 * 60 * 1000,
+		});
+
+		const days = reducer.finish().days;
+		expect(days.map((day) => day.date)).toEqual(["2026-08-24", "2026-08-25"]);
+		// 50,686 and 61,162 both sit in half-octave bucket 32 ([45,255, 64,000)).
+		expect(days[0]?.context).toEqual({
+			bucketRuleVersion: "log-buckets/v2",
+			calls: {
+				main: [{ bucket: 32, calls: 2 }],
+				subagents: [{ bucket: 31, calls: 1 }],
+			},
+			firstCalls: { main: [{ bucket: 32, sessions: 1 }] },
+			firstCallHarnessTokens: 0,
+			firstCallInstructionsTokens: 50_686,
+			firstCallCount: 1,
+			maxContext: 61_162,
+			compactions: 0,
+		});
+		expect(days[1]?.context).toEqual({
+			bucketRuleVersion: "log-buckets/v2",
+			calls: { main: [], subagents: [] },
+			firstCalls: { main: [] },
+			firstCallHarnessTokens: 0,
+			firstCallInstructionsTokens: 0,
+			firstCallCount: 0,
+			maxContext: 0,
+			compactions: 1,
+		});
+	});
+
+	it("keeps the latest logged window and omits the block on a day without context", () => {
+		const reducer = createHarnessWorkflowReducer("codex");
+		const start = Date.UTC(2026, 7, 24, 10, 0);
+		reducer.ingest({
+			type: "response",
+			session: "s",
+			tsMs: start,
+			responseId: "r1",
+			model: "gpt-5.5",
+			contextTokens: 18_515,
+			contextWindow: 258_400,
+			firstCall: { harnessTokens: 11_904, instructionsTokens: 6_611 },
+		});
+		reducer.ingest({
+			type: "response",
+			session: "s",
+			tsMs: start + 5000,
+			responseId: "r2",
+			model: "gpt-5.5",
+			contextTokens: 130_480,
+			contextWindow: 872_000,
+		});
+		reducer.ingest({
+			type: "response",
+			session: "quiet",
+			tsMs: start + 24 * 60 * 60 * 1000,
+			responseId: "r3",
+			model: "gpt-5.5",
+			responseTokens: 5,
+		});
+		const days = reducer.finish().days;
+		expect(days[0]?.context?.window).toBe(872_000);
+		expect(days[0]?.context?.firstCallHarnessTokens).toBe(11_904);
+		expect(days[0]?.context?.firstCallInstructionsTokens).toBe(6_611);
+		expect(days[1]?.context).toBeUndefined();
+	});
+});

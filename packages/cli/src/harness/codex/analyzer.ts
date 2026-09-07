@@ -84,6 +84,14 @@ export type FileState = {
 	counted: boolean;
 	/** Timestamp of the file's `session_meta` line, for the replay guard. */
 	metaTsMs: number | null;
+	/**
+	 * True on a rollout forked from another (`forked_from_id`). Its first
+	 * genuine call already carries the parent's history, so it is no first
+	 * call for the context split (#358); its calls still count.
+	 */
+	forked: boolean;
+	/** True once a genuine (non-replayed, nonzero) response was seen, in window or not. */
+	sawResponse: boolean;
 };
 
 export function createFileState(): FileState {
@@ -97,6 +105,55 @@ export function createFileState(): FileState {
 		currentQuestionBack: false,
 		counted: false,
 		metaTsMs: null,
+		forked: false,
+		sawResponse: false,
+	};
+}
+
+/**
+ * The per-response delta of a `token_count` event, or null when the line is
+ * a rate-limit-only refresh (zero delta) or replayed parent history (see
+ * `FORK_REPLAY_WINDOW_MS`). Shared by the window-independent first-call
+ * bookkeeping and the in-window fold, so both see the same responses.
+ */
+function genuineDelta(
+	payload: Obj,
+	state: FileState,
+	tsMs: number | null,
+): { counts: TokenCounts; last: Obj; contextWindow: number } | null {
+	if (asStr(payload.type) !== "token_count") return null;
+	const info = asObj(payload.info);
+	const last = info ? asObj(info.last_token_usage) : null;
+	if (!last) return null;
+
+	const inputTotal = asNum(last.input_tokens);
+	const cached = Math.min(asNum(last.cached_input_tokens), inputTotal);
+	const counts: TokenCounts = {
+		input: inputTotal - cached,
+		output: asNum(last.output_tokens),
+		cacheWrite5m: 0,
+		cacheWrite1h: 0,
+		cacheWriteUnsplit: 0,
+		cacheRead: cached,
+	};
+	// A zero delta is a rate-limit-only refresh, not a response.
+	if (countsTotal(counts) === 0) return null;
+
+	// Replayed parent history (see FORK_REPLAY_WINDOW_MS): a `token_count`
+	// stamped within the fork's write burst was counted by the parent rollout.
+	// The replay often carries the parent's `turn_context` lines too, so the
+	// timestamp is the guard; the `modelKey` check in `ingestEvent` only
+	// backstops a replay whose head carried usage before any `turn_context`.
+	if (
+		tsMs !== null &&
+		state.metaTsMs !== null &&
+		tsMs - state.metaTsMs < FORK_REPLAY_WINDOW_MS
+	)
+		return null;
+	return {
+		counts,
+		last,
+		contextWindow: info ? asNum(info.model_context_window) : 0,
 	};
 }
 
@@ -150,10 +207,21 @@ export function ingestLine(
 		state.cliVersion = asStr(payload.cli_version) ?? state.cliVersion;
 		state.cwd = asStr(payload.cwd) ?? state.cwd;
 		state.metaTsMs = tsMs ?? state.metaTsMs;
+		state.forked =
+			payload.forked_from_id !== undefined && payload.forked_from_id !== null;
 	} else if (type === "turn_context" && payload) {
 		const model = asName(payload.model);
 		if (model) state.modelKey = normalizeModel(model);
 		state.effort = asStr(payload.effort) ?? state.effort;
+	}
+
+	// The first genuine response of a file is a fact about the whole file, so
+	// it is noted before the window filter: a session resumed inside the
+	// window must not file a mid-conversation call as its first (#358).
+	let firstCall = false;
+	if (type === "event_msg" && payload && genuineDelta(payload, state, tsMs)) {
+		firstCall = !state.sawResponse;
+		state.sawResponse = true;
 	}
 
 	if (!inWindow) return;
@@ -166,9 +234,20 @@ export function ingestLine(
 	noteActivity(agg, state, tsMs);
 	noteProjectDay(agg, state.cwd ?? "(unknown)", tsMs);
 
-	if (type === "event_msg" && payload) ingestEvent(agg, payload, state, tsMs);
+	if (type === "event_msg" && payload)
+		ingestEvent(agg, payload, state, tsMs, firstCall);
 	else if (type === "response_item" && payload)
 		ingestItem(agg, payload, state, tsMs);
+	else if (type === "compacted" && tsMs !== null && state.sessionId) {
+		// A `compacted` rollout line is one compaction boundary (#358). The
+		// zero-delta `token_count` that follows it stays skipped as usage.
+		agg.workflow.ingest({
+			type: "compaction",
+			session: state.sessionId,
+			projectWorkspace: state.cwd ?? undefined,
+			tsMs,
+		});
+	}
 }
 
 /** Count the file's session/version/cwd once, on its first in-window line. */
@@ -195,37 +274,12 @@ function ingestEvent(
 	payload: Obj,
 	state: FileState,
 	tsMs: number | null,
+	firstCall: boolean,
 ): void {
-	if (asStr(payload.type) !== "token_count") return;
-	const info = asObj(payload.info);
-	const last = info ? asObj(info.last_token_usage) : null;
-	if (!last) return;
-
-	const inputTotal = asNum(last.input_tokens);
-	const cached = Math.min(asNum(last.cached_input_tokens), inputTotal);
-	const counts: TokenCounts = {
-		input: inputTotal - cached,
-		output: asNum(last.output_tokens),
-		cacheWrite5m: 0,
-		cacheWrite1h: 0,
-		cacheWriteUnsplit: 0,
-		cacheRead: cached,
-	};
+	const delta = genuineDelta(payload, state, tsMs);
+	if (!delta) return;
+	const { counts, last, contextWindow } = delta;
 	const total = countsTotal(counts);
-	// A zero delta is a rate-limit-only refresh, not a response.
-	if (total === 0) return;
-
-	// Replayed parent history (see FORK_REPLAY_WINDOW_MS): a `token_count`
-	// stamped within the fork's write burst was counted by the parent rollout.
-	// The replay often carries the parent's `turn_context` lines too, so the
-	// timestamp is the guard; the `modelKey` check below only backstops a
-	// replay whose head carried usage before any `turn_context`.
-	if (
-		tsMs !== null &&
-		state.metaTsMs !== null &&
-		tsMs - state.metaTsMs < FORK_REPLAY_WINDOW_MS
-	)
-		return;
 	if (state.modelKey === null) return;
 
 	if (tsMs === null) agg.untimestampedResponses++;
@@ -256,6 +310,21 @@ function ingestEvent(
 			routingTokens: total,
 			thinkingTokens: asNum(last.reasoning_output_tokens),
 			...(state.effort ? { effort: state.effort } : {}),
+			// The context at this call is `input_tokens` (cached is a subset).
+			// On the first call the cached part is the harness (base
+			// instructions and tool specs, cached by an earlier session) and
+			// the fresh part is the instructions: AGENTS.md, environment,
+			// skills and the first prompt. Same method as Claude Code (#358).
+			contextTokens: counts.input + counts.cacheRead,
+			...(contextWindow > 0 ? { contextWindow } : {}),
+			...(firstCall && !state.forked
+				? {
+						firstCall: {
+							harnessTokens: counts.cacheRead,
+							instructionsTokens: counts.input,
+						},
+					}
+				: {}),
 		});
 		agg.workflow.ingest({
 			type: "turn",

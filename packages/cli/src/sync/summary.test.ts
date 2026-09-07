@@ -480,7 +480,7 @@ describe("the workflow section at the gate (#213, #307)", () => {
 		// not an opt-out.
 		const out = buildGateSummary(ctx({ measuredDays: measuredDays() }));
 		expect(out).toContain("workflow  1 harness · 142 sessions");
-		expect(out).toContain("workflow-aggregates/v2");
+		expect(out).toContain("workflow-aggregates/v3");
 		expect(out).toContain("phase-rules/v1");
 		expect(out).toContain("          1 day · 2026-08-21 to 2026-08-21");
 		expect(out).toContain("git       214 commits · 12.4k lines changed");
