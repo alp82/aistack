@@ -13,6 +13,7 @@ import {
   measuredDaysForStack,
   newestInventoryPerSource,
 } from './lib/measuredDays'
+import { resolveModelId } from './lib/modelCatalog'
 import { round2 } from './lib/reprice'
 import { loadModelCatalog, type ModelCatalog, readUsageWindow } from './measured'
 
@@ -284,7 +285,7 @@ function rankModels(readings: StackReading[], catalog: ModelCatalog) {
     }
   }
   const modelName = (id: string) =>
-    (catalog.bySlug.get(id) ?? catalog.byAlias.get(id))?.name ?? id
+    resolveModelId(catalog, id).catalogName ?? id
   return {
     attributed,
     models: [...models.entries()]
@@ -381,7 +382,7 @@ export const get = query({
     }
 
     const modelName = (id: string) =>
-      (catalog.bySlug.get(id) ?? catalog.byAlias.get(id))?.name ?? id
+      resolveModelId(catalog, id).catalogName ?? id
 
     const rankOf = (
       map: Map<string, Bucket>,

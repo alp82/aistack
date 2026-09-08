@@ -102,6 +102,10 @@ export function AdminImportTab() {
 							</button>
 						) : null}
 					</h3>
+					<p className="mb-4 text-sm text-fg-muted">
+						Before approving, check each name against its model family. Include
+						the family and version, for example Claude Fable 5.
+					</p>
 					{!pendingModels || pendingModels.length === 0 ? (
 						<div className="border-2 border-dashed border-stroke-subtle px-4 py-8 text-center">
 							<p className="font-mono text-sm text-fg-muted">

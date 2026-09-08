@@ -78,6 +78,7 @@ import type * as migrations_20260829_vendor_model_ids from "../migrations/202608
 import type * as migrations_20260830_provider_logos from "../migrations/20260830_provider_logos.js";
 import type * as migrations_20260831_auto_sync_six_hours from "../migrations/20260831_auto_sync_six_hours.js";
 import type * as migrations_20260831_stacks_always_public from "../migrations/20260831_stacks_always_public.js";
+import type * as migrations_20260908_model_display_names from "../migrations/20260908_model_display_names.js";
 import type * as migrations__archived_migrateBlockToReference from "../migrations/_archived/migrateBlockToReference.js";
 import type * as migrations__archived_migrateNotesToDescription from "../migrations/_archived/migrateNotesToDescription.js";
 import type * as migrations__archived_migrateStackDescriptions from "../migrations/_archived/migrateStackDescriptions.js";
@@ -185,6 +186,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/20260830_provider_logos": typeof migrations_20260830_provider_logos;
   "migrations/20260831_auto_sync_six_hours": typeof migrations_20260831_auto_sync_six_hours;
   "migrations/20260831_stacks_always_public": typeof migrations_20260831_stacks_always_public;
+  "migrations/20260908_model_display_names": typeof migrations_20260908_model_display_names;
   "migrations/_archived/migrateBlockToReference": typeof migrations__archived_migrateBlockToReference;
   "migrations/_archived/migrateNotesToDescription": typeof migrations__archived_migrateNotesToDescription;
   "migrations/_archived/migrateStackDescriptions": typeof migrations__archived_migrateStackDescriptions;
