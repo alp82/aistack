@@ -76,6 +76,12 @@ import {
 	machineUtcOffsetMinutes,
 	type WorkflowExtraction,
 } from "../workflow/index.js";
+import {
+	grokCacheScope,
+	loadGrokDateHints,
+	mapToHints,
+	saveGrokDateHints,
+} from "./grokDateCache.js";
 import { buildGateDialog, buildGateSummary } from "./summary.js";
 
 const utcDate = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
@@ -105,6 +111,8 @@ export type StagedSend = {
 	days?: DaySelection;
 	/** Which price table priced this stage (#336). Absent only in fixtures. */
 	prices?: PriceTableUsed;
+	/** Commit local Grok date hints only after the server accepted these bytes. */
+	acknowledgePublish?: () => void;
 };
 
 /**
@@ -233,6 +241,9 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	// the one the days and the workflow blocks come from.
 	const daysSinceMs = windowStartMs(now, retentionDays);
 	const active = await adapters(sinceMs);
+	const historical = await adapters(daysSinceMs);
+	let dayScansComplete = true;
+	let grokCurrentDates: Map<string, Set<string>> | null = null;
 	for (const adapter of active) {
 		progress(`Scanning recent ${adapter.name} usage`);
 		const { aggregate, stats } = await adapter.scan({
@@ -254,13 +265,17 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 			}),
 		);
 	}
-	for (const adapter of active) {
+	for (const adapter of historical) {
 		progress(`Reading historical ${adapter.name} days`);
-		const { aggregate, workflow, workflowLocal } = await adapter.scan({
-			sinceMs: daysSinceMs,
-			onProgress: (files) =>
-				progress(`Reading historical ${adapter.name} days · ${files} files`),
-		});
+		const { aggregate, workflow, workflowLocal, scanComplete, sessionDates } =
+			await adapter.scan({
+				sinceMs: daysSinceMs,
+				onProgress: (files) =>
+					progress(`Reading historical ${adapter.name} days · ${files} files`),
+			});
+		if (scanComplete === false) dayScansComplete = false;
+		if (adapter.name === "grok-build")
+			grokCurrentDates = sessionDates ?? new Map();
 		workflowScans.push({ aggregate: workflow, local: workflowLocal });
 		usageScans.push(
 			buildUsageDays({
@@ -305,17 +320,33 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	// The day rows (#307): usage and workflow joined by date, consent applied
 	// BEFORE the fingerprint so the hash is over the bytes that go, then diffed
 	// against the manifest. Today always resends.
+	const correctionDates = new Set<string>();
+	let acknowledgePublish: (() => void) | undefined;
+	if (grokCurrentDates && token && config.stack) {
+		const scope = grokCacheScope(deps.baseUrl, config.stack.slug, token);
+		const floor = utcDate(daysSinceMs);
+		const previous = loadGrokDateHints(scope);
+		const current = mapToHints(grokCurrentDates, floor);
+		for (const dates of Object.values(previous))
+			for (const date of dates) correctionDates.add(date);
+		for (const dates of Object.values(current))
+			for (const date of dates) correctionDates.add(date);
+		if (Object.keys(previous).some((id) => !(id in current)))
+			dayScansComplete = false;
+		acknowledgePublish = () => saveGrokDateHints(scope, current);
+	}
 	const localDays: MeasuredDay[] = applyDayConsent(
 		buildMeasuredDays({
 			usage: mergeUsageDays(usageScans),
 			...(workflow ? { workflow: workflow.days } : {}),
 			from: utcDate(daysSinceMs),
 			to: utcDate(now),
+			includeDates: correctionDates,
 		}),
 		config,
 	);
 	const days = selectDaysToPublish({
-		local: localDays,
+		local: dayScansComplete ? localDays : [],
 		manifest,
 		todayUtc: utcDate(now),
 	});
@@ -325,7 +356,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		config,
 		settings.autoSync,
 		deps.trigger,
-		active.length > 0
+		historical.length > 0 && dayScansComplete
 			? {
 					aggregateVersion: MEASURED_DAYS_V1,
 					utcOffsetMinutes:
@@ -354,8 +385,8 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	};
 
 	let blockedReason: string | null = null;
-	if (built.length === 0) {
-		blockedReason = `No active harness on this machine - no Claude Code and no Codex transcript from the last ${windowDays} days to read.`;
+	if (historical.length === 0) {
+		blockedReason = `No supported harness transcript from the last ${retentionDays} days to read.`;
 	} else if (token === null) {
 		blockedReason =
 			"This machine is not linked. Run `npx @use-aistack/cli login` first.";
@@ -379,5 +410,6 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		blockedReason,
 		days,
 		prices,
+		...(acknowledgePublish ? { acknowledgePublish } : {}),
 	};
 }

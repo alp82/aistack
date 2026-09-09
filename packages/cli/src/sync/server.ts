@@ -254,6 +254,7 @@ export function createSyncServer(
 				log(`consent received, sending stage ${approvedStage.id}`);
 				publish(approvedStage.token as string, approvedStage.bodyJson).then(
 					(res) => {
+						approvedStage.acknowledgePublish?.();
 						if (staged?.id === approvedStage.id) staged = null;
 						// Same ending as the terminal channel (#130): the result last,
 						// the stamp in human form.

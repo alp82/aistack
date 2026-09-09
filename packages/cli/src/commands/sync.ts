@@ -225,6 +225,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<void> {
 	s.start("Publishing");
 	try {
 		const res = await syncPublish(staged.token as string, staged.bodyJson);
+		staged.acknowledgePublish?.();
 		s.stop("Published");
 		// The last thing read is the result, not a receipt (#130): the stamp is
 		// human-form, and the link gets its own line under a sentence that names

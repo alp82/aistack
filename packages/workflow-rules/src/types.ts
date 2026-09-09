@@ -6,11 +6,17 @@
 // no server-side fit ranking or rotation state (that is ticket #218).
 
 /** Matches the four `*_HARNESS_NAME` constants in packages/cli/src/harness/*\/adapter.ts. */
-export type HarnessName = "claude-code" | "codex" | "opencode" | "pi-mono";
+export type HarnessName =
+	| "claude-code"
+	| "codex"
+	| "grok-build"
+	| "opencode"
+	| "pi-mono";
 
 export const HARNESS_NAMES: readonly HarnessName[] = [
 	"claude-code",
 	"codex",
+	"grok-build",
 	"opencode",
 	"pi-mono",
 ];
@@ -27,6 +33,8 @@ export function harnessLabel(name: HarnessName): string {
 			return "Claude Code";
 		case "codex":
 			return "Codex";
+		case "grok-build":
+			return "Grok Build";
 		case "opencode":
 			return "opencode";
 		case "pi-mono":

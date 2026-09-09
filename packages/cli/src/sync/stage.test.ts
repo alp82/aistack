@@ -209,12 +209,12 @@ describe("stageSync", () => {
 	// #101: detection and the scan read ONE window start, so a harness that
 	// counts as detected is exactly a harness with something in the window.
 	test("detection gets the same window start the snapshot scan gets", async () => {
-		let detectSince: number | null = null;
+		const detectSince: number[] = [];
 		const scanSince: number[] = [];
 		await stageSync(
 			deps({
 				adaptersImpl: async (sinceMs) => {
-					detectSince = sinceMs;
+					detectSince.push(sinceMs);
 					return [
 						{
 							...FAKE_CLAUDE_ADAPTER,
@@ -227,10 +227,16 @@ describe("stageSync", () => {
 				},
 			}),
 		);
-		expect(detectSince).toBe(windowStartMs(NOW, DEFAULT_WINDOW_DAYS));
+		expect(detectSince).toEqual([
+			windowStartMs(NOW, DEFAULT_WINDOW_DAYS),
+			windowStartMs(NOW, 400),
+		]);
 		// The snapshot scan reads the 30-day window; the day scan (#307) reads
 		// the whole retention, 400 days when no manifest names one.
-		expect(scanSince).toEqual([detectSince, windowStartMs(NOW, 400)]);
+		expect(scanSince).toEqual([
+			windowStartMs(NOW, DEFAULT_WINDOW_DAYS),
+			windowStartMs(NOW, 400),
+		]);
 	});
 
 	test("the day scan reaches as far as the manifest's retention (#307)", async () => {
@@ -258,8 +264,8 @@ describe("stageSync", () => {
 
 	test("no active harness blocks, and the reason names the window", async () => {
 		const staged = await stageSync(deps({ adaptersImpl: async () => [] }));
-		expect(staged.blockedReason).toContain("No active harness");
-		expect(staged.blockedReason).toContain("last 30 days");
+		expect(staged.blockedReason).toContain("No supported harness transcript");
+		expect(staged.blockedReason).toContain("last 400 days");
 	});
 
 	test("stages the measured days in the bytes the gate describes (#213, #307)", async () => {

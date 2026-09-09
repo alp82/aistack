@@ -40,6 +40,7 @@ export const HANDOFF_MARKERS: Record<HarnessName, readonly string[]> = {
 		"mcp__curia__request_review",
 	],
 	codex: ["request_user_input"],
+	"grok-build": [],
 	opencode: ["question"],
 	"pi-mono": [],
 };

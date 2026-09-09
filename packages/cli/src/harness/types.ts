@@ -21,6 +21,10 @@ export type HarnessScan = {
 	workflow: HarnessWorkflowAggregate;
 	/** Local path keys for Git extraction. Never serialize this value. */
 	workflowLocal: WorkflowLocalSources;
+	/** False means measured days must not replace server rows from this scan. */
+	scanComplete?: boolean;
+	/** Local-only source identity hints used to repair a session whose UTC date moved. */
+	sessionDates?: Map<string, Set<string>>;
 };
 
 export type HarnessScanOptions = {

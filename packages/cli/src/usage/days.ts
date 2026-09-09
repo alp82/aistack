@@ -183,10 +183,17 @@ export function buildMeasuredDays(input: {
 	workflow?: readonly WorkflowDay[];
 	from: string;
 	to: string;
+	includeDates?: ReadonlySet<string>;
 }): MeasuredDay[] {
 	const workflowByDate = new Map<string, WorkflowDay>();
 	for (const day of input.workflow ?? []) workflowByDate.set(day.date, day);
-	const dates = [...new Set([...input.usage.keys(), ...workflowByDate.keys()])]
+	const dates = [
+		...new Set([
+			...input.usage.keys(),
+			...workflowByDate.keys(),
+			...(input.includeDates ?? []),
+		]),
+	]
 		.filter(
 			(d) => /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= input.from && d <= input.to,
 		)
