@@ -35,6 +35,7 @@ const LOCAL_PATTERNS: FilePattern[] = [
 	// Rules
 	{ path: "CLAUDE.md", type: "rule", group: "claude-code" },
 	{ path: "AGENTS.md", type: "rule", group: "claude-code" },
+	{ path: "GROK.md", type: "rule", group: "grok-build" },
 	{ path: "GEMINI.md", type: "rule", group: "gemini" },
 	{ path: ".cursorrules", type: "rule", group: "cursor" },
 	{ path: ".windsurfrules", type: "rule", group: "windsurf" },
@@ -66,8 +67,16 @@ const LOCAL_DIR_PATTERNS: { dir: string; type: FileType; group: string }[] = [
 	{ dir: ".github/instructions", type: "rule", group: "copilot" },
 	{ dir: ".github/prompts", type: "prompt", group: "copilot" },
 	{ dir: ".claude/commands", type: "command", group: "claude-code" },
+	{ dir: ".claude/skills", type: "skill", group: "claude-code" },
 	{ dir: ".claude/agents", type: "subagent", group: "claude-code" },
 	{ dir: ".claude/hooks", type: "hook", group: "claude-code" },
+	{ dir: ".grok/skills", type: "skill", group: "grok-build" },
+	{ dir: ".grok/commands", type: "command", group: "grok-build" },
+	{ dir: ".grok/agents", type: "subagent", group: "grok-build" },
+	{ dir: ".grok/hooks", type: "hook", group: "grok-build" },
+	{ dir: ".cursor/skills", type: "skill", group: "cursor" },
+	{ dir: ".agents/skills", type: "skill", group: "generic" },
+	{ dir: ".agents/commands", type: "command", group: "generic" },
 	{ dir: "prompts", type: "prompt", group: "generic" },
 	{ dir: ".ai", type: "custom", group: "generic" },
 ];
@@ -157,7 +166,9 @@ export function scanLocal(cwd: string): ScannedFile[] {
 		for (const entry of readdirSync(cwd, { withFileTypes: true }).filter((e) =>
 			e.isDirectory(),
 		)) {
-			if (ig.ignores(entry.name + "/")) continue;
+			if ([".grok", ".claude", ".cursor", ".agents"].includes(entry.name))
+				continue;
+			if (ig.ignores(`${entry.name}/`)) continue;
 			scanSkillDirs(join(cwd, entry.name), cwd, ig, results, 1);
 		}
 	} catch {
@@ -199,7 +210,7 @@ function scanSkillDirs(
 		for (const entry of readdirSync(dir, { withFileTypes: true })) {
 			if (entry.isDirectory()) {
 				const rel = relative(cwd, join(dir, entry.name));
-				if (!ig.ignores(rel + "/")) {
+				if (!ig.ignores(`${rel}/`)) {
 					scanSkillDirs(join(dir, entry.name), cwd, ig, results, depth + 1);
 				}
 			}
@@ -215,6 +226,7 @@ export function scanGlobal(): ScannedFile[] {
 
 	const globalPatterns: FilePattern[] = [
 		{ path: ".claude/CLAUDE.md", type: "rule", group: "claude-code" },
+		{ path: ".grok/GROK.md", type: "rule", group: "grok-build" },
 		{ path: ".claude/settings.json", type: "config", group: "claude-code" },
 		{ path: ".continue/config.json", type: "config", group: "continue" },
 		{ path: ".continue/config.yaml", type: "config", group: "continue" },
@@ -248,7 +260,14 @@ export function scanGlobal(): ScannedFile[] {
 		{ dir: ".claude/commands", type: "command", group: "claude-code" },
 		{ dir: ".claude/agents", type: "subagent", group: "claude-code" },
 		{ dir: ".claude/hooks", type: "hook", group: "claude-code" },
+		{ dir: ".grok/skills", type: "skill", group: "grok-build" },
+		{ dir: ".grok/commands", type: "command", group: "grok-build" },
+		{ dir: ".grok/agents", type: "subagent", group: "grok-build" },
+		{ dir: ".grok/hooks", type: "hook", group: "grok-build" },
 		{ dir: ".cursor/rules", type: "rule", group: "cursor" },
+		{ dir: ".cursor/skills", type: "skill", group: "cursor" },
+		{ dir: ".agents/skills", type: "skill", group: "generic" },
+		{ dir: ".agents/commands", type: "command", group: "generic" },
 	];
 
 	for (const { dir, type, group } of globalDirs) {

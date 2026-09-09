@@ -7,7 +7,10 @@ import { asObj, asStr, countsTotal } from "../shared/aggregate.js";
 import { emptyScanStats, type ScanStats } from "../shared/window.js";
 import type { Aggregate } from "./analyzer.js";
 import {
+	createGrokEventState,
 	ingestContribution,
+	ingestEvent,
+	ingestUpdate,
 	sidecarContributions,
 	terminalContribution,
 	type UsageContribution,
@@ -128,7 +131,9 @@ export async function scan(
 					.map((e) => [e.name, path.join(dir, e.name)]),
 			);
 			let projectDir = dir;
+			let sessionFallback = path.basename(dir);
 			let child = false;
+			let parentSession: string | undefined;
 			const summary = files.get("summary.json");
 			if (summary) {
 				const read = await stableRead(summary, false);
@@ -140,14 +145,15 @@ export async function scan(
 				const value = asObj(read.json);
 				const info = value && asObj(value.info);
 				projectDir = asStr(info?.cwd) ?? asStr(value?.cwd) ?? dir;
-				child = Boolean(
+				sessionFallback = asStr(value?.sessionId) ?? sessionFallback;
+				parentSession =
 					asStr(value?.parentSessionId) ??
-						asStr(value?.parent_session_id) ??
-						asStr(info?.parentSessionId) ??
-						asStr(info?.parent_session_id),
-				);
+					asStr(value?.parent_session_id) ??
+					asStr(info?.parentSessionId) ??
+					asStr(info?.parent_session_id) ??
+					undefined;
+				child = parentSession !== undefined;
 			}
-			if (child) continue;
 			let rows = [] as ReturnType<typeof sidecarContributions>;
 			let precedence = 0;
 			const usage = files.get("usage.json");
@@ -163,26 +169,56 @@ export async function scan(
 				rows = sidecarContributions(read.json, projectDir);
 				if (rows.length > 0) precedence = 2;
 			}
-			if (rows.length === 0) {
-				const updates = files.get("updates.jsonl");
-				if (updates) {
-					stats.filesFound++;
-					const read = await stableRead(updates, true);
-					if (!read.complete) {
-						complete = false;
-						stats.filesUnreadable++;
+			if (child) {
+				rows = [];
+				precedence = 0;
+			}
+			const eventState = createGrokEventState(parentSession);
+			const updates = files.get("updates.jsonl");
+			if (updates) {
+				const useTerminalUsage = rows.length === 0 && !child;
+				stats.filesFound++;
+				const read = await stableRead(updates, true);
+				if (!read.complete) {
+					complete = false;
+					stats.filesUnreadable++;
+					continue;
+				}
+				stats.filesRead++;
+				for (const value of read.lines ?? []) {
+					if (value === null) {
+						agg.parseErrors++;
 						continue;
 					}
-					stats.filesRead++;
-					for (const value of read.lines ?? []) {
-						if (value === null) {
-							agg.parseErrors++;
-							continue;
-						}
+					ingestUpdate(agg, eventState, value, projectDir, opts.sinceMs);
+					if (useTerminalUsage) {
 						const row = terminalContribution(value, projectDir);
 						if (row) rows.push(row);
 					}
-					if (rows.length > 0) precedence = 1;
+				}
+				if (rows.length > 0) precedence = 1;
+			}
+			const events = files.get("events.jsonl");
+			if (events) {
+				stats.filesFound++;
+				const read = await stableRead(events, true);
+				if (!read.complete) {
+					complete = false;
+					stats.filesUnreadable++;
+					continue;
+				}
+				stats.filesRead++;
+				for (const value of read.lines ?? []) {
+					if (value === null) agg.parseErrors++;
+					else
+						ingestEvent(
+							agg,
+							eventState,
+							value,
+							sessionFallback,
+							projectDir,
+							opts.sinceMs,
+						);
 				}
 			}
 			rows = rows.filter(

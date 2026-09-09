@@ -11,6 +11,7 @@ import {
 } from "../../workflow/reducer.js";
 import {
 	addModelUsage,
+	asName,
 	asNum,
 	asObj,
 	asStr,
@@ -41,6 +42,171 @@ export type UsageContribution = {
 	durationMs?: number;
 	models: Array<{ model: string; counts: TokenCounts }>;
 };
+
+type GrokEventState = {
+	tools: Map<string, { name: string; arg?: string; tsMs: number }>;
+	completedTools: Set<string>;
+	parentSession?: string;
+};
+
+export const createGrokEventState = (
+	parentSession?: string,
+): GrokEventState => ({
+	tools: new Map(),
+	completedTools: new Set(),
+	...(parentSession ? { parentSession } : {}),
+});
+
+const bump = (map: Map<string, number>, key: string): void =>
+	map.set(key, (map.get(key) ?? 0) + 1);
+
+const toolMetadata = (update: Record<string, unknown>) => {
+	const meta = asObj(update._meta);
+	return meta && asObj(meta["x.ai/tool"]);
+};
+
+/** Project one persisted Grok update without retaining prompts or raw arguments. */
+export function ingestUpdate(
+	agg: Aggregate,
+	state: GrokEventState,
+	value: unknown,
+	projectDir: string,
+	sinceMs?: number,
+): void {
+	const root = asObj(value);
+	const params = root && asObj(root.params);
+	const update = params && asObj(params.update);
+	const session = params && asStr(params.sessionId);
+	const tsMs = timestampMs(
+		asObj(params?._meta)?.agentTimestampMs ?? root?.timestamp,
+	);
+	if (!update || !session || tsMs === null) return;
+	const kind = asStr(update.sessionUpdate);
+	if (kind === "tool_call") {
+		const id = asStr(update.toolCallId);
+		const metadata = toolMetadata(update);
+		const name = asName(metadata?.name ?? update.toolName);
+		if (!id || !name || state.tools.has(id)) return;
+		const raw = asObj(update.input);
+		const arg = asStr(raw?.command ?? raw?.query ?? raw?.skill ?? raw?.name);
+		state.tools.set(id, { name, ...(arg ? { arg } : {}), tsMs });
+		return;
+	}
+	if (sinceMs !== undefined && tsMs < sinceMs) return;
+	if (kind === "tool_call_update") {
+		const id = asStr(update.toolCallId);
+		if (!id || asStr(update.status) !== "completed") return;
+		completeTool(agg, state, id, session, projectDir, tsMs);
+		return;
+	}
+	if (kind !== "turn_completed") return;
+	const usage = asObj(update.usage);
+	if (!usage) return;
+	const prompt = asStr(update.prompt_id) ?? `turn:${tsMs}`;
+	for (const [model, raw] of Object.entries(asObj(usage.modelUsage) ?? {})) {
+		const row = asObj(raw);
+		agg.workflow.ingest({
+			type: "response",
+			session,
+			projectWorkspace: projectDir,
+			parentSession: state.parentSession,
+			tsMs,
+			responseId: `${prompt}:${model}`,
+			model,
+			thinkingTokens: asNum(row?.reasoningTokens),
+			responseTokens: asNum(row?.outputTokens),
+			routingTokens: asNum(row?.outputTokens),
+			...(asNum(row?.apiDurationMs) > 0
+				? { durationSec: asNum(row?.apiDurationMs) / 1000 }
+				: asNum(update.elapsed_ms) > 0
+					? { durationSec: asNum(update.elapsed_ms) / 1000 }
+					: {}),
+		});
+	}
+	agg.workflow.ingest({
+		type: "turn",
+		session,
+		projectWorkspace: projectDir,
+		parentSession: state.parentSession,
+		tsMs,
+		turnId: prompt,
+		questionBack: asStr(update.stop_reason) === "question",
+	});
+}
+
+function completeTool(
+	agg: Aggregate,
+	state: GrokEventState,
+	id: string,
+	session: string,
+	projectDir: string,
+	tsMs: number,
+): void {
+	if (state.completedTools.has(id)) return;
+	const tool = state.tools.get(id);
+	if (!tool) return;
+	state.completedTools.add(id);
+	bump(agg.toolCalls, tool.name);
+	if (["web_search", "websearch", "search_web"].includes(tool.name))
+		agg.webSearchRequests++;
+	if (["skill", "use_skill"].includes(tool.name) && tool.arg)
+		bump(agg.skillCalls, tool.arg);
+	const mcp = /^(?:mcp__|mcp:)([^_:]+)[_:](.+)$/.exec(tool.name);
+	if (mcp) {
+		bump(agg.mcpServerCalls, mcp[1] as string);
+		bump(agg.mcpToolCalls, tool.name);
+	} else if (tool.name === "use_tool" && tool.arg?.includes("__")) {
+		const [server] = tool.arg.split("__", 1);
+		if (server) {
+			bump(agg.mcpServerCalls, server);
+			bump(agg.mcpToolCalls, tool.arg);
+		}
+	}
+	agg.workflow.ingest({
+		type: "event",
+		session,
+		projectWorkspace: projectDir,
+		parentSession: state.parentSession,
+		tsMs: tool.tsMs || tsMs,
+		tool: tool.name,
+		...(tool.arg ? { arg: tool.arg } : {}),
+		batchId: id,
+	});
+}
+
+/** Complete a tool from the durable event stream when the ACP update is absent. */
+export function ingestEvent(
+	agg: Aggregate,
+	state: GrokEventState,
+	value: unknown,
+	sessionFallback: string,
+	projectDir: string,
+	sinceMs?: number,
+): void {
+	const row = asObj(value);
+	if (!row) return;
+	const session = asStr(row.session_id) ?? sessionFallback;
+	const tsMs = timestampMs(row.ts);
+	if (!session || tsMs === null) return;
+	if (asStr(row.type) === "tool_started") {
+		const id = asStr(row.tool_call_id);
+		const name = asName(row.tool_name);
+		if (id && name && !state.tools.has(id)) state.tools.set(id, { name, tsMs });
+	} else if (sinceMs !== undefined && tsMs < sinceMs) {
+		return;
+	} else if (asStr(row.type) === "tool_completed") {
+		const id = asStr(row.tool_call_id);
+		if (id) completeTool(agg, state, id, session, projectDir, tsMs);
+	} else if (asStr(row.type) === "compaction") {
+		agg.workflow.ingest({
+			type: "compaction",
+			session,
+			projectWorkspace: projectDir,
+			parentSession: state.parentSession,
+			tsMs,
+		});
+	}
+}
 
 const timestampMs = (value: unknown): number | null => {
 	if (typeof value === "string") {

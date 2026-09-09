@@ -43,4 +43,61 @@ describe("Grok Build scanner", () => {
 		expect(result.complete).toBe(true);
 		expect(aggregate.parseErrors).toBe(1);
 	});
+
+	test("keeps child workflow without double-counting child usage", async () => {
+		const root = await mkdtemp(path.join(tmpdir(), "grok-scan-"));
+		const child = path.join(root, "workspace", "child");
+		await mkdir(child, { recursive: true });
+		await writeFile(
+			path.join(child, "summary.json"),
+			JSON.stringify({
+				sessionId: "child",
+				parent_session_id: "parent",
+				cwd: "/private/project",
+			}),
+		);
+		await writeFile(
+			path.join(child, "updates.jsonl"),
+			[
+				{
+					timestamp: 1_767_306_617,
+					params: {
+						sessionId: "child",
+						update: {
+							sessionUpdate: "tool_call",
+							toolCallId: "call",
+							_meta: { "x.ai/tool": { name: "read_file" } },
+						},
+					},
+				},
+				{
+					timestamp: 1_767_306_618,
+					params: {
+						sessionId: "child",
+						update: {
+							sessionUpdate: "turn_completed",
+							prompt_id: "prompt",
+							usage: {
+								modelUsage: { "grok-4": { inputTokens: 10, outputTokens: 2 } },
+							},
+						},
+					},
+				},
+			]
+				.map(JSON.stringify)
+				.join("\n"),
+		);
+		await writeFile(
+			path.join(child, "events.jsonl"),
+			`${JSON.stringify({ type: "tool_completed", tool_call_id: "call", ts: "2026-01-01T00:00:18Z" })}\n`,
+		);
+
+		const aggregate = createAggregate();
+		await scan(aggregate, { roots: [root], sinceMs: 0 });
+		const day = aggregate.workflow.finish().days[0];
+		expect(aggregate.distinctResponses).toBe(0);
+		expect(day?.delegation?.subagentToolCalls).toBe(1);
+		expect(day?.delegation?.mostSubagents).toBe(1);
+		expect(JSON.stringify(day)).not.toContain("private");
+	});
 });

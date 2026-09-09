@@ -40,7 +40,7 @@ export const HANDOFF_MARKERS: Record<HarnessName, readonly string[]> = {
 		"mcp__curia__request_review",
 	],
 	codex: ["request_user_input"],
-	"grok-build": [],
+	"grok-build": ["ask_user_question", "request_user_input"],
 	opencode: ["question"],
 	"pi-mono": [],
 };
@@ -80,6 +80,10 @@ const SCOUT_TOOLS = [
 	"tool_search",
 	"codebase_search",
 	"find",
+	"search_tool",
+	"search_files",
+	"list_dir",
+	"read_file",
 ];
 
 const EDIT_TOOLS = [
@@ -92,11 +96,20 @@ const EDIT_TOOLS = [
 	"patch",
 	"multiedit",
 	"apply_patch",
+	"write_file",
+	"edit_file",
 ];
 
 const REVIEW_SKILLS = ["code-review", "security-review", "review"];
 const SCOUT_AGENTS = ["Explore", "Plan", "research"];
-const SHELL_TOOLS = ["Bash", "bash", "shell", "local_shell", "exec_command"];
+const SHELL_TOOLS = [
+	"Bash",
+	"bash",
+	"shell",
+	"local_shell",
+	"exec_command",
+	"run_terminal_command",
+];
 const SKILL_TOOLS = ["Skill", "skill"];
 const AGENT_TOOLS = ["Agent", "Task", "task", "agent"];
 

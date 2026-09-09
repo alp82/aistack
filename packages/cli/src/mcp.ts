@@ -93,10 +93,19 @@ function splitImageTag(image: string): { id: string; version?: string } {
 export function parseMcpPackage(server: McpServerConfig): PkgRef | null {
 	// Remote server: a URL endpoint (http/sse).
 	if (server.url) {
+		let safeUrl: string;
+		try {
+			const parsed = new URL(server.url);
+			parsed.username = "";
+			parsed.password = "";
+			safeUrl = parsed.toString();
+		} catch {
+			return null;
+		}
 		const t = (server.type ?? server.transport ?? "").toLowerCase();
 		return {
 			registry: "url",
-			id: server.url,
+			id: safeUrl,
 			transport: t === "sse" ? "sse" : "http",
 		};
 	}
@@ -218,6 +227,10 @@ interface ContinueYaml {
 interface CodexToml {
 	mcp_servers?: Record<string, McpServerConfig>;
 }
+interface GrokToml {
+	mcp_servers?: Record<string, McpServerConfig & { enabled?: boolean }>;
+	disabled_mcp_servers?: string[];
+}
 
 /** Normalize Continue's list form to the common name→config map. */
 function continueListToMap(file: ContinueYaml | null): ServerMap {
@@ -264,6 +277,25 @@ export function detectMcpServers(
 			out.push(resource);
 		}
 	};
+	const grokHome = process.env.GROK_HOME ?? join(home, ".grok");
+	const grokGlobal = readToml<GrokToml>(join(grokHome, "config.toml"));
+	const grokProject = readToml<GrokToml>(join(cwd, ".grok", "config.toml"));
+	const disabled = new Set([
+		...(grokGlobal?.disabled_mcp_servers ?? []),
+		...(grokProject?.disabled_mcp_servers ?? []),
+	]);
+	const effectiveGrok = {
+		...(grokGlobal?.mcp_servers ?? {}),
+		...(grokProject?.mcp_servers ?? {}),
+	};
+	add(
+		Object.fromEntries(
+			Object.entries(effectiveGrok).filter(
+				([name, config]) => config.enabled !== false && !disabled.has(name),
+			),
+		),
+		"grok-build",
+	);
 
 	// Project configs first (so they win dedup over global).
 	add(readJson<McpFile>(join(cwd, ".mcp.json"))?.mcpServers, "claude-code");

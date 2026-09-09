@@ -683,7 +683,10 @@ export function createHarnessWorkflowReducer(
 			);
 			const unknown =
 				attributed === 0 ? 0 : windowPhaseSec.unknown / attributed;
-			const routesModels = harness === "claude-code" || harness === "opencode";
+			const routesModels =
+				harness === "claude-code" ||
+				harness === "opencode" ||
+				harness === "grok-build";
 
 			const asRows = (map: Map<string, number>) => {
 				const safe = new Map<string, number>();

@@ -2,7 +2,10 @@ import { describe, expect, test } from "vitest";
 import { countsTotal, finalize } from "../shared/aggregate.js";
 import {
 	createAggregate,
+	createGrokEventState,
 	ingestContribution,
+	ingestEvent,
+	ingestUpdate,
 	sidecarContributions,
 	terminalContribution,
 } from "./analyzer.js";
@@ -22,6 +25,115 @@ const usage = (over: Record<string, unknown> = {}) => ({
 			...over,
 		},
 	],
+});
+
+describe("Grok Build workflow projection", () => {
+	test("joins durable tool completions once and omits unfinished tools", () => {
+		const aggregate = createAggregate();
+		const state = createGrokEventState();
+		const call = (id: string, name: string) => ({
+			timestamp: 1_767_306_617,
+			params: {
+				sessionId: "session",
+				update: {
+					sessionUpdate: "tool_call",
+					toolCallId: id,
+					_meta: { "x.ai/tool": { name } },
+				},
+			},
+		});
+		ingestUpdate(aggregate, state, call("done", "web_search"), "/secret");
+		ingestUpdate(aggregate, state, call("open", "write_file"), "/secret");
+		const completion = {
+			type: "tool_completed",
+			tool_call_id: "done",
+			tool_name: "web_search",
+			ts: "2026-01-01T00:00:18Z",
+		};
+		ingestEvent(aggregate, state, completion, "session", "/secret");
+		ingestEvent(aggregate, state, completion, "session", "/secret");
+
+		expect(aggregate.toolCalls).toEqual(new Map([["web_search", 1]]));
+		expect(aggregate.webSearchRequests).toBe(1);
+		const workflow = aggregate.workflow.finish();
+		expect(workflow.days[0]?.webSearches).toBe(1);
+		expect(JSON.stringify(workflow)).not.toContain("secret");
+	});
+
+	test("attributes Grok use_tool calls to the configured MCP namespace", () => {
+		const aggregate = createAggregate();
+		const state = createGrokEventState();
+		ingestUpdate(
+			aggregate,
+			state,
+			{
+				timestamp: 1_767_306_617,
+				params: {
+					sessionId: "session",
+					update: {
+						sessionUpdate: "tool_call",
+						toolCallId: "mcp",
+						input: { name: "github__create_issue" },
+						_meta: { "x.ai/tool": { name: "use_tool" } },
+					},
+				},
+			},
+			"/project",
+		);
+		ingestUpdate(
+			aggregate,
+			state,
+			{
+				timestamp: 1_767_306_618,
+				params: {
+					sessionId: "session",
+					update: {
+						sessionUpdate: "tool_call_update",
+						toolCallId: "mcp",
+						status: "completed",
+					},
+				},
+			},
+			"/project",
+		);
+		expect(aggregate.mcpServerCalls).toEqual(new Map([["github", 1]]));
+		expect(aggregate.mcpToolCalls).toEqual(
+			new Map([["github__create_issue", 1]]),
+		);
+	});
+
+	test("projects response duration, thinking and routing without context", () => {
+		const aggregate = createAggregate();
+		ingestUpdate(
+			aggregate,
+			createGrokEventState(),
+			{
+				timestamp: 1_767_306_617,
+				params: {
+					sessionId: "session",
+					update: {
+						sessionUpdate: "turn_completed",
+						prompt_id: "prompt",
+						elapsed_ms: 2_000,
+						usage: {
+							modelUsage: {
+								"grok-4.6": {
+									outputTokens: 20,
+									reasoningTokens: 7,
+								},
+							},
+						},
+					},
+				},
+			},
+			"/project",
+		);
+		const day = aggregate.workflow.finish().days[0];
+		expect(day?.thinking).toEqual({ thinkingTokens: 7, responseTokens: 20 });
+		expect(day?.routing?.main).toEqual([{ model: "grok-4.6", tokens: 20 }]);
+		expect(day?.context).toBeUndefined();
+		expect(day?.turnDurations?.buckets).toEqual([{ bucket: 2, turns: 1 }]);
+	});
 });
 
 describe("Grok Build accounting", () => {

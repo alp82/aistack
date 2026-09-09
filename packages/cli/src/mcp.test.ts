@@ -84,7 +84,7 @@ describe("parseMcpPackage", () => {
 			parseMcpPackage({ type: "http", url: "https://mcp.example.com" }),
 		).toEqual({
 			registry: "url",
-			id: "https://mcp.example.com",
+			id: "https://mcp.example.com/",
 			transport: "http",
 		});
 		expect(parseMcpPackage({ type: "sse", url: "https://x.com/sse" })).toEqual({
@@ -92,6 +92,9 @@ describe("parseMcpPackage", () => {
 			id: "https://x.com/sse",
 			transport: "sse",
 		});
+		expect(
+			parseMcpPackage({ url: "https://user:secret@mcp.example.com/api" })?.id,
+		).toBe("https://mcp.example.com/api");
 	});
 
 	it("returns null for a local script or empty config", () => {
@@ -182,6 +185,16 @@ describe("detectMcpServers (cross-tool)", () => {
 			join(home, ".codex", "config.toml"),
 			'[mcp_servers.time]\ncommand = "uvx"\nargs = ["mcp-server-time"]\n',
 		);
+		mkdirSync(join(home, ".grok"), { recursive: true });
+		mkdirSync(join(cwd, ".grok"), { recursive: true });
+		writeFileSync(
+			join(home, ".grok", "config.toml"),
+			'[mcp_servers.old]\ncommand = "npx"\nargs = ["old-server"]\n[mcp_servers.off]\ncommand = "npx"\nargs = ["secret-server"]\nenabled = false\n',
+		);
+		writeFileSync(
+			join(cwd, ".grok", "config.toml"),
+			'[mcp_servers.old]\ncommand = "npx"\nargs = ["project-server"]\n',
+		);
 	});
 
 	afterAll(() => {
@@ -213,5 +226,11 @@ describe("detectMcpServers (cross-tool)", () => {
 		).toBe("gemini");
 		// Codex TOML (pypi), global.
 		expect(byKey.get("linked:pkg:pypi:mcp-server-time")?.group).toBe("codex");
+		// Grok project config replaces global by name and disabled entries stay out.
+		expect(byKey.get("linked:pkg:npm:project-server")?.group).toBe(
+			"grok-build",
+		);
+		expect(byKey.has("linked:pkg:npm:old-server")).toBe(false);
+		expect(byKey.has("linked:pkg:npm:secret-server")).toBe(false);
 	});
 });
