@@ -147,6 +147,36 @@ describe("Grok Build accounting", () => {
 		expect(models).toEqual({ alias: 12, "grok-4": 120 });
 	});
 
+	test("prices the observed Build id with conserved cache counters", () => {
+		const aggregate = createAggregate();
+		for (const row of sidecarContributions(
+			usage({
+				modelUsage: {
+					"grok-4.6-build": {
+						inputTokens: 1_750_000,
+						cachedReadTokens: 500_000,
+						cacheCreationTokens: 250_000,
+						outputTokens: 1_000_000,
+					},
+				},
+			}),
+			"/project",
+		))
+			ingestContribution(aggregate, row);
+		const model = finalize(aggregate).models[0];
+		expect(model?.modelKey).toBe("grok-4.6-build");
+		expect(model?.tokens).toEqual({
+			input: 1_000_000,
+			output: 1_000_000,
+			cacheWrite5m: 0,
+			cacheWrite1h: 0,
+			cacheWriteUnsplit: 250_000,
+			cacheRead: 500_000,
+		});
+		expect(model?.costUSD).toBe(8.25);
+		expect(model?.unpricedTokens).toBe(0);
+	});
+
 	test("keeps usable per-model data when a redundant turn total is malformed", () => {
 		const rows = sidecarContributions(
 			usage({ inputTokens: "broken" }),

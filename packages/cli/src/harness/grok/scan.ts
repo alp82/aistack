@@ -3,6 +3,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import readline from "node:readline";
+import { parse as parseToml } from "smol-toml";
 import { asObj, asStr, countsTotal } from "../shared/aggregate.js";
 import { emptyScanStats, type ScanStats } from "../shared/window.js";
 import type { Aggregate } from "./analyzer.js";
@@ -88,6 +89,33 @@ async function directories(root: string): Promise<string[] | null> {
 	}
 }
 
+/**
+ * Read only aliases that still use xAI's normal endpoint. Routing overrides
+ * remain under their recorded alias because no vendor rate is established.
+ */
+export async function modelAliasesForRoot(
+	root: string,
+): Promise<ReadonlyMap<string, string>> {
+	if (process.env.GROK_MODELS_BASE_URL) return new Map();
+	try {
+		const parsed = asObj(
+			parseToml(await readFile(path.join(root, "..", "config.toml"), "utf8")),
+		);
+		if (!parsed || asObj(parsed.endpoints)?.models_base_url) return new Map();
+		const models = asObj(parsed.model);
+		const aliases = new Map<string, string>();
+		for (const [alias, raw] of Object.entries(models ?? {})) {
+			const entry = asObj(raw);
+			const model = entry && asStr(entry.model);
+			if (!model || entry?.base_url || entry?.model_provider) continue;
+			aliases.set(alias, model);
+		}
+		return aliases;
+	} catch {
+		return new Map();
+	}
+}
+
 export async function scan(
 	agg: Aggregate,
 	opts: {
@@ -108,6 +136,7 @@ export async function scan(
 	>();
 	let complete = true;
 	for (const root of opts.roots ?? sessionRoots()) {
+		const aliases = await modelAliasesForRoot(root);
 		const dirs = await directories(root);
 		if (dirs === null) {
 			complete = false;
@@ -224,6 +253,13 @@ export async function scan(
 			rows = rows.filter(
 				(row) => opts.sinceMs === undefined || row.tsMs >= opts.sinceMs,
 			);
+			rows = rows.map((row) => ({
+				...row,
+				models: row.models.map(({ model, counts }) => ({
+					model: aliases.get(model) ?? model,
+					counts,
+				})),
+			}));
 			if (rows.length > 0) {
 				const sessionId = rows[0]?.sessionId as string;
 				const held = candidates.get(sessionId);

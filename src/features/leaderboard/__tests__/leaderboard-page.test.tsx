@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { trendOf, trendWords } from "../board";
+import { harnessLabel, trendOf, trendWords } from "../board";
 import { LeaderboardPage } from "../LeaderboardPage";
 import { board, NOW, row } from "./fixture";
 
@@ -20,6 +20,9 @@ function setup(b = board()) {
 }
 
 describe("the trend", () => {
+	it("names Grok Build", () => {
+		expect(harnessLabel("grok-build")).toBe("Grok Build");
+	});
 	it("is null below two readings - one dot is not a trend", () => {
 		expect(trendOf([{ at: 1, tokens: 100 }])).toBeNull();
 		expect(trendOf([])).toBeNull();

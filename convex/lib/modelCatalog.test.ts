@@ -86,6 +86,19 @@ describe('catalogFrom: the single read seam (ADR-0012 decision 13)', () => {
     expect(c.priceRows[0].vendor).toBe('google')
   })
 
+  it('normalizes xAI and keeps the Grok Build catalog identity distinct', () => {
+    const c = catalogFrom(
+      [
+        model('grok-4.6', { provider: 'xAI' }),
+        model('grok-4.6-build', { provider: 'xAI' }),
+      ],
+      [price('grok-4.6', { input: 2, output: 6, cacheRead: 0.5 })]
+    )
+    expect(c.priceAt('grok-4.6-build', 'xai', T1)?.input).toBe(2)
+    expect(c.priceRows[0].vendor).toBe('xai')
+    expect(resolveModelId(c, 'grok-4.6-build').catalogSlug).toBe('grok-4.6-build')
+  })
+
   it('serves the rows in the wire shape with a content-derived id', () => {
     const a = catalogFrom([], [price('m'), price('n')])
     const b = catalogFrom([], [price('n'), price('m')])

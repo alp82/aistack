@@ -21,6 +21,7 @@ import {
 	splitModelKey,
 	type TokenCounts,
 	vendorModelId,
+	XAI_PRICING_TABLE_VERSION,
 } from "./index.js";
 
 const noTokens: TokenCounts = {
@@ -285,6 +286,7 @@ describe("pricingTableFor - the citation rides on the rate (#93)", () => {
 	it("cites each vendor's own table", () => {
 		expect(pricingTableFor("claude-opus-5")).toBe(PRICING_TABLE_VERSION);
 		expect(pricingTableFor("gpt-5.6-sol")).toBe(OPENAI_PRICING_TABLE_VERSION);
+		expect(pricingTableFor("grok-4.6-build")).toBe(XAI_PRICING_TABLE_VERSION);
 	});
 
 	it("cites nothing for a model it cannot price", () => {

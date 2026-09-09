@@ -131,6 +131,58 @@ describe("Pricer", () => {
 		expect(p.priceAt("google:gemini-x", T1)?.input).toBe(1);
 	});
 
+	it("uses the explicit Grok Build alias only after exact rates", () => {
+		const p = new Pricer([
+			new PriceIndex({
+				id: "xai",
+				rows: [
+					row({
+						modelSlug: "grok-4.6",
+						from: T1,
+						input: 2,
+						output: 6,
+						cacheRead: 0.5,
+						cacheWrite5m: 0,
+						cacheWrite1h: 0,
+						source: "models.dev@2026-08-29",
+						vendor: "xai",
+					}),
+				],
+			}),
+		]);
+		expect(p.priceAt("grok-4.6-build", T1)).toMatchObject({
+			input: 2,
+			cacheRead: 0.5,
+			source: "models.dev@2026-08-29",
+		});
+		expect(p.priceAt("xai:grok-4.6-build", T1)?.output).toBe(6);
+		expect(p.priceAt("gateway:grok-4.6-build", T1)).toBeNull();
+		expect(p.priceAt("grok-4.6-build", T1 - 1)).toBeNull();
+	});
+
+	it("prefers an exact zero Grok Build rate without calling it local", () => {
+		const p = new Pricer([
+			new PriceIndex({
+				id: "xai",
+				rows: [
+					row({ modelSlug: "grok-4.6", vendor: "xai" }),
+					row({
+						modelSlug: "grok-4.6-build",
+						input: 0,
+						output: 0,
+						cacheRead: 0,
+						cacheWrite5m: 0,
+						cacheWrite1h: 0,
+						vendor: "xai",
+					}),
+				],
+			}),
+		]);
+		expect(p.priceAt("xai:grok-4.6-build", T1)?.input).toBe(0);
+		expect(p.isPriced("grok-4.6-build")).toBe(true);
+		expect(p.isLocal("grok-4.6-build")).toBe(false);
+	});
+
 	it("prices a local provider free and cites the no-charge table", () => {
 		const p = new Pricer([new PriceIndex(table)]);
 		expect(p.priceAt("ollama:anything", T1)).toMatchObject({
@@ -255,5 +307,13 @@ describe("parsePriceTable", () => {
 			rows: [{ ...row({ provider: "gw", vendor: "google" }), extra: 1 }],
 		});
 		expect(t?.rows[0]).toEqual(row({ provider: "gw", vendor: "google" }));
+	});
+
+	it("round trips xAI vendor metadata", () => {
+		const t = parsePriceTable({
+			id: "xai",
+			rows: [row({ modelSlug: "grok-4.6", vendor: "xai" })],
+		});
+		expect(t?.rows[0]?.vendor).toBe("xai");
 	});
 });

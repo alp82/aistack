@@ -44,6 +44,40 @@ describe("Grok Build scanner", () => {
 		expect(aggregate.parseErrors).toBe(1);
 	});
 
+	test("resolves configured xAI aliases and keeps routed aliases unpriced", async () => {
+		const home = await mkdtemp(path.join(tmpdir(), "grok-home-"));
+		const root = path.join(home, "sessions");
+		for (const [workspace, model] of [
+			["native", "my-grok"],
+			["gateway", "my-gateway"],
+		] as const) {
+			const session = path.join(root, workspace, "session");
+			await mkdir(session, { recursive: true });
+			await writeFile(
+				path.join(session, "usage.json"),
+				JSON.stringify({
+					sessionId: workspace,
+					turns: [
+						{
+							endedAt: "2026-09-08T00:00:00Z",
+							primaryModelId: model,
+							inputTokens: 4,
+							outputTokens: 1,
+						},
+					],
+				}),
+			);
+		}
+		await writeFile(
+			path.join(home, "config.toml"),
+			'\n[model.my-grok]\nmodel = "grok-4.6"\n\n[model.my-gateway]\nmodel = "grok-4.6"\nbase_url = "https://gateway.example/v1"\n',
+		);
+		const aggregate = createAggregate();
+		await scan(aggregate, { roots: [root], sinceMs: 0 });
+		expect(aggregate.byModel.get("grok-4.6")?.input).toBe(4);
+		expect(aggregate.byModel.get("my-gateway")?.input).toBe(4);
+	});
+
 	test("keeps child workflow without double-counting child usage", async () => {
 		const root = await mkdtemp(path.join(tmpdir(), "grok-scan-"));
 		const child = path.join(root, "workspace", "child");

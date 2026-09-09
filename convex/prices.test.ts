@@ -54,4 +54,32 @@ describe('GET /api/prices (#336)', () => {
     const body = await (await t.fetch('/api/prices')).json()
     expect(body.rows).toEqual([])
   })
+
+  it('serves xAI vendor metadata in the shared wire shape', async () => {
+    const t = convexTest(schema, modules)
+    await t.run(async (ctx) => {
+      await ctx.db.insert('models', {
+        name: 'Grok 4.6',
+        slug: 'grok-4.6',
+        shortId: 'grok46',
+        provider: 'xAI',
+        category: 'coding',
+        reviewStatus: 'approved',
+        createdAt: 1,
+        updatedAt: 1,
+      })
+      await ctx.db.insert('modelPrices', {
+        modelSlug: 'grok-4.6',
+        from: 1,
+        input: 2,
+        output: 6,
+        cacheRead: 0.5,
+        source: 'models.dev@2026-08-29',
+        createdAt: 1,
+      })
+    })
+    const body = await (await t.fetch('/api/prices')).json()
+    expect(body.rows[0]?.vendor).toBe('xai')
+    expect(parsePriceTable(body)?.rows[0]?.vendor).toBe('xai')
+  })
 })

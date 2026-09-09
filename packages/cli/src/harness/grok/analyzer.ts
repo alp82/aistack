@@ -57,8 +57,9 @@ export const createGrokEventState = (
 	...(parentSession ? { parentSession } : {}),
 });
 
-const bump = (map: Map<string, number>, key: string): void =>
+const bump = (map: Map<string, number>, key: string): void => {
 	map.set(key, (map.get(key) ?? 0) + 1);
+};
 
 const toolMetadata = (update: Record<string, unknown>) => {
 	const meta = asObj(update._meta);

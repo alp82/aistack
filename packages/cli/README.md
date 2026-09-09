@@ -1,6 +1,6 @@
 # @use-aistack/cli
 
-Measure and share your AI stack. The CLI scans your local Claude Code transcripts, shows you exactly what would go up, and publishes only after you approve in your terminal.
+Measure and share your AI stack. The CLI scans local history from Claude Code, Codex, Grok Build, opencode and Pi, shows you exactly what would go up, and publishes only after you approve in your terminal.
 
 Run on-demand with `npx` - no install required:
 

@@ -57,6 +57,7 @@ describe("a sync row", () => {
 
 	it("names harnesses in words and keeps an unknown one as it came", () => {
 		expect(harnessList(["claude-code"])).toBe("Claude Code");
+		expect(harnessList(["grok-build"])).toBe("Grok Build");
 		expect(harnessList(["claude-code", "codex"])).toBe("Claude Code + Codex");
 		expect(harnessList(["cursor"])).toBe("cursor");
 	});

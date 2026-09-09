@@ -46,6 +46,7 @@ export function trendWords(
 const HARNESS_LABELS: Record<string, string> = {
 	"claude-code": "Claude Code",
 	codex: "Codex",
+	"grok-build": "Grok Build",
 	// Lowercase brands: the wire name is the label, but each is an explicit
 	// row so a rename cannot silently leak a raw slug (#130).
 	opencode: "opencode",

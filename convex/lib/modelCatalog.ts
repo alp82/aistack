@@ -42,6 +42,7 @@ export function vendorOfProvider(provider: string | undefined): Vendor | null {
   if (p === 'anthropic') return 'anthropic'
   if (p === 'openai') return 'openai'
   if (p === 'google' || p === 'google deepmind') return 'google'
+  if (p === 'xai') return 'xai'
   return null
 }
 

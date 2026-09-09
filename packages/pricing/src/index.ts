@@ -73,14 +73,16 @@
 export const PRICING_TABLE_VERSION = "anthropic-list-2026-07-25";
 export const OPENAI_PRICING_TABLE_VERSION = "openai-list-2026-08-02";
 export const GOOGLE_PRICING_TABLE_VERSION = "google-list-2026-08-09";
+export const XAI_PRICING_TABLE_VERSION = "models.dev@2026-08-29";
 /**
  * The id the CLI prints when it priced against the bundled constants rather
  * than a table the server served (#336). Bump it when a constant changes.
  */
-export const BUNDLED_PRICE_TABLE_ID = "bundled-2026-08-29";
+export const BUNDLED_PRICE_TABLE_ID = "bundled-2026-09-10";
 
 export {
 	LOCAL_PRICING_TABLE_VERSION,
+	PRICING_ALIASES,
 	PROVIDER_SEPARATOR,
 	PriceIndex,
 	type PricePeriod,
@@ -151,6 +153,12 @@ const GOOGLE_CACHE_MULTIPLIERS: CacheMultipliers = {
 	read: 0.1,
 };
 
+const XAI_CACHE_MULTIPLIERS: CacheMultipliers = {
+	write5m: 0,
+	write1h: 0,
+	read: 0.25,
+};
+
 /** A bundled rate, before it is rendered into dated rows. */
 type BundledPeriod = {
 	from: number | null;
@@ -183,6 +191,12 @@ const google = (periods: BundledPeriod[]): PriceEntry => ({
 	table: GOOGLE_PRICING_TABLE_VERSION,
 	periods,
 	cache: GOOGLE_CACHE_MULTIPLIERS,
+});
+const xai = (periods: BundledPeriod[]): PriceEntry => ({
+	vendor: "xai",
+	table: XAI_PRICING_TABLE_VERSION,
+	periods,
+	cache: XAI_CACHE_MULTIPLIERS,
 });
 const flat = (input: number, output: number): BundledPeriod[] => [
 	{ from: null, input, output },
@@ -258,6 +272,9 @@ const PRICES: Record<string, PriceEntry> = {
 	// A real Anthropic model with no row until #123. Measured in #122 as
 	// `claude-opus-4-5-20251101`, which the dated-suffix rule strips to this key.
 	"claude-opus-4-5": anthropic(flat(5, 25)),
+	// models.dev's xAI row mirrored into the live table on 2026-08-29. Grok
+	// Build's explicit `grok-4.6-build` pricing alias reaches this base rate.
+	"grok-4.6": xai(flat(2, 6)),
 };
 
 /**

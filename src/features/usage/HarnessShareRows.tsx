@@ -10,6 +10,7 @@ export const SOURCE_PAINTS = [
 export const HARNESS_LABELS: Record<string, string> = {
 	"claude-code": "Claude Code",
 	codex: "Codex",
+	"grok-build": "Grok Build",
 	opencode: "opencode",
 	"pi-mono": "Pi",
 };
