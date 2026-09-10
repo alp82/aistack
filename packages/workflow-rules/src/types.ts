@@ -9,6 +9,7 @@
 export type HarnessName =
 	| "claude-code"
 	| "codex"
+	| "cursor"
 	| "grok-build"
 	| "opencode"
 	| "pi-mono";
@@ -16,6 +17,7 @@ export type HarnessName =
 export const HARNESS_NAMES: readonly HarnessName[] = [
 	"claude-code",
 	"codex",
+	"cursor",
 	"grok-build",
 	"opencode",
 	"pi-mono",
@@ -31,6 +33,8 @@ export function harnessLabel(name: HarnessName): string {
 	switch (name) {
 		case "claude-code":
 			return "Claude Code";
+		case "cursor":
+			return "Cursor";
 		case "codex":
 			return "Codex";
 		case "grok-build":

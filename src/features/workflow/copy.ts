@@ -153,6 +153,7 @@ export function fmtRowValue(row: Pick<WorkflowRow, "unit" | "value">): string {
 export const HARNESS_LABELS: Record<string, string> = {
 	"claude-code": "Claude Code",
 	codex: "Codex",
+	cursor: "Cursor",
 	"grok-build": "Grok Build",
 	opencode: "opencode",
 	"pi-mono": "Pi",

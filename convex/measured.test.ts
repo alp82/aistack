@@ -2507,3 +2507,32 @@ describe('getUsageByStackSlug publishes the inventory and the machines', () => {
     ).toMatchObject({ hasDays: false, inventory: [] })
   })
 })
+
+
+describe('Cursor statistics integration', () => {
+  test('publishes inventory, machine-filtered usage, history and cost consent through existing queries', async () => {
+    const t = convexTest(schema, modules)
+    const { stackId, shortId } = await seedStack(t, { publishCost: true })
+    const slug = `my-stack-${shortId}`
+    for (const [machine, input] of [['desktop', 1000], ['laptop', 2000]] as const) {
+      await t.mutation(internal.measured.publishSnapshot, {
+        stackId, machine,
+        payload: payload({ harness: { name: 'cursor', version: null } }),
+        measuredDays: usageWire(today(), { harness: 'cursor', input, usd: input / 1000000 }),
+      })
+    }
+    const usage = await t.query(api.measured.getUsageByStackSlug, { slug })
+    expect(usage?.inventory.map(h => h.harness)).toEqual(['cursor', 'cursor'])
+    expect(usage?.machines).toHaveLength(2)
+    expect(usage?.current?.totalTokens).toBe(3000)
+    expect(usage?.current?.cost).not.toBeNull()
+    expect(usage?.series).toMatchObject([{ date: today(), tokens: 3000 }])
+    const laptop = await t.query(api.measured.getUsageByStackSlug, { slug, machineOrdinal: 2 })
+    expect(laptop?.current?.totalTokens).toBe(2000)
+    await t.run(ctx => ctx.db.patch(stackId, { publishCost: false, publishWorkflow: false }))
+    const privateCost = await t.query(api.measured.getUsageByStackSlug, { slug })
+    expect(privateCost?.current?.cost).toBeNull()
+    expect(privateCost?.current?.totalTokens).toBe(3000)
+    expect(await t.query(api.workflow.getWorkflowByStackSlug, { slug })).toBeNull()
+  })
+})

@@ -352,7 +352,7 @@ describe("beat one - the summary", () => {
 		const lines = summary.split("\n");
 		const toIdx = lines.findIndex((l) => l.startsWith("to        "));
 		expect(lines[toIdx + 1]).toBe(
-			"searched  claude code, codex, grok build, opencode, pi",
+			"searched  claude code, codex, grok build, cursor, opencode, pi",
 		);
 	});
 

@@ -25,6 +25,7 @@ import {
 } from "../config.js";
 import { CLAUDE_HARNESS_NAME } from "../harness/claude/adapter.js";
 import { CODEX_HARNESS_NAME } from "../harness/codex/adapter.js";
+import { CURSOR_HARNESS_NAME } from "../harness/cursor/adapter.js";
 import { GROK_HARNESS_NAME } from "../harness/grok/adapter.js";
 import {
 	type AutoSyncPermission,
@@ -41,6 +42,11 @@ import {
 	installCodexAutoSyncHook,
 	removeCodexAutoSyncHook,
 } from "./codexHook.js";
+import {
+	cursorAutoSyncHookInstalled,
+	installCursorAutoSyncHook,
+	removeCursorAutoSyncHook,
+} from "./cursorHook.js";
 import {
 	grokAutoSyncHookInstalled,
 	installGrokAutoSyncHook,
@@ -59,6 +65,9 @@ export interface EnableDeps {
 	removeHook?: () => HookResult;
 	installCodexHook?: () => HookResult;
 	removeCodexHook?: () => HookResult;
+	installCursorHook?: () => HookResult;
+	removeCursorHook?: () => HookResult;
+	cursorHookInstalledImpl?: () => boolean;
 	installGrokHook?: () => HookResult;
 	removeGrokHook?: () => HookResult;
 	/** Is the Claude Code trigger already on this machine? */
@@ -141,6 +150,11 @@ export async function enableAutoSync(
 		if (!grokResult.ok) return grokResult;
 	}
 
+	if (names.has(CURSOR_HARNESS_NAME)) {
+		const result = (deps.installCursorHook ?? installCursorAutoSyncHook)();
+		if (!result.ok) return result;
+	}
+
 	saveSettings(
 		{
 			autoSyncAnswered: true,
@@ -151,7 +165,7 @@ export async function enableAutoSync(
 	return {
 		ok: true,
 		message: [
-			`Auto-sync is on. It runs about every ${frequencyHours}h when a ${harnessListLabel(detected)} session starts. Turn it off any time: npx @use-aistack/cli sync --auto off`,
+			`Auto-sync is on. It runs about every ${frequencyHours}h when a ${harnessListLabel(detected)} ${names.has(CURSOR_HARNESS_NAME) ? "session is active" : "session starts"}. Turn it off any time: npx @use-aistack/cli sync --auto off`,
 			...(trustLine ? [trustLine] : []),
 		].join("\n"),
 	};
@@ -190,7 +204,8 @@ export async function disableAutoSync(
 	const result = (deps.removeHook ?? removeAutoSyncHook)();
 	const codexResult = (deps.removeCodexHook ?? removeCodexAutoSyncHook)();
 	const grokResult = (deps.removeGrokHook ?? removeGrokAutoSyncHook)();
-	const failures = [result, codexResult, grokResult]
+	const cursorResult = (deps.removeCursorHook ?? removeCursorAutoSyncHook)();
+	const failures = [result, codexResult, grokResult, cursorResult]
 		.filter((r) => !r.ok)
 		.map((r) => r.message);
 
@@ -259,6 +274,7 @@ export async function reconcileAutoSync(
 			(deps.removeHook ?? removeAutoSyncHook)(),
 			(deps.removeCodexHook ?? removeCodexAutoSyncHook)(),
 			(deps.removeGrokHook ?? removeGrokAutoSyncHook)(),
+			(deps.removeCursorHook ?? removeCursorAutoSyncHook)(),
 		];
 		const failures = results.filter((result) => !result.ok);
 		if (failures.length > 0) {
@@ -310,6 +326,12 @@ export async function reconcileAutoSync(
 		deps.installGrokHook ?? installGrokAutoSyncHook,
 	);
 
+	install(
+		CURSOR_HARNESS_NAME,
+		deps.cursorHookInstalledImpl ?? cursorAutoSyncHookInstalled,
+		deps.installCursorHook ?? installCursorAutoSyncHook,
+	);
+
 	if (failures.length > 0) {
 		return {
 			ok: false,
@@ -335,8 +357,8 @@ export async function reconcileAutoSync(
 		ok: true,
 		message:
 			installed.length > 0
-				? `Auto-sync is on for this stack. Installed the ${installed.join(" and ")} trigger on this machine; it runs about every ${frequencyHours}h when a session starts.`
-				: `Auto-sync is on for this stack. It runs about every ${frequencyHours}h when a ${harnessListLabel(detected)} session starts.`,
+				? `Auto-sync is on for this stack. Installed the ${installed.join(" and ")} trigger on this machine; it runs about every ${frequencyHours}h during session activity.`
+				: `Auto-sync is on for this stack. It runs about every ${frequencyHours}h when a ${harnessListLabel(detected)} ${names.has(CURSOR_HARNESS_NAME) ? "session is active" : "session starts"}.`,
 	};
 }
 
@@ -383,13 +405,14 @@ export async function offerAutoSyncOptIn(
 	const detected = await (deps.detectedImpl ?? detectedAdapters)();
 	if (detected.length === 0) return false;
 
+	const names = new Set(detected.map((adapter) => adapter.name));
 	const answer = await p.select({
 		message: "Keep this stack fresh automatically every 6 hours?",
 		options: [
 			{
 				value: "enable",
 				label: "Enable",
-				hint: `a silent sync at most every 6 hours when a ${harnessListLabel(detected)} session starts`,
+				hint: `a silent sync at most every 6 hours when a ${harnessListLabel(detected)} ${names.has(CURSOR_HARNESS_NAME) ? "session is active" : "session starts"}`,
 			},
 			{
 				value: "later",

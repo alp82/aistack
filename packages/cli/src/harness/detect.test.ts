@@ -29,6 +29,8 @@ const SINCE = detectionSinceMs(NOW);
 
 let dir: string;
 const savedEnv = {
+	CURSOR_DATA_PATH: process.env.CURSOR_DATA_PATH,
+	CURSOR_STORE_ROOT: process.env.CURSOR_STORE_ROOT,
 	CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR,
 	CODEX_HOME: process.env.CODEX_HOME,
 	GROK_HOME: process.env.GROK_HOME,
@@ -42,6 +44,8 @@ beforeEach(() => {
 	dir = mkdtempSync(join(tmpdir(), "aistack-detect-"));
 	// Point every harness at the temp dir so the machine running the tests
 	// never leaks its own installs into `detectedAdapters`.
+	process.env.CURSOR_DATA_PATH = join(dir, "cursor-workspaces");
+	process.env.CURSOR_STORE_ROOT = join(dir, "cursor-store");
 	process.env.XDG_DATA_HOME = join(dir, "xdg-data");
 	process.env.GROK_HOME = join(dir, "grok-home");
 	delete process.env.OPENCODE_DB;

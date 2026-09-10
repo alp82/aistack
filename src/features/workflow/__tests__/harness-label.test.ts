@@ -4,5 +4,6 @@ import { harnessLabelOf } from "../copy";
 describe("workflow harness labels", () => {
 	it("names Grok Build", () => {
 		expect(harnessLabelOf("grok-build")).toBe("Grok Build");
+		expect(harnessLabelOf("cursor")).toBe("Cursor");
 	});
 });

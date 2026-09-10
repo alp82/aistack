@@ -60,7 +60,7 @@ export type AutoSyncDeps = {
 	loadConfigImpl?: typeof loadSyncConfig;
 	/** Where the systemMessage JSON goes. Defaults to stdout. */
 	emit?: (line: string) => void;
-	/** Grok hooks keep stdout empty, including failure escalation. */
+	/** Cursor and Grok hooks keep stdout empty, including failure escalation. */
 	suppressOutput?: boolean;
 	reservationFile?: string;
 };
@@ -242,7 +242,8 @@ export async function runAutoSync(deps: AutoSyncDeps): Promise<void> {
 	if (
 		shouldWarn &&
 		deps.suppressOutput !== true &&
-		process.env.AISTACK_HOOK_SOURCE !== "grok"
+		process.env.AISTACK_HOOK_SOURCE !== "grok" &&
+		process.env.AISTACK_HOOK_SOURCE !== "cursor"
 	) {
 		emit(
 			JSON.stringify({

@@ -459,3 +459,29 @@ describe("appendLogLine", () => {
 		expect(lines[lines.length - 1]).toBe(`line ${SYNC_LOG_MAX_LINES + 49}`);
 	});
 });
+
+test("Cursor failures remain silent and repeated stop events share the attempt throttle", async () => {
+	vi.stubEnv("AISTACK_HOOK_SOURCE", "cursor");
+	try {
+		saveSettings(
+			{
+				autoSync: { enabled: true, frequencyHours: 6 },
+				autoSyncState: { consecutiveFailures: 2 },
+			},
+			settingsFile,
+		);
+		const stageImpl = vi.fn(async () => {
+			throw new Error("offline");
+		});
+		const options = deps({ stageImpl });
+		await runAutoSync(options);
+		await runAutoSync(options);
+		expect(stageImpl).toHaveBeenCalledOnce();
+		expect(options.emit).not.toHaveBeenCalled();
+		expect(getSettings(settingsFile).autoSyncState?.consecutiveFailures).toBe(
+			3,
+		);
+	} finally {
+		vi.unstubAllEnvs();
+	}
+});
