@@ -1,0 +1,2 @@
+{"role": "user", "message": {"content": [{"type": "text", "text": "Read the example file."}]}}
+{"role": "assistant", "message": {"content": [{"type": "tool_use", "id": "synthetic-tool-1", "name": "read_file", "input": {"target_file": "/synthetic/project/example.ts"}}]}}

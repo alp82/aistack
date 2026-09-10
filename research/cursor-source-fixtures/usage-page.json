@@ -1,0 +1,47 @@
+{
+  "totalUsageEventsCount": 4,
+  "usageEventsDisplay": [
+    {
+      "timestamp": "1788998401000",
+      "conversationId": "11111111-1111-4111-8111-111111111111",
+      "model": "claude-sonnet-4-6",
+      "kind": "USAGE_EVENT_KIND_INCLUDED",
+      "chargedCents": 0,
+      "tokenUsage": {
+        "inputTokens": 100,
+        "outputTokens": 20,
+        "cacheReadTokens": 300,
+        "cacheWriteTokens": 40,
+        "totalCents": 0.25
+      }
+    },
+    {
+      "timestamp": "1788998401000",
+      "conversationId": "11111111-1111-4111-8111-111111111111",
+      "model": "claude-sonnet-4-6",
+      "kind": "USAGE_EVENT_KIND_INCLUDED",
+      "chargedCents": 0,
+      "tokenUsage": {
+        "inputTokens": 80,
+        "outputTokens": 10,
+        "cacheReadTokens": 0
+      }
+    },
+    {
+      "timestamp": "1788998401000",
+      "conversationId": "22222222-2222-4222-8222-222222222222",
+      "model": "claude-sonnet-4-6",
+      "kind": "USAGE_EVENT_KIND_INCLUDED",
+      "chargedCents": 0,
+      "cloudAgentId": "synthetic-cloud",
+      "tokenUsage": {
+        "inputTokens": 15,
+        "outputTokens": 5
+      }
+    },
+    {
+      "timestamp": "1788998402000",
+      "model": "auto"
+    }
+  ]
+}
