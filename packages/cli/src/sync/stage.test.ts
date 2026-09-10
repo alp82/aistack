@@ -425,3 +425,38 @@ describe("stageSync", () => {
 		expect(none.prices?.origin).toBe("bundled");
 	});
 });
+
+test("Cursor corrections rebuild a former date and incomplete reads withhold the machine day block", async () => {
+	let complete = true;
+	const adapter: HarnessAdapter = {
+		...FAKE_CLAUDE_ADAPTER,
+		name: "cursor",
+		async scan(options) {
+			return {
+				...(await FAKE_CLAUDE_ADAPTER.scan(options)),
+				scanComplete: complete,
+				sessionDates: new Map([
+					["synthetic-cursor-session", new Set(["2026-07-19", "2026-07-20"])],
+				]),
+			};
+		},
+	};
+	const input = deps({
+		baseUrl: "https://cursor-date-test.invalid",
+		adaptersImpl: async () => [adapter],
+		config: {
+			config: { ...FETCHED, publishWorkflow: false },
+			source: "fetched",
+		},
+	});
+	const staged = await stageSync(input);
+	expect(staged.body.measuredDays?.days.map((day) => day.date)).toContain(
+		"2026-07-19",
+	);
+	expect(
+		staged.body.measuredDays?.days.find((day) => day.date === "2026-07-19")
+			?.usage,
+	).toBeUndefined();
+	complete = false;
+	expect((await stageSync(input)).body.measuredDays).toBeUndefined();
+});

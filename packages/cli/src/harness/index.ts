@@ -23,6 +23,7 @@
 
 import { CLAUDE_HARNESS_NAME, claudeAdapter } from "./claude/adapter.js";
 import { CODEX_HARNESS_NAME, codexAdapter } from "./codex/adapter.js";
+import { CURSOR_HARNESS_NAME, cursorAdapter } from "./cursor/adapter.js";
 import { GROK_HARNESS_NAME, grokAdapter } from "./grok/adapter.js";
 import { OPENCODE_HARNESS_NAME, opencodeAdapter } from "./opencode/adapter.js";
 import { PI_HARNESS_NAME, piAdapter } from "./pi/adapter.js";
@@ -62,6 +63,7 @@ export {
 } from "./claude/analyzer.js";
 export { type ScanOptions, scan, transcriptRoots } from "./claude/scan.js";
 export { CODEX_HARNESS_NAME, codexAdapter } from "./codex/adapter.js";
+export { CURSOR_HARNESS_NAME, cursorAdapter } from "./cursor/adapter.js";
 export { GROK_HARNESS_NAME, grokAdapter } from "./grok/adapter.js";
 export {
 	OPENCODE_BUILTIN_TOOLS,
@@ -140,6 +142,7 @@ export const HARNESS_ADAPTERS: readonly HarnessAdapter[] = [
 	claudeAdapter,
 	codexAdapter,
 	grokAdapter,
+	cursorAdapter,
 	opencodeAdapter,
 	piAdapter,
 ];
@@ -148,6 +151,7 @@ export const HARNESS_ADAPTERS: readonly HarnessAdapter[] = [
 export function harnessLabel(name: string): string {
 	if (name === CLAUDE_HARNESS_NAME) return "Claude Code";
 	if (name === CODEX_HARNESS_NAME) return "Codex";
+	if (name === CURSOR_HARNESS_NAME) return "Cursor";
 	if (name === GROK_HARNESS_NAME) return "Grok Build";
 	// opencode spells itself lowercase, so its discriminator IS the label -
 	// but it is an explicit row, so a rename cannot leak a raw slug.

@@ -243,7 +243,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	const active = await adapters(sinceMs);
 	const historical = await adapters(daysSinceMs);
 	let dayScansComplete = true;
-	let grokCurrentDates: Map<string, Set<string>> | null = null;
+	const sessionDatesByHarness = new Map<string, Map<string, Set<string>>>();
 	for (const adapter of active) {
 		progress(`Scanning recent ${adapter.name} usage`);
 		const { aggregate, stats } = await adapter.scan({
@@ -274,8 +274,8 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 					progress(`Reading historical ${adapter.name} days · ${files} files`),
 			});
 		if (scanComplete === false) dayScansComplete = false;
-		if (adapter.name === "grok-build")
-			grokCurrentDates = sessionDates ?? new Map();
+		if (adapter.name === "grok-build" || adapter.name === "cursor")
+			sessionDatesByHarness.set(adapter.name, sessionDates ?? new Map());
 		workflowScans.push({ aggregate: workflow, local: workflowLocal });
 		usageScans.push(
 			buildUsageDays({
@@ -322,19 +322,29 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 	// against the manifest. Today always resends.
 	const correctionDates = new Set<string>();
 	let acknowledgePublish: (() => void) | undefined;
-	if (grokCurrentDates && token && config.stack) {
-		const scope = grokCacheScope(deps.baseUrl, config.stack.slug, token);
+	const acknowledgements: Array<() => void> = [];
+	for (const [harness, currentDates] of sessionDatesByHarness) {
+		if (!token || !config.stack) continue;
+		const scope = grokCacheScope(
+			harness === "grok-build" ? deps.baseUrl : `${deps.baseUrl}\0${harness}`,
+			config.stack.slug,
+			token,
+		);
 		const floor = utcDate(daysSinceMs);
 		const previous = loadGrokDateHints(scope);
-		const current = mapToHints(grokCurrentDates, floor);
+		const current = mapToHints(currentDates, floor);
 		for (const dates of Object.values(previous))
 			for (const date of dates) correctionDates.add(date);
 		for (const dates of Object.values(current))
 			for (const date of dates) correctionDates.add(date);
 		if (Object.keys(previous).some((id) => !(id in current)))
 			dayScansComplete = false;
-		acknowledgePublish = () => saveGrokDateHints(scope, current);
+		acknowledgements.push(() => saveGrokDateHints(scope, current));
 	}
+	if (acknowledgements.length)
+		acknowledgePublish = () => {
+			for (const acknowledge of acknowledgements) acknowledge();
+		};
 	const localDays: MeasuredDay[] = applyDayConsent(
 		buildMeasuredDays({
 			usage: mergeUsageDays(usageScans),
