@@ -79,6 +79,7 @@ function deps(over: Partial<Parameters<typeof runAutoSync>[0]> = {}) {
 		now: () => NOW,
 		settingsFile,
 		logFile,
+		reservationFile: join(dir, "attempt"),
 		emit: vi.fn(),
 		getTokenImpl: () => "tok",
 		// No stack has ever set the flag - the state a local opt-in still seeds.
@@ -246,6 +247,29 @@ describe("the done-bar: a revoke reaches a machine with live hooks", () => {
 });
 
 describe("the freshness gate", () => {
+	test("simultaneous triggers reserve one attempt before async work", async () => {
+		saveSettings(
+			{ autoSync: { enabled: true, frequencyHours: 24 } },
+			settingsFile,
+		);
+		let release: (() => void) | undefined;
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const d = deps({
+			loadConfigImpl: vi.fn(async () => {
+				await held;
+				return serverConfig(null);
+			}),
+		});
+		const first = runAutoSync(d);
+		const second = runAutoSync(d);
+		release?.();
+		await Promise.all([first, second]);
+		expect(d.loadConfigImpl).toHaveBeenCalledOnce();
+		expect(d.publishImpl).toHaveBeenCalledOnce();
+	});
+
 	test("a run inside the frequency window exits with no work and no log line", async () => {
 		saveSettings(
 			{
@@ -363,6 +387,7 @@ describe("a failing run", () => {
 			publishImpl: vi.fn(() => Promise.reject(new Error("HTTP 500"))),
 		});
 		for (let i = 0; i < 3; i++) {
+			rmSync(join(dir, "attempt"), { force: true });
 			saveSettings(
 				{
 					autoSyncState: {
@@ -380,6 +405,25 @@ describe("a failing run", () => {
 		);
 		expect(payload.systemMessage).toContain("3 times");
 		expect(payload.systemMessage).toContain("npx @use-aistack/cli sync");
+	});
+
+	test("Grok-triggered failures never write hook stdout", async () => {
+		saveSettings(
+			{
+				autoSyncState: {
+					consecutiveFailures: 2,
+					lastRunAt: 0,
+				},
+			},
+			settingsFile,
+		);
+		const d = deps({
+			suppressOutput: true,
+			publishImpl: vi.fn(() => Promise.reject(new Error("HTTP 500"))),
+		});
+		await runAutoSync(d);
+		expect(d.emit).not.toHaveBeenCalled();
+		expect(getSettings(settingsFile).autoSyncState?.failureWarned).toBe(true);
 	});
 
 	test("failure 4 does not repeat the warning", async () => {

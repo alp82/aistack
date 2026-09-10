@@ -24,7 +24,7 @@ After a manual sync, the CLI offers auto-sync with three choices: Enable, Maybe 
 
 ### `npx @use-aistack/cli sync --auto on` / `off`
 
-Optional: keep your stack fresh without manual syncs. `on` asks your stack for the permission, then writes a `SessionStart` hook into the harnesses you actually use - `~/.claude/settings.json` for Claude Code, `~/.codex/hooks.json` for Codex. The hook runs a silent sync at most once every 6 hours when a session starts. `off` removes the hooks and takes the permission back.
+Optional: keep your stack fresh without manual syncs. `on` asks your stack for permission, then writes a `SessionStart` hook for the harnesses you actually use: `~/.claude/settings.json` for Claude Code, `~/.codex/hooks.json` for Codex, and `$GROK_HOME/hooks/aistack.json` (default `~/.grok/hooks/aistack.json`) for Grok Build. The hook runs a silent sync at most once every 6 hours when a session starts. Grok Build needs a new session or hook reload after installation. `off` disables local publication first, removes the owned hooks, then takes the remote permission back. If removal fails, the disabled local gate still prevents publication and the next interactive sync can retry reconciliation.
 
 ```sh
 npx @use-aistack/cli sync --auto on            # enable, default every 6h

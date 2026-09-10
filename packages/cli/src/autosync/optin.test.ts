@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { getSettings, saveSettings } from "../config.js";
-import { claudeAdapter, codexAdapter } from "../harness/index.js";
+import { claudeAdapter, codexAdapter, grokAdapter } from "../harness/index.js";
 import {
 	disableAutoSync,
 	type EnableDeps,
@@ -54,6 +54,9 @@ const claudeOnly: Pick<EnableDeps, "detectedImpl"> = {
 const codexOnly: Pick<EnableDeps, "detectedImpl"> = {
 	detectedImpl: async () => [codexAdapter],
 };
+const grokOnly: Pick<EnableDeps, "detectedImpl"> = {
+	detectedImpl: async () => [grokAdapter],
+};
 const bothHarnesses: Pick<EnableDeps, "detectedImpl"> = {
 	detectedImpl: async () => [claudeAdapter, codexAdapter],
 };
@@ -76,6 +79,18 @@ afterEach(() => {
 });
 
 describe("enableAutoSync", () => {
+	test("writes the Grok Build hook only when Grok Build is active", async () => {
+		const installGrokHook = vi.fn(() => ({ ok: true, message: "written" }));
+		const res = await enableAutoSync(6, {
+			settingsFile,
+			...linked,
+			installGrokHook,
+			...grokOnly,
+		});
+		expect(res.ok).toBe(true);
+		expect(installGrokHook).toHaveBeenCalledOnce();
+	});
+
 	test("writes the hook, then persists the flag and the answer", async () => {
 		const installHook = vi.fn(() => ({ ok: true, message: "written" }));
 		const res = await enableAutoSync(24, {
@@ -253,33 +268,39 @@ describe("disableAutoSync", () => {
 		);
 		const removeHook = vi.fn(() => ({ ok: true, message: "removed" }));
 		const removeCodexHook = vi.fn(() => ({ ok: true, message: "removed" }));
+		const removeGrokHook = vi.fn(() => ({ ok: true, message: "removed" }));
 		const res = await disableAutoSync({
 			settingsFile,
 			...linked,
 			removeHook,
 			removeCodexHook,
+			removeGrokHook,
 		});
 		expect(res.ok).toBe(true);
 		expect(removeHook).toHaveBeenCalledOnce();
 		expect(removeCodexHook).toHaveBeenCalledOnce();
+		expect(removeGrokHook).toHaveBeenCalledOnce();
 		const s = getSettings(settingsFile);
 		expect(s.autoSync?.enabled).toBe(false);
 		expect(s.autoSync?.frequencyHours).toBe(6);
 	});
 
 	// #101: a revoke must reach a hook whose harness has since gone quiet.
-	test("removes both hooks even when neither harness is active", async () => {
+	test("removes every owned hook even when no harness is active", async () => {
 		const removeHook = vi.fn(() => ({ ok: true, message: "removed" }));
 		const removeCodexHook = vi.fn(() => ({ ok: true, message: "removed" }));
+		const removeGrokHook = vi.fn(() => ({ ok: true, message: "removed" }));
 		await disableAutoSync({
 			settingsFile,
 			...linked,
 			removeHook,
 			removeCodexHook,
+			removeGrokHook,
 			...nothingActive,
 		});
 		expect(removeHook).toHaveBeenCalledOnce();
 		expect(removeCodexHook).toHaveBeenCalledOnce();
+		expect(removeGrokHook).toHaveBeenCalledOnce();
 	});
 
 	test("flips the flag even when a hook cannot be removed", async () => {
@@ -428,6 +449,40 @@ describe("the server half of enable and revoke", () => {
  * answered on the web, and this is the machine catching up with them.
  */
 describe("reconcileAutoSync", () => {
+	test("an active Grok Build install gets its owned trigger", async () => {
+		const installGrokHook = vi.fn(() => ({ ok: true, message: "" }));
+		const res = await reconcileAutoSync(
+			{ enabled: true, frequencyHours: 6 },
+			{
+				settingsFile,
+				installGrokHook,
+				grokHookInstalledImpl: () => false,
+				...grokOnly,
+			},
+		);
+		expect(installGrokHook).toHaveBeenCalledOnce();
+		expect(res?.message).toContain("Grok Build");
+	});
+
+	test("a Grok hook write failure is retried by later reconciliation", async () => {
+		const installGrokHook = vi
+			.fn()
+			.mockReturnValueOnce({ ok: false, message: "permission denied" })
+			.mockReturnValueOnce({ ok: true, message: "written" });
+		const deps = {
+			settingsFile,
+			installGrokHook,
+			grokHookInstalledImpl: () => false,
+			...grokOnly,
+		};
+		expect(
+			(await reconcileAutoSync({ enabled: true, frequencyHours: 6 }, deps))?.ok,
+		).toBe(false);
+		expect(
+			(await reconcileAutoSync({ enabled: true, frequencyHours: 6 }, deps))?.ok,
+		).toBe(true);
+		expect(installGrokHook).toHaveBeenCalledTimes(2);
+	});
 	test("the stack says on and a hook is missing: it installs one and says so", async () => {
 		const installHook = vi.fn(() => ({ ok: true, message: "" }));
 		const res = await reconcileAutoSync(
@@ -500,20 +555,47 @@ describe("reconcileAutoSync", () => {
 		expect(res?.message).toContain("Codex");
 	});
 
-	test("the stack says off: it touches nothing", async () => {
-		const installHook = vi.fn(() => ({ ok: true, message: "" }));
+	test("the stack says off: it disables locally and removes every trigger", async () => {
+		const removeHook = vi.fn(() => ({ ok: true, message: "" }));
+		const removeCodexHook = vi.fn(() => ({ ok: true, message: "" }));
+		const removeGrokHook = vi.fn(() => ({ ok: true, message: "" }));
 		const res = await reconcileAutoSync(
 			{ enabled: false, frequencyHours: 24 },
 			{
 				settingsFile,
-				installHook,
-				hookInstalledImpl: () => false,
+				removeHook,
+				removeCodexHook,
+				removeGrokHook,
 				...claudeOnly,
 			},
 		);
-		expect(installHook).not.toHaveBeenCalled();
-		expect(res).toBeNull();
-		expect(getSettings(settingsFile).autoSync).toBeUndefined();
+		expect(removeHook).toHaveBeenCalledOnce();
+		expect(removeCodexHook).toHaveBeenCalledOnce();
+		expect(removeGrokHook).toHaveBeenCalledOnce();
+		expect(res?.ok).toBe(true);
+		expect(getSettings(settingsFile).autoSync?.enabled).toBe(false);
+	});
+
+	test("a failed removal is retried on the next interactive reconciliation", async () => {
+		const removeGrokHook = vi
+			.fn()
+			.mockReturnValueOnce({ ok: false, message: "permission denied" })
+			.mockReturnValueOnce({ ok: true, message: "removed" });
+		const deps = {
+			settingsFile,
+			removeHook: () => ({ ok: true, message: "" }),
+			removeCodexHook: () => ({ ok: true, message: "" }),
+			removeGrokHook,
+		};
+		expect(
+			(await reconcileAutoSync({ enabled: false, frequencyHours: 6 }, deps))
+				?.ok,
+		).toBe(false);
+		expect(
+			(await reconcileAutoSync({ enabled: false, frequencyHours: 6 }, deps))
+				?.ok,
+		).toBe(true);
+		expect(removeGrokHook).toHaveBeenCalledTimes(2);
 	});
 
 	test("no stack has decided: it touches nothing, and the ask still owns this", async () => {
@@ -569,7 +651,13 @@ describe("settleAutoSync", () => {
 	test("the stack refused, so the machine is not asked either", async () => {
 		const asked = await settleAutoSync(
 			{ enabled: false, frequencyHours: 24 },
-			{ settingsFile, hookInstalledImpl: () => false, ...claudeOnly },
+			{
+				settingsFile,
+				removeHook: () => ({ ok: true, message: "" }),
+				removeCodexHook: () => ({ ok: true, message: "" }),
+				removeGrokHook: () => ({ ok: true, message: "" }),
+				...claudeOnly,
+			},
 		);
 		expect(asked).toBe(false);
 		expect(selectMock).not.toHaveBeenCalled();

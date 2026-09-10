@@ -21,8 +21,11 @@
 
 import {
 	appendFileSync,
+	closeSync,
 	mkdirSync,
+	openSync,
 	readFileSync,
+	unlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
@@ -30,7 +33,6 @@ import { dirname, join } from "node:path";
 import { syncPublish } from "../api.js";
 import {
 	type AutoSyncState,
-	DEFAULT_FREQUENCY_HOURS,
 	getSettings,
 	getToken,
 	normalizeFrequencyHours,
@@ -58,6 +60,9 @@ export type AutoSyncDeps = {
 	loadConfigImpl?: typeof loadSyncConfig;
 	/** Where the systemMessage JSON goes. Defaults to stdout. */
 	emit?: (line: string) => void;
+	/** Grok hooks keep stdout empty, including failure escalation. */
+	suppressOutput?: boolean;
+	reservationFile?: string;
 };
 
 /** What the next interactive sync says when the stack has taken the permission away. */
@@ -69,6 +74,28 @@ export function appendLogLine(file: string, line: string): void {
 	const lines = readFileSync(file, "utf-8").split("\n").filter(Boolean);
 	if (lines.length > SYNC_LOG_MAX_LINES) {
 		writeFileSync(file, `${lines.slice(-SYNC_LOG_MAX_LINES).join("\n")}\n`);
+	}
+}
+
+function reserveAttempt(file: string, now: number, windowMs: number): boolean {
+	mkdirSync(dirname(file), { recursive: true });
+	for (;;) {
+		try {
+			const fd = openSync(file, "wx");
+			writeFileSync(fd, String(now));
+			closeSync(fd);
+			return true;
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+			const held = Number(readFileSync(file, "utf-8"));
+			if (Number.isFinite(held) && now - held < windowMs) return false;
+			try {
+				unlinkSync(file);
+			} catch (unlinkError) {
+				if ((unlinkError as NodeJS.ErrnoException).code !== "ENOENT")
+					throw unlinkError;
+			}
+		}
 	}
 }
 
@@ -93,9 +120,15 @@ export async function runAutoSync(deps: AutoSyncDeps): Promise<void> {
 	// broken setup then retries once per frequency window, not once per
 	// session start, and still reaches the 3-failure escalation.
 	const frequencyHours = normalizeFrequencyHours(config.frequencyHours);
+	const windowMs = frequencyHours * 3_600_000;
 	const state: AutoSyncState = settings.autoSyncState ?? {};
 	const lastRunAt = state.lastRunAt ?? 0;
-	if (now - lastRunAt < frequencyHours * 3_600_000) return;
+	if (now - lastRunAt < windowMs) return;
+	const reservationFile =
+		deps.reservationFile ??
+		`${settingsFile ?? join(homedir(), ".config", "aistack", "settings.json")}.auto-sync-attempt`;
+	if (!reserveAttempt(reservationFile, now, windowMs)) return;
+	saveSettings({ autoSyncState: { ...state, lastRunAt: now } }, settingsFile);
 
 	const stage = deps.stageImpl ?? stageSync;
 	const publish = deps.publishImpl ?? syncPublish;
@@ -206,7 +239,11 @@ export async function runAutoSync(deps: AutoSyncDeps): Promise<void> {
 
 	// One visible line, once per failure streak. SessionStart hook JSON:
 	// Claude Code shows `systemMessage` to the user when the async hook lands.
-	if (shouldWarn) {
+	if (
+		shouldWarn &&
+		deps.suppressOutput !== true &&
+		process.env.AISTACK_HOOK_SOURCE !== "grok"
+	) {
 		emit(
 			JSON.stringify({
 				systemMessage: `aistack auto-sync failed ${consecutiveFailures} times in a row (${failure}). Run \`${FIX_COMMAND}\` in a terminal to fix it, or \`${FIX_COMMAND} --auto off\` to stop these runs.`,

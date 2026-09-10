@@ -351,7 +351,9 @@ describe("beat one - the summary", () => {
 		const summary = buildGateSummary(ctx({}));
 		const lines = summary.split("\n");
 		const toIdx = lines.findIndex((l) => l.startsWith("to        "));
-		expect(lines[toIdx + 1]).toBe("searched  claude code, codex, opencode, pi");
+		expect(lines[toIdx + 1]).toBe(
+			"searched  claude code, codex, grok build, opencode, pi",
+		);
 	});
 
 	test("the harness header prints even for a single harness (#130)", () => {

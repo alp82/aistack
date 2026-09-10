@@ -25,6 +25,7 @@ import {
 } from "../config.js";
 import { CLAUDE_HARNESS_NAME } from "../harness/claude/adapter.js";
 import { CODEX_HARNESS_NAME } from "../harness/codex/adapter.js";
+import { GROK_HARNESS_NAME } from "../harness/grok/adapter.js";
 import {
 	type AutoSyncPermission,
 	DEFAULT_WINDOW_DAYS,
@@ -41,6 +42,11 @@ import {
 	removeCodexAutoSyncHook,
 } from "./codexHook.js";
 import {
+	grokAutoSyncHookInstalled,
+	installGrokAutoSyncHook,
+	removeGrokAutoSyncHook,
+} from "./grokHook.js";
+import {
 	autoSyncHookInstalled,
 	type HookResult,
 	installAutoSyncHook,
@@ -53,12 +59,15 @@ export interface EnableDeps {
 	removeHook?: () => HookResult;
 	installCodexHook?: () => HookResult;
 	removeCodexHook?: () => HookResult;
+	installGrokHook?: () => HookResult;
+	removeGrokHook?: () => HookResult;
 	/** Is the Claude Code trigger already on this machine? */
 	hookInstalledImpl?: () => boolean;
 	/** Is the Codex trigger already on this machine? */
 	codexHookInstalledImpl?: () => boolean;
 	/** Is the installed Codex trigger's exact definition trusted? */
 	codexHookTrustedImpl?: () => boolean | null;
+	grokHookInstalledImpl?: () => boolean;
 	/** Override the detected harness set. Tests only. */
 	detectedImpl?: () => Promise<HarnessAdapter[]>;
 	getTokenImpl?: () => string | null;
@@ -70,7 +79,7 @@ export const NOT_LINKED =
 	"This machine is not linked to an aistack account, and the auto-sync permission lives on your stack. Run `npx @use-aistack/cli sync` first.";
 
 /** The message when the machine has no active harness to trigger anything. */
-export const NOTHING_TO_TRIGGER = `No Claude Code or Codex session on this machine in the last ${DEFAULT_WINDOW_DAYS} days, so nothing would trigger an auto-sync. Nothing was changed.`;
+export const NOTHING_TO_TRIGGER = `No supported session on this machine in the last ${DEFAULT_WINDOW_DAYS} days, so nothing would trigger an auto-sync. Nothing was changed.`;
 
 /**
  * Turn auto-sync on: grant the permission on the STACK, then write the
@@ -127,6 +136,10 @@ export async function enableAutoSync(
 			trustLine = codexResult.message;
 		}
 	}
+	if (names.has(GROK_HARNESS_NAME)) {
+		const grokResult = (deps.installGrokHook ?? installGrokAutoSyncHook)();
+		if (!grokResult.ok) return grokResult;
+	}
 
 	saveSettings(
 		{
@@ -176,7 +189,8 @@ export async function disableAutoSync(
 	);
 	const result = (deps.removeHook ?? removeAutoSyncHook)();
 	const codexResult = (deps.removeCodexHook ?? removeCodexAutoSyncHook)();
-	const failures = [result, codexResult]
+	const grokResult = (deps.removeGrokHook ?? removeGrokAutoSyncHook)();
+	const failures = [result, codexResult, grokResult]
 		.filter((r) => !r.ok)
 		.map((r) => r.message);
 
@@ -214,9 +228,9 @@ export async function disableAutoSync(
  *                gate. That is what makes "flip the web switch, run one sync"
  *                the whole enable story, and it is also what gives a harness
  *                adopted months later its trigger.
- *   - flag OFF - touch nothing. The revoke is already in force: `sync --auto`
- *                asks the stack before it publishes, so a live hook on this
- *                machine publishes nothing.
+ *   - flag OFF - disable locally first and remove every owned trigger. A
+ *                failed removal is retried on the next interactive sync, and
+ *                the local gate keeps a leftover trigger from publishing.
  *   - ABSENT   - touch nothing. Nobody has decided, and the post-sync ask still
  *                owns that case.
  *
@@ -226,7 +240,42 @@ export async function reconcileAutoSync(
 	permission: AutoSyncPermission | null,
 	deps: EnableDeps = {},
 ): Promise<HookResult | null> {
-	if (permission?.enabled !== true) return null;
+	if (permission === null) return null;
+	if (permission.enabled !== true) {
+		const settings = getSettings(deps.settingsFile);
+		saveSettings(
+			{
+				autoSyncAnswered: true,
+				autoSync: {
+					enabled: false,
+					frequencyHours: normalizeFrequencyHours(
+						permission.frequencyHours ?? settings.autoSync?.frequencyHours,
+					),
+				},
+			},
+			deps.settingsFile,
+		);
+		const results = [
+			(deps.removeHook ?? removeAutoSyncHook)(),
+			(deps.removeCodexHook ?? removeCodexAutoSyncHook)(),
+			(deps.removeGrokHook ?? removeGrokAutoSyncHook)(),
+		];
+		const failures = results.filter((result) => !result.ok);
+		if (failures.length > 0) {
+			return {
+				ok: false,
+				message: `Auto-sync is off on this machine, but a trigger could not be removed: ${failures.map((result) => result.message).join("; ")}. The next interactive sync will retry.`,
+			};
+		}
+		const changed =
+			settings.autoSync?.enabled !== false ||
+			results.some((result) => !result.message.toLowerCase().startsWith("no "));
+		if (!changed) return null;
+		return {
+			ok: true,
+			message: "Auto-sync is off on this machine. Removed its local triggers.",
+		};
+	}
 
 	const detected = await (deps.detectedImpl ?? detectedAdapters)();
 	if (detected.length === 0) return null;
@@ -254,6 +303,11 @@ export async function reconcileAutoSync(
 		CODEX_HARNESS_NAME,
 		deps.codexHookInstalledImpl ?? codexAutoSyncHookInstalled,
 		deps.installCodexHook ?? installCodexAutoSyncHook,
+	);
+	install(
+		GROK_HARNESS_NAME,
+		deps.grokHookInstalledImpl ?? grokAutoSyncHookInstalled,
+		deps.installGrokHook ?? installGrokAutoSyncHook,
 	);
 
 	if (failures.length > 0) {

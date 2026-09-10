@@ -158,7 +158,7 @@ export function harnessLabel(name: string): string {
 	return name;
 }
 
-/** The detected harnesses as one phrase: "Claude Code or Codex". */
+/** The detected harnesses as one readable phrase. */
 export function harnessListLabel(adapters: readonly HarnessAdapter[]): string {
 	return adapters.map((a) => harnessLabel(a.name)).join(" or ");
 }

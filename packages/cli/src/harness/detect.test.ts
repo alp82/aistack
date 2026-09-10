@@ -31,6 +31,7 @@ let dir: string;
 const savedEnv = {
 	CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR,
 	CODEX_HOME: process.env.CODEX_HOME,
+	GROK_HOME: process.env.GROK_HOME,
 	XDG_DATA_HOME: process.env.XDG_DATA_HOME,
 	OPENCODE_DB: process.env.OPENCODE_DB,
 	PI_CODING_AGENT_DIR: process.env.PI_CODING_AGENT_DIR,
@@ -42,6 +43,7 @@ beforeEach(() => {
 	// Point every harness at the temp dir so the machine running the tests
 	// never leaks its own installs into `detectedAdapters`.
 	process.env.XDG_DATA_HOME = join(dir, "xdg-data");
+	process.env.GROK_HOME = join(dir, "grok-home");
 	delete process.env.OPENCODE_DB;
 	process.env.PI_CODING_AGENT_SESSION_DIR = join(dir, "pi-sessions");
 	delete process.env.PI_CODING_AGENT_DIR;
