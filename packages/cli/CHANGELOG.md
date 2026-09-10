@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/alp82/aistack/compare/cli-v0.14.0...cli-v0.15.0) (2026-09-10)
+
+
+### Features
+
+* **cli:** add Cursor sync and measured statistics ([#395](https://github.com/alp82/aistack/issues/395)) ([d402ef9](https://github.com/alp82/aistack/commit/d402ef99173134126cbfd77f4eae3e58f7e852db))
+
 ## [0.14.0](https://github.com/alp82/aistack/compare/cli-v0.13.0...cli-v0.14.0) (2026-09-10)
 
 
