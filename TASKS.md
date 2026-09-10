@@ -1,5 +1,3 @@
-* cursor + grok
-* add project: derive fields from repo/url
 * discord bot, better commands
 * empty state for project: only keep add a project and remove new project
 * profile

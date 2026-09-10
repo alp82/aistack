@@ -198,14 +198,14 @@ export function ProjectsManager({
 				)
 			}
 		>
-			<div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2">
-				{isOwner && (
+			{isOwner && !isEmpty && (
+				<div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2">
 					<NewProjectButton
 						label="New Project"
 						onClick={() => setDialog({ mode: "create" })}
 					/>
-				)}
-			</div>
+				</div>
+			)}
 			{loading && (
 				<ul
 					aria-busy="true"

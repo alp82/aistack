@@ -150,14 +150,14 @@ describe("ProjectsStep – edit mode: delegation to ProjectsSection", () => {
 		expect(document.getElementById("section-projects")).toBeInTheDocument();
 	});
 
-	// TC-NEW-E-05: isOwner wired → "New Project" button present.
-	it("TC-NEW-E-05: isOwner=true → button with accessible name /new project/i present", async () => {
+	// TC-NEW-E-05: isOwner wired → "Add a project" button present.
+	it("TC-NEW-E-05: isOwner=true → button with accessible name /add a project/i present", async () => {
 		const { useQuery } = vi.mocked(await import("convex/react"));
 		useQuery.mockReturnValue([]);
 
 		render(<ProjectsStep mode="edit" stackId={STACK_ID} isOwner={true} />);
 		expect(
-			screen.getByRole("button", { name: /new project/i }),
+			screen.getByRole("button", { name: /add a project/i }),
 		).toBeInTheDocument();
 	});
 });
@@ -168,11 +168,11 @@ describe("ProjectsStep – edit mode: delegation to ProjectsSection", () => {
 
 describe("ProjectsStep – create mode: dialog-based ProjectsManager UI", () => {
 	// TC-NEW-D-01
-	it("TC-NEW-D-01: 'New Project' → dialog opens with empty name input", async () => {
+	it("TC-NEW-D-01: 'Add a project' → dialog opens with empty name input", async () => {
 		render(
 			<ProjectsStep mode="create" projects={[]} onProjectsChange={vi.fn()} />,
 		);
-		fireEvent.click(screen.getByRole("button", { name: /new project/i }));
+		fireEvent.click(screen.getByRole("button", { name: /add a project/i }));
 		const nameInput = await screen.findByLabelText(/name/i);
 		expect(nameInput).toHaveValue("");
 	});
@@ -187,7 +187,7 @@ describe("ProjectsStep – create mode: dialog-based ProjectsManager UI", () => 
 				onProjectsChange={onProjectsChange}
 			/>,
 		);
-		fireEvent.click(screen.getByRole("button", { name: /new project/i }));
+		fireEvent.click(screen.getByRole("button", { name: /add a project/i }));
 		const nameInput = await screen.findByLabelText(/name/i);
 		fireEvent.change(nameInput, { target: { value: "Dialog Project" } });
 		fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
@@ -275,7 +275,7 @@ describe("ProjectsStep – create mode: dialog-based ProjectsManager UI", () => 
 	});
 
 	// TC-NEW-D-06
-	it("TC-NEW-D-06: New Project → name filled → URL set to 'not a valid url !!!' → Create → role='alert' shown AND onProjectsChange NOT called", async () => {
+	it("TC-NEW-D-06: Add a project → name filled → URL set to 'not a valid url !!!' → Create → role='alert' shown AND onProjectsChange NOT called", async () => {
 		const onProjectsChange = vi.fn();
 		render(
 			<ProjectsStep
@@ -284,7 +284,7 @@ describe("ProjectsStep – create mode: dialog-based ProjectsManager UI", () => 
 				onProjectsChange={onProjectsChange}
 			/>,
 		);
-		fireEvent.click(screen.getByRole("button", { name: /new project/i }));
+		fireEvent.click(screen.getByRole("button", { name: /add a project/i }));
 		const nameInput = await screen.findByLabelText(/name/i);
 		fireEvent.change(nameInput, { target: { value: "Bad URL Project" } });
 		const urlInput = screen.getByLabelText(/^url$/i);
@@ -419,7 +419,7 @@ describe("ProjectsStep – create mode: dialog-based ProjectsManager UI", () => 
 	});
 
 	// TC-NEW-D-09
-	it("TC-NEW-D-09: New Project dialog, empty name → Create button disabled; clicking does not call onProjectsChange", async () => {
+	it("TC-NEW-D-09: Add a project dialog, empty name → Create button disabled; clicking does not call onProjectsChange", async () => {
 		const onProjectsChange = vi.fn();
 		render(
 			<ProjectsStep
@@ -428,7 +428,7 @@ describe("ProjectsStep – create mode: dialog-based ProjectsManager UI", () => 
 				onProjectsChange={onProjectsChange}
 			/>,
 		);
-		fireEvent.click(screen.getByRole("button", { name: /new project/i }));
+		fireEvent.click(screen.getByRole("button", { name: /add a project/i }));
 		await screen.findByLabelText(/name/i); // dialog open
 		const createBtn = screen.getByRole("button", { name: /^create$/i });
 		expect(createBtn).toBeDisabled();
