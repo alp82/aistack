@@ -118,7 +118,7 @@ describe("Grok Build scanner", () => {
 					},
 				},
 			]
-				.map(JSON.stringify)
+				.map((value) => JSON.stringify(value))
 				.join("\n"),
 		);
 		await writeFile(
@@ -133,5 +133,40 @@ describe("Grok Build scanner", () => {
 		expect(day?.delegation?.subagentToolCalls).toBe(1);
 		expect(day?.delegation?.mostSubagents).toBe(1);
 		expect(JSON.stringify(day)).not.toContain("private");
+	});
+
+	test("streams a large updates file through the normal scanner", async () => {
+		const root = await mkdtemp(path.join(tmpdir(), "grok-scan-large-"));
+		const session = path.join(root, "workspace", "session");
+		await mkdir(session, { recursive: true });
+		const turns = 25_000;
+		const row = JSON.stringify({
+			timestamp: 1_767_306_618,
+			params: {
+				sessionId: "large-session",
+				update: {
+					sessionUpdate: "turn_completed",
+					usage: {
+						modelUsage: {
+							"grok-4.6": { inputTokens: 10, outputTokens: 2 },
+						},
+					},
+				},
+			},
+		});
+		await writeFile(
+			path.join(session, "updates.jsonl"),
+			`${row}\n`.repeat(turns),
+		);
+
+		const aggregate = createAggregate();
+		const result = await scan(aggregate, { roots: [root], sinceMs: 0 });
+
+		expect(result.complete).toBe(true);
+		expect(aggregate.distinctResponses).toBe(turns);
+		expect(aggregate.byModel.get("grok-4.6")?.input).toBe(turns * 10);
+		expect(result.sessionDates.get("large-session")).toEqual(
+			new Set(["2026-01-01"]),
+		);
 	});
 });
