@@ -22,6 +22,7 @@ function setup(b = board()) {
 describe("the trend", () => {
 	it("names Grok Build", () => {
 		expect(harnessLabel("grok-build")).toBe("Grok Build");
+		expect(harnessLabel("cursor")).toBe("Cursor");
 	});
 	it("is null below two readings - one dot is not a trend", () => {
 		expect(trendOf([{ at: 1, tokens: 100 }])).toBeNull();

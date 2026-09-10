@@ -59,6 +59,7 @@ describe("a sync row", () => {
 		expect(harnessList(["claude-code"])).toBe("Claude Code");
 		expect(harnessList(["grok-build"])).toBe("Grok Build");
 		expect(harnessList(["claude-code", "codex"])).toBe("Claude Code + Codex");
-		expect(harnessList(["cursor"])).toBe("cursor");
+		expect(harnessList(["cursor"])).toBe("Cursor");
+		expect(harnessList(["future-harness"])).toBe("future-harness");
 	});
 });

@@ -153,6 +153,8 @@ export async function scan(options: ScanOptions): Promise<HarnessScan> {
 			cacheWrite1h: 0,
 			cacheWriteUnsplit: buckets.cacheWrite ?? 0,
 		};
+		// Value the reported model at shared API rates. Cursor account charges
+		// include plan accounting and never substitute for token valuation.
 		addModelUsage(
 			aggregate,
 			model,

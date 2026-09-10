@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { layeredPricer, setActivePricer } from "@aistack/pricing";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { detectMcpServers } from "../../mcp.js";
 import { scanLocal } from "../../scanner.js";
@@ -50,6 +51,7 @@ beforeEach(async () => {
 	};
 });
 afterEach(async () => {
+	setActivePricer(null);
 	await rm(dir, { recursive: true, force: true });
 });
 const event = (overrides: Record<string, unknown> = {}) => ({
@@ -428,4 +430,96 @@ it("reuses configured Cursor resources without claiming use and publishes only c
 		/private-tool|private-skill|private_docs|never-send|skill body|rule body/,
 	);
 	expect(wire).not.toContain(project);
+});
+
+it("values Cursor tokens at dated shared rates, never dashboard charges, and leaves Auto unpriced", async () => {
+	setActivePricer(
+		layeredPricer({
+			id: "cursor-test-table",
+			rows: [
+				{
+					modelSlug: "claude-sonnet-4-6",
+					from: 0,
+					input: 2,
+					output: 4,
+					cacheRead: 0.5,
+					cacheWrite5m: 3,
+					source: "old-period",
+				},
+				{
+					modelSlug: "claude-sonnet-4-6",
+					from: AT + 500,
+					input: 5,
+					output: 10,
+					cacheRead: 1,
+					cacheWrite5m: 6,
+					source: "new-period",
+				},
+			],
+		}),
+	);
+	options.accountImpl = async () => ({ scope: "account-a", cookie: "cookie" });
+	options.fetchImpl = fetcher([
+		event({ id: "old", timestamp: AT, tokenUsage: { inputTokens: 1000 } }),
+		event({
+			id: "new",
+			model: "claude-sonnet-4-6-20260910",
+			tokenUsage: {
+				inputTokens: 1000,
+				outputTokens: 100,
+				cacheReadTokens: 200,
+				cacheWriteTokens: 300,
+			},
+			chargedCents: 999999,
+		}),
+		event({
+			id: "auto",
+			model: "auto",
+			tokenUsage: { inputTokens: 500 },
+			chargedCents: 999999,
+		}),
+		event({
+			id: "vendor",
+			model: "anthropic:claude-sonnet-4-6",
+			tokenUsage: { inputTokens: 1000 },
+		}),
+		event({
+			id: "gateway",
+			model: "openrouter:claude-sonnet-4-6",
+			tokenUsage: { inputTokens: 300 },
+		}),
+		event({
+			id: "free",
+			model: "local:llama",
+			tokenUsage: { inputTokens: 200 },
+		}),
+	]);
+	const reading = await scan(options);
+	const build = (publishCost: boolean) =>
+		[
+			...buildUsageDays({
+				aggregate: reading.aggregate,
+				harness: "cursor",
+				publishCost,
+				projectWorkspaceId: () => "opaque-workspace",
+			}).values(),
+		][0];
+	const day = build(true);
+	expect(
+		day.models.find((m) => m.model === "claude-sonnet-4-6")?.usd,
+	).toBeCloseTo(0.01, 6);
+	expect(day.models.find((m) => m.model === "auto")?.usd).toBeUndefined();
+	expect(day.models.find((m) => m.model === "local:llama")).toMatchObject({
+		usd: 0,
+		pricingTable: "local-no-charge",
+	});
+	expect(
+		day.models.find((m) => m.model === "anthropic:claude-sonnet-4-6")?.usd,
+	).toBeCloseTo(0.005, 6);
+	expect(
+		day.models.find((m) => m.model === "openrouter:claude-sonnet-4-6")?.usd,
+	).toBeUndefined();
+	expect(day.excludedTokens.unpriced).toBe(800);
+	expect(JSON.stringify(build(false))).not.toContain('"usd"');
+	expect(JSON.stringify(build(false))).not.toContain('"pricingTable"');
 });

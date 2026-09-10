@@ -227,6 +227,15 @@ async function staleSync(
 }
 
 describe('leaderboard.get', () => {
+  test('includes Cursor tokens and history in the normal harness filter', async () => {
+    const t = convexTest(schema, modules)
+    const stack = await seedStack(t, { name: 'Cursor Stack' })
+    await sync(t, stack.stackId, { totalTokens: 1234, harness: 'cursor' })
+    const board = await t.query(api.leaderboard.get, {})
+    expect(board.rows[0]).toMatchObject({ tokens: 1234, harnesses: ['cursor'] })
+    expect(board.harnesses.some(h => h.key === 'cursor')).toBe(true)
+  })
+
   test('ranks living stacks by measured tokens and excludes low quality', async () => {
     const t = convexTest(schema, modules)
     const small = await seedStack(t, { name: 'Small' })
