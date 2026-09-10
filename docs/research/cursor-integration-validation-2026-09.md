@@ -1,6 +1,6 @@
 # Cursor integration validation and release handoff
 
-Status on 2026-09-10: automated acceptance passed. Native acceptance is UNRUN and awaits the owner's release disposition in [Validate Cursor integration and release readiness](https://github.com/alp82/aistack/issues/393). This report does not claim publication or close that ticket.
+Status on 2026-09-10: automated acceptance passed. The owner explicitly approved proceeding with release while deferring real Cursor manual sync, account-login reuse and native hook checks to post-release validation. Native checks remain UNRUN. [Validate Cursor integration and release readiness](https://github.com/alp82/aistack/issues/393) is accepted with that disposition; this report does not claim publication.
 
 ## Integrated changes
 
@@ -50,9 +50,9 @@ No owner credentials, private retained history, paid session, real interactive s
 | Actual SQLite login reuse, unavailable/expired access and Cursor renewal | UNRUN | Enrichment success and join coverage remain unverified on a real account. Local estimates and complete-cache fallback are implemented and tested. |
 | Native macOS and Windows execution, including GUI PATH | UNRUN | Launcher text/platform paths are tested synthetically; native shell and environment behavior is unverified. |
 
-These gaps affect the promised real acquisition and automatic-refresh paths, so their release treatment needs the explicit owner disposition required by the validation ticket. They do not justify an exhaustive donor programme or paid session requirement. The Grok Build precedent deferred native checks to post-release user validation after an explicit owner decision. That decision has not yet been recorded for Cursor.
+These gaps affect the promised real acquisition and automatic-refresh paths. On 2026-09-10, the owner explicitly approved proceeding with release while deferring real Cursor manual sync, account-login reuse and native hook checks to post-release validation, replying "yes do it" to that question in the live session. This supplies the validation ticket's required release disposition and follows the Grok Build precedent. It does not establish native success or introduce a paid session requirement.
 
-Recommended disposition: accept these exact UNRUN checks as staged post-release owner/user validation, retaining their status and asking for normal user feedback. Alternatively, hold publication until the owner runs the feasible local manual and native stop checks and reports the results; unavailable platform checks still need a disposition. No synthetic result is relabelled as native success.
+Accepted disposition: these exact UNRUN checks are staged post-release owner/user validation. Retain their status and ask for normal user feedback. No synthetic result is relabelled as native success.
 
 The installed hook intentionally invokes npm `@latest`, with the existing cached fallback. Before the Cursor release is published, a real stop event can therefore run the older published collector. Pre-release synthetic launcher tests use a controlled executable; they are not evidence that the installed hook has run the new collector against an owner account.
 
@@ -66,7 +66,7 @@ Automatic sync needs its normal explicit opt-in. After the Cursor package is pub
 
 [Deploy Cursor backend support and publish the CLI](https://github.com/alp82/aistack/issues/394) owns all publication:
 
-1. Record the owner's disposition or actual native outcomes on the validation ticket before closing acceptance.
+1. Carry the recorded owner-approved post-release deferral into the release handoff and retain each UNRUN status until actual feedback supplies an outcome.
 2. Integrate the four implementation commits and this report using a Conventional Commit CLI feature title. Preserve unrelated workspace changes. Resolve any current-main drift through the normal review workflow; this report validates the local combined branch, not a future merge commit.
 3. Wait for the `deploy-convex.yml` workflow on the merged main commit. There is no Cursor migration in this change. If later integration requires a migration, run it only via the server wrapper after its code is deployed.
 4. Let Release Please choose the CLI version and release PR. Merge that PR only after compatible backend deployment and the acceptance disposition. `publish-cli.yml` publishes its release commit through npm OIDC. Do not bump the package version or publish manually.
