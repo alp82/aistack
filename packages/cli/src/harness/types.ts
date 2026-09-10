@@ -28,6 +28,8 @@ export type HarnessScan = {
 };
 
 export type HarnessScanOptions = {
+	/** Skip optional workflow extraction when the stack has disabled publication. */
+	publishWorkflow?: boolean;
 	/** Only count records with a timestamp at or after this epoch ms. */
 	sinceMs: number;
 	onProgress?: (files: number) => void;

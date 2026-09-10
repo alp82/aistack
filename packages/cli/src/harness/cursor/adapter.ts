@@ -3,9 +3,10 @@ import { cachedEvents, cacheFile, loadCache } from "./cache.js";
 import { messageTimes } from "./evidence.js";
 import { dataPath, readLocal, storeRoot } from "./local.js";
 import { scan } from "./scan.js";
+import { CURSOR_BUILTIN_TOOLS } from "./workflow.js";
 
 export const CURSOR_HARNESS_NAME = "cursor";
-export const CURSOR_BUILTIN_TOOLS: ReadonlySet<string> = new Set();
+export { CURSOR_BUILTIN_TOOLS } from "./workflow.js";
 export const cursorAdapter: HarnessAdapter = {
 	name: CURSOR_HARNESS_NAME,
 	builtinTools: CURSOR_BUILTIN_TOOLS,

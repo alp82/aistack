@@ -28,6 +28,7 @@ import {
 } from "./cache.js";
 import { localContributions, messageTimes, reconcile } from "./evidence.js";
 import { dataPath, type LocalRead, readLocal, storeRoot } from "./local.js";
+import { projectHistory } from "./workflow.js";
 
 export type ScanOptions = HarnessScanOptions & {
 	root?: string;
@@ -127,7 +128,17 @@ export async function scan(options: ScanOptions): Promise<HarnessScan> {
 			noteSessionStart(aggregate, session.id, Math.min(...times));
 		}
 	}
-	for (const contribution of reconcile(contributions, api)) {
+	const usage = reconcile(contributions, api);
+	projectHistory({
+		locals: local.sessions,
+		api,
+		usage,
+		aggregate,
+		workflow: options.publishWorkflow === false ? undefined : workflow,
+		sinceMs: options.sinceMs,
+		now,
+	});
+	for (const contribution of usage) {
 		const { tsMs, buckets, session, sidechain } = contribution;
 		const dates = sessionDates.get(session) ?? new Set();
 		dates.add(utcDateOf(tsMs));

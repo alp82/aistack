@@ -686,7 +686,8 @@ export function createHarnessWorkflowReducer(
 			const routesModels =
 				harness === "claude-code" ||
 				harness === "opencode" ||
-				harness === "grok-build";
+				harness === "grok-build" ||
+				harness === "cursor";
 
 			const asRows = (map: Map<string, number>) => {
 				const safe = new Map<string, number>();

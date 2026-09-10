@@ -248,6 +248,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		progress(`Scanning recent ${adapter.name} usage`);
 		const { aggregate, stats } = await adapter.scan({
 			sinceMs,
+			publishWorkflow: false,
 			onProgress: (files) =>
 				progress(`Scanning recent ${adapter.name} usage · ${files} files`),
 		});
@@ -270,6 +271,7 @@ export async function stageSync(deps: StageDeps): Promise<StagedSend> {
 		const { aggregate, workflow, workflowLocal, scanComplete, sessionDates } =
 			await adapter.scan({
 				sinceMs: daysSinceMs,
+				publishWorkflow: config.publishWorkflow,
 				onProgress: (files) =>
 					progress(`Reading historical ${adapter.name} days · ${files} files`),
 			});
